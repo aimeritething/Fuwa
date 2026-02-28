@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useCommandRegistry, groupSortKey } from './useCommandRegistry'
+import { useCommandRegistry, groupSortKey, pluralizeType, extractVaultTypes } from './useCommandRegistry'
 import type { VaultEntry } from '../types'
 
 const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
@@ -37,6 +37,7 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     modifiedCount: 0,
     onQuickOpen: vi.fn(),
     onCreateNote: vi.fn(),
+    onCreateNoteOfType: vi.fn(),
     onSave: vi.fn(),
     onOpenSettings: vi.fn(),
     onTrashNote: vi.fn(),
@@ -173,6 +174,169 @@ describe('useCommandRegistry', () => {
   it('zoom-in label shows current zoom level', () => {
     const { result } = renderHook(() => useCommandRegistry(makeConfig({ zoomLevel: 120 })))
     expect(result.current.find(c => c.id === 'zoom-in')!.label).toContain('120%')
+  })
+
+  describe('type-aware commands', () => {
+    it('generates "New [Type]" commands from vault entries', () => {
+      const entries = [
+        makeEntry({ path: '/vault/event/birthday.md', isA: 'Event' }),
+        makeEntry({ path: '/vault/person/alice.md', isA: 'Person' }),
+      ]
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ entries })))
+      const newEvent = result.current.find(c => c.id === 'new-event')
+      const newPerson = result.current.find(c => c.id === 'new-person')
+      expect(newEvent).toBeDefined()
+      expect(newEvent!.label).toBe('New Event')
+      expect(newEvent!.group).toBe('Note')
+      expect(newPerson).toBeDefined()
+      expect(newPerson!.label).toBe('New Person')
+    })
+
+    it('generates "List [Type]" commands with pluralized names', () => {
+      const entries = [
+        makeEntry({ path: '/vault/event/birthday.md', isA: 'Event' }),
+        makeEntry({ path: '/vault/person/alice.md', isA: 'Person' }),
+      ]
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ entries })))
+      const listEvents = result.current.find(c => c.id === 'list-event')
+      const listPeople = result.current.find(c => c.id === 'list-person')
+      expect(listEvents).toBeDefined()
+      expect(listEvents!.label).toBe('List Events')
+      expect(listEvents!.group).toBe('Navigation')
+      expect(listPeople).toBeDefined()
+      expect(listPeople!.label).toBe('List People')
+    })
+
+    it('calls onCreateNoteOfType when "New [Type]" executes', () => {
+      const onCreateNoteOfType = vi.fn()
+      const entries = [makeEntry({ path: '/vault/event/birthday.md', isA: 'Event' })]
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ entries, onCreateNoteOfType })))
+      result.current.find(c => c.id === 'new-event')!.execute()
+      expect(onCreateNoteOfType).toHaveBeenCalledWith('Event')
+    })
+
+    it('calls onSelect with sectionGroup when "List [Type]" executes', () => {
+      const onSelect = vi.fn()
+      const entries = [makeEntry({ path: '/vault/person/alice.md', isA: 'Person' })]
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ entries, onSelect })))
+      result.current.find(c => c.id === 'list-person')!.execute()
+      expect(onSelect).toHaveBeenCalledWith({ kind: 'sectionGroup', type: 'Person' })
+    })
+
+    it('uses default types when vault has no typed notes', () => {
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ entries: [] })))
+      expect(result.current.find(c => c.id === 'new-event')).toBeDefined()
+      expect(result.current.find(c => c.id === 'new-person')).toBeDefined()
+      expect(result.current.find(c => c.id === 'new-project')).toBeDefined()
+      expect(result.current.find(c => c.id === 'new-note')).toBeDefined()
+    })
+
+    it('excludes Type entries from vault type list', () => {
+      const entries = [
+        makeEntry({ path: '/vault/type/event.md', isA: 'Type', title: 'Event' }),
+        makeEntry({ path: '/vault/event/birthday.md', isA: 'Event' }),
+      ]
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ entries })))
+      expect(result.current.find(c => c.id === 'new-type')).toBeUndefined()
+    })
+
+    it('excludes trashed entries from type extraction', () => {
+      const entries = [
+        makeEntry({ path: '/vault/event/old.md', isA: 'Event', trashed: true }),
+      ]
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ entries })))
+      // Should fall back to defaults since the only Event entry is trashed
+      expect(result.current.find(c => c.id === 'new-event')).toBeDefined()
+      expect(result.current.find(c => c.id === 'new-project')).toBeDefined()
+    })
+
+    it('deduplicates types from multiple entries', () => {
+      const entries = [
+        makeEntry({ path: '/vault/event/a.md', isA: 'Event' }),
+        makeEntry({ path: '/vault/event/b.md', isA: 'Event' }),
+        makeEntry({ path: '/vault/event/c.md', isA: 'Event' }),
+      ]
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ entries })))
+      const eventCmds = result.current.filter(c => c.id === 'new-event')
+      expect(eventCmds).toHaveLength(1)
+    })
+  })
+})
+
+describe('pluralizeType', () => {
+  it('handles regular plurals', () => {
+    expect(pluralizeType('Event')).toBe('Events')
+    expect(pluralizeType('Project')).toBe('Projects')
+    expect(pluralizeType('Note')).toBe('Notes')
+    expect(pluralizeType('Topic')).toBe('Topics')
+  })
+
+  it('handles special plurals', () => {
+    expect(pluralizeType('Person')).toBe('People')
+    expect(pluralizeType('Responsibility')).toBe('Responsibilities')
+  })
+
+  it('handles words ending in y', () => {
+    expect(pluralizeType('Category')).toBe('Categories')
+  })
+
+  it('handles words ending in s/x/ch/sh', () => {
+    expect(pluralizeType('Process')).toBe('Processes')
+    expect(pluralizeType('Box')).toBe('Boxes')
+  })
+
+  it('does not double-pluralize words ending in vowel+y', () => {
+    expect(pluralizeType('Key')).toBe('Keys')
+    expect(pluralizeType('Day')).toBe('Days')
+  })
+})
+
+describe('extractVaultTypes', () => {
+  it('extracts unique types from entries', () => {
+    const entries = [
+      makeEntry({ isA: 'Event' }),
+      makeEntry({ isA: 'Person' }),
+      makeEntry({ isA: 'Event' }),
+    ]
+    const types = extractVaultTypes(entries)
+    expect(types).toEqual(['Event', 'Person'])
+  })
+
+  it('returns default types when no entries', () => {
+    const types = extractVaultTypes([])
+    expect(types).toContain('Event')
+    expect(types).toContain('Person')
+    expect(types).toContain('Project')
+    expect(types).toContain('Note')
+    expect(types).toHaveLength(4)
+  })
+
+  it('excludes Type entries', () => {
+    const entries = [
+      makeEntry({ isA: 'Type' }),
+      makeEntry({ isA: 'Event' }),
+    ]
+    const types = extractVaultTypes(entries)
+    expect(types).toEqual(['Event'])
+    expect(types).not.toContain('Type')
+  })
+
+  it('excludes trashed entries', () => {
+    const entries = [makeEntry({ isA: 'Event', trashed: true })]
+    const types = extractVaultTypes(entries)
+    // Falls back to defaults since the only typed entry is trashed
+    expect(types).toContain('Event')
+    expect(types).toContain('Person')
+    expect(types).toHaveLength(4)
+  })
+
+  it('returns sorted types', () => {
+    const entries = [
+      makeEntry({ isA: 'Procedure' }),
+      makeEntry({ isA: 'Event' }),
+      makeEntry({ isA: 'Note' }),
+    ]
+    expect(extractVaultTypes(entries)).toEqual(['Event', 'Note', 'Procedure'])
   })
 })
 

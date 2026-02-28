@@ -21,6 +21,7 @@ interface CommandRegistryConfig {
 
   onQuickOpen: () => void
   onCreateNote: () => void
+  onCreateNoteOfType: (type: string) => void
   onSave: () => void
   onOpenSettings: () => void
   onTrashNote: (path: string) => void
@@ -41,16 +42,62 @@ interface CommandRegistryConfig {
   canGoForward?: boolean
 }
 
+const PLURAL_OVERRIDES: Record<string, string> = {
+  Person: 'People',
+  Responsibility: 'Responsibilities',
+}
+
+const DEFAULT_TYPES = ['Event', 'Person', 'Project', 'Note']
+
+export function pluralizeType(type: string): string {
+  if (PLURAL_OVERRIDES[type]) return PLURAL_OVERRIDES[type]
+  if (type.endsWith('s') || type.endsWith('x') || type.endsWith('ch') || type.endsWith('sh')) return `${type}es`
+  if (type.endsWith('y') && !/[aeiou]y$/i.test(type)) return `${type.slice(0, -1)}ies`
+  return `${type}s`
+}
+
+export function extractVaultTypes(entries: VaultEntry[]): string[] {
+  const typeSet = new Set<string>()
+  for (const e of entries) {
+    if (e.isA && e.isA !== 'Type' && !e.trashed) typeSet.add(e.isA)
+  }
+  if (typeSet.size === 0) return DEFAULT_TYPES
+  return Array.from(typeSet).sort()
+}
+
 const GROUP_ORDER: CommandGroup[] = ['Navigation', 'Note', 'Git', 'View', 'Settings']
 
 export function groupSortKey(group: CommandGroup): number {
   return GROUP_ORDER.indexOf(group)
 }
 
+export function buildTypeCommands(
+  types: string[],
+  onCreateNoteOfType: (type: string) => void,
+  onSelect: (sel: SidebarSelection) => void,
+): CommandAction[] {
+  return types.flatMap((type) => {
+    const slug = type.toLowerCase().replace(/\s+/g, '-')
+    const plural = pluralizeType(type)
+    return [
+      {
+        id: `new-${slug}`, label: `New ${type}`, group: 'Note' as CommandGroup,
+        keywords: ['new', 'create', type.toLowerCase()],
+        enabled: true, execute: () => onCreateNoteOfType(type),
+      },
+      {
+        id: `list-${slug}`, label: `List ${plural}`, group: 'Navigation' as CommandGroup,
+        keywords: ['list', 'show', 'filter', type.toLowerCase(), plural.toLowerCase()],
+        enabled: true, execute: () => onSelect({ kind: 'sectionGroup', type }),
+      },
+    ]
+  })
+}
+
 export function useCommandRegistry(config: CommandRegistryConfig): CommandAction[] {
   const {
     activeTabPath, entries, modifiedCount,
-    onQuickOpen, onCreateNote, onSave, onOpenSettings,
+    onQuickOpen, onCreateNote, onCreateNoteOfType, onSave, onOpenSettings,
     onTrashNote, onArchiveNote, onUnarchiveNote,
     onCommitPush, onSetViewMode, onToggleInspector,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
@@ -65,6 +112,8 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     [entries, activeTabPath, hasActiveNote],
   )
   const isArchived = activeEntry?.archived ?? false
+
+  const vaultTypes = useMemo(() => extractVaultTypes(entries), [entries])
 
   return useMemo(() => {
     const cmds: CommandAction[] = [
@@ -104,16 +153,20 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
 
       // Settings
       { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,', keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
+
+      // Type-aware: "New [Type]" and "List [Type]"
+      ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
     ]
 
     return cmds
   }, [
     hasActiveNote, activeTabPath, isArchived, modifiedCount,
-    onQuickOpen, onCreateNote, onSave, onOpenSettings,
+    onQuickOpen, onCreateNote, onCreateNoteOfType, onSave, onOpenSettings,
     onTrashNote, onArchiveNote, onUnarchiveNote,
     onCommitPush, onSetViewMode, onToggleInspector,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onCloseTab,
     onGoBack, onGoForward, canGoBack, canGoForward,
+    vaultTypes,
   ])
 }

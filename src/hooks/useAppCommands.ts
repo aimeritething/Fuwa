@@ -21,6 +21,7 @@ interface AppCommandsConfig {
   onCommandPalette: () => void
   onSearch: () => void
   onCreateNote: () => void
+  onCreateNoteOfType: (type: string) => void
   onSave: () => void
   onOpenSettings: () => void
   onTrashNote: (path: string) => void
@@ -87,6 +88,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     modifiedCount: config.modifiedCount,
     onQuickOpen: config.onQuickOpen,
     onCreateNote: config.onCreateNote,
+    onCreateNoteOfType: config.onCreateNoteOfType,
     onSave: config.onSave,
     onOpenSettings: config.onOpenSettings,
     onTrashNote: config.onTrashNote,
