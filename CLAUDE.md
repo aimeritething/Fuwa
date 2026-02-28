@@ -17,6 +17,10 @@ pre_commit_code_health_safeguard    # CodeScene ≥9.2 — if it fails, fix stru
 
 ## ⛔ BEFORE FIRING laputa-task-done — QA on real vault
 
+> **⚠️ TAURI APP ONLY — never test in browser (`pnpm dev` / localhost)**
+> The browser dev server has a fake HTTP server (`/api/*` routes, mock handlers) that doesn't exist in the real Tauri app.
+> If it works in the browser but crashes in Tauri, it's broken. Always test in `pnpm tauri dev`.
+
 1. Acquire lockfile: `echo $$ > /tmp/laputa-qa.lock && trap "rm -f /tmp/laputa-qa.lock" EXIT`
 2. Kill other instances: `pkill -x laputa 2>/dev/null || true; sleep 1`
 3. Start app: `pnpm tauri dev` from worktree
