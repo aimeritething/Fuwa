@@ -198,7 +198,11 @@ fn batch_trash_notes(paths: Vec<String>) -> Result<usize, String> {
     for path in &paths {
         let path = expand_tilde(path);
         frontmatter::update_frontmatter(&path, "Trashed", FrontmatterValue::Bool(true))?;
-        frontmatter::update_frontmatter(&path, "Trashed at", FrontmatterValue::String(now.clone()))?;
+        frontmatter::update_frontmatter(
+            &path,
+            "Trashed at",
+            FrontmatterValue::String(now.clone()),
+        )?;
         count += 1;
     }
     Ok(count)
