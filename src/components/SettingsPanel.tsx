@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { X, Eye, EyeSlash, GithubLogo, SignOut, CircleNotch } from '@phosphor-icons/react'
+import { X, Eye, EyeSlash, GithubLogo, SignOut, CircleNotch, ArrowClockwise, Copy, Check } from '@phosphor-icons/react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
+import { openExternalUrl } from '../utils/url'
 import type { Settings, DeviceFlowStart, DeviceFlowPollResult, GitHubUser } from '../types'
 
 function tauriCall<T>(cmd: string, args: Record<string, unknown> = {}): Promise<T> {
@@ -109,6 +110,7 @@ function processPollResult(
 function GitHubSection({ githubUsername, githubToken, onConnected, onDisconnect }: GitHubSectionProps) {
   const [oauthStatus, setOauthStatus] = useState<OAuthStatus>('idle')
   const [userCode, setUserCode] = useState<string | null>(null)
+  const [verificationUri, setVerificationUri] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const pollingRef = useRef(false)
   const deviceCodeRef = useRef<string | null>(null)
@@ -132,8 +134,11 @@ function GitHubSection({ githubUsername, githubToken, onConnected, onDisconnect 
     try {
       const flowStart = await tauriCall<DeviceFlowStart>('github_device_flow_start')
       setUserCode(flowStart.user_code)
+      setVerificationUri(flowStart.verification_uri)
       deviceCodeRef.current = flowStart.device_code
-      window.open(flowStart.verification_uri, '_blank')
+      openExternalUrl(flowStart.verification_uri).catch(() => {
+        // Browser failed to open — URL is shown in UI so user can navigate manually
+      })
 
       pollingRef.current = true
       const intervalMs = Math.max(flowStart.interval * 1000, 5000)
@@ -184,6 +189,7 @@ function GitHubSection({ githubUsername, githubToken, onConnected, onDisconnect 
     stopPolling()
     setOauthStatus('idle')
     setUserCode(null)
+    setVerificationUri(null)
     setErrorMessage(null)
   }, [stopPolling])
 
@@ -192,10 +198,10 @@ function GitHubSection({ githubUsername, githubToken, onConnected, onDisconnect 
   }
 
   if (oauthStatus === 'waiting' && userCode) {
-    return <GitHubWaitingView userCode={userCode} onCancel={resetOAuth} />
+    return <GitHubWaitingView userCode={userCode} verificationUri={verificationUri} onCancel={resetOAuth} />
   }
 
-  return <GitHubLoginButton onLogin={handleLogin} disabled={oauthStatus === 'waiting'} errorMessage={errorMessage} />
+  return <GitHubLoginButton onLogin={handleLogin} disabled={oauthStatus === 'waiting'} errorMessage={errorMessage} onRetry={errorMessage ? () => { resetOAuth(); handleLogin() } : undefined} />
 }
 
 function GitHubConnectedRow({ username, onDisconnect }: { username: string; onDisconnect: () => void }) {
@@ -224,7 +230,20 @@ function GitHubConnectedRow({ username, onDisconnect }: { username: string; onDi
   )
 }
 
-function GitHubWaitingView({ userCode, onCancel }: { userCode: string; onCancel: () => void }) {
+function GitHubWaitingView({ userCode, verificationUri, onCancel }: { userCode: string; verificationUri: string | null; onCancel: () => void }) {
+  const [copied, setCopied] = useState(false)
+
+  const handleCopyCode = useCallback(() => {
+    navigator.clipboard.writeText(userCode).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }).catch(() => {})
+  }, [userCode])
+
+  const handleOpenUrl = useCallback(() => {
+    if (verificationUri) openExternalUrl(verificationUri).catch(() => {})
+  }, [verificationUri])
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }} data-testid="github-waiting">
       <div
@@ -232,12 +251,32 @@ function GitHubWaitingView({ userCode, onCancel }: { userCode: string; onCancel:
         style={{ display: 'flex', flexDirection: 'column', gap: 8, textAlign: 'center' }}
       >
         <div style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>Enter this code on GitHub:</div>
-        <div
-          style={{ fontSize: 24, fontWeight: 700, letterSpacing: 4, color: 'var(--foreground)', fontFamily: 'monospace' }}
-          data-testid="github-user-code"
-        >
-          {userCode}
+        <div className="flex items-center justify-center gap-2">
+          <div
+            style={{ fontSize: 24, fontWeight: 700, letterSpacing: 4, color: 'var(--foreground)', fontFamily: 'monospace' }}
+            data-testid="github-user-code"
+          >
+            {userCode}
+          </div>
+          <button
+            className="border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground"
+            onClick={handleCopyCode}
+            title="Copy code"
+            data-testid="github-copy-code"
+          >
+            {copied ? <Check size={16} /> : <Copy size={16} />}
+          </button>
         </div>
+        {verificationUri && (
+          <button
+            className="border-none bg-transparent text-muted-foreground cursor-pointer hover:text-foreground underline"
+            style={{ fontSize: 12 }}
+            onClick={handleOpenUrl}
+            data-testid="github-open-url"
+          >
+            {verificationUri}
+          </button>
+        )}
         <div className="flex items-center justify-center gap-2" style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
           <CircleNotch size={14} className="animate-spin" />
           Waiting for authorization...
@@ -255,7 +294,7 @@ function GitHubWaitingView({ userCode, onCancel }: { userCode: string; onCancel:
   )
 }
 
-function GitHubLoginButton({ onLogin, disabled, errorMessage }: { onLogin: () => void; disabled: boolean; errorMessage: string | null }) {
+function GitHubLoginButton({ onLogin, disabled, errorMessage, onRetry }: { onLogin: () => void; disabled: boolean; errorMessage: string | null; onRetry?: () => void }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
       <button
@@ -269,8 +308,19 @@ function GitHubLoginButton({ onLogin, disabled, errorMessage }: { onLogin: () =>
         Login with GitHub
       </button>
       {errorMessage && (
-        <div style={{ fontSize: 12, color: 'var(--destructive, #e03e3e)' }} data-testid="github-error">
-          {errorMessage}
+        <div className="flex items-center gap-2" style={{ fontSize: 12, color: 'var(--destructive, #e03e3e)' }}>
+          <span data-testid="github-error">{errorMessage}</span>
+          {onRetry && (
+            <button
+              className="border-none bg-transparent cursor-pointer hover:text-foreground flex items-center gap-1"
+              style={{ fontSize: 12, color: 'var(--destructive, #e03e3e)', padding: 0 }}
+              onClick={onRetry}
+              data-testid="github-retry"
+            >
+              <ArrowClockwise size={12} />
+              Retry
+            </button>
+          )}
         </div>
       )}
     </div>
