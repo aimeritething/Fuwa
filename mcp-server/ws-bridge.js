@@ -5,19 +5,46 @@
  * Exposes vault operations over WebSocket so the Laputa app frontend
  * can invoke MCP tools in real-time without going through stdio.
  *
- * Usage:
- *   VAULT_PATH=/path/to/vault WS_PORT=9710 node ws-bridge.js
+ * Port 9710: Tool bridge — Claude/AI clients call vault tools here.
+ * Port 9711: UI bridge — Frontend listens for UI action broadcasts.
  *
- * Protocol:
+ * Usage:
+ *   VAULT_PATH=/path/to/vault WS_PORT=9710 WS_UI_PORT=9711 node ws-bridge.js
+ *
+ * Protocol (tool bridge):
  *   Client sends:  { "id": "req-1", "tool": "search_notes", "args": { "query": "test" } }
  *   Server sends:  { "id": "req-1", "result": { ... } }
  *   On error:      { "id": "req-1", "error": "message" }
+ *
+ * Protocol (UI bridge):
+ *   Server broadcasts: { "type": "ui_action", "action": "open_note", "path": "..." }
  */
 import { WebSocketServer } from 'ws'
-import { readNote, createNote, searchNotes, appendToNote } from './vault.js'
+import {
+  readNote, createNote, searchNotes, appendToNote,
+  editNoteFrontmatter, deleteNote, linkNotes, listNotes, vaultContext,
+} from './vault.js'
 
 const VAULT_PATH = process.env.VAULT_PATH || process.env.HOME + '/Laputa'
 const WS_PORT = parseInt(process.env.WS_PORT || '9710', 10)
+const WS_UI_PORT = parseInt(process.env.WS_UI_PORT || '9711', 10)
+
+/** @type {WebSocketServer | null} */
+let uiBridge = null
+
+function broadcastUiAction(action, payload) {
+  if (!uiBridge) return
+  const msg = JSON.stringify({ type: 'ui_action', action, ...payload })
+  for (const client of uiBridge.clients) {
+    if (client.readyState === 1) client.send(msg)
+  }
+}
+
+function buildFrontmatter(args) {
+  const fm = {}
+  if (args.is_a) fm.is_a = args.is_a
+  return fm
+}
 
 const TOOL_HANDLERS = {
   open_note: (args) => readNote(VAULT_PATH, args.path).then(text => ({ content: text })),
@@ -25,12 +52,15 @@ const TOOL_HANDLERS = {
   create_note: (args) => createNote(VAULT_PATH, args.path, args.title, buildFrontmatter(args)),
   search_notes: (args) => searchNotes(VAULT_PATH, args.query, args.limit),
   append_to_note: (args) => appendToNote(VAULT_PATH, args.path, args.text).then(() => ({ ok: true })),
-}
-
-function buildFrontmatter(args) {
-  const fm = {}
-  if (args.is_a) fm.is_a = args.is_a
-  return fm
+  edit_note_frontmatter: (args) => editNoteFrontmatter(VAULT_PATH, args.path, args.patch),
+  delete_note: (args) => deleteNote(VAULT_PATH, args.path).then(() => ({ ok: true })),
+  link_notes: (args) => linkNotes(VAULT_PATH, args.source_path, args.property, args.target_title),
+  list_notes: (args) => listNotes(VAULT_PATH, args.type_filter, args.sort),
+  vault_context: () => vaultContext(VAULT_PATH),
+  ui_open_note: (args) => { broadcastUiAction('open_note', { path: args.path }); return { ok: true } },
+  ui_open_tab: (args) => { broadcastUiAction('open_tab', { path: args.path }); return { ok: true } },
+  ui_highlight: (args) => { broadcastUiAction('highlight', { element: args.element, path: args.path }); return { ok: true } },
+  ui_set_filter: (args) => { broadcastUiAction('set_filter', { type: args.type }); return { ok: true } },
 }
 
 async function handleMessage(data) {
@@ -48,6 +78,17 @@ async function handleMessage(data) {
   } catch (err) {
     return { id, error: err.message }
   }
+}
+
+export function startUiBridge(port = WS_UI_PORT) {
+  uiBridge = new WebSocketServer({ port })
+
+  uiBridge.on('connection', () => {
+    console.error(`[ws-bridge] UI client connected on port ${port}`)
+  })
+
+  console.error(`[ws-bridge] UI bridge listening on ws://localhost:${port}`)
+  return uiBridge
 }
 
 export function startBridge(port = WS_PORT) {
@@ -75,5 +116,6 @@ export function startBridge(port = WS_PORT) {
 // Run directly if invoked as main module
 const isMain = process.argv[1]?.endsWith('ws-bridge.js')
 if (isMain) {
+  startUiBridge()
   startBridge()
 }

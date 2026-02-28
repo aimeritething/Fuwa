@@ -234,6 +234,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     return args.path.includes('demo-vault-v2')
   },
   create_getting_started_vault: () => '/Users/mock/Documents/Laputa',
+  register_mcp_tools: () => 'registered',
 }
 
 export function addMockEntry(_entry: VaultEntry, content: string): void {

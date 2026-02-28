@@ -2,6 +2,7 @@ pub mod ai_chat;
 pub mod frontmatter;
 pub mod git;
 pub mod github;
+pub mod mcp;
 pub mod menu;
 pub mod search;
 pub mod settings;
@@ -9,6 +10,8 @@ pub mod vault;
 
 use std::borrow::Cow;
 use std::path::Path;
+use std::process::Child;
+use std::sync::Mutex;
 
 use ai_chat::{AiChatRequest, AiChatResponse};
 use frontmatter::FrontmatterValue;
@@ -266,6 +269,16 @@ async fn search_vault(
         .map_err(|e| format!("Search task failed: {}", e))?
 }
 
+struct WsBridgeChild(Mutex<Option<Child>>);
+
+#[tauri::command]
+async fn register_mcp_tools(vault_path: String) -> Result<String, String> {
+    let vault_path = expand_tilde(&vault_path).into_owned();
+    tokio::task::spawn_blocking(move || mcp::register_mcp(&vault_path))
+        .await
+        .map_err(|e| format!("Registration task failed: {e}"))?
+}
+
 fn log_startup_result(label: &str, result: Result<usize, String>) {
     match result {
         Ok(n) if n > 0 => log::info!("{}: {} files", label, n),
@@ -291,6 +304,12 @@ fn run_startup_tasks() {
         "Migrated is_a to type on startup",
         vault::migrate_is_a_to_type(vp_str),
     );
+
+    // Register Laputa MCP server in Claude Code and Cursor configs
+    match mcp::register_mcp(vp_str) {
+        Ok(status) => log::info!("MCP registration: {status}"),
+        Err(e) => log::warn!("MCP registration failed: {e}"),
+    }
 }
 
 #[cfg(test)]
@@ -333,6 +352,7 @@ mod tests {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .manage(WsBridgeChild(Mutex::new(None)))
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -359,6 +379,22 @@ pub fn run() {
             }
 
             run_startup_tasks();
+
+            // Spawn the MCP WebSocket bridge for the default vault
+            {
+                use tauri::Manager;
+                let vault_path = dirs::home_dir()
+                    .map(|h| h.join("Laputa"))
+                    .unwrap_or_default();
+                let vp_str = vault_path.to_string_lossy().to_string();
+                match mcp::spawn_ws_bridge(&vp_str) {
+                    Ok(child) => {
+                        let state: tauri::State<'_, WsBridgeChild> = app.state();
+                        *state.0.lock().unwrap() = Some(child);
+                    }
+                    Err(e) => log::warn!("Failed to start ws-bridge: {}", e),
+                }
+            }
 
             Ok(())
         })
@@ -395,8 +431,20 @@ pub fn run() {
             search_vault,
             create_getting_started_vault,
             check_vault_exists,
-            get_default_vault_path
+            get_default_vault_path,
+            register_mcp_tools
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            use tauri::Manager;
+            if let tauri::RunEvent::Exit = event {
+                let state: tauri::State<'_, WsBridgeChild> = app_handle.state();
+                let mut guard = state.0.lock().unwrap();
+                if let Some(ref mut child) = *guard {
+                    let _ = child.kill();
+                    log::info!("ws-bridge child process killed on exit");
+                }
+            }
+        });
 }

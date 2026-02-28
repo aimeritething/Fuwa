@@ -3,6 +3,7 @@
  */
 import fs from 'node:fs/promises'
 import path from 'node:path'
+import matter from 'gray-matter'
 
 /**
  * Recursively find all .md files under a directory.
@@ -102,6 +103,119 @@ export async function appendToNote(vaultPath, notePath, text) {
   const current = await fs.readFile(absPath, 'utf-8')
   const separator = current.endsWith('\n') ? '\n' : '\n\n'
   await fs.writeFile(absPath, current + separator + text + '\n', 'utf-8')
+}
+
+/**
+ * Merge a patch object into a note's YAML frontmatter.
+ * @param {string} vaultPath
+ * @param {string} notePath
+ * @param {Record<string, unknown>} patch
+ * @returns {Promise<Record<string, unknown>>} The updated frontmatter.
+ */
+export async function editNoteFrontmatter(vaultPath, notePath, patch) {
+  const absPath = path.isAbsolute(notePath) ? notePath : path.join(vaultPath, notePath)
+  const raw = await fs.readFile(absPath, 'utf-8')
+  const parsed = matter(raw)
+  Object.assign(parsed.data, patch)
+  const updated = matter.stringify(parsed.content, parsed.data)
+  await fs.writeFile(absPath, updated, 'utf-8')
+  return parsed.data
+}
+
+/**
+ * Delete a note file.
+ * @param {string} vaultPath
+ * @param {string} notePath
+ * @returns {Promise<void>}
+ */
+export async function deleteNote(vaultPath, notePath) {
+  const absPath = path.isAbsolute(notePath) ? notePath : path.join(vaultPath, notePath)
+  await fs.unlink(absPath)
+}
+
+/**
+ * Add a target title to an array property in a note's frontmatter.
+ * Creates the property as an array if it doesn't exist.
+ * @param {string} vaultPath
+ * @param {string} sourcePath
+ * @param {string} property
+ * @param {string} targetTitle
+ * @returns {Promise<string[]>} The updated array.
+ */
+export async function linkNotes(vaultPath, sourcePath, property, targetTitle) {
+  const absPath = path.isAbsolute(sourcePath) ? sourcePath : path.join(vaultPath, sourcePath)
+  const raw = await fs.readFile(absPath, 'utf-8')
+  const parsed = matter(raw)
+  const current = Array.isArray(parsed.data[property]) ? parsed.data[property] : []
+  if (!current.includes(targetTitle)) {
+    current.push(targetTitle)
+  }
+  parsed.data[property] = current
+  const updated = matter.stringify(parsed.content, parsed.data)
+  await fs.writeFile(absPath, updated, 'utf-8')
+  return current
+}
+
+/**
+ * List all notes in the vault, optionally filtered by type.
+ * @param {string} vaultPath
+ * @param {string} [typeFilter]
+ * @param {string} [sort] - 'title' or 'mtime' (default: 'title')
+ * @returns {Promise<Array<{path: string, title: string, type: string|null}>>}
+ */
+export async function listNotes(vaultPath, typeFilter, sort = 'title') {
+  const files = await findMarkdownFiles(vaultPath)
+  const notes = await Promise.all(files.map(async (filePath) => {
+    const raw = await fs.readFile(filePath, 'utf-8')
+    const parsed = matter(raw)
+    const relativePath = path.relative(vaultPath, filePath)
+    const title = parsed.data.title || extractTitle(raw, path.basename(filePath, '.md'))
+    const type = parsed.data.type || parsed.data.is_a || null
+    const stat = sort === 'mtime' ? await fs.stat(filePath) : null
+    return { path: relativePath, title, type, mtime: stat?.mtimeMs ?? 0 }
+  }))
+
+  const filtered = typeFilter
+    ? notes.filter(n => n.type === typeFilter)
+    : notes
+
+  if (sort === 'mtime') {
+    filtered.sort((a, b) => b.mtime - a.mtime)
+  } else {
+    filtered.sort((a, b) => a.title.localeCompare(b.title))
+  }
+
+  return filtered.map(({ mtime: _mtime, ...rest }) => rest)
+}
+
+/**
+ * Get vault context: unique types and 20 most recent notes.
+ * @param {string} vaultPath
+ * @returns {Promise<{types: string[], recentNotes: Array<{path: string, title: string, type: string|null}>, vaultPath: string}>}
+ */
+export async function vaultContext(vaultPath) {
+  const files = await findMarkdownFiles(vaultPath)
+  const typesSet = new Set()
+  const notesWithMtime = []
+
+  for (const filePath of files) {
+    const raw = await fs.readFile(filePath, 'utf-8')
+    const parsed = matter(raw)
+    const type = parsed.data.type || parsed.data.is_a || null
+    if (type) typesSet.add(type)
+    const stat = await fs.stat(filePath)
+    notesWithMtime.push({
+      path: path.relative(vaultPath, filePath),
+      title: parsed.data.title || extractTitle(raw, path.basename(filePath, '.md')),
+      type,
+      mtime: stat.mtimeMs,
+    })
+  }
+
+  notesWithMtime.sort((a, b) => b.mtime - a.mtime)
+  const recentNotes = notesWithMtime.slice(0, 20).map(({ mtime: _mtime, ...rest }) => rest)
+
+  return { types: [...typesSet].sort(), recentNotes, vaultPath }
 }
 
 // --- Helpers ---

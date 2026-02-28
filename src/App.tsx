@@ -13,6 +13,7 @@ import { StatusBar } from './components/StatusBar'
 import { SettingsPanel } from './components/SettingsPanel'
 import { GitHubVaultModal } from './components/GitHubVaultModal'
 import { WelcomeScreen } from './components/WelcomeScreen'
+import { useMcpRegistration } from './hooks/useMcpRegistration'
 import { useVaultLoader } from './hooks/useVaultLoader'
 import { useSettings } from './hooks/useSettings'
 import { useNoteActions } from './hooks/useNoteActions'
@@ -123,6 +124,7 @@ function App() {
   const { settings, saveSettings } = useSettings()
 
   useEffect(() => { setApiKey(settings.anthropic_key ?? '') }, [settings.anthropic_key])
+  useMcpRegistration(resolvedPath, setToastMessage)
 
   const autoSync = useAutoSync({
     vaultPath: resolvedPath,
