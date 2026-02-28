@@ -202,6 +202,8 @@ jobs:
         run: |
           mkdir -p _site
           gh api repos/${{ github.repository }}/releases --paginate > _site/releases.json
+          # Copy latest.json to GitHub Pages for auto-updater endpoint
+          gh release download --repo ${{ github.repository }} --pattern "latest.json" --output _site/latest.json || true
           cat > _site/index.html << 'HTMLEOF'
           <!DOCTYPE html>
           <html lang="en">
