@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 
 /// Find the `node` binary path at runtime.
-fn find_node() -> Result<PathBuf, String> {
+pub(crate) fn find_node() -> Result<PathBuf, String> {
     let output = Command::new("which")
         .arg("node")
         .output()
@@ -14,12 +14,11 @@ fn find_node() -> Result<PathBuf, String> {
     Ok(PathBuf::from(path))
 }
 
-/// Resolve the path to `mcp-server/ws-bridge.js`.
+/// Resolve the path to `mcp-server/`.
 ///
 /// In dev mode, uses `CARGO_MANIFEST_DIR` (set at compile time).
 /// In release mode, navigates from the current executable.
-fn mcp_server_dir() -> Result<PathBuf, String> {
-    // Dev mode: CARGO_MANIFEST_DIR points to src-tauri/
+pub(crate) fn mcp_server_dir() -> Result<PathBuf, String> {
     let dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("mcp-server");
@@ -27,7 +26,6 @@ fn mcp_server_dir() -> Result<PathBuf, String> {
         return Ok(std::fs::canonicalize(&dev_path).unwrap_or(dev_path));
     }
 
-    // Release mode: relative to the executable
     let exe = std::env::current_exe().map_err(|e| format!("Cannot find executable: {e}"))?;
     let release_path = exe
         .parent()
@@ -66,6 +64,32 @@ pub fn spawn_ws_bridge(vault_path: &str) -> Result<Child, String> {
     Ok(child)
 }
 
+/// Build the MCP server entry JSON for a given vault path and index.js path.
+fn build_mcp_entry(index_js: &str, vault_path: &str) -> serde_json::Value {
+    serde_json::json!({
+        "command": "node",
+        "args": [index_js],
+        "env": { "VAULT_PATH": vault_path }
+    })
+}
+
+/// Write MCP registration to a list of config file paths.
+/// Returns "registered" on first registration, "updated" if already present.
+fn register_mcp_to_configs(
+    entry: &serde_json::Value,
+    config_paths: &[PathBuf],
+) -> String {
+    let mut status = "registered";
+    for config_path in config_paths {
+        match upsert_mcp_config(config_path, entry) {
+            Ok(true) => status = "updated",
+            Ok(false) => {}
+            Err(e) => log::warn!("Failed to update {}: {}", config_path.display(), e),
+        }
+    }
+    status.to_string()
+}
+
 /// Register Laputa as an MCP server in Claude Code and Cursor config files.
 pub fn register_mcp(vault_path: &str) -> Result<String, String> {
     let server_dir = mcp_server_dir()?;
@@ -74,30 +98,17 @@ pub fn register_mcp(vault_path: &str) -> Result<String, String> {
         .to_string_lossy()
         .into_owned();
 
-    let entry = serde_json::json!({
-        "command": "node",
-        "args": [index_js],
-        "env": { "VAULT_PATH": vault_path }
-    });
+    let entry = build_mcp_entry(&index_js, vault_path);
 
-    let configs = [
+    let configs: Vec<PathBuf> = [
         dirs::home_dir().map(|h| h.join(".claude").join("mcp.json")),
         dirs::home_dir().map(|h| h.join(".cursor").join("mcp.json")),
-    ];
+    ]
+    .into_iter()
+    .flatten()
+    .collect();
 
-    let mut status = "registered";
-    for config_path in configs.into_iter().flatten() {
-        match upsert_mcp_config(&config_path, &entry) {
-            Ok(was_update) => {
-                if was_update {
-                    status = "updated";
-                }
-            }
-            Err(e) => log::warn!("Failed to update {}: {}", config_path.display(), e),
-        }
-    }
-
-    Ok(status.to_string())
+    Ok(register_mcp_to_configs(&entry, &configs))
 }
 
 /// Insert or update the "laputa" entry in an MCP config file.
@@ -145,36 +156,40 @@ mod tests {
     use super::*;
 
     #[test]
-    fn register_mcp_creates_config_files() {
+    fn build_mcp_entry_produces_correct_json() {
+        let entry = build_mcp_entry("/path/to/index.js", "/my/vault");
+        assert_eq!(entry["command"], "node");
+        assert_eq!(entry["args"][0], "/path/to/index.js");
+        assert_eq!(entry["env"]["VAULT_PATH"], "/my/vault");
+    }
+
+    #[test]
+    fn upsert_creates_new_config() {
         let tmp = tempfile::tempdir().unwrap();
         let config_path = tmp.path().join("mcp.json");
-        let entry = serde_json::json!({
-            "command": "node",
-            "args": ["/test/mcp-server/index.js"],
-            "env": { "VAULT_PATH": "/test/vault" }
-        });
+        let entry = build_mcp_entry("/test/index.js", "/test/vault");
 
-        // First call creates the file
         let was_update = upsert_mcp_config(&config_path, &entry).unwrap();
         assert!(!was_update);
 
         let raw = std::fs::read_to_string(&config_path).unwrap();
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
-        assert_eq!(
-            config["mcpServers"]["laputa"]["args"][0],
-            "/test/mcp-server/index.js"
-        );
+        assert_eq!(config["mcpServers"]["laputa"]["args"][0], "/test/index.js");
         assert_eq!(
             config["mcpServers"]["laputa"]["env"]["VAULT_PATH"],
             "/test/vault"
         );
+    }
 
-        // Second call updates
-        let entry2 = serde_json::json!({
-            "command": "node",
-            "args": ["/test/mcp-server/index.js"],
-            "env": { "VAULT_PATH": "/new/vault" }
-        });
+    #[test]
+    fn upsert_updates_existing_config() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_path = tmp.path().join("mcp.json");
+
+        let entry1 = build_mcp_entry("/test/index.js", "/vault/v1");
+        upsert_mcp_config(&config_path, &entry1).unwrap();
+
+        let entry2 = build_mcp_entry("/test/index.js", "/vault/v2");
         let was_update = upsert_mcp_config(&config_path, &entry2).unwrap();
         assert!(was_update);
 
@@ -182,7 +197,7 @@ mod tests {
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
         assert_eq!(
             config["mcpServers"]["laputa"]["env"]["VAULT_PATH"],
-            "/new/vault"
+            "/vault/v2"
         );
     }
 
@@ -191,24 +206,105 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let config_path = tmp.path().join("mcp.json");
 
-        // Seed with existing config
         let existing = serde_json::json!({
             "mcpServers": {
                 "other-server": { "command": "other", "args": [] }
             }
         });
-        std::fs::write(&config_path, serde_json::to_string(&existing).unwrap()).unwrap();
+        std::fs::write(
+            &config_path,
+            serde_json::to_string(&existing).unwrap(),
+        )
+        .unwrap();
 
-        let entry = serde_json::json!({
-            "command": "node",
-            "args": ["/test/index.js"],
-            "env": { "VAULT_PATH": "/vault" }
-        });
+        let entry = build_mcp_entry("/test/index.js", "/vault");
         upsert_mcp_config(&config_path, &entry).unwrap();
 
         let raw = std::fs::read_to_string(&config_path).unwrap();
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
         assert!(config["mcpServers"]["other-server"].is_object());
         assert!(config["mcpServers"]["laputa"].is_object());
+    }
+
+    #[test]
+    fn upsert_creates_parent_dirs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_path = tmp.path().join("nested").join("dir").join("mcp.json");
+        let entry = build_mcp_entry("/test/index.js", "/vault");
+
+        upsert_mcp_config(&config_path, &entry).unwrap();
+        assert!(config_path.exists());
+    }
+
+    #[test]
+    fn register_mcp_to_configs_returns_registered_for_new() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config = tmp.path().join("claude").join("mcp.json");
+        let entry = build_mcp_entry("/test/index.js", "/vault");
+
+        let status = register_mcp_to_configs(&entry, &[config]);
+        assert_eq!(status, "registered");
+    }
+
+    #[test]
+    fn register_mcp_to_configs_returns_updated_for_existing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config = tmp.path().join("mcp.json");
+        let entry = build_mcp_entry("/test/index.js", "/vault");
+
+        // First call
+        register_mcp_to_configs(&entry, &[config.clone()]);
+        // Second call
+        let status = register_mcp_to_configs(&entry, &[config]);
+        assert_eq!(status, "updated");
+    }
+
+    #[test]
+    fn find_node_returns_valid_path() {
+        let node = find_node().unwrap();
+        assert!(node.exists(), "node binary should exist at {:?}", node);
+        assert!(
+            node.to_string_lossy().contains("node"),
+            "path should contain 'node': {:?}",
+            node
+        );
+    }
+
+    #[test]
+    fn mcp_server_dir_resolves_in_dev() {
+        let dir = mcp_server_dir().unwrap();
+        assert!(dir.join("ws-bridge.js").exists());
+        assert!(dir.join("index.js").exists());
+        assert!(dir.join("vault.js").exists());
+    }
+
+    #[test]
+    fn spawn_ws_bridge_starts_and_can_be_killed() {
+        let tmp = tempfile::tempdir().unwrap();
+        let vault_path = tmp.path().to_str().unwrap();
+
+        let mut child = spawn_ws_bridge(vault_path).unwrap();
+        assert!(child.id() > 0, "child process should have a valid PID");
+
+        // Clean up: kill the spawned process
+        child.kill().unwrap();
+        child.wait().unwrap();
+    }
+
+    #[test]
+    fn register_mcp_to_configs_writes_multiple_configs() {
+        let tmp = tempfile::tempdir().unwrap();
+        let claude_cfg = tmp.path().join("claude").join("mcp.json");
+        let cursor_cfg = tmp.path().join("cursor").join("mcp.json");
+        let entry = build_mcp_entry("/test/index.js", "/vault");
+
+        register_mcp_to_configs(&entry, &[claude_cfg.clone(), cursor_cfg.clone()]);
+
+        assert!(claude_cfg.exists());
+        assert!(cursor_cfg.exists());
+
+        let raw = std::fs::read_to_string(&claude_cfg).unwrap();
+        let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert_eq!(config["mcpServers"]["laputa"]["args"][0], "/test/index.js");
     }
 }
