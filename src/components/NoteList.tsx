@@ -136,31 +136,24 @@ function EntityView({ entity, groups, query, collapsedGroups, sortPrefs, onToggl
   )
 }
 
-function ListViewHeader({ typeDocument, isTrashView, expiredTrashCount, typeEntryMap, onClickNote }: {
-  typeDocument: VaultEntry | null; isTrashView: boolean; expiredTrashCount: number
-  typeEntryMap: Record<string, VaultEntry>; onClickNote: (entry: VaultEntry, e: React.MouseEvent) => void
+function ListViewHeader({ isTrashView, expiredTrashCount }: {
+  isTrashView: boolean; expiredTrashCount: number
 }) {
-  return (
-    <>
-      {typeDocument && <PinnedCard entry={typeDocument} typeEntryMap={typeEntryMap} onClickNote={onClickNote} />}
-      <TrashWarningBanner expiredCount={isTrashView ? expiredTrashCount : 0} />
-    </>
-  )
+  return <TrashWarningBanner expiredCount={isTrashView ? expiredTrashCount : 0} />
 }
 
-function ListView({ typeDocument, isTrashView, isChangesView, expiredTrashCount, searched, query, renderItem, typeEntryMap, onClickNote }: {
-  typeDocument: VaultEntry | null; isTrashView: boolean; isChangesView?: boolean; expiredTrashCount: number
+function ListView({ isTrashView, isChangesView, expiredTrashCount, searched, query, renderItem }: {
+  isTrashView: boolean; isChangesView?: boolean; expiredTrashCount: number
   searched: VaultEntry[]; query: string
   renderItem: (entry: VaultEntry) => React.ReactNode
-  typeEntryMap: Record<string, VaultEntry>; onClickNote: (entry: VaultEntry, e: React.MouseEvent) => void
 }) {
   const emptyText = isChangesView ? 'No pending changes' : isTrashView ? 'Trash is empty' : (query ? 'No matching notes' : 'No notes found')
-  const hasHeader = typeDocument || (isTrashView && expiredTrashCount > 0)
+  const hasHeader = isTrashView && expiredTrashCount > 0
 
   if (searched.length === 0) {
     return (
       <div className="h-full overflow-y-auto">
-        {hasHeader && <ListViewHeader typeDocument={typeDocument} isTrashView={isTrashView} expiredTrashCount={expiredTrashCount} typeEntryMap={typeEntryMap} onClickNote={onClickNote} />}
+        {hasHeader && <ListViewHeader isTrashView={isTrashView} expiredTrashCount={expiredTrashCount} />}
         <EmptyMessage text={emptyText} />
       </div>
     )
@@ -172,7 +165,7 @@ function ListView({ typeDocument, isTrashView, isChangesView, expiredTrashCount,
       data={searched}
       overscan={200}
       components={{
-        Header: hasHeader ? () => <ListViewHeader typeDocument={typeDocument} isTrashView={isTrashView} expiredTrashCount={expiredTrashCount} typeEntryMap={typeEntryMap} onClickNote={onClickNote} /> : undefined,
+        Header: hasHeader ? () => <ListViewHeader isTrashView={isTrashView} expiredTrashCount={expiredTrashCount} /> : undefined,
       }}
       itemContent={(_index, entry) => renderItem(entry)}
     />
@@ -369,7 +362,14 @@ function NoteListInner({ entries, selection, selectedNote, allContent, modifiedF
   return (
     <div className="flex flex-col select-none overflow-hidden border-r border-border bg-card text-foreground" style={{ height: '100%' }}>
       <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-border px-4" onMouseDown={onDragMouseDown} style={{ cursor: 'default', paddingLeft: sidebarCollapsed ? 80 : undefined }}>
-        <h3 className="m-0 min-w-0 flex-1 truncate text-[14px] font-semibold">{resolveHeaderTitle(selection, typeDocument)}</h3>
+        <h3
+          className="m-0 min-w-0 flex-1 truncate text-[14px] font-semibold"
+          style={typeDocument ? { cursor: 'pointer' } : undefined}
+          onClick={typeDocument ? () => onReplaceActiveTab(typeDocument) : undefined}
+          data-testid={typeDocument ? 'type-header-link' : undefined}
+        >
+          {resolveHeaderTitle(selection, typeDocument)}
+        </h3>
         <div className="flex items-center gap-3" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           {!isEntityView && <SortDropdown groupLabel="__list__" current={listSort} direction={listDirection} onChange={handleSortChange} />}
           <button className="flex items-center text-muted-foreground transition-colors hover:text-foreground" onClick={() => { setSearchVisible(!searchVisible); if (searchVisible) setSearch('') }} title="Search notes">
@@ -391,7 +391,7 @@ function NoteListInner({ entries, selection, selectedNote, allContent, modifiedF
         {isEntityView && selection.kind === 'entity' ? (
           <EntityView entity={selection.entry} groups={searchedGroups} query={query} collapsedGroups={collapsedGroups} sortPrefs={sortPrefs} onToggleGroup={toggleGroup} onSortChange={handleSortChange} renderItem={renderItem} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} />
         ) : (
-          <ListView typeDocument={typeDocument} isTrashView={isTrashView} isChangesView={isChangesView} expiredTrashCount={expiredTrashCount} searched={searched} query={query} renderItem={renderItem} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} />
+          <ListView isTrashView={isTrashView} isChangesView={isChangesView} expiredTrashCount={expiredTrashCount} searched={searched} query={query} renderItem={renderItem} />
         )}
       </div>
 

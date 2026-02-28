@@ -1107,6 +1107,72 @@ describe('NoteList — multi-select', () => {
   })
 })
 
+// --- Type note filtering tests ---
+
+const typeEntry: VaultEntry = {
+  path: '/Users/luca/Laputa/types/project.md',
+  filename: 'project.md',
+  title: 'Project',
+  isA: 'Type',
+  aliases: [],
+  belongsTo: [],
+  relatedTo: [],
+  status: null,
+  owner: null,
+  cadence: null,
+  archived: false,
+  trashed: false,
+  trashedAt: null,
+  modifiedAt: 1700000000,
+  createdAt: null,
+  fileSize: 200,
+  snippet: 'Defines the Project type.',
+  wordCount: 50,
+  relationships: {},
+  icon: null,
+  color: null,
+  order: null,
+  outgoingLinks: [],
+}
+
+const entriesWithType = [...mockEntries, typeEntry]
+
+describe('NoteList — type note filtering', () => {
+  beforeEach(() => {
+    noopSelect.mockClear()
+    noopReplace.mockClear()
+  })
+
+  it('does not show type note PinnedCard when browsing a sectionGroup', () => {
+    render(
+      <NoteList entries={entriesWithType} selection={{ kind: 'sectionGroup', type: 'Project' }} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} allContent={{}} onCreateNote={vi.fn()} />
+    )
+    // The type note snippet should NOT be visible (PinnedCard was removed)
+    expect(screen.queryByText('Defines the Project type.')).not.toBeInTheDocument()
+    // But the Project instance should still be in the list
+    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+  })
+
+  it('shows clickable header title that navigates to type note', () => {
+    render(
+      <NoteList entries={entriesWithType} selection={{ kind: 'sectionGroup', type: 'Project' }} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} allContent={{}} onCreateNote={vi.fn()} />
+    )
+    const headerLink = screen.getByTestId('type-header-link')
+    expect(headerLink).toBeInTheDocument()
+    expect(headerLink.textContent).toBe('Project')
+    expect(headerLink.style.cursor).toBe('pointer')
+    fireEvent.click(headerLink)
+    expect(noopReplace).toHaveBeenCalledWith(typeEntry)
+  })
+
+  it('header is not clickable when not viewing a type section', () => {
+    render(
+      <NoteList entries={entriesWithType} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} allContent={{}} onCreateNote={vi.fn()} />
+    )
+    expect(screen.queryByTestId('type-header-link')).not.toBeInTheDocument()
+  })
+})
+
 describe('NoteList — traffic light padding when sidebar collapsed', () => {
   it('adds left padding to header when sidebarCollapsed is true', () => {
     const { container } = render(
