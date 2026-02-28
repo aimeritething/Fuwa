@@ -1,43 +1,18 @@
-import { useRef, useEffect } from 'react'
-import { Robot, X, PaperPlaneRight } from '@phosphor-icons/react'
-import { AiMessage, type AiAction } from './AiMessage'
+import { useState, useRef, useEffect } from 'react'
+import { Robot, X, PaperPlaneRight, Plus } from '@phosphor-icons/react'
+import { AiMessage } from './AiMessage'
+import { useAiAgent, type AiAgentMessage } from '../hooks/useAiAgent'
+import { AGENT_MODEL_OPTIONS, getAgentModel, setAgentModel } from '../utils/ai-agent'
+import { getApiKey } from '../utils/ai-chat'
 
-export interface AiAgentMessage {
-  userMessage: string
-  reasoning?: string
-  actions: AiAction[]
-  response?: string
-  isStreaming?: boolean
-}
+export type { AiAgentMessage } from '../hooks/useAiAgent'
 
 interface AiPanelProps {
   onClose: () => void
   onOpenNote?: (path: string) => void
 }
 
-const MOCK_MESSAGES: AiAgentMessage[] = [
-  {
-    userMessage: 'Crea una nota evento per la riunione con Marco domani',
-    reasoning: "L'utente vuole creare un evento per una riunione con Marco. Devo creare un file in event/, impostare la data corretta (domani = 2026-03-01), e linkare Marco come partecipante.",
-    actions: [
-      { tool: 'vault_context', label: 'Loaded vault context', status: 'done' },
-      { tool: 'create_note', label: 'Created: 2026-03-01-meeting-marco.md', path: 'event/2026-03-01-meeting-marco.md', status: 'done' },
-      { tool: 'link_notes', label: 'Linked: Marco \u2192 meeting', status: 'done' },
-      { tool: 'ui_open_tab', label: 'Opened tab', path: 'event/2026-03-01-meeting-marco.md', status: 'done' },
-    ],
-    response: 'Ho creato la nota evento e linkato Marco come partecipante. La trovi già aperta in un nuovo tab.',
-  },
-  {
-    userMessage: 'Cerca tutte le note su TypeScript',
-    actions: [
-      { tool: 'search_notes', label: 'Searched: TypeScript', status: 'done' },
-      { tool: 'ui_set_filter', label: 'Filtered results', status: 'done' },
-    ],
-    response: 'Ho trovato 12 note che menzionano TypeScript. Ho applicato il filtro nella lista note.',
-  },
-]
-
-function PanelHeader({ onClose }: { onClose: () => void }) {
+function PanelHeader({ onClose, onClear }: { onClose: () => void; onClear: () => void }) {
   return (
     <div
       className="flex shrink-0 items-center border-b border-border"
@@ -45,12 +20,19 @@ function PanelHeader({ onClose }: { onClose: () => void }) {
     >
       <Robot size={16} className="shrink-0 text-muted-foreground" />
       <span className="flex-1 text-muted-foreground" style={{ fontSize: 13, fontWeight: 600 }}>
-        AI
+        AI Agent
       </span>
       <button
         className="shrink-0 border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
+        onClick={onClear}
+        title="New conversation"
+      >
+        <Plus size={16} />
+      </button>
+      <button
+        className="shrink-0 border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
         onClick={onClose}
-        title="Close AI panel (\u2318I)"
+        title="Close AI panel (⌘I)"
       >
         <X size={16} />
       </button>
@@ -58,63 +40,149 @@ function PanelHeader({ onClose }: { onClose: () => void }) {
   )
 }
 
-function MessageHistory({ messages, onOpenNote }: {
-  messages: AiAgentMessage[]; onOpenNote?: (path: string) => void
+function EmptyState() {
+  const hasKey = !!getApiKey()
+  return (
+    <div
+      className="flex flex-col items-center justify-center text-center text-muted-foreground"
+      style={{ paddingTop: 40 }}
+    >
+      <Robot size={24} style={{ marginBottom: 8, opacity: 0.5 }} />
+      <p style={{ fontSize: 13, margin: '0 0 4px' }}>
+        Ask the AI agent to work with your vault
+      </p>
+      <p style={{ fontSize: 11, margin: 0, opacity: 0.6 }}>
+        {hasKey
+          ? 'Creates notes, searches, edits frontmatter, and more'
+          : 'Set your Anthropic API key in Settings (⌘,)'}
+      </p>
+    </div>
+  )
+}
+
+function MessageHistory({ messages, isActive, onOpenNote }: {
+  messages: AiAgentMessage[]; isActive: boolean; onOpenNote?: (path: string) => void
 }) {
   const endRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages.length])
+  }, [messages, isActive])
 
   return (
     <div className="flex-1 overflow-y-auto" style={{ padding: 12 }}>
+      {messages.length === 0 && !isActive && <EmptyState />}
       {messages.map((msg, i) => (
-        <AiMessage key={i} {...msg} onOpenNote={onOpenNote} />
+        <AiMessage key={msg.id ?? i} {...msg} onOpenNote={onOpenNote} />
       ))}
       <div ref={endRef} />
     </div>
   )
 }
 
-function InputBar() {
+function InputBar({ input, onInputChange, onSend, onKeyDown, isActive, model, onModelChange }: {
+  input: string; onInputChange: (v: string) => void
+  onSend: () => void; onKeyDown: (e: React.KeyboardEvent) => void
+  isActive: boolean; model: string; onModelChange: (m: string) => void
+}) {
+  const sendDisabled = isActive || !input.trim()
   return (
     <div
-      className="flex shrink-0 items-center gap-2 border-t border-border"
+      className="flex shrink-0 flex-col border-t border-border"
       style={{ padding: '8px 12px' }}
     >
-      <input
-        className="flex-1 border border-border bg-transparent text-muted-foreground"
-        style={{ fontSize: 13, borderRadius: 8, padding: '8px 10px', outline: 'none', fontFamily: 'inherit' }}
-        placeholder="Ask the AI agent..."
-        disabled
-      />
-      <button
-        className="shrink-0 flex items-center justify-center border-none"
-        style={{
-          background: 'var(--muted)',
-          color: 'var(--muted-foreground)',
-          borderRadius: 8, width: 32, height: 34,
-          cursor: 'not-allowed',
-        }}
-        disabled
-        title="Coming in Task 3"
-      >
-        <PaperPlaneRight size={16} />
-      </button>
+      <div style={{ marginBottom: 6 }}>
+        <select
+          value={model}
+          onChange={e => onModelChange(e.target.value)}
+          className="border border-border bg-transparent text-muted-foreground"
+          style={{ fontSize: 11, borderRadius: 4, padding: '2px 6px', outline: 'none' }}
+          data-testid="agent-model-select"
+        >
+          {AGENT_MODEL_OPTIONS.map(opt => (
+            <option key={opt.value} value={opt.value}>{opt.label}</option>
+          ))}
+        </select>
+      </div>
+      <div className="flex items-end gap-2">
+        <input
+          value={input}
+          onChange={e => onInputChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          className="flex-1 border border-border bg-transparent text-foreground"
+          style={{
+            fontSize: 13, borderRadius: 8, padding: '8px 10px',
+            outline: 'none', fontFamily: 'inherit',
+          }}
+          placeholder="Ask the AI agent..."
+          disabled={isActive}
+          data-testid="agent-input"
+        />
+        <button
+          className="shrink-0 flex items-center justify-center border-none cursor-pointer transition-colors"
+          style={{
+            background: sendDisabled ? 'var(--muted)' : 'var(--primary)',
+            color: sendDisabled ? 'var(--muted-foreground)' : 'white',
+            borderRadius: 8, width: 32, height: 34,
+            cursor: sendDisabled ? 'not-allowed' : 'pointer',
+          }}
+          onClick={onSend}
+          disabled={sendDisabled}
+          title="Send message"
+          data-testid="agent-send"
+        >
+          <PaperPlaneRight size={16} />
+        </button>
+      </div>
     </div>
   )
 }
 
 export function AiPanel({ onClose, onOpenNote }: AiPanelProps) {
+  const [input, setInput] = useState('')
+  const [model, setModel] = useState(getAgentModel)
+  const agent = useAiAgent()
+
+  const isActive = agent.status === 'thinking' || agent.status === 'tool-executing'
+
+  const handleModelChange = (m: string) => {
+    setModel(m)
+    setAgentModel(m)
+  }
+
+  const handleSend = () => {
+    if (!input.trim() || isActive) return
+    agent.sendMessage(input)
+    setInput('')
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault()
+      handleSend()
+    }
+  }
+
   return (
     <aside
       className="flex flex-1 flex-col overflow-hidden border-l border-border bg-background text-foreground"
       data-testid="ai-panel"
     >
-      <PanelHeader onClose={onClose} />
-      <MessageHistory messages={MOCK_MESSAGES} onOpenNote={onOpenNote} />
-      <InputBar />
+      <PanelHeader onClose={onClose} onClear={agent.clearConversation} />
+      <MessageHistory
+        messages={agent.messages}
+        isActive={isActive}
+        onOpenNote={onOpenNote}
+      />
+      <InputBar
+        input={input}
+        onInputChange={setInput}
+        onSend={handleSend}
+        onKeyDown={handleKeyDown}
+        isActive={isActive}
+        model={model}
+        onModelChange={handleModelChange}
+      />
     </aside>
   )
 }

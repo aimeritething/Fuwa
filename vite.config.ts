@@ -254,6 +254,28 @@ async function forwardToAnthropic(params: {
   })
 }
 
+/** Forward to Anthropic with tool definitions (non-streaming for tool loop) */
+async function forwardToAnthropicAgent(params: {
+  apiKey: string; model?: string; messages: unknown[]; system?: string
+  maxTokens?: number; tools?: unknown[]
+}): Promise<Response> {
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': params.apiKey,
+      'anthropic-version': '2023-06-01',
+    },
+    body: JSON.stringify({
+      model: params.model || 'claude-3-5-haiku-20241022',
+      max_tokens: params.maxTokens || 4096,
+      system: params.system || undefined,
+      messages: params.messages,
+      tools: params.tools || undefined,
+    }),
+  })
+}
+
 async function streamResponseBody(source: ReadableStream<Uint8Array>, res: import('http').ServerResponse): Promise<void> {
   const reader = source.getReader()
   const decoder = new TextDecoder()
@@ -310,6 +332,37 @@ function aiChatProxyPlugin(): Plugin {
   }
 }
 
+/** Agent proxy — non-streaming Anthropic calls with tool support */
+function aiAgentProxyPlugin(): Plugin {
+  return {
+    name: 'ai-agent-proxy',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (req.url !== '/api/ai/agent' || req.method !== 'POST') return next()
+
+        try {
+          const body = await readRequestBody(req)
+          const params = JSON.parse(body)
+          if (!params.apiKey) {
+            res.statusCode = 400
+            res.end(JSON.stringify({ error: 'Missing API key' }))
+            return
+          }
+
+          const anthropicRes = await forwardToAnthropicAgent(params)
+          res.statusCode = anthropicRes.status
+          res.setHeader('Content-Type', 'application/json')
+          res.end(await anthropicRes.text())
+        } catch (err: unknown) {
+          res.statusCode = 500
+          res.setHeader('Content-Type', 'application/json')
+          res.end(JSON.stringify({ error: err instanceof Error ? err.message : 'Internal server error' }))
+        }
+      })
+    },
+  }
+}
+
 /** WebSocket proxy info endpoint — tells the frontend where the MCP bridge is */
 function mcpBridgeInfoPlugin(): Plugin {
   return {
@@ -329,7 +382,7 @@ function mcpBridgeInfoPlugin(): Plugin {
 
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react(), tailwindcss(), vaultApiPlugin(), aiChatProxyPlugin(), mcpBridgeInfoPlugin()],
+  plugins: [react(), tailwindcss(), vaultApiPlugin(), aiChatProxyPlugin(), aiAgentProxyPlugin(), mcpBridgeInfoPlugin()],
 
   resolve: {
     alias: {
