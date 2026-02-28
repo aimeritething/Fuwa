@@ -376,6 +376,7 @@ function App() {
             canGoForward={navHistory.canGoForward}
             onGoBack={handleGoBack}
             onGoForward={handleGoForward}
+            leftPanelsCollapsed={!sidebarVisible && !noteListVisible}
           />
         </div>
       </div>

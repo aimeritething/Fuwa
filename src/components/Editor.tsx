@@ -59,6 +59,7 @@ interface EditorProps {
   canGoForward?: boolean
   onGoBack?: () => void
   onGoForward?: () => void
+  leftPanelsCollapsed?: boolean
 }
 
 function EditorEmptyState() {
@@ -80,7 +81,7 @@ export const Editor = memo(function Editor({
   vaultPath,
   onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
   onRenameTab, onContentChange, onTitleSync,
-  canGoBack, canGoForward, onGoBack, onGoForward,
+  canGoBack, canGoForward, onGoBack, onGoForward, leftPanelsCollapsed,
 }: EditorProps) {
   const vaultPathRef = useRef(vaultPath)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
@@ -133,6 +134,7 @@ export const Editor = memo(function Editor({
         canGoForward={canGoForward}
         onGoBack={onGoBack}
         onGoForward={onGoForward}
+        leftPanelsCollapsed={leftPanelsCollapsed}
       />
       <div className="flex flex-1 min-h-0">
         {tabs.length === 0
