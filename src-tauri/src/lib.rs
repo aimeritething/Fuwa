@@ -7,6 +7,7 @@ pub mod search;
 pub mod settings;
 pub mod vault;
 
+use std::borrow::Cow;
 use std::path::Path;
 
 use ai_chat::{AiChatRequest, AiChatResponse};
@@ -17,18 +18,37 @@ use search::SearchResponse;
 use settings::Settings;
 use vault::{RenameResult, VaultEntry};
 
+/// Expand a leading `~` or `~/` in a path string to the user's home directory.
+/// Returns the original string unchanged if it doesn't start with `~` or if the
+/// home directory cannot be determined.
+fn expand_tilde(path: &str) -> Cow<'_, str> {
+    if path == "~" {
+        if let Some(home) = dirs::home_dir() {
+            return Cow::Owned(home.to_string_lossy().into_owned());
+        }
+    } else if let Some(rest) = path.strip_prefix("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return Cow::Owned(format!("{}/{}", home.to_string_lossy(), rest));
+        }
+    }
+    Cow::Borrowed(path)
+}
+
 #[tauri::command]
 fn list_vault(path: String) -> Result<Vec<VaultEntry>, String> {
-    vault::scan_vault_cached(Path::new(&path))
+    let path = expand_tilde(&path);
+    vault::scan_vault_cached(Path::new(path.as_ref()))
 }
 
 #[tauri::command]
 fn get_note_content(path: String) -> Result<String, String> {
-    vault::get_note_content(Path::new(&path))
+    let path = expand_tilde(&path);
+    vault::get_note_content(Path::new(path.as_ref()))
 }
 
 #[tauri::command]
 fn save_note_content(path: String, content: String) -> Result<(), String> {
+    let path = expand_tilde(&path);
     vault::save_note_content(&path, &content)
 }
 
@@ -38,26 +58,33 @@ fn update_frontmatter(
     key: String,
     value: FrontmatterValue,
 ) -> Result<String, String> {
+    let path = expand_tilde(&path);
     frontmatter::update_frontmatter(&path, &key, value)
 }
 
 #[tauri::command]
 fn delete_frontmatter_property(path: String, key: String) -> Result<String, String> {
+    let path = expand_tilde(&path);
     frontmatter::delete_frontmatter_property(&path, &key)
 }
 
 #[tauri::command]
 fn get_file_history(vault_path: String, path: String) -> Result<Vec<GitCommit>, String> {
+    let vault_path = expand_tilde(&vault_path);
+    let path = expand_tilde(&path);
     git::get_file_history(&vault_path, &path)
 }
 
 #[tauri::command]
 fn get_modified_files(vault_path: String) -> Result<Vec<ModifiedFile>, String> {
+    let vault_path = expand_tilde(&vault_path);
     git::get_modified_files(&vault_path)
 }
 
 #[tauri::command]
 fn get_file_diff(vault_path: String, path: String) -> Result<String, String> {
+    let vault_path = expand_tilde(&vault_path);
+    let path = expand_tilde(&path);
     git::get_file_diff(&vault_path, &path)
 }
 
@@ -67,26 +94,32 @@ fn get_file_diff_at_commit(
     path: String,
     commit_hash: String,
 ) -> Result<String, String> {
+    let vault_path = expand_tilde(&vault_path);
+    let path = expand_tilde(&path);
     git::get_file_diff_at_commit(&vault_path, &path, &commit_hash)
 }
 
 #[tauri::command]
 fn git_commit(vault_path: String, message: String) -> Result<String, String> {
+    let vault_path = expand_tilde(&vault_path);
     git::git_commit(&vault_path, &message)
 }
 
 #[tauri::command]
 fn get_last_commit_info(vault_path: String) -> Result<Option<LastCommitInfo>, String> {
+    let vault_path = expand_tilde(&vault_path);
     git::get_last_commit_info(&vault_path)
 }
 
 #[tauri::command]
 fn git_pull(vault_path: String) -> Result<GitPullResult, String> {
+    let vault_path = expand_tilde(&vault_path);
     git::git_pull(&vault_path)
 }
 
 #[tauri::command]
 fn git_push(vault_path: String) -> Result<String, String> {
+    let vault_path = expand_tilde(&vault_path);
     git::git_push(&vault_path)
 }
 
@@ -97,6 +130,7 @@ async fn ai_chat(request: AiChatRequest) -> Result<AiChatResponse, String> {
 
 #[tauri::command]
 fn save_image(vault_path: String, filename: String, data: String) -> Result<String, String> {
+    let vault_path = expand_tilde(&vault_path);
     vault::save_image(&vault_path, &filename, &data)
 }
 
@@ -106,23 +140,27 @@ fn rename_note(
     old_path: String,
     new_title: String,
 ) -> Result<RenameResult, String> {
+    let vault_path = expand_tilde(&vault_path);
+    let old_path = expand_tilde(&old_path);
     vault::rename_note(&vault_path, &old_path, &new_title)
 }
 
 #[tauri::command]
 fn purge_trash(vault_path: String) -> Result<Vec<String>, String> {
+    let vault_path = expand_tilde(&vault_path);
     vault::purge_trash(&vault_path)
 }
 
 #[tauri::command]
 fn migrate_is_a_to_type(vault_path: String) -> Result<usize, String> {
+    let vault_path = expand_tilde(&vault_path);
     vault::migrate_is_a_to_type(&vault_path)
 }
 
 #[tauri::command]
 fn create_getting_started_vault(target_path: Option<String>) -> Result<String, String> {
     let path = match target_path {
-        Some(p) if !p.is_empty() => p,
+        Some(p) if !p.is_empty() => expand_tilde(&p).into_owned(),
         _ => vault::default_vault_path()?.to_string_lossy().to_string(),
     };
     vault::create_getting_started_vault(&path)
@@ -130,6 +168,7 @@ fn create_getting_started_vault(target_path: Option<String>) -> Result<String, S
 
 #[tauri::command]
 fn check_vault_exists(path: String) -> bool {
+    let path = expand_tilde(&path);
     vault::vault_exists(&path)
 }
 
@@ -142,7 +181,8 @@ fn get_default_vault_path() -> Result<String, String> {
 fn batch_archive_notes(paths: Vec<String>) -> Result<usize, String> {
     let mut count = 0;
     for path in &paths {
-        frontmatter::update_frontmatter(path, "Archived", FrontmatterValue::Bool(true))?;
+        let path = expand_tilde(path);
+        frontmatter::update_frontmatter(&path, "Archived", FrontmatterValue::Bool(true))?;
         count += 1;
     }
     Ok(count)
@@ -153,8 +193,9 @@ fn batch_trash_notes(paths: Vec<String>) -> Result<usize, String> {
     let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
     let mut count = 0;
     for path in &paths {
-        frontmatter::update_frontmatter(path, "Trashed", FrontmatterValue::Bool(true))?;
-        frontmatter::update_frontmatter(path, "Trashed at", FrontmatterValue::String(now.clone()))?;
+        let path = expand_tilde(path);
+        frontmatter::update_frontmatter(&path, "Trashed", FrontmatterValue::Bool(true))?;
+        frontmatter::update_frontmatter(&path, "Trashed at", FrontmatterValue::String(now.clone()))?;
         count += 1;
     }
     Ok(count)
@@ -192,6 +233,7 @@ async fn github_create_repo(
 
 #[tauri::command]
 fn clone_repo(url: String, token: String, local_path: String) -> Result<String, String> {
+    let local_path = expand_tilde(&local_path);
     github::clone_repo(&url, &token, &local_path)
 }
 
@@ -217,6 +259,7 @@ async fn search_vault(
     mode: String,
     limit: Option<usize>,
 ) -> Result<SearchResponse, String> {
+    let vault_path = expand_tilde(&vault_path).into_owned();
     let limit = limit.unwrap_or(20);
     tokio::task::spawn_blocking(move || search::search_vault(&vault_path, &query, &mode, limit))
         .await
@@ -251,7 +294,41 @@ fn run_startup_tasks() {
 }
 
 #[cfg(test)]
-mod tests {}
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expand_tilde_with_subpath() {
+        let home = dirs::home_dir().unwrap();
+        let result = expand_tilde("~/Documents/vault");
+        assert_eq!(result, format!("{}/Documents/vault", home.display()));
+    }
+
+    #[test]
+    fn expand_tilde_alone() {
+        let home = dirs::home_dir().unwrap();
+        let result = expand_tilde("~");
+        assert_eq!(result, home.to_string_lossy());
+    }
+
+    #[test]
+    fn expand_tilde_noop_for_absolute_path() {
+        let result = expand_tilde("/usr/local/bin");
+        assert_eq!(result, "/usr/local/bin");
+    }
+
+    #[test]
+    fn expand_tilde_noop_for_relative_path() {
+        let result = expand_tilde("some/relative/path");
+        assert_eq!(result, "some/relative/path");
+    }
+
+    #[test]
+    fn expand_tilde_noop_for_tilde_in_middle() {
+        let result = expand_tilde("/home/~user/path");
+        assert_eq!(result, "/home/~user/path");
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
