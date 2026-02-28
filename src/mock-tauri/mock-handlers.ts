@@ -228,6 +228,12 @@ export const mockHandlers: Record<string, (args: any) => any> = {
       }))
     return { results: matches, elapsed_ms: 42, query: q, mode: args.mode }
   },
+  get_default_vault_path: () => '/Users/mock/Documents/Laputa',
+  check_vault_exists: (args: { path: string }) => {
+    // In mock mode, the demo-vault-v2 path always "exists"
+    return args.path.includes('demo-vault-v2')
+  },
+  create_getting_started_vault: () => '/Users/mock/Documents/Laputa',
 }
 
 export function addMockEntry(_entry: VaultEntry, content: string): void {

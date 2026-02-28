@@ -12,6 +12,7 @@ import { CommitDialog } from './components/CommitDialog'
 import { StatusBar } from './components/StatusBar'
 import { SettingsPanel } from './components/SettingsPanel'
 import { GitHubVaultModal } from './components/GitHubVaultModal'
+import { WelcomeScreen } from './components/WelcomeScreen'
 import { useVaultLoader } from './hooks/useVaultLoader'
 import { useSettings } from './hooks/useSettings'
 import { useNoteActions } from './hooks/useNoteActions'
@@ -27,6 +28,7 @@ import { useUpdater } from './hooks/useUpdater'
 import { useNavigationHistory } from './hooks/useNavigationHistory'
 import { useAutoSync } from './hooks/useAutoSync'
 import { useZoom } from './hooks/useZoom'
+import { useOnboarding } from './hooks/useOnboarding'
 import { UpdateBanner } from './components/UpdateBanner'
 import { setApiKey } from './utils/ai-chat'
 import { extractOutgoingLinks } from './utils/wikilinks'
@@ -113,13 +115,17 @@ function App() {
     onToast: (msg) => setToastMessage(msg),
   })
 
-  const vault = useVaultLoader(vaultSwitcher.vaultPath)
+  const onboarding = useOnboarding(vaultSwitcher.vaultPath)
+
+  // When onboarding resolves to a different vault path, update the switcher
+  const resolvedPath = onboarding.state.status === 'ready' ? onboarding.state.vaultPath : vaultSwitcher.vaultPath
+  const vault = useVaultLoader(resolvedPath)
   const { settings, saveSettings } = useSettings()
 
   useEffect(() => { setApiKey(settings.anthropic_key ?? '') }, [settings.anthropic_key])
 
   const autoSync = useAutoSync({
-    vaultPath: vaultSwitcher.vaultPath,
+    vaultPath: resolvedPath,
     intervalMinutes: settings.auto_pull_interval_minutes,
     onVaultUpdated: vault.reloadVault,
     onConflict: (files) => {
@@ -237,8 +243,8 @@ function App() {
 
   const handleRenameTab = useCallback(async (path: string, newTitle: string) => {
     await savePendingForPath(path)
-    await notes.handleRenameNote(path, newTitle, vaultSwitcher.vaultPath, vault.replaceEntry).then(vault.loadModifiedFiles)
-  }, [notes, vaultSwitcher.vaultPath, vault, savePendingForPath])
+    await notes.handleRenameNote(path, newTitle, resolvedPath, vault.replaceEntry).then(vault.loadModifiedFiles)
+  }, [notes, resolvedPath, vault, savePendingForPath])
 
   /** H1→title sync: update VaultEntry.title and tab entry in memory. */
   const handleTitleSync = useCallback((path: string, newTitle: string) => {
@@ -278,6 +284,35 @@ function App() {
   const { status: updateStatus, actions: updateActions } = useUpdater()
 
   const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null
+
+  // Show welcome/onboarding screen when vault doesn't exist
+  if (onboarding.state.status === 'welcome' || onboarding.state.status === 'vault-missing') {
+    const defaultPath = onboarding.state.defaultPath
+    return (
+      <div className="app-shell">
+        <WelcomeScreen
+          mode={onboarding.state.status === 'welcome' ? 'welcome' : 'vault-missing'}
+          missingPath={onboarding.state.status === 'vault-missing' ? onboarding.state.vaultPath : undefined}
+          defaultVaultPath={defaultPath}
+          onCreateVault={onboarding.handleCreateVault}
+          onOpenFolder={onboarding.handleOpenFolder}
+          creating={onboarding.creating}
+          error={onboarding.error}
+        />
+      </div>
+    )
+  }
+
+  // Show loading spinner while checking vault
+  if (onboarding.state.status === 'loading') {
+    return (
+      <div className="app-shell">
+        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sidebar)' }}>
+          <span style={{ color: 'var(--muted-foreground)', fontSize: 14 }}>Loading…</span>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="app-shell">
@@ -325,7 +360,7 @@ function App() {
             onAddProperty={notes.handleAddProperty}
             showAIChat={dialogs.showAIChat}
             onToggleAIChat={dialogs.toggleAIChat}
-            vaultPath={vaultSwitcher.vaultPath}
+            vaultPath={resolvedPath}
             onTrashNote={entryActions.handleTrashNote}
             onRestoreNote={entryActions.handleRestoreNote}
             onArchiveNote={entryActions.handleArchiveNote}
@@ -344,7 +379,7 @@ function App() {
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
       <CommandPalette open={dialogs.showCommandPalette} commands={commands} onClose={dialogs.closeCommandPalette} />
-      <SearchPanel open={dialogs.showSearch} vaultPath={vaultSwitcher.vaultPath} entries={vault.entries} onSelectNote={notes.handleSelectNote} onClose={dialogs.closeSearch} />
+      <SearchPanel open={dialogs.showSearch} vaultPath={resolvedPath} entries={vault.entries} onSelectNote={notes.handleSelectNote} onClose={dialogs.closeSearch} />
       <CreateTypeDialog open={dialogs.showCreateTypeDialog} onClose={dialogs.closeCreateType} onCreate={handleCreateType} />
       <CommitDialog open={commitFlow.showCommitDialog} modifiedCount={vault.modifiedFiles.length} onCommit={commitFlow.handleCommitPush} onClose={commitFlow.closeCommitDialog} />
       <SettingsPanel open={dialogs.showSettings} settings={settings} onSave={saveSettings} onClose={dialogs.closeSettings} />
