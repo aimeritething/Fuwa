@@ -131,29 +131,97 @@ The context picker controls which notes are sent to the AI as context:
 
 ### MCP Server
 
-The MCP server (`mcp-server/`) exposes vault operations as tools:
+The MCP server (`mcp-server/`) exposes vault operations as tools for AI assistants (Claude Code, Cursor, or any MCP-compatible client).
 
-| Tool | Description |
-|------|-------------|
-| `open_note` | Open and read a note by path |
-| `read_note` | Read note content (alias) |
-| `create_note` | Create new note with frontmatter |
-| `search_notes` | Search by title or content |
-| `append_to_note` | Append text to a note |
+#### Tool Surface (14 tools)
 
-**Transports:**
-- **stdio** — standard MCP transport (`node mcp-server/index.js`)
-- **WebSocket** — live bridge for app integration (`node mcp-server/ws-bridge.js`, port 9710)
+| Tool | Params | Description |
+|------|--------|-------------|
+| `open_note` | `path` | Open and read a note by relative path |
+| `read_note` | `path` | Read note content (alias for `open_note`) |
+| `create_note` | `path, title, [is_a]` | Create new note with title and optional type frontmatter |
+| `search_notes` | `query, [limit]` | Search notes by title or content substring |
+| `append_to_note` | `path, text` | Append text to end of existing note |
+| `edit_note_frontmatter` | `path, patch` | Merge key-value patch into YAML frontmatter |
+| `delete_note` | `path` | Delete a note file from the vault |
+| `link_notes` | `source_path, property, target_title` | Add a target to an array property in frontmatter |
+| `list_notes` | `[type_filter], [sort]` | List all notes, optionally filtered by type |
+| `vault_context` | — | Get vault summary: entity types + 20 recent notes |
+| `ui_open_note` | `path` | Open a note in the Laputa UI editor |
+| `ui_open_tab` | `path` | Open a note in a new UI tab |
+| `ui_highlight` | `element, [path]` | Highlight a UI element (editor, tab, properties, notelist) |
+| `ui_set_filter` | `type` | Set the sidebar filter to a specific type |
+
+#### Transports
+
+- **stdio** — standard MCP transport for Claude Code / Cursor (`node mcp-server/index.js`)
+- **WebSocket** — live bridge for Laputa app integration:
+  - Port **9710**: Tool bridge — AI/Claude clients call vault tools here
+  - Port **9711**: UI bridge — Frontend listens for UI action broadcasts from MCP tools
+
+#### Auto-Registration
+
+On app startup, Laputa automatically registers itself as an MCP server in:
+- `~/.claude/mcp.json` (Claude Code)
+- `~/.cursor/mcp.json` (Cursor)
+
+The registration is non-destructive (additive — preserves other MCP servers) and uses `upsert` semantics. The entry points to `mcp-server/index.js` with the active vault path as `VAULT_PATH` env var.
+
+Registration also runs from the frontend via the `useMcpRegistration` hook and `register_mcp_tools` Tauri command, ensuring the config stays up-to-date when the vault path changes.
+
+#### Architecture
+
+```
+┌─────────────────────────────────────────────────────┐
+│                 MCP Server (Node.js)                 │
+│                                                     │
+│  index.js ─── stdio transport ──→ Claude Code       │
+│     │                              Cursor           │
+│     ├── vault.js (9 vault operations)               │
+│     │     ├── findMarkdownFiles  ├── deleteNote     │
+│     │     ├── readNote           ├── linkNotes      │
+│     │     ├── createNote         ├── listNotes      │
+│     │     ├── searchNotes        ├── vaultContext    │
+│     │     ├── appendToNote                          │
+│     │     └── editNoteFrontmatter                   │
+│     │                                               │
+│     └── ws-bridge.js                                │
+│           ├── port 9710: tool bridge ←→ AI clients  │
+│           └── port 9711: UI bridge  ←→ Frontend     │
+│                                                     │
+│  Spawned by Tauri (mcp.rs) on app startup           │
+│  Auto-registered in ~/.claude/mcp.json              │
+└─────────────────────────────────────────────────────┘
+```
 
 ### WebSocket Bridge
 
-The WebSocket bridge (`useMcpBridge` hook) enables real-time vault operations from the frontend:
+The WebSocket bridge enables real-time vault operations from both the frontend and external AI clients:
 
 ```
 Frontend (useMcpBridge) ←→ ws://localhost:9710 ←→ ws-bridge.js ←→ vault.js
+MCP stdio tools         ←→ ws://localhost:9711 ←→ Frontend UI actions
 ```
 
-Protocol: JSON-RPC-like with `{id, tool, args}` requests and `{id, result}` responses.
+**Tool bridge protocol** (port 9710):
+- Request: `{ "id": "req-1", "tool": "search_notes", "args": { "query": "test" } }`
+- Response: `{ "id": "req-1", "result": { ... } }`
+- Error: `{ "id": "req-1", "error": "message" }`
+
+**UI bridge protocol** (port 9711):
+- Broadcast: `{ "type": "ui_action", "action": "open_note", "path": "..." }`
+
+### Rust MCP Module
+
+`src-tauri/src/mcp.rs` manages the MCP server lifecycle:
+
+| Function | Purpose |
+|----------|---------|
+| `spawn_ws_bridge(vault_path)` | Spawns `ws-bridge.js` as child process with VAULT_PATH env |
+| `register_mcp(vault_path)` | Writes Laputa entry to Claude Code and Cursor MCP configs |
+| `upsert_mcp_config(path, entry)` | Atomic config file update (create/merge, preserves others) |
+
+The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is killed on app exit via `RunEvent::Exit` handler.
 
 ### Rust Backend (Tauri)
 
@@ -170,24 +238,31 @@ The `ai_chat` Tauri command (`src-tauri/src/ai_chat.rs`) provides a non-streamin
 | `src/components/AIChatPanel.tsx` | Main UI: context bar, messages, input, quick actions |
 | `src/hooks/useAIChat.ts` | Chat state: messages, streaming, send/retry/clear |
 | `src/hooks/useMcpBridge.ts` | WebSocket client for MCP vault tool calls |
+| `src/hooks/useMcpRegistration.ts` | Auto-registers Laputa MCP on vault load |
 | `src/utils/ai-chat.ts` | API client, token estimation, context builder |
 | `src-tauri/src/ai_chat.rs` | Rust Anthropic API client (non-streaming) |
-| `mcp-server/index.js` | MCP server entry (stdio transport) |
-| `mcp-server/vault.js` | Vault file operations |
-| `mcp-server/ws-bridge.js` | WebSocket bridge server |
+| `src-tauri/src/mcp.rs` | MCP server spawning + config registration |
+| `mcp-server/index.js` | MCP server entry (stdio transport, 14 tools) |
+| `mcp-server/vault.js` | Vault file operations (9 functions) |
+| `mcp-server/ws-bridge.js` | WebSocket bridge server (tool + UI bridges) |
+| `mcp-server/test.js` | 26 unit tests for all vault.js functions |
 
 ## Data Flow
 
 ### Startup Sequence
 
 ```
-1. App mounts
-2. useVaultLoader fires:
+1. Tauri setup:
+   a. run_startup_tasks() → purge trash, migrate frontmatter, register MCP config
+   b. spawn_ws_bridge() → start MCP WebSocket bridge (ports 9710, 9711)
+2. App mounts
+3. useVaultLoader fires:
    a. isTauri() ? invoke('list_vault') : mockInvoke('list_vault')
       → VaultEntry[] stored in state
    b. Load all content (mock mode) or on-demand (Tauri mode)
    c. invoke('get_modified_files') → ModifiedFile[] stored in state
-3. User clicks note in NoteList
+   d. useMcpRegistration → invoke('register_mcp_tools') → ensures MCP config current
+4. User clicks note in NoteList
 4. useNoteActions.handleSelectNote:
    a. invoke('get_note_content') → raw markdown string
    b. Add tab { entry, content } to tabs state
@@ -255,6 +330,7 @@ All commands are defined in `src-tauri/src/lib.rs` and registered via `tauri::ge
 | `git_commit` | `vault_path, message` | `String` | `git::git_commit()` |
 | `git_push` | `vault_path` | `String` | `git::git_push()` |
 | `ai_chat` | `request: AiChatRequest` | `AiChatResponse` | `ai_chat::send_chat()` |
+| `register_mcp_tools` | `vault_path` | `String` ("registered" or "updated") | `mcp::register_mcp()` |
 
 All commands return `Result<T, String>`. Errors are serialized as JSON error objects to the frontend.
 
