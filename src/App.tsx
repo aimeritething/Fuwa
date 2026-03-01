@@ -287,10 +287,7 @@ function App() {
     canGoBack: navHistory.canGoBack, canGoForward: navHistory.canGoForward,
     themes: themeManager.themes, activeThemeId: themeManager.activeThemeId,
     onSwitchTheme: themeManager.switchTheme,
-    onCreateTheme: async () => {
-      const newId = await themeManager.createTheme()
-      if (newId) await themeManager.switchTheme(newId)
-    },
+    onCreateTheme: async () => { await themeManager.createTheme() },
   })
 
   const { status: updateStatus, actions: updateActions } = useUpdater()

@@ -112,12 +112,13 @@ export function useThemeManager(vaultPath: string | null): ThemeManager {
         source_id: sourceId ?? null,
       })
       await loadThemes()
+      await switchTheme(newId)
       return newId
     } catch (err) {
       console.error('Failed to create theme:', err)
       return ''
     }
-  }, [vaultPath, loadThemes])
+  }, [vaultPath, loadThemes, switchTheme])
 
   return { themes, activeThemeId, activeTheme, switchTheme, createTheme, reloadThemes: loadThemes }
 }
