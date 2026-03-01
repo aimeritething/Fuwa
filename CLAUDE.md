@@ -118,6 +118,17 @@ bash ~/.openclaw/skills/laputa-qa/scripts/shortcut.sh "command" "s"
 bash ~/.openclaw/skills/laputa-qa/scripts/click.sh 400 300   # logical coords
 ```
 
+## Keyboard-First Principle (mandatory for every new feature)
+
+Every feature must be reachable via keyboard. This is both a UX requirement and a QA requirement — Brian tests the native app using keyboard only (osascript key events, no mouse).
+
+**Before marking any task done:**
+- Can the feature be triggered/used without touching the mouse?
+- If it requires clicking a button, add a command palette entry or keyboard shortcut
+- Document the shortcut in the command palette or menu bar
+
+**If you add UI that is only reachable by mouse**, you must also add a keyboard path (command palette entry, shortcut, or Tab-navigable focus). No exceptions.
+
 ## Push Workflow (IMPORTANT — changed Feb 27, 2026)
 
 **Push directly to main** — no PRs, no branches, no CI queue.
