@@ -18,16 +18,16 @@ export function UpdateBanner({ status, actions }: UpdateBannerProps) {
         alignItems: 'center',
         gap: 10,
         padding: '6px 12px',
-        background: 'var(--accent-blue, #E8F0FE)',
-        borderBottom: '1px solid var(--border)',
+        background: '#1a56db',
+        borderBottom: 'none',
         fontSize: 13,
-        color: 'var(--foreground)',
+        color: '#fff',
         flexShrink: 0,
       }}
     >
       {status.state === 'available' && (
         <>
-          <Download size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+          <Download size={14} style={{ color: '#fff', flexShrink: 0 }} />
           <span>
             <strong>Laputa {status.version}</strong> is available
           </span>
@@ -40,7 +40,7 @@ export function UpdateBanner({ status, actions }: UpdateBannerProps) {
               gap: 3,
               background: 'none',
               border: 'none',
-              color: 'var(--primary)',
+              color: '#fff',
               cursor: 'pointer',
               fontSize: 13,
               padding: 0,
@@ -73,7 +73,7 @@ export function UpdateBanner({ status, actions }: UpdateBannerProps) {
               background: 'none',
               border: 'none',
               cursor: 'pointer',
-              color: 'var(--muted-foreground)',
+              color: '#fff',
               display: 'flex',
               padding: 2,
             }}
@@ -86,14 +86,14 @@ export function UpdateBanner({ status, actions }: UpdateBannerProps) {
 
       {status.state === 'downloading' && (
         <>
-          <RefreshCw size={14} style={{ color: 'var(--primary)', flexShrink: 0, animation: 'spin 1s linear infinite' }} />
+          <RefreshCw size={14} style={{ color: '#fff', flexShrink: 0, animation: 'spin 1s linear infinite' }} />
           <span>Downloading Laputa {status.version}...</span>
           <div
             style={{
               flex: 1,
               maxWidth: 200,
               height: 4,
-              background: 'var(--border)',
+              background: 'rgba(255,255,255,0.3)',
               borderRadius: 2,
               overflow: 'hidden',
             }}
