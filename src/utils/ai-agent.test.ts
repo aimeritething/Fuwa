@@ -150,8 +150,32 @@ describe('runAgentLoop', () => {
 
 describe('executeToolViaWs', () => {
   it('resolves with error when WebSocket is unavailable', async () => {
-    // jsdom WebSocket will fail to connect
-    const result = await executeToolViaWs('read_note', { path: 'test.md' })
-    expect(result.isError).toBe(true)
+    // Mock WebSocket to simulate a connection failure without triggering
+    // jsdom/undici unhandled rejections (jsdom's WebSocket internally throws
+    // InvalidArgumentError: invalid onError method on failed connections).
+    const OriginalWebSocket = globalThis.WebSocket
+    const mockWs = {
+      readyState: WebSocket.CONNECTING,
+      close: vi.fn(),
+      send: vi.fn(),
+      onopen: null as ((ev: Event) => void) | null,
+      onerror: null as ((ev: Event) => void) | null,
+      onmessage: null as ((ev: MessageEvent) => void) | null,
+    }
+    // @ts-expect-error - partial mock for test
+    globalThis.WebSocket = vi.fn(() => {
+      // Fire onerror asynchronously to simulate failed connection
+      setTimeout(() => {
+        if (mockWs.onerror) mockWs.onerror(new Event('error'))
+      }, 0)
+      return mockWs
+    })
+
+    try {
+      const result = await executeToolViaWs('read_note', { path: 'test.md' })
+      expect(result.isError).toBe(true)
+    } finally {
+      globalThis.WebSocket = OriginalWebSocket
+    }
   })
 })
