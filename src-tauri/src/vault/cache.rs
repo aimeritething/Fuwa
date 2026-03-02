@@ -369,11 +369,7 @@ mod tests {
             .unwrap();
 
         // Commit a type note without sidebar label
-        create_test_file(
-            vault,
-            "type/news.md",
-            "---\ntype: Type\n---\n# News\n",
-        );
+        create_test_file(vault, "type/news.md", "---\ntype: Type\n---\n# News\n");
         std::process::Command::new("git")
             .args(["add", "."])
             .current_dir(vault)
