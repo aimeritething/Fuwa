@@ -88,6 +88,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onGoBack: config.onGoBack,
     onGoForward: config.onGoForward,
     onToggleAIChat: config.onToggleAIChat,
+    onToggleRawEditor: config.onToggleRawEditor,
     activeTabPathRef: config.activeTabPathRef,
     handleCloseTabRef: config.handleCloseTabRef,
   })
