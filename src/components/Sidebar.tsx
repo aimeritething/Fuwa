@@ -34,6 +34,7 @@ interface SidebarProps {
   onCustomizeType?: (typeName: string, icon: string, color: string) => void
   onUpdateTypeTemplate?: (typeName: string, template: string) => void
   onReorderSections?: (orderedTypes: { typeName: string; order: number }[]) => void
+  onRenameSection?: (typeName: string, label: string) => void
   modifiedCount?: number
   onCommitPush?: () => void
   onCollapse?: () => void
@@ -162,12 +163,13 @@ function applyCustomization(
 
 function SortableSection({ group, sectionProps }: {
   group: SectionGroup
-  sectionProps: Omit<SectionContentProps, 'group' | 'items' | 'isCollapsed' | 'onToggle'>
-    & { entries: VaultEntry[]; collapsed: Record<string, boolean>; onToggle: (type: string) => void }
+  sectionProps: Omit<SectionContentProps, 'group' | 'items' | 'isCollapsed' | 'dragHandleProps' | 'onToggle' | 'isRenaming' | 'renameInitialValue'>
+    & { entries: VaultEntry[]; collapsed: Record<string, boolean>; onToggle: (type: string) => void; renamingType: string | null; renameInitialValue: string }
 }) {
   const { attributes, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.type })
   const items = sectionProps.entries.filter((e) => e.isA === group.type && !e.archived && !e.trashed)
   const isCollapsed = sectionProps.collapsed[group.type] ?? true
+  const isRenaming = sectionProps.renamingType === group.type
 
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, padding: '4px 6px' }} {...attributes}>
@@ -177,6 +179,11 @@ function SortableSection({ group, sectionProps }: {
         onSelectNote={sectionProps.onSelectNote} onCreateType={sectionProps.onCreateType}
         onCreateNewType={sectionProps.onCreateNewType} onContextMenu={sectionProps.onContextMenu}
         onToggle={() => sectionProps.onToggle(group.type)}
+        dragHandleProps={listeners}
+        isRenaming={isRenaming}
+        renameInitialValue={isRenaming ? sectionProps.renameInitialValue : undefined}
+        onRenameSubmit={sectionProps.onRenameSubmit}
+        onRenameCancel={sectionProps.onRenameCancel}
       />
     </div>
   )
@@ -216,16 +223,21 @@ function SidebarTitleBar({ onCollapse }: { onCollapse?: () => void }) {
   )
 }
 
-function ContextMenuOverlay({ pos, type, innerRef, onOpenCustomize }: {
+function ContextMenuOverlay({ pos, type, innerRef, onOpenCustomize, onStartRename }: {
   pos: { x: number; y: number } | null; type: string | null
   innerRef: React.Ref<HTMLDivElement>
   onOpenCustomize: (type: string) => void
+  onStartRename: (type: string) => void
 }) {
   if (!pos || !type) return null
+  const btnClass = "flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm cursor-default hover:bg-accent hover:text-accent-foreground transition-colors border-none bg-transparent text-left"
   return (
     <div ref={innerRef} className="fixed z-50 rounded-md border bg-popover p-1 shadow-md" style={{ left: pos.x, top: pos.y, minWidth: 180 }}>
-      <button className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm cursor-default hover:bg-accent hover:text-accent-foreground transition-colors border-none bg-transparent text-left" onClick={() => onOpenCustomize(type)}>
-        Customize icon & color…
+      <button className={btnClass} onClick={() => onStartRename(type)}>
+        Rename section…
+      </button>
+      <button className={btnClass} onClick={() => onOpenCustomize(type)}>
+        Customize icon &amp; color…
       </button>
     </div>
   )
@@ -258,13 +270,16 @@ function CustomizeOverlay({ target, typeEntryMap, innerRef, onCustomize, onChang
 
 export const Sidebar = memo(function Sidebar({
   entries, selection, onSelect, onSelectNote, onCreateType, onCreateNewType,
-  onCustomizeType, onUpdateTypeTemplate, onReorderSections, modifiedCount = 0, onCommitPush, onCollapse,
+  onCustomizeType, onUpdateTypeTemplate, onReorderSections, onRenameSection,
+  modifiedCount = 0, onCommitPush, onCollapse,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
   const [contextMenuType, setContextMenuType] = useState<string | null>(null)
   const [showCustomize, setShowCustomize] = useState(false)
+  const [renamingType, setRenamingType] = useState<string | null>(null)
+  const [renameInitialValue, setRenameInitialValue] = useState('')
 
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -277,6 +292,7 @@ export const Sidebar = memo(function Sidebar({
   const closeContextMenu = useCallback(() => { setContextMenuPos(null); setContextMenuType(null) }, [])
   const closeCustomize = useCallback(() => setShowCustomize(false), [])
   const closeCustomizeTarget = useCallback(() => setCustomizeTarget(null), [])
+  const cancelRename = useCallback(() => setRenamingType(null), [])
 
   useOutsideClick(customizeRef, showCustomize, closeCustomize)
   useOutsideClick(contextMenuRef, !!contextMenuPos, closeContextMenu)
@@ -303,6 +319,18 @@ export const Sidebar = memo(function Sidebar({
     setContextMenuPos({ x: e.clientX, y: e.clientY }); setContextMenuType(type)
   }, [])
 
+  const handleStartRename = useCallback((type: string) => {
+    closeContextMenu()
+    const group = allSectionGroups.find((g) => g.type === type)
+    setRenameInitialValue(group?.label ?? type)
+    setRenamingType(type)
+  }, [closeContextMenu, allSectionGroups])
+
+  const handleRenameSubmit = useCallback((value: string) => {
+    if (renamingType) onRenameSection?.(renamingType, value)
+    setRenamingType(null)
+  }, [renamingType, onRenameSection])
+
   const handleCustomize = useCallback((prop: 'icon' | 'color', value: string) => {
     applyCustomization(customizeTarget, typeEntryMap, onCustomizeType, prop, value)
   }, [customizeTarget, typeEntryMap, onCustomizeType])
@@ -314,6 +342,7 @@ export const Sidebar = memo(function Sidebar({
   const sectionProps = {
     entries, collapsed, selection, onSelect, onSelectNote, onCreateType, onCreateNewType,
     onContextMenu: handleContextMenu, onToggle: toggleSection,
+    renamingType, renameInitialValue, onRenameSubmit: handleRenameSubmit, onRenameCancel: cancelRename,
   }
 
   return (
@@ -354,7 +383,7 @@ export const Sidebar = memo(function Sidebar({
       </nav>
 
       <CommitButton modifiedCount={modifiedCount} onClick={onCommitPush} />
-      <ContextMenuOverlay pos={contextMenuPos} type={contextMenuType} innerRef={contextMenuRef} onOpenCustomize={(type) => { closeContextMenu(); setCustomizeTarget(type) }} />
+      <ContextMenuOverlay pos={contextMenuPos} type={contextMenuType} innerRef={contextMenuRef} onOpenCustomize={(type) => { closeContextMenu(); setCustomizeTarget(type) }} onStartRename={handleStartRename} />
       <CustomizeOverlay target={customizeTarget} typeEntryMap={typeEntryMap} innerRef={popoverRef} onCustomize={handleCustomize} onChangeTemplate={handleChangeTemplate} onClose={closeCustomizeTarget} />
     </aside>
   )

@@ -1,4 +1,4 @@
-import { type ComponentType } from 'react'
+import { type ComponentType, useState, useEffect, useRef } from 'react'
 import type { VaultEntry, SidebarSelection } from '../types'
 import { cn } from '@/lib/utils'
 import { ChevronRight, ChevronDown, Plus } from 'lucide-react'
@@ -75,6 +75,11 @@ export interface SectionContentProps {
   onCreateNewType?: () => void
   onContextMenu: (e: React.MouseEvent, type: string) => void
   onToggle: () => void
+  dragHandleProps?: Record<string, unknown>
+  isRenaming?: boolean
+  renameInitialValue?: string
+  onRenameSubmit?: (value: string) => void
+  onRenameCancel?: () => void
 }
 
 function childSelection(type: string, entry: VaultEntry): SidebarSelection {
@@ -89,7 +94,8 @@ function resolveCreateHandler(type: string, onCreateType?: (type: string) => voi
 
 export function SectionContent({
   group, items, isCollapsed, selection, onSelect, onSelectNote,
-  onCreateType, onCreateNewType, onContextMenu, onToggle,
+  onCreateType, onCreateNewType, onContextMenu, onToggle, dragHandleProps,
+  isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel,
 }: SectionContentProps) {
   const { label, type, Icon, customColor } = group
   const sectionColor = getTypeColor(type, customColor)
@@ -108,6 +114,11 @@ export function SectionContent({
         onContextMenu={(e) => onContextMenu(e, type)}
         onToggle={onToggle}
         onCreate={(e) => { e.stopPropagation(); onCreate?.() }}
+        dragHandleProps={dragHandleProps}
+        isRenaming={isRenaming}
+        renameInitialValue={renameInitialValue}
+        onRenameSubmit={onRenameSubmit}
+        onRenameCancel={onRenameCancel}
       />
       {!isCollapsed && items.length > 0 && (
         <SectionChildList
@@ -143,36 +154,86 @@ function SectionChildList({ items, type, selection, sectionColor, sectionLightCo
   )
 }
 
-function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive, showCreate, onSelect, onContextMenu, onToggle, onCreate }: {
+function InlineRenameInput({ initialValue, onSubmit, onCancel }: {
+  initialValue: string
+  onSubmit: (value: string) => void
+  onCancel: () => void
+}) {
+  const [value, setValue] = useState(initialValue)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => { inputRef.current?.focus(); inputRef.current?.select() }, [])
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); onSubmit(value.trim()) }
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onCancel() }
+  }
+
+  return (
+    <input
+      ref={inputRef}
+      value={value}
+      onChange={(e) => setValue(e.target.value)}
+      onKeyDown={handleKeyDown}
+      onBlur={() => onSubmit(value.trim())}
+      onClick={(e) => e.stopPropagation()}
+      className="flex-1 rounded border border-primary bg-background text-[13px] font-medium text-foreground outline-none"
+      style={{ padding: '0 4px', marginLeft: 4, minWidth: 0 }}
+      aria-label="Section name"
+    />
+  )
+}
+
+function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive, showCreate, onSelect, onContextMenu, onToggle, onCreate, dragHandleProps, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
   label: string; type: string; Icon: ComponentType<IconProps>
   sectionColor: string; isCollapsed: boolean; isActive: boolean; showCreate: boolean
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void
   onToggle: () => void; onCreate: (e: React.MouseEvent) => void
+  dragHandleProps?: Record<string, unknown>
+  isRenaming?: boolean
+  renameInitialValue?: string
+  onRenameSubmit?: (value: string) => void
+  onRenameCancel?: () => void
 }) {
   return (
     <div
       className={cn("group/section flex cursor-pointer select-none items-center justify-between rounded transition-colors", isActive ? "bg-secondary" : "hover:bg-accent")}
       style={{ padding: '6px 8px 6px 16px', borderRadius: 4, gap: 4 }}
       onClick={() => {
+        if (isRenaming) return
         if (isCollapsed) { onToggle(); onSelect() }
         else if (isActive) { onToggle() }
         else { onSelect() }
-      }} onContextMenu={onContextMenu}
+      }} onContextMenu={isRenaming ? undefined : onContextMenu}
     >
-      <div className="flex items-center" style={{ gap: 4 }}>
-        <Icon size={16} style={{ color: sectionColor }} />
-        <span className="text-[13px] font-medium text-foreground" style={{ marginLeft: 4 }}>{label}</span>
-      </div>
-      <div className="flex items-center" style={{ gap: 2 }}>
-        {showCreate && (
-          <button className="flex shrink-0 items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/section:opacity-100 cursor-pointer" style={{ width: 20, height: 20 }} onClick={onCreate} aria-label={type === 'Type' ? 'Create new Type' : `Create new ${type}`} title={type === 'Type' ? 'New Type' : `New ${type}`}>
-            <Plus size={14} />
-          </button>
+      <div className="flex min-w-0 flex-1 items-center" style={{ gap: 4 }}>
+        <div className="flex shrink-0 items-center justify-center text-muted-foreground opacity-0 group-hover/section:opacity-50 hover:!opacity-100 cursor-grab" style={{ width: 16, height: 16 }} {...dragHandleProps} aria-label={`Drag to reorder ${label}`}>
+          <GripVertical size={12} />
+        </div>
+        <Icon size={16} style={{ color: sectionColor, flexShrink: 0 }} />
+        {isRenaming && onRenameSubmit && onRenameCancel ? (
+          <InlineRenameInput
+            key={`rename-${type}`}
+            initialValue={renameInitialValue ?? label}
+            onSubmit={onRenameSubmit}
+            onCancel={onRenameCancel}
+          />
+        ) : (
+          <span className="text-[13px] font-medium text-foreground" style={{ marginLeft: 4 }}>{label}</span>
         )}
-        <button className="flex shrink-0 items-center border-none bg-transparent p-0 text-inherit cursor-pointer" onClick={(e) => { e.stopPropagation(); onToggle() }} aria-label={isCollapsed ? `Expand ${label}` : `Collapse ${label}`}>
-          {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-        </button>
       </div>
+      {!isRenaming && (
+        <div className="flex shrink-0 items-center" style={{ gap: 2 }}>
+          {showCreate && (
+            <button className="flex shrink-0 items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/section:opacity-100 cursor-pointer" style={{ width: 20, height: 20 }} onClick={onCreate} aria-label={type === 'Type' ? 'Create new Type' : `Create new ${type}`} title={type === 'Type' ? 'New Type' : `New ${type}`}>
+              <Plus size={14} />
+            </button>
+          )}
+          <button className="flex shrink-0 items-center border-none bg-transparent p-0 text-inherit cursor-pointer" onClick={(e) => { e.stopPropagation(); onToggle() }} aria-label={isCollapsed ? `Expand ${label}` : `Collapse ${label}`}>
+            {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+          </button>
+        </div>
+      )}
     </div>
   )
 }
