@@ -156,6 +156,36 @@ describe('useCommandRegistry', () => {
     expect(onTrashNote).toHaveBeenCalledWith('/vault/note/test.md')
   })
 
+  it('has toggle-raw-editor command in View group', () => {
+    const { result } = renderHook(() => useCommandRegistry(makeConfig()))
+    const cmd = result.current.find(c => c.id === 'toggle-raw-editor')
+    expect(cmd).toBeDefined()
+    expect(cmd!.group).toBe('View')
+  })
+
+  it('disables toggle-raw-editor when no note is open', () => {
+    const { result } = renderHook(() => useCommandRegistry(makeConfig({ activeTabPath: null })))
+    const cmd = result.current.find(c => c.id === 'toggle-raw-editor')
+    expect(cmd!.enabled).toBe(false)
+  })
+
+  it('enables toggle-raw-editor when a note is open', () => {
+    const { result } = renderHook(() =>
+      useCommandRegistry(makeConfig({ activeTabPath: '/vault/note/test.md' })),
+    )
+    const cmd = result.current.find(c => c.id === 'toggle-raw-editor')
+    expect(cmd!.enabled).toBe(true)
+  })
+
+  it('calls onToggleRawEditor when toggle-raw-editor executes', () => {
+    const onToggleRawEditor = vi.fn()
+    const { result } = renderHook(() =>
+      useCommandRegistry(makeConfig({ activeTabPath: '/vault/note/test.md', onToggleRawEditor })),
+    )
+    result.current.find(c => c.id === 'toggle-raw-editor')!.execute()
+    expect(onToggleRawEditor).toHaveBeenCalledOnce()
+  })
+
   it('disables commit when no modified files', () => {
     const { result } = renderHook(() => useCommandRegistry(makeConfig({ modifiedCount: 0 })))
     expect(result.current.find(c => c.id === 'commit-push')!.enabled).toBe(false)

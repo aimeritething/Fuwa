@@ -1,0 +1,29 @@
+import { useState, useCallback } from 'react'
+
+interface UseRawModeParams {
+  activeTabPath: string | null
+  /** Flush pending WYSIWYG edits to disk before entering raw mode. */
+  onFlushPending?: () => Promise<boolean>
+}
+
+/**
+ * Manages raw editor mode state.
+ * Raw mode is automatically inactive when the active tab changes,
+ * because rawMode is derived from whether the stored path matches the current tab.
+ */
+export function useRawMode({ activeTabPath, onFlushPending }: UseRawModeParams) {
+  // Track which path has raw mode active — automatically deactivates on tab switch
+  const [rawActivePath, setRawActivePath] = useState<string | null>(null)
+  const rawMode = rawActivePath !== null && rawActivePath === activeTabPath
+
+  const handleToggleRaw = useCallback(async () => {
+    if (rawMode) {
+      setRawActivePath(null)
+    } else {
+      await onFlushPending?.()
+      setRawActivePath(activeTabPath)
+    }
+  }, [rawMode, activeTabPath, onFlushPending])
+
+  return { rawMode, handleToggleRaw }
+}

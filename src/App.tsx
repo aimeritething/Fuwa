@@ -270,6 +270,9 @@ function App() {
 
   const bulkActions = useBulkActions(entryActions, setToastMessage)
 
+  // Raw-toggle ref: Editor registers its handleToggleRaw here so the command palette can call it
+  const rawToggleRef = useRef<() => void>(() => {})
+
   const { setViewMode, sidebarVisible, noteListVisible } = useViewMode()
   const zoom = useZoom()
   const buildNumber = useBuildNumber()
@@ -290,6 +293,7 @@ function App() {
     onArchiveNote: entryActions.handleArchiveNote, onUnarchiveNote: entryActions.handleUnarchiveNote,
     onCommitPush: commitFlow.openCommitDialog, onSetViewMode: setViewMode,
     onToggleInspector: () => layout.setInspectorCollapsed(c => !c),
+    onToggleRawEditor: () => rawToggleRef.current(),
     onZoomIn: zoom.zoomIn, onZoomOut: zoom.zoomOut, onZoomReset: zoom.zoomReset,
     zoomLevel: zoom.zoomLevel,
     onSelect: setSelection, onCloseTab: notes.handleCloseTab,
@@ -389,7 +393,9 @@ function App() {
             onUnarchiveNote={entryActions.handleUnarchiveNote}
             onRenameTab={handleRenameTab}
             onContentChange={handleContentChange}
+            onSave={handleSave}
             onTitleSync={handleTitleSync}
+            rawToggleRef={rawToggleRef}
             canGoBack={navHistory.canGoBack}
             canGoForward={navHistory.canGoForward}
             onGoBack={handleGoBack}

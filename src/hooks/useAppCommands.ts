@@ -33,6 +33,7 @@ interface AppCommandsConfig {
   onCommitPush: () => void
   onSetViewMode: (mode: ViewMode) => void
   onToggleInspector: () => void
+  onToggleRawEditor?: () => void
   onZoomIn: () => void
   onZoomOut: () => void
   onZoomReset: () => void
@@ -129,6 +130,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onCommitPush: config.onCommitPush,
     onSetViewMode: config.onSetViewMode,
     onToggleInspector: config.onToggleInspector,
+    onToggleRawEditor: config.onToggleRawEditor,
     onZoomIn: config.onZoomIn,
     onZoomOut: config.onZoomOut,
     onZoomReset: config.onZoomReset,

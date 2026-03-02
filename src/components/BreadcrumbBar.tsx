@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import {
   MagnifyingGlass,
   GitBranch,
+  Code,
   CursorText,
   Sparkle,
   SlidersHorizontal,
@@ -22,6 +23,8 @@ interface BreadcrumbBarProps {
   diffMode: boolean
   diffLoading: boolean
   onToggleDiff: () => void
+  rawMode?: boolean
+  onToggleRaw?: () => void
   showAIChat?: boolean
   onToggleAIChat?: () => void
   inspectorCollapsed?: boolean
@@ -34,7 +37,23 @@ interface BreadcrumbBarProps {
 
 const DISABLED_ICON_STYLE = { opacity: 0.4, cursor: 'not-allowed' } as const
 
+function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggleRaw?: () => void }) {
+  return (
+    <button
+      className={cn(
+        'flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors',
+        rawMode ? 'text-foreground' : 'text-muted-foreground hover:text-foreground',
+      )}
+      onClick={onToggleRaw}
+      title={rawMode ? 'Back to editor' : 'Raw editor'}
+    >
+      <Code size={16} />
+    </button>
+  )
+}
+
 function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onToggleDiff,
+  rawMode, onToggleRaw,
   showAIChat, onToggleAIChat, inspectorCollapsed, onToggleInspector,
   onTrash, onRestore, onArchive, onUnarchive,
 }: Omit<BreadcrumbBarProps, 'wordCount' | 'noteStatus'>) {
@@ -68,6 +87,7 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
           <GitBranch size={16} />
         </button>
       )}
+      <RawToggleButton rawMode={rawMode} onToggleRaw={onToggleRaw} />
       <button
         className="flex items-center justify-center border-none bg-transparent p-0 text-muted-foreground"
         style={DISABLED_ICON_STYLE}

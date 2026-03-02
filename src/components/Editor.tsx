@@ -9,6 +9,7 @@ import type { FrontmatterValue } from './Inspector'
 import { ResizeHandle } from './ResizeHandle'
 import { TabBar } from './TabBar'
 import { useDiffMode } from '../hooks/useDiffMode'
+import { useRawMode } from '../hooks/useRawMode'
 import { useEditorFocus } from '../hooks/useEditorFocus'
 import { EditorRightPanel } from './EditorRightPanel'
 import { EditorContent } from './EditorContent'
@@ -53,6 +54,7 @@ interface EditorProps {
   onUnarchiveNote?: (path: string) => void
   onRenameTab?: (path: string, newTitle: string) => void
   onContentChange?: (path: string, content: string) => void
+  onSave?: () => void
   /** Called when H1→title sync updates the title (debounced). */
   onTitleSync?: (path: string, newTitle: string) => void
   canGoBack?: boolean
@@ -61,6 +63,34 @@ interface EditorProps {
   onGoForward?: () => void
   leftPanelsCollapsed?: boolean
   isDarkTheme?: boolean
+  /** Mutable ref that Editor registers its raw-mode toggle into, for command palette access. */
+  rawToggleRef?: React.MutableRefObject<() => void>
+}
+
+function useEditorModeExclusion({
+  diffMode, rawMode, handleToggleDiff, handleToggleRaw, rawToggleRef,
+}: {
+  diffMode: boolean
+  rawMode: boolean
+  handleToggleDiff: () => void | Promise<void>
+  handleToggleRaw: () => void
+  rawToggleRef?: React.MutableRefObject<() => void>
+}) {
+  const handleToggleDiffExclusive = useCallback(async () => {
+    if (!diffMode && rawMode) handleToggleRaw()
+    await handleToggleDiff()
+  }, [diffMode, rawMode, handleToggleDiff, handleToggleRaw])
+
+  const handleToggleRawExclusive = useCallback(() => {
+    if (!rawMode && diffMode) handleToggleDiff()
+    handleToggleRaw()
+  }, [rawMode, diffMode, handleToggleDiff, handleToggleRaw])
+
+  useEffect(() => {
+    if (rawToggleRef) rawToggleRef.current = handleToggleRawExclusive
+  }, [rawToggleRef, handleToggleRawExclusive])
+
+  return { handleToggleDiffExclusive, handleToggleRawExclusive }
 }
 
 function EditorEmptyState() {
@@ -81,9 +111,10 @@ export const Editor = memo(function Editor({
   showAIChat, onToggleAIChat,
   vaultPath,
   onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
-  onRenameTab, onContentChange, onTitleSync,
+  onRenameTab, onContentChange, onSave, onTitleSync,
   canGoBack, canGoForward, onGoBack, onGoForward, leftPanelsCollapsed,
   isDarkTheme,
+  rawToggleRef,
 }: EditorProps) {
   const vaultPathRef = useRef(vaultPath)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
@@ -116,6 +147,13 @@ export const Editor = memo(function Editor({
   const { diffMode, diffContent, diffLoading, handleToggleDiff, handleViewCommitDiff } = useDiffMode({
     activeTabPath, onLoadDiff, onLoadDiffAtCommit,
   })
+
+  const { rawMode, handleToggleRaw } = useRawMode({ activeTabPath })
+
+  const { handleToggleDiffExclusive, handleToggleRawExclusive } = useEditorModeExclusion({
+    diffMode, rawMode, handleToggleDiff, handleToggleRaw, rawToggleRef,
+  })
+
   const isLoadingNewTab = activeTabPath !== null && !activeTab
   const activeStatus = activeTab ? getNoteStatus?.(activeTab.entry.path) ?? 'clean' : 'clean'
   const showDiffToggle = !!(activeTab && (diffMode || activeStatus === 'modified'))
@@ -149,7 +187,11 @@ export const Editor = memo(function Editor({
               diffMode={diffMode}
               diffContent={diffContent}
               diffLoading={diffLoading}
-              onToggleDiff={handleToggleDiff}
+              onToggleDiff={handleToggleDiffExclusive}
+              rawMode={rawMode}
+              onToggleRaw={handleToggleRawExclusive}
+              onRawContentChange={onContentChange}
+              onSave={onSave}
               activeStatus={activeStatus}
               showDiffToggle={showDiffToggle}
               showAIChat={showAIChat}

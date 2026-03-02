@@ -115,3 +115,24 @@ describe('BreadcrumbBar — archive/unarchive', () => {
     expect(onUnarchive).toHaveBeenCalledOnce()
   })
 })
+
+describe('BreadcrumbBar — raw editor toggle', () => {
+  it('shows Raw editor button with tooltip "Raw editor" when rawMode is off', () => {
+    const onToggleRaw = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode={false} onToggleRaw={onToggleRaw} />)
+    expect(screen.getByTitle('Raw editor')).toBeInTheDocument()
+  })
+
+  it('shows "Back to editor" tooltip when rawMode is on', () => {
+    const onToggleRaw = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode={true} onToggleRaw={onToggleRaw} />)
+    expect(screen.getByTitle('Back to editor')).toBeInTheDocument()
+  })
+
+  it('calls onToggleRaw when raw button is clicked', () => {
+    const onToggleRaw = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode={false} onToggleRaw={onToggleRaw} />)
+    fireEvent.click(screen.getByTitle('Raw editor'))
+    expect(onToggleRaw).toHaveBeenCalledOnce()
+  })
+})

@@ -2,6 +2,7 @@ import type { VaultEntry, NoteStatus } from '../types'
 import type { useCreateBlockNote } from '@blocknote/react'
 import { DiffView } from './DiffView'
 import { BreadcrumbBar } from './BreadcrumbBar'
+import { RawEditorView } from './RawEditorView'
 import { countWords } from '../utils/wikilinks'
 import { SingleEditorView } from './SingleEditorView'
 
@@ -19,6 +20,10 @@ interface EditorContentProps {
   diffContent: string | null
   diffLoading: boolean
   onToggleDiff: () => void
+  rawMode: boolean
+  onToggleRaw: () => void
+  onRawContentChange?: (path: string, content: string) => void
+  onSave?: () => void
   activeStatus: NoteStatus
   showDiffToggle: boolean
   showAIChat?: boolean
@@ -63,6 +68,28 @@ function DiffModeView({ diffContent, onToggleDiff }: { diffContent: string | nul
   )
 }
 
+function RawModeEditorSection({
+  rawMode, activeTab, entries, onContentChange, onSave,
+}: {
+  rawMode: boolean
+  activeTab: Tab | null
+  entries: VaultEntry[]
+  onContentChange?: (path: string, content: string) => void
+  onSave?: () => void
+}) {
+  if (!rawMode || !activeTab) return null
+  return (
+    <RawEditorView
+      key={activeTab.entry.path}
+      content={activeTab.content}
+      path={activeTab.entry.path}
+      entries={entries}
+      onContentChange={onContentChange ?? (() => {})}
+      onSave={onSave ?? (() => {})}
+    />
+  )
+}
+
 /** Bind an optional callback to a path, returning undefined if callback is absent */
 function bindPath(cb: ((path: string) => void) | undefined, path: string) {
   return cb ? () => cb(path) : undefined
@@ -70,7 +97,7 @@ function bindPath(cb: ((path: string) => void) | undefined, path: string) {
 
 function ActiveTabBreadcrumb({ activeTab, props }: {
   activeTab: Tab
-  props: Omit<EditorContentProps, 'activeTab' | 'isLoadingNewTab' | 'entries' | 'editor' | 'onNavigateWikilink' | 'onEditorChange'>
+  props: Omit<EditorContentProps, 'activeTab' | 'isLoadingNewTab' | 'entries' | 'editor' | 'onNavigateWikilink' | 'onEditorChange' | 'onRawContentChange' | 'onSave'>
 }) {
   const wordCount = countWords(activeTab.content)
   const path = activeTab.entry.path
@@ -83,6 +110,8 @@ function ActiveTabBreadcrumb({ activeTab, props }: {
       diffMode={props.diffMode}
       diffLoading={props.diffLoading}
       onToggleDiff={props.onToggleDiff}
+      rawMode={props.rawMode}
+      onToggleRaw={props.onToggleRaw}
       showAIChat={props.showAIChat}
       onToggleAIChat={props.onToggleAIChat}
       inspectorCollapsed={props.inspectorCollapsed}
@@ -98,19 +127,28 @@ function ActiveTabBreadcrumb({ activeTab, props }: {
 export function EditorContent({
   activeTab, isLoadingNewTab, entries, editor,
   diffMode, diffContent, onToggleDiff,
+  rawMode, onToggleRaw, onRawContentChange, onSave,
   onNavigateWikilink, onEditorChange, vaultPath, isDarkTheme,
   ...breadcrumbProps
 }: EditorContentProps) {
+  const showEditor = !diffMode && !rawMode
+
   return (
     <div className="flex flex-1 flex-col min-w-0 min-h-0">
-      {activeTab && <ActiveTabBreadcrumb activeTab={activeTab} props={{ diffMode, diffContent, onToggleDiff, ...breadcrumbProps }} />}
+      {activeTab && (
+        <ActiveTabBreadcrumb
+          activeTab={activeTab}
+          props={{ diffMode, diffContent, onToggleDiff, rawMode, onToggleRaw, ...breadcrumbProps }}
+        />
+      )}
       {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
-      {!diffMode && activeTab && (
+      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} />
+      {showEditor && activeTab && (
         <div style={{ display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0 }}>
           <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} isDarkTheme={isDarkTheme} />
         </div>
       )}
-      {isLoadingNewTab && !diffMode && <EditorLoadingSkeleton />}
+      {isLoadingNewTab && showEditor && <EditorLoadingSkeleton />}
     </div>
   )
 }
