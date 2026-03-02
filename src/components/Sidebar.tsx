@@ -215,6 +215,19 @@ function SidebarTitleBar({ onCollapse }: { onCollapse?: () => void }) {
   )
 }
 
+const CONTEXT_MENU_HEIGHT = 48
+const CUSTOMIZE_POPOVER_WIDTH = 320
+const CUSTOMIZE_POPOVER_HEIGHT = 480
+
+const CLAMP_MARGIN = 8
+
+function clampToViewport(x: number, y: number, width: number, height: number): { left: number; top: number } {
+  return {
+    left: Math.min(Math.max(x, CLAMP_MARGIN), window.innerWidth - width - CLAMP_MARGIN),
+    top: Math.min(Math.max(y, CLAMP_MARGIN), window.innerHeight - height - CLAMP_MARGIN),
+  }
+}
+
 function ContextMenuOverlay({ pos, type, innerRef, onOpenCustomize }: {
   pos: { x: number; y: number } | null; type: string | null
   innerRef: React.Ref<HTMLDivElement>
@@ -230,16 +243,21 @@ function ContextMenuOverlay({ pos, type, innerRef, onOpenCustomize }: {
   )
 }
 
-function CustomizeOverlay({ target, typeEntryMap, innerRef, onCustomize, onChangeTemplate, onClose }: {
-  target: string | null; typeEntryMap: Record<string, VaultEntry>
+function CustomizeOverlay({ target, pos, typeEntryMap, innerRef, onCustomize, onChangeTemplate, onClose }: {
+  target: string | null
+  pos: { x: number; y: number } | null
+  typeEntryMap: Record<string, VaultEntry>
   innerRef: React.Ref<HTMLDivElement>
   onCustomize: (prop: 'icon' | 'color', value: string) => void
   onChangeTemplate: (template: string) => void
   onClose: () => void
 }) {
   if (!target) return null
+  const { left, top } = pos
+    ? clampToViewport(pos.x, pos.y, CUSTOMIZE_POPOVER_WIDTH, CUSTOMIZE_POPOVER_HEIGHT)
+    : { left: 20, top: 100 }
   return (
-    <div ref={innerRef} className="fixed z-50" style={{ left: 20, top: 100 }}>
+    <div ref={innerRef} className="fixed z-50" style={{ left, top }}>
       <TypeCustomizePopover
         currentIcon={typeEntryMap[target]?.icon ?? null}
         currentColor={typeEntryMap[target]?.color ?? null}
@@ -261,6 +279,7 @@ export const Sidebar = memo(function Sidebar({
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
+  const [customizePos, setCustomizePos] = useState<{ x: number; y: number } | null>(null)
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
   const [contextMenuType, setContextMenuType] = useState<string | null>(null)
   const [showCustomize, setShowCustomize] = useState(false)
@@ -299,7 +318,8 @@ export const Sidebar = memo(function Sidebar({
 
   const handleContextMenu = useCallback((e: React.MouseEvent, type: string) => {
     e.preventDefault(); e.stopPropagation()
-    setContextMenuPos({ x: e.clientX, y: e.clientY }); setContextMenuType(type)
+    const y = e.clientY + CONTEXT_MENU_HEIGHT > window.innerHeight ? e.clientY - CONTEXT_MENU_HEIGHT : e.clientY
+    setContextMenuPos({ x: e.clientX, y }); setContextMenuType(type)
   }, [])
 
   const handleCustomize = useCallback((prop: 'icon' | 'color', value: string) => {
@@ -353,8 +373,8 @@ export const Sidebar = memo(function Sidebar({
       </nav>
 
       <CommitButton modifiedCount={modifiedCount} onClick={onCommitPush} />
-      <ContextMenuOverlay pos={contextMenuPos} type={contextMenuType} innerRef={contextMenuRef} onOpenCustomize={(type) => { closeContextMenu(); setCustomizeTarget(type) }} />
-      <CustomizeOverlay target={customizeTarget} typeEntryMap={typeEntryMap} innerRef={popoverRef} onCustomize={handleCustomize} onChangeTemplate={handleChangeTemplate} onClose={closeCustomizeTarget} />
+      <ContextMenuOverlay pos={contextMenuPos} type={contextMenuType} innerRef={contextMenuRef} onOpenCustomize={(type) => { setCustomizePos(contextMenuPos); closeContextMenu(); setCustomizeTarget(type) }} />
+      <CustomizeOverlay target={customizeTarget} pos={customizePos} typeEntryMap={typeEntryMap} innerRef={popoverRef} onCustomize={handleCustomize} onChangeTemplate={handleChangeTemplate} onClose={closeCustomizeTarget} />
     </aside>
   )
 })
