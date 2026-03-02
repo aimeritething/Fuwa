@@ -67,6 +67,21 @@
   background: var(--bg-primary);
   color: var(--text-primary);
   font-size: 15px;
+  /* Override BlockNote's internal color variables so .bn-editor background
+     matches our vault theme instead of BlockNote's hardcoded light/dark defaults. */
+  --bn-colors-editor-background: var(--bg-primary);
+  --bn-colors-editor-text: var(--text-primary);
+  --bn-colors-menu-background: var(--bg-card);
+  --bn-colors-menu-text: var(--text-primary);
+  --bn-colors-tooltip-background: var(--bg-hover);
+  --bn-colors-tooltip-text: var(--text-primary);
+  --bn-colors-hovered-background: var(--bg-hover);
+  --bn-colors-hovered-text: var(--text-primary);
+  --bn-colors-selected-background: var(--bg-selected);
+  --bn-colors-selected-text: var(--text-primary);
+  --bn-colors-border: var(--border-primary);
+  --bn-colors-shadow: var(--border-primary);
+  --bn-colors-side-menu: var(--text-muted);
 }
 
 .editor__blocknote-container .bn-editor {
