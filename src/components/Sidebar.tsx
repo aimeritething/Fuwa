@@ -15,7 +15,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import {
   FileText, Star, Wrench, Flask, Target, ArrowsClockwise,
-  Users, CalendarBlank, Tag, TagSimple, Trash, StackSimple, Archive, CaretLeft, GitDiff,
+  Users, CalendarBlank, Tag, TagSimple, Trash, StackSimple, Archive, CaretLeft, GitDiff, PaintBrush,
 } from '@phosphor-icons/react'
 import { GitCommitHorizontal, SlidersHorizontal } from 'lucide-react'
 import {
@@ -48,6 +48,7 @@ const BUILT_IN_SECTION_GROUPS: SectionGroup[] = [
   { label: 'Events', type: 'Event', Icon: CalendarBlank },
   { label: 'Topics', type: 'Topic', Icon: Tag },
   { label: 'Types', type: 'Type', Icon: StackSimple },
+  { label: 'Themes', type: 'Theme', Icon: PaintBrush },
 ]
 
 /** Metadata lookup for well-known types (icon/label only — NOT used to determine which sections to show) */

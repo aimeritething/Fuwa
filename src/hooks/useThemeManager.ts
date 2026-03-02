@@ -1,12 +1,14 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
-import type { ThemeFile, VaultSettings } from '../types'
+import { parseFrontmatter } from '../utils/frontmatter'
+import type { ThemeFile, VaultEntry, VaultSettings } from '../types'
 
 function tauriCall<T>(command: string, args: Record<string, unknown>): Promise<T> {
   return isTauri() ? invoke<T>(command, args) : mockInvoke<T>(command, args)
 }
 
+<<<<<<< HEAD
 // --- Color utilities for theme variable derivation ---
 
 function parseHex(hex: string): [number, number, number] {
@@ -121,37 +123,80 @@ function clearDerivedVariables(root: HTMLElement): void {
 
 /** Map theme colors/typography/spacing to CSS custom properties on :root. */
 function applyThemeToDom(theme: ThemeFile): void {
+=======
+/** Frontmatter keys that are metadata — not CSS custom properties. */
+const NON_THEME_KEYS = new Set([
+  'Is A', 'type', 'is_a', 'is a',
+  'Name', 'name', 'title', 'Title',
+  'Description', 'description',
+  'Archived', 'archived',
+  'Trashed', 'trashed',
+  'Trashed at', 'trashed at', 'trashed_at',
+  'Created at', 'created at', 'created_at',
+  'Created time', 'created_time',
+  'Owner', 'owner',
+  'Status', 'status',
+  'Cadence', 'cadence',
+  'aliases',
+  'Belongs to', 'belongs_to', 'belongs to',
+  'Related to', 'related_to', 'related to',
+])
+
+/** Extract CSS custom properties from a theme note's frontmatter content. */
+export function extractCssVars(content: string): Record<string, string> {
+  const fm = parseFrontmatter(content)
+  const vars: Record<string, string> = {}
+  for (const [key, value] of Object.entries(fm)) {
+    if (NON_THEME_KEYS.has(key)) continue
+    if (typeof value === 'string' && value) {
+      vars[`--${key}`] = value
+    } else if (typeof value === 'number') {
+      vars[`--${key}`] = String(value)
+    }
+  }
+  return vars
+}
+
+function applyVarsToDom(vars: Record<string, string>): void {
+>>>>>>> 240be0d (wip: themes-editable — theme management system WIP (13 files, 1014 insertions))
   const root = document.documentElement
-  for (const [key, value] of Object.entries(theme.colors)) {
-    root.style.setProperty(`--theme-${key}`, value)
-    root.style.setProperty(`--${key}`, value)
-  }
-  for (const [key, value] of Object.entries(theme.typography)) {
-    root.style.setProperty(`--theme-${key}`, value)
-  }
-  for (const [key, value] of Object.entries(theme.spacing)) {
-    root.style.setProperty(`--theme-${key}`, value)
-  }
-  if (theme.colors['sidebar-background']) {
-    root.style.setProperty('--sidebar', theme.colors['sidebar-background'])
+  for (const [key, value] of Object.entries(vars)) {
+    root.style.setProperty(key, value)
   }
   deriveThemeVariables(root, theme.colors)
 }
 
-function clearThemeFromDom(theme: ThemeFile): void {
+function clearVarsFromDom(vars: Record<string, string>): void {
   const root = document.documentElement
-  for (const key of Object.keys(theme.colors)) {
-    root.style.removeProperty(`--theme-${key}`)
-    root.style.removeProperty(`--${key}`)
+  for (const key of Object.keys(vars)) {
+    root.style.removeProperty(key)
   }
-  for (const key of Object.keys(theme.typography)) {
-    root.style.removeProperty(`--theme-${key}`)
+}
+
+/** Build a ThemeFile descriptor from a vault entry (metadata only). */
+function entryToThemeFile(entry: VaultEntry): ThemeFile {
+  return {
+    id: entry.path,
+    name: entry.title,
+    description: '',
+    path: entry.path,
+    colors: {},
+    typography: {},
+    spacing: {},
   }
+<<<<<<< HEAD
   for (const key of Object.keys(theme.spacing)) {
     root.style.removeProperty(`--theme-${key}`)
   }
   root.style.removeProperty('--sidebar')
   clearDerivedVariables(root)
+=======
+}
+
+/** True when a theme entry should no longer be applied (trashed or archived). */
+function isEntryRemoved(entry: VaultEntry): boolean {
+  return entry.trashed || entry.archived
+>>>>>>> 240be0d (wip: themes-editable — theme management system WIP (13 files, 1014 insertions))
 }
 
 export interface ThemeManager {
@@ -160,81 +205,125 @@ export interface ThemeManager {
   activeTheme: ThemeFile | null
   isDark: boolean
   switchTheme: (themeId: string) => Promise<void>
-  createTheme: (sourceId?: string) => Promise<string>
+  createTheme: (name?: string) => Promise<string>
   reloadThemes: () => Promise<void>
 }
 
-/** Sync CSS custom properties: clear old theme, apply new one. */
-function syncThemeDom(
-  prevRef: React.MutableRefObject<ThemeFile | null>,
-  theme: ThemeFile | null,
-): void {
-  if (prevRef.current) clearThemeFromDom(prevRef.current)
-  if (theme) {
-    applyThemeToDom(theme)
-    prevRef.current = theme
-  } else {
-    prevRef.current = null
-  }
-}
-
-export function useThemeManager(vaultPath: string | null): ThemeManager {
-  const [themes, setThemes] = useState<ThemeFile[]>([])
+/** Manages loading and persisting the active theme path from vault settings. */
+function useThemeSetting(vaultPath: string | null) {
   const [activeThemeId, setActiveThemeId] = useState<string | null>(null)
-  const prevThemeRef = useRef<ThemeFile | null>(null)
 
+<<<<<<< HEAD
   const activeTheme = themes.find(t => t.id === activeThemeId) ?? null
   const isDark = activeTheme?.colors.background ? isColorDark(activeTheme.colors.background) : false
 
   const loadThemes = useCallback(async () => {
+=======
+  const load = useCallback(async () => {
+>>>>>>> 240be0d (wip: themes-editable — theme management system WIP (13 files, 1014 insertions))
     if (!vaultPath) return
     try {
-      const [themeList, settings] = await Promise.all([
-        tauriCall<ThemeFile[]>('list_themes', { vaultPath }),
-        tauriCall<VaultSettings>('get_vault_settings', { vaultPath }),
-      ])
-      setThemes(themeList)
-      setActiveThemeId(settings.theme)
-    } catch (err) {
-      console.warn('Failed to load themes:', err)
-    }
+      const s = await tauriCall<VaultSettings>('get_vault_settings', { vaultPath })
+      setActiveThemeId(s.theme)
+    } catch { /* no settings file — fine, no active theme */ }
   }, [vaultPath])
 
-  useEffect(() => { loadThemes() }, [loadThemes]) // eslint-disable-line react-hooks/set-state-in-effect -- trigger initial load
-  useEffect(() => { syncThemeDom(prevThemeRef, activeTheme) }, [activeTheme])
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- async fn; setState runs after await
+  useEffect(() => { load() }, [load])
 
-  // Reload themes when window regains focus (live reload for external edits)
   useEffect(() => {
-    const onFocus = () => { loadThemes() }
-    window.addEventListener('focus', onFocus)
-    return () => window.removeEventListener('focus', onFocus)
-  }, [loadThemes])
+    window.addEventListener('focus', load)
+    return () => window.removeEventListener('focus', load)
+  }, [load])
+
+  return { activeThemeId, setActiveThemeId, reload: load }
+}
+
+/** Applies CSS custom properties to the document root from the active theme. */
+function useThemeApplier(
+  activeThemeId: string | null,
+  cachedContent: string | undefined,
+) {
+  const appliedVarsRef = useRef<Record<string, string>>({})
+
+  const apply = useCallback((content: string) => {
+    const newVars = extractCssVars(content)
+    clearVarsFromDom(appliedVarsRef.current)
+    applyVarsToDom(newVars)
+    appliedVarsRef.current = newVars
+  }, [])
+
+  const clear = useCallback(() => {
+    clearVarsFromDom(appliedVarsRef.current)
+    appliedVarsRef.current = {}
+  }, [])
+
+  // Apply theme when activeThemeId or cached content changes.
+  // Also serves as live-preview: re-applies when the user saves the theme note.
+  useEffect(() => {
+    if (!activeThemeId) { clear(); return }
+    if (cachedContent) { apply(cachedContent); return }
+    tauriCall<string>('get_note_content', { path: activeThemeId })
+      .then(apply)
+      .catch(clear)
+  }, [activeThemeId, cachedContent, apply, clear])
+
+  return { clear }
+}
+
+export function useThemeManager(
+  vaultPath: string | null,
+  entries: VaultEntry[],
+  allContent: Record<string, string>,
+): ThemeManager {
+  const { activeThemeId, setActiveThemeId, reload } = useThemeSetting(vaultPath)
+  const cachedThemeContent = activeThemeId ? allContent[activeThemeId] : undefined
+  const { clear: clearTheme } = useThemeApplier(activeThemeId, cachedThemeContent)
+
+  const themes = useMemo(
+    () => entries.filter(e => e.isA === 'Theme' && !e.trashed && !e.archived).map(entryToThemeFile),
+    [entries],
+  )
+
+  const activeTheme = useMemo(
+    () => themes.find(t => t.id === activeThemeId) ?? null,
+    [themes, activeThemeId],
+  )
+
+  // If active theme is trashed or archived: clear CSS vars and fall back to no theme
+  useEffect(() => {
+    if (!activeThemeId) return
+    const entry = entries.find(e => e.path === activeThemeId)
+    if (!entry || !isEntryRemoved(entry)) return
+    clearTheme()
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync fallback when active theme is deleted
+    setActiveThemeId(null)
+    if (vaultPath) tauriCall('set_active_theme', { vaultPath, themeId: null }).catch(() => {})
+  }, [entries, activeThemeId, clearTheme, vaultPath, setActiveThemeId])
 
   const switchTheme = useCallback(async (themeId: string) => {
     if (!vaultPath) return
     try {
       await tauriCall<null>('set_active_theme', { vaultPath, themeId })
       setActiveThemeId(themeId)
-    } catch (err) {
-      console.error('Failed to switch theme:', err)
-    }
-  }, [vaultPath])
+    } catch (err) { console.error('Failed to switch theme:', err) }
+  }, [vaultPath, setActiveThemeId])
 
-  const createTheme = useCallback(async (sourceId?: string) => {
+  const createTheme = useCallback(async (name?: string) => {
     if (!vaultPath) return ''
     try {
-      const newId = await tauriCall<string>('create_theme', {
-        vaultPath,
-        sourceId: sourceId ?? null,
-      })
-      await loadThemes()
-      await switchTheme(newId)
-      return newId
-    } catch (err) {
-      console.error('Failed to create theme:', err)
-      return ''
-    }
-  }, [vaultPath, loadThemes, switchTheme])
+      const path = await tauriCall<string>('create_vault_theme', { vaultPath, name: name ?? null })
+      await tauriCall<null>('set_active_theme', { vaultPath, themeId: path })
+      setActiveThemeId(path)
+      return path
+    } catch (err) { console.error('Failed to create theme:', err); return '' }
+  }, [vaultPath, setActiveThemeId])
 
+<<<<<<< HEAD
   return { themes, activeThemeId, activeTheme, isDark, switchTheme, createTheme, reloadThemes: loadThemes }
+=======
+  const reloadThemes = useCallback(async () => { await reload() }, [reload])
+
+  return { themes, activeThemeId, activeTheme, switchTheme, createTheme, reloadThemes }
+>>>>>>> 240be0d (wip: themes-editable — theme management system WIP (13 files, 1014 insertions))
 }
