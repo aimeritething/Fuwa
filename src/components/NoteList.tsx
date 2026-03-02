@@ -26,6 +26,7 @@ interface NoteListProps {
   selectedNote: VaultEntry | null
   allContent: Record<string, string>
   modifiedFiles?: ModifiedFile[]
+  modifiedFilesError?: string | null
   getNoteStatus?: (path: string) => NoteStatus
   sidebarCollapsed?: boolean
   onSelectNote: (entry: VaultEntry) => void
@@ -143,13 +144,13 @@ function ListViewHeader({ isTrashView, expiredTrashCount }: {
   return <TrashWarningBanner expiredCount={isTrashView ? expiredTrashCount : 0} />
 }
 
-function ListView({ isTrashView, isChangesView, expiredTrashCount, searched, query, renderItem, virtuosoRef }: {
-  isTrashView: boolean; isChangesView?: boolean; expiredTrashCount: number
+function ListView({ isTrashView, isChangesView, changesError, expiredTrashCount, searched, query, renderItem, virtuosoRef }: {
+  isTrashView: boolean; isChangesView?: boolean; changesError?: string | null; expiredTrashCount: number
   searched: VaultEntry[]; query: string
   renderItem: (entry: VaultEntry) => React.ReactNode
   virtuosoRef?: React.RefObject<VirtuosoHandle | null>
 }) {
-  const emptyText = isChangesView ? 'No pending changes' : isTrashView ? 'Trash is empty' : (query ? 'No matching notes' : 'No notes found')
+  const emptyText = (isChangesView && changesError) ? `Failed to load changes: ${changesError}` : isChangesView ? 'No pending changes' : isTrashView ? 'Trash is empty' : (query ? 'No matching notes' : 'No notes found')
   const hasHeader = isTrashView && expiredTrashCount > 0
 
   if (searched.length === 0) {
@@ -232,10 +233,15 @@ function toggleSetMember<T>(set: Set<T>, member: T): Set<T> {
 interface NoteListDataParams {
   entries: VaultEntry[]; selection: SidebarSelection; allContent: Record<string, string>
   query: string; listSort: SortOption; listDirection: SortDirection
-  modifiedPathSet: Set<string>
+  modifiedPathSet: Set<string>; modifiedSuffixes: string[]
 }
 
-function useNoteListData({ entries, selection, allContent, query, listSort, listDirection, modifiedPathSet }: NoteListDataParams) {
+function isModifiedEntry(path: string, pathSet: Set<string>, suffixes: string[]): boolean {
+  if (pathSet.has(path)) return true
+  return suffixes.some((suffix) => path.endsWith(suffix))
+}
+
+function useNoteListData({ entries, selection, allContent, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes }: NoteListDataParams) {
   const isEntityView = selection.kind === 'entity'
   const isTrashView = selection.kind === 'filter' && selection.filter === 'trash'
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
@@ -248,12 +254,12 @@ function useNoteListData({ entries, selection, allContent, query, listSort, list
   const searched = useMemo(() => {
     if (isEntityView) return []
     if (isChangesView) {
-      const sorted = [...entries.filter((e) => modifiedPathSet.has(e.path))].sort(getSortComparator(listSort, listDirection))
+      const sorted = [...entries.filter((e) => isModifiedEntry(e.path, modifiedPathSet, modifiedSuffixes))].sort(getSortComparator(listSort, listDirection))
       return filterByQuery(sorted, query)
     }
     const sorted = [...filterEntries(entries, selection)].sort(getSortComparator(listSort, listDirection))
     return filterByQuery(sorted, query)
-  }, [entries, selection, isEntityView, isChangesView, listSort, listDirection, query, modifiedPathSet])
+  }, [entries, selection, isEntityView, isChangesView, listSort, listDirection, query, modifiedPathSet, modifiedSuffixes])
 
   const searchedGroups = useMemo(() => {
     if (!isEntityView) return []
@@ -273,7 +279,7 @@ function useNoteListData({ entries, selection, allContent, query, listSort, list
 
 const defaultGetNoteStatus = (): NoteStatus => 'clean'
 
-function NoteListInner({ entries, selection, selectedNote, allContent, modifiedFiles, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash }: NoteListProps) {
+function NoteListInner({ entries, selection, selectedNote, allContent, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash }: NoteListProps) {
   const [search, setSearch] = useState('')
   const [searchVisible, setSearchVisible] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
@@ -282,6 +288,14 @@ function NoteListInner({ entries, selection, selectedNote, allContent, modifiedF
 
   const modifiedPathSet = useMemo(
     () => new Set((modifiedFiles ?? []).map((f) => f.path)),
+    [modifiedFiles],
+  )
+
+  // Suffix patterns for cross-machine robustness: if the vault cache carried
+  // stale absolute paths from another machine, fall back to matching by the
+  // relative path suffix so the changes view stays in sync with the badge.
+  const modifiedSuffixes = useMemo(
+    () => (modifiedFiles ?? []).map((f) => '/' + f.relativePath),
     [modifiedFiles],
   )
 
@@ -303,7 +317,7 @@ function NoteListInner({ entries, selection, selectedNote, allContent, modifiedF
   const listConfig = sortPrefs['__list__'] ?? { option: 'modified' as SortOption, direction: 'desc' as SortDirection }
   const listSort = listConfig.option
   const listDirection = listConfig.direction
-  const { isEntityView, isTrashView, isChangesView, typeDocument, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, allContent, query, listSort, listDirection, modifiedPathSet })
+  const { isEntityView, isTrashView, isChangesView, typeDocument, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, allContent, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes })
 
   const noteListKeyboard = useNoteListKeyboard({
     items: searched,
@@ -401,7 +415,7 @@ function NoteListInner({ entries, selection, selectedNote, allContent, modifiedF
         {isEntityView && selection.kind === 'entity' ? (
           <EntityView entity={selection.entry} groups={searchedGroups} query={query} collapsedGroups={collapsedGroups} sortPrefs={sortPrefs} onToggleGroup={toggleGroup} onSortChange={handleSortChange} renderItem={renderItem} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} />
         ) : (
-          <ListView isTrashView={isTrashView} isChangesView={isChangesView} expiredTrashCount={expiredTrashCount} searched={searched} query={query} renderItem={renderItem} virtuosoRef={noteListKeyboard.virtuosoRef} />
+          <ListView isTrashView={isTrashView} isChangesView={isChangesView} changesError={modifiedFilesError} expiredTrashCount={expiredTrashCount} searched={searched} query={query} renderItem={renderItem} virtuosoRef={noteListKeyboard.virtuosoRef} />
         )}
       </div>
 

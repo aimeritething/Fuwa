@@ -7,12 +7,16 @@ use super::{parse_md_file, scan_vault, VaultEntry};
 // --- Vault Cache ---
 
 /// Bump this when VaultEntry fields change to force a full rescan.
-const CACHE_VERSION: u32 = 2;
+const CACHE_VERSION: u32 = 3;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct VaultCache {
     #[serde(default = "default_cache_version")]
     version: u32,
+    /// The vault path when the cache was written. Used to detect stale caches
+    /// from a different machine or a moved vault directory.
+    #[serde(default)]
+    vault_path: String,
     commit_hash: String,
     entries: Vec<VaultEntry>,
 }
@@ -107,6 +111,7 @@ fn write_cache(vault: &Path, cache: &VaultCache) {
     if let Ok(data) = serde_json::to_string(cache) {
         let _ = fs::write(cache_path(vault), data);
     }
+    ensure_cache_excluded(vault);
 }
 
 /// Normalize an absolute path to a relative path for comparison with git output.
@@ -135,6 +140,23 @@ fn parse_files_at(vault: &Path, rel_paths: &[String]) -> Vec<VaultEntry> {
         .collect()
 }
 
+/// Ensure `.laputa-cache.json` is excluded from git via `.git/info/exclude`.
+/// This prevents the cache (which contains machine-specific absolute paths)
+/// from being committed and causing stale-path bugs on cloned vaults.
+fn ensure_cache_excluded(vault: &Path) {
+    let exclude_path = vault.join(".git/info/exclude");
+    let entry = ".laputa-cache.json";
+    if let Ok(content) = fs::read_to_string(&exclude_path) {
+        if content.lines().any(|line| line.trim() == entry) {
+            return;
+        }
+        let separator = if content.ends_with('\n') { "" } else { "\n" };
+        let _ = fs::write(&exclude_path, format!("{content}{separator}{entry}\n"));
+    } else if exclude_path.parent().map(|p| p.is_dir()).unwrap_or(false) {
+        let _ = fs::write(&exclude_path, format!("{entry}\n"));
+    }
+}
+
 /// Sort entries by modified_at descending and write the cache.
 fn finalize_and_cache(vault: &Path, mut entries: Vec<VaultEntry>, hash: String) -> Vec<VaultEntry> {
     entries.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
@@ -142,6 +164,7 @@ fn finalize_and_cache(vault: &Path, mut entries: Vec<VaultEntry>, hash: String) 
         vault,
         &VaultCache {
             version: CACHE_VERSION,
+            vault_path: vault.to_string_lossy().to_string(),
             commit_hash: hash,
             entries: entries.clone(),
         },
@@ -200,7 +223,10 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     };
 
     if let Some(cache) = load_cache(vault_path) {
-        if cache.version != CACHE_VERSION {
+        let current_vault_str = vault_path.to_string_lossy();
+        let cache_stale = cache.version != CACHE_VERSION
+            || (!cache.vault_path.is_empty() && cache.vault_path != current_vault_str.as_ref());
+        if cache_stale {
             let entries = scan_vault(vault_path)?;
             return Ok(finalize_and_cache(vault_path, entries, current_hash));
         }
@@ -286,6 +312,67 @@ mod tests {
         let entries2 = scan_vault_cached(vault).unwrap();
         assert_eq!(entries2.len(), 1);
         assert_eq!(entries2[0].title, "Note");
+    }
+
+    #[test]
+    fn test_scan_vault_cached_invalidates_stale_vault_path() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+
+        // Init git repo
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        create_test_file(vault, "note.md", "# Note\n\nContent.");
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "init"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        // Build cache normally
+        let entries = scan_vault_cached(vault).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert!(
+            entries[0].path.starts_with(&vault.to_string_lossy().as_ref()),
+            "Entry path should start with vault path"
+        );
+
+        // Tamper with cache to simulate a clone from a different machine
+        let cache_file = cache_path(vault);
+        let cache_data = fs::read_to_string(&cache_file).unwrap();
+        let tampered = cache_data.replace(
+            &vault.to_string_lossy().as_ref(),
+            "/Users/other-machine/OtherVault",
+        );
+        fs::write(&cache_file, tampered).unwrap();
+
+        // Rescanning should invalidate the stale cache and produce correct paths
+        let entries2 = scan_vault_cached(vault).unwrap();
+        assert_eq!(entries2.len(), 1);
+        assert!(
+            entries2[0].path.starts_with(&vault.to_string_lossy().as_ref()),
+            "After stale-cache invalidation, paths should use the current vault path, got: {}",
+            entries2[0].path
+        );
     }
 
     #[test]

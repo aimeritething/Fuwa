@@ -996,6 +996,33 @@ describe('NoteList — virtual list with large datasets', () => {
       expect(screen.queryByText('Matteo Cellini')).not.toBeInTheDocument()
     })
 
+    it('matches entries by relative path suffix when absolute paths differ (cross-machine)', () => {
+      // Simulate a cloned vault where cached entries have paths from a different machine
+      const crossMachineEntries: VaultEntry[] = mockEntries.map((e) => ({
+        ...e,
+        path: e.path.replace('/Users/luca/Laputa', '/Users/other-machine/OtherVault'),
+      }))
+      const modifiedFromCurrentMachine = [
+        { path: mockEntries[0].path, relativePath: 'project/26q1-laputa-app.md', status: 'modified' as const },
+        { path: mockEntries[1].path, relativePath: 'note/facebook-ads-strategy.md', status: 'modified' as const },
+      ]
+      render(
+        <NoteList entries={crossMachineEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFromCurrentMachine} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} allContent={{}} onCreateNote={vi.fn()} />
+      )
+      // Even though absolute paths differ, entries should match via relative path suffix
+      expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+      expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
+      expect(screen.queryByText('Matteo Cellini')).not.toBeInTheDocument()
+    })
+
+    it('shows error message when modifiedFilesError is set', () => {
+      render(
+        <NoteList entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={[]} modifiedFilesError="git status failed: not a git repository" onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} allContent={{}} onCreateNote={vi.fn()} />
+      )
+      expect(screen.getByText(/Failed to load changes/)).toBeInTheDocument()
+      expect(screen.getByText(/git status failed/)).toBeInTheDocument()
+    })
+
     it('shows untracked (new) notes alongside modified notes in changes view', () => {
       const mixedFiles = [
         { path: mockEntries[0].path, relativePath: 'project/26q1-laputa-app.md', status: 'modified' as const },

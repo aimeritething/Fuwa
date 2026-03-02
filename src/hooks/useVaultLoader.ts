@@ -97,13 +97,14 @@ export function useVaultLoader(vaultPath: string) {
   const [entries, setEntries] = useState<VaultEntry[]>([])
   const [allContent, setAllContent] = useState<Record<string, string>>({})
   const [modifiedFiles, setModifiedFiles] = useState<ModifiedFile[]>([])
+  const [modifiedFilesError, setModifiedFilesError] = useState<string | null>(null)
   const tracker = useNewNoteTracker()
   const pendingSave = usePendingSaveTracker()
   const unsaved = useUnsavedTracker()
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale data then load new vault
-    setEntries([]); setAllContent({}); setModifiedFiles([]); tracker.clear(); unsaved.clearAll()
+    setEntries([]); setAllContent({}); setModifiedFiles([]); setModifiedFilesError(null); tracker.clear(); unsaved.clearAll()
     loadVaultData(vaultPath)
       .then(({ entries: e, allContent: c }) => { setEntries(e); setAllContent(c) })
       .catch((err) => console.warn('Vault scan failed:', err))
@@ -111,9 +112,12 @@ export function useVaultLoader(vaultPath: string) {
 
   const loadModifiedFiles = useCallback(async () => {
     try {
+      setModifiedFilesError(null)
       setModifiedFiles(await tauriCall<ModifiedFile[]>('get_modified_files', { vaultPath }, {}))
     } catch (err) {
+      const message = typeof err === 'string' ? err : 'Failed to load changes'
       console.warn('Failed to load modified files:', err)
+      setModifiedFilesError(message)
       setModifiedFiles([])
     }
   }, [vaultPath])
@@ -174,7 +178,7 @@ export function useVaultLoader(vaultPath: string) {
   )
 
   return {
-    entries, allContent, modifiedFiles,
+    entries, allContent, modifiedFiles, modifiedFilesError,
     addEntry, updateEntry, removeEntry, replaceEntry, updateContent,
     loadModifiedFiles, loadGitHistory, loadDiff, loadDiffAtCommit,
     getNoteStatus, commitAndPush, reloadVault,
