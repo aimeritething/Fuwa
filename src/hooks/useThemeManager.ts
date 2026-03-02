@@ -187,5 +187,17 @@ export function useThemeManager(
 
   const reloadThemes = useCallback(async () => { await reload() }, [reload])
 
-  return { themes, activeThemeId, activeTheme, switchTheme, createTheme, reloadThemes }
+  // Determine if the active theme is dark by checking --background CSS variable
+  const isDark = useMemo(() => {
+    if (!activeThemeId || !cachedThemeContent) return false
+    const vars = extractCssVars(cachedThemeContent)
+    const bg = vars['--background'] ?? ''
+    if (!bg.startsWith('#') || bg.length < 7) return false
+    const r = parseInt(bg.slice(1, 3), 16)
+    const g = parseInt(bg.slice(3, 5), 16)
+    const b = parseInt(bg.slice(5, 7), 16)
+    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5
+  }, [activeThemeId, cachedThemeContent])
+
+  return { themes, activeThemeId, activeTheme, isDark, switchTheme, createTheme, reloadThemes }
 }
