@@ -53,6 +53,7 @@ interface AppCommandsConfig {
   onCreateTheme?: () => void
   onOpenTheme?: (themeId: string) => void
   onOpenVault?: () => void
+  onCreateType?: () => void
   onToggleAIChat?: () => void
   onCheckForUpdates?: () => void
   isUpdating?: boolean
@@ -152,6 +153,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onCreateTheme: config.onCreateTheme,
     onOpenTheme: config.onOpenTheme,
     onOpenVault: config.onOpenVault,
+    onCreateType: config.onCreateType,
     onToggleAIChat: config.onToggleAIChat,
     onCheckForUpdates: config.onCheckForUpdates,
     isUpdating: config.isUpdating,

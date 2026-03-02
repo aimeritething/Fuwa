@@ -25,6 +25,7 @@ interface CommandRegistryConfig {
   onSave: () => void
   onOpenSettings: () => void
   onOpenVault?: () => void
+  onCreateType?: () => void
   onTrashNote: (path: string) => void
   onRestoreNote: (path: string) => void
   onArchiveNote: (path: string) => void
@@ -178,6 +179,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onGoBack, onGoForward, canGoBack, canGoForward,
     themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme,
     onCheckForUpdates, isUpdating,
+    onCreateType,
   } = config
 
   const hasActiveNote = activeTabPath !== null
@@ -205,6 +207,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
 
       // Note actions (contextual)
       { id: 'create-note', label: 'Create New Note', group: 'Note', shortcut: '⌘N', keywords: ['new', 'add'], enabled: true, execute: onCreateNote },
+      { id: 'create-type', label: 'New Type', group: 'Note', keywords: ['new', 'create', 'type', 'template'], enabled: !!onCreateType, execute: () => onCreateType?.() },
       { id: 'open-daily-note', label: "Open Today's Note", group: 'Note', shortcut: '⌘J', keywords: ['daily', 'journal', 'today'], enabled: true, execute: onOpenDailyNote },
       { id: 'save-note', label: 'Save Note', group: 'Note', shortcut: '⌘S', keywords: ['write'], enabled: hasActiveNote, execute: onSave },
       { id: 'close-tab', label: 'Close Tab', group: 'Note', shortcut: '⌘W', keywords: [], enabled: hasActiveNote, execute: () => { if (activeTabPath) onCloseTab(activeTabPath) } },
@@ -241,7 +244,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     return cmds
   }, [
     hasActiveNote, activeTabPath, isArchived, isTrashed, modifiedCount,
-    onQuickOpen, onCreateNote, onCreateNoteOfType, onSave, onOpenSettings,
+    onQuickOpen, onCreateNote, onCreateNoteOfType, onCreateType, onSave, onOpenSettings,
     onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
     onCommitPush, onSetViewMode, onToggleInspector, onToggleRawEditor, onToggleAIChat, onOpenVault,
     onCheckForUpdates, isUpdating,

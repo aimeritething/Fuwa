@@ -316,6 +316,41 @@ describe('useCommandRegistry', () => {
     })
   })
 
+  describe('create-type command', () => {
+    it('has create-type command in Note group when onCreateType is provided', () => {
+      const onCreateType = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ onCreateType })))
+      const cmd = result.current.find(c => c.id === 'create-type')
+      expect(cmd).toBeDefined()
+      expect(cmd!.label).toBe('New Type')
+      expect(cmd!.group).toBe('Note')
+      expect(cmd!.enabled).toBe(true)
+    })
+
+    it('is disabled when onCreateType is not provided', () => {
+      const { result } = renderHook(() => useCommandRegistry(makeConfig()))
+      const cmd = result.current.find(c => c.id === 'create-type')
+      expect(cmd).toBeDefined()
+      expect(cmd!.enabled).toBe(false)
+    })
+
+    it('calls onCreateType when executed', () => {
+      const onCreateType = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ onCreateType })))
+      result.current.find(c => c.id === 'create-type')!.execute()
+      expect(onCreateType).toHaveBeenCalled()
+    })
+
+    it('has relevant keywords for discoverability', () => {
+      const onCreateType = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ onCreateType })))
+      const cmd = result.current.find(c => c.id === 'create-type')
+      expect(cmd!.keywords).toContain('new')
+      expect(cmd!.keywords).toContain('create')
+      expect(cmd!.keywords).toContain('type')
+    })
+  })
+
   describe('type-aware commands', () => {
     it('generates "New [Type]" commands from vault entries', () => {
       const entries = [

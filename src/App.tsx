@@ -325,6 +325,7 @@ function App() {
       if (entry) notes.handleSelectNote(entry)
     },
     onOpenVault: vaultSwitcher.handleOpenLocalFolder,
+    onCreateType: dialogs.openCreateType,
     onToggleAIChat: dialogs.toggleAIChat,
     onCheckForUpdates: handleCheckForUpdates,
     isUpdating: updateStatus.state === 'downloading' || updateStatus.state === 'ready',
