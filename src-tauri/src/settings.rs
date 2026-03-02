@@ -71,6 +71,36 @@ pub fn save_settings(settings: Settings) -> Result<(), String> {
     save_settings_at(&settings_path()?, settings)
 }
 
+fn last_vault_file() -> Result<PathBuf, String> {
+    dirs::config_dir()
+        .map(|d| d.join("com.laputa.app").join("last-vault.txt"))
+        .ok_or_else(|| "Could not determine config directory".to_string())
+}
+
+fn get_last_vault_at(path: &PathBuf) -> Option<String> {
+    fs::read_to_string(path)
+        .ok()
+        .map(|s| s.trim().to_string())
+        .filter(|s| !s.is_empty())
+}
+
+fn set_last_vault_at(path: &PathBuf, vault_path: &str) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create config directory: {}", e))?;
+    }
+    fs::write(path, vault_path.trim())
+        .map_err(|e| format!("Failed to write last vault path: {}", e))
+}
+
+pub fn get_last_vault() -> Option<String> {
+    last_vault_file().ok().and_then(|p| get_last_vault_at(&p))
+}
+
+pub fn set_last_vault(vault_path: &str) -> Result<(), String> {
+    set_last_vault_at(&last_vault_file()?, vault_path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -198,5 +228,66 @@ mod tests {
         let result = settings_path();
         assert!(result.is_ok());
         assert!(result.unwrap().to_str().unwrap().contains("com.laputa.app"));
+    }
+
+    #[test]
+    fn test_get_last_vault_returns_none_for_missing_file() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("last-vault.txt");
+        assert!(get_last_vault_at(&path).is_none());
+    }
+
+    #[test]
+    fn test_set_and_get_last_vault_roundtrip() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("last-vault.txt");
+        set_last_vault_at(&path, "/Users/test/MyVault").unwrap();
+        assert_eq!(
+            get_last_vault_at(&path).as_deref(),
+            Some("/Users/test/MyVault")
+        );
+    }
+
+    #[test]
+    fn test_set_last_vault_trims_whitespace() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("last-vault.txt");
+        set_last_vault_at(&path, "  /Users/test/Vault  ").unwrap();
+        assert_eq!(
+            get_last_vault_at(&path).as_deref(),
+            Some("/Users/test/Vault")
+        );
+    }
+
+    #[test]
+    fn test_get_last_vault_returns_none_for_empty_file() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("last-vault.txt");
+        fs::write(&path, "   \n  ").unwrap();
+        assert!(get_last_vault_at(&path).is_none());
+    }
+
+    #[test]
+    fn test_set_last_vault_creates_parent_directories() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("nested").join("dir").join("last-vault.txt");
+        set_last_vault_at(&path, "/Users/test/Vault").unwrap();
+        assert!(path.exists());
+        assert_eq!(
+            get_last_vault_at(&path).as_deref(),
+            Some("/Users/test/Vault")
+        );
+    }
+
+    #[test]
+    fn test_set_last_vault_overwrites_previous() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("last-vault.txt");
+        set_last_vault_at(&path, "/Users/test/OldVault").unwrap();
+        set_last_vault_at(&path, "/Users/test/NewVault").unwrap();
+        assert_eq!(
+            get_last_vault_at(&path).as_deref(),
+            Some("/Users/test/NewVault")
+        );
     }
 }

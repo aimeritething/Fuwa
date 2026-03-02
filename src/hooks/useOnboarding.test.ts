@@ -20,12 +20,17 @@ vi.mock('../mock-tauri', () => ({
   mockInvoke: (...args: unknown[]) => mockInvokeFn(...args),
 }))
 
+vi.mock('./useVaultSwitcher', () => ({
+  persistLastVault: vi.fn(),
+}))
+
 vi.mock('../utils/vault-dialog', () => ({
   pickFolder: vi.fn(),
 }))
 
 import { useOnboarding } from './useOnboarding'
 import { pickFolder } from '../utils/vault-dialog'
+import { persistLastVault } from './useVaultSwitcher'
 
 describe('useOnboarding', () => {
   beforeEach(() => {
@@ -104,6 +109,7 @@ describe('useOnboarding', () => {
 
     expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/mock/Documents/Getting Started' })
     expect(localStorage.getItem('laputa_welcome_dismissed')).toBe('1')
+    expect(persistLastVault).toHaveBeenCalledWith('/mock/Documents/Getting Started')
   })
 
   it('handleCreateVault sets error on failure', async () => {
@@ -148,6 +154,7 @@ describe('useOnboarding', () => {
 
     expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/selected/folder' })
     expect(localStorage.getItem('laputa_welcome_dismissed')).toBe('1')
+    expect(persistLastVault).toHaveBeenCalledWith('/selected/folder')
   })
 
   it('handleOpenFolder does nothing when picker is cancelled', async () => {

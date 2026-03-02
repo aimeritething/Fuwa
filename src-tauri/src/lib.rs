@@ -275,6 +275,16 @@ fn save_settings(settings: Settings) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn get_last_vault_path() -> Option<String> {
+    settings::get_last_vault()
+}
+
+#[tauri::command]
+fn set_last_vault_path(path: String) -> Result<(), String> {
+    settings::set_last_vault(&path)
+}
+
+#[tauri::command]
 async fn github_list_repos(token: String) -> Result<Vec<GithubRepo>, String> {
     github::github_list_repos(&token).await
 }
@@ -539,6 +549,8 @@ pub fn run() {
             get_settings,
             update_menu_state,
             save_settings,
+            get_last_vault_path,
+            set_last_vault_path,
             github_list_repos,
             github_create_repo,
             clone_repo,

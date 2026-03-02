@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import { pickFolder } from '../utils/vault-dialog'
+import { persistLastVault } from './useVaultSwitcher'
 
 type OnboardingState =
   | { status: 'loading' }
@@ -70,6 +71,7 @@ export function useOnboarding(initialVaultPath: string) {
     try {
       const vaultPath = await tauriCall<string>('create_getting_started_vault', { targetPath: null })
       markDismissed()
+      persistLastVault(vaultPath)
       setState({ status: 'ready', vaultPath })
     } catch (err) {
       setError(typeof err === 'string' ? err : `Failed to create vault: ${err}`)
@@ -83,6 +85,7 @@ export function useOnboarding(initialVaultPath: string) {
       const path = await pickFolder('Open vault folder')
       if (!path) return
       markDismissed()
+      persistLastVault(path)
       setState({ status: 'ready', vaultPath: path })
     } catch (err) {
       setError(`Failed to open folder: ${err}`)

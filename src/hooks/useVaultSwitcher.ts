@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { isTauri, mockInvoke } from '../mock-tauri'
 import { pickFolder } from '../utils/vault-dialog'
 import type { VaultOption } from '../components/StatusBar'
 
@@ -11,11 +13,26 @@ interface UseVaultSwitcherOptions {
   onToast: (msg: string) => void
 }
 
+function tauriCall<T>(command: string, args: Record<string, unknown>): Promise<T> {
+  return isTauri() ? invoke<T>(command, args) : mockInvoke<T>(command, args)
+}
+
+export function persistLastVault(path: string): void {
+  tauriCall('set_last_vault_path', { path }).catch(() => {})
+}
+
 /** Manages vault path, extra vaults, switching, cloning, and local folder opening. */
 export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions) {
   const [vaultPath, setVaultPath] = useState(DEFAULT_VAULTS[0].path)
   const [extraVaults, setExtraVaults] = useState<VaultOption[]>([])
   const allVaults = useMemo(() => [...DEFAULT_VAULTS, ...extraVaults], [extraVaults])
+
+  // On mount, load the last vault path from persistent storage
+  useEffect(() => {
+    tauriCall<string | null>('get_last_vault_path', {}).then((saved) => {
+      if (saved) setVaultPath(saved)
+    }).catch(() => {})
+  }, [])
 
   // Refs ensure stable callbacks that always invoke the latest closures,
   // breaking the circular dependency between useVaultSwitcher and downstream hooks.
@@ -29,6 +46,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
 
   const switchVault = useCallback((path: string) => {
     setVaultPath(path)
+    persistLastVault(path)
     onSwitchRef.current()
   }, [])
 
