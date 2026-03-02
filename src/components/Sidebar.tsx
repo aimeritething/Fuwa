@@ -161,10 +161,10 @@ function applyCustomization(
 
 function SortableSection({ group, sectionProps }: {
   group: SectionGroup
-  sectionProps: Omit<SectionContentProps, 'group' | 'items' | 'isCollapsed' | 'dragHandleProps' | 'onToggle'>
+  sectionProps: Omit<SectionContentProps, 'group' | 'items' | 'isCollapsed' | 'onToggle'>
     & { entries: VaultEntry[]; collapsed: Record<string, boolean>; onToggle: (type: string) => void }
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.type })
+  const { attributes, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.type })
   const items = sectionProps.entries.filter((e) => e.isA === group.type && !e.archived && !e.trashed)
   const isCollapsed = sectionProps.collapsed[group.type] ?? true
 
@@ -176,7 +176,6 @@ function SortableSection({ group, sectionProps }: {
         onSelectNote={sectionProps.onSelectNote} onCreateType={sectionProps.onCreateType}
         onCreateNewType={sectionProps.onCreateNewType} onContextMenu={sectionProps.onContextMenu}
         onToggle={() => sectionProps.onToggle(group.type)}
-        dragHandleProps={listeners}
       />
     </div>
   )
