@@ -6,6 +6,7 @@ import { openExternalUrl } from '../utils/url'
 export interface VaultOption {
   label: string
   path: string
+  available?: boolean
 }
 
 interface StatusBarProps {
@@ -29,19 +30,36 @@ interface StatusBarProps {
   buildNumber?: string
 }
 
+function VaultMenuIcon({ isActive, unavailable }: { isActive: boolean; unavailable: boolean }) {
+  if (isActive) return <Check size={12} />
+  if (unavailable) return <AlertTriangle size={12} style={{ color: 'var(--muted-foreground)' }} />
+  return <span style={{ width: 12 }} />
+}
+
+function vaultItemStyle(isActive: boolean, unavailable: boolean): React.CSSProperties {
+  return {
+    display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 4,
+    cursor: unavailable ? 'not-allowed' : 'pointer',
+    background: isActive ? 'var(--hover)' : 'transparent',
+    opacity: unavailable ? 0.45 : 1,
+    color: isActive ? 'var(--foreground)' : 'var(--muted-foreground)', fontSize: 12,
+  }
+}
+
 function VaultMenuItem({ vault, isActive, onSelect }: { vault: VaultOption; isActive: boolean; onSelect: () => void }) {
+  const unavailable = vault.available === false
+  const canHover = !isActive && !unavailable
   return (
     <div
-      role="button" onClick={onSelect}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 6, padding: '4px 8px', borderRadius: 4, cursor: 'pointer',
-        background: isActive ? 'var(--hover)' : 'transparent',
-        color: isActive ? 'var(--foreground)' : 'var(--muted-foreground)', fontSize: 12,
-      }}
-      onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = 'var(--hover)' }}
-      onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = 'transparent' }}
+      role="button"
+      onClick={unavailable ? undefined : onSelect}
+      style={vaultItemStyle(isActive, unavailable)}
+      title={unavailable ? `Vault not found: ${vault.path}` : vault.path}
+      onMouseEnter={canHover ? (e) => { e.currentTarget.style.background = 'var(--hover)' } : undefined}
+      onMouseLeave={canHover ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
+      data-testid={`vault-menu-item-${vault.label}`}
     >
-      {isActive ? <Check size={12} /> : <span style={{ width: 12 }} />}
+      <VaultMenuIcon isActive={isActive} unavailable={unavailable} />
       {vault.label}
     </div>
   )
@@ -116,21 +134,21 @@ const DISABLED_STYLE = { display: 'flex', alignItems: 'center', opacity: 0.4, cu
 const SEP_STYLE = { color: 'var(--border)' } as const
 const SYNC_ICON_MAP: Record<string, typeof RefreshCw> = { syncing: Loader2, conflict: AlertTriangle }
 
-function formatSyncLabel(status: SyncStatus, lastSyncTime: number | null): string {
-  if (status === 'syncing') return 'Syncing…'
-  if (status === 'conflict') return 'Conflict'
-  if (status === 'error') return 'Sync failed'
+const SYNC_LABELS: Record<string, string> = { syncing: 'Syncing…', conflict: 'Conflict', error: 'Sync failed' }
+const SYNC_COLORS: Record<string, string> = { conflict: 'var(--accent-orange)', error: 'var(--muted-foreground)' }
+
+function formatElapsedSync(lastSyncTime: number | null): string {
   if (!lastSyncTime) return 'Not synced'
-  const elapsed = Math.round((Date.now() - lastSyncTime) / 1000)
-  if (elapsed < 60) return 'Synced just now'
-  const mins = Math.floor(elapsed / 60)
-  return `Synced ${mins}m ago`
+  const secs = Math.round((Date.now() - lastSyncTime) / 1000)
+  return secs < 60 ? 'Synced just now' : `Synced ${Math.floor(secs / 60)}m ago`
+}
+
+function formatSyncLabel(status: SyncStatus, lastSyncTime: number | null): string {
+  return SYNC_LABELS[status] ?? formatElapsedSync(lastSyncTime)
 }
 
 function syncIconColor(status: SyncStatus): string {
-  if (status === 'conflict') return 'var(--accent-orange)'
-  if (status === 'error') return 'var(--muted-foreground)'
-  return 'var(--accent-green)'
+  return SYNC_COLORS[status] ?? 'var(--accent-green)'
 }
 
 function CommitBadge({ info }: { info: LastCommitInfo }) {
@@ -156,16 +174,58 @@ function CommitBadge({ info }: { info: LastCommitInfo }) {
   )
 }
 
+function SyncBadge({ status, lastSyncTime, onTriggerSync }: { status: SyncStatus; lastSyncTime: number | null; onTriggerSync?: () => void }) {
+  const SyncIcon = SYNC_ICON_MAP[status] ?? RefreshCw
+  const isSyncing = status === 'syncing'
+  return (
+    <span
+      role="button"
+      onClick={onTriggerSync}
+      style={{ ...ICON_STYLE, cursor: onTriggerSync ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 3 }}
+      title={isSyncing ? 'Syncing…' : 'Click to sync now'}
+      data-testid="status-sync"
+    >
+      <SyncIcon size={13} style={{ color: syncIconColor(status) }} className={isSyncing ? 'animate-spin' : ''} />{formatSyncLabel(status, lastSyncTime)}
+    </span>
+  )
+}
+
+function ConflictBadge({ count }: { count: number }) {
+  if (count <= 0) return null
+  return (
+    <>
+      <span style={SEP_STYLE}>|</span>
+      <span style={{ ...ICON_STYLE, color: 'var(--destructive, #e03e3e)' }} data-testid="status-conflict-count">
+        <AlertTriangle size={13} />{count} conflict{count > 1 ? 's' : ''}
+      </span>
+    </>
+  )
+}
+
+function PendingBadge({ count, onClick }: { count: number; onClick?: () => void }) {
+  if (count <= 0) return null
+  return (
+    <>
+      <span style={SEP_STYLE}>|</span>
+      <span
+        role="button"
+        onClick={onClick}
+        style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
+        title="View pending changes"
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+        data-testid="status-modified-count"
+      ><CircleDot size={13} style={{ color: 'var(--accent-orange)' }} />{count} pending</span>
+    </>
+  )
+}
+
 export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, zoomLevel = 100, onZoomReset, buildNumber }: StatusBarProps) {
-  // Force re-render every 30s to keep relative time label fresh
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000)
     return () => clearInterval(id)
   }, [])
-
-  const syncLabel = formatSyncLabel(syncStatus, lastSyncTime)
-  const SyncIcon = SYNC_ICON_MAP[syncStatus] ?? RefreshCw
 
   return (
     <footer style={{ height: 30, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--sidebar)', borderTop: '1px solid var(--border)', padding: '0 8px', fontSize: 11, color: 'var(--muted-foreground)' }}>
@@ -174,38 +234,10 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
         <span style={SEP_STYLE}>|</span>
         <span style={ICON_STYLE} data-testid="status-build-number"><Package size={13} />{buildNumber ?? 'b?'}</span>
         <span style={SEP_STYLE}>|</span>
-        <span
-          role="button"
-          onClick={onTriggerSync}
-          style={{ ...ICON_STYLE, cursor: onTriggerSync ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 3 }}
-          title={syncStatus === 'syncing' ? 'Syncing…' : 'Click to sync now'}
-          data-testid="status-sync"
-        >
-          <SyncIcon size={13} style={{ color: syncIconColor(syncStatus) }} className={syncStatus === 'syncing' ? 'animate-spin' : ''} />{syncLabel}
-        </span>
+        <SyncBadge status={syncStatus} lastSyncTime={lastSyncTime} onTriggerSync={onTriggerSync} />
         {lastCommitInfo && <CommitBadge info={lastCommitInfo} />}
-        {conflictCount > 0 && (
-          <>
-            <span style={SEP_STYLE}>|</span>
-            <span style={{ ...ICON_STYLE, color: 'var(--destructive, #e03e3e)' }} data-testid="status-conflict-count">
-              <AlertTriangle size={13} />{conflictCount} conflict{conflictCount > 1 ? 's' : ''}
-            </span>
-          </>
-        )}
-        {modifiedCount > 0 && (
-          <>
-            <span style={SEP_STYLE}>|</span>
-            <span
-              role="button"
-              onClick={onClickPending}
-              style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
-              title="View pending changes"
-              onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)' }}
-              onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-              data-testid="status-modified-count"
-            ><CircleDot size={13} style={{ color: 'var(--accent-orange)' }} />{modifiedCount} pending</span>
-          </>
-        )}
+        <ConflictBadge count={conflictCount} />
+        <PendingBadge count={modifiedCount} onClick={onClickPending} />
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={ICON_STYLE}><Sparkles size={13} style={{ color: 'var(--accent-purple)' }} />Claude Sonnet 4</span>

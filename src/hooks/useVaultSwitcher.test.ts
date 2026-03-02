@@ -1,133 +1,190 @@
-import { renderHook, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, act, waitFor } from '@testing-library/react'
+import { useVaultSwitcher, DEFAULT_VAULTS } from './useVaultSwitcher'
+import type { PersistedVaultList } from './useVaultSwitcher'
 
-const mockInvokeFn = vi.fn()
+let mockVaultListStore: PersistedVaultList = { vaults: [], active_vault: null }
+
+const mockInvokeFn = vi.fn((cmd: string, args?: Record<string, unknown>): Promise<unknown> => {
+  if (cmd === 'load_vault_list') return Promise.resolve({ ...mockVaultListStore })
+  if (cmd === 'save_vault_list') {
+    mockVaultListStore = { ...(args as { list: PersistedVaultList }).list }
+    return Promise.resolve(null)
+  }
+  if (cmd === 'check_vault_exists') return Promise.resolve(true)
+  return Promise.resolve(null)
+})
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(),
+}))
 
 vi.mock('../mock-tauri', () => ({
   isTauri: () => false,
-  mockInvoke: (...args: unknown[]) => mockInvokeFn(...args),
+  mockInvoke: (cmd: string, args?: Record<string, unknown>) => mockInvokeFn(cmd, args),
 }))
 
 vi.mock('../utils/vault-dialog', () => ({
   pickFolder: vi.fn(),
 }))
 
-import { useVaultSwitcher, DEFAULT_VAULTS, persistLastVault } from './useVaultSwitcher'
-import { pickFolder } from '../utils/vault-dialog'
-
 describe('useVaultSwitcher', () => {
   const onSwitch = vi.fn()
   const onToast = vi.fn()
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_last_vault_path') return null
-      if (cmd === 'set_last_vault_path') return null
-      return null
+    vi.resetAllMocks()
+    mockVaultListStore = { vaults: [], active_vault: null }
+    // Re-set default implementation after resetAllMocks
+    mockInvokeFn.mockImplementation((cmd: string, args?: Record<string, unknown>): Promise<unknown> => {
+      if (cmd === 'load_vault_list') return Promise.resolve({ ...mockVaultListStore })
+      if (cmd === 'save_vault_list') {
+        mockVaultListStore = { ...(args as { list: PersistedVaultList }).list }
+        return Promise.resolve(null)
+      }
+      if (cmd === 'check_vault_exists') return Promise.resolve(true)
+      return Promise.resolve(null)
     })
   })
 
-  it('starts with the default vault path', () => {
+  it('starts with default vaults', () => {
     const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+    expect(result.current.allVaults).toEqual(DEFAULT_VAULTS)
     expect(result.current.vaultPath).toBe(DEFAULT_VAULTS[0].path)
   })
 
-  it('loads last vault path from backend on mount', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_last_vault_path') return '/Users/test/MyVault'
-      if (cmd === 'set_last_vault_path') return null
-      return null
+  it('loads persisted vaults on mount', async () => {
+    mockVaultListStore = {
+      vaults: [{ label: 'My Vault', path: '/Users/luca/Laputa' }],
+      active_vault: '/Users/luca/Laputa',
+    }
+
+    const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+
+    await waitFor(() => {
+      expect(result.current.loaded).toBe(true)
+    })
+
+    expect(result.current.allVaults).toHaveLength(2) // default + persisted
+    expect(result.current.allVaults[1].label).toBe('My Vault')
+    expect(result.current.allVaults[1].path).toBe('/Users/luca/Laputa')
+    expect(result.current.allVaults[1].available).toBe(true)
+    expect(result.current.vaultPath).toBe('/Users/luca/Laputa')
+    expect(mockInvokeFn).toHaveBeenCalledWith('load_vault_list', {})
+  })
+
+  it('marks unavailable vaults when check_vault_exists returns false', async () => {
+    mockVaultListStore = {
+      vaults: [{ label: 'External', path: '/Volumes/USB/vault' }],
+      active_vault: null,
+    }
+    mockInvokeFn.mockImplementation((cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === 'load_vault_list') return Promise.resolve({ ...mockVaultListStore })
+      if (cmd === 'save_vault_list') {
+        mockVaultListStore = { ...(args as { list: PersistedVaultList }).list }
+        return Promise.resolve(null)
+      }
+      if (cmd === 'check_vault_exists') return Promise.resolve(false)
+      return Promise.resolve(null)
     })
 
     const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
 
     await waitFor(() => {
-      expect(result.current.vaultPath).toBe('/Users/test/MyVault')
+      expect(result.current.loaded).toBe(true)
     })
+
+    expect(result.current.allVaults[1].available).toBe(false)
+    expect(result.current.allVaults[1].label).toBe('External')
   })
 
-  it('falls back to default when no last vault is stored', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_last_vault_path') return null
-      return null
-    })
-
+  it('persists vault list when adding a vault via handleVaultCloned', async () => {
     const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
 
-    // Wait for the async load to complete
-    await waitFor(() => {
-      expect(mockInvokeFn).toHaveBeenCalledWith('get_last_vault_path', {})
-    })
-
-    expect(result.current.vaultPath).toBe(DEFAULT_VAULTS[0].path)
-  })
-
-  it('falls back to default when get_last_vault_path fails', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_last_vault_path') throw new Error('read failed')
-      return null
-    })
-
-    const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
-
-    // Wait for the async load to complete
-    await waitFor(() => {
-      expect(mockInvokeFn).toHaveBeenCalledWith('get_last_vault_path', {})
-    })
-
-    expect(result.current.vaultPath).toBe(DEFAULT_VAULTS[0].path)
-  })
-
-  it('persists vault path when switching', async () => {
-    const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+    await waitFor(() => { expect(result.current.loaded).toBe(true) })
 
     act(() => {
-      result.current.switchVault('/Users/test/NewVault')
+      result.current.handleVaultCloned('/cloned/vault', 'Cloned')
     })
 
-    expect(result.current.vaultPath).toBe('/Users/test/NewVault')
-    expect(mockInvokeFn).toHaveBeenCalledWith('set_last_vault_path', { path: '/Users/test/NewVault' })
+    await waitFor(() => {
+      expect(mockInvokeFn).toHaveBeenCalledWith('save_vault_list', expect.objectContaining({
+        list: expect.objectContaining({
+          vaults: expect.arrayContaining([
+            expect.objectContaining({ label: 'Cloned', path: '/cloned/vault' }),
+          ]),
+        }),
+      }))
+    })
   })
 
-  it('persists vault path on handleOpenLocalFolder', async () => {
-    vi.mocked(pickFolder).mockResolvedValue('/Users/test/OpenedVault')
+  it('persists active vault when switching', async () => {
+    mockVaultListStore = {
+      vaults: [{ label: 'Work', path: '/work/vault' }],
+      active_vault: null,
+    }
 
     const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+
+    await waitFor(() => { expect(result.current.loaded).toBe(true) })
+
+    act(() => {
+      result.current.switchVault('/work/vault')
+    })
+
+    await waitFor(() => {
+      expect(mockInvokeFn).toHaveBeenCalledWith('save_vault_list', expect.objectContaining({
+        list: expect.objectContaining({
+          active_vault: '/work/vault',
+        }),
+      }))
+    })
+    expect(onSwitch).toHaveBeenCalled()
+  })
+
+  it('handles load error gracefully', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    mockInvokeFn.mockImplementation((cmd: string) => {
+      if (cmd === 'load_vault_list') return Promise.reject(new Error('disk error'))
+      return Promise.resolve(null)
+    })
+
+    const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+
+    await waitFor(() => { expect(result.current.loaded).toBe(true) })
+
+    // Should fall back to defaults
+    expect(result.current.allVaults).toEqual(DEFAULT_VAULTS)
+    warnSpy.mockRestore()
+  })
+
+  it('does not duplicate vaults with same path', async () => {
+    const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+    await waitFor(() => { expect(result.current.loaded).toBe(true) })
+
+    act(() => {
+      result.current.handleVaultCloned('/some/vault', 'First')
+    })
+    act(() => {
+      result.current.handleVaultCloned('/some/vault', 'Duplicate')
+    })
+
+    const extras = result.current.allVaults.filter(v => v.path === '/some/vault')
+    expect(extras).toHaveLength(1)
+  })
+
+  it('opens local folder and persists', async () => {
+    const { pickFolder } = await import('../utils/vault-dialog')
+    vi.mocked(pickFolder).mockResolvedValue('/Users/luca/MyVault')
+
+    const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+    await waitFor(() => { expect(result.current.loaded).toBe(true) })
 
     await act(async () => {
       await result.current.handleOpenLocalFolder()
     })
 
-    expect(result.current.vaultPath).toBe('/Users/test/OpenedVault')
-    expect(mockInvokeFn).toHaveBeenCalledWith('set_last_vault_path', { path: '/Users/test/OpenedVault' })
-  })
-
-  it('persists vault path on handleVaultCloned', async () => {
-    const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
-
-    act(() => {
-      result.current.handleVaultCloned('/Users/test/ClonedVault', 'ClonedVault')
-    })
-
-    expect(result.current.vaultPath).toBe('/Users/test/ClonedVault')
-    expect(mockInvokeFn).toHaveBeenCalledWith('set_last_vault_path', { path: '/Users/test/ClonedVault' })
-  })
-})
-
-describe('persistLastVault', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    mockInvokeFn.mockResolvedValue(null)
-  })
-
-  it('calls set_last_vault_path with the given path', () => {
-    persistLastVault('/Users/test/Vault')
-    expect(mockInvokeFn).toHaveBeenCalledWith('set_last_vault_path', { path: '/Users/test/Vault' })
-  })
-
-  it('does not throw when the backend call fails', () => {
-    mockInvokeFn.mockRejectedValue(new Error('write failed'))
-    expect(() => persistLastVault('/Users/test/Vault')).not.toThrow()
+    expect(result.current.allVaults.some(v => v.path === '/Users/luca/MyVault')).toBe(true)
+    expect(onToast).toHaveBeenCalledWith('Vault "MyVault" opened')
   })
 })

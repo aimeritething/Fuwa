@@ -86,6 +86,11 @@ let mockLastVaultPath: string | null = null
 
 let mockVaultSettings: VaultSettings = { theme: null }
 
+let mockVaultList: { vaults: Array<{ label: string; path: string }>; active_vault: string | null } = {
+  vaults: [],
+  active_vault: null,
+}
+
 const mockThemes: ThemeFile[] = [
   {
     id: 'default', name: 'Default', description: 'Light theme with warm, paper-like tones',
@@ -199,6 +204,8 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     }
     return null
   },
+  load_vault_list: () => ({ ...mockVaultList, vaults: [...mockVaultList.vaults] }),
+  save_vault_list: (args: { list: typeof mockVaultList }) => { mockVaultList = { ...args.list }; return null },
   rename_note: handleRenameNote,
   github_list_repos: () => [
     { name: 'laputa-vault', full_name: 'lucaong/laputa-vault', description: 'Personal knowledge vault — markdown + YAML frontmatter', private: true, clone_url: 'https://github.com/lucaong/laputa-vault.git', html_url: 'https://github.com/lucaong/laputa-vault', updated_at: '2026-02-20T10:30:00Z' },

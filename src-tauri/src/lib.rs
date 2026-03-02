@@ -9,6 +9,7 @@ pub mod search;
 pub mod settings;
 pub mod theme;
 pub mod vault;
+pub mod vault_list;
 
 use std::borrow::Cow;
 use std::path::Path;
@@ -24,6 +25,7 @@ use search::SearchResponse;
 use settings::Settings;
 use theme::{ThemeFile, VaultSettings};
 use vault::{RenameResult, VaultEntry};
+use vault_list::VaultList;
 
 /// Expand a leading `~` or `~/` in a path string to the user's home directory.
 /// Returns the original string unchanged if it doesn't start with `~` or if the
@@ -275,13 +277,13 @@ fn save_settings(settings: Settings) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn get_last_vault_path() -> Option<String> {
-    settings::get_last_vault()
+fn load_vault_list() -> Result<VaultList, String> {
+    vault_list::load_vault_list()
 }
 
 #[tauri::command]
-fn set_last_vault_path(path: String) -> Result<(), String> {
-    settings::set_last_vault(&path)
+fn save_vault_list(list: VaultList) -> Result<(), String> {
+    vault_list::save_vault_list(&list)
 }
 
 #[tauri::command]
@@ -471,6 +473,21 @@ mod tests {
     }
 }
 
+fn spawn_ws_bridge(app: &mut tauri::App) {
+    use tauri::Manager;
+    let vault_path = dirs::home_dir()
+        .map(|h| h.join("Laputa"))
+        .unwrap_or_default();
+    let vp_str = vault_path.to_string_lossy().to_string();
+    match mcp::spawn_ws_bridge(&vp_str) {
+        Ok(child) => {
+            let state: tauri::State<'_, WsBridgeChild> = app.state();
+            *state.0.lock().unwrap() = Some(child);
+        }
+        Err(e) => log::warn!("Failed to start ws-bridge: {}", e),
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -501,23 +518,7 @@ pub fn run() {
             }
 
             run_startup_tasks();
-
-            // Spawn the MCP WebSocket bridge for the default vault
-            {
-                use tauri::Manager;
-                let vault_path = dirs::home_dir()
-                    .map(|h| h.join("Laputa"))
-                    .unwrap_or_default();
-                let vp_str = vault_path.to_string_lossy().to_string();
-                match mcp::spawn_ws_bridge(&vp_str) {
-                    Ok(child) => {
-                        let state: tauri::State<'_, WsBridgeChild> = app.state();
-                        *state.0.lock().unwrap() = Some(child);
-                    }
-                    Err(e) => log::warn!("Failed to start ws-bridge: {}", e),
-                }
-            }
-
+            spawn_ws_bridge(app);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -549,8 +550,8 @@ pub fn run() {
             get_settings,
             update_menu_state,
             save_settings,
-            get_last_vault_path,
-            set_last_vault_path,
+            load_vault_list,
+            save_vault_list,
             github_list_repos,
             github_create_repo,
             clone_repo,
