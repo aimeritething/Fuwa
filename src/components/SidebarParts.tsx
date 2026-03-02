@@ -75,7 +75,6 @@ export interface SectionContentProps {
   onCreateNewType?: () => void
   onContextMenu: (e: React.MouseEvent, type: string) => void
   onToggle: () => void
-  dragHandleProps?: Record<string, unknown>
 }
 
 function childSelection(type: string, entry: VaultEntry): SidebarSelection {
@@ -90,7 +89,7 @@ function resolveCreateHandler(type: string, onCreateType?: (type: string) => voi
 
 export function SectionContent({
   group, items, isCollapsed, selection, onSelect, onSelectNote,
-  onCreateType, onCreateNewType, onContextMenu, onToggle, dragHandleProps,
+  onCreateType, onCreateNewType, onContextMenu, onToggle,
 }: SectionContentProps) {
   const { label, type, Icon, customColor } = group
   const sectionColor = getTypeColor(type, customColor)
@@ -109,7 +108,6 @@ export function SectionContent({
         onContextMenu={(e) => onContextMenu(e, type)}
         onToggle={onToggle}
         onCreate={(e) => { e.stopPropagation(); onCreate?.() }}
-        dragHandleProps={dragHandleProps}
       />
       {!isCollapsed && items.length > 0 && (
         <SectionChildList
