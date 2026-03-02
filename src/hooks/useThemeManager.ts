@@ -296,7 +296,6 @@ export function useThemeManager(
     const entry = entries.find(e => e.path === activeThemeId)
     if (!entry || !isEntryRemoved(entry)) return
     clearTheme()
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- sync fallback when active theme is deleted
     setActiveThemeId(null)
     if (vaultPath) tauriCall('set_active_theme', { vaultPath, themeId: null }).catch(() => {})
   }, [entries, activeThemeId, clearTheme, vaultPath, setActiveThemeId])
