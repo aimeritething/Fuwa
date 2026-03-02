@@ -15,7 +15,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import {
   FileText, Star, Wrench, Flask, Target, ArrowsClockwise,
-  Users, CalendarBlank, Tag, TagSimple, Trash, StackSimple, Archive, CaretLeft, GitDiff, PaintBrush,
+  Users, CalendarBlank, Tag, TagSimple, Trash, StackSimple, Archive, CaretLeft, GitDiff,
 } from '@phosphor-icons/react'
 import { GitCommitHorizontal, SlidersHorizontal } from 'lucide-react'
 import {
@@ -49,7 +49,6 @@ const BUILT_IN_SECTION_GROUPS: SectionGroup[] = [
   { label: 'Events', type: 'Event', Icon: CalendarBlank },
   { label: 'Topics', type: 'Topic', Icon: Tag },
   { label: 'Types', type: 'Type', Icon: StackSimple },
-  { label: 'Themes', type: 'Theme', Icon: PaintBrush },
 ]
 
 /** Metadata lookup for well-known types (icon/label only — NOT used to determine which sections to show) */
@@ -163,7 +162,7 @@ function applyCustomization(
 
 function SortableSection({ group, sectionProps }: {
   group: SectionGroup
-  sectionProps: Omit<SectionContentProps, 'group' | 'items' | 'isCollapsed' | 'dragHandleProps' | 'onToggle' | 'isRenaming' | 'renameInitialValue'>
+  sectionProps: Omit<SectionContentProps, 'group' | 'items' | 'isCollapsed' | 'onToggle' | 'isRenaming' | 'renameInitialValue'>
     & { entries: VaultEntry[]; collapsed: Record<string, boolean>; onToggle: (type: string) => void; renamingType: string | null; renameInitialValue: string }
 }) {
   const { attributes, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.type })
@@ -179,7 +178,6 @@ function SortableSection({ group, sectionProps }: {
         onSelectNote={sectionProps.onSelectNote} onCreateType={sectionProps.onCreateType}
         onCreateNewType={sectionProps.onCreateNewType} onContextMenu={sectionProps.onContextMenu}
         onToggle={() => sectionProps.onToggle(group.type)}
-        dragHandleProps={listeners}
         isRenaming={isRenaming}
         renameInitialValue={isRenaming ? sectionProps.renameInitialValue : undefined}
         onRenameSubmit={sectionProps.onRenameSubmit}
@@ -276,10 +274,10 @@ export const Sidebar = memo(function Sidebar({
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
-  const [contextMenuType, setContextMenuType] = useState<string | null>(null)
-  const [showCustomize, setShowCustomize] = useState(false)
   const [renamingType, setRenamingType] = useState<string | null>(null)
   const [renameInitialValue, setRenameInitialValue] = useState('')
+  const [contextMenuType, setContextMenuType] = useState<string | null>(null)
+  const [showCustomize, setShowCustomize] = useState(false)
 
   const contextMenuRef = useRef<HTMLDivElement>(null)
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -292,7 +290,6 @@ export const Sidebar = memo(function Sidebar({
   const closeContextMenu = useCallback(() => { setContextMenuPos(null); setContextMenuType(null) }, [])
   const closeCustomize = useCallback(() => setShowCustomize(false), [])
   const closeCustomizeTarget = useCallback(() => setCustomizeTarget(null), [])
-  const cancelRename = useCallback(() => setRenamingType(null), [])
 
   useOutsideClick(customizeRef, showCustomize, closeCustomize)
   useOutsideClick(contextMenuRef, !!contextMenuPos, closeContextMenu)
@@ -318,6 +315,8 @@ export const Sidebar = memo(function Sidebar({
     e.preventDefault(); e.stopPropagation()
     setContextMenuPos({ x: e.clientX, y: e.clientY }); setContextMenuType(type)
   }, [])
+
+  const cancelRename = useCallback(() => setRenamingType(null), [])
 
   const handleStartRename = useCallback((type: string) => {
     closeContextMenu()

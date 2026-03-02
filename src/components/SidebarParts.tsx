@@ -75,7 +75,6 @@ export interface SectionContentProps {
   onCreateNewType?: () => void
   onContextMenu: (e: React.MouseEvent, type: string) => void
   onToggle: () => void
-  dragHandleProps?: Record<string, unknown>
   isRenaming?: boolean
   renameInitialValue?: string
   onRenameSubmit?: (value: string) => void
@@ -94,7 +93,7 @@ function resolveCreateHandler(type: string, onCreateType?: (type: string) => voi
 
 export function SectionContent({
   group, items, isCollapsed, selection, onSelect, onSelectNote,
-  onCreateType, onCreateNewType, onContextMenu, onToggle, dragHandleProps,
+  onCreateType, onCreateNewType, onContextMenu, onToggle,
   isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel,
 }: SectionContentProps) {
   const { label, type, Icon, customColor } = group
@@ -114,7 +113,6 @@ export function SectionContent({
         onContextMenu={(e) => onContextMenu(e, type)}
         onToggle={onToggle}
         onCreate={(e) => { e.stopPropagation(); onCreate?.() }}
-        dragHandleProps={dragHandleProps}
         isRenaming={isRenaming}
         renameInitialValue={renameInitialValue}
         onRenameSubmit={onRenameSubmit}
@@ -177,23 +175,20 @@ function InlineRenameInput({ initialValue, onSubmit, onCancel }: {
       onKeyDown={handleKeyDown}
       onBlur={() => onSubmit(value.trim())}
       onClick={(e) => e.stopPropagation()}
-      className="flex-1 rounded border border-primary bg-background text-[13px] font-medium text-foreground outline-none"
-      style={{ padding: '0 4px', marginLeft: 4, minWidth: 0 }}
       aria-label="Section name"
+      className="flex-1 rounded border border-primary bg-background text-[13px] font-medium text-foreground outline-none"
+      style={{ padding: '1px 4px' }}
     />
   )
 }
 
-function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive, showCreate, onSelect, onContextMenu, onToggle, onCreate, dragHandleProps, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
+function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive, showCreate, onSelect, onContextMenu, onToggle, onCreate, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
   label: string; type: string; Icon: ComponentType<IconProps>
   sectionColor: string; isCollapsed: boolean; isActive: boolean; showCreate: boolean
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void
   onToggle: () => void; onCreate: (e: React.MouseEvent) => void
-  dragHandleProps?: Record<string, unknown>
-  isRenaming?: boolean
-  renameInitialValue?: string
-  onRenameSubmit?: (value: string) => void
-  onRenameCancel?: () => void
+  isRenaming?: boolean; renameInitialValue?: string
+  onRenameSubmit?: (value: string) => void; onRenameCancel?: () => void
 }) {
   return (
     <div
@@ -207,9 +202,6 @@ function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive,
       }} onContextMenu={isRenaming ? undefined : onContextMenu}
     >
       <div className="flex min-w-0 flex-1 items-center" style={{ gap: 4 }}>
-        <div className="flex shrink-0 items-center justify-center text-muted-foreground opacity-0 group-hover/section:opacity-50 hover:!opacity-100 cursor-grab" style={{ width: 16, height: 16 }} {...dragHandleProps} aria-label={`Drag to reorder ${label}`}>
-          <GripVertical size={12} />
-        </div>
         <Icon size={16} style={{ color: sectionColor, flexShrink: 0 }} />
         {isRenaming && onRenameSubmit && onRenameCancel ? (
           <InlineRenameInput
@@ -222,18 +214,16 @@ function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive,
           <span className="text-[13px] font-medium text-foreground" style={{ marginLeft: 4 }}>{label}</span>
         )}
       </div>
-      {!isRenaming && (
-        <div className="flex shrink-0 items-center" style={{ gap: 2 }}>
-          {showCreate && (
-            <button className="flex shrink-0 items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/section:opacity-100 cursor-pointer" style={{ width: 20, height: 20 }} onClick={onCreate} aria-label={type === 'Type' ? 'Create new Type' : `Create new ${type}`} title={type === 'Type' ? 'New Type' : `New ${type}`}>
-              <Plus size={14} />
-            </button>
-          )}
-          <button className="flex shrink-0 items-center border-none bg-transparent p-0 text-inherit cursor-pointer" onClick={(e) => { e.stopPropagation(); onToggle() }} aria-label={isCollapsed ? `Expand ${label}` : `Collapse ${label}`}>
-            {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+      <div className="flex items-center" style={{ gap: 2 }}>
+        {showCreate && (
+          <button className="flex shrink-0 items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/section:opacity-100 cursor-pointer" style={{ width: 20, height: 20 }} onClick={onCreate} aria-label={type === 'Type' ? 'Create new Type' : `Create new ${type}`} title={type === 'Type' ? 'New Type' : `New ${type}`}>
+            <Plus size={14} />
           </button>
-        </div>
-      )}
+        )}
+        <button className="flex shrink-0 items-center border-none bg-transparent p-0 text-inherit cursor-pointer" onClick={(e) => { e.stopPropagation(); onToggle() }} aria-label={isCollapsed ? `Expand ${label}` : `Collapse ${label}`}>
+          {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
+        </button>
+      </div>
     </div>
   )
 }
