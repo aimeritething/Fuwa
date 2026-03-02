@@ -77,7 +77,7 @@ fn git_changed_files(vault: &Path, from_hash: &str, to_hash: &str) -> Vec<String
 
     // Use ls-files for untracked files so that newly-seeded directories are picked up
     // as individual files rather than as a single "?? dirname/" entry.
-    let uncommitted = git_uncommitted_new_files(vault);
+    let uncommitted = git_uncommitted_files(vault);
     // Also include modified-but-unstaged files via status --porcelain.
     let modified = run_git(vault, &["status", "--porcelain"])
         .map(|s| collect_md_paths_from_porcelain(&s))
