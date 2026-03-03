@@ -176,8 +176,7 @@ pub fn seed_vault_themes(vault_path: &str) {
 /// cannot be created (e.g. read-only filesystem).
 pub fn ensure_vault_themes(vault_path: &str) -> Result<(), String> {
     let theme_dir = Path::new(vault_path).join("theme");
-    fs::create_dir_all(&theme_dir)
-        .map_err(|e| format!("Failed to create theme directory: {e}"))?;
+    fs::create_dir_all(&theme_dir).map_err(|e| format!("Failed to create theme directory: {e}"))?;
     let defaults: &[(&str, &str)] = &[
         ("default.md", DEFAULT_VAULT_THEME),
         ("dark.md", DARK_VAULT_THEME),
@@ -186,8 +185,7 @@ pub fn ensure_vault_themes(vault_path: &str) -> Result<(), String> {
         let path = theme_dir.join(name);
         let needs_write = !path.exists() || fs::metadata(&path).map_or(true, |m| m.len() == 0);
         if needs_write {
-            fs::write(&path, content)
-                .map_err(|e| format!("Failed to write theme/{name}: {e}"))?;
+            fs::write(&path, content).map_err(|e| format!("Failed to write theme/{name}: {e}"))?;
         }
     }
     Ok(())
@@ -934,7 +932,10 @@ mod tests {
 
         seed_vault_themes(vp);
         let content = fs::read_to_string(theme_dir.join("default.md")).unwrap();
-        assert!(content.contains("#FF0000"), "existing content must be preserved");
+        assert!(
+            content.contains("#FF0000"),
+            "existing content must be preserved"
+        );
     }
 
     #[test]
