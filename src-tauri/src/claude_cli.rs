@@ -463,10 +463,7 @@ fn extract_tool_result_text(json: &serde_json::Value) -> Option<String> {
     }
     // Array of content blocks (Claude format)
     if let Some(arr) = json["content"].as_array() {
-        let texts: Vec<&str> = arr
-            .iter()
-            .filter_map(|b| b["text"].as_str())
-            .collect();
+        let texts: Vec<&str> = arr.iter().filter_map(|b| b["text"].as_str()).collect();
         if !texts.is_empty() {
             return Some(texts.join("\n"));
         }
