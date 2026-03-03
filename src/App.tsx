@@ -330,9 +330,13 @@ function App() {
     themes: themeManager.themes, activeThemeId: themeManager.activeThemeId,
     onSwitchTheme: themeManager.switchTheme,
     onCreateTheme: async () => {
-      await themeManager.createTheme()
-      await vault.reloadVault()
+      const path = await themeManager.createTheme()
+      const freshEntries = await vault.reloadVault()
       setSelection({ kind: 'sectionGroup', type: 'Theme' })
+      if (path) {
+        const entry = freshEntries.find(e => e.path === path)
+        if (entry) notes.handleSelectNote(entry)
+      }
     },
     onOpenTheme: (themeId: string) => {
       const entry = vault.entries.find(e => e.path === themeId)

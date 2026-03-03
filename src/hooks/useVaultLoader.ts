@@ -172,8 +172,8 @@ export function useVaultLoader(vaultPath: string) {
 
   const reloadVault = useCallback(
     () => loadVaultData(vaultPath)
-      .then((data) => { setEntries(data.entries); setAllContent((prev) => ({ ...prev, ...data.allContent })); loadModifiedFiles() })
-      .catch((err) => console.warn('Vault reload failed:', err)),
+      .then((data) => { setEntries(data.entries); setAllContent((prev) => ({ ...prev, ...data.allContent })); loadModifiedFiles(); return data.entries })
+      .catch((err) => { console.warn('Vault reload failed:', err); return [] as VaultEntry[] }),
     [vaultPath, loadModifiedFiles],
   )
 
