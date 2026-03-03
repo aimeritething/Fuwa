@@ -116,9 +116,19 @@ fn git_commit(vault_path: String, message: String) -> Result<String, String> {
     git::git_commit(&vault_path, &message)
 }
 
+fn parse_build_label(version: &str) -> String {
+    let parts: Vec<&str> = version.split('.').collect();
+    match parts.as_slice() {
+        [_, minor, patch] if minor.len() >= 6 => format!("b{}", patch),
+        [_, _, _] => "dev".to_string(),
+        _ => "b?".to_string(),
+    }
+}
+
 #[tauri::command]
-fn get_build_number() -> String {
-    format!("b{}", env!("BUILD_NUMBER"))
+fn get_build_number(app_handle: tauri::AppHandle) -> String {
+    let version = app_handle.package_info().version.to_string();
+    parse_build_label(&version)
 }
 
 #[tauri::command]
@@ -540,14 +550,21 @@ mod tests {
     }
 
     #[test]
-    fn get_build_number_returns_prefixed_value() {
-        let result = get_build_number();
-        assert!(
-            result.starts_with('b'),
-            "expected 'b' prefix, got: {}",
-            result
-        );
-        assert_ne!(result, "b0", "build number should not fall back to 0");
+    fn parse_build_label_release_version() {
+        assert_eq!(parse_build_label("0.20260303.281"), "b281");
+        assert_eq!(parse_build_label("0.20251215.42"), "b42");
+    }
+
+    #[test]
+    fn parse_build_label_dev_version() {
+        assert_eq!(parse_build_label("0.1.0"), "dev");
+        assert_eq!(parse_build_label("0.0.0"), "dev");
+    }
+
+    #[test]
+    fn parse_build_label_malformed() {
+        assert_eq!(parse_build_label("invalid"), "b?");
+        assert_eq!(parse_build_label(""), "b?");
     }
 }
 

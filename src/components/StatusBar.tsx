@@ -30,6 +30,7 @@ interface StatusBarProps {
   zoomLevel?: number
   onZoomReset?: () => void
   buildNumber?: string
+  onCheckForUpdates?: () => void
   indexingProgress?: IndexingProgress
   onRemoveVault?: (path: string) => void
 }
@@ -281,7 +282,7 @@ function PendingBadge({ count, onClick }: { count: number; onClick?: () => void 
   )
 }
 
-export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber, indexingProgress, onRemoveVault }: StatusBarProps) {
+export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber, onCheckForUpdates, indexingProgress, onRemoveVault }: StatusBarProps) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000)
@@ -293,7 +294,15 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <VaultMenu vaults={vaults} vaultPath={vaultPath} onSwitchVault={onSwitchVault} onOpenLocalFolder={onOpenLocalFolder} onConnectGitHub={onConnectGitHub} hasGitHub={hasGitHub} onRemoveVault={onRemoveVault} />
         <span style={SEP_STYLE}>|</span>
-        <span style={ICON_STYLE} data-testid="status-build-number"><Package size={13} />{buildNumber ?? 'b?'}</span>
+        <span
+          role="button"
+          onClick={onCheckForUpdates}
+          style={{ ...ICON_STYLE, cursor: onCheckForUpdates ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
+          title="Check for updates"
+          data-testid="status-build-number"
+          onMouseEnter={onCheckForUpdates ? (e) => { e.currentTarget.style.background = 'var(--hover)' } : undefined}
+          onMouseLeave={onCheckForUpdates ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
+        ><Package size={13} />{buildNumber ?? 'b?'}</span>
         <span style={SEP_STYLE}>|</span>
         <SyncBadge status={syncStatus} lastSyncTime={lastSyncTime} onTriggerSync={onTriggerSync} onOpenConflictResolver={onOpenConflictResolver} />
         {lastCommitInfo && <CommitBadge info={lastCommitInfo} />}

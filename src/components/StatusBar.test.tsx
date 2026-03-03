@@ -35,6 +35,18 @@ describe('StatusBar', () => {
     expect(screen.getByText('b?')).toBeInTheDocument()
   })
 
+  it('calls onCheckForUpdates when clicking build number', () => {
+    const onCheckForUpdates = vi.fn()
+    render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} buildNumber="b281" onCheckForUpdates={onCheckForUpdates} />)
+    fireEvent.click(screen.getByTestId('status-build-number'))
+    expect(onCheckForUpdates).toHaveBeenCalledOnce()
+  })
+
+  it('build number has "Check for updates" title', () => {
+    render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} buildNumber="b281" onCheckForUpdates={vi.fn()} />)
+    expect(screen.getByTitle('Check for updates')).toBeInTheDocument()
+  })
+
   it('does not display branch name', () => {
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
     expect(screen.queryByText('main')).not.toBeInTheDocument()
