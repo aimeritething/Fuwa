@@ -328,6 +328,64 @@ describe('Editor', () => {
       fireEvent.click(screen.getByTestId('trashed-banner-delete'))
       expect(onDeleteNote).toHaveBeenCalledWith(trashedEntry.path)
     })
+
+    it('shows trash banner immediately when entry changes to trashed (reactive)', () => {
+      const { rerender } = render(
+        <Editor {...defaultProps} tabs={[mockTab]} activeTabPath={mockEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
+      )
+      expect(screen.queryByTestId('trashed-note-banner')).not.toBeInTheDocument()
+
+      const updatedTab = { entry: { ...mockEntry, trashed: true, trashedAt: Date.now() / 1000 }, content: mockContent }
+      rerender(
+        <Editor {...defaultProps} tabs={[updatedTab]} activeTabPath={mockEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
+      )
+      expect(screen.getByTestId('trashed-note-banner')).toBeInTheDocument()
+      expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
+    })
+
+    it('removes trash banner immediately when entry is restored (reactive)', () => {
+      const { rerender } = render(
+        <Editor {...defaultProps} tabs={[trashedTab]} activeTabPath={trashedEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
+      )
+      expect(screen.getByTestId('trashed-note-banner')).toBeInTheDocument()
+
+      const restoredTab = { entry: { ...trashedEntry, trashed: false, trashedAt: null }, content: mockContent }
+      rerender(
+        <Editor {...defaultProps} tabs={[restoredTab]} activeTabPath={trashedEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
+      )
+      expect(screen.queryByTestId('trashed-note-banner')).not.toBeInTheDocument()
+      expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'true')
+    })
+  })
+})
+
+describe('archived note behavior', () => {
+  it('shows archive banner immediately when entry changes to archived (reactive)', () => {
+    const { rerender } = render(
+      <Editor {...defaultProps} tabs={[mockTab]} activeTabPath={mockEntry.path} onUnarchiveNote={vi.fn()} />
+    )
+    expect(screen.queryByTestId('archived-note-banner')).not.toBeInTheDocument()
+
+    const archivedTab = { entry: { ...mockEntry, archived: true }, content: mockContent }
+    rerender(
+      <Editor {...defaultProps} tabs={[archivedTab]} activeTabPath={mockEntry.path} onUnarchiveNote={vi.fn()} />
+    )
+    expect(screen.getByTestId('archived-note-banner')).toBeInTheDocument()
+  })
+
+  it('removes archive banner immediately when entry is unarchived (reactive)', () => {
+    const archivedEntry: VaultEntry = { ...mockEntry, archived: true }
+    const archivedTab = { entry: archivedEntry, content: mockContent }
+    const { rerender } = render(
+      <Editor {...defaultProps} tabs={[archivedTab]} activeTabPath={archivedEntry.path} onUnarchiveNote={vi.fn()} />
+    )
+    expect(screen.getByTestId('archived-note-banner')).toBeInTheDocument()
+
+    const unarchivedTab = { entry: { ...archivedEntry, archived: false }, content: mockContent }
+    rerender(
+      <Editor {...defaultProps} tabs={[unarchivedTab]} activeTabPath={archivedEntry.path} onUnarchiveNote={vi.fn()} />
+    )
+    expect(screen.queryByTestId('archived-note-banner')).not.toBeInTheDocument()
   })
 })
 

@@ -322,6 +322,49 @@ describe('useTabManagement', () => {
     })
   })
 
+  describe('setTabs entry sync', () => {
+    it('updates tab entry via setTabs mapper (vault entry sync pattern)', async () => {
+      const { result } = renderHook(() => useTabManagement())
+      const entry = makeEntry({ path: '/vault/a.md', trashed: false })
+
+      await act(async () => {
+        await result.current.handleSelectNote(entry)
+      })
+
+      expect(result.current.tabs[0].entry.trashed).toBe(false)
+
+      // Simulate the App.tsx sync effect: vault entry updated, sync into tab
+      const freshEntry = { ...entry, trashed: true, trashedAt: Date.now() / 1000 }
+      act(() => {
+        result.current.setTabs(prev => prev.map(tab =>
+          tab.entry.path === freshEntry.path ? { ...tab, entry: freshEntry } : tab
+        ))
+      })
+
+      expect(result.current.tabs[0].entry.trashed).toBe(true)
+    })
+
+    it('preserves content when syncing entry', async () => {
+      const { result } = renderHook(() => useTabManagement())
+      const entry = makeEntry({ path: '/vault/a.md', archived: false })
+
+      await act(async () => {
+        await result.current.handleSelectNote(entry)
+      })
+
+      const originalContent = result.current.tabs[0].content
+
+      act(() => {
+        result.current.setTabs(prev => prev.map(tab =>
+          tab.entry.path === entry.path ? { ...tab, entry: { ...tab.entry, archived: true } } : tab
+        ))
+      })
+
+      expect(result.current.tabs[0].entry.archived).toBe(true)
+      expect(result.current.tabs[0].content).toBe(originalContent)
+    })
+  })
+
   describe('closeAllTabs', () => {
     it('clears all tabs and active path', async () => {
       const { result } = renderHook(() => useTabManagement())

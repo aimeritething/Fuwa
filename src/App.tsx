@@ -150,6 +150,23 @@ function App() {
 
   const notes = useNoteActions({ addEntry: vault.addEntry, removeEntry: vault.removeEntry, updateContent: vault.updateContent, entries: vault.entries, setToastMessage, updateEntry: vault.updateEntry, addPendingSave: vault.addPendingSave, removePendingSave: vault.removePendingSave, trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths, markContentPending: (path, content) => contentChangeRef.current(path, content), onNewNotePersisted: vault.loadModifiedFiles })
 
+  // Keep tab entries in sync with vault entries so banners (trash/archive)
+  // and read-only state react immediately without reopening the note.
+  useEffect(() => {
+    notes.setTabs(prev => {
+      let changed = false
+      const next = prev.map(tab => {
+        const fresh = vault.entries.find(e => e.path === tab.entry.path)
+        if (fresh && fresh !== tab.entry) {
+          changed = true
+          return { ...tab, entry: fresh }
+        }
+        return tab
+      })
+      return changed ? next : prev
+    })
+  }, [vault.entries]) // eslint-disable-line react-hooks/exhaustive-deps -- notes.setTabs is stable (useState setter)
+
   const navHistory = useNavigationHistory()
 
   // Push to navigation history whenever the active tab changes (user-initiated)
