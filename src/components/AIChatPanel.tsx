@@ -9,6 +9,7 @@ import {
   buildSystemPrompt,
 } from '../utils/ai-chat'
 import { useAIChat } from '../hooks/useAIChat'
+import { MarkdownContent } from './MarkdownContent'
 
 // --- Sub-components ---
 
@@ -101,10 +102,7 @@ function ContextSearchDropdown({
 function AssistantMessage({ msg, onRetry }: { msg: ChatMessage; onRetry: () => void }) {
   return (
     <div>
-      <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}
-        dangerouslySetInnerHTML={{
-          __html: msg.content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>'),
-        }} />
+      <MarkdownContent content={msg.content} />
       <div className="flex items-center gap-3" style={{ marginTop: 4 }}>
         <button className="border-none bg-transparent p-0 text-muted-foreground cursor-pointer hover:underline"
           style={{ fontSize: 11 }} onClick={() => navigator.clipboard.writeText(msg.content)}>
@@ -126,10 +124,7 @@ function AssistantMessage({ msg, onRetry }: { msg: ChatMessage; onRetry: () => v
 function StreamingContent({ content }: { content: string }) {
   return (
     <div style={{ marginBottom: 12 }}>
-      <div style={{ fontSize: 13, lineHeight: 1.6, whiteSpace: 'pre-wrap' }}
-        dangerouslySetInnerHTML={{
-          __html: content.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br/>'),
-        }} />
+      <MarkdownContent content={content} />
     </div>
   )
 }
