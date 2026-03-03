@@ -269,5 +269,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onSelect, onOpenDailyNote, onCloseTab,
     onGoBack, onGoForward, canGoBack, canGoForward,
     vaultTypes, themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme,
+    onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
   ])
 }
