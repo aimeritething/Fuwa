@@ -369,18 +369,9 @@ describe('useCommandRegistry', () => {
       expect(cmd!.keywords).toContain('version')
     })
 
-    it('is enabled when not updating', () => {
-      const { result } = renderHook(() =>
-        useCommandRegistry(makeConfig({ isUpdating: false })),
-      )
+    it('is always enabled', () => {
+      const { result } = renderHook(() => useCommandRegistry(makeConfig()))
       expect(result.current.find(c => c.id === 'check-updates')!.enabled).toBe(true)
-    })
-
-    it('is disabled when updating', () => {
-      const { result } = renderHook(() =>
-        useCommandRegistry(makeConfig({ isUpdating: true })),
-      )
-      expect(result.current.find(c => c.id === 'check-updates')!.enabled).toBe(false)
     })
 
     it('calls onCheckForUpdates when executed', () => {

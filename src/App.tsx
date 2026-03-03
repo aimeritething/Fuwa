@@ -24,7 +24,7 @@ import { useAppCommands } from './hooks/useAppCommands'
 import { useDialogs } from './hooks/useDialogs'
 import { useVaultSwitcher } from './hooks/useVaultSwitcher'
 import { useGitHistory } from './hooks/useGitHistory'
-import { useUpdater } from './hooks/useUpdater'
+import { useUpdater, restartApp } from './hooks/useUpdater'
 import { useNavigationHistory } from './hooks/useNavigationHistory'
 import { useAutoSync } from './hooks/useAutoSync'
 import { useConflictResolver } from './hooks/useConflictResolver'
@@ -280,6 +280,14 @@ function App() {
   const { status: updateStatus, actions: updateActions } = useUpdater()
 
   const handleCheckForUpdates = useCallback(async () => {
+    if (updateStatus.state === 'downloading') {
+      setToastMessage('Update is downloading…')
+      return
+    }
+    if (updateStatus.state === 'ready') {
+      await restartApp()
+      return
+    }
     const result = await updateActions.checkForUpdates()
     if (result === 'up-to-date') {
       setToastMessage("You're on the latest version")
@@ -287,7 +295,7 @@ function App() {
       setToastMessage('Could not check for updates')
     }
     // 'available' → UpdateBanner handles it automatically
-  }, [updateActions, setToastMessage])
+  }, [updateActions, updateStatus.state, setToastMessage])
 
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
@@ -334,7 +342,6 @@ function App() {
     onCreateType: dialogs.openCreateType,
     onToggleAIChat: dialogs.toggleAIChat,
     onCheckForUpdates: handleCheckForUpdates,
-    isUpdating: updateStatus.state === 'downloading' || updateStatus.state === 'ready',
     onRemoveActiveVault: () => vaultSwitcher.removeVault(vaultSwitcher.vaultPath),
     onRestoreGettingStarted: vaultSwitcher.restoreGettingStarted,
     isGettingStartedHidden: vaultSwitcher.isGettingStartedHidden,

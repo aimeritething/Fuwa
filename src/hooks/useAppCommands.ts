@@ -60,7 +60,6 @@ interface AppCommandsConfig {
   onCreateType?: () => void
   onToggleAIChat?: () => void
   onCheckForUpdates?: () => void
-  isUpdating?: boolean
   onRemoveActiveVault?: () => void
   onRestoreGettingStarted?: () => void
   isGettingStartedHidden?: boolean
@@ -169,7 +168,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onCreateType: config.onCreateType,
     onToggleAIChat: config.onToggleAIChat,
     onCheckForUpdates: config.onCheckForUpdates,
-    isUpdating: config.isUpdating,
     onRemoveActiveVault: config.onRemoveActiveVault,
     onRestoreGettingStarted: config.onRestoreGettingStarted,
     isGettingStartedHidden: config.isGettingStartedHidden,

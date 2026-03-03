@@ -40,7 +40,6 @@ interface CommandRegistryConfig {
   onToggleAIChat?: () => void
   activeNoteModified: boolean
   onCheckForUpdates?: () => void
-  isUpdating?: boolean
   onZoomIn: () => void
   onZoomOut: () => void
   onZoomReset: () => void
@@ -191,7 +190,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onSelect, onOpenDailyNote, onCloseTab,
     onGoBack, onGoForward, canGoBack, canGoForward,
     themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme,
-    onCheckForUpdates, isUpdating,
+    onCheckForUpdates,
     onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
   } = config
@@ -252,7 +251,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
       { id: 'open-vault', label: 'Open Vault…', group: 'Settings', keywords: ['vault', 'folder', 'switch', 'open', 'workspace'], enabled: true, execute: () => onOpenVault?.() },
       { id: 'remove-vault', label: 'Remove Vault from List', group: 'Settings', keywords: ['vault', 'remove', 'disconnect', 'hide'], enabled: (vaultCount ?? 0) > 1 && !!onRemoveActiveVault, execute: () => onRemoveActiveVault?.() },
       { id: 'restore-getting-started', label: 'Restore Getting Started Vault', group: 'Settings', keywords: ['vault', 'restore', 'demo', 'getting started', 'reset'], enabled: !!isGettingStartedHidden && !!onRestoreGettingStarted, execute: () => onRestoreGettingStarted?.() },
-      { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: !isUpdating, execute: () => onCheckForUpdates?.() },
+      { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: true, execute: () => onCheckForUpdates?.() },
 
       // Type-aware: "New [Type]" and "List [Type]"
       ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
@@ -264,7 +263,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onQuickOpen, onCreateNote, onCreateNoteOfType, onCreateType, onSave, onOpenSettings,
     onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
     onCommitPush, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
-    onCheckForUpdates, isUpdating,
+    onCheckForUpdates,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onOpenDailyNote, onCloseTab,
     onGoBack, onGoForward, canGoBack, canGoForward,
