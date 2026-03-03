@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { AiPanel } from './AiPanel'
 import type { VaultEntry } from '../types'
 
@@ -132,5 +132,22 @@ describe('AiPanel', () => {
     render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)
     const input = screen.getByTestId('agent-input') as HTMLInputElement
     expect(input.placeholder).toBe('Ask the AI agent...')
+  })
+
+  it('auto-focuses input on mount', async () => {
+    vi.useFakeTimers()
+    render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)
+    await act(() => { vi.advanceTimersByTime(1) })
+    const input = screen.getByTestId('agent-input')
+    expect(document.activeElement).toBe(input)
+    vi.useRealTimers()
+  })
+
+  it('calls onClose when Escape is pressed in input', () => {
+    const onClose = vi.fn()
+    render(<AiPanel onClose={onClose} vaultPath="/tmp/vault" />)
+    const input = screen.getByTestId('agent-input')
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
   })
 })

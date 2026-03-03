@@ -103,10 +103,10 @@ function MessageHistory({ messages, isActive, onOpenNote, hasContext }: {
   )
 }
 
-function InputBar({ input, onInputChange, onSend, onKeyDown, isActive, hasContext }: {
+function InputBar({ input, onInputChange, onSend, onKeyDown, isActive, hasContext, inputRef }: {
   input: string; onInputChange: (v: string) => void
   onSend: () => void; onKeyDown: (e: React.KeyboardEvent) => void
-  isActive: boolean; hasContext: boolean
+  isActive: boolean; hasContext: boolean; inputRef: React.RefObject<HTMLInputElement | null>
 }) {
   const sendDisabled = isActive || !input.trim()
   return (
@@ -116,6 +116,7 @@ function InputBar({ input, onInputChange, onSend, onKeyDown, isActive, hasContex
     >
       <div className="flex items-end gap-2">
         <input
+          ref={inputRef}
           value={input}
           onChange={e => onInputChange(e.target.value)}
           onKeyDown={onKeyDown}
@@ -150,6 +151,13 @@ function InputBar({ input, onInputChange, onSend, onKeyDown, isActive, hasContex
 
 export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, allContent }: AiPanelProps) {
   const [input, setInput] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    // Small delay to ensure DOM is ready after panel mount
+    const timer = setTimeout(() => inputRef.current?.focus(), 0)
+    return () => clearTimeout(timer)
+  }, [])
 
   const linkedEntries = useMemo(() => {
     if (!activeEntry || !entries) return []
@@ -173,6 +181,11 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      e.preventDefault()
+      onClose()
+      return
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -201,6 +214,7 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
         onKeyDown={handleKeyDown}
         isActive={isActive}
         hasContext={hasContext}
+        inputRef={inputRef}
       />
     </aside>
   )
