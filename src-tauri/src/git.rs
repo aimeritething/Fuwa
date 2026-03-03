@@ -427,20 +427,28 @@ pub fn git_pull(vault_path: &str) -> Result<GitPullResult, String> {
 }
 
 /// List files with merge conflicts (unmerged paths).
+///
+/// Uses `git ls-files --unmerged` instead of `git diff --diff-filter=U` because
+/// ls-files reliably detects unmerged index entries even when the merge state is
+/// stale (e.g. after a reboot or when MERGE_HEAD is missing).
 pub fn get_conflict_files(vault_path: &str) -> Result<Vec<String>, String> {
     let vault = Path::new(vault_path);
     let output = Command::new("git")
-        .args(["diff", "--name-only", "--diff-filter=U"])
+        .args(["ls-files", "--unmerged"])
         .current_dir(vault)
         .output()
         .map_err(|e| format!("Failed to check conflicts: {}", e))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    Ok(stdout
+    // Each unmerged file appears multiple times (once per stage: base/ours/theirs).
+    // Format: "<mode> <hash> <stage>\t<path>"
+    let mut files: Vec<String> = stdout
         .lines()
-        .filter(|l| !l.is_empty())
-        .map(|l| l.to_string())
-        .collect())
+        .filter_map(|line| line.split('\t').nth(1).map(|s| s.to_string()))
+        .collect();
+    files.sort();
+    files.dedup();
+    Ok(files)
 }
 
 /// Parse `git pull` output to extract updated file paths.
