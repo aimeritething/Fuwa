@@ -66,7 +66,7 @@ export function useIndexing(vaultPath: string) {
         if (needsIndexing && !indexingRef.current) {
           indexingRef.current = true
           setProgress({
-            phase: 'scanning',
+            phase: status.qmd_installed ? 'scanning' : 'installing',
             current: 0,
             total: status.indexed_count,
             done: false,
