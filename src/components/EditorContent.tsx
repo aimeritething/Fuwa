@@ -72,13 +72,14 @@ function DiffModeView({ diffContent, onToggleDiff }: { diffContent: string | nul
 }
 
 function RawModeEditorSection({
-  rawMode, activeTab, entries, onContentChange, onSave,
+  rawMode, activeTab, entries, onContentChange, onSave, isDark,
 }: {
   rawMode: boolean
   activeTab: Tab | null
   entries: VaultEntry[]
   onContentChange?: (path: string, content: string) => void
   onSave?: () => void
+  isDark?: boolean
 }) {
   if (!rawMode || !activeTab) return null
   return (
@@ -89,6 +90,7 @@ function RawModeEditorSection({
       entries={entries}
       onContentChange={onContentChange ?? (() => {})}
       onSave={onSave ?? (() => {})}
+      isDark={isDark}
     />
   )
 }
@@ -139,7 +141,7 @@ function EditorBody({ activeTab, isLoadingNewTab, entries, editor, diffMode, dif
   return (
     <>
       {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
-      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} />
+      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} isDark={isDarkTheme} />
       {showEditor && activeTab && (
         <div style={{ display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0 }}>
           <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} isDarkTheme={isDarkTheme} editable={!isTrashed} />

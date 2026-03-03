@@ -1,54 +1,13 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
+import type { EditorView } from '@codemirror/view'
 import { preFilterWikilinks, deduplicateByPath, MIN_QUERY_LENGTH } from '../utils/wikilinkSuggestions'
 import { attachClickHandlers, enrichSuggestionItems } from '../utils/suggestionEnrichment'
 import { buildTypeEntryMap } from '../utils/typeColors'
 import { NoteSearchList } from './NoteSearchList'
 import { extractWikilinkQuery, detectYamlError } from '../utils/rawEditorUtils'
+import { useCodeMirror } from '../hooks/useCodeMirror'
 import type { WikilinkSuggestionItem } from './WikilinkSuggestionMenu'
 import type { VaultEntry } from '../types'
-
-/** Get approximate pixel coordinates of the cursor in a textarea. */
-function getCaretCoordinates(
-  textarea: HTMLTextAreaElement,
-  position: number,
-): { top: number; left: number } {
-  const mirror = document.createElement('div')
-  const style = getComputedStyle(textarea)
-
-  const props = [
-    'boxSizing', 'width', 'borderTopWidth', 'borderRightWidth',
-    'borderBottomWidth', 'borderLeftWidth',
-    'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
-    'fontStyle', 'fontVariant', 'fontWeight', 'fontSize', 'lineHeight',
-    'fontFamily', 'textTransform', 'letterSpacing', 'wordSpacing',
-  ] as const
-  for (const prop of props) {
-    (mirror.style as unknown as Record<string, string>)[prop] = style[prop] as string
-  }
-  mirror.style.position = 'absolute'
-  mirror.style.visibility = 'hidden'
-  mirror.style.top = '0'
-  mirror.style.left = '-9999px'
-  mirror.style.whiteSpace = 'pre-wrap'
-  mirror.style.wordWrap = 'break-word'
-  mirror.style.overflow = 'hidden'
-
-  mirror.textContent = textarea.value.slice(0, position)
-  const caret = document.createElement('span')
-  caret.textContent = '\u200B'
-  mirror.appendChild(caret)
-  document.body.appendChild(mirror)
-
-  const caretRect = caret.getBoundingClientRect()
-  const mirrorRect = mirror.getBoundingClientRect()
-  document.body.removeChild(mirror)
-
-  const textareaRect = textarea.getBoundingClientRect()
-  return {
-    top: caretRect.top - mirrorRect.top + textareaRect.top - textarea.scrollTop,
-    left: caretRect.left - mirrorRect.left + textareaRect.left,
-  }
-}
 
 interface AutocompleteState {
   caretTop: number
@@ -57,32 +16,38 @@ interface AutocompleteState {
   items: WikilinkSuggestionItem[]
 }
 
-interface RawEditorViewProps {
+export interface RawEditorViewProps {
   content: string
   path: string
   entries: VaultEntry[]
   onContentChange: (path: string, content: string) => void
   onSave: () => void
+  isDark?: boolean
 }
 
-const FONT_FAMILY = '"Berkeley Mono", "JetBrains Mono", "Fira Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
 const DEBOUNCE_MS = 500
 const DROPDOWN_MAX_HEIGHT = 200
 
-export function RawEditorView({ content, path, entries, onContentChange, onSave }: RawEditorViewProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+function getCursorCoords(view: EditorView): { top: number; left: number } | null {
+  const pos = view.state.selection.main.head
+  const coords = view.coordsAtPos(pos)
+  if (!coords) return null
+  return { top: coords.bottom, left: coords.left }
+}
+
+export function RawEditorView({ content, path, entries, onContentChange, onSave, isDark = false }: RawEditorViewProps) {
+  const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pathRef = useRef(path)
   const onContentChangeRef = useRef(onContentChange)
   const onSaveRef = useRef(onSave)
+  const latestDocRef = useRef(content)
   useEffect(() => { pathRef.current = path }, [path])
   useEffect(() => { onContentChangeRef.current = onContentChange }, [onContentChange])
   useEffect(() => { onSaveRef.current = onSave }, [onSave])
 
-  const [value, setValue] = useState(content)
   const [autocomplete, setAutocomplete] = useState<AutocompleteState | null>(null)
   const [yamlError, setYamlError] = useState<string | null>(() => detectYamlError(content))
-  // NOTE: tab-switch reset is handled via key={path} in the parent (EditorContent)
 
   const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
 
@@ -97,80 +62,85 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave 
     [entries],
   )
 
-  /** Insert [[entryTitle]] at the current [[ trigger position */
-  const insertWikilink = useCallback((entryTitle: string) => {
-    const textarea = textareaRef.current
-    if (!textarea) return
+  const insertWikilinkRef = useRef<(entryTitle: string) => void>(() => {})
 
-    const cursor = textarea.selectionStart
-    const text = textarea.value
-    const before = text.slice(0, cursor)
-    const triggerIdx = before.lastIndexOf('[[')
-    if (triggerIdx === -1) return
-
-    const after = text.slice(cursor)
-    const newText = `${text.slice(0, triggerIdx)}[[${entryTitle}]]${after}`
-    const newCursor = triggerIdx + entryTitle.length + 4
-
-    setValue(newText)
-    setAutocomplete(null)
-
-    // Flush immediately — autocomplete inserts should not be debounced
-    if (debounceRef.current) clearTimeout(debounceRef.current)
-    debounceRef.current = null
-    onContentChangeRef.current(pathRef.current, newText)
-
-    requestAnimationFrame(() => {
-      if (textareaRef.current) {
-        textareaRef.current.selectionStart = newCursor
-        textareaRef.current.selectionEnd = newCursor
-        textareaRef.current.focus()
-      }
-    })
-  }, [])
-
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    const newValue = e.target.value
-    const cursor = e.target.selectionStart ?? 0
-
-    setValue(newValue)
-    setYamlError(detectYamlError(newValue))
-
+  const handleDocChange = useCallback((doc: string) => {
+    latestDocRef.current = doc
+    setYamlError(detectYamlError(doc))
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
-      onContentChangeRef.current(pathRef.current, newValue)
+      onContentChangeRef.current(pathRef.current, doc)
     }, DEBOUNCE_MS)
+  }, [])
 
-    const query = extractWikilinkQuery(newValue, cursor)
+  const handleCursorActivity = useCallback((view: EditorView) => {
+    const doc = view.state.doc.toString()
+    const cursor = view.state.selection.main.head
+    const query = extractWikilinkQuery(doc, cursor)
     if (query === null || query.length < MIN_QUERY_LENGTH) {
       setAutocomplete(null)
       return
     }
-
-    const textarea = e.target
-    const coords = getCaretCoordinates(textarea, cursor)
+    const coords = getCursorCoords(view)
+    if (!coords) { setAutocomplete(null); return }
     const candidates = preFilterWikilinks(baseItems, query)
-    const withHandlers = attachClickHandlers(candidates, insertWikilink)
+    const withHandlers = attachClickHandlers(candidates, (title: string) => insertWikilinkRef.current(title))
     const items = enrichSuggestionItems(withHandlers, query, typeEntryMap)
-
     setAutocomplete({ caretTop: coords.top, caretLeft: coords.left, selectedIndex: 0, items })
-  }, [baseItems, typeEntryMap, insertWikilink])
+  }, [baseItems, typeEntryMap])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Save shortcut
-    if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-      e.preventDefault()
-      if (debounceRef.current) {
-        clearTimeout(debounceRef.current)
-        debounceRef.current = null
-        onContentChangeRef.current(pathRef.current, textareaRef.current?.value ?? '')
-      }
-      onSaveRef.current()
-      return
+  const handleSave = useCallback(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current)
+      debounceRef.current = null
+      onContentChangeRef.current(pathRef.current, latestDocRef.current)
     }
+    onSaveRef.current()
+  }, [])
 
+  const handleEscape = useCallback(() => {
+    if (autocomplete) { setAutocomplete(null); return true }
+    return false
+  }, [autocomplete])
+
+  const viewRef = useCodeMirror(containerRef, content, isDark, {
+    onDocChange: handleDocChange,
+    onCursorActivity: handleCursorActivity,
+    onSave: handleSave,
+    onEscape: handleEscape,
+  })
+
+  const insertWikilink = useCallback((entryTitle: string) => {
+    const view = viewRef.current
+    if (!view) return
+    const cursor = view.state.selection.main.head
+    const doc = view.state.doc.toString()
+    const before = doc.slice(0, cursor)
+    const triggerIdx = before.lastIndexOf('[[')
+    if (triggerIdx === -1) return
+
+    const after = doc.slice(cursor)
+    const newText = `${doc.slice(0, triggerIdx)}[[${entryTitle}]]${after}`
+    const newCursor = triggerIdx + entryTitle.length + 4
+
+    view.dispatch({
+      changes: { from: 0, to: doc.length, insert: newText },
+      selection: { anchor: newCursor },
+    })
+    setAutocomplete(null)
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = null
+    latestDocRef.current = newText
+    onContentChangeRef.current(pathRef.current, newText)
+
+    view.focus()
+  }, [viewRef])
+
+  useEffect(() => { insertWikilinkRef.current = insertWikilink }, [insertWikilink])
+
+  const handleAutocompleteKey = useCallback((e: React.KeyboardEvent) => {
     if (!autocomplete) return
-
     if (e.key === 'ArrowDown') {
       e.preventDefault()
       setAutocomplete(prev => prev
@@ -185,24 +155,15 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave 
       e.preventDefault()
       const item = autocomplete.items[autocomplete.selectedIndex]
       if (item) insertWikilink(item.entryTitle ?? item.title)
-    } else if (e.key === 'Escape') {
-      e.preventDefault()
-      setAutocomplete(null)
     }
   }, [autocomplete, insertWikilink])
 
-  const closeAutocomplete = useCallback(() => setAutocomplete(null), [])
-
-  // Flush pending debounce on unmount (e.g. switching tabs while in raw mode)
+  // Flush pending debounce on unmount
   useEffect(() => {
-    const pendingPath = pathRef
-    const pendingChange = onContentChangeRef
-    const pendingDebounce = debounceRef
-    const pendingTextarea = textareaRef
     return () => {
-      if (pendingDebounce.current) {
-        clearTimeout(pendingDebounce.current)
-        pendingChange.current(pendingPath.current, pendingTextarea.current?.value ?? '')
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current)
+        onContentChangeRef.current(pathRef.current, latestDocRef.current)
       }
     }
   }, [])
@@ -211,14 +172,14 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave 
     ? autocomplete.caretTop + 20 + DROPDOWN_MAX_HEIGHT <= window.innerHeight
     : true
   const dropdownTop = autocomplete
-    ? (dropdownBelow ? autocomplete.caretTop + 20 : autocomplete.caretTop - DROPDOWN_MAX_HEIGHT - 4)
+    ? (dropdownBelow ? autocomplete.caretTop + 4 : autocomplete.caretTop - DROPDOWN_MAX_HEIGHT - 24)
     : 0
   const dropdownLeft = autocomplete
     ? Math.min(autocomplete.caretLeft, window.innerWidth - 260)
     : 0
 
   return (
-    <div className="flex flex-1 flex-col min-h-0 relative" style={{ background: 'var(--background)' }}>
+    <div className="flex flex-1 flex-col min-h-0 relative" style={{ background: 'var(--background)' }} onKeyDown={handleAutocompleteKey} role="presentation">
       {yamlError && (
         <div
           className="flex items-center gap-2 px-4 py-2 text-xs border-b shrink-0"
@@ -230,25 +191,11 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave 
           <span>{yamlError}</span>
         </div>
       )}
-      <textarea
-        ref={textareaRef}
-        value={value}
-        onChange={handleChange}
-        onKeyDown={handleKeyDown}
-        onClick={closeAutocomplete}
-        className="flex-1 resize-none border-none outline-none p-8"
-        style={{
-          fontFamily: FONT_FAMILY,
-          fontSize: 13,
-          lineHeight: 1.6,
-          background: 'var(--background)',
-          color: 'var(--foreground)',
-          tabSize: 2,
-          minHeight: 0,
-        }}
-        spellCheck={false}
+      <div
+        ref={containerRef}
+        className="flex flex-1 min-h-0"
+        data-testid="raw-editor-codemirror"
         aria-label="Raw editor"
-        data-testid="raw-editor-textarea"
       />
       {autocomplete && autocomplete.items.length > 0 && (
         <div
