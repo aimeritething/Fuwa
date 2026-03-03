@@ -44,8 +44,8 @@ describe('AiMessage', () => {
       <AiMessage
         userMessage="Do something"
         actions={[
-          { tool: 'create_note', label: 'Created test.md', status: 'done' },
-          { tool: 'search_notes', label: 'Searched', status: 'pending' },
+          { tool: 'create_note', toolId: 't1', label: 'Created test.md', status: 'done' },
+          { tool: 'search_notes', toolId: 't2', label: 'Searched', status: 'pending' },
         ]}
       />,
     )
@@ -57,11 +57,11 @@ describe('AiMessage', () => {
     render(
       <AiMessage
         userMessage="Do"
-        actions={[{ tool: 'create_note', label: 'Open', path: '/vault/note.md', status: 'done' }]}
+        actions={[{ tool: 'create_note', toolId: 't1', label: 'Open', path: '/vault/note.md', status: 'done' }]}
         onOpenNote={onOpenNote}
       />,
     )
-    fireEvent.click(screen.getByTestId('ai-action-card'))
+    fireEvent.click(screen.getByTestId('action-card-header'))
     expect(onOpenNote).toHaveBeenCalledWith('/vault/note.md')
   })
 
@@ -87,5 +87,29 @@ describe('AiMessage', () => {
   it('does not render actions when empty array', () => {
     render(<AiMessage userMessage="Ask" actions={[]} />)
     expect(screen.queryByTestId('ai-action-card')).toBeNull()
+  })
+
+  it('expands and collapses action cards independently', () => {
+    render(
+      <AiMessage
+        userMessage="Do"
+        actions={[
+          { tool: 'search_notes', toolId: 't1', label: 'Searched', status: 'done', input: '{"q":"test"}', output: 'Found 3' },
+          { tool: 'create_note', toolId: 't2', label: 'Created', status: 'done', input: '{"title":"x"}' },
+        ]}
+      />,
+    )
+    const headers = screen.getAllByTestId('action-card-header')
+    // Both collapsed initially
+    expect(screen.queryByTestId('action-card-details')).toBeNull()
+    // Expand first card
+    fireEvent.click(headers[0])
+    expect(screen.getAllByTestId('action-card-details')).toHaveLength(1)
+    // Expand second card too
+    fireEvent.click(headers[1])
+    expect(screen.getAllByTestId('action-card-details')).toHaveLength(2)
+    // Collapse first card
+    fireEvent.click(headers[0])
+    expect(screen.getAllByTestId('action-card-details')).toHaveLength(1)
   })
 })

@@ -63,23 +63,54 @@ export function useAiAgent(vaultPath: string, contextPrompt?: string) {
         update(m => ({ ...m, response: (m.response ?? '') + text }))
       },
 
-      onToolStart: (toolName, toolId) => {
+      onToolStart: (toolName, toolId, input) => {
         if (abortRef.current.aborted) return
         setStatus('tool-executing')
+        update(m => {
+          const existing = m.actions.find(a => a.toolId === toolId)
+          if (existing) {
+            // Re-emitted with input data — update the existing action
+            return {
+              ...m,
+              actions: m.actions.map(a =>
+                a.toolId === toolId ? { ...a, input: input ?? a.input } : a,
+              ),
+            }
+          }
+          return {
+            ...m,
+            actions: [...m.actions, {
+              tool: toolName,
+              toolId,
+              label: formatToolLabel(toolName, toolId),
+              status: 'pending' as const,
+              input,
+            }],
+          }
+        })
+      },
+
+      onToolDone: (toolId, output) => {
+        if (abortRef.current.aborted) return
         update(m => ({
           ...m,
-          actions: [...m.actions, {
-            tool: toolName,
-            label: formatToolLabel(toolName, toolId),
-            status: 'pending' as const,
-          }],
+          actions: m.actions.map(a =>
+            a.toolId === toolId ? { ...a, status: 'done' as const, output } : a,
+          ),
         }))
       },
 
       onError: (error) => {
         if (abortRef.current.aborted) return
         setStatus('error')
-        update(m => ({ ...m, isStreaming: false, response: (m.response ?? '') + `\nError: ${error}` }))
+        update(m => ({
+          ...m,
+          isStreaming: false,
+          response: (m.response ?? '') + `\nError: ${error}`,
+          actions: m.actions.map(a =>
+            a.status === 'pending' ? { ...a, status: 'error' as const } : a,
+          ),
+        }))
       },
 
       onDone: () => {

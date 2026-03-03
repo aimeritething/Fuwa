@@ -1,12 +1,15 @@
-import { useState } from 'react'
+import { useState, useCallback } from 'react'
 import { CaretRight, CaretDown, Brain, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { AiActionCard, type AiActionStatus } from './AiActionCard'
 
 export interface AiAction {
   tool: string
+  toolId: string
   label: string
   path?: string
   status: AiActionStatus
+  input?: string
+  output?: string
 }
 
 export interface AiMessageProps {
@@ -66,18 +69,25 @@ function ReasoningBlock({ text, expanded, onToggle }: {
   )
 }
 
-function ActionCardsList({ actions, onOpenNote }: {
-  actions: AiAction[]; onOpenNote?: (path: string) => void
+function ActionCardsList({ actions, onOpenNote, expandedIds, onToggleExpand }: {
+  actions: AiAction[]
+  onOpenNote?: (path: string) => void
+  expandedIds: Set<string>
+  onToggleExpand: (toolId: string) => void
 }) {
   return (
     <div className="flex flex-col gap-1" style={{ marginBottom: 8 }}>
-      {actions.map((action, i) => (
+      {actions.map((action) => (
         <AiActionCard
-          key={`${action.tool}-${i}`}
+          key={action.toolId}
           tool={action.tool}
           label={action.label}
           path={action.path}
           status={action.status}
+          input={action.input}
+          output={action.output}
+          expanded={expandedIds.has(action.toolId)}
+          onToggle={() => onToggleExpand(action.toolId)}
           onOpenNote={onOpenNote}
         />
       ))}
@@ -115,6 +125,16 @@ function StreamingIndicator() {
 
 export function AiMessage({ userMessage, reasoning, actions, response, isStreaming, onOpenNote }: AiMessageProps) {
   const [reasoningExpanded, setReasoningExpanded] = useState(false)
+  const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set())
+
+  const toggleAction = useCallback((toolId: string) => {
+    setExpandedActions(prev => {
+      const next = new Set(prev)
+      if (next.has(toolId)) next.delete(toolId)
+      else next.add(toolId)
+      return next
+    })
+  }, [])
 
   return (
     <div data-testid="ai-message" style={{ marginBottom: 16 }}>
@@ -126,7 +146,14 @@ export function AiMessage({ userMessage, reasoning, actions, response, isStreami
           onToggle={() => setReasoningExpanded(!reasoningExpanded)}
         />
       )}
-      {actions.length > 0 && <ActionCardsList actions={actions} onOpenNote={onOpenNote} />}
+      {actions.length > 0 && (
+        <ActionCardsList
+          actions={actions}
+          onOpenNote={onOpenNote}
+          expandedIds={expandedActions}
+          onToggleExpand={toggleAction}
+        />
+      )}
       {response && <ResponseBlock text={response} />}
       {isStreaming && !response && <StreamingIndicator />}
     </div>

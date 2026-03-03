@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::io::BufRead;
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
@@ -19,9 +20,18 @@ pub enum ClaudeStreamEvent {
     /// Incremental text chunk.
     TextDelta { text: String },
     /// A tool call started (agent mode only).
-    ToolStart { tool_name: String, tool_id: String },
+    ToolStart {
+        tool_name: String,
+        tool_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        input: Option<String>,
+    },
     /// A tool call finished (agent mode only).
-    ToolDone { tool_id: String },
+    ToolDone {
+        tool_id: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        output: Option<String>,
+    },
     /// Final result text + session ID.
     Result { text: String, session_id: String },
     /// Something went wrong.
@@ -207,6 +217,15 @@ fn build_mcp_config(vault_path: &str) -> Result<String, String> {
     serde_json::to_string(&config).map_err(|e| format!("Failed to serialise MCP config: {e}"))
 }
 
+/// Mutable state accumulated across the JSON stream for a single subprocess.
+struct StreamState {
+    session_id: String,
+    /// Accumulates `input_json_delta` chunks keyed by tool_use id.
+    tool_inputs: HashMap<String, String>,
+    /// The tool_use id of the block currently being streamed.
+    current_tool_id: Option<String>,
+}
+
 /// Core subprocess runner shared by chat and agent modes.
 fn run_claude_subprocess<F>(bin: &PathBuf, args: &[String], emit: &mut F) -> Result<String, String>
 where
@@ -223,7 +242,11 @@ where
     let stdout = child.stdout.take().ok_or("No stdout handle")?;
     let reader = std::io::BufReader::new(stdout);
 
-    let mut session_id = String::new();
+    let mut state = StreamState {
+        session_id: String::new(),
+        tool_inputs: HashMap::new(),
+        current_tool_id: None,
+    };
 
     for line in reader.lines() {
         let line = match line {
@@ -245,7 +268,7 @@ where
             Err(_) => continue, // skip non-JSON lines
         };
 
-        dispatch_event(&json, &mut session_id, emit);
+        dispatch_event(&json, &mut state, emit);
     }
 
     // Read stderr for potential error messages.
@@ -257,7 +280,7 @@ where
 
     let status = child.wait().map_err(|e| format!("Wait failed: {e}"))?;
 
-    if !status.success() && session_id.is_empty() {
+    if !status.success() && state.session_id.is_empty() {
         let msg = if stderr_output.contains("not logged in")
             || stderr_output.contains("authentication")
             || stderr_output.contains("auth")
@@ -273,11 +296,11 @@ where
 
     emit(ClaudeStreamEvent::Done);
 
-    Ok(session_id)
+    Ok(state.session_id)
 }
 
 /// Parse a single JSON line from the stream and emit the appropriate event.
-fn dispatch_event<F>(json: &serde_json::Value, session_id: &mut String, emit: &mut F)
+fn dispatch_event<F>(json: &serde_json::Value, state: &mut StreamState, emit: &mut F)
 where
     F: FnMut(ClaudeStreamEvent),
 {
@@ -287,7 +310,7 @@ where
         // --- System init → capture session_id ---
         "system" if json["subtype"].as_str() == Some("init") => {
             if let Some(sid) = json["session_id"].as_str() {
-                *session_id = sid.to_string();
+                state.session_id = sid.to_string();
                 emit(ClaudeStreamEvent::Init {
                     session_id: sid.to_string(),
                 });
@@ -296,7 +319,7 @@ where
 
         // --- Streaming partial events (text deltas, tool_use starts) ---
         "stream_event" => {
-            dispatch_stream_event(json, emit);
+            dispatch_stream_event(json, state, emit);
         }
 
         // --- Tool progress (agent mode) ---
@@ -307,6 +330,18 @@ where
                 emit(ClaudeStreamEvent::ToolStart {
                     tool_name: name.to_string(),
                     tool_id: id.to_string(),
+                    input: None,
+                });
+            }
+        }
+
+        // --- Tool result (agent mode) ---
+        "tool_result" => {
+            if let Some(id) = json["tool_use_id"].as_str() {
+                let output = extract_tool_result_text(json);
+                emit(ClaudeStreamEvent::ToolDone {
+                    tool_id: id.to_string(),
+                    output,
                 });
             }
         }
@@ -315,7 +350,7 @@ where
         "result" => {
             let sid = json["session_id"].as_str().unwrap_or("").to_string();
             if !sid.is_empty() {
-                *session_id = sid.clone();
+                state.session_id = sid.clone();
             }
             let text = json["result"].as_str().unwrap_or("").to_string();
             emit(ClaudeStreamEvent::Result {
@@ -332,9 +367,11 @@ where
                         if let (Some(id), Some(name)) =
                             (block["id"].as_str(), block["name"].as_str())
                         {
+                            let input = format_tool_input(&block["input"], state, id);
                             emit(ClaudeStreamEvent::ToolStart {
                                 tool_name: name.to_string(),
                                 tool_id: id.to_string(),
+                                input,
                             });
                         }
                     }
@@ -347,7 +384,7 @@ where
 }
 
 /// Handle a `stream_event` (partial assistant message).
-fn dispatch_stream_event<F>(json: &serde_json::Value, emit: &mut F)
+fn dispatch_stream_event<F>(json: &serde_json::Value, state: &mut StreamState, emit: &mut F)
 where
     F: FnMut(ClaudeStreamEvent),
 {
@@ -357,27 +394,85 @@ where
     match event_type {
         "content_block_delta" => {
             let delta = &event["delta"];
-            if delta["type"].as_str() == Some("text_delta") {
-                if let Some(text) = delta["text"].as_str() {
-                    emit(ClaudeStreamEvent::TextDelta {
-                        text: text.to_string(),
-                    });
+            match delta["type"].as_str() {
+                Some("text_delta") => {
+                    if let Some(text) = delta["text"].as_str() {
+                        emit(ClaudeStreamEvent::TextDelta {
+                            text: text.to_string(),
+                        });
+                    }
                 }
+                Some("input_json_delta") => {
+                    if let (Some(partial), Some(ref tid)) =
+                        (delta["partial_json"].as_str(), &state.current_tool_id)
+                    {
+                        state
+                            .tool_inputs
+                            .entry(tid.clone())
+                            .or_default()
+                            .push_str(partial);
+                    }
+                }
+                _ => {}
             }
         }
         "content_block_start" => {
             let block = &event["content_block"];
             if block["type"].as_str() == Some("tool_use") {
                 if let (Some(id), Some(name)) = (block["id"].as_str(), block["name"].as_str()) {
+                    state.current_tool_id = Some(id.to_string());
+                    state.tool_inputs.entry(id.to_string()).or_default();
                     emit(ClaudeStreamEvent::ToolStart {
                         tool_name: name.to_string(),
                         tool_id: id.to_string(),
+                        input: None,
                     });
                 }
             }
         }
+        "content_block_stop" => {
+            state.current_tool_id = None;
+        }
         _ => {}
     }
+}
+
+/// Build the tool input string, preferring accumulated delta chunks over the
+/// block's `input` field (which may be empty at stream start).
+fn format_tool_input(
+    block_input: &serde_json::Value,
+    state: &StreamState,
+    tool_id: &str,
+) -> Option<String> {
+    if let Some(accumulated) = state.tool_inputs.get(tool_id) {
+        if !accumulated.is_empty() {
+            return Some(accumulated.clone());
+        }
+    }
+    if !block_input.is_null() && block_input.as_object().is_some_and(|o| !o.is_empty()) {
+        return Some(block_input.to_string());
+    }
+    None
+}
+
+/// Extract displayable text from a `tool_result` event.
+fn extract_tool_result_text(json: &serde_json::Value) -> Option<String> {
+    // String content field
+    if let Some(s) = json["content"].as_str() {
+        return Some(s.to_string());
+    }
+    // Array of content blocks (Claude format)
+    if let Some(arr) = json["content"].as_array() {
+        let texts: Vec<&str> = arr
+            .iter()
+            .filter_map(|b| b["text"].as_str())
+            .collect();
+        if !texts.is_empty() {
+            return Some(texts.join("\n"));
+        }
+    }
+    // Fallback: "output" field
+    json["output"].as_str().map(|s| s.to_string())
 }
 
 #[cfg(test)]
@@ -408,12 +503,20 @@ mod tests {
 
     // --- dispatch_event / dispatch_stream_event ---
 
+    fn new_state() -> StreamState {
+        StreamState {
+            session_id: String::new(),
+            tool_inputs: HashMap::new(),
+            current_tool_id: None,
+        }
+    }
+
     /// Run dispatch_event on the given JSON and return (session_id, events).
     fn run_dispatch(json: serde_json::Value) -> (String, Vec<ClaudeStreamEvent>) {
-        let mut sid = String::new();
+        let mut state = new_state();
         let mut events = vec![];
-        dispatch_event(&json, &mut sid, &mut |e| events.push(e));
-        (sid, events)
+        dispatch_event(&json, &mut state, &mut |e| events.push(e));
+        (state.session_id, events)
     }
 
     /// Run dispatch_event with a pre-set session_id.
@@ -421,10 +524,23 @@ mod tests {
         json: serde_json::Value,
         initial_sid: &str,
     ) -> (String, Vec<ClaudeStreamEvent>) {
-        let mut sid = initial_sid.to_string();
+        let mut state = new_state();
+        state.session_id = initial_sid.to_string();
         let mut events = vec![];
-        dispatch_event(&json, &mut sid, &mut |e| events.push(e));
-        (sid, events)
+        dispatch_event(&json, &mut state, &mut |e| events.push(e));
+        (state.session_id, events)
+    }
+
+    /// Run multiple dispatch_event calls sharing state (for multi-event sequences).
+    fn run_dispatch_sequence(
+        events_json: Vec<serde_json::Value>,
+    ) -> (StreamState, Vec<ClaudeStreamEvent>) {
+        let mut state = new_state();
+        let mut events = vec![];
+        for json in &events_json {
+            dispatch_event(json, &mut state, &mut |e| events.push(e));
+        }
+        (state, events)
     }
 
     #[test]
@@ -468,7 +584,7 @@ mod tests {
             "event": { "type": "content_block_start", "index": 1, "content_block": { "type": "tool_use", "id": "tool_abc", "name": "read_note", "input": {} } }
         }));
         assert!(
-            matches!(&events[0], ClaudeStreamEvent::ToolStart { tool_name, tool_id } if tool_name == "read_note" && tool_id == "tool_abc")
+            matches!(&events[0], ClaudeStreamEvent::ToolStart { tool_name, tool_id, .. } if tool_name == "read_note" && tool_id == "tool_abc")
         );
     }
 
@@ -501,7 +617,7 @@ mod tests {
             "type": "tool_progress", "tool_name": "search_notes", "tool_use_id": "tool_xyz"
         }));
         assert!(
-            matches!(&events[0], ClaudeStreamEvent::ToolStart { tool_name, tool_id } if tool_name == "search_notes" && tool_id == "tool_xyz")
+            matches!(&events[0], ClaudeStreamEvent::ToolStart { tool_name, tool_id, .. } if tool_name == "search_notes" && tool_id == "tool_xyz")
         );
     }
 
@@ -523,7 +639,7 @@ mod tests {
         }));
         assert_eq!(events.len(), 1);
         assert!(
-            matches!(&events[0], ClaudeStreamEvent::ToolStart { tool_name, tool_id } if tool_name == "search_notes" && tool_id == "tu_1")
+            matches!(&events[0], ClaudeStreamEvent::ToolStart { tool_name, tool_id, .. } if tool_name == "search_notes" && tool_id == "tu_1")
         );
     }
 
@@ -541,7 +657,8 @@ mod tests {
     }
 
     #[test]
-    fn dispatch_stream_event_non_text_delta_is_ignored() {
+    fn dispatch_stream_event_input_json_delta_accumulates_silently() {
+        // input_json_delta doesn't emit events directly — it accumulates in state
         let (_, events) = run_dispatch(serde_json::json!({
             "type": "stream_event",
             "event": { "type": "content_block_delta", "index": 0, "delta": { "type": "input_json_delta", "partial_json": "{}" } }
@@ -564,6 +681,109 @@ mod tests {
             "type": "stream_event", "event": { "type": "message_stop" }
         }));
         assert!(events.is_empty());
+    }
+
+    #[test]
+    fn dispatch_event_handles_tool_result_string_content() {
+        let (_, events) = run_dispatch(serde_json::json!({
+            "type": "tool_result",
+            "tool_use_id": "tool_abc",
+            "content": "Found 3 notes matching query"
+        }));
+        assert_eq!(events.len(), 1);
+        assert!(
+            matches!(&events[0], ClaudeStreamEvent::ToolDone { tool_id, output }
+                if tool_id == "tool_abc" && output.as_deref() == Some("Found 3 notes matching query"))
+        );
+    }
+
+    #[test]
+    fn dispatch_event_handles_tool_result_array_content() {
+        let (_, events) = run_dispatch(serde_json::json!({
+            "type": "tool_result",
+            "tool_use_id": "tool_def",
+            "content": [{ "type": "text", "text": "Line 1" }, { "type": "text", "text": "Line 2" }]
+        }));
+        assert!(
+            matches!(&events[0], ClaudeStreamEvent::ToolDone { output, .. }
+                if output.as_deref() == Some("Line 1\nLine 2"))
+        );
+    }
+
+    #[test]
+    fn dispatch_event_tool_result_missing_tool_id_is_ignored() {
+        let (_, events) = run_dispatch(serde_json::json!({
+            "type": "tool_result", "content": "result text"
+        }));
+        assert!(events.is_empty());
+    }
+
+    #[test]
+    fn dispatch_accumulates_input_json_deltas() {
+        let (_, events) = run_dispatch_sequence(vec![
+            // Start tool_use block
+            serde_json::json!({
+                "type": "stream_event",
+                "event": { "type": "content_block_start", "content_block": { "type": "tool_use", "id": "t1", "name": "search_notes", "input": {} } }
+            }),
+            // Input delta chunks
+            serde_json::json!({
+                "type": "stream_event",
+                "event": { "type": "content_block_delta", "delta": { "type": "input_json_delta", "partial_json": "{\"query\":" } }
+            }),
+            serde_json::json!({
+                "type": "stream_event",
+                "event": { "type": "content_block_delta", "delta": { "type": "input_json_delta", "partial_json": "\"test\"}" } }
+            }),
+            // Stop block
+            serde_json::json!({
+                "type": "stream_event",
+                "event": { "type": "content_block_stop" }
+            }),
+            // Assistant message triggers ToolStart with accumulated input
+            serde_json::json!({
+                "type": "assistant",
+                "message": { "content": [
+                    { "type": "tool_use", "id": "t1", "name": "search_notes", "input": { "query": "test" } }
+                ] }
+            }),
+        ]);
+        // First event: ToolStart with no input (from content_block_start)
+        assert!(matches!(&events[0], ClaudeStreamEvent::ToolStart { input: None, .. }));
+        // Second event: ToolStart with accumulated input (from assistant)
+        assert!(
+            matches!(&events[1], ClaudeStreamEvent::ToolStart { input: Some(inp), .. }
+                if inp == "{\"query\":\"test\"}")
+        );
+    }
+
+    #[test]
+    fn dispatch_assistant_uses_block_input_when_no_deltas() {
+        let (_, events) = run_dispatch(serde_json::json!({
+            "type": "assistant",
+            "message": { "content": [
+                { "type": "tool_use", "id": "tu_x", "name": "create_note", "input": { "title": "Hello", "content": "world" } }
+            ] }
+        }));
+        assert!(
+            matches!(&events[0], ClaudeStreamEvent::ToolStart { input: Some(inp), .. }
+                if inp.contains("title") && inp.contains("Hello"))
+        );
+    }
+
+    #[test]
+    fn content_block_stop_clears_current_tool() {
+        let (state, _) = run_dispatch_sequence(vec![
+            serde_json::json!({
+                "type": "stream_event",
+                "event": { "type": "content_block_start", "content_block": { "type": "tool_use", "id": "t1", "name": "x", "input": {} } }
+            }),
+            serde_json::json!({
+                "type": "stream_event",
+                "event": { "type": "content_block_stop" }
+            }),
+        ]);
+        assert!(state.current_tool_id.is_none());
     }
 
     // --- run_claude_subprocess with mock scripts ---
