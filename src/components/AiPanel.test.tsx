@@ -143,11 +143,23 @@ describe('AiPanel', () => {
     vi.useRealTimers()
   })
 
-  it('calls onClose when Escape is pressed in input', () => {
+  it('calls onClose when Escape is pressed while panel has focus', async () => {
+    vi.useFakeTimers()
     const onClose = vi.fn()
     render(<AiPanel onClose={onClose} vaultPath="/tmp/vault" />)
-    const input = screen.getByTestId('agent-input')
-    fireEvent.keyDown(input, { key: 'Escape' })
+    await act(() => { vi.advanceTimersByTime(1) })
+    // Input is focused inside the panel, so Escape should trigger onClose
+    fireEvent.keyDown(document.activeElement!, { key: 'Escape' })
+    expect(onClose).toHaveBeenCalledOnce()
+    vi.useRealTimers()
+  })
+
+  it('calls onClose when Escape is pressed on panel element', () => {
+    const onClose = vi.fn()
+    render(<AiPanel onClose={onClose} vaultPath="/tmp/vault" />)
+    const panel = screen.getByTestId('ai-panel')
+    panel.focus()
+    fireEvent.keyDown(panel, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledOnce()
   })
 })

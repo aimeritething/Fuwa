@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Robot, X, PaperPlaneRight, Plus, Link } from '@phosphor-icons/react'
 import { AiMessage } from './AiMessage'
 import { useAiAgent, type AiAgentMessage } from '../hooks/useAiAgent'
@@ -152,12 +152,7 @@ function InputBar({ input, onInputChange, onSend, onKeyDown, isActive, hasContex
 export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, allContent }: AiPanelProps) {
   const [input, setInput] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => {
-    // Small delay to ensure DOM is ready after panel mount
-    const timer = setTimeout(() => inputRef.current?.focus(), 0)
-    return () => clearTimeout(timer)
-  }, [])
+  const panelRef = useRef<HTMLElement>(null)
 
   const linkedEntries = useMemo(() => {
     if (!activeEntry || !entries) return []
@@ -171,8 +166,32 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
 
   const agent = useAiAgent(vaultPath, contextPrompt)
   const hasContext = !!activeEntry
-
   const isActive = agent.status === 'thinking' || agent.status === 'tool-executing'
+
+  useEffect(() => {
+    const timer = setTimeout(() => inputRef.current?.focus(), 0)
+    return () => clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (isActive) {
+      panelRef.current?.focus()
+    } else {
+      inputRef.current?.focus()
+    }
+  }, [isActive])
+
+  const handleEscape = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && panelRef.current?.contains(document.activeElement)) {
+      e.preventDefault()
+      onClose()
+    }
+  }, [onClose])
+
+  useEffect(() => {
+    window.addEventListener('keydown', handleEscape)
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [handleEscape])
 
   const handleSend = () => {
     if (!input.trim() || isActive) return
@@ -181,11 +200,6 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
-      onClose()
-      return
-    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
       handleSend()
@@ -194,7 +208,10 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
 
   return (
     <aside
+      ref={panelRef}
+      tabIndex={-1}
       className="flex flex-1 flex-col overflow-hidden border-l border-border bg-background text-foreground"
+      style={{ outline: 'none' }}
       data-testid="ai-panel"
     >
       <PanelHeader onClose={onClose} onClear={agent.clearConversation} />
