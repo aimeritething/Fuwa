@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Package, RefreshCw, Sparkles, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, Search, X } from 'lucide-react'
+import { Package, RefreshCw, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, Search, X } from 'lucide-react'
 import type { LastCommitInfo, SyncStatus } from '../types'
 import type { IndexingProgress } from '../hooks/useIndexing'
 import { openExternalUrl } from '../utils/url'
@@ -302,7 +302,6 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
         {indexingProgress && <IndexingBadge progress={indexingProgress} />}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span style={ICON_STYLE}><Sparkles size={13} style={{ color: 'var(--accent-purple)' }} />Claude Sonnet 4</span>
         <span style={ICON_STYLE}><FileText size={13} />{noteCount.toLocaleString()} notes</span>
         {zoomLevel !== 100 && (
           <span
