@@ -461,6 +461,56 @@ fn parse_updated_files(stdout: &str) -> Vec<String> {
         .collect()
 }
 
+/// Resolve a single conflict file by choosing "ours" or "theirs" strategy,
+/// then stage the result.
+pub fn git_resolve_conflict(vault_path: &str, file: &str, strategy: &str) -> Result<(), String> {
+    let vault = Path::new(vault_path);
+
+    let checkout_flag = match strategy {
+        "ours" => "--ours",
+        "theirs" => "--theirs",
+        _ => return Err(format!("Invalid strategy '{}': must be 'ours' or 'theirs'", strategy)),
+    };
+
+    run_git(vault, &["checkout", checkout_flag, "--", file])?;
+    run_git(vault, &["add", "--", file])?;
+
+    Ok(())
+}
+
+/// Commit after all merge conflicts have been resolved.
+pub fn git_commit_conflict_resolution(vault_path: &str) -> Result<String, String> {
+    let vault = Path::new(vault_path);
+
+    // Verify no remaining conflicts
+    let remaining = get_conflict_files(vault_path)?;
+    if !remaining.is_empty() {
+        return Err(format!(
+            "Cannot commit: {} file(s) still have unresolved conflicts",
+            remaining.len()
+        ));
+    }
+
+    let commit = Command::new("git")
+        .args(["commit", "-m", "Resolve merge conflicts"])
+        .current_dir(vault)
+        .output()
+        .map_err(|e| format!("Failed to run git commit: {}", e))?;
+
+    if !commit.status.success() {
+        let stderr = String::from_utf8_lossy(&commit.stderr);
+        let stdout = String::from_utf8_lossy(&commit.stdout);
+        let detail = if stderr.trim().is_empty() {
+            stdout
+        } else {
+            stderr
+        };
+        return Err(format!("git commit failed: {}", detail.trim()));
+    }
+
+    Ok(String::from_utf8_lossy(&commit.stdout).to_string())
+}
+
 /// Push to remote.
 pub fn git_push(vault_path: &str) -> Result<String, String> {
     let vault = Path::new(vault_path);
@@ -1215,6 +1265,111 @@ mod tests {
             parse_github_repo_path("https://gho_abc123@github.com/owner/repo.git"),
             Some("owner/repo".to_string())
         );
+    }
+
+    /// Set up a pair of clones that have a merge conflict on the same file.
+    /// Returns (bare, clone_a, clone_b) where clone_b has an unresolved conflict.
+    fn setup_conflict_pair() -> (TempDir, TempDir, TempDir) {
+        let (bare_dir, clone_a_dir, clone_b_dir) = setup_remote_pair();
+
+        let vp_a = clone_a_dir.path().to_str().unwrap();
+        let vp_b = clone_b_dir.path().to_str().unwrap();
+
+        // A creates the file and pushes
+        fs::write(clone_a_dir.path().join("conflict.md"), "# Original\n").unwrap();
+        git_commit(vp_a, "create conflict.md").unwrap();
+        git_push(vp_a).unwrap();
+
+        // B pulls to get the file
+        git_pull(vp_b).unwrap();
+
+        // A modifies and pushes
+        fs::write(clone_a_dir.path().join("conflict.md"), "# Version A\n").unwrap();
+        git_commit(vp_a, "A's change").unwrap();
+        git_push(vp_a).unwrap();
+
+        // B modifies the same file locally and commits
+        fs::write(clone_b_dir.path().join("conflict.md"), "# Version B\n").unwrap();
+        git_commit(vp_b, "B's change").unwrap();
+
+        // B pulls — this causes a merge conflict
+        let result = git_pull(vp_b).unwrap();
+        assert_eq!(result.status, "conflict");
+
+        (bare_dir, clone_a_dir, clone_b_dir)
+    }
+
+    #[test]
+    fn test_resolve_conflict_ours() {
+        let (_bare, _clone_a, clone_b) = setup_conflict_pair();
+        let vp_b = clone_b.path().to_str().unwrap();
+
+        let conflicts = get_conflict_files(vp_b).unwrap();
+        assert!(conflicts.contains(&"conflict.md".to_string()));
+
+        git_resolve_conflict(vp_b, "conflict.md", "ours").unwrap();
+
+        let remaining = get_conflict_files(vp_b).unwrap();
+        assert!(remaining.is_empty());
+
+        let content = fs::read_to_string(clone_b.path().join("conflict.md")).unwrap();
+        assert_eq!(content, "# Version B\n");
+    }
+
+    #[test]
+    fn test_resolve_conflict_theirs() {
+        let (_bare, _clone_a, clone_b) = setup_conflict_pair();
+        let vp_b = clone_b.path().to_str().unwrap();
+
+        git_resolve_conflict(vp_b, "conflict.md", "theirs").unwrap();
+
+        let remaining = get_conflict_files(vp_b).unwrap();
+        assert!(remaining.is_empty());
+
+        let content = fs::read_to_string(clone_b.path().join("conflict.md")).unwrap();
+        assert_eq!(content, "# Version A\n");
+    }
+
+    #[test]
+    fn test_resolve_conflict_invalid_strategy() {
+        let (_bare, _clone_a, clone_b) = setup_conflict_pair();
+        let vp_b = clone_b.path().to_str().unwrap();
+
+        let result = git_resolve_conflict(vp_b, "conflict.md", "invalid");
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("Invalid strategy"));
+    }
+
+    #[test]
+    fn test_commit_conflict_resolution() {
+        let (_bare, _clone_a, clone_b) = setup_conflict_pair();
+        let vp_b = clone_b.path().to_str().unwrap();
+
+        // Resolve all conflicts first
+        git_resolve_conflict(vp_b, "conflict.md", "ours").unwrap();
+
+        let result = git_commit_conflict_resolution(vp_b);
+        assert!(result.is_ok());
+
+        // Verify the merge commit exists
+        let log = Command::new("git")
+            .args(["log", "--oneline", "-1"])
+            .current_dir(clone_b.path())
+            .output()
+            .unwrap();
+        let log_str = String::from_utf8_lossy(&log.stdout);
+        assert!(log_str.contains("Resolve merge conflicts"));
+    }
+
+    #[test]
+    fn test_commit_conflict_resolution_fails_with_unresolved() {
+        let (_bare, _clone_a, clone_b) = setup_conflict_pair();
+        let vp_b = clone_b.path().to_str().unwrap();
+
+        // Don't resolve — try to commit directly
+        let result = git_commit_conflict_resolution(vp_b);
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("still have unresolved conflicts"));
     }
 
     #[test]

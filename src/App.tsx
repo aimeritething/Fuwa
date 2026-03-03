@@ -28,11 +28,12 @@ import { useGitHistory } from './hooks/useGitHistory'
 import { useUpdater } from './hooks/useUpdater'
 import { useNavigationHistory } from './hooks/useNavigationHistory'
 import { useAutoSync } from './hooks/useAutoSync'
-import { useIndexing } from './hooks/useIndexing'
+import { useConflictResolver } from './hooks/useConflictResolver'
 import { useZoom } from './hooks/useZoom'
 import { useBuildNumber } from './hooks/useBuildNumber'
 import { useOnboarding } from './hooks/useOnboarding'
 import { useThemeManager } from './hooks/useThemeManager'
+import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { UpdateBanner } from './components/UpdateBanner'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
@@ -136,12 +137,37 @@ function App() {
     onVaultUpdated: vault.reloadVault,
     onConflict: (files) => {
       const names = files.map((f) => f.split('/').pop()).join(', ')
-      setToastMessage(`Conflict in ${names} — review needed`)
+      setToastMessage(`Conflict in ${names} — click to resolve`)
     },
     onToast: (msg) => setToastMessage(msg),
   })
 
-  const indexing = useIndexing(resolvedPath)
+  // Ref bridges for conflict resolution callbacks (notes declared below)
+  const openConflictFileRef = useRef<(relativePath: string) => void>(() => {})
+
+  const conflictResolver = useConflictResolver({
+    vaultPath: resolvedPath,
+    onResolved: () => {
+      dialogs.closeConflictResolver()
+      autoSync.resumePull()
+      vault.reloadVault()
+      autoSync.triggerSync()
+    },
+    onToast: (msg) => setToastMessage(msg),
+    onOpenFile: (relativePath) => openConflictFileRef.current(relativePath),
+  })
+
+  const handleOpenConflictResolver = useCallback(() => {
+    if (autoSync.conflictFiles.length === 0) return
+    autoSync.pausePull()
+    conflictResolver.initFiles(autoSync.conflictFiles)
+    dialogs.openConflictResolver()
+  }, [autoSync, conflictResolver, dialogs])
+
+  const handleCloseConflictResolver = useCallback(() => {
+    autoSync.resumePull()
+    dialogs.closeConflictResolver()
+  }, [autoSync, dialogs])
 
   // Ref bridges handleContentChange (created after notes) into useNoteActions.
   // Read at callback time, so it's always current when user presses Cmd+N.
@@ -241,6 +267,18 @@ function App() {
   })
   useEffect(() => { contentChangeRef.current = handleContentChange }, [handleContentChange])
 
+  // Wire conflict file opener now that notes is available
+  useEffect(() => {
+    openConflictFileRef.current = (relativePath: string) => {
+      const fullPath = `${resolvedPath}/${relativePath}`
+      const entry = vault.entries.find(e => e.path === fullPath)
+      if (entry) {
+        notes.handleSelectNote(entry)
+        dialogs.closeConflictResolver()
+      }
+    }
+  }, [resolvedPath, vault.entries, notes, dialogs])
+
   // Wrap handleSave to also persist unsaved notes that have no pending edits (user pressed Cmd+S without typing)
   const handleSave = useCallback(async () => {
     const activeTab = notes.tabs.find(t => t.entry.path === notes.activeTabPath)
@@ -330,7 +368,10 @@ function App() {
     onOpenSettings: dialogs.openSettings,
     onTrashNote: entryActions.handleTrashNote, onRestoreNote: entryActions.handleRestoreNote,
     onArchiveNote: entryActions.handleArchiveNote, onUnarchiveNote: entryActions.handleUnarchiveNote,
-    onCommitPush: commitFlow.openCommitDialog, onSetViewMode: setViewMode,
+    onCommitPush: commitFlow.openCommitDialog,
+    onResolveConflicts: handleOpenConflictResolver,
+    conflictCount: autoSync.conflictFiles.length,
+    onSetViewMode: setViewMode,
     onToggleInspector: () => layout.setInspectorCollapsed(c => !c),
     onToggleDiff: () => diffToggleRef.current(),
     onToggleRawEditor: () => rawToggleRef.current(),
@@ -461,13 +502,24 @@ function App() {
         </div>
       </div>
       <UpdateBanner status={updateStatus} actions={updateActions} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => setSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} onTriggerSync={autoSync.triggerSync} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} indexingProgress={indexing.progress} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => setSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} onTriggerSync={autoSync.triggerSync} onOpenConflictResolver={handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
       <CommandPalette open={dialogs.showCommandPalette} commands={commands} onClose={dialogs.closeCommandPalette} />
       <SearchPanel open={dialogs.showSearch} vaultPath={resolvedPath} entries={vault.entries} onSelectNote={notes.handleSelectNote} onClose={dialogs.closeSearch} />
       <CreateTypeDialog open={dialogs.showCreateTypeDialog} onClose={dialogs.closeCreateType} onCreate={handleCreateType} />
       <CommitDialog open={commitFlow.showCommitDialog} modifiedCount={vault.modifiedFiles.length} onCommit={commitFlow.handleCommitPush} onClose={commitFlow.closeCommitDialog} />
+      <ConflictResolverModal
+        open={dialogs.showConflictResolver}
+        fileStates={conflictResolver.fileStates}
+        allResolved={conflictResolver.allResolved}
+        committing={conflictResolver.committing}
+        error={conflictResolver.error}
+        onResolveFile={conflictResolver.resolveFile}
+        onOpenInEditor={conflictResolver.openInEditor}
+        onCommit={conflictResolver.commitResolution}
+        onClose={handleCloseConflictResolver}
+      />
       <SettingsPanel open={dialogs.showSettings} settings={settings} onSave={saveSettings} onClose={dialogs.closeSettings} themeManager={themeManager} />
       <GitHubVaultModal
         open={dialogs.showGitHubVault}

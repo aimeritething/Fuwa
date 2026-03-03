@@ -18,6 +18,7 @@ interface CommandRegistryConfig {
   activeTabPath: string | null
   entries: VaultEntry[]
   modifiedCount: number
+  conflictCount?: number
 
   onQuickOpen: () => void
   onCreateNote: () => void
@@ -31,6 +32,7 @@ interface CommandRegistryConfig {
   onArchiveNote: (path: string) => void
   onUnarchiveNote: (path: string) => void
   onCommitPush: () => void
+  onResolveConflicts?: () => void
   onSetViewMode: (mode: ViewMode) => void
   onToggleInspector: () => void
   onToggleDiff?: () => void
@@ -180,10 +182,10 @@ export function buildThemeCommands(
 
 export function useCommandRegistry(config: CommandRegistryConfig): CommandAction[] {
   const {
-    activeTabPath, entries, modifiedCount,
+    activeTabPath, entries, modifiedCount, conflictCount,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onSave, onOpenSettings,
     onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
-    onCommitPush, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
+    onCommitPush, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
     activeNoteModified,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onOpenDailyNote, onCloseTab,
@@ -236,6 +238,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
 
       // Git
       { id: 'commit-push', label: 'Commit & Push', group: 'Git', keywords: ['git', 'save', 'sync'], enabled: modifiedCount > 0, execute: onCommitPush },
+      { id: 'resolve-conflicts', label: 'Resolve Conflicts', group: 'Git', keywords: ['conflict', 'merge', 'git', 'sync'], enabled: (conflictCount ?? 0) > 0, execute: () => onResolveConflicts?.() },
       { id: 'view-changes', label: 'View Pending Changes', group: 'Git', keywords: ['modified', 'diff'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'changes' }) },
 
       // View
@@ -257,11 +260,10 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
 
     return cmds
   }, [
-    hasActiveNote, activeTabPath, isArchived, isTrashed, modifiedCount, activeNoteModified,
+    hasActiveNote, activeTabPath, isArchived, isTrashed, modifiedCount, conflictCount, activeNoteModified,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onCreateType, onSave, onOpenSettings,
     onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
-    onCommitPush, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
-    onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
+    onCommitPush, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
     onCheckForUpdates, isUpdating,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onOpenDailyNote, onCloseTab,

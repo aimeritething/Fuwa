@@ -26,6 +26,7 @@ interface StatusBarProps {
   conflictCount?: number
   lastCommitInfo?: LastCommitInfo | null
   onTriggerSync?: () => void
+  onOpenConflictResolver?: () => void
   zoomLevel?: number
   onZoomReset?: () => void
   buildNumber?: string
@@ -192,15 +193,17 @@ function CommitBadge({ info }: { info: LastCommitInfo }) {
   )
 }
 
-function SyncBadge({ status, lastSyncTime, onTriggerSync }: { status: SyncStatus; lastSyncTime: number | null; onTriggerSync?: () => void }) {
+function SyncBadge({ status, lastSyncTime, onTriggerSync, onOpenConflictResolver }: { status: SyncStatus; lastSyncTime: number | null; onTriggerSync?: () => void; onOpenConflictResolver?: () => void }) {
   const SyncIcon = SYNC_ICON_MAP[status] ?? RefreshCw
   const isSyncing = status === 'syncing'
+  const isConflict = status === 'conflict'
+  const handleClick = isConflict ? onOpenConflictResolver : onTriggerSync
   return (
     <span
       role="button"
-      onClick={onTriggerSync}
-      style={{ ...ICON_STYLE, cursor: onTriggerSync ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 3 }}
-      title={isSyncing ? 'Syncing…' : 'Click to sync now'}
+      onClick={handleClick}
+      style={{ ...ICON_STYLE, cursor: handleClick ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 3 }}
+      title={isConflict ? 'Click to resolve conflicts' : isSyncing ? 'Syncing…' : 'Click to sync now'}
       data-testid="status-sync"
     >
       <SyncIcon size={13} style={{ color: syncIconColor(status) }} className={isSyncing ? 'animate-spin' : ''} />{formatSyncLabel(status, lastSyncTime)}
@@ -208,12 +211,20 @@ function SyncBadge({ status, lastSyncTime, onTriggerSync }: { status: SyncStatus
   )
 }
 
-function ConflictBadge({ count }: { count: number }) {
+function ConflictBadge({ count, onClick }: { count: number; onClick?: () => void }) {
   if (count <= 0) return null
   return (
     <>
       <span style={SEP_STYLE}>|</span>
-      <span style={{ ...ICON_STYLE, color: 'var(--destructive, #e03e3e)' }} data-testid="status-conflict-count">
+      <span
+        role="button"
+        onClick={onClick}
+        style={{ ...ICON_STYLE, color: 'var(--destructive, #e03e3e)', cursor: onClick ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
+        title="Resolve merge conflicts"
+        onMouseEnter={onClick ? (e) => { e.currentTarget.style.background = 'var(--hover)' } : undefined}
+        onMouseLeave={onClick ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
+        data-testid="status-conflict-count"
+      >
         <AlertTriangle size={13} />{count} conflict{count > 1 ? 's' : ''}
       </span>
     </>
@@ -270,7 +281,7 @@ function PendingBadge({ count, onClick }: { count: number; onClick?: () => void 
   )
 }
 
-export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, zoomLevel = 100, onZoomReset, buildNumber, indexingProgress, onRemoveVault }: StatusBarProps) {
+export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber }: StatusBarProps) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000)
@@ -284,9 +295,9 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
         <span style={SEP_STYLE}>|</span>
         <span style={ICON_STYLE} data-testid="status-build-number"><Package size={13} />{buildNumber ?? 'b?'}</span>
         <span style={SEP_STYLE}>|</span>
-        <SyncBadge status={syncStatus} lastSyncTime={lastSyncTime} onTriggerSync={onTriggerSync} />
+        <SyncBadge status={syncStatus} lastSyncTime={lastSyncTime} onTriggerSync={onTriggerSync} onOpenConflictResolver={onOpenConflictResolver} />
         {lastCommitInfo && <CommitBadge info={lastCommitInfo} />}
-        <ConflictBadge count={conflictCount} />
+        <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} />
         <PendingBadge count={modifiedCount} onClick={onClickPending} />
         {indexingProgress && <IndexingBadge progress={indexingProgress} />}
       </div>

@@ -8,6 +8,7 @@ export function useDialogs() {
   const [showSettings, setShowSettings] = useState(false)
   const [showGitHubVault, setShowGitHubVault] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
+  const [showConflictResolver, setShowConflictResolver] = useState(false)
 
   const openCreateType = useCallback(() => setShowCreateTypeDialog(true), [])
   const closeCreateType = useCallback(() => setShowCreateTypeDialog(false), [])
@@ -22,6 +23,8 @@ export function useDialogs() {
   const toggleAIChat = useCallback(() => setShowAIChat((c) => !c), [])
   const openSearch = useCallback(() => setShowSearch(true), [])
   const closeSearch = useCallback(() => setShowSearch(false), [])
+  const openConflictResolver = useCallback(() => setShowConflictResolver(true), [])
+  const closeConflictResolver = useCallback(() => setShowConflictResolver(false), [])
 
   return {
     showCreateTypeDialog, openCreateType, closeCreateType,
@@ -31,5 +34,6 @@ export function useDialogs() {
     showSettings, openSettings, closeSettings,
     showGitHubVault, openGitHubVault, closeGitHubVault,
     showSearch, openSearch, closeSearch,
+    showConflictResolver, openConflictResolver, closeConflictResolver,
   }
 }

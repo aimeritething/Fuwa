@@ -23,6 +23,10 @@ export interface AutoSyncState {
   conflictFiles: string[]
   lastCommitInfo: LastCommitInfo | null
   triggerSync: () => void
+  /** Pause auto-pull (e.g. while conflict resolver modal is open). */
+  pausePull: () => void
+  /** Resume auto-pull after pausing. */
+  resumePull: () => void
 }
 
 export function useAutoSync({
@@ -37,11 +41,12 @@ export function useAutoSync({
   const [conflictFiles, setConflictFiles] = useState<string[]>([])
   const [lastCommitInfo, setLastCommitInfo] = useState<LastCommitInfo | null>(null)
   const syncingRef = useRef(false)
+  const pauseRef = useRef(false)
   const callbacksRef = useRef({ onVaultUpdated, onConflict, onToast })
   callbacksRef.current = { onVaultUpdated, onConflict, onToast }
 
   const performPull = useCallback(async () => {
-    if (syncingRef.current) return
+    if (syncingRef.current || pauseRef.current) return
     syncingRef.current = true
     setSyncStatus('syncing')
 
@@ -95,5 +100,8 @@ export function useAutoSync({
     return () => clearInterval(id)
   }, [performPull, intervalMinutes])
 
-  return { syncStatus, lastSyncTime, conflictFiles, lastCommitInfo, triggerSync: performPull }
+  const pausePull = useCallback(() => { pauseRef.current = true }, [])
+  const resumePull = useCallback(() => { pauseRef.current = false }, [])
+
+  return { syncStatus, lastSyncTime, conflictFiles, lastCommitInfo, triggerSync: performPull, pausePull, resumePull }
 }

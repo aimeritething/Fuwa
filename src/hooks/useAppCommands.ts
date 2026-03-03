@@ -31,6 +31,8 @@ interface AppCommandsConfig {
   onArchiveNote: (path: string) => void
   onUnarchiveNote: (path: string) => void
   onCommitPush: () => void
+  onResolveConflicts?: () => void
+  conflictCount?: number
   onSetViewMode: (mode: ViewMode) => void
   onToggleInspector: () => void
   onToggleDiff?: () => void
@@ -139,6 +141,8 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onArchiveNote: config.onArchiveNote,
     onUnarchiveNote: config.onUnarchiveNote,
     onCommitPush: config.onCommitPush,
+    onResolveConflicts: config.onResolveConflicts,
+    conflictCount: config.conflictCount,
     onSetViewMode: config.onSetViewMode,
     onToggleInspector: config.onToggleInspector,
     onToggleDiff: config.onToggleDiff,

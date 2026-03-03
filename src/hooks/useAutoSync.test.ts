@@ -194,6 +194,28 @@ describe('useAutoSync', () => {
     })
   })
 
+  it('skips pull when paused via pausePull', async () => {
+    const { result } = renderSync()
+
+    await waitFor(() => {
+      expect(result.current.syncStatus).toBe('idle')
+    })
+
+    // Pause and clear mocks
+    act(() => { result.current.pausePull() })
+    mockInvokeFn.mockClear()
+
+    // Trigger sync while paused
+    act(() => { result.current.triggerSync() })
+
+    // Should not have called git_pull
+    const pullCalls = mockInvokeFn.mock.calls.filter((c: unknown[]) => c[0] === 'git_pull').length
+    expect(pullCalls).toBe(0)
+
+    // Resume
+    act(() => { result.current.resumePull() })
+  })
+
   it('handles error status from git_pull result', async () => {
     mockInvokeFn.mockImplementation((cmd: string) => {
       if (cmd === 'get_last_commit_info') return Promise.resolve(null)

@@ -134,6 +134,18 @@ fn git_pull(vault_path: String) -> Result<GitPullResult, String> {
 }
 
 #[tauri::command]
+fn git_resolve_conflict(vault_path: String, file: String, strategy: String) -> Result<(), String> {
+    let vault_path = expand_tilde(&vault_path);
+    git::git_resolve_conflict(&vault_path, &file, &strategy)
+}
+
+#[tauri::command]
+fn git_commit_conflict_resolution(vault_path: String) -> Result<String, String> {
+    let vault_path = expand_tilde(&vault_path);
+    git::git_commit_conflict_resolution(&vault_path)
+}
+
+#[tauri::command]
 fn git_push(vault_path: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
     git::git_push(&vault_path)
@@ -603,6 +615,8 @@ pub fn run() {
             get_last_commit_info,
             git_pull,
             git_push,
+            git_resolve_conflict,
+            git_commit_conflict_resolution,
             ai_chat,
             check_claude_cli,
             stream_claude_chat,
