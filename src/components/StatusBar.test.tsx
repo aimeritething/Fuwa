@@ -212,4 +212,59 @@ describe('StatusBar', () => {
     )
     expect(screen.getByTitle('View pending changes')).toBeInTheDocument()
   })
+
+  describe('vault removal', () => {
+    it('shows remove button for each vault when onRemoveVault is provided and multiple vaults exist', () => {
+      render(
+        <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onRemoveVault={vi.fn()} />
+      )
+      fireEvent.click(screen.getByTitle('Switch vault'))
+      expect(screen.getByTestId('vault-menu-remove-Main Vault')).toBeInTheDocument()
+      expect(screen.getByTestId('vault-menu-remove-Work Vault')).toBeInTheDocument()
+    })
+
+    it('does not show remove button when only one vault exists', () => {
+      const singleVault: VaultOption[] = [{ label: 'Only Vault', path: '/only/vault' }]
+      render(
+        <StatusBar noteCount={100} vaultPath="/only/vault" vaults={singleVault} onSwitchVault={vi.fn()} onRemoveVault={vi.fn()} />
+      )
+      fireEvent.click(screen.getByTitle('Switch vault'))
+      expect(screen.queryByTestId('vault-menu-remove-Only Vault')).not.toBeInTheDocument()
+    })
+
+    it('calls onRemoveVault with vault path when remove button is clicked', () => {
+      const onRemoveVault = vi.fn()
+      render(
+        <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onRemoveVault={onRemoveVault} />
+      )
+      fireEvent.click(screen.getByTitle('Switch vault'))
+      fireEvent.click(screen.getByTestId('vault-menu-remove-Work Vault'))
+      expect(onRemoveVault).toHaveBeenCalledWith('/Users/luca/Work')
+    })
+
+    it('closes menu after removing a vault', () => {
+      render(
+        <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onRemoveVault={vi.fn()} />
+      )
+      fireEvent.click(screen.getByTitle('Switch vault'))
+      fireEvent.click(screen.getByTestId('vault-menu-remove-Work Vault'))
+      expect(screen.queryByTestId('vault-menu-remove-Work Vault')).not.toBeInTheDocument()
+    })
+
+    it('remove button has "Remove from list" title for accessibility', () => {
+      render(
+        <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onRemoveVault={vi.fn()} />
+      )
+      fireEvent.click(screen.getByTitle('Switch vault'))
+      expect(screen.getAllByTitle('Remove from list')).toHaveLength(2)
+    })
+
+    it('does not show remove button when onRemoveVault is not provided', () => {
+      render(
+        <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />
+      )
+      fireEvent.click(screen.getByTitle('Switch vault'))
+      expect(screen.queryByTestId('vault-menu-remove-Main Vault')).not.toBeInTheDocument()
+    })
+  })
 })

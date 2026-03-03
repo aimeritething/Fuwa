@@ -55,6 +55,10 @@ interface CommandRegistryConfig {
   onSwitchTheme?: (themeId: string) => void
   onCreateTheme?: () => void
   onOpenTheme?: (themeId: string) => void
+  onRemoveActiveVault?: () => void
+  onRestoreGettingStarted?: () => void
+  isGettingStartedHidden?: boolean
+  vaultCount?: number
 }
 
 const PLURAL_OVERRIDES: Record<string, string> = {
@@ -187,6 +191,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme,
     onCheckForUpdates, isUpdating,
     onCreateType,
+    onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
   } = config
 
   const hasActiveNote = activeTabPath !== null
@@ -242,6 +247,8 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
       // Settings
       { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,', keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
       { id: 'open-vault', label: 'Open Vault…', group: 'Settings', keywords: ['vault', 'folder', 'switch', 'open', 'workspace'], enabled: true, execute: () => onOpenVault?.() },
+      { id: 'remove-vault', label: 'Remove Vault from List', group: 'Settings', keywords: ['vault', 'remove', 'disconnect', 'hide'], enabled: (vaultCount ?? 0) > 1 && !!onRemoveActiveVault, execute: () => onRemoveActiveVault?.() },
+      { id: 'restore-getting-started', label: 'Restore Getting Started Vault', group: 'Settings', keywords: ['vault', 'restore', 'demo', 'getting started', 'reset'], enabled: !!isGettingStartedHidden && !!onRestoreGettingStarted, execute: () => onRestoreGettingStarted?.() },
       { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: !isUpdating, execute: () => onCheckForUpdates?.() },
 
       // Type-aware: "New [Type]" and "List [Type]"
@@ -254,6 +261,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onQuickOpen, onCreateNote, onCreateNoteOfType, onCreateType, onSave, onOpenSettings,
     onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
     onCommitPush, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
+    onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
     onCheckForUpdates, isUpdating,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onOpenDailyNote, onCloseTab,

@@ -59,6 +59,10 @@ interface AppCommandsConfig {
   onToggleAIChat?: () => void
   onCheckForUpdates?: () => void
   isUpdating?: boolean
+  onRemoveActiveVault?: () => void
+  onRestoreGettingStarted?: () => void
+  isGettingStartedHidden?: boolean
+  vaultCount?: number
 }
 
 /** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
@@ -161,6 +165,10 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onToggleAIChat: config.onToggleAIChat,
     onCheckForUpdates: config.onCheckForUpdates,
     isUpdating: config.isUpdating,
+    onRemoveActiveVault: config.onRemoveActiveVault,
+    onRestoreGettingStarted: config.onRestoreGettingStarted,
+    isGettingStartedHidden: config.isGettingStartedHidden,
+    vaultCount: config.vaultCount,
   })
 
   useKeyboardNavigation({

@@ -625,6 +625,93 @@ describe('useCommandRegistry', () => {
       expect(result.current.find(c => c.id === 'open-theme-default')!.enabled).toBe(true)
     })
   })
+
+  describe('vault management commands', () => {
+    it('has remove-vault command in Settings group', () => {
+      const onRemoveActiveVault = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({
+        onRemoveActiveVault, vaultCount: 2,
+      })))
+      const cmd = result.current.find(c => c.id === 'remove-vault')
+      expect(cmd).toBeDefined()
+      expect(cmd!.label).toBe('Remove Vault from List')
+      expect(cmd!.group).toBe('Settings')
+      expect(cmd!.enabled).toBe(true)
+    })
+
+    it('disables remove-vault when only one vault remains', () => {
+      const onRemoveActiveVault = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({
+        onRemoveActiveVault, vaultCount: 1,
+      })))
+      expect(result.current.find(c => c.id === 'remove-vault')!.enabled).toBe(false)
+    })
+
+    it('disables remove-vault when onRemoveActiveVault is not provided', () => {
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ vaultCount: 3 })))
+      expect(result.current.find(c => c.id === 'remove-vault')!.enabled).toBe(false)
+    })
+
+    it('calls onRemoveActiveVault when remove-vault executes', () => {
+      const onRemoveActiveVault = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({
+        onRemoveActiveVault, vaultCount: 2,
+      })))
+      result.current.find(c => c.id === 'remove-vault')!.execute()
+      expect(onRemoveActiveVault).toHaveBeenCalled()
+    })
+
+    it('has restore-getting-started command in Settings group', () => {
+      const onRestoreGettingStarted = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({
+        onRestoreGettingStarted, isGettingStartedHidden: true,
+      })))
+      const cmd = result.current.find(c => c.id === 'restore-getting-started')
+      expect(cmd).toBeDefined()
+      expect(cmd!.label).toBe('Restore Getting Started Vault')
+      expect(cmd!.group).toBe('Settings')
+      expect(cmd!.enabled).toBe(true)
+    })
+
+    it('disables restore-getting-started when vault is not hidden', () => {
+      const onRestoreGettingStarted = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({
+        onRestoreGettingStarted, isGettingStartedHidden: false,
+      })))
+      expect(result.current.find(c => c.id === 'restore-getting-started')!.enabled).toBe(false)
+    })
+
+    it('calls onRestoreGettingStarted when restore command executes', () => {
+      const onRestoreGettingStarted = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({
+        onRestoreGettingStarted, isGettingStartedHidden: true,
+      })))
+      result.current.find(c => c.id === 'restore-getting-started')!.execute()
+      expect(onRestoreGettingStarted).toHaveBeenCalled()
+    })
+
+    it('remove-vault has relevant keywords for discoverability', () => {
+      const onRemoveActiveVault = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({
+        onRemoveActiveVault, vaultCount: 2,
+      })))
+      const cmd = result.current.find(c => c.id === 'remove-vault')
+      expect(cmd!.keywords).toContain('vault')
+      expect(cmd!.keywords).toContain('remove')
+      expect(cmd!.keywords).toContain('disconnect')
+    })
+
+    it('restore-getting-started has relevant keywords for discoverability', () => {
+      const onRestoreGettingStarted = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({
+        onRestoreGettingStarted, isGettingStartedHidden: true,
+      })))
+      const cmd = result.current.find(c => c.id === 'restore-getting-started')
+      expect(cmd!.keywords).toContain('vault')
+      expect(cmd!.keywords).toContain('restore')
+      expect(cmd!.keywords).toContain('demo')
+    })
+  })
 })
 
 describe('pluralizeType', () => {

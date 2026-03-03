@@ -12,6 +12,8 @@ pub struct VaultEntry {
 pub struct VaultList {
     pub vaults: Vec<VaultEntry>,
     pub active_vault: Option<String>,
+    #[serde(default)]
+    pub hidden_defaults: Vec<String>,
 }
 
 fn vault_list_path() -> Result<PathBuf, String> {
@@ -79,6 +81,7 @@ mod tests {
                 },
             ],
             active_vault: Some("/Users/luca/Laputa".to_string()),
+            hidden_defaults: vec![],
         };
         let loaded = save_and_reload(&list);
         assert_eq!(loaded.vaults.len(), 2);
@@ -116,6 +119,7 @@ mod tests {
                 path: "/tmp/test".to_string(),
             }],
             active_vault: None,
+            hidden_defaults: vec![],
         };
         save_at(&path, &list).unwrap();
         assert!(path.exists());
@@ -136,5 +140,35 @@ mod tests {
         let loaded = save_and_reload(&list);
         assert!(loaded.vaults.is_empty());
         assert!(loaded.active_vault.is_none());
+        assert!(loaded.hidden_defaults.is_empty());
+    }
+
+    #[test]
+    fn hidden_defaults_roundtrip() {
+        let list = VaultList {
+            vaults: vec![],
+            active_vault: None,
+            hidden_defaults: vec!["/Users/luca/Documents/Getting Started".to_string()],
+        };
+        let loaded = save_and_reload(&list);
+        assert_eq!(loaded.hidden_defaults.len(), 1);
+        assert_eq!(
+            loaded.hidden_defaults[0],
+            "/Users/luca/Documents/Getting Started"
+        );
+    }
+
+    #[test]
+    fn load_legacy_format_without_hidden_defaults() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("legacy.json");
+        // Simulate old format without hidden_defaults field
+        fs::write(
+            &path,
+            r#"{"vaults":[],"active_vault":null}"#,
+        )
+        .unwrap();
+        let loaded = load_at(&path).unwrap();
+        assert!(loaded.hidden_defaults.is_empty());
     }
 }

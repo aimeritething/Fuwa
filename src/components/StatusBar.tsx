@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Package, RefreshCw, Sparkles, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal } from 'lucide-react'
+import { Package, RefreshCw, Sparkles, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, X } from 'lucide-react'
 import type { LastCommitInfo, SyncStatus } from '../types'
 import { openExternalUrl } from '../utils/url'
 
@@ -28,6 +28,7 @@ interface StatusBarProps {
   zoomLevel?: number
   onZoomReset?: () => void
   buildNumber?: string
+  onRemoveVault?: (path: string) => void
 }
 
 function VaultMenuIcon({ isActive, unavailable }: { isActive: boolean; unavailable: boolean }) {
@@ -46,26 +47,41 @@ function vaultItemStyle(isActive: boolean, unavailable: boolean): React.CSSPrope
   }
 }
 
-function VaultMenuItem({ vault, isActive, onSelect }: { vault: VaultOption; isActive: boolean; onSelect: () => void }) {
+function VaultMenuItem({ vault, isActive, onSelect, onRemove, canRemove }: { vault: VaultOption; isActive: boolean; onSelect: () => void; onRemove?: () => void; canRemove?: boolean }) {
   const unavailable = vault.available === false
   const canHover = !isActive && !unavailable
   return (
     <div
       role="button"
       onClick={unavailable ? undefined : onSelect}
-      style={vaultItemStyle(isActive, unavailable)}
+      style={{ ...vaultItemStyle(isActive, unavailable), justifyContent: 'space-between' }}
       title={unavailable ? `Vault not found: ${vault.path}` : vault.path}
       onMouseEnter={canHover ? (e) => { e.currentTarget.style.background = 'var(--hover)' } : undefined}
       onMouseLeave={canHover ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
       data-testid={`vault-menu-item-${vault.label}`}
     >
-      <VaultMenuIcon isActive={isActive} unavailable={unavailable} />
-      {vault.label}
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <VaultMenuIcon isActive={isActive} unavailable={unavailable} />
+        {vault.label}
+      </span>
+      {canRemove && onRemove && (
+        <span
+          role="button"
+          onClick={(e) => { e.stopPropagation(); onRemove() }}
+          style={{ display: 'flex', alignItems: 'center', padding: 2, borderRadius: 3, cursor: 'pointer', opacity: 0.5 }}
+          title="Remove from list"
+          data-testid={`vault-menu-remove-${vault.label}`}
+          onMouseEnter={e => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.background = 'var(--hover)' }}
+          onMouseLeave={e => { e.currentTarget.style.opacity = '0.5'; e.currentTarget.style.background = 'transparent' }}
+        >
+          <X size={10} />
+        </span>
+      )}
     </div>
   )
 }
 
-function VaultMenu({ vaults, vaultPath, onSwitchVault, onOpenLocalFolder, onConnectGitHub, hasGitHub }: { vaults: VaultOption[]; vaultPath: string; onSwitchVault: (path: string) => void; onOpenLocalFolder?: () => void; onConnectGitHub?: () => void; hasGitHub?: boolean }) {
+function VaultMenu({ vaults, vaultPath, onSwitchVault, onOpenLocalFolder, onConnectGitHub, hasGitHub, onRemoveVault }: { vaults: VaultOption[]; vaultPath: string; onSwitchVault: (path: string) => void; onOpenLocalFolder?: () => void; onConnectGitHub?: () => void; hasGitHub?: boolean; onRemoveVault?: (path: string) => void }) {
   const [open, setOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const activeVault = vaults.find((v) => v.path === vaultPath)
@@ -87,7 +103,7 @@ function VaultMenu({ vaults, vaultPath, onSwitchVault, onOpenLocalFolder, onConn
       </span>
       {open && (
         <div style={{ position: 'absolute', bottom: '100%', left: 0, marginBottom: 4, background: 'var(--sidebar)', border: '1px solid var(--border)', borderRadius: 6, padding: 4, minWidth: 200, boxShadow: '0 4px 12px rgba(0,0,0,0.3)', zIndex: 1000 }}>
-          {vaults.map((v) => <VaultMenuItem key={v.path} vault={v} isActive={v.path === vaultPath} onSelect={() => { onSwitchVault(v.path); setOpen(false) }} />)}
+          {vaults.map((v) => <VaultMenuItem key={v.path} vault={v} isActive={v.path === vaultPath} onSelect={() => { onSwitchVault(v.path); setOpen(false) }} onRemove={() => { onRemoveVault?.(v.path); setOpen(false) }} canRemove={!!onRemoveVault && vaults.length > 1} />)}
           <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
           {onOpenLocalFolder && (
             <div
@@ -220,7 +236,7 @@ function PendingBadge({ count, onClick }: { count: number; onClick?: () => void 
   )
 }
 
-export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, zoomLevel = 100, onZoomReset, buildNumber }: StatusBarProps) {
+export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, zoomLevel = 100, onZoomReset, buildNumber, onRemoveVault }: StatusBarProps) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000)
@@ -230,7 +246,7 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
   return (
     <footer style={{ height: 30, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--sidebar)', borderTop: '1px solid var(--border)', padding: '0 8px', fontSize: 11, color: 'var(--muted-foreground)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <VaultMenu vaults={vaults} vaultPath={vaultPath} onSwitchVault={onSwitchVault} onOpenLocalFolder={onOpenLocalFolder} onConnectGitHub={onConnectGitHub} hasGitHub={hasGitHub} />
+        <VaultMenu vaults={vaults} vaultPath={vaultPath} onSwitchVault={onSwitchVault} onOpenLocalFolder={onOpenLocalFolder} onConnectGitHub={onConnectGitHub} hasGitHub={hasGitHub} onRemoveVault={onRemoveVault} />
         <span style={SEP_STYLE}>|</span>
         <span style={ICON_STYLE} data-testid="status-build-number"><Package size={13} />{buildNumber ?? 'b?'}</span>
         <span style={SEP_STYLE}>|</span>
