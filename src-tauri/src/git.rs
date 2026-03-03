@@ -469,7 +469,12 @@ pub fn git_resolve_conflict(vault_path: &str, file: &str, strategy: &str) -> Res
     let checkout_flag = match strategy {
         "ours" => "--ours",
         "theirs" => "--theirs",
-        _ => return Err(format!("Invalid strategy '{}': must be 'ours' or 'theirs'", strategy)),
+        _ => {
+            return Err(format!(
+                "Invalid strategy '{}': must be 'ours' or 'theirs'",
+                strategy
+            ))
+        }
     };
 
     run_git(vault, &["checkout", checkout_flag, "--", file])?;
@@ -1369,7 +1374,9 @@ mod tests {
         // Don't resolve — try to commit directly
         let result = git_commit_conflict_resolution(vp_b);
         assert!(result.is_err());
-        assert!(result.unwrap_err().contains("still have unresolved conflicts"));
+        assert!(result
+            .unwrap_err()
+            .contains("still have unresolved conflicts"));
     }
 
     #[test]
