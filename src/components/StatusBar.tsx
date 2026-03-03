@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Package, RefreshCw, Sparkles, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, Search } from 'lucide-react'
+import { Package, RefreshCw, Sparkles, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, Search, X } from 'lucide-react'
 import type { LastCommitInfo, SyncStatus } from '../types'
 import type { IndexingProgress } from '../hooks/useIndexing'
 import { openExternalUrl } from '../utils/url'
@@ -30,6 +30,7 @@ interface StatusBarProps {
   onZoomReset?: () => void
   buildNumber?: string
   indexingProgress?: IndexingProgress
+  onRemoveVault?: (path: string) => void
 }
 
 function VaultMenuIcon({ isActive, unavailable }: { isActive: boolean; unavailable: boolean }) {
@@ -269,7 +270,7 @@ function PendingBadge({ count, onClick }: { count: number; onClick?: () => void 
   )
 }
 
-export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, zoomLevel = 100, onZoomReset, buildNumber, indexingProgress }: StatusBarProps) {
+export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, zoomLevel = 100, onZoomReset, buildNumber, indexingProgress, onRemoveVault }: StatusBarProps) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000)
