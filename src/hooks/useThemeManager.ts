@@ -41,11 +41,50 @@ export function extractCssVars(content: string): Record<string, string> {
   return vars
 }
 
+/** Extract bare colors (without -- prefix) for ThemeFile.colors from content. */
+function extractColorsFromContent(content: string): Record<string, string> {
+  const fm = parseFrontmatter(content)
+  const colors: Record<string, string> = {}
+  for (const [key, value] of Object.entries(fm)) {
+    if (NON_THEME_KEYS.has(key)) continue
+    if (typeof value === 'string' && value.startsWith('#')) {
+      colors[key] = value
+    }
+  }
+  return colors
+}
+
+/** Check if a hex color is perceptually dark (luminance < 0.5). */
+export function isColorDark(hex: string): boolean {
+  if (!hex.startsWith('#') || hex.length < 7) return false
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5
+}
+
+/** Update color-scheme and data-theme-mode on document root based on --background. */
+function updateColorScheme(vars: Record<string, string>): void {
+  const bg = vars['--background']
+  if (!bg) return
+  const dark = isColorDark(bg)
+  const root = document.documentElement
+  root.style.setProperty('color-scheme', dark ? 'dark' : 'light')
+  root.dataset.themeMode = dark ? 'dark' : 'light'
+}
+
+function clearColorScheme(): void {
+  const root = document.documentElement
+  root.style.removeProperty('color-scheme')
+  delete root.dataset.themeMode
+}
+
 function applyVarsToDom(vars: Record<string, string>): void {
   const root = document.documentElement
   for (const [key, value] of Object.entries(vars)) {
     root.style.setProperty(key, value)
   }
+  updateColorScheme(vars)
 }
 
 function clearVarsFromDom(vars: Record<string, string>): void {
@@ -53,16 +92,17 @@ function clearVarsFromDom(vars: Record<string, string>): void {
   for (const key of Object.keys(vars)) {
     root.style.removeProperty(key)
   }
+  clearColorScheme()
 }
 
-/** Build a ThemeFile descriptor from a vault entry (metadata only). */
-function entryToThemeFile(entry: VaultEntry): ThemeFile {
+/** Build a ThemeFile descriptor from a vault entry, enriched with content colors. */
+function entryToThemeFile(entry: VaultEntry, content: string | undefined): ThemeFile {
   return {
     id: entry.path,
     name: entry.title,
     description: '',
     path: entry.path,
-    colors: {},
+    colors: content ? extractColorsFromContent(content) : {},
     typography: {},
     spacing: {},
   }
@@ -112,15 +152,17 @@ function useThemeApplier(
   cachedContent: string | undefined,
 ) {
   const appliedVarsRef = useRef<Record<string, string>>({})
+  const [isDark, setIsDark] = useState(false)
 
-  const apply = useCallback((content: string) => {
+  const applyDom = useCallback((content: string) => {
     const newVars = extractCssVars(content)
     clearVarsFromDom(appliedVarsRef.current)
     applyVarsToDom(newVars)
     appliedVarsRef.current = newVars
+    return newVars
   }, [])
 
-  const clear = useCallback(() => {
+  const clearDom = useCallback(() => {
     clearVarsFromDom(appliedVarsRef.current)
     appliedVarsRef.current = {}
   }, [])
@@ -128,14 +170,25 @@ function useThemeApplier(
   // Apply theme when activeThemeId or cached content changes.
   // Also serves as live-preview: re-applies when the user saves the theme note.
   useEffect(() => {
-    if (!activeThemeId) { clear(); return }
-    if (cachedContent) { apply(cachedContent); return }
+    if (!activeThemeId) {
+      clearDom()
+      setIsDark(false) // eslint-disable-line react-hooks/set-state-in-effect -- sync dark mode with cleared theme
+      return
+    }
+    if (cachedContent) {
+      const vars = applyDom(cachedContent)
+      setIsDark(isColorDark(vars['--background'] ?? ''))
+      return
+    }
     tauriCall<string>('get_note_content', { path: activeThemeId })
-      .then(apply)
-      .catch(clear)
-  }, [activeThemeId, cachedContent, apply, clear])
+      .then(content => {
+        const vars = applyDom(content)
+        setIsDark(isColorDark(vars['--background'] ?? ''))
+      })
+      .catch(() => { clearDom(); setIsDark(false) })
+  }, [activeThemeId, cachedContent, applyDom, clearDom])
 
-  return { clear }
+  return { clearDom, isDark }
 }
 
 export function useThemeManager(
@@ -145,17 +198,38 @@ export function useThemeManager(
 ): ThemeManager {
   const { activeThemeId, setActiveThemeId, reload } = useThemeSetting(vaultPath)
   const cachedThemeContent = activeThemeId ? allContent[activeThemeId] : undefined
-  const { clear: clearTheme } = useThemeApplier(activeThemeId, cachedThemeContent)
+  const { clearDom: clearTheme, isDark } = useThemeApplier(activeThemeId, cachedThemeContent)
+
+  // Track IDs set by user actions (switchTheme/createTheme) so the stale-ID
+  // cleanup doesn't clear a newly-created theme that isn't in entries yet.
+  const userSetIdRef = useRef<string | null>(null)
 
   const themes = useMemo(
-    () => entries.filter(e => e.isA === 'Theme' && !e.trashed && !e.archived).map(entryToThemeFile),
-    [entries],
+    () => entries
+      .filter(e => e.isA === 'Theme' && !e.trashed && !e.archived)
+      .map(e => entryToThemeFile(e, allContent[e.path])),
+    [entries, allContent],
   )
 
   const activeTheme = useMemo(
     () => themes.find(t => t.id === activeThemeId) ?? null,
     [themes, activeThemeId],
   )
+
+  // If active theme ID doesn't match any known theme (e.g. stale ID from old
+  // JSON-based theme system), clear it so the app doesn't try to load a
+  // non-existent path. Skip IDs just set by switchTheme/createTheme — the
+  // entry may not have appeared in `entries` yet.
+  useEffect(() => {
+    if (!activeThemeId || themes.length === 0) return
+    if (activeThemeId === userSetIdRef.current) return
+    const isKnown = themes.some(t => t.id === activeThemeId)
+    if (!isKnown) {
+      clearTheme()
+      setActiveThemeId(null)
+      if (vaultPath) tauriCall('set_active_theme', { vaultPath, themeId: null }).catch(() => {})
+    }
+  }, [activeThemeId, themes, clearTheme, vaultPath, setActiveThemeId])
 
   // If active theme is trashed or archived: clear CSS vars and fall back to no theme
   useEffect(() => {
@@ -171,6 +245,7 @@ export function useThemeManager(
     if (!vaultPath) return
     try {
       await tauriCall<null>('set_active_theme', { vaultPath, themeId })
+      userSetIdRef.current = themeId
       setActiveThemeId(themeId)
     } catch (err) { console.error('Failed to switch theme:', err) }
   }, [vaultPath, setActiveThemeId])
@@ -180,24 +255,13 @@ export function useThemeManager(
     try {
       const path = await tauriCall<string>('create_vault_theme', { vaultPath, name: name ?? null })
       await tauriCall<null>('set_active_theme', { vaultPath, themeId: path })
+      userSetIdRef.current = path
       setActiveThemeId(path)
       return path
     } catch (err) { console.error('Failed to create theme:', err); return '' }
   }, [vaultPath, setActiveThemeId])
 
   const reloadThemes = useCallback(async () => { await reload() }, [reload])
-
-  // Determine if the active theme is dark by checking --background CSS variable
-  const isDark = useMemo(() => {
-    if (!activeThemeId || !cachedThemeContent) return false
-    const vars = extractCssVars(cachedThemeContent)
-    const bg = vars['--background'] ?? ''
-    if (!bg.startsWith('#') || bg.length < 7) return false
-    const r = parseInt(bg.slice(1, 3), 16)
-    const g = parseInt(bg.slice(3, 5), 16)
-    const b = parseInt(bg.slice(5, 7), 16)
-    return (0.299 * r + 0.587 * g + 0.114 * b) / 255 < 0.5
-  }, [activeThemeId, cachedThemeContent])
 
   return { themes, activeThemeId, activeTheme, isDark, switchTheme, createTheme, reloadThemes }
 }

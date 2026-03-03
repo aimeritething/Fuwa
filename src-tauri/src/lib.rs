@@ -448,9 +448,9 @@ fn save_vault_settings(vault_path: String, settings: VaultSettings) -> Result<()
 }
 
 #[tauri::command]
-fn set_active_theme(vault_path: String, theme_id: String) -> Result<(), String> {
+fn set_active_theme(vault_path: String, theme_id: Option<String>) -> Result<(), String> {
     let vault_path = expand_tilde(&vault_path);
-    theme::set_active_theme(&vault_path, &theme_id)
+    theme::set_active_theme(&vault_path, theme_id.as_deref())
 }
 
 #[tauri::command]

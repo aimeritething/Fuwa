@@ -349,7 +349,7 @@ function AppearanceSection({ themeManager }: { themeManager: ThemeManager }) {
       <button
         className="border border-border bg-transparent text-muted-foreground rounded cursor-pointer hover:text-foreground hover:border-foreground"
         style={{ fontSize: 12, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 4, alignSelf: 'flex-start' }}
-        onClick={() => createTheme(activeThemeId ?? undefined)}
+        onClick={() => createTheme()}
         type="button"
         data-testid="create-theme"
       >

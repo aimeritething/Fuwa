@@ -98,10 +98,10 @@ pub fn save_vault_settings(vault_path: &str, settings: VaultSettings) -> Result<
         .map_err(|e| format!("Failed to write vault settings: {e}"))
 }
 
-/// Set the active theme in vault settings.
-pub fn set_active_theme(vault_path: &str, theme_id: &str) -> Result<(), String> {
+/// Set the active theme in vault settings. Pass `None` to clear.
+pub fn set_active_theme(vault_path: &str, theme_id: Option<&str>) -> Result<(), String> {
     let mut settings = get_vault_settings(vault_path)?;
-    settings.theme = Some(theme_id.to_string());
+    settings.theme = theme_id.map(|s| s.to_string());
     save_vault_settings(vault_path, settings)
 }
 
@@ -684,9 +684,14 @@ mod tests {
         assert!(settings.theme.is_none());
 
         // Set and read back
-        set_active_theme(vp, "dark").unwrap();
+        set_active_theme(vp, Some("dark")).unwrap();
         let settings = get_vault_settings(vp).unwrap();
         assert_eq!(settings.theme.as_deref(), Some("dark"));
+
+        // Clear theme
+        set_active_theme(vp, None).unwrap();
+        let settings = get_vault_settings(vp).unwrap();
+        assert_eq!(settings.theme, None);
     }
 
     #[test]
