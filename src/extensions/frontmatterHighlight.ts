@@ -1,4 +1,4 @@
-import { ViewPlugin, Decoration, DecorationSet, EditorView } from '@codemirror/view'
+import { ViewPlugin, Decoration, type DecorationSet, EditorView } from '@codemirror/view'
 import { RangeSetBuilder } from '@codemirror/state'
 
 const frontmatterDelimiter = Decoration.mark({ class: 'cm-frontmatter-delimiter' })
