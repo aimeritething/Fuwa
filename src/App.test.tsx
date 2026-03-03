@@ -34,7 +34,7 @@ const mockEntries = [
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 1024,
-    template: null,
+    template: null, sort: null,
     outgoingLinks: [],
   },
   {
@@ -51,7 +51,7 @@ const mockEntries = [
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 256,
-    template: null,
+    template: null, sort: null,
     outgoingLinks: [],
   },
 ]

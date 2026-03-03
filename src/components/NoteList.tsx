@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, memo } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef, memo } from 'react'
 import { useDragRegion } from '../hooks/useDragRegion'
 import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus } from '../types'
@@ -18,6 +18,7 @@ import {
   buildRelationshipGroups, filterEntries,
   relativeDate, getDisplayDate,
   loadSortPreferences, saveSortPreferences,
+  parseSortConfig, serializeSortConfig, clearListSortFromLocalStorage,
 } from '../utils/noteListHelpers'
 
 interface NoteListProps {
@@ -34,6 +35,8 @@ interface NoteListProps {
   onCreateNote: () => void
   onBulkArchive?: (paths: string[]) => void
   onBulkTrash?: (paths: string[]) => void
+  onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
+  updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
 }
 
 function PinnedCard({ entry, typeEntryMap, onClickNote, showDate }: {
@@ -256,11 +259,6 @@ function useNoteListData({ entries, selection, allContent, query, listSort, list
   const isEntityView = selection.kind === 'entity'
   const isTrashView = selection.kind === 'filter' && selection.filter === 'trash'
 
-  const typeDocument = useMemo(() => {
-    if (selection.kind !== 'sectionGroup') return null
-    return entries.find((e) => e.isA === 'Type' && e.title === selection.type) ?? null
-  }, [selection, entries])
-
   const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes)
 
   const searched = useMemo(() => {
@@ -279,14 +277,26 @@ function useNoteListData({ entries, selection, allContent, query, listSort, list
     [isTrashView, searched],
   )
 
-  return { isEntityView, isTrashView, typeDocument, searched, searchedGroups, expiredTrashCount }
+  return { isEntityView, isTrashView, searched, searchedGroups, expiredTrashCount }
+}
+
+// --- Pure helpers ---
+
+const DEFAULT_LIST_CONFIG: SortConfig = { option: 'modified', direction: 'desc' }
+
+function resolveListSortConfig(typeDocument: VaultEntry | null, sortPrefs: Record<string, SortConfig>): SortConfig {
+  if (typeDocument?.sort) {
+    const parsed = parseSortConfig(typeDocument.sort)
+    if (parsed) return parsed
+  }
+  return sortPrefs['__list__'] ?? DEFAULT_LIST_CONFIG
 }
 
 // --- Main component ---
 
 const defaultGetNoteStatus = (): NoteStatus => 'clean'
 
-function NoteListInner({ entries, selection, selectedNote, allContent, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash }: NoteListProps) {
+function NoteListInner({ entries, selection, selectedNote, allContent, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onUpdateTypeSort, updateEntry }: NoteListProps) {
   const [search, setSearch] = useState('')
   const [searchVisible, setSearchVisible] = useState(false)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
@@ -311,9 +321,43 @@ function NoteListInner({ entries, selection, selectedNote, allContent, modifiedF
     [getNoteStatus, modifiedFiles, modifiedPathSet],
   )
 
+  // Resolve the type document for sectionGroup selections (needs to be above sort logic)
+  const typeDocument = useMemo(() => {
+    if (selection.kind !== 'sectionGroup') return null
+    return entries.find((e) => e.isA === 'Type' && e.title === selection.type) ?? null
+  }, [selection, entries])
+
+  // Resolve list sort config: read from type frontmatter for sectionGroup, else localStorage
+  const listConfig = resolveListSortConfig(typeDocument, sortPrefs)
+
+  // Silent migration: if type has no sort in frontmatter but localStorage has __list__, migrate it
+  const migrationDoneRef = useRef<Set<string>>(new Set())
+  useEffect(() => {
+    if (!typeDocument || typeDocument.sort || !onUpdateTypeSort || !updateEntry) return
+    if (migrationDoneRef.current.has(typeDocument.path)) return
+    const lsConfig = sortPrefs['__list__']
+    if (!lsConfig) return
+    migrationDoneRef.current.add(typeDocument.path)
+    const serialized = serializeSortConfig(lsConfig)
+    onUpdateTypeSort(typeDocument.path, 'sort', serialized)
+    updateEntry(typeDocument.path, { sort: serialized })
+    clearListSortFromLocalStorage()
+  }, [typeDocument, sortPrefs, onUpdateTypeSort, updateEntry])
+
   const handleSortChange = useCallback((groupLabel: string, option: SortOption, direction: SortDirection) => {
-    setSortPrefs((prev) => { const next = { ...prev, [groupLabel]: { option, direction } }; saveSortPreferences(next); return next })
-  }, [])
+    if (groupLabel === '__list__' && typeDocument && onUpdateTypeSort && updateEntry) {
+      // Persist sort to type file frontmatter
+      const config: SortConfig = { option, direction }
+      const serialized = serializeSortConfig(config)
+      onUpdateTypeSort(typeDocument.path, 'sort', serialized)
+      updateEntry(typeDocument.path, { sort: serialized })
+      // Clear old localStorage __list__ entry if present (migration cleanup)
+      clearListSortFromLocalStorage()
+    } else {
+      // Relationship group sorts still use localStorage
+      setSortPrefs((prev) => { const next = { ...prev, [groupLabel]: { option, direction } }; saveSortPreferences(next); return next })
+    }
+  }, [typeDocument, onUpdateTypeSort, updateEntry])
 
   const toggleGroup = useCallback((label: string) => {
     setCollapsedGroups((prev) => toggleSetMember(prev, label))
@@ -321,7 +365,6 @@ function NoteListInner({ entries, selection, selectedNote, allContent, modifiedF
 
   const typeEntryMap = useTypeEntryMap(entries)
   const query = search.trim().toLowerCase()
-  const listConfig = sortPrefs['__list__'] ?? { option: 'modified' as SortOption, direction: 'desc' as SortDirection }
 
   // Compute custom properties and derive effective sort before sorting entries
   const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes)
@@ -332,7 +375,7 @@ function NoteListInner({ entries, selection, selectedNote, allContent, modifiedF
     return customProperties.includes(opt.slice('property:'.length)) ? opt : 'modified'
   }, [listConfig.option, customProperties])
   const listDirection = listSort === listConfig.option ? listConfig.direction : 'desc'
-  const { isEntityView, isTrashView, typeDocument, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, allContent, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes })
+  const { isEntityView, isTrashView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, allContent, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes })
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
 
   const noteListKeyboard = useNoteListKeyboard({

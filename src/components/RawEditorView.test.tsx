@@ -11,7 +11,7 @@ function entry(title: string, path = `/vault/note/${title}.md`) {
     cadence: null, archived: false, trashed: false, trashedAt: null,
     modifiedAt: null, createdAt: null, fileSize: 0, snippet: '', wordCount: 0,
     relationships: {}, icon: null, color: null, order: null,
-    sidebarLabel: null, template: null, outgoingLinks: [],
+    sidebarLabel: null, template: null, sort: null, outgoingLinks: [],
     properties: {},
   }
 }

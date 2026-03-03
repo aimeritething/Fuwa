@@ -75,7 +75,7 @@ const mockEntry: VaultEntry = {
   icon: null,
   color: null,
     order: null,
-  template: null,
+  template: null, sort: null,
   outgoingLinks: [],
 }
 

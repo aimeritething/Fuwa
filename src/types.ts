@@ -29,6 +29,8 @@ export interface VaultEntry {
   sidebarLabel: string | null
   /** Markdown template for Type entries. Pre-fills new notes created with this type. */
   template: string | null
+  /** Default sort preference for the note list of this Type. Format: "option:direction". */
+  sort: string | null
   /** All wikilink targets found in the note content. Extracted from [[target]] patterns. */
   outgoingLinks: string[]
   /** Custom scalar frontmatter properties (non-relationship, non-structural). */

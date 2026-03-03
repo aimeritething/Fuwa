@@ -183,6 +183,23 @@ export function getSortComparator(option: SortOption, direction?: SortDirection)
 
 const SORT_STORAGE_KEY = 'laputa-sort-preferences'
 
+/** Serialize a SortConfig to the string format stored in type frontmatter: "option:direction". */
+export function serializeSortConfig(config: SortConfig): string {
+  return `${config.option}:${config.direction}`
+}
+
+/** Parse a frontmatter sort string ("option:direction") back to SortConfig. */
+export function parseSortConfig(raw: string | null | undefined): SortConfig | null {
+  if (!raw) return null
+  // Format: "option:direction" where option itself can contain ":" (e.g. "property:Priority:asc")
+  const lastColon = raw.lastIndexOf(':')
+  if (lastColon <= 0) return null
+  const dir = raw.slice(lastColon + 1)
+  if (dir !== 'asc' && dir !== 'desc') return null
+  const option = raw.slice(0, lastColon) as SortOption
+  return { option, direction: dir }
+}
+
 export function loadSortPreferences(): Record<string, SortConfig> {
   try {
     const raw = localStorage.getItem(SORT_STORAGE_KEY)
@@ -207,6 +224,21 @@ export function loadSortPreferences(): Record<string, SortConfig> {
 export function saveSortPreferences(prefs: Record<string, SortConfig>) {
   try {
     localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(prefs))
+  } catch { /* ignore */ }
+}
+
+/** Remove the `__list__` key from localStorage sort preferences (used during migration). */
+export function clearListSortFromLocalStorage(): void {
+  try {
+    const raw = localStorage.getItem(SORT_STORAGE_KEY)
+    if (!raw) return
+    const parsed = JSON.parse(raw)
+    delete parsed['__list__']
+    if (Object.keys(parsed).length === 0) {
+      localStorage.removeItem(SORT_STORAGE_KEY)
+    } else {
+      localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(parsed))
+    }
   } catch { /* ignore */ }
 }
 

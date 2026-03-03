@@ -72,7 +72,7 @@ export function buildNewEntry({ path, slug, title, type, status }: NewEntryParam
     aliases: [], belongsTo: [], relatedTo: [],
     status, owner: null, cadence: null, archived: false, trashed: false, trashedAt: null,
     modifiedAt: now, createdAt: now, fileSize: 0,
-    snippet: '', wordCount: 0, relationships: {}, icon: null, color: null, order: null, outgoingLinks: [], sidebarLabel: null, template: null, properties: {},
+    snippet: '', wordCount: 0, relationships: {}, icon: null, color: null, order: null, outgoingLinks: [], sidebarLabel: null, template: null, sort: null, properties: {},
   }
 }
 
@@ -148,7 +148,7 @@ const ENTRY_DELETE_MAP: Record<string, Partial<VaultEntry>> = {
   icon: { icon: null }, owner: { owner: null }, cadence: { cadence: null },
   aliases: { aliases: [] }, belongs_to: { belongsTo: [] }, related_to: { relatedTo: [] },
   archived: { archived: false }, trashed: { trashed: false }, order: { order: null },
-  template: { template: null },
+  template: { template: null }, sort: { sort: null },
 }
 
 /** Map a frontmatter key+value to the corresponding VaultEntry field(s). */
@@ -166,6 +166,7 @@ export function frontmatterToEntryPatch(
     archived: { archived: Boolean(value) }, trashed: { trashed: Boolean(value) },
     order: { order: typeof value === 'number' ? value : null },
     template: { template: str },
+    sort: { sort: str },
   }
   return updates[k] ?? {}
 }

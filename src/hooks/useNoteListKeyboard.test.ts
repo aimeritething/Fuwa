@@ -22,7 +22,7 @@ function makeEntry(path: string, title: string): VaultEntry {
     fileSize: 100,
     color: null,
     icon: null,
-    template: null,
+    template: null, sort: null,
     outgoingLinks: [],
     relationships: {},
   }

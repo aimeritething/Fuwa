@@ -68,6 +68,9 @@ pub struct VaultEntry {
     /// Markdown template for notes of this Type. When a new note is created
     /// with this type, the template body is pre-filled after the frontmatter.
     pub template: Option<String>,
+    /// Default sort preference for the note list when viewing instances of this Type.
+    /// Stored as "option:direction" (e.g. "modified:desc", "title:asc", "property:Priority:asc").
+    pub sort: Option<String>,
     /// Word count of the note body (excludes frontmatter and H1 title).
     #[serde(rename = "wordCount")]
     pub word_count: u32,
@@ -118,6 +121,8 @@ struct Frontmatter {
     sidebar_label: Option<String>,
     #[serde(default)]
     template: Option<String>,
+    #[serde(default)]
+    sort: Option<String>,
 }
 
 /// Handles YAML fields that can be either a single string or a list of strings.
@@ -163,6 +168,7 @@ const SKIP_KEYS: &[&str] = &[
     "order",
     "sidebar label",
     "template",
+    "sort",
 ];
 
 /// Extract all wikilink-containing fields from raw YAML frontmatter.
@@ -387,6 +393,7 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
         order: frontmatter.order,
         sidebar_label: frontmatter.sidebar_label,
         template: frontmatter.template,
+        sort: frontmatter.sort,
         word_count,
         outgoing_links,
         properties,
@@ -1181,6 +1188,40 @@ References:
         let content = "---\ntype: Type\ntemplate: \"## Heading\"\n---\n# Project\n";
         let entry = parse_test_entry(&dir, "type/project.md", content);
         assert!(entry.relationships.get("template").is_none());
+    }
+
+    // --- sort field tests ---
+
+    #[test]
+    fn test_parse_sort_from_type_entry() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Type\nsort: \"modified:desc\"\n---\n# Project\n";
+        let entry = parse_test_entry(&dir, "type/project.md", content);
+        assert_eq!(entry.sort, Some("modified:desc".to_string()));
+    }
+
+    #[test]
+    fn test_parse_sort_missing_defaults_to_none() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Type\n---\n# Project\n";
+        let entry = parse_test_entry(&dir, "type/project.md", content);
+        assert_eq!(entry.sort, None);
+    }
+
+    #[test]
+    fn test_sort_not_in_relationships() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Type\nsort: \"title:asc\"\n---\n# Project\n";
+        let entry = parse_test_entry(&dir, "type/project.md", content);
+        assert!(entry.relationships.get("sort").is_none());
+    }
+
+    #[test]
+    fn test_sort_not_in_properties() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Type\nsort: \"title:asc\"\n---\n# Project\n";
+        let entry = parse_test_entry(&dir, "type/project.md", content);
+        assert!(entry.properties.get("sort").is_none());
     }
 
     // --- custom properties tests ---

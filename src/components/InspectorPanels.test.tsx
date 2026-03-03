@@ -30,7 +30,7 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   icon: null,
   color: null,
   order: null,
-  template: null,
+  template: null, sort: null,
   outgoingLinks: [],
   ...overrides,
 })

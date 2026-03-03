@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { formatSubtitle, formatSearchSubtitle, relativeDate, buildRelationshipGroups, getSortComparator, extractSortableProperties, getSortOptionLabel, getDefaultDirection } from './noteListHelpers'
+import { formatSubtitle, formatSearchSubtitle, relativeDate, buildRelationshipGroups, getSortComparator, extractSortableProperties, getSortOptionLabel, getDefaultDirection, parseSortConfig, serializeSortConfig } from './noteListHelpers'
 import type { VaultEntry } from '../types'
 
 function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
@@ -10,7 +10,7 @@ function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
     trashed: false, trashedAt: null,
     modifiedAt: null, createdAt: null, fileSize: 0,
     snippet: '', wordCount: 0, relationships: {},
-    icon: null, color: null, order: null, template: null, outgoingLinks: [],
+    icon: null, color: null, order: null, template: null, sort: null, outgoingLinks: [],
     ...overrides,
   }
 }
@@ -433,5 +433,55 @@ describe('getDefaultDirection', () => {
     expect(getDefaultDirection('title')).toBe('asc')
     expect(getDefaultDirection('status')).toBe('asc')
     expect(getDefaultDirection('property:Priority')).toBe('asc')
+  })
+})
+
+describe('serializeSortConfig', () => {
+  it('serializes a built-in sort config', () => {
+    expect(serializeSortConfig({ option: 'modified', direction: 'desc' })).toBe('modified:desc')
+    expect(serializeSortConfig({ option: 'title', direction: 'asc' })).toBe('title:asc')
+  })
+
+  it('serializes a custom property sort config', () => {
+    expect(serializeSortConfig({ option: 'property:Priority', direction: 'asc' })).toBe('property:Priority:asc')
+  })
+})
+
+describe('parseSortConfig', () => {
+  it('parses a built-in sort config', () => {
+    expect(parseSortConfig('modified:desc')).toEqual({ option: 'modified', direction: 'desc' })
+    expect(parseSortConfig('title:asc')).toEqual({ option: 'title', direction: 'asc' })
+  })
+
+  it('parses a custom property sort config with colon in option', () => {
+    expect(parseSortConfig('property:Priority:asc')).toEqual({ option: 'property:Priority', direction: 'asc' })
+  })
+
+  it('returns null for null/undefined input', () => {
+    expect(parseSortConfig(null)).toBeNull()
+    expect(parseSortConfig(undefined)).toBeNull()
+  })
+
+  it('returns null for empty string', () => {
+    expect(parseSortConfig('')).toBeNull()
+  })
+
+  it('returns null for invalid direction', () => {
+    expect(parseSortConfig('modified:up')).toBeNull()
+  })
+
+  it('returns null for string without colon', () => {
+    expect(parseSortConfig('modified')).toBeNull()
+  })
+
+  it('roundtrips correctly', () => {
+    const configs = [
+      { option: 'modified' as const, direction: 'desc' as const },
+      { option: 'title' as const, direction: 'asc' as const },
+      { option: 'property:Due date' as const, direction: 'desc' as const },
+    ]
+    for (const config of configs) {
+      expect(parseSortConfig(serializeSortConfig(config))).toEqual(config)
+    }
   })
 })
