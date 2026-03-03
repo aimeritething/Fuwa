@@ -28,6 +28,7 @@ import { useGitHistory } from './hooks/useGitHistory'
 import { useUpdater } from './hooks/useUpdater'
 import { useNavigationHistory } from './hooks/useNavigationHistory'
 import { useAutoSync } from './hooks/useAutoSync'
+import { useIndexing } from './hooks/useIndexing'
 import { useZoom } from './hooks/useZoom'
 import { useBuildNumber } from './hooks/useBuildNumber'
 import { useOnboarding } from './hooks/useOnboarding'
@@ -140,6 +141,8 @@ function App() {
     onToast: (msg) => setToastMessage(msg),
   })
 
+  const indexing = useIndexing(resolvedPath)
+
   // Ref bridges handleContentChange (created after notes) into useNoteActions.
   // Read at callback time, so it's always current when user presses Cmd+N.
   const contentChangeRef = useRef<(path: string, content: string) => void>(() => {})
@@ -225,9 +228,15 @@ function App() {
     }
   }, [handleGoBack, handleGoForward])
 
+  const { triggerIncrementalIndex } = indexing
+  const onAfterSave = useCallback(() => {
+    vault.loadModifiedFiles()
+    triggerIncrementalIndex()
+  }, [vault, triggerIncrementalIndex])
+
   const { handleSave: handleSaveRaw, handleContentChange, savePendingForPath, savePending } = useEditorSaveWithLinks({
     updateContent: vault.updateContent, updateEntry: vault.updateEntry,
-    setTabs: notes.setTabs, setToastMessage, onAfterSave: vault.loadModifiedFiles,
+    setTabs: notes.setTabs, setToastMessage, onAfterSave,
     onNotePersisted: vault.clearUnsaved,
   })
   useEffect(() => { contentChangeRef.current = handleContentChange }, [handleContentChange])
@@ -452,7 +461,7 @@ function App() {
         </div>
       </div>
       <UpdateBanner status={updateStatus} actions={updateActions} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => setSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} onTriggerSync={autoSync.triggerSync} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onRemoveVault={vaultSwitcher.removeVault} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => setSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} onTriggerSync={autoSync.triggerSync} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} indexingProgress={indexing.progress} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
       <CommandPalette open={dialogs.showCommandPalette} commands={commands} onClose={dialogs.closeCommandPalette} />

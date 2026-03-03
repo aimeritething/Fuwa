@@ -3,6 +3,7 @@ pub mod claude_cli;
 pub mod frontmatter;
 pub mod git;
 pub mod github;
+pub mod indexing;
 pub mod mcp;
 pub mod menu;
 pub mod search;
@@ -21,6 +22,7 @@ use claude_cli::{AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus, ClaudeS
 use frontmatter::FrontmatterValue;
 use git::{GitCommit, GitPullResult, LastCommitInfo, ModifiedFile};
 use github::{DeviceFlowPollResult, DeviceFlowStart, GitHubUser, GithubRepo};
+use indexing::{IndexStatus, IndexingProgress};
 use search::SearchResponse;
 use settings::Settings;
 use theme::{ThemeFile, VaultSettings};
@@ -341,6 +343,58 @@ async fn search_vault(
         .map_err(|e| format!("Search task failed: {}", e))?
 }
 
+#[tauri::command]
+fn get_index_status(vault_path: String) -> IndexStatus {
+    let vault_path = expand_tilde(&vault_path);
+    indexing::check_index_status(&vault_path)
+}
+
+#[tauri::command]
+async fn start_indexing(app_handle: tauri::AppHandle, vault_path: String) -> Result<(), String> {
+    use tauri::Emitter;
+    let vault_path = expand_tilde(&vault_path).into_owned();
+    tokio::task::spawn_blocking(move || {
+        // Auto-install qmd if not available
+        if indexing::find_qmd_binary().is_none() {
+            let _ = app_handle.emit("indexing-progress", IndexingProgress {
+                phase: "installing".to_string(),
+                current: 0,
+                total: 0,
+                done: false,
+                error: None,
+            });
+            match indexing::auto_install_qmd() {
+                Ok(_) => log::info!("qmd auto-installed successfully"),
+                Err(e) => {
+                    log::warn!("qmd auto-install failed: {e}");
+                    let _ = app_handle.emit("indexing-progress", IndexingProgress {
+                        phase: "error".to_string(),
+                        current: 0,
+                        total: 0,
+                        done: true,
+                        error: Some(format!("qmd not available: {e}")),
+                    });
+                    return Err(e);
+                }
+            }
+        }
+
+        indexing::run_full_index(&vault_path, |progress| {
+            let _ = app_handle.emit("indexing-progress", &progress);
+        })
+    })
+    .await
+    .map_err(|e| format!("Indexing task failed: {e}"))?
+}
+
+#[tauri::command]
+async fn trigger_incremental_index(vault_path: String) -> Result<(), String> {
+    let vault_path = expand_tilde(&vault_path).into_owned();
+    tokio::task::spawn_blocking(move || indexing::run_incremental_update(&vault_path))
+        .await
+        .map_err(|e| format!("Incremental index failed: {e}"))?
+}
+
 struct WsBridgeChild(Mutex<Option<Child>>);
 
 #[tauri::command]
@@ -566,6 +620,9 @@ pub fn run() {
             github_device_flow_poll,
             github_get_user,
             search_vault,
+            get_index_status,
+            start_indexing,
+            trigger_incremental_index,
             create_getting_started_vault,
             check_vault_exists,
             get_default_vault_path,

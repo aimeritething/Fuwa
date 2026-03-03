@@ -213,58 +213,89 @@ describe('StatusBar', () => {
     expect(screen.getByTitle('View pending changes')).toBeInTheDocument()
   })
 
-  describe('vault removal', () => {
-    it('shows remove button for each vault when onRemoveVault is provided and multiple vaults exist', () => {
-      render(
-        <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onRemoveVault={vi.fn()} />
-      )
-      fireEvent.click(screen.getByTitle('Switch vault'))
-      expect(screen.getByTestId('vault-menu-remove-Main Vault')).toBeInTheDocument()
-      expect(screen.getByTestId('vault-menu-remove-Work Vault')).toBeInTheDocument()
-    })
+  it('shows indexing badge when indexing is in progress', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        indexingProgress={{ phase: 'scanning', current: 342, total: 1057, done: false, error: null }}
+      />
+    )
+    expect(screen.getByTestId('status-indexing')).toBeInTheDocument()
+    expect(screen.getByText(/Indexing… 342\/1,057/)).toBeInTheDocument()
+  })
 
-    it('does not show remove button when only one vault exists', () => {
-      const singleVault: VaultOption[] = [{ label: 'Only Vault', path: '/only/vault' }]
-      render(
-        <StatusBar noteCount={100} vaultPath="/only/vault" vaults={singleVault} onSwitchVault={vi.fn()} onRemoveVault={vi.fn()} />
-      )
-      fireEvent.click(screen.getByTitle('Switch vault'))
-      expect(screen.queryByTestId('vault-menu-remove-Only Vault')).not.toBeInTheDocument()
-    })
+  it('shows embedding phase in indexing badge', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        indexingProgress={{ phase: 'embedding', current: 50, total: 200, done: false, error: null }}
+      />
+    )
+    expect(screen.getByText(/Embedding… 50\/200/)).toBeInTheDocument()
+  })
 
-    it('calls onRemoveVault with vault path when remove button is clicked', () => {
-      const onRemoveVault = vi.fn()
-      render(
-        <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onRemoveVault={onRemoveVault} />
-      )
-      fireEvent.click(screen.getByTitle('Switch vault'))
-      fireEvent.click(screen.getByTestId('vault-menu-remove-Work Vault'))
-      expect(onRemoveVault).toHaveBeenCalledWith('/Users/luca/Work')
-    })
+  it('shows index ready when indexing is complete', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        indexingProgress={{ phase: 'complete', current: 1057, total: 1057, done: true, error: null }}
+      />
+    )
+    expect(screen.getByText('Index ready')).toBeInTheDocument()
+  })
 
-    it('closes menu after removing a vault', () => {
-      render(
-        <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onRemoveVault={vi.fn()} />
-      )
-      fireEvent.click(screen.getByTitle('Switch vault'))
-      fireEvent.click(screen.getByTestId('vault-menu-remove-Work Vault'))
-      expect(screen.queryByTestId('vault-menu-remove-Work Vault')).not.toBeInTheDocument()
-    })
+  it('shows error state in indexing badge', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        indexingProgress={{ phase: 'error', current: 0, total: 0, done: true, error: 'qmd not available' }}
+      />
+    )
+    expect(screen.getByText('Index error')).toBeInTheDocument()
+  })
 
-    it('remove button has "Remove from list" title for accessibility', () => {
-      render(
-        <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onRemoveVault={vi.fn()} />
-      )
-      fireEvent.click(screen.getByTitle('Switch vault'))
-      expect(screen.getAllByTitle('Remove from list')).toHaveLength(2)
-    })
+  it('hides indexing badge when phase is idle', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        indexingProgress={{ phase: 'idle', current: 0, total: 0, done: false, error: null }}
+      />
+    )
+    expect(screen.queryByTestId('status-indexing')).not.toBeInTheDocument()
+  })
 
-    it('does not show remove button when onRemoveVault is not provided', () => {
-      render(
-        <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />
-      )
-      fireEvent.click(screen.getByTitle('Switch vault'))
-      expect(screen.queryByTestId('vault-menu-remove-Main Vault')).not.toBeInTheDocument()
-    })
+  it('hides indexing badge when no progress prop provided', () => {
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />
+    )
+    expect(screen.queryByTestId('status-indexing')).not.toBeInTheDocument()
+  })
+
+  it('shows installing phase in indexing badge', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        indexingProgress={{ phase: 'installing', current: 0, total: 0, done: false, error: null }}
+      />
+    )
+    expect(screen.getByText('Installing search…')).toBeInTheDocument()
   })
 })

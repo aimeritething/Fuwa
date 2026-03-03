@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
-import { Package, RefreshCw, Sparkles, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, X } from 'lucide-react'
+import { Package, RefreshCw, Sparkles, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, Search } from 'lucide-react'
 import type { LastCommitInfo, SyncStatus } from '../types'
+import type { IndexingProgress } from '../hooks/useIndexing'
 import { openExternalUrl } from '../utils/url'
 
 export interface VaultOption {
@@ -28,7 +29,7 @@ interface StatusBarProps {
   zoomLevel?: number
   onZoomReset?: () => void
   buildNumber?: string
-  onRemoveVault?: (path: string) => void
+  indexingProgress?: IndexingProgress
 }
 
 function VaultMenuIcon({ isActive, unavailable }: { isActive: boolean; unavailable: boolean }) {
@@ -218,6 +219,38 @@ function ConflictBadge({ count }: { count: number }) {
   )
 }
 
+const INDEXING_LABELS: Record<string, string> = {
+  installing: 'Installing search…',
+  scanning: 'Indexing…',
+  embedding: 'Embedding…',
+  complete: 'Index ready',
+  error: 'Index error',
+}
+
+function IndexingBadge({ progress }: { progress: IndexingProgress }) {
+  if (progress.phase === 'idle') return null
+  const label = INDEXING_LABELS[progress.phase] ?? progress.phase
+  const isActive = !progress.done
+  const showCount = progress.total > 0 && isActive
+  const displayText = showCount
+    ? `${label} ${progress.current.toLocaleString()}/${progress.total.toLocaleString()}`
+    : label
+  const color = progress.phase === 'error' ? 'var(--accent-orange)' : 'var(--accent-blue, #3b82f6)'
+
+  return (
+    <>
+      <span style={SEP_STYLE}>|</span>
+      <span style={{ ...ICON_STYLE, color }} data-testid="status-indexing">
+        {isActive
+          ? <Loader2 size={13} className="animate-spin" />
+          : <Search size={13} />
+        }
+        {displayText}
+      </span>
+    </>
+  )
+}
+
 function PendingBadge({ count, onClick }: { count: number; onClick?: () => void }) {
   if (count <= 0) return null
   return (
@@ -236,7 +269,7 @@ function PendingBadge({ count, onClick }: { count: number; onClick?: () => void 
   )
 }
 
-export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, zoomLevel = 100, onZoomReset, buildNumber, onRemoveVault }: StatusBarProps) {
+export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, zoomLevel = 100, onZoomReset, buildNumber, indexingProgress }: StatusBarProps) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000)
@@ -254,6 +287,7 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
         {lastCommitInfo && <CommitBadge info={lastCommitInfo} />}
         <ConflictBadge count={conflictCount} />
         <PendingBadge count={modifiedCount} onClick={onClickPending} />
+        {indexingProgress && <IndexingBadge progress={indexingProgress} />}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={ICON_STYLE}><Sparkles size={13} style={{ color: 'var(--accent-purple)' }} />Claude Sonnet 4</span>

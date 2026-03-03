@@ -1,3 +1,4 @@
+use crate::indexing;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
@@ -28,31 +29,6 @@ struct QmdResult {
     pub title: String,
     pub snippet: String,
     pub score: f64,
-}
-
-fn find_qmd_binary() -> Option<String> {
-    let candidates = [
-        dirs::home_dir().map(|h| h.join(".bun/bin/qmd").to_string_lossy().to_string()),
-        Some("/usr/local/bin/qmd".to_string()),
-        Some("/opt/homebrew/bin/qmd".to_string()),
-    ];
-    for candidate in candidates.into_iter().flatten() {
-        if Path::new(&candidate).exists() {
-            return Some(candidate);
-        }
-    }
-    // Fallback: try PATH
-    Command::new("which")
-        .arg("qmd")
-        .output()
-        .ok()
-        .and_then(|o| {
-            if o.status.success() {
-                Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
-            } else {
-                None
-            }
-        })
 }
 
 fn qmd_uri_to_vault_path(uri: &str, vault_path: &str) -> String {
@@ -108,7 +84,7 @@ fn detect_collection_name(vault_path: &str) -> String {
 }
 
 fn detect_collection_name_uncached(vault_path: &str) -> String {
-    let qmd_bin = match find_qmd_binary() {
+    let qmd_bin = match indexing::find_qmd_binary() {
         Some(b) => b,
         None => return "laputa".to_string(),
     };
@@ -149,8 +125,8 @@ pub fn search_vault(
 ) -> Result<SearchResponse, String> {
     let start = Instant::now();
 
-    let qmd_bin =
-        find_qmd_binary().ok_or_else(|| "qmd binary not found. Install qmd first.".to_string())?;
+    let qmd_bin = indexing::find_qmd_binary()
+        .ok_or_else(|| "qmd binary not found. Install qmd first.".to_string())?;
 
     let collection = detect_collection_name(vault_path);
 
