@@ -19,6 +19,7 @@ export interface MenuEventHandlers {
   onSearch: () => void
   onGoBack?: () => void
   onGoForward?: () => void
+  onCheckForUpdates?: () => void
   activeTabPathRef: React.MutableRefObject<string | null>
   handleCloseTabRef: React.MutableRefObject<(path: string) => void>
   activeTabPath: string | null
@@ -58,6 +59,7 @@ function dispatchActiveTabEvent(id: string, h: MenuEventHandlers): boolean {
 function dispatchOptionalEvent(id: string, h: MenuEventHandlers): boolean {
   if (id === 'view-go-back') { h.onGoBack?.(); return true }
   if (id === 'view-go-forward') { h.onGoForward?.(); return true }
+  if (id === 'app-check-for-updates') { h.onCheckForUpdates?.(); return true }
   return false
 }
 

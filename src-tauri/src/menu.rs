@@ -23,6 +23,7 @@ const NOTE_TRASH: &str = "note-trash";
 const EDIT_FIND_IN_VAULT: &str = "edit-find-in-vault";
 const VIEW_GO_BACK: &str = "view-go-back";
 const VIEW_GO_FORWARD: &str = "view-go-forward";
+const APP_CHECK_FOR_UPDATES: &str = "app-check-for-updates";
 
 const CUSTOM_IDS: &[&str] = &[
     APP_SETTINGS,
@@ -44,6 +45,7 @@ const CUSTOM_IDS: &[&str] = &[
     VIEW_ZOOM_RESET,
     VIEW_GO_BACK,
     VIEW_GO_FORWARD,
+    APP_CHECK_FOR_UPDATES,
 ];
 
 /// IDs of menu items that should be disabled when no note tab is active.
@@ -56,9 +58,14 @@ fn build_app_menu(app: &App) -> MenuResult {
         .id(APP_SETTINGS)
         .accelerator("CmdOrCtrl+,")
         .build(app)?;
+    let check_updates_item = MenuItemBuilder::new("Check for Updates...")
+        .id(APP_CHECK_FOR_UPDATES)
+        .build(app)?;
 
     Ok(SubmenuBuilder::new(app, "Laputa")
         .about(None)
+        .separator()
+        .item(&check_updates_item)
         .separator()
         .item(&settings_item)
         .separator()
@@ -269,6 +276,7 @@ mod tests {
             "view-zoom-reset",
             "view-go-back",
             "view-go-forward",
+            "app-check-for-updates",
         ];
         for id in &expected {
             assert!(CUSTOM_IDS.contains(id), "missing custom ID: {id}");

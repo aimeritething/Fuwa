@@ -19,6 +19,7 @@ function makeHandlers(): MenuEventHandlers {
     onSearch: vi.fn(),
     onGoBack: vi.fn(),
     onGoForward: vi.fn(),
+    onCheckForUpdates: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
     handleCloseTabRef: { current: vi.fn() } as React.MutableRefObject<(path: string) => void>,
     activeTabPath: '/vault/test.md',
@@ -159,6 +160,12 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('view-go-forward', h)
     expect(h.onGoForward).toHaveBeenCalled()
+  })
+
+  it('app-check-for-updates triggers check for updates', () => {
+    const h = makeHandlers()
+    dispatchMenuEvent('app-check-for-updates', h)
+    expect(h.onCheckForUpdates).toHaveBeenCalled()
   })
 
   it('unknown event ID does nothing', () => {

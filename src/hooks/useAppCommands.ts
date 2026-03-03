@@ -122,6 +122,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onSearch: config.onSearch,
     onGoBack: config.onGoBack,
     onGoForward: config.onGoForward,
+    onCheckForUpdates: config.onCheckForUpdates,
     activeTabPathRef: config.activeTabPathRef,
     handleCloseTabRef: config.handleCloseTabRef,
     activeTabPath: config.activeTabPath,
