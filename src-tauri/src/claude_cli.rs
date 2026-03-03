@@ -746,7 +746,10 @@ mod tests {
             }),
         ]);
         // First event: ToolStart with no input (from content_block_start)
-        assert!(matches!(&events[0], ClaudeStreamEvent::ToolStart { input: None, .. }));
+        assert!(matches!(
+            &events[0],
+            ClaudeStreamEvent::ToolStart { input: None, .. }
+        ));
         // Second event: ToolStart with accumulated input (from assistant)
         assert!(
             matches!(&events[1], ClaudeStreamEvent::ToolStart { input: Some(inp), .. }
