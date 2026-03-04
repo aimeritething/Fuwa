@@ -193,7 +193,11 @@ pub fn check_mcp_status() -> McpStatus {
     }
 
     // Verify the referenced index.js actually exists on disk
-    if let Some(index_js) = entry["args"].as_array().and_then(|a| a.first()).and_then(|v| v.as_str()) {
+    if let Some(index_js) = entry["args"]
+        .as_array()
+        .and_then(|a| a.first())
+        .and_then(|v| v.as_str())
+    {
         if !Path::new(index_js).exists() {
             return McpStatus::NotInstalled;
         }
@@ -381,7 +385,10 @@ mod tests {
         // On CI without Claude it might be NoClaudeCli. Either way it must not panic.
         let status = check_mcp_status();
         assert!(
-            matches!(status, McpStatus::Installed | McpStatus::NotInstalled | McpStatus::NoClaudeCli),
+            matches!(
+                status,
+                McpStatus::Installed | McpStatus::NotInstalled | McpStatus::NoClaudeCli
+            ),
             "unexpected status: {:?}",
             status
         );
