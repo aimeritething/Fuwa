@@ -228,6 +228,7 @@ export const Editor = memo(function Editor({
           allContent={allContent}
           gitHistory={gitHistory}
           vaultPath={vaultPath ?? ''}
+          openTabs={tabs.map(t => t.entry)}
           onToggleInspector={onToggleInspector}
           onToggleAIChat={onToggleAIChat}
           onNavigateWikilink={onNavigateWikilink}

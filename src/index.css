@@ -289,3 +289,26 @@
 .ai-markdown .hljs-attribute { color: #005cc5; }
 .ai-markdown .hljs-deletion { color: #b31d28; background: #ffeef0; }
 .ai-markdown .hljs-meta { color: #6a737d; }
+
+/* --- AI panel working border animation --- */
+
+@keyframes ai-border-pulse {
+  0%, 100% { border-color: var(--accent-blue, #3b82f6); opacity: 1; }
+  50% { border-color: var(--accent-blue, #93c5fd); opacity: 0.6; }
+}
+
+/* --- Typing indicator dots --- */
+
+.typing-dot {
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted-foreground);
+  animation: typing-bounce 1.2s ease-in-out infinite;
+}
+
+@keyframes typing-bounce {
+  0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+  30% { opacity: 1; transform: translateY(-3px); }
+}

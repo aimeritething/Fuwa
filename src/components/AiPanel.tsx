@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Robot, X, PaperPlaneRight, Plus, Link } from '@phosphor-icons/react'
 import { AiMessage } from './AiMessage'
+import { WikilinkChatInput } from './WikilinkChatInput'
 import { useAiAgent, type AiAgentMessage } from '../hooks/useAiAgent'
-import { collectLinkedEntries, buildContextualPrompt } from '../utils/ai-context'
+import { collectLinkedEntries, buildContextSnapshot, type NoteReference } from '../utils/ai-context'
 import type { VaultEntry } from '../types'
 
 export type { AiAgentMessage } from '../hooks/useAiAgent'
@@ -14,6 +15,7 @@ interface AiPanelProps {
   activeEntry?: VaultEntry | null
   entries?: VaultEntry[]
   allContent?: Record<string, string>
+  openTabs?: VaultEntry[]
 }
 
 function PanelHeader({ onClose, onClear }: { onClose: () => void; onClear: () => void }) {
@@ -103,54 +105,9 @@ function MessageHistory({ messages, isActive, onOpenNote, hasContext }: {
   )
 }
 
-function InputBar({ input, onInputChange, onSend, onKeyDown, isActive, hasContext, inputRef }: {
-  input: string; onInputChange: (v: string) => void
-  onSend: () => void; onKeyDown: (e: React.KeyboardEvent) => void
-  isActive: boolean; hasContext: boolean; inputRef: React.RefObject<HTMLInputElement | null>
-}) {
-  const sendDisabled = isActive || !input.trim()
-  return (
-    <div
-      className="flex shrink-0 flex-col border-t border-border"
-      style={{ padding: '8px 12px' }}
-    >
-      <div className="flex items-end gap-2">
-        <input
-          ref={inputRef}
-          value={input}
-          onChange={e => onInputChange(e.target.value)}
-          onKeyDown={onKeyDown}
-          className="flex-1 border border-border bg-transparent text-foreground"
-          style={{
-            fontSize: 13, borderRadius: 8, padding: '8px 10px',
-            outline: 'none', fontFamily: 'inherit',
-          }}
-          placeholder={hasContext ? 'Ask about this note...' : 'Ask the AI agent...'}
-          disabled={isActive}
-          data-testid="agent-input"
-        />
-        <button
-          className="shrink-0 flex items-center justify-center border-none cursor-pointer transition-colors"
-          style={{
-            background: sendDisabled ? 'var(--muted)' : 'var(--primary)',
-            color: sendDisabled ? 'var(--muted-foreground)' : 'white',
-            borderRadius: 8, width: 32, height: 34,
-            cursor: sendDisabled ? 'not-allowed' : 'pointer',
-          }}
-          onClick={onSend}
-          disabled={sendDisabled}
-          title="Send message"
-          data-testid="agent-send"
-        >
-          <PaperPlaneRight size={16} />
-        </button>
-      </div>
-    </div>
-  )
-}
-
-export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, allContent }: AiPanelProps) {
+export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, allContent, openTabs }: AiPanelProps) {
   const [input, setInput] = useState('')
+  const [pendingRefs, setPendingRefs] = useState<NoteReference[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
   const panelRef = useRef<HTMLElement>(null)
 
@@ -160,9 +117,15 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
   }, [activeEntry, entries])
 
   const contextPrompt = useMemo(() => {
-    if (!activeEntry || !allContent) return undefined
-    return buildContextualPrompt(activeEntry, linkedEntries, allContent)
-  }, [activeEntry, linkedEntries, allContent])
+    if (!activeEntry || !allContent || !entries) return undefined
+    return buildContextSnapshot({
+      activeEntry,
+      allContent,
+      openTabs,
+      entries,
+      references: pendingRefs.length > 0 ? pendingRefs : undefined,
+    })
+  }, [activeEntry, allContent, openTabs, entries, pendingRefs])
 
   const agent = useAiAgent(vaultPath, contextPrompt)
   const hasContext = !!activeEntry
@@ -193,26 +156,28 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
     return () => window.removeEventListener('keydown', handleEscape)
   }, [handleEscape])
 
-  const handleSend = () => {
-    if (!input.trim() || isActive) return
-    agent.sendMessage(input)
+  const handleSend = useCallback((text: string, references: NoteReference[]) => {
+    if (!text.trim() || isActive) return
+    setPendingRefs(references)
+    agent.sendMessage(text)
     setInput('')
-  }
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
-    }
-  }
+  }, [isActive, agent])
 
   return (
     <aside
       ref={panelRef}
       tabIndex={-1}
-      className="flex flex-1 flex-col overflow-hidden border-l border-border bg-background text-foreground"
-      style={{ outline: 'none' }}
+      className="flex flex-1 flex-col overflow-hidden bg-background text-foreground"
+      style={{
+        outline: 'none',
+        borderLeft: isActive
+          ? '2px solid var(--accent-blue, #3b82f6)'
+          : '1px solid var(--border)',
+        animation: isActive ? 'ai-border-pulse 2s ease-in-out infinite' : undefined,
+        transition: 'border-color 0.3s ease',
+      }}
       data-testid="ai-panel"
+      data-ai-active={isActive || undefined}
     >
       <PanelHeader onClose={onClose} onClear={agent.clearConversation} />
       {activeEntry && (
@@ -224,15 +189,39 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
         onOpenNote={onOpenNote}
         hasContext={hasContext}
       />
-      <InputBar
-        input={input}
-        onInputChange={setInput}
-        onSend={handleSend}
-        onKeyDown={handleKeyDown}
-        isActive={isActive}
-        hasContext={hasContext}
-        inputRef={inputRef}
-      />
+      <div
+        className="flex shrink-0 flex-col border-t border-border"
+        style={{ padding: '8px 12px' }}
+      >
+        <div className="flex items-end gap-2">
+          <div className="flex-1">
+            <WikilinkChatInput
+              entries={entries ?? []}
+              value={input}
+              onChange={setInput}
+              onSend={handleSend}
+              disabled={isActive}
+              placeholder={hasContext ? 'Ask about this note...' : 'Ask the AI agent...'}
+              inputRef={inputRef}
+            />
+          </div>
+          <button
+            className="shrink-0 flex items-center justify-center border-none cursor-pointer transition-colors"
+            style={{
+              background: (isActive || !input.trim()) ? 'var(--muted)' : 'var(--primary)',
+              color: (isActive || !input.trim()) ? 'var(--muted-foreground)' : 'white',
+              borderRadius: 8, width: 32, height: 34,
+              cursor: (isActive || !input.trim()) ? 'not-allowed' : 'pointer',
+            }}
+            onClick={() => handleSend(input, pendingRefs)}
+            disabled={isActive || !input.trim()}
+            title="Send message"
+            data-testid="agent-send"
+          >
+            <PaperPlaneRight size={16} />
+          </button>
+        </div>
+      </div>
     </aside>
   )
 }

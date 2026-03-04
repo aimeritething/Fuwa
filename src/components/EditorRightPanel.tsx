@@ -12,6 +12,7 @@ interface EditorRightPanelProps {
   allContent: Record<string, string>
   gitHistory: GitCommit[]
   vaultPath: string
+  openTabs?: VaultEntry[]
   onToggleInspector: () => void
   onToggleAIChat?: () => void
   onNavigateWikilink: (target: string) => void
@@ -24,7 +25,7 @@ interface EditorRightPanelProps {
 
 export function EditorRightPanel({
   showAIChat, inspectorCollapsed, inspectorWidth,
-  inspectorEntry, inspectorContent, entries, allContent, gitHistory, vaultPath,
+  inspectorEntry, inspectorContent, entries, allContent, gitHistory, vaultPath, openTabs,
   onToggleInspector, onToggleAIChat, onNavigateWikilink, onViewCommitDiff,
   onUpdateFrontmatter, onDeleteProperty, onAddProperty, onOpenNote,
 }: EditorRightPanelProps) {
@@ -41,6 +42,7 @@ export function EditorRightPanel({
           activeEntry={inspectorEntry}
           entries={entries}
           allContent={allContent}
+          openTabs={openTabs}
         />
       </div>
     )
