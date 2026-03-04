@@ -339,4 +339,59 @@ describe('StatusBar', () => {
     )
     expect(screen.getByText('Installing search…')).toBeInTheDocument()
   })
+
+  it('shows MCP warning badge when status is not_installed', () => {
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="not_installed" />
+    )
+    expect(screen.getByTestId('status-mcp')).toBeInTheDocument()
+    expect(screen.getByTitle('MCP server not installed — click to install')).toBeInTheDocument()
+  })
+
+  it('shows MCP warning badge when status is no_claude_cli', () => {
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="no_claude_cli" />
+    )
+    expect(screen.getByTestId('status-mcp')).toBeInTheDocument()
+    expect(screen.getByTitle('Claude CLI not found — install it first')).toBeInTheDocument()
+  })
+
+  it('hides MCP badge when status is installed', () => {
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="installed" />
+    )
+    expect(screen.queryByTestId('status-mcp')).not.toBeInTheDocument()
+  })
+
+  it('hides MCP badge when status is checking', () => {
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="checking" />
+    )
+    expect(screen.queryByTestId('status-mcp')).not.toBeInTheDocument()
+  })
+
+  it('hides MCP badge when no mcpStatus prop provided', () => {
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />
+    )
+    expect(screen.queryByTestId('status-mcp')).not.toBeInTheDocument()
+  })
+
+  it('calls onInstallMcp when clicking MCP badge with not_installed status', () => {
+    const onInstallMcp = vi.fn()
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="not_installed" onInstallMcp={onInstallMcp} />
+    )
+    fireEvent.click(screen.getByTestId('status-mcp'))
+    expect(onInstallMcp).toHaveBeenCalledOnce()
+  })
+
+  it('does not call onInstallMcp when clicking MCP badge with no_claude_cli status', () => {
+    const onInstallMcp = vi.fn()
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="no_claude_cli" onInstallMcp={onInstallMcp} />
+    )
+    fireEvent.click(screen.getByTestId('status-mcp'))
+    expect(onInstallMcp).not.toHaveBeenCalled()
+  })
 })

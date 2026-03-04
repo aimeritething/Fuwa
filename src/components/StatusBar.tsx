@@ -1,7 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { Package, RefreshCw, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, Search, X } from 'lucide-react'
+import { Package, RefreshCw, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, Search, X, Cpu } from 'lucide-react'
 import type { LastCommitInfo, SyncStatus } from '../types'
 import type { IndexingProgress } from '../hooks/useIndexing'
+import type { McpStatus } from '../hooks/useMcpStatus'
 import { openExternalUrl } from '../utils/url'
 
 export interface VaultOption {
@@ -34,6 +35,8 @@ interface StatusBarProps {
   indexingProgress?: IndexingProgress
   onRetryIndexing?: () => void
   onRemoveVault?: (path: string) => void
+  mcpStatus?: McpStatus
+  onInstallMcp?: () => void
 }
 
 function VaultMenuIcon({ isActive, unavailable }: { isActive: boolean; unavailable: boolean }) {
@@ -291,7 +294,42 @@ function PendingBadge({ count, onClick }: { count: number; onClick?: () => void 
   )
 }
 
-export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber, onCheckForUpdates, indexingProgress, onRetryIndexing, onRemoveVault }: StatusBarProps) {
+const MCP_TOOLTIPS: Record<string, string> = {
+  not_installed: 'MCP server not installed — click to install',
+  no_claude_cli: 'Claude CLI not found — install it first',
+}
+
+function McpBadge({ status, onInstall }: { status: McpStatus; onInstall?: () => void }) {
+  if (status === 'installed' || status === 'checking') return null
+  const tooltip = MCP_TOOLTIPS[status] ?? 'MCP status unknown'
+  const clickable = status === 'not_installed' && !!onInstall
+  return (
+    <>
+      <span style={SEP_STYLE}>|</span>
+      <span
+        role={clickable ? 'button' : undefined}
+        onClick={clickable ? onInstall : undefined}
+        style={{
+          ...ICON_STYLE,
+          color: 'var(--accent-orange)',
+          cursor: clickable ? 'pointer' : 'default',
+          padding: '2px 4px',
+          borderRadius: 3,
+          background: 'transparent',
+        }}
+        title={tooltip}
+        data-testid="status-mcp"
+        onMouseEnter={clickable ? (e) => { e.currentTarget.style.background = 'var(--hover)' } : undefined}
+        onMouseLeave={clickable ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
+      >
+        <Cpu size={13} />MCP
+        <AlertTriangle size={10} style={{ marginLeft: 2 }} />
+      </span>
+    </>
+  )
+}
+
+export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber, onCheckForUpdates, indexingProgress, onRetryIndexing, onRemoveVault, mcpStatus, onInstallMcp }: StatusBarProps) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000)
@@ -318,6 +356,7 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
         <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} />
         <PendingBadge count={modifiedCount} onClick={onClickPending} />
         {indexingProgress && <IndexingBadge progress={indexingProgress} onRetry={onRetryIndexing} />}
+        {mcpStatus && <McpBadge status={mcpStatus} onInstall={onInstallMcp} />}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={ICON_STYLE}><FileText size={13} />{noteCount.toLocaleString()} notes</span>

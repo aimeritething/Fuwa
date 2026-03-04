@@ -19,6 +19,8 @@ interface CommandRegistryConfig {
   entries: VaultEntry[]
   modifiedCount: number
   conflictCount?: number
+  mcpStatus?: string
+  onInstallMcp?: () => void
 
   onQuickOpen: () => void
   onCreateNote: () => void
@@ -193,6 +195,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onCheckForUpdates,
     onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
+    mcpStatus, onInstallMcp,
   } = config
 
   const hasActiveNote = activeTabPath !== null
@@ -252,6 +255,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
       { id: 'remove-vault', label: 'Remove Vault from List', group: 'Settings', keywords: ['vault', 'remove', 'disconnect', 'hide'], enabled: (vaultCount ?? 0) > 1 && !!onRemoveActiveVault, execute: () => onRemoveActiveVault?.() },
       { id: 'restore-getting-started', label: 'Restore Getting Started Vault', group: 'Settings', keywords: ['vault', 'restore', 'demo', 'getting started', 'reset'], enabled: !!isGettingStartedHidden && !!onRestoreGettingStarted, execute: () => onRestoreGettingStarted?.() },
       { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: true, execute: () => onCheckForUpdates?.() },
+      { id: 'install-mcp', label: 'Install MCP Server', group: 'Settings', keywords: ['mcp', 'claude', 'ai', 'tools', 'install'], enabled: mcpStatus === 'not_installed' && !!onInstallMcp, execute: () => onInstallMcp?.() },
 
       // Type-aware: "New [Type]" and "List [Type]"
       ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
@@ -269,5 +273,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onGoBack, onGoForward, canGoBack, canGoForward,
     vaultTypes, themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
+    mcpStatus, onInstallMcp,
   ])
 }

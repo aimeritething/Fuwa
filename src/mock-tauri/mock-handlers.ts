@@ -264,6 +264,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   },
   create_getting_started_vault: () => '/Users/mock/Documents/Getting Started',
   register_mcp_tools: () => 'registered',
+  check_mcp_status: () => 'installed',
   get_index_status: () => ({ available: true, qmd_installed: true, collection_exists: true, indexed_count: 100, embedded_count: 80, pending_embed: 0 }),
   start_indexing: () => null,
   trigger_incremental_index: () => null,

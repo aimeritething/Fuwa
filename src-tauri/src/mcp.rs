@@ -1,5 +1,18 @@
+use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
+
+/// Status of the MCP server installation.
+#[derive(Debug, Serialize, Clone, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum McpStatus {
+    /// MCP is registered in Claude config and server files exist.
+    Installed,
+    /// MCP server files or config are missing but can be installed.
+    NotInstalled,
+    /// Claude CLI is not installed — must install that first.
+    NoClaudeCli,
+}
 
 /// Find the `node` binary path at runtime.
 pub(crate) fn find_node() -> Result<PathBuf, String> {
@@ -142,6 +155,53 @@ fn upsert_mcp_config(config_path: &Path, entry: &serde_json::Value) -> Result<bo
         .map_err(|e| format!("Cannot write {}: {e}", config_path.display()))?;
 
     Ok(was_update)
+}
+
+/// Check whether the MCP server is properly installed and registered.
+///
+/// Returns `Installed` when the laputa entry exists in `~/.claude/mcp.json`
+/// and the referenced index.js file is present. Returns `NoClaudeCli` when
+/// the Claude CLI binary cannot be found. Otherwise returns `NotInstalled`.
+pub fn check_mcp_status() -> McpStatus {
+    // Check Claude CLI first — no point installing MCP if Claude isn't available
+    if crate::claude_cli::find_claude_binary().is_err() {
+        return McpStatus::NoClaudeCli;
+    }
+
+    let config_path = match dirs::home_dir() {
+        Some(h) => h.join(".claude").join("mcp.json"),
+        None => return McpStatus::NotInstalled,
+    };
+
+    if !config_path.exists() {
+        return McpStatus::NotInstalled;
+    }
+
+    let raw = match std::fs::read_to_string(&config_path) {
+        Ok(r) => r,
+        Err(_) => return McpStatus::NotInstalled,
+    };
+
+    let config: serde_json::Value = match serde_json::from_str(&raw) {
+        Ok(c) => c,
+        Err(_) => return McpStatus::NotInstalled,
+    };
+
+    let entry = &config["mcpServers"]["laputa"];
+    if entry.is_null() {
+        return McpStatus::NotInstalled;
+    }
+
+    // Verify the referenced index.js actually exists on disk
+    if let Some(index_js) = entry["args"].as_array().and_then(|a| a.first()).and_then(|v| v.as_str()) {
+        if !Path::new(index_js).exists() {
+            return McpStatus::NotInstalled;
+        }
+    } else {
+        return McpStatus::NotInstalled;
+    }
+
+    McpStatus::Installed
 }
 
 #[cfg(test)]
@@ -313,5 +373,27 @@ mod tests {
         let status = register_mcp_to_configs(&entry, &[]);
         // With empty config list, there were no updates, so status should be "registered"
         assert_eq!(status, "registered");
+    }
+
+    #[test]
+    fn check_mcp_status_returns_valid_variant() {
+        // On a dev machine with Claude CLI and MCP registered, this should be Installed.
+        // On CI without Claude it might be NoClaudeCli. Either way it must not panic.
+        let status = check_mcp_status();
+        assert!(
+            matches!(status, McpStatus::Installed | McpStatus::NotInstalled | McpStatus::NoClaudeCli),
+            "unexpected status: {:?}",
+            status
+        );
+    }
+
+    #[test]
+    fn mcp_status_serializes_to_snake_case() {
+        let json = serde_json::to_string(&McpStatus::Installed).unwrap();
+        assert_eq!(json, r#""installed""#);
+        let json = serde_json::to_string(&McpStatus::NotInstalled).unwrap();
+        assert_eq!(json, r#""not_installed""#);
+        let json = serde_json::to_string(&McpStatus::NoClaudeCli).unwrap();
+        assert_eq!(json, r#""no_claude_cli""#);
     }
 }

@@ -64,6 +64,8 @@ interface AppCommandsConfig {
   onRestoreGettingStarted?: () => void
   isGettingStartedHidden?: boolean
   vaultCount?: number
+  mcpStatus?: string
+  onInstallMcp?: () => void
 }
 
 /** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
@@ -172,6 +174,8 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onRestoreGettingStarted: config.onRestoreGettingStarted,
     isGettingStartedHidden: config.isGettingStartedHidden,
     vaultCount: config.vaultCount,
+    mcpStatus: config.mcpStatus,
+    onInstallMcp: config.onInstallMcp,
   })
 
   useKeyboardNavigation({

@@ -434,6 +434,13 @@ async fn register_mcp_tools(vault_path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+async fn check_mcp_status() -> Result<mcp::McpStatus, String> {
+    tokio::task::spawn_blocking(mcp::check_mcp_status)
+        .await
+        .map_err(|e| format!("MCP status check failed: {e}"))
+}
+
+#[tauri::command]
 fn list_themes(vault_path: String) -> Result<Vec<ThemeFile>, String> {
     let vault_path = expand_tilde(&vault_path);
     theme::list_themes(&vault_path)
@@ -670,6 +677,7 @@ pub fn run() {
             check_vault_exists,
             get_default_vault_path,
             register_mcp_tools,
+            check_mcp_status,
             list_themes,
             get_theme,
             get_vault_settings,
