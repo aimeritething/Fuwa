@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { resolveTarget, collectLinkedEntries, buildContextualPrompt } from './ai-context'
+import { resolveTarget, collectLinkedEntries, buildContextualPrompt, buildContextSnapshot } from './ai-context'
 import type { VaultEntry } from '../types'
 
 const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
@@ -181,5 +181,130 @@ describe('buildContextualPrompt', () => {
     const active = makeEntry({ path: '/vault/a.md', title: 'Alpha' })
     const prompt = buildContextualPrompt(active, [], { '/vault/a.md': 'content' })
     expect(prompt).toContain('AI assistant integrated into Laputa')
+  })
+})
+
+describe('buildContextSnapshot', () => {
+  const active = makeEntry({ path: '/vault/a.md', title: 'Alpha', isA: 'Project', status: 'active', owner: 'Alice' })
+  const entries = [
+    active,
+    makeEntry({ path: '/vault/b.md', title: 'Beta', isA: 'Person' }),
+    makeEntry({ path: '/vault/c.md', title: 'Gamma', isA: 'Note' }),
+  ]
+  const allContent: Record<string, string> = {
+    '/vault/a.md': '# Alpha\nProject content.',
+    '/vault/b.md': '# Beta\nPerson content.',
+    '/vault/c.md': '# Gamma\nNote content.',
+  }
+
+  it('includes activeNote with body and frontmatter', () => {
+    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    expect(result).toContain('Alpha')
+    expect(result).toContain('Project content.')
+    expect(result).toContain('"type": "Project"')
+    expect(result).toContain('"status": "active"')
+    expect(result).toContain('"owner": "Alice"')
+  })
+
+  it('includes system preamble', () => {
+    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    expect(result).toContain('AI assistant integrated into Laputa')
+    expect(result).toContain('Context Snapshot')
+  })
+
+  it('includes vault summary with types and totalNotes', () => {
+    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.vault.totalNotes).toBe(3)
+    expect(json.vault.types).toContain('Project')
+    expect(json.vault.types).toContain('Person')
+    expect(json.vault.types).toContain('Note')
+  })
+
+  it('includes openTabs excluding active note', () => {
+    const tab = makeEntry({ path: '/vault/b.md', title: 'Beta', isA: 'Person' })
+    const result = buildContextSnapshot({
+      activeEntry: active, allContent, entries,
+      openTabs: [active, tab],
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.openTabs).toHaveLength(1)
+    expect(json.openTabs[0].title).toBe('Beta')
+  })
+
+  it('omits openTabs when none besides active', () => {
+    const result = buildContextSnapshot({
+      activeEntry: active, allContent, entries,
+      openTabs: [active],
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.openTabs).toBeUndefined()
+  })
+
+  it('includes noteListFilter when present', () => {
+    const result = buildContextSnapshot({
+      activeEntry: active, allContent, entries,
+      noteListFilter: { type: 'Project', query: 'search' },
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.noteListFilter.type).toBe('Project')
+    expect(json.noteListFilter.query).toBe('search')
+  })
+
+  it('omits noteListFilter when empty', () => {
+    const result = buildContextSnapshot({
+      activeEntry: active, allContent, entries,
+      noteListFilter: { type: null, query: '' },
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.noteListFilter).toBeUndefined()
+  })
+
+  it('includes referencedNotes with bodies', () => {
+    const result = buildContextSnapshot({
+      activeEntry: active, allContent, entries,
+      references: [
+        { title: 'Beta', path: '/vault/b.md', type: 'Person' },
+        { title: 'Gamma', path: '/vault/c.md', type: null },
+      ],
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.referencedNotes).toHaveLength(2)
+    expect(json.referencedNotes[0].title).toBe('Beta')
+    expect(json.referencedNotes[0].body).toContain('Person content.')
+    expect(json.referencedNotes[1].type).toBe('Note') // null fallback
+  })
+
+  it('filters out references with no content', () => {
+    const result = buildContextSnapshot({
+      activeEntry: active, allContent, entries,
+      references: [
+        { title: 'Beta', path: '/vault/b.md', type: 'Person' },
+        { title: 'Missing', path: '/vault/missing.md', type: null },
+      ],
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.referencedNotes).toHaveLength(1)
+    expect(json.referencedNotes[0].title).toBe('Beta')
+  })
+
+  it('omits referencedNotes when no references provided', () => {
+    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.referencedNotes).toBeUndefined()
+  })
+
+  it('includes belongsTo and relatedTo in frontmatter', () => {
+    const entryWithRels = makeEntry({
+      path: '/vault/a.md', title: 'Alpha',
+      belongsTo: ['[[Parent]]'],
+      relatedTo: ['[[Sibling]]'],
+      relationships: { people: ['[[Alice]]'] },
+    })
+    const result = buildContextSnapshot({ activeEntry: entryWithRels, allContent, entries })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.activeNote.frontmatter.belongsTo).toEqual(['[[Parent]]'])
+    expect(json.activeNote.frontmatter.relatedTo).toEqual(['[[Sibling]]'])
+    expect(json.activeNote.frontmatter.relationships).toEqual({ people: ['[[Alice]]'] })
   })
 })
