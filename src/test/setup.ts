@@ -2,6 +2,12 @@ import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
 import { createElement, type ReactNode, type ComponentType } from 'react'
 
+// Suppress undici WebSocket ERR_INVALID_ARG_TYPE in jsdom (jsdom Event ≠ Node Event)
+process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'ERR_INVALID_ARG_TYPE' && err.message?.includes('Event')) return
+  throw err
+})
+
 // Mock scrollIntoView for jsdom (not implemented)
 Element.prototype.scrollIntoView = vi.fn()
 

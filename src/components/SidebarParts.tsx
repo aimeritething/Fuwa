@@ -75,6 +75,7 @@ export interface SectionContentProps {
   onCreateNewType?: () => void
   onContextMenu: (e: React.MouseEvent, type: string) => void
   onToggle: () => void
+  dragHandleProps?: Record<string, unknown>
   isRenaming?: boolean
   renameInitialValue?: string
   onRenameSubmit?: (value: string) => void
@@ -93,7 +94,7 @@ function resolveCreateHandler(type: string, onCreateType?: (type: string) => voi
 
 export function SectionContent({
   group, items, isCollapsed, selection, onSelect, onSelectNote,
-  onCreateType, onCreateNewType, onContextMenu, onToggle,
+  onCreateType, onCreateNewType, onContextMenu, onToggle, dragHandleProps,
   isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel,
 }: SectionContentProps) {
   const { label, type, Icon, customColor } = group
@@ -113,6 +114,7 @@ export function SectionContent({
         onContextMenu={(e) => onContextMenu(e, type)}
         onToggle={onToggle}
         onCreate={(e) => { e.stopPropagation(); onCreate?.() }}
+        dragHandleProps={dragHandleProps}
         isRenaming={isRenaming}
         renameInitialValue={renameInitialValue}
         onRenameSubmit={onRenameSubmit}
@@ -182,11 +184,12 @@ function InlineRenameInput({ initialValue, onSubmit, onCancel }: {
   )
 }
 
-function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive, showCreate, onSelect, onContextMenu, onToggle, onCreate, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
+function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive, showCreate, onSelect, onContextMenu, onToggle, onCreate, dragHandleProps, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
   label: string; type: string; Icon: ComponentType<IconProps>
   sectionColor: string; isCollapsed: boolean; isActive: boolean; showCreate: boolean
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void
   onToggle: () => void; onCreate: (e: React.MouseEvent) => void
+  dragHandleProps?: Record<string, unknown>
   isRenaming?: boolean; renameInitialValue?: string
   onRenameSubmit?: (value: string) => void; onRenameCancel?: () => void
 }) {
@@ -194,6 +197,7 @@ function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive,
     <div
       className={cn("group/section flex cursor-pointer select-none items-center justify-between rounded transition-colors", isActive ? "bg-secondary" : "hover:bg-accent")}
       style={{ padding: '6px 8px 6px 16px', borderRadius: 4, gap: 4 }}
+      {...dragHandleProps}
       onClick={() => {
         if (isRenaming) return
         if (isCollapsed) { onToggle(); onSelect() }

@@ -165,7 +165,7 @@ function SortableSection({ group, sectionProps }: {
   sectionProps: Omit<SectionContentProps, 'group' | 'items' | 'isCollapsed' | 'onToggle' | 'isRenaming' | 'renameInitialValue'>
     & { entries: VaultEntry[]; collapsed: Record<string, boolean>; onToggle: (type: string) => void; renamingType: string | null; renameInitialValue: string }
 }) {
-  const { attributes, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.type })
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.type })
   const items = sectionProps.entries.filter((e) => e.isA === group.type && !e.archived && !e.trashed)
   const isCollapsed = sectionProps.collapsed[group.type] ?? true
   const isRenaming = sectionProps.renamingType === group.type
@@ -178,6 +178,7 @@ function SortableSection({ group, sectionProps }: {
         onSelectNote={sectionProps.onSelectNote} onCreateType={sectionProps.onCreateType}
         onCreateNewType={sectionProps.onCreateNewType} onContextMenu={sectionProps.onContextMenu}
         onToggle={() => sectionProps.onToggle(group.type)}
+        dragHandleProps={listeners}
         isRenaming={isRenaming}
         renameInitialValue={isRenaming ? sectionProps.renameInitialValue : undefined}
         onRenameSubmit={sectionProps.onRenameSubmit}
