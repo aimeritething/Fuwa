@@ -23,29 +23,44 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
+import WebSocket from 'ws'
 import {
   readNote, createNote, searchNotes, appendToNote,
   editNoteFrontmatter, deleteNote, linkNotes, listNotes, vaultContext,
 } from './vault.js'
-import { startUiBridge } from './ws-bridge.js'
 
 const VAULT_PATH = process.env.VAULT_PATH || process.env.HOME + '/Laputa'
 const WS_UI_PORT = parseInt(process.env.WS_UI_PORT || '9711', 10)
+const WS_UI_URL = `ws://localhost:${WS_UI_PORT}`
 
-// Start the UI bridge so stdio-based MCP tools can broadcast UI actions.
-// If the port is already in use (e.g. by the running Laputa app), continue
-// without the bridge — vault tools still work via stdio MCP.
-let uiBridge = null
-startUiBridge(WS_UI_PORT).then((bridge) => {
-  uiBridge = bridge
-})
+// Connect as a WebSocket CLIENT to the UI bridge (run by ws-bridge.js).
+// The bridge relays messages to all other clients (the React frontend).
+let uiSocket = null
+const RECONNECT_INTERVAL_MS = 3000
+
+function connectUiBridge() {
+  try {
+    const ws = new WebSocket(WS_UI_URL)
+    ws.on('open', () => {
+      uiSocket = ws
+      console.error(`[mcp] Connected to UI bridge at ${WS_UI_URL}`)
+    })
+    ws.on('close', () => {
+      uiSocket = null
+      setTimeout(connectUiBridge, RECONNECT_INTERVAL_MS)
+    })
+    ws.on('error', () => {
+      // Silent — bridge may not be running yet, will retry
+    })
+  } catch {
+    setTimeout(connectUiBridge, RECONNECT_INTERVAL_MS)
+  }
+}
+connectUiBridge()
 
 function broadcastUiAction(action, payload) {
-  if (!uiBridge) return
-  const msg = JSON.stringify({ type: 'ui_action', action, ...payload })
-  for (const client of uiBridge.clients) {
-    if (client.readyState === 1) client.send(msg)
-  }
+  if (!uiSocket || uiSocket.readyState !== WebSocket.OPEN) return
+  uiSocket.send(JSON.stringify({ type: 'ui_action', action, ...payload }))
 }
 
 const TOOLS = [
@@ -233,6 +248,7 @@ async function handleCreateNote(args) {
   const frontmatter = {}
   if (args.is_a) frontmatter.is_a = args.is_a
   const absPath = await createNote(VAULT_PATH, args.path, args.title, frontmatter)
+  broadcastUiAction('vault_changed', { path: args.path })
   return { content: [{ type: 'text', text: `Created note at ${absPath}` }] }
 }
 
@@ -246,21 +262,25 @@ async function handleSearchNotes(args) {
 
 async function handleAppendToNote(args) {
   await appendToNote(VAULT_PATH, args.path, args.text)
+  broadcastUiAction('vault_changed', { path: args.path })
   return { content: [{ type: 'text', text: `Appended text to ${args.path}` }] }
 }
 
 async function handleEditFrontmatter(args) {
   const updated = await editNoteFrontmatter(VAULT_PATH, args.path, args.patch)
+  broadcastUiAction('vault_changed', { path: args.path })
   return { content: [{ type: 'text', text: JSON.stringify(updated) }] }
 }
 
 async function handleDeleteNote(args) {
   await deleteNote(VAULT_PATH, args.path)
+  broadcastUiAction('vault_changed', { path: args.path })
   return { content: [{ type: 'text', text: `Deleted ${args.path}` }] }
 }
 
 async function handleLinkNotes(args) {
   const arr = await linkNotes(VAULT_PATH, args.source_path, args.property, args.target_title)
+  broadcastUiAction('vault_changed', { path: args.source_path })
   return { content: [{ type: 'text', text: `${args.property}: [${arr.join(', ')}]` }] }
 }
 
@@ -293,7 +313,7 @@ function handleUiHighlight(args) {
 }
 
 function handleUiSetFilter(args) {
-  broadcastUiAction('set_filter', { type: args.type })
+  broadcastUiAction('set_filter', { filterType: args.type })
   return { content: [{ type: 'text', text: `Filter set to ${args.type}` }] }
 }
 

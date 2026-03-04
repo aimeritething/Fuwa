@@ -7,6 +7,7 @@ let lastWsInstance: MockWebSocket | null = null
 class MockWebSocket {
   onmessage: ((event: MessageEvent) => void) | null = null
   onerror: (() => void) | null = null
+  onclose: (() => void) | null = null
   close = vi.fn()
   url: string
 
@@ -82,10 +83,10 @@ describe('useAiActivity', () => {
     expect(result.current.highlightElement).toBeNull()
   })
 
-  it('ignores non-highlight messages', () => {
+  it('ignores non-ui_action messages', () => {
     const { result } = renderHook(() => useAiActivity())
     act(() => {
-      sendWsMessage({ type: 'ui_action', action: 'other_action' })
+      sendWsMessage({ type: 'other', action: 'highlight', element: 'editor' })
     })
     expect(result.current.highlightElement).toBeNull()
   })
@@ -111,5 +112,58 @@ describe('useAiActivity', () => {
     })
     expect(result.current.highlightElement).toBe('properties')
     expect(result.current.highlightPath).toBeNull()
+  })
+
+  it('calls onOpenNote callback on open_note action', () => {
+    const onOpenNote = vi.fn()
+    renderHook(() => useAiActivity({ onOpenNote }))
+    act(() => {
+      sendWsMessage({ type: 'ui_action', action: 'open_note', path: 'project/foo.md' })
+    })
+    expect(onOpenNote).toHaveBeenCalledWith('project/foo.md')
+  })
+
+  it('calls onOpenTab callback on open_tab action', () => {
+    const onOpenTab = vi.fn()
+    renderHook(() => useAiActivity({ onOpenTab }))
+    act(() => {
+      sendWsMessage({ type: 'ui_action', action: 'open_tab', path: 'note/bar.md' })
+    })
+    expect(onOpenTab).toHaveBeenCalledWith('note/bar.md')
+  })
+
+  it('calls onSetFilter callback on set_filter action', () => {
+    const onSetFilter = vi.fn()
+    renderHook(() => useAiActivity({ onSetFilter }))
+    act(() => {
+      sendWsMessage({ type: 'ui_action', action: 'set_filter', filterType: 'Project' })
+    })
+    expect(onSetFilter).toHaveBeenCalledWith('Project')
+  })
+
+  it('calls onVaultChanged callback on vault_changed action', () => {
+    const onVaultChanged = vi.fn()
+    renderHook(() => useAiActivity({ onVaultChanged }))
+    act(() => {
+      sendWsMessage({ type: 'ui_action', action: 'vault_changed', path: 'note/new.md' })
+    })
+    expect(onVaultChanged).toHaveBeenCalledWith('note/new.md')
+  })
+
+  it('does not call onOpenNote when path is missing', () => {
+    const onOpenNote = vi.fn()
+    renderHook(() => useAiActivity({ onOpenNote }))
+    act(() => {
+      sendWsMessage({ type: 'ui_action', action: 'open_note' })
+    })
+    expect(onOpenNote).not.toHaveBeenCalled()
+  })
+
+  it('reconnects on close after delay', () => {
+    renderHook(() => useAiActivity())
+    const firstWs = lastWsInstance
+    act(() => { firstWs?.onclose?.() })
+    act(() => { vi.advanceTimersByTime(3000) })
+    expect(lastWsInstance).not.toBe(firstWs)
   })
 })

@@ -35,6 +35,7 @@ import { useOnboarding } from './hooks/useOnboarding'
 import { useThemeManager } from './hooks/useThemeManager'
 import { useEditorSaveWithLinks } from './hooks/useEditorSaveWithLinks'
 import { useNavigationGestures } from './hooks/useNavigationGestures'
+import { useAiActivity } from './hooks/useAiActivity'
 import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { UpdateBanner } from './components/UpdateBanner'
 import { invoke } from '@tauri-apps/api/core'
@@ -207,6 +208,22 @@ function App() {
   }, [navHistory, isEntryExists, vault.entries, notes])
 
   useNavigationGestures({ onGoBack: handleGoBack, onGoForward: handleGoForward })
+
+  // MCP UI bridge: react to AI-driven open/highlight/vault-change events
+  const aiActivity = useAiActivity({
+    onOpenNote: (path) => {
+      const entry = vault.entries.find(e => e.path === path || e.path === `${resolvedPath}/${path}`)
+      if (entry) notes.handleSelectNote(entry)
+    },
+    onOpenTab: (path) => {
+      const entry = vault.entries.find(e => e.path === path || e.path === `${resolvedPath}/${path}`)
+      if (entry) notes.handleSelectNote(entry)
+    },
+    onSetFilter: (filterType) => {
+      setSelection({ kind: 'sectionGroup', type: filterType })
+    },
+    onVaultChanged: () => { vault.reloadVault() },
+  })
 
   const { triggerIncrementalIndex } = indexing
   const onAfterSave = useCallback(() => {
@@ -413,13 +430,13 @@ function App() {
         )}
         {noteListVisible && (
           <>
-            <div className="app__note-list" style={{ width: layout.noteListWidth }}>
+            <div className={`app__note-list${aiActivity.highlightElement === 'notelist' ? ' ai-highlight' : ''}`} style={{ width: layout.noteListWidth }}>
               <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} allContent={vault.allContent} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} />
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />
           </>
         )}
-        <div className="app__editor">
+        <div className={`app__editor${aiActivity.highlightElement === 'editor' || aiActivity.highlightElement === 'tab' ? ' ai-highlight' : ''}`}>
           <Editor
             tabs={notes.tabs}
             activeTabPath={notes.activeTabPath}

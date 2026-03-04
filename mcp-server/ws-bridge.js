@@ -50,18 +50,18 @@ function buildFrontmatter(args) {
 const TOOL_HANDLERS = {
   open_note: (args) => readNote(VAULT_PATH, args.path).then(text => ({ content: text })),
   read_note: (args) => readNote(VAULT_PATH, args.path).then(text => ({ content: text })),
-  create_note: (args) => createNote(VAULT_PATH, args.path, args.title, buildFrontmatter(args)),
+  create_note: (args) => createNote(VAULT_PATH, args.path, args.title, buildFrontmatter(args)).then(r => { broadcastUiAction('vault_changed', { path: args.path }); return r }),
   search_notes: (args) => searchNotes(VAULT_PATH, args.query, args.limit),
-  append_to_note: (args) => appendToNote(VAULT_PATH, args.path, args.text).then(() => ({ ok: true })),
-  edit_note_frontmatter: (args) => editNoteFrontmatter(VAULT_PATH, args.path, args.patch),
-  delete_note: (args) => deleteNote(VAULT_PATH, args.path).then(() => ({ ok: true })),
-  link_notes: (args) => linkNotes(VAULT_PATH, args.source_path, args.property, args.target_title),
+  append_to_note: (args) => appendToNote(VAULT_PATH, args.path, args.text).then(() => { broadcastUiAction('vault_changed', { path: args.path }); return { ok: true } }),
+  edit_note_frontmatter: (args) => editNoteFrontmatter(VAULT_PATH, args.path, args.patch).then(r => { broadcastUiAction('vault_changed', { path: args.path }); return r }),
+  delete_note: (args) => deleteNote(VAULT_PATH, args.path).then(() => { broadcastUiAction('vault_changed', { path: args.path }); return { ok: true } }),
+  link_notes: (args) => linkNotes(VAULT_PATH, args.source_path, args.property, args.target_title).then(r => { broadcastUiAction('vault_changed', { path: args.source_path }); return r }),
   list_notes: (args) => listNotes(VAULT_PATH, args.type_filter, args.sort),
   vault_context: () => vaultContext(VAULT_PATH),
   ui_open_note: (args) => { broadcastUiAction('open_note', { path: args.path }); return { ok: true } },
   ui_open_tab: (args) => { broadcastUiAction('open_tab', { path: args.path }); return { ok: true } },
   ui_highlight: (args) => { broadcastUiAction('highlight', { element: args.element, path: args.path }); return { ok: true } },
-  ui_set_filter: (args) => { broadcastUiAction('set_filter', { type: args.type }); return { ok: true } },
+  ui_set_filter: (args) => { broadcastUiAction('set_filter', { filterType: args.type }); return { ok: true } },
 }
 
 async function handleMessage(data) {
@@ -101,8 +101,15 @@ export function startUiBridge(port = WS_UI_PORT) {
 
     httpServer.listen(port, () => {
       const wss = new WebSocketServer({ server: httpServer })
-      wss.on('connection', () => {
+      wss.on('connection', (ws) => {
         console.error(`[ws-bridge] UI client connected on port ${port}`)
+        // Relay: when a client sends a message, broadcast to all OTHER clients.
+        // This allows the MCP stdio server (connected as a client) to reach the frontend.
+        ws.on('message', (raw) => {
+          for (const client of wss.clients) {
+            if (client !== ws && client.readyState === 1) client.send(raw.toString())
+          }
+        })
       })
       uiBridge = wss
       console.error(`[ws-bridge] UI bridge listening on ws://localhost:${port}`)
