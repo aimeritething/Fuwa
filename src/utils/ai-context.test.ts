@@ -294,6 +294,43 @@ describe('buildContextSnapshot', () => {
     expect(json.referencedNotes).toBeUndefined()
   })
 
+  it('includes noteList when provided', () => {
+    const noteList = [
+      { path: '/vault/a.md', title: 'Alpha', type: 'Project' },
+      { path: '/vault/b.md', title: 'Beta', type: 'Person' },
+    ]
+    const result = buildContextSnapshot({
+      activeEntry: active, allContent, entries,
+      noteList,
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.noteList).toHaveLength(2)
+    expect(json.noteList[0].title).toBe('Alpha')
+    expect(json.noteList[1].type).toBe('Person')
+  })
+
+  it('truncates noteList at 100 items', () => {
+    const noteList = Array.from({ length: 150 }, (_, i) => ({
+      path: `/vault/note-${i}.md`, title: `Note ${i}`, type: 'Note',
+    }))
+    const result = buildContextSnapshot({
+      activeEntry: active, allContent, entries,
+      noteList,
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.noteList).toHaveLength(100)
+    expect(json.noteListTruncated).toEqual({ shown: 100, total: 150 })
+  })
+
+  it('omits noteList when empty', () => {
+    const result = buildContextSnapshot({
+      activeEntry: active, allContent, entries,
+      noteList: [],
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.noteList).toBeUndefined()
+  })
+
   it('includes belongsTo and relatedTo in frontmatter', () => {
     const entryWithRels = makeEntry({
       path: '/vault/a.md', title: 'Alpha',

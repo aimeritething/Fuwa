@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { CaretRight, CaretDown, Brain, ArrowCounterClockwise } from '@phosphor-icons/react'
 import { AiActionCard, type AiActionStatus } from './AiActionCard'
 import { MarkdownContent } from './MarkdownContent'
+import type { NoteReference } from '../utils/ai-context'
+import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 
 export interface AiAction {
   tool: string
@@ -15,6 +17,7 @@ export interface AiAction {
 
 export interface AiMessageProps {
   userMessage: string
+  references?: NoteReference[]
   reasoning?: string
   reasoningDone?: boolean
   actions: AiAction[]
@@ -23,7 +26,38 @@ export interface AiMessageProps {
   onOpenNote?: (path: string) => void
 }
 
-function UserBubble({ content }: { content: string }) {
+function ReferencePill({ reference, onClick }: {
+  reference: NoteReference
+  onClick?: (path: string) => void
+}) {
+  const color = getTypeColor(reference.type)
+  const lightColor = getTypeLightColor(reference.type)
+  return (
+    <button
+      className="inline-flex items-center border-none cursor-pointer transition-opacity hover:opacity-80"
+      style={{
+        background: lightColor,
+        color,
+        borderRadius: 9999,
+        padding: '1px 8px',
+        fontSize: 11,
+        fontWeight: 500,
+        fontFamily: 'inherit',
+        lineHeight: 1.4,
+      }}
+      onClick={() => onClick?.(reference.path)}
+      data-testid="message-reference-pill"
+    >
+      {reference.title}
+    </button>
+  )
+}
+
+function UserBubble({ content, references, onOpenNote }: {
+  content: string
+  references?: NoteReference[]
+  onOpenNote?: (path: string) => void
+}) {
   return (
     <div className="flex justify-end" style={{ marginBottom: 8 }}>
       <div
@@ -37,6 +71,13 @@ function UserBubble({ content }: { content: string }) {
           lineHeight: 1.5,
         }}
       >
+        {references && references.length > 0 && (
+          <div className="flex flex-wrap gap-1" style={{ marginBottom: 4 }}>
+            {references.map(ref => (
+              <ReferencePill key={ref.path} reference={ref} onClick={onOpenNote} />
+            ))}
+          </div>
+        )}
         {content}
       </div>
     </div>
@@ -134,7 +175,7 @@ function StreamingIndicator() {
   )
 }
 
-export function AiMessage({ userMessage, reasoning, reasoningDone, actions, response, isStreaming, onOpenNote }: AiMessageProps) {
+export function AiMessage({ userMessage, references, reasoning, reasoningDone, actions, response, isStreaming, onOpenNote }: AiMessageProps) {
   // Manual override: null = follow auto behavior, true/false = user forced
   const [userOverride, setUserOverride] = useState(false)
   const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set())
@@ -155,7 +196,7 @@ export function AiMessage({ userMessage, reasoning, reasoningDone, actions, resp
 
   return (
     <div data-testid="ai-message" style={{ marginBottom: 16 }}>
-      <UserBubble content={userMessage} />
+      <UserBubble content={userMessage} references={references} onOpenNote={onOpenNote} />
       {reasoning && (
         <ReasoningBlock
           text={reasoning}

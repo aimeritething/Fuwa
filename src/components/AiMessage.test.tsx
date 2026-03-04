@@ -102,6 +102,47 @@ describe('AiMessage', () => {
     expect(screen.queryByTestId('ai-action-card')).toBeNull()
   })
 
+  it('renders reference pills in user bubble', () => {
+    render(
+      <AiMessage
+        userMessage="Tell me about this"
+        references={[
+          { title: 'Marco', path: 'person/marco.md', type: 'Person' },
+          { title: 'Project X', path: 'project/x.md', type: 'Project' },
+        ]}
+        actions={[]}
+      />,
+    )
+    const pills = screen.getAllByTestId('message-reference-pill')
+    expect(pills).toHaveLength(2)
+    expect(pills[0].textContent).toBe('Marco')
+    expect(pills[1].textContent).toBe('Project X')
+  })
+
+  it('does not render pills when no references', () => {
+    render(<AiMessage userMessage="Hello" actions={[]} />)
+    expect(screen.queryAllByTestId('message-reference-pill')).toHaveLength(0)
+  })
+
+  it('does not render pills when references array is empty', () => {
+    render(<AiMessage userMessage="Hello" references={[]} actions={[]} />)
+    expect(screen.queryAllByTestId('message-reference-pill')).toHaveLength(0)
+  })
+
+  it('calls onOpenNote when a reference pill is clicked', () => {
+    const onOpenNote = vi.fn()
+    render(
+      <AiMessage
+        userMessage="Check this"
+        references={[{ title: 'Alpha', path: 'note/alpha.md', type: 'Note' }]}
+        actions={[]}
+        onOpenNote={onOpenNote}
+      />,
+    )
+    fireEvent.click(screen.getByTestId('message-reference-pill'))
+    expect(onOpenNote).toHaveBeenCalledWith('note/alpha.md')
+  })
+
   it('expands and collapses action cards independently', () => {
     render(
       <AiMessage

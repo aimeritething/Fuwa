@@ -9,6 +9,7 @@
  */
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { AiAction } from '../components/AiMessage'
+import type { NoteReference } from '../utils/ai-context'
 import { streamClaudeAgent, buildAgentSystemPrompt } from '../utils/ai-agent'
 import { nextMessageId } from '../utils/ai-chat'
 
@@ -16,6 +17,7 @@ export type AgentStatus = 'idle' | 'thinking' | 'tool-executing' | 'done' | 'err
 
 export interface AiAgentMessage {
   userMessage: string
+  references?: NoteReference[]
   reasoning?: string
   reasoningDone?: boolean
   actions: AiAction[]
@@ -34,12 +36,14 @@ export function useAiAgent(vaultPath: string, contextPrompt?: string) {
     contextRef.current = contextPrompt
   }, [contextPrompt])
 
-  const sendMessage = useCallback(async (text: string) => {
+  const sendMessage = useCallback(async (text: string, references?: NoteReference[]) => {
     if (!text.trim() || status === 'thinking' || status === 'tool-executing') return
+
+    const refs = references && references.length > 0 ? references : undefined
 
     if (!vaultPath) {
       setMessages(prev => [...prev, {
-        userMessage: text.trim(), actions: [],
+        userMessage: text.trim(), references: refs, actions: [],
         response: 'No vault loaded. Open a vault first.',
         id: nextMessageId(),
       }])
@@ -51,7 +55,7 @@ export function useAiAgent(vaultPath: string, contextPrompt?: string) {
 
     const messageId = nextMessageId()
     setMessages(prev => [...prev, {
-      userMessage: text.trim(), actions: [], isStreaming: true, id: messageId,
+      userMessage: text.trim(), references: refs, actions: [], isStreaming: true, id: messageId,
     }])
     setStatus('thinking')
 

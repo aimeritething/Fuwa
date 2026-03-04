@@ -5,6 +5,7 @@ import { useCreateBlockNote } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
 import { uploadImageFile } from '../hooks/useImageDrop'
 import type { VaultEntry, GitCommit, NoteStatus } from '../types'
+import type { NoteListItem } from '../utils/ai-context'
 import type { FrontmatterValue } from './Inspector'
 import { ResizeHandle } from './ResizeHandle'
 import { TabBar } from './TabBar'
@@ -48,6 +49,8 @@ interface EditorProps {
   showAIChat?: boolean
   onToggleAIChat?: () => void
   vaultPath?: string
+  noteList?: NoteListItem[]
+  noteListFilter?: { type: string | null; query: string }
   onTrashNote?: (path: string) => void
   onRestoreNote?: (path: string) => void
   onDeleteNote?: (path: string) => void
@@ -117,7 +120,7 @@ export const Editor = memo(function Editor({
   inspectorEntry, inspectorContent, allContent, gitHistory,
   onUpdateFrontmatter, onDeleteProperty, onAddProperty,
   showAIChat, onToggleAIChat,
-  vaultPath,
+  vaultPath, noteList, noteListFilter,
   onTrashNote, onRestoreNote, onDeleteNote, onArchiveNote, onUnarchiveNote,
   onRenameTab, onContentChange, onSave, onTitleSync,
   canGoBack, canGoForward, onGoBack, onGoForward, leftPanelsCollapsed,
@@ -229,6 +232,8 @@ export const Editor = memo(function Editor({
           gitHistory={gitHistory}
           vaultPath={vaultPath ?? ''}
           openTabs={tabs.map(t => t.entry)}
+          noteList={noteList}
+          noteListFilter={noteListFilter}
           onToggleInspector={onToggleInspector}
           onToggleAIChat={onToggleAIChat}
           onNavigateWikilink={onNavigateWikilink}

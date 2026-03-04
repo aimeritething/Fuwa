@@ -1,4 +1,5 @@
 import type { VaultEntry, GitCommit } from '../types'
+import type { NoteListItem } from '../utils/ai-context'
 import { Inspector, type FrontmatterValue } from './Inspector'
 import { AiPanel } from './AiPanel'
 
@@ -13,6 +14,8 @@ interface EditorRightPanelProps {
   gitHistory: GitCommit[]
   vaultPath: string
   openTabs?: VaultEntry[]
+  noteList?: NoteListItem[]
+  noteListFilter?: { type: string | null; query: string }
   onToggleInspector: () => void
   onToggleAIChat?: () => void
   onNavigateWikilink: (target: string) => void
@@ -26,6 +29,7 @@ interface EditorRightPanelProps {
 export function EditorRightPanel({
   showAIChat, inspectorCollapsed, inspectorWidth,
   inspectorEntry, inspectorContent, entries, allContent, gitHistory, vaultPath, openTabs,
+  noteList, noteListFilter,
   onToggleInspector, onToggleAIChat, onNavigateWikilink, onViewCommitDiff,
   onUpdateFrontmatter, onDeleteProperty, onAddProperty, onOpenNote,
 }: EditorRightPanelProps) {
@@ -43,6 +47,8 @@ export function EditorRightPanel({
           entries={entries}
           allContent={allContent}
           openTabs={openTabs}
+          noteList={noteList}
+          noteListFilter={noteListFilter}
         />
       </div>
     )

@@ -3,7 +3,7 @@ import { Robot, X, PaperPlaneRight, Plus, Link } from '@phosphor-icons/react'
 import { AiMessage } from './AiMessage'
 import { WikilinkChatInput } from './WikilinkChatInput'
 import { useAiAgent, type AiAgentMessage } from '../hooks/useAiAgent'
-import { collectLinkedEntries, buildContextSnapshot, type NoteReference } from '../utils/ai-context'
+import { collectLinkedEntries, buildContextSnapshot, type NoteReference, type NoteListItem } from '../utils/ai-context'
 import type { VaultEntry } from '../types'
 
 export type { AiAgentMessage } from '../hooks/useAiAgent'
@@ -16,6 +16,8 @@ interface AiPanelProps {
   entries?: VaultEntry[]
   allContent?: Record<string, string>
   openTabs?: VaultEntry[]
+  noteList?: NoteListItem[]
+  noteListFilter?: { type: string | null; query: string }
 }
 
 function PanelHeader({ onClose, onClear }: { onClose: () => void; onClear: () => void }) {
@@ -105,7 +107,7 @@ function MessageHistory({ messages, isActive, onOpenNote, hasContext }: {
   )
 }
 
-export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, allContent, openTabs }: AiPanelProps) {
+export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, allContent, openTabs, noteList, noteListFilter }: AiPanelProps) {
   const [input, setInput] = useState('')
   const [pendingRefs, setPendingRefs] = useState<NoteReference[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -122,10 +124,12 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
       activeEntry,
       allContent,
       openTabs,
+      noteList,
+      noteListFilter,
       entries,
       references: pendingRefs.length > 0 ? pendingRefs : undefined,
     })
-  }, [activeEntry, allContent, openTabs, entries, pendingRefs])
+  }, [activeEntry, allContent, openTabs, noteList, noteListFilter, entries, pendingRefs])
 
   const agent = useAiAgent(vaultPath, contextPrompt)
   const hasContext = !!activeEntry
@@ -159,7 +163,7 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
   const handleSend = useCallback((text: string, references: NoteReference[]) => {
     if (!text.trim() || isActive) return
     setPendingRefs(references)
-    agent.sendMessage(text)
+    agent.sendMessage(text, references)
     setInput('')
   }, [isActive, agent])
 

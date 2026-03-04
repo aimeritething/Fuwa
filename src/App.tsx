@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { NoteList } from './components/NoteList'
 import { Editor } from './components/Editor'
@@ -41,6 +41,8 @@ import { UpdateBanner } from './components/UpdateBanner'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
 import type { SidebarSelection } from './types'
+import type { NoteListItem } from './utils/ai-context'
+import { filterEntries } from './utils/noteListHelpers'
 import './App.css'
 
 // Type declaration for mock content storage
@@ -390,6 +392,19 @@ function App() {
 
   const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null
 
+  const aiNoteList = useMemo<NoteListItem[]>(() => {
+    return filterEntries(vault.entries, selection).map(e => ({
+      path: e.path, title: e.title, type: e.isA ?? 'Note',
+    }))
+  }, [vault.entries, selection])
+
+  const aiNoteListFilter = useMemo(() => {
+    if (selection.kind === 'sectionGroup') return { type: selection.type, query: '' }
+    if (selection.kind === 'topic') return { type: null, query: selection.entry.title }
+    if (selection.kind === 'entity') return { type: null, query: selection.entry.title }
+    return { type: null, query: '' }
+  }, [selection])
+
   // Show welcome/onboarding screen when vault doesn't exist
   if (onboarding.state.status === 'welcome' || onboarding.state.status === 'vault-missing') {
     const defaultPath = onboarding.state.defaultPath
@@ -465,6 +480,8 @@ function App() {
             showAIChat={dialogs.showAIChat}
             onToggleAIChat={dialogs.toggleAIChat}
             vaultPath={resolvedPath}
+            noteList={aiNoteList}
+            noteListFilter={aiNoteListFilter}
             onTrashNote={entryActions.handleTrashNote}
             onRestoreNote={entryActions.handleRestoreNote}
             onDeleteNote={handleDeleteNote}

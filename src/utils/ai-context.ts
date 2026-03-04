@@ -61,11 +61,19 @@ export interface NoteReference {
   type: string | null
 }
 
+/** Lightweight note summary for the context snapshot. */
+export interface NoteListItem {
+  path: string
+  title: string
+  type: string
+}
+
 /** Parameters for building the structured context snapshot. */
 export interface ContextSnapshotParams {
   activeEntry: VaultEntry
   allContent: Record<string, string>
   openTabs?: VaultEntry[]
+  noteList?: NoteListItem[]
   noteListFilter?: { type: string | null; query: string }
   entries: VaultEntry[]
   references?: NoteReference[]
@@ -82,9 +90,11 @@ function entryFrontmatter(e: VaultEntry): Record<string, unknown> {
   return fm
 }
 
+const MAX_NOTE_LIST_ITEMS = 100
+
 /** Build a structured context snapshot as a system prompt for Claude. */
 export function buildContextSnapshot(params: ContextSnapshotParams): string {
-  const { activeEntry, allContent, openTabs, noteListFilter, entries, references } = params
+  const { activeEntry, allContent, openTabs, noteList, noteListFilter, entries, references } = params
 
   const snapshot: Record<string, unknown> = {
     activeNote: {
@@ -104,6 +114,14 @@ export function buildContextSnapshot(params: ContextSnapshotParams): string {
       type: t.isA ?? 'Note',
       frontmatter: entryFrontmatter(t),
     }))
+  }
+
+  if (noteList && noteList.length > 0) {
+    const items = noteList.slice(0, MAX_NOTE_LIST_ITEMS)
+    snapshot.noteList = items
+    if (noteList.length > MAX_NOTE_LIST_ITEMS) {
+      snapshot.noteListTruncated = { shown: MAX_NOTE_LIST_ITEMS, total: noteList.length }
+    }
   }
 
   if (noteListFilter && (noteListFilter.type || noteListFilter.query)) {
