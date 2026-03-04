@@ -2,12 +2,14 @@ import '@testing-library/jest-dom/vitest'
 import { vi } from 'vitest'
 import { createElement, type ReactNode, type ComponentType } from 'react'
 
-// Suppress undici WebSocket ERR_INVALID_ARG_TYPE in jsdom (jsdom Event ≠ Node Event)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-;(globalThis as any).process?.on?.('uncaughtException', (err: Error & { code?: string }) => {
-  if (err.code === 'ERR_INVALID_ARG_TYPE' && err.message?.includes('Event')) return
-  throw err
-})
+// Stub fetch to prevent jsdom@28 + Node 22 undici incompatibility.
+// jsdom's JSDOMDispatcher passes an onError handler that Node 22's bundled
+// undici rejects with InvalidArgumentError (UND_ERR_INVALID_ARG).
+// Tests should never make real network requests — individual tests can
+// override this stub via vi.mocked(fetch).mockImplementation(...).
+globalThis.fetch = vi.fn(() =>
+  Promise.resolve(new Response(null, { status: 418 })),
+) as typeof globalThis.fetch
 
 // Mock scrollIntoView for jsdom (not implemented)
 Element.prototype.scrollIntoView = vi.fn()
