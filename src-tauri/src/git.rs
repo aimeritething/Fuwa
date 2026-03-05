@@ -690,7 +690,11 @@ fn parse_pulse_output(stdout: &str, github_base: &Option<String>) -> Vec<PulseCo
             continue;
         }
 
-        if line.contains('|') && !line.starts_with(|c: char| c.is_ascii_uppercase() && line.len() > 1 && line.as_bytes().get(1) == Some(&b'\t')) {
+        if line.contains('|')
+            && !line.starts_with(|c: char| {
+                c.is_ascii_uppercase() && line.len() > 1 && line.as_bytes().get(1) == Some(&b'\t')
+            })
+        {
             // Commit header line: hash|short_hash|message|date
             if let Some(commit) = current.take() {
                 commits.push(commit);
@@ -1785,7 +1789,11 @@ mod tests {
         let vp = vault.to_str().unwrap();
 
         for i in 0..5 {
-            fs::write(vault.join(format!("note{}.md", i)), format!("# Note {}\n", i)).unwrap();
+            fs::write(
+                vault.join(format!("note{}.md", i)),
+                format!("# Note {}\n", i),
+            )
+            .unwrap();
             git_commit(vp, &format!("Add note {}", i)).unwrap();
         }
 
@@ -1859,7 +1867,8 @@ mod tests {
 
     #[test]
     fn test_parse_pulse_output_basic() {
-        let stdout = "abc123|abc123d|Add notes|2026-03-05T10:00:00+01:00\nA\tnote.md\nM\tproject.md\n";
+        let stdout =
+            "abc123|abc123d|Add notes|2026-03-05T10:00:00+01:00\nA\tnote.md\nM\tproject.md\n";
         let commits = parse_pulse_output(stdout, &None);
 
         assert_eq!(commits.len(), 1);
