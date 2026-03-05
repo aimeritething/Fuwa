@@ -10,7 +10,7 @@ import { getTypeColor, getTypeLightColor, buildTypeEntryMap } from '../utils/typ
 import { NoteItem, getTypeIcon } from './NoteItem'
 import { SortDropdown } from './SortDropdown'
 import { BulkActionBar } from './BulkActionBar'
-import { useMultiSelect } from '../hooks/useMultiSelect'
+import { useMultiSelect, type MultiSelectState } from '../hooks/useMultiSelect'
 import { useNoteListKeyboard } from '../hooks/useNoteListKeyboard'
 import {
   type SortOption, type SortDirection, type SortConfig, type RelationshipGroup,
@@ -148,13 +148,20 @@ function ListViewHeader({ isTrashView, expiredTrashCount }: {
   return <TrashWarningBanner expiredCount={isTrashView ? expiredTrashCount : 0} />
 }
 
+function resolveEmptyText(isChangesView: boolean, changesError: string | null | undefined, isTrashView: boolean, query: string): string {
+  if (isChangesView && changesError) return `Failed to load changes: ${changesError}`
+  if (isChangesView) return 'No pending changes'
+  if (isTrashView) return 'Trash is empty'
+  return query ? 'No matching notes' : 'No notes found'
+}
+
 function ListView({ isTrashView, isChangesView, changesError, expiredTrashCount, searched, query, renderItem, virtuosoRef }: {
   isTrashView: boolean; isChangesView?: boolean; changesError?: string | null; expiredTrashCount: number
   searched: VaultEntry[]; query: string
   renderItem: (entry: VaultEntry) => React.ReactNode
   virtuosoRef?: React.RefObject<VirtuosoHandle | null>
 }) {
-  const emptyText = (isChangesView && changesError) ? `Failed to load changes: ${changesError}` : isChangesView ? 'No pending changes' : isTrashView ? 'Trash is empty' : (query ? 'No matching notes' : 'No notes found')
+  const emptyText = resolveEmptyText(!!isChangesView, changesError ?? null, isTrashView, query)
   const hasHeader = isTrashView && expiredTrashCount > 0
 
   if (searched.length === 0) {
@@ -198,17 +205,16 @@ function countExpiredTrash(entries: VaultEntry[]): number {
 
 // --- Click routing ---
 
-type MultiSelectActions = { selectRange: (path: string) => void; clear: () => void; setAnchor: (path: string) => void }
+interface ClickActions {
+  onReplace: (entry: VaultEntry) => void
+  onSelect: (entry: VaultEntry) => void
+  multiSelect: { selectRange: (path: string) => void; clear: () => void; setAnchor: (path: string) => void }
+}
 
-function routeNoteClick(
-  entry: VaultEntry, e: React.MouseEvent,
-  onReplaceActiveTab: (entry: VaultEntry) => void,
-  onSelectNote: (entry: VaultEntry) => void,
-  multiSelect: MultiSelectActions,
-) {
-  if (e.shiftKey) { multiSelect.selectRange(entry.path) }
-  else if (e.metaKey || e.ctrlKey) { multiSelect.clear(); onSelectNote(entry) }
-  else { multiSelect.clear(); multiSelect.setAnchor(entry.path); onReplaceActiveTab(entry) }
+function routeNoteClick(entry: VaultEntry, e: React.MouseEvent, actions: ClickActions) {
+  if (e.shiftKey) { actions.multiSelect.selectRange(entry.path) }
+  else if (e.metaKey || e.ctrlKey) { actions.multiSelect.clear(); actions.onSelect(entry) }
+  else { actions.multiSelect.clear(); actions.multiSelect.setAnchor(entry.path); actions.onReplace(entry) }
 }
 
 // --- Pure helpers extracted from NoteListInner to reduce cyclomatic complexity ---
@@ -292,170 +298,162 @@ function resolveListSortConfig(typeDocument: VaultEntry | null, sortPrefs: Recor
   return sortPrefs['__list__'] ?? DEFAULT_LIST_CONFIG
 }
 
-// --- Main component ---
+// --- Extracted hooks ---
 
-const defaultGetNoteStatus = (): NoteStatus => 'clean'
+interface SortPersistence {
+  onUpdateTypeSort: (path: string, key: string, value: string) => void
+  updateEntry: (path: string, patch: Partial<VaultEntry>) => void
+}
 
-function NoteListInner({ entries, selection, selectedNote, allContent, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onUpdateTypeSort, updateEntry }: NoteListProps) {
-  const [search, setSearch] = useState('')
-  const [searchVisible, setSearchVisible] = useState(false)
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+function persistSortToType(path: string, config: SortConfig, persistence: SortPersistence) {
+  const serialized = serializeSortConfig(config)
+  persistence.onUpdateTypeSort(path, 'sort', serialized)
+  persistence.updateEntry(path, { sort: serialized })
+  clearListSortFromLocalStorage()
+}
+
+function migrateListSortToType(typeDoc: VaultEntry, sortPrefs: Record<string, SortConfig>, migrationDone: Set<string>, persistence: SortPersistence) {
+  if (typeDoc.sort || migrationDone.has(typeDoc.path)) return
+  const lsConfig = sortPrefs['__list__']
+  if (!lsConfig) return
+  migrationDone.add(typeDoc.path)
+  persistSortToType(typeDoc.path, lsConfig, persistence)
+}
+
+function saveGroupSort(groupLabel: string, option: SortOption, direction: SortDirection, setSortPrefs: React.Dispatch<React.SetStateAction<Record<string, SortConfig>>>) {
+  setSortPrefs((prev) => { const next = { ...prev, [groupLabel]: { option, direction } }; saveSortPreferences(next); return next })
+}
+
+function deriveEffectiveSort(configOption: SortOption, customProperties: string[]): SortOption {
+  if (!configOption.startsWith('property:')) return configOption
+  return customProperties.includes(configOption.slice('property:'.length)) ? configOption : 'modified'
+}
+
+interface UseNoteListSortParams {
+  entries: VaultEntry[]
+  selection: SidebarSelection
+  modifiedPathSet: Set<string>
+  modifiedSuffixes: string[]
+  onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
+  updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
+}
+
+function useNoteListSort({ entries, selection, modifiedPathSet, modifiedSuffixes, onUpdateTypeSort, updateEntry }: UseNoteListSortParams) {
   const [sortPrefs, setSortPrefs] = useState<Record<string, SortConfig>>(loadSortPreferences)
-  const { onMouseDown: onDragMouseDown } = useDragRegion()
 
-  const modifiedPathSet = useMemo(
-    () => new Set((modifiedFiles ?? []).map((f) => f.path)),
-    [modifiedFiles],
-  )
-
-  // Suffix patterns for cross-machine robustness: if the vault cache carried
-  // stale absolute paths from another machine, fall back to matching by the
-  // relative path suffix so the changes view stays in sync with the badge.
-  const modifiedSuffixes = useMemo(
-    () => (modifiedFiles ?? []).map((f) => '/' + f.relativePath),
-    [modifiedFiles],
-  )
-
-  const resolvedGetNoteStatus = useMemo<(path: string) => NoteStatus>(
-    () => createNoteStatusResolver(getNoteStatus, modifiedFiles, modifiedPathSet),
-    [getNoteStatus, modifiedFiles, modifiedPathSet],
-  )
-
-  // Resolve the type document for sectionGroup selections (needs to be above sort logic)
   const typeDocument = useMemo(() => {
     if (selection.kind !== 'sectionGroup') return null
     return entries.find((e) => e.isA === 'Type' && e.title === selection.type) ?? null
   }, [selection, entries])
 
-  // Resolve list sort config: read from type frontmatter for sectionGroup, else localStorage
   const listConfig = resolveListSortConfig(typeDocument, sortPrefs)
+  const persistence = useMemo<SortPersistence | null>(
+    () => (onUpdateTypeSort && updateEntry) ? { onUpdateTypeSort, updateEntry } : null,
+    [onUpdateTypeSort, updateEntry],
+  )
 
-  // Silent migration: if type has no sort in frontmatter but localStorage has __list__, migrate it
   const migrationDoneRef = useRef<Set<string>>(new Set())
   useEffect(() => {
-    if (!typeDocument || typeDocument.sort || !onUpdateTypeSort || !updateEntry) return
-    if (migrationDoneRef.current.has(typeDocument.path)) return
-    const lsConfig = sortPrefs['__list__']
-    if (!lsConfig) return
-    migrationDoneRef.current.add(typeDocument.path)
-    const serialized = serializeSortConfig(lsConfig)
-    onUpdateTypeSort(typeDocument.path, 'sort', serialized)
-    updateEntry(typeDocument.path, { sort: serialized })
-    clearListSortFromLocalStorage()
-  }, [typeDocument, sortPrefs, onUpdateTypeSort, updateEntry])
+    if (!typeDocument || !persistence) return
+    migrateListSortToType(typeDocument, sortPrefs, migrationDoneRef.current, persistence)
+  }, [typeDocument, sortPrefs, persistence])
 
   const handleSortChange = useCallback((groupLabel: string, option: SortOption, direction: SortDirection) => {
-    if (groupLabel === '__list__' && typeDocument && onUpdateTypeSort && updateEntry) {
-      // Persist sort to type file frontmatter
-      const config: SortConfig = { option, direction }
-      const serialized = serializeSortConfig(config)
-      onUpdateTypeSort(typeDocument.path, 'sort', serialized)
-      updateEntry(typeDocument.path, { sort: serialized })
-      // Clear old localStorage __list__ entry if present (migration cleanup)
-      clearListSortFromLocalStorage()
+    if (groupLabel === '__list__' && typeDocument && persistence) {
+      persistSortToType(typeDocument.path, { option, direction }, persistence)
     } else {
-      // Relationship group sorts still use localStorage
-      setSortPrefs((prev) => { const next = { ...prev, [groupLabel]: { option, direction } }; saveSortPreferences(next); return next })
+      saveGroupSort(groupLabel, option, direction, setSortPrefs)
     }
-  }, [typeDocument, onUpdateTypeSort, updateEntry])
+  }, [typeDocument, persistence])
 
-  const toggleGroup = useCallback((label: string) => {
-    setCollapsedGroups((prev) => toggleSetMember(prev, label))
-  }, [])
-
-  const typeEntryMap = useTypeEntryMap(entries)
-  const query = search.trim().toLowerCase()
-
-  // Compute custom properties and derive effective sort before sorting entries
   const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes)
   const customProperties = useMemo(() => extractSortableProperties(filteredEntries), [filteredEntries])
-  const listSort = useMemo<SortOption>(() => {
-    const opt = listConfig.option
-    if (!opt.startsWith('property:')) return opt
-    return customProperties.includes(opt.slice('property:'.length)) ? opt : 'modified'
-  }, [listConfig.option, customProperties])
+  const listSort = useMemo<SortOption>(() => deriveEffectiveSort(listConfig.option, customProperties), [listConfig.option, customProperties])
   const listDirection = listSort === listConfig.option ? listConfig.direction : 'desc'
-  const { isEntityView, isTrashView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, allContent, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes })
-  const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
 
-  const noteListKeyboard = useNoteListKeyboard({
-    items: searched,
-    selectedNotePath: selectedNote?.path ?? null,
-    onOpen: onReplaceActiveTab,
-    enabled: !isEntityView,
-  })
+  return { listSort, listDirection, customProperties, handleSortChange, sortPrefs, typeDocument }
+}
 
-  const multiSelect = useMultiSelect(searched, selectedNote?.path ?? null)
+function useNoteListSearch() {
+  const [search, setSearch] = useState('')
+  const [searchVisible, setSearchVisible] = useState(false)
+  const query = search.trim().toLowerCase()
 
-  // Clear multi-select when sidebar selection changes
-  useEffect(() => { multiSelect.clear() }, [selection]) // eslint-disable-line react-hooks/exhaustive-deps -- clear on selection change only
+  const toggleSearch = useCallback(() => {
+    setSearchVisible((v) => { if (v) setSearch(''); return !v })
+  }, [])
 
-  const handleClickNote = useCallback((entry: VaultEntry, e: React.MouseEvent) => {
-    routeNoteClick(entry, e, onReplaceActiveTab, onSelectNote, multiSelect)
-  }, [onReplaceActiveTab, onSelectNote, multiSelect])
+  return { search, setSearch, query, searchVisible, toggleSearch }
+}
 
-  const handleBulkArchive = useCallback(() => {
-    const paths = [...multiSelect.selectedPaths]
-    multiSelect.clear()
-    onBulkArchive?.(paths)
-  }, [multiSelect, onBulkArchive])
+function isInputFocused(): boolean {
+  const el = document.activeElement
+  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || !!(el as HTMLElement)?.isContentEditable
+}
 
-  const handleBulkTrash = useCallback(() => {
-    const paths = [...multiSelect.selectedPaths]
-    multiSelect.clear()
-    onBulkTrash?.(paths)
-  }, [multiSelect, onBulkTrash])
+function handleEscapeKey(e: KeyboardEvent, multiSelect: MultiSelectState) {
+  if (e.key !== 'Escape' || !multiSelect.isMultiSelecting) return
+  e.preventDefault()
+  multiSelect.clear()
+}
 
-  // Keyboard: Escape to clear, Cmd+A to select all, Cmd+E/Cmd+Delete for bulk actions
-  // Uses capture phase so bulk shortcuts preempt the global single-note handler
+function handleSelectAllKey(e: KeyboardEvent, multiSelect: MultiSelectState, isEntityView: boolean) {
+  if (e.key !== 'a' || !(e.metaKey || e.ctrlKey) || isEntityView || isInputFocused()) return
+  e.preventDefault()
+  multiSelect.selectAll()
+}
+
+function handleBulkActionKey(e: KeyboardEvent, multiSelect: MultiSelectState, onArchive: () => void, onTrash: () => void) {
+  if (!multiSelect.isMultiSelecting || !(e.metaKey || e.ctrlKey)) return
+  if (e.key === 'e') { e.preventDefault(); e.stopPropagation(); onArchive() }
+  if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); onTrash() }
+}
+
+function useMultiSelectKeyboard(multiSelect: MultiSelectState, isEntityView: boolean, onBulkArchive: () => void, onBulkTrash: () => void) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape' && multiSelect.isMultiSelecting) {
-        e.preventDefault()
-        multiSelect.clear()
-      }
-      if (e.key === 'a' && (e.metaKey || e.ctrlKey) && !isEntityView) {
-        const active = document.activeElement
-        const isInput = active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement || (active as HTMLElement)?.isContentEditable
-        if (!isInput) {
-          e.preventDefault()
-          multiSelect.selectAll()
-        }
-      }
-      if (multiSelect.isMultiSelecting && (e.metaKey || e.ctrlKey)) {
-        if (e.key === 'e') {
-          e.preventDefault()
-          e.stopPropagation()
-          handleBulkArchive()
-        } else if (e.key === 'Backspace' || e.key === 'Delete') {
-          e.preventDefault()
-          e.stopPropagation()
-          handleBulkTrash()
-        }
-      }
+      handleEscapeKey(e, multiSelect)
+      handleSelectAllKey(e, multiSelect, isEntityView)
+      handleBulkActionKey(e, multiSelect, onBulkArchive, onBulkTrash)
     }
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [multiSelect, isEntityView, handleBulkArchive, handleBulkTrash])
+  }, [multiSelect, isEntityView, onBulkArchive, onBulkTrash])
+}
 
-  const renderItem = useCallback((entry: VaultEntry) => (
-    <NoteItem key={entry.path} entry={entry} isSelected={selectedNote?.path === entry.path} isMultiSelected={multiSelect.selectedPaths.has(entry.path)} isHighlighted={entry.path === noteListKeyboard.highlightedPath} noteStatus={resolvedGetNoteStatus(entry.path)} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} />
-  ), [selectedNote?.path, handleClickNote, typeEntryMap, resolvedGetNoteStatus, multiSelect.selectedPaths, noteListKeyboard.highlightedPath])
+// --- Header component ---
 
+function NoteListHeader({ title, typeDocument, isEntityView, listSort, listDirection, customProperties, sidebarCollapsed, searchVisible, search, onSortChange, onCreateNote, onOpenType, onToggleSearch, onSearchChange }: {
+  title: string
+  typeDocument: VaultEntry | null
+  isEntityView: boolean
+  listSort: SortOption
+  listDirection: SortDirection
+  customProperties: string[]
+  sidebarCollapsed?: boolean
+  searchVisible: boolean
+  search: string
+  onSortChange: (groupLabel: string, option: SortOption, direction: SortDirection) => void
+  onCreateNote: () => void
+  onOpenType: (entry: VaultEntry) => void
+  onToggleSearch: () => void
+  onSearchChange: (value: string) => void
+}) {
+  const { onMouseDown: onDragMouseDown } = useDragRegion()
   return (
-    <div className="flex flex-col select-none overflow-hidden border-r border-border bg-card text-foreground" style={{ height: '100%' }}>
+    <>
       <div className="flex h-[52px] shrink-0 items-center justify-between border-b border-border px-4" onMouseDown={onDragMouseDown} style={{ cursor: 'default', paddingLeft: sidebarCollapsed ? 80 : undefined }}>
         <h3
           className="m-0 min-w-0 flex-1 truncate text-[14px] font-semibold"
           style={typeDocument ? { cursor: 'pointer' } : undefined}
-          onClick={typeDocument ? () => onReplaceActiveTab(typeDocument) : undefined}
+          onClick={typeDocument ? () => onOpenType(typeDocument) : undefined}
           data-testid={typeDocument ? 'type-header-link' : undefined}
         >
-          {resolveHeaderTitle(selection, typeDocument)}
+          {title}
         </h3>
         <div className="flex items-center gap-3" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
-          {!isEntityView && <SortDropdown groupLabel="__list__" current={listSort} direction={listDirection} customProperties={customProperties} onChange={handleSortChange} />}
-          <button className="flex items-center text-muted-foreground transition-colors hover:text-foreground" onClick={() => { setSearchVisible(!searchVisible); if (searchVisible) setSearch('') }} title="Search notes">
+          {!isEntityView && <SortDropdown groupLabel="__list__" current={listSort} direction={listDirection} customProperties={customProperties} onChange={onSortChange} />}
+          <button className="flex items-center text-muted-foreground transition-colors hover:text-foreground" onClick={onToggleSearch} title="Search notes">
             <MagnifyingGlass size={16} />
           </button>
           <button className="flex items-center text-muted-foreground transition-colors hover:text-foreground" onClick={() => onCreateNote()} title="Create new note">
@@ -463,21 +461,69 @@ function NoteListInner({ entries, selection, selectedNote, allContent, modifiedF
           </button>
         </div>
       </div>
-
       {searchVisible && (
         <div className="border-b border-border px-3 py-2">
-          <Input placeholder="Search notes..." value={search} onChange={(e) => setSearch(e.target.value)} className="h-8 text-[13px]" autoFocus />
+          <Input placeholder="Search notes..." value={search} onChange={(e) => onSearchChange(e.target.value)} className="h-8 text-[13px]" autoFocus />
         </div>
       )}
+    </>
+  )
+}
 
+// --- Main component ---
+
+const defaultGetNoteStatus = (): NoteStatus => 'clean'
+
+function useModifiedFilesState(modifiedFiles: ModifiedFile[] | undefined, getNoteStatus: ((path: string) => NoteStatus) | undefined) {
+  const modifiedPathSet = useMemo(() => new Set((modifiedFiles ?? []).map((f) => f.path)), [modifiedFiles])
+  const modifiedSuffixes = useMemo(() => (modifiedFiles ?? []).map((f) => '/' + f.relativePath), [modifiedFiles])
+  const resolvedGetNoteStatus = useMemo<(path: string) => NoteStatus>(
+    () => createNoteStatusResolver(getNoteStatus, modifiedFiles, modifiedPathSet),
+    [getNoteStatus, modifiedFiles, modifiedPathSet],
+  )
+  return { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus }
+}
+
+function NoteListInner({ entries, selection, selectedNote, allContent, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onUpdateTypeSort, updateEntry }: NoteListProps) {
+  const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
+  const { listSort, listDirection, customProperties, handleSortChange, sortPrefs, typeDocument } = useNoteListSort({ entries, selection, modifiedPathSet, modifiedSuffixes, onUpdateTypeSort, updateEntry })
+  const { search, setSearch, query, searchVisible, toggleSearch } = useNoteListSearch()
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+
+  const typeEntryMap = useTypeEntryMap(entries)
+  const { isEntityView, isTrashView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, allContent, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes })
+  const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
+  const entitySelection = isEntityView && selection.kind === 'entity' ? selection : null
+
+  const noteListKeyboard = useNoteListKeyboard({ items: searched, selectedNotePath: selectedNote?.path ?? null, onOpen: onReplaceActiveTab, enabled: !isEntityView })
+  const multiSelect = useMultiSelect(searched, selectedNote?.path ?? null)
+  useEffect(() => { multiSelect.clear() }, [selection]) // eslint-disable-line react-hooks/exhaustive-deps -- clear on selection change only
+
+  const handleClickNote = useCallback((entry: VaultEntry, e: React.MouseEvent) => {
+    routeNoteClick(entry, e, { onReplace: onReplaceActiveTab, onSelect: onSelectNote, multiSelect })
+  }, [onReplaceActiveTab, onSelectNote, multiSelect])
+
+  const handleBulkArchive = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkArchive?.(paths) }, [multiSelect, onBulkArchive])
+  const handleBulkTrash = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkTrash?.(paths) }, [multiSelect, onBulkTrash])
+  useMultiSelectKeyboard(multiSelect, isEntityView, handleBulkArchive, handleBulkTrash)
+
+  const renderItem = useCallback((entry: VaultEntry) => (
+    <NoteItem key={entry.path} entry={entry} isSelected={selectedNote?.path === entry.path} isMultiSelected={multiSelect.selectedPaths.has(entry.path)} isHighlighted={entry.path === noteListKeyboard.highlightedPath} noteStatus={resolvedGetNoteStatus(entry.path)} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} />
+  ), [selectedNote?.path, handleClickNote, typeEntryMap, resolvedGetNoteStatus, multiSelect.selectedPaths, noteListKeyboard.highlightedPath])
+
+  const toggleGroup = useCallback((label: string) => { setCollapsedGroups((prev) => toggleSetMember(prev, label)) }, [])
+  const title = resolveHeaderTitle(selection, typeDocument)
+
+  return (
+    <div className="flex flex-col select-none overflow-hidden border-r border-border bg-card text-foreground" style={{ height: '100%' }}>
+      <NoteListHeader title={title} typeDocument={typeDocument} isEntityView={isEntityView} listSort={listSort} listDirection={listDirection} customProperties={customProperties} sidebarCollapsed={sidebarCollapsed} searchVisible={searchVisible} search={search} onSortChange={handleSortChange} onCreateNote={onCreateNote} onOpenType={onReplaceActiveTab} onToggleSearch={toggleSearch} onSearchChange={setSearch} />
       <div className="flex-1 overflow-hidden outline-none" style={{ minHeight: 0 }} tabIndex={0} onKeyDown={noteListKeyboard.handleKeyDown} onFocus={noteListKeyboard.handleFocus} data-testid="note-list-container">
-        {isEntityView && selection.kind === 'entity' ? (
-          <EntityView entity={selection.entry} groups={searchedGroups} query={query} collapsedGroups={collapsedGroups} sortPrefs={sortPrefs} onToggleGroup={toggleGroup} onSortChange={handleSortChange} renderItem={renderItem} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} />
+        {entitySelection ? (
+          <EntityView entity={entitySelection.entry} groups={searchedGroups} query={query} collapsedGroups={collapsedGroups} sortPrefs={sortPrefs} onToggleGroup={toggleGroup} onSortChange={handleSortChange} renderItem={renderItem} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} />
         ) : (
           <ListView isTrashView={isTrashView} isChangesView={isChangesView} changesError={modifiedFilesError} expiredTrashCount={expiredTrashCount} searched={searched} query={query} renderItem={renderItem} virtuosoRef={noteListKeyboard.virtuosoRef} />
         )}
       </div>
-
       {multiSelect.isMultiSelecting && (
         <BulkActionBar count={multiSelect.selectedPaths.size} onArchive={handleBulkArchive} onTrash={handleBulkTrash} onClear={multiSelect.clear} />
       )}
