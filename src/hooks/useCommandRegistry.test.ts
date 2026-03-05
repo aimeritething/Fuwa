@@ -715,11 +715,11 @@ describe('useCommandRegistry', () => {
       expect(cmd!.enabled).toBe(true)
     })
 
-    it('is disabled when onRestoreDefaultThemes is not provided', () => {
+    it('is always enabled even when onRestoreDefaultThemes is not provided', () => {
       const { result } = renderHook(() => useCommandRegistry(makeConfig()))
       const cmd = result.current.find(c => c.id === 'restore-default-themes')
       expect(cmd).toBeDefined()
-      expect(cmd!.enabled).toBe(false)
+      expect(cmd!.enabled).toBe(true)
     })
 
     it('calls onRestoreDefaultThemes when executed', () => {

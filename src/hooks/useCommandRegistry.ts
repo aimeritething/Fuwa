@@ -249,7 +249,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
 
       // Appearance
       ...buildThemeCommands(themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme),
-      { id: 'restore-default-themes', label: 'Restore Default Themes', group: 'Appearance', keywords: ['theme', 'reset', 'restore', 'default', 'fix', 'missing'], enabled: !!onRestoreDefaultThemes, execute: () => onRestoreDefaultThemes?.() },
+      { id: 'restore-default-themes', label: 'Restore Default Themes', group: 'Appearance', keywords: ['theme', 'reset', 'restore', 'default', 'fix', 'missing'], enabled: true, execute: () => onRestoreDefaultThemes?.() },
 
       // Settings
       { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,', keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
