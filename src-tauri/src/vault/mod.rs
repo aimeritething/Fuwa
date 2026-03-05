@@ -1326,8 +1326,14 @@ Company: Acme Corp
         let dir = TempDir::new().unwrap();
         let content = "---\ntrashed: true\ntrashed_at: \"2025-02-01\"\n---\n# Gone\n";
         let entry = parse_test_entry(&dir, "gone.md", content);
-        assert!(entry.trashed, "lowercase 'trashed' must be parsed via alias");
-        assert!(entry.trashed_at.is_some(), "lowercase 'trashed_at' must be parsed via alias");
+        assert!(
+            entry.trashed,
+            "lowercase 'trashed' must be parsed via alias"
+        );
+        assert!(
+            entry.trashed_at.is_some(),
+            "lowercase 'trashed_at' must be parsed via alias"
+        );
     }
 
     #[test]
