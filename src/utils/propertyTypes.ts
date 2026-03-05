@@ -1,6 +1,7 @@
 import type { FrontmatterValue } from '../components/Inspector'
+import { isValidCssColor, isColorKeyName } from './colorUtils'
 
-export type PropertyDisplayMode = 'text' | 'date' | 'boolean' | 'status' | 'url' | 'tags'
+export type PropertyDisplayMode = 'text' | 'date' | 'boolean' | 'status' | 'url' | 'tags' | 'color'
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2})?)?/
 const COMMON_DATE_RE = /^\d{1,2}\/\d{1,2}\/\d{2,4}$/
@@ -28,6 +29,7 @@ function detectStringType(key: string, strValue: string): PropertyDisplayMode {
   if (keyMatchesPatterns(key, STATUS_KEY_PATTERNS)) return 'status'
   if (STATUS_VALUES.has(strValue.toLowerCase()) && !keyMatchesPatterns(key, DATE_KEY_PATTERNS)) return 'status'
   if (isDateString(strValue)) return 'date'
+  if (isValidCssColor(strValue) && (strValue.startsWith('#') || isColorKeyName(key))) return 'color'
   return 'text'
 }
 

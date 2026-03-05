@@ -10,8 +10,9 @@ import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { CalendarIcon, XIcon, Check, X, Type, ToggleLeft, Circle, Link, Tag } from 'lucide-react'
+import { CalendarIcon, XIcon, Check, X, Type, ToggleLeft, Circle, Link, Tag, Palette } from 'lucide-react'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
+import { isValidCssColor } from '../utils/colorUtils'
 import { getTypeIcon } from './NoteItem'
 import { countWords } from '../utils/wikilinks'
 import {
@@ -24,6 +25,7 @@ import {
 import { StatusPill, StatusDropdown } from './StatusDropdown'
 import { TagsDropdown } from './TagsDropdown'
 import { getTagStyle } from '../utils/tagStyles'
+import { ColorEditableValue } from './ColorInput'
 
 // Keys that are relationships (contain wikilinks)
 export const RELATIONSHIP_KEYS = new Set([
@@ -234,6 +236,7 @@ const DISPLAY_MODE_OPTIONS: { value: PropertyDisplayMode; label: string }[] = [
   { value: 'status', label: 'Status' },
   { value: 'url', label: 'URL' },
   { value: 'tags', label: 'Tags' },
+  { value: 'color', label: 'Color' },
 ]
 
 function DisplayModeSelector({ propKey, currentMode, autoMode, onSelect }: {
@@ -312,7 +315,7 @@ function DisplayModeSelector({ propKey, currentMode, autoMode, onSelect }: {
 }
 
 const DISPLAY_MODE_ICONS: Record<PropertyDisplayMode, typeof Type> = {
-  text: Type, date: CalendarIcon, boolean: ToggleLeft, status: Circle, url: Link, tags: Tag,
+  text: Type, date: CalendarIcon, boolean: ToggleLeft, status: Circle, url: Link, tags: Tag, color: Palette,
 }
 
 const ADD_INPUT_CLASS = "h-[26px] min-w-[60px] flex-1 rounded border border-border bg-muted px-1.5 text-[12px] text-foreground outline-none focus:border-primary"
@@ -546,6 +549,7 @@ function toBooleanValue(value: FrontmatterValue): boolean {
 function autoDetectFromValue(value: FrontmatterValue): PropertyDisplayMode {
   if (typeof value === 'boolean') return 'boolean'
   if (typeof value === 'string' && isUrlValue(value)) return 'url'
+  if (typeof value === 'string' && isValidCssColor(value) && value.startsWith('#')) return 'color'
   return 'text'
 }
 
@@ -572,6 +576,8 @@ function ScalarValueCell({ propKey, value, displayMode, isEditing, vaultStatuses
     }
     case 'url':
       return <UrlValue {...editProps} />
+    case 'color':
+      return <ColorEditableValue {...editProps} />
     default:
       return <EditableValue {...editProps} />
   }
