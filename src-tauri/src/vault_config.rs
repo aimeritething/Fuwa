@@ -53,10 +53,8 @@ fn parse_vault_config(content: &str) -> Result<VaultConfig, String> {
         _ => return Ok(VaultConfig::default()),
     };
 
-    let json_map: serde_json::Map<String, serde_json::Value> = hash
-        .into_iter()
-        .map(|(k, v)| (k, pod_to_json(v)))
-        .collect();
+    let json_map: serde_json::Map<String, serde_json::Value> =
+        hash.into_iter().map(|(k, v)| (k, pod_to_json(v))).collect();
     let json = serde_json::Value::Object(json_map);
 
     serde_json::from_value(json.clone())
@@ -78,8 +76,7 @@ pub fn save_vault_config(vault_path: &str, config: VaultConfig) -> Result<(), St
     let path = config_path(vault_path);
     let dir = Path::new(vault_path).join(CONFIG_DIR);
     if !dir.exists() {
-        std::fs::create_dir_all(&dir)
-            .map_err(|e| format!("Failed to create config dir: {e}"))?;
+        std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create config dir: {e}"))?;
     }
 
     let content = serialize_config(&config);
@@ -117,11 +114,7 @@ fn serialize_config(config: &VaultConfig) -> String {
 }
 
 /// Append a YAML map section with sorted keys for stable output.
-fn append_string_map(
-    lines: &mut Vec<String>,
-    key: &str,
-    map: Option<&HashMap<String, String>>,
-) {
+fn append_string_map(lines: &mut Vec<String>, key: &str, map: Option<&HashMap<String, String>>) {
     if let Some(m) = map {
         if !m.is_empty() {
             lines.push(format!("{key}:"));
@@ -236,10 +229,7 @@ hidden_sections:
         let parsed = parse_vault_config(&serialized).unwrap();
         assert_eq!(parsed.zoom, Some(1.2));
         assert_eq!(parsed.view_mode.as_deref(), Some("editor-only"));
-        assert_eq!(
-            parsed.tag_colors.unwrap().get("work").unwrap(),
-            "blue"
-        );
+        assert_eq!(parsed.tag_colors.unwrap().get("work").unwrap(), "blue");
         assert_eq!(parsed.hidden_sections.unwrap(), vec!["Trash"]);
     }
 
