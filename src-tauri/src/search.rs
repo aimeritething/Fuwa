@@ -2,7 +2,6 @@ use crate::indexing;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
-use std::process::Command;
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -84,12 +83,12 @@ fn detect_collection_name(vault_path: &str) -> String {
 }
 
 fn detect_collection_name_uncached(vault_path: &str) -> String {
-    let qmd_bin = match indexing::find_qmd_binary() {
+    let qmd = match indexing::find_qmd_binary() {
         Some(b) => b,
         None => return "laputa".to_string(),
     };
 
-    let output = Command::new(&qmd_bin).args(["collection", "list"]).output();
+    let output = qmd.command().args(["collection", "list"]).output();
 
     match output {
         Ok(o) if o.status.success() => {
@@ -125,8 +124,8 @@ pub fn search_vault(
 ) -> Result<SearchResponse, String> {
     let start = Instant::now();
 
-    let qmd_bin = indexing::find_qmd_binary()
-        .ok_or_else(|| "qmd binary not found. Install qmd first.".to_string())?;
+    let qmd = indexing::find_qmd_binary()
+        .ok_or_else(|| "qmd binary not found".to_string())?;
 
     let collection = detect_collection_name(vault_path);
 
@@ -137,7 +136,8 @@ pub fn search_vault(
     };
 
     let limit_str = limit.to_string();
-    let output = Command::new(&qmd_bin)
+    let output = qmd
+        .command()
         .args([
             search_cmd,
             query,

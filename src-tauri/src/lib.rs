@@ -408,35 +408,19 @@ async fn start_indexing(app_handle: tauri::AppHandle, vault_path: String) -> Res
     use tauri::Emitter;
     let vault_path = expand_tilde(&vault_path).into_owned();
     tokio::task::spawn_blocking(move || {
-        // Auto-install qmd if not available
         if indexing::find_qmd_binary().is_none() {
+            log::info!("qmd binary not found (bundled or system)");
             let _ = app_handle.emit(
                 "indexing-progress",
                 IndexingProgress {
-                    phase: "installing".to_string(),
+                    phase: "unavailable".to_string(),
                     current: 0,
                     total: 0,
-                    done: false,
-                    error: None,
+                    done: true,
+                    error: Some("qmd not available".to_string()),
                 },
             );
-            match indexing::auto_install_qmd() {
-                Ok(_) => log::info!("qmd auto-installed successfully"),
-                Err(e) => {
-                    log::info!("qmd not available (search disabled): {e}");
-                    let _ = app_handle.emit(
-                        "indexing-progress",
-                        IndexingProgress {
-                            phase: "unavailable".to_string(),
-                            current: 0,
-                            total: 0,
-                            done: true,
-                            error: Some(format!("qmd not available: {e}")),
-                        },
-                    );
-                    return Err(e);
-                }
-            }
+            return Err("qmd not available".to_string());
         }
 
         indexing::run_full_index(&vault_path, |progress| {

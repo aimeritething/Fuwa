@@ -1,14 +1,33 @@
 use serde::Serialize;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
 
-static QMD_PATH_CACHE: Mutex<Option<String>> = Mutex::new(None);
+/// Resolved qmd binary location: path + optional working directory.
+/// The working dir is required for the bundled binary to find its node_modules.
+#[derive(Debug, Clone)]
+pub struct QmdBinary {
+    pub path: String,
+    pub work_dir: Option<PathBuf>,
+}
 
-/// Locate the qmd binary, checking known locations and PATH.
+impl QmdBinary {
+    /// Create a `Command` pre-configured with the correct working directory.
+    pub fn command(&self) -> Command {
+        let mut cmd = Command::new(&self.path);
+        if let Some(ref dir) = self.work_dir {
+            cmd.current_dir(dir);
+        }
+        cmd
+    }
+}
+
+static QMD_CACHE: Mutex<Option<QmdBinary>> = Mutex::new(None);
+
+/// Locate the qmd binary, checking bundled resource first, then known locations.
 /// Caches the result for subsequent calls.
-pub fn find_qmd_binary() -> Option<String> {
-    if let Ok(guard) = QMD_PATH_CACHE.lock() {
+pub fn find_qmd_binary() -> Option<QmdBinary> {
+    if let Ok(guard) = QMD_CACHE.lock() {
         if let Some(ref cached) = *guard {
             return Some(cached.clone());
         }
@@ -16,16 +35,22 @@ pub fn find_qmd_binary() -> Option<String> {
 
     let result = find_qmd_binary_uncached();
 
-    if let Some(ref path) = result {
-        if let Ok(mut guard) = QMD_PATH_CACHE.lock() {
-            *guard = Some(path.clone());
+    if let Some(ref bin) = result {
+        if let Ok(mut guard) = QMD_CACHE.lock() {
+            *guard = Some(bin.clone());
         }
     }
 
     result
 }
 
-fn find_qmd_binary_uncached() -> Option<String> {
+fn find_qmd_binary_uncached() -> Option<QmdBinary> {
+    // 1. Check bundled binary (Tauri resource)
+    if let Some(bin) = find_bundled_qmd() {
+        return Some(bin);
+    }
+
+    // 2. Check known system locations
     let candidates = [
         dirs::home_dir().map(|h| h.join(".bun/bin/qmd").to_string_lossy().to_string()),
         Some("/usr/local/bin/qmd".to_string()),
@@ -33,26 +58,67 @@ fn find_qmd_binary_uncached() -> Option<String> {
     ];
     for candidate in candidates.into_iter().flatten() {
         if Path::new(&candidate).exists() {
-            return Some(candidate);
+            return Some(QmdBinary {
+                path: candidate,
+                work_dir: None,
+            });
         }
     }
-    // Fallback: try PATH
+
+    // 3. Fallback: try PATH
     Command::new("which")
         .arg("qmd")
         .output()
         .ok()
         .and_then(|o| {
             if o.status.success() {
-                Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
+                Some(QmdBinary {
+                    path: String::from_utf8_lossy(&o.stdout).trim().to_string(),
+                    work_dir: None,
+                })
             } else {
                 None
             }
         })
 }
 
-/// Clear the cached qmd path (e.g. after auto-install).
+/// Look for the bundled qmd binary inside the app bundle or dev resources.
+fn find_bundled_qmd() -> Option<QmdBinary> {
+    let exe = std::env::current_exe().ok()?;
+    let exe_dir = exe.parent()?;
+
+    // macOS app bundle: <app>/Contents/MacOS/laputa → <app>/Contents/Resources/qmd/qmd
+    let bundle_dir = exe_dir.parent()?.join("Resources").join("qmd");
+    if bundle_dir.join("qmd").exists() {
+        return Some(QmdBinary {
+            path: bundle_dir.join("qmd").to_string_lossy().to_string(),
+            work_dir: Some(bundle_dir),
+        });
+    }
+
+    // Dev mode: src-tauri/resources/qmd/qmd (binary is in target/debug or target/release)
+    // Walk up from exe_dir to find the project root
+    let mut dir = exe_dir.to_path_buf();
+    for _ in 0..6 {
+        let dev_qmd = dir.join("resources").join("qmd").join("qmd");
+        if dev_qmd.exists() {
+            let qmd_dir = dir.join("resources").join("qmd");
+            return Some(QmdBinary {
+                path: dev_qmd.to_string_lossy().to_string(),
+                work_dir: Some(qmd_dir),
+            });
+        }
+        if !dir.pop() {
+            break;
+        }
+    }
+
+    None
+}
+
+/// Clear the cached qmd binary (e.g. after path changes).
 pub fn clear_qmd_cache() {
-    if let Ok(mut guard) = QMD_PATH_CACHE.lock() {
+    if let Ok(mut guard) = QMD_CACHE.lock() {
         *guard = None;
     }
 }
@@ -69,7 +135,7 @@ pub struct IndexStatus {
 
 /// Check whether the vault has a qmd index and its status.
 pub fn check_index_status(vault_path: &str) -> IndexStatus {
-    let qmd_bin = match find_qmd_binary() {
+    let qmd = match find_qmd_binary() {
         Some(b) => b,
         None => {
             return IndexStatus {
@@ -84,7 +150,7 @@ pub fn check_index_status(vault_path: &str) -> IndexStatus {
     };
 
     let vault_name = vault_dir_name(vault_path);
-    let output = Command::new(&qmd_bin).args(["status"]).output();
+    let output = qmd.command().args(["status"]).output();
 
     match output {
         Ok(o) if o.status.success() => {
@@ -182,11 +248,12 @@ fn extract_first_number(s: &str) -> Option<usize> {
 
 /// Ensure a qmd collection exists for this vault. Creates one if missing.
 pub fn ensure_collection(vault_path: &str) -> Result<(), String> {
-    let qmd_bin = find_qmd_binary().ok_or("qmd not installed")?;
+    let qmd = find_qmd_binary().ok_or("qmd not installed")?;
     let vault_name = vault_dir_name(vault_path);
 
     // Check if collection already exists
-    let output = Command::new(&qmd_bin)
+    let output = qmd
+        .command()
         .args(["collection", "list"])
         .output()
         .map_err(|e| format!("Failed to list collections: {e}"))?;
@@ -199,7 +266,7 @@ pub fn ensure_collection(vault_path: &str) -> Result<(), String> {
     }
 
     // Create collection
-    Command::new(&qmd_bin)
+    qmd.command()
         .args([
             "collection",
             "add",
@@ -229,7 +296,7 @@ pub fn run_full_index<F>(vault_path: &str, on_progress: F) -> Result<(), String>
 where
     F: Fn(IndexingProgress),
 {
-    let qmd_bin = find_qmd_binary().ok_or("qmd not installed")?;
+    let qmd = find_qmd_binary().ok_or("qmd not installed")?;
 
     ensure_collection(vault_path)?;
 
@@ -242,7 +309,8 @@ where
         error: None,
     });
 
-    let update_output = Command::new(&qmd_bin)
+    let update_output = qmd
+        .command()
         .args(["update"])
         .output()
         .map_err(|e| format!("qmd update failed: {e}"))?;
@@ -281,7 +349,8 @@ where
         error: None,
     });
 
-    let embed_output = Command::new(&qmd_bin)
+    let embed_output = qmd
+        .command()
         .args(["embed"])
         .output()
         .map_err(|e| format!("qmd embed failed: {e}"))?;
@@ -323,11 +392,12 @@ fn parse_indexed_count(update_output: &str) -> usize {
 
 /// Run incremental update for a single file change.
 pub fn run_incremental_update(vault_path: &str) -> Result<(), String> {
-    let qmd_bin = find_qmd_binary().ok_or("qmd not installed")?;
+    let qmd = find_qmd_binary().ok_or("qmd not installed")?;
 
     // Verify collection exists
     let vault_name = vault_dir_name(vault_path);
-    let list_output = Command::new(&qmd_bin)
+    let list_output = qmd
+        .command()
         .args(["collection", "list"])
         .output()
         .map_err(|e| format!("Failed to list collections: {e}"))?;
@@ -340,7 +410,8 @@ pub fn run_incremental_update(vault_path: &str) -> Result<(), String> {
         }
     }
 
-    let output = Command::new(&qmd_bin)
+    let output = qmd
+        .command()
         .args(["update"])
         .output()
         .map_err(|e| format!("qmd incremental update failed: {e}"))?;
@@ -353,57 +424,30 @@ pub fn run_incremental_update(vault_path: &str) -> Result<(), String> {
     Ok(())
 }
 
-/// Attempt to auto-install qmd via bun. Returns Ok if successful.
-pub fn auto_install_qmd() -> Result<String, String> {
-    // Find bun
-    let bun = find_bun().ok_or("bun not installed — cannot auto-install qmd")?;
-
-    let output = Command::new(&bun)
-        .args(["install", "-g", "qmd"])
-        .output()
-        .map_err(|e| format!("Failed to install qmd: {e}"))?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("qmd installation failed: {stderr}"));
-    }
-
-    // Clear cache so find_qmd_binary() re-discovers
-    clear_qmd_cache();
-
-    match find_qmd_binary() {
-        Some(path) => Ok(path),
-        None => Err("qmd installed but binary not found".to_string()),
-    }
-}
-
-fn find_bun() -> Option<String> {
-    let candidates = [
-        dirs::home_dir().map(|h| h.join(".bun/bin/bun").to_string_lossy().to_string()),
-        Some("/opt/homebrew/bin/bun".to_string()),
-        Some("/usr/local/bin/bun".to_string()),
-    ];
-    for candidate in candidates.into_iter().flatten() {
-        if Path::new(&candidate).exists() {
-            return Some(candidate);
-        }
-    }
-    Command::new("which")
-        .arg("bun")
-        .output()
-        .ok()
-        .and_then(|o| {
-            if o.status.success() {
-                Some(String::from_utf8_lossy(&o.stdout).trim().to_string())
-            } else {
-                None
-            }
-        })
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn qmd_binary_command_sets_work_dir() {
+        let qmd = QmdBinary {
+            path: "/bin/echo".to_string(),
+            work_dir: Some(PathBuf::from("/tmp")),
+        };
+        let cmd = qmd.command();
+        let dbg = format!("{:?}", cmd);
+        assert!(dbg.contains("/bin/echo"));
+    }
+
+    #[test]
+    fn qmd_binary_command_no_work_dir() {
+        let qmd = QmdBinary {
+            path: "/bin/echo".to_string(),
+            work_dir: None,
+        };
+        let output = qmd.command().arg("hello").output().unwrap();
+        assert!(output.status.success());
+    }
 
     #[test]
     fn vault_dir_name_extracts_last_segment() {
