@@ -91,6 +91,7 @@ export function useCodeMirror(
       extensions: [
         lineNumbers(),
         highlightActiveLine(),
+        EditorView.lineWrapping,
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         buildSaveKeymap(callbacksRef),
