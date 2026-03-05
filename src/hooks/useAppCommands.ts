@@ -32,7 +32,6 @@ interface AppCommandsConfig {
   onUnarchiveNote: (path: string) => void
   onCommitPush: () => void
   onResolveConflicts?: () => void
-  conflictCount?: number
   onSetViewMode: (mode: ViewMode) => void
   onToggleInspector: () => void
   onToggleDiff?: () => void
@@ -153,7 +152,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     handleCloseTabRef: config.handleCloseTabRef,
     activeTabPath: config.activeTabPath,
     modifiedCount: config.modifiedCount,
-    conflictCount: config.conflictCount,
   })
 
   const commands = useCommandRegistry({
@@ -171,7 +169,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onUnarchiveNote: config.onUnarchiveNote,
     onCommitPush: config.onCommitPush,
     onResolveConflicts: config.onResolveConflicts,
-    conflictCount: config.conflictCount,
     onSetViewMode: config.onSetViewMode,
     onToggleInspector: config.onToggleInspector,
     onToggleDiff: config.onToggleDiff,

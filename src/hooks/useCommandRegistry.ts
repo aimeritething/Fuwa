@@ -18,7 +18,6 @@ interface CommandRegistryConfig {
   activeTabPath: string | null
   entries: VaultEntry[]
   modifiedCount: number
-  conflictCount?: number
   mcpStatus?: string
   onInstallMcp?: () => void
 
@@ -184,7 +183,7 @@ export function buildThemeCommands(
 
 export function useCommandRegistry(config: CommandRegistryConfig): CommandAction[] {
   const {
-    activeTabPath, entries, modifiedCount, conflictCount,
+    activeTabPath, entries, modifiedCount,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onSave, onOpenSettings,
     onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
     onCommitPush, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
@@ -242,7 +241,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
 
       // Git
       { id: 'commit-push', label: 'Commit & Push', group: 'Git', keywords: ['git', 'save', 'sync'], enabled: modifiedCount > 0, execute: onCommitPush },
-      { id: 'resolve-conflicts', label: 'Resolve Conflicts', group: 'Git', keywords: ['conflict', 'merge', 'git', 'sync'], enabled: (conflictCount ?? 0) > 0, execute: () => onResolveConflicts?.() },
+      { id: 'resolve-conflicts', label: 'Resolve Conflicts', group: 'Git', keywords: ['conflict', 'merge', 'git', 'sync'], enabled: true, execute: () => onResolveConflicts?.() },
       { id: 'view-changes', label: 'View Pending Changes', group: 'Git', keywords: ['modified', 'diff'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'changes' }) },
 
       // View
@@ -266,7 +265,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
 
     return cmds
   }, [
-    hasActiveNote, activeTabPath, isArchived, isTrashed, modifiedCount, conflictCount, activeNoteModified,
+    hasActiveNote, activeTabPath, isArchived, isTrashed, modifiedCount, activeNoteModified,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onCreateType, onSave, onOpenSettings,
     onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
     onCommitPush, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,

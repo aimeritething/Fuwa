@@ -150,7 +150,10 @@ function App() {
       } catch {
         return
       }
-      if (files.length === 0) return
+      if (files.length === 0) {
+        setToastMessage('No merge conflicts to resolve')
+        return
+      }
     }
     autoSync.pausePull()
     conflictResolver.initFiles(files)
@@ -402,7 +405,6 @@ function App() {
     onArchiveNote: entryActions.handleArchiveNote, onUnarchiveNote: entryActions.handleUnarchiveNote,
     onCommitPush: commitFlow.openCommitDialog,
     onResolveConflicts: handleOpenConflictResolver,
-    conflictCount: autoSync.conflictFiles.length,
     onSetViewMode: setViewMode,
     onToggleInspector: () => layout.setInspectorCollapsed(c => !c),
     onToggleDiff: () => diffToggleRef.current(),
