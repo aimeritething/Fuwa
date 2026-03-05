@@ -11,6 +11,30 @@ globalThis.fetch = vi.fn(() =>
   Promise.resolve(new Response(null, { status: 418 })),
 ) as typeof globalThis.fetch
 
+// Stub WebSocket to prevent Node 22 + undici WebSocket incompatibility.
+// undici's WebSocket dispatchEvent crashes with "The event argument must be
+// an instance of Event" when running in jsdom environment.
+// Tests should never open real WebSocket connections.
+globalThis.WebSocket = class MockWebSocket {
+  static CONNECTING = 0
+  static OPEN = 1
+  static CLOSING = 2
+  static CLOSED = 3
+  readyState = MockWebSocket.OPEN
+  onopen: ((event: Event) => void) | null = null
+  onclose: ((event: CloseEvent) => void) | null = null
+  onmessage: ((event: MessageEvent) => void) | null = null
+  onerror: ((event: Event) => void) | null = null
+  constructor(/* url: string, protocols?: string | string[] */) {
+    // No-op: don't open real connections in tests
+  }
+  send(/* data: unknown */) {}
+  close() { this.readyState = MockWebSocket.CLOSED }
+  addEventListener() {}
+  removeEventListener() {}
+  dispatchEvent() { return true }
+} as unknown as typeof WebSocket
+
 // Mock scrollIntoView for jsdom (not implemented)
 Element.prototype.scrollIntoView = vi.fn()
 
