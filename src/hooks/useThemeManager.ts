@@ -117,10 +117,13 @@ export interface ThemeManager {
   themes: ThemeFile[]
   activeThemeId: string | null
   activeTheme: ThemeFile | null
+  activeThemeContent: string | undefined
   isDark: boolean
   switchTheme: (themeId: string) => Promise<void>
   createTheme: (name?: string) => Promise<string>
   reloadThemes: () => Promise<void>
+  /** Update a single frontmatter property on the active theme note. */
+  updateThemeProperty: (key: string, value: string) => Promise<void>
 }
 
 /** Manages loading and persisting the active theme path from vault settings. */
@@ -195,6 +198,7 @@ export function useThemeManager(
   vaultPath: string | null,
   entries: VaultEntry[],
   allContent: Record<string, string>,
+  updateContent?: (path: string, content: string) => void,
 ): ThemeManager {
   // Ensure default theme files exist on vault open (creates theme/ dir + defaults if missing)
   useEffect(() => {
@@ -268,5 +272,21 @@ export function useThemeManager(
 
   const reloadThemes = useCallback(async () => { await reload() }, [reload])
 
-  return { themes, activeThemeId, activeTheme, isDark, switchTheme, createTheme, reloadThemes }
+  const updateThemeProperty = useCallback(async (key: string, value: string) => {
+    if (!activeThemeId) return
+    try {
+      const newContent = await tauriCall<string>('update_frontmatter', {
+        path: activeThemeId,
+        key,
+        value,
+      })
+      updateContent?.(activeThemeId, newContent)
+    } catch (err) { console.error('Failed to update theme property:', err) }
+  }, [activeThemeId, updateContent])
+
+  return {
+    themes, activeThemeId, activeTheme,
+    activeThemeContent: cachedThemeContent,
+    isDark, switchTheme, createTheme, reloadThemes, updateThemeProperty,
+  }
 }

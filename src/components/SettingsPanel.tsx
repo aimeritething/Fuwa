@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { X, Eye, EyeSlash, GithubLogo, SignOut, Check, Plus } from '@phosphor-icons/react'
 import { GitHubDeviceFlow } from './GitHubDeviceFlow'
+import { ThemePropertyEditor } from './ThemePropertyEditor'
 import type { Settings, ThemeFile } from '../types'
 import type { ThemeManager } from '../hooks/useThemeManager'
 
@@ -356,6 +357,13 @@ function AppearanceSection({ themeManager }: { themeManager: ThemeManager }) {
         <Plus size={14} />
         New Theme
       </button>
+
+      {activeThemeId && (
+        <>
+          <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
+          <ThemePropertyEditor themeManager={themeManager} />
+        </>
+      )}
     </>
   )
 }

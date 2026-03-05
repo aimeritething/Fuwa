@@ -103,7 +103,7 @@ function App() {
   const resolvedPath = onboarding.state.status === 'ready' ? onboarding.state.vaultPath : vaultSwitcher.vaultPath
   const vault = useVaultLoader(resolvedPath)
   const { settings, saveSettings } = useSettings()
-  const themeManager = useThemeManager(resolvedPath, vault.entries, vault.allContent)
+  const themeManager = useThemeManager(resolvedPath, vault.entries, vault.allContent, vault.updateContent)
 
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
 
