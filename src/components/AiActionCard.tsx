@@ -1,7 +1,8 @@
 import { type KeyboardEvent, type ReactNode, useCallback } from 'react'
 import {
-  PencilSimple, MagnifyingGlass, Link, Trash, ChartBar, Eye, Sparkle,
+  PencilSimple, MagnifyingGlass, Trash, ChartBar, Eye,
   CircleNotch, CheckCircle, XCircle, CaretRight, CaretDown,
+  Terminal, File, FolderOpen, NotePencil,
 } from '@phosphor-icons/react'
 
 export type AiActionStatus = 'pending' | 'done' | 'error'
@@ -23,18 +24,21 @@ const MAX_DETAIL_LENGTH = 800
 type IconRenderer = (size: number) => ReactNode
 
 const TOOL_ICON_MAP: Record<string, IconRenderer> = {
-  create_note: (s) => <PencilSimple size={s} />,
-  edit_note_frontmatter: (s) => <PencilSimple size={s} />,
-  append_to_note: (s) => <PencilSimple size={s} />,
+  // Native Claude Code tools
+  Bash: (s) => <Terminal size={s} />,
+  Write: (s) => <PencilSimple size={s} />,
+  Edit: (s) => <NotePencil size={s} />,
+  Read: (s) => <File size={s} />,
+  Glob: (s) => <FolderOpen size={s} />,
+  Grep: (s) => <MagnifyingGlass size={s} />,
+  // Laputa MCP tools
   search_notes: (s) => <MagnifyingGlass size={s} />,
-  list_notes: (s) => <MagnifyingGlass size={s} />,
-  link_notes: (s) => <Link size={s} />,
+  get_vault_context: (s) => <ChartBar size={s} />,
+  get_note: (s) => <File size={s} />,
+  open_note: (s) => <Eye size={s} />,
+  // Legacy tools (for backward compatibility with existing messages)
+  create_note: (s) => <PencilSimple size={s} />,
   delete_note: (s) => <Trash size={s} />,
-  vault_context: (s) => <ChartBar size={s} />,
-  ui_open_note: (s) => <Eye size={s} />,
-  ui_open_tab: (s) => <Eye size={s} />,
-  ui_highlight: (s) => <Sparkle size={s} />,
-  ui_set_filter: (s) => <Sparkle size={s} />,
 }
 
 const DEFAULT_ICON: IconRenderer = (s) => <PencilSimple size={s} />
@@ -96,11 +100,15 @@ function DetailBlock({ label, content, isError }: {
   )
 }
 
+/** Whether this tool is a Laputa UI-only tool (lighter styling). */
+function isUiOnlyTool(tool: string): boolean {
+  return tool === 'open_note'
+}
+
 export function AiActionCard({
   tool, label, path, status, input, output, expanded, onToggle, onOpenNote,
 }: AiActionCardProps) {
   const renderIcon = TOOL_ICON_MAP[tool] ?? DEFAULT_ICON
-  const isUiTool = tool.startsWith('ui_')
   const hasDetails = !!(input || output)
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -129,7 +137,7 @@ export function AiActionCard({
       className="rounded"
       style={{
         fontSize: 12,
-        background: isUiTool ? 'rgba(74, 158, 255, 0.06)' : 'rgba(74, 158, 255, 0.1)',
+        background: isUiOnlyTool(tool) ? 'rgba(74, 158, 255, 0.06)' : 'rgba(74, 158, 255, 0.1)',
       }}
     >
       <div

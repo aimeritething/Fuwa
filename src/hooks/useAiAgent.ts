@@ -1,11 +1,14 @@
 /**
  * Hook for the AI agent panel — manages agent state and streaming.
- * Uses Claude CLI subprocess with MCP tools via Tauri.
+ * Uses Claude CLI subprocess with full tool access + MCP tools via Tauri.
  *
  * States: idle -> thinking -> tool-executing -> done/error
  *
  * Reasoning streams live while Claude thinks, then auto-collapses.
  * Response text accumulates internally and is revealed as a complete block on done.
+ *
+ * Detects file operations (Write/Edit/Bash) and notifies the parent via callbacks
+ * so the Laputa UI can auto-open new notes and live-refresh modified notes.
  */
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { AiAction } from '../components/AiMessage'
@@ -26,15 +29,31 @@ export interface AiAgentMessage {
   id?: string
 }
 
-export function useAiAgent(vaultPath: string, contextPrompt?: string) {
+export interface AgentFileCallbacks {
+  onFileCreated?: (relativePath: string) => void
+  onFileModified?: (relativePath: string) => void
+}
+
+export function useAiAgent(
+  vaultPath: string,
+  contextPrompt?: string,
+  fileCallbacks?: AgentFileCallbacks,
+) {
   const [messages, setMessages] = useState<AiAgentMessage[]>([])
   const [status, setStatus] = useState<AgentStatus>('idle')
   const abortRef = useRef({ aborted: false })
   const contextRef = useRef(contextPrompt)
   const responseAccRef = useRef('')
+  const fileCallbacksRef = useRef(fileCallbacks)
+  // Track tool inputs for file-operation detection on ToolDone
+  const toolInputMapRef = useRef<Map<string, { tool: string; input?: string }>>(new Map())
+
   useEffect(() => {
     contextRef.current = contextPrompt
   }, [contextPrompt])
+  useEffect(() => {
+    fileCallbacksRef.current = fileCallbacks
+  }, [fileCallbacks])
 
   const sendMessage = useCallback(async (text: string, references?: NoteReference[]) => {
     if (!text.trim() || status === 'thinking' || status === 'tool-executing') return
@@ -52,6 +71,7 @@ export function useAiAgent(vaultPath: string, contextPrompt?: string) {
 
     abortRef.current = { aborted: false }
     responseAccRef.current = ''
+    toolInputMapRef.current = new Map()
 
     const messageId = nextMessageId()
     setMessages(prev => [...prev, {
@@ -85,6 +105,7 @@ export function useAiAgent(vaultPath: string, contextPrompt?: string) {
         if (abortRef.current.aborted) return
         markReasoningDone()
         setStatus('tool-executing')
+        toolInputMapRef.current.set(toolId, { tool: toolName, input })
         update(m => {
           const existing = m.actions.find(a => a.toolId === toolId)
           if (existing) {
@@ -100,7 +121,7 @@ export function useAiAgent(vaultPath: string, contextPrompt?: string) {
             actions: [...m.actions, {
               tool: toolName,
               toolId,
-              label: formatToolLabel(toolName, toolId),
+              label: formatToolLabel(toolName, input),
               status: 'pending' as const,
               input,
             }],
@@ -110,6 +131,10 @@ export function useAiAgent(vaultPath: string, contextPrompt?: string) {
 
       onToolDone: (toolId, output) => {
         if (abortRef.current.aborted) return
+        const info = toolInputMapRef.current.get(toolId)
+        if (info) {
+          detectFileOperation(info.tool, info.input, vaultPath, fileCallbacksRef.current)
+        }
         update(m => ({
           ...m,
           actions: m.actions.map(a =>
@@ -151,6 +176,7 @@ export function useAiAgent(vaultPath: string, contextPrompt?: string) {
   const clearConversation = useCallback(() => {
     abortRef.current.aborted = true
     responseAccRef.current = ''
+    toolInputMapRef.current = new Map()
     setMessages([])
     setStatus('idle')
   }, [])
@@ -160,22 +186,112 @@ export function useAiAgent(vaultPath: string, contextPrompt?: string) {
 
 // --- Helpers ---
 
-function formatToolLabel(toolName: string, toolId: string): string {
-  const suffix = toolId.slice(-6)
-  const labels: Record<string, string> = {
-    read_note: 'Reading note',
-    create_note: 'Creating note',
-    search_notes: 'Searching notes',
-    append_to_note: 'Appending to note',
-    edit_note_frontmatter: 'Editing frontmatter',
-    delete_note: 'Deleting note',
-    link_notes: 'Linking notes',
-    list_notes: 'Listing notes',
-    vault_context: 'Loading vault context',
-    ui_open_note: 'Opening note',
-    ui_open_tab: 'Opening tab',
-    ui_highlight: 'Highlighting',
-    ui_set_filter: 'Setting filter',
+/** Parse the file_path from a Write or Edit tool input JSON string. */
+function parseFilePath(input: string | undefined): string | null {
+  if (!input) return null
+  try {
+    const parsed = JSON.parse(input)
+    return parsed.file_path ?? parsed.path ?? null
+  } catch {
+    return null
   }
-  return `${labels[toolName] ?? toolName}... (${suffix})`
+}
+
+/** Convert absolute path to vault-relative path, or null if outside vault. */
+function toVaultRelative(filePath: string, vaultPath: string): string | null {
+  if (!filePath.startsWith(vaultPath)) return null
+  const rel = filePath.slice(vaultPath.length).replace(/^\//, '')
+  return rel || null
+}
+
+/** Detect file operations from completed tool calls and notify callbacks. */
+function detectFileOperation(
+  toolName: string,
+  input: string | undefined,
+  vaultPath: string,
+  callbacks: AgentFileCallbacks | undefined,
+) {
+  if (!callbacks) return
+  if (toolName !== 'Write' && toolName !== 'Edit') return
+  const filePath = parseFilePath(input)
+  if (!filePath || !filePath.endsWith('.md')) return
+  const rel = toVaultRelative(filePath, vaultPath)
+  if (!rel) return
+  if (toolName === 'Write') {
+    callbacks.onFileCreated?.(rel)
+  } else {
+    callbacks.onFileModified?.(rel)
+  }
+}
+
+/** Generate a human-readable label for a tool call. */
+function formatToolLabel(toolName: string, input?: string): string {
+  // Native Claude Code tools
+  switch (toolName) {
+    case 'Bash': {
+      const cmd = extractBashCommand(input)
+      return cmd ? `$ ${cmd}` : 'Running command...'
+    }
+    case 'Write': {
+      const fp = parseFilePath(input)
+      return fp ? `Writing ${basename(fp)}` : 'Writing file...'
+    }
+    case 'Edit': {
+      const fp = parseFilePath(input)
+      return fp ? `Editing ${basename(fp)}` : 'Editing file...'
+    }
+    case 'Read': {
+      const fp = parseFilePath(input)
+      return fp ? `Reading ${basename(fp)}` : 'Reading file...'
+    }
+    case 'Glob':
+      return 'Searching files...'
+    case 'Grep':
+      return 'Searching content...'
+    case 'TodoWrite':
+      return 'Updating plan...'
+    default:
+      break
+  }
+
+  // Laputa MCP tools
+  const mcpLabels: Record<string, string> = {
+    search_notes: 'Searching notes',
+    get_vault_context: 'Loading vault context',
+    get_note: 'Reading note',
+    open_note: 'Opening note',
+  }
+  if (mcpLabels[toolName]) {
+    const notePath = parseNotePath(input)
+    return notePath ? `${mcpLabels[toolName]}: ${basename(notePath)}` : `${mcpLabels[toolName]}...`
+  }
+
+  return `${toolName}...`
+}
+
+function extractBashCommand(input: string | undefined): string | null {
+  if (!input) return null
+  try {
+    const parsed = JSON.parse(input)
+    const cmd = parsed.command ?? parsed.cmd ?? null
+    if (typeof cmd !== 'string') return null
+    // Truncate long commands
+    return cmd.length > 60 ? cmd.slice(0, 57) + '...' : cmd
+  } catch {
+    return null
+  }
+}
+
+function parseNotePath(input: string | undefined): string | null {
+  if (!input) return null
+  try {
+    const parsed = JSON.parse(input)
+    return parsed.path ?? parsed.query ?? null
+  } catch {
+    return null
+  }
+}
+
+function basename(filePath: string): string {
+  return filePath.split('/').pop() ?? filePath
 }

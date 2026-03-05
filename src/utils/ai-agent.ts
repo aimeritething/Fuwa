@@ -1,7 +1,8 @@
 /**
- * AI Agent utilities — Claude CLI agent mode with MCP vault tools.
+ * AI Agent utilities — Claude CLI agent mode with full shell access + MCP vault tools.
  *
- * The Claude CLI handles the tool-use loop internally via MCP.
+ * The agent has full native tool access (bash, read, write, edit) plus
+ * Laputa-specific MCP tools (search_notes, get_vault_context, get_note, open_note).
  * The frontend receives streaming events for text, tool calls, and completion.
  */
 
@@ -9,10 +10,14 @@ import { isTauri } from '../mock-tauri'
 
 // --- Agent system prompt ---
 
-const AGENT_SYSTEM_PREAMBLE = `You are an AI assistant integrated into Laputa, a personal knowledge management app.
-You can perform actions on the user's vault using the provided tools.
-Be concise and helpful. When creating notes, use appropriate entity types and folder conventions.
-When you've completed a task, briefly summarize what you did.`
+const AGENT_SYSTEM_PREAMBLE = `You are working inside Laputa, a personal knowledge management app.
+
+Notes are markdown files with YAML frontmatter. Standard fields: title, type (aliased is_a), date, tags.
+You have full shell access. Use bash for file operations, search, bulk edits.
+Use the provided MCP tools for: full-text search (search_notes), vault orientation (get_vault_context), parsed note reading (get_note), and opening notes in the UI (open_note).
+
+When you create or edit a note, call open_note(path) so the user sees it in Laputa.
+Be concise and helpful. When you've completed a task, briefly summarize what you did.`
 
 export function buildAgentSystemPrompt(vaultContext?: string): string {
   if (!vaultContext) return AGENT_SYSTEM_PREAMBLE
@@ -41,7 +46,7 @@ export interface AgentStreamCallbacks {
 }
 
 /**
- * Stream an agent task through the Claude CLI subprocess with MCP tools.
+ * Stream an agent task through the Claude CLI subprocess with full tool access.
  * The CLI handles the tool-use loop; we receive events for UI updates.
  */
 export async function streamClaudeAgent(

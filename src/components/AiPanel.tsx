@@ -2,7 +2,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import { Robot, X, PaperPlaneRight, Plus, Link } from '@phosphor-icons/react'
 import { AiMessage } from './AiMessage'
 import { WikilinkChatInput } from './WikilinkChatInput'
-import { useAiAgent, type AiAgentMessage } from '../hooks/useAiAgent'
+import { useAiAgent, type AiAgentMessage, type AgentFileCallbacks } from '../hooks/useAiAgent'
 import { collectLinkedEntries, buildContextSnapshot, type NoteReference, type NoteListItem } from '../utils/ai-context'
 import type { VaultEntry } from '../types'
 
@@ -11,6 +11,8 @@ export type { AiAgentMessage } from '../hooks/useAiAgent'
 interface AiPanelProps {
   onClose: () => void
   onOpenNote?: (path: string) => void
+  onFileCreated?: (relativePath: string) => void
+  onFileModified?: (relativePath: string) => void
   vaultPath: string
   activeEntry?: VaultEntry | null
   entries?: VaultEntry[]
@@ -107,7 +109,7 @@ function MessageHistory({ messages, isActive, onOpenNote, hasContext }: {
   )
 }
 
-export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, allContent, openTabs, noteList, noteListFilter }: AiPanelProps) {
+export function AiPanel({ onClose, onOpenNote, onFileCreated, onFileModified, vaultPath, activeEntry, entries, allContent, openTabs, noteList, noteListFilter }: AiPanelProps) {
   const [input, setInput] = useState('')
   const [pendingRefs, setPendingRefs] = useState<NoteReference[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -131,7 +133,12 @@ export function AiPanel({ onClose, onOpenNote, vaultPath, activeEntry, entries, 
     })
   }, [activeEntry, allContent, openTabs, noteList, noteListFilter, entries, pendingRefs])
 
-  const agent = useAiAgent(vaultPath, contextPrompt)
+  const fileCallbacks = useMemo<AgentFileCallbacks>(() => ({
+    onFileCreated,
+    onFileModified,
+  }), [onFileCreated, onFileModified])
+
+  const agent = useAiAgent(vaultPath, contextPrompt, fileCallbacks)
   const hasContext = !!activeEntry
   const isActive = agent.status === 'thinking' || agent.status === 'tool-executing'
 

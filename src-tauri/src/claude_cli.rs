@@ -129,7 +129,7 @@ where
 {
     let bin = find_claude_binary()?;
     let args = build_chat_args(&req);
-    run_claude_subprocess(&bin, &args, &mut emit)
+    run_claude_subprocess(&bin, &args, None, &mut emit)
 }
 
 /// Build CLI arguments for a chat stream request.
@@ -160,17 +160,18 @@ fn build_chat_args(req: &ChatStreamRequest) -> Vec<String> {
     args
 }
 
-/// Spawn `claude -p` with MCP vault tools for an agent task and stream events.
+/// Spawn `claude -p` with full tool access and MCP vault tools for an agent task.
 pub fn run_agent_stream<F>(req: AgentStreamRequest, mut emit: F) -> Result<String, String>
 where
     F: FnMut(ClaudeStreamEvent),
 {
     let bin = find_claude_binary()?;
     let args = build_agent_args(&req)?;
-    run_claude_subprocess(&bin, &args, &mut emit)
+    run_claude_subprocess(&bin, &args, Some(&req.vault_path), &mut emit)
 }
 
 /// Build CLI arguments for an agent stream request.
+/// Native tools (bash, read, write, edit) are enabled by default — no `--tools ""`.
 fn build_agent_args(req: &AgentStreamRequest) -> Result<Vec<String>, String> {
     let mcp_config = build_mcp_config(&req.vault_path)?;
 
@@ -181,8 +182,6 @@ fn build_agent_args(req: &AgentStreamRequest) -> Result<Vec<String>, String> {
         "stream-json".into(),
         "--verbose".into(),
         "--include-partial-messages".into(),
-        "--tools".into(),
-        String::new(), // disable built-in tools; MCP tools remain
         "--mcp-config".into(),
         mcp_config,
         "--dangerously-skip-permissions".into(),
@@ -229,15 +228,25 @@ struct StreamState {
 }
 
 /// Core subprocess runner shared by chat and agent modes.
-fn run_claude_subprocess<F>(bin: &PathBuf, args: &[String], emit: &mut F) -> Result<String, String>
+/// When `cwd` is `Some`, the subprocess starts with that working directory.
+fn run_claude_subprocess<F>(
+    bin: &PathBuf,
+    args: &[String],
+    cwd: Option<&str>,
+    emit: &mut F,
+) -> Result<String, String>
 where
     F: FnMut(ClaudeStreamEvent),
 {
-    let mut child = Command::new(bin)
-        .args(args)
+    let mut cmd = Command::new(bin);
+    cmd.args(args)
         .env_remove("CLAUDECODE") // prevent "nested session" guard
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
+        .stderr(Stdio::piped());
+    if let Some(dir) = cwd {
+        cmd.current_dir(dir);
+    }
+    let mut child = cmd
         .spawn()
         .map_err(|e| format!("Failed to spawn claude: {e}"))?;
 
@@ -813,7 +822,7 @@ mod tests {
         std::fs::write(&path, script).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
         let mut events = vec![];
-        let result = run_claude_subprocess(&path, args, &mut |e| events.push(e));
+        let result = run_claude_subprocess(&path, args, None, &mut |e| events.push(e));
         (result, events)
     }
 
@@ -964,6 +973,8 @@ mod tests {
             assert!(args.contains(&"--dangerously-skip-permissions".to_string()));
             assert!(args.contains(&"--no-session-persistence".to_string()));
             assert!(!args.contains(&"--append-system-prompt".to_string()));
+            // Native tools must NOT be disabled
+            assert!(!args.contains(&"--tools".to_string()));
         }
     }
 
@@ -1035,7 +1046,7 @@ mod tests {
     fn run_subprocess_spawn_failure() {
         let fake_bin = PathBuf::from("/nonexistent/binary/path");
         let mut events = vec![];
-        let result = run_claude_subprocess(&fake_bin, &[], &mut |e| events.push(e));
+        let result = run_claude_subprocess(&fake_bin, &[], None, &mut |e| events.push(e));
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Failed to spawn"));
     }

@@ -71,6 +71,8 @@ interface EditorProps {
   rawToggleRef?: React.MutableRefObject<() => void>
   /** Mutable ref that Editor registers its diff-mode toggle into, for command palette access. */
   diffToggleRef?: React.MutableRefObject<() => void>
+  onFileCreated?: (relativePath: string) => void
+  onFileModified?: (relativePath: string) => void
 }
 
 function useEditorModeExclusion({
@@ -127,6 +129,8 @@ export const Editor = memo(function Editor({
   isDarkTheme,
   rawToggleRef,
   diffToggleRef,
+  onFileCreated,
+  onFileModified,
 }: EditorProps) {
   const vaultPathRef = useRef(vaultPath)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
@@ -242,6 +246,8 @@ export const Editor = memo(function Editor({
           onDeleteProperty={onDeleteProperty}
           onAddProperty={onAddProperty}
           onOpenNote={onNavigateWikilink}
+          onFileCreated={onFileCreated}
+          onFileModified={onFileModified}
         />
       </div>
     </div>

@@ -24,6 +24,8 @@ interface EditorRightPanelProps {
   onDeleteProperty?: (path: string, key: string) => Promise<void>
   onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
   onOpenNote?: (path: string) => void
+  onFileCreated?: (relativePath: string) => void
+  onFileModified?: (relativePath: string) => void
 }
 
 export function EditorRightPanel({
@@ -32,6 +34,7 @@ export function EditorRightPanel({
   noteList, noteListFilter,
   onToggleInspector, onToggleAIChat, onNavigateWikilink, onViewCommitDiff,
   onUpdateFrontmatter, onDeleteProperty, onAddProperty, onOpenNote,
+  onFileCreated, onFileModified,
 }: EditorRightPanelProps) {
   if (showAIChat) {
     return (
@@ -42,6 +45,8 @@ export function EditorRightPanel({
         <AiPanel
           onClose={() => onToggleAIChat?.()}
           onOpenNote={onOpenNote}
+          onFileCreated={onFileCreated}
+          onFileModified={onFileModified}
           vaultPath={vaultPath}
           activeEntry={inspectorEntry}
           entries={entries}

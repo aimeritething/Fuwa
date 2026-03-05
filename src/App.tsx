@@ -40,7 +40,7 @@ import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { UpdateBanner } from './components/UpdateBanner'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
-import type { SidebarSelection } from './types'
+import type { SidebarSelection, VaultEntry } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { filterEntries } from './utils/noteListHelpers'
 import './App.css'
@@ -224,20 +224,43 @@ function App() {
   useNavigationGestures({ onGoBack: handleGoBack, onGoForward: handleGoForward })
 
   // MCP UI bridge: react to AI-driven open/highlight/vault-change events
+  const openNoteByPath = useCallback((path: string) => {
+    const entry = vault.entries.find(e => e.path === path || e.path === `${resolvedPath}/${path}`)
+    if (entry) {
+      notes.handleSelectNote(entry)
+    } else {
+      // Entry not yet in vault (just created) — reload then open
+      vault.reloadVault().then(freshEntries => {
+        const fresh = freshEntries.find((e: VaultEntry) => e.path === path || e.path === `${resolvedPath}/${path}`)
+        if (fresh) notes.handleSelectNote(fresh)
+      })
+    }
+  }, [vault, notes, resolvedPath])
+
   const aiActivity = useAiActivity({
-    onOpenNote: (path) => {
-      const entry = vault.entries.find(e => e.path === path || e.path === `${resolvedPath}/${path}`)
-      if (entry) notes.handleSelectNote(entry)
-    },
-    onOpenTab: (path) => {
-      const entry = vault.entries.find(e => e.path === path || e.path === `${resolvedPath}/${path}`)
-      if (entry) notes.handleSelectNote(entry)
-    },
+    onOpenNote: openNoteByPath,
+    onOpenTab: openNoteByPath,
     onSetFilter: (filterType) => {
       setSelection({ kind: 'sectionGroup', type: filterType })
     },
     onVaultChanged: () => { vault.reloadVault() },
   })
+
+  // Agent file operation handlers: auto-open created notes, live-refresh modified notes
+  const handleAgentFileCreated = useCallback((relativePath: string) => {
+    vault.reloadVault().then(freshEntries => {
+      const entry = freshEntries.find((e: VaultEntry) => e.path === relativePath || e.path === `${resolvedPath}/${relativePath}`)
+      if (entry) notes.handleSelectNote(entry)
+    })
+  }, [vault, notes, resolvedPath])
+
+  const handleAgentFileModified = useCallback((relativePath: string) => {
+    const fullPath = `${resolvedPath}/${relativePath}`
+    const matchPath = notes.tabs.some(t => t.entry.path === relativePath) ? relativePath : fullPath
+    if (notes.tabs.some(t => t.entry.path === matchPath)) {
+      vault.reloadVault()
+    }
+  }, [vault, notes, resolvedPath])
 
   const { triggerIncrementalIndex } = indexing
   const onAfterSave = useCallback(() => {
@@ -525,6 +548,8 @@ function App() {
             onGoForward={handleGoForward}
             leftPanelsCollapsed={!sidebarVisible && !noteListVisible}
             isDarkTheme={themeManager.isDark}
+            onFileCreated={handleAgentFileCreated}
+            onFileModified={handleAgentFileModified}
           />
         </div>
       </div>

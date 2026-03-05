@@ -66,8 +66,8 @@ describe('AiActionCard', () => {
     expect(header.getAttribute('tabindex')).toBe('0')
   })
 
-  it('uses lighter background for ui_ tools', () => {
-    render(<AiActionCard {...defaults} tool="ui_open_tab" label="Opened tab" />)
+  it('uses lighter background for open_note tool', () => {
+    render(<AiActionCard {...defaults} tool="open_note" label="Opening note" />)
     const card = screen.getByTestId('ai-action-card')
     expect(card.style.background).toContain('0.06')
   })
