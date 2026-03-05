@@ -116,6 +116,14 @@ fn strip_markdown_chars(s: &str) -> String {
     let mut chars = s.chars().peekable();
     while let Some(ch) = chars.next() {
         match ch {
+            '[' if chars.peek() == Some(&'[') => {
+                chars.next(); // consume second '['
+                let inner = collect_wikilink_inner(&mut chars);
+                match inner.find('|') {
+                    Some(idx) => result.push_str(&inner[idx + 1..]),
+                    None => result.push_str(&inner),
+                }
+            }
             '[' => {
                 let inner = collect_until(&mut chars, ']');
                 if chars.peek() == Some(&'(') {
@@ -129,6 +137,21 @@ fn strip_markdown_chars(s: &str) -> String {
         }
     }
     result
+}
+
+/// Collect chars inside a wikilink until `]]`, consuming both closing brackets.
+fn collect_wikilink_inner(
+    chars: &mut std::iter::Peekable<impl Iterator<Item = char>>,
+) -> String {
+    let mut buf = String::new();
+    while let Some(c) = chars.next() {
+        if c == ']' && chars.peek() == Some(&']') {
+            chars.next();
+            break;
+        }
+        buf.push(c);
+    }
+    buf
 }
 
 /// Check if a string contains a wikilink pattern `[[...]]`.
@@ -250,6 +273,16 @@ mod tests {
         let snippet = extract_snippet(content);
         assert!(snippet.contains("this link"));
         assert!(!snippet.contains("https://example.com"));
+        assert!(snippet.contains("wiki link"));
+        assert!(!snippet.contains("[["));
+        assert!(!snippet.contains("]]"));
+    }
+
+    #[test]
+    fn test_extract_snippet_wikilink_alias() {
+        let content = "# Title\n\nDiscussed in [[meetings/standup|standup]] today.";
+        let snippet = extract_snippet(content);
+        assert_eq!(snippet, "Discussed in standup today.");
     }
 
     #[test]
@@ -378,7 +411,20 @@ mod tests {
 
     #[test]
     fn test_strip_markdown_chars_wikilink() {
-        assert_eq!(strip_markdown_chars("see [[my note]]"), "see [my note]");
+        assert_eq!(strip_markdown_chars("see [[my note]]"), "see my note");
+    }
+
+    #[test]
+    fn test_strip_markdown_chars_wikilink_alias() {
+        assert_eq!(
+            strip_markdown_chars("visit [[project/alpha|Alpha Project]]"),
+            "visit Alpha Project"
+        );
+    }
+
+    #[test]
+    fn test_strip_markdown_chars_wikilink_unclosed() {
+        assert_eq!(strip_markdown_chars("see [[broken link"), "see broken link");
     }
 
     #[test]
