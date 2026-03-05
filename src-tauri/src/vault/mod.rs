@@ -103,9 +103,9 @@ struct Frontmatter {
     cadence: Option<String>,
     #[serde(rename = "Archived")]
     archived: Option<bool>,
-    #[serde(rename = "Trashed")]
+    #[serde(rename = "Trashed", alias = "trashed")]
     trashed: Option<bool>,
-    #[serde(rename = "Trashed at")]
+    #[serde(rename = "Trashed at", alias = "trashed_at")]
     trashed_at: Option<String>,
     #[serde(rename = "Created at")]
     created_at: Option<String>,
@@ -1310,6 +1310,33 @@ Company: Acme Corp
             entry.properties.get("Company").and_then(|v| v.as_str()),
             Some("Acme Corp")
         );
+    }
+
+    #[test]
+    fn test_parse_trashed_title_case() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\nTrashed: true\nTrashed at: \"2025-02-01\"\n---\n# Gone\n";
+        let entry = parse_test_entry(&dir, "gone.md", content);
+        assert!(entry.trashed);
+        assert!(entry.trashed_at.is_some());
+    }
+
+    #[test]
+    fn test_parse_trashed_lowercase_alias() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntrashed: true\ntrashed_at: \"2025-02-01\"\n---\n# Gone\n";
+        let entry = parse_test_entry(&dir, "gone.md", content);
+        assert!(entry.trashed, "lowercase 'trashed' must be parsed via alias");
+        assert!(entry.trashed_at.is_some(), "lowercase 'trashed_at' must be parsed via alias");
+    }
+
+    #[test]
+    fn test_trashed_false_when_absent() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\nIs A: Note\n---\n# Active\n";
+        let entry = parse_test_entry(&dir, "active.md", content);
+        assert!(!entry.trashed);
+        assert!(entry.trashed_at.is_none());
     }
 
     // Frontmatter update/delete tests are in frontmatter.rs

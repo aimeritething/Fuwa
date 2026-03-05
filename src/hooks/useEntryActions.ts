@@ -19,15 +19,15 @@ export function useEntryActions({
 }: EntryActionsConfig) {
   const handleTrashNote = useCallback(async (path: string) => {
     const now = new Date().toISOString().slice(0, 10)
-    await handleUpdateFrontmatter(path, 'trashed', true)
-    await handleUpdateFrontmatter(path, 'trashed_at', now)
+    await handleUpdateFrontmatter(path, 'Trashed', true)
+    await handleUpdateFrontmatter(path, 'Trashed at', now)
     updateEntry(path, { trashed: true, trashedAt: Date.now() / 1000 })
     setToastMessage('Note moved to trash')
   }, [handleUpdateFrontmatter, updateEntry, setToastMessage])
 
   const handleRestoreNote = useCallback(async (path: string) => {
-    await handleUpdateFrontmatter(path, 'trashed', false)
-    await handleDeleteProperty(path, 'trashed_at')
+    await handleUpdateFrontmatter(path, 'Trashed', false)
+    await handleDeleteProperty(path, 'Trashed at')
     updateEntry(path, { trashed: false, trashedAt: null })
     setToastMessage('Note restored from trash')
   }, [handleUpdateFrontmatter, handleDeleteProperty, updateEntry, setToastMessage])

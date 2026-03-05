@@ -66,8 +66,8 @@ describe('useEntryActions', () => {
         await result.current.handleTrashNote('/vault/note/test.md')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'trashed', true)
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'trashed_at', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed', true)
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed at', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', {
         trashed: true,
         trashedAt: expect.any(Number),
@@ -84,8 +84,8 @@ describe('useEntryActions', () => {
         await result.current.handleRestoreNote('/vault/note/test.md')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'trashed', false)
-      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', 'trashed_at')
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed', false)
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed at')
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', {
         trashed: false,
         trashedAt: null,
