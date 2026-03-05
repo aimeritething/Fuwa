@@ -84,6 +84,33 @@ describe('detectPropertyType', () => {
   it('detects common date format MM/DD/YYYY', () => {
     expect(detectPropertyType('due', '02/25/2026')).toBe('date')
   })
+
+  it('detects hex color values as color', () => {
+    expect(detectPropertyType('background', '#FFFFFF')).toBe('color')
+    expect(detectPropertyType('foreground', '#37352F')).toBe('color')
+    expect(detectPropertyType('primary', '#155DFF')).toBe('color')
+    expect(detectPropertyType('custom', '#3b82f6')).toBe('color')
+  })
+
+  it('detects short hex colors as color', () => {
+    expect(detectPropertyType('accent', '#fff')).toBe('color')
+    expect(detectPropertyType('color', '#abc')).toBe('color')
+  })
+
+  it('does not detect non-hex named colors without color key', () => {
+    expect(detectPropertyType('custom_field', 'red')).toBe('text')
+    expect(detectPropertyType('custom_field', 'blue')).toBe('text')
+  })
+
+  it('detects named colors with color-related keys', () => {
+    expect(detectPropertyType('fill', 'red')).toBe('color')
+    expect(detectPropertyType('background', 'blue')).toBe('color')
+  })
+
+  it('does not detect invalid hex as color', () => {
+    expect(detectPropertyType('background', '#zzzzzz')).toBe('text')
+    expect(detectPropertyType('color', 'not-a-color')).toBe('text')
+  })
 })
 
 describe('formatDateValue', () => {
