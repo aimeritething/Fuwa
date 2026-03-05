@@ -124,8 +124,7 @@ pub fn search_vault(
 ) -> Result<SearchResponse, String> {
     let start = Instant::now();
 
-    let qmd = indexing::find_qmd_binary()
-        .ok_or_else(|| "qmd binary not found".to_string())?;
+    let qmd = indexing::find_qmd_binary().ok_or_else(|| "qmd binary not found".to_string())?;
 
     let collection = detect_collection_name(vault_path);
 
