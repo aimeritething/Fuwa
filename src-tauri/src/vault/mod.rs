@@ -71,6 +71,9 @@ pub struct VaultEntry {
     /// Default sort preference for the note list when viewing instances of this Type.
     /// Stored as "option:direction" (e.g. "modified:desc", "title:asc", "property:Priority:asc").
     pub sort: Option<String>,
+    /// Default view mode for the note list when viewing instances of this Type.
+    /// Stored as a string: "all", "editor-list", or "editor-only".
+    pub view: Option<String>,
     /// Word count of the note body (excludes frontmatter and H1 title).
     #[serde(rename = "wordCount")]
     pub word_count: u32,
@@ -123,6 +126,8 @@ struct Frontmatter {
     template: Option<String>,
     #[serde(default)]
     sort: Option<String>,
+    #[serde(default)]
+    view: Option<String>,
 }
 
 /// Handles YAML fields that can be either a single string or a list of strings.
@@ -169,6 +174,7 @@ const SKIP_KEYS: &[&str] = &[
     "sidebar label",
     "template",
     "sort",
+    "view",
 ];
 
 /// Extract all wikilink-containing fields from raw YAML frontmatter.
@@ -394,6 +400,7 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
         sidebar_label: frontmatter.sidebar_label,
         template: frontmatter.template,
         sort: frontmatter.sort,
+        view: frontmatter.view,
         word_count,
         outgoing_links,
         properties,

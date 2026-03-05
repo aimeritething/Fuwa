@@ -10,6 +10,7 @@ pub mod search;
 pub mod settings;
 pub mod theme;
 pub mod vault;
+pub mod vault_config;
 pub mod vault_list;
 
 use std::borrow::Cow;
@@ -27,6 +28,7 @@ use search::SearchResponse;
 use settings::Settings;
 use theme::{ThemeFile, VaultSettings};
 use vault::{RenameResult, VaultEntry};
+use vault_config::VaultConfig;
 use vault_list::VaultList;
 
 /// Expand a leading `~` or `~/` in a path string to the user's home directory.
@@ -517,6 +519,18 @@ fn restore_default_themes(vault_path: String) -> Result<String, String> {
     theme::restore_default_themes(&vault_path)
 }
 
+#[tauri::command]
+fn get_vault_config(vault_path: String) -> Result<VaultConfig, String> {
+    let vault_path = expand_tilde(&vault_path);
+    vault_config::get_vault_config(&vault_path)
+}
+
+#[tauri::command]
+fn save_vault_config(vault_path: String, config: VaultConfig) -> Result<(), String> {
+    let vault_path = expand_tilde(&vault_path);
+    vault_config::save_vault_config(&vault_path, config)
+}
+
 fn log_startup_result(label: &str, result: Result<usize, String>) {
     match result {
         Ok(n) if n > 0 => log::info!("{}: {} files", label, n),
@@ -717,7 +731,9 @@ pub fn run() {
             create_theme,
             create_vault_theme,
             ensure_vault_themes,
-            restore_default_themes
+            restore_default_themes,
+            get_vault_config,
+            save_vault_config
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
