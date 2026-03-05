@@ -500,7 +500,10 @@ pub fn is_rebase_in_progress(vault_path: &str) -> bool {
 
 /// Check whether a merge is currently in progress.
 pub fn is_merge_in_progress(vault_path: &str) -> bool {
-    Path::new(vault_path).join(".git").join("MERGE_HEAD").exists()
+    Path::new(vault_path)
+        .join(".git")
+        .join("MERGE_HEAD")
+        .exists()
 }
 
 /// Returns the current conflict mode: "rebase", "merge", or "none".
