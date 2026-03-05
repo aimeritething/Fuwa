@@ -3,7 +3,7 @@
  * Each handler simulates a Tauri backend command.
  */
 
-import type { VaultEntry, VaultConfig, ModifiedFile, Settings, DeviceFlowStart, DeviceFlowPollResult, GitHubUser, GitPullResult, LastCommitInfo, ThemeFile, VaultSettings } from '../types'
+import type { VaultEntry, VaultConfig, ModifiedFile, Settings, DeviceFlowStart, DeviceFlowPollResult, GitHubUser, GitPullResult, LastCommitInfo, ThemeFile, VaultSettings, PulseCommit } from '../types'
 import { MOCK_CONTENT } from './mock-content'
 import { MOCK_ENTRIES } from './mock-entries'
 
@@ -173,6 +173,16 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   get_last_commit_info: (): LastCommitInfo => ({ shortHash: 'a1b2c3d', commitUrl: 'https://github.com/lucaong/laputa-vault/commit/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' }),
   git_pull: (): GitPullResult => ({ status: 'up_to_date', message: 'Already up to date', updatedFiles: [], conflictFiles: [] }),
   git_push: () => 'Everything up-to-date',
+  get_vault_pulse: (args: { limit?: number }): PulseCommit[] => {
+    const limit = args.limit ?? 30
+    const ts = Math.floor(Date.now() / 1000)
+    const commits: PulseCommit[] = [
+      { hash: 'a1b2c3d4e5f6', shortHash: 'a1b2c3d', message: 'Update project notes and add new experiment', date: ts - 3600, githubUrl: 'https://github.com/lucaong/laputa-vault/commit/a1b2c3d4e5f6', files: [{ path: 'project/26q1-laputa-app.md', status: 'modified', title: '26q1 laputa app' }, { path: 'experiment/ai-search.md', status: 'added', title: 'ai search' }], added: 1, modified: 1, deleted: 0 },
+      { hash: 'b2c3d4e5f6g7', shortHash: 'b2c3d4e', message: 'Reorganize people notes', date: ts - 86400, githubUrl: 'https://github.com/lucaong/laputa-vault/commit/b2c3d4e5f6g7', files: [{ path: 'person/alice-johnson.md', status: 'modified', title: 'alice johnson' }, { path: 'person/bob-smith.md', status: 'modified', title: 'bob smith' }, { path: 'person/old-contact.md', status: 'deleted', title: 'old contact' }], added: 0, modified: 2, deleted: 1 },
+      { hash: 'c3d4e5f6g7h8', shortHash: 'c3d4e5f', message: 'Add daily journal entry', date: ts - 172800, githubUrl: null, files: [{ path: 'note/2026-03-03.md', status: 'added', title: '2026 03 03' }], added: 1, modified: 0, deleted: 0 },
+    ]
+    return commits.slice(0, limit)
+  },
   get_conflict_files: (): string[] => [],
   get_conflict_mode: () => 'none',
   check_claude_cli: () => ({ installed: false, version: null }),

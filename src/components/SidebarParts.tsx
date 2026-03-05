@@ -26,7 +26,7 @@ export function isSelectionActive(current: SidebarSelection, check: SidebarSelec
 
 // --- NavItem ---
 
-export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 'bg-primary/10 text-primary', badgeClassName, badgeStyle, onClick, disabled }: {
+export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 'bg-primary/10 text-primary', badgeClassName, badgeStyle, onClick, disabled, disabledTooltip }: {
   icon: ComponentType<IconProps>
   label: string
   count?: number
@@ -36,10 +36,11 @@ export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 
   badgeStyle?: React.CSSProperties
   onClick?: () => void
   disabled?: boolean
+  disabledTooltip?: string
 }) {
   if (disabled) {
     return (
-      <div className="flex select-none items-center gap-2 rounded text-foreground" style={{ padding: '6px 16px', borderRadius: 4, opacity: 0.4, cursor: 'not-allowed' }} title="Coming soon">
+      <div className="flex select-none items-center gap-2 rounded text-foreground" style={{ padding: '6px 16px', borderRadius: 4, opacity: 0.4, cursor: 'not-allowed' }} title={disabledTooltip ?? "Coming soon"}>
         <Icon size={16} />
         <span className="flex-1 text-[13px] font-medium">{label}</span>
       </div>

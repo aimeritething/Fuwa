@@ -87,7 +87,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
 
   const { onSelect } = config
 
-  const selectFilter = useCallback((filter: 'all' | 'favorites' | 'archived' | 'trash' | 'changes') => {
+  const selectFilter = useCallback((filter: 'all' | 'favorites' | 'archived' | 'trash' | 'changes' | 'pulse') => {
     onSelect({ kind: 'filter', filter })
   }, [onSelect])
 

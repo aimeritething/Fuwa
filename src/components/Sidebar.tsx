@@ -15,7 +15,7 @@ import {
 import { CSS } from '@dnd-kit/utilities'
 import {
   FileText, Star, Wrench, Flask, Target, ArrowsClockwise,
-  Users, CalendarBlank, Tag, TagSimple, Trash, StackSimple, Archive, CaretLeft, GitDiff,
+  Users, CalendarBlank, Tag, TagSimple, Trash, StackSimple, Archive, CaretLeft, GitDiff, Pulse,
 } from '@phosphor-icons/react'
 import { GitCommitHorizontal, SlidersHorizontal } from 'lucide-react'
 import {
@@ -38,6 +38,7 @@ interface SidebarProps {
   modifiedCount?: number
   onCommitPush?: () => void
   onCollapse?: () => void
+  isGitVault?: boolean
 }
 
 const BUILT_IN_SECTION_GROUPS: SectionGroup[] = [
@@ -270,7 +271,7 @@ function CustomizeOverlay({ target, typeEntryMap, innerRef, onCustomize, onChang
 export const Sidebar = memo(function Sidebar({
   entries, selection, onSelect, onSelectNote, onCreateType, onCreateNewType,
   onCustomizeType, onUpdateTypeTemplate, onReorderSections, onRenameSection,
-  modifiedCount = 0, onCommitPush, onCollapse,
+  modifiedCount = 0, onCommitPush, onCollapse, isGitVault = false,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
@@ -359,6 +360,7 @@ export const Sidebar = memo(function Sidebar({
           {modifiedCount > 0 && (
             <NavItem icon={GitDiff} label="Changes" count={modifiedCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'changes' })} activeClassName="bg-[color:var(--accent-orange)]/10 text-[var(--accent-orange)]" badgeClassName="text-white" badgeStyle={{ background: 'var(--accent-orange)' }} onClick={() => onSelect({ kind: 'filter', filter: 'changes' })} />
           )}
+          <NavItem icon={Pulse} label="Pulse" isActive={isSelectionActive(selection, { kind: 'filter', filter: 'pulse' })} disabled={!isGitVault} disabledTooltip="Pulse is only available for git-enabled vaults" onClick={isGitVault ? () => onSelect({ kind: 'filter', filter: 'pulse' }) : undefined} />
         </div>
 
         {/* Sections header + visibility popover */}

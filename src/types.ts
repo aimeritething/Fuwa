@@ -151,7 +151,25 @@ export interface VaultConfig {
   hidden_sections: string[] | null
 }
 
-export type SidebarFilter = 'all' | 'favorites' | 'archived' | 'trash' | 'changes'
+export interface PulseFile {
+  path: string
+  status: 'added' | 'modified' | 'deleted'
+  title: string
+}
+
+export interface PulseCommit {
+  hash: string
+  shortHash: string
+  message: string
+  date: number
+  githubUrl: string | null
+  files: PulseFile[]
+  added: number
+  modified: number
+  deleted: number
+}
+
+export type SidebarFilter = 'all' | 'favorites' | 'archived' | 'trash' | 'changes' | 'pulse'
 
 export type SidebarSelection =
   | { kind: 'filter'; filter: SidebarFilter }

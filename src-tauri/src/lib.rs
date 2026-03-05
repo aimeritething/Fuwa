@@ -21,7 +21,7 @@ use std::sync::Mutex;
 use ai_chat::{AiChatRequest, AiChatResponse};
 use claude_cli::{AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus, ClaudeStreamEvent};
 use frontmatter::FrontmatterValue;
-use git::{GitCommit, GitPullResult, LastCommitInfo, ModifiedFile};
+use git::{GitCommit, GitPullResult, LastCommitInfo, ModifiedFile, PulseCommit};
 use github::{DeviceFlowPollResult, DeviceFlowStart, GitHubUser, GithubRepo};
 use indexing::{IndexStatus, IndexingProgress};
 use search::SearchResponse;
@@ -110,6 +110,13 @@ fn get_file_diff_at_commit(
     let vault_path = expand_tilde(&vault_path);
     let path = expand_tilde(&path);
     git::get_file_diff_at_commit(&vault_path, &path, &commit_hash)
+}
+
+#[tauri::command]
+fn get_vault_pulse(vault_path: String, limit: Option<usize>) -> Result<Vec<PulseCommit>, String> {
+    let vault_path = expand_tilde(&vault_path);
+    let limit = limit.unwrap_or(30);
+    git::get_vault_pulse(&vault_path, limit)
 }
 
 #[tauri::command]
@@ -683,6 +690,7 @@ pub fn run() {
             get_modified_files,
             get_file_diff,
             get_file_diff_at_commit,
+            get_vault_pulse,
             git_commit,
             get_build_number,
             get_last_commit_info,
