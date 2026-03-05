@@ -280,12 +280,8 @@ fn build_go_menu(app: &App) -> MenuResult {
     let archived = MenuItemBuilder::new("Archived")
         .id(GO_ARCHIVED)
         .build(app)?;
-    let trash = MenuItemBuilder::new("Trash")
-        .id(GO_TRASH)
-        .build(app)?;
-    let changes = MenuItemBuilder::new("Changes")
-        .id(GO_CHANGES)
-        .build(app)?;
+    let trash = MenuItemBuilder::new("Trash").id(GO_TRASH).build(app)?;
+    let changes = MenuItemBuilder::new("Changes").id(GO_CHANGES).build(app)?;
 
     Ok(SubmenuBuilder::new(app, "Go")
         .item(&all_notes)
