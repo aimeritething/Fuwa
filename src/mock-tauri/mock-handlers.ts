@@ -313,6 +313,7 @@ line-height-base: 1.6
     return path
   },
   ensure_vault_themes: (): null => null,
+  restore_default_themes: (): string => 'Default themes restored',
 }
 
 export function addMockEntry(_entry: VaultEntry, content: string): void {

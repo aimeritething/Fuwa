@@ -345,6 +345,19 @@ function App() {
     // 'available' → UpdateBanner handles it automatically
   }, [updateActions, updateStatus.state, setToastMessage])
 
+  const handleRestoreDefaultThemes = useCallback(async () => {
+    if (!resolvedPath) return
+    try {
+      const tauriInvoke = isTauri() ? invoke : mockInvoke
+      const msg = await tauriInvoke<string>('restore_default_themes', { vaultPath: resolvedPath })
+      await vault.reloadVault()
+      await themeManager.reloadThemes()
+      setToastMessage(msg)
+    } catch (err) {
+      setToastMessage(`Failed to restore themes: ${err}`)
+    }
+  }, [resolvedPath, vault, themeManager, setToastMessage])
+
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
     handleCloseTabRef: notes.handleCloseTabRef, tabs: notes.tabs,
@@ -396,6 +409,7 @@ function App() {
     onCheckForUpdates: handleCheckForUpdates,
     onRemoveActiveVault: () => vaultSwitcher.removeVault(vaultSwitcher.vaultPath),
     onRestoreGettingStarted: vaultSwitcher.restoreGettingStarted,
+    onRestoreDefaultThemes: handleRestoreDefaultThemes,
     isGettingStartedHidden: vaultSwitcher.isGettingStartedHidden,
     vaultCount: vaultSwitcher.allVaults.length,
     mcpStatus,

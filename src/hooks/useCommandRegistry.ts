@@ -60,6 +60,7 @@ interface CommandRegistryConfig {
   onOpenTheme?: (themeId: string) => void
   onRemoveActiveVault?: () => void
   onRestoreGettingStarted?: () => void
+  onRestoreDefaultThemes?: () => void
   isGettingStartedHidden?: boolean
   vaultCount?: number
 }
@@ -194,7 +195,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme,
     onCheckForUpdates,
     onCreateType,
-    onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
+    onRemoveActiveVault, onRestoreGettingStarted, onRestoreDefaultThemes, isGettingStartedHidden, vaultCount,
     mcpStatus, onInstallMcp,
   } = config
 
@@ -248,6 +249,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
 
       // Appearance
       ...buildThemeCommands(themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme),
+      { id: 'restore-default-themes', label: 'Restore Default Themes', group: 'Appearance', keywords: ['theme', 'reset', 'restore', 'default', 'fix', 'missing'], enabled: !!onRestoreDefaultThemes, execute: () => onRestoreDefaultThemes?.() },
 
       // Settings
       { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,', keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
@@ -271,7 +273,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onOpenDailyNote, onCloseTab,
     onGoBack, onGoForward, canGoBack, canGoForward,
-    vaultTypes, themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme,
+    vaultTypes, themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme, onRestoreDefaultThemes,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
     mcpStatus, onInstallMcp,
   ])

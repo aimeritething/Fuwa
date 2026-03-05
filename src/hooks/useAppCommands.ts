@@ -62,6 +62,7 @@ interface AppCommandsConfig {
   onCheckForUpdates?: () => void
   onRemoveActiveVault?: () => void
   onRestoreGettingStarted?: () => void
+  onRestoreDefaultThemes?: () => void
   isGettingStartedHidden?: boolean
   vaultCount?: number
   mcpStatus?: string
@@ -172,6 +173,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onCheckForUpdates: config.onCheckForUpdates,
     onRemoveActiveVault: config.onRemoveActiveVault,
     onRestoreGettingStarted: config.onRestoreGettingStarted,
+    onRestoreDefaultThemes: config.onRestoreDefaultThemes,
     isGettingStartedHidden: config.isGettingStartedHidden,
     vaultCount: config.vaultCount,
     mcpStatus: config.mcpStatus,

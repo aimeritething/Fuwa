@@ -703,6 +703,41 @@ describe('useCommandRegistry', () => {
       expect(cmd!.keywords).toContain('demo')
     })
   })
+
+  describe('restore-default-themes command', () => {
+    it('has restore-default-themes command in Appearance group', () => {
+      const onRestoreDefaultThemes = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ onRestoreDefaultThemes })))
+      const cmd = result.current.find(c => c.id === 'restore-default-themes')
+      expect(cmd).toBeDefined()
+      expect(cmd!.label).toBe('Restore Default Themes')
+      expect(cmd!.group).toBe('Appearance')
+      expect(cmd!.enabled).toBe(true)
+    })
+
+    it('is disabled when onRestoreDefaultThemes is not provided', () => {
+      const { result } = renderHook(() => useCommandRegistry(makeConfig()))
+      const cmd = result.current.find(c => c.id === 'restore-default-themes')
+      expect(cmd).toBeDefined()
+      expect(cmd!.enabled).toBe(false)
+    })
+
+    it('calls onRestoreDefaultThemes when executed', () => {
+      const onRestoreDefaultThemes = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ onRestoreDefaultThemes })))
+      result.current.find(c => c.id === 'restore-default-themes')!.execute()
+      expect(onRestoreDefaultThemes).toHaveBeenCalled()
+    })
+
+    it('has relevant keywords for discoverability', () => {
+      const onRestoreDefaultThemes = vi.fn()
+      const { result } = renderHook(() => useCommandRegistry(makeConfig({ onRestoreDefaultThemes })))
+      const cmd = result.current.find(c => c.id === 'restore-default-themes')
+      expect(cmd!.keywords).toContain('theme')
+      expect(cmd!.keywords).toContain('restore')
+      expect(cmd!.keywords).toContain('default')
+    })
+  })
 })
 
 describe('pluralizeType', () => {

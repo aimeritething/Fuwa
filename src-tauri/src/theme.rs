@@ -180,6 +180,7 @@ pub fn ensure_vault_themes(vault_path: &str) -> Result<(), String> {
     let defaults: &[(&str, &str)] = &[
         ("default.md", DEFAULT_VAULT_THEME),
         ("dark.md", DARK_VAULT_THEME),
+        ("minimal.md", MINIMAL_VAULT_THEME),
     ];
     for (name, content) in defaults {
         let path = theme_dir.join(name);
@@ -189,6 +190,34 @@ pub fn ensure_vault_themes(vault_path: &str) -> Result<(), String> {
         }
     }
     Ok(())
+}
+
+/// Restore default themes for a vault: seeds both `_themes/` (JSON) and
+/// `theme/` (markdown notes). Per-file idempotent — never overwrites files
+/// that already have content. Returns an error on read-only filesystems.
+pub fn restore_default_themes(vault_path: &str) -> Result<String, String> {
+    // Seed _themes/ JSON files (per-file idempotent)
+    let themes_dir = Path::new(vault_path).join("_themes");
+    fs::create_dir_all(&themes_dir)
+        .map_err(|e| format!("Failed to create _themes directory: {e}"))?;
+    let json_defaults: &[(&str, &str)] = &[
+        ("default.json", DEFAULT_THEME),
+        ("dark.json", DARK_THEME),
+        ("minimal.json", MINIMAL_THEME),
+    ];
+    for (name, content) in json_defaults {
+        let path = themes_dir.join(name);
+        let needs_write = !path.exists() || fs::metadata(&path).map_or(true, |m| m.len() == 0);
+        if needs_write {
+            fs::write(&path, content)
+                .map_err(|e| format!("Failed to write _themes/{name}: {e}"))?;
+        }
+    }
+
+    // Seed theme/ markdown notes (reuses ensure_vault_themes for consistency)
+    ensure_vault_themes(vault_path)?;
+
+    Ok("Default themes restored".to_string())
 }
 
 /// Create a new vault theme note in `theme/` directory.
@@ -949,6 +978,7 @@ mod tests {
         assert!(vault.join("theme").is_dir());
         assert!(vault.join("theme").join("default.md").exists());
         assert!(vault.join("theme").join("dark.md").exists());
+        assert!(vault.join("theme").join("minimal.md").exists());
     }
 
     #[test]
@@ -978,5 +1008,68 @@ mod tests {
         ensure_vault_themes(vp).unwrap();
         let content = fs::read_to_string(theme_dir.join("default.md")).unwrap();
         assert!(content.contains("#123456"));
+    }
+
+    #[test]
+    fn test_restore_default_themes_creates_both_dirs() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path().join("vault");
+        fs::create_dir_all(&vault).unwrap();
+        let vp = vault.to_str().unwrap();
+
+        let msg = restore_default_themes(vp).unwrap();
+        assert_eq!(msg, "Default themes restored");
+        // _themes/ JSON files
+        assert!(vault.join("_themes").join("default.json").exists());
+        assert!(vault.join("_themes").join("dark.json").exists());
+        assert!(vault.join("_themes").join("minimal.json").exists());
+        // theme/ markdown notes
+        assert!(vault.join("theme").join("default.md").exists());
+        assert!(vault.join("theme").join("dark.md").exists());
+        assert!(vault.join("theme").join("minimal.md").exists());
+    }
+
+    #[test]
+    fn test_restore_default_themes_is_idempotent() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path().join("vault");
+        fs::create_dir_all(&vault).unwrap();
+        let vp = vault.to_str().unwrap();
+
+        restore_default_themes(vp).unwrap();
+        // Modify a theme file to verify it isn't overwritten
+        let custom = "---\nIs A: Theme\nbackground: \"#CUSTOM\"\n---\n";
+        fs::write(vault.join("theme").join("default.md"), custom).unwrap();
+
+        restore_default_themes(vp).unwrap();
+        let content = fs::read_to_string(vault.join("theme").join("default.md")).unwrap();
+        assert!(
+            content.contains("#CUSTOM"),
+            "must not overwrite existing content"
+        );
+    }
+
+    #[test]
+    fn test_restore_default_themes_fills_partial_state() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path().join("vault");
+        // Create _themes/ with only default.json, theme/ with only default.md
+        let themes_dir = vault.join("_themes");
+        let theme_dir = vault.join("theme");
+        fs::create_dir_all(&themes_dir).unwrap();
+        fs::create_dir_all(&theme_dir).unwrap();
+        fs::write(themes_dir.join("default.json"), DEFAULT_THEME).unwrap();
+        fs::write(theme_dir.join("default.md"), DEFAULT_VAULT_THEME).unwrap();
+        let vp = vault.to_str().unwrap();
+
+        restore_default_themes(vp).unwrap();
+        // Missing files should now exist
+        assert!(themes_dir.join("dark.json").exists());
+        assert!(themes_dir.join("minimal.json").exists());
+        assert!(theme_dir.join("dark.md").exists());
+        assert!(theme_dir.join("minimal.md").exists());
+        // Existing files should be unchanged
+        let content = fs::read_to_string(theme_dir.join("default.md")).unwrap();
+        assert!(content.contains("Light theme with warm"));
     }
 }
