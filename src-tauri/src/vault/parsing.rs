@@ -140,9 +140,7 @@ fn strip_markdown_chars(s: &str) -> String {
 }
 
 /// Collect chars inside a wikilink until `]]`, consuming both closing brackets.
-fn collect_wikilink_inner(
-    chars: &mut std::iter::Peekable<impl Iterator<Item = char>>,
-) -> String {
+fn collect_wikilink_inner(chars: &mut std::iter::Peekable<impl Iterator<Item = char>>) -> String {
     let mut buf = String::new();
     while let Some(c) = chars.next() {
         if c == ']' && chars.peek() == Some(&']') {
