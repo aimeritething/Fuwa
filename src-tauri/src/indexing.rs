@@ -89,24 +89,24 @@ fn find_bundled_qmd() -> Option<QmdBinary> {
 
     // macOS app bundle: <app>/Contents/MacOS/laputa → <app>/Contents/Resources/qmd/qmd
     let bundle_dir = exe_dir.parent()?.join("Resources").join("qmd");
-    if bundle_dir.join("qmd").exists() {
-        return Some(QmdBinary {
-            path: bundle_dir.join("qmd").to_string_lossy().to_string(),
-            work_dir: Some(bundle_dir),
-        });
+    if let Some(bin) = prepare_bundled_dir(&bundle_dir) {
+        return Some(bin);
     }
 
-    // Dev mode: src-tauri/resources/qmd/qmd (binary is in target/debug or target/release)
-    // Walk up from exe_dir to find the project root
+    // Dev mode: use compile-time CARGO_MANIFEST_DIR for reliable path resolution
+    let dev_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("resources")
+        .join("qmd");
+    if let Some(bin) = prepare_bundled_dir(&dev_dir) {
+        return Some(bin);
+    }
+
+    // Dev mode fallback: walk up from exe_dir to find the project root
     let mut dir = exe_dir.to_path_buf();
     for _ in 0..6 {
-        let dev_qmd = dir.join("resources").join("qmd").join("qmd");
-        if dev_qmd.exists() {
-            let qmd_dir = dir.join("resources").join("qmd");
-            return Some(QmdBinary {
-                path: dev_qmd.to_string_lossy().to_string(),
-                work_dir: Some(qmd_dir),
-            });
+        let qmd_dir = dir.join("resources").join("qmd");
+        if let Some(bin) = prepare_bundled_dir(&qmd_dir) {
+            return Some(bin);
         }
         if !dir.pop() {
             break;
@@ -116,7 +116,99 @@ fn find_bundled_qmd() -> Option<QmdBinary> {
     None
 }
 
-/// Clear the cached qmd binary (e.g. after path changes).
+/// Validate a bundled qmd directory and prepare the binary for execution.
+/// Sets execute permissions and removes macOS quarantine attributes.
+fn prepare_bundled_dir(qmd_dir: &Path) -> Option<QmdBinary> {
+    let qmd_path = qmd_dir.join("qmd");
+    if !qmd_path.exists() {
+        return None;
+    }
+
+    ensure_executable(&qmd_path);
+
+    // Remove macOS quarantine attributes that block execution of bundled binaries
+    #[cfg(target_os = "macos")]
+    {
+        let _ = Command::new("xattr")
+            .args(["-rd", "com.apple.quarantine"])
+            .arg(qmd_dir)
+            .output();
+    }
+
+    Some(QmdBinary {
+        path: qmd_path.to_string_lossy().to_string(),
+        work_dir: Some(qmd_dir.to_path_buf()),
+    })
+}
+
+/// Ensure a file has execute permission.
+#[cfg(unix)]
+fn ensure_executable(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    if let Ok(metadata) = path.metadata() {
+        let mode = metadata.permissions().mode();
+        if mode & 0o111 == 0 {
+            let mut perms = metadata.permissions();
+            perms.set_mode(mode | 0o755);
+            let _ = std::fs::set_permissions(path, perms);
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn ensure_executable(_path: &Path) {}
+
+/// Try to install qmd globally using bun. Returns Ok if installation succeeded.
+pub fn try_auto_install_qmd() -> Result<(), String> {
+    let bun = find_bun().ok_or("bun not found — cannot auto-install qmd")?;
+
+    log::info!("Auto-installing qmd via bun...");
+    let output = Command::new(&bun)
+        .args(["install", "-g", "qmd"])
+        .output()
+        .map_err(|e| format!("Failed to run bun install: {e}"))?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(format!("bun install -g qmd failed: {stderr}"));
+    }
+
+    // Clear cache so the newly installed binary is discovered
+    clear_qmd_cache();
+    log::info!("qmd auto-install succeeded");
+    Ok(())
+}
+
+/// Locate bun binary for auto-installing qmd.
+fn find_bun() -> Option<PathBuf> {
+    let candidates = [
+        dirs::home_dir().map(|h| h.join(".bun/bin/bun")),
+        Some(PathBuf::from("/opt/homebrew/bin/bun")),
+        Some(PathBuf::from("/usr/local/bin/bun")),
+    ];
+    for candidate in candidates.into_iter().flatten() {
+        if candidate.exists() {
+            return Some(candidate);
+        }
+    }
+
+    // Fallback: try PATH
+    Command::new("which")
+        .arg("bun")
+        .output()
+        .ok()
+        .and_then(|o| {
+            if o.status.success() {
+                Some(PathBuf::from(
+                    String::from_utf8_lossy(&o.stdout).trim().to_string(),
+                ))
+            } else {
+                None
+            }
+        })
+}
+
+/// Clear the cached qmd binary (e.g. after path changes or installation).
 pub fn clear_qmd_cache() {
     if let Ok(mut guard) = QMD_CACHE.lock() {
         *guard = None;
@@ -526,5 +618,84 @@ Collections
     fn parse_indexed_count_from_output() {
         assert_eq!(parse_indexed_count("Indexed 342 files in 1.2s"), 342);
         assert_eq!(parse_indexed_count("No output"), 0);
+    }
+
+    #[test]
+    fn ensure_executable_sets_permission() {
+        use std::fs;
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("test-bin");
+        fs::write(&file, "#!/bin/sh\necho ok").unwrap();
+
+        // Start with no execute permission
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&file, fs::Permissions::from_mode(0o644)).unwrap();
+            assert_eq!(fs::metadata(&file).unwrap().permissions().mode() & 0o111, 0);
+
+            ensure_executable(&file);
+            assert_ne!(fs::metadata(&file).unwrap().permissions().mode() & 0o111, 0);
+        }
+    }
+
+    #[test]
+    fn ensure_executable_noop_when_already_executable() {
+        use std::fs;
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("test-bin");
+        fs::write(&file, "#!/bin/sh\necho ok").unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&file, fs::Permissions::from_mode(0o755)).unwrap();
+            ensure_executable(&file);
+            let mode = fs::metadata(&file).unwrap().permissions().mode();
+            assert_ne!(mode & 0o111, 0);
+        }
+    }
+
+    #[test]
+    fn prepare_bundled_dir_returns_none_for_missing_binary() {
+        let dir = tempfile::tempdir().unwrap();
+        assert!(prepare_bundled_dir(dir.path()).is_none());
+    }
+
+    #[test]
+    fn prepare_bundled_dir_finds_and_prepares_binary() {
+        use std::fs;
+        let dir = tempfile::tempdir().unwrap();
+        let qmd_path = dir.path().join("qmd");
+        fs::write(&qmd_path, "#!/bin/sh\necho ok").unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            fs::set_permissions(&qmd_path, fs::Permissions::from_mode(0o644)).unwrap();
+        }
+
+        let result = prepare_bundled_dir(dir.path());
+        assert!(result.is_some());
+        let bin = result.unwrap();
+        assert!(bin.path.ends_with("qmd"));
+        assert_eq!(bin.work_dir.unwrap(), dir.path());
+
+        // Verify execute permission was set
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            assert_ne!(
+                fs::metadata(&qmd_path).unwrap().permissions().mode() & 0o111,
+                0
+            );
+        }
+    }
+
+    #[test]
+    fn find_bun_returns_some_if_available() {
+        // This test may succeed or fail depending on the system.
+        // It verifies the function doesn't panic.
+        let _ = find_bun();
     }
 }

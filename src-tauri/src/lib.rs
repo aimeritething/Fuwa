@@ -403,24 +403,53 @@ fn get_index_status(vault_path: String) -> IndexStatus {
     indexing::check_index_status(&vault_path)
 }
 
+fn emit_unavailable(app_handle: &tauri::AppHandle) {
+    use tauri::Emitter;
+    let _ = app_handle.emit(
+        "indexing-progress",
+        IndexingProgress {
+            phase: "unavailable".to_string(),
+            current: 0,
+            total: 0,
+            done: true,
+            error: Some("qmd not available".to_string()),
+        },
+    );
+}
+
 #[tauri::command]
 async fn start_indexing(app_handle: tauri::AppHandle, vault_path: String) -> Result<(), String> {
     use tauri::Emitter;
     let vault_path = expand_tilde(&vault_path).into_owned();
     tokio::task::spawn_blocking(move || {
         if indexing::find_qmd_binary().is_none() {
-            log::info!("qmd binary not found (bundled or system)");
+            log::info!("qmd binary not found — attempting auto-install via bun");
             let _ = app_handle.emit(
                 "indexing-progress",
                 IndexingProgress {
-                    phase: "unavailable".to_string(),
+                    phase: "installing".to_string(),
                     current: 0,
                     total: 0,
-                    done: true,
-                    error: Some("qmd not available".to_string()),
+                    done: false,
+                    error: None,
                 },
             );
-            return Err("qmd not available".to_string());
+
+            match indexing::try_auto_install_qmd() {
+                Ok(()) if indexing::find_qmd_binary().is_some() => {
+                    log::info!("qmd auto-installed successfully, proceeding with indexing");
+                }
+                Ok(()) => {
+                    log::warn!("qmd auto-install reported success but binary still not found");
+                    emit_unavailable(&app_handle);
+                    return Err("qmd not available after install".to_string());
+                }
+                Err(e) => {
+                    log::info!("qmd auto-install failed: {e}");
+                    emit_unavailable(&app_handle);
+                    return Err(format!("qmd not available: {e}"));
+                }
+            }
         }
 
         indexing::run_full_index(&vault_path, |progress| {

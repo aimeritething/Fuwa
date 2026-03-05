@@ -53,10 +53,18 @@ describe('useIndexing', () => {
     expect(result.current.progress.phase).toBe('idle')
   })
 
-  it('sets unavailable phase for missing qmd errors', async () => {
+  it('sets unavailable phase for "not installed" errors', async () => {
     const { result } = renderHook(() => useIndexing('/test/vault'))
 
     mockInvoke.mockRejectedValueOnce(new Error('bun not installed'))
+    await act(async () => { await result.current.retryIndexing() })
+    expect(result.current.progress.phase).toBe('unavailable')
+  })
+
+  it('sets unavailable phase for "not available" errors', async () => {
+    const { result } = renderHook(() => useIndexing('/test/vault'))
+
+    mockInvoke.mockRejectedValueOnce(new Error('qmd not available: bun not found'))
     await act(async () => { await result.current.retryIndexing() })
     expect(result.current.progress.phase).toBe('unavailable')
   })

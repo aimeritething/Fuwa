@@ -116,6 +116,13 @@ export class LlamaChatSession {
 export const LlamaLogLevel = { Error: 0, Warn: 1, Info: 2, Debug: 3 };
 STUB
 
+# ---------- ad-hoc code signing (macOS) ----------
+if [[ "$(uname)" == "Darwin" ]] && command -v codesign &>/dev/null; then
+  echo "Ad-hoc signing bundled binaries..."
+  codesign --force --sign - "$OUT/qmd" 2>/dev/null && echo "  ✓ qmd signed" || echo "  ⚠ qmd signing failed (non-fatal)"
+  find "$OUT/node_modules" -name "*.dylib" -exec sh -c 'codesign --force --sign - "$1" 2>/dev/null && echo "  ✓ $(basename "$1") signed"' _ {} \;
+fi
+
 # ---------- summary ----------
 echo ""
 echo "qmd bundled → $OUT/"
