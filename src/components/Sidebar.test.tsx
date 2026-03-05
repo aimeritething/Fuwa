@@ -2,18 +2,7 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Sidebar } from './Sidebar'
 import type { VaultEntry, SidebarSelection } from '../types'
-
-// Mock localStorage for section visibility tests
-const localStorageMock = (() => {
-  let store: Record<string, string> = {}
-  return {
-    getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value },
-    removeItem: (key: string) => { delete store[key] },
-    clear: () => { store = {} },
-  }
-})()
-Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true })
+import { bindVaultConfigStore, getVaultConfig, resetVaultConfigStore } from '../utils/vaultConfigStore'
 
 const mockEntries: VaultEntry[] = [
   {
@@ -689,7 +678,11 @@ describe('Sidebar', () => {
 
   describe('customize section visibility', () => {
     beforeEach(() => {
-      localStorageMock.clear()
+      resetVaultConfigStore()
+      bindVaultConfigStore(
+        { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: null },
+        vi.fn(),
+      )
     })
 
     it('renders a "Customize sections" button', () => {
@@ -735,19 +728,23 @@ describe('Sidebar', () => {
       expect(peopleElements.length).toBe(2)
     })
 
-    it('persists hidden sections in localStorage', () => {
+    it('persists hidden sections in vault config', () => {
       const { unmount } = render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
       fireEvent.click(screen.getByTitle('Customize sections'))
       fireEvent.click(screen.getByLabelText('Toggle Events'))
       unmount()
 
-      // Verify localStorage was updated
-      const stored = JSON.parse(localStorage.getItem('laputa-hidden-sections') || '[]')
+      // Verify vault config was updated
+      const stored = getVaultConfig().hidden_sections
       expect(stored).toContain('Event')
     })
 
-    it('restores hidden sections from localStorage on mount', () => {
-      localStorage.setItem('laputa-hidden-sections', JSON.stringify(['Person', 'Event']))
+    it('restores hidden sections from vault config on mount', () => {
+      resetVaultConfigStore()
+      bindVaultConfigStore(
+        { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: ['Person', 'Event'] },
+        vi.fn(),
+      )
       render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
 
       // People and Events section headers should be hidden
@@ -760,7 +757,11 @@ describe('Sidebar', () => {
     })
 
     it('does not affect All Notes or other sidebar filters when sections are hidden', () => {
-      localStorage.setItem('laputa-hidden-sections', JSON.stringify(['Project', 'Person']))
+      resetVaultConfigStore()
+      bindVaultConfigStore(
+        { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: ['Project', 'Person'] },
+        vi.fn(),
+      )
       render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
 
       // Top nav items still present

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   getStatusStyle,
   getStatusColorKey,
@@ -6,31 +6,19 @@ import {
   getStatusColorOverrides,
   STATUS_STYLES,
   DEFAULT_STATUS_STYLE,
+  initStatusColors,
 } from './statusStyles'
-
-// Mock localStorage (jsdom's may be incomplete)
-const localStorageMock = (() => {
-  let store: Record<string, string> = {}
-  return {
-    getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value },
-    removeItem: (key: string) => { delete store[key] },
-    clear: () => { store = {} },
-    get length() { return Object.keys(store).length },
-    key: (i: number) => Object.keys(store)[i] ?? null,
-  }
-})()
-Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true })
-
-const STORAGE_KEY = 'laputa:status-color-overrides'
+import { bindVaultConfigStore, getVaultConfig, resetVaultConfigStore } from './vaultConfigStore'
 
 describe('statusStyles — color overrides', () => {
   beforeEach(() => {
-    localStorageMock.clear()
-    // Reset module-level cache by clearing all overrides
-    for (const key of Object.keys(getStatusColorOverrides())) {
-      setStatusColor(key, null)
-    }
+    resetVaultConfigStore()
+    bindVaultConfigStore(
+      { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: null },
+      vi.fn(),
+    )
+    // Reset module-level cache by re-initializing with empty overrides
+    initStatusColors({})
   })
 
   it('returns built-in style when no override exists', () => {
@@ -48,7 +36,9 @@ describe('statusStyles — color overrides', () => {
   it('setStatusColor persists a color override', () => {
     setStatusColor('Active', 'red')
     expect(getStatusColorKey('Active')).toBe('red')
-    expect(localStorage.getItem(STORAGE_KEY)).toContain('"Active":"red"')
+    const stored = getVaultConfig().status_colors as Record<string, string>
+    expect(stored).toBeTruthy()
+    expect(stored['Active']).toBe('red')
   })
 
   it('getStatusStyle uses override when set', () => {

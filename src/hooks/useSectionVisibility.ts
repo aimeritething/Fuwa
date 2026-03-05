@@ -1,26 +1,35 @@
-import { useState, useCallback } from 'react'
-
-const STORAGE_KEY = 'laputa-hidden-sections'
+import { useState, useCallback, useEffect } from 'react'
+import { getVaultConfig, updateVaultConfigField, subscribeVaultConfig } from '../utils/vaultConfigStore'
 
 function loadHiddenSections(): Set<string> {
+  const fromConfig = getVaultConfig().hidden_sections
+  if (fromConfig && fromConfig.length > 0) return new Set(fromConfig)
+  // Fallback to localStorage during initial load
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
+    const raw = localStorage.getItem('laputa-hidden-sections')
     if (raw) {
       const arr = JSON.parse(raw)
-      if (Array.isArray(arr)) return new Set(arr)
+      if (Array.isArray(arr)) return new Set(arr as string[])
     }
-  } catch {
-    // ignore corrupt data
-  }
+  } catch { /* ignore */ }
   return new Set()
 }
 
-function saveHiddenSections(hidden: Set<string>) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify([...hidden]))
+function saveHiddenSections(hidden: Set<string>): void {
+  const arr = [...hidden]
+  updateVaultConfigField('hidden_sections', arr.length > 0 ? arr : null)
 }
 
 export function useSectionVisibility() {
   const [hiddenSections, setHiddenSections] = useState<Set<string>>(loadHiddenSections)
+
+  // Re-sync when vault config becomes available
+  useEffect(() => {
+    return subscribeVaultConfig(() => {
+      const sections = getVaultConfig().hidden_sections
+      if (sections) setHiddenSections(new Set(sections))
+    })
+  }, [])
 
   const toggleSection = useCallback((type: string) => {
     setHiddenSections((prev) => {

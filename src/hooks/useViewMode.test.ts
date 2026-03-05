@@ -1,25 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useViewMode } from './useViewMode'
+import { bindVaultConfigStore, getVaultConfig, resetVaultConfigStore } from '../utils/vaultConfigStore'
 
 vi.mock('../mock-tauri', () => ({
   isTauri: () => false,
 }))
 
-const localStorageMock = (() => {
-  let store: Record<string, string> = {}
-  return {
-    getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value },
-    removeItem: (key: string) => { delete store[key] },
-    clear: () => { store = {} },
-  }
-})()
-Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true })
-
 describe('useViewMode', () => {
   beforeEach(() => {
-    localStorageMock.clear()
+    resetVaultConfigStore()
+    bindVaultConfigStore(
+      { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: null },
+      vi.fn(),
+    )
   })
 
   it('defaults to "all" when no stored value', () => {
@@ -29,21 +23,25 @@ describe('useViewMode', () => {
     expect(result.current.noteListVisible).toBe(true)
   })
 
-  it('loads persisted view mode from localStorage', () => {
-    localStorageMock.setItem('laputa-view-mode', 'editor-only')
+  it('loads persisted view mode from vault config', () => {
+    resetVaultConfigStore()
+    bindVaultConfigStore(
+      { zoom: null, view_mode: 'editor-only', tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: null },
+      vi.fn(),
+    )
     const { result } = renderHook(() => useViewMode())
     expect(result.current.viewMode).toBe('editor-only')
     expect(result.current.sidebarVisible).toBe(false)
     expect(result.current.noteListVisible).toBe(false)
   })
 
-  it('setViewMode updates state and persists to localStorage', () => {
+  it('setViewMode updates state and persists to vault config', () => {
     const { result } = renderHook(() => useViewMode())
     act(() => result.current.setViewMode('editor-list'))
     expect(result.current.viewMode).toBe('editor-list')
     expect(result.current.sidebarVisible).toBe(false)
     expect(result.current.noteListVisible).toBe(true)
-    expect(localStorageMock.getItem('laputa-view-mode')).toBe('editor-list')
+    expect(getVaultConfig().view_mode).toBe('editor-list')
   })
 
   it('editor-only hides both sidebar and note list', () => {
@@ -68,8 +66,12 @@ describe('useViewMode', () => {
     expect(result.current.noteListVisible).toBe(true)
   })
 
-  it('ignores invalid localStorage values', () => {
-    localStorageMock.setItem('laputa-view-mode', 'garbage')
+  it('ignores invalid vault config values', () => {
+    resetVaultConfigStore()
+    bindVaultConfigStore(
+      { zoom: null, view_mode: 'garbage' as never, tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: null },
+      vi.fn(),
+    )
     const { result } = renderHook(() => useViewMode())
     expect(result.current.viewMode).toBe('all')
   })

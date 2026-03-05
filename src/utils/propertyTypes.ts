@@ -1,5 +1,6 @@
 import type { FrontmatterValue } from '../components/Inspector'
 import { isValidCssColor, isColorKeyName } from './colorUtils'
+import { updateVaultConfigField } from './vaultConfigStore'
 
 export type PropertyDisplayMode = 'text' | 'date' | 'boolean' | 'status' | 'url' | 'tags' | 'color'
 
@@ -42,7 +43,15 @@ export function detectPropertyType(key: string, value: FrontmatterValue): Proper
 
 const STORAGE_KEY = 'laputa:display-mode-overrides'
 
+let vaultOverrides: Record<string, PropertyDisplayMode> | null = null
+
+/** Initialize display mode overrides from vault config (replaces localStorage). */
+export function initDisplayModeOverrides(overrides: Record<string, string>): void {
+  vaultOverrides = overrides as Record<string, PropertyDisplayMode>
+}
+
 export function loadDisplayModeOverrides(): Record<string, PropertyDisplayMode> {
+  if (vaultOverrides !== null) return { ...vaultOverrides }
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     return raw ? JSON.parse(raw) : {}
@@ -51,16 +60,22 @@ export function loadDisplayModeOverrides(): Record<string, PropertyDisplayMode> 
   }
 }
 
+function persistDisplayModeOverrides(overrides: Record<string, PropertyDisplayMode>): void {
+  vaultOverrides = { ...overrides }
+  const snapshot = Object.keys(overrides).length > 0 ? { ...overrides } : null
+  updateVaultConfigField('property_display_modes', snapshot as Record<string, string> | null)
+}
+
 export function saveDisplayModeOverride(propertyName: string, mode: PropertyDisplayMode): void {
   const overrides = loadDisplayModeOverrides()
   overrides[propertyName] = mode
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
+  persistDisplayModeOverrides(overrides)
 }
 
 export function removeDisplayModeOverride(propertyName: string): void {
   const overrides = loadDisplayModeOverrides()
   delete overrides[propertyName]
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(overrides))
+  persistDisplayModeOverrides(overrides)
 }
 
 export function getEffectiveDisplayMode(

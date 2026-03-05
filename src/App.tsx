@@ -30,6 +30,7 @@ import { useAutoSync } from './hooks/useAutoSync'
 import { useConflictResolver } from './hooks/useConflictResolver'
 import { useIndexing } from './hooks/useIndexing'
 import { useZoom } from './hooks/useZoom'
+import { useVaultConfig } from './hooks/useVaultConfig'
 import { useBuildNumber } from './hooks/useBuildNumber'
 import { useOnboarding } from './hooks/useOnboarding'
 import { useThemeManager } from './hooks/useThemeManager'
@@ -102,6 +103,7 @@ function App() {
   // When onboarding resolves to a different vault path, update the switcher
   const resolvedPath = onboarding.state.status === 'ready' ? onboarding.state.vaultPath : vaultSwitcher.vaultPath
   const vault = useVaultLoader(resolvedPath)
+  useVaultConfig(resolvedPath)
   const { settings, saveSettings } = useSettings()
   const themeManager = useThemeManager(resolvedPath, vault.entries, vault.allContent, vault.updateContent)
 

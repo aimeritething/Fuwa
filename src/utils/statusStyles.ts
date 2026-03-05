@@ -1,4 +1,5 @@
 import { ACCENT_COLORS } from './typeColors'
+import { updateVaultConfigField } from './vaultConfigStore'
 
 export interface StatusStyle {
   bg: string
@@ -46,7 +47,12 @@ const COLOR_KEY_TO_STYLE: Record<string, StatusStyle> = Object.fromEntries(
   ACCENT_COLORS.map(c => [c.key, { bg: c.cssLight, color: c.css }]),
 )
 
-const colorOverrides: Record<string, string> = loadColorOverrides()
+let colorOverrides: Record<string, string> = loadColorOverrides()
+
+/** Initialize status color overrides from vault config (replaces localStorage). */
+export function initStatusColors(overrides: Record<string, string>): void {
+  colorOverrides = { ...overrides }
+}
 
 function loadColorOverrides(): Record<string, string> {
   try {
@@ -67,9 +73,8 @@ export function setStatusColor(status: string, colorKey: string | null): void {
   } else {
     colorOverrides[status] = colorKey
   }
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(colorOverrides))
-  } catch { /* storage full — silently ignore */ }
+  const snapshot = { ...colorOverrides }
+  updateVaultConfigField('status_colors', Object.keys(snapshot).length > 0 ? snapshot : null)
 }
 
 export function getStatusColorKey(status: string): string | null {

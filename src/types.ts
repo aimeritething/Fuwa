@@ -31,6 +31,8 @@ export interface VaultEntry {
   template: string | null
   /** Default sort preference for the note list of this Type. Format: "option:direction". */
   sort: string | null
+  /** Default view mode for the note list of this Type: "all", "editor-list", or "editor-only". */
+  view: string | null
   /** All wikilink targets found in the note content. Extracted from [[target]] patterns. */
   outgoingLinks: string[]
   /** Custom scalar frontmatter properties (non-relationship, non-structural). */
@@ -137,6 +139,16 @@ export interface ThemeFile {
 
 export interface VaultSettings {
   theme: string | null
+}
+
+/** Vault-wide UI configuration stored in config/ui.config.md. */
+export interface VaultConfig {
+  zoom: number | null
+  view_mode: string | null
+  tag_colors: Record<string, string> | null
+  status_colors: Record<string, string> | null
+  property_display_modes: Record<string, string> | null
+  hidden_sections: string[] | null
 }
 
 export type SidebarFilter = 'all' | 'favorites' | 'archived' | 'trash' | 'changes'

@@ -24,25 +24,33 @@ function toResult(e: VaultEntry, typeEntryMap: Record<string, VaultEntry>): Note
   }
 }
 
+/** Types excluded from note search results (internal infrastructure). */
+const SEARCH_EXCLUDED_TYPES = new Set(['Config'])
+
 export function useNoteSearch(entries: VaultEntry[], query: string, maxResults = DEFAULT_MAX_RESULTS) {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
 
+  const searchableEntries = useMemo(
+    () => entries.filter((e) => !SEARCH_EXCLUDED_TYPES.has(e.isA ?? '')),
+    [entries],
+  )
+
   const results: NoteSearchResult[] = useMemo(() => {
     const mapResult = (e: VaultEntry) => toResult(e, typeEntryMap)
     if (!query.trim()) {
-      return [...entries]
+      return [...searchableEntries]
         .sort((a, b) => (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0))
         .slice(0, maxResults)
         .map(mapResult)
     }
-    return entries
+    return searchableEntries
       .map((e) => ({ entry: e, ...fuzzyMatch(query, e.title) }))
       .filter((r) => r.match)
       .sort((a, b) => b.score - a.score)
       .slice(0, maxResults)
       .map((r) => mapResult(r.entry))
-  }, [entries, query, maxResults, typeEntryMap])
+  }, [searchableEntries, query, maxResults, typeEntryMap])
 
   useEffect(() => {
     setSelectedIndex(0) // eslint-disable-line react-hooks/set-state-in-effect -- reset on query change

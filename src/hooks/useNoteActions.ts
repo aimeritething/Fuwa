@@ -72,7 +72,7 @@ export function buildNewEntry({ path, slug, title, type, status }: NewEntryParam
     aliases: [], belongsTo: [], relatedTo: [],
     status, owner: null, cadence: null, archived: false, trashed: false, trashedAt: null,
     modifiedAt: now, createdAt: now, fileSize: 0,
-    snippet: '', wordCount: 0, relationships: {}, icon: null, color: null, order: null, outgoingLinks: [], sidebarLabel: null, template: null, sort: null, properties: {},
+    snippet: '', wordCount: 0, relationships: {}, icon: null, color: null, order: null, outgoingLinks: [], sidebarLabel: null, template: null, sort: null, view: null, properties: {},
   }
 }
 
@@ -167,6 +167,7 @@ export function frontmatterToEntryPatch(
     order: { order: typeof value === 'number' ? value : null },
     template: { template: str },
     sort: { sort: str },
+    view: { view: str },
   }
   return updates[k] ?? {}
 }

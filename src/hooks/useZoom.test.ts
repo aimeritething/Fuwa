@@ -1,22 +1,14 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useZoom } from './useZoom'
+import { bindVaultConfigStore, getVaultConfig, resetVaultConfigStore } from '../utils/vaultConfigStore'
 
-// Mock localStorage (jsdom's may be incomplete)
-const localStorageMock = (() => {
-  let store: Record<string, string> = {}
-  return {
-    getItem: vi.fn((key: string) => store[key] ?? null),
-    setItem: vi.fn((key: string, value: string) => { store[key] = value }),
-    removeItem: vi.fn((key: string) => { delete store[key] }),
-    clear: vi.fn(() => { store = {} }),
-  }
-})()
-Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true })
+const DEFAULT_VC = { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: null } as const
 
 describe('useZoom', () => {
   beforeEach(() => {
-    localStorageMock.clear()
+    resetVaultConfigStore()
+    bindVaultConfigStore({ ...DEFAULT_VC }, vi.fn())
     document.documentElement.style.removeProperty('zoom')
   })
 
@@ -25,20 +17,23 @@ describe('useZoom', () => {
     expect(result.current.zoomLevel).toBe(100)
   })
 
-  it('restores persisted zoom level from localStorage', () => {
-    localStorageMock.setItem('laputa:zoom-level', '120')
+  it('restores persisted zoom level from vault config', () => {
+    resetVaultConfigStore()
+    bindVaultConfigStore({ ...DEFAULT_VC, zoom: 1.2 }, vi.fn())
     const { result } = renderHook(() => useZoom())
     expect(result.current.zoomLevel).toBe(120)
   })
 
-  it('ignores invalid persisted values', () => {
-    localStorageMock.setItem('laputa:zoom-level', 'banana')
+  it('defaults to 100 when vault config zoom is null', () => {
+    resetVaultConfigStore()
+    bindVaultConfigStore({ ...DEFAULT_VC, zoom: null }, vi.fn())
     const { result } = renderHook(() => useZoom())
     expect(result.current.zoomLevel).toBe(100)
   })
 
   it('ignores out-of-range persisted values', () => {
-    localStorageMock.setItem('laputa:zoom-level', '200')
+    resetVaultConfigStore()
+    bindVaultConfigStore({ ...DEFAULT_VC, zoom: 2.0 }, vi.fn())
     const { result } = renderHook(() => useZoom())
     expect(result.current.zoomLevel).toBe(100)
   })
@@ -47,36 +42,39 @@ describe('useZoom', () => {
     const { result } = renderHook(() => useZoom())
     act(() => result.current.zoomIn())
     expect(result.current.zoomLevel).toBe(110)
-    expect(localStorageMock.getItem('laputa:zoom-level')).toBe('110')
+    expect(getVaultConfig().zoom).toBe(1.1)
   })
 
   it('zoomOut decreases level by 10', () => {
     const { result } = renderHook(() => useZoom())
     act(() => result.current.zoomOut())
     expect(result.current.zoomLevel).toBe(90)
-    expect(localStorageMock.getItem('laputa:zoom-level')).toBe('90')
+    expect(getVaultConfig().zoom).toBe(0.9)
   })
 
   it('zoomIn clamps at 150', () => {
-    localStorageMock.setItem('laputa:zoom-level', '150')
+    resetVaultConfigStore()
+    bindVaultConfigStore({ ...DEFAULT_VC, zoom: 1.5 }, vi.fn())
     const { result } = renderHook(() => useZoom())
     act(() => result.current.zoomIn())
     expect(result.current.zoomLevel).toBe(150)
   })
 
   it('zoomOut clamps at 80', () => {
-    localStorageMock.setItem('laputa:zoom-level', '80')
+    resetVaultConfigStore()
+    bindVaultConfigStore({ ...DEFAULT_VC, zoom: 0.8 }, vi.fn())
     const { result } = renderHook(() => useZoom())
     act(() => result.current.zoomOut())
     expect(result.current.zoomLevel).toBe(80)
   })
 
   it('zoomReset returns to 100', () => {
-    localStorageMock.setItem('laputa:zoom-level', '130')
+    resetVaultConfigStore()
+    bindVaultConfigStore({ ...DEFAULT_VC, zoom: 1.3 }, vi.fn())
     const { result } = renderHook(() => useZoom())
     act(() => result.current.zoomReset())
     expect(result.current.zoomLevel).toBe(100)
-    expect(localStorageMock.getItem('laputa:zoom-level')).toBe('100')
+    expect(getVaultConfig().zoom).toBe(1.0)
   })
 
   it('applies CSS zoom property to document element', () => {
@@ -105,8 +103,9 @@ describe('useZoom', () => {
     expect(result.current.zoomLevel).toBe(130)
   })
 
-  it('handles localStorage getItem throwing', () => {
-    localStorageMock.getItem.mockImplementationOnce(() => { throw new Error('no storage') })
+  it('defaults to 100 when vault config store is empty', () => {
+    resetVaultConfigStore()
+    bindVaultConfigStore({ ...DEFAULT_VC }, vi.fn())
     const { result } = renderHook(() => useZoom())
     expect(result.current.zoomLevel).toBe(100)
   })

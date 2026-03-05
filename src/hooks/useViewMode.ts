@@ -1,13 +1,19 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { getVaultConfig, updateVaultConfigField, subscribeVaultConfig } from '../utils/vaultConfigStore'
 
 export type ViewMode = 'editor-only' | 'editor-list' | 'all'
 
-const STORAGE_KEY = 'laputa-view-mode'
+function isViewMode(v: string | null | undefined): v is ViewMode {
+  return v === 'editor-only' || v === 'editor-list' || v === 'all'
+}
 
 function loadViewMode(): ViewMode {
+  const stored = getVaultConfig().view_mode
+  if (isViewMode(stored)) return stored
+  // Fallback to localStorage during initial load (before vault config is ready)
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored === 'editor-only' || stored === 'editor-list' || stored === 'all') return stored
+    const ls = localStorage.getItem('laputa-view-mode')
+    if (isViewMode(ls)) return ls
   } catch { /* ignore */ }
   return 'all'
 }
@@ -15,9 +21,17 @@ function loadViewMode(): ViewMode {
 export function useViewMode() {
   const [viewMode, setViewModeState] = useState<ViewMode>(loadViewMode)
 
+  // Re-sync when vault config becomes available
+  useEffect(() => {
+    return subscribeVaultConfig(() => {
+      const stored = getVaultConfig().view_mode
+      if (isViewMode(stored)) setViewModeState(stored)
+    })
+  }, [])
+
   const setViewMode = useCallback((mode: ViewMode) => {
     setViewModeState(mode)
-    try { localStorage.setItem(STORAGE_KEY, mode) } catch { /* ignore */ }
+    updateVaultConfigField('view_mode', mode)
   }, [])
 
   const sidebarVisible = viewMode === 'all'

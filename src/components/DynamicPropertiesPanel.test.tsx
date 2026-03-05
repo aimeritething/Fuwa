@@ -2,20 +2,8 @@ import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { DynamicPropertiesPanel, containsWikilinks } from './DynamicPropertiesPanel'
 import type { VaultEntry } from '../types'
-
-// Mock localStorage (jsdom's may be incomplete)
-const localStorageMock = (() => {
-  let store: Record<string, string> = {}
-  return {
-    getItem: (key: string) => store[key] ?? null,
-    setItem: vi.fn((key: string, value: string) => { store[key] = value }),
-    removeItem: (key: string) => { delete store[key] },
-    clear: () => { store = {} },
-    get length() { return Object.keys(store).length },
-    key: (i: number) => Object.keys(store)[i] ?? null,
-  }
-})()
-Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true })
+import { bindVaultConfigStore, getVaultConfig, resetVaultConfigStore } from '../utils/vaultConfigStore'
+import { initDisplayModeOverrides } from '../utils/propertyTypes'
 
 // Radix Select needs ResizeObserver and pointer/scroll APIs in JSDOM
 beforeAll(() => {
@@ -847,7 +835,12 @@ describe('DynamicPropertiesPanel', () => {
 
   describe('display mode override', () => {
     beforeEach(() => {
-      localStorageMock.clear()
+      resetVaultConfigStore()
+      bindVaultConfigStore(
+        { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: null },
+        vi.fn(),
+      )
+      initDisplayModeOverrides({})
     })
 
     it('renders display mode trigger on property rows', () => {
@@ -880,7 +873,7 @@ describe('DynamicPropertiesPanel', () => {
       expect(screen.getByTestId('display-mode-option-url')).toBeInTheDocument()
     })
 
-    it('persists override to localStorage when mode selected', () => {
+    it('persists override to vault config when mode selected', () => {
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
@@ -891,12 +884,13 @@ describe('DynamicPropertiesPanel', () => {
       )
       fireEvent.click(screen.getByTestId('display-mode-trigger'))
       fireEvent.click(screen.getByTestId('display-mode-option-status'))
-      const stored = JSON.parse(localStorageMock.getItem('laputa:display-mode-overrides') ?? '{}')
+      const stored = getVaultConfig().property_display_modes as Record<string, string>
+      expect(stored).toBeTruthy()
       expect(stored.cadence).toBe('status')
     })
 
     it('overrides rendering to status badge when status mode selected', () => {
-      localStorageMock.setItem('laputa:display-mode-overrides', JSON.stringify({ cadence: 'status' }))
+      initDisplayModeOverrides({ cadence: 'status' })
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
@@ -909,7 +903,7 @@ describe('DynamicPropertiesPanel', () => {
     })
 
     it('renders boolean toggle for string "true" when boolean mode overridden', () => {
-      localStorageMock.setItem('laputa:display-mode-overrides', JSON.stringify({ draft: 'boolean' }))
+      initDisplayModeOverrides({ draft: 'boolean' })
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
@@ -923,7 +917,7 @@ describe('DynamicPropertiesPanel', () => {
     })
 
     it('renders boolean toggle for string "false" when boolean mode overridden', () => {
-      localStorageMock.setItem('laputa:display-mode-overrides', JSON.stringify({ draft: 'boolean' }))
+      initDisplayModeOverrides({ draft: 'boolean' })
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
@@ -937,7 +931,7 @@ describe('DynamicPropertiesPanel', () => {
     })
 
     it('toggles string boolean from false to true', () => {
-      localStorageMock.setItem('laputa:display-mode-overrides', JSON.stringify({ draft: 'boolean' }))
+      initDisplayModeOverrides({ draft: 'boolean' })
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
@@ -951,7 +945,7 @@ describe('DynamicPropertiesPanel', () => {
     })
 
     it('renders date picker for empty value when date mode overridden', () => {
-      localStorageMock.setItem('laputa:display-mode-overrides', JSON.stringify({ due: 'date' }))
+      initDisplayModeOverrides({ due: 'date' })
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
@@ -965,7 +959,7 @@ describe('DynamicPropertiesPanel', () => {
     })
 
     it('renders date picker for non-date string when date mode overridden', () => {
-      localStorageMock.setItem('laputa:display-mode-overrides', JSON.stringify({ deadline: 'date' }))
+      initDisplayModeOverrides({ deadline: 'date' })
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}

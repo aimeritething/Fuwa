@@ -1,19 +1,29 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getVaultConfig, updateVaultConfigField, subscribeVaultConfig } from '../utils/vaultConfigStore'
 
-const ZOOM_KEY = 'laputa:zoom-level'
 const MIN_ZOOM = 80
 const MAX_ZOOM = 150
 const STEP = 10
 const DEFAULT_ZOOM = 100
 
+/** Convert vault config zoom (0.8–1.5 fraction) to percentage (80–150). */
+function configToPercent(zoom: number | null): number | null {
+  if (zoom === null) return null
+  const pct = Math.round(zoom * 100)
+  return pct >= MIN_ZOOM && pct <= MAX_ZOOM ? pct : null
+}
+
 function loadPersistedZoom(): number {
+  const fromConfig = configToPercent(getVaultConfig().zoom)
+  if (fromConfig !== null) return fromConfig
+  // Fallback to localStorage during initial load
   try {
-    const stored = localStorage.getItem(ZOOM_KEY)
+    const stored = localStorage.getItem('laputa:zoom-level')
     if (stored !== null) {
       const val = Number(stored)
       if (val >= MIN_ZOOM && val <= MAX_ZOOM && val % STEP === 0) return val
     }
-  } catch { /* localStorage unavailable */ }
+  } catch { /* ignore */ }
   return DEFAULT_ZOOM
 }
 
@@ -22,7 +32,7 @@ function applyZoomToDocument(level: number): void {
 }
 
 function persistZoom(level: number): void {
-  try { localStorage.setItem(ZOOM_KEY, String(level)) } catch { /* ignore */ }
+  updateVaultConfigField('zoom', level / 100)
 }
 
 export function useZoom() {
@@ -32,6 +42,17 @@ export function useZoom() {
   useEffect(() => {
     applyZoomToDocument(zoomLevel)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps -- only on mount
+
+  // Re-sync when vault config becomes available
+  useEffect(() => {
+    return subscribeVaultConfig(() => {
+      const pct = configToPercent(getVaultConfig().zoom)
+      if (pct !== null) {
+        setZoomLevel(pct)
+        applyZoomToDocument(pct)
+      }
+    })
+  }, [])
 
   const zoomIn = useCallback(() => {
     setZoomLevel(prev => {

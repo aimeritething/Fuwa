@@ -1,35 +1,22 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   getTagStyle,
   getTagColorKey,
   setTagColor,
   DEFAULT_TAG_STYLE,
+  initTagColors,
 } from './tagStyles'
-
-// Mock localStorage (jsdom's may be incomplete)
-const localStorageMock = (() => {
-  let store: Record<string, string> = {}
-  return {
-    getItem: (key: string) => store[key] ?? null,
-    setItem: (key: string, value: string) => { store[key] = value },
-    removeItem: (key: string) => { delete store[key] },
-    clear: () => { store = {} },
-    get length() { return Object.keys(store).length },
-    key: (i: number) => Object.keys(store)[i] ?? null,
-  }
-})()
-Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true })
-
-const STORAGE_KEY = 'laputa:tag-color-overrides'
+import { bindVaultConfigStore, getVaultConfig, resetVaultConfigStore } from './vaultConfigStore'
 
 describe('tagStyles — color overrides', () => {
   beforeEach(() => {
-    localStorageMock.clear()
-    // Reset module-level cache by clearing known overrides
-    // We can't easily list all, but clearing known test keys suffices
-    for (const tag of ['React', 'TypeScript', 'Tauri', 'CustomTag']) {
-      setTagColor(tag, null)
-    }
+    resetVaultConfigStore()
+    bindVaultConfigStore(
+      { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: null },
+      vi.fn(),
+    )
+    // Reset module-level cache
+    initTagColors({})
   })
 
   it('returns default style when no override exists', () => {
@@ -43,7 +30,9 @@ describe('tagStyles — color overrides', () => {
   it('setTagColor persists a color override', () => {
     setTagColor('React', 'blue')
     expect(getTagColorKey('React')).toBe('blue')
-    expect(localStorage.getItem(STORAGE_KEY)).toContain('"React":"blue"')
+    const stored = getVaultConfig().tag_colors as Record<string, string>
+    expect(stored).toBeTruthy()
+    expect(stored['React']).toBe('blue')
   })
 
   it('getTagStyle uses override when set', () => {
@@ -74,10 +63,10 @@ describe('tagStyles — color overrides', () => {
     expect(getTagStyle('React')).toEqual(DEFAULT_TAG_STYLE)
   })
 
-  it('persists multiple overrides to localStorage', () => {
+  it('persists multiple overrides to vault config', () => {
     setTagColor('React', 'blue')
     setTagColor('Tauri', 'orange')
-    const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}')
+    const stored = getVaultConfig().tag_colors as Record<string, string>
     expect(stored).toEqual({ React: 'blue', Tauri: 'orange' })
   })
 })

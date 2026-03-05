@@ -1,4 +1,5 @@
 import { ACCENT_COLORS } from './typeColors'
+import { updateVaultConfigField } from './vaultConfigStore'
 
 export interface TagStyle {
   bg: string
@@ -16,7 +17,12 @@ const COLOR_KEY_TO_STYLE: Record<string, TagStyle> = Object.fromEntries(
   ACCENT_COLORS.map(c => [c.key, { bg: c.cssLight, color: c.css }]),
 )
 
-const colorOverrides: Record<string, string> = loadColorOverrides()
+let colorOverrides: Record<string, string> = loadColorOverrides()
+
+/** Initialize tag color overrides from vault config (replaces localStorage). */
+export function initTagColors(overrides: Record<string, string>): void {
+  colorOverrides = { ...overrides }
+}
 
 function loadColorOverrides(): Record<string, string> {
   try {
@@ -33,9 +39,8 @@ export function setTagColor(tag: string, colorKey: string | null): void {
   } else {
     colorOverrides[tag] = colorKey
   }
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(colorOverrides))
-  } catch { /* storage full — silently ignore */ }
+  const snapshot = { ...colorOverrides }
+  updateVaultConfigField('tag_colors', Object.keys(snapshot).length > 0 ? snapshot : null)
 }
 
 export function getTagColorKey(tag: string): string | null {
