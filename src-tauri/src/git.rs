@@ -18,6 +18,18 @@ pub fn init_repo(path: &str) -> Result<(), String> {
 
     run_git(dir, &["init"])?;
     ensure_author_config(dir)?;
+
+    // Write .gitignore before the first commit so macOS metadata files
+    // are never tracked and don't cause conflicts across machines.
+    let gitignore_path = dir.join(".gitignore");
+    if !gitignore_path.exists() {
+        std::fs::write(
+            &gitignore_path,
+            "# macOS\n.DS_Store\n.AppleDouble\n.LSOverride\n\n# Thumbnails\n._*\n\n# Editors\n.vscode/\n.idea/\n*.swp\n*.swo\n",
+        )
+        .map_err(|e| format!("Failed to write .gitignore: {}", e))?;
+    }
+
     run_git(dir, &["add", "."])?;
     run_git(dir, &["commit", "-m", "Initial vault setup"])?;
 
@@ -925,6 +937,35 @@ mod tests {
             String::from_utf8_lossy(&status.stdout).trim().is_empty(),
             "All files should be committed"
         );
+    }
+
+    #[test]
+    fn test_init_repo_creates_gitignore_with_ds_store() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path().join("new-vault");
+        fs::create_dir_all(&vault).unwrap();
+        fs::write(vault.join("note.md"), "# Test\n").unwrap();
+
+        init_repo(vault.to_str().unwrap()).unwrap();
+
+        let gitignore = vault.join(".gitignore");
+        assert!(gitignore.exists(), ".gitignore should be created by init_repo");
+        let content = fs::read_to_string(&gitignore).unwrap();
+        assert!(content.contains(".DS_Store"), ".gitignore should exclude .DS_Store");
+    }
+
+    #[test]
+    fn test_init_repo_does_not_overwrite_existing_gitignore() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path().join("new-vault");
+        fs::create_dir_all(&vault).unwrap();
+        fs::write(vault.join("note.md"), "# Test\n").unwrap();
+        fs::write(vault.join(".gitignore"), "custom-rule\n").unwrap();
+
+        init_repo(vault.to_str().unwrap()).unwrap();
+
+        let content = fs::read_to_string(vault.join(".gitignore")).unwrap();
+        assert_eq!(content, "custom-rule\n", "existing .gitignore should not be overwritten");
     }
 
     #[test]
