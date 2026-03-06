@@ -74,6 +74,8 @@ pub struct VaultEntry {
     /// Default view mode for the note list when viewing instances of this Type.
     /// Stored as a string: "all", "editor-list", or "editor-only".
     pub view: Option<String>,
+    /// Whether this Type is visible in the sidebar. Defaults to true when absent.
+    pub visible: Option<bool>,
     /// Word count of the note body (excludes frontmatter and H1 title).
     #[serde(rename = "wordCount")]
     pub word_count: u32,
@@ -128,6 +130,8 @@ struct Frontmatter {
     sort: Option<String>,
     #[serde(default)]
     view: Option<String>,
+    #[serde(default)]
+    visible: Option<bool>,
 }
 
 /// Handles YAML fields that can be either a single string or a list of strings.
@@ -175,6 +179,7 @@ const SKIP_KEYS: &[&str] = &[
     "template",
     "sort",
     "view",
+    "visible",
 ];
 
 /// Extract all wikilink-containing fields from raw YAML frontmatter.
@@ -401,6 +406,7 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
         template: frontmatter.template,
         sort: frontmatter.sort,
         view: frontmatter.view,
+        visible: frontmatter.visible,
         word_count,
         outgoing_links,
         properties,
@@ -1372,6 +1378,48 @@ Company: Acme Corp
         let entry = parse_test_entry(&dir, "active.md", content);
         assert!(!entry.trashed);
         assert!(entry.trashed_at.is_none());
+    }
+
+    // --- visible field tests ---
+
+    #[test]
+    fn test_parse_visible_false_from_type_entry() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
+        let entry = parse_test_entry(&dir, "type/journal.md", content);
+        assert_eq!(entry.visible, Some(false));
+    }
+
+    #[test]
+    fn test_parse_visible_true_from_type_entry() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Type\nvisible: true\n---\n# Project\n";
+        let entry = parse_test_entry(&dir, "type/project.md", content);
+        assert_eq!(entry.visible, Some(true));
+    }
+
+    #[test]
+    fn test_parse_visible_missing_defaults_to_none() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Type\n---\n# Project\n";
+        let entry = parse_test_entry(&dir, "type/project.md", content);
+        assert_eq!(entry.visible, None);
+    }
+
+    #[test]
+    fn test_visible_not_in_relationships() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
+        let entry = parse_test_entry(&dir, "type/journal.md", content);
+        assert!(entry.relationships.get("visible").is_none());
+    }
+
+    #[test]
+    fn test_visible_not_in_properties() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
+        let entry = parse_test_entry(&dir, "type/journal.md", content);
+        assert!(entry.properties.get("visible").is_none());
     }
 
     // Frontmatter update/delete tests are in frontmatter.rs
