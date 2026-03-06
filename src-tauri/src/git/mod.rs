@@ -274,11 +274,23 @@ mod tests {
         init_repo(vault.to_str().unwrap()).unwrap();
 
         let gitignore = vault.join(".gitignore");
-        assert!(gitignore.exists(), ".gitignore should be created by init_repo");
+        assert!(
+            gitignore.exists(),
+            ".gitignore should be created by init_repo"
+        );
         let content = fs::read_to_string(&gitignore).unwrap();
-        assert!(content.contains(".DS_Store"), ".gitignore should exclude .DS_Store");
-        assert!(content.contains(".laputa-cache.json"), ".gitignore should exclude .laputa-cache.json");
-        assert!(content.contains(".laputa/settings.json"), ".gitignore should exclude settings.json");
+        assert!(
+            content.contains(".DS_Store"),
+            ".gitignore should exclude .DS_Store"
+        );
+        assert!(
+            content.contains(".laputa-cache.json"),
+            ".gitignore should exclude .laputa-cache.json"
+        );
+        assert!(
+            content.contains(".laputa/settings.json"),
+            ".gitignore should exclude settings.json"
+        );
     }
 
     #[test]
@@ -292,7 +304,10 @@ mod tests {
         init_repo(vault.to_str().unwrap()).unwrap();
 
         let content = fs::read_to_string(vault.join(".gitignore")).unwrap();
-        assert_eq!(content, "custom-rule\n", "existing .gitignore should not be overwritten");
+        assert_eq!(
+            content, "custom-rule\n",
+            "existing .gitignore should not be overwritten"
+        );
     }
 
     #[test]

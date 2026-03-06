@@ -113,8 +113,7 @@ pub fn restore_default_themes(vault_path: &str) -> Result<String, String> {
 /// Create `type/theme.md` if it doesn't exist (gives the Theme type a sidebar icon/color).
 pub fn ensure_theme_type_definition(vault_path: &str) -> Result<(), String> {
     let type_dir = Path::new(vault_path).join("type");
-    fs::create_dir_all(&type_dir)
-        .map_err(|e| format!("Failed to create type directory: {e}"))?;
+    fs::create_dir_all(&type_dir).map_err(|e| format!("Failed to create type directory: {e}"))?;
     let path = type_dir.join("theme.md");
     let needs_write = !path.exists() || fs::metadata(&path).map_or(true, |m| m.len() == 0);
     if needs_write {

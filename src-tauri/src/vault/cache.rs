@@ -100,17 +100,14 @@ fn git_uncommitted_files(vault: &Path) -> Vec<String> {
     // Untracked files via ls-files (lists individual files, not just directories).
     // git status --porcelain shows `?? dir/` for new directories, hiding individual
     // files inside — ls-files resolves them so the cache picks up all new .md files.
-    let untracked = run_git(
-        vault,
-        &["ls-files", "--others", "--exclude-standard"],
-    )
-    .map(|s| {
-        s.lines()
-            .filter(|l| !l.is_empty() && l.ends_with(".md"))
-            .map(|l| l.to_string())
-            .collect::<Vec<_>>()
-    })
-    .unwrap_or_default();
+    let untracked = run_git(vault, &["ls-files", "--others", "--exclude-standard"])
+        .map(|s| {
+            s.lines()
+                .filter(|l| !l.is_empty() && l.ends_with(".md"))
+                .map(|l| l.to_string())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
 
     for path in untracked {
         if !files.contains(&path) {

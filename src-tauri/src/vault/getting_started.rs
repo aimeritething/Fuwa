@@ -412,12 +412,21 @@ pub fn create_getting_started_vault(target_path: &str) -> Result<String, String>
     let theme_notes_dir = vault_dir.join("theme");
     fs::create_dir_all(&theme_notes_dir)
         .map_err(|e| format!("Failed to create theme directory: {e}"))?;
-    fs::write(theme_notes_dir.join("default.md"), crate::theme::DEFAULT_VAULT_THEME)
-        .map_err(|e| format!("Failed to write default vault theme: {e}"))?;
-    fs::write(theme_notes_dir.join("dark.md"), crate::theme::DARK_VAULT_THEME)
-        .map_err(|e| format!("Failed to write dark vault theme: {e}"))?;
-    fs::write(theme_notes_dir.join("minimal.md"), crate::theme::MINIMAL_VAULT_THEME)
-        .map_err(|e| format!("Failed to write minimal vault theme: {e}"))?;
+    fs::write(
+        theme_notes_dir.join("default.md"),
+        crate::theme::DEFAULT_VAULT_THEME,
+    )
+    .map_err(|e| format!("Failed to write default vault theme: {e}"))?;
+    fs::write(
+        theme_notes_dir.join("dark.md"),
+        crate::theme::DARK_VAULT_THEME,
+    )
+    .map_err(|e| format!("Failed to write dark vault theme: {e}"))?;
+    fs::write(
+        theme_notes_dir.join("minimal.md"),
+        crate::theme::MINIMAL_VAULT_THEME,
+    )
+    .map_err(|e| format!("Failed to write minimal vault theme: {e}"))?;
 
     crate::git::init_repo(target_path)?;
 
