@@ -96,7 +96,7 @@ function FileItem({ file, onOpenNote }: { file: PulseFile; onOpenNote?: (path: s
 }
 
 function CommitCard({ commit, onOpenNote }: { commit: PulseCommit; onOpenNote?: (path: string) => void }) {
-  const [expanded, setExpanded] = useState(true)
+  const [expanded, setExpanded] = useState(false)
   const Chevron = expanded ? CaretDown : CaretRight
 
   return (
@@ -239,7 +239,7 @@ export const PulseView = memo(function PulseView({ vaultPath, onOpenNote, sideba
   const dayGroups = groupCommitsByDay(commits)
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-background">
+    <div className="flex h-full flex-col overflow-hidden border-r border-[var(--sidebar-border)] bg-background">
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-border" style={{ height: 52, padding: '0 16px' }}>
         <div className="flex items-center" style={{ gap: 8 }}>

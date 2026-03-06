@@ -104,10 +104,16 @@ describe('PulseView', () => {
     expect(nonLink.tagName).toBe('SPAN')
   })
 
-  it('renders file list with correct titles', async () => {
+  it('renders file list with correct titles when expanded', async () => {
     mockInvokeFn.mockResolvedValue(mockCommits)
 
     render(<PulseView vaultPath="/test/vault" />)
+
+    // Files are collapsed by default — expand all commit cards first
+    await waitFor(() => {
+      expect(screen.getAllByLabelText('Expand files').length).toBeGreaterThan(0)
+    })
+    screen.getAllByLabelText('Expand files').forEach((btn) => fireEvent.click(btn))
 
     await waitFor(() => {
       expect(screen.getByText('my project')).toBeInTheDocument()
@@ -122,6 +128,12 @@ describe('PulseView', () => {
 
     render(<PulseView vaultPath="/test/vault" onOpenNote={onOpenNote} />)
 
+    // Expand first commit card
+    await waitFor(() => {
+      expect(screen.getAllByLabelText('Expand files').length).toBeGreaterThan(0)
+    })
+    fireEvent.click(screen.getAllByLabelText('Expand files')[0])
+
     await waitFor(() => {
       expect(screen.getByText('my project')).toBeInTheDocument()
     })
@@ -135,6 +147,12 @@ describe('PulseView', () => {
     const onOpenNote = vi.fn()
 
     render(<PulseView vaultPath="/test/vault" onOpenNote={onOpenNote} />)
+
+    // Expand all commit cards to find the deleted file
+    await waitFor(() => {
+      expect(screen.getAllByLabelText('Expand files').length).toBeGreaterThan(0)
+    })
+    screen.getAllByLabelText('Expand files').forEach((btn) => fireEvent.click(btn))
 
     await waitFor(() => {
       expect(screen.getByText('old')).toBeInTheDocument()
@@ -191,20 +209,28 @@ describe('PulseView', () => {
     })
   })
 
-  it('toggles file list visibility when clicking collapse button', async () => {
+  it('toggles file list visibility when clicking expand/collapse button', async () => {
     mockInvokeFn.mockResolvedValue(mockCommits)
 
     render(<PulseView vaultPath="/test/vault" />)
 
+    // Files are collapsed by default
+    await waitFor(() => {
+      expect(screen.getAllByLabelText('Expand files').length).toBeGreaterThan(0)
+    })
+    expect(screen.queryByText('my project')).not.toBeInTheDocument()
+
+    // Click expand on first commit card
+    fireEvent.click(screen.getAllByLabelText('Expand files')[0])
+
+    // Files should now be visible
     await waitFor(() => {
       expect(screen.getByText('my project')).toBeInTheDocument()
     })
 
-    // Click the collapse button on the first commit card
-    const collapseBtn = screen.getAllByLabelText('Collapse files')[0]
-    fireEvent.click(collapseBtn)
+    // Click collapse to hide again
+    fireEvent.click(screen.getAllByLabelText('Collapse files')[0])
 
-    // Files should be hidden
     expect(screen.queryByText('my project')).not.toBeInTheDocument()
   })
 
