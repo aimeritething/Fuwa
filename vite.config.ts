@@ -19,11 +19,25 @@ interface VaultEntry {
   status: string | null
   owner: string | null
   cadence: string | null
+  archived: boolean
+  trashed: boolean
+  trashedAt: number | null
   modifiedAt: number | null
   createdAt: number | null
   fileSize: number
   snippet: string
+  wordCount: number
   relationships: Record<string, string[]>
+  icon: string | null
+  color: string | null
+  order: number | null
+  sidebarLabel: string | null
+  template: string | null
+  sort: string | null
+  view: string | null
+  visible: boolean | null
+  outgoingLinks: string[]
+  properties: Record<string, string | number | boolean | null>
 }
 
 /** Extract all [[wiki-links]] from a string. */
@@ -115,22 +129,48 @@ function parseMarkdownFile(filePath: string): VaultEntry | null {
       }
     }
 
+    // Boolean field helper
+    const getBool = (...keys: string[]): boolean | null => {
+      for (const k of keys) {
+        for (const fk of Object.keys(fm)) {
+          if (fk.toLowerCase() === k.toLowerCase() && typeof fm[fk] === 'boolean') {
+            return fm[fk]
+          }
+        }
+      }
+      return null
+    }
+
     return {
       path: filePath,
       filename,
       title,
-      isA: getString('is_a', 'is a'),
+      isA: getString('is_a', 'is a', 'type'),
       aliases,
       belongsTo,
       relatedTo,
       status: getString('status'),
       owner: getString('owner'),
       cadence: getString('cadence'),
+      archived: getBool('archived') ?? false,
+      trashed: getBool('trashed') ?? false,
+      trashedAt: null,
       modifiedAt: stats.mtimeMs,
       createdAt,
       fileSize: stats.size,
       snippet,
+      wordCount: bodyText.split(/\s+/).filter(Boolean).length,
       relationships,
+      icon: getString('icon'),
+      color: getString('color'),
+      order: fm.order != null ? Number(fm.order) : null,
+      sidebarLabel: getString('sidebar label', 'sidebar_label'),
+      template: getString('template'),
+      sort: getString('sort'),
+      view: getString('view'),
+      visible: getBool('visible'),
+      outgoingLinks: [],
+      properties: {},
     }
   } catch {
     return null

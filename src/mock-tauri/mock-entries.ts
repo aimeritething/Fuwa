@@ -681,7 +681,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     color: null,
     order: 3,
     sidebarLabel: null,
-    template: null, sort: null, view: null, visible: null,
+    template: null, sort: null, view: null, visible: false,
     outgoingLinks: [],
     properties: {},
   },
