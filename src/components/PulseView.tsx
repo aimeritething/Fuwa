@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, memo } from 'react'
+import { useState, useEffect, useCallback, useRef, memo } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { PulseCommit, PulseFile } from '../types'
@@ -207,20 +207,29 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
   )
 }
 
+const PAGE_SIZE = 20
+
 export const PulseView = memo(function PulseView({ vaultPath, onOpenNote, sidebarCollapsed, onExpandSidebar }: PulseViewProps) {
   const [commits, setCommits] = useState<PulseCommit[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [hasMore, setHasMore] = useState(true)
-  const batchSize = 30
+  const [skip, setSkip] = useState(0)
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
 
-  const loadPulse = useCallback(async (limit: number) => {
+  // Initial load
+  const loadInitial = useCallback(async () => {
     setLoading(true)
     setError(null)
+    setCommits([])
+    setSkip(0)
+    setHasMore(true)
     try {
-      const result = await tauriCall<PulseCommit[]>('get_vault_pulse', { vaultPath, limit })
+      const result = await tauriCall<PulseCommit[]>('get_vault_pulse', { vaultPath, limit: PAGE_SIZE, skip: 0 })
       setCommits(result)
-      setHasMore(result.length >= limit)
+      setHasMore(result.length >= PAGE_SIZE)
+      setSkip(result.length)
     } catch (err) {
       const msg = typeof err === 'string' ? err : 'Failed to load activity'
       setError(msg)
@@ -229,12 +238,35 @@ export const PulseView = memo(function PulseView({ vaultPath, onOpenNote, sideba
     }
   }, [vaultPath])
 
-  useEffect(() => { loadPulse(batchSize) }, [loadPulse])
+  // Append next page
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore) return
+    setLoadingMore(true)
+    try {
+      const result = await tauriCall<PulseCommit[]>('get_vault_pulse', { vaultPath, limit: PAGE_SIZE, skip })
+      setCommits((prev) => [...prev, ...result])
+      setHasMore(result.length >= PAGE_SIZE)
+      setSkip((s) => s + result.length)
+    } catch {
+      // silently fail for pagination — user can scroll up/retry
+    } finally {
+      setLoadingMore(false)
+    }
+  }, [vaultPath, skip, loadingMore, hasMore])
 
-  const handleLoadMore = useCallback(() => {
-    const nextLimit = commits.length + batchSize
-    loadPulse(nextLimit)
-  }, [commits.length, loadPulse])
+  useEffect(() => { loadInitial() }, [loadInitial])
+
+  // Intersection Observer for infinite scroll
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => { if (entries[0].isIntersecting) loadMore() },
+      { threshold: 0.1 },
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [loadMore])
 
   const dayGroups = groupCommitsByDay(commits)
 
@@ -260,12 +292,12 @@ export const PulseView = memo(function PulseView({ vaultPath, onOpenNote, sideba
 
       {/* Feed */}
       <div className="flex-1 overflow-y-auto">
-        {loading && commits.length === 0 ? (
+        {loading ? (
           <div className="flex items-center justify-center" style={{ padding: 32 }}>
             <span className="text-[13px] text-muted-foreground">Loading activity…</span>
           </div>
         ) : error ? (
-          <ErrorState message={error} onRetry={() => loadPulse(batchSize)} />
+          <ErrorState message={error} onRetry={loadInitial} />
         ) : commits.length === 0 ? (
           <EmptyState />
         ) : (
@@ -278,15 +310,11 @@ export const PulseView = memo(function PulseView({ vaultPath, onOpenNote, sideba
                 onOpenNote={onOpenNote}
               />
             ))}
-            {hasMore && (
-              <div style={{ padding: '12px 16px' }}>
-                <button
-                  className="flex w-full cursor-pointer items-center justify-center rounded border border-border bg-transparent py-2 text-[12px] text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-                  onClick={handleLoadMore}
-                  disabled={loading}
-                >
-                  {loading ? 'Loading…' : 'Load more'}
-                </button>
+            {/* Sentinel for infinite scroll */}
+            <div ref={sentinelRef} style={{ height: 1 }} />
+            {loadingMore && (
+              <div className="flex items-center justify-center" style={{ padding: 12 }}>
+                <span className="text-[12px] text-muted-foreground">Loading…</span>
               </div>
             )}
           </>

@@ -221,10 +221,12 @@ pub fn get_file_diff_at_commit(
 pub fn get_vault_pulse(
     vault_path: String,
     limit: Option<usize>,
+    skip: Option<usize>,
 ) -> Result<Vec<PulseCommit>, String> {
     let vault_path = expand_tilde(&vault_path);
-    let limit = limit.unwrap_or(30);
-    git::get_vault_pulse(&vault_path, limit)
+    let limit = limit.unwrap_or(20);
+    let skip = skip.unwrap_or(0);
+    git::get_vault_pulse(&vault_path, limit, skip)
 }
 
 #[tauri::command]

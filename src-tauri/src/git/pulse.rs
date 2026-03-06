@@ -53,7 +53,8 @@ fn parse_file_status(code: &str) -> &str {
 }
 
 /// Get the pulse (commit activity feed) for a vault, showing only .md file changes.
-pub fn get_vault_pulse(vault_path: &str, limit: usize) -> Result<Vec<PulseCommit>, String> {
+/// `skip` offsets into the commit list for pagination; `limit` caps how many to return.
+pub fn get_vault_pulse(vault_path: &str, limit: usize, skip: usize) -> Result<Vec<PulseCommit>, String> {
     let vault = Path::new(vault_path);
 
     if !vault.join(".git").exists() {
@@ -61,6 +62,7 @@ pub fn get_vault_pulse(vault_path: &str, limit: usize) -> Result<Vec<PulseCommit
     }
 
     let limit_str = limit.to_string();
+    let skip_str = skip.to_string();
     let output = Command::new("git")
         .args([
             "log",
@@ -69,6 +71,8 @@ pub fn get_vault_pulse(vault_path: &str, limit: usize) -> Result<Vec<PulseCommit
             "--diff-filter=ADM",
             "-n",
             &limit_str,
+            "--skip",
+            &skip_str,
             "--",
             "*.md",
         ])
@@ -255,7 +259,7 @@ mod tests {
         fs::write(vault.join("project.md"), "# Project\n").unwrap();
         git_commit(vp, "Add project").unwrap();
 
-        let pulse = get_vault_pulse(vp, 30).unwrap();
+        let pulse = get_vault_pulse(vp, 30, 0).unwrap();
 
         assert_eq!(pulse.len(), 2);
         assert_eq!(pulse[0].message, "Add project");
@@ -273,7 +277,7 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let vp = dir.path().to_str().unwrap();
 
-        let result = get_vault_pulse(vp, 30);
+        let result = get_vault_pulse(vp, 30, 0);
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Not a git repository"));
     }
@@ -283,7 +287,7 @@ mod tests {
         let dir = setup_git_repo();
         let vp = dir.path().to_str().unwrap();
 
-        let pulse = get_vault_pulse(vp, 30).unwrap();
+        let pulse = get_vault_pulse(vp, 30, 0).unwrap();
         assert!(pulse.is_empty());
     }
 
@@ -297,7 +301,7 @@ mod tests {
         fs::write(vault.join("config.json"), "{}").unwrap();
         git_commit(vp, "Add files").unwrap();
 
-        let pulse = get_vault_pulse(vp, 30).unwrap();
+        let pulse = get_vault_pulse(vp, 30, 0).unwrap();
         assert_eq!(pulse.len(), 1);
         assert_eq!(pulse[0].files.len(), 1);
         assert_eq!(pulse[0].files[0].path, "note.md");
@@ -318,7 +322,7 @@ mod tests {
             git_commit(vp, &format!("Add note {}", i)).unwrap();
         }
 
-        let pulse = get_vault_pulse(vp, 3).unwrap();
+        let pulse = get_vault_pulse(vp, 3, 0).unwrap();
         assert_eq!(pulse.len(), 3);
     }
 
@@ -334,7 +338,7 @@ mod tests {
         fs::write(vault.join("note.md"), "# Updated\n").unwrap();
         git_commit(vp, "Update note").unwrap();
 
-        let pulse = get_vault_pulse(vp, 30).unwrap();
+        let pulse = get_vault_pulse(vp, 30, 0).unwrap();
         assert_eq!(pulse[0].message, "Update note");
         assert_eq!(pulse[0].files[0].status, "modified");
         assert_eq!(pulse[0].modified, 1);
@@ -360,7 +364,7 @@ mod tests {
             .output()
             .unwrap();
 
-        let pulse = get_vault_pulse(vp, 30).unwrap();
+        let pulse = get_vault_pulse(vp, 30, 0).unwrap();
         assert!(pulse[0].github_url.is_some());
         let url = pulse[0].github_url.as_ref().unwrap();
         assert!(url.starts_with("https://github.com/owner/repo/commit/"));
@@ -375,7 +379,7 @@ mod tests {
         fs::write(vault.join("note.md"), "# Note\n").unwrap();
         git_commit(vp, "Add note").unwrap();
 
-        let pulse = get_vault_pulse(vp, 30).unwrap();
+        let pulse = get_vault_pulse(vp, 30, 0).unwrap();
         assert!(pulse[0].github_url.is_none());
     }
 

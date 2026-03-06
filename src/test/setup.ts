@@ -45,6 +45,13 @@ globalThis.ResizeObserver = class {
   disconnect() {}
 } as unknown as typeof ResizeObserver
 
+// Mock IntersectionObserver for jsdom (not implemented)
+globalThis.IntersectionObserver = class {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+} as unknown as typeof IntersectionObserver
+
 // Mock @tauri-apps/plugin-opener for test environment
 vi.mock('@tauri-apps/plugin-opener', () => ({
   openUrl: vi.fn(),

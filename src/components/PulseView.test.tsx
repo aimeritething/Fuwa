@@ -183,19 +183,13 @@ describe('PulseView', () => {
     expect(screen.getByText('Retry')).toBeInTheDocument()
   })
 
-  it('shows Load more button when hasMore is true', async () => {
-    const manyCommits = Array.from({ length: 30 }, (_, i) => ({
-      ...mockCommits[0],
-      hash: `hash${i}`,
-      shortHash: `h${i}`,
-      message: `Commit ${i}`,
-    }))
-    mockInvokeFn.mockResolvedValue(manyCommits)
+  it('calls get_vault_pulse with skip=0 on initial load and passes correct page size', async () => {
+    mockInvokeFn.mockResolvedValue([])
 
     render(<PulseView vaultPath="/test/vault" />)
 
     await waitFor(() => {
-      expect(screen.getByText('Load more')).toBeInTheDocument()
+      expect(mockInvokeFn).toHaveBeenCalledWith('get_vault_pulse', { vaultPath: '/test/vault', limit: 20, skip: 0 })
     })
   })
 
@@ -205,7 +199,7 @@ describe('PulseView', () => {
     render(<PulseView vaultPath="/my/vault" />)
 
     await waitFor(() => {
-      expect(mockInvokeFn).toHaveBeenCalledWith('get_vault_pulse', { vaultPath: '/my/vault', limit: 30 })
+      expect(mockInvokeFn).toHaveBeenCalledWith('get_vault_pulse', { vaultPath: '/my/vault', limit: 20, skip: 0 })
     })
   })
 
