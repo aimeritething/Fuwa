@@ -14,9 +14,10 @@ export function isTauri(): boolean {
   return typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
 }
 
-// Initialize window.__mockContent for browser testing
+// Initialize window globals for browser testing and Playwright overrides
 if (typeof window !== 'undefined') {
   window.__mockContent = MOCK_CONTENT
+  window.__mockHandlers = mockHandlers
 }
 
 export async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {

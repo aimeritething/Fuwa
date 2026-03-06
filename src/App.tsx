@@ -48,10 +48,12 @@ import { filterEntries } from './utils/noteListHelpers'
 import { openLocalFile } from './utils/url'
 import './App.css'
 
-// Type declaration for mock content storage
+// Type declarations for mock content storage and test overrides
 declare global {
   interface Window {
     __mockContent?: Record<string, string>
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock handler map for Playwright test overrides
+    __mockHandlers?: Record<string, (args: any) => any>
   }
 }
 
