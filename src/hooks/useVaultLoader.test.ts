@@ -34,7 +34,7 @@ function defaultMockInvoke(cmd: string, args?: Record<string, unknown>) {
   if (cmd === 'get_file_diff') return Promise.resolve('--- a/note.md\n+++ b/note.md')
   if (cmd === 'get_file_diff_at_commit') return Promise.resolve(`diff for ${(args as Record<string, string>)?.commitHash}`)
   if (cmd === 'git_commit') return Promise.resolve('committed')
-  if (cmd === 'git_push') return Promise.resolve('pushed')
+  if (cmd === 'git_push') return Promise.resolve({ status: 'ok', message: 'Pushed to remote' })
   return Promise.resolve(null)
 }
 
@@ -381,6 +381,49 @@ describe('useVaultLoader', () => {
       })
 
       expect(response).toBe('Committed and pushed')
+    })
+
+    it('returns actionable message when push is rejected', async () => {
+      mockInvokeFn.mockImplementation(((cmd: string) => {
+        if (cmd === 'list_vault') return Promise.resolve(mockEntries)
+        if (cmd === 'get_all_content') return Promise.resolve(mockContent)
+        if (cmd === 'get_modified_files') return Promise.resolve([])
+        if (cmd === 'git_commit') return Promise.resolve('committed')
+        if (cmd === 'git_push') return Promise.resolve({ status: 'rejected', message: 'Push rejected: remote has new commits. Pull first, then push.' })
+        return Promise.resolve(null)
+      }) as typeof defaultMockInvoke)
+
+      const { result } = renderHook(() => useVaultLoader('/vault'))
+      await waitFor(() => { expect(result.current.entries).toHaveLength(1) })
+
+      let response = ''
+      await act(async () => {
+        response = await result.current.commitAndPush('test commit')
+      })
+
+      expect(response).toContain('Pull first')
+      expect(response).not.toBe('Committed and pushed')
+    })
+
+    it('returns network error message on network failure', async () => {
+      mockInvokeFn.mockImplementation(((cmd: string) => {
+        if (cmd === 'list_vault') return Promise.resolve(mockEntries)
+        if (cmd === 'get_all_content') return Promise.resolve(mockContent)
+        if (cmd === 'get_modified_files') return Promise.resolve([])
+        if (cmd === 'git_commit') return Promise.resolve('committed')
+        if (cmd === 'git_push') return Promise.resolve({ status: 'network_error', message: 'Push failed: network error. Check your connection and try again.' })
+        return Promise.resolve(null)
+      }) as typeof defaultMockInvoke)
+
+      const { result } = renderHook(() => useVaultLoader('/vault'))
+      await waitFor(() => { expect(result.current.entries).toHaveLength(1) })
+
+      let response = ''
+      await act(async () => {
+        response = await result.current.commitAndPush('test commit')
+      })
+
+      expect(response).toContain('network error')
     })
   })
 

@@ -3,7 +3,7 @@
  * Each handler simulates a Tauri backend command.
  */
 
-import type { VaultEntry, VaultConfig, ModifiedFile, Settings, DeviceFlowStart, DeviceFlowPollResult, GitHubUser, GitPullResult, LastCommitInfo, ThemeFile, VaultSettings, PulseCommit } from '../types'
+import type { VaultEntry, VaultConfig, ModifiedFile, Settings, DeviceFlowStart, DeviceFlowPollResult, GitHubUser, GitPullResult, GitPushResult, LastCommitInfo, ThemeFile, VaultSettings, PulseCommit } from '../types'
 import { MOCK_CONTENT } from './mock-content'
 import { MOCK_ENTRIES } from './mock-entries'
 
@@ -172,7 +172,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   get_build_number: () => 'bDEV',
   get_last_commit_info: (): LastCommitInfo => ({ shortHash: 'a1b2c3d', commitUrl: 'https://github.com/lucaong/laputa-vault/commit/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' }),
   git_pull: (): GitPullResult => ({ status: 'up_to_date', message: 'Already up to date', updatedFiles: [], conflictFiles: [] }),
-  git_push: () => 'Everything up-to-date',
+  git_push: (): GitPushResult => ({ status: 'ok', message: 'Pushed to remote' }),
   get_vault_pulse: (args: { limit?: number }): PulseCommit[] => {
     const limit = args.limit ?? 30
     const ts = Math.floor(Date.now() / 1000)

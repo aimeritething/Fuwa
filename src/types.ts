@@ -78,6 +78,11 @@ export interface GitPullResult {
   conflictFiles: string[]
 }
 
+export interface GitPushResult {
+  status: 'ok' | 'rejected' | 'auth_error' | 'network_error' | 'error'
+  message: string
+}
+
 export type SyncStatus = 'idle' | 'syncing' | 'error' | 'conflict'
 
 export interface DeviceFlowStart {

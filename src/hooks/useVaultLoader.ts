@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, startTransition } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
-import type { VaultEntry, GitCommit, ModifiedFile, NoteStatus } from '../types'
+import type { VaultEntry, GitCommit, ModifiedFile, NoteStatus, GitPushResult } from '../types'
 
 function tauriCall<T>(command: string, tauriArgs: Record<string, unknown>, mockArgs?: Record<string, unknown>): Promise<T> {
   return isTauri() ? invoke<T>(command, tauriArgs) : mockInvoke<T>(command, mockArgs ?? tauriArgs)
@@ -18,16 +18,12 @@ async function loadVaultData(vaultPath: string) {
 async function commitWithPush(vaultPath: string, message: string): Promise<string> {
   if (!isTauri()) {
     await mockInvoke<string>('git_commit', { message })
-    await mockInvoke<string>('git_push', {})
-    return 'Committed and pushed'
+    const pushResult = await mockInvoke<GitPushResult>('git_push', {})
+    return pushResult.status === 'ok' ? 'Committed and pushed' : pushResult.message
   }
   await invoke<string>('git_commit', { vaultPath, message })
-  try {
-    await invoke<string>('git_push', { vaultPath })
-    return 'Committed and pushed'
-  } catch {
-    return 'Committed (push failed)'
-  }
+  const pushResult = await invoke<GitPushResult>('git_push', { vaultPath })
+  return pushResult.status === 'ok' ? 'Committed and pushed' : pushResult.message
 }
 
 function useNewNoteTracker() {
