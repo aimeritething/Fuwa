@@ -326,7 +326,7 @@ line-height-base: 1.6
       cadence: null, archived: false, trashed: false, trashedAt: null,
       modifiedAt: now, createdAt: now, fileSize: 512, snippet: `A custom ${displayName} theme.`,
       wordCount: 10, relationships: {}, icon: null, color: null, order: null,
-      sidebarLabel: null, template: null, sort: null, view: null,
+      sidebarLabel: null, template: null, sort: null, view: null, visible: null,
       outgoingLinks: [], properties: {},
     })
     syncWindowContent()
@@ -334,7 +334,7 @@ line-height-base: 1.6
   },
   ensure_vault_themes: (): null => null,
   restore_default_themes: (): string => 'Default themes restored',
-  get_vault_config: (): VaultConfig => ({ zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null, hidden_sections: null }),
+  get_vault_config: (): VaultConfig => ({ zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null }),
   save_vault_config: (): null => null,
 }
 

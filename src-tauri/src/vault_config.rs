@@ -18,8 +18,6 @@ pub struct VaultConfig {
     pub status_colors: Option<HashMap<String, String>>,
     #[serde(default)]
     pub property_display_modes: Option<HashMap<String, String>>,
-    #[serde(default)]
-    pub hidden_sections: Option<Vec<String>>,
 }
 
 const CONFIG_DIR: &str = "config";
@@ -100,15 +98,6 @@ fn serialize_config(config: &VaultConfig) -> String {
         "property_display_modes",
         config.property_display_modes.as_ref(),
     );
-    if let Some(ref sections) = config.hidden_sections {
-        if !sections.is_empty() {
-            lines.push("hidden_sections:".to_string());
-            for s in sections {
-                lines.push(format!("  - {s}"));
-            }
-        }
-    }
-
     lines.push("---".to_string());
     lines.join("\n") + "\n"
 }
@@ -194,9 +183,6 @@ status_colors:
   Done: blue
 property_display_modes:
   deadline: date
-hidden_sections:
-  - Archived
-  - Trash
 ---
 "#;
         let config = parse_vault_config(content).unwrap();
@@ -209,8 +195,6 @@ hidden_sections:
         assert_eq!(statuses.get("Active").unwrap(), "green");
         let props = config.property_display_modes.unwrap();
         assert_eq!(props.get("deadline").unwrap(), "date");
-        let hidden = config.hidden_sections.unwrap();
-        assert_eq!(hidden, vec!["Archived", "Trash"]);
     }
 
     #[test]
@@ -223,14 +207,12 @@ hidden_sections:
             tag_colors: Some(tag_colors),
             status_colors: None,
             property_display_modes: None,
-            hidden_sections: Some(vec!["Trash".to_string()]),
         };
         let serialized = serialize_config(&config);
         let parsed = parse_vault_config(&serialized).unwrap();
         assert_eq!(parsed.zoom, Some(1.2));
         assert_eq!(parsed.view_mode.as_deref(), Some("editor-only"));
         assert_eq!(parsed.tag_colors.unwrap().get("work").unwrap(), "blue");
-        assert_eq!(parsed.hidden_sections.unwrap(), vec!["Trash"]);
     }
 
     #[test]
@@ -252,7 +234,6 @@ hidden_sections:
             tag_colors: None,
             status_colors: Some(status_colors),
             property_display_modes: None,
-            hidden_sections: None,
         };
         save_vault_config(vault_path, config).unwrap();
 

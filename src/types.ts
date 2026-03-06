@@ -150,7 +150,6 @@ export interface VaultConfig {
   tag_colors: Record<string, string> | null
   status_colors: Record<string, string> | null
   property_display_modes: Record<string, string> | null
-  hidden_sections: string[] | null
 }
 
 export interface PulseFile {

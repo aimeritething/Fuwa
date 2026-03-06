@@ -9,7 +9,6 @@ function makeConfig(overrides: Partial<VaultConfig> = {}): VaultConfig {
     tag_colors: null,
     status_colors: null,
     property_display_modes: null,
-    hidden_sections: null,
     ...overrides,
   }
 }
@@ -116,27 +115,13 @@ describe('migrateLocalStorageToVaultConfig', () => {
     expect(result.property_display_modes).toBeNull()
   })
 
-  // 8. Hidden sections migration
-  it('migrates populated hidden sections array', () => {
-    store['laputa-hidden-sections'] = JSON.stringify(['backlinks', 'properties'])
-    const result = migrateLocalStorageToVaultConfig(makeConfig())
-    expect(result.hidden_sections).toEqual(['backlinks', 'properties'])
-  })
-
-  it('ignores empty hidden sections array', () => {
-    store['laputa-hidden-sections'] = JSON.stringify([])
-    const result = migrateLocalStorageToVaultConfig(makeConfig())
-    expect(result.hidden_sections).toBeNull()
-  })
-
-  // 9. Existing config values are NOT overwritten
+  // 8. Existing config values are NOT overwritten
   it('does not overwrite existing config values with localStorage data', () => {
     store['laputa:zoom-level'] = '120'
     store['laputa-view-mode'] = 'all'
     store['laputa:tag-color-overrides'] = JSON.stringify({ x: '#fff' })
     store['laputa:status-color-overrides'] = JSON.stringify({ y: '#000' })
     store['laputa:display-mode-overrides'] = JSON.stringify({ z: 'compact' })
-    store['laputa-hidden-sections'] = JSON.stringify(['nav'])
 
     const existing = makeConfig({
       zoom: 0.9,
@@ -144,7 +129,6 @@ describe('migrateLocalStorageToVaultConfig', () => {
       tag_colors: { existing: '#aaa' },
       status_colors: { existing: '#bbb' },
       property_display_modes: { existing: 'full' },
-      hidden_sections: ['sidebar'],
     })
 
     const result = migrateLocalStorageToVaultConfig(existing)
@@ -153,7 +137,6 @@ describe('migrateLocalStorageToVaultConfig', () => {
     expect(result.tag_colors).toEqual({ existing: '#aaa' })
     expect(result.status_colors).toEqual({ existing: '#bbb' })
     expect(result.property_display_modes).toEqual({ existing: 'full' })
-    expect(result.hidden_sections).toEqual(['sidebar'])
   })
 
   // 10. loaded=null (no vault config file yet) — uses defaults then migrates

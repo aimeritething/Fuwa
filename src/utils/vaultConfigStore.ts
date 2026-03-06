@@ -5,7 +5,7 @@ type Listener = () => void
 
 const DEFAULT_CONFIG: VaultConfig = {
   zoom: null, view_mode: null, tag_colors: null,
-  status_colors: null, property_display_modes: null, hidden_sections: null,
+  status_colors: null, property_display_modes: null,
 }
 
 let config: VaultConfig = DEFAULT_CONFIG

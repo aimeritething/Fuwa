@@ -9,7 +9,6 @@ const LS_KEYS = {
   tagColors: 'laputa:tag-color-overrides',
   statusColors: 'laputa:status-color-overrides',
   propertyModes: 'laputa:display-mode-overrides',
-  hiddenSections: 'laputa-hidden-sections',
 } as const
 
 function readJson<T>(key: string): T | null {
@@ -29,7 +28,7 @@ function readJson<T>(key: string): T | null {
 export function migrateLocalStorageToVaultConfig(loaded: VaultConfig | null): VaultConfig {
   const base: VaultConfig = loaded ?? {
     zoom: null, view_mode: null, tag_colors: null,
-    status_colors: null, property_display_modes: null, hidden_sections: null,
+    status_colors: null, property_display_modes: null,
   }
 
   // Skip migration if already done
@@ -78,12 +77,6 @@ export function migrateLocalStorageToVaultConfig(loaded: VaultConfig | null): Va
   if (result.property_display_modes === null) {
     const modes = readJson<Record<string, string>>(LS_KEYS.propertyModes)
     if (modes && Object.keys(modes).length > 0) result.property_display_modes = modes
-  }
-
-  // Hidden sections
-  if (result.hidden_sections === null) {
-    const sections = readJson<string[]>(LS_KEYS.hiddenSections)
-    if (sections && sections.length > 0) result.hidden_sections = sections
   }
 
   // Mark migration as done
