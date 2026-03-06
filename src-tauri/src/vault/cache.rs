@@ -688,14 +688,14 @@ mod tests {
         // Prime the cache
         let entries = scan_vault_cached(vault).unwrap();
         assert_eq!(entries.len(), 1);
-        assert_eq!(entries[0].visible, Some(false), "visible must be false initially");
+        assert_eq!(
+            entries[0].visible,
+            Some(false),
+            "visible must be false initially"
+        );
 
         // User removes visible field (uncommitted edit)
-        create_test_file(
-            vault,
-            "type/topic.md",
-            "---\ntype: Type\n---\n# Topic\n",
-        );
+        create_test_file(vault, "type/topic.md", "---\ntype: Type\n---\n# Topic\n");
 
         // Reload — must reflect the removal (visible defaults to None)
         let entries2 = scan_vault_cached(vault).unwrap();
