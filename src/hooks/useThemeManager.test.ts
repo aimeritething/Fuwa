@@ -371,6 +371,7 @@ describe('useThemeManager', () => {
     mockInvokeFn.mockImplementation(async (cmd: string) => {
       if (cmd === 'get_vault_settings') return { theme: 'untitled-2' }
       if (cmd === 'set_active_theme') return null
+      if (cmd === 'ensure_vault_themes') return null
       return null
     })
 
