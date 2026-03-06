@@ -22,8 +22,7 @@
 import { createServer } from 'node:http'
 import { WebSocketServer } from 'ws'
 import {
-  readNote, createNote, searchNotes, appendToNote,
-  editNoteFrontmatter, deleteNote, linkNotes, listNotes, vaultContext,
+  getNote, searchNotes, vaultContext,
 } from './vault.js'
 
 const VAULT_PATH = process.env.VAULT_PATH || process.env.HOME + '/Laputa'
@@ -41,22 +40,11 @@ function broadcastUiAction(action, payload) {
   }
 }
 
-function buildFrontmatter(args) {
-  const fm = {}
-  if (args.is_a) fm.is_a = args.is_a
-  return fm
-}
 
 const TOOL_HANDLERS = {
-  open_note: (args) => readNote(VAULT_PATH, args.path).then(text => ({ content: text })),
-  read_note: (args) => readNote(VAULT_PATH, args.path).then(text => ({ content: text })),
-  create_note: (args) => createNote(VAULT_PATH, args.path, args.title, buildFrontmatter(args)).then(r => { broadcastUiAction('vault_changed', { path: args.path }); return r }),
+  open_note: (args) => getNote(VAULT_PATH, args.path).then(note => ({ content: note.content, frontmatter: note.frontmatter })),
+  read_note: (args) => getNote(VAULT_PATH, args.path).then(note => ({ content: note.content, frontmatter: note.frontmatter })),
   search_notes: (args) => searchNotes(VAULT_PATH, args.query, args.limit),
-  append_to_note: (args) => appendToNote(VAULT_PATH, args.path, args.text).then(() => { broadcastUiAction('vault_changed', { path: args.path }); return { ok: true } }),
-  edit_note_frontmatter: (args) => editNoteFrontmatter(VAULT_PATH, args.path, args.patch).then(r => { broadcastUiAction('vault_changed', { path: args.path }); return r }),
-  delete_note: (args) => deleteNote(VAULT_PATH, args.path).then(() => { broadcastUiAction('vault_changed', { path: args.path }); return { ok: true } }),
-  link_notes: (args) => linkNotes(VAULT_PATH, args.source_path, args.property, args.target_title).then(r => { broadcastUiAction('vault_changed', { path: args.source_path }); return r }),
-  list_notes: (args) => listNotes(VAULT_PATH, args.type_filter, args.sort),
   vault_context: () => vaultContext(VAULT_PATH),
   ui_open_note: (args) => { broadcastUiAction('open_note', { path: args.path }); return { ok: true } },
   ui_open_tab: (args) => { broadcastUiAction('open_tab', { path: args.path }); return { ok: true } },
