@@ -28,10 +28,10 @@ DEV_PID=$!
 sleep 3  # wait for vite to be ready
 
 # 2. Run Playwright smoke test for this task
-npx playwright test --headed=false tests/smoke/<slug>.spec.ts
+BASE_URL="http://localhost:<N>" npx playwright test tests/smoke/<slug>.spec.ts
 
-# 3. Or use the MCP Playwright tool directly in your session to drive the browser
-# e.g. navigate to localhost:<N>, open Cmd+K, verify command appears, etc.
+# 3. Or run all smoke tests
+BASE_URL="http://localhost:<N>" pnpm playwright:smoke
 
 kill $DEV_PID
 ```

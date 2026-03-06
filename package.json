@@ -13,6 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
+    "playwright:smoke": "playwright test tests/smoke/",
     "test:coverage": "vitest run --coverage",
     "prepare": "husky"
   },

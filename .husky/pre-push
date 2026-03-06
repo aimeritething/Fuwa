@@ -47,26 +47,26 @@ fi
 
 # ── 0. TypeScript + Vite build ──────────────────────────────────────────
 echo ""
-echo "📦 [0/4] TypeScript + Vite build..."
+echo "📦 [0/5] TypeScript + Vite build..."
 pnpm exec tsc --noEmit
 pnpm build
 echo "  ✅ Build OK"
 
 # ── 1. Frontend coverage (≥70%) — includes all unit tests ───────────────
 echo ""
-echo "📊 [1/4] Frontend tests + coverage (≥70%)..."
+echo "📊 [1/5] Frontend tests + coverage (≥70%)..."
 pnpm test:coverage --silent
 echo "  ✅ Frontend coverage OK"
 
 # ── 2. Rust lint (clippy + fmt) — fast, run before coverage ─────────────
 echo ""
 if [ "$RUST_CHANGED" = true ]; then
-  echo "🔧 [2/4] Clippy + rustfmt..."
+  echo "🔧 [2/5] Clippy + rustfmt..."
   cargo clippy --manifest-path=src-tauri/Cargo.toml -- -D warnings
   cargo fmt --manifest-path=src-tauri/Cargo.toml -- --check
   echo "  ✅ Rust lint OK"
 else
-  echo "⏭️  [2/4] Rust lint — skipped (no src-tauri/ changes)"
+  echo "⏭️  [2/5] Rust lint — skipped (no src-tauri/ changes)"
 fi
 
 # ── 3. Rust coverage (≥85% lines) ──────────────────────────────────────
@@ -75,9 +75,9 @@ if [ "$RUST_CHANGED" = true ]; then
   LLVM_COV_FLAGS="--no-clean"
   if [ "${LAPUTA_FULL_COVERAGE:-0}" = "1" ]; then
     LLVM_COV_FLAGS=""
-    echo "🦀 [3/4] Rust coverage — FULL (LAPUTA_FULL_COVERAGE=1)..."
+    echo "🦀 [3/5] Rust coverage — FULL (LAPUTA_FULL_COVERAGE=1)..."
   else
-    echo "🦀 [3/4] Rust coverage (≥85%, incremental)..."
+    echo "🦀 [3/5] Rust coverage (≥85%, incremental)..."
   fi
   # Unset GIT_DIR so git tests create isolated repos without inheriting hook context
   unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
@@ -90,12 +90,23 @@ if [ "$RUST_CHANGED" = true ]; then
     -- --test-threads=1
   echo "  ✅ Rust coverage OK"
 else
-  echo "⏭️  [3/4] Rust coverage — skipped (no src-tauri/ changes)"
+  echo "⏭️  [3/5] Rust coverage — skipped (no src-tauri/ changes)"
 fi
 
-# ── 4. CodeScene code health gate (≥9.2) ────────────────────────────────
+# ── 4. Playwright smoke tests (if any exist) ──────────────────────────
 echo ""
-echo "🏥 [4/4] CodeScene code health gate (≥9.2)..."
+SMOKE_FILES=$(find tests/smoke -name '*.spec.ts' 2>/dev/null | head -1)
+if [ -n "$SMOKE_FILES" ]; then
+  echo "🎭 [4/5] Playwright smoke tests..."
+  pnpm playwright:smoke
+  echo "  ✅ Smoke tests OK"
+else
+  echo "⏭️  [4/5] Playwright smoke tests — skipped (no tests/smoke/*.spec.ts)"
+fi
+
+# ── 5. CodeScene code health gate (≥9.2) ────────────────────────────────
+echo ""
+echo "🏥 [5/5] CodeScene code health gate (≥9.2)..."
 if [ -z "$CODESCENE_PAT" ] || [ -z "$CODESCENE_PROJECT_ID" ]; then
   echo "  ⚠️  CODESCENE_PAT or CODESCENE_PROJECT_ID not set — skipping"
 else

@@ -1,15 +1,18 @@
 import { defineConfig } from '@playwright/test'
 
 export default defineConfig({
-  testDir: './e2e',
-  timeout: 30000,
+  testDir: './tests/smoke',
+  timeout: 15_000,
+  retries: 0,
   workers: 1,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: process.env.BASE_URL || 'http://localhost:5201',
+    headless: true,
   },
+  projects: [{ name: 'chromium', use: { browserName: 'chromium' } }],
   webServer: {
-    command: 'pnpm dev',
-    port: 5173,
+    command: `pnpm dev --port ${process.env.BASE_URL?.match(/:(\d+)/)?.[1] || '5201'}`,
+    url: process.env.BASE_URL || 'http://localhost:5201',
     reuseExistingServer: true,
   },
 })
