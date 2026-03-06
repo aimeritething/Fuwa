@@ -80,5 +80,17 @@ export function useEntryActions({
     }
   }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry])
 
-  return { handleTrashNote, handleRestoreNote, handleArchiveNote, handleUnarchiveNote, handleCustomizeType, handleReorderSections, handleUpdateTypeTemplate, handleRenameSection }
+  const handleToggleTypeVisibility = useCallback(async (typeName: string) => {
+    let typeEntry = findTypeEntry(entries, typeName)
+    if (!typeEntry) typeEntry = await createTypeEntry(typeName)
+    if (typeEntry.visible === false) {
+      updateEntry(typeEntry.path, { visible: null })
+      await handleDeleteProperty(typeEntry.path, 'visible')
+    } else {
+      updateEntry(typeEntry.path, { visible: false })
+      await handleUpdateFrontmatter(typeEntry.path, 'visible', false)
+    }
+  }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry])
+
+  return { handleTrashNote, handleRestoreNote, handleArchiveNote, handleUnarchiveNote, handleCustomizeType, handleReorderSections, handleUpdateTypeTemplate, handleRenameSection, handleToggleTypeVisibility }
 }

@@ -289,4 +289,42 @@ describe('useEntryActions', () => {
       expect(updateEntry).not.toHaveBeenCalled()
     })
   })
+
+  describe('handleToggleTypeVisibility', () => {
+    it('sets visible to false when currently visible (null/default)', async () => {
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/type/journal.md', visible: null })
+      const { result } = setup([typeEntry])
+
+      await act(async () => {
+        await result.current.handleToggleTypeVisibility('Journal')
+      })
+
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/journal.md', 'visible', false)
+      expect(updateEntry).toHaveBeenCalledWith('/vault/type/journal.md', { visible: false })
+    })
+
+    it('sets visible to true (deletes property) when currently hidden', async () => {
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/type/journal.md', visible: false })
+      const { result } = setup([typeEntry])
+
+      await act(async () => {
+        await result.current.handleToggleTypeVisibility('Journal')
+      })
+
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/type/journal.md', 'visible')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/type/journal.md', { visible: null })
+    })
+
+    it('auto-creates type entry when not found', async () => {
+      const { result } = setup([])
+
+      await act(async () => {
+        await result.current.handleToggleTypeVisibility('Journal')
+      })
+
+      expect(createTypeEntry).toHaveBeenCalledWith('Journal')
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/journal.md', 'visible', false)
+      expect(updateEntry).toHaveBeenCalledWith('/vault/type/journal.md', { visible: false })
+    })
+  })
 })
