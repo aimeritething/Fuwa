@@ -646,4 +646,63 @@ mod tests {
         assert!(titles.contains(&"Default Theme"));
         assert!(titles.contains(&"Dark Theme"));
     }
+
+    #[test]
+    fn test_update_same_commit_visible_removed_from_type_note() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        // Commit a type note with visible: false
+        create_test_file(
+            vault,
+            "type/topic.md",
+            "---\ntype: Type\nvisible: false\n---\n# Topic\n",
+        );
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "init"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        // Prime the cache
+        let entries = scan_vault_cached(vault).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].visible, Some(false), "visible must be false initially");
+
+        // User removes visible field (uncommitted edit)
+        create_test_file(
+            vault,
+            "type/topic.md",
+            "---\ntype: Type\n---\n# Topic\n",
+        );
+
+        // Reload — must reflect the removal (visible defaults to None)
+        let entries2 = scan_vault_cached(vault).unwrap();
+        assert_eq!(entries2.len(), 1);
+        assert_eq!(
+            entries2[0].visible, None,
+            "visible must be None after removing the field"
+        );
+    }
 }

@@ -150,7 +150,7 @@ const ENTRY_DELETE_MAP: Record<string, Partial<VaultEntry>> = {
   icon: { icon: null }, owner: { owner: null }, cadence: { cadence: null },
   aliases: { aliases: [] }, belongs_to: { belongsTo: [] }, related_to: { relatedTo: [] },
   archived: { archived: false }, trashed: { trashed: false }, order: { order: null },
-  template: { template: null }, sort: { sort: null },
+  template: { template: null }, sort: { sort: null }, visible: { visible: null },
 }
 
 /** Map a frontmatter key+value to the corresponding VaultEntry field(s). */
@@ -170,6 +170,7 @@ export function frontmatterToEntryPatch(
     template: { template: str },
     sort: { sort: str },
     view: { view: str },
+    visible: { visible: value === false ? false : null },
   }
   return updates[k] ?? {}
 }

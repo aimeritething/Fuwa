@@ -290,6 +290,8 @@ describe('frontmatterToEntryPatch', () => {
     ['trashed', true, { trashed: true }],
     ['order', 5, { order: 5 }],
     ['template', '## Heading\n\n', { template: '## Heading\n\n' }],
+    ['visible', false, { visible: false }],
+    ['visible', true, { visible: null }],
   ] as [string, unknown, Partial<VaultEntry>][])(
     'maps %s update to correct entry field',
     (key, value, expected) => {
@@ -321,6 +323,7 @@ describe('frontmatterToEntryPatch', () => {
     ['archived', { archived: false }],
     ['order', { order: null }],
     ['template', { template: null }],
+    ['visible', { visible: null }],
   ] as [string, Partial<VaultEntry>][])(
     'maps delete of %s to null/default',
     (key, expected) => {
