@@ -158,10 +158,7 @@ fn parse_files_at(vault: &Path, rel_paths: &[String]) -> Vec<VaultEntry> {
 
 /// Machine-local files that should never be git-tracked in any vault.
 /// These are either caches with absolute paths or per-machine settings.
-const UNTRACKED_FILES: &[&str] = &[
-    ".laputa-cache.json",
-    ".laputa/settings.json",
-];
+const UNTRACKED_FILES: &[&str] = &[".laputa-cache.json", ".laputa/settings.json"];
 
 /// Ensure machine-local files are excluded from git via `.git/info/exclude`
 /// and un-tracked if they were previously committed (git rm --cached).
@@ -184,7 +181,11 @@ fn ensure_cache_excluded(vault: &Path) {
 
     if !to_add.is_empty() {
         to_add.sort();
-        let separator = if existing.ends_with('\n') || existing.is_empty() { "" } else { "\n" };
+        let separator = if existing.ends_with('\n') || existing.is_empty() {
+            ""
+        } else {
+            "\n"
+        };
         let additions = to_add.join("\n");
         let _ = fs::write(&exclude_path, format!("{existing}{separator}{additions}\n"));
     }

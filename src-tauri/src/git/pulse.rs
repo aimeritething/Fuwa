@@ -54,7 +54,11 @@ fn parse_file_status(code: &str) -> &str {
 
 /// Get the pulse (commit activity feed) for a vault, showing only .md file changes.
 /// `skip` offsets into the commit list for pagination; `limit` caps how many to return.
-pub fn get_vault_pulse(vault_path: &str, limit: usize, skip: usize) -> Result<Vec<PulseCommit>, String> {
+pub fn get_vault_pulse(
+    vault_path: &str,
+    limit: usize,
+    skip: usize,
+) -> Result<Vec<PulseCommit>, String> {
     let vault = Path::new(vault_path);
 
     if !vault.join(".git").exists() {
