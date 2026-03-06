@@ -230,19 +230,26 @@ function App() {
 
   useNavigationGestures({ onGoBack: handleGoBack, onGoForward: handleGoForward })
 
+  // O(1) path lookup map — rebuilt only when vault.entries changes
+  const entriesByPath = useMemo(() => {
+    const map = new Map<string, VaultEntry>()
+    for (const e of vault.entries) map.set(e.path, e)
+    return map
+  }, [vault.entries])
+
   // MCP UI bridge: react to AI-driven open/highlight/vault-change events
   const openNoteByPath = useCallback((path: string) => {
-    const entry = vault.entries.find(e => e.path === path || e.path === `${resolvedPath}/${path}`)
+    const entry = entriesByPath.get(path) ?? entriesByPath.get(`${resolvedPath}/${path}`)
     if (entry) {
       notes.handleSelectNote(entry)
     } else {
       // Entry not yet in vault (just created) — reload then open
       vault.reloadVault().then(freshEntries => {
-        const fresh = freshEntries.find((e: VaultEntry) => e.path === path || e.path === `${resolvedPath}/${path}`)
+        const fresh = (freshEntries as VaultEntry[]).find(e => e.path === path || e.path === `${resolvedPath}/${path}`)
         if (fresh) notes.handleSelectNote(fresh)
       })
     }
-  }, [vault, notes, resolvedPath])
+  }, [entriesByPath, vault, notes, resolvedPath])
 
   const aiActivity = useAiActivity({
     onOpenNote: openNoteByPath,
@@ -253,10 +260,18 @@ function App() {
     onVaultChanged: () => { vault.reloadVault() },
   })
 
+  // Stable callback for Pulse "open note" — never triggers reloadVault.
+  // Pulse files always exist in the vault; if somehow not found, silently skip.
+  const handlePulseOpenNote = useCallback((relativePath: string) => {
+    const fullPath = `${resolvedPath}/${relativePath}`
+    const entry = entriesByPath.get(fullPath) ?? entriesByPath.get(relativePath)
+    if (entry) notes.handleSelectNote(entry)
+  }, [entriesByPath, resolvedPath, notes])
+
   // Agent file operation handlers: auto-open created notes, live-refresh modified notes
   const handleAgentFileCreated = useCallback((relativePath: string) => {
     vault.reloadVault().then(freshEntries => {
-      const entry = freshEntries.find((e: VaultEntry) => e.path === relativePath || e.path === `${resolvedPath}/${relativePath}`)
+      const entry = (freshEntries as VaultEntry[]).find(e => e.path === relativePath || e.path === `${resolvedPath}/${relativePath}`)
       if (entry) notes.handleSelectNote(entry)
     })
   }, [vault, notes, resolvedPath])
@@ -509,11 +524,7 @@ function App() {
           <>
             <div className={`app__note-list${aiActivity.highlightElement === 'notelist' ? ' ai-highlight' : ''}`} style={{ width: layout.noteListWidth }}>
               {selection.kind === 'filter' && selection.filter === 'pulse' ? (
-                <PulseView vaultPath={resolvedPath} onOpenNote={(relativePath) => {
-                  const fullPath = `${resolvedPath}/${relativePath}`
-                  const entry = vault.entries.find(e => e.path === fullPath || e.path === relativePath)
-                  if (entry) notes.handleSelectNote(entry)
-                }} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
+                <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
                 <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} allContent={vault.allContent} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} />
               )}
