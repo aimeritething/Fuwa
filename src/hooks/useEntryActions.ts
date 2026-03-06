@@ -8,6 +8,7 @@ interface EntryActionsConfig {
   handleDeleteProperty: (path: string, key: string) => Promise<void>
   setToastMessage: (msg: string | null) => void
   createTypeEntry: (typeName: string) => Promise<VaultEntry>
+  onFrontmatterPersisted?: () => void
 }
 
 function findTypeEntry(entries: VaultEntry[], typeName: string): VaultEntry | undefined {
@@ -15,7 +16,7 @@ function findTypeEntry(entries: VaultEntry[], typeName: string): VaultEntry | un
 }
 
 export function useEntryActions({
-  entries, updateEntry, handleUpdateFrontmatter, handleDeleteProperty, setToastMessage, createTypeEntry,
+  entries, updateEntry, handleUpdateFrontmatter, handleDeleteProperty, setToastMessage, createTypeEntry, onFrontmatterPersisted,
 }: EntryActionsConfig) {
   const handleTrashNote = useCallback(async (path: string) => {
     const now = new Date().toISOString().slice(0, 10)
@@ -23,26 +24,30 @@ export function useEntryActions({
     await handleUpdateFrontmatter(path, 'Trashed at', now)
     updateEntry(path, { trashed: true, trashedAt: Date.now() / 1000 })
     setToastMessage('Note moved to trash')
-  }, [handleUpdateFrontmatter, updateEntry, setToastMessage])
+    onFrontmatterPersisted?.()
+  }, [handleUpdateFrontmatter, updateEntry, setToastMessage, onFrontmatterPersisted])
 
   const handleRestoreNote = useCallback(async (path: string) => {
     await handleUpdateFrontmatter(path, 'Trashed', false)
     await handleDeleteProperty(path, 'Trashed at')
     updateEntry(path, { trashed: false, trashedAt: null })
     setToastMessage('Note restored from trash')
-  }, [handleUpdateFrontmatter, handleDeleteProperty, updateEntry, setToastMessage])
+    onFrontmatterPersisted?.()
+  }, [handleUpdateFrontmatter, handleDeleteProperty, updateEntry, setToastMessage, onFrontmatterPersisted])
 
   const handleArchiveNote = useCallback(async (path: string) => {
     await handleUpdateFrontmatter(path, 'archived', true)
     updateEntry(path, { archived: true })
     setToastMessage('Note archived')
-  }, [handleUpdateFrontmatter, updateEntry, setToastMessage])
+    onFrontmatterPersisted?.()
+  }, [handleUpdateFrontmatter, updateEntry, setToastMessage, onFrontmatterPersisted])
 
   const handleUnarchiveNote = useCallback(async (path: string) => {
     await handleUpdateFrontmatter(path, 'archived', false)
     updateEntry(path, { archived: false })
     setToastMessage('Note unarchived')
-  }, [handleUpdateFrontmatter, updateEntry, setToastMessage])
+    onFrontmatterPersisted?.()
+  }, [handleUpdateFrontmatter, updateEntry, setToastMessage, onFrontmatterPersisted])
 
   const handleCustomizeType = useCallback(async (typeName: string, icon: string, color: string) => {
     let typeEntry = findTypeEntry(entries, typeName)

@@ -330,6 +330,7 @@ function App() {
     handleUpdateFrontmatter: notes.handleUpdateFrontmatter,
     handleDeleteProperty: notes.handleDeleteProperty, setToastMessage,
     createTypeEntry: notes.createTypeEntrySilent,
+    onFrontmatterPersisted: vault.loadModifiedFiles,
   })
 
   const handleDeleteNote = useCallback(async (path: string) => {

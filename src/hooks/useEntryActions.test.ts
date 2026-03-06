@@ -50,9 +50,12 @@ describe('useEntryActions', () => {
         handleDeleteProperty,
         setToastMessage,
         createTypeEntry,
+        onFrontmatterPersisted,
       })
     )
   }
+
+  const onFrontmatterPersisted = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -73,6 +76,7 @@ describe('useEntryActions', () => {
         trashedAt: expect.any(Number),
       })
       expect(setToastMessage).toHaveBeenCalledWith('Note moved to trash')
+      expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -91,6 +95,7 @@ describe('useEntryActions', () => {
         trashedAt: null,
       })
       expect(setToastMessage).toHaveBeenCalledWith('Note restored from trash')
+      expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -105,6 +110,7 @@ describe('useEntryActions', () => {
       expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'archived', true)
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', { archived: true })
       expect(setToastMessage).toHaveBeenCalledWith('Note archived')
+      expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -119,6 +125,7 @@ describe('useEntryActions', () => {
       expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'archived', false)
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', { archived: false })
       expect(setToastMessage).toHaveBeenCalledWith('Note unarchived')
+      expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
     })
   })
 
