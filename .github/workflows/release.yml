@@ -176,7 +176,7 @@ jobs:
           REPO="refactoringhq/laputa-app"
 
           ARM_SIG=$(cat updater-aarch64/*.app.tar.gz.sig)
-          ARM_DMG=$(ls dmg-aarch64/*.dmg | xargs basename)
+          ARM_TARBALL=$(ls updater-aarch64/*.app.tar.gz | xargs basename)
 
           cat > latest.json << EOF
           {
@@ -186,7 +186,7 @@ jobs:
             "platforms": {
               "darwin-aarch64": {
                 "signature": "${ARM_SIG}",
-                "url": "https://github.com/${REPO}/releases/download/${TAG}/${ARM_DMG}"
+                "url": "https://github.com/${REPO}/releases/download/${TAG}/${ARM_TARBALL}"
               }
             }
           }
