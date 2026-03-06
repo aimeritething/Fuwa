@@ -156,21 +156,47 @@ fn parse_files_at(vault: &Path, rel_paths: &[String]) -> Vec<VaultEntry> {
         .collect()
 }
 
-/// Ensure `.laputa-cache.json` is excluded from git via `.git/info/exclude`.
-/// This prevents the cache (which contains machine-specific absolute paths)
-/// from being committed and causing stale-path bugs on cloned vaults.
+/// Machine-local files that should never be git-tracked in any vault.
+/// These are either caches with absolute paths or per-machine settings.
+const UNTRACKED_FILES: &[&str] = &[
+    ".laputa-cache.json",
+    ".laputa/settings.json",
+];
+
+/// Ensure machine-local files are excluded from git via `.git/info/exclude`
+/// and un-tracked if they were previously committed (git rm --cached).
+/// Called on every cache write so existing vaults self-heal automatically.
 fn ensure_cache_excluded(vault: &Path) {
-    let exclude_path = vault.join(".git/info/exclude");
-    let entry = ".laputa-cache.json";
-    if let Ok(content) = fs::read_to_string(&exclude_path) {
-        if content.lines().any(|line| line.trim() == entry) {
-            return;
-        }
-        let separator = if content.ends_with('\n') { "" } else { "\n" };
-        let _ = fs::write(&exclude_path, format!("{content}{separator}{entry}\n"));
-    } else if exclude_path.parent().map(|p| p.is_dir()).unwrap_or(false) {
-        let _ = fs::write(&exclude_path, format!("{entry}\n"));
+    let git_dir = vault.join(".git");
+    if !git_dir.is_dir() {
+        return;
     }
+
+    let exclude_path = git_dir.join("info").join("exclude");
+
+    // 1. Add each entry to .git/info/exclude so git ignores it going forward.
+    let existing = fs::read_to_string(&exclude_path).unwrap_or_default();
+    let mut to_add: Vec<&str> = UNTRACKED_FILES
+        .iter()
+        .filter(|e| !existing.lines().any(|line| line.trim() == **e))
+        .copied()
+        .collect();
+
+    if !to_add.is_empty() {
+        to_add.sort();
+        let separator = if existing.ends_with('\n') || existing.is_empty() { "" } else { "\n" };
+        let additions = to_add.join("\n");
+        let _ = fs::write(&exclude_path, format!("{existing}{separator}{additions}\n"));
+    }
+
+    // 2. Un-track each file if git currently tracks it.
+    //    `git rm --cached --quiet --ignore-unmatch` exits 0 even if the file isn't tracked.
+    //    This fixes existing vaults where these files were committed before this guard.
+    let _ = std::process::Command::new("git")
+        .args(["rm", "--cached", "--quiet", "--ignore-unmatch", "--"])
+        .args(UNTRACKED_FILES)
+        .current_dir(vault)
+        .output();
 }
 
 /// Sort entries by modified_at descending and write the cache.
