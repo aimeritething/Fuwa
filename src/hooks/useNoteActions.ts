@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { isTauri, mockInvoke, addMockEntry, updateMockContent } from '../mock-tauri'
+import { isTauri, mockInvoke, addMockEntry, updateMockContent, trackMockChange } from '../mock-tauri'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
 import { useTabManagement } from './useTabManagement'
@@ -111,12 +111,14 @@ async function invokeFrontmatter(command: string, args: Record<string, unknown>)
 function applyMockFrontmatterUpdate(path: string, key: string, value: FrontmatterValue): string {
   const content = updateMockFrontmatter(path, key, value)
   updateMockContent(path, content)
+  trackMockChange(path)
   return content
 }
 
 function applyMockFrontmatterDelete(path: string, key: string): string {
   const content = deleteMockFrontmatterProperty(path, key)
   updateMockContent(path, content)
+  trackMockChange(path)
   return content
 }
 

@@ -5,10 +5,10 @@
  */
 
 import { MOCK_CONTENT } from './mock-content'
-import { mockHandlers, addMockEntry, updateMockContent } from './mock-handlers'
+import { mockHandlers, addMockEntry, updateMockContent, trackMockChange } from './mock-handlers'
 import { tryVaultApi } from './vault-api'
 
-export { addMockEntry, updateMockContent }
+export { addMockEntry, updateMockContent, trackMockChange }
 
 export function isTauri(): boolean {
   return typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)

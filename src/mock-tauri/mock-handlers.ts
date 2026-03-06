@@ -347,3 +347,7 @@ export function updateMockContent(path: string, content: string): void {
   MOCK_CONTENT[path] = content
   syncWindowContent()
 }
+
+export function trackMockChange(path: string): void {
+  mockSavedSinceCommit.add(path)
+}

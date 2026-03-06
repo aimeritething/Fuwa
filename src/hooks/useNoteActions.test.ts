@@ -28,6 +28,7 @@ vi.mock('../mock-tauri', () => ({
   isTauri: vi.fn(() => false),
   addMockEntry: vi.fn(),
   updateMockContent: vi.fn(),
+  trackMockChange: vi.fn(),
   mockInvoke: vi.fn().mockResolvedValue(''),
 }))
 vi.mock('./mockFrontmatterHelpers', () => ({
