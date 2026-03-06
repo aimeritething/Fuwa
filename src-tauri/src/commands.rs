@@ -5,7 +5,9 @@ use crate::claude_cli::{
     AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus, ClaudeStreamEvent,
 };
 use crate::frontmatter::FrontmatterValue;
-use crate::git::{GitCommit, GitPullResult, GitPushResult, LastCommitInfo, ModifiedFile, PulseCommit};
+use crate::git::{
+    GitCommit, GitPullResult, GitPushResult, LastCommitInfo, ModifiedFile, PulseCommit,
+};
 use crate::github::{DeviceFlowPollResult, DeviceFlowStart, GitHubUser, GithubRepo};
 use crate::indexing::{IndexStatus, IndexingProgress};
 use crate::search::SearchResponse;
