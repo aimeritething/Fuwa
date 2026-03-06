@@ -14,8 +14,8 @@ pub use rename::{rename_note, RenameResult};
 pub use trash::{delete_note, purge_trash};
 
 use parsing::{
-    capitalize_first, contains_wikilink, count_body_words, extract_outgoing_links, extract_snippet,
-    extract_title, parse_iso_date,
+    contains_wikilink, count_body_words, extract_outgoing_links, extract_snippet, extract_title,
+    parse_iso_date, title_case_folder,
 };
 
 use gray_matter::engine::YAML;
@@ -274,7 +274,7 @@ fn infer_type_from_folder(folder: &str) -> String {
         "month" => "Month",
         "essay" => "Essay",
         "evergreen" => "Evergreen",
-        _ => return capitalize_first(folder),
+        _ => return title_case_folder(folder),
     }
     .to_string()
 }
@@ -958,6 +958,28 @@ References:
         create_test_file(dir.path(), "recipe/test.md", "# Test\n");
         let entry = parse_md_file(&dir.path().join("recipe/test.md")).unwrap();
         assert_eq!(entry.is_a, Some("Recipe".to_string()));
+    }
+
+    #[test]
+    fn test_infer_type_from_hyphenated_folder_title_cases() {
+        let dir = TempDir::new().unwrap();
+        let cases = vec![
+            ("monday-ideas", "Monday Ideas"),
+            ("key-result", "Key Result"),
+            ("my_custom_type", "My Custom Type"),
+            ("mix-and_match", "Mix And Match"),
+        ];
+        for (folder, expected) in cases {
+            create_test_file(dir.path(), &format!("{}/test.md", folder), "# Test\n");
+            let entry = parse_md_file(&dir.path().join(folder).join("test.md")).unwrap();
+            assert_eq!(
+                entry.is_a,
+                Some(expected.to_string()),
+                "folder '{}' should infer type '{}'",
+                folder,
+                expected
+            );
+        }
     }
 
     #[test]

@@ -195,6 +195,16 @@ pub(super) fn capitalize_first(s: &str) -> String {
     }
 }
 
+/// Title-case a folder name: split on hyphens and underscores, capitalize each word, join with spaces.
+/// Example: "monday-ideas" → "Monday Ideas", "key_result" → "Key Result"
+pub(super) fn title_case_folder(s: &str) -> String {
+    s.split(|c| c == '-' || c == '_')
+        .filter(|w| !w.is_empty())
+        .map(|w| capitalize_first(w))
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// Parse an ISO 8601 date string to Unix timestamp (seconds since epoch).
 /// Handles "2025-05-23T14:35:00.000Z" and "2025-05-23" formats.
 pub(super) fn parse_iso_date(date_str: &str) -> Option<u64> {
@@ -455,6 +465,29 @@ mod tests {
     #[test]
     fn test_capitalize_first_single_char() {
         assert_eq!(capitalize_first("a"), "A");
+    }
+
+    // --- title_case_folder tests ---
+
+    #[test]
+    fn test_title_case_folder_hyphenated() {
+        assert_eq!(title_case_folder("monday-ideas"), "Monday Ideas");
+        assert_eq!(title_case_folder("key-result"), "Key Result");
+    }
+
+    #[test]
+    fn test_title_case_folder_underscored() {
+        assert_eq!(title_case_folder("my_custom_type"), "My Custom Type");
+    }
+
+    #[test]
+    fn test_title_case_folder_single_word() {
+        assert_eq!(title_case_folder("recipe"), "Recipe");
+    }
+
+    #[test]
+    fn test_title_case_folder_empty() {
+        assert_eq!(title_case_folder(""), "");
     }
 
     // --- without_h1_line tests ---
