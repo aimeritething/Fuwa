@@ -79,15 +79,10 @@ fn git_changed_files(vault: &Path, from_hash: &str, to_hash: &str) -> Vec<String
         .map(|s| collect_md_paths_from_diff(&s))
         .unwrap_or_default();
 
-    // Use ls-files for untracked files so that newly-seeded directories are picked up
-    // as individual files rather than as a single "?? dirname/" entry.
+    // Include uncommitted changes (modified, staged, and untracked files).
     let uncommitted = git_uncommitted_files(vault);
-    // Also include modified-but-unstaged files via status --porcelain.
-    let modified = run_git(vault, &["status", "--porcelain"])
-        .map(|s| collect_md_paths_from_porcelain(&s))
-        .unwrap_or_default();
 
-    for path in uncommitted.into_iter().chain(modified) {
+    for path in uncommitted.into_iter() {
         if !files.contains(&path) {
             files.push(path);
         }
@@ -97,9 +92,33 @@ fn git_changed_files(vault: &Path, from_hash: &str, to_hash: &str) -> Vec<String
 }
 
 fn git_uncommitted_files(vault: &Path) -> Vec<String> {
-    run_git(vault, &["status", "--porcelain"])
+    // Modified/staged tracked files from git status --porcelain
+    let mut files: Vec<String> = run_git(vault, &["status", "--porcelain"])
         .map(|s| collect_md_paths_from_porcelain(&s))
-        .unwrap_or_default()
+        .unwrap_or_default();
+
+    // Untracked files via ls-files (lists individual files, not just directories).
+    // git status --porcelain shows `?? dir/` for new directories, hiding individual
+    // files inside — ls-files resolves them so the cache picks up all new .md files.
+    let untracked = run_git(
+        vault,
+        &["ls-files", "--others", "--exclude-standard"],
+    )
+    .map(|s| {
+        s.lines()
+            .filter(|l| !l.is_empty() && l.ends_with(".md"))
+            .map(|l| l.to_string())
+            .collect::<Vec<_>>()
+    })
+    .unwrap_or_default();
+
+    for path in untracked {
+        if !files.contains(&path) {
+            files.push(path);
+        }
+    }
+
+    files
 }
 
 fn load_cache(vault: &Path) -> Option<VaultCache> {
@@ -540,5 +559,67 @@ mod tests {
         let titles: Vec<&str> = entries2.iter().map(|e| e.title.as_str()).collect();
         assert!(titles.contains(&"Existing"));
         assert!(titles.contains(&"New Note"));
+    }
+
+    #[test]
+    fn test_update_same_commit_new_files_in_new_subdirectory() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        create_test_file(vault, "existing.md", "# Existing\n");
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "init"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        // Prime cache
+        let entries = scan_vault_cached(vault).unwrap();
+        assert_eq!(entries.len(), 1);
+
+        // Create files in a new subdirectory (simulates restore_default_themes)
+        create_test_file(
+            vault,
+            "theme/default.md",
+            "---\nIs A: Theme\n---\n# Default Theme\n",
+        );
+        create_test_file(
+            vault,
+            "theme/dark.md",
+            "---\nIs A: Theme\n---\n# Dark Theme\n",
+        );
+
+        // Cache same commit — files in new subdirectory must appear
+        let entries2 = scan_vault_cached(vault).unwrap();
+        assert_eq!(
+            entries2.len(),
+            3,
+            "must pick up files in new untracked subdirectory"
+        );
+        let titles: Vec<&str> = entries2.iter().map(|e| e.title.as_str()).collect();
+        assert!(titles.contains(&"Existing"));
+        assert!(titles.contains(&"Default Theme"));
+        assert!(titles.contains(&"Dark Theme"));
     }
 }

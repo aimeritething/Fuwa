@@ -134,6 +134,10 @@ const SAMPLE_FILES: &[SampleFile] = &[
         content: "---\nIs A: Type\nicon: tag\ncolor: yellow\norder: 4\n---\n\n# Topic\n\nA Topic is a subject area or interest category that groups related notes, projects, and people.\n",
     },
     SampleFile {
+        rel_path: "type/theme.md",
+        content: "---\nIs A: Type\nicon: palette\ncolor: purple\norder: 50\n---\n\n# Theme\n\nA visual theme for Laputa. Each theme defines CSS custom properties that control colors, typography, and spacing.\n",
+    },
+    SampleFile {
         rel_path: "note/welcome-to-laputa.md",
         content: r#"---
 Is A: Note
@@ -394,7 +398,7 @@ pub fn create_getting_started_vault(target_path: &str) -> Result<String, String>
             .map_err(|e| format!("Failed to write {}: {}", sample.rel_path, e))?;
     }
 
-    // Seed built-in themes
+    // Seed built-in themes (both JSON legacy and vault-based markdown notes)
     let themes_dir = vault_dir.join("_themes");
     fs::create_dir_all(&themes_dir)
         .map_err(|e| format!("Failed to create _themes directory: {e}"))?;
@@ -404,6 +408,16 @@ pub fn create_getting_started_vault(target_path: &str) -> Result<String, String>
         .map_err(|e| format!("Failed to write dark theme: {e}"))?;
     fs::write(themes_dir.join("minimal.json"), crate::theme::MINIMAL_THEME)
         .map_err(|e| format!("Failed to write minimal theme: {e}"))?;
+
+    let theme_notes_dir = vault_dir.join("theme");
+    fs::create_dir_all(&theme_notes_dir)
+        .map_err(|e| format!("Failed to create theme directory: {e}"))?;
+    fs::write(theme_notes_dir.join("default.md"), crate::theme::DEFAULT_VAULT_THEME)
+        .map_err(|e| format!("Failed to write default vault theme: {e}"))?;
+    fs::write(theme_notes_dir.join("dark.md"), crate::theme::DARK_VAULT_THEME)
+        .map_err(|e| format!("Failed to write dark vault theme: {e}"))?;
+    fs::write(theme_notes_dir.join("minimal.md"), crate::theme::MINIMAL_VAULT_THEME)
+        .map_err(|e| format!("Failed to write minimal vault theme: {e}"))?;
 
     crate::git::init_repo(target_path)?;
 
@@ -507,8 +521,8 @@ mod tests {
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
         let entries = crate::vault::scan_vault(&vault_path).unwrap();
-        // SAMPLE_FILES + AGENTS.md
-        assert_eq!(entries.len(), SAMPLE_FILES.len() + 1);
+        // SAMPLE_FILES + AGENTS.md + 3 vault theme notes (theme/default.md, dark.md, minimal.md)
+        assert_eq!(entries.len(), SAMPLE_FILES.len() + 1 + 3);
     }
 
     #[test]
@@ -583,12 +597,21 @@ mod tests {
         let vault_path = dir.path().join("theme-vault");
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
+        // JSON legacy themes
         assert!(vault_path.join("_themes/default.json").exists());
         assert!(vault_path.join("_themes/dark.json").exists());
         assert!(vault_path.join("_themes/minimal.json").exists());
 
         let themes = crate::theme::list_themes(vault_path.to_str().unwrap()).unwrap();
         assert_eq!(themes.len(), 3);
+
+        // Vault-based theme notes
+        assert!(vault_path.join("theme/default.md").exists());
+        assert!(vault_path.join("theme/dark.md").exists());
+        assert!(vault_path.join("theme/minimal.md").exists());
+
+        // Theme type definition
+        assert!(vault_path.join("type/theme.md").exists());
     }
 
     #[test]

@@ -329,3 +329,15 @@ editor-max-width: 680\n\
 # Minimal Theme\n\
 \n\
 High contrast, minimal chrome. Monospace typography throughout.\n";
+
+/// Type definition for the Theme note type.
+pub const THEME_TYPE_DEFINITION: &str = "---\n\
+Is A: Type\n\
+icon: palette\n\
+color: purple\n\
+order: 50\n\
+---\n\
+\n\
+# Theme\n\
+\n\
+A visual theme for Laputa. Each theme defines CSS custom properties that control colors, typography, and spacing.\n";

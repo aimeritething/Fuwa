@@ -104,7 +104,24 @@ pub fn restore_default_themes(vault_path: &str) -> Result<String, String> {
     // Seed theme/ markdown notes (reuses ensure_vault_themes for consistency)
     ensure_vault_themes(vault_path)?;
 
+    // Seed type/theme.md so the Theme type has an icon and label in the sidebar
+    ensure_theme_type_definition(vault_path)?;
+
     Ok("Default themes restored".to_string())
+}
+
+/// Create `type/theme.md` if it doesn't exist (gives the Theme type a sidebar icon/color).
+pub fn ensure_theme_type_definition(vault_path: &str) -> Result<(), String> {
+    let type_dir = Path::new(vault_path).join("type");
+    fs::create_dir_all(&type_dir)
+        .map_err(|e| format!("Failed to create type directory: {e}"))?;
+    let path = type_dir.join("theme.md");
+    let needs_write = !path.exists() || fs::metadata(&path).map_or(true, |m| m.len() == 0);
+    if needs_write {
+        fs::write(&path, THEME_TYPE_DEFINITION)
+            .map_err(|e| format!("Failed to write type/theme.md: {e}"))?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -244,6 +261,46 @@ mod tests {
         assert!(vault.join("theme").join("default.md").exists());
         assert!(vault.join("theme").join("dark.md").exists());
         assert!(vault.join("theme").join("minimal.md").exists());
+        assert!(
+            vault.join("type").join("theme.md").exists(),
+            "restore must create type/theme.md"
+        );
+        let type_content = fs::read_to_string(vault.join("type").join("theme.md")).unwrap();
+        assert!(type_content.contains("Is A: Type"));
+        assert!(type_content.contains("icon: palette"));
+    }
+
+    #[test]
+    fn test_ensure_theme_type_definition_creates_file() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path().join("vault");
+        fs::create_dir_all(&vault).unwrap();
+        let vp = vault.to_str().unwrap();
+
+        ensure_theme_type_definition(vp).unwrap();
+        let path = vault.join("type").join("theme.md");
+        assert!(path.exists());
+        let content = fs::read_to_string(&path).unwrap();
+        assert!(content.contains("Is A: Type"));
+        assert!(content.contains("icon: palette"));
+    }
+
+    #[test]
+    fn test_ensure_theme_type_definition_is_idempotent() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path().join("vault");
+        let type_dir = vault.join("type");
+        fs::create_dir_all(&type_dir).unwrap();
+        let custom = "---\nIs A: Type\nicon: swatches\ncolor: green\n---\n# Theme\n";
+        fs::write(type_dir.join("theme.md"), custom).unwrap();
+        let vp = vault.to_str().unwrap();
+
+        ensure_theme_type_definition(vp).unwrap();
+        let content = fs::read_to_string(type_dir.join("theme.md")).unwrap();
+        assert!(
+            content.contains("swatches"),
+            "existing content must be preserved"
+        );
     }
 
     #[test]
