@@ -5,7 +5,7 @@ use crate::claude_cli::{
     AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus, ClaudeStreamEvent,
 };
 use crate::frontmatter::FrontmatterValue;
-use crate::git::{GitCommit, GitPullResult, LastCommitInfo, ModifiedFile, PulseCommit};
+use crate::git::{GitCommit, GitPullResult, GitPushResult, LastCommitInfo, ModifiedFile, PulseCommit};
 use crate::github::{DeviceFlowPollResult, DeviceFlowStart, GitHubUser, GithubRepo};
 use crate::indexing::{IndexStatus, IndexingProgress};
 use crate::search::SearchResponse;
@@ -276,7 +276,7 @@ pub fn git_commit_conflict_resolution(vault_path: String) -> Result<String, Stri
 }
 
 #[tauri::command]
-pub fn git_push(vault_path: String) -> Result<String, String> {
+pub fn git_push(vault_path: String) -> Result<GitPushResult, String> {
     let vault_path = expand_tilde(&vault_path);
     git::git_push(&vault_path)
 }

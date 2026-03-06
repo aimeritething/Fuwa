@@ -15,7 +15,7 @@ pub use conflict::{
 };
 pub use history::{get_file_diff, get_file_diff_at_commit, get_file_history};
 pub use pulse::{get_last_commit_info, get_vault_pulse, LastCommitInfo, PulseCommit, PulseFile};
-pub use remote::{git_pull, git_push, has_remote, GitPullResult};
+pub use remote::{git_pull, git_push, has_remote, GitPullResult, GitPushResult};
 pub use status::{get_modified_files, ModifiedFile};
 
 use serde::Serialize;
