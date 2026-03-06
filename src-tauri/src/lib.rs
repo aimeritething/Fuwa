@@ -44,6 +44,10 @@ fn run_startup_tasks() {
         "Migrated is_a to type on startup",
         vault::migrate_is_a_to_type(vp_str),
     );
+    log_startup_result(
+        "Migrated hidden_sections to visible property",
+        vault_config::migrate_hidden_sections_to_visible(vp_str),
+    );
 
     // Seed _themes/ with built-in JSON themes (legacy) if missing
     theme::seed_default_themes(vp_str);

@@ -138,6 +138,109 @@ fn yaml_safe_value(value: &str) -> String {
     }
 }
 
+/// Migrate `hidden_sections` from `config/ui.config.md` to `visible: false`
+/// on Type notes. Returns the number of Type notes updated.
+///
+/// For each type name in `hidden_sections`:
+/// - If `type/<slug>.md` exists, adds `visible: false` to its frontmatter
+/// - If it doesn't exist, creates it with `type: Type`, `title: <name>`, `visible: false`
+/// - Re-saves the config without `hidden_sections`
+pub fn migrate_hidden_sections_to_visible(vault_path: &str) -> Result<usize, String> {
+    let path = config_path(vault_path);
+    if !path.exists() {
+        return Ok(0);
+    }
+
+    let content =
+        std::fs::read_to_string(&path).map_err(|e| format!("Failed to read config: {e}"))?;
+
+    let hidden = extract_hidden_sections(&content);
+    if hidden.is_empty() {
+        return Ok(0);
+    }
+
+    let type_dir = Path::new(vault_path).join("type");
+    if !type_dir.exists() {
+        std::fs::create_dir_all(&type_dir)
+            .map_err(|e| format!("Failed to create type dir: {e}"))?;
+    }
+
+    let mut migrated = 0;
+    for type_name in &hidden {
+        let slug = type_name_to_slug(type_name);
+        let type_path = type_dir.join(format!("{slug}.md"));
+
+        if type_path.exists() {
+            let type_content = std::fs::read_to_string(&type_path)
+                .map_err(|e| format!("Failed to read {}: {e}", type_path.display()))?;
+            if !type_content.contains("visible:") {
+                let updated =
+                    crate::frontmatter::update_frontmatter_content(
+                        &type_content,
+                        "visible",
+                        Some(crate::frontmatter::FrontmatterValue::Bool(false)),
+                    )
+                    .map_err(|e| format!("Failed to update {}: {e}", type_path.display()))?;
+                std::fs::write(&type_path, updated)
+                    .map_err(|e| format!("Failed to write {}: {e}", type_path.display()))?;
+            }
+        } else {
+            let new_content = format!(
+                "---\ntype: Type\ntitle: {}\nvisible: false\n---\n\n# {}\n",
+                type_name, type_name
+            );
+            std::fs::write(&type_path, new_content)
+                .map_err(|e| format!("Failed to write {}: {e}", type_path.display()))?;
+        }
+        migrated += 1;
+    }
+
+    // Re-save config without hidden_sections
+    let config = parse_vault_config(&content)?;
+    save_vault_config(vault_path, config)?;
+
+    Ok(migrated)
+}
+
+/// Extract `hidden_sections` from raw YAML frontmatter.
+fn extract_hidden_sections(content: &str) -> Vec<String> {
+    let matter = Matter::<YAML>::new();
+    let parsed = matter.parse(content);
+
+    let hash = match parsed.data {
+        Some(gray_matter::Pod::Hash(map)) => map,
+        _ => return vec![],
+    };
+
+    match hash.get("hidden_sections") {
+        Some(gray_matter::Pod::Array(arr)) => arr
+            .iter()
+            .filter_map(|v| match v {
+                gray_matter::Pod::String(s) => Some(s.clone()),
+                _ => None,
+            })
+            .collect(),
+        _ => vec![],
+    }
+}
+
+/// Convert a Type name to a filesystem slug.
+fn type_name_to_slug(name: &str) -> String {
+    name.chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() {
+                c.to_ascii_lowercase()
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .split('-')
+        .filter(|s| !s.is_empty())
+        .collect::<Vec<_>>()
+        .join("-")
+}
+
 /// Convert gray_matter::Pod to serde_json::Value.
 fn pod_to_json(pod: gray_matter::Pod) -> serde_json::Value {
     match pod {
@@ -243,6 +346,129 @@ property_display_modes:
             loaded.status_colors.unwrap().get("Active").unwrap(),
             "green"
         );
+    }
+
+    #[test]
+    fn migrate_hidden_sections_creates_type_notes_with_visible_false() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+
+        // Create config with hidden_sections
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(
+            config_dir.join("ui.config.md"),
+            "---\ntype: config\nhidden_sections:\n  - Bookmark\n  - Recipe\n---\n",
+        )
+        .unwrap();
+
+        let count = migrate_hidden_sections_to_visible(vault_path).unwrap();
+        assert_eq!(count, 2);
+
+        // Check type notes were created
+        let bookmark = std::fs::read_to_string(dir.path().join("type/bookmark.md")).unwrap();
+        assert!(bookmark.contains("visible: false"));
+        assert!(bookmark.contains("title: Bookmark"));
+
+        let recipe = std::fs::read_to_string(dir.path().join("type/recipe.md")).unwrap();
+        assert!(recipe.contains("visible: false"));
+
+        // Config should no longer have hidden_sections
+        let config_content =
+            std::fs::read_to_string(config_dir.join("ui.config.md")).unwrap();
+        assert!(!config_content.contains("hidden_sections"));
+    }
+
+    #[test]
+    fn migrate_hidden_sections_updates_existing_type_note() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+
+        // Create config with hidden_sections
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(
+            config_dir.join("ui.config.md"),
+            "---\ntype: config\nhidden_sections:\n  - Project\n---\n",
+        )
+        .unwrap();
+
+        // Create existing type note without visible
+        let type_dir = dir.path().join("type");
+        std::fs::create_dir_all(&type_dir).unwrap();
+        std::fs::write(
+            type_dir.join("project.md"),
+            "---\ntype: Type\ntitle: Project\nicon: briefcase\n---\n\n# Project\n",
+        )
+        .unwrap();
+
+        let count = migrate_hidden_sections_to_visible(vault_path).unwrap();
+        assert_eq!(count, 1);
+
+        let content = std::fs::read_to_string(type_dir.join("project.md")).unwrap();
+        assert!(content.contains("visible: false"));
+        assert!(content.contains("icon: briefcase"), "should preserve existing fields");
+    }
+
+    #[test]
+    fn migrate_hidden_sections_skips_when_no_hidden_sections() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(
+            config_dir.join("ui.config.md"),
+            "---\ntype: config\nzoom: 1.0\n---\n",
+        )
+        .unwrap();
+
+        let count = migrate_hidden_sections_to_visible(vault_path).unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn migrate_hidden_sections_skips_when_no_config_file() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let count = migrate_hidden_sections_to_visible(dir.path().to_str().unwrap()).unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn migrate_hidden_sections_does_not_duplicate_visible() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(
+            config_dir.join("ui.config.md"),
+            "---\ntype: config\nhidden_sections:\n  - Note\n---\n",
+        )
+        .unwrap();
+
+        // Type note already has visible: false
+        let type_dir = dir.path().join("type");
+        std::fs::create_dir_all(&type_dir).unwrap();
+        std::fs::write(
+            type_dir.join("note.md"),
+            "---\ntype: Type\ntitle: Note\nvisible: false\n---\n",
+        )
+        .unwrap();
+
+        let count = migrate_hidden_sections_to_visible(vault_path).unwrap();
+        assert_eq!(count, 1);
+
+        let content = std::fs::read_to_string(type_dir.join("note.md")).unwrap();
+        // Should have exactly one visible: false, not two
+        assert_eq!(content.matches("visible:").count(), 1);
+    }
+
+    #[test]
+    fn type_name_to_slug_converts_names() {
+        assert_eq!(type_name_to_slug("Project"), "project");
+        assert_eq!(type_name_to_slug("Weekly Review"), "weekly-review");
+        assert_eq!(type_name_to_slug("My Note!"), "my-note");
     }
 
     #[test]
