@@ -893,4 +893,42 @@ describe('Sidebar', () => {
       expect(screen.queryByRole('textbox', { name: 'Section name' })).not.toBeInTheDocument()
     })
   })
+
+  it('renders exactly one section for a hyphenated custom type like Monday Ideas', () => {
+    const entriesWithMondayIdeas: VaultEntry[] = [
+      ...mockEntries,
+      {
+        path: '/vault/monday-ideas/standup-bingo.md',
+        filename: 'standup-bingo.md',
+        title: 'Standup Bingo',
+        isA: 'Monday Ideas',
+        aliases: [], belongsTo: [], relatedTo: [],
+        status: null, owner: null, cadence: null,
+        archived: false, trashed: false, trashedAt: null,
+        modifiedAt: 1700000000, createdAt: null,
+        fileSize: 310, snippet: '', wordCount: 120,
+        relationships: {}, icon: null, color: null, order: null,
+        sidebarLabel: null, template: null, sort: null, view: null,
+        outgoingLinks: [], properties: {},
+      },
+      {
+        path: '/vault/monday-ideas/theme-days.md',
+        filename: 'theme-days.md',
+        title: 'Theme Days',
+        isA: 'Monday Ideas',
+        aliases: [], belongsTo: [], relatedTo: [],
+        status: null, owner: null, cadence: null,
+        archived: false, trashed: false, trashedAt: null,
+        modifiedAt: 1700000000, createdAt: null,
+        fileSize: 280, snippet: '', wordCount: 95,
+        relationships: {}, icon: null, color: null, order: null,
+        sidebarLabel: null, template: null, sort: null, view: null,
+        outgoingLinks: [], properties: {},
+      },
+    ]
+    render(<Sidebar entries={entriesWithMondayIdeas} selection={defaultSelection} onSelect={() => {}} />)
+    // "Monday Ideas" pluralized → "Monday Ideases" (the pluralizeType function)
+    const mondaySections = screen.getAllByText(/Monday Ideas/i)
+    expect(mondaySections).toHaveLength(1)
+  })
 })
