@@ -241,7 +241,7 @@ fn index_metadata_path(vault_path: &str) -> PathBuf {
     Path::new(vault_path).join(".laputa-index.json")
 }
 
-pub fn load_index_metadata(vault_path: &str) -> IndexMetadata {
+fn load_index_metadata(vault_path: &str) -> IndexMetadata {
     let path = index_metadata_path(vault_path);
     std::fs::read_to_string(&path)
         .ok()
@@ -249,7 +249,7 @@ pub fn load_index_metadata(vault_path: &str) -> IndexMetadata {
         .unwrap_or_default()
 }
 
-pub fn save_index_metadata(vault_path: &str, meta: &IndexMetadata) -> Result<(), String> {
+fn save_index_metadata(vault_path: &str, meta: &IndexMetadata) -> Result<(), String> {
     let path = index_metadata_path(vault_path);
     let json =
         serde_json::to_string_pretty(meta).map_err(|e| format!("Failed to serialize: {e}"))?;
@@ -257,7 +257,7 @@ pub fn save_index_metadata(vault_path: &str, meta: &IndexMetadata) -> Result<(),
 }
 
 /// Get the current HEAD commit hash for a vault.
-pub fn get_head_commit(vault_path: &str) -> Option<String> {
+fn get_head_commit(vault_path: &str) -> Option<String> {
     let output = Command::new("git")
         .args(["rev-parse", "HEAD"])
         .current_dir(vault_path)
@@ -594,7 +594,8 @@ pub fn run_incremental_update(vault_path: &str) -> Result<(), String> {
 }
 
 /// Check if HEAD has advanced past the last indexed commit.
-pub fn needs_reindex_after_sync(vault_path: &str) -> bool {
+#[cfg(test)]
+fn needs_reindex_after_sync(vault_path: &str) -> bool {
     let meta = load_index_metadata(vault_path);
     let head = get_head_commit(vault_path);
     match (meta.last_indexed_commit, head) {

@@ -193,8 +193,8 @@ mod tests {
 
     #[test]
     fn test_to_yaml_value_number_float() {
-        let v = FrontmatterValue::Number(3.14);
-        assert_eq!(v.to_yaml_value(), "3.14");
+        let v = FrontmatterValue::Number(3.125);
+        assert_eq!(v.to_yaml_value(), "3.125");
     }
 
     #[test]
