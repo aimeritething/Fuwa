@@ -113,10 +113,13 @@ function App() {
 
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
 
+  const indexing = useIndexing(resolvedPath)
+
   const autoSync = useAutoSync({
     vaultPath: resolvedPath,
     intervalMinutes: settings.auto_pull_interval_minutes,
     onVaultUpdated: vault.reloadVault,
+    onSyncUpdated: indexing.triggerIncrementalIndex,
     onConflict: (files) => {
       const names = files.map((f) => f.split('/').pop()).join(', ')
       setToastMessage(`Conflict in ${names} — click to resolve`)
@@ -126,8 +129,6 @@ function App() {
 
   // Ref bridges for conflict resolution callbacks (notes declared below)
   const openConflictFileRef = useRef<(relativePath: string) => void>(() => {})
-
-  const indexing = useIndexing(resolvedPath)
 
   const conflictResolver = useConflictResolver({
     vaultPath: resolvedPath,
@@ -466,6 +467,7 @@ function App() {
     vaultCount: vaultSwitcher.allVaults.length,
     mcpStatus,
     onInstallMcp: installMcp,
+    onReindexVault: indexing.triggerFullReindex,
   })
 
   const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null
@@ -587,7 +589,7 @@ function App() {
         </div>
       </div>
       <UpdateBanner status={updateStatus} actions={updateActions} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => setSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} onTriggerSync={autoSync.triggerSync} onOpenConflictResolver={handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} indexingProgress={indexing.progress} onRetryIndexing={indexing.retryIndexing} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => setSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} onTriggerSync={autoSync.triggerSync} onOpenConflictResolver={handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} indexingProgress={indexing.progress} lastIndexedTime={indexing.lastIndexedTime} onRetryIndexing={indexing.retryIndexing} onReindexVault={indexing.triggerFullReindex} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
       <CommandPalette open={dialogs.showCommandPalette} commands={commands} onClose={dialogs.closeCommandPalette} />

@@ -66,6 +66,7 @@ interface AppCommandsConfig {
   vaultCount?: number
   mcpStatus?: string
   onInstallMcp?: () => void
+  onReindexVault?: () => void
 }
 
 /** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
@@ -148,6 +149,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onResolveConflicts: config.onResolveConflicts,
     onViewChanges: viewChanges,
     onInstallMcp: config.onInstallMcp,
+    onReindexVault: config.onReindexVault,
     activeTabPathRef: config.activeTabPathRef,
     handleCloseTabRef: config.handleCloseTabRef,
     activeTabPath: config.activeTabPath,
@@ -201,6 +203,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     vaultCount: config.vaultCount,
     mcpStatus: config.mcpStatus,
     onInstallMcp: config.onInstallMcp,
+    onReindexVault: config.onReindexVault,
   })
 
   useKeyboardNavigation({

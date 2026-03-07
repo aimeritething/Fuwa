@@ -17,6 +17,8 @@ interface IndexStatus {
   indexed_count: number
   embedded_count: number
   pending_embed: number
+  last_indexed_commit: string | null
+  last_indexed_at: number | null
 }
 
 const IDLE: IndexingProgress = { phase: 'idle', current: 0, total: 0, done: false, error: null }
@@ -27,6 +29,7 @@ function invokeCmd<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
 
 export function useIndexing(vaultPath: string) {
   const [progress, setProgress] = useState<IndexingProgress>(IDLE)
+  const [lastIndexedTime, setLastIndexedTime] = useState<number | null>(null)
   const indexingRef = useRef(false)
   const vaultPathRef = useRef(vaultPath)
 
@@ -43,6 +46,9 @@ export function useIndexing(vaultPath: string) {
         setProgress(event.payload)
         if (event.payload.done) {
           indexingRef.current = false
+          if (event.payload.phase === 'complete') {
+            setLastIndexedTime(Date.now())
+          }
         }
       })
       cleanup = () => { unlisten.then(fn => fn()) }
@@ -60,6 +66,11 @@ export function useIndexing(vaultPath: string) {
       try {
         const status = await invokeCmd<IndexStatus>('get_index_status', { vaultPath })
         if (cancelled) return
+
+        // Populate last indexed time from backend metadata
+        if (status.last_indexed_at) {
+          setLastIndexedTime(status.last_indexed_at * 1000) // seconds → ms
+        }
 
         // If qmd not installed or no collection or pending embeds, trigger indexing
         const needsIndexing = !status.qmd_installed || !status.collection_exists || status.pending_embed > 0
@@ -116,17 +127,23 @@ export function useIndexing(vaultPath: string) {
     if (indexingRef.current) return
     try {
       await invokeCmd('trigger_incremental_index', { vaultPath: vaultPathRef.current })
+      setLastIndexedTime(Date.now())
     } catch {
       // Incremental update failure is non-fatal
     }
   }, [])
 
-  const retryIndexing = useCallback(async () => {
+  const triggerFullReindex = useCallback(async () => {
     if (indexingRef.current || !vaultPathRef.current) return
     indexingRef.current = true
     setProgress({ phase: 'scanning', current: 0, total: 0, done: false, error: null })
     try {
       await invokeCmd('start_indexing', { vaultPath: vaultPathRef.current })
+      // In non-Tauri mode, mark complete immediately
+      if (!isTauri()) {
+        setProgress({ phase: 'complete', current: 0, total: 0, done: true, error: null })
+        setLastIndexedTime(Date.now())
+      }
     } catch (err) {
       const msg = String(err)
       const isUnavailable = msg.includes('not installed') || msg.includes('not available')
@@ -136,5 +153,7 @@ export function useIndexing(vaultPath: string) {
     }
   }, [])
 
-  return { progress, triggerIncrementalIndex, retryIndexing }
+  const retryIndexing = triggerFullReindex
+
+  return { progress, lastIndexedTime, triggerIncrementalIndex, triggerFullReindex, retryIndexing }
 }

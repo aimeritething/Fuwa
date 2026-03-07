@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { StatusBar } from './StatusBar'
 import type { VaultOption } from './StatusBar'
+import { formatIndexedElapsed } from '../utils/indexingHelpers'
 
 vi.mock('../utils/url', async () => {
   const actual = await vi.importActual('../utils/url')
@@ -393,5 +394,72 @@ describe('StatusBar', () => {
     )
     fireEvent.click(screen.getByTestId('status-mcp'))
     expect(onInstallMcp).not.toHaveBeenCalled()
+  })
+
+  it('shows "Indexed just now" when lastIndexedTime is recent and phase is idle', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        indexingProgress={{ phase: 'idle', current: 0, total: 0, done: false, error: null }}
+        lastIndexedTime={Date.now() - 5000}
+      />
+    )
+    expect(screen.getByText(/Indexed just now/)).toBeInTheDocument()
+    expect(screen.getByTestId('status-indexed-time')).toBeInTheDocument()
+  })
+
+  it('calls onReindexVault when clicking the indexed time badge', () => {
+    const onReindexVault = vi.fn()
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        indexingProgress={{ phase: 'idle', current: 0, total: 0, done: false, error: null }}
+        lastIndexedTime={Date.now() - 5000}
+        onReindexVault={onReindexVault}
+      />
+    )
+    fireEvent.click(screen.getByTestId('status-indexed-time'))
+    expect(onReindexVault).toHaveBeenCalledOnce()
+  })
+
+  it('hides indexed time badge when no lastIndexedTime', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        indexingProgress={{ phase: 'idle', current: 0, total: 0, done: false, error: null }}
+      />
+    )
+    expect(screen.queryByTestId('status-indexed-time')).not.toBeInTheDocument()
+  })
+})
+
+describe('formatIndexedElapsed', () => {
+  it('returns empty string for null', () => {
+    expect(formatIndexedElapsed(null)).toBe('')
+  })
+
+  it('returns "Indexed just now" for < 60s', () => {
+    expect(formatIndexedElapsed(Date.now() - 30_000)).toBe('Indexed just now')
+  })
+
+  it('returns minutes for < 60min', () => {
+    expect(formatIndexedElapsed(Date.now() - 5 * 60_000)).toBe('Indexed 5m ago')
+  })
+
+  it('returns hours for < 24h', () => {
+    expect(formatIndexedElapsed(Date.now() - 3 * 3600_000)).toBe('Indexed 3h ago')
+  })
+
+  it('returns days for >= 24h', () => {
+    expect(formatIndexedElapsed(Date.now() - 48 * 3600_000)).toBe('Indexed 2d ago')
   })
 })

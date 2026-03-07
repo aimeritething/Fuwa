@@ -84,4 +84,62 @@ describe('useIndexing', () => {
     const { result } = renderHook(() => useIndexing('/test/vault'))
     expect(typeof result.current.retryIndexing).toBe('function')
   })
+
+  it('exposes triggerFullReindex function', () => {
+    const { result } = renderHook(() => useIndexing('/test/vault'))
+    expect(typeof result.current.triggerFullReindex).toBe('function')
+  })
+
+  it('retryIndexing is the same reference as triggerFullReindex', () => {
+    const { result } = renderHook(() => useIndexing('/test/vault'))
+    expect(result.current.retryIndexing).toBe(result.current.triggerFullReindex)
+  })
+
+  it('triggerFullReindex sets scanning phase then completes', async () => {
+    const { result } = renderHook(() => useIndexing('/test/vault'))
+
+    await act(async () => { await result.current.triggerFullReindex() })
+    // In non-Tauri mode, it goes to 'complete' then auto-dismisses
+    expect(result.current.progress.phase).toBe('complete')
+  })
+
+  it('triggerFullReindex sets lastIndexedTime on success', async () => {
+    const { result } = renderHook(() => useIndexing('/test/vault'))
+
+    expect(result.current.lastIndexedTime).toBeNull()
+    await act(async () => { await result.current.triggerFullReindex() })
+    expect(result.current.lastIndexedTime).toBeGreaterThan(0)
+  })
+
+  it('triggerFullReindex sets error phase on failure', async () => {
+    const { result } = renderHook(() => useIndexing('/test/vault'))
+
+    mockInvoke.mockRejectedValueOnce(new Error('indexing failed'))
+    await act(async () => { await result.current.triggerFullReindex() })
+    expect(result.current.progress.phase).toBe('error')
+  })
+
+  it('populates lastIndexedTime from backend metadata on mount', async () => {
+    mockInvoke.mockResolvedValue({
+      available: true,
+      qmd_installed: true,
+      collection_exists: true,
+      indexed_count: 100,
+      embedded_count: 80,
+      pending_embed: 0,
+      last_indexed_commit: 'abc123',
+      last_indexed_at: 1709800000,
+    })
+
+    const { result } = renderHook(() => useIndexing('/test/vault'))
+
+    // Wait for the effect to run
+    await act(async () => { await vi.advanceTimersByTimeAsync(10) })
+    expect(result.current.lastIndexedTime).toBe(1709800000000) // seconds → ms
+  })
+
+  it('starts with lastIndexedTime as null', () => {
+    const { result } = renderHook(() => useIndexing('/test/vault'))
+    expect(result.current.lastIndexedTime).toBeNull()
+  })
 })

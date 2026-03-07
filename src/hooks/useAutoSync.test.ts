@@ -255,6 +255,47 @@ describe('useAutoSync', () => {
     expect(pullCalls).toHaveLength(0)
   })
 
+  it('calls onSyncUpdated when pull has updates', async () => {
+    const onSyncUpdated = vi.fn()
+    mockInvokeFn.mockImplementation((cmd: string) => {
+      if (cmd === 'get_last_commit_info') return Promise.resolve(MOCK_COMMIT_INFO)
+      return Promise.resolve(updated(['note.md']))
+    })
+    renderHook(() =>
+      useAutoSync({
+        vaultPath: '/Users/luca/Laputa',
+        intervalMinutes: 5,
+        onVaultUpdated,
+        onSyncUpdated,
+        onConflict,
+        onToast,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(onSyncUpdated).toHaveBeenCalledOnce()
+    })
+  })
+
+  it('does not call onSyncUpdated when pull is up_to_date', async () => {
+    const onSyncUpdated = vi.fn()
+    renderHook(() =>
+      useAutoSync({
+        vaultPath: '/Users/luca/Laputa',
+        intervalMinutes: 5,
+        onVaultUpdated,
+        onSyncUpdated,
+        onConflict,
+        onToast,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(onVaultUpdated).not.toHaveBeenCalled()
+    })
+    expect(onSyncUpdated).not.toHaveBeenCalled()
+  })
+
   it('detects conflicts when git_pull returns error with unresolved conflicts', async () => {
     mockInvokeFn.mockImplementation((cmd: string) => {
       if (cmd === 'get_conflict_files') return Promise.resolve(['conflict.md'])

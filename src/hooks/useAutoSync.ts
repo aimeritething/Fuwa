@@ -13,6 +13,7 @@ interface UseAutoSyncOptions {
   vaultPath: string
   intervalMinutes: number | null
   onVaultUpdated: () => void
+  onSyncUpdated?: () => void
   onConflict: (files: string[]) => void
   onToast: (msg: string) => void
 }
@@ -33,6 +34,7 @@ export function useAutoSync({
   vaultPath,
   intervalMinutes,
   onVaultUpdated,
+  onSyncUpdated,
   onConflict,
   onToast,
 }: UseAutoSyncOptions): AutoSyncState {
@@ -42,8 +44,8 @@ export function useAutoSync({
   const [lastCommitInfo, setLastCommitInfo] = useState<LastCommitInfo | null>(null)
   const syncingRef = useRef(false)
   const pauseRef = useRef(false)
-  const callbacksRef = useRef({ onVaultUpdated, onConflict, onToast })
-  callbacksRef.current = { onVaultUpdated, onConflict, onToast }
+  const callbacksRef = useRef({ onVaultUpdated, onSyncUpdated, onConflict, onToast })
+  callbacksRef.current = { onVaultUpdated, onSyncUpdated, onConflict, onToast }
 
   /** Check for pre-existing conflicts (e.g. from a prior session or interrupted rebase). */
   const checkExistingConflicts = useCallback(async (): Promise<boolean> => {
@@ -77,6 +79,7 @@ export function useAutoSync({
         setSyncStatus('idle')
         setConflictFiles([])
         callbacksRef.current.onVaultUpdated()
+        callbacksRef.current.onSyncUpdated?.()
         callbacksRef.current.onToast(`Pulled ${result.updatedFiles.length} update(s) from remote`)
       } else if (result.status === 'conflict') {
         setSyncStatus('conflict')

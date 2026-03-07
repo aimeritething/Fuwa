@@ -48,6 +48,7 @@ const VAULT_COMMIT_PUSH: &str = "vault-commit-push";
 const VAULT_RESOLVE_CONFLICTS: &str = "vault-resolve-conflicts";
 const VAULT_VIEW_CHANGES: &str = "vault-view-changes";
 const VAULT_INSTALL_MCP: &str = "vault-install-mcp";
+const VAULT_REINDEX: &str = "vault-reindex";
 
 const CUSTOM_IDS: &[&str] = &[
     APP_SETTINGS,
@@ -88,6 +89,7 @@ const CUSTOM_IDS: &[&str] = &[
     VAULT_RESOLVE_CONFLICTS,
     VAULT_VIEW_CHANGES,
     VAULT_INSTALL_MCP,
+    VAULT_REINDEX,
 ];
 
 /// IDs of menu items that should be disabled when no note tab is active.
@@ -332,6 +334,9 @@ fn build_vault_menu(app: &App) -> MenuResult {
     let install_mcp = MenuItemBuilder::new("Install MCP Server")
         .id(VAULT_INSTALL_MCP)
         .build(app)?;
+    let reindex = MenuItemBuilder::new("Reindex Vault")
+        .id(VAULT_REINDEX)
+        .build(app)?;
 
     Ok(SubmenuBuilder::new(app, "Vault")
         .item(&open_vault)
@@ -345,6 +350,7 @@ fn build_vault_menu(app: &App) -> MenuResult {
         .item(&resolve_conflicts)
         .item(&view_changes)
         .separator()
+        .item(&reindex)
         .item(&install_mcp)
         .build()?)
 }
@@ -462,6 +468,7 @@ mod tests {
             VAULT_RESOLVE_CONFLICTS,
             VAULT_VIEW_CHANGES,
             VAULT_INSTALL_MCP,
+            VAULT_REINDEX,
         ];
         for id in &expected {
             assert!(CUSTOM_IDS.contains(id), "missing custom ID: {id}");

@@ -20,6 +20,7 @@ interface CommandRegistryConfig {
   modifiedCount: number
   mcpStatus?: string
   onInstallMcp?: () => void
+  onReindexVault?: () => void
 
   onQuickOpen: () => void
   onCreateNote: () => void
@@ -196,6 +197,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, onRestoreDefaultThemes, isGettingStartedHidden, vaultCount,
     mcpStatus, onInstallMcp,
+    onReindexVault,
   } = config
 
   const hasActiveNote = activeTabPath !== null
@@ -257,6 +259,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
       { id: 'restore-getting-started', label: 'Restore Getting Started Vault', group: 'Settings', keywords: ['vault', 'restore', 'demo', 'getting started', 'reset'], enabled: !!isGettingStartedHidden && !!onRestoreGettingStarted, execute: () => onRestoreGettingStarted?.() },
       { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: true, execute: () => onCheckForUpdates?.() },
       { id: 'install-mcp', label: 'Install MCP Server', group: 'Settings', keywords: ['mcp', 'claude', 'ai', 'tools', 'install'], enabled: mcpStatus === 'not_installed' && !!onInstallMcp, execute: () => onInstallMcp?.() },
+      { id: 'reindex-vault', label: 'Reindex Vault', group: 'Settings', keywords: ['reindex', 'index', 'search', 'rebuild', 'refresh'], enabled: !!onReindexVault, execute: () => onReindexVault?.() },
 
       // Type-aware: "New [Type]" and "List [Type]"
       ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
@@ -275,5 +278,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     vaultTypes, themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme, onRestoreDefaultThemes,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
     mcpStatus, onInstallMcp,
+    onReindexVault,
   ])
 }
