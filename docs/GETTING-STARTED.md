@@ -7,6 +7,7 @@ How to navigate the codebase, run the app, and find what you need.
 - **Node.js** 18+ and **pnpm**
 - **Rust** 1.77.2+ (for the Tauri backend)
 - **git** CLI (required by the git integration features)
+- **qmd** (optional — for search indexing; auto-installed if missing)
 
 ## Quick Start
 
@@ -24,7 +25,7 @@ pnpm tauri dev
 # Run tests
 pnpm test          # Vitest unit tests
 cargo test         # Rust tests (from src-tauri/)
-pnpm test:e2e      # Playwright E2E tests
+pnpm playwright:smoke  # Playwright smoke tests
 ```
 
 ## Directory Structure
@@ -33,39 +34,94 @@ pnpm test:e2e      # Playwright E2E tests
 laputa-app/
 ├── src/                          # React frontend
 │   ├── main.tsx                  # Entry point (renders <App />)
-│   ├── App.tsx                   # Root component — orchestrates 4-panel layout
+│   ├── App.tsx                   # Root component — orchestrates layout + state
 │   ├── App.css                   # App shell layout styles
-│   ├── types.ts                  # Shared TS types (VaultEntry, GitCommit, etc.)
+│   ├── types.ts                  # Shared TS types (VaultEntry, Settings, etc.)
 │   ├── mock-tauri.ts             # Mock Tauri layer for browser testing
 │   ├── theme.json                # Editor theme configuration
 │   ├── index.css                 # Global CSS variables + Tailwind setup
 │   │
-│   ├── components/               # UI components
-│   │   ├── Sidebar.tsx           # Left panel: filters + section groups
+│   ├── components/               # UI components (~98 files)
+│   │   ├── Sidebar.tsx           # Left panel: filters + type groups
+│   │   ├── SidebarParts.tsx      # Sidebar subcomponents
 │   │   ├── NoteList.tsx          # Second panel: filtered note list
-│   │   ├── Editor.tsx            # Third panel: tabs + BlockNote + diff
+│   │   ├── NoteItem.tsx          # Individual note item
+│   │   ├── PulseView.tsx         # Git activity feed (replaces NoteList)
+│   │   ├── Editor.tsx            # Third panel: tabs + editor orchestration
+│   │   ├── EditorContent.tsx     # Editor content area
+│   │   ├── EditorRightPanel.tsx  # Right panel toggle
+│   │   ├── editorSchema.tsx      # BlockNote schema + wikilink type
+│   │   ├── RawEditorView.tsx     # CodeMirror raw editor
 │   │   ├── Inspector.tsx         # Fourth panel: metadata + relationships
 │   │   ├── DynamicPropertiesPanel.tsx  # Editable frontmatter properties
-│   │   ├── EditableValue.tsx     # Inline value editor component
-│   │   ├── DiffView.tsx          # Git diff viewer
-│   │   ├── ResizeHandle.tsx      # Draggable panel divider
-│   │   ├── StatusBar.tsx         # Bottom status bar
-│   │   ├── QuickOpenPalette.tsx  # Cmd+P command palette
-│   │   ├── CreateNoteDialog.tsx  # New note modal
+│   │   ├── AIChatPanel.tsx       # AI chat (API-based)
+│   │   ├── AiPanel.tsx           # AI agent (Claude CLI subprocess)
+│   │   ├── AiMessage.tsx         # Agent message display
+│   │   ├── AiActionCard.tsx      # Agent tool action cards
+│   │   ├── SearchPanel.tsx       # Search interface
+│   │   ├── SettingsPanel.tsx     # App settings
+│   │   ├── StatusBar.tsx         # Bottom bar: vault picker + sync
+│   │   ├── CommandPalette.tsx    # Cmd+K command launcher
+│   │   ├── TabBar.tsx            # Tab management
+│   │   ├── BreadcrumbBar.tsx     # Breadcrumb + word count + actions
+│   │   ├── WelcomeScreen.tsx     # Onboarding screen
+│   │   ├── GitHubVaultModal.tsx  # GitHub vault clone/create
+│   │   ├── GitHubDeviceFlow.tsx  # GitHub OAuth device flow
+│   │   ├── ThemePropertyEditor.tsx # Interactive theme editor
+│   │   ├── ConflictResolverModal.tsx # Git conflict resolution
 │   │   ├── CommitDialog.tsx      # Git commit modal
-│   │   ├── Toast.tsx             # Toast notifications
-│   │   ├── Editor.css            # Editor layout styles
-│   │   ├── EditorTheme.css       # BlockNote theme overrides
-│   │   └── ui/                   # shadcn/ui primitives (button, dialog, etc.)
+│   │   ├── CreateNoteDialog.tsx  # New note modal
+│   │   ├── CreateTypeDialog.tsx  # New type modal
+│   │   ├── UpdateBanner.tsx      # In-app update notification
+│   │   ├── inspector/            # Inspector sub-panels
+│   │   │   ├── BacklinksPanel.tsx
+│   │   │   ├── RelationshipsPanel.tsx
+│   │   │   ├── GitHistoryPanel.tsx
+│   │   │   └── ...
+│   │   └── ui/                   # shadcn/ui primitives
+│   │       ├── button.tsx, dialog.tsx, input.tsx, ...
 │   │
-│   ├── hooks/                    # Custom React hooks
-│   │   ├── useVaultLoader.ts     # Loads vault entries, git status, content
-│   │   ├── useNoteActions.ts     # Tab management, frontmatter CRUD, navigation
-│   │   └── useTheme.ts           # Flattens theme.json into CSS variables
+│   ├── hooks/                    # Custom React hooks (~87 files)
+│   │   ├── useVaultLoader.ts     # Loads vault entries + content
+│   │   ├── useVaultSwitcher.ts   # Multi-vault management
+│   │   ├── useVaultConfig.ts     # Per-vault UI settings
+│   │   ├── useNoteActions.ts     # Tab management, navigation, CRUD
+│   │   ├── useTabManagement.ts   # Tab ordering + lifecycle
+│   │   ├── useAIChat.ts          # AI chat state
+│   │   ├── useAiAgent.ts         # AI agent state + tool tracking
+│   │   ├── useAiActivity.ts      # MCP UI bridge listener
+│   │   ├── useAutoSync.ts        # Auto git pull/push
+│   │   ├── useConflictResolver.ts # Git conflict handling
+│   │   ├── useEditorSave.ts      # Auto-save with debounce
+│   │   ├── useTheme.ts           # Flatten theme.json → CSS vars
+│   │   ├── useThemeManager.ts    # Vault theme lifecycle
+│   │   ├── useIndexing.ts        # Search indexing management
+│   │   ├── useNoteSearch.ts      # Note search
+│   │   ├── useCommandRegistry.ts # Command palette registry
+│   │   ├── useAppCommands.ts     # App-level commands
+│   │   ├── useAppKeyboard.ts     # Keyboard shortcuts
+│   │   ├── useSettings.ts        # App settings
+│   │   ├── useOnboarding.ts      # First-launch flow
+│   │   ├── useCodeMirror.ts      # CodeMirror raw editor
+│   │   ├── useMcpBridge.ts       # MCP WebSocket client
+│   │   ├── useMcpStatus.ts       # MCP registration status
+│   │   ├── useUpdater.ts         # In-app updates
+│   │   └── ...
 │   │
-│   ├── utils/                    # Pure utility functions
-│   │   ├── frontmatter.ts        # TypeScript YAML frontmatter parser
-│   │   └── wikilinks.ts          # Wikilink preprocessing + word count
+│   ├── utils/                    # Pure utility functions (~48 files)
+│   │   ├── wikilinks.ts          # Wikilink preprocessing pipeline
+│   │   ├── frontmatter.ts        # TypeScript YAML parser
+│   │   ├── ai-agent.ts           # Agent stream utilities
+│   │   ├── ai-chat.ts            # Chat API client + token estimation
+│   │   ├── ai-context.ts         # Context snapshot builder
+│   │   ├── noteListHelpers.ts    # Sorting, filtering, date formatting
+│   │   ├── themeSchema.ts        # Theme editor schema builder
+│   │   ├── configMigration.ts    # localStorage → vault config migration
+│   │   ├── iconRegistry.ts       # Phosphor icon registry
+│   │   ├── propertyTypes.ts      # Property type definitions
+│   │   ├── vaultListStore.ts     # Vault list persistence
+│   │   ├── vaultConfigStore.ts   # Vault config store
+│   │   └── ...
 │   │
 │   ├── lib/
 │   │   └── utils.ts              # Tailwind merge + cn() helper
@@ -78,28 +134,58 @@ laputa-app/
 │   ├── build.rs                  # Tauri build script
 │   ├── tauri.conf.json           # Tauri app configuration
 │   ├── capabilities/             # Tauri v2 security capabilities
-│   │   └── default.json
 │   ├── src/
 │   │   ├── main.rs               # Entry point (calls lib::run())
-│   │   ├── lib.rs                # Tauri command registration (9 commands)
-│   │   ├── vault.rs              # Vault scanning + markdown parsing
-│   │   ├── frontmatter.rs        # YAML frontmatter manipulation
-│   │   └── git.rs                # Git CLI operations
+│   │   ├── lib.rs                # Tauri setup + command registration (61 commands)
+│   │   ├── commands.rs           # All Tauri command handlers
+│   │   ├── vault/                # Vault module
+│   │   │   ├── mod.rs            # Core types, parse_md_file, scan_vault
+│   │   │   ├── cache.rs          # Git-based incremental caching
+│   │   │   ├── parsing.rs        # Text processing + title extraction
+│   │   │   ├── trash.rs          # Trash auto-purge
+│   │   │   ├── rename.rs         # Rename + cross-vault wikilink update
+│   │   │   ├── image.rs          # Image attachment saving
+│   │   │   ├── migration.rs      # Frontmatter migration
+│   │   │   └── getting_started.rs # Getting Started vault creation
+│   │   ├── frontmatter/          # Frontmatter module
+│   │   │   ├── mod.rs, yaml.rs, ops.rs
+│   │   ├── git/                  # Git module
+│   │   │   ├── mod.rs, commit.rs, status.rs, history.rs
+│   │   │   ├── conflict.rs, remote.rs, pulse.rs
+│   │   ├── github/               # GitHub module
+│   │   │   ├── mod.rs, auth.rs, api.rs, clone.rs
+│   │   ├── theme/                # Theme module
+│   │   │   ├── mod.rs, create.rs, defaults.rs, seed.rs
+│   │   ├── search.rs             # qmd search integration
+│   │   ├── indexing.rs           # qmd indexing + progress streaming
+│   │   ├── claude_cli.rs         # Claude CLI subprocess management
+│   │   ├── ai_chat.rs            # Direct Anthropic API client
+│   │   ├── mcp.rs                # MCP server lifecycle + registration
+│   │   ├── settings.rs           # App settings persistence
+│   │   ├── vault_config.rs       # Per-vault UI config
+│   │   ├── vault_list.rs         # Vault list persistence
+│   │   └── menu.rs               # Native macOS menu bar
 │   └── icons/                    # App icons
 │
-├── e2e/                          # Playwright E2E tests
-│   ├── app.spec.ts               # App loading tests
-│   ├── core-flows.spec.ts        # Main user workflows
-│   ├── keyboard-shortcuts.spec.ts
-│   ├── quick-open.spec.ts
-│   ├── screenshot.spec.ts        # Visual regression screenshots
-│   └── ...
+├── mcp-server/                   # MCP bridge (Node.js)
+│   ├── index.js                  # MCP server entry (stdio, 14 tools)
+│   ├── vault.js                  # Vault file operations
+│   ├── ws-bridge.js              # WebSocket bridge (ports 9710, 9711)
+│   ├── test.js                   # MCP server tests
+│   └── package.json
+│
+├── e2e/                          # Playwright E2E tests (~26 specs)
+├── tests/smoke/                  # Smoke tests (~10 specs)
+├── design/                       # Per-task design files
+├── demo-vault-v2/                # Getting Started demo vault
+├── scripts/                      # Build/utility scripts
 │
 ├── package.json                  # Frontend dependencies + scripts
 ├── vite.config.ts                # Vite bundler config
 ├── tsconfig.json                 # TypeScript config
 ├── playwright.config.ts          # E2E test config
-├── CLAUDE.md                     # Project instructions for Claude
+├── ui-design.pen                 # Master design file
+├── CLAUDE.md                     # Project instructions
 └── docs/                         # This documentation
 ```
 
@@ -109,9 +195,10 @@ laputa-app/
 
 | File | Why it matters |
 |------|---------------|
-| `src/App.tsx` | The root component. Shows how the 4-panel layout is assembled and how state flows between components. |
+| `src/App.tsx` | Root component. Shows the 4-panel layout, state flow, and how all features connect. |
 | `src/types.ts` | All shared TypeScript types. Read this first to understand the data model. |
-| `src-tauri/src/lib.rs` | All 9 Tauri commands in one place. This is the frontend-backend API surface. |
+| `src-tauri/src/commands.rs` | All 61 Tauri command handlers. This is the frontend-backend API surface. |
+| `src-tauri/src/lib.rs` | Tauri setup, command registration, startup tasks, WebSocket bridge lifecycle. |
 
 ### Data layer
 
@@ -119,31 +206,55 @@ laputa-app/
 |------|---------------|
 | `src/hooks/useVaultLoader.ts` | How vault data is loaded and managed. The Tauri/mock branching pattern. |
 | `src/hooks/useNoteActions.ts` | Tab management, wikilink navigation, frontmatter CRUD. The biggest hook. |
+| `src/hooks/useVaultSwitcher.ts` | Multi-vault management, vault switching, Getting Started vault. |
 | `src/mock-tauri.ts` | Mock data for browser testing. Shows the shape of all Tauri responses. |
 
 ### Backend
 
 | File | Why it matters |
 |------|---------------|
-| `src-tauri/src/vault.rs` | Vault scanning, frontmatter parsing, entity type inference. The core backend logic. |
-| `src-tauri/src/frontmatter.rs` | YAML manipulation — how properties are updated/deleted in files. |
-| `src-tauri/src/git.rs` | All git operations. Shells out to git CLI. |
+| `src-tauri/src/vault/mod.rs` | Vault scanning, frontmatter parsing, entity type inference, relationship extraction. |
+| `src-tauri/src/vault/cache.rs` | Git-based incremental caching — how large vaults load fast. |
+| `src-tauri/src/frontmatter/ops.rs` | YAML manipulation — how properties are updated/deleted in files. |
+| `src-tauri/src/git/` | All git operations (commit, pull, push, conflicts, pulse). |
+| `src-tauri/src/github/` | GitHub OAuth device flow + repo clone/create. |
+| `src-tauri/src/search.rs` | qmd search integration (keyword/semantic/hybrid). |
+| `src-tauri/src/claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing. |
 
 ### Editor
 
 | File | Why it matters |
 |------|---------------|
-| `src/components/Editor.tsx` | BlockNote setup, custom wikilink schema, tab bar, breadcrumb bar, diff toggle. |
-| `src/utils/wikilinks.ts` | The wikilink preprocessing pipeline (markdown → BlockNote blocks with wikilinks). |
-| `src/components/EditorTheme.css` | BlockNote CSS overrides for typography and styling. |
+| `src/components/Editor.tsx` | BlockNote setup, tab bar, breadcrumb bar, diff/raw toggle. |
+| `src/components/editorSchema.tsx` | Custom wikilink inline content type definition. |
+| `src/utils/wikilinks.ts` | Wikilink preprocessing pipeline (markdown ↔ BlockNote). |
+| `src/components/RawEditorView.tsx` | CodeMirror 6 raw markdown editor. |
 
-### Styling
+### AI
 
 | File | Why it matters |
 |------|---------------|
-| `src/index.css` | All CSS custom properties (colors, spacing). The design token source of truth. |
+| `src/components/AiPanel.tsx` | AI agent panel — Claude CLI with tool execution, reasoning, actions. |
+| `src/components/AIChatPanel.tsx` | AI chat panel — API-based chat without tools. |
+| `src/hooks/useAiAgent.ts` | Agent state: messages, streaming, tool tracking, file detection. |
+| `src/utils/ai-context.ts` | Context snapshot builder for AI conversations. |
+
+### Styling & Themes
+
+| File | Why it matters |
+|------|---------------|
+| `src/index.css` | All CSS custom properties. The design token source of truth. |
 | `src/theme.json` | Editor-specific theme (fonts, headings, lists, code blocks). |
-| `src/hooks/useTheme.ts` | Converts theme.json into CSS variables for the editor. |
+| `src/hooks/useThemeManager.ts` | Vault theme lifecycle (switch, create, apply, live preview). |
+| `docs/THEMING.md` | Full theme system documentation. |
+
+### Settings & Config
+
+| File | Why it matters |
+|------|---------------|
+| `src/hooks/useSettings.ts` | App settings (API keys, GitHub token, sync interval). |
+| `src/hooks/useVaultConfig.ts` | Per-vault UI preferences (zoom, view mode, colors). |
+| `src/components/SettingsPanel.tsx` | Settings UI including GitHub OAuth connection. |
 
 ## Architecture Patterns
 
@@ -169,13 +280,15 @@ No global state management (no Redux, no Context). `App.tsx` owns the state and 
 
 ```typescript
 type SidebarSelection =
-  | { kind: 'filter'; filter: 'all' | 'favorites' }
+  | { kind: 'filter'; filter: SidebarFilter }
   | { kind: 'sectionGroup'; type: string }
   | { kind: 'entity'; entry: VaultEntry }
   | { kind: 'topic'; entry: VaultEntry }
 ```
 
-This pattern makes it easy to handle all selection states exhaustively.
+### Command Registry
+
+`useCommandRegistry` + `useAppCommands` build a centralized command registry. Commands are registered with labels, shortcuts, and handlers. The `CommandPalette` (Cmd+K) fuzzy-searches this registry. The native macOS menu bar also triggers commands via `useMenuEvents`.
 
 ## Running Tests
 
@@ -183,26 +296,28 @@ This pattern makes it easy to handle all selection states exhaustively.
 # Unit tests (fast, no browser)
 pnpm test
 
-# Rust tests
-cd src-tauri && cargo test
+# Unit tests with coverage (must pass ≥70%)
+pnpm test:coverage
 
-# E2E tests (requires dev server)
-pnpm test:e2e
+# Rust tests
+cargo test
+
+# Rust coverage (must pass ≥85% line coverage)
+cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-lines 85
+
+# Playwright smoke tests (requires dev server)
+BASE_URL="http://localhost:5173" pnpm playwright:smoke
 
 # Single Playwright test
-npx playwright test e2e/screenshot.spec.ts
-
-# Visual verification screenshots
-npx playwright test e2e/screenshot.spec.ts
-# Screenshots saved to test-results/
+BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 ```
 
 ## Common Tasks
 
 ### Add a new Tauri command
 
-1. Write the Rust function in `vault.rs`, `git.rs`, or a new module
-2. Add `#[tauri::command]` wrapper in `lib.rs`
+1. Write the Rust function in the appropriate module (`vault/`, `git/`, etc.)
+2. Add a command handler in `commands.rs`
 3. Register it in the `generate_handler![]` macro in `lib.rs`
 4. Call it from the frontend via `invoke()` in the appropriate hook
 5. Add a mock handler in `mock-tauri.ts`
@@ -217,6 +332,25 @@ npx playwright test e2e/screenshot.spec.ts
 ### Add a new entity type
 
 1. Create the folder in the vault (e.g., `~/Laputa/mytype/`)
-2. Add the folder → type mapping in `vault.rs:parse_md_file()` (the `match` on folder names)
-3. The sidebar section groups are defined as `SECTION_GROUPS` in `Sidebar.tsx` — add it there
-4. Update `CreateNoteDialog.tsx` type options if users should be able to create it
+2. Create a type document: `type/mytype.md` with `Is A: Type` frontmatter (icon, color, order, etc.)
+3. The sidebar section groups are auto-generated from type documents — no code change needed if `visible: true`
+4. Update `CreateNoteDialog.tsx` type options if users should be able to create it from the dialog
+
+### Add a command palette entry
+
+1. Register the command in `useAppCommands.ts` via the command registry
+2. Add a corresponding menu bar item in `menu.rs` for discoverability
+3. If it has a keyboard shortcut, register it in `useAppKeyboard.ts`
+
+### Add or modify a theme
+
+1. **Vault-based** (preferred): Create/edit a markdown note in `theme/` with `Is A: Theme` frontmatter
+2. **Programmatic**: Edit defaults in `src-tauri/src/theme/defaults.rs`
+3. See `docs/THEMING.md` for the full property reference
+
+### Work with the AI agent
+
+1. **Agent system prompt**: Edit `src/utils/ai-agent.ts` (inline system prompt string)
+2. **Context building**: Edit `src/utils/ai-context.ts` for what data is sent to the agent
+3. **Tool action display**: Edit `src/components/AiActionCard.tsx`
+4. **Claude CLI arguments**: Edit `src-tauri/src/claude_cli.rs` (`run_agent_stream()`)

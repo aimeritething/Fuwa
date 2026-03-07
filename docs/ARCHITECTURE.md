@@ -9,46 +9,58 @@ Laputa is a personal knowledge and life management desktop app. It reads a vault
 | Desktop shell | Tauri v2 | 2.10.0 |
 | Frontend | React + TypeScript | React 19, TS 5.9 |
 | Editor | BlockNote | 0.46.2 |
+| Raw editor | CodeMirror 6 | - |
 | Styling | Tailwind CSS v4 + CSS variables | 4.1.18 |
 | UI primitives | Radix UI + shadcn/ui | - |
 | Icons | Phosphor Icons + Lucide | - |
 | Build | Vite | 7.3.1 |
 | Backend language | Rust (edition 2021) | 1.77.2 |
 | Frontmatter parsing | gray_matter | 0.2 |
-| AI | Anthropic Claude API (Haiku 3.5 default) | - |
+| AI (in-app chat) | Anthropic Claude API (Haiku 3.5 default) | - |
+| AI (agent panel) | Claude CLI subprocess (streaming NDJSON) | - |
+| Search | qmd (keyword + semantic + hybrid) | - |
 | MCP | @modelcontextprotocol/sdk | 1.0 |
-| Tests | Vitest (unit), Playwright (E2E), cargo test (Rust) | - |
+| Tests | Vitest (unit), Playwright (E2E/smoke), cargo test (Rust) | - |
 | Package manager | pnpm | - |
 
 ## System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                      Tauri v2 Window                        │
-│                                                             │
-│  ┌─────────────────── React Frontend ───────────────────┐   │
-│  │                                                      │   │
-│  │  App.tsx (orchestrator)                               │   │
-│  │    ├── Sidebar         (navigation + filters)        │   │
-│  │    ├── NoteList         (filtered note list)          │   │
-│  │    ├── Editor           (BlockNote + tabs + diff)     │   │
-│  │    │     ├── Inspector  (metadata + relationships)    │   │
-│  │    │     └── AIChatPanel (AI assistant + context)     │   │
-│  │    ├── StatusBar        (footer info)                 │   │
-│  │    └── Modals (QuickOpen, CreateNote, CommitDialog)  │   │
-│  │                                                      │   │
-│  └──────────────┬──────────┬──────────────────────────┘   │
-│                 │          │                               │
-│        Tauri IPC│     Vite Proxy / WS                     │
-│  ┌──────────────▼────┐ ┌──▼───────────────────────────┐   │
-│  │   Rust Backend    │ │   External Services          │   │
-│  │  lib.rs → 10 cmds │ │  Anthropic API (Claude)      │   │
-│  │  vault/           │ │  MCP Server (ws://9710)      │   │
-│  │  frontmatter.rs   │ │                              │   │
-│  │  git.rs           │ └──────────────────────────────┘   │
-│  │  ai_chat.rs       │                                    │
-│  └───────────────────┘                                    │
-└─────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                       Tauri v2 Window                            │
+│                                                                  │
+│  ┌──────────────────── React Frontend ────────────────────────┐  │
+│  │                                                            │  │
+│  │  App.tsx (orchestrator)                                    │  │
+│  │    ├── WelcomeScreen     (onboarding / vault-missing)     │  │
+│  │    ├── Sidebar           (navigation + filters + types)   │  │
+│  │    ├── NoteList / PulseView (filtered list / activity)    │  │
+│  │    ├── Editor            (BlockNote + tabs + diff + raw)  │  │
+│  │    │     ├── Inspector   (metadata + relationships)       │  │
+│  │    │     ├── AIChatPanel (API-based chat)                 │  │
+│  │    │     └── AiPanel     (Claude CLI agent + tools)       │  │
+│  │    ├── SearchPanel       (keyword/semantic/hybrid search) │  │
+│  │    ├── SettingsPanel     (API keys, GitHub, zoom, theme)  │  │
+│  │    ├── StatusBar         (vault picker + sync + version)  │  │
+│  │    ├── CommandPalette    (Cmd+K fuzzy command launcher)   │  │
+│  │    └── Modals (CreateNote, CreateType, Commit, GitHub)    │  │
+│  │                                                            │  │
+│  └──────────────┬──────────┬──────────────────────────────────┘  │
+│                 │          │                                      │
+│        Tauri IPC│     Vite Proxy / WS                            │
+│  ┌──────────────▼────┐ ┌──▼────────────────────────────────┐    │
+│  │   Rust Backend    │ │   External Services               │    │
+│  │  lib.rs → 61 cmds │ │  Anthropic API (Claude chat)      │    │
+│  │  vault/           │ │  Claude CLI (agent subprocess)    │    │
+│  │  frontmatter/     │ │  MCP Server (ws://9710, 9711)     │    │
+│  │  git/             │ │  qmd (search/indexing engine)     │    │
+│  │  github/          │ │  GitHub API (OAuth, repos, clone) │    │
+│  │  theme/           │ │                                   │    │
+│  │  search.rs        │ └───────────────────────────────────┘    │
+│  │  indexing.rs      │                                           │
+│  │  claude_cli.rs    │                                           │
+│  └───────────────────┘                                           │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 ## Four-Panel Layout
@@ -57,71 +69,90 @@ Laputa is a personal knowledge and life management desktop app. It reads a vault
 ┌────────┬─────────────┬─────────────────────────┬────────────┐
 │Sidebar │ Note List   │ Editor                  │ Inspector  │
 │(250px) │ (300px)     │ (flex-1)                │ (280px)    │
-│        │             │                         │ OR         │
-│ All    │ [Search]    │ [Tab Bar]               │ AI Chat    │
-│ Favs   │ [Type Pill] │ [Breadcrumb Bar]        │            │
+│        │ OR          │                         │ OR         │
+│ All    │ Pulse View  │ [Tab Bar]               │ AI Chat    │
+│ Favs   │             │ [Breadcrumb Bar]        │ OR         │
+│ Changes│ [Search]    │                         │ AI Agent   │
+│ Pulse  │ [Sort/Filt] │ # My Note               │            │
 │        │             │                         │ Context    │
-│Projects│ Note 1      │ # My Note               │ Messages   │
-│Experim.│ Note 2      │                         │ Actions    │
-│Respons.│ Note 3      │ Content here...         │ Input      │
-│Procedu.│ ...         │                         │            │
-│People  │             │                         │            │
+│Projects│ Note 1      │ Content here...         │ Messages   │
+│Experim.│ Note 2      │ (BlockNote or Raw)      │ Actions    │
+│Respons.│ Note 3      │                         │ Input      │
+│People  │ ...         │                         │            │
 │Events  │             │                         │            │
 │Topics  │             │                         │            │
 ├────────┴─────────────┴─────────────────────────┴────────────┤
-│ StatusBar: v0.4.2 │ main │ Synced 2m ago │ 3 pending  notes│
-└─────────────────────────────────────────────────────────────┘
+│ StatusBar: v0.4.2 │ main │ Synced 2m ago │ Vault: ~/Laputa │
+└──────────────────────────────────────────────────────────────┘
 ```
 
-- **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Favorites) and collapsible section groups (Projects, Experiments, Responsibilities, etc.)
-- **Note List** (200-500px, resizable): Filtered list of notes matching the sidebar selection. Shows snippets, modified dates, relationship groups, and orange dot indicators for uncommitted modified notes.
-- **Editor** (flex, fills remaining space): Tab bar (with orange modified dots on dirty tabs), breadcrumb bar with word count and modified indicator, BlockNote editor with wikilink support. Can toggle to diff view for modified files. Decomposed into focused subcomponents: `Editor` (orchestrator), `EditorContent` (breadcrumb + editor/diff views), `EditorRightPanel` (inspector/AI toggle), `SingleEditorView` (BlockNote + suggestions), with hooks `useDiffMode` and `useEditorFocus`.
-- **Inspector / AI Chat** (200-500px or 40px collapsed): Toggles between Inspector (frontmatter, relationships, backlinks, git history) and AI Chat panel. The Sparkle icon in the breadcrumb bar toggles between them.
+- **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Favorites, Changes, Pulse) and collapsible type-based section groups. Each type can have a custom icon, color, sort, and visibility set via its type document in `type/`.
+- **Note List / Pulse View** (200-500px, resizable): When a section group or filter is selected, shows filtered notes with snippets, modified dates, and status indicators. When Pulse filter is active, shows `PulseView` — a chronological git activity feed grouped by day.
+- **Editor** (flex, fills remaining space): Tab bar with modified dots, breadcrumb bar with word count, BlockNote rich text editor with wikilink support. Can toggle to diff view (modified files) or raw CodeMirror view. Decomposed into `Editor` (orchestrator), `EditorContent`, `EditorRightPanel`, `SingleEditorView`, with hooks `useDiffMode`, `useEditorFocus`, `useEditorSave`, `useRawMode`.
+- **Inspector / AI Chat / AI Agent** (200-500px or 40px collapsed): Toggles between Inspector (frontmatter, relationships, backlinks, git history), AI Chat panel (API-based), and AI Agent panel (Claude CLI subprocess with tool execution). The Sparkle icon in the breadcrumb bar toggles between them.
 
 Panels are separated by `ResizeHandle` components that support drag-to-resize.
 
-## AI Chat System
+## AI System
 
-### Architecture
+Laputa has two AI interfaces with distinct architectures:
 
-The AI chat feature has three layers:
+### AI Chat (AIChatPanel)
+
+Simple chat mode — no tool execution, streaming text responses.
 
 1. **Frontend** (`AIChatPanel` + `useAIChat` hook) — UI and state management
 2. **API Proxy** (Vite middleware in dev, Rust `ai_chat` command in Tauri) — routes to Anthropic
-3. **MCP Server** (`mcp-server/`) — vault operation tools for AI assistants
+3. **Context picker** — selected notes sent as system context with token estimation
 
-### Data Flow
+### AI Agent (AiPanel)
+
+Full agent mode — spawns Claude CLI as a subprocess with tool access and MCP vault integration.
+
+1. **Frontend** (`AiPanel` + `useAiAgent` hook) — streaming UI with reasoning blocks, tool action cards, and response display
+2. **Backend** (`claude_cli.rs`) — spawns `claude` binary with `--output-format stream-json`, parses NDJSON events
+3. **MCP Integration** — passes vault MCP config via `--mcp-config` flag so the agent can search, read, and modify vault notes
+
+#### Agent Event Flow
 
 ```
-User types message in AIChatPanel
-  → useAIChat.sendMessage(text)
-    → buildSystemPrompt(contextNotes, allContent, model)
-      → Assembles selected notes as system context
-      → Estimates tokens, truncates if needed
-    → streamChat(messages, systemPrompt, model, callbacks)
-      → POST /api/ai/chat (Vite proxy → Anthropic API)
-      → SSE stream parsed, chunks dispatched to onChunk callback
-      → UI updates in real-time as tokens arrive
-    → On completion: message added to conversation history
+User sends message in AiPanel
+  → useAiAgent.sendMessage(text, references)
+    → buildContextSnapshot(activeNote, linkedNotes, openTabs)
+    → invoke('stream_claude_agent', { message, systemPrompt, vaultPath })
+      → Rust spawns: claude -p <msg> --output-format stream-json --mcp-config <json>
+      → NDJSON lines parsed into ClaudeStreamEvent variants:
+          Init, TextDelta, ThinkingDelta, ToolStart, ToolDone, Result, Error, Done
+      → Events emitted via Tauri: app_handle.emit("claude-agent-stream", &event)
+    → Frontend listener routes events:
+        onText → accumulate response (revealed on Done)
+        onThinking → show reasoning block (collapsed on first text)
+        onToolStart → add AiActionCard with spinner
+        onToolDone → update card with output
+        onDone → reveal full response, detect file operations
 ```
 
-### Context Picker
+#### File Operation Detection
 
-The context picker controls which notes are sent to the AI as context:
+When the agent writes or edits vault files, `useAiAgent` detects this from tool inputs (Write/Edit tool JSON) and calls `onFileCreated` or `onFileModified` callbacks to trigger vault reload.
 
-- **Current note** is auto-added when the panel opens
-- **Add button** opens a search dropdown to select additional notes
-- **Token estimation** shows approximate context size (~4 chars/token)
-- **Truncation** kicks in when context exceeds 60% of model limit (108k tokens)
-- Context pills show selected notes with remove buttons
+### Context Building
 
-### API Key Management
+Both AI modes use context from the active note and linked entries. The agent panel (`ai-context.ts`) builds a structured JSON snapshot:
 
-- Stored in `localStorage` under key `laputa:anthropic-api-key`
-- Configurable via the key icon in the AI Chat header
-- When no key is set, falls back to mock responses for testing
+```json
+{
+  "activeNote": { "path", "title", "type", "frontmatter", "content" },
+  "linkedNotes": [{ "path", "title", "content" }],
+  "openTabs": [{ "title", "snippet" }],
+  "vaultMetadata": { "noteTypes", "stats", "filter" },
+  "references": [{ "title", "path", "type" }]
+}
+```
 
-### Models
+Token budget: 60% of 180k context limit (~108k tokens max). Active note gets priority, then linked notes, then truncation.
+
+### Models (Chat mode)
 
 | Model | ID | Use case |
 |-------|----|----------|
@@ -129,11 +160,17 @@ The context picker controls which notes are sent to the AI as context:
 | Sonnet 4 | `claude-sonnet-4-20250514` | Balanced |
 | Opus 4 | `claude-opus-4-20250514` | Most capable |
 
-### MCP Server
+### API Key Management
+
+- Stored in app settings (`~/.config/com.laputa.app/settings.json`) under `anthropic_key`
+- Configurable via Settings panel (also supports `openai_key`, `google_key`)
+- Claude CLI (agent mode) uses its own authentication — no API key needed
+
+## MCP Server
 
 The MCP server (`mcp-server/`) exposes vault operations as tools for AI assistants (Claude Code, Cursor, or any MCP-compatible client).
 
-#### Tool Surface (14 tools)
+### Tool Surface (14 tools)
 
 | Tool | Params | Description |
 |------|--------|-------------|
@@ -152,24 +189,22 @@ The MCP server (`mcp-server/`) exposes vault operations as tools for AI assistan
 | `ui_highlight` | `element, [path]` | Highlight a UI element (editor, tab, properties, notelist) |
 | `ui_set_filter` | `type` | Set the sidebar filter to a specific type |
 
-#### Transports
+### Transports
 
 - **stdio** — standard MCP transport for Claude Code / Cursor (`node mcp-server/index.js`)
 - **WebSocket** — live bridge for Laputa app integration:
   - Port **9710**: Tool bridge — AI/Claude clients call vault tools here
   - Port **9711**: UI bridge — Frontend listens for UI action broadcasts from MCP tools
 
-#### Auto-Registration
+### Auto-Registration
 
 On app startup, Laputa automatically registers itself as an MCP server in:
 - `~/.claude/mcp.json` (Claude Code)
 - `~/.cursor/mcp.json` (Cursor)
 
-The registration is non-destructive (additive — preserves other MCP servers) and uses `upsert` semantics. The entry points to `mcp-server/index.js` with the active vault path as `VAULT_PATH` env var.
+Registration is non-destructive (additive, preserves other servers) and uses `upsert` semantics. The `useMcpStatus` hook tracks registration state (`checking | installed | not_installed | no_claude_cli`).
 
-Registration also runs from the frontend via the `useMcpRegistration` hook and `register_mcp_tools` Tauri command, ensuring the config stays up-to-date when the vault path changes.
-
-#### Architecture
+### Architecture
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -200,16 +235,16 @@ The WebSocket bridge enables real-time vault operations from both the frontend a
 
 ```
 Frontend (useMcpBridge) ←→ ws://localhost:9710 ←→ ws-bridge.js ←→ vault.js
-MCP stdio tools         ←→ ws://localhost:9711 ←→ Frontend UI actions
+MCP stdio tools         ←→ ws://localhost:9711 ←→ Frontend UI actions (useAiActivity)
 ```
 
 **Tool bridge protocol** (port 9710):
 - Request: `{ "id": "req-1", "tool": "search_notes", "args": { "query": "test" } }`
 - Response: `{ "id": "req-1", "result": { ... } }`
-- Error: `{ "id": "req-1", "error": "message" }`
 
 **UI bridge protocol** (port 9711):
 - Broadcast: `{ "type": "ui_action", "action": "open_note", "path": "..." }`
+- `useAiActivity` hook receives these and applies them (highlight with 800ms feedback, open note, set filter, etc.)
 
 ### Rust MCP Module
 
@@ -223,29 +258,132 @@ MCP stdio tools         ←→ ws://localhost:9711 ←→ Frontend UI actions
 
 The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is killed on app exit via `RunEvent::Exit` handler.
 
-### Rust Backend (Tauri)
+## Search & Indexing
 
-The `ai_chat` Tauri command (`src-tauri/src/ai_chat.rs`) provides a non-streaming alternative:
-- Uses `reqwest` to call the Anthropic Messages API directly
-- API key from `ANTHROPIC_API_KEY` environment variable
-- Returns full response (not streamed)
-- Used in production Tauri builds where Vite proxy is unavailable
+### Search Engine
 
-### Files
+Search uses the external `qmd` binary (semantic search engine) with three modes:
 
-| File | Purpose |
-|------|---------|
-| `src/components/AIChatPanel.tsx` | Main UI: context bar, messages, input, quick actions |
-| `src/hooks/useAIChat.ts` | Chat state: messages, streaming, send/retry/clear |
-| `src/hooks/useMcpBridge.ts` | WebSocket client for MCP vault tool calls |
-| `src/hooks/useMcpRegistration.ts` | Auto-registers Laputa MCP on vault load |
-| `src/utils/ai-chat.ts` | API client, token estimation, context builder |
-| `src-tauri/src/ai_chat.rs` | Rust Anthropic API client (non-streaming) |
-| `src-tauri/src/mcp.rs` | MCP server spawning + config registration |
-| `mcp-server/index.js` | MCP server entry (stdio transport, 14 tools) |
-| `mcp-server/vault.js` | Vault file operations (9 functions) |
-| `mcp-server/ws-bridge.js` | WebSocket bridge server (tool + UI bridges) |
-| `mcp-server/test.js` | 26 unit tests for all vault.js functions |
+| Mode | Command | Description |
+|------|---------|-------------|
+| `keyword` | `qmd search` | Term matching (default) |
+| `semantic` | `qmd vsearch` | Vector similarity search |
+| `hybrid` | `qmd query` | Combined keyword + semantic |
+
+### Indexing Flow
+
+```
+Vault opened
+  → check_index_status() → parse qmd status output
+  → if stale or missing:
+    → start_indexing() (two phases):
+        Phase 1 (Scanning): qmd update — scan all .md files
+        Phase 2 (Embedding): qmd embed — generate vector embeddings
+    → Progress streamed via Tauri "indexing-progress" event
+    → Metadata saved to .laputa-index.json (last_indexed_commit, timestamp)
+  → run_incremental_update() for subsequent changes
+```
+
+Embedding failure is non-fatal — keyword search still works.
+
+### qmd Binary Resolution
+
+1. Bundled macOS app resource: `<app>/Contents/Resources/qmd/qmd`
+2. Dev mode: `CARGO_MANIFEST_DIR/resources/qmd/qmd`
+3. System locations: `~/.bun/bin/qmd`, `/usr/local/bin/qmd`, `/opt/homebrew/bin/qmd`
+4. PATH lookup via `which qmd`
+5. Auto-install via `bun install -g qmd` if missing
+
+## Vault Cache System
+
+The vault cache (`src-tauri/src/vault/cache.rs`) accelerates vault scanning using git-based incremental updates.
+
+### Cache File
+
+`.laputa-cache.json` at vault root. Stores: vault path, git HEAD commit hash, all VaultEntry objects. Version: v5 (bumped on VaultEntry field changes to force full rescan).
+
+### Three Cache Strategies
+
+1. **Same Commit (Cache Hit)**: Git HEAD matches cached hash → only re-parse uncommitted changed files via `git status --porcelain`
+2. **Different Commit (Incremental Update)**: Uses `git diff <old>..<new> --name-only` to find changed files + uncommitted changes → selective re-parse
+3. **No Cache / Corrupt Cache (Full Scan)**: Recursive `walkdir` of all `.md` files → full parse
+
+Cache auto-excludes itself from git via `.git/info/exclude`.
+
+## Theme System
+
+See [THEMING.md](./THEMING.md) for the full theme system documentation.
+
+### Two-Layer Architecture
+
+1. **Global CSS variables** (`src/index.css`): App-wide colors, borders, backgrounds. Bridged to Tailwind v4 via `@theme inline`.
+2. **Editor theme** (`src/theme.json`): BlockNote-specific typography. Flattened to CSS vars by `useEditorTheme`.
+
+### Vault-Based Themes
+
+Themes are markdown notes in the `theme/` folder with `Is A: Theme` frontmatter. Each frontmatter property becomes a CSS variable. Managed by `useThemeManager` hook and the `src-tauri/src/theme/` Rust module (create, seed, defaults).
+
+- **Vault settings**: `.laputa/settings.json` stores the active theme reference
+- **Legacy support**: `_themes/*.json` files still supported for backward compatibility
+- **Built-in themes**: Default (light), Dark, Minimal — auto-seeded on vault open
+- **Live preview**: Re-applies when the active theme note is saved
+
+## Vault Management
+
+### Vault List
+
+Persisted at `~/.config/com.laputa.app/vaults.json`:
+```json
+{
+  "vaults": [{ "label": "My Vault", "path": "/path/to/vault" }],
+  "active_vault": "/path/to/vault",
+  "hidden_defaults": []
+}
+```
+
+Managed by `useVaultSwitcher` hook. Switching vaults closes all tabs and resets sidebar.
+
+### Vault Config
+
+Per-vault UI settings stored in `config/ui.config.md` (YAML frontmatter in a markdown note):
+- `zoom`: Float zoom level (0.8–1.5)
+- `view_mode`: "all" | "editor-list" | "editor-only"
+- `tag_colors`, `status_colors`: Custom color overrides
+- `property_display_modes`: Property display preferences
+
+### Getting Started Vault
+
+On first launch, `useOnboarding` checks if the default vault exists. If not, shows `WelcomeScreen` with two options:
+- **Create Getting Started vault** → calls `create_getting_started_vault()` Tauri command
+- **Open an existing folder** → system file picker
+
+### GitHub OAuth Integration
+
+Implements GitHub Device Authorization Flow for cloning/creating GitHub-backed vaults.
+
+**Flow:**
+1. User clicks "Login with GitHub" in Settings panel
+2. `github_device_flow_start()` returns a user code + verification URL
+3. User authorizes at `github.com/login/device`
+4. App polls `github_device_flow_poll()` until authorized
+5. Token stored in `~/.config/com.laputa.app/settings.json`
+
+**Vault operations:**
+- `GitHubVaultModal`: Clone existing repo or create new private/public repo
+- `clone_repo()`: Clones with token-injected HTTPS URL
+- Token persists for future git push/pull operations
+
+## Pulse View
+
+`PulseView` is a git activity feed that replaces the NoteList when the Pulse filter is selected.
+
+- Groups commits by day ("Today", "Yesterday", or full date)
+- Shows commit message, short hash, timestamp, and changed files
+- Files have status icons (added/modified/deleted) and are clickable to open in editor
+- Links to GitHub commits when `githubUrl` is available
+- Infinite scroll pagination (20 commits per page) via Intersection Observer
+
+Backend: `get_vault_pulse` Tauri command parses `git log` with `--name-status`.
 
 ## Data Flow
 
@@ -253,93 +391,199 @@ The `ai_chat` Tauri command (`src-tauri/src/ai_chat.rs`) provides a non-streamin
 
 ```
 1. Tauri setup:
-   a. run_startup_tasks() → purge trash, migrate frontmatter, register MCP config
+   a. run_startup_tasks() → purge trash, migrate frontmatter, seed themes, register MCP
    b. spawn_ws_bridge() → start MCP WebSocket bridge (ports 9710, 9711)
 2. App mounts
-3. useVaultLoader fires:
-   a. isTauri() ? invoke('list_vault') : mockInvoke('list_vault')
-      → VaultEntry[] stored in state
-   b. Load all content (mock mode) or on-demand (Tauri mode)
-   c. invoke('get_modified_files') → ModifiedFile[] stored in state
-   d. useMcpRegistration → invoke('register_mcp_tools') → ensures MCP config current
-4. User clicks note in NoteList
-4. useNoteActions.handleSelectNote:
-   a. invoke('get_note_content') → raw markdown string
+3. useOnboarding checks vault exists → WelcomeScreen if not
+4. useVaultLoader fires:
+   a. invoke('list_vault', { path }) → scan_vault_cached() → VaultEntry[]
+   b. Load modified files via invoke('get_modified_files')
+   c. useMcpStatus → register MCP if needed
+   d. useThemeManager → load and apply active theme
+   e. useIndexing → check index status, trigger incremental update if needed
+5. User clicks note in NoteList
+6. useNoteActions.handleSelectNote:
+   a. invoke('get_note_content') → raw markdown
    b. Add tab { entry, content } to tabs state
    c. Set activeTabPath
-5. Editor renders BlockNoteTab:
+7. Editor renders BlockNoteTab:
    a. splitFrontmatter(content) → [yaml, body]
    b. preProcessWikilinks(body) → replaces [[target]] with tokens
    c. editor.tryParseMarkdownToBlocks(preprocessed)
    d. injectWikilinks(blocks) → replaces tokens with wikilink nodes
    e. editor.replaceBlocks()
-6. Inspector renders frontmatter parsed from content
+8. Inspector renders frontmatter parsed from content
 ```
 
-### Frontmatter Edit Flow
+### Auto-Save Flow
 
 ```
-User edits property in Inspector
-  → handleUpdateFrontmatter(path, key, value)
-    → Tauri: invoke('update_frontmatter') → Rust reads file, modifies YAML, writes back
-    → Mock: updateMockFrontmatter() → client-side YAML manipulation
-  → Update tab content in state
-  → Update allContent for backlink recalculation
-  → Toast: "Property updated"
+Editor content changes
+  → useEditorSave detects change (debounced)
+    → serialize BlockNote blocks → markdown
+    → postProcessWikilinks → restore [[target]] syntax
+    → invoke('save_note_content', { path, content })
+    → Update tab status indicator
 ```
 
-### Git Flow
+### Git Sync Flow
 
 ```
-User clicks Commit button → CommitDialog opens
-  → handleCommitPush(message)
-    → invoke('git_commit') → git add -A && git commit -m "..."
-    → invoke('git_push') → git push
+useAutoSync (configurable interval, default from settings):
+  → invoke('git_pull') → GitPullResult
+    → if conflicts → ConflictResolverModal
+    → if fast-forward → reload vault
+  → invoke('git_push') → GitPushResult
+
+Manual commit:
+  → CommitDialog → invoke('git_commit', { message })
+    → invoke('git_push')
     → Reload modified files
-    → Toast: "Committed and pushed"
 ```
 
 ## Vault Module Structure
 
 The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 
-| File | Purpose | CodeScene Health |
-|------|---------|-----------------|
-| `mod.rs` | Core types (`VaultEntry`, `Frontmatter`), `parse_md_file`, `scan_vault`, relationship extraction | 10.0 |
-| `parsing.rs` | Text processing: snippet extraction, markdown stripping, ISO date parsing, `extract_title` | 9.68 |
-| `cache.rs` | Git-based incremental vault caching (`scan_vault_cached`), git helpers | 9.68 |
-| `trash.rs` | `purge_trash` — deletes trashed notes older than 30 days | 9.38 |
-| `rename.rs` | `rename_note` — renames files and updates wikilinks across the vault | 9.68 |
-| `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames | 10.0 |
+| File | Purpose |
+|------|---------|
+| `mod.rs` | Core types (`VaultEntry`, `Frontmatter`), `parse_md_file`, `scan_vault`, relationship/link extraction |
+| `parsing.rs` | Text processing: snippet extraction, markdown stripping, ISO date parsing, `extract_title` |
+| `cache.rs` | Git-based incremental vault caching (`scan_vault_cached`), git helpers |
+| `trash.rs` | `purge_trash` — deletes trashed notes older than 30 days |
+| `rename.rs` | `rename_note` — renames files and updates wikilinks across the vault |
+| `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
+| `migration.rs` | Frontmatter migration utilities |
+| `getting_started.rs` | Creates the Getting Started demo vault |
 
-Public API (re-exported from `mod.rs`): `scan_vault_cached`, `save_image`, `rename_note`, `RenameResult`, `purge_trash`, `get_note_content`, `parse_md_file`, `VaultEntry`.
+## Rust Backend Modules
 
-## Tauri IPC Commands
+| Module | Purpose |
+|--------|---------|
+| `vault/` | Vault scanning, caching, parsing, trash, rename, image, migration |
+| `frontmatter/` | YAML frontmatter read/write (`mod.rs`, `yaml.rs`, `ops.rs`) |
+| `git/` | Git operations (`commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`) |
+| `github/` | GitHub OAuth + API (`auth.rs`, `api.rs`, `clone.rs`) |
+| `theme/` | Theme management (`mod.rs`, `create.rs`, `defaults.rs`, `seed.rs`) |
+| `search.rs` | qmd search integration (keyword/semantic/hybrid) |
+| `indexing.rs` | qmd indexing with progress streaming |
+| `claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing |
+| `ai_chat.rs` | Direct Anthropic API client (non-streaming, for Tauri builds) |
+| `mcp.rs` | MCP server spawning + config registration |
+| `commands.rs` | All 61 Tauri command handlers |
+| `settings.rs` | App settings persistence |
+| `vault_config.rs` | Per-vault UI config |
+| `vault_list.rs` | Vault list persistence |
+| `menu.rs` | Native macOS menu bar |
 
-All commands are defined in `src-tauri/src/lib.rs` and registered via `tauri::generate_handler![]`.
+## Tauri IPC Commands (61 total)
 
-| Command | Params | Returns | Backend function |
-|---------|--------|---------|-----------------|
-| `list_vault` | `path` | `Vec<VaultEntry>` | `vault::scan_vault()` |
-| `get_note_content` | `path` | `String` | `vault::get_note_content()` |
-| `update_frontmatter` | `path, key, value` | `String` (updated content) | `frontmatter::with_frontmatter()` |
-| `delete_frontmatter_property` | `path, key` | `String` (updated content) | `frontmatter::with_frontmatter()` |
-| `get_file_history` | `vault_path, path` | `Vec<GitCommit>` | `git::get_file_history()` |
-| `get_modified_files` | `vault_path` | `Vec<ModifiedFile>` | `git::get_modified_files()` |
-| `get_file_diff` | `vault_path, path` | `String` (unified diff) | `git::get_file_diff()` |
-| `git_commit` | `vault_path, message` | `String` | `git::git_commit()` |
-| `git_push` | `vault_path` | `String` | `git::git_push()` |
-| `ai_chat` | `request: AiChatRequest` | `AiChatResponse` | `ai_chat::send_chat()` |
-| `register_mcp_tools` | `vault_path` | `String` ("registered" or "updated") | `mcp::register_mcp()` |
+### Vault Operations
 
-All commands return `Result<T, String>`. Errors are serialized as JSON error objects to the frontend.
+| Command | Description |
+|---------|-------------|
+| `list_vault` | Scan vault (cached) → `Vec<VaultEntry>` |
+| `get_note_content` | Read note file content |
+| `save_note_content` | Write note content to disk |
+| `delete_note` | Move note to trash |
+| `rename_note` | Rename note + update cross-vault wikilinks |
+| `batch_archive_notes` | Archive multiple notes |
+| `batch_trash_notes` | Trash multiple notes |
+| `purge_trash` | Delete notes trashed >30 days ago |
+| `check_vault_exists` | Check if vault path exists |
+| `create_getting_started_vault` | Bootstrap demo vault |
+
+### Frontmatter
+
+| Command | Description |
+|---------|-------------|
+| `update_frontmatter` | Update a frontmatter property |
+| `delete_frontmatter_property` | Remove a frontmatter property |
+
+### Git
+
+| Command | Description |
+|---------|-------------|
+| `git_commit` | Stage all + commit |
+| `git_pull` | Pull from remote |
+| `git_push` | Push to remote |
+| `git_resolve_conflict` | Resolve a merge conflict |
+| `git_commit_conflict_resolution` | Commit conflict resolution |
+| `get_file_history` | Last N commits for a file |
+| `get_modified_files` | `git status` filtered to .md |
+| `get_file_diff` | Unified diff for a file |
+| `get_file_diff_at_commit` | Diff at a specific commit |
+| `get_conflict_files` | List conflicted files |
+| `get_conflict_mode` | Get conflict resolution mode |
+| `get_vault_pulse` | Git activity feed (paginated) |
+| `get_last_commit_info` | Latest commit metadata |
+
+### GitHub
+
+| Command | Description |
+|---------|-------------|
+| `github_device_flow_start` | Begin OAuth device flow |
+| `github_device_flow_poll` | Poll for authorization |
+| `github_get_user` | Get authenticated user info |
+| `github_list_repos` | List user's repos |
+| `github_create_repo` | Create new repo |
+| `clone_repo` | Clone repo with token auth |
+
+### Search & Indexing
+
+| Command | Description |
+|---------|-------------|
+| `search_vault` | Search via qmd (keyword/semantic/hybrid) |
+| `get_index_status` | Check qmd index state |
+| `start_indexing` | Full index with progress streaming |
+| `trigger_incremental_index` | Incremental index update |
+
+### Theme
+
+| Command | Description |
+|---------|-------------|
+| `list_themes` | List all themes (legacy JSON) |
+| `get_theme` | Read a theme file |
+| `get_vault_settings` | Read `.laputa/settings.json` |
+| `save_vault_settings` | Write vault settings |
+| `set_active_theme` | Set active theme ID |
+| `create_theme` | Create JSON theme from template |
+| `create_vault_theme` | Create markdown theme note |
+| `ensure_vault_themes` | Seed default themes if missing |
+| `restore_default_themes` | Restore all default themes |
+
+### AI & MCP
+
+| Command | Description |
+|---------|-------------|
+| `ai_chat` | Direct Anthropic API call (non-streaming) |
+| `stream_claude_chat` | Claude CLI chat mode (streaming) |
+| `stream_claude_agent` | Claude CLI agent mode (streaming + tools) |
+| `check_claude_cli` | Check if Claude CLI is available |
+| `register_mcp_tools` | Register MCP in Claude/Cursor config |
+| `check_mcp_status` | Check MCP registration state |
+
+### Settings & Config
+
+| Command | Description |
+|---------|-------------|
+| `get_settings` | Load app settings |
+| `save_settings` | Save app settings |
+| `load_vault_list` | Load vault list |
+| `save_vault_list` | Save vault list |
+| `get_vault_config` | Load per-vault UI config |
+| `save_vault_config` | Save per-vault UI config |
+| `get_default_vault_path` | Get default vault path |
+| `get_build_number` | Get app build number |
+| `save_image` | Save base64 image to vault |
+| `copy_image_to_vault` | Copy image file to vault |
+| `update_menu_state` | Update native menu checkmarks |
 
 ## Mock Layer
 
-When running outside Tauri (browser at `localhost:5201`), `src/mock-tauri.ts` provides a transparent mock layer:
+When running outside Tauri (browser at `localhost:5173`), `src/mock-tauri.ts` provides a transparent mock layer:
 
 ```typescript
-// In hooks, the pattern is always:
 if (isTauri()) {
   result = await invoke<T>('command_name', { args })
 } else {
@@ -347,14 +591,7 @@ if (isTauri()) {
 }
 ```
 
-The mock layer includes:
-- **15 sample entries** across all entity types (Project, Responsibility, Procedure, Experiment, Note, Person, Event, Topic, Essay)
-- **Full markdown content** with realistic frontmatter for each entry
-- **Mock git history, modified files, and diff output**
-- **Mock AI chat responses** with context-aware answers (summarize, expand, grammar)
-- `addMockEntry()` and `updateMockContent()` for runtime updates
-
-This means the entire UI can be developed and tested in Chrome without the Rust backend.
+The mock layer includes sample entries across all entity types, full markdown content with realistic frontmatter, mock git history, mock AI responses, and mock pulse commits.
 
 ## State Management
 
@@ -362,11 +599,18 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 
 | State owner | State | Purpose |
 |-------------|-------|---------|
-| `App.tsx` | `selection`, panel widths, dialog visibility, toast, `showAIChat` | UI state |
+| `App.tsx` | `selection`, panel widths, dialog visibility, toast, view mode | UI state |
 | `useVaultLoader` | `entries`, `allContent`, `modifiedFiles` | Vault data |
 | `useNoteActions` | `tabs`, `activeTabPath` | Open tabs and note operations |
-| `useAIChat` | `messages`, `isStreaming`, `streamingContent` | AI conversation state |
-| `useMcpBridge` | `connected`, tool methods | MCP WebSocket connection |
+| `useTabManagement` | Tab ordering, pinning, swapping | Tab lifecycle |
+| `useVaultSwitcher` | `vaultPath`, `extraVaults` | Vault switching |
+| `useThemeManager` | `themes`, `activeThemeId`, `isDark` | Theme state |
+| `useAIChat` | `messages`, `isStreaming` | AI chat conversation |
+| `useAiAgent` | `messages`, `status`, tool actions | AI agent conversation |
+| `useAutoSync` | Sync interval, pull/push state | Git auto-sync |
+| `useIndexing` | Index status, progress | Search indexing |
+| `useSettings` | App settings (API keys, GitHub token) | Persistent settings |
+| `useVaultConfig` | Per-vault UI preferences | Vault-specific config |
 
 Data flows unidirectionally: `App` passes data and callbacks as props to child components. No child-to-child communication — everything goes through `App`.
 
@@ -374,10 +618,14 @@ Data flows unidirectionally: `App` passes data and callbacks as props to child c
 
 | Shortcut | Action |
 |----------|--------|
-| Cmd+P | Open Quick Open palette |
-| Cmd+N | Open Create Note dialog |
-| Cmd+S | Show "Saved" toast |
+| Cmd+K | Open command palette |
+| Cmd+P | Open quick open palette |
+| Cmd+N | Create new note |
+| Cmd+S | Save current note |
 | Cmd+W | Close active tab |
+| Cmd+Z / Cmd+Shift+Z | Undo / Redo |
+| Cmd+1–9 | Switch to tab N |
+| Cmd+[ / Cmd+] | Navigate back / forward |
 | `[[` in editor | Open wikilink suggestion menu |
 
 ## Auto-Release & In-App Updates
@@ -399,47 +647,22 @@ push to main
       → generate latest.json (per-arch + universal platform entries)
       → publish GitHub Release with all assets + auto-generated notes
   → pages job:
-      → fetch all releases via gh api
       → build static HTML release history page
-      → deploy to gh-pages via peaceiris/actions-gh-pages
+      → deploy to gh-pages
 ```
 
 ### Versioning
 
-Format: `0.YYYYMMDD.GITHUB_RUN_NUMBER` (e.g. `0.20260223.42`). The `0.` prefix keeps it SemVer-compatible while making it clear these are date-based auto-releases. The version is stamped into both `tauri.conf.json` and `Cargo.toml` dynamically in the workflow.
+Format: `0.YYYYMMDD.GITHUB_RUN_NUMBER` (e.g. `0.20260223.42`). Stamped into `tauri.conf.json` and `Cargo.toml` dynamically.
 
-### Universal Binary
-
-macOS builds produce both `aarch64-apple-darwin` and `x86_64-apple-darwin` in parallel. The release job merges them with `lipo` — copying the arm64 `.app` as the base and replacing only the main executable with a universal fat binary. The per-arch updater tarballs are also uploaded so the Tauri updater downloads only the relevant architecture (smaller download).
-
-### Updater Endpoint
-
-The Tauri updater plugin is configured to fetch:
-```
-https://github.com/refactoringhq/laputa-app/releases/latest/download/latest.json
-```
-
-This JSON manifest contains `version`, `pub_date`, `notes`, and per-platform entries (`darwin-aarch64`, `darwin-x86_64`) with `url` and `signature` fields. The updater compares the manifest version against the running app version, downloads the matching platform artifact, verifies the signature, and installs it.
-
-### In-App Update UI
+### In-App Updates
 
 ```
 App startup (3s delay)
   → useUpdater.check()
-    → idle (no update) → no UI shown
-    → available → UpdateBanner: "Laputa X.Y.Z is available" + Release Notes + Update Now + X
-      → user clicks Update Now → downloading → progress bar
-        → download complete → ready → "Restart to apply" + Restart Now button
-          → user clicks Restart → relaunch()
-    → network error / 404 → fail silently, no UI
+    → idle (no update) → no UI
+    → available → UpdateBanner with release notes + "Update Now"
+      → downloading → progress bar
+        → ready → "Restart to apply" + Restart Now
+    → network error → fail silently
 ```
-
-| Component | File | Purpose |
-|-----------|------|---------|
-| `useUpdater` | `src/hooks/useUpdater.ts` | State machine: idle → available → downloading → ready → error |
-| `UpdateBanner` | `src/components/UpdateBanner.tsx` | Top-of-app notification bar |
-| `restartApp` | `src/hooks/useUpdater.ts` | Calls `@tauri-apps/plugin-process` relaunch |
-
-### GitHub Pages
-
-Release history site at `https://refactoringhq.github.io/laputa-app/`. Auto-updated by the workflow after each release. The page loads `releases.json` (deployed alongside) and renders each release with date, notes, and `.dmg` download links. Linked from the in-app "Release Notes" button.

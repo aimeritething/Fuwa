@@ -115,7 +115,29 @@ Tauri v2 + React + TypeScript desktop app. Reads a vault of markdown files with 
 
 - **Never develop on `main`** — always on `task/<slug>` branch
 - **Commit every 20–30 min** — atomic commits, one concern per commit (`feat:`, `fix:`, `refactor:`, `test:`, `docs:`)
-- **Update docs/** when changing architecture, abstractions, or significant design
+- **Update docs/** when changing architecture, abstractions, or significant design (mandatory — see rule below)
+
+## ⛔ DOCS — Keep docs/ in sync with code (mandatory)
+
+After any significant feature change, update the relevant `docs/` files **in the same commit**:
+
+- **`docs/ARCHITECTURE.md`** — stack, system overview, component structure, Tauri commands, data flow, backend modules
+- **`docs/ABSTRACTIONS.md`** — domain models, VaultEntry fields, entity types, key abstractions, integration patterns
+- **`docs/GETTING-STARTED.md`** — directory structure, key files, common tasks, test commands, onboarding
+
+**What counts as "significant":**
+- Adding a new Tauri command or backend module
+- Adding a new major component, hook, or feature (not a bugfix)
+- Changing the data model (VaultEntry fields, new types, new config files)
+- Adding a new integration (API, service, transport)
+- Changing the architecture (new panels, new state management, new build steps)
+
+**How to update:**
+1. Read the relevant doc section before making changes
+2. After your code changes, update the doc to reflect the new state
+3. Commit doc changes together with the code — not in a separate follow-up commit
+
+If unsure whether a change is "significant", err on the side of updating. Stale docs are worse than slightly verbose docs.
 
 ## TDD — Red/Green/Refactor (mandatory)
 
