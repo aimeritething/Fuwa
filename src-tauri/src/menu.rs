@@ -331,7 +331,7 @@ fn build_vault_menu(app: &App) -> MenuResult {
     let view_changes = MenuItemBuilder::new("View Pending Changes")
         .id(VAULT_VIEW_CHANGES)
         .build(app)?;
-    let install_mcp = MenuItemBuilder::new("Install MCP Server")
+    let install_mcp = MenuItemBuilder::new("Restore MCP Server")
         .id(VAULT_INSTALL_MCP)
         .build(app)?;
     let reindex = MenuItemBuilder::new("Reindex Vault")

@@ -66,9 +66,10 @@ describe('useMcpStatus', () => {
   })
 
   it('install action calls register_mcp_tools and updates status', async () => {
+    // Auto-register fails (e.g. node not found), leaving status as not_installed
     mockInvoke.mockImplementation((cmd: string) => {
       if (cmd === 'check_mcp_status') return Promise.resolve('not_installed')
-      if (cmd === 'register_mcp_tools') return Promise.resolve('registered')
+      if (cmd === 'register_mcp_tools') return Promise.reject(new Error('no node'))
       return Promise.resolve(null)
     })
 
@@ -76,12 +77,11 @@ describe('useMcpStatus', () => {
     const { result } = renderHook(() => useMcpStatus('/vault', onToast))
 
     await waitFor(() => {
-      expect(result.current.mcpStatus).toBe('installed')
+      expect(result.current.mcpStatus).toBe('not_installed')
     })
 
-    // Reset to test install action directly
+    // Now manual install succeeds
     mockInvoke.mockImplementation((cmd: string) => {
-      if (cmd === 'check_mcp_status') return Promise.resolve('not_installed')
       if (cmd === 'register_mcp_tools') return Promise.resolve('registered')
       return Promise.resolve(null)
     })
@@ -129,6 +129,33 @@ describe('useMcpStatus', () => {
     await waitFor(() => {
       expect(onToast).toHaveBeenCalledWith('Laputa registered as MCP tool for Claude Code')
     })
+  })
+
+  it('install action shows restored toast when status was installed', async () => {
+    // First call: status already installed
+    mockInvoke.mockImplementation((cmd: string) => {
+      if (cmd === 'check_mcp_status') return Promise.resolve('installed')
+      if (cmd === 'register_mcp_tools') return Promise.resolve('updated')
+      return Promise.resolve(null)
+    })
+
+    const onToast = vi.fn()
+    const { result } = renderHook(() => useMcpStatus('/vault', onToast))
+
+    await waitFor(() => {
+      expect(result.current.mcpStatus).toBe('installed')
+    })
+
+    // Clear toasts from auto-register
+    onToast.mockClear()
+
+    // Now manually trigger install (restore)
+    await act(async () => {
+      await result.current.installMcp()
+    })
+
+    expect(result.current.mcpStatus).toBe('installed')
+    expect(onToast).toHaveBeenCalledWith('MCP server restored successfully')
   })
 
   it('does not show toast when already registered', async () => {

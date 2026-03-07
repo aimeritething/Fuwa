@@ -258,7 +258,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
       { id: 'remove-vault', label: 'Remove Vault from List', group: 'Settings', keywords: ['vault', 'remove', 'disconnect', 'hide'], enabled: (vaultCount ?? 0) > 1 && !!onRemoveActiveVault, execute: () => onRemoveActiveVault?.() },
       { id: 'restore-getting-started', label: 'Restore Getting Started Vault', group: 'Settings', keywords: ['vault', 'restore', 'demo', 'getting started', 'reset'], enabled: !!isGettingStartedHidden && !!onRestoreGettingStarted, execute: () => onRestoreGettingStarted?.() },
       { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: true, execute: () => onCheckForUpdates?.() },
-      { id: 'install-mcp', label: 'Install MCP Server', group: 'Settings', keywords: ['mcp', 'claude', 'ai', 'tools', 'install'], enabled: mcpStatus === 'not_installed' && !!onInstallMcp, execute: () => onInstallMcp?.() },
+      { id: 'install-mcp', label: mcpStatus === 'installed' ? 'Restore MCP Server' : 'Install MCP Server', group: 'Settings', keywords: ['mcp', 'claude', 'ai', 'tools', 'install', 'restore', 'fix', 'repair'], enabled: mcpStatus !== 'checking' && !!onInstallMcp, execute: () => onInstallMcp?.() },
       { id: 'reindex-vault', label: 'Reindex Vault', group: 'Settings', keywords: ['reindex', 'index', 'search', 'rebuild', 'refresh'], enabled: !!onReindexVault, execute: () => onReindexVault?.() },
 
       // Type-aware: "New [Type]" and "List [Type]"

@@ -19,9 +19,11 @@ export function useMcpStatus(
   onToast: (msg: string) => void,
 ) {
   const [status, setStatus] = useState<McpStatus>('checking')
+  const statusRef = useRef<McpStatus>(status)
   const registeredRef = useRef<string | null>(null)
   const onToastRef = useRef(onToast)
   useEffect(() => { onToastRef.current = onToast })
+  useEffect(() => { statusRef.current = status }, [status])
 
   // Check MCP status on vault open / vault switch
   useEffect(() => {
@@ -57,11 +59,12 @@ export function useMcpStatus(
   }, [vaultPath])
 
   const install = useCallback(async () => {
+    const wasInstalled = statusRef.current === 'installed'
     setStatus('checking')
     try {
       await tauriCall<string>('register_mcp_tools', { vaultPath })
       setStatus('installed')
-      onToastRef.current('MCP server installed successfully')
+      onToastRef.current(wasInstalled ? 'MCP server restored successfully' : 'MCP server installed successfully')
     } catch (e) {
       setStatus('not_installed')
       onToastRef.current(`MCP install failed: ${e}`)
