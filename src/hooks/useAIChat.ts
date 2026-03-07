@@ -18,7 +18,6 @@ export function useAIChat(
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const abortRef = useRef(false)
-  const sessionIdRef = useRef<string | undefined>(undefined)
 
   const sendMessage = useCallback((text: string) => {
     if (!text.trim() || isStreaming) return
@@ -34,9 +33,10 @@ export function useAIChat(
     const messageWithHistory = formatMessageWithHistory(history, text.trim())
     let accumulated = ''
 
-    streamClaudeChat(messageWithHistory, systemPrompt || undefined, sessionIdRef.current, {
-      onInit: (sid) => { sessionIdRef.current = sid },
-
+    // No session_id: each call is independent. Context is provided via
+    // formatted history in the prompt, avoiding --resume which causes
+    // double-context confusion when combined with in-prompt history.
+    streamClaudeChat(messageWithHistory, systemPrompt || undefined, undefined, {
       onText: (chunk) => {
         if (abortRef.current) return
         accumulated += chunk
@@ -58,8 +58,6 @@ export function useAIChat(
         setStreamingContent('')
         setIsStreaming(false)
       },
-    }).then(sid => {
-      if (sid) sessionIdRef.current = sid
     })
   }, [isStreaming, allContent, contextNotes, messages])
 
@@ -68,7 +66,6 @@ export function useAIChat(
     setMessages([])
     setIsStreaming(false)
     setStreamingContent('')
-    sessionIdRef.current = undefined
   }, [])
 
   const retryMessage = useCallback((msgIndex: number) => {

@@ -111,4 +111,20 @@ describe('useAIChat', () => {
     expect(thirdMessage).toContain('Q2')
     expect(thirdMessage).toContain('Q3')
   })
+
+  it('does not pass session_id to avoid --resume (history is in prompt)', async () => {
+    const { result } = renderHook(() => useAIChat(emptyContent, []))
+
+    // First message
+    act(() => { result.current.sendMessage('hello') })
+    await act(async () => { vi.advanceTimersByTime(50) })
+
+    // Second message — session_id should still be undefined (no --resume)
+    act(() => { result.current.sendMessage('follow up') })
+
+    expect(streamClaudeChatMock).toHaveBeenCalledTimes(2)
+    // Third argument is sessionId — must be undefined for both calls
+    expect(streamClaudeChatMock.mock.calls[0][2]).toBeUndefined()
+    expect(streamClaudeChatMock.mock.calls[1][2]).toBeUndefined()
+  })
 })
