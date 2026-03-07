@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::sync::Mutex;
@@ -223,10 +223,72 @@ pub struct IndexStatus {
     pub indexed_count: usize,
     pub embedded_count: usize,
     pub pending_embed: usize,
+    pub last_indexed_commit: Option<String>,
+    pub last_indexed_at: Option<u64>,
+}
+
+// --- Index metadata persistence ---
+
+#[derive(Debug, Serialize, Deserialize, Default)]
+struct IndexMetadata {
+    #[serde(default)]
+    last_indexed_commit: Option<String>,
+    #[serde(default)]
+    last_indexed_at: Option<u64>,
+}
+
+fn index_metadata_path(vault_path: &str) -> PathBuf {
+    Path::new(vault_path).join(".laputa-index.json")
+}
+
+pub fn load_index_metadata(vault_path: &str) -> IndexMetadata {
+    let path = index_metadata_path(vault_path);
+    std::fs::read_to_string(&path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_default()
+}
+
+pub fn save_index_metadata(vault_path: &str, meta: &IndexMetadata) -> Result<(), String> {
+    let path = index_metadata_path(vault_path);
+    let json =
+        serde_json::to_string_pretty(meta).map_err(|e| format!("Failed to serialize: {e}"))?;
+    std::fs::write(&path, json).map_err(|e| format!("Failed to write index metadata: {e}"))
+}
+
+/// Get the current HEAD commit hash for a vault.
+pub fn get_head_commit(vault_path: &str) -> Option<String> {
+    let output = Command::new("git")
+        .args(["rev-parse", "HEAD"])
+        .current_dir(vault_path)
+        .output()
+        .ok()?;
+    if output.status.success() {
+        Some(String::from_utf8_lossy(&output.stdout).trim().to_string())
+    } else {
+        None
+    }
+}
+
+/// Record the current HEAD as the last indexed commit.
+fn stamp_index_commit(vault_path: &str) {
+    if let Some(commit) = get_head_commit(vault_path) {
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let meta = IndexMetadata {
+            last_indexed_commit: Some(commit),
+            last_indexed_at: Some(now),
+        };
+        let _ = save_index_metadata(vault_path, &meta);
+    }
 }
 
 /// Check whether the vault has a qmd index and its status.
 pub fn check_index_status(vault_path: &str) -> IndexStatus {
+    let meta = load_index_metadata(vault_path);
+
     let qmd = match find_qmd_binary() {
         Some(b) => b,
         None => {
@@ -237,6 +299,8 @@ pub fn check_index_status(vault_path: &str) -> IndexStatus {
                 indexed_count: 0,
                 embedded_count: 0,
                 pending_embed: 0,
+                last_indexed_commit: meta.last_indexed_commit,
+                last_indexed_at: meta.last_indexed_at,
             }
         }
     };
@@ -244,7 +308,7 @@ pub fn check_index_status(vault_path: &str) -> IndexStatus {
     let vault_name = vault_dir_name(vault_path);
     let output = qmd.command().args(["status"]).output();
 
-    match output {
+    let mut status = match output {
         Ok(o) if o.status.success() => {
             let stdout = String::from_utf8_lossy(&o.stdout);
             parse_status_for_vault(&stdout, &vault_name)
@@ -256,8 +320,14 @@ pub fn check_index_status(vault_path: &str) -> IndexStatus {
             indexed_count: 0,
             embedded_count: 0,
             pending_embed: 0,
+            last_indexed_commit: None,
+            last_indexed_at: None,
         },
-    }
+    };
+
+    status.last_indexed_commit = meta.last_indexed_commit;
+    status.last_indexed_at = meta.last_indexed_at;
+    status
 }
 
 fn vault_dir_name(vault_path: &str) -> String {
@@ -323,6 +393,8 @@ fn parse_status_for_vault(status_output: &str, vault_name: &str) -> IndexStatus 
         indexed_count,
         embedded_count,
         pending_embed,
+        last_indexed_commit: None,
+        last_indexed_at: None,
     }
 }
 
@@ -451,6 +523,7 @@ where
         let stderr = String::from_utf8_lossy(&embed_output.stderr);
         // Embedding failure is non-fatal — keyword search still works
         log::warn!("qmd embed failed (keyword search still works): {stderr}");
+        stamp_index_commit(vault_path);
         on_progress(IndexingProgress {
             phase: "complete".to_string(),
             current: total,
@@ -460,6 +533,8 @@ where
         });
         return Ok(());
     }
+
+    stamp_index_commit(vault_path);
 
     on_progress(IndexingProgress {
         phase: "complete".to_string(),
@@ -513,7 +588,20 @@ pub fn run_incremental_update(vault_path: &str) -> Result<(), String> {
         return Err(format!("qmd update failed: {stderr}"));
     }
 
+    stamp_index_commit(vault_path);
+
     Ok(())
+}
+
+/// Check if HEAD has advanced past the last indexed commit.
+pub fn needs_reindex_after_sync(vault_path: &str) -> bool {
+    let meta = load_index_metadata(vault_path);
+    let head = get_head_commit(vault_path);
+    match (meta.last_indexed_commit, head) {
+        (Some(last), Some(current)) => last != current,
+        (None, Some(_)) => true,
+        _ => false,
+    }
 }
 
 #[cfg(test)]
@@ -697,5 +785,127 @@ Collections
         // This test may succeed or fail depending on the system.
         // It verifies the function doesn't panic.
         let _ = find_bun();
+    }
+
+    #[test]
+    fn index_metadata_roundtrip() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = dir.path().to_str().unwrap();
+
+        // Default when no file exists
+        let meta = load_index_metadata(vault);
+        assert!(meta.last_indexed_commit.is_none());
+        assert!(meta.last_indexed_at.is_none());
+
+        // Write and read back
+        let meta = IndexMetadata {
+            last_indexed_commit: Some("abc123def456".to_string()),
+            last_indexed_at: Some(1709000000),
+        };
+        save_index_metadata(vault, &meta).unwrap();
+
+        let loaded = load_index_metadata(vault);
+        assert_eq!(loaded.last_indexed_commit.as_deref(), Some("abc123def456"));
+        assert_eq!(loaded.last_indexed_at, Some(1709000000));
+    }
+
+    #[test]
+    fn index_metadata_survives_malformed_json() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = dir.path().to_str().unwrap();
+
+        // Write garbage
+        std::fs::write(dir.path().join(".laputa-index.json"), "not json").unwrap();
+
+        let meta = load_index_metadata(vault);
+        assert!(meta.last_indexed_commit.is_none());
+    }
+
+    #[test]
+    fn needs_reindex_after_sync_no_metadata() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = dir.path().to_str().unwrap();
+
+        // Init a git repo so get_head_commit works
+        Command::new("git")
+            .args(["init"])
+            .current_dir(dir.path())
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "--allow-empty", "-m", "init"])
+            .current_dir(dir.path())
+            .output()
+            .unwrap();
+
+        // No metadata → needs reindex
+        assert!(needs_reindex_after_sync(vault));
+    }
+
+    #[test]
+    fn needs_reindex_after_sync_same_commit() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = dir.path().to_str().unwrap();
+
+        Command::new("git")
+            .args(["init"])
+            .current_dir(dir.path())
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "--allow-empty", "-m", "init"])
+            .current_dir(dir.path())
+            .output()
+            .unwrap();
+
+        let head = get_head_commit(vault).unwrap();
+        let meta = IndexMetadata {
+            last_indexed_commit: Some(head),
+            last_indexed_at: Some(1709000000),
+        };
+        save_index_metadata(vault, &meta).unwrap();
+
+        assert!(!needs_reindex_after_sync(vault));
+    }
+
+    #[test]
+    fn needs_reindex_after_sync_different_commit() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = dir.path().to_str().unwrap();
+
+        Command::new("git")
+            .args(["init"])
+            .current_dir(dir.path())
+            .output()
+            .unwrap();
+        Command::new("git")
+            .args(["commit", "--allow-empty", "-m", "init"])
+            .current_dir(dir.path())
+            .output()
+            .unwrap();
+
+        let meta = IndexMetadata {
+            last_indexed_commit: Some("old_commit_hash".to_string()),
+            last_indexed_at: Some(1709000000),
+        };
+        save_index_metadata(vault, &meta).unwrap();
+
+        assert!(needs_reindex_after_sync(vault));
+    }
+
+    #[test]
+    fn check_index_status_includes_metadata() {
+        let dir = tempfile::tempdir().unwrap();
+        let vault = dir.path().to_str().unwrap();
+
+        let meta = IndexMetadata {
+            last_indexed_commit: Some("abc123".to_string()),
+            last_indexed_at: Some(1709000000),
+        };
+        save_index_metadata(vault, &meta).unwrap();
+
+        let status = check_index_status(vault);
+        assert_eq!(status.last_indexed_commit.as_deref(), Some("abc123"));
+        assert_eq!(status.last_indexed_at, Some(1709000000));
     }
 }
