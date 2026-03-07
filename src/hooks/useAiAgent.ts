@@ -208,7 +208,7 @@ function toVaultRelative(filePath: string, vaultPath: string): string | null {
 }
 
 /** Detect file operations from completed tool calls and notify callbacks. */
-function detectFileOperation(
+export function detectFileOperation(
   toolName: string,
   input: string | undefined,
   vaultPath: string,
@@ -236,7 +236,7 @@ function detectFileOperation(
 }
 
 /** Detect .md file creation from a Bash command string. */
-function parseBashFileCreation(input: string | undefined, vaultPath: string): string | null {
+export function parseBashFileCreation(input: string | undefined, vaultPath: string): string | null {
   if (!input) return null
   try {
     const parsed = JSON.parse(input)
