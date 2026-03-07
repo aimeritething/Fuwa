@@ -4,7 +4,6 @@ import { AiMessage } from './AiMessage'
 import { WikilinkChatInput } from './WikilinkChatInput'
 import { useAiAgent, type AiAgentMessage, type AgentFileCallbacks } from '../hooks/useAiAgent'
 import { collectLinkedEntries, buildContextSnapshot, type NoteReference, type NoteListItem } from '../utils/ai-context'
-import { findEntryByTarget } from '../utils/wikilinkColors'
 import type { VaultEntry } from '../types'
 
 export type { AiAgentMessage } from '../hooks/useAiAgent'
@@ -169,10 +168,8 @@ export function AiPanel({ onClose, onOpenNote, onFileCreated, onFileModified, va
   }, [handleEscape])
 
   const handleNavigateWikilink = useCallback((target: string) => {
-    if (!entries) return
-    const entry = findEntryByTarget(entries, target)
-    if (entry) onOpenNote?.(entry.path)
-  }, [entries, onOpenNote])
+    onOpenNote?.(target)
+  }, [onOpenNote])
 
   const handleSend = useCallback((text: string, references: NoteReference[]) => {
     if (!text.trim() || isActive) return
