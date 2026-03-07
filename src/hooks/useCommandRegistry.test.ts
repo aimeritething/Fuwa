@@ -215,18 +215,18 @@ describe('install-mcp command', () => {
     expect(cmd!.label).toBe('Restore MCP Server')
   })
 
-  it('is disabled when mcpStatus is checking', () => {
+  it('is enabled even when mcpStatus is checking', () => {
     const config = makeConfig({ mcpStatus: 'checking', onInstallMcp: vi.fn() })
     const { result } = renderHook(() => useCommandRegistry(config))
     const cmd = findCommand(result.current, 'install-mcp')
-    expect(cmd!.enabled).toBe(false)
+    expect(cmd!.enabled).toBe(true)
   })
 
-  it('is disabled when no handler provided', () => {
+  it('is enabled even when no handler provided', () => {
     const config = makeConfig({ mcpStatus: 'not_installed' })
     const { result } = renderHook(() => useCommandRegistry(config))
     const cmd = findCommand(result.current, 'install-mcp')
-    expect(cmd!.enabled).toBe(false)
+    expect(cmd!.enabled).toBe(true)
   })
 
   it('has restore keyword for discoverability', () => {
