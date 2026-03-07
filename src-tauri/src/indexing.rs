@@ -464,7 +464,9 @@ where
 
     ensure_collection(vault_path)?;
 
-    // Phase 1: update (scan files)
+    let vault_name = vault_dir_name(vault_path);
+
+    // Phase 1: update (scan files) — scoped to this vault's collection only
     on_progress(IndexingProgress {
         phase: "scanning".to_string(),
         current: 0,
@@ -475,7 +477,7 @@ where
 
     let update_output = qmd
         .command()
-        .args(["update"])
+        .args(["update", &vault_name])
         .output()
         .map_err(|e| format!("qmd update failed: {e}"))?;
 
@@ -504,7 +506,7 @@ where
         error: None,
     });
 
-    // Phase 2: embed (generate vectors)
+    // Phase 2: embed (generate vectors) — scoped to this vault's collection only
     on_progress(IndexingProgress {
         phase: "embedding".to_string(),
         current: 0,
@@ -515,7 +517,7 @@ where
 
     let embed_output = qmd
         .command()
-        .args(["embed"])
+        .args(["embed", "-c", &vault_name])
         .output()
         .map_err(|e| format!("qmd embed failed: {e}"))?;
 
@@ -579,7 +581,7 @@ pub fn run_incremental_update(vault_path: &str) -> Result<(), String> {
 
     let output = qmd
         .command()
-        .args(["update"])
+        .args(["update", &vault_name])
         .output()
         .map_err(|e| format!("qmd incremental update failed: {e}"))?;
 
