@@ -13,6 +13,7 @@ interface AiPanelProps {
   onOpenNote?: (path: string) => void
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
+  onVaultChanged?: () => void
   vaultPath: string
   activeEntry?: VaultEntry | null
   entries?: VaultEntry[]
@@ -109,7 +110,7 @@ function MessageHistory({ messages, isActive, onOpenNote, onNavigateWikilink, ha
   )
 }
 
-export function AiPanel({ onClose, onOpenNote, onFileCreated, onFileModified, vaultPath, activeEntry, entries, allContent, openTabs, noteList, noteListFilter }: AiPanelProps) {
+export function AiPanel({ onClose, onOpenNote, onFileCreated, onFileModified, onVaultChanged, vaultPath, activeEntry, entries, allContent, openTabs, noteList, noteListFilter }: AiPanelProps) {
   const [input, setInput] = useState('')
   const [pendingRefs, setPendingRefs] = useState<NoteReference[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -136,7 +137,8 @@ export function AiPanel({ onClose, onOpenNote, onFileCreated, onFileModified, va
   const fileCallbacks = useMemo<AgentFileCallbacks>(() => ({
     onFileCreated,
     onFileModified,
-  }), [onFileCreated, onFileModified])
+    onVaultChanged,
+  }), [onFileCreated, onFileModified, onVaultChanged])
 
   const agent = useAiAgent(vaultPath, contextPrompt, fileCallbacks)
   const hasContext = !!activeEntry

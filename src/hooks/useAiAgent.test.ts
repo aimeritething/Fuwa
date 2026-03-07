@@ -8,6 +8,7 @@ function makeCallbacks() {
   return {
     onFileCreated: vi.fn(),
     onFileModified: vi.fn(),
+    onVaultChanged: vi.fn(),
   } satisfies AgentFileCallbacks
 }
 
@@ -45,16 +46,45 @@ describe('detectFileOperation', () => {
     expect(cb.onFileModified).not.toHaveBeenCalled()
   })
 
-  it('handles undefined input gracefully', () => {
+  it('calls onVaultChanged when Write input is undefined', () => {
     const cb = makeCallbacks()
     detectFileOperation('Write', undefined, VAULT, cb)
     expect(cb.onFileCreated).not.toHaveBeenCalled()
+    expect(cb.onVaultChanged).toHaveBeenCalled()
   })
 
-  it('handles malformed JSON input gracefully', () => {
+  it('calls onVaultChanged when Edit input is undefined', () => {
+    const cb = makeCallbacks()
+    detectFileOperation('Edit', undefined, VAULT, cb)
+    expect(cb.onFileModified).not.toHaveBeenCalled()
+    expect(cb.onVaultChanged).toHaveBeenCalled()
+  })
+
+  it('calls onVaultChanged when Write has malformed JSON input', () => {
     const cb = makeCallbacks()
     detectFileOperation('Write', 'not-json', VAULT, cb)
     expect(cb.onFileCreated).not.toHaveBeenCalled()
+    expect(cb.onVaultChanged).toHaveBeenCalled()
+  })
+
+  it('does not call onVaultChanged when Write detects specific file', () => {
+    const cb = makeCallbacks()
+    detectFileOperation('Write', JSON.stringify({ file_path: `${VAULT}/note/test.md` }), VAULT, cb)
+    expect(cb.onFileCreated).toHaveBeenCalledWith('note/test.md')
+    expect(cb.onVaultChanged).not.toHaveBeenCalled()
+  })
+
+  it('does not call onVaultChanged for Read tool', () => {
+    const cb = makeCallbacks()
+    detectFileOperation('Read', undefined, VAULT, cb)
+    expect(cb.onVaultChanged).not.toHaveBeenCalled()
+  })
+
+  it('calls onVaultChanged when Bash input is undefined', () => {
+    const cb = makeCallbacks()
+    detectFileOperation('Bash', undefined, VAULT, cb)
+    expect(cb.onFileCreated).not.toHaveBeenCalled()
+    expect(cb.onVaultChanged).toHaveBeenCalled()
   })
 
   it('handles undefined callbacks gracefully', () => {

@@ -287,6 +287,10 @@ function App() {
     }
   }, [vault, notes, resolvedPath])
 
+  const handleAgentVaultChanged = useCallback(() => {
+    vault.reloadVault()
+  }, [vault])
+
   const { triggerIncrementalIndex } = indexing
   const onAfterSave = useCallback(() => {
     vault.loadModifiedFiles()
@@ -599,6 +603,7 @@ function App() {
             isDarkTheme={themeManager.isDark}
             onFileCreated={handleAgentFileCreated}
             onFileModified={handleAgentFileModified}
+            onVaultChanged={handleAgentVaultChanged}
           />
         </div>
       </div>

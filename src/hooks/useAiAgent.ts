@@ -32,6 +32,8 @@ export interface AiAgentMessage {
 export interface AgentFileCallbacks {
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
+  /** Fallback: vault may have changed but we can't determine the specific file. */
+  onVaultChanged?: () => void
 }
 
 export function useAiAgent(
@@ -172,6 +174,8 @@ export function useAiAgent(
           response: finalResponse,
           actions: m.actions.map(a => a.status === 'pending' ? { ...a, status: 'done' as const } : a),
         }))
+        // Safety net: refresh vault after agent completes in case file changes were missed
+        fileCallbacksRef.current?.onVaultChanged?.()
       },
     })
   }, [status, vaultPath])
@@ -219,20 +223,26 @@ export function detectFileOperation(
   // Handle Bash commands that create/write .md files
   if (toolName === 'Bash') {
     const mdPath = parseBashFileCreation(input, vaultPath)
-    if (mdPath) callbacks.onFileCreated?.(mdPath)
+    if (mdPath) { callbacks.onFileCreated?.(mdPath); return }
+    // Bash ran but we couldn't detect a specific .md file — still may have changed vault
+    callbacks.onVaultChanged?.()
     return
   }
 
   if (toolName !== 'Write' && toolName !== 'Edit') return
+
   const filePath = parseFilePath(input)
-  if (!filePath || !filePath.endsWith('.md')) return
-  const rel = toVaultRelative(filePath, vaultPath)
-  if (!rel) return
-  if (toolName === 'Write') {
-    callbacks.onFileCreated?.(rel)
-  } else {
-    callbacks.onFileModified?.(rel)
+  if (filePath && filePath.endsWith('.md')) {
+    const rel = toVaultRelative(filePath, vaultPath)
+    if (rel) {
+      if (toolName === 'Write') callbacks.onFileCreated?.(rel)
+      else callbacks.onFileModified?.(rel)
+      return
+    }
   }
+
+  // Write/Edit completed but couldn't determine target file — trigger vault refresh
+  callbacks.onVaultChanged?.()
 }
 
 /** Detect .md file creation from a Bash command string. */

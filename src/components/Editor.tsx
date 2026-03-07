@@ -73,6 +73,7 @@ interface EditorProps {
   diffToggleRef?: React.MutableRefObject<() => void>
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
+  onVaultChanged?: () => void
 }
 
 function useEditorModeExclusion({
@@ -131,6 +132,7 @@ export const Editor = memo(function Editor({
   diffToggleRef,
   onFileCreated,
   onFileModified,
+  onVaultChanged,
 }: EditorProps) {
   const vaultPathRef = useRef(vaultPath)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
@@ -248,6 +250,7 @@ export const Editor = memo(function Editor({
           onOpenNote={onNavigateWikilink}
           onFileCreated={onFileCreated}
           onFileModified={onFileModified}
+          onVaultChanged={onVaultChanged}
         />
       </div>
     </div>
