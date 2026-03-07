@@ -59,9 +59,11 @@ fn ensure_config_type_definition(vault_path: &str) {
 }
 
 /// Migrate root `AGENTS.md` → `config/agents.md` for existing vaults.
+///
 /// - If root `AGENTS.md` exists and `config/agents.md` does not: move content, write stub.
 /// - If root `AGENTS.md` exists and `config/agents.md` also exists: just replace root with stub.
 /// - If root `AGENTS.md` doesn't exist: write the stub anyway (for Codex discoverability).
+///
 /// Always idempotent and silent.
 pub fn migrate_agents_md(vault_path: &str) {
     let vault = Path::new(vault_path);
