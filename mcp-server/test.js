@@ -4,8 +4,7 @@ import fs from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import {
-  readNote, createNote, searchNotes, appendToNote, findMarkdownFiles,
-  editNoteFrontmatter, deleteNote, linkNotes, listNotes, vaultContext,
+  findMarkdownFiles, getNote, searchNotes, vaultContext,
 } from './vault.js'
 
 let tmpDir
@@ -65,36 +64,20 @@ describe('findMarkdownFiles', () => {
   })
 })
 
-describe('readNote', () => {
-  it('should read a note by relative path', async () => {
-    const content = await readNote(tmpDir, 'project/test-project.md')
-    assert.ok(content.includes('Test Project'))
-    assert.ok(content.includes('is_a: Project'))
+describe('getNote', () => {
+  it('should read a note with parsed frontmatter', async () => {
+    const note = await getNote(tmpDir, 'project/test-project.md')
+    assert.equal(note.path, 'project/test-project.md')
+    assert.equal(note.frontmatter.title, 'Test Project')
+    assert.equal(note.frontmatter.is_a, 'Project')
+    assert.ok(note.content.includes('test project for the MCP server'))
   })
 
   it('should throw for missing notes', async () => {
     await assert.rejects(
-      () => readNote(tmpDir, 'nonexistent.md'),
+      () => getNote(tmpDir, 'nonexistent.md'),
       { code: 'ENOENT' }
     )
-  })
-})
-
-describe('createNote', () => {
-  it('should create a note with frontmatter', async () => {
-    const absPath = await createNote(tmpDir, 'note/new-note.md', 'My New Note', { is_a: 'Note' })
-    assert.ok(absPath.endsWith('new-note.md'))
-
-    const content = await fs.readFile(absPath, 'utf-8')
-    assert.ok(content.includes('title: My New Note'))
-    assert.ok(content.includes('is_a: Note'))
-    assert.ok(content.includes('# My New Note'))
-  })
-
-  it('should create parent directories', async () => {
-    const absPath = await createNote(tmpDir, 'deep/nested/dir/note.md', 'Deep Note')
-    const content = await fs.readFile(absPath, 'utf-8')
-    assert.ok(content.includes('# Deep Note'))
   })
 })
 
@@ -118,123 +101,6 @@ describe('searchNotes', () => {
   it('should respect limit', async () => {
     const results = await searchNotes(tmpDir, 'project', 1)
     assert.ok(results.length <= 1)
-  })
-})
-
-describe('appendToNote', () => {
-  it('should append text to a note', async () => {
-    await appendToNote(tmpDir, 'note/daily-log.md', '## Evening Update\nFinished testing.')
-    const content = await readNote(tmpDir, 'note/daily-log.md')
-    assert.ok(content.includes('## Evening Update'))
-    assert.ok(content.includes('Finished testing.'))
-  })
-})
-
-describe('editNoteFrontmatter', () => {
-  it('should merge a patch into frontmatter', async () => {
-    const updated = await editNoteFrontmatter(tmpDir, 'project/test-project.md', { status: 'Completed', priority: 'High' })
-    assert.equal(updated.status, 'Completed')
-    assert.equal(updated.priority, 'High')
-    assert.equal(updated.title, 'Test Project')
-  })
-
-  it('should preserve existing frontmatter fields', async () => {
-    const content = await readNote(tmpDir, 'project/test-project.md')
-    assert.ok(content.includes('is_a: Project'))
-    assert.ok(content.includes('status: Completed'))
-  })
-
-  it('should throw for missing file', async () => {
-    await assert.rejects(
-      () => editNoteFrontmatter(tmpDir, 'nonexistent.md', { foo: 'bar' }),
-      { code: 'ENOENT' }
-    )
-  })
-})
-
-describe('deleteNote', () => {
-  it('should delete an existing note', async () => {
-    const delPath = 'note/to-delete.md'
-    await createNote(tmpDir, delPath, 'To Delete')
-    const absPath = path.join(tmpDir, delPath)
-
-    // Verify it exists
-    await fs.access(absPath)
-
-    await deleteNote(tmpDir, delPath)
-
-    await assert.rejects(
-      () => fs.access(absPath),
-      { code: 'ENOENT' }
-    )
-  })
-
-  it('should throw for missing file', async () => {
-    await assert.rejects(
-      () => deleteNote(tmpDir, 'nonexistent.md'),
-      { code: 'ENOENT' }
-    )
-  })
-})
-
-describe('linkNotes', () => {
-  it('should add a target to an array property', async () => {
-    const linkPath = 'project/link-test.md'
-    await createNote(tmpDir, linkPath, 'Link Test', { is_a: 'Project' })
-
-    const result = await linkNotes(tmpDir, linkPath, 'related_to', '[[note/daily-log]]')
-    assert.deepEqual(result, ['[[note/daily-log]]'])
-  })
-
-  it('should not duplicate existing links', async () => {
-    const linkPath = 'project/link-test.md'
-
-    await linkNotes(tmpDir, linkPath, 'related_to', '[[note/daily-log]]')
-    const result = await linkNotes(tmpDir, linkPath, 'related_to', '[[note/daily-log]]')
-    assert.equal(result.length, 1)
-  })
-
-  it('should add multiple distinct links', async () => {
-    const linkPath = 'project/link-test.md'
-
-    await linkNotes(tmpDir, linkPath, 'related_to', '[[project/test-project]]')
-    const result = await linkNotes(tmpDir, linkPath, 'related_to', '[[project/test-project]]')
-    // Should have daily-log and test-project
-    assert.ok(result.includes('[[note/daily-log]]'))
-    assert.ok(result.includes('[[project/test-project]]'))
-    assert.equal(result.length, 2)
-  })
-})
-
-describe('listNotes', () => {
-  it('should list all notes sorted by title', async () => {
-    const notes = await listNotes(tmpDir)
-    assert.ok(notes.length >= 3)
-    // Verify sorted by title
-    for (let i = 1; i < notes.length; i++) {
-      assert.ok(notes[i - 1].title.localeCompare(notes[i].title) <= 0)
-    }
-  })
-
-  it('should filter by type', async () => {
-    const projects = await listNotes(tmpDir, 'Project')
-    assert.ok(projects.length >= 1)
-    for (const n of projects) {
-      assert.equal(n.type, 'Project')
-    }
-  })
-
-  it('should return empty for unknown type', async () => {
-    const notes = await listNotes(tmpDir, 'UnknownType12345')
-    assert.equal(notes.length, 0)
-  })
-
-  it('should support mtime sorting', async () => {
-    const notes = await listNotes(tmpDir, undefined, 'mtime')
-    assert.ok(notes.length >= 1)
-    // Just verify it returns results without crashing
-    assert.ok(notes[0].path)
-    assert.ok(notes[0].title)
   })
 })
 
@@ -263,5 +129,16 @@ describe('vaultContext', () => {
       assert.ok(note.path)
       assert.ok(note.title)
     }
+  })
+
+  it('should include folders', async () => {
+    const ctx = await vaultContext(tmpDir)
+    assert.ok(ctx.folders.includes('project/'))
+    assert.ok(ctx.folders.includes('note/'))
+  })
+
+  it('should report correct note count', async () => {
+    const ctx = await vaultContext(tmpDir)
+    assert.equal(ctx.noteCount, 3)
   })
 })

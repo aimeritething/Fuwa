@@ -50,6 +50,8 @@ const TOOL_HANDLERS = {
   ui_open_tab: (args) => { broadcastUiAction('open_tab', { path: args.path }); return { ok: true } },
   ui_highlight: (args) => { broadcastUiAction('highlight', { element: args.element, path: args.path }); return { ok: true } },
   ui_set_filter: (args) => { broadcastUiAction('set_filter', { filterType: args.type }); return { ok: true } },
+  highlight_editor: (args) => { broadcastUiAction('highlight', { element: args.element, path: args.path }); return { ok: true } },
+  refresh_vault: (args) => { broadcastUiAction('vault_changed', { path: args?.path }); return { ok: true } },
 }
 
 async function handleMessage(data) {

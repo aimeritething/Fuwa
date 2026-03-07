@@ -10,6 +10,8 @@
  *   - get_vault_context: vault structure overview (types, note count, folders)
  *   - get_note: parsed frontmatter + content (convenience over raw cat)
  *   - open_note: signal Laputa UI to open a note as a tab
+ *   - highlight_editor: visually highlight a UI element (editor, tab, etc.)
+ *   - refresh_vault: trigger vault rescan so new/modified files appear
  */
 import { Server } from '@modelcontextprotocol/sdk/server/index.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
@@ -94,6 +96,28 @@ const TOOLS = [
       required: ['path'],
     },
   },
+  {
+    name: 'highlight_editor',
+    description: 'Visually highlight a UI element in Laputa (editor, tab, properties panel, or note list). The highlight auto-clears after a short delay.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        element: { type: 'string', enum: ['editor', 'tab', 'properties', 'notelist'], description: 'Which UI element to highlight' },
+        path: { type: 'string', description: 'Optional note path to associate with the highlight' },
+      },
+      required: ['element'],
+    },
+  },
+  {
+    name: 'refresh_vault',
+    description: 'Trigger a vault rescan so new or modified files appear immediately in the Laputa note list.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Optional specific note path that changed' },
+      },
+    },
+  },
 ]
 
 const TOOL_HANDLERS = {
@@ -101,6 +125,8 @@ const TOOL_HANDLERS = {
   get_vault_context: handleVaultContext,
   get_note: handleGetNote,
   open_note: handleOpenNote,
+  highlight_editor: handleHighlightEditor,
+  refresh_vault: handleRefreshVault,
 }
 
 async function handleSearchNotes(args) {
@@ -126,10 +152,20 @@ function handleOpenNote(args) {
   return { content: [{ type: 'text', text: `Opening ${args.path} in Laputa` }] }
 }
 
+function handleHighlightEditor(args) {
+  broadcastUiAction('highlight', { element: args.element, path: args.path })
+  return { content: [{ type: 'text', text: `Highlighting ${args.element}` }] }
+}
+
+function handleRefreshVault(args) {
+  broadcastUiAction('vault_changed', { path: args?.path })
+  return { content: [{ type: 'text', text: 'Vault refresh triggered' }] }
+}
+
 // --- Server setup ---
 
 const server = new Server(
-  { name: 'laputa-mcp-server', version: '0.2.0' },
+  { name: 'laputa-mcp-server', version: '0.3.0' },
   { capabilities: { tools: {} } },
 )
 
