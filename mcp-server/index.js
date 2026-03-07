@@ -148,6 +148,9 @@ async function handleGetNote(args) {
 }
 
 function handleOpenNote(args) {
+  // Refresh vault first so the new/modified note appears in the note list,
+  // then signal the UI to open it in a tab.
+  broadcastUiAction('vault_changed', { path: args.path })
   broadcastUiAction('open_tab', { path: args.path })
   return { content: [{ type: 'text', text: `Opening ${args.path} in Laputa` }] }
 }

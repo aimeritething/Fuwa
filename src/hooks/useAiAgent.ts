@@ -105,7 +105,10 @@ export function useAiAgent(
         if (abortRef.current.aborted) return
         markReasoningDone()
         setStatus('tool-executing')
-        toolInputMapRef.current.set(toolId, { tool: toolName, input })
+        // Preserve accumulated input — tool_progress events arrive with
+        // input=undefined AFTER the assistant message set the full input.
+        const prev = toolInputMapRef.current.get(toolId)
+        toolInputMapRef.current.set(toolId, { tool: toolName, input: input ?? prev?.input })
         update(m => {
           const existing = m.actions.find(a => a.toolId === toolId)
           if (existing) {
@@ -212,6 +215,14 @@ function detectFileOperation(
   callbacks: AgentFileCallbacks | undefined,
 ) {
   if (!callbacks) return
+
+  // Handle Bash commands that create/write .md files
+  if (toolName === 'Bash') {
+    const mdPath = parseBashFileCreation(input, vaultPath)
+    if (mdPath) callbacks.onFileCreated?.(mdPath)
+    return
+  }
+
   if (toolName !== 'Write' && toolName !== 'Edit') return
   const filePath = parseFilePath(input)
   if (!filePath || !filePath.endsWith('.md')) return
@@ -221,6 +232,23 @@ function detectFileOperation(
     callbacks.onFileCreated?.(rel)
   } else {
     callbacks.onFileModified?.(rel)
+  }
+}
+
+/** Detect .md file creation from a Bash command string. */
+function parseBashFileCreation(input: string | undefined, vaultPath: string): string | null {
+  if (!input) return null
+  try {
+    const parsed = JSON.parse(input)
+    const cmd = parsed.command ?? parsed.cmd
+    if (typeof cmd !== 'string') return null
+    // Match redirect patterns: > file.md, >> file.md, tee file.md, cat > file.md
+    const match = cmd.match(/(?:>|>>|tee\s+(?:-a\s+)?)\s*["']?([^\s"'|;]+\.md)["']?/)
+    if (!match) return null
+    const filePath = match[1]
+    return toVaultRelative(filePath, vaultPath)
+  } catch {
+    return null
   }
 }
 
