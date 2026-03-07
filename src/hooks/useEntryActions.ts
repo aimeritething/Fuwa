@@ -55,27 +55,30 @@ export function useEntryActions({
     updateEntry(typeEntry.path, { icon, color })
     await handleUpdateFrontmatter(typeEntry.path, 'icon', icon)
     await handleUpdateFrontmatter(typeEntry.path, 'color', color)
-  }, [entries, handleUpdateFrontmatter, updateEntry, createTypeEntry])
+    onFrontmatterPersisted?.()
+  }, [entries, handleUpdateFrontmatter, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
-  const handleReorderSections = useCallback((orderedTypes: { typeName: string; order: number }[]) => {
+  const handleReorderSections = useCallback(async (orderedTypes: { typeName: string; order: number }[]) => {
     for (const { typeName, order } of orderedTypes) {
-      const typeEntry = findTypeEntry(entries, typeName)
-      if (!typeEntry) continue
-      handleUpdateFrontmatter(typeEntry.path, 'order', order)
+      let typeEntry = findTypeEntry(entries, typeName)
+      if (!typeEntry) typeEntry = await createTypeEntry(typeName)
+      await handleUpdateFrontmatter(typeEntry.path, 'order', order)
       updateEntry(typeEntry.path, { order })
     }
-  }, [entries, handleUpdateFrontmatter, updateEntry])
+    onFrontmatterPersisted?.()
+  }, [entries, handleUpdateFrontmatter, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
-  const handleUpdateTypeTemplate = useCallback((typeName: string, template: string) => {
-    const typeEntry = findTypeEntry(entries, typeName)
-    if (!typeEntry) return
-    handleUpdateFrontmatter(typeEntry.path, 'template', template)
+  const handleUpdateTypeTemplate = useCallback(async (typeName: string, template: string) => {
+    let typeEntry = findTypeEntry(entries, typeName)
+    if (!typeEntry) typeEntry = await createTypeEntry(typeName)
+    await handleUpdateFrontmatter(typeEntry.path, 'template', template)
     updateEntry(typeEntry.path, { template: template || null })
-  }, [entries, handleUpdateFrontmatter, updateEntry])
+    onFrontmatterPersisted?.()
+  }, [entries, handleUpdateFrontmatter, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
   const handleRenameSection = useCallback(async (typeName: string, label: string) => {
-    const typeEntry = findTypeEntry(entries, typeName)
-    if (!typeEntry) return
+    let typeEntry = findTypeEntry(entries, typeName)
+    if (!typeEntry) typeEntry = await createTypeEntry(typeName)
     const trimmed = label.trim()
     updateEntry(typeEntry.path, { sidebarLabel: trimmed || null })
     if (trimmed) {
@@ -83,7 +86,8 @@ export function useEntryActions({
     } else {
       await handleDeleteProperty(typeEntry.path, 'sidebar label')
     }
-  }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry])
+    onFrontmatterPersisted?.()
+  }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
   const handleToggleTypeVisibility = useCallback(async (typeName: string) => {
     let typeEntry = findTypeEntry(entries, typeName)
@@ -95,7 +99,8 @@ export function useEntryActions({
       updateEntry(typeEntry.path, { visible: false })
       await handleUpdateFrontmatter(typeEntry.path, 'visible', false)
     }
-  }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry])
+    onFrontmatterPersisted?.()
+  }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
   return { handleTrashNote, handleRestoreNote, handleArchiveNote, handleUnarchiveNote, handleCustomizeType, handleReorderSections, handleUpdateTypeTemplate, handleRenameSection, handleToggleTypeVisibility }
 }

@@ -141,6 +141,7 @@ describe('useEntryActions', () => {
       expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/recipe.md', 'icon', 'cooking-pot')
       expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/recipe.md', 'color', 'green')
       expect(updateEntry).toHaveBeenCalledWith('/vault/type/recipe.md', { icon: 'cooking-pot', color: 'green' })
+      expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
     it('auto-creates type entry when not found and applies customization', async () => {
@@ -174,50 +175,52 @@ describe('useEntryActions', () => {
   })
 
   describe('handleUpdateTypeTemplate', () => {
-    it('updates template on the type entry', () => {
+    it('updates template on the type entry', async () => {
       const typeEntry = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/type/project.md' })
       const { result } = setup([typeEntry])
 
-      act(() => {
-        result.current.handleUpdateTypeTemplate('Project', '## Objective\n\n## Notes')
+      await act(async () => {
+        await result.current.handleUpdateTypeTemplate('Project', '## Objective\n\n## Notes')
       })
 
       expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/project.md', 'template', '## Objective\n\n## Notes')
       expect(updateEntry).toHaveBeenCalledWith('/vault/type/project.md', { template: '## Objective\n\n## Notes' })
+      expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
-    it('sets template to null when empty string', () => {
+    it('sets template to null when empty string', async () => {
       const typeEntry = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/type/project.md' })
       const { result } = setup([typeEntry])
 
-      act(() => {
-        result.current.handleUpdateTypeTemplate('Project', '')
+      await act(async () => {
+        await result.current.handleUpdateTypeTemplate('Project', '')
       })
 
       expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/project.md', 'template', '')
       expect(updateEntry).toHaveBeenCalledWith('/vault/type/project.md', { template: null })
     })
 
-    it('does nothing when type entry not found', () => {
+    it('auto-creates type entry when not found', async () => {
       const { result } = setup([])
 
-      act(() => {
-        result.current.handleUpdateTypeTemplate('NonExistent', '## Template')
+      await act(async () => {
+        await result.current.handleUpdateTypeTemplate('NonExistent', '## Template')
       })
 
-      expect(handleUpdateFrontmatter).not.toHaveBeenCalled()
-      expect(updateEntry).not.toHaveBeenCalled()
+      expect(createTypeEntry).toHaveBeenCalledWith('NonExistent')
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/nonexistent.md', 'template', '## Template')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/type/nonexistent.md', { template: '## Template' })
     })
   })
 
   describe('handleReorderSections', () => {
-    it('updates order on multiple type entries', () => {
+    it('updates order on multiple type entries', async () => {
       const typeA = makeEntry({ isA: 'Type', title: 'Note', path: '/vault/type/note.md' })
       const typeB = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/type/project.md' })
       const { result } = setup([typeA, typeB])
 
-      act(() => {
-        result.current.handleReorderSections([
+      await act(async () => {
+        await result.current.handleReorderSections([
           { typeName: 'Note', order: 0 },
           { typeName: 'Project', order: 1 },
         ])
@@ -227,23 +230,24 @@ describe('useEntryActions', () => {
       expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/project.md', 'order', 1)
       expect(updateEntry).toHaveBeenCalledWith('/vault/type/note.md', { order: 0 })
       expect(updateEntry).toHaveBeenCalledWith('/vault/type/project.md', { order: 1 })
+      expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
-    it('skips types that are not found', () => {
+    it('auto-creates type entries when not found', async () => {
       const typeA = makeEntry({ isA: 'Type', title: 'Note', path: '/vault/type/note.md' })
       const { result } = setup([typeA])
 
-      act(() => {
-        result.current.handleReorderSections([
+      await act(async () => {
+        await result.current.handleReorderSections([
           { typeName: 'Note', order: 0 },
           { typeName: 'Missing', order: 1 },
         ])
       })
 
-      // Only Note's order was set; Missing was skipped
-      expect(handleUpdateFrontmatter).toHaveBeenCalledTimes(1)
+      expect(createTypeEntry).toHaveBeenCalledWith('Missing')
+      expect(handleUpdateFrontmatter).toHaveBeenCalledTimes(2)
       expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/note.md', 'order', 0)
-      expect(updateEntry).toHaveBeenCalledTimes(1)
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/missing.md', 'order', 1)
     })
   })
 
@@ -258,6 +262,7 @@ describe('useEntryActions', () => {
 
       expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/recipe.md', 'sidebar label', 'Recipes')
       expect(updateEntry).toHaveBeenCalledWith('/vault/type/recipe.md', { sidebarLabel: 'Recipes' })
+      expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
     it('trims whitespace before saving', async () => {
@@ -285,15 +290,16 @@ describe('useEntryActions', () => {
       expect(handleUpdateFrontmatter).not.toHaveBeenCalled()
     })
 
-    it('does nothing when type entry not found', async () => {
+    it('auto-creates type entry when not found', async () => {
       const { result } = setup([])
 
       await act(async () => {
         await result.current.handleRenameSection('NonExistent', 'Label')
       })
 
-      expect(handleUpdateFrontmatter).not.toHaveBeenCalled()
-      expect(updateEntry).not.toHaveBeenCalled()
+      expect(createTypeEntry).toHaveBeenCalledWith('NonExistent')
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/nonexistent.md', 'sidebar label', 'Label')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/type/nonexistent.md', { sidebarLabel: 'Label' })
     })
   })
 
@@ -308,6 +314,7 @@ describe('useEntryActions', () => {
 
       expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/journal.md', 'visible', false)
       expect(updateEntry).toHaveBeenCalledWith('/vault/type/journal.md', { visible: false })
+      expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
     it('sets visible to true (deletes property) when currently hidden', async () => {
@@ -320,6 +327,7 @@ describe('useEntryActions', () => {
 
       expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/type/journal.md', 'visible')
       expect(updateEntry).toHaveBeenCalledWith('/vault/type/journal.md', { visible: null })
+      expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
     it('auto-creates type entry when not found', async () => {
