@@ -4,10 +4,12 @@ import { AiPanel } from './AiPanel'
 import type { VaultEntry } from '../types'
 
 // Mock the hooks and utils to isolate component tests
+let mockMessages: ReturnType<typeof import('../hooks/useAiAgent').useAiAgent>['messages'] = []
+let mockStatus: ReturnType<typeof import('../hooks/useAiAgent').useAiAgent>['status'] = 'idle'
 vi.mock('../hooks/useAiAgent', () => ({
   useAiAgent: () => ({
-    messages: [],
-    status: 'idle',
+    messages: mockMessages,
+    status: mockStatus,
     sendMessage: vi.fn(),
     clearConversation: vi.fn(),
   }),
@@ -45,6 +47,11 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
 })
 
 describe('AiPanel', () => {
+  beforeEach(() => {
+    mockMessages = []
+    mockStatus = 'idle'
+  })
+
   it('renders panel with AI Chat header', () => {
     render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)
     expect(screen.getByText('AI Chat')).toBeTruthy()
@@ -161,5 +168,42 @@ describe('AiPanel', () => {
     panel.focus()
     fireEvent.keyDown(panel, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('clicking a wikilink in AI response calls onOpenNote with the target', () => {
+    mockMessages = [{
+      userMessage: 'Tell me about notes',
+      actions: [],
+      response: 'Check out [[Build Laputa App]] for details.',
+      id: 'msg-1',
+    }]
+    const onOpenNote = vi.fn()
+    const { container } = render(
+      <AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" onOpenNote={onOpenNote} />,
+    )
+    const wikilink = container.querySelector('.chat-wikilink')
+    expect(wikilink).toBeTruthy()
+    expect(wikilink!.textContent).toBe('Build Laputa App')
+    fireEvent.click(wikilink!)
+    expect(onOpenNote).toHaveBeenCalledWith('Build Laputa App')
+  })
+
+  it('renders wikilinks with special characters and clicking works', () => {
+    mockMessages = [{
+      userMessage: 'Tell me about meetings',
+      actions: [],
+      response: 'See [[Meeting — 2024/01/15]] and [[Pasta Carbonara]].',
+      id: 'msg-2',
+    }]
+    const onOpenNote = vi.fn()
+    const { container } = render(
+      <AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" onOpenNote={onOpenNote} />,
+    )
+    const wikilinks = container.querySelectorAll('.chat-wikilink')
+    expect(wikilinks).toHaveLength(2)
+    fireEvent.click(wikilinks[0])
+    expect(onOpenNote).toHaveBeenCalledWith('Meeting — 2024/01/15')
+    fireEvent.click(wikilinks[1])
+    expect(onOpenNote).toHaveBeenCalledWith('Pasta Carbonara')
   })
 })

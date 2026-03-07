@@ -48,15 +48,19 @@ test.describe('AI chat wikilink rendering', () => {
   })
 
   test('clicking a wikilink opens the note in a tab', async ({ page }) => {
-    const wikilink = page.locator('.chat-wikilink').first()
-    await expect(wikilink).toHaveText('Build Laputa App')
+    // Click the second wikilink ("Matteo Cellini") which is NOT already open in a tab
+    const wikilink = page.locator('.chat-wikilink').nth(1)
+    await expect(wikilink).toHaveText('Matteo Cellini')
+
+    // Verify "Matteo Cellini" is not yet in any tab
+    const tabsBefore = await page.locator('span.truncate:has-text("Matteo Cellini")').count()
 
     // Click the wikilink
     await wikilink.click()
     await page.waitForTimeout(500)
 
-    // Verify the note opened in a tab — the editor breadcrumb shows the active note title
-    const breadcrumb = page.locator('.app__editor span.truncate.font-medium', { hasText: 'Build Laputa App' })
-    await expect(breadcrumb).toBeVisible({ timeout: 3000 })
+    // Verify a new tab appeared with the note title
+    const tabsAfter = await page.locator('span.truncate:has-text("Matteo Cellini")').count()
+    expect(tabsAfter).toBeGreaterThan(tabsBefore)
   })
 })

@@ -331,6 +331,12 @@ describe('buildContextSnapshot', () => {
     expect(json.noteList).toBeUndefined()
   })
 
+  it('includes wikilink instruction in preamble', () => {
+    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    expect(result).toContain('[[Note Title]]')
+    expect(result).toContain('wikilink')
+  })
+
   it('includes belongsTo and relatedTo in frontmatter', () => {
     const entryWithRels = makeEntry({
       path: '/vault/a.md', title: 'Alpha',
