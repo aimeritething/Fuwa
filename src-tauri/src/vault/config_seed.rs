@@ -117,8 +117,8 @@ pub fn repair_config_files(vault_path: &str) -> Result<String, String> {
         let root_content = fs::read_to_string(&root_agents).unwrap_or_default();
         let is_stub = root_content.contains("See config/agents.md");
         if !is_stub && !root_content.is_empty() {
-            let config_needs_write = !agents_path.exists()
-                || fs::metadata(&agents_path).map_or(true, |m| m.len() == 0);
+            let config_needs_write =
+                !agents_path.exists() || fs::metadata(&agents_path).map_or(true, |m| m.len() == 0);
             if config_needs_write {
                 fs::write(&agents_path, &root_content)
                     .map_err(|e| format!("Failed to migrate AGENTS.md: {e}"))?;
@@ -138,8 +138,7 @@ pub fn repair_config_files(vault_path: &str) -> Result<String, String> {
 
     // Step 3: Ensure type/config.md
     let type_dir = vault.join("type");
-    fs::create_dir_all(&type_dir)
-        .map_err(|e| format!("Failed to create type directory: {e}"))?;
+    fs::create_dir_all(&type_dir).map_err(|e| format!("Failed to create type directory: {e}"))?;
     let config_type_path = type_dir.join("config.md");
     let type_needs_write = !config_type_path.exists()
         || fs::metadata(&config_type_path).map_or(true, |m| m.len() == 0);
@@ -150,8 +149,7 @@ pub fn repair_config_files(vault_path: &str) -> Result<String, String> {
 
     // Step 4: Ensure root AGENTS.md stub exists
     let stub_needs_write = !root_agents.exists()
-        || fs::read_to_string(&root_agents)
-            .map_or(true, |c| !c.contains("See config/agents.md"));
+        || fs::read_to_string(&root_agents).map_or(true, |c| !c.contains("See config/agents.md"));
     if stub_needs_write {
         fs::write(&root_agents, AGENTS_MD_STUB)
             .map_err(|e| format!("Failed to write AGENTS.md stub: {e}"))?;

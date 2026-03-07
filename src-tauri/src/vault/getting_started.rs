@@ -597,8 +597,7 @@ mod tests {
         let vault_path = dir.path().join("agents-parse-vault");
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
-        let entry =
-            crate::vault::parse_md_file(&vault_path.join("config/agents.md")).unwrap();
+        let entry = crate::vault::parse_md_file(&vault_path.join("config/agents.md")).unwrap();
         assert_eq!(
             entry.title,
             "AGENTS.md \u{2014} Vault Instructions for AI Agents"
