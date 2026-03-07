@@ -13,14 +13,14 @@ vi.mock('../utils/ai-chat', async () => {
     ...actual,
     streamClaudeChat: (...args: Parameters<typeof actual.streamClaudeChat>) => {
       streamClaudeChatMock(...args)
-      // Simulate async: call onDone after a tick
+      // Simulate async: emit Init with session_id, then text, then done
       const callbacks = args[3]
       setTimeout(() => {
-        callbacks.onInit?.('test-session')
+        callbacks.onInit?.('session-001')
         callbacks.onText('mock response')
         callbacks.onDone()
       }, 10)
-      return Promise.resolve('test-session')
+      return Promise.resolve('session-001')
     },
   }
 })
@@ -39,40 +39,42 @@ afterEach(() => {
 describe('useAIChat', () => {
   const emptyContent: Record<string, string> = {}
 
-  it('sends first message without history', async () => {
+  it('sends first message without session_id (new session)', async () => {
     const { result } = renderHook(() => useAIChat(emptyContent, []))
 
     act(() => { result.current.sendMessage('hello') })
 
     expect(streamClaudeChatMock).toHaveBeenCalledTimes(1)
-    const message = streamClaudeChatMock.mock.calls[0][0]
-    // First message: no history, so just the plain text
+    const [message, , sessionId] = streamClaudeChatMock.mock.calls[0]
+    // First message: raw text, no session_id
     expect(message).toBe('hello')
+    expect(sessionId).toBeUndefined()
   })
 
-  it('includes conversation history in second message', async () => {
+  it('resumes session on second message via --resume', async () => {
     const { result } = renderHook(() => useAIChat(emptyContent, []))
 
     // Send first message
     act(() => { result.current.sendMessage('What is Rust?') })
-    // Wait for mock response
+    // Wait for mock response (which fires onInit with session-001)
     await act(async () => { vi.advanceTimersByTime(50) })
 
-    // Now messages state has: [user: What is Rust?, assistant: mock response]
     expect(result.current.messages).toHaveLength(2)
 
-    // Send second message
+    // Send second message — should resume with session_id
     act(() => { result.current.sendMessage('Tell me more') })
 
     expect(streamClaudeChatMock).toHaveBeenCalledTimes(2)
-    const secondMessage = streamClaudeChatMock.mock.calls[1][0]
-    // Should contain conversation history
-    expect(secondMessage).toContain('What is Rust?')
-    expect(secondMessage).toContain('mock response')
-    expect(secondMessage).toContain('Tell me more')
+    const [message, systemPrompt, sessionId] = streamClaudeChatMock.mock.calls[1]
+    // Raw message only (no embedded history)
+    expect(message).toBe('Tell me more')
+    // Session resumed via --resume
+    expect(sessionId).toBe('session-001')
+    // System prompt omitted on resumed sessions
+    expect(systemPrompt).toBeUndefined()
   })
 
-  it('resets history on clearConversation', async () => {
+  it('resets session on clearConversation', async () => {
     const { result } = renderHook(() => useAIChat(emptyContent, []))
 
     // Send a message and get response
@@ -83,14 +85,15 @@ describe('useAIChat', () => {
     act(() => { result.current.clearConversation() })
     expect(result.current.messages).toHaveLength(0)
 
-    // Send new message — should have no history
+    // Send new message — should start a fresh session (no session_id)
     act(() => { result.current.sendMessage('fresh start') })
 
     const lastCall = streamClaudeChatMock.mock.calls[streamClaudeChatMock.mock.calls.length - 1]
     expect(lastCall[0]).toBe('fresh start')
+    expect(lastCall[2]).toBeUndefined() // no session_id
   })
 
-  it('accumulates multiple exchanges in history', async () => {
+  it('resumes session across multiple exchanges', async () => {
     const { result } = renderHook(() => useAIChat(emptyContent, []))
 
     // Exchange 1
@@ -105,26 +108,54 @@ describe('useAIChat', () => {
     act(() => { result.current.sendMessage('Q3') })
 
     expect(streamClaudeChatMock).toHaveBeenCalledTimes(3)
-    const thirdMessage = streamClaudeChatMock.mock.calls[2][0]
-    // Should contain all prior exchanges
-    expect(thirdMessage).toContain('Q1')
-    expect(thirdMessage).toContain('Q2')
-    expect(thirdMessage).toContain('Q3')
+
+    // First call: no session
+    expect(streamClaudeChatMock.mock.calls[0][2]).toBeUndefined()
+    // Second and third calls: resume session
+    expect(streamClaudeChatMock.mock.calls[1][2]).toBe('session-001')
+    expect(streamClaudeChatMock.mock.calls[2][2]).toBe('session-001')
+
+    // All messages are raw text (no embedded history)
+    expect(streamClaudeChatMock.mock.calls[0][0]).toBe('Q1')
+    expect(streamClaudeChatMock.mock.calls[1][0]).toBe('Q2')
+    expect(streamClaudeChatMock.mock.calls[2][0]).toBe('Q3')
   })
 
-  it('does not pass session_id to avoid --resume (history is in prompt)', async () => {
-    const { result } = renderHook(() => useAIChat(emptyContent, []))
+  it('includes system prompt only on first message of a session', async () => {
+    const content = { 'note.md': 'Some note content' }
+    const notes = [{ path: 'note.md', title: 'Test Note' }] as import('../types').VaultEntry[]
 
-    // First message
+    const { result } = renderHook(() => useAIChat(content, notes))
+
+    // First message — system prompt included
     act(() => { result.current.sendMessage('hello') })
     await act(async () => { vi.advanceTimersByTime(50) })
 
-    // Second message — session_id should still be undefined (no --resume)
+    const firstSystemPrompt = streamClaudeChatMock.mock.calls[0][1]
+    expect(firstSystemPrompt).toBeTruthy()
+    expect(firstSystemPrompt).toContain('Test Note')
+
+    // Second message — system prompt omitted (session already has it)
     act(() => { result.current.sendMessage('follow up') })
 
-    expect(streamClaudeChatMock).toHaveBeenCalledTimes(2)
-    // Third argument is sessionId — must be undefined for both calls
-    expect(streamClaudeChatMock.mock.calls[0][2]).toBeUndefined()
-    expect(streamClaudeChatMock.mock.calls[1][2]).toBeUndefined()
+    const secondSystemPrompt = streamClaudeChatMock.mock.calls[1][1]
+    expect(secondSystemPrompt).toBeUndefined()
+  })
+
+  it('resets session on retry', async () => {
+    const { result } = renderHook(() => useAIChat(emptyContent, []))
+
+    // Send message and get response
+    act(() => { result.current.sendMessage('hello') })
+    await act(async () => { vi.advanceTimersByTime(50) })
+    expect(result.current.messages).toHaveLength(2)
+
+    // Retry the assistant response (index 1)
+    act(() => { result.current.retryMessage(1) })
+
+    // Should start a fresh session
+    const lastCall = streamClaudeChatMock.mock.calls[streamClaudeChatMock.mock.calls.length - 1]
+    expect(lastCall[2]).toBeUndefined() // no session_id — fresh session
+    expect(lastCall[0]).toBe('hello') // re-sends the user message
   })
 })
