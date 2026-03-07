@@ -1,4 +1,5 @@
 mod cache;
+mod config_seed;
 mod getting_started;
 mod image;
 mod migration;
@@ -7,6 +8,7 @@ mod rename;
 mod trash;
 
 pub use cache::scan_vault_cached;
+pub use config_seed::{migrate_agents_md, repair_config_files, seed_config_files};
 pub use getting_started::{create_getting_started_vault, default_vault_path, vault_exists};
 pub use image::{copy_image_to_vault, save_image};
 pub use migration::migrate_is_a_to_type;
@@ -277,6 +279,7 @@ fn infer_type_from_folder(folder: &str) -> String {
         "target" => "Target",
         "journal" => "Journal",
         "month" => "Month",
+        "config" => "Config",
         "essay" => "Essay",
         "evergreen" => "Evergreen",
         _ => return title_case_folder(folder),

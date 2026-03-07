@@ -56,6 +56,11 @@ fn run_startup_tasks() {
     // Seed type/theme.md so the Theme type has an icon in the sidebar
     let _ = theme::ensure_theme_type_definition(vp_str);
 
+    // Migrate root AGENTS.md → config/agents.md (one-time, idempotent)
+    vault::migrate_agents_md(vp_str);
+    // Seed config/ with default config files if missing
+    vault::seed_config_files(vp_str);
+
     // Register Laputa MCP server in Claude Code and Cursor configs
     match mcp::register_mcp(vp_str) {
         Ok(status) => log::info!("MCP registration: {status}"),
@@ -167,6 +172,7 @@ pub fn run() {
             commands::create_vault_theme,
             commands::ensure_vault_themes,
             commands::restore_default_themes,
+            commands::repair_vault,
             commands::get_vault_config,
             commands::save_vault_config
         ])

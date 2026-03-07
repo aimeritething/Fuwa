@@ -18,10 +18,10 @@ struct SampleFile {
     content: &'static str,
 }
 
-/// Content for the AGENTS.md file written to the vault root.
+/// Content for config/agents.md — vault instructions for AI agents.
 /// This file has no YAML frontmatter — it is a convention file for AI agents,
 /// not a vault note. The vault scanner will still pick it up as a regular entry.
-const AGENTS_MD: &str = r#"# AGENTS.md — Vault Instructions for AI Agents
+pub(super) const AGENTS_MD: &str = r#"# AGENTS.md — Vault Instructions for AI Agents
 
 This is a [Laputa](https://github.com/refactoring-ai/laputa) vault — a folder of markdown files with YAML frontmatter that form a personal knowledge graph.
 
@@ -136,6 +136,10 @@ const SAMPLE_FILES: &[SampleFile] = &[
     SampleFile {
         rel_path: "type/theme.md",
         content: "---\nIs A: Type\nicon: palette\ncolor: purple\norder: 50\n---\n\n# Theme\n\nA visual theme for Laputa. Each theme defines CSS custom properties that control colors, typography, and spacing.\n",
+    },
+    SampleFile {
+        rel_path: "type/config.md",
+        content: "---\nIs A: Type\nicon: gear-six\ncolor: gray\norder: 90\nsidebar label: Config\n---\n\n# Config\n\nVault configuration files. These control how AI agents, tools, and other integrations interact with this vault.\n",
     },
     SampleFile {
         rel_path: "note/welcome-to-laputa.md",
@@ -384,9 +388,19 @@ pub fn create_getting_started_vault(target_path: &str) -> Result<String, String>
     fs::create_dir_all(vault_dir)
         .map_err(|e| format!("Failed to create vault directory: {}", e))?;
 
-    // Write AGENTS.md at the vault root
-    fs::write(vault_dir.join("AGENTS.md"), AGENTS_MD)
-        .map_err(|e| format!("Failed to write AGENTS.md: {}", e))?;
+    // Write config/agents.md with vault instructions for AI agents
+    let config_dir = vault_dir.join("config");
+    fs::create_dir_all(&config_dir)
+        .map_err(|e| format!("Failed to create config directory: {}", e))?;
+    fs::write(config_dir.join("agents.md"), AGENTS_MD)
+        .map_err(|e| format!("Failed to write config/agents.md: {}", e))?;
+
+    // Write root AGENTS.md stub for Codex discoverability
+    fs::write(
+        vault_dir.join("AGENTS.md"),
+        "# Agent Instructions\n\nSee config/agents.md for vault instructions.\n",
+    )
+    .map_err(|e| format!("Failed to write AGENTS.md stub: {}", e))?;
 
     for sample in SAMPLE_FILES {
         let file_path = vault_dir.join(sample.rel_path);
@@ -462,6 +476,7 @@ mod tests {
         assert!(result.is_ok());
 
         // Verify key files exist
+        assert!(vault_path.join("config/agents.md").exists());
         assert!(vault_path.join("AGENTS.md").exists());
         assert!(vault_path.join("note/welcome-to-laputa.md").exists());
         assert!(vault_path.join("note/editor-basics.md").exists());
@@ -476,6 +491,7 @@ mod tests {
         assert!(vault_path.join("type/note.md").exists());
         assert!(vault_path.join("type/person.md").exists());
         assert!(vault_path.join("type/topic.md").exists());
+        assert!(vault_path.join("type/config.md").exists());
     }
 
     #[test]
@@ -530,57 +546,64 @@ mod tests {
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
         let entries = crate::vault::scan_vault(&vault_path).unwrap();
-        // SAMPLE_FILES + AGENTS.md + 3 vault theme notes (theme/default.md, dark.md, minimal.md)
-        assert_eq!(entries.len(), SAMPLE_FILES.len() + 1 + 3);
+        // SAMPLE_FILES + config/agents.md + AGENTS.md stub + 3 vault theme notes
+        assert_eq!(entries.len(), SAMPLE_FILES.len() + 2 + 3);
     }
 
     #[test]
-    fn test_agents_md_present_after_vault_creation() {
+    fn test_config_agents_md_present_after_vault_creation() {
         let dir = tempfile::TempDir::new().unwrap();
         let vault_path = dir.path().join("agents-vault");
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
-        let agents_path = vault_path.join("AGENTS.md");
-        assert!(agents_path.exists(), "AGENTS.md should exist at vault root");
+        let agents_path = vault_path.join("config/agents.md");
+        assert!(
+            agents_path.exists(),
+            "config/agents.md should exist in vault"
+        );
 
         let content = fs::read_to_string(&agents_path).unwrap();
+        assert!(content.contains("Vault Instructions for AI Agents"));
+        assert!(content.contains("## Structure"));
+        assert!(content.contains("## Frontmatter"));
+        assert!(content.contains("## Wikilinks"));
+        assert!(content.contains("## Type definitions"));
+        assert!(content.contains("## Conventions"));
+    }
+
+    #[test]
+    fn test_root_agents_md_is_stub_after_vault_creation() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().join("stub-vault");
+        create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
+
+        let root_path = vault_path.join("AGENTS.md");
+        assert!(root_path.exists(), "Root AGENTS.md stub should exist");
+
+        let content = fs::read_to_string(&root_path).unwrap();
         assert!(
-            content.contains("Vault Instructions for AI Agents"),
-            "AGENTS.md should contain instructions header"
+            content.contains("See config/agents.md"),
+            "Root AGENTS.md should redirect to config/agents.md"
         );
         assert!(
-            content.contains("## Structure"),
-            "AGENTS.md should describe vault structure"
-        );
-        assert!(
-            content.contains("## Frontmatter"),
-            "AGENTS.md should describe frontmatter"
-        );
-        assert!(
-            content.contains("## Wikilinks"),
-            "AGENTS.md should describe wikilinks"
-        );
-        assert!(
-            content.contains("## Type definitions"),
-            "AGENTS.md should describe type definitions"
-        );
-        assert!(
-            content.contains("## Conventions"),
-            "AGENTS.md should describe conventions"
+            !content.contains("## Structure"),
+            "Root AGENTS.md should not contain full instructions"
         );
     }
 
     #[test]
-    fn test_agents_md_parseable_as_vault_entry() {
+    fn test_config_agents_md_parseable_as_vault_entry() {
         let dir = tempfile::TempDir::new().unwrap();
         let vault_path = dir.path().join("agents-parse-vault");
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
-        let entry = crate::vault::parse_md_file(&vault_path.join("AGENTS.md")).unwrap();
+        let entry =
+            crate::vault::parse_md_file(&vault_path.join("config/agents.md")).unwrap();
         assert_eq!(
             entry.title,
             "AGENTS.md \u{2014} Vault Instructions for AI Agents"
         );
+        assert_eq!(entry.is_a.as_deref(), Some("Config"));
     }
 
     #[test]
