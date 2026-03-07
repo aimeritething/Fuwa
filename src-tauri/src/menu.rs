@@ -49,6 +49,7 @@ const VAULT_RESOLVE_CONFLICTS: &str = "vault-resolve-conflicts";
 const VAULT_VIEW_CHANGES: &str = "vault-view-changes";
 const VAULT_INSTALL_MCP: &str = "vault-install-mcp";
 const VAULT_REINDEX: &str = "vault-reindex";
+const VAULT_REPAIR: &str = "vault-repair";
 
 const CUSTOM_IDS: &[&str] = &[
     APP_SETTINGS,
@@ -90,6 +91,7 @@ const CUSTOM_IDS: &[&str] = &[
     VAULT_VIEW_CHANGES,
     VAULT_INSTALL_MCP,
     VAULT_REINDEX,
+    VAULT_REPAIR,
 ];
 
 /// IDs of menu items that should be disabled when no note tab is active.
@@ -337,6 +339,9 @@ fn build_vault_menu(app: &App) -> MenuResult {
     let reindex = MenuItemBuilder::new("Reindex Vault")
         .id(VAULT_REINDEX)
         .build(app)?;
+    let repair = MenuItemBuilder::new("Repair Vault")
+        .id(VAULT_REPAIR)
+        .build(app)?;
 
     Ok(SubmenuBuilder::new(app, "Vault")
         .item(&open_vault)
@@ -351,6 +356,7 @@ fn build_vault_menu(app: &App) -> MenuResult {
         .item(&view_changes)
         .separator()
         .item(&reindex)
+        .item(&repair)
         .item(&install_mcp)
         .build()?)
 }

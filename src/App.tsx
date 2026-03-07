@@ -412,6 +412,19 @@ function App() {
     }
   }, [resolvedPath, vault, themeManager, setToastMessage])
 
+  const handleRepairVault = useCallback(async () => {
+    if (!resolvedPath) return
+    try {
+      const tauriInvoke = isTauri() ? invoke : mockInvoke
+      const msg = await tauriInvoke<string>('repair_vault', { vaultPath: resolvedPath })
+      await vault.reloadVault()
+      await themeManager.reloadThemes()
+      setToastMessage(msg)
+    } catch (err) {
+      setToastMessage(`Failed to repair vault: ${err}`)
+    }
+  }, [resolvedPath, vault, themeManager, setToastMessage])
+
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
     handleCloseTabRef: notes.handleCloseTabRef, tabs: notes.tabs,
@@ -468,6 +481,7 @@ function App() {
     mcpStatus,
     onInstallMcp: installMcp,
     onReindexVault: indexing.triggerFullReindex,
+    onRepairVault: handleRepairVault,
   })
 
   const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null

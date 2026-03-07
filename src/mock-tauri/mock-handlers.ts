@@ -334,6 +334,7 @@ line-height-base: 1.6
   },
   ensure_vault_themes: (): null => null,
   restore_default_themes: (): string => 'Default themes restored',
+  repair_vault: (): string => 'Vault repaired',
   get_vault_config: (): VaultConfig => ({ zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null }),
   save_vault_config: (): null => null,
 }

@@ -67,6 +67,7 @@ interface AppCommandsConfig {
   mcpStatus?: string
   onInstallMcp?: () => void
   onReindexVault?: () => void
+  onRepairVault?: () => void
 }
 
 /** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
@@ -150,6 +151,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onViewChanges: viewChanges,
     onInstallMcp: config.onInstallMcp,
     onReindexVault: config.onReindexVault,
+    onRepairVault: config.onRepairVault,
     activeTabPathRef: config.activeTabPathRef,
     handleCloseTabRef: config.handleCloseTabRef,
     activeTabPath: config.activeTabPath,
@@ -204,6 +206,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     mcpStatus: config.mcpStatus,
     onInstallMcp: config.onInstallMcp,
     onReindexVault: config.onReindexVault,
+    onRepairVault: config.onRepairVault,
   })
 
   useKeyboardNavigation({

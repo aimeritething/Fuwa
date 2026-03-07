@@ -36,6 +36,7 @@ export interface MenuEventHandlers {
   onViewChanges?: () => void
   onInstallMcp?: () => void
   onReindexVault?: () => void
+  onRepairVault?: () => void
   activeTabPathRef: React.MutableRefObject<string | null>
   handleCloseTabRef: React.MutableRefObject<(path: string) => void>
   activeTabPath: string | null
@@ -78,7 +79,7 @@ type OptionalHandler =
   | 'onCreateType' | 'onToggleRawEditor' | 'onToggleDiff' | 'onToggleAIChat'
   | 'onOpenVault' | 'onRemoveActiveVault' | 'onRestoreGettingStarted'
   | 'onCreateTheme' | 'onRestoreDefaultThemes'
-  | 'onCommitPush' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReindexVault'
+  | 'onCommitPush' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReindexVault' | 'onRepairVault'
 
 const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'view-go-back': 'onGoBack',
@@ -98,6 +99,7 @@ const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'vault-view-changes': 'onViewChanges',
   'vault-install-mcp': 'onInstallMcp',
   'vault-reindex': 'onReindexVault',
+  'vault-repair': 'onRepairVault',
 }
 
 function dispatchActiveTabEvent(id: string, h: MenuEventHandlers): boolean {

@@ -21,6 +21,7 @@ interface CommandRegistryConfig {
   mcpStatus?: string
   onInstallMcp?: () => void
   onReindexVault?: () => void
+  onRepairVault?: () => void
 
   onQuickOpen: () => void
   onCreateNote: () => void
@@ -198,6 +199,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onRemoveActiveVault, onRestoreGettingStarted, onRestoreDefaultThemes, isGettingStartedHidden, vaultCount,
     mcpStatus, onInstallMcp,
     onReindexVault,
+    onRepairVault,
   } = config
 
   const hasActiveNote = activeTabPath !== null
@@ -260,6 +262,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
       { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: true, execute: () => onCheckForUpdates?.() },
       { id: 'install-mcp', label: mcpStatus === 'installed' ? 'Restore MCP Server' : 'Install MCP Server', group: 'Settings', keywords: ['mcp', 'claude', 'ai', 'tools', 'install', 'restore', 'fix', 'repair'], enabled: true, execute: () => onInstallMcp?.() },
       { id: 'reindex-vault', label: 'Reindex Vault', group: 'Settings', keywords: ['reindex', 'index', 'search', 'rebuild', 'refresh'], enabled: !!onReindexVault, execute: () => onReindexVault?.() },
+      { id: 'repair-vault', label: 'Repair Vault', group: 'Settings', keywords: ['repair', 'fix', 'restore', 'config', 'agents', 'themes', 'missing', 'reset'], enabled: !!onRepairVault, execute: () => onRepairVault?.() },
 
       // Type-aware: "New [Type]" and "List [Type]"
       ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
@@ -278,6 +281,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     vaultTypes, themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme, onRestoreDefaultThemes,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
     mcpStatus, onInstallMcp,
-    onReindexVault,
+    onReindexVault, onRepairVault,
   ])
 }

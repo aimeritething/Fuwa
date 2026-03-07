@@ -107,11 +107,22 @@ export async function vaultContext(vaultPath) {
   notesWithMtime.sort((a, b) => b.mtime - a.mtime)
   const recentNotes = notesWithMtime.slice(0, 20).map(({ mtime: _mtime, ...rest }) => rest)
 
+  // Read config files for AI agent context
+  const configFiles = {}
+  try {
+    const agentsPath = path.join(vaultPath, 'config', 'agents.md')
+    const agentsContent = await fs.readFile(agentsPath, 'utf-8')
+    configFiles.agents = agentsContent
+  } catch {
+    // config/agents.md may not exist yet
+  }
+
   return {
     types: [...typesSet].sort(),
     noteCount: files.length,
     folders: [...foldersSet].sort(),
     recentNotes,
+    configFiles,
     vaultPath,
   }
 }
