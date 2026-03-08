@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { invoke } from '@tauri-apps/api/core'
-import { isTauri } from '../mock-tauri'
+import { isTauri, mockInvoke } from '../mock-tauri'
 import type { VaultEntry } from '../types'
 import {
   slugify,
@@ -851,6 +851,109 @@ describe('useNoteActions hook', () => {
 
       expect(removeEntry).toHaveBeenCalledWith(createdPath)
       expect(clearUnsaved).toHaveBeenCalledWith(createdPath)
+    })
+  })
+
+  describe('move note to type folder on type change', () => {
+    it('calls move_note_to_type_folder when type key is updated', async () => {
+      const entry = makeEntry({ path: '/test/vault/note/my-note.md', filename: 'my-note.md', title: 'My Note', isA: 'Note' })
+      const replaceEntry = vi.fn()
+      const config = makeConfig([entry])
+      config.replaceEntry = replaceEntry
+
+      vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
+        if (cmd === 'move_note_to_type_folder') return { new_path: '/test/vault/quarter/my-note.md', updated_links: 0, moved: true }
+        if (cmd === 'get_note_content') return '---\ntype: Quarter\n---\n# My Note\n'
+        return ''
+      })
+
+      const { result } = renderHook(() => useNoteActions(config))
+
+      await act(async () => {
+        await result.current.handleUpdateFrontmatter('/test/vault/note/my-note.md', 'type', 'Quarter')
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('move_note_to_type_folder', expect.objectContaining({
+        vault_path: '/test/vault',
+        note_path: '/test/vault/note/my-note.md',
+        new_type: 'Quarter',
+      }))
+      expect(replaceEntry).toHaveBeenCalledWith(
+        '/test/vault/note/my-note.md',
+        expect.objectContaining({ path: '/test/vault/quarter/my-note.md' }),
+        expect.any(String),
+      )
+      expect(setToastMessage).toHaveBeenCalledWith('Note moved to quarter/')
+    })
+
+    it('does not call move when type key is not being changed', async () => {
+      const config = makeConfig()
+      vi.mocked(mockInvoke).mockResolvedValue('')
+
+      const { result } = renderHook(() => useNoteActions(config))
+
+      await act(async () => {
+        await result.current.handleUpdateFrontmatter('/vault/note.md', 'status', 'Done')
+      })
+
+      expect(mockInvoke).not.toHaveBeenCalledWith('move_note_to_type_folder', expect.anything())
+    })
+
+    it('does not move when result.moved is false (already in correct folder)', async () => {
+      const entry = makeEntry({ path: '/test/vault/quarter/my-note.md', filename: 'my-note.md', isA: 'Quarter' })
+      const replaceEntry = vi.fn()
+      const config = makeConfig([entry])
+      config.replaceEntry = replaceEntry
+
+      vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
+        if (cmd === 'move_note_to_type_folder') return { new_path: '/test/vault/quarter/my-note.md', updated_links: 0, moved: false }
+        return ''
+      })
+
+      const { result } = renderHook(() => useNoteActions(config))
+
+      await act(async () => {
+        await result.current.handleUpdateFrontmatter('/test/vault/quarter/my-note.md', 'type', 'Quarter')
+      })
+
+      expect(replaceEntry).not.toHaveBeenCalled()
+      // Should still show 'Property updated' toast (not move toast)
+      expect(setToastMessage).toHaveBeenCalledWith('Property updated')
+    })
+
+    it('handles Is A key (case-insensitive)', async () => {
+      const entry = makeEntry({ path: '/test/vault/note/my-note.md' })
+      const config = makeConfig([entry])
+      config.replaceEntry = vi.fn()
+
+      vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
+        if (cmd === 'move_note_to_type_folder') return { new_path: '/test/vault/project/my-note.md', updated_links: 0, moved: true }
+        if (cmd === 'get_note_content') return '---\nIs A: Project\n---\n# My Note\n'
+        return ''
+      })
+
+      const { result } = renderHook(() => useNoteActions(config))
+
+      await act(async () => {
+        await result.current.handleUpdateFrontmatter('/test/vault/note/my-note.md', 'Is A', 'Project')
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('move_note_to_type_folder', expect.objectContaining({
+        new_type: 'Project',
+      }))
+    })
+
+    it('does not move when value is empty or null-like', async () => {
+      const config = makeConfig()
+      vi.mocked(mockInvoke).mockResolvedValue('')
+
+      const { result } = renderHook(() => useNoteActions(config))
+
+      await act(async () => {
+        await result.current.handleUpdateFrontmatter('/vault/note.md', 'type', '')
+      })
+
+      expect(mockInvoke).not.toHaveBeenCalledWith('move_note_to_type_folder', expect.anything())
     })
   })
 })

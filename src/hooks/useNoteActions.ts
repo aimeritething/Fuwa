@@ -19,6 +19,12 @@ interface RenameResult {
   updated_files: number
 }
 
+interface MoveResult {
+  new_path: string
+  updated_links: number
+  moved: boolean
+}
+
 export interface NoteActionsConfig {
   addEntry: (entry: VaultEntry, content: string) => void
   removeEntry: (path: string) => void
@@ -38,6 +44,23 @@ export interface NoteActionsConfig {
   onNewNotePersisted?: () => void
   /** Return cached content for a path (from allContent), or undefined on cache miss. */
   getCachedContent?: (path: string) => string | undefined
+  /** Replace an entry at oldPath with a patch (handles path changes in entries + content). */
+  replaceEntry?: (oldPath: string, patch: Partial<VaultEntry> & { path: string }, newContent: string) => void
+}
+
+async function performMoveToTypeFolder(
+  vaultPath: string, notePath: string, newType: string,
+): Promise<MoveResult> {
+  if (isTauri()) {
+    return invoke<MoveResult>('move_note_to_type_folder', { vaultPath, notePath, newType })
+  }
+  return mockInvoke<MoveResult>('move_note_to_type_folder', { vault_path: vaultPath, note_path: notePath, new_type: newType })
+}
+
+/** Check if a frontmatter key represents the note type. */
+function isTypeKey(key: string): boolean {
+  const k = key.toLowerCase().replace(/\s+/g, '_')
+  return k === 'type' || k === 'is_a'
 }
 
 async function performRename(
@@ -448,7 +471,30 @@ export function useNoteActions(config: NoteActionsConfig) {
     handleOpenDailyNote,
     handleCreateType,
     createTypeEntrySilent,
-    handleUpdateFrontmatter: useCallback((path: string, key: string, value: FrontmatterValue) => runFrontmatterOp('update', path, key, value), [runFrontmatterOp]),
+    handleUpdateFrontmatter: useCallback(async (path: string, key: string, value: FrontmatterValue) => {
+      await runFrontmatterOp('update', path, key, value)
+      if (isTypeKey(key) && typeof value === 'string' && value !== '') {
+        try {
+          const result = await performMoveToTypeFolder(config.vaultPath, path, value)
+          if (result.moved) {
+            const entry = entries.find(e => e.path === path)
+            if (entry) {
+              const newFilename = result.new_path.split('/').pop() ?? entry.filename
+              const newContent = await loadNoteContent(result.new_path)
+              config.replaceEntry?.(path, { ...entry, path: result.new_path, filename: newFilename }, newContent)
+              setTabs(prev => prev.map(t => t.entry.path === path
+                ? { entry: { ...t.entry, path: result.new_path, filename: newFilename }, content: newContent }
+                : t))
+              if (activeTabPathRef.current === path) handleSwitchTab(result.new_path)
+            }
+            const folder = result.new_path.split('/').slice(-2, -1)[0] ?? ''
+            setToastMessage(`Note moved to ${folder}/`)
+          }
+        } catch (err) {
+          console.error('Failed to move note to type folder:', err)
+        }
+      }
+    }, [runFrontmatterOp, config.vaultPath, config.replaceEntry, entries, setTabs, activeTabPathRef, handleSwitchTab, setToastMessage]),
     handleDeleteProperty: useCallback((path: string, key: string) => runFrontmatterOp('delete', path, key), [runFrontmatterOp]),
     handleAddProperty: useCallback((path: string, key: string, value: FrontmatterValue) => runFrontmatterOp('update', path, key, value), [runFrontmatterOp]),
     handleRenameNote,
