@@ -44,15 +44,11 @@ export function useAiAgent(
   const [messages, setMessages] = useState<AiAgentMessage[]>([])
   const [status, setStatus] = useState<AgentStatus>('idle')
   const abortRef = useRef({ aborted: false })
-  const contextRef = useRef(contextPrompt)
   const responseAccRef = useRef('')
   const fileCallbacksRef = useRef(fileCallbacks)
   // Track tool inputs for file-operation detection on ToolDone
   const toolInputMapRef = useRef<Map<string, { tool: string; input?: string }>>(new Map())
 
-  useEffect(() => {
-    contextRef.current = contextPrompt
-  }, [contextPrompt])
   useEffect(() => {
     fileCallbacksRef.current = fileCallbacks
   }, [fileCallbacks])
@@ -89,7 +85,7 @@ export function useAiAgent(
       update(m => m.reasoningDone ? m : { ...m, reasoningDone: true })
     }
 
-    const systemPrompt = contextRef.current ?? buildAgentSystemPrompt()
+    const systemPrompt = contextPrompt ?? buildAgentSystemPrompt()
 
     await streamClaudeAgent(text.trim(), systemPrompt, vaultPath, {
       onThinking: (chunk) => {
@@ -178,7 +174,7 @@ export function useAiAgent(
         fileCallbacksRef.current?.onVaultChanged?.()
       },
     })
-  }, [status, vaultPath])
+  }, [status, vaultPath, contextPrompt])
 
   const clearConversation = useCallback(() => {
     abortRef.current.aborted = true

@@ -1,6 +1,15 @@
-import { describe, it, expect, vi } from 'vitest'
-import { detectFileOperation, parseBashFileCreation } from './useAiAgent'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, act } from '@testing-library/react'
+import { detectFileOperation, parseBashFileCreation, useAiAgent } from './useAiAgent'
 import type { AgentFileCallbacks } from './useAiAgent'
+import { streamClaudeAgent } from '../utils/ai-agent'
+
+vi.mock('../utils/ai-agent', () => ({
+  streamClaudeAgent: vi.fn(),
+  buildAgentSystemPrompt: vi.fn(() => 'default-system-prompt'),
+}))
+
+const mockStreamClaudeAgent = vi.mocked(streamClaudeAgent)
 
 const VAULT = '/Users/luca/Laputa'
 
@@ -174,5 +183,58 @@ describe('parseBashFileCreation', () => {
   it('returns null for non-md redirect', () => {
     const input = JSON.stringify({ command: `echo "x" > ${VAULT}/file.txt` })
     expect(parseBashFileCreation(input, VAULT)).toBeNull()
+  })
+})
+
+describe('useAiAgent', () => {
+  beforeEach(() => {
+    mockStreamClaudeAgent.mockReset()
+    mockStreamClaudeAgent.mockImplementation(async (_msg: string, _sys: string, _vault: string, callbacks: { onDone: () => void }) => {
+      callbacks.onDone()
+    })
+  })
+
+  it('updates sendMessage when contextPrompt changes (no stale closure)', () => {
+    // Mount with empty contextPrompt (simulates race: panel mounts before tab content loads)
+    const { result, rerender } = renderHook(
+      ({ vault, context }) => useAiAgent(vault, context),
+      { initialProps: { vault: VAULT, context: undefined as string | undefined } },
+    )
+
+    const firstSendMessage = result.current.sendMessage
+
+    // Simulate tab content arriving — re-render with real contextPrompt
+    rerender({ vault: VAULT, context: 'You are viewing note with body: Hello world' })
+
+    // sendMessage must be a NEW function that closes over the updated contextPrompt.
+    // If it's the same reference, it may read stale context (the race condition).
+    expect(result.current.sendMessage).not.toBe(firstSendMessage)
+  })
+
+  it('uses the current contextPrompt at send time, not the mount-time value', async () => {
+    const { result, rerender } = renderHook(
+      ({ vault, context }) => useAiAgent(vault, context),
+      { initialProps: { vault: VAULT, context: undefined as string | undefined } },
+    )
+
+    rerender({ vault: VAULT, context: 'You are viewing note with body: Hello world' })
+
+    await act(async () => {
+      await result.current.sendMessage('What does this note contain?')
+    })
+
+    expect(mockStreamClaudeAgent).toHaveBeenCalledTimes(1)
+    expect(mockStreamClaudeAgent.mock.calls[0][1]).toBe('You are viewing note with body: Hello world')
+  })
+
+  it('falls back to buildAgentSystemPrompt when contextPrompt is undefined', async () => {
+    const { result } = renderHook(() => useAiAgent(VAULT, undefined))
+
+    await act(async () => {
+      await result.current.sendMessage('Hello')
+    })
+
+    expect(mockStreamClaudeAgent).toHaveBeenCalledTimes(1)
+    expect(mockStreamClaudeAgent.mock.calls[0][1]).toBe('default-system-prompt')
   })
 })
