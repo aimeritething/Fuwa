@@ -29,7 +29,7 @@ import { ColorEditableValue } from './ColorInput'
 
 // Keys that are relationships (contain wikilinks)
 export const RELATIONSHIP_KEYS = new Set([
-  'Belongs to', 'Related to', 'Events', 'Has Data', 'Owner',
+  'Belongs to', 'Related to', 'Events', 'Has Data',
   'Advances', 'Parent', 'Children', 'Has', 'Notes',
 ])
 

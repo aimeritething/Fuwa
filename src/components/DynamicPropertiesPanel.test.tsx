@@ -130,6 +130,42 @@ describe('DynamicPropertiesPanel', () => {
     expect(screen.getByText('Luca')).toBeInTheDocument()
   })
 
+  it('renders capitalized Owner with plain text value in Properties panel', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={makeEntry()}
+        content=""
+        frontmatter={{ Owner: 'Luca' }}
+      />
+    )
+    expect(screen.getByText('Owner')).toBeInTheDocument()
+    expect(screen.getByText('Luca')).toBeInTheDocument()
+  })
+
+  it('hides Owner with wikilink value from Properties panel', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={makeEntry()}
+        content=""
+        frontmatter={{ Owner: '[[person/luca]]' }}
+      />
+    )
+    // Owner with wikilink goes to RelationshipsPanel, not Properties
+    expect(screen.queryByText('Owner')).not.toBeInTheDocument()
+  })
+
+  it('renders notion_id as a visible property', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={makeEntry()}
+        content=""
+        frontmatter={{ notion_id: 'abc-123-def' }}
+      />
+    )
+    expect(screen.getByText('notion_id')).toBeInTheDocument()
+    expect(screen.getByText('abc-123-def')).toBeInTheDocument()
+  })
+
   it('skips aliases and relationship keys', () => {
     render(
       <DynamicPropertiesPanel

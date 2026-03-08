@@ -12,7 +12,7 @@ import {
 import { RELATIONSHIP_KEYS, containsWikilinks } from '../components/DynamicPropertiesPanel'
 
 // Keys to skip showing in Properties (handled by dedicated UI or internal)
-const SKIP_KEYS = new Set(['aliases', 'notion_id', 'workspace', 'title', 'type', 'is_a', 'Is A'])
+const SKIP_KEYS = new Set(['aliases', 'workspace', 'title', 'type', 'is_a', 'Is A'])
 
 function coerceValue(raw: string): FrontmatterValue {
   if (raw.toLowerCase() === 'true') return true
