@@ -22,7 +22,6 @@ describe('flushEditorContent', () => {
       savePendingForPath: vi.fn().mockResolvedValue(false),
       getTabContent: vi.fn().mockReturnValue(undefined),
       isUnsaved: vi.fn().mockReturnValue(false),
-      getSavedContent: vi.fn().mockReturnValue(undefined),
       onSaved: vi.fn(),
     }
   })
@@ -51,9 +50,9 @@ describe('flushEditorContent', () => {
     expect(deps.onSaved).toHaveBeenCalledWith('/vault/note.md', '# New note content')
   })
 
-  it('saves tab content when it differs from saved content (dirty editor)', async () => {
+  it('saves tab content when note is marked unsaved (dirty editor)', async () => {
     ;(deps.getTabContent as ReturnType<typeof vi.fn>).mockReturnValue('edited body')
-    ;(deps.getSavedContent as ReturnType<typeof vi.fn>).mockReturnValue('original body')
+    ;(deps.isUnsaved as ReturnType<typeof vi.fn>).mockReturnValue(true)
 
     await flushEditorContent('/vault/note.md', deps)
 
@@ -64,9 +63,9 @@ describe('flushEditorContent', () => {
     expect(deps.onSaved).toHaveBeenCalledWith('/vault/note.md', 'edited body')
   })
 
-  it('does not save when tab content matches saved content (no changes)', async () => {
+  it('does not save when note is not unsaved (clean editor)', async () => {
     ;(deps.getTabContent as ReturnType<typeof vi.fn>).mockReturnValue('same content')
-    ;(deps.getSavedContent as ReturnType<typeof vi.fn>).mockReturnValue('same content')
+    ;(deps.isUnsaved as ReturnType<typeof vi.fn>).mockReturnValue(false)
 
     await flushEditorContent('/vault/note.md', deps)
 

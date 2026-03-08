@@ -13,7 +13,6 @@ interface KeyboardNavigationOptions {
   activeTabPath: string | null
   entries: VaultEntry[]
   selection: SidebarSelection
-  allContent: Record<string, string>
   onSwitchTab: (path: string) => void
   onReplaceActiveTab: (entry: VaultEntry) => void
   onSelectNote: (entry: VaultEntry) => void
@@ -22,10 +21,9 @@ interface KeyboardNavigationOptions {
 function computeVisibleNotes(
   entries: VaultEntry[],
   selection: SidebarSelection,
-  allContent: Record<string, string>,
 ): VaultEntry[] {
   if (selection.kind === 'entity') {
-    return buildRelationshipGroups(selection.entry, entries, allContent)
+    return buildRelationshipGroups(selection.entry, entries)
       .flatMap((g) => g.entries)
   }
   return [...filterEntries(entries, selection)].sort(sortByModified)
@@ -93,12 +91,12 @@ function useLatestRef<T>(value: T): React.RefObject<T> {
 }
 
 export function useKeyboardNavigation({
-  tabs, activeTabPath, entries, selection, allContent,
+  tabs, activeTabPath, entries, selection,
   onSwitchTab, onReplaceActiveTab, onSelectNote,
 }: KeyboardNavigationOptions) {
   const visibleNotes = useMemo(
-    () => computeVisibleNotes(entries, selection, allContent),
-    [entries, selection, allContent],
+    () => computeVisibleNotes(entries, selection),
+    [entries, selection],
   )
 
   const tabsRef = useLatestRef(tabs)

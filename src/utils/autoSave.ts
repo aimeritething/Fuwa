@@ -4,7 +4,6 @@ export interface FlushDeps {
   savePendingForPath: (path: string) => Promise<boolean>
   getTabContent: (path: string) => string | undefined
   isUnsaved: (path: string) => boolean
-  getSavedContent: (path: string) => string | undefined
   onSaved?: (path: string, content: string) => void
 }
 
@@ -22,7 +21,7 @@ export async function flushEditorContent(path: string, deps: FlushDeps): Promise
   const tabContent = deps.getTabContent(path)
   if (tabContent === undefined) return
 
-  if (deps.isUnsaved(path) || tabContent !== deps.getSavedContent(path)) {
+  if (deps.isUnsaved(path)) {
     await persistContent(path, tabContent)
     deps.onSaved?.(path, tabContent)
   }

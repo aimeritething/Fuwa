@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, memo, useMemo } from 'react'
+import { useRef, useEffect, useCallback, memo } from 'react'
 import { useEditorTabSwap, getH1TextFromBlocks } from '../hooks/useEditorTabSwap'
 import { useHeadingTitleSync } from '../hooks/useHeadingTitleSync'
 import { useCreateBlockNote } from '@blocknote/react'
@@ -15,7 +15,6 @@ import { useEditorFocus } from '../hooks/useEditorFocus'
 import { EditorRightPanel } from './EditorRightPanel'
 import { EditorContent } from './EditorContent'
 import { schema } from './editorSchema'
-import { mergeTabContent } from '../utils/mergeTabContent'
 import './Editor.css'
 import './EditorTheme.css'
 
@@ -42,7 +41,6 @@ interface EditorProps {
   onInspectorResize: (delta: number) => void
   inspectorEntry: VaultEntry | null
   inspectorContent: string | null
-  allContent: Record<string, string>
   gitHistory: GitCommit[]
   onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
   onDeleteProperty?: (path: string, key: string) => Promise<void>
@@ -121,7 +119,7 @@ export const Editor = memo(function Editor({
   tabs, activeTabPath, entries, onSwitchTab, onCloseTab, onReorderTabs, onNavigateWikilink,
   onLoadDiff, onLoadDiffAtCommit, getNoteStatus, onCreateNote,
   inspectorCollapsed, onToggleInspector, inspectorWidth, onInspectorResize,
-  inspectorEntry, inspectorContent, allContent, gitHistory,
+  inspectorEntry, inspectorContent, gitHistory,
   onUpdateFrontmatter, onDeleteProperty, onAddProperty,
   showAIChat, onToggleAIChat,
   vaultPath, noteList, noteListFilter,
@@ -172,11 +170,6 @@ export const Editor = memo(function Editor({
   const { handleToggleDiffExclusive, handleToggleRawExclusive } = useEditorModeExclusion({
     diffMode, rawMode, handleToggleDiff, handleToggleRaw, rawToggleRef, diffToggleRef,
   })
-
-  const enrichedAllContent = useMemo(
-    () => mergeTabContent(allContent, tabs),
-    [allContent, tabs],
-  )
 
   const isLoadingNewTab = activeTabPath !== null && !activeTab
   const activeStatus = activeTab ? getNoteStatus?.(activeTab.entry.path) ?? 'clean' : 'clean'
@@ -240,7 +233,6 @@ export const Editor = memo(function Editor({
           inspectorEntry={inspectorEntry}
           inspectorContent={inspectorContent}
           entries={entries}
-          allContent={enrichedAllContent}
           gitHistory={gitHistory}
           vaultPath={vaultPath ?? ''}
           openTabs={tabs.map(t => t.entry)}

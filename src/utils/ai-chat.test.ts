@@ -38,25 +38,23 @@ describe('buildSystemPrompt', () => {
   })
 
   it('returns empty prompt for no notes', () => {
-    const result = buildSystemPrompt([], {})
+    const result = buildSystemPrompt([])
     expect(result.prompt).toBe('')
     expect(result.totalTokens).toBe(0)
     expect(result.truncated).toBe(false)
   })
 
-  it('includes note content in the prompt', () => {
+  it('includes note metadata in the prompt', () => {
     const notes = [makeEntry('/test.md', 'Test Note')]
-    const content = { '/test.md': '# Test Note\nHello world' }
-    const result = buildSystemPrompt(notes, content)
+    const result = buildSystemPrompt(notes)
     expect(result.prompt).toContain('Test Note')
-    expect(result.prompt).toContain('Hello world')
+    expect(result.prompt).toContain('/test.md')
     expect(result.totalTokens).toBeGreaterThan(0)
   })
 
   it('instructs AI to use wikilink syntax', () => {
     const notes = [makeEntry('/test.md', 'Test Note')]
-    const content = { '/test.md': 'content' }
-    const result = buildSystemPrompt(notes, content)
+    const result = buildSystemPrompt(notes)
     expect(result.prompt).toContain('[[')
     expect(result.prompt).toMatch(/wikilink/i)
   })

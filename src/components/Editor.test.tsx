@@ -105,7 +105,6 @@ const defaultProps = {
   onInspectorResize: vi.fn(),
   inspectorEntry: null as VaultEntry | null,
   inspectorContent: null as string | null,
-  allContent: {} as Record<string, string>,
   gitHistory: [],
   onCreateNote: vi.fn(),
 }

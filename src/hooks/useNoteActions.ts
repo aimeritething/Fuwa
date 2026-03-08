@@ -26,9 +26,8 @@ interface MoveResult {
 }
 
 export interface NoteActionsConfig {
-  addEntry: (entry: VaultEntry, content: string) => void
+  addEntry: (entry: VaultEntry) => void
   removeEntry: (path: string) => void
-  updateContent: (path: string, content: string) => void
   entries: VaultEntry[]
   setToastMessage: (msg: string | null) => void
   updateEntry: (path: string, patch: Partial<VaultEntry>) => void
@@ -42,10 +41,8 @@ export interface NoteActionsConfig {
   markContentPending?: (path: string, content: string) => void
   /** Called after a new note is persisted to disk (e.g. to refresh git status for Changes view). */
   onNewNotePersisted?: () => void
-  /** Return cached content for a path (from allContent), or undefined on cache miss. */
-  getCachedContent?: (path: string) => string | undefined
-  /** Replace an entry at oldPath with a patch (handles path changes in entries + content). */
-  replaceEntry?: (oldPath: string, patch: Partial<VaultEntry> & { path: string }, newContent: string) => void
+  /** Replace an entry at oldPath with a patch (handles path changes in entries). */
+  replaceEntry?: (oldPath: string, patch: Partial<VaultEntry> & { path: string }) => void
 }
 
 async function performMoveToTypeFolder(
@@ -201,9 +198,9 @@ export function frontmatterToEntryPatch(
   return updates[k] ?? {}
 }
 
-function addEntryWithMock(entry: VaultEntry, content: string, addEntry: (e: VaultEntry, c: string) => void) {
+function addEntryWithMock(entry: VaultEntry, content: string, addEntry: (e: VaultEntry) => void) {
   if (!isTauri()) addMockEntry(entry, content)
-  addEntry(entry, content)
+  addEntry(entry)
 }
 
 export function buildNoteContent(title: string, type: string, status: string | null, template?: string | null): string {
@@ -300,7 +297,7 @@ function persistOptimistic(path: string, content: string, cbs: PersistCallbacks)
  *  deferred and doesn't block the tab from rendering. */
 function createAndPersist(
   resolved: { entry: VaultEntry; content: string },
-  addFn: (e: VaultEntry, c: string) => void,
+  addFn: (e: VaultEntry) => void,
   openTab: (e: VaultEntry, c: string) => void,
   cbs: PersistCallbacks,
 ): void {
@@ -350,11 +347,8 @@ async function runFrontmatterAndApply(
 }
 
 export function useNoteActions(config: NoteActionsConfig) {
-  const { addEntry, removeEntry, updateContent, entries, setToastMessage, updateEntry, addPendingSave, removePendingSave } = config
-  const tabMgmt = useTabManagement({
-    getCachedContent: config.getCachedContent,
-    onContentLoaded: updateContent,
-  })
+  const { addEntry, removeEntry, entries, setToastMessage, updateEntry, addPendingSave, removePendingSave } = config
+  const tabMgmt = useTabManagement()
   const { setTabs, handleSelectNote, openTabWithContent, handleCloseTab, handleCloseTabRef, activeTabPathRef, handleSwitchTab } = tabMgmt
   const tabsRef = useRef(tabMgmt.tabs)
   // eslint-disable-next-line react-hooks/refs
@@ -365,8 +359,7 @@ export function useNoteActions(config: NoteActionsConfig) {
 
   const updateTabContent = useCallback((path: string, newContent: string) => {
     setTabs((prev) => prev.map((t) => t.entry.path === path ? { ...t, content: newContent } : t))
-    updateContent(path, newContent)
-  }, [setTabs, updateContent])
+  }, [setTabs])
 
   const handleNavigateWikilink = useCallback(
     (target: string) => navigateWikilink(entries, target, handleSelectNote),
@@ -481,7 +474,7 @@ export function useNoteActions(config: NoteActionsConfig) {
             if (entry) {
               const newFilename = result.new_path.split('/').pop() ?? entry.filename
               const newContent = await loadNoteContent(result.new_path)
-              config.replaceEntry?.(path, { ...entry, path: result.new_path, filename: newFilename }, newContent)
+              config.replaceEntry?.(path, { ...entry, path: result.new_path, filename: newFilename })
               setTabs(prev => prev.map(t => t.entry.path === path
                 ? { entry: { ...t.entry, path: result.new_path, filename: newFilename }, content: newContent }
                 : t))

@@ -25,7 +25,6 @@ interface NoteListProps {
   entries: VaultEntry[]
   selection: SidebarSelection
   selectedNote: VaultEntry | null
-  allContent: Record<string, string>
   modifiedFiles?: ModifiedFile[]
   modifiedFilesError?: string | null
   getNoteStatus?: (path: string) => NoteStatus
@@ -241,7 +240,7 @@ function toggleSetMember<T>(set: Set<T>, member: T): Set<T> {
 // --- Data hooks ---
 
 interface NoteListDataParams {
-  entries: VaultEntry[]; selection: SidebarSelection; allContent: Record<string, string>
+  entries: VaultEntry[]; selection: SidebarSelection
   query: string; listSort: SortOption; listDirection: SortDirection
   modifiedPathSet: Set<string>; modifiedSuffixes: string[]
 }
@@ -261,7 +260,7 @@ function useFilteredEntries(entries: VaultEntry[], selection: SidebarSelection, 
   }, [entries, selection, isEntityView, isChangesView, modifiedPathSet, modifiedSuffixes])
 }
 
-function useNoteListData({ entries, selection, allContent, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes }: NoteListDataParams) {
+function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes }: NoteListDataParams) {
   const isEntityView = selection.kind === 'entity'
   const isTrashView = selection.kind === 'filter' && selection.filter === 'trash'
 
@@ -274,9 +273,9 @@ function useNoteListData({ entries, selection, allContent, query, listSort, list
 
   const searchedGroups = useMemo(() => {
     if (!isEntityView) return []
-    const groups = buildRelationshipGroups(selection.entry, entries, allContent)
+    const groups = buildRelationshipGroups(selection.entry, entries)
     return filterGroupsByQuery(groups, query)
-  }, [isEntityView, selection, entries, allContent, query])
+  }, [isEntityView, selection, entries, query])
 
   const expiredTrashCount = useMemo(
     () => isTrashView ? countExpiredTrash(searched) : 0,
@@ -484,14 +483,14 @@ function useModifiedFilesState(modifiedFiles: ModifiedFile[] | undefined, getNot
   return { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus }
 }
 
-function NoteListInner({ entries, selection, selectedNote, allContent, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onUpdateTypeSort, updateEntry }: NoteListProps) {
+function NoteListInner({ entries, selection, selectedNote, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onUpdateTypeSort, updateEntry }: NoteListProps) {
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
   const { listSort, listDirection, customProperties, handleSortChange, sortPrefs, typeDocument } = useNoteListSort({ entries, selection, modifiedPathSet, modifiedSuffixes, onUpdateTypeSort, updateEntry })
   const { search, setSearch, query, searchVisible, toggleSearch } = useNoteListSearch()
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   const typeEntryMap = useTypeEntryMap(entries)
-  const { isEntityView, isTrashView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, allContent, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes })
+  const { isEntityView, isTrashView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes })
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
   const entitySelection = isEntityView && selection.kind === 'entity' ? selection : null
 

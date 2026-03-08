@@ -81,7 +81,7 @@ describe('AiPanel', () => {
   it('renders contextual empty state when active entry is provided', () => {
     const entry = makeEntry({ title: 'My Note' })
     render(
-      <AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" activeEntry={entry} entries={[entry]} allContent={{}} />
+      <AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" activeEntry={entry} entries={[entry]} />
     )
     expect(screen.getByText('Ask about this note and its linked context')).toBeTruthy()
   })
@@ -89,7 +89,7 @@ describe('AiPanel', () => {
   it('shows context bar with active entry title', () => {
     const entry = makeEntry({ title: 'My Note' })
     render(
-      <AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" activeEntry={entry} entries={[entry]} allContent={{}} />
+      <AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" activeEntry={entry} entries={[entry]} />
     )
     expect(screen.getByTestId('context-bar')).toBeTruthy()
     expect(screen.getByText('My Note')).toBeTruthy()
@@ -102,8 +102,7 @@ describe('AiPanel', () => {
       <AiPanel
         onClose={vi.fn()} vaultPath="/tmp/vault"
         activeEntry={entry} entries={[entry, linked]}
-        allContent={{}}
-      />
+             />
     )
     expect(screen.getByText('+ 1 linked')).toBeTruthy()
   })
@@ -129,7 +128,7 @@ describe('AiPanel', () => {
   it('shows contextual placeholder when active entry exists', () => {
     const entry = makeEntry({ title: 'My Note' })
     render(
-      <AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" activeEntry={entry} entries={[entry]} allContent={{}} />
+      <AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" activeEntry={entry} entries={[entry]} />
     )
     const input = screen.getByTestId('agent-input') as HTMLInputElement
     expect(input.placeholder).toBe('Ask about this note...')

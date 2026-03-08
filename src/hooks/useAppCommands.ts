@@ -15,7 +15,6 @@ interface AppCommandsConfig {
   handleCloseTabRef: React.MutableRefObject<(path: string) => void>
   tabs: Tab[]
   entries: VaultEntry[]
-  allContent: Record<string, string>
   modifiedCount: number
   selection: SidebarSelection
   onQuickOpen: () => void
@@ -214,7 +213,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     activeTabPath: config.activeTabPath,
     entries: config.entries,
     selection: config.selection,
-    allContent: config.allContent,
     onSwitchTab: config.onSwitchTab,
     onReplaceActiveTab: config.onReplaceActiveTab,
     onSelectNote: config.onSelectNote,

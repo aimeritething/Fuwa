@@ -2,7 +2,6 @@ import { useMemo, useState, useCallback } from 'react'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
 import type { ParsedFrontmatter } from '../utils/frontmatter'
-import { parseFrontmatter } from '../utils/frontmatter'
 import {
   type PropertyDisplayMode,
   loadDisplayModeOverrides,
@@ -62,22 +61,17 @@ function collectVaultStatuses(entries: VaultEntry[] | undefined): string[] {
   return Array.from(seen).sort((a, b) => a.localeCompare(b))
 }
 
-function mergeArrayFieldsInto(fm: ParsedFrontmatter, tagsByKey: Map<string, Set<string>>): void {
-  for (const [key, value] of Object.entries(fm)) {
-    if (!Array.isArray(value)) continue
-    let set = tagsByKey.get(key)
-    if (!set) { set = new Set(); tagsByKey.set(key, set) }
-    for (const tag of value) set.add(String(tag))
-  }
-}
-
-function collectAllVaultTags(entries: VaultEntry[] | undefined, allContent: Record<string, string> | undefined): Record<string, string[]> {
-  if (!entries || !allContent) return {}
+function collectAllVaultTags(entries: VaultEntry[] | undefined): Record<string, string[]> {
+  if (!entries) return {}
   const tagsByKey = new Map<string, Set<string>>()
   for (const entry of entries) {
-    const content = allContent[entry.path]
-    if (!content) continue
-    mergeArrayFieldsInto(parseFrontmatter(content), tagsByKey)
+    if (!entry.properties) continue
+    for (const [key, value] of Object.entries(entry.properties)) {
+      if (!Array.isArray(value)) continue
+      let set = tagsByKey.get(key)
+      if (!set) { set = new Set(); tagsByKey.set(key, set) }
+      for (const tag of value) set.add(String(tag))
+    }
   }
   const result: Record<string, string[]> = {}
   for (const [key, set] of tagsByKey) result[key] = Array.from(set).sort((a, b) => a.localeCompare(b))
@@ -106,21 +100,20 @@ export interface PropertyPanelDeps {
   entries: VaultEntry[] | undefined
   entryIsA: string | null
   frontmatter: ParsedFrontmatter
-  allContent: Record<string, string> | undefined
   onUpdateProperty?: (key: string, value: FrontmatterValue) => void
   onDeleteProperty?: (key: string) => void
   onAddProperty?: (key: string, value: FrontmatterValue) => void
 }
 
 export function usePropertyPanelState(deps: PropertyPanelDeps) {
-  const { entries, entryIsA, frontmatter, allContent, onUpdateProperty, onDeleteProperty, onAddProperty } = deps
+  const { entries, entryIsA, frontmatter, onUpdateProperty, onDeleteProperty, onAddProperty } = deps
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [displayOverrides, setDisplayOverrides] = useState(() => loadDisplayModeOverrides())
 
   const { availableTypes, customColorKey, typeColorKeys, typeIconKeys } = useMemo(() => deriveTypeInfo(entries, entryIsA), [entries, entryIsA])
   const vaultStatuses = useMemo(() => collectVaultStatuses(entries), [entries])
-  const vaultTagsByKey = useMemo(() => collectAllVaultTags(entries, allContent), [entries, allContent])
+  const vaultTagsByKey = useMemo(() => collectAllVaultTags(entries), [entries])
   const propertyEntries = useMemo(() => Object.entries(frontmatter).filter(isVisibleProperty), [frontmatter])
 
   const handleSaveValue = useCallback((key: string, newValue: string) => {

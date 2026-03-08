@@ -51,7 +51,6 @@ function makeStreamCallbacks(
 }
 
 export function useAIChat(
-  allContent: Record<string, string>,
   contextNotes: VaultEntry[],
 ) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -69,7 +68,7 @@ export function useAIChat(
     abortRef.current = false
 
     // Always include system prompt (each request is a fresh subprocess).
-    const systemPrompt = buildSystemPrompt(contextNotes, allContent).prompt || undefined
+    const systemPrompt = buildSystemPrompt(contextNotes).prompt || undefined
 
     // Embed conversation history in the prompt for continuity.
     const trimmedHistory = trimHistory(history, MAX_HISTORY_TOKENS)
@@ -81,7 +80,7 @@ export function useAIChat(
 
     streamClaudeChat(formattedMessage, systemPrompt, undefined, callbacks)
       .catch(() => { /* errors forwarded via onError */ })
-  }, [isStreaming, allContent, contextNotes])
+  }, [isStreaming, contextNotes])
 
   const sendMessage = useCallback((text: string) => {
     doSend(text, messages)

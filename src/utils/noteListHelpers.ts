@@ -242,21 +242,16 @@ export function clearListSortFromLocalStorage(): void {
   } catch { /* ignore */ }
 }
 
-function findBacklinks(entity: VaultEntry, allEntries: VaultEntry[], allContent: Record<string, string>): VaultEntry[] {
+function findBacklinks(entity: VaultEntry, allEntries: VaultEntry[]): VaultEntry[] {
   const stem = entity.filename.replace(/\.md$/, '')
   const pathStem = entity.path.replace(/^.*\/Laputa\//, '').replace(/\.md$/, '')
-  const targets = [entity.title, ...entity.aliases]
+  const targets = new Set([entity.title, ...entity.aliases, stem, pathStem])
 
   return allEntries.filter((e) => {
     if (e.path === entity.path) return false
-    const content = allContent[e.path]
-    if (!content) return false
-    for (const t of targets) {
-      if (content.includes(`[[${t}]]`)) return true
-    }
-    if (content.includes(`[[${stem}]]`)) return true
-    if (content.includes(`[[${pathStem}]]`)) return true
-    return content.includes(`[[${pathStem}|`)
+    return e.outgoingLinks.some((link) =>
+      targets.has(link) || targets.has(link.split('/').pop() ?? ''),
+    )
   })
 }
 
@@ -292,7 +287,6 @@ class GroupBuilder {
 export function buildRelationshipGroups(
   entity: VaultEntry,
   allEntries: VaultEntry[],
-  allContent: Record<string, string>,
 ): RelationshipGroup[] {
   const b = new GroupBuilder(entity.path, allEntries)
   const rels = entity.relationships ?? {}
@@ -312,7 +306,7 @@ export function buildRelationshipGroups(
   b.filterAndAdd('Children', (e) => e.isA !== 'Event' && refsMatch(e.belongsTo, entity))
   b.filterAndAdd('Events', (e) => e.isA === 'Event' && (refsMatch(e.belongsTo, entity) || refsMatch(e.relatedTo, entity)))
   b.filterAndAdd('Referenced By', (e) => e.isA !== 'Event' && refsMatch(e.relatedTo, entity))
-  b.add('Backlinks', findBacklinks(entity, allEntries, allContent).sort(sortByModified))
+  b.add('Backlinks', findBacklinks(entity, allEntries).sort(sortByModified))
 
   return b.groups
 }

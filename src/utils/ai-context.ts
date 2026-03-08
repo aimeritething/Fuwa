@@ -78,7 +78,6 @@ export interface NoteListItem {
 /** Parameters for building the structured context snapshot. */
 export interface ContextSnapshotParams {
   activeEntry: VaultEntry
-  allContent: Record<string, string>
   /** Direct content of the active note from the editor tab (most reliable source). */
   activeNoteContent?: string
   openTabs?: VaultEntry[]
@@ -103,12 +102,9 @@ const MAX_NOTE_LIST_ITEMS = 100
 
 /** Build a structured context snapshot as a system prompt for Claude. */
 export function buildContextSnapshot(params: ContextSnapshotParams): string {
-  const { activeEntry, allContent, activeNoteContent, openTabs, noteList, noteListFilter, entries, references } = params
+  const { activeEntry, activeNoteContent, openTabs, noteList, noteListFilter, entries, references } = params
 
-  // Use `||` (not `??`) so empty string '' falls through to allContent.
-  // This handles the case where handleEditorChange temporarily overwrites
-  // tab.content with frontmatter-only content during async content swaps.
-  const rawContent = activeNoteContent || allContent[activeEntry.path] || ''
+  const rawContent = activeNoteContent || ''
   let body = extractBody(rawContent)
 
   // Defence-in-depth: when body is empty but the note has content on disk,
@@ -161,14 +157,11 @@ export function buildContextSnapshot(params: ContextSnapshotParams): string {
   }
 
   if (references && references.length > 0) {
-    snapshot.referencedNotes = references
-      .filter(ref => allContent[ref.path] !== undefined)
-      .map(ref => ({
-        path: ref.path,
-        title: ref.title,
-        type: ref.type ?? 'Note',
-        body: extractBody(allContent[ref.path] ?? ''),
-      }))
+    snapshot.referencedNotes = references.map(ref => ({
+      path: ref.path,
+      title: ref.title,
+      type: ref.type ?? 'Note',
+    }))
   }
 
   const preamble = [
@@ -186,7 +179,6 @@ export function buildContextSnapshot(params: ContextSnapshotParams): string {
 export function buildContextualPrompt(
   active: VaultEntry,
   linkedEntries: VaultEntry[],
-  allContent: Record<string, string>,
 ): string {
   const parts: string[] = [
     'You are an AI assistant integrated into Laputa, a personal knowledge management app.',
@@ -195,18 +187,14 @@ export function buildContextualPrompt(
     '',
     `## Active Note: ${active.title}`,
     `Type: ${active.isA ?? 'Note'} | Path: ${active.path}`,
-    '',
-    allContent[active.path] ?? '(no content)',
   ]
 
   if (linkedEntries.length > 0) {
     parts.push('', '## Linked Notes')
     for (const entry of linkedEntries) {
-      const content = allContent[entry.path]
       parts.push(
         '',
         `### ${entry.title} (${entry.isA ?? 'Note'})`,
-        content ? content.slice(0, 2000) : '(no content loaded)',
       )
     }
   }

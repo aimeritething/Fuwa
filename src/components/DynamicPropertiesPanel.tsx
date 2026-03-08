@@ -658,14 +658,13 @@ function NoteInfoSection({ entry, wordCount }: { entry: VaultEntry; wordCount: n
 }
 
 export function DynamicPropertiesPanel({
-  entry, content, frontmatter, entries, allContent,
+  entry, content, frontmatter, entries,
   onUpdateProperty, onDeleteProperty, onAddProperty, onNavigate,
 }: {
   entry: VaultEntry
   content: string | null
   frontmatter: ParsedFrontmatter
   entries?: VaultEntry[]
-  allContent?: Record<string, string>
   onUpdateProperty?: (key: string, value: FrontmatterValue) => void
   onDeleteProperty?: (key: string) => void
   onAddProperty?: (key: string, value: FrontmatterValue) => void
@@ -675,7 +674,7 @@ export function DynamicPropertiesPanel({
     editingKey, setEditingKey, showAddDialog, setShowAddDialog, displayOverrides,
     availableTypes, customColorKey, typeColorKeys, typeIconKeys, vaultStatuses, vaultTagsByKey, propertyEntries,
     handleSaveValue, handleSaveList, handleAdd, handleDisplayModeChange,
-  } = usePropertyPanelState({ entries, entryIsA: entry.isA, frontmatter, allContent, onUpdateProperty, onDeleteProperty, onAddProperty })
+  } = usePropertyPanelState({ entries, entryIsA: entry.isA, frontmatter, onUpdateProperty, onDeleteProperty, onAddProperty })
 
   const wordCount = countWords(content ?? '')
 

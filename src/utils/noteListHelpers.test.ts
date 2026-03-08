@@ -174,7 +174,7 @@ describe('buildRelationshipGroups', () => {
       path: '/Laputa/project/alpha.md', filename: 'alpha.md', title: 'Alpha',
       relationships: { 'Belongs to': ['[[responsibility/building]]'] },
     })
-    const groups = buildRelationshipGroups(entity, [entity, building], {})
+    const groups = buildRelationshipGroups(entity, [entity, building])
     const labels = groups.map((g) => g.label)
     expect(labels).toContain('Belongs to')
     expect(groups.find((g) => g.label === 'Belongs to')!.entries[0].title).toBe('Building')
@@ -190,7 +190,7 @@ describe('buildRelationshipGroups', () => {
       path: '/Laputa/project/alpha.md', filename: 'alpha.md', title: 'Alpha',
       relationships: { Notes: ['[[note/note1]]', '[[note/note2]]'] },
     })
-    const groups = buildRelationshipGroups(entity, [entity, note1, note2], {})
+    const groups = buildRelationshipGroups(entity, [entity, note1, note2])
     const labels = groups.map((g) => g.label)
     expect(labels).toContain('Notes')
     expect(groups.find((g) => g.label === 'Notes')!.entries).toHaveLength(2)
@@ -215,7 +215,7 @@ describe('buildRelationshipGroups', () => {
         Topics: ['[[topic/rust]]'],
       },
     })
-    const groups = buildRelationshipGroups(entity, [entity, ...entries], {})
+    const groups = buildRelationshipGroups(entity, [entity, ...entries])
     const labels = groups.map((g) => g.label)
     expect(labels).toContain('Belongs to')
     expect(labels).toContain('Notes')
@@ -230,7 +230,7 @@ describe('buildRelationshipGroups', () => {
       path: '/Laputa/project/alpha.md', filename: 'alpha.md', title: 'Alpha',
       relationships: {},
     })
-    const groups = buildRelationshipGroups(entity, [entity, child], {})
+    const groups = buildRelationshipGroups(entity, [entity, child])
     const labels = groups.map((g) => g.label)
     expect(labels).toContain('Children')
     expect(groups.find((g) => g.label === 'Children')!.entries[0].title).toBe('Child')
@@ -241,14 +241,14 @@ describe('buildRelationshipGroups', () => {
       path: '/Laputa/project/alpha.md', filename: 'alpha.md', title: 'Alpha',
       relationships: { Type: ['[[type/project]]'] },
     })
-    const groups = buildRelationshipGroups(entity, [entity], {})
+    const groups = buildRelationshipGroups(entity, [entity])
     const labels = groups.map((g) => g.label)
     expect(labels).not.toContain('Type')
   })
 
   it('returns empty groups for entity with no relationships', () => {
     const entity = makeEntry({ path: '/Laputa/note/solo.md', filename: 'solo.md', title: 'Solo', relationships: {} })
-    const groups = buildRelationshipGroups(entity, [entity], {})
+    const groups = buildRelationshipGroups(entity, [entity])
     expect(groups).toHaveLength(0)
   })
 
@@ -263,7 +263,7 @@ describe('buildRelationshipGroups', () => {
         Notes: ['[[note/n1]]', '[[note/n2]]'],
       },
     })
-    const groups = buildRelationshipGroups(entity, [entity, alice, n1, n2], {})
+    const groups = buildRelationshipGroups(entity, [entity, alice, n1, n2])
     expect(groups.find((g) => g.label === 'Owner')!.entries).toHaveLength(1)
     expect(groups.find((g) => g.label === 'Notes')!.entries).toHaveLength(2)
   })
@@ -275,7 +275,7 @@ describe('buildRelationshipGroups', () => {
       path: '/Laputa/type/project.md', filename: 'project.md', title: 'Project',
       isA: 'Type', relationships: {},
     })
-    const groups = buildRelationshipGroups(typeEntity, [typeEntity, instance1, instance2], {})
+    const groups = buildRelationshipGroups(typeEntity, [typeEntity, instance1, instance2])
     const labels = groups.map((g) => g.label)
     expect(labels).toContain('Instances')
     expect(groups.find((g) => g.label === 'Instances')!.entries).toHaveLength(2)
@@ -293,7 +293,7 @@ describe('buildRelationshipGroups', () => {
         Middle: ['[[note/b]]'],
       },
     })
-    const groups = buildRelationshipGroups(entity, [entity, a, b, c], {})
+    const groups = buildRelationshipGroups(entity, [entity, a, b, c])
     const directLabels = groups.map((g) => g.label)
     expect(directLabels.indexOf('Alpha')).toBeLessThan(directLabels.indexOf('Middle'))
     expect(directLabels.indexOf('Middle')).toBeLessThan(directLabels.indexOf('Zebra'))
@@ -308,20 +308,20 @@ describe('buildRelationshipGroups', () => {
       path: '/Laputa/project/alpha.md', filename: 'alpha.md', title: 'Alpha',
       relationships: {},
     })
-    const groups = buildRelationshipGroups(entity, [entity, referer], {})
+    const groups = buildRelationshipGroups(entity, [entity, referer])
     expect(groups.find((g) => g.label === 'Referenced By')!.entries[0].title).toBe('Referer')
   })
 
-  it('Backlinks shows entries that mention the entity via wikilinks in content', () => {
+  it('Backlinks shows entries that mention the entity via outgoingLinks', () => {
     const linker = makeEntry({
       path: '/Laputa/note/linker.md', filename: 'linker.md', title: 'Linker', modifiedAt: 1700000000,
+      outgoingLinks: ['Alpha'],
     })
     const entity = makeEntry({
       path: '/Laputa/project/alpha.md', filename: 'alpha.md', title: 'Alpha',
       relationships: {},
     })
-    const allContent = { '/Laputa/note/linker.md': 'See [[Alpha]] for details.' }
-    const groups = buildRelationshipGroups(entity, [entity, linker], allContent)
+    const groups = buildRelationshipGroups(entity, [entity, linker])
     expect(groups.find((g) => g.label === 'Backlinks')!.entries[0].title).toBe('Linker')
   })
 })

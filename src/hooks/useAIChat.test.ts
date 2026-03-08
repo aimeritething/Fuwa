@@ -36,10 +36,8 @@ afterEach(() => {
 })
 
 describe('useAIChat', () => {
-  const emptyContent: Record<string, string> = {}
-
   it('sends first message as raw text without history', async () => {
-    const { result } = renderHook(() => useAIChat(emptyContent, []))
+    const { result } = renderHook(() => useAIChat([]))
 
     act(() => { result.current.sendMessage('hello') })
 
@@ -51,7 +49,7 @@ describe('useAIChat', () => {
   })
 
   it('embeds conversation history in second message', async () => {
-    const { result } = renderHook(() => useAIChat(emptyContent, []))
+    const { result } = renderHook(() => useAIChat([]))
 
     // First exchange
     act(() => { result.current.sendMessage('What is 2+2?') })
@@ -69,7 +67,7 @@ describe('useAIChat', () => {
   })
 
   it('accumulates history across multiple exchanges', async () => {
-    const { result } = renderHook(() => useAIChat(emptyContent, []))
+    const { result } = renderHook(() => useAIChat([]))
 
     // Exchange 1
     act(() => { result.current.sendMessage('Q1') })
@@ -98,7 +96,7 @@ describe('useAIChat', () => {
   })
 
   it('never passes session_id (no --resume)', async () => {
-    const { result } = renderHook(() => useAIChat(emptyContent, []))
+    const { result } = renderHook(() => useAIChat([]))
 
     act(() => { result.current.sendMessage('Q1') })
     await act(async () => { vi.advanceTimersByTime(50) })
@@ -111,7 +109,7 @@ describe('useAIChat', () => {
   })
 
   it('resets history after clearConversation', async () => {
-    const { result } = renderHook(() => useAIChat(emptyContent, []))
+    const { result } = renderHook(() => useAIChat([]))
 
     // Build up some history
     act(() => { result.current.sendMessage('hello') })
@@ -130,10 +128,9 @@ describe('useAIChat', () => {
   })
 
   it('includes system prompt on every message when context notes exist', async () => {
-    const content = { 'note.md': 'Some note content' }
     const notes = [{ path: 'note.md', title: 'Test Note' }] as import('../types').VaultEntry[]
 
-    const { result } = renderHook(() => useAIChat(content, notes))
+    const { result } = renderHook(() => useAIChat(notes))
 
     // First message
     act(() => { result.current.sendMessage('hello') })
@@ -153,7 +150,7 @@ describe('useAIChat', () => {
   })
 
   it('retries with correct history (excludes retried exchange)', async () => {
-    const { result } = renderHook(() => useAIChat(emptyContent, []))
+    const { result } = renderHook(() => useAIChat([]))
 
     // First exchange
     act(() => { result.current.sendMessage('hello') })

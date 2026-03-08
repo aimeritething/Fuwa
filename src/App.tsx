@@ -118,7 +118,7 @@ function App() {
   const vault = useVaultLoader(resolvedPath)
   useVaultConfig(resolvedPath)
   const { settings, saveSettings } = useSettings()
-  const themeManager = useThemeManager(resolvedPath, vault.entries, vault.allContent, vault.updateContent)
+  const themeManager = useThemeManager(resolvedPath, vault.entries)
 
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
 
@@ -182,12 +182,7 @@ function App() {
   // Read at callback time, so it's always current when user presses Cmd+N.
   const contentChangeRef = useRef<(path: string, content: string) => void>(() => {})
 
-  // Stable ref for allContent so getCachedContent callback never changes identity
-  const allContentForCacheRef = useRef(vault.allContent)
-  allContentForCacheRef.current = vault.allContent // eslint-disable-line react-hooks/refs -- ref sync pattern
-  const getCachedContent = useCallback((path: string) => allContentForCacheRef.current[path], [])
-
-  const notes = useNoteActions({ addEntry: vault.addEntry, removeEntry: vault.removeEntry, updateContent: vault.updateContent, entries: vault.entries, setToastMessage, updateEntry: vault.updateEntry, vaultPath: resolvedPath, addPendingSave: vault.addPendingSave, removePendingSave: vault.removePendingSave, trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths, markContentPending: (path, content) => contentChangeRef.current(path, content), onNewNotePersisted: vault.loadModifiedFiles, getCachedContent, replaceEntry: vault.replaceEntry })
+  const notes = useNoteActions({ addEntry: vault.addEntry, removeEntry: vault.removeEntry, entries: vault.entries, setToastMessage, updateEntry: vault.updateEntry, vaultPath: resolvedPath, addPendingSave: vault.addPendingSave, removePendingSave: vault.removePendingSave, trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths, markContentPending: (path, content) => contentChangeRef.current(path, content), onNewNotePersisted: vault.loadModifiedFiles, replaceEntry: vault.replaceEntry })
 
   // Keep tab entries in sync with vault entries so banners (trash/archive)
   // and read-only state react immediately without reopening the note.
@@ -312,7 +307,7 @@ function App() {
   }, [vault, triggerIncrementalIndex])
 
   const { handleSave: handleSaveRaw, handleContentChange, savePendingForPath, savePending } = useEditorSaveWithLinks({
-    updateContent: vault.updateContent, updateEntry: vault.updateEntry,
+    updateEntry: vault.updateEntry,
     setTabs: notes.setTabs, setToastMessage, onAfterSave,
     onNotePersisted: vault.clearUnsaved,
   })
@@ -321,27 +316,24 @@ function App() {
   // Refs for stable closure in flushBeforeAction (avoids re-creating on every tab/content change)
   const tabsRef = useRef(notes.tabs)
   tabsRef.current = notes.tabs // eslint-disable-line react-hooks/refs -- ref sync pattern
-  const allContentRef = useRef(vault.allContent)
-  allContentRef.current = vault.allContent // eslint-disable-line react-hooks/refs -- ref sync pattern
   const unsavedPathsRef = useRef(vault.unsavedPaths)
   unsavedPathsRef.current = vault.unsavedPaths // eslint-disable-line react-hooks/refs -- ref sync pattern
 
   /** Auto-save unsaved editor content before a destructive action (trash/archive). */
-  const { updateContent: vaultUpdateContent, clearUnsaved: vaultClearUnsaved } = vault
+  const { clearUnsaved: vaultClearUnsaved } = vault
   const flushBeforeAction = useCallback(async (path: string) => {
     try {
       await flushEditorContent(path, {
         savePendingForPath,
         getTabContent: (p) => tabsRef.current.find(t => t.entry.path === p)?.content,
         isUnsaved: (p) => unsavedPathsRef.current.has(p),
-        getSavedContent: (p) => allContentRef.current[p],
-        onSaved: (p, c) => { vaultUpdateContent(p, c); vaultClearUnsaved(p) },
+        onSaved: (p) => { vaultClearUnsaved(p) },
       })
     } catch (err) {
       setToastMessage(`Auto-save failed: ${err}`)
       throw err
     }
-  }, [savePendingForPath, vaultUpdateContent, vaultClearUnsaved, setToastMessage])
+  }, [savePendingForPath, vaultClearUnsaved, setToastMessage])
 
   // Wire conflict file opener now that notes is available
   useEffect(() => {
@@ -472,7 +464,7 @@ function App() {
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
     handleCloseTabRef: notes.handleCloseTabRef, tabs: notes.tabs,
-    entries: vault.entries, allContent: vault.allContent,
+    entries: vault.entries,
     modifiedCount: vault.modifiedFiles.length,
     activeNoteModified: vault.modifiedFiles.some(f => f.path === notes.activeTabPath),
     selection,
@@ -589,7 +581,7 @@ function App() {
               {selection.kind === 'filter' && selection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} allContent={vault.allContent} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} />
+                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />
@@ -614,7 +606,6 @@ function App() {
             onInspectorResize={layout.handleInspectorResize}
             inspectorEntry={activeTab?.entry ?? null}
             inspectorContent={activeTab?.content ?? null}
-            allContent={vault.allContent}
             gitHistory={gitHistory}
             onUpdateFrontmatter={notes.handleUpdateFrontmatter}
             onDeleteProperty={notes.handleDeleteProperty}

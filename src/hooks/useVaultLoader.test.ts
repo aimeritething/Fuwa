@@ -61,11 +61,10 @@ describe('useVaultLoader', () => {
     mockInvokeFn.mockImplementation(defaultMockInvoke)
   })
 
-  it('loads entries and content on mount', async () => {
+  it('loads entries on mount', async () => {
     const { result } = await renderVaultLoader()
 
     expect(result.current.entries[0].title).toBe('Hello')
-    expect(result.current.allContent['/vault/note/hello.md']).toContain('# Hello')
   })
 
   it('loads modified files on mount', async () => {
@@ -79,15 +78,14 @@ describe('useVaultLoader', () => {
   })
 
   describe('addEntry', () => {
-    it('prepends new entry and adds content', async () => {
+    it('prepends new entry', async () => {
       const { result } = await renderVaultLoader()
       const newEntry: VaultEntry = { ...mockEntries[0], path: '/vault/note/new.md', filename: 'new.md', title: 'New Note' }
 
-      act(() => { result.current.addEntry(newEntry, '# New Note') })
+      act(() => { result.current.addEntry(newEntry) })
 
       expect(result.current.entries).toHaveLength(2)
       expect(result.current.entries[0].title).toBe('New Note')
-      expect(result.current.allContent['/vault/note/new.md']).toBe('# New Note')
     })
 
     it('ignores duplicate entry with same path', async () => {
@@ -95,32 +93,21 @@ describe('useVaultLoader', () => {
       const newEntry: VaultEntry = { ...mockEntries[0], path: '/vault/note/new.md', filename: 'new.md', title: 'New Note' }
 
       act(() => {
-        result.current.addEntry(newEntry, '# New Note')
-        result.current.addEntry(newEntry, '# New Note')
+        result.current.addEntry(newEntry)
+        result.current.addEntry(newEntry)
       })
 
       expect(result.current.entries).toHaveLength(2)
     })
   })
 
-  describe('updateContent', () => {
-    it('updates content for an existing path', async () => {
-      const { result } = await renderVaultLoader()
-
-      act(() => { result.current.updateContent('/vault/note/hello.md', '# Updated') })
-
-      expect(result.current.allContent['/vault/note/hello.md']).toBe('# Updated')
-    })
-  })
-
   describe('removeEntry', () => {
-    it('removes entry and content by path', async () => {
+    it('removes entry by path', async () => {
       const { result } = await renderVaultLoader()
 
       act(() => { result.current.removeEntry('/vault/note/hello.md') })
 
       expect(result.current.entries).toHaveLength(0)
-      expect(result.current.allContent['/vault/note/hello.md']).toBeUndefined()
     })
 
     it('is a no-op for non-existent paths', async () => {
@@ -159,7 +146,7 @@ describe('useVaultLoader', () => {
       const { result } = await renderVaultLoader()
       const newEntry: VaultEntry = { ...mockEntries[0], path: '/vault/note/brand-new.md', filename: 'brand-new.md', title: 'Brand New' }
 
-      act(() => { result.current.addEntry(newEntry, '# Brand New') })
+      act(() => { result.current.addEntry(newEntry) })
 
       expect(result.current.getNoteStatus('/vault/note/brand-new.md')).toBe('new')
     })
@@ -227,7 +214,7 @@ describe('useVaultLoader', () => {
       }
 
       act(() => {
-        result.current.addEntry(newEntry, '# New')
+        result.current.addEntry(newEntry)
       })
 
       expect(result.current.getNoteStatus('/vault/note/new.md')).toBe('new')
@@ -238,7 +225,7 @@ describe('useVaultLoader', () => {
       const newEntry: VaultEntry = { ...mockEntries[0], path: '/vault/note/draft.md', filename: 'draft.md', title: 'Draft' }
 
       act(() => {
-        result.current.addEntry(newEntry, '# Draft')
+        result.current.addEntry(newEntry)
         result.current.trackUnsaved('/vault/note/draft.md')
       })
 
@@ -250,7 +237,7 @@ describe('useVaultLoader', () => {
       const newEntry: VaultEntry = { ...mockEntries[0], path: '/vault/note/draft.md', filename: 'draft.md', title: 'Draft' }
 
       act(() => {
-        result.current.addEntry(newEntry, '# Draft')
+        result.current.addEntry(newEntry)
         result.current.trackUnsaved('/vault/note/draft.md')
       })
 
@@ -263,7 +250,7 @@ describe('useVaultLoader', () => {
       const newEntry: VaultEntry = { ...mockEntries[0], path: '/vault/note/draft.md', filename: 'draft.md', title: 'Draft' }
 
       act(() => {
-        result.current.addEntry(newEntry, '# Draft')
+        result.current.addEntry(newEntry)
         result.current.trackUnsaved('/vault/note/draft.md')
       })
 

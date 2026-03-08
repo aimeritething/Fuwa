@@ -426,12 +426,11 @@ describe('findDailyNote', () => {
 describe('useNoteActions hook', () => {
   const addEntry = vi.fn()
   const removeEntry = vi.fn()
-  const updateContent = vi.fn()
   const updateEntry = vi.fn()
   const setToastMessage = vi.fn()
 
   const makeConfig = (entries: VaultEntry[] = []): NoteActionsConfig => ({
-    addEntry, removeEntry, updateContent, entries, setToastMessage, updateEntry, vaultPath: '/test/vault',
+    addEntry, removeEntry, entries, setToastMessage, updateEntry, vaultPath: '/test/vault',
   })
 
   beforeEach(() => {
@@ -447,11 +446,10 @@ describe('useNoteActions hook', () => {
     })
 
     expect(addEntry).toHaveBeenCalledTimes(1)
-    const [createdEntry, createdContent] = addEntry.mock.calls[0]
+    const [createdEntry] = addEntry.mock.calls[0]
     expect(createdEntry.title).toBe('Test Note')
     expect(createdEntry.isA).toBe('Note')
     expect(createdEntry.path).toContain('note/test-note.md')
-    expect(createdContent).toContain('title: Test Note')
   })
 
   it('handleCreateNote opens tab immediately (before addEntry resolves)', () => {
@@ -517,7 +515,6 @@ describe('useNoteActions hook', () => {
       await result.current.handleUpdateFrontmatter('/vault/note.md', 'status', 'Done')
     })
 
-    expect(updateContent).toHaveBeenCalled()
     expect(updateEntry).toHaveBeenCalledWith('/vault/note.md', { status: 'Done' })
     expect(setToastMessage).toHaveBeenCalledWith('Property updated')
   })
@@ -544,7 +541,6 @@ describe('useNoteActions hook', () => {
       await result.current.handleDeleteProperty('/vault/note.md', 'status')
     })
 
-    expect(updateContent).toHaveBeenCalled()
     expect(updateEntry).toHaveBeenCalledWith('/vault/note.md', { status: null })
     expect(setToastMessage).toHaveBeenCalledWith('Property deleted')
   })
@@ -598,9 +594,9 @@ describe('useNoteActions hook', () => {
       result.current.handleCreateNote('My Project', 'Project')
     })
 
-    const [, createdContent] = addEntry.mock.calls[0]
-    expect(createdContent).toContain('## Objective')
-    expect(createdContent).toContain('## Key Results')
+    const tabContent = result.current.tabs[0].content
+    expect(tabContent).toContain('## Objective')
+    expect(tabContent).toContain('## Key Results')
   })
 
   it('handleCreateNote uses custom template from type entry', () => {
@@ -611,9 +607,9 @@ describe('useNoteActions hook', () => {
       result.current.handleCreateNote('Pasta', 'Recipe')
     })
 
-    const [, createdContent] = addEntry.mock.calls[0]
-    expect(createdContent).toContain('## Ingredients')
-    expect(createdContent).toContain('## Steps')
+    const tabContent = result.current.tabs[0].content
+    expect(tabContent).toContain('## Ingredients')
+    expect(tabContent).toContain('## Steps')
   })
 
   it('handleCreateNoteImmediate uses template for typed notes', () => {
@@ -624,8 +620,8 @@ describe('useNoteActions hook', () => {
       result.current.handleCreateNoteImmediate('Project')
     })
 
-    const [, createdContent] = addEntry.mock.calls[0]
-    expect(createdContent).toContain('## Custom Template')
+    const tabContent = result.current.tabs[0].content
+    expect(tabContent).toContain('## Custom Template')
   })
 
   it('handleUpdateFrontmatter does not call updateEntry for unknown keys', async () => {
@@ -881,7 +877,6 @@ describe('useNoteActions hook', () => {
       expect(replaceEntry).toHaveBeenCalledWith(
         '/test/vault/note/my-note.md',
         expect.objectContaining({ path: '/test/vault/quarter/my-note.md' }),
-        expect.any(String),
       )
       expect(setToastMessage).toHaveBeenCalledWith('Note moved to quarter/')
     })

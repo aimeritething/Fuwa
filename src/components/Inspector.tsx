@@ -7,7 +7,6 @@ import { parseFrontmatter } from '../utils/frontmatter'
 import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
 import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel, InstancesPanel } from './InspectorPanels'
 import { wikilinkTarget } from '../utils/wikilink'
-import { extractBacklinkContext } from '../utils/wikilinks'
 import type { ReferencedByItem, BacklinkItem } from './InspectorPanels'
 
 export type FrontmatterValue = string | number | boolean | string[] | null
@@ -18,7 +17,6 @@ interface InspectorProps {
   entry: VaultEntry | null
   content: string | null
   entries: VaultEntry[]
-  allContent?: Record<string, string>
   gitHistory: GitCommit[]
   onNavigate: (target: string) => void
   onViewCommitDiff?: (commitHash: string) => void
@@ -31,7 +29,6 @@ function useBacklinks(
   entry: VaultEntry | null,
   entries: VaultEntry[],
   referencedBy: ReferencedByItem[],
-  allContent?: Record<string, string>,
 ): BacklinkItem[] {
   return useMemo(() => {
     if (!entry) return []
@@ -53,11 +50,9 @@ function useBacklinks(
       })
       .map((e) => ({
         entry: e,
-        context: allContent?.[e.path]
-          ? extractBacklinkContext(allContent[e.path], matchTargets)
-          : null,
+        context: null,
       }))
-  }, [entry, entries, referencedBy, allContent])
+  }, [entry, entries, referencedBy])
 }
 
 function refsMatchTargets(refs: string[], targets: Set<string>): boolean {
@@ -118,11 +113,11 @@ function EmptyInspector() {
 }
 
 export function Inspector({
-  collapsed, onToggle, entry, content, entries, allContent, gitHistory, onNavigate,
+  collapsed, onToggle, entry, content, entries, gitHistory, onNavigate,
   onViewCommitDiff, onUpdateFrontmatter, onDeleteProperty, onAddProperty,
 }: InspectorProps) {
   const referencedBy = useReferencedBy(entry, entries)
-  const backlinks = useBacklinks(entry, entries, referencedBy, allContent)
+  const backlinks = useBacklinks(entry, entries, referencedBy)
   const frontmatter = useMemo(() => parseFrontmatter(content), [content])
   const typeEntryMap = useMemo(() => {
     const map: Record<string, VaultEntry> = {}
@@ -151,7 +146,7 @@ export function Inspector({
             <>
               <DynamicPropertiesPanel
                 entry={entry} content={content} frontmatter={frontmatter}
-                entries={entries} allContent={allContent}
+                entries={entries}
                 onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}
                 onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
                 onAddProperty={onAddProperty ? handleAddProperty : undefined}

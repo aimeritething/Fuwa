@@ -59,8 +59,6 @@ describe('useKeyboardNavigation', () => {
   ]
 
   const selection: SidebarSelection = { kind: 'filter', filter: 'all' }
-  const allContent: Record<string, string> = {}
-
   let addedListeners: { type: string; handler: EventListenerOrEventListenerObject }[] = []
 
   beforeEach(() => {
@@ -85,7 +83,7 @@ describe('useKeyboardNavigation', () => {
   it('registers keydown listener on mount', () => {
     renderHook(() =>
       useKeyboardNavigation({
-        tabs, activeTabPath: '/vault/a.md', entries, selection, allContent,
+        tabs, activeTabPath: '/vault/a.md', entries, selection,
         onSwitchTab, onReplaceActiveTab, onSelectNote,
       })
     )
@@ -96,7 +94,7 @@ describe('useKeyboardNavigation', () => {
   it('switches to next tab on Cmd+Shift+ArrowRight (browser mode)', () => {
     renderHook(() =>
       useKeyboardNavigation({
-        tabs, activeTabPath: '/vault/a.md', entries, selection, allContent,
+        tabs, activeTabPath: '/vault/a.md', entries, selection,
         onSwitchTab, onReplaceActiveTab, onSelectNote,
       })
     )
@@ -113,7 +111,7 @@ describe('useKeyboardNavigation', () => {
   it('switches to previous tab on Cmd+Shift+ArrowLeft (browser mode)', () => {
     renderHook(() =>
       useKeyboardNavigation({
-        tabs, activeTabPath: '/vault/b.md', entries, selection, allContent,
+        tabs, activeTabPath: '/vault/b.md', entries, selection,
         onSwitchTab, onReplaceActiveTab, onSelectNote,
       })
     )
@@ -130,7 +128,7 @@ describe('useKeyboardNavigation', () => {
   it('wraps around when navigating past last tab', () => {
     renderHook(() =>
       useKeyboardNavigation({
-        tabs, activeTabPath: '/vault/c.md', entries, selection, allContent,
+        tabs, activeTabPath: '/vault/c.md', entries, selection,
         onSwitchTab, onReplaceActiveTab, onSelectNote,
       })
     )
@@ -147,7 +145,7 @@ describe('useKeyboardNavigation', () => {
   it('navigates to next note on Cmd+Alt+ArrowDown', () => {
     renderHook(() =>
       useKeyboardNavigation({
-        tabs, activeTabPath: '/vault/a.md', entries, selection, allContent,
+        tabs, activeTabPath: '/vault/a.md', entries, selection,
         onSwitchTab, onReplaceActiveTab, onSelectNote,
       })
     )
@@ -164,7 +162,7 @@ describe('useKeyboardNavigation', () => {
   it('navigates to previous note on Cmd+Alt+ArrowUp', () => {
     renderHook(() =>
       useKeyboardNavigation({
-        tabs, activeTabPath: '/vault/b.md', entries, selection, allContent,
+        tabs, activeTabPath: '/vault/b.md', entries, selection,
         onSwitchTab, onReplaceActiveTab, onSelectNote,
       })
     )
@@ -181,7 +179,7 @@ describe('useKeyboardNavigation', () => {
   it('selects first note when no active tab', () => {
     renderHook(() =>
       useKeyboardNavigation({
-        tabs: [], activeTabPath: null, entries, selection, allContent,
+        tabs: [], activeTabPath: null, entries, selection,
         onSwitchTab, onReplaceActiveTab, onSelectNote,
       })
     )
@@ -198,7 +196,7 @@ describe('useKeyboardNavigation', () => {
   it('does nothing without modifier keys', () => {
     renderHook(() =>
       useKeyboardNavigation({
-        tabs, activeTabPath: '/vault/a.md', entries, selection, allContent,
+        tabs, activeTabPath: '/vault/a.md', entries, selection,
         onSwitchTab, onReplaceActiveTab, onSelectNote,
       })
     )
@@ -217,7 +215,7 @@ describe('useKeyboardNavigation', () => {
   it('does nothing with empty tabs for tab navigation', () => {
     renderHook(() =>
       useKeyboardNavigation({
-        tabs: [], activeTabPath: null, entries, selection, allContent,
+        tabs: [], activeTabPath: null, entries, selection,
         onSwitchTab, onReplaceActiveTab, onSelectNote,
       })
     )

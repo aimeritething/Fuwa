@@ -41,7 +41,6 @@ function renderNoteList(props: {
       entries={props.entries}
       selection={props.selection}
       selectedNote={null}
-      allContent={{}}
       onSelectNote={noop}
       onReplaceActiveTab={noop}
       onCreateNote={noop}

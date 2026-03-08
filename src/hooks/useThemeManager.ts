@@ -197,8 +197,6 @@ function useThemeApplier(
 export function useThemeManager(
   vaultPath: string | null,
   entries: VaultEntry[],
-  allContent: Record<string, string>,
-  updateContent?: (path: string, content: string) => void,
 ): ThemeManager {
   // Ensure default theme files exist on vault open (creates theme/ dir + defaults if missing)
   useEffect(() => {
@@ -206,7 +204,12 @@ export function useThemeManager(
   }, [vaultPath])
 
   const { activeThemeId, setActiveThemeId, reload } = useThemeSetting(vaultPath)
-  const cachedThemeContent = activeThemeId ? allContent[activeThemeId] : undefined
+  const [cachedThemeContent, setCachedThemeContent] = useState<string | undefined>(undefined)
+
+  // Clear cached content when theme changes — useThemeApplier will fetch from disk
+  // eslint-disable-next-line react-hooks/set-state-in-effect
+  useEffect(() => { setCachedThemeContent(undefined) }, [activeThemeId])
+
   const { clearDom: clearTheme, isDark } = useThemeApplier(activeThemeId, cachedThemeContent)
 
   // Track IDs set by user actions (switchTheme/createTheme) so the stale-ID
@@ -216,8 +219,8 @@ export function useThemeManager(
   const themes = useMemo(
     () => entries
       .filter(e => e.isA === 'Theme' && !e.trashed && !e.archived)
-      .map(e => entryToThemeFile(e, allContent[e.path])),
-    [entries, allContent],
+      .map(e => entryToThemeFile(e, e.path === activeThemeId ? cachedThemeContent : undefined)),
+    [entries, activeThemeId, cachedThemeContent],
   )
 
   const activeTheme = useMemo(
@@ -280,9 +283,9 @@ export function useThemeManager(
         key,
         value,
       })
-      updateContent?.(activeThemeId, newContent)
+      setCachedThemeContent(newContent)
     } catch (err) { console.error('Failed to update theme property:', err) }
-  }, [activeThemeId, updateContent])
+  }, [activeThemeId])
 
   return {
     themes, activeThemeId, activeTheme,

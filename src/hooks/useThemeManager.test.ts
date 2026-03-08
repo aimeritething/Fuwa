@@ -332,25 +332,6 @@ describe('useThemeManager', () => {
     expect(newPath).toBe('')
   })
 
-  it('re-applies theme when active content changes in allContent', async () => {
-    const { result, rerender } = renderHook(
-      ({ content }) => useThemeManager('/vault', entries, content),
-      { initialProps: { content: allContent } },
-    )
-    await waitFor(() => {
-      expect(result.current.activeTheme).not.toBeNull()
-    })
-
-    const newContent = {
-      [THEME_PATH_DEFAULT]: `---\ntype: Theme\nbackground: "#FF0000"\n---\n# Default Theme\n`,
-    }
-    rerender({ content: newContent })
-
-    await waitFor(() => {
-      expect(document.documentElement.style.getPropertyValue('--background')).toBe('#FF0000')
-    })
-  })
-
   it('reloadThemes re-reads vault settings', async () => {
     const { result } = renderHook(() =>
       useThemeManager('/vault', entries, allContent)
@@ -420,26 +401,6 @@ describe('useThemeManager', () => {
       expect(document.documentElement.style.getPropertyValue('color-scheme')).toBe('dark')
     })
     expect(document.documentElement.dataset.themeMode).toBe('dark')
-  })
-
-  it('populates theme colors from allContent when available', async () => {
-    const contentWithColors = {
-      [THEME_PATH_DEFAULT]: DEFAULT_THEME_CONTENT,
-      [THEME_PATH_DARK]: DARK_THEME_CONTENT,
-    }
-    const { result } = renderHook(() =>
-      useThemeManager('/vault', entries, contentWithColors)
-    )
-    await waitFor(() => {
-      expect(result.current.themes).toHaveLength(2)
-    })
-
-    const defaultTheme = result.current.themes.find(t => t.id === THEME_PATH_DEFAULT)
-    expect(defaultTheme?.colors.background).toBe('#FFFFFF')
-    expect(defaultTheme?.colors.primary).toBe('#155DFF')
-
-    const darkTheme = result.current.themes.find(t => t.id === THEME_PATH_DARK)
-    expect(darkTheme?.colors.background).toBe('#0f0f1a')
   })
 
   it('isDark detects dark theme from cached content', async () => {

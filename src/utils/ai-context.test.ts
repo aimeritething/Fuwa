@@ -133,53 +133,25 @@ describe('collectLinkedEntries', () => {
 })
 
 describe('buildContextualPrompt', () => {
-  it('includes active note title and content', () => {
+  it('includes active note title and type', () => {
     const active = makeEntry({ path: '/vault/a.md', title: 'Alpha', isA: 'Project' })
-    const content = { '/vault/a.md': '# Alpha\nThis is the alpha project.' }
-    const prompt = buildContextualPrompt(active, [], content)
+    const prompt = buildContextualPrompt(active, [])
     expect(prompt).toContain('Alpha')
     expect(prompt).toContain('Project')
-    expect(prompt).toContain('This is the alpha project.')
   })
 
-  it('includes linked note content', () => {
+  it('includes linked note titles', () => {
     const active = makeEntry({ path: '/vault/a.md', title: 'Alpha' })
     const linked = makeEntry({ path: '/vault/b.md', title: 'Beta', isA: 'Person' })
-    const content = {
-      '/vault/a.md': '# Alpha\nMain note.',
-      '/vault/b.md': '# Beta\nLinked person.',
-    }
-    const prompt = buildContextualPrompt(active, [linked], content)
+    const prompt = buildContextualPrompt(active, [linked])
     expect(prompt).toContain('Beta')
     expect(prompt).toContain('Person')
-    expect(prompt).toContain('Linked person.')
     expect(prompt).toContain('Linked Notes')
-  })
-
-  it('shows (no content) when content is missing', () => {
-    const active = makeEntry({ path: '/vault/a.md', title: 'Alpha' })
-    const prompt = buildContextualPrompt(active, [], {})
-    expect(prompt).toContain('(no content)')
-  })
-
-  it('truncates linked note content to 2000 chars', () => {
-    const active = makeEntry({ path: '/vault/a.md', title: 'Alpha' })
-    const linked = makeEntry({ path: '/vault/b.md', title: 'Beta' })
-    const longContent = 'x'.repeat(3000)
-    const content = {
-      '/vault/a.md': '# Alpha',
-      '/vault/b.md': longContent,
-    }
-    const prompt = buildContextualPrompt(active, [linked], content)
-    // The linked note content should be truncated
-    const betaIdx = prompt.indexOf('### Beta')
-    const afterBeta = prompt.slice(betaIdx)
-    expect(afterBeta.length).toBeLessThan(2200)
   })
 
   it('includes the system preamble', () => {
     const active = makeEntry({ path: '/vault/a.md', title: 'Alpha' })
-    const prompt = buildContextualPrompt(active, [], { '/vault/a.md': 'content' })
+    const prompt = buildContextualPrompt(active, [])
     expect(prompt).toContain('AI assistant integrated into Laputa')
   })
 })
@@ -191,14 +163,9 @@ describe('buildContextSnapshot', () => {
     makeEntry({ path: '/vault/b.md', title: 'Beta', isA: 'Person' }),
     makeEntry({ path: '/vault/c.md', title: 'Gamma', isA: 'Note' }),
   ]
-  const allContent: Record<string, string> = {
-    '/vault/a.md': '# Alpha\nProject content.',
-    '/vault/b.md': '# Beta\nPerson content.',
-    '/vault/c.md': '# Gamma\nNote content.',
-  }
 
   it('includes activeNote with body and frontmatter', () => {
-    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    const result = buildContextSnapshot({ activeEntry: active, entries, activeNoteContent: '---\ntitle: Alpha\n---\n# Alpha\nProject content.' })
     expect(result).toContain('Alpha')
     expect(result).toContain('Project content.')
     expect(result).toContain('"type": "Project"')
@@ -207,13 +174,13 @@ describe('buildContextSnapshot', () => {
   })
 
   it('includes system preamble', () => {
-    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    const result = buildContextSnapshot({ activeEntry: active, entries })
     expect(result).toContain('AI assistant integrated into Laputa')
     expect(result).toContain('Context Snapshot')
   })
 
   it('includes vault summary with types and totalNotes', () => {
-    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    const result = buildContextSnapshot({ activeEntry: active, entries })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
     expect(json.vault.totalNotes).toBe(3)
     expect(json.vault.types).toContain('Project')
@@ -224,7 +191,7 @@ describe('buildContextSnapshot', () => {
   it('includes openTabs excluding active note', () => {
     const tab = makeEntry({ path: '/vault/b.md', title: 'Beta', isA: 'Person' })
     const result = buildContextSnapshot({
-      activeEntry: active, allContent, entries,
+      activeEntry: active, entries,
       openTabs: [active, tab],
     })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
@@ -234,7 +201,7 @@ describe('buildContextSnapshot', () => {
 
   it('omits openTabs when none besides active', () => {
     const result = buildContextSnapshot({
-      activeEntry: active, allContent, entries,
+      activeEntry: active, entries,
       openTabs: [active],
     })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
@@ -243,7 +210,7 @@ describe('buildContextSnapshot', () => {
 
   it('includes noteListFilter when present', () => {
     const result = buildContextSnapshot({
-      activeEntry: active, allContent, entries,
+      activeEntry: active, entries,
       noteListFilter: { type: 'Project', query: 'search' },
     })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
@@ -253,16 +220,16 @@ describe('buildContextSnapshot', () => {
 
   it('omits noteListFilter when empty', () => {
     const result = buildContextSnapshot({
-      activeEntry: active, allContent, entries,
+      activeEntry: active, entries,
       noteListFilter: { type: null, query: '' },
     })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
     expect(json.noteListFilter).toBeUndefined()
   })
 
-  it('includes referencedNotes with bodies', () => {
+  it('includes referencedNotes metadata', () => {
     const result = buildContextSnapshot({
-      activeEntry: active, allContent, entries,
+      activeEntry: active, entries,
       references: [
         { title: 'Beta', path: '/vault/b.md', type: 'Person' },
         { title: 'Gamma', path: '/vault/c.md', type: null },
@@ -271,25 +238,11 @@ describe('buildContextSnapshot', () => {
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
     expect(json.referencedNotes).toHaveLength(2)
     expect(json.referencedNotes[0].title).toBe('Beta')
-    expect(json.referencedNotes[0].body).toContain('Person content.')
     expect(json.referencedNotes[1].type).toBe('Note') // null fallback
   })
 
-  it('filters out references with no content', () => {
-    const result = buildContextSnapshot({
-      activeEntry: active, allContent, entries,
-      references: [
-        { title: 'Beta', path: '/vault/b.md', type: 'Person' },
-        { title: 'Missing', path: '/vault/missing.md', type: null },
-      ],
-    })
-    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
-    expect(json.referencedNotes).toHaveLength(1)
-    expect(json.referencedNotes[0].title).toBe('Beta')
-  })
-
   it('omits referencedNotes when no references provided', () => {
-    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    const result = buildContextSnapshot({ activeEntry: active, entries })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
     expect(json.referencedNotes).toBeUndefined()
   })
@@ -300,7 +253,7 @@ describe('buildContextSnapshot', () => {
       { path: '/vault/b.md', title: 'Beta', type: 'Person' },
     ]
     const result = buildContextSnapshot({
-      activeEntry: active, allContent, entries,
+      activeEntry: active, entries,
       noteList,
     })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
@@ -314,7 +267,7 @@ describe('buildContextSnapshot', () => {
       path: `/vault/note-${i}.md`, title: `Note ${i}`, type: 'Note',
     }))
     const result = buildContextSnapshot({
-      activeEntry: active, allContent, entries,
+      activeEntry: active, entries,
       noteList,
     })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
@@ -324,7 +277,7 @@ describe('buildContextSnapshot', () => {
 
   it('omits noteList when empty', () => {
     const result = buildContextSnapshot({
-      activeEntry: active, allContent, entries,
+      activeEntry: active, entries,
       noteList: [],
     })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
@@ -332,10 +285,8 @@ describe('buildContextSnapshot', () => {
   })
 
   it('strips frontmatter from activeNoteContent before setting body', () => {
-    const emptyAllContent: Record<string, string> = {}
     const result = buildContextSnapshot({
       activeEntry: active,
-      allContent: emptyAllContent,
       entries,
       activeNoteContent: '---\ntitle: Alpha\n---\n\n# Alpha\nProject content from tab.',
     })
@@ -348,7 +299,6 @@ describe('buildContextSnapshot', () => {
   it('returns empty body when raw content is frontmatter-only (bug case)', () => {
     const result = buildContextSnapshot({
       activeEntry: active,
-      allContent: {},
       entries,
       activeNoteContent: '---\ntitle: Alpha\nis_a: Project\nstatus: active\n---\n',
     })
@@ -356,10 +306,9 @@ describe('buildContextSnapshot', () => {
     expect(json.activeNote.body).toBe('')
   })
 
-  it('prefers activeNoteContent body over allContent when both present', () => {
+  it('uses activeNoteContent for body', () => {
     const result = buildContextSnapshot({
       activeEntry: active,
-      allContent,
       entries,
       activeNoteContent: '---\ntitle: Alpha\n---\nFresh editor content',
     })
@@ -367,15 +316,15 @@ describe('buildContextSnapshot', () => {
     expect(json.activeNote.body).toBe('Fresh editor content')
   })
 
-  it('falls back to allContent when activeNoteContent is undefined', () => {
-    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+  it('returns empty body when no activeNoteContent', () => {
+    const result = buildContextSnapshot({ activeEntry: active, entries })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
-    expect(json.activeNote.body).toBe('# Alpha\nProject content.')
+    expect(json.activeNote.body).toBe('')
   })
 
   it('includes wordCount in activeNote', () => {
     const entryWithWords = makeEntry({ path: '/vault/a.md', title: 'Alpha', wordCount: 206 })
-    const result = buildContextSnapshot({ activeEntry: entryWithWords, allContent, entries })
+    const result = buildContextSnapshot({ activeEntry: entryWithWords, entries })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
     expect(json.activeNote.wordCount).toBe(206)
   })
@@ -383,7 +332,6 @@ describe('buildContextSnapshot', () => {
   it('handles content with no frontmatter (plain markdown)', () => {
     const result = buildContextSnapshot({
       activeEntry: active,
-      allContent: {},
       entries,
       activeNoteContent: '# Just a heading\n\nSome plain content.',
     })
@@ -391,29 +339,12 @@ describe('buildContextSnapshot', () => {
     expect(json.activeNote.body).toBe('# Just a heading\n\nSome plain content.')
   })
 
-  it('falls back to allContent when activeNoteContent is empty string (|| fix)', () => {
-    // Regression: `??` does not fall through on empty string '', only on null/undefined.
-    // The `||` fix ensures empty string falls through to allContent.
-    const result = buildContextSnapshot({
-      activeEntry: active,
-      allContent,
-      entries,
-      activeNoteContent: '',
-    })
-    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
-    expect(json.activeNote.body).toContain('Project content.')
-    expect(json.activeNote.body).not.toBe('')
-  })
-
   it('includes defensive body when body is empty but wordCount > 0', () => {
-    // When body is empty (e.g. timing issue) but note has content on disk,
-    // body field should instruct Claude to use get_note
     const entryWithWords = makeEntry({
       path: '/vault/a.md', title: 'Alpha', wordCount: 206,
     })
     const result = buildContextSnapshot({
       activeEntry: entryWithWords,
-      allContent: {},
       entries,
       activeNoteContent: '---\ntitle: Alpha\n---\n',
     })
@@ -423,7 +354,7 @@ describe('buildContextSnapshot', () => {
   })
 
   it('includes wikilink instruction in preamble', () => {
-    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    const result = buildContextSnapshot({ activeEntry: active, entries })
     expect(result).toContain('[[Note Title]]')
     expect(result).toContain('wikilink')
   })
@@ -435,7 +366,7 @@ describe('buildContextSnapshot', () => {
       relatedTo: ['[[Sibling]]'],
       relationships: { people: ['[[Alice]]'] },
     })
-    const result = buildContextSnapshot({ activeEntry: entryWithRels, allContent, entries })
+    const result = buildContextSnapshot({ activeEntry: entryWithRels, entries })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
     expect(json.activeNote.frontmatter.belongsTo).toEqual(['[[Parent]]'])
     expect(json.activeNote.frontmatter.relatedTo).toEqual(['[[Sibling]]'])

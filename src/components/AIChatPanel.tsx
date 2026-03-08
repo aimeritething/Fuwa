@@ -15,7 +15,6 @@ import { MarkdownContent } from './MarkdownContent'
 
 interface AIChatPanelProps {
   entry: VaultEntry | null
-  allContent: Record<string, string>
   entries?: VaultEntry[]
   onClose: () => void
   onNavigateWikilink?: (target: string) => void
@@ -177,17 +176,17 @@ function useContextNotes(entry: VaultEntry | null) {
 
 // --- Main component ---
 
-export function AIChatPanel({ entry, allContent, entries = [], onClose, onNavigateWikilink }: AIChatPanelProps) {
+export function AIChatPanel({ entry, entries = [], onClose, onNavigateWikilink }: AIChatPanelProps) {
   const [input, setInput] = useState('')
   const [showSearch, setShowSearch] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const ctx = useContextNotes(entry)
-  const chat = useAIChat(allContent, ctx.contextNotes)
+  const chat = useAIChat(ctx.contextNotes)
 
   const contextInfo = useMemo(
-    () => buildSystemPrompt(ctx.contextNotes, allContent),
-    [ctx.contextNotes, allContent],
+    () => buildSystemPrompt(ctx.contextNotes),
+    [ctx.contextNotes],
   )
 
   useEffect(() => {

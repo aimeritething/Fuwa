@@ -21,47 +21,31 @@ export function getContextLimit(): number {
 
 // --- Context building ---
 
-/** Build system prompt from selected context notes. */
+/** Build system prompt from selected context notes (metadata only — content loaded via MCP). */
 export function buildSystemPrompt(
   notes: VaultEntry[],
-  allContent: Record<string, string>,
 ): { prompt: string; totalTokens: number; truncated: boolean } {
   if (notes.length === 0) {
     return { prompt: '', totalTokens: 0, truncated: false }
   }
 
-  const contextBudget = Math.floor(getContextLimit() * 0.6)
   const preamble = [
     'You are a helpful AI assistant integrated into Laputa, a personal knowledge management app.',
     'The user has selected the following notes as context. Use them to answer questions accurately.',
+    'You can use MCP tools to read the full content of any note.',
     'When you mention or reference a note by name, always use [[Note Title]] wikilink syntax so the user can click to open it.',
     '',
   ].join('\n')
 
   const parts: string[] = [preamble]
-  let totalChars = preamble.length
-  let truncated = false
 
   for (const note of notes) {
-    const content = allContent[note.path] ?? ''
-    const header = `--- Note: ${note.title} (${note.isA ?? 'Note'}) ---`
-    const noteText = `${header}\n${content}\n`
-
-    if (estimateTokens(totalChars + noteText.length) > contextBudget) {
-      const remaining = (contextBudget - estimateTokens(totalChars)) * 4
-      if (remaining > 200) {
-        parts.push(`${header}\n${content.slice(0, remaining)}\n[... truncated ...]`)
-      }
-      truncated = true
-      break
-    }
-
-    parts.push(noteText)
-    totalChars += noteText.length
+    const header = `--- Note: ${note.title} (${note.isA ?? 'Note'}) | Path: ${note.path} ---`
+    parts.push(header)
   }
 
   const prompt = parts.join('\n')
-  return { prompt, totalTokens: estimateTokens(prompt), truncated }
+  return { prompt, totalTokens: estimateTokens(prompt), truncated: false }
 }
 
 // --- Message types ---

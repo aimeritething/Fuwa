@@ -11,8 +11,7 @@ async function loadVaultData(vaultPath: string) {
   if (!isTauri()) console.info('[mock] Using mock Tauri data for browser testing')
   const entries = await tauriCall<VaultEntry[]>('list_vault', { path: vaultPath })
   console.log(`Vault scan complete: ${entries.length} entries found`)
-  const allContent = isTauri() ? {} : await mockInvoke<Record<string, string>>('get_all_content', { path: vaultPath })
-  return { entries, allContent }
+  return { entries }
 }
 
 async function commitWithPush(vaultPath: string, message: string): Promise<string> {
@@ -91,7 +90,6 @@ export function resolveNoteStatus(
 
 export function useVaultLoader(vaultPath: string) {
   const [entries, setEntries] = useState<VaultEntry[]>([])
-  const [allContent, setAllContent] = useState<Record<string, string>>({})
   const [modifiedFiles, setModifiedFiles] = useState<ModifiedFile[]>([])
   const [modifiedFilesError, setModifiedFilesError] = useState<string | null>(null)
   const tracker = useNewNoteTracker()
@@ -100,9 +98,9 @@ export function useVaultLoader(vaultPath: string) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale data then load new vault
-    setEntries([]); setAllContent({}); setModifiedFiles([]); setModifiedFilesError(null); tracker.clear(); unsaved.clearAll()
+    setEntries([]); setModifiedFiles([]); setModifiedFilesError(null); tracker.clear(); unsaved.clearAll()
     loadVaultData(vaultPath)
-      .then(({ entries: e, allContent: c }) => { setEntries(e); setAllContent(c) })
+      .then(({ entries: e }) => { setEntries(e) })
       .catch((err) => console.warn('Vault scan failed:', err))
   }, [vaultPath]) // eslint-disable-line react-hooks/exhaustive-deps -- tracker.clear is stable
 
@@ -122,31 +120,25 @@ export function useVaultLoader(vaultPath: string) {
 
   // PERF: startTransition defers the expensive entries update (filter/sort on
   // 9000+ entries) so the high-priority tab render completes in <50ms first.
-  const addEntry = useCallback((entry: VaultEntry, content: string) => {
+  const addEntry = useCallback((entry: VaultEntry) => {
     startTransition(() => {
       setEntries((prev) => {
         if (prev.some(e => e.path === entry.path)) return prev
         return [entry, ...prev]
       })
-      setAllContent((prev) => ({ ...prev, [entry.path]: content }))
       tracker.trackNew(entry.path)
     })
   }, [tracker])
-
-  const updateContent = useCallback((path: string, content: string) =>
-    setAllContent((prev) => ({ ...prev, [path]: content })), [])
 
   const updateEntry = useCallback((path: string, patch: Partial<VaultEntry>) =>
     setEntries((prev) => prev.map((e) => e.path === path ? { ...e, ...patch } : e)), [])
 
   const removeEntry = useCallback((path: string) => {
     setEntries((prev) => prev.filter((e) => e.path !== path))
-    setAllContent((prev) => { const next = { ...prev }; delete next[path]; return next })
   }, [])
 
-  const replaceEntry = useCallback((oldPath: string, patch: Partial<VaultEntry> & { path: string }, newContent: string) => {
+  const replaceEntry = useCallback((oldPath: string, patch: Partial<VaultEntry> & { path: string }) => {
     setEntries((prev) => prev.map((e) => e.path === oldPath ? { ...e, ...patch } : e))
-    setAllContent((prev) => { const next = { ...prev }; delete next[oldPath]; next[patch.path] = newContent; return next })
   }, [])
 
   const loadGitHistory = useCallback(async (path: string): Promise<GitCommit[]> => {
@@ -168,14 +160,14 @@ export function useVaultLoader(vaultPath: string) {
 
   const reloadVault = useCallback(
     () => loadVaultData(vaultPath)
-      .then((data) => { setEntries(data.entries); setAllContent((prev) => ({ ...prev, ...data.allContent })); loadModifiedFiles(); return data.entries })
+      .then((data) => { setEntries(data.entries); loadModifiedFiles(); return data.entries })
       .catch((err) => { console.warn('Vault reload failed:', err); return [] as VaultEntry[] }),
     [vaultPath, loadModifiedFiles],
   )
 
   return {
-    entries, allContent, modifiedFiles, modifiedFilesError,
-    addEntry, updateEntry, removeEntry, replaceEntry, updateContent,
+    entries, modifiedFiles, modifiedFilesError,
+    addEntry, updateEntry, removeEntry, replaceEntry,
     loadModifiedFiles, loadGitHistory, loadDiff, loadDiffAtCommit,
     getNoteStatus, commitAndPush, reloadVault,
     addPendingSave: pendingSave.addPendingSave,

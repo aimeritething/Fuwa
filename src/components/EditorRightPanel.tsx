@@ -10,7 +10,6 @@ interface EditorRightPanelProps {
   inspectorEntry: VaultEntry | null
   inspectorContent: string | null
   entries: VaultEntry[]
-  allContent: Record<string, string>
   gitHistory: GitCommit[]
   vaultPath: string
   openTabs?: VaultEntry[]
@@ -31,7 +30,7 @@ interface EditorRightPanelProps {
 
 export function EditorRightPanel({
   showAIChat, inspectorCollapsed, inspectorWidth,
-  inspectorEntry, inspectorContent, entries, allContent, gitHistory, vaultPath, openTabs,
+  inspectorEntry, inspectorContent, entries, gitHistory, vaultPath, openTabs,
   noteList, noteListFilter,
   onToggleInspector, onToggleAIChat, onNavigateWikilink, onViewCommitDiff,
   onUpdateFrontmatter, onDeleteProperty, onAddProperty, onOpenNote,
@@ -53,7 +52,6 @@ export function EditorRightPanel({
           activeEntry={inspectorEntry}
           activeNoteContent={inspectorContent}
           entries={entries}
-          allContent={allContent}
           openTabs={openTabs}
           noteList={noteList}
           noteListFilter={noteListFilter}
@@ -75,7 +73,6 @@ export function EditorRightPanel({
         entry={inspectorEntry}
         content={inspectorContent}
         entries={entries}
-        allContent={allContent}
         gitHistory={gitHistory}
         onNavigate={onNavigateWikilink}
         onViewCommitDiff={onViewCommitDiff}
