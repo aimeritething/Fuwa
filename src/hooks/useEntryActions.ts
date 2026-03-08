@@ -9,23 +9,32 @@ interface EntryActionsConfig {
   setToastMessage: (msg: string | null) => void
   createTypeEntry: (typeName: string) => Promise<VaultEntry>
   onFrontmatterPersisted?: () => void
+  /** Called before trash/archive to flush unsaved editor content to disk. */
+  onBeforeAction?: (path: string) => Promise<void>
 }
 
 function findTypeEntry(entries: VaultEntry[], typeName: string): VaultEntry | undefined {
   return entries.find((e) => e.isA === 'Type' && e.title === typeName)
 }
 
+async function findOrCreateType(
+  entries: VaultEntry[], typeName: string, create: (name: string) => Promise<VaultEntry>,
+): Promise<VaultEntry> {
+  return findTypeEntry(entries, typeName) ?? await create(typeName)
+}
+
 export function useEntryActions({
-  entries, updateEntry, handleUpdateFrontmatter, handleDeleteProperty, setToastMessage, createTypeEntry, onFrontmatterPersisted,
+  entries, updateEntry, handleUpdateFrontmatter, handleDeleteProperty, setToastMessage, createTypeEntry, onFrontmatterPersisted, onBeforeAction,
 }: EntryActionsConfig) {
   const handleTrashNote = useCallback(async (path: string) => {
+    await onBeforeAction?.(path)
     const now = new Date().toISOString().slice(0, 10)
     await handleUpdateFrontmatter(path, 'Trashed', true)
     await handleUpdateFrontmatter(path, 'Trashed at', now)
     updateEntry(path, { trashed: true, trashedAt: Date.now() / 1000 })
     setToastMessage('Note moved to trash')
     onFrontmatterPersisted?.()
-  }, [handleUpdateFrontmatter, updateEntry, setToastMessage, onFrontmatterPersisted])
+  }, [onBeforeAction, handleUpdateFrontmatter, updateEntry, setToastMessage, onFrontmatterPersisted])
 
   const handleRestoreNote = useCallback(async (path: string) => {
     await handleUpdateFrontmatter(path, 'Trashed', false)
@@ -36,11 +45,12 @@ export function useEntryActions({
   }, [handleUpdateFrontmatter, handleDeleteProperty, updateEntry, setToastMessage, onFrontmatterPersisted])
 
   const handleArchiveNote = useCallback(async (path: string) => {
+    await onBeforeAction?.(path)
     await handleUpdateFrontmatter(path, 'archived', true)
     updateEntry(path, { archived: true })
     setToastMessage('Note archived')
     onFrontmatterPersisted?.()
-  }, [handleUpdateFrontmatter, updateEntry, setToastMessage, onFrontmatterPersisted])
+  }, [onBeforeAction, handleUpdateFrontmatter, updateEntry, setToastMessage, onFrontmatterPersisted])
 
   const handleUnarchiveNote = useCallback(async (path: string) => {
     await handleUpdateFrontmatter(path, 'archived', false)
@@ -50,8 +60,7 @@ export function useEntryActions({
   }, [handleUpdateFrontmatter, updateEntry, setToastMessage, onFrontmatterPersisted])
 
   const handleCustomizeType = useCallback(async (typeName: string, icon: string, color: string) => {
-    let typeEntry = findTypeEntry(entries, typeName)
-    if (!typeEntry) typeEntry = await createTypeEntry(typeName)
+    const typeEntry = await findOrCreateType(entries, typeName, createTypeEntry)
     updateEntry(typeEntry.path, { icon, color })
     await handleUpdateFrontmatter(typeEntry.path, 'icon', icon)
     await handleUpdateFrontmatter(typeEntry.path, 'color', color)
@@ -60,8 +69,7 @@ export function useEntryActions({
 
   const handleReorderSections = useCallback(async (orderedTypes: { typeName: string; order: number }[]) => {
     for (const { typeName, order } of orderedTypes) {
-      let typeEntry = findTypeEntry(entries, typeName)
-      if (!typeEntry) typeEntry = await createTypeEntry(typeName)
+      const typeEntry = await findOrCreateType(entries, typeName, createTypeEntry)
       await handleUpdateFrontmatter(typeEntry.path, 'order', order)
       updateEntry(typeEntry.path, { order })
     }
@@ -69,16 +77,14 @@ export function useEntryActions({
   }, [entries, handleUpdateFrontmatter, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
   const handleUpdateTypeTemplate = useCallback(async (typeName: string, template: string) => {
-    let typeEntry = findTypeEntry(entries, typeName)
-    if (!typeEntry) typeEntry = await createTypeEntry(typeName)
+    const typeEntry = await findOrCreateType(entries, typeName, createTypeEntry)
     await handleUpdateFrontmatter(typeEntry.path, 'template', template)
     updateEntry(typeEntry.path, { template: template || null })
     onFrontmatterPersisted?.()
   }, [entries, handleUpdateFrontmatter, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
   const handleRenameSection = useCallback(async (typeName: string, label: string) => {
-    let typeEntry = findTypeEntry(entries, typeName)
-    if (!typeEntry) typeEntry = await createTypeEntry(typeName)
+    const typeEntry = await findOrCreateType(entries, typeName, createTypeEntry)
     const trimmed = label.trim()
     updateEntry(typeEntry.path, { sidebarLabel: trimmed || null })
     if (trimmed) {
@@ -90,8 +96,7 @@ export function useEntryActions({
   }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
   const handleToggleTypeVisibility = useCallback(async (typeName: string) => {
-    let typeEntry = findTypeEntry(entries, typeName)
-    if (!typeEntry) typeEntry = await createTypeEntry(typeName)
+    const typeEntry = await findOrCreateType(entries, typeName, createTypeEntry)
     if (typeEntry.visible === false) {
       updateEntry(typeEntry.path, { visible: null })
       await handleDeleteProperty(typeEntry.path, 'visible')

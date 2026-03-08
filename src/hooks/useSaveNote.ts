@@ -2,7 +2,7 @@ import { useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke, updateMockContent } from '../mock-tauri'
 
-async function persistContent(path: string, content: string): Promise<void> {
+export async function persistContent(path: string, content: string): Promise<void> {
   if (isTauri()) {
     await invoke('save_note_content', { path, content })
   } else {

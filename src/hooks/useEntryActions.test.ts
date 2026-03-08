@@ -342,4 +342,58 @@ describe('useEntryActions', () => {
       expect(updateEntry).toHaveBeenCalledWith('/vault/type/journal.md', { visible: false })
     })
   })
+
+  describe('onBeforeAction callback', () => {
+    function setupWithBeforeAction(onBeforeAction: ReturnType<typeof vi.fn>) {
+      return renderHook(() =>
+        useEntryActions({
+          entries: [], updateEntry, handleUpdateFrontmatter, handleDeleteProperty,
+          setToastMessage, createTypeEntry, onFrontmatterPersisted, onBeforeAction,
+        })
+      )
+    }
+
+    it('calls onBeforeAction before trashing a note', async () => {
+      const callOrder: string[] = []
+      const onBeforeAction = vi.fn().mockImplementation(() => {
+        callOrder.push('beforeAction')
+        return Promise.resolve()
+      })
+      handleUpdateFrontmatter.mockImplementation(() => {
+        callOrder.push('updateFrontmatter')
+        return Promise.resolve()
+      })
+      const { result } = setupWithBeforeAction(onBeforeAction)
+
+      await act(async () => {
+        await result.current.handleTrashNote('/vault/note/test.md')
+      })
+
+      expect(onBeforeAction).toHaveBeenCalledWith('/vault/note/test.md')
+      expect(callOrder[0]).toBe('beforeAction')
+      expect(callOrder[1]).toBe('updateFrontmatter')
+    })
+
+    it('calls onBeforeAction before archiving a note', async () => {
+      const onBeforeAction = vi.fn().mockResolvedValue(undefined)
+      const { result } = setupWithBeforeAction(onBeforeAction)
+
+      await act(async () => {
+        await result.current.handleArchiveNote('/vault/note/test.md')
+      })
+
+      expect(onBeforeAction).toHaveBeenCalledWith('/vault/note/test.md')
+    })
+
+    it.each([
+      ['trash', 'handleTrashNote'] as const,
+      ['archive', 'handleArchiveNote'] as const,
+    ])('does not proceed with %s when onBeforeAction rejects', async (_label, method) => {
+      const { result } = setupWithBeforeAction(vi.fn().mockRejectedValue(new Error('Save failed')))
+
+      await expect(act(() => result.current[method]('/vault/note/test.md'))).rejects.toThrow('Save failed')
+
+      expect(handleUpdateFrontmatter).not.toHaveBeenCalled()
+    })
+  })
 })

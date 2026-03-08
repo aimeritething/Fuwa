@@ -46,6 +46,7 @@ import type { SidebarSelection, VaultEntry } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { filterEntries } from './utils/noteListHelpers'
 import { openLocalFile } from './utils/url'
+import { flushEditorContent } from './utils/autoSave'
 import './App.css'
 
 // Type declarations for mock content storage and test overrides
@@ -64,13 +65,21 @@ function useBulkActions(
   setToastMessage: (msg: string | null) => void,
 ) {
   const handleBulkArchive = useCallback(async (paths: string[]) => {
-    for (const path of paths) await entryActions.handleArchiveNote(path)
-    setToastMessage(`${paths.length} note${paths.length > 1 ? 's' : ''} archived`)
+    let ok = 0
+    for (const path of paths) {
+      try { await entryActions.handleArchiveNote(path); ok++ }
+      catch { /* error toast already shown by flushBeforeAction */ }
+    }
+    if (ok > 0) setToastMessage(`${ok} note${ok > 1 ? 's' : ''} archived`)
   }, [entryActions, setToastMessage])
 
   const handleBulkTrash = useCallback(async (paths: string[]) => {
-    for (const path of paths) await entryActions.handleTrashNote(path)
-    setToastMessage(`${paths.length} note${paths.length > 1 ? 's' : ''} moved to trash`)
+    let ok = 0
+    for (const path of paths) {
+      try { await entryActions.handleTrashNote(path); ok++ }
+      catch { /* error toast already shown by flushBeforeAction */ }
+    }
+    if (ok > 0) setToastMessage(`${ok} note${ok > 1 ? 's' : ''} moved to trash`)
   }, [entryActions, setToastMessage])
 
   return { handleBulkArchive, handleBulkTrash }
@@ -304,6 +313,31 @@ function App() {
   })
   useEffect(() => { contentChangeRef.current = handleContentChange }, [handleContentChange])
 
+  // Refs for stable closure in flushBeforeAction (avoids re-creating on every tab/content change)
+  const tabsRef = useRef(notes.tabs)
+  tabsRef.current = notes.tabs // eslint-disable-line react-hooks/refs -- ref sync pattern
+  const allContentRef = useRef(vault.allContent)
+  allContentRef.current = vault.allContent // eslint-disable-line react-hooks/refs -- ref sync pattern
+  const unsavedPathsRef = useRef(vault.unsavedPaths)
+  unsavedPathsRef.current = vault.unsavedPaths // eslint-disable-line react-hooks/refs -- ref sync pattern
+
+  /** Auto-save unsaved editor content before a destructive action (trash/archive). */
+  const { updateContent: vaultUpdateContent, clearUnsaved: vaultClearUnsaved } = vault
+  const flushBeforeAction = useCallback(async (path: string) => {
+    try {
+      await flushEditorContent(path, {
+        savePendingForPath,
+        getTabContent: (p) => tabsRef.current.find(t => t.entry.path === p)?.content,
+        isUnsaved: (p) => unsavedPathsRef.current.has(p),
+        getSavedContent: (p) => allContentRef.current[p],
+        onSaved: (p, c) => { vaultUpdateContent(p, c); vaultClearUnsaved(p) },
+      })
+    } catch (err) {
+      setToastMessage(`Auto-save failed: ${err}`)
+      throw err
+    }
+  }, [savePendingForPath, vaultUpdateContent, vaultClearUnsaved, setToastMessage])
+
   // Wire conflict file opener now that notes is available
   useEffect(() => {
     openConflictFileRef.current = (relativePath: string) => {
@@ -338,6 +372,7 @@ function App() {
     handleDeleteProperty: notes.handleDeleteProperty, setToastMessage,
     createTypeEntry: notes.createTypeEntrySilent,
     onFrontmatterPersisted: vault.loadModifiedFiles,
+    onBeforeAction: flushBeforeAction,
   })
 
   const handleDeleteNote = useCallback(async (path: string) => {
