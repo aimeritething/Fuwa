@@ -171,6 +171,22 @@ describe('useEditorSave', () => {
     // (We'll check via the next handleSave call)
   })
 
+  it('handleContentChange syncs content to tab state immediately', () => {
+    const { result } = renderSaveHook()
+
+    act(() => {
+      result.current.handleContentChange('/test/note.md', '---\ntitle: T\n---\n\n# T\n\nLive edits')
+    })
+
+    // setTabs must be called on every content change (not just on save)
+    // so that consumers like the AI panel see current editor content
+    expect(setTabs).toHaveBeenCalled()
+    const updater = setTabs.mock.calls[0][0]
+    const tabs = [{ entry: { path: '/test/note.md' }, content: 'stale' }]
+    const updated = updater(tabs)
+    expect(updated[0].content).toBe('---\ntitle: T\n---\n\n# T\n\nLive edits')
+  })
+
   it('save updates tab content with edited body, not original (regression)', async () => {
     const { result } = renderSaveHook()
 

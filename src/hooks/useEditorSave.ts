@@ -66,10 +66,14 @@ export function useEditorSave({ updateVaultContent, setTabs, setToastMessage, on
     }
   }, [flushPending, setToastMessage, onAfterSave, saveNote, onNotePersisted])
 
-  /** Called by Editor onChange — buffers the latest content without saving */
+  /** Called by Editor onChange — buffers the latest content and syncs tab state
+   *  so consumers (e.g. AI panel) always see current editor content. */
   const handleContentChange = useCallback((path: string, content: string) => {
     pendingContentRef.current = { path, content }
-  }, [])
+    setTabs((prev: Tab[]) =>
+      prev.map((t) => t.entry.path === path ? { ...t, content } : t)
+    )
+  }, [setTabs])
 
   /** Save pending content for a specific path (used before rename) */
   const savePendingForPath = useCallback(
