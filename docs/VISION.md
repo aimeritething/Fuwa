@@ -21,6 +21,16 @@ The credibility is real: if you wonder whether this person knows how to organize
 
 This is not a product looking for a market. It's a tool built by its first power user, for an audience that already knows and trusts him.
 
+**Why Laputa, in the context of Refactoring.**
+
+Refactoring is a newsletter about how software is built, how teams work, and how digital products are developed — written from Luca's experience and conversations with other tech leaders. A natural question follows: what is the author's own current experience building software with AI?
+
+Laputa answers that question directly and publicly. If it works — if it becomes a real product used by real people — it validates the author's capabilities and authority to write about these topics. Not as theory, but as demonstrated practice. Anyone can look at the GitHub repository, see 100 commits a day, and verify: this person actually does this.
+
+This is why Laputa is **free and open source**: success becomes a reputation and acquisition channel for Refactoring. The attention and trust earned through a well-executed open source project converts — through sponsorships, paid subscriptions, and brand authority — into the business that Refactoring runs on.
+
+The strategy is coherent: build the tool you describe, make the work visible, let the product speak for the author.
+
 ---
 
 ## The problem
