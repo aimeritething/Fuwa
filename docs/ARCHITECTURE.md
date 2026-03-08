@@ -16,7 +16,7 @@ This principle directly serves AI-readability: the more structure comes from sha
 
 ### No hardcoded exceptions
 
-No field names, folder paths, or vault-specific values should be hardcoded in the application source code. What can be a convention should be a convention. What needs to be configurable should live in a file. Hardcoded lists (like `RELATIONSHIP_KEYS`) are a code smell — they create invisible walls that break when the user's vocabulary differs from the developer's assumptions.
+No field names, folder paths, or vault-specific values should be hardcoded in the application source code. What can be a convention should be a convention. What needs to be configurable should live in a file. Relationship fields are detected dynamically by checking whether values contain `[[wikilinks]]` — no hardcoded field name lists.
 
 ### AI-first knowledge graph
 

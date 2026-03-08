@@ -8,7 +8,7 @@ import {
   saveDisplayModeOverride,
   removeDisplayModeOverride,
 } from '../utils/propertyTypes'
-import { RELATIONSHIP_KEYS, containsWikilinks } from '../components/DynamicPropertiesPanel'
+import { containsWikilinks } from '../components/DynamicPropertiesPanel'
 
 // Keys to skip showing in Properties (handled by dedicated UI or internal)
 const SKIP_KEYS = new Set(['aliases', 'workspace', 'title', 'type', 'is_a', 'Is A'])
@@ -79,7 +79,7 @@ function collectAllVaultTags(entries: VaultEntry[] | undefined): Record<string, 
 }
 
 function isVisibleProperty([key, value]: [string, FrontmatterValue]): boolean {
-  return !SKIP_KEYS.has(key) && !RELATIONSHIP_KEYS.has(key) && !containsWikilinks(value)
+  return !SKIP_KEYS.has(key) && !containsWikilinks(value)
 }
 
 function parseAddedValue(rawValue: string, mode: PropertyDisplayMode): FrontmatterValue {

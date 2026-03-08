@@ -27,12 +27,6 @@ import { TagsDropdown } from './TagsDropdown'
 import { getTagStyle } from '../utils/tagStyles'
 import { ColorEditableValue } from './ColorInput'
 
-// Keys that are relationships (contain wikilinks)
-export const RELATIONSHIP_KEYS = new Set([
-  'Belongs to', 'Related to', 'Events', 'Has Data',
-  'Advances', 'Parent', 'Children', 'Has', 'Notes',
-])
-
 // eslint-disable-next-line react-refresh/only-export-components -- utility co-located with component
 export function containsWikilinks(value: FrontmatterValue): boolean {
   if (typeof value === 'string') return /^\[\[.*\]\]$/.test(value)

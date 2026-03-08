@@ -13,7 +13,7 @@ Before building new features, the architectural foundations must be solid. Key s
 - Move vault cache outside the vault directory (→ `~/.laputa/cache/`) with atomic writes
 - Flip `type:` to canonical field in Rust parser (`Is A:` becomes alias)
 - Remove `allContent` from the architecture — derive backlinks from open tabs only
-- Remove hardcoded `RELATIONSHIP_KEYS` — detect wikilink fields dynamically
+- ~~Remove hardcoded `RELATIONSHIP_KEYS` — detect wikilink fields dynamically~~ ✅ Done
 - Fix hardcoded vault path in `resolveNewNote` / `resolveNewType` / `resolveDailyNote`
 - Define and enforce the three-source-of-truth contract (filesystem → cache → React state)
 

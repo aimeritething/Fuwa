@@ -166,7 +166,7 @@ describe('DynamicPropertiesPanel', () => {
     expect(screen.getByText('abc-123-def')).toBeInTheDocument()
   })
 
-  it('skips aliases and relationship keys', () => {
+  it('skips aliases and fields with wikilink values', () => {
     render(
       <DynamicPropertiesPanel
         entry={makeEntry()}
@@ -174,10 +174,35 @@ describe('DynamicPropertiesPanel', () => {
         frontmatter={{ aliases: ['AL'], 'Belongs to': '[[Something]]', cadence: 'Monthly' }}
       />
     )
-    // aliases and "Belongs to" should be skipped
+    // aliases skipped (in SKIP_KEYS); 'Belongs to' skipped (has wikilinks)
     expect(screen.queryByText('aliases')).not.toBeInTheDocument()
     expect(screen.queryByText('Belongs to')).not.toBeInTheDocument()
     expect(screen.getByText('cadence')).toBeInTheDocument()
+  })
+
+  it('shows former relationship key with plain text value in Properties', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={makeEntry()}
+        content=""
+        frontmatter={{ 'Belongs to': 'some-team', cadence: 'Monthly' }}
+      />
+    )
+    // 'Belongs to' has a plain text value, not a wikilink — should render as property
+    expect(screen.getByText('Belongs to')).toBeInTheDocument()
+    expect(screen.getByText('some-team')).toBeInTheDocument()
+  })
+
+  it('hides custom field with wikilink value from Properties', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={makeEntry()}
+        content=""
+        frontmatter={{ Mentor: '[[person/luca]]' }}
+      />
+    )
+    // Mentor contains a wikilink → shown in Relationships, not Properties
+    expect(screen.queryByText('Mentor')).not.toBeInTheDocument()
   })
 
   it('skips is_a, Is A, and type keys (shown via TypeRow instead)', () => {

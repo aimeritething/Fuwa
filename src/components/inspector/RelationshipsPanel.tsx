@@ -2,7 +2,7 @@ import { useMemo, useCallback, useState, useRef } from 'react'
 import type { VaultEntry } from '../../types'
 import { X } from '@phosphor-icons/react'
 import type { ParsedFrontmatter } from '../../utils/frontmatter'
-import { RELATIONSHIP_KEYS, containsWikilinks } from '../DynamicPropertiesPanel'
+import { containsWikilinks } from '../DynamicPropertiesPanel'
 import type { FrontmatterValue } from '../Inspector'
 import { NoteSearchList } from '../NoteSearchList'
 import { useNoteSearch } from '../../hooks/useNoteSearch'
@@ -123,7 +123,7 @@ function RelationshipGroup({ label, refs, entries, typeEntryMap, onNavigate, onR
 
 function extractRelationshipRefs(frontmatter: ParsedFrontmatter): { key: string; refs: string[] }[] {
   return Object.entries(frontmatter)
-    .filter(([key, value]) => key !== 'Type' && (RELATIONSHIP_KEYS.has(key) || containsWikilinks(value)))
+    .filter(([key, value]) => key !== 'Type' && containsWikilinks(value))
     .map(([key, value]) => {
       const refs: string[] = []
       if (typeof value === 'string' && isWikilink(value)) refs.push(value)
