@@ -64,6 +64,26 @@ Laputa's goal is not just to be an efficient place to store things. It's to prov
 
 The vision: a person who uses Laputa well has built a second brain that any AI can read, reason over, and contribute to. Not the naive "memory" that ChatGPT builds from chat history — but an intentional, curated, structured representation of their work and life.
 
+## Product trajectory
+
+Laputa is designed to grow through three natural stages — not pivots, but extensions of the same foundational model:
+
+**Stage 1: Personal PKM + AI context** *(current)*
+A single person manages their knowledge, life, and work in a local vault. The primary collaborator is AI. The vault gives structure to one person's context, making it legible to an AI that can then assist meaningfully across all areas of life and work.
+
+**Stage 2: Independent knowledge workers**
+Content creators, freelancers, consultants, indie hackers. People with maximum incentive *and* maximum agency to build their own system. They have a business, clients, projects, responsibilities — and they work alone or in very small teams. The same ontology (Projects, Responsibilities, Procedures, Notes, People, Events) maps perfectly: a content creator has editorial projects, a newsletter responsibility measured by subscriber growth, and a procedure for publishing.
+
+This stage is also where AI collaboration deepens: the AI can see not just your personal notes but your client commitments, your content pipeline, your recurring workflows — and help you manage all of it.
+
+**Stage 3: Small teams**
+The same ontology scales to small startups and teams. Companies have projects (with start and end), responsibilities (recurring, measured by KPIs), procedures (owned by someone, with a cadence and expected output), and people. The knowledge structure is identical — only the access model changes: different people should see different subsets of the vault.
+
+This is where the workspace feature becomes meaningful at a team level: workspaces map to vaults, vaults map to access scopes, and each team member has a Laputa instance that shows exactly the information they should see — nothing more, nothing less. Version control gives the team a full audit trail: who changed what, when, and why.
+
+**What makes this trajectory coherent:**
+The foundational model — local files, Git-versioned, structured via conventions — is not a compromise. It's what makes all three stages possible without rebuilding the product. Personal use is offline-first and fully private. Team use is Git-collaborative, with access control at the vault/repo level. AI assistance gets better at every stage because the structure it can reason over gets richer.
+
 ## Target user (v1)
 
 Developers and technically-minded knowledge workers who:
@@ -149,8 +169,11 @@ A living snapshot of what's built vs what's missing. Updated as features ship.
 ## Design principles
 
 1. **Opinionated but not rigid** — ship strong defaults, allow customization where it matters
-2. **Git-first** — sync, history, and collaboration via Git; no proprietary cloud
-3. **AI-native architecture** — local files, open formats, readable by any AI tool
-4. **Zero lock-in** — earn trust daily; the exit door is always open
-5. **Ready out of the box** — no plugin hunting, no theme configuration; it just works
-6. **Relations as first-class citizens** — connections between notes are as important as the notes themselves
+2. **Convention over configuration** — standard field names (`status:`, `url:`, `start_date:`, `Workspace:`) trigger rich UI behavior automatically. No setup required. Users can override via config files in the vault, but the defaults work out of the box. This is *convention over* configuration, not *convention instead of* configuration.
+3. **Git-first** — sync, history, collaboration, and audit trail via Git; no proprietary cloud
+4. **AI-native architecture** — local files, open formats, structured by conventions that both humans and AI can read without bespoke instructions. The more a vault follows conventions, the more capable an AI becomes in it.
+5. **Zero lock-in** — earn trust daily; the exit door is always open
+6. **Ready out of the box** — no plugin hunting, no theme configuration; it just works
+7. **Relations as first-class citizens** — connections between notes are as important as the notes themselves
+8. **Semantic properties** — certain well-known frontmatter fields (`status:`, `goal:` + `result:`, `start_date:` + `end_date:`) are rendered meaningfully in the UI — as chips, progress indicators, date ranges — not just as plain text in a properties panel. The rendering rules are configurable but sensible by default.
+9. **Filesystem as the single source of truth** — the app never owns the data. Cache and UI state are always derived from the files and reconstructible from scratch.
