@@ -16,7 +16,7 @@ interface VaultEntry {
   path: string              // Absolute file path
   filename: string          // Just the filename
   title: string             // From first # heading, or filename fallback
-  isA: string | null        // Entity type: Project, Procedure, Person, etc.
+  isA: string | null        // Entity type: Project, Procedure, Person, etc. (from frontmatter `type:` field)
   aliases: string[]         // Alternative names for wikilink resolution
   belongsTo: string[]       // Parent relationships (wikilinks)
   relatedTo: string[]       // Related entity links (wikilinks)
@@ -37,9 +37,11 @@ interface VaultEntry {
 }
 ```
 
-### Entity Types (isA)
+### Entity Types (isA / type)
 
-Entity type is inferred from the folder structure. The vault is organized by type:
+Entity type is stored in the `type:` frontmatter field (e.g. `type: Quarter`). The legacy field name `Is A:` is still accepted as an alias for backwards compatibility but new notes use `type:`. The `VaultEntry.isA` property in TypeScript/Rust holds the resolved value.
+
+Type is also inferred from the folder structure when `type:` is absent. The vault is organized by type:
 
 ```
 ~/Laputa/
@@ -66,7 +68,7 @@ Mapping logic lives in `vault/mod.rs:parse_md_file()`. If a folder doesn't match
 
 Each entity type can have a corresponding **type document** in the `type/` folder (e.g., `type/project.md`, `type/person.md`). Type documents:
 
-- Have `Is A: Type` in their frontmatter
+- Have `type: Type` in their frontmatter (`Is A: Type` also accepted as legacy alias)
 - Define type metadata: icon, color, order, sidebar label, template, sort, view, visibility
 - Are navigable entities — they appear in the sidebar under "Types" and can be opened/edited like any note
 - Serve as the "definition" for their type category
@@ -171,7 +173,7 @@ type SidebarSelection =
    - Reads content with `fs::read_to_string()`
    - Parses frontmatter with `gray_matter::Matter::<YAML>`
    - Extracts title from first `#` heading
-   - Infers entity type from parent folder name (or explicit `Is A`/`type` frontmatter)
+   - Infers entity type from parent folder name (or explicit `type:` frontmatter; `Is A:` accepted as legacy alias)
    - Parses dates as ISO 8601 to Unix timestamps
    - Extracts relationships, outgoing links, custom properties, word count, snippet
 5. Sorts by `modified_at` descending
@@ -334,11 +336,11 @@ Two-layer theming:
 
 ### Vault-Based Themes
 
-Themes are markdown notes in `theme/` with `Is A: Theme` frontmatter. Each property becomes a CSS variable with `--` prefix.
+Themes are markdown notes in `theme/` with `type: Theme` frontmatter. Each property becomes a CSS variable with `--` prefix.
 
 ```yaml
 ---
-Is A: Theme
+type: Theme
 Description: Light theme with warm, paper-like tones
 background: "#FFFFFF"
 foreground: "#37352F"
@@ -381,7 +383,7 @@ The Inspector panel (`src/components/Inspector.tsx`) is composed of sub-panels:
 1. **DynamicPropertiesPanel** (`src/components/DynamicPropertiesPanel.tsx`): Renders frontmatter as editable key-value pairs:
    - **Editable properties** (top): Type badge, Status pill with dropdown, boolean toggles, array tag pills, text fields. Click-to-edit interaction.
    - **Info section** (bottom, separated by border): Read-only derived metadata — Modified, Created, Words, File Size. Uses muted styling with no interaction.
-   - Keys in `SKIP_KEYS` (`aliases`, `notion_id`, `workspace`, `is_a`, `Is A`) are hidden from the editable section.
+   - Keys in `SKIP_KEYS` (`type`, `aliases`, `notion_id`, `workspace`, `is_a`, `Is A`) are hidden from the editable section.
 
 2. **RelationshipsPanel**: Shows `belongs_to`, `related_to`, and all custom relationship fields as clickable wikilink chips.
 

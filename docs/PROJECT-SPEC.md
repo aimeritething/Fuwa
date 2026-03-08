@@ -263,7 +263,7 @@ M1 passed all tests but showed 0 notes — vault path wrong, error silently swal
 - [x] Tauri v2 + React 19 + TypeScript + Vite 7 project setup
 - [x] Configure Vitest (7 tests), Playwright (2 E2E tests), Rust tests (10 tests)
 - [x] Rust backend: `list_vault` command — scans directory, parses YAML frontmatter via `gray_matter` crate
-- [x] Rust backend: extracts Is A, aliases, Belongs to, Related to, Status, Owner, Cadence, title from H1
+- [x] Rust backend: extracts type (Is A), aliases, Belongs to, Related to, Status, Owner, Cadence, title from H1
 - [x] React: four-panel layout (Sidebar 250px, NoteList 300px, Editor flex, Inspector 280px), all resizable
 - [x] Tauri mock layer for browser testing (`src/mock-tauri.ts`)
 - [x] Screenshot verification via Playwright (`e2e/screenshot.spec.ts`)
@@ -281,7 +281,7 @@ bc75647 Remove unused Vite scaffold files
 ### M2: Sidebar & Note List
 **Goal:** Navigate the vault via sidebar, see filtered note lists.
 - [ ] Sidebar: Filters section (All Notes, Favorites, Trash)
-- [ ] Sidebar: Section Groups (Projects, Experiments, Responsibilities, Procedures) — populated from frontmatter `Is A`
+- [ ] Sidebar: Section Groups (Projects, Experiments, Responsibilities, Procedures) — populated from frontmatter `type:`
 - [ ] Sidebar: Topics — flat list, populated from `Related to` topic links
 - [ ] Note list: show title, preview snippet, date, type indicator
 - [ ] Note list: sort by last modified (descending)
@@ -313,7 +313,7 @@ bc75647 Remove unused Vite scaffold files
 
 ### M5: File Operations & Polish
 **Goal:** Create, rename, delete files. Polish for daily-driver use.
-- [ ] Create new note (with type selector → sets `Is A` and target folder)
+- [ ] Create new note (with type selector → sets `type:` and target folder)
 - [ ] Rename file (updates filename + title)
 - [ ] Delete → move to trash
 - [ ] Keyboard shortcuts (Cmd+N new, Cmd+S save, Cmd+P quick open/search)

@@ -332,7 +332,7 @@ BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 ### Add a new entity type
 
 1. Create the folder in the vault (e.g., `~/Laputa/mytype/`)
-2. Create a type document: `type/mytype.md` with `Is A: Type` frontmatter (icon, color, order, etc.)
+2. Create a type document: `type/mytype.md` with `type: Type` frontmatter (icon, color, order, etc.)
 3. The sidebar section groups are auto-generated from type documents — no code change needed if `visible: true`
 4. Update `CreateNoteDialog.tsx` type options if users should be able to create it from the dialog
 
@@ -344,7 +344,7 @@ BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 
 ### Add or modify a theme
 
-1. **Vault-based** (preferred): Create/edit a markdown note in `theme/` with `Is A: Theme` frontmatter
+1. **Vault-based** (preferred): Create/edit a markdown note in `theme/` with `type: Theme` frontmatter
 2. **Programmatic**: Edit defaults in `src-tauri/src/theme/defaults.rs`
 3. See `docs/THEMING.md` for the full property reference
 

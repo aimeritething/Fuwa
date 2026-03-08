@@ -176,7 +176,7 @@ The MCP server (`mcp-server/`) exposes vault operations as tools for AI assistan
 |------|--------|-------------|
 | `open_note` | `path` | Open and read a note by relative path |
 | `read_note` | `path` | Read note content (alias for `open_note`) |
-| `create_note` | `path, title, [is_a]` | Create new note with title and optional type frontmatter |
+| `create_note` | `path, title, [type]` | Create new note with title and optional type frontmatter |
 | `search_notes` | `query, [limit]` | Search notes by title or content substring |
 | `append_to_note` | `path, text` | Append text to end of existing note |
 | `edit_note_frontmatter` | `path, patch` | Merge key-value patch into YAML frontmatter |
@@ -321,7 +321,7 @@ See [THEMING.md](./THEMING.md) for the full theme system documentation.
 
 ### Vault-Based Themes
 
-Themes are markdown notes in the `theme/` folder with `Is A: Theme` frontmatter. Each frontmatter property becomes a CSS variable. Managed by `useThemeManager` hook and the `src-tauri/src/theme/` Rust module (create, seed, defaults).
+Themes are markdown notes in the `theme/` folder with `type: Theme` frontmatter (`Is A: Theme` accepted as legacy alias). Each frontmatter property becomes a CSS variable. Managed by `useThemeManager` hook and the `src-tauri/src/theme/` Rust module (create, seed, defaults).
 
 - **Vault settings**: `.laputa/settings.json` stores the active theme reference
 - **Legacy support**: `_themes/*.json` files still supported for backward compatibility
