@@ -45,3 +45,18 @@ src-tauri/target
 
 # Generated mcp-server bundle (built by scripts/bundle-mcp-server.mjs)
 src-tauri/resources/
+
+# Python cache
+__pycache__/
+*.py[cod]
+
+# Dev screenshots
+screenshots/
+
+# Stale planning docs (keep locally if needed, not in repo)
+REDESIGN-PLAN.md
+SF-SYMBOLS-MIGRATION.md
+CODE-HEALTH-REPORT.md
+
+# Local home dir artifact from worktree ops
+(HOME)/
