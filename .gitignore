@@ -60,3 +60,13 @@ CODE-HEALTH-REPORT.md
 
 # Local home dir artifact from worktree ops
 (HOME)/
+
+# Runtime / process files
+.claude-pid
+
+# Generated vault index files (qmd/search artifacts)
+.laputa-index.json
+
+# Tauri signing keys (never commit private keys)
+*.key
+*.key.pub
