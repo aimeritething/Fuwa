@@ -61,7 +61,25 @@ These are not features — they are the foundation everything else is built on.
 
 ---
 
-### 4. Mobile apps
+### 4. Inbox and capture pipeline
+
+**What:** An Inbox section that surfaces all unorganized notes — those with no outgoing relationships. Replaces "All Notes" as the primary landing section. Capture integrations (Chrome extension, iPhone share sheet, Readwise sync) feed into the inbox automatically.
+
+**Why:** Capture and organize are fundamentally different activities and should be treated separately. Today Laputa has no concept of an unorganized note — everything lands in the same pool. The inbox makes the unorganized state visible and actionable, creating a discipline: Inbox Zero, reached weekly.
+
+**The inbox as a smart filter:** not a folder. Any note without `Belongs to:`, `Related to:`, or other meaningful relationship is automatically in the inbox. Connecting a note to something removes it from the inbox, automatically.
+
+**Capture integrations (future, each a separate feature):**
+- Chrome extension → saves URL/clip as a note to the vault via Git
+- iPhone share sheet → quick capture from any app
+- Readwise / Kindle highlights → synced via Git automation
+- Voice memo → transcribed and dropped into inbox
+
+**Priority:** The Inbox UI is high-value and can be implemented without the capture integrations. Integrations come after.
+
+---
+
+### 5. Mobile apps
 
 **What:** Native apps for iPhone and iPad — not ports of the desktop app, but purpose-built for each form factor.
 

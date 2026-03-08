@@ -56,6 +56,44 @@ Laputa is built around a clear conceptual model, inspired by PARA but adapted to
 
 **Relations** between notes are first-class citizens — not just wiki-links, but typed, bidirectional connections.
 
+## The two-phase knowledge workflow: capture and organize
+
+The ontology above describes the *destination* of a note — what it becomes once it's organized. But before a note reaches its destination, it passes through two distinct phases that Laputa treats as first-class:
+
+### Phase 1: Capture
+
+Capture must be fast, frictionless, and available everywhere. A thought, a saved article, a photo, a Kindle highlight, a voice memo — any of these can be the seed of a future note. The cardinal rule: **never let friction during capture cause a good idea to be lost.**
+
+Capture sources can be:
+- Creating a note directly in Laputa (desktop or mobile)
+- A Chrome extension that saves a URL or web clip to the vault
+- Sharing a photo to the iPhone app
+- Readwise or Kindle highlights synced via Git automation
+- Any service that can commit a Markdown file to a Git repo
+
+What all captured notes have in common: they land in the vault **unorganized**. They have no `Belongs to:`, no `Related to:`, no connections to the rest of the graph. They are orphans — intentionally.
+
+### Phase 2: Organize
+
+Organization is a deliberate, separate activity. It's when you ask: *"What is this useful for?"*
+
+- Useful for a **Project**? → link it with `Belongs to: [[project/x]]`
+- Useful for a **Responsibility**? → link it
+- Part of a **Topic** you want to grow over time? → link it with `Related to: [[topic/x]]`
+- Part of a **Procedure**? An **Event**? A **Person**? → link accordingly
+
+The rule: **every captured note should eventually connect to at least one actionable container.** If you can't connect it to anything, it's a signal the note isn't useful enough to keep, or that the connection hasn't been discovered yet.
+
+### Inbox: the UI expression of this principle
+
+The Inbox is the section of Laputa that shows all *unorganized* notes — notes that have no outgoing relationships yet. It's the visual representation of "things captured but not yet processed."
+
+The goal: **Inbox Zero**, reached periodically (weekly is ideal). A full inbox is not a failure — it's a queue. An inbox that never empties is a system that isn't working.
+
+The inbox is not a folder. It's a smart filter: any note without a `Belongs to:`, `Related to:`, or other meaningful relationship is automatically in the inbox. Connecting a note to something moves it out, automatically.
+
+This replaces the current "All Notes" section, which has no semantic meaning and provides no guidance on what to do next.
+
 ## The deeper mission: AI context scaffolding
 
 Most people today can't effectively share context about their lives with AI. They don't know what to write, how to structure it, or when. The result is that AI assistants — even the best ones — are working with a fraction of the context they need.
