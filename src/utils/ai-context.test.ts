@@ -331,7 +331,7 @@ describe('buildContextSnapshot', () => {
     expect(json.noteList).toBeUndefined()
   })
 
-  it('uses activeNoteContent for body when allContent is empty (Tauri mode)', () => {
+  it('strips frontmatter from activeNoteContent before setting body', () => {
     const emptyAllContent: Record<string, string> = {}
     const result = buildContextSnapshot({
       activeEntry: active,
@@ -341,14 +341,27 @@ describe('buildContextSnapshot', () => {
     })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
     expect(json.activeNote.body).toContain('Project content from tab.')
+    expect(json.activeNote.body).not.toContain('---')
+    expect(json.activeNote.body).not.toContain('title: Alpha')
   })
 
-  it('prefers activeNoteContent over allContent when both present', () => {
+  it('returns empty body when raw content is frontmatter-only (bug case)', () => {
+    const result = buildContextSnapshot({
+      activeEntry: active,
+      allContent: {},
+      entries,
+      activeNoteContent: '---\ntitle: Alpha\nis_a: Project\nstatus: active\n---\n',
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.activeNote.body).toBe('')
+  })
+
+  it('prefers activeNoteContent body over allContent when both present', () => {
     const result = buildContextSnapshot({
       activeEntry: active,
       allContent,
       entries,
-      activeNoteContent: 'Fresh editor content',
+      activeNoteContent: '---\ntitle: Alpha\n---\nFresh editor content',
     })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
     expect(json.activeNote.body).toBe('Fresh editor content')
@@ -358,6 +371,24 @@ describe('buildContextSnapshot', () => {
     const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
     const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
     expect(json.activeNote.body).toBe('# Alpha\nProject content.')
+  })
+
+  it('includes wordCount in activeNote', () => {
+    const entryWithWords = makeEntry({ path: '/vault/a.md', title: 'Alpha', wordCount: 206 })
+    const result = buildContextSnapshot({ activeEntry: entryWithWords, allContent, entries })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.activeNote.wordCount).toBe(206)
+  })
+
+  it('handles content with no frontmatter (plain markdown)', () => {
+    const result = buildContextSnapshot({
+      activeEntry: active,
+      allContent: {},
+      entries,
+      activeNoteContent: '# Just a heading\n\nSome plain content.',
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.activeNote.body).toBe('# Just a heading\n\nSome plain content.')
   })
 
   it('includes wikilink instruction in preamble', () => {

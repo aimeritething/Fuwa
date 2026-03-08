@@ -5,6 +5,13 @@
 
 import type { VaultEntry } from '../types'
 import { wikilinkTarget } from './wikilink'
+import { splitFrontmatter } from './wikilinks'
+
+/** Extract only the body text from raw file content (strips YAML frontmatter). */
+function extractBody(rawContent: string): string {
+  const [, body] = splitFrontmatter(rawContent)
+  return body.trim()
+}
 
 /** Resolve a link target string to a VaultEntry by matching title, aliases, or filename stem. */
 export function resolveTarget(target: string, entries: VaultEntry[]): VaultEntry | undefined {
@@ -98,13 +105,17 @@ const MAX_NOTE_LIST_ITEMS = 100
 export function buildContextSnapshot(params: ContextSnapshotParams): string {
   const { activeEntry, allContent, activeNoteContent, openTabs, noteList, noteListFilter, entries, references } = params
 
+  const rawContent = activeNoteContent ?? allContent[activeEntry.path] ?? ''
+  const body = extractBody(rawContent)
+
   const snapshot: Record<string, unknown> = {
     activeNote: {
       path: activeEntry.path,
       title: activeEntry.title,
       type: activeEntry.isA ?? 'Note',
       frontmatter: entryFrontmatter(activeEntry),
-      body: activeNoteContent ?? allContent[activeEntry.path] ?? '',
+      body,
+      wordCount: activeEntry.wordCount,
     },
   }
 
@@ -146,7 +157,7 @@ export function buildContextSnapshot(params: ContextSnapshotParams): string {
         path: ref.path,
         title: ref.title,
         type: ref.type ?? 'Note',
-        body: allContent[ref.path] ?? '',
+        body: extractBody(allContent[ref.path] ?? ''),
       }))
   }
 
@@ -154,6 +165,7 @@ export function buildContextSnapshot(params: ContextSnapshotParams): string {
     'You are an AI assistant integrated into Laputa, a personal knowledge management app.',
     'The user is viewing a specific note. Use the structured context below to answer questions accurately.',
     'You can also use MCP tools to search, read, create, or edit notes in the vault.',
+    'If the body field is empty but wordCount is > 0, the content may be stale — use get_note to read the full note from disk.',
     'When you mention or reference a note by name, always use [[Note Title]] wikilink syntax so the user can click to open it.',
   ].join('\n')
 
