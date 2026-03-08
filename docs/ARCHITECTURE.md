@@ -2,6 +2,35 @@
 
 Laputa is a personal knowledge and life management desktop app. It reads a vault of markdown files with YAML frontmatter and presents them in a four-panel UI inspired by Bear Notes.
 
+## Design Principles
+
+### Filesystem as the single source of truth
+
+The vault is a folder of plain markdown files. The app never owns the data — it only reads and writes files. The cache, React state, and any in-memory representation are always derived from the filesystem and must be reconstructible by deleting them. When in doubt, the file on disk wins.
+
+### Convention over configuration
+
+Laputa is opinionated. Standard field names (`type:`, `status:`, `url:`, `Workspace:`, `Belongs to:`, `start_date:`, `end_date:`) have well-defined meanings and trigger specific UI behavior — without any setup. This is not convention *instead of* configuration: users can override defaults via config files in their vault (e.g. `config/relations.md`, `config/semantic-properties.md`). But the defaults work out of the box, and most users never need to touch them.
+
+This principle directly serves AI-readability: the more structure comes from shared conventions rather than per-user custom configurations, the easier it is for an AI agent to understand and navigate the vault correctly — without needing bespoke instructions for every setup.
+
+### No hardcoded exceptions
+
+No field names, folder paths, or vault-specific values should be hardcoded in the application source code. What can be a convention should be a convention. What needs to be configurable should live in a file. Hardcoded lists (like `RELATIONSHIP_KEYS`) are a code smell — they create invisible walls that break when the user's vocabulary differs from the developer's assumptions.
+
+### AI-first knowledge graph
+
+Notes are not just documents — they are nodes in a structured graph of people, projects, events, responsibilities, and ideas. Every design decision should ask: "Does this make the knowledge graph easier for a human *and* an AI to navigate?" Conventions that are legible to both are better than conventions that are legible only to one.
+
+### Three representations, one authority
+
+Vault data exists in three forms simultaneously:
+1. **Filesystem** — the `.md` files. This is the authority.
+2. **Cache** — an index for fast startup. Always reconstructible from the filesystem.
+3. **React state** — the in-memory view during a session. Always derived from the cache.
+
+These must never diverge permanently. If they do, the filesystem wins and the cache/state are rebuilt.
+
 ## Tech Stack
 
 | Layer | Technology | Version |

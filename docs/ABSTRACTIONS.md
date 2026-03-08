@@ -2,6 +2,30 @@
 
 Key abstractions and domain models in Laputa.
 
+## Design Philosophy
+
+Laputa's abstractions follow the **convention over configuration** principle: standard field names and folder structures have well-defined meanings and trigger UI behavior automatically. This makes vaults legible both to humans and to AI agents — the more a vault follows conventions, the less custom configuration an AI needs to navigate it correctly.
+
+The full set of design principles is documented in [ARCHITECTURE.md](./ARCHITECTURE.md#design-principles).
+
+## Semantic Field Names (conventions)
+
+These frontmatter field names have special meaning in Laputa's UI:
+
+| Field | Meaning | UI behavior |
+|---|---|---|
+| `type:` | Entity type (Project, Person, Quarter…) | Type chip in note list + sidebar grouping |
+| `status:` | Lifecycle stage (active, done, blocked…) | Colored chip in note list + editor header |
+| `url:` | External link | Clickable link chip in editor header |
+| `date:` | Single date | Formatted date badge |
+| `start_date:` + `end_date:` | Duration/timespan | Date range badge |
+| `goal:` + `result:` | Progress | Progress indicator in editor header |
+| `Workspace:` | Vault context filter | Global workspace filter |
+| `Belongs to:` | Parent relationship | Relationship chip in Properties panel |
+| `Related to:` | Lateral relationship | Relationship chip in Properties panel |
+
+The list of default-shown relationships and semantic property rendering rules can be customized via `config/relations.md` and `config/semantic-properties.md` in the vault.
+
 ## Document Model
 
 All data lives in markdown files with YAML frontmatter. There is no database — the filesystem is the source of truth.
