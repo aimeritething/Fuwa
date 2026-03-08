@@ -1,0 +1,37 @@
+import { test, expect } from '@playwright/test'
+import { sendShortcut } from './helpers'
+
+test.describe('AI chat empty body fix — no regression', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.route('**/api/vault/ping', route => route.fulfill({ status: 503 }))
+    await page.goto('/')
+    await page.waitForTimeout(500)
+  })
+
+  test('AI panel opens, note is selected, message can be sent and response renders', async ({ page }) => {
+    // Select a note so the AI panel has context
+    const noteItem = page.locator('.app__note-list .cursor-pointer').first()
+    await noteItem.click()
+    await page.waitForTimeout(500)
+
+    // Verify editor has content (note body is loaded)
+    const editor = page.locator('.bn-editor')
+    await expect(editor).toBeVisible({ timeout: 3000 })
+
+    // Open AI Chat with Ctrl+I
+    await sendShortcut(page, 'i', ['Control'])
+    await expect(page.getByTestId('ai-panel')).toBeVisible({ timeout: 3000 })
+
+    // Send a message
+    const input = page.locator('input[placeholder*="Ask"]')
+    await expect(input).toBeVisible()
+    await input.fill('What does this note contain?')
+    await page.getByTestId('agent-send').click()
+
+    // Wait for mock AI response to render (mock returns fixed text after 300ms)
+    await expect(page.getByTestId('ai-message').first()).toBeVisible({ timeout: 5000 })
+
+    // Verify the response text is rendered (mock includes wikilinks)
+    await expect(page.getByTestId('ai-message').first()).not.toBeEmpty()
+  })
+})
