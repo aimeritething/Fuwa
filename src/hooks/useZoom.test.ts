@@ -109,4 +109,46 @@ describe('useZoom', () => {
     const { result } = renderHook(() => useZoom())
     expect(result.current.zoomLevel).toBe(100)
   })
+
+  it('dispatches laputa-zoom-change event on zoomIn', () => {
+    const handler = vi.fn()
+    window.addEventListener('laputa-zoom-change', handler)
+    const { result } = renderHook(() => useZoom())
+    handler.mockClear() // clear any init-phase dispatches
+    act(() => result.current.zoomIn())
+    expect(handler).toHaveBeenCalled()
+    window.removeEventListener('laputa-zoom-change', handler)
+  })
+
+  it('dispatches laputa-zoom-change event on zoomOut', () => {
+    const handler = vi.fn()
+    window.addEventListener('laputa-zoom-change', handler)
+    const { result } = renderHook(() => useZoom())
+    handler.mockClear()
+    act(() => result.current.zoomOut())
+    expect(handler).toHaveBeenCalled()
+    window.removeEventListener('laputa-zoom-change', handler)
+  })
+
+  it('dispatches laputa-zoom-change event on zoomReset', () => {
+    resetVaultConfigStore()
+    bindVaultConfigStore({ ...DEFAULT_VC, zoom: 1.2 }, vi.fn())
+    const handler = vi.fn()
+    window.addEventListener('laputa-zoom-change', handler)
+    const { result } = renderHook(() => useZoom())
+    handler.mockClear()
+    act(() => result.current.zoomReset())
+    expect(handler).toHaveBeenCalled()
+    window.removeEventListener('laputa-zoom-change', handler)
+  })
+
+  it('applies CSS zoom synchronously during initialization', () => {
+    resetVaultConfigStore()
+    bindVaultConfigStore({ ...DEFAULT_VC, zoom: 1.2 }, vi.fn())
+    const spy = vi.spyOn(document.documentElement.style, 'setProperty')
+    renderHook(() => useZoom())
+    // Zoom should be applied during state init (setProperty called with zoom value)
+    expect(spy).toHaveBeenCalledWith('zoom', '120%')
+    spy.mockRestore()
+  })
 })

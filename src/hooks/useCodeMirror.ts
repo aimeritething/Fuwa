@@ -111,7 +111,19 @@ export function useCodeMirror(
 
     const view = new EditorView({ state, parent })
     viewRef.current = view
-    return () => { view.destroy(); viewRef.current = null }
+
+    // When CSS zoom changes on the document, CodeMirror's cached measurements
+    // (scaleX/scaleY, line heights, character widths) become stale because
+    // ResizeObserver doesn't fire for ancestor zoom changes. Force a re-measure
+    // so cursor placement stays accurate at any zoom level.
+    const handleZoomChange = () => { view.requestMeasure() }
+    window.addEventListener('laputa-zoom-change', handleZoomChange)
+
+    return () => {
+      window.removeEventListener('laputa-zoom-change', handleZoomChange)
+      view.destroy()
+      viewRef.current = null
+    }
     // Re-create editor when isDark changes (theme is baked into extensions)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isDark])

@@ -29,6 +29,7 @@ function loadPersistedZoom(): number {
 
 function applyZoomToDocument(level: number): void {
   document.documentElement.style.setProperty('zoom', `${level}%`)
+  window.dispatchEvent(new Event('laputa-zoom-change'))
 }
 
 function persistZoom(level: number): void {
@@ -36,12 +37,13 @@ function persistZoom(level: number): void {
 }
 
 export function useZoom() {
-  const [zoomLevel, setZoomLevel] = useState(loadPersistedZoom)
-
-  // Apply persisted zoom on mount
-  useEffect(() => {
-    applyZoomToDocument(zoomLevel)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps -- only on mount
+  const [zoomLevel, setZoomLevel] = useState(() => {
+    const level = loadPersistedZoom()
+    // Apply zoom synchronously during init so child components (e.g. CodeMirror)
+    // measure the correct scale factor in their own effects.
+    document.documentElement.style.setProperty('zoom', `${level}%`)
+    return level
+  })
 
   // Re-sync when vault config becomes available
   useEffect(() => {
