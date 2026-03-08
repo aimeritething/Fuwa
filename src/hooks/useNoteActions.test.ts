@@ -241,8 +241,8 @@ describe('DEFAULT_TEMPLATES', () => {
 
 describe('resolveNewNote', () => {
   it('uses TYPE_FOLDER_MAP for known types', () => {
-    const { entry, content } = resolveNewNote('My Project', 'Project')
-    expect(entry.path).toBe('/Users/luca/Laputa/project/my-project.md')
+    const { entry, content } = resolveNewNote('My Project', 'Project', '/my/vault')
+    expect(entry.path).toBe('/my/vault/project/my-project.md')
     expect(entry.isA).toBe('Project')
     expect(entry.status).toBe('Active')
     expect(content).toContain('type: Project')
@@ -250,30 +250,42 @@ describe('resolveNewNote', () => {
   })
 
   it('falls back to slugified type for custom types', () => {
-    const { entry } = resolveNewNote('First Recipe', 'Recipe')
-    expect(entry.path).toBe('/Users/luca/Laputa/recipe/first-recipe.md')
+    const { entry } = resolveNewNote('First Recipe', 'Recipe', '/my/vault')
+    expect(entry.path).toBe('/my/vault/recipe/first-recipe.md')
   })
 
   it('omits status for Topic type', () => {
-    const { entry, content } = resolveNewNote('Machine Learning', 'Topic')
+    const { entry, content } = resolveNewNote('Machine Learning', 'Topic', '/my/vault')
     expect(entry.status).toBeNull()
     expect(content).not.toContain('status:')
   })
 
   it('omits status for Person type', () => {
-    const { entry } = resolveNewNote('John Doe', 'Person')
+    const { entry } = resolveNewNote('John Doe', 'Person', '/my/vault')
     expect(entry.status).toBeNull()
+  })
+
+  it('uses provided vault path instead of hardcoded path', () => {
+    const { entry } = resolveNewNote('Test', 'Note', '/other/vault')
+    expect(entry.path).toBe('/other/vault/note/test.md')
+    expect(entry.path).not.toContain('/Users/luca/Laputa')
   })
 })
 
 describe('resolveNewType', () => {
   it('creates a type entry in the type folder', () => {
-    const { entry, content } = resolveNewType('Recipe')
-    expect(entry.path).toBe('/Users/luca/Laputa/type/recipe.md')
+    const { entry, content } = resolveNewType('Recipe', '/my/vault')
+    expect(entry.path).toBe('/my/vault/type/recipe.md')
     expect(entry.isA).toBe('Type')
     expect(entry.status).toBeNull()
     expect(content).toContain('type: Type')
     expect(content).toContain('# Recipe')
+  })
+
+  it('uses provided vault path instead of hardcoded path', () => {
+    const { entry } = resolveNewType('Responsibility', '/other/vault')
+    expect(entry.path).toBe('/other/vault/type/responsibility.md')
+    expect(entry.path).not.toContain('/Users/luca/Laputa')
   })
 })
 
@@ -365,8 +377,8 @@ describe('buildDailyNoteContent', () => {
 
 describe('resolveDailyNote', () => {
   it('creates entry in journal folder with date as filename', () => {
-    const { entry } = resolveDailyNote('2026-03-02')
-    expect(entry.path).toBe('/Users/luca/Laputa/journal/2026-03-02.md')
+    const { entry } = resolveDailyNote('2026-03-02', '/my/vault')
+    expect(entry.path).toBe('/my/vault/journal/2026-03-02.md')
     expect(entry.filename).toBe('2026-03-02.md')
     expect(entry.title).toBe('2026-03-02')
     expect(entry.isA).toBe('Journal')
@@ -374,9 +386,15 @@ describe('resolveDailyNote', () => {
   })
 
   it('returns content with daily note template', () => {
-    const { content } = resolveDailyNote('2026-03-02')
+    const { content } = resolveDailyNote('2026-03-02', '/my/vault')
     expect(content).toContain('type: Journal')
     expect(content).toContain('## Intentions')
+  })
+
+  it('uses provided vault path instead of hardcoded path', () => {
+    const { entry } = resolveDailyNote('2026-03-02', '/other/vault')
+    expect(entry.path).toBe('/other/vault/journal/2026-03-02.md')
+    expect(entry.path).not.toContain('/Users/luca/Laputa')
   })
 })
 
@@ -413,7 +431,7 @@ describe('useNoteActions hook', () => {
   const setToastMessage = vi.fn()
 
   const makeConfig = (entries: VaultEntry[] = []): NoteActionsConfig => ({
-    addEntry, removeEntry, updateContent, entries, setToastMessage, updateEntry,
+    addEntry, removeEntry, updateContent, entries, setToastMessage, updateEntry, vaultPath: '/test/vault',
   })
 
   beforeEach(() => {

@@ -26,6 +26,7 @@ export interface NoteActionsConfig {
   entries: VaultEntry[]
   setToastMessage: (msg: string | null) => void
   updateEntry: (path: string, patch: Partial<VaultEntry>) => void
+  vaultPath: string
   addPendingSave?: (path: string) => void
   removePendingSave?: (path: string) => void
   trackUnsaved?: (path: string) => void
@@ -188,17 +189,17 @@ export function buildNoteContent(title: string, type: string, status: string | n
   return `${lines.join('\n')}\n\n# ${title}\n${body}`
 }
 
-export function resolveNewNote(title: string, type: string, template?: string | null): { entry: VaultEntry; content: string } {
+export function resolveNewNote(title: string, type: string, vaultPath: string, template?: string | null): { entry: VaultEntry; content: string } {
   const folder = TYPE_FOLDER_MAP[type] || slugify(type)
   const slug = slugify(title)
   const status = NO_STATUS_TYPES.has(type) ? null : 'Active'
-  const entry = buildNewEntry({ path: `/Users/luca/Laputa/${folder}/${slug}.md`, slug, title, type, status })
+  const entry = buildNewEntry({ path: `${vaultPath}/${folder}/${slug}.md`, slug, title, type, status })
   return { entry, content: buildNoteContent(title, type, status, template) }
 }
 
-export function resolveNewType(typeName: string): { entry: VaultEntry; content: string } {
+export function resolveNewType(typeName: string, vaultPath: string): { entry: VaultEntry; content: string } {
   const slug = slugify(typeName)
-  const entry = buildNewEntry({ path: `/Users/luca/Laputa/type/${slug}.md`, slug, title: typeName, type: 'Type', status: null })
+  const entry = buildNewEntry({ path: `${vaultPath}/type/${slug}.md`, slug, title: typeName, type: 'Type', status: null })
   return { entry, content: `---\ntype: Type\n---\n\n# ${typeName}\n\n` }
 }
 
@@ -211,8 +212,8 @@ export function buildDailyNoteContent(date: string): string {
   return `${lines.join('\n')}\n\n# ${date}\n\n## Intentions\n\n\n\n## Reflections\n\n`
 }
 
-export function resolveDailyNote(date: string): { entry: VaultEntry; content: string } {
-  const entry = buildNewEntry({ path: `/Users/luca/Laputa/journal/${date}.md`, slug: date, title: date, type: 'Journal', status: null })
+export function resolveDailyNote(date: string, vaultPath: string): { entry: VaultEntry; content: string } {
+  const entry = buildNewEntry({ path: `${vaultPath}/journal/${date}.md`, slug: date, title: date, type: 'Journal', status: null })
   return { entry, content: buildDailyNoteContent(date) }
 }
 
@@ -224,11 +225,11 @@ export function findDailyNote(entries: VaultEntry[], date: string): VaultEntry |
 type PersistFn = (resolved: { entry: VaultEntry; content: string }) => void
 
 /** Open today's daily note: navigate to it if it exists, or create + persist a new one. */
-function openDailyNote(entries: VaultEntry[], selectNote: (e: VaultEntry) => void, persist: PersistFn): void {
+function openDailyNote(entries: VaultEntry[], selectNote: (e: VaultEntry) => void, persist: PersistFn, vaultPath: string): void {
   const date = todayDateString()
   const existing = findDailyNote(entries, date)
   if (existing) selectNote(existing)
-  else persist(resolveDailyNote(date))
+  else persist(resolveDailyNote(date, vaultPath))
   signalFocusEditor()
 }
 
@@ -366,22 +367,22 @@ export function useNoteActions(config: NoteActionsConfig) {
 
   const handleCreateNote = useCallback((title: string, type: string) => {
     const template = resolveTemplate(entries, type)
-    persistNew(resolveNewNote(title, type, template))
-  }, [entries, persistNew])
+    persistNew(resolveNewNote(title, type, config.vaultPath, template))
+  }, [entries, persistNew, config.vaultPath])
 
   const handleCreateNoteImmediate = useCallback((type?: string) => {
     const noteType = type || 'Note'
     const title = generateUntitledName(entries, noteType, pendingNamesRef.current)
     pendingNamesRef.current.add(title)
     const template = resolveTemplate(entries, noteType)
-    const resolved = resolveNewNote(title, noteType, template)
+    const resolved = resolveNewNote(title, noteType, config.vaultPath, template)
     openTabWithContent(resolved.entry, resolved.content)
     addEntryWithMock(resolved.entry, resolved.content, addEntry)
     config.trackUnsaved?.(resolved.entry.path)
     config.markContentPending?.(resolved.entry.path, resolved.content)
     signalFocusEditor({ selectTitle: true })
     setTimeout(() => pendingNamesRef.current.delete(title), 500)
-  }, [entries, openTabWithContent, addEntry, config.trackUnsaved, config.markContentPending]) // eslint-disable-line react-hooks/exhaustive-deps -- config callbacks are stable
+  }, [entries, openTabWithContent, addEntry, config.vaultPath, config.trackUnsaved, config.markContentPending]) // eslint-disable-line react-hooks/exhaustive-deps -- config callbacks are stable
 
   /** Close tab and discard entry+unsaved state if the note was never persisted. */
   const handleCloseTabWithCleanup = useCallback((path: string) => {
@@ -392,17 +393,17 @@ export function useNoteActions(config: NoteActionsConfig) {
   // Keep handleCloseTabRef in sync so Cmd+W and menu events also clean up unsaved notes.
   useEffect(() => { handleCloseTabRef.current = handleCloseTabWithCleanup })
 
-  const handleOpenDailyNote = useCallback(() => openDailyNote(entries, handleSelectNote, persistNew), [entries, handleSelectNote, persistNew])
+  const handleOpenDailyNote = useCallback(() => openDailyNote(entries, handleSelectNote, persistNew, config.vaultPath), [entries, handleSelectNote, persistNew, config.vaultPath])
 
-  const handleCreateType = useCallback((typeName: string) => persistNew(resolveNewType(typeName)), [persistNew])
+  const handleCreateType = useCallback((typeName: string) => persistNew(resolveNewType(typeName, config.vaultPath)), [persistNew, config.vaultPath])
 
   /** Create a Type entry file silently (no tab opened). Adds to state and persists to disk. */
   const createTypeEntrySilent = useCallback(async (typeName: string): Promise<VaultEntry> => {
-    const resolved = resolveNewType(typeName)
+    const resolved = resolveNewType(typeName, config.vaultPath)
     addEntryWithMock(resolved.entry, resolved.content, addEntry)
     await persistNewNote(resolved.entry.path, resolved.content)
     return resolved.entry
-  }, [addEntry])
+  }, [addEntry, config.vaultPath])
 
   const fmCallbacks = { updateTab: updateTabContent, updateEntry, toast: setToastMessage }
 
