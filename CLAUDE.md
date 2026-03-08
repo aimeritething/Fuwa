@@ -36,13 +36,19 @@ BASE_URL="http://localhost:<N>" pnpm playwright:smoke
 kill $DEV_PID
 ```
 
-**What to test in Playwright:**
-- Every command palette entry from the spec → open `Cmd+K`, type the command name, verify it appears and executes
+**You must write a new Playwright test for this task** in `tests/smoke/<slug>.spec.ts` that covers every acceptance criterion. Do not rely only on existing smoke tests — they test the app in general, not your specific feature.
+
+**What to cover in your Playwright test:**
+- Every acceptance criterion from the task spec → one `test()` block per criterion
+- Every command palette entry → open `Cmd+K`, type the command name, verify it appears and executes
 - Every keyboard shortcut → send keydown events, verify UI state changes
 - Every UI element described in the spec → verify it renders, is focusable, responds to Tab
 - Edge cases: empty state, long text, rapid keypresses
+- **The happy path end-to-end**: simulate exactly what a user would do to use this feature
 
-**Playwright is non-negotiable even if tests pass.** Unit tests verify code; Playwright verifies the user experience in the real browser. Both are required.
+**The test must fail before your fix and pass after.** If you can't write a test that demonstrates the bug is fixed, your test doesn't cover the right thing.
+
+**Playwright is non-negotiable even if unit tests pass.** Unit tests verify code; Playwright verifies the user experience in the real browser. Both are required.
 
 > **⚠️ Browser dev server limits**: the dev server uses mock Tauri handlers (`src/mock-tauri.ts`) — file system operations, git commands, and native dialogs are mocked. Test those via `pnpm tauri dev` in Phase 2 if the task touches them.
 
@@ -63,6 +69,9 @@ Brian installs the release build and runs keyboard-only QA on the native app. Yo
 - The QA comment must describe what you did as a user: "Opened app → Cmd+K → typed 'Trash' → pressed Enter → note disappeared from list → restarted app → note still not visible"
 - Every QA comment must include: the exact keyboard/command palette steps used, what was visible before and after, and any edge case tested.
 - If you cannot test a feature using keyboard only (osascript shortcuts + command palette), the feature is not keyboard-first → QA fails.
+
+**⚠️ Phase 1 is YOUR quality gate, not a formality.**
+Brian's Phase 2 QA is a *reinforcement* check, not the primary gate. If Brian finds a bug in Phase 2 that you could have caught in Phase 1, that is a Phase 1 failure — not a Phase 2 discovery. Before firing the done signal, ask yourself: "Did I actually verify, in Playwright, that the feature works end-to-end exactly as the spec describes?" If the answer is "I ran the smoke tests and they passed", that is not enough. You must run your task-specific test and verify the acceptance criteria one by one.
 
 **⚠️ Test in a clean environment when the feature depends on state.**
 If a feature involves indexing, fresh installs, first-time setup, or anything that only runs once:
