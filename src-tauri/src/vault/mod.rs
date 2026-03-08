@@ -108,7 +108,7 @@ struct Frontmatter {
     owner: Option<String>,
     #[serde(rename = "Cadence")]
     cadence: Option<String>,
-    #[serde(rename = "Archived")]
+    #[serde(rename = "Archived", alias = "archived")]
     archived: Option<bool>,
     #[serde(rename = "Trashed", alias = "trashed")]
     trashed: Option<bool>,
@@ -1371,6 +1371,28 @@ Company: Acme Corp
         assert!(
             entry.trashed_at.is_some(),
             "lowercase 'trashed_at' must be parsed via alias"
+        );
+    }
+
+    #[test]
+    fn test_parse_archived_lowercase_alias() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\narchived: true\n---\n# Old Quarter\n";
+        let entry = parse_test_entry(&dir, "old-quarter.md", content);
+        assert!(
+            entry.archived,
+            "lowercase 'archived' must be parsed via alias (frontend writes lowercase)"
+        );
+    }
+
+    #[test]
+    fn test_parse_archived_titlecase() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\nArchived: true\n---\n# Old Quarter\n";
+        let entry = parse_test_entry(&dir, "old-quarter-2.md", content);
+        assert!(
+            entry.archived,
+            "titlecase 'Archived' must also be parsed"
         );
     }
 
