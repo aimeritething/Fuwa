@@ -268,8 +268,8 @@ pub fn move_note_to_type_folder(
     let new_path_str = new_file.to_string_lossy().to_string();
 
     // Read content and move
-    let content = fs::read_to_string(old_file)
-        .map_err(|e| format!("Failed to read {}: {}", note_path, e))?;
+    let content =
+        fs::read_to_string(old_file).map_err(|e| format!("Failed to read {}: {}", note_path, e))?;
     fs::write(&new_file, &content)
         .map_err(|e| format!("Failed to write {}: {}", new_path_str, e))?;
     fs::remove_file(old_file)
@@ -700,12 +700,9 @@ mod tests {
         );
 
         let path = vault.join("quarter/weekly-review.md");
-        let result = move_note_to_type_folder(
-            vault.to_str().unwrap(),
-            path.to_str().unwrap(),
-            "Quarter",
-        )
-        .unwrap();
+        let result =
+            move_note_to_type_folder(vault.to_str().unwrap(), path.to_str().unwrap(), "Quarter")
+                .unwrap();
 
         assert!(!result.moved);
         assert_eq!(result.new_path, path.to_str().unwrap());
@@ -742,7 +739,11 @@ mod tests {
     fn test_move_note_filename_collision() {
         let dir = TempDir::new().unwrap();
         let vault = dir.path();
-        create_test_file(vault, "note/my-note.md", "---\ntype: Quarter\n---\n# My Note\n");
+        create_test_file(
+            vault,
+            "note/my-note.md",
+            "---\ntype: Quarter\n---\n# My Note\n",
+        );
         create_test_file(
             vault,
             "quarter/my-note.md",
