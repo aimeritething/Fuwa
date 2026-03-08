@@ -1390,10 +1390,7 @@ Company: Acme Corp
         let dir = TempDir::new().unwrap();
         let content = "---\nArchived: true\n---\n# Old Quarter\n";
         let entry = parse_test_entry(&dir, "old-quarter-2.md", content);
-        assert!(
-            entry.archived,
-            "titlecase 'Archived' must also be parsed"
-        );
+        assert!(entry.archived, "titlecase 'Archived' must also be parsed");
     }
 
     #[test]
