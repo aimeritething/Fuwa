@@ -54,13 +54,21 @@ Relations between notes are first-class citizens — not just wiki-links, but ty
 
 This ontology is not arbitrary. It maps cleanly to how both individuals and organizations actually structure their work: companies have projects, responsibilities, procedures, and people. So do independent creators. So do individuals managing their lives.
 
+### Knowledge has a purpose
+
+A principle that underlies everything in Laputa: **notes exist to get things done.** Not to be stored for some abstract future use. Not to show how organized you are. To do something.
+
+This is the difference between a knowledge system that works over years and one that collapses after a few weeks. Without a real purpose, the maintenance cost of taking notes is never justified, and people stop. With a purpose — writing regularly, building things, making decisions — the system pays for itself.
+
+The clearest expression of purpose-driven notes is the **evergreen note**: a small, atomic note about a single timeless idea. Not a raw capture, not a project update — a refined, reusable unit of thought. Evergreen notes are extracted from articles you write, from books you read, from highlights you collect. Over time they become the most valuable part of the vault: a personal library of ideas that can be recombined, surfaced, and used in new contexts.
+
 ### The two-phase workflow: capture and organize
 
 Notes move through two distinct phases, and the transition between them is intentional.
 
 **Capture** — fast, frictionless, available everywhere. A thought, a saved article, a Kindle highlight, a voice memo. The cardinal rule: never let friction during capture cause a good idea to be lost. Captured notes land in the vault unconnected — no relationships, no organization. That's fine. That's the point.
 
-**Organize** — a deliberate, periodic activity. You ask: *what is this useful for?* Connect it to a Project, a Responsibility, a Topic, a Person. Every captured note should eventually connect to at least one actionable container. If you can't connect it to anything, that's a signal worth paying attention to.
+**Organize** — a deliberate, periodic activity (weekly is the natural cadence). You ask: *what is this useful for?* Many things that seemed important when captured won't survive this question — deleting >50% of captures is normal and healthy. For the things that survive: connect them. Link to a Project, a Responsibility, a Topic. Every note should eventually connect to at least one actionable container. If you can't connect something to anything, that's a signal worth paying attention to.
 
 **The Inbox** is the UI expression of this split: a smart section that shows all unorganized notes — those with no outgoing relationships. The goal is Inbox Zero, reached periodically (weekly). The inbox is not a folder; it's a derived state. Connecting a note to something removes it automatically.
 
