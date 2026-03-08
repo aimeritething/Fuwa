@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel } from './InspectorPanels'
+import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel, InstancesPanel } from './InspectorPanels'
 import type { ReferencedByItem } from './InspectorPanels'
 import type { VaultEntry, GitCommit } from '../types'
 
@@ -566,5 +566,114 @@ describe('GitHistoryPanel', () => {
     expect(screen.getByText('today')).toBeInTheDocument()
     expect(screen.getByText('yesterday')).toBeInTheDocument()
     expect(screen.getByText('10d ago')).toBeInTheDocument()
+  })
+})
+
+describe('InstancesPanel', () => {
+  const onNavigate = vi.fn()
+  const quarterType = makeEntry({
+    path: '/vault/type/quarter.md', filename: 'quarter.md', title: 'Quarter',
+    isA: 'Type', color: 'blue', icon: 'calendar',
+  })
+  const typeEntryMap: Record<string, VaultEntry> = { Quarter: quarterType }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders nothing when entry is not a Type', () => {
+    const entry = makeEntry({ title: 'Random Note', isA: 'Note' })
+    const { container } = render(
+      <InstancesPanel entry={entry} entries={[]} typeEntryMap={{}} onNavigate={onNavigate} />
+    )
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('renders nothing when Type has zero instances', () => {
+    const { container } = render(
+      <InstancesPanel entry={quarterType} entries={[]} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+    )
+    expect(container.innerHTML).toBe('')
+  })
+
+  it('renders instances of a Type sorted by modifiedAt descending', () => {
+    const instances = [
+      makeEntry({ path: '/vault/quarter/q1.md', title: 'Q1 2026', isA: 'Quarter', modifiedAt: 1000 }),
+      makeEntry({ path: '/vault/quarter/q2.md', title: 'Q2 2026', isA: 'Quarter', modifiedAt: 3000 }),
+      makeEntry({ path: '/vault/quarter/q3.md', title: 'Q3 2026', isA: 'Quarter', modifiedAt: 2000 }),
+    ]
+    render(
+      <InstancesPanel entry={quarterType} entries={instances} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+    )
+    expect(screen.getByText('Instances (3)')).toBeInTheDocument()
+    const buttons = screen.getAllByRole('button').filter(b => ['Q1 2026', 'Q2 2026', 'Q3 2026'].includes(b.textContent?.replace(/\s*\(.*\)/, '') ?? ''))
+    // Q2 (3000) should come before Q3 (2000) before Q1 (1000)
+    expect(buttons[0].textContent).toContain('Q2 2026')
+    expect(buttons[1].textContent).toContain('Q3 2026')
+    expect(buttons[2].textContent).toContain('Q1 2026')
+  })
+
+  it('excludes trashed instances', () => {
+    const instances = [
+      makeEntry({ path: '/vault/quarter/q1.md', title: 'Q1 2026', isA: 'Quarter', modifiedAt: 2000 }),
+      makeEntry({ path: '/vault/quarter/q2.md', title: 'Q2 Trashed', isA: 'Quarter', trashed: true, modifiedAt: 3000 }),
+    ]
+    render(
+      <InstancesPanel entry={quarterType} entries={instances} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+    )
+    expect(screen.getByText('Q1 2026')).toBeInTheDocument()
+    expect(screen.queryByText('Q2 Trashed')).not.toBeInTheDocument()
+  })
+
+  it('dims archived instances', () => {
+    const instances = [
+      makeEntry({ path: '/vault/quarter/old.md', title: 'Q4 2024', isA: 'Quarter', archived: true, modifiedAt: 1000 }),
+    ]
+    render(
+      <InstancesPanel entry={quarterType} entries={instances} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+    )
+    expect(screen.getByTitle('Archived')).toBeInTheDocument()
+  })
+
+  it('navigates when clicking an instance', () => {
+    const instances = [
+      makeEntry({ path: '/vault/quarter/q1.md', title: 'Q1 2026', isA: 'Quarter', modifiedAt: 1000 }),
+    ]
+    render(
+      <InstancesPanel entry={quarterType} entries={instances} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+    )
+    fireEvent.click(screen.getByText('Q1 2026'))
+    expect(onNavigate).toHaveBeenCalledWith('Q1 2026')
+  })
+
+  it('caps display at 50 instances and shows count badge', () => {
+    const instances = Array.from({ length: 80 }, (_, i) =>
+      makeEntry({
+        path: `/vault/quarter/q${i}.md`,
+        title: `Instance ${i}`,
+        isA: 'Quarter',
+        modifiedAt: 80 - i,
+      })
+    )
+    render(
+      <InstancesPanel entry={quarterType} entries={instances} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+    )
+    expect(screen.getByText('Instances (80)')).toBeInTheDocument()
+    // Only 50 link buttons rendered
+    const allButtons = screen.getAllByRole('button')
+    const instanceButtons = allButtons.filter(b => b.textContent?.startsWith('Instance'))
+    expect(instanceButtons.length).toBe(50)
+    expect(screen.getByText('showing 50 of 80')).toBeInTheDocument()
+  })
+
+  it('does not show Instances section for non-Type note even if title matches a type name', () => {
+    const notAType = makeEntry({ title: 'Quarter', isA: 'Project' })
+    const instances = [
+      makeEntry({ path: '/vault/quarter/q1.md', title: 'Q1 2026', isA: 'Quarter', modifiedAt: 1000 }),
+    ]
+    const { container } = render(
+      <InstancesPanel entry={notAType} entries={instances} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+    )
+    expect(container.innerHTML).toBe('')
   })
 })

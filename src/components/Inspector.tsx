@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils'
 import { SlidersHorizontal, X } from '@phosphor-icons/react'
 import { parseFrontmatter } from '../utils/frontmatter'
 import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
-import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel } from './InspectorPanels'
+import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel, InstancesPanel } from './InspectorPanels'
 import { wikilinkTarget } from '../utils/wikilink'
 import { extractBacklinkContext } from '../utils/wikilinks'
 import type { ReferencedByItem, BacklinkItem } from './InspectorPanels'
@@ -163,6 +163,7 @@ export function Inspector({
                 onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}
                 onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
               />
+              <InstancesPanel entry={entry} entries={entries} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
               <ReferencedByPanel items={referencedBy} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
               <BacklinksPanel backlinks={backlinks} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
               <GitHistoryPanel commits={gitHistory} onViewCommitDiff={onViewCommitDiff} />
