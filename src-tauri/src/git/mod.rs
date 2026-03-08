@@ -44,7 +44,6 @@ pub fn init_repo(path: &str) -> Result<(), String> {
         std::fs::write(
             &gitignore_path,
             "# Laputa app files (machine-specific, never commit)\n\
-.laputa-cache.json\n\
 .laputa/settings.json\n\
 \n\
 # macOS\n\
@@ -265,7 +264,7 @@ mod tests {
     }
 
     #[test]
-    fn test_init_repo_creates_gitignore_with_ds_store() {
+    fn test_init_repo_creates_gitignore() {
         let dir = TempDir::new().unwrap();
         let vault = dir.path().join("new-vault");
         fs::create_dir_all(&vault).unwrap();
@@ -284,12 +283,13 @@ mod tests {
             ".gitignore should exclude .DS_Store"
         );
         assert!(
-            content.contains(".laputa-cache.json"),
-            ".gitignore should exclude .laputa-cache.json"
-        );
-        assert!(
             content.contains(".laputa/settings.json"),
             ".gitignore should exclude settings.json"
+        );
+        // Cache is now stored outside the vault — no need for .gitignore entry
+        assert!(
+            !content.contains(".laputa-cache.json"),
+            ".gitignore should NOT contain .laputa-cache.json (cache is external)"
         );
     }
 

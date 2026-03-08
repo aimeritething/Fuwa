@@ -353,7 +353,7 @@ function App() {
         notes.handleSelectNote(entry)
         dialogs.closeConflictResolver()
       } else {
-        // Non-note file (e.g. .laputa-cache.json, settings.json) —
+        // Non-note file (e.g. settings.json) —
         // open with system default app so the user can inspect/edit it
         openLocalFile(fullPath)
       }

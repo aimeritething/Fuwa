@@ -30,9 +30,6 @@ dist-ssr
 # Coverage reports
 /coverage/
 
-# Laputa vault cache
-.laputa-cache.json
-
 # Demo vault and helper scripts
 demo-vault/
 select_demo_notes*.py

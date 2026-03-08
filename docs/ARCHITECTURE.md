@@ -329,15 +329,13 @@ The vault cache (`src-tauri/src/vault/cache.rs`) accelerates vault scanning usin
 
 ### Cache File
 
-`.laputa-cache.json` at vault root. Stores: vault path, git HEAD commit hash, all VaultEntry objects. Version: v5 (bumped on VaultEntry field changes to force full rescan).
+`~/.laputa/cache/<vault-hash>.json` — stored outside the vault directory so it never pollutes the user's git repo. The vault path is hashed (via `DefaultHasher`) to produce a deterministic filename. Stores: vault path, git HEAD commit hash, all VaultEntry objects. Version: v5 (bumped on VaultEntry field changes to force full rescan). Writes are atomic (write to `.tmp` then rename). Legacy `.laputa-cache.json` files inside the vault are auto-migrated and deleted on first run.
 
 ### Three Cache Strategies
 
 1. **Same Commit (Cache Hit)**: Git HEAD matches cached hash → only re-parse uncommitted changed files via `git status --porcelain`
 2. **Different Commit (Incremental Update)**: Uses `git diff <old>..<new> --name-only` to find changed files + uncommitted changes → selective re-parse
 3. **No Cache / Corrupt Cache (Full Scan)**: Recursive `walkdir` of all `.md` files → full parse
-
-Cache auto-excludes itself from git via `.git/info/exclude`.
 
 ## Theme System
 

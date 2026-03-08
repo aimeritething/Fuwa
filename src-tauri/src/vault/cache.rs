@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::Path;
+use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
 
 use super::{parse_md_file, scan_vault, VaultEntry};
 
@@ -25,7 +26,30 @@ fn default_cache_version() -> u32 {
     1
 }
 
-fn cache_path(vault: &Path) -> std::path::PathBuf {
+/// Compute a deterministic hex hash of the vault path for use as cache filename.
+fn vault_path_hash(vault: &Path) -> String {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    vault.to_string_lossy().as_ref().hash(&mut hasher);
+    format!("{:016x}", hasher.finish())
+}
+
+/// Return the cache directory. Override with `LAPUTA_CACHE_DIR` env var (for tests).
+fn cache_dir() -> PathBuf {
+    if let Ok(dir) = std::env::var("LAPUTA_CACHE_DIR") {
+        return PathBuf::from(dir);
+    }
+    dirs::home_dir()
+        .unwrap_or_else(|| PathBuf::from("~"))
+        .join(".laputa")
+        .join("cache")
+}
+
+fn cache_path(vault: &Path) -> PathBuf {
+    cache_dir().join(format!("{}.json", vault_path_hash(vault)))
+}
+
+/// Legacy cache path inside the vault directory (pre-migration).
+fn legacy_cache_path(vault: &Path) -> PathBuf {
     vault.join(".laputa-cache.json")
 }
 
@@ -123,11 +147,18 @@ fn load_cache(vault: &Path) -> Option<VaultCache> {
     serde_json::from_str(&data).ok()
 }
 
+/// Write cache atomically: write to a temp file then rename.
 fn write_cache(vault: &Path, cache: &VaultCache) {
-    if let Ok(data) = serde_json::to_string(cache) {
-        let _ = fs::write(cache_path(vault), data);
+    let final_path = cache_path(vault);
+    if let Some(parent) = final_path.parent() {
+        let _ = fs::create_dir_all(parent);
     }
-    ensure_cache_excluded(vault);
+    let tmp_path = final_path.with_extension("tmp");
+    if let Ok(data) = serde_json::to_string(cache) {
+        if fs::write(&tmp_path, &data).is_ok() {
+            let _ = fs::rename(&tmp_path, &final_path);
+        }
+    }
 }
 
 /// Normalize an absolute path to a relative path for comparison with git output.
@@ -156,48 +187,46 @@ fn parse_files_at(vault: &Path, rel_paths: &[String]) -> Vec<VaultEntry> {
         .collect()
 }
 
-/// Machine-local files that should never be git-tracked in any vault.
-/// These are either caches with absolute paths or per-machine settings.
-const UNTRACKED_FILES: &[&str] = &[".laputa-cache.json", ".laputa/settings.json"];
+/// Copy legacy cache data to the new external location atomically.
+fn copy_legacy_cache_to(legacy: &Path, dest: &Path) {
+    if let Some(parent) = dest.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+    let tmp_path = dest.with_extension("tmp");
+    if let Ok(data) = fs::read_to_string(legacy) {
+        if fs::write(&tmp_path, &data).is_ok() {
+            let _ = fs::rename(&tmp_path, dest);
+        }
+    }
+}
 
-/// Ensure machine-local files are excluded from git via `.git/info/exclude`
-/// and un-tracked if they were previously committed (git rm --cached).
-/// Called on every cache write so existing vaults self-heal automatically.
-fn ensure_cache_excluded(vault: &Path) {
-    let git_dir = vault.join(".git");
-    if !git_dir.is_dir() {
+/// Migrate legacy cache from inside the vault to the new external location.
+/// Also removes the legacy file from git tracking if present.
+fn migrate_legacy_cache(vault: &Path) {
+    let legacy = legacy_cache_path(vault);
+    if !legacy.exists() {
         return;
     }
 
-    let exclude_path = git_dir.join("info").join("exclude");
-
-    // 1. Add each entry to .git/info/exclude so git ignores it going forward.
-    let existing = fs::read_to_string(&exclude_path).unwrap_or_default();
-    let mut to_add: Vec<&str> = UNTRACKED_FILES
-        .iter()
-        .filter(|e| !existing.lines().any(|line| line.trim() == **e))
-        .copied()
-        .collect();
-
-    if !to_add.is_empty() {
-        to_add.sort();
-        let separator = if existing.ends_with('\n') || existing.is_empty() {
-            ""
-        } else {
-            "\n"
-        };
-        let additions = to_add.join("\n");
-        let _ = fs::write(&exclude_path, format!("{existing}{separator}{additions}\n"));
+    let new_path = cache_path(vault);
+    if !new_path.exists() {
+        copy_legacy_cache_to(&legacy, &new_path);
     }
 
-    // 2. Un-track each file if git currently tracks it.
-    //    `git rm --cached --quiet --ignore-unmatch` exits 0 even if the file isn't tracked.
-    //    This fixes existing vaults where these files were committed before this guard.
+    // Remove legacy file from git tracking if present
     let _ = std::process::Command::new("git")
-        .args(["rm", "--cached", "--quiet", "--ignore-unmatch", "--"])
-        .args(UNTRACKED_FILES)
+        .args([
+            "rm",
+            "--cached",
+            "--quiet",
+            "--ignore-unmatch",
+            ".laputa-cache.json",
+        ])
         .current_dir(vault)
         .output();
+
+    // Delete the legacy file from disk
+    let _ = fs::remove_file(&legacy);
 }
 
 /// Sort entries by modified_at descending and write the cache.
@@ -260,6 +289,9 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
         ));
     }
 
+    // Migrate legacy in-vault cache to external location on first run
+    migrate_legacy_cache(vault_path);
+
     let current_hash = match git_head_hash(vault_path) {
         Some(h) => h,
         None => return scan_vault(vault_path),
@@ -289,7 +321,18 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
 mod tests {
     use super::*;
     use std::io::Write;
+    use std::sync::Mutex;
     use tempfile::TempDir;
+
+    /// Serialize all cache tests that mutate the LAPUTA_CACHE_DIR env var.
+    /// `std::env::set_var` is process-global, so parallel tests would race.
+    static ENV_LOCK: Mutex<()> = Mutex::new(());
+
+    /// Set up a temporary cache directory for test isolation.
+    /// Caller MUST hold `ENV_LOCK` for the duration of the test.
+    fn set_test_cache_dir(dir: &Path) {
+        std::env::set_var("LAPUTA_CACHE_DIR", dir.to_string_lossy().as_ref());
+    }
 
     fn create_test_file(dir: &Path, name: &str, content: &str) {
         let file_path = dir.join(name);
@@ -300,8 +343,157 @@ mod tests {
         file.write_all(content.as_bytes()).unwrap();
     }
 
+    fn init_git_repo(vault: &Path) {
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+    }
+
+    /// Common setup: acquire env lock, create temp cache dir + git-initialised vault.
+    /// Returns (lock_guard, cache_tmpdir, vault_tmpdir) — keep all alive for the test.
+    fn setup_git_vault() -> (std::sync::MutexGuard<'static, ()>, TempDir, TempDir) {
+        let lock = ENV_LOCK.lock().unwrap();
+        let cache_tmp = TempDir::new().unwrap();
+        set_test_cache_dir(cache_tmp.path());
+        let vault_tmp = TempDir::new().unwrap();
+        init_git_repo(vault_tmp.path());
+        (lock, cache_tmp, vault_tmp)
+    }
+
+    fn git_add_commit(vault: &Path, msg: &str) {
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", msg])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+    }
+
+    #[test]
+    fn test_cache_path_is_outside_vault() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        set_test_cache_dir(cache_dir.path());
+
+        let vault = Path::new("/Users/test/MyVault");
+        let path = cache_path(vault);
+
+        // Cache must NOT be inside the vault
+        assert!(
+            !path.starts_with(vault),
+            "cache path must be outside the vault, got: {}",
+            path.display()
+        );
+        // Cache must be under the cache directory
+        assert!(
+            path.starts_with(cache_dir.path()),
+            "cache path must be under cache dir, got: {}",
+            path.display()
+        );
+        // Must end with .json
+        assert_eq!(path.extension().unwrap(), "json");
+    }
+
+    #[test]
+    fn test_vault_path_hash_is_deterministic() {
+        let hash1 = vault_path_hash(Path::new("/Users/test/MyVault"));
+        let hash2 = vault_path_hash(Path::new("/Users/test/MyVault"));
+        assert_eq!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_different_vaults_get_different_hashes() {
+        let hash1 = vault_path_hash(Path::new("/Users/test/Vault1"));
+        let hash2 = vault_path_hash(Path::new("/Users/test/Vault2"));
+        assert_ne!(hash1, hash2);
+    }
+
+    #[test]
+    fn test_atomic_write_no_tmp_file_left() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        set_test_cache_dir(cache_dir.path());
+
+        let vault_dir = TempDir::new().unwrap();
+        let vault = vault_dir.path();
+
+        let cache = VaultCache {
+            version: CACHE_VERSION,
+            vault_path: vault.to_string_lossy().to_string(),
+            commit_hash: "abc123".to_string(),
+            entries: vec![],
+        };
+
+        write_cache(vault, &cache);
+
+        // Final file should exist
+        let final_path = cache_path(vault);
+        assert!(final_path.exists(), "cache file must exist after write");
+
+        // Tmp file should NOT exist (renamed away)
+        let tmp_path = final_path.with_extension("tmp");
+        assert!(
+            !tmp_path.exists(),
+            "tmp file must not exist after atomic write"
+        );
+
+        // Content must be valid JSON
+        let data = fs::read_to_string(&final_path).unwrap();
+        let loaded: VaultCache = serde_json::from_str(&data).unwrap();
+        assert_eq!(loaded.commit_hash, "abc123");
+    }
+
+    #[test]
+    fn test_legacy_cache_migration() {
+        let (_lock, _cache_tmp, vault_dir) = setup_git_vault();
+        let vault = vault_dir.path();
+
+        // Create a legacy cache file inside the vault
+        let legacy = legacy_cache_path(vault);
+        let cache = VaultCache {
+            version: CACHE_VERSION,
+            vault_path: vault.to_string_lossy().to_string(),
+            commit_hash: "old123".to_string(),
+            entries: vec![],
+        };
+        fs::write(&legacy, serde_json::to_string(&cache).unwrap()).unwrap();
+
+        // Run migration
+        migrate_legacy_cache(vault);
+
+        // New cache file should exist with migrated data
+        let new_path = cache_path(vault);
+        assert!(new_path.exists(), "migrated cache must exist");
+        let data = fs::read_to_string(&new_path).unwrap();
+        let loaded: VaultCache = serde_json::from_str(&data).unwrap();
+        assert_eq!(loaded.commit_hash, "old123");
+
+        // Legacy file should be deleted
+        assert!(!legacy.exists(), "legacy cache file must be removed");
+    }
+
     #[test]
     fn test_scan_vault_cached_no_git() {
+        let _lock = ENV_LOCK.lock().unwrap();
+        let cache_dir = TempDir::new().unwrap();
+        set_test_cache_dir(cache_dir.path());
+
         // Without git, scan_vault_cached falls back to scan_vault
         let dir = TempDir::new().unwrap();
         create_test_file(dir.path(), "note.md", "# Note\n\nContent here.");
@@ -314,42 +506,22 @@ mod tests {
 
     #[test]
     fn test_scan_vault_cached_with_git() {
-        let dir = TempDir::new().unwrap();
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
 
-        // Init git repo
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.email", "test@test.com"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.name", "Test"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-
         create_test_file(vault, "note.md", "# Note\n\nFirst version.");
-        std::process::Command::new("git")
-            .args(["add", "."])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["commit", "-m", "init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
+        git_add_commit(vault, "init");
 
         // First call: full scan, writes cache
         let entries = scan_vault_cached(vault).unwrap();
         assert_eq!(entries.len(), 1);
         assert!(cache_path(vault).exists());
+
+        // Cache must NOT be inside the vault
+        assert!(
+            !cache_path(vault).starts_with(vault),
+            "cache must be outside the vault"
+        );
 
         // Second call: uses cache (same HEAD)
         let entries2 = scan_vault_cached(vault).unwrap();
@@ -359,37 +531,11 @@ mod tests {
 
     #[test]
     fn test_scan_vault_cached_invalidates_stale_vault_path() {
-        let dir = TempDir::new().unwrap();
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
 
-        // Init git repo
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.email", "test@test.com"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.name", "Test"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-
         create_test_file(vault, "note.md", "# Note\n\nContent.");
-        std::process::Command::new("git")
-            .args(["add", "."])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["commit", "-m", "init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
+        git_add_commit(vault, "init");
 
         // Build cache normally
         let entries = scan_vault_cached(vault).unwrap();
@@ -424,37 +570,11 @@ mod tests {
 
     #[test]
     fn test_scan_vault_cached_incremental_different_commit() {
-        let dir = TempDir::new().unwrap();
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
 
-        // Init git repo
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.email", "test@test.com"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.name", "Test"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-
         create_test_file(vault, "first.md", "# First\n\nFirst note.");
-        std::process::Command::new("git")
-            .args(["add", "."])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["commit", "-m", "first"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
+        git_add_commit(vault, "first");
 
         // Build cache
         let entries = scan_vault_cached(vault).unwrap();
@@ -462,16 +582,7 @@ mod tests {
 
         // Add a second file and commit
         create_test_file(vault, "second.md", "# Second\n\nSecond note.");
-        std::process::Command::new("git")
-            .args(["add", "."])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["commit", "-m", "second"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
+        git_add_commit(vault, "second");
 
         // Incremental update: cache has old commit, new commit adds second.md
         let entries2 = scan_vault_cached(vault).unwrap();
@@ -483,37 +594,12 @@ mod tests {
 
     #[test]
     fn test_update_same_commit_picks_up_modified_file() {
-        let dir = TempDir::new().unwrap();
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
-
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.email", "test@test.com"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.name", "Test"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
 
         // Commit a type note without sidebar label
         create_test_file(vault, "type/news.md", "---\ntype: Type\n---\n# News\n");
-        std::process::Command::new("git")
-            .args(["add", "."])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["commit", "-m", "init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
+        git_add_commit(vault, "init");
 
         // Prime the cache (same commit hash)
         let entries = scan_vault_cached(vault).unwrap();
@@ -539,36 +625,11 @@ mod tests {
 
     #[test]
     fn test_update_same_commit_new_file_still_added() {
-        let dir = TempDir::new().unwrap();
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
 
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.email", "test@test.com"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.name", "Test"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-
         create_test_file(vault, "existing.md", "# Existing\n");
-        std::process::Command::new("git")
-            .args(["add", "."])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["commit", "-m", "init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
+        git_add_commit(vault, "init");
 
         // Prime cache
         let entries = scan_vault_cached(vault).unwrap();
@@ -587,36 +648,11 @@ mod tests {
 
     #[test]
     fn test_update_same_commit_new_files_in_new_subdirectory() {
-        let dir = TempDir::new().unwrap();
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
 
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.email", "test@test.com"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.name", "Test"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-
         create_test_file(vault, "existing.md", "# Existing\n");
-        std::process::Command::new("git")
-            .args(["add", "."])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["commit", "-m", "init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
+        git_add_commit(vault, "init");
 
         // Prime cache
         let entries = scan_vault_cached(vault).unwrap();
@@ -649,24 +685,8 @@ mod tests {
 
     #[test]
     fn test_update_same_commit_visible_removed_from_type_note() {
-        let dir = TempDir::new().unwrap();
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
-
-        std::process::Command::new("git")
-            .args(["init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.email", "test@test.com"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["config", "user.name", "Test"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
 
         // Commit a type note with visible: false
         create_test_file(
@@ -674,16 +694,7 @@ mod tests {
             "type/topic.md",
             "---\ntype: Type\nvisible: false\n---\n# Topic\n",
         );
-        std::process::Command::new("git")
-            .args(["add", "."])
-            .current_dir(vault)
-            .output()
-            .unwrap();
-        std::process::Command::new("git")
-            .args(["commit", "-m", "init"])
-            .current_dir(vault)
-            .output()
-            .unwrap();
+        git_add_commit(vault, "init");
 
         // Prime the cache
         let entries = scan_vault_cached(vault).unwrap();

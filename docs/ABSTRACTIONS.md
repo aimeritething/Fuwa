@@ -207,12 +207,13 @@ type SidebarSelection =
 
 `vault::scan_vault_cached(path)` wraps scanning with git-based caching:
 
-1. Reads `.laputa-cache.json` if it exists
+1. Reads cache from `~/.laputa/cache/<vault-hash>.json` (external to vault)
 2. Compares cache version, vault path, and git HEAD commit hash
 3. If cache is valid and same commit → only re-parse uncommitted changed files
 4. If different commit → use `git diff` to find changed files → selective re-parse
 5. If no cache → full scan
-6. Writes updated cache after every scan
+6. Writes updated cache atomically (write to `.tmp`, then rename)
+7. On first run, migrates any legacy `.laputa-cache.json` from inside the vault
 
 ### Frontmatter Manipulation (Rust)
 
