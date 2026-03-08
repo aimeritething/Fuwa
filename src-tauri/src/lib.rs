@@ -118,6 +118,7 @@ pub fn run() {
             commands::update_frontmatter,
             commands::delete_frontmatter_property,
             commands::rename_note,
+            commands::move_note_to_type_folder,
             commands::get_file_history,
             commands::get_modified_files,
             commands::get_file_diff,

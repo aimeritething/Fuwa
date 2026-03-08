@@ -219,6 +219,19 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   load_vault_list: () => ({ ...mockVaultList, vaults: [...mockVaultList.vaults] }),
   save_vault_list: (args: { list: typeof mockVaultList }) => { mockVaultList = { ...args.list }; return null },
   rename_note: handleRenameNote,
+  move_note_to_type_folder: (args: { vault_path: string; note_path: string; new_type: string }) => {
+    const slug = args.new_type.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    const currentFolder = args.note_path.replace(/\/[^/]+$/, '').split('/').pop() ?? ''
+    if (currentFolder === slug) return { new_path: args.note_path, updated_links: 0, moved: false }
+    const filename = args.note_path.split('/').pop() ?? ''
+    const vaultPath = args.vault_path.replace(/\/$/, '')
+    const newPath = `${vaultPath}/${slug}/${filename}`
+    const content = MOCK_CONTENT[args.note_path] ?? ''
+    delete MOCK_CONTENT[args.note_path]
+    MOCK_CONTENT[newPath] = content
+    syncWindowContent()
+    return { new_path: newPath, updated_links: 0, moved: true }
+  },
   github_list_repos: () => [
     { name: 'laputa-vault', full_name: 'lucaong/laputa-vault', description: 'Personal knowledge vault — markdown + YAML frontmatter', private: true, clone_url: 'https://github.com/lucaong/laputa-vault.git', html_url: 'https://github.com/lucaong/laputa-vault', updated_at: '2026-02-20T10:30:00Z' },
     { name: 'laputa-app', full_name: 'lucaong/laputa-app', description: 'Laputa desktop app — Tauri + React + CodeMirror 6', private: false, clone_url: 'https://github.com/lucaong/laputa-app.git', html_url: 'https://github.com/lucaong/laputa-app', updated_at: '2026-02-19T15:00:00Z' },

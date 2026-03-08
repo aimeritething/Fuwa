@@ -13,7 +13,7 @@ use crate::indexing::{IndexStatus, IndexingProgress};
 use crate::search::SearchResponse;
 use crate::settings::Settings;
 use crate::theme::{ThemeFile, VaultSettings};
-use crate::vault::{RenameResult, VaultEntry};
+use crate::vault::{MoveResult, RenameResult, VaultEntry};
 use crate::vault_config::VaultConfig;
 use crate::vault_list::VaultList;
 use crate::{
@@ -88,6 +88,17 @@ pub fn rename_note(
     let vault_path = expand_tilde(&vault_path);
     let old_path = expand_tilde(&old_path);
     vault::rename_note(&vault_path, &old_path, &new_title)
+}
+
+#[tauri::command]
+pub fn move_note_to_type_folder(
+    vault_path: String,
+    note_path: String,
+    new_type: String,
+) -> Result<MoveResult, String> {
+    let vault_path = expand_tilde(&vault_path);
+    let note_path = expand_tilde(&note_path);
+    vault::move_note_to_type_folder(&vault_path, &note_path, &new_type)
 }
 
 #[tauri::command]

@@ -12,7 +12,7 @@ pub use config_seed::{migrate_agents_md, repair_config_files, seed_config_files}
 pub use getting_started::{create_getting_started_vault, default_vault_path, vault_exists};
 pub use image::{copy_image_to_vault, save_image};
 pub use migration::migrate_is_a_to_type;
-pub use rename::{rename_note, RenameResult};
+pub use rename::{move_note_to_type_folder, rename_note, MoveResult, RenameResult};
 pub use trash::{delete_note, purge_trash};
 
 use parsing::{
