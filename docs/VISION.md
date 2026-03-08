@@ -60,7 +60,13 @@ A principle that underlies everything in Laputa: **notes exist to get things don
 
 This is the difference between a knowledge system that works over years and one that collapses after a few weeks. Without a real purpose, the maintenance cost of taking notes is never justified, and people stop. With a purpose — writing regularly, building things, making decisions — the system pays for itself.
 
-The clearest expression of purpose-driven notes is the **evergreen note**: a small, atomic note about a single timeless idea. Not a raw capture, not a project update — a refined, reusable unit of thought. Evergreen notes are extracted from articles you write, from books you read, from highlights you collect. Over time they become the most valuable part of the vault: a personal library of ideas that can be recombined, surfaced, and used in new contexts.
+What you *do* with organized knowledge depends on who you are:
+
+- **Writers and content creators** — the output is articles, essays, posts. Captures become highlights, highlights become **evergreen notes** (small, atomic, timeless ideas), evergreen notes become building blocks for articles. Evergreen notes are a middle layer: not the raw input, not the final output, but the refined reusable units that make writing easier and faster.
+- **Builders and project-driven people** — the output is shipped work. Captures feed projects, decisions, and procedures. Evergreen notes matter less; the project knowledge graph matters more.
+- **Operators and managers** — the output is better systems and decisions. Captures feed responsibilities (KPIs, workflows) and procedures (how we do things). The value accumulates in the recurring structure, not in individual notes.
+
+The framework is flexible enough to fit all three — and most people are a mix. What stays constant is the flow: **capture → organize → express**. The *what* of expressing changes; the discipline doesn't.
 
 ### The two-phase workflow: capture and organize
 
