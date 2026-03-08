@@ -90,4 +90,14 @@ describe('enrichSuggestionItems', () => {
     const result = enrichSuggestionItems(items, '', {})
     expect(result.length).toBeLessThanOrEqual(20)
   })
+
+  it('ranks exact title match first among prefix competitors', () => {
+    const items = [
+      makeItem('Refactoring Ideas', 'Note', '/ri.md'),
+      makeItem('Refactoring Key Ideas', 'Note', '/rk.md'),
+      makeItem('Refactoring', 'Area', '/r.md'),
+    ]
+    const result = enrichSuggestionItems(items, 'Refactoring', {})
+    expect(result[0].title).toBe('Refactoring')
+  })
 })

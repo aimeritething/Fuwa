@@ -1,20 +1,39 @@
 /** Search rank tier: 0 = exact match, 1 = prefix match, 2 = fuzzy only. Lower is better. */
 export function searchRank(query: string, target: string): number {
-  const q = query.toLowerCase()
-  const t = target.toLowerCase()
+  const q = query.trim().toLowerCase()
+  const t = target.trim().toLowerCase()
   if (t === q) return 0
   if (t.startsWith(q)) return 1
   return 2
 }
 
-/** Best rank across a title and its aliases. */
+/**
+ * Rank a note by how well its title/aliases match the query.
+ * Tiers: 0 = title exact, 1 = alias exact, 2 = title prefix,
+ * 3 = alias prefix, 4 = fuzzy only. Lower is better.
+ *
+ * Title exact match (tier 0) is exclusive to the title — an alias
+ * exact match only reaches tier 1, ensuring the note whose title
+ * matches exactly always sorts first.
+ */
 export function bestSearchRank(query: string, title: string, aliases: string[]): number {
-  let rank = searchRank(query, title)
+  const q = query.trim().toLowerCase()
+  const t = title.trim().toLowerCase()
+
+  if (t === q) return 0
+
+  let aliasExact = false
+  let aliasPrefix = false
   for (const alias of aliases) {
-    rank = Math.min(rank, searchRank(query, alias))
-    if (rank === 0) break
+    const a = alias.trim().toLowerCase()
+    if (a === q) { aliasExact = true; break }
+    if (a.startsWith(q)) aliasPrefix = true
   }
-  return rank
+
+  if (aliasExact) return 1
+  if (t.startsWith(q)) return 2
+  if (aliasPrefix) return 3
+  return 4
 }
 
 /** Fuzzy match: all query chars must appear in order in the target. */

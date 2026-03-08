@@ -2,6 +2,7 @@ import type { VaultEntry } from '../types'
 import { getTypeColor, getTypeLightColor } from './typeColors'
 import { getTypeIcon } from '../components/NoteItem'
 import { deduplicateByPath, disambiguateTitles } from './wikilinkSuggestions'
+import { bestSearchRank } from './fuzzyMatch'
 import { filterSuggestionItems } from '@blocknote/core/extensions'
 import type { WikilinkSuggestionItem } from '../components/WikilinkSuggestionMenu'
 
@@ -32,8 +33,12 @@ export function enrichSuggestionItems(
   query: string,
   typeEntryMap: Record<string, VaultEntry>,
 ): WikilinkSuggestionItem[] {
-  const filtered = filterSuggestionItems(items, query).slice(0, MAX_RESULTS)
-  const final = disambiguateTitles(deduplicateByPath(filtered))
+  const filtered = filterSuggestionItems(items, query)
+  filtered.sort((a, b) =>
+    bestSearchRank(query, a.entryTitle, a.aliases) - bestSearchRank(query, b.entryTitle, b.aliases),
+  )
+  const sliced = filtered.slice(0, MAX_RESULTS)
+  const final = disambiguateTitles(deduplicateByPath(sliced))
   return final.map(({ group, ...rest }) => {
     const noteType = group !== 'Note' ? group : undefined
     const te = typeEntryMap[group]

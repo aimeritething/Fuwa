@@ -175,18 +175,31 @@ describe('useNoteSearch', () => {
     expect(preventDefaultSpy).not.toHaveBeenCalled()
   })
 
-  it('ranks exact title match first, prefix second, fuzzy third', () => {
+  it('ranks exact title match first even with many prefix competitors', () => {
     const ranked: VaultEntry[] = [
-      makeEntry({ path: '/vault/ri.md', title: 'Refactoring Ideas', modifiedAt: 1700000003 }),
+      makeEntry({ path: '/vault/ri.md', title: 'Refactoring Ideas', modifiedAt: 1700000010 }),
+      makeEntry({ path: '/vault/rk.md', title: 'Refactoring Key Ideas', modifiedAt: 1700000009 }),
+      makeEntry({ path: '/vault/rp.md', title: 'Refactoring Patterns', modifiedAt: 1700000008 }),
+      makeEntry({ path: '/vault/rs.md', title: 'Refactoring Strategy', modifiedAt: 1700000007 }),
+      makeEntry({ path: '/vault/rt.md', title: 'Refactoring Techniques', modifiedAt: 1700000006 }),
+      makeEntry({ path: '/vault/rb.md', title: 'Refactoring Best Practices', modifiedAt: 1700000005 }),
+      makeEntry({ path: '/vault/rg.md', title: 'Refactoring Guide', modifiedAt: 1700000004 }),
+      makeEntry({ path: '/vault/rw.md', title: 'Refactoring Workflows', modifiedAt: 1700000003 }),
+      makeEntry({ path: '/vault/rc.md', title: 'Refactoring Checklist', modifiedAt: 1700000002 }),
+      makeEntry({ path: '/vault/r.md', title: 'Refactoring', isA: 'Area', modifiedAt: 1700000001 }),
+    ]
+    const { result } = renderHook(() => useNoteSearch(ranked, 'Refactoring'))
+    expect(result.current.results[0].title).toBe('Refactoring')
+  })
+
+  it('ranks exact title match above note with alias exact match', () => {
+    const ranked: VaultEntry[] = [
+      makeEntry({ path: '/vault/ri.md', title: 'Refactoring Ideas', aliases: ['Refactoring'], modifiedAt: 1700000003 }),
       makeEntry({ path: '/vault/rk.md', title: 'Refactoring Key Ideas', modifiedAt: 1700000002 }),
       makeEntry({ path: '/vault/r.md', title: 'Refactoring', modifiedAt: 1700000001 }),
     ]
     const { result } = renderHook(() => useNoteSearch(ranked, 'Refactoring'))
-    expect(result.current.results.map(r => r.title)).toEqual([
-      'Refactoring',
-      'Refactoring Ideas',
-      'Refactoring Key Ideas',
-    ])
+    expect(result.current.results[0].title).toBe('Refactoring')
   })
 
   it('ranks case-insensitive exact match first', () => {

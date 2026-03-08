@@ -68,19 +68,42 @@ describe('searchRank', () => {
 })
 
 describe('bestSearchRank', () => {
-  it('returns best rank across title and aliases', () => {
-    expect(bestSearchRank('ref', 'Refactoring Notes', ['ref'])).toBe(0)
-  })
-
-  it('returns title rank when no aliases match better', () => {
+  it('returns 0 for title exact match', () => {
     expect(bestSearchRank('Refactoring', 'Refactoring', [])).toBe(0)
   })
 
-  it('prefers alias exact match over title prefix match', () => {
-    expect(bestSearchRank('ref', 'Reference Manual', ['ref'])).toBe(0)
+  it('returns 0 for title exact match with aliases present', () => {
+    expect(bestSearchRank('Refactoring', 'Refactoring', ['refactor', 'cleanup'])).toBe(0)
   })
 
-  it('returns 2 when nothing matches as exact or prefix', () => {
-    expect(bestSearchRank('ideas', 'Refactoring Ideas', ['thoughts'])).toBe(2)
+  it('returns 1 for alias exact match (never 0)', () => {
+    expect(bestSearchRank('ref', 'Refactoring Notes', ['ref'])).toBe(1)
+  })
+
+  it('ranks alias exact match above title prefix match', () => {
+    expect(bestSearchRank('ref', 'Reference Manual', ['ref'])).toBe(1)
+    // title prefix would be rank 2, alias exact is rank 1
+  })
+
+  it('returns 2 for title prefix match (no alias boost)', () => {
+    expect(bestSearchRank('Refactoring', 'Refactoring Ideas', [])).toBe(2)
+  })
+
+  it('returns 3 for alias prefix match only', () => {
+    expect(bestSearchRank('ref', 'Something Else', ['refactor'])).toBe(3)
+  })
+
+  it('returns 4 when nothing matches as exact or prefix', () => {
+    expect(bestSearchRank('ideas', 'Refactoring Ideas', ['thoughts'])).toBe(4)
+  })
+
+  it('title exact match always beats alias exact match', () => {
+    const titleExact = bestSearchRank('Refactoring', 'Refactoring', ['refactor'])
+    const aliasExact = bestSearchRank('Refactoring', 'Refactoring Ideas', ['Refactoring'])
+    expect(titleExact).toBeLessThan(aliasExact)
+  })
+
+  it('handles trimmed whitespace in title and query', () => {
+    expect(bestSearchRank('Refactoring ', ' Refactoring', [])).toBe(0)
   })
 })
