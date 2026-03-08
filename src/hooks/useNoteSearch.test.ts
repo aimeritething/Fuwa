@@ -175,6 +175,38 @@ describe('useNoteSearch', () => {
     expect(preventDefaultSpy).not.toHaveBeenCalled()
   })
 
+  it('ranks exact title match first, prefix second, fuzzy third', () => {
+    const ranked: VaultEntry[] = [
+      makeEntry({ path: '/vault/ri.md', title: 'Refactoring Ideas', modifiedAt: 1700000003 }),
+      makeEntry({ path: '/vault/rk.md', title: 'Refactoring Key Ideas', modifiedAt: 1700000002 }),
+      makeEntry({ path: '/vault/r.md', title: 'Refactoring', modifiedAt: 1700000001 }),
+    ]
+    const { result } = renderHook(() => useNoteSearch(ranked, 'Refactoring'))
+    expect(result.current.results.map(r => r.title)).toEqual([
+      'Refactoring',
+      'Refactoring Ideas',
+      'Refactoring Key Ideas',
+    ])
+  })
+
+  it('ranks case-insensitive exact match first', () => {
+    const ranked: VaultEntry[] = [
+      makeEntry({ path: '/vault/qi.md', title: 'Quarter Ideas', modifiedAt: 1700000002 }),
+      makeEntry({ path: '/vault/q.md', title: 'Quarter', modifiedAt: 1700000001 }),
+    ]
+    const { result } = renderHook(() => useNoteSearch(ranked, 'quarter'))
+    expect(result.current.results[0].title).toBe('Quarter')
+  })
+
+  it('boosts note whose alias is an exact match', () => {
+    const ranked: VaultEntry[] = [
+      makeEntry({ path: '/vault/ri.md', title: 'Refactoring Ideas', modifiedAt: 1700000002 }),
+      makeEntry({ path: '/vault/rn.md', title: 'Refactoring Notes', aliases: ['ref'], modifiedAt: 1700000001 }),
+    ]
+    const { result } = renderHook(() => useNoteSearch(ranked, 'ref'))
+    expect(result.current.results[0].title).toBe('Refactoring Notes')
+  })
+
   it('resolves custom type color from Type entries', () => {
     const withTypes: VaultEntry[] = [
       makeEntry({ path: '/vault/t/recipe.md', title: 'Recipe', isA: 'Type', color: 'orange', icon: 'cooking-pot' }),

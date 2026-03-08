@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, useEffect } from 'react'
 import type { VaultEntry } from '../types'
-import { fuzzyMatch } from '../utils/fuzzyMatch'
+import { fuzzyMatch, bestSearchRank } from '../utils/fuzzyMatch'
 import { getTypeColor, getTypeLightColor, buildTypeEntryMap } from '../utils/typeColors'
 import { getTypeIcon } from '../components/NoteItem'
 import type { NoteSearchResultItem } from '../components/NoteSearchList'
@@ -45,9 +45,13 @@ export function useNoteSearch(entries: VaultEntry[], query: string, maxResults =
         .map(mapResult)
     }
     return searchableEntries
-      .map((e) => ({ entry: e, ...fuzzyMatch(query, e.title) }))
+      .map((e) => ({
+        entry: e,
+        ...fuzzyMatch(query, e.title),
+        rank: bestSearchRank(query, e.title, e.aliases),
+      }))
       .filter((r) => r.match)
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => a.rank - b.rank || b.score - a.score)
       .slice(0, maxResults)
       .map((r) => mapResult(r.entry))
   }, [searchableEntries, query, maxResults, typeEntryMap])

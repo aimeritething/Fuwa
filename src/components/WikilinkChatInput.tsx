@@ -8,6 +8,7 @@ import { useState, useRef, useMemo, useEffect } from 'react'
 import type { VaultEntry } from '../types'
 import type { NoteReference } from '../utils/ai-context'
 import { getTypeColor, getTypeLightColor, buildTypeEntryMap } from '../utils/typeColors'
+import { bestSearchRank } from '../utils/fuzzyMatch'
 
 const MAX_SUGGESTIONS = 20
 const MIN_QUERY_LENGTH = 1
@@ -46,13 +47,16 @@ function matchEntries(
 ): SuggestionEntry[] {
   if (query.length < MIN_QUERY_LENGTH) return []
   const lower = query.toLowerCase()
-  const matches = entries.filter(e =>
-    !e.trashed && !e.archived && (
-      e.title.toLowerCase().includes(lower) ||
-      e.aliases.some(a => a.toLowerCase().includes(lower))
-    ),
-  )
-  return matches.slice(0, MAX_SUGGESTIONS).map(e => {
+  const matches = entries
+    .filter(e =>
+      !e.trashed && !e.archived && (
+        e.title.toLowerCase().includes(lower) ||
+        e.aliases.some(a => a.toLowerCase().includes(lower))
+      ),
+    )
+    .map(e => ({ entry: e, rank: bestSearchRank(query, e.title, e.aliases) }))
+    .sort((a, b) => a.rank - b.rank)
+  return matches.slice(0, MAX_SUGGESTIONS).map(({ entry: e }) => {
     const te = typeEntryMap[e.isA ?? '']
     return {
       title: e.title,

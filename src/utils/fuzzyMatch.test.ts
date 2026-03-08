@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { fuzzyMatch } from './fuzzyMatch'
+import { fuzzyMatch, searchRank, bestSearchRank } from './fuzzyMatch'
 
 describe('fuzzyMatch', () => {
   it('matches exact string', () => {
@@ -42,5 +42,45 @@ describe('fuzzyMatch', () => {
 
   it('handles empty target', () => {
     expect(fuzzyMatch('a', '').match).toBe(false)
+  })
+})
+
+describe('searchRank', () => {
+  it('returns 0 for exact match', () => {
+    expect(searchRank('Refactoring', 'Refactoring')).toBe(0)
+  })
+
+  it('returns 0 for case-insensitive exact match', () => {
+    expect(searchRank('refactoring', 'Refactoring')).toBe(0)
+  })
+
+  it('returns 1 for prefix match', () => {
+    expect(searchRank('Refactoring', 'Refactoring Ideas')).toBe(1)
+  })
+
+  it('returns 1 for case-insensitive prefix match', () => {
+    expect(searchRank('quarter', 'Quarter Review')).toBe(1)
+  })
+
+  it('returns 2 for non-prefix fuzzy match', () => {
+    expect(searchRank('Ideas', 'Refactoring Ideas')).toBe(2)
+  })
+})
+
+describe('bestSearchRank', () => {
+  it('returns best rank across title and aliases', () => {
+    expect(bestSearchRank('ref', 'Refactoring Notes', ['ref'])).toBe(0)
+  })
+
+  it('returns title rank when no aliases match better', () => {
+    expect(bestSearchRank('Refactoring', 'Refactoring', [])).toBe(0)
+  })
+
+  it('prefers alias exact match over title prefix match', () => {
+    expect(bestSearchRank('ref', 'Reference Manual', ['ref'])).toBe(0)
+  })
+
+  it('returns 2 when nothing matches as exact or prefix', () => {
+    expect(bestSearchRank('ideas', 'Refactoring Ideas', ['thoughts'])).toBe(2)
   })
 })
