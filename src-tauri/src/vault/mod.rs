@@ -435,6 +435,15 @@ fn pod_to_json(pod: gray_matter::Pod) -> serde_json::Value {
     }
 }
 
+/// Re-read a single file from disk and return a fresh VaultEntry.
+/// Used after failed optimistic updates to restore the true filesystem state.
+pub fn reload_entry(path: &Path) -> Result<VaultEntry, String> {
+    if !path.exists() {
+        return Err(format!("File does not exist: {}", path.display()));
+    }
+    parse_md_file(path)
+}
+
 /// Read the content of a single note file.
 pub fn get_note_content(path: &Path) -> Result<String, String> {
     if !path.exists() {
@@ -541,6 +550,27 @@ mod tests {
     fn parse_test_entry(dir: &TempDir, name: &str, content: &str) -> VaultEntry {
         create_test_file(dir.path(), name, content);
         parse_md_file(&dir.path().join(name)).unwrap()
+    }
+
+    #[test]
+    fn test_reload_entry_returns_fresh_data() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(dir.path(), "note.md", "---\nStatus: Active\n---\n# My Note\n\nOriginal.");
+        let entry = reload_entry(&dir.path().join("note.md")).unwrap();
+        assert_eq!(entry.title, "My Note");
+        assert_eq!(entry.status, Some("Active".to_string()));
+
+        // Modify on disk and reload — must see the new content
+        create_test_file(dir.path(), "note.md", "---\nStatus: Done\n---\n# My Note\n\nUpdated.");
+        let fresh = reload_entry(&dir.path().join("note.md")).unwrap();
+        assert_eq!(fresh.status, Some("Done".to_string()));
+    }
+
+    #[test]
+    fn test_reload_entry_nonexistent_file() {
+        let result = reload_entry(std::path::Path::new("/nonexistent/path/note.md"));
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("does not exist"));
     }
 
     const FULL_FM_CONTENT: &str = "---\nIs A: Project\naliases:\n  - Laputa\n  - Castle in the Sky\nBelongs to:\n  - Studio Ghibli\nRelated to:\n  - Miyazaki\nStatus: Active\nOwner: Luca\nCadence: Weekly\n---\n# Laputa Project\n\nThis is a project note.\n";

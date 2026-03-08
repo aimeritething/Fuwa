@@ -140,6 +140,12 @@ pub fn get_default_vault_path() -> Result<String, String> {
 }
 
 #[tauri::command]
+pub fn reload_vault_entry(path: String) -> Result<VaultEntry, String> {
+    let path = expand_tilde(&path);
+    vault::reload_entry(std::path::Path::new(path.as_ref()))
+}
+
+#[tauri::command]
 pub fn save_image(vault_path: String, filename: String, data: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
     vault::save_image(&vault_path, &filename, &data)
@@ -669,6 +675,28 @@ mod tests {
         let content = std::fs::read_to_string(&note).unwrap();
         assert!(content.contains("Trashed: true"));
         assert!(content.contains("Trashed at"));
+    }
+
+    #[test]
+    fn test_reload_vault_entry_reads_from_disk() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let note = dir.path().join("note.md");
+        std::fs::write(&note, "---\nStatus: Active\n---\n# Test\n").unwrap();
+
+        let entry = reload_vault_entry(note.to_str().unwrap().to_string()).unwrap();
+        assert_eq!(entry.title, "Test");
+        assert_eq!(entry.status, Some("Active".to_string()));
+
+        // Modify file on disk
+        std::fs::write(&note, "---\nStatus: Done\n---\n# Test\n").unwrap();
+        let fresh = reload_vault_entry(note.to_str().unwrap().to_string()).unwrap();
+        assert_eq!(fresh.status, Some("Done".to_string()));
+    }
+
+    #[test]
+    fn test_reload_vault_entry_nonexistent() {
+        let result = reload_vault_entry("/nonexistent/path.md".to_string());
+        assert!(result.is_err());
     }
 
     #[test]
