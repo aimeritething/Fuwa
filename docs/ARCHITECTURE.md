@@ -25,11 +25,27 @@ Notes are not just documents — they are nodes in a structured graph of people,
 ### Three representations, one authority
 
 Vault data exists in three forms simultaneously:
-1. **Filesystem** — the `.md` files. This is the authority.
-2. **Cache** — an index for fast startup. Always reconstructible from the filesystem.
-3. **React state** — the in-memory view during a session. Always derived from the cache.
+1. **Filesystem** — the `.md` files on disk. This is the single source of truth.
+2. **Cache** — `~/.laputa/cache/<hash>.json`, an index for fast startup. Always reconstructible from the filesystem.
+3. **React state** — the in-memory `VaultEntry[]` during a session. Always derived from the cache or filesystem.
 
 These must never diverge permanently. If they do, the filesystem wins and the cache/state are rebuilt.
+
+#### Ownership rules
+
+| Layer | Owner | Writes to | Reads from |
+|-------|-------|-----------|------------|
+| Filesystem | Tauri Rust commands (`save_note_content`, `update_frontmatter`, etc.) | Disk | — |
+| Cache | `scan_vault_cached()` in `vault/cache.rs` | `~/.laputa/cache/` | Filesystem + git diff |
+| React state | `useVaultLoader` + `useEntryActions` + `useNoteActions` | In-memory `entries` | Cache (on load), filesystem (on reload) |
+
+#### Invariants
+
+1. **Disk-first writes**: All functions that change vault data must write to disk (via Tauri IPC) *before* updating React state. This ensures that if the disk write fails, React state remains consistent with what's actually on disk.
+2. **Optimistic UI with rollback**: Where responsiveness matters (e.g. `persistOptimistic` in `useNoteActions`), state may update before disk confirmation — but a failure callback must revert the optimistic state.
+3. **No orphan state updates**: Never call `updateEntry()` before the corresponding `handleUpdateFrontmatter()` or `handleDeleteProperty()` has resolved. The three functions in `useEntryActions` (`handleCustomizeType`, `handleRenameSection`, `handleToggleTypeVisibility`) follow this rule — disk write first, then state update.
+4. **Recovery via reload**: If state ever diverges from disk (crash, external edit, race condition), `Reload Vault` (Cmd+K → "Reload Vault") re-scans the filesystem and replaces all React state. The `reload_vault_entry` Tauri command can also re-read a single file.
+5. **Cache is disposable**: Deleting the cache file forces a full rescan on next startup. The cache never contains data that doesn't exist on the filesystem.
 
 ## Tech Stack
 
@@ -79,7 +95,7 @@ These must never diverge permanently. If they do, the filesystem wins and the ca
 │        Tauri IPC│     Vite Proxy / WS                            │
 │  ┌──────────────▼────┐ ┌──▼────────────────────────────────┐    │
 │  │   Rust Backend    │ │   External Services               │    │
-│  │  lib.rs → 61 cmds │ │  Anthropic API (Claude chat)      │    │
+│  │  lib.rs → 62 cmds │ │  Anthropic API (Claude chat)      │    │
 │  │  vault/           │ │  Claude CLI (agent subprocess)    │    │
 │  │  frontmatter/     │ │  MCP Server (ws://9710, 9711)     │    │
 │  │  git/             │ │  qmd (search/indexing engine)     │    │
@@ -498,13 +514,13 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing |
 | `ai_chat.rs` | Direct Anthropic API client (non-streaming, for Tauri builds) |
 | `mcp.rs` | MCP server spawning + config registration |
-| `commands.rs` | All 61 Tauri command handlers |
+| `commands.rs` | All 62 Tauri command handlers |
 | `settings.rs` | App settings persistence |
 | `vault_config.rs` | Per-vault UI config |
 | `vault_list.rs` | Vault list persistence |
 | `menu.rs` | Native macOS menu bar |
 
-## Tauri IPC Commands (61 total)
+## Tauri IPC Commands (62 total)
 
 ### Vault Operations
 
@@ -518,6 +534,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `batch_archive_notes` | Archive multiple notes |
 | `batch_trash_notes` | Trash multiple notes |
 | `purge_trash` | Delete notes trashed >30 days ago |
+| `reload_vault_entry` | Re-read a single file from disk → `VaultEntry` |
 | `check_vault_exists` | Check if vault path exists |
 | `create_getting_started_vault` | Bootstrap demo vault |
 

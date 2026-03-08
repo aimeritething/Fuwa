@@ -343,6 +343,68 @@ describe('useEntryActions', () => {
     })
   })
 
+  describe('failed disk writes do not update React state', () => {
+    it('handleCustomizeType does not update entry when frontmatter write fails', async () => {
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/type/recipe.md' })
+      handleUpdateFrontmatter.mockRejectedValueOnce(new Error('disk full'))
+      const { result } = setup([typeEntry])
+
+      await expect(
+        act(() => result.current.handleCustomizeType('Recipe', 'star', 'red'))
+      ).rejects.toThrow('disk full')
+
+      expect(updateEntry).not.toHaveBeenCalled()
+    })
+
+    it('handleRenameSection does not update entry when frontmatter write fails', async () => {
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/type/recipe.md' })
+      handleUpdateFrontmatter.mockRejectedValueOnce(new Error('disk full'))
+      const { result } = setup([typeEntry])
+
+      await expect(
+        act(() => result.current.handleRenameSection('Recipe', 'Dishes'))
+      ).rejects.toThrow('disk full')
+
+      expect(updateEntry).not.toHaveBeenCalled()
+    })
+
+    it('handleRenameSection does not update entry when delete property fails', async () => {
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/type/recipe.md', sidebarLabel: 'Dishes' })
+      handleDeleteProperty.mockRejectedValueOnce(new Error('disk full'))
+      const { result } = setup([typeEntry])
+
+      await expect(
+        act(() => result.current.handleRenameSection('Recipe', ''))
+      ).rejects.toThrow('disk full')
+
+      expect(updateEntry).not.toHaveBeenCalled()
+    })
+
+    it('handleToggleTypeVisibility does not update entry when frontmatter write fails (hide)', async () => {
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/type/journal.md', visible: null })
+      handleUpdateFrontmatter.mockRejectedValueOnce(new Error('disk full'))
+      const { result } = setup([typeEntry])
+
+      await expect(
+        act(() => result.current.handleToggleTypeVisibility('Journal'))
+      ).rejects.toThrow('disk full')
+
+      expect(updateEntry).not.toHaveBeenCalled()
+    })
+
+    it('handleToggleTypeVisibility does not update entry when delete property fails (show)', async () => {
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/type/journal.md', visible: false })
+      handleDeleteProperty.mockRejectedValueOnce(new Error('disk full'))
+      const { result } = setup([typeEntry])
+
+      await expect(
+        act(() => result.current.handleToggleTypeVisibility('Journal'))
+      ).rejects.toThrow('disk full')
+
+      expect(updateEntry).not.toHaveBeenCalled()
+    })
+  })
+
   describe('onBeforeAction callback', () => {
     function setupWithBeforeAction(onBeforeAction: ReturnType<typeof vi.fn>) {
       return renderHook(() =>

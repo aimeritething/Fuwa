@@ -61,9 +61,9 @@ export function useEntryActions({
 
   const handleCustomizeType = useCallback(async (typeName: string, icon: string, color: string) => {
     const typeEntry = await findOrCreateType(entries, typeName, createTypeEntry)
-    updateEntry(typeEntry.path, { icon, color })
     await handleUpdateFrontmatter(typeEntry.path, 'icon', icon)
     await handleUpdateFrontmatter(typeEntry.path, 'color', color)
+    updateEntry(typeEntry.path, { icon, color })
     onFrontmatterPersisted?.()
   }, [entries, handleUpdateFrontmatter, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
@@ -86,23 +86,23 @@ export function useEntryActions({
   const handleRenameSection = useCallback(async (typeName: string, label: string) => {
     const typeEntry = await findOrCreateType(entries, typeName, createTypeEntry)
     const trimmed = label.trim()
-    updateEntry(typeEntry.path, { sidebarLabel: trimmed || null })
     if (trimmed) {
       await handleUpdateFrontmatter(typeEntry.path, 'sidebar label', trimmed)
     } else {
       await handleDeleteProperty(typeEntry.path, 'sidebar label')
     }
+    updateEntry(typeEntry.path, { sidebarLabel: trimmed || null })
     onFrontmatterPersisted?.()
   }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
   const handleToggleTypeVisibility = useCallback(async (typeName: string) => {
     const typeEntry = await findOrCreateType(entries, typeName, createTypeEntry)
     if (typeEntry.visible === false) {
-      updateEntry(typeEntry.path, { visible: null })
       await handleDeleteProperty(typeEntry.path, 'visible')
+      updateEntry(typeEntry.path, { visible: null })
     } else {
-      updateEntry(typeEntry.path, { visible: false })
       await handleUpdateFrontmatter(typeEntry.path, 'visible', false)
+      updateEntry(typeEntry.path, { visible: false })
     }
     onFrontmatterPersisted?.()
   }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry, onFrontmatterPersisted])
