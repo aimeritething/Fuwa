@@ -543,7 +543,7 @@ Status: Active
         <Inspector
           {...defaultProps}
           entry={typeEntry}
-          content="---\nIs A: Type\n---\n# Responsibility\n"
+          content="---\ntype: Type\n---\n# Responsibility\n"
           entries={[typeEntry, essayEntry]}
 
         />

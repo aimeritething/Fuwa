@@ -6,7 +6,7 @@ const THEME_PATH_DEFAULT = '/vault/theme/default.md'
 const THEME_PATH_DARK = '/vault/theme/dark.md'
 
 const DEFAULT_THEME_CONTENT = `---
-Is A: Theme
+type: Theme
 Description: Light theme
 background: "#FFFFFF"
 foreground: "#37352F"
@@ -19,7 +19,7 @@ text-primary: "#37352F"
 `
 
 const DARK_THEME_CONTENT = `---
-Is A: Theme
+type: Theme
 Description: Dark theme
 background: "#0f0f1a"
 foreground: "#e0e0e0"
@@ -342,7 +342,7 @@ describe('useThemeManager', () => {
     })
 
     const newContent = {
-      [THEME_PATH_DEFAULT]: `---\nIs A: Theme\nbackground: "#FF0000"\n---\n# Default Theme\n`,
+      [THEME_PATH_DEFAULT]: `---\ntype: Theme\nbackground: "#FF0000"\n---\n# Default Theme\n`,
     }
     rerender({ content: newContent })
 

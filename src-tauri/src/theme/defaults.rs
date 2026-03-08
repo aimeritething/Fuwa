@@ -164,7 +164,7 @@ pub const DEFAULT_VAULT_THEME_VARS: [(&str, &str); 46] = [
 
 /// Vault-based theme note for the built-in Default theme.
 pub const DEFAULT_VAULT_THEME: &str = "---\n\
-Is A: Theme\n\
+type: Theme\n\
 Description: Light theme with warm, paper-like tones\n\
 background: \"#FFFFFF\"\n\
 foreground: \"#37352F\"\n\
@@ -220,7 +220,7 @@ The default light theme for Laputa. Clean and warm, inspired by Notion.\n";
 
 /// Vault-based theme note for the built-in Dark theme.
 pub const DARK_VAULT_THEME: &str = "---\n\
-Is A: Theme\n\
+type: Theme\n\
 Description: Dark variant with deep navy tones\n\
 background: \"#0f0f1a\"\n\
 foreground: \"#e0e0e0\"\n\
@@ -276,7 +276,7 @@ A dark theme with deep navy tones for comfortable night-time reading.\n";
 
 /// Vault-based theme note for the built-in Minimal theme.
 pub const MINIMAL_VAULT_THEME: &str = "---\n\
-Is A: Theme\n\
+type: Theme\n\
 Description: High contrast, minimal chrome\n\
 background: \"#FAFAFA\"\n\
 foreground: \"#111111\"\n\
@@ -332,7 +332,7 @@ High contrast, minimal chrome. Monospace typography throughout.\n";
 
 /// Type definition for the Theme note type.
 pub const THEME_TYPE_DEFINITION: &str = "---\n\
-Is A: Type\n\
+type: Type\n\
 icon: palette\n\
 color: purple\n\
 order: 50\n\

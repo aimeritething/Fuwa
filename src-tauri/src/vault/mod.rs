@@ -94,7 +94,7 @@ pub struct VaultEntry {
 /// Intermediate struct to capture YAML frontmatter fields.
 #[derive(Debug, Deserialize, Default)]
 struct Frontmatter {
-    #[serde(rename = "Is A", alias = "type")]
+    #[serde(rename = "type", alias = "Is A", alias = "is_a")]
     is_a: Option<StringOrList>,
     #[serde(default)]
     aliases: Option<StringOrList>,
@@ -1442,6 +1442,32 @@ Company: Acme Corp
         let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
         let entry = parse_test_entry(&dir, "type/journal.md", content);
         assert!(entry.properties.get("visible").is_none());
+    }
+
+    // --- round-trip: canonical `type:` field and `Is A:` alias ---
+
+    #[test]
+    fn test_roundtrip_type_key_parses_correctly() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Quarter\n---\n# Q1 2026\n";
+        let entry = parse_test_entry(&dir, "quarter/q1.md", content);
+        assert_eq!(entry.is_a, Some("Quarter".to_string()));
+    }
+
+    #[test]
+    fn test_roundtrip_is_a_alias_still_works() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\nIs A: Quarter\n---\n# Q1 2026\n";
+        let entry = parse_test_entry(&dir, "quarter/q1.md", content);
+        assert_eq!(entry.is_a, Some("Quarter".to_string()));
+    }
+
+    #[test]
+    fn test_roundtrip_is_a_snake_case_alias_still_works() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\nis_a: Quarter\n---\n# Q1 2026\n";
+        let entry = parse_test_entry(&dir, "quarter/q1.md", content);
+        assert_eq!(entry.is_a, Some("Quarter".to_string()));
     }
 
     // Frontmatter update/delete tests are in frontmatter.rs

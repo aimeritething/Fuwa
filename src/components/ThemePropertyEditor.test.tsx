@@ -8,7 +8,7 @@ function makeThemeManager(overrides: Partial<ThemeManager> = {}): ThemeManager {
     themes: [],
     activeThemeId: '/vault/_themes/My Theme.md',
     activeTheme: { id: '/vault/_themes/My Theme.md', name: 'My Theme', description: '', colors: {}, typography: {}, spacing: {} },
-    activeThemeContent: '---\nIs A: Theme\nName: My Theme\neditor-font-size: 18px\nlists-bullet-color: "#ff0000"\n---\n',
+    activeThemeContent: '---\ntype: Theme\nName: My Theme\neditor-font-size: 18px\nlists-bullet-color: "#ff0000"\n---\n',
     isDark: false,
     switchTheme: vi.fn(),
     createTheme: vi.fn().mockResolvedValue(''),

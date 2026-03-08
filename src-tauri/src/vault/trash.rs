@@ -155,7 +155,7 @@ mod tests {
         create_test_file(
             dir.path(),
             "normal.md",
-            "---\nIs A: Note\n---\n# Normal Note\n",
+            "---\ntype: Note\n---\n# Normal Note\n",
         );
 
         let deleted = purge_trash(dir.path().to_str().unwrap()).unwrap();

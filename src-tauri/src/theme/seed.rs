@@ -181,7 +181,7 @@ mod tests {
 
         seed_vault_themes(vp);
         let content = fs::read_to_string(theme_dir.join("default.md")).unwrap();
-        assert!(content.contains("Is A: Theme"));
+        assert!(content.contains("type: Theme"));
     }
 
     #[test]
@@ -190,7 +190,7 @@ mod tests {
         let vault = dir.path().join("vault");
         let theme_dir = vault.join("theme");
         fs::create_dir_all(&theme_dir).unwrap();
-        let custom = "---\nIs A: Theme\nbackground: \"#FF0000\"\n---\n# Custom\n";
+        let custom = "---\ntype: Theme\nbackground: \"#FF0000\"\n---\n# Custom\n";
         fs::write(theme_dir.join("default.md"), custom).unwrap();
         let vp = vault.to_str().unwrap();
 
@@ -227,7 +227,7 @@ mod tests {
 
         ensure_vault_themes(vp).unwrap();
         let content = fs::read_to_string(theme_dir.join("default.md")).unwrap();
-        assert!(content.contains("Is A: Theme"));
+        assert!(content.contains("type: Theme"));
     }
 
     #[test]
@@ -236,7 +236,7 @@ mod tests {
         let vault = dir.path().join("vault");
         let theme_dir = vault.join("theme");
         fs::create_dir_all(&theme_dir).unwrap();
-        let custom = "---\nIs A: Theme\nbackground: \"#123456\"\n---\n";
+        let custom = "---\ntype: Theme\nbackground: \"#123456\"\n---\n";
         fs::write(theme_dir.join("default.md"), custom).unwrap();
         let vp = vault.to_str().unwrap();
 
@@ -265,7 +265,7 @@ mod tests {
             "restore must create type/theme.md"
         );
         let type_content = fs::read_to_string(vault.join("type").join("theme.md")).unwrap();
-        assert!(type_content.contains("Is A: Type"));
+        assert!(type_content.contains("type: Type"));
         assert!(type_content.contains("icon: palette"));
     }
 
@@ -280,7 +280,7 @@ mod tests {
         let path = vault.join("type").join("theme.md");
         assert!(path.exists());
         let content = fs::read_to_string(&path).unwrap();
-        assert!(content.contains("Is A: Type"));
+        assert!(content.contains("type: Type"));
         assert!(content.contains("icon: palette"));
     }
 
@@ -290,7 +290,7 @@ mod tests {
         let vault = dir.path().join("vault");
         let type_dir = vault.join("type");
         fs::create_dir_all(&type_dir).unwrap();
-        let custom = "---\nIs A: Type\nicon: swatches\ncolor: green\n---\n# Theme\n";
+        let custom = "---\ntype: Type\nicon: swatches\ncolor: green\n---\n# Theme\n";
         fs::write(type_dir.join("theme.md"), custom).unwrap();
         let vp = vault.to_str().unwrap();
 

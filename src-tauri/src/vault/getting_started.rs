@@ -51,7 +51,7 @@ YAML frontmatter between `---` delimiters defines metadata:
 
 ```yaml
 ---
-Is A: Project
+type: Project
 Status: Active
 Owner: "[[person/jane-doe]]"
 Belongs to: "[[quarter/24q1]]"
@@ -65,7 +65,7 @@ Related to:
 
 | Field | Purpose |
 |-------|---------|
-| `Is A` | Entity type (usually inferred from folder) |
+| `type` | Entity type (usually inferred from folder) |
 | `Status` | Active, Done, Paused, Archived, Dropped |
 | `Owner` | Person responsible (wikilink) |
 | `Belongs to` | Parent relationship(s) |
@@ -98,7 +98,7 @@ Files in `type/` define entity types and control how they appear in the sidebar:
 
 ```yaml
 ---
-Is A: Type
+type: Type
 icon: rocket-launch
 color: purple
 order: 1
@@ -119,32 +119,32 @@ Available colors: red, purple, blue, green, yellow, orange. Icons are Phosphor n
 const SAMPLE_FILES: &[SampleFile] = &[
     SampleFile {
         rel_path: "type/project.md",
-        content: "---\nIs A: Type\nicon: rocket-launch\ncolor: purple\norder: 1\n---\n\n# Project\n\nA Project is a time-bounded effort with a clear goal and an eventual completion date. Projects belong to a quarter or area and advance specific goals.\n",
+        content: "---\ntype: Type\nicon: rocket-launch\ncolor: purple\norder: 1\n---\n\n# Project\n\nA Project is a time-bounded effort with a clear goal and an eventual completion date. Projects belong to a quarter or area and advance specific goals.\n",
     },
     SampleFile {
         rel_path: "type/note.md",
-        content: "---\nIs A: Type\nicon: note\ncolor: blue\norder: 2\n---\n\n# Note\n\nA Note is a general-purpose document — research notes, meeting notes, strategy docs, or anything that doesn't fit a more specific type.\n",
+        content: "---\ntype: Type\nicon: note\ncolor: blue\norder: 2\n---\n\n# Note\n\nA Note is a general-purpose document — research notes, meeting notes, strategy docs, or anything that doesn't fit a more specific type.\n",
     },
     SampleFile {
         rel_path: "type/person.md",
-        content: "---\nIs A: Type\nicon: user\ncolor: green\norder: 3\n---\n\n# Person\n\nA Person represents someone you interact with — a colleague, friend, mentor, or collaborator.\n",
+        content: "---\ntype: Type\nicon: user\ncolor: green\norder: 3\n---\n\n# Person\n\nA Person represents someone you interact with — a colleague, friend, mentor, or collaborator.\n",
     },
     SampleFile {
         rel_path: "type/topic.md",
-        content: "---\nIs A: Type\nicon: tag\ncolor: yellow\norder: 4\n---\n\n# Topic\n\nA Topic is a subject area or interest category that groups related notes, projects, and people.\n",
+        content: "---\ntype: Type\nicon: tag\ncolor: yellow\norder: 4\n---\n\n# Topic\n\nA Topic is a subject area or interest category that groups related notes, projects, and people.\n",
     },
     SampleFile {
         rel_path: "type/theme.md",
-        content: "---\nIs A: Type\nicon: palette\ncolor: purple\norder: 50\n---\n\n# Theme\n\nA visual theme for Laputa. Each theme defines CSS custom properties that control colors, typography, and spacing.\n",
+        content: "---\ntype: Type\nicon: palette\ncolor: purple\norder: 50\n---\n\n# Theme\n\nA visual theme for Laputa. Each theme defines CSS custom properties that control colors, typography, and spacing.\n",
     },
     SampleFile {
         rel_path: "type/config.md",
-        content: "---\nIs A: Type\nicon: gear-six\ncolor: gray\norder: 90\nsidebar label: Config\n---\n\n# Config\n\nVault configuration files. These control how AI agents, tools, and other integrations interact with this vault.\n",
+        content: "---\ntype: Type\nicon: gear-six\ncolor: gray\norder: 90\nsidebar label: Config\n---\n\n# Config\n\nVault configuration files. These control how AI agents, tools, and other integrations interact with this vault.\n",
     },
     SampleFile {
         rel_path: "note/welcome-to-laputa.md",
         content: r#"---
-Is A: Note
+type: Note
 Related to:
   - "[[note/editor-basics]]"
   - "[[note/using-properties]]"
@@ -179,7 +179,7 @@ Every note is a markdown file with optional YAML frontmatter at the top. Notes l
     SampleFile {
         rel_path: "note/editor-basics.md",
         content: r#"---
-Is A: Note
+type: Note
 Related to: "[[note/welcome-to-laputa]]"
 ---
 
@@ -227,7 +227,7 @@ function hello() {
     SampleFile {
         rel_path: "note/using-properties.md",
         content: r#"---
-Is A: Note
+type: Note
 Status: Active
 Related to:
   - "[[note/welcome-to-laputa]]"
@@ -240,7 +240,7 @@ Every note can have **properties** defined in the YAML frontmatter at the top of
 
 ## Common properties
 
-- **Is A** — The note's type (Project, Note, Person, etc.)
+- **type** — The note's type (Project, Note, Person, etc.)
 - **Status** — Current state: Active, Done, Paused, Archived, Dropped
 - **Belongs to** — Parent relationship (e.g., a project belongs to a quarter)
 - **Related to** — Lateral connections to other notes
@@ -261,7 +261,7 @@ You can add any custom property. If the value contains `[[wiki-links]]`, Laputa 
     SampleFile {
         rel_path: "note/wiki-links-and-relationships.md",
         content: r#"---
-Is A: Note
+type: Note
 Related to:
   - "[[note/welcome-to-laputa]]"
   - "[[note/using-properties]]"
@@ -300,7 +300,7 @@ Over time, your wiki-links form a rich web of connections. Use the **Referenced 
     SampleFile {
         rel_path: "project/sample-project.md",
         content: r#"---
-Is A: Project
+type: Project
 Status: Active
 Owner: "[[person/sample-collaborator]]"
 Related to: "[[topic/getting-started]]"
@@ -329,7 +329,7 @@ This project is owned by [[person/sample-collaborator]] and relates to [[topic/g
     SampleFile {
         rel_path: "person/sample-collaborator.md",
         content: r#"---
-Is A: Person
+type: Person
 ---
 
 # Sample Collaborator
@@ -350,7 +350,7 @@ This person is the owner of [[project/sample-project]]. Check the **Referenced B
     SampleFile {
         rel_path: "topic/getting-started.md",
         content: r#"---
-Is A: Topic
+type: Topic
 ---
 
 # Getting Started

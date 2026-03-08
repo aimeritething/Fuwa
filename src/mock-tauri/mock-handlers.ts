@@ -314,7 +314,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     const slug = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'untitled-theme'
     const path = `${args.vaultPath}/theme/${slug}.md`
     MOCK_CONTENT[path] = `---
-Is A: Theme
+type: Theme
 title: ${displayName}
 primary: "#155DFF"
 background: "#FFFFFF"

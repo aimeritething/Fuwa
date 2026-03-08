@@ -734,7 +734,7 @@ rating: 5
 Essential reading for anyone building distributed systems. Covers replication, partitioning, transactions, and stream processing.
 `,
   '/Users/luca/Laputa/theme/default.md': `---
-Is A: Theme
+type: Theme
 title: Default
 primary: "#155DFF"
 background: "#FFFFFF"
@@ -755,7 +755,7 @@ line-height-base: 1.6
 Light theme with warm, paper-like tones.
 `,
   '/Users/luca/Laputa/theme/dark.md': `---
-Is A: Theme
+type: Theme
 title: Dark
 primary: "#155DFF"
 background: "#0f0f1a"
@@ -776,7 +776,7 @@ line-height-base: 1.6
 Dark variant with deep navy tones.
 `,
   '/Users/luca/Laputa/theme/minimal.md': `---
-Is A: Theme
+type: Theme
 title: Minimal
 primary: "#000000"
 background: "#FAFAFA"
