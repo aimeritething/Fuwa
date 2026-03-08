@@ -50,7 +50,36 @@ kill $DEV_PID
 
 **Playwright is non-negotiable even if unit tests pass.** Unit tests verify code; Playwright verifies the user experience in the real browser. Both are required.
 
-> **⚠️ Browser dev server limits**: the dev server uses mock Tauri handlers (`src/mock-tauri.ts`) — file system operations, git commands, and native dialogs are mocked. Test those via `pnpm tauri dev` in Phase 2 if the task touches them.
+> **⚠️ Browser dev server limits**: the dev server uses mock Tauri handlers (`src/mock-tauri.ts`) — file system operations, git commands, and native dialogs are mocked. **If your task touches the filesystem, AI context pipeline, MCP server, git integration, or any Tauri command that reads/writes real files, Playwright alone is not enough.** You must also do Phase 1b.
+
+### Phase 1b: Tauri dev QA (you do this for filesystem/native tasks)
+
+If your task touches **any of the following**, you must also test with `pnpm tauri dev` against the real vault before firing done:
+- File read/write (notes, cache, vault config)
+- AI chat context (what the AI actually receives as input)
+- MCP server / subprocess communication
+- Git integration (commit, push, history, diff)
+- Native dialogs or OS-level features
+
+```bash
+# Start Tauri dev app from your worktree
+pnpm tauri dev --port <N> &
+sleep 10  # wait for Tauri + Vite to boot
+
+# Then test using osascript keyboard events (NO mouse/cliclick)
+# Example:
+osascript -e 'tell application "laputa" to activate'
+osascript -e 'tell application "System Events" to keystroke "k" using command down'
+# ...simulate the full user flow from the acceptance criteria
+```
+
+**What to verify in Phase 1b:**
+- Open the feature on a real note in `~/Laputa` (not the demo vault)
+- Walk through every acceptance criterion step by step using keyboard only
+- Verify file changes with `git -C ~/Laputa diff` if the task writes files
+- Verify AI responses actually contain note content (not empty) if the task touches AI context
+
+**⚠️ Claude Code runs headless — you cannot see the screen.** Use `screencapture /tmp/qa-check.png` and then read/describe what you see if you need visual verification. Or rely on DOM state checks via osascript accessibility API.
 
 ### Phase 2: Native Tauri QA (Brian does this after you push)
 
