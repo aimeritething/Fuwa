@@ -18,12 +18,18 @@ pub(super) fn extract_title(content: &str, filename: &str) -> String {
 }
 
 /// Remove YAML frontmatter (triple-dash delimited) from content.
+/// The closing `---` must appear at the start of a line to avoid matching
+/// occurrences inside frontmatter values (e.g. `title: foo---bar`).
 fn strip_frontmatter(content: &str) -> &str {
     let Some(rest) = content.strip_prefix("---") else {
         return content;
     };
-    match rest.find("---") {
-        Some(end) => rest[end + 3..].trim_start(),
+    // Find closing `---` at the start of a line (preceded by newline)
+    match rest.find("\n---") {
+        Some(end) => {
+            let after = end + 4; // skip past "\n---"
+            rest[after..].trim_start()
+        }
         None => content,
     }
 }
@@ -382,6 +388,46 @@ mod tests {
     fn test_count_body_words_plain_text_only() {
         let content = "Just plain text without any heading.";
         assert_eq!(count_body_words(content), 6);
+    }
+
+    // --- strip_frontmatter tests ---
+
+    #[test]
+    fn test_strip_frontmatter_basic() {
+        let content = "---\ntitle: Test\n---\nBody content.";
+        assert_eq!(strip_frontmatter(content), "Body content.");
+    }
+
+    #[test]
+    fn test_strip_frontmatter_no_frontmatter() {
+        let content = "Just plain content.";
+        assert_eq!(strip_frontmatter(content), "Just plain content.");
+    }
+
+    #[test]
+    fn test_strip_frontmatter_dashes_in_value() {
+        // The closing --- must be at line start, not inside a value
+        let content = "---\ntitle: foo---bar\nstatus: active\n---\nBody here.";
+        assert_eq!(strip_frontmatter(content), "Body here.");
+    }
+
+    #[test]
+    fn test_strip_frontmatter_unclosed() {
+        let content = "---\ntitle: Test\nNo closing fence";
+        assert_eq!(strip_frontmatter(content), content);
+    }
+
+    #[test]
+    fn test_strip_frontmatter_empty_body() {
+        let content = "---\ntitle: Test\n---\n";
+        assert_eq!(strip_frontmatter(content), "");
+    }
+
+    #[test]
+    fn test_count_body_words_with_dashes_in_frontmatter_value() {
+        // Regression: strip_frontmatter previously matched --- inside values
+        let content = "---\ntitle: my---note\nstatus: active\n---\n# Title\n\nThree body words.";
+        assert_eq!(count_body_words(content), 3);
     }
 
     // --- strip_markdown_chars tests ---

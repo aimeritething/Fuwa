@@ -391,6 +391,37 @@ describe('buildContextSnapshot', () => {
     expect(json.activeNote.body).toBe('# Just a heading\n\nSome plain content.')
   })
 
+  it('falls back to allContent when activeNoteContent is empty string (|| fix)', () => {
+    // Regression: `??` does not fall through on empty string '', only on null/undefined.
+    // The `||` fix ensures empty string falls through to allContent.
+    const result = buildContextSnapshot({
+      activeEntry: active,
+      allContent,
+      entries,
+      activeNoteContent: '',
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.activeNote.body).toContain('Project content.')
+    expect(json.activeNote.body).not.toBe('')
+  })
+
+  it('includes defensive body when body is empty but wordCount > 0', () => {
+    // When body is empty (e.g. timing issue) but note has content on disk,
+    // body field should instruct Claude to use get_note
+    const entryWithWords = makeEntry({
+      path: '/vault/a.md', title: 'Alpha', wordCount: 206,
+    })
+    const result = buildContextSnapshot({
+      activeEntry: entryWithWords,
+      allContent: {},
+      entries,
+      activeNoteContent: '---\ntitle: Alpha\n---\n',
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.activeNote.body).toContain('get_note')
+    expect(json.activeNote.body).toContain('206 words')
+  })
+
   it('includes wikilink instruction in preamble', () => {
     const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
     expect(result).toContain('[[Note Title]]')

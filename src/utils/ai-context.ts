@@ -105,8 +105,18 @@ const MAX_NOTE_LIST_ITEMS = 100
 export function buildContextSnapshot(params: ContextSnapshotParams): string {
   const { activeEntry, allContent, activeNoteContent, openTabs, noteList, noteListFilter, entries, references } = params
 
-  const rawContent = activeNoteContent ?? allContent[activeEntry.path] ?? ''
-  const body = extractBody(rawContent)
+  // Use `||` (not `??`) so empty string '' falls through to allContent.
+  // This handles the case where handleEditorChange temporarily overwrites
+  // tab.content with frontmatter-only content during async content swaps.
+  const rawContent = activeNoteContent || allContent[activeEntry.path] || ''
+  let body = extractBody(rawContent)
+
+  // Defence-in-depth: when body is empty but the note has content on disk,
+  // include an explicit instruction in the body field itself (more reliable
+  // than a preamble instruction that Claude might skip).
+  if (!body && activeEntry.wordCount > 0) {
+    body = `[Content not available in editor context — use get_note("${activeEntry.path}") to read the full note (${activeEntry.wordCount} words)]`
+  }
 
   const snapshot: Record<string, unknown> = {
     activeNote: {
