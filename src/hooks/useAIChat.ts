@@ -2,21 +2,20 @@
  * Custom hook encapsulating AI chat state and message handling.
  * Uses Claude CLI subprocess via Tauri for streaming responses.
  *
- * Conversation continuity uses the CLI's --resume flag: the first message
- * starts a new session; subsequent messages resume it via session_id.
- * This avoids embedding history as text in the prompt (which the CLI's
- * -p mode treats as a single user turn, losing turn boundaries).
+ * Conversation continuity embeds prior exchanges in each prompt
+ * (each CLI invocation is a fresh subprocess with no memory).
+ * History is trimmed to MAX_HISTORY_TOKENS, dropping oldest first.
  */
 import { useState, useCallback, useRef } from 'react'
 import type { VaultEntry } from '../types'
 import {
   type ChatMessage, type ChatStreamCallbacks, nextMessageId,
   buildSystemPrompt, streamClaudeChat,
+  trimHistory, formatMessageWithHistory, MAX_HISTORY_TOKENS,
 } from '../utils/ai-chat'
 
 interface ChatStreamRefs {
   abortRef: React.RefObject<boolean>
-  sessionIdRef: React.MutableRefObject<string | undefined>
   setMessages: React.Dispatch<React.SetStateAction<ChatMessage[]>>
   setStreamingContent: React.Dispatch<React.SetStateAction<string>>
   setIsStreaming: React.Dispatch<React.SetStateAction<boolean>>
@@ -28,7 +27,6 @@ function makeStreamCallbacks(
 ): { callbacks: ChatStreamCallbacks; getAccumulated: () => string } {
   let accumulated = ''
   const callbacks: ChatStreamCallbacks = {
-    onInit: (sid) => { refs.sessionIdRef.current = sid },
     onText: (chunk) => {
       if (refs.abortRef.current) return
       accumulated += chunk
@@ -60,9 +58,9 @@ export function useAIChat(
   const [isStreaming, setIsStreaming] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const abortRef = useRef(false)
-  const sessionIdRef = useRef<string | undefined>(undefined)
 
-  const sendMessage = useCallback((text: string) => {
+  /** Internal: send text with explicit history context. */
+  const doSend = useCallback((text: string, history: ChatMessage[]) => {
     if (!text.trim() || isStreaming) return
 
     setMessages(prev => [...prev, { role: 'user', content: text.trim(), id: nextMessageId() }])
@@ -70,29 +68,30 @@ export function useAIChat(
     setStreamingContent('')
     abortRef.current = false
 
-    const currentSessionId = sessionIdRef.current
-    // System prompt only on first message (new session).
-    const systemPrompt = currentSessionId
-      ? undefined
-      : (buildSystemPrompt(contextNotes, allContent).prompt || undefined)
+    // Always include system prompt (each request is a fresh subprocess).
+    const systemPrompt = buildSystemPrompt(contextNotes, allContent).prompt || undefined
+
+    // Embed conversation history in the prompt for continuity.
+    const trimmedHistory = trimHistory(history, MAX_HISTORY_TOKENS)
+    const formattedMessage = formatMessageWithHistory(trimmedHistory, text.trim())
 
     const { callbacks } = makeStreamCallbacks({
-      abortRef, sessionIdRef, setMessages, setStreamingContent, setIsStreaming,
+      abortRef, setMessages, setStreamingContent, setIsStreaming,
     })
 
-    streamClaudeChat(text.trim(), systemPrompt, currentSessionId, callbacks)
-      .then((sid) => {
-        if (sid && !sessionIdRef.current) sessionIdRef.current = sid
-      })
+    streamClaudeChat(formattedMessage, systemPrompt, undefined, callbacks)
       .catch(() => { /* errors forwarded via onError */ })
   }, [isStreaming, allContent, contextNotes])
+
+  const sendMessage = useCallback((text: string) => {
+    doSend(text, messages)
+  }, [doSend, messages])
 
   const clearConversation = useCallback(() => {
     abortRef.current = true
     setMessages([])
     setIsStreaming(false)
     setStreamingContent('')
-    sessionIdRef.current = undefined
   }, [])
 
   const retryMessage = useCallback((msgIndex: number) => {
@@ -101,10 +100,10 @@ export function useAIChat(
     const userMsg = messages[userMsgIndex]
     if (userMsg.role !== 'user') return
 
-    sessionIdRef.current = undefined
-    setMessages(prev => prev.slice(0, msgIndex))
-    sendMessage(userMsg.content)
-  }, [messages, sendMessage])
+    const historyForRetry = messages.slice(0, userMsgIndex)
+    setMessages(prev => prev.slice(0, userMsgIndex))
+    doSend(userMsg.content, historyForRetry)
+  }, [messages, doSend])
 
   return { messages, isStreaming, streamingContent, sendMessage, clearConversation, retryMessage }
 }
