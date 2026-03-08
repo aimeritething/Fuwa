@@ -51,6 +51,7 @@ export function EditorRightPanel({
           onVaultChanged={onVaultChanged}
           vaultPath={vaultPath}
           activeEntry={inspectorEntry}
+          activeNoteContent={inspectorContent}
           entries={entries}
           allContent={allContent}
           openTabs={openTabs}

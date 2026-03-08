@@ -72,6 +72,8 @@ export interface NoteListItem {
 export interface ContextSnapshotParams {
   activeEntry: VaultEntry
   allContent: Record<string, string>
+  /** Direct content of the active note from the editor tab (most reliable source). */
+  activeNoteContent?: string
   openTabs?: VaultEntry[]
   noteList?: NoteListItem[]
   noteListFilter?: { type: string | null; query: string }
@@ -94,7 +96,7 @@ const MAX_NOTE_LIST_ITEMS = 100
 
 /** Build a structured context snapshot as a system prompt for Claude. */
 export function buildContextSnapshot(params: ContextSnapshotParams): string {
-  const { activeEntry, allContent, openTabs, noteList, noteListFilter, entries, references } = params
+  const { activeEntry, allContent, activeNoteContent, openTabs, noteList, noteListFilter, entries, references } = params
 
   const snapshot: Record<string, unknown> = {
     activeNote: {
@@ -102,7 +104,7 @@ export function buildContextSnapshot(params: ContextSnapshotParams): string {
       title: activeEntry.title,
       type: activeEntry.isA ?? 'Note',
       frontmatter: entryFrontmatter(activeEntry),
-      body: allContent[activeEntry.path] ?? '',
+      body: activeNoteContent ?? allContent[activeEntry.path] ?? '',
     },
   }
 

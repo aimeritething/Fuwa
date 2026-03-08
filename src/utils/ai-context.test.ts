@@ -331,6 +331,35 @@ describe('buildContextSnapshot', () => {
     expect(json.noteList).toBeUndefined()
   })
 
+  it('uses activeNoteContent for body when allContent is empty (Tauri mode)', () => {
+    const emptyAllContent: Record<string, string> = {}
+    const result = buildContextSnapshot({
+      activeEntry: active,
+      allContent: emptyAllContent,
+      entries,
+      activeNoteContent: '---\ntitle: Alpha\n---\n\n# Alpha\nProject content from tab.',
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.activeNote.body).toContain('Project content from tab.')
+  })
+
+  it('prefers activeNoteContent over allContent when both present', () => {
+    const result = buildContextSnapshot({
+      activeEntry: active,
+      allContent,
+      entries,
+      activeNoteContent: 'Fresh editor content',
+    })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.activeNote.body).toBe('Fresh editor content')
+  })
+
+  it('falls back to allContent when activeNoteContent is undefined', () => {
+    const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
+    const json = JSON.parse(result.split('```json\n')[1].split('\n```')[0])
+    expect(json.activeNote.body).toBe('# Alpha\nProject content.')
+  })
+
   it('includes wikilink instruction in preamble', () => {
     const result = buildContextSnapshot({ activeEntry: active, allContent, entries })
     expect(result).toContain('[[Note Title]]')

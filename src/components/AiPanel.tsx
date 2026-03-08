@@ -16,6 +16,8 @@ interface AiPanelProps {
   onVaultChanged?: () => void
   vaultPath: string
   activeEntry?: VaultEntry | null
+  /** Direct content of the active note from the editor tab. */
+  activeNoteContent?: string | null
   entries?: VaultEntry[]
   allContent?: Record<string, string>
   openTabs?: VaultEntry[]
@@ -110,7 +112,7 @@ function MessageHistory({ messages, isActive, onOpenNote, onNavigateWikilink, ha
   )
 }
 
-export function AiPanel({ onClose, onOpenNote, onFileCreated, onFileModified, onVaultChanged, vaultPath, activeEntry, entries, allContent, openTabs, noteList, noteListFilter }: AiPanelProps) {
+export function AiPanel({ onClose, onOpenNote, onFileCreated, onFileModified, onVaultChanged, vaultPath, activeEntry, activeNoteContent, entries, allContent, openTabs, noteList, noteListFilter }: AiPanelProps) {
   const [input, setInput] = useState('')
   const [pendingRefs, setPendingRefs] = useState<NoteReference[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
@@ -122,17 +124,18 @@ export function AiPanel({ onClose, onOpenNote, onFileCreated, onFileModified, on
   }, [activeEntry, entries])
 
   const contextPrompt = useMemo(() => {
-    if (!activeEntry || !allContent || !entries) return undefined
+    if (!activeEntry || !entries) return undefined
     return buildContextSnapshot({
       activeEntry,
-      allContent,
+      allContent: allContent ?? {},
+      activeNoteContent: activeNoteContent ?? undefined,
       openTabs,
       noteList,
       noteListFilter,
       entries,
       references: pendingRefs.length > 0 ? pendingRefs : undefined,
     })
-  }, [activeEntry, allContent, openTabs, noteList, noteListFilter, entries, pendingRefs])
+  }, [activeEntry, activeNoteContent, allContent, openTabs, noteList, noteListFilter, entries, pendingRefs])
 
   const fileCallbacks = useMemo<AgentFileCallbacks>(() => ({
     onFileCreated,
