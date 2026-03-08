@@ -74,6 +74,38 @@ describe('useTabManagement', () => {
       expect(result.current.activeTabPath).toBe('/vault/note/a.md')
     })
 
+    it('uses cached content when getCachedContent returns a value', async () => {
+      const getCachedContent = vi.fn().mockReturnValue('# Cached content')
+      const onContentLoaded = vi.fn()
+      const { result } = renderHook(() => useTabManagement({ getCachedContent, onContentLoaded }))
+      const entry = makeEntry({ path: '/vault/note/a.md' })
+
+      await act(async () => {
+        await result.current.handleSelectNote(entry)
+      })
+
+      expect(result.current.tabs).toHaveLength(1)
+      expect(result.current.tabs[0].content).toBe('# Cached content')
+      expect(getCachedContent).toHaveBeenCalledWith('/vault/note/a.md')
+      // Should NOT call onContentLoaded — content came from cache, no disk read
+      expect(onContentLoaded).not.toHaveBeenCalled()
+    })
+
+    it('falls back to disk read and calls onContentLoaded when cache misses', async () => {
+      const getCachedContent = vi.fn().mockReturnValue(undefined)
+      const onContentLoaded = vi.fn()
+      const { result } = renderHook(() => useTabManagement({ getCachedContent, onContentLoaded }))
+      const entry = makeEntry({ path: '/vault/note/a.md' })
+
+      await act(async () => {
+        await result.current.handleSelectNote(entry)
+      })
+
+      expect(result.current.tabs).toHaveLength(1)
+      expect(result.current.tabs[0].content).toBe('# Mock content')
+      expect(onContentLoaded).toHaveBeenCalledWith('/vault/note/a.md', '# Mock content')
+    })
+
     it('switches to existing tab without duplicating', async () => {
       const { result } = renderHook(() => useTabManagement())
       const entry = makeEntry({ path: '/vault/note/a.md' })
@@ -294,6 +326,30 @@ describe('useTabManagement', () => {
 
       expect(result.current.tabs).toHaveLength(1)
       expect(result.current.activeTabPath).toBe('/vault/a.md')
+    })
+
+    it('uses cached content when replacing active tab', async () => {
+      const getCachedContent = vi.fn((path: string) =>
+        path === '/vault/b.md' ? '# B cached' : undefined,
+      )
+      const onContentLoaded = vi.fn()
+      const { result } = renderHook(() => useTabManagement({ getCachedContent, onContentLoaded }))
+
+      await act(async () => {
+        await result.current.handleSelectNote(makeEntry({ path: '/vault/a.md', title: 'A' }))
+      })
+      // Reset after the first disk read (for A)
+      onContentLoaded.mockClear()
+
+      const replacement = makeEntry({ path: '/vault/b.md', title: 'B' })
+      await act(async () => {
+        await result.current.handleReplaceActiveTab(replacement)
+      })
+
+      expect(result.current.tabs).toHaveLength(1)
+      expect(result.current.tabs[0].content).toBe('# B cached')
+      // Cache hit for B — no disk read, no onContentLoaded call
+      expect(onContentLoaded).not.toHaveBeenCalled()
     })
 
     it('switches to existing tab instead of replacing when note is already open', async () => {

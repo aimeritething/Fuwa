@@ -36,6 +36,8 @@ export interface NoteActionsConfig {
   markContentPending?: (path: string, content: string) => void
   /** Called after a new note is persisted to disk (e.g. to refresh git status for Changes view). */
   onNewNotePersisted?: () => void
+  /** Return cached content for a path (from allContent), or undefined on cache miss. */
+  getCachedContent?: (path: string) => string | undefined
 }
 
 async function performRename(
@@ -326,7 +328,10 @@ async function runFrontmatterAndApply(
 
 export function useNoteActions(config: NoteActionsConfig) {
   const { addEntry, removeEntry, updateContent, entries, setToastMessage, updateEntry, addPendingSave, removePendingSave } = config
-  const tabMgmt = useTabManagement()
+  const tabMgmt = useTabManagement({
+    getCachedContent: config.getCachedContent,
+    onContentLoaded: updateContent,
+  })
   const { setTabs, handleSelectNote, openTabWithContent, handleCloseTab, handleCloseTabRef, activeTabPathRef, handleSwitchTab } = tabMgmt
   const tabsRef = useRef(tabMgmt.tabs)
   // eslint-disable-next-line react-hooks/refs

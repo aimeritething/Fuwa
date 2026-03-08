@@ -84,19 +84,28 @@ async function loadAndSetTab(
   entry: VaultEntry,
   updater: (prev: Tab[], content: string) => Tab[],
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
+  onContentLoaded?: (path: string, content: string) => void,
 ) {
   try {
     const content = await loadNoteContent(entry.path)
     setTabs((prev) => updater(prev, content))
+    onContentLoaded?.(entry.path, content)
   } catch (err) {
     console.warn('Failed to load note content:', err)
     setTabs((prev) => updater(prev, ''))
   }
 }
 
+export interface TabManagementOptions {
+  /** Return cached content for a path, or undefined for a cache miss. */
+  getCachedContent?: (path: string) => string | undefined
+  /** Called after a disk read so the caller can populate its cache. */
+  onContentLoaded?: (path: string, content: string) => void
+}
+
 export type { Tab }
 
-export function useTabManagement() {
+export function useTabManagement(options?: TabManagementOptions) {
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeTabPath, setActiveTabPath] = useState<string | null>(null)
   const activeTabPathRef = useRef(activeTabPath)
@@ -104,10 +113,20 @@ export function useTabManagement() {
   const tabsRef = useRef(tabs)
   useEffect(() => { tabsRef.current = tabs })
   const handleCloseTabRef = useRef<(path: string) => void>(() => {})
+  const getCachedContentRef = useRef(options?.getCachedContent)
+  useEffect(() => { getCachedContentRef.current = options?.getCachedContent })
+  const onContentLoadedRef = useRef(options?.onContentLoaded)
+  useEffect(() => { onContentLoadedRef.current = options?.onContentLoaded })
 
   const handleSelectNote = useCallback(async (entry: VaultEntry) => {
     if (isTabOpen(tabsRef.current, entry.path)) { setActiveTabPath(entry.path); return }
-    await loadAndSetTab(entry, (prev, content) => addTabIfAbsent(prev, entry, content), setTabs)
+    const cached = getCachedContentRef.current?.(entry.path)
+    if (cached !== undefined) {
+      setTabs((prev) => addTabIfAbsent(prev, entry, cached))
+      setActiveTabPath(entry.path)
+      return
+    }
+    await loadAndSetTab(entry, (prev, content) => addTabIfAbsent(prev, entry, content), setTabs, onContentLoadedRef.current)
     setActiveTabPath(entry.path)
   }, [])
 
@@ -137,7 +156,13 @@ export function useTabManagement() {
     if (isTabOpen(tabsRef.current, entry.path)) { setActiveTabPath(entry.path); return }
     const currentPath = activeTabPathRef.current
     if (!currentPath) { handleSelectNote(entry); return }
-    await loadAndSetTab(entry, (prev, content) => replaceTabEntry(prev, currentPath, entry, content), setTabs)
+    const cached = getCachedContentRef.current?.(entry.path)
+    if (cached !== undefined) {
+      setTabs((prev) => replaceTabEntry(prev, currentPath, entry, cached))
+      setActiveTabPath(entry.path)
+      return
+    }
+    await loadAndSetTab(entry, (prev, content) => replaceTabEntry(prev, currentPath, entry, content), setTabs, onContentLoadedRef.current)
     setActiveTabPath(entry.path)
   }, [handleSelectNote])
 
