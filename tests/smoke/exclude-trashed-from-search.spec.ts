@@ -15,8 +15,19 @@ async function openQuickOpen(page: import('@playwright/test').Page) {
   await expect(page.locator(QUICK_OPEN_INPUT)).toBeVisible()
 }
 
-function getAllResultTitles(page: import('@playwright/test').Page) {
-  return page.locator('span.truncate').allTextContents()
+/** Get result titles scoped to a specific container (avoids matching sidebar items). */
+function getResultTitles(container: import('@playwright/test').Locator) {
+  return container.locator('span.truncate').allTextContents()
+}
+
+/** The Quick Open dialog overlay */
+function quickOpenPanel(page: import('@playwright/test').Page) {
+  return page.locator('.fixed.inset-0').filter({ has: page.locator(QUICK_OPEN_INPUT) })
+}
+
+/** The full-text search dialog overlay */
+function searchPanel(page: import('@playwright/test').Page) {
+  return page.locator('.fixed.inset-0').filter({ has: page.locator(SEARCH_INPUT) })
 }
 
 test.describe('Exclude trashed notes from search and autocomplete', () => {
@@ -27,21 +38,23 @@ test.describe('Exclude trashed notes from search and autocomplete', () => {
 
   test('trashed notes do not appear in Quick Open search', async ({ page }) => {
     await openQuickOpen(page)
+    const panel = quickOpenPanel(page)
     for (const title of TRASHED_TITLES) {
       // Use a unique enough substring to trigger results
       const query = title.split(' ')[0]
       await page.locator(QUICK_OPEN_INPUT).fill(query)
       await page.waitForTimeout(400)
-      const titles = await getAllResultTitles(page)
+      const titles = await getResultTitles(panel)
       expect(titles, `"${title}" should not appear for query "${query}"`).not.toContain(title)
     }
   })
 
   test('active notes still appear in Quick Open search', async ({ page }) => {
     await openQuickOpen(page)
+    const panel = quickOpenPanel(page)
     await page.locator(QUICK_OPEN_INPUT).fill(ACTIVE_QUERY)
     await page.waitForTimeout(400)
-    const titles = await getAllResultTitles(page)
+    const titles = await getResultTitles(panel)
     expect(titles.some(t => t.includes('Laputa App'))).toBe(true)
   })
 
@@ -67,7 +80,7 @@ test.describe('Exclude trashed notes from search and autocomplete', () => {
     }
     await page.locator(SEARCH_INPUT).fill('Old Draft')
     await page.waitForTimeout(600)
-    const titles = await getAllResultTitles(page)
+    const titles = await getResultTitles(searchPanel(page))
     expect(titles).not.toContain('Old Draft Notes')
   })
 
