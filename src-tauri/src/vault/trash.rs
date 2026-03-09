@@ -283,7 +283,11 @@ mod tests {
     #[test]
     fn test_is_file_trashed_with_trashed_true() {
         let dir = TempDir::new().unwrap();
-        create_test_file(dir.path(), "trashed.md", "---\nTrashed: true\n---\n# Gone\n");
+        create_test_file(
+            dir.path(),
+            "trashed.md",
+            "---\nTrashed: true\n---\n# Gone\n",
+        );
         assert!(is_file_trashed(&dir.path().join("trashed.md")));
     }
 
