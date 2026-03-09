@@ -85,47 +85,62 @@ type PosAndSide = { pos: number; assoc: -1 | 1 }
  *    factor if caretRangeFromPoint is unavailable or returns no result.
  */
 export function zoomCursorFix() {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  type AnyFn = (...args: any[]) => any
+
   return ViewPlugin.define((view) => {
-    const proto = Object.getPrototypeOf(view) as EditorView
-    const origPosAtCoords = proto.posAtCoords
+    const origPosAtCoords: AnyFn =
+      Object.getPrototypeOf(view).posAtCoords
+    const origPosAndSideAtCoords: AnyFn =
+      Object.getPrototypeOf(view).posAndSideAtCoords
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const origPosAndSideAtCoords = (proto as any).posAndSideAtCoords as (
-      coords: Coords,
-      precise?: boolean,
-    ) => PosAndSide | null
-
-    // Override posAtCoords on the instance (shadows prototype method)
-    view.posAtCoords = function (
-      this: EditorView,
+    function zoomPosAtCoords(
+      self: EditorView,
       coords: Coords,
       precise?: boolean,
     ): number | null {
       const zoom = getDocumentZoom()
-      if (zoom === 1) return origPosAtCoords.call(this, coords, precise)
+      if (zoom === 1) return origPosAtCoords.call(self, coords, precise)
 
-      const pos = caretPosFromPoint(this, coords.x, coords.y)
+      const pos = caretPosFromPoint(self, coords.x, coords.y)
       if (pos !== null) return pos
 
       const adjusted = adjustCoordsForZoom(coords, zoom)
-      return origPosAtCoords.call(this, adjusted, precise)
+      return origPosAtCoords.call(self, adjusted, precise)
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ;(view as any).posAndSideAtCoords = function (
-      this: EditorView,
+    function zoomPosAndSideAtCoords(
+      self: EditorView,
       coords: Coords,
       precise?: boolean,
     ): PosAndSide | null {
       const zoom = getDocumentZoom()
       if (zoom === 1)
-        return origPosAndSideAtCoords.call(this, coords, precise)
+        return origPosAndSideAtCoords.call(self, coords, precise)
 
-      const pos = caretPosFromPoint(this, coords.x, coords.y)
+      const pos = caretPosFromPoint(self, coords.x, coords.y)
       if (pos !== null) return { pos, assoc: 1 }
 
       const adjusted = adjustCoordsForZoom(coords, zoom)
-      return origPosAndSideAtCoords.call(this, adjusted, precise)
+      return origPosAndSideAtCoords.call(self, adjusted, precise)
+    }
+
+    // Override on the instance (shadows prototype methods)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(view as any).posAtCoords = function (
+      this: EditorView,
+      coords: Coords,
+      precise?: boolean,
+    ) {
+      return zoomPosAtCoords(this, coords, precise)
+    }
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(view as any).posAndSideAtCoords = function (
+      this: EditorView,
+      coords: Coords,
+      precise?: boolean,
+    ) {
+      return zoomPosAndSideAtCoords(this, coords, precise)
     }
 
     return {
