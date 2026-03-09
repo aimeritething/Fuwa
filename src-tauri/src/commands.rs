@@ -711,17 +711,40 @@ mod tests {
         let dir = tempfile::TempDir::new().unwrap();
         let vault = dir.path();
         // Init git repo for caching to work
-        std::process::Command::new("git").args(["init"]).current_dir(vault).output().unwrap();
-        std::process::Command::new("git").args(["config", "user.email", "t@t.com"]).current_dir(vault).output().unwrap();
-        std::process::Command::new("git").args(["config", "user.name", "T"]).current_dir(vault).output().unwrap();
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.email", "t@t.com"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "T"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
 
         // Set test cache dir to avoid polluting real cache
         let cache_dir = tempfile::TempDir::new().unwrap();
-        std::env::set_var("LAPUTA_CACHE_DIR", cache_dir.path().to_string_lossy().as_ref());
+        std::env::set_var(
+            "LAPUTA_CACHE_DIR",
+            cache_dir.path().to_string_lossy().as_ref(),
+        );
 
         std::fs::write(vault.join("note.md"), "---\nTrashed: false\n---\n# Note\n").unwrap();
-        std::process::Command::new("git").args(["add", "."]).current_dir(vault).output().unwrap();
-        std::process::Command::new("git").args(["commit", "-m", "init"]).current_dir(vault).output().unwrap();
+        std::process::Command::new("git")
+            .args(["add", "."])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "init"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
 
         // Prime cache via list_vault
         let entries = list_vault(vault.to_str().unwrap().to_string()).unwrap();
@@ -732,7 +755,10 @@ mod tests {
 
         // reload_vault must return the updated trashed state
         let fresh = reload_vault(vault.to_str().unwrap().to_string()).unwrap();
-        assert!(fresh[0].trashed, "reload_vault must reflect disk state after trashing");
+        assert!(
+            fresh[0].trashed,
+            "reload_vault must reflect disk state after trashing"
+        );
     }
 
     #[test]

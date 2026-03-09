@@ -836,7 +836,10 @@ mod tests {
 
         // Invalidate
         invalidate_cache(vault);
-        assert!(!cache_path(vault).exists(), "cache file must be deleted after invalidation");
+        assert!(
+            !cache_path(vault).exists(),
+            "cache file must be deleted after invalidation"
+        );
     }
 
     #[test]
@@ -862,6 +865,9 @@ mod tests {
         invalidate_cache(vault);
         let entries2 = scan_vault_cached(vault).unwrap();
         assert_eq!(entries2.len(), 1);
-        assert!(entries2[0].trashed, "note must be trashed after invalidate + rescan");
+        assert!(
+            entries2[0].trashed,
+            "note must be trashed after invalidate + rescan"
+        );
     }
 }
