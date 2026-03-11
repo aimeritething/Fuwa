@@ -65,6 +65,8 @@ interface AppCommandsConfig {
   vaultCount?: number
   mcpStatus?: string
   onInstallMcp?: () => void
+  onEmptyTrash?: () => void
+  trashedCount?: number
   onReindexVault?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
@@ -206,6 +208,8 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     vaultCount: config.vaultCount,
     mcpStatus: config.mcpStatus,
     onInstallMcp: config.onInstallMcp,
+    onEmptyTrash: config.onEmptyTrash,
+    trashedCount: config.trashedCount,
     onReindexVault: config.onReindexVault,
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
