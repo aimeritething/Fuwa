@@ -696,6 +696,7 @@ mod tests {
             vault.to_str().unwrap(),
             old_path.to_str().unwrap(),
             "My New Note",
+            None,
         )
         .unwrap();
 
@@ -736,6 +737,7 @@ mod tests {
             vault.to_str().unwrap(),
             old_path.to_str().unwrap(),
             "My Note",
+            None,
         )
         .unwrap();
 
