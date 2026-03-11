@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { VaultEntry } from '../types'
+import { useClosedTabHistory } from './useClosedTabHistory'
 
 interface Tab {
   entry: VaultEntry
@@ -137,6 +138,7 @@ export function useTabManagement() {
   const tabsRef = useRef(tabs)
   useEffect(() => { tabsRef.current = tabs })
   const handleCloseTabRef = useRef<(path: string) => void>(() => {})
+  const closedTabHistory = useClosedTabHistory()
 
   // Sequence counter for rapid-switch safety: only the latest navigation wins.
   // Prevents stale content from an earlier click appearing after a later click.
@@ -151,11 +153,13 @@ export function useTabManagement() {
 
   const handleCloseTab = useCallback((path: string) => {
     setTabs((prev) => {
+      const idx = prev.findIndex((t) => t.entry.path === path)
+      if (idx !== -1) closedTabHistory.push(path, idx)
       const next = prev.filter((t) => t.entry.path !== path)
       if (path === activeTabPathRef.current) { setActiveTabPath(resolveNextActiveTab(prev, path)) }
       return next
     })
-  }, [])
+  }, [closedTabHistory])
   useEffect(() => { handleCloseTabRef.current = handleCloseTab })
 
   const handleSwitchTab = useCallback((path: string) => { setActiveTabPath(path) }, [])
@@ -179,6 +183,38 @@ export function useTabManagement() {
     await loadAndSetTab(entry, (prev, content) => replaceTabEntry(prev, currentPath, entry, content), setTabs)
     if (navSeqRef.current === seq) setActiveTabPath(entry.path)
   }, [handleSelectNote])
+
+  const handleReopenClosedTab = useCallback(async () => {
+    const entry = closedTabHistory.pop()
+    if (!entry) return
+    // If tab is already open, just switch to it
+    if (isTabOpen(tabsRef.current, entry.path)) {
+      setActiveTabPath(entry.path)
+      return
+    }
+    const seq = ++navSeqRef.current
+    try {
+      const content = await loadNoteContent(entry.path)
+      setTabs((prev) => {
+        if (prev.some(t => t.entry.path === entry.path)) return prev
+        const insertIdx = Math.min(entry.index, prev.length)
+        const next = [...prev]
+        next.splice(insertIdx, 0, { entry: { path: entry.path, filename: entry.path.split('/').pop() ?? '', title: entry.path.split('/').pop()?.replace(/\.md$/, '') ?? '' } as VaultEntry, content })
+        return next
+      })
+      if (navSeqRef.current === seq) setActiveTabPath(entry.path)
+    } catch {
+      // If content loading fails, still open with empty content
+      setTabs((prev) => {
+        if (prev.some(t => t.entry.path === entry.path)) return prev
+        const insertIdx = Math.min(entry.index, prev.length)
+        const next = [...prev]
+        next.splice(insertIdx, 0, { entry: { path: entry.path, filename: entry.path.split('/').pop() ?? '', title: entry.path.split('/').pop()?.replace(/\.md$/, '') ?? '' } as VaultEntry, content: '' })
+        return next
+      })
+      if (navSeqRef.current === seq) setActiveTabPath(entry.path)
+    }
+  }, [closedTabHistory])
 
   const closeAllTabs = useCallback(() => {
     setTabs([])
@@ -209,6 +245,8 @@ export function useTabManagement() {
     handleSwitchTab,
     handleReorderTabs,
     handleReplaceActiveTab,
+    handleReopenClosedTab,
     closeAllTabs,
+    closedTabHistory,
   }
 }
