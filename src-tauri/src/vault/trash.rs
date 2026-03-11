@@ -439,11 +439,7 @@ mod tests {
             "---\nTrashed: true\nTrashed at: \"2025-01-01\"\n---\n# Old\n",
         );
         // Not trashed — should be kept
-        create_test_file(
-            dir.path(),
-            "normal.md",
-            "---\ntype: Note\n---\n# Normal\n",
-        );
+        create_test_file(dir.path(), "normal.md", "---\ntype: Note\n---\n# Normal\n");
 
         let deleted = empty_trash(dir.path().to_str().unwrap()).unwrap();
         assert_eq!(deleted.len(), 2);
