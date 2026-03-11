@@ -58,4 +58,16 @@ describe('buildSectionGroup', () => {
     const group = buildSectionGroup('Config', typeEntryMap)
     expect(group.customColor).toBe('gray')
   })
+
+  it('resolves type entry via lowercase key (case-insensitive isA)', () => {
+    // When instances have isA: 'config' (lowercase) but type entry title is 'Config'
+    const typeEntryMap: Record<string, VaultEntry> = {
+      Config: { ...baseEntry, title: 'Config', isA: 'Type', icon: 'gear-six', color: 'gray', sidebarLabel: 'Config' },
+      config: { ...baseEntry, title: 'Config', isA: 'Type', icon: 'gear-six', color: 'gray', sidebarLabel: 'Config' },
+    }
+    const group = buildSectionGroup('config', typeEntryMap)
+    expect(group.label).toBe('Config')
+    expect(group.customColor).toBe('gray')
+    expect(group.Icon).toBe(GearSix)
+  })
 })

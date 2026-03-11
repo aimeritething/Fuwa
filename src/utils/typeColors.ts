@@ -5,10 +5,18 @@
 
 import type { VaultEntry } from '../types'
 
-/** Builds a map from type name → Type document entry (for custom color/icon lookup) */
+/** Builds a map from type name → Type document entry (for custom color/icon lookup).
+ *  Stores both original title and lowercase version so lookups work regardless
+ *  of whether instances use `isA: Config` or `isA: config`. */
 export function buildTypeEntryMap(entries: VaultEntry[]): Record<string, VaultEntry> {
   const map: Record<string, VaultEntry> = {}
-  for (const e of entries) { if (e.isA === 'Type') map[e.title] = e }
+  for (const e of entries) {
+    if (e.isA === 'Type') {
+      map[e.title] = e
+      const lower = e.title.toLowerCase()
+      if (lower !== e.title) map[lower] = e
+    }
+  }
   return map
 }
 

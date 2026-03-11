@@ -67,16 +67,17 @@ const baseEntry: VaultEntry = {
 }
 
 describe('buildTypeEntryMap', () => {
-  it('indexes Type entries by title', () => {
+  it('indexes Type entries by title and lowercase', () => {
     const entries: VaultEntry[] = [
       { ...baseEntry, title: 'Recipe', isA: 'Type', color: 'orange', icon: 'cooking-pot' },
       { ...baseEntry, title: 'My Note', isA: 'Note' },
       { ...baseEntry, title: 'Evergreen', isA: 'Type', color: 'green', icon: 'leaf' },
     ]
     const map = buildTypeEntryMap(entries)
-    expect(Object.keys(map)).toEqual(['Recipe', 'Evergreen'])
     expect(map['Recipe'].color).toBe('orange')
+    expect(map['recipe'].color).toBe('orange')
     expect(map['Evergreen'].icon).toBe('leaf')
+    expect(map['evergreen'].icon).toBe('leaf')
   })
 
   it('returns empty map when no Type entries exist', () => {
@@ -86,13 +87,14 @@ describe('buildTypeEntryMap', () => {
     expect(buildTypeEntryMap(entries)).toEqual({})
   })
 
-  it('preserves sidebarLabel in type entry', () => {
+  it('preserves sidebarLabel in type entry via exact and lowercase keys', () => {
     const entries: VaultEntry[] = [
       { ...baseEntry, title: 'Config', isA: 'Type', icon: 'gear-six', color: 'gray', sidebarLabel: 'Config' },
     ]
     const map = buildTypeEntryMap(entries)
     expect(map['Config'].sidebarLabel).toBe('Config')
-    expect(map['Config'].icon).toBe('gear-six')
-    expect(map['Config'].color).toBe('gray')
+    expect(map['config'].sidebarLabel).toBe('Config')
+    expect(map['config'].icon).toBe('gear-six')
+    expect(map['config'].color).toBe('gray')
   })
 })
