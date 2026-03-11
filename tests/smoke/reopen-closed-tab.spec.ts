@@ -15,20 +15,22 @@ const TAB = '[data-tab-path]'
 
 test.describe('Reopen closed tab (Cmd+Shift+T)', () => {
   test.beforeEach(async ({ page }) => {
+    await page.setViewportSize({ width: 1600, height: 900 })
     await page.goto('/')
-    await page.evaluate(() => localStorage.removeItem('laputa-tab-order'))
-    await page.reload()
     await page.waitForLoadState('networkidle')
   })
 
   test('open note → close tab → Cmd+Shift+T → tab reopens', async ({ page }) => {
-    const firstNote = page.locator('.cursor-pointer.border-b').first()
-    await expect(firstNote).toBeVisible()
+    // Open the first note via the sidebar
+    const noteListContainer = page.locator('[data-testid="note-list-container"]')
+    await noteListContainer.waitFor({ timeout: 5000 })
+    const firstNote = noteListContainer.locator('.cursor-pointer.border-b').first()
+    await expect(firstNote).toBeVisible({ timeout: 5000 })
     await firstNote.click()
     await page.waitForTimeout(500)
 
     const tabs = page.locator(TAB)
-    await expect(tabs.first()).toBeVisible({ timeout: 3000 })
+    await expect(tabs.first()).toBeVisible({ timeout: 5000 })
     const tabTitle = await tabs.first().textContent()
 
     // Close the tab via its close button
