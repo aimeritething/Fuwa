@@ -28,6 +28,10 @@ describe('getTypeColor', () => {
   it('ignores invalid custom color key', () => {
     expect(getTypeColor('Project', 'invalid')).toBe('var(--accent-red)')
   })
+
+  it('uses gray custom color key', () => {
+    expect(getTypeColor('Config', 'gray')).toBe('var(--accent-gray)')
+  })
 })
 
 describe('getTypeLightColor', () => {
@@ -47,6 +51,10 @@ describe('getTypeLightColor', () => {
   it('uses custom color key for light variant', () => {
     expect(getTypeLightColor('Recipe', 'purple')).toBe('var(--accent-purple-light)')
   })
+
+  it('uses gray custom color key for light variant', () => {
+    expect(getTypeLightColor('Config', 'gray')).toBe('var(--accent-gray-light)')
+  })
 })
 
 const baseEntry: VaultEntry = {
@@ -54,7 +62,8 @@ const baseEntry: VaultEntry = {
   status: null, owner: null, cadence: null, archived: false, trashed: false, trashedAt: null,
   modifiedAt: null, createdAt: null, fileSize: 0, snippet: '', relationships: {},
   wordCount: 0,
-  icon: null, color: null, order: null, template: null, sort: null, outgoingLinks: [],
+  icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
+  view: null, visible: null, outgoingLinks: [], properties: {},
 }
 
 describe('buildTypeEntryMap', () => {
@@ -75,5 +84,15 @@ describe('buildTypeEntryMap', () => {
       { ...baseEntry, title: 'A Note', isA: 'Note' },
     ]
     expect(buildTypeEntryMap(entries)).toEqual({})
+  })
+
+  it('preserves sidebarLabel in type entry', () => {
+    const entries: VaultEntry[] = [
+      { ...baseEntry, title: 'Config', isA: 'Type', icon: 'gear-six', color: 'gray', sidebarLabel: 'Config' },
+    ]
+    const map = buildTypeEntryMap(entries)
+    expect(map['Config'].sidebarLabel).toBe('Config')
+    expect(map['Config'].icon).toBe('gear-six')
+    expect(map['Config'].color).toBe('gray')
   })
 })

@@ -47,6 +47,7 @@ export const ACCENT_COLORS: { key: string; label: string; css: string; cssLight:
   { key: 'purple', label: 'Purple', css: 'var(--accent-purple)', cssLight: 'var(--accent-purple-light)' },
   { key: 'teal', label: 'Teal', css: 'var(--accent-teal)', cssLight: 'var(--accent-teal-light)' },
   { key: 'pink', label: 'Pink', css: 'var(--accent-pink)', cssLight: 'var(--accent-pink-light)' },
+  { key: 'gray', label: 'Gray', css: 'var(--accent-gray)', cssLight: 'var(--accent-gray-light)' },
 ]
 
 const COLOR_KEY_TO_CSS: Record<string, string> = Object.fromEntries(
