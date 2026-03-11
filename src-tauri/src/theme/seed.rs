@@ -35,8 +35,7 @@ pub fn seed_default_themes(vault_path: &str) {
 fn write_if_missing(path: &Path, content: &str) -> Result<bool, String> {
     let needs_write = !path.exists() || fs::metadata(path).map_or(true, |m| m.len() == 0);
     if needs_write {
-        fs::write(path, content)
-            .map_err(|e| format!("Failed to write {}: {e}", path.display()))?;
+        fs::write(path, content).map_err(|e| format!("Failed to write {}: {e}", path.display()))?;
     }
     Ok(needs_write)
 }
@@ -352,15 +351,42 @@ mod tests {
         let content = fs::read_to_string(vault.join("theme").join("default.md")).unwrap();
 
         // Must contain all editor properties from theme.json
-        assert!(content.contains("editor-font-family:"), "missing editor-font-family");
-        assert!(content.contains("headings-h1-font-size:"), "missing headings-h1-font-size");
-        assert!(content.contains("lists-bullet-size:"), "missing lists-bullet-size");
-        assert!(content.contains("checkboxes-size:"), "missing checkboxes-size");
-        assert!(content.contains("inline-styles-bold-font-weight:"), "missing inline-styles-bold");
-        assert!(content.contains("code-blocks-font-family:"), "missing code-blocks-font-family");
-        assert!(content.contains("blockquote-border-left-width:"), "missing blockquote");
-        assert!(content.contains("table-border-color:"), "missing table-border-color");
-        assert!(content.contains("horizontal-rule-thickness:"), "missing horizontal-rule");
+        assert!(
+            content.contains("editor-font-family:"),
+            "missing editor-font-family"
+        );
+        assert!(
+            content.contains("headings-h1-font-size:"),
+            "missing headings-h1-font-size"
+        );
+        assert!(
+            content.contains("lists-bullet-size:"),
+            "missing lists-bullet-size"
+        );
+        assert!(
+            content.contains("checkboxes-size:"),
+            "missing checkboxes-size"
+        );
+        assert!(
+            content.contains("inline-styles-bold-font-weight:"),
+            "missing inline-styles-bold"
+        );
+        assert!(
+            content.contains("code-blocks-font-family:"),
+            "missing code-blocks-font-family"
+        );
+        assert!(
+            content.contains("blockquote-border-left-width:"),
+            "missing blockquote"
+        );
+        assert!(
+            content.contains("table-border-color:"),
+            "missing table-border-color"
+        );
+        assert!(
+            content.contains("horizontal-rule-thickness:"),
+            "missing horizontal-rule"
+        );
         assert!(content.contains("colors-text:"), "missing colors-text");
     }
 }

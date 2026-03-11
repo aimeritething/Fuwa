@@ -93,10 +93,7 @@ fn find_available_stem(dir: &Path, base: &str, ext: &str) -> String {
 fn vault_theme_note_content(name: &str, vars: &[(&str, &str)]) -> String {
     let mut fm = format!("---\nIs A: Theme\nDescription: {name} theme\n");
     for (key, value) in vars {
-        if value.contains('#')
-            || value.contains('\'')
-            || value.contains(',')
-            || value.contains('(')
+        if value.contains('#') || value.contains('\'') || value.contains(',') || value.contains('(')
         {
             fm.push_str(&format!("{key}: \"{value}\"\n"));
         } else {
@@ -240,23 +237,65 @@ mod tests {
         }
 
         // Spot-check editor properties from theme.json that were previously missing
-        assert!(content.contains("editor-font-family:"), "missing editor-font-family");
-        assert!(content.contains("editor-padding-horizontal:"), "missing editor-padding-horizontal");
-        assert!(content.contains("headings-h1-font-size:"), "missing headings-h1-font-size");
-        assert!(content.contains("lists-bullet-size:"), "missing lists-bullet-size");
-        assert!(content.contains("lists-bullet-color:"), "missing lists-bullet-color");
-        assert!(content.contains("checkboxes-size:"), "missing checkboxes-size");
-        assert!(content.contains("inline-styles-bold-font-weight:"), "missing inline-styles-bold-font-weight");
-        assert!(content.contains("code-blocks-font-family:"), "missing code-blocks-font-family");
-        assert!(content.contains("blockquote-border-left-width:"), "missing blockquote-border-left-width");
-        assert!(content.contains("table-border-color:"), "missing table-border-color");
-        assert!(content.contains("horizontal-rule-thickness:"), "missing horizontal-rule-thickness");
+        assert!(
+            content.contains("editor-font-family:"),
+            "missing editor-font-family"
+        );
+        assert!(
+            content.contains("editor-padding-horizontal:"),
+            "missing editor-padding-horizontal"
+        );
+        assert!(
+            content.contains("headings-h1-font-size:"),
+            "missing headings-h1-font-size"
+        );
+        assert!(
+            content.contains("lists-bullet-size:"),
+            "missing lists-bullet-size"
+        );
+        assert!(
+            content.contains("lists-bullet-color:"),
+            "missing lists-bullet-color"
+        );
+        assert!(
+            content.contains("checkboxes-size:"),
+            "missing checkboxes-size"
+        );
+        assert!(
+            content.contains("inline-styles-bold-font-weight:"),
+            "missing inline-styles-bold-font-weight"
+        );
+        assert!(
+            content.contains("code-blocks-font-family:"),
+            "missing code-blocks-font-family"
+        );
+        assert!(
+            content.contains("blockquote-border-left-width:"),
+            "missing blockquote-border-left-width"
+        );
+        assert!(
+            content.contains("table-border-color:"),
+            "missing table-border-color"
+        );
+        assert!(
+            content.contains("horizontal-rule-thickness:"),
+            "missing horizontal-rule-thickness"
+        );
         assert!(content.contains("colors-text:"), "missing colors-text");
         assert!(content.contains("colors-cursor:"), "missing colors-cursor");
 
         // Numeric values that need CSS units must have px suffix
-        assert!(content.contains("editor-font-size: 15px"), "editor-font-size should have px unit");
-        assert!(content.contains("editor-max-width: 720px"), "editor-max-width should have px unit");
-        assert!(content.contains("editor-padding-horizontal: 40px"), "editor-padding-horizontal should have px unit");
+        assert!(
+            content.contains("editor-font-size: 15px"),
+            "editor-font-size should have px unit"
+        );
+        assert!(
+            content.contains("editor-max-width: 720px"),
+            "editor-max-width should have px unit"
+        );
+        assert!(
+            content.contains("editor-padding-horizontal: 40px"),
+            "editor-padding-horizontal should have px unit"
+        );
     }
 }

@@ -239,7 +239,10 @@ pub const DEFAULT_VAULT_THEME_VARS: [(&str, &str); 140] = [
         "'SF Mono', 'Fira Code', monospace",
     ),
     ("inline-styles-code-font-size", "14px"),
-    ("inline-styles-code-background-color", "var(--bg-hover-subtle)"),
+    (
+        "inline-styles-code-background-color",
+        "var(--bg-hover-subtle)",
+    ),
     ("inline-styles-code-padding-horizontal", "4px"),
     ("inline-styles-code-padding-vertical", "2px"),
     ("inline-styles-code-border-radius", "3px"),
@@ -377,10 +380,7 @@ const MINIMAL_OVERRIDES: &[(&str, &str)] = &[
     ("accent-purple-light", "#66009914"),
     ("accent-red-light", "#CC000014"),
     ("accent-yellow-light", "#99660014"),
-    (
-        "font-family",
-        "'SF Mono', 'Menlo', monospace",
-    ),
+    ("font-family", "'SF Mono', 'Menlo', monospace"),
     ("font-size-base", "13px"),
     ("editor-font-size", "15px"),
     ("editor-line-height", "1.6"),
@@ -391,17 +391,10 @@ const MINIMAL_OVERRIDES: &[(&str, &str)] = &[
 /// Build a vault theme note string from a set of CSS variable pairs.
 ///
 /// Values containing `#`, `'`, `,`, or `(` are YAML-quoted to avoid parse errors.
-fn build_vault_theme_note(
-    name: &str,
-    description: &str,
-    vars: &[(&str, &str)],
-) -> String {
+fn build_vault_theme_note(name: &str, description: &str, vars: &[(&str, &str)]) -> String {
     let mut fm = format!("---\ntype: Theme\nDescription: {description}\n");
     for (key, value) in vars {
-        if value.contains('#')
-            || value.contains('\'')
-            || value.contains(',')
-            || value.contains('(')
+        if value.contains('#') || value.contains('\'') || value.contains(',') || value.contains('(')
         {
             fm.push_str(&format!("{key}: \"{value}\"\n"));
         } else {
@@ -414,7 +407,9 @@ fn build_vault_theme_note(
 }
 
 /// Apply overrides on top of DEFAULT_VAULT_THEME_VARS, returning a new Vec.
-fn apply_overrides(overrides: &[(&'static str, &'static str)]) -> Vec<(&'static str, &'static str)> {
+fn apply_overrides(
+    overrides: &[(&'static str, &'static str)],
+) -> Vec<(&'static str, &'static str)> {
     let mut vars: Vec<(&'static str, &'static str)> = DEFAULT_VAULT_THEME_VARS.to_vec();
     for &(key, value) in overrides {
         if let Some(entry) = vars.iter_mut().find(|e| e.0 == key) {
