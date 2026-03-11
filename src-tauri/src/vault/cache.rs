@@ -901,11 +901,7 @@ mod tests {
         let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
 
-        create_test_file(
-            vault,
-            "trashed-note.md",
-            "---\nTrashed: Yes\n---\n# Gone\n",
-        );
+        create_test_file(vault, "trashed-note.md", "---\nTrashed: Yes\n---\n# Gone\n");
         git_add_commit(vault, "init");
 
         let entries = scan_vault_cached(vault).unwrap();
@@ -923,11 +919,7 @@ mod tests {
         let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
 
-        create_test_file(
-            vault,
-            "note.md",
-            "---\nArchived: Yes\n---\n# Note\n",
-        );
+        create_test_file(vault, "note.md", "---\nArchived: Yes\n---\n# Note\n");
         git_add_commit(vault, "init");
 
         let hash = git_head_hash(vault).unwrap();
