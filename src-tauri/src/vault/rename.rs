@@ -414,7 +414,7 @@ pub fn rename_note(
     let old_path_stem = to_path_stem(old_path, &vault_prefix);
     let updated_files = update_wikilinks_in_vault(&WikilinkReplacement {
         vault_path: vault,
-        old_title: &old_title,
+        old_title,
         new_title,
         old_path_stem,
         exclude_path: &new_file,
