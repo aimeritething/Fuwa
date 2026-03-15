@@ -20,23 +20,28 @@ export function wikilinkDisplay(ref: string): string {
 
 /**
  * Unified wikilink resolution: find the VaultEntry matching a wikilink target.
- * Handles pipe syntax, case-insensitive matching, title/alias/filename/path lookup.
+ * Resolution order: filename stem (primary) → alias → title (fallback).
+ * Handles pipe syntax, case-insensitive matching.
  */
 export function resolveEntry(entries: VaultEntry[], rawTarget: string): VaultEntry | undefined {
   const key = rawTarget.includes('|') ? rawTarget.split('|')[0] : rawTarget
   const keyLower = key.toLowerCase()
-  const suffix = '/' + key + '.md'
   const lastSegment = key.split('/').pop() ?? key
   const asWords = lastSegment.replace(/-/g, ' ').toLowerCase()
 
-  return entries.find(e => {
-    if (e.title.toLowerCase() === keyLower) return true
-    if (e.aliases.some(a => a.toLowerCase() === keyLower)) return true
+  // 1. Filename stem match (primary — filename IS identity in flat vault)
+  const byStem = entries.find(e => {
     const stem = e.filename.replace(/\.md$/, '')
-    if (stem.toLowerCase() === keyLower) return true
-    if (e.path.endsWith(suffix)) return true
-    if (stem.toLowerCase() === lastSegment.toLowerCase()) return true
-    if (e.title.toLowerCase() === asWords) return true
-    return false
+    return stem.toLowerCase() === keyLower || stem.toLowerCase() === lastSegment.toLowerCase()
   })
+  if (byStem) return byStem
+
+  // 2. Alias match
+  const byAlias = entries.find(e => e.aliases.some(a => a.toLowerCase() === keyLower))
+  if (byAlias) return byAlias
+
+  // 3. Title match (fallback)
+  return entries.find(e =>
+    e.title.toLowerCase() === keyLower || e.title.toLowerCase() === asWords,
+  )
 }

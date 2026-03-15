@@ -20,6 +20,7 @@ import {
   useNoteActions,
   DEFAULT_TEMPLATES,
   resolveTemplate,
+  slugCollides,
 } from './useNoteActions'
 import type { NoteActionsConfig } from './useNoteActions'
 
@@ -111,6 +112,38 @@ describe('needsRenameOnSave', () => {
   })
 })
 
+describe('slugCollides', () => {
+  it('detects collision with existing filename', () => {
+    const entries = [makeEntry({ filename: 'my-note.md', path: '/vault/my-note.md' })]
+    expect(slugCollides('My Note', entries)).toBe(true)
+  })
+
+  it('returns false when no collision', () => {
+    const entries = [makeEntry({ filename: 'other.md', path: '/vault/other.md' })]
+    expect(slugCollides('My Note', entries)).toBe(false)
+  })
+
+  it('excludes the current note path from collision check', () => {
+    const entries = [makeEntry({ filename: 'my-note.md', path: '/vault/my-note.md' })]
+    expect(slugCollides('My Note', entries, '/vault/my-note.md')).toBe(false)
+  })
+})
+
+describe('resolveNewNote slug collision', () => {
+  it('auto-suffixes slug when collision detected', () => {
+    const entries = [makeEntry({ filename: 'my-project.md', path: '/vault/my-project.md' })]
+    const { entry } = resolveNewNote('My Project', 'Project', '/vault', null, entries)
+    expect(entry.path).toBe('/vault/my-project-2.md')
+    expect(entry.filename).toBe('my-project-2.md')
+  })
+
+  it('skips suffix when no collision', () => {
+    const entries = [makeEntry({ filename: 'other.md', path: '/vault/other.md' })]
+    const { entry } = resolveNewNote('My Project', 'Project', '/vault', null, entries)
+    expect(entry.path).toBe('/vault/my-project.md')
+  })
+})
+
 describe('buildNewEntry', () => {
   it('creates a VaultEntry with correct fields', () => {
     const entry = buildNewEntry({
@@ -190,8 +223,8 @@ describe('entryMatchesTarget', () => {
     expect(entryMatchesTarget(entry, 'mp')).toBe(true)
   })
 
-  it('matches by path suffix (type/slug)', () => {
-    const entry = makeEntry({ path: '/Users/luca/Laputa/project/my-project.md' })
+  it('matches by filename stem from path-style wikilink', () => {
+    const entry = makeEntry({ path: '/Users/luca/Laputa/my-project.md', filename: 'my-project.md' })
     expect(entryMatchesTarget(entry, 'project/my-project')).toBe(true)
   })
 
