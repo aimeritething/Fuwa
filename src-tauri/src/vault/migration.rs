@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -113,6 +114,231 @@ pub fn migrate_is_a_to_type(vault_path: &str) -> Result<usize, String> {
     }
 
     Ok(migrated)
+}
+
+/// Folders that are system folders and should NOT be migrated (notes stay there).
+const SYSTEM_FOLDERS: &[&str] = &["type", "config", "theme"];
+
+/// Result of the flat vault migration.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct MigrationResult {
+    /// Number of files moved to the vault root.
+    pub moved: usize,
+    /// Number of files skipped (already at root, or in system folders).
+    pub skipped: usize,
+    /// Files that could not be moved (collision, error).
+    pub errors: Vec<String>,
+}
+
+/// Determine a unique destination path at vault root, appending -2, -3, etc. if needed.
+fn unique_root_path(vault: &Path, filename: &str) -> std::path::PathBuf {
+    let dest = vault.join(filename);
+    if !dest.exists() {
+        return dest;
+    }
+    let stem = Path::new(filename)
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let ext = Path::new(filename)
+        .extension()
+        .map(|s| format!(".{}", s.to_string_lossy()))
+        .unwrap_or_default();
+    let mut counter = 2;
+    loop {
+        let candidate = vault.join(format!("{}-{}{}", stem, counter, ext));
+        if !candidate.exists() {
+            return candidate;
+        }
+        counter += 1;
+    }
+}
+
+/// Check if a directory entry is inside a system folder.
+fn is_in_system_folder(path: &Path, vault: &Path) -> bool {
+    let rel = path
+        .strip_prefix(vault)
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_default();
+    SYSTEM_FOLDERS
+        .iter()
+        .any(|sf| rel.starts_with(&format!("{}/", sf)) || rel == *sf)
+}
+
+/// Migrate an existing vault to flat structure: move all .md files from type-based
+/// subfolders to the vault root. System folders (type/, config/, theme/) are skipped.
+/// Wikilinks that used path-based references are updated to use the title.
+pub fn migrate_to_flat_vault(vault_path: &str) -> Result<MigrationResult, String> {
+    let vault = Path::new(vault_path);
+    if !vault.exists() || !vault.is_dir() {
+        return Err(format!(
+            "Vault path does not exist or is not a directory: {}",
+            vault_path
+        ));
+    }
+
+    // Collect all .md files in subfolders (not root, not system folders)
+    let mut files_to_move: Vec<std::path::PathBuf> = Vec::new();
+    for entry in WalkDir::new(vault)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if !path.is_file() || path.extension().map(|ext| ext != "md").unwrap_or(true) {
+            continue;
+        }
+        // Skip files already at vault root
+        if path.parent() == Some(vault) {
+            continue;
+        }
+        // Skip system folders
+        if is_in_system_folder(path, vault) {
+            continue;
+        }
+        files_to_move.push(path.to_path_buf());
+    }
+
+    let mut result = MigrationResult {
+        moved: 0,
+        skipped: 0,
+        errors: Vec::new(),
+    };
+
+    // Build a map of old path stems → titles for wikilink updating
+    let mut path_stem_to_title: Vec<(String, String)> = Vec::new();
+
+    for file in &files_to_move {
+        let filename = file
+            .file_name()
+            .map(|f| f.to_string_lossy().to_string())
+            .unwrap_or_default();
+
+        // Read content to extract title
+        let content = match fs::read_to_string(file) {
+            Ok(c) => c,
+            Err(e) => {
+                result
+                    .errors
+                    .push(format!("Failed to read {}: {}", file.display(), e));
+                continue;
+            }
+        };
+
+        let title = super::extract_title(&content, &filename);
+
+        // Compute old path stem for wikilink replacement
+        let vault_prefix = format!("{}/", vault.to_string_lossy());
+        let old_path_stem = file
+            .to_string_lossy()
+            .strip_prefix(&vault_prefix)
+            .unwrap_or(&file.to_string_lossy())
+            .strip_suffix(".md")
+            .unwrap_or(&file.to_string_lossy())
+            .to_string();
+
+        path_stem_to_title.push((old_path_stem, title));
+
+        // Move file to vault root
+        let new_path = unique_root_path(vault, &filename);
+        match fs::rename(file, &new_path) {
+            Ok(()) => result.moved += 1,
+            Err(e) => {
+                // Try copy+delete for cross-device moves
+                match fs::read_to_string(file)
+                    .and_then(|c| fs::write(&new_path, c))
+                    .and_then(|()| fs::remove_file(file))
+                {
+                    Ok(()) => result.moved += 1,
+                    Err(_) => {
+                        result.errors.push(format!(
+                            "Failed to move {} → {}: {}",
+                            file.display(),
+                            new_path.display(),
+                            e
+                        ));
+                    }
+                }
+            }
+        }
+    }
+
+    // Update wikilinks: replace path-based wikilinks [[folder/slug]] with [[Title]]
+    if !path_stem_to_title.is_empty() {
+        update_wikilinks_for_migration(vault, &path_stem_to_title);
+    }
+
+    // Clean up empty directories (except system folders)
+    cleanup_empty_dirs(vault);
+
+    Ok(result)
+}
+
+/// Update wikilinks across all vault .md files, replacing path-based references
+/// with title-based ones.
+fn update_wikilinks_for_migration(vault: &Path, replacements: &[(String, String)]) {
+    let all_md: Vec<std::path::PathBuf> = WalkDir::new(vault)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+        .filter(|e| e.path().is_file() && e.path().extension().is_some_and(|ext| ext == "md"))
+        .map(|e| e.path().to_path_buf())
+        .collect();
+
+    for file in &all_md {
+        let Ok(mut content) = fs::read_to_string(file) else {
+            continue;
+        };
+        let mut changed = false;
+        for (old_stem, title) in replacements {
+            // Replace [[old/path/stem]] with [[Title]]
+            let old_link = format!("[[{}]]", old_stem);
+            if content.contains(&old_link) {
+                content = content.replace(&old_link, &format!("[[{}]]", title));
+                changed = true;
+            }
+            // Replace [[old/path/stem|display]] with [[Title|display]]
+            let old_prefix = format!("[[{}|", old_stem);
+            if content.contains(&old_prefix) {
+                content = content.replace(&old_prefix, &format!("[[{}|", title));
+                changed = true;
+            }
+        }
+        if changed {
+            let _ = fs::write(file, &content);
+        }
+    }
+}
+
+/// Remove empty directories in the vault (excluding system folders).
+fn cleanup_empty_dirs(vault: &Path) {
+    let Ok(entries) = fs::read_dir(vault) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if !path.is_dir() {
+            continue;
+        }
+        let name = path
+            .file_name()
+            .map(|n| n.to_string_lossy().to_string())
+            .unwrap_or_default();
+        if SYSTEM_FOLDERS.contains(&name.as_str()) {
+            continue;
+        }
+        // Skip hidden directories (e.g., .git)
+        if name.starts_with('.') {
+            continue;
+        }
+        // Check if directory is empty
+        let is_empty = fs::read_dir(&path)
+            .map(|mut d| d.next().is_none())
+            .unwrap_or(false);
+        if is_empty {
+            let _ = fs::remove_dir(&path);
+        }
+    }
 }
 
 #[cfg(test)]
@@ -252,5 +478,137 @@ mod tests {
         write_file(tmp.path(), "data.json", "{\"is_a\": \"test\"}");
         let count = migrate_is_a_to_type(tmp.path().to_str().unwrap()).unwrap();
         assert_eq!(count, 0, "non-markdown files should be ignored");
+    }
+
+    // --- migrate_to_flat_vault tests ---
+
+    fn write_sub_file(dir: &Path, subdir: &str, name: &str, content: &str) -> std::path::PathBuf {
+        let sub = dir.join(subdir);
+        fs::create_dir_all(&sub).unwrap();
+        let path = sub.join(name);
+        fs::write(&path, content).unwrap();
+        path
+    }
+
+    #[test]
+    fn test_flat_migration_moves_files_to_root() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_sub_file(vault, "note", "my-note.md", "# My Note\n\nContent.\n");
+        write_sub_file(
+            vault,
+            "project",
+            "alpha.md",
+            "---\ntype: Project\n---\n# Alpha\n",
+        );
+
+        let result = migrate_to_flat_vault(vault.to_str().unwrap()).unwrap();
+        assert_eq!(result.moved, 2);
+        assert!(vault.join("my-note.md").exists());
+        assert!(vault.join("alpha.md").exists());
+        assert!(!vault.join("note/my-note.md").exists());
+        assert!(!vault.join("project/alpha.md").exists());
+    }
+
+    #[test]
+    fn test_flat_migration_skips_system_folders() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_sub_file(vault, "type", "project.md", "---\ntype: Type\n---\n# Project\n");
+        write_sub_file(vault, "config", "agents.md", "# Agents\n");
+        write_sub_file(vault, "note", "test.md", "# Test\n");
+
+        let result = migrate_to_flat_vault(vault.to_str().unwrap()).unwrap();
+        assert_eq!(result.moved, 1);
+        // System files should stay
+        assert!(vault.join("type/project.md").exists());
+        assert!(vault.join("config/agents.md").exists());
+        // Regular file should be moved
+        assert!(vault.join("test.md").exists());
+    }
+
+    #[test]
+    fn test_flat_migration_skips_root_files() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_file(vault, "already-at-root.md", "# Already Root\n");
+        write_sub_file(vault, "note", "in-sub.md", "# In Sub\n");
+
+        let result = migrate_to_flat_vault(vault.to_str().unwrap()).unwrap();
+        assert_eq!(result.moved, 1);
+        assert!(vault.join("already-at-root.md").exists());
+        assert!(vault.join("in-sub.md").exists());
+    }
+
+    #[test]
+    fn test_flat_migration_handles_filename_collision() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_file(vault, "test.md", "# Root Test\n");
+        write_sub_file(vault, "note", "test.md", "# Note Test\n");
+
+        let result = migrate_to_flat_vault(vault.to_str().unwrap()).unwrap();
+        assert_eq!(result.moved, 1);
+        assert!(vault.join("test.md").exists());
+        assert!(vault.join("test-2.md").exists());
+    }
+
+    #[test]
+    fn test_flat_migration_updates_path_wikilinks() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_sub_file(
+            vault,
+            "person",
+            "alice.md",
+            "---\ntype: Person\n---\n# Alice\n",
+        );
+        write_file(
+            vault,
+            "root-note.md",
+            "# Root\n\nSee [[person/alice]] for details.\n",
+        );
+
+        let result = migrate_to_flat_vault(vault.to_str().unwrap()).unwrap();
+        assert_eq!(result.moved, 1);
+
+        let content = fs::read_to_string(vault.join("root-note.md")).unwrap();
+        assert!(
+            content.contains("[[Alice]]"),
+            "should update path-based wikilink to title: {}",
+            content
+        );
+        assert!(!content.contains("[[person/alice]]"));
+    }
+
+    #[test]
+    fn test_flat_migration_cleans_up_empty_dirs() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_sub_file(vault, "note", "test.md", "# Test\n");
+
+        let _ = migrate_to_flat_vault(vault.to_str().unwrap()).unwrap();
+        assert!(!vault.join("note").exists(), "empty note/ dir should be removed");
+    }
+
+    #[test]
+    fn test_flat_migration_preserves_nonempty_dirs() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_sub_file(vault, "custom", "note.md", "# Note\n");
+        // Add a non-md file so dir isn't empty after migration
+        write_sub_file(vault, "custom", "image.png", "binary data");
+
+        let _ = migrate_to_flat_vault(vault.to_str().unwrap()).unwrap();
+        assert!(
+            vault.join("custom").exists(),
+            "non-empty dir should be preserved"
+        );
+    }
+
+    #[test]
+    fn test_flat_migration_nonexistent_vault() {
+        let result = migrate_to_flat_vault("/tmp/nonexistent-vault-flat-test");
+        assert!(result.is_err());
     }
 }

@@ -20,12 +20,6 @@ interface RenameResult {
   updated_files: number
 }
 
-interface MoveResult {
-  new_path: string
-  updated_links: number
-  moved: boolean
-}
-
 export interface NoteActionsConfig {
   addEntry: (entry: VaultEntry) => void
   removeEntry: (path: string) => void
@@ -44,21 +38,6 @@ export interface NoteActionsConfig {
   onNewNotePersisted?: () => void
   /** Replace an entry at oldPath with a patch (handles path changes in entries). */
   replaceEntry?: (oldPath: string, patch: Partial<VaultEntry> & { path: string }) => void
-}
-
-async function performMoveToTypeFolder(
-  vaultPath: string, notePath: string, newType: string,
-): Promise<MoveResult> {
-  if (isTauri()) {
-    return invoke<MoveResult>('move_note_to_type_folder', { vaultPath, notePath, newType })
-  }
-  return mockInvoke<MoveResult>('move_note_to_type_folder', { vault_path: vaultPath, note_path: notePath, new_type: newType })
-}
-
-/** Check if a frontmatter key represents the note type. */
-function isTypeKey(key: string): boolean {
-  const k = key.toLowerCase().replace(/\s+/g, '_')
-  return k === 'type' || k === 'is_a'
 }
 
 /** Check if a frontmatter key represents the note title. */
@@ -152,13 +131,6 @@ function applyMockFrontmatterDelete(path: string, key: string): string {
   return content
 }
 
-const TYPE_FOLDER_MAP: Record<string, string> = {
-  Note: 'note', Project: 'project', Experiment: 'experiment',
-  Responsibility: 'responsibility', Procedure: 'procedure',
-  Person: 'person', Event: 'event', Topic: 'topic',
-  Journal: 'journal',
-}
-
 const NO_STATUS_TYPES = new Set(['Topic', 'Person', 'Journal'])
 
 /** Default templates for built-in types. Used when the type entry has no custom template. */
@@ -219,10 +191,9 @@ export function buildNoteContent(title: string, type: string, status: string | n
 }
 
 export function resolveNewNote(title: string, type: string, vaultPath: string, template?: string | null): { entry: VaultEntry; content: string } {
-  const folder = TYPE_FOLDER_MAP[type] || slugify(type)
   const slug = slugify(title)
   const status = NO_STATUS_TYPES.has(type) ? null : 'Active'
-  const entry = buildNewEntry({ path: `${vaultPath}/${folder}/${slug}.md`, slug, title, type, status })
+  const entry = buildNewEntry({ path: `${vaultPath}/${slug}.md`, slug, title, type, status })
   return { entry, content: buildNoteContent(title, type, status, template) }
 }
 
@@ -242,13 +213,12 @@ export function buildDailyNoteContent(date: string): string {
 }
 
 export function resolveDailyNote(date: string, vaultPath: string): { entry: VaultEntry; content: string } {
-  const entry = buildNewEntry({ path: `${vaultPath}/journal/${date}.md`, slug: date, title: date, type: 'Journal', status: null })
+  const entry = buildNewEntry({ path: `${vaultPath}/${date}.md`, slug: date, title: date, type: 'Journal', status: null })
   return { entry, content: buildDailyNoteContent(date) }
 }
 
 export function findDailyNote(entries: VaultEntry[], date: string): VaultEntry | undefined {
-  const suffix = `journal/${date}.md`
-  return entries.find(e => e.path.endsWith(suffix))
+  return entries.find(e => e.filename === `${date}.md` && e.isA === 'Journal')
 }
 
 type PersistFn = (resolved: { entry: VaultEntry; content: string }) => void
@@ -514,30 +484,6 @@ export function useNoteActions(config: NoteActionsConfig) {
           setToastMessage(renameToastMessage(result.updated_files))
         } catch (err) {
           console.error('Failed to rename note after title change:', err)
-        }
-      }
-      if (isTypeKey(key) && typeof value === 'string' && value !== '') {
-        try {
-          const result = await performMoveToTypeFolder(config.vaultPath, path, value)
-          if (result.moved) {
-            const newFilename = result.new_path.split('/').pop() ?? ''
-            // Update the vault entry with the new path.  Only pass the changed
-            // fields — avoid spreading a stale closure entry which would revert
-            // the isA update that runFrontmatterOp already applied.
-            config.replaceEntry?.(path, { path: result.new_path, filename: newFilename } as Partial<VaultEntry> & { path: string })
-            // Preserve the tab content already set by runFrontmatterOp.
-            // Re-reading from disk via loadNoteContent is unnecessary (the move
-            // does not change content) and dangerous: if the path collides or a
-            // stale cache intervenes it could return a different note's content.
-            setTabs(prev => prev.map(t => t.entry.path === path
-              ? { entry: { ...t.entry, path: result.new_path, filename: newFilename }, content: t.content }
-              : t))
-            if (activeTabPathRef.current === path) handleSwitchTab(result.new_path)
-            const folder = result.new_path.split('/').slice(-2, -1)[0] ?? ''
-            setToastMessage(`Note moved to ${folder}/`)
-          }
-        } catch (err) {
-          console.error('Failed to move note to type folder:', err)
         }
       }
     }, [runFrontmatterOp, config.vaultPath, config.replaceEntry, setTabs, activeTabPathRef, handleSwitchTab, setToastMessage, updateTabContent]),

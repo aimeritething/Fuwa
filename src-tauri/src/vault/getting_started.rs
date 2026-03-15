@@ -19,31 +19,23 @@ struct SampleFile {
 }
 
 /// Content for config/agents.md — vault instructions for AI agents.
-/// This file has no YAML frontmatter — it is a convention file for AI agents,
-/// not a vault note. The vault scanner will still pick it up as a regular entry.
-pub(super) const AGENTS_MD: &str = r#"# AGENTS.md — Vault Instructions for AI Agents
+pub(super) const AGENTS_MD: &str = r#"---
+type: Config
+---
+
+# AGENTS.md — Vault Instructions for AI Agents
 
 This is a [Laputa](https://github.com/refactoring-ai/laputa) vault — a folder of markdown files with YAML frontmatter that form a personal knowledge graph.
 
 ## Structure
 
-Files are organized in folders by type:
+Notes live at the vault root as flat `.md` files. Type is determined by the `type` field in frontmatter, not by folder. System folders:
 
-| Folder | Type | Purpose |
-|--------|------|---------|
-| `note/` | Note | General-purpose documents, research, meeting notes |
-| `project/` | Project | Time-bounded efforts with clear goals |
-| `person/` | Person | People — colleagues, collaborators, contacts |
-| `topic/` | Topic | Subject areas that group related notes |
-| `responsibility/` | Responsibility | Long-running duties with KPIs |
-| `procedure/` | Procedure | Recurring workflows (weekly, monthly) |
-| `event/` | Event | Something that happened on a specific date |
-| `quarter/` | Quarter | Time containers (e.g. 24Q1) |
-| `measure/` | Measure | Trackable metrics tied to responsibilities |
-| `target/` | Target | Time-bound goals for a measure |
-| `type/` | Type | Type definitions — icon, color, ordering |
-
-Custom folders are valid — the folder name becomes the type (capitalized).
+| Folder | Purpose |
+|--------|---------|
+| `type/` | Type definitions — icon, color, ordering |
+| `config/` | Vault configuration files |
+| `theme/` | Visual theme definitions |
 
 ## Frontmatter
 
@@ -53,11 +45,11 @@ YAML frontmatter between `---` delimiters defines metadata:
 ---
 type: Project
 Status: Active
-Owner: "[[person/jane-doe]]"
-Belongs to: "[[quarter/24q1]]"
+Owner: "[[Jane Doe]]"
+Belongs to: "[[24Q1]]"
 Related to:
-  - "[[topic/growth]]"
-  - "[[note/research-findings]]"
+  - "[[Growth]]"
+  - "[[Research Findings]]"
 ---
 ```
 
@@ -65,7 +57,7 @@ Related to:
 
 | Field | Purpose |
 |-------|---------|
-| `type` | Entity type (usually inferred from folder) |
+| `type` | Entity type (required — determines note category) |
 | `Status` | Active, Done, Paused, Archived, Dropped |
 | `Owner` | Person responsible (wikilink) |
 | `Belongs to` | Parent relationship(s) |
@@ -78,17 +70,17 @@ Related to:
 Any YAML field containing `[[wikilinks]]` becomes a navigable relationship:
 
 ```yaml
-Has Measures: ["[[measure/revenue]]", "[[measure/churn]]"]
-Resources: "[[note/api-docs]]"
+Has Measures: ["[[Revenue]]", "[[Churn]]"]
+Resources: "[[API Docs]]"
 ```
 
 ## Wikilinks
 
 Connect notes with double-bracket syntax:
 
-- `[[note/my-note]]` — link by path
-- `[[My Note Title]]` — link by title or alias
-- `[[note/my-note|display text]]` — link with custom display text
+- `[[My Note Title]]` — link by title (primary)
+- `[[my-note-title]]` — link by filename stem
+- `[[My Note|display text]]` — link with custom display text
 
 Wikilinks work in both frontmatter values and markdown body. Backlinks are computed automatically — linking A to B makes B show a backlink to A.
 
@@ -111,8 +103,8 @@ Available colors: red, purple, blue, green, yellow, orange. Icons are Phosphor n
 
 - First `# Heading` in a file becomes its title
 - One entity per file
-- Filenames use kebab-case: `my-note-title.md`
-- Type is inferred from parent folder if not set in frontmatter
+- Filenames use kebab-case: `my-note-title.md` (= slugified title)
+- Type is set via `type:` in frontmatter (required for non-root notes)
 - Relationships are bidirectional via automatic backlinks
 "#;
 
@@ -142,13 +134,13 @@ const SAMPLE_FILES: &[SampleFile] = &[
         content: "---\ntype: Type\nicon: gear-six\ncolor: gray\norder: 90\nsidebar label: Config\n---\n\n# Config\n\nVault configuration files. These control how AI agents, tools, and other integrations interact with this vault.\n",
     },
     SampleFile {
-        rel_path: "note/welcome-to-laputa.md",
+        rel_path: "welcome-to-laputa.md",
         content: r#"---
 type: Note
 Related to:
-  - "[[note/editor-basics]]"
-  - "[[note/using-properties]]"
-  - "[[note/wiki-links-and-relationships]]"
+  - "[[Editor Basics]]"
+  - "[[Using Properties]]"
+  - "[[Wiki-Links and Relationships]]"
 ---
 
 # Welcome to Laputa
@@ -157,15 +149,15 @@ Welcome to your new knowledge vault! Laputa helps you organize your thoughts, pr
 
 ## How it works
 
-Every note is a markdown file with optional YAML frontmatter at the top. Notes live in folders that define their **type** — a file in the `project/` folder is automatically a Project, a file in `person/` is a Person, and so on.
+Every note is a markdown file with optional YAML frontmatter at the top. The `type` field in frontmatter determines what kind of note it is — Project, Person, Note, etc.
 
 ## What to explore
 
-- [[note/editor-basics]] — Learn about headings, lists, checkboxes, and formatting
-- [[note/using-properties]] — See how frontmatter properties work (status, dates, relationships)
-- [[note/wiki-links-and-relationships]] — Connect your notes with `[[wiki-links]]`
-- [[project/sample-project]] — A sample project with relationships and status
-- [[person/sample-collaborator]] — A sample person entry
+- [[Editor Basics]] — Learn about headings, lists, checkboxes, and formatting
+- [[Using Properties]] — See how frontmatter properties work (status, dates, relationships)
+- [[Wiki-Links and Relationships]] — Connect your notes with `[[wiki-links]]`
+- [[Sample Project]] — A sample project with relationships and status
+- [[Sample Collaborator]] — A sample person entry
 
 ## Tips
 
@@ -177,10 +169,10 @@ Every note is a markdown file with optional YAML frontmatter at the top. Notes l
 "#,
     },
     SampleFile {
-        rel_path: "note/editor-basics.md",
+        rel_path: "editor-basics.md",
         content: r#"---
 type: Note
-Related to: "[[note/welcome-to-laputa]]"
+Related to: "[[Welcome to Laputa]]"
 ---
 
 # Editor Basics
@@ -225,13 +217,13 @@ function hello() {
 "#,
     },
     SampleFile {
-        rel_path: "note/using-properties.md",
+        rel_path: "using-properties.md",
         content: r#"---
 type: Note
 Status: Active
 Related to:
-  - "[[note/welcome-to-laputa]]"
-  - "[[note/wiki-links-and-relationships]]"
+  - "[[Welcome to Laputa]]"
+  - "[[Wiki-Links and Relationships]]"
 ---
 
 # Using Properties
@@ -259,12 +251,12 @@ You can add any custom property. If the value contains `[[wiki-links]]`, Laputa 
 "#,
     },
     SampleFile {
-        rel_path: "note/wiki-links-and-relationships.md",
+        rel_path: "wiki-links-and-relationships.md",
         content: r#"---
 type: Note
 Related to:
-  - "[[note/welcome-to-laputa]]"
-  - "[[note/using-properties]]"
+  - "[[Welcome to Laputa]]"
+  - "[[Using Properties]]"
 ---
 
 # Wiki-Links and Relationships
@@ -273,7 +265,7 @@ Wiki-links are the core of Laputa's knowledge graph. They let you connect any no
 
 ## Creating links
 
-Type `[[` in the editor to open the link suggestion menu. Start typing to search for a note, then select it. The link will look like this: [[note/welcome-to-laputa]].
+Type `[[` in the editor to open the link suggestion menu. Start typing to search for a note, then select it. The link will look like this: [[Welcome to Laputa]].
 
 ## Backlinks
 
@@ -284,10 +276,10 @@ When note A links to note B, note B automatically shows a **backlink** to note A
 You can also define relationships in the frontmatter:
 
 ```yaml
-Belongs to: "[[project/sample-project]]"
+Belongs to: "[[Sample Project]]"
 Related to:
-  - "[[note/editor-basics]]"
-  - "[[note/using-properties]]"
+  - "[[Editor Basics]]"
+  - "[[Using Properties]]"
 ```
 
 These appear as clickable pills in the inspector and are navigable with a single click.
@@ -298,12 +290,12 @@ Over time, your wiki-links form a rich web of connections. Use the **Referenced 
 "#,
     },
     SampleFile {
-        rel_path: "project/sample-project.md",
+        rel_path: "sample-project.md",
         content: r#"---
 type: Project
 Status: Active
-Owner: "[[person/sample-collaborator]]"
-Related to: "[[topic/getting-started]]"
+Owner: "[[Sample Collaborator]]"
+Related to: "[[Getting Started]]"
 ---
 
 # Sample Project
@@ -323,11 +315,11 @@ Projects are time-bounded efforts with clear goals. They have a **status** (Acti
 
 ## Notes
 
-This project is owned by [[person/sample-collaborator]] and relates to [[topic/getting-started]]. You can see these relationships in the inspector panel on the right.
+This project is owned by [[Sample Collaborator]] and relates to [[Getting Started]]. You can see these relationships in the inspector panel on the right.
 "#,
     },
     SampleFile {
-        rel_path: "person/sample-collaborator.md",
+        rel_path: "sample-collaborator.md",
         content: r#"---
 type: Person
 ---
@@ -344,11 +336,11 @@ This is an example person entry. In your vault, you might create entries for col
 
 ## Connections
 
-This person is the owner of [[project/sample-project]]. Check the **Referenced By** section in the inspector to see all notes that link back here.
+This person is the owner of [[Sample Project]]. Check the **Referenced By** section in the inspector to see all notes that link back here.
 "#,
     },
     SampleFile {
-        rel_path: "topic/getting-started.md",
+        rel_path: "getting-started.md",
         content: r#"---
 type: Topic
 ---
@@ -359,11 +351,11 @@ This topic groups notes related to learning and getting started with Laputa.
 
 ## Related notes
 
-- [[note/welcome-to-laputa]] — Start here for an overview
-- [[note/editor-basics]] — Formatting and editor features
-- [[note/using-properties]] — Frontmatter and the inspector
-- [[note/wiki-links-and-relationships]] — Building your knowledge graph
-- [[project/sample-project]] — A sample project with relationships
+- [[Welcome to Laputa]] — Start here for an overview
+- [[Editor Basics]] — Formatting and editor features
+- [[Using Properties]] — Frontmatter and the inspector
+- [[Wiki-Links and Relationships]] — Building your knowledge graph
+- [[Sample Project]] — A sample project with relationships
 "#,
     },
 ];
@@ -475,18 +467,16 @@ mod tests {
         let result = create_getting_started_vault(vault_path.to_str().unwrap());
         assert!(result.is_ok());
 
-        // Verify key files exist
+        // Verify key files exist (flat vault: notes at root, types in type/)
         assert!(vault_path.join("config/agents.md").exists());
         assert!(vault_path.join("AGENTS.md").exists());
-        assert!(vault_path.join("note/welcome-to-laputa.md").exists());
-        assert!(vault_path.join("note/editor-basics.md").exists());
-        assert!(vault_path.join("note/using-properties.md").exists());
-        assert!(vault_path
-            .join("note/wiki-links-and-relationships.md")
-            .exists());
-        assert!(vault_path.join("project/sample-project.md").exists());
-        assert!(vault_path.join("person/sample-collaborator.md").exists());
-        assert!(vault_path.join("topic/getting-started.md").exists());
+        assert!(vault_path.join("welcome-to-laputa.md").exists());
+        assert!(vault_path.join("editor-basics.md").exists());
+        assert!(vault_path.join("using-properties.md").exists());
+        assert!(vault_path.join("wiki-links-and-relationships.md").exists());
+        assert!(vault_path.join("sample-project.md").exists());
+        assert!(vault_path.join("sample-collaborator.md").exists());
+        assert!(vault_path.join("getting-started.md").exists());
         assert!(vault_path.join("type/project.md").exists());
         assert!(vault_path.join("type/note.md").exists());
         assert!(vault_path.join("type/person.md").exists());
@@ -546,7 +536,7 @@ mod tests {
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
         let entries = crate::vault::scan_vault(&vault_path).unwrap();
-        // SAMPLE_FILES + config/agents.md + AGENTS.md stub + 3 vault theme notes
+        // SAMPLE_FILES (root + type/) + config/agents.md + AGENTS.md stub + 3 vault theme notes
         assert_eq!(entries.len(), SAMPLE_FILES.len() + 2 + 3);
     }
 
