@@ -16,7 +16,7 @@ Personal and business finances. Covers investing, savings, tax planning, and the
 
 ## Philosophy
 
-The approach to finance is intentionally simple: automate what can be automated, invest passively for the long term, and focus energy on growing business revenue rather than optimizing portfolio returns. See [[evergreen/index-funds-and-intellectual-humility]] for the underlying thinking.
+The approach to finance is intentionally simple: automate what can be automated, invest passively for the long term, and focus energy on growing business revenue rather than optimizing portfolio returns. See [[index-funds-and-intellectual-humility]] for the underlying thinking.
 
 ## Key measures
 

@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test'
 
-test.describe('Changing note type is frontmatter-only (flat vault)', () => {
+test.describe('Changing note type preserves content (flat vault)', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 })
     await page.goto('/')
     await page.waitForLoadState('networkidle')
   })
 
-  test('type change preserves content and does not move file', async ({ page }) => {
+  test('type change does not load a different note into the editor', async ({ page }) => {
     // 1. Click the first note in the note list to open it
     const noteListContainer = page.locator('[data-testid="note-list-container"]')
     await noteListContainer.waitFor({ timeout: 5000 })
@@ -35,17 +35,22 @@ test.describe('Changing note type is frontmatter-only (flat vault)', () => {
     await expect(option).toBeVisible({ timeout: 3000 })
     await option.click()
 
-    // 5. In flat vault, type change only updates frontmatter — shows "Property updated" toast
+    // 5. In flat vault, type change only updates frontmatter — no "Note moved" toast.
+    //    We should see "Property updated" instead.
     const toast = page.getByText('Property updated')
     await expect(toast).toBeVisible({ timeout: 5000 })
 
-    // 6. CRITICAL: verify the editor still shows the SAME note's heading.
+    // 6. No "Note moved" toast should appear
+    const movedToast = page.getByText('Note moved')
+    await expect(movedToast).not.toBeVisible()
+
+    // 7. CRITICAL: verify the editor still shows the SAME note's heading.
     await page.waitForTimeout(300)
     const headingAfter = await editorContainer.locator('h1').first().textContent()
     expect(headingAfter).toBe(headingBefore)
 
-    // 7. Restore original type to leave vault clean
-    await page.waitForTimeout(2500)
+    // 8. Restore original type to leave vault clean
+    await page.waitForTimeout(1000)
     const restoredTrigger = typeSelector.locator('button[role="combobox"]')
     await restoredTrigger.click()
     await page.waitForTimeout(300)

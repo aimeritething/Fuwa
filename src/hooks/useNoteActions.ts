@@ -95,12 +95,6 @@ export function needsRenameOnSave(title: string, filename: string): boolean {
   return `${slugify(title)}.md` !== filename
 }
 
-/** Check if a slug would collide with an existing entry's filename. */
-export function slugCollides(title: string, entries: VaultEntry[], excludePath?: string): boolean {
-  const slug = slugify(title)
-  return entries.some(e => e.filename === `${slug}.md` && e.path !== excludePath)
-}
-
 /** Generate a unique "Untitled <type>" name by checking existing entries and pending names. */
 export function generateUntitledName(entries: VaultEntry[], type: string, pending?: Set<string>): string {
   const baseName = `Untitled ${type.toLowerCase()}`
@@ -196,16 +190,8 @@ export function buildNoteContent(title: string, type: string, status: string | n
   return `${lines.join('\n')}\n\n# ${title}\n${body}`
 }
 
-export function resolveNewNote(title: string, type: string, vaultPath: string, template?: string | null, entries?: VaultEntry[]): { entry: VaultEntry; content: string } {
-  let slug = slugify(title)
-  // Detect slug collision and auto-suffix
-  if (entries) {
-    let counter = 2
-    while (entries.some(e => e.filename === `${slug}.md`)) {
-      slug = `${slugify(title)}-${counter}`
-      counter++
-    }
-  }
+export function resolveNewNote(title: string, type: string, vaultPath: string, template?: string | null): { entry: VaultEntry; content: string } {
+  const slug = slugify(title)
   const status = NO_STATUS_TYPES.has(type) ? null : 'Active'
   const entry = buildNewEntry({ path: `${vaultPath}/${slug}.md`, slug, title, type, status })
   return { entry, content: buildNoteContent(title, type, status, template) }
@@ -377,7 +363,7 @@ export function useNoteActions(config: NoteActionsConfig) {
 
   const handleCreateNote = useCallback((title: string, type: string) => {
     const template = resolveTemplate(entries, type)
-    persistNew(resolveNewNote(title, type, config.vaultPath, template, entries))
+    persistNew(resolveNewNote(title, type, config.vaultPath, template))
   }, [entries, persistNew, config.vaultPath])
 
   const handleCreateNoteImmediate = useCallback((type?: string) => {
@@ -386,7 +372,7 @@ export function useNoteActions(config: NoteActionsConfig) {
       const title = generateUntitledName(entries, noteType, pendingNamesRef.current)
       pendingNamesRef.current.add(title)
       const template = resolveTemplate(entries, noteType)
-      const resolved = resolveNewNote(title, noteType, config.vaultPath, template, entries)
+      const resolved = resolveNewNote(title, noteType, config.vaultPath, template)
       openTabWithContent(resolved.entry, resolved.content)
       addEntryWithMock(resolved.entry, resolved.content, addEntry)
       config.trackUnsaved?.(resolved.entry.path)
@@ -403,7 +389,7 @@ export function useNoteActions(config: NoteActionsConfig) {
    *  Returns true on success, false on failure (shows toast on error). */
   const handleCreateNoteForRelationship = useCallback(async (title: string): Promise<boolean> => {
     const template = resolveTemplate(entries, 'Note')
-    const resolved = resolveNewNote(title, 'Note', config.vaultPath, template, entries)
+    const resolved = resolveNewNote(title, 'Note', config.vaultPath, template)
     openTabWithContent(resolved.entry, resolved.content)
     addEntryWithMock(resolved.entry, resolved.content, addEntry)
     try {

@@ -11,7 +11,7 @@ pub use cache::{invalidate_cache, scan_vault_cached};
 pub use config_seed::{migrate_agents_md, repair_config_files, seed_config_files};
 pub use getting_started::{create_getting_started_vault, default_vault_path, vault_exists};
 pub use image::{copy_image_to_vault, save_image};
-pub use migration::{migrate_is_a_to_type, migrate_to_flat_vault, MigrationResult};
+pub use migration::{flatten_vault, migrate_is_a_to_type};
 pub use rename::{rename_note, RenameResult};
 pub use trash::{batch_delete_notes, delete_note, empty_trash, is_file_trashed, purge_trash};
 
@@ -322,9 +322,9 @@ fn extract_properties(
     properties
 }
 
-/// Resolve `is_a` from frontmatter only. Folder-based inference is no longer used
-/// (flat vault: all notes live at vault root, type is purely frontmatter).
-fn resolve_is_a(fm_is_a: Option<StringOrList>, _path: &Path) -> Option<String> {
+/// Resolve `is_a` from frontmatter only. Type is determined purely by frontmatter,
+/// never inferred from folder name.
+fn resolve_is_a(fm_is_a: Option<StringOrList>) -> Option<String> {
     fm_is_a.and_then(|a| a.into_vec().into_iter().next())
 }
 
@@ -388,7 +388,7 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
     let outgoing_links = extract_outgoing_links(&parsed.content);
     let (modified_at, file_size) = read_file_metadata(path)?;
     let created_at = parse_created_at(&frontmatter);
-    let is_a = resolve_is_a(frontmatter.is_a, path);
+    let is_a = resolve_is_a(frontmatter.is_a);
 
     // Add "Type" relationship: isA becomes a navigable link to the type document.
     // Skip for type documents themselves (isA == "Type") to avoid self-referential links.
@@ -518,32 +518,7 @@ pub fn save_note_content(path: &str, content: &str) -> Result<(), String> {
     fs::write(file_path, content).map_err(|e| format!("Failed to save {}: {}", path, e))
 }
 
-/// Folders that are scanned recursively (system folders).
-/// All other .md files must live at the vault root.
-const SYSTEM_FOLDERS: &[&str] = &["type", "config", "theme"];
-
-/// Check if a path is a .md file.
-fn is_md_file(path: &Path) -> bool {
-    path.is_file() && path.extension().is_some_and(|ext| ext == "md")
-}
-
-/// Parse all .md files in a single directory (non-recursive).
-fn scan_dir_flat(dir: &Path, entries: &mut Vec<VaultEntry>) {
-    let Ok(read_dir) = fs::read_dir(dir) else {
-        return;
-    };
-    for item in read_dir.flatten() {
-        let p = item.path();
-        if is_md_file(&p) {
-            match parse_md_file(&p) {
-                Ok(e) => entries.push(e),
-                Err(e) => log::warn!("Skipping file: {}", e),
-            }
-        }
-    }
-}
-
-/// Scan a vault for .md files: root-level files plus system subfolders (type/, config/, theme/).
+/// Scan a directory recursively for .md files and return VaultEntry for each.
 pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     if !vault_path.exists() {
         return Err(format!(
@@ -559,25 +534,22 @@ pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     }
 
     let mut entries = Vec::new();
-
-    // Scan root-level .md files
-    scan_dir_flat(vault_path, &mut entries);
-
-    // Scan system subfolders recursively
-    for folder in SYSTEM_FOLDERS {
-        let sub = vault_path.join(folder);
-        if sub.is_dir() {
-            for item in WalkDir::new(&sub)
-                .follow_links(true)
-                .into_iter()
-                .filter_map(|e| e.ok())
-            {
-                let p = item.path();
-                if is_md_file(p) {
-                    match parse_md_file(p) {
-                        Ok(e) => entries.push(e),
-                        Err(e) => log::warn!("Skipping file: {}", e),
-                    }
+    for entry in WalkDir::new(vault_path)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let entry_path = entry.path();
+        if entry_path.is_file()
+            && entry_path
+                .extension()
+                .map(|ext| ext == "md")
+                .unwrap_or(false)
+        {
+            match parse_md_file(entry_path) {
+                Ok(vault_entry) => entries.push(vault_entry),
+                Err(e) => {
+                    log::warn!("Skipping file: {}", e);
                 }
             }
         }
@@ -705,38 +677,22 @@ mod tests {
     }
 
     #[test]
-    fn test_scan_vault_flat_root_plus_system_folders() {
+    fn test_scan_vault_recursive() {
         let dir = TempDir::new().unwrap();
         create_test_file(dir.path(), "root.md", "# Root Note\n");
         create_test_file(
             dir.path(),
-            "type/project.md",
-            "---\ntype: Type\n---\n# Project\n",
-        );
-        create_test_file(dir.path(), "config/agents.md", "# Agents\n");
-        // Files in non-system subfolders should be IGNORED by scan_vault
-        create_test_file(
-            dir.path(),
-            "old-folder/nested.md",
-            "---\ntype: Task\n---\n# Nested\n",
+            "sub/nested.md",
+            "---\nIs A: Task\n---\n# Nested\n",
         );
         create_test_file(dir.path(), "not-markdown.txt", "This should be ignored");
 
         let entries = scan_vault(dir.path()).unwrap();
-        assert_eq!(
-            entries.len(),
-            3,
-            "should find root + type/ + config/ files only"
-        );
+        assert_eq!(entries.len(), 2);
 
         let filenames: Vec<&str> = entries.iter().map(|e| e.filename.as_str()).collect();
         assert!(filenames.contains(&"root.md"));
-        assert!(filenames.contains(&"project.md"));
-        assert!(filenames.contains(&"agents.md"));
-        assert!(
-            !filenames.contains(&"nested.md"),
-            "non-system subfolder files should be excluded"
-        );
+        assert!(filenames.contains(&"nested.md"));
     }
 
     #[test]
@@ -1038,35 +994,22 @@ References:
         );
     }
 
-    // --- flat vault: type is frontmatter-only ---
-
-    #[test]
-    fn test_no_type_inference_from_folder() {
-        let dir = TempDir::new().unwrap();
-        // File in a folder named "person" should NOT infer type from folder
-        create_test_file(dir.path(), "person/test.md", "# Test\n");
-        let entry = parse_md_file(&dir.path().join("person/test.md")).unwrap();
-        assert_eq!(entry.is_a, None, "flat vault: folder should not infer type");
-    }
+    // --- type from frontmatter only (no folder inference) ---
 
     #[test]
     fn test_type_from_frontmatter_only() {
         let dir = TempDir::new().unwrap();
-        create_test_file(dir.path(), "test.md", "---\ntype: Person\n---\n# Test\n");
+        create_test_file(dir.path(), "test.md", "---\ntype: Custom\n---\n# Test\n");
         let entry = parse_md_file(&dir.path().join("test.md")).unwrap();
-        assert_eq!(entry.is_a, Some("Person".to_string()));
+        assert_eq!(entry.is_a, Some("Custom".to_string()));
     }
 
     #[test]
-    fn test_type_from_frontmatter_in_subfolder() {
+    fn test_no_type_when_frontmatter_missing() {
         let dir = TempDir::new().unwrap();
-        create_test_file(
-            dir.path(),
-            "person/test.md",
-            "---\ntype: Custom\n---\n# Test\n",
-        );
-        let entry = parse_md_file(&dir.path().join("person/test.md")).unwrap();
-        assert_eq!(entry.is_a, Some("Custom".to_string()));
+        create_test_file(dir.path(), "note/test.md", "# Test\n");
+        let entry = parse_md_file(&dir.path().join("note/test.md")).unwrap();
+        assert_eq!(entry.is_a, None, "type should not be inferred from folder");
     }
 
     // --- created_at parsing from frontmatter ---
@@ -1116,15 +1059,9 @@ References:
     fn test_no_type_relationship_without_frontmatter() {
         let dir = TempDir::new().unwrap();
         let content = "# A Person\n\nSome content.";
-        let entry = parse_test_entry(&dir, "person/someone.md", content);
-        assert_eq!(
-            entry.is_a, None,
-            "flat vault: no type inference from folder"
-        );
-        assert!(
-            entry.relationships.get("Type").is_none(),
-            "no type relationship without frontmatter type"
-        );
+        let entry = parse_test_entry(&dir, "someone.md", content);
+        assert_eq!(entry.is_a, None);
+        assert!(entry.relationships.get("Type").is_none());
     }
 
     #[test]
@@ -1139,14 +1076,11 @@ References:
     }
 
     #[test]
-    fn test_type_folder_not_inferred_without_frontmatter() {
+    fn test_type_from_frontmatter_not_folder() {
         let dir = TempDir::new().unwrap();
-        let content = "# Some Type\n";
+        let content = "---\ntype: Type\n---\n# Some Type\n";
         let entry = parse_test_entry(&dir, "type/some-type.md", content);
-        assert_eq!(
-            entry.is_a, None,
-            "flat vault: type folder no longer infers type"
-        );
+        assert_eq!(entry.is_a, Some("Type".to_string()));
     }
 
     // --- type key (post-migration) tests ---

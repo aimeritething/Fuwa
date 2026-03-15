@@ -4,7 +4,7 @@
  */
 
 export const MOCK_CONTENT: Record<string, string> = {
-  '/Users/luca/Laputa/project/26q1-laputa-app.md': `---
+  '/Users/luca/Laputa/26q1-laputa-app.md': `---
 title: Build Laputa App
 type: Project
 status: Active
@@ -16,9 +16,9 @@ tags: [Tauri, React, TypeScript, CodeMirror]
 tools: [Vite, Vitest, Playwright]
 url: https://github.com/lucaong/laputa-app
 belongs_to:
-  - "[[quarter/q1-2026]]"
+  - "[[q1-2026]]"
 related_to:
-  - "[[topic/software-development]]"
+  - "[[software-development]]"
 ---
 
 # Build Laputa App
@@ -118,7 +118,7 @@ This is a normal paragraph with enough text to test line wrapping and spacing be
 
 And this is a second paragraph to verify inter-paragraph spacing is correct. Good typography requires consistent vertical rhythm throughout the document.
 `,
-  '/Users/luca/Laputa/responsibility/grow-newsletter.md': `---
+  '/Users/luca/Laputa/grow-newsletter.md': `---
 title: Grow Newsletter
 type: Responsibility
 status: Active
@@ -148,7 +148,7 @@ Build a sustainable audience through high-quality weekly essays on **engineering
 ## Notes
 The newsletter is the *engine* that drives everything else — sponsorships, consulting leads, and brand building.
 `,
-  '/Users/luca/Laputa/responsibility/manage-sponsorships.md': `---
+  '/Users/luca/Laputa/manage-sponsorships.md': `---
 title: Manage Sponsorships
 type: Responsibility
 status: Active
@@ -172,14 +172,14 @@ Revenue stream from newsletter sponsorships. [[Matteo Cellini]] handles day-to-d
 - Close rate
 - Repeat sponsor rate
 `,
-  '/Users/luca/Laputa/procedure/write-weekly-essays.md': `---
+  '/Users/luca/Laputa/write-weekly-essays.md': `---
 title: Write Weekly Essays
 type: Procedure
 status: Active
 owner: Luca Rossi
 cadence: Weekly
 belongs_to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 ---
 
 # Write Weekly Essays
@@ -216,14 +216,14 @@ belongs_to:
 2. Second ordered item — shorter
   1. Nested ordered item that also has quite a long description to verify that the indentation works correctly for nested numbered lists too
 `,
-  '/Users/luca/Laputa/procedure/run-sponsorships.md': `---
+  '/Users/luca/Laputa/run-sponsorships.md': `---
 title: Run Sponsorships
 type: Procedure
 status: Active
 owner: Matteo Cellini
 cadence: Weekly
 belongs_to:
-  - "[[responsibility/manage-sponsorships]]"
+  - "[[manage-sponsorships]]"
 ---
 
 # Run Sponsorships
@@ -238,7 +238,7 @@ belongs_to:
 - Proposal template: \`/templates/sponsorship-proposal.md\`
 - Report template: \`/templates/sponsorship-report.md\`
 `,
-  '/Users/luca/Laputa/experiment/stock-screener.md': `---
+  '/Users/luca/Laputa/stock-screener.md': `---
 title: Stock Screener — EMA200 Wick Bounce
 type: Experiment
 status: Active
@@ -246,8 +246,8 @@ owner: Luca Rossi
 domains: [Finance, Quantitative Analysis]
 tools: [Python, pandas, TradingView]
 related_to:
-  - "[[topic/trading]]"
-  - "[[topic/algorithmic-trading]]"
+  - "[[trading]]"
+  - "[[algorithmic-trading]]"
 ---
 
 # Stock Screener — EMA200 Wick Bounce
@@ -273,14 +273,14 @@ Stocks that wick below the 200-day EMA and close above it show a **statistically
 - [ ] Add RSI filter for oversold confirmation
 - [ ] Build automated alerts via Python script
 `,
-  '/Users/luca/Laputa/note/facebook-ads-strategy.md': `---
+  '/Users/luca/Laputa/facebook-ads-strategy.md': `---
 title: Facebook Ads Strategy
 type: Note
 belongs_to:
-  - "[[project/26q1-laputa-app]]"
+  - "[[26q1-laputa-app]]"
 related_to:
-  - "[[topic/growth]]"
-  - "[[topic/ads]]"
+  - "[[growth]]"
+  - "[[ads]]"
 ---
 
 # Facebook Ads Strategy
@@ -298,11 +298,11 @@ related_to:
 1. Long-form vs short-form ad copy
 2. Testimonial vs data-driven creative
 `,
-  '/Users/luca/Laputa/note/budget-allocation.md': `---
+  '/Users/luca/Laputa/budget-allocation.md': `---
 title: Budget Allocation
 type: Note
 belongs_to:
-  - "[[project/26q1-laputa-app]]"
+  - "[[26q1-laputa-app]]"
 ---
 
 # Budget Allocation
@@ -318,7 +318,7 @@ belongs_to:
 - Under budget on ads due to improved targeting efficiency
 - Consider reallocating savings to content production
 `,
-  '/Users/luca/Laputa/person/matteo-cellini.md': `---
+  '/Users/luca/Laputa/matteo-cellini.md': `---
 title: Matteo Cellini
 type: Person
 aliases:
@@ -338,12 +338,12 @@ Sponsorship manager — handles all sponsor relationships, proposals, and report
 - [[Manage Sponsorships]]
 - [[Run Sponsorships]]
 `,
-  '/Users/luca/Laputa/event/2026-02-14-laputa-app-kickoff.md': `---
+  '/Users/luca/Laputa/2026-02-14-laputa-app-kickoff.md': `---
 title: Laputa App Design Session
 type: Event
 related_to:
-  - "[[project/26q1-laputa-app]]"
-  - "[[person/matteo-cellini]]"
+  - "[[26q1-laputa-app]]"
+  - "[[matteo-cellini]]"
 ---
 
 # Laputa App Design Session
@@ -366,7 +366,7 @@ related_to:
 - [x] Luca: set up Tauri v2 project scaffold
 - [ ] Matteo: test with real vault data
 `,
-  '/Users/luca/Laputa/topic/software-development.md': `---
+  '/Users/luca/Laputa/software-development.md': `---
 title: Software Development
 type: Topic
 aliases:
@@ -384,7 +384,7 @@ A broad topic covering everything from frontend to systems programming.
 - **AI/ML**: LLMs, agents, code generation
 - **Systems**: Rust, performance optimization
 `,
-  '/Users/luca/Laputa/topic/trading.md': `---
+  '/Users/luca/Laputa/trading.md': `---
 title: Trading
 type: Topic
 aliases:
@@ -401,42 +401,42 @@ aliases:
 ## Active Experiments
 - [[Stock Screener — EMA200 Wick Bounce]]
 `,
-  '/Users/luca/Laputa/essay/on-writing-well.md': `---
+  '/Users/luca/Laputa/on-writing-well.md': `---
 title: On Writing Well
 type: Essay
 Belongs to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 ---
 
 # On Writing Well
 
 Good writing is lean and confident. Every sentence should serve a purpose.
 `,
-  '/Users/luca/Laputa/essay/engineering-leadership-101.md': `---
+  '/Users/luca/Laputa/engineering-leadership-101.md': `---
 title: Engineering Leadership 101
 type: Essay
 Belongs to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 Related to:
-  - "[[topic/software-development]]"
+  - "[[software-development]]"
 ---
 
 # Engineering Leadership 101
 
 The transition from IC to manager is the hardest career shift in engineering.
 `,
-  '/Users/luca/Laputa/essay/ai-agents-primer.md': `---
+  '/Users/luca/Laputa/ai-agents-primer.md': `---
 title: AI Agents Primer
 type: Essay
 Belongs to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 ---
 
 # AI Agents Primer
 
 AI agents are autonomous systems that can plan, execute, and adapt to achieve goals.
 `,
-  '/Users/luca/Laputa/person/maria-bianchi.md': `---
+  '/Users/luca/Laputa/maria-bianchi.md': `---
 title: Maria Bianchi
 type: Person
 aliases:
@@ -452,7 +452,7 @@ Product designer — leads UX research and design sprints for the app.
 - Email: maria@example.com
 - Slack: @maria
 `,
-  '/Users/luca/Laputa/person/marco-verdi.md': `---
+  '/Users/luca/Laputa/marco-verdi.md': `---
 title: Marco Verdi
 type: Person
 aliases:
@@ -467,7 +467,7 @@ Frontend engineer — focuses on React performance and accessibility.
 ## Contact
 - Email: marco@example.com
 `,
-  '/Users/luca/Laputa/person/elena-russo.md': `---
+  '/Users/luca/Laputa/elena-russo.md': `---
 title: Elena Russo
 type: Person
 aliases:
@@ -624,20 +624,20 @@ A **book** you're reading or have read. Track reading progress, notes, and key t
 - **Status**: Reading, Finished, Abandoned
 - **Rating**: 1-5 stars
 `,
-  '/Users/luca/Laputa/note/old-draft-notes.md': `---
+  '/Users/luca/Laputa/old-draft-notes.md': `---
 title: Old Draft Notes
 type: Note
 trashed: true
 trashed_at: ${new Date(Date.now() - 86400000 * 5).toISOString().slice(0, 10)}
 belongs_to:
-  - "[[project/26q1-laputa-app]]"
+  - "[[26q1-laputa-app]]"
 ---
 
 # Old Draft Notes
 
 Some rough draft content that is no longer relevant. Moving to trash.
 `,
-  '/Users/luca/Laputa/note/deprecated-api-notes.md': `---
+  '/Users/luca/Laputa/deprecated-api-notes.md': `---
 title: Deprecated API Notes
 type: Note
 trashed: true
@@ -648,28 +648,28 @@ trashed_at: ${new Date(Date.now() - 86400000 * 35).toISOString().slice(0, 10)}
 
 Old API documentation for the v1 endpoint. Replaced by v2 docs.
 `,
-  '/Users/luca/Laputa/experiment/failed-seo-experiment.md': `---
+  '/Users/luca/Laputa/failed-seo-experiment.md': `---
 title: Failed SEO Experiment
 type: Experiment
 status: Dropped
 trashed: true
 trashed_at: ${new Date(Date.now() - 86400000 * 10).toISOString().slice(0, 10)}
 related_to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 ---
 
 # Failed SEO Experiment
 
 Tried programmatic SEO pages. Results were negligible — trashing this.
 `,
-  '/Users/luca/Laputa/project/25q3-website-redesign.md': `---
+  '/Users/luca/Laputa/25q3-website-redesign.md': `---
 title: Website Redesign
 type: Project
 status: Done
 archived: true
 owner: Luca Rossi
 belongs_to:
-  - "[[quarter/q3-2025]]"
+  - "[[q3-2025]]"
 ---
 
 # Website Redesign
@@ -681,14 +681,14 @@ Completed redesign of the company website. Migrated from WordPress to Next.js wi
 - Organic traffic: +35% in 3 months
 - Bounce rate: 58% → 42%
 `,
-  '/Users/luca/Laputa/experiment/twitter-thread-experiment.md': `---
+  '/Users/luca/Laputa/twitter-thread-experiment.md': `---
 title: Twitter Thread Growth Experiment
 type: Experiment
 status: Done
 archived: true
 owner: Luca Rossi
 related_to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 ---
 
 # Twitter Thread Growth Experiment
@@ -702,7 +702,7 @@ After 6 weeks, signups increased by only 12%. The additional threads had diminis
 ## Decision
 Reverted to 1 high-quality thread per week. Archived this experiment.
 `,
-  '/Users/luca/Laputa/recipe/pasta-carbonara.md': `---
+  '/Users/luca/Laputa/pasta-carbonara.md': `---
 title: Pasta Carbonara
 type: Recipe
 servings: 4
@@ -721,7 +721,7 @@ Classic Roman pasta dish with eggs, pecorino, guanciale, and black pepper.
 - 100g Pecorino Romano
 - Black pepper
 `,
-  '/Users/luca/Laputa/book/designing-data-intensive-applications.md': `---
+  '/Users/luca/Laputa/designing-data-intensive-applications.md': `---
 title: Designing Data-Intensive Applications
 type: Book
 author: Martin Kleppmann

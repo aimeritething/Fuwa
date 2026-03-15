@@ -331,10 +331,10 @@ BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 
 ### Add a new entity type
 
-1. Create the folder in the vault (e.g., `~/Laputa/mytype/`)
-2. Create a type document: `type/mytype.md` with `type: Type` frontmatter (icon, color, order, etc.)
-3. The sidebar section groups are auto-generated from type documents — no code change needed if `visible: true`
-4. Update `CreateNoteDialog.tsx` type options if users should be able to create it from the dialog
+1. Create a type document: `type/mytype.md` with `type: Type` frontmatter (icon, color, order, etc.)
+2. The sidebar section groups are auto-generated from type documents — no code change needed if `visible: true`
+3. Update `CreateNoteDialog.tsx` type options if users should be able to create it from the dialog
+4. Notes of this type are created at the vault root with `type: MyType` in frontmatter — no dedicated folder needed
 
 ### Add a command palette entry
 

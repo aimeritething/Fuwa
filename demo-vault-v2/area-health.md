@@ -17,7 +17,7 @@ Physical and mental health. Encompasses cycling training, gym work, nutrition, s
 
 ## Why this area matters
 
-Health is the foundation everything else is built on. Consistent training and sleep directly correlate with better creative output, clearer thinking, and more sustainable work habits. The [[evergreen/training-load-and-knowledge-work]] connection is real and measurable.
+Health is the foundation everything else is built on. Consistent training and sleep directly correlate with better creative output, clearer thinking, and more sustainable work habits. The [[training-load-and-knowledge-work]] connection is real and measurable.
 
 ## Key measures
 

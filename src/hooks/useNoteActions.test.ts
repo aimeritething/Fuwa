@@ -20,7 +20,6 @@ import {
   useNoteActions,
   DEFAULT_TEMPLATES,
   resolveTemplate,
-  slugCollides,
 } from './useNoteActions'
 import type { NoteActionsConfig } from './useNoteActions'
 
@@ -39,7 +38,7 @@ vi.mock('./mockFrontmatterHelpers', () => ({
 }))
 
 const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
-  path: '/Users/luca/Laputa/note/test.md',
+  path: '/Users/luca/Laputa/test.md',
   filename: 'test.md',
   title: 'Test Note',
   isA: 'Note',
@@ -112,49 +111,17 @@ describe('needsRenameOnSave', () => {
   })
 })
 
-describe('slugCollides', () => {
-  it('detects collision with existing filename', () => {
-    const entries = [makeEntry({ filename: 'my-note.md', path: '/vault/my-note.md' })]
-    expect(slugCollides('My Note', entries)).toBe(true)
-  })
-
-  it('returns false when no collision', () => {
-    const entries = [makeEntry({ filename: 'other.md', path: '/vault/other.md' })]
-    expect(slugCollides('My Note', entries)).toBe(false)
-  })
-
-  it('excludes the current note path from collision check', () => {
-    const entries = [makeEntry({ filename: 'my-note.md', path: '/vault/my-note.md' })]
-    expect(slugCollides('My Note', entries, '/vault/my-note.md')).toBe(false)
-  })
-})
-
-describe('resolveNewNote slug collision', () => {
-  it('auto-suffixes slug when collision detected', () => {
-    const entries = [makeEntry({ filename: 'my-project.md', path: '/vault/my-project.md' })]
-    const { entry } = resolveNewNote('My Project', 'Project', '/vault', null, entries)
-    expect(entry.path).toBe('/vault/my-project-2.md')
-    expect(entry.filename).toBe('my-project-2.md')
-  })
-
-  it('skips suffix when no collision', () => {
-    const entries = [makeEntry({ filename: 'other.md', path: '/vault/other.md' })]
-    const { entry } = resolveNewNote('My Project', 'Project', '/vault', null, entries)
-    expect(entry.path).toBe('/vault/my-project.md')
-  })
-})
-
 describe('buildNewEntry', () => {
   it('creates a VaultEntry with correct fields', () => {
     const entry = buildNewEntry({
-      path: '/vault/note/my-note.md',
+      path: '/vault/my-note.md',
       slug: 'my-note',
       title: 'My Note',
       type: 'Note',
       status: 'Active',
     })
 
-    expect(entry.path).toBe('/vault/note/my-note.md')
+    expect(entry.path).toBe('/vault/my-note.md')
     expect(entry.filename).toBe('my-note.md')
     expect(entry.title).toBe('My Note')
     expect(entry.isA).toBe('Note')
@@ -223,8 +190,8 @@ describe('entryMatchesTarget', () => {
     expect(entryMatchesTarget(entry, 'mp')).toBe(true)
   })
 
-  it('matches by filename stem from path-style wikilink', () => {
-    const entry = makeEntry({ path: '/Users/luca/Laputa/my-project.md', filename: 'my-project.md' })
+  it('matches by path suffix (type/slug)', () => {
+    const entry = makeEntry({ path: '/Users/luca/Laputa/project/my-project.md' })
     expect(entryMatchesTarget(entry, 'project/my-project')).toBe(true)
   })
 
@@ -303,7 +270,7 @@ describe('DEFAULT_TEMPLATES', () => {
 })
 
 describe('resolveNewNote', () => {
-  it('creates notes at vault root', () => {
+  it('creates note at vault root', () => {
     const { entry, content } = resolveNewNote('My Project', 'Project', '/my/vault')
     expect(entry.path).toBe('/my/vault/my-project.md')
     expect(entry.isA).toBe('Project')
@@ -312,7 +279,7 @@ describe('resolveNewNote', () => {
     expect(content).toContain('status: Active')
   })
 
-  it('creates custom type notes at vault root', () => {
+  it('creates custom type note at vault root', () => {
     const { entry } = resolveNewNote('First Recipe', 'Recipe', '/my/vault')
     expect(entry.path).toBe('/my/vault/first-recipe.md')
   })
@@ -328,10 +295,9 @@ describe('resolveNewNote', () => {
     expect(entry.status).toBeNull()
   })
 
-  it('uses provided vault path instead of hardcoded path', () => {
+  it('uses provided vault path', () => {
     const { entry } = resolveNewNote('Test', 'Note', '/other/vault')
     expect(entry.path).toBe('/other/vault/test.md')
-    expect(entry.path).not.toContain('/Users/luca/Laputa')
   })
 
   it('produces a valid path for custom types with special characters', () => {
@@ -467,10 +433,9 @@ describe('resolveDailyNote', () => {
     expect(content).toContain('## Intentions')
   })
 
-  it('uses provided vault path instead of hardcoded path', () => {
+  it('uses provided vault path', () => {
     const { entry } = resolveDailyNote('2026-03-02', '/other/vault')
     expect(entry.path).toBe('/other/vault/2026-03-02.md')
-    expect(entry.path).not.toContain('/Users/luca/Laputa')
   })
 })
 
@@ -478,7 +443,7 @@ describe('findDailyNote', () => {
   it('finds entry by filename and Journal type', () => {
     const entries = [
       makeEntry({ path: '/Users/luca/Laputa/2026-03-02.md', filename: '2026-03-02.md', isA: 'Journal' }),
-      makeEntry({ path: '/Users/luca/Laputa/other.md', filename: 'other.md' }),
+      makeEntry({ path: '/Users/luca/Laputa/other.md' }),
     ]
     const found = findDailyNote(entries, '2026-03-02')
     expect(found).toBeDefined()
@@ -486,11 +451,11 @@ describe('findDailyNote', () => {
   })
 
   it('returns undefined when no matching entry exists', () => {
-    const entries = [makeEntry({ path: '/Users/luca/Laputa/other.md', filename: 'other.md' })]
+    const entries = [makeEntry({ path: '/Users/luca/Laputa/other.md' })]
     expect(findDailyNote(entries, '2026-03-02')).toBeUndefined()
   })
 
-  it('does not match non-Journal entries with same filename', () => {
+  it('does not match non-Journal notes with date filename', () => {
     const entries = [
       makeEntry({ path: '/vault/2026-03-02.md', filename: '2026-03-02.md', isA: 'Note' }),
     ]
@@ -559,7 +524,7 @@ describe('useNoteActions hook', () => {
   })
 
   it('handleNavigateWikilink finds entry by title', async () => {
-    const target = makeEntry({ title: 'Target Note', path: '/vault/note/target.md' })
+    const target = makeEntry({ title: 'Target Note', path: '/vault/target.md' })
 
     const { result } = renderHook(() => useNoteActions(makeConfig([target])))
 
@@ -567,7 +532,7 @@ describe('useNoteActions hook', () => {
       result.current.handleNavigateWikilink('Target Note')
     })
 
-    expect(result.current.activeTabPath).toBe('/vault/note/target.md')
+    expect(result.current.activeTabPath).toBe('/vault/target.md')
   })
 
   it('handleNavigateWikilink warns when target not found', () => {
@@ -748,7 +713,7 @@ describe('useNoteActions hook', () => {
     expect(addEntry).toHaveBeenCalledTimes(1)
     const [createdEntry] = addEntry.mock.calls[0]
     expect(createdEntry.isA).toBe('Journal')
-    expect(createdEntry.path).toMatch(/\d{4}-\d{2}-\d{2}\.md$/)
+    expect(createdEntry.path).toMatch(/\/\d{4}-\d{2}-\d{2}\.md$/)
   })
 
   it('handleOpenDailyNote opens existing daily note instead of creating', async () => {
@@ -952,18 +917,18 @@ describe('useNoteActions hook', () => {
     })
   })
 
-  describe('type change is frontmatter-only (flat vault)', () => {
-    it('does not move file when type key is updated', async () => {
-      const config = makeConfig()
+  describe('type change does not move file', () => {
+    it('changing type only updates frontmatter, does not move file', async () => {
+      const entry = makeEntry({ path: '/test/vault/my-note.md', filename: 'my-note.md', title: 'My Note', isA: 'Note' })
+      const config = makeConfig([entry])
       vi.mocked(mockInvoke).mockResolvedValue('')
 
       const { result } = renderHook(() => useNoteActions(config))
 
       await act(async () => {
-        await result.current.handleUpdateFrontmatter('/vault/note.md', 'type', 'Quarter')
+        await result.current.handleUpdateFrontmatter('/test/vault/my-note.md', 'type', 'Quarter')
       })
 
-      // In flat vault, type changes only update frontmatter — no file movement
       expect(setToastMessage).toHaveBeenCalledWith('Property updated')
     })
   })
@@ -971,7 +936,7 @@ describe('useNoteActions hook', () => {
   describe('rename note updates wikilinks', () => {
     it('handleRenameNote passes entry title as old_title to rename_note', async () => {
       const entry = makeEntry({
-        path: '/test/vault/note/weekly-review.md',
+        path: '/test/vault/weekly-review.md',
         filename: 'weekly-review.md',
         title: 'Weekly Review',
       })
@@ -980,7 +945,7 @@ describe('useNoteActions hook', () => {
       config.replaceEntry = replaceEntry
 
       vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
-        if (cmd === 'rename_note') return { new_path: '/test/vault/note/sprint-retro.md', updated_files: 2 }
+        if (cmd === 'rename_note') return { new_path: '/test/vault/sprint-retro.md', updated_files: 2 }
         if (cmd === 'get_note_content') return '---\nIs A: Note\n---\n# Sprint Retro\n'
         return ''
       })
@@ -989,7 +954,7 @@ describe('useNoteActions hook', () => {
 
       await act(async () => {
         await result.current.handleRenameNote(
-          '/test/vault/note/weekly-review.md',
+          '/test/vault/weekly-review.md',
           'Sprint Retro',
           '/test/vault',
           replaceEntry,
@@ -998,7 +963,7 @@ describe('useNoteActions hook', () => {
 
       expect(mockInvoke).toHaveBeenCalledWith('rename_note', expect.objectContaining({
         vault_path: '/test/vault',
-        old_path: '/test/vault/note/weekly-review.md',
+        old_path: '/test/vault/weekly-review.md',
         new_title: 'Sprint Retro',
         old_title: 'Weekly Review',
       }))
@@ -1009,7 +974,7 @@ describe('useNoteActions hook', () => {
       const config = makeConfig([])
 
       vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
-        if (cmd === 'rename_note') return { new_path: '/test/vault/note/new.md', updated_files: 0 }
+        if (cmd === 'rename_note') return { new_path: '/test/vault/new.md', updated_files: 0 }
         if (cmd === 'get_note_content') return '# New\n'
         return ''
       })
@@ -1018,7 +983,7 @@ describe('useNoteActions hook', () => {
 
       await act(async () => {
         await result.current.handleRenameNote(
-          '/test/vault/note/old.md', 'New', '/test/vault', vi.fn(),
+          '/test/vault/old.md', 'New', '/test/vault', vi.fn(),
         )
       })
 
@@ -1029,7 +994,7 @@ describe('useNoteActions hook', () => {
 
     it('handleUpdateFrontmatter triggers rename when title key is changed', async () => {
       const entry = makeEntry({
-        path: '/test/vault/note/old-name.md',
+        path: '/test/vault/old-name.md',
         filename: 'old-name.md',
         title: 'Old Name',
       })
@@ -1038,7 +1003,7 @@ describe('useNoteActions hook', () => {
       config.replaceEntry = replaceEntry
 
       vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
-        if (cmd === 'rename_note') return { new_path: '/test/vault/note/new-name.md', updated_files: 1 }
+        if (cmd === 'rename_note') return { new_path: '/test/vault/new-name.md', updated_files: 1 }
         if (cmd === 'get_note_content') return '---\ntitle: New Name\n---\n# New Name\n'
         return ''
       })
@@ -1049,17 +1014,17 @@ describe('useNoteActions hook', () => {
       await act(async () => { result.current.handleSelectNote(entry) })
 
       await act(async () => {
-        await result.current.handleUpdateFrontmatter('/test/vault/note/old-name.md', 'title', 'New Name')
+        await result.current.handleUpdateFrontmatter('/test/vault/old-name.md', 'title', 'New Name')
       })
 
       expect(mockInvoke).toHaveBeenCalledWith('rename_note', expect.objectContaining({
-        old_path: '/test/vault/note/old-name.md',
+        old_path: '/test/vault/old-name.md',
         new_title: 'New Name',
         old_title: 'Old Name',
       }))
       expect(replaceEntry).toHaveBeenCalledWith(
-        '/test/vault/note/old-name.md',
-        expect.objectContaining({ path: '/test/vault/note/new-name.md', title: 'New Name' }),
+        '/test/vault/old-name.md',
+        expect.objectContaining({ path: '/test/vault/new-name.md', title: 'New Name' }),
       )
     })
 

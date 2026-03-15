@@ -13,7 +13,7 @@ use crate::indexing::{IndexStatus, IndexingProgress};
 use crate::search::SearchResponse;
 use crate::settings::Settings;
 use crate::theme::{ThemeFile, VaultSettings};
-use crate::vault::{MigrationResult, RenameResult, VaultEntry};
+use crate::vault::{RenameResult, VaultEntry};
 use crate::vault_config::VaultConfig;
 use crate::vault_list::VaultList;
 use crate::{
@@ -122,9 +122,9 @@ pub fn migrate_is_a_to_type(vault_path: String) -> Result<usize, String> {
 }
 
 #[tauri::command]
-pub fn migrate_to_flat_vault(vault_path: String) -> Result<MigrationResult, String> {
+pub fn flatten_vault(vault_path: String) -> Result<usize, String> {
     let vault_path = expand_tilde(&vault_path);
-    vault::migrate_to_flat_vault(&vault_path)
+    vault::flatten_vault(&vault_path)
 }
 
 #[tauri::command]
@@ -546,20 +546,11 @@ pub fn restore_default_themes(vault_path: String) -> Result<String, String> {
 #[tauri::command]
 pub fn repair_vault(vault_path: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
-    // Migrate to flat vault (move notes from type folders to root)
-    let migration = vault::migrate_to_flat_vault(&vault_path)?;
     // Repair themes
     theme::restore_default_themes(&vault_path)?;
     // Repair config files (config/agents.md, type/config.md, AGENTS.md stub)
     vault::repair_config_files(&vault_path)?;
-    if migration.moved > 0 {
-        Ok(format!(
-            "Vault repaired — migrated {} notes to flat structure",
-            migration.moved
-        ))
-    } else {
-        Ok("Vault repaired".to_string())
-    }
+    Ok("Vault repaired".to_string())
 }
 
 // ── Settings & config commands ──────────────────────────────────────────────

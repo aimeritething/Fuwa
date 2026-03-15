@@ -16,11 +16,11 @@ interface BaseSuggestionItem {
   path: string
 }
 
-/** Build a vault-relative path target with pipe display: "type/slug|Title" */
+/** Build a filename-based target with pipe display: "slug|Title" */
 function buildPathTarget(item: BaseSuggestionItem): string {
-  const parts = item.path.split('/')
-  const vaultRelPath = parts.slice(-2).join('/').replace(/\.md$/, '')
-  return `${vaultRelPath}|${item.entryTitle}`
+  const filename = item.path.split('/').pop() ?? ''
+  const slug = filename.replace(/\.md$/, '')
+  return `${slug}|${item.entryTitle}`
 }
 
 /** Add onItemClick to raw suggestion candidates.

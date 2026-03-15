@@ -10,15 +10,15 @@ Continuous learning through reading, courses, conversations, and writing. The in
 ## Scope
 
 - **Reading** — books, articles, newsletters, research papers. Target of 20+ books per year
-- **Writing as learning** — [[evergreen/the-compound-effect-in-knowledge-work]] captures why writing notes and evergreen pieces accelerates understanding
+- **Writing as learning** — [[the-compound-effect-in-knowledge-work]] captures why writing notes and evergreen pieces accelerates understanding
 - **Conversations** — podcast guests, conference hallway chats, 1:1s with smart people
 - **Courses & talks** — occasional online courses, preparing conference talks as a forcing function
 
 ## Philosophy
 
-Learning is not about consuming more — it's about extracting and connecting ideas. The [[procedure-evergreen-note-writing]] process exists to turn raw input into lasting, reusable knowledge. Every book note in [[note/]] should eventually produce at least one evergreen idea.
+Learning is not about consuming more — it's about extracting and connecting ideas. The [[procedure-evergreen-note-writing]] process exists to turn raw input into lasting, reusable knowledge. Every book note in the vault should eventually produce at least one evergreen idea.
 
-See [[evergreen/reading-more-by-reading-better]] for the approach to reading.
+See [[reading-more-by-reading-better]] for the approach to reading.
 
 ## Key measures
 

@@ -22,11 +22,6 @@ function useInsertImageCallback(editor: ReturnType<typeof useCreateBlockNote>) {
   }, [])
 }
 
-/** Returns true if the click target is an interactive area the container should not steal focus from. */
-function isInteractiveTarget(target: HTMLElement): boolean {
-  return !!(target.closest('[contenteditable="true"]') || target.closest('.bn-side-menu'))
-}
-
 /** Single BlockNote editor view — content is swapped via replaceBlocks */
 export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange, vaultPath, isDarkTheme, editable = true }: {
   editor: ReturnType<typeof useCreateBlockNote>
@@ -45,7 +40,9 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   const { isDragOver } = useImageDrop({ containerRef, onImageUrl, vaultPath })
 
   const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!editable || isInteractiveTarget(e.target as HTMLElement)) return
+    if (!editable) return
+    const target = e.target as HTMLElement
+    if (target.closest('[contenteditable="true"]')) return
     const blocks = editor.document
     if (blocks.length > 0) {
       editor.setTextCursorPosition(blocks[blocks.length - 1].id, 'end')

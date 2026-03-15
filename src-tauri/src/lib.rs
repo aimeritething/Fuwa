@@ -145,7 +145,7 @@ pub fn run() {
             commands::batch_delete_notes,
             commands::empty_trash,
             commands::migrate_is_a_to_type,
-            commands::migrate_to_flat_vault,
+            commands::flatten_vault,
             commands::batch_archive_notes,
             commands::batch_trash_notes,
             commands::get_settings,

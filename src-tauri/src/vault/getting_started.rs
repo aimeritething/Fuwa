@@ -19,23 +19,31 @@ struct SampleFile {
 }
 
 /// Content for config/agents.md — vault instructions for AI agents.
-pub(super) const AGENTS_MD: &str = r#"---
-type: Config
----
-
-# AGENTS.md — Vault Instructions for AI Agents
+/// This file has no YAML frontmatter — it is a convention file for AI agents,
+/// not a vault note. The vault scanner will still pick it up as a regular entry.
+pub(super) const AGENTS_MD: &str = r#"# AGENTS.md — Vault Instructions for AI Agents
 
 This is a [Laputa](https://github.com/refactoring-ai/laputa) vault — a folder of markdown files with YAML frontmatter that form a personal knowledge graph.
 
 ## Structure
 
-Notes live at the vault root as flat `.md` files. Type is determined by the `type` field in frontmatter, not by folder. System folders:
+Files are organized in folders by type:
 
-| Folder | Purpose |
-|--------|---------|
-| `type/` | Type definitions — icon, color, ordering |
-| `config/` | Vault configuration files |
-| `theme/` | Visual theme definitions |
+| Folder | Type | Purpose |
+|--------|------|---------|
+| `note/` | Note | General-purpose documents, research, meeting notes |
+| `project/` | Project | Time-bounded efforts with clear goals |
+| `person/` | Person | People — colleagues, collaborators, contacts |
+| `topic/` | Topic | Subject areas that group related notes |
+| `responsibility/` | Responsibility | Long-running duties with KPIs |
+| `procedure/` | Procedure | Recurring workflows (weekly, monthly) |
+| `event/` | Event | Something that happened on a specific date |
+| `quarter/` | Quarter | Time containers (e.g. 24Q1) |
+| `measure/` | Measure | Trackable metrics tied to responsibilities |
+| `target/` | Target | Time-bound goals for a measure |
+| `type/` | Type | Type definitions — icon, color, ordering |
+
+Custom folders are valid — the folder name becomes the type (capitalized).
 
 ## Frontmatter
 
@@ -45,11 +53,11 @@ YAML frontmatter between `---` delimiters defines metadata:
 ---
 type: Project
 Status: Active
-Owner: "[[Jane Doe]]"
-Belongs to: "[[24Q1]]"
+Owner: "[[person/jane-doe]]"
+Belongs to: "[[quarter/24q1]]"
 Related to:
-  - "[[Growth]]"
-  - "[[Research Findings]]"
+  - "[[topic/growth]]"
+  - "[[note/research-findings]]"
 ---
 ```
 
@@ -57,7 +65,7 @@ Related to:
 
 | Field | Purpose |
 |-------|---------|
-| `type` | Entity type (required — determines note category) |
+| `type` | Entity type (usually inferred from folder) |
 | `Status` | Active, Done, Paused, Archived, Dropped |
 | `Owner` | Person responsible (wikilink) |
 | `Belongs to` | Parent relationship(s) |
@@ -70,17 +78,17 @@ Related to:
 Any YAML field containing `[[wikilinks]]` becomes a navigable relationship:
 
 ```yaml
-Has Measures: ["[[Revenue]]", "[[Churn]]"]
-Resources: "[[API Docs]]"
+Has Measures: ["[[measure/revenue]]", "[[measure/churn]]"]
+Resources: "[[note/api-docs]]"
 ```
 
 ## Wikilinks
 
 Connect notes with double-bracket syntax:
 
-- `[[My Note Title]]` — link by title (primary)
-- `[[my-note-title]]` — link by filename stem
-- `[[My Note|display text]]` — link with custom display text
+- `[[note/my-note]]` — link by path
+- `[[My Note Title]]` — link by title or alias
+- `[[note/my-note|display text]]` — link with custom display text
 
 Wikilinks work in both frontmatter values and markdown body. Backlinks are computed automatically — linking A to B makes B show a backlink to A.
 
@@ -103,8 +111,8 @@ Available colors: red, purple, blue, green, yellow, orange. Icons are Phosphor n
 
 - First `# Heading` in a file becomes its title
 - One entity per file
-- Filenames use kebab-case: `my-note-title.md` (= slugified title)
-- Type is set via `type:` in frontmatter (required for non-root notes)
+- Filenames use kebab-case: `my-note-title.md`
+- Type is inferred from parent folder if not set in frontmatter
 - Relationships are bidirectional via automatic backlinks
 "#;
 
@@ -149,7 +157,7 @@ Welcome to your new knowledge vault! Laputa helps you organize your thoughts, pr
 
 ## How it works
 
-Every note is a markdown file with optional YAML frontmatter at the top. The `type` field in frontmatter determines what kind of note it is — Project, Person, Note, etc.
+Every note is a markdown file with optional YAML frontmatter at the top. All notes live at the vault root. The `type` field in the frontmatter determines the note's type — set `type: Project` for a Project, `type: Person` for a Person, and so on.
 
 ## What to explore
 
@@ -467,7 +475,7 @@ mod tests {
         let result = create_getting_started_vault(vault_path.to_str().unwrap());
         assert!(result.is_ok());
 
-        // Verify key files exist (flat vault: notes at root, types in type/)
+        // Verify key files exist
         assert!(vault_path.join("config/agents.md").exists());
         assert!(vault_path.join("AGENTS.md").exists());
         assert!(vault_path.join("welcome-to-laputa.md").exists());
@@ -536,7 +544,7 @@ mod tests {
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
         let entries = crate::vault::scan_vault(&vault_path).unwrap();
-        // SAMPLE_FILES (root + type/) + config/agents.md + AGENTS.md stub + 3 vault theme notes
+        // SAMPLE_FILES + config/agents.md + AGENTS.md stub + 3 vault theme notes
         assert_eq!(entries.len(), SAMPLE_FILES.len() + 2 + 3);
     }
 
@@ -592,7 +600,8 @@ mod tests {
             entry.title,
             "AGENTS.md \u{2014} Vault Instructions for AI Agents"
         );
-        assert_eq!(entry.is_a.as_deref(), Some("Config"));
+        // Config files have no frontmatter type field — type is None
+        assert_eq!(entry.is_a, None);
     }
 
     #[test]

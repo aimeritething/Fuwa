@@ -313,7 +313,7 @@ bc75647 Remove unused Vite scaffold files
 
 ### M5: File Operations & Polish
 **Goal:** Create, rename, delete files. Polish for daily-driver use.
-- [ ] Create new note (with type selector → sets `type:` and target folder)
+- [ ] Create new note (with type selector → sets `type:` in frontmatter, created at vault root)
 - [ ] Rename file (updates filename + title)
 - [ ] Delete → move to trash
 - [ ] Keyboard shortcuts (Cmd+N new, Cmd+S save, Cmd+P quick open/search)

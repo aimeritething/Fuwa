@@ -62,9 +62,14 @@ test.describe('Note filename updates on title change + save', () => {
   })
 
   test('saving a note whose filename already matches does not trigger rename', async ({ page }) => {
-    // Click on an existing note in the note list that already has a matching filename.
-    // The default sidebar shows "Notes" section with several notes visible.
-    const noteItem = page.locator('.truncate.text-foreground.font-medium').first()
+    // Click "All Notes" to show all notes regardless of section grouping
+    const allNotes = page.locator('text=All Notes').first()
+    await allNotes.click()
+    await page.waitForTimeout(500)
+    // Click on the first note in the note list
+    const noteListContainer = page.locator('[data-testid="note-list-container"]')
+    await noteListContainer.waitFor({ timeout: 5000 })
+    const noteItem = noteListContainer.locator('.cursor-pointer').first()
     await noteItem.click()
     await page.waitForTimeout(500)
 

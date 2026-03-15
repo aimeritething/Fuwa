@@ -114,28 +114,23 @@ interface VaultEntry {
 
 Entity type is stored in the `type:` frontmatter field (e.g. `type: Quarter`). The legacy field name `Is A:` is still accepted as an alias for backwards compatibility but new notes use `type:`. The `VaultEntry.isA` property in TypeScript/Rust holds the resolved value.
 
-Type is also inferred from the folder structure when `type:` is absent. The vault is organized by type:
+Type is determined **purely** from the `type:` frontmatter field — it is never inferred from the file's folder location. All notes live at the vault root as flat `.md` files:
 
 ```
 ~/Laputa/
-├── type/           → "Type"       ← type definition documents
-├── project/        → "Project"
-├── responsibility/ → "Responsibility"
-├── procedure/      → "Procedure"
-├── experiment/     → "Experiment"
-├── person/         → "Person"
-├── event/          → "Event"
-├── topic/          → "Topic"
-├── note/           → "Note"
-├── quarter/        → "Quarter"
-├── journal/        → "Journal"
-├── essay/          → "Essay"
-├── evergreen/      → "Evergreen"
-├── theme/          → "Theme"      ← vault-based themes
-└── config/         → "Config"     ← meta-configuration files (agents.md, etc.)
+├── my-project.md          ← type: Project (in frontmatter)
+├── weekly-review.md       ← type: Procedure
+├── john-doe.md            ← type: Person
+├── some-topic.md          ← type: Topic
+├── ...
+├── type/                  ← type definition documents
+├── config/                ← meta-configuration files (agents.md, etc.)
+└── theme/                 ← vault-based themes (legacy location)
 ```
 
-Mapping logic lives in `vault/mod.rs:parse_md_file()`. If a folder doesn't match any known type, the folder name is capitalized and used as-is.
+New notes are created at the vault root: `{vault}/{slug}.md`. Changing a note's type only requires updating the `type:` field in frontmatter — the file does not move. The `type/` folder exists solely for type definition documents, and `config/` for configuration files.
+
+A `flatten_vault` migration command is available to move existing notes from type-based subfolders to the vault root.
 
 ### Types as Files
 
@@ -178,9 +173,9 @@ status: Active
 owner: Luca Rossi
 cadence: Weekly
 belongs_to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 related_to:
-  - "[[topic/writing]]"
+  - "[[writing]]"
 aliases:
   - Weekly Writing
 ---
@@ -200,14 +195,14 @@ The Rust parser scans all frontmatter keys for fields containing `[[wikilinks]]`
 ```yaml
 ---
 Topics:
-  - "[[topic/writing]]"
-  - "[[topic/productivity]]"
+  - "[[writing]]"
+  - "[[productivity]]"
 Key People:
-  - "[[person/matteo-cellini]]"
+  - "[[matteo-cellini]]"
 ---
 ```
 
-Becomes: `relationships["Topics"] = ["[[topic/writing]]", "[[topic/productivity]]"]`
+Becomes: `relationships["Topics"] = ["[[writing]]", "[[productivity]]"]`
 
 This enables arbitrary, extensible relationship types without code changes.
 
@@ -246,7 +241,7 @@ type SidebarSelection =
    - Reads content with `fs::read_to_string()`
    - Parses frontmatter with `gray_matter::Matter::<YAML>`
    - Extracts title from first `#` heading
-   - Infers entity type from parent folder name (or explicit `type:` frontmatter; `Is A:` accepted as legacy alias)
+   - Reads entity type from `type:` frontmatter field (`Is A:` accepted as legacy alias); type is never inferred from folder
    - Parses dates as ISO 8601 to Unix timestamps
    - Extracts relationships, outgoing links, custom properties, word count, snippet
 5. Sorts by `modified_at` descending

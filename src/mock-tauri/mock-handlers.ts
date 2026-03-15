@@ -26,9 +26,9 @@ function mockFileHistory(path: string) {
 
 function mockModifiedFiles(): ModifiedFile[] {
   return [
-    { path: '/Users/luca/Laputa/project/26q1-laputa-app.md', relativePath: 'project/26q1-laputa-app.md', status: 'modified' },
-    { path: '/Users/luca/Laputa/note/facebook-ads-strategy.md', relativePath: 'note/facebook-ads-strategy.md', status: 'modified' },
-    { path: '/Users/luca/Laputa/essay/ai-agents-primer.md', relativePath: 'essay/ai-agents-primer.md', status: 'added' },
+    { path: '/Users/luca/Laputa/26q1-laputa-app.md', relativePath: '26q1-laputa-app.md', status: 'modified' },
+    { path: '/Users/luca/Laputa/facebook-ads-strategy.md', relativePath: 'facebook-ads-strategy.md', status: 'modified' },
+    { path: '/Users/luca/Laputa/ai-agents-primer.md', relativePath: 'ai-agents-primer.md', status: 'added' },
   ]
 }
 
@@ -182,9 +182,9 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     const limit = args.limit ?? 30
     const ts = Math.floor(Date.now() / 1000)
     const commits: PulseCommit[] = [
-      { hash: 'a1b2c3d4e5f6', shortHash: 'a1b2c3d', message: 'Update project notes and add new experiment', date: ts - 3600, githubUrl: 'https://github.com/lucaong/laputa-vault/commit/a1b2c3d4e5f6', files: [{ path: 'project/26q1-laputa-app.md', status: 'modified', title: '26q1 laputa app' }, { path: 'experiment/ai-search.md', status: 'added', title: 'ai search' }], added: 1, modified: 1, deleted: 0 },
-      { hash: 'b2c3d4e5f6g7', shortHash: 'b2c3d4e', message: 'Reorganize people notes', date: ts - 86400, githubUrl: 'https://github.com/lucaong/laputa-vault/commit/b2c3d4e5f6g7', files: [{ path: 'person/alice-johnson.md', status: 'modified', title: 'alice johnson' }, { path: 'person/bob-smith.md', status: 'modified', title: 'bob smith' }, { path: 'person/old-contact.md', status: 'deleted', title: 'old contact' }], added: 0, modified: 2, deleted: 1 },
-      { hash: 'c3d4e5f6g7h8', shortHash: 'c3d4e5f', message: 'Add daily journal entry', date: ts - 172800, githubUrl: null, files: [{ path: 'note/2026-03-03.md', status: 'added', title: '2026 03 03' }], added: 1, modified: 0, deleted: 0 },
+      { hash: 'a1b2c3d4e5f6', shortHash: 'a1b2c3d', message: 'Update project notes and add new experiment', date: ts - 3600, githubUrl: 'https://github.com/lucaong/laputa-vault/commit/a1b2c3d4e5f6', files: [{ path: '26q1-laputa-app.md', status: 'modified', title: '26q1 laputa app' }, { path: 'ai-search.md', status: 'added', title: 'ai search' }], added: 1, modified: 1, deleted: 0 },
+      { hash: 'b2c3d4e5f6g7', shortHash: 'b2c3d4e', message: 'Reorganize people notes', date: ts - 86400, githubUrl: 'https://github.com/lucaong/laputa-vault/commit/b2c3d4e5f6g7', files: [{ path: 'alice-johnson.md', status: 'modified', title: 'alice johnson' }, { path: 'bob-smith.md', status: 'modified', title: 'bob smith' }, { path: 'old-contact.md', status: 'deleted', title: 'old contact' }], added: 0, modified: 2, deleted: 1 },
+      { hash: 'c3d4e5f6g7h8', shortHash: 'c3d4e5f', message: 'Add daily journal entry', date: ts - 172800, githubUrl: null, files: [{ path: '2026-03-03.md', status: 'added', title: '2026 03 03' }], added: 1, modified: 0, deleted: 0 },
     ]
     return commits.slice(0, limit)
   },
