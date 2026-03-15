@@ -514,7 +514,12 @@ mod tests {
     fn test_flat_migration_skips_system_folders() {
         let tmp = tempdir().unwrap();
         let vault = tmp.path();
-        write_sub_file(vault, "type", "project.md", "---\ntype: Type\n---\n# Project\n");
+        write_sub_file(
+            vault,
+            "type",
+            "project.md",
+            "---\ntype: Type\n---\n# Project\n",
+        );
         write_sub_file(vault, "config", "agents.md", "# Agents\n");
         write_sub_file(vault, "note", "test.md", "# Test\n");
 
@@ -588,7 +593,10 @@ mod tests {
         write_sub_file(vault, "note", "test.md", "# Test\n");
 
         let _ = migrate_to_flat_vault(vault.to_str().unwrap()).unwrap();
-        assert!(!vault.join("note").exists(), "empty note/ dir should be removed");
+        assert!(
+            !vault.join("note").exists(),
+            "empty note/ dir should be removed"
+        );
     }
 
     #[test]

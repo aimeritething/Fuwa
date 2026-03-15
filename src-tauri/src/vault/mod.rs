@@ -713,11 +713,7 @@ mod tests {
             "type/project.md",
             "---\ntype: Type\n---\n# Project\n",
         );
-        create_test_file(
-            dir.path(),
-            "config/agents.md",
-            "# Agents\n",
-        );
+        create_test_file(dir.path(), "config/agents.md", "# Agents\n");
         // Files in non-system subfolders should be IGNORED by scan_vault
         create_test_file(
             dir.path(),
@@ -727,13 +723,20 @@ mod tests {
         create_test_file(dir.path(), "not-markdown.txt", "This should be ignored");
 
         let entries = scan_vault(dir.path()).unwrap();
-        assert_eq!(entries.len(), 3, "should find root + type/ + config/ files only");
+        assert_eq!(
+            entries.len(),
+            3,
+            "should find root + type/ + config/ files only"
+        );
 
         let filenames: Vec<&str> = entries.iter().map(|e| e.filename.as_str()).collect();
         assert!(filenames.contains(&"root.md"));
         assert!(filenames.contains(&"project.md"));
         assert!(filenames.contains(&"agents.md"));
-        assert!(!filenames.contains(&"nested.md"), "non-system subfolder files should be excluded");
+        assert!(
+            !filenames.contains(&"nested.md"),
+            "non-system subfolder files should be excluded"
+        );
     }
 
     #[test]
@@ -1049,11 +1052,7 @@ References:
     #[test]
     fn test_type_from_frontmatter_only() {
         let dir = TempDir::new().unwrap();
-        create_test_file(
-            dir.path(),
-            "test.md",
-            "---\ntype: Person\n---\n# Test\n",
-        );
+        create_test_file(dir.path(), "test.md", "---\ntype: Person\n---\n# Test\n");
         let entry = parse_md_file(&dir.path().join("test.md")).unwrap();
         assert_eq!(entry.is_a, Some("Person".to_string()));
     }
@@ -1118,7 +1117,10 @@ References:
         let dir = TempDir::new().unwrap();
         let content = "# A Person\n\nSome content.";
         let entry = parse_test_entry(&dir, "person/someone.md", content);
-        assert_eq!(entry.is_a, None, "flat vault: no type inference from folder");
+        assert_eq!(
+            entry.is_a, None,
+            "flat vault: no type inference from folder"
+        );
         assert!(
             entry.relationships.get("Type").is_none(),
             "no type relationship without frontmatter type"
@@ -1141,7 +1143,10 @@ References:
         let dir = TempDir::new().unwrap();
         let content = "# Some Type\n";
         let entry = parse_test_entry(&dir, "type/some-type.md", content);
-        assert_eq!(entry.is_a, None, "flat vault: type folder no longer infers type");
+        assert_eq!(
+            entry.is_a, None,
+            "flat vault: type folder no longer infers type"
+        );
     }
 
     // --- type key (post-migration) tests ---

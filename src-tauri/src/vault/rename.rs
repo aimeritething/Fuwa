@@ -694,5 +694,4 @@ mod tests {
         assert_eq!(result.new_path, old_path.to_str().unwrap());
         assert_eq!(result.updated_files, 0);
     }
-
 }
