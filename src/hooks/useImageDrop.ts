@@ -53,89 +53,89 @@ interface UseImageDropOptions {
   vaultPath?: string
 }
 
+/** Track whether an internal HTML5 drag (tab, block) is in progress.
+ *  Internal drags fire `dragstart` on a DOM element; OS file drags do not. */
+function useInternalDragFlag() {
+  const ref = useRef(false)
+  useEffect(() => {
+    const start = () => { ref.current = true }
+    const end = () => { ref.current = false }
+    document.addEventListener('dragstart', start)
+    document.addEventListener('dragend', end)
+    return () => { document.removeEventListener('dragstart', start); document.removeEventListener('dragend', end) }
+  }, [])
+  return ref
+}
+
+/** Process a Tauri native file drop payload — copy images to vault. */
+function handleTauriDrop(
+  paths: string[],
+  vaultPath: string | undefined,
+  callback: ((url: string) => void) | undefined,
+) {
+  const imagePaths = paths.filter(isImagePath)
+  if (imagePaths.length > 0 && vaultPath && callback) {
+    for (const p of imagePaths) void copyImageToVault(p, vaultPath).then(callback)
+  }
+}
+
 export function useImageDrop({ containerRef, onImageUrl, vaultPath }: UseImageDropOptions) {
   const [isDragOver, setIsDragOver] = useState(false)
   const onImageUrlRef = useRef(onImageUrl)
   useEffect(() => { onImageUrlRef.current = onImageUrl }, [onImageUrl])
   const vaultPathRef = useRef(vaultPath)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
+  const internalDragRef = useInternalDragFlag()
 
   // HTML5 DnD visual feedback (works in browser mode; BlockNote handles the actual upload)
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
-    const handleDragOver = (e: DragEvent) => {
+    const onOver = (e: DragEvent) => {
       if (!e.dataTransfer || !hasImageFiles(e.dataTransfer)) return
       e.preventDefault()
       e.dataTransfer.dropEffect = 'copy'
       setIsDragOver(true)
     }
-
-    const handleDragLeave = (e: DragEvent) => {
-      if (!container.contains(e.relatedTarget as Node)) {
-        setIsDragOver(false)
-      }
+    const onLeave = (e: DragEvent) => {
+      if (!container.contains(e.relatedTarget as Node)) setIsDragOver(false)
     }
+    const onDrop = () => { setIsDragOver(false) }
 
-    const handleDrop = () => {
-      // Only reset visual state; BlockNote's native dropFile plugin handles
-      // the actual upload (via editor.uploadFile) and block insertion.
-      setIsDragOver(false)
-    }
-
-    container.addEventListener('dragover', handleDragOver)
-    container.addEventListener('dragleave', handleDragLeave)
-    container.addEventListener('drop', handleDrop)
-
+    container.addEventListener('dragover', onOver)
+    container.addEventListener('dragleave', onLeave)
+    container.addEventListener('drop', onDrop)
     return () => {
-      container.removeEventListener('dragover', handleDragOver)
-      container.removeEventListener('dragleave', handleDragLeave)
-      container.removeEventListener('drop', handleDrop)
+      container.removeEventListener('dragover', onOver)
+      container.removeEventListener('dragleave', onLeave)
+      container.removeEventListener('drop', onDrop)
     }
   }, [containerRef])
 
-  // Tauri native file drop — intercepts OS file drops that bypass HTML5 DnD
+  // Tauri native file drop — intercepts OS file drops that bypass HTML5 DnD.
+  // Skipped entirely when an internal drag is in progress (tabs, blocks).
   useEffect(() => {
     if (!isTauri()) return
-
     let unlisten: (() => void) | null = null
     let mounted = true
-
     void (async () => {
       try {
         const { getCurrentWebview } = await import('@tauri-apps/api/webview')
         if (!mounted) return
-        unlisten = await getCurrentWebview().onDragDropEvent((event) => {
-          const payload = event.payload
-          if (payload.type === 'over') {
-            // Tauri 'over' events don't include paths and can't distinguish
-            // OS file drags from internal drags (tabs, blocks). Let the HTML5
-            // dragover handler drive isDragOver — it checks hasImageFiles().
-          } else if (payload.type === 'drop') {
+        unlisten = await getCurrentWebview().onDragDropEvent(({ payload }) => {
+          if (internalDragRef.current) return
+          if (payload.type === 'drop') {
             setIsDragOver(false)
-            const imagePaths = payload.paths.filter(isImagePath)
-            const vault = vaultPathRef.current
-            const callback = onImageUrlRef.current
-            if (imagePaths.length > 0 && vault && callback) {
-              for (const sourcePath of imagePaths) {
-                void copyImageToVault(sourcePath, vault).then(callback)
-              }
-            }
-          } else {
+            handleTauriDrop(payload.paths, vaultPathRef.current, onImageUrlRef.current)
+          } else if (payload.type !== 'over') {
             setIsDragOver(false)
           }
         })
-      } catch {
-        // Tauri webview API not available (e.g. older Tauri version)
-      }
+      } catch { /* Tauri webview API not available */ }
     })()
-
-    return () => {
-      mounted = false
-      unlisten?.()
-    }
-  }, [])
+    return () => { mounted = false; unlisten?.() }
+  }, [internalDragRef])
 
   return { isDragOver }
 }

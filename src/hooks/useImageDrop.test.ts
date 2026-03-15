@@ -250,4 +250,36 @@ describe('useImageDrop — Tauri native drag-drop', () => {
 
     expect(result.current.isDragOver).toBe(false)
   })
+
+  it('ignores Tauri events during internal HTML5 drags (tab/block reorder)', async () => {
+    const onImageUrl = vi.fn()
+    renderImageDropTauri({ onImageUrl, vaultPath: '/vault' })
+
+    await waitFor(() => expect(capturedDragDropHandler).not.toBeNull())
+
+    // Simulate an internal drag start (e.g. tab drag)
+    act(() => { document.dispatchEvent(new Event('dragstart')) })
+
+    // Tauri drop event during internal drag should be ignored
+    act(() => {
+      capturedDragDropHandler!({
+        payload: { type: 'drop', paths: ['/tmp/photo.png'], position: { x: 100, y: 100 } },
+      })
+    })
+    expect(onImageUrl).not.toHaveBeenCalled()
+
+    // End the internal drag
+    act(() => { document.dispatchEvent(new Event('dragend')) })
+
+    // After internal drag ends, Tauri events should work again
+    const { invoke } = await import('@tauri-apps/api/core')
+    vi.mocked(invoke).mockResolvedValue('/vault/attachments/photo.png')
+    act(() => {
+      capturedDragDropHandler!({
+        payload: { type: 'drop', paths: ['/tmp/photo.png'], position: { x: 100, y: 100 } },
+      })
+    })
+    // onImageUrl is called async (after copyImageToVault resolves)
+    await waitFor(() => expect(onImageUrl).toHaveBeenCalled())
+  })
 })
