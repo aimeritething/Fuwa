@@ -23,11 +23,7 @@
   opacity: 0.55;
 }
 
-/* BlockNote container
-   padding: 0 4px prevents BlockNote's side menu (≈42px wide) from being
-   clipped — the menu hangs left of the editor body (40px padding), and
-   overflow-y:auto forces overflow-x:auto (CSS spec). The 4px padding
-   keeps the menu inside the padding box, which is the overflow clip edge. */
+/* BlockNote container */
 .editor__blocknote-container {
   flex: 1;
   min-height: 0;
@@ -36,7 +32,6 @@
   justify-content: center;
   position: relative;
   cursor: text;
-  padding: 0 4px;
 }
 
 /* Drag-over state: subtle border highlight */

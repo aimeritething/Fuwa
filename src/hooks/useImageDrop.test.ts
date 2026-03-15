@@ -14,19 +14,6 @@ vi.mock('../mock-tauri', () => ({
   isTauri: () => tauriMode,
 }))
 
-type DragDropEvent = { payload: { type: string; paths: string[]; position: { x: number; y: number } } }
-type DragDropCallback = (event: DragDropEvent) => void
-let capturedDragDropHandler: DragDropCallback | null = null
-
-vi.mock('@tauri-apps/api/webview', () => ({
-  getCurrentWebview: () => ({
-    onDragDropEvent: vi.fn((cb: DragDropCallback) => {
-      capturedDragDropHandler = cb
-      return Promise.resolve(() => { capturedDragDropHandler = null })
-    }),
-  }),
-}))
-
 // JSDOM lacks DragEvent and File.arrayBuffer — polyfill for tests
 beforeAll(() => {
   if (typeof globalThis.DragEvent === 'undefined') {
@@ -57,7 +44,7 @@ function createMockDataTransfer(files: File[]) {
   const items = files.map(f => ({ kind: 'file' as const, type: f.type, getAsFile: () => f }))
   return {
     items: { ...items, length: items.length },
-    files: Object.assign(files, { item: (i: number) => files[i] }),
+    files: Object.assign([...files], { item: (i: number) => files[i], length: files.length }),
     dropEffect: 'none',
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any as DataTransfer
@@ -149,7 +136,7 @@ describe('useImageDrop', () => {
     expect(result.current.isDragOver).toBe(false)
   })
 
-  it('resets isDragOver on drop (upload handled by BlockNote natively)', () => {
+  it('resets isDragOver on drop', () => {
     const { result } = renderImageDrop()
     const file = new File(['data'], 'photo.png', { type: 'image/png' })
 
@@ -172,114 +159,57 @@ describe('useImageDrop', () => {
     }
   })
 
-  it('passes onImageUrl and vaultPath without error', () => {
+  it('calls onImageUrl for each image file on drop', async () => {
     const onImageUrl = vi.fn()
-    const { result } = renderImageDrop({ onImageUrl, vaultPath: '/vault' })
-    // Should render without error; Tauri event listener is skipped in browser mode
-    expect(result.current.isDragOver).toBe(false)
-  })
-})
+    renderImageDrop({ onImageUrl, vaultPath: '/vault' })
 
-describe('useImageDrop — Tauri native drag-drop', () => {
-  let container: HTMLDivElement
+    const file = new File(['fake-img'], 'photo.png', { type: 'image/png' })
+    act(() => { container.dispatchEvent(createDragEvent('drop', [file])) })
 
-  beforeEach(() => {
-    tauriMode = true
-    capturedDragDropHandler = null
-    container = document.createElement('div')
-    document.body.appendChild(container)
+    // uploadImageFile is async — wait for callback
+    await waitFor(() => expect(onImageUrl).toHaveBeenCalledTimes(1))
+    expect(onImageUrl).toHaveBeenCalledWith(expect.stringContaining('data:image/png'))
   })
 
-  afterEach(() => {
-    tauriMode = false
-    capturedDragDropHandler = null
-    container.remove()
-  })
-
-  function renderImageDropTauri(opts?: { onImageUrl?: (url: string) => void; vaultPath?: string }) {
-    const ref = createRef<HTMLDivElement>()
-    Object.defineProperty(ref, 'current', { value: container, writable: true })
-    return renderHook(() => useImageDrop({ containerRef: ref, ...opts }))
-  }
-
-  it('does not set isDragOver on Tauri over event (internal drags are indistinguishable)', async () => {
-    const { result } = renderImageDropTauri()
-
-    await waitFor(() => expect(capturedDragDropHandler).not.toBeNull())
-
-    act(() => {
-      capturedDragDropHandler!({ payload: { type: 'over', paths: [], position: { x: 100, y: 100 } } })
-    })
-
-    expect(result.current.isDragOver).toBe(false)
-  })
-
-  it('resets isDragOver on Tauri drop event', async () => {
+  it('skips non-image files during drop', async () => {
     const onImageUrl = vi.fn()
-    const { result } = renderImageDropTauri({ onImageUrl, vaultPath: '/vault' })
+    renderImageDrop({ onImageUrl })
 
-    await waitFor(() => expect(capturedDragDropHandler).not.toBeNull())
+    const pdf = new File(['data'], 'doc.pdf', { type: 'application/pdf' })
+    act(() => { container.dispatchEvent(createDragEvent('drop', [pdf])) })
 
-    // Set isDragOver via HTML5 dragover (simulates real OS file drag)
-    const file = new File(['data'], 'photo.png', { type: 'image/png' })
-    act(() => { container.dispatchEvent(createDragEvent('dragover', [file])) })
-    expect(result.current.isDragOver).toBe(true)
-
-    act(() => {
-      capturedDragDropHandler!({
-        payload: { type: 'drop', paths: ['/tmp/photo.png'], position: { x: 100, y: 100 } },
-      })
-    })
-
-    expect(result.current.isDragOver).toBe(false)
-  })
-
-  it('resets isDragOver on Tauri cancel event', async () => {
-    const { result } = renderImageDropTauri()
-
-    await waitFor(() => expect(capturedDragDropHandler).not.toBeNull())
-
-    // Set isDragOver via HTML5 dragover first
-    const file = new File(['data'], 'photo.png', { type: 'image/png' })
-    act(() => { container.dispatchEvent(createDragEvent('dragover', [file])) })
-    expect(result.current.isDragOver).toBe(true)
-
-    act(() => {
-      capturedDragDropHandler!({ payload: { type: 'cancel', paths: [], position: { x: 0, y: 0 } } })
-    })
-
-    expect(result.current.isDragOver).toBe(false)
-  })
-
-  it('ignores Tauri events during internal HTML5 drags (tab/block reorder)', async () => {
-    const onImageUrl = vi.fn()
-    renderImageDropTauri({ onImageUrl, vaultPath: '/vault' })
-
-    await waitFor(() => expect(capturedDragDropHandler).not.toBeNull())
-
-    // Simulate an internal drag start (e.g. tab drag)
-    act(() => { document.dispatchEvent(new Event('dragstart')) })
-
-    // Tauri drop event during internal drag should be ignored
-    act(() => {
-      capturedDragDropHandler!({
-        payload: { type: 'drop', paths: ['/tmp/photo.png'], position: { x: 100, y: 100 } },
-      })
-    })
+    // Give it a tick to ensure no callback fires
+    await new Promise(r => setTimeout(r, 50))
     expect(onImageUrl).not.toHaveBeenCalled()
+  })
 
-    // End the internal drag
-    act(() => { document.dispatchEvent(new Event('dragend')) })
+  it('does not call onImageUrl when no callback provided', () => {
+    renderImageDrop()
+    const file = new File(['data'], 'photo.png', { type: 'image/png' })
+    // Should not throw
+    act(() => { container.dispatchEvent(createDragEvent('drop', [file])) })
+  })
 
-    // After internal drag ends, Tauri events should work again
-    const { invoke } = await import('@tauri-apps/api/core')
-    vi.mocked(invoke).mockResolvedValue('/vault/attachments/photo.png')
-    act(() => {
-      capturedDragDropHandler!({
-        payload: { type: 'drop', paths: ['/tmp/photo.png'], position: { x: 100, y: 100 } },
-      })
-    })
-    // onImageUrl is called async (after copyImageToVault resolves)
-    await waitFor(() => expect(onImageUrl).toHaveBeenCalled())
+  it('handles multiple image files in a single drop', async () => {
+    const onImageUrl = vi.fn()
+    renderImageDrop({ onImageUrl })
+
+    const files = [
+      new File(['a'], 'a.png', { type: 'image/png' }),
+      new File(['b'], 'b.jpg', { type: 'image/jpeg' }),
+    ]
+    const dt = createMockDataTransfer(files)
+    const event = new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })
+    act(() => { container.dispatchEvent(event) })
+
+    await waitFor(() => expect(onImageUrl).toHaveBeenCalledTimes(2))
+  })
+
+  it('internal drag (no image files) does not trigger overlay', () => {
+    const { result } = renderImageDrop()
+
+    // Internal drags have no image files in dataTransfer
+    act(() => { container.dispatchEvent(createDragEvent('dragover', [])) })
+    expect(result.current.isDragOver).toBe(false)
   })
 })
