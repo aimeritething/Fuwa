@@ -128,6 +128,12 @@ pub fn flatten_vault(vault_path: String) -> Result<usize, String> {
 }
 
 #[tauri::command]
+pub fn vault_health_check(vault_path: String) -> Result<vault::VaultHealthReport, String> {
+    let vault_path = expand_tilde(&vault_path);
+    vault::vault_health_check(&vault_path)
+}
+
+#[tauri::command]
 pub fn create_getting_started_vault(target_path: Option<String>) -> Result<String, String> {
     let path = match target_path {
         Some(p) if !p.is_empty() => expand_tilde(&p).into_owned(),

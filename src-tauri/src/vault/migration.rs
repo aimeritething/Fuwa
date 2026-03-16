@@ -1,4 +1,5 @@
 use regex::Regex;
+use serde::Serialize;
 use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
@@ -292,6 +293,130 @@ pub fn flatten_vault(vault_path: &str) -> Result<usize, String> {
     Ok(moved)
 }
 
+/// Result of a vault health check.
+#[derive(Debug, Serialize, Default)]
+pub struct VaultHealthReport {
+    /// Files in non-protected subfolders (won't be scanned by scan_vault).
+    pub stray_files: Vec<String>,
+    /// Files whose filename doesn't match slugify(title).
+    pub title_mismatches: Vec<TitleMismatch>,
+}
+
+/// A single filename-title mismatch.
+#[derive(Debug, Serialize)]
+pub struct TitleMismatch {
+    pub path: String,
+    pub filename: String,
+    pub title: String,
+    pub expected_filename: String,
+}
+
+/// Slugify a title to produce the expected filename stem.
+fn slugify(text: &str) -> String {
+    let result: String = text
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() { c } else { '-' })
+        .collect();
+    let trimmed = result.trim_matches('-').to_string();
+    // Collapse consecutive dashes
+    let mut prev_dash = false;
+    let collapsed: String = trimmed
+        .chars()
+        .filter(|&c| {
+            if c == '-' {
+                if prev_dash {
+                    return false;
+                }
+                prev_dash = true;
+            } else {
+                prev_dash = false;
+            }
+            true
+        })
+        .collect();
+    if collapsed.is_empty() {
+        "untitled".to_string()
+    } else {
+        collapsed
+    }
+}
+
+/// Check vault health: detect stray files and filename-title mismatches.
+pub fn vault_health_check(vault_path: &str) -> Result<VaultHealthReport, String> {
+    let vault = Path::new(vault_path);
+    if !vault.exists() || !vault.is_dir() {
+        return Err(format!(
+            "Vault path does not exist or is not a directory: {}",
+            vault_path
+        ));
+    }
+
+    let mut report = VaultHealthReport::default();
+
+    // 1. Detect stray files in non-protected subfolders
+    for entry in WalkDir::new(vault)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        let path = entry.path();
+        if !path.is_file() || path.extension().map(|ext| ext != "md").unwrap_or(true) {
+            continue;
+        }
+        // Skip root files (they're fine)
+        if path.parent() == Some(vault) {
+            continue;
+        }
+        let rel = path.strip_prefix(vault).unwrap_or(path);
+        let top_folder = rel
+            .components()
+            .next()
+            .map(|c| c.as_os_str().to_string_lossy().to_string())
+            .unwrap_or_default();
+        if KEEP_FOLDERS.iter().any(|&k| k == top_folder) || top_folder.starts_with('.') {
+            continue;
+        }
+        report
+            .stray_files
+            .push(rel.to_string_lossy().to_string());
+    }
+
+    // 2. Detect filename-title mismatches (root .md files only)
+    if let Ok(dir_entries) = fs::read_dir(vault) {
+        let matter = gray_matter::Matter::<gray_matter::engine::YAML>::new();
+        for dir_entry in dir_entries.flatten() {
+            let path = dir_entry.path();
+            if !path.is_file() || path.extension().map(|ext| ext != "md").unwrap_or(true) {
+                continue;
+            }
+            let filename = path
+                .file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_default();
+            let content = match fs::read_to_string(&path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            let parsed = matter.parse(&content);
+            let title = super::parsing::extract_title(&parsed.content, &filename);
+            let expected_stem = slugify(&title);
+            let expected_filename = format!("{}.md", expected_stem);
+            let current_stem = filename.strip_suffix(".md").unwrap_or(&filename);
+            if current_stem != expected_stem {
+                report.title_mismatches.push(TitleMismatch {
+                    path: path.to_string_lossy().to_string(),
+                    filename: filename.clone(),
+                    title,
+                    expected_filename,
+                });
+            }
+        }
+    }
+
+    Ok(report)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -566,5 +691,105 @@ mod tests {
             !vault.join("note").exists(),
             "empty folder should be removed"
         );
+    }
+
+    // --- slugify ---
+
+    #[test]
+    fn test_slugify_basic() {
+        assert_eq!(slugify("Hello World"), "hello-world");
+    }
+
+    #[test]
+    fn test_slugify_special_chars() {
+        assert_eq!(slugify("My Note (v2)!"), "my-note-v2");
+        assert_eq!(slugify("Sprint Retrospective"), "sprint-retrospective");
+    }
+
+    #[test]
+    fn test_slugify_empty() {
+        assert_eq!(slugify(""), "untitled");
+    }
+
+    #[test]
+    fn test_slugify_unicode() {
+        assert_eq!(slugify("Café Résumé"), "caf-r-sum");
+    }
+
+    // --- vault_health_check ---
+
+    #[test]
+    fn test_health_check_detects_stray_files() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_file(vault, "root-note.md", "---\ntype: Note\n---\n# Root Note\n");
+        write_nested_file(
+            vault,
+            "old-folder/stray.md",
+            "---\ntype: Note\n---\n# Stray\n",
+        );
+        write_nested_file(
+            vault,
+            "type/project.md",
+            "---\ntype: Type\n---\n# Project\n",
+        );
+
+        let report = vault_health_check(vault.to_str().unwrap()).unwrap();
+        assert_eq!(report.stray_files.len(), 1);
+        assert!(report.stray_files[0].contains("stray.md"));
+    }
+
+    #[test]
+    fn test_health_check_no_stray_when_flat() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_file(vault, "my-note.md", "# My Note\n");
+        write_nested_file(vault, "type/project.md", "---\ntype: Type\n---\n# Project\n");
+
+        let report = vault_health_check(vault.to_str().unwrap()).unwrap();
+        assert!(report.stray_files.is_empty());
+    }
+
+    #[test]
+    fn test_health_check_detects_title_mismatch() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        // Filename is "wrong-name.md" but title is "My Actual Title"
+        write_file(
+            vault,
+            "wrong-name.md",
+            "---\ntype: Note\n---\n# My Actual Title\n",
+        );
+
+        let report = vault_health_check(vault.to_str().unwrap()).unwrap();
+        assert_eq!(report.title_mismatches.len(), 1);
+        assert_eq!(report.title_mismatches[0].filename, "wrong-name.md");
+        assert_eq!(report.title_mismatches[0].expected_filename, "my-actual-title.md");
+    }
+
+    #[test]
+    fn test_health_check_no_mismatch_when_correct() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_file(
+            vault,
+            "my-note.md",
+            "---\ntype: Note\n---\n# My Note\n",
+        );
+
+        let report = vault_health_check(vault.to_str().unwrap()).unwrap();
+        assert!(report.title_mismatches.is_empty());
+    }
+
+    #[test]
+    fn test_health_check_skips_hidden_folders() {
+        let tmp = tempdir().unwrap();
+        let vault = tmp.path();
+        write_file(vault, "root.md", "# Root\n");
+        write_nested_file(vault, ".git/config.md", "# Git Config\n");
+        write_nested_file(vault, ".laputa/cache.md", "# Cache\n");
+
+        let report = vault_health_check(vault.to_str().unwrap()).unwrap();
+        assert!(report.stray_files.is_empty());
     }
 }
