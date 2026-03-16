@@ -105,9 +105,9 @@ struct Frontmatter {
     #[serde(rename = "Status")]
     status: Option<String>,
     #[serde(rename = "Owner")]
-    owner: Option<String>,
+    owner: Option<StringOrList>,
     #[serde(rename = "Cadence")]
-    cadence: Option<String>,
+    cadence: Option<StringOrList>,
     #[serde(
         rename = "Archived",
         alias = "archived",
@@ -215,9 +215,44 @@ impl StringOrList {
 
 /// Parse frontmatter from raw YAML data extracted by gray_matter.
 fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
-    // Convert HashMap to serde_json::Value for deserialization
-    let value =
-        serde_json::Value::Object(data.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
+    // Convert HashMap to serde_json::Value for deserialization.
+    // Filter to only known Frontmatter keys to prevent unknown fields with
+    // unexpected types (e.g. a list where a string is expected) from causing
+    // the entire deserialization to fail and return Default (all None).
+    static KNOWN_KEYS: &[&str] = &[
+        "type",
+        "Is A",
+        "is_a",
+        "aliases",
+        "Belongs to",
+        "Related to",
+        "Status",
+        "Owner",
+        "Cadence",
+        "Archived",
+        "archived",
+        "Trashed",
+        "trashed",
+        "Trashed at",
+        "trashed_at",
+        "Created at",
+        "Created time",
+        "icon",
+        "color",
+        "order",
+        "sidebar label",
+        "template",
+        "sort",
+        "view",
+        "visible",
+        "notion_id",
+    ];
+    let filtered: serde_json::Map<String, serde_json::Value> = data
+        .iter()
+        .filter(|(k, _)| KNOWN_KEYS.iter().any(|&kk| kk == k.as_str()))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    let value = serde_json::Value::Object(filtered);
     serde_json::from_value(value).unwrap_or_default()
 }
 
@@ -424,8 +459,12 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
             .map(|r| r.into_vec())
             .unwrap_or_default(),
         status: frontmatter.status,
-        owner: frontmatter.owner,
-        cadence: frontmatter.cadence,
+        owner: frontmatter
+            .owner
+            .and_then(|o| o.into_vec().into_iter().next()),
+        cadence: frontmatter
+            .cadence
+            .and_then(|c| c.into_vec().into_iter().next()),
         archived: frontmatter.archived.unwrap_or(false),
         trashed: frontmatter.trashed.unwrap_or(false),
         trashed_at: frontmatter.trashed_at.as_deref().and_then(parse_iso_date),
