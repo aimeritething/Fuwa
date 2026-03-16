@@ -479,21 +479,21 @@ aliases:
 ## Role
 Content strategist — plans newsletter topics and manages the editorial calendar.
 `,
-  '/Users/luca/Laputa/type/project.md': `---
+  '/Users/luca/Laputa/project.md': `---
 type: Type
 order: 0
 ---
 
 # Project
 
-A **time-bound initiative** that advances a [[type/responsibility|Responsibility]]. Projects have a clear start, end, and deliverables.
+A **time-bound initiative** that advances a [[responsibility|Responsibility]]. Projects have a clear start, end, and deliverables.
 
 ## Properties
 - **Status**: Active, Paused, Done, Dropped
 - **Owner**: The person accountable
 - **Belongs to**: Usually a Quarter or Responsibility
 `,
-  '/Users/luca/Laputa/type/responsibility.md': `---
+  '/Users/luca/Laputa/responsibility.md': `---
 type: Type
 order: 1
 ---
@@ -506,14 +506,14 @@ An **ongoing area of ownership** — something you're accountable for indefinite
 - **Status**: Active, Paused, Archived
 - **Owner**: The person accountable
 `,
-  '/Users/luca/Laputa/type/procedure.md': `---
+  '/Users/luca/Laputa/procedure.md': `---
 type: Type
 order: 2
 ---
 
 # Procedure
 
-A **recurring process** tied to a [[type/responsibility|Responsibility]]. Procedures have a cadence (weekly, monthly) and describe how to do something.
+A **recurring process** tied to a [[responsibility|Responsibility]]. Procedures have a cadence (weekly, monthly) and describe how to do something.
 
 ## Properties
 - **Status**: Active, Paused
@@ -521,7 +521,7 @@ A **recurring process** tied to a [[type/responsibility|Responsibility]]. Proced
 - **Cadence**: Weekly, Monthly, Quarterly
 - **Belongs to**: A Responsibility
 `,
-  '/Users/luca/Laputa/type/experiment.md': `---
+  '/Users/luca/Laputa/experiment.md': `---
 type: Type
 order: 3
 ---
@@ -534,7 +534,7 @@ A **hypothesis-driven investigation** with a clear test and measurable outcome. 
 - **Status**: Active, Done, Dropped
 - **Owner**: The person running the experiment
 `,
-  '/Users/luca/Laputa/type/person.md': `---
+  '/Users/luca/Laputa/person.md': `---
 type: Type
 order: 4
 ---
@@ -546,7 +546,7 @@ A **person** you interact with — team members, collaborators, contacts. People
 ## Properties
 - **Aliases**: Alternative names for wikilink resolution
 `,
-  '/Users/luca/Laputa/type/event.md': `---
+  '/Users/luca/Laputa/event.md': `---
 type: Type
 order: 5
 ---
@@ -558,7 +558,7 @@ A **point-in-time occurrence** — meetings, launches, milestones. Events are li
 ## Properties
 - **Related to**: Entities this event is about
 `,
-  '/Users/luca/Laputa/type/topic.md': `---
+  '/Users/luca/Laputa/topic.md': `---
 type: Type
 order: 6
 ---
@@ -570,7 +570,7 @@ A **subject area** for categorization. Topics group related notes, projects, and
 ## Properties
 - **Aliases**: Alternative names
 `,
-  '/Users/luca/Laputa/type/essay.md': `---
+  '/Users/luca/Laputa/essay.md': `---
 type: Type
 order: 7
 ---
@@ -582,7 +582,7 @@ A **published piece of writing** — newsletter essays, blog posts, articles. Es
 ## Properties
 - **Belongs to**: Usually a Responsibility
 `,
-  '/Users/luca/Laputa/type/note.md': `---
+  '/Users/luca/Laputa/note.md': `---
 type: Type
 order: 8
 ---
@@ -594,7 +594,7 @@ A **general-purpose document** — research notes, meeting notes, strategy docs.
 ## Properties
 - **Belongs to**: A Project, Responsibility, or other parent
 `,
-  '/Users/luca/Laputa/type/recipe.md': `---
+  '/Users/luca/Laputa/recipe.md': `---
 type: Type
 icon: cooking-pot
 color: orange
@@ -609,7 +609,7 @@ A **recipe** for cooking or baking. Recipes have ingredients, steps, and serving
 - **Prep Time**: Time to prepare
 - **Cook Time**: Time to cook
 `,
-  '/Users/luca/Laputa/type/book.md': `---
+  '/Users/luca/Laputa/book.md': `---
 type: Type
 icon: book-open
 color: green

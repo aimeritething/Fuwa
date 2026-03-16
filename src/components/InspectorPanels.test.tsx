@@ -39,7 +39,7 @@ describe('DynamicRelationshipsPanel', () => {
   const onNavigate = vi.fn()
   const onAddProperty = vi.fn()
   const personTypeEntry = makeEntry({
-    path: '/vault/type/person.md', filename: 'person.md', title: 'Person',
+    path: '/vault/person.md', filename: 'person.md', title: 'Person',
     isA: 'Type', color: 'yellow', icon: 'user',
   })
   const entries = [
@@ -757,7 +757,7 @@ describe('GitHistoryPanel', () => {
 describe('InstancesPanel', () => {
   const onNavigate = vi.fn()
   const quarterType = makeEntry({
-    path: '/vault/type/quarter.md', filename: 'quarter.md', title: 'Quarter',
+    path: '/vault/quarter.md', filename: 'quarter.md', title: 'Quarter',
     isA: 'Type', color: 'blue', icon: 'calendar',
   })
   const typeEntryMap: Record<string, VaultEntry> = { Quarter: quarterType }

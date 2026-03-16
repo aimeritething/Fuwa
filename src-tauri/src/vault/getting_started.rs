@@ -118,27 +118,27 @@ Available colors: red, purple, blue, green, yellow, orange. Icons are Phosphor n
 
 const SAMPLE_FILES: &[SampleFile] = &[
     SampleFile {
-        rel_path: "type/project.md",
+        rel_path: "project.md",
         content: "---\ntype: Type\nicon: rocket-launch\ncolor: purple\norder: 1\n---\n\n# Project\n\nA Project is a time-bounded effort with a clear goal and an eventual completion date. Projects belong to a quarter or area and advance specific goals.\n",
     },
     SampleFile {
-        rel_path: "type/note.md",
+        rel_path: "note.md",
         content: "---\ntype: Type\nicon: note\ncolor: blue\norder: 2\n---\n\n# Note\n\nA Note is a general-purpose document — research notes, meeting notes, strategy docs, or anything that doesn't fit a more specific type.\n",
     },
     SampleFile {
-        rel_path: "type/person.md",
+        rel_path: "person.md",
         content: "---\ntype: Type\nicon: user\ncolor: green\norder: 3\n---\n\n# Person\n\nA Person represents someone you interact with — a colleague, friend, mentor, or collaborator.\n",
     },
     SampleFile {
-        rel_path: "type/topic.md",
+        rel_path: "topic.md",
         content: "---\ntype: Type\nicon: tag\ncolor: yellow\norder: 4\n---\n\n# Topic\n\nA Topic is a subject area or interest category that groups related notes, projects, and people.\n",
     },
     SampleFile {
-        rel_path: "type/theme.md",
+        rel_path: "theme.md",
         content: "---\ntype: Type\nicon: palette\ncolor: purple\norder: 50\n---\n\n# Theme\n\nA visual theme for Laputa. Each theme defines CSS custom properties that control colors, typography, and spacing.\n",
     },
     SampleFile {
-        rel_path: "type/config.md",
+        rel_path: "config.md",
         content: "---\ntype: Type\nicon: gear-six\ncolor: gray\norder: 90\nsidebar label: Config\n---\n\n# Config\n\nVault configuration files. These control how AI agents, tools, and other integrations interact with this vault.\n",
     },
     SampleFile {
@@ -485,11 +485,11 @@ mod tests {
         assert!(vault_path.join("sample-project.md").exists());
         assert!(vault_path.join("sample-collaborator.md").exists());
         assert!(vault_path.join("getting-started.md").exists());
-        assert!(vault_path.join("type/project.md").exists());
-        assert!(vault_path.join("type/note.md").exists());
-        assert!(vault_path.join("type/person.md").exists());
-        assert!(vault_path.join("type/topic.md").exists());
-        assert!(vault_path.join("type/config.md").exists());
+        assert!(vault_path.join("project.md").exists());
+        assert!(vault_path.join("note.md").exists());
+        assert!(vault_path.join("person.md").exists());
+        assert!(vault_path.join("topic.md").exists());
+        assert!(vault_path.join("config.md").exists());
     }
 
     #[test]
@@ -544,8 +544,8 @@ mod tests {
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
         let entries = crate::vault::scan_vault(&vault_path).unwrap();
-        // SAMPLE_FILES + config/agents.md + AGENTS.md stub + 3 vault theme notes
-        assert_eq!(entries.len(), SAMPLE_FILES.len() + 2 + 3);
+        // SAMPLE_FILES (all at root) + AGENTS.md stub
+        assert_eq!(entries.len(), SAMPLE_FILES.len() + 1);
     }
 
     #[test]
@@ -641,7 +641,7 @@ mod tests {
         assert!(vault_path.join("theme/minimal.md").exists());
 
         // Theme type definition
-        assert!(vault_path.join("type/theme.md").exists());
+        assert!(vault_path.join("theme.md").exists());
     }
 
     #[test]

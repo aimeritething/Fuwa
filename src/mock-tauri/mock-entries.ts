@@ -30,7 +30,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     relationships: {
       'Belongs to': ['[[q1-2026]]'],
       'Related to': ['[[software-development]]'],
-      'Type': ['[[type/project]]'],
+      'Type': ['[[project]]'],
     },
     icon: null,
     color: null,
@@ -67,7 +67,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
       ],
       'Topics': ['[[growth]]', '[[writing]]'],
       'Related to': ['[[growth]]'],
-      'Type': ['[[type/responsibility]]'],
+      'Type': ['[[responsibility]]'],
     },
     icon: null,
     color: null,
@@ -98,7 +98,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 180,
     relationships: {
       'Owner': ['[[matteo-cellini|Matteo Cellini]]'],
-      'Type': ['[[type/responsibility]]'],
+      'Type': ['[[responsibility]]'],
     },
     icon: null,
     color: null,
@@ -129,7 +129,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 95,
     relationships: {
       'Belongs to': ['[[grow-newsletter]]'],
-      'Type': ['[[type/procedure]]'],
+      'Type': ['[[procedure]]'],
     },
     icon: null,
     color: null,
@@ -160,7 +160,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 128,
     relationships: {
       'Belongs to': ['[[manage-sponsorships]]'],
-      'Type': ['[[type/procedure]]'],
+      'Type': ['[[procedure]]'],
     },
     icon: null,
     color: null,
@@ -192,7 +192,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     relationships: {
       'Related to': ['[[trading]]', '[[algorithmic-trading]]'],
       'Has Data': ['[[ema200-backtest-results]]'],
-      'Type': ['[[type/experiment]]'],
+      'Type': ['[[experiment]]'],
     },
     icon: null,
     color: null,
@@ -224,7 +224,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     relationships: {
       'Belongs to': ['[[26q1-laputa-app]]'],
       'Related to': ['[[growth]]', '[[ads]]'],
-      'Type': ['[[type/note]]'],
+      'Type': ['[[note]]'],
     },
     icon: null,
     color: null,
@@ -255,7 +255,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 150,
     relationships: {
       'Belongs to': ['[[26q1-laputa-app]]'],
-      'Type': ['[[type/note]]'],
+      'Type': ['[[note]]'],
     },
     icon: null,
     color: null,
@@ -285,7 +285,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     snippet: 'Sponsorship manager — handles all sponsor relationships, proposals, and reporting.',
     wordCount: 88,
     relationships: {
-      'Type': ['[[type/person]]'],
+      'Type': ['[[person]]'],
     },
     icon: null,
     color: null,
@@ -315,7 +315,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     snippet: 'Product designer — leads UX research and design sprints for the app.',
     wordCount: 120,
     relationships: {
-      'Type': ['[[type/person]]'],
+      'Type': ['[[person]]'],
     },
     icon: null,
     color: null,
@@ -345,7 +345,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     snippet: 'Frontend engineer — focuses on React performance and accessibility.',
     wordCount: 95,
     relationships: {
-      'Type': ['[[type/person]]'],
+      'Type': ['[[person]]'],
     },
     icon: null,
     color: null,
@@ -375,7 +375,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     snippet: 'Content strategist — plans newsletter topics and manages the editorial calendar.',
     wordCount: 75,
     relationships: {
-      'Type': ['[[type/person]]'],
+      'Type': ['[[person]]'],
     },
     icon: null,
     color: null,
@@ -406,7 +406,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 310,
     relationships: {
       'Related to': ['[[26q1-laputa-app]]', '[[matteo-cellini]]'],
-      'Type': ['[[type/event]]'],
+      'Type': ['[[event]]'],
     },
     icon: null,
     color: null,
@@ -437,7 +437,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 45,
     relationships: {
       'Notes': ['[[facebook-ads-strategy]]', '[[budget-allocation]]'],
-      'Type': ['[[type/topic]]'],
+      'Type': ['[[topic]]'],
     },
     icon: null,
     color: null,
@@ -468,7 +468,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 60,
     relationships: {
       'Notes': ['[[stock-screener]]'],
-      'Type': ['[[type/topic]]'],
+      'Type': ['[[topic]]'],
     },
     icon: null,
     color: null,
@@ -499,7 +499,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 180,
     relationships: {
       'Belongs to': ['[[grow-newsletter]]'],
-      'Type': ['[[type/essay]]'],
+      'Type': ['[[essay]]'],
     },
     icon: null,
     color: null,
@@ -531,7 +531,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     relationships: {
       'Belongs to': ['[[grow-newsletter]]'],
       'Related to': ['[[software-development]]'],
-      'Type': ['[[type/essay]]'],
+      'Type': ['[[essay]]'],
     },
     icon: null,
     color: null,
@@ -562,7 +562,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 410,
     relationships: {
       'Belongs to': ['[[grow-newsletter]]'],
-      'Type': ['[[type/essay]]'],
+      'Type': ['[[essay]]'],
     },
     icon: null,
     color: null,
@@ -574,7 +574,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
   },
   // --- Type documents ---
   {
-    path: '/Users/luca/Laputa/type/project.md',
+    path: '/Users/luca/Laputa/project.md',
     filename: 'project.md',
     title: 'Project',
     isA: 'Type',
@@ -602,7 +602,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     properties: {},
   },
   {
-    path: '/Users/luca/Laputa/type/responsibility.md',
+    path: '/Users/luca/Laputa/responsibility.md',
     filename: 'responsibility.md',
     title: 'Responsibility',
     isA: 'Type',
@@ -630,7 +630,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     properties: {},
   },
   {
-    path: '/Users/luca/Laputa/type/procedure.md',
+    path: '/Users/luca/Laputa/procedure.md',
     filename: 'procedure.md',
     title: 'Procedure',
     isA: 'Type',
@@ -658,7 +658,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     properties: {},
   },
   {
-    path: '/Users/luca/Laputa/type/experiment.md',
+    path: '/Users/luca/Laputa/experiment.md',
     filename: 'experiment.md',
     title: 'Experiment',
     isA: 'Type',
@@ -686,7 +686,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     properties: {},
   },
   {
-    path: '/Users/luca/Laputa/type/person.md',
+    path: '/Users/luca/Laputa/person.md',
     filename: 'person.md',
     title: 'Person',
     isA: 'Type',
@@ -714,7 +714,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     properties: {},
   },
   {
-    path: '/Users/luca/Laputa/type/event.md',
+    path: '/Users/luca/Laputa/event.md',
     filename: 'event.md',
     title: 'Event',
     isA: 'Type',
@@ -742,7 +742,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     properties: {},
   },
   {
-    path: '/Users/luca/Laputa/type/topic.md',
+    path: '/Users/luca/Laputa/topic.md',
     filename: 'topic.md',
     title: 'Topic',
     isA: 'Type',
@@ -770,7 +770,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     properties: {},
   },
   {
-    path: '/Users/luca/Laputa/type/essay.md',
+    path: '/Users/luca/Laputa/essay.md',
     filename: 'essay.md',
     title: 'Essay',
     isA: 'Type',
@@ -798,7 +798,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     properties: {},
   },
   {
-    path: '/Users/luca/Laputa/type/note.md',
+    path: '/Users/luca/Laputa/note.md',
     filename: 'note.md',
     title: 'Note',
     isA: 'Type',
@@ -827,7 +827,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
   },
   // --- Custom type documents ---
   {
-    path: '/Users/luca/Laputa/type/config.md',
+    path: '/Users/luca/Laputa/config.md',
     filename: 'config.md',
     title: 'Config',
     isA: 'Type',
@@ -855,7 +855,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     properties: {},
   },
   {
-    path: '/Users/luca/Laputa/type/recipe.md',
+    path: '/Users/luca/Laputa/recipe.md',
     filename: 'recipe.md',
     title: 'Recipe',
     isA: 'Type',
@@ -883,7 +883,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     properties: {},
   },
   {
-    path: '/Users/luca/Laputa/type/book.md',
+    path: '/Users/luca/Laputa/book.md',
     filename: 'book.md',
     title: 'Book',
     isA: 'Type',
@@ -931,7 +931,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     snippet: 'Vault instructions for AI agents. Defines how tools and integrations interact with this vault.',
     wordCount: 200,
     relationships: {
-      'Type': ['[[type/config]]'],
+      'Type': ['[[config]]'],
     },
     icon: null,
     color: null,
@@ -961,7 +961,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     snippet: 'Classic Roman pasta dish with eggs, pecorino, guanciale, and black pepper.',
     wordCount: 310,
     relationships: {
-      'Type': ['[[type/recipe]]'],
+      'Type': ['[[recipe]]'],
     },
     icon: null,
     color: null,
@@ -991,7 +991,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     snippet: 'Essential reading for anyone building distributed systems. Covers replication, partitioning, transactions.',
     wordCount: 100,
     relationships: {
-      'Type': ['[[type/book]]'],
+      'Type': ['[[book]]'],
     },
     icon: null,
     color: null,
@@ -1023,7 +1023,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 100,
     relationships: {
       'Belongs to': ['[[26q1-laputa-app]]'],
-      'Type': ['[[type/note]]'],
+      'Type': ['[[note]]'],
     },
     icon: null,
     color: null,
@@ -1053,7 +1053,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     snippet: 'Old API documentation for the v1 endpoint. Replaced by v2 docs.',
     wordCount: 85,
     relationships: {
-      'Type': ['[[type/note]]'],
+      'Type': ['[[note]]'],
     },
     icon: null,
     color: null,
@@ -1084,7 +1084,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 120,
     relationships: {
       'Related to': ['[[grow-newsletter]]'],
-      'Type': ['[[type/experiment]]'],
+      'Type': ['[[experiment]]'],
     },
     icon: null,
     color: null,
@@ -1123,7 +1123,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 342,
     relationships: {
       'Belongs to': ['[[q3-2025]]'],
-      'Type': ['[[type/project]]'],
+      'Type': ['[[project]]'],
     },
   },
   {
@@ -1154,7 +1154,7 @@ export const MOCK_ENTRIES: VaultEntry[] = [
     wordCount: 215,
     relationships: {
       'Related to': ['[[grow-newsletter]]'],
-      'Type': ['[[type/experiment]]'],
+      'Type': ['[[experiment]]'],
     },
   },
   // --- Refactoring entries for exact-match search testing ---

@@ -394,11 +394,11 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
     // Skip for type documents themselves (isA == "Type") to avoid self-referential links.
     if let Some(ref type_name) = is_a {
         if type_name != "Type" {
-            // If isA is already a wikilink (e.g. "[[type/project]]"), use it directly
+            // If isA is already a wikilink (e.g. "[[project]]"), use it directly
             let type_link = if type_name.starts_with("[[") && type_name.ends_with("]]") {
                 type_name.clone()
             } else {
-                format!("[[type/{}]]", type_name.to_lowercase())
+                format!("[[{}]]", type_name.to_lowercase())
             };
             relationships.insert("Type".to_string(), vec![type_link]);
         }
@@ -519,9 +519,9 @@ pub fn save_note_content(path: &str, content: &str) -> Result<(), String> {
 }
 
 /// Scan a directory recursively for .md files and return VaultEntry for each.
-/// Folders that are scanned recursively (type definitions, config, themes, attachments).
-/// All other subfolders are ignored — notes live flat at the vault root.
-const PROTECTED_FOLDERS: &[&str] = &["type", "config", "attachments", "_themes", "theme"];
+/// Folders that are scanned recursively (themes, attachments, assets).
+/// All other subfolders are ignored — notes and type definitions live flat at the vault root.
+const PROTECTED_FOLDERS: &[&str] = &["attachments", "_themes", "assets"];
 
 pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     if !vault_path.exists() {
@@ -700,14 +700,10 @@ mod tests {
         create_test_file(dir.path(), "root.md", "# Root Note\n");
         create_test_file(
             dir.path(),
-            "type/project.md",
+            "project.md",
             "---\ntype: Type\n---\n# Project\n",
         );
-        create_test_file(
-            dir.path(),
-            "config/agents.md",
-            "---\ntype: Config\n---\n# Agents\n",
-        );
+        create_test_file(dir.path(), "attachments/notes.md", "# Attachment note\n");
         create_test_file(dir.path(), "not-markdown.txt", "This should be ignored");
 
         let entries = scan_vault(dir.path()).unwrap();
@@ -716,7 +712,7 @@ mod tests {
         let filenames: Vec<&str> = entries.iter().map(|e| e.filename.as_str()).collect();
         assert!(filenames.contains(&"root.md"));
         assert!(filenames.contains(&"project.md"));
-        assert!(filenames.contains(&"agents.md"));
+        assert!(filenames.contains(&"notes.md"));
     }
 
     #[test]
@@ -743,22 +739,12 @@ mod tests {
     fn test_scan_vault_includes_all_protected_folders() {
         let dir = TempDir::new().unwrap();
         create_test_file(dir.path(), "root.md", "# Root\n");
-        create_test_file(
-            dir.path(),
-            "type/event.md",
-            "---\ntype: Type\n---\n# Event\n",
-        );
-        create_test_file(dir.path(), "config/ui.config.md", "---\n---\n# Config\n");
-        create_test_file(
-            dir.path(),
-            "theme/default.md",
-            "---\ntype: Theme\n---\n# Default\n",
-        );
         create_test_file(dir.path(), "_themes/legacy.md", "---\n---\n# Legacy\n");
         create_test_file(dir.path(), "attachments/notes.md", "# Attachment note\n");
+        create_test_file(dir.path(), "assets/image.md", "# Asset\n");
 
         let entries = scan_vault(dir.path()).unwrap();
-        assert_eq!(entries.len(), 6);
+        assert_eq!(entries.len(), 4);
     }
 
     #[test]
@@ -872,7 +858,7 @@ Status: Active
         );
         assert_eq!(
             entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/responsibility]]".to_string()]
+            &vec!["[[responsibility]]".to_string()]
         );
     }
 
@@ -924,7 +910,7 @@ Custom Field: just a plain string
         assert_eq!(entry.relationships.len(), 1);
         assert_eq!(
             entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/note]]".to_string()]
+            &vec!["[[note]]".to_string()]
         );
     }
 
@@ -1005,7 +991,7 @@ Context: "[[area/research]]"
         );
     }
 
-    const SKIP_KEYS_CONTENT: &str = "---\nIs A: \"[[type/project]]\"\nAliases:\n  - \"[[alias/foo]]\"\nStatus: \"[[status/active]]\"\nCadence: \"[[cadence/weekly]]\"\nCreated at: \"[[time/2024-01-01]]\"\nCreated time: \"[[time/noon]]\"\nReal Relation: \"[[note/important]]\"\n---\n# Skip Keys Test\n";
+    const SKIP_KEYS_CONTENT: &str = "---\nIs A: \"[[project]]\"\nAliases:\n  - \"[[alias/foo]]\"\nStatus: \"[[status/active]]\"\nCadence: \"[[cadence/weekly]]\"\nCreated at: \"[[time/2024-01-01]]\"\nCreated time: \"[[time/noon]]\"\nReal Relation: \"[[note/important]]\"\n---\n# Skip Keys Test\n";
 
     fn parse_skip_keys_rels() -> (HashMap<String, Vec<String>>, usize) {
         let dir = TempDir::new().unwrap();
@@ -1037,12 +1023,9 @@ Context: "[[area/research]]"
             rels.get("Real Relation").unwrap(),
             &vec!["[[note/important]]".to_string()]
         );
-        // "Real Relation" + auto-generated "Type" (from is_a: "[[type/project]]")
+        // "Real Relation" + auto-generated "Type" (from is_a: "[[project]]")
         assert_eq!(len, 2);
-        assert_eq!(
-            rels.get("Type").unwrap(),
-            &vec!["[[type/project]]".to_string()]
-        );
+        assert_eq!(rels.get("Type").unwrap(), &vec!["[[project]]".to_string()]);
     }
 
     #[test]
@@ -1121,7 +1104,7 @@ References:
         let entry = parse_test_entry(&dir, "project/my-project.md", content);
         assert_eq!(
             entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/project]]".to_string()]
+            &vec!["[[project]]".to_string()]
         );
     }
 
@@ -1129,7 +1112,7 @@ References:
     fn test_type_relationship_skipped_for_type_documents() {
         let dir = TempDir::new().unwrap();
         let content = "---\nIs A: Type\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.relationships.get("Type").is_none());
     }
 
@@ -1145,11 +1128,11 @@ References:
     #[test]
     fn test_type_relationship_handles_wikilink_is_a() {
         let dir = TempDir::new().unwrap();
-        let content = "---\nIs A: \"[[type/experiment]]\"\n---\n# Test\n";
+        let content = "---\nIs A: \"[[experiment]]\"\n---\n# Test\n";
         let entry = parse_test_entry(&dir, "test.md", content);
         assert_eq!(
             entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/experiment]]".to_string()]
+            &vec!["[[experiment]]".to_string()]
         );
     }
 
@@ -1157,7 +1140,7 @@ References:
     fn test_type_from_frontmatter_not_folder() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\n---\n# Some Type\n";
-        let entry = parse_test_entry(&dir, "type/some-type.md", content);
+        let entry = parse_test_entry(&dir, "some-type.md", content);
         assert_eq!(entry.is_a, Some("Type".to_string()));
     }
 
@@ -1178,7 +1161,7 @@ References:
         let entry = parse_test_entry(&dir, "person/alice.md", content);
         assert_eq!(
             entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/person]]".to_string()]
+            &vec!["[[person]]".to_string()]
         );
     }
 
@@ -1264,7 +1247,7 @@ References:
     fn test_parse_sidebar_label_from_type_entry() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nsidebar label: News\n---\n# News\n";
-        let entry = parse_test_entry(&dir, "type/news.md", content);
+        let entry = parse_test_entry(&dir, "news.md", content);
         assert_eq!(entry.sidebar_label, Some("News".to_string()));
     }
 
@@ -1272,7 +1255,7 @@ References:
     fn test_parse_sidebar_label_missing_defaults_to_none() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert_eq!(entry.sidebar_label, None);
     }
 
@@ -1280,7 +1263,7 @@ References:
     fn test_sidebar_label_not_in_relationships() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nsidebar label: My Series\n---\n# Series\n";
-        let entry = parse_test_entry(&dir, "type/series.md", content);
+        let entry = parse_test_entry(&dir, "series.md", content);
         assert!(entry.relationships.get("sidebar label").is_none());
     }
 
@@ -1291,7 +1274,7 @@ References:
         let dir = TempDir::new().unwrap();
         let content =
             "---\ntype: Type\ntemplate: \"## Objective\\n\\n## Timeline\"\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.template.is_some());
     }
 
@@ -1300,7 +1283,7 @@ References:
         let dir = TempDir::new().unwrap();
         let content =
             "---\ntype: Type\ntemplate: |\n  ## Objective\n  \n  ## Timeline\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.template.is_some());
         let tmpl = entry.template.unwrap();
         assert!(tmpl.contains("## Objective"));
@@ -1311,7 +1294,7 @@ References:
     fn test_parse_template_missing_defaults_to_none() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\n---\n# Note\n";
-        let entry = parse_test_entry(&dir, "type/note.md", content);
+        let entry = parse_test_entry(&dir, "note.md", content);
         assert_eq!(entry.template, None);
     }
 
@@ -1319,7 +1302,7 @@ References:
     fn test_template_not_in_relationships() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\ntemplate: \"## Heading\"\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.relationships.get("template").is_none());
     }
 
@@ -1329,7 +1312,7 @@ References:
     fn test_parse_sort_from_type_entry() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nsort: \"modified:desc\"\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert_eq!(entry.sort, Some("modified:desc".to_string()));
     }
 
@@ -1337,7 +1320,7 @@ References:
     fn test_parse_sort_missing_defaults_to_none() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert_eq!(entry.sort, None);
     }
 
@@ -1345,7 +1328,7 @@ References:
     fn test_sort_not_in_relationships() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nsort: \"title:asc\"\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.relationships.get("sort").is_none());
     }
 
@@ -1353,7 +1336,7 @@ References:
     fn test_sort_not_in_properties() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nsort: \"title:asc\"\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.properties.get("sort").is_none());
     }
 
@@ -1588,7 +1571,7 @@ Company: Acme Corp
     fn test_parse_visible_false_from_type_entry() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
-        let entry = parse_test_entry(&dir, "type/journal.md", content);
+        let entry = parse_test_entry(&dir, "journal.md", content);
         assert_eq!(entry.visible, Some(false));
     }
 
@@ -1596,7 +1579,7 @@ Company: Acme Corp
     fn test_parse_visible_true_from_type_entry() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nvisible: true\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert_eq!(entry.visible, Some(true));
     }
 
@@ -1604,7 +1587,7 @@ Company: Acme Corp
     fn test_parse_visible_missing_defaults_to_none() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert_eq!(entry.visible, None);
     }
 
@@ -1612,7 +1595,7 @@ Company: Acme Corp
     fn test_visible_not_in_relationships() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
-        let entry = parse_test_entry(&dir, "type/journal.md", content);
+        let entry = parse_test_entry(&dir, "journal.md", content);
         assert!(entry.relationships.get("visible").is_none());
     }
 
@@ -1620,7 +1603,7 @@ Company: Acme Corp
     fn test_visible_not_in_properties() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
-        let entry = parse_test_entry(&dir, "type/journal.md", content);
+        let entry = parse_test_entry(&dir, "journal.md", content);
         assert!(entry.properties.get("visible").is_none());
     }
 

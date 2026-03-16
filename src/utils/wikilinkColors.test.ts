@@ -32,12 +32,12 @@ function makeEntry(overrides: Partial<VaultEntry>): VaultEntry {
   }
 }
 
-const typeProject = makeEntry({ path: '/vault/type/project.md', filename: 'project.md', title: 'Project', isA: 'Type', color: 'red' })
-const typePerson = makeEntry({ path: '/vault/type/person.md', filename: 'person.md', title: 'Person', isA: 'Type', color: 'yellow' })
-const typeEvent = makeEntry({ path: '/vault/type/event.md', filename: 'event.md', title: 'Event', isA: 'Type', color: 'yellow' })
-const typeTopic = makeEntry({ path: '/vault/type/topic.md', filename: 'topic.md', title: 'Topic', isA: 'Type', color: 'green' })
-const typeRecipe = makeEntry({ path: '/vault/type/recipe.md', filename: 'recipe.md', title: 'Recipe', isA: 'Type', color: 'orange', icon: 'cooking-pot' })
-const typeNote = makeEntry({ path: '/vault/type/note.md', filename: 'note.md', title: 'Note', isA: 'Type', color: 'blue' })
+const typeProject = makeEntry({ path: '/vault/project.md', filename: 'project.md', title: 'Project', isA: 'Type', color: 'red' })
+const typePerson = makeEntry({ path: '/vault/person.md', filename: 'person.md', title: 'Person', isA: 'Type', color: 'yellow' })
+const typeEvent = makeEntry({ path: '/vault/event.md', filename: 'event.md', title: 'Event', isA: 'Type', color: 'yellow' })
+const typeTopic = makeEntry({ path: '/vault/topic.md', filename: 'topic.md', title: 'Topic', isA: 'Type', color: 'green' })
+const typeRecipe = makeEntry({ path: '/vault/recipe.md', filename: 'recipe.md', title: 'Recipe', isA: 'Type', color: 'orange', icon: 'cooking-pot' })
+const typeNote = makeEntry({ path: '/vault/note.md', filename: 'note.md', title: 'Note', isA: 'Type', color: 'blue' })
 
 const projectEntry = makeEntry({ path: '/vault/project/app.md', filename: 'app.md', title: 'Build App', isA: 'Project' })
 const personEntry = makeEntry({ path: '/vault/person/alice.md', filename: 'alice.md', title: 'Alice', isA: 'Person', aliases: ['Alice Smith'] })

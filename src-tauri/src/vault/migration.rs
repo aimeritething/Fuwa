@@ -118,8 +118,8 @@ pub fn migrate_is_a_to_type(vault_path: &str) -> Result<usize, String> {
     Ok(migrated)
 }
 
-/// Folders that are NOT flattened — they contain definitions/config, not notes.
-const KEEP_FOLDERS: &[&str] = &["type", "config", "attachments", "_themes", "theme"];
+/// Folders that are NOT flattened — they contain assets/themes, not notes.
+const KEEP_FOLDERS: &[&str] = &["attachments", "_themes", "assets"];
 
 /// Determine a unique filename at `dest_dir`, appending -2, -3, etc. on collision.
 fn unique_filename(dest_dir: &Path, filename: &str, taken: &HashSet<String>) -> String {
@@ -589,26 +589,18 @@ mod tests {
     }
 
     #[test]
-    fn test_flatten_vault_skips_type_and_config() {
+    fn test_flatten_vault_skips_protected_folders() {
         let tmp = tempdir().unwrap();
         let vault = tmp.path();
-        write_nested_file(
-            vault,
-            "type/project.md",
-            "---\ntype: Type\n---\n# Project\n",
-        );
-        write_nested_file(
-            vault,
-            "config/agents.md",
-            "---\ntype: Config\n---\n# Agents\n",
-        );
+        write_nested_file(vault, "attachments/image.md", "# Image note\n");
+        write_nested_file(vault, "_themes/legacy.md", "---\n---\n# Legacy\n");
         write_nested_file(vault, "note/hello.md", "---\ntype: Note\n---\n# Hello\n");
 
         let count = flatten_vault(vault.to_str().unwrap()).unwrap();
         assert_eq!(count, 1);
         assert!(vault.join("hello.md").exists());
-        assert!(vault.join("type/project.md").exists());
-        assert!(vault.join("config/agents.md").exists());
+        assert!(vault.join("attachments/image.md").exists());
+        assert!(vault.join("_themes/legacy.md").exists());
     }
 
     #[test]
@@ -721,15 +713,11 @@ mod tests {
         let tmp = tempdir().unwrap();
         let vault = tmp.path();
         write_file(vault, "root-note.md", "---\ntype: Note\n---\n# Root Note\n");
+        write_file(vault, "project.md", "---\ntype: Type\n---\n# Project\n");
         write_nested_file(
             vault,
             "old-folder/stray.md",
             "---\ntype: Note\n---\n# Stray\n",
-        );
-        write_nested_file(
-            vault,
-            "type/project.md",
-            "---\ntype: Type\n---\n# Project\n",
         );
 
         let report = vault_health_check(vault.to_str().unwrap()).unwrap();
@@ -742,11 +730,7 @@ mod tests {
         let tmp = tempdir().unwrap();
         let vault = tmp.path();
         write_file(vault, "my-note.md", "# My Note\n");
-        write_nested_file(
-            vault,
-            "type/project.md",
-            "---\ntype: Type\n---\n# Project\n",
-        );
+        write_file(vault, "project.md", "---\ntype: Type\n---\n# Project\n");
 
         let report = vault_health_check(vault.to_str().unwrap()).unwrap();
         assert!(report.stray_files.is_empty());

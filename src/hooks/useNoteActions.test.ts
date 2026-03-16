@@ -315,9 +315,9 @@ describe('resolveNewNote', () => {
 })
 
 describe('resolveNewType', () => {
-  it('creates a type entry in the type folder', () => {
+  it('creates a type entry at vault root', () => {
     const { entry, content } = resolveNewType('Recipe', '/my/vault')
-    expect(entry.path).toBe('/my/vault/type/recipe.md')
+    expect(entry.path).toBe('/my/vault/recipe.md')
     expect(entry.isA).toBe('Type')
     expect(entry.status).toBeNull()
     expect(content).toContain('type: Type')
@@ -326,7 +326,7 @@ describe('resolveNewType', () => {
 
   it('uses provided vault path instead of hardcoded path', () => {
     const { entry } = resolveNewType('Responsibility', '/other/vault')
-    expect(entry.path).toBe('/other/vault/type/responsibility.md')
+    expect(entry.path).toBe('/other/vault/responsibility.md')
     expect(entry.path).not.toContain('/Users/luca/Laputa')
   })
 })
@@ -846,7 +846,7 @@ describe('useNoteActions hook', () => {
 
     it.each([
       ['handleCreateNote', 'Failing Note', 'Note', 'failing-note.md'],
-      ['handleCreateType', 'Recipe', 'Type', 'type/recipe.md'],
+      ['handleCreateType', 'Recipe', 'Type', 'recipe.md'],
     ])('reverts optimistic creation via %s when disk write fails', async (method, title, type, pathFragment) => {
       vi.mocked(invoke).mockRejectedValueOnce(new Error('disk full'))
       const { result } = renderHook(() => useNoteActions(makeConfig()))

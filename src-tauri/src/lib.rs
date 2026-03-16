@@ -53,7 +53,7 @@ fn run_startup_tasks() {
     theme::seed_default_themes(vp_str);
     // Seed theme/ with built-in vault theme notes if missing
     theme::seed_vault_themes(vp_str);
-    // Seed type/theme.md so the Theme type has an icon in the sidebar
+    // Seed theme.md type definition so the Theme type has an icon in the sidebar
     let _ = theme::ensure_theme_type_definition(vp_str);
 
     // Migrate root AGENTS.md → config/agents.md (one-time, idempotent)

@@ -554,7 +554,7 @@ pub fn repair_vault(vault_path: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
     // Repair themes
     theme::restore_default_themes(&vault_path)?;
-    // Repair config files (config/agents.md, type/config.md, AGENTS.md stub)
+    // Repair config files (config/agents.md, config.md type def, AGENTS.md stub)
     vault::repair_config_files(&vault_path)?;
     // Ensure .gitignore with sensible defaults exists
     git::ensure_gitignore(&vault_path)?;

@@ -3,7 +3,7 @@ use std::path::Path;
 
 use super::getting_started::AGENTS_MD;
 
-/// Content for `type/config.md` — gives the Config type a sidebar icon and label.
+/// Content for `config.md` — gives the Config type a sidebar icon and label.
 const CONFIG_TYPE_DEFINITION: &str = "\
 ---
 Is A: Type
@@ -26,7 +26,7 @@ See config/agents.md for vault instructions.
 ";
 
 /// Seed `config/agents.md` if missing or empty (idempotent, per-file).
-/// Also seeds `type/config.md` for sidebar visibility.
+/// Also seeds `config.md` type definition for sidebar visibility.
 pub fn seed_config_files(vault_path: &str) {
     let vault = Path::new(vault_path);
     let config_dir = vault.join("config");
@@ -45,13 +45,9 @@ pub fn seed_config_files(vault_path: &str) {
     ensure_config_type_definition(vault_path);
 }
 
-/// Ensure `type/config.md` exists (gives Config type a sidebar icon/color).
+/// Ensure `config.md` exists at vault root (gives Config type a sidebar icon/color).
 fn ensure_config_type_definition(vault_path: &str) {
-    let type_dir = Path::new(vault_path).join("type");
-    if fs::create_dir_all(&type_dir).is_err() {
-        return;
-    }
-    let path = type_dir.join("config.md");
+    let path = Path::new(vault_path).join("config.md");
     let needs_write = !path.exists() || fs::metadata(&path).map_or(true, |m| m.len() == 0);
     if needs_write {
         let _ = fs::write(&path, CONFIG_TYPE_DEFINITION);
@@ -99,7 +95,7 @@ pub fn migrate_agents_md(vault_path: &str) {
     }
 }
 
-/// Repair config files: re-create missing `config/agents.md` and `type/config.md`.
+/// Repair config files: re-create missing `config/agents.md` and `config.md` type definition.
 /// Called by the "Repair Vault" command. Returns a status message.
 pub fn repair_config_files(vault_path: &str) -> Result<String, String> {
     let vault = Path::new(vault_path);
@@ -136,15 +132,13 @@ pub fn repair_config_files(vault_path: &str) -> Result<String, String> {
             .map_err(|e| format!("Failed to write config/agents.md: {e}"))?;
     }
 
-    // Step 3: Ensure type/config.md
-    let type_dir = vault.join("type");
-    fs::create_dir_all(&type_dir).map_err(|e| format!("Failed to create type directory: {e}"))?;
-    let config_type_path = type_dir.join("config.md");
+    // Step 3: Ensure config.md type definition at vault root
+    let config_type_path = vault.join("config.md");
     let type_needs_write = !config_type_path.exists()
         || fs::metadata(&config_type_path).map_or(true, |m| m.len() == 0);
     if type_needs_write {
         fs::write(&config_type_path, CONFIG_TYPE_DEFINITION)
-            .map_err(|e| format!("Failed to write type/config.md: {e}"))?;
+            .map_err(|e| format!("Failed to write config.md: {e}"))?;
     }
 
     // Step 4: Ensure root AGENTS.md stub exists
@@ -186,8 +180,8 @@ mod tests {
 
         seed_config_files(vault.to_str().unwrap());
 
-        assert!(vault.join("type/config.md").exists());
-        let content = fs::read_to_string(vault.join("type/config.md")).unwrap();
+        assert!(vault.join("config.md").exists());
+        let content = fs::read_to_string(vault.join("config.md")).unwrap();
         assert!(content.contains("Is A: Type"));
         assert!(content.contains("icon: gear-six"));
     }
@@ -301,7 +295,7 @@ mod tests {
         assert_eq!(msg, "Config files repaired");
 
         assert!(vault.join("config/agents.md").exists());
-        assert!(vault.join("type/config.md").exists());
+        assert!(vault.join("config.md").exists());
         assert!(vault.join("AGENTS.md").exists());
 
         let agents = fs::read_to_string(vault.join("config/agents.md")).unwrap();

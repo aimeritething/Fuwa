@@ -28,7 +28,7 @@ function ReadOnlyType({ isA, customColorKey, onNavigate }: { isA?: string | null
         <button
           className="min-w-0 truncate border-none text-right cursor-pointer hover:opacity-80"
           style={{ background: getTypeLightColor(isA, customColorKey), color: getTypeColor(isA, customColorKey), borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 500 }}
-          onClick={() => onNavigate(`type/${isA.toLowerCase()}`)} title={isA}
+          onClick={() => onNavigate(isA.toLowerCase())} title={isA}
         >{isA}</button>
       ) : (
         <span className="text-right text-[12px] text-secondary-foreground">{isA}</span>

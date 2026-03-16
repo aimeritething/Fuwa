@@ -67,7 +67,7 @@ describe('useNoteListSort (via NoteList)', () => {
   })
 
   it('reads sort from type document for sectionGroup selection', () => {
-    const typeDoc = makeEntry({ path: '/type/note.md', title: 'Note', isA: 'Type', sort: 'title:asc' })
+    const typeDoc = makeEntry({ path: '/note.md', title: 'Note', isA: 'Type', sort: 'title:asc' })
     const entries = [
       typeDoc,
       makeEntry({ path: '/c.md', title: 'Charlie', modifiedAt: 3000 }),
@@ -82,7 +82,7 @@ describe('useNoteListSort (via NoteList)', () => {
   })
 
   it('shows type title as header for sectionGroup selection', () => {
-    const typeDoc = makeEntry({ path: '/type/project.md', title: 'Project', isA: 'Type' })
+    const typeDoc = makeEntry({ path: '/project.md', title: 'Project', isA: 'Type' })
     renderNoteList({ entries: [typeDoc], selection: { kind: 'sectionGroup', type: 'Project', label: 'Projects' } })
     expect(screen.getByText('Project')).toBeInTheDocument()
   })
@@ -91,7 +91,7 @@ describe('useNoteListSort (via NoteList)', () => {
     localStorageMock.setItem('laputa-sort-preferences', JSON.stringify({ '__list__': { option: 'title', direction: 'asc' } }))
     const onUpdateTypeSort = vi.fn()
     const updateEntry = vi.fn()
-    const typeDoc = makeEntry({ path: '/type/project.md', title: 'Project', isA: 'Type', sort: null })
+    const typeDoc = makeEntry({ path: '/project.md', title: 'Project', isA: 'Type', sort: null })
     const entries = [typeDoc, makeEntry()]
 
     renderNoteList({
@@ -101,15 +101,15 @@ describe('useNoteListSort (via NoteList)', () => {
       updateEntry,
     })
 
-    expect(onUpdateTypeSort).toHaveBeenCalledWith('/type/project.md', 'sort', 'title:asc')
-    expect(updateEntry).toHaveBeenCalledWith('/type/project.md', { sort: 'title:asc' })
+    expect(onUpdateTypeSort).toHaveBeenCalledWith('/project.md', 'sort', 'title:asc')
+    expect(updateEntry).toHaveBeenCalledWith('/project.md', { sort: 'title:asc' })
   })
 
   it('does not migrate if type already has sort', () => {
     localStorageMock.setItem('laputa-sort-preferences', JSON.stringify({ '__list__': { option: 'title', direction: 'asc' } }))
     const onUpdateTypeSort = vi.fn()
     const updateEntry = vi.fn()
-    const typeDoc = makeEntry({ path: '/type/project.md', title: 'Project', isA: 'Type', sort: 'modified:desc' })
+    const typeDoc = makeEntry({ path: '/project.md', title: 'Project', isA: 'Type', sort: 'modified:desc' })
     const entries = [typeDoc, makeEntry()]
 
     renderNoteList({

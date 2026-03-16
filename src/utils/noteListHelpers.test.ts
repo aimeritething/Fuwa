@@ -239,7 +239,7 @@ describe('buildRelationshipGroups', () => {
   it('excludes Type key from relationship groups', () => {
     const entity = makeEntry({
       path: '/Laputa/project/alpha.md', filename: 'alpha.md', title: 'Alpha',
-      relationships: { Type: ['[[type/project]]'] },
+      relationships: { Type: ['[[project]]'] },
     })
     const groups = buildRelationshipGroups(entity, [entity])
     const labels = groups.map((g) => g.label)
@@ -272,7 +272,7 @@ describe('buildRelationshipGroups', () => {
     const instance1 = makeEntry({ path: '/Laputa/project/a.md', filename: 'a.md', title: 'Project A', isA: 'Project', modifiedAt: 1700000000 })
     const instance2 = makeEntry({ path: '/Laputa/project/b.md', filename: 'b.md', title: 'Project B', isA: 'Project', modifiedAt: 1700000000 })
     const typeEntity = makeEntry({
-      path: '/Laputa/type/project.md', filename: 'project.md', title: 'Project',
+      path: '/Laputa/project.md', filename: 'project.md', title: 'Project',
       isA: 'Type', relationships: {},
     })
     const groups = buildRelationshipGroups(typeEntity, [typeEntity, instance1, instance2])

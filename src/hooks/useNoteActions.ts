@@ -199,7 +199,7 @@ export function resolveNewNote(title: string, type: string, vaultPath: string, t
 
 export function resolveNewType(typeName: string, vaultPath: string): { entry: VaultEntry; content: string } {
   const slug = slugify(typeName)
-  const entry = buildNewEntry({ path: `${vaultPath}/type/${slug}.md`, slug, title: typeName, type: 'Type', status: null })
+  const entry = buildNewEntry({ path: `${vaultPath}/${slug}.md`, slug, title: typeName, type: 'Type', status: null })
   return { entry, content: `---\ntype: Type\n---\n\n# ${typeName}\n\n` }
 }
 
