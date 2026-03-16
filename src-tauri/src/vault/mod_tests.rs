@@ -352,10 +352,8 @@ fn test_parse_relationships_custom_fields() {
 fn test_parse_relationships_owner_and_notes() {
     let rels = parse_big_project_rels();
     assert_eq!(rels.get("Notes").unwrap().len(), 3);
-    assert_eq!(
-        rels.get("Owner").unwrap(),
-        &vec!["[[person/alice]]".to_string()]
-    );
+    // Owner is now a structural field (skipped from relationships)
+    assert!(rels.get("Owner").is_none());
 }
 
 #[test]

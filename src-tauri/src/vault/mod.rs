@@ -37,6 +37,13 @@ pub struct VaultEntry {
     #[serde(rename = "isA")]
     pub is_a: Option<String>,
     pub aliases: Vec<String>,
+    #[serde(rename = "belongsTo")]
+    pub belongs_to: Vec<String>,
+    #[serde(rename = "relatedTo")]
+    pub related_to: Vec<String>,
+    pub status: Option<String>,
+    pub owner: Option<String>,
+    pub cadence: Option<String>,
     pub archived: bool,
     pub trashed: bool,
     #[serde(rename = "trashedAt")]
@@ -105,6 +112,12 @@ struct Frontmatter {
         deserialize_with = "deserialize_bool_or_string"
     )]
     trashed: Option<bool>,
+    #[serde(rename = "Status", alias = "status", default)]
+    status: Option<String>,
+    #[serde(rename = "Owner", alias = "owner", default)]
+    owner: Option<String>,
+    #[serde(rename = "Cadence", alias = "cadence", default)]
+    cadence: Option<String>,
     #[serde(rename = "Trashed at", alias = "trashed_at")]
     trashed_at: Option<String>,
     #[serde(rename = "Created at")]
@@ -224,6 +237,12 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
         "view",
         "visible",
         "notion_id",
+        "Status",
+        "status",
+        "Owner",
+        "owner",
+        "Cadence",
+        "cadence",
     ];
     let filtered: serde_json::Map<String, serde_json::Value> = data
         .iter()
@@ -253,6 +272,9 @@ const SKIP_KEYS: &[&str] = &[
     "sort",
     "view",
     "visible",
+    "status",
+    "owner",
+    "cadence",
 ];
 
 /// Extract all wikilink-containing fields from raw YAML frontmatter.
@@ -406,6 +428,9 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
         }
     }
 
+    let belongs_to = relationships.get("Belongs to").cloned().unwrap_or_default();
+    let related_to = relationships.get("Related to").cloned().unwrap_or_default();
+
     Ok(VaultEntry {
         path: path.to_string_lossy().to_string(),
         filename,
@@ -417,6 +442,11 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
             .aliases
             .map(|a| a.into_vec())
             .unwrap_or_default(),
+        belongs_to,
+        related_to,
+        status: frontmatter.status,
+        owner: frontmatter.owner,
+        cadence: frontmatter.cadence,
         archived: frontmatter.archived.unwrap_or(false),
         trashed: frontmatter.trashed.unwrap_or(false),
         trashed_at: frontmatter.trashed_at.as_deref().and_then(parse_iso_date),
@@ -601,10 +631,7 @@ mod tests {
         );
         let entry = reload_entry(&dir.path().join("note.md")).unwrap();
         assert_eq!(entry.title, "My Note");
-        assert_eq!(
-            entry.properties.get("Status").and_then(|v| v.as_str()),
-            Some("Active")
-        );
+        assert_eq!(entry.status, Some("Active".to_string()));
 
         // Modify on disk and reload — must see the new content
         create_test_file(
@@ -613,10 +640,7 @@ mod tests {
             "---\nStatus: Done\n---\n# My Note\n\nUpdated.",
         );
         let fresh = reload_entry(&dir.path().join("note.md")).unwrap();
-        assert_eq!(
-            fresh.properties.get("Status").and_then(|v| v.as_str()),
-            Some("Done")
-        );
+        assert_eq!(fresh.status, Some("Done".to_string()));
     }
 
     #[test]
@@ -654,20 +678,10 @@ mod tests {
     fn test_parse_full_frontmatter_scalars() {
         let dir = TempDir::new().unwrap();
         let entry = parse_test_entry(&dir, "laputa.md", FULL_FM_CONTENT);
-        // Status, Owner, Cadence are no longer first-class fields — they flow
-        // into properties (plain strings) or relationships (wikilinks).
-        assert_eq!(
-            entry.properties.get("Status").and_then(|v| v.as_str()),
-            Some("Active")
-        );
-        assert_eq!(
-            entry.properties.get("Owner").and_then(|v| v.as_str()),
-            Some("Luca")
-        );
-        assert_eq!(
-            entry.properties.get("Cadence").and_then(|v| v.as_str()),
-            Some("Weekly")
-        );
+        // Status, Owner, Cadence are first-class struct fields.
+        assert_eq!(entry.status, Some("Active".to_string()));
+        assert_eq!(entry.owner, Some("Luca".to_string()));
+        assert_eq!(entry.cadence, Some("Weekly".to_string()));
     }
 
     #[test]
@@ -887,17 +901,15 @@ Belongs to:
         create_test_file(dir.path(), "some-project.md", content);
 
         let entry = parse_md_file(&dir.path().join("some-project.md")).unwrap();
-        // Owner contains a wikilink, so it should appear in relationships
-        assert_eq!(
-            entry.relationships.get("Owner").unwrap(),
-            &vec!["[[person/luca-rossi|Luca Rossi]]".to_string()]
-        );
-        // Belongs to is also a wikilink array, should appear in relationships
+        // Owner is now a structural field (skipped from relationships)
+        assert!(entry.relationships.get("Owner").is_none());
+        assert_eq!(entry.owner, Some("[[person/luca-rossi|Luca Rossi]]".to_string()));
+        // Belongs to is a wikilink array, should appear in relationships
         assert_eq!(
             entry.relationships.get("Belongs to").unwrap(),
             &vec!["[[responsibility/grow-newsletter]]".to_string()]
         );
-        // Still parsed in the dedicated field too
+        // Also parsed in the dedicated field
         assert_eq!(entry.belongs_to, vec!["[[responsibility/grow-newsletter]]"]);
     }
 
@@ -945,10 +957,8 @@ Custom Field: just a plain string
     fn test_parse_relationships_owner_and_notes() {
         let rels = parse_big_project_rels();
         assert_eq!(rels.get("Notes").unwrap().len(), 3);
-        assert_eq!(
-            rels.get("Owner").unwrap(),
-            &vec!["[[person/alice]]".to_string()]
-        );
+        // Owner is now a structural field (skipped from relationships)
+        assert!(rels.get("Owner").is_none());
     }
 
     #[test]
