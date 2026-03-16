@@ -519,6 +519,10 @@ pub fn save_note_content(path: &str, content: &str) -> Result<(), String> {
 }
 
 /// Scan a directory recursively for .md files and return VaultEntry for each.
+/// Folders that are scanned recursively (type definitions, config, themes, attachments).
+/// All other subfolders are ignored — notes live flat at the vault root.
+const PROTECTED_FOLDERS: &[&str] = &["type", "config", "attachments", "_themes", "theme"];
+
 pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     if !vault_path.exists() {
         return Err(format!(
@@ -534,22 +538,36 @@ pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     }
 
     let mut entries = Vec::new();
-    for entry in WalkDir::new(vault_path)
-        .follow_links(true)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        let entry_path = entry.path();
-        if entry_path.is_file()
-            && entry_path
-                .extension()
-                .map(|ext| ext == "md")
-                .unwrap_or(false)
+
+    // 1. Scan root-level .md files (non-recursive)
+    if let Ok(dir_entries) = fs::read_dir(vault_path) {
+        for dir_entry in dir_entries.flatten() {
+            let path = dir_entry.path();
+            if path.is_file() && path.extension().is_some_and(|ext| ext == "md") {
+                match parse_md_file(&path) {
+                    Ok(vault_entry) => entries.push(vault_entry),
+                    Err(e) => log::warn!("Skipping file: {}", e),
+                }
+            }
+        }
+    }
+
+    // 2. Scan protected folders recursively
+    for folder in PROTECTED_FOLDERS {
+        let folder_path = vault_path.join(folder);
+        if !folder_path.is_dir() {
+            continue;
+        }
+        for entry in WalkDir::new(&folder_path)
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok())
         {
-            match parse_md_file(entry_path) {
-                Ok(vault_entry) => entries.push(vault_entry),
-                Err(e) => {
-                    log::warn!("Skipping file: {}", e);
+            let entry_path = entry.path();
+            if entry_path.is_file() && entry_path.extension().is_some_and(|ext| ext == "md") {
+                match parse_md_file(entry_path) {
+                    Ok(vault_entry) => entries.push(vault_entry),
+                    Err(e) => log::warn!("Skipping file: {}", e),
                 }
             }
         }
@@ -677,22 +695,74 @@ mod tests {
     }
 
     #[test]
-    fn test_scan_vault_recursive() {
+    fn test_scan_vault_root_and_protected_folders() {
         let dir = TempDir::new().unwrap();
         create_test_file(dir.path(), "root.md", "# Root Note\n");
         create_test_file(
             dir.path(),
-            "sub/nested.md",
-            "---\nIs A: Task\n---\n# Nested\n",
+            "type/project.md",
+            "---\ntype: Type\n---\n# Project\n",
+        );
+        create_test_file(
+            dir.path(),
+            "config/agents.md",
+            "---\ntype: Config\n---\n# Agents\n",
         );
         create_test_file(dir.path(), "not-markdown.txt", "This should be ignored");
 
         let entries = scan_vault(dir.path()).unwrap();
-        assert_eq!(entries.len(), 2);
+        assert_eq!(entries.len(), 3);
 
         let filenames: Vec<&str> = entries.iter().map(|e| e.filename.as_str()).collect();
         assert!(filenames.contains(&"root.md"));
-        assert!(filenames.contains(&"nested.md"));
+        assert!(filenames.contains(&"project.md"));
+        assert!(filenames.contains(&"agents.md"));
+    }
+
+    #[test]
+    fn test_scan_vault_skips_non_protected_subfolders() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(dir.path(), "root.md", "# Root Note\n");
+        create_test_file(
+            dir.path(),
+            "random-folder/nested.md",
+            "---\ntype: Note\n---\n# Nested\n",
+        );
+        create_test_file(
+            dir.path(),
+            "project/old-project.md",
+            "---\ntype: Project\n---\n# Old\n",
+        );
+
+        let entries = scan_vault(dir.path()).unwrap();
+        assert_eq!(entries.len(), 1, "only root .md files should be scanned");
+        assert_eq!(entries[0].filename, "root.md");
+    }
+
+    #[test]
+    fn test_scan_vault_includes_all_protected_folders() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(dir.path(), "root.md", "# Root\n");
+        create_test_file(dir.path(), "type/event.md", "---\ntype: Type\n---\n# Event\n");
+        create_test_file(dir.path(), "config/ui.config.md", "---\n---\n# Config\n");
+        create_test_file(dir.path(), "theme/default.md", "---\ntype: Theme\n---\n# Default\n");
+        create_test_file(dir.path(), "_themes/legacy.md", "---\n---\n# Legacy\n");
+        create_test_file(dir.path(), "attachments/notes.md", "# Attachment note\n");
+
+        let entries = scan_vault(dir.path()).unwrap();
+        assert_eq!(entries.len(), 6);
+    }
+
+    #[test]
+    fn test_scan_vault_skips_hidden_folders() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(dir.path(), "root.md", "# Root\n");
+        create_test_file(dir.path(), ".laputa/cache.md", "# Cache\n");
+        create_test_file(dir.path(), ".git/objects.md", "# Git\n");
+
+        let entries = scan_vault(dir.path()).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].filename, "root.md");
     }
 
     #[test]
