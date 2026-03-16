@@ -214,6 +214,10 @@ All `[[wikilinks]]` in the note body (not frontmatter) are extracted by regex an
 
 Title comes from the first `# Heading` in the markdown body. If none is found, the filename (without `.md`) is used as fallback. Logic in `vault/parsing.rs:extract_title()`.
 
+### Title Field (UI)
+
+The editor displays a dedicated `TitleField` component above the BlockNote editor. This is the primary title editing surface — the H1 block inside BlockNote is hidden via CSS. Changing the title field triggers `onTitleSync`, which updates the frontmatter `title:` field and renames the file to match `slugify(title).md`. The title field also responds to `laputa:focus-editor` events with `selectTitle: true` for new note creation.
+
 ### Sidebar Selection
 
 Navigation state is modeled as a discriminated union:
@@ -235,17 +239,20 @@ type SidebarSelection =
 `vault::scan_vault(path)` in `src-tauri/src/vault/mod.rs`:
 
 1. Validates the path exists and is a directory
-2. Uses `walkdir` to recursively traverse (follows symlinks)
-3. Filters to `.md` files only
-4. For each file, calls `parse_md_file()`:
+2. Scans root-level `.md` files (non-recursive)
+3. Recursively scans protected folders: `type/`, `config/`, `attachments/`, `_themes/`, `theme/`
+4. Files in non-protected subfolders are **not indexed** (flat vault enforcement)
+5. For each `.md` file, calls `parse_md_file()`:
    - Reads content with `fs::read_to_string()`
    - Parses frontmatter with `gray_matter::Matter::<YAML>`
    - Extracts title from first `#` heading
    - Reads entity type from `type:` frontmatter field (`Is A:` accepted as legacy alias); type is never inferred from folder
    - Parses dates as ISO 8601 to Unix timestamps
    - Extracts relationships, outgoing links, custom properties, word count, snippet
-5. Sorts by `modified_at` descending
-6. Skips unparseable files with a warning log
+6. Sorts by `modified_at` descending
+7. Skips unparseable files with a warning log
+
+A `vault_health_check` command detects stray files in non-protected subfolders and filename-title mismatches. On vault load, a migration banner offers to flatten stray files to the root via `flatten_vault`.
 
 ### Vault Caching
 
@@ -393,7 +400,7 @@ Two navigation mechanisms:
 1. **Click handler**: DOM event listener on `.editor__blocknote-container` catches clicks on `.wikilink` elements → `onNavigateWikilink(target)`.
 2. **Suggestion menu**: Typing `[[` triggers `SuggestionMenuController` with filtered vault entries.
 
-Wikilink resolution (`useNoteActions`) uses fuzzy matching: exact title → alias → path stem → filename stem → slug-to-words.
+Wikilink resolution (`resolveEntry` in `src/utils/wikilink.ts`) uses multi-pass matching with global priority: filename stem (strongest) → alias → exact title → humanized title (kebab-case → words). No path-based matching — flat vault uses title/filename only. Legacy path-style targets like `[[person/alice]]` are supported by extracting the last segment.
 
 ### Raw Editor Mode
 

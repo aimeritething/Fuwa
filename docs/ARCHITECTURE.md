@@ -569,7 +569,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `trash.rs` | `purge_trash` — deletes trashed notes older than 30 days |
 | `rename.rs` | `rename_note` — renames files and updates wikilinks across the vault |
 | `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
-| `migration.rs` | Frontmatter migration utilities |
+| `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
 | `config_seed.rs` | Seeds `config/` folder, migrates `AGENTS.md`, repairs missing config files |
 | `getting_started.rs` | Creates the Getting Started demo vault |
 
