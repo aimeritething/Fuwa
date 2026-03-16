@@ -903,7 +903,10 @@ Belongs to:
         let entry = parse_md_file(&dir.path().join("some-project.md")).unwrap();
         // Owner is now a structural field (skipped from relationships)
         assert!(entry.relationships.get("Owner").is_none());
-        assert_eq!(entry.owner, Some("[[person/luca-rossi|Luca Rossi]]".to_string()));
+        assert_eq!(
+            entry.owner,
+            Some("[[person/luca-rossi|Luca Rossi]]".to_string())
+        );
         // Belongs to is a wikilink array, should appear in relationships
         assert_eq!(
             entry.relationships.get("Belongs to").unwrap(),
