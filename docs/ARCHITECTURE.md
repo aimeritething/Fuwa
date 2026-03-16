@@ -723,9 +723,10 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 |-------------|-------|---------|
 | `App.tsx` | `selection`, panel widths, dialog visibility, toast, view mode | UI state |
 | `useVaultLoader` | `entries`, `allContent`, `modifiedFiles` | Vault data |
-| `useNoteActions` | `tabs`, `activeTabPath` | Composes `useNoteCreation` + `useNoteRename` + frontmatter ops |
+| `useNoteActions` | `tabs`, `activeTabPath` | Composes `useNoteCreation` + `useNoteRename` + `frontmatterOps` |
 | `useNoteCreation` | — (delegates to `useTabManagement`) | Note/type/daily-note creation with optimistic persistence |
 | `useNoteRename` | — (delegates to `useTabManagement`) | Note renaming with wikilink update |
+| `frontmatterOps` | — (pure functions) | Frontmatter CRUD: key→VaultEntry mapping, mock/Tauri dispatch |
 | `useTabManagement` | Tab ordering, pinning, swapping, closed-tab history | Tab lifecycle |
 | `useVaultSwitcher` | `vaultPath`, `extraVaults` | Vault switching |
 | `useThemeManager` | `themes`, `activeThemeId`, `isDark` | Theme state |
