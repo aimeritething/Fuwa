@@ -30,20 +30,7 @@ pub struct GitCommit {
     pub date: i64,
 }
 
-/// Initialize a new git repository, stage all files, and create an initial commit.
-pub fn init_repo(path: &str) -> Result<(), String> {
-    let dir = Path::new(path);
-
-    run_git(dir, &["init"])?;
-    ensure_author_config(dir)?;
-
-    // Write .gitignore before the first commit so machine-specific and
-    // macOS metadata files are never tracked and don't cause conflicts.
-    let gitignore_path = dir.join(".gitignore");
-    if !gitignore_path.exists() {
-        std::fs::write(
-            &gitignore_path,
-            "# Laputa app files (machine-specific, never commit)\n\
+const DEFAULT_GITIGNORE: &str = "# Laputa app files (machine-specific, never commit)\n\
 .laputa/settings.json\n\
 \n\
 # macOS\n\
@@ -58,10 +45,29 @@ pub fn init_repo(path: &str) -> Result<(), String> {
 .vscode/\n\
 .idea/\n\
 *.swp\n\
-*.swo\n",
-        )
-        .map_err(|e| format!("Failed to write .gitignore: {}", e))?;
+*.swo\n";
+
+/// Ensure a `.gitignore` with sensible defaults exists in the vault directory.
+/// Creates the file if missing; leaves existing `.gitignore` files untouched.
+pub fn ensure_gitignore(path: &str) -> Result<(), String> {
+    let gitignore_path = Path::new(path).join(".gitignore");
+    if !gitignore_path.exists() {
+        std::fs::write(&gitignore_path, DEFAULT_GITIGNORE)
+            .map_err(|e| format!("Failed to write .gitignore: {}", e))?;
     }
+    Ok(())
+}
+
+/// Initialize a new git repository, stage all files, and create an initial commit.
+pub fn init_repo(path: &str) -> Result<(), String> {
+    let dir = Path::new(path);
+
+    run_git(dir, &["init"])?;
+    ensure_author_config(dir)?;
+
+    // Write .gitignore before the first commit so machine-specific and
+    // macOS metadata files are never tracked and don't cause conflicts.
+    ensure_gitignore(path)?;
 
     run_git(dir, &["add", "."])?;
     run_git(dir, &["commit", "-m", "Initial vault setup"])?;
@@ -210,6 +216,29 @@ mod tests {
         }
 
         (bare_dir, clone_a_dir, clone_b_dir)
+    }
+
+    #[test]
+    fn test_ensure_gitignore_creates_file() {
+        let dir = TempDir::new().unwrap();
+        let path = dir.path().to_str().unwrap();
+
+        ensure_gitignore(path).unwrap();
+
+        let content = fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+        assert!(content.contains(".DS_Store"));
+        assert!(content.contains(".laputa/settings.json"));
+    }
+
+    #[test]
+    fn test_ensure_gitignore_preserves_existing() {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join(".gitignore"), "my-rule\n").unwrap();
+
+        ensure_gitignore(dir.path().to_str().unwrap()).unwrap();
+
+        let content = fs::read_to_string(dir.path().join(".gitignore")).unwrap();
+        assert_eq!(content, "my-rule\n");
     }
 
     #[test]

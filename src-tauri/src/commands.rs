@@ -556,6 +556,8 @@ pub fn repair_vault(vault_path: String) -> Result<String, String> {
     theme::restore_default_themes(&vault_path)?;
     // Repair config files (config/agents.md, type/config.md, AGENTS.md stub)
     vault::repair_config_files(&vault_path)?;
+    // Ensure .gitignore with sensible defaults exists
+    git::ensure_gitignore(&vault_path)?;
     Ok("Vault repaired".to_string())
 }
 
