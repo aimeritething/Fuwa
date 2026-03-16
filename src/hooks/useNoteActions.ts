@@ -386,22 +386,23 @@ export function useNoteActions(config: NoteActionsConfig) {
   }, [entries, openTabWithContent, addEntry, config.vaultPath, config.trackUnsaved, config.markContentPending]) // eslint-disable-line react-hooks/exhaustive-deps -- config callbacks are stable
 
   /** Create a note with the given title, open it in a tab, and persist to disk.
-   *  Returns true on success, false on failure (shows toast on error). */
-  const handleCreateNoteForRelationship = useCallback(async (title: string): Promise<boolean> => {
+   *  Returns true synchronously — persistence runs in the background to keep
+   *  all React state updates batched in one tick (avoiding radix-ui infinite
+   *  update loops that occur when `await` forces an early flush). */
+  const handleCreateNoteForRelationship = useCallback((title: string): Promise<boolean> => {
     const template = resolveTemplate(entries, 'Note')
     const resolved = resolveNewNote(title, 'Note', config.vaultPath, template)
     openTabWithContent(resolved.entry, resolved.content)
     addEntryWithMock(resolved.entry, resolved.content, addEntry)
-    try {
-      await persistNewNote(resolved.entry.path, resolved.content)
-      config.onNewNotePersisted?.()
-      return true
-    } catch {
-      handleCloseTab(resolved.entry.path)
-      removeEntry(resolved.entry.path)
-      setToastMessage('Failed to create note — disk write error')
-      return false
-    }
+    // Fire-and-forget persistence — mirrors handleCreateNoteImmediate's pattern.
+    persistNewNote(resolved.entry.path, resolved.content)
+      .then(() => config.onNewNotePersisted?.())
+      .catch(() => {
+        handleCloseTab(resolved.entry.path)
+        removeEntry(resolved.entry.path)
+        setToastMessage('Failed to create note — disk write error')
+      })
+    return Promise.resolve(true)
   }, [entries, openTabWithContent, addEntry, handleCloseTab, removeEntry, setToastMessage, config.vaultPath, config.onNewNotePersisted]) // eslint-disable-line react-hooks/exhaustive-deps -- config callbacks are stable
 
   /** Close tab and discard entry+unsaved state if the note was never persisted. */

@@ -100,8 +100,11 @@ function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
     const title = trimmed
     if (!title) return
     const ok = await onCreateAndOpenNote(title)
+    // Defer frontmatter update to avoid radix-ui infinite setState loop:
+    // onAdd triggers handleUpdateFrontmatter → setTabs in a microtask,
+    // which can collide with the render triggered by openTabWithContent.
+    if (ok) setTimeout(() => onAdd(title), 0)
     if (ok) {
-      onAdd(title)
       setQuery('')
       setActive(false)
     }
@@ -179,7 +182,12 @@ function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
           onCreateAndOpen={onCreateAndOpenNote ? (title) => {
             const fn = async () => {
               const ok = await onCreateAndOpenNote(title)
-              if (ok) { onAdd(title); setQuery(''); setActive(false) }
+              if (ok) {
+                // Defer frontmatter update to next tick to avoid radix-ui
+                // infinite setState loop from overlapping render batches
+                setTimeout(() => onAdd(title), 0)
+                setQuery(''); setActive(false)
+              }
             }
             fn()
           } : undefined}
@@ -326,7 +334,9 @@ function AddRelationshipForm({ entries, onAddProperty, onCreateAndOpenNote }: {
     if (!key) return
     const ok = await onCreateAndOpenNote(title)
     if (ok) {
-      onAddProperty(key, `[[${title}]]`)
+      // Defer frontmatter update to next tick to avoid radix-ui
+      // infinite setState loop from overlapping render batches
+      setTimeout(() => onAddProperty(key, `[[${title}]]`), 0)
       setRelKey(''); setRelTarget(''); setShowForm(false)
     }
   }, [onCreateAndOpenNote, relKey, onAddProperty])

@@ -500,6 +500,7 @@ describe('DynamicRelationshipsPanel', () => {
       await vi.waitFor(() => {
         expect(onCreateAndOpenNote).toHaveBeenCalled()
       })
+      // Wikilink is deferred to next tick and only added on success
       expect(onUpdateProperty).not.toHaveBeenCalled()
     })
 
