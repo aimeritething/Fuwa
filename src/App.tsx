@@ -43,6 +43,8 @@ import { useLayoutPanels } from './hooks/useLayoutPanels'
 import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { ConfirmDeleteDialog } from './components/ConfirmDeleteDialog'
 import { UpdateBanner } from './components/UpdateBanner'
+import { FlatVaultMigrationBanner } from './components/FlatVaultMigrationBanner'
+import { useFlatVaultMigration } from './hooks/useFlatVaultMigration'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
 import type { SidebarSelection, VaultEntry } from './types'
@@ -87,6 +89,7 @@ function App() {
   const { settings, saveSettings } = useSettings()
   const themeManager = useThemeManager(resolvedPath, vault.entries)
 
+  const flatVaultMigration = useFlatVaultMigration(resolvedPath, vault.entries.length > 0, vault.reloadVault)
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
 
   const indexing = useIndexing(resolvedPath)
@@ -576,6 +579,17 @@ function App() {
           />
         </div>
       </div>
+      {flatVaultMigration.needsMigration && (
+        <FlatVaultMigrationBanner
+          strayFileCount={flatVaultMigration.strayFiles.length}
+          isMigrating={flatVaultMigration.isMigrating}
+          onMigrate={async () => {
+            const count = await flatVaultMigration.migrate()
+            setToastMessage(`Migrated ${count} file${count !== 1 ? 's' : ''} to vault root`)
+          }}
+          onDismiss={flatVaultMigration.dismiss}
+        />
+      )}
       <UpdateBanner status={updateStatus} actions={updateActions} />
       <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => setSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} onTriggerSync={autoSync.triggerSync} onOpenConflictResolver={handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} indexingProgress={indexing.progress} lastIndexedTime={indexing.lastIndexedTime} onRetryIndexing={indexing.retryIndexing} onReindexVault={indexing.triggerFullReindex} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
