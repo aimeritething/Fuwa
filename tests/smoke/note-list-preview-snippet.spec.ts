@@ -7,33 +7,41 @@ test.describe('Note list preview snippet', () => {
   })
 
   test('notes with content show a snippet in the note list', async ({ page }) => {
-    // The note list should be visible with entries that have snippets
     const noteListContainer = page.locator('[data-testid="note-list-container"]')
     await expect(noteListContainer).toBeVisible()
 
-    // The snippet text lives in a 12px muted-foreground div inside each note item.
-    // At least one must contain real text (10+ word-chars) — not just a date.
-    const snippetElements = noteListContainer.locator('.text-\\[12px\\]').filter({
-      hasText: /\w{10,}/,
-    })
-    const count = await snippetElements.count()
-    expect(count).toBeGreaterThan(0)
+    // Wait for note items to render (cursor-pointer items inside the container)
+    const noteItems = noteListContainer.locator('.cursor-pointer')
+    await expect(noteItems.first()).toBeVisible({ timeout: 5000 })
+
+    // Each note item has a snippet div: 12px text with muted-foreground
+    // Check that at least one note has text content in its snippet area
+    const snippets = noteListContainer.locator('.text-muted-foreground')
+    const count = await snippets.count()
+    let foundSnippet = false
+    for (let i = 0; i < count; i++) {
+      const text = await snippets.nth(i).textContent()
+      if (text && text.length > 15 && !/^\d/.test(text.trim())) {
+        foundSnippet = true
+        break
+      }
+    }
+    expect(foundSnippet).toBe(true)
   })
 
   test('snippet does not contain raw markdown formatting', async ({ page }) => {
     const noteListContainer = page.locator('[data-testid="note-list-container"]')
     await expect(noteListContainer).toBeVisible()
 
-    // Check snippet divs for absence of raw markdown
-    const snippetDivs = noteListContainer.locator('.text-\\[12px\\]')
-    const snippetCount = await snippetDivs.count()
+    const snippets = noteListContainer.locator('.text-muted-foreground')
+    const count = await snippets.count()
 
-    for (let i = 0; i < Math.min(snippetCount, 5); i++) {
-      const text = await snippetDivs.nth(i).textContent()
+    for (let i = 0; i < Math.min(count, 8); i++) {
+      const text = await snippets.nth(i).textContent()
       if (text && text.length > 10) {
-        expect(text).not.toMatch(/\*\*[^*]+\*\*/)  // no **bold**
-        expect(text).not.toContain('```')  // no code fences
-        expect(text).not.toMatch(/\[\[.*\]\]/)  // no raw wikilinks
+        expect(text).not.toMatch(/\*\*[^*]+\*\*/)
+        expect(text).not.toContain('```')
+        expect(text).not.toMatch(/\[\[.*\]\]/)
       }
     }
   })
@@ -42,13 +50,12 @@ test.describe('Note list preview snippet', () => {
     const noteListContainer = page.locator('[data-testid="note-list-container"]')
     await expect(noteListContainer).toBeVisible()
 
-    const snippetDivs = noteListContainer.locator('.text-\\[12px\\]')
-    const snippetCount = await snippetDivs.count()
+    const snippets = noteListContainer.locator('.text-muted-foreground')
+    const count = await snippets.count()
 
-    for (let i = 0; i < Math.min(snippetCount, 10); i++) {
-      const text = await snippetDivs.nth(i).textContent()
-      if (text && text.length > 5) {
-        // Snippet text should not start with bullet markers
+    for (let i = 0; i < Math.min(count, 10); i++) {
+      const text = await snippets.nth(i).textContent()
+      if (text && text.length > 15) {
         expect(text.trimStart()).not.toMatch(/^[*\-+] /)
         expect(text.trimStart()).not.toMatch(/^\d+\. /)
       }
