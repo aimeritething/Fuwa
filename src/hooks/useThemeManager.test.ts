@@ -490,6 +490,53 @@ text-primary: "#e0e0e0"
     expect(document.documentElement.style.getPropertyValue('--background')).toBe('#FFFFFF')
   })
 
+  it('stale async fetch does not overwrite live-reload content', async () => {
+    // Simulate a slow get_note_content that resolves AFTER notifyThemeSaved
+    let resolveSlowFetch!: (v: string) => void
+    let fetchCount = 0
+    mockInvokeFn.mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === 'get_vault_settings') return { theme: THEME_PATH_DEFAULT }
+      if (cmd === 'get_note_content') {
+        fetchCount++
+        if (fetchCount === 1) {
+          // First fetch: return a pending promise (simulates slow disk)
+          return new Promise<string>(r => { resolveSlowFetch = r })
+        }
+        const path = args?.path as string | undefined
+        if (path === THEME_PATH_DEFAULT) return DEFAULT_THEME_CONTENT
+        return ''
+      }
+      if (cmd === 'set_active_theme') return null
+      return null
+    })
+
+    const { result } = renderHook(() => useThemeManager('/vault', entries, allContent))
+    await waitFor(() => {
+      expect(result.current.activeThemeId).toBe(THEME_PATH_DEFAULT)
+    })
+
+    // Before slow fetch resolves, user saves the theme note (live-reload via Cmd+S)
+    const updatedContent = `---
+type: Theme
+background: "#FF0000"
+---
+`
+    act(() => {
+      result.current.notifyThemeSaved(THEME_PATH_DEFAULT, updatedContent)
+    })
+
+    await waitFor(() => {
+      expect(document.documentElement.style.getPropertyValue('--background')).toBe('#FF0000')
+    })
+
+    // Now the stale fetch resolves with old content — should be ignored
+    resolveSlowFetch(DEFAULT_THEME_CONTENT)
+    await new Promise(r => setTimeout(r, 50))
+
+    // Background should still be the live-reload value, not the stale fetch
+    expect(document.documentElement.style.getPropertyValue('--background')).toBe('#FF0000')
+  })
+
   it('calls ensure_vault_themes on mount with vaultPath', async () => {
     renderHook(() => useThemeManager('/vault', entries, allContent))
     await waitFor(() => {
