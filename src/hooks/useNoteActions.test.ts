@@ -190,8 +190,8 @@ describe('entryMatchesTarget', () => {
     expect(entryMatchesTarget(entry, 'mp')).toBe(true)
   })
 
-  it('matches by path suffix (type/slug)', () => {
-    const entry = makeEntry({ path: '/Users/luca/Laputa/project/my-project.md' })
+  it('matches legacy path-style target via filename stem', () => {
+    const entry = makeEntry({ filename: 'my-project.md' })
     expect(entryMatchesTarget(entry, 'project/my-project')).toBe(true)
   })
 

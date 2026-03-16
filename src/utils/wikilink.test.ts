@@ -58,7 +58,7 @@ describe('resolveEntry', () => {
     expect(resolveEntry(entries, 'My-Project')).toBe(project)
   })
 
-  it('matches by relative path suffix (type/slug)', () => {
+  it('matches legacy path-style targets via last segment', () => {
     expect(resolveEntry(entries, 'person/alice')).toBe(alice)
     expect(resolveEntry(entries, 'project/my-project')).toBe(project)
   })
@@ -84,5 +84,17 @@ describe('resolveEntry', () => {
   it('matches title-as-words from kebab-case target', () => {
     // "my-project" → "my project" should match title "My Project"
     expect(resolveEntry(entries, 'my-project')).toBe(project)
+  })
+
+  it('prefers filename stem over title when ambiguous', () => {
+    // Entry has filename "foo.md" but title "Bar"
+    const fooEntry = makeEntry({ path: '/vault/foo.md', filename: 'foo.md', title: 'Bar' })
+    // Entry has filename "bar.md" but title "Foo"
+    const barEntry = makeEntry({ path: '/vault/bar.md', filename: 'bar.md', title: 'Foo' })
+    const ambiguous = [fooEntry, barEntry]
+    // Searching for "foo" should match fooEntry (by filename stem) not barEntry (by title)
+    expect(resolveEntry(ambiguous, 'foo')).toBe(fooEntry)
+    // Searching for "bar" should match barEntry (by filename stem) not fooEntry (by title)
+    expect(resolveEntry(ambiguous, 'bar')).toBe(barEntry)
   })
 })
