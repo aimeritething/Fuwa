@@ -40,6 +40,24 @@ fn is_snippet_line(line: &str) -> bool {
     !t.is_empty() && !t.starts_with('#') && !t.starts_with("```") && !t.starts_with("---")
 }
 
+/// Strip leading list markers (*, -, +, 1.) from a line.
+fn strip_list_marker(line: &str) -> &str {
+    let t = line.trim_start();
+    // Unordered: "* ", "- ", "+ "
+    for prefix in &["* ", "- ", "+ "] {
+        if let Some(rest) = t.strip_prefix(prefix) {
+            return rest;
+        }
+    }
+    // Ordered: "1. ", "2. ", etc.
+    if let Some(dot_pos) = t.find(". ") {
+        if dot_pos <= 3 && t[..dot_pos].chars().all(|c| c.is_ascii_digit()) {
+            return &t[dot_pos + 2..];
+        }
+    }
+    t
+}
+
 /// Truncate a string to `max_len` bytes at a valid UTF-8 boundary, appending "...".
 fn truncate_with_ellipsis(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
@@ -71,9 +89,15 @@ pub(super) fn extract_snippet(content: &str) -> String {
     let clean: String = body
         .lines()
         .filter(|line| is_snippet_line(line))
+        .map(strip_list_marker)
         .collect::<Vec<&str>>()
         .join(" ");
-    truncate_with_ellipsis(&strip_markdown_chars(&clean), 160)
+    let stripped = strip_markdown_chars(&clean);
+    let trimmed = stripped.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    truncate_with_ellipsis(trimmed, 160)
 }
 
 fn without_h1_line(s: &str) -> Option<&str> {
@@ -330,6 +354,55 @@ mod tests {
         let content = "# Title\n\n---\n\nContent after rule.";
         let snippet = extract_snippet(content);
         assert_eq!(snippet, "Content after rule.");
+    }
+
+    // --- strip_list_marker tests ---
+
+    #[test]
+    fn test_strip_list_marker_unordered() {
+        assert_eq!(strip_list_marker("* Item one"), "Item one");
+        assert_eq!(strip_list_marker("- Item two"), "Item two");
+        assert_eq!(strip_list_marker("+ Item three"), "Item three");
+    }
+
+    #[test]
+    fn test_strip_list_marker_ordered() {
+        assert_eq!(strip_list_marker("1. First item"), "First item");
+        assert_eq!(strip_list_marker("10. Tenth item"), "Tenth item");
+        assert_eq!(strip_list_marker("99. Large number"), "Large number");
+    }
+
+    #[test]
+    fn test_strip_list_marker_preserves_non_list() {
+        assert_eq!(strip_list_marker("Regular text"), "Regular text");
+        assert_eq!(strip_list_marker("  Indented text"), "Indented text");
+    }
+
+    #[test]
+    fn test_extract_snippet_strips_list_markers() {
+        let content =
+            "---\ntype: Project\n---\n# My Project\n\n* First bullet\n* Second bullet\n- Dash item";
+        let snippet = extract_snippet(content);
+        assert_eq!(snippet, "First bullet Second bullet Dash item");
+    }
+
+    #[test]
+    fn test_extract_snippet_mixed_headings_and_bullets() {
+        let content = "---\ntype: Project\nstatus: Active\n---\n# Migrate newsletter to Beehiiv\n\n### 1) Newsletter is 100% on Beehiiv\n\n* Migration is successful\n\n### 2) Open rate is >27%\n\n* No regressions on open rate";
+        let snippet = extract_snippet(content);
+        assert!(
+            snippet.starts_with("Migration is successful"),
+            "snippet should start with first bullet content, got: {}",
+            snippet
+        );
+        assert!(snippet.contains("No regressions on open rate"));
+    }
+
+    #[test]
+    fn test_extract_snippet_ordered_list() {
+        let content = "# Title\n\n1. First step\n2. Second step\n3. Third step";
+        let snippet = extract_snippet(content);
+        assert_eq!(snippet, "First step Second step Third step");
     }
 
     // --- count_body_words tests ---

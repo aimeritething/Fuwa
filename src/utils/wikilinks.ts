@@ -160,6 +160,19 @@ function isSnippetLine(line: string): boolean {
   return t !== '' && !t.startsWith('#') && !t.startsWith('```') && !t.startsWith('---')
 }
 
+/** Strip leading list markers (*, -, +, 1.) from a line. */
+function stripListMarker(line: string): string {
+  const t = line.trimStart()
+  for (const prefix of ['* ', '- ', '+ ']) {
+    if (t.startsWith(prefix)) return t.slice(prefix.length)
+  }
+  const dotPos = t.indexOf('. ')
+  if (dotPos >= 1 && dotPos <= 3 && /^\d+$/.test(t.slice(0, dotPos))) {
+    return t.slice(dotPos + 2)
+  }
+  return t
+}
+
 /** Remove the first H1 heading line, allowing leading blank lines. */
 function removeH1Line(body: string): string {
   const lines = body.split('\n')
@@ -204,8 +217,9 @@ function stripMarkdownChars(s: string): string {
 export function extractSnippet(content: string): string {
   const [, body] = splitFrontmatter(content)
   const withoutH1 = removeH1Line(body)
-  const clean = withoutH1.split('\n').filter(isSnippetLine).join(' ')
-  const stripped = stripMarkdownChars(clean)
+  const clean = withoutH1.split('\n').filter(isSnippetLine).map(stripListMarker).join(' ')
+  const stripped = stripMarkdownChars(clean).trim()
+  if (!stripped) return ''
   if (stripped.length <= 160) return stripped
   return stripped.slice(0, 160) + '...'
 }

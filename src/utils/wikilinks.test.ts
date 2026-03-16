@@ -565,11 +565,29 @@ describe('extractSnippet', () => {
     expect(snippet).toContain('Ship the minimum viable product')
   })
 
-  it('includes list items in snippet', () => {
-    const content = '# Title\n\n- First item\n- Second item\n- Third item'
+  it('strips list markers from bullet items', () => {
+    const content = '# Title\n\n* First bullet\n* Second bullet\n- Dash item'
     const snippet = extractSnippet(content)
-    expect(snippet).toContain('First item')
-    expect(snippet).toContain('Second item')
+    expect(snippet).toBe('First bullet Second bullet Dash item')
+  })
+
+  it('strips ordered list markers', () => {
+    const content = '# Title\n\n1. First step\n2. Second step\n3. Third step'
+    const snippet = extractSnippet(content)
+    expect(snippet).toBe('First step Second step Third step')
+  })
+
+  it('handles mixed headings and bullet lists (real-world format)', () => {
+    const content = '---\ntype: Project\nstatus: Active\n---\n# Migrate newsletter\n\n### 1) Goal one\n\n* Migration is successful\n\n### 2) Goal two\n\n* No regressions on open rate'
+    const snippet = extractSnippet(content)
+    expect(snippet).toMatch(/^Migration is successful/)
+    expect(snippet).toContain('No regressions on open rate')
+  })
+
+  it('trims leading/trailing whitespace from snippet', () => {
+    const content = '# Title\n\n  Some text with spaces  \n'
+    const snippet = extractSnippet(content)
+    expect(snippet).toBe('Some text with spaces')
   })
 
   it('includes code content lines (not fences) in snippet', () => {
