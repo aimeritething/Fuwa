@@ -5,22 +5,22 @@ import { isTauri, mockInvoke } from '../mock-tauri'
 import type { VaultEntry } from '../types'
 import {
   slugify,
-  needsRenameOnSave,
   buildNewEntry,
   generateUntitledName,
   entryMatchesTarget,
   buildNoteContent,
   resolveNewNote,
   resolveNewType,
-  frontmatterToEntryPatch,
   todayDateString,
   buildDailyNoteContent,
   resolveDailyNote,
   findDailyNote,
-  useNoteActions,
   DEFAULT_TEMPLATES,
   resolveTemplate,
-} from './useNoteActions'
+} from './useNoteCreation'
+import { needsRenameOnSave } from './useNoteRename'
+import { frontmatterToEntryPatch } from './frontmatterOps'
+import { useNoteActions } from './useNoteActions'
 import type { NoteActionsConfig } from './useNoteActions'
 
 // Mock dependencies

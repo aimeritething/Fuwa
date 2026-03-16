@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { slugify } from '../hooks/useNoteActions'
+import { slugify } from '../hooks/useNoteCreation'
 
 interface TitleFieldProps {
   title: string
