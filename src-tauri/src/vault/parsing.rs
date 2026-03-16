@@ -447,7 +447,11 @@ mod tests {
     fn test_extract_snippet_paragraph_takes_priority_over_headings() {
         let content = "# Title\n\n## Section One\n\nActual paragraph content.\n\n## Section Two\n";
         let snippet = extract_snippet(content);
-        assert!(snippet.starts_with("Actual paragraph content"), "paragraph content should be preferred over headings, got: {}", snippet);
+        assert!(
+            snippet.starts_with("Actual paragraph content"),
+            "paragraph content should be preferred over headings, got: {}",
+            snippet
+        );
     }
 
     // --- count_body_words tests ---
