@@ -58,7 +58,7 @@ flowchart LR
 #### Invariants
 
 1. **Disk-first writes**: All functions that change vault data must write to disk (via Tauri IPC) *before* updating React state. This ensures that if the disk write fails, React state remains consistent with what's actually on disk.
-2. **Optimistic UI with rollback**: Where responsiveness matters (e.g. `persistOptimistic` in `useNoteActions`), state may update before disk confirmation — but a failure callback must revert the optimistic state.
+2. **Optimistic UI with rollback**: Where responsiveness matters (e.g. `persistOptimistic` in `useNoteCreation`), state may update before disk confirmation — but a failure callback must revert the optimistic state.
 3. **No orphan state updates**: Never call `updateEntry()` before the corresponding `handleUpdateFrontmatter()` or `handleDeleteProperty()` has resolved. The three functions in `useEntryActions` (`handleCustomizeType`, `handleRenameSection`, `handleToggleTypeVisibility`) follow this rule — disk write first, then state update.
 4. **Recovery via reload**: If state ever diverges from disk (crash, external edit, race condition), `Reload Vault` (Cmd+K → "Reload Vault") invalidates the cache and does a full filesystem rescan via the `reload_vault` Tauri command, replacing all React state. The `reload_vault_entry` command can re-read a single file.
 5. **Cache is disposable**: The `reload_vault` command deletes the cache file before rescanning, guaranteeing fresh data. The cache never contains data that doesn't exist on the filesystem.
@@ -723,7 +723,9 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 |-------------|-------|---------|
 | `App.tsx` | `selection`, panel widths, dialog visibility, toast, view mode | UI state |
 | `useVaultLoader` | `entries`, `allContent`, `modifiedFiles` | Vault data |
-| `useNoteActions` | `tabs`, `activeTabPath` | Open tabs and note operations |
+| `useNoteActions` | `tabs`, `activeTabPath` | Composes `useNoteCreation` + `useNoteRename` + frontmatter ops |
+| `useNoteCreation` | — (delegates to `useTabManagement`) | Note/type/daily-note creation with optimistic persistence |
+| `useNoteRename` | — (delegates to `useTabManagement`) | Note renaming with wikilink update |
 | `useTabManagement` | Tab ordering, pinning, swapping, closed-tab history | Tab lifecycle |
 | `useVaultSwitcher` | `vaultPath`, `extraVaults` | Vault switching |
 | `useThemeManager` | `themes`, `activeThemeId`, `isDark` | Theme state |

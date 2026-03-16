@@ -85,7 +85,9 @@ laputa-app/
 │   │   ├── useVaultLoader.ts     # Loads vault entries + content
 │   │   ├── useVaultSwitcher.ts   # Multi-vault management
 │   │   ├── useVaultConfig.ts     # Per-vault UI settings
-│   │   ├── useNoteActions.ts     # Tab management, navigation, CRUD
+│   │   ├── useNoteActions.ts     # Composes creation + rename + frontmatter
+│   │   ├── useNoteCreation.ts   # Note/type/daily-note creation
+│   │   ├── useNoteRename.ts     # Note renaming + wikilink updates
 │   │   ├── useTabManagement.ts   # Tab ordering + lifecycle
 │   │   ├── useAIChat.ts          # AI chat state
 │   │   ├── useAiAgent.ts         # AI agent state + tool tracking
@@ -205,7 +207,7 @@ laputa-app/
 | File | Why it matters |
 |------|---------------|
 | `src/hooks/useVaultLoader.ts` | How vault data is loaded and managed. The Tauri/mock branching pattern. |
-| `src/hooks/useNoteActions.ts` | Tab management, wikilink navigation, frontmatter CRUD. The biggest hook. |
+| `src/hooks/useNoteActions.ts` | Orchestrates note operations: composes `useNoteCreation`, `useNoteRename`, frontmatter CRUD, and wikilink navigation. |
 | `src/hooks/useVaultSwitcher.ts` | Multi-vault management, vault switching, Getting Started vault. |
 | `src/mock-tauri.ts` | Mock data for browser testing. Shows the shape of all Tauri responses. |
 
