@@ -31,7 +31,7 @@ test.describe('Changing note type preserves content (flat vault)', () => {
     const targetType = currentType === 'Project' ? 'Experiment' : 'Project'
     await selectTrigger.click()
     await page.waitForTimeout(300)
-    const option = page.getByRole('option', { name: targetType, exact: true })
+    const option = page.getByRole('option', { name: targetType, exact: true }).first()
     await expect(option).toBeVisible({ timeout: 3000 })
     await option.click()
 
