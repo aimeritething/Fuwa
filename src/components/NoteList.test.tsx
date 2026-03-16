@@ -1107,6 +1107,46 @@ describe('NoteList — virtual list with large datasets', () => {
       expect(screen.getByText('Matteo Cellini')).toBeInTheDocument()
       expect(screen.queryByText('Facebook Ads Strategy')).not.toBeInTheDocument()
     })
+
+    it('shows deleted notes banner when files are deleted', () => {
+      const filesWithDeleted = [
+        { path: mockEntries[0].path, relativePath: 'project/26q1-laputa-app.md', status: 'modified' as const },
+        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
+        { path: '/Users/luca/Laputa/note/also-gone.md', relativePath: 'note/also-gone.md', status: 'deleted' as const },
+      ]
+      render(
+        <NoteList entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={filesWithDeleted} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
+      )
+      expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+      expect(screen.getByText('2 notes deleted')).toBeInTheDocument()
+    })
+
+    it('shows singular form for single deleted note', () => {
+      const filesWithOneDeleted = [
+        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
+      ]
+      render(
+        <NoteList entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={filesWithOneDeleted} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
+      )
+      expect(screen.getByText('1 note deleted')).toBeInTheDocument()
+    })
+
+    it('does not show deleted banner when no files are deleted', () => {
+      render(
+        <NoteList entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
+      )
+      expect(screen.queryByText(/notes? deleted/)).not.toBeInTheDocument()
+    })
+
+    it('does not show deleted banner outside changes view', () => {
+      const filesWithDeleted = [
+        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
+      ]
+      render(
+        <NoteList entries={mockEntries} selection={allSelection} selectedNote={null} modifiedFiles={filesWithDeleted} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
+      )
+      expect(screen.queryByText(/notes? deleted/)).not.toBeInTheDocument()
+    })
   })
 })
 

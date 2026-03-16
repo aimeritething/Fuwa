@@ -4,7 +4,7 @@ import { Virtuoso, type VirtuosoHandle } from 'react-virtuoso'
 import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus } from '../types'
 import { Input } from '@/components/ui/input'
 import {
-  MagnifyingGlass, Plus, CaretDown, CaretRight, Warning, Trash,
+  MagnifyingGlass, Plus, CaretDown, CaretRight, Warning, Trash, TrashSimple,
 } from '@phosphor-icons/react'
 import { getTypeColor, getTypeLightColor, buildTypeEntryMap } from '../utils/typeColors'
 import { NoteItem, getTypeIcon } from './NoteItem'
@@ -110,6 +110,16 @@ function EmptyMessage({ text }: { text: string }) {
   return <div className="px-4 py-8 text-center text-[13px] text-muted-foreground">{text}</div>
 }
 
+function DeletedNotesBanner({ count }: { count: number }) {
+  if (count === 0) return null
+  return (
+    <div className="flex items-center gap-2 border-b border-[var(--border)] opacity-60" style={{ padding: '14px 16px' }} data-testid="deleted-notes-banner">
+      <TrashSimple size={14} className="shrink-0 text-muted-foreground" />
+      <span className="text-[13px] text-muted-foreground">{count} {count === 1 ? 'note' : 'notes'} deleted</span>
+    </div>
+  )
+}
+
 function resolveHeaderTitle(selection: SidebarSelection, typeDocument: VaultEntry | null): string {
   if (selection.kind === 'entity') return selection.entry.title
   if (typeDocument) return typeDocument.title
@@ -158,16 +168,17 @@ function resolveEmptyText(isChangesView: boolean, changesError: string | null | 
   return query ? 'No matching notes' : 'No notes found'
 }
 
-function ListView({ isTrashView, isChangesView, changesError, expiredTrashCount, searched, query, renderItem, virtuosoRef }: {
+function ListView({ isTrashView, isChangesView, changesError, expiredTrashCount, deletedCount = 0, searched, query, renderItem, virtuosoRef }: {
   isTrashView: boolean; isChangesView?: boolean; changesError?: string | null; expiredTrashCount: number
-  searched: VaultEntry[]; query: string
+  deletedCount?: number; searched: VaultEntry[]; query: string
   renderItem: (entry: VaultEntry) => React.ReactNode
   virtuosoRef?: React.RefObject<VirtuosoHandle | null>
 }) {
   const emptyText = resolveEmptyText(!!isChangesView, changesError ?? null, isTrashView, query)
   const hasHeader = isTrashView && expiredTrashCount > 0
+  const showDeleted = !!isChangesView && deletedCount > 0
 
-  if (searched.length === 0) {
+  if (searched.length === 0 && !showDeleted) {
     return (
       <div className="h-full overflow-y-auto">
         {hasHeader && <ListViewHeader isTrashView={isTrashView} expiredTrashCount={expiredTrashCount} />}
@@ -176,17 +187,28 @@ function ListView({ isTrashView, isChangesView, changesError, expiredTrashCount,
     )
   }
 
+  if (searched.length === 0 && showDeleted) {
+    return (
+      <div className="h-full overflow-y-auto">
+        <DeletedNotesBanner count={deletedCount} />
+      </div>
+    )
+  }
+
   return (
-    <Virtuoso
-      ref={virtuosoRef}
-      style={{ height: '100%' }}
-      data={searched}
-      overscan={200}
-      components={{
-        Header: hasHeader ? () => <ListViewHeader isTrashView={isTrashView} expiredTrashCount={expiredTrashCount} /> : undefined,
-      }}
-      itemContent={(_index, entry) => renderItem(entry)}
-    />
+    <div className="h-full flex flex-col" style={{ minHeight: 0 }}>
+      <Virtuoso
+        ref={virtuosoRef}
+        style={{ flex: 1 }}
+        data={searched}
+        overscan={200}
+        components={{
+          Header: hasHeader ? () => <ListViewHeader isTrashView={isTrashView} expiredTrashCount={expiredTrashCount} /> : undefined,
+        }}
+        itemContent={(_index, entry) => renderItem(entry)}
+      />
+      {showDeleted && <DeletedNotesBanner count={deletedCount} />}
+    </div>
   )
 }
 
@@ -511,6 +533,10 @@ function NoteListInner({ entries, selection, selectedNote, modifiedFiles, modifi
   const typeEntryMap = useTypeEntryMap(entries)
   const { isEntityView, isTrashView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes })
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
+  const deletedCount = useMemo(
+    () => isChangesView ? (modifiedFiles ?? []).filter((f) => f.status === 'deleted').length : 0,
+    [isChangesView, modifiedFiles],
+  )
   const entitySelection = isEntityView && selection.kind === 'entity' ? selection : null
 
   const noteListKeyboard = useNoteListKeyboard({ items: searched, selectedNotePath: selectedNote?.path ?? null, onOpen: onReplaceActiveTab, enabled: !isEntityView })
@@ -543,7 +569,7 @@ function NoteListInner({ entries, selection, selectedNote, modifiedFiles, modifi
         {entitySelection ? (
           <EntityView entity={entitySelection.entry} groups={searchedGroups} query={query} collapsedGroups={collapsedGroups} sortPrefs={sortPrefs} onToggleGroup={toggleGroup} onSortChange={handleSortChange} renderItem={renderItem} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} />
         ) : (
-          <ListView isTrashView={isTrashView} isChangesView={isChangesView} changesError={modifiedFilesError} expiredTrashCount={expiredTrashCount} searched={searched} query={query} renderItem={renderItem} virtuosoRef={noteListKeyboard.virtuosoRef} />
+          <ListView isTrashView={isTrashView} isChangesView={isChangesView} changesError={modifiedFilesError} expiredTrashCount={expiredTrashCount} deletedCount={deletedCount} searched={searched} query={query} renderItem={renderItem} virtuosoRef={noteListKeyboard.virtuosoRef} />
         )}
       </div>
       {multiSelect.isMultiSelecting && (
