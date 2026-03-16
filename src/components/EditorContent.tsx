@@ -3,6 +3,7 @@ import type { VaultEntry, NoteStatus } from '../types'
 import type { useCreateBlockNote } from '@blocknote/react'
 import { DiffView } from './DiffView'
 import { BreadcrumbBar } from './BreadcrumbBar'
+import { TitleField } from './TitleField'
 import { TrashedNoteBanner } from './TrashedNoteBanner'
 import { ArchivedNoteBanner } from './ArchivedNoteBanner'
 import { RawEditorView } from './RawEditorView'
@@ -44,6 +45,8 @@ interface EditorContentProps {
   isDarkTheme?: boolean
   /** Ref updated by RawEditorView on every keystroke with the latest doc. */
   rawLatestContentRef?: React.MutableRefObject<string | null>
+  /** Called when the user edits the dedicated title field. */
+  onTitleChange?: (path: string, newTitle: string) => void
 }
 
 function EditorLoadingSkeleton() {
@@ -163,10 +166,11 @@ export function EditorContent({
   diffMode, diffContent, onToggleDiff,
   rawMode, onToggleRaw, onRawContentChange, onSave,
   onNavigateWikilink, onEditorChange, vaultPath, isDarkTheme,
-  onDeleteNote, rawLatestContentRef,
+  onDeleteNote, rawLatestContentRef, onTitleChange,
   ...breadcrumbProps
 }: EditorContentProps) {
   const isTrashed = activeTab?.entry.trashed ?? false
+  const showTitleField = activeTab && !diffMode && !rawMode
 
   return (
     <div className="flex flex-1 flex-col min-w-0 min-h-0">
@@ -184,6 +188,14 @@ export function EditorContent({
       )}
       {activeTab?.entry.archived && breadcrumbProps.onUnarchiveNote && (
         <ArchivedNoteBanner onUnarchive={() => breadcrumbProps.onUnarchiveNote!(activeTab.entry.path)} />
+      )}
+      {showTitleField && (
+        <TitleField
+          title={activeTab.entry.title}
+          filename={activeTab.entry.filename}
+          editable={!isTrashed}
+          onTitleChange={(newTitle) => onTitleChange?.(activeTab.entry.path, newTitle)}
+        />
       )}
       <EditorBody activeTab={activeTab} isLoadingNewTab={isLoadingNewTab} entries={entries} editor={editor} diffMode={diffMode} diffContent={diffContent} onToggleDiff={onToggleDiff} rawMode={rawMode} onRawContentChange={onRawContentChange} onSave={onSave} onNavigateWikilink={onNavigateWikilink} onEditorChange={onEditorChange} vaultPath={vaultPath} isDarkTheme={isDarkTheme} isTrashed={isTrashed} rawLatestContentRef={rawLatestContentRef} />
     </div>

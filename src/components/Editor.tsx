@@ -238,6 +238,7 @@ export const Editor = memo(function Editor({
               vaultPath={vaultPath}
               isDarkTheme={isDarkTheme}
               rawLatestContentRef={rawLatestContentRef}
+              onTitleChange={onTitleSync}
             />
         }
         {(showAIChat || !inspectorCollapsed) && <ResizeHandle onResize={onInspectorResize} />}
