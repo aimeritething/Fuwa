@@ -160,7 +160,7 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
     ];
     let filtered: serde_json::Map<String, serde_json::Value> = data
         .iter()
-        .filter(|(k, _)| KNOWN_KEYS.iter().any(|&kk| kk == k.as_str()))
+        .filter(|(k, _)| KNOWN_KEYS.contains(&k.as_str()))
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect();
     let value = serde_json::Value::Object(filtered);

@@ -1,4 +1,5 @@
 use super::*;
+use std::collections::HashMap;
 use std::fs;
 use std::io::Write;
 use tempfile::TempDir;
