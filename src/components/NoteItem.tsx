@@ -128,9 +128,11 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
           <StateBadge archived={entry.archived} trashed={entry.trashed} />
         </div>
       </div>
-      <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-        {entry.snippet}
-      </div>
+      {entry.snippet && (
+        <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          {entry.snippet}
+        </div>
+      )}
       {entry.trashed && entry.trashedAt
         ? <TrashDateLine entry={entry} />
         : <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>

@@ -40,6 +40,19 @@ fn is_snippet_line(line: &str) -> bool {
     !t.is_empty() && !t.starts_with('#') && !t.starts_with("```") && !t.starts_with("---")
 }
 
+/// Extract sub-heading text (## , ### , etc.) stripped of the `#` prefix.
+fn extract_subheading_text(line: &str) -> Option<&str> {
+    let t = line.trim();
+    let stripped = t.trim_start_matches('#');
+    if stripped.len() < t.len() && stripped.starts_with(' ') {
+        let text = stripped.trim();
+        if !text.is_empty() {
+            return Some(text);
+        }
+    }
+    None
+}
+
 /// Strip leading list markers (*, -, +, 1.) from a line.
 fn strip_list_marker(line: &str) -> &str {
     let t = line.trim_start();
@@ -94,10 +107,21 @@ pub(super) fn extract_snippet(content: &str) -> String {
         .join(" ");
     let stripped = strip_markdown_chars(&clean);
     let trimmed = stripped.trim();
-    if trimmed.is_empty() {
+    if !trimmed.is_empty() {
+        return truncate_with_ellipsis(trimmed, 160);
+    }
+    // Fallback: collect sub-heading text when no paragraph content exists
+    let heading_text: String = body
+        .lines()
+        .filter_map(extract_subheading_text)
+        .collect::<Vec<&str>>()
+        .join(" ");
+    let heading_trimmed = strip_markdown_chars(&heading_text);
+    let heading_trimmed = heading_trimmed.trim();
+    if heading_trimmed.is_empty() {
         return String::new();
     }
-    truncate_with_ellipsis(trimmed, 160)
+    truncate_with_ellipsis(heading_trimmed, 160)
 }
 
 fn without_h1_line(s: &str) -> Option<&str> {
@@ -329,10 +353,10 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_snippet_only_headings() {
+    fn test_extract_snippet_only_headings_uses_fallback() {
         let content = "# Title\n\n## Section One\n\n### Sub Section\n";
         let snippet = extract_snippet(content);
-        assert_eq!(snippet, "");
+        assert_eq!(snippet, "Section One Sub Section");
     }
 
     #[test]
@@ -403,6 +427,27 @@ mod tests {
         let content = "# Title\n\n1. First step\n2. Second step\n3. Third step";
         let snippet = extract_snippet(content);
         assert_eq!(snippet, "First step Second step Third step");
+    }
+
+    #[test]
+    fn test_extract_snippet_only_subheadings_fallback() {
+        let content = "---\ntype: Project\n---\n# My Project\n\n## Description\n\n---\n\n## Key Results\n\n---\n";
+        let snippet = extract_snippet(content);
+        assert_eq!(snippet, "Description Key Results");
+    }
+
+    #[test]
+    fn test_extract_snippet_subheadings_with_emoji() {
+        let content = "# Daily\n\n## Intentions\n\n## Reflections\n";
+        let snippet = extract_snippet(content);
+        assert_eq!(snippet, "Intentions Reflections");
+    }
+
+    #[test]
+    fn test_extract_snippet_paragraph_takes_priority_over_headings() {
+        let content = "# Title\n\n## Section One\n\nActual paragraph content.\n\n## Section Two\n";
+        let snippet = extract_snippet(content);
+        assert!(snippet.starts_with("Actual paragraph content"), "paragraph content should be preferred over headings, got: {}", snippet);
     }
 
     // --- count_body_words tests ---

@@ -532,9 +532,19 @@ describe('extractSnippet', () => {
     expect(snippet).toContain('Real content here')
   })
 
-  it('returns empty for content with only headings', () => {
+  it('falls back to sub-heading text when no paragraph content', () => {
     const content = '# Title\n\n## Section One\n\n### Sub Section\n'
-    expect(extractSnippet(content)).toBe('')
+    expect(extractSnippet(content)).toBe('Section One Sub Section')
+  })
+
+  it('falls back to sub-headings for headings-and-rules-only notes', () => {
+    const content = '---\ntype: Project\n---\n# My Project\n\n## Description\n\n---\n\n## Key Results\n\n---\n'
+    expect(extractSnippet(content)).toBe('Description Key Results')
+  })
+
+  it('prefers paragraph content over sub-heading fallback', () => {
+    const content = '# Title\n\n## Section One\n\nActual paragraph content.\n\n## Section Two\n'
+    expect(extractSnippet(content)).toMatch(/^Actual paragraph content/)
   })
 
   it('handles content without frontmatter or title', () => {

@@ -212,6 +212,17 @@ function stripMarkdownChars(s: string): string {
   return result
 }
 
+/** Extract sub-heading text (## , ### , etc.) stripped of the # prefix. */
+function extractSubheadingText(line: string): string | null {
+  const t = line.trim()
+  const stripped = t.replace(/^#+/, '')
+  if (stripped.length < t.length && stripped.startsWith(' ')) {
+    const text = stripped.trim()
+    return text || null
+  }
+  return null
+}
+
 /** Extract a snippet: first ~160 chars of body content, stripped of markdown.
  *  Mirrors the Rust extract_snippet() logic for frontend use. */
 export function extractSnippet(content: string): string {
@@ -219,9 +230,19 @@ export function extractSnippet(content: string): string {
   const withoutH1 = removeH1Line(body)
   const clean = withoutH1.split('\n').filter(isSnippetLine).map(stripListMarker).join(' ')
   const stripped = stripMarkdownChars(clean).trim()
-  if (!stripped) return ''
-  if (stripped.length <= 160) return stripped
-  return stripped.slice(0, 160) + '...'
+  if (stripped) {
+    if (stripped.length <= 160) return stripped
+    return stripped.slice(0, 160) + '...'
+  }
+  // Fallback: collect sub-heading text when no paragraph content exists
+  const headingText = withoutH1.split('\n')
+    .map(extractSubheadingText)
+    .filter((t): t is string => t !== null)
+    .join(' ')
+  const headingStripped = stripMarkdownChars(headingText).trim()
+  if (!headingStripped) return ''
+  if (headingStripped.length <= 160) return headingStripped
+  return headingStripped.slice(0, 160) + '...'
 }
 
 export function countWords(content: string): number {
