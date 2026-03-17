@@ -1096,8 +1096,7 @@ fn test_multi_element_array_owner_takes_first() {
 #[test]
 fn test_scalar_fields_unchanged() {
     let dir = TempDir::new().unwrap();
-    let content =
-        "---\ntype: Project\nOwner: Luca\nCadence: Daily\nStatus: Done\n---\n# Test\n";
+    let content = "---\ntype: Project\nOwner: Luca\nCadence: Daily\nStatus: Done\n---\n# Test\n";
     let entry = parse_test_entry(&dir, "test.md", content);
     assert_eq!(entry.owner, Some("Luca".to_string()));
     assert_eq!(entry.cadence, Some("Daily".to_string()));
