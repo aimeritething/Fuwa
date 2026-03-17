@@ -8,7 +8,7 @@ pnpm test
 pnpm test:coverage                  # frontend ≥70%
 cargo test
 cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-lines 85
-pre_commit_code_health_safeguard    # CodeScene ≥9.2 hotspot + ≥8.8 average
+pre_commit_code_health_safeguard    # CodeScene ≥9.2 hotspot + ≥9.2 average (target: 9.5+)
 ```
 
 If `pre_commit_code_health_safeguard` fails: extract hooks, split components, reduce complexity. Never add `// eslint-disable`, `#[allow(...)]`, or `as any` to pass the gate.
@@ -20,9 +20,9 @@ If `pre_commit_code_health_safeguard` fails: extract hooks, split components, re
 Write a test in `tests/smoke/<slug>.spec.ts` that covers every acceptance criterion. The test must fail before your fix and pass after. Run it:
 
 ```bash
-pnpm dev --port <N> &
+pnpm dev --port 5201 &
 sleep 3
-BASE_URL="http://localhost:<N>" npx playwright test tests/smoke/<slug>.spec.ts
+BASE_URL="http://localhost:5201" npx playwright test tests/smoke/<slug>.spec.ts
 ```
 
 **If your task touches filesystem, git, AI, MCP, or any native Tauri command**: also test with `pnpm tauri dev` against `~/Laputa` (not demo vault). Use `osascript` keyboard events — no mouse, no `cliclick`.
@@ -33,7 +33,7 @@ Brian installs the release build and runs keyboard-only QA. Phase 1 must pass fi
 
 Fire done signal only after Phase 1 passes:
 ```bash
-openclaw system event --text "laputa-task-done:<task_id>:<slug>" --mode now
+openclaw system event --text "laputa-task-done:<task_id>" --mode now
 ```
 
 ## Project
