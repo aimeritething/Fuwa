@@ -24,7 +24,7 @@ pub use trash::{batch_delete_notes, delete_note, empty_trash, is_file_trashed, p
 
 use file::read_file_metadata;
 use frontmatter::{extract_fm_and_rels, parse_created_at, resolve_is_a};
-use parsing::{count_body_words, extract_outgoing_links, extract_snippet, extract_title, slug_to_title};
+use parsing::{count_body_words, extract_outgoing_links, extract_snippet, extract_title};
 
 use gray_matter::engine::YAML;
 use gray_matter::Matter;

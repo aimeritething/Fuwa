@@ -148,23 +148,6 @@ fn extract_fm_title_value(content: &str) -> Option<String> {
     None
 }
 
-/// Check if frontmatter contains a `title:` key.
-fn frontmatter_has_title_key(content: &str) -> bool {
-    if !content.starts_with("---\n") {
-        return false;
-    }
-    content[4..]
-        .split("\n---")
-        .next()
-        .map(|fm| {
-            fm.lines().any(|l| {
-                let t = l.trim_start();
-                t.starts_with("title:") || t.starts_with("\"title\":")
-            })
-        })
-        .unwrap_or(false)
-}
-
 /// Update H1 and the `title:` frontmatter field in content.
 /// Always writes `title` to frontmatter (creates it if absent).
 fn update_note_title_in_content(content: &str, new_title: &str) -> String {
