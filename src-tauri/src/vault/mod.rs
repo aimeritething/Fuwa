@@ -8,6 +8,7 @@ mod image;
 mod migration;
 mod parsing;
 mod rename;
+mod title_sync;
 mod trash;
 
 pub use cache::{invalidate_cache, scan_vault_cached};
@@ -18,6 +19,7 @@ pub use getting_started::{create_getting_started_vault, default_vault_path, vaul
 pub use image::{copy_image_to_vault, save_image};
 pub use migration::{flatten_vault, migrate_is_a_to_type, vault_health_check, VaultHealthReport};
 pub use rename::{rename_note, RenameResult};
+pub use title_sync::{sync_title_on_open, SyncAction};
 pub use trash::{batch_delete_notes, delete_note, empty_trash, is_file_trashed, purge_trash};
 
 use file::read_file_metadata;

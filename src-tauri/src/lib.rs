@@ -140,6 +140,7 @@ pub fn run() {
             commands::stream_claude_agent,
             commands::reload_vault,
             commands::reload_vault_entry,
+            commands::sync_note_title,
             commands::save_image,
             commands::copy_image_to_vault,
             commands::purge_trash,

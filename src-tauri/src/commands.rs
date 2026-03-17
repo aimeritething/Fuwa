@@ -166,6 +166,16 @@ pub fn reload_vault_entry(path: String) -> Result<VaultEntry, String> {
     vault::reload_entry(std::path::Path::new(path.as_ref()))
 }
 
+/// Sync the `title` frontmatter field with the filename on note open.
+/// Returns `true` if the file was modified (title was absent or desynced).
+#[tauri::command]
+pub fn sync_note_title(path: String) -> Result<bool, String> {
+    use vault::SyncAction;
+    let path = expand_tilde(&path);
+    let action = vault::sync_title_on_open(std::path::Path::new(path.as_ref()))?;
+    Ok(matches!(action, SyncAction::Updated { .. }))
+}
+
 #[tauri::command]
 pub fn save_image(vault_path: String, filename: String, data: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);

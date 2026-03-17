@@ -165,14 +165,13 @@ fn frontmatter_has_title_key(content: &str) -> bool {
         .unwrap_or(false)
 }
 
-/// Update H1 and optionally the `title:` frontmatter field in content.
+/// Update H1 and the `title:` frontmatter field in content.
+/// Always writes `title` to frontmatter (creates it if absent).
 fn update_note_title_in_content(content: &str, new_title: &str) -> String {
     let mut updated = update_h1_title(content, new_title);
-    if frontmatter_has_title_key(content) {
-        let value = FrontmatterValue::String(new_title.to_string());
-        if let Ok(c) = update_frontmatter_content(&updated, "title", Some(value)) {
-            updated = c;
-        }
+    let value = FrontmatterValue::String(new_title.to_string());
+    if let Ok(c) = update_frontmatter_content(&updated, "title", Some(value)) {
+        updated = c;
     }
     updated
 }
