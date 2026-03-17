@@ -559,14 +559,17 @@ describe('useTabManagement', () => {
 
       // Start loading A (don't await — simulates rapid click)
       let selectADone = false
-      act(() => {
+      await act(async () => {
         result.current.handleSelectNote(makeEntry({ path: '/vault/a.md', title: 'A' })).then(() => { selectADone = true })
+        // Flush microtask from sync_note_title (no-op in mock mode) so loadAndSetTab starts
+        await Promise.resolve()
       })
 
       // Start loading B while A is still loading
       let selectBDone = false
-      act(() => {
+      await act(async () => {
         result.current.handleSelectNote(makeEntry({ path: '/vault/b.md', title: 'B' })).then(() => { selectBDone = true })
+        await Promise.resolve()
       })
 
       // B resolves first

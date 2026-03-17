@@ -1,4 +1,6 @@
 import { useCallback } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { isTauri } from '../mock-tauri'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
 import { useTabManagement } from './useTabManagement'
@@ -78,15 +80,27 @@ export function useNoteActions(config: NoteActionsConfig) {
     setTabs((prev) => prev.map((t) => t.entry.path === path ? { ...t, content: newContent } : t))
   }, [setTabs])
 
-  const creation = useNoteCreation(config, { openTabWithContent, handleSelectNote, handleCloseTab, handleCloseTabRef })
+  // After opening a note, reload its VaultEntry so title reflects any sync.
+  const handleSelectNoteWithSync = useCallback(async (entry: VaultEntry) => {
+    await handleSelectNote(entry)
+    // Reload entry from disk to pick up title changes from sync_note_title
+    if (isTauri()) {
+      try {
+        const fresh = await invoke<VaultEntry>('reload_vault_entry', { path: entry.path })
+        if (fresh.title !== entry.title) updateEntry(entry.path, { title: fresh.title })
+      } catch { /* non-fatal: entry display may be stale */ }
+    }
+  }, [handleSelectNote, updateEntry])
+
+  const creation = useNoteCreation(config, { openTabWithContent, handleSelectNote: handleSelectNoteWithSync, handleCloseTab, handleCloseTabRef })
   const rename = useNoteRename(
     { entries, setToastMessage },
     { tabs: tabMgmt.tabs, setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
   )
 
   const handleNavigateWikilink = useCallback(
-    (target: string) => navigateWikilink(entries, target, handleSelectNote),
-    [entries, handleSelectNote],
+    (target: string) => navigateWikilink(entries, target, handleSelectNoteWithSync),
+    [entries, handleSelectNoteWithSync],
   )
 
   const runFrontmatterOp = useCallback(
@@ -97,6 +111,7 @@ export function useNoteActions(config: NoteActionsConfig) {
 
   return {
     ...tabMgmt,
+    handleSelectNote: handleSelectNoteWithSync,
     handleCloseTab: creation.handleCloseTabWithCleanup,
     handleNavigateWikilink,
     handleCreateNote: creation.handleCreateNote,

@@ -69,6 +69,16 @@ async function loadNoteContent(path: string): Promise<string> {
     : mockInvoke<string>('get_note_content', { path })
 }
 
+/** Sync title frontmatter with filename on note open.
+ *  Returns true if the file was modified. */
+async function syncNoteTitle(path: string): Promise<boolean> {
+  try {
+    return isTauri()
+      ? await invoke<boolean>('sync_note_title', { path })
+      : false // mock: no-op
+  } catch { return false }
+}
+
 function addTabIfAbsent(prev: Tab[], entry: VaultEntry, content: string): Tab[] {
   if (prev.some((t) => t.entry.path === entry.path)) return prev
   return [...prev, { entry, content }]
@@ -147,6 +157,8 @@ export function useTabManagement() {
   const handleSelectNote = useCallback(async (entry: VaultEntry) => {
     if (isTabOpen(tabsRef.current, entry.path)) { setActiveTabPath(entry.path); return }
     const seq = ++navSeqRef.current
+    // Sync title frontmatter with filename before loading content
+    await syncNoteTitle(entry.path)
     await loadAndSetTab(entry, (prev, content) => addTabIfAbsent(prev, entry, content), setTabs)
     if (navSeqRef.current === seq) setActiveTabPath(entry.path)
   }, [])
