@@ -55,6 +55,8 @@ Tauri v2 + React + TypeScript desktop app. Reads a vault of markdown files with 
 
 Red → Green → Refactor → Commit. One cycle per commit. For bugs: write a failing regression test first, then fix. Exception: pure CSS/layout with no logic.
 
+**Test quality (Kent Beck's Desiderata):** every test must be Isolated (no shared state), Deterministic (no flakiness), Fast, Behavioral (tests behavior not implementation), Structure-insensitive (refactoring doesn't break it), Specific (failure points to exact cause), Predictive (all pass = production-ready). Fix flaky/non-deterministic tests before adding new ones. E2E tests over unit tests for user flows.
+
 ## ⛔ Docs — Keep docs/ in sync
 
 After adding a Tauri command, new component/hook, data model change, or new integration: update `docs/ARCHITECTURE.md`, `docs/ABSTRACTIONS.md`, and/or `docs/GETTING-STARTED.md` in the same commit. Use Mermaid for diagrams (not ASCII). Exception: spatial wireframe layouts.
