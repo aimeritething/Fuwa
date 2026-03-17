@@ -14,6 +14,7 @@ These frontmatter field names have special meaning in Laputa's UI:
 
 | Field | Meaning | UI behavior |
 |---|---|---|
+| `title:` | Human-readable title (synced with filename) | Tab label, breadcrumb, sidebar. Filename = `slugify(title).md` |
 | `type:` | Entity type (Project, Person, Quarter…) | Type chip in note list + sidebar grouping |
 | `status:` | Lifecycle stage (active, done, blocked…) | Colored chip in note list + editor header |
 | `url:` | External link | Clickable link chip in editor header |
@@ -210,9 +211,14 @@ This enables arbitrary, extensible relationship types without code changes.
 
 All `[[wikilinks]]` in the note body (not frontmatter) are extracted by regex and stored in `outgoingLinks`. Used for backlink detection and relationship graphs.
 
-### Title Extraction
+### Title / Filename Sync
 
-Title comes from the first `# Heading` in the markdown body. If none is found, the filename (without `.md`) is used as fallback. Logic in `vault/parsing.rs:extract_title()`.
+Every note has a `title` field in frontmatter that stores the human-readable title. The filename is always the slug of the title (`slugify(title).md`). The two are kept in sync:
+
+- **Source of truth**: filename (on open), user input (on rename inside Laputa)
+- **`extract_title`** reads `title` from frontmatter; falls back to deriving a title from the filename via `slug_to_title()` (hyphens → spaces, title-case). Never reads from H1. Logic in `vault/parsing.rs`.
+- **On note open** (`sync_title_on_open`): if `title` frontmatter is absent or desynced from the filename, it is auto-corrected (filename wins). Logic in `vault/title_sync.rs`.
+- **On rename** (`rename_note`): updates both `title` frontmatter and filename atomically, plus wikilinks across the vault. Always writes `title` to frontmatter.
 
 ### Title Field (UI)
 

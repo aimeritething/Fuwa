@@ -565,10 +565,11 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | File | Purpose |
 |------|---------|
 | `mod.rs` | Core types (`VaultEntry`, `Frontmatter`), `parse_md_file`, `scan_vault`, relationship/link extraction |
-| `parsing.rs` | Text processing: snippet extraction, markdown stripping, ISO date parsing, `extract_title` |
+| `parsing.rs` | Text processing: snippet extraction, markdown stripping, ISO date parsing, `extract_title`, `slug_to_title` |
+| `title_sync.rs` | `sync_title_on_open` — ensures `title` frontmatter matches filename on note open |
 | `cache.rs` | Git-based incremental vault caching (`scan_vault_cached`), git helpers |
 | `trash.rs` | `purge_trash` — deletes trashed notes older than 30 days |
-| `rename.rs` | `rename_note` — renames files and updates wikilinks across the vault |
+| `rename.rs` | `rename_note` — renames files, updates `title` frontmatter, and updates wikilinks across the vault |
 | `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
 | `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
 | `config_seed.rs` | Seeds `config/` folder, migrates `AGENTS.md`, repairs missing config files |
@@ -594,7 +595,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `vault_list.rs` | Vault list persistence |
 | `menu.rs` | Native macOS menu bar |
 
-## Tauri IPC Commands (64 total)
+## Tauri IPC Commands (65 total)
 
 ### Vault Operations
 
@@ -604,7 +605,8 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `get_note_content` | Read note file content |
 | `save_note_content` | Write note content to disk |
 | `delete_note` | Move note to trash |
-| `rename_note` | Rename note + update cross-vault wikilinks |
+| `rename_note` | Rename note + update `title` frontmatter + cross-vault wikilinks |
+| `sync_note_title` | Sync `title` frontmatter with filename on note open → `bool` (modified) |
 | `batch_archive_notes` | Archive multiple notes |
 | `batch_trash_notes` | Trash multiple notes |
 | `batch_delete_notes` | Permanently delete notes from disk |
