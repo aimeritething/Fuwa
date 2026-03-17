@@ -673,7 +673,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `create_vault_theme` | Create markdown theme note |
 | `ensure_vault_themes` | Seed default themes if missing |
 | `restore_default_themes` | Restore all default themes |
-| `repair_vault` | Restore default themes + missing config files |
+| `repair_vault` | Flatten vault structure, migrate legacy frontmatter, restore themes + config |
 
 ### AI & MCP
 

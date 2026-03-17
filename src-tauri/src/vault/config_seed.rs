@@ -6,7 +6,7 @@ use super::getting_started::AGENTS_MD;
 /// Content for `config.md` — gives the Config type a sidebar icon and label.
 const CONFIG_TYPE_DEFINITION: &str = "\
 ---
-Is A: Type
+type: Type
 icon: gear-six
 color: gray
 order: 90
@@ -174,7 +174,7 @@ mod tests {
 
         assert!(vault.join("config.md").exists());
         let content = fs::read_to_string(vault.join("config.md")).unwrap();
-        assert!(content.contains("Is A: Type"));
+        assert!(content.contains("type: Type"));
         assert!(content.contains("icon: gear-six"));
     }
 

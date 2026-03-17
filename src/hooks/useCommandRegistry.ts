@@ -269,7 +269,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
       { id: 'install-mcp', label: mcpStatus === 'installed' ? 'Restore MCP Server' : 'Install MCP Server', group: 'Settings', keywords: ['mcp', 'claude', 'ai', 'tools', 'install', 'restore', 'fix', 'repair'], enabled: true, execute: () => onInstallMcp?.() },
       { id: 'reindex-vault', label: 'Reindex Vault', group: 'Settings', keywords: ['reindex', 'index', 'search', 'rebuild', 'refresh'], enabled: !!onReindexVault, execute: () => onReindexVault?.() },
       { id: 'reload-vault', label: 'Reload Vault', group: 'Settings', keywords: ['reload', 'refresh', 'rescan', 'sync', 'filesystem', 'cache'], enabled: !!onReloadVault, execute: () => onReloadVault?.() },
-      { id: 'repair-vault', label: 'Repair Vault', group: 'Settings', keywords: ['repair', 'fix', 'restore', 'config', 'agents', 'themes', 'missing', 'reset'], enabled: !!onRepairVault, execute: () => onRepairVault?.() },
+      { id: 'repair-vault', label: 'Repair Vault', group: 'Settings', keywords: ['repair', 'fix', 'restore', 'config', 'agents', 'themes', 'missing', 'reset', 'flatten', 'structure'], enabled: !!onRepairVault, execute: () => onRepairVault?.() },
 
       // Type-aware: "New [Type]" and "List [Type]"
       ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),

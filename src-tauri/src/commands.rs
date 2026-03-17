@@ -552,6 +552,10 @@ pub fn restore_default_themes(vault_path: String) -> Result<String, String> {
 #[tauri::command]
 pub fn repair_vault(vault_path: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
+    // Migrate legacy is_a/Is A frontmatter → type
+    vault::migrate_is_a_to_type(&vault_path)?;
+    // Flatten vault: move notes from type-based subfolders to root
+    vault::flatten_vault(&vault_path)?;
     // Migrate legacy theme/ directory to root, then repair themes
     theme::migrate_theme_dir_to_root(&vault_path);
     theme::restore_default_themes(&vault_path)?;
@@ -787,5 +791,50 @@ mod tests {
     fn test_get_default_vault_path_returns_ok() {
         let result = get_default_vault_path();
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_repair_vault_flattens_type_folders() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault = dir.path();
+        let note_dir = vault.join("note");
+        std::fs::create_dir_all(&note_dir).unwrap();
+        std::fs::write(
+            note_dir.join("hello.md"),
+            "---\nis_a: Note\n---\n# Hello\n",
+        )
+        .unwrap();
+
+        let result = repair_vault(vault.to_str().unwrap().to_string());
+        assert!(result.is_ok());
+        // Note moved from note/ subfolder to root
+        assert!(vault.join("hello.md").exists());
+        assert!(!note_dir.join("hello.md").exists());
+        // Legacy is_a migrated to type
+        let content = std::fs::read_to_string(vault.join("hello.md")).unwrap();
+        assert!(content.contains("type: Note"));
+        assert!(!content.contains("is_a:"));
+    }
+
+    #[test]
+    fn test_repair_vault_creates_config_and_theme_files() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault = dir.path();
+
+        let result = repair_vault(vault.to_str().unwrap().to_string());
+        assert!(result.is_ok());
+        // Config files at root
+        assert!(vault.join("AGENTS.md").exists());
+        assert!(vault.join("config.md").exists());
+        // Theme files at root (flat structure)
+        assert!(vault.join("default-theme.md").exists());
+        assert!(vault.join("dark-theme.md").exists());
+        assert!(vault.join("minimal-theme.md").exists());
+        assert!(vault.join("theme.md").exists());
+        // No type/themes subfolders
+        assert!(!vault.join("theme").exists());
+        assert!(!vault.join("config").exists());
+        // .gitignore
+        assert!(vault.join(".gitignore").exists());
     }
 }
