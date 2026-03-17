@@ -49,6 +49,6 @@ editor-line-height: 1.6
 editor-max-width: 680
 ---
 
-# Minimal Theme
+# Minimal
 
 High contrast, minimal chrome. Monospace typography throughout.

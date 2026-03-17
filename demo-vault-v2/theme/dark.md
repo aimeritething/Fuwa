@@ -49,6 +49,6 @@ editor-line-height: 1.5
 editor-max-width: 720
 ---
 
-# Dark Theme
+# Dark
 
 A dark theme with deep navy tones for comfortable night-time reading.

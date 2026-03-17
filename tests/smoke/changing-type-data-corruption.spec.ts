@@ -8,15 +8,24 @@ test.describe('Changing note type preserves content (data corruption fix)', () =
   })
 
   test('type change does not load a different note into the editor', async ({ page }) => {
-    // 1. Click the first note in the note list to open it
+    // 1. Click a non-Theme note in the note list to open it
     const noteListContainer = page.locator('[data-testid="note-list-container"]')
     await noteListContainer.waitFor({ timeout: 5000 })
-    const firstNote = noteListContainer.locator('.cursor-pointer').first()
-    await firstNote.click()
-    await page.waitForTimeout(500)
+    const notes = noteListContainer.locator('.cursor-pointer')
+    const noteCount = await notes.count()
+
+    let currentType = ''
+    for (let i = 0; i < Math.min(noteCount, 10); i++) {
+      await notes.nth(i).click()
+      await page.waitForTimeout(500)
+      const ts = page.locator('[data-testid="type-selector"]')
+      if (!(await ts.isVisible())) continue
+      const t = ts.locator('button[role="combobox"]')
+      currentType = (await t.textContent())?.trim() ?? ''
+      if (currentType !== 'Theme') break
+    }
 
     // 2. Get the editor's H1 heading text before the type change.
-    //    The note's title is shown as an H1 in the BlockNote editor.
     const editorContainer = page.locator('.bn-editor')
     await expect(editorContainer).toBeVisible({ timeout: 5000 })
     const headingBefore = await editorContainer.locator('h1').first().textContent()
@@ -26,7 +35,7 @@ test.describe('Changing note type preserves content (data corruption fix)', () =
     const typeSelector = page.locator('[data-testid="type-selector"]')
     await expect(typeSelector).toBeVisible({ timeout: 5000 })
     const selectTrigger = typeSelector.locator('button[role="combobox"]')
-    const currentType = (await selectTrigger.textContent())?.trim() ?? ''
+    if (!currentType) currentType = (await selectTrigger.textContent())?.trim() ?? ''
 
     // 4. Change the type to something different
     const targetType = currentType === 'Project' ? 'Experiment' : 'Project'
@@ -62,14 +71,23 @@ test.describe('Changing note type preserves content (data corruption fix)', () =
   })
 
   test('changing type of existing note preserves its content', async ({ page }) => {
-    // 1. Click the second note in the note list (different note than test 1)
+    // 1. Click a non-Theme note (different note than test 1)
     const noteListContainer = page.locator('[data-testid="note-list-container"]')
     await noteListContainer.waitFor({ timeout: 5000 })
     const notes = noteListContainer.locator('.cursor-pointer')
     const noteCount = await notes.count()
-    const noteIndex = noteCount > 1 ? 1 : 0
-    await notes.nth(noteIndex).click()
-    await page.waitForTimeout(500)
+
+    let currentType = ''
+    // Start from index 1 to pick a different note from test 1
+    for (let i = Math.min(1, noteCount - 1); i < Math.min(noteCount, 10); i++) {
+      await notes.nth(i).click()
+      await page.waitForTimeout(500)
+      const ts = page.locator('[data-testid="type-selector"]')
+      if (!(await ts.isVisible())) continue
+      const t = ts.locator('button[role="combobox"]')
+      currentType = (await t.textContent())?.trim() ?? ''
+      if (currentType !== 'Theme') break
+    }
 
     // 2. Capture the H1 heading
     const editorContainer = page.locator('.bn-editor')
@@ -81,7 +99,7 @@ test.describe('Changing note type preserves content (data corruption fix)', () =
     const typeSelector = page.locator('[data-testid="type-selector"]')
     await expect(typeSelector).toBeVisible({ timeout: 5000 })
     const selectTrigger = typeSelector.locator('button[role="combobox"]')
-    const currentType = (await selectTrigger.textContent())?.trim() ?? ''
+    if (!currentType) currentType = (await selectTrigger.textContent())?.trim() ?? ''
     const targetType = currentType === 'Experiment' ? 'Person' : 'Experiment'
 
     await selectTrigger.click()

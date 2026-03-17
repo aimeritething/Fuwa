@@ -430,6 +430,11 @@ export default defineConfig({
     },
   },
 
+  // Inject the demo-vault-v2 path so browser code resolves it relative to the project root
+  define: {
+    __DEMO_VAULT_PATH__: JSON.stringify(path.resolve(__dirname, 'demo-vault-v2')),
+  },
+
   // Prevent vite from obscuring Rust errors
   clearScreen: false,
 

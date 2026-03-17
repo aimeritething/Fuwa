@@ -9,8 +9,10 @@ export type { PersistedVaultList } from '../utils/vaultListStore'
 
 export const GETTING_STARTED_LABEL = 'Getting Started'
 
+declare const __DEMO_VAULT_PATH__: string
+
 export const DEFAULT_VAULTS: VaultOption[] = [
-  { label: GETTING_STARTED_LABEL, path: '/Users/luca/Workspace/laputa-app/demo-vault-v2' },
+  { label: GETTING_STARTED_LABEL, path: typeof __DEMO_VAULT_PATH__ !== 'undefined' ? __DEMO_VAULT_PATH__ : '/Users/luca/Workspace/laputa-app/demo-vault-v2' },
 ]
 
 interface UseVaultSwitcherOptions {

@@ -49,6 +49,6 @@ editor-line-height: 1.5
 editor-max-width: 720
 ---
 
-# Default Theme
+# Default
 
 The default light theme for Laputa. Clean and warm, inspired by Notion.

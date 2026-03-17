@@ -32,10 +32,10 @@ test.describe('Canonical type field', () => {
 
   test('theme notes display correctly with type: Theme', async ({ page }) => {
     // Navigate to a theme note — themes now use type: Theme in their frontmatter
-    await openNoteViaQuickOpen(page, 'Default Theme')
+    await openNoteViaQuickOpen(page, 'Default')
 
     // Verify the note loaded and the editor/title area shows the theme title
-    const heading = page.getByText('Default Theme').first()
+    const heading = page.getByText('Default').first()
     await expect(heading).toBeVisible({ timeout: 5000 })
   })
 
