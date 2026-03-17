@@ -116,24 +116,59 @@ function EditorEmptyState() {
   )
 }
 
-export const Editor = memo(function Editor({
-  tabs, activeTabPath, entries, onSwitchTab, onCloseTab, onReorderTabs, onNavigateWikilink,
-  onLoadDiff, onLoadDiffAtCommit, getNoteStatus, onCreateNote,
-  inspectorCollapsed, onToggleInspector, inspectorWidth, onInspectorResize,
-  inspectorEntry, inspectorContent, gitHistory,
-  onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateAndOpenNote,
-  showAIChat, onToggleAIChat,
-  vaultPath, noteList, noteListFilter,
-  onTrashNote, onRestoreNote, onDeleteNote, onArchiveNote, onUnarchiveNote,
-  onRenameTab, onContentChange, onSave, onTitleSync,
-  canGoBack, canGoForward, onGoBack, onGoForward, leftPanelsCollapsed,
-  isDarkTheme,
-  rawToggleRef,
-  diffToggleRef,
-  onFileCreated,
-  onFileModified,
-  onVaultChanged,
-}: EditorProps) {
+interface EditorSetupParams {
+  tabs: Tab[]
+  activeTabPath: string | null
+  vaultPath?: string
+  onContentChange?: (path: string, content: string) => void
+  onTitleSync?: (path: string, newTitle: string) => void
+  onRenameTab?: (path: string, newTitle: string) => void
+  onLoadDiff?: (path: string) => Promise<string>
+  onLoadDiffAtCommit?: (path: string, commitHash: string) => Promise<string>
+  getNoteStatus?: (path: string) => NoteStatus
+  rawToggleRef?: React.MutableRefObject<() => void>
+  diffToggleRef?: React.MutableRefObject<() => void>
+}
+
+function useRawModeWithFlush(
+  activeTabPath: string | null,
+  onContentChange?: (path: string, content: string) => void,
+) {
+  const rawLatestContentRef = useRef<string | null>(null)
+
+  const handleBeforeRawEnd = useCallback(() => {
+    if (rawLatestContentRef.current != null && activeTabPath) {
+      onContentChange?.(activeTabPath, rawLatestContentRef.current)
+    }
+    rawLatestContentRef.current = null
+  }, [activeTabPath, onContentChange])
+
+  const { rawMode, handleToggleRaw } = useRawMode({
+    activeTabPath, onBeforeRawEnd: handleBeforeRawEnd,
+  })
+
+  // Flush raw editor content when switching tabs while raw mode stays active.
+  const prevTabPathRef = useRef(activeTabPath)
+  const onContentChangeRef = useRef(onContentChange)
+  useEffect(() => { onContentChangeRef.current = onContentChange }, [onContentChange])
+  useEffect(() => {
+    const prev = prevTabPathRef.current
+    prevTabPathRef.current = activeTabPath
+    const hasUnflushedContent = prev && prev !== activeTabPath && rawMode && rawLatestContentRef.current != null
+    if (hasUnflushedContent) {
+      onContentChangeRef.current?.(prev, rawLatestContentRef.current!)
+      rawLatestContentRef.current = null
+    }
+  }, [activeTabPath, rawMode])
+
+  return { rawMode, handleToggleRaw, rawLatestContentRef }
+}
+
+function useEditorSetup({
+  tabs, activeTabPath, vaultPath, onContentChange, onTitleSync,
+  onRenameTab, onLoadDiff, onLoadDiffAtCommit, getNoteStatus,
+  rawToggleRef, diffToggleRef,
+}: EditorSetupParams) {
   const vaultPathRef = useRef(vaultPath)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
 
@@ -150,34 +185,9 @@ export const Editor = memo(function Editor({
     onTitleSync: onTitleSync ?? (() => {}),
   })
 
-  // Ref updated by RawEditorView on every keystroke — used to flush
-  // debounced content synchronously before leaving raw mode.
-  const rawLatestContentRef = useRef<string | null>(null)
-
-  const handleBeforeRawEnd = useCallback(() => {
-    if (rawLatestContentRef.current != null && activeTabPath) {
-      onContentChange?.(activeTabPath, rawLatestContentRef.current)
-    }
-    rawLatestContentRef.current = null
-  }, [activeTabPath, onContentChange])
-
-  const { rawMode, handleToggleRaw } = useRawMode({
-    activeTabPath, onBeforeRawEnd: handleBeforeRawEnd,
-  })
-
-  // Flush raw editor content when switching tabs while raw mode stays active.
-  // Must capture the previous tab path since handleBeforeRawEnd uses activeTabPath.
-  const prevTabPathRef = useRef(activeTabPath)
-  const onContentChangeRef = useRef(onContentChange)
-  useEffect(() => { onContentChangeRef.current = onContentChange }, [onContentChange])
-  useEffect(() => {
-    const prev = prevTabPathRef.current
-    prevTabPathRef.current = activeTabPath
-    if (prev && prev !== activeTabPath && rawMode && rawLatestContentRef.current != null) {
-      onContentChangeRef.current?.(prev, rawLatestContentRef.current)
-      rawLatestContentRef.current = null
-    }
-  }, [activeTabPath, rawMode])
+  const { rawMode, handleToggleRaw, rawLatestContentRef } = useRawModeWithFlush(
+    activeTabPath, onContentChange,
+  )
 
   const { handleEditorChange, editorMountedRef } = useEditorTabSwap({
     tabs, activeTabPath, editor, onContentChange,
@@ -202,6 +212,43 @@ export const Editor = memo(function Editor({
   const isLoadingNewTab = activeTabPath !== null && !activeTab
   const activeStatus = activeTab ? getNoteStatus?.(activeTab.entry.path) ?? 'clean' : 'clean'
   const showDiffToggle = !!(activeTab && (diffMode || activeStatus === 'modified'))
+
+  return {
+    editor, activeTab, rawLatestContentRef,
+    rawMode, diffMode, diffContent, diffLoading,
+    handleToggleDiffExclusive, handleToggleRawExclusive,
+    handleEditorChange, handleRenameTabWithSync, handleViewCommitDiff,
+    isLoadingNewTab, activeStatus, showDiffToggle,
+  }
+}
+
+export const Editor = memo(function Editor(props: EditorProps) {
+  const {
+    tabs, activeTabPath, entries, onSwitchTab, onCloseTab, onReorderTabs, onNavigateWikilink,
+    getNoteStatus, onCreateNote,
+    inspectorCollapsed, onToggleInspector, inspectorWidth, onInspectorResize,
+    inspectorEntry, inspectorContent, gitHistory,
+    onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateAndOpenNote,
+    showAIChat, onToggleAIChat,
+    vaultPath, noteList, noteListFilter,
+    onTrashNote, onRestoreNote, onDeleteNote, onArchiveNote, onUnarchiveNote,
+    onContentChange, onSave, onTitleSync,
+    canGoBack, canGoForward, onGoBack, onGoForward, leftPanelsCollapsed,
+    isDarkTheme, onFileCreated, onFileModified, onVaultChanged,
+  } = props
+
+  const {
+    editor, activeTab, rawLatestContentRef,
+    rawMode, diffMode, diffContent, diffLoading,
+    handleToggleDiffExclusive, handleToggleRawExclusive,
+    handleEditorChange, handleRenameTabWithSync, handleViewCommitDiff,
+    isLoadingNewTab, activeStatus, showDiffToggle,
+  } = useEditorSetup({
+    tabs, activeTabPath, vaultPath, onContentChange, onTitleSync,
+    onRenameTab: props.onRenameTab, onLoadDiff: props.onLoadDiff,
+    onLoadDiffAtCommit: props.onLoadDiffAtCommit, getNoteStatus,
+    rawToggleRef: props.rawToggleRef, diffToggleRef: props.diffToggleRef,
+  })
 
   return (
     <div className="editor flex flex-col min-h-0 overflow-hidden bg-background text-foreground">

@@ -569,6 +569,47 @@ pub fn save_note_content(path: &str, content: &str) -> Result<(), String> {
 /// All other subfolders are ignored — notes and type definitions live flat at the vault root.
 const PROTECTED_FOLDERS: &[&str] = &["attachments", "_themes", "assets"];
 
+fn is_md_file(path: &Path) -> bool {
+    path.is_file() && path.extension().is_some_and(|ext| ext == "md")
+}
+
+fn try_parse_md(path: &Path, entries: &mut Vec<VaultEntry>) {
+    match parse_md_file(path) {
+        Ok(vault_entry) => entries.push(vault_entry),
+        Err(e) => log::warn!("Skipping file: {}", e),
+    }
+}
+
+fn scan_root_md_files(vault_path: &Path, entries: &mut Vec<VaultEntry>) {
+    let dir_entries = match fs::read_dir(vault_path) {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    for dir_entry in dir_entries.flatten() {
+        let path = dir_entry.path();
+        if is_md_file(&path) {
+            try_parse_md(&path, entries);
+        }
+    }
+}
+
+fn scan_protected_folders(vault_path: &Path, entries: &mut Vec<VaultEntry>) {
+    for folder in PROTECTED_FOLDERS {
+        let folder_path = vault_path.join(folder);
+        if !folder_path.is_dir() {
+            continue;
+        }
+        let md_files = WalkDir::new(&folder_path)
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| is_md_file(e.path()));
+        for entry in md_files {
+            try_parse_md(entry.path(), entries);
+        }
+    }
+}
+
 pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     if !vault_path.exists() {
         return Err(format!(
@@ -584,44 +625,10 @@ pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     }
 
     let mut entries = Vec::new();
+    scan_root_md_files(vault_path, &mut entries);
+    scan_protected_folders(vault_path, &mut entries);
 
-    // 1. Scan root-level .md files (non-recursive)
-    if let Ok(dir_entries) = fs::read_dir(vault_path) {
-        for dir_entry in dir_entries.flatten() {
-            let path = dir_entry.path();
-            if path.is_file() && path.extension().is_some_and(|ext| ext == "md") {
-                match parse_md_file(&path) {
-                    Ok(vault_entry) => entries.push(vault_entry),
-                    Err(e) => log::warn!("Skipping file: {}", e),
-                }
-            }
-        }
-    }
-
-    // 2. Scan protected folders recursively
-    for folder in PROTECTED_FOLDERS {
-        let folder_path = vault_path.join(folder);
-        if !folder_path.is_dir() {
-            continue;
-        }
-        for entry in WalkDir::new(&folder_path)
-            .follow_links(true)
-            .into_iter()
-            .filter_map(|e| e.ok())
-        {
-            let entry_path = entry.path();
-            if entry_path.is_file() && entry_path.extension().is_some_and(|ext| ext == "md") {
-                match parse_md_file(entry_path) {
-                    Ok(vault_entry) => entries.push(vault_entry),
-                    Err(e) => log::warn!("Skipping file: {}", e),
-                }
-            }
-        }
-    }
-
-    // Sort by modified date descending (newest first)
     entries.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
-
     Ok(entries)
 }
 
@@ -719,6 +726,7 @@ mod tests {
         );
         assert_eq!(entry.title, "Just a Title");
         assert!(entry.aliases.is_empty());
+
         assert!(entry.relationships.is_empty());
         assert!(entry.properties.is_empty());
     }
@@ -895,21 +903,24 @@ Status: Active
 
         let entry = parse_md_file(&dir.path().join("publish-essays.md")).unwrap();
         assert_eq!(entry.relationships.len(), 3); // Has, Topics, Type
+
+        let has = entry.relationships.get("Has").unwrap();
         assert_eq!(
-            entry.relationships.get("Has").unwrap(),
+            has,
             &vec![
                 "[[essay/foo|Foo Essay]]".to_string(),
                 "[[essay/bar|Bar Essay]]".to_string()
             ]
         );
+
+        let topics = entry.relationships.get("Topics").unwrap();
         assert_eq!(
-            entry.relationships.get("Topics").unwrap(),
+            topics,
             &vec!["[[topic/rust]]".to_string(), "[[topic/wasm]]".to_string()]
         );
-        assert_eq!(
-            entry.relationships.get("Type").unwrap(),
-            &vec!["[[responsibility]]".to_string()]
-        );
+
+        let rel_type = entry.relationships.get("Type").unwrap();
+        assert_eq!(rel_type, &vec!["[[responsibility]]".to_string()]);
     }
 
     #[test]
@@ -926,15 +937,18 @@ Belongs to:
         create_test_file(dir.path(), "some-project.md", content);
 
         let entry = parse_md_file(&dir.path().join("some-project.md")).unwrap();
+
         // Owner is now a structural field (skipped from relationships)
         assert!(entry.relationships.get("Owner").is_none());
         assert_eq!(
             entry.owner,
             Some("[[person/luca-rossi|Luca Rossi]]".to_string())
         );
+
         // Belongs to is a wikilink array, should appear in relationships
+        let belongs = entry.relationships.get("Belongs to").unwrap();
         assert_eq!(
-            entry.relationships.get("Belongs to").unwrap(),
+            belongs,
             &vec!["[[responsibility/grow-newsletter]]".to_string()]
         );
         // Also parsed in the dedicated field
@@ -1753,6 +1767,7 @@ Company: Acme Corp
             Some("Responsibility".to_string()),
             "type must not be lost when other fields are arrays"
         );
+
         assert_eq!(entry.owner, Some("Luca".to_string()));
         assert_eq!(entry.cadence, Some("Weekly".to_string()));
         assert_eq!(entry.status, Some("Active".to_string()));
