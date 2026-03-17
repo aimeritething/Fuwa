@@ -23,20 +23,20 @@ fn test_reload_entry_returns_fresh_data() {
     let dir = TempDir::new().unwrap();
     create_test_file(
         dir.path(),
-        "note.md",
-        "---\nStatus: Active\n---\n# My Note\n\nOriginal.",
+        "my-note.md",
+        "---\ntitle: My Note\nStatus: Active\n---\n# My Note\n\nOriginal.",
     );
-    let entry = reload_entry(&dir.path().join("note.md")).unwrap();
+    let entry = reload_entry(&dir.path().join("my-note.md")).unwrap();
     assert_eq!(entry.title, "My Note");
     assert_eq!(entry.status, Some("Active".to_string()));
 
     // Modify on disk and reload — must see the new content
     create_test_file(
         dir.path(),
-        "note.md",
-        "---\nStatus: Done\n---\n# My Note\n\nUpdated.",
+        "my-note.md",
+        "---\ntitle: My Note\nStatus: Done\n---\n# My Note\n\nUpdated.",
     );
-    let fresh = reload_entry(&dir.path().join("note.md")).unwrap();
+    let fresh = reload_entry(&dir.path().join("my-note.md")).unwrap();
     assert_eq!(fresh.status, Some("Done".to_string()));
 }
 
@@ -47,7 +47,7 @@ fn test_reload_entry_nonexistent_file() {
     assert!(result.unwrap_err().contains("does not exist"));
 }
 
-const FULL_FM_CONTENT: &str = "---\nIs A: Project\naliases:\n  - Laputa\n  - Castle in the Sky\nBelongs to:\n  - Studio Ghibli\nRelated to:\n  - Miyazaki\nStatus: Active\nOwner: Luca\nCadence: Weekly\n---\n# Laputa Project\n\nThis is a project note.\n";
+const FULL_FM_CONTENT: &str = "---\ntitle: Laputa Project\nIs A: Project\naliases:\n  - Laputa\n  - Castle in the Sky\nBelongs to:\n  - Studio Ghibli\nRelated to:\n  - Miyazaki\nStatus: Active\nOwner: Luca\nCadence: Weekly\n---\n# Laputa Project\n\nThis is a project note.\n";
 
 #[test]
 fn test_parse_full_frontmatter_identity() {
@@ -85,10 +85,11 @@ fn test_parse_empty_frontmatter() {
     let dir = TempDir::new().unwrap();
     let entry = parse_test_entry(
         &dir,
-        "empty-fm.md",
+        "just-a-title.md",
         "---\n---\n# Just a Title\n\nNo frontmatter fields.",
     );
-    assert_eq!(entry.title, "Just a Title");
+    // No title in frontmatter → derived from filename
+    assert_eq!(entry.title, "Just A Title");
     assert!(entry.aliases.is_empty());
 
     assert!(entry.belongs_to.is_empty());
@@ -99,11 +100,11 @@ fn test_parse_empty_frontmatter() {
 fn test_parse_no_frontmatter() {
     let dir = TempDir::new().unwrap();
     let content = "# A Note Without Frontmatter\n\nJust markdown.";
-    create_test_file(dir.path(), "no-fm.md", content);
+    create_test_file(dir.path(), "a-note-without-frontmatter.md", content);
 
-    let entry = parse_md_file(&dir.path().join("no-fm.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("a-note-without-frontmatter.md")).unwrap();
+    // No title in frontmatter → derived from filename
     assert_eq!(entry.title, "A Note Without Frontmatter");
-    // is_a is inferred from parent folder name (temp dir), not None
 }
 
 #[test]

@@ -1,20 +1,36 @@
 //! Pure text-processing helpers for markdown content parsing.
 //! Snippet extraction, markdown stripping, date parsing, and string utilities.
 
-/// Extract the title from a markdown file's content.
-/// Tries the first H1 heading (`# Title`), falls back to filename without extension.
-pub(super) fn extract_title(content: &str, filename: &str) -> String {
-    for line in content.lines() {
-        let trimmed = line.trim();
-        if let Some(heading) = trimmed.strip_prefix("# ") {
-            let title = heading.trim();
-            if !title.is_empty() {
-                return title.to_string();
+/// Derive a human-readable title from a filename stem (slug).
+/// Converts hyphens to spaces and title-cases each word.
+/// Example: `career-tracks-depend-on-company-shape` → `Career Tracks Depend on Company Shape`
+pub(super) fn slug_to_title(stem: &str) -> String {
+    stem.split('-')
+        .filter(|s| !s.is_empty())
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                Some(c) => {
+                    let upper: String = c.to_uppercase().collect();
+                    format!("{}{}", upper, chars.as_str())
+                }
+                None => String::new(),
             }
+        })
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Extract the display title for a note.
+/// Reads `title` from frontmatter; falls back to deriving a title from the filename.
+pub(super) fn extract_title(fm_title: Option<&str>, filename: &str) -> String {
+    if let Some(title) = fm_title {
+        if !title.is_empty() {
+            return title.to_string();
         }
     }
-    // Fallback: filename without .md extension
-    filename.strip_suffix(".md").unwrap_or(filename).to_string()
+    let stem = filename.strip_suffix(".md").unwrap_or(filename);
+    slug_to_title(stem)
 }
 
 /// Remove YAML frontmatter (triple-dash delimited) from content.
@@ -271,27 +287,54 @@ pub(super) fn parse_iso_date(date_str: &str) -> Option<u64> {
 mod tests {
     use super::*;
 
-    // --- extract_title tests ---
+    // --- slug_to_title tests ---
 
     #[test]
-    fn test_extract_title_from_h1() {
-        let content = "---\nIs A: Note\n---\n# My Great Note\n\nSome content here.";
-        assert_eq!(extract_title(content, "my-great-note.md"), "My Great Note");
+    fn test_slug_to_title_basic() {
+        assert_eq!(slug_to_title("career-tracks"), "Career Tracks");
     }
 
     #[test]
-    fn test_extract_title_fallback_to_filename() {
-        let content = "Just some content without a heading.";
+    fn test_slug_to_title_single_word() {
+        assert_eq!(slug_to_title("hello"), "Hello");
+    }
+
+    #[test]
+    fn test_slug_to_title_empty() {
+        assert_eq!(slug_to_title(""), "");
+    }
+
+    #[test]
+    fn test_slug_to_title_e2e() {
+        assert_eq!(slug_to_title("e2e-test"), "E2e Test");
+    }
+
+    #[test]
+    fn test_slug_to_title_multiple_hyphens() {
+        assert_eq!(slug_to_title("a--b"), "A B");
+    }
+
+    // --- extract_title tests ---
+
+    #[test]
+    fn test_extract_title_from_frontmatter() {
         assert_eq!(
-            extract_title(content, "fallback-title.md"),
-            "fallback-title"
+            extract_title(Some("My Great Note"), "my-great-note.md"),
+            "My Great Note"
         );
     }
 
     #[test]
-    fn test_extract_title_empty_h1_falls_back() {
-        let content = "# \n\nSome content.";
-        assert_eq!(extract_title(content, "empty-h1.md"), "empty-h1");
+    fn test_extract_title_fallback_to_filename() {
+        assert_eq!(
+            extract_title(None, "fallback-title.md"),
+            "Fallback Title"
+        );
+    }
+
+    #[test]
+    fn test_extract_title_empty_fm_falls_back() {
+        assert_eq!(extract_title(Some(""), "empty-h1.md"), "Empty H1");
     }
 
     // --- extract_snippet tests ---

@@ -1,0 +1,61 @@
+Title/filename sync: derive title from filename, keep in sync via frontmatter
+
+## Goal
+Every note has a `title` field in frontmatter that stores the human-readable title with original casing and spacing. The filename is always the slug of the title. The two are kept in sync at all times within Laputa.
+
+## Current state
+`extract_title` reads the first H1 heading as the display title, with filename as fallback. This approach is fragile: H1 can diverge from the filename, and using filename directly loses casing information.
+
+## Expected behavior
+
+### Title/filename contract
+- `title` frontmatter = human-readable title (e.g. `Career Tracks Depend on Company Shape`)
+- filename = slug of title (e.g. `career-tracks-depend-on-company-shape.md`)
+- The two are always kept in sync within Laputa
+
+### On note open (sync check)
+When Laputa opens a note, it checks for desync:
+- If `title` frontmatter is absent → derive title from filename (hyphens → spaces), write it to frontmatter
+- If `title` frontmatter is present but its slug doesn't match the filename → **filename wins**: overwrite `title` with the filename-derived value
+- If both are in sync → no-op
+
+This means: edits made outside Laputa that change only the filename or only the title frontmatter are auto-corrected on next open. **Filename is the source of truth.**
+
+### On title edit (inside Laputa)
+When the user renames a note inside Laputa:
+- Update `title` frontmatter to the new value
+- Rename the file to the new slug
+- Update all wikilinks in the vault (existing rename flow)
+
+### Title display
+`extract_title` should read `title` from frontmatter (never from H1). H1 in the body is just content.
+
+## Keyboard access
+- No new keyboard interactions — title editing is part of the existing rename flow
+- QA: Cmd+P → open note → verify title in header matches frontmatter `title` field
+
+## Edge cases
+1. Note has no `title` frontmatter → derive from filename on open (silent, idempotent)
+2. `title` frontmatter desync from filename (edited outside Laputa) → filename wins, title overwritten
+3. Filename has hyphens that are actual content (e.g. `e2e-test.md`) → becomes `E2e Test` — acceptable tradeoff
+4. Fresh note created in Laputa → title set immediately from user input, filename = slug
+5. Note renamed outside Laputa (filename changed, title not) → title updated to match new filename on next open
+
+## Acceptance criteria
+- [ ] Every note has `title` in frontmatter after being opened in Laputa
+- [ ] Filename = slug of `title` at all times within Laputa
+- [ ] On open: desync is detected and resolved (filename wins)
+- [ ] `extract_title` reads from frontmatter `title`, never H1
+- [ ] Rename flow updates both `title` frontmatter and filename atomically
+- [ ] **Keyboard access:** open note → rename via title field → file renamed + wikilinks updated
+- [ ] No regressions (`pnpm test` + `cargo test` pass)
+- [ ] **Native app QA (keyboard only):** Open note → edit title → confirm filename changed + wikilinks updated; then manually desync title in a file → reopen in Laputa → confirm title auto-corrected
+
+---
+CONTEXT:
+- Worktree: /Users/luca/Workspace/laputa-worktrees/title-filename-sync
+- Dev port: 5393 (use --port 5393 when running pnpm dev)
+- Run pnpm test before finishing
+- Push directly to main when done: git push origin HEAD:main — NEVER open PRs, NEVER --no-verify
+- Finish signal: openclaw system event --text 'laputa-task-done:6g9hCFpjP7qRRhqv:title-filename-sync' --mode now
+- See CLAUDE.md for all coding guidelines

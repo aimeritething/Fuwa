@@ -708,15 +708,15 @@ mod tests {
     #[test]
     fn test_reload_vault_entry_reads_from_disk() {
         let dir = tempfile::TempDir::new().unwrap();
-        let note = dir.path().join("note.md");
-        std::fs::write(&note, "---\nStatus: Active\n---\n# Test\n").unwrap();
+        let note = dir.path().join("test.md");
+        std::fs::write(&note, "---\ntitle: Test\nStatus: Active\n---\n# Test\n").unwrap();
 
         let entry = reload_vault_entry(note.to_str().unwrap().to_string()).unwrap();
         assert_eq!(entry.title, "Test");
         assert_eq!(entry.status, Some("Active".to_string()));
 
         // Modify file on disk
-        std::fs::write(&note, "---\nStatus: Done\n---\n# Test\n").unwrap();
+        std::fs::write(&note, "---\ntitle: Test\nStatus: Done\n---\n# Test\n").unwrap();
         let fresh = reload_vault_entry(note.to_str().unwrap().to_string()).unwrap();
         assert_eq!(fresh.status, Some("Done".to_string()));
     }

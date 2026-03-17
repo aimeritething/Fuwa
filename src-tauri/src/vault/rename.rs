@@ -16,7 +16,7 @@ pub struct RenameResult {
 }
 
 /// Convert a title to a filename slug (lowercase, hyphens, no special chars).
-fn title_to_slug(title: &str) -> String {
+pub(super) fn title_to_slug(title: &str) -> String {
     title
         .to_lowercase()
         .chars()
@@ -128,6 +128,26 @@ fn update_wikilinks_in_vault(params: &WikilinkReplacement) -> usize {
         .count()
 }
 
+/// Extract the value of the `title:` frontmatter field from raw content.
+fn extract_fm_title_value(content: &str) -> Option<String> {
+    if !content.starts_with("---\n") {
+        return None;
+    }
+    let fm = content[4..].split("\n---").next()?;
+    for line in fm.lines() {
+        let t = line.trim_start();
+        for prefix in &["title:", "\"title\":"] {
+            if let Some(rest) = t.strip_prefix(prefix) {
+                let val = rest.trim().trim_matches('"').trim_matches('\'');
+                if !val.is_empty() {
+                    return Some(val.to_string());
+                }
+            }
+        }
+    }
+    None
+}
+
 /// Check if frontmatter contains a `title:` key.
 fn frontmatter_has_title_key(content: &str) -> bool {
     if !content.starts_with("---\n") {
@@ -219,7 +239,8 @@ pub fn rename_note(
         .file_name()
         .map(|f| f.to_string_lossy().to_string())
         .unwrap_or_default();
-    let extracted_title = super::extract_title(&content, &old_filename);
+    let fm_title = extract_fm_title_value(&content);
+    let extracted_title = super::extract_title(fm_title.as_deref(), &old_filename);
     let old_title = old_title_hint.unwrap_or(&extracted_title);
 
     // Check both title and filename: even if the title in content matches,

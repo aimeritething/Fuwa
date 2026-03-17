@@ -22,7 +22,7 @@ pub use trash::{batch_delete_notes, delete_note, empty_trash, is_file_trashed, p
 
 use file::read_file_metadata;
 use frontmatter::{extract_fm_and_rels, parse_created_at, resolve_is_a};
-use parsing::{count_body_words, extract_outgoing_links, extract_snippet, extract_title};
+use parsing::{count_body_words, extract_outgoing_links, extract_snippet, extract_title, slug_to_title};
 
 use gray_matter::engine::YAML;
 use gray_matter::Matter;
@@ -43,7 +43,7 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
     let parsed = matter.parse(&content);
     let (frontmatter, mut relationships, properties) = extract_fm_and_rels(parsed.data);
 
-    let title = extract_title(&parsed.content, &filename);
+    let title = extract_title(frontmatter.title.as_deref(), &filename);
     let snippet = extract_snippet(&content);
     let word_count = count_body_words(&content);
     let outgoing_links = extract_outgoing_links(&parsed.content);

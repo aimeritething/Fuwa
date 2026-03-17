@@ -5,6 +5,8 @@ use std::collections::HashMap;
 /// Intermediate struct to capture YAML frontmatter fields.
 #[derive(Debug, Deserialize, Default)]
 pub(crate) struct Frontmatter {
+    #[serde(default)]
+    pub title: Option<String>,
     #[serde(rename = "type", alias = "Is A", alias = "is_a")]
     pub is_a: Option<StringOrList>,
     #[serde(default)]
@@ -138,6 +140,7 @@ impl StringOrList {
 /// Parse frontmatter from raw YAML data extracted by gray_matter.
 fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
     static KNOWN_KEYS: &[&str] = &[
+        "title",
         "type",
         "Is A",
         "is_a",
@@ -178,6 +181,7 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
 /// Known non-relationship frontmatter keys to skip (case-insensitive comparison).
 /// Only skip keys that can never contain wikilinks.
 const SKIP_KEYS: &[&str] = &[
+    "title",
     "is a",
     "type",
     "aliases",

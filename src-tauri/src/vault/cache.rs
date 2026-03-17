@@ -676,7 +676,7 @@ mod tests {
         let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
 
-        create_test_file(vault, "existing.md", "# Existing\n");
+        create_test_file(vault, "existing.md", "---\ntitle: Existing\n---\n# Existing\n");
         git_add_commit(vault, "init");
 
         // Prime cache
@@ -686,13 +686,13 @@ mod tests {
         // Create files in a new protected subdirectory (simulates asset creation)
         create_test_file(
             vault,
-            "assets/default.md",
-            "---\nIs A: Theme\n---\n# Default Theme\n",
+            "assets/default-theme.md",
+            "---\ntitle: Default Theme\nIs A: Theme\n---\n# Default Theme\n",
         );
         create_test_file(
             vault,
-            "assets/dark.md",
-            "---\nIs A: Theme\n---\n# Dark Theme\n",
+            "assets/dark-theme.md",
+            "---\ntitle: Dark Theme\nIs A: Theme\n---\n# Dark Theme\n",
         );
 
         // Cache same commit — files in new subdirectory must appear

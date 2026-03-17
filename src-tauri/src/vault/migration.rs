@@ -397,7 +397,15 @@ pub fn vault_health_check(vault_path: &str) -> Result<VaultHealthReport, String>
                 Err(_) => continue,
             };
             let parsed = matter.parse(&content);
-            let title = super::parsing::extract_title(&parsed.content, &filename);
+            let fm_title = parsed.data.as_ref().and_then(|pod| {
+                if let gray_matter::Pod::Hash(ref map) = pod {
+                    if let Some(gray_matter::Pod::String(s)) = map.get("title") {
+                        return Some(s.as_str());
+                    }
+                }
+                None
+            });
+            let title = super::parsing::extract_title(fm_title, &filename);
             let expected_stem = slugify(&title);
             let expected_filename = format!("{}.md", expected_stem);
             let current_stem = filename.strip_suffix(".md").unwrap_or(&filename);
@@ -740,11 +748,11 @@ mod tests {
     fn test_health_check_detects_title_mismatch() {
         let tmp = tempdir().unwrap();
         let vault = tmp.path();
-        // Filename is "wrong-name.md" but title is "My Actual Title"
+        // Filename is "wrong-name.md" but title frontmatter says "My Actual Title"
         write_file(
             vault,
             "wrong-name.md",
-            "---\ntype: Note\n---\n# My Actual Title\n",
+            "---\ntitle: My Actual Title\ntype: Note\n---\n# My Actual Title\n",
         );
 
         let report = vault_health_check(vault.to_str().unwrap()).unwrap();
