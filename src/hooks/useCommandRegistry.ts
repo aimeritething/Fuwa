@@ -18,6 +18,8 @@ interface CommandRegistryConfig {
   activeTabPath: string | null
   entries: VaultEntry[]
   modifiedCount: number
+  /** Whether the active note has an emoji icon set. */
+  activeNoteHasIcon?: boolean
   mcpStatus?: string
   onInstallMcp?: () => void
   onEmptyTrash?: () => void
@@ -25,6 +27,8 @@ interface CommandRegistryConfig {
   onReindexVault?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
+  onSetNoteIcon?: () => void
+  onRemoveNoteIcon?: () => void
 
   onQuickOpen: () => void
   onCreateNote: () => void
@@ -205,6 +209,9 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onReindexVault,
     onReloadVault,
     onRepairVault,
+    onSetNoteIcon,
+    onRemoveNoteIcon,
+    activeNoteHasIcon,
   } = config
 
   const hasActiveNote = activeTabPath !== null
@@ -246,6 +253,18 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
         id: 'archive-note', label: isArchived ? 'Unarchive Note' : 'Archive Note', group: 'Note', shortcut: '⌘E',
         keywords: ['archive'], enabled: hasActiveNote,
         execute: () => { if (activeTabPath) (isArchived ? onUnarchiveNote : onArchiveNote)(activeTabPath) },
+      },
+      {
+        id: 'set-note-icon', label: 'Set Note Icon', group: 'Note',
+        keywords: ['icon', 'emoji', 'set', 'add', 'change', 'picker'],
+        enabled: hasActiveNote && !!onSetNoteIcon,
+        execute: () => onSetNoteIcon?.(),
+      },
+      {
+        id: 'remove-note-icon', label: 'Remove Note Icon', group: 'Note',
+        keywords: ['icon', 'emoji', 'remove', 'delete', 'clear'],
+        enabled: hasActiveNote && !!activeNoteHasIcon && !!onRemoveNoteIcon,
+        execute: () => onRemoveNoteIcon?.(),
       },
 
       // Git
@@ -290,5 +309,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     mcpStatus, onInstallMcp,
     onEmptyTrash, trashedCount,
     onReindexVault, onReloadVault, onRepairVault,
+    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
   ])
 }

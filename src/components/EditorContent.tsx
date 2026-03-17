@@ -1,14 +1,17 @@
 import type React from 'react'
+import { useCallback } from 'react'
 import type { VaultEntry, NoteStatus } from '../types'
 import type { useCreateBlockNote } from '@blocknote/react'
 import { DiffView } from './DiffView'
 import { BreadcrumbBar } from './BreadcrumbBar'
 import { TitleField } from './TitleField'
+import { NoteIcon } from './NoteIcon'
 import { TrashedNoteBanner } from './TrashedNoteBanner'
 import { ArchivedNoteBanner } from './ArchivedNoteBanner'
 import { RawEditorView } from './RawEditorView'
 import { countWords } from '../utils/wikilinks'
 import { SingleEditorView } from './SingleEditorView'
+import { isEmoji } from '../utils/emoji'
 
 interface Tab {
   entry: VaultEntry
@@ -47,6 +50,10 @@ interface EditorContentProps {
   rawLatestContentRef?: React.MutableRefObject<string | null>
   /** Called when the user edits the dedicated title field. */
   onTitleChange?: (path: string, newTitle: string) => void
+  /** Called when user sets or changes an emoji icon via the picker. */
+  onSetNoteIcon?: (path: string, emoji: string) => void
+  /** Called when user removes an emoji icon. */
+  onRemoveNoteIcon?: (path: string) => void
 }
 
 function EditorLoadingSkeleton() {
@@ -167,10 +174,21 @@ export function EditorContent({
   rawMode, onToggleRaw, onRawContentChange, onSave,
   onNavigateWikilink, onEditorChange, vaultPath, isDarkTheme,
   onDeleteNote, rawLatestContentRef, onTitleChange,
+  onSetNoteIcon, onRemoveNoteIcon,
   ...breadcrumbProps
 }: EditorContentProps) {
   const isTrashed = activeTab?.entry.trashed ?? false
   const showTitleField = activeTab && !diffMode && !rawMode
+  const entryIcon = activeTab?.entry.icon ?? null
+  const emojiIcon = entryIcon && isEmoji(entryIcon) ? entryIcon : null
+
+  const handleSetIcon = useCallback((emoji: string) => {
+    if (activeTab) onSetNoteIcon?.(activeTab.entry.path, emoji)
+  }, [activeTab, onSetNoteIcon])
+
+  const handleRemoveIcon = useCallback(() => {
+    if (activeTab) onRemoveNoteIcon?.(activeTab.entry.path)
+  }, [activeTab, onRemoveNoteIcon])
 
   return (
     <div className="flex flex-1 flex-col min-w-0 min-h-0">
@@ -188,6 +206,14 @@ export function EditorContent({
       )}
       {activeTab?.entry.archived && breadcrumbProps.onUnarchiveNote && (
         <ArchivedNoteBanner onUnarchive={() => breadcrumbProps.onUnarchiveNote!(activeTab.entry.path)} />
+      )}
+      {showTitleField && (
+        <NoteIcon
+          icon={emojiIcon}
+          editable={!isTrashed}
+          onSetIcon={handleSetIcon}
+          onRemoveIcon={handleRemoveIcon}
+        />
       )}
       {showTitleField && (
         <TitleField

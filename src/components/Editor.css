@@ -162,9 +162,95 @@
   opacity: 1 !important;
 }
 
+/* --- Note Icon Area --- */
+.note-icon-area {
+  padding: 16px 54px 0;
+  flex-shrink: 0;
+}
+
+.note-icon-button {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.note-icon-button:disabled {
+  cursor: default;
+}
+
+.note-icon-button--active {
+  font-size: 40px;
+  transition: transform 0.1s;
+}
+
+.note-icon-button--active:hover:not(:disabled) {
+  transform: scale(1.1);
+}
+
+.note-icon-button--add {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-faint, #999);
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.note-icon-area:hover .note-icon-button--add,
+.note-icon-button--add:focus-visible {
+  opacity: 1;
+}
+
+.note-icon-button__plus {
+  font-size: 16px;
+  font-weight: 300;
+}
+
+.note-icon-button__label {
+  font-size: 12px;
+}
+
+.note-icon-menu {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  min-width: 140px;
+  border-radius: 8px;
+  border: 1px solid var(--border-dialog, var(--border));
+  background: var(--popover);
+  box-shadow: 0 4px 16px var(--shadow-dialog, rgba(0,0,0,0.1));
+  padding: 4px;
+}
+
+.note-icon-menu__item {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--foreground);
+  border-radius: 4px;
+  transition: background 0.1s;
+}
+
+.note-icon-menu__item:hover {
+  background: var(--accent);
+}
+
+.note-icon-menu__item--danger {
+  color: var(--destructive, #ef4444);
+}
+
 /* --- Title Field --- */
 .title-field {
-  padding: 16px 54px 0;
+  padding: 4px 54px 0;
   flex-shrink: 0;
 }
 

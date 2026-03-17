@@ -146,6 +146,51 @@ describe('useCommandRegistry', () => {
     rerender(makeConfig())
     expect(findCommand(result.current, 'resolve-conflicts')!.enabled).toBe(true)
   })
+
+  it('includes set-note-icon command in Note group', () => {
+    const config = makeConfig({ onSetNoteIcon: vi.fn() })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'set-note-icon')
+    expect(cmd).toBeDefined()
+    expect(cmd!.group).toBe('Note')
+    expect(cmd!.label).toBe('Set Note Icon')
+  })
+
+  it('set-note-icon is enabled when active note and callback exist', () => {
+    const config = makeConfig({ onSetNoteIcon: vi.fn() })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'set-note-icon')
+    expect(cmd!.enabled).toBe(true)
+  })
+
+  it('set-note-icon is disabled when no active note', () => {
+    const config = makeConfig({ activeTabPath: null, onSetNoteIcon: vi.fn() })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'set-note-icon')
+    expect(cmd!.enabled).toBe(false)
+  })
+
+  it('remove-note-icon is enabled when active note has icon', () => {
+    const config = makeConfig({ onRemoveNoteIcon: vi.fn(), activeNoteHasIcon: true })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'remove-note-icon')
+    expect(cmd!.enabled).toBe(true)
+  })
+
+  it('remove-note-icon is disabled when active note has no icon', () => {
+    const config = makeConfig({ onRemoveNoteIcon: vi.fn(), activeNoteHasIcon: false })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'remove-note-icon')
+    expect(cmd!.enabled).toBe(false)
+  })
+
+  it('set-note-icon executes callback', () => {
+    const onSetNoteIcon = vi.fn()
+    const config = makeConfig({ onSetNoteIcon })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    findCommand(result.current, 'set-note-icon')!.execute()
+    expect(onSetNoteIcon).toHaveBeenCalled()
+  })
 })
 
 describe('pluralizeType', () => {

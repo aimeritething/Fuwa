@@ -23,6 +23,7 @@ import { useCommitFlow } from './hooks/useCommitFlow'
 import { useViewMode } from './hooks/useViewMode'
 import { useEntryActions } from './hooks/useEntryActions'
 import { useAppCommands } from './hooks/useAppCommands'
+import { isEmoji } from './utils/emoji'
 import { useDialogs } from './hooks/useDialogs'
 import { useVaultSwitcher } from './hooks/useVaultSwitcher'
 import { useGitHistory } from './hooks/useGitHistory'
@@ -230,6 +231,24 @@ function App() {
   const handleAgentVaultChanged = useCallback(() => {
     vault.reloadVault()
   }, [vault])
+
+  const handleSetNoteIcon = useCallback(async (path: string, emoji: string) => {
+    await notes.handleUpdateFrontmatter(path, 'icon', emoji)
+  }, [notes])
+
+  const handleRemoveNoteIcon = useCallback(async (path: string) => {
+    await notes.handleDeleteProperty(path, 'icon')
+  }, [notes])
+
+  /** Command palette: open the emoji picker on the active note's NoteIcon. */
+  const handleSetNoteIconCommand = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('laputa:open-icon-picker'))
+  }, [])
+
+  /** Command palette: remove the active note's emoji icon. */
+  const handleRemoveNoteIconCommand = useCallback(() => {
+    if (notes.activeTabPath) handleRemoveNoteIcon(notes.activeTabPath)
+  }, [notes.activeTabPath, handleRemoveNoteIcon])
 
   const { triggerIncrementalIndex } = indexing
   const onAfterSave = useCallback(() => {
@@ -459,6 +478,12 @@ function App() {
     onReindexVault: indexing.triggerFullReindex,
     onReloadVault: vault.reloadVault,
     onRepairVault: handleRepairVault,
+    onSetNoteIcon: handleSetNoteIconCommand,
+    onRemoveNoteIcon: handleRemoveNoteIconCommand,
+    activeNoteHasIcon: (() => {
+      const ae = vault.entries.find(e => e.path === notes.activeTabPath)
+      return !!(ae?.icon && isEmoji(ae.icon))
+    })(),
   })
 
   const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null
@@ -558,6 +583,8 @@ function App() {
             onFileCreated={handleAgentFileCreated}
             onFileModified={handleAgentFileModified}
             onVaultChanged={handleAgentVaultChanged}
+            onSetNoteIcon={handleSetNoteIcon}
+            onRemoveNoteIcon={handleRemoveNoteIcon}
           />
         </div>
       </div>

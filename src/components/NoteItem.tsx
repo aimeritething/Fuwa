@@ -8,6 +8,7 @@ import {
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { resolveIcon } from '../utils/iconRegistry'
 import { relativeDate, getDisplayDate } from '../utils/noteListHelpers'
+import { isEmoji } from '../utils/emoji'
 
 const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>> = {
   Project: Wrench,
@@ -124,6 +125,7 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
       <div className="pr-5">
         <div className={cn("truncate text-[13px] text-foreground", isSelected ? "font-semibold" : "font-medium")}>
           {noteStatus !== 'clean' && <StatusDot noteStatus={noteStatus} />}
+          {entry.icon && isEmoji(entry.icon) && <span className="mr-1">{entry.icon}</span>}
           {entry.title}
           <StateBadge archived={entry.archived} trashed={entry.trashed} />
         </div>

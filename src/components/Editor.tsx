@@ -74,6 +74,10 @@ interface EditorProps {
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
+  /** Called when user sets an emoji icon on a note. */
+  onSetNoteIcon?: (path: string, emoji: string) => void
+  /** Called when user removes an emoji icon from a note. */
+  onRemoveNoteIcon?: (path: string) => void
 }
 
 function useEditorModeExclusion({
@@ -235,6 +239,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     onContentChange, onSave, onTitleSync,
     canGoBack, canGoForward, onGoBack, onGoForward, leftPanelsCollapsed,
     isDarkTheme, onFileCreated, onFileModified, onVaultChanged,
+    onSetNoteIcon, onRemoveNoteIcon,
   } = props
 
   const {
@@ -300,6 +305,8 @@ export const Editor = memo(function Editor(props: EditorProps) {
               isDarkTheme={isDarkTheme}
               rawLatestContentRef={rawLatestContentRef}
               onTitleChange={onTitleSync}
+              onSetNoteIcon={onSetNoteIcon}
+              onRemoveNoteIcon={onRemoveNoteIcon}
             />
         }
         {(showAIChat || !inspectorCollapsed) && <ResizeHandle onResize={onInspectorResize} />}

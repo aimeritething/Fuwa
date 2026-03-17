@@ -6,6 +6,7 @@ import { useUnifiedSearch } from '../hooks/useUnifiedSearch'
 import { getTypeColor, buildTypeEntryMap } from '../utils/typeColors'
 import { formatSearchSubtitle } from '../utils/noteListHelpers'
 import { getTypeIcon } from './NoteItem'
+import { isEmoji } from '../utils/emoji'
 
 interface SearchPanelProps {
   open: boolean
@@ -210,7 +211,10 @@ function SearchContent({
                 >
                   <div className="flex items-center gap-2">
                     <TypeIcon width={14} height={14} className="shrink-0" style={{ color: typeColor ?? 'var(--muted-foreground)' }} />
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">{result.title}</span>
+                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+                      {entry?.icon && isEmoji(entry.icon) && <span className="mr-1">{entry.icon}</span>}
+                      {result.title}
+                    </span>
                     {noteType && (
                       <span className="shrink-0 text-[11px] text-muted-foreground/70">{noteType}</span>
                     )}

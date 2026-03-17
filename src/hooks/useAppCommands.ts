@@ -71,6 +71,9 @@ interface AppCommandsConfig {
   onReindexVault?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
+  onSetNoteIcon?: () => void
+  onRemoveNoteIcon?: () => void
+  activeNoteHasIcon?: boolean
 }
 
 /** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
@@ -217,6 +220,9 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onReindexVault: config.onReindexVault,
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
+    onSetNoteIcon: config.onSetNoteIcon,
+    onRemoveNoteIcon: config.onRemoveNoteIcon,
+    activeNoteHasIcon: config.activeNoteHasIcon,
   })
 
   useKeyboardNavigation({
