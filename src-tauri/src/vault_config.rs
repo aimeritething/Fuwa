@@ -12,6 +12,7 @@ use std::path::Path;
 pub struct VaultConfig {
     pub zoom: Option<f64>,
     pub view_mode: Option<String>,
+    pub editor_mode: Option<String>,
     #[serde(default)]
     pub tag_colors: Option<HashMap<String, String>>,
     #[serde(default)]
@@ -90,6 +91,9 @@ fn serialize_config(config: &VaultConfig) -> String {
     }
     if let Some(ref mode) = config.view_mode {
         lines.push(format!("view_mode: {mode}"));
+    }
+    if let Some(ref mode) = config.editor_mode {
+        lines.push(format!("editor_mode: {mode}"));
     }
     append_string_map(&mut lines, "tag_colors", config.tag_colors.as_ref());
     append_string_map(&mut lines, "status_colors", config.status_colors.as_ref());
@@ -302,6 +306,7 @@ property_display_modes:
         let config = VaultConfig {
             zoom: Some(1.2),
             view_mode: Some("editor-only".to_string()),
+            editor_mode: None,
             tag_colors: Some(tag_colors),
             status_colors: None,
             property_display_modes: None,
@@ -329,6 +334,7 @@ property_display_modes:
         let config = VaultConfig {
             zoom: Some(0.9),
             view_mode: None,
+            editor_mode: None,
             tag_colors: None,
             status_colors: Some(status_colors),
             property_display_modes: None,

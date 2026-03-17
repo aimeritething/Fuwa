@@ -165,6 +165,20 @@ export const Editor = memo(function Editor({
     activeTabPath, onBeforeRawEnd: handleBeforeRawEnd,
   })
 
+  // Flush raw editor content when switching tabs while raw mode stays active.
+  // Must capture the previous tab path since handleBeforeRawEnd uses activeTabPath.
+  const prevTabPathRef = useRef(activeTabPath)
+  const onContentChangeRef = useRef(onContentChange)
+  useEffect(() => { onContentChangeRef.current = onContentChange }, [onContentChange])
+  useEffect(() => {
+    const prev = prevTabPathRef.current
+    prevTabPathRef.current = activeTabPath
+    if (prev && prev !== activeTabPath && rawMode && rawLatestContentRef.current != null) {
+      onContentChangeRef.current?.(prev, rawLatestContentRef.current)
+      rawLatestContentRef.current = null
+    }
+  }, [activeTabPath, rawMode])
+
   const { handleEditorChange, editorMountedRef } = useEditorTabSwap({
     tabs, activeTabPath, editor, onContentChange,
     onH1Change: onH1Changed, syncActiveRef, rawMode,
