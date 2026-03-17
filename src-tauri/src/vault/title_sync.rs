@@ -42,8 +42,8 @@ fn extract_raw_title(content: &str) -> Option<String> {
 /// - If `title` is present but its slug doesn't match the filename stem → overwrite
 /// - If both are in sync → no-op
 pub fn sync_title_on_open(path: &Path) -> Result<SyncAction, String> {
-    let content =
-        fs::read_to_string(path).map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
+    let content = fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
     let filename = path
         .file_name()
         .map(|f| f.to_string_lossy().to_string())
@@ -136,7 +136,11 @@ mod tests {
     #[test]
     fn test_sync_adds_frontmatter_when_none_exists() {
         let dir = TempDir::new().unwrap();
-        let path = write_note(dir.path(), "plain-note.md", "# Plain Note\n\nSome content.\n");
+        let path = write_note(
+            dir.path(),
+            "plain-note.md",
+            "# Plain Note\n\nSome content.\n",
+        );
         let result = sync_title_on_open(&path).unwrap();
         assert_eq!(
             result,

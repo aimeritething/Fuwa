@@ -676,7 +676,11 @@ mod tests {
         let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
 
-        create_test_file(vault, "existing.md", "---\ntitle: Existing\n---\n# Existing\n");
+        create_test_file(
+            vault,
+            "existing.md",
+            "---\ntitle: Existing\n---\n# Existing\n",
+        );
         git_add_commit(vault, "init");
 
         // Prime cache

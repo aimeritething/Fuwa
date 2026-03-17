@@ -326,10 +326,7 @@ mod tests {
 
     #[test]
     fn test_extract_title_fallback_to_filename() {
-        assert_eq!(
-            extract_title(None, "fallback-title.md"),
-            "Fallback Title"
-        );
+        assert_eq!(extract_title(None, "fallback-title.md"), "Fallback Title");
     }
 
     #[test]
