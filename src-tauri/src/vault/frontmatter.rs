@@ -9,16 +9,6 @@ pub(crate) struct Frontmatter {
     pub is_a: Option<StringOrList>,
     #[serde(default)]
     pub aliases: Option<StringOrList>,
-    #[serde(rename = "Belongs to")]
-    pub belongs_to: Option<StringOrList>,
-    #[serde(rename = "Related to")]
-    pub related_to: Option<StringOrList>,
-    #[serde(rename = "Status")]
-    pub status: Option<String>,
-    #[serde(rename = "Owner")]
-    pub owner: Option<StringOrList>,
-    #[serde(rename = "Cadence")]
-    pub cadence: Option<StringOrList>,
     #[serde(
         rename = "Archived",
         alias = "archived",
@@ -33,26 +23,32 @@ pub(crate) struct Frontmatter {
         deserialize_with = "deserialize_bool_or_string"
     )]
     pub trashed: Option<bool>,
+    #[serde(rename = "Status", alias = "status", default)]
+    pub status: Option<StringOrList>,
+    #[serde(rename = "Owner", alias = "owner", default)]
+    pub owner: Option<StringOrList>,
+    #[serde(rename = "Cadence", alias = "cadence", default)]
+    pub cadence: Option<StringOrList>,
     #[serde(rename = "Trashed at", alias = "trashed_at")]
-    pub trashed_at: Option<String>,
+    pub trashed_at: Option<StringOrList>,
     #[serde(rename = "Created at")]
-    pub created_at: Option<String>,
+    pub created_at: Option<StringOrList>,
     #[serde(rename = "Created time")]
-    pub created_time: Option<String>,
+    pub created_time: Option<StringOrList>,
     #[serde(default)]
-    pub icon: Option<String>,
+    pub icon: Option<StringOrList>,
     #[serde(default)]
-    pub color: Option<String>,
+    pub color: Option<StringOrList>,
     #[serde(default)]
     pub order: Option<i64>,
     #[serde(rename = "sidebar label", default)]
-    pub sidebar_label: Option<String>,
+    pub sidebar_label: Option<StringOrList>,
     #[serde(default)]
-    pub template: Option<String>,
+    pub template: Option<StringOrList>,
     #[serde(default)]
-    pub sort: Option<String>,
+    pub sort: Option<StringOrList>,
     #[serde(default)]
-    pub view: Option<String>,
+    pub view: Option<StringOrList>,
     #[serde(default)]
     pub visible: Option<bool>,
 }
@@ -122,24 +118,30 @@ impl StringOrList {
             StringOrList::List(v) => v,
         }
     }
+
+    /// Normalize to a single scalar: unwrap single-element arrays, take first
+    /// element of multi-element arrays, return scalar unchanged, empty array → None.
+    pub fn into_scalar(self) -> Option<String> {
+        match self {
+            StringOrList::Single(s) => Some(s),
+            StringOrList::List(mut v) => {
+                if v.is_empty() {
+                    None
+                } else {
+                    Some(v.swap_remove(0))
+                }
+            }
+        }
+    }
 }
 
 /// Parse frontmatter from raw YAML data extracted by gray_matter.
 fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
-    // Convert HashMap to serde_json::Value for deserialization.
-    // Filter to only known Frontmatter keys to prevent unknown fields with
-    // unexpected types (e.g. a list where a string is expected) from causing
-    // the entire deserialization to fail and return Default (all None).
     static KNOWN_KEYS: &[&str] = &[
         "type",
         "Is A",
         "is_a",
         "aliases",
-        "Belongs to",
-        "Related to",
-        "Status",
-        "Owner",
-        "Cadence",
         "Archived",
         "archived",
         "Trashed",
@@ -157,6 +159,12 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
         "view",
         "visible",
         "notion_id",
+        "Status",
+        "status",
+        "Owner",
+        "owner",
+        "Cadence",
+        "cadence",
     ];
     let filtered: serde_json::Map<String, serde_json::Value> = data
         .iter()
@@ -173,8 +181,6 @@ const SKIP_KEYS: &[&str] = &[
     "is a",
     "type",
     "aliases",
-    "status",
-    "cadence",
     "archived",
     "trashed",
     "trashed at",
@@ -188,19 +194,18 @@ const SKIP_KEYS: &[&str] = &[
     "sort",
     "view",
     "visible",
+    "status",
+    "owner",
+    "cadence",
 ];
 
 /// Extract all wikilink-containing fields from raw YAML frontmatter.
-/// Returns a HashMap where each key is the original frontmatter field name
-/// and the value is a Vec of wikilink strings found in that field.
-/// Handles both single string values and arrays of strings.
-fn extract_relationships(
+pub(crate) fn extract_relationships(
     data: &HashMap<String, serde_json::Value>,
 ) -> HashMap<String, Vec<String>> {
     let mut relationships = HashMap::new();
 
     for (key, value) in data {
-        // Skip known non-relationship keys
         if SKIP_KEYS.iter().any(|k| k.eq_ignore_ascii_case(key)) {
             continue;
         }
@@ -229,26 +234,15 @@ fn extract_relationships(
     relationships
 }
 
-/// Additional keys to skip when extracting custom properties.
-/// These are already first-class fields on VaultEntry, so including them
-/// in `properties` would duplicate information.
-const PROPERTY_EXTRA_SKIP: &[&str] = &["belongs to", "related to", "owner"];
-
 /// Extract custom scalar properties from raw YAML frontmatter.
-/// Captures string, number, and boolean values that are not structural fields
-/// and do not contain wikilinks. Arrays and objects are excluded.
-fn extract_properties(
+pub(crate) fn extract_properties(
     data: &HashMap<String, serde_json::Value>,
 ) -> HashMap<String, serde_json::Value> {
     let mut properties = HashMap::new();
 
     for (key, value) in data {
         let lower = key.to_ascii_lowercase();
-        if SKIP_KEYS.iter().any(|k| k.eq_ignore_ascii_case(&lower))
-            || PROPERTY_EXTRA_SKIP
-                .iter()
-                .any(|k| k.eq_ignore_ascii_case(&lower))
-        {
+        if SKIP_KEYS.iter().any(|k| k.eq_ignore_ascii_case(&lower)) {
             continue;
         }
 
@@ -268,8 +262,7 @@ fn extract_properties(
     properties
 }
 
-/// Resolve `is_a` from frontmatter only. Type is determined purely by frontmatter,
-/// never inferred from folder name.
+/// Resolve `is_a` from frontmatter only.
 pub(crate) fn resolve_is_a(fm_is_a: Option<StringOrList>) -> Option<String> {
     fm_is_a.and_then(|a| a.into_vec().into_iter().next())
 }
@@ -277,9 +270,15 @@ pub(crate) fn resolve_is_a(fm_is_a: Option<StringOrList>) -> Option<String> {
 /// Parse created_at from frontmatter (prefer "Created at" over "Created time").
 pub(crate) fn parse_created_at(fm: &Frontmatter) -> Option<u64> {
     fm.created_at
-        .as_ref()
-        .and_then(|s| parse_iso_date(s))
-        .or_else(|| fm.created_time.as_ref().and_then(|s| parse_iso_date(s)))
+        .clone()
+        .and_then(|v| v.into_scalar())
+        .and_then(|s| parse_iso_date(&s))
+        .or_else(|| {
+            fm.created_time
+                .clone()
+                .and_then(|v| v.into_scalar())
+                .and_then(|s| parse_iso_date(&s))
+        })
 }
 
 /// Convert gray_matter::Pod to serde_json::Value

@@ -63,8 +63,12 @@ fn test_parse_full_frontmatter_lists() {
     let dir = TempDir::new().unwrap();
     let entry = parse_test_entry(&dir, "laputa.md", FULL_FM_CONTENT);
     assert_eq!(entry.aliases, vec!["Laputa", "Castle in the Sky"]);
-    assert_eq!(entry.belongs_to, vec!["Studio Ghibli"]);
-    assert_eq!(entry.related_to, vec!["Miyazaki"]);
+    // Belongs to / Related to are no longer first-class fields.
+    // As arrays of plain strings (no wikilinks), they don't appear in
+    // relationships or properties — only wikilink arrays become relationships,
+    // and only scalars become properties.
+    assert!(entry.relationships.get("Belongs to").is_none());
+    assert!(entry.relationships.get("Related to").is_none());
 }
 
 #[test]
@@ -294,17 +298,21 @@ Belongs to:
     create_test_file(dir.path(), "some-project.md", content);
 
     let entry = parse_md_file(&dir.path().join("some-project.md")).unwrap();
-    // Owner contains a wikilink, so it should appear in relationships
+
+    // Owner is now a structural field (skipped from relationships)
+    assert!(entry.relationships.get("Owner").is_none());
     assert_eq!(
-        entry.relationships.get("Owner").unwrap(),
-        &vec!["[[person/luca-rossi|Luca Rossi]]".to_string()]
+        entry.owner,
+        Some("[[person/luca-rossi|Luca Rossi]]".to_string())
     );
-    // Belongs to is also a wikilink array, should appear in relationships
+
+    // Belongs to is a wikilink array, should appear in relationships
+    let belongs = entry.relationships.get("Belongs to").unwrap();
     assert_eq!(
-        entry.relationships.get("Belongs to").unwrap(),
+        belongs,
         &vec!["[[responsibility/grow-newsletter]]".to_string()]
     );
-    // Still parsed in the dedicated field too
+    // Also parsed in the dedicated field
     assert_eq!(entry.belongs_to, vec!["[[responsibility/grow-newsletter]]"]);
 }
 
@@ -1046,6 +1054,80 @@ fn test_roundtrip_is_a_snake_case_alias_still_works() {
     let content = "---\nis_a: Quarter\n---\n# Q1 2026\n";
     let entry = parse_test_entry(&dir, "quarter/q1.md", content);
     assert_eq!(entry.is_a, Some("Quarter".to_string()));
+}
+
+// --- StringOrList normalization (uniform, no per-field special cases) ---
+
+#[test]
+fn test_single_element_array_owner_unwraps_to_scalar() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\ntype: Responsibility\nOwner:\n  - Luca\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "test.md", content);
+    assert_eq!(entry.owner, Some("Luca".to_string()));
+    assert_eq!(entry.is_a, Some("Responsibility".to_string()));
+}
+
+#[test]
+fn test_single_element_array_cadence_unwraps_to_scalar() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\ntype: Procedure\nCadence:\n  - Weekly\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "test.md", content);
+    assert_eq!(entry.cadence, Some("Weekly".to_string()));
+    assert_eq!(entry.is_a, Some("Procedure".to_string()));
+}
+
+#[test]
+fn test_single_element_array_status_unwraps_to_scalar() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\ntype: Project\nStatus:\n  - Active\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "test.md", content);
+    assert_eq!(entry.status, Some("Active".to_string()));
+    assert_eq!(entry.is_a, Some("Project".to_string()));
+}
+
+#[test]
+fn test_multi_element_array_owner_takes_first() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\ntype: Project\nOwner:\n  - Alice\n  - Bob\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "test.md", content);
+    assert_eq!(entry.owner, Some("Alice".to_string()));
+}
+
+#[test]
+fn test_scalar_fields_unchanged() {
+    let dir = TempDir::new().unwrap();
+    let content =
+        "---\ntype: Project\nOwner: Luca\nCadence: Daily\nStatus: Done\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "test.md", content);
+    assert_eq!(entry.owner, Some("Luca".to_string()));
+    assert_eq!(entry.cadence, Some("Daily".to_string()));
+    assert_eq!(entry.status, Some("Done".to_string()));
+}
+
+#[test]
+fn test_absent_fields_no_crash() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\ntype: Note\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "test.md", content);
+    assert_eq!(entry.owner, None);
+    assert_eq!(entry.cadence, None);
+    assert_eq!(entry.status, None);
+}
+
+#[test]
+fn test_array_field_does_not_break_type_detection() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\ntype: Responsibility\nOwner:\n  - Luca\nCadence:\n  - Weekly\nStatus:\n  - Active\n---\n# My Responsibility\n";
+    let entry = parse_test_entry(&dir, "test.md", content);
+    assert_eq!(
+        entry.is_a,
+        Some("Responsibility".to_string()),
+        "type must not be lost when other fields are arrays"
+    );
+
+    assert_eq!(entry.owner, Some("Luca".to_string()));
+    assert_eq!(entry.cadence, Some("Weekly".to_string()));
+    assert_eq!(entry.status, Some("Active".to_string()));
 }
 
 // Frontmatter update/delete tests are in frontmatter.rs
