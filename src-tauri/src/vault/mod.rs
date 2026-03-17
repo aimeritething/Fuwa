@@ -113,31 +113,31 @@ struct Frontmatter {
     )]
     trashed: Option<bool>,
     #[serde(rename = "Status", alias = "status", default)]
-    status: Option<String>,
+    status: Option<StringOrList>,
     #[serde(rename = "Owner", alias = "owner", default)]
-    owner: Option<String>,
+    owner: Option<StringOrList>,
     #[serde(rename = "Cadence", alias = "cadence", default)]
-    cadence: Option<String>,
+    cadence: Option<StringOrList>,
     #[serde(rename = "Trashed at", alias = "trashed_at")]
-    trashed_at: Option<String>,
+    trashed_at: Option<StringOrList>,
     #[serde(rename = "Created at")]
-    created_at: Option<String>,
+    created_at: Option<StringOrList>,
     #[serde(rename = "Created time")]
-    created_time: Option<String>,
+    created_time: Option<StringOrList>,
     #[serde(default)]
-    icon: Option<String>,
+    icon: Option<StringOrList>,
     #[serde(default)]
-    color: Option<String>,
+    color: Option<StringOrList>,
     #[serde(default)]
     order: Option<i64>,
     #[serde(rename = "sidebar label", default)]
-    sidebar_label: Option<String>,
+    sidebar_label: Option<StringOrList>,
     #[serde(default)]
-    template: Option<String>,
+    template: Option<StringOrList>,
     #[serde(default)]
-    sort: Option<String>,
+    sort: Option<StringOrList>,
     #[serde(default)]
-    view: Option<String>,
+    view: Option<StringOrList>,
     #[serde(default)]
     visible: Option<bool>,
 }
@@ -205,6 +205,21 @@ impl StringOrList {
         match self {
             StringOrList::Single(s) => vec![s],
             StringOrList::List(v) => v,
+        }
+    }
+
+    /// Normalize to a single scalar: unwrap single-element arrays, take first
+    /// element of multi-element arrays, return scalar unchanged, empty array → None.
+    fn into_scalar(self) -> Option<String> {
+        match self {
+            StringOrList::Single(s) => Some(s),
+            StringOrList::List(mut v) => {
+                if v.is_empty() {
+                    None
+                } else {
+                    Some(v.swap_remove(0))
+                }
+            }
         }
     }
 }
@@ -355,9 +370,15 @@ fn resolve_is_a(fm_is_a: Option<StringOrList>) -> Option<String> {
 /// Parse created_at from frontmatter (prefer "Created at" over "Created time").
 fn parse_created_at(fm: &Frontmatter) -> Option<u64> {
     fm.created_at
-        .as_ref()
-        .and_then(|s| parse_iso_date(s))
-        .or_else(|| fm.created_time.as_ref().and_then(|s| parse_iso_date(s)))
+        .clone()
+        .and_then(|v| v.into_scalar())
+        .and_then(|s| parse_iso_date(&s))
+        .or_else(|| {
+            fm.created_time
+                .clone()
+                .and_then(|v| v.into_scalar())
+                .and_then(|s| parse_iso_date(&s))
+        })
 }
 
 /// Extract frontmatter, relationships, and custom properties from parsed gray_matter data.
@@ -444,22 +465,26 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
             .unwrap_or_default(),
         belongs_to,
         related_to,
-        status: frontmatter.status,
-        owner: frontmatter.owner,
-        cadence: frontmatter.cadence,
+        status: frontmatter.status.and_then(|v| v.into_scalar()),
+        owner: frontmatter.owner.and_then(|v| v.into_scalar()),
+        cadence: frontmatter.cadence.and_then(|v| v.into_scalar()),
         archived: frontmatter.archived.unwrap_or(false),
         trashed: frontmatter.trashed.unwrap_or(false),
-        trashed_at: frontmatter.trashed_at.as_deref().and_then(parse_iso_date),
+        trashed_at: frontmatter
+            .trashed_at
+            .and_then(|v| v.into_scalar())
+            .as_deref()
+            .and_then(parse_iso_date),
         modified_at,
         created_at,
         file_size,
-        icon: frontmatter.icon,
-        color: frontmatter.color,
+        icon: frontmatter.icon.and_then(|v| v.into_scalar()),
+        color: frontmatter.color.and_then(|v| v.into_scalar()),
         order: frontmatter.order,
-        sidebar_label: frontmatter.sidebar_label,
-        template: frontmatter.template,
-        sort: frontmatter.sort,
-        view: frontmatter.view,
+        sidebar_label: frontmatter.sidebar_label.and_then(|v| v.into_scalar()),
+        template: frontmatter.template.and_then(|v| v.into_scalar()),
+        sort: frontmatter.sort.and_then(|v| v.into_scalar()),
+        view: frontmatter.view.and_then(|v| v.into_scalar()),
         visible: frontmatter.visible,
         word_count,
         outgoing_links,
@@ -1655,6 +1680,81 @@ Company: Acme Corp
         let content = "---\nis_a: Quarter\n---\n# Q1 2026\n";
         let entry = parse_test_entry(&dir, "quarter/q1.md", content);
         assert_eq!(entry.is_a, Some("Quarter".to_string()));
+    }
+
+    // --- StringOrList normalization (uniform, no per-field special cases) ---
+
+    #[test]
+    fn test_single_element_array_owner_unwraps_to_scalar() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Responsibility\nOwner:\n  - Luca\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.owner, Some("Luca".to_string()));
+        assert_eq!(entry.is_a, Some("Responsibility".to_string()));
+    }
+
+    #[test]
+    fn test_single_element_array_cadence_unwraps_to_scalar() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Procedure\nCadence:\n  - Weekly\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.cadence, Some("Weekly".to_string()));
+        assert_eq!(entry.is_a, Some("Procedure".to_string()));
+    }
+
+    #[test]
+    fn test_single_element_array_status_unwraps_to_scalar() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Project\nStatus:\n  - Active\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.status, Some("Active".to_string()));
+        assert_eq!(entry.is_a, Some("Project".to_string()));
+    }
+
+    #[test]
+    fn test_multi_element_array_owner_takes_first() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Project\nOwner:\n  - Alice\n  - Bob\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.owner, Some("Alice".to_string()));
+    }
+
+    #[test]
+    fn test_scalar_fields_unchanged() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Project\nOwner: Luca\nCadence: Daily\nStatus: Done\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.owner, Some("Luca".to_string()));
+        assert_eq!(entry.cadence, Some("Daily".to_string()));
+        assert_eq!(entry.status, Some("Done".to_string()));
+    }
+
+    #[test]
+    fn test_absent_fields_no_crash() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Note\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.owner, None);
+        assert_eq!(entry.cadence, None);
+        assert_eq!(entry.status, None);
+    }
+
+    #[test]
+    fn test_array_field_does_not_break_type_detection() {
+        // Regression: when Owner was Option<String>, a YAML array like [Luca]
+        // caused serde to fail the entire Frontmatter → all fields defaulted to None,
+        // losing the is_a field and breaking the type badge.
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Responsibility\nOwner:\n  - Luca\nCadence:\n  - Weekly\nStatus:\n  - Active\n---\n# My Responsibility\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(
+            entry.is_a,
+            Some("Responsibility".to_string()),
+            "type must not be lost when other fields are arrays"
+        );
+        assert_eq!(entry.owner, Some("Luca".to_string()));
+        assert_eq!(entry.cadence, Some("Weekly".to_string()));
+        assert_eq!(entry.status, Some("Active".to_string()));
     }
 
     // Frontmatter update/delete tests are in frontmatter.rs
