@@ -799,11 +799,7 @@ mod tests {
         let vault = dir.path();
         let note_dir = vault.join("note");
         std::fs::create_dir_all(&note_dir).unwrap();
-        std::fs::write(
-            note_dir.join("hello.md"),
-            "---\nis_a: Note\n---\n# Hello\n",
-        )
-        .unwrap();
+        std::fs::write(note_dir.join("hello.md"), "---\nis_a: Note\n---\n# Hello\n").unwrap();
 
         let result = repair_vault(vault.to_str().unwrap().to_string());
         assert!(result.is_ok());
