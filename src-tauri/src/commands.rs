@@ -13,7 +13,7 @@ use crate::indexing::{IndexStatus, IndexingProgress};
 use crate::search::SearchResponse;
 use crate::settings::Settings;
 use crate::theme::{ThemeFile, VaultSettings};
-use crate::vault::{MoveResult, RenameResult, VaultEntry};
+use crate::vault::{RenameResult, VaultEntry};
 use crate::vault_config::VaultConfig;
 use crate::vault_list::VaultList;
 use crate::{
@@ -84,21 +84,11 @@ pub fn rename_note(
     vault_path: String,
     old_path: String,
     new_title: String,
+    old_title: Option<String>,
 ) -> Result<RenameResult, String> {
     let vault_path = expand_tilde(&vault_path);
     let old_path = expand_tilde(&old_path);
-    vault::rename_note(&vault_path, &old_path, &new_title)
-}
-
-#[tauri::command]
-pub fn move_note_to_type_folder(
-    vault_path: String,
-    note_path: String,
-    new_type: String,
-) -> Result<MoveResult, String> {
-    let vault_path = expand_tilde(&vault_path);
-    let note_path = expand_tilde(&note_path);
-    vault::move_note_to_type_folder(&vault_path, &note_path, &new_type)
+    vault::rename_note(&vault_path, &old_path, &new_title, old_title.as_deref())
 }
 
 #[tauri::command]
@@ -114,9 +104,33 @@ pub fn delete_note(path: String) -> Result<String, String> {
 }
 
 #[tauri::command]
+pub fn batch_delete_notes(paths: Vec<String>) -> Result<Vec<String>, String> {
+    let expanded: Vec<String> = paths.iter().map(|p| expand_tilde(p).into_owned()).collect();
+    vault::batch_delete_notes(&expanded)
+}
+
+#[tauri::command]
+pub fn empty_trash(vault_path: String) -> Result<Vec<String>, String> {
+    let vault_path = expand_tilde(&vault_path);
+    vault::empty_trash(&vault_path)
+}
+
+#[tauri::command]
 pub fn migrate_is_a_to_type(vault_path: String) -> Result<usize, String> {
     let vault_path = expand_tilde(&vault_path);
     vault::migrate_is_a_to_type(&vault_path)
+}
+
+#[tauri::command]
+pub fn flatten_vault(vault_path: String) -> Result<usize, String> {
+    let vault_path = expand_tilde(&vault_path);
+    vault::flatten_vault(&vault_path)
+}
+
+#[tauri::command]
+pub fn vault_health_check(vault_path: String) -> Result<vault::VaultHealthReport, String> {
+    let vault_path = expand_tilde(&vault_path);
+    vault::vault_health_check(&vault_path)
 }
 
 #[tauri::command]
@@ -538,10 +552,13 @@ pub fn restore_default_themes(vault_path: String) -> Result<String, String> {
 #[tauri::command]
 pub fn repair_vault(vault_path: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
-    // Repair themes
+    // Migrate legacy theme/ directory to root, then repair themes
+    theme::migrate_theme_dir_to_root(&vault_path);
     theme::restore_default_themes(&vault_path)?;
-    // Repair config files (config/agents.md, type/config.md, AGENTS.md stub)
+    // Repair config files (AGENTS.md at root, config.md type def)
     vault::repair_config_files(&vault_path)?;
+    // Ensure .gitignore with sensible defaults exists
+    git::ensure_gitignore(&vault_path)?;
     Ok("Vault repaired".to_string())
 }
 

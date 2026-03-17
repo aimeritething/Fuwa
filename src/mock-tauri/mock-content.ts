@@ -4,7 +4,7 @@
  */
 
 export const MOCK_CONTENT: Record<string, string> = {
-  '/Users/luca/Laputa/project/26q1-laputa-app.md': `---
+  '/Users/luca/Laputa/26q1-laputa-app.md': `---
 title: Build Laputa App
 type: Project
 status: Active
@@ -16,9 +16,9 @@ tags: [Tauri, React, TypeScript, CodeMirror]
 tools: [Vite, Vitest, Playwright]
 url: https://github.com/lucaong/laputa-app
 belongs_to:
-  - "[[quarter/q1-2026]]"
+  - "[[q1-2026]]"
 related_to:
-  - "[[topic/software-development]]"
+  - "[[software-development]]"
 ---
 
 # Build Laputa App
@@ -118,7 +118,7 @@ This is a normal paragraph with enough text to test line wrapping and spacing be
 
 And this is a second paragraph to verify inter-paragraph spacing is correct. Good typography requires consistent vertical rhythm throughout the document.
 `,
-  '/Users/luca/Laputa/responsibility/grow-newsletter.md': `---
+  '/Users/luca/Laputa/grow-newsletter.md': `---
 title: Grow Newsletter
 type: Responsibility
 status: Active
@@ -148,7 +148,7 @@ Build a sustainable audience through high-quality weekly essays on **engineering
 ## Notes
 The newsletter is the *engine* that drives everything else — sponsorships, consulting leads, and brand building.
 `,
-  '/Users/luca/Laputa/responsibility/manage-sponsorships.md': `---
+  '/Users/luca/Laputa/manage-sponsorships.md': `---
 title: Manage Sponsorships
 type: Responsibility
 status: Active
@@ -172,14 +172,14 @@ Revenue stream from newsletter sponsorships. [[Matteo Cellini]] handles day-to-d
 - Close rate
 - Repeat sponsor rate
 `,
-  '/Users/luca/Laputa/procedure/write-weekly-essays.md': `---
+  '/Users/luca/Laputa/write-weekly-essays.md': `---
 title: Write Weekly Essays
 type: Procedure
 status: Active
 owner: Luca Rossi
 cadence: Weekly
 belongs_to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 ---
 
 # Write Weekly Essays
@@ -216,14 +216,14 @@ belongs_to:
 2. Second ordered item — shorter
   1. Nested ordered item that also has quite a long description to verify that the indentation works correctly for nested numbered lists too
 `,
-  '/Users/luca/Laputa/procedure/run-sponsorships.md': `---
+  '/Users/luca/Laputa/run-sponsorships.md': `---
 title: Run Sponsorships
 type: Procedure
 status: Active
 owner: Matteo Cellini
 cadence: Weekly
 belongs_to:
-  - "[[responsibility/manage-sponsorships]]"
+  - "[[manage-sponsorships]]"
 ---
 
 # Run Sponsorships
@@ -238,7 +238,7 @@ belongs_to:
 - Proposal template: \`/templates/sponsorship-proposal.md\`
 - Report template: \`/templates/sponsorship-report.md\`
 `,
-  '/Users/luca/Laputa/experiment/stock-screener.md': `---
+  '/Users/luca/Laputa/stock-screener.md': `---
 title: Stock Screener — EMA200 Wick Bounce
 type: Experiment
 status: Active
@@ -246,8 +246,8 @@ owner: Luca Rossi
 domains: [Finance, Quantitative Analysis]
 tools: [Python, pandas, TradingView]
 related_to:
-  - "[[topic/trading]]"
-  - "[[topic/algorithmic-trading]]"
+  - "[[trading]]"
+  - "[[algorithmic-trading]]"
 ---
 
 # Stock Screener — EMA200 Wick Bounce
@@ -273,14 +273,14 @@ Stocks that wick below the 200-day EMA and close above it show a **statistically
 - [ ] Add RSI filter for oversold confirmation
 - [ ] Build automated alerts via Python script
 `,
-  '/Users/luca/Laputa/note/facebook-ads-strategy.md': `---
+  '/Users/luca/Laputa/facebook-ads-strategy.md': `---
 title: Facebook Ads Strategy
 type: Note
 belongs_to:
-  - "[[project/26q1-laputa-app]]"
+  - "[[26q1-laputa-app]]"
 related_to:
-  - "[[topic/growth]]"
-  - "[[topic/ads]]"
+  - "[[growth]]"
+  - "[[ads]]"
 ---
 
 # Facebook Ads Strategy
@@ -298,11 +298,11 @@ related_to:
 1. Long-form vs short-form ad copy
 2. Testimonial vs data-driven creative
 `,
-  '/Users/luca/Laputa/note/budget-allocation.md': `---
+  '/Users/luca/Laputa/budget-allocation.md': `---
 title: Budget Allocation
 type: Note
 belongs_to:
-  - "[[project/26q1-laputa-app]]"
+  - "[[26q1-laputa-app]]"
 ---
 
 # Budget Allocation
@@ -318,7 +318,7 @@ belongs_to:
 - Under budget on ads due to improved targeting efficiency
 - Consider reallocating savings to content production
 `,
-  '/Users/luca/Laputa/person/matteo-cellini.md': `---
+  '/Users/luca/Laputa/matteo-cellini.md': `---
 title: Matteo Cellini
 type: Person
 aliases:
@@ -338,12 +338,12 @@ Sponsorship manager — handles all sponsor relationships, proposals, and report
 - [[Manage Sponsorships]]
 - [[Run Sponsorships]]
 `,
-  '/Users/luca/Laputa/event/2026-02-14-laputa-app-kickoff.md': `---
+  '/Users/luca/Laputa/2026-02-14-laputa-app-kickoff.md': `---
 title: Laputa App Design Session
 type: Event
 related_to:
-  - "[[project/26q1-laputa-app]]"
-  - "[[person/matteo-cellini]]"
+  - "[[26q1-laputa-app]]"
+  - "[[matteo-cellini]]"
 ---
 
 # Laputa App Design Session
@@ -366,7 +366,7 @@ related_to:
 - [x] Luca: set up Tauri v2 project scaffold
 - [ ] Matteo: test with real vault data
 `,
-  '/Users/luca/Laputa/topic/software-development.md': `---
+  '/Users/luca/Laputa/software-development.md': `---
 title: Software Development
 type: Topic
 aliases:
@@ -384,7 +384,7 @@ A broad topic covering everything from frontend to systems programming.
 - **AI/ML**: LLMs, agents, code generation
 - **Systems**: Rust, performance optimization
 `,
-  '/Users/luca/Laputa/topic/trading.md': `---
+  '/Users/luca/Laputa/trading.md': `---
 title: Trading
 type: Topic
 aliases:
@@ -401,42 +401,42 @@ aliases:
 ## Active Experiments
 - [[Stock Screener — EMA200 Wick Bounce]]
 `,
-  '/Users/luca/Laputa/essay/on-writing-well.md': `---
+  '/Users/luca/Laputa/on-writing-well.md': `---
 title: On Writing Well
 type: Essay
 Belongs to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 ---
 
 # On Writing Well
 
 Good writing is lean and confident. Every sentence should serve a purpose.
 `,
-  '/Users/luca/Laputa/essay/engineering-leadership-101.md': `---
+  '/Users/luca/Laputa/engineering-leadership-101.md': `---
 title: Engineering Leadership 101
 type: Essay
 Belongs to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 Related to:
-  - "[[topic/software-development]]"
+  - "[[software-development]]"
 ---
 
 # Engineering Leadership 101
 
 The transition from IC to manager is the hardest career shift in engineering.
 `,
-  '/Users/luca/Laputa/essay/ai-agents-primer.md': `---
+  '/Users/luca/Laputa/ai-agents-primer.md': `---
 title: AI Agents Primer
 type: Essay
 Belongs to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 ---
 
 # AI Agents Primer
 
 AI agents are autonomous systems that can plan, execute, and adapt to achieve goals.
 `,
-  '/Users/luca/Laputa/person/maria-bianchi.md': `---
+  '/Users/luca/Laputa/maria-bianchi.md': `---
 title: Maria Bianchi
 type: Person
 aliases:
@@ -452,7 +452,7 @@ Product designer — leads UX research and design sprints for the app.
 - Email: maria@example.com
 - Slack: @maria
 `,
-  '/Users/luca/Laputa/person/marco-verdi.md': `---
+  '/Users/luca/Laputa/marco-verdi.md': `---
 title: Marco Verdi
 type: Person
 aliases:
@@ -467,7 +467,7 @@ Frontend engineer — focuses on React performance and accessibility.
 ## Contact
 - Email: marco@example.com
 `,
-  '/Users/luca/Laputa/person/elena-russo.md': `---
+  '/Users/luca/Laputa/elena-russo.md': `---
 title: Elena Russo
 type: Person
 aliases:
@@ -479,21 +479,21 @@ aliases:
 ## Role
 Content strategist — plans newsletter topics and manages the editorial calendar.
 `,
-  '/Users/luca/Laputa/type/project.md': `---
+  '/Users/luca/Laputa/project.md': `---
 type: Type
 order: 0
 ---
 
 # Project
 
-A **time-bound initiative** that advances a [[type/responsibility|Responsibility]]. Projects have a clear start, end, and deliverables.
+A **time-bound initiative** that advances a [[responsibility|Responsibility]]. Projects have a clear start, end, and deliverables.
 
 ## Properties
 - **Status**: Active, Paused, Done, Dropped
 - **Owner**: The person accountable
 - **Belongs to**: Usually a Quarter or Responsibility
 `,
-  '/Users/luca/Laputa/type/responsibility.md': `---
+  '/Users/luca/Laputa/responsibility.md': `---
 type: Type
 order: 1
 ---
@@ -506,14 +506,14 @@ An **ongoing area of ownership** — something you're accountable for indefinite
 - **Status**: Active, Paused, Archived
 - **Owner**: The person accountable
 `,
-  '/Users/luca/Laputa/type/procedure.md': `---
+  '/Users/luca/Laputa/procedure.md': `---
 type: Type
 order: 2
 ---
 
 # Procedure
 
-A **recurring process** tied to a [[type/responsibility|Responsibility]]. Procedures have a cadence (weekly, monthly) and describe how to do something.
+A **recurring process** tied to a [[responsibility|Responsibility]]. Procedures have a cadence (weekly, monthly) and describe how to do something.
 
 ## Properties
 - **Status**: Active, Paused
@@ -521,7 +521,7 @@ A **recurring process** tied to a [[type/responsibility|Responsibility]]. Proced
 - **Cadence**: Weekly, Monthly, Quarterly
 - **Belongs to**: A Responsibility
 `,
-  '/Users/luca/Laputa/type/experiment.md': `---
+  '/Users/luca/Laputa/experiment.md': `---
 type: Type
 order: 3
 ---
@@ -534,7 +534,7 @@ A **hypothesis-driven investigation** with a clear test and measurable outcome. 
 - **Status**: Active, Done, Dropped
 - **Owner**: The person running the experiment
 `,
-  '/Users/luca/Laputa/type/person.md': `---
+  '/Users/luca/Laputa/person.md': `---
 type: Type
 order: 4
 ---
@@ -546,7 +546,7 @@ A **person** you interact with — team members, collaborators, contacts. People
 ## Properties
 - **Aliases**: Alternative names for wikilink resolution
 `,
-  '/Users/luca/Laputa/type/event.md': `---
+  '/Users/luca/Laputa/event.md': `---
 type: Type
 order: 5
 ---
@@ -558,7 +558,7 @@ A **point-in-time occurrence** — meetings, launches, milestones. Events are li
 ## Properties
 - **Related to**: Entities this event is about
 `,
-  '/Users/luca/Laputa/type/topic.md': `---
+  '/Users/luca/Laputa/topic.md': `---
 type: Type
 order: 6
 ---
@@ -570,7 +570,7 @@ A **subject area** for categorization. Topics group related notes, projects, and
 ## Properties
 - **Aliases**: Alternative names
 `,
-  '/Users/luca/Laputa/type/essay.md': `---
+  '/Users/luca/Laputa/essay.md': `---
 type: Type
 order: 7
 ---
@@ -582,7 +582,7 @@ A **published piece of writing** — newsletter essays, blog posts, articles. Es
 ## Properties
 - **Belongs to**: Usually a Responsibility
 `,
-  '/Users/luca/Laputa/type/note.md': `---
+  '/Users/luca/Laputa/note.md': `---
 type: Type
 order: 8
 ---
@@ -594,7 +594,7 @@ A **general-purpose document** — research notes, meeting notes, strategy docs.
 ## Properties
 - **Belongs to**: A Project, Responsibility, or other parent
 `,
-  '/Users/luca/Laputa/type/recipe.md': `---
+  '/Users/luca/Laputa/recipe.md': `---
 type: Type
 icon: cooking-pot
 color: orange
@@ -609,7 +609,7 @@ A **recipe** for cooking or baking. Recipes have ingredients, steps, and serving
 - **Prep Time**: Time to prepare
 - **Cook Time**: Time to cook
 `,
-  '/Users/luca/Laputa/type/book.md': `---
+  '/Users/luca/Laputa/book.md': `---
 type: Type
 icon: book-open
 color: green
@@ -624,20 +624,20 @@ A **book** you're reading or have read. Track reading progress, notes, and key t
 - **Status**: Reading, Finished, Abandoned
 - **Rating**: 1-5 stars
 `,
-  '/Users/luca/Laputa/note/old-draft-notes.md': `---
+  '/Users/luca/Laputa/old-draft-notes.md': `---
 title: Old Draft Notes
 type: Note
 trashed: true
 trashed_at: ${new Date(Date.now() - 86400000 * 5).toISOString().slice(0, 10)}
 belongs_to:
-  - "[[project/26q1-laputa-app]]"
+  - "[[26q1-laputa-app]]"
 ---
 
 # Old Draft Notes
 
 Some rough draft content that is no longer relevant. Moving to trash.
 `,
-  '/Users/luca/Laputa/note/deprecated-api-notes.md': `---
+  '/Users/luca/Laputa/deprecated-api-notes.md': `---
 title: Deprecated API Notes
 type: Note
 trashed: true
@@ -648,28 +648,28 @@ trashed_at: ${new Date(Date.now() - 86400000 * 35).toISOString().slice(0, 10)}
 
 Old API documentation for the v1 endpoint. Replaced by v2 docs.
 `,
-  '/Users/luca/Laputa/experiment/failed-seo-experiment.md': `---
+  '/Users/luca/Laputa/failed-seo-experiment.md': `---
 title: Failed SEO Experiment
 type: Experiment
 status: Dropped
 trashed: true
 trashed_at: ${new Date(Date.now() - 86400000 * 10).toISOString().slice(0, 10)}
 related_to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 ---
 
 # Failed SEO Experiment
 
 Tried programmatic SEO pages. Results were negligible — trashing this.
 `,
-  '/Users/luca/Laputa/project/25q3-website-redesign.md': `---
+  '/Users/luca/Laputa/25q3-website-redesign.md': `---
 title: Website Redesign
 type: Project
 status: Done
 archived: true
 owner: Luca Rossi
 belongs_to:
-  - "[[quarter/q3-2025]]"
+  - "[[q3-2025]]"
 ---
 
 # Website Redesign
@@ -681,14 +681,14 @@ Completed redesign of the company website. Migrated from WordPress to Next.js wi
 - Organic traffic: +35% in 3 months
 - Bounce rate: 58% → 42%
 `,
-  '/Users/luca/Laputa/experiment/twitter-thread-experiment.md': `---
+  '/Users/luca/Laputa/twitter-thread-experiment.md': `---
 title: Twitter Thread Growth Experiment
 type: Experiment
 status: Done
 archived: true
 owner: Luca Rossi
 related_to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 ---
 
 # Twitter Thread Growth Experiment
@@ -702,7 +702,7 @@ After 6 weeks, signups increased by only 12%. The additional threads had diminis
 ## Decision
 Reverted to 1 high-quality thread per week. Archived this experiment.
 `,
-  '/Users/luca/Laputa/recipe/pasta-carbonara.md': `---
+  '/Users/luca/Laputa/pasta-carbonara.md': `---
 title: Pasta Carbonara
 type: Recipe
 servings: 4
@@ -721,7 +721,7 @@ Classic Roman pasta dish with eggs, pecorino, guanciale, and black pepper.
 - 100g Pecorino Romano
 - Black pepper
 `,
-  '/Users/luca/Laputa/book/designing-data-intensive-applications.md': `---
+  '/Users/luca/Laputa/designing-data-intensive-applications.md': `---
 title: Designing Data-Intensive Applications
 type: Book
 author: Martin Kleppmann
@@ -735,19 +735,147 @@ Essential reading for anyone building distributed systems. Covers replication, p
 `,
   '/Users/luca/Laputa/theme/default.md': `---
 type: Theme
-title: Default
-primary: "#155DFF"
+Description: Light theme with warm, paper-like tones
 background: "#FFFFFF"
 foreground: "#37352F"
-sidebar: "#F7F6F3"
-border: "#E9E9E7"
+card: "#FFFFFF"
+popover: "#FFFFFF"
+primary: "#155DFF"
+primary-foreground: "#FFFFFF"
+secondary: "#EBEBEA"
+secondary-foreground: "#37352F"
 muted: "#F0F0EF"
-muted-foreground: "#9B9A97"
-accent: "#F0F7FF"
-accent-foreground: "#0A3B8F"
+muted-foreground: "#787774"
+accent: "#EBEBEA"
+accent-foreground: "#37352F"
+destructive: "#E03E3E"
+border: "#E9E9E7"
+input: "#E9E9E7"
+ring: "#155DFF"
+sidebar: "#F7F6F3"
+sidebar-foreground: "#37352F"
+sidebar-border: "#E9E9E7"
+sidebar-accent: "#EBEBEA"
+text-primary: "#37352F"
+text-secondary: "#787774"
+text-tertiary: "#B4B4B4"
+text-muted: "#B4B4B4"
+text-heading: "#37352F"
+bg-primary: "#FFFFFF"
+bg-card: "#FFFFFF"
+bg-sidebar: "#F7F6F3"
+bg-hover: "#EBEBEA"
+bg-hover-subtle: "#F0F0EF"
+bg-selected: "#E8F4FE"
+border-primary: "#E9E9E7"
+accent-blue: "#155DFF"
+accent-green: "#00B38B"
+accent-orange: "#D9730D"
+accent-red: "#E03E3E"
+accent-purple: "#A932FF"
+accent-yellow: "#F0B100"
+accent-blue-light: "#155DFF14"
+accent-green-light: "#00B38B14"
+accent-purple-light: "#A932FF14"
+accent-red-light: "#E03E3E14"
+accent-yellow-light: "#F0B10014"
 font-family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-font-size-base: 14
-line-height-base: 1.6
+font-size-base: 14px
+editor-font-family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+editor-font-size: 15px
+editor-line-height: 1.5
+editor-max-width: 720px
+editor-padding-horizontal: 40px
+editor-padding-vertical: 20px
+editor-paragraph-spacing: 8px
+headings-h1-font-size: 32px
+headings-h1-font-weight: 700
+headings-h1-line-height: 1.2
+headings-h1-margin-top: 32px
+headings-h1-margin-bottom: 12px
+headings-h1-color: "var(--text-heading)"
+headings-h1-letter-spacing: -0.5px
+headings-h2-font-size: 27px
+headings-h2-font-weight: 600
+headings-h2-line-height: 1.4
+headings-h2-margin-top: 28px
+headings-h2-margin-bottom: 10px
+headings-h2-color: "var(--text-heading)"
+headings-h2-letter-spacing: -0.5px
+headings-h3-font-size: 20px
+headings-h3-font-weight: 600
+headings-h3-line-height: 1.4
+headings-h3-margin-top: 24px
+headings-h3-margin-bottom: 8px
+headings-h3-color: "var(--text-heading)"
+headings-h3-letter-spacing: -0.5px
+headings-h4-font-size: 20px
+headings-h4-font-weight: 600
+headings-h4-line-height: 1.4
+headings-h4-margin-top: 20px
+headings-h4-margin-bottom: 6px
+headings-h4-color: "var(--text-heading)"
+headings-h4-letter-spacing: 0px
+lists-bullet-size: 28px
+lists-bullet-color: "#177bfd"
+lists-indent-size: 24px
+lists-item-spacing: 4px
+lists-padding-left: 8px
+lists-bullet-gap: 6px
+checkboxes-size: 18px
+checkboxes-border-radius: 3px
+checkboxes-checked-color: "var(--accent-blue)"
+checkboxes-unchecked-border-color: "var(--text-muted)"
+checkboxes-gap: 8px
+inline-styles-bold-font-weight: 700
+inline-styles-bold-color: "var(--text-primary)"
+inline-styles-italic-font-style: italic
+inline-styles-italic-color: "var(--text-primary)"
+inline-styles-strikethrough-color: "var(--text-tertiary)"
+inline-styles-strikethrough-text-decoration: line-through
+inline-styles-code-font-family: "'SF Mono', 'Fira Code', monospace"
+inline-styles-code-font-size: 14px
+inline-styles-code-background-color: "var(--bg-hover-subtle)"
+inline-styles-code-padding-horizontal: 4px
+inline-styles-code-padding-vertical: 2px
+inline-styles-code-border-radius: 3px
+inline-styles-code-color: "var(--text-secondary)"
+inline-styles-link-color: "var(--accent-blue)"
+inline-styles-link-text-decoration: underline
+inline-styles-wikilink-color: "var(--accent-blue)"
+inline-styles-wikilink-text-decoration: none
+inline-styles-wikilink-border-bottom: "1px dotted currentColor"
+inline-styles-wikilink-cursor: pointer
+code-blocks-font-family: "'SF Mono', 'Fira Code', monospace"
+code-blocks-font-size: 13px
+code-blocks-line-height: 1.5
+code-blocks-background-color: "var(--bg-card)"
+code-blocks-padding-horizontal: 16px
+code-blocks-padding-vertical: 12px
+code-blocks-border-radius: 6px
+code-blocks-margin-vertical: 12px
+blockquote-border-left-width: 3px
+blockquote-border-left-color: "var(--accent-blue)"
+blockquote-padding-left: 16px
+blockquote-margin-vertical: 12px
+blockquote-color: "var(--text-secondary)"
+blockquote-font-style: italic
+table-border-color: "var(--border-primary)"
+table-header-background: "var(--bg-card)"
+table-cell-padding-horizontal: 12px
+table-cell-padding-vertical: 8px
+table-font-size: 14px
+horizontal-rule-color: "var(--border-primary)"
+horizontal-rule-margin-vertical: 24px
+horizontal-rule-thickness: 1px
+colors-background: "var(--bg-primary)"
+colors-text: "var(--text-primary)"
+colors-text-secondary: "var(--text-secondary)"
+colors-text-muted: "var(--text-muted)"
+colors-heading: "var(--text-heading)"
+colors-accent: "var(--accent-blue)"
+colors-selection: "var(--bg-selected)"
+colors-cursor: "var(--text-primary)"
 ---
 
 # Default
@@ -756,19 +884,147 @@ Light theme with warm, paper-like tones.
 `,
   '/Users/luca/Laputa/theme/dark.md': `---
 type: Theme
-title: Dark
-primary: "#155DFF"
+Description: Dark variant with deep navy tones
 background: "#0f0f1a"
 foreground: "#e0e0e0"
-sidebar: "#1a1a2e"
-border: "#2a2a4a"
+card: "#16162a"
+popover: "#1e1e3a"
+primary: "#155DFF"
+primary-foreground: "#FFFFFF"
+secondary: "#2a2a4a"
+secondary-foreground: "#e0e0e0"
 muted: "#1e1e3a"
-muted-foreground: "#6b6b8a"
-accent: "#1a2a4a"
-accent-foreground: "#8ab4ff"
+muted-foreground: "#888888"
+accent: "#2a2a4a"
+accent-foreground: "#e0e0e0"
+destructive: "#f44336"
+border: "#2a2a4a"
+input: "#2a2a4a"
+ring: "#155DFF"
+sidebar: "#1a1a2e"
+sidebar-foreground: "#e0e0e0"
+sidebar-border: "#2a2a4a"
+sidebar-accent: "#2a2a4a"
+text-primary: "#e0e0e0"
+text-secondary: "#888888"
+text-tertiary: "#666666"
+text-muted: "#666666"
+text-heading: "#e0e0e0"
+bg-primary: "#0f0f1a"
+bg-card: "#16162a"
+bg-sidebar: "#1a1a2e"
+bg-hover: "#2a2a4a"
+bg-hover-subtle: "#1e1e3a"
+bg-selected: "#155DFF22"
+border-primary: "#2a2a4a"
+accent-blue: "#155DFF"
+accent-green: "#00B38B"
+accent-orange: "#D9730D"
+accent-red: "#f44336"
+accent-purple: "#A932FF"
+accent-yellow: "#F0B100"
+accent-blue-light: "#155DFF33"
+accent-green-light: "#00B38B33"
+accent-purple-light: "#A932FF33"
+accent-red-light: "#f4433633"
+accent-yellow-light: "#F0B10033"
 font-family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-font-size-base: 14
-line-height-base: 1.6
+font-size-base: 14px
+editor-font-family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+editor-font-size: 15px
+editor-line-height: 1.5
+editor-max-width: 720px
+editor-padding-horizontal: 40px
+editor-padding-vertical: 20px
+editor-paragraph-spacing: 8px
+headings-h1-font-size: 32px
+headings-h1-font-weight: 700
+headings-h1-line-height: 1.2
+headings-h1-margin-top: 32px
+headings-h1-margin-bottom: 12px
+headings-h1-color: "var(--text-heading)"
+headings-h1-letter-spacing: -0.5px
+headings-h2-font-size: 27px
+headings-h2-font-weight: 600
+headings-h2-line-height: 1.4
+headings-h2-margin-top: 28px
+headings-h2-margin-bottom: 10px
+headings-h2-color: "var(--text-heading)"
+headings-h2-letter-spacing: -0.5px
+headings-h3-font-size: 20px
+headings-h3-font-weight: 600
+headings-h3-line-height: 1.4
+headings-h3-margin-top: 24px
+headings-h3-margin-bottom: 8px
+headings-h3-color: "var(--text-heading)"
+headings-h3-letter-spacing: -0.5px
+headings-h4-font-size: 20px
+headings-h4-font-weight: 600
+headings-h4-line-height: 1.4
+headings-h4-margin-top: 20px
+headings-h4-margin-bottom: 6px
+headings-h4-color: "var(--text-heading)"
+headings-h4-letter-spacing: 0px
+lists-bullet-size: 28px
+lists-bullet-color: "#155DFF"
+lists-indent-size: 24px
+lists-item-spacing: 4px
+lists-padding-left: 8px
+lists-bullet-gap: 6px
+checkboxes-size: 18px
+checkboxes-border-radius: 3px
+checkboxes-checked-color: "var(--accent-blue)"
+checkboxes-unchecked-border-color: "var(--text-muted)"
+checkboxes-gap: 8px
+inline-styles-bold-font-weight: 700
+inline-styles-bold-color: "var(--text-primary)"
+inline-styles-italic-font-style: italic
+inline-styles-italic-color: "var(--text-primary)"
+inline-styles-strikethrough-color: "var(--text-tertiary)"
+inline-styles-strikethrough-text-decoration: line-through
+inline-styles-code-font-family: "'SF Mono', 'Fira Code', monospace"
+inline-styles-code-font-size: 14px
+inline-styles-code-background-color: "var(--bg-hover-subtle)"
+inline-styles-code-padding-horizontal: 4px
+inline-styles-code-padding-vertical: 2px
+inline-styles-code-border-radius: 3px
+inline-styles-code-color: "var(--text-secondary)"
+inline-styles-link-color: "var(--accent-blue)"
+inline-styles-link-text-decoration: underline
+inline-styles-wikilink-color: "var(--accent-blue)"
+inline-styles-wikilink-text-decoration: none
+inline-styles-wikilink-border-bottom: "1px dotted currentColor"
+inline-styles-wikilink-cursor: pointer
+code-blocks-font-family: "'SF Mono', 'Fira Code', monospace"
+code-blocks-font-size: 13px
+code-blocks-line-height: 1.5
+code-blocks-background-color: "var(--bg-card)"
+code-blocks-padding-horizontal: 16px
+code-blocks-padding-vertical: 12px
+code-blocks-border-radius: 6px
+code-blocks-margin-vertical: 12px
+blockquote-border-left-width: 3px
+blockquote-border-left-color: "var(--accent-blue)"
+blockquote-padding-left: 16px
+blockquote-margin-vertical: 12px
+blockquote-color: "var(--text-secondary)"
+blockquote-font-style: italic
+table-border-color: "var(--border-primary)"
+table-header-background: "var(--bg-card)"
+table-cell-padding-horizontal: 12px
+table-cell-padding-vertical: 8px
+table-font-size: 14px
+horizontal-rule-color: "var(--border-primary)"
+horizontal-rule-margin-vertical: 24px
+horizontal-rule-thickness: 1px
+colors-background: "var(--bg-primary)"
+colors-text: "var(--text-primary)"
+colors-text-secondary: "var(--text-secondary)"
+colors-text-muted: "var(--text-muted)"
+colors-heading: "var(--text-heading)"
+colors-accent: "var(--accent-blue)"
+colors-selection: "var(--bg-selected)"
+colors-cursor: "var(--text-primary)"
 ---
 
 # Dark
@@ -777,19 +1033,147 @@ Dark variant with deep navy tones.
 `,
   '/Users/luca/Laputa/theme/minimal.md': `---
 type: Theme
-title: Minimal
-primary: "#000000"
+Description: High contrast, minimal chrome
 background: "#FAFAFA"
 foreground: "#111111"
-sidebar: "#F5F5F5"
-border: "#E0E0E0"
+card: "#FFFFFF"
+popover: "#FFFFFF"
+primary: "#000000"
+primary-foreground: "#FFFFFF"
+secondary: "#F0F0F0"
+secondary-foreground: "#111111"
 muted: "#F5F5F5"
-muted-foreground: "#888888"
+muted-foreground: "#666666"
 accent: "#F0F0F0"
-accent-foreground: "#000000"
+accent-foreground: "#111111"
+destructive: "#CC0000"
+border: "#E0E0E0"
+input: "#E0E0E0"
+ring: "#000000"
+sidebar: "#F5F5F5"
+sidebar-foreground: "#111111"
+sidebar-border: "#E0E0E0"
+sidebar-accent: "#E8E8E8"
+text-primary: "#111111"
+text-secondary: "#666666"
+text-tertiary: "#999999"
+text-muted: "#999999"
+text-heading: "#111111"
+bg-primary: "#FAFAFA"
+bg-card: "#FFFFFF"
+bg-sidebar: "#F5F5F5"
+bg-hover: "#EBEBEB"
+bg-hover-subtle: "#F5F5F5"
+bg-selected: "#00000014"
+border-primary: "#E0E0E0"
+accent-blue: "#000000"
+accent-green: "#006600"
+accent-orange: "#996600"
+accent-red: "#CC0000"
+accent-purple: "#660099"
+accent-yellow: "#996600"
+accent-blue-light: "#00000014"
+accent-green-light: "#00660014"
+accent-purple-light: "#66009914"
+accent-red-light: "#CC000014"
+accent-yellow-light: "#99660014"
 font-family: "'SF Mono', 'Menlo', monospace"
-font-size-base: 13
-line-height-base: 1.5
+font-size-base: 13px
+editor-font-family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+editor-font-size: 15px
+editor-line-height: 1.6
+editor-max-width: 680px
+editor-padding-horizontal: 40px
+editor-padding-vertical: 20px
+editor-paragraph-spacing: 8px
+headings-h1-font-size: 32px
+headings-h1-font-weight: 700
+headings-h1-line-height: 1.2
+headings-h1-margin-top: 32px
+headings-h1-margin-bottom: 12px
+headings-h1-color: "var(--text-heading)"
+headings-h1-letter-spacing: -0.5px
+headings-h2-font-size: 27px
+headings-h2-font-weight: 600
+headings-h2-line-height: 1.4
+headings-h2-margin-top: 28px
+headings-h2-margin-bottom: 10px
+headings-h2-color: "var(--text-heading)"
+headings-h2-letter-spacing: -0.5px
+headings-h3-font-size: 20px
+headings-h3-font-weight: 600
+headings-h3-line-height: 1.4
+headings-h3-margin-top: 24px
+headings-h3-margin-bottom: 8px
+headings-h3-color: "var(--text-heading)"
+headings-h3-letter-spacing: -0.5px
+headings-h4-font-size: 20px
+headings-h4-font-weight: 600
+headings-h4-line-height: 1.4
+headings-h4-margin-top: 20px
+headings-h4-margin-bottom: 6px
+headings-h4-color: "var(--text-heading)"
+headings-h4-letter-spacing: 0px
+lists-bullet-size: 28px
+lists-bullet-color: "#000000"
+lists-indent-size: 24px
+lists-item-spacing: 4px
+lists-padding-left: 8px
+lists-bullet-gap: 6px
+checkboxes-size: 18px
+checkboxes-border-radius: 3px
+checkboxes-checked-color: "var(--accent-blue)"
+checkboxes-unchecked-border-color: "var(--text-muted)"
+checkboxes-gap: 8px
+inline-styles-bold-font-weight: 700
+inline-styles-bold-color: "var(--text-primary)"
+inline-styles-italic-font-style: italic
+inline-styles-italic-color: "var(--text-primary)"
+inline-styles-strikethrough-color: "var(--text-tertiary)"
+inline-styles-strikethrough-text-decoration: line-through
+inline-styles-code-font-family: "'SF Mono', 'Fira Code', monospace"
+inline-styles-code-font-size: 14px
+inline-styles-code-background-color: "var(--bg-hover-subtle)"
+inline-styles-code-padding-horizontal: 4px
+inline-styles-code-padding-vertical: 2px
+inline-styles-code-border-radius: 3px
+inline-styles-code-color: "var(--text-secondary)"
+inline-styles-link-color: "var(--accent-blue)"
+inline-styles-link-text-decoration: underline
+inline-styles-wikilink-color: "var(--accent-blue)"
+inline-styles-wikilink-text-decoration: none
+inline-styles-wikilink-border-bottom: "1px dotted currentColor"
+inline-styles-wikilink-cursor: pointer
+code-blocks-font-family: "'SF Mono', 'Fira Code', monospace"
+code-blocks-font-size: 13px
+code-blocks-line-height: 1.5
+code-blocks-background-color: "var(--bg-card)"
+code-blocks-padding-horizontal: 16px
+code-blocks-padding-vertical: 12px
+code-blocks-border-radius: 6px
+code-blocks-margin-vertical: 12px
+blockquote-border-left-width: 3px
+blockquote-border-left-color: "var(--accent-blue)"
+blockquote-padding-left: 16px
+blockquote-margin-vertical: 12px
+blockquote-color: "var(--text-secondary)"
+blockquote-font-style: italic
+table-border-color: "var(--border-primary)"
+table-header-background: "var(--bg-card)"
+table-cell-padding-horizontal: 12px
+table-cell-padding-vertical: 8px
+table-font-size: 14px
+horizontal-rule-color: "var(--border-primary)"
+horizontal-rule-margin-vertical: 24px
+horizontal-rule-thickness: 1px
+colors-background: "var(--bg-primary)"
+colors-text: "var(--text-primary)"
+colors-text-secondary: "var(--text-secondary)"
+colors-text-muted: "var(--text-muted)"
+colors-heading: "var(--text-heading)"
+colors-accent: "var(--accent-blue)"
+colors-selection: "var(--bg-selected)"
+colors-cursor: "var(--text-primary)"
 ---
 
 # Minimal

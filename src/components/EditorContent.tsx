@@ -1,7 +1,9 @@
+import type React from 'react'
 import type { VaultEntry, NoteStatus } from '../types'
 import type { useCreateBlockNote } from '@blocknote/react'
 import { DiffView } from './DiffView'
 import { BreadcrumbBar } from './BreadcrumbBar'
+import { TitleField } from './TitleField'
 import { TrashedNoteBanner } from './TrashedNoteBanner'
 import { ArchivedNoteBanner } from './ArchivedNoteBanner'
 import { RawEditorView } from './RawEditorView'
@@ -41,6 +43,10 @@ interface EditorContentProps {
   onUnarchiveNote?: (path: string) => void
   vaultPath?: string
   isDarkTheme?: boolean
+  /** Ref updated by RawEditorView on every keystroke with the latest doc. */
+  rawLatestContentRef?: React.MutableRefObject<string | null>
+  /** Called when the user edits the dedicated title field. */
+  onTitleChange?: (path: string, newTitle: string) => void
 }
 
 function EditorLoadingSkeleton() {
@@ -72,7 +78,7 @@ function DiffModeView({ diffContent, onToggleDiff }: { diffContent: string | nul
 }
 
 function RawModeEditorSection({
-  rawMode, activeTab, entries, onContentChange, onSave, isDark,
+  rawMode, activeTab, entries, onContentChange, onSave, isDark, latestContentRef,
 }: {
   rawMode: boolean
   activeTab: Tab | null
@@ -80,6 +86,7 @@ function RawModeEditorSection({
   onContentChange?: (path: string, content: string) => void
   onSave?: () => void
   isDark?: boolean
+  latestContentRef?: React.MutableRefObject<string | null>
 }) {
   if (!rawMode || !activeTab) return null
   return (
@@ -91,6 +98,7 @@ function RawModeEditorSection({
       onContentChange={onContentChange ?? (() => {})}
       onSave={onSave ?? (() => {})}
       isDark={isDark}
+      latestContentRef={latestContentRef}
     />
   )
 }
@@ -129,19 +137,20 @@ function ActiveTabBreadcrumb({ activeTab, props }: {
   )
 }
 
-function EditorBody({ activeTab, isLoadingNewTab, entries, editor, diffMode, diffContent, onToggleDiff, rawMode, onRawContentChange, onSave, onNavigateWikilink, onEditorChange, vaultPath, isDarkTheme, isTrashed }: {
+function EditorBody({ activeTab, isLoadingNewTab, entries, editor, diffMode, diffContent, onToggleDiff, rawMode, onRawContentChange, onSave, onNavigateWikilink, onEditorChange, vaultPath, isDarkTheme, isTrashed, rawLatestContentRef }: {
   activeTab: Tab | null; isLoadingNewTab: boolean; entries: VaultEntry[]
   editor: ReturnType<typeof useCreateBlockNote>
   diffMode: boolean; diffContent: string | null; onToggleDiff: () => void
   rawMode: boolean; onRawContentChange?: (path: string, content: string) => void; onSave?: () => void
   onNavigateWikilink: (target: string) => void; onEditorChange?: () => void
   vaultPath?: string; isDarkTheme?: boolean; isTrashed: boolean
+  rawLatestContentRef?: React.MutableRefObject<string | null>
 }) {
   const showEditor = !diffMode && !rawMode
   return (
     <>
       {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
-      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} isDark={isDarkTheme} />
+      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} isDark={isDarkTheme} latestContentRef={rawLatestContentRef} />
       {showEditor && activeTab && (
         <div style={{ display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0 }}>
           <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} isDarkTheme={isDarkTheme} editable={!isTrashed} />
@@ -157,10 +166,11 @@ export function EditorContent({
   diffMode, diffContent, onToggleDiff,
   rawMode, onToggleRaw, onRawContentChange, onSave,
   onNavigateWikilink, onEditorChange, vaultPath, isDarkTheme,
-  onDeleteNote,
+  onDeleteNote, rawLatestContentRef, onTitleChange,
   ...breadcrumbProps
 }: EditorContentProps) {
   const isTrashed = activeTab?.entry.trashed ?? false
+  const showTitleField = activeTab && !diffMode && !rawMode
 
   return (
     <div className="flex flex-1 flex-col min-w-0 min-h-0">
@@ -179,7 +189,15 @@ export function EditorContent({
       {activeTab?.entry.archived && breadcrumbProps.onUnarchiveNote && (
         <ArchivedNoteBanner onUnarchive={() => breadcrumbProps.onUnarchiveNote!(activeTab.entry.path)} />
       )}
-      <EditorBody activeTab={activeTab} isLoadingNewTab={isLoadingNewTab} entries={entries} editor={editor} diffMode={diffMode} diffContent={diffContent} onToggleDiff={onToggleDiff} rawMode={rawMode} onRawContentChange={onRawContentChange} onSave={onSave} onNavigateWikilink={onNavigateWikilink} onEditorChange={onEditorChange} vaultPath={vaultPath} isDarkTheme={isDarkTheme} isTrashed={isTrashed} />
+      {showTitleField && (
+        <TitleField
+          title={activeTab.entry.title}
+          filename={activeTab.entry.filename}
+          editable={!isTrashed}
+          onTitleChange={(newTitle) => onTitleChange?.(activeTab.entry.path, newTitle)}
+        />
+      )}
+      <EditorBody activeTab={activeTab} isLoadingNewTab={isLoadingNewTab} entries={entries} editor={editor} diffMode={diffMode} diffContent={diffContent} onToggleDiff={onToggleDiff} rawMode={rawMode} onRawContentChange={onRawContentChange} onSave={onSave} onNavigateWikilink={onNavigateWikilink} onEditorChange={onEditorChange} vaultPath={vaultPath} isDarkTheme={isDarkTheme} isTrashed={isTrashed} rawLatestContentRef={rawLatestContentRef} />
     </div>
   )
 }

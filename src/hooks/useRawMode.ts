@@ -1,29 +1,47 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
+import { getVaultConfig, updateVaultConfigField, subscribeVaultConfig } from '../utils/vaultConfigStore'
 
 interface UseRawModeParams {
   activeTabPath: string | null
   /** Flush pending WYSIWYG edits to disk before entering raw mode. */
   onFlushPending?: () => Promise<boolean>
+  /** Called synchronously before raw mode is deactivated, so the caller can
+   *  flush any debounced raw-editor content into tab state. */
+  onBeforeRawEnd?: () => void
+}
+
+function loadEditorMode(): boolean {
+  return getVaultConfig().editor_mode === 'raw'
 }
 
 /**
  * Manages raw editor mode state.
- * Raw mode is automatically inactive when the active tab changes,
- * because rawMode is derived from whether the stored path matches the current tab.
+ * The mode preference persists across tab switches and is stored in vault config.
  */
-export function useRawMode({ activeTabPath, onFlushPending }: UseRawModeParams) {
-  // Track which path has raw mode active — automatically deactivates on tab switch
-  const [rawActivePath, setRawActivePath] = useState<string | null>(null)
-  const rawMode = rawActivePath !== null && rawActivePath === activeTabPath
+export function useRawMode({ activeTabPath, onFlushPending, onBeforeRawEnd }: UseRawModeParams) {
+  const [rawEnabled, setRawEnabled] = useState(loadEditorMode)
+
+  // Re-sync when vault config becomes available (e.g. after initial load)
+  useEffect(() => {
+    return subscribeVaultConfig(() => {
+      const stored = getVaultConfig().editor_mode
+      setRawEnabled(stored === 'raw')
+    })
+  }, [])
+
+  const rawMode = rawEnabled && activeTabPath !== null
 
   const handleToggleRaw = useCallback(async () => {
-    if (rawMode) {
-      setRawActivePath(null)
+    if (rawEnabled) {
+      onBeforeRawEnd?.()
+      setRawEnabled(false)
+      updateVaultConfigField('editor_mode', 'preview')
     } else {
       await onFlushPending?.()
-      setRawActivePath(activeTabPath)
+      setRawEnabled(true)
+      updateVaultConfigField('editor_mode', 'raw')
     }
-  }, [rawMode, activeTabPath, onFlushPending])
+  }, [rawEnabled, onFlushPending, onBeforeRawEnd])
 
   return { rawMode, handleToggleRaw }
 }

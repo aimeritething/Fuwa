@@ -13,6 +13,7 @@ const FILE_DAILY_NOTE: &str = "file-daily-note";
 const FILE_QUICK_OPEN: &str = "file-quick-open";
 const FILE_SAVE: &str = "file-save";
 const FILE_CLOSE_TAB: &str = "file-close-tab";
+const FILE_REOPEN_CLOSED_TAB: &str = "file-reopen-closed-tab";
 
 const EDIT_FIND_IN_VAULT: &str = "edit-find-in-vault";
 const EDIT_TOGGLE_RAW_EDITOR: &str = "edit-toggle-raw-editor";
@@ -38,6 +39,7 @@ const GO_CHANGES: &str = "go-changes";
 
 const NOTE_ARCHIVE: &str = "note-archive";
 const NOTE_TRASH: &str = "note-trash";
+const NOTE_EMPTY_TRASH: &str = "note-empty-trash";
 
 const VAULT_OPEN: &str = "vault-open";
 const VAULT_REMOVE: &str = "vault-remove";
@@ -61,6 +63,7 @@ const CUSTOM_IDS: &[&str] = &[
     FILE_QUICK_OPEN,
     FILE_SAVE,
     FILE_CLOSE_TAB,
+    FILE_REOPEN_CLOSED_TAB,
     EDIT_FIND_IN_VAULT,
     EDIT_TOGGLE_RAW_EDITOR,
     EDIT_TOGGLE_DIFF,
@@ -82,6 +85,7 @@ const CUSTOM_IDS: &[&str] = &[
     GO_CHANGES,
     NOTE_ARCHIVE,
     NOTE_TRASH,
+    NOTE_EMPTY_TRASH,
     VAULT_OPEN,
     VAULT_REMOVE,
     VAULT_RESTORE_GETTING_STARTED,
@@ -165,6 +169,10 @@ fn build_file_menu(app: &App) -> MenuResult {
         .id(FILE_CLOSE_TAB)
         .accelerator("CmdOrCtrl+W")
         .build(app)?;
+    let reopen_closed_tab = MenuItemBuilder::new("Reopen Closed Tab")
+        .id(FILE_REOPEN_CLOSED_TAB)
+        .accelerator("CmdOrCtrl+Shift+T")
+        .build(app)?;
 
     Ok(SubmenuBuilder::new(app, "File")
         .item(&new_note)
@@ -174,6 +182,7 @@ fn build_file_menu(app: &App) -> MenuResult {
         .separator()
         .item(&save)
         .item(&close_tab)
+        .item(&reopen_closed_tab)
         .build()?)
 }
 
@@ -287,6 +296,9 @@ fn build_note_menu(app: &App) -> MenuResult {
         .id(NOTE_TRASH)
         .accelerator("CmdOrCtrl+Backspace")
         .build(app)?;
+    let empty_trash = MenuItemBuilder::new("Empty Trash…")
+        .id(NOTE_EMPTY_TRASH)
+        .build(app)?;
     let toggle_raw_editor = MenuItemBuilder::new("Toggle Raw Editor")
         .id(EDIT_TOGGLE_RAW_EDITOR)
         .accelerator("CmdOrCtrl+\\")
@@ -302,6 +314,7 @@ fn build_note_menu(app: &App) -> MenuResult {
     Ok(SubmenuBuilder::new(app, "Note")
         .item(&archive_note)
         .item(&trash_note)
+        .item(&empty_trash)
         .separator()
         .item(&toggle_raw_editor)
         .item(&toggle_ai_chat)
@@ -471,6 +484,7 @@ mod tests {
             GO_CHANGES,
             NOTE_ARCHIVE,
             NOTE_TRASH,
+            NOTE_EMPTY_TRASH,
             VAULT_OPEN,
             VAULT_REMOVE,
             VAULT_RESTORE_GETTING_STARTED,

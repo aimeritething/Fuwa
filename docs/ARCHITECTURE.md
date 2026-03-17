@@ -31,6 +31,22 @@ Vault data exists in three forms simultaneously:
 
 These must never diverge permanently. If they do, the filesystem wins and the cache/state are rebuilt.
 
+```mermaid
+flowchart LR
+    FS["🗂️ Filesystem\n.md files on disk\n(source of truth)"]
+    Cache["⚡ Cache\n~/.laputa/cache/\n(fast startup index)"]
+    RS["⚛️ React State\nVaultEntry[]\n(in-memory session)"]
+
+    FS -->|"scan_vault_cached()"| Cache
+    Cache -->|"useVaultLoader on load"| RS
+    FS -->|"reload_vault (full rescan)"| RS
+    RS -.->|"write via Tauri IPC first"| FS
+
+    style FS fill:#d4edda,stroke:#28a745,color:#000
+    style Cache fill:#fff3cd,stroke:#ffc107,color:#000
+    style RS fill:#cce5ff,stroke:#004085,color:#000
+```
+
 #### Ownership rules
 
 | Layer | Owner | Writes to | Reads from |
@@ -42,7 +58,7 @@ These must never diverge permanently. If they do, the filesystem wins and the ca
 #### Invariants
 
 1. **Disk-first writes**: All functions that change vault data must write to disk (via Tauri IPC) *before* updating React state. This ensures that if the disk write fails, React state remains consistent with what's actually on disk.
-2. **Optimistic UI with rollback**: Where responsiveness matters (e.g. `persistOptimistic` in `useNoteActions`), state may update before disk confirmation — but a failure callback must revert the optimistic state.
+2. **Optimistic UI with rollback**: Where responsiveness matters (e.g. `persistOptimistic` in `useNoteCreation`), state may update before disk confirmation — but a failure callback must revert the optimistic state.
 3. **No orphan state updates**: Never call `updateEntry()` before the corresponding `handleUpdateFrontmatter()` or `handleDeleteProperty()` has resolved. The three functions in `useEntryActions` (`handleCustomizeType`, `handleRenameSection`, `handleToggleTypeVisibility`) follow this rule — disk write first, then state update.
 4. **Recovery via reload**: If state ever diverges from disk (crash, external edit, race condition), `Reload Vault` (Cmd+K → "Reload Vault") invalidates the cache and does a full filesystem rescan via the `reload_vault` Tauri command, replacing all React state. The `reload_vault_entry` command can re-read a single file.
 5. **Cache is disposable**: The `reload_vault` command deletes the cache file before rescanning, guaranteeing fresh data. The cache never contains data that doesn't exist on the filesystem.
@@ -70,42 +86,52 @@ These must never diverge permanently. If they do, the filesystem wins and the ca
 
 ## System Overview
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                       Tauri v2 Window                            │
-│                                                                  │
-│  ┌──────────────────── React Frontend ────────────────────────┐  │
-│  │                                                            │  │
-│  │  App.tsx (orchestrator)                                    │  │
-│  │    ├── WelcomeScreen     (onboarding / vault-missing)     │  │
-│  │    ├── Sidebar           (navigation + filters + types)   │  │
-│  │    ├── NoteList / PulseView (filtered list / activity)    │  │
-│  │    ├── Editor            (BlockNote + tabs + diff + raw)  │  │
-│  │    │     ├── Inspector   (metadata + relationships)       │  │
-│  │    │     ├── AIChatPanel (API-based chat)                 │  │
-│  │    │     └── AiPanel     (Claude CLI agent + tools)       │  │
-│  │    ├── SearchPanel       (keyword/semantic/hybrid search) │  │
-│  │    ├── SettingsPanel     (API keys, GitHub, zoom, theme)  │  │
-│  │    ├── StatusBar         (vault picker + sync + version)  │  │
-│  │    ├── CommandPalette    (Cmd+K fuzzy command launcher)   │  │
-│  │    └── Modals (CreateNote, CreateType, Commit, GitHub)    │  │
-│  │                                                            │  │
-│  └──────────────┬──────────┬──────────────────────────────────┘  │
-│                 │          │                                      │
-│        Tauri IPC│     Vite Proxy / WS                            │
-│  ┌──────────────▼────┐ ┌──▼────────────────────────────────┐    │
-│  │   Rust Backend    │ │   External Services               │    │
-│  │  lib.rs → 62 cmds │ │  Anthropic API (Claude chat)      │    │
-│  │  vault/           │ │  Claude CLI (agent subprocess)    │    │
-│  │  frontmatter/     │ │  MCP Server (ws://9710, 9711)     │    │
-│  │  git/             │ │  qmd (search/indexing engine)     │    │
-│  │  github/          │ │  GitHub API (OAuth, repos, clone) │    │
-│  │  theme/           │ │                                   │    │
-│  │  search.rs        │ └───────────────────────────────────┘    │
-│  │  indexing.rs      │                                           │
-│  │  claude_cli.rs    │                                           │
-│  └───────────────────┘                                           │
-└──────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph TW["Tauri v2 Window"]
+        subgraph FE["React Frontend"]
+            App["App.tsx (orchestrator)"]
+            WS["WelcomeScreen\n(onboarding)"]
+            SB["Sidebar\n(navigation + filters + types)"]
+            NL["NoteList / PulseView\n(filtered list / activity)"]
+            ED["Editor\n(BlockNote + tabs + diff + raw)"]
+            IN["Inspector\n(metadata + relationships)"]
+            AIC["AIChatPanel\n(API-based chat)"]
+            AIP["AiPanel\n(Claude CLI agent + tools)"]
+            SP["SearchPanel\n(keyword/semantic/hybrid)"]
+            ST["StatusBar\n(vault picker + sync + version)"]
+            CP["CommandPalette\n(Cmd+K launcher)"]
+
+            App --> WS & SB & NL & ED & SP & ST & CP
+            ED --> IN & AIC & AIP
+        end
+
+        subgraph RB["Rust Backend"]
+            LIB["lib.rs → 64 Tauri commands"]
+            VAULT["vault/"]
+            FM["frontmatter/"]
+            GIT["git/"]
+            GH["github/"]
+            THEME["theme/"]
+            SEARCH["search.rs + indexing.rs"]
+            CLI["claude_cli.rs"]
+        end
+
+        subgraph EXT["External Services"]
+            ANTH["Anthropic API\n(Claude chat)"]
+            CCLI["Claude CLI\n(agent subprocess)"]
+            MCP["MCP Server\n(ws://9710, 9711)"]
+            QMD["qmd\n(search engine)"]
+            GHAPI["GitHub API\n(OAuth, repos, clone)"]
+        end
+
+        FE -->|"Tauri IPC"| RB
+        FE -->|"Vite Proxy / WS"| EXT
+    end
+
+    style FE fill:#e8f4fd,stroke:#2196f3,color:#000
+    style RB fill:#fff8e1,stroke:#ff9800,color:#000
+    style EXT fill:#f3e5f5,stroke:#9c27b0,color:#000
 ```
 
 ## Four-Panel Layout
@@ -160,21 +186,38 @@ Full agent mode — spawns Claude CLI as a subprocess with tool access and MCP v
 
 #### Agent Event Flow
 
-```
-User sends message in AiPanel
-  → useAiAgent.sendMessage(text, references)
-    → buildContextSnapshot(activeNote, linkedNotes, openTabs)
-    → invoke('stream_claude_agent', { message, systemPrompt, vaultPath })
-      → Rust spawns: claude -p <msg> --output-format stream-json --mcp-config <json>
-      → NDJSON lines parsed into ClaudeStreamEvent variants:
-          Init, TextDelta, ThinkingDelta, ToolStart, ToolDone, Result, Error, Done
-      → Events emitted via Tauri: app_handle.emit("claude-agent-stream", &event)
-    → Frontend listener routes events:
-        onText → accumulate response (revealed on Done)
-        onThinking → show reasoning block (collapsed on first text)
-        onToolStart → add AiActionCard with spinner
-        onToolDone → update card with output
-        onDone → reveal full response, detect file operations
+```mermaid
+sequenceDiagram
+    participant U as User (AiPanel)
+    participant FE as useAiAgent (Frontend)
+    participant R as claude_cli.rs (Rust)
+    participant C as Claude CLI
+    participant V as Vault (MCP)
+
+    U->>FE: sendMessage(text, references)
+    FE->>FE: buildContextSnapshot(activeNote, linkedNotes, openTabs)
+    FE->>R: invoke('stream_claude_agent', {message, systemPrompt, vaultPath})
+    R->>C: spawn claude -p <msg> --output-format stream-json --mcp-config <json>
+
+    loop NDJSON stream
+        C-->>R: Init | TextDelta | ThinkingDelta | ToolStart | ToolDone | Result | Done
+        R-->>FE: emit("claude-agent-stream", event)
+        alt TextDelta
+            FE->>FE: accumulate response (revealed on Done)
+        else ThinkingDelta
+            FE->>FE: show reasoning block (collapses on first text)
+        else ToolStart
+            FE->>FE: add AiActionCard with spinner
+        else ToolDone
+            FE->>FE: update card with output
+        else Done
+            FE->>FE: reveal full response
+            FE->>FE: detect file operations → reload vault if needed
+        end
+    end
+
+    C->>V: MCP tool calls (search_notes, read_note, edit_note…)
+    V-->>C: tool results
 ```
 
 #### File Operation Detection
@@ -251,36 +294,31 @@ Registration is non-destructive (additive, preserves other servers) and uses `up
 
 ### Architecture
 
-```
-┌─────────────────────────────────────────────────────┐
-│                 MCP Server (Node.js)                 │
-│                                                     │
-│  index.js ─── stdio transport ──→ Claude Code       │
-│     │                              Cursor           │
-│     ├── vault.js (9 vault operations)               │
-│     │     ├── findMarkdownFiles  ├── deleteNote     │
-│     │     ├── readNote           ├── linkNotes      │
-│     │     ├── createNote         ├── listNotes      │
-│     │     ├── searchNotes        ├── vaultContext    │
-│     │     ├── appendToNote                          │
-│     │     └── editNoteFrontmatter                   │
-│     │                                               │
-│     └── ws-bridge.js                                │
-│           ├── port 9710: tool bridge ←→ AI clients  │
-│           └── port 9711: UI bridge  ←→ Frontend     │
-│                                                     │
-│  Spawned by Tauri (mcp.rs) on app startup           │
-│  Auto-registered in ~/.claude/mcp.json              │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph MCP["MCP Server (Node.js) — spawned by Tauri on startup"]
+        IDX["index.js"]
+        VAULT["vault.js\n(findMarkdownFiles, readNote, createNote,\nsearchNotes, appendToNote, editNoteFrontmatter,\ndeleteNote, linkNotes, listNotes, vaultContext)"]
+        WSB["ws-bridge.js"]
+
+        IDX -->|"stdio transport"| STDIO["Claude Code / Cursor"]
+        IDX --> VAULT
+        IDX --> WSB
+        WSB -->|"port 9710 — tool bridge"| AI["AI Clients\n(Claude Code, external)"]
+        WSB -->|"port 9711 — UI bridge"| FE["Frontend\n(useAiActivity)"]
+    end
+
+    TAURI["Tauri (mcp.rs)"] -->|"spawn on startup"| MCP
+    TAURI -->|"auto-register"| CFG["~/.claude/mcp.json\n~/.cursor/mcp.json"]
 ```
 
 ### WebSocket Bridge
 
-The WebSocket bridge enables real-time vault operations from both the frontend and external AI clients:
-
-```
-Frontend (useMcpBridge) ←→ ws://localhost:9710 ←→ ws-bridge.js ←→ vault.js
-MCP stdio tools         ←→ ws://localhost:9711 ←→ Frontend UI actions (useAiActivity)
+```mermaid
+flowchart LR
+    FE["Frontend\n(useMcpBridge)"] <-->|"ws://localhost:9710"| WSB["ws-bridge.js"]
+    WSB <--> VAULT["vault.js"]
+    STDIO["MCP stdio tools"] <-->|"ws://localhost:9711"| FE2["Frontend UI actions\n(useAiActivity)"]
 ```
 
 **Tool bridge protocol** (port 9710):
@@ -317,16 +355,28 @@ Search uses the external `qmd` binary (semantic search engine) with three modes:
 
 ### Indexing Flow
 
-```
-Vault opened
-  → check_index_status() → parse qmd status output
-  → if stale or missing:
-    → start_indexing() (two phases):
-        Phase 1 (Scanning): qmd update — scan all .md files
-        Phase 2 (Embedding): qmd embed — generate vector embeddings
-    → Progress streamed via Tauri "indexing-progress" event
-    → Metadata saved to .laputa-index.json (last_indexed_commit, timestamp)
-  → run_incremental_update() for subsequent changes
+```mermaid
+flowchart TD
+    A([Vault opened]) --> B[check_index_status]
+    B --> C{Index status?}
+    C -->|Fresh| D[run_incremental_update\ngit diff since last commit]
+    C -->|Stale / Missing| E
+
+    subgraph E[Full Indexing — start_indexing]
+        E1["Phase 1: qmd update\n(scan all .md files)"]
+        E2["Phase 2: qmd embed\n(generate vector embeddings)"]
+        E1 --> E2
+    end
+
+    E --> F[Save .laputa-index.json\nlast_indexed_commit + timestamp]
+    D --> G([Search ready])
+    F --> G
+
+    E2 -.->|failure is non-fatal| G
+    G --> H{Search mode}
+    H -->|keyword| I[qmd search]
+    H -->|semantic| J[qmd vsearch]
+    H -->|hybrid| K[qmd query]
 ```
 
 Embedding failure is non-fatal — keyword search still works.
@@ -349,9 +399,19 @@ The vault cache (`src-tauri/src/vault/cache.rs`) accelerates vault scanning usin
 
 ### Three Cache Strategies
 
-1. **Same Commit (Cache Hit)**: Git HEAD matches cached hash → only re-parse uncommitted changed files via `git status --porcelain`
-2. **Different Commit (Incremental Update)**: Uses `git diff <old>..<new> --name-only` to find changed files + uncommitted changes → selective re-parse
-3. **No Cache / Corrupt Cache (Full Scan)**: Recursive `walkdir` of all `.md` files → full parse
+```mermaid
+flowchart TD
+    A([scan_vault_cached]) --> B{Cache exists\nand valid?}
+    B -->|No / Corrupt| C["🔴 Full Scan\nwalkdir all .md files\n→ full parse"]
+    B -->|Yes| D{Git HEAD\nmatches cache?}
+    D -->|Same commit| E["🟢 Cache Hit\ngit status --porcelain\n→ re-parse only uncommitted changes"]
+    D -->|Different commit| F["🟡 Incremental Update\ngit diff old..new --name-only\n→ selective re-parse of changed files"]
+
+    C --> G[Write cache atomically\n.tmp → rename]
+    E --> G
+    F --> G
+    G --> H([VaultEntry list ready])
+```
 
 ## Theme System
 
@@ -391,6 +451,7 @@ Managed by `useVaultSwitcher` hook. Switching vaults closes all tabs and resets 
 Per-vault UI settings stored in `config/ui.config.md` (YAML frontmatter in a markdown note):
 - `zoom`: Float zoom level (0.8–1.5)
 - `view_mode`: "all" | "editor-list" | "editor-only"
+- `editor_mode`: "raw" | "preview" (persists across tab switches and sessions)
 - `tag_colors`, `status_colors`: Custom color overrides
 - `property_display_modes`: Property display preferences
 
@@ -432,56 +493,69 @@ Backend: `get_vault_pulse` Tauri command parses `git log` with `--name-status`.
 
 ### Startup Sequence
 
-```
-1. Tauri setup:
-   a. run_startup_tasks() → purge trash, migrate frontmatter, seed themes, migrate AGENTS.md, seed config files, register MCP
-   b. spawn_ws_bridge() → start MCP WebSocket bridge (ports 9710, 9711)
-2. App mounts
-3. useOnboarding checks vault exists → WelcomeScreen if not
-4. useVaultLoader fires:
-   a. invoke('list_vault', { path }) → scan_vault_cached() → VaultEntry[]
-   b. Load modified files via invoke('get_modified_files')
-   c. useMcpStatus → register MCP if needed
-   d. useThemeManager → load and apply active theme
-   e. useIndexing → check index status, trigger incremental update if needed
-5. User clicks note in NoteList
-6. useNoteActions.handleSelectNote:
-   a. invoke('get_note_content') → raw markdown
-   b. Add tab { entry, content } to tabs state
-   c. Set activeTabPath
-7. Editor renders BlockNoteTab:
-   a. splitFrontmatter(content) → [yaml, body]
-   b. preProcessWikilinks(body) → replaces [[target]] with tokens
-   c. editor.tryParseMarkdownToBlocks(preprocessed)
-   d. injectWikilinks(blocks) → replaces tokens with wikilink nodes
-   e. editor.replaceBlocks()
-8. Inspector renders frontmatter parsed from content
+```mermaid
+sequenceDiagram
+    participant T as Tauri (Rust)
+    participant A as App.tsx
+    participant VL as useVaultLoader
+    participant MCP as MCP Server
+    participant U as User
+
+    T->>T: run_startup_tasks()<br/>(purge trash, seed themes, register MCP)
+    T->>MCP: spawn_ws_bridge() — ports 9710 + 9711
+    T->>A: App mounts
+
+    A->>A: useOnboarding — vault exists?
+    alt Vault missing
+        A-->>U: WelcomeScreen
+    else Vault found
+        A->>VL: useVaultLoader fires
+        VL->>T: invoke('list_vault') → scan_vault_cached()
+        T-->>VL: VaultEntry[]
+        VL->>T: invoke('get_modified_files')
+        VL->>T: useMcpStatus — register if needed
+        VL->>T: useThemeManager — load active theme
+        VL->>T: useIndexing — incremental update if stale
+        VL-->>A: entries ready
+    end
+
+    U->>A: clicks note in NoteList
+    A->>T: invoke('get_note_content')
+    T-->>A: raw markdown
+    A->>A: splitFrontmatter → [yaml, body]
+    A->>A: preProcessWikilinks(body)
+    A->>A: tryParseMarkdownToBlocks()
+    A->>A: injectWikilinks(blocks)
+    A-->>U: Editor renders note
 ```
 
 ### Auto-Save Flow
 
-```
-Editor content changes
-  → useEditorSave detects change (debounced)
-    → serialize BlockNote blocks → markdown
-    → postProcessWikilinks → restore [[target]] syntax
-    → invoke('save_note_content', { path, content })
-    → Update tab status indicator
+```mermaid
+flowchart LR
+    A["✏️ Editor content changes"] --> B["useEditorSave\n(debounced)"]
+    B --> C["blocksToMarkdownLossy()"]
+    C --> D["postProcessWikilinks()\n→ restore [[target]] syntax"]
+    D --> E["invoke('save_note_content')"]
+    E --> F["💾 Disk write"]
+    F --> G["Update tab status indicator"]
 ```
 
 ### Git Sync Flow
 
-```
-useAutoSync (configurable interval, default from settings):
-  → invoke('git_pull') → GitPullResult
-    → if conflicts → ConflictResolverModal
-    → if fast-forward → reload vault
-  → invoke('git_push') → GitPushResult
+```mermaid
+flowchart TD
+    AS["useAutoSync\n(configurable interval)"] --> PULL["invoke('git_pull')"]
+    PULL --> PC{Result?}
+    PC -->|Conflicts| CM["ConflictResolverModal"]
+    PC -->|Fast-forward| RV["reload vault"]
+    PC -->|Up to date| DONE["idle"]
 
-Manual commit:
-  → CommitDialog → invoke('git_commit', { message })
-    → invoke('git_push')
-    → Reload modified files
+    AS --> PUSH["invoke('git_push')"]
+
+    MAN["Manual commit\n(CommitDialog)"] --> GC["invoke('git_commit', message)"]
+    GC --> GP["invoke('git_push')"]
+    GP --> RM["Reload modified files"]
 ```
 
 ## Vault Module Structure
@@ -496,7 +570,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `trash.rs` | `purge_trash` — deletes trashed notes older than 30 days |
 | `rename.rs` | `rename_note` — renames files and updates wikilinks across the vault |
 | `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
-| `migration.rs` | Frontmatter migration utilities |
+| `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
 | `config_seed.rs` | Seeds `config/` folder, migrates `AGENTS.md`, repairs missing config files |
 | `getting_started.rs` | Creates the Getting Started demo vault |
 
@@ -520,7 +594,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `vault_list.rs` | Vault list persistence |
 | `menu.rs` | Native macOS menu bar |
 
-## Tauri IPC Commands (62 total)
+## Tauri IPC Commands (64 total)
 
 ### Vault Operations
 
@@ -533,6 +607,8 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `rename_note` | Rename note + update cross-vault wikilinks |
 | `batch_archive_notes` | Archive multiple notes |
 | `batch_trash_notes` | Trash multiple notes |
+| `batch_delete_notes` | Permanently delete notes from disk |
+| `empty_trash` | Permanently delete all trashed notes from disk |
 | `purge_trash` | Delete notes trashed >30 days ago |
 | `reload_vault` | Invalidate cache and full rescan from filesystem → `Vec<VaultEntry>` |
 | `reload_vault_entry` | Re-read a single file from disk → `VaultEntry` |
@@ -648,8 +724,11 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 |-------------|-------|---------|
 | `App.tsx` | `selection`, panel widths, dialog visibility, toast, view mode | UI state |
 | `useVaultLoader` | `entries`, `allContent`, `modifiedFiles` | Vault data |
-| `useNoteActions` | `tabs`, `activeTabPath` | Open tabs and note operations |
-| `useTabManagement` | Tab ordering, pinning, swapping | Tab lifecycle |
+| `useNoteActions` | `tabs`, `activeTabPath` | Composes `useNoteCreation` + `useNoteRename` + `frontmatterOps` |
+| `useNoteCreation` | — (delegates to `useTabManagement`) | Note/type/daily-note creation with optimistic persistence |
+| `useNoteRename` | — (delegates to `useTabManagement`) | Note renaming with wikilink update |
+| `frontmatterOps` | — (pure functions) | Frontmatter CRUD: key→VaultEntry mapping, mock/Tauri dispatch |
+| `useTabManagement` | Tab ordering, pinning, swapping, closed-tab history | Tab lifecycle |
 | `useVaultSwitcher` | `vaultPath`, `extraVaults` | Vault switching |
 | `useThemeManager` | `themes`, `activeThemeId`, `isDark` | Theme state |
 | `useAIChat` | `messages`, `isStreaming` | AI chat conversation |
@@ -670,6 +749,7 @@ Data flows unidirectionally: `App` passes data and callbacks as props to child c
 | Cmd+N | Create new note |
 | Cmd+S | Save current note |
 | Cmd+W | Close active tab |
+| Cmd+Shift+T | Reopen last closed tab (LIFO history, up to 20) |
 | Cmd+Z / Cmd+Shift+Z | Undo / Redo |
 | Cmd+1–9 | Switch to tab N |
 | Cmd+[ / Cmd+] | Navigate back / forward |

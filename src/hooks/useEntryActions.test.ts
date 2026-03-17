@@ -38,7 +38,7 @@ describe('useEntryActions', () => {
   const handleDeleteProperty = vi.fn().mockResolvedValue(undefined)
   const setToastMessage = vi.fn()
   const createTypeEntry = vi.fn().mockImplementation((typeName: string) =>
-    Promise.resolve(makeEntry({ isA: 'Type', title: typeName, path: `/vault/type/${typeName.toLowerCase()}.md` })),
+    Promise.resolve(makeEntry({ isA: 'Type', title: typeName, path: `/vault/${typeName.toLowerCase()}.md` })),
   )
 
   function setup(entries: VaultEntry[] = []) {
@@ -131,16 +131,16 @@ describe('useEntryActions', () => {
 
   describe('handleCustomizeType', () => {
     it('updates icon and color on the type entry', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/type/recipe.md' })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/recipe.md' })
       const { result } = setup([typeEntry])
 
       await act(async () => {
         await result.current.handleCustomizeType('Recipe', 'cooking-pot', 'green')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/recipe.md', 'icon', 'cooking-pot')
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/recipe.md', 'color', 'green')
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/recipe.md', { icon: 'cooking-pot', color: 'green' })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/recipe.md', 'icon', 'cooking-pot')
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/recipe.md', 'color', 'green')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/recipe.md', { icon: 'cooking-pot', color: 'green' })
       expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
@@ -152,9 +152,9 @@ describe('useEntryActions', () => {
       })
 
       expect(createTypeEntry).toHaveBeenCalledWith('Recipe')
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/recipe.md', { icon: 'star', color: 'red' })
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/recipe.md', 'icon', 'star')
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/recipe.md', 'color', 'red')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/recipe.md', { icon: 'star', color: 'red' })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/recipe.md', 'icon', 'star')
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/recipe.md', 'color', 'red')
     })
 
     it('serializes frontmatter writes (icon before color)', async () => {
@@ -163,7 +163,7 @@ describe('useEntryActions', () => {
         callOrder.push(key)
         return Promise.resolve()
       })
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/type/project.md' })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/project.md' })
       const { result } = setup([typeEntry])
 
       await act(async () => {
@@ -176,28 +176,28 @@ describe('useEntryActions', () => {
 
   describe('handleUpdateTypeTemplate', () => {
     it('updates template on the type entry', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/type/project.md' })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/project.md' })
       const { result } = setup([typeEntry])
 
       await act(async () => {
         await result.current.handleUpdateTypeTemplate('Project', '## Objective\n\n## Notes')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/project.md', 'template', '## Objective\n\n## Notes')
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/project.md', { template: '## Objective\n\n## Notes' })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/project.md', 'template', '## Objective\n\n## Notes')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/project.md', { template: '## Objective\n\n## Notes' })
       expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
     it('sets template to null when empty string', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/type/project.md' })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/project.md' })
       const { result } = setup([typeEntry])
 
       await act(async () => {
         await result.current.handleUpdateTypeTemplate('Project', '')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/project.md', 'template', '')
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/project.md', { template: null })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/project.md', 'template', '')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/project.md', { template: null })
     })
 
     it('auto-creates type entry when not found', async () => {
@@ -208,15 +208,15 @@ describe('useEntryActions', () => {
       })
 
       expect(createTypeEntry).toHaveBeenCalledWith('NonExistent')
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/nonexistent.md', 'template', '## Template')
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/nonexistent.md', { template: '## Template' })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/nonexistent.md', 'template', '## Template')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/nonexistent.md', { template: '## Template' })
     })
   })
 
   describe('handleReorderSections', () => {
     it('updates order on multiple type entries', async () => {
-      const typeA = makeEntry({ isA: 'Type', title: 'Note', path: '/vault/type/note.md' })
-      const typeB = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/type/project.md' })
+      const typeA = makeEntry({ isA: 'Type', title: 'Note', path: '/vault/note.md' })
+      const typeB = makeEntry({ isA: 'Type', title: 'Project', path: '/vault/project.md' })
       const { result } = setup([typeA, typeB])
 
       await act(async () => {
@@ -226,15 +226,15 @@ describe('useEntryActions', () => {
         ])
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/note.md', 'order', 0)
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/project.md', 'order', 1)
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/note.md', { order: 0 })
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/project.md', { order: 1 })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note.md', 'order', 0)
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/project.md', 'order', 1)
+      expect(updateEntry).toHaveBeenCalledWith('/vault/note.md', { order: 0 })
+      expect(updateEntry).toHaveBeenCalledWith('/vault/project.md', { order: 1 })
       expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
     it('auto-creates type entries when not found', async () => {
-      const typeA = makeEntry({ isA: 'Type', title: 'Note', path: '/vault/type/note.md' })
+      const typeA = makeEntry({ isA: 'Type', title: 'Note', path: '/vault/note.md' })
       const { result } = setup([typeA])
 
       await act(async () => {
@@ -246,47 +246,47 @@ describe('useEntryActions', () => {
 
       expect(createTypeEntry).toHaveBeenCalledWith('Missing')
       expect(handleUpdateFrontmatter).toHaveBeenCalledTimes(2)
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/note.md', 'order', 0)
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/missing.md', 'order', 1)
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note.md', 'order', 0)
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/missing.md', 'order', 1)
     })
   })
 
   describe('handleRenameSection', () => {
     it('writes sidebar label frontmatter and updates entry in memory', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/type/recipe.md', sidebarLabel: null })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/recipe.md', sidebarLabel: null })
       const { result } = setup([typeEntry])
 
       await act(async () => {
         await result.current.handleRenameSection('Recipe', 'Recipes')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/recipe.md', 'sidebar label', 'Recipes')
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/recipe.md', { sidebarLabel: 'Recipes' })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/recipe.md', 'sidebar label', 'Recipes')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/recipe.md', { sidebarLabel: 'Recipes' })
       expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
     it('trims whitespace before saving', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/type/recipe.md', sidebarLabel: null })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/recipe.md', sidebarLabel: null })
       const { result } = setup([typeEntry])
 
       await act(async () => {
         await result.current.handleRenameSection('Recipe', '  Dishes  ')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/recipe.md', 'sidebar label', 'Dishes')
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/recipe.md', { sidebarLabel: 'Dishes' })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/recipe.md', 'sidebar label', 'Dishes')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/recipe.md', { sidebarLabel: 'Dishes' })
     })
 
     it('deletes sidebar label when label is empty', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/type/recipe.md', sidebarLabel: 'Dishes' })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/recipe.md', sidebarLabel: 'Dishes' })
       const { result } = setup([typeEntry])
 
       await act(async () => {
         await result.current.handleRenameSection('Recipe', '')
       })
 
-      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/type/recipe.md', 'sidebar label')
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/recipe.md', { sidebarLabel: null })
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/recipe.md', 'sidebar label')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/recipe.md', { sidebarLabel: null })
       expect(handleUpdateFrontmatter).not.toHaveBeenCalled()
     })
 
@@ -298,35 +298,35 @@ describe('useEntryActions', () => {
       })
 
       expect(createTypeEntry).toHaveBeenCalledWith('NonExistent')
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/nonexistent.md', 'sidebar label', 'Label')
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/nonexistent.md', { sidebarLabel: 'Label' })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/nonexistent.md', 'sidebar label', 'Label')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/nonexistent.md', { sidebarLabel: 'Label' })
     })
   })
 
   describe('handleToggleTypeVisibility', () => {
     it('sets visible to false when currently visible (null/default)', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/type/journal.md', visible: null })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/journal.md', visible: null })
       const { result } = setup([typeEntry])
 
       await act(async () => {
         await result.current.handleToggleTypeVisibility('Journal')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/journal.md', 'visible', false)
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/journal.md', { visible: false })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/journal.md', 'visible', false)
+      expect(updateEntry).toHaveBeenCalledWith('/vault/journal.md', { visible: false })
       expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
     it('sets visible to true (deletes property) when currently hidden', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/type/journal.md', visible: false })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/journal.md', visible: false })
       const { result } = setup([typeEntry])
 
       await act(async () => {
         await result.current.handleToggleTypeVisibility('Journal')
       })
 
-      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/type/journal.md', 'visible')
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/journal.md', { visible: null })
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/journal.md', 'visible')
+      expect(updateEntry).toHaveBeenCalledWith('/vault/journal.md', { visible: null })
       expect(onFrontmatterPersisted).toHaveBeenCalled()
     })
 
@@ -338,14 +338,14 @@ describe('useEntryActions', () => {
       })
 
       expect(createTypeEntry).toHaveBeenCalledWith('Journal')
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/type/journal.md', 'visible', false)
-      expect(updateEntry).toHaveBeenCalledWith('/vault/type/journal.md', { visible: false })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/journal.md', 'visible', false)
+      expect(updateEntry).toHaveBeenCalledWith('/vault/journal.md', { visible: false })
     })
   })
 
   describe('failed disk writes do not update React state', () => {
     it('handleCustomizeType does not update entry when frontmatter write fails', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/type/recipe.md' })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/recipe.md' })
       handleUpdateFrontmatter.mockRejectedValueOnce(new Error('disk full'))
       const { result } = setup([typeEntry])
 
@@ -357,7 +357,7 @@ describe('useEntryActions', () => {
     })
 
     it('handleRenameSection does not update entry when frontmatter write fails', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/type/recipe.md' })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/recipe.md' })
       handleUpdateFrontmatter.mockRejectedValueOnce(new Error('disk full'))
       const { result } = setup([typeEntry])
 
@@ -369,7 +369,7 @@ describe('useEntryActions', () => {
     })
 
     it('handleRenameSection does not update entry when delete property fails', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/type/recipe.md', sidebarLabel: 'Dishes' })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', path: '/vault/recipe.md', sidebarLabel: 'Dishes' })
       handleDeleteProperty.mockRejectedValueOnce(new Error('disk full'))
       const { result } = setup([typeEntry])
 
@@ -381,7 +381,7 @@ describe('useEntryActions', () => {
     })
 
     it('handleToggleTypeVisibility does not update entry when frontmatter write fails (hide)', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/type/journal.md', visible: null })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/journal.md', visible: null })
       handleUpdateFrontmatter.mockRejectedValueOnce(new Error('disk full'))
       const { result } = setup([typeEntry])
 
@@ -393,7 +393,7 @@ describe('useEntryActions', () => {
     })
 
     it('handleToggleTypeVisibility does not update entry when delete property fails (show)', async () => {
-      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/type/journal.md', visible: false })
+      const typeEntry = makeEntry({ isA: 'Type', title: 'Journal', path: '/vault/journal.md', visible: false })
       handleDeleteProperty.mockRejectedValueOnce(new Error('disk full'))
       const { result } = setup([typeEntry])
 

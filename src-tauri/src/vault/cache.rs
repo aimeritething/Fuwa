@@ -8,7 +8,7 @@ use super::{parse_md_file, scan_vault, VaultEntry};
 // --- Vault Cache ---
 
 /// Bump this when VaultEntry fields change to force a full rescan.
-const CACHE_VERSION: u32 = 6;
+const CACHE_VERSION: u32 = 8;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct VaultCache {
@@ -623,7 +623,7 @@ mod tests {
         let vault = dir.path();
 
         // Commit a type note without sidebar label
-        create_test_file(vault, "type/news.md", "---\ntype: Type\n---\n# News\n");
+        create_test_file(vault, "news.md", "---\ntype: Type\n---\n# News\n");
         git_add_commit(vault, "init");
 
         // Prime the cache (same commit hash)
@@ -634,7 +634,7 @@ mod tests {
         // User edits the type note to add sidebar label (uncommitted)
         create_test_file(
             vault,
-            "type/news.md",
+            "news.md",
             "---\ntype: Type\nsidebar label: News\n---\n# News\n",
         );
 
@@ -683,15 +683,15 @@ mod tests {
         let entries = scan_vault_cached(vault).unwrap();
         assert_eq!(entries.len(), 1);
 
-        // Create files in a new subdirectory (simulates restore_default_themes)
+        // Create files in a new protected subdirectory (simulates asset creation)
         create_test_file(
             vault,
-            "theme/default.md",
+            "assets/default.md",
             "---\nIs A: Theme\n---\n# Default Theme\n",
         );
         create_test_file(
             vault,
-            "theme/dark.md",
+            "assets/dark.md",
             "---\nIs A: Theme\n---\n# Dark Theme\n",
         );
 
@@ -716,7 +716,7 @@ mod tests {
         // Commit a type note with visible: false
         create_test_file(
             vault,
-            "type/topic.md",
+            "topic.md",
             "---\ntype: Type\nvisible: false\n---\n# Topic\n",
         );
         git_add_commit(vault, "init");
@@ -731,7 +731,7 @@ mod tests {
         );
 
         // User removes visible field (uncommitted edit)
-        create_test_file(vault, "type/topic.md", "---\ntype: Type\n---\n# Topic\n");
+        create_test_file(vault, "topic.md", "---\ntype: Type\n---\n# Topic\n");
 
         // Reload — must reflect the removal (visible defaults to None)
         let entries2 = scan_vault_cached(vault).unwrap();

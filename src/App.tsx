@@ -17,7 +17,8 @@ import { WelcomeScreen } from './components/WelcomeScreen'
 import { useMcpStatus } from './hooks/useMcpStatus'
 import { useVaultLoader } from './hooks/useVaultLoader'
 import { useSettings } from './hooks/useSettings'
-import { useNoteActions, needsRenameOnSave } from './hooks/useNoteActions'
+import { useNoteActions } from './hooks/useNoteActions'
+import { needsRenameOnSave } from './hooks/useNoteRename'
 import { useCommitFlow } from './hooks/useCommitFlow'
 import { useViewMode } from './hooks/useViewMode'
 import { useEntryActions } from './hooks/useEntryActions'
@@ -26,7 +27,6 @@ import { useDialogs } from './hooks/useDialogs'
 import { useVaultSwitcher } from './hooks/useVaultSwitcher'
 import { useGitHistory } from './hooks/useGitHistory'
 import { useUpdater, restartApp } from './hooks/useUpdater'
-import { useNavigationHistory } from './hooks/useNavigationHistory'
 import { useAutoSync } from './hooks/useAutoSync'
 import { useConflictResolver } from './hooks/useConflictResolver'
 import { useIndexing } from './hooks/useIndexing'
@@ -36,10 +36,16 @@ import { useBuildNumber } from './hooks/useBuildNumber'
 import { useOnboarding } from './hooks/useOnboarding'
 import { useThemeManager } from './hooks/useThemeManager'
 import { useEditorSaveWithLinks } from './hooks/useEditorSaveWithLinks'
-import { useNavigationGestures } from './hooks/useNavigationGestures'
+import { useAppNavigation } from './hooks/useAppNavigation'
 import { useAiActivity } from './hooks/useAiActivity'
+import { useBulkActions } from './hooks/useBulkActions'
+import { useDeleteActions } from './hooks/useDeleteActions'
+import { useLayoutPanels } from './hooks/useLayoutPanels'
 import { ConflictResolverModal } from './components/ConflictResolverModal'
+import { ConfirmDeleteDialog } from './components/ConfirmDeleteDialog'
 import { UpdateBanner } from './components/UpdateBanner'
+import { FlatVaultMigrationBanner } from './components/FlatVaultMigrationBanner'
+import { useFlatVaultMigration } from './hooks/useFlatVaultMigration'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
 import type { SidebarSelection, VaultEntry } from './types'
@@ -59,42 +65,6 @@ declare global {
 }
 
 const DEFAULT_SELECTION: SidebarSelection = { kind: 'filter', filter: 'all' }
-
-function useBulkActions(
-  entryActions: { handleArchiveNote: (path: string) => Promise<void>; handleTrashNote: (path: string) => Promise<void> },
-  setToastMessage: (msg: string | null) => void,
-) {
-  const handleBulkArchive = useCallback(async (paths: string[]) => {
-    let ok = 0
-    for (const path of paths) {
-      try { await entryActions.handleArchiveNote(path); ok++ }
-      catch { /* error toast already shown by flushBeforeAction */ }
-    }
-    if (ok > 0) setToastMessage(`${ok} note${ok > 1 ? 's' : ''} archived`)
-  }, [entryActions, setToastMessage])
-
-  const handleBulkTrash = useCallback(async (paths: string[]) => {
-    let ok = 0
-    for (const path of paths) {
-      try { await entryActions.handleTrashNote(path); ok++ }
-      catch { /* error toast already shown by flushBeforeAction */ }
-    }
-    if (ok > 0) setToastMessage(`${ok} note${ok > 1 ? 's' : ''} moved to trash`)
-  }, [entryActions, setToastMessage])
-
-  return { handleBulkArchive, handleBulkTrash }
-}
-
-function useLayoutPanels() {
-  const [sidebarWidth, setSidebarWidth] = useState(250)
-  const [noteListWidth, setNoteListWidth] = useState(300)
-  const [inspectorWidth, setInspectorWidth] = useState(280)
-  const [inspectorCollapsed, setInspectorCollapsed] = useState(false)
-  const handleSidebarResize = useCallback((delta: number) => setSidebarWidth((w) => Math.max(150, Math.min(400, w + delta))), [])
-  const handleNoteListResize = useCallback((delta: number) => setNoteListWidth((w) => Math.max(200, Math.min(500, w + delta))), [])
-  const handleInspectorResize = useCallback((delta: number) => setInspectorWidth((w) => Math.max(200, Math.min(500, w - delta))), [])
-  return { sidebarWidth, noteListWidth, inspectorWidth, inspectorCollapsed, setInspectorCollapsed, handleSidebarResize, handleNoteListResize, handleInspectorResize }
-}
 
 /** Wraps useEditorSave to also keep outgoingLinks in sync on save and on content change. */
 function App() {
@@ -120,6 +90,7 @@ function App() {
   const { settings, saveSettings } = useSettings()
   const themeManager = useThemeManager(resolvedPath, vault.entries)
 
+  const flatVaultMigration = useFlatVaultMigration(resolvedPath, vault.entries.length > 0, vault.reloadVault)
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
 
   const indexing = useIndexing(resolvedPath)
@@ -201,53 +172,13 @@ function App() {
     })
   }, [vault.entries]) // eslint-disable-line react-hooks/exhaustive-deps -- notes.setTabs is stable (useState setter)
 
-  const navHistory = useNavigationHistory()
-
-  // Push to navigation history whenever the active tab changes (user-initiated)
-  const navFromHistoryRef = useRef(false)
-  useEffect(() => {
-    if (notes.activeTabPath && !navFromHistoryRef.current) {
-      navHistory.push(notes.activeTabPath)
-    }
-    navFromHistoryRef.current = false
-  }, [notes.activeTabPath]) // eslint-disable-line react-hooks/exhaustive-deps -- navHistory.push is stable
-
-  const isEntryExists = useCallback((path: string) => vault.entries.some(e => e.path === path), [vault.entries])
-
-  const handleGoBack = useCallback(() => {
-    const target = navHistory.goBack(isEntryExists)
-    if (target) {
-      navFromHistoryRef.current = true
-      if (notes.tabs.some(t => t.entry.path === target)) {
-        notes.handleSwitchTab(target)
-      } else {
-        const entry = vault.entries.find(e => e.path === target)
-        if (entry) notes.handleSelectNote(entry)
-      }
-    }
-  }, [navHistory, isEntryExists, vault.entries, notes])
-
-  const handleGoForward = useCallback(() => {
-    const target = navHistory.goForward(isEntryExists)
-    if (target) {
-      navFromHistoryRef.current = true
-      if (notes.tabs.some(t => t.entry.path === target)) {
-        notes.handleSwitchTab(target)
-      } else {
-        const entry = vault.entries.find(e => e.path === target)
-        if (entry) notes.handleSelectNote(entry)
-      }
-    }
-  }, [navHistory, isEntryExists, vault.entries, notes])
-
-  useNavigationGestures({ onGoBack: handleGoBack, onGoForward: handleGoForward })
-
-  // O(1) path lookup map — rebuilt only when vault.entries changes
-  const entriesByPath = useMemo(() => {
-    const map = new Map<string, VaultEntry>()
-    for (const e of vault.entries) map.set(e.path, e)
-    return map
-  }, [vault.entries])
+  const { handleGoBack, handleGoForward, canGoBack, canGoForward, entriesByPath } = useAppNavigation({
+    entries: vault.entries,
+    tabs: notes.tabs,
+    activeTabPath: notes.activeTabPath,
+    onSelectNote: notes.handleSelectNote,
+    onSwitchTab: notes.handleSwitchTab,
+  })
 
   // MCP UI bridge: react to AI-driven open/highlight/vault-change events
   const openNoteByPath = useCallback((path: string) => {
@@ -389,17 +320,13 @@ function App() {
     onBeforeAction: flushBeforeAction,
   })
 
-  const handleDeleteNote = useCallback(async (path: string) => {
-    try {
-      if (isTauri()) await invoke('delete_note', { path })
-      else await mockInvoke('delete_note', { path })
-      notes.handleCloseTab(path)
-      vault.removeEntry(path)
-      setToastMessage('Note permanently deleted')
-    } catch (e) {
-      setToastMessage(`Failed to delete note: ${e}`)
-    }
-  }, [notes, vault, setToastMessage])
+  const deleteActions = useDeleteActions({
+    vaultPath: resolvedPath,
+    entries: vault.entries,
+    handleCloseTab: notes.handleCloseTab,
+    removeEntry: vault.removeEntry,
+    setToastMessage,
+  })
 
   const gitHistory = useGitHistory(notes.activeTabPath, vault.loadGitHistory)
 
@@ -408,13 +335,11 @@ function App() {
     setToastMessage(`Type "${name}" created`)
   }, [notes])
 
-  /** H1→title sync: update VaultEntry.title and tab entry in memory. */
-  const handleTitleSync = useCallback((path: string, newTitle: string) => {
-    vault.updateEntry(path, { title: newTitle })
-    notes.setTabs(prev => prev.map(t =>
-      t.entry.path === path ? { ...t, entry: { ...t.entry, title: newTitle } } : t
-    ))
-  }, [vault, notes])
+  /** H1→title sync: save pending content then rename file + update wikilinks. */
+  const handleTitleSync = useCallback(async (path: string, newTitle: string) => {
+    await savePendingForPath(path)
+    await notes.handleRenameNote(path, newTitle, resolvedPath, vault.replaceEntry).then(vault.loadModifiedFiles)
+  }, [notes, resolvedPath, vault, savePendingForPath])
 
   const bulkActions = useBulkActions(entryActions, setToastMessage)
 
@@ -501,7 +426,7 @@ function App() {
     onSwitchTab: notes.handleSwitchTab, onReplaceActiveTab: notes.handleReplaceActiveTab,
     onSelectNote: notes.handleSelectNote,
     onGoBack: handleGoBack, onGoForward: handleGoForward,
-    canGoBack: navHistory.canGoBack, canGoForward: navHistory.canGoForward,
+    canGoBack: canGoBack, canGoForward: canGoForward,
     themes: themeManager.themes, activeThemeId: themeManager.activeThemeId,
     onSwitchTheme: themeManager.switchTheme,
     onCreateTheme: async () => {
@@ -528,6 +453,9 @@ function App() {
     vaultCount: vaultSwitcher.allVaults.length,
     mcpStatus,
     onInstallMcp: installMcp,
+    onEmptyTrash: deleteActions.handleEmptyTrash,
+    trashedCount: deleteActions.trashedCount,
+    onReopenClosedTab: notes.handleReopenClosedTab,
     onReindexVault: indexing.triggerFullReindex,
     onReloadVault: vault.reloadVault,
     onRepairVault: handleRepairVault,
@@ -550,31 +478,12 @@ function App() {
 
   // Show welcome/onboarding screen when vault doesn't exist
   if (onboarding.state.status === 'welcome' || onboarding.state.status === 'vault-missing') {
-    const defaultPath = onboarding.state.defaultPath
-    return (
-      <div className="app-shell">
-        <WelcomeScreen
-          mode={onboarding.state.status === 'welcome' ? 'welcome' : 'vault-missing'}
-          missingPath={onboarding.state.status === 'vault-missing' ? onboarding.state.vaultPath : undefined}
-          defaultVaultPath={defaultPath}
-          onCreateVault={onboarding.handleCreateVault}
-          onOpenFolder={onboarding.handleOpenFolder}
-          creating={onboarding.creating}
-          error={onboarding.error}
-        />
-      </div>
-    )
+    return <WelcomeView onboarding={onboarding} />
   }
 
   // Show loading spinner while checking vault
   if (onboarding.state.status === 'loading') {
-    return (
-      <div className="app-shell">
-        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sidebar)' }}>
-          <span style={{ color: 'var(--muted-foreground)', fontSize: 14 }}>Loading…</span>
-        </div>
-      </div>
-    )
+    return <LoadingView />
   }
 
   return (
@@ -594,7 +503,7 @@ function App() {
               {selection.kind === 'filter' && selection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} />
+                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onBulkRestore={bulkActions.handleBulkRestore} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onEmptyTrash={deleteActions.handleEmptyTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />
@@ -623,6 +532,7 @@ function App() {
             onUpdateFrontmatter={notes.handleUpdateFrontmatter}
             onDeleteProperty={notes.handleDeleteProperty}
             onAddProperty={notes.handleAddProperty}
+            onCreateAndOpenNote={notes.handleCreateNoteForRelationship}
             showAIChat={dialogs.showAIChat}
             onToggleAIChat={dialogs.toggleAIChat}
             vaultPath={resolvedPath}
@@ -630,7 +540,7 @@ function App() {
             noteListFilter={aiNoteListFilter}
             onTrashNote={entryActions.handleTrashNote}
             onRestoreNote={entryActions.handleRestoreNote}
-            onDeleteNote={handleDeleteNote}
+            onDeleteNote={deleteActions.handleDeleteNote}
             onArchiveNote={entryActions.handleArchiveNote}
             onUnarchiveNote={entryActions.handleUnarchiveNote}
             onRenameTab={handleRenameTab}
@@ -639,8 +549,8 @@ function App() {
             onTitleSync={handleTitleSync}
             rawToggleRef={rawToggleRef}
             diffToggleRef={diffToggleRef}
-            canGoBack={navHistory.canGoBack}
-            canGoForward={navHistory.canGoForward}
+            canGoBack={canGoBack}
+            canGoForward={canGoForward}
             onGoBack={handleGoBack}
             onGoForward={handleGoForward}
             leftPanelsCollapsed={!sidebarVisible && !noteListVisible}
@@ -651,6 +561,17 @@ function App() {
           />
         </div>
       </div>
+      {flatVaultMigration.needsMigration && (
+        <FlatVaultMigrationBanner
+          strayFileCount={flatVaultMigration.strayFiles.length}
+          isMigrating={flatVaultMigration.isMigrating}
+          onMigrate={async () => {
+            const count = await flatVaultMigration.migrate()
+            setToastMessage(`Migrated ${count} file${count !== 1 ? 's' : ''} to vault root`)
+          }}
+          onDismiss={flatVaultMigration.dismiss}
+        />
+      )}
       <UpdateBanner status={updateStatus} actions={updateActions} />
       <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => setSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} onTriggerSync={autoSync.triggerSync} onOpenConflictResolver={handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} indexingProgress={indexing.progress} lastIndexedTime={indexing.lastIndexedTime} onRetryIndexing={indexing.retryIndexing} onReindexVault={indexing.triggerFullReindex} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
@@ -679,6 +600,47 @@ function App() {
         onOpenSettings={() => { dialogs.closeGitHubVault(); dialogs.openSettings() }}
         onGitHubConnected={(token, username) => saveSettings({ ...settings, github_token: token, github_username: username })}
       />
+      {deleteActions.confirmDelete && (
+        <ConfirmDeleteDialog
+          open={true}
+          title={deleteActions.confirmDelete.title}
+          message={deleteActions.confirmDelete.message}
+          confirmLabel={deleteActions.confirmDelete.confirmLabel}
+          onConfirm={deleteActions.confirmDelete.onConfirm}
+          onCancel={() => deleteActions.setConfirmDelete(null)}
+        />
+      )}
+    </div>
+  )
+}
+
+type OnboardingState = ReturnType<typeof useOnboarding>
+
+/** Welcome screen view - extracted from main App component */
+function WelcomeView({ onboarding }: { onboarding: OnboardingState }) {
+  const state = onboarding.state as { status: 'welcome' | 'vault-missing'; defaultPath: string; vaultPath?: string }
+  return (
+    <div className="app-shell">
+      <WelcomeScreen
+        mode={state.status === 'welcome' ? 'welcome' : 'vault-missing'}
+        missingPath={state.status === 'vault-missing' ? state.vaultPath : undefined}
+        defaultVaultPath={state.defaultPath}
+        onCreateVault={onboarding.handleCreateVault}
+        onOpenFolder={onboarding.handleOpenFolder}
+        creating={onboarding.creating}
+        error={onboarding.error}
+      />
+    </div>
+  )
+}
+
+/** Loading spinner view - extracted from main App component */
+function LoadingView() {
+  return (
+    <div className="app-shell">
+      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sidebar)' }}>
+        <span style={{ color: 'var(--muted-foreground)', fontSize: 14 }}>Loading…</span>
+      </div>
     </div>
   )
 }

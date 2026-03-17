@@ -306,14 +306,14 @@ describe('DynamicPropertiesPanel', () => {
       />
     )
     fireEvent.click(screen.getByText('Project'))
-    expect(onNavigate).toHaveBeenCalledWith('type/project')
+    expect(onNavigate).toHaveBeenCalledWith('project')
   })
 
   describe('TypeSelector', () => {
     const typeEntries = [
-      makeEntry({ path: '/vault/type/project.md', title: 'Project', isA: 'Type' }),
-      makeEntry({ path: '/vault/type/person.md', title: 'Person', isA: 'Type' }),
-      makeEntry({ path: '/vault/type/topic.md', title: 'Topic', isA: 'Type' }),
+      makeEntry({ path: '/vault/project.md', title: 'Project', isA: 'Type' }),
+      makeEntry({ path: '/vault/person.md', title: 'Person', isA: 'Type' }),
+      makeEntry({ path: '/vault/topic.md', title: 'Topic', isA: 'Type' }),
     ]
 
     it('renders as dropdown when editable', () => {
@@ -898,7 +898,7 @@ describe('DynamicPropertiesPanel', () => {
     beforeEach(() => {
       resetVaultConfigStore()
       bindVaultConfigStore(
-        { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null },
+        { zoom: null, view_mode: null, editor_mode: null, tag_colors: null, status_colors: null, property_display_modes: null },
         vi.fn(),
       )
       initDisplayModeOverrides({})

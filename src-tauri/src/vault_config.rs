@@ -12,6 +12,7 @@ use std::path::Path;
 pub struct VaultConfig {
     pub zoom: Option<f64>,
     pub view_mode: Option<String>,
+    pub editor_mode: Option<String>,
     #[serde(default)]
     pub tag_colors: Option<HashMap<String, String>>,
     #[serde(default)]
@@ -91,6 +92,9 @@ fn serialize_config(config: &VaultConfig) -> String {
     if let Some(ref mode) = config.view_mode {
         lines.push(format!("view_mode: {mode}"));
     }
+    if let Some(ref mode) = config.editor_mode {
+        lines.push(format!("editor_mode: {mode}"));
+    }
     append_string_map(&mut lines, "tag_colors", config.tag_colors.as_ref());
     append_string_map(&mut lines, "status_colors", config.status_colors.as_ref());
     append_string_map(
@@ -142,7 +146,7 @@ fn yaml_safe_value(value: &str) -> String {
 /// on Type notes. Returns the number of Type notes updated.
 ///
 /// For each type name in `hidden_sections`:
-/// - If `type/<slug>.md` exists, adds `visible: false` to its frontmatter
+/// - If `<slug>.md` exists at vault root, adds `visible: false` to its frontmatter
 /// - If it doesn't exist, creates it with `type: Type`, `title: <name>`, `visible: false`
 /// - Re-saves the config without `hidden_sections`
 pub fn migrate_hidden_sections_to_visible(vault_path: &str) -> Result<usize, String> {
@@ -159,16 +163,12 @@ pub fn migrate_hidden_sections_to_visible(vault_path: &str) -> Result<usize, Str
         return Ok(0);
     }
 
-    let type_dir = Path::new(vault_path).join("type");
-    if !type_dir.exists() {
-        std::fs::create_dir_all(&type_dir)
-            .map_err(|e| format!("Failed to create type dir: {e}"))?;
-    }
+    let vault = Path::new(vault_path);
 
     let mut migrated = 0;
     for type_name in &hidden {
         let slug = type_name_to_slug(type_name);
-        let type_path = type_dir.join(format!("{slug}.md"));
+        let type_path = vault.join(format!("{slug}.md"));
 
         if type_path.exists() {
             let type_content = std::fs::read_to_string(&type_path)
@@ -306,6 +306,7 @@ property_display_modes:
         let config = VaultConfig {
             zoom: Some(1.2),
             view_mode: Some("editor-only".to_string()),
+            editor_mode: None,
             tag_colors: Some(tag_colors),
             status_colors: None,
             property_display_modes: None,
@@ -333,6 +334,7 @@ property_display_modes:
         let config = VaultConfig {
             zoom: Some(0.9),
             view_mode: None,
+            editor_mode: None,
             tag_colors: None,
             status_colors: Some(status_colors),
             property_display_modes: None,
@@ -365,11 +367,11 @@ property_display_modes:
         assert_eq!(count, 2);
 
         // Check type notes were created
-        let bookmark = std::fs::read_to_string(dir.path().join("type/bookmark.md")).unwrap();
+        let bookmark = std::fs::read_to_string(dir.path().join("bookmark.md")).unwrap();
         assert!(bookmark.contains("visible: false"));
         assert!(bookmark.contains("title: Bookmark"));
 
-        let recipe = std::fs::read_to_string(dir.path().join("type/recipe.md")).unwrap();
+        let recipe = std::fs::read_to_string(dir.path().join("recipe.md")).unwrap();
         assert!(recipe.contains("visible: false"));
 
         // Config should no longer have hidden_sections
@@ -391,11 +393,9 @@ property_display_modes:
         )
         .unwrap();
 
-        // Create existing type note without visible
-        let type_dir = dir.path().join("type");
-        std::fs::create_dir_all(&type_dir).unwrap();
+        // Create existing type note at vault root without visible
         std::fs::write(
-            type_dir.join("project.md"),
+            dir.path().join("project.md"),
             "---\ntype: Type\ntitle: Project\nicon: briefcase\n---\n\n# Project\n",
         )
         .unwrap();
@@ -403,7 +403,7 @@ property_display_modes:
         let count = migrate_hidden_sections_to_visible(vault_path).unwrap();
         assert_eq!(count, 1);
 
-        let content = std::fs::read_to_string(type_dir.join("project.md")).unwrap();
+        let content = std::fs::read_to_string(dir.path().join("project.md")).unwrap();
         assert!(content.contains("visible: false"));
         assert!(
             content.contains("icon: briefcase"),

@@ -11,13 +11,13 @@ pub use cache::{invalidate_cache, scan_vault_cached};
 pub use config_seed::{migrate_agents_md, repair_config_files, seed_config_files};
 pub use getting_started::{create_getting_started_vault, default_vault_path, vault_exists};
 pub use image::{copy_image_to_vault, save_image};
-pub use migration::migrate_is_a_to_type;
-pub use rename::{move_note_to_type_folder, rename_note, MoveResult, RenameResult};
-pub use trash::{delete_note, is_file_trashed, purge_trash};
+pub use migration::{flatten_vault, migrate_is_a_to_type, vault_health_check, VaultHealthReport};
+pub use rename::{rename_note, RenameResult};
+pub use trash::{batch_delete_notes, delete_note, empty_trash, is_file_trashed, purge_trash};
 
 use parsing::{
     contains_wikilink, count_body_words, extract_outgoing_links, extract_snippet, extract_title,
-    parse_iso_date, title_case_folder,
+    parse_iso_date,
 };
 
 use gray_matter::engine::YAML;
@@ -98,16 +98,6 @@ struct Frontmatter {
     is_a: Option<StringOrList>,
     #[serde(default)]
     aliases: Option<StringOrList>,
-    #[serde(rename = "Belongs to")]
-    belongs_to: Option<StringOrList>,
-    #[serde(rename = "Related to")]
-    related_to: Option<StringOrList>,
-    #[serde(rename = "Status")]
-    status: Option<String>,
-    #[serde(rename = "Owner")]
-    owner: Option<String>,
-    #[serde(rename = "Cadence")]
-    cadence: Option<String>,
     #[serde(
         rename = "Archived",
         alias = "archived",
@@ -122,26 +112,32 @@ struct Frontmatter {
         deserialize_with = "deserialize_bool_or_string"
     )]
     trashed: Option<bool>,
+    #[serde(rename = "Status", alias = "status", default)]
+    status: Option<StringOrList>,
+    #[serde(rename = "Owner", alias = "owner", default)]
+    owner: Option<StringOrList>,
+    #[serde(rename = "Cadence", alias = "cadence", default)]
+    cadence: Option<StringOrList>,
     #[serde(rename = "Trashed at", alias = "trashed_at")]
-    trashed_at: Option<String>,
+    trashed_at: Option<StringOrList>,
     #[serde(rename = "Created at")]
-    created_at: Option<String>,
+    created_at: Option<StringOrList>,
     #[serde(rename = "Created time")]
-    created_time: Option<String>,
+    created_time: Option<StringOrList>,
     #[serde(default)]
-    icon: Option<String>,
+    icon: Option<StringOrList>,
     #[serde(default)]
-    color: Option<String>,
+    color: Option<StringOrList>,
     #[serde(default)]
     order: Option<i64>,
     #[serde(rename = "sidebar label", default)]
-    sidebar_label: Option<String>,
+    sidebar_label: Option<StringOrList>,
     #[serde(default)]
-    template: Option<String>,
+    template: Option<StringOrList>,
     #[serde(default)]
-    sort: Option<String>,
+    sort: Option<StringOrList>,
     #[serde(default)]
-    view: Option<String>,
+    view: Option<StringOrList>,
     #[serde(default)]
     visible: Option<bool>,
 }
@@ -211,13 +207,64 @@ impl StringOrList {
             StringOrList::List(v) => v,
         }
     }
+
+    /// Normalize to a single scalar: unwrap single-element arrays, take first
+    /// element of multi-element arrays, return scalar unchanged, empty array → None.
+    fn into_scalar(self) -> Option<String> {
+        match self {
+            StringOrList::Single(s) => Some(s),
+            StringOrList::List(mut v) => {
+                if v.is_empty() {
+                    None
+                } else {
+                    Some(v.swap_remove(0))
+                }
+            }
+        }
+    }
 }
 
 /// Parse frontmatter from raw YAML data extracted by gray_matter.
 fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
-    // Convert HashMap to serde_json::Value for deserialization
-    let value =
-        serde_json::Value::Object(data.iter().map(|(k, v)| (k.clone(), v.clone())).collect());
+    // Convert HashMap to serde_json::Value for deserialization.
+    // Filter to only known Frontmatter keys to prevent unknown fields with
+    // unexpected types (e.g. a list where a string is expected) from causing
+    // the entire deserialization to fail and return Default (all None).
+    static KNOWN_KEYS: &[&str] = &[
+        "type",
+        "Is A",
+        "is_a",
+        "aliases",
+        "Archived",
+        "archived",
+        "Trashed",
+        "trashed",
+        "Trashed at",
+        "trashed_at",
+        "Created at",
+        "Created time",
+        "icon",
+        "color",
+        "order",
+        "sidebar label",
+        "template",
+        "sort",
+        "view",
+        "visible",
+        "notion_id",
+        "Status",
+        "status",
+        "Owner",
+        "owner",
+        "Cadence",
+        "cadence",
+    ];
+    let filtered: serde_json::Map<String, serde_json::Value> = data
+        .iter()
+        .filter(|(k, _)| KNOWN_KEYS.contains(&k.as_str()))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+    let value = serde_json::Value::Object(filtered);
     serde_json::from_value(value).unwrap_or_default()
 }
 
@@ -227,8 +274,6 @@ const SKIP_KEYS: &[&str] = &[
     "is a",
     "type",
     "aliases",
-    "status",
-    "cadence",
     "archived",
     "trashed",
     "trashed at",
@@ -242,6 +287,9 @@ const SKIP_KEYS: &[&str] = &[
     "sort",
     "view",
     "visible",
+    "status",
+    "owner",
+    "cadence",
 ];
 
 /// Extract all wikilink-containing fields from raw YAML frontmatter.
@@ -283,11 +331,6 @@ fn extract_relationships(
     relationships
 }
 
-/// Additional keys to skip when extracting custom properties.
-/// These are already first-class fields on VaultEntry, so including them
-/// in `properties` would duplicate information.
-const PROPERTY_EXTRA_SKIP: &[&str] = &["belongs to", "related to", "owner"];
-
 /// Extract custom scalar properties from raw YAML frontmatter.
 /// Captures string, number, and boolean values that are not structural fields
 /// and do not contain wikilinks. Arrays and objects are excluded.
@@ -298,11 +341,7 @@ fn extract_properties(
 
     for (key, value) in data {
         let lower = key.to_ascii_lowercase();
-        if SKIP_KEYS.iter().any(|k| k.eq_ignore_ascii_case(&lower))
-            || PROPERTY_EXTRA_SKIP
-                .iter()
-                .any(|k| k.eq_ignore_ascii_case(&lower))
-        {
+        if SKIP_KEYS.iter().any(|k| k.eq_ignore_ascii_case(&lower)) {
             continue;
         }
 
@@ -322,48 +361,24 @@ fn extract_properties(
     properties
 }
 
-/// Infer entity type from a parent folder name.
-fn infer_type_from_folder(folder: &str) -> String {
-    match folder {
-        "person" => "Person",
-        "project" => "Project",
-        "procedure" => "Procedure",
-        "responsibility" => "Responsibility",
-        "event" => "Event",
-        "topic" => "Topic",
-        "experiment" => "Experiment",
-        "type" => "Type",
-        "note" => "Note",
-        "quarter" => "Quarter",
-        "measure" => "Measure",
-        "target" => "Target",
-        "journal" => "Journal",
-        "month" => "Month",
-        "config" => "Config",
-        "essay" => "Essay",
-        "evergreen" => "Evergreen",
-        _ => return title_case_folder(folder),
-    }
-    .to_string()
-}
-
-/// Resolve `is_a` from frontmatter, falling back to parent folder inference.
-fn resolve_is_a(fm_is_a: Option<StringOrList>, path: &Path) -> Option<String> {
-    fm_is_a
-        .and_then(|a| a.into_vec().into_iter().next())
-        .or_else(|| {
-            path.parent()
-                .and_then(|p| p.file_name())
-                .map(|f| infer_type_from_folder(&f.to_string_lossy()))
-        })
+/// Resolve `is_a` from frontmatter only. Type is determined purely by frontmatter,
+/// never inferred from folder name.
+fn resolve_is_a(fm_is_a: Option<StringOrList>) -> Option<String> {
+    fm_is_a.and_then(|a| a.into_vec().into_iter().next())
 }
 
 /// Parse created_at from frontmatter (prefer "Created at" over "Created time").
 fn parse_created_at(fm: &Frontmatter) -> Option<u64> {
     fm.created_at
-        .as_ref()
-        .and_then(|s| parse_iso_date(s))
-        .or_else(|| fm.created_time.as_ref().and_then(|s| parse_iso_date(s)))
+        .clone()
+        .and_then(|v| v.into_scalar())
+        .and_then(|s| parse_iso_date(&s))
+        .or_else(|| {
+            fm.created_time
+                .clone()
+                .and_then(|v| v.into_scalar())
+                .and_then(|s| parse_iso_date(&s))
+        })
 }
 
 /// Extract frontmatter, relationships, and custom properties from parsed gray_matter data.
@@ -418,21 +433,24 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
     let outgoing_links = extract_outgoing_links(&parsed.content);
     let (modified_at, file_size) = read_file_metadata(path)?;
     let created_at = parse_created_at(&frontmatter);
-    let is_a = resolve_is_a(frontmatter.is_a, path);
+    let is_a = resolve_is_a(frontmatter.is_a);
 
     // Add "Type" relationship: isA becomes a navigable link to the type document.
     // Skip for type documents themselves (isA == "Type") to avoid self-referential links.
     if let Some(ref type_name) = is_a {
         if type_name != "Type" {
-            // If isA is already a wikilink (e.g. "[[type/project]]"), use it directly
+            // If isA is already a wikilink (e.g. "[[project]]"), use it directly
             let type_link = if type_name.starts_with("[[") && type_name.ends_with("]]") {
                 type_name.clone()
             } else {
-                format!("[[type/{}]]", type_name.to_lowercase())
+                format!("[[{}]]", type_name.to_lowercase())
             };
             relationships.insert("Type".to_string(), vec![type_link]);
         }
     }
+
+    let belongs_to = relationships.get("Belongs to").cloned().unwrap_or_default();
+    let related_to = relationships.get("Related to").cloned().unwrap_or_default();
 
     Ok(VaultEntry {
         path: path.to_string_lossy().to_string(),
@@ -445,30 +463,28 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
             .aliases
             .map(|a| a.into_vec())
             .unwrap_or_default(),
-        belongs_to: frontmatter
-            .belongs_to
-            .map(|b| b.into_vec())
-            .unwrap_or_default(),
-        related_to: frontmatter
-            .related_to
-            .map(|r| r.into_vec())
-            .unwrap_or_default(),
-        status: frontmatter.status,
-        owner: frontmatter.owner,
-        cadence: frontmatter.cadence,
+        belongs_to,
+        related_to,
+        status: frontmatter.status.and_then(|v| v.into_scalar()),
+        owner: frontmatter.owner.and_then(|v| v.into_scalar()),
+        cadence: frontmatter.cadence.and_then(|v| v.into_scalar()),
         archived: frontmatter.archived.unwrap_or(false),
         trashed: frontmatter.trashed.unwrap_or(false),
-        trashed_at: frontmatter.trashed_at.as_deref().and_then(parse_iso_date),
+        trashed_at: frontmatter
+            .trashed_at
+            .and_then(|v| v.into_scalar())
+            .as_deref()
+            .and_then(parse_iso_date),
         modified_at,
         created_at,
         file_size,
-        icon: frontmatter.icon,
-        color: frontmatter.color,
+        icon: frontmatter.icon.and_then(|v| v.into_scalar()),
+        color: frontmatter.color.and_then(|v| v.into_scalar()),
         order: frontmatter.order,
-        sidebar_label: frontmatter.sidebar_label,
-        template: frontmatter.template,
-        sort: frontmatter.sort,
-        view: frontmatter.view,
+        sidebar_label: frontmatter.sidebar_label.and_then(|v| v.into_scalar()),
+        template: frontmatter.template.and_then(|v| v.into_scalar()),
+        sort: frontmatter.sort.and_then(|v| v.into_scalar()),
+        view: frontmatter.view.and_then(|v| v.into_scalar()),
         visible: frontmatter.visible,
         word_count,
         outgoing_links,
@@ -549,6 +565,51 @@ pub fn save_note_content(path: &str, content: &str) -> Result<(), String> {
 }
 
 /// Scan a directory recursively for .md files and return VaultEntry for each.
+/// Folders that are scanned recursively (themes, attachments, assets).
+/// All other subfolders are ignored — notes and type definitions live flat at the vault root.
+const PROTECTED_FOLDERS: &[&str] = &["attachments", "_themes", "assets"];
+
+fn is_md_file(path: &Path) -> bool {
+    path.is_file() && path.extension().is_some_and(|ext| ext == "md")
+}
+
+fn try_parse_md(path: &Path, entries: &mut Vec<VaultEntry>) {
+    match parse_md_file(path) {
+        Ok(vault_entry) => entries.push(vault_entry),
+        Err(e) => log::warn!("Skipping file: {}", e),
+    }
+}
+
+fn scan_root_md_files(vault_path: &Path, entries: &mut Vec<VaultEntry>) {
+    let dir_entries = match fs::read_dir(vault_path) {
+        Ok(d) => d,
+        Err(_) => return,
+    };
+    for dir_entry in dir_entries.flatten() {
+        let path = dir_entry.path();
+        if is_md_file(&path) {
+            try_parse_md(&path, entries);
+        }
+    }
+}
+
+fn scan_protected_folders(vault_path: &Path, entries: &mut Vec<VaultEntry>) {
+    for folder in PROTECTED_FOLDERS {
+        let folder_path = vault_path.join(folder);
+        if !folder_path.is_dir() {
+            continue;
+        }
+        let md_files = WalkDir::new(&folder_path)
+            .follow_links(true)
+            .into_iter()
+            .filter_map(|e| e.ok())
+            .filter(|e| is_md_file(e.path()));
+        for entry in md_files {
+            try_parse_md(entry.path(), entries);
+        }
+    }
+}
+
 pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     if !vault_path.exists() {
         return Err(format!(
@@ -564,30 +625,10 @@ pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     }
 
     let mut entries = Vec::new();
-    for entry in WalkDir::new(vault_path)
-        .follow_links(true)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
-        let entry_path = entry.path();
-        if entry_path.is_file()
-            && entry_path
-                .extension()
-                .map(|ext| ext == "md")
-                .unwrap_or(false)
-        {
-            match parse_md_file(entry_path) {
-                Ok(vault_entry) => entries.push(vault_entry),
-                Err(e) => {
-                    log::warn!("Skipping file: {}", e);
-                }
-            }
-        }
-    }
+    scan_root_md_files(vault_path, &mut entries);
+    scan_protected_folders(vault_path, &mut entries);
 
-    // Sort by modified date descending (newest first)
     entries.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
-
     Ok(entries)
 }
 
@@ -657,14 +698,19 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let entry = parse_test_entry(&dir, "laputa.md", FULL_FM_CONTENT);
         assert_eq!(entry.aliases, vec!["Laputa", "Castle in the Sky"]);
-        assert_eq!(entry.belongs_to, vec!["Studio Ghibli"]);
-        assert_eq!(entry.related_to, vec!["Miyazaki"]);
+        // Belongs to / Related to are no longer first-class fields.
+        // As arrays of plain strings (no wikilinks), they don't appear in
+        // relationships or properties — only wikilink arrays become relationships,
+        // and only scalars become properties.
+        assert!(entry.relationships.get("Belongs to").is_none());
+        assert!(entry.relationships.get("Related to").is_none());
     }
 
     #[test]
     fn test_parse_full_frontmatter_scalars() {
         let dir = TempDir::new().unwrap();
         let entry = parse_test_entry(&dir, "laputa.md", FULL_FM_CONTENT);
+        // Status, Owner, Cadence are first-class struct fields.
         assert_eq!(entry.status, Some("Active".to_string()));
         assert_eq!(entry.owner, Some("Luca".to_string()));
         assert_eq!(entry.cadence, Some("Weekly".to_string()));
@@ -681,8 +727,8 @@ mod tests {
         assert_eq!(entry.title, "Just a Title");
         assert!(entry.aliases.is_empty());
 
-        assert!(entry.belongs_to.is_empty());
-        assert_eq!(entry.status, None);
+        assert!(entry.relationships.is_empty());
+        assert!(entry.properties.is_empty());
     }
 
     #[test]
@@ -707,22 +753,68 @@ mod tests {
     }
 
     #[test]
-    fn test_scan_vault_recursive() {
+    fn test_scan_vault_root_and_protected_folders() {
         let dir = TempDir::new().unwrap();
         create_test_file(dir.path(), "root.md", "# Root Note\n");
         create_test_file(
             dir.path(),
-            "sub/nested.md",
-            "---\nIs A: Task\n---\n# Nested\n",
+            "project.md",
+            "---\ntype: Type\n---\n# Project\n",
         );
+        create_test_file(dir.path(), "attachments/notes.md", "# Attachment note\n");
         create_test_file(dir.path(), "not-markdown.txt", "This should be ignored");
 
         let entries = scan_vault(dir.path()).unwrap();
-        assert_eq!(entries.len(), 2);
+        assert_eq!(entries.len(), 3);
 
         let filenames: Vec<&str> = entries.iter().map(|e| e.filename.as_str()).collect();
         assert!(filenames.contains(&"root.md"));
-        assert!(filenames.contains(&"nested.md"));
+        assert!(filenames.contains(&"project.md"));
+        assert!(filenames.contains(&"notes.md"));
+    }
+
+    #[test]
+    fn test_scan_vault_skips_non_protected_subfolders() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(dir.path(), "root.md", "# Root Note\n");
+        create_test_file(
+            dir.path(),
+            "random-folder/nested.md",
+            "---\ntype: Note\n---\n# Nested\n",
+        );
+        create_test_file(
+            dir.path(),
+            "project/old-project.md",
+            "---\ntype: Project\n---\n# Old\n",
+        );
+
+        let entries = scan_vault(dir.path()).unwrap();
+        assert_eq!(entries.len(), 1, "only root .md files should be scanned");
+        assert_eq!(entries[0].filename, "root.md");
+    }
+
+    #[test]
+    fn test_scan_vault_includes_all_protected_folders() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(dir.path(), "root.md", "# Root\n");
+        create_test_file(dir.path(), "_themes/legacy.md", "---\n---\n# Legacy\n");
+        create_test_file(dir.path(), "attachments/notes.md", "# Attachment note\n");
+        create_test_file(dir.path(), "assets/image.md", "# Asset\n");
+
+        let entries = scan_vault(dir.path()).unwrap();
+        assert_eq!(entries.len(), 4);
+    }
+
+    #[test]
+    fn test_scan_vault_skips_hidden_folders() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(dir.path(), "root.md", "# Root\n");
+        create_test_file(dir.path(), ".laputa/cache.md", "# Cache\n");
+        create_test_file(dir.path(), ".git/objects.md", "# Git\n");
+
+        let entries = scan_vault(dir.path()).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].filename, "root.md");
     }
 
     #[test]
@@ -811,21 +903,24 @@ Status: Active
 
         let entry = parse_md_file(&dir.path().join("publish-essays.md")).unwrap();
         assert_eq!(entry.relationships.len(), 3); // Has, Topics, Type
+
+        let has = entry.relationships.get("Has").unwrap();
         assert_eq!(
-            entry.relationships.get("Has").unwrap(),
+            has,
             &vec![
                 "[[essay/foo|Foo Essay]]".to_string(),
                 "[[essay/bar|Bar Essay]]".to_string()
             ]
         );
+
+        let topics = entry.relationships.get("Topics").unwrap();
         assert_eq!(
-            entry.relationships.get("Topics").unwrap(),
+            topics,
             &vec!["[[topic/rust]]".to_string(), "[[topic/wasm]]".to_string()]
         );
-        assert_eq!(
-            entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/responsibility]]".to_string()]
-        );
+
+        let rel_type = entry.relationships.get("Type").unwrap();
+        assert_eq!(rel_type, &vec!["[[responsibility]]".to_string()]);
     }
 
     #[test]
@@ -842,17 +937,21 @@ Belongs to:
         create_test_file(dir.path(), "some-project.md", content);
 
         let entry = parse_md_file(&dir.path().join("some-project.md")).unwrap();
-        // Owner contains a wikilink, so it should appear in relationships
+
+        // Owner is now a structural field (skipped from relationships)
+        assert!(entry.relationships.get("Owner").is_none());
         assert_eq!(
-            entry.relationships.get("Owner").unwrap(),
-            &vec!["[[person/luca-rossi|Luca Rossi]]".to_string()]
+            entry.owner,
+            Some("[[person/luca-rossi|Luca Rossi]]".to_string())
         );
-        // Belongs to is also a wikilink array, should appear in relationships
+
+        // Belongs to is a wikilink array, should appear in relationships
+        let belongs = entry.relationships.get("Belongs to").unwrap();
         assert_eq!(
-            entry.relationships.get("Belongs to").unwrap(),
+            belongs,
             &vec!["[[responsibility/grow-newsletter]]".to_string()]
         );
-        // Still parsed in the dedicated field too
+        // Also parsed in the dedicated field
         assert_eq!(entry.belongs_to, vec!["[[responsibility/grow-newsletter]]"]);
     }
 
@@ -876,7 +975,7 @@ Custom Field: just a plain string
         assert_eq!(entry.relationships.len(), 1);
         assert_eq!(
             entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/note]]".to_string()]
+            &vec!["[[note]]".to_string()]
         );
     }
 
@@ -900,10 +999,8 @@ Custom Field: just a plain string
     fn test_parse_relationships_owner_and_notes() {
         let rels = parse_big_project_rels();
         assert_eq!(rels.get("Notes").unwrap().len(), 3);
-        assert_eq!(
-            rels.get("Owner").unwrap(),
-            &vec!["[[person/alice]]".to_string()]
-        );
+        // Owner is now a structural field (skipped from relationships)
+        assert!(rels.get("Owner").is_none());
     }
 
     #[test]
@@ -957,7 +1054,7 @@ Context: "[[area/research]]"
         );
     }
 
-    const SKIP_KEYS_CONTENT: &str = "---\nIs A: \"[[type/project]]\"\nAliases:\n  - \"[[alias/foo]]\"\nStatus: \"[[status/active]]\"\nCadence: \"[[cadence/weekly]]\"\nCreated at: \"[[time/2024-01-01]]\"\nCreated time: \"[[time/noon]]\"\nReal Relation: \"[[note/important]]\"\n---\n# Skip Keys Test\n";
+    const SKIP_KEYS_CONTENT: &str = "---\nIs A: \"[[project]]\"\nAliases:\n  - \"[[alias/foo]]\"\nStatus: \"[[status/active]]\"\nCadence: \"[[cadence/weekly]]\"\nCreated at: \"[[time/2024-01-01]]\"\nCreated time: \"[[time/noon]]\"\nReal Relation: \"[[note/important]]\"\n---\n# Skip Keys Test\n";
 
     fn parse_skip_keys_rels() -> (HashMap<String, Vec<String>>, usize) {
         let dir = TempDir::new().unwrap();
@@ -989,12 +1086,9 @@ Context: "[[area/research]]"
             rels.get("Real Relation").unwrap(),
             &vec!["[[note/important]]".to_string()]
         );
-        // "Real Relation" + auto-generated "Type" (from is_a: "[[type/project]]")
+        // "Real Relation" + auto-generated "Type" (from is_a: "[[project]]")
         assert_eq!(len, 2);
-        assert_eq!(
-            rels.get("Type").unwrap(),
-            &vec!["[[type/project]]".to_string()]
-        );
+        assert_eq!(rels.get("Type").unwrap(), &vec!["[[project]]".to_string()]);
     }
 
     #[test]
@@ -1024,81 +1118,22 @@ References:
         );
     }
 
-    // --- infer_type_from_folder tests ---
+    // --- type from frontmatter only (no folder inference) ---
 
     #[test]
-    fn test_infer_type_from_known_folders() {
+    fn test_type_from_frontmatter_only() {
         let dir = TempDir::new().unwrap();
-        let known_folders = vec![
-            ("person", "Person"),
-            ("project", "Project"),
-            ("procedure", "Procedure"),
-            ("responsibility", "Responsibility"),
-            ("event", "Event"),
-            ("topic", "Topic"),
-            ("experiment", "Experiment"),
-            ("note", "Note"),
-            ("quarter", "Quarter"),
-            ("measure", "Measure"),
-            ("target", "Target"),
-            ("journal", "Journal"),
-            ("month", "Month"),
-            ("essay", "Essay"),
-            ("evergreen", "Evergreen"),
-        ];
-        for (folder, expected_type) in known_folders {
-            create_test_file(dir.path(), &format!("{}/test.md", folder), "# Test\n");
-            let entry = parse_md_file(&dir.path().join(folder).join("test.md")).unwrap();
-            assert_eq!(
-                entry.is_a,
-                Some(expected_type.to_string()),
-                "folder '{}' should infer type '{}'",
-                folder,
-                expected_type
-            );
-        }
-    }
-
-    #[test]
-    fn test_infer_type_from_unknown_folder_capitalizes() {
-        let dir = TempDir::new().unwrap();
-        create_test_file(dir.path(), "recipe/test.md", "# Test\n");
-        let entry = parse_md_file(&dir.path().join("recipe/test.md")).unwrap();
-        assert_eq!(entry.is_a, Some("Recipe".to_string()));
-    }
-
-    #[test]
-    fn test_infer_type_from_hyphenated_folder_title_cases() {
-        let dir = TempDir::new().unwrap();
-        let cases = vec![
-            ("monday-ideas", "Monday Ideas"),
-            ("key-result", "Key Result"),
-            ("my_custom_type", "My Custom Type"),
-            ("mix-and_match", "Mix And Match"),
-        ];
-        for (folder, expected) in cases {
-            create_test_file(dir.path(), &format!("{}/test.md", folder), "# Test\n");
-            let entry = parse_md_file(&dir.path().join(folder).join("test.md")).unwrap();
-            assert_eq!(
-                entry.is_a,
-                Some(expected.to_string()),
-                "folder '{}' should infer type '{}'",
-                folder,
-                expected
-            );
-        }
-    }
-
-    #[test]
-    fn test_infer_type_frontmatter_overrides_folder() {
-        let dir = TempDir::new().unwrap();
-        create_test_file(
-            dir.path(),
-            "person/test.md",
-            "---\nIs A: Custom\n---\n# Test\n",
-        );
-        let entry = parse_md_file(&dir.path().join("person/test.md")).unwrap();
+        create_test_file(dir.path(), "test.md", "---\ntype: Custom\n---\n# Test\n");
+        let entry = parse_md_file(&dir.path().join("test.md")).unwrap();
         assert_eq!(entry.is_a, Some("Custom".to_string()));
+    }
+
+    #[test]
+    fn test_no_type_when_frontmatter_missing() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(dir.path(), "note/test.md", "# Test\n");
+        let entry = parse_md_file(&dir.path().join("note/test.md")).unwrap();
+        assert_eq!(entry.is_a, None, "type should not be inferred from folder");
     }
 
     // --- created_at parsing from frontmatter ---
@@ -1132,7 +1167,7 @@ References:
         let entry = parse_test_entry(&dir, "project/my-project.md", content);
         assert_eq!(
             entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/project]]".to_string()]
+            &vec!["[[project]]".to_string()]
         );
     }
 
@@ -1140,38 +1175,35 @@ References:
     fn test_type_relationship_skipped_for_type_documents() {
         let dir = TempDir::new().unwrap();
         let content = "---\nIs A: Type\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.relationships.get("Type").is_none());
     }
 
     #[test]
-    fn test_type_relationship_from_folder_inference() {
+    fn test_no_type_relationship_without_frontmatter() {
         let dir = TempDir::new().unwrap();
         let content = "# A Person\n\nSome content.";
-        let entry = parse_test_entry(&dir, "person/someone.md", content);
-        assert_eq!(entry.is_a, Some("Person".to_string()));
-        assert_eq!(
-            entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/person]]".to_string()]
-        );
+        let entry = parse_test_entry(&dir, "someone.md", content);
+        assert_eq!(entry.is_a, None);
+        assert!(entry.relationships.get("Type").is_none());
     }
 
     #[test]
     fn test_type_relationship_handles_wikilink_is_a() {
         let dir = TempDir::new().unwrap();
-        let content = "---\nIs A: \"[[type/experiment]]\"\n---\n# Test\n";
+        let content = "---\nIs A: \"[[experiment]]\"\n---\n# Test\n";
         let entry = parse_test_entry(&dir, "test.md", content);
         assert_eq!(
             entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/experiment]]".to_string()]
+            &vec!["[[experiment]]".to_string()]
         );
     }
 
     #[test]
-    fn test_type_folder_inferred_as_type() {
+    fn test_type_from_frontmatter_not_folder() {
         let dir = TempDir::new().unwrap();
-        let content = "# Some Type\n";
-        let entry = parse_test_entry(&dir, "type/some-type.md", content);
+        let content = "---\ntype: Type\n---\n# Some Type\n";
+        let entry = parse_test_entry(&dir, "some-type.md", content);
         assert_eq!(entry.is_a, Some("Type".to_string()));
     }
 
@@ -1192,7 +1224,7 @@ References:
         let entry = parse_test_entry(&dir, "person/alice.md", content);
         assert_eq!(
             entry.relationships.get("Type").unwrap(),
-            &vec!["[[type/person]]".to_string()]
+            &vec!["[[person]]".to_string()]
         );
     }
 
@@ -1278,7 +1310,7 @@ References:
     fn test_parse_sidebar_label_from_type_entry() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nsidebar label: News\n---\n# News\n";
-        let entry = parse_test_entry(&dir, "type/news.md", content);
+        let entry = parse_test_entry(&dir, "news.md", content);
         assert_eq!(entry.sidebar_label, Some("News".to_string()));
     }
 
@@ -1286,7 +1318,7 @@ References:
     fn test_parse_sidebar_label_missing_defaults_to_none() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert_eq!(entry.sidebar_label, None);
     }
 
@@ -1294,7 +1326,7 @@ References:
     fn test_sidebar_label_not_in_relationships() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nsidebar label: My Series\n---\n# Series\n";
-        let entry = parse_test_entry(&dir, "type/series.md", content);
+        let entry = parse_test_entry(&dir, "series.md", content);
         assert!(entry.relationships.get("sidebar label").is_none());
     }
 
@@ -1305,7 +1337,7 @@ References:
         let dir = TempDir::new().unwrap();
         let content =
             "---\ntype: Type\ntemplate: \"## Objective\\n\\n## Timeline\"\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.template.is_some());
     }
 
@@ -1314,7 +1346,7 @@ References:
         let dir = TempDir::new().unwrap();
         let content =
             "---\ntype: Type\ntemplate: |\n  ## Objective\n  \n  ## Timeline\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.template.is_some());
         let tmpl = entry.template.unwrap();
         assert!(tmpl.contains("## Objective"));
@@ -1325,7 +1357,7 @@ References:
     fn test_parse_template_missing_defaults_to_none() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\n---\n# Note\n";
-        let entry = parse_test_entry(&dir, "type/note.md", content);
+        let entry = parse_test_entry(&dir, "note.md", content);
         assert_eq!(entry.template, None);
     }
 
@@ -1333,7 +1365,7 @@ References:
     fn test_template_not_in_relationships() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\ntemplate: \"## Heading\"\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.relationships.get("template").is_none());
     }
 
@@ -1343,7 +1375,7 @@ References:
     fn test_parse_sort_from_type_entry() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nsort: \"modified:desc\"\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert_eq!(entry.sort, Some("modified:desc".to_string()));
     }
 
@@ -1351,7 +1383,7 @@ References:
     fn test_parse_sort_missing_defaults_to_none() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert_eq!(entry.sort, None);
     }
 
@@ -1359,7 +1391,7 @@ References:
     fn test_sort_not_in_relationships() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nsort: \"title:asc\"\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.relationships.get("sort").is_none());
     }
 
@@ -1367,7 +1399,7 @@ References:
     fn test_sort_not_in_properties() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nsort: \"title:asc\"\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert!(entry.properties.get("sort").is_none());
     }
 
@@ -1602,7 +1634,7 @@ Company: Acme Corp
     fn test_parse_visible_false_from_type_entry() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
-        let entry = parse_test_entry(&dir, "type/journal.md", content);
+        let entry = parse_test_entry(&dir, "journal.md", content);
         assert_eq!(entry.visible, Some(false));
     }
 
@@ -1610,7 +1642,7 @@ Company: Acme Corp
     fn test_parse_visible_true_from_type_entry() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nvisible: true\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert_eq!(entry.visible, Some(true));
     }
 
@@ -1618,7 +1650,7 @@ Company: Acme Corp
     fn test_parse_visible_missing_defaults_to_none() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\n---\n# Project\n";
-        let entry = parse_test_entry(&dir, "type/project.md", content);
+        let entry = parse_test_entry(&dir, "project.md", content);
         assert_eq!(entry.visible, None);
     }
 
@@ -1626,7 +1658,7 @@ Company: Acme Corp
     fn test_visible_not_in_relationships() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
-        let entry = parse_test_entry(&dir, "type/journal.md", content);
+        let entry = parse_test_entry(&dir, "journal.md", content);
         assert!(entry.relationships.get("visible").is_none());
     }
 
@@ -1634,7 +1666,7 @@ Company: Acme Corp
     fn test_visible_not_in_properties() {
         let dir = TempDir::new().unwrap();
         let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
-        let entry = parse_test_entry(&dir, "type/journal.md", content);
+        let entry = parse_test_entry(&dir, "journal.md", content);
         assert!(entry.properties.get("visible").is_none());
     }
 
@@ -1662,6 +1694,83 @@ Company: Acme Corp
         let content = "---\nis_a: Quarter\n---\n# Q1 2026\n";
         let entry = parse_test_entry(&dir, "quarter/q1.md", content);
         assert_eq!(entry.is_a, Some("Quarter".to_string()));
+    }
+
+    // --- StringOrList normalization (uniform, no per-field special cases) ---
+
+    #[test]
+    fn test_single_element_array_owner_unwraps_to_scalar() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Responsibility\nOwner:\n  - Luca\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.owner, Some("Luca".to_string()));
+        assert_eq!(entry.is_a, Some("Responsibility".to_string()));
+    }
+
+    #[test]
+    fn test_single_element_array_cadence_unwraps_to_scalar() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Procedure\nCadence:\n  - Weekly\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.cadence, Some("Weekly".to_string()));
+        assert_eq!(entry.is_a, Some("Procedure".to_string()));
+    }
+
+    #[test]
+    fn test_single_element_array_status_unwraps_to_scalar() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Project\nStatus:\n  - Active\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.status, Some("Active".to_string()));
+        assert_eq!(entry.is_a, Some("Project".to_string()));
+    }
+
+    #[test]
+    fn test_multi_element_array_owner_takes_first() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Project\nOwner:\n  - Alice\n  - Bob\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.owner, Some("Alice".to_string()));
+    }
+
+    #[test]
+    fn test_scalar_fields_unchanged() {
+        let dir = TempDir::new().unwrap();
+        let content =
+            "---\ntype: Project\nOwner: Luca\nCadence: Daily\nStatus: Done\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.owner, Some("Luca".to_string()));
+        assert_eq!(entry.cadence, Some("Daily".to_string()));
+        assert_eq!(entry.status, Some("Done".to_string()));
+    }
+
+    #[test]
+    fn test_absent_fields_no_crash() {
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Note\n---\n# Test\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(entry.owner, None);
+        assert_eq!(entry.cadence, None);
+        assert_eq!(entry.status, None);
+    }
+
+    #[test]
+    fn test_array_field_does_not_break_type_detection() {
+        // Regression: when Owner was Option<String>, a YAML array like [Luca]
+        // caused serde to fail the entire Frontmatter → all fields defaulted to None,
+        // losing the is_a field and breaking the type badge.
+        let dir = TempDir::new().unwrap();
+        let content = "---\ntype: Responsibility\nOwner:\n  - Luca\nCadence:\n  - Weekly\nStatus:\n  - Active\n---\n# My Responsibility\n";
+        let entry = parse_test_entry(&dir, "test.md", content);
+        assert_eq!(
+            entry.is_a,
+            Some("Responsibility".to_string()),
+            "type must not be lost when other fields are arrays"
+        );
+
+        assert_eq!(entry.owner, Some("Luca".to_string()));
+        assert_eq!(entry.cadence, Some("Weekly".to_string()));
+        assert_eq!(entry.status, Some("Active".to_string()));
     }
 
     // Frontmatter update/delete tests are in frontmatter.rs

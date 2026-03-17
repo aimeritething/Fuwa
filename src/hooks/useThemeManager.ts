@@ -85,6 +85,9 @@ function applyVarsToDom(vars: Record<string, string>): void {
     root.style.setProperty(key, value)
   }
   updateColorScheme(vars)
+  // Force WebKit to recalculate ::before/::after pseudo-element styles
+  // when CSS custom properties change (WKWebView doesn't auto-invalidate).
+  void root.offsetHeight
 }
 
 function clearVarsFromDom(vars: Record<string, string>): void {
@@ -158,6 +161,7 @@ function useThemeApplier(
 ) {
   const appliedVarsRef = useRef<Record<string, string>>({})
   const [isDark, setIsDark] = useState(false)
+  const versionRef = useRef(0)
 
   const applyDom = useCallback((content: string) => {
     const newVars = extractCssVars(content)
@@ -175,6 +179,7 @@ function useThemeApplier(
   // Apply theme when activeThemeId or cached content changes.
   // Also serves as live-preview: re-applies when the user saves the theme note.
   useEffect(() => {
+    const version = ++versionRef.current
     if (!activeThemeId) {
       clearDom()
       setIsDark(false) // eslint-disable-line react-hooks/set-state-in-effect -- sync dark mode with cleared theme
@@ -187,10 +192,14 @@ function useThemeApplier(
     }
     tauriCall<string>('get_note_content', { path: activeThemeId })
       .then(content => {
+        if (versionRef.current !== version) return
         const vars = applyDom(content)
         setIsDark(isColorDark(vars['--background'] ?? ''))
       })
-      .catch(() => { clearDom(); setIsDark(false) })
+      .catch(() => {
+        if (versionRef.current !== version) return
+        clearDom(); setIsDark(false)
+      })
   }, [activeThemeId, cachedContent, applyDom, clearDom])
 
   return { clearDom, isDark }

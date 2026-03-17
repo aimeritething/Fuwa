@@ -37,6 +37,9 @@ pub fn clone_repo(url: &str, token: &str, local_path: &str) -> Result<String, St
     // Configure the remote to use token auth for future pushes
     configure_remote_auth(local_path, url, token)?;
 
+    // Ensure sensible .gitignore defaults (especially .DS_Store on macOS)
+    crate::git::ensure_gitignore(local_path)?;
+
     Ok(format!("Cloned to {}", local_path))
 }
 

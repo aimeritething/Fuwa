@@ -11,7 +11,7 @@ describe('useViewMode', () => {
   beforeEach(() => {
     resetVaultConfigStore()
     bindVaultConfigStore(
-      { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null },
+      { zoom: null, view_mode: null, editor_mode: null, tag_colors: null, status_colors: null, property_display_modes: null },
       vi.fn(),
     )
   })
@@ -26,7 +26,7 @@ describe('useViewMode', () => {
   it('loads persisted view mode from vault config', () => {
     resetVaultConfigStore()
     bindVaultConfigStore(
-      { zoom: null, view_mode: 'editor-only', tag_colors: null, status_colors: null, property_display_modes: null },
+      { zoom: null, view_mode: 'editor-only', editor_mode: null, tag_colors: null, status_colors: null, property_display_modes: null },
       vi.fn(),
     )
     const { result } = renderHook(() => useViewMode())
@@ -69,7 +69,7 @@ describe('useViewMode', () => {
   it('ignores invalid vault config values', () => {
     resetVaultConfigStore()
     bindVaultConfigStore(
-      { zoom: null, view_mode: 'garbage' as never, tag_colors: null, status_colors: null, property_display_modes: null },
+      { zoom: null, view_mode: 'garbage' as never, editor_mode: null, tag_colors: null, status_colors: null, property_display_modes: null },
       vi.fn(),
     )
     const { result } = renderHook(() => useViewMode())

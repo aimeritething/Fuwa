@@ -422,7 +422,7 @@ describe('Sidebar', () => {
     const entriesWithCustomTypes: VaultEntry[] = [
       ...mockEntries,
       {
-        path: '/vault/type/recipe.md',
+        path: '/vault/recipe.md',
         filename: 'recipe.md',
         title: 'Recipe',
         isA: 'Type',
@@ -450,7 +450,7 @@ describe('Sidebar', () => {
     properties: {},
       },
       {
-        path: '/vault/type/book.md',
+        path: '/vault/book.md',
         filename: 'book.md',
         title: 'Book',
         isA: 'Type',
@@ -592,7 +592,7 @@ describe('Sidebar', () => {
 
     it('does not show built-in types as custom sections', () => {
       const projectTypeEntry: VaultEntry = {
-        path: '/vault/type/project.md',
+        path: '/vault/project.md',
         filename: 'project.md',
         title: 'Project',
         isA: 'Type',
@@ -629,7 +629,7 @@ describe('Sidebar', () => {
       const entriesWithLabel: VaultEntry[] = [
         ...mockEntries,
         {
-          path: '/vault/type/news.md', filename: 'news.md', title: 'News', isA: 'Type',
+          path: '/vault/news.md', filename: 'news.md', title: 'News', isA: 'Type',
           aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
           archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null,
           fileSize: 200, snippet: '', wordCount: 0, relationships: {},
@@ -655,7 +655,7 @@ describe('Sidebar', () => {
       const entriesWithBuiltInOverride: VaultEntry[] = [
         ...mockEntries,
         {
-          path: '/vault/type/person.md', filename: 'person.md', title: 'Person', isA: 'Type',
+          path: '/vault/person.md', filename: 'person.md', title: 'Person', isA: 'Type',
           aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
           archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null,
           fileSize: 200, snippet: '', wordCount: 0, relationships: {},
@@ -677,7 +677,7 @@ describe('Sidebar', () => {
 
   describe('type visibility via visible property', () => {
     const makeTypeEntry = (title: string, visible: boolean | null): VaultEntry => ({
-      path: `/vault/type/${title.toLowerCase()}.md`,
+      path: `/vault/${title.toLowerCase()}.md`,
       filename: `${title.toLowerCase()}.md`,
       title,
       isA: 'Type',
@@ -809,7 +809,7 @@ describe('Sidebar', () => {
       ...mockEntries,
       // Type entries with order values — reversed from default
       {
-        path: '/vault/type/project.md', filename: 'project.md', title: 'Project', isA: 'Type',
+        path: '/vault/project.md', filename: 'project.md', title: 'Project', isA: 'Type',
         aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
         archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null, fileSize: 200, snippet: '',
         wordCount: 0,
@@ -817,7 +817,7 @@ describe('Sidebar', () => {
         properties: {},
       },
       {
-        path: '/vault/type/topic.md', filename: 'topic.md', title: 'Topic', isA: 'Type',
+        path: '/vault/topic.md', filename: 'topic.md', title: 'Topic', isA: 'Type',
         aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
         archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null, fileSize: 200, snippet: '',
         wordCount: 0,
@@ -825,7 +825,7 @@ describe('Sidebar', () => {
         properties: {},
       },
       {
-        path: '/vault/type/person.md', filename: 'person.md', title: 'Person', isA: 'Type',
+        path: '/vault/person.md', filename: 'person.md', title: 'Person', isA: 'Type',
         aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
         archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null, fileSize: 200, snippet: '',
         wordCount: 0,

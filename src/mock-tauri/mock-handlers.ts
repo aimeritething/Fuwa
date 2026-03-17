@@ -26,9 +26,10 @@ function mockFileHistory(path: string) {
 
 function mockModifiedFiles(): ModifiedFile[] {
   return [
-    { path: '/Users/luca/Laputa/project/26q1-laputa-app.md', relativePath: 'project/26q1-laputa-app.md', status: 'modified' },
-    { path: '/Users/luca/Laputa/note/facebook-ads-strategy.md', relativePath: 'note/facebook-ads-strategy.md', status: 'modified' },
-    { path: '/Users/luca/Laputa/essay/ai-agents-primer.md', relativePath: 'essay/ai-agents-primer.md', status: 'added' },
+    { path: '/Users/luca/Laputa/26q1-laputa-app.md', relativePath: '26q1-laputa-app.md', status: 'modified' },
+    { path: '/Users/luca/Laputa/facebook-ads-strategy.md', relativePath: 'facebook-ads-strategy.md', status: 'modified' },
+    { path: '/Users/luca/Laputa/ai-agents-primer.md', relativePath: 'ai-agents-primer.md', status: 'added' },
+    { path: '/Users/luca/Laputa/old-draft.md', relativePath: 'old-draft.md', status: 'deleted' },
   ]
 }
 
@@ -114,7 +115,13 @@ const mockThemes: ThemeFile[] = [
 
 let mockDeviceFlowPollCount = 0
 
-function handleRenameNote(args: { vault_path: string; old_path: string; new_title: string }) {
+function handleRenameNote(args: { vault_path: string; old_path: string; new_title: string; old_title?: string | null }) {
+  const oldEntry = MOCK_ENTRIES.find(e => e.path === args.old_path)
+  const oldTitle = args.old_title ?? oldEntry?.title ?? ''
+  if (oldTitle === args.new_title) {
+    return { new_path: args.old_path, updated_files: 0 }
+  }
+
   const oldContent = MOCK_CONTENT[args.old_path] ?? ''
   const slug = args.new_title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
   const parentDir = args.old_path.replace(/\/[^/]+$/, '')
@@ -123,9 +130,6 @@ function handleRenameNote(args: { vault_path: string; old_path: string; new_titl
 
   delete MOCK_CONTENT[args.old_path]
   MOCK_CONTENT[newPath] = newContent
-
-  const oldEntry = MOCK_ENTRIES.find(e => e.path === args.old_path)
-  const oldTitle = oldEntry?.title ?? ''
   let updatedFiles = 0
   if (oldTitle) {
     const pattern = new RegExp(`\\[\\[${oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\|[^\\]]*?)?\\]\\]`, 'g')
@@ -179,9 +183,9 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     const limit = args.limit ?? 30
     const ts = Math.floor(Date.now() / 1000)
     const commits: PulseCommit[] = [
-      { hash: 'a1b2c3d4e5f6', shortHash: 'a1b2c3d', message: 'Update project notes and add new experiment', date: ts - 3600, githubUrl: 'https://github.com/lucaong/laputa-vault/commit/a1b2c3d4e5f6', files: [{ path: 'project/26q1-laputa-app.md', status: 'modified', title: '26q1 laputa app' }, { path: 'experiment/ai-search.md', status: 'added', title: 'ai search' }], added: 1, modified: 1, deleted: 0 },
-      { hash: 'b2c3d4e5f6g7', shortHash: 'b2c3d4e', message: 'Reorganize people notes', date: ts - 86400, githubUrl: 'https://github.com/lucaong/laputa-vault/commit/b2c3d4e5f6g7', files: [{ path: 'person/alice-johnson.md', status: 'modified', title: 'alice johnson' }, { path: 'person/bob-smith.md', status: 'modified', title: 'bob smith' }, { path: 'person/old-contact.md', status: 'deleted', title: 'old contact' }], added: 0, modified: 2, deleted: 1 },
-      { hash: 'c3d4e5f6g7h8', shortHash: 'c3d4e5f', message: 'Add daily journal entry', date: ts - 172800, githubUrl: null, files: [{ path: 'note/2026-03-03.md', status: 'added', title: '2026 03 03' }], added: 1, modified: 0, deleted: 0 },
+      { hash: 'a1b2c3d4e5f6', shortHash: 'a1b2c3d', message: 'Update project notes and add new experiment', date: ts - 3600, githubUrl: 'https://github.com/lucaong/laputa-vault/commit/a1b2c3d4e5f6', files: [{ path: '26q1-laputa-app.md', status: 'modified', title: '26q1 laputa app' }, { path: 'ai-search.md', status: 'added', title: 'ai search' }], added: 1, modified: 1, deleted: 0 },
+      { hash: 'b2c3d4e5f6g7', shortHash: 'b2c3d4e', message: 'Reorganize people notes', date: ts - 86400, githubUrl: 'https://github.com/lucaong/laputa-vault/commit/b2c3d4e5f6g7', files: [{ path: 'alice-johnson.md', status: 'modified', title: 'alice johnson' }, { path: 'bob-smith.md', status: 'modified', title: 'bob smith' }, { path: 'old-contact.md', status: 'deleted', title: 'old contact' }], added: 0, modified: 2, deleted: 1 },
+      { hash: 'c3d4e5f6g7h8', shortHash: 'c3d4e5f', message: 'Add daily journal entry', date: ts - 172800, githubUrl: null, files: [{ path: '2026-03-03.md', status: 'added', title: '2026 03 03' }], added: 1, modified: 0, deleted: 0 },
     ]
     return commits.slice(0, limit)
   },
@@ -221,28 +225,6 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   load_vault_list: () => ({ ...mockVaultList, vaults: [...mockVaultList.vaults] }),
   save_vault_list: (args: { list: typeof mockVaultList }) => { mockVaultList = { ...args.list }; return null },
   rename_note: handleRenameNote,
-  move_note_to_type_folder: (args: { vault_path: string; note_path: string; new_type: string }) => {
-    const slug = args.new_type.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-    const currentFolder = args.note_path.replace(/\/[^/]+$/, '').split('/').pop() ?? ''
-    if (currentFolder === slug) return { new_path: args.note_path, updated_links: 0, moved: false }
-    const filename = args.note_path.split('/').pop() ?? ''
-    const vaultPath = args.vault_path.replace(/\/$/, '')
-    // Handle collisions: append -2, -3, etc. if the target path already exists
-    // (mirrors the Rust unique_dest_path logic).
-    let newPath = `${vaultPath}/${slug}/${filename}`
-    if (newPath in MOCK_CONTENT && newPath !== args.note_path) {
-      const stem = filename.replace(/\.md$/, '')
-      const ext = filename.endsWith('.md') ? '.md' : ''
-      let counter = 2
-      while (`${vaultPath}/${slug}/${stem}-${counter}${ext}` in MOCK_CONTENT) counter++
-      newPath = `${vaultPath}/${slug}/${stem}-${counter}${ext}`
-    }
-    const content = MOCK_CONTENT[args.note_path] ?? ''
-    delete MOCK_CONTENT[args.note_path]
-    MOCK_CONTENT[newPath] = content
-    syncWindowContent()
-    return { new_path: newPath, updated_links: 0, moved: true }
-  },
   github_list_repos: () => [
     { name: 'laputa-vault', full_name: 'lucaong/laputa-vault', description: 'Personal knowledge vault — markdown + YAML frontmatter', private: true, clone_url: 'https://github.com/lucaong/laputa-vault.git', html_url: 'https://github.com/lucaong/laputa-vault', updated_at: '2026-02-20T10:30:00Z' },
     { name: 'laputa-app', full_name: 'lucaong/laputa-app', description: 'Laputa desktop app — Tauri + React + CodeMirror 6', private: false, clone_url: 'https://github.com/lucaong/laputa-app.git', html_url: 'https://github.com/lucaong/laputa-app', updated_at: '2026-02-19T15:00:00Z' },
@@ -258,6 +240,8 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   clone_repo: (args: { url: string; local_path: string }) => `Cloned to ${args.local_path}`,
   purge_trash: () => [],
   delete_note: (args: { path: string }) => args.path,
+  batch_delete_notes: (args: { paths: string[] }) => args.paths,
+  empty_trash: () => [],
   migrate_is_a_to_type: () => 0,
   batch_archive_notes: (args: { paths: string[] }) => args.paths.length,
   batch_trash_notes: (args: { paths: string[] }) => args.paths.length,
@@ -326,23 +310,153 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     const slug = displayName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'untitled-theme'
     const path = `${args.vaultPath}/theme/${slug}.md`
     MOCK_CONTENT[path] = `---
-type: Theme
-title: ${displayName}
-primary: "#155DFF"
+Is A: Theme
+Description: ${displayName} theme
 background: "#FFFFFF"
 foreground: "#37352F"
-sidebar: "#F7F6F3"
-border: "#E9E9E7"
+card: "#FFFFFF"
+popover: "#FFFFFF"
+primary: "#155DFF"
+primary-foreground: "#FFFFFF"
+secondary: "#EBEBEA"
+secondary-foreground: "#37352F"
 muted: "#F0F0EF"
-muted-foreground: "#9B9A97"
-accent: "#F0F7FF"
-accent-foreground: "#0A3B8F"
+muted-foreground: "#787774"
+accent: "#EBEBEA"
+accent-foreground: "#37352F"
+destructive: "#E03E3E"
+border: "#E9E9E7"
+input: "#E9E9E7"
+ring: "#155DFF"
+sidebar: "#F7F6F3"
+sidebar-foreground: "#37352F"
+sidebar-border: "#E9E9E7"
+sidebar-accent: "#EBEBEA"
+text-primary: "#37352F"
+text-secondary: "#787774"
+text-tertiary: "#B4B4B4"
+text-muted: "#B4B4B4"
+text-heading: "#37352F"
+bg-primary: "#FFFFFF"
+bg-card: "#FFFFFF"
+bg-sidebar: "#F7F6F3"
+bg-hover: "#EBEBEA"
+bg-hover-subtle: "#F0F0EF"
+bg-selected: "#E8F4FE"
+border-primary: "#E9E9E7"
+accent-blue: "#155DFF"
+accent-green: "#00B38B"
+accent-orange: "#D9730D"
+accent-red: "#E03E3E"
+accent-purple: "#A932FF"
+accent-yellow: "#F0B100"
+accent-blue-light: "#155DFF14"
+accent-green-light: "#00B38B14"
+accent-purple-light: "#A932FF14"
+accent-red-light: "#E03E3E14"
+accent-yellow-light: "#F0B10014"
 font-family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
-font-size-base: 14
-line-height-base: 1.6
+font-size-base: 14px
+editor-font-family: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif"
+editor-font-size: 15px
+editor-line-height: 1.5
+editor-max-width: 720px
+editor-padding-horizontal: 40px
+editor-padding-vertical: 20px
+editor-paragraph-spacing: 8px
+headings-h1-font-size: 32px
+headings-h1-font-weight: 700
+headings-h1-line-height: 1.2
+headings-h1-margin-top: 32px
+headings-h1-margin-bottom: 12px
+headings-h1-color: "var(--text-heading)"
+headings-h1-letter-spacing: -0.5px
+headings-h2-font-size: 27px
+headings-h2-font-weight: 600
+headings-h2-line-height: 1.4
+headings-h2-margin-top: 28px
+headings-h2-margin-bottom: 10px
+headings-h2-color: "var(--text-heading)"
+headings-h2-letter-spacing: -0.5px
+headings-h3-font-size: 20px
+headings-h3-font-weight: 600
+headings-h3-line-height: 1.4
+headings-h3-margin-top: 24px
+headings-h3-margin-bottom: 8px
+headings-h3-color: "var(--text-heading)"
+headings-h3-letter-spacing: -0.5px
+headings-h4-font-size: 20px
+headings-h4-font-weight: 600
+headings-h4-line-height: 1.4
+headings-h4-margin-top: 20px
+headings-h4-margin-bottom: 6px
+headings-h4-color: "var(--text-heading)"
+headings-h4-letter-spacing: 0px
+lists-bullet-size: 28px
+lists-bullet-color: "#177bfd"
+lists-indent-size: 24px
+lists-item-spacing: 4px
+lists-padding-left: 8px
+lists-bullet-gap: 6px
+checkboxes-size: 18px
+checkboxes-border-radius: 3px
+checkboxes-checked-color: "var(--accent-blue)"
+checkboxes-unchecked-border-color: "var(--text-muted)"
+checkboxes-gap: 8px
+inline-styles-bold-font-weight: 700
+inline-styles-bold-color: "var(--text-primary)"
+inline-styles-italic-font-style: italic
+inline-styles-italic-color: "var(--text-primary)"
+inline-styles-strikethrough-color: "var(--text-tertiary)"
+inline-styles-strikethrough-text-decoration: line-through
+inline-styles-code-font-family: "'SF Mono', 'Fira Code', monospace"
+inline-styles-code-font-size: 14px
+inline-styles-code-background-color: "var(--bg-hover-subtle)"
+inline-styles-code-padding-horizontal: 4px
+inline-styles-code-padding-vertical: 2px
+inline-styles-code-border-radius: 3px
+inline-styles-code-color: "var(--text-secondary)"
+inline-styles-link-color: "var(--accent-blue)"
+inline-styles-link-text-decoration: underline
+inline-styles-wikilink-color: "var(--accent-blue)"
+inline-styles-wikilink-text-decoration: none
+inline-styles-wikilink-border-bottom: "1px dotted currentColor"
+inline-styles-wikilink-cursor: pointer
+code-blocks-font-family: "'SF Mono', 'Fira Code', monospace"
+code-blocks-font-size: 13px
+code-blocks-line-height: 1.5
+code-blocks-background-color: "var(--bg-card)"
+code-blocks-padding-horizontal: 16px
+code-blocks-padding-vertical: 12px
+code-blocks-border-radius: 6px
+code-blocks-margin-vertical: 12px
+blockquote-border-left-width: 3px
+blockquote-border-left-color: "var(--accent-blue)"
+blockquote-padding-left: 16px
+blockquote-margin-vertical: 12px
+blockquote-color: "var(--text-secondary)"
+blockquote-font-style: italic
+table-border-color: "var(--border-primary)"
+table-header-background: "var(--bg-card)"
+table-cell-padding-horizontal: 12px
+table-cell-padding-vertical: 8px
+table-font-size: 14px
+horizontal-rule-color: "var(--border-primary)"
+horizontal-rule-margin-vertical: 24px
+horizontal-rule-thickness: 1px
+colors-background: "var(--bg-primary)"
+colors-text: "var(--text-primary)"
+colors-text-secondary: "var(--text-secondary)"
+colors-text-muted: "var(--text-muted)"
+colors-heading: "var(--text-heading)"
+colors-accent: "var(--accent-blue)"
+colors-selection: "var(--bg-selected)"
+colors-cursor: "var(--text-primary)"
 ---
 
 # ${displayName}
+
+A custom ${displayName} theme for Laputa.
 `
     const now = Date.now() / 1000
     MOCK_ENTRIES.push({
@@ -360,7 +474,7 @@ line-height-base: 1.6
   ensure_vault_themes: (): null => null,
   restore_default_themes: (): string => 'Default themes restored',
   repair_vault: (): string => 'Vault repaired',
-  get_vault_config: (): VaultConfig => ({ zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null }),
+  get_vault_config: (): VaultConfig => ({ zoom: null, view_mode: null, editor_mode: null, tag_colors: null, status_colors: null, property_display_modes: null }),
   save_vault_config: (): null => null,
 }
 

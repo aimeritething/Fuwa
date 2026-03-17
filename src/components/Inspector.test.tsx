@@ -372,7 +372,7 @@ This is a test note with some words to count.
       fileSize: 500,
       snippet: '',
       wordCount: 0,
-      relationships: { 'Type': ['[[type/responsibility]]'] },
+      relationships: { 'Type': ['[[responsibility]]'] },
       icon: null,
       color: null,
       order: null,
@@ -399,7 +399,7 @@ This is a test note with some words to count.
       fileSize: 300,
       snippet: '',
       wordCount: 0,
-      relationships: { 'Belongs to': ['[[responsibility/grow-newsletter]]'], 'Type': ['[[type/essay]]'] },
+      relationships: { 'Belongs to': ['[[responsibility/grow-newsletter]]'], 'Type': ['[[essay]]'] },
       icon: null,
       color: null,
       order: null,
@@ -426,7 +426,7 @@ This is a test note with some words to count.
       fileSize: 400,
       snippet: '',
       wordCount: 0,
-      relationships: { 'Belongs to': ['[[responsibility/grow-newsletter]]'], 'Type': ['[[type/procedure]]'] },
+      relationships: { 'Belongs to': ['[[responsibility/grow-newsletter]]'], 'Type': ['[[procedure]]'] },
       icon: null,
       color: null,
       order: null,
@@ -453,7 +453,7 @@ This is a test note with some words to count.
       fileSize: 200,
       snippet: '',
       wordCount: 0,
-      relationships: { 'Related to': ['[[responsibility/grow-newsletter]]'], 'Type': ['[[type/experiment]]'] },
+      relationships: { 'Related to': ['[[responsibility/grow-newsletter]]'], 'Type': ['[[experiment]]'] },
       icon: null,
       color: null,
       order: null,
@@ -532,13 +532,13 @@ Status: Active
     it('skips Type relationships in referenced-by computation', () => {
       const typeEntry: VaultEntry = {
         ...targetEntry,
-        path: '/Users/luca/Laputa/type/responsibility.md',
+        path: '/Users/luca/Laputa/responsibility.md',
         filename: 'responsibility.md',
         title: 'Responsibility',
         isA: 'Type',
         relationships: {},
       }
-      // essayEntry has Type: [[type/responsibility]] — should NOT show as referenced-by
+      // essayEntry has Type: [[responsibility]] — should NOT show as referenced-by
       render(
         <Inspector
           {...defaultProps}
@@ -549,7 +549,7 @@ Status: Active
         />
       )
       // On Writing Well references responsibility via "Belongs to" (path match), not via "Type"
-      // But the Type entry is at type/responsibility.md, so wikilinks to
+      // But the Type entry is at responsibility.md, so wikilinks to
       // responsibility/grow-newsletter won't match. Section should be hidden
       expect(screen.queryByText('Referenced by')).not.toBeInTheDocument()
     })
@@ -561,7 +561,7 @@ Status: Active
       }
       const referrer: VaultEntry = {
         ...essayEntry,
-        relationships: { 'Topics': ['[[Newsletter]]'], 'Type': ['[[type/essay]]'] },
+        relationships: { 'Topics': ['[[Newsletter]]'], 'Type': ['[[essay]]'] },
       }
       render(
         <Inspector
@@ -596,7 +596,7 @@ Status: Active
         fileSize: 300,
         snippet: '',
         wordCount: 0,
-        relationships: { 'Belongs to': ['[[responsibility/grow-newsletter]]'], 'Type': ['[[type/essay]]'] },
+        relationships: { 'Belongs to': ['[[responsibility/grow-newsletter]]'], 'Type': ['[[essay]]'] },
         icon: null,
         color: null,
         order: null,

@@ -32,7 +32,56 @@ All data lives in markdown files with YAML frontmatter. There is no database —
 
 ### VaultEntry
 
-The core data type representing a single note, defined in Rust (`src-tauri/src/vault/mod.rs`) and TypeScript (`src/types.ts`):
+The core data type representing a single note, defined in Rust (`src-tauri/src/vault/mod.rs`) and TypeScript (`src/types.ts`).
+
+```mermaid
+classDiagram
+    class VaultEntry {
+        +String path
+        +String filename
+        +String title
+        +String? isA
+        +String[] aliases
+        +String[] belongsTo
+        +String[] relatedTo
+        +Record~string,string[]~ relationships
+        +String[] outgoingLinks
+        +String? status
+        +String? owner
+        +Number? modifiedAt
+        +Number? createdAt
+        +Number wordCount
+        +String? snippet
+        +Boolean archived
+        +Boolean trashed
+        +Number? trashedAt
+        +Record~string,string~ properties
+    }
+
+    class TypeDocument {
+        +String icon
+        +String color
+        +Number order
+        +String sidebarLabel
+        +String template
+        +String sort
+        +Boolean visible
+    }
+
+    class Frontmatter {
+        +String type
+        +String status
+        +String url
+        +String[] belongsTo
+        +String[] relatedTo
+        +String[] aliases
+        ...custom fields
+    }
+
+    VaultEntry --> Frontmatter : parsed from
+    VaultEntry --> TypeDocument : isA resolves to
+    VaultEntry "many" --> "1" TypeDocument : grouped by type
+```
 
 ```typescript
 // src/types.ts
@@ -65,28 +114,23 @@ interface VaultEntry {
 
 Entity type is stored in the `type:` frontmatter field (e.g. `type: Quarter`). The legacy field name `Is A:` is still accepted as an alias for backwards compatibility but new notes use `type:`. The `VaultEntry.isA` property in TypeScript/Rust holds the resolved value.
 
-Type is also inferred from the folder structure when `type:` is absent. The vault is organized by type:
+Type is determined **purely** from the `type:` frontmatter field — it is never inferred from the file's folder location. All notes live at the vault root as flat `.md` files:
 
 ```
 ~/Laputa/
-├── type/           → "Type"       ← type definition documents
-├── project/        → "Project"
-├── responsibility/ → "Responsibility"
-├── procedure/      → "Procedure"
-├── experiment/     → "Experiment"
-├── person/         → "Person"
-├── event/          → "Event"
-├── topic/          → "Topic"
-├── note/           → "Note"
-├── quarter/        → "Quarter"
-├── journal/        → "Journal"
-├── essay/          → "Essay"
-├── evergreen/      → "Evergreen"
-├── theme/          → "Theme"      ← vault-based themes
-└── config/         → "Config"     ← meta-configuration files (agents.md, etc.)
+├── my-project.md          ← type: Project (in frontmatter)
+├── weekly-review.md       ← type: Procedure
+├── john-doe.md            ← type: Person
+├── some-topic.md          ← type: Topic
+├── ...
+├── type/                  ← type definition documents
+├── config/                ← meta-configuration files (agents.md, etc.)
+└── theme/                 ← vault-based themes (legacy location)
 ```
 
-Mapping logic lives in `vault/mod.rs:parse_md_file()`. If a folder doesn't match any known type, the folder name is capitalized and used as-is.
+New notes are created at the vault root: `{vault}/{slug}.md`. Changing a note's type only requires updating the `type:` field in frontmatter — the file does not move. The `type/` folder exists solely for type definition documents, and `config/` for configuration files.
+
+A `flatten_vault` migration command is available to move existing notes from type-based subfolders to the vault root.
 
 ### Types as Files
 
@@ -129,9 +173,9 @@ status: Active
 owner: Luca Rossi
 cadence: Weekly
 belongs_to:
-  - "[[responsibility/grow-newsletter]]"
+  - "[[grow-newsletter]]"
 related_to:
-  - "[[topic/writing]]"
+  - "[[writing]]"
 aliases:
   - Weekly Writing
 ---
@@ -151,14 +195,14 @@ The Rust parser scans all frontmatter keys for fields containing `[[wikilinks]]`
 ```yaml
 ---
 Topics:
-  - "[[topic/writing]]"
-  - "[[topic/productivity]]"
+  - "[[writing]]"
+  - "[[productivity]]"
 Key People:
-  - "[[person/matteo-cellini]]"
+  - "[[matteo-cellini]]"
 ---
 ```
 
-Becomes: `relationships["Topics"] = ["[[topic/writing]]", "[[topic/productivity]]"]`
+Becomes: `relationships["Topics"] = ["[[writing]]", "[[productivity]]"]`
 
 This enables arbitrary, extensible relationship types without code changes.
 
@@ -169,6 +213,10 @@ All `[[wikilinks]]` in the note body (not frontmatter) are extracted by regex an
 ### Title Extraction
 
 Title comes from the first `# Heading` in the markdown body. If none is found, the filename (without `.md`) is used as fallback. Logic in `vault/parsing.rs:extract_title()`.
+
+### Title Field (UI)
+
+The editor displays a dedicated `TitleField` component above the BlockNote editor. This is the primary title editing surface — the H1 block inside BlockNote is hidden via CSS. Changing the title field triggers `onTitleSync`, which updates the frontmatter `title:` field and renames the file to match `slugify(title).md`. The title field also responds to `laputa:focus-editor` events with `selectTitle: true` for new note creation.
 
 ### Sidebar Selection
 
@@ -191,17 +239,20 @@ type SidebarSelection =
 `vault::scan_vault(path)` in `src-tauri/src/vault/mod.rs`:
 
 1. Validates the path exists and is a directory
-2. Uses `walkdir` to recursively traverse (follows symlinks)
-3. Filters to `.md` files only
-4. For each file, calls `parse_md_file()`:
+2. Scans root-level `.md` files (non-recursive)
+3. Recursively scans protected folders: `type/`, `config/`, `attachments/`, `_themes/`, `theme/`
+4. Files in non-protected subfolders are **not indexed** (flat vault enforcement)
+5. For each `.md` file, calls `parse_md_file()`:
    - Reads content with `fs::read_to_string()`
    - Parses frontmatter with `gray_matter::Matter::<YAML>`
    - Extracts title from first `#` heading
-   - Infers entity type from parent folder name (or explicit `type:` frontmatter; `Is A:` accepted as legacy alias)
+   - Reads entity type from `type:` frontmatter field (`Is A:` accepted as legacy alias); type is never inferred from folder
    - Parses dates as ISO 8601 to Unix timestamps
    - Extracts relationships, outgoing links, custom properties, word count, snippet
-5. Sorts by `modified_at` descending
-6. Skips unparseable files with a warning log
+6. Sorts by `modified_at` descending
+7. Skips unparseable files with a warning log
+
+A `vault_health_check` command detects stray files in non-protected subfolders and filename-title mismatches. On vault load, a migration banner offers to flatten stray files to the root via `flatten_vault`.
 
 ### Vault Caching
 
@@ -315,25 +366,31 @@ const WikiLink = createReactInlineContentSpec(
 
 ### Markdown-to-BlockNote Pipeline
 
-```
-Raw markdown
-  → splitFrontmatter() → [yaml, body]
-  → preProcessWikilinks(body) → replaces [[target]] with Unicode placeholder tokens
-  → editor.tryParseMarkdownToBlocks() → BlockNote block tree
-  → injectWikilinks(blocks) → walks tree, replaces placeholders with wikilink inline content nodes
-  → editor.replaceBlocks()
+```mermaid
+flowchart LR
+    A["📄 Raw markdown\n(from disk)"] --> B["splitFrontmatter()\n→ yaml + body"]
+    B --> C["preProcessWikilinks(body)\n[[target]] → ‹token›"]
+    C --> D["tryParseMarkdownToBlocks()\n→ BlockNote block tree"]
+    D --> E["injectWikilinks(blocks)\n‹token› → WikiLink node"]
+    E --> F["editor.replaceBlocks()\n→ rendered editor"]
+
+    style A fill:#f8f9fa,stroke:#6c757d,color:#000
+    style F fill:#d4edda,stroke:#28a745,color:#000
 ```
 
-Placeholder tokens use `\u2039` and `\u203A` to avoid colliding with markdown syntax.
+> Placeholder tokens use `\u2039` and `\u203A` to avoid colliding with markdown syntax.
 
 ### BlockNote-to-Markdown Pipeline (Save)
 
-```
-BlockNote blocks
-  → editor.blocksToMarkdownLossy()
-  → postProcessWikilinks() → restore [[target]] syntax from wikilink nodes
-  → prepend frontmatter yaml
-  → invoke('save_note_content', { path, content })
+```mermaid
+flowchart LR
+    A["✏️ BlockNote blocks\n(editor state)"] --> B["blocksToMarkdownLossy()"]
+    B --> C["postProcessWikilinks()\nWikiLink node → [[target]]"]
+    C --> D["prepend frontmatter yaml"]
+    D --> E["invoke('save_note_content')\n→ disk write"]
+
+    style A fill:#cce5ff,stroke:#004085,color:#000
+    style E fill:#d4edda,stroke:#28a745,color:#000
 ```
 
 ### Wikilink Navigation
@@ -343,7 +400,7 @@ Two navigation mechanisms:
 1. **Click handler**: DOM event listener on `.editor__blocknote-container` catches clicks on `.wikilink` elements → `onNavigateWikilink(target)`.
 2. **Suggestion menu**: Typing `[[` triggers `SuggestionMenuController` with filtered vault entries.
 
-Wikilink resolution (`useNoteActions`) uses fuzzy matching: exact title → alias → path stem → filename stem → slug-to-words.
+Wikilink resolution (`resolveEntry` in `src/utils/wikilink.ts`) uses multi-pass matching with global priority: filename stem (strongest) → alias → exact title → humanized title (kebab-case → words). No path-based matching — flat vault uses title/filename only. Legacy path-style targets like `[[person/alice]]` are supported by extracting the last segment.
 
 ### Raw Editor Mode
 
@@ -415,6 +472,10 @@ The Inspector panel (`src/components/Inspector.tsx`) is composed of sub-panels:
 3. **BacklinksPanel**: Scans `allContent` for notes that reference the current note via `[[title]]` or `[[path]]`.
 
 4. **GitHistoryPanel**: Shows recent commits from file history with relative timestamps.
+
+## Closed Tab History
+
+`useClosedTabHistory` hook (`src/hooks/useClosedTabHistory.ts`) provides a LIFO stack for closed tab entries, used by `useTabManagement` to support Cmd+Shift+T reopen. Each entry stores the note's path, tab index, and full `VaultEntry`. The stack is in-memory only (resets on restart), capped at 20 entries, and deduplicates by path.
 
 ## Search & Indexing
 

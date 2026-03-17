@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react'
 import { useZoom } from './useZoom'
 import { bindVaultConfigStore, getVaultConfig, resetVaultConfigStore } from '../utils/vaultConfigStore'
 
-const DEFAULT_VC = { zoom: null, view_mode: null, tag_colors: null, status_colors: null, property_display_modes: null } as const
+const DEFAULT_VC = { zoom: null, view_mode: null, editor_mode: null, tag_colors: null, status_colors: null, property_display_modes: null } as const
 
 describe('useZoom', () => {
   beforeEach(() => {

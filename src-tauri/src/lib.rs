@@ -51,14 +51,16 @@ fn run_startup_tasks() {
 
     // Seed _themes/ with built-in JSON themes (legacy) if missing
     theme::seed_default_themes(vp_str);
-    // Seed theme/ with built-in vault theme notes if missing
+    // Migrate legacy theme/ directory notes to root (flat structure)
+    theme::migrate_theme_dir_to_root(vp_str);
+    // Seed vault theme notes at root (flat structure) if missing
     theme::seed_vault_themes(vp_str);
-    // Seed type/theme.md so the Theme type has an icon in the sidebar
+    // Seed theme.md type definition so the Theme type has an icon in the sidebar
     let _ = theme::ensure_theme_type_definition(vp_str);
 
-    // Migrate root AGENTS.md → config/agents.md (one-time, idempotent)
+    // Migrate legacy config/agents.md → root AGENTS.md (one-time, idempotent)
     vault::migrate_agents_md(vp_str);
-    // Seed config/ with default config files if missing
+    // Seed AGENTS.md and config.md at vault root if missing
     vault::seed_config_files(vp_str);
 
     // Register Laputa MCP server in Claude Code and Cursor configs
@@ -118,7 +120,6 @@ pub fn run() {
             commands::update_frontmatter,
             commands::delete_frontmatter_property,
             commands::rename_note,
-            commands::move_note_to_type_folder,
             commands::get_file_history,
             commands::get_modified_files,
             commands::get_file_diff,
@@ -143,7 +144,11 @@ pub fn run() {
             commands::copy_image_to_vault,
             commands::purge_trash,
             commands::delete_note,
+            commands::batch_delete_notes,
+            commands::empty_trash,
             commands::migrate_is_a_to_type,
+            commands::flatten_vault,
+            commands::vault_health_check,
             commands::batch_archive_notes,
             commands::batch_trash_notes,
             commands::get_settings,

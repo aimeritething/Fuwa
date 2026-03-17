@@ -152,6 +152,7 @@ export interface VaultSettings {
 export interface VaultConfig {
   zoom: number | null
   view_mode: string | null
+  editor_mode: string | null
   tag_colors: Record<string, string> | null
   status_colors: Record<string, string> | null
   property_display_modes: Record<string, string> | null

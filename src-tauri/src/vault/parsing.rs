@@ -40,6 +40,37 @@ fn is_snippet_line(line: &str) -> bool {
     !t.is_empty() && !t.starts_with('#') && !t.starts_with("```") && !t.starts_with("---")
 }
 
+/// Extract sub-heading text (## , ### , etc.) stripped of the `#` prefix.
+fn extract_subheading_text(line: &str) -> Option<&str> {
+    let t = line.trim();
+    let stripped = t.trim_start_matches('#');
+    if stripped.len() < t.len() && stripped.starts_with(' ') {
+        let text = stripped.trim();
+        if !text.is_empty() {
+            return Some(text);
+        }
+    }
+    None
+}
+
+/// Strip leading list markers (*, -, +, 1.) from a line.
+fn strip_list_marker(line: &str) -> &str {
+    let t = line.trim_start();
+    // Unordered: "* ", "- ", "+ "
+    for prefix in &["* ", "- ", "+ "] {
+        if let Some(rest) = t.strip_prefix(prefix) {
+            return rest;
+        }
+    }
+    // Ordered: "1. ", "2. ", etc.
+    if let Some(dot_pos) = t.find(". ") {
+        if dot_pos <= 3 && t[..dot_pos].chars().all(|c| c.is_ascii_digit()) {
+            return &t[dot_pos + 2..];
+        }
+    }
+    t
+}
+
 /// Truncate a string to `max_len` bytes at a valid UTF-8 boundary, appending "...".
 fn truncate_with_ellipsis(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
@@ -71,9 +102,26 @@ pub(super) fn extract_snippet(content: &str) -> String {
     let clean: String = body
         .lines()
         .filter(|line| is_snippet_line(line))
+        .map(strip_list_marker)
         .collect::<Vec<&str>>()
         .join(" ");
-    truncate_with_ellipsis(&strip_markdown_chars(&clean), 160)
+    let stripped = strip_markdown_chars(&clean);
+    let trimmed = stripped.trim();
+    if !trimmed.is_empty() {
+        return truncate_with_ellipsis(trimmed, 160);
+    }
+    // Fallback: collect sub-heading text when no paragraph content exists
+    let heading_text: String = body
+        .lines()
+        .filter_map(extract_subheading_text)
+        .collect::<Vec<&str>>()
+        .join(" ");
+    let heading_trimmed = strip_markdown_chars(&heading_text);
+    let heading_trimmed = heading_trimmed.trim();
+    if heading_trimmed.is_empty() {
+        return String::new();
+    }
+    truncate_with_ellipsis(heading_trimmed, 160)
 }
 
 fn without_h1_line(s: &str) -> Option<&str> {
@@ -193,24 +241,6 @@ pub(super) fn extract_outgoing_links(content: &str) -> Vec<String> {
     links
 }
 
-pub(super) fn capitalize_first(s: &str) -> String {
-    let mut c = s.chars();
-    match c.next() {
-        None => String::new(),
-        Some(f) => f.to_uppercase().collect::<String>() + c.as_str(),
-    }
-}
-
-/// Title-case a folder name: split on hyphens and underscores, capitalize each word, join with spaces.
-/// Example: "monday-ideas" → "Monday Ideas", "key_result" → "Key Result"
-pub(super) fn title_case_folder(s: &str) -> String {
-    s.split(['-', '_'])
-        .filter(|w| !w.is_empty())
-        .map(capitalize_first)
-        .collect::<Vec<_>>()
-        .join(" ")
-}
-
 /// Parse an ISO 8601 date string to Unix timestamp (seconds since epoch).
 /// Handles "2025-05-23T14:35:00.000Z" and "2025-05-23" formats.
 pub(super) fn parse_iso_date(date_str: &str) -> Option<u64> {
@@ -323,10 +353,10 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_snippet_only_headings() {
+    fn test_extract_snippet_only_headings_uses_fallback() {
         let content = "# Title\n\n## Section One\n\n### Sub Section\n";
         let snippet = extract_snippet(content);
-        assert_eq!(snippet, "");
+        assert_eq!(snippet, "Section One Sub Section");
     }
 
     #[test]
@@ -348,6 +378,80 @@ mod tests {
         let content = "# Title\n\n---\n\nContent after rule.";
         let snippet = extract_snippet(content);
         assert_eq!(snippet, "Content after rule.");
+    }
+
+    // --- strip_list_marker tests ---
+
+    #[test]
+    fn test_strip_list_marker_unordered() {
+        assert_eq!(strip_list_marker("* Item one"), "Item one");
+        assert_eq!(strip_list_marker("- Item two"), "Item two");
+        assert_eq!(strip_list_marker("+ Item three"), "Item three");
+    }
+
+    #[test]
+    fn test_strip_list_marker_ordered() {
+        assert_eq!(strip_list_marker("1. First item"), "First item");
+        assert_eq!(strip_list_marker("10. Tenth item"), "Tenth item");
+        assert_eq!(strip_list_marker("99. Large number"), "Large number");
+    }
+
+    #[test]
+    fn test_strip_list_marker_preserves_non_list() {
+        assert_eq!(strip_list_marker("Regular text"), "Regular text");
+        assert_eq!(strip_list_marker("  Indented text"), "Indented text");
+    }
+
+    #[test]
+    fn test_extract_snippet_strips_list_markers() {
+        let content =
+            "---\ntype: Project\n---\n# My Project\n\n* First bullet\n* Second bullet\n- Dash item";
+        let snippet = extract_snippet(content);
+        assert_eq!(snippet, "First bullet Second bullet Dash item");
+    }
+
+    #[test]
+    fn test_extract_snippet_mixed_headings_and_bullets() {
+        let content = "---\ntype: Project\nstatus: Active\n---\n# Migrate newsletter to Beehiiv\n\n### 1) Newsletter is 100% on Beehiiv\n\n* Migration is successful\n\n### 2) Open rate is >27%\n\n* No regressions on open rate";
+        let snippet = extract_snippet(content);
+        assert!(
+            snippet.starts_with("Migration is successful"),
+            "snippet should start with first bullet content, got: {}",
+            snippet
+        );
+        assert!(snippet.contains("No regressions on open rate"));
+    }
+
+    #[test]
+    fn test_extract_snippet_ordered_list() {
+        let content = "# Title\n\n1. First step\n2. Second step\n3. Third step";
+        let snippet = extract_snippet(content);
+        assert_eq!(snippet, "First step Second step Third step");
+    }
+
+    #[test]
+    fn test_extract_snippet_only_subheadings_fallback() {
+        let content = "---\ntype: Project\n---\n# My Project\n\n## Description\n\n---\n\n## Key Results\n\n---\n";
+        let snippet = extract_snippet(content);
+        assert_eq!(snippet, "Description Key Results");
+    }
+
+    #[test]
+    fn test_extract_snippet_subheadings_with_emoji() {
+        let content = "# Daily\n\n## Intentions\n\n## Reflections\n";
+        let snippet = extract_snippet(content);
+        assert_eq!(snippet, "Intentions Reflections");
+    }
+
+    #[test]
+    fn test_extract_snippet_paragraph_takes_priority_over_headings() {
+        let content = "# Title\n\n## Section One\n\nActual paragraph content.\n\n## Section Two\n";
+        let snippet = extract_snippet(content);
+        assert!(
+            snippet.starts_with("Actual paragraph content"),
+            "paragraph content should be preferred over headings, got: {}",
+            snippet
+        );
     }
 
     // --- count_body_words tests ---
@@ -489,51 +593,6 @@ mod tests {
     #[test]
     fn test_strip_markdown_chars_empty() {
         assert_eq!(strip_markdown_chars(""), "");
-    }
-
-    // --- capitalize_first tests ---
-
-    #[test]
-    fn test_capitalize_first_normal() {
-        assert_eq!(capitalize_first("person"), "Person");
-    }
-
-    #[test]
-    fn test_capitalize_first_already_capitalized() {
-        assert_eq!(capitalize_first("Project"), "Project");
-    }
-
-    #[test]
-    fn test_capitalize_first_empty() {
-        assert_eq!(capitalize_first(""), "");
-    }
-
-    #[test]
-    fn test_capitalize_first_single_char() {
-        assert_eq!(capitalize_first("a"), "A");
-    }
-
-    // --- title_case_folder tests ---
-
-    #[test]
-    fn test_title_case_folder_hyphenated() {
-        assert_eq!(title_case_folder("monday-ideas"), "Monday Ideas");
-        assert_eq!(title_case_folder("key-result"), "Key Result");
-    }
-
-    #[test]
-    fn test_title_case_folder_underscored() {
-        assert_eq!(title_case_folder("my_custom_type"), "My Custom Type");
-    }
-
-    #[test]
-    fn test_title_case_folder_single_word() {
-        assert_eq!(title_case_folder("recipe"), "Recipe");
-    }
-
-    #[test]
-    fn test_title_case_folder_empty() {
-        assert_eq!(title_case_folder(""), "");
     }
 
     // --- without_h1_line tests ---

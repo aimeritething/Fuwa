@@ -38,29 +38,35 @@ test.describe('Note filename updates on title change + save', () => {
     await page.waitForTimeout(2500)
   })
 
-  test('Cmd+N creates untitled note, typing new title + Cmd+S renames file', async ({ page }) => {
+  test('Cmd+N creates untitled note, typing new title triggers rename via title sync', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => { if (!isKnownEditorError(err.message)) errors.push(err.message) })
 
     await createNoteWithTitle(page, 'Test Note ABC')
 
-    // Breadcrumb should already show the new title (title sync fired)
-    const breadcrumb = page.locator('span.truncate.font-medium')
-    await expect(breadcrumb.first()).toContainText('Test Note ABC', { timeout: 2000 })
-
-    // 5. Cmd+S → save + rename
-    await sendShortcut(page, 's', ['Control'])
-
-    // 6. Toast should show "Renamed" (appears within 5s, auto-dismisses after 2s)
+    // Title sync now triggers a full rename (save + rename + wikilink update).
+    // The toast should show "Renamed" after the debounce fires.
     const toast = page.locator('.fixed.bottom-8')
     await expect(toast).toContainText('Renamed', { timeout: 5000 })
 
-    // 7. No unexpected JS errors
+    // Breadcrumb should show the new title
+    const breadcrumb = page.locator('span.truncate.font-medium')
+    await expect(breadcrumb.first()).toContainText('Test Note ABC', { timeout: 2000 })
+
+    // Cmd+S should NOT trigger another rename (filename already matches)
+    await sendShortcut(page, 's', ['Control'])
+    await page.waitForTimeout(500)
+
+    // No unexpected JS errors
     expect(errors).toEqual([])
   })
 
   test('saving a note whose filename already matches does not trigger rename', async ({ page }) => {
-    // Click on any existing note in the note list.
+    // Click "All Notes" to show all notes regardless of section grouping
+    const allNotes = page.locator('text=All Notes').first()
+    await allNotes.click()
+    await page.waitForTimeout(500)
+    // Click on the first note in the note list
     const noteListContainer = page.locator('[data-testid="note-list-container"]')
     await noteListContainer.waitFor({ timeout: 5000 })
     const noteItem = noteListContainer.locator('.cursor-pointer').first()
@@ -76,7 +82,7 @@ test.describe('Note filename updates on title change + save', () => {
     expect(toastText).not.toContain('Renamed')
   })
 
-  test('rapid title changes only rename to final title on Cmd+S', async ({ page }) => {
+  test('rapid title changes only rename to final title', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => { if (!isKnownEditorError(err.message)) errors.push(err.message) })
 
@@ -87,11 +93,8 @@ test.describe('Note filename updates on title change + save', () => {
     await heading.click({ clickCount: 3 })
     await page.keyboard.type('Final Title', { delay: 20 })
 
-    // Wait for debounce again
+    // Wait for debounce to fire — title sync triggers rename automatically
     await page.waitForTimeout(800)
-
-    // Cmd+S → should rename to final-title.md
-    await sendShortcut(page, 's', ['Control'])
 
     const toast = page.locator('.fixed.bottom-8')
     await expect(toast).toContainText('Renamed', { timeout: 5000 })

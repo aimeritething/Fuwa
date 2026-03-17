@@ -31,6 +31,7 @@
   display: flex;
   justify-content: center;
   position: relative;
+  cursor: text;
 }
 
 /* Drag-over state: subtle border highlight */
@@ -159,4 +160,48 @@
 .cm-line:not(.cm-heading-line) .cm-formatting-block.cm-formatting-block-visible {
   color: var(--text-faint) !important;
   opacity: 1 !important;
+}
+
+/* --- Title Field --- */
+.title-field {
+  padding: 16px 54px 0;
+  flex-shrink: 0;
+}
+
+.title-field__input {
+  display: block;
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--editor-title-size, 28px);
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--foreground);
+  padding: 0;
+}
+
+.title-field__input::placeholder {
+  color: var(--text-faint, #ccc);
+}
+
+.title-field__input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.title-field__filename {
+  display: block;
+  font-size: 11px;
+  color: var(--text-faint, #999);
+  margin-top: 2px;
+}
+
+/* Hide the first H1 heading in BlockNote — title is shown in TitleField above */
+.editor__blocknote-container [data-node-type="blockContainer"]:first-child [data-content-type="heading"][data-level="1"] {
+  display: none;
+}
+/* Also hide the BlockContainer wrapper if its heading is hidden */
+.editor__blocknote-container [data-node-type="blockContainer"]:first-child:has([data-content-type="heading"][data-level="1"]) {
+  display: none;
 }

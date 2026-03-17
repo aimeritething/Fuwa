@@ -3,16 +3,15 @@ use std::path::Path;
 
 use super::defaults::DEFAULT_VAULT_THEME_VARS;
 
-/// Create a new vault theme note in `theme/` directory.
+/// Create a new vault theme note at vault root (flat structure).
 /// Returns the absolute path to the newly created theme note.
 pub fn create_vault_theme(vault_path: &str, name: Option<&str>) -> Result<String, String> {
-    let theme_dir = Path::new(vault_path).join("theme");
-    fs::create_dir_all(&theme_dir).map_err(|e| format!("Failed to create theme directory: {e}"))?;
+    let vault_dir = Path::new(vault_path);
 
     let display_name = name.unwrap_or("Untitled Theme");
     let slug = slugify(display_name);
-    let filename = format!("{}.md", find_available_stem(&theme_dir, &slug, "md"));
-    let path = theme_dir.join(&filename);
+    let filename = format!("{}.md", find_available_stem(vault_dir, &slug, "md"));
+    let path = vault_dir.join(&filename);
 
     let content = vault_theme_note_content(display_name, &DEFAULT_VAULT_THEME_VARS);
     fs::write(&path, content).map_err(|e| format!("Failed to write theme note: {e}"))?;
@@ -93,7 +92,8 @@ fn find_available_stem(dir: &Path, base: &str, ext: &str) -> String {
 fn vault_theme_note_content(name: &str, vars: &[(&str, &str)]) -> String {
     let mut fm = format!("---\nIs A: Theme\nDescription: {name} theme\n");
     for (key, value) in vars {
-        if value.contains('#') || value.contains('\'') || value.contains(',') {
+        if value.contains('#') || value.contains('\'') || value.contains(',') || value.contains('(')
+        {
             fm.push_str(&format!("{key}: \"{value}\"\n"));
         } else {
             fm.push_str(&format!("{key}: {value}\n"));
@@ -215,5 +215,86 @@ mod tests {
         assert_eq!(slugify("My Cool Theme"), "my-cool-theme");
         assert_eq!(slugify("default"), "default");
         assert_eq!(slugify("Dark Mode!"), "dark-mode");
+    }
+
+    #[test]
+    fn test_create_vault_theme_contains_all_default_css_vars() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path().join("vault");
+        fs::create_dir_all(&vault).unwrap();
+        let vp = vault.to_str().unwrap();
+
+        let path = create_vault_theme(vp, Some("Full Theme")).unwrap();
+        let content = fs::read_to_string(&path).unwrap();
+
+        // Every entry in DEFAULT_VAULT_THEME_VARS must appear in the generated file
+        for (key, _) in &DEFAULT_VAULT_THEME_VARS {
+            assert!(
+                content.contains(&format!("{key}:")),
+                "missing key in theme file: {key}"
+            );
+        }
+
+        // Spot-check editor properties from theme.json that were previously missing
+        assert!(
+            content.contains("editor-font-family:"),
+            "missing editor-font-family"
+        );
+        assert!(
+            content.contains("editor-padding-horizontal:"),
+            "missing editor-padding-horizontal"
+        );
+        assert!(
+            content.contains("headings-h1-font-size:"),
+            "missing headings-h1-font-size"
+        );
+        assert!(
+            content.contains("lists-bullet-size:"),
+            "missing lists-bullet-size"
+        );
+        assert!(
+            content.contains("lists-bullet-color:"),
+            "missing lists-bullet-color"
+        );
+        assert!(
+            content.contains("checkboxes-size:"),
+            "missing checkboxes-size"
+        );
+        assert!(
+            content.contains("inline-styles-bold-font-weight:"),
+            "missing inline-styles-bold-font-weight"
+        );
+        assert!(
+            content.contains("code-blocks-font-family:"),
+            "missing code-blocks-font-family"
+        );
+        assert!(
+            content.contains("blockquote-border-left-width:"),
+            "missing blockquote-border-left-width"
+        );
+        assert!(
+            content.contains("table-border-color:"),
+            "missing table-border-color"
+        );
+        assert!(
+            content.contains("horizontal-rule-thickness:"),
+            "missing horizontal-rule-thickness"
+        );
+        assert!(content.contains("colors-text:"), "missing colors-text");
+        assert!(content.contains("colors-cursor:"), "missing colors-cursor");
+
+        // Numeric values that need CSS units must have px suffix
+        assert!(
+            content.contains("editor-font-size: 15px"),
+            "editor-font-size should have px unit"
+        );
+        assert!(
+            content.contains("editor-max-width: 720px"),
+            "editor-max-width should have px unit"
+        );
+        assert!(
+            content.contains("editor-padding-horizontal: 40px"),
+            "editor-padding-horizontal should have px unit"
+        );
     }
 }

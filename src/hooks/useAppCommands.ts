@@ -65,6 +65,9 @@ interface AppCommandsConfig {
   vaultCount?: number
   mcpStatus?: string
   onInstallMcp?: () => void
+  onEmptyTrash?: () => void
+  trashedCount?: number
+  onReopenClosedTab?: () => void
   onReindexVault?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
@@ -114,6 +117,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onGoForward: config.onGoForward,
     onToggleAIChat: config.onToggleAIChat,
     onToggleRawEditor: config.onToggleRawEditor,
+    onReopenClosedTab: config.onReopenClosedTab,
     activeTabPathRef: config.activeTabPathRef,
     handleCloseTabRef: config.handleCloseTabRef,
   })
@@ -153,6 +157,8 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onReindexVault: config.onReindexVault,
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
+    onEmptyTrash: config.onEmptyTrash,
+    onReopenClosedTab: config.onReopenClosedTab,
     activeTabPathRef: config.activeTabPathRef,
     handleCloseTabRef: config.handleCloseTabRef,
     activeTabPath: config.activeTabPath,
@@ -206,6 +212,8 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     vaultCount: config.vaultCount,
     mcpStatus: config.mcpStatus,
     onInstallMcp: config.onInstallMcp,
+    onEmptyTrash: config.onEmptyTrash,
+    trashedCount: config.trashedCount,
     onReindexVault: config.onReindexVault,
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,

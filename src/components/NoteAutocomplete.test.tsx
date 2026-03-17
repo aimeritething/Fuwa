@@ -38,7 +38,7 @@ const entries = [
 ]
 
 const personTypeEntry = makeEntry({
-  path: '/vault/type/person.md', filename: 'person.md', title: 'Person',
+  path: '/vault/person.md', filename: 'person.md', title: 'Person',
   isA: 'Type', color: 'yellow', icon: 'user',
 })
 const typeEntryMap: Record<string, VaultEntry> = { Person: personTypeEntry }

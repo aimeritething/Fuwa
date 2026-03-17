@@ -118,37 +118,37 @@ Available colors: red, purple, blue, green, yellow, orange. Icons are Phosphor n
 
 const SAMPLE_FILES: &[SampleFile] = &[
     SampleFile {
-        rel_path: "type/project.md",
+        rel_path: "project.md",
         content: "---\ntype: Type\nicon: rocket-launch\ncolor: purple\norder: 1\n---\n\n# Project\n\nA Project is a time-bounded effort with a clear goal and an eventual completion date. Projects belong to a quarter or area and advance specific goals.\n",
     },
     SampleFile {
-        rel_path: "type/note.md",
+        rel_path: "note.md",
         content: "---\ntype: Type\nicon: note\ncolor: blue\norder: 2\n---\n\n# Note\n\nA Note is a general-purpose document — research notes, meeting notes, strategy docs, or anything that doesn't fit a more specific type.\n",
     },
     SampleFile {
-        rel_path: "type/person.md",
+        rel_path: "person.md",
         content: "---\ntype: Type\nicon: user\ncolor: green\norder: 3\n---\n\n# Person\n\nA Person represents someone you interact with — a colleague, friend, mentor, or collaborator.\n",
     },
     SampleFile {
-        rel_path: "type/topic.md",
+        rel_path: "topic.md",
         content: "---\ntype: Type\nicon: tag\ncolor: yellow\norder: 4\n---\n\n# Topic\n\nA Topic is a subject area or interest category that groups related notes, projects, and people.\n",
     },
     SampleFile {
-        rel_path: "type/theme.md",
+        rel_path: "theme.md",
         content: "---\ntype: Type\nicon: palette\ncolor: purple\norder: 50\n---\n\n# Theme\n\nA visual theme for Laputa. Each theme defines CSS custom properties that control colors, typography, and spacing.\n",
     },
     SampleFile {
-        rel_path: "type/config.md",
+        rel_path: "config.md",
         content: "---\ntype: Type\nicon: gear-six\ncolor: gray\norder: 90\nsidebar label: Config\n---\n\n# Config\n\nVault configuration files. These control how AI agents, tools, and other integrations interact with this vault.\n",
     },
     SampleFile {
-        rel_path: "note/welcome-to-laputa.md",
+        rel_path: "welcome-to-laputa.md",
         content: r#"---
 type: Note
 Related to:
-  - "[[note/editor-basics]]"
-  - "[[note/using-properties]]"
-  - "[[note/wiki-links-and-relationships]]"
+  - "[[Editor Basics]]"
+  - "[[Using Properties]]"
+  - "[[Wiki-Links and Relationships]]"
 ---
 
 # Welcome to Laputa
@@ -157,15 +157,15 @@ Welcome to your new knowledge vault! Laputa helps you organize your thoughts, pr
 
 ## How it works
 
-Every note is a markdown file with optional YAML frontmatter at the top. Notes live in folders that define their **type** — a file in the `project/` folder is automatically a Project, a file in `person/` is a Person, and so on.
+Every note is a markdown file with optional YAML frontmatter at the top. All notes live at the vault root. The `type` field in the frontmatter determines the note's type — set `type: Project` for a Project, `type: Person` for a Person, and so on.
 
 ## What to explore
 
-- [[note/editor-basics]] — Learn about headings, lists, checkboxes, and formatting
-- [[note/using-properties]] — See how frontmatter properties work (status, dates, relationships)
-- [[note/wiki-links-and-relationships]] — Connect your notes with `[[wiki-links]]`
-- [[project/sample-project]] — A sample project with relationships and status
-- [[person/sample-collaborator]] — A sample person entry
+- [[Editor Basics]] — Learn about headings, lists, checkboxes, and formatting
+- [[Using Properties]] — See how frontmatter properties work (status, dates, relationships)
+- [[Wiki-Links and Relationships]] — Connect your notes with `[[wiki-links]]`
+- [[Sample Project]] — A sample project with relationships and status
+- [[Sample Collaborator]] — A sample person entry
 
 ## Tips
 
@@ -177,10 +177,10 @@ Every note is a markdown file with optional YAML frontmatter at the top. Notes l
 "#,
     },
     SampleFile {
-        rel_path: "note/editor-basics.md",
+        rel_path: "editor-basics.md",
         content: r#"---
 type: Note
-Related to: "[[note/welcome-to-laputa]]"
+Related to: "[[Welcome to Laputa]]"
 ---
 
 # Editor Basics
@@ -225,13 +225,13 @@ function hello() {
 "#,
     },
     SampleFile {
-        rel_path: "note/using-properties.md",
+        rel_path: "using-properties.md",
         content: r#"---
 type: Note
 Status: Active
 Related to:
-  - "[[note/welcome-to-laputa]]"
-  - "[[note/wiki-links-and-relationships]]"
+  - "[[Welcome to Laputa]]"
+  - "[[Wiki-Links and Relationships]]"
 ---
 
 # Using Properties
@@ -259,12 +259,12 @@ You can add any custom property. If the value contains `[[wiki-links]]`, Laputa 
 "#,
     },
     SampleFile {
-        rel_path: "note/wiki-links-and-relationships.md",
+        rel_path: "wiki-links-and-relationships.md",
         content: r#"---
 type: Note
 Related to:
-  - "[[note/welcome-to-laputa]]"
-  - "[[note/using-properties]]"
+  - "[[Welcome to Laputa]]"
+  - "[[Using Properties]]"
 ---
 
 # Wiki-Links and Relationships
@@ -273,7 +273,7 @@ Wiki-links are the core of Laputa's knowledge graph. They let you connect any no
 
 ## Creating links
 
-Type `[[` in the editor to open the link suggestion menu. Start typing to search for a note, then select it. The link will look like this: [[note/welcome-to-laputa]].
+Type `[[` in the editor to open the link suggestion menu. Start typing to search for a note, then select it. The link will look like this: [[Welcome to Laputa]].
 
 ## Backlinks
 
@@ -284,10 +284,10 @@ When note A links to note B, note B automatically shows a **backlink** to note A
 You can also define relationships in the frontmatter:
 
 ```yaml
-Belongs to: "[[project/sample-project]]"
+Belongs to: "[[Sample Project]]"
 Related to:
-  - "[[note/editor-basics]]"
-  - "[[note/using-properties]]"
+  - "[[Editor Basics]]"
+  - "[[Using Properties]]"
 ```
 
 These appear as clickable pills in the inspector and are navigable with a single click.
@@ -298,12 +298,12 @@ Over time, your wiki-links form a rich web of connections. Use the **Referenced 
 "#,
     },
     SampleFile {
-        rel_path: "project/sample-project.md",
+        rel_path: "sample-project.md",
         content: r#"---
 type: Project
 Status: Active
-Owner: "[[person/sample-collaborator]]"
-Related to: "[[topic/getting-started]]"
+Owner: "[[Sample Collaborator]]"
+Related to: "[[Getting Started]]"
 ---
 
 # Sample Project
@@ -323,11 +323,11 @@ Projects are time-bounded efforts with clear goals. They have a **status** (Acti
 
 ## Notes
 
-This project is owned by [[person/sample-collaborator]] and relates to [[topic/getting-started]]. You can see these relationships in the inspector panel on the right.
+This project is owned by [[Sample Collaborator]] and relates to [[Getting Started]]. You can see these relationships in the inspector panel on the right.
 "#,
     },
     SampleFile {
-        rel_path: "person/sample-collaborator.md",
+        rel_path: "sample-collaborator.md",
         content: r#"---
 type: Person
 ---
@@ -344,11 +344,11 @@ This is an example person entry. In your vault, you might create entries for col
 
 ## Connections
 
-This person is the owner of [[project/sample-project]]. Check the **Referenced By** section in the inspector to see all notes that link back here.
+This person is the owner of [[Sample Project]]. Check the **Referenced By** section in the inspector to see all notes that link back here.
 "#,
     },
     SampleFile {
-        rel_path: "topic/getting-started.md",
+        rel_path: "getting-started.md",
         content: r#"---
 type: Topic
 ---
@@ -359,11 +359,11 @@ This topic groups notes related to learning and getting started with Laputa.
 
 ## Related notes
 
-- [[note/welcome-to-laputa]] — Start here for an overview
-- [[note/editor-basics]] — Formatting and editor features
-- [[note/using-properties]] — Frontmatter and the inspector
-- [[note/wiki-links-and-relationships]] — Building your knowledge graph
-- [[project/sample-project]] — A sample project with relationships
+- [[Welcome to Laputa]] — Start here for an overview
+- [[Editor Basics]] — Formatting and editor features
+- [[Using Properties]] — Frontmatter and the inspector
+- [[Wiki-Links and Relationships]] — Building your knowledge graph
+- [[Sample Project]] — A sample project with relationships
 "#,
     },
 ];
@@ -388,19 +388,9 @@ pub fn create_getting_started_vault(target_path: &str) -> Result<String, String>
     fs::create_dir_all(vault_dir)
         .map_err(|e| format!("Failed to create vault directory: {}", e))?;
 
-    // Write config/agents.md with vault instructions for AI agents
-    let config_dir = vault_dir.join("config");
-    fs::create_dir_all(&config_dir)
-        .map_err(|e| format!("Failed to create config directory: {}", e))?;
-    fs::write(config_dir.join("agents.md"), AGENTS_MD)
-        .map_err(|e| format!("Failed to write config/agents.md: {}", e))?;
-
-    // Write root AGENTS.md stub for Codex discoverability
-    fs::write(
-        vault_dir.join("AGENTS.md"),
-        "# Agent Instructions\n\nSee config/agents.md for vault instructions.\n",
-    )
-    .map_err(|e| format!("Failed to write AGENTS.md stub: {}", e))?;
+    // Write AGENTS.md with vault instructions at root (flat structure)
+    fs::write(vault_dir.join("AGENTS.md"), AGENTS_MD)
+        .map_err(|e| format!("Failed to write AGENTS.md: {}", e))?;
 
     for sample in SAMPLE_FILES {
         let file_path = vault_dir.join(sample.rel_path);
@@ -423,22 +413,20 @@ pub fn create_getting_started_vault(target_path: &str) -> Result<String, String>
     fs::write(themes_dir.join("minimal.json"), crate::theme::MINIMAL_THEME)
         .map_err(|e| format!("Failed to write minimal theme: {e}"))?;
 
-    let theme_notes_dir = vault_dir.join("theme");
-    fs::create_dir_all(&theme_notes_dir)
-        .map_err(|e| format!("Failed to create theme directory: {e}"))?;
+    // Vault theme notes at root (flat structure)
     fs::write(
-        theme_notes_dir.join("default.md"),
-        crate::theme::DEFAULT_VAULT_THEME,
+        vault_dir.join("default-theme.md"),
+        crate::theme::default_vault_theme(),
     )
     .map_err(|e| format!("Failed to write default vault theme: {e}"))?;
     fs::write(
-        theme_notes_dir.join("dark.md"),
-        crate::theme::DARK_VAULT_THEME,
+        vault_dir.join("dark-theme.md"),
+        crate::theme::dark_vault_theme(),
     )
     .map_err(|e| format!("Failed to write dark vault theme: {e}"))?;
     fs::write(
-        theme_notes_dir.join("minimal.md"),
-        crate::theme::MINIMAL_VAULT_THEME,
+        vault_dir.join("minimal-theme.md"),
+        crate::theme::minimal_vault_theme(),
     )
     .map_err(|e| format!("Failed to write minimal vault theme: {e}"))?;
 
@@ -475,23 +463,21 @@ mod tests {
         let result = create_getting_started_vault(vault_path.to_str().unwrap());
         assert!(result.is_ok());
 
-        // Verify key files exist
-        assert!(vault_path.join("config/agents.md").exists());
+        // Verify key files exist (flat structure — no config/ or theme/ dirs)
         assert!(vault_path.join("AGENTS.md").exists());
-        assert!(vault_path.join("note/welcome-to-laputa.md").exists());
-        assert!(vault_path.join("note/editor-basics.md").exists());
-        assert!(vault_path.join("note/using-properties.md").exists());
-        assert!(vault_path
-            .join("note/wiki-links-and-relationships.md")
-            .exists());
-        assert!(vault_path.join("project/sample-project.md").exists());
-        assert!(vault_path.join("person/sample-collaborator.md").exists());
-        assert!(vault_path.join("topic/getting-started.md").exists());
-        assert!(vault_path.join("type/project.md").exists());
-        assert!(vault_path.join("type/note.md").exists());
-        assert!(vault_path.join("type/person.md").exists());
-        assert!(vault_path.join("type/topic.md").exists());
-        assert!(vault_path.join("type/config.md").exists());
+        assert!(!vault_path.join("config").exists());
+        assert!(vault_path.join("welcome-to-laputa.md").exists());
+        assert!(vault_path.join("editor-basics.md").exists());
+        assert!(vault_path.join("using-properties.md").exists());
+        assert!(vault_path.join("wiki-links-and-relationships.md").exists());
+        assert!(vault_path.join("sample-project.md").exists());
+        assert!(vault_path.join("sample-collaborator.md").exists());
+        assert!(vault_path.join("getting-started.md").exists());
+        assert!(vault_path.join("project.md").exists());
+        assert!(vault_path.join("note.md").exists());
+        assert!(vault_path.join("person.md").exists());
+        assert!(vault_path.join("topic.md").exists());
+        assert!(vault_path.join("config.md").exists());
     }
 
     #[test]
@@ -546,21 +532,18 @@ mod tests {
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
         let entries = crate::vault::scan_vault(&vault_path).unwrap();
-        // SAMPLE_FILES + config/agents.md + AGENTS.md stub + 3 vault theme notes
-        assert_eq!(entries.len(), SAMPLE_FILES.len() + 2 + 3);
+        // SAMPLE_FILES + AGENTS.md + 3 vault theme notes (all at root)
+        assert_eq!(entries.len(), SAMPLE_FILES.len() + 1 + 3);
     }
 
     #[test]
-    fn test_config_agents_md_present_after_vault_creation() {
+    fn test_agents_md_present_at_root_after_vault_creation() {
         let dir = tempfile::TempDir::new().unwrap();
         let vault_path = dir.path().join("agents-vault");
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
-        let agents_path = vault_path.join("config/agents.md");
-        assert!(
-            agents_path.exists(),
-            "config/agents.md should exist in vault"
-        );
+        let agents_path = vault_path.join("AGENTS.md");
+        assert!(agents_path.exists(), "AGENTS.md should exist at vault root");
 
         let content = fs::read_to_string(&agents_path).unwrap();
         assert!(content.contains("Vault Instructions for AI Agents"));
@@ -569,40 +552,26 @@ mod tests {
         assert!(content.contains("## Wikilinks"));
         assert!(content.contains("## Type definitions"));
         assert!(content.contains("## Conventions"));
-    }
-
-    #[test]
-    fn test_root_agents_md_is_stub_after_vault_creation() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let vault_path = dir.path().join("stub-vault");
-        create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
-
-        let root_path = vault_path.join("AGENTS.md");
-        assert!(root_path.exists(), "Root AGENTS.md stub should exist");
-
-        let content = fs::read_to_string(&root_path).unwrap();
+        // Must NOT be a stub
         assert!(
-            content.contains("See config/agents.md"),
-            "Root AGENTS.md should redirect to config/agents.md"
-        );
-        assert!(
-            !content.contains("## Structure"),
-            "Root AGENTS.md should not contain full instructions"
+            !content.contains("See config/agents.md"),
+            "AGENTS.md should have full content, not a redirect"
         );
     }
 
     #[test]
-    fn test_config_agents_md_parseable_as_vault_entry() {
+    fn test_agents_md_parseable_as_vault_entry() {
         let dir = tempfile::TempDir::new().unwrap();
         let vault_path = dir.path().join("agents-parse-vault");
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
-        let entry = crate::vault::parse_md_file(&vault_path.join("config/agents.md")).unwrap();
+        let entry = crate::vault::parse_md_file(&vault_path.join("AGENTS.md")).unwrap();
         assert_eq!(
             entry.title,
             "AGENTS.md \u{2014} Vault Instructions for AI Agents"
         );
-        assert_eq!(entry.is_a.as_deref(), Some("Config"));
+        // Config files have no frontmatter type field — type is None
+        assert_eq!(entry.is_a, None);
     }
 
     #[test]
@@ -636,13 +605,15 @@ mod tests {
         let themes = crate::theme::list_themes(vault_path.to_str().unwrap()).unwrap();
         assert_eq!(themes.len(), 3);
 
-        // Vault-based theme notes
-        assert!(vault_path.join("theme/default.md").exists());
-        assert!(vault_path.join("theme/dark.md").exists());
-        assert!(vault_path.join("theme/minimal.md").exists());
+        // Vault-based theme notes at root (flat structure)
+        assert!(vault_path.join("default-theme.md").exists());
+        assert!(vault_path.join("dark-theme.md").exists());
+        assert!(vault_path.join("minimal-theme.md").exists());
+        // Must NOT create a theme/ subdirectory
+        assert!(!vault_path.join("theme").exists());
 
         // Theme type definition
-        assert!(vault_path.join("type/theme.md").exists());
+        assert!(vault_path.join("theme.md").exists());
     }
 
     #[test]
