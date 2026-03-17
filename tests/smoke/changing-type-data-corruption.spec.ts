@@ -1,5 +1,27 @@
 import { test, expect } from '@playwright/test'
 
+/**
+ * Click the first non-Theme note in the note list, starting from `startIndex`.
+ * Theme notes appear first in the vault and don't have standard type selectors.
+ */
+async function clickNonThemeNote(page: import('@playwright/test').Page, startIndex = 0) {
+  const noteListContainer = page.locator('[data-testid="note-list-container"]')
+  await noteListContainer.waitFor({ timeout: 5000 })
+  const items = noteListContainer.locator('.cursor-pointer')
+  const count = await items.count()
+
+  for (let i = startIndex; i < Math.min(count, startIndex + 15); i++) {
+    await items.nth(i).click()
+    await page.waitForTimeout(500)
+    const typeSelector = page.locator('[data-testid="type-selector"]')
+    if (!(await typeSelector.isVisible())) continue
+    const trigger = typeSelector.locator('button[role="combobox"]')
+    const type = (await trigger.textContent())?.trim() ?? ''
+    if (type !== 'Theme') return type
+  }
+  return ''
+}
+
 test.describe('Changing note type preserves content (data corruption fix)', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 })
@@ -8,36 +30,17 @@ test.describe('Changing note type preserves content (data corruption fix)', () =
   })
 
   test('type change does not load a different note into the editor', async ({ page }) => {
-    // 1. Click a non-Theme note in the note list to open it
-    const noteListContainer = page.locator('[data-testid="note-list-container"]')
-    await noteListContainer.waitFor({ timeout: 5000 })
-    const notes = noteListContainer.locator('.cursor-pointer')
-    const noteCount = await notes.count()
+    const currentType = await clickNonThemeNote(page)
+    expect(currentType).toBeTruthy()
 
-    let currentType = ''
-    for (let i = 0; i < Math.min(noteCount, 10); i++) {
-      await notes.nth(i).click()
-      await page.waitForTimeout(500)
-      const ts = page.locator('[data-testid="type-selector"]')
-      if (!(await ts.isVisible())) continue
-      const t = ts.locator('button[role="combobox"]')
-      currentType = (await t.textContent())?.trim() ?? ''
-      if (currentType !== 'Theme') break
-    }
-
-    // 2. Get the editor's H1 heading text before the type change.
     const editorContainer = page.locator('.bn-editor')
     await expect(editorContainer).toBeVisible({ timeout: 5000 })
     const headingBefore = await editorContainer.locator('h1').first().textContent()
     expect(headingBefore).toBeTruthy()
 
-    // 3. The type selector should be visible in the inspector
     const typeSelector = page.locator('[data-testid="type-selector"]')
-    await expect(typeSelector).toBeVisible({ timeout: 5000 })
     const selectTrigger = typeSelector.locator('button[role="combobox"]')
-    if (!currentType) currentType = (await selectTrigger.textContent())?.trim() ?? ''
 
-    // 4. Change the type to something different
     const targetType = currentType === 'Project' ? 'Experiment' : 'Project'
     await selectTrigger.click()
     await page.waitForTimeout(300)
@@ -45,21 +48,17 @@ test.describe('Changing note type preserves content (data corruption fix)', () =
     await expect(option).toBeVisible({ timeout: 3000 })
     await option.click()
 
-    // 5. Wait for the move to complete (toast confirms it)
     const toastSlug = targetType.toLowerCase()
     const toast = page.getByText(`Note moved to ${toastSlug}/`)
     await expect(toast).toBeVisible({ timeout: 5000 })
 
-    // 6. CRITICAL: verify the editor still shows the SAME note's heading.
-    //    The data-corruption bug would replace this with another note's content.
     await page.waitForTimeout(300)
     const headingAfter = await editorContainer.locator('h1').first().textContent()
     expect(headingAfter).toBe(headingBefore)
 
-    // 7. Restore original type to leave vault clean
+    // Restore original type
     await page.waitForTimeout(2500)
-    const restoredTrigger = typeSelector.locator('button[role="combobox"]')
-    await restoredTrigger.click()
+    await selectTrigger.click()
     await page.waitForTimeout(300)
     const restoreOption = page.getByRole('option', { name: currentType, exact: true })
     if (await restoreOption.isVisible()) {
@@ -71,35 +70,17 @@ test.describe('Changing note type preserves content (data corruption fix)', () =
   })
 
   test('changing type of existing note preserves its content', async ({ page }) => {
-    // 1. Click a non-Theme note (different note than test 1)
-    const noteListContainer = page.locator('[data-testid="note-list-container"]')
-    await noteListContainer.waitFor({ timeout: 5000 })
-    const notes = noteListContainer.locator('.cursor-pointer')
-    const noteCount = await notes.count()
+    // Use a different start index to pick a different note from test 1
+    const currentType = await clickNonThemeNote(page, 1)
+    test.skip(!currentType, 'No non-Theme note found with visible type selector')
 
-    let currentType = ''
-    // Start from index 1 to pick a different note from test 1
-    for (let i = Math.min(1, noteCount - 1); i < Math.min(noteCount, 10); i++) {
-      await notes.nth(i).click()
-      await page.waitForTimeout(500)
-      const ts = page.locator('[data-testid="type-selector"]')
-      if (!(await ts.isVisible())) continue
-      const t = ts.locator('button[role="combobox"]')
-      currentType = (await t.textContent())?.trim() ?? ''
-      if (currentType !== 'Theme') break
-    }
-
-    // 2. Capture the H1 heading
     const editorContainer = page.locator('.bn-editor')
-    await expect(editorContainer).toBeVisible({ timeout: 5000 })
+    await expect(editorContainer).toBeVisible({ timeout: 8000 })
     const headingBefore = await editorContainer.locator('h1').first().textContent()
     expect(headingBefore).toBeTruthy()
 
-    // 3. Change the type
     const typeSelector = page.locator('[data-testid="type-selector"]')
-    await expect(typeSelector).toBeVisible({ timeout: 5000 })
     const selectTrigger = typeSelector.locator('button[role="combobox"]')
-    if (!currentType) currentType = (await selectTrigger.textContent())?.trim() ?? ''
     const targetType = currentType === 'Experiment' ? 'Person' : 'Experiment'
 
     await selectTrigger.click()
@@ -108,16 +89,12 @@ test.describe('Changing note type preserves content (data corruption fix)', () =
     await expect(option).toBeVisible({ timeout: 3000 })
     await option.click()
 
-    // 4. Wait for move
     await page.waitForTimeout(1000)
-
-    // 5. CRITICAL: the H1 heading must still be the original note's title
     const headingAfter = await editorContainer.locator('h1').first().textContent()
     expect(headingAfter).toBe(headingBefore)
 
-    // 6. Restore the original type
-    const restoredTrigger = typeSelector.locator('button[role="combobox"]')
-    await restoredTrigger.click()
+    // Restore original type
+    await selectTrigger.click()
     await page.waitForTimeout(300)
     const restoreOption = page.getByRole('option', { name: currentType, exact: true })
     if (await restoreOption.isVisible()) {

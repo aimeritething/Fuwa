@@ -1,5 +1,26 @@
 import { test, expect } from '@playwright/test'
 
+/**
+ * Click the first non-Theme note in the note list, starting from `startIndex`.
+ */
+async function clickNonThemeNote(page: import('@playwright/test').Page, startIndex = 0) {
+  const noteListContainer = page.locator('[data-testid="note-list-container"]')
+  await noteListContainer.waitFor({ timeout: 5000 })
+  const items = noteListContainer.locator('.cursor-pointer')
+  const count = await items.count()
+
+  for (let i = startIndex; i < Math.min(count, startIndex + 15); i++) {
+    await items.nth(i).click()
+    await page.waitForTimeout(500)
+    const typeSelector = page.locator('[data-testid="type-selector"]')
+    if (!(await typeSelector.isVisible())) continue
+    const trigger = typeSelector.locator('button[role="combobox"]')
+    const type = (await trigger.textContent())?.trim() ?? ''
+    if (type !== 'Theme') return type
+  }
+  return ''
+}
+
 test.describe('Move note to type folder on type change', () => {
   test.beforeEach(async ({ page }) => {
     await page.setViewportSize({ width: 1600, height: 900 })
@@ -8,50 +29,26 @@ test.describe('Move note to type folder on type change', () => {
   })
 
   test('changing type shows move toast and note appears under new section', async ({ page }) => {
-    // Click a note in the note list to open it — skip any Theme entries
-    const noteListContainer = page.locator('[data-testid="note-list-container"]')
-    await noteListContainer.waitFor({ timeout: 5000 })
-    const notes = noteListContainer.locator('.cursor-pointer')
-    const noteCount = await notes.count()
+    const currentType = await clickNonThemeNote(page)
+    expect(currentType).toBeTruthy()
 
-    let currentType = ''
-    for (let i = 0; i < Math.min(noteCount, 10); i++) {
-      await notes.nth(i).click()
-      await page.waitForTimeout(500)
-      const typeSelector = page.locator('[data-testid="type-selector"]')
-      if (!(await typeSelector.isVisible())) continue
-      const trigger = typeSelector.locator('button[role="combobox"]')
-      currentType = (await trigger.textContent())?.trim() ?? ''
-      if (currentType !== 'Theme') break
-    }
-
-    // The Properties panel should show a type selector
     const typeSelector = page.locator('[data-testid="type-selector"]')
-    await expect(typeSelector).toBeVisible({ timeout: 5000 })
-
-    // Read the current type
     const selectTrigger = typeSelector.locator('button[role="combobox"]')
-    if (!currentType) currentType = (await selectTrigger.textContent())?.trim() ?? 'Note'
-
-    // Pick a different type to change to
     const targetType = currentType === 'Note' ? 'Experiment' : 'Note'
 
-    // Open the type selector dropdown and select the target type
     await selectTrigger.click()
     await page.waitForTimeout(300)
     const option = page.getByRole('option', { name: targetType, exact: true })
     await expect(option).toBeVisible({ timeout: 3000 })
     await option.click()
 
-    // Toast should confirm the move
     const toastSlug = targetType.toLowerCase()
     const toast = page.getByText(`Note moved to ${toastSlug}/`)
     await expect(toast).toBeVisible({ timeout: 5000 })
 
-    // Restore original type to avoid leaving vault dirty
-    await page.waitForTimeout(2500) // wait for toast to dismiss
-    const restoredTrigger = typeSelector.locator('button[role="combobox"]')
-    await restoredTrigger.click()
+    // Restore original type
+    await page.waitForTimeout(2500)
+    await selectTrigger.click()
     await page.waitForTimeout(300)
     const restoreOption = page.getByRole('option', { name: currentType, exact: true })
     if (await restoreOption.isVisible()) {
@@ -63,18 +60,11 @@ test.describe('Move note to type folder on type change', () => {
   })
 
   test('type selector is visible in properties panel for opened note', async ({ page }) => {
-    // Click the first note in the note list
-    const noteListContainer = page.locator('[data-testid="note-list-container"]')
-    await noteListContainer.waitFor({ timeout: 5000 })
-    const firstNote = noteListContainer.locator('.cursor-pointer').first()
-    await firstNote.click()
-    await page.waitForTimeout(500)
+    const currentType = await clickNonThemeNote(page)
+    expect(currentType).toBeTruthy()
 
-    // Type selector should be visible in the properties panel
     const typeSelector = page.locator('[data-testid="type-selector"]')
     await expect(typeSelector).toBeVisible({ timeout: 5000 })
-
-    // It should show "Type" label
     await expect(typeSelector.getByText('Type')).toBeVisible()
   })
 })
