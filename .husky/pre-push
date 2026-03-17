@@ -117,7 +117,7 @@ else
     -H "Accept: application/json" \
     "https://api.codescene.io/v2/projects/$CODESCENE_PROJECT_ID")
   HOTSPOT_SCORE=$(echo "$API_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['analysis']['hotspot_code_health']['now'])")
-  AVERAGE_SCORE=$(echo "$API_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['analysis']['average_code_health']['now'])")
+  AVERAGE_SCORE=$(echo "$API_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['analysis']['code_health']['now'])")
   echo "  Hotspot Code Health: $HOTSPOT_SCORE (threshold: $HOTSPOT_THRESHOLD)"
   echo "  Average Code Health: $AVERAGE_SCORE (threshold: $AVERAGE_THRESHOLD)"
   python3 -c "
