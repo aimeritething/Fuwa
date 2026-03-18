@@ -9,43 +9,40 @@ function isKnownEditorError(msg: string): boolean {
 }
 
 /**
- * Helper: create a new note, select the existing H1 heading text,
- * replace it with a new title, then wait for the 500 ms title-sync debounce.
+ * Helper: create a new note and rename it via TitleField.
  */
 async function createNoteWithTitle(page: import('@playwright/test').Page, title: string) {
-  // 1. Cmd+N → new "Untitled note" (creates heading with "Untitled note")
+  // 1. Cmd+N → new "Untitled note"
   await page.locator('body').click()
   await sendShortcut(page, 'n', ['Control'])
   await expect(page.getByText(/Untitled note/).first()).toBeVisible({ timeout: 3000 })
 
-  // 2. Wait for the heading to render in BlockNote
-  const heading = page.locator('[data-content-type="heading"] h1')
-  await heading.waitFor({ timeout: 3000 })
+  // 2. Edit the title via TitleField
+  const titleInput = page.getByTestId('title-field-input')
+  await titleInput.waitFor({ timeout: 3000 })
+  await titleInput.click()
+  await titleInput.fill(title)
+  await titleInput.press('Enter')
 
-  // 3. Triple-click the heading to select all its text, then type replacement
-  await heading.click({ clickCount: 3 })
-  await page.keyboard.type(title, { delay: 20 })
-
-  // 4. Wait for the 500 ms useHeadingTitleSync debounce to fire + React re-render
-  await page.waitForTimeout(800)
+  // 3. Wait for async rename to complete
+  await page.waitForTimeout(1000)
 }
 
 test.describe('Note filename updates on title change + save', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
-    // Wait for startup toast ("Laputa registered as MCP tool") to dismiss
+    // Wait for startup toast to dismiss
     await page.waitForTimeout(2500)
   })
 
-  test('Cmd+N creates untitled note, typing new title triggers rename via title sync', async ({ page }) => {
+  test('Cmd+N creates untitled note, editing TitleField triggers rename', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => { if (!isKnownEditorError(err.message)) errors.push(err.message) })
 
     await createNoteWithTitle(page, 'Test Note ABC')
 
-    // Title sync now triggers a full rename (save + rename + wikilink update).
-    // The toast should show "Renamed" after the debounce fires.
+    // The toast should show "Renamed" after the TitleField commit
     const toast = page.locator('.fixed.bottom-8')
     await expect(toast).toContainText('Renamed', { timeout: 5000 })
 
@@ -82,20 +79,19 @@ test.describe('Note filename updates on title change + save', () => {
     expect(toastText).not.toContain('Renamed')
   })
 
-  test('rapid title changes only rename to final title', async ({ page }) => {
+  test('rapid TitleField edits only rename to final title', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => { if (!isKnownEditorError(err.message)) errors.push(err.message) })
 
     await createNoteWithTitle(page, 'First Title')
 
-    // Select heading text again and replace with final title
-    const heading = page.locator('[data-content-type="heading"] h1')
-    await heading.click({ clickCount: 3 })
-    await page.keyboard.type('Final Title', { delay: 20 })
+    // Edit TitleField again with final title
+    const titleInput = page.getByTestId('title-field-input')
+    await titleInput.click()
+    await titleInput.fill('Final Title')
+    await titleInput.press('Enter')
 
-    // Wait for debounce to fire — title sync triggers rename automatically
-    await page.waitForTimeout(800)
-
+    // Wait for rename
     const toast = page.locator('.fixed.bottom-8')
     await expect(toast).toContainText('Renamed', { timeout: 5000 })
 

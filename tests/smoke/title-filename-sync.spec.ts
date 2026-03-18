@@ -15,7 +15,7 @@ test.describe('Title/filename sync', () => {
     await page.waitForTimeout(2500)
   })
 
-  test('new note has title in frontmatter and filename = slug of title', async ({ page }) => {
+  test('new note renamed via TitleField updates frontmatter and filename', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => { if (!isKnownEditorError(err.message)) errors.push(err.message) })
 
@@ -24,14 +24,14 @@ test.describe('Title/filename sync', () => {
     await sendShortcut(page, 'n', ['Control'])
     await expect(page.getByText(/Untitled note/).first()).toBeVisible({ timeout: 3000 })
 
-    // Type a title in the heading
-    const heading = page.locator('[data-content-type="heading"] h1')
-    await heading.waitFor({ timeout: 3000 })
-    await heading.click({ clickCount: 3 })
-    await page.keyboard.type('Career Tracks Depend on Company Shape', { delay: 15 })
+    // Edit the title via TitleField (not H1)
+    const titleInput = page.getByTestId('title-field-input')
+    await titleInput.waitFor({ timeout: 3000 })
+    await titleInput.click()
+    await titleInput.fill('Career Tracks Depend on Company Shape')
+    await titleInput.press('Enter')
 
-    // Wait for debounce + rename
-    await page.waitForTimeout(800)
+    // Wait for async rename
     const toast = page.locator('.fixed.bottom-8')
     await expect(toast).toContainText('Renamed', { timeout: 5000 })
 
@@ -63,7 +63,7 @@ test.describe('Title/filename sync', () => {
     }
   })
 
-  test('rename via title editing updates both title and filename atomically', async ({ page }) => {
+  test('rename via TitleField updates both title and filename', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => { if (!isKnownEditorError(err.message)) errors.push(err.message) })
 
@@ -72,21 +72,22 @@ test.describe('Title/filename sync', () => {
     await sendShortcut(page, 'n', ['Control'])
     await expect(page.getByText(/Untitled note/).first()).toBeVisible({ timeout: 3000 })
 
-    const heading = page.locator('[data-content-type="heading"] h1')
-    await heading.waitFor({ timeout: 3000 })
-    await heading.click({ clickCount: 3 })
-    await page.keyboard.type('Original Title XYZ', { delay: 15 })
+    // First rename via TitleField
+    const titleInput = page.getByTestId('title-field-input')
+    await titleInput.waitFor({ timeout: 3000 })
+    await titleInput.click()
+    await titleInput.fill('Original Title XYZ')
+    await titleInput.press('Enter')
 
     // Wait for rename
-    await page.waitForTimeout(800)
     await expect(page.locator('.fixed.bottom-8')).toContainText('Renamed', { timeout: 5000 })
 
-    // Now rename by editing the heading again
-    await heading.click({ clickCount: 3 })
-    await page.keyboard.type('Renamed Title XYZ', { delay: 15 })
+    // Second rename via TitleField
+    await titleInput.click()
+    await titleInput.fill('Renamed Title XYZ')
+    await titleInput.press('Enter')
 
-    // Wait for debounce + rename
-    await page.waitForTimeout(800)
+    // Wait for second rename
     await expect(page.locator('.fixed.bottom-8')).toContainText('Renamed', { timeout: 5000 })
 
     // Breadcrumb should show the new title
