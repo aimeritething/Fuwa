@@ -99,8 +99,9 @@ describe('useEntryActions', () => {
         await result.current.handleRestoreNote('/vault/note/test.md')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed', false, { silent: true })
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed', { silent: true })
       expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed at', { silent: true })
+      expect(handleUpdateFrontmatter).not.toHaveBeenCalled()
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', {
         trashed: false,
         trashedAt: null,
@@ -145,7 +146,8 @@ describe('useEntryActions', () => {
         await result.current.handleUnarchiveNote('/vault/note/test.md')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'archived', false, { silent: true })
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', 'archived', { silent: true })
+      expect(handleUpdateFrontmatter).not.toHaveBeenCalled()
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', { archived: false })
       expect(setToastMessage).toHaveBeenCalledWith('Note unarchived')
       expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
@@ -468,7 +470,7 @@ describe('useEntryActions', () => {
     })
 
     it('rolls back restore state when frontmatter write fails', async () => {
-      handleUpdateFrontmatter.mockRejectedValueOnce(new Error('disk full'))
+      handleDeleteProperty.mockRejectedValueOnce(new Error('disk full'))
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const { result } = setup()
 
@@ -486,7 +488,7 @@ describe('useEntryActions', () => {
     })
 
     it('rolls back unarchive state when frontmatter write fails', async () => {
-      handleUpdateFrontmatter.mockRejectedValueOnce(new Error('disk full'))
+      handleDeleteProperty.mockRejectedValueOnce(new Error('disk full'))
       const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const { result } = setup()
 

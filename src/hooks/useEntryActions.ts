@@ -50,7 +50,7 @@ export function useEntryActions({
     updateEntry(path, { trashed: false, trashedAt: null })
     setToastMessage('Note restored from trash')
     try {
-      await handleUpdateFrontmatter(path, 'Trashed', false, { silent: true })
+      await handleDeleteProperty(path, 'Trashed', { silent: true })
       await handleDeleteProperty(path, 'Trashed at', { silent: true })
       onFrontmatterPersisted?.()
     } catch (err) {
@@ -58,7 +58,7 @@ export function useEntryActions({
       setToastMessage('Failed to restore note — rolled back')
       console.error('Optimistic restore rollback:', err)
     }
-  }, [handleUpdateFrontmatter, handleDeleteProperty, updateEntry, setToastMessage, onFrontmatterPersisted])
+  }, [handleDeleteProperty, updateEntry, setToastMessage, onFrontmatterPersisted])
 
   const handleArchiveNote = useCallback(async (path: string) => {
     await onBeforeAction?.(path)
@@ -80,14 +80,14 @@ export function useEntryActions({
     updateEntry(path, { archived: false })
     setToastMessage('Note unarchived')
     try {
-      await handleUpdateFrontmatter(path, 'archived', false, { silent: true })
+      await handleDeleteProperty(path, 'archived', { silent: true })
       onFrontmatterPersisted?.()
     } catch (err) {
       updateEntry(path, { archived: true })
       setToastMessage('Failed to unarchive note — rolled back')
       console.error('Optimistic unarchive rollback:', err)
     }
-  }, [handleUpdateFrontmatter, updateEntry, setToastMessage, onFrontmatterPersisted])
+  }, [handleDeleteProperty, updateEntry, setToastMessage, onFrontmatterPersisted])
 
   const handleCustomizeType = useCallback(async (typeName: string, icon: string, color: string) => {
     const typeEntry = await findOrCreateType(entries, typeName, createTypeEntry)
