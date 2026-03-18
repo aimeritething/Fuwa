@@ -41,8 +41,6 @@ function makeThemeEntry(path: string, title: string): VaultEntry {
     belongsTo: [],
     relatedTo: [],
     status: null,
-    owner: null,
-    cadence: null,
     archived: false,
     trashed: false,
     trashedAt: null,

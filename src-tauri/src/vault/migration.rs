@@ -405,7 +405,7 @@ pub fn vault_health_check(vault_path: &str) -> Result<VaultHealthReport, String>
                 }
                 None
             });
-            let title = super::parsing::extract_title(fm_title, &filename);
+            let title = super::parsing::extract_title(fm_title, &content, &filename);
             let expected_stem = slugify(&title);
             let expected_filename = format!("{}.md", expected_stem);
             let current_stem = filename.strip_suffix(".md").unwrap_or(&filename);

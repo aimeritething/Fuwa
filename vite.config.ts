@@ -17,8 +17,6 @@ interface VaultEntry {
   belongsTo: string[]
   relatedTo: string[]
   status: string | null
-  owner: string | null
-  cadence: string | null
   archived: boolean
   trashed: boolean
   trashedAt: number | null
@@ -58,8 +56,7 @@ function wikiLinksFromValue(value: unknown): string[] {
 // Frontmatter keys that map to dedicated VaultEntry fields (skip in generic relationships)
 const DEDICATED_KEYS = new Set([
   'aliases', 'is_a', 'is a', 'belongs_to', 'belongs to',
-  'related_to', 'related to', 'status', 'owner', 'cadence',
-  'created_at', 'created at', 'title',
+  'related_to', 'related to', 'status', 'title',
 ])
 
 function parseMarkdownFile(filePath: string): VaultEntry | null {
@@ -107,13 +104,8 @@ function parseMarkdownFile(filePath: string): VaultEntry | null {
     const belongsTo = belongsToRaw.flatMap((v) => extractWikiLinks(v))
     const relatedTo = relatedToRaw.flatMap((v) => extractWikiLinks(v))
 
-    // Created at → unix ms
-    const createdAtRaw = getString('created_at', 'created at')
-    let createdAt: number | null = null
-    if (createdAtRaw) {
-      const d = new Date(createdAtRaw)
-      if (!isNaN(d.getTime())) createdAt = d.getTime()
-    }
+    // Created at from filesystem metadata (birthtime), not frontmatter
+    const createdAt = stats.birthtimeMs
 
     // Snippet: first 200 chars of body after frontmatter, stripped of markdown
     const bodyText = content.replace(/^#+\s+.+$/gm, '').replace(/[\n\r]+/g, ' ').trim()
@@ -157,8 +149,6 @@ function parseMarkdownFile(filePath: string): VaultEntry | null {
       belongsTo,
       relatedTo,
       status: getString('status'),
-      owner: getString('owner'),
-      cadence: getString('cadence'),
       archived: getBool('archived') ?? false,
       trashed: getBool('trashed') ?? false,
       trashedAt: null,

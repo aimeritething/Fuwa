@@ -222,7 +222,7 @@ pub fn rename_note(
         .map(|f| f.to_string_lossy().to_string())
         .unwrap_or_default();
     let fm_title = extract_fm_title_value(&content);
-    let extracted_title = super::extract_title(fm_title.as_deref(), &old_filename);
+    let extracted_title = super::extract_title(fm_title.as_deref(), &content, &old_filename);
     let old_title = old_title_hint.unwrap_or(&extracted_title);
 
     // Check both title and filename: even if the title in content matches,

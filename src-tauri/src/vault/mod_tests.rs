@@ -76,8 +76,8 @@ fn test_parse_full_frontmatter_scalars() {
     let dir = TempDir::new().unwrap();
     let entry = parse_test_entry(&dir, "laputa.md", FULL_FM_CONTENT);
     assert_eq!(entry.status, Some("Active".to_string()));
-    assert_eq!(entry.owner, Some("Luca".to_string()));
-    assert_eq!(entry.cadence, Some("Weekly".to_string()));
+    assert_eq!(entry.properties.get("Owner").and_then(|v| v.as_str()), Some("Luca"));
+    assert_eq!(entry.properties.get("Cadence").and_then(|v| v.as_str()), Some("Weekly"));
 }
 
 #[test]
@@ -88,8 +88,8 @@ fn test_parse_empty_frontmatter() {
         "just-a-title.md",
         "---\n---\n# Just a Title\n\nNo frontmatter fields.",
     );
-    // No title in frontmatter → derived from filename
-    assert_eq!(entry.title, "Just A Title");
+    // No title in frontmatter → derived from H1
+    assert_eq!(entry.title, "Just a Title");
     assert!(entry.aliases.is_empty());
 
     assert!(entry.belongs_to.is_empty());
@@ -300,12 +300,10 @@ Belongs to:
 
     let entry = parse_md_file(&dir.path().join("some-project.md")).unwrap();
 
-    // Owner is now a structural field (skipped from relationships)
-    assert!(entry.relationships.get("Owner").is_none());
-    assert_eq!(
-        entry.owner,
-        Some("[[person/luca-rossi|Luca Rossi]]".to_string())
-    );
+    // Owner with wikilink should appear in relationships
+    assert!(entry.relationships.get("Owner").is_some());
+    // Wikilinks don't go to properties
+    assert!(entry.properties.get("Owner").is_none());
 
     // Belongs to is a wikilink array, should appear in relationships
     let belongs = entry.relationships.get("Belongs to").unwrap();
@@ -361,8 +359,8 @@ fn test_parse_relationships_custom_fields() {
 fn test_parse_relationships_owner_and_notes() {
     let rels = parse_big_project_rels();
     assert_eq!(rels.get("Notes").unwrap().len(), 3);
-    // Owner is now a structural field (skipped from relationships)
-    assert!(rels.get("Owner").is_none());
+    // Owner with wikilink should be in relationships
+    assert!(rels.get("Owner").is_some());
 }
 
 #[test]
@@ -436,9 +434,9 @@ fn test_skip_keys_identity_fields_excluded() {
 #[test]
 fn test_skip_keys_temporal_fields_excluded() {
     let (rels, _) = parse_skip_keys_rels();
-    assert!(rels.get("Cadence").is_none());
-    assert!(rels.get("Created at").is_none());
-    assert!(rels.get("Created time").is_none());
+    assert!(rels.get("Cadence").is_some());
+    assert!(rels.get("Created at").is_some());
+    assert!(rels.get("Created time").is_some());
 }
 
 #[test]
@@ -448,9 +446,12 @@ fn test_skip_keys_real_relation_included() {
         rels.get("Real Relation").unwrap(),
         &vec!["[[note/important]]".to_string()]
     );
-    // "Real Relation" + auto-generated "Type" (from is_a: "[[project]]")
-    assert_eq!(len, 2);
+    // "Real Relation" + "Type" + "Cadence" + "Created at" + "Created time"
+    assert_eq!(len, 5);
     assert_eq!(rels.get("Type").unwrap(), &vec!["[[project]]".to_string()]);
+    assert!(rels.get("Cadence").is_some());
+    assert!(rels.get("Created at").is_some());
+    assert!(rels.get("Created time").is_some());
 }
 
 #[test]
@@ -498,26 +499,17 @@ fn test_no_type_when_frontmatter_missing() {
     assert_eq!(entry.is_a, None, "type should not be inferred from folder");
 }
 
-// --- created_at parsing from frontmatter ---
+// --- created_at sourcing from filesystem ---
 
 #[test]
-fn test_parse_created_at_from_frontmatter() {
+fn test_created_at_from_filesystem() {
     let dir = TempDir::new().unwrap();
-    let content = "---\nCreated at: 2025-05-23T14:35:00.000Z\n---\n# Test\n";
+    let content = "---\nIs A: Note\n---\n# Test\n";
     create_test_file(dir.path(), "test.md", content);
 
     let entry = parse_md_file(&dir.path().join("test.md")).unwrap();
-    assert_eq!(entry.created_at, Some(1748010900));
-}
-
-#[test]
-fn test_parse_created_time_fallback() {
-    let dir = TempDir::new().unwrap();
-    let content = "---\nCreated time: 2025-05-23\n---\n# Test\n";
-    create_test_file(dir.path(), "test.md", content);
-
-    let entry = parse_md_file(&dir.path().join("test.md")).unwrap();
-    assert_eq!(entry.created_at, Some(1747958400));
+    // created_at should be set from filesystem metadata (not None)
+    assert!(entry.created_at.is_some(), "created_at should come from filesystem");
 }
 
 // --- Type relationship tests ---
@@ -808,12 +800,14 @@ Priority: High
 # Test
 "#;
     let entry = parse_test_entry(&dir, "project/test.md", content);
-    // Only Priority should survive — all others are structural
-    assert_eq!(entry.properties.len(), 1);
+    // Priority + Owner + Cadence should survive — all others are structural
+    assert_eq!(entry.properties.len(), 3);
     assert_eq!(
         entry.properties.get("Priority").and_then(|v| v.as_str()),
         Some("High")
     );
+    assert_eq!(entry.properties.get("Owner").and_then(|v| v.as_str()), Some("Luca"));
+    assert_eq!(entry.properties.get("Cadence").and_then(|v| v.as_str()), Some("Weekly"));
 }
 
 #[test]
@@ -1064,7 +1058,7 @@ fn test_single_element_array_owner_unwraps_to_scalar() {
     let dir = TempDir::new().unwrap();
     let content = "---\ntype: Responsibility\nOwner:\n  - Luca\n---\n# Test\n";
     let entry = parse_test_entry(&dir, "test.md", content);
-    assert_eq!(entry.owner, Some("Luca".to_string()));
+    assert_eq!(entry.properties.get("Owner").and_then(|v| v.as_str()), Some("Luca"));
     assert_eq!(entry.is_a, Some("Responsibility".to_string()));
 }
 
@@ -1073,7 +1067,7 @@ fn test_single_element_array_cadence_unwraps_to_scalar() {
     let dir = TempDir::new().unwrap();
     let content = "---\ntype: Procedure\nCadence:\n  - Weekly\n---\n# Test\n";
     let entry = parse_test_entry(&dir, "test.md", content);
-    assert_eq!(entry.cadence, Some("Weekly".to_string()));
+    assert_eq!(entry.properties.get("Cadence").and_then(|v| v.as_str()), Some("Weekly"));
     assert_eq!(entry.is_a, Some("Procedure".to_string()));
 }
 
@@ -1087,20 +1081,12 @@ fn test_single_element_array_status_unwraps_to_scalar() {
 }
 
 #[test]
-fn test_multi_element_array_owner_takes_first() {
-    let dir = TempDir::new().unwrap();
-    let content = "---\ntype: Project\nOwner:\n  - Alice\n  - Bob\n---\n# Test\n";
-    let entry = parse_test_entry(&dir, "test.md", content);
-    assert_eq!(entry.owner, Some("Alice".to_string()));
-}
-
-#[test]
 fn test_scalar_fields_unchanged() {
     let dir = TempDir::new().unwrap();
     let content = "---\ntype: Project\nOwner: Luca\nCadence: Daily\nStatus: Done\n---\n# Test\n";
     let entry = parse_test_entry(&dir, "test.md", content);
-    assert_eq!(entry.owner, Some("Luca".to_string()));
-    assert_eq!(entry.cadence, Some("Daily".to_string()));
+    assert_eq!(entry.properties.get("Owner").and_then(|v| v.as_str()), Some("Luca"));
+    assert_eq!(entry.properties.get("Cadence").and_then(|v| v.as_str()), Some("Daily"));
     assert_eq!(entry.status, Some("Done".to_string()));
 }
 
@@ -1109,8 +1095,6 @@ fn test_absent_fields_no_crash() {
     let dir = TempDir::new().unwrap();
     let content = "---\ntype: Note\n---\n# Test\n";
     let entry = parse_test_entry(&dir, "test.md", content);
-    assert_eq!(entry.owner, None);
-    assert_eq!(entry.cadence, None);
     assert_eq!(entry.status, None);
 }
 
@@ -1125,8 +1109,6 @@ fn test_array_field_does_not_break_type_detection() {
         "type must not be lost when other fields are arrays"
     );
 
-    assert_eq!(entry.owner, Some("Luca".to_string()));
-    assert_eq!(entry.cadence, Some("Weekly".to_string()));
     assert_eq!(entry.status, Some("Active".to_string()));
 }
 

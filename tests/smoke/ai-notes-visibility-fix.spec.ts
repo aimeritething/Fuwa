@@ -57,8 +57,7 @@ test.describe('AI-created note visibility', () => {
       entries.push({
         path: NEW_NOTE_PATH, filename: 'ai-created-note.md',
         title: NEW_NOTE_TITLE, isA: null,
-        aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-        cadence: null, archived: false, trashed: false, trashedAt: null,
+        aliases: [], belongsTo: [], relatedTo: [], status: null, archived: false, trashed: false, trashedAt: null,
         modifiedAt: now, createdAt: now, fileSize: NEW_NOTE_CONTENT.length,
         snippet: 'This note was created by the AI agent.', wordCount: 10,
         relationships: {}, icon: null, color: null, order: null,

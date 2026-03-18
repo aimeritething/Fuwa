@@ -5,7 +5,7 @@ import type { VaultEntry } from '../types'
 
 const stubEntry = (path: string): VaultEntry => ({
   path, filename: path.split('/').pop() ?? '', title: path.split('/').pop()?.replace(/\.md$/, '') ?? '',
-  isA: 'Note', aliases: [], belongsTo: [], relatedTo: [], status: 'Active', owner: null, cadence: null,
+  isA: 'Note', aliases: [], belongsTo: [], relatedTo: [], status: 'Active',
   archived: false, trashed: false, trashedAt: null, modifiedAt: 0, createdAt: 0, fileSize: 0,
   snippet: '', wordCount: 0, relationships: {}, icon: null, color: null, order: null, template: null, sort: null, outgoingLinks: [],
 })

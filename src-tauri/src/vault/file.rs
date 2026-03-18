@@ -2,8 +2,9 @@ use std::fs;
 use std::path::Path;
 use std::time::UNIX_EPOCH;
 
-/// Read file metadata (modified_at timestamp, file size).
-pub(crate) fn read_file_metadata(path: &Path) -> Result<(Option<u64>, u64), String> {
+/// Read file metadata (modified_at timestamp, created_at timestamp, file size).
+/// Creation time is sourced from filesystem metadata (birthtime on macOS).
+pub(crate) fn read_file_metadata(path: &Path) -> Result<(Option<u64>, Option<u64>, u64), String> {
     let metadata =
         fs::metadata(path).map_err(|e| format!("Failed to stat {}: {}", path.display(), e))?;
     let modified_at = metadata
@@ -11,7 +12,12 @@ pub(crate) fn read_file_metadata(path: &Path) -> Result<(Option<u64>, u64), Stri
         .ok()
         .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
         .map(|d| d.as_secs());
-    Ok((modified_at, metadata.len()))
+    let created_at = metadata
+        .created()
+        .ok()
+        .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+        .map(|d| d.as_secs());
+    Ok((modified_at, created_at, metadata.len()))
 }
 
 /// Read the content of a single note file.

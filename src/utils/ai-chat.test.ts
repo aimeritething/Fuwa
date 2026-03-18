@@ -32,7 +32,7 @@ describe('buildSystemPrompt', () => {
   const makeEntry = (path: string, title: string): VaultEntry => ({
     path, title, filename: `${title}.md`, isA: 'Note',
     aliases: [], belongsTo: [], relatedTo: [],
-    status: null, owner: null, cadence: null,
+    status: null,
     modifiedAt: null, createdAt: null, fileSize: 100,
     snippet: '', relationships: {},
   })

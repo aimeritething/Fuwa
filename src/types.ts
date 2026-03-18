@@ -7,8 +7,8 @@ export interface VaultEntry {
   belongsTo: string[]
   relatedTo: string[]
   status: string | null
-  owner: string | null
-  cadence: string | null
+  // Note: owner and cadence are now stored in the generic `properties` map,
+  // accessed via entry.properties?.Owner and entry.properties?.Cadence
   archived: boolean
   trashed: boolean
   trashedAt: number | null

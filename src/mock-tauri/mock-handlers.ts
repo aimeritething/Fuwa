@@ -462,8 +462,7 @@ A custom ${displayName} theme for Laputa.
     const now = Date.now() / 1000
     MOCK_ENTRIES.push({
       path, filename: `${slug}.md`, title: displayName, isA: 'Theme',
-      aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-      cadence: null, archived: false, trashed: false, trashedAt: null,
+      aliases: [], belongsTo: [], relatedTo: [], status: null, archived: false, trashed: false, trashedAt: null,
       modifiedAt: now, createdAt: now, fileSize: 512, snippet: `A custom ${displayName} theme.`,
       wordCount: 10, relationships: {}, icon: null, color: null, order: null,
       sidebarLabel: null, template: null, sort: null, view: null, visible: null,

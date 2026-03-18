@@ -1,4 +1,4 @@
-use crate::vault::parsing::{contains_wikilink, parse_iso_date};
+use crate::vault::parsing::contains_wikilink;
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -27,16 +27,8 @@ pub(crate) struct Frontmatter {
     pub trashed: Option<bool>,
     #[serde(rename = "Status", alias = "status", default)]
     pub status: Option<StringOrList>,
-    #[serde(rename = "Owner", alias = "owner", default)]
-    pub owner: Option<StringOrList>,
-    #[serde(rename = "Cadence", alias = "cadence", default)]
-    pub cadence: Option<StringOrList>,
     #[serde(rename = "Trashed at", alias = "trashed_at")]
     pub trashed_at: Option<StringOrList>,
-    #[serde(rename = "Created at")]
-    pub created_at: Option<StringOrList>,
-    #[serde(rename = "Created time")]
-    pub created_time: Option<StringOrList>,
     #[serde(default)]
     pub icon: Option<StringOrList>,
     #[serde(default)]
@@ -151,8 +143,6 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
         "trashed",
         "Trashed at",
         "trashed_at",
-        "Created at",
-        "Created time",
         "icon",
         "color",
         "order",
@@ -164,10 +154,6 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
         "notion_id",
         "Status",
         "status",
-        "Owner",
-        "owner",
-        "Cadence",
-        "cadence",
     ];
     let filtered: serde_json::Map<String, serde_json::Value> = data
         .iter()
@@ -180,6 +166,7 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
 
 /// Known non-relationship frontmatter keys to skip (case-insensitive comparison).
 /// Only skip keys that can never contain wikilinks.
+/// Note: owner and cadence are NOT skipped — they should appear in generic properties.
 const SKIP_KEYS: &[&str] = &[
     "title",
     "is a",
@@ -188,8 +175,6 @@ const SKIP_KEYS: &[&str] = &[
     "archived",
     "trashed",
     "trashed at",
-    "created at",
-    "created time",
     "icon",
     "color",
     "order",
@@ -199,8 +184,6 @@ const SKIP_KEYS: &[&str] = &[
     "view",
     "visible",
     "status",
-    "owner",
-    "cadence",
 ];
 
 /// Extract all wikilink-containing fields from raw YAML frontmatter.
@@ -259,6 +242,17 @@ pub(crate) fn extract_properties(
             serde_json::Value::Number(_) | serde_json::Value::Bool(_) => {
                 properties.insert(key.clone(), value.clone());
             }
+            // Handle single-element arrays: unwrap to scalar.
+            // This ensures YAML like "Owner: [Luca]" or "Owner:\n  - Luca" works correctly.
+            serde_json::Value::Array(arr) => {
+                if arr.len() == 1 {
+                    if let Some(serde_json::Value::String(s)) = arr.first() {
+                        if !contains_wikilink(s) {
+                            properties.insert(key.clone(), serde_json::Value::String(s.clone()));
+                        }
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -269,20 +263,6 @@ pub(crate) fn extract_properties(
 /// Resolve `is_a` from frontmatter only.
 pub(crate) fn resolve_is_a(fm_is_a: Option<StringOrList>) -> Option<String> {
     fm_is_a.and_then(|a| a.into_vec().into_iter().next())
-}
-
-/// Parse created_at from frontmatter (prefer "Created at" over "Created time").
-pub(crate) fn parse_created_at(fm: &Frontmatter) -> Option<u64> {
-    fm.created_at
-        .clone()
-        .and_then(|v| v.into_scalar())
-        .and_then(|s| parse_iso_date(&s))
-        .or_else(|| {
-            fm.created_time
-                .clone()
-                .and_then(|v| v.into_scalar())
-                .and_then(|s| parse_iso_date(&s))
-        })
 }
 
 /// Convert gray_matter::Pod to serde_json::Value

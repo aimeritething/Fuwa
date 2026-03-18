@@ -566,8 +566,8 @@ mod tests {
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
         let entry = crate::vault::parse_md_file(&vault_path.join("AGENTS.md")).unwrap();
-        // No frontmatter title → derived from filename "AGENTS.md"
-        assert_eq!(entry.title, "AGENTS");
+        // No frontmatter title → extracted from H1 heading
+        assert!(entry.title.contains("Vault Instructions"), "title should come from H1: {}", entry.title);
         // Config files have no frontmatter type field — type is None
         assert_eq!(entry.is_a, None);
     }

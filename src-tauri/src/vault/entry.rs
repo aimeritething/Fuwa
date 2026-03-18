@@ -14,8 +14,6 @@ pub struct VaultEntry {
     #[serde(rename = "relatedTo")]
     pub related_to: Vec<String>,
     pub status: Option<String>,
-    pub owner: Option<String>,
-    pub cadence: Option<String>,
     pub archived: bool,
     pub trashed: bool,
     #[serde(rename = "trashedAt")]

@@ -12,8 +12,6 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   belongsTo: [],
   relatedTo: [],
   status: 'Active',
-  owner: null,
-  cadence: null,
   archived: false,
   trashed: false,
   trashedAt: null,

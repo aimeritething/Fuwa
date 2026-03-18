@@ -23,7 +23,7 @@ pub use title_sync::{sync_title_on_open, SyncAction};
 pub use trash::{batch_delete_notes, delete_note, empty_trash, is_file_trashed, purge_trash};
 
 use file::read_file_metadata;
-use frontmatter::{extract_fm_and_rels, parse_created_at, resolve_is_a};
+use frontmatter::{extract_fm_and_rels, resolve_is_a};
 use parsing::{count_body_words, extract_outgoing_links, extract_snippet, extract_title};
 
 use gray_matter::engine::YAML;
@@ -45,12 +45,11 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
     let parsed = matter.parse(&content);
     let (frontmatter, mut relationships, properties) = extract_fm_and_rels(parsed.data);
 
-    let title = extract_title(frontmatter.title.as_deref(), &filename);
+    let title = extract_title(frontmatter.title.as_deref(), &content, &filename);
     let snippet = extract_snippet(&content);
     let word_count = count_body_words(&content);
     let outgoing_links = extract_outgoing_links(&parsed.content);
-    let (modified_at, file_size) = read_file_metadata(path)?;
-    let created_at = parse_created_at(&frontmatter);
+    let (modified_at, created_at, file_size) = read_file_metadata(path)?;
     let is_a = resolve_is_a(frontmatter.is_a);
 
     // Add "Type" relationship: isA becomes a navigable link to the type document.
@@ -83,8 +82,6 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
         belongs_to,
         related_to,
         status: frontmatter.status.and_then(|v| v.into_scalar()),
-        owner: frontmatter.owner.and_then(|v| v.into_scalar()),
-        cadence: frontmatter.cadence.and_then(|v| v.into_scalar()),
         archived: frontmatter.archived.unwrap_or(false),
         trashed: frontmatter.trashed.unwrap_or(false),
         trashed_at: frontmatter

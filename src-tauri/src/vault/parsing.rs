@@ -21,13 +21,31 @@ pub(super) fn slug_to_title(stem: &str) -> String {
         .join(" ")
 }
 
+/// Extract the first H1 heading from markdown content (after stripping frontmatter).
+fn extract_h1(content: &str) -> Option<String> {
+    let body = strip_frontmatter(content);
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if let Some(heading) = trimmed.strip_prefix("# ") {
+            let title = heading.trim();
+            if !title.is_empty() {
+                return Some(title.to_string());
+            }
+        }
+    }
+    None
+}
+
 /// Extract the display title for a note.
-/// Reads `title` from frontmatter; falls back to deriving a title from the filename.
-pub(super) fn extract_title(fm_title: Option<&str>, filename: &str) -> String {
+/// Priority: frontmatter `title:` → first H1 heading → filename-derived title.
+pub(super) fn extract_title(fm_title: Option<&str>, content: &str, filename: &str) -> String {
     if let Some(title) = fm_title {
         if !title.is_empty() {
             return title.to_string();
         }
+    }
+    if let Some(h1) = extract_h1(content) {
+        return h1;
     }
     let stem = filename.strip_suffix(".md").unwrap_or(filename);
     slug_to_title(stem)
@@ -319,19 +337,38 @@ mod tests {
     #[test]
     fn test_extract_title_from_frontmatter() {
         assert_eq!(
-            extract_title(Some("My Great Note"), "my-great-note.md"),
+            extract_title(Some("My Great Note"), "", "my-great-note.md"),
             "My Great Note"
         );
     }
 
     #[test]
-    fn test_extract_title_fallback_to_filename() {
-        assert_eq!(extract_title(None, "fallback-title.md"), "Fallback Title");
+    fn test_extract_title_from_h1() {
+        assert_eq!(
+            extract_title(None, "# Hello World\n\nBody text.", "some-file.md"),
+            "Hello World"
+        );
     }
 
     #[test]
-    fn test_extract_title_empty_fm_falls_back() {
-        assert_eq!(extract_title(Some(""), "empty-h1.md"), "Empty H1");
+    fn test_extract_title_h1_after_frontmatter() {
+        let content = "---\nIs A: Note\n---\n# My Note\n\nBody.";
+        assert_eq!(extract_title(None, content, "fallback.md"), "My Note");
+    }
+
+    #[test]
+    fn test_extract_title_fallback_to_filename() {
+        assert_eq!(extract_title(None, "", "fallback-title.md"), "Fallback Title");
+    }
+
+    #[test]
+    fn test_extract_title_empty_fm_falls_back_to_h1() {
+        assert_eq!(extract_title(Some(""), "# From H1\n", "empty-h1.md"), "From H1");
+    }
+
+    #[test]
+    fn test_extract_title_empty_fm_no_h1_falls_back_to_filename() {
+        assert_eq!(extract_title(Some(""), "No heading here.", "empty-h1.md"), "Empty H1");
     }
 
     // --- extract_snippet tests ---

@@ -7,7 +7,7 @@ import { updateMockContent, trackMockChange } from '../mock-tauri'
 
 const ENTRY_DELETE_MAP: Record<string, Partial<VaultEntry>> = {
   type: { isA: null }, is_a: { isA: null }, status: { status: null }, color: { color: null },
-  icon: { icon: null }, owner: { owner: null }, cadence: { cadence: null },
+  icon: { icon: null },
   aliases: { aliases: [] }, belongs_to: { belongsTo: [] }, related_to: { relatedTo: [] },
   archived: { archived: false }, trashed: { trashed: false }, order: { order: null },
   template: { template: null }, sort: { sort: null }, visible: { visible: null },
@@ -23,7 +23,7 @@ export function frontmatterToEntryPatch(
   const arr = Array.isArray(value) ? value.map(String) : []
   const updates: Record<string, Partial<VaultEntry>> = {
     type: { isA: str }, is_a: { isA: str }, status: { status: str }, color: { color: str },
-    icon: { icon: str }, owner: { owner: str }, cadence: { cadence: str },
+    icon: { icon: str },
     aliases: { aliases: arr }, belongs_to: { belongsTo: arr }, related_to: { relatedTo: arr },
     archived: { archived: Boolean(value) }, trashed: { trashed: Boolean(value) },
     order: { order: typeof value === 'number' ? value : null },
