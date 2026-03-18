@@ -23,11 +23,19 @@
   opacity: 0.55;
 }
 
+/* Scroll area wrapping title + editor — single scroll context for alignment */
+.editor-scroll-area {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
 /* BlockNote container */
 .editor__blocknote-container {
   flex: 1;
   min-height: 0;
-  overflow-y: auto;
   display: flex;
   justify-content: center;
   position: relative;
@@ -162,9 +170,23 @@
   opacity: 1 !important;
 }
 
+/* --- Title Section: wraps icon + title + separator, aligned to editor --- */
+.title-section {
+  width: 100%;
+  max-width: var(--editor-max-width, 760px);
+  margin: 0 auto;
+  padding: 0 var(--editor-padding-horizontal, 40px);
+  flex-shrink: 0;
+}
+
+.title-section__separator {
+  border-bottom: 1px solid var(--border-primary, rgba(0, 0, 0, 0.08));
+  margin-top: 12px;
+}
+
 /* --- Note Icon Area --- */
 .note-icon-area {
-  padding: 16px 54px 0;
+  padding: 16px 0 0;
   flex-shrink: 0;
 }
 
@@ -250,7 +272,7 @@
 
 /* --- Title Field --- */
 .title-field {
-  padding: 4px 54px 0;
+  padding: 4px 0 0;
   flex-shrink: 0;
 }
 

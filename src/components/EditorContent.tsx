@@ -144,30 +144,6 @@ function ActiveTabBreadcrumb({ activeTab, props }: {
   )
 }
 
-function EditorBody({ activeTab, isLoadingNewTab, entries, editor, diffMode, diffContent, onToggleDiff, rawMode, onRawContentChange, onSave, onNavigateWikilink, onEditorChange, vaultPath, isDarkTheme, isTrashed, rawLatestContentRef }: {
-  activeTab: Tab | null; isLoadingNewTab: boolean; entries: VaultEntry[]
-  editor: ReturnType<typeof useCreateBlockNote>
-  diffMode: boolean; diffContent: string | null; onToggleDiff: () => void
-  rawMode: boolean; onRawContentChange?: (path: string, content: string) => void; onSave?: () => void
-  onNavigateWikilink: (target: string) => void; onEditorChange?: () => void
-  vaultPath?: string; isDarkTheme?: boolean; isTrashed: boolean
-  rawLatestContentRef?: React.MutableRefObject<string | null>
-}) {
-  const showEditor = !diffMode && !rawMode
-  return (
-    <>
-      {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
-      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} isDark={isDarkTheme} latestContentRef={rawLatestContentRef} />
-      {showEditor && activeTab && (
-        <div style={{ display: 'flex', flex: 1, flexDirection: 'column', minHeight: 0 }}>
-          <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} isDarkTheme={isDarkTheme} editable={!isTrashed} />
-        </div>
-      )}
-      {isLoadingNewTab && showEditor && <EditorLoadingSkeleton />}
-    </>
-  )
-}
-
 export function EditorContent({
   activeTab, isLoadingNewTab, entries, editor,
   diffMode, diffContent, onToggleDiff,
@@ -178,7 +154,7 @@ export function EditorContent({
   ...breadcrumbProps
 }: EditorContentProps) {
   const isTrashed = activeTab?.entry.trashed ?? false
-  const showTitleField = activeTab && !diffMode && !rawMode
+  const showEditor = !diffMode && !rawMode
   const entryIcon = activeTab?.entry.icon ?? null
   const emojiIcon = entryIcon && isEmoji(entryIcon) ? entryIcon : null
 
@@ -207,23 +183,29 @@ export function EditorContent({
       {activeTab?.entry.archived && breadcrumbProps.onUnarchiveNote && (
         <ArchivedNoteBanner onUnarchive={() => breadcrumbProps.onUnarchiveNote!(activeTab.entry.path)} />
       )}
-      {showTitleField && (
-        <NoteIcon
-          icon={emojiIcon}
-          editable={!isTrashed}
-          onSetIcon={handleSetIcon}
-          onRemoveIcon={handleRemoveIcon}
-        />
+      {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
+      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} isDark={isDarkTheme} latestContentRef={rawLatestContentRef} />
+      {showEditor && activeTab && (
+        <div className="editor-scroll-area">
+          <div className="title-section">
+            <NoteIcon
+              icon={emojiIcon}
+              editable={!isTrashed}
+              onSetIcon={handleSetIcon}
+              onRemoveIcon={handleRemoveIcon}
+            />
+            <TitleField
+              title={activeTab.entry.title}
+              filename={activeTab.entry.filename}
+              editable={!isTrashed}
+              onTitleChange={(newTitle) => onTitleChange?.(activeTab.entry.path, newTitle)}
+            />
+            <div className="title-section__separator" />
+          </div>
+          <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} isDarkTheme={isDarkTheme} editable={!isTrashed} />
+        </div>
       )}
-      {showTitleField && (
-        <TitleField
-          title={activeTab.entry.title}
-          filename={activeTab.entry.filename}
-          editable={!isTrashed}
-          onTitleChange={(newTitle) => onTitleChange?.(activeTab.entry.path, newTitle)}
-        />
-      )}
-      <EditorBody activeTab={activeTab} isLoadingNewTab={isLoadingNewTab} entries={entries} editor={editor} diffMode={diffMode} diffContent={diffContent} onToggleDiff={onToggleDiff} rawMode={rawMode} onRawContentChange={onRawContentChange} onSave={onSave} onNavigateWikilink={onNavigateWikilink} onEditorChange={onEditorChange} vaultPath={vaultPath} isDarkTheme={isDarkTheme} isTrashed={isTrashed} rawLatestContentRef={rawLatestContentRef} />
+      {isLoadingNewTab && showEditor && <EditorLoadingSkeleton />}
     </div>
   )
 }
