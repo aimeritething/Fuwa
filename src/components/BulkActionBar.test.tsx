@@ -21,11 +21,11 @@ describe('BulkActionBar', () => {
     expect(screen.queryByTestId('bulk-delete-btn')).not.toBeInTheDocument()
   })
 
-  it('shows Restore and Delete permanently in trash view', () => {
+  it('shows Restore, Archive, and Delete permanently in trash view', () => {
     render(<BulkActionBar {...defaultProps} isTrashView={true} />)
     expect(screen.getByTestId('bulk-restore-btn')).toBeInTheDocument()
+    expect(screen.getByTestId('bulk-archive-btn')).toBeInTheDocument()
     expect(screen.getByTestId('bulk-delete-btn')).toBeInTheDocument()
-    expect(screen.queryByTestId('bulk-archive-btn')).not.toBeInTheDocument()
     expect(screen.queryByTestId('bulk-trash-btn')).not.toBeInTheDocument()
   })
 
@@ -46,5 +46,21 @@ describe('BulkActionBar', () => {
   it('shows selected count', () => {
     render(<BulkActionBar {...defaultProps} count={5} />)
     expect(screen.getByText('5 selected')).toBeInTheDocument()
+  })
+
+  it('shows Unarchive and Trash buttons in archived view', () => {
+    render(<BulkActionBar {...defaultProps} isArchivedView={true} />)
+    expect(screen.getByTestId('bulk-unarchive-btn')).toBeInTheDocument()
+    expect(screen.getByTestId('bulk-trash-btn')).toBeInTheDocument()
+    expect(screen.queryByTestId('bulk-archive-btn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('bulk-restore-btn')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('bulk-delete-btn')).not.toBeInTheDocument()
+  })
+
+  it('calls onUnarchive when Unarchive button clicked in archived view', () => {
+    const onUnarchive = vi.fn()
+    render(<BulkActionBar {...defaultProps} isArchivedView={true} onUnarchive={onUnarchive} />)
+    fireEvent.click(screen.getByTestId('bulk-unarchive-btn'))
+    expect(onUnarchive).toHaveBeenCalledTimes(1)
   })
 })

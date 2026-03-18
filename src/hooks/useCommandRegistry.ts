@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { SidebarSelection, ThemeFile, VaultEntry } from '../types'
+import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
 
 export type CommandGroup = 'Navigation' | 'Note' | 'Git' | 'View' | 'Appearance' | 'Settings'
@@ -71,6 +72,10 @@ interface CommandRegistryConfig {
   onRestoreDefaultThemes?: () => void
   isGettingStartedHidden?: boolean
   vaultCount?: number
+  /** Current selection — used to scope filter pill commands to section group views. */
+  selection?: SidebarSelection
+  noteListFilter?: NoteListFilter
+  onSetNoteListFilter?: (filter: NoteListFilter) => void
 }
 
 const PLURAL_OVERRIDES: Record<string, string> = {
@@ -212,8 +217,10 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onSetNoteIcon,
     onRemoveNoteIcon,
     activeNoteHasIcon,
+    selection, noteListFilter, onSetNoteListFilter,
   } = config
 
+  const isSectionGroup = selection?.kind === 'sectionGroup'
   const hasActiveNote = activeTabPath !== null
 
   const activeEntry = useMemo(
@@ -292,6 +299,11 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
 
       // Type-aware: "New [Type]" and "List [Type]"
       ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
+
+      // Note list filter pills (scoped to section group views)
+      { id: 'filter-open', label: 'Show Open Notes', group: 'Navigation', keywords: ['filter', 'open', 'active', 'pill'], enabled: !!isSectionGroup && noteListFilter !== 'open', execute: () => onSetNoteListFilter?.('open') },
+      { id: 'filter-archived', label: 'Show Archived Notes', group: 'Navigation', keywords: ['filter', 'archived', 'pill'], enabled: !!isSectionGroup && noteListFilter !== 'archived', execute: () => onSetNoteListFilter?.('archived') },
+      { id: 'filter-trashed', label: 'Show Trashed Notes', group: 'Navigation', keywords: ['filter', 'trashed', 'trash', 'pill', 'deleted'], enabled: !!isSectionGroup && noteListFilter !== 'trashed', execute: () => onSetNoteListFilter?.('trashed') },
     ]
 
     return cmds
@@ -310,5 +322,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onEmptyTrash, trashedCount,
     onReindexVault, onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
+    isSectionGroup, noteListFilter, onSetNoteListFilter,
   ])
 }

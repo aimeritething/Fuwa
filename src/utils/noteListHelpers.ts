@@ -1,5 +1,7 @@
 import type { VaultEntry, SidebarSelection } from '../types'
 
+export type NoteListFilter = 'open' | 'archived' | 'trashed'
+
 export interface RelationshipGroup {
   label: string
   entries: VaultEntry[]
@@ -313,10 +315,17 @@ export function buildRelationshipGroups(
 
 const isActive = (e: VaultEntry) => !e.archived && !e.trashed
 
-function filterByKind(entries: VaultEntry[], selection: SidebarSelection): VaultEntry[] {
+function applySubFilter(entries: VaultEntry[], subFilter: NoteListFilter): VaultEntry[] {
+  if (subFilter === 'archived') return entries.filter((e) => e.archived && !e.trashed)
+  if (subFilter === 'trashed') return entries.filter((e) => e.trashed)
+  return entries.filter(isActive)
+}
+
+function filterByKind(entries: VaultEntry[], selection: SidebarSelection, subFilter?: NoteListFilter): VaultEntry[] {
   if (selection.kind === 'entity') return []
   if (selection.kind === 'sectionGroup') {
-    return entries.filter((e) => e.isA === selection.type && isActive(e))
+    const typeEntries = entries.filter((e) => e.isA === selection.type)
+    return subFilter ? applySubFilter(typeEntries, subFilter) : typeEntries.filter(isActive)
   }
   if (selection.kind === 'topic') {
     return entries.filter((e) => refsMatch(e.relatedTo, selection.entry) && isActive(e))
@@ -332,6 +341,18 @@ function filterByFilterType(entries: VaultEntry[], filter: string): VaultEntry[]
   return []
 }
 
-export function filterEntries(entries: VaultEntry[], selection: SidebarSelection): VaultEntry[] {
-  return filterByKind(entries, selection)
+export function filterEntries(entries: VaultEntry[], selection: SidebarSelection, subFilter?: NoteListFilter): VaultEntry[] {
+  return filterByKind(entries, selection, subFilter)
+}
+
+/** Count notes per sub-filter for a given type. */
+export function countByFilter(entries: VaultEntry[], type: string): Record<NoteListFilter, number> {
+  let open = 0, archived = 0, trashed = 0
+  for (const e of entries) {
+    if (e.isA !== type) continue
+    if (e.trashed) trashed++
+    else if (e.archived) archived++
+    else open++
+  }
+  return { open, archived, trashed }
 }

@@ -5,6 +5,7 @@ import type { CommandAction } from './useCommandRegistry'
 import { useKeyboardNavigation } from './useKeyboardNavigation'
 import { useMenuEvents } from './useMenuEvents'
 import type { SidebarSelection, ThemeFile, VaultEntry } from '../types'
+import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
 
 interface Tab { entry: VaultEntry; content: string }
@@ -74,6 +75,8 @@ interface AppCommandsConfig {
   onSetNoteIcon?: () => void
   onRemoveNoteIcon?: () => void
   activeNoteHasIcon?: boolean
+  noteListFilter?: NoteListFilter
+  onSetNoteListFilter?: (filter: NoteListFilter) => void
 }
 
 /** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
@@ -223,6 +226,9 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onSetNoteIcon: config.onSetNoteIcon,
     onRemoveNoteIcon: config.onRemoveNoteIcon,
     activeNoteHasIcon: config.activeNoteHasIcon,
+    selection: config.selection,
+    noteListFilter: config.noteListFilter,
+    onSetNoteListFilter: config.onSetNoteListFilter,
   })
 
   useKeyboardNavigation({

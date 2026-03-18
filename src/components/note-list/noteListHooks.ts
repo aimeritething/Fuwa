@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus } from '../../types'
 import {
-  type SortOption, type SortDirection, type SortConfig,
+  type SortOption, type SortDirection, type SortConfig, type NoteListFilter,
   getSortComparator, extractSortableProperties,
   buildRelationshipGroups, filterEntries,
   loadSortPreferences, saveSortPreferences,
@@ -19,14 +19,14 @@ export function useTypeEntryMap(entries: VaultEntry[]) {
 
 // --- useFilteredEntries ---
 
-export function useFilteredEntries(entries: VaultEntry[], selection: SidebarSelection, modifiedPathSet: Set<string>, modifiedSuffixes: string[]) {
+export function useFilteredEntries(entries: VaultEntry[], selection: SidebarSelection, modifiedPathSet: Set<string>, modifiedSuffixes: string[], subFilter?: NoteListFilter) {
   const isEntityView = selection.kind === 'entity'
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
   return useMemo(() => {
     if (isEntityView) return []
     if (isChangesView) return entries.filter((e) => isModifiedEntry(e.path, modifiedPathSet, modifiedSuffixes))
-    return filterEntries(entries, selection)
-  }, [entries, selection, isEntityView, isChangesView, modifiedPathSet, modifiedSuffixes])
+    return filterEntries(entries, selection, subFilter)
+  }, [entries, selection, isEntityView, isChangesView, modifiedPathSet, modifiedSuffixes, subFilter])
 }
 
 // --- useNoteListData ---
@@ -35,13 +35,15 @@ interface NoteListDataParams {
   entries: VaultEntry[]; selection: SidebarSelection
   query: string; listSort: SortOption; listDirection: SortDirection
   modifiedPathSet: Set<string>; modifiedSuffixes: string[]
+  subFilter?: NoteListFilter
 }
 
-export function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes }: NoteListDataParams) {
+export function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter }: NoteListDataParams) {
   const isEntityView = selection.kind === 'entity'
-  const isTrashView = selection.kind === 'filter' && selection.filter === 'trash'
+  const isTrashView = (selection.kind === 'filter' && selection.filter === 'trash') || subFilter === 'trashed'
+  const isArchivedView = (selection.kind === 'filter' && selection.filter === 'archived') || subFilter === 'archived'
 
-  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes)
+  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter)
 
   const searched = useMemo(() => {
     const sorted = [...filteredEntries].sort(getSortComparator(listSort, listDirection))
@@ -59,7 +61,7 @@ export function useNoteListData({ entries, selection, query, listSort, listDirec
     [isTrashView, searched],
   )
 
-  return { isEntityView, isTrashView, searched, searchedGroups, expiredTrashCount }
+  return { isEntityView, isTrashView, isArchivedView, searched, searchedGroups, expiredTrashCount }
 }
 
 // --- useNoteListSearch ---
@@ -122,11 +124,12 @@ export interface UseNoteListSortParams {
   selection: SidebarSelection
   modifiedPathSet: Set<string>
   modifiedSuffixes: string[]
+  subFilter?: NoteListFilter
   onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
 }
 
-export function useNoteListSort({ entries, selection, modifiedPathSet, modifiedSuffixes, onUpdateTypeSort, updateEntry }: UseNoteListSortParams) {
+export function useNoteListSort({ entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, onUpdateTypeSort, updateEntry }: UseNoteListSortParams) {
   const [sortPrefs, setSortPrefs] = useState<Record<string, SortConfig>>(loadSortPreferences)
 
   const typeDocument = useMemo(() => {
@@ -154,7 +157,7 @@ export function useNoteListSort({ entries, selection, modifiedPathSet, modifiedS
     }
   }, [typeDocument, persistence])
 
-  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes)
+  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter)
   const customProperties = useMemo(() => extractSortableProperties(filteredEntries), [filteredEntries])
   const listSort = useMemo<SortOption>(() => deriveEffectiveSort(listConfig.option, customProperties), [listConfig.option, customProperties])
   const listDirection = listSort === listConfig.option ? listConfig.direction : 'desc'
