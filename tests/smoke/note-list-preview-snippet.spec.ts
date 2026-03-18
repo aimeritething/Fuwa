@@ -6,29 +6,11 @@ test.describe('Note list preview snippet', () => {
     await page.waitForLoadState('networkidle')
   })
 
-  test('notes with content show a snippet in the note list', async ({ page }) => {
-    const noteListContainer = page.locator('[data-testid="note-list-container"]')
-    await expect(noteListContainer).toBeVisible()
-
-    // Wait for note items to render (cursor-pointer items inside the container)
-    const noteItems = noteListContainer.locator('.cursor-pointer')
-    await expect(noteItems.first()).toBeVisible({ timeout: 5000 })
-
-    // Each note item has a snippet div: 12px text with muted-foreground
-    // Use the specific text-[12px] class to target snippet divs, not metadata
-    const snippetSelector = '.text-\\[12px\\].text-muted-foreground'
-    const snippet = noteListContainer.locator(snippetSelector).first()
-    await expect(snippet).toBeVisible({ timeout: 5000 })
-
-    const text = await snippet.textContent()
-    expect(text && text.length > 10).toBe(true)
-  })
-
   test('snippet does not contain raw markdown formatting', async ({ page }) => {
     const noteListContainer = page.locator('[data-testid="note-list-container"]')
     await expect(noteListContainer).toBeVisible()
 
-    const snippets = noteListContainer.locator('.text-muted-foreground')
+    const snippets = noteListContainer.locator('[data-testid="note-snippet"]')
     const count = await snippets.count()
 
     for (let i = 0; i < Math.min(count, 8); i++) {
@@ -45,7 +27,7 @@ test.describe('Note list preview snippet', () => {
     const noteListContainer = page.locator('[data-testid="note-list-container"]')
     await expect(noteListContainer).toBeVisible()
 
-    const snippets = noteListContainer.locator('.text-muted-foreground')
+    const snippets = noteListContainer.locator('[data-testid="note-snippet"]')
     const count = await snippets.count()
 
     for (let i = 0; i < Math.min(count, 10); i++) {

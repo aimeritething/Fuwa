@@ -131,7 +131,7 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
         </div>
       </div>
       {entry.snippet && (
-        <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+        <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" data-testid="note-snippet" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {entry.snippet}
         </div>
       )}
