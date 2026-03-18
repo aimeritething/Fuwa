@@ -21,31 +21,14 @@ pub(super) fn slug_to_title(stem: &str) -> String {
         .join(" ")
 }
 
-/// Extract the first H1 heading from markdown content (after stripping frontmatter).
-fn extract_h1(content: &str) -> Option<String> {
-    let body = strip_frontmatter(content);
-    for line in body.lines() {
-        let trimmed = line.trim();
-        if let Some(heading) = trimmed.strip_prefix("# ") {
-            let title = heading.trim();
-            if !title.is_empty() {
-                return Some(title.to_string());
-            }
-        }
-    }
-    None
-}
-
 /// Extract the display title for a note.
-/// Priority: frontmatter `title:` → first H1 heading → filename-derived title.
-pub(super) fn extract_title(fm_title: Option<&str>, content: &str, filename: &str) -> String {
+/// Priority: frontmatter `title:` → filename-derived title.
+/// H1 headings are treated as body content, not title source.
+pub(super) fn extract_title(fm_title: Option<&str>, _content: &str, filename: &str) -> String {
     if let Some(title) = fm_title {
         if !title.is_empty() {
             return title.to_string();
         }
-    }
-    if let Some(h1) = extract_h1(content) {
-        return h1;
     }
     let stem = filename.strip_suffix(".md").unwrap_or(filename);
     slug_to_title(stem)
@@ -343,17 +326,18 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_title_from_h1() {
+    fn test_extract_title_ignores_h1_uses_filename() {
+        // H1 is body content, not a title source
         assert_eq!(
             extract_title(None, "# Hello World\n\nBody text.", "some-file.md"),
-            "Hello World"
+            "Some File"
         );
     }
 
     #[test]
-    fn test_extract_title_h1_after_frontmatter() {
+    fn test_extract_title_ignores_h1_after_frontmatter() {
         let content = "---\nIs A: Note\n---\n# My Note\n\nBody.";
-        assert_eq!(extract_title(None, content, "fallback.md"), "My Note");
+        assert_eq!(extract_title(None, content, "fallback.md"), "Fallback");
     }
 
     #[test]
@@ -365,10 +349,11 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_title_empty_fm_falls_back_to_h1() {
+    fn test_extract_title_empty_fm_falls_back_to_filename() {
+        // Empty frontmatter title falls back to filename, not H1
         assert_eq!(
             extract_title(Some(""), "# From H1\n", "empty-h1.md"),
-            "From H1"
+            "Empty H1"
         );
     }
 

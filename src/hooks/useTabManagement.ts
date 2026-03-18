@@ -71,7 +71,7 @@ async function loadNoteContent(path: string): Promise<string> {
 
 /** Sync title frontmatter with filename on note open.
  *  Returns true if the file was modified. */
-async function syncNoteTitle(path: string): Promise<boolean> {
+export async function syncNoteTitle(path: string): Promise<boolean> {
   try {
     return isTauri()
       ? await invoke<boolean>('sync_note_title', { path })
