@@ -31,8 +31,16 @@ BASE_URL="http://localhost:5201" npx playwright test tests/smoke/<slug>.spec.ts
 
 Brian installs the release build and runs keyboard-only QA. Phase 1 must pass first or the task goes to To Rework.
 
-Fire done signal only after Phase 1 passes:
+Fire done signal only after Phase 1 passes — **two steps, both required**:
+
 ```bash
+# 1. Move task to In Review on Todoist
+curl -s -X POST "https://api.todoist.com/api/v1/tasks/<task_id>/move" \
+  -H "Authorization: Bearer $TODOIST_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"section_id": "6g3XjX33FF4Vj86M"}'
+
+# 2. Notify Brian
 openclaw system event --text "laputa-task-done:<task_id>" --mode now
 ```
 
