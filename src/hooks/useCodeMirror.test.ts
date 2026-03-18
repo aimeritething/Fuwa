@@ -67,6 +67,40 @@ describe('useCodeMirror', () => {
     spy.mockRestore()
   })
 
+  it('syncs content prop changes to the editor', () => {
+    const ref = { current: container }
+    const onDocChange = vi.fn()
+    const callbacks = { ...noopCallbacks, onDocChange }
+    const { result, rerender } = renderHook(
+      ({ content }) => useCodeMirror(ref, content, false, callbacks),
+      { initialProps: { content: '---\ntitle: Hello\n---\nBody' } },
+    )
+    const view = result.current.current!
+    expect(view.state.doc.toString()).toBe('---\ntitle: Hello\n---\nBody')
+
+    // Simulate external content update (e.g. frontmatter written to disk)
+    rerender({ content: '---\ntitle: Hello\nTrashed: true\n---\nBody' })
+
+    expect(view.state.doc.toString()).toBe('---\ntitle: Hello\nTrashed: true\n---\nBody')
+    // External sync should NOT trigger onDocChange (would cause infinite loop)
+    expect(onDocChange).not.toHaveBeenCalled()
+  })
+
+  it('does not sync when content matches current editor state', () => {
+    const ref = { current: container }
+    const { result, rerender } = renderHook(
+      ({ content }) => useCodeMirror(ref, content, false, noopCallbacks),
+      { initialProps: { content: 'hello' } },
+    )
+    const view = result.current.current!
+    const spy = vi.spyOn(view, 'dispatch')
+
+    // Re-render with same content — no dispatch needed
+    rerender({ content: 'hello' })
+    expect(spy).not.toHaveBeenCalled()
+    spy.mockRestore()
+  })
+
   it('installs zoomCursorFix that overrides posAtCoords on the view instance', () => {
     const ref = { current: container }
     const { result } = renderHook(() =>

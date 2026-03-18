@@ -67,14 +67,27 @@ describe('useEntryActions', () => {
         await result.current.handleTrashNote('/vault/note/test.md')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed', true)
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed at', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/))
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed', true, { silent: true })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed at', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), { silent: true })
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', {
         trashed: true,
         trashedAt: expect.any(Number),
       })
       expect(setToastMessage).toHaveBeenCalledWith('Note moved to trash')
       expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
+    })
+
+    it('final toast is contextual, not "Property updated"', async () => {
+      const { result } = setup()
+      const toastCalls: (string | null)[] = []
+      setToastMessage.mockImplementation((msg: string | null) => toastCalls.push(msg))
+
+      await act(async () => {
+        await result.current.handleTrashNote('/vault/note/test.md')
+      })
+
+      // The only toast should be "Note moved to trash", never "Property updated"
+      expect(toastCalls).toEqual(['Note moved to trash'])
     })
   })
 
@@ -86,8 +99,8 @@ describe('useEntryActions', () => {
         await result.current.handleRestoreNote('/vault/note/test.md')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed', false)
-      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed at')
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed', false, { silent: true })
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed at', { silent: true })
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', {
         trashed: false,
         trashedAt: null,
@@ -105,10 +118,22 @@ describe('useEntryActions', () => {
         await result.current.handleArchiveNote('/vault/note/test.md')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'archived', true)
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'archived', true, { silent: true })
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', { archived: true })
       expect(setToastMessage).toHaveBeenCalledWith('Note archived')
       expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
+    })
+
+    it('final toast is contextual, not "Property updated"', async () => {
+      const { result } = setup()
+      const toastCalls: (string | null)[] = []
+      setToastMessage.mockImplementation((msg: string | null) => toastCalls.push(msg))
+
+      await act(async () => {
+        await result.current.handleArchiveNote('/vault/note/test.md')
+      })
+
+      expect(toastCalls).toEqual(['Note archived'])
     })
   })
 
@@ -120,7 +145,7 @@ describe('useEntryActions', () => {
         await result.current.handleUnarchiveNote('/vault/note/test.md')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'archived', false)
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'archived', false, { silent: true })
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', { archived: false })
       expect(setToastMessage).toHaveBeenCalledWith('Note unarchived')
       expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)

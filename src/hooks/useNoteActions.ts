@@ -10,7 +10,7 @@ import {
   useNoteRename,
   performRename, loadNoteContent, renameToastMessage, reloadTabsAfterRename,
 } from './useNoteRename'
-import { runFrontmatterAndApply } from './frontmatterOps'
+import { runFrontmatterAndApply, type FrontmatterOpOptions } from './frontmatterOps'
 
 export interface NoteActionsConfig {
   addEntry: (entry: VaultEntry) => void
@@ -114,8 +114,8 @@ export function useNoteActions(config: NoteActionsConfig) {
   )
 
   const runFrontmatterOp = useCallback(
-    (op: 'update' | 'delete', path: string, key: string, value?: FrontmatterValue) =>
-      runFrontmatterAndApply(op, path, key, value, { updateTab: updateTabContent, updateEntry, toast: setToastMessage }),
+    (op: 'update' | 'delete', path: string, key: string, value?: FrontmatterValue, options?: FrontmatterOpOptions) =>
+      runFrontmatterAndApply(op, path, key, value, { updateTab: updateTabContent, updateEntry, toast: setToastMessage }, options),
     [updateTabContent, updateEntry, setToastMessage],
   )
 
@@ -130,8 +130,8 @@ export function useNoteActions(config: NoteActionsConfig) {
     handleOpenDailyNote: creation.handleOpenDailyNote,
     handleCreateType: creation.handleCreateType,
     createTypeEntrySilent: creation.createTypeEntrySilent,
-    handleUpdateFrontmatter: useCallback(async (path: string, key: string, value: FrontmatterValue) => {
-      await runFrontmatterOp('update', path, key, value)
+    handleUpdateFrontmatter: useCallback(async (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => {
+      await runFrontmatterOp('update', path, key, value, options)
       if (shouldRenameOnTitleUpdate(key, value)) {
         try {
           await renameAfterTitleChange(path, value, {
@@ -143,7 +143,7 @@ export function useNoteActions(config: NoteActionsConfig) {
         }
       }
     }, [runFrontmatterOp, config.vaultPath, config.replaceEntry, rename.tabsRef, setTabs, activeTabPathRef, handleSwitchTab, setToastMessage, updateTabContent]),
-    handleDeleteProperty: useCallback((path: string, key: string) => runFrontmatterOp('delete', path, key), [runFrontmatterOp]),
+    handleDeleteProperty: useCallback((path: string, key: string, options?: FrontmatterOpOptions) => runFrontmatterOp('delete', path, key, undefined, options), [runFrontmatterOp]),
     handleAddProperty: useCallback((path: string, key: string, value: FrontmatterValue) => runFrontmatterOp('update', path, key, value), [runFrontmatterOp]),
     handleRenameNote: rename.handleRenameNote,
   }

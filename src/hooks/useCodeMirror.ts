@@ -82,6 +82,19 @@ export function useCodeMirror(
   const viewRef = useRef<EditorView | null>(null)
   const callbacksRef = useRef(callbacks)
   callbacksRef.current = callbacks
+  // Track whether we're dispatching an external sync so the updateListener skips it
+  const externalSyncRef = useRef(false)
+
+  // Sync content prop changes to the editor (e.g. after frontmatter update on disk)
+  useEffect(() => {
+    const view = viewRef.current
+    if (!view) return
+    const current = view.state.doc.toString()
+    if (current === content) return
+    externalSyncRef.current = true
+    view.dispatch({ changes: { from: 0, to: current.length, insert: content } })
+    externalSyncRef.current = false
+  }, [content])
 
   useEffect(() => {
     const parent = containerRef.current
@@ -101,7 +114,7 @@ export function useCodeMirror(
         frontmatterHighlightPlugin,
         zoomCursorFix(),
         EditorView.updateListener.of((update) => {
-          if (update.docChanged) {
+          if (update.docChanged && !externalSyncRef.current) {
             callbacksRef.current.onDocChange(update.state.doc.toString())
           }
           if (update.selectionSet || update.docChanged) {

@@ -60,18 +60,25 @@ async function executeFrontmatterOp(op: 'update' | 'delete', path: string, key: 
   return isTauri() ? invokeFrontmatter('delete_frontmatter_property', { path, key }) : applyMockFrontmatterDelete(path, key)
 }
 
+export interface FrontmatterOpOptions {
+  /** Suppress toast feedback (caller manages its own toast). */
+  silent?: boolean
+}
+
 /** Run a frontmatter update/delete and apply the result to state. */
 export async function runFrontmatterAndApply(
   op: 'update' | 'delete', path: string, key: string, value: FrontmatterValue | undefined,
   callbacks: { updateTab: (p: string, c: string) => void; updateEntry: (p: string, patch: Partial<VaultEntry>) => void; toast: (m: string | null) => void },
+  options?: FrontmatterOpOptions,
 ): Promise<void> {
   try {
     callbacks.updateTab(path, await executeFrontmatterOp(op, path, key, value))
     const patch = frontmatterToEntryPatch(op, key, value)
     if (Object.keys(patch).length > 0) callbacks.updateEntry(path, patch)
-    callbacks.toast(op === 'update' ? 'Property updated' : 'Property deleted')
+    if (!options?.silent) callbacks.toast(op === 'update' ? 'Property updated' : 'Property deleted')
   } catch (err) {
     console.error(`Failed to ${op} frontmatter:`, err)
+    if (options?.silent) throw err
     callbacks.toast(`Failed to ${op} property`)
   }
 }

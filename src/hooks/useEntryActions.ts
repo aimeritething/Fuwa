@@ -1,11 +1,12 @@
 import { useCallback } from 'react'
 import type { VaultEntry } from '../types'
+import type { FrontmatterOpOptions } from './frontmatterOps'
 
 interface EntryActionsConfig {
   entries: VaultEntry[]
   updateEntry: (path: string, updates: Partial<VaultEntry>) => void
-  handleUpdateFrontmatter: (path: string, key: string, value: string | number | boolean | string[]) => Promise<void>
-  handleDeleteProperty: (path: string, key: string) => Promise<void>
+  handleUpdateFrontmatter: (path: string, key: string, value: string | number | boolean | string[], options?: FrontmatterOpOptions) => Promise<void>
+  handleDeleteProperty: (path: string, key: string, options?: FrontmatterOpOptions) => Promise<void>
   setToastMessage: (msg: string | null) => void
   createTypeEntry: (typeName: string) => Promise<VaultEntry>
   onFrontmatterPersisted?: () => void
@@ -34,8 +35,8 @@ export function useEntryActions({
     setToastMessage('Note moved to trash')
     const now = new Date().toISOString().slice(0, 10)
     try {
-      await handleUpdateFrontmatter(path, 'Trashed', true)
-      await handleUpdateFrontmatter(path, 'Trashed at', now)
+      await handleUpdateFrontmatter(path, 'Trashed', true, { silent: true })
+      await handleUpdateFrontmatter(path, 'Trashed at', now, { silent: true })
       onFrontmatterPersisted?.()
     } catch (err) {
       updateEntry(path, { trashed: false, trashedAt: null })
@@ -49,8 +50,8 @@ export function useEntryActions({
     updateEntry(path, { trashed: false, trashedAt: null })
     setToastMessage('Note restored from trash')
     try {
-      await handleUpdateFrontmatter(path, 'Trashed', false)
-      await handleDeleteProperty(path, 'Trashed at')
+      await handleUpdateFrontmatter(path, 'Trashed', false, { silent: true })
+      await handleDeleteProperty(path, 'Trashed at', { silent: true })
       onFrontmatterPersisted?.()
     } catch (err) {
       updateEntry(path, { trashed: true, trashedAt: Date.now() / 1000 })
@@ -65,7 +66,7 @@ export function useEntryActions({
     updateEntry(path, { archived: true })
     setToastMessage('Note archived')
     try {
-      await handleUpdateFrontmatter(path, 'archived', true)
+      await handleUpdateFrontmatter(path, 'archived', true, { silent: true })
       onFrontmatterPersisted?.()
     } catch (err) {
       updateEntry(path, { archived: false })
@@ -79,7 +80,7 @@ export function useEntryActions({
     updateEntry(path, { archived: false })
     setToastMessage('Note unarchived')
     try {
-      await handleUpdateFrontmatter(path, 'archived', false)
+      await handleUpdateFrontmatter(path, 'archived', false, { silent: true })
       onFrontmatterPersisted?.()
     } catch (err) {
       updateEntry(path, { archived: true })
