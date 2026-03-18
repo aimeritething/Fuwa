@@ -327,9 +327,6 @@ function filterByKind(entries: VaultEntry[], selection: SidebarSelection, subFil
     const typeEntries = entries.filter((e) => e.isA === selection.type)
     return subFilter ? applySubFilter(typeEntries, subFilter) : typeEntries.filter(isActive)
   }
-  if (selection.kind === 'topic') {
-    return entries.filter((e) => refsMatch(e.relatedTo, selection.entry) && isActive(e))
-  }
   return filterByFilterType(entries, selection.filter)
 }
 

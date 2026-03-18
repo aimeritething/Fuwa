@@ -18,8 +18,7 @@ export function isSelectionActive(current: SidebarSelection, check: SidebarSelec
   switch (check.kind) {
     case 'filter': return (current as typeof check).filter === check.filter
     case 'sectionGroup': return (current as typeof check).type === check.type
-    case 'entity':
-    case 'topic': return (current as typeof check).entry.path === check.entry.path
+    case 'entity': return (current as typeof check).entry.path === check.entry.path
     default: return false
   }
 }
@@ -83,8 +82,8 @@ export interface SectionContentProps {
   onRenameCancel?: () => void
 }
 
-function childSelection(type: string, entry: VaultEntry): SidebarSelection {
-  return type === 'Topic' ? { kind: 'topic', entry } : { kind: 'entity', entry }
+function childSelection(entry: VaultEntry): SidebarSelection {
+  return { kind: 'entity', entry }
 }
 
 function resolveCreateHandler(type: string, onCreateType?: (type: string) => void, onCreateNewType?: () => void): (() => void) | undefined {
@@ -123,7 +122,7 @@ export function SectionContent({
       />
       {!isCollapsed && items.length > 0 && (
         <SectionChildList
-          items={items} type={type} selection={selection}
+          items={items} selection={selection}
           sectionColor={sectionColor} sectionLightColor={sectionLightColor}
           onSelect={onSelect} onSelectNote={onSelectNote}
         />
@@ -132,15 +131,15 @@ export function SectionContent({
   )
 }
 
-function SectionChildList({ items, type, selection, sectionColor, sectionLightColor, onSelect, onSelectNote }: {
-  items: VaultEntry[]; type: string; selection: SidebarSelection
+function SectionChildList({ items, selection, sectionColor, sectionLightColor, onSelect, onSelectNote }: {
+  items: VaultEntry[]; selection: SidebarSelection
   sectionColor: string; sectionLightColor: string
   onSelect: (sel: SidebarSelection) => void; onSelectNote?: (entry: VaultEntry) => void
 }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
       {items.map((entry) => {
-        const sel = childSelection(type, entry)
+        const sel = childSelection(entry)
         const active = isSelectionActive(selection, sel)
         return (
           <SectionChildItem

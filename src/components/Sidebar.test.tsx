@@ -359,13 +359,13 @@ describe('Sidebar', () => {
     expect(screen.getByText('Trading')).toBeInTheDocument()
   })
 
-  it('calls onSelect with topic kind when clicking a topic', () => {
+  it('calls onSelect with entity kind when clicking a topic', () => {
     const onSelect = vi.fn()
     render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={onSelect} />)
     fireEvent.click(screen.getByLabelText('Expand Topics'))
     fireEvent.click(screen.getByText('Software Development'))
     expect(onSelect).toHaveBeenCalledWith({
-      kind: 'topic',
+      kind: 'entity',
       entry: mockEntries[4],
     })
   })

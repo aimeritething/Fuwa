@@ -505,7 +505,6 @@ function App() {
 
   const aiNoteListFilter = useMemo(() => {
     if (selection.kind === 'sectionGroup') return { type: selection.type, query: '' }
-    if (selection.kind === 'topic') return { type: null, query: selection.entry.title }
     if (selection.kind === 'entity') return { type: null, query: selection.entry.title }
     return { type: null, query: '' }
   }, [selection])

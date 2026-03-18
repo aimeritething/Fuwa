@@ -182,4 +182,3 @@ export type SidebarSelection =
   | { kind: 'filter'; filter: SidebarFilter }
   | { kind: 'sectionGroup'; type: string }
   | { kind: 'entity'; entry: VaultEntry }
-  | { kind: 'topic'; entry: VaultEntry }

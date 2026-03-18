@@ -200,13 +200,14 @@ describe('NoteList', () => {
     expect(screen.getByText('Related to')).toBeInTheDocument()
   })
 
-  it('filters by topic (relatedTo references)', () => {
+  it('shows entity view with relationship groups for topics', () => {
     render(
-      <NoteList {...defaultFilterProps} entries={mockEntries} selection={{ kind: 'topic', entry: mockEntries[4] }} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
+      <NoteList {...defaultFilterProps} entries={mockEntries} selection={{ kind: 'entity', entry: mockEntries[4] }} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
     )
-    // Build Laputa App has relatedTo: [[topic/software-development]]
+    // Build Laputa App references this topic via relatedTo — should appear in Referenced By
     expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-    expect(screen.queryByText('Facebook Ads Strategy')).not.toBeInTheDocument()
+    // Entity view shows group headers
+    expect(screen.getByText('Referenced By')).toBeInTheDocument()
   })
 
   it('shows search input when search icon is clicked', () => {
@@ -806,17 +807,9 @@ describe('filterEntries — trash', () => {
     expect(result.find((e) => e.title === 'Old Draft Notes')).toBeUndefined()
   })
 
-  it('topic filter excludes trashed entries', () => {
-    const topicEntry: VaultEntry = { ...mockEntries[4] } // Software Development topic
-    const trashedWithTopic: VaultEntry = {
-      ...trashedEntry,
-      relatedTo: ['[[topic/software-development]]'],
-    }
-    const all = [...mockEntries, trashedWithTopic]
-    const result = filterEntries(all, { kind: 'topic', entry: topicEntry })
-    expect(result.find((e) => e.title === 'Old Draft Notes')).toBeUndefined()
-    // Normal entry with that topic should still appear
-    expect(result.find((e) => e.title === 'Build Laputa App')).toBeDefined()
+  it('entity filter returns empty (entity view uses relationship groups instead)', () => {
+    const result = filterEntries(mockEntries, { kind: 'entity', entry: mockEntries[4] })
+    expect(result).toHaveLength(0)
   })
 })
 
