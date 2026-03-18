@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils'
 import { X } from 'lucide-react'
 import { Plus, Columns, ArrowsOutSimple, ArrowLeft, ArrowRight } from '@phosphor-icons/react'
 import { computeTabMaxWidth } from '@/utils/tabLayout'
+import { isEmoji } from '../utils/emoji'
 
 interface Tab {
   entry: VaultEntry
@@ -242,6 +243,7 @@ function TabItem({ tab, isActive, isEditing, noteStatus, isDragging, showDropBef
         <InlineTabEdit initialValue={tab.entry.title} onSave={onRenameSave} onCancel={onRenameCancel} />
       ) : (
         <span className="truncate" style={noteStatus === 'unsaved' ? { fontStyle: 'italic' } : undefined} onDoubleClick={(e) => { e.stopPropagation(); onDoubleClick() }}>
+          {tab.entry.icon && isEmoji(tab.entry.icon) && <span className="mr-1">{tab.entry.icon}</span>}
           {tab.entry.title}
         </span>
       )}
