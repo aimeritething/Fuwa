@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { EMOJI_CATEGORIES } from '../utils/emoji'
+import { EMOJI_GROUPS, EMOJIS_BY_GROUP, GROUP_ICONS, GROUP_SHORT_LABELS, searchEmojis } from '../utils/emoji'
 
 interface EmojiPickerProps {
   onSelect: (emoji: string) => void
@@ -8,9 +8,10 @@ interface EmojiPickerProps {
 
 export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
   const [search, setSearch] = useState('')
-  const [activeCategory, setActiveCategory] = useState(0)
   const inputRef = useRef<HTMLInputElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const groupRefs = useRef<Map<string, HTMLDivElement>>(new Map())
 
   useEffect(() => {
     setTimeout(() => inputRef.current?.focus(), 50)
@@ -35,7 +36,6 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
         onClose()
       }
     }
-    // Delay adding the listener to avoid the click that opened the picker from closing it
     const timer = setTimeout(() => document.addEventListener('mousedown', handler), 0)
     return () => { clearTimeout(timer); document.removeEventListener('mousedown', handler) }
   }, [onClose])
@@ -45,14 +45,20 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
     onClose()
   }, [onSelect, onClose])
 
-  const filteredCategories = search.trim()
-    ? [{ name: 'Results', emojis: EMOJI_CATEGORIES.flatMap(c => c.emojis) }]
-    : EMOJI_CATEGORIES
+  const scrollToGroup = useCallback((group: string) => {
+    const el = groupRefs.current.get(group)
+    if (el && scrollRef.current) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [])
+
+  const searchResults = search.trim() ? searchEmojis(search) : null
+  const isSearching = searchResults !== null
 
   return (
     <div
       ref={containerRef}
-      className="absolute z-50 w-[320px] rounded-lg border border-[var(--border-dialog)] bg-popover shadow-lg"
+      className="absolute z-50 w-[340px] rounded-lg border border-[var(--border-dialog)] bg-popover shadow-lg"
       style={{ left: 54, top: 0 }}
       data-testid="emoji-picker"
     >
@@ -61,53 +67,76 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
           ref={inputRef}
           type="text"
           className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
-          placeholder="Search emoji..."
+          placeholder="Search emoji by name..."
           value={search}
           onChange={e => setSearch(e.target.value)}
           data-testid="emoji-picker-search"
         />
       </div>
-      {!search.trim() && (
-        <div className="flex gap-1 border-b border-border px-3 py-1.5 overflow-x-auto">
-          {EMOJI_CATEGORIES.map((cat, i) => (
+      {!isSearching && (
+        <div className="flex gap-0.5 border-b border-border px-2 py-1.5 overflow-x-auto">
+          {EMOJI_GROUPS.map(group => (
             <button
-              key={cat.name}
-              className={`shrink-0 rounded px-1.5 py-0.5 text-[11px] transition-colors ${
-                i === activeCategory ? 'bg-accent text-foreground' : 'text-muted-foreground hover:bg-secondary'
-              }`}
-              onClick={() => setActiveCategory(i)}
+              key={group}
+              className="shrink-0 rounded px-1.5 py-1 text-base transition-colors hover:bg-secondary"
+              onClick={() => scrollToGroup(group)}
+              title={GROUP_SHORT_LABELS[group]}
             >
-              {cat.name}
+              {GROUP_ICONS[group]}
             </button>
           ))}
         </div>
       )}
-      <div className="max-h-[240px] overflow-y-auto p-2" data-testid="emoji-picker-grid">
-        {filteredCategories.map((cat, ci) => {
-          const show = search.trim() || ci === activeCategory
-          if (!show) return null
-          return (
-            <div key={cat.name}>
-              {!search.trim() && (
-                <div className="px-1 pb-1 pt-1.5 text-[11px] font-medium text-muted-foreground">
-                  {cat.name}
-                </div>
-              )}
-              <div className="grid grid-cols-8 gap-0.5">
-                {cat.emojis.map(emoji => (
-                  <button
-                    key={emoji}
-                    className="flex h-8 w-8 items-center justify-center rounded text-xl transition-colors hover:bg-accent"
-                    onClick={() => handleSelect(emoji)}
-                    data-testid="emoji-option"
-                  >
-                    {emoji}
-                  </button>
-                ))}
-              </div>
+      <div ref={scrollRef} className="max-h-[300px] overflow-y-auto p-2" data-testid="emoji-picker-grid">
+        {isSearching ? (
+          searchResults.length > 0 ? (
+            <div className="grid grid-cols-8 gap-0.5">
+              {searchResults.map(entry => (
+                <button
+                  key={entry.emoji}
+                  className="flex h-8 w-8 items-center justify-center rounded text-xl transition-colors hover:bg-accent"
+                  onClick={() => handleSelect(entry.emoji)}
+                  title={entry.name}
+                  data-testid="emoji-option"
+                >
+                  {entry.emoji}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-sm text-muted-foreground">
+              No emojis found
             </div>
           )
-        })}
+        ) : (
+          EMOJI_GROUPS.map(group => {
+            const emojis = EMOJIS_BY_GROUP.get(group)
+            if (!emojis?.length) return null
+            return (
+              <div
+                key={group}
+                ref={el => { if (el) groupRefs.current.set(group, el) }}
+              >
+                <div className="sticky top-0 z-10 bg-popover px-1 pb-1 pt-2 text-[11px] font-medium text-muted-foreground">
+                  {GROUP_SHORT_LABELS[group]}
+                </div>
+                <div className="grid grid-cols-8 gap-0.5">
+                  {emojis.map(entry => (
+                    <button
+                      key={entry.emoji}
+                      className="flex h-8 w-8 items-center justify-center rounded text-xl transition-colors hover:bg-accent"
+                      onClick={() => handleSelect(entry.emoji)}
+                      title={entry.name}
+                      data-testid="emoji-option"
+                    >
+                      {entry.emoji}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+          })
+        )}
       </div>
     </div>
   )
