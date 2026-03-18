@@ -72,6 +72,29 @@ describe('TitleField', () => {
     expect(input).toHaveValue('Original')
   })
 
+  it('shows new title optimistically after commit (before prop updates)', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<TitleField title="Old Title" filename="old-title.md" onTitleChange={onChange} />)
+    const input = screen.getByTestId('title-field-input')
+    fireEvent.focus(input)
+    fireEvent.change(input, { target: { value: 'New Title' } })
+    fireEvent.blur(input)
+    // After commit, should show new title even though prop is still "Old Title"
+    expect(input).toHaveValue('New Title')
+    // After prop updates to match, should still show new title
+    rerender(<TitleField title="New Title" filename="new-title.md" onTitleChange={onChange} />)
+    expect(input).toHaveValue('New Title')
+  })
+
+  it('resets optimistic title when prop changes from external source', () => {
+    const onChange = vi.fn()
+    const { rerender } = render(<TitleField title="Title A" filename="title-a.md" onTitleChange={onChange} />)
+    const input = screen.getByTestId('title-field-input')
+    // Simulate external title change (e.g., tab switch)
+    rerender(<TitleField title="Title B" filename="title-b.md" onTitleChange={onChange} />)
+    expect(input).toHaveValue('Title B')
+  })
+
   it('responds to laputa:focus-editor event with selectTitle', () => {
     render(<TitleField title="Focus Me" filename="focus-me.md" onTitleChange={() => {}} />)
     const input = screen.getByTestId('title-field-input')

@@ -359,10 +359,12 @@ function App() {
     setToastMessage(`Type "${name}" created`)
   }, [notes])
 
-  /** H1→title sync: save pending content then rename file + update wikilinks. */
-  const handleTitleSync = useCallback(async (path: string, newTitle: string) => {
-    await savePendingForPath(path)
-    await notes.handleRenameNote(path, newTitle, resolvedPath, vault.replaceEntry).then(vault.loadModifiedFiles)
+  /** Title field change: save pending content then rename file + update wikilinks (non-blocking). */
+  const handleTitleSync = useCallback((path: string, newTitle: string) => {
+    savePendingForPath(path)
+      .then(() => notes.handleRenameNote(path, newTitle, resolvedPath, vault.replaceEntry))
+      .then(vault.loadModifiedFiles)
+      .catch((err) => console.error('Title rename failed:', err))
   }, [notes, resolvedPath, vault, savePendingForPath])
 
   const bulkActions = useBulkActions(entryActions, setToastMessage)

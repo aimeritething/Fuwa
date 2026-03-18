@@ -9,20 +9,50 @@ interface TitleFieldProps {
   onTitleChange: (newTitle: string) => void
 }
 
+/** Manages local edit + optimistic title state for TitleField. */
+function useOptimisticTitle(title: string, onTitleChange: (t: string) => void) {
+  const [localValue, setLocalValue] = useState<string | null>(null)
+  // [optimisticTitle, forPropTitle]: shown after commit until title prop catches up
+  const [optimistic, setOptimistic] = useState<[string, string] | null>(null)
+  const isFocusedRef = useRef(false)
+
+  // Clear optimistic once the prop changes (rename completed or tab switched)
+  const optimisticValue = optimistic && optimistic[1] === title ? optimistic[0] : null
+  const value = localValue ?? optimisticValue ?? title
+  const isEditing = localValue !== null || optimisticValue !== null
+
+  const handleFocus = useCallback(() => {
+    isFocusedRef.current = true
+    setLocalValue(title)
+  }, [title])
+
+  const commitTitle = useCallback(() => {
+    isFocusedRef.current = false
+    const trimmed = (localValue ?? '').trim()
+    if (trimmed && trimmed !== title) {
+      setLocalValue(null)
+      setOptimistic([trimmed, title])
+      onTitleChange(trimmed)
+    } else {
+      setLocalValue(null)
+    }
+  }, [localValue, title, onTitleChange])
+
+  const revert = useCallback(() => setLocalValue(null), [])
+  const setEdit = useCallback((v: string) => setLocalValue(v), [])
+
+  return { value, isEditing, handleFocus, commitTitle, revert, setEdit }
+}
+
 /**
  * Dedicated title input field above the editor.
  * Displays the title as an editable field and shows the resulting filename below.
- * Replaces the H1 block as the primary title editing surface.
  */
 export function TitleField({ title, filename, editable = true, onTitleChange }: TitleFieldProps) {
-  const [localValue, setLocalValue] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
-  const isFocusedRef = useRef(false)
+  const { value, isEditing, handleFocus, commitTitle, revert, setEdit } =
+    useOptimisticTitle(title, onTitleChange)
 
-  // The displayed value: use local edit value while focused, otherwise prop title
-  const value = localValue ?? title
-
-  // Listen for laputa:focus-editor with selectTitle to focus this field
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail
@@ -35,34 +65,20 @@ export function TitleField({ title, filename, editable = true, onTitleChange }: 
     return () => window.removeEventListener('laputa:focus-editor', handler)
   }, [])
 
-  const handleFocus = useCallback(() => {
-    isFocusedRef.current = true
-    setLocalValue(title)
-  }, [title])
-
-  const commitTitle = useCallback(() => {
-    isFocusedRef.current = false
-    const trimmed = (localValue ?? '').trim()
-    if (trimmed && trimmed !== title) {
-      onTitleChange(trimmed)
-    }
-    setLocalValue(null) // reset to prop-driven
-  }, [localValue, title, onTitleChange])
-
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
       e.preventDefault()
       inputRef.current?.blur()
     }
     if (e.key === 'Escape') {
-      setLocalValue(null) // revert to prop
+      revert()
       inputRef.current?.blur()
     }
-  }, [])
+  }, [revert])
 
   const expectedSlug = slugify(value.trim() || title)
   const currentStem = filename.replace(/\.md$/, '')
-  const showFilename = localValue !== null || currentStem !== expectedSlug
+  const showFilename = isEditing || currentStem !== expectedSlug
 
   return (
     <div className="title-field" data-testid="title-field">
@@ -70,7 +86,7 @@ export function TitleField({ title, filename, editable = true, onTitleChange }: 
         ref={inputRef}
         className="title-field__input"
         value={value}
-        onChange={e => setLocalValue(e.target.value)}
+        onChange={e => setEdit(e.target.value)}
         onFocus={handleFocus}
         onBlur={commitTitle}
         onKeyDown={handleKeyDown}

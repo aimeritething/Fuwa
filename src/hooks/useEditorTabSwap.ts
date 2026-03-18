@@ -1,4 +1,3 @@
-import type React from 'react'
 import { useCallback, useEffect, useRef } from 'react'
 import type { useCreateBlockNote } from '@blocknote/react'
 import type { VaultEntry } from '../types'
@@ -15,10 +14,6 @@ interface UseEditorTabSwapOptions {
   activeTabPath: string | null
   editor: ReturnType<typeof useCreateBlockNote>
   onContentChange?: (path: string, content: string) => void
-  /** Called on every editor change with the H1 text (null if no H1 first block). */
-  onH1Change?: (h1Text: string | null) => void
-  /** When .current is false, handleEditorChange won't update frontmatter title from H1. */
-  syncActiveRef?: React.MutableRefObject<boolean>
   /** When true, the BlockNote editor is hidden (raw/CodeMirror mode active). */
   rawMode?: boolean
 }
@@ -63,7 +58,7 @@ export function replaceTitleInFrontmatter(frontmatter: string, newTitle: string)
  *
  * Returns `handleEditorChange`, the onChange callback for SingleEditorView.
  */
-export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange, onH1Change, syncActiveRef, rawMode }: UseEditorTabSwapOptions) {
+export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange, rawMode }: UseEditorTabSwapOptions) {
   // Cache parsed blocks + scroll position per tab path for instant switching
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BlockNote block arrays
   const tabCacheRef = useRef<Map<string, { blocks: any[]; scrollTop: number }>>(new Map())
@@ -81,8 +76,6 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
   // Keep refs to callbacks for the onChange handler
   const onContentChangeRef = useRef(onContentChange)
   onContentChangeRef.current = onContentChange
-  const onH1ChangeRef = useRef(onH1Change)
-  onH1ChangeRef.current = onH1Change
   const tabsRef = useRef(tabs)
   tabsRef.current = tabs
 
@@ -122,18 +115,10 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
 
     // Reconstruct full file: frontmatter + body (which now includes H1 if present)
     const [frontmatter] = splitFrontmatter(tab.content)
-    const h1Text = getH1TextFromBlocks(blocks)
-
-    // Keep frontmatter title: in sync with H1 when sync is active
-    const isSyncActive = syncActiveRef?.current !== false
-    const fm = (isSyncActive && h1Text)
-      ? replaceTitleInFrontmatter(frontmatter, h1Text)
-      : frontmatter
-    const fullContent = `${fm}${bodyMarkdown}`
+    const fullContent = `${frontmatter}${bodyMarkdown}`
 
     onContentChangeRef.current?.(path, fullContent)
-    onH1ChangeRef.current?.(h1Text)
-  }, [editor, syncActiveRef])
+  }, [editor])
 
   // Swap document content when active tab changes.
   // Uses queueMicrotask to defer BlockNote mutations outside React's commit phase,

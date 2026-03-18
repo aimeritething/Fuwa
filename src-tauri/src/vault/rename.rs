@@ -28,32 +28,6 @@ pub(super) fn title_to_slug(title: &str) -> String {
         .join("-")
 }
 
-/// Update the first H1 heading in markdown content to a new title.
-fn update_h1_title(content: &str, new_title: &str) -> String {
-    let has_h1 = content.lines().any(|l| l.trim().starts_with("# "));
-    if !has_h1 {
-        return content.to_string();
-    }
-
-    let result: Vec<String> = content
-        .lines()
-        .map(|l| {
-            if l.trim().starts_with("# ") {
-                format!("# {}", new_title)
-            } else {
-                l.to_string()
-            }
-        })
-        .collect();
-
-    let joined = result.join("\n");
-    if content.ends_with('\n') && !joined.ends_with('\n') {
-        format!("{}\n", joined)
-    } else {
-        joined
-    }
-}
-
 /// Build a regex that matches wiki links referencing old title or path stem.
 fn build_wikilink_pattern(old_title: &str, old_path_stem: &str) -> Option<Regex> {
     let pattern_str = format!(
@@ -148,15 +122,16 @@ fn extract_fm_title_value(content: &str) -> Option<String> {
     None
 }
 
-/// Update H1 and the `title:` frontmatter field in content.
+/// Update the `title:` frontmatter field in content.
 /// Always writes `title` to frontmatter (creates it if absent).
+/// H1 headings are body content and are NOT modified — the title source
+/// of truth is frontmatter `title:` → filename, never H1.
 fn update_note_title_in_content(content: &str, new_title: &str) -> String {
-    let mut updated = update_h1_title(content, new_title);
     let value = FrontmatterValue::String(new_title.to_string());
-    if let Ok(c) = update_frontmatter_content(&updated, "title", Some(value)) {
-        updated = c;
+    match update_frontmatter_content(content, "title", Some(value)) {
+        Ok(c) => c,
+        Err(_) => content.to_string(),
     }
-    updated
 }
 
 /// Strip vault prefix and .md suffix to get the relative path stem (e.g., "project/weekly-review").
@@ -192,12 +167,11 @@ fn unique_dest_path(dest_dir: &Path, filename: &str) -> std::path::PathBuf {
     }
 }
 
-/// Rename a note: update its title, rename the file, and update wiki links across the vault.
+/// Rename a note: update its frontmatter title, rename the file, and update wiki links across the vault.
 ///
 /// When `old_title_hint` is provided it is used instead of extracting the title from
-/// the file's H1 heading.  This is needed when the caller has already saved updated
-/// content to disk (e.g. the editor saved a new H1 before triggering the rename)
-/// so the on-disk H1 already matches `new_title`.
+/// the file's frontmatter/filename.  This is needed when the caller has already saved
+/// updated content to disk before triggering the rename.
 pub fn rename_note(
     vault_path: &str,
     old_path: &str,
@@ -299,15 +273,6 @@ mod tests {
     }
 
     #[test]
-    fn test_update_h1_title() {
-        let content = "---\nIs A: Note\n---\n# Old Title\n\nContent here.\n";
-        let updated = update_h1_title(content, "New Title");
-        assert!(updated.contains("# New Title"));
-        assert!(!updated.contains("# Old Title"));
-        assert!(updated.contains("Content here."));
-    }
-
-    #[test]
     fn test_rename_note_basic() {
         let dir = TempDir::new().unwrap();
         let vault = dir.path();
@@ -331,7 +296,9 @@ mod tests {
         assert!(Path::new(&result.new_path).exists());
 
         let new_content = fs::read_to_string(&result.new_path).unwrap();
-        assert!(new_content.contains("# Sprint Retrospective"));
+        // H1 is body content — rename must NOT modify it
+        assert!(new_content.contains("# Weekly Review"));
+        assert!(new_content.contains("title: Sprint Retrospective"));
     }
 
     #[test]
@@ -454,7 +421,8 @@ mod tests {
 
         let content = fs::read_to_string(&result.new_path).unwrap();
         assert!(content.contains("title: New Name"));
-        assert!(content.contains("# New Name"));
+        // H1 is body content — rename must NOT modify it
+        assert!(content.contains("# Old Name"));
     }
 
     // --- Regression: rename empty / minimal notes (nota vuota) ---
@@ -513,7 +481,9 @@ mod tests {
     #[test]
     fn test_rename_note_h1_only_no_body() {
         let content = rename_test_note("note/heading-only.md", "# Old Heading\n", "New Heading");
-        assert!(content.contains("# New Heading"));
+        // H1 is body content — rename must NOT modify it
+        assert!(content.contains("# Old Heading"));
+        assert!(content.contains("title: New Heading"));
     }
 
     #[test]
@@ -524,7 +494,8 @@ mod tests {
             "Renamed Note",
         );
         assert!(content.contains("title: Renamed Note"));
-        assert!(content.contains("# Renamed Note"));
+        // H1 is body content — rename must NOT modify it
+        assert!(content.contains("# My Note"));
     }
 
     // --- rename-on-save: filename doesn't match title slug ---
@@ -676,6 +647,32 @@ mod tests {
         assert_eq!(result.updated_files, 1);
         let other_content = fs::read_to_string(vault.join("note/other.md")).unwrap();
         assert!(other_content.contains("[[Sprint Retrospective]]"));
+    }
+
+    #[test]
+    fn test_rename_note_does_not_modify_h1() {
+        // H1 is body content — rename should only update frontmatter title, not H1
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        create_test_file(
+            vault,
+            "note/old.md",
+            "---\ntitle: Old Title\ntype: Note\n---\n\n# Old Title\n\nSome body text.\n",
+        );
+
+        let old_path = vault.join("note/old.md");
+        let result = rename_note(
+            vault.to_str().unwrap(),
+            old_path.to_str().unwrap(),
+            "Brand New Title",
+            None,
+        )
+        .unwrap();
+
+        let content = fs::read_to_string(&result.new_path).unwrap();
+        assert!(content.contains("title: Brand New Title"), "frontmatter title should be updated");
+        assert!(content.contains("# Old Title"), "H1 must NOT be modified by rename");
+        assert!(!content.contains("# Brand New Title"), "H1 must NOT match new title");
     }
 
     #[test]

@@ -1,6 +1,5 @@
 import { useRef, useEffect, useCallback, memo } from 'react'
-import { useEditorTabSwap, getH1TextFromBlocks } from '../hooks/useEditorTabSwap'
-import { useHeadingTitleSync } from '../hooks/useHeadingTitleSync'
+import { useEditorTabSwap } from '../hooks/useEditorTabSwap'
 import { useCreateBlockNote } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
 import { uploadImageFile } from '../hooks/useImageDrop'
@@ -59,7 +58,7 @@ interface EditorProps {
   onRenameTab?: (path: string, newTitle: string) => void
   onContentChange?: (path: string, content: string) => void
   onSave?: () => void
-  /** Called when H1→title sync updates the title (debounced). */
+  /** Called when the user edits the title in TitleField. */
   onTitleSync?: (path: string, newTitle: string) => void
   canGoBack?: boolean
   canGoForward?: boolean
@@ -125,8 +124,6 @@ interface EditorSetupParams {
   activeTabPath: string | null
   vaultPath?: string
   onContentChange?: (path: string, content: string) => void
-  onTitleSync?: (path: string, newTitle: string) => void
-  onRenameTab?: (path: string, newTitle: string) => void
   onLoadDiff?: (path: string) => Promise<string>
   onLoadDiffAtCommit?: (path: string, commitHash: string) => Promise<string>
   getNoteStatus?: (path: string) => NoteStatus
@@ -169,8 +166,8 @@ function useRawModeWithFlush(
 }
 
 function useEditorSetup({
-  tabs, activeTabPath, vaultPath, onContentChange, onTitleSync,
-  onRenameTab, onLoadDiff, onLoadDiffAtCommit, getNoteStatus,
+  tabs, activeTabPath, vaultPath, onContentChange,
+  onLoadDiff, onLoadDiffAtCommit, getNoteStatus,
   rawToggleRef, diffToggleRef,
 }: EditorSetupParams) {
   const vaultPathRef = useRef(vaultPath)
@@ -183,27 +180,14 @@ function useEditorSetup({
 
   const activeTab = tabs.find((t) => t.entry.path === activeTabPath) ?? null
 
-  const { syncActiveRef, onH1Changed, onManualRename } = useHeadingTitleSync({
-    activeTabPath,
-    currentTitle: activeTab?.entry.title ?? null,
-    onTitleSync: onTitleSync ?? (() => {}),
-  })
-
   const { rawMode, handleToggleRaw, rawLatestContentRef } = useRawModeWithFlush(
     activeTabPath, onContentChange,
   )
 
   const { handleEditorChange, editorMountedRef } = useEditorTabSwap({
-    tabs, activeTabPath, editor, onContentChange,
-    onH1Change: onH1Changed, syncActiveRef, rawMode,
+    tabs, activeTabPath, editor, onContentChange, rawMode,
   })
   useEditorFocus(editor, editorMountedRef)
-
-  const handleRenameTabWithSync = useCallback((path: string, newTitle: string) => {
-    const h1Text = getH1TextFromBlocks(editor.document)
-    onManualRename(newTitle, h1Text)
-    onRenameTab?.(path, newTitle)
-  }, [editor, onManualRename, onRenameTab])
 
   const { diffMode, diffContent, diffLoading, handleToggleDiff, handleViewCommitDiff } = useDiffMode({
     activeTabPath, onLoadDiff, onLoadDiffAtCommit,
@@ -221,7 +205,7 @@ function useEditorSetup({
     editor, activeTab, rawLatestContentRef,
     rawMode, diffMode, diffContent, diffLoading,
     handleToggleDiffExclusive, handleToggleRawExclusive,
-    handleEditorChange, handleRenameTabWithSync, handleViewCommitDiff,
+    handleEditorChange, handleViewCommitDiff,
     isLoadingNewTab, activeStatus, showDiffToggle,
   }
 }
@@ -246,11 +230,11 @@ export const Editor = memo(function Editor(props: EditorProps) {
     editor, activeTab, rawLatestContentRef,
     rawMode, diffMode, diffContent, diffLoading,
     handleToggleDiffExclusive, handleToggleRawExclusive,
-    handleEditorChange, handleRenameTabWithSync, handleViewCommitDiff,
+    handleEditorChange, handleViewCommitDiff,
     isLoadingNewTab, activeStatus, showDiffToggle,
   } = useEditorSetup({
-    tabs, activeTabPath, vaultPath, onContentChange, onTitleSync,
-    onRenameTab: props.onRenameTab, onLoadDiff: props.onLoadDiff,
+    tabs, activeTabPath, vaultPath, onContentChange,
+    onLoadDiff: props.onLoadDiff,
     onLoadDiffAtCommit: props.onLoadDiffAtCommit, getNoteStatus,
     rawToggleRef: props.rawToggleRef, diffToggleRef: props.diffToggleRef,
   })
@@ -265,7 +249,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
         onCloseTab={onCloseTab}
         onCreateNote={onCreateNote}
         onReorderTabs={onReorderTabs}
-        onRenameTab={handleRenameTabWithSync}
+        onRenameTab={props.onRenameTab}
         canGoBack={canGoBack}
         canGoForward={canGoForward}
         onGoBack={onGoBack}
