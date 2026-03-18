@@ -219,6 +219,43 @@ describe('useEditorSave', () => {
     expect(updateVaultContent).toHaveBeenCalledWith('/vault/note.md', edited)
   })
 
+  it('calls onNotePersisted with path and content after saving pending content', async () => {
+    const onNotePersisted = vi.fn()
+    const { result } = renderHook(() =>
+      useEditorSave({ updateVaultContent, setTabs, setToastMessage, onNotePersisted })
+    )
+
+    act(() => {
+      result.current.handleContentChange('/vault/theme/default.md', '---\nbackground: "#FFD700"\n---\n')
+    })
+
+    await act(async () => {
+      await result.current.handleSave()
+    })
+
+    expect(onNotePersisted).toHaveBeenCalledWith(
+      '/vault/theme/default.md',
+      '---\nbackground: "#FFD700"\n---\n',
+    )
+  })
+
+  it('calls onNotePersisted for unsaved fallback when no pending content', async () => {
+    const onNotePersisted = vi.fn()
+    const { result } = renderHook(() =>
+      useEditorSave({ updateVaultContent, setTabs, setToastMessage, onNotePersisted })
+    )
+
+    // No handleContentChange — simulate Cmd+S on a newly created unsaved note
+    await act(async () => {
+      await result.current.handleSave({ path: '/vault/theme/default.md', content: '---\nbackground: "#FF0000"\n---\n' })
+    })
+
+    expect(onNotePersisted).toHaveBeenCalledWith(
+      '/vault/theme/default.md',
+      '---\nbackground: "#FF0000"\n---\n',
+    )
+  })
+
   it('successive edits and saves persist each version correctly', async () => {
     const { result } = renderSaveHook()
 

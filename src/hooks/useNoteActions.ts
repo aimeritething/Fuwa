@@ -27,6 +27,8 @@ export interface NoteActionsConfig {
   markContentPending?: (path: string, content: string) => void
   onNewNotePersisted?: () => void
   replaceEntry?: (oldPath: string, patch: Partial<VaultEntry> & { path: string }) => void
+  /** Called after frontmatter is written to disk — used for live-reloading theme CSS vars. */
+  onFrontmatterContentChanged?: (path: string, content: string) => void
 }
 
 function isTitleKey(key: string): boolean {
@@ -131,7 +133,8 @@ export function useNoteActions(config: NoteActionsConfig) {
     handleCreateType: creation.handleCreateType,
     createTypeEntrySilent: creation.createTypeEntrySilent,
     handleUpdateFrontmatter: useCallback(async (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => {
-      await runFrontmatterOp('update', path, key, value, options)
+      const newContent = await runFrontmatterOp('update', path, key, value, options)
+      if (newContent) config.onFrontmatterContentChanged?.(path, newContent)
       if (shouldRenameOnTitleUpdate(key, value)) {
         try {
           await renameAfterTitleChange(path, value, {
@@ -142,9 +145,15 @@ export function useNoteActions(config: NoteActionsConfig) {
           console.error('Failed to rename note after title change:', err)
         }
       }
-    }, [runFrontmatterOp, config.vaultPath, config.replaceEntry, rename.tabsRef, setTabs, activeTabPathRef, handleSwitchTab, setToastMessage, updateTabContent]),
-    handleDeleteProperty: useCallback((path: string, key: string, options?: FrontmatterOpOptions) => runFrontmatterOp('delete', path, key, undefined, options), [runFrontmatterOp]),
-    handleAddProperty: useCallback((path: string, key: string, value: FrontmatterValue) => runFrontmatterOp('update', path, key, value), [runFrontmatterOp]),
+    }, [runFrontmatterOp, config, rename.tabsRef, setTabs, activeTabPathRef, handleSwitchTab, setToastMessage, updateTabContent]),
+    handleDeleteProperty: useCallback(async (path: string, key: string, options?: FrontmatterOpOptions) => {
+      const newContent = await runFrontmatterOp('delete', path, key, undefined, options)
+      if (newContent) config.onFrontmatterContentChanged?.(path, newContent)
+    }, [runFrontmatterOp, config]),
+    handleAddProperty: useCallback(async (path: string, key: string, value: FrontmatterValue) => {
+      const newContent = await runFrontmatterOp('update', path, key, value)
+      if (newContent) config.onFrontmatterContentChanged?.(path, newContent)
+    }, [runFrontmatterOp, config]),
     handleRenameNote: rename.handleRenameNote,
   }
 }

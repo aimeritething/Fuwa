@@ -65,20 +65,24 @@ export interface FrontmatterOpOptions {
   silent?: boolean
 }
 
-/** Run a frontmatter update/delete and apply the result to state. */
+/** Run a frontmatter update/delete and apply the result to state.
+ *  Returns the new file content on success, or undefined on failure. */
 export async function runFrontmatterAndApply(
   op: 'update' | 'delete', path: string, key: string, value: FrontmatterValue | undefined,
   callbacks: { updateTab: (p: string, c: string) => void; updateEntry: (p: string, patch: Partial<VaultEntry>) => void; toast: (m: string | null) => void },
   options?: FrontmatterOpOptions,
-): Promise<void> {
+): Promise<string | undefined> {
   try {
-    callbacks.updateTab(path, await executeFrontmatterOp(op, path, key, value))
+    const newContent = await executeFrontmatterOp(op, path, key, value)
+    callbacks.updateTab(path, newContent)
     const patch = frontmatterToEntryPatch(op, key, value)
     if (Object.keys(patch).length > 0) callbacks.updateEntry(path, patch)
     if (!options?.silent) callbacks.toast(op === 'update' ? 'Property updated' : 'Property deleted')
+    return newContent
   } catch (err) {
     console.error(`Failed to ${op} frontmatter:`, err)
     if (options?.silent) throw err
     callbacks.toast(`Failed to ${op} property`)
+    return undefined
   }
 }
