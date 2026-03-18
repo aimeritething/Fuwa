@@ -670,9 +670,18 @@ mod tests {
         .unwrap();
 
         let content = fs::read_to_string(&result.new_path).unwrap();
-        assert!(content.contains("title: Brand New Title"), "frontmatter title should be updated");
-        assert!(content.contains("# Old Title"), "H1 must NOT be modified by rename");
-        assert!(!content.contains("# Brand New Title"), "H1 must NOT match new title");
+        assert!(
+            content.contains("title: Brand New Title"),
+            "frontmatter title should be updated"
+        );
+        assert!(
+            content.contains("# Old Title"),
+            "H1 must NOT be modified by rename"
+        );
+        assert!(
+            !content.contains("# Brand New Title"),
+            "H1 must NOT match new title"
+        );
     }
 
     #[test]
