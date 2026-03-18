@@ -80,9 +80,9 @@ test.describe('Trash management', () => {
     const bulkBar = page.locator('[data-testid="bulk-action-bar"]')
     await expect(bulkBar).toBeVisible({ timeout: 3000 })
     await expect(page.locator('[data-testid="bulk-restore-btn"]')).toBeVisible()
+    await expect(page.locator('[data-testid="bulk-archive-btn"]')).toBeVisible()
     await expect(page.locator('[data-testid="bulk-delete-btn"]')).toBeVisible()
-    // Archive and Trash buttons should NOT be visible in trash view
-    await expect(page.locator('[data-testid="bulk-archive-btn"]')).not.toBeVisible()
+    // Trash button should NOT be visible in trash view (notes are already trashed)
     await expect(page.locator('[data-testid="bulk-trash-btn"]')).not.toBeVisible()
   })
 
