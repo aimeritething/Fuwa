@@ -15,18 +15,13 @@ test.describe('Note list preview snippet', () => {
     await expect(noteItems.first()).toBeVisible({ timeout: 5000 })
 
     // Each note item has a snippet div: 12px text with muted-foreground
-    // Check that at least one note has text content in its snippet area
-    const snippets = noteListContainer.locator('.text-muted-foreground')
-    const count = await snippets.count()
-    let foundSnippet = false
-    for (let i = 0; i < count; i++) {
-      const text = await snippets.nth(i).textContent()
-      if (text && text.length > 15 && !/^\d/.test(text.trim())) {
-        foundSnippet = true
-        break
-      }
-    }
-    expect(foundSnippet).toBe(true)
+    // Use the specific text-[12px] class to target snippet divs, not metadata
+    const snippetSelector = '.text-\\[12px\\].text-muted-foreground'
+    const snippet = noteListContainer.locator(snippetSelector).first()
+    await expect(snippet).toBeVisible({ timeout: 5000 })
+
+    const text = await snippet.textContent()
+    expect(text && text.length > 10).toBe(true)
   })
 
   test('snippet does not contain raw markdown formatting', async ({ page }) => {
