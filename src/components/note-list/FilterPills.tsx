@@ -15,7 +15,7 @@ const PILLS: { value: NoteListFilter; label: string }[] = [
 
 function FilterPillsInner({ active, counts, onChange }: FilterPillsProps) {
   return (
-    <div className="flex shrink-0 items-center gap-1 border-b border-border px-4 py-1.5" data-testid="filter-pills">
+    <div className="flex h-[45px] shrink-0 items-center gap-1 border-b border-border px-4" data-testid="filter-pills">
       {PILLS.map(({ value, label }) => (
         <button
           key={value}
