@@ -85,13 +85,13 @@ jobs:
       # comments on PRs). This step enforces a minimum floor on the
       # project-wide Hotspot Code Health score (weighted avg of the most
       # frequently edited files — the ones that matter most).
-      # Current baseline: 9.33 | Aspirational target: 9.5
-      - name: Hotspot Code Health gate (≥9.2)
+      # Current baseline: 9.53 | Aspirational target: 9.8
+      - name: Hotspot Code Health gate (≥9.5)
         env:
           CODESCENE_PAT: ${{ secrets.CODESCENE_PAT }}
           CODESCENE_PROJECT_ID: ${{ secrets.CODESCENE_PROJECT_ID }}
         run: |
-          THRESHOLD=9.2
+          THRESHOLD=9.5
           SCORE=$(curl -sf \
             -H "Authorization: Bearer $CODESCENE_PAT" \
             -H "Accept: application/json" \
