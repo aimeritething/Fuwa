@@ -36,6 +36,7 @@ const GO_ALL_NOTES: &str = "go-all-notes";
 const GO_ARCHIVED: &str = "go-archived";
 const GO_TRASH: &str = "go-trash";
 const GO_CHANGES: &str = "go-changes";
+const GO_INBOX: &str = "go-inbox";
 
 const NOTE_ARCHIVE: &str = "note-archive";
 const NOTE_TRASH: &str = "note-trash";
@@ -267,6 +268,7 @@ fn build_go_menu(app: &App) -> MenuResult {
         .build(app)?;
     let trash = MenuItemBuilder::new("Trash").id(GO_TRASH).build(app)?;
     let changes = MenuItemBuilder::new("Changes").id(GO_CHANGES).build(app)?;
+    let inbox = MenuItemBuilder::new("Inbox").id(GO_INBOX).build(app)?;
     let go_back = MenuItemBuilder::new("Go Back")
         .id(VIEW_GO_BACK)
         .accelerator("CmdOrCtrl+[")
@@ -281,6 +283,7 @@ fn build_go_menu(app: &App) -> MenuResult {
         .item(&archived)
         .item(&trash)
         .item(&changes)
+        .item(&inbox)
         .separator()
         .item(&go_back)
         .item(&go_forward)

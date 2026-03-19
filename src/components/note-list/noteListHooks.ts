@@ -3,10 +3,11 @@ import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus } from '../
 import {
   type SortOption, type SortDirection, type SortConfig, type NoteListFilter,
   getSortComparator, extractSortableProperties,
-  buildRelationshipGroups, filterEntries,
+  buildRelationshipGroups, filterEntries, filterInboxEntries,
   loadSortPreferences, saveSortPreferences,
   parseSortConfig, serializeSortConfig, clearListSortFromLocalStorage,
 } from '../../utils/noteListHelpers'
+import type { InboxPeriod } from '../../types'
 import { buildTypeEntryMap } from '../../utils/typeColors'
 import { filterByQuery, filterGroupsByQuery, countExpiredTrash, createNoteStatusResolver, isModifiedEntry } from './noteListUtils'
 import type { MultiSelectState } from '../../hooks/useMultiSelect'
@@ -19,14 +20,16 @@ export function useTypeEntryMap(entries: VaultEntry[]) {
 
 // --- useFilteredEntries ---
 
-export function useFilteredEntries(entries: VaultEntry[], selection: SidebarSelection, modifiedPathSet: Set<string>, modifiedSuffixes: string[], subFilter?: NoteListFilter) {
+export function useFilteredEntries(entries: VaultEntry[], selection: SidebarSelection, modifiedPathSet: Set<string>, modifiedSuffixes: string[], subFilter?: NoteListFilter, inboxPeriod?: InboxPeriod) {
   const isEntityView = selection.kind === 'entity'
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
+  const isInboxView = selection.kind === 'filter' && selection.filter === 'inbox'
   return useMemo(() => {
     if (isEntityView) return []
     if (isChangesView) return entries.filter((e) => isModifiedEntry(e.path, modifiedPathSet, modifiedSuffixes))
+    if (isInboxView) return filterInboxEntries(entries, inboxPeriod ?? 'month')
     return filterEntries(entries, selection, subFilter)
-  }, [entries, selection, isEntityView, isChangesView, modifiedPathSet, modifiedSuffixes, subFilter])
+  }, [entries, selection, isEntityView, isChangesView, isInboxView, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod])
 }
 
 // --- useNoteListData ---
@@ -36,14 +39,15 @@ interface NoteListDataParams {
   query: string; listSort: SortOption; listDirection: SortDirection
   modifiedPathSet: Set<string>; modifiedSuffixes: string[]
   subFilter?: NoteListFilter
+  inboxPeriod?: InboxPeriod
 }
 
-export function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter }: NoteListDataParams) {
+export function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod }: NoteListDataParams) {
   const isEntityView = selection.kind === 'entity'
   const isTrashView = (selection.kind === 'filter' && selection.filter === 'trash') || subFilter === 'trashed'
   const isArchivedView = (selection.kind === 'filter' && selection.filter === 'archived') || subFilter === 'archived'
 
-  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter)
+  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod)
 
   const searched = useMemo(() => {
     const sorted = [...filteredEntries].sort(getSortComparator(listSort, listDirection))
@@ -125,11 +129,12 @@ export interface UseNoteListSortParams {
   modifiedPathSet: Set<string>
   modifiedSuffixes: string[]
   subFilter?: NoteListFilter
+  inboxPeriod?: InboxPeriod
   onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
 }
 
-export function useNoteListSort({ entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, onUpdateTypeSort, updateEntry }: UseNoteListSortParams) {
+export function useNoteListSort({ entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod, onUpdateTypeSort, updateEntry }: UseNoteListSortParams) {
   const [sortPrefs, setSortPrefs] = useState<Record<string, SortConfig>>(loadSortPreferences)
 
   const typeDocument = useMemo(() => {
@@ -157,7 +162,7 @@ export function useNoteListSort({ entries, selection, modifiedPathSet, modifiedS
     }
   }, [typeDocument, persistence])
 
-  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter)
+  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod)
   const customProperties = useMemo(() => extractSortableProperties(filteredEntries), [filteredEntries])
   const listSort = useMemo<SortOption>(() => deriveEffectiveSort(listConfig.option, customProperties), [listConfig.option, customProperties])
   const listDirection = listSort === listConfig.option ? listConfig.direction : 'desc'

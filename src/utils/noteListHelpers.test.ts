@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { formatSubtitle, formatSearchSubtitle, relativeDate, buildRelationshipGroups, getSortComparator, extractSortableProperties, getSortOptionLabel, getDefaultDirection, parseSortConfig, serializeSortConfig } from './noteListHelpers'
+import { formatSubtitle, formatSearchSubtitle, relativeDate, buildRelationshipGroups, getSortComparator, extractSortableProperties, getSortOptionLabel, getDefaultDirection, parseSortConfig, serializeSortConfig, buildValidLinkTargets, isInboxEntry, filterInboxEntries } from './noteListHelpers'
 import type { VaultEntry } from '../types'
 
 function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
@@ -483,5 +483,137 @@ describe('parseSortConfig', () => {
     for (const config of configs) {
       expect(parseSortConfig(serializeSortConfig(config))).toEqual(config)
     }
+  })
+})
+
+// --- Inbox ---
+
+describe('buildValidLinkTargets', () => {
+  it('builds a set of titles, filename stems, and path stems', () => {
+    const entries = [
+      makeEntry({ path: '/vault/project/my-project.md', filename: 'my-project.md', title: 'My Project', aliases: ['MP'] }),
+      makeEntry({ path: '/vault/note/test.md', filename: 'test.md', title: 'Test Note' }),
+    ]
+    const targets = buildValidLinkTargets(entries)
+    expect(targets.has('My Project')).toBe(true)
+    expect(targets.has('Test Note')).toBe(true)
+    expect(targets.has('my-project')).toBe(true)
+    expect(targets.has('test')).toBe(true)
+    expect(targets.has('MP')).toBe(true)
+    // path stems (last 2 segments without .md)
+    expect(targets.has('project/my-project')).toBe(true)
+    expect(targets.has('note/test')).toBe(true)
+  })
+})
+
+describe('isInboxEntry', () => {
+  const allEntries = [
+    makeEntry({ path: '/vault/topic/ai.md', filename: 'ai.md', title: 'AI', aliases: [] }),
+    makeEntry({ path: '/vault/project/laputa.md', filename: 'laputa.md', title: 'Laputa' }),
+  ]
+  const validTargets = buildValidLinkTargets(allEntries)
+
+  it('returns true for a note with no outgoing links and no relationships', () => {
+    const note = makeEntry({ outgoingLinks: [], relationships: {}, belongsTo: [], relatedTo: [] })
+    expect(isInboxEntry(note, validTargets)).toBe(true)
+  })
+
+  it('returns false for a trashed note', () => {
+    const note = makeEntry({ trashed: true, outgoingLinks: [], relationships: {} })
+    expect(isInboxEntry(note, validTargets)).toBe(false)
+  })
+
+  it('returns false for an archived note', () => {
+    const note = makeEntry({ archived: true, outgoingLinks: [], relationships: {} })
+    expect(isInboxEntry(note, validTargets)).toBe(false)
+  })
+
+  it('returns false for a note with valid outgoing links', () => {
+    const note = makeEntry({ outgoingLinks: ['AI'] })
+    expect(isInboxEntry(note, validTargets)).toBe(false)
+  })
+
+  it('returns true for a note with only broken outgoing links (non-existent targets)', () => {
+    const note = makeEntry({ outgoingLinks: ['NonExistent Page', 'Another Missing'] })
+    expect(isInboxEntry(note, validTargets)).toBe(true)
+  })
+
+  it('returns false for a note with valid frontmatter relationships', () => {
+    const note = makeEntry({ outgoingLinks: [], relationships: { 'Related to': ['[[AI]]'] } })
+    expect(isInboxEntry(note, validTargets)).toBe(false)
+  })
+
+  it('returns false for a note with belongsTo pointing to real note', () => {
+    const note = makeEntry({ outgoingLinks: [], belongsTo: ['[[Laputa]]'] })
+    expect(isInboxEntry(note, validTargets)).toBe(false)
+  })
+
+  it('returns false for a note with relatedTo pointing to real note', () => {
+    const note = makeEntry({ outgoingLinks: [], relatedTo: ['[[AI]]'] })
+    expect(isInboxEntry(note, validTargets)).toBe(false)
+  })
+
+  it('returns true for a note with only broken relationship refs', () => {
+    const note = makeEntry({ outgoingLinks: [], relationships: { 'Relates': ['[[Ghost]]'] }, belongsTo: ['[[Missing]]'] })
+    expect(isInboxEntry(note, validTargets)).toBe(true)
+  })
+
+  it('excludes Type entries from inbox', () => {
+    const note = makeEntry({ isA: 'Type', outgoingLinks: [], relationships: {} })
+    expect(isInboxEntry(note, validTargets)).toBe(false)
+  })
+})
+
+describe('filterInboxEntries', () => {
+  const now = Math.floor(Date.now() / 1000)
+  const DAY = 86400
+
+  const allEntries = [
+    makeEntry({ path: '/vault/a.md', filename: 'a.md', title: 'A', createdAt: now - 2 * DAY, outgoingLinks: [] }),
+    makeEntry({ path: '/vault/b.md', filename: 'b.md', title: 'B', createdAt: now - 15 * DAY, outgoingLinks: [] }),
+    makeEntry({ path: '/vault/c.md', filename: 'c.md', title: 'C', createdAt: now - 60 * DAY, outgoingLinks: [] }),
+    makeEntry({ path: '/vault/d.md', filename: 'd.md', title: 'D', createdAt: now - 120 * DAY, outgoingLinks: [] }),
+    makeEntry({ path: '/vault/linked.md', filename: 'linked.md', title: 'Linked', createdAt: now - 1 * DAY, outgoingLinks: ['A'] }),
+  ]
+
+  it('filters by "week" period (last 7 days)', () => {
+    const result = filterInboxEntries(allEntries, 'week')
+    expect(result.map(e => e.title)).toEqual(['A'])
+  })
+
+  it('filters by "month" period (last 30 days)', () => {
+    const result = filterInboxEntries(allEntries, 'month')
+    expect(result.map(e => e.title)).toEqual(['A', 'B'])
+  })
+
+  it('filters by "quarter" period (last 90 days)', () => {
+    const result = filterInboxEntries(allEntries, 'quarter')
+    expect(result.map(e => e.title)).toEqual(['A', 'B', 'C'])
+  })
+
+  it('filters by "all" period', () => {
+    const result = filterInboxEntries(allEntries, 'all')
+    expect(result.map(e => e.title)).toEqual(['A', 'B', 'C', 'D'])
+  })
+
+  it('sorts by createdAt descending', () => {
+    const result = filterInboxEntries(allEntries, 'all')
+    for (let i = 1; i < result.length; i++) {
+      expect((result[i - 1].createdAt ?? 0)).toBeGreaterThanOrEqual((result[i].createdAt ?? 0))
+    }
+  })
+
+  it('excludes linked notes', () => {
+    const result = filterInboxEntries(allEntries, 'all')
+    expect(result.find(e => e.title === 'Linked')).toBeUndefined()
+  })
+
+  it('returns empty array when all notes have valid outgoing links', () => {
+    const linked = [
+      makeEntry({ path: '/vault/x.md', title: 'X', outgoingLinks: ['Y'] }),
+      makeEntry({ path: '/vault/y.md', title: 'Y', outgoingLinks: ['X'] }),
+    ]
+    const result = filterInboxEntries(linked, 'all')
+    expect(result).toEqual([])
   })
 })

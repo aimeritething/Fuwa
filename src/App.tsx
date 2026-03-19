@@ -49,9 +49,9 @@ import { FlatVaultMigrationBanner } from './components/FlatVaultMigrationBanner'
 import { useFlatVaultMigration } from './hooks/useFlatVaultMigration'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
-import type { SidebarSelection, VaultEntry } from './types'
+import type { SidebarSelection, VaultEntry, InboxPeriod } from './types'
 import type { NoteListItem } from './utils/ai-context'
-import { filterEntries, type NoteListFilter } from './utils/noteListHelpers'
+import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openLocalFile } from './utils/url'
 import { flushEditorContent } from './utils/autoSave'
 import './App.css'
@@ -71,6 +71,7 @@ const DEFAULT_SELECTION: SidebarSelection = { kind: 'filter', filter: 'all' }
 function App() {
   const [selection, setSelection] = useState<SidebarSelection>(DEFAULT_SELECTION)
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>('open')
+  const [inboxPeriod, setInboxPeriod] = useState<InboxPeriod>('month')
   const handleSetSelection = useCallback((sel: SidebarSelection) => {
     setSelection(sel)
     setNoteListFilter('open')
@@ -513,11 +514,15 @@ function App() {
 
   const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null
 
+  const inboxCount = useMemo(() => filterInboxEntries(vault.entries, inboxPeriod).length, [vault.entries, inboxPeriod])
+
   const aiNoteList = useMemo<NoteListItem[]>(() => {
-    return filterEntries(vault.entries, selection).map(e => ({
+    const isInbox = selection.kind === 'filter' && selection.filter === 'inbox'
+    const filtered = isInbox ? filterInboxEntries(vault.entries, inboxPeriod) : filterEntries(vault.entries, selection)
+    return filtered.map(e => ({
       path: e.path, title: e.title, type: e.isA ?? 'Note',
     }))
-  }, [vault.entries, selection])
+  }, [vault.entries, selection, inboxPeriod])
 
   const aiNoteListFilter = useMemo(() => {
     if (selection.kind === 'sectionGroup') return { type: selection.type, query: '' }
@@ -541,7 +546,7 @@ function App() {
         {sidebarVisible && (
           <>
             <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-              <Sidebar entries={vault.entries} selection={selection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} modifiedCount={vault.modifiedFiles.length} onCommitPush={commitFlow.openCommitDialog} isGitVault={!vault.modifiedFilesError} />
+              <Sidebar entries={vault.entries} selection={selection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} modifiedCount={vault.modifiedFiles.length} inboxCount={inboxCount} onCommitPush={commitFlow.openCommitDialog} isGitVault={!vault.modifiedFilesError} />
             </div>
             <ResizeHandle onResize={layout.handleSidebarResize} />
           </>
@@ -552,7 +557,7 @@ function App() {
               {selection.kind === 'filter' && selection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onBulkRestore={bulkActions.handleBulkRestore} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onEmptyTrash={deleteActions.handleEmptyTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} />
+                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} onInboxPeriodChange={setInboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onBulkRestore={bulkActions.handleBulkRestore} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onEmptyTrash={deleteActions.handleEmptyTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />

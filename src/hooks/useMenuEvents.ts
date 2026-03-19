@@ -75,6 +75,7 @@ const FILTER_MAP: Record<string, SidebarFilter> = {
   'go-archived': 'archived',
   'go-trash': 'trash',
   'go-changes': 'changes',
+  'go-inbox': 'inbox',
 }
 
 type OptionalHandler =

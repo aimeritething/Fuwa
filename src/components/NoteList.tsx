@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, memo } from 'react'
-import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus } from '../types'
+import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus, InboxPeriod } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
-import { countByFilter } from '../utils/noteListHelpers'
+import { countByFilter, countInboxByPeriod } from '../utils/noteListHelpers'
 import { NoteItem } from './NoteItem'
 import { prefetchNoteContent } from '../hooks/useTabManagement'
 import { BulkActionBar } from './BulkActionBar'
@@ -9,6 +9,7 @@ import { useMultiSelect } from '../hooks/useMultiSelect'
 import { useNoteListKeyboard } from '../hooks/useNoteListKeyboard'
 import { NoteListHeader } from './note-list/NoteListHeader'
 import { FilterPills } from './note-list/FilterPills'
+import { InboxFilterPills } from './note-list/InboxFilterPills'
 import { EntityView, ListView } from './note-list/NoteListViews'
 import { DeletedNotesBanner } from './note-list/TrashWarningBanner'
 import { routeNoteClick, toggleSetMember, resolveHeaderTitle } from './note-list/noteListUtils'
@@ -23,6 +24,8 @@ interface NoteListProps {
   selectedNote: VaultEntry | null
   noteListFilter: NoteListFilter
   onNoteListFilterChange: (filter: NoteListFilter) => void
+  inboxPeriod?: InboxPeriod
+  onInboxPeriodChange?: (period: InboxPeriod) => void
   modifiedFiles?: ModifiedFile[]
   modifiedFilesError?: string | null
   getNoteStatus?: (path: string) => NoteStatus
@@ -39,10 +42,11 @@ interface NoteListProps {
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
 }
 
-function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry }: NoteListProps) {
+function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'month', onInboxPeriodChange, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry }: NoteListProps) {
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
 
   const isSectionGroup = selection.kind === 'sectionGroup'
+  const isInboxView = selection.kind === 'filter' && selection.filter === 'inbox'
   const subFilter = isSectionGroup ? noteListFilter : undefined
 
   const filterCounts = useMemo(
@@ -50,12 +54,17 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
     [entries, isSectionGroup, selection],
   )
 
-  const { listSort, listDirection, customProperties, handleSortChange, sortPrefs, typeDocument } = useNoteListSort({ entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, onUpdateTypeSort, updateEntry })
+  const inboxCounts = useMemo(
+    () => isInboxView ? countInboxByPeriod(entries) : { week: 0, month: 0, quarter: 0, all: 0 },
+    [entries, isInboxView],
+  )
+
+  const { listSort, listDirection, customProperties, handleSortChange, sortPrefs, typeDocument } = useNoteListSort({ entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod: isInboxView ? inboxPeriod : undefined, onUpdateTypeSort, updateEntry })
   const { search, setSearch, query, searchVisible, toggleSearch } = useNoteListSearch()
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   const typeEntryMap = useTypeEntryMap(entries)
-  const { isEntityView, isTrashView, isArchivedView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter })
+  const { isEntityView, isTrashView, isArchivedView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod: isInboxView ? inboxPeriod : undefined })
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
   const deletedCount = useMemo(
     () => isChangesView ? (modifiedFiles ?? []).filter((f) => f.status === 'deleted').length : 0,
@@ -91,12 +100,13 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
     <div className="flex flex-col select-none overflow-hidden border-r border-border bg-card text-foreground" style={{ height: '100%' }}>
       <NoteListHeader title={title} typeDocument={typeDocument} isEntityView={isEntityView} isTrashView={isTrashView} trashCount={searched.length} listSort={listSort} listDirection={listDirection} customProperties={customProperties} sidebarCollapsed={sidebarCollapsed} searchVisible={searchVisible} search={search} onSortChange={handleSortChange} onCreateNote={onCreateNote} onOpenType={onReplaceActiveTab} onToggleSearch={toggleSearch} onSearchChange={setSearch} onEmptyTrash={onEmptyTrash} />
       {isSectionGroup && <FilterPills active={noteListFilter} counts={filterCounts} onChange={onNoteListFilterChange} />}
+      {isInboxView && onInboxPeriodChange && <InboxFilterPills active={inboxPeriod} counts={inboxCounts} onChange={onInboxPeriodChange} />}
       <div className="flex flex-1 flex-col overflow-hidden outline-none" style={{ minHeight: 0 }} tabIndex={0} onKeyDown={noteListKeyboard.handleKeyDown} onFocus={noteListKeyboard.handleFocus} data-testid="note-list-container">
         <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
           {entitySelection ? (
             <EntityView entity={entitySelection.entry} groups={searchedGroups} query={query} collapsedGroups={collapsedGroups} sortPrefs={sortPrefs} onToggleGroup={toggleGroup} onSortChange={handleSortChange} renderItem={renderItem} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} />
           ) : (
-            <ListView isTrashView={isTrashView} isArchivedView={isArchivedView} isChangesView={isChangesView} changesError={modifiedFilesError} expiredTrashCount={expiredTrashCount} deletedCount={deletedCount} searched={searched} query={query} renderItem={renderItem} virtuosoRef={noteListKeyboard.virtuosoRef} />
+            <ListView isTrashView={isTrashView} isArchivedView={isArchivedView} isChangesView={isChangesView} isInboxView={isInboxView} changesError={modifiedFilesError} expiredTrashCount={expiredTrashCount} deletedCount={deletedCount} searched={searched} query={query} renderItem={renderItem} virtuosoRef={noteListKeyboard.virtuosoRef} />
           )}
         </div>
         {isChangesView && deletedCount > 0 && <DeletedNotesBanner count={deletedCount} />}

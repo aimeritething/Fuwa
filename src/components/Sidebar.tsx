@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  FileText, Trash, Archive, CaretLeft, GitDiff, Pulse,
+  FileText, Trash, Archive, CaretLeft, GitDiff, Pulse, Tray,
 } from '@phosphor-icons/react'
 import { GitCommitHorizontal, SlidersHorizontal } from 'lucide-react'
 import {
@@ -34,6 +34,7 @@ interface SidebarProps {
   onRenameSection?: (typeName: string, label: string) => void
   onToggleTypeVisibility?: (typeName: string) => void
   modifiedCount?: number
+  inboxCount?: number
   onCommitPush?: () => void
   onCollapse?: () => void
   isGitVault?: boolean
@@ -222,7 +223,7 @@ export const Sidebar = memo(function Sidebar({
   entries, selection, onSelect, onSelectNote, onCreateType, onCreateNewType,
   onCustomizeType, onUpdateTypeTemplate, onReorderSections, onRenameSection,
   onToggleTypeVisibility,
-  modifiedCount = 0, onCommitPush, onCollapse, isGitVault = false,
+  modifiedCount = 0, inboxCount = 0, onCommitPush, onCollapse, isGitVault = false,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
@@ -312,6 +313,7 @@ export const Sidebar = memo(function Sidebar({
             <NavItem icon={GitDiff} label="Changes" count={modifiedCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'changes' })} activeClassName="bg-[color:var(--accent-orange)]/10 text-[var(--accent-orange)]" badgeClassName="text-white" badgeStyle={{ background: 'var(--accent-orange)' }} onClick={() => onSelect({ kind: 'filter', filter: 'changes' })} />
           )}
           <NavItem icon={Pulse} label="Pulse" isActive={isSelectionActive(selection, { kind: 'filter', filter: 'pulse' })} disabled={!isGitVault} disabledTooltip="Pulse is only available for git-enabled vaults" onClick={isGitVault ? () => onSelect({ kind: 'filter', filter: 'pulse' }) : undefined} />
+          <NavItem icon={Tray} label="Inbox" count={inboxCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'inbox' })} badgeClassName="text-muted-foreground" badgeStyle={{ background: 'var(--muted)' }} onClick={() => onSelect({ kind: 'filter', filter: 'inbox' })} />
         </div>
 
         {/* Sections header + visibility popover */}

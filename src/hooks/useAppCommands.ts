@@ -4,7 +4,7 @@ import { useCommandRegistry } from './useCommandRegistry'
 import type { CommandAction } from './useCommandRegistry'
 import { useKeyboardNavigation } from './useKeyboardNavigation'
 import { useMenuEvents } from './useMenuEvents'
-import type { SidebarSelection, ThemeFile, VaultEntry } from '../types'
+import type { SidebarSelection, SidebarFilter, ThemeFile, VaultEntry } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
 
@@ -97,7 +97,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
 
   const { onSelect } = config
 
-  const selectFilter = useCallback((filter: 'all' | 'archived' | 'trash' | 'changes' | 'pulse') => {
+  const selectFilter = useCallback((filter: SidebarFilter) => {
     onSelect({ kind: 'filter', filter })
   }, [onSelect])
 

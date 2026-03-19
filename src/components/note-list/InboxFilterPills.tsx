@@ -1,0 +1,44 @@
+import { memo } from 'react'
+import type { InboxPeriod } from '../../types'
+
+interface InboxFilterPillsProps {
+  active: InboxPeriod
+  counts: Record<InboxPeriod, number>
+  onChange: (period: InboxPeriod) => void
+}
+
+const PILLS: { value: InboxPeriod; label: string }[] = [
+  { value: 'week', label: 'This week' },
+  { value: 'month', label: 'This month' },
+  { value: 'quarter', label: 'This quarter' },
+  { value: 'all', label: 'All time' },
+]
+
+function InboxFilterPillsInner({ active, counts, onChange }: InboxFilterPillsProps) {
+  return (
+    <div className="flex h-[45px] shrink-0 items-center gap-1 border-b border-border px-4" data-testid="inbox-filter-pills">
+      {PILLS.map(({ value, label }) => (
+        <button
+          key={value}
+          type="button"
+          role="tab"
+          aria-selected={active === value}
+          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+            active === value
+              ? 'border-foreground/20 bg-foreground/10 text-foreground'
+              : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+          }`}
+          onClick={() => onChange(value)}
+          data-testid={`inbox-pill-${value}`}
+        >
+          {label}
+          <span className={`text-[10px] tabular-nums ${active === value ? 'text-foreground/70' : 'text-muted-foreground/70'}`}>
+            {counts[value]}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+export const InboxFilterPills = memo(InboxFilterPillsInner)

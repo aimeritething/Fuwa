@@ -7,6 +7,7 @@ export function resolveHeaderTitle(selection: SidebarSelection, typeDocument: Va
   if (selection.kind === 'filter' && selection.filter === 'archived') return 'Archive'
   if (selection.kind === 'filter' && selection.filter === 'trash') return 'Trash'
   if (selection.kind === 'filter' && selection.filter === 'changes') return 'Changes'
+  if (selection.kind === 'filter' && selection.filter === 'inbox') return 'Inbox'
   return 'Notes'
 }
 

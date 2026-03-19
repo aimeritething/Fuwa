@@ -242,6 +242,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
       { id: 'empty-trash', label: 'Empty Trash', group: 'Note', keywords: ['delete', 'permanently', 'purge', 'clear', 'trash'], enabled: (trashedCount ?? 0) > 0, execute: () => onEmptyTrash?.() },
       { id: 'go-changes', label: 'Go to Changes', group: 'Navigation', keywords: ['git', 'modified', 'pending'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'changes' }) },
       { id: 'go-pulse', label: 'Go to Pulse', group: 'Navigation', keywords: ['activity', 'history', 'commits', 'git', 'feed'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'pulse' }) },
+      { id: 'go-inbox', label: 'Go to Inbox', group: 'Navigation', keywords: ['inbox', 'unlinked', 'orphan', 'unorganized', 'triage'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'inbox' }) },
       { id: 'go-back', label: 'Go Back', group: 'Navigation', shortcut: '⌘[', keywords: ['previous', 'history', 'back'], enabled: !!canGoBack, execute: () => onGoBack?.() },
       { id: 'go-forward', label: 'Go Forward', group: 'Navigation', shortcut: '⌘]', keywords: ['next', 'history', 'forward'], enabled: !!canGoForward, execute: () => onGoForward?.() },
 

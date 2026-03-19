@@ -11,11 +11,12 @@ function ListViewHeader({ isTrashView, expiredTrashCount }: {
   return <TrashWarningBanner expiredCount={isTrashView ? expiredTrashCount : 0} />
 }
 
-function resolveEmptyText(isChangesView: boolean, changesError: string | null | undefined, isTrashView: boolean, isArchivedView: boolean, query: string): string {
+function resolveEmptyText(isChangesView: boolean, changesError: string | null | undefined, isTrashView: boolean, isArchivedView: boolean, isInboxView: boolean, query: string): string {
   if (isChangesView && changesError) return `Failed to load changes: ${changesError}`
   if (isChangesView) return 'No pending changes'
   if (isTrashView) return 'Trash is empty'
   if (isArchivedView) return 'No archived notes'
+  if (isInboxView) return query ? 'No matching notes' : 'All notes are organized'
   return query ? 'No matching notes' : 'No notes found'
 }
 
@@ -39,13 +40,13 @@ export function EntityView({ entity, groups, query, collapsedGroups, sortPrefs, 
   )
 }
 
-export function ListView({ isTrashView, isArchivedView, isChangesView, changesError, expiredTrashCount, deletedCount = 0, searched, query, renderItem, virtuosoRef }: {
-  isTrashView: boolean; isArchivedView?: boolean; isChangesView?: boolean; changesError?: string | null; expiredTrashCount: number
+export function ListView({ isTrashView, isArchivedView, isChangesView, isInboxView, changesError, expiredTrashCount, deletedCount = 0, searched, query, renderItem, virtuosoRef }: {
+  isTrashView: boolean; isArchivedView?: boolean; isChangesView?: boolean; isInboxView?: boolean; changesError?: string | null; expiredTrashCount: number
   deletedCount?: number; searched: VaultEntry[]; query: string
   renderItem: (entry: VaultEntry) => React.ReactNode
   virtuosoRef?: React.RefObject<VirtuosoHandle | null>
 }) {
-  const emptyText = resolveEmptyText(!!isChangesView, changesError ?? null, isTrashView, !!isArchivedView, query)
+  const emptyText = resolveEmptyText(!!isChangesView, changesError ?? null, isTrashView, !!isArchivedView, !!isInboxView, query)
   const hasHeader = isTrashView && expiredTrashCount > 0
   const hasDeletedOnly = !!isChangesView && deletedCount > 0 && searched.length === 0
 
