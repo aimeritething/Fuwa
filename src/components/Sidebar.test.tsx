@@ -418,6 +418,36 @@ describe('Sidebar', () => {
     expect(onSelect).toHaveBeenCalledWith({ kind: 'filter', filter: 'changes' })
   })
 
+  describe('Changes and Pulse in secondary bottom area', () => {
+    it('renders Changes outside the main top nav section', () => {
+      render(<Sidebar entries={[]} selection={defaultSelection} onSelect={() => {}} modifiedCount={3} isGitVault />)
+      const changesEl = screen.getByText('Changes')
+      // Changes should be inside the secondary bottom area, not the top nav
+      const secondaryArea = changesEl.closest('[data-testid="sidebar-secondary"]')
+      expect(secondaryArea).not.toBeNull()
+    })
+
+    it('renders Pulse outside the main top nav section', () => {
+      render(<Sidebar entries={[]} selection={defaultSelection} onSelect={() => {}} isGitVault />)
+      const pulseEl = screen.getByText('Pulse')
+      const secondaryArea = pulseEl.closest('[data-testid="sidebar-secondary"]')
+      expect(secondaryArea).not.toBeNull()
+    })
+
+    it('does not render Changes or Pulse inside the top nav section', () => {
+      render(<Sidebar entries={[]} selection={defaultSelection} onSelect={() => {}} modifiedCount={3} isGitVault />)
+      const topNav = screen.getByTestId('sidebar-top-nav')
+      expect(topNav.textContent).not.toContain('Changes')
+      expect(topNav.textContent).not.toContain('Pulse')
+    })
+
+    it('shows Changes badge count in secondary area', () => {
+      render(<Sidebar entries={[]} selection={defaultSelection} onSelect={() => {}} modifiedCount={7} isGitVault />)
+      const secondaryArea = screen.getByTestId('sidebar-secondary')
+      expect(secondaryArea.textContent).toContain('7')
+    })
+  })
+
   describe('dynamic custom type sections', () => {
     const entriesWithCustomTypes: VaultEntry[] = [
       ...mockEntries,

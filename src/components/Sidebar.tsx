@@ -305,14 +305,10 @@ export const Sidebar = memo(function Sidebar({
       <SidebarTitleBar onCollapse={onCollapse} />
       <nav className="flex-1 overflow-y-auto">
         {/* Top nav */}
-        <div className="border-b border-border" style={{ padding: '4px 6px' }}>
+        <div className="border-b border-border" data-testid="sidebar-top-nav" style={{ padding: '4px 6px' }}>
           <NavItem icon={FileText} label="All Notes" count={activeCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'all' })} badgeClassName="bg-primary text-primary-foreground" onClick={() => onSelect({ kind: 'filter', filter: 'all' })} />
           <NavItem icon={Archive} label="Archive" count={archivedCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'archived' })} badgeClassName="text-muted-foreground" badgeStyle={{ background: 'var(--muted)' }} onClick={() => onSelect({ kind: 'filter', filter: 'archived' })} />
           <NavItem icon={Trash} label="Trash" count={trashedCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'trash' })} activeClassName="bg-destructive/10 text-destructive" badgeClassName="text-muted-foreground" badgeStyle={{ background: 'var(--muted)' }} onClick={() => onSelect({ kind: 'filter', filter: 'trash' })} />
-          {modifiedCount > 0 && (
-            <NavItem icon={GitDiff} label="Changes" count={modifiedCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'changes' })} activeClassName="bg-[color:var(--accent-orange)]/10 text-[var(--accent-orange)]" badgeClassName="text-white" badgeStyle={{ background: 'var(--accent-orange)' }} onClick={() => onSelect({ kind: 'filter', filter: 'changes' })} />
-          )}
-          <NavItem icon={Pulse} label="Pulse" isActive={isSelectionActive(selection, { kind: 'filter', filter: 'pulse' })} disabled={!isGitVault} disabledTooltip="Pulse is only available for git-enabled vaults" onClick={isGitVault ? () => onSelect({ kind: 'filter', filter: 'pulse' }) : undefined} />
           <NavItem icon={Tray} label="Inbox" count={inboxCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'inbox' })} badgeClassName="text-muted-foreground" badgeStyle={{ background: 'var(--muted)' }} onClick={() => onSelect({ kind: 'filter', filter: 'inbox' })} />
         </div>
 
@@ -337,6 +333,13 @@ export const Sidebar = memo(function Sidebar({
         </DndContext>
       </nav>
 
+      {/* Secondary area: Changes + Pulse */}
+      <div className="shrink-0 border-t border-border" data-testid="sidebar-secondary" style={{ padding: '4px 6px' }}>
+        {modifiedCount > 0 && (
+          <NavItem icon={GitDiff} label="Changes" count={modifiedCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'changes' })} activeClassName="bg-[color:var(--accent-orange)]/10 text-[var(--accent-orange)]" badgeClassName="text-white" badgeStyle={{ background: 'var(--accent-orange)' }} onClick={() => onSelect({ kind: 'filter', filter: 'changes' })} compact />
+        )}
+        <NavItem icon={Pulse} label="Pulse" isActive={isSelectionActive(selection, { kind: 'filter', filter: 'pulse' })} disabled={!isGitVault} disabledTooltip="Pulse is only available for git-enabled vaults" onClick={isGitVault ? () => onSelect({ kind: 'filter', filter: 'pulse' }) : undefined} compact />
+      </div>
       <CommitButton modifiedCount={modifiedCount} onClick={onCommitPush} />
       <ContextMenuOverlay pos={contextMenuPos} type={contextMenuType} innerRef={contextMenuRef} onOpenCustomize={(type) => { closeContextMenu(); setCustomizeTarget(type) }} onStartRename={handleStartRename} />
       <CustomizeOverlay target={customizeTarget} typeEntryMap={typeEntryMap} innerRef={popoverRef} onCustomize={handleCustomize} onChangeTemplate={handleChangeTemplate} onClose={closeCustomizeTarget} />

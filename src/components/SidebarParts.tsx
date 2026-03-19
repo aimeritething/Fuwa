@@ -25,7 +25,7 @@ export function isSelectionActive(current: SidebarSelection, check: SidebarSelec
 
 // --- NavItem ---
 
-export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 'bg-primary/10 text-primary', badgeClassName, badgeStyle, onClick, disabled, disabledTooltip }: {
+export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 'bg-primary/10 text-primary', badgeClassName, badgeStyle, onClick, disabled, disabledTooltip, compact }: {
   icon: ComponentType<IconProps>
   label: string
   count?: number
@@ -36,25 +36,30 @@ export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 
   onClick?: () => void
   disabled?: boolean
   disabledTooltip?: string
+  compact?: boolean
 }) {
+  const iconSize = compact ? 14 : 16
+  const textClass = compact ? 'text-[12px]' : 'text-[13px]'
+  const padding = compact ? '4px 16px' : '6px 16px'
+
   if (disabled) {
     return (
-      <div className="flex select-none items-center gap-2 rounded text-foreground" style={{ padding: '6px 16px', borderRadius: 4, opacity: 0.4, cursor: 'not-allowed' }} title={disabledTooltip ?? "Coming soon"}>
-        <Icon size={16} />
-        <span className="flex-1 text-[13px] font-medium">{label}</span>
+      <div className="flex select-none items-center gap-2 rounded text-foreground" style={{ padding, borderRadius: 4, opacity: 0.4, cursor: 'not-allowed' }} title={disabledTooltip ?? "Coming soon"}>
+        <Icon size={iconSize} />
+        <span className={cn("flex-1 font-medium", textClass)}>{label}</span>
       </div>
     )
   }
   return (
     <div
       className={cn("flex cursor-pointer select-none items-center gap-2 rounded transition-colors", isActive ? activeClassName : "text-foreground hover:bg-accent")}
-      style={{ padding: '6px 16px', borderRadius: 4 }}
+      style={{ padding, borderRadius: 4 }}
       onClick={onClick}
     >
-      <Icon size={16} />
-      <span className="flex-1 text-[13px] font-medium">{label}</span>
+      <Icon size={iconSize} />
+      <span className={cn("flex-1 font-medium", textClass)}>{label}</span>
       {count !== undefined && count > 0 && (
-        <span className={cn("flex items-center justify-center", badgeClassName)} style={{ height: 20, borderRadius: 9999, padding: '0 6px', fontSize: 10, ...badgeStyle }}>
+        <span className={cn("flex items-center justify-center", badgeClassName)} style={{ height: compact ? 18 : 20, borderRadius: 9999, padding: '0 6px', fontSize: 10, ...badgeStyle }}>
           {count}
         </span>
       )}
