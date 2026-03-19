@@ -51,14 +51,24 @@ export function TypeSelector({ isA, customColorKey, availableTypes, typeColorKey
     ? [...availableTypes, isA].sort((a, b) => a.localeCompare(b))
     : availableTypes
 
+  const typeColor = isA ? getTypeColor(isA, typeColorKeys[isA] ?? customColorKey) : undefined
+  const typeLightColor = isA ? getTypeLightColor(isA, typeColorKeys[isA] ?? customColorKey) : undefined
+
   return (
     <div className="flex min-w-0 items-center justify-between gap-2 px-1.5" data-testid="type-selector">
       <span className="font-mono-overline shrink-0 text-muted-foreground">Type</span>
       <Select value={currentValue} onValueChange={v => onUpdateProperty('type', v === TYPE_NONE ? null : v)}>
         <SelectTrigger
           size="sm"
-          className="h-[26px] shrink-0 gap-1 border-border bg-muted px-1.5 py-0 shadow-none"
-          style={{ fontSize: 12, borderRadius: 4 }}
+          className={`h-auto shrink-0 gap-1 border-none shadow-none [&_svg]:text-current ring-inset${isA ? ' hover:ring-1 hover:ring-current' : ' bg-muted hover:opacity-80'}`}
+          style={{
+            background: typeLightColor ?? undefined,
+            color: typeColor ?? undefined,
+            borderRadius: 6,
+            padding: '4px 8px',
+            fontSize: 12,
+            fontWeight: 500,
+          }}
         >
           <SelectValue placeholder="None" />
         </SelectTrigger>
