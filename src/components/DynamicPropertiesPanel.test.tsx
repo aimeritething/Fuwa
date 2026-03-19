@@ -227,14 +227,14 @@ describe('DynamicPropertiesPanel', () => {
       <DynamicPropertiesPanel
         entry={makeEntry()}
         content=""
-        frontmatter={{ archived: false }}
+        frontmatter={{ published: false }}
         onUpdateProperty={onUpdateProperty}
       />
     )
     // Boolean should show as Yes/No toggle
     const toggleBtn = screen.getByText('\u2717 No')
     fireEvent.click(toggleBtn)
-    expect(onUpdateProperty).toHaveBeenCalledWith('archived', true)
+    expect(onUpdateProperty).toHaveBeenCalledWith('published', true)
   })
 
   it('renders array property as tag pills', () => {
@@ -441,7 +441,7 @@ describe('DynamicPropertiesPanel', () => {
       <DynamicPropertiesPanel
         entry={makeEntry()}
         content=""
-        frontmatter={{ archived: 'false' }}
+        frontmatter={{ draft: 'false' }}
         onUpdateProperty={onUpdateProperty}
       />
     )
@@ -450,7 +450,7 @@ describe('DynamicPropertiesPanel', () => {
     const input = screen.getByDisplayValue('false')
     fireEvent.change(input, { target: { value: 'true' } })
     fireEvent.keyDown(input, { key: 'Enter' })
-    expect(onUpdateProperty).toHaveBeenCalledWith('archived', true)
+    expect(onUpdateProperty).toHaveBeenCalledWith('draft', true)
   })
 
   it('coerces numeric strings to numbers on save', () => {
@@ -885,12 +885,60 @@ describe('DynamicPropertiesPanel', () => {
         <DynamicPropertiesPanel
           entry={makeEntry()}
           content=""
-          frontmatter={{ archived: false }}
+          frontmatter={{ published: false }}
           onUpdateProperty={onUpdateProperty}
         />
       )
       expect(screen.getByTestId('boolean-toggle')).toBeInTheDocument()
       expect(screen.getByText('\u2717 No')).toBeInTheDocument()
+    })
+  })
+
+  describe('system property filtering', () => {
+    it('hides trashed, trashed_at, archived, archived_at, icon from properties panel', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{ trashed: true, trashed_at: '2026-01-01', archived: false, archived_at: '', icon: '📝', cadence: 'Weekly' }}
+          onUpdateProperty={onUpdateProperty}
+        />
+      )
+      expect(screen.queryByText('trashed')).not.toBeInTheDocument()
+      expect(screen.queryByText('trashed_at')).not.toBeInTheDocument()
+      expect(screen.queryByText('archived')).not.toBeInTheDocument()
+      expect(screen.queryByText('archived_at')).not.toBeInTheDocument()
+      expect(screen.queryByText('icon')).not.toBeInTheDocument()
+      // Custom property still visible
+      expect(screen.getByText('cadence')).toBeInTheDocument()
+    })
+
+    it('filters system properties case-insensitively', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{ Trashed: true, Archived: false, Icon: '🎯', cadence: 'Daily' }}
+          onUpdateProperty={onUpdateProperty}
+        />
+      )
+      expect(screen.queryByText('Trashed')).not.toBeInTheDocument()
+      expect(screen.queryByText('Archived')).not.toBeInTheDocument()
+      expect(screen.queryByText('Icon')).not.toBeInTheDocument()
+      expect(screen.getByText('cadence')).toBeInTheDocument()
+    })
+
+    it('does not filter similar but non-matching property names', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{ 'Is Trashed': true, 'archive_date': '2026-01-01' }}
+          onUpdateProperty={onUpdateProperty}
+        />
+      )
+      expect(screen.getByText('Is Trashed')).toBeInTheDocument()
+      expect(screen.getByText('archive_date')).toBeInTheDocument()
     })
   })
 

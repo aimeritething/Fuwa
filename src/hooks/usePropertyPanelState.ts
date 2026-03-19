@@ -11,7 +11,8 @@ import {
 import { containsWikilinks } from '../components/DynamicPropertiesPanel'
 
 // Keys to skip showing in Properties (handled by dedicated UI or internal)
-const SKIP_KEYS = new Set(['aliases', 'workspace', 'title', 'type', 'is_a', 'Is A'])
+// Compared case-insensitively via isVisibleProperty()
+const SKIP_KEYS = new Set(['aliases', 'workspace', 'title', 'type', 'is_a', 'is a', 'trashed', 'trashed_at', 'archived', 'archived_at', 'icon'])
 
 function coerceValue(raw: string): FrontmatterValue {
   if (raw.toLowerCase() === 'true') return true
@@ -79,7 +80,7 @@ function collectAllVaultTags(entries: VaultEntry[] | undefined): Record<string, 
 }
 
 function isVisibleProperty([key, value]: [string, FrontmatterValue]): boolean {
-  return !SKIP_KEYS.has(key) && !containsWikilinks(value)
+  return !SKIP_KEYS.has(key.toLowerCase()) && !containsWikilinks(value)
 }
 
 function parseAddedValue(rawValue: string, mode: PropertyDisplayMode): FrontmatterValue {
