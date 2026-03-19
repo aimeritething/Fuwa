@@ -1,14 +1,16 @@
 import { useCallback, useState } from 'react'
+import type { GitPushResult } from '../types'
 
 interface CommitFlowConfig {
   savePending: () => Promise<void | boolean>
   loadModifiedFiles: () => Promise<void>
-  commitAndPush: (message: string) => Promise<string>
+  commitAndPush: (message: string) => Promise<GitPushResult>
   setToastMessage: (msg: string | null) => void
+  onPushRejected?: () => void
 }
 
 /** Manages the Commit & Push dialog state and the save→commit→push flow. */
-export function useCommitFlow({ savePending, loadModifiedFiles, commitAndPush, setToastMessage }: CommitFlowConfig) {
+export function useCommitFlow({ savePending, loadModifiedFiles, commitAndPush, setToastMessage, onPushRejected }: CommitFlowConfig) {
   const [showCommitDialog, setShowCommitDialog] = useState(false)
 
   const openCommitDialog = useCallback(async () => {
@@ -22,13 +24,20 @@ export function useCommitFlow({ savePending, loadModifiedFiles, commitAndPush, s
     try {
       await savePending()
       const result = await commitAndPush(message)
-      setToastMessage(result)
+      if (result.status === 'ok') {
+        setToastMessage('Committed and pushed')
+      } else if (result.status === 'rejected') {
+        setToastMessage('Committed, but push rejected — remote has new commits. Pull first.')
+        onPushRejected?.()
+      } else {
+        setToastMessage(result.message)
+      }
       loadModifiedFiles()
     } catch (err) {
       console.error('Commit failed:', err)
       setToastMessage(`Commit failed: ${err}`)
     }
-  }, [savePending, commitAndPush, loadModifiedFiles, setToastMessage])
+  }, [savePending, commitAndPush, loadModifiedFiles, setToastMessage, onPushRejected])
 
   const closeCommitDialog = useCallback(() => setShowCommitDialog(false), [])
 

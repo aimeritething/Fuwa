@@ -15,15 +15,13 @@ async function loadVaultData(vaultPath: string) {
   return { entries }
 }
 
-async function commitWithPush(vaultPath: string, message: string): Promise<string> {
+async function commitWithPush(vaultPath: string, message: string): Promise<GitPushResult> {
   if (!isTauri()) {
     await mockInvoke<string>('git_commit', { message })
-    const pushResult = await mockInvoke<GitPushResult>('git_push', {})
-    return pushResult.status === 'ok' ? 'Committed and pushed' : pushResult.message
+    return mockInvoke<GitPushResult>('git_push', {})
   }
   await invoke<string>('git_commit', { vaultPath, message })
-  const pushResult = await invoke<GitPushResult>('git_push', { vaultPath })
-  return pushResult.status === 'ok' ? 'Committed and pushed' : pushResult.message
+  return invoke<GitPushResult>('git_push', { vaultPath })
 }
 
 function useNewNoteTracker() {
@@ -156,7 +154,7 @@ export function useVaultLoader(vaultPath: string) {
   const getNoteStatus = useCallback((path: string): NoteStatus =>
     resolveNoteStatus(path, tracker.newPaths, modifiedFiles, pendingSave.pendingSavePaths, unsaved.unsavedPaths), [tracker.newPaths, modifiedFiles, pendingSave.pendingSavePaths, unsaved.unsavedPaths])
 
-  const commitAndPush = useCallback((message: string): Promise<string> =>
+  const commitAndPush = useCallback((message: string): Promise<GitPushResult> =>
     commitWithPush(vaultPath, message), [vaultPath])
 
   const reloadVault = useCallback(

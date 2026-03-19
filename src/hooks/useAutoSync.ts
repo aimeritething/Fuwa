@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
-import type { GitPullResult, LastCommitInfo, SyncStatus } from '../types'
+import type { GitPullResult, GitPushResult, GitRemoteStatus, LastCommitInfo, SyncStatus } from '../types'
 
 const DEFAULT_INTERVAL_MS = 5 * 60_000
 
@@ -23,11 +23,16 @@ export interface AutoSyncState {
   lastSyncTime: number | null
   conflictFiles: string[]
   lastCommitInfo: LastCommitInfo | null
+  remoteStatus: GitRemoteStatus | null
   triggerSync: () => void
+  /** Pull from remote, then push if there are local commits ahead. */
+  pullAndPush: () => void
   /** Pause auto-pull (e.g. while conflict resolver modal is open). */
   pausePull: () => void
   /** Resume auto-pull after pausing. */
   resumePull: () => void
+  /** Notify that a push was rejected so the status updates to pull_required. */
+  handlePushRejected: () => void
 }
 
 export function useAutoSync({
@@ -42,10 +47,21 @@ export function useAutoSync({
   const [lastSyncTime, setLastSyncTime] = useState<number | null>(null)
   const [conflictFiles, setConflictFiles] = useState<string[]>([])
   const [lastCommitInfo, setLastCommitInfo] = useState<LastCommitInfo | null>(null)
+  const [remoteStatus, setRemoteStatus] = useState<GitRemoteStatus | null>(null)
   const syncingRef = useRef(false)
   const pauseRef = useRef(false)
   const callbacksRef = useRef({ onVaultUpdated, onSyncUpdated, onConflict, onToast })
   callbacksRef.current = { onVaultUpdated, onSyncUpdated, onConflict, onToast }
+
+  const refreshRemoteStatus = useCallback(async () => {
+    try {
+      const status = await tauriCall<GitRemoteStatus>('git_remote_status', { vaultPath })
+      setRemoteStatus(status)
+      return status
+    } catch {
+      return null
+    }
+  }, [vaultPath])
 
   /** Check for pre-existing conflicts (e.g. from a prior session or interrupted rebase). */
   const checkExistingConflicts = useCallback(async (): Promise<boolean> => {
@@ -63,6 +79,12 @@ export function useAutoSync({
     return false
   }, [vaultPath])
 
+  const refreshCommitInfo = useCallback(() => {
+    tauriCall<LastCommitInfo | null>('get_last_commit_info', { vaultPath })
+      .then(info => setLastCommitInfo(info))
+      .catch(() => {})
+  }, [vaultPath])
+
   const performPull = useCallback(async () => {
     if (syncingRef.current || pauseRef.current) return
     syncingRef.current = true
@@ -71,9 +93,7 @@ export function useAutoSync({
     try {
       const result = await tauriCall<GitPullResult>('git_pull', { vaultPath })
       setLastSyncTime(Date.now())
-      tauriCall<LastCommitInfo | null>('get_last_commit_info', { vaultPath })
-        .then(info => setLastCommitInfo(info))
-        .catch(() => {})
+      refreshCommitInfo()
 
       if (result.status === 'updated') {
         setSyncStatus('idle')
@@ -96,20 +116,84 @@ export function useAutoSync({
         setSyncStatus('idle')
         setConflictFiles([])
       }
+
+      // Refresh remote status after pull
+      refreshRemoteStatus()
     } catch {
       setSyncStatus('error')
       setLastSyncTime(Date.now())
     } finally {
       syncingRef.current = false
     }
-  }, [vaultPath, checkExistingConflicts])
+  }, [vaultPath, checkExistingConflicts, refreshCommitInfo, refreshRemoteStatus])
+
+  /** Pull from remote, then auto-push if successful. Used for divergence recovery. */
+  const pullAndPush = useCallback(async () => {
+    if (syncingRef.current) return
+    syncingRef.current = true
+    setSyncStatus('syncing')
+
+    try {
+      const pullResult = await tauriCall<GitPullResult>('git_pull', { vaultPath })
+      setLastSyncTime(Date.now())
+      refreshCommitInfo()
+
+      if (pullResult.status === 'conflict') {
+        setSyncStatus('conflict')
+        setConflictFiles(pullResult.conflictFiles)
+        callbacksRef.current.onConflict(pullResult.conflictFiles)
+        return
+      }
+
+      if (pullResult.status === 'error') {
+        const hasConflicts = await checkExistingConflicts()
+        if (!hasConflicts) {
+          setSyncStatus('error')
+          callbacksRef.current.onToast('Pull failed: ' + pullResult.message)
+        }
+        return
+      }
+
+      if (pullResult.status === 'updated') {
+        callbacksRef.current.onVaultUpdated()
+        callbacksRef.current.onSyncUpdated?.()
+      }
+
+      // Now push
+      const pushResult = await tauriCall<GitPushResult>('git_push', { vaultPath })
+      if (pushResult.status === 'ok') {
+        setSyncStatus('idle')
+        setConflictFiles([])
+        callbacksRef.current.onToast('Pulled and pushed successfully')
+      } else if (pushResult.status === 'rejected') {
+        // Still diverged — shouldn't happen after pull but handle gracefully
+        setSyncStatus('pull_required')
+        callbacksRef.current.onToast('Push still rejected after pull — try again')
+      } else {
+        setSyncStatus('error')
+        callbacksRef.current.onToast(pushResult.message)
+      }
+
+      refreshRemoteStatus()
+    } catch {
+      setSyncStatus('error')
+      setLastSyncTime(Date.now())
+    } finally {
+      syncingRef.current = false
+    }
+  }, [vaultPath, checkExistingConflicts, refreshCommitInfo, refreshRemoteStatus])
+
+  const handlePushRejected = useCallback(() => {
+    setSyncStatus('pull_required')
+  }, [])
 
   // Check for pre-existing conflicts on mount, then pull
   useEffect(() => {
     checkExistingConflicts().then(hasConflicts => {
       if (!hasConflicts) performPull()
     })
-  }, [checkExistingConflicts, performPull])
+    refreshRemoteStatus()
+  }, [checkExistingConflicts, performPull, refreshRemoteStatus])
 
   // Pull on window focus (app foreground)
   useEffect(() => {
@@ -128,5 +212,5 @@ export function useAutoSync({
   const pausePull = useCallback(() => { pauseRef.current = true }, [])
   const resumePull = useCallback(() => { pauseRef.current = false }, [])
 
-  return { syncStatus, lastSyncTime, conflictFiles, lastCommitInfo, triggerSync: performPull, pausePull, resumePull }
+  return { syncStatus, lastSyncTime, conflictFiles, lastCommitInfo, remoteStatus, triggerSync: performPull, pullAndPush, pausePull, resumePull, handlePushRejected }
 }

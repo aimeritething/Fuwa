@@ -32,6 +32,7 @@ export interface MenuEventHandlers {
   onCreateTheme?: () => void
   onRestoreDefaultThemes?: () => void
   onCommitPush?: () => void
+  onPull?: () => void
   onResolveConflicts?: () => void
   onViewChanges?: () => void
   onInstallMcp?: () => void
@@ -84,7 +85,7 @@ type OptionalHandler =
   | 'onCreateType' | 'onToggleRawEditor' | 'onToggleDiff' | 'onToggleAIChat'
   | 'onOpenVault' | 'onRemoveActiveVault' | 'onRestoreGettingStarted'
   | 'onCreateTheme' | 'onRestoreDefaultThemes'
-  | 'onCommitPush' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReindexVault' | 'onReloadVault' | 'onRepairVault'
+  | 'onCommitPush' | 'onPull' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReindexVault' | 'onReloadVault' | 'onRepairVault'
   | 'onEmptyTrash'
   | 'onReopenClosedTab'
   | 'onOpenInNewWindow'
@@ -103,6 +104,7 @@ const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'vault-new-theme': 'onCreateTheme',
   'vault-restore-default-themes': 'onRestoreDefaultThemes',
   'vault-commit-push': 'onCommitPush',
+  'vault-pull': 'onPull',
   'vault-resolve-conflicts': 'onResolveConflicts',
   'vault-view-changes': 'onViewChanges',
   'vault-install-mcp': 'onInstallMcp',

@@ -157,6 +157,35 @@ function App() {
     dialogs.closeConflictResolver()
   }, [autoSync, dialogs])
 
+  /** Resolve a single file conflict from the in-editor banner. */
+  const handleResolveConflictInline = useCallback(async (filePath: string, strategy: 'ours' | 'theirs') => {
+    try {
+      const relativePath = filePath.replace(resolvedPath + '/', '')
+      const call = isTauri() ? invoke : mockInvoke
+      await call('git_resolve_conflict', { vaultPath: resolvedPath, file: relativePath, strategy })
+      // Reload the note content to show the resolved version
+      const content = await (isTauri() ? invoke<string> : mockInvoke<string>)('get_note_content', { path: filePath })
+      // Check remaining conflicts
+      const remaining = await (isTauri() ? invoke<string[]> : mockInvoke<string[]>)('get_conflict_files', { vaultPath: resolvedPath })
+      if (remaining.length === 0) {
+        // All resolved — auto-commit the merge and push
+        await (isTauri() ? invoke : mockInvoke)('git_commit_conflict_resolution', { vaultPath: resolvedPath })
+        vault.reloadVault()
+        autoSync.triggerSync()
+        setToastMessage('All conflicts resolved — merge committed')
+      } else {
+        void content // content reload happens via vault reload
+        vault.reloadVault()
+        setToastMessage(`Resolved — ${remaining.length} conflict${remaining.length > 1 ? 's' : ''} remaining`)
+      }
+    } catch (err) {
+      setToastMessage(`Failed to resolve conflict: ${err}`)
+    }
+  }, [resolvedPath, vault, autoSync, setToastMessage])
+
+  const handleKeepMine = useCallback((path: string) => handleResolveConflictInline(path, 'ours'), [handleResolveConflictInline])
+  const handleKeepTheirs = useCallback((path: string) => handleResolveConflictInline(path, 'theirs'), [handleResolveConflictInline])
+
   // Ref bridges handleContentChange (created after notes) into useNoteActions.
   // Read at callback time, so it's always current when user presses Cmd+N.
   const contentChangeRef = useRef<(path: string, content: string) => void>(() => {})
@@ -362,7 +391,7 @@ function App() {
     }
   }, [handleSaveRaw, handleRenameTab, notes.tabs, notes.activeTabPath, vault.unsavedPaths])
 
-  const commitFlow = useCommitFlow({ savePending, loadModifiedFiles: vault.loadModifiedFiles, commitAndPush: vault.commitAndPush, setToastMessage })
+  const commitFlow = useCommitFlow({ savePending, loadModifiedFiles: vault.loadModifiedFiles, commitAndPush: vault.commitAndPush, setToastMessage, onPushRejected: autoSync.handlePushRejected })
 
   const entryActions = useEntryActions({
     entries: vault.entries, updateEntry: vault.updateEntry,
@@ -470,6 +499,7 @@ function App() {
     onTrashNote: entryActions.handleTrashNote, onRestoreNote: entryActions.handleRestoreNote,
     onArchiveNote: entryActions.handleArchiveNote, onUnarchiveNote: entryActions.handleUnarchiveNote,
     onCommitPush: commitFlow.openCommitDialog,
+    onPull: autoSync.triggerSync,
     onResolveConflicts: handleOpenConflictResolver,
     onSetViewMode: setViewMode,
     onToggleInspector: () => layout.setInspectorCollapsed(c => !c),
@@ -627,6 +657,9 @@ function App() {
             onVaultChanged={handleAgentVaultChanged}
             onSetNoteIcon={handleSetNoteIcon}
             onRemoveNoteIcon={handleRemoveNoteIcon}
+            isConflicted={!!notes.activeTabPath && autoSync.conflictFiles.some(f => notes.activeTabPath?.endsWith(f))}
+            onKeepMine={handleKeepMine}
+            onKeepTheirs={handleKeepTheirs}
           />
         </div>
       </div>
@@ -642,7 +675,7 @@ function App() {
         />
       )}
       <UpdateBanner status={updateStatus} actions={updateActions} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} onTriggerSync={autoSync.triggerSync} onOpenConflictResolver={handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} indexingProgress={indexing.progress} lastIndexedTime={indexing.lastIndexedTime} onRetryIndexing={indexing.retryIndexing} onReindexVault={indexing.triggerFullReindex} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} indexingProgress={indexing.progress} lastIndexedTime={indexing.lastIndexedTime} onRetryIndexing={indexing.retryIndexing} onReindexVault={indexing.triggerFullReindex} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
       <CommandPalette open={dialogs.showCommandPalette} commands={commands} onClose={dialogs.closeCommandPalette} />

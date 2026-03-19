@@ -31,6 +31,7 @@ function makeHandlers(): MenuEventHandlers {
     onCreateTheme: vi.fn(),
     onRestoreDefaultThemes: vi.fn(),
     onCommitPush: vi.fn(),
+    onPull: vi.fn(),
     onResolveConflicts: vi.fn(),
     onViewChanges: vi.fn(),
     onInstallMcp: vi.fn(),
@@ -283,6 +284,12 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('vault-commit-push', h)
     expect(h.onCommitPush).toHaveBeenCalled()
+  })
+
+  it('vault-pull triggers pull', () => {
+    const h = makeHandlers()
+    dispatchMenuEvent('vault-pull', h)
+    expect(h.onPull).toHaveBeenCalled()
   })
 
   it('vault-resolve-conflicts triggers resolve conflicts', () => {

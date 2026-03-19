@@ -31,6 +31,7 @@ interface AppCommandsConfig {
   onArchiveNote: (path: string) => void
   onUnarchiveNote: (path: string) => void
   onCommitPush: () => void
+  onPull?: () => void
   onResolveConflicts?: () => void
   onSetViewMode: (mode: ViewMode) => void
   onToggleInspector: () => void
@@ -159,6 +160,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onCreateTheme: config.onCreateTheme,
     onRestoreDefaultThemes: config.onRestoreDefaultThemes,
     onCommitPush: config.onCommitPush,
+    onPull: config.onPull,
     onResolveConflicts: config.onResolveConflicts,
     onViewChanges: viewChanges,
     onInstallMcp: config.onInstallMcp,
@@ -188,6 +190,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onArchiveNote: config.onArchiveNote,
     onUnarchiveNote: config.onUnarchiveNote,
     onCommitPush: config.onCommitPush,
+    onPull: config.onPull,
     onResolveConflicts: config.onResolveConflicts,
     onSetViewMode: config.onSetViewMode,
     onToggleInspector: config.onToggleInspector,

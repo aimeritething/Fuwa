@@ -83,7 +83,14 @@ export interface GitPushResult {
   message: string
 }
 
-export type SyncStatus = 'idle' | 'syncing' | 'error' | 'conflict'
+export type SyncStatus = 'idle' | 'syncing' | 'error' | 'conflict' | 'pull_required'
+
+export interface GitRemoteStatus {
+  branch: string
+  ahead: number
+  behind: number
+  hasRemote: boolean
+}
 
 export interface DeviceFlowStart {
   device_code: string

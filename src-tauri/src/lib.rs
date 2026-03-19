@@ -130,6 +130,7 @@ pub fn run() {
             commands::get_last_commit_info,
             commands::git_pull,
             commands::git_push,
+            commands::git_remote_status,
             commands::get_conflict_files,
             commands::get_conflict_mode,
             commands::git_resolve_conflict,

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
-import { Package, RefreshCw, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, Search, X, Cpu } from 'lucide-react'
-import type { LastCommitInfo, SyncStatus } from '../types'
+import { Package, RefreshCw, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, Search, X, Cpu, ArrowDown, GitBranch } from 'lucide-react'
+import type { GitRemoteStatus, LastCommitInfo, SyncStatus } from '../types'
 import type { IndexingProgress } from '../hooks/useIndexing'
 import type { McpStatus } from '../hooks/useMcpStatus'
 import { openExternalUrl } from '../utils/url'
@@ -27,7 +27,9 @@ interface StatusBarProps {
   lastSyncTime?: number | null
   conflictCount?: number
   lastCommitInfo?: LastCommitInfo | null
+  remoteStatus?: GitRemoteStatus | null
   onTriggerSync?: () => void
+  onPullAndPush?: () => void
   onOpenConflictResolver?: () => void
   zoomLevel?: number
   onZoomReset?: () => void
@@ -159,10 +161,10 @@ function VaultMenu({ vaults, vaultPath, onSwitchVault, onOpenLocalFolder, onConn
 const ICON_STYLE = { display: 'flex', alignItems: 'center', gap: 4 } as const
 const DISABLED_STYLE = { display: 'flex', alignItems: 'center', opacity: 0.4, cursor: 'not-allowed' } as const
 const SEP_STYLE = { color: 'var(--border)' } as const
-const SYNC_ICON_MAP: Record<string, typeof RefreshCw> = { syncing: Loader2, conflict: AlertTriangle }
+const SYNC_ICON_MAP: Record<string, typeof RefreshCw> = { syncing: Loader2, conflict: AlertTriangle, pull_required: ArrowDown }
 
-const SYNC_LABELS: Record<string, string> = { syncing: 'Syncing…', conflict: 'Conflict', error: 'Sync failed' }
-const SYNC_COLORS: Record<string, string> = { conflict: 'var(--accent-orange)', error: 'var(--muted-foreground)' }
+const SYNC_LABELS: Record<string, string> = { syncing: 'Syncing…', conflict: 'Conflict', error: 'Sync failed', pull_required: 'Pull required' }
+const SYNC_COLORS: Record<string, string> = { conflict: 'var(--accent-orange)', error: 'var(--muted-foreground)', pull_required: 'var(--accent-orange)' }
 
 function formatElapsedSync(lastSyncTime: number | null): string {
   if (!lastSyncTime) return 'Not synced'
@@ -201,21 +203,114 @@ function CommitBadge({ info }: { info: LastCommitInfo }) {
   )
 }
 
-function SyncBadge({ status, lastSyncTime, onTriggerSync, onOpenConflictResolver }: { status: SyncStatus; lastSyncTime: number | null; onTriggerSync?: () => void; onOpenConflictResolver?: () => void }) {
+function syncBadgeTitle(status: SyncStatus): string {
+  if (status === 'conflict') return 'Click to resolve conflicts'
+  if (status === 'syncing') return 'Syncing…'
+  if (status === 'pull_required') return 'Click to pull from remote and push'
+  return 'Click to sync now'
+}
+
+function SyncBadge({ status, lastSyncTime, remoteStatus, onTriggerSync, onPullAndPush, onOpenConflictResolver }: { status: SyncStatus; lastSyncTime: number | null; remoteStatus?: GitRemoteStatus | null; onTriggerSync?: () => void; onPullAndPush?: () => void; onOpenConflictResolver?: () => void }) {
+  const [showPopup, setShowPopup] = useState(false)
+  const popupRef = useRef<HTMLDivElement>(null)
   const SyncIcon = SYNC_ICON_MAP[status] ?? RefreshCw
   const isSyncing = status === 'syncing'
   const isConflict = status === 'conflict'
-  const handleClick = isConflict ? onOpenConflictResolver : onTriggerSync
+  const isPullRequired = status === 'pull_required'
+
+  const handleClick = () => {
+    if (isConflict) { onOpenConflictResolver?.(); return }
+    if (isPullRequired) { onPullAndPush?.(); return }
+    setShowPopup(v => !v)
+  }
+
+  useEffect(() => {
+    if (!showPopup) return
+    const handleOutside = (e: MouseEvent) => {
+      if (popupRef.current && !popupRef.current.contains(e.target as Node)) setShowPopup(false)
+    }
+    document.addEventListener('mousedown', handleOutside)
+    return () => document.removeEventListener('mousedown', handleOutside)
+  }, [showPopup])
+
   return (
-    <span
-      role="button"
-      onClick={handleClick}
-      style={{ ...ICON_STYLE, cursor: handleClick ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 3 }}
-      title={isConflict ? 'Click to resolve conflicts' : isSyncing ? 'Syncing…' : 'Click to sync now'}
-      data-testid="status-sync"
+    <div ref={popupRef} style={{ position: 'relative' }}>
+      <span
+        role="button"
+        onClick={handleClick}
+        style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3 }}
+        title={syncBadgeTitle(status)}
+        data-testid="status-sync"
+      >
+        <SyncIcon size={13} style={{ color: syncIconColor(status) }} className={isSyncing ? 'animate-spin' : ''} />{formatSyncLabel(status, lastSyncTime)}
+      </span>
+      {showPopup && (
+        <GitStatusPopup
+          status={status}
+          remoteStatus={remoteStatus ?? null}
+          onPull={onTriggerSync}
+          onClose={() => setShowPopup(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+function GitStatusPopup({ status, remoteStatus, onPull, onClose }: { status: SyncStatus; remoteStatus: GitRemoteStatus | null; onPull?: () => void; onClose: () => void }) {
+  const branch = remoteStatus?.branch || '—'
+  const ahead = remoteStatus?.ahead ?? 0
+  const behind = remoteStatus?.behind ?? 0
+  const hasRemote = remoteStatus?.hasRemote ?? false
+
+  return (
+    <div
+      data-testid="git-status-popup"
+      style={{
+        position: 'absolute', bottom: '100%', left: 0, marginBottom: 4,
+        background: 'var(--sidebar)', border: '1px solid var(--border)',
+        borderRadius: 6, padding: 8, minWidth: 220, boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+        zIndex: 1000, fontSize: 12, color: 'var(--foreground)',
+      }}
     >
-      <SyncIcon size={13} style={{ color: syncIconColor(status) }} className={isSyncing ? 'animate-spin' : ''} />{formatSyncLabel(status, lastSyncTime)}
-    </span>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+        <GitBranch size={13} style={{ color: 'var(--muted-foreground)' }} />
+        <span style={{ fontWeight: 500 }}>{branch}</span>
+      </div>
+
+      {hasRemote && (
+        <div style={{ display: 'flex', gap: 12, marginBottom: 6, color: 'var(--muted-foreground)' }}>
+          {ahead > 0 && <span title={`${ahead} commit${ahead > 1 ? 's' : ''} ahead of remote`}>↑ {ahead} ahead</span>}
+          {behind > 0 && <span title={`${behind} commit${behind > 1 ? 's' : ''} behind remote`} style={{ color: 'var(--accent-orange)' }}>↓ {behind} behind</span>}
+          {ahead === 0 && behind === 0 && <span>In sync with remote</span>}
+        </div>
+      )}
+
+      {!hasRemote && (
+        <div style={{ color: 'var(--muted-foreground)', marginBottom: 6 }}>No remote configured</div>
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4, color: 'var(--muted-foreground)' }}>
+        Status: {status === 'idle' ? 'Synced' : status === 'pull_required' ? 'Pull required' : status === 'conflict' ? 'Conflicts' : status === 'error' ? 'Error' : status === 'syncing' ? 'Syncing…' : status}
+      </div>
+
+      {hasRemote && (
+        <div style={{ display: 'flex', gap: 4, marginTop: 6, borderTop: '1px solid var(--border)', paddingTop: 6 }}>
+          <button
+            onClick={() => { onPull?.(); onClose() }}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 4, padding: '3px 8px',
+              background: 'transparent', border: '1px solid var(--border)', borderRadius: 4,
+              fontSize: 11, color: 'var(--foreground)', cursor: 'pointer',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+            data-testid="git-status-pull-btn"
+          >
+            <ArrowDown size={11} />Pull
+          </button>
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -356,7 +451,7 @@ function McpBadge({ status, onInstall }: { status: McpStatus; onInstall?: () => 
   )
 }
 
-export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, onTriggerSync, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber, onCheckForUpdates, indexingProgress, lastIndexedTime, onRetryIndexing, onReindexVault, onRemoveVault, mcpStatus, onInstallMcp }: StatusBarProps) {
+export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, remoteStatus, onTriggerSync, onPullAndPush, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber, onCheckForUpdates, indexingProgress, lastIndexedTime, onRetryIndexing, onReindexVault, onRemoveVault, mcpStatus, onInstallMcp }: StatusBarProps) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000)
@@ -378,7 +473,7 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
           onMouseLeave={onCheckForUpdates ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
         ><Package size={13} />{buildNumber ?? 'b?'}</span>
         <span style={SEP_STYLE}>|</span>
-        <SyncBadge status={syncStatus} lastSyncTime={lastSyncTime} onTriggerSync={onTriggerSync} onOpenConflictResolver={onOpenConflictResolver} />
+        <SyncBadge status={syncStatus} lastSyncTime={lastSyncTime} remoteStatus={remoteStatus} onTriggerSync={onTriggerSync} onPullAndPush={onPullAndPush} onOpenConflictResolver={onOpenConflictResolver} />
         {lastCommitInfo && <CommitBadge info={lastCommitInfo} />}
         <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} />
         <PendingBadge count={modifiedCount} onClick={onClickPending} />

@@ -565,16 +565,33 @@ flowchart LR
 flowchart TD
     AS["useAutoSync\n(configurable interval)"] --> PULL["invoke('git_pull')"]
     PULL --> PC{Result?}
-    PC -->|Conflicts| CM["ConflictResolverModal"]
+    PC -->|Conflicts| CM["ConflictResolverModal\nor ConflictNoteBanner"]
     PC -->|Fast-forward| RV["reload vault"]
     PC -->|Up to date| DONE["idle"]
 
-    AS --> PUSH["invoke('git_push')"]
-
     MAN["Manual commit\n(CommitDialog)"] --> GC["invoke('git_commit', message)"]
     GC --> GP["invoke('git_push')"]
-    GP --> RM["Reload modified files"]
+    GP --> PR{Push result?}
+    PR -->|ok| RM["Reload modified files"]
+    PR -->|rejected| DIV["syncStatus = pull_required"]
+    DIV -->|User clicks badge| PAP["pullAndPush()"]
+    PAP --> PULL2["invoke('git_pull')"]
+    PULL2 --> GP2["invoke('git_push')"]
+    GP2 --> RM
+
+    CMD["Cmd+K → Pull\nor Menu → Pull"] --> PULL
+    STATUS["Click sync badge"] --> POPUP["GitStatusPopup\n(branch, ahead/behind)"]
 ```
+
+#### Sync States
+
+| State | Indicator | Color | Trigger |
+|-------|-----------|-------|---------|
+| `idle` | Synced / Synced Xm ago | green | Successful sync |
+| `syncing` | Syncing... | blue | Pull/push in progress |
+| `pull_required` | Pull required | orange | Push rejected (divergence) |
+| `conflict` | Conflict | orange | Merge conflicts detected |
+| `error` | Sync failed | grey | Network/auth error |
 
 ## Vault Module Structure
 
@@ -649,6 +666,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `git_commit` | Stage all + commit |
 | `git_pull` | Pull from remote |
 | `git_push` | Push to remote |
+| `git_remote_status` | Get branch name + ahead/behind counts |
 | `git_resolve_conflict` | Resolve a merge conflict |
 | `git_commit_conflict_resolution` | Commit conflict resolution |
 | `get_file_history` | Last N commits for a file |

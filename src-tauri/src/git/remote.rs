@@ -111,6 +111,75 @@ fn parse_updated_files(stdout: &str) -> Vec<String> {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+pub struct GitRemoteStatus {
+    pub branch: String,
+    pub ahead: u32,
+    pub behind: u32,
+    #[serde(rename = "hasRemote")]
+    pub has_remote: bool,
+}
+
+/// Get the current branch name, and how many commits ahead/behind the upstream.
+pub fn git_remote_status(vault_path: &str) -> Result<GitRemoteStatus, String> {
+    let vault = Path::new(vault_path);
+
+    if !has_remote(vault_path)? {
+        let branch = current_branch(vault)?;
+        return Ok(GitRemoteStatus {
+            branch,
+            ahead: 0,
+            behind: 0,
+            has_remote: false,
+        });
+    }
+
+    // Fetch latest remote refs (silent, best-effort)
+    let _ = Command::new("git")
+        .args(["fetch", "--quiet"])
+        .current_dir(vault)
+        .output();
+
+    let branch = current_branch(vault)?;
+
+    let output = Command::new("git")
+        .args(["rev-list", "--left-right", "--count", "HEAD...@{upstream}"])
+        .current_dir(vault)
+        .output()
+        .map_err(|e| format!("Failed to run git rev-list: {}", e))?;
+
+    if !output.status.success() {
+        // No upstream set — report 0/0
+        return Ok(GitRemoteStatus {
+            branch,
+            ahead: 0,
+            behind: 0,
+            has_remote: true,
+        });
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let parts: Vec<&str> = stdout.trim().split('\t').collect();
+    let ahead = parts.first().and_then(|s| s.parse().ok()).unwrap_or(0);
+    let behind = parts.get(1).and_then(|s| s.parse().ok()).unwrap_or(0);
+
+    Ok(GitRemoteStatus {
+        branch,
+        ahead,
+        behind,
+        has_remote: true,
+    })
+}
+
+fn current_branch(vault: &Path) -> Result<String, String> {
+    let output = Command::new("git")
+        .args(["branch", "--show-current"])
+        .current_dir(vault)
+        .output()
+        .map_err(|e| format!("Failed to get branch: {}", e))?;
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct GitPushResult {
     pub status: String, // "ok" | "rejected" | "auth_error" | "network_error" | "error"
     pub message: String,
@@ -389,6 +458,90 @@ hint: have locally."#;
         let result = git_push(vp_a).unwrap();
         assert_eq!(result.status, "rejected");
         assert!(result.message.contains("Pull first"));
+    }
+
+    #[test]
+    fn test_git_remote_status_no_remote() {
+        let dir = setup_git_repo();
+        let vault = dir.path();
+        let vp = vault.to_str().unwrap();
+
+        fs::write(vault.join("note.md"), "# Note\n").unwrap();
+        git_commit(vp, "initial").unwrap();
+
+        let status = git_remote_status(vp).unwrap();
+        assert!(!status.has_remote);
+        assert_eq!(status.ahead, 0);
+        assert_eq!(status.behind, 0);
+    }
+
+    #[test]
+    fn test_git_remote_status_up_to_date() {
+        let (_bare, clone_a, _clone_b) = setup_remote_pair();
+        let vp_a = clone_a.path().to_str().unwrap();
+
+        fs::write(clone_a.path().join("note.md"), "# Note\n").unwrap();
+        git_commit(vp_a, "initial").unwrap();
+        git_push(vp_a).unwrap();
+
+        let status = git_remote_status(vp_a).unwrap();
+        assert!(status.has_remote);
+        assert_eq!(status.ahead, 0);
+        assert_eq!(status.behind, 0);
+    }
+
+    #[test]
+    fn test_git_remote_status_ahead() {
+        let (_bare, clone_a, _clone_b) = setup_remote_pair();
+        let vp_a = clone_a.path().to_str().unwrap();
+
+        fs::write(clone_a.path().join("note.md"), "# Note\n").unwrap();
+        git_commit(vp_a, "initial").unwrap();
+        git_push(vp_a).unwrap();
+
+        // Make a new commit without pushing
+        fs::write(clone_a.path().join("note.md"), "# Updated\n").unwrap();
+        git_commit(vp_a, "update").unwrap();
+
+        let status = git_remote_status(vp_a).unwrap();
+        assert_eq!(status.ahead, 1);
+        assert_eq!(status.behind, 0);
+    }
+
+    #[test]
+    fn test_git_remote_status_behind() {
+        let (_bare, clone_a, clone_b) = setup_remote_pair();
+        let vp_a = clone_a.path().to_str().unwrap();
+        let vp_b = clone_b.path().to_str().unwrap();
+
+        fs::write(clone_a.path().join("note.md"), "# Note\n").unwrap();
+        git_commit(vp_a, "initial").unwrap();
+        git_push(vp_a).unwrap();
+
+        git_pull(vp_b).unwrap();
+        fs::write(clone_b.path().join("note.md"), "# B update\n").unwrap();
+        git_commit(vp_b, "from B").unwrap();
+        git_push(vp_b).unwrap();
+
+        // A is now behind by 1
+        let status = git_remote_status(vp_a).unwrap();
+        assert_eq!(status.behind, 1);
+        assert_eq!(status.ahead, 0);
+    }
+
+    #[test]
+    fn test_git_remote_status_serialization() {
+        let status = GitRemoteStatus {
+            branch: "main".to_string(),
+            ahead: 2,
+            behind: 1,
+            has_remote: true,
+        };
+        let json = serde_json::to_string(&status).unwrap();
+        assert!(json.contains("\"hasRemote\""));
+        let parsed: GitRemoteStatus = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.branch, "main");
+        assert_eq!(parsed.ahead, 2);
     }
 
     #[test]

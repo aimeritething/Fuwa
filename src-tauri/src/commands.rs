@@ -6,7 +6,8 @@ use crate::claude_cli::{
 };
 use crate::frontmatter::FrontmatterValue;
 use crate::git::{
-    GitCommit, GitPullResult, GitPushResult, LastCommitInfo, ModifiedFile, PulseCommit,
+    GitCommit, GitPullResult, GitPushResult, GitRemoteStatus, LastCommitInfo, ModifiedFile,
+    PulseCommit,
 };
 use crate::github::{DeviceFlowPollResult, DeviceFlowStart, GitHubUser, GithubRepo};
 use crate::indexing::{IndexStatus, IndexingProgress};
@@ -329,6 +330,12 @@ pub fn git_commit_conflict_resolution(vault_path: String) -> Result<String, Stri
 pub fn git_push(vault_path: String) -> Result<GitPushResult, String> {
     let vault_path = expand_tilde(&vault_path);
     git::git_push(&vault_path)
+}
+
+#[tauri::command]
+pub fn git_remote_status(vault_path: String) -> Result<GitRemoteStatus, String> {
+    let vault_path = expand_tilde(&vault_path);
+    git::git_remote_status(&vault_path)
 }
 
 // ── GitHub commands ─────────────────────────────────────────────────────────

@@ -362,15 +362,15 @@ describe('useVaultLoader', () => {
         expect(result.current.entries).toHaveLength(1)
       })
 
-      let response = ''
+      let response: { status: string; message: string } = { status: '', message: '' }
       await act(async () => {
         response = await result.current.commitAndPush('test commit')
       })
 
-      expect(response).toBe('Committed and pushed')
+      expect(response.status).toBe('ok')
     })
 
-    it('returns actionable message when push is rejected', async () => {
+    it('returns rejected status when push is rejected', async () => {
       mockInvokeFn.mockImplementation(((cmd: string) => {
         if (cmd === 'list_vault') return Promise.resolve(mockEntries)
         if (cmd === 'get_all_content') return Promise.resolve(mockContent)
@@ -383,16 +383,16 @@ describe('useVaultLoader', () => {
       const { result } = renderHook(() => useVaultLoader('/vault'))
       await waitFor(() => { expect(result.current.entries).toHaveLength(1) })
 
-      let response = ''
+      let response: { status: string; message: string } = { status: '', message: '' }
       await act(async () => {
         response = await result.current.commitAndPush('test commit')
       })
 
-      expect(response).toContain('Pull first')
-      expect(response).not.toBe('Committed and pushed')
+      expect(response.status).toBe('rejected')
+      expect(response.message).toContain('Pull first')
     })
 
-    it('returns network error message on network failure', async () => {
+    it('returns network error status on network failure', async () => {
       mockInvokeFn.mockImplementation(((cmd: string) => {
         if (cmd === 'list_vault') return Promise.resolve(mockEntries)
         if (cmd === 'get_all_content') return Promise.resolve(mockContent)
@@ -405,12 +405,13 @@ describe('useVaultLoader', () => {
       const { result } = renderHook(() => useVaultLoader('/vault'))
       await waitFor(() => { expect(result.current.entries).toHaveLength(1) })
 
-      let response = ''
+      let response: { status: string; message: string } = { status: '', message: '' }
       await act(async () => {
         response = await result.current.commitAndPush('test commit')
       })
 
-      expect(response).toContain('network error')
+      expect(response.status).toBe('network_error')
+      expect(response.message).toContain('network error')
     })
   })
 

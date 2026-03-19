@@ -77,6 +77,12 @@ interface EditorProps {
   onSetNoteIcon?: (path: string, emoji: string) => void
   /** Called when user removes an emoji icon from a note. */
   onRemoveNoteIcon?: (path: string) => void
+  /** Whether the active note has a merge conflict. */
+  isConflicted?: boolean
+  /** Resolve conflict by keeping the local version. */
+  onKeepMine?: (path: string) => void
+  /** Resolve conflict by keeping the remote version. */
+  onKeepTheirs?: (path: string) => void
 }
 
 function useEditorModeExclusion({
@@ -224,6 +230,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     canGoBack, canGoForward, onGoBack, onGoForward, leftPanelsCollapsed,
     isDarkTheme, onFileCreated, onFileModified, onVaultChanged,
     onSetNoteIcon, onRemoveNoteIcon,
+    isConflicted, onKeepMine, onKeepTheirs,
   } = props
 
   const {
@@ -291,6 +298,9 @@ export const Editor = memo(function Editor(props: EditorProps) {
               onTitleChange={onTitleSync}
               onSetNoteIcon={onSetNoteIcon}
               onRemoveNoteIcon={onRemoveNoteIcon}
+              isConflicted={isConflicted}
+              onKeepMine={onKeepMine}
+              onKeepTheirs={onKeepTheirs}
             />
         }
         {(showAIChat || !inspectorCollapsed) && <ResizeHandle onResize={onInspectorResize} />}

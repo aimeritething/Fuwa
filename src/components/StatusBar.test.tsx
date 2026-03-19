@@ -428,6 +428,40 @@ describe('StatusBar', () => {
     expect(onReindexVault).toHaveBeenCalledOnce()
   })
 
+  it('shows Pull required label when syncStatus is pull_required', () => {
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} syncStatus="pull_required" />
+    )
+    expect(screen.getByText('Pull required')).toBeInTheDocument()
+  })
+
+  it('calls onPullAndPush when clicking Pull required badge', () => {
+    const onPullAndPush = vi.fn()
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} syncStatus="pull_required" onPullAndPush={onPullAndPush} />
+    )
+    fireEvent.click(screen.getByTestId('status-sync'))
+    expect(onPullAndPush).toHaveBeenCalledOnce()
+  })
+
+  it('shows git status popup when clicking idle sync badge', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        syncStatus="idle"
+        remoteStatus={{ branch: 'main', ahead: 2, behind: 1, hasRemote: true }}
+      />
+    )
+    fireEvent.click(screen.getByTestId('status-sync'))
+    expect(screen.getByTestId('git-status-popup')).toBeInTheDocument()
+    expect(screen.getByText('main')).toBeInTheDocument()
+    expect(screen.getByText(/2 ahead/)).toBeInTheDocument()
+    expect(screen.getByText(/1 behind/)).toBeInTheDocument()
+  })
+
   it('hides indexed time badge when no lastIndexedTime', () => {
     render(
       <StatusBar

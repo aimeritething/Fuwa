@@ -8,6 +8,7 @@ import { TitleField } from './TitleField'
 import { NoteIcon } from './NoteIcon'
 import { TrashedNoteBanner } from './TrashedNoteBanner'
 import { ArchivedNoteBanner } from './ArchivedNoteBanner'
+import { ConflictNoteBanner } from './ConflictNoteBanner'
 import { RawEditorView } from './RawEditorView'
 import { countWords } from '../utils/wikilinks'
 import { SingleEditorView } from './SingleEditorView'
@@ -54,6 +55,12 @@ interface EditorContentProps {
   onSetNoteIcon?: (path: string, emoji: string) => void
   /** Called when user removes an emoji icon. */
   onRemoveNoteIcon?: (path: string) => void
+  /** Whether the active note has a merge conflict. */
+  isConflicted?: boolean
+  /** Resolve conflict by keeping the local version. */
+  onKeepMine?: (path: string) => void
+  /** Resolve conflict by keeping the remote version. */
+  onKeepTheirs?: (path: string) => void
 }
 
 function EditorLoadingSkeleton() {
@@ -151,6 +158,7 @@ export function EditorContent({
   onNavigateWikilink, onEditorChange, vaultPath, isDarkTheme,
   onDeleteNote, rawLatestContentRef, onTitleChange,
   onSetNoteIcon, onRemoveNoteIcon,
+  isConflicted, onKeepMine, onKeepTheirs,
   ...breadcrumbProps
 }: EditorContentProps) {
   const isTrashed = activeTab?.entry.trashed ?? false
@@ -182,6 +190,12 @@ export function EditorContent({
       )}
       {activeTab?.entry.archived && breadcrumbProps.onUnarchiveNote && (
         <ArchivedNoteBanner onUnarchive={() => breadcrumbProps.onUnarchiveNote!(activeTab.entry.path)} />
+      )}
+      {activeTab && isConflicted && (
+        <ConflictNoteBanner
+          onKeepMine={() => onKeepMine?.(activeTab.entry.path)}
+          onKeepTheirs={() => onKeepTheirs?.(activeTab.entry.path)}
+        />
       )}
       {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
       <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} isDark={isDarkTheme} latestContentRef={rawLatestContentRef} />

@@ -49,6 +49,7 @@ const VAULT_RESTORE_GETTING_STARTED: &str = "vault-restore-getting-started";
 const VAULT_NEW_THEME: &str = "vault-new-theme";
 const VAULT_RESTORE_DEFAULT_THEMES: &str = "vault-restore-default-themes";
 const VAULT_COMMIT_PUSH: &str = "vault-commit-push";
+const VAULT_PULL: &str = "vault-pull";
 const VAULT_RESOLVE_CONFLICTS: &str = "vault-resolve-conflicts";
 const VAULT_VIEW_CHANGES: &str = "vault-view-changes";
 const VAULT_INSTALL_MCP: &str = "vault-install-mcp";
@@ -95,6 +96,7 @@ const CUSTOM_IDS: &[&str] = &[
     VAULT_NEW_THEME,
     VAULT_RESTORE_DEFAULT_THEMES,
     VAULT_COMMIT_PUSH,
+    VAULT_PULL,
     VAULT_RESOLVE_CONFLICTS,
     VAULT_VIEW_CHANGES,
     VAULT_INSTALL_MCP,
@@ -353,6 +355,9 @@ fn build_vault_menu(app: &App) -> MenuResult {
     let commit_push = MenuItemBuilder::new("Commit & Push")
         .id(VAULT_COMMIT_PUSH)
         .build(app)?;
+    let pull = MenuItemBuilder::new("Pull from Remote")
+        .id(VAULT_PULL)
+        .build(app)?;
     let resolve_conflicts = MenuItemBuilder::new("Resolve Conflicts")
         .id(VAULT_RESOLVE_CONFLICTS)
         .enabled(false)
@@ -382,6 +387,7 @@ fn build_vault_menu(app: &App) -> MenuResult {
         .item(&restore_default_themes)
         .separator()
         .item(&commit_push)
+        .item(&pull)
         .item(&resolve_conflicts)
         .item(&view_changes)
         .separator()
@@ -504,6 +510,7 @@ mod tests {
             VAULT_NEW_THEME,
             VAULT_RESTORE_DEFAULT_THEMES,
             VAULT_COMMIT_PUSH,
+            VAULT_PULL,
             VAULT_RESOLVE_CONFLICTS,
             VAULT_VIEW_CHANGES,
             VAULT_INSTALL_MCP,

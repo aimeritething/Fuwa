@@ -342,6 +342,10 @@ interface PulseCommit {
 - Configurable interval (from app settings: `auto_pull_interval_minutes`)
 - Pulls on interval, pushes after commits
 - Detects merge conflicts → opens `ConflictResolverModal`
+- Tracks remote status (branch, ahead/behind via `git_remote_status`)
+- Handles push rejection (divergence) → sets `pull_required` status
+- `pullAndPush()`: pulls then auto-pushes for divergence recovery
+- `ConflictNoteBanner`: inline banner in editor for conflicted notes (Keep mine / Keep theirs)
 
 ### Frontend Integration
 
@@ -350,6 +354,9 @@ interface PulseCommit {
 - **Git history**: Shown in Inspector panel for active note
 - **Commit dialog**: Triggered from sidebar or Cmd+K
 - **Pulse view**: Activity feed when Pulse filter is selected
+- **Pull command**: Cmd+K → "Pull from Remote", also in Vault menu
+- **Git status popup**: Click sync badge → shows branch, ahead/behind, Pull button
+- **Conflict banner**: Inline banner in editor with Keep mine / Keep theirs for conflicted notes
 
 ## BlockNote Customization
 
