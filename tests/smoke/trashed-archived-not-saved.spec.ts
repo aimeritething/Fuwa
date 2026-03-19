@@ -10,8 +10,9 @@ test.describe('Trash/archive notes appear in Changes', () => {
   test('trashing a note increments the Changes badge', async ({ page }) => {
     const sidebar = page.locator('.app__sidebar')
 
-    // Wait for Changes nav item (mock starts with 3 modified files)
-    const changesRow = sidebar.locator('div', { hasText: /^Changes/ }).first()
+    // Wait for Changes nav item in the secondary bottom area (mock starts with 3 modified files)
+    const secondaryArea = sidebar.locator('[data-testid="sidebar-secondary"]')
+    const changesRow = secondaryArea.locator('div', { hasText: /^Changes/ }).first()
     await changesRow.waitFor({ timeout: 5000 })
 
     // Read the initial badge count from the Changes row

@@ -75,7 +75,8 @@ test.describe('Trash/archive state consistency across UI', () => {
 
   test('Changes list updates after trashing a note', async ({ page }) => {
     const sidebar = page.locator('.app__sidebar')
-    const changesRow = sidebar.locator('div', { hasText: /^Changes/ }).first()
+    const secondaryArea = sidebar.locator('[data-testid="sidebar-secondary"]')
+    const changesRow = secondaryArea.locator('div', { hasText: /^Changes/ }).first()
     await changesRow.waitFor({ timeout: 5000 })
 
     const badge = changesRow.locator('span').last()
