@@ -59,6 +59,8 @@ test.describe('Theme live reload on raw editor save (rework)', () => {
       'primary: "#155DFF"',
       'sidebar: "#F7F6F3"',
       'text-primary: "#37352F"',
+      'lists-bullet-size: 32px',
+      'lists-bullet-color: "#FF0000"',
       '---',
       '',
       '# Default',
@@ -81,6 +83,10 @@ test.describe('Theme live reload on raw editor save (rework)', () => {
     // Verify other vars also updated
     expect(await getCssVar(page, '--sidebar')).toBe('#F7F6F3')
     expect(await getCssVar(page, '--foreground')).toBe('#37352F')
+
+    // Verify bullet-size and bullet-color (rework regression)
+    expect(await getCssVar(page, '--lists-bullet-size')).toBe('32px')
+    expect(await getCssVar(page, '--lists-bullet-color')).toBe('#FF0000')
   })
 
   test('saving a non-theme note does not affect active theme CSS', async ({ page }) => {

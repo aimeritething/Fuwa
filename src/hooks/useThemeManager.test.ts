@@ -470,6 +470,38 @@ text-primary: "#e0e0e0"
     expect(document.documentElement.style.getPropertyValue('--sidebar')).toBe('#2a2a3e')
   })
 
+  it('notifyThemeSaved updates bullet-size and bullet-color CSS vars', async () => {
+    const { result } = renderHook(() =>
+      useThemeManager('/vault', entries, allContent)
+    )
+    await waitFor(() => {
+      expect(result.current.activeThemeId).toBe(THEME_PATH_DEFAULT)
+    })
+
+    const updatedContent = `---
+type: Theme
+Description: Light theme
+background: "#FFFFFF"
+foreground: "#37352F"
+primary: "#155DFF"
+sidebar: "#F7F6F3"
+text-primary: "#37352F"
+lists-bullet-size: 32px
+lists-bullet-color: "#FF0000"
+---
+
+# Default Theme
+`
+    act(() => {
+      result.current.notifyThemeSaved(THEME_PATH_DEFAULT, updatedContent)
+    })
+
+    await waitFor(() => {
+      expect(document.documentElement.style.getPropertyValue('--lists-bullet-size')).toBe('32px')
+    })
+    expect(document.documentElement.style.getPropertyValue('--lists-bullet-color')).toBe('#FF0000')
+  })
+
   it('notifyThemeSaved is a no-op for non-active theme path', async () => {
     const { result } = renderHook(() =>
       useThemeManager('/vault', entries, allContent)
