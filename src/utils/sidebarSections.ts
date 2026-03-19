@@ -26,11 +26,11 @@ const BUILT_IN_SECTION_GROUPS: SectionGroup[] = [
 /** Metadata lookup for well-known types (icon/label only — NOT used to determine which sections to show) */
 const BUILT_IN_TYPE_MAP = new Map(BUILT_IN_SECTION_GROUPS.map((sg) => [sg.type, sg]))
 
-/** Collect unique isA values from active (non-trashed, non-archived) entries, excluding generic Note */
+/** Collect unique isA values from active (non-trashed, non-archived) entries. Untyped entries count as 'Note'. */
 export function collectActiveTypes(entries: VaultEntry[]): Set<string> {
   const types = new Set<string>()
   for (const e of entries) {
-    if (e.isA && e.isA !== 'Note' && !e.trashed && !e.archived) types.add(e.isA)
+    if (!e.trashed && !e.archived) types.add(e.isA || 'Note')
   }
   return types
 }

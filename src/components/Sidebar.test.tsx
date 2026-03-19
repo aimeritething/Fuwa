@@ -914,6 +914,63 @@ describe('Sidebar', () => {
     })
   })
 
+  describe('Note type in sidebar', () => {
+    const noteEntries: VaultEntry[] = [
+      ...mockEntries,
+      {
+        path: '/vault/note.md', filename: 'note.md', title: 'Note', isA: 'Type',
+        aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
+        archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null,
+        fileSize: 200, snippet: '', wordCount: 0, relationships: {},
+        icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
+        outgoingLinks: [], properties: {},
+      },
+      {
+        path: '/vault/explicit-note.md', filename: 'explicit-note.md', title: 'Explicit Note',
+        isA: 'Note', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
+        cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+        createdAt: null, fileSize: 300, snippet: '', wordCount: 0, relationships: {},
+        icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
+        outgoingLinks: [], properties: {},
+      },
+      {
+        path: '/vault/untyped-note.md', filename: 'untyped-note.md', title: 'Untyped Note',
+        isA: null, aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
+        cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+        createdAt: null, fileSize: 150, snippet: '', wordCount: 0, relationships: {},
+        icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
+        outgoingLinks: [], properties: {},
+      },
+    ]
+
+    it('shows Notes section when Note entries exist', () => {
+      render(<Sidebar entries={noteEntries} selection={defaultSelection} onSelect={() => {}} />)
+      expect(screen.getByText('Notes')).toBeInTheDocument()
+    })
+
+    it('includes both explicit and untyped notes under Notes section', () => {
+      render(<Sidebar entries={noteEntries} selection={defaultSelection} onSelect={() => {}} />)
+      fireEvent.click(screen.getByLabelText('Expand Notes'))
+      expect(screen.getByText('Explicit Note')).toBeInTheDocument()
+      expect(screen.getByText('Untyped Note')).toBeInTheDocument()
+    })
+
+    it('shows Notes section for untyped entries even without explicit Note entries', () => {
+      const untypedOnly: VaultEntry[] = [
+        {
+          path: '/vault/plain.md', filename: 'plain.md', title: 'Plain Note',
+          isA: null, aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
+          cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+          createdAt: null, fileSize: 100, snippet: '', wordCount: 0, relationships: {},
+          icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
+          outgoingLinks: [], properties: {},
+        },
+      ]
+      render(<Sidebar entries={untypedOnly} selection={defaultSelection} onSelect={() => {}} />)
+      expect(screen.getByText('Notes')).toBeInTheDocument()
+    })
+  })
+
   it('renders exactly one section for a hyphenated custom type like Monday Ideas', () => {
     const entriesWithMondayIdeas: VaultEntry[] = [
       ...mockEntries,
