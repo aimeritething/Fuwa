@@ -77,6 +77,7 @@ interface AppCommandsConfig {
   activeNoteHasIcon?: boolean
   noteListFilter?: NoteListFilter
   onSetNoteListFilter?: (filter: NoteListFilter) => void
+  onOpenInNewWindow?: () => void
 }
 
 /** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
@@ -124,6 +125,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onToggleAIChat: config.onToggleAIChat,
     onToggleRawEditor: config.onToggleRawEditor,
     onReopenClosedTab: config.onReopenClosedTab,
+    onOpenInNewWindow: config.onOpenInNewWindow,
     activeTabPathRef: config.activeTabPathRef,
     handleCloseTabRef: config.handleCloseTabRef,
   })
@@ -165,6 +167,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onRepairVault: config.onRepairVault,
     onEmptyTrash: config.onEmptyTrash,
     onReopenClosedTab: config.onReopenClosedTab,
+    onOpenInNewWindow: config.onOpenInNewWindow,
     activeTabPathRef: config.activeTabPathRef,
     handleCloseTabRef: config.handleCloseTabRef,
     activeTabPath: config.activeTabPath,
@@ -229,6 +232,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     selection: config.selection,
     noteListFilter: config.noteListFilter,
     onSetNoteListFilter: config.onSetNoteListFilter,
+    onOpenInNewWindow: config.onOpenInNewWindow,
   })
 
   useKeyboardNavigation({

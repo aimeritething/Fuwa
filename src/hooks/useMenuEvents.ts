@@ -36,6 +36,7 @@ export interface MenuEventHandlers {
   onViewChanges?: () => void
   onInstallMcp?: () => void
   onReopenClosedTab?: () => void
+  onOpenInNewWindow?: () => void
   onReindexVault?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
@@ -86,6 +87,7 @@ type OptionalHandler =
   | 'onCommitPush' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReindexVault' | 'onReloadVault' | 'onRepairVault'
   | 'onEmptyTrash'
   | 'onReopenClosedTab'
+  | 'onOpenInNewWindow'
 
 const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'view-go-back': 'onGoBack',
@@ -109,6 +111,7 @@ const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'vault-repair': 'onRepairVault',
   'note-empty-trash': 'onEmptyTrash',
   'file-reopen-closed-tab': 'onReopenClosedTab',
+  'note-open-in-new-window': 'onOpenInNewWindow',
 }
 
 function dispatchActiveTabEvent(id: string, h: MenuEventHandlers): boolean {

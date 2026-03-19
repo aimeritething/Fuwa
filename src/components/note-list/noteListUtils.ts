@@ -28,11 +28,13 @@ export function countExpiredTrash(entries: VaultEntry[]): number {
 export interface ClickActions {
   onReplace: (entry: VaultEntry) => void
   onSelect: (entry: VaultEntry) => void
+  onOpenInNewWindow?: (entry: VaultEntry) => void
   multiSelect: { selectRange: (path: string) => void; clear: () => void; setAnchor: (path: string) => void }
 }
 
 export function routeNoteClick(entry: VaultEntry, e: React.MouseEvent, actions: ClickActions) {
-  if (e.shiftKey) { actions.multiSelect.selectRange(entry.path) }
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey) { actions.onOpenInNewWindow?.(entry) }
+  else if (e.shiftKey) { actions.multiSelect.selectRange(entry.path) }
   else if (e.metaKey || e.ctrlKey) { actions.multiSelect.clear(); actions.onSelect(entry) }
   else { actions.multiSelect.clear(); actions.multiSelect.setAnchor(entry.path); actions.onReplace(entry) }
 }

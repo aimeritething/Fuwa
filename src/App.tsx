@@ -53,6 +53,7 @@ import type { SidebarSelection, VaultEntry, InboxPeriod } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openLocalFile } from './utils/url'
+import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { flushEditorContent } from './utils/autoSave'
 import './App.css'
 
@@ -255,6 +256,17 @@ function App() {
   const handleRemoveNoteIconCommand = useCallback(() => {
     if (notes.activeTabPath) handleRemoveNoteIcon(notes.activeTabPath)
   }, [notes.activeTabPath, handleRemoveNoteIcon])
+
+  /** Open the active note in a new window (command palette / keyboard shortcut). */
+  const handleOpenInNewWindow = useCallback(() => {
+    const activeTab = notes.tabs.find(t => t.entry.path === notes.activeTabPath)
+    if (activeTab) openNoteInNewWindow(activeTab.entry.path, resolvedPath, activeTab.entry.title)
+  }, [notes.tabs, notes.activeTabPath, resolvedPath])
+
+  /** Open a specific note entry in a new window (Cmd+Shift+Click). */
+  const handleOpenEntryInNewWindow = useCallback((entry: VaultEntry) => {
+    openNoteInNewWindow(entry.path, resolvedPath, entry.title)
+  }, [resolvedPath])
 
   const { triggerIncrementalIndex } = indexing
   const onAfterSave = useCallback(() => {
@@ -510,6 +522,7 @@ function App() {
     })(),
     noteListFilter,
     onSetNoteListFilter: setNoteListFilter,
+    onOpenInNewWindow: handleOpenInNewWindow,
   })
 
   const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null
@@ -557,7 +570,7 @@ function App() {
               {selection.kind === 'filter' && selection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} onInboxPeriodChange={setInboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onBulkRestore={bulkActions.handleBulkRestore} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onEmptyTrash={deleteActions.handleEmptyTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} />
+                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} onInboxPeriodChange={setInboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onBulkRestore={bulkActions.handleBulkRestore} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onEmptyTrash={deleteActions.handleEmptyTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />

@@ -164,6 +164,24 @@ flowchart TD
 
 Panels are separated by `ResizeHandle` components that support drag-to-resize.
 
+## Multi-Window (Note Windows)
+
+Notes can be opened in separate Tauri windows for focused editing. Secondary windows show only the editor panel (no sidebar, no note list).
+
+**Triggers:**
+- `Cmd+Shift+Click` on any note in the note list or sidebar
+- `Cmd+K` → "Open in New Window" (command palette, requires active note)
+- `Cmd+Shift+O` keyboard shortcut
+- Note → "Open in New Window" menu bar item
+
+**Architecture:**
+- `openNoteInNewWindow()` (`src/utils/openNoteWindow.ts`) creates a new `WebviewWindow` via the Tauri v2 JS API with URL query params (`?window=note&path=...&vault=...&title=...`)
+- `main.tsx` checks `isNoteWindow()` at boot to route between `App` (main window) and `NoteWindow` (secondary window)
+- `NoteWindow` (`src/NoteWindow.tsx`) is a minimal shell that loads vault entries, fetches note content, applies the theme, and renders a single `Editor` instance
+- Each window has its own auto-save via `useEditorSaveWithLinks` (same 500ms debounce, same Rust `save_note_content` command)
+- Secondary windows are sized 800×700 with overlay title bar
+- Capabilities config (`src-tauri/capabilities/default.json`) grants permissions to both `main` and `note-*` window labels
+
 ## AI System
 
 Laputa has two AI interfaces with distinct architectures:

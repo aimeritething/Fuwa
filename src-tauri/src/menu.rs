@@ -41,6 +41,7 @@ const GO_INBOX: &str = "go-inbox";
 const NOTE_ARCHIVE: &str = "note-archive";
 const NOTE_TRASH: &str = "note-trash";
 const NOTE_EMPTY_TRASH: &str = "note-empty-trash";
+const NOTE_OPEN_IN_NEW_WINDOW: &str = "note-open-in-new-window";
 
 const VAULT_OPEN: &str = "vault-open";
 const VAULT_REMOVE: &str = "vault-remove";
@@ -87,6 +88,7 @@ const CUSTOM_IDS: &[&str] = &[
     NOTE_ARCHIVE,
     NOTE_TRASH,
     NOTE_EMPTY_TRASH,
+    NOTE_OPEN_IN_NEW_WINDOW,
     VAULT_OPEN,
     VAULT_REMOVE,
     VAULT_RESTORE_GETTING_STARTED,
@@ -110,6 +112,7 @@ const NOTE_DEPENDENT_IDS: &[&str] = &[
     EDIT_TOGGLE_RAW_EDITOR,
     EDIT_TOGGLE_DIFF,
     VIEW_TOGGLE_BACKLINKS,
+    NOTE_OPEN_IN_NEW_WINDOW,
 ];
 
 /// IDs of menu items that depend on having uncommitted changes.
@@ -302,6 +305,10 @@ fn build_note_menu(app: &App) -> MenuResult {
     let empty_trash = MenuItemBuilder::new("Empty Trash…")
         .id(NOTE_EMPTY_TRASH)
         .build(app)?;
+    let open_new_window = MenuItemBuilder::new("Open in New Window")
+        .id(NOTE_OPEN_IN_NEW_WINDOW)
+        .accelerator("CmdOrCtrl+Shift+O")
+        .build(app)?;
     let toggle_raw_editor = MenuItemBuilder::new("Toggle Raw Editor")
         .id(EDIT_TOGGLE_RAW_EDITOR)
         .accelerator("CmdOrCtrl+\\")
@@ -318,6 +325,8 @@ fn build_note_menu(app: &App) -> MenuResult {
         .item(&archive_note)
         .item(&trash_note)
         .item(&empty_trash)
+        .separator()
+        .item(&open_new_window)
         .separator()
         .item(&toggle_raw_editor)
         .item(&toggle_ai_chat)
@@ -488,6 +497,7 @@ mod tests {
             NOTE_ARCHIVE,
             NOTE_TRASH,
             NOTE_EMPTY_TRASH,
+            NOTE_OPEN_IN_NEW_WINDOW,
             VAULT_OPEN,
             VAULT_REMOVE,
             VAULT_RESTORE_GETTING_STARTED,

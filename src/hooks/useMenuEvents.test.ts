@@ -37,6 +37,7 @@ function makeHandlers(): MenuEventHandlers {
     onReindexVault: vi.fn(),
     onReloadVault: vi.fn(),
     onReopenClosedTab: vi.fn(),
+    onOpenInNewWindow: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
     handleCloseTabRef: { current: vi.fn() } as React.MutableRefObject<(path: string) => void>,
     activeTabPath: '/vault/test.md',
@@ -319,6 +320,13 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('file-reopen-closed-tab', h)
     expect(h.onReopenClosedTab).toHaveBeenCalled()
+  })
+
+  // Note: open in new window
+  it('note-open-in-new-window triggers open in new window', () => {
+    const h = makeHandlers()
+    dispatchMenuEvent('note-open-in-new-window', h)
+    expect(h.onOpenInNewWindow).toHaveBeenCalled()
   })
 
   // Edge cases

@@ -30,6 +30,7 @@ interface CommandRegistryConfig {
   onRepairVault?: () => void
   onSetNoteIcon?: () => void
   onRemoveNoteIcon?: () => void
+  onOpenInNewWindow?: () => void
 
   onQuickOpen: () => void
   onCreateNote: () => void
@@ -217,6 +218,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onSetNoteIcon,
     onRemoveNoteIcon,
     activeNoteHasIcon,
+    onOpenInNewWindow,
     selection, noteListFilter, onSetNoteListFilter,
   } = config
 
@@ -274,6 +276,12 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
         enabled: hasActiveNote && !!activeNoteHasIcon && !!onRemoveNoteIcon,
         execute: () => onRemoveNoteIcon?.(),
       },
+      {
+        id: 'open-in-new-window', label: 'Open in New Window', group: 'Note', shortcut: '⌘⇧O',
+        keywords: ['window', 'new', 'detach', 'pop', 'external', 'separate'],
+        enabled: hasActiveNote,
+        execute: () => onOpenInNewWindow?.(),
+      },
 
       // Git
       { id: 'commit-push', label: 'Commit & Push', group: 'Git', keywords: ['git', 'save', 'sync'], enabled: modifiedCount > 0, execute: onCommitPush },
@@ -324,5 +332,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onReindexVault, onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     isSectionGroup, noteListFilter, onSetNoteListFilter,
+    onOpenInNewWindow,
   ])
 }
