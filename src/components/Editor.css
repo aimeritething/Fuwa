@@ -96,7 +96,7 @@
 .editor__blocknote-container .bn-editor {
   width: 100%;
   padding: 20px 40px;
-  max-width: 760px;
+  max-width: var(--editor-max-width, 760px);
   margin: 0 auto;
 }
 
@@ -282,11 +282,13 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: var(--editor-title-size, 28px);
-  font-weight: 700;
-  line-height: 1.2;
+  font-size: var(--headings-h1-font-size);
+  font-weight: var(--headings-h1-font-weight);
+  line-height: var(--headings-h1-line-height);
+  letter-spacing: var(--headings-h1-letter-spacing);
   color: var(--foreground);
   padding: 0;
+  margin-left: 8px;
 }
 
 .title-field__input::placeholder {

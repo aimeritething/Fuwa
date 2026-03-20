@@ -54,4 +54,29 @@ test.describe('TitleField alignment and separator', () => {
     // Both should have the same left edge (within 2px tolerance)
     expect(Math.abs(titleBox!.x - editorBox!.x)).toBeLessThanOrEqual(2)
   })
+
+  test('title field uses H1 CSS variables for font styling', async ({ page }) => {
+    // Verify the title-field__input element references the H1 heading CSS vars
+    const usesH1Vars = await page.evaluate(() => {
+      const sheets = Array.from(document.styleSheets)
+      for (const sheet of sheets) {
+        try {
+          for (const rule of Array.from(sheet.cssRules)) {
+            if (rule instanceof CSSStyleRule && rule.selectorText === '.title-field__input') {
+              const fontSize = rule.style.getPropertyValue('font-size')
+              const fontWeight = rule.style.getPropertyValue('font-weight')
+              return {
+                fontSize: fontSize.includes('--headings-h1-font-size'),
+                fontWeight: fontWeight.includes('--headings-h1-font-weight'),
+              }
+            }
+          }
+        } catch { /* cross-origin sheet */ }
+      }
+      return { fontSize: false, fontWeight: false }
+    })
+
+    expect(usesH1Vars.fontSize).toBe(true)
+    expect(usesH1Vars.fontWeight).toBe(true)
+  })
 })
