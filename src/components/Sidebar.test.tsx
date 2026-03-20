@@ -1038,4 +1038,24 @@ describe('Sidebar', () => {
     const mondaySections = screen.getAllByText(/Monday Ideas/i)
     expect(mondaySections).toHaveLength(1)
   })
+
+  it('renders Inbox as the first item in the top nav', () => {
+    render(<Sidebar entries={[]} selection={defaultSelection} onSelect={() => {}} inboxCount={5} />)
+    const topNav = screen.getByTestId('sidebar-top-nav')
+    const items = topNav.children
+    expect(items[0].textContent).toContain('Inbox')
+    expect(items[1].textContent).toContain('All Notes')
+  })
+
+  it('displays inbox count badge', () => {
+    render(<Sidebar entries={[]} selection={defaultSelection} onSelect={() => {}} inboxCount={12} />)
+    expect(screen.getByText('12')).toBeInTheDocument()
+  })
+
+  it('calls onSelect with inbox filter when clicking Inbox', () => {
+    const onSelect = vi.fn()
+    render(<Sidebar entries={[]} selection={defaultSelection} onSelect={onSelect} inboxCount={3} />)
+    fireEvent.click(screen.getByText('Inbox'))
+    expect(onSelect).toHaveBeenCalledWith({ kind: 'filter', filter: 'inbox' })
+  })
 })

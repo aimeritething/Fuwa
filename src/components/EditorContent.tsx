@@ -161,7 +161,11 @@ export function EditorContent({
   isConflicted, onKeepMine, onKeepTheirs,
   ...breadcrumbProps
 }: EditorContentProps) {
-  const isTrashed = activeTab?.entry.trashed ?? false
+  // Look up trashed/archived from the latest vault entries, not the tab snapshot,
+  // so the banner appears regardless of navigation context.
+  const freshEntry = activeTab ? entries.find(e => e.path === activeTab.entry.path) : undefined
+  const isTrashed = freshEntry?.trashed ?? activeTab?.entry.trashed ?? false
+  const isArchived = freshEntry?.archived ?? activeTab?.entry.archived ?? false
   const showEditor = !diffMode && !rawMode
   const entryIcon = activeTab?.entry.icon ?? null
   const emojiIcon = entryIcon && isEmoji(entryIcon) ? entryIcon : null
@@ -188,7 +192,7 @@ export function EditorContent({
           onDeletePermanently={() => onDeleteNote?.(activeTab.entry.path)}
         />
       )}
-      {activeTab?.entry.archived && breadcrumbProps.onUnarchiveNote && (
+      {activeTab && isArchived && breadcrumbProps.onUnarchiveNote && (
         <ArchivedNoteBanner onUnarchive={() => breadcrumbProps.onUnarchiveNote!(activeTab.entry.path)} />
       )}
       {activeTab && isConflicted && (

@@ -300,7 +300,7 @@ describe('Editor', () => {
     const trashedTab = { entry: trashedEntry, content: mockContent }
 
     function renderTrashed(overrides: Partial<Parameters<typeof Editor>[0]> = {}) {
-      return render(<Editor {...defaultProps} tabs={[trashedTab]} activeTabPath={trashedEntry.path} {...overrides} />)
+      return render(<Editor {...defaultProps} entries={[trashedEntry]} tabs={[trashedTab]} activeTabPath={trashedEntry.path} {...overrides} />)
     }
 
     it('shows banner and read-only editor when note is trashed', () => {
@@ -336,9 +336,10 @@ describe('Editor', () => {
       )
       expect(screen.queryByTestId('trashed-note-banner')).not.toBeInTheDocument()
 
-      const updatedTab = { entry: { ...mockEntry, trashed: true, trashedAt: Date.now() / 1000 }, content: mockContent }
+      const trashedEntryUpdated = { ...mockEntry, trashed: true, trashedAt: Date.now() / 1000 }
+      const updatedTab = { entry: trashedEntryUpdated, content: mockContent }
       rerender(
-        <Editor {...defaultProps} tabs={[updatedTab]} activeTabPath={mockEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
+        <Editor {...defaultProps} entries={[trashedEntryUpdated]} tabs={[updatedTab]} activeTabPath={mockEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
       )
       expect(screen.getByTestId('trashed-note-banner')).toBeInTheDocument()
       expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
@@ -346,13 +347,14 @@ describe('Editor', () => {
 
     it('removes trash banner immediately when entry is restored (reactive)', () => {
       const { rerender } = render(
-        <Editor {...defaultProps} tabs={[trashedTab]} activeTabPath={trashedEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
+        <Editor {...defaultProps} entries={[trashedEntry]} tabs={[trashedTab]} activeTabPath={trashedEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
       )
       expect(screen.getByTestId('trashed-note-banner')).toBeInTheDocument()
 
-      const restoredTab = { entry: { ...trashedEntry, trashed: false, trashedAt: null }, content: mockContent }
+      const restoredEntry = { ...trashedEntry, trashed: false, trashedAt: null }
+      const restoredTab = { entry: restoredEntry, content: mockContent }
       rerender(
-        <Editor {...defaultProps} tabs={[restoredTab]} activeTabPath={trashedEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
+        <Editor {...defaultProps} entries={[restoredEntry]} tabs={[restoredTab]} activeTabPath={trashedEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
       )
       expect(screen.queryByTestId('trashed-note-banner')).not.toBeInTheDocument()
       expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'true')
@@ -408,6 +410,7 @@ describe('click empty editor space', () => {
     render(
       <Editor
         {...defaultProps}
+        entries={[trashedEntry]}
         tabs={[{ entry: trashedEntry, content: mockContent }]}
         activeTabPath={trashedEntry.path}
       />
@@ -429,9 +432,10 @@ describe('archived note behavior', () => {
     )
     expect(screen.queryByTestId('archived-note-banner')).not.toBeInTheDocument()
 
-    const archivedTab = { entry: { ...mockEntry, archived: true }, content: mockContent }
+    const archivedEntry = { ...mockEntry, archived: true }
+    const archivedTab = { entry: archivedEntry, content: mockContent }
     rerender(
-      <Editor {...defaultProps} tabs={[archivedTab]} activeTabPath={mockEntry.path} onUnarchiveNote={vi.fn()} />
+      <Editor {...defaultProps} entries={[archivedEntry]} tabs={[archivedTab]} activeTabPath={mockEntry.path} onUnarchiveNote={vi.fn()} />
     )
     expect(screen.getByTestId('archived-note-banner')).toBeInTheDocument()
   })
@@ -440,13 +444,14 @@ describe('archived note behavior', () => {
     const archivedEntry: VaultEntry = { ...mockEntry, archived: true }
     const archivedTab = { entry: archivedEntry, content: mockContent }
     const { rerender } = render(
-      <Editor {...defaultProps} tabs={[archivedTab]} activeTabPath={archivedEntry.path} onUnarchiveNote={vi.fn()} />
+      <Editor {...defaultProps} entries={[archivedEntry]} tabs={[archivedTab]} activeTabPath={archivedEntry.path} onUnarchiveNote={vi.fn()} />
     )
     expect(screen.getByTestId('archived-note-banner')).toBeInTheDocument()
 
-    const unarchivedTab = { entry: { ...archivedEntry, archived: false }, content: mockContent }
+    const unarchivedEntry = { ...archivedEntry, archived: false }
+    const unarchivedTab = { entry: unarchivedEntry, content: mockContent }
     rerender(
-      <Editor {...defaultProps} tabs={[unarchivedTab]} activeTabPath={archivedEntry.path} onUnarchiveNote={vi.fn()} />
+      <Editor {...defaultProps} entries={[unarchivedEntry]} tabs={[unarchivedTab]} activeTabPath={archivedEntry.path} onUnarchiveNote={vi.fn()} />
     )
     expect(screen.queryByTestId('archived-note-banner')).not.toBeInTheDocument()
   })

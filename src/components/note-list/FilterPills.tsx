@@ -15,14 +15,14 @@ const PILLS: { value: NoteListFilter; label: string }[] = [
 
 function FilterPillsInner({ active, counts, onChange }: FilterPillsProps) {
   return (
-    <div className="flex h-[45px] shrink-0 items-center gap-1 border-b border-border px-4" data-testid="filter-pills">
+    <div className="flex h-auto min-h-[45px] shrink-0 flex-wrap items-center gap-1 border-b border-border px-4 py-1.5" data-testid="filter-pills">
       {PILLS.map(({ value, label }) => (
         <button
           key={value}
           type="button"
           role="tab"
           aria-selected={active === value}
-          className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
+          className={`inline-flex whitespace-nowrap items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-[12px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring ${
             active === value
               ? 'border-foreground/20 bg-foreground/10 text-foreground'
               : 'border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
