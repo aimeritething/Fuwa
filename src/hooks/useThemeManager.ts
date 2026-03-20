@@ -79,15 +79,31 @@ function clearColorScheme(): void {
   delete root.dataset.themeMode
 }
 
+const THEME_STYLE_ID = 'laputa-theme-vars'
+
+function getOrCreateThemeStyle(): HTMLStyleElement {
+  let el = document.getElementById(THEME_STYLE_ID) as HTMLStyleElement | null
+  if (!el) {
+    el = document.createElement('style')
+    el.id = THEME_STYLE_ID
+    document.head.appendChild(el)
+  }
+  return el
+}
+
 function applyVarsToDom(vars: Record<string, string>): void {
   const root = document.documentElement
   for (const [key, value] of Object.entries(vars)) {
     root.style.setProperty(key, value)
   }
   updateColorScheme(vars)
-  // Force WebKit to recalculate ::before/::after pseudo-element styles
-  // when CSS custom properties change (WKWebView doesn't auto-invalidate).
-  void root.offsetHeight
+  // WKWebView doesn't invalidate ::before/::after pseudo-element styles when
+  // CSS custom properties change via inline styles alone — `void offsetHeight`
+  // triggers layout reflow but not style recalculation on pseudo-elements.
+  // Replacing a <style> element's content forces a full style tree invalidation
+  // that covers pseudo-elements using var() references (e.g. bullet size/color).
+  const css = Object.entries(vars).map(([k, v]) => `${k}:${v}`).join(';')
+  getOrCreateThemeStyle().textContent = `:root{${css}}`
 }
 
 function clearVarsFromDom(vars: Record<string, string>): void {
@@ -95,6 +111,7 @@ function clearVarsFromDom(vars: Record<string, string>): void {
   for (const key of Object.keys(vars)) {
     root.style.removeProperty(key)
   }
+  getOrCreateThemeStyle().textContent = ''
   clearColorScheme()
 }
 
@@ -205,11 +222,36 @@ function useThemeApplier(
   return { clearDom, isDark }
 }
 
+/** Deactivate the theme and persist `null` to vault settings. */
+function deactivateTheme(
+  vaultPath: string | null,
+  clearTheme: () => void,
+  setActiveThemeId: (id: string | null) => void,
+) {
+  clearTheme()
+  setActiveThemeId(null)
+  if (vaultPath) tauriCall('set_active_theme', { vaultPath, themeId: null }).catch(() => {})
+}
+
+/** True when the active theme should be cleared (stale, trashed, or archived). */
+function shouldDeactivate(
+  activeThemeId: string | null,
+  themes: ThemeFile[],
+  entries: VaultEntry[],
+  userSetId: string | null,
+): boolean {
+  if (!activeThemeId) return false
+  // Stale ID from old theme system — skip IDs just set by user action
+  if (themes.length > 0 && activeThemeId !== userSetId && !themes.some(t => t.id === activeThemeId)) return true
+  // Trashed or archived
+  const entry = entries.find(e => e.path === activeThemeId)
+  return !!entry && isEntryRemoved(entry)
+}
+
 export function useThemeManager(
   vaultPath: string | null,
   entries: VaultEntry[],
 ): ThemeManager {
-  // Ensure default theme files exist on vault open (creates theme/ dir + defaults if missing)
   useEffect(() => {
     if (vaultPath) tauriCall('ensure_vault_themes', { vaultPath }).catch(() => {})
   }, [vaultPath])
@@ -217,14 +259,10 @@ export function useThemeManager(
   const { activeThemeId, setActiveThemeId, reload } = useThemeSetting(vaultPath)
   const [cachedThemeContent, setCachedThemeContent] = useState<string | undefined>(undefined)
 
-  // Clear cached content when theme changes — useThemeApplier will fetch from disk
   // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setCachedThemeContent(undefined) }, [activeThemeId])
 
   const { clearDom: clearTheme, isDark } = useThemeApplier(activeThemeId, cachedThemeContent)
-
-  // Track IDs set by user actions (switchTheme/createTheme) so the stale-ID
-  // cleanup doesn't clear a newly-created theme that isn't in entries yet.
   const userSetIdRef = useRef<string | null>(null)
 
   const themes = useMemo(
@@ -239,30 +277,12 @@ export function useThemeManager(
     [themes, activeThemeId],
   )
 
-  // If active theme ID doesn't match any known theme (e.g. stale ID from old
-  // JSON-based theme system), clear it so the app doesn't try to load a
-  // non-existent path. Skip IDs just set by switchTheme/createTheme — the
-  // entry may not have appeared in `entries` yet.
+  // Deactivate stale, trashed, or archived theme
   useEffect(() => {
-    if (!activeThemeId || themes.length === 0) return
-    if (activeThemeId === userSetIdRef.current) return
-    const isKnown = themes.some(t => t.id === activeThemeId)
-    if (!isKnown) {
-      clearTheme()
-      setActiveThemeId(null)
-      if (vaultPath) tauriCall('set_active_theme', { vaultPath, themeId: null }).catch(() => {})
+    if (shouldDeactivate(activeThemeId, themes, entries, userSetIdRef.current)) {
+      deactivateTheme(vaultPath, clearTheme, setActiveThemeId)
     }
-  }, [activeThemeId, themes, clearTheme, vaultPath, setActiveThemeId])
-
-  // If active theme is trashed or archived: clear CSS vars and fall back to no theme
-  useEffect(() => {
-    if (!activeThemeId) return
-    const entry = entries.find(e => e.path === activeThemeId)
-    if (!entry || !isEntryRemoved(entry)) return
-    clearTheme()
-    setActiveThemeId(null)
-    if (vaultPath) tauriCall('set_active_theme', { vaultPath, themeId: null }).catch(() => {})
-  }, [entries, activeThemeId, clearTheme, vaultPath, setActiveThemeId])
+  }, [activeThemeId, themes, entries, clearTheme, vaultPath, setActiveThemeId])
 
   const switchTheme = useCallback(async (themeId: string) => {
     if (!vaultPath) return
@@ -294,9 +314,7 @@ export function useThemeManager(
     if (!activeThemeId) return
     try {
       const newContent = await tauriCall<string>('update_frontmatter', {
-        path: activeThemeId,
-        key,
-        value,
+        path: activeThemeId, key, value,
       })
       setCachedThemeContent(newContent)
     } catch (err) { console.error('Failed to update theme property:', err) }
