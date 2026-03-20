@@ -154,6 +154,29 @@ const mockEntries: VaultEntry[] = [
   },
 ]
 
+const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
+  path: '/test.md', filename: 'test.md', title: 'Test', isA: null,
+  aliases: [], belongsTo: [], relatedTo: [], status: null,
+  archived: false, trashed: false, trashedAt: null,
+  modifiedAt: null, createdAt: null, fileSize: 100, snippet: '', wordCount: 0,
+  relationships: {}, icon: null, color: null, order: null, sidebarLabel: null,
+  template: null, sort: null, view: null, visible: null,
+  outgoingLinks: [], properties: {},
+  ...overrides,
+})
+
+const makeIndexedEntry = (i: number, overrides?: Partial<VaultEntry>): VaultEntry =>
+  makeEntry({
+    path: `/vault/note/note-${i}.md`,
+    filename: `note-${i}.md`,
+    title: `Note ${i}`,
+    isA: 'Note',
+    modifiedAt: 1700000000 - i * 60,
+    fileSize: 500,
+    snippet: `Content of note ${i}`,
+    ...overrides,
+  })
+
 describe('NoteList', () => {
   it('shows empty state when no entries', () => {
     render(<NoteList {...defaultFilterProps} entries={[]} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />)
@@ -348,35 +371,6 @@ describe('NoteList click behavior', () => {
 })
 
 describe('getSortComparator', () => {
-  const makeEntry = (overrides: Partial<VaultEntry>): VaultEntry => ({
-    path: '/test.md',
-    filename: 'test.md',
-    title: 'Test',
-    isA: null,
-    aliases: [],
-    belongsTo: [],
-    relatedTo: [],
-    status: null,
-    owner: null,
-    cadence: null,
-    archived: false,
-    trashed: false,
-    trashedAt: null,
-    modifiedAt: null,
-    createdAt: null,
-    fileSize: 100,
-    snippet: '',
-    wordCount: 0,
-    relationships: {},
-    icon: null,
-    color: null,
-    order: null,
-    template: null, sort: null,
-    outgoingLinks: [],
-    properties: {},
-    ...overrides,
-  })
-
   it('sorts by modified date descending', () => {
     const a = makeEntry({ title: 'A', modifiedAt: 1000 })
     const b = makeEntry({ title: 'B', modifiedAt: 3000 })
@@ -462,35 +456,6 @@ describe('NoteList sort controls', () => {
     try { localStorage.removeItem('laputa-sort-preferences') } catch { /* noop */ }
   })
 
-  const makeEntry = (overrides: Partial<VaultEntry>): VaultEntry => ({
-    path: '/test.md',
-    filename: 'test.md',
-    title: 'Test',
-    isA: null,
-    aliases: [],
-    belongsTo: [],
-    relatedTo: [],
-    status: null,
-    owner: null,
-    cadence: null,
-    archived: false,
-    trashed: false,
-    trashedAt: null,
-    modifiedAt: null,
-    createdAt: null,
-    fileSize: 100,
-    snippet: '',
-    wordCount: 0,
-    relationships: {},
-    icon: null,
-    color: null,
-    order: null,
-    template: null, sort: null,
-    outgoingLinks: [],
-    properties: {},
-    ...overrides,
-  })
-
   it('shows sort button in note list header for flat view', () => {
     render(
       <NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
@@ -505,11 +470,21 @@ describe('NoteList sort controls', () => {
     expect(screen.getByTestId('sort-button-Children')).toBeInTheDocument()
   })
 
-  it('opens sort menu on click and shows all options', () => {
+  const renderListAndOpenSort = (entries: VaultEntry[] = mockEntries) => {
     render(
-      <NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
+      <NoteList {...defaultFilterProps} entries={entries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
     )
     fireEvent.click(screen.getByTestId('sort-button-__list__'))
+  }
+
+  const zamEntries = [
+    makeEntry({ path: '/a.md', title: 'Zebra', modifiedAt: 3000 }),
+    makeEntry({ path: '/b.md', title: 'Alpha', modifiedAt: 1000 }),
+    makeEntry({ path: '/c.md', title: 'Middle', modifiedAt: 2000 }),
+  ]
+
+  it('opens sort menu on click and shows all options', () => {
+    renderListAndOpenSort()
     expect(screen.getByTestId('sort-menu-__list__')).toBeInTheDocument()
     expect(screen.getByTestId('sort-option-modified')).toBeInTheDocument()
     expect(screen.getByTestId('sort-option-created')).toBeInTheDocument()
@@ -518,20 +493,12 @@ describe('NoteList sort controls', () => {
   })
 
   it('changes sort order when an option is selected', () => {
-    const entries = [
-      makeEntry({ path: '/a.md', title: 'Zebra', modifiedAt: 3000 }),
-      makeEntry({ path: '/b.md', title: 'Alpha', modifiedAt: 1000 }),
-      makeEntry({ path: '/c.md', title: 'Middle', modifiedAt: 2000 }),
-    ]
-    render(
-      <NoteList {...defaultFilterProps} entries={entries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
-    )
-    // Default sort: by modified (Zebra first)
+    renderListAndOpenSort(zamEntries)
+    // Default sort: by modified (Zebra first) — menu is already open
     let titles = screen.getAllByText(/Zebra|Alpha|Middle/).map((el) => el.textContent)
     expect(titles).toEqual(['Zebra', 'Middle', 'Alpha'])
 
     // Switch to title sort
-    fireEvent.click(screen.getByTestId('sort-button-__list__'))
     fireEvent.click(screen.getByTestId('sort-option-title'))
 
     // Now should be alphabetical
@@ -540,21 +507,14 @@ describe('NoteList sort controls', () => {
   })
 
   it('closes sort menu after selecting an option', () => {
-    render(
-      <NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
-    )
-    fireEvent.click(screen.getByTestId('sort-button-__list__'))
+    renderListAndOpenSort()
     expect(screen.getByTestId('sort-menu-__list__')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('sort-option-title'))
     expect(screen.queryByTestId('sort-menu-__list__')).not.toBeInTheDocument()
   })
 
   it('shows direction arrows in sort dropdown menu', () => {
-    render(
-      <NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
-    )
-    fireEvent.click(screen.getByTestId('sort-button-__list__'))
-    // Each option should have asc and desc direction buttons
+    renderListAndOpenSort()
     expect(screen.getByTestId('sort-dir-asc-modified')).toBeInTheDocument()
     expect(screen.getByTestId('sort-dir-desc-modified')).toBeInTheDocument()
     expect(screen.getByTestId('sort-dir-asc-title')).toBeInTheDocument()
@@ -562,20 +522,12 @@ describe('NoteList sort controls', () => {
   })
 
   it('reverses sort order when clicking direction arrow', () => {
-    const entries = [
-      makeEntry({ path: '/a.md', title: 'Zebra', modifiedAt: 3000 }),
-      makeEntry({ path: '/b.md', title: 'Alpha', modifiedAt: 1000 }),
-      makeEntry({ path: '/c.md', title: 'Middle', modifiedAt: 2000 }),
-    ]
-    render(
-      <NoteList {...defaultFilterProps} entries={entries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
-    )
+    renderListAndOpenSort(zamEntries)
     // Default sort: modified descending (Zebra first at 3000)
     let titles = screen.getAllByText(/Zebra|Alpha|Middle/).map((el) => el.textContent)
     expect(titles).toEqual(['Zebra', 'Middle', 'Alpha'])
 
     // Click the asc arrow for modified to reverse
-    fireEvent.click(screen.getByTestId('sort-button-__list__'))
     fireEvent.click(screen.getByTestId('sort-dir-asc-modified'))
 
     // Now ascending: Alpha (1000) first
@@ -897,37 +849,8 @@ describe('NoteList — trash view', () => {
 // --- Virtual list performance tests ---
 
 describe('NoteList — virtual list with large datasets', () => {
-  const makeEntry = (i: number, overrides?: Partial<VaultEntry>): VaultEntry => ({
-    path: `/vault/note/note-${i}.md`,
-    filename: `note-${i}.md`,
-    title: `Note ${i}`,
-    isA: 'Note',
-    aliases: [],
-    belongsTo: [],
-    relatedTo: [],
-    status: null,
-    owner: null,
-    cadence: null,
-    archived: false,
-    trashed: false,
-    trashedAt: null,
-    modifiedAt: 1700000000 - i * 60,
-    createdAt: null,
-    fileSize: 500,
-    snippet: `Content of note ${i}`,
-    wordCount: 0,
-    relationships: {},
-    icon: null,
-    color: null,
-    order: null,
-    template: null, sort: null,
-    outgoingLinks: [],
-    properties: {},
-    ...overrides,
-  })
-
   it('renders 9000 entries without crashing', { timeout: 30000 }, () => {
-    const largeDataset = Array.from({ length: 9000 }, (_, i) => makeEntry(i))
+    const largeDataset = Array.from({ length: 9000 }, (_, i) => makeIndexedEntry(i))
     const { container } = render(
       <NoteList {...defaultFilterProps} entries={largeDataset} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
     )
@@ -936,7 +859,7 @@ describe('NoteList — virtual list with large datasets', () => {
   })
 
   it('renders items from a large dataset via Virtuoso', () => {
-    const largeDataset = Array.from({ length: 500 }, (_, i) => makeEntry(i))
+    const largeDataset = Array.from({ length: 500 }, (_, i) => makeIndexedEntry(i))
     render(
       <NoteList {...defaultFilterProps} entries={largeDataset} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
     )
@@ -946,9 +869,9 @@ describe('NoteList — virtual list with large datasets', () => {
 
   it('search filters large dataset correctly', () => {
     const entries = [
-      makeEntry(0, { title: 'Alpha Strategy' }),
-      ...Array.from({ length: 998 }, (_, i) => makeEntry(i + 1, { title: `Filler Note ${i + 1}` })),
-      makeEntry(999, { title: 'Beta Strategy' }),
+      makeIndexedEntry(0, { title: 'Alpha Strategy' }),
+      ...Array.from({ length: 998 }, (_, i) => makeIndexedEntry(i + 1, { title: `Filler Note ${i + 1}` })),
+      makeIndexedEntry(999, { title: 'Beta Strategy' }),
     ]
     render(
       <NoteList {...defaultFilterProps} entries={entries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
@@ -962,9 +885,9 @@ describe('NoteList — virtual list with large datasets', () => {
 
   it('sorting works with large dataset', () => {
     const entries = [
-      makeEntry(0, { title: 'Zebra', modifiedAt: 1000 }),
-      makeEntry(1, { title: 'Alpha', modifiedAt: 3000 }),
-      ...Array.from({ length: 100 }, (_, i) => makeEntry(i + 2, { title: `Mid ${i}`, modifiedAt: 2000 - i })),
+      makeIndexedEntry(0, { title: 'Zebra', modifiedAt: 1000 }),
+      makeIndexedEntry(1, { title: 'Alpha', modifiedAt: 3000 }),
+      ...Array.from({ length: 100 }, (_, i) => makeIndexedEntry(i + 2, { title: `Mid ${i}`, modifiedAt: 2000 - i })),
     ]
     render(
       <NoteList {...defaultFilterProps} entries={entries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
@@ -976,8 +899,8 @@ describe('NoteList — virtual list with large datasets', () => {
 
   it('section group filter works with large mixed-type dataset', () => {
     const entries = [
-      ...Array.from({ length: 100 }, (_, i) => makeEntry(i, { isA: 'Project', title: `Project ${i}` })),
-      ...Array.from({ length: 200 }, (_, i) => makeEntry(100 + i, { isA: 'Note', title: `Note ${i}` })),
+      ...Array.from({ length: 100 }, (_, i) => makeIndexedEntry(i, { isA: 'Project', title: `Project ${i}` })),
+      ...Array.from({ length: 200 }, (_, i) => makeIndexedEntry(100 + i, { isA: 'Note', title: `Note ${i}` })),
     ]
     render(
       <NoteList {...defaultFilterProps} entries={entries} selection={{ kind: 'sectionGroup', type: 'Project' }} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
@@ -987,7 +910,7 @@ describe('NoteList — virtual list with large datasets', () => {
   })
 
   it('selection highlighting works in virtualized list', () => {
-    const entries = Array.from({ length: 100 }, (_, i) => makeEntry(i))
+    const entries = Array.from({ length: 100 }, (_, i) => makeIndexedEntry(i))
     const selected = entries[5]
     render(
       <NoteList {...defaultFilterProps} entries={entries} selection={allSelection} selectedNote={selected} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
@@ -997,7 +920,7 @@ describe('NoteList — virtual list with large datasets', () => {
 
   it('click handler works on virtualized items', () => {
     noopReplace.mockClear()
-    const entries = Array.from({ length: 100 }, (_, i) => makeEntry(i))
+    const entries = Array.from({ length: 100 }, (_, i) => makeIndexedEntry(i))
     render(
       <NoteList {...defaultFilterProps} entries={entries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
     )
@@ -1197,66 +1120,32 @@ describe('NoteList — multi-select', () => {
     expect(screen.getByText('2 selected')).toBeInTheDocument()
   })
 
-  it('bulk archive calls onBulkArchive and clears selection', () => {
-    const onBulkArchive = vi.fn()
-    render(<NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onBulkArchive={onBulkArchive} />)
+  const selectTwoNotes = (extraProps: Record<string, unknown> = {}) => {
+    render(<NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} {...extraProps} />)
     fireEvent.click(screen.getByText('Build Laputa App'))
     fireEvent.click(screen.getByText('Facebook Ads Strategy'), { shiftKey: true })
-    fireEvent.click(screen.getByTestId('bulk-archive-btn'))
-    expect(onBulkArchive).toHaveBeenCalledWith([mockEntries[0].path, mockEntries[1].path])
-    expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument()
-  })
+  }
 
-  it('bulk trash calls onBulkTrash and clears selection', () => {
-    const onBulkTrash = vi.fn()
-    render(<NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onBulkTrash={onBulkTrash} />)
-    fireEvent.click(screen.getByText('Build Laputa App'))
-    fireEvent.click(screen.getByText('Facebook Ads Strategy'), { shiftKey: true })
-    fireEvent.click(screen.getByTestId('bulk-trash-btn'))
-    expect(onBulkTrash).toHaveBeenCalledWith([mockEntries[0].path, mockEntries[1].path])
+  it.each([
+    { label: 'bulk archive via button', prop: 'onBulkArchive', trigger: () => fireEvent.click(screen.getByTestId('bulk-archive-btn')) },
+    { label: 'bulk trash via button', prop: 'onBulkTrash', trigger: () => fireEvent.click(screen.getByTestId('bulk-trash-btn')) },
+    { label: 'Cmd+E archives', prop: 'onBulkArchive', trigger: () => fireEvent.keyDown(window, { key: 'e', metaKey: true }) },
+    { label: 'Cmd+Backspace trashes', prop: 'onBulkTrash', trigger: () => fireEvent.keyDown(window, { key: 'Backspace', metaKey: true }) },
+    { label: 'Cmd+Delete trashes', prop: 'onBulkTrash', trigger: () => fireEvent.keyDown(window, { key: 'Delete', metaKey: true }) },
+  ])('$label selected notes and clears selection', ({ prop, trigger }) => {
+    const handler = vi.fn()
+    selectTwoNotes({ [prop]: handler })
+    trigger()
+    expect(handler).toHaveBeenCalledWith([mockEntries[0].path, mockEntries[1].path])
     expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument()
   })
 
   it('clear button on bulk action bar clears selection', () => {
-    render(<NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />)
-    fireEvent.click(screen.getByText('Build Laputa App'))
-    fireEvent.click(screen.getByText('Facebook Ads Strategy'), { shiftKey: true })
+    selectTwoNotes()
     expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('bulk-clear-btn'))
     expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument()
     expect(screen.queryByTestId('multi-selected-item')).not.toBeInTheDocument()
-  })
-
-  it('Cmd+E archives selected notes when multiselect is active', () => {
-    const onBulkArchive = vi.fn()
-    render(<NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onBulkArchive={onBulkArchive} />)
-    fireEvent.click(screen.getByText('Build Laputa App'))
-    fireEvent.click(screen.getByText('Facebook Ads Strategy'), { shiftKey: true })
-    expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument()
-    fireEvent.keyDown(window, { key: 'e', metaKey: true })
-    expect(onBulkArchive).toHaveBeenCalledWith([mockEntries[0].path, mockEntries[1].path])
-    expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument()
-  })
-
-  it('Cmd+Backspace trashes selected notes when multiselect is active', () => {
-    const onBulkTrash = vi.fn()
-    render(<NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onBulkTrash={onBulkTrash} />)
-    fireEvent.click(screen.getByText('Build Laputa App'))
-    fireEvent.click(screen.getByText('Facebook Ads Strategy'), { shiftKey: true })
-    expect(screen.getByTestId('bulk-action-bar')).toBeInTheDocument()
-    fireEvent.keyDown(window, { key: 'Backspace', metaKey: true })
-    expect(onBulkTrash).toHaveBeenCalledWith([mockEntries[0].path, mockEntries[1].path])
-    expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument()
-  })
-
-  it('Cmd+Delete trashes selected notes when multiselect is active', () => {
-    const onBulkTrash = vi.fn()
-    render(<NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onBulkTrash={onBulkTrash} />)
-    fireEvent.click(screen.getByText('Build Laputa App'))
-    fireEvent.click(screen.getByText('Facebook Ads Strategy'), { shiftKey: true })
-    fireEvent.keyDown(window, { key: 'Delete', metaKey: true })
-    expect(onBulkTrash).toHaveBeenCalledWith([mockEntries[0].path, mockEntries[1].path])
-    expect(screen.queryByTestId('bulk-action-bar')).not.toBeInTheDocument()
   })
 
   it('no bulk action bar when nothing is selected', () => {
@@ -1360,17 +1249,6 @@ describe('NoteList — traffic light padding when sidebar collapsed', () => {
 })
 
 describe('countByFilter', () => {
-  const makeEntry = (overrides: Partial<VaultEntry>): VaultEntry => ({
-    path: '/test.md', filename: 'test.md', title: 'Test', isA: null,
-    aliases: [], belongsTo: [], relatedTo: [], status: null,
-    archived: false, trashed: false, trashedAt: null,
-    modifiedAt: null, createdAt: null, fileSize: 100, snippet: '', wordCount: 0,
-    relationships: {}, icon: null, color: null, order: null, sidebarLabel: null,
-    template: null, sort: null, view: null, visible: null,
-    outgoingLinks: [], properties: {},
-    ...overrides,
-  })
-
   it('counts open, archived, and trashed notes per type', () => {
     const entries = [
       makeEntry({ path: '/1.md', isA: 'Project' }),
@@ -1397,17 +1275,6 @@ describe('countByFilter', () => {
 })
 
 describe('NoteList — filter pills', () => {
-  const makeEntry = (overrides: Partial<VaultEntry>): VaultEntry => ({
-    path: '/test.md', filename: 'test.md', title: 'Test', isA: null,
-    aliases: [], belongsTo: [], relatedTo: [], status: null,
-    archived: false, trashed: false, trashedAt: null,
-    modifiedAt: 1700000000, createdAt: null, fileSize: 100, snippet: '', wordCount: 0,
-    relationships: {}, icon: null, color: null, order: null, sidebarLabel: null,
-    template: null, sort: null, view: null, visible: null,
-    outgoingLinks: [], properties: {},
-    ...overrides,
-  })
-
   const projectEntries = [
     makeEntry({ path: '/p1.md', title: 'Open Project 1', isA: 'Project' }),
     makeEntry({ path: '/p2.md', title: 'Open Project 2', isA: 'Project' }),
@@ -1484,17 +1351,6 @@ describe('NoteList — filter pills', () => {
 })
 
 describe('NoteList — filterEntries with subFilter', () => {
-  const makeEntry = (overrides: Partial<VaultEntry>): VaultEntry => ({
-    path: '/test.md', filename: 'test.md', title: 'Test', isA: null,
-    aliases: [], belongsTo: [], relatedTo: [], status: null,
-    archived: false, trashed: false, trashedAt: null,
-    modifiedAt: null, createdAt: null, fileSize: 100, snippet: '', wordCount: 0,
-    relationships: {}, icon: null, color: null, order: null, sidebarLabel: null,
-    template: null, sort: null, view: null, visible: null,
-    outgoingLinks: [], properties: {},
-    ...overrides,
-  })
-
   const entries = [
     makeEntry({ path: '/1.md', title: 'Active', isA: 'Project' }),
     makeEntry({ path: '/2.md', title: 'Archived', isA: 'Project', archived: true }),
