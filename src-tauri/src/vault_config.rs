@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 
-/// Vault-wide UI configuration stored in `config/ui.config.md`.
+/// Vault-wide UI configuration stored in `ui.config.md` at vault root.
 ///
 /// This file is a regular vault note with YAML frontmatter, visible in the
 /// sidebar under the "Config" section and editable like any note.
@@ -21,14 +21,13 @@ pub struct VaultConfig {
     pub property_display_modes: Option<HashMap<String, String>>,
 }
 
-const CONFIG_DIR: &str = "config";
 const CONFIG_FILENAME: &str = "ui.config.md";
 
 fn config_path(vault_path: &str) -> std::path::PathBuf {
-    Path::new(vault_path).join(CONFIG_DIR).join(CONFIG_FILENAME)
+    Path::new(vault_path).join(CONFIG_FILENAME)
 }
 
-/// Read the vault-wide UI config from `config/ui.config.md`.
+/// Read the vault-wide UI config from `ui.config.md` at vault root.
 /// Returns default values if the file doesn't exist.
 pub fn get_vault_config(vault_path: &str) -> Result<VaultConfig, String> {
     let path = config_path(vault_path);
@@ -69,17 +68,41 @@ fn parse_vault_config(content: &str) -> Result<VaultConfig, String> {
         .map_err(|e| format!("Failed to parse config: {e}"))
 }
 
-/// Save the vault-wide UI config to `config/ui.config.md`.
-/// Creates the directory and file if they don't exist.
+/// Save the vault-wide UI config to `ui.config.md` at vault root.
+/// Creates the file if it doesn't exist.
 pub fn save_vault_config(vault_path: &str, config: VaultConfig) -> Result<(), String> {
     let path = config_path(vault_path);
-    let dir = Path::new(vault_path).join(CONFIG_DIR);
-    if !dir.exists() {
-        std::fs::create_dir_all(&dir).map_err(|e| format!("Failed to create config dir: {e}"))?;
-    }
-
     let content = serialize_config(&config);
     std::fs::write(&path, content).map_err(|e| format!("Failed to write config: {e}"))
+}
+
+/// Migrate legacy `config/ui.config.md` → root `ui.config.md`.
+/// If the root file already exists, the legacy file is simply removed.
+/// Cleans up empty `config/` directory after migration.
+pub fn migrate_ui_config_to_root(vault_path: &str) {
+    let vault = Path::new(vault_path);
+    let legacy = vault.join("config").join(CONFIG_FILENAME);
+    let root = vault.join(CONFIG_FILENAME);
+
+    if legacy.exists() {
+        if !root.exists() {
+            // Move legacy content to root
+            if let Ok(content) = std::fs::read_to_string(&legacy) {
+                let _ = std::fs::write(&root, content);
+            }
+        }
+        let _ = std::fs::remove_file(&legacy);
+    }
+
+    // Clean up empty config/ directory
+    let config_dir = vault.join("config");
+    if config_dir.is_dir() {
+        let is_empty =
+            std::fs::read_dir(&config_dir).map_or(true, |mut d| d.next().is_none());
+        if is_empty {
+            let _ = std::fs::remove_dir(&config_dir);
+        }
+    }
 }
 
 /// Serialize VaultConfig to a markdown file with YAML frontmatter.
@@ -142,7 +165,7 @@ fn yaml_safe_value(value: &str) -> String {
     }
 }
 
-/// Migrate `hidden_sections` from `config/ui.config.md` to `visible: false`
+/// Migrate `hidden_sections` from `ui.config.md` to `visible: false`
 /// on Type notes. Returns the number of Type notes updated.
 ///
 /// For each type name in `hidden_sections`:
@@ -354,11 +377,9 @@ property_display_modes:
         let dir = tempfile::TempDir::new().unwrap();
         let vault_path = dir.path().to_str().unwrap();
 
-        // Create config with hidden_sections
-        let config_dir = dir.path().join("config");
-        std::fs::create_dir_all(&config_dir).unwrap();
+        // Create config with hidden_sections at vault root
         std::fs::write(
-            config_dir.join("ui.config.md"),
+            dir.path().join("ui.config.md"),
             "---\ntype: config\nhidden_sections:\n  - Bookmark\n  - Recipe\n---\n",
         )
         .unwrap();
@@ -375,7 +396,8 @@ property_display_modes:
         assert!(recipe.contains("visible: false"));
 
         // Config should no longer have hidden_sections
-        let config_content = std::fs::read_to_string(config_dir.join("ui.config.md")).unwrap();
+        let config_content =
+            std::fs::read_to_string(dir.path().join("ui.config.md")).unwrap();
         assert!(!config_content.contains("hidden_sections"));
     }
 
@@ -384,11 +406,9 @@ property_display_modes:
         let dir = tempfile::TempDir::new().unwrap();
         let vault_path = dir.path().to_str().unwrap();
 
-        // Create config with hidden_sections
-        let config_dir = dir.path().join("config");
-        std::fs::create_dir_all(&config_dir).unwrap();
+        // Create config with hidden_sections at vault root
         std::fs::write(
-            config_dir.join("ui.config.md"),
+            dir.path().join("ui.config.md"),
             "---\ntype: config\nhidden_sections:\n  - Project\n---\n",
         )
         .unwrap();
@@ -416,10 +436,8 @@ property_display_modes:
         let dir = tempfile::TempDir::new().unwrap();
         let vault_path = dir.path().to_str().unwrap();
 
-        let config_dir = dir.path().join("config");
-        std::fs::create_dir_all(&config_dir).unwrap();
         std::fs::write(
-            config_dir.join("ui.config.md"),
+            dir.path().join("ui.config.md"),
             "---\ntype: config\nzoom: 1.0\n---\n",
         )
         .unwrap();
@@ -440,19 +458,15 @@ property_display_modes:
         let dir = tempfile::TempDir::new().unwrap();
         let vault_path = dir.path().to_str().unwrap();
 
-        let config_dir = dir.path().join("config");
-        std::fs::create_dir_all(&config_dir).unwrap();
         std::fs::write(
-            config_dir.join("ui.config.md"),
+            dir.path().join("ui.config.md"),
             "---\ntype: config\nhidden_sections:\n  - Note\n---\n",
         )
         .unwrap();
 
-        // Type note already has visible: false
-        let type_dir = dir.path().join("type");
-        std::fs::create_dir_all(&type_dir).unwrap();
+        // Type note already has visible: false at vault root
         std::fs::write(
-            type_dir.join("note.md"),
+            dir.path().join("note.md"),
             "---\ntype: Type\ntitle: Note\nvisible: false\n---\n",
         )
         .unwrap();
@@ -460,7 +474,7 @@ property_display_modes:
         let count = migrate_hidden_sections_to_visible(vault_path).unwrap();
         assert_eq!(count, 1);
 
-        let content = std::fs::read_to_string(type_dir.join("note.md")).unwrap();
+        let content = std::fs::read_to_string(dir.path().join("note.md")).unwrap();
         // Should have exactly one visible: false, not two
         assert_eq!(content.matches("visible:").count(), 1);
     }
@@ -477,5 +491,95 @@ property_display_modes:
         assert_eq!(yaml_safe_key("simple"), "simple");
         assert_eq!(yaml_safe_key("has space"), "\"has space\"");
         assert_eq!(yaml_safe_key("has:colon"), "\"has:colon\"");
+    }
+
+    #[test]
+    fn migrate_ui_config_moves_legacy_to_root() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(
+            config_dir.join("ui.config.md"),
+            "---\ntype: config\nzoom: 1.5\n---\n",
+        )
+        .unwrap();
+
+        migrate_ui_config_to_root(vault_path);
+
+        // Root file should exist with migrated content
+        let content = std::fs::read_to_string(dir.path().join("ui.config.md")).unwrap();
+        assert!(content.contains("zoom: 1.5"));
+        // Legacy file and empty config dir should be gone
+        assert!(!config_dir.join("ui.config.md").exists());
+        assert!(!config_dir.exists());
+    }
+
+    #[test]
+    fn migrate_ui_config_preserves_existing_root() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+
+        // Root already has content
+        std::fs::write(
+            dir.path().join("ui.config.md"),
+            "---\ntype: config\nzoom: 2.0\n---\n",
+        )
+        .unwrap();
+
+        // Legacy also exists
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(
+            config_dir.join("ui.config.md"),
+            "---\ntype: config\nzoom: 1.0\n---\n",
+        )
+        .unwrap();
+
+        migrate_ui_config_to_root(vault_path);
+
+        // Root should keep its original content
+        let content = std::fs::read_to_string(dir.path().join("ui.config.md")).unwrap();
+        assert!(content.contains("zoom: 2.0"));
+        // Legacy file should be removed
+        assert!(!config_dir.join("ui.config.md").exists());
+    }
+
+    #[test]
+    fn migrate_ui_config_keeps_nonempty_config_dir() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+
+        let config_dir = dir.path().join("config");
+        std::fs::create_dir_all(&config_dir).unwrap();
+        std::fs::write(
+            config_dir.join("ui.config.md"),
+            "---\ntype: config\n---\n",
+        )
+        .unwrap();
+        std::fs::write(config_dir.join("other.md"), "Other file").unwrap();
+
+        migrate_ui_config_to_root(vault_path);
+
+        // config/ should still exist because it has other files
+        assert!(config_dir.exists());
+        assert!(config_dir.join("other.md").exists());
+        assert!(!config_dir.join("ui.config.md").exists());
+    }
+
+    #[test]
+    fn save_config_writes_to_vault_root() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().to_str().unwrap();
+        let config = VaultConfig {
+            zoom: Some(1.0),
+            ..Default::default()
+        };
+        save_vault_config(vault_path, config).unwrap();
+
+        // File should be at vault root, not in config/
+        assert!(dir.path().join("ui.config.md").exists());
+        assert!(!dir.path().join("config").exists());
     }
 }

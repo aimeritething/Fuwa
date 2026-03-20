@@ -588,6 +588,8 @@ pub fn repair_vault(vault_path: String) -> Result<String, String> {
     // Migrate legacy theme/ directory to root, then repair themes
     theme::migrate_theme_dir_to_root(&vault_path);
     theme::restore_default_themes(&vault_path)?;
+    // Migrate legacy config/ui.config.md → root ui.config.md
+    vault_config::migrate_ui_config_to_root(&vault_path);
     // Repair config files (AGENTS.md at root, config.md type def)
     vault::repair_config_files(&vault_path)?;
     // Ensure .gitignore with sensible defaults exists

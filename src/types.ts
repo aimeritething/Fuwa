@@ -155,7 +155,7 @@ export interface VaultSettings {
   theme: string | null
 }
 
-/** Vault-wide UI configuration stored in config/ui.config.md. */
+/** Vault-wide UI configuration stored in ui.config.md at vault root. */
 export interface VaultConfig {
   zoom: number | null
   view_mode: string | null

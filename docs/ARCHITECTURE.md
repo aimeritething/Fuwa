@@ -466,7 +466,7 @@ Managed by `useVaultSwitcher` hook. Switching vaults closes all tabs and resets 
 
 ### Vault Config
 
-Per-vault UI settings stored in `config/ui.config.md` (YAML frontmatter in a markdown note):
+Per-vault UI settings stored in `ui.config.md` at vault root (YAML frontmatter in a markdown note):
 - `zoom`: Float zoom level (0.8–1.5)
 - `view_mode`: "all" | "editor-list" | "editor-only"
 - `editor_mode`: "raw" | "preview" (persists across tab switches and sessions)
