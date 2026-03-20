@@ -97,8 +97,7 @@ pub fn migrate_ui_config_to_root(vault_path: &str) {
     // Clean up empty config/ directory
     let config_dir = vault.join("config");
     if config_dir.is_dir() {
-        let is_empty =
-            std::fs::read_dir(&config_dir).map_or(true, |mut d| d.next().is_none());
+        let is_empty = std::fs::read_dir(&config_dir).map_or(true, |mut d| d.next().is_none());
         if is_empty {
             let _ = std::fs::remove_dir(&config_dir);
         }
@@ -396,8 +395,7 @@ property_display_modes:
         assert!(recipe.contains("visible: false"));
 
         // Config should no longer have hidden_sections
-        let config_content =
-            std::fs::read_to_string(dir.path().join("ui.config.md")).unwrap();
+        let config_content = std::fs::read_to_string(dir.path().join("ui.config.md")).unwrap();
         assert!(!config_content.contains("hidden_sections"));
     }
 
@@ -553,11 +551,7 @@ property_display_modes:
 
         let config_dir = dir.path().join("config");
         std::fs::create_dir_all(&config_dir).unwrap();
-        std::fs::write(
-            config_dir.join("ui.config.md"),
-            "---\ntype: config\n---\n",
-        )
-        .unwrap();
+        std::fs::write(config_dir.join("ui.config.md"), "---\ntype: config\n---\n").unwrap();
         std::fs::write(config_dir.join("other.md"), "Other file").unwrap();
 
         migrate_ui_config_to_root(vault_path);
