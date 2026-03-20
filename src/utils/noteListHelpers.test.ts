@@ -368,6 +368,40 @@ describe('buildRelationshipGroups', () => {
     const referredGroup = groups.find((g) => g.label === 'Referred by Data')
     expect(referredGroup).toBeUndefined()
   })
+
+  it('resolves refs by title when filename differs from wikilink target', () => {
+    // Wikilink [[Airdev]] but filename is airdev-tool.md, title is "Airdev"
+    const airdev = makeEntry({
+      path: '/vault/airdev-tool.md', filename: 'airdev-tool.md', title: 'Airdev',
+    })
+    const budibase = makeEntry({
+      path: '/vault/budibase-app.md', filename: 'budibase-app.md', title: 'Budibase',
+      aliases: ['Budi'],
+    })
+    const entity = makeEntry({
+      path: '/vault/no-code.md', filename: 'no-code.md', title: 'No Code',
+      relationships: { Notes: ['[[Airdev]]', '[[Budi]]'] },
+    })
+    const groups = buildRelationshipGroups(entity, [entity, airdev, budibase])
+    const notesGroup = groups.find((g) => g.label === 'Notes')
+    expect(notesGroup).toBeDefined()
+    expect(notesGroup!.entries).toHaveLength(2)
+    expect(notesGroup!.entries.map(e => e.title).sort()).toEqual(['Airdev', 'Budibase'])
+  })
+
+  it('resolves Children via title match when belongsTo target differs from filename', () => {
+    // Child's belongsTo uses [[No Code]] but entity filename is no-code-topic.md
+    const child = makeEntry({
+      path: '/vault/tool.md', filename: 'tool.md', title: 'Tool',
+      belongsTo: ['[[No Code]]'], modifiedAt: 1700000000,
+    })
+    const entity = makeEntry({
+      path: '/vault/no-code-topic.md', filename: 'no-code-topic.md', title: 'No Code',
+      relationships: {},
+    })
+    const groups = buildRelationshipGroups(entity, [entity, child])
+    expect(groups.find((g) => g.label === 'Children')!.entries).toHaveLength(1)
+  })
 })
 
 describe('getSortComparator — custom properties', () => {

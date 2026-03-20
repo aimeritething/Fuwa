@@ -1,4 +1,5 @@
 import type { VaultEntry, SidebarSelection, InboxPeriod } from '../types'
+import { wikilinkTarget, resolveEntry } from './wikilink'
 
 export type NoteListFilter = 'open' | 'archived' | 'trashed'
 
@@ -61,25 +62,12 @@ export function formatSearchSubtitle(entry: VaultEntry): string {
 }
 
 function refsMatch(refs: string[], entry: VaultEntry): boolean {
-  const stem = entry.path.replace(/^.*\/Laputa\//, '').replace(/\.md$/, '')
-  const fileStem = entry.filename.replace(/\.md$/, '')
-  return refs.some((ref) => {
-    const inner = ref.replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0]
-    return inner === stem || inner.split('/').pop() === fileStem
-  })
+  return refs.some((ref) => resolveEntry([entry], wikilinkTarget(ref)) !== undefined)
 }
 
 function resolveRefs(refs: string[], entries: VaultEntry[]): VaultEntry[] {
   return refs
-    .map((ref) => {
-      const inner = ref.replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0]
-      return entries.find((e) => {
-        const stem = e.path.replace(/^.*\/Laputa\//, '').replace(/\.md$/, '')
-        if (stem === inner) return true
-        const fileStem = e.filename.replace(/\.md$/, '')
-        return fileStem === inner.split('/').pop()
-      })
-    })
+    .map((ref) => resolveEntry(entries, wikilinkTarget(ref)))
     .filter((e): e is VaultEntry => e !== undefined)
 }
 
