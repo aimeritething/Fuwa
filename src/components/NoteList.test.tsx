@@ -1,7 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NoteList } from './NoteList'
-import { getSortComparator, filterEntries, countByFilter } from '../utils/noteListHelpers'
+import { getSortComparator, filterEntries, countByFilter, countAllByFilter } from '../utils/noteListHelpers'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { VaultEntry, SidebarSelection } from '../types'
 
@@ -1293,11 +1293,44 @@ describe('NoteList — filter pills', () => {
     expect(screen.getByTestId('filter-pill-trashed')).toBeInTheDocument()
   })
 
-  it('does not show filter pills in All Notes view', () => {
+  it('shows filter pills in All Notes view', () => {
     render(
       <NoteList {...defaultFilterProps} entries={projectEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
     )
-    expect(screen.queryByTestId('filter-pills')).not.toBeInTheDocument()
+    expect(screen.getByTestId('filter-pills')).toBeInTheDocument()
+    expect(screen.getByTestId('filter-pill-open')).toBeInTheDocument()
+    expect(screen.getByTestId('filter-pill-archived')).toBeInTheDocument()
+    expect(screen.getByTestId('filter-pill-trashed')).toBeInTheDocument()
+  })
+
+  it('shows correct All Notes count badges across all types', () => {
+    render(
+      <NoteList {...defaultFilterProps} entries={projectEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
+    )
+    // projectEntries: 2 open Projects + 1 open Note = 3 open, 1 archived, 1 trashed
+    const openPill = screen.getByTestId('filter-pill-open')
+    const archivedPill = screen.getByTestId('filter-pill-archived')
+    const trashedPill = screen.getByTestId('filter-pill-trashed')
+    expect(openPill).toHaveTextContent('3')
+    expect(archivedPill).toHaveTextContent('1')
+    expect(trashedPill).toHaveTextContent('1')
+  })
+
+  it('shows archived notes in All Notes when filter is archived', () => {
+    render(
+      <NoteList noteListFilter="archived" onNoteListFilterChange={noopFilterChange} entries={projectEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
+    )
+    expect(screen.getByText('Archived Project')).toBeInTheDocument()
+    expect(screen.queryByText('Open Project 1')).not.toBeInTheDocument()
+    expect(screen.queryByText('Some Note')).not.toBeInTheDocument()
+  })
+
+  it('shows trashed notes in All Notes when filter is trashed', () => {
+    render(
+      <NoteList noteListFilter="trashed" onNoteListFilterChange={noopFilterChange} entries={projectEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
+    )
+    expect(screen.getByText('Trashed Project')).toBeInTheDocument()
+    expect(screen.queryByText('Open Project 1')).not.toBeInTheDocument()
   })
 
   it('shows correct count badges for each filter', () => {
@@ -1376,5 +1409,34 @@ describe('NoteList — filterEntries with subFilter', () => {
   it('without sub-filter, defaults to active only', () => {
     const result = filterEntries(entries, { kind: 'sectionGroup', type: 'Project' })
     expect(result.map(e => e.title)).toEqual(['Active'])
+  })
+
+  it('filters all notes by open sub-filter', () => {
+    const result = filterEntries(entries, { kind: 'filter', filter: 'all' }, 'open')
+    expect(result.map(e => e.title)).toEqual(['Active', 'Other'])
+  })
+
+  it('filters all notes by archived sub-filter', () => {
+    const result = filterEntries(entries, { kind: 'filter', filter: 'all' }, 'archived')
+    expect(result.map(e => e.title)).toEqual(['Archived'])
+  })
+
+  it('filters all notes by trashed sub-filter', () => {
+    const result = filterEntries(entries, { kind: 'filter', filter: 'all' }, 'trashed')
+    expect(result.map(e => e.title)).toEqual(['Trashed'])
+  })
+})
+
+describe('countAllByFilter', () => {
+  it('counts all entries by filter status', () => {
+    const entries = [
+      makeEntry({ path: '/1.md', isA: 'Project' }),
+      makeEntry({ path: '/2.md', isA: 'Note' }),
+      makeEntry({ path: '/3.md', isA: 'Project', archived: true }),
+      makeEntry({ path: '/4.md', isA: 'Note', trashed: true }),
+      makeEntry({ path: '/5.md', isA: 'Person', archived: true, trashed: true }),
+    ]
+    const counts = countAllByFilter(entries)
+    expect(counts).toEqual({ open: 2, archived: 1, trashed: 2 })
   })
 })

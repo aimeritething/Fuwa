@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, memo } from 'react'
 import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus, InboxPeriod } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
-import { countByFilter, countInboxByPeriod } from '../utils/noteListHelpers'
+import { countByFilter, countAllByFilter, countInboxByPeriod } from '../utils/noteListHelpers'
 import { NoteItem } from './NoteItem'
 import { prefetchNoteContent } from '../hooks/useTabManagement'
 import { BulkActionBar } from './BulkActionBar'
@@ -48,11 +48,13 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
 
   const isSectionGroup = selection.kind === 'sectionGroup'
   const isInboxView = selection.kind === 'filter' && selection.filter === 'inbox'
-  const subFilter = isSectionGroup ? noteListFilter : undefined
+  const isAllNotesView = selection.kind === 'filter' && selection.filter === 'all'
+  const showFilterPills = isSectionGroup || isAllNotesView
+  const subFilter = showFilterPills ? noteListFilter : undefined
 
   const filterCounts = useMemo(
-    () => isSectionGroup ? countByFilter(entries, selection.type) : { open: 0, archived: 0, trashed: 0 },
-    [entries, isSectionGroup, selection],
+    () => isSectionGroup ? countByFilter(entries, selection.type) : isAllNotesView ? countAllByFilter(entries) : { open: 0, archived: 0, trashed: 0 },
+    [entries, isSectionGroup, isAllNotesView, selection],
   )
 
   const inboxCounts = useMemo(
@@ -75,7 +77,7 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
 
   const noteListKeyboard = useNoteListKeyboard({ items: searched, selectedNotePath: selectedNote?.path ?? null, onOpen: onReplaceActiveTab, enabled: !isEntityView })
   const multiSelect = useMultiSelect(searched, selectedNote?.path ?? null)
-  useEffect(() => { multiSelect.clear() }, [selection]) // eslint-disable-line react-hooks/exhaustive-deps -- clear on selection change only
+  useEffect(() => { multiSelect.clear() }, [selection, noteListFilter]) // eslint-disable-line react-hooks/exhaustive-deps -- clear on selection/filter change
 
   const handleClickNote = useCallback((entry: VaultEntry, e: React.MouseEvent) => {
     routeNoteClick(entry, e, { onReplace: onReplaceActiveTab, onSelect: onSelectNote, onOpenInNewWindow, multiSelect })
@@ -100,7 +102,7 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
   return (
     <div className="flex flex-col select-none overflow-hidden border-r border-border bg-card text-foreground" style={{ height: '100%' }}>
       <NoteListHeader title={title} typeDocument={typeDocument} isEntityView={isEntityView} isTrashView={isTrashView} trashCount={searched.length} listSort={listSort} listDirection={listDirection} customProperties={customProperties} sidebarCollapsed={sidebarCollapsed} searchVisible={searchVisible} search={search} onSortChange={handleSortChange} onCreateNote={onCreateNote} onOpenType={onReplaceActiveTab} onToggleSearch={toggleSearch} onSearchChange={setSearch} onEmptyTrash={onEmptyTrash} />
-      {isSectionGroup && <FilterPills active={noteListFilter} counts={filterCounts} onChange={onNoteListFilterChange} />}
+      {showFilterPills && <FilterPills active={noteListFilter} counts={filterCounts} onChange={onNoteListFilterChange} />}
       {isInboxView && onInboxPeriodChange && <InboxFilterPills active={inboxPeriod} counts={inboxCounts} onChange={onInboxPeriodChange} />}
       <div className="flex flex-1 flex-col overflow-hidden outline-none" style={{ minHeight: 0 }} tabIndex={0} onKeyDown={noteListKeyboard.handleKeyDown} onFocus={noteListKeyboard.handleFocus} data-testid="note-list-container">
         <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>

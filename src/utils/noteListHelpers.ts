@@ -315,6 +315,7 @@ function filterByKind(entries: VaultEntry[], selection: SidebarSelection, subFil
     const typeEntries = entries.filter((e) => e.isA === selection.type)
     return subFilter ? applySubFilter(typeEntries, subFilter) : typeEntries.filter(isActive)
   }
+  if (selection.filter === 'all' && subFilter) return applySubFilter(entries, subFilter)
   return filterByFilterType(entries, selection.filter)
 }
 
@@ -335,6 +336,17 @@ export function countByFilter(entries: VaultEntry[], type: string): Record<NoteL
   let open = 0, archived = 0, trashed = 0
   for (const e of entries) {
     if (e.isA !== type) continue
+    if (e.trashed) trashed++
+    else if (e.archived) archived++
+    else open++
+  }
+  return { open, archived, trashed }
+}
+
+/** Count notes per sub-filter across all entries (no type filter). */
+export function countAllByFilter(entries: VaultEntry[]): Record<NoteListFilter, number> {
+  let open = 0, archived = 0, trashed = 0
+  for (const e of entries) {
     if (e.trashed) trashed++
     else if (e.archived) archived++
     else open++
