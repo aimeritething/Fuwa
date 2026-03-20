@@ -47,7 +47,7 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
   }
 
   return (
-    <div className="group/prop flex min-w-0 items-center gap-2 rounded px-1.5 py-0.5 outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary" tabIndex={0} onKeyDown={handleKeyDown} data-testid="editable-property">
+    <div className="group/prop flex min-w-0 items-center gap-2 rounded px-1.5 outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary" tabIndex={0} onKeyDown={handleKeyDown} data-testid="editable-property">
       <span className="font-mono-overline flex w-1/2 shrink-0 min-w-0 items-center gap-1 text-muted-foreground">
         <span className="truncate">{propKey}</span>
         {onDelete && (
