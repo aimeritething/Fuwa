@@ -1,6 +1,7 @@
 import { type ComponentType, useState, useEffect, useRef } from 'react'
 import type { VaultEntry, SidebarSelection } from '../types'
 import { cn } from '@/lib/utils'
+import { isEmoji } from '../utils/emoji'
 import { ChevronRight, ChevronDown, Plus } from 'lucide-react'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { type IconProps } from '@phosphor-icons/react'
@@ -148,7 +149,7 @@ function SectionChildList({ items, selection, sectionColor, sectionLightColor, o
         const active = isSelectionActive(selection, sel)
         return (
           <SectionChildItem
-            key={entry.path} title={entry.title} isActive={active}
+            key={entry.path} title={entry.title} icon={entry.icon} isActive={active}
             sectionColor={active ? sectionColor : undefined}
             sectionLightColor={active ? sectionLightColor : undefined}
             onClick={() => { onSelect(sel); onSelectNote?.(entry) }}
@@ -237,8 +238,8 @@ function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive,
   )
 }
 
-function SectionChildItem({ title, isActive, sectionColor, sectionLightColor, onClick }: {
-  title: string; isActive: boolean
+function SectionChildItem({ title, icon, isActive, sectionColor, sectionLightColor, onClick }: {
+  title: string; icon?: string | null; isActive: boolean
   sectionColor?: string; sectionLightColor?: string
   onClick: () => void
 }) {
@@ -248,7 +249,7 @@ function SectionChildItem({ title, isActive, sectionColor, sectionLightColor, on
       style={{ padding: '4px 16px 4px 28px', ...(isActive && { backgroundColor: sectionLightColor, color: sectionColor }) }}
       onClick={onClick}
     >
-      {title}
+      {icon && isEmoji(icon) && <span className="mr-1">{icon}</span>}{title}
     </div>
   )
 }
