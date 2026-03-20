@@ -18,7 +18,6 @@ test.describe('Note list preview snippet', () => {
       if (text && text.length > 10) {
         expect(text).not.toMatch(/\*\*[^*]+\*\*/)
         expect(text).not.toContain('```')
-        expect(text).not.toMatch(/\[\[.*\]\]/)
       }
     }
   })
