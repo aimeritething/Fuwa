@@ -107,20 +107,32 @@ describe('useAutoSync', () => {
     })
   })
 
-  it('pulls on window focus', async () => {
+  it('pulls on window focus after cooldown expires', async () => {
+    const now = vi.spyOn(Date, 'now')
+    let clock = 1000
+    now.mockImplementation(() => clock)
+
     renderSync()
     await waitFor(() => {
       expect(mockInvokeFn).toHaveBeenCalledWith('git_pull', { vaultPath: '/Users/luca/Laputa' })
     })
 
+    // Focus within cooldown — should NOT trigger pull
     mockInvokeFn.mockClear()
-    await act(async () => {
-      window.dispatchEvent(new Event('focus'))
-    })
+    clock += 5_000 // only 5s later
+    await act(async () => { window.dispatchEvent(new Event('focus')) })
+    const pullCalls = mockInvokeFn.mock.calls.filter((c: unknown[]) => c[0] === 'git_pull')
+    expect(pullCalls).toHaveLength(0)
+
+    // Focus after cooldown — should trigger pull
+    clock += 30_000 // 30s later
+    await act(async () => { window.dispatchEvent(new Event('focus')) })
 
     await waitFor(() => {
       expect(mockInvokeFn).toHaveBeenCalledWith('git_pull', { vaultPath: '/Users/luca/Laputa' })
     })
+
+    now.mockRestore()
   })
 
   it('triggerSync allows manual pull', async () => {

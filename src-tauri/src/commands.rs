@@ -155,10 +155,14 @@ pub fn get_default_vault_path() -> Result<String, String> {
 }
 
 #[tauri::command]
-pub fn reload_vault(path: String) -> Result<Vec<VaultEntry>, String> {
-    let path = expand_tilde(&path);
-    vault::invalidate_cache(std::path::Path::new(path.as_ref()));
-    vault::scan_vault_cached(std::path::Path::new(path.as_ref()))
+pub async fn reload_vault(path: String) -> Result<Vec<VaultEntry>, String> {
+    let path = expand_tilde(&path).into_owned();
+    tokio::task::spawn_blocking(move || {
+        vault::invalidate_cache(std::path::Path::new(&path));
+        vault::scan_vault_cached(std::path::Path::new(&path))
+    })
+    .await
+    .map_err(|e| format!("Task panicked: {e}"))?
 }
 
 #[tauri::command]
@@ -293,9 +297,11 @@ pub fn get_last_commit_info(vault_path: String) -> Result<Option<LastCommitInfo>
 }
 
 #[tauri::command]
-pub fn git_pull(vault_path: String) -> Result<GitPullResult, String> {
-    let vault_path = expand_tilde(&vault_path);
-    git::git_pull(&vault_path)
+pub async fn git_pull(vault_path: String) -> Result<GitPullResult, String> {
+    let vault_path = expand_tilde(&vault_path).into_owned();
+    tokio::task::spawn_blocking(move || git::git_pull(&vault_path))
+        .await
+        .map_err(|e| format!("Task panicked: {e}"))?
 }
 
 #[tauri::command]
@@ -327,15 +333,19 @@ pub fn git_commit_conflict_resolution(vault_path: String) -> Result<String, Stri
 }
 
 #[tauri::command]
-pub fn git_push(vault_path: String) -> Result<GitPushResult, String> {
-    let vault_path = expand_tilde(&vault_path);
-    git::git_push(&vault_path)
+pub async fn git_push(vault_path: String) -> Result<GitPushResult, String> {
+    let vault_path = expand_tilde(&vault_path).into_owned();
+    tokio::task::spawn_blocking(move || git::git_push(&vault_path))
+        .await
+        .map_err(|e| format!("Task panicked: {e}"))?
 }
 
 #[tauri::command]
-pub fn git_remote_status(vault_path: String) -> Result<GitRemoteStatus, String> {
-    let vault_path = expand_tilde(&vault_path);
-    git::git_remote_status(&vault_path)
+pub async fn git_remote_status(vault_path: String) -> Result<GitRemoteStatus, String> {
+    let vault_path = expand_tilde(&vault_path).into_owned();
+    tokio::task::spawn_blocking(move || git::git_remote_status(&vault_path))
+        .await
+        .map_err(|e| format!("Task panicked: {e}"))?
 }
 
 // ── GitHub commands ─────────────────────────────────────────────────────────
@@ -794,7 +804,9 @@ mod tests {
         std::fs::write(vault.join("note.md"), "---\nTrashed: true\n---\n# Note\n").unwrap();
 
         // reload_vault must return the updated trashed state
-        let fresh = reload_vault(vault.to_str().unwrap().to_string()).unwrap();
+        let vault_str = vault.to_str().unwrap();
+        vault::invalidate_cache(std::path::Path::new(vault_str));
+        let fresh = vault::scan_vault_cached(std::path::Path::new(vault_str)).unwrap();
         assert!(
             fresh[0].trashed,
             "reload_vault must reflect disk state after trashing"

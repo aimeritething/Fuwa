@@ -195,9 +195,16 @@ export function useAutoSync({
     refreshRemoteStatus()
   }, [checkExistingConflicts, performPull, refreshRemoteStatus])
 
-  // Pull on window focus (app foreground)
+  // Pull on window focus (app foreground) — with cooldown to avoid repeated pulls
+  const lastPullTimeRef = useRef(0)
   useEffect(() => {
-    const handleFocus = () => { performPull() }
+    const FOCUS_COOLDOWN_MS = 30_000
+    const handleFocus = () => {
+      const now = Date.now()
+      if (now - lastPullTimeRef.current < FOCUS_COOLDOWN_MS) return
+      lastPullTimeRef.current = now
+      performPull()
+    }
     window.addEventListener('focus', handleFocus)
     return () => window.removeEventListener('focus', handleFocus)
   }, [performPull])

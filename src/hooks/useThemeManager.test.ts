@@ -579,4 +579,32 @@ background: "#FF0000"
     await new Promise(r => setTimeout(r, 50))
     expect(mockInvokeFn).not.toHaveBeenCalledWith('ensure_vault_themes', expect.anything())
   })
+
+  it('skips theme reload on focus within 30s cooldown', async () => {
+    const now = vi.spyOn(Date, 'now')
+    let clock = 1000
+    now.mockImplementation(() => clock)
+
+    renderHook(() => useThemeManager('/vault', entries, allContent))
+    await waitFor(() => {
+      expect(mockInvokeFn).toHaveBeenCalledWith('get_vault_settings', { vaultPath: '/vault' })
+    })
+
+    mockInvokeFn.mockClear()
+
+    // Focus within cooldown — should NOT reload settings
+    clock += 5_000
+    await act(async () => { window.dispatchEvent(new Event('focus')) })
+    const settingsCalls = mockInvokeFn.mock.calls.filter((c: unknown[]) => c[0] === 'get_vault_settings')
+    expect(settingsCalls).toHaveLength(0)
+
+    // Focus after cooldown — should reload
+    clock += 30_000
+    await act(async () => { window.dispatchEvent(new Event('focus')) })
+    await waitFor(() => {
+      expect(mockInvokeFn).toHaveBeenCalledWith('get_vault_settings', { vaultPath: '/vault' })
+    })
+
+    now.mockRestore()
+  })
 })

@@ -163,9 +163,17 @@ function useThemeSetting(vaultPath: string | null) {
   // eslint-disable-next-line react-hooks/set-state-in-effect -- async fn; setState runs after await
   useEffect(() => { load() }, [load])
 
+  const lastLoadRef = useRef(0)
   useEffect(() => {
-    window.addEventListener('focus', load)
-    return () => window.removeEventListener('focus', load)
+    const FOCUS_COOLDOWN_MS = 30_000
+    const handleFocus = () => {
+      const now = Date.now()
+      if (now - lastLoadRef.current < FOCUS_COOLDOWN_MS) return
+      lastLoadRef.current = now
+      load()
+    }
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
   }, [load])
 
   return { activeThemeId, setActiveThemeId, reload: load }
