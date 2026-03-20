@@ -56,7 +56,10 @@ export function useNoteListData({ entries, selection, query, listSort, listDirec
 
   const searchedGroups = useMemo(() => {
     if (!isEntityView) return []
-    const groups = buildRelationshipGroups(selection.entry, entries)
+    // Look up the fresh entry from the entries array to pick up relationship
+    // updates that happened after the selection was captured.
+    const freshEntry = entries.find((e) => e.path === selection.entry.path) ?? selection.entry
+    const groups = buildRelationshipGroups(freshEntry, entries)
     return filterGroupsByQuery(groups, query)
   }, [isEntityView, selection, entries, query])
 

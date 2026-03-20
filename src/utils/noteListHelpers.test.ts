@@ -324,6 +324,50 @@ describe('buildRelationshipGroups', () => {
     const groups = buildRelationshipGroups(entity, [entity, linker])
     expect(groups.find((g) => g.label === 'Backlinks')!.entries[0].title).toBe('Linker')
   })
+
+  it('resolves all entries in a large Notes relationship (regression: No Code)', () => {
+    // Simulates the No Code topic note with 32 Notes, 2 Referred by Data, 1 Belongs to
+    const noteRefs = [
+      '8020', 'airdev-build-hub', 'airdev-leader', 'budibase', 'bullet-launch',
+      'canvas', 'chameleon', 'felt', 'flutterflow', 'framer-ai',
+      'jumpstart', 'mailparser', 'make', 'michele-sampieri', 'n8n-a',
+      'n8n-ai', 'nocodey', 'outseta', 'lemon-squeezy', 'retool',
+      'rise-no-code', 'scene', 'scrapingbee', 'softr', 'superblocks',
+      'superwall', 'tails', 'supabase', 'varun-anand', 'xano',
+      'directus', 'framer-design',
+    ]
+    const noteEntries = noteRefs.map((slug, i) => makeEntry({
+      path: `/Laputa/${slug}.md`, filename: `${slug}.md`, title: `Title ${slug}`,
+      modifiedAt: 1700000000 - i * 100,
+    }))
+    const engineering = makeEntry({
+      path: '/Laputa/engineering.md', filename: 'engineering.md', title: 'Engineering',
+      modifiedAt: 1700000000,
+    })
+    const entity = makeEntry({
+      path: '/Laputa/no-code.md', filename: 'no-code.md', title: 'No Code',
+      isA: 'Topic',
+      relationships: {
+        'Belongs to': ['[[engineering|Engineering]]'],
+        Notes: noteRefs.map((slug) => `[[${slug}|Title ${slug}]]`),
+        'Referred by Data': ['[[michele-sampieri|Michele Sampieri]]', '[[varun-anand|Varun Anand]]'],
+      },
+    })
+    const allEntries = [entity, engineering, ...noteEntries]
+    const groups = buildRelationshipGroups(entity, allEntries)
+
+    const belongsGroup = groups.find((g) => g.label === 'Belongs to')
+    expect(belongsGroup).toBeDefined()
+    expect(belongsGroup!.entries).toHaveLength(1)
+
+    const notesGroup = groups.find((g) => g.label === 'Notes')
+    expect(notesGroup).toBeDefined()
+    expect(notesGroup!.entries).toHaveLength(32)
+
+    // michele-sampieri and varun-anand already consumed by Notes → Referred by Data has 0 new
+    const referredGroup = groups.find((g) => g.label === 'Referred by Data')
+    expect(referredGroup).toBeUndefined()
+  })
 })
 
 describe('getSortComparator — custom properties', () => {

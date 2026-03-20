@@ -19,7 +19,7 @@ import {
   resolveTemplate,
 } from './useNoteCreation'
 import { needsRenameOnSave } from './useNoteRename'
-import { frontmatterToEntryPatch } from './frontmatterOps'
+import { frontmatterToEntryPatch, applyRelationshipPatch } from './frontmatterOps'
 import { useNoteActions } from './useNoteActions'
 import type { NoteActionsConfig } from './useNoteActions'
 
@@ -345,25 +345,45 @@ describe('frontmatterToEntryPatch', () => {
   ] as [string, unknown, Partial<VaultEntry>][])(
     'maps %s update to correct entry field',
     (key, value, expected) => {
-      expect(frontmatterToEntryPatch('update', key, value as never)).toEqual(expected)
+      expect(frontmatterToEntryPatch('update', key, value as never).patch).toEqual(expected)
     },
   )
 
   it('maps aliases update with array value', () => {
-    expect(frontmatterToEntryPatch('update', 'aliases', ['A', 'B'])).toEqual({ aliases: ['A', 'B'] })
+    expect(frontmatterToEntryPatch('update', 'aliases', ['A', 'B']).patch).toEqual({ aliases: ['A', 'B'] })
   })
 
   it('maps belongs_to update with array value', () => {
-    expect(frontmatterToEntryPatch('update', 'belongs_to', ['[[parent]]'])).toEqual({ belongsTo: ['[[parent]]'] })
+    const result = frontmatterToEntryPatch('update', 'belongs_to', ['[[parent]]'])
+    expect(result.patch).toEqual({ belongsTo: ['[[parent]]'] })
+    // Also produces a relationship patch for the wikilink
+    expect(result.relationshipPatch).toEqual({ 'belongs_to': ['[[parent]]'] })
   })
 
   it('handles case-insensitive keys with spaces (e.g. "Is A", "Belongs to")', () => {
-    expect(frontmatterToEntryPatch('update', 'Is A', 'Experiment')).toEqual({ isA: 'Experiment' })
-    expect(frontmatterToEntryPatch('update', 'Belongs to', ['[[x]]'])).toEqual({ belongsTo: ['[[x]]'] })
+    expect(frontmatterToEntryPatch('update', 'Is A', 'Experiment').patch).toEqual({ isA: 'Experiment' })
+    const result = frontmatterToEntryPatch('update', 'Belongs to', ['[[x]]'])
+    expect(result.patch).toEqual({ belongsTo: ['[[x]]'] })
+    expect(result.relationshipPatch).toEqual({ 'Belongs to': ['[[x]]'] })
   })
 
-  it('returns empty object for unknown keys', () => {
-    expect(frontmatterToEntryPatch('update', 'custom_field', 'value')).toEqual({})
+  it('returns empty patch for unknown non-wikilink keys', () => {
+    const result = frontmatterToEntryPatch('update', 'custom_field', 'value')
+    expect(result.patch).toEqual({})
+    // Non-wikilink value → no relationship change
+    expect(result.relationshipPatch).toBeNull()
+  })
+
+  it('produces relationship patch for wikilink values on unknown keys', () => {
+    const result = frontmatterToEntryPatch('update', 'Notes', ['[[note-a]]', '[[note-b|Note B]]'])
+    expect(result.patch).toEqual({})
+    expect(result.relationshipPatch).toEqual({ Notes: ['[[note-a]]', '[[note-b|Note B]]'] })
+  })
+
+  it('produces relationship patch for single wikilink string', () => {
+    const result = frontmatterToEntryPatch('update', 'Owner', '[[person/alice]]')
+    expect(result.patch).toEqual({})
+    expect(result.relationshipPatch).toEqual({ Owner: ['[[person/alice]]'] })
   })
 
   it.each([
@@ -377,12 +397,46 @@ describe('frontmatterToEntryPatch', () => {
   ] as [string, Partial<VaultEntry>][])(
     'maps delete of %s to null/default',
     (key, expected) => {
-      expect(frontmatterToEntryPatch('delete', key)).toEqual(expected)
+      expect(frontmatterToEntryPatch('delete', key).patch).toEqual(expected)
     },
   )
 
-  it('returns empty object for unknown key on delete', () => {
-    expect(frontmatterToEntryPatch('delete', 'unknown_key')).toEqual({})
+  it('returns empty patch for unknown key on delete, with relationship removal', () => {
+    const result = frontmatterToEntryPatch('delete', 'unknown_key')
+    expect(result.patch).toEqual({})
+    expect(result.relationshipPatch).toEqual({ unknown_key: null })
+  })
+
+  it('delete of known key also produces relationship removal', () => {
+    const result = frontmatterToEntryPatch('delete', 'status')
+    expect(result.patch).toEqual({ status: null })
+    expect(result.relationshipPatch).toEqual({ status: null })
+  })
+})
+
+describe('applyRelationshipPatch', () => {
+  it('adds new relationship key', () => {
+    const existing = { 'Belongs to': ['[[eng]]'] }
+    const result = applyRelationshipPatch(existing, { Notes: ['[[note-a]]', '[[note-b]]'] })
+    expect(result).toEqual({ 'Belongs to': ['[[eng]]'], Notes: ['[[note-a]]', '[[note-b]]'] })
+  })
+
+  it('overwrites existing relationship key', () => {
+    const existing = { Notes: ['[[old]]'] }
+    const result = applyRelationshipPatch(existing, { Notes: ['[[new-a]]', '[[new-b]]'] })
+    expect(result).toEqual({ Notes: ['[[new-a]]', '[[new-b]]'] })
+  })
+
+  it('removes relationship key when value is null', () => {
+    const existing = { Notes: ['[[a]]'], Owner: ['[[alice]]'] }
+    const result = applyRelationshipPatch(existing, { Notes: null })
+    expect(result).toEqual({ Owner: ['[[alice]]'] })
+  })
+
+  it('does not mutate the original map', () => {
+    const existing = { Notes: ['[[a]]'] }
+    applyRelationshipPatch(existing, { Notes: ['[[b]]'] })
+    expect(existing).toEqual({ Notes: ['[[a]]'] })
   })
 })
 
