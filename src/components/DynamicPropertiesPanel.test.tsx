@@ -664,6 +664,39 @@ describe('DynamicPropertiesPanel', () => {
     })
   })
 
+  describe('property row 50/50 layout', () => {
+    it('uses CSS grid with two equal columns on editable rows', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{ url: 'https://example.com/very/long/path/that/should/be/truncated' }}
+          onUpdateProperty={onUpdateProperty}
+        />
+      )
+      const editableRows = screen.getAllByTestId('editable-property')
+      editableRows.forEach(row => {
+        expect(row.className).toContain('grid')
+        expect(row.className).toContain('grid-cols-2')
+      })
+    })
+
+    it('uses CSS grid with two equal columns on read-only rows', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{}}
+        />
+      )
+      const readOnlyRows = screen.getAllByTestId('readonly-property')
+      readOnlyRows.forEach(row => {
+        expect(row.className).toContain('grid')
+        expect(row.className).toContain('grid-cols-2')
+      })
+    })
+  })
+
   describe('URL property rendering', () => {
     it('renders URL values with link styling instead of plain EditableValue', () => {
       render(

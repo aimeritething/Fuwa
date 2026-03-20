@@ -47,15 +47,15 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
   }
 
   return (
-    <div className="group/prop flex min-w-0 items-center gap-2 rounded px-1.5 outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary" tabIndex={0} onKeyDown={handleKeyDown} data-testid="editable-property">
-      <span className="font-mono-overline flex w-1/2 shrink-0 min-w-0 items-center gap-1 text-muted-foreground">
+    <div className="group/prop grid min-w-0 grid-cols-2 items-center gap-2 rounded px-1.5 outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary" tabIndex={0} onKeyDown={handleKeyDown} data-testid="editable-property">
+      <span className="font-mono-overline flex min-w-0 items-center gap-1 text-muted-foreground">
         <span className="truncate">{propKey}</span>
         {onDelete && (
           <button className="border-none bg-transparent p-0 text-sm leading-none text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover/prop:opacity-100" onClick={() => onDelete(propKey)} title="Delete property">&times;</button>
         )}
         <DisplayModeSelector propKey={propKey} currentMode={displayMode} autoMode={autoMode} onSelect={onDisplayModeChange} />
       </span>
-      <div className="w-1/2 min-w-0">
+      <div className="min-w-0">
         <SmartPropertyValueCell propKey={propKey} value={value} displayMode={displayMode} isEditing={editingKey === propKey} vaultStatuses={vaultStatuses} vaultTags={vaultTags} onStartEdit={onStartEdit} onSave={onSave} onSaveList={onSaveList} onUpdate={onUpdate} />
       </div>
     </div>
@@ -64,9 +64,9 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="flex min-w-0 items-center gap-2 px-1.5" data-testid="readonly-property">
-      <span className="font-mono-overline w-1/2 shrink-0 truncate" style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <span className="w-1/2 min-w-0 truncate text-right text-[12px]" style={{ color: 'var(--text-muted)' }}>{value}</span>
+    <div className="grid min-w-0 grid-cols-2 items-center gap-2 px-1.5" data-testid="readonly-property">
+      <span className="font-mono-overline min-w-0 truncate" style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span className="min-w-0 truncate text-right text-[12px]" style={{ color: 'var(--text-muted)' }}>{value}</span>
     </div>
   )
 }
