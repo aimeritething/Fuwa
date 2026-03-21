@@ -1058,4 +1058,49 @@ describe('Sidebar', () => {
     fireEvent.click(screen.getByText('Inbox'))
     expect(onSelect).toHaveBeenCalledWith({ kind: 'filter', filter: 'inbox' })
   })
+
+  describe('emoji icon in sidebar section children', () => {
+    const entriesWithEmoji: VaultEntry[] = [
+      {
+        path: '/vault/project.md', filename: 'project.md', title: 'Project', isA: 'Type',
+        aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
+        archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null,
+        fileSize: 200, snippet: '', wordCount: 0, relationships: {},
+        icon: 'rocket-launch', color: 'purple', order: null, sidebarLabel: null, template: null,
+        sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
+      },
+      {
+        path: '/vault/project/build-app.md', filename: 'build-app.md', title: 'Build App',
+        isA: 'Project', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
+        cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+        createdAt: null, fileSize: 300, snippet: '', wordCount: 0, relationships: {},
+        icon: '🚀', color: null, order: null, sidebarLabel: null, template: null,
+        sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
+      },
+      {
+        path: '/vault/project/no-icon.md', filename: 'no-icon.md', title: 'No Icon Project',
+        isA: 'Project', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
+        cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+        createdAt: null, fileSize: 150, snippet: '', wordCount: 0, relationships: {},
+        icon: null, color: null, order: null, sidebarLabel: null, template: null,
+        sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
+      },
+    ]
+
+    it('shows emoji icon before title in expanded section child', () => {
+      render(<Sidebar entries={entriesWithEmoji} selection={defaultSelection} onSelect={() => {}} />)
+      fireEvent.click(screen.getByLabelText('Expand Projects'))
+      const buildApp = screen.getByText('Build App')
+      const parent = buildApp.closest('div')!
+      expect(parent.textContent).toBe('🚀Build App')
+    })
+
+    it('does not show emoji for notes without icon', () => {
+      render(<Sidebar entries={entriesWithEmoji} selection={defaultSelection} onSelect={() => {}} />)
+      fireEvent.click(screen.getByLabelText('Expand Projects'))
+      const noIcon = screen.getByText('No Icon Project')
+      const parent = noIcon.closest('div')!
+      expect(parent.textContent).toBe('No Icon Project')
+    })
+  })
 })
