@@ -402,23 +402,6 @@ pub fn create_getting_started_vault(target_path: &str) -> Result<String, String>
             .map_err(|e| format!("Failed to write {}: {}", sample.rel_path, e))?;
     }
 
-    // Seed vault theme notes at root (flat structure)
-    fs::write(
-        vault_dir.join("default-theme.md"),
-        crate::theme::default_vault_theme(),
-    )
-    .map_err(|e| format!("Failed to write default vault theme: {e}"))?;
-    fs::write(
-        vault_dir.join("dark-theme.md"),
-        crate::theme::dark_vault_theme(),
-    )
-    .map_err(|e| format!("Failed to write dark vault theme: {e}"))?;
-    fs::write(
-        vault_dir.join("minimal-theme.md"),
-        crate::theme::minimal_vault_theme(),
-    )
-    .map_err(|e| format!("Failed to write minimal vault theme: {e}"))?;
-
     crate::git::init_repo(target_path)?;
 
     Ok(vault_dir
@@ -521,8 +504,8 @@ mod tests {
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
         let entries = crate::vault::scan_vault(&vault_path).unwrap();
-        // SAMPLE_FILES + AGENTS.md + 3 vault theme notes (all at root)
-        assert_eq!(entries.len(), SAMPLE_FILES.len() + 1 + 3);
+        // SAMPLE_FILES + AGENTS.md
+        assert_eq!(entries.len(), SAMPLE_FILES.len() + 1);
     }
 
     #[test]
@@ -576,26 +559,6 @@ mod tests {
             .unwrap();
         let log_str = String::from_utf8_lossy(&log.stdout);
         assert!(log_str.contains("Initial vault setup"));
-    }
-
-    #[test]
-    fn test_create_getting_started_vault_seeds_themes() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let vault_path = dir.path().join("theme-vault");
-        create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
-
-        // Must NOT create legacy _themes/ directory
-        assert!(!vault_path.join("_themes").exists());
-
-        // Vault-based theme notes at root (flat structure)
-        assert!(vault_path.join("default-theme.md").exists());
-        assert!(vault_path.join("dark-theme.md").exists());
-        assert!(vault_path.join("minimal-theme.md").exists());
-        // Must NOT create a theme/ subdirectory
-        assert!(!vault_path.join("theme").exists());
-
-        // Theme type definition
-        assert!(vault_path.join("theme.md").exists());
     }
 
     #[test]

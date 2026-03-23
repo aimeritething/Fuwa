@@ -28,8 +28,6 @@ function makeHandlers(): MenuEventHandlers {
     onOpenVault: vi.fn(),
     onRemoveActiveVault: vi.fn(),
     onRestoreGettingStarted: vi.fn(),
-    onCreateTheme: vi.fn(),
-    onRestoreDefaultThemes: vi.fn(),
     onCommitPush: vi.fn(),
     onPull: vi.fn(),
     onResolveConflicts: vi.fn(),
@@ -266,18 +264,6 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('vault-restore-getting-started', h)
     expect(h.onRestoreGettingStarted).toHaveBeenCalled()
-  })
-
-  it('vault-new-theme triggers create theme', () => {
-    const h = makeHandlers()
-    dispatchMenuEvent('vault-new-theme', h)
-    expect(h.onCreateTheme).toHaveBeenCalled()
-  })
-
-  it('vault-restore-default-themes triggers restore default themes', () => {
-    const h = makeHandlers()
-    dispatchMenuEvent('vault-restore-default-themes', h)
-    expect(h.onRestoreDefaultThemes).toHaveBeenCalled()
   })
 
   it('vault-commit-push triggers commit push', () => {

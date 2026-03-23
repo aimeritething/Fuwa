@@ -4,7 +4,6 @@ import { Editor } from './components/Editor'
 import { Toast } from './components/Toast'
 import { isTauri, mockInvoke } from './mock-tauri'
 import { getNoteWindowParams } from './utils/windowMode'
-import { useThemeManager } from './hooks/useThemeManager'
 import { useEditorSaveWithLinks } from './hooks/useEditorSaveWithLinks'
 import { useLayoutPanels } from './hooks/useLayoutPanels'
 import type { VaultEntry } from './types'
@@ -53,9 +52,7 @@ export default function NoteWindow() {
     return () => { cancelled = true }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps -- run once on mount with captured params
 
-  // Apply theme
   const vaultPath = params?.vaultPath ?? ''
-  useThemeManager(vaultPath, entries)
 
   // Update window title when note title changes
   useEffect(() => {

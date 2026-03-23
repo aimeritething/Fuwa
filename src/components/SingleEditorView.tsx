@@ -23,13 +23,12 @@ function useInsertImageCallback(editor: ReturnType<typeof useCreateBlockNote>) {
 }
 
 /** Single BlockNote editor view — content is swapped via replaceBlocks */
-export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange, vaultPath, isDarkTheme, editable = true }: {
+export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange, vaultPath, editable = true }: {
   editor: ReturnType<typeof useCreateBlockNote>
   entries: VaultEntry[]
   onNavigateWikilink: (target: string) => void
   onChange?: () => void
   vaultPath?: string
-  isDarkTheme?: boolean
   editable?: boolean
 }) {
   const navigateRef = useRef(onNavigateWikilink)
@@ -113,7 +112,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
       )}
       <BlockNoteView
         editor={editor}
-        theme={isDarkTheme ? 'dark' : 'light'}
+        theme="light"
         onChange={onChange}
         editable={editable}
       >

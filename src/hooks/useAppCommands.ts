@@ -4,7 +4,7 @@ import { useCommandRegistry } from './useCommandRegistry'
 import type { CommandAction } from './useCommandRegistry'
 import { useKeyboardNavigation } from './useKeyboardNavigation'
 import { useMenuEvents } from './useMenuEvents'
-import type { SidebarSelection, SidebarFilter, ThemeFile, VaultEntry } from '../types'
+import type { SidebarSelection, SidebarFilter, VaultEntry } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
 
@@ -51,18 +51,12 @@ interface AppCommandsConfig {
   onGoForward?: () => void
   canGoBack?: boolean
   canGoForward?: boolean
-  themes?: ThemeFile[]
-  activeThemeId?: string | null
-  onSwitchTheme?: (themeId: string) => void
-  onCreateTheme?: () => void
-  onOpenTheme?: (themeId: string) => void
   onOpenVault?: () => void
   onCreateType?: () => void
   onToggleAIChat?: () => void
   onCheckForUpdates?: () => void
   onRemoveActiveVault?: () => void
   onRestoreGettingStarted?: () => void
-  onRestoreDefaultThemes?: () => void
   isGettingStartedHidden?: boolean
   vaultCount?: number
   mcpStatus?: string
@@ -157,8 +151,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onOpenVault: config.onOpenVault,
     onRemoveActiveVault: config.onRemoveActiveVault,
     onRestoreGettingStarted: config.onRestoreGettingStarted,
-    onCreateTheme: config.onCreateTheme,
-    onRestoreDefaultThemes: config.onRestoreDefaultThemes,
     onCommitPush: config.onCommitPush,
     onPull: config.onPull,
     onResolveConflicts: config.onResolveConflicts,
@@ -210,16 +202,10 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onGoForward: config.onGoForward,
     canGoBack: config.canGoBack,
     canGoForward: config.canGoForward,
-    themes: config.themes,
-    activeThemeId: config.activeThemeId,
-    onSwitchTheme: config.onSwitchTheme,
-    onCreateTheme: config.onCreateTheme,
-    onOpenTheme: config.onOpenTheme,
     onCheckForUpdates: config.onCheckForUpdates,
     onCreateType: config.onCreateType,
     onRemoveActiveVault: config.onRemoveActiveVault,
     onRestoreGettingStarted: config.onRestoreGettingStarted,
-    onRestoreDefaultThemes: config.onRestoreDefaultThemes,
     isGettingStartedHidden: config.isGettingStartedHidden,
     vaultCount: config.vaultCount,
     mcpStatus: config.mcpStatus,

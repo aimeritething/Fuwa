@@ -9,7 +9,6 @@ pub mod mcp;
 pub mod menu;
 pub mod search;
 pub mod settings;
-pub mod theme;
 pub mod vault;
 pub mod vault_config;
 pub mod vault_list;
@@ -50,15 +49,6 @@ fn run_startup_tasks() {
         "Migrated hidden_sections to visible property",
         vault_config::migrate_hidden_sections_to_visible(vp_str),
     );
-
-    // Remove legacy _themes/ directory (JSON theme store) if only defaults remain
-    theme::migrate_legacy_themes_dir(vp_str);
-    // Migrate legacy theme/ directory notes to root (flat structure)
-    theme::migrate_theme_dir_to_root(vp_str);
-    // Seed vault theme notes at root (flat structure) if missing
-    theme::seed_vault_themes(vp_str);
-    // Seed theme.md type definition so the Theme type has an icon in the sidebar
-    let _ = theme::ensure_theme_type_definition(vp_str);
 
     // Migrate legacy config/agents.md → root AGENTS.md (one-time, idempotent)
     vault::migrate_agents_md(vp_str);
@@ -175,15 +165,6 @@ pub fn run() {
             commands::get_default_vault_path,
             commands::register_mcp_tools,
             commands::check_mcp_status,
-            commands::list_themes,
-            commands::get_theme,
-            commands::get_vault_settings,
-            commands::save_vault_settings,
-            commands::set_active_theme,
-            commands::create_theme,
-            commands::create_vault_theme,
-            commands::ensure_vault_themes,
-            commands::restore_default_themes,
             commands::repair_vault,
             commands::get_vault_config,
             commands::save_vault_config

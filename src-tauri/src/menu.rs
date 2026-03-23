@@ -46,8 +46,6 @@ const NOTE_OPEN_IN_NEW_WINDOW: &str = "note-open-in-new-window";
 const VAULT_OPEN: &str = "vault-open";
 const VAULT_REMOVE: &str = "vault-remove";
 const VAULT_RESTORE_GETTING_STARTED: &str = "vault-restore-getting-started";
-const VAULT_NEW_THEME: &str = "vault-new-theme";
-const VAULT_RESTORE_DEFAULT_THEMES: &str = "vault-restore-default-themes";
 const VAULT_COMMIT_PUSH: &str = "vault-commit-push";
 const VAULT_PULL: &str = "vault-pull";
 const VAULT_RESOLVE_CONFLICTS: &str = "vault-resolve-conflicts";
@@ -93,8 +91,6 @@ const CUSTOM_IDS: &[&str] = &[
     VAULT_OPEN,
     VAULT_REMOVE,
     VAULT_RESTORE_GETTING_STARTED,
-    VAULT_NEW_THEME,
-    VAULT_RESTORE_DEFAULT_THEMES,
     VAULT_COMMIT_PUSH,
     VAULT_PULL,
     VAULT_RESOLVE_CONFLICTS,
@@ -346,12 +342,6 @@ fn build_vault_menu(app: &App) -> MenuResult {
     let restore_getting_started = MenuItemBuilder::new("Restore Getting Started")
         .id(VAULT_RESTORE_GETTING_STARTED)
         .build(app)?;
-    let new_theme = MenuItemBuilder::new("New Theme")
-        .id(VAULT_NEW_THEME)
-        .build(app)?;
-    let restore_default_themes = MenuItemBuilder::new("Restore Default Themes")
-        .id(VAULT_RESTORE_DEFAULT_THEMES)
-        .build(app)?;
     let commit_push = MenuItemBuilder::new("Commit & Push")
         .id(VAULT_COMMIT_PUSH)
         .build(app)?;
@@ -382,9 +372,6 @@ fn build_vault_menu(app: &App) -> MenuResult {
         .item(&open_vault)
         .item(&remove_vault)
         .item(&restore_getting_started)
-        .separator()
-        .item(&new_theme)
-        .item(&restore_default_themes)
         .separator()
         .item(&commit_push)
         .item(&pull)
@@ -507,8 +494,6 @@ mod tests {
             VAULT_OPEN,
             VAULT_REMOVE,
             VAULT_RESTORE_GETTING_STARTED,
-            VAULT_NEW_THEME,
-            VAULT_RESTORE_DEFAULT_THEMES,
             VAULT_COMMIT_PUSH,
             VAULT_PULL,
             VAULT_RESOLVE_CONFLICTS,

@@ -13,12 +13,11 @@ use crate::github::{DeviceFlowPollResult, DeviceFlowStart, GitHubUser, GithubRep
 use crate::indexing::{IndexStatus, IndexingProgress};
 use crate::search::SearchResponse;
 use crate::settings::Settings;
-use crate::theme::{ThemeFile, VaultSettings};
 use crate::vault::{RenameResult, VaultEntry};
 use crate::vault_config::VaultConfig;
 use crate::vault_list::VaultList;
 use crate::{
-    frontmatter, git, github, indexing, menu, search, theme, vault, vault_config, vault_list,
+    frontmatter, git, github, indexing, menu, search, vault, vault_config, vault_list,
 };
 
 /// Expand a leading `~` or `~/` in a path string to the user's home directory.
@@ -520,62 +519,6 @@ pub async fn check_mcp_status() -> Result<crate::mcp::McpStatus, String> {
         .map_err(|e| format!("MCP status check failed: {e}"))
 }
 
-// ── Theme commands ──────────────────────────────────────────────────────────
-
-#[tauri::command]
-pub fn list_themes(vault_path: String) -> Result<Vec<ThemeFile>, String> {
-    let vault_path = expand_tilde(&vault_path);
-    theme::list_themes(&vault_path)
-}
-
-#[tauri::command]
-pub fn get_theme(vault_path: String, theme_id: String) -> Result<ThemeFile, String> {
-    let vault_path = expand_tilde(&vault_path);
-    theme::get_theme(&vault_path, &theme_id)
-}
-
-#[tauri::command]
-pub fn get_vault_settings(vault_path: String) -> Result<VaultSettings, String> {
-    let vault_path = expand_tilde(&vault_path);
-    theme::get_vault_settings(&vault_path)
-}
-
-#[tauri::command]
-pub fn save_vault_settings(vault_path: String, settings: VaultSettings) -> Result<(), String> {
-    let vault_path = expand_tilde(&vault_path);
-    theme::save_vault_settings(&vault_path, settings)
-}
-
-#[tauri::command]
-pub fn set_active_theme(vault_path: String, theme_id: Option<String>) -> Result<(), String> {
-    let vault_path = expand_tilde(&vault_path);
-    theme::set_active_theme(&vault_path, theme_id.as_deref())
-}
-
-#[tauri::command]
-pub fn create_theme(vault_path: String, source_id: Option<String>) -> Result<String, String> {
-    let vault_path = expand_tilde(&vault_path);
-    theme::create_theme(&vault_path, source_id.as_deref())
-}
-
-#[tauri::command]
-pub fn create_vault_theme(vault_path: String, name: Option<String>) -> Result<String, String> {
-    let vault_path = expand_tilde(&vault_path);
-    theme::create_vault_theme(&vault_path, name.as_deref())
-}
-
-#[tauri::command]
-pub fn ensure_vault_themes(vault_path: String) -> Result<(), String> {
-    let vault_path = expand_tilde(&vault_path);
-    theme::ensure_vault_themes(&vault_path)
-}
-
-#[tauri::command]
-pub fn restore_default_themes(vault_path: String) -> Result<String, String> {
-    let vault_path = expand_tilde(&vault_path);
-    theme::restore_default_themes(&vault_path)
-}
-
 #[tauri::command]
 pub fn repair_vault(vault_path: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
@@ -583,11 +526,6 @@ pub fn repair_vault(vault_path: String) -> Result<String, String> {
     vault::migrate_is_a_to_type(&vault_path)?;
     // Flatten vault: move notes from type-based subfolders to root
     vault::flatten_vault(&vault_path)?;
-    // Remove legacy _themes/ directory (JSON theme store) if only defaults remain
-    theme::migrate_legacy_themes_dir(&vault_path);
-    // Migrate legacy theme/ directory to root, then repair themes
-    theme::migrate_theme_dir_to_root(&vault_path);
-    theme::restore_default_themes(&vault_path)?;
     // Migrate legacy config/ui.config.md → root ui.config.md
     vault_config::migrate_ui_config_to_root(&vault_path);
     // Repair config files (AGENTS.md at root, config.md type def)
@@ -846,7 +784,7 @@ mod tests {
     }
 
     #[test]
-    fn test_repair_vault_creates_config_and_theme_files() {
+    fn test_repair_vault_creates_config_files() {
         let dir = tempfile::TempDir::new().unwrap();
         let vault = dir.path();
 
@@ -855,14 +793,6 @@ mod tests {
         // Config files at root
         assert!(vault.join("AGENTS.md").exists());
         assert!(vault.join("config.md").exists());
-        // Theme files at root (flat structure)
-        assert!(vault.join("default-theme.md").exists());
-        assert!(vault.join("dark-theme.md").exists());
-        assert!(vault.join("minimal-theme.md").exists());
-        assert!(vault.join("theme.md").exists());
-        // No type/themes subfolders
-        assert!(!vault.join("theme").exists());
-        assert!(!vault.join("config").exists());
         // .gitignore
         assert!(vault.join(".gitignore").exists());
     }

@@ -142,15 +142,6 @@ describe('RawEditorView', () => {
     expect(cmScroller).toBeInTheDocument()
   })
 
-  it('supports dark theme', () => {
-    render(<RawEditorView {...defaultProps} isDark />)
-    const container = screen.getByTestId('raw-editor-codemirror')
-    const cmEditor = container.querySelector('.cm-editor')
-    expect(cmEditor).toBeInTheDocument()
-    // CM applies dark theme via .cm-theme class — verify editor re-creates with isDark
-    expect(cmEditor?.querySelector('.cm-gutters')).toBeInTheDocument()
-  })
-
   it('cleans up CodeMirror view on unmount', () => {
     const { unmount } = render(<RawEditorView {...defaultProps} />)
     const container = screen.getByTestId('raw-editor-codemirror')

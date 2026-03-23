@@ -29,8 +29,6 @@ export interface MenuEventHandlers {
   onOpenVault?: () => void
   onRemoveActiveVault?: () => void
   onRestoreGettingStarted?: () => void
-  onCreateTheme?: () => void
-  onRestoreDefaultThemes?: () => void
   onCommitPush?: () => void
   onPull?: () => void
   onResolveConflicts?: () => void
@@ -84,7 +82,6 @@ type OptionalHandler =
   | 'onGoBack' | 'onGoForward' | 'onCheckForUpdates'
   | 'onCreateType' | 'onToggleRawEditor' | 'onToggleDiff' | 'onToggleAIChat'
   | 'onOpenVault' | 'onRemoveActiveVault' | 'onRestoreGettingStarted'
-  | 'onCreateTheme' | 'onRestoreDefaultThemes'
   | 'onCommitPush' | 'onPull' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReindexVault' | 'onReloadVault' | 'onRepairVault'
   | 'onEmptyTrash'
   | 'onReopenClosedTab'
@@ -101,8 +98,6 @@ const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'vault-open': 'onOpenVault',
   'vault-remove': 'onRemoveActiveVault',
   'vault-restore-getting-started': 'onRestoreGettingStarted',
-  'vault-new-theme': 'onCreateTheme',
-  'vault-restore-default-themes': 'onRestoreDefaultThemes',
   'vault-commit-push': 'onCommitPush',
   'vault-pull': 'onPull',
   'vault-resolve-conflicts': 'onResolveConflicts',

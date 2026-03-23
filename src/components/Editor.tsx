@@ -65,7 +65,6 @@ interface EditorProps {
   onGoBack?: () => void
   onGoForward?: () => void
   leftPanelsCollapsed?: boolean
-  isDarkTheme?: boolean
   /** Mutable ref that Editor registers its raw-mode toggle into, for command palette access. */
   rawToggleRef?: React.MutableRefObject<() => void>
   /** Mutable ref that Editor registers its diff-mode toggle into, for command palette access. */
@@ -228,7 +227,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     onTrashNote, onRestoreNote, onDeleteNote, onArchiveNote, onUnarchiveNote,
     onContentChange, onSave, onTitleSync,
     canGoBack, canGoForward, onGoBack, onGoForward, leftPanelsCollapsed,
-    isDarkTheme, onFileCreated, onFileModified, onVaultChanged,
+    onFileCreated, onFileModified, onVaultChanged,
     onSetNoteIcon, onRemoveNoteIcon,
     isConflicted, onKeepMine, onKeepTheirs,
   } = props
@@ -293,7 +292,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
               onArchiveNote={onArchiveNote}
               onUnarchiveNote={onUnarchiveNote}
               vaultPath={vaultPath}
-              isDarkTheme={isDarkTheme}
               rawLatestContentRef={rawLatestContentRef}
               onTitleChange={onTitleSync}
               onSetNoteIcon={onSetNoteIcon}

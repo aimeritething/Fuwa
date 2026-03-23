@@ -139,22 +139,6 @@ export interface SearchResponse {
 
 export type SearchMode = 'keyword' | 'semantic' | 'hybrid'
 
-export interface ThemeFile {
-  /** For vault-based themes: absolute note path. For legacy JSON themes: filename stem. */
-  id: string
-  name: string
-  description: string
-  /** Absolute path to the vault note (vault-based themes only). */
-  path?: string
-  colors: Record<string, string>
-  typography: Record<string, string>
-  spacing: Record<string, string>
-}
-
-export interface VaultSettings {
-  theme: string | null
-}
-
 /** Vault-wide UI configuration stored in ui.config.md at vault root. */
 export interface VaultConfig {
   zoom: number | null

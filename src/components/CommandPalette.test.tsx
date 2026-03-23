@@ -170,7 +170,6 @@ describe('CommandPalette', () => {
     const relevanceCommands: CommandAction[] = [
       makeCommand({ id: 'create-note', label: 'Create New Note', group: 'Note' }),
       makeCommand({ id: 'toggle-raw', label: 'Toggle Raw Editor', group: 'View' }),
-      makeCommand({ id: 'switch-theme', label: 'Switch Theme', group: 'Appearance', keywords: ['dark', 'light'] }),
       makeCommand({ id: 'search-notes', label: 'Search Notes', group: 'Navigation' }),
     ]
 
@@ -203,14 +202,6 @@ describe('CommandPalette', () => {
       expect(labels[0]).toBe('Create New Note')
     })
 
-    it('ranks theme commands first for query "theme"', () => {
-      render(<CommandPalette open={true} commands={relevanceCommands} onClose={onClose} />)
-      fireEvent.change(screen.getByPlaceholderText('Type a command...'), { target: { value: 'theme' } })
-
-      const labels = getVisibleLabels()
-      expect(labels[0]).toBe('Switch Theme')
-    })
-
     it('preserves default section order with empty query', () => {
       render(<CommandPalette open={true} commands={relevanceCommands} onClose={onClose} />)
 
@@ -221,8 +212,8 @@ describe('CommandPalette', () => {
           !!el.textContent,
       ).map(el => el.textContent)
 
-      // Default order: Navigation < Note < View < Appearance
-      expect(groupHeaders).toEqual(['Navigation', 'Note', 'View', 'Appearance'])
+      // Default order: Navigation < Note < View
+      expect(groupHeaders).toEqual(['Navigation', 'Note', 'View'])
     })
   })
 })

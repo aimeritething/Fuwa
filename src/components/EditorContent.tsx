@@ -46,7 +46,6 @@ interface EditorContentProps {
   onArchiveNote?: (path: string) => void
   onUnarchiveNote?: (path: string) => void
   vaultPath?: string
-  isDarkTheme?: boolean
   /** Ref updated by RawEditorView on every keystroke with the latest doc. */
   rawLatestContentRef?: React.MutableRefObject<string | null>
   /** Called when the user edits the dedicated title field. */
@@ -92,14 +91,13 @@ function DiffModeView({ diffContent, onToggleDiff }: { diffContent: string | nul
 }
 
 function RawModeEditorSection({
-  rawMode, activeTab, entries, onContentChange, onSave, isDark, latestContentRef,
+  rawMode, activeTab, entries, onContentChange, onSave, latestContentRef,
 }: {
   rawMode: boolean
   activeTab: Tab | null
   entries: VaultEntry[]
   onContentChange?: (path: string, content: string) => void
   onSave?: () => void
-  isDark?: boolean
   latestContentRef?: React.MutableRefObject<string | null>
 }) {
   if (!rawMode || !activeTab) return null
@@ -111,7 +109,6 @@ function RawModeEditorSection({
       entries={entries}
       onContentChange={onContentChange ?? (() => {})}
       onSave={onSave ?? (() => {})}
-      isDark={isDark}
       latestContentRef={latestContentRef}
     />
   )
@@ -155,7 +152,7 @@ export function EditorContent({
   activeTab, isLoadingNewTab, entries, editor,
   diffMode, diffContent, onToggleDiff,
   rawMode, onToggleRaw, onRawContentChange, onSave,
-  onNavigateWikilink, onEditorChange, vaultPath, isDarkTheme,
+  onNavigateWikilink, onEditorChange, vaultPath,
   onDeleteNote, rawLatestContentRef, onTitleChange,
   onSetNoteIcon, onRemoveNoteIcon,
   isConflicted, onKeepMine, onKeepTheirs,
@@ -202,7 +199,7 @@ export function EditorContent({
         />
       )}
       {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
-      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} isDark={isDarkTheme} latestContentRef={rawLatestContentRef} />
+      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} latestContentRef={rawLatestContentRef} />
       {showEditor && activeTab && (
         <div className="editor-scroll-area">
           <div className="title-section">
@@ -220,7 +217,7 @@ export function EditorContent({
             />
             <div className="title-section__separator" />
           </div>
-          <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} isDarkTheme={isDarkTheme} editable={!isTrashed} />
+          <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} editable={!isTrashed} />
         </div>
       )}
       {isLoadingNewTab && showEditor && <EditorLoadingSkeleton />}

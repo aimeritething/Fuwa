@@ -35,7 +35,6 @@ import { useZoom } from './hooks/useZoom'
 import { useVaultConfig } from './hooks/useVaultConfig'
 import { useBuildNumber } from './hooks/useBuildNumber'
 import { useOnboarding } from './hooks/useOnboarding'
-import { useThemeManager } from './hooks/useThemeManager'
 import { useEditorSaveWithLinks } from './hooks/useEditorSaveWithLinks'
 import { useAppNavigation } from './hooks/useAppNavigation'
 import { useAiActivity } from './hooks/useAiActivity'
@@ -96,8 +95,6 @@ function App() {
   const vault = useVaultLoader(resolvedPath)
   useVaultConfig(resolvedPath)
   const { settings, saveSettings } = useSettings()
-  const themeManager = useThemeManager(resolvedPath, vault.entries)
-
   const flatVaultMigration = useFlatVaultMigration(resolvedPath, vault.entries.length > 0, vault.reloadVault)
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
 
@@ -190,7 +187,7 @@ function App() {
   // Read at callback time, so it's always current when user presses Cmd+N.
   const contentChangeRef = useRef<(path: string, content: string) => void>(() => {})
 
-  const notes = useNoteActions({ addEntry: vault.addEntry, removeEntry: vault.removeEntry, entries: vault.entries, setToastMessage, updateEntry: vault.updateEntry, vaultPath: resolvedPath, addPendingSave: vault.addPendingSave, removePendingSave: vault.removePendingSave, trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths, markContentPending: (path, content) => contentChangeRef.current(path, content), onNewNotePersisted: vault.loadModifiedFiles, replaceEntry: vault.replaceEntry, onFrontmatterContentChanged: themeManager.notifyThemeSaved })
+  const notes = useNoteActions({ addEntry: vault.addEntry, removeEntry: vault.removeEntry, entries: vault.entries, setToastMessage, updateEntry: vault.updateEntry, vaultPath: resolvedPath, addPendingSave: vault.addPendingSave, removePendingSave: vault.removePendingSave, trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths, markContentPending: (path, content) => contentChangeRef.current(path, content), onNewNotePersisted: vault.loadModifiedFiles, replaceEntry: vault.replaceEntry })
 
   // Keep tab entries in sync with vault entries so banners (trash/archive)
   // and read-only state react immediately without reopening the note.
@@ -303,11 +300,10 @@ function App() {
     triggerIncrementalIndex()
   }, [vault, triggerIncrementalIndex])
 
-  const { notifyThemeSaved } = themeManager
-  const onNotePersisted = useCallback((path: string, content: string) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature required by useEditorSave
+  const onNotePersisted = useCallback((path: string, _content: string) => {
     vault.clearUnsaved(path)
-    notifyThemeSaved(path, content)
-  }, [vault, notifyThemeSaved])
+  }, [vault])
 
   const { handleSave: handleSaveRaw, handleContentChange, savePendingForPath, savePending } = useEditorSaveWithLinks({
     updateEntry: vault.updateEntry,
@@ -456,31 +452,17 @@ function App() {
     // 'available' → UpdateBanner handles it automatically
   }, [updateActions, updateStatus.state, setToastMessage])
 
-  const handleRestoreDefaultThemes = useCallback(async () => {
-    if (!resolvedPath) return
-    try {
-      const tauriInvoke = isTauri() ? invoke : mockInvoke
-      const msg = await tauriInvoke<string>('restore_default_themes', { vaultPath: resolvedPath })
-      await vault.reloadVault()
-      await themeManager.reloadThemes()
-      setToastMessage(msg)
-    } catch (err) {
-      setToastMessage(`Failed to restore themes: ${err}`)
-    }
-  }, [resolvedPath, vault, themeManager, setToastMessage])
-
   const handleRepairVault = useCallback(async () => {
     if (!resolvedPath) return
     try {
       const tauriInvoke = isTauri() ? invoke : mockInvoke
       const msg = await tauriInvoke<string>('repair_vault', { vaultPath: resolvedPath })
       await vault.reloadVault()
-      await themeManager.reloadThemes()
       setToastMessage(msg)
     } catch (err) {
       setToastMessage(`Failed to repair vault: ${err}`)
     }
-  }, [resolvedPath, vault, themeManager, setToastMessage])
+  }, [resolvedPath, vault, setToastMessage])
 
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
@@ -512,28 +494,12 @@ function App() {
     onSelectNote: notes.handleSelectNote,
     onGoBack: handleGoBack, onGoForward: handleGoForward,
     canGoBack: canGoBack, canGoForward: canGoForward,
-    themes: themeManager.themes, activeThemeId: themeManager.activeThemeId,
-    onSwitchTheme: themeManager.switchTheme,
-    onCreateTheme: async () => {
-      const path = await themeManager.createTheme()
-      const freshEntries = await vault.reloadVault()
-      handleSetSelection({ kind: 'sectionGroup', type: 'Theme' })
-      if (path) {
-        const entry = freshEntries.find(e => e.path === path)
-        if (entry) notes.handleSelectNote(entry)
-      }
-    },
-    onOpenTheme: (themeId: string) => {
-      const entry = vault.entries.find(e => e.path === themeId)
-      if (entry) notes.handleSelectNote(entry)
-    },
     onOpenVault: vaultSwitcher.handleOpenLocalFolder,
     onCreateType: dialogs.openCreateType,
     onToggleAIChat: dialogs.toggleAIChat,
     onCheckForUpdates: handleCheckForUpdates,
     onRemoveActiveVault: () => vaultSwitcher.removeVault(vaultSwitcher.vaultPath),
     onRestoreGettingStarted: vaultSwitcher.restoreGettingStarted,
-    onRestoreDefaultThemes: handleRestoreDefaultThemes,
     isGettingStartedHidden: vaultSwitcher.isGettingStartedHidden,
     vaultCount: vaultSwitcher.allVaults.length,
     mcpStatus,
@@ -651,7 +617,6 @@ function App() {
             onGoBack={handleGoBack}
             onGoForward={handleGoForward}
             leftPanelsCollapsed={!sidebarVisible && !noteListVisible}
-            isDarkTheme={themeManager.isDark}
             onFileCreated={handleAgentFileCreated}
             onFileModified={handleAgentFileModified}
             onVaultChanged={handleAgentVaultChanged}
@@ -693,7 +658,7 @@ function App() {
         onCommit={conflictResolver.commitResolution}
         onClose={handleCloseConflictResolver}
       />
-      <SettingsPanel open={dialogs.showSettings} settings={settings} onSave={saveSettings} onClose={dialogs.closeSettings} themeManager={themeManager} />
+      <SettingsPanel open={dialogs.showSettings} settings={settings} onSave={saveSettings} onClose={dialogs.closeSettings} />
       <GitHubVaultModal
         open={dialogs.showGitHubVault}
         githubToken={settings.github_token}

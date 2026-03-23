@@ -22,7 +22,6 @@ export interface RawEditorViewProps {
   entries: VaultEntry[]
   onContentChange: (path: string, content: string) => void
   onSave: () => void
-  isDark?: boolean
   /** Mutable ref updated on every keystroke with the latest doc string.
    *  Allows the parent to flush debounced content before unmount. */
   latestContentRef?: React.MutableRefObject<string | null>
@@ -38,7 +37,7 @@ function getCursorCoords(view: EditorView): { top: number; left: number } | null
   return { top: coords.bottom, left: coords.left }
 }
 
-export function RawEditorView({ content, path, entries, onContentChange, onSave, isDark = false, latestContentRef }: RawEditorViewProps) {
+export function RawEditorView({ content, path, entries, onContentChange, onSave, latestContentRef }: RawEditorViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pathRef = useRef(path)
@@ -112,7 +111,7 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave,
     return false
   }, [autocomplete])
 
-  const viewRef = useCodeMirror(containerRef, content, isDark, {
+  const viewRef = useCodeMirror(containerRef, content, {
     onDocChange: handleDocChange,
     onCursorActivity: handleCursorActivity,
     onSave: handleSave,

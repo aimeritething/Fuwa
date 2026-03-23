@@ -14,13 +14,13 @@ export interface CodeMirrorCallbacks {
   onEscape: () => boolean
 }
 
-function buildBaseTheme(isDark: boolean) {
-  const bg = isDark ? '#1e1e1e' : '#ffffff'
-  const fg = isDark ? '#d4d4d4' : '#1e1e1e'
-  const gutterBg = isDark ? '#1e1e1e' : '#ffffff'
-  const gutterColor = isDark ? '#555' : '#aaa'
-  const activeLineBg = isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,100,255,0.06)'
-  const gutterBorder = isDark ? '#333' : '#eee'
+function buildBaseTheme() {
+  const bg = '#ffffff'
+  const fg = '#1e1e1e'
+  const gutterBg = '#ffffff'
+  const gutterColor = '#aaa'
+  const activeLineBg = 'rgba(0,100,255,0.06)'
+  const gutterBorder = '#eee'
 
   return EditorView.theme({
     '&': {
@@ -60,7 +60,7 @@ function buildBaseTheme(isDark: boolean) {
     },
     '&.cm-focused': { outline: 'none' },
     '.cm-line': { padding: '0' },
-  }, { dark: isDark })
+  })
 }
 
 function buildSaveKeymap(callbacks: { current: CodeMirrorCallbacks }) {
@@ -76,7 +76,6 @@ function buildSaveKeymap(callbacks: { current: CodeMirrorCallbacks }) {
 export function useCodeMirror(
   containerRef: React.RefObject<HTMLDivElement | null>,
   content: string,
-  isDark: boolean,
   callbacks: CodeMirrorCallbacks,
 ) {
   const viewRef = useRef<EditorView | null>(null)
@@ -109,8 +108,8 @@ export function useCodeMirror(
         history(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         buildSaveKeymap(callbacksRef),
-        buildBaseTheme(isDark),
-        frontmatterHighlightTheme(isDark),
+        buildBaseTheme(),
+        frontmatterHighlightTheme(),
         frontmatterHighlightPlugin,
         zoomCursorFix(),
         EditorView.updateListener.of((update) => {
@@ -144,9 +143,8 @@ export function useCodeMirror(
       view.destroy()
       viewRef.current = null
     }
-    // Re-create editor when isDark changes (theme is baked into extensions)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isDark])
+  }, [])
 
   return viewRef
 }

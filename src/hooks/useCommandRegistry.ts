@@ -1,9 +1,9 @@
 import { useMemo } from 'react'
-import type { SidebarSelection, ThemeFile, VaultEntry } from '../types'
+import type { SidebarSelection, VaultEntry } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
 
-export type CommandGroup = 'Navigation' | 'Note' | 'Git' | 'View' | 'Appearance' | 'Settings'
+export type CommandGroup = 'Navigation' | 'Note' | 'Git' | 'View' | 'Settings'
 
 export interface CommandAction {
   id: string
@@ -64,14 +64,8 @@ interface CommandRegistryConfig {
   onGoForward?: () => void
   canGoBack?: boolean
   canGoForward?: boolean
-  themes?: ThemeFile[]
-  activeThemeId?: string | null
-  onSwitchTheme?: (themeId: string) => void
-  onCreateTheme?: () => void
-  onOpenTheme?: (themeId: string) => void
   onRemoveActiveVault?: () => void
   onRestoreGettingStarted?: () => void
-  onRestoreDefaultThemes?: () => void
   isGettingStartedHidden?: boolean
   vaultCount?: number
   /** Current selection — used to scope filter pill commands to section group views. */
@@ -103,7 +97,7 @@ export function extractVaultTypes(entries: VaultEntry[]): string[] {
   return Array.from(typeSet).sort()
 }
 
-const GROUP_ORDER: CommandGroup[] = ['Navigation', 'Note', 'Git', 'View', 'Appearance', 'Settings']
+const GROUP_ORDER: CommandGroup[] = ['Navigation', 'Note', 'Git', 'View', 'Settings']
 
 export function groupSortKey(group: CommandGroup): number {
   return GROUP_ORDER.indexOf(group)
@@ -160,43 +154,6 @@ export function buildViewCommands(
   ]
 }
 
-export function buildThemeCommands(
-  themes: ThemeFile[] | undefined,
-  activeThemeId: string | null | undefined,
-  onSwitchTheme: ((themeId: string) => void) | undefined,
-  onCreateTheme: (() => void) | undefined,
-  onOpenTheme: ((themeId: string) => void) | undefined,
-): CommandAction[] {
-  const cmds: CommandAction[] = []
-  for (const t of (themes ?? [])) {
-    cmds.push({
-      id: `switch-theme-${t.id}`,
-      label: `Switch to ${t.name} Theme`,
-      group: 'Appearance' as CommandGroup,
-      keywords: ['theme', 'appearance', 'color', t.name.toLowerCase()],
-      enabled: t.id !== activeThemeId,
-      execute: () => onSwitchTheme?.(t.id),
-    })
-    if (onOpenTheme) {
-      cmds.push({
-        id: `open-theme-${t.id}`,
-        label: `Edit ${t.name} Theme`,
-        group: 'Appearance' as CommandGroup,
-        keywords: ['theme', 'edit', 'open', 'appearance', t.name.toLowerCase()],
-        enabled: true,
-        execute: () => onOpenTheme(t.id),
-      })
-    }
-  }
-  if (onCreateTheme) {
-    cmds.push({
-      id: 'new-theme', label: 'New Theme', group: 'Appearance' as CommandGroup,
-      keywords: ['theme', 'create', 'appearance'], enabled: true, execute: onCreateTheme,
-    })
-  }
-  return cmds
-}
-
 export function useCommandRegistry(config: CommandRegistryConfig): CommandAction[] {
   const {
     activeTabPath, entries, modifiedCount,
@@ -207,10 +164,9 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onOpenDailyNote, onCloseTab,
     onGoBack, onGoForward, canGoBack, canGoForward,
-    themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme,
     onCheckForUpdates,
     onCreateType,
-    onRemoveActiveVault, onRestoreGettingStarted, onRestoreDefaultThemes, isGettingStartedHidden, vaultCount,
+    onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
     mcpStatus, onInstallMcp,
     onEmptyTrash, trashedCount,
     onReindexVault,
@@ -293,10 +249,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
       // View
       ...buildViewCommands(hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, zoomLevel, onZoomIn, onZoomOut, onZoomReset),
 
-      // Appearance
-      ...buildThemeCommands(themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme),
-      { id: 'restore-default-themes', label: 'Restore Default Themes', group: 'Appearance', keywords: ['theme', 'reset', 'restore', 'default', 'fix', 'missing'], enabled: true, execute: () => onRestoreDefaultThemes?.() },
-
       // Settings
       { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,', keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
       { id: 'open-vault', label: 'Open Vault…', group: 'Settings', keywords: ['vault', 'folder', 'switch', 'open', 'workspace'], enabled: true, execute: () => onOpenVault?.() },
@@ -327,7 +279,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onOpenDailyNote, onCloseTab,
     onGoBack, onGoForward, canGoBack, canGoForward,
-    vaultTypes, themes, activeThemeId, onSwitchTheme, onCreateTheme, onOpenTheme, onRestoreDefaultThemes,
+    vaultTypes,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
     mcpStatus, onInstallMcp, onEmptyTrash, trashedCount,
     onReindexVault, onReloadVault, onRepairVault,

@@ -1,16 +1,13 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { X, Eye, EyeSlash, GithubLogo, SignOut, Check, Plus } from '@phosphor-icons/react'
+import { X, Eye, EyeSlash, GithubLogo, SignOut } from '@phosphor-icons/react'
 import { GitHubDeviceFlow } from './GitHubDeviceFlow'
-import { ThemePropertyEditor } from './ThemePropertyEditor'
-import type { Settings, ThemeFile } from '../types'
-import type { ThemeManager } from '../hooks/useThemeManager'
+import type { Settings } from '../types'
 
 interface SettingsPanelProps {
   open: boolean
   settings: Settings
   onSave: (settings: Settings) => void
   onClose: () => void
-  themeManager: ThemeManager
 }
 
 
@@ -116,12 +113,12 @@ function GitHubConnectedRow({ username, onDisconnect }: { username: string; onDi
 
 // --- Settings Panel ---
 
-export function SettingsPanel({ open, settings, onSave, onClose, themeManager }: SettingsPanelProps) {
+export function SettingsPanel({ open, settings, onSave, onClose }: SettingsPanelProps) {
   if (!open) return null
-  return <SettingsPanelInner settings={settings} onSave={onSave} onClose={onClose} themeManager={themeManager} />
+  return <SettingsPanelInner settings={settings} onSave={onSave} onClose={onClose} />
 }
 
-function SettingsPanelInner({ settings, onSave, onClose, themeManager }: Omit<SettingsPanelProps, 'open'>) {
+function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelProps, 'open'>) {
   const [openaiKey, setOpenaiKey] = useState(settings.openai_key ?? '')
   const [googleKey, setGoogleKey] = useState(settings.google_key ?? '')
   const [githubToken, setGithubToken] = useState(settings.github_token)
@@ -195,7 +192,6 @@ function SettingsPanelInner({ settings, onSave, onClose, themeManager }: Omit<Se
           githubToken={githubToken ?? null} githubUsername={githubUsername ?? null}
           onGitHubConnected={handleGitHubConnected} onGitHubDisconnect={handleGitHubDisconnect}
           pullInterval={pullInterval} setPullInterval={setPullInterval}
-          themeManager={themeManager}
         />
         <SettingsFooter onClose={onClose} onSave={handleSave} />
       </div>
@@ -228,7 +224,6 @@ interface SettingsBodyProps {
   onGitHubConnected: (token: string, username: string) => void
   onGitHubDisconnect: () => void
   pullInterval: number; setPullInterval: (v: number) => void
-  themeManager: ThemeManager
 }
 
 function SettingsBody(props: SettingsBodyProps) {
@@ -286,85 +281,7 @@ function SettingsBody(props: SettingsBodyProps) {
           <option value={30}>30</option>
         </select>
       </div>
-
-      <div style={{ height: 1, background: 'var(--border)' }} />
-
-      <AppearanceSection themeManager={props.themeManager} />
     </div>
-  )
-}
-
-// --- Appearance Section ---
-
-function ColorSwatch({ color }: { color: string }) {
-  return (
-    <div
-      style={{ width: 14, height: 14, borderRadius: 3, background: color, border: '1px solid var(--border)', flexShrink: 0 }}
-    />
-  )
-}
-
-function ThemeCard({ theme, active, onSelect }: { theme: ThemeFile; active: boolean; onSelect: () => void }) {
-  const swatchColors = ['background', 'foreground', 'primary', 'border', 'muted']
-  return (
-    <button
-      className="border rounded cursor-pointer text-left"
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', width: '100%',
-        background: active ? 'var(--accent)' : 'transparent',
-        borderColor: active ? 'var(--primary)' : 'var(--border)',
-      }}
-      onClick={onSelect}
-      type="button"
-      data-testid={`theme-card-${theme.id}`}
-    >
-      <div style={{ display: 'flex', gap: 3 }}>
-        {swatchColors.map(key => theme.colors[key] && <ColorSwatch key={key} color={theme.colors[key]} />)}
-      </div>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--foreground)' }}>{theme.name}</div>
-        {theme.description && (
-          <div style={{ fontSize: 11, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{theme.description}</div>
-        )}
-      </div>
-      {active && <Check size={14} weight="bold" style={{ color: 'var(--primary)', flexShrink: 0 }} />}
-    </button>
-  )
-}
-
-function AppearanceSection({ themeManager }: { themeManager: ThemeManager }) {
-  const { themes, activeThemeId, switchTheme, createTheme } = themeManager
-  return (
-    <>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>Appearance</div>
-        <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
-          Choose a theme for your vault. Themes are stored in <code>_themes/</code> and synced with Git.
-        </div>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }} data-testid="theme-list">
-        {themes.map(theme => (
-          <ThemeCard key={theme.id} theme={theme} active={theme.id === activeThemeId} onSelect={() => switchTheme(theme.id)} />
-        ))}
-      </div>
-      <button
-        className="border border-border bg-transparent text-muted-foreground rounded cursor-pointer hover:text-foreground hover:border-foreground"
-        style={{ fontSize: 12, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 4, alignSelf: 'flex-start' }}
-        onClick={() => createTheme()}
-        type="button"
-        data-testid="create-theme"
-      >
-        <Plus size={14} />
-        New Theme
-      </button>
-
-      {activeThemeId && (
-        <>
-          <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />
-          <ThemePropertyEditor themeManager={themeManager} />
-        </>
-      )}
-    </>
   )
 }
 

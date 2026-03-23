@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { SettingsPanel } from './SettingsPanel'
 import type { Settings } from '../types'
-import type { ThemeManager } from '../hooks/useThemeManager'
 
 // Mock the tauri/mock-tauri calls used by GitHubSection
 const mockInvokeFn = vi.fn()
@@ -36,16 +35,6 @@ const populatedSettings: Settings = {
   auto_pull_interval_minutes: 5,
 }
 
-const mockThemeManager: ThemeManager = {
-  themes: [],
-  activeThemeId: null,
-  activeTheme: null,
-  isDark: false,
-  switchTheme: vi.fn(),
-  createTheme: vi.fn().mockResolvedValue('untitled'),
-  reloadThemes: vi.fn(),
-}
-
 describe('SettingsPanel', () => {
   const onSave = vi.fn()
   const onClose = vi.fn()
@@ -56,14 +45,14 @@ describe('SettingsPanel', () => {
 
   it('renders nothing when not open', () => {
     const { container } = render(
-      <SettingsPanel open={false} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={false} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     expect(container.innerHTML).toBe('')
   })
 
   it('renders modal when open', () => {
     render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     expect(screen.getByText('Settings')).toBeInTheDocument()
     expect(screen.getByText('AI Provider Keys')).toBeInTheDocument()
@@ -72,7 +61,7 @@ describe('SettingsPanel', () => {
 
   it('shows two key fields with labels', () => {
     render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     expect(screen.getByText('OpenAI')).toBeInTheDocument()
     expect(screen.getByText('Google AI')).toBeInTheDocument()
@@ -80,7 +69,7 @@ describe('SettingsPanel', () => {
 
   it('populates fields from settings', () => {
     render(
-      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} />
     )
     const openaiInput = screen.getByTestId('settings-key-openai') as HTMLInputElement
     const googleInput = screen.getByTestId('settings-key-google-ai') as HTMLInputElement
@@ -91,7 +80,7 @@ describe('SettingsPanel', () => {
 
   it('calls onSave with trimmed keys on save', () => {
     render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     const openaiInput = screen.getByTestId('settings-key-openai')
     fireEvent.change(openaiInput, { target: { value: '  sk-openai-test  ' } })
@@ -111,7 +100,7 @@ describe('SettingsPanel', () => {
 
   it('converts empty/whitespace keys to null', () => {
     render(
-      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} />
     )
     // Clear the openai key field
     const openaiInput = screen.getByTestId('settings-key-openai')
@@ -131,7 +120,7 @@ describe('SettingsPanel', () => {
 
   it('calls onClose when Cancel is clicked', () => {
     render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     fireEvent.click(screen.getByText('Cancel'))
     expect(onClose).toHaveBeenCalled()
@@ -139,7 +128,7 @@ describe('SettingsPanel', () => {
 
   it('calls onClose when close button is clicked', () => {
     render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     fireEvent.click(screen.getByTitle('Close settings'))
     expect(onClose).toHaveBeenCalled()
@@ -147,7 +136,7 @@ describe('SettingsPanel', () => {
 
   it('calls onClose on Escape key', () => {
     render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     fireEvent.keyDown(screen.getByTestId('settings-panel'), { key: 'Escape' })
     expect(onClose).toHaveBeenCalled()
@@ -155,7 +144,7 @@ describe('SettingsPanel', () => {
 
   it('saves on Cmd+Enter', () => {
     render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     const openaiInput = screen.getByTestId('settings-key-openai')
     fireEvent.change(openaiInput, { target: { value: 'sk-openai-test' } })
@@ -173,7 +162,7 @@ describe('SettingsPanel', () => {
 
   it('calls onClose when clicking backdrop', () => {
     render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     fireEvent.click(screen.getByTestId('settings-panel'))
     expect(onClose).toHaveBeenCalled()
@@ -181,7 +170,7 @@ describe('SettingsPanel', () => {
 
   it('clears a key field when X button is clicked', () => {
     render(
-      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} />
     )
     const clearBtn = screen.getByTestId('clear-openai')
     fireEvent.click(clearBtn)
@@ -192,14 +181,14 @@ describe('SettingsPanel', () => {
 
   it('shows keyboard shortcut hint in footer', () => {
     render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     expect(screen.getByText(/to open settings/)).toBeInTheDocument()
   })
 
   it('resets fields when reopened with different settings', () => {
     const { rerender } = render(
-      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} />
     )
     // Verify initial state
     const openaiInput = screen.getByTestId('settings-key-openai') as HTMLInputElement
@@ -207,11 +196,11 @@ describe('SettingsPanel', () => {
 
     // Close and reopen with different settings
     rerender(
-      <SettingsPanel open={false} settings={populatedSettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={false} settings={populatedSettings} onSave={onSave} onClose={onClose} />
     )
     const newSettings: Settings = { ...emptySettings, openai_key: 'new-key' }
     rerender(
-      <SettingsPanel open={true} settings={newSettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+      <SettingsPanel open={true} settings={newSettings} onSave={onSave} onClose={onClose} />
     )
     const updatedInput = screen.getByTestId('settings-key-openai') as HTMLInputElement
     expect(updatedInput.value).toBe('new-key')
@@ -220,7 +209,7 @@ describe('SettingsPanel', () => {
   describe('GitHub OAuth section', () => {
     it('shows Login with GitHub button when not connected', () => {
       render(
-        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
       )
       expect(screen.getByTestId('github-login')).toBeInTheDocument()
       expect(screen.getByText('Login with GitHub')).toBeInTheDocument()
@@ -228,7 +217,7 @@ describe('SettingsPanel', () => {
 
     it('does not show GitHub token input field', () => {
       render(
-        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
       )
       expect(screen.queryByTestId('settings-key-github-token')).not.toBeInTheDocument()
       expect(screen.queryByPlaceholderText('ghp_... or gho_...')).not.toBeInTheDocument()
@@ -241,7 +230,7 @@ describe('SettingsPanel', () => {
         github_username: 'lucaong',
       }
       render(
-        <SettingsPanel open={true} settings={connectedSettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+        <SettingsPanel open={true} settings={connectedSettings} onSave={onSave} onClose={onClose} />
       )
       expect(screen.getByTestId('github-connected')).toBeInTheDocument()
       expect(screen.getByText('lucaong')).toBeInTheDocument()
@@ -256,7 +245,7 @@ describe('SettingsPanel', () => {
         github_username: 'lucaong',
       }
       render(
-        <SettingsPanel open={true} settings={connectedSettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+        <SettingsPanel open={true} settings={connectedSettings} onSave={onSave} onClose={onClose} />
       )
       fireEvent.click(screen.getByTestId('github-disconnect'))
 
@@ -285,7 +274,7 @@ describe('SettingsPanel', () => {
       })
 
       render(
-        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
       )
 
       fireEvent.click(screen.getByTestId('github-login'))
@@ -316,7 +305,7 @@ describe('SettingsPanel', () => {
       })
 
       render(
-        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
       )
 
       fireEvent.click(screen.getByTestId('github-login'))
@@ -337,7 +326,7 @@ describe('SettingsPanel', () => {
       })
 
       render(
-        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
       )
 
       fireEvent.click(screen.getByTestId('github-login'))
@@ -350,7 +339,7 @@ describe('SettingsPanel', () => {
 
     it('shows GitHub section description about connecting', () => {
       render(
-        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
       )
       expect(screen.getByText(/Connect your GitHub account/)).toBeInTheDocument()
     })
@@ -365,7 +354,7 @@ describe('SettingsPanel', () => {
       })
 
       render(
-        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
       )
 
       fireEvent.click(screen.getByTestId('github-login'))
@@ -387,7 +376,7 @@ describe('SettingsPanel', () => {
       })
 
       render(
-        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} themeManager={mockThemeManager} />
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
       )
 
       const loginBtn = screen.getByTestId('github-login') as HTMLButtonElement
