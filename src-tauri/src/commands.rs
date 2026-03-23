@@ -16,9 +16,7 @@ use crate::settings::Settings;
 use crate::vault::{RenameResult, VaultEntry};
 use crate::vault_config::VaultConfig;
 use crate::vault_list::VaultList;
-use crate::{
-    frontmatter, git, github, indexing, menu, search, vault, vault_config, vault_list,
-};
+use crate::{frontmatter, git, github, indexing, menu, search, vault, vault_config, vault_list};
 
 /// Expand a leading `~` or `~/` in a path string to the user's home directory.
 /// Returns the original string unchanged if it doesn't start with `~` or if the
