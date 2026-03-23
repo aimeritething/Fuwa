@@ -10,7 +10,6 @@ pub mod menu;
 pub mod search;
 pub mod settings;
 pub mod vault;
-pub mod vault_config;
 pub mod vault_list;
 
 use std::process::Child;
@@ -43,13 +42,6 @@ fn run_startup_tasks() {
         "Migrated is_a to type on startup",
         vault::migrate_is_a_to_type(vp_str),
     );
-    // Migrate legacy config/ui.config.md → root ui.config.md
-    vault_config::migrate_ui_config_to_root(vp_str);
-    log_startup_result(
-        "Migrated hidden_sections to visible property",
-        vault_config::migrate_hidden_sections_to_visible(vp_str),
-    );
-
     // Migrate legacy config/agents.md → root AGENTS.md (one-time, idempotent)
     vault::migrate_agents_md(vp_str);
     // Seed AGENTS.md and config.md at vault root if missing
@@ -165,9 +157,7 @@ pub fn run() {
             commands::get_default_vault_path,
             commands::register_mcp_tools,
             commands::check_mcp_status,
-            commands::repair_vault,
-            commands::get_vault_config,
-            commands::save_vault_config
+            commands::repair_vault
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

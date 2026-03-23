@@ -3,7 +3,7 @@
  * Each handler simulates a Tauri backend command.
  */
 
-import type { VaultEntry, VaultConfig, ModifiedFile, Settings, DeviceFlowStart, DeviceFlowPollResult, GitHubUser, GitPullResult, GitPushResult, GitRemoteStatus, LastCommitInfo, PulseCommit } from '../types'
+import type { VaultEntry, ModifiedFile, Settings, DeviceFlowStart, DeviceFlowPollResult, GitHubUser, GitPullResult, GitPushResult, GitRemoteStatus, LastCommitInfo, PulseCommit } from '../types'
 import { MOCK_CONTENT } from './mock-content'
 import { MOCK_ENTRIES } from './mock-entries'
 
@@ -269,8 +269,6 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   start_indexing: () => null,
   trigger_incremental_index: () => null,
   repair_vault: (): string => 'Vault repaired',
-  get_vault_config: (): VaultConfig => ({ zoom: null, view_mode: null, editor_mode: null, tag_colors: null, status_colors: null, property_display_modes: null }),
-  save_vault_config: (): null => null,
 }
 
 export function addMockEntry(_entry: VaultEntry, content: string): void {

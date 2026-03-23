@@ -14,9 +14,8 @@ use crate::indexing::{IndexStatus, IndexingProgress};
 use crate::search::SearchResponse;
 use crate::settings::Settings;
 use crate::vault::{RenameResult, VaultEntry};
-use crate::vault_config::VaultConfig;
 use crate::vault_list::VaultList;
-use crate::{frontmatter, git, github, indexing, menu, search, vault, vault_config, vault_list};
+use crate::{frontmatter, git, github, indexing, menu, search, vault, vault_list};
 
 /// Expand a leading `~` or `~/` in a path string to the user's home directory.
 /// Returns the original string unchanged if it doesn't start with `~` or if the
@@ -524,8 +523,6 @@ pub fn repair_vault(vault_path: String) -> Result<String, String> {
     vault::migrate_is_a_to_type(&vault_path)?;
     // Flatten vault: move notes from type-based subfolders to root
     vault::flatten_vault(&vault_path)?;
-    // Migrate legacy config/ui.config.md → root ui.config.md
-    vault_config::migrate_ui_config_to_root(&vault_path);
     // Repair config files (AGENTS.md at root, config.md type def)
     vault::repair_config_files(&vault_path)?;
     // Ensure .gitignore with sensible defaults exists
@@ -576,18 +573,6 @@ pub fn load_vault_list() -> Result<VaultList, String> {
 #[tauri::command]
 pub fn save_vault_list(list: VaultList) -> Result<(), String> {
     vault_list::save_vault_list(&list)
-}
-
-#[tauri::command]
-pub fn get_vault_config(vault_path: String) -> Result<VaultConfig, String> {
-    let vault_path = expand_tilde(&vault_path);
-    vault_config::get_vault_config(&vault_path)
-}
-
-#[tauri::command]
-pub fn save_vault_config(vault_path: String, config: VaultConfig) -> Result<(), String> {
-    let vault_path = expand_tilde(&vault_path);
-    vault_config::save_vault_config(&vault_path, config)
 }
 
 #[cfg(test)]
