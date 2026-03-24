@@ -95,46 +95,6 @@ describe('useCommandRegistry', () => {
     expect(cmd!.enabled).toBe(false)
   })
 
-  it('includes reindex-vault command in Settings group', () => {
-    const config = makeConfig({ onReindexVault: vi.fn() })
-    const { result } = renderHook(() => useCommandRegistry(config))
-    const cmd = findCommand(result.current, 'reindex-vault')
-    expect(cmd).toBeDefined()
-    expect(cmd!.group).toBe('Settings')
-    expect(cmd!.label).toBe('Reindex Vault')
-  })
-
-  it('reindex-vault is enabled when onReindexVault is provided', () => {
-    const config = makeConfig({ onReindexVault: vi.fn() })
-    const { result } = renderHook(() => useCommandRegistry(config))
-    const cmd = findCommand(result.current, 'reindex-vault')
-    expect(cmd!.enabled).toBe(true)
-  })
-
-  it('reindex-vault is disabled when onReindexVault is not provided', () => {
-    const config = makeConfig()
-    const { result } = renderHook(() => useCommandRegistry(config))
-    const cmd = findCommand(result.current, 'reindex-vault')
-    expect(cmd!.enabled).toBe(false)
-  })
-
-  it('reindex-vault executes onReindexVault callback', () => {
-    const onReindexVault = vi.fn()
-    const config = makeConfig({ onReindexVault })
-    const { result } = renderHook(() => useCommandRegistry(config))
-    const cmd = findCommand(result.current, 'reindex-vault')
-    cmd!.execute()
-    expect(onReindexVault).toHaveBeenCalled()
-  })
-
-  it('reindex-vault has searchable keywords', () => {
-    const config = makeConfig({ onReindexVault: vi.fn() })
-    const { result } = renderHook(() => useCommandRegistry(config))
-    const cmd = findCommand(result.current, 'reindex-vault')
-    expect(cmd!.keywords).toContain('reindex')
-    expect(cmd!.keywords).toContain('search')
-  })
-
   it('resolve-conflicts stays enabled across rerenders', () => {
     const config = makeConfig()
     const { result, rerender } = renderHook(

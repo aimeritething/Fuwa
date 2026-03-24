@@ -30,7 +30,6 @@ import { useGitHistory } from './hooks/useGitHistory'
 import { useUpdater, restartApp } from './hooks/useUpdater'
 import { useAutoSync } from './hooks/useAutoSync'
 import { useConflictResolver } from './hooks/useConflictResolver'
-import { useIndexing } from './hooks/useIndexing'
 import { useZoom } from './hooks/useZoom'
 import { useVaultConfig } from './hooks/useVaultConfig'
 import { useBuildNumber } from './hooks/useBuildNumber'
@@ -98,13 +97,10 @@ function App() {
   const flatVaultMigration = useFlatVaultMigration(resolvedPath, vault.entries.length > 0, vault.reloadVault)
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
 
-  const indexing = useIndexing(resolvedPath)
-
   const autoSync = useAutoSync({
     vaultPath: resolvedPath,
     intervalMinutes: settings.auto_pull_interval_minutes,
     onVaultUpdated: vault.reloadVault,
-    onSyncUpdated: indexing.triggerIncrementalIndex,
     onConflict: (files) => {
       const names = files.map((f) => f.split('/').pop()).join(', ')
       setToastMessage(`Conflict in ${names} — click to resolve`)
@@ -294,11 +290,9 @@ function App() {
     openNoteInNewWindow(entry.path, resolvedPath, entry.title)
   }, [resolvedPath])
 
-  const { triggerIncrementalIndex } = indexing
   const onAfterSave = useCallback(() => {
     vault.loadModifiedFiles()
-    triggerIncrementalIndex()
-  }, [vault, triggerIncrementalIndex])
+  }, [vault])
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars -- signature required by useEditorSave
   const onNotePersisted = useCallback((path: string, _content: string) => {
@@ -507,7 +501,6 @@ function App() {
     onEmptyTrash: deleteActions.handleEmptyTrash,
     trashedCount: deleteActions.trashedCount,
     onReopenClosedTab: notes.handleReopenClosedTab,
-    onReindexVault: indexing.triggerFullReindex,
     onReloadVault: vault.reloadVault,
     onRepairVault: handleRepairVault,
     onSetNoteIcon: handleSetNoteIconCommand,
@@ -640,7 +633,7 @@ function App() {
         />
       )}
       <UpdateBanner status={updateStatus} actions={updateActions} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} indexingProgress={indexing.progress} lastIndexedTime={indexing.lastIndexedTime} onRetryIndexing={indexing.retryIndexing} onReindexVault={indexing.triggerFullReindex} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
       <CommandPalette open={dialogs.showCommandPalette} commands={commands} onClose={dialogs.closeCommandPalette} />

@@ -4,7 +4,6 @@ mod commands;
 pub mod frontmatter;
 pub mod git;
 pub mod github;
-pub mod indexing;
 pub mod mcp;
 pub mod menu;
 pub mod search;
@@ -149,9 +148,6 @@ pub fn run() {
             commands::github_device_flow_poll,
             commands::github_get_user,
             commands::search_vault,
-            commands::get_index_status,
-            commands::start_indexing,
-            commands::trigger_incremental_index,
             commands::create_getting_started_vault,
             commands::check_vault_exists,
             commands::get_default_vault_path,

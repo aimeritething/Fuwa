@@ -10,12 +10,11 @@ use crate::git::{
     PulseCommit,
 };
 use crate::github::{DeviceFlowPollResult, DeviceFlowStart, GitHubUser, GithubRepo};
-use crate::indexing::{IndexStatus, IndexingProgress};
 use crate::search::SearchResponse;
 use crate::settings::Settings;
 use crate::vault::{RenameResult, VaultEntry};
 use crate::vault_list::VaultList;
-use crate::{frontmatter, git, github, indexing, menu, search, vault, vault_list};
+use crate::{frontmatter, git, github, menu, search, vault, vault_list};
 
 /// Expand a leading `~` or `~/` in a path string to the user's home directory.
 /// Returns the original string unchanged if it doesn't start with `~` or if the
@@ -40,20 +39,6 @@ pub fn parse_build_label(version: &str) -> String {
         [_, _, _] => "dev".to_string(),
         _ => "b?".to_string(),
     }
-}
-
-pub fn emit_unavailable(app_handle: &tauri::AppHandle) {
-    use tauri::Emitter;
-    let _ = app_handle.emit(
-        "indexing-progress",
-        IndexingProgress {
-            phase: "unavailable".to_string(),
-            current: 0,
-            total: 0,
-            done: true,
-            error: Some("qmd not available".to_string()),
-        },
-    );
 }
 
 // ── Vault commands ──────────────────────────────────────────────────────────
@@ -423,7 +408,7 @@ pub async fn stream_claude_agent(
     .map_err(|e| format!("Task failed: {e}"))?
 }
 
-// ── Search & indexing commands ──────────────────────────────────────────────
+// ── Search commands ─────────────────────────────────────────────────────────
 
 #[tauri::command]
 pub async fn search_vault(
@@ -437,66 +422,6 @@ pub async fn search_vault(
     tokio::task::spawn_blocking(move || search::search_vault(&vault_path, &query, &mode, limit))
         .await
         .map_err(|e| format!("Search task failed: {}", e))?
-}
-
-#[tauri::command]
-pub fn get_index_status(vault_path: String) -> IndexStatus {
-    let vault_path = expand_tilde(&vault_path);
-    indexing::check_index_status(&vault_path)
-}
-
-#[tauri::command]
-pub async fn start_indexing(
-    app_handle: tauri::AppHandle,
-    vault_path: String,
-) -> Result<(), String> {
-    use tauri::Emitter;
-    let vault_path = expand_tilde(&vault_path).into_owned();
-    tokio::task::spawn_blocking(move || {
-        if indexing::find_qmd_binary().is_none() {
-            log::info!("qmd binary not found — attempting auto-install via bun");
-            let _ = app_handle.emit(
-                "indexing-progress",
-                IndexingProgress {
-                    phase: "installing".to_string(),
-                    current: 0,
-                    total: 0,
-                    done: false,
-                    error: None,
-                },
-            );
-
-            match indexing::try_auto_install_qmd() {
-                Ok(()) if indexing::find_qmd_binary().is_some() => {
-                    log::info!("qmd auto-installed successfully, proceeding with indexing");
-                }
-                Ok(()) => {
-                    log::warn!("qmd auto-install reported success but binary still not found");
-                    emit_unavailable(&app_handle);
-                    return Err("qmd not available after install".to_string());
-                }
-                Err(e) => {
-                    log::info!("qmd auto-install failed: {e}");
-                    emit_unavailable(&app_handle);
-                    return Err(format!("qmd not available: {e}"));
-                }
-            }
-        }
-
-        indexing::run_full_index(&vault_path, |progress| {
-            let _ = app_handle.emit("indexing-progress", &progress);
-        })
-    })
-    .await
-    .map_err(|e| format!("Indexing task failed: {e}"))?
-}
-
-#[tauri::command]
-pub async fn trigger_incremental_index(vault_path: String) -> Result<(), String> {
-    let vault_path = expand_tilde(&vault_path).into_owned();
-    tokio::task::spawn_blocking(move || indexing::run_incremental_update(&vault_path))
-        .await
-        .map_err(|e| format!("Incremental index failed: {e}"))?
 }
 
 // ── MCP commands ────────────────────────────────────────────────────────────

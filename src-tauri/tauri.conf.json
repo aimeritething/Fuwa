@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5202",
     "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build && pnpm bundle-mcp && bash scripts/bundle-qmd.sh"
+    "beforeBuildCommand": "pnpm build && pnpm bundle-mcp"
   },
   "app": {
     "withGlobalTauri": true,
@@ -38,8 +38,7 @@
     "targets": "all",
     "createUpdaterArtifacts": true,
     "resources": {
-      "resources/mcp-server/**/*": "mcp-server/",
-      "resources/qmd/**/*": "qmd/"
+      "resources/mcp-server/**/*": "mcp-server/"
     },
     "icon": [
       "icons/32x32.png",

@@ -33,7 +33,6 @@ function makeHandlers(): MenuEventHandlers {
     onResolveConflicts: vi.fn(),
     onViewChanges: vi.fn(),
     onInstallMcp: vi.fn(),
-    onReindexVault: vi.fn(),
     onReloadVault: vi.fn(),
     onReopenClosedTab: vi.fn(),
     onOpenInNewWindow: vi.fn(),
@@ -294,12 +293,6 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('vault-install-mcp', h)
     expect(h.onInstallMcp).toHaveBeenCalled()
-  })
-
-  it('vault-reindex triggers reindex vault', () => {
-    const h = makeHandlers()
-    dispatchMenuEvent('vault-reindex', h)
-    expect(h.onReindexVault).toHaveBeenCalled()
   })
 
   it('vault-reload triggers reload vault', () => {

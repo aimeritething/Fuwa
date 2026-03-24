@@ -2,8 +2,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { StatusBar } from './StatusBar'
 import type { VaultOption } from './StatusBar'
-import { formatIndexedElapsed } from '../utils/indexingHelpers'
-
 vi.mock('../utils/url', async () => {
   const actual = await vi.importActual('../utils/url')
   return { ...actual, openExternalUrl: vi.fn().mockResolvedValue(undefined) }
@@ -226,121 +224,6 @@ describe('StatusBar', () => {
     expect(screen.getByTitle('View pending changes')).toBeInTheDocument()
   })
 
-  it('shows indexing badge when indexing is in progress', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'scanning', current: 342, total: 1057, done: false, error: null }}
-      />
-    )
-    expect(screen.getByTestId('status-indexing')).toBeInTheDocument()
-    expect(screen.getByText(/Indexing… 342\/1,057/)).toBeInTheDocument()
-  })
-
-  it('shows embedding phase in indexing badge', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'embedding', current: 50, total: 200, done: false, error: null }}
-      />
-    )
-    expect(screen.getByText(/Embedding… 50\/200/)).toBeInTheDocument()
-  })
-
-  it('shows index ready when indexing is complete', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'complete', current: 1057, total: 1057, done: true, error: null }}
-      />
-    )
-    expect(screen.getByText('Index ready')).toBeInTheDocument()
-  })
-
-  it('shows error state in indexing badge with retry label', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'error', current: 0, total: 0, done: true, error: 'qmd update failed' }}
-      />
-    )
-    expect(screen.getByText('Index failed — retry')).toBeInTheDocument()
-  })
-
-  it('hides indexing badge when phase is unavailable', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'unavailable', current: 0, total: 0, done: true, error: 'qmd not available' }}
-      />
-    )
-    expect(screen.queryByTestId('status-indexing')).not.toBeInTheDocument()
-  })
-
-  it('calls onRetryIndexing when clicking error badge', () => {
-    const onRetryIndexing = vi.fn()
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'error', current: 0, total: 0, done: true, error: 'qmd update failed' }}
-        onRetryIndexing={onRetryIndexing}
-      />
-    )
-    fireEvent.click(screen.getByTestId('status-indexing'))
-    expect(onRetryIndexing).toHaveBeenCalledOnce()
-  })
-
-  it('hides indexing badge when phase is idle', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'idle', current: 0, total: 0, done: false, error: null }}
-      />
-    )
-    expect(screen.queryByTestId('status-indexing')).not.toBeInTheDocument()
-  })
-
-  it('hides indexing badge when no progress prop provided', () => {
-    render(
-      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />
-    )
-    expect(screen.queryByTestId('status-indexing')).not.toBeInTheDocument()
-  })
-
-  it('shows installing phase in indexing badge', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'installing', current: 0, total: 0, done: false, error: null }}
-      />
-    )
-    expect(screen.getByText('Installing search…')).toBeInTheDocument()
-  })
-
   it('shows MCP warning badge when status is not_installed', () => {
     render(
       <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="not_installed" />
@@ -396,38 +279,6 @@ describe('StatusBar', () => {
     expect(onInstallMcp).not.toHaveBeenCalled()
   })
 
-  it('shows "Indexed just now" when lastIndexedTime is recent and phase is idle', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'idle', current: 0, total: 0, done: false, error: null }}
-        lastIndexedTime={Date.now() - 5000}
-      />
-    )
-    expect(screen.getByText(/Indexed just now/)).toBeInTheDocument()
-    expect(screen.getByTestId('status-indexed-time')).toBeInTheDocument()
-  })
-
-  it('calls onReindexVault when clicking the indexed time badge', () => {
-    const onReindexVault = vi.fn()
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'idle', current: 0, total: 0, done: false, error: null }}
-        lastIndexedTime={Date.now() - 5000}
-        onReindexVault={onReindexVault}
-      />
-    )
-    fireEvent.click(screen.getByTestId('status-indexed-time'))
-    expect(onReindexVault).toHaveBeenCalledOnce()
-  })
-
   it('shows Pull required label when syncStatus is pull_required', () => {
     render(
       <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} syncStatus="pull_required" />
@@ -462,38 +313,4 @@ describe('StatusBar', () => {
     expect(screen.getByText(/1 behind/)).toBeInTheDocument()
   })
 
-  it('hides indexed time badge when no lastIndexedTime', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        indexingProgress={{ phase: 'idle', current: 0, total: 0, done: false, error: null }}
-      />
-    )
-    expect(screen.queryByTestId('status-indexed-time')).not.toBeInTheDocument()
-  })
-})
-
-describe('formatIndexedElapsed', () => {
-  it('returns empty string for null', () => {
-    expect(formatIndexedElapsed(null)).toBe('')
-  })
-
-  it('returns "Indexed just now" for < 60s', () => {
-    expect(formatIndexedElapsed(Date.now() - 30_000)).toBe('Indexed just now')
-  })
-
-  it('returns minutes for < 60min', () => {
-    expect(formatIndexedElapsed(Date.now() - 5 * 60_000)).toBe('Indexed 5m ago')
-  })
-
-  it('returns hours for < 24h', () => {
-    expect(formatIndexedElapsed(Date.now() - 3 * 3600_000)).toBe('Indexed 3h ago')
-  })
-
-  it('returns days for >= 24h', () => {
-    expect(formatIndexedElapsed(Date.now() - 48 * 3600_000)).toBe('Indexed 2d ago')
-  })
 })

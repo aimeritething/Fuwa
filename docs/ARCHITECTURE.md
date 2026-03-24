@@ -79,7 +79,7 @@ flowchart LR
 | Frontmatter parsing | gray_matter | 0.2 |
 | AI (in-app chat) | Anthropic Claude API (Haiku 3.5 default) | - |
 | AI (agent panel) | Claude CLI subprocess (streaming NDJSON) | - |
-| Search | qmd (keyword + semantic + hybrid) | - |
+| Search | Keyword (walkdir-based file scan) | - |
 | MCP | @modelcontextprotocol/sdk | 1.0 |
 | Tests | Vitest (unit), Playwright (E2E/smoke), cargo test (Rust) | - |
 | Package manager | pnpm | - |
@@ -113,7 +113,7 @@ flowchart TD
             GIT["git/"]
             GH["github/"]
             THEME["theme/"]
-            SEARCH["search.rs + indexing.rs"]
+            SEARCH["search.rs"]
             CLI["claude_cli.rs"]
         end
 
@@ -121,7 +121,6 @@ flowchart TD
             ANTH["Anthropic API\n(Claude chat)"]
             CCLI["Claude CLI\n(agent subprocess)"]
             MCP["MCP Server\n(ws://9710, 9711)"]
-            QMD["qmd\n(search engine)"]
             GHAPI["GitHub API\n(OAuth, repos, clone)"]
         end
 
@@ -359,53 +358,16 @@ flowchart LR
 
 The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is killed on app exit via `RunEvent::Exit` handler.
 
-## Search & Indexing
+## Search
 
-### Search Engine
+Search is keyword-based, using `walkdir` to scan all `.md` files in the vault directory. No external binary or indexing step required.
 
-Search uses the external `qmd` binary (semantic search engine) with three modes:
+- Matches query against file titles and content (case-insensitive)
+- Scores results: title matches ranked higher than content-only matches
+- Extracts contextual snippets around the first match
+- Skips trashed and hidden files
 
-| Mode | Command | Description |
-|------|---------|-------------|
-| `keyword` | `qmd search` | Term matching (default) |
-| `semantic` | `qmd vsearch` | Vector similarity search |
-| `hybrid` | `qmd query` | Combined keyword + semantic |
-
-### Indexing Flow
-
-```mermaid
-flowchart TD
-    A([Vault opened]) --> B[check_index_status]
-    B --> C{Index status?}
-    C -->|Fresh| D[run_incremental_update\ngit diff since last commit]
-    C -->|Stale / Missing| E
-
-    subgraph E[Full Indexing — start_indexing]
-        E1["Phase 1: qmd update\n(scan all .md files)"]
-        E2["Phase 2: qmd embed\n(generate vector embeddings)"]
-        E1 --> E2
-    end
-
-    E --> F[Save .laputa-index.json\nlast_indexed_commit + timestamp]
-    D --> G([Search ready])
-    F --> G
-
-    E2 -.->|failure is non-fatal| G
-    G --> H{Search mode}
-    H -->|keyword| I[qmd search]
-    H -->|semantic| J[qmd vsearch]
-    H -->|hybrid| K[qmd query]
-```
-
-Embedding failure is non-fatal — keyword search still works.
-
-### qmd Binary Resolution
-
-1. Bundled macOS app resource: `<app>/Contents/Resources/qmd/qmd`
-2. Dev mode: `CARGO_MANIFEST_DIR/resources/qmd/qmd`
-3. System locations: `~/.bun/bin/qmd`, `/usr/local/bin/qmd`, `/opt/homebrew/bin/qmd`
-4. PATH lookup via `which qmd`
-5. Auto-install via `bun install -g qmd` if missing
+The `search_vault` Tauri command runs the scan in a blocking Tokio task and returns results sorted by relevance score.
 
 ## Vault Cache System
 
@@ -533,7 +495,6 @@ sequenceDiagram
         VL->>T: invoke('get_modified_files')
         VL->>T: useMcpStatus — register if needed
         VL->>T: useThemeManager — load active theme
-        VL->>T: useIndexing — incremental update if stale
         VL-->>A: entries ready
     end
 
@@ -619,8 +580,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `git/` | Git operations (`commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`) |
 | `github/` | GitHub OAuth + API (`auth.rs`, `api.rs`, `clone.rs`) |
 | `theme/` | Theme management (`mod.rs`, `create.rs`, `defaults.rs`, `seed.rs`) |
-| `search.rs` | qmd search integration (keyword/semantic/hybrid) |
-| `indexing.rs` | qmd indexing with progress streaming |
+| `search.rs` | Keyword search — walkdir-based vault file scan |
 | `claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing |
 | `ai_chat.rs` | Direct Anthropic API client (non-streaming, for Tauri builds) |
 | `mcp.rs` | MCP server spawning + config registration |
@@ -689,14 +649,11 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `github_create_repo` | Create new repo |
 | `clone_repo` | Clone repo with token auth |
 
-### Search & Indexing
+### Search
 
 | Command | Description |
 |---------|-------------|
-| `search_vault` | Search via qmd (keyword/semantic/hybrid) |
-| `get_index_status` | Check qmd index state |
-| `start_indexing` | Full index with progress streaming |
-| `trigger_incremental_index` | Incremental index update |
+| `search_vault` | Keyword search across vault files |
 
 ### Theme
 
@@ -772,7 +729,7 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useAIChat` | `messages`, `isStreaming` | AI chat conversation |
 | `useAiAgent` | `messages`, `status`, tool actions | AI agent conversation |
 | `useAutoSync` | Sync interval, pull/push state | Git auto-sync |
-| `useIndexing` | Index status, progress | Search indexing |
+| `useUnifiedSearch` | Query, results, loading state | Keyword search |
 | `useSettings` | App settings (API keys, GitHub token) | Persistent settings |
 | `useVaultConfig` | Per-vault UI preferences | Vault-specific config |
 

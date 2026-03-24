@@ -1,10 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
-import { Package, RefreshCw, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, Search, X, Cpu, ArrowDown, GitBranch } from 'lucide-react'
+import { Package, RefreshCw, FileText, Bell, Settings, FolderOpen, Check, Github, CircleDot, AlertTriangle, Loader2, GitCommitHorizontal, X, Cpu, ArrowDown, GitBranch } from 'lucide-react'
 import type { GitRemoteStatus, LastCommitInfo, SyncStatus } from '../types'
-import type { IndexingProgress } from '../hooks/useIndexing'
 import type { McpStatus } from '../hooks/useMcpStatus'
 import { openExternalUrl } from '../utils/url'
-import { formatIndexedElapsed } from '../utils/indexingHelpers'
 
 export interface VaultOption {
   label: string
@@ -35,10 +33,6 @@ interface StatusBarProps {
   onZoomReset?: () => void
   buildNumber?: string
   onCheckForUpdates?: () => void
-  indexingProgress?: IndexingProgress
-  lastIndexedTime?: number | null
-  onRetryIndexing?: () => void
-  onReindexVault?: () => void
   onRemoveVault?: (path: string) => void
   mcpStatus?: McpStatus
   onInstallMcp?: () => void
@@ -334,70 +328,6 @@ function ConflictBadge({ count, onClick }: { count: number; onClick?: () => void
   )
 }
 
-const INDEXING_LABELS: Record<string, string> = {
-  installing: 'Installing search…',
-  scanning: 'Indexing…',
-  embedding: 'Embedding…',
-  complete: 'Index ready',
-  error: 'Index failed — retry',
-  unavailable: 'Search unavailable',
-}
-
-function IndexingBadge({ progress, lastIndexedTime, onRetry, onReindex }: { progress: IndexingProgress; lastIndexedTime?: number | null; onRetry?: () => void; onReindex?: () => void }) {
-  const isIdle = progress.phase === 'idle' || progress.phase === 'unavailable'
-
-  // When idle, show "Indexed Xm ago" if we have a timestamp
-  if (isIdle) {
-    if (!lastIndexedTime) return null
-    const elapsed = formatIndexedElapsed(lastIndexedTime)
-    if (!elapsed) return null
-    return (
-      <>
-        <span style={SEP_STYLE}>|</span>
-        <span
-          role={onReindex ? 'button' : undefined}
-          onClick={onReindex}
-          style={{ ...ICON_STYLE, color: 'var(--muted-foreground)', cursor: onReindex ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
-          title={onReindex ? 'Click to reindex vault' : undefined}
-          data-testid="status-indexed-time"
-          onMouseEnter={onReindex ? (e) => { e.currentTarget.style.background = 'var(--hover)' } : undefined}
-          onMouseLeave={onReindex ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
-        >
-          <Search size={13} />{elapsed}
-        </span>
-      </>
-    )
-  }
-
-  const label = INDEXING_LABELS[progress.phase] ?? progress.phase
-  const isActive = !progress.done
-  const isError = progress.phase === 'error'
-  const showCount = progress.total > 0 && isActive
-  const displayText = showCount
-    ? `${label} ${progress.current.toLocaleString()}/${progress.total.toLocaleString()}`
-    : label
-  const color = isError ? 'var(--accent-orange)' : 'var(--accent-blue, #3b82f6)'
-
-  return (
-    <>
-      <span style={SEP_STYLE}>|</span>
-      <span
-        role={isError && onRetry ? 'button' : undefined}
-        onClick={isError && onRetry ? onRetry : undefined}
-        style={{ ...ICON_STYLE, color, cursor: isError && onRetry ? 'pointer' : 'default' }}
-        title={isError ? 'Click to retry indexing' : undefined}
-        data-testid="status-indexing"
-      >
-        {isActive
-          ? <Loader2 size={13} className="animate-spin" />
-          : <Search size={13} />
-        }
-        {displayText}
-      </span>
-    </>
-  )
-}
-
 function PendingBadge({ count, onClick }: { count: number; onClick?: () => void }) {
   if (count <= 0) return null
   return (
@@ -451,7 +381,7 @@ function McpBadge({ status, onInstall }: { status: McpStatus; onInstall?: () => 
   )
 }
 
-export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, remoteStatus, onTriggerSync, onPullAndPush, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber, onCheckForUpdates, indexingProgress, lastIndexedTime, onRetryIndexing, onReindexVault, onRemoveVault, mcpStatus, onInstallMcp }: StatusBarProps) {
+export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, remoteStatus, onTriggerSync, onPullAndPush, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber, onCheckForUpdates, onRemoveVault, mcpStatus, onInstallMcp }: StatusBarProps) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000)
@@ -477,7 +407,6 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
         {lastCommitInfo && <CommitBadge info={lastCommitInfo} />}
         <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} />
         <PendingBadge count={modifiedCount} onClick={onClickPending} />
-        {indexingProgress && <IndexingBadge progress={indexingProgress} lastIndexedTime={lastIndexedTime} onRetry={onRetryIndexing} onReindex={onReindexVault} />}
         {mcpStatus && <McpBadge status={mcpStatus} onInstall={onInstallMcp} />}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>

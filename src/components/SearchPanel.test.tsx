@@ -125,7 +125,7 @@ describe('SearchPanel', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('performs unified search with keyword then hybrid', async () => {
+  it('performs keyword search', async () => {
     mockInvokeFn.mockResolvedValue({
       results: [
         { title: 'How to Design AI-first APIs', path: '/vault/essay/ai-apis.md', snippet: '...designing APIs for AI...', score: 0.87, note_type: 'Essay' },
@@ -140,7 +140,6 @@ describe('SearchPanel', () => {
     const input = screen.getByPlaceholderText('Search in all notes...')
     fireEvent.change(input, { target: { value: 'api design' } })
 
-    // Should call keyword search first
     await waitFor(() => {
       expect(mockInvokeFn).toHaveBeenCalledWith('search_vault', {
         vaultPath: '/vault',
@@ -150,19 +149,8 @@ describe('SearchPanel', () => {
       })
     })
 
-    // Results should appear
     await waitFor(() => {
       expect(screen.getByText('How to Design AI-first APIs')).toBeInTheDocument()
-    })
-
-    // Should also call hybrid search
-    await waitFor(() => {
-      expect(mockInvokeFn).toHaveBeenCalledWith('search_vault', {
-        vaultPath: '/vault',
-        query: 'api design',
-        mode: 'hybrid',
-        limit: 20,
-      })
     })
   })
 
@@ -331,7 +319,7 @@ describe('SearchPanel', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Search in all notes...'), { target: { value: 'test' } })
 
-    // Spinner appears when keyword search starts (after debounce)
+    // Spinner appears when search starts (after debounce)
     await waitFor(() => {
       expect(screen.getByTestId('search-spinner')).toBeInTheDocument()
     })
@@ -342,21 +330,9 @@ describe('SearchPanel', () => {
       elapsed_ms: 30,
     })
 
-    // Keyword results appear, spinner still visible (hybrid in progress)
+    // Spinner disappears after search completes
     await waitFor(() => {
       expect(screen.getByText('Result')).toBeInTheDocument()
-      expect(screen.getByTestId('search-spinner')).toBeInTheDocument()
-    })
-
-    // Wait for hybrid call then resolve it
-    await waitFor(() => { expect(resolvers).toHaveLength(2) })
-    resolvers[1]({
-      results: [{ title: 'Result', path: '/vault/essay/ai-apis.md', snippet: '', score: 0.9, note_type: null }],
-      elapsed_ms: 150,
-    })
-
-    // Spinner disappears after hybrid completes
-    await waitFor(() => {
       expect(screen.queryByTestId('search-spinner')).not.toBeInTheDocument()
     })
   })
@@ -388,44 +364,12 @@ describe('SearchPanel', () => {
     })
   })
 
-  it('keeps keyword results when hybrid search fails', async () => {
-    mockInvokeFn.mockImplementation(async (_cmd: string, args?: Record<string, unknown>) => {
-      const mode = (args as Record<string, string>)?.mode
-      if (mode === 'keyword') {
-        return {
-          results: [{ title: 'Keyword Only', path: '/vault/essay/ai-apis.md', snippet: '', score: 0.9, note_type: null }],
-          elapsed_ms: 30,
-        }
-      }
-      throw new Error('qmd unavailable')
-    })
-
-    render(
-      <SearchPanel open={true} vaultPath="/vault" entries={MOCK_ENTRIES} onSelectNote={vi.fn()} onClose={vi.fn()} />,
-    )
-
-    fireEvent.change(screen.getByPlaceholderText('Search in all notes...'), { target: { value: 'test' } })
-
-    // Keyword results appear
-    await waitFor(() => {
-      expect(screen.getByText('Keyword Only')).toBeInTheDocument()
-    })
-
-    // Spinner disappears after hybrid fails
-    await waitFor(() => {
-      expect(screen.queryByTestId('search-spinner')).not.toBeInTheDocument()
-    })
-
-    // Keyword results remain
-    expect(screen.getByText('Keyword Only')).toBeInTheDocument()
-  })
-
   it('deduplicates results when backend returns same note twice', async () => {
     mockInvokeFn.mockResolvedValue({
       results: [
         { title: 'How to Design AI-first APIs', path: '/vault/essay/ai-apis.md', snippet: 'keyword hit', score: 0.7, note_type: 'Essay' },
         { title: 'Refactoring Retreat', path: '/vault/event/retreat.md', snippet: 'unique', score: 0.6, note_type: 'Event' },
-        { title: 'How to Design AI-first APIs', path: '/vault/essay/ai-apis.md', snippet: 'semantic hit', score: 0.9, note_type: 'Essay' },
+        { title: 'How to Design AI-first APIs', path: '/vault/essay/ai-apis.md', snippet: 'duplicate hit', score: 0.9, note_type: 'Essay' },
       ],
       elapsed_ms: 48,
     })

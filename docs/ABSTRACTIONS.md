@@ -490,42 +490,29 @@ The Inspector panel (`src/components/Inspector.tsx`) is composed of sub-panels:
 
 `useClosedTabHistory` hook (`src/hooks/useClosedTabHistory.ts`) provides a LIFO stack for closed tab entries, used by `useTabManagement` to support Cmd+Shift+T reopen. Each entry stores the note's path, tab index, and full `VaultEntry`. The stack is in-memory only (resets on restart), capped at 20 entries, and deduplicates by path.
 
-## Search & Indexing
+## Search
 
-### Search Modes
+### Search
+
+Keyword-based search scans all vault `.md` files using `walkdir`:
 
 ```typescript
-type SearchMode = 'keyword' | 'semantic' | 'hybrid'
-
 interface SearchResult {
   title: string
   path: string
   snippet: string
   score: number
 }
-
-interface SearchResponse {
-  results: SearchResult[]
-  elapsedMs: number
-}
 ```
 
 ### Search Integration
 
 `SearchPanel` component provides the search UI:
-- Mode selector (keyword/semantic/hybrid)
-- Real-time results as user types
+- Real-time results as user types (300ms debounce)
 - Click result to open note in editor
 - Shows relevance score and snippet
 
-### Indexing
-
-Managed by `useIndexing` hook:
-- Checks index status on vault load
-- Two-phase indexing: scanning (parse files) → embedding (generate vectors)
-- Progress streamed via Tauri events
-- Incremental updates after git sync
-- Metadata persisted in `.laputa-index.json`
+No indexing step required — search runs directly against the filesystem.
 
 ## Vault Management
 

@@ -17,22 +17,11 @@ interface SearchResponseData {
 }
 
 const DEBOUNCE_MS = 300
-const HYBRID_TIMEOUT_MS = 5000
 
 function searchCall(args: Record<string, unknown>): Promise<SearchResponseData> {
   return isTauri()
     ? invoke<SearchResponseData>('search_vault', args)
     : mockInvoke<SearchResponseData>('search_vault', args)
-}
-
-function searchWithTimeout(args: Record<string, unknown>, ms: number): Promise<SearchResponseData> {
-  return new Promise((resolve, reject) => {
-    const timer = setTimeout(() => reject(new Error('Search timeout')), ms)
-    searchCall(args).then(
-      result => { clearTimeout(timer); resolve(result) },
-      err => { clearTimeout(timer); reject(err) },
-    )
-  })
 }
 
 function mapResults(raw: SearchResultData[]): SearchResult[] {
@@ -92,19 +81,7 @@ export function useUnifiedSearch(vaultPath: string, active: boolean) {
       setSelectedIndex(0)
     } catch {
       if (gen !== searchGenRef.current) return
-      setLoading(false)
-      return
-    }
-    try {
-      const response = await searchWithTimeout(
-        { vaultPath, query: q, mode: 'hybrid', limit: 20 },
-        HYBRID_TIMEOUT_MS,
-      )
-      if (gen !== searchGenRef.current) return
-      setResults(mapResults(response.results))
-      setElapsedMs(response.elapsed_ms)
-      setSelectedIndex(prev => Math.min(prev, Math.max(response.results.length - 1, 0)))
-    } catch { /* Hybrid timed out — keyword results remain */ } finally {
+    } finally {
       if (gen === searchGenRef.current) setLoading(false)
     }
   }, [vaultPath])

@@ -64,7 +64,6 @@ interface AppCommandsConfig {
   onEmptyTrash?: () => void
   trashedCount?: number
   onReopenClosedTab?: () => void
-  onReindexVault?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
   onSetNoteIcon?: () => void
@@ -156,7 +155,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onResolveConflicts: config.onResolveConflicts,
     onViewChanges: viewChanges,
     onInstallMcp: config.onInstallMcp,
-    onReindexVault: config.onReindexVault,
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
     onEmptyTrash: config.onEmptyTrash,
@@ -212,7 +210,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onInstallMcp: config.onInstallMcp,
     onEmptyTrash: config.onEmptyTrash,
     trashedCount: config.trashedCount,
-    onReindexVault: config.onReindexVault,
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
     onSetNoteIcon: config.onSetNoteIcon,

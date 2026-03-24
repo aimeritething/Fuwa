@@ -51,7 +51,6 @@ const VAULT_PULL: &str = "vault-pull";
 const VAULT_RESOLVE_CONFLICTS: &str = "vault-resolve-conflicts";
 const VAULT_VIEW_CHANGES: &str = "vault-view-changes";
 const VAULT_INSTALL_MCP: &str = "vault-install-mcp";
-const VAULT_REINDEX: &str = "vault-reindex";
 const VAULT_RELOAD: &str = "vault-reload";
 const VAULT_REPAIR: &str = "vault-repair";
 
@@ -96,7 +95,6 @@ const CUSTOM_IDS: &[&str] = &[
     VAULT_RESOLVE_CONFLICTS,
     VAULT_VIEW_CHANGES,
     VAULT_INSTALL_MCP,
-    VAULT_REINDEX,
     VAULT_RELOAD,
     VAULT_REPAIR,
 ];
@@ -358,9 +356,6 @@ fn build_vault_menu(app: &App) -> MenuResult {
     let install_mcp = MenuItemBuilder::new("Restore MCP Server")
         .id(VAULT_INSTALL_MCP)
         .build(app)?;
-    let reindex = MenuItemBuilder::new("Reindex Vault")
-        .id(VAULT_REINDEX)
-        .build(app)?;
     let reload = MenuItemBuilder::new("Reload Vault")
         .id(VAULT_RELOAD)
         .build(app)?;
@@ -378,7 +373,6 @@ fn build_vault_menu(app: &App) -> MenuResult {
         .item(&resolve_conflicts)
         .item(&view_changes)
         .separator()
-        .item(&reindex)
         .item(&reload)
         .item(&repair)
         .item(&install_mcp)
@@ -499,7 +493,6 @@ mod tests {
             VAULT_RESOLVE_CONFLICTS,
             VAULT_VIEW_CHANGES,
             VAULT_INSTALL_MCP,
-            VAULT_REINDEX,
             VAULT_RELOAD,
         ];
         for id in &expected {

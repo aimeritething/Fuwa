@@ -7,7 +7,6 @@ How to navigate the codebase, run the app, and find what you need.
 - **Node.js** 18+ and **pnpm**
 - **Rust** 1.77.2+ (for the Tauri backend)
 - **git** CLI (required by the git integration features)
-- **qmd** (optional — for search indexing; auto-installed if missing)
 
 ## Quick Start
 
@@ -97,7 +96,7 @@ laputa-app/
 │   │   ├── useEditorSave.ts      # Auto-save with debounce
 │   │   ├── useTheme.ts           # Flatten theme.json → CSS vars
 │   │   ├── useThemeManager.ts    # Vault theme lifecycle
-│   │   ├── useIndexing.ts        # Search indexing management
+│   │   ├── useUnifiedSearch.ts   # Keyword search
 │   │   ├── useNoteSearch.ts      # Note search
 │   │   ├── useCommandRegistry.ts # Command palette registry
 │   │   ├── useAppCommands.ts     # App-level commands
@@ -158,8 +157,7 @@ laputa-app/
 │   │   │   ├── mod.rs, auth.rs, api.rs, clone.rs
 │   │   ├── theme/                # Theme module
 │   │   │   ├── mod.rs, create.rs, defaults.rs, seed.rs
-│   │   ├── search.rs             # qmd search integration
-│   │   ├── indexing.rs           # qmd indexing + progress streaming
+│   │   ├── search.rs             # Keyword search (walkdir-based)
 │   │   ├── claude_cli.rs         # Claude CLI subprocess management
 │   │   ├── ai_chat.rs            # Direct Anthropic API client
 │   │   ├── mcp.rs                # MCP server lifecycle + registration
@@ -220,7 +218,7 @@ laputa-app/
 | `src-tauri/src/frontmatter/ops.rs` | YAML manipulation — how properties are updated/deleted in files. |
 | `src-tauri/src/git/` | All git operations (commit, pull, push, conflicts, pulse). |
 | `src-tauri/src/github/` | GitHub OAuth device flow + repo clone/create. |
-| `src-tauri/src/search.rs` | qmd search integration (keyword/semantic/hybrid). |
+| `src-tauri/src/search.rs` | Keyword search — scans vault files with walkdir. |
 | `src-tauri/src/claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing. |
 
 ### Editor

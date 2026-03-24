@@ -36,7 +36,6 @@ export interface MenuEventHandlers {
   onInstallMcp?: () => void
   onReopenClosedTab?: () => void
   onOpenInNewWindow?: () => void
-  onReindexVault?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
   onEmptyTrash?: () => void
@@ -82,7 +81,7 @@ type OptionalHandler =
   | 'onGoBack' | 'onGoForward' | 'onCheckForUpdates'
   | 'onCreateType' | 'onToggleRawEditor' | 'onToggleDiff' | 'onToggleAIChat'
   | 'onOpenVault' | 'onRemoveActiveVault' | 'onRestoreGettingStarted'
-  | 'onCommitPush' | 'onPull' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReindexVault' | 'onReloadVault' | 'onRepairVault'
+  | 'onCommitPush' | 'onPull' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReloadVault' | 'onRepairVault'
   | 'onEmptyTrash'
   | 'onReopenClosedTab'
   | 'onOpenInNewWindow'
@@ -103,7 +102,6 @@ const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'vault-resolve-conflicts': 'onResolveConflicts',
   'vault-view-changes': 'onViewChanges',
   'vault-install-mcp': 'onInstallMcp',
-  'vault-reindex': 'onReindexVault',
   'vault-reload': 'onReloadVault',
   'vault-repair': 'onRepairVault',
   'note-empty-trash': 'onEmptyTrash',
