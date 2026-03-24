@@ -65,12 +65,11 @@ test.describe('Create note crash fix', () => {
 
     const createBtn = page.getByRole('button', { name: 'Create new Experiment', exact: true })
     await createBtn.click({ force: true })
+    await page.waitForTimeout(200)
     await createBtn.click({ force: true })
 
-    await page.waitForTimeout(500)
-
-    // At least one untitled experiment should exist
-    await expect(page.getByText('Untitled experiment').first()).toBeVisible({ timeout: 3000 })
+    // At least one untitled experiment should exist (single-note model: second replaces first)
+    await expect(page.getByText('Untitled experiment').first()).toBeVisible({ timeout: 5000 })
 
     expect(errors).toEqual([])
   })

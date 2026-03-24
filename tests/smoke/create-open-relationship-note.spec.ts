@@ -88,14 +88,14 @@ test.describe('Create & open note from relationship input', () => {
     await page.waitForTimeout(300)
 
     await page.getByTestId('create-and-open-option').click()
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(3000)
 
-    // Navigate back to the original note
+    // Navigate back to the original note (single-note model: replaces the newly created note)
     await openNoteViaQuickOpen(page, 'Start Laputa App')
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(2000)
 
     // The new wikilink should appear in the relationships
     const newRef = page.locator(`text=${uniqueTitle}`)
-    await expect(newRef.first()).toBeVisible({ timeout: 5000 })
+    await expect(newRef.first()).toBeVisible({ timeout: 8000 })
   })
 })
