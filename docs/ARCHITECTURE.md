@@ -14,6 +14,26 @@ Laputa is opinionated. Standard field names (`type:`, `status:`, `url:`, `Worksp
 
 This principle directly serves AI-readability: the more structure comes from shared conventions rather than per-user custom configurations, the easier it is for an AI agent to understand and navigate the vault correctly — without needing bespoke instructions for every setup.
 
+### Where to store state: vault vs. app settings
+
+When deciding where to persist a piece of data, ask: **"Would the user want this to follow them across all their Laputa installations — other devices, future platforms (tablet, web)?"**
+
+| Follows the vault | Stays with the installation |
+|-------------------|-----------------------------|
+| Type icon, type color | Editor zoom level |
+| Pinned properties per type | API keys (Anthropic, OpenAI) |
+| Sidebar label overrides | GitHub token |
+| Property display order | Window size / position |
+| Any user-visible customization of how content is organized or displayed | Any machine-specific or credential-type setting |
+
+**Rule:** If the information is about *how the content is structured or presented* and the user would expect it to be consistent wherever they open their vault, store it in the vault (frontmatter of the relevant note, using the `_field` underscore convention for system properties). If it's about *this specific installation of the app*, store it in `~/.config/com.laputa.app/settings.json` or localStorage.
+
+Examples:
+- ✅ Vault: `_pinned_properties` in a Type note (every device should show the same pinned properties)
+- ✅ Vault: `_icon: shapes` in a Type note (icon is part of the type's identity)
+- ✅ App settings: `anthropic_key` (credential, not vault data)
+- ✅ App settings: `zoom: 1.3` (machine-specific preference)
+
 ### No hardcoded exceptions
 
 No field names, folder paths, or vault-specific values should be hardcoded in the application source code. What can be a convention should be a convention. What needs to be configurable should live in a file. Relationship fields are detected dynamically by checking whether values contain `[[wikilinks]]` — no hardcoded field name lists.
