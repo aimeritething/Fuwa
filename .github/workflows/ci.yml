@@ -80,31 +80,44 @@ jobs:
         # cargo-llvm-cov exits non-zero if line coverage drops below 85%
         # lib.rs/main.rs/menu.rs are Tauri boilerplate -- not meaningfully unit-testable.
 
-      # ── 3. Code Health (CodeScene — Hotspot Code Health gate) ────────────
-      # The webhook integration handles per-PR delta analysis (posts review
-      # comments on PRs). This step enforces a minimum floor on the
-      # project-wide Hotspot Code Health score (weighted avg of the most
-      # frequently edited files — the ones that matter most).
-      # Current baseline: 9.53 | Aspirational target: 9.8
-      - name: Hotspot Code Health gate (≥9.5)
+      # ── 3. Code Health (CodeScene — Hotspot + Average Code Health gates) ──
+      # Enforces minimum floors on BOTH hotspot and average code health.
+      # Hotspot: weighted avg of most-edited files (9.6 current | target 9.8)
+      # Average: project-wide avg across all files (8.9 current | target 9.5)
+      # Both gates must pass — average catches regressions in non-hotspot files.
+      - name: Code Health gates (Hotspot ≥9.5 + Average ≥9.0)
         env:
           CODESCENE_PAT: ${{ secrets.CODESCENE_PAT }}
           CODESCENE_PROJECT_ID: ${{ secrets.CODESCENE_PROJECT_ID }}
         run: |
-          THRESHOLD=9.5
-          SCORE=$(curl -sf \
+          HOTSPOT_THRESHOLD=9.5
+          AVERAGE_THRESHOLD=8.9
+          API_RESPONSE=$(curl -sf \
             -H "Authorization: Bearer $CODESCENE_PAT" \
             -H "Accept: application/json" \
-            "https://api.codescene.io/v2/projects/$CODESCENE_PROJECT_ID" \
-            | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['analysis']['hotspot_code_health']['now'])")
-          echo "Hotspot Code Health: $SCORE (threshold: $THRESHOLD)"
+            "https://api.codescene.io/v2/projects/$CODESCENE_PROJECT_ID")
+          HOTSPOT_SCORE=$(echo "$API_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['analysis']['hotspot_code_health']['now'])")
+          AVERAGE_SCORE=$(echo "$API_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['analysis']['code_health']['now'])")
+          echo "Hotspot Code Health: $HOTSPOT_SCORE (threshold: $HOTSPOT_THRESHOLD)"
+          echo "Average Code Health: $AVERAGE_SCORE (threshold: $AVERAGE_THRESHOLD)"
           python3 -c "
-          score = float('$SCORE')
-          threshold = float('$THRESHOLD')
-          if score < threshold:
-              print(f'❌ Hotspot Code Health {score:.2f} is below threshold {threshold}')
+          hotspot = float('$HOTSPOT_SCORE')
+          average = float('$AVERAGE_SCORE')
+          ht = float('$HOTSPOT_THRESHOLD')
+          at = float('$AVERAGE_THRESHOLD')
+          failed = False
+          if hotspot < ht:
+              print(f'❌ Hotspot Code Health {hotspot:.2f} is below threshold {ht}')
+              failed = True
+          else:
+              print(f'✅ Hotspot Code Health {hotspot:.2f} ≥ {ht}')
+          if average < at:
+              print(f'❌ Average Code Health {average:.2f} is below threshold {at}')
+              failed = True
+          else:
+              print(f'✅ Average Code Health {average:.2f} ≥ {at}')
+          if failed:
               exit(1)
-          print(f'✅ Hotspot Code Health {score:.2f} ≥ {threshold}')
           "
 
       # ── 4. Documentation check (warning only — does not fail build) ───────

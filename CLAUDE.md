@@ -8,10 +8,17 @@ pnpm test
 pnpm test:coverage                  # frontend ≥70%
 cargo test
 cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-lines 85
-pre_commit_code_health_safeguard    # CodeScene ≥9.2 hotspot + ≥9.2 average (target: 9.5+)
 ```
 
-If `pre_commit_code_health_safeguard` fails: extract hooks, split components, reduce complexity. Never add `// eslint-disable`, `#[allow(...)]`, or `as any` to pass the gate.
+**CodeScene Code Health** — the pre-commit and pre-push hooks enforce:
+- Hotspot Code Health ≥ 9.5 (most-edited files)
+- Average Code Health ≥ 9.0 (project-wide, ALL files)
+
+**Both gates block commit/push.** If either fails: extract hooks, split large components, reduce function complexity. Never add `// eslint-disable`, `#[allow(...)]`, or `as any` to pass the gate. Check both scores via MCP CodeScene after every significant change:
+- `hotspot_code_health.now` ≥ 9.5
+- `code_health.now` ≥ 9.0 (average — do NOT ignore this one)
+
+If Average Code Health is below 9.0, you must fix regressions before pushing — even in files you didn't directly modify, if your changes indirectly affected complexity.
 
 ## ⛔ BEFORE FIRING laputa-task-done — Two-phase QA
 
