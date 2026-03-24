@@ -45,9 +45,7 @@ fn extract_snippet(content: &str, query_lower: &str) -> String {
 
 fn score_match(title_lower: &str, content_lower: &str, query_lower: &str) -> f64 {
     let title_exact = title_lower.contains(query_lower);
-    let title_word = title_lower
-        .split_whitespace()
-        .any(|w| w == query_lower);
+    let title_word = title_lower.split_whitespace().any(|w| w == query_lower);
     let content_count = content_lower.matches(query_lower).count();
 
     let mut score = 0.0;
@@ -72,10 +70,7 @@ pub fn search_vault(
 
     let mut results: Vec<SearchResult> = Vec::new();
 
-    for entry in WalkDir::new(vault_dir)
-        .into_iter()
-        .filter_map(|e| e.ok())
-    {
+    for entry in WalkDir::new(vault_dir).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
         if !path.extension().is_some_and(|ext| ext == "md") {
             continue;
@@ -121,7 +116,11 @@ pub fn search_vault(
         });
     }
 
-    results.sort_by(|a, b| b.score.partial_cmp(&a.score).unwrap_or(std::cmp::Ordering::Equal));
+    results.sort_by(|a, b| {
+        b.score
+            .partial_cmp(&a.score)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
     results.truncate(limit);
 
     let elapsed_ms = start.elapsed().as_millis() as u64;
