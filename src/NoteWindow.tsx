@@ -143,8 +143,6 @@ export default function NoteWindow() {
             tabs={tabs}
             activeTabPath={activeTabPath}
             entries={entries}
-            onSwitchTab={() => {}}
-            onCloseTab={handleCloseTab}
             onNavigateWikilink={handleNavigateWikilink}
             inspectorCollapsed={layout.inspectorCollapsed}
             onToggleInspector={() => layout.setInspectorCollapsed(c => !c)}
@@ -155,7 +153,6 @@ export default function NoteWindow() {
             gitHistory={gitHistory}
             onContentChange={handleContentChange}
             onSave={handleSave}
-            leftPanelsCollapsed={true}
             vaultPath={vaultPath}
           />
         </div>
