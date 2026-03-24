@@ -213,14 +213,11 @@ describe('useNoteCreation hook', () => {
   const setToastMessage = vi.fn()
   const openTabWithContent = vi.fn()
   const handleSelectNote = vi.fn()
-  const handleCloseTab = vi.fn()
-  const handleCloseTabRef = { current: vi.fn() }
-
   const makeConfig = (entries: VaultEntry[] = []): NoteCreationConfig => ({
     addEntry, removeEntry, entries, setToastMessage, vaultPath: '/test/vault',
   })
 
-  const tabDeps = { openTabWithContent, handleSelectNote, handleCloseTab, handleCloseTabRef }
+  const tabDeps = { openTabWithContent, handleSelectNote }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -316,16 +313,4 @@ describe('useNoteCreation hook', () => {
     expect(setToastMessage).toHaveBeenCalledWith('Failed to create note — disk write error')
   })
 
-  it('handleCloseTabWithCleanup removes unsaved entry', () => {
-    const clearUnsaved = vi.fn()
-    const unsavedPaths = new Set(['/test/vault/untitled-note.md'])
-    const config = makeConfig()
-    config.clearUnsaved = clearUnsaved
-    config.unsavedPaths = unsavedPaths
-    const { result } = renderHook(() => useNoteCreation(config, tabDeps))
-    act(() => { result.current.handleCloseTabWithCleanup('/test/vault/untitled-note.md') })
-    expect(removeEntry).toHaveBeenCalledWith('/test/vault/untitled-note.md')
-    expect(clearUnsaved).toHaveBeenCalledWith('/test/vault/untitled-note.md')
-    expect(handleCloseTab).toHaveBeenCalledWith('/test/vault/untitled-note.md')
-  })
 })

@@ -76,7 +76,7 @@ function navigateWikilink(entries: VaultEntry[], target: string, selectNote: (e:
 export function useNoteActions(config: NoteActionsConfig) {
   const { entries, setToastMessage, updateEntry } = config
   const tabMgmt = useTabManagement()
-  const { setTabs, handleSelectNote, openTabWithContent, handleCloseTab, handleCloseTabRef, activeTabPathRef, handleSwitchTab } = tabMgmt
+  const { setTabs, handleSelectNote, openTabWithContent, activeTabPathRef, handleSwitchTab } = tabMgmt
 
   const updateTabContent = useCallback((path: string, newContent: string) => {
     setTabs((prev) => prev.map((t) => t.entry.path === path ? { ...t, content: newContent } : t))
@@ -104,7 +104,7 @@ export function useNoteActions(config: NoteActionsConfig) {
     }
   }, [handleSelectNote, updateEntry, setTabs])
 
-  const creation = useNoteCreation(config, { openTabWithContent, handleSelectNote: handleSelectNoteWithSync, handleCloseTab, handleCloseTabRef })
+  const creation = useNoteCreation(config, { openTabWithContent, handleSelectNote: handleSelectNoteWithSync })
   const rename = useNoteRename(
     { entries, setToastMessage },
     { tabs: tabMgmt.tabs, setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
@@ -124,7 +124,6 @@ export function useNoteActions(config: NoteActionsConfig) {
   return {
     ...tabMgmt,
     handleSelectNote: handleSelectNoteWithSync,
-    handleCloseTab: creation.handleCloseTabWithCleanup,
     handleNavigateWikilink,
     handleCreateNote: creation.handleCreateNote,
     handleCreateNoteImmediate: creation.handleCreateNoteImmediate,

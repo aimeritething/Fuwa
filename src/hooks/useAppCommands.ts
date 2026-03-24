@@ -8,13 +8,9 @@ import type { SidebarSelection, SidebarFilter, VaultEntry } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
 
-interface Tab { entry: VaultEntry; content: string }
-
 interface AppCommandsConfig {
   activeTabPath: string | null
   activeTabPathRef: React.MutableRefObject<string | null>
-  handleCloseTabRef: React.MutableRefObject<(path: string) => void>
-  tabs: Tab[]
   entries: VaultEntry[]
   modifiedCount: number
   selection: SidebarSelection
@@ -43,8 +39,6 @@ interface AppCommandsConfig {
   onZoomReset: () => void
   zoomLevel: number
   onSelect: (sel: SidebarSelection) => void
-  onCloseTab: (path: string) => void
-  onSwitchTab: (path: string) => void
   onReplaceActiveTab: (entry: VaultEntry) => void
   onSelectNote: (entry: VaultEntry) => void
   onGoBack?: () => void
@@ -63,7 +57,6 @@ interface AppCommandsConfig {
   onInstallMcp?: () => void
   onEmptyTrash?: () => void
   trashedCount?: number
-  onReopenClosedTab?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
   onSetNoteIcon?: () => void
@@ -118,10 +111,8 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onGoForward: config.onGoForward,
     onToggleAIChat: config.onToggleAIChat,
     onToggleRawEditor: config.onToggleRawEditor,
-    onReopenClosedTab: config.onReopenClosedTab,
     onOpenInNewWindow: config.onOpenInNewWindow,
     activeTabPathRef: config.activeTabPathRef,
-    handleCloseTabRef: config.handleCloseTabRef,
   })
 
   useMenuEvents({
@@ -158,10 +149,8 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
     onEmptyTrash: config.onEmptyTrash,
-    onReopenClosedTab: config.onReopenClosedTab,
     onOpenInNewWindow: config.onOpenInNewWindow,
     activeTabPathRef: config.activeTabPathRef,
-    handleCloseTabRef: config.handleCloseTabRef,
     activeTabPath: config.activeTabPath,
     modifiedCount: config.modifiedCount,
   })
@@ -195,7 +184,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     zoomLevel: config.zoomLevel,
     onSelect: config.onSelect,
     onOpenDailyNote: config.onOpenDailyNote,
-    onCloseTab: config.onCloseTab,
     onGoBack: config.onGoBack,
     onGoForward: config.onGoForward,
     canGoBack: config.canGoBack,
@@ -222,11 +210,9 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
   })
 
   useKeyboardNavigation({
-    tabs: config.tabs,
     activeTabPath: config.activeTabPath,
     entries: config.entries,
     selection: config.selection,
-    onSwitchTab: config.onSwitchTab,
     onReplaceActiveTab: config.onReplaceActiveTab,
     onSelectNote: config.onSelectNote,
   })

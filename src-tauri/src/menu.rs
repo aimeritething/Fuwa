@@ -12,8 +12,7 @@ const FILE_NEW_TYPE: &str = "file-new-type";
 const FILE_DAILY_NOTE: &str = "file-daily-note";
 const FILE_QUICK_OPEN: &str = "file-quick-open";
 const FILE_SAVE: &str = "file-save";
-const FILE_CLOSE_TAB: &str = "file-close-tab";
-const FILE_REOPEN_CLOSED_TAB: &str = "file-reopen-closed-tab";
+
 
 const EDIT_FIND_IN_VAULT: &str = "edit-find-in-vault";
 const EDIT_TOGGLE_RAW_EDITOR: &str = "edit-toggle-raw-editor";
@@ -62,8 +61,6 @@ const CUSTOM_IDS: &[&str] = &[
     FILE_DAILY_NOTE,
     FILE_QUICK_OPEN,
     FILE_SAVE,
-    FILE_CLOSE_TAB,
-    FILE_REOPEN_CLOSED_TAB,
     EDIT_FIND_IN_VAULT,
     EDIT_TOGGLE_RAW_EDITOR,
     EDIT_TOGGLE_DIFF,
@@ -102,7 +99,6 @@ const CUSTOM_IDS: &[&str] = &[
 /// IDs of menu items that should be disabled when no note tab is active.
 const NOTE_DEPENDENT_IDS: &[&str] = &[
     FILE_SAVE,
-    FILE_CLOSE_TAB,
     NOTE_ARCHIVE,
     NOTE_TRASH,
     EDIT_TOGGLE_RAW_EDITOR,
@@ -165,15 +161,6 @@ fn build_file_menu(app: &App) -> MenuResult {
         .id(FILE_SAVE)
         .accelerator("CmdOrCtrl+S")
         .build(app)?;
-    let close_tab = MenuItemBuilder::new("Close Tab")
-        .id(FILE_CLOSE_TAB)
-        .accelerator("CmdOrCtrl+W")
-        .build(app)?;
-    let reopen_closed_tab = MenuItemBuilder::new("Reopen Closed Tab")
-        .id(FILE_REOPEN_CLOSED_TAB)
-        .accelerator("CmdOrCtrl+Shift+T")
-        .build(app)?;
-
     Ok(SubmenuBuilder::new(app, "File")
         .item(&new_note)
         .item(&new_type)
@@ -181,8 +168,6 @@ fn build_file_menu(app: &App) -> MenuResult {
         .item(&quick_open)
         .separator()
         .item(&save)
-        .item(&close_tab)
-        .item(&reopen_closed_tab)
         .build()?)
 }
 
@@ -461,7 +446,6 @@ mod tests {
             FILE_DAILY_NOTE,
             FILE_QUICK_OPEN,
             FILE_SAVE,
-            FILE_CLOSE_TAB,
             EDIT_FIND_IN_VAULT,
             EDIT_TOGGLE_RAW_EDITOR,
             EDIT_TOGGLE_DIFF,

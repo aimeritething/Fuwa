@@ -185,7 +185,7 @@ function App() {
 
   const notes = useNoteActions({ addEntry: vault.addEntry, removeEntry: vault.removeEntry, entries: vault.entries, setToastMessage, updateEntry: vault.updateEntry, vaultPath: resolvedPath, addPendingSave: vault.addPendingSave, removePendingSave: vault.removePendingSave, trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths, markContentPending: (path, content) => contentChangeRef.current(path, content), onNewNotePersisted: vault.loadModifiedFiles, replaceEntry: vault.replaceEntry })
 
-  // Keep tab entries in sync with vault entries so banners (trash/archive)
+  // Keep note entry in sync with vault entries so banners (trash/archive)
   // and read-only state react immediately without reopening the note.
   useEffect(() => {
     notes.setTabs(prev => {
@@ -204,10 +204,8 @@ function App() {
 
   const { handleGoBack, handleGoForward, canGoBack, canGoForward, entriesByPath } = useAppNavigation({
     entries: vault.entries,
-    tabs: notes.tabs,
     activeTabPath: notes.activeTabPath,
     onSelectNote: notes.handleSelectNote,
-    onSwitchTab: notes.handleSwitchTab,
   })
 
   // MCP UI bridge: react to AI-driven open/highlight/vault-change events
@@ -251,11 +249,11 @@ function App() {
 
   const handleAgentFileModified = useCallback((relativePath: string) => {
     const fullPath = `${resolvedPath}/${relativePath}`
-    const matchPath = notes.tabs.some(t => t.entry.path === relativePath) ? relativePath : fullPath
-    if (notes.tabs.some(t => t.entry.path === matchPath)) {
+    const currentPath = notes.activeTabPath
+    if (currentPath === relativePath || currentPath === fullPath) {
       vault.reloadVault()
     }
-  }, [vault, notes, resolvedPath])
+  }, [vault, notes.activeTabPath, resolvedPath])
 
   const handleAgentVaultChanged = useCallback(() => {
     vault.reloadVault()
@@ -283,7 +281,7 @@ function App() {
   const handleOpenInNewWindow = useCallback(() => {
     const activeTab = notes.tabs.find(t => t.entry.path === notes.activeTabPath)
     if (activeTab) openNoteInNewWindow(activeTab.entry.path, resolvedPath, activeTab.entry.title)
-  }, [notes.tabs, notes.activeTabPath, resolvedPath])
+  }, [notes.tabs, notes.activeTabPath, resolvedPath]) // eslint-disable-line react-hooks/exhaustive-deps
 
   /** Open a specific note entry in a new window (Cmd+Shift+Click). */
   const handleOpenEntryInNewWindow = useCallback((entry: VaultEntry) => {
@@ -345,22 +343,6 @@ function App() {
     }
   }, [resolvedPath, vault.entries, notes, dialogs])
 
-  /** Flush pending auto-save before closing a tab to prevent data loss. */
-  const handleCloseTabWithFlush = useCallback((path: string) => {
-    savePendingForPath(path).catch(() => {})
-    notes.handleCloseTab(path)
-  }, [savePendingForPath, notes])
-
-  // Wrap the close-tab ref so Cmd+W and menu bar also flush auto-save
-  const closeTabWithFlushRef = useRef<(path: string) => void>(handleCloseTabWithFlush)
-  useEffect(() => {
-    const original = notes.handleCloseTabRef.current
-    closeTabWithFlushRef.current = (path: string) => {
-      savePendingForPath(path).catch(() => {})
-      original(path)
-    }
-  })
-
   const handleRenameTab = useCallback(async (path: string, newTitle: string) => {
     await savePendingForPath(path)
     await notes.handleRenameNote(path, newTitle, resolvedPath, vault.replaceEntry).then(vault.loadModifiedFiles)
@@ -395,7 +377,7 @@ function App() {
   const deleteActions = useDeleteActions({
     vaultPath: resolvedPath,
     entries: vault.entries,
-    handleCloseTab: notes.handleCloseTab,
+    onDeselectNote: (path: string) => { if (notes.activeTabPath === path) notes.closeAllTabs() },
     removeEntry: vault.removeEntry,
     setToastMessage,
   })
@@ -460,7 +442,6 @@ function App() {
 
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
-    handleCloseTabRef: closeTabWithFlushRef, tabs: notes.tabs,
     entries: vault.entries,
     modifiedCount: vault.modifiedFiles.length,
     activeNoteModified: vault.modifiedFiles.some(f => f.path === notes.activeTabPath),
@@ -483,8 +464,8 @@ function App() {
     onToggleRawEditor: () => rawToggleRef.current(),
     onZoomIn: zoom.zoomIn, onZoomOut: zoom.zoomOut, onZoomReset: zoom.zoomReset,
     zoomLevel: zoom.zoomLevel,
-    onSelect: handleSetSelection, onCloseTab: notes.handleCloseTab,
-    onSwitchTab: notes.handleSwitchTab, onReplaceActiveTab: notes.handleReplaceActiveTab,
+    onSelect: handleSetSelection,
+    onReplaceActiveTab: notes.handleReplaceActiveTab,
     onSelectNote: notes.handleSelectNote,
     onGoBack: handleGoBack, onGoForward: handleGoForward,
     canGoBack: canGoBack, canGoForward: canGoForward,
@@ -500,7 +481,6 @@ function App() {
     onInstallMcp: installMcp,
     onEmptyTrash: deleteActions.handleEmptyTrash,
     trashedCount: deleteActions.trashedCount,
-    onReopenClosedTab: notes.handleReopenClosedTab,
     onReloadVault: vault.reloadVault,
     onRepairVault: handleRepairVault,
     onSetNoteIcon: handleSetNoteIconCommand,
@@ -570,9 +550,6 @@ function App() {
             tabs={notes.tabs}
             activeTabPath={notes.activeTabPath}
             entries={vault.entries}
-            onSwitchTab={notes.handleSwitchTab}
-            onCloseTab={handleCloseTabWithFlush}
-            onReorderTabs={notes.handleReorderTabs}
             onNavigateWikilink={notes.handleNavigateWikilink}
             onLoadDiff={vault.loadDiff}
             onLoadDiffAtCommit={vault.loadDiffAtCommit}
@@ -599,7 +576,6 @@ function App() {
             onDeleteNote={deleteActions.handleDeleteNote}
             onArchiveNote={entryActions.handleArchiveNote}
             onUnarchiveNote={entryActions.handleUnarchiveNote}
-            onRenameTab={handleRenameTab}
             onContentChange={handleContentChange}
             onSave={handleSave}
             onTitleSync={handleTitleSync}

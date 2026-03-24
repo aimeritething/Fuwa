@@ -7,29 +7,21 @@ function makeEntry(path: string): VaultEntry {
   return { path, filename: path.split('/').pop()!, title: path, isA: null, aliases: [] } as VaultEntry
 }
 
-function makeTab(entry: VaultEntry) {
-  return { entry, content: '' }
-}
-
 describe('useAppNavigation', () => {
   let onSelectNote: ReturnType<typeof vi.fn>
-  let onSwitchTab: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     onSelectNote = vi.fn()
-    onSwitchTab = vi.fn()
   })
 
   function renderNav(overrides: {
     entries?: VaultEntry[]
-    tabs?: Array<{ entry: VaultEntry; content: string }>
     activeTabPath?: string | null
   } = {}) {
     const entries = overrides.entries ?? [makeEntry('/a.md'), makeEntry('/b.md'), makeEntry('/c.md')]
-    const tabs = overrides.tabs ?? []
     const activeTabPath = overrides.activeTabPath ?? null
     return renderHook(() =>
-      useAppNavigation({ entries, tabs, activeTabPath, onSelectNote, onSwitchTab }),
+      useAppNavigation({ entries, activeTabPath, onSelectNote }),
     )
   }
 
@@ -60,51 +52,30 @@ describe('useAppNavigation', () => {
   describe('navigation via activeTabPath changes', () => {
     it('pushes to history when activeTabPath changes, enabling goBack', () => {
       const entries = [makeEntry('/a.md'), makeEntry('/b.md')]
-      const tabA = makeTab(entries[0])
-      const tabB = makeTab(entries[1])
 
       const { result, rerender } = renderHook(
-        ({ activeTabPath, tabs }) =>
-          useAppNavigation({ entries, tabs, activeTabPath, onSelectNote, onSwitchTab }),
-        { initialProps: { activeTabPath: '/a.md' as string | null, tabs: [tabA] } },
+        ({ activeTabPath }) =>
+          useAppNavigation({ entries, activeTabPath, onSelectNote }),
+        { initialProps: { activeTabPath: '/a.md' as string | null } },
       )
 
       // Navigate to /b.md
-      rerender({ activeTabPath: '/b.md', tabs: [tabA, tabB] })
+      rerender({ activeTabPath: '/b.md' })
 
       expect(result.current.canGoBack).toBe(true)
       expect(result.current.canGoForward).toBe(false)
     })
 
-    it('handleGoBack switches to the tab if it is open', () => {
+    it('handleGoBack calls onSelectNote with the previous entry', () => {
       const entries = [makeEntry('/a.md'), makeEntry('/b.md')]
-      const tabA = makeTab(entries[0])
-      const tabB = makeTab(entries[1])
 
       const { result, rerender } = renderHook(
-        ({ activeTabPath, tabs }) =>
-          useAppNavigation({ entries, tabs, activeTabPath, onSelectNote, onSwitchTab }),
-        { initialProps: { activeTabPath: '/a.md' as string | null, tabs: [tabA, tabB] } },
+        ({ activeTabPath }) =>
+          useAppNavigation({ entries, activeTabPath, onSelectNote }),
+        { initialProps: { activeTabPath: '/a.md' as string | null } },
       )
 
-      rerender({ activeTabPath: '/b.md', tabs: [tabA, tabB] })
-
-      act(() => { result.current.handleGoBack() })
-
-      expect(onSwitchTab).toHaveBeenCalledWith('/a.md')
-    })
-
-    it('handleGoBack opens entry via onSelectNote if not in tabs', () => {
-      const entries = [makeEntry('/a.md'), makeEntry('/b.md')]
-      const tabB = makeTab(entries[1])
-
-      const { result, rerender } = renderHook(
-        ({ activeTabPath, tabs }) =>
-          useAppNavigation({ entries, tabs, activeTabPath, onSelectNote, onSwitchTab }),
-        { initialProps: { activeTabPath: '/a.md' as string | null, tabs: [tabB] } },
-      )
-
-      rerender({ activeTabPath: '/b.md', tabs: [tabB] })
+      rerender({ activeTabPath: '/b.md' })
 
       act(() => { result.current.handleGoBack() })
 
@@ -113,22 +84,20 @@ describe('useAppNavigation', () => {
 
     it('handleGoForward works after going back', () => {
       const entries = [makeEntry('/a.md'), makeEntry('/b.md')]
-      const tabA = makeTab(entries[0])
-      const tabB = makeTab(entries[1])
 
       const { result, rerender } = renderHook(
-        ({ activeTabPath, tabs }) =>
-          useAppNavigation({ entries, tabs, activeTabPath, onSelectNote, onSwitchTab }),
-        { initialProps: { activeTabPath: '/a.md' as string | null, tabs: [tabA, tabB] } },
+        ({ activeTabPath }) =>
+          useAppNavigation({ entries, activeTabPath, onSelectNote }),
+        { initialProps: { activeTabPath: '/a.md' as string | null } },
       )
 
-      rerender({ activeTabPath: '/b.md', tabs: [tabA, tabB] })
+      rerender({ activeTabPath: '/b.md' })
       act(() => { result.current.handleGoBack() })
 
       expect(result.current.canGoForward).toBe(true)
       act(() => { result.current.handleGoForward() })
 
-      expect(onSwitchTab).toHaveBeenCalledWith('/b.md')
+      expect(onSelectNote).toHaveBeenCalledWith(entries[1])
     })
   })
 })

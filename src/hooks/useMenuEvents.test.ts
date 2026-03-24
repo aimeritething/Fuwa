@@ -34,10 +34,8 @@ function makeHandlers(): MenuEventHandlers {
     onViewChanges: vi.fn(),
     onInstallMcp: vi.fn(),
     onReloadVault: vi.fn(),
-    onReopenClosedTab: vi.fn(),
     onOpenInNewWindow: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
-    handleCloseTabRef: { current: vi.fn() } as React.MutableRefObject<(path: string) => void>,
     activeTabPath: '/vault/test.md',
   }
 }
@@ -85,19 +83,6 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('file-save', h)
     expect(h.onSave).toHaveBeenCalled()
-  })
-
-  it('file-close-tab closes the active tab', () => {
-    const h = makeHandlers()
-    dispatchMenuEvent('file-close-tab', h)
-    expect(h.handleCloseTabRef.current).toHaveBeenCalledWith('/vault/test.md')
-  })
-
-  it('file-close-tab does nothing when no active tab', () => {
-    const h = makeHandlers()
-    h.activeTabPathRef = { current: null }
-    dispatchMenuEvent('file-close-tab', h)
-    expect(h.handleCloseTabRef.current).not.toHaveBeenCalled()
   })
 
   it('app-settings triggers open settings', () => {
@@ -299,13 +284,6 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('vault-reload', h)
     expect(h.onReloadVault).toHaveBeenCalled()
-  })
-
-  // File menu: reopen closed tab
-  it('file-reopen-closed-tab triggers reopen closed tab', () => {
-    const h = makeHandlers()
-    dispatchMenuEvent('file-reopen-closed-tab', h)
-    expect(h.onReopenClosedTab).toHaveBeenCalled()
   })
 
   // Note: open in new window

@@ -15,12 +15,12 @@ function makeEntry(path: string, trashed = false) {
 }
 
 describe('useDeleteActions', () => {
-  let handleCloseTab: ReturnType<typeof vi.fn>
+  let onDeselectNote: ReturnType<typeof vi.fn>
   let removeEntry: ReturnType<typeof vi.fn>
   let setToastMessage: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
-    handleCloseTab = vi.fn()
+    onDeselectNote = vi.fn()
     removeEntry = vi.fn()
     setToastMessage = vi.fn()
     mockInvokeFn.mockReset()
@@ -31,7 +31,7 @@ describe('useDeleteActions', () => {
       useDeleteActions({
         vaultPath: '/vault',
         entries,
-        handleCloseTab,
+        onDeselectNote,
         removeEntry,
         setToastMessage,
       }),
@@ -68,7 +68,7 @@ describe('useDeleteActions', () => {
       })
       expect(ok).toBe(true)
       expect(mockInvokeFn).toHaveBeenCalledWith('delete_note', { path: '/vault/a.md' })
-      expect(handleCloseTab).toHaveBeenCalledWith('/vault/a.md')
+      expect(onDeselectNote).toHaveBeenCalledWith('/vault/a.md')
       expect(removeEntry).toHaveBeenCalledWith('/vault/a.md')
     })
 
@@ -184,8 +184,8 @@ describe('useDeleteActions', () => {
       })
       expect(result.current.confirmDelete).toBeNull()
       expect(mockInvokeFn).toHaveBeenCalledWith('empty_trash', { vaultPath: '/vault' })
-      expect(handleCloseTab).toHaveBeenCalledWith('/vault/t1.md')
-      expect(handleCloseTab).toHaveBeenCalledWith('/vault/t2.md')
+      expect(onDeselectNote).toHaveBeenCalledWith('/vault/t1.md')
+      expect(onDeselectNote).toHaveBeenCalledWith('/vault/t2.md')
       expect(removeEntry).toHaveBeenCalledWith('/vault/t1.md')
       expect(removeEntry).toHaveBeenCalledWith('/vault/t2.md')
       expect(setToastMessage).toHaveBeenCalledWith('2 notes permanently deleted')

@@ -13,7 +13,8 @@ interface ConfirmDeleteState {
 interface UseDeleteActionsInput {
   vaultPath: string
   entries: VaultEntry[]
-  handleCloseTab: (path: string) => void
+  /** Called to deselect the note if it is currently open. */
+  onDeselectNote: (path: string) => void
   removeEntry: (path: string) => void
   setToastMessage: (msg: string | null) => void
 }
@@ -21,7 +22,7 @@ interface UseDeleteActionsInput {
 export function useDeleteActions({
   vaultPath,
   entries,
-  handleCloseTab,
+  onDeselectNote,
   removeEntry,
   setToastMessage,
 }: UseDeleteActionsInput) {
@@ -33,14 +34,14 @@ export function useDeleteActions({
     try {
       if (isTauri()) await invoke('delete_note', { path })
       else await mockInvoke('delete_note', { path })
-      handleCloseTab(path)
+      onDeselectNote(path)
       removeEntry(path)
       return true
     } catch (e) {
       setToastMessage(`Failed to delete note: ${e}`)
       return false
     }
-  }, [handleCloseTab, removeEntry, setToastMessage])
+  }, [onDeselectNote, removeEntry, setToastMessage])
 
   const handleDeleteNote = useCallback(async (path: string) => {
     setConfirmDelete({
@@ -82,7 +83,7 @@ export function useDeleteActions({
           const tauriInvoke = isTauri() ? invoke : mockInvoke
           const deleted = await tauriInvoke<string[]>('empty_trash', { vaultPath })
           for (const path of deleted) {
-            handleCloseTab(path)
+            onDeselectNote(path)
             removeEntry(path)
           }
           setToastMessage(`${deleted.length} note${deleted.length !== 1 ? 's' : ''} permanently deleted`)
@@ -91,7 +92,7 @@ export function useDeleteActions({
         }
       },
     })
-  }, [trashedCount, vaultPath, handleCloseTab, removeEntry, setToastMessage])
+  }, [trashedCount, vaultPath, onDeselectNote, removeEntry, setToastMessage])
 
   return {
     confirmDelete,

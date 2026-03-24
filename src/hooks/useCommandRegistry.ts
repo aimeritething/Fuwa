@@ -58,7 +58,6 @@ interface CommandRegistryConfig {
   zoomLevel: number
   onSelect: (sel: SidebarSelection) => void
   onOpenDailyNote: () => void
-  onCloseTab: (path: string) => void
   onGoBack?: () => void
   onGoForward?: () => void
   canGoBack?: boolean
@@ -161,7 +160,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
     activeNoteModified,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
-    onSelect, onOpenDailyNote, onCloseTab,
+    onSelect, onOpenDailyNote,
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates,
     onCreateType,
@@ -208,7 +207,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
       { id: 'create-type', label: 'New Type', group: 'Note', keywords: ['new', 'create', 'type', 'template'], enabled: !!onCreateType, execute: () => onCreateType?.() },
       { id: 'open-daily-note', label: "Open Today's Note", group: 'Note', shortcut: '⌘J', keywords: ['daily', 'journal', 'today'], enabled: true, execute: onOpenDailyNote },
       { id: 'save-note', label: 'Save Note', group: 'Note', shortcut: '⌘S', keywords: ['write'], enabled: hasActiveNote, execute: onSave },
-      { id: 'close-tab', label: 'Close Tab', group: 'Note', shortcut: '⌘W', keywords: [], enabled: hasActiveNote, execute: () => { if (activeTabPath) onCloseTab(activeTabPath) } },
       {
         id: 'trash-note', label: isTrashed ? 'Restore Note' : 'Trash Note', group: 'Note', shortcut: '⌘⌫',
         keywords: ['delete', 'remove', 'restore', 'trash'], enabled: hasActiveNote,
@@ -274,7 +272,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
     onCheckForUpdates,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
-    onSelect, onOpenDailyNote, onCloseTab,
+    onSelect, onOpenDailyNote,
     onGoBack, onGoForward, canGoBack, canGoForward,
     vaultTypes,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,

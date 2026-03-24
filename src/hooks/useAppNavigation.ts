@@ -3,34 +3,26 @@ import { useNavigationHistory } from './useNavigationHistory'
 import { useNavigationGestures } from './useNavigationGestures'
 import type { VaultEntry } from '../types'
 
-interface TabLike {
-  entry: { path: string }
-}
-
 interface UseAppNavigationParams {
   entries: VaultEntry[]
-  tabs: TabLike[]
   activeTabPath: string | null
   onSelectNote: (entry: VaultEntry) => void
-  onSwitchTab: (path: string) => void
 }
 
 /**
  * Encapsulates browser-style back/forward navigation for the app:
- * - Navigation history (push on tab change, back/forward traversal)
+ * - Navigation history (push on note change, back/forward traversal)
  * - Mouse button & trackpad gesture bindings
- * - O(1) path→entry lookup map
+ * - O(1) path->entry lookup map
  */
 export function useAppNavigation({
   entries,
-  tabs,
   activeTabPath,
   onSelectNote,
-  onSwitchTab,
 }: UseAppNavigationParams) {
   const navHistory = useNavigationHistory()
 
-  // Push to navigation history whenever the active tab changes (user-initiated)
+  // Push to navigation history whenever the active note changes (user-initiated)
   const navFromHistoryRef = useRef(false)
   useEffect(() => {
     if (activeTabPath && !navFromHistoryRef.current) {
@@ -48,27 +40,19 @@ export function useAppNavigation({
     const target = navHistory.goBack(isEntryExists)
     if (target) {
       navFromHistoryRef.current = true
-      if (tabs.some(t => t.entry.path === target)) {
-        onSwitchTab(target)
-      } else {
-        const entry = entries.find(e => e.path === target)
-        if (entry) onSelectNote(entry)
-      }
+      const entry = entries.find(e => e.path === target)
+      if (entry) onSelectNote(entry)
     }
-  }, [navHistory, isEntryExists, entries, tabs, onSelectNote, onSwitchTab])
+  }, [navHistory, isEntryExists, entries, onSelectNote])
 
   const handleGoForward = useCallback(() => {
     const target = navHistory.goForward(isEntryExists)
     if (target) {
       navFromHistoryRef.current = true
-      if (tabs.some(t => t.entry.path === target)) {
-        onSwitchTab(target)
-      } else {
-        const entry = entries.find(e => e.path === target)
-        if (entry) onSelectNote(entry)
-      }
+      const entry = entries.find(e => e.path === target)
+      if (entry) onSelectNote(entry)
     }
-  }, [navHistory, isEntryExists, entries, tabs, onSelectNote, onSwitchTab])
+  }, [navHistory, isEntryExists, entries, onSelectNote])
 
   useNavigationGestures({ onGoBack: handleGoBack, onGoForward: handleGoForward })
 

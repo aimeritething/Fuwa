@@ -34,13 +34,11 @@ export interface MenuEventHandlers {
   onResolveConflicts?: () => void
   onViewChanges?: () => void
   onInstallMcp?: () => void
-  onReopenClosedTab?: () => void
   onOpenInNewWindow?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
   onEmptyTrash?: () => void
   activeTabPathRef: React.MutableRefObject<string | null>
-  handleCloseTabRef: React.MutableRefObject<(path: string) => void>
   activeTabPath: string | null
   modifiedCount?: number
   conflictCount?: number
@@ -83,7 +81,6 @@ type OptionalHandler =
   | 'onOpenVault' | 'onRemoveActiveVault' | 'onRestoreGettingStarted'
   | 'onCommitPush' | 'onPull' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReloadVault' | 'onRepairVault'
   | 'onEmptyTrash'
-  | 'onReopenClosedTab'
   | 'onOpenInNewWindow'
 
 const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
@@ -105,16 +102,14 @@ const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'vault-reload': 'onReloadVault',
   'vault-repair': 'onRepairVault',
   'note-empty-trash': 'onEmptyTrash',
-  'file-reopen-closed-tab': 'onReopenClosedTab',
   'note-open-in-new-window': 'onOpenInNewWindow',
 }
 
 function dispatchActiveTabEvent(id: string, h: MenuEventHandlers): boolean {
   const path = h.activeTabPathRef.current
-  if (!path) return id === 'note-archive' || id === 'note-trash' || id === 'file-close-tab'
+  if (!path) return id === 'note-archive' || id === 'note-trash'
   if (id === 'note-archive') { h.onArchiveNote(path); return true }
   if (id === 'note-trash') { h.onTrashNote(path); return true }
-  if (id === 'file-close-tab') { h.handleCloseTabRef.current(path); return true }
   return false
 }
 
@@ -163,7 +158,7 @@ export function useMenuEvents(handlers: MenuEventHandlers) {
     return () => cleanup?.()
   }, [])
 
-  // Sync menu item enabled state when active tab or git state changes
+  // Sync menu item enabled state when active note or git state changes
   useEffect(() => {
     if (!isTauri()) return
     import('@tauri-apps/api/core').then(({ invoke }) => {

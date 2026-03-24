@@ -31,7 +31,6 @@ function makeActions() {
     onZoomOut: vi.fn(),
     onZoomReset: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
-    handleCloseTabRef: { current: vi.fn() } as React.MutableRefObject<(path: string) => void>,
   }
 }
 
@@ -85,13 +84,6 @@ describe('useAppKeyboard', () => {
     renderHook(() => useAppKeyboard(actions))
     fireKey('j', { metaKey: true })
     expect(actions.onOpenDailyNote).toHaveBeenCalled()
-  })
-
-  it('Cmd+W closes the active tab', () => {
-    const actions = makeActions()
-    renderHook(() => useAppKeyboard(actions))
-    fireKey('w', { metaKey: true })
-    expect(actions.handleCloseTabRef.current).toHaveBeenCalledWith('/vault/test.md')
   })
 
   it('Alt+4 does not trigger any view mode', () => {
@@ -181,23 +173,6 @@ describe('useAppKeyboard', () => {
     renderHook(() => useAppKeyboard(actions))
     fireKey('0', { metaKey: true })
     expect(actions.onZoomReset).toHaveBeenCalled()
-  })
-
-  it('Cmd+Shift+T triggers reopen closed tab', () => {
-    const actions = makeActions()
-    const onReopenClosedTab = vi.fn()
-    renderHook(() => useAppKeyboard({ ...actions, onReopenClosedTab }))
-    fireKey('t', { metaKey: true, shiftKey: true })
-    expect(onReopenClosedTab).toHaveBeenCalled()
-  })
-
-  it('Cmd+Shift+T does not trigger other shortcuts', () => {
-    const actions = makeActions()
-    const onReopenClosedTab = vi.fn()
-    renderHook(() => useAppKeyboard({ ...actions, onReopenClosedTab }))
-    fireKey('t', { metaKey: true, shiftKey: true })
-    expect(actions.onQuickOpen).not.toHaveBeenCalled()
-    expect(actions.onCreateNote).not.toHaveBeenCalled()
   })
 
   it('Cmd+I triggers toggle AI chat', () => {

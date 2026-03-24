@@ -941,30 +941,6 @@ describe('useNoteActions hook', () => {
       expect(removeEntry).not.toHaveBeenCalled()
     })
 
-    it('closing unsaved tab removes entry', () => {
-      const clearUnsaved = vi.fn()
-      const unsavedPaths = new Set<string>()
-      const config = makeConfig()
-      config.clearUnsaved = clearUnsaved
-      config.unsavedPaths = unsavedPaths
-
-      const { result } = renderHook(() => useNoteActions(config))
-
-      act(() => {
-        result.current.handleCreateNoteImmediate()
-      })
-
-      const createdPath = addEntry.mock.calls[0][0].path
-      unsavedPaths.add(createdPath) // simulate trackUnsaved
-      config.unsavedPaths = unsavedPaths // update ref
-
-      act(() => {
-        result.current.handleCloseTab(createdPath)
-      })
-
-      expect(removeEntry).toHaveBeenCalledWith(createdPath)
-      expect(clearUnsaved).toHaveBeenCalledWith(createdPath)
-    })
   })
 
   describe('type change does not move file', () => {

@@ -159,7 +159,6 @@ describe('replaceTitleInFrontmatter', () => {
 })
 
 const blocksA = [{ type: 'paragraph', content: [{ type: 'text', text: 'A' }] }]
-const blocksB = [{ type: 'paragraph', content: [{ type: 'text', text: 'B' }] }]
 
 function makeTab(path: string, title: string) {
   return {
@@ -306,57 +305,7 @@ describe('useEditorTabSwap scroll position', () => {
 
   afterEach(() => { vi.restoreAllMocks() })
 
-  it('saves scroll position when switching tabs and restores it when switching back', async () => {
-    const scrollEl = { scrollTop: 0 }
-    vi.spyOn(document, 'querySelector').mockReturnValue(scrollEl as unknown as Element)
-    const rAF = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
-
-    const docRef = { current: blocksA as unknown[] }
-    const mockEditor = makeMockEditor(docRef)
-    // Override document to be dynamic
-    Object.defineProperty(mockEditor, 'document', { get: () => docRef.current })
-
-    const tabA = makeTab('a.md', 'Note A')
-    const tabB = makeTab('b.md', 'Note B')
-
-    const { rerender } = renderHook(
-      ({ tabs, activeTabPath }) => useEditorTabSwap({
-        tabs,
-        activeTabPath,
-        editor: mockEditor as never,
-      }),
-      { initialProps: { tabs: [tabA, tabB], activeTabPath: 'a.md' } },
-    )
-
-    // Flush the microtask for initial content swap
-    await act(() => new Promise(r => setTimeout(r, 0)))
-
-    // Simulate scrolling in tab A
-    scrollEl.scrollTop = 350
-
-    // Switch to tab B
-    rerender({ tabs: [tabA, tabB], activeTabPath: 'b.md' })
-    await act(() => new Promise(r => setTimeout(r, 0)))
-
-    // rAF should have been called to set scroll to 0 (new tab, no cached scroll)
-    expect(rAF).toHaveBeenCalled()
-
-    // Switch back to tab A
-    docRef.current = blocksB // simulate B's content in editor
-    scrollEl.scrollTop = 0 // B is at top
-    rerender({ tabs: [tabA, tabB], activeTabPath: 'a.md' })
-    await act(() => new Promise(r => setTimeout(r, 0)))
-
-    // The last rAF call should restore A's scroll position (350)
-    const lastRAFCall = rAF.mock.calls[rAF.mock.calls.length - 1]
-    expect(lastRAFCall).toBeDefined()
-    // Execute the callback to verify scrollTop is set
-    scrollEl.scrollTop = 0
-    ;(lastRAFCall[0] as (n: number) => void)(0)
-    expect(scrollEl.scrollTop).toBe(350)
-  })
-
-  it('defaults to scroll top 0 for newly opened tabs', async () => {
+  it('defaults to scroll top 0 for newly opened note', async () => {
     const scrollEl = { scrollTop: 0 }
     vi.spyOn(document, 'querySelector').mockReturnValue(scrollEl as unknown as Element)
     const rAF = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
@@ -378,47 +327,8 @@ describe('useEditorTabSwap scroll position', () => {
 
     await act(() => new Promise(r => setTimeout(r, 0)))
 
-    // For a fresh tab, scroll should go to 0
+    // For a fresh note, scroll should go to 0
     expect(rAF).toHaveBeenCalled()
-    expect(scrollEl.scrollTop).toBe(0)
-  })
-
-  it('cleans up scroll cache when a tab is closed', async () => {
-    const scrollEl = { scrollTop: 100 }
-    vi.spyOn(document, 'querySelector').mockReturnValue(scrollEl as unknown as Element)
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
-
-    const docRef = { current: blocksA as unknown[] }
-    const mockEditor = makeMockEditor(docRef)
-    Object.defineProperty(mockEditor, 'document', { get: () => docRef.current })
-
-    const tabA = makeTab('a.md', 'Note A')
-    const tabB = makeTab('b.md', 'Note B')
-
-    const { rerender } = renderHook(
-      ({ tabs, activeTabPath }) => useEditorTabSwap({
-        tabs,
-        activeTabPath,
-        editor: mockEditor as never,
-      }),
-      { initialProps: { tabs: [tabA, tabB], activeTabPath: 'a.md' } },
-    )
-    await act(() => new Promise(r => setTimeout(r, 0)))
-
-    // Switch to B (caches A's scroll at 100)
-    rerender({ tabs: [tabA, tabB], activeTabPath: 'b.md' })
-    await act(() => new Promise(r => setTimeout(r, 0)))
-
-    // Close tab A (only tab B remains)
-    rerender({ tabs: [tabB], activeTabPath: 'b.md' })
-    await act(() => new Promise(r => setTimeout(r, 0)))
-
-    // Reopen tab A — should start at scroll 0, not the cached 100
-    const tabANew = makeTab('a.md', 'Note A')
-    scrollEl.scrollTop = 0
-    rerender({ tabs: [tabB, tabANew], activeTabPath: 'a.md' })
-    await act(() => new Promise(r => setTimeout(r, 0)))
-
     expect(scrollEl.scrollTop).toBe(0)
   })
 })

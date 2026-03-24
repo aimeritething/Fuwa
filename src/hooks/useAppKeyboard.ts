@@ -19,10 +19,8 @@ interface KeyboardActions {
   onGoForward?: () => void
   onToggleAIChat?: () => void
   onToggleRawEditor?: () => void
-  onReopenClosedTab?: () => void
   onOpenInNewWindow?: () => void
   activeTabPathRef: React.MutableRefObject<string | null>
-  handleCloseTabRef: React.MutableRefObject<(path: string) => void>
 }
 
 type ShortcutHandler = () => void
@@ -66,7 +64,7 @@ function handleCmdKey(e: KeyboardEvent, keyMap: Record<string, ShortcutHandler>)
 
 export function useAppKeyboard({
   onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onTrashNote, onArchiveNote,
-  onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onReopenClosedTab, onOpenInNewWindow, activeTabPathRef, handleCloseTabRef,
+  onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onOpenInNewWindow, activeTabPathRef,
 }: KeyboardActions) {
   useEffect(() => {
     const withActiveTab = (fn: (path: string) => void): ShortcutHandler => () => {
@@ -82,7 +80,6 @@ export function useAppKeyboard({
       s: onSave,
       ',': onOpenSettings,
       e: withActiveTab(onArchiveNote),
-      w: withActiveTab((path) => handleCloseTabRef.current(path)),
       Backspace: withActiveTab(onTrashNote),
       Delete: withActiveTab(onTrashNote),
       '[': () => onGoBack?.(),
@@ -102,12 +99,6 @@ export function useAppKeyboard({
         onSearch()
         return
       }
-      // Cmd+Shift+T: reopen last closed tab
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 't' || e.key === 'T')) {
-        e.preventDefault()
-        onReopenClosedTab?.()
-        return
-      }
       // Cmd+Shift+O: open active note in new window
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'o' || e.key === 'O')) {
         e.preventDefault()
@@ -120,5 +111,5 @@ export function useAppKeyboard({
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onTrashNote, onArchiveNote, activeTabPathRef, handleCloseTabRef, onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onReopenClosedTab, onOpenInNewWindow])
+  }, [onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onTrashNote, onArchiveNote, activeTabPathRef, onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onOpenInNewWindow])
 }

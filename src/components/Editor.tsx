@@ -7,7 +7,6 @@ import type { VaultEntry, GitCommit, NoteStatus } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { FrontmatterValue } from './Inspector'
 import { ResizeHandle } from './ResizeHandle'
-import { TabBar } from './TabBar'
 import { useDiffMode } from '../hooks/useDiffMode'
 import { useRawMode } from '../hooks/useRawMode'
 import { useEditorFocus } from '../hooks/useEditorFocus'
@@ -26,9 +25,6 @@ interface EditorProps {
   tabs: Tab[]
   activeTabPath: string | null
   entries: VaultEntry[]
-  onSwitchTab: (path: string) => void
-  onCloseTab: (path: string) => void
-  onReorderTabs?: (fromIndex: number, toIndex: number) => void
   onNavigateWikilink: (target: string) => void
   onLoadDiff?: (path: string) => Promise<string>
   onLoadDiffAtCommit?: (path: string, commitHash: string) => Promise<string>
@@ -55,7 +51,6 @@ interface EditorProps {
   onDeleteNote?: (path: string) => void
   onArchiveNote?: (path: string) => void
   onUnarchiveNote?: (path: string) => void
-  onRenameTab?: (path: string, newTitle: string) => void
   onContentChange?: (path: string, content: string) => void
   onSave?: () => void
   /** Called when the user edits the title in TitleField. */
@@ -153,20 +148,6 @@ function useRawModeWithFlush(
     activeTabPath, onBeforeRawEnd: handleBeforeRawEnd,
   })
 
-  // Flush raw editor content when switching tabs while raw mode stays active.
-  const prevTabPathRef = useRef(activeTabPath)
-  const onContentChangeRef = useRef(onContentChange)
-  useEffect(() => { onContentChangeRef.current = onContentChange }, [onContentChange])
-  useEffect(() => {
-    const prev = prevTabPathRef.current
-    prevTabPathRef.current = activeTabPath
-    const hasUnflushedContent = prev && prev !== activeTabPath && rawMode && rawLatestContentRef.current != null
-    if (hasUnflushedContent) {
-      onContentChangeRef.current?.(prev, rawLatestContentRef.current!)
-      rawLatestContentRef.current = null
-    }
-  }, [activeTabPath, rawMode])
-
   return { rawMode, handleToggleRaw, rawLatestContentRef }
 }
 
@@ -217,8 +198,8 @@ function useEditorSetup({
 
 export const Editor = memo(function Editor(props: EditorProps) {
   const {
-    tabs, activeTabPath, entries, onSwitchTab, onCloseTab, onReorderTabs, onNavigateWikilink,
-    getNoteStatus, onCreateNote,
+    tabs, activeTabPath, entries, onNavigateWikilink,
+    getNoteStatus,
     inspectorCollapsed, onToggleInspector, inspectorWidth, onInspectorResize,
     inspectorEntry, inspectorContent, gitHistory,
     onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateAndOpenNote,
@@ -226,7 +207,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
     vaultPath, noteList, noteListFilter,
     onTrashNote, onRestoreNote, onDeleteNote, onArchiveNote, onUnarchiveNote,
     onContentChange, onSave, onTitleSync,
-    canGoBack, canGoForward, onGoBack, onGoForward, leftPanelsCollapsed,
     onFileCreated, onFileModified, onVaultChanged,
     onSetNoteIcon, onRemoveNoteIcon,
     isConflicted, onKeepMine, onKeepTheirs,
@@ -247,21 +227,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
 
   return (
     <div className="editor flex flex-col min-h-0 overflow-hidden bg-background text-foreground">
-      <TabBar
-        tabs={tabs}
-        activeTabPath={activeTabPath}
-        getNoteStatus={getNoteStatus}
-        onSwitchTab={onSwitchTab}
-        onCloseTab={onCloseTab}
-        onCreateNote={onCreateNote}
-        onReorderTabs={onReorderTabs}
-        onRenameTab={props.onRenameTab}
-        canGoBack={canGoBack}
-        canGoForward={canGoForward}
-        onGoBack={onGoBack}
-        onGoForward={onGoForward}
-        leftPanelsCollapsed={leftPanelsCollapsed}
-      />
       <div className="flex flex-1 min-h-0">
         {tabs.length === 0
           ? <EditorEmptyState />
@@ -311,7 +276,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
           entries={entries}
           gitHistory={gitHistory}
           vaultPath={vaultPath ?? ''}
-          openTabs={tabs.map(t => t.entry)}
           noteList={noteList}
           noteListFilter={noteListFilter}
           onToggleInspector={onToggleInspector}

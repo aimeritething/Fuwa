@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, addMockEntry } from '../mock-tauri'
 import type { VaultEntry } from '../types'
@@ -136,7 +136,7 @@ function persistOptimistic(path: string, content: string, cbs: PersistCallbacks)
 
 type PersistFn = (resolved: { entry: VaultEntry; content: string }) => void
 
-/** Optimistically open tab, add entry to vault, and persist to disk. */
+/** Optimistically open note, add entry to vault, and persist to disk. */
 function createAndPersist(
   resolved: { entry: VaultEntry; content: string },
   addFn: (e: VaultEntry) => void,
@@ -187,7 +187,6 @@ interface RelationshipCreateDeps {
   vaultPath: string
   openTabWithContent: (entry: VaultEntry, content: string) => void
   addEntry: (entry: VaultEntry) => void
-  handleCloseTab: (path: string) => void
   removeEntry: (path: string) => void
   setToastMessage: (msg: string | null) => void
   onNewNotePersisted?: () => void
@@ -202,7 +201,6 @@ function createNoteForRelationship(deps: RelationshipCreateDeps, title: string):
   persistNewNote(resolved.entry.path, resolved.content)
     .then(() => deps.onNewNotePersisted?.())
     .catch(() => {
-      deps.handleCloseTab(resolved.entry.path)
       deps.removeEntry(resolved.entry.path)
       deps.setToastMessage('Failed to create note — disk write error')
     })
@@ -226,36 +224,27 @@ export interface NoteCreationConfig {
 interface CreationTabDeps {
   openTabWithContent: (entry: VaultEntry, content: string) => void
   handleSelectNote: (entry: VaultEntry) => void
-  handleCloseTab: (path: string) => void
-  handleCloseTabRef: React.MutableRefObject<(path: string) => void>
 }
 
 export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTabDeps) {
   const { addEntry, removeEntry, entries, setToastMessage, addPendingSave, removePendingSave } = config
-  const { openTabWithContent, handleSelectNote, handleCloseTab, handleCloseTabRef } = tabDeps
-
-  const unsavedPathsRef = useRef(config.unsavedPaths)
-  // eslint-disable-next-line react-hooks/refs
-  unsavedPathsRef.current = config.unsavedPaths
+  const { openTabWithContent, handleSelectNote } = tabDeps
 
   const revertOptimisticNote = useCallback((path: string) => {
-    handleCloseTab(path)
     removeEntry(path)
     setToastMessage('Failed to create note — disk write error')
-  }, [handleCloseTab, removeEntry, setToastMessage])
-
-  const persistCbs: PersistCallbacks = {
-    onFail: revertOptimisticNote,
-    onStart: addPendingSave,
-    onEnd: removePendingSave,
-    onPersisted: config.onNewNotePersisted,
-  }
+  }, [removeEntry, setToastMessage])
 
   const pendingNamesRef = useRef<Set<string>>(new Set())
 
   const persistNew: PersistFn = useCallback(
-    (resolved) => createAndPersist(resolved, addEntry, openTabWithContent, persistCbs),
-    [openTabWithContent, addEntry, revertOptimisticNote, addPendingSave, removePendingSave], // eslint-disable-line react-hooks/exhaustive-deps -- persistCbs is stable when deps are
+    (resolved) => createAndPersist(resolved, addEntry, openTabWithContent, {
+      onFail: revertOptimisticNote,
+      onStart: addPendingSave,
+      onEnd: removePendingSave,
+      onPersisted: config.onNewNotePersisted,
+    }),
+    [openTabWithContent, addEntry, revertOptimisticNote, addPendingSave, removePendingSave, config.onNewNotePersisted],
   )
 
   const handleCreateNote = useCallback((title: string, type: string) => {
@@ -264,33 +253,19 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
   }, [entries, persistNew, config.vaultPath])
 
   const handleCreateNoteImmediate = useCallback((type?: string) => {
-    try {
-      createNoteImmediate({
-        entries, vaultPath: config.vaultPath, pendingNames: pendingNamesRef.current,
-        openTabWithContent, addEntry, trackUnsaved: config.trackUnsaved, markContentPending: config.markContentPending,
-      }, type)
-    } catch (err) {
-      console.error('Failed to create note:', err)
-      setToastMessage('Failed to create note')
-    }
-  }, [entries, openTabWithContent, addEntry, config.vaultPath, config.trackUnsaved, config.markContentPending]) // eslint-disable-line react-hooks/exhaustive-deps -- config callbacks are stable
+    createNoteImmediate({
+      entries, vaultPath: config.vaultPath, pendingNames: pendingNamesRef.current,
+      openTabWithContent, addEntry, trackUnsaved: config.trackUnsaved, markContentPending: config.markContentPending,
+    }, type)
+  }, [entries, openTabWithContent, addEntry, config.vaultPath, config.trackUnsaved, config.markContentPending, setToastMessage])
 
   const handleCreateNoteForRelationship = useCallback((title: string): Promise<boolean> => {
     createNoteForRelationship({
       entries, vaultPath: config.vaultPath, openTabWithContent, addEntry,
-      handleCloseTab, removeEntry, setToastMessage, onNewNotePersisted: config.onNewNotePersisted,
+      removeEntry, setToastMessage, onNewNotePersisted: config.onNewNotePersisted,
     }, title)
     return Promise.resolve(true)
-  }, [entries, openTabWithContent, addEntry, handleCloseTab, removeEntry, setToastMessage, config.vaultPath, config.onNewNotePersisted])
-
-  /** Close tab and discard entry+unsaved state if the note was never persisted. */
-  const handleCloseTabWithCleanup = useCallback((path: string) => {
-    if (unsavedPathsRef.current?.has(path)) { removeEntry(path); config.clearUnsaved?.(path) }
-    handleCloseTab(path)
-  }, [handleCloseTab, removeEntry, config.clearUnsaved]) // eslint-disable-line react-hooks/exhaustive-deps -- ref access is stable
-
-  // Keep handleCloseTabRef in sync so Cmd+W and menu events also clean up unsaved notes.
-  useEffect(() => { handleCloseTabRef.current = handleCloseTabWithCleanup })
+  }, [entries, openTabWithContent, addEntry, removeEntry, setToastMessage, config.vaultPath, config.onNewNotePersisted])
 
   const handleOpenDailyNote = useCallback(() => openDailyNote(entries, handleSelectNote, persistNew, config.vaultPath), [entries, handleSelectNote, persistNew, config.vaultPath])
 
@@ -311,6 +286,5 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
     handleOpenDailyNote,
     handleCreateType,
     createTypeEntrySilent,
-    handleCloseTabWithCleanup,
   }
 }

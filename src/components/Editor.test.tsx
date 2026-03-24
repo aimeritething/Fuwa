@@ -98,8 +98,6 @@ const defaultProps = {
   tabs: [] as { entry: VaultEntry; content: string }[],
   activeTabPath: null as string | null,
   entries: [mockEntry],
-  onSwitchTab: vi.fn(),
-  onCloseTab: vi.fn(),
   onNavigateWikilink: vi.fn(),
   inspectorCollapsed: true,
   onToggleInspector: vi.fn(),
@@ -141,62 +139,6 @@ describe('Editor', () => {
     expect(screen.getByText('Project')).toBeInTheDocument()
     // Word count shown
     expect(screen.getByText(/words/)).toBeInTheDocument()
-  })
-
-  it('calls onCloseTab when close button is clicked', () => {
-    const onCloseTab = vi.fn()
-    render(
-      <Editor
-        {...defaultProps}
-        tabs={[mockTab]}
-        activeTabPath={mockEntry.path}
-        onCloseTab={onCloseTab}
-      />
-    )
-    // Find the close button (X icon) in the tab
-    const closeButtons = document.querySelectorAll('button')
-    const tabCloseBtn = Array.from(closeButtons).find(btn => {
-      const svg = btn.querySelector('svg')
-      return svg && btn.closest('[class*="group"]')
-    })
-    if (tabCloseBtn) {
-      fireEvent.click(tabCloseBtn)
-      expect(onCloseTab).toHaveBeenCalledWith(mockEntry.path)
-    }
-  })
-
-  it('calls onSwitchTab when clicking a tab', () => {
-    const secondEntry: VaultEntry = {
-      ...mockEntry,
-      path: '/vault/topic/dev.md',
-      title: 'Dev Topic',
-      isA: 'Topic',
-    }
-    const onSwitchTab = vi.fn()
-    render(
-      <Editor
-        {...defaultProps}
-        tabs={[mockTab, { entry: secondEntry, content: '# Dev' }]}
-        activeTabPath={mockEntry.path}
-        onSwitchTab={onSwitchTab}
-      />
-    )
-    fireEvent.click(screen.getByText('Dev Topic'))
-    expect(onSwitchTab).toHaveBeenCalledWith(secondEntry.path)
-  })
-
-  it('renders new note button in tab bar', () => {
-    const onCreateNote = vi.fn()
-    render(
-      <Editor
-        {...defaultProps}
-        onCreateNote={onCreateNote}
-      />
-    )
-    const newNoteBtn = screen.getByTitle('New note')
-    expect(newNoteBtn).toBeInTheDocument()
-    fireEvent.click(newNoteBtn)
-    expect(onCreateNote).toHaveBeenCalled()
   })
 
   it('shows BlockNote editor when a tab is active', () => {
