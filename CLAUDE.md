@@ -20,6 +20,14 @@ cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-line
 
 If Average Code Health is below 9.0, you must fix regressions before pushing — even in files you didn't directly modify, if your changes indirectly affected complexity.
 
+**Boy Scout Rule (Robert C. Martin):** Leave every file you touch better than you found it. When working on any task:
+1. Before modifying a file, check its CodeScene health: `mcp__codescene__code_health_review`
+2. If the file has issues (complexity, duplication, large functions), fix them as part of your work
+3. After your changes, verify the file's score is higher than before: `mcp__codescene__code_health_score`
+4. The goal: every commit either maintains or raises the overall average. No commit should lower it.
+
+This is not optional — it's how we incrementally raise the codebase quality with every task.
+
 ## ⛔ BEFORE FIRING laputa-task-done — Two-phase QA
 
 ### Phase 1: Playwright (you do this)
