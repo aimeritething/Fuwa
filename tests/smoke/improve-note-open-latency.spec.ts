@@ -23,10 +23,6 @@ test.describe('Improve note open latency', () => {
     const editorContainer = page.locator('.editor__blocknote-container')
     await expect(editorContainer).toBeVisible({ timeout: 5000 })
 
-    // A tab should be open
-    const tabBar = page.locator('[draggable]')
-    await expect(tabBar.first()).toBeVisible({ timeout: 3000 })
-
     // The editor should have BlockNote content
     const editorContent = page.locator('.bn-editor')
     await expect(editorContent).toBeVisible({ timeout: 3000 })
@@ -68,9 +64,8 @@ test.describe('Improve note open latency', () => {
     const editorContainer = page.locator('.editor__blocknote-container')
     await expect(editorContainer).toBeVisible({ timeout: 5000 })
 
-    // At least one tab should be open
-    const tabs = page.locator('[draggable]')
-    const tabCount = await tabs.count()
-    expect(tabCount).toBeGreaterThan(0)
+    // The editor should have content loaded
+    const editorContent = page.locator('.bn-editor')
+    await expect(editorContent).toBeVisible({ timeout: 3000 })
   })
 })

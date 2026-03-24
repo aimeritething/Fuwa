@@ -7,7 +7,7 @@ test.describe('Emoji icon shown everywhere title appears', () => {
     await page.waitForTimeout(2500)
   })
 
-  test('emoji icon appears in tab bar, breadcrumb, and note list after setting it', async ({ page }) => {
+  test('emoji icon appears in editor and note list after setting it', async ({ page }) => {
     // Open a note
     const noteItem = page.locator('[data-testid="note-list-container"] .cursor-pointer').first()
     await noteItem.waitFor({ timeout: 5000 })
@@ -36,10 +36,11 @@ test.describe('Emoji icon shown everywhere title appears', () => {
     const noteListText = await noteItem.textContent()
     expect(noteListText).toContain(emojiText!)
 
-    // Verify emoji in the tab (active tab has the truncate span with title)
-    const tabArea = page.locator('.group .truncate').first()
-    const tabText = await tabArea.textContent()
-    expect(tabText).toContain(emojiText!)
+    // Verify emoji appears in the editor NoteIcon area
+    // Wait for frontmatter update to propagate through the single-note reload cycle
+    const iconAfterSet = page.locator('[data-testid="note-icon-display"]')
+    await expect(iconAfterSet).toBeVisible({ timeout: 8000 })
+    await expect(iconAfterSet).toHaveText(emojiText!, { timeout: 3000 })
   })
 
   test('note without emoji shows no emoji span in tab or note list', async ({ page }) => {
