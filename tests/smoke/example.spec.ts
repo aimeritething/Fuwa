@@ -28,7 +28,7 @@ test.describe('Command Palette smoke tests', () => {
 
   test('typing filters the command list', async ({ page }) => {
     await openCommandPalette(page)
-    const found = await findCommand(page, 'reindex')
+    const found = await findCommand(page, 'reload')
     expect(found).toBe(true)
   })
 
