@@ -354,7 +354,6 @@ pub(crate) fn extract_fm_and_rels(data: Option<gray_matter::Pod>) -> Frontmatter
     )
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
