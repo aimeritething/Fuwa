@@ -113,7 +113,7 @@ function SearchDropdownWithCreate({ search, onSelect, query, entries, onCreateAn
           className="max-h-[160px] overflow-y-auto"
         />
       )}
-      {showCreate && (
+      {showCreate && onCreateAndOpen && (
         <CreateAndOpenOption
           title={trimmed}
           selected={search.selectedIndex === createIndex}
