@@ -16,9 +16,6 @@ import { SingleEditorView } from './SingleEditorView'
 import { isEmoji } from '../utils/emoji'
 import { PinnedPropertiesBar } from './PinnedPropertiesBar'
 import { parseFrontmatter } from '../utils/frontmatter'
-import type { FrontmatterValue } from './Inspector' 
-import { parseFrontmatter } from '../utils/frontmatter'
-import { PinnedPropertiesBar } from './PinnedPropertiesBar'
 
 interface Tab {
   entry: VaultEntry
