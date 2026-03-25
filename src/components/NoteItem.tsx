@@ -10,6 +10,7 @@ import { resolveIcon } from '../utils/iconRegistry'
 import { relativeDate, getDisplayDate } from '../utils/noteListHelpers'
 import { isEmoji } from '../utils/emoji'
 import { NoteListPinnedValues } from './NoteListPinnedValues'
+import { NoteListPinnedValues } from './NoteListPinnedValues'
 
 const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>> = {
   Project: Wrench,
@@ -149,6 +150,7 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
           {entry.snippet}
         </div>
       )}
+      {pinnedConfigs.length > 0 && <NoteListPinnedValues entry={entry} pinnedConfigs={pinnedConfigs} />}
       {pinnedConfigs.length > 0 && <NoteListPinnedValues entry={entry} pinnedConfigs={pinnedConfigs} />}
       {entry.trashed && entry.trashedAt
         ? <TrashDateLine entry={entry} />

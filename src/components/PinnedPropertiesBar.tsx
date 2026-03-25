@@ -1,4 +1,7 @@
 import { memo, useRef, useState, useCallback, useEffect } from 'react'
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core'
+import { SortableContext, useSortable, horizontalListSortingStrategy } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from './Inspector'
 import type { ParsedFrontmatter } from '../utils/frontmatter'
@@ -13,7 +16,23 @@ export const PinnedPropertiesBar = memo(function PinnedPropertiesBar({ entry, en
   onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
   onNavigate?: (target: string) => void
 }) {
-  const { resolved } = usePinnedProperties({ entry, entries, frontmatter, onUpdateTypeFrontmatter: onUpdateFrontmatter })
+  const { resolved, pinnedConfigs, reorderPins } = usePinnedProperties({ entry, entries, frontmatter, onUpdateTypeFrontmatter: onUpdateFrontmatter })
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = pinnedConfigs.findIndex((c) => c.key === active.id)
+    const newIndex = pinnedConfigs.findIndex((c) => c.key === over.id)
+    if (oldIndex === -1 || newIndex === -1) return
+    const reordered = [...pinnedConfigs]
+    const [moved] = reordered.splice(oldIndex, 1)
+    reordered.splice(newIndex, 0, moved)
+    reorderPins(reordered)
+  }, [pinnedConfigs, reorderPins])
 
   const containerRef = useRef<HTMLDivElement>(null)
   const [visibleCount, setVisibleCount] = useState(resolved.length)
@@ -49,35 +68,58 @@ export const PinnedPropertiesBar = memo(function PinnedPropertiesBar({ entry, en
 
   const hiddenCount = resolved.length - visibleCount
 
+  const sortableIds = resolved.map((p) => p.key)
+
   return (
-    <div
-      ref={containerRef}
-      className="flex items-start overflow-hidden"
-      style={{ gap: 16, padding: '8px 0', position: 'relative' }}
-      data-testid="pinned-properties-bar"
-    >
-      {resolved.map((p, i) => (
-        <div key={p.key} data-pinchip style={i >= visibleCount ? { visibility: 'hidden', position: 'absolute' } : undefined}>
-          <PinnedPropertyChip
-            propKey={p.key} label={p.label} value={p.value} icon={p.icon}
-            isRelationship={p.isRelationship}
-            onSave={handleSave} onNavigate={onNavigate}
-          />
+    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <SortableContext items={sortableIds} strategy={horizontalListSortingStrategy}>
+        <div
+          ref={containerRef}
+          className="flex items-start overflow-hidden"
+          style={{ gap: 16, padding: '8px 0', position: 'relative' }}
+          data-testid="pinned-properties-bar"
+        >
+          {resolved.map((p, i) => (
+            <SortableChip key={p.key} prop={p} visible={i < visibleCount} onSave={handleSave} onNavigate={onNavigate} />
+          ))}
+          {hiddenCount > 0 && (
+            <OverflowPopover
+              count={hiddenCount}
+              items={resolved.slice(visibleCount)}
+              open={showOverflow}
+              onToggle={() => setShowOverflow((v) => !v)}
+              onSave={handleSave}
+              onNavigate={onNavigate}
+            />
+          )}
         </div>
-      ))}
-      {hiddenCount > 0 && (
-        <OverflowPopover
-          count={hiddenCount}
-          items={resolved.slice(visibleCount)}
-          open={showOverflow}
-          onToggle={() => setShowOverflow((v) => !v)}
-          onSave={handleSave}
-          onNavigate={onNavigate}
-        />
-      )}
-    </div>
+      </SortableContext>
+    </DndContext>
   )
 })
+
+function SortableChip({ prop, visible, onSave, onNavigate }: {
+  prop: ResolvedPinnedProperty; visible: boolean
+  onSave: (key: string, value: string) => void; onNavigate?: (target: string) => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: prop.key })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    ...(visible ? {} : { visibility: 'hidden' as const, position: 'absolute' as const }),
+  }
+
+  return (
+    <div ref={setNodeRef} data-pinchip style={style} {...attributes} {...listeners}>
+      <PinnedPropertyChip
+        propKey={prop.key} label={prop.label} value={prop.value} icon={prop.icon}
+        isRelationship={prop.isRelationship}
+        onSave={onSave} onNavigate={onNavigate}
+      />
+    </div>
+  )
+}
 
 function OverflowPopover({ count, items, open, onToggle, onSave, onNavigate }: {
   count: number
