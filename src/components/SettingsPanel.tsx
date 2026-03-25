@@ -124,6 +124,7 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
   const [githubToken, setGithubToken] = useState(settings.github_token)
   const [githubUsername, setGithubUsername] = useState(settings.github_username)
   const [pullInterval, setPullInterval] = useState(settings.auto_pull_interval_minutes ?? 5)
+  const [updateChannel, setUpdateChannel] = useState(settings.update_channel ?? 'stable')
   const [crashReporting, setCrashReporting] = useState(settings.crash_reporting_enabled ?? false)
   const [analytics, setAnalytics] = useState(settings.analytics_enabled ?? false)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -148,7 +149,8 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
     crash_reporting_enabled: crashReporting,
     analytics_enabled: analytics,
     anonymous_id: (crashReporting || analytics) ? (settings.anonymous_id ?? crypto.randomUUID()) : settings.anonymous_id,
-  }), [openaiKey, googleKey, githubToken, githubUsername, pullInterval, crashReporting, analytics, settings.telemetry_consent, settings.anonymous_id])
+    update_channel: updateChannel === 'stable' ? null : updateChannel,
+  }), [openaiKey, googleKey, githubToken, githubUsername, pullInterval, updateChannel, crashReporting, analytics, settings.telemetry_consent, settings.anonymous_id])
 
   const handleSave = () => {
     onSave(buildSettings())
@@ -198,6 +200,7 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
           githubToken={githubToken ?? null} githubUsername={githubUsername ?? null}
           onGitHubConnected={handleGitHubConnected} onGitHubDisconnect={handleGitHubDisconnect}
           pullInterval={pullInterval} setPullInterval={setPullInterval}
+          updateChannel={updateChannel} setUpdateChannel={setUpdateChannel}
           crashReporting={crashReporting} setCrashReporting={setCrashReporting}
           analytics={analytics} setAnalytics={setAnalytics}
         />
@@ -232,6 +235,7 @@ interface SettingsBodyProps {
   onGitHubConnected: (token: string, username: string) => void
   onGitHubDisconnect: () => void
   pullInterval: number; setPullInterval: (v: number) => void
+  updateChannel: string; setUpdateChannel: (v: string) => void
   crashReporting: boolean; setCrashReporting: (v: boolean) => void
   analytics: boolean; setAnalytics: (v: boolean) => void
 }
@@ -289,6 +293,29 @@ function SettingsBody(props: SettingsBodyProps) {
           <option value={10}>10</option>
           <option value={15}>15</option>
           <option value={30}>30</option>
+        </select>
+      </div>
+
+      <div style={{ height: 1, background: 'var(--border)' }} />
+
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>Updates</div>
+        <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
+          Canary builds include the latest features but may be less stable. Restart required after changing.
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--foreground)' }}>Update channel</label>
+        <select
+          value={props.updateChannel}
+          onChange={(e) => props.setUpdateChannel(e.target.value)}
+          className="border border-border bg-transparent text-foreground rounded"
+          style={{ fontSize: 13, padding: '8px 10px', outline: 'none', fontFamily: 'inherit' }}
+          data-testid="settings-update-channel"
+        >
+          <option value="stable">Stable</option>
+          <option value="canary">Canary (pre-release)</option>
         </select>
       </div>
 

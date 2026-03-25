@@ -25,6 +25,11 @@ vi.mock('@tauri-apps/plugin-process', () => ({
   relaunch: (...args: unknown[]) => mockRelaunch(...args),
 }))
 
+const mockGetVersion = vi.fn().mockResolvedValue('0.20260101.1')
+vi.mock('@tauri-apps/api/app', () => ({
+  getVersion: () => mockGetVersion(),
+}))
+
 import { isTauri } from '../mock-tauri'
 
 describe('useUpdater', () => {
@@ -198,6 +203,42 @@ describe('useUpdater', () => {
 
     expect(result.current.status).toEqual({ state: 'ready', version: '1.2.0' })
     expect(mockDownload).toHaveBeenCalled()
+  })
+
+  describe('canary channel', () => {
+    it('fetches latest-canary.json when channel is canary', async () => {
+      vi.mocked(isTauri).mockReturnValue(true)
+      mockGetVersion.mockResolvedValue('0.20260101.1')
+
+      const mockFetch = vi.mocked(globalThis.fetch)
+      mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({
+        version: '0.20260325.99-canary',
+        notes: 'Canary build',
+        platforms: {
+          'darwin-aarch64': {
+            url: 'https://github.com/refactoringhq/laputa-app/releases/download/v0.20260325.99-canary/laputa.app.tar.gz',
+            signature: 'sig123',
+          },
+        },
+      }), { status: 200 }))
+
+      const { result } = renderHook(() => useUpdater('canary'))
+
+      let checkResult: string | undefined
+      await act(async () => {
+        checkResult = await result.current.actions.checkForUpdates()
+      })
+
+      expect(checkResult).toBe('available')
+      expect(result.current.status).toEqual({
+        state: 'available',
+        version: '0.20260325.99-canary',
+        notes: 'Canary build',
+      })
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://refactoringhq.github.io/laputa-app/latest-canary.json'
+      )
+    })
   })
 
   describe('checkForUpdates (manual)', () => {

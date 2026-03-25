@@ -605,3 +605,18 @@ Managed by `useSettings` hook and `SettingsPanel` component.
 
 ### Tauri Commands
 - **`reinit_telemetry`** — Re-reads settings and toggles Rust Sentry on/off. Called from frontend when user changes crash reporting setting.
+
+---
+
+## Update Channels & Feature Flags
+
+### Settings
+- **`update_channel`** — `"stable"` (default/null) or `"canary"`. Stored in `Settings` struct, configurable in Settings panel under "Updates" section.
+
+### Hooks
+- **`useUpdater(channel?)`** — Checks for updates. For stable: uses Tauri updater plugin. For canary: fetches `latest-canary.json` and opens release page for download.
+- **`useFeatureFlag(flag)`** — Returns boolean for a named feature flag. Checks `localStorage` override (`ff_<name>`), then falls back to compile-time default. Type-safe via `FeatureFlagName` union.
+
+### CI/CD
+- **`.github/workflows/release.yml`** — Stable builds from `main`. Produces `latest.json` on GitHub Pages.
+- **`.github/workflows/release-canary.yml`** — Canary builds from `canary` branch. Produces `latest-canary.json` on GitHub Pages. Releases are marked as prerelease.

@@ -28,6 +28,7 @@ const emptySettings: Settings = {
   crash_reporting_enabled: null,
   analytics_enabled: null,
   anonymous_id: null,
+  update_channel: null,
 }
 
 const populatedSettings: Settings = {
@@ -41,6 +42,7 @@ const populatedSettings: Settings = {
   crash_reporting_enabled: null,
   analytics_enabled: null,
   anonymous_id: null,
+  update_channel: null,
 }
 
 describe('SettingsPanel', () => {
@@ -401,6 +403,56 @@ describe('SettingsPanel', () => {
         verification_uri: 'https://github.com/login/device',
         expires_in: 900, interval: 5,
       })
+    })
+  })
+
+  describe('Update channel section', () => {
+    it('renders the update channel dropdown', () => {
+      render(
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+      )
+      expect(screen.getByTestId('settings-update-channel')).toBeInTheDocument()
+      expect(screen.getByText('Updates')).toBeInTheDocument()
+    })
+
+    it('defaults to stable when update_channel is null', () => {
+      render(
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+      )
+      const select = screen.getByTestId('settings-update-channel') as HTMLSelectElement
+      expect(select.value).toBe('stable')
+    })
+
+    it('reflects canary setting', () => {
+      const canarySettings: Settings = { ...emptySettings, update_channel: 'canary' }
+      render(
+        <SettingsPanel open={true} settings={canarySettings} onSave={onSave} onClose={onClose} />
+      )
+      const select = screen.getByTestId('settings-update-channel') as HTMLSelectElement
+      expect(select.value).toBe('canary')
+    })
+
+    it('saves update_channel when changed to canary', () => {
+      render(
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+      )
+      fireEvent.change(screen.getByTestId('settings-update-channel'), { target: { value: 'canary' } })
+      fireEvent.click(screen.getByTestId('settings-save'))
+
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+        update_channel: 'canary',
+      }))
+    })
+
+    it('saves null when channel is stable (default)', () => {
+      render(
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+      )
+      fireEvent.click(screen.getByTestId('settings-save'))
+
+      expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+        update_channel: null,
+      }))
     })
   })
 

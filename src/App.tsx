@@ -411,7 +411,7 @@ function App() {
   const zoom = useZoom()
   const buildNumber = useBuildNumber()
 
-  const { status: updateStatus, actions: updateActions } = useUpdater()
+  const { status: updateStatus, actions: updateActions } = useUpdater(settings.update_channel)
 
   const handleCheckForUpdates = useCallback(async () => {
     if (updateStatus.state === 'downloading') {

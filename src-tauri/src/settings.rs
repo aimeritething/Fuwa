@@ -14,6 +14,7 @@ pub struct Settings {
     pub crash_reporting_enabled: Option<bool>,
     pub analytics_enabled: Option<bool>,
     pub anonymous_id: Option<String>,
+    pub update_channel: Option<String>,
 }
 
 fn settings_path() -> Result<PathBuf, String> {
@@ -65,6 +66,10 @@ fn save_settings_at(path: &PathBuf, settings: Settings) -> Result<(), String> {
         analytics_enabled: settings.analytics_enabled,
         anonymous_id: settings
             .anonymous_id
+            .map(|k| k.trim().to_string())
+            .filter(|k| !k.is_empty()),
+        update_channel: settings
+            .update_channel
             .map(|k| k.trim().to_string())
             .filter(|k| !k.is_empty()),
     };
@@ -137,6 +142,7 @@ mod tests {
         assert!(s.crash_reporting_enabled.is_none());
         assert!(s.analytics_enabled.is_none());
         assert!(s.anonymous_id.is_none());
+        assert!(s.update_channel.is_none());
     }
 
     #[test]

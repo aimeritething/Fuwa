@@ -849,3 +849,52 @@ sequenceDiagram
 - **JS:** `@sentry/browser` + `posthog-js` initialized lazily by `useTelemetry` hook
 - **Settings:** `telemetry_consent`, `crash_reporting_enabled`, `analytics_enabled`, `anonymous_id` in `Settings` struct
 - **Consent:** `TelemetryConsentDialog` shown when `telemetry_consent === null`
+
+### Update Channels (Stable / Canary)
+
+Laputa supports two release channels:
+
+- **Stable** (default): builds from `main` branch, published as full GitHub Releases
+- **Canary**: builds from `canary` branch, published as pre-release GitHub Releases
+
+```mermaid
+flowchart LR
+    main["main branch"] -->|push| stable["Stable build<br/>latest.json"]
+    canary["canary branch"] -->|push| canaryBuild["Canary build<br/>latest-canary.json"]
+    stable --> ghPages["GitHub Pages"]
+    canaryBuild --> ghPages
+    ghPages -->|"update_channel = stable"| stableUsers["Stable users<br/>(auto-update via plugin)"]
+    ghPages -->|"update_channel = canary"| canaryUsers["Canary users<br/>(fetch + manual download)"]
+```
+
+**How it works:**
+- Both channels publish to GitHub Pages: `latest.json` (stable) and `latest-canary.json` (canary)
+- `update_channel` is stored in `Settings` (`settings.json`), configurable in Settings panel
+- **Stable**: uses the Tauri updater plugin with automatic download and install
+- **Canary**: `useUpdater` hook fetches `latest-canary.json` via HTTP, compares versions, and opens the GitHub release page for manual download
+- Canary versions use semver prerelease: `0.YYYYMMDD.N-canary`
+
+### Feature Flags (Local V1)
+
+Feature flags use a local-only system with no external dependencies:
+
+```typescript
+import { useFeatureFlag } from './hooks/useFeatureFlag'
+
+const enabled = useFeatureFlag('example_flag') // boolean
+```
+
+**Resolution order:**
+1. `localStorage` override: key `ff_<name>` with value `"true"` or `"false"`
+2. Compile-time default in `FLAG_DEFAULTS` map
+
+**How to add a new flag:**
+1. Add the flag name to the `FeatureFlagName` union type in `src/hooks/useFeatureFlag.ts`
+2. Set its default in the `FLAG_DEFAULTS` record
+3. Use `useFeatureFlag('your_flag')` in components
+
+**Design decisions:**
+- No remote fetching, no PostHog dependency — zero privacy concerns
+- `localStorage` overrides allow dev/QA testing without rebuilding
+- Type-safe flag names via TypeScript union type
+- API surface is compatible with future migration to remote flags
