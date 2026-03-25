@@ -202,6 +202,10 @@ export const mockHandlers: Record<string, (args: any) => any> = {
       github_token: trimOrNull(s.github_token),
       github_username: trimOrNull(s.github_username),
       auto_pull_interval_minutes: s.auto_pull_interval_minutes ?? 5,
+      telemetry_consent: s.telemetry_consent,
+      crash_reporting_enabled: s.crash_reporting_enabled,
+      analytics_enabled: s.analytics_enabled,
+      anonymous_id: s.anonymous_id,
     }
     return null
   },
