@@ -32,6 +32,8 @@ test.describe('Changing note type preserves content', () => {
 
     const editorContainer = page.locator('.bn-editor')
     await expect(editorContainer).toBeVisible({ timeout: 5000 })
+    // Wait for editor content to stabilise after note selection
+    await page.waitForTimeout(800)
     const headingBefore = await editorContainer.locator('h1').first().textContent()
     expect(headingBefore).toBeTruthy()
 
@@ -40,22 +42,20 @@ test.describe('Changing note type preserves content', () => {
 
     const targetType = currentType === 'Project' ? 'Experiment' : 'Project'
     await selectTrigger.click()
-    await page.waitForTimeout(300)
     const option = page.getByRole('option', { name: targetType, exact: true }).first()
     await expect(option).toBeVisible({ timeout: 3000 })
     await option.click()
 
-    // Wait for toast (either "Note moved" or "Property updated" depending on vault structure)
-    await page.waitForTimeout(1000)
+    // Wait for type change to propagate through state
+    await page.waitForTimeout(1500)
 
     // CRITICAL: verify the editor still shows the SAME note's heading
     const headingAfter = await editorContainer.locator('h1').first().textContent()
     expect(headingAfter).toBe(headingBefore)
 
     // Restore original type
-    await page.waitForTimeout(1500)
     await selectTrigger.click()
-    await page.waitForTimeout(300)
+    await page.waitForTimeout(500)
     const restoreOption = page.getByRole('option', { name: currentType, exact: true })
     if (await restoreOption.isVisible()) {
       await restoreOption.click()
