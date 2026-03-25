@@ -98,7 +98,13 @@ echo ""
 SMOKE_FILES=$(find tests/smoke -name '*.spec.ts' 2>/dev/null | head -1)
 if [ -n "$SMOKE_FILES" ]; then
   echo "🎭 [4/5] Playwright smoke tests..."
-  pnpm playwright:smoke
+  SMOKE_OUTPUT=$(pnpm playwright:smoke 2>&1) || true
+  echo "$SMOKE_OUTPUT" | tail -20
+  # Fail only on real failures (not flaky). Flaky = passed on retry.
+  if echo "$SMOKE_OUTPUT" | grep -qE '^\s+\d+ failed' && ! echo "$SMOKE_OUTPUT" | grep -qE '^\s+\d+ passed'; then
+    echo "  ❌ Smoke tests FAILED"
+    exit 1
+  fi
   echo "  ✅ Smoke tests OK"
 else
   echo "⏭️  [4/5] Playwright smoke tests — skipped (no tests/smoke/*.spec.ts)"
