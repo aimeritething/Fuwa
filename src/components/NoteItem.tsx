@@ -101,6 +101,37 @@ function noteItemStyle(isSelected: boolean, isMultiSelected: boolean, typeColor:
   return base
 }
 
+
+function NoteItemTitle({ entry, noteStatus, isSelected }: { entry: VaultEntry; noteStatus: NoteStatus; isSelected: boolean }) {
+  return (
+    <div className="pr-5">
+      <div className={cn("truncate text-[13px] text-foreground", isSelected ? "font-semibold" : "font-medium")}>
+        {noteStatus !== 'clean' && <StatusDot noteStatus={noteStatus} />}
+        {entry.icon && isEmoji(entry.icon) && <span className="mr-1">{entry.icon}</span>}
+        {entry.title}
+        <StateBadge archived={entry.archived} trashed={entry.trashed} />
+      </div>
+    </div>
+  )
+}
+
+function NoteItemFooter({ entry, pinnedConfigs }: { entry: VaultEntry; pinnedConfigs: PinnedPropertyConfig[] }) {
+  return (
+    <>
+      {entry.snippet && (
+        <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" data-testid="note-snippet" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          {entry.snippet}
+        </div>
+      )}
+      {pinnedConfigs.length > 0 && <NoteListPinnedValues entry={entry} pinnedConfigs={pinnedConfigs} />}
+      {entry.trashed && entry.trashedAt
+        ? <TrashDateLine entry={entry} />
+        : <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>
+      }
+    </>
+  )
+}
+
 export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlighted = false, noteStatus = 'clean', typeEntryMap, onClickNote, onPrefetch }: {
   entry: VaultEntry
   isSelected: boolean
@@ -136,25 +167,8 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
     >
       {/* eslint-disable-next-line react-hooks/static-components -- icon lookup from static map, no internal state */}
       <TypeIcon width={14} height={14} className="absolute right-3 top-2.5" style={{ color: typeColor }} data-testid="type-icon" />
-      <div className="pr-5">
-        <div className={cn("truncate text-[13px] text-foreground", isSelected ? "font-semibold" : "font-medium")}>
-          {noteStatus !== 'clean' && <StatusDot noteStatus={noteStatus} />}
-          {entry.icon && isEmoji(entry.icon) && <span className="mr-1">{entry.icon}</span>}
-          {entry.title}
-          <StateBadge archived={entry.archived} trashed={entry.trashed} />
-        </div>
-      </div>
-      {entry.snippet && (
-        <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" data-testid="note-snippet" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-          {entry.snippet}
-        </div>
-      )}
-      {pinnedConfigs.length > 0 && <NoteListPinnedValues entry={entry} pinnedConfigs={pinnedConfigs} />}
-      {pinnedConfigs.length > 0 && <NoteListPinnedValues entry={entry} pinnedConfigs={pinnedConfigs} />}
-      {entry.trashed && entry.trashedAt
-        ? <TrashDateLine entry={entry} />
-        : <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>
-      }
+      <NoteItemTitle entry={entry} noteStatus={noteStatus} isSelected={isSelected} />
+      <NoteItemFooter entry={entry} pinnedConfigs={pinnedConfigs} />
     </div>
   )
 }

@@ -46,11 +46,16 @@ function PropertyPinMenu({ x, y, isPinned, onPin, onUnpin, onClose }: {
   }, [onClose])
 
   return (
-    <div ref={ref} className="fixed z-50 flex flex-col rounded-lg border border-border bg-popover shadow-lg" style={{ left: x, top: y, minWidth: 160, padding: 4 }} data-testid="property-context-menu">
+    <div
+      ref={ref}
+      className="fixed z-50 flex flex-col rounded-lg border border-border bg-popover shadow-lg"
+      style={{ left: x, top: y, minWidth: 160, padding: 4 }}
+      data-testid="property-context-menu"
+    >
       <button
         className="flex w-full items-center gap-2 rounded px-2.5 py-1.5 text-left text-[13px] text-foreground transition-colors hover:bg-accent"
         style={{ border: 'none', background: 'transparent', cursor: 'pointer' }}
-        onClick={() => { if (isPinned) onUnpin(); else onPin(); onClose() }}
+        onClick={() => { if (isPinned) { onUnpin() } else { onPin() } onClose() }}
       >
         <PushPin size={14} />
         {isPinned ? 'Unpin from editor' : 'Pin to editor'}
