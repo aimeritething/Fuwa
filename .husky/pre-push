@@ -134,11 +134,11 @@ if hotspot < 9.5:
     failed = True
 else:
     print(f'OK: Hotspot {hotspot:.2f} >= 9.5')
-if average < 8.9:
-    print(f'FAIL: Average Code Health {average:.2f} < 9.0 — regressions detected, fix before pushing')
+if average < 9.31:
+    print(f'FAIL: Average Code Health {average:.2f} < 9.31 — regressions detected, fix before pushing')
     failed = True
 else:
-    print(f'OK: Average {average:.2f} >= 9.0')
+    print(f'OK: Average {average:.2f} >= 9.31')
 if failed:
     sys.exit(1)
 " || exit 1

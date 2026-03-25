@@ -15,6 +15,57 @@ function hasExactTitleMatch(entries: VaultEntry[], title: string): boolean {
   return resolveEntry(entries, title) !== undefined
 }
 
+/** Shared keyboard navigation for search dropdowns with an optional "create" item. */
+function useSearchKeyboard(
+  search: ReturnType<typeof useNoteSearch>,
+  totalItems: number,
+  onConfirm: () => void,
+  onEscape: () => void,
+) {
+  return useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      search.setSelectedIndex((i: number) => Math.min(i + 1, totalItems - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      search.setSelectedIndex((i: number) => Math.max(i - 1, 0))
+    } else if (e.key === 'Enter') {
+      e.preventDefault()
+      onConfirm()
+    } else if (e.key === 'Escape') {
+      onEscape()
+    }
+  }, [search, totalItems, onConfirm, onEscape])
+}
+
+/** Wraps the create-and-open-note pattern: calls the async creator, then defers a side-effect to the next tick. */
+function useCreateAndOpen(
+  onCreateAndOpenNote: ((title: string) => Promise<boolean>) | undefined,
+  afterCreate: (title: string) => void,
+  onDone: () => void,
+) {
+  return useCallback(async (title: string) => {
+    if (!onCreateAndOpenNote || !title) return
+    const ok = await onCreateAndOpenNote(title)
+    if (!ok) return
+    // Defer frontmatter update to next tick to avoid radix-ui
+    // infinite setState loop from overlapping render batches
+    setTimeout(() => afterCreate(title), 0)
+    onDone()
+  }, [onCreateAndOpenNote, afterCreate, onDone])
+}
+
+/** Derives create-option state from search results and entries. */
+function useCreateOption(
+  entries: VaultEntry[],
+  trimmedQuery: string,
+  resultCount: number,
+  hasCreator: boolean,
+) {
+  const showCreate = hasCreator && trimmedQuery.length > 0 && !hasExactTitleMatch(entries, trimmedQuery)
+  return { showCreate, createIndex: resultCount, totalItems: resultCount + (showCreate ? 1 : 0) }
+}
+
 function CreateAndOpenOption({ title, selected, onClick, onHover }: {
   title: string
   selected: boolean
@@ -45,9 +96,8 @@ function SearchDropdownWithCreate({ search, onSelect, query, entries, onCreateAn
   onCreateAndOpen?: (title: string) => void
 }) {
   const trimmed = query.trim()
-  const showCreate = !!onCreateAndOpen && trimmed.length > 0 && !hasExactTitleMatch(entries, trimmed)
+  const { showCreate, createIndex } = useCreateOption(entries, trimmed, search.results.length, !!onCreateAndOpen)
   const hasResults = search.results.length > 0
-  const createIndex = search.results.length
 
   if (!hasResults && !showCreate) return null
 
@@ -86,56 +136,27 @@ function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
   const search = useNoteSearch(entries, query, 8)
 
   const trimmed = query.trim()
-  const showCreate = !!onCreateAndOpenNote && trimmed.length > 0 && !hasExactTitleMatch(entries, trimmed)
-  const createIndex = search.results.length
+  const { showCreate, createIndex, totalItems } = useCreateOption(entries, trimmed, search.results.length, !!onCreateAndOpenNote)
+
+  const dismiss = useCallback(() => { setQuery(''); setActive(false) }, [])
 
   const selectAndClose = useCallback((title: string) => {
     onAdd(title)
-    setQuery('')
-    setActive(false)
-  }, [onAdd])
+    dismiss()
+  }, [onAdd, dismiss])
 
-  const handleCreateAndOpen = useCallback(async () => {
-    if (!onCreateAndOpenNote) return
-    const title = trimmed
-    if (!title) return
-    const ok = await onCreateAndOpenNote(title)
-    // Defer frontmatter update to avoid radix-ui infinite setState loop:
-    // onAdd triggers handleUpdateFrontmatter → setTabs in a microtask,
-    // which can collide with the render triggered by openTabWithContent.
-    if (ok) setTimeout(() => onAdd(title), 0)
-    if (ok) {
-      setQuery('')
-      setActive(false)
-    }
-  }, [onCreateAndOpenNote, trimmed, onAdd])
+  const handleCreateAndOpen = useCreateAndOpen(onCreateAndOpenNote, onAdd, dismiss)
 
   const handleConfirm = useCallback(() => {
     if (showCreate && search.selectedIndex === createIndex) {
-      handleCreateAndOpen()
+      handleCreateAndOpen(trimmed)
       return
     }
     const title = search.selectedEntry?.title ?? trimmed
     if (title) selectAndClose(title)
   }, [search.selectedEntry, search.selectedIndex, trimmed, selectAndClose, showCreate, createIndex, handleCreateAndOpen])
 
-  const totalItems = search.results.length + (showCreate ? 1 : 0)
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      search.setSelectedIndex((i: number) => Math.min(i + 1, totalItems - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      search.setSelectedIndex((i: number) => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      handleConfirm()
-    } else if (e.key === 'Escape') {
-      setQuery('')
-      setActive(false)
-    }
-  }, [search, totalItems, handleConfirm])
+  const handleKeyDown = useSearchKeyboard(search, totalItems, handleConfirm, dismiss)
 
   if (!active) {
     return (
@@ -150,7 +171,7 @@ function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
     )
   }
 
-  const showDropdown = query.trim().length > 0 && (search.results.length > 0 || showCreate)
+  const showDropdown = trimmed.length > 0 && (search.results.length > 0 || showCreate)
 
   return (
     <div className="relative mt-1">
@@ -168,7 +189,7 @@ function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
         />
         <button
           className="absolute right-1 top-1/2 -translate-y-1/2 border-none bg-transparent p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/add:opacity-100"
-          onClick={() => { setQuery(''); setActive(false) }}
+          onClick={dismiss}
         >
           <X size={12} />
         </button>
@@ -179,18 +200,7 @@ function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
           onSelect={selectAndClose}
           query={query}
           entries={entries}
-          onCreateAndOpen={onCreateAndOpenNote ? (title) => {
-            const fn = async () => {
-              const ok = await onCreateAndOpenNote(title)
-              if (ok) {
-                // Defer frontmatter update to next tick to avoid radix-ui
-                // infinite setState loop from overlapping render batches
-                setTimeout(() => onAdd(title), 0)
-                setQuery(''); setActive(false)
-              }
-            }
-            fn()
-          } : undefined}
+          onCreateAndOpen={onCreateAndOpenNote ? (title) => { handleCreateAndOpen(title) } : undefined}
         />
       )}
     </div>
@@ -257,31 +267,22 @@ function NoteTargetInput({ entries, value, onChange, onSubmit, onCancel, onCreat
   const search = useNoteSearch(entries, value, 8)
 
   const trimmed = value.trim()
-  const showCreate = !!onCreateAndOpenNote && trimmed.length > 0 && !hasExactTitleMatch(entries, trimmed)
-  const createIndex = search.results.length
-  const totalItems = search.results.length + (showCreate ? 1 : 0)
+  const { showCreate, createIndex, totalItems } = useCreateOption(entries, trimmed, search.results.length, !!onCreateAndOpenNote)
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      search.setSelectedIndex((i: number) => Math.min(i + 1, totalItems - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      search.setSelectedIndex((i: number) => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
-      if (showCreate && search.selectedIndex === createIndex) {
-        onSubmitWithCreate?.(trimmed)
-      } else if (search.selectedEntry) {
-        onChange(search.selectedEntry.title)
-        setFocused(false)
-      } else {
-        onSubmit?.()
-      }
-    } else if (e.key === 'Escape') {
-      onCancel?.()
+  const handleConfirm = useCallback(() => {
+    if (showCreate && search.selectedIndex === createIndex) {
+      onSubmitWithCreate?.(trimmed)
+    } else if (search.selectedEntry) {
+      onChange(search.selectedEntry.title)
+      setFocused(false)
+    } else {
+      onSubmit?.()
     }
-  }, [search, totalItems, showCreate, createIndex, trimmed, onChange, onSubmit, onCancel, onSubmitWithCreate])
+  }, [showCreate, search.selectedIndex, search.selectedEntry, createIndex, trimmed, onChange, onSubmit, onSubmitWithCreate])
+
+  const handleEscape = useCallback(() => { onCancel?.() }, [onCancel])
+
+  const handleKeyDown = useSearchKeyboard(search, totalItems, handleConfirm, handleEscape)
 
   const showDropdown = focused && trimmed.length > 0 && (search.results.length > 0 || showCreate)
 
@@ -320,30 +321,24 @@ function AddRelationshipForm({ entries, onAddProperty, onCreateAndOpenNote }: {
   const [showForm, setShowForm] = useState(false)
   const keyInputRef = useRef<HTMLInputElement>(null)
 
+  const resetForm = useCallback(() => {
+    setShowForm(false); setRelKey(''); setRelTarget('')
+  }, [])
+
   const submitForm = useCallback((targetOverride?: string) => {
     const key = relKey.trim()
     const target = (targetOverride ?? relTarget).trim()
     if (!key || !target) return
     onAddProperty(key, `[[${target}]]`)
-    setRelKey(''); setRelTarget(''); setShowForm(false)
-  }, [relKey, relTarget, onAddProperty])
+    resetForm()
+  }, [relKey, relTarget, onAddProperty, resetForm])
 
-  const handleCreateAndSubmit = useCallback(async (title: string) => {
-    if (!onCreateAndOpenNote) return
+  const addPropertyForKey = useCallback((title: string) => {
     const key = relKey.trim()
-    if (!key) return
-    const ok = await onCreateAndOpenNote(title)
-    if (ok) {
-      // Defer frontmatter update to next tick to avoid radix-ui
-      // infinite setState loop from overlapping render batches
-      setTimeout(() => onAddProperty(key, `[[${title}]]`), 0)
-      setRelKey(''); setRelTarget(''); setShowForm(false)
-    }
-  }, [onCreateAndOpenNote, relKey, onAddProperty])
+    if (key) onAddProperty(key, `[[${title}]]`)
+  }, [relKey, onAddProperty])
 
-  const resetForm = useCallback(() => {
-    setShowForm(false); setRelKey(''); setRelTarget('')
-  }, [])
+  const handleCreateAndSubmit = useCreateAndOpen(onCreateAndOpenNote, addPropertyForKey, resetForm)
 
   if (!showForm) {
     return (
@@ -393,6 +388,12 @@ function updateRefsForAddition(refs: string[], noteTitle: string): FrontmatterVa
   return updated.length === 1 ? updated[0] : updated
 }
 
+function DisabledLinkButton() {
+  return (
+    <button className="mt-2 w-full border border-border bg-transparent text-center text-muted-foreground" style={{ borderRadius: 6, padding: '6px 12px', fontSize: 12, opacity: 0.5, cursor: 'not-allowed' }} disabled>+ Link existing</button>
+  )
+}
+
 export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, onNavigate, onAddProperty, onUpdateProperty, onDeleteProperty, onCreateAndOpenNote }: {
   frontmatter: ParsedFrontmatter; entries: VaultEntry[]; typeEntryMap: Record<string, VaultEntry>
   onNavigate: (target: string) => void
@@ -433,7 +434,7 @@ export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, 
       ))}
       {onAddProperty
         ? <AddRelationshipForm entries={entries} onAddProperty={onAddProperty} onCreateAndOpenNote={onCreateAndOpenNote} />
-        : <button className="mt-2 w-full border border-border bg-transparent text-center text-muted-foreground" style={{ borderRadius: 6, padding: '6px 12px', fontSize: 12, opacity: 0.5, cursor: 'not-allowed' }} disabled>+ Link existing</button>
+        : <DisabledLinkButton />
       }
     </div>
   )

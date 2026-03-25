@@ -12,11 +12,11 @@ cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-line
 
 **CodeScene Code Health** — the pre-commit and pre-push hooks enforce:
 - Hotspot Code Health ≥ 9.5 (most-edited files)
-- Average Code Health ≥ 9.0 (project-wide, ALL files)
+- Average Code Health ≥ 9.31 (project-wide, ALL files)
 
 **Both gates block commit/push.** If either fails: extract hooks, split large components, reduce function complexity. Never add `// eslint-disable`, `#[allow(...)]`, or `as any` to pass the gate. Check both scores via MCP CodeScene after every significant change:
 - `hotspot_code_health.now` ≥ 9.5
-- `code_health.now` ≥ 9.0 (average — do NOT ignore this one)
+- `code_health.now` ≥ 9.31 (average — do NOT ignore this one)
 
 If Average Code Health is below 9.0, you must fix regressions before pushing — even in files you didn't directly modify, if your changes indirectly affected complexity.
 
