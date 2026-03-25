@@ -47,10 +47,11 @@ describe('useVaultSwitcher', () => {
     })
   })
 
-  it('starts with default vaults', () => {
+  it('starts with default vaults', async () => {
     const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
     expect(result.current.allVaults).toEqual(DEFAULT_VAULTS)
     expect(result.current.vaultPath).toBe(DEFAULT_VAULTS[0].path)
+    await waitFor(() => { expect(result.current.loaded).toBe(true) })
   })
 
   it('loads persisted vaults on mount', async () => {
