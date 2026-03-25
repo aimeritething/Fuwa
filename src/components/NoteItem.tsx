@@ -1,5 +1,5 @@
 import { useMemo, type ComponentType, type SVGAttributes } from 'react'
-import type { VaultEntry, NoteStatus } from '../types'
+import type { VaultEntry, NoteStatus, PinnedPropertyConfig } from '../types'
 import { cn } from '@/lib/utils'
 import {
   Wrench, Flask, Target, ArrowsClockwise,
@@ -9,6 +9,7 @@ import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { resolveIcon } from '../utils/iconRegistry'
 import { relativeDate, getDisplayDate } from '../utils/noteListHelpers'
 import { isEmoji } from '../utils/emoji'
+import { NoteListPinnedValues } from './NoteListPinnedValues'
 
 const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>> = {
   Project: Wrench,
@@ -25,6 +26,15 @@ const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>>
 export function getTypeIcon(isA: string | null, customIcon?: string | null): ComponentType<SVGAttributes<SVGSVGElement>> {
   if (customIcon) return resolveIcon(customIcon)
   return (isA && TYPE_ICON_MAP[isA]) || FileText
+}
+
+function defaultPinnedConfigs(entry: VaultEntry): PinnedPropertyConfig[] {
+  if (!entry.isA) return []
+  const pins: PinnedPropertyConfig[] = []
+  if (entry.status != null) pins.push({ key: 'Status', icon: 'circle-dot' })
+  if (entry.belongsTo.length > 0) pins.push({ key: 'Belongs to', icon: 'arrow-up-right' })
+  if (entry.relatedTo.length > 0) pins.push({ key: 'Related to', icon: 'arrows-left-right' })
+  return pins
 }
 
 const THIRTY_DAYS_SECS = 86400 * 30
@@ -105,6 +115,10 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
   const typeColor = getTypeColor(entry.isA ?? 'Note', te?.color)
   const typeLightColor = getTypeLightColor(entry.isA ?? 'Note', te?.color)
   const TypeIcon = useMemo(() => getTypeIcon(entry.isA, te?.icon), [entry.isA, te?.icon])
+  const pinnedConfigs = useMemo((): PinnedPropertyConfig[] => {
+    if (te?.pinnedProperties && te.pinnedProperties.length > 0) return te.pinnedProperties
+    return defaultPinnedConfigs(entry)
+  }, [te, entry])
 
   return (
     <div
@@ -135,6 +149,7 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
           {entry.snippet}
         </div>
       )}
+      {pinnedConfigs.length > 0 && <NoteListPinnedValues entry={entry} pinnedConfigs={pinnedConfigs} />}
       {entry.trashed && entry.trashedAt
         ? <TrashDateLine entry={entry} />
         : <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>

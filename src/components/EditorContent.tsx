@@ -1,7 +1,8 @@
 import type React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useMemo } from 'react'
 import type { VaultEntry, NoteStatus } from '../types'
 import type { useCreateBlockNote } from '@blocknote/react'
+import type { FrontmatterValue } from './Inspector'
 import { DiffView } from './DiffView'
 import { BreadcrumbBar } from './BreadcrumbBar'
 import { TitleField } from './TitleField'
@@ -13,6 +14,8 @@ import { RawEditorView } from './RawEditorView'
 import { countWords } from '../utils/wikilinks'
 import { SingleEditorView } from './SingleEditorView'
 import { isEmoji } from '../utils/emoji'
+import { parseFrontmatter } from '../utils/frontmatter'
+import { PinnedPropertiesBar } from './PinnedPropertiesBar'
 
 interface Tab {
   entry: VaultEntry
@@ -60,6 +63,7 @@ interface EditorContentProps {
   onKeepMine?: (path: string) => void
   /** Resolve conflict by keeping the remote version. */
   onKeepTheirs?: (path: string) => void
+  onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
 }
 
 function EditorLoadingSkeleton() {
@@ -156,6 +160,7 @@ export function EditorContent({
   onDeleteNote, rawLatestContentRef, onTitleChange,
   onSetNoteIcon, onRemoveNoteIcon,
   isConflicted, onKeepMine, onKeepTheirs,
+  onUpdateFrontmatter,
   ...breadcrumbProps
 }: EditorContentProps) {
   // Look up trashed/archived from the latest vault entries, not the tab snapshot,
@@ -174,6 +179,12 @@ export function EditorContent({
   const handleRemoveIcon = useCallback(() => {
     if (activeTab) onRemoveNoteIcon?.(activeTab.entry.path)
   }, [activeTab, onRemoveNoteIcon])
+
+  const frontmatter = useMemo(
+    () => parseFrontmatter(activeTab?.content ?? null),
+    [activeTab?.content],
+  )
+  const currentEntry = freshEntry ?? activeTab?.entry ?? null
 
   return (
     <div className="flex flex-1 flex-col min-w-0 min-h-0">
@@ -215,6 +226,15 @@ export function EditorContent({
               editable={!isTrashed}
               onTitleChange={(newTitle) => onTitleChange?.(activeTab.entry.path, newTitle)}
             />
+            {currentEntry && (
+              <PinnedPropertiesBar
+                entry={currentEntry}
+                entries={entries}
+                frontmatter={frontmatter}
+                onUpdateFrontmatter={onUpdateFrontmatter}
+                onNavigate={onNavigateWikilink}
+              />
+            )}
             <div className="title-section__separator" />
           </div>
           <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} editable={!isTrashed} />
