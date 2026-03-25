@@ -808,3 +808,44 @@ App startup (3s delay)
         → ready → "Restart to apply" + Restart Now
     → network error → fail silently
 ```
+
+### Telemetry (Opt-in)
+
+Anonymous crash reporting (Sentry) and usage analytics (PostHog), both **opt-in only**.
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant App
+    participant Settings
+    participant Sentry
+    participant PostHog
+
+    Note over App: First launch or upgrade
+    App->>User: TelemetryConsentDialog
+    alt Accept
+        User->>Settings: telemetry_consent=true, anonymous_id=UUID
+        Settings->>Sentry: init(DSN, anonymous_id)
+        Settings->>PostHog: init(key, anonymous_id)
+    else Decline
+        User->>Settings: telemetry_consent=false
+        Note over Sentry,PostHog: Zero network requests
+    end
+
+    Note over App: Settings panel toggle change
+    User->>Settings: crash_reporting_enabled=false
+    Settings->>Sentry: teardown()
+    Settings->>App: reinit_telemetry (Tauri cmd)
+```
+
+**Privacy guarantees:**
+- No vault content, note titles, or file paths in payloads (regex scrubber in `beforeSend`)
+- `anonymous_id` is a locally-generated UUID, never tied to identity
+- `send_default_pii: false` on both SDKs
+- PostHog: `autocapture: false`, `persistence: 'memory'`, no cookies
+
+**Architecture:**
+- **Rust:** `sentry` crate initialized in `lib.rs::setup()` via `telemetry::init_sentry_from_settings()`
+- **JS:** `@sentry/browser` + `posthog-js` initialized lazily by `useTelemetry` hook
+- **Settings:** `telemetry_consent`, `crash_reporting_enabled`, `analytics_enabled`, `anonymous_id` in `Settings` struct
+- **Consent:** `TelemetryConsentDialog` shown when `telemetry_consent === null`

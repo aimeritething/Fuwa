@@ -270,6 +270,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   register_mcp_tools: () => 'registered',
   check_mcp_status: () => 'installed',
   repair_vault: (): string => 'Vault repaired',
+  reinit_telemetry: (): null => null,
 }
 
 export function addMockEntry(_entry: VaultEntry, content: string): void {
