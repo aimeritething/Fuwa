@@ -323,15 +323,16 @@ fn pod_to_json(pod: gray_matter::Pod) -> serde_json::Value {
     }
 }
 
-/// Extract frontmatter, relationships, custom properties, and pinned-property config.
-pub(crate) fn extract_fm_and_rels(
-    data: Option<gray_matter::Pod>,
-) -> (
+/// Return type for `extract_fm_and_rels`: (frontmatter, relationships, properties, pinned).
+type FrontmatterBundle = (
     Frontmatter,
     HashMap<String, Vec<String>>,
     HashMap<String, serde_json::Value>,
     Vec<PinnedPropertyConfig>,
-) {
+);
+
+/// Extract frontmatter, relationships, custom properties, and pinned-property config.
+pub(crate) fn extract_fm_and_rels(data: Option<gray_matter::Pod>) -> FrontmatterBundle {
     let hash = match data {
         Some(gray_matter::Pod::Hash(map)) => map,
         _ => {
