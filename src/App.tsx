@@ -15,6 +15,7 @@ import { SettingsPanel } from './components/SettingsPanel'
 import { GitHubVaultModal } from './components/GitHubVaultModal'
 import { WelcomeScreen } from './components/WelcomeScreen'
 import { TelemetryConsentDialog } from './components/TelemetryConsentDialog'
+import { useTelemetry } from './hooks/useTelemetry'
 import { useMcpStatus } from './hooks/useMcpStatus'
 import { useVaultLoader } from './hooks/useVaultLoader'
 import { useSettings } from './hooks/useSettings'
@@ -95,6 +96,7 @@ function App() {
   const vault = useVaultLoader(resolvedPath)
   useVaultConfig(resolvedPath)
   const { settings, loaded: settingsLoaded, saveSettings } = useSettings()
+  useTelemetry(settings, settingsLoaded)
   const flatVaultMigration = useFlatVaultMigration(resolvedPath, vault.entries.length > 0, vault.reloadVault)
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
 

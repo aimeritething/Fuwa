@@ -491,6 +491,11 @@ pub fn save_settings(settings: Settings) -> Result<(), String> {
 }
 
 #[tauri::command]
+pub fn reinit_telemetry() {
+    crate::telemetry::reinit_sentry();
+}
+
+#[tauri::command]
 pub fn load_vault_list() -> Result<VaultList, String> {
     vault_list::load_vault_list()
 }

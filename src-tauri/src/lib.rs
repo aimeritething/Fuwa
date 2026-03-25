@@ -8,6 +8,7 @@ pub mod mcp;
 pub mod menu;
 pub mod search;
 pub mod settings;
+pub mod telemetry;
 pub mod vault;
 pub mod vault_list;
 
@@ -92,6 +93,9 @@ pub fn run() {
                 menu::setup_menu(app)?;
             }
 
+            if telemetry::init_sentry_from_settings() {
+                log::info!("Sentry initialized (crash reporting enabled)");
+            }
             run_startup_tasks();
             spawn_ws_bridge(app);
             Ok(())
@@ -153,7 +157,8 @@ pub fn run() {
             commands::get_default_vault_path,
             commands::register_mcp_tools,
             commands::check_mcp_status,
-            commands::repair_vault
+            commands::repair_vault,
+            commands::reinit_telemetry
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
