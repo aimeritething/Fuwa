@@ -14,8 +14,8 @@ import { RawEditorView } from './RawEditorView'
 import { countWords } from '../utils/wikilinks'
 import { SingleEditorView } from './SingleEditorView'
 import { isEmoji } from '../utils/emoji'
-import { PinnedPropertiesBar } from './PinnedPropertiesBar'
 import { parseFrontmatter } from '../utils/frontmatter'
+import { PinnedPropertiesBar } from './PinnedPropertiesBar'
 
 interface Tab {
   entry: VaultEntry
@@ -63,6 +63,7 @@ interface EditorContentProps {
   onKeepMine?: (path: string) => void
   /** Resolve conflict by keeping the remote version. */
   onKeepTheirs?: (path: string) => void
+  /** Update a frontmatter property (for inline pinned-property editing). */
   onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
 }
 

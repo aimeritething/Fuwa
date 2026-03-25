@@ -47,6 +47,7 @@ export function frontmatterToEntryPatch(
     const relPatch: RelationshipPatch = { [key]: null }
     return { patch: ENTRY_DELETE_MAP[k] ?? {}, relationshipPatch: relPatch }
   }
+
   // Handle _pinned_properties for Type entries
   if (k === '_pinned_properties' && Array.isArray(value)) {
     const pinned = parsePinnedConfig(value.map(String))

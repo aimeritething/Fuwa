@@ -68,6 +68,29 @@ function formatLabel(key: string): string {
   return key.replace(/_/g, ' ')
 }
 
+/** Resolve a single pinned config to its display representation. */
+function resolveOne(
+  entry: VaultEntry, frontmatter: ParsedFrontmatter, cfg: PinnedPropertyConfig,
+): ResolvedPinnedProperty {
+  const { value, isRelationship } = resolveValue(entry, frontmatter, cfg.key)
+  return { key: cfg.key, icon: resolvePinIcon(cfg.key, cfg.icon), label: formatLabel(cfg.key), value, isRelationship }
+}
+
+/** Find the Type entry for a note's isA field. */
+function findTypeEntry(entries: VaultEntry[], isA: string | null): VaultEntry | null {
+  if (!isA) return null
+  return entries.find((e) => e.isA === 'Type' && e.title === isA) ?? null
+}
+
+/** Determine which properties are pinned for a given type. */
+function resolvePinnedConfigs(
+  isA: string | null, typeEntry: VaultEntry | null, entries: VaultEntry[],
+): PinnedPropertyConfig[] {
+  if (!isA) return []
+  if (typeEntry && typeEntry.pinnedProperties.length > 0) return typeEntry.pinnedProperties
+  return computeDefaults(entries, isA)
+}
+
 export interface UsePinnedPropertiesResult {
   pinnedConfigs: PinnedPropertyConfig[]
   resolved: ResolvedPinnedProperty[]
@@ -78,53 +101,31 @@ export interface UsePinnedPropertiesResult {
   isPinned: (key: string) => boolean
 }
 
+/** Hook to read and mutate pinned properties for a note based on its type. */
 export function usePinnedProperties({
-  entry,
-  entries,
-  frontmatter,
-  onUpdateTypeFrontmatter,
+  entry, entries, frontmatter, onUpdateTypeFrontmatter,
 }: {
   entry: VaultEntry | null
   entries: VaultEntry[]
   frontmatter: ParsedFrontmatter
   onUpdateTypeFrontmatter?: (typePath: string, key: string, value: FrontmatterValue) => Promise<void>
 }): UsePinnedPropertiesResult {
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- type lookup intentionally memoized
-  const typeEntry = useMemo(() => {
-    if (!entry?.isA) return null
-    return entries.find((e) => e.isA === 'Type' && e.title === entry.isA) ?? null
-  }, [entry?.isA, entries])
-
-  // eslint-disable-next-line react-hooks/preserve-manual-memoization -- pin config intentionally memoized
-  const pinnedConfigs = useMemo((): PinnedPropertyConfig[] => {
-    if (!entry?.isA) return []
-    if (typeEntry && typeEntry.pinnedProperties.length > 0) return typeEntry.pinnedProperties
-    return computeDefaults(entries, entry.isA)
-  }, [entry?.isA, typeEntry, entries])
-
-  const resolved = useMemo((): ResolvedPinnedProperty[] => {
-    if (!entry) return []
-    return pinnedConfigs.map((cfg) => {
-      const { value, isRelationship } = resolveValue(entry, frontmatter, cfg.key)
-      return {
-        key: cfg.key,
-        icon: resolvePinIcon(cfg.key, cfg.icon),
-        label: formatLabel(cfg.key),
-        value,
-        isRelationship,
-      }
-    })
-  }, [entry, pinnedConfigs, frontmatter])
-
+  const typeEntry = useMemo(() => findTypeEntry(entries, entry?.isA ?? null), [entry?.isA, entries])
+  const pinnedConfigs = useMemo(
+    () => resolvePinnedConfigs(entry?.isA ?? null, typeEntry, entries),
+    [entry?.isA, typeEntry, entries],
+  )
+  const resolved = useMemo(
+    () => (entry ? pinnedConfigs.map((cfg) => resolveOne(entry, frontmatter, cfg)) : []),
+    [entry, pinnedConfigs, frontmatter],
+  )
   const savePins = useCallback(
     (newConfigs: PinnedPropertyConfig[]) => {
       if (!typeEntry || !onUpdateTypeFrontmatter) return
-      const serialised = serialisePinnedConfig(newConfigs)
-      onUpdateTypeFrontmatter(typeEntry.path, '_pinned_properties', serialised)
+      onUpdateTypeFrontmatter(typeEntry.path, '_pinned_properties', serialisePinnedConfig(newConfigs))
     },
     [typeEntry, onUpdateTypeFrontmatter],
   )
-
   const pinProperty = useCallback(
     (key: string, icon?: string) => {
       if (pinnedConfigs.some((c) => c.key === key)) return
@@ -132,26 +133,16 @@ export function usePinnedProperties({
     },
     [pinnedConfigs, savePins],
   )
-
   const unpinProperty = useCallback(
     (key: string) => savePins(pinnedConfigs.filter((c) => c.key !== key)),
     [pinnedConfigs, savePins],
   )
-
   const updatePinIcon = useCallback(
     (key: string, icon: string) => savePins(pinnedConfigs.map((c) => (c.key === key ? { ...c, icon } : c))),
     [pinnedConfigs, savePins],
   )
-
-  const reorderPins = useCallback(
-    (configs: PinnedPropertyConfig[]) => savePins(configs),
-    [savePins],
-  )
-
-  const isPinned = useCallback(
-    (key: string) => pinnedConfigs.some((c) => c.key === key),
-    [pinnedConfigs],
-  )
+  const reorderPins = useCallback((configs: PinnedPropertyConfig[]) => savePins(configs), [savePins])
+  const isPinned = useCallback((key: string) => pinnedConfigs.some((c) => c.key === key), [pinnedConfigs])
 
   return { pinnedConfigs, resolved, pinProperty, unpinProperty, updatePinIcon, reorderPins, isPinned }
 }

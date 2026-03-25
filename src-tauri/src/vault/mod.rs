@@ -43,7 +43,8 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
 
     let matter = Matter::<YAML>::new();
     let parsed = matter.parse(&content);
-    let (frontmatter, mut relationships, properties) = extract_fm_and_rels(parsed.data);
+    let (frontmatter, mut relationships, properties, pinned_properties) =
+        extract_fm_and_rels(parsed.data);
 
     let title = extract_title(frontmatter.title.as_deref(), &content, &filename);
     let snippet = extract_snippet(&content);
@@ -103,6 +104,7 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
         word_count,
         outgoing_links,
         properties,
+        pinned_properties,
     })
 }
 
