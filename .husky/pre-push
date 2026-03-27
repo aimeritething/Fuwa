@@ -111,11 +111,11 @@ else
 fi
 
 # ── 5. CodeScene code health gate ────────────────────────────────────────
-# Blocks push if Hotspot < 9.5 OR Average < 9.0.
+# Blocks push if Hotspot < 9.5 OR Average < 9.33.
 # Remote scores reflect state after last push — this catches regressions
 # introduced in a previous push that weren't caught yet.
 echo ""
-echo "🏥 [5/5] CodeScene code health (Hotspot ≥9.5 + Average ≥9.0)..."
+echo "🏥 [5/5] CodeScene code health (Hotspot ≥9.5 + Average ≥9.33)..."
 if [ -z "$CODESCENE_PAT" ] || [ -z "$CODESCENE_PROJECT_ID" ]; then
   echo "  ⚠️  CODESCENE_PAT or CODESCENE_PROJECT_ID not set — skipping"
 else
@@ -129,7 +129,7 @@ else
     echo "  ⚠️  Could not fetch remote scores — skipping (CI will enforce)"
   else
     echo "  Remote Hotspot Code Health: $HOTSPOT_SCORE (threshold: 9.5)"
-    echo "  Remote Average Code Health: $AVERAGE_SCORE (threshold: 8.9)"
+    echo "  Remote Average Code Health: $AVERAGE_SCORE (threshold: 9.33)"
     python3 -c "
 import sys
 hotspot = float('$HOTSPOT_SCORE')
@@ -140,11 +140,11 @@ if hotspot < 9.5:
     failed = True
 else:
     print(f'OK: Hotspot {hotspot:.2f} >= 9.5')
-if average < 9.31:
-    print(f'FAIL: Average Code Health {average:.2f} < 9.31 — regressions detected, fix before pushing')
+if average < 9.33:
+    print(f'FAIL: Average Code Health {average:.2f} < 9.33 — regressions detected, fix before pushing')
     failed = True
 else:
-    print(f'OK: Average {average:.2f} >= 9.31')
+    print(f'OK: Average {average:.2f} >= 9.33')
 if failed:
     sys.exit(1)
 " || exit 1

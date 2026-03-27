@@ -91,7 +91,7 @@ jobs:
           CODESCENE_PROJECT_ID: ${{ secrets.CODESCENE_PROJECT_ID }}
         run: |
           HOTSPOT_THRESHOLD=9.5
-          AVERAGE_THRESHOLD=9.31
+          AVERAGE_THRESHOLD=9.33
           API_RESPONSE=$(curl -sf \
             -H "Authorization: Bearer $CODESCENE_PAT" \
             -H "Accept: application/json" \

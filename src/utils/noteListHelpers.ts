@@ -43,12 +43,16 @@ export function formatSubtitle(entry: VaultEntry): string {
   return parts.join(' \u00b7 ')
 }
 
+function wasCreatedBeforeLastModification(entry: VaultEntry): boolean {
+  return !!(entry.createdAt && entry.modifiedAt && entry.createdAt !== entry.modifiedAt)
+}
+
 export function formatSearchSubtitle(entry: VaultEntry): string {
   const parts: string[] = []
   const modified = entry.modifiedAt ?? entry.createdAt
   if (modified) parts.push(relativeDate(modified))
-  if (entry.createdAt && entry.modifiedAt && entry.createdAt !== entry.modifiedAt) {
-    parts.push(`Created ${relativeDate(entry.createdAt)}`)
+  if (wasCreatedBeforeLastModification(entry)) {
+    parts.push(`Created ${relativeDate(entry.createdAt!)}`)
   }
   if (entry.wordCount > 0) {
     parts.push(`${entry.wordCount.toLocaleString()} words`)
@@ -391,20 +395,26 @@ function hasValidRef(refs: string[], validTargets: Set<string>): boolean {
 export function isInboxEntry(entry: VaultEntry, validTargets: Set<string>): boolean {
   if (entry.trashed || entry.archived) return false
   if (entry.isA === 'Type') return false
+  return !hasAnyValidLinks(entry, validTargets)
+}
 
-  // Check body outgoing links
-  if (entry.outgoingLinks.some((link) => validTargets.has(link) || validTargets.has(link.split('/').pop() ?? ''))) return false
+function hasAnyValidLinks(entry: VaultEntry, validTargets: Set<string>): boolean {
+  return hasValidBodyLinks(entry.outgoingLinks, validTargets) || hasValidFrontmatterLinks(entry, validTargets)
+}
 
-  // Check frontmatter relationship refs
-  if (entry.belongsTo?.length && hasValidRef(entry.belongsTo, validTargets)) return false
-  if (entry.relatedTo?.length && hasValidRef(entry.relatedTo, validTargets)) return false
+function hasValidBodyLinks(outgoingLinks: string[], validTargets: Set<string>): boolean {
+  return outgoingLinks.some((link) => validTargets.has(link) || validTargets.has(link.split('/').pop() ?? ''))
+}
+
+function hasValidFrontmatterLinks(entry: VaultEntry, validTargets: Set<string>): boolean {
+  if (entry.belongsTo?.length && hasValidRef(entry.belongsTo, validTargets)) return true
+  if (entry.relatedTo?.length && hasValidRef(entry.relatedTo, validTargets)) return true
+
   if (entry.relationships) {
-    for (const refs of Object.values(entry.relationships)) {
-      if (hasValidRef(refs, validTargets)) return false
-    }
+    return Object.values(entry.relationships).some((refs) => hasValidRef(refs, validTargets))
   }
 
-  return true
+  return false
 }
 
 const INBOX_PERIOD_DAYS: Record<InboxPeriod, number> = {

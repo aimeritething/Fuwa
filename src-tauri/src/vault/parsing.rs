@@ -73,19 +73,26 @@ fn extract_subheading_text(line: &str) -> Option<&str> {
 /// Strip leading list markers (*, -, +, 1.) from a line.
 fn strip_list_marker(line: &str) -> &str {
     let t = line.trim_start();
-    // Unordered: "* ", "- ", "+ "
-    for prefix in &["* ", "- ", "+ "] {
-        if let Some(rest) = t.strip_prefix(prefix) {
-            return rest;
-        }
+    strip_unordered_marker(t)
+        .or_else(|| strip_ordered_marker(t))
+        .unwrap_or(t)
+}
+
+/// Strip unordered list markers: "* ", "- ", "+ "
+fn strip_unordered_marker(s: &str) -> Option<&str> {
+    ["* ", "- ", "+ "]
+        .iter()
+        .find_map(|prefix| s.strip_prefix(prefix))
+}
+
+/// Strip ordered list markers: "1. ", "2. ", etc.
+fn strip_ordered_marker(s: &str) -> Option<&str> {
+    let dot_pos = s.find(". ")?;
+    if dot_pos <= 3 && s[..dot_pos].chars().all(|c| c.is_ascii_digit()) {
+        Some(&s[dot_pos + 2..])
+    } else {
+        None
     }
-    // Ordered: "1. ", "2. ", etc.
-    if let Some(dot_pos) = t.find(". ") {
-        if dot_pos <= 3 && t[..dot_pos].chars().all(|c| c.is_ascii_digit()) {
-            return &t[dot_pos + 2..];
-        }
-    }
-    t
 }
 
 /// Truncate a string to `max_len` bytes at a valid UTF-8 boundary, appending "...".
@@ -188,26 +195,46 @@ fn strip_markdown_chars(s: &str) -> String {
     while let Some(ch) = chars.next() {
         match ch {
             '[' if chars.peek() == Some(&'[') => {
-                chars.next(); // consume second '['
-                let inner = collect_wikilink_inner(&mut chars);
-                match inner.find('|') {
-                    Some(idx) => result.push_str(&inner[idx + 1..]),
-                    None => result.push_str(&inner),
-                }
+                process_wikilink(&mut chars, &mut result);
             }
             '[' => {
-                let inner = collect_until(&mut chars, ']');
-                if chars.peek() == Some(&'(') {
-                    chars.next();
-                    skip_until(&mut chars, ')');
-                }
-                result.push_str(&inner);
+                process_markdown_link(&mut chars, &mut result);
             }
             c if is_markdown_formatting(c) => {}
             _ => result.push(ch),
         }
     }
     result
+}
+
+/// Process a wikilink `[[...]]` or `[[...|display]]`, extracting the display text.
+fn process_wikilink(
+    chars: &mut std::iter::Peekable<impl Iterator<Item = char>>,
+    result: &mut String,
+) {
+    chars.next(); // consume second '['
+    let inner = collect_wikilink_inner(chars);
+    let display_text = extract_wikilink_display(&inner);
+    result.push_str(display_text);
+}
+
+/// Extract display text from wikilink inner content.
+/// Returns the part after '|' if present, otherwise the whole inner text.
+fn extract_wikilink_display(inner: &str) -> &str {
+    inner.find('|').map_or(inner, |idx| &inner[idx + 1..])
+}
+
+/// Process a markdown link `[text](url)`, extracting only the link text.
+fn process_markdown_link(
+    chars: &mut std::iter::Peekable<impl Iterator<Item = char>>,
+    result: &mut String,
+) {
+    let inner = collect_until(chars, ']');
+    if chars.peek() == Some(&'(') {
+        chars.next();
+        skip_until(chars, ')');
+    }
+    result.push_str(&inner);
 }
 
 /// Collect chars inside a wikilink until `]]`, consuming both closing brackets.
