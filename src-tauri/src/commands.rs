@@ -1,9 +1,9 @@
 use std::borrow::Cow;
 
 use crate::ai_chat::{AiChatRequest, AiChatResponse};
-use crate::claude_cli::{
-    AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus, ClaudeStreamEvent,
-};
+use crate::claude_cli::{AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus};
+#[cfg(desktop)]
+use crate::claude_cli::ClaudeStreamEvent;
 use crate::frontmatter::FrontmatterValue;
 use crate::git::{
     GitCommit, GitPullResult, GitPushResult, GitRemoteStatus, LastCommitInfo, ModifiedFile,
@@ -14,7 +14,9 @@ use crate::search::SearchResponse;
 use crate::settings::Settings;
 use crate::vault::{RenameResult, VaultEntry};
 use crate::vault_list::VaultList;
-use crate::{frontmatter, git, github, menu, search, vault, vault_list};
+#[cfg(desktop)]
+use crate::menu;
+use crate::{frontmatter, git, search, vault, vault_list};
 
 /// Expand a leading `~` or `~/` in a path string to the user's home directory.
 /// Returns the original string unchanged if it doesn't start with `~` or if the
@@ -222,6 +224,7 @@ pub fn batch_trash_notes(paths: Vec<String>) -> Result<usize, String> {
 
 // ── Git commands ────────────────────────────────────────────────────────────
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn get_file_history(vault_path: String, path: String) -> Result<Vec<GitCommit>, String> {
     let vault_path = expand_tilde(&vault_path);
@@ -229,12 +232,14 @@ pub fn get_file_history(vault_path: String, path: String) -> Result<Vec<GitCommi
     git::get_file_history(&vault_path, &path)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn get_modified_files(vault_path: String) -> Result<Vec<ModifiedFile>, String> {
     let vault_path = expand_tilde(&vault_path);
     git::get_modified_files(&vault_path)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn get_file_diff(vault_path: String, path: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
@@ -242,6 +247,7 @@ pub fn get_file_diff(vault_path: String, path: String) -> Result<String, String>
     git::get_file_diff(&vault_path, &path)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn get_file_diff_at_commit(
     vault_path: String,
@@ -253,6 +259,7 @@ pub fn get_file_diff_at_commit(
     git::get_file_diff_at_commit(&vault_path, &path, &commit_hash)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn get_vault_pulse(
     vault_path: String,
@@ -265,18 +272,21 @@ pub fn get_vault_pulse(
     git::get_vault_pulse(&vault_path, limit, skip)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn git_commit(vault_path: String, message: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
     git::git_commit(&vault_path, &message)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn get_last_commit_info(vault_path: String) -> Result<Option<LastCommitInfo>, String> {
     let vault_path = expand_tilde(&vault_path);
     git::get_last_commit_info(&vault_path)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn git_pull(vault_path: String) -> Result<GitPullResult, String> {
     let vault_path = expand_tilde(&vault_path).into_owned();
@@ -285,18 +295,21 @@ pub async fn git_pull(vault_path: String) -> Result<GitPullResult, String> {
         .map_err(|e| format!("Task panicked: {e}"))?
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn get_conflict_files(vault_path: String) -> Result<Vec<String>, String> {
     let vault_path = expand_tilde(&vault_path);
     git::get_conflict_files(&vault_path)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn get_conflict_mode(vault_path: String) -> String {
     let vault_path = expand_tilde(&vault_path);
     git::get_conflict_mode(&vault_path)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn git_resolve_conflict(
     vault_path: String,
@@ -307,12 +320,14 @@ pub fn git_resolve_conflict(
     git::git_resolve_conflict(&vault_path, &file, &strategy)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn git_commit_conflict_resolution(vault_path: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
     git::git_commit_conflict_resolution(&vault_path)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn git_push(vault_path: String) -> Result<GitPushResult, String> {
     let vault_path = expand_tilde(&vault_path).into_owned();
@@ -321,6 +336,7 @@ pub async fn git_push(vault_path: String) -> Result<GitPushResult, String> {
         .map_err(|e| format!("Task panicked: {e}"))?
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn git_remote_status(vault_path: String) -> Result<GitRemoteStatus, String> {
     let vault_path = expand_tilde(&vault_path).into_owned();
@@ -329,41 +345,192 @@ pub async fn git_remote_status(vault_path: String) -> Result<GitRemoteStatus, St
         .map_err(|e| format!("Task panicked: {e}"))?
 }
 
-// ── GitHub commands ─────────────────────────────────────────────────────────
+// ── Git commands (mobile stubs) ─────────────────────────────────────────────
 
+#[cfg(mobile)]
 #[tauri::command]
-pub async fn github_list_repos(token: String) -> Result<Vec<GithubRepo>, String> {
-    github::github_list_repos(&token).await
+pub fn get_file_history(_vault_path: String, _path: String) -> Result<Vec<GitCommit>, String> {
+    Err("Git history is not available on mobile".into())
 }
 
+#[cfg(mobile)]
+#[tauri::command]
+pub fn get_modified_files(_vault_path: String) -> Result<Vec<ModifiedFile>, String> {
+    Ok(vec![])
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn get_file_diff(_vault_path: String, _path: String) -> Result<String, String> {
+    Err("Git diff is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn get_file_diff_at_commit(
+    _vault_path: String,
+    _path: String,
+    _commit_hash: String,
+) -> Result<String, String> {
+    Err("Git diff is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn get_vault_pulse(
+    _vault_path: String,
+    _limit: Option<usize>,
+    _skip: Option<usize>,
+) -> Result<Vec<PulseCommit>, String> {
+    Ok(vec![])
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn git_commit(_vault_path: String, _message: String) -> Result<String, String> {
+    Err("Git commit is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn get_last_commit_info(_vault_path: String) -> Result<Option<LastCommitInfo>, String> {
+    Ok(None)
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn git_pull(_vault_path: String) -> Result<GitPullResult, String> {
+    Err("Git pull is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn get_conflict_files(_vault_path: String) -> Result<Vec<String>, String> {
+    Ok(vec![])
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn get_conflict_mode(_vault_path: String) -> String {
+    "none".to_string()
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn git_resolve_conflict(
+    _vault_path: String,
+    _file: String,
+    _strategy: String,
+) -> Result<(), String> {
+    Err("Git conflict resolution is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn git_commit_conflict_resolution(_vault_path: String) -> Result<String, String> {
+    Err("Git conflict resolution is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn git_push(_vault_path: String) -> Result<GitPushResult, String> {
+    Err("Git push is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn git_remote_status(_vault_path: String) -> Result<GitRemoteStatus, String> {
+    Ok(GitRemoteStatus {
+        branch: String::new(),
+        has_remote: false,
+        ahead: 0,
+        behind: 0,
+    })
+}
+
+// ── GitHub commands ─────────────────────────────────────────────────────────
+
+#[cfg(desktop)]
+#[tauri::command]
+pub async fn github_list_repos(token: String) -> Result<Vec<GithubRepo>, String> {
+    crate::github::github_list_repos(&token).await
+}
+
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn github_create_repo(
     token: String,
     name: String,
     private: bool,
 ) -> Result<GithubRepo, String> {
-    github::github_create_repo(&token, &name, private).await
+    crate::github::github_create_repo(&token, &name, private).await
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn clone_repo(url: String, token: String, local_path: String) -> Result<String, String> {
     let local_path = expand_tilde(&local_path);
-    github::clone_repo(&url, &token, &local_path)
+    crate::github::clone_repo(&url, &token, &local_path)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn github_device_flow_start() -> Result<DeviceFlowStart, String> {
-    github::github_device_flow_start().await
+    crate::github::github_device_flow_start().await
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn github_device_flow_poll(device_code: String) -> Result<DeviceFlowPollResult, String> {
-    github::github_device_flow_poll(&device_code).await
+    crate::github::github_device_flow_poll(&device_code).await
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn github_get_user(token: String) -> Result<GitHubUser, String> {
-    github::github_get_user(&token).await
+    crate::github::github_get_user(&token).await
+}
+
+// ── GitHub commands (mobile stubs) ──────────────────────────────────────────
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn github_list_repos(_token: String) -> Result<Vec<GithubRepo>, String> {
+    Err("GitHub integration is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn github_create_repo(
+    _token: String,
+    _name: String,
+    _private: bool,
+) -> Result<GithubRepo, String> {
+    Err("GitHub integration is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn clone_repo(_url: String, _token: String, _local_path: String) -> Result<String, String> {
+    Err("Git clone is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn github_device_flow_start() -> Result<DeviceFlowStart, String> {
+    Err("GitHub integration is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn github_device_flow_poll(_device_code: String) -> Result<DeviceFlowPollResult, String> {
+    Err("GitHub integration is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn github_get_user(_token: String) -> Result<GitHubUser, String> {
+    Err("GitHub integration is not available on mobile".into())
 }
 
 // ── AI / Claude commands ────────────────────────────────────────────────────
@@ -373,11 +540,13 @@ pub async fn ai_chat(request: AiChatRequest) -> Result<AiChatResponse, String> {
     crate::ai_chat::send_chat(request).await
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn check_claude_cli() -> ClaudeCliStatus {
     crate::claude_cli::check_cli()
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn stream_claude_chat(
     app_handle: tauri::AppHandle,
@@ -393,6 +562,7 @@ pub async fn stream_claude_chat(
     .map_err(|e| format!("Task failed: {e}"))?
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn stream_claude_agent(
     app_handle: tauri::AppHandle,
@@ -406,6 +576,35 @@ pub async fn stream_claude_agent(
     })
     .await
     .map_err(|e| format!("Task failed: {e}"))?
+}
+
+// ── Claude CLI (mobile stubs) ───────────────────────────────────────────────
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn check_claude_cli() -> ClaudeCliStatus {
+    ClaudeCliStatus {
+        installed: false,
+        version: None,
+    }
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn stream_claude_chat(
+    _app_handle: tauri::AppHandle,
+    _request: ChatStreamRequest,
+) -> Result<String, String> {
+    Err("Claude CLI is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn stream_claude_agent(
+    _app_handle: tauri::AppHandle,
+    _request: AgentStreamRequest,
+) -> Result<String, String> {
+    Err("Claude CLI is not available on mobile".into())
 }
 
 // ── Search commands ─────────────────────────────────────────────────────────
@@ -426,6 +625,7 @@ pub async fn search_vault(
 
 // ── MCP commands ────────────────────────────────────────────────────────────
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn register_mcp_tools(vault_path: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path).into_owned();
@@ -434,11 +634,24 @@ pub async fn register_mcp_tools(vault_path: String) -> Result<String, String> {
         .map_err(|e| format!("Registration task failed: {e}"))?
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub async fn check_mcp_status() -> Result<crate::mcp::McpStatus, String> {
     tokio::task::spawn_blocking(crate::mcp::check_mcp_status)
         .await
         .map_err(|e| format!("MCP status check failed: {e}"))
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn register_mcp_tools(_vault_path: String) -> Result<String, String> {
+    Err("MCP is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn check_mcp_status() -> Result<crate::mcp::McpStatus, String> {
+    Ok(crate::mcp::McpStatus::NotInstalled)
 }
 
 #[tauri::command]
@@ -463,6 +676,7 @@ pub fn get_build_number(app_handle: tauri::AppHandle) -> String {
     parse_build_label(&version)
 }
 
+#[cfg(desktop)]
 #[tauri::command]
 pub fn update_menu_state(
     app_handle: tauri::AppHandle,
@@ -477,6 +691,17 @@ pub fn update_menu_state(
     if let Some(v) = has_conflicts {
         menu::set_git_conflict_items_enabled(&app_handle, v);
     }
+    Ok(())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn update_menu_state(
+    _app_handle: tauri::AppHandle,
+    _has_active_note: bool,
+    _has_modified_files: Option<bool>,
+    _has_conflicts: Option<bool>,
+) -> Result<(), String> {
     Ok(())
 }
 

@@ -898,3 +898,36 @@ const enabled = useFeatureFlag('example_flag') // boolean
 - `localStorage` overrides allow dev/QA testing without rebuilding
 - Type-safe flag names via TypeScript union type
 - API surface is compatible with future migration to remote flags
+
+## Platform Support — iOS / iPadOS (Prototype)
+
+Tauri v2 supports iOS as a beta target. The Rust backend cross-compiles to `aarch64-apple-ios-sim` (simulator) and `aarch64-apple-ios` (device) with zero code changes to vault/frontmatter/search logic.
+
+**Conditional compilation strategy:**
+
+```
+#[cfg(desktop)]  — git CLI, menu bar, MCP server, Claude CLI, updater
+#[cfg(mobile)]   — stub commands returning graceful errors or empty results
+```
+
+Desktop-only modules gated at the crate level:
+- `pub mod menu` — macOS menu bar (entire module)
+
+Desktop-only features gated at the function level in `commands.rs`:
+- Git operations (commit, pull, push, status, history, diff, conflicts)
+- GitHub operations (clone, list repos, device flow auth)
+- Claude CLI streaming (check, chat, agent)
+- MCP registration and status
+- Menu state updates
+
+Features that work on both platforms without changes:
+- Vault scan, note read/write, rename, delete, trash, archive
+- Frontmatter read/write/delete
+- AI chat (Anthropic API via `reqwest`)
+- Search (pure Rust in-memory)
+- Settings persistence
+- Vault list management
+
+**Capabilities:** `src-tauri/capabilities/default.json` targets desktop; `mobile.json` targets iOS/Android with a minimal permission set.
+
+**Detailed feasibility report:** `docs/IPAD-PROTOTYPE.md`

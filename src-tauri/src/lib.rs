@@ -5,6 +5,7 @@ pub mod frontmatter;
 pub mod git;
 pub mod github;
 pub mod mcp;
+#[cfg(desktop)]
 pub mod menu;
 pub mod search;
 pub mod settings;
@@ -12,11 +13,15 @@ pub mod telemetry;
 pub mod vault;
 pub mod vault_list;
 
+#[cfg(desktop)]
 use std::process::Child;
+#[cfg(desktop)]
 use std::sync::Mutex;
 
+#[cfg(desktop)]
 struct WsBridgeChild(Mutex<Option<Child>>);
 
+#[cfg(desktop)]
 fn log_startup_result(label: &str, result: Result<usize, String>) {
     match result {
         Ok(n) if n > 0 => log::info!("{}: {} files", label, n),
@@ -26,6 +31,7 @@ fn log_startup_result(label: &str, result: Result<usize, String>) {
 }
 
 /// Run startup housekeeping on the default vault (purge old trash, migrate legacy frontmatter).
+#[cfg(desktop)]
 fn run_startup_tasks() {
     let vault_path = dirs::home_dir()
         .map(|h| h.join("Laputa"))
@@ -54,6 +60,7 @@ fn run_startup_tasks() {
     }
 }
 
+#[cfg(desktop)]
 fn spawn_ws_bridge(app: &mut tauri::App) {
     use tauri::Manager;
     let vault_path = dirs::home_dir()
@@ -71,8 +78,12 @@ fn spawn_ws_bridge(app: &mut tauri::App) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
-        .manage(WsBridgeChild(Mutex::new(None)))
+    let builder = tauri::Builder::default();
+
+    #[cfg(desktop)]
+    let builder = builder.manage(WsBridgeChild(Mutex::new(None)));
+
+    builder
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -96,8 +107,13 @@ pub fn run() {
             if telemetry::init_sentry_from_settings() {
                 log::info!("Sentry initialized (crash reporting enabled)");
             }
-            run_startup_tasks();
-            spawn_ws_bridge(app);
+
+            #[cfg(desktop)]
+            {
+                run_startup_tasks();
+                spawn_ws_bridge(app);
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -162,14 +178,17 @@ pub fn run() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app_handle, event| {
-            use tauri::Manager;
-            if let tauri::RunEvent::Exit = event {
-                let state: tauri::State<'_, WsBridgeChild> = app_handle.state();
-                let mut guard = state.0.lock().unwrap();
-                if let Some(ref mut child) = *guard {
-                    let _ = child.kill();
-                    log::info!("ws-bridge child process killed on exit");
+        .run(|_app_handle, _event| {
+            #[cfg(desktop)]
+            {
+                use tauri::Manager;
+                if let tauri::RunEvent::Exit = _event {
+                    let state: tauri::State<'_, WsBridgeChild> = _app_handle.state();
+                    let mut guard = state.0.lock().unwrap();
+                    if let Some(ref mut child) = *guard {
+                        let _ = child.kill();
+                        log::info!("ws-bridge child process killed on exit");
+                    }
                 }
             }
         });
