@@ -1,21 +1,21 @@
 use std::borrow::Cow;
 
 use crate::ai_chat::{AiChatRequest, AiChatResponse};
-use crate::claude_cli::{AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus};
 #[cfg(desktop)]
 use crate::claude_cli::ClaudeStreamEvent;
+use crate::claude_cli::{AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus};
 use crate::frontmatter::FrontmatterValue;
 use crate::git::{
     GitCommit, GitPullResult, GitPushResult, GitRemoteStatus, LastCommitInfo, ModifiedFile,
     PulseCommit,
 };
 use crate::github::{DeviceFlowPollResult, DeviceFlowStart, GitHubUser, GithubRepo};
+#[cfg(desktop)]
+use crate::menu;
 use crate::search::SearchResponse;
 use crate::settings::Settings;
 use crate::vault::{RenameResult, VaultEntry};
 use crate::vault_list::VaultList;
-#[cfg(desktop)]
-use crate::menu;
 use crate::{frontmatter, git, search, vault, vault_list};
 
 /// Expand a leading `~` or `~/` in a path string to the user's home directory.
