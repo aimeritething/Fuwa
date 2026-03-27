@@ -83,7 +83,7 @@ jobs:
       # ── 3. Code Health (CodeScene — Hotspot + Average Code Health gates) ──
       # Enforces minimum floors on BOTH hotspot and average code health.
       # Hotspot: weighted avg of most-edited files (9.6 current | target 9.8)
-      # Average: project-wide avg across all files (8.9 current | target 9.5)
+      # Average: project-wide avg across all files (9.37 current | target 9.5)
       # Both gates must pass — average catches regressions in non-hotspot files.
       - name: Code Health gates (Hotspot ≥9.5 + Average ≥9.0)
         env:
