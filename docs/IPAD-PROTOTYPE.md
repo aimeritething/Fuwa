@@ -1,24 +1,28 @@
 # iPad Prototype — Tauri v2 iOS Feasibility Report
 
 **Date:** 2026-03-27
-**Status:** Prototype — Rust cross-compiles to iOS, Xcode project generated, awaiting simulator runtime
+**Status:** VERIFIED — App builds, installs, and renders React UI on iPad Pro 13" simulator (iOS 18.3.1)
 
 ## Summary
 
 Laputa can be ported to iPad using Tauri v2 iOS (beta) with **minimal code changes**. The React frontend stays identical. The Rust backend compiles for iOS with conditional compilation to gate desktop-only features (git CLI, menu bar, MCP, Claude CLI). Vault read/write operations work without changes.
 
+**Key result:** `tauri ios build --target aarch64-sim` succeeds. The app launches on iPad simulator and the React UI renders correctly (telemetry consent dialog, welcome screen, all styled correctly).
+
 ## What Works
 
 | Feature | Status | Notes |
 |---------|--------|-------|
-| Rust backend cross-compilation | Compiles cleanly for `aarch64-apple-ios-sim` | Zero errors, zero warnings |
-| Desktop build (no regressions) | 581 Rust tests pass, 2201 frontend tests pass | Lint and type check clean |
-| Tauri iOS project generation | Xcode project generated via `tauri ios init` | CocoaPods, xcodegen, libimobiledevice installed |
+| Rust backend cross-compilation | VERIFIED | Zero errors, zero warnings for `aarch64-apple-ios-sim` |
+| Desktop build (no regressions) | VERIFIED | 581 Rust tests pass, 2201 frontend tests pass, CodeScene gates pass |
+| Tauri iOS project generation | VERIFIED | `tauri ios init` generates Xcode project successfully |
+| Xcode build for simulator | VERIFIED | `tauri ios build --target aarch64-sim` — **BUILD SUCCEEDED** |
+| App launch on iPad simulator | VERIFIED | Installs and launches on iPad Pro 13" (M4), PID assigned |
+| React UI in WebView | VERIFIED | Telemetry consent dialog renders with correct styling, fonts, buttons |
 | Vault file read/write | Expected to work | Pure filesystem operations, no process spawning |
 | AI chat (Anthropic API) | Expected to work | Uses `reqwest` HTTP, no CLI dependency |
 | Search | Expected to work | Pure Rust in-memory search |
 | Settings persistence | Expected to work | JSON file read/write |
-| React UI in WebView | Expected to work | Tauri v2 uses WKWebView on iOS |
 
 ## What Doesn't Work (Yet)
 
