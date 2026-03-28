@@ -84,6 +84,20 @@ Red → Green → Refactor → Commit. One cycle per commit. For bugs: write a f
 
 After adding a Tauri command, new component/hook, data model change, or new integration: update `docs/ARCHITECTURE.md`, `docs/ABSTRACTIONS.md`, and/or `docs/GETTING-STARTED.md` in the same commit. Use Mermaid for diagrams (not ASCII). Exception: spatial wireframe layouts.
 
+## Architecture Decision Records (ADRs)
+
+ADRs live in `docs/adr/`. Read `docs/adr/README.md` for the format.
+
+**Before making any architectural choice** (storage strategy, new dependency, platform approach, data model change): check `docs/adr/` for an existing decision that covers it. If one exists and your work aligns with it — proceed. If your work **supersedes** an existing ADR, **do not modify the existing file** — instead:
+1. Update the existing ADR: set `status: superseded` and `superseded_by: "NNNN"`
+2. Create a new ADR with the updated decision
+
+**After completing a task**: if you made a significant architectural decision that isn't already documented in `docs/adr/`, create a new ADR in the same commit. A decision is "significant" if it affects: data storage, platform support, major dependencies, core abstractions, or cross-cutting concerns.
+
+ADRs use Laputa note format — YAML frontmatter with `type: ADR`, `status: active|superseded|proposed`, `date: YYYY-MM-DD`.
+
+**Do not create ADRs for**: implementation details, UI styling choices, refactoring decisions, or anything that doesn't affect how future code should be written.
+
 ## Design File (UI tasks)
 
 1. Open `ui-design.pen` first — study existing frames for visual language.
