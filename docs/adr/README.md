@@ -66,3 +66,8 @@ proposed → active → superseded
 | [0008](0008-canary-release-channel.md) | Canary release channel for early testing | active |
 | [0009](0009-local-feature-flags.md) | Local feature flags (no remote dependency) | active |
 | [0010](0010-codescene-code-health-gates.md) | CodeScene code health gates in CI and git hooks | active |
+| [0011](0011-keyword-search-only.md) | Keyword search only (remove QMD semantic indexing) | active |
+| [0012](0012-underscore-system-properties.md) | Underscore convention for system properties | active |
+| [0013](0013-blocknote-editor.md) | BlockNote as the rich text editor | active |
+| [0014](0014-wikilink-relationships.md) | Wikilink-based relationship model | active |
+| [0015](0015-note-type-system.md) | Note type system (types as files) | active |
