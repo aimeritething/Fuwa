@@ -591,7 +591,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing |
 | `ai_chat.rs` | Direct Anthropic API client (non-streaming, for Tauri builds) |
 | `mcp.rs` | MCP server spawning + config registration |
-| `commands.rs` | All 62 Tauri command handlers |
+| `commands/` | Tauri command handlers (split into submodules) |
 | `settings.rs` | App settings persistence |
 | `vault_config.rs` | Per-vault UI config |
 | `vault_list.rs` | Vault list persistence |
@@ -662,20 +662,13 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 |---------|-------------|
 | `search_vault` | Keyword search across vault files |
 
-### Theme
+### Vault Maintenance
 
 | Command | Description |
 |---------|-------------|
-| `list_themes` | List all themes (legacy JSON) |
-| `get_theme` | Read a theme file |
 | `get_vault_settings` | Read `.laputa/settings.json` |
 | `save_vault_settings` | Write vault settings |
-| `set_active_theme` | Set active theme ID |
-| `create_theme` | Create JSON theme from template |
-| `create_vault_theme` | Create markdown theme note |
-| `ensure_vault_themes` | Seed default themes if missing |
-| `restore_default_themes` | Restore all default themes |
-| `repair_vault` | Flatten vault structure, migrate legacy frontmatter, restore themes + config |
+| `repair_vault` | Flatten vault structure, migrate legacy frontmatter, restore config |
 
 ### AI & MCP
 
@@ -899,7 +892,7 @@ Tauri v2 supports iOS as a beta target. The Rust backend cross-compiles to `aarc
 Desktop-only modules gated at the crate level:
 - `pub mod menu` — macOS menu bar (entire module)
 
-Desktop-only features gated at the function level in `commands.rs`:
+Desktop-only features gated at the function level in `commands/`:
 - Git operations (commit, pull, push, status, history, diff, conflicts)
 - GitHub operations (clone, list repos, device flow auth)
 - Claude CLI streaming (check, chat, agent)
