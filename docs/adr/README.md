@@ -71,3 +71,8 @@ proposed → active → superseded
 | [0013](0013-blocknote-editor.md) | BlockNote as the rich text editor | active |
 | [0014](0014-wikilink-relationships.md) | Wikilink-based relationship model | active |
 | [0015](0015-note-type-system.md) | Note type system (types as files) | active |
+| [0016](0016-vault-repair-auto-bootstrap.md) | Vault repair and auto-bootstrap | active |
+| [0017](0017-auto-save-debounce.md) | Auto-save with 500ms debounce | active |
+| [0018](0018-git-divergence-conflict-resolution.md) | In-app git divergence and conflict resolution | active |
+| [0019](0019-mcp-server.md) | MCP server for AI integration | active |
+| [0020](0020-ai-dual-architecture.md) | AI dual architecture (chat + agent) | active |
