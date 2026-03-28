@@ -62,17 +62,24 @@ proposed → active → superseded
 | [0004](0004-vault-vs-app-settings-storage.md) | Vault vs app settings for state storage | active |
 | [0005](0005-tauri-ios-for-ipad.md) | Tauri v2 iOS for iPad support (vs SwiftUI rewrite) | active |
 | [0006](0006-flat-vault-structure.md) | Flat vault structure (no type-based folders) | active |
-| [0007](0007-sentry-posthog-telemetry.md) | Opt-in telemetry via Sentry and PostHog | active |
-| [0008](0008-canary-release-channel.md) | Canary release channel for early testing | active |
-| [0009](0009-local-feature-flags.md) | Local feature flags (no remote dependency) | active |
-| [0010](0010-codescene-code-health-gates.md) | CodeScene code health gates in CI and git hooks | active |
-| [0011](0011-keyword-search-only.md) | Keyword search only (remove QMD semantic indexing) | active |
-| [0012](0012-underscore-system-properties.md) | Underscore convention for system properties | active |
-| [0013](0013-blocknote-editor.md) | BlockNote as the rich text editor | active |
-| [0014](0014-wikilink-relationships.md) | Wikilink-based relationship model | active |
-| [0015](0015-note-type-system.md) | Note type system (types as files) | active |
-| [0016](0016-vault-repair-auto-bootstrap.md) | Vault repair and auto-bootstrap | active |
-| [0017](0017-auto-save-debounce.md) | Auto-save with 500ms debounce | active |
-| [0018](0018-git-divergence-conflict-resolution.md) | In-app git divergence and conflict resolution | active |
-| [0019](0019-mcp-server.md) | MCP server for AI integration | active |
-| [0020](0020-ai-dual-architecture.md) | AI dual architecture (chat + agent) | active |
+| [0007](0007-title-filename-sync.md) | Title equals filename (slug sync) | active |
+| [0008](0008-underscore-system-properties.md) | Underscore convention for system properties | active |
+| [0009](0009-keyword-only-search.md) | Keyword-only search (remove semantic indexing) | active |
+| [0010](0010-dynamic-wikilink-relationship-detection.md) | Dynamic wikilink relationship detection | active |
+| [0011](0011-mcp-server-for-ai-integration.md) | MCP server for AI tool integration | active |
+| [0012](0012-claude-cli-for-ai-agent.md) | Claude CLI subprocess for AI agent | active |
+| [0013](0013-remove-theming-system.md) | Remove vault-based theming system | active |
+| [0014](0014-git-based-vault-cache.md) | Git-based incremental vault cache | active |
+| [0015](0015-auto-save-with-debounce.md) | Auto-save with 500ms debounce | active |
+| [0016](0016-sentry-posthog-telemetry.md) | Sentry + PostHog telemetry with consent | active |
+| [0017](0017-canary-release-channel.md) | Canary release channel and feature flags | active |
+| [0018](0018-codescene-code-health-gates.md) | CodeScene code health gates in CI | active |
+| [0019](0019-github-device-flow-oauth.md) | GitHub device flow OAuth for vault sync | active |
+| [0020](0020-keyboard-first-design.md) | Keyboard-first design principle | active |
+| [0021](0021-push-to-main-workflow.md) | Push directly to main (no PRs) | active |
+| [0022](0022-blocknote-rich-text-editor.md) | BlockNote as the rich text editor | active |
+| [0023](0023-repair-vault-auto-bootstrap.md) | Repair Vault auto-bootstrap pattern | active |
+| [0024](0024-cache-outside-vault.md) | Vault cache stored outside vault directory | active |
+| [0025](0025-type-field-canonical.md) | type: as canonical field (replacing Is A:) | active |
+| [0026](0026-props-down-no-global-state.md) | Props-down callbacks-up (no global state) | active |
+| [0027](0027-dual-ai-architecture.md) | Dual AI architecture (API chat + CLI agent) | active |
