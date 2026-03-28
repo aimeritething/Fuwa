@@ -189,7 +189,7 @@ describe('SearchPanel', () => {
       expect(screen.getByText('Result One')).toBeInTheDocument()
     })
 
-    fireEvent.keyDown(document, { key: 'ArrowDown' })
+    fireEvent.keyDown(window, { key: 'ArrowDown' })
 
     await waitFor(() => {
       const resultTwo = screen.getByText('Result Two').closest('[class*="cursor-pointer"]')!

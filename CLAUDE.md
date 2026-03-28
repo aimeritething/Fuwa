@@ -94,8 +94,6 @@ ADRs live in `docs/adr/`. Read `docs/adr/README.md` for the format.
 
 **After completing a task**: if you made a significant architectural decision that isn't already documented in `docs/adr/`, create a new ADR in the same commit. A decision is "significant" if it affects: data storage, platform support, major dependencies, core abstractions, or cross-cutting concerns.
 
-ADRs use Laputa note format — YAML frontmatter with `type: ADR`, `status: active|superseded|proposed`, `date: YYYY-MM-DD`.
-
 **Do not create ADRs for**: implementation details, UI styling choices, refactoring decisions, or anything that doesn't affect how future code should be written.
 
 ## Design File (UI tasks)
