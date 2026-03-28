@@ -46,7 +46,7 @@ laputa-app/
 │   │   ├── NoteList.tsx          # Second panel: filtered note list
 │   │   ├── NoteItem.tsx          # Individual note item
 │   │   ├── PulseView.tsx         # Git activity feed (replaces NoteList)
-│   │   ├── Editor.tsx            # Third panel: tabs + editor orchestration
+│   │   ├── Editor.tsx            # Third panel: editor orchestration
 │   │   ├── EditorContent.tsx     # Editor content area
 │   │   ├── EditorRightPanel.tsx  # Right panel toggle
 │   │   ├── editorSchema.tsx      # BlockNote schema + wikilink type
@@ -61,12 +61,11 @@ laputa-app/
 │   │   ├── SettingsPanel.tsx     # App settings
 │   │   ├── StatusBar.tsx         # Bottom bar: vault picker + sync
 │   │   ├── CommandPalette.tsx    # Cmd+K command launcher
-│   │   ├── TabBar.tsx            # Tab management
 │   │   ├── BreadcrumbBar.tsx     # Breadcrumb + word count + actions
 │   │   ├── WelcomeScreen.tsx     # Onboarding screen
 │   │   ├── GitHubVaultModal.tsx  # GitHub vault clone/create
 │   │   ├── GitHubDeviceFlow.tsx  # GitHub OAuth device flow
-│   │   ├── ThemePropertyEditor.tsx # Interactive theme editor
+│   │   ├── TitleField.tsx         # Editable note title above editor
 │   │   ├── ConflictResolverModal.tsx # Git conflict resolution
 │   │   ├── CommitDialog.tsx      # Git commit modal
 │   │   ├── CreateNoteDialog.tsx  # New note modal
@@ -87,7 +86,6 @@ laputa-app/
 │   │   ├── useNoteActions.ts     # Composes creation + rename + frontmatter
 │   │   ├── useNoteCreation.ts   # Note/type/daily-note creation
 │   │   ├── useNoteRename.ts     # Note renaming + wikilink updates
-│   │   ├── useTabManagement.ts   # Tab ordering + lifecycle
 │   │   ├── useAIChat.ts          # AI chat state
 │   │   ├── useAiAgent.ts         # AI agent state + tool tracking
 │   │   ├── useAiActivity.ts      # MCP UI bridge listener
@@ -95,7 +93,6 @@ laputa-app/
 │   │   ├── useConflictResolver.ts # Git conflict handling
 │   │   ├── useEditorSave.ts      # Auto-save with debounce
 │   │   ├── useTheme.ts           # Flatten theme.json → CSS vars
-│   │   ├── useThemeManager.ts    # Vault theme lifecycle
 │   │   ├── useUnifiedSearch.ts   # Keyword search
 │   │   ├── useNoteSearch.ts      # Note search
 │   │   ├── useCommandRegistry.ts # Command palette registry
@@ -116,7 +113,7 @@ laputa-app/
 │   │   ├── ai-chat.ts            # Chat API client + token estimation
 │   │   ├── ai-context.ts         # Context snapshot builder
 │   │   ├── noteListHelpers.ts    # Sorting, filtering, date formatting
-│   │   ├── themeSchema.ts        # Theme editor schema builder
+│   │   ├── wikilink.ts           # Wikilink resolution
 │   │   ├── configMigration.ts    # localStorage → vault config migration
 │   │   ├── iconRegistry.ts       # Phosphor icon registry
 │   │   ├── propertyTypes.ts      # Property type definitions
@@ -138,7 +135,7 @@ laputa-app/
 │   ├── src/
 │   │   ├── main.rs               # Entry point (calls lib::run())
 │   │   ├── lib.rs                # Tauri setup + command registration (61 commands)
-│   │   ├── commands.rs           # All Tauri command handlers
+│   │   ├── commands/             # Tauri command handlers (split into modules)
 │   │   ├── vault/                # Vault module
 │   │   │   ├── mod.rs            # Core types, parse_md_file, scan_vault
 │   │   │   ├── cache.rs          # Git-based incremental caching
@@ -155,8 +152,7 @@ laputa-app/
 │   │   │   ├── conflict.rs, remote.rs, pulse.rs
 │   │   ├── github/               # GitHub module
 │   │   │   ├── mod.rs, auth.rs, api.rs, clone.rs
-│   │   ├── theme/                # Theme module
-│   │   │   ├── mod.rs, create.rs, defaults.rs, seed.rs
+│   │   ├── telemetry.rs          # Sentry init + path scrubber
 │   │   ├── search.rs             # Keyword search (walkdir-based)
 │   │   ├── claude_cli.rs         # Claude CLI subprocess management
 │   │   ├── ai_chat.rs            # Direct Anthropic API client
@@ -197,7 +193,7 @@ laputa-app/
 |------|---------------|
 | `src/App.tsx` | Root component. Shows the 4-panel layout, state flow, and how all features connect. |
 | `src/types.ts` | All shared TypeScript types. Read this first to understand the data model. |
-| `src-tauri/src/commands.rs` | All 61 Tauri command handlers. This is the frontend-backend API surface. |
+| `src-tauri/src/commands/` | Tauri command handlers (split into modules). This is the frontend-backend API surface. |
 | `src-tauri/src/lib.rs` | Tauri setup, command registration, startup tasks, WebSocket bridge lifecycle. |
 
 ### Data layer
@@ -225,7 +221,7 @@ laputa-app/
 
 | File | Why it matters |
 |------|---------------|
-| `src/components/Editor.tsx` | BlockNote setup, tab bar, breadcrumb bar, diff/raw toggle. |
+| `src/components/Editor.tsx` | BlockNote setup, breadcrumb bar, diff/raw toggle. |
 | `src/components/editorSchema.tsx` | Custom wikilink inline content type definition. |
 | `src/utils/wikilinks.ts` | Wikilink preprocessing pipeline (markdown ↔ BlockNote). |
 | `src/components/RawEditorView.tsx` | CodeMirror 6 raw markdown editor. |
@@ -239,14 +235,12 @@ laputa-app/
 | `src/hooks/useAiAgent.ts` | Agent state: messages, streaming, tool tracking, file detection. |
 | `src/utils/ai-context.ts` | Context snapshot builder for AI conversations. |
 
-### Styling & Themes
+### Styling
 
 | File | Why it matters |
 |------|---------------|
 | `src/index.css` | All CSS custom properties. The design token source of truth. |
 | `src/theme.json` | Editor-specific theme (fonts, headings, lists, code blocks). |
-| `src/hooks/useThemeManager.ts` | Vault theme lifecycle (switch, create, apply, live preview). |
-| `docs/THEMING.md` | Full theme system documentation. |
 
 ### Settings & Config
 
@@ -274,7 +268,7 @@ This lives in `useVaultLoader.ts` and `useNoteActions.ts`. Components never call
 
 ### Props-Down, Callbacks-Up
 
-No global state management (no Redux, no Context). `App.tsx` owns the state and passes it down as props. Child-to-parent communication uses callback props (`onSelectNote`, `onCloseTab`, etc.).
+No global state management (no Redux, no Context). `App.tsx` owns the state and passes it down as props. Child-to-parent communication uses callback props (`onSelectNote`, etc.).
 
 ### Discriminated Unions for Selection State
 
@@ -317,7 +311,7 @@ BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 ### Add a new Tauri command
 
 1. Write the Rust function in the appropriate module (`vault/`, `git/`, etc.)
-2. Add a command handler in `commands.rs`
+2. Add a command handler in `commands/`
 3. Register it in the `generate_handler![]` macro in `lib.rs`
 4. Call it from the frontend via `invoke()` in the appropriate hook
 5. Add a mock handler in `mock-tauri.ts`
@@ -342,11 +336,10 @@ BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 2. Add a corresponding menu bar item in `menu.rs` for discoverability
 3. If it has a keyboard shortcut, register it in `useAppKeyboard.ts`
 
-### Add or modify a theme
+### Modify styling
 
-1. **Vault-based** (preferred): Create/edit a markdown note in `theme/` with `type: Theme` frontmatter
-2. **Programmatic**: Edit defaults in `src-tauri/src/theme/defaults.rs`
-3. See `docs/THEMING.md` for the full property reference
+1. **Global CSS variables**: Edit `src/index.css`
+2. **Editor typography**: Edit `src/theme.json`
 
 ### Work with the AI agent
 

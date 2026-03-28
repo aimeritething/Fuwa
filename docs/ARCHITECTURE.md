@@ -114,11 +114,11 @@ flowchart TD
             WS["WelcomeScreen\n(onboarding)"]
             SB["Sidebar\n(navigation + filters + types)"]
             NL["NoteList / PulseView\n(filtered list / activity)"]
-            ED["Editor\n(BlockNote + tabs + diff + raw)"]
+            ED["Editor\n(BlockNote + diff + raw)"]
             IN["Inspector\n(metadata + relationships)"]
             AIC["AIChatPanel\n(API-based chat)"]
             AIP["AiPanel\n(Claude CLI agent + tools)"]
-            SP["SearchPanel\n(keyword/semantic/hybrid)"]
+            SP["SearchPanel\n(keyword search)"]
             ST["StatusBar\n(vault picker + sync + version)"]
             CP["CommandPalette\n(Cmd+K launcher)"]
 
@@ -132,7 +132,7 @@ flowchart TD
             FM["frontmatter/"]
             GIT["git/"]
             GH["github/"]
-            THEME["theme/"]
+            SETTINGS["settings.rs"]
             SEARCH["search.rs"]
             CLI["claude_cli.rs"]
         end
@@ -160,10 +160,10 @@ flowchart TD
 │Sidebar │ Note List   │ Editor                  │ Inspector  │
 │(250px) │ (300px)     │ (flex-1)                │ (280px)    │
 │        │ OR          │                         │ OR         │
-│ All    │ Pulse View  │ [Tab Bar]               │ AI Chat    │
-│ Favs   │             │ [Breadcrumb Bar]        │ OR         │
-│ Changes│ [Search]    │                         │ AI Agent   │
-│ Pulse  │ [Sort/Filt] │ # My Note               │            │
+│ All    │ Pulse View  │ [Breadcrumb Bar]        │ AI Chat    │
+│ Changes│             │                         │ OR         │
+│ Pulse  │ [Search]    │ # My Note               │ AI Agent   │
+│ Inbox  │ [Sort/Filt] │                         │            │
 │        │             │                         │ Context    │
 │Projects│ Note 1      │ Content here...         │ Messages   │
 │Experim.│ Note 2      │ (BlockNote or Raw)      │ Actions    │
@@ -176,9 +176,9 @@ flowchart TD
 └──────────────────────────────────────────────────────────────┘
 ```
 
-- **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Favorites, Changes, Pulse) and collapsible type-based section groups. Each type can have a custom icon, color, sort, and visibility set via its type document in `type/`.
+- **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Changes, Pulse) and collapsible type-based section groups. Each type can have a custom icon, color, sort, and visibility set via its type document in `type/`.
 - **Note List / Pulse View** (200-500px, resizable): When a section group or filter is selected, shows filtered notes with snippets, modified dates, and status indicators. When Pulse filter is active, shows `PulseView` — a chronological git activity feed grouped by day.
-- **Editor** (flex, fills remaining space): Tab bar with modified dots, breadcrumb bar with word count, BlockNote rich text editor with wikilink support. Can toggle to diff view (modified files) or raw CodeMirror view. Decomposed into `Editor` (orchestrator), `EditorContent`, `EditorRightPanel`, `SingleEditorView`, with hooks `useDiffMode`, `useEditorFocus`, `useEditorSave`, `useRawMode`.
+- **Editor** (flex, fills remaining space): Single note open at a time (no tabs — see ADR-0003). Breadcrumb bar with word count, BlockNote rich text editor with wikilink support. Can toggle to diff view (modified files) or raw CodeMirror view. Decomposed into `Editor` (orchestrator), `EditorContent`, `EditorRightPanel`, `SingleEditorView`, with hooks `useDiffMode`, `useEditorFocus`, `useEditorSave`, `useRawMode`. Navigation history (Cmd+[/]) replaces tabs.
 - **Inspector / AI Chat / AI Agent** (200-500px or 40px collapsed): Toggles between Inspector (frontmatter, relationships, instances, backlinks, git history), AI Chat panel (API-based), and AI Agent panel (Claude CLI subprocess with tool execution). The Sparkle icon in the breadcrumb bar toggles between them. When viewing a Type note, the Inspector shows an **Instances** section listing all notes of that type (sorted by modified_at desc, capped at 50).
 
 Panels are separated by `ResizeHandle` components that support drag-to-resize.
@@ -413,23 +413,12 @@ flowchart TD
     G --> H([VaultEntry list ready])
 ```
 
-## Theme System
+## Styling
 
-See [THEMING.md](./THEMING.md) for the full theme system documentation.
-
-### Two-Layer Architecture
+The app uses a single light theme with no user-configurable theming (see [ADR-0013](adr/0013-remove-theming-system.md)).
 
 1. **Global CSS variables** (`src/index.css`): App-wide colors, borders, backgrounds. Bridged to Tailwind v4 via `@theme inline`.
 2. **Editor theme** (`src/theme.json`): BlockNote-specific typography. Flattened to CSS vars by `useEditorTheme`.
-
-### Vault-Based Themes
-
-Themes are markdown notes in the `theme/` folder with `type: Theme` frontmatter (`Is A: Theme` accepted as legacy alias). Each frontmatter property becomes a CSS variable. Managed by `useThemeManager` hook and the `src-tauri/src/theme/` Rust module (create, seed, defaults).
-
-- **Vault settings**: `.laputa/settings.json` stores the active theme reference
-- **Legacy support**: `_themes/*.json` files still supported for backward compatibility
-- **Built-in themes**: Default (light), Dark, Minimal — auto-seeded on vault open
-- **Live preview**: Re-applies when the active theme note is saved
 
 ## Vault Management
 
@@ -444,14 +433,14 @@ Persisted at `~/.config/com.laputa.app/vaults.json`:
 }
 ```
 
-Managed by `useVaultSwitcher` hook. Switching vaults closes all tabs and resets sidebar.
+Managed by `useVaultSwitcher` hook. Switching vaults resets sidebar and clears the active note.
 
 ### Vault Config
 
 Per-vault UI settings stored in `ui.config.md` at vault root (YAML frontmatter in a markdown note):
 - `zoom`: Float zoom level (0.8–1.5)
 - `view_mode`: "all" | "editor-list" | "editor-only"
-- `editor_mode`: "raw" | "preview" (persists across tab switches and sessions)
+- `editor_mode`: "raw" | "preview" (persists across note switches and sessions)
 - `tag_colors`, `status_colors`: Custom color overrides
 - `property_display_modes`: Property display preferences
 
@@ -501,7 +490,7 @@ sequenceDiagram
     participant MCP as MCP Server
     participant U as User
 
-    T->>T: run_startup_tasks()<br/>(purge trash, seed themes, register MCP)
+    T->>T: run_startup_tasks()<br/>(purge trash, register MCP)
     T->>MCP: spawn_ws_bridge() — ports 9710 + 9711
     T->>A: App mounts
 
@@ -514,7 +503,6 @@ sequenceDiagram
         T-->>VL: VaultEntry[]
         VL->>T: invoke('get_modified_files')
         VL->>T: useMcpStatus — register if needed
-        VL->>T: useThemeManager — load active theme
         VL-->>A: entries ready
     end
 
@@ -599,7 +587,6 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `frontmatter/` | YAML frontmatter read/write (`mod.rs`, `yaml.rs`, `ops.rs`) |
 | `git/` | Git operations (`commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`) |
 | `github/` | GitHub OAuth + API (`auth.rs`, `api.rs`, `clone.rs`) |
-| `theme/` | Theme management (`mod.rs`, `create.rs`, `defaults.rs`, `seed.rs`) |
 | `search.rs` | Keyword search — walkdir-based vault file scan |
 | `claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing |
 | `ai_chat.rs` | Direct Anthropic API client (non-streaming, for Tauri builds) |
@@ -740,12 +727,12 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `App.tsx` | `selection`, panel widths, dialog visibility, toast, view mode | UI state |
 | `useVaultLoader` | `entries`, `allContent`, `modifiedFiles` | Vault data |
 | `useNoteActions` | `tabs`, `activeTabPath` | Composes `useNoteCreation` + `useNoteRename` + `frontmatterOps` |
-| `useNoteCreation` | — (delegates to `useTabManagement`) | Note/type/daily-note creation with optimistic persistence |
-| `useNoteRename` | — (delegates to `useTabManagement`) | Note renaming with wikilink update |
+| `useNoteCreation` | — | Note/type/daily-note creation with optimistic persistence |
+| `useNoteRename` | — | Note renaming with wikilink update |
 | `frontmatterOps` | — (pure functions) | Frontmatter CRUD: key→VaultEntry mapping, mock/Tauri dispatch |
-| `useTabManagement` | Tab ordering, pinning, swapping, closed-tab history | Tab lifecycle |
+| `useTabManagement` | Navigation history, note switching | Note navigation lifecycle |
 | `useVaultSwitcher` | `vaultPath`, `extraVaults` | Vault switching |
-| `useThemeManager` | `themes`, `activeThemeId`, `isDark` | Theme state |
+| `useTheme` | Editor theme CSS vars | Editor typography theme |
 | `useAIChat` | `messages`, `isStreaming` | AI chat conversation |
 | `useAiAgent` | `messages`, `status`, tool actions | AI agent conversation |
 | `useAutoSync` | Sync interval, pull/push state | Git auto-sync |
@@ -763,8 +750,7 @@ Data flows unidirectionally: `App` passes data and callbacks as props to child c
 | Cmd+P | Open quick open palette |
 | Cmd+N | Create new note |
 | Cmd+S | Save current note |
-| Cmd+W | Close active tab |
-| Cmd+Shift+T | Reopen last closed tab (LIFO history, up to 20) |
+| Cmd+[ / Cmd+] | Navigate back / forward (replaces tabs) |
 | Cmd+Z / Cmd+Shift+Z | Undo / Redo |
 | Cmd+1–9 | Switch to tab N |
 | Cmd+[ / Cmd+] | Navigate back / forward |

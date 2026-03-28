@@ -14,7 +14,7 @@ These frontmatter field names have special meaning in Laputa's UI:
 
 | Field | Meaning | UI behavior |
 |---|---|---|
-| `title:` | Human-readable title (synced with filename) | Tab label, breadcrumb, sidebar. Filename = `slugify(title).md` |
+| `title:` | Human-readable title (synced with filename) | Breadcrumb, sidebar. Filename = `slugify(title).md` |
 | `type:` | Entity type (Project, Person, Quarter…) | Type chip in note list + sidebar grouping |
 | `status:` | Lifecycle stage (active, done, blocked…) | Colored chip in note list + editor header |
 | `url:` | External link | Clickable link chip in editor header |
@@ -25,7 +25,7 @@ These frontmatter field names have special meaning in Laputa's UI:
 | `Belongs to:` | Parent relationship | Relationship chip in Properties panel |
 | `Related to:` | Lateral relationship | Relationship chip in Properties panel |
 
-The list of default-shown relationships and semantic property rendering rules can be customized via `config/relations.md` and `config/semantic-properties.md` in the vault.
+Relationship fields are detected dynamically — any frontmatter field containing `[[wikilink]]` values is treated as a relationship (see [ADR-0010](adr/0010-dynamic-wikilink-relationship-detection.md)).
 
 ### System Properties (underscore convention)
 
@@ -72,7 +72,6 @@ classDiagram
         +Record~string,string[]~ relationships
         +String[] outgoingLinks
         +String? status
-        +String? owner
         +Number? modifiedAt
         +Number? createdAt
         +Number wordCount
@@ -121,9 +120,8 @@ interface VaultEntry {
   relationships: Record<string, string[]>  // All frontmatter fields containing wikilinks
   outgoingLinks: string[]   // All [[wikilinks]] found in note body
   status: string | null     // Active, Done, Paused, Archived, Dropped
-  owner: string | null      // Person responsible
-  cadence: string | null    // Update frequency: Weekly, Monthly, etc.
   modifiedAt: number | null // Unix timestamp (seconds)
+  // Note: owner and cadence are now in the generic `properties` map
   createdAt: number | null  // Unix timestamp (seconds)
   fileSize: number
   wordCount: number | null  // Body word count (excludes frontmatter)
@@ -149,8 +147,7 @@ Type is determined **purely** from the `type:` frontmatter field — it is never
 ├── some-topic.md          ← type: Topic
 ├── ...
 ├── type/                  ← type definition documents
-├── config/                ← meta-configuration files (agents.md, etc.)
-└── theme/                 ← vault-based themes (legacy location)
+└── config/                ← meta-configuration files (agents.md, etc.)
 ```
 
 New notes are created at the vault root: `{vault}/{slug}.md`. Changing a note's type only requires updating the `type:` field in frontmatter — the file does not move. The `type/` folder exists solely for type definition documents, and `config/` for configuration files.
@@ -193,10 +190,8 @@ Standard YAML frontmatter between `---` delimiters:
 ```yaml
 ---
 title: Write Weekly Essays
-is_a: Procedure
+type: Procedure
 status: Active
-owner: Luca Rossi
-cadence: Weekly
 belongs_to:
   - "[[grow-newsletter]]"
 related_to:
@@ -270,7 +265,7 @@ type SidebarSelection =
 
 1. Validates the path exists and is a directory
 2. Scans root-level `.md` files (non-recursive)
-3. Recursively scans protected folders: `type/`, `config/`, `attachments/`, `_themes/`, `theme/`
+3. Recursively scans protected folders: `type/`, `config/`, `attachments/`
 4. Files in non-protected subfolders are **not indexed** (flat vault enforcement)
 5. For each `.md` file, calls `parse_md_file()`:
    - Reads content with `fs::read_to_string()`
@@ -373,7 +368,7 @@ interface PulseCommit {
 
 ### Frontend Integration
 
-- **Modified file badges**: Orange dots in sidebar and tab bar
+- **Modified file badges**: Orange dots in sidebar
 - **Diff view**: Toggle in breadcrumb bar → shows unified diff
 - **Git history**: Shown in Inspector panel for active note
 - **Commit dialog**: Triggered from sidebar or Cmd+K
@@ -443,57 +438,12 @@ Wikilink resolution (`resolveEntry` in `src/utils/wikilink.ts`) uses multi-pass 
 
 Toggle via Cmd+K → "Raw Editor" or breadcrumb bar button. Uses CodeMirror 6 (`useCodeMirror` hook) to edit the raw markdown + frontmatter directly. Changes saved via the same `save_note_content` command.
 
-## Theme System
+## Styling
 
-See [THEMING.md](./THEMING.md) for the full theme system documentation.
+The app uses a single light theme — the vault-based theming system was removed (see [ADR-0013](adr/0013-remove-theming-system.md)). Styling is defined in two layers:
 
-### Overview
-
-Two-layer theming:
 1. **Global CSS variables** (`src/index.css`): App-wide colors via `:root`, bridged to Tailwind v4
 2. **Editor theme** (`src/theme.json`): BlockNote typography, flattened to CSS vars by `useEditorTheme`
-
-### Vault-Based Themes
-
-Themes are markdown notes in `theme/` with `type: Theme` frontmatter. Each property becomes a CSS variable with `--` prefix.
-
-```yaml
----
-type: Theme
-Description: Light theme with warm, paper-like tones
-background: "#FFFFFF"
-foreground: "#37352F"
-accent-blue: "#155DFF"
-editor-font-size: 16
-editor-line-height: 1.5
----
-```
-
-### ThemeManager
-
-`useThemeManager` hook manages the theme lifecycle:
-
-```typescript
-interface ThemeManager {
-  themes: ThemeFile[]
-  activeThemeId: string | null
-  activeTheme: ThemeFile | null
-  isDark: boolean
-  switchTheme(themeId: string): Promise<void>
-  createTheme(name?: string): Promise<string>
-  reloadThemes(): Promise<void>
-  updateThemeProperty(key: string, value: string): Promise<void>
-}
-```
-
-- Detects dark backgrounds via luminance calculation → sets `color-scheme` and `data-theme-mode`
-- Live preview: re-applies when active theme note is saved
-- Three built-in themes: Default (light), Dark (deep navy), Minimal (high contrast)
-- Legacy JSON themes (`_themes/*.json`) supported for backward compatibility
-
-### Theme Property Editor
-
-`ThemePropertyEditor` component provides an interactive UI for editing theme properties. Uses `themeSchema.ts` to determine input types (color picker, number slider, text field) based on property names and values.
 
 ## Inspector Abstraction
 
@@ -509,10 +459,6 @@ The Inspector panel (`src/components/Inspector.tsx`) is composed of sub-panels:
 3. **BacklinksPanel**: Scans `allContent` for notes that reference the current note via `[[title]]` or `[[path]]`.
 
 4. **GitHistoryPanel**: Shows recent commits from file history with relative timestamps.
-
-## Closed Tab History
-
-`useClosedTabHistory` hook (`src/hooks/useClosedTabHistory.ts`) provides a LIFO stack for closed tab entries, used by `useTabManagement` to support Cmd+Shift+T reopen. Each entry stores the note's path, tab index, and full `VaultEntry`. The stack is in-memory only (resets on restart), capped at 20 entries, and deduplicates by path.
 
 ## Search
 
