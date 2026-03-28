@@ -82,5 +82,4 @@ proposed → active → superseded
 | [0024](0024-cache-outside-vault.md) | Vault cache stored outside vault directory | active |
 | [0025](0025-type-field-canonical.md) | type: as canonical field (replacing Is A:) | active |
 | [0026](0026-props-down-no-global-state.md) | Props-down callbacks-up (no global state) | active |
-| [0027](0027-dual-ai-architecture.md) | Dual AI architecture (API chat + CLI agent) | superseded |
-| [0028](0028-cli-agent-only-no-api-key.md) | AI integration via CLI agents only — no API key | active |
+| [0027](0027-dual-ai-architecture.md) | Dual AI architecture (API chat + CLI agent) | active |

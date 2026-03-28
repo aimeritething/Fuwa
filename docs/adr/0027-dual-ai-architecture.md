@@ -2,8 +2,7 @@
 type: ADR
 id: "0027"
 title: "Dual AI architecture (API chat + CLI agent)"
-status: superseded
-superseded_by: "0028"
+status: active
 date: 2026-03-01
 ---
 
