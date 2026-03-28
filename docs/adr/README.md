@@ -61,3 +61,8 @@ proposed → active → superseded
 | [0003](0003-single-note-model.md) | Single note open at a time (no tabs) | active |
 | [0004](0004-vault-vs-app-settings-storage.md) | Vault vs app settings for state storage | active |
 | [0005](0005-tauri-ios-for-ipad.md) | Tauri v2 iOS for iPad support (vs SwiftUI rewrite) | active |
+| [0006](0006-flat-vault-structure.md) | Flat vault structure (no type-based folders) | active |
+| [0007](0007-sentry-posthog-telemetry.md) | Opt-in telemetry via Sentry and PostHog | active |
+| [0008](0008-canary-release-channel.md) | Canary release channel for early testing | active |
+| [0009](0009-local-feature-flags.md) | Local feature flags (no remote dependency) | active |
+| [0010](0010-codescene-code-health-gates.md) | CodeScene code health gates in CI and git hooks | active |
