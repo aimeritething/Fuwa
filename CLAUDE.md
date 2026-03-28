@@ -90,6 +90,8 @@ ADRs live in `docs/adr/`. Before making an architectural choice, check existing 
 
 **When to create one**: storage strategy, new dependency, platform support, core abstraction change, cross-cutting concern. Use `/create-adr` for the full template and instructions.
 
+**Timing**: create the ADR **in the same commit as the code** that implements the decision — never before, never after. An ADR committed without the corresponding code is invalid.
+
 **When your work supersedes an existing ADR**: do not edit the existing file — use `/create-adr` which covers the superseding flow.
 
 **Do not create ADRs for**: bug fixes, UI styling, refactors, or test additions.
