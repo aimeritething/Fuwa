@@ -100,6 +100,17 @@ ADRs live in `docs/adr/`. Before making an architectural choice, check existing 
 2. Design in light mode. Create `design/<slug>.pen` for the task.
 3. On merge to main: merge frames into `ui-design.pen`, delete `design/<slug>.pen`.
 
+## ⛔ Never modify the user vault for testing
+
+`~/Laputa/` is Luca's real vault. **Never create, edit, or delete notes there for testing purposes.**
+
+Use the demo vault for all testing:
+- Playwright / Vitest: use the fixtures in `tests/` or `demo-vault-v2/`
+- `pnpm tauri dev` manual testing: open `demo-vault-v2/` as the vault, not `~/Laputa/`
+- If a test genuinely requires the real vault (e.g. verifying git history), read only — never write
+
+Any commit that touches `~/Laputa/` content is a bug. If you accidentally created test notes there, delete them before committing.
+
 ## Vault Retrocompatibility
 
 Every feature that depends on vault files must auto-bootstrap: check if file/folder exists on vault open, create with defaults if missing (silent, idempotent). Register with the central `Cmd+K → "Repair Vault"` command.
