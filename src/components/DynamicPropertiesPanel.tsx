@@ -9,6 +9,12 @@ import { AddPropertyForm } from './AddPropertyForm'
 import { countWords } from '../utils/wikilinks'
 import type { PropertyDisplayMode } from '../utils/propertyTypes'
 
+function toSentenceCase(key: string): string {
+  const spaced = key.replace(/[_-]/g, ' ')
+  if (!spaced) return spaced
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+}
+
 // eslint-disable-next-line react-refresh/only-export-components -- utility co-located with component
 export function containsWikilinks(value: FrontmatterValue): boolean {
   if (typeof value === 'string') return /^\[\[.*\]\]$/.test(value)
@@ -48,8 +54,8 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
 
   return (
     <div className="group/prop grid min-w-0 grid-cols-2 items-center gap-2 rounded px-1.5 outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary" tabIndex={0} onKeyDown={handleKeyDown} data-testid="editable-property">
-      <span className="font-mono-overline flex min-w-0 items-center gap-1 text-muted-foreground">
-        <span className="truncate">{propKey}</span>
+      <span className="flex min-w-0 items-center gap-1 text-[12px] text-muted-foreground">
+        <span className="truncate">{toSentenceCase(propKey)}</span>
         {onDelete && (
           <button className="border-none bg-transparent p-0 text-sm leading-none text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover/prop:opacity-100" onClick={() => onDelete(propKey)} title="Delete property">&times;</button>
         )}
@@ -65,7 +71,7 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="grid min-w-0 grid-cols-2 items-center gap-2 px-1.5" data-testid="readonly-property">
-      <span className="font-mono-overline min-w-0 truncate" style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span className="min-w-0 truncate text-[12px] text-muted-foreground">{label}</span>
       <span className="min-w-0 truncate text-right text-[12px]" style={{ color: 'var(--text-muted)' }}>{value}</span>
     </div>
   )
@@ -74,10 +80,12 @@ function InfoRow({ label, value }: { label: string; value: string }) {
 function AddPropertyButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
   return (
     <button
-      className="mt-3 w-full cursor-pointer border border-border bg-transparent text-center text-muted-foreground transition-colors hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-      style={{ borderRadius: 6, padding: '6px 12px', fontSize: 12 }}
+      className="mt-1 flex w-full cursor-pointer items-center gap-1 border-none bg-transparent px-1.5 text-[12px] text-muted-foreground opacity-50 transition-opacity hover:opacity-100 disabled:cursor-not-allowed"
       onClick={onClick} disabled={disabled}
-    >+ Add property</button>
+    >
+      <span className="text-[12px] leading-none">+</span>
+      Add property
+    </button>
   )
 }
 

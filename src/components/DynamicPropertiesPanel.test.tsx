@@ -113,7 +113,7 @@ describe('DynamicPropertiesPanel', () => {
       />
     )
     // Status rendered with CSS text-transform: uppercase, DOM text is still "Active"
-    expect(screen.getByTitle('Active')).toBeInTheDocument()
+    expect(screen.getByTestId('status-badge')).toBeInTheDocument()
   })
 
   it('renders properties from frontmatter', () => {
@@ -124,9 +124,9 @@ describe('DynamicPropertiesPanel', () => {
         frontmatter={{ cadence: 'Weekly', owner: 'Luca' }}
       />
     )
-    expect(screen.getByText('cadence')).toBeInTheDocument()
+    expect(screen.getByText('Cadence')).toBeInTheDocument()
     expect(screen.getByText('Weekly')).toBeInTheDocument()
-    expect(screen.getByText('owner')).toBeInTheDocument()
+    expect(screen.getByText('Owner')).toBeInTheDocument()
     expect(screen.getByText('Luca')).toBeInTheDocument()
   })
 
@@ -162,7 +162,7 @@ describe('DynamicPropertiesPanel', () => {
         frontmatter={{ notion_id: 'abc-123-def' }}
       />
     )
-    expect(screen.getByText('notion_id')).toBeInTheDocument()
+    expect(screen.getByText('Notion id')).toBeInTheDocument()
     expect(screen.getByText('abc-123-def')).toBeInTheDocument()
   })
 
@@ -177,7 +177,7 @@ describe('DynamicPropertiesPanel', () => {
     // aliases skipped (in SKIP_KEYS); 'Belongs to' skipped (has wikilinks)
     expect(screen.queryByText('aliases')).not.toBeInTheDocument()
     expect(screen.queryByText('Belongs to')).not.toBeInTheDocument()
-    expect(screen.getByText('cadence')).toBeInTheDocument()
+    expect(screen.getByText('Cadence')).toBeInTheDocument()
   })
 
   it('shows former relationship key with plain text value in Properties', () => {
@@ -219,7 +219,7 @@ describe('DynamicPropertiesPanel', () => {
     const typeLabels = screen.getAllByText('Type')
     // Only the TypeRow label should exist, not a property row
     expect(typeLabels).toHaveLength(1)
-    expect(screen.getByTitle('Active')).toBeInTheDocument()
+    expect(screen.getByTestId('status-badge')).toBeInTheDocument()
   })
 
   it('renders boolean property as toggle', () => {
@@ -232,7 +232,7 @@ describe('DynamicPropertiesPanel', () => {
       />
     )
     // Boolean should show as Yes/No toggle
-    const toggleBtn = screen.getByText('\u2717 No')
+    const toggleBtn = screen.getByText('No')
     fireEvent.click(toggleBtn)
     expect(onUpdateProperty).toHaveBeenCalledWith('published', true)
   })
@@ -260,7 +260,7 @@ describe('DynamicPropertiesPanel', () => {
         onAddProperty={onAddProperty}
       />
     )
-    expect(screen.getByText('+ Add property')).toBeInTheDocument()
+    expect(screen.getByText('Add property')).toBeInTheDocument()
   })
 
   it('opens add property form when button clicked', () => {
@@ -272,7 +272,7 @@ describe('DynamicPropertiesPanel', () => {
         onAddProperty={onAddProperty}
       />
     )
-    fireEvent.click(screen.getByText('+ Add property'))
+    fireEvent.click(screen.getByText('Add property'))
     expect(screen.getByPlaceholderText('Property name')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Value')).toBeInTheDocument()
     expect(screen.getByTestId('add-property-type-trigger')).toBeInTheDocument()
@@ -287,7 +287,7 @@ describe('DynamicPropertiesPanel', () => {
         onAddProperty={onAddProperty}
       />
     )
-    fireEvent.click(screen.getByText('+ Add property'))
+    fireEvent.click(screen.getByText('Add property'))
     const keyInput = screen.getByPlaceholderText('Property name')
     const valueInput = screen.getByPlaceholderText('Value')
     fireEvent.change(keyInput, { target: { value: 'priority' } })
@@ -412,7 +412,7 @@ describe('DynamicPropertiesPanel', () => {
       />
     )
     // Click status pill to open dropdown
-    fireEvent.click(screen.getByTitle('Active'))
+    fireEvent.click(screen.getByTestId('status-badge'))
     // Should show dropdown with search input
     expect(screen.getByTestId('status-dropdown')).toBeInTheDocument()
     expect(screen.getByTestId('status-search-input')).toBeInTheDocument()
@@ -478,11 +478,11 @@ describe('DynamicPropertiesPanel', () => {
         onAddProperty={onAddProperty}
       />
     )
-    fireEvent.click(screen.getByText('+ Add property'))
+    fireEvent.click(screen.getByText('Add property'))
     const keyInput = screen.getByPlaceholderText('Property name')
     fireEvent.keyDown(keyInput, { key: 'Escape' })
     // Form should be hidden, button should reappear
-    expect(screen.getByText('+ Add property')).toBeInTheDocument()
+    expect(screen.getByText('Add property')).toBeInTheDocument()
   })
 
   it('adds property on Enter in form', () => {
@@ -494,7 +494,7 @@ describe('DynamicPropertiesPanel', () => {
         onAddProperty={onAddProperty}
       />
     )
-    fireEvent.click(screen.getByText('+ Add property'))
+    fireEvent.click(screen.getByText('Add property'))
     const keyInput = screen.getByPlaceholderText('Property name')
     const valueInput = screen.getByPlaceholderText('Value')
     fireEvent.change(keyInput, { target: { value: 'key' } })
@@ -512,7 +512,7 @@ describe('DynamicPropertiesPanel', () => {
         onAddProperty={onAddProperty}
       />
     )
-    fireEvent.click(screen.getByText('+ Add property'))
+    fireEvent.click(screen.getByText('Add property'))
     const keyInput = screen.getByPlaceholderText('Property name')
     const valueInput = screen.getByPlaceholderText('Value')
     fireEvent.change(keyInput, { target: { value: 'tags' } })
@@ -530,9 +530,9 @@ describe('DynamicPropertiesPanel', () => {
         onAddProperty={onAddProperty}
       />
     )
-    fireEvent.click(screen.getByText('+ Add property'))
+    fireEvent.click(screen.getByText('Add property'))
     fireEvent.click(screen.getByTestId('add-property-cancel'))
-    expect(screen.getByText('+ Add property')).toBeInTheDocument()
+    expect(screen.getByText('Add property')).toBeInTheDocument()
   })
 
   describe('editable vs read-only distinction', () => {
@@ -775,7 +775,7 @@ describe('DynamicPropertiesPanel', () => {
       expect(screen.getByText('Mar 31, 2026')).toBeInTheDocument()
     })
 
-    it('renders calendar icon in date trigger button', () => {
+    it('renders date trigger button', () => {
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
@@ -786,7 +786,6 @@ describe('DynamicPropertiesPanel', () => {
       )
       const trigger = screen.getByTestId('date-display')
       expect(trigger.tagName).toBe('BUTTON')
-      expect(trigger.querySelector('svg')).toBeInTheDocument()
     })
 
     it('opens calendar popover when date button clicked', () => {
@@ -841,7 +840,7 @@ describe('DynamicPropertiesPanel', () => {
           onUpdateProperty={onUpdateProperty}
         />
       )
-      fireEvent.click(screen.getByTitle('Active'))
+      fireEvent.click(screen.getByTestId('status-badge'))
       expect(screen.getByTestId('status-dropdown')).toBeInTheDocument()
       fireEvent.keyDown(screen.getByTestId('status-search-input'), { key: 'Escape' })
       expect(screen.queryByTestId('status-dropdown')).not.toBeInTheDocument()
@@ -857,7 +856,7 @@ describe('DynamicPropertiesPanel', () => {
           onUpdateProperty={onUpdateProperty}
         />
       )
-      fireEvent.click(screen.getByTitle('Active'))
+      fireEvent.click(screen.getByTestId('status-badge'))
       fireEvent.click(screen.getByTestId('status-dropdown-backdrop'))
       expect(screen.queryByTestId('status-dropdown')).not.toBeInTheDocument()
       expect(onUpdateProperty).not.toHaveBeenCalled()
@@ -872,7 +871,7 @@ describe('DynamicPropertiesPanel', () => {
           onUpdateProperty={onUpdateProperty}
         />
       )
-      fireEvent.click(screen.getByTitle('Active'))
+      fireEvent.click(screen.getByTestId('status-badge'))
       const input = screen.getByTestId('status-search-input')
       fireEvent.change(input, { target: { value: 'Needs Review' } })
       fireEvent.keyDown(input, { key: 'Enter' })
@@ -893,7 +892,7 @@ describe('DynamicPropertiesPanel', () => {
           onUpdateProperty={onUpdateProperty}
         />
       )
-      fireEvent.click(screen.getByTitle('Active'))
+      fireEvent.click(screen.getByTestId('status-badge'))
       expect(screen.getByTestId('status-option-Reviewing')).toBeInTheDocument()
       expect(screen.getByTestId('status-option-Shipped')).toBeInTheDocument()
     })
@@ -910,7 +909,7 @@ describe('DynamicPropertiesPanel', () => {
         />
       )
       expect(screen.getByTestId('boolean-toggle')).toBeInTheDocument()
-      expect(screen.getByText('\u2713 Yes')).toBeInTheDocument()
+      expect(screen.getByText('Yes')).toBeInTheDocument()
     })
 
     it('renders boolean toggle for false values', () => {
@@ -923,7 +922,7 @@ describe('DynamicPropertiesPanel', () => {
         />
       )
       expect(screen.getByTestId('boolean-toggle')).toBeInTheDocument()
-      expect(screen.getByText('\u2717 No')).toBeInTheDocument()
+      expect(screen.getByText('No')).toBeInTheDocument()
     })
   })
 
@@ -937,13 +936,13 @@ describe('DynamicPropertiesPanel', () => {
           onUpdateProperty={onUpdateProperty}
         />
       )
-      expect(screen.queryByText('trashed')).not.toBeInTheDocument()
-      expect(screen.queryByText('trashed_at')).not.toBeInTheDocument()
-      expect(screen.queryByText('archived')).not.toBeInTheDocument()
-      expect(screen.queryByText('archived_at')).not.toBeInTheDocument()
-      expect(screen.queryByText('icon')).not.toBeInTheDocument()
+      expect(screen.queryByText('Trashed')).not.toBeInTheDocument()
+      expect(screen.queryByText('Trashed at')).not.toBeInTheDocument()
+      expect(screen.queryByText('Archived')).not.toBeInTheDocument()
+      expect(screen.queryByText('Archived at')).not.toBeInTheDocument()
+      expect(screen.queryByText('Icon')).not.toBeInTheDocument()
       // Custom property still visible
-      expect(screen.getByText('cadence')).toBeInTheDocument()
+      expect(screen.getByText('Cadence')).toBeInTheDocument()
     })
 
     it('filters system properties case-insensitively', () => {
@@ -958,7 +957,7 @@ describe('DynamicPropertiesPanel', () => {
       expect(screen.queryByText('Trashed')).not.toBeInTheDocument()
       expect(screen.queryByText('Archived')).not.toBeInTheDocument()
       expect(screen.queryByText('Icon')).not.toBeInTheDocument()
-      expect(screen.getByText('cadence')).toBeInTheDocument()
+      expect(screen.getByText('Cadence')).toBeInTheDocument()
     })
 
     it('does not filter similar but non-matching property names', () => {
@@ -971,7 +970,7 @@ describe('DynamicPropertiesPanel', () => {
         />
       )
       expect(screen.getByText('Is Trashed')).toBeInTheDocument()
-      expect(screen.getByText('archive_date')).toBeInTheDocument()
+      expect(screen.getByText('Archive date')).toBeInTheDocument()
     })
   })
 
@@ -1055,7 +1054,7 @@ describe('DynamicPropertiesPanel', () => {
         />
       )
       expect(screen.getByTestId('boolean-toggle')).toBeInTheDocument()
-      expect(screen.getByText('\u2713 Yes')).toBeInTheDocument()
+      expect(screen.getByText('Yes')).toBeInTheDocument()
     })
 
     it('renders boolean toggle for string "false" when boolean mode overridden', () => {
@@ -1069,7 +1068,7 @@ describe('DynamicPropertiesPanel', () => {
         />
       )
       expect(screen.getByTestId('boolean-toggle')).toBeInTheDocument()
-      expect(screen.getByText('\u2717 No')).toBeInTheDocument()
+      expect(screen.getByText('No')).toBeInTheDocument()
     })
 
     it('toggles string boolean from false to true', () => {
@@ -1124,7 +1123,7 @@ describe('DynamicPropertiesPanel', () => {
           onAddProperty={onAddProperty}
         />
       )
-      fireEvent.click(screen.getByText('+ Add property'))
+      fireEvent.click(screen.getByText('Add property'))
       // Switch type to boolean
       fireEvent.pointerDown(screen.getByTestId('add-property-type-trigger'), { button: 0, pointerType: 'mouse' })
       fireEvent.click(screen.getByRole('option', { name: /Boolean/ }))
@@ -1141,7 +1140,7 @@ describe('DynamicPropertiesPanel', () => {
           onAddProperty={onAddProperty}
         />
       )
-      fireEvent.click(screen.getByText('+ Add property'))
+      fireEvent.click(screen.getByText('Add property'))
       fireEvent.pointerDown(screen.getByTestId('add-property-type-trigger'), { button: 0, pointerType: 'mouse' })
       fireEvent.click(screen.getByRole('option', { name: /Boolean/ }))
       // Toggle from No to Yes
@@ -1158,7 +1157,7 @@ describe('DynamicPropertiesPanel', () => {
           onAddProperty={onAddProperty}
         />
       )
-      fireEvent.click(screen.getByText('+ Add property'))
+      fireEvent.click(screen.getByText('Add property'))
       const keyInput = screen.getByPlaceholderText('Property name')
       fireEvent.change(keyInput, { target: { value: 'published' } })
       // Switch to boolean type
@@ -1180,7 +1179,7 @@ describe('DynamicPropertiesPanel', () => {
           onAddProperty={onAddProperty}
         />
       )
-      fireEvent.click(screen.getByText('+ Add property'))
+      fireEvent.click(screen.getByText('Add property'))
       fireEvent.pointerDown(screen.getByTestId('add-property-type-trigger'), { button: 0, pointerType: 'mouse' })
       fireEvent.click(screen.getByRole('option', { name: /Date/ }))
       expect(screen.getByTestId('add-property-date-trigger')).toBeInTheDocument()
@@ -1196,7 +1195,7 @@ describe('DynamicPropertiesPanel', () => {
           onAddProperty={onAddProperty}
         />
       )
-      fireEvent.click(screen.getByText('+ Add property'))
+      fireEvent.click(screen.getByText('Add property'))
       fireEvent.pointerDown(screen.getByTestId('add-property-type-trigger'), { button: 0, pointerType: 'mouse' })
       fireEvent.click(screen.getByRole('option', { name: /Status/ }))
       expect(screen.getByTestId('add-property-status-trigger')).toBeInTheDocument()
@@ -1211,7 +1210,7 @@ describe('DynamicPropertiesPanel', () => {
           onAddProperty={onAddProperty}
         />
       )
-      fireEvent.click(screen.getByText('+ Add property'))
+      fireEvent.click(screen.getByText('Add property'))
       // Default mode is text
       expect(screen.getByPlaceholderText('Value')).toBeInTheDocument()
     })

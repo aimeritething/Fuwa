@@ -122,11 +122,11 @@ describe('Inspector', () => {
     expect(screen.getByText('Words')).toBeInTheDocument()
   })
 
-  it('renders status as a colored pill', () => {
+  it('renders status as a colored badge with dot indicator', () => {
     render(<Inspector {...defaultProps} entry={mockEntry} content={mockContent} />)
-    const pill = screen.getByText('Active')
-    // Status is rendered as an inline pill with CSS variable-based styles
-    expect(pill).toHaveStyle({ borderRadius: '16px' })
+    const badge = screen.getByTestId('status-badge')
+    expect(badge).toHaveTextContent('Active')
+    expect(badge.className).toContain('rounded')
   })
 
   it('computes word count from content minus frontmatter and title', () => {
@@ -137,7 +137,7 @@ describe('Inspector', () => {
 
   it('shows "Add property" button as disabled placeholder', () => {
     render(<Inspector {...defaultProps} entry={mockEntry} content={mockContent} />)
-    const btn = screen.getByText('+ Add property')
+    const btn = screen.getByText('Add property')
     expect(btn).toBeDisabled()
   })
 

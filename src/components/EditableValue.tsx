@@ -65,7 +65,7 @@ export function UrlValue({
   return (
     <span className="group/url inline-flex min-w-0 items-center gap-1">
       <span
-        className="min-w-0 cursor-pointer truncate rounded px-1 py-0.5 text-right text-[12px] text-secondary-foreground transition-colors hover:text-primary hover:underline"
+        className="min-w-0 cursor-pointer truncate rounded px-1 py-0.5 text-right text-[12px] text-[var(--accent-blue)] underline decoration-[var(--accent-blue)]/40 transition-colors hover:decoration-[var(--accent-blue)]"
         onClick={handleOpen}
         title={value}
         data-testid="url-link"

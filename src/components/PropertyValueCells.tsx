@@ -5,7 +5,7 @@ import { EditableValue, TagPillList, UrlValue } from './EditableValue'
 import { isUrlValue } from '../utils/url'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { CalendarIcon, XIcon } from 'lucide-react'
+import { XIcon } from 'lucide-react'
 import { isValidCssColor } from '../utils/colorUtils'
 import {
   type PropertyDisplayMode,
@@ -14,7 +14,8 @@ import {
   DISPLAY_MODE_OPTIONS,
   DISPLAY_MODE_ICONS,
 } from '../utils/propertyTypes'
-import { StatusPill, StatusDropdown } from './StatusDropdown'
+import { StatusDropdown } from './StatusDropdown'
+import { getStatusStyle } from '../utils/statusStyles'
 import { TagsDropdown } from './TagsDropdown'
 import { getTagStyle } from '../utils/tagStyles'
 import { ColorEditableValue } from './ColorInput'
@@ -37,14 +38,17 @@ function StatusValue({ propKey, value, isEditing, vaultStatuses, onSave, onStart
   onSave: (key: string, value: string) => void; onStartEdit: (key: string | null) => void
 }) {
   const statusStr = String(value)
+  const style = getStatusStyle(statusStr)
   return (
     <span className="relative inline-flex min-w-0 items-center">
       <span
-        className="cursor-pointer transition-opacity hover:opacity-80"
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded px-2 py-0.5 text-[12px] font-medium transition-opacity hover:opacity-80"
+        style={{ backgroundColor: style.bg, color: style.color }}
         onClick={() => onStartEdit(propKey)}
         data-testid="status-badge"
       >
-        <StatusPill status={statusStr} />
+        <span className="inline-block size-1.5 shrink-0 rounded-full" style={{ backgroundColor: style.color }} />
+        {statusStr}
       </span>
       {isEditing && (
         <StatusDropdown
@@ -86,11 +90,8 @@ function TagsValue({ propKey, value, isEditing, vaultTags, onSave, onStartEdit }
               className="transition-[max-width] duration-150 group-hover/tag:[mask-image:linear-gradient(to_right,black_60%,transparent_100%)]"
               style={{
                 color: style.color,
-                fontFamily: "'IBM Plex Mono', monospace",
-                fontSize: 10,
-                fontWeight: 600,
-                letterSpacing: '0',
-                textTransform: 'uppercase' as const,
+                fontSize: 11,
+                fontWeight: 500,
                 overflow: 'hidden',
                 whiteSpace: 'nowrap' as const,
               }}
@@ -99,7 +100,7 @@ function TagsValue({ propKey, value, isEditing, vaultTags, onSave, onStartEdit }
             </span>
             <button
               className="ml-0.5 max-w-0 overflow-hidden border-none bg-transparent p-0 leading-none opacity-0 transition-all duration-150 group-hover/tag:max-w-[14px] group-hover/tag:opacity-100"
-              style={{ color: style.color, fontSize: 10, flexShrink: 0 }}
+              style={{ color: style.color, fontSize: 11, flexShrink: 0 }}
               onClick={() => handleRemove(tag)}
               title={`Remove ${tag}`}
             >
@@ -128,13 +129,15 @@ function TagsValue({ propKey, value, isEditing, vaultTags, onSave, onStartEdit }
 
 function BooleanToggle({ value, onToggle }: { value: boolean; onToggle: () => void }) {
   return (
-    <button
-      className="rounded border border-border bg-transparent px-2 py-0.5 text-xs text-secondary-foreground transition-colors hover:bg-muted"
-      onClick={onToggle}
-      data-testid="boolean-toggle"
-    >
-      {value ? '\u2713 Yes' : '\u2717 No'}
-    </button>
+    <label className="inline-flex cursor-pointer items-center gap-1.5" data-testid="boolean-toggle">
+      <input
+        type="checkbox"
+        checked={value}
+        onChange={onToggle}
+        className="size-3.5 cursor-pointer accent-primary"
+      />
+      <span className="text-[12px] text-secondary-foreground">{value ? 'Yes' : 'No'}</span>
+    </label>
   )
 }
 
@@ -160,11 +163,10 @@ function DateValue({ value, onSave }: {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className="inline-flex min-w-0 cursor-pointer items-center gap-1 rounded border-none bg-transparent px-1 py-0.5 text-right text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
+          className={`inline-flex min-w-0 cursor-pointer items-center gap-1 border-none px-2 py-0.5 text-right text-[12px] font-medium transition-colors hover:opacity-80${formatted ? ' rounded bg-muted text-accent-foreground' : ' bg-transparent text-muted-foreground'}`}
           title={value}
           data-testid="date-display"
         >
-          <CalendarIcon className="size-3 shrink-0 text-muted-foreground" />
           <span className={`min-w-0 truncate${!formatted ? ' text-muted-foreground' : ''}`}>{formatted || 'Pick a date\u2026'}</span>
         </button>
       </PopoverTrigger>
