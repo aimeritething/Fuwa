@@ -1,8 +1,8 @@
 #[cfg(desktop)]
 use crate::menu;
 use crate::settings::Settings;
+use crate::vault_list;
 use crate::vault_list::VaultList;
-use crate::{vault_list};
 
 use super::parse_build_label;
 
