@@ -2,24 +2,24 @@ import { useMemo } from 'react'
 import type { SidebarSelection, VaultEntry } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
+import { buildNavigationCommands } from './commands/navigationCommands'
+import { buildNoteCommands } from './commands/noteCommands'
+import { buildGitCommands } from './commands/gitCommands'
+import { buildViewCommands } from './commands/viewCommands'
+import { buildSettingsCommands } from './commands/settingsCommands'
+import { buildTypeCommands, extractVaultTypes } from './commands/typeCommands'
+import { buildFilterCommands } from './commands/filterCommands'
 
-export type CommandGroup = 'Navigation' | 'Note' | 'Git' | 'View' | 'Settings'
-
-export interface CommandAction {
-  id: string
-  label: string
-  group: CommandGroup
-  shortcut?: string
-  keywords?: string[]
-  enabled: boolean
-  execute: () => void
-}
+// Re-export types and helpers for backward compatibility
+export type { CommandAction, CommandGroup } from './commands/types'
+export { groupSortKey } from './commands/types'
+export { pluralizeType, extractVaultTypes, buildTypeCommands } from './commands/typeCommands'
+export { buildViewCommands } from './commands/viewCommands'
 
 interface CommandRegistryConfig {
   activeTabPath: string | null
   entries: VaultEntry[]
   modifiedCount: number
-  /** Whether the active note has an emoji icon set. */
   activeNoteHasIcon?: boolean
   mcpStatus?: string
   onInstallMcp?: () => void
@@ -30,7 +30,6 @@ interface CommandRegistryConfig {
   onSetNoteIcon?: () => void
   onRemoveNoteIcon?: () => void
   onOpenInNewWindow?: () => void
-
   onQuickOpen: () => void
   onCreateNote: () => void
   onCreateNoteOfType: (type: string) => void
@@ -66,93 +65,12 @@ interface CommandRegistryConfig {
   onRestoreGettingStarted?: () => void
   isGettingStartedHidden?: boolean
   vaultCount?: number
-  /** Current selection — used to scope filter pill commands to section group views. */
   selection?: SidebarSelection
   noteListFilter?: NoteListFilter
   onSetNoteListFilter?: (filter: NoteListFilter) => void
 }
 
-const PLURAL_OVERRIDES: Record<string, string> = {
-  Person: 'People',
-  Responsibility: 'Responsibilities',
-}
-
-const DEFAULT_TYPES = ['Event', 'Person', 'Project', 'Note']
-
-export function pluralizeType(type: string): string {
-  if (PLURAL_OVERRIDES[type]) return PLURAL_OVERRIDES[type]
-  if (type.endsWith('s') || type.endsWith('x') || type.endsWith('ch') || type.endsWith('sh')) return `${type}es`
-  if (type.endsWith('y') && !/[aeiou]y$/i.test(type)) return `${type.slice(0, -1)}ies`
-  return `${type}s`
-}
-
-export function extractVaultTypes(entries: VaultEntry[]): string[] {
-  const typeSet = new Set<string>()
-  for (const e of entries) {
-    if (e.isA && e.isA !== 'Type' && !e.trashed) typeSet.add(e.isA)
-  }
-  if (typeSet.size === 0) return DEFAULT_TYPES
-  return Array.from(typeSet).sort()
-}
-
-const GROUP_ORDER: CommandGroup[] = ['Navigation', 'Note', 'Git', 'View', 'Settings']
-
-export function groupSortKey(group: CommandGroup): number {
-  return GROUP_ORDER.indexOf(group)
-}
-
-export function buildTypeCommands(
-  types: string[],
-  onCreateNoteOfType: (type: string) => void,
-  onSelect: (sel: SidebarSelection) => void,
-): CommandAction[] {
-  return types.flatMap((type) => {
-    const slug = type.toLowerCase().replace(/\s+/g, '-')
-    const plural = pluralizeType(type)
-    return [
-      {
-        id: `new-${slug}`, label: `New ${type}`, group: 'Note' as CommandGroup,
-        keywords: ['new', 'create', type.toLowerCase()],
-        enabled: true, execute: () => onCreateNoteOfType(type),
-      },
-      {
-        id: `list-${slug}`, label: `List ${plural}`, group: 'Navigation' as CommandGroup,
-        keywords: ['list', 'show', 'filter', type.toLowerCase(), plural.toLowerCase()],
-        enabled: true, execute: () => onSelect({ kind: 'sectionGroup', type }),
-      },
-    ]
-  })
-}
-
-export function buildViewCommands(
-  hasActiveNote: boolean,
-  activeNoteModified: boolean,
-  onSetViewMode: (mode: ViewMode) => void,
-  onToggleInspector: () => void,
-  onToggleDiff: (() => void) | undefined,
-  onToggleRawEditor: (() => void) | undefined,
-  onToggleAIChat: (() => void) | undefined,
-  zoomLevel: number,
-  onZoomIn: () => void,
-  onZoomOut: () => void,
-  onZoomReset: () => void,
-): CommandAction[] {
-  return [
-    { id: 'view-editor', label: 'Editor Only', group: 'View', shortcut: '⌘1', keywords: ['layout', 'focus'], enabled: true, execute: () => onSetViewMode('editor-only') },
-    { id: 'view-editor-list', label: 'Editor + Note List', group: 'View', shortcut: '⌘2', keywords: ['layout'], enabled: true, execute: () => onSetViewMode('editor-list') },
-    { id: 'view-all', label: 'Full Layout', group: 'View', shortcut: '⌘3', keywords: ['layout', 'sidebar'], enabled: true, execute: () => onSetViewMode('all') },
-    { id: 'toggle-inspector', label: 'Toggle Properties Panel', group: 'View', keywords: ['properties', 'inspector', 'panel', 'right', 'sidebar'], enabled: true, execute: onToggleInspector },
-    { id: 'toggle-diff', label: 'Toggle Diff Mode', group: 'View', keywords: ['diff', 'changes', 'git', 'compare', 'version'], enabled: hasActiveNote && activeNoteModified, execute: () => onToggleDiff?.() },
-    { id: 'toggle-raw-editor', label: 'Toggle Raw Editor', group: 'View', keywords: ['raw', 'source', 'markdown', 'frontmatter', 'code', 'textarea'], enabled: hasActiveNote, execute: () => onToggleRawEditor?.() },
-    { id: 'toggle-ai-panel', label: 'Toggle AI Panel', group: 'View', shortcut: '⌘I', keywords: ['ai', 'agent', 'chat', 'assistant', 'contextual'], enabled: true, execute: () => onToggleAIChat?.() },
-    { id: 'toggle-backlinks', label: 'Toggle Backlinks', group: 'View', keywords: ['backlinks', 'references', 'links', 'mentions', 'incoming'], enabled: hasActiveNote, execute: onToggleInspector },
-    { id: 'zoom-in', label: `Zoom In (${zoomLevel}%)`, group: 'View', shortcut: '⌘=', keywords: ['zoom', 'bigger', 'larger', 'scale'], enabled: zoomLevel < 150, execute: onZoomIn },
-    { id: 'zoom-out', label: `Zoom Out (${zoomLevel}%)`, group: 'View', shortcut: '⌘-', keywords: ['zoom', 'smaller', 'scale'], enabled: zoomLevel > 80, execute: onZoomOut },
-    { id: 'zoom-reset', label: 'Reset Zoom', group: 'View', shortcut: '⌘0', keywords: ['zoom', 'actual', 'default', '100'], enabled: zoomLevel !== 100, execute: onZoomReset },
-  ]
-}
-
-export function useCommandRegistry(config: CommandRegistryConfig): CommandAction[] {
+export function useCommandRegistry(config: CommandRegistryConfig): import('./commands/types').CommandAction[] {
   const {
     activeTabPath, entries, modifiedCount,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onSave, onOpenSettings,
@@ -162,21 +80,15 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onOpenDailyNote,
     onGoBack, onGoForward, canGoBack, canGoForward,
-    onCheckForUpdates,
-    onCreateType,
+    onCheckForUpdates, onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
-    mcpStatus, onInstallMcp,
-    onEmptyTrash, trashedCount,
-    onReloadVault,
-    onRepairVault,
-    onSetNoteIcon,
-    onRemoveNoteIcon,
-    activeNoteHasIcon,
+    mcpStatus, onInstallMcp, onEmptyTrash, trashedCount,
+    onReloadVault, onRepairVault,
+    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     onOpenInNewWindow,
     selection, noteListFilter, onSetNoteListFilter,
   } = config
 
-  const isSectionGroup = selection?.kind === 'sectionGroup'
   const hasActiveNote = activeTabPath !== null
 
   const activeEntry = useMemo(
@@ -185,87 +97,31 @@ export function useCommandRegistry(config: CommandRegistryConfig): CommandAction
   )
   const isArchived = activeEntry?.archived ?? false
   const isTrashed = activeEntry?.trashed ?? false
+  const isSectionGroup = selection?.kind === 'sectionGroup'
 
   const vaultTypes = useMemo(() => extractVaultTypes(entries), [entries])
 
-  return useMemo(() => {
-    const cmds: CommandAction[] = [
-      // Navigation
-      { id: 'search-notes', label: 'Search Notes', group: 'Navigation', shortcut: '⌘P', keywords: ['find', 'open', 'quick'], enabled: true, execute: onQuickOpen },
-      { id: 'go-all', label: 'Go to All Notes', group: 'Navigation', keywords: ['filter'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'all' }) },
-      { id: 'go-archived', label: 'Go to Archived', group: 'Navigation', keywords: [], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'archived' }) },
-      { id: 'go-trash', label: 'Go to Trash', group: 'Navigation', keywords: ['deleted'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'trash' }) },
-      { id: 'empty-trash', label: 'Empty Trash', group: 'Note', keywords: ['delete', 'permanently', 'purge', 'clear', 'trash'], enabled: (trashedCount ?? 0) > 0, execute: () => onEmptyTrash?.() },
-      { id: 'go-changes', label: 'Go to Changes', group: 'Navigation', keywords: ['git', 'modified', 'pending'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'changes' }) },
-      { id: 'go-pulse', label: 'Go to Pulse', group: 'Navigation', keywords: ['activity', 'history', 'commits', 'git', 'feed'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'pulse' }) },
-      { id: 'go-inbox', label: 'Go to Inbox', group: 'Navigation', keywords: ['inbox', 'unlinked', 'orphan', 'unorganized', 'triage'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'inbox' }) },
-      { id: 'go-back', label: 'Go Back', group: 'Navigation', shortcut: '⌘[', keywords: ['previous', 'history', 'back'], enabled: !!canGoBack, execute: () => onGoBack?.() },
-      { id: 'go-forward', label: 'Go Forward', group: 'Navigation', shortcut: '⌘]', keywords: ['next', 'history', 'forward'], enabled: !!canGoForward, execute: () => onGoForward?.() },
-
-      // Note actions (contextual)
-      { id: 'create-note', label: 'Create New Note', group: 'Note', shortcut: '⌘N', keywords: ['new', 'add'], enabled: true, execute: onCreateNote },
-      { id: 'create-type', label: 'New Type', group: 'Note', keywords: ['new', 'create', 'type', 'template'], enabled: !!onCreateType, execute: () => onCreateType?.() },
-      { id: 'open-daily-note', label: "Open Today's Note", group: 'Note', shortcut: '⌘J', keywords: ['daily', 'journal', 'today'], enabled: true, execute: onOpenDailyNote },
-      { id: 'save-note', label: 'Save Note', group: 'Note', shortcut: '⌘S', keywords: ['write'], enabled: hasActiveNote, execute: onSave },
-      {
-        id: 'trash-note', label: isTrashed ? 'Restore Note' : 'Trash Note', group: 'Note', shortcut: '⌘⌫',
-        keywords: ['delete', 'remove', 'restore', 'trash'], enabled: hasActiveNote,
-        execute: () => { if (activeTabPath) (isTrashed ? onRestoreNote : onTrashNote)(activeTabPath) },
-      },
-      {
-        id: 'archive-note', label: isArchived ? 'Unarchive Note' : 'Archive Note', group: 'Note', shortcut: '⌘E',
-        keywords: ['archive'], enabled: hasActiveNote,
-        execute: () => { if (activeTabPath) (isArchived ? onUnarchiveNote : onArchiveNote)(activeTabPath) },
-      },
-      {
-        id: 'set-note-icon', label: 'Set Note Icon', group: 'Note',
-        keywords: ['icon', 'emoji', 'set', 'add', 'change', 'picker'],
-        enabled: hasActiveNote && !!onSetNoteIcon,
-        execute: () => onSetNoteIcon?.(),
-      },
-      {
-        id: 'remove-note-icon', label: 'Remove Note Icon', group: 'Note',
-        keywords: ['icon', 'emoji', 'remove', 'delete', 'clear'],
-        enabled: hasActiveNote && !!activeNoteHasIcon && !!onRemoveNoteIcon,
-        execute: () => onRemoveNoteIcon?.(),
-      },
-      {
-        id: 'open-in-new-window', label: 'Open in New Window', group: 'Note', shortcut: '⌘⇧O',
-        keywords: ['window', 'new', 'detach', 'pop', 'external', 'separate'],
-        enabled: hasActiveNote,
-        execute: () => onOpenInNewWindow?.(),
-      },
-
-      // Git
-      { id: 'commit-push', label: 'Commit & Push', group: 'Git', keywords: ['git', 'save', 'sync'], enabled: modifiedCount > 0, execute: onCommitPush },
-      { id: 'git-pull', label: 'Pull from Remote', group: 'Git', keywords: ['git', 'pull', 'fetch', 'download', 'sync', 'remote'], enabled: true, execute: () => onPull?.() },
-      { id: 'resolve-conflicts', label: 'Resolve Conflicts', group: 'Git', keywords: ['conflict', 'merge', 'git', 'sync'], enabled: true, execute: () => onResolveConflicts?.() },
-      { id: 'view-changes', label: 'View Pending Changes', group: 'Git', keywords: ['modified', 'diff'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'changes' }) },
-
-      // View
-      ...buildViewCommands(hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, zoomLevel, onZoomIn, onZoomOut, onZoomReset),
-
-      // Settings
-      { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,', keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
-      { id: 'open-vault', label: 'Open Vault…', group: 'Settings', keywords: ['vault', 'folder', 'switch', 'open', 'workspace'], enabled: true, execute: () => onOpenVault?.() },
-      { id: 'remove-vault', label: 'Remove Vault from List', group: 'Settings', keywords: ['vault', 'remove', 'disconnect', 'hide'], enabled: (vaultCount ?? 0) > 1 && !!onRemoveActiveVault, execute: () => onRemoveActiveVault?.() },
-      { id: 'restore-getting-started', label: 'Restore Getting Started Vault', group: 'Settings', keywords: ['vault', 'restore', 'demo', 'getting started', 'reset'], enabled: !!isGettingStartedHidden && !!onRestoreGettingStarted, execute: () => onRestoreGettingStarted?.() },
-      { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: true, execute: () => onCheckForUpdates?.() },
-      { id: 'install-mcp', label: mcpStatus === 'installed' ? 'Restore MCP Server' : 'Install MCP Server', group: 'Settings', keywords: ['mcp', 'claude', 'ai', 'tools', 'install', 'restore', 'fix', 'repair'], enabled: true, execute: () => onInstallMcp?.() },
-      { id: 'reload-vault', label: 'Reload Vault', group: 'Settings', keywords: ['reload', 'refresh', 'rescan', 'sync', 'filesystem', 'cache'], enabled: !!onReloadVault, execute: () => onReloadVault?.() },
-      { id: 'repair-vault', label: 'Repair Vault', group: 'Settings', keywords: ['repair', 'fix', 'restore', 'config', 'agents', 'themes', 'missing', 'reset', 'flatten', 'structure'], enabled: !!onRepairVault, execute: () => onRepairVault?.() },
-
-      // Type-aware: "New [Type]" and "List [Type]"
-      ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
-
-      // Note list filter pills (scoped to section group views)
-      { id: 'filter-open', label: 'Show Open Notes', group: 'Navigation', keywords: ['filter', 'open', 'active', 'pill'], enabled: !!isSectionGroup && noteListFilter !== 'open', execute: () => onSetNoteListFilter?.('open') },
-      { id: 'filter-archived', label: 'Show Archived Notes', group: 'Navigation', keywords: ['filter', 'archived', 'pill'], enabled: !!isSectionGroup && noteListFilter !== 'archived', execute: () => onSetNoteListFilter?.('archived') },
-      { id: 'filter-trashed', label: 'Show Trashed Notes', group: 'Navigation', keywords: ['filter', 'trashed', 'trash', 'pill', 'deleted'], enabled: !!isSectionGroup && noteListFilter !== 'trashed', execute: () => onSetNoteListFilter?.('trashed') },
-    ]
-
-    return cmds
-  }, [
+  return useMemo(() => [
+    ...buildNavigationCommands({ onQuickOpen, onSelect, onOpenDailyNote, onGoBack, onGoForward, canGoBack, canGoForward }),
+    ...buildNoteCommands({
+      hasActiveNote, activeTabPath, isArchived, isTrashed,
+      onCreateNote, onCreateType, onOpenDailyNote, onSave,
+      onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
+      onEmptyTrash, trashedCount, onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow,
+    }),
+    ...buildGitCommands({ modifiedCount, onCommitPush, onPull, onResolveConflicts, onSelect }),
+    ...buildViewCommands({
+      hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
+      onToggleDiff, onToggleRawEditor, onToggleAIChat, zoomLevel, onZoomIn, onZoomOut, onZoomReset,
+    }),
+    ...buildSettingsCommands({
+      mcpStatus, vaultCount, isGettingStartedHidden,
+      onOpenSettings, onOpenVault, onRemoveActiveVault, onRestoreGettingStarted,
+      onCheckForUpdates, onInstallMcp, onReloadVault, onRepairVault,
+    }),
+    ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
+    ...buildFilterCommands({ isSectionGroup, noteListFilter, onSetNoteListFilter }),
+  ], [
     hasActiveNote, activeTabPath, isArchived, isTrashed, modifiedCount, activeNoteModified,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onCreateType, onSave, onOpenSettings,
     onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
