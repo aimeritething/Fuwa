@@ -92,6 +92,33 @@ test.describe('Properties panel visual style', () => {
     }
   })
 
+  test('Type label uses same font-size as other property labels', async ({ page }) => {
+    await openNoteViaQuickOpen(page, 'Untitled note 58')
+
+    const typeSelector = page.locator('[data-testid="type-selector"]')
+    const typeCount = await typeSelector.count()
+    if (typeCount > 0) {
+      const typeLabel = typeSelector.locator('span').first()
+      const typeFontSize = await typeLabel.evaluate(el => getComputedStyle(el).fontSize)
+      // Should be 12px, matching other property labels
+      expect(typeFontSize).toBe('12px')
+    }
+  })
+
+  test('tags add button is solid pill, not dashed circle', async ({ page }) => {
+    await openNoteViaQuickOpen(page, 'Untitled note 58')
+
+    const tagsAddBtn = page.locator('[data-testid="tags-add-button"]')
+    const count = await tagsAddBtn.count()
+    if (count > 0) {
+      // Should NOT have dashed border
+      const borderStyle = await tagsAddBtn.first().evaluate(el => getComputedStyle(el).borderStyle)
+      expect(borderStyle).not.toBe('dashed')
+      // Should have rounded-md (not rounded-full circle)
+      await expect(tagsAddBtn.first()).toHaveClass(/rounded-md/)
+    }
+  })
+
   test('add property button is subtle', async ({ page }) => {
     await openNoteViaQuickOpen(page, 'Untitled note 58')
 

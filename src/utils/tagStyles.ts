@@ -11,6 +11,17 @@ export const DEFAULT_TAG_STYLE: TagStyle = {
   color: 'var(--accent-blue)',
 }
 
+/** Deterministic hash → accent color index for tags without a manual override. */
+function hashTagColor(tag: string): TagStyle {
+  let hash = 0
+  for (let i = 0; i < tag.length; i++) {
+    hash = ((hash << 5) - hash + tag.charCodeAt(i)) | 0
+  }
+  const idx = ((hash % ACCENT_COLORS.length) + ACCENT_COLORS.length) % ACCENT_COLORS.length
+  const accent = ACCENT_COLORS[idx]
+  return { bg: accent.cssLight, color: accent.css }
+}
+
 const STORAGE_KEY = 'laputa:tag-color-overrides'
 
 const COLOR_KEY_TO_STYLE: Record<string, TagStyle> = Object.fromEntries(
@@ -53,5 +64,5 @@ export function getTagStyle(tag: string): TagStyle {
     const style = COLOR_KEY_TO_STYLE[overrideKey]
     if (style) return style
   }
-  return DEFAULT_TAG_STYLE
+  return hashTagColor(tag)
 }

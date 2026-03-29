@@ -38,7 +38,8 @@ function detectStringType(key: string, strValue: string): PropertyDisplayMode {
 export function detectPropertyType(key: string, value: FrontmatterValue): PropertyDisplayMode {
   if (value === null || value === undefined) return 'text'
   if (typeof value === 'boolean') return 'boolean'
-  if (Array.isArray(value)) return keyMatchesPatterns(key, TAGS_KEY_PATTERNS) ? 'tags' : 'text'
+  if (keyMatchesPatterns(key, TAGS_KEY_PATTERNS)) return 'tags'
+  if (Array.isArray(value)) return 'text'
   return detectStringType(key, String(value))
 }
 

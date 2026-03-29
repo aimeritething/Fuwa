@@ -77,6 +77,14 @@ describe('detectPropertyType', () => {
     expect(detectPropertyType('custom_list', ['x', 'y'])).toBe('text')
   })
 
+  it('detects tags from tag-like key names even with scalar string values', () => {
+    expect(detectPropertyType('tags', 'Has Pic')).toBe('tags')
+    expect(detectPropertyType('Tags', 'solo-tag')).toBe('tags')
+    expect(detectPropertyType('keywords', 'react')).toBe('tags')
+    expect(detectPropertyType('categories', 'frontend')).toBe('tags')
+    expect(detectPropertyType('labels', 'bug')).toBe('tags')
+  })
+
   it('treats date-keyed fields with non-date values as text', () => {
     expect(detectPropertyType('deadline', 'active')).toBe('text')
   })

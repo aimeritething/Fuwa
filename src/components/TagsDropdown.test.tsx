@@ -10,11 +10,11 @@ describe('TagPill', () => {
     expect(pill.textContent).toBe('React')
   })
 
-  it('renders with default style (blue)', () => {
+  it('renders with a hash-based accent color', () => {
     render(<TagPill tag="Unknown" />)
     const pill = screen.getByTitle('Unknown')
-    expect(pill.style.backgroundColor).toBe('var(--accent-blue-light)')
-    expect(pill.style.color).toBe('var(--accent-blue)')
+    expect(pill.style.backgroundColor).toMatch(/^var\(--accent-\w+-light\)$/)
+    expect(pill.style.color).toMatch(/^var\(--accent-\w+\)$/)
   })
 
   it('applies truncate for long names', () => {

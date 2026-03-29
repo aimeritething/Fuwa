@@ -23,7 +23,7 @@ function ReadOnlyType({ isA, customColorKey, onNavigate }: { isA?: string | null
   if (!isA) return null
   return (
     <div className="grid min-w-0 grid-cols-2 items-center gap-2 px-1.5">
-      <span className="font-mono-overline shrink-0 text-muted-foreground">Type</span>
+      <span className="text-[12px] shrink-0 text-muted-foreground">Type</span>
       <div className="min-w-0">
         {onNavigate ? (
           <button
@@ -58,7 +58,7 @@ export function TypeSelector({ isA, customColorKey, availableTypes, typeColorKey
 
   return (
     <div className="grid min-w-0 grid-cols-2 items-center gap-2 px-1.5" data-testid="type-selector">
-      <span className="font-mono-overline shrink-0 text-muted-foreground">Type</span>
+      <span className="text-[12px] shrink-0 text-muted-foreground">Type</span>
       <div className="min-w-0">
         <Select value={currentValue} onValueChange={v => onUpdateProperty('type', v === TYPE_NONE ? null : v)}>
           <SelectTrigger

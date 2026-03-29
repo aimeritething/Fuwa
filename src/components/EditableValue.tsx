@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { normalizeUrl, openExternalUrl } from '../utils/url'
+import { getTagStyle } from '../utils/tagStyles'
 
 export function UrlValue({
   value,
@@ -211,11 +212,12 @@ export function TagPillList({
         ) : (
           <span
             key={idx}
-            className="group/pill relative inline-flex cursor-pointer items-center rounded-full px-2 py-0.5 transition-colors"
+            className="group/pill relative inline-flex cursor-pointer items-center rounded-md transition-colors"
             style={{
-              backgroundColor: 'var(--accent-blue-light)',
-              color: 'var(--accent-blue)',
-              fontSize: 11,
+              ...getTagStyle(item),
+              backgroundColor: getTagStyle(item).bg,
+              padding: '2px 8px',
+              fontSize: 12,
               fontWeight: 500,
             }}
             onClick={() => handleStartEdit(idx)}
@@ -223,8 +225,8 @@ export function TagPillList({
           >
             {item}
             <button
-              className="absolute right-0.5 top-1/2 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full border-none p-0 text-[10px] leading-none opacity-0 shadow-[-6px_0_4px_-2px_var(--accent-blue-light)] transition-all hover:bg-[var(--accent-red-light)] hover:text-[var(--accent-red)] group-hover/pill:opacity-100"
-              style={{ color: 'var(--accent-blue)', backgroundColor: 'var(--accent-blue-light)' }}
+              className="absolute right-0.5 top-1/2 flex h-3.5 w-3.5 -translate-y-1/2 items-center justify-center rounded-full border-none p-0 text-[10px] leading-none opacity-0 transition-all hover:bg-[var(--accent-red-light)] hover:text-[var(--accent-red)] group-hover/pill:opacity-100"
+              style={{ color: getTagStyle(item).color, backgroundColor: getTagStyle(item).bg }}
               onClick={(e) => {
                 e.stopPropagation()
                 handleDeleteItem(idx)
@@ -253,7 +255,8 @@ export function TagPillList({
         />
       ) : (
         <button
-          className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-dashed border-[var(--accent-blue)] bg-transparent p-0 text-[12px] leading-none text-[var(--accent-blue)] transition-colors hover:bg-[var(--accent-blue-light)]"
+          className="inline-flex items-center justify-center rounded-md border-none bg-muted px-2 text-[12px] font-medium leading-none text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          style={{ padding: '2px 8px' }}
           onClick={() => setIsAddingNew(true)}
           title={`Add ${label.toLowerCase()}`}
         >
