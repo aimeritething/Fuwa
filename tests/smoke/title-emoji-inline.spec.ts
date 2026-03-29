@@ -45,10 +45,23 @@ test.describe('Title H1 with inline emoji', () => {
     expect(fontWeight).toBeGreaterThanOrEqual(700)
   })
 
+  test('no reserved space for emoji when note has no icon', async ({ page }) => {
+    const titleRow = page.locator('.title-section__row')
+    await expect(titleRow).toBeVisible({ timeout: 3000 })
+
+    // When no emoji is set, icon-display should not be in the row
+    const iconInRow = titleRow.locator('[data-testid="note-icon-display"]')
+    await expect(iconInRow).toHaveCount(0)
+
+    // Title should be the first (and only significant) child in the row
+    const titleInput = titleRow.locator('[data-testid="title-field-input"]')
+    await expect(titleInput).toBeVisible()
+  })
+
   test('emoji icon and title are on the same horizontal line when icon present', async ({ page }) => {
-    // Add an icon via the "Add icon" button
-    const iconArea = page.locator('[data-testid="note-icon-area"]')
-    await iconArea.hover()
+    // Hover over the title section to reveal the "Add icon" button
+    const titleSection = page.locator('.title-section')
+    await titleSection.hover()
     await page.waitForTimeout(200)
 
     const addBtn = page.locator('[data-testid="note-icon-add"]')

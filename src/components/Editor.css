@@ -183,7 +183,7 @@
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  padding-top: 16px;
+  padding-top: 32px;
 }
 
 .title-section__separator {
@@ -209,10 +209,10 @@
 }
 
 .note-icon-button--active {
-  font-size: 32px;
-  line-height: 1.2;
+  font-size: 36px;
+  line-height: 1;
   transition: transform 0.1s;
-  margin-right: 8px;
+  margin-right: 10px;
 }
 
 .note-icon-button--active:hover:not(:disabled) {
@@ -227,9 +227,10 @@
   font-size: 13px;
   opacity: 0;
   transition: opacity 0.15s;
+  margin-top: 16px;
 }
 
-.note-icon-area:hover .note-icon-button--add,
+.title-section:hover .note-icon-button--add,
 .note-icon-button--add:focus-visible {
   opacity: 1;
 }
@@ -290,7 +291,7 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: var(--headings-h1-font-size, 28px);
+  font-size: var(--headings-h1-font-size, 32px);
   font-weight: var(--headings-h1-font-weight, 700);
   line-height: var(--headings-h1-line-height, 1.2);
   letter-spacing: var(--headings-h1-letter-spacing, -0.015em);

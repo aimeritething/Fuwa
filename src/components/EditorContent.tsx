@@ -203,13 +203,23 @@ export function EditorContent({
       {showEditor && activeTab && (
         <div className="editor-scroll-area">
           <div className="title-section">
-            <div className="title-section__row">
+            {!emojiIcon && (
               <NoteIcon
-                icon={emojiIcon}
+                icon={null}
                 editable={!isTrashed}
                 onSetIcon={handleSetIcon}
                 onRemoveIcon={handleRemoveIcon}
               />
+            )}
+            <div className="title-section__row">
+              {emojiIcon && (
+                <NoteIcon
+                  icon={emojiIcon}
+                  editable={!isTrashed}
+                  onSetIcon={handleSetIcon}
+                  onRemoveIcon={handleRemoveIcon}
+                />
+              )}
               <TitleField
                 title={activeTab.entry.title}
                 filename={activeTab.entry.filename}
