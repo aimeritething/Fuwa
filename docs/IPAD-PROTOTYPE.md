@@ -30,7 +30,7 @@ Laputa can be ported to iPad using Tauri v2 iOS (beta) with **minimal code chang
 |---------|---------|---------------------|
 | Git operations | No `git` binary on iOS | **Option B (Working Copy)** for prototype; **Option A (isomorphic-git)** for production |
 | GitHub clone/push/pull | Depends on git CLI | Same as above |
-| Claude CLI streaming | No `claude` binary on iOS | Use Anthropic API directly (already available via `ai_chat`) |
+| Claude CLI streaming | No `claude` binary on iOS | Use Anthropic API directly (requires new implementation) |
 | MCP server / WS bridge | Spawns Node.js child process | Skip for mobile; explore in-process MCP later |
 | macOS menu bar | Desktop-only API | Touch-native navigation (already handled by React) |
 | Updater plugin | Desktop-only | Use TestFlight for updates |

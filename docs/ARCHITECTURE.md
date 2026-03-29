@@ -21,7 +21,7 @@ When deciding where to persist a piece of data, ask: **"Would the user want this
 | Follows the vault | Stays with the installation |
 |-------------------|-----------------------------|
 | Type icon, type color | Editor zoom level |
-| Pinned properties per type | API keys (Anthropic, OpenAI) |
+| Pinned properties per type | API keys (OpenAI, Google) |
 | Sidebar label overrides | GitHub token |
 | Property display order | Window size / position |
 | Any user-visible customization of how content is organized or displayed | Any machine-specific or credential-type setting |
@@ -31,7 +31,6 @@ When deciding where to persist a piece of data, ask: **"Would the user want this
 Examples:
 - ✅ Vault: `_pinned_properties` in a Type note (every device should show the same pinned properties)
 - ✅ Vault: `_icon: shapes` in a Type note (icon is part of the type's identity)
-- ✅ App settings: `anthropic_key` (credential, not vault data)
 - ✅ App settings: `zoom: 1.3` (machine-specific preference)
 
 ### No hardcoded exceptions
@@ -97,7 +96,6 @@ flowchart LR
 | Build | Vite | 7.3.1 |
 | Backend language | Rust (edition 2021) | 1.77.2 |
 | Frontmatter parsing | gray_matter | 0.2 |
-| AI (in-app chat) | Anthropic Claude API (Haiku 3.5 default) | - |
 | AI (agent panel) | Claude CLI subprocess (streaming NDJSON) | - |
 | Search | Keyword (walkdir-based file scan) | - |
 | MCP | @modelcontextprotocol/sdk | 1.0 |
@@ -116,14 +114,13 @@ flowchart TD
             NL["NoteList / PulseView\n(filtered list / activity)"]
             ED["Editor\n(BlockNote + diff + raw)"]
             IN["Inspector\n(metadata + relationships)"]
-            AIC["AIChatPanel\n(API-based chat)"]
             AIP["AiPanel\n(Claude CLI agent + tools)"]
             SP["SearchPanel\n(keyword search)"]
             ST["StatusBar\n(vault picker + sync + version)"]
             CP["CommandPalette\n(Cmd+K launcher)"]
 
             App --> WS & SB & NL & ED & SP & ST & CP
-            ED --> IN & AIC & AIP
+            ED --> IN & AIP
         end
 
         subgraph RB["Rust Backend"]
@@ -138,7 +135,6 @@ flowchart TD
         end
 
         subgraph EXT["External Services"]
-            ANTH["Anthropic API\n(Claude chat)"]
             CCLI["Claude CLI\n(agent subprocess)"]
             MCP["MCP Server\n(ws://9710, 9711)"]
             GHAPI["GitHub API\n(OAuth, repos, clone)"]
@@ -179,7 +175,7 @@ flowchart TD
 - **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Changes, Pulse) and collapsible type-based section groups. Each type can have a custom icon, color, sort, and visibility set via its type document in `type/`.
 - **Note List / Pulse View** (200-500px, resizable): When a section group or filter is selected, shows filtered notes with snippets, modified dates, and status indicators. When Pulse filter is active, shows `PulseView` — a chronological git activity feed grouped by day.
 - **Editor** (flex, fills remaining space): Single note open at a time (no tabs — see ADR-0003). Breadcrumb bar with word count, BlockNote rich text editor with wikilink support. Can toggle to diff view (modified files) or raw CodeMirror view. Decomposed into `Editor` (orchestrator), `EditorContent`, `EditorRightPanel`, `SingleEditorView`, with hooks `useDiffMode`, `useEditorFocus`, `useEditorSave`, `useRawMode`. Navigation history (Cmd+[/]) replaces tabs.
-- **Inspector / AI Chat / AI Agent** (200-500px or 40px collapsed): Toggles between Inspector (frontmatter, relationships, instances, backlinks, git history), AI Chat panel (API-based), and AI Agent panel (Claude CLI subprocess with tool execution). The Sparkle icon in the breadcrumb bar toggles between them. When viewing a Type note, the Inspector shows an **Instances** section listing all notes of that type (sorted by modified_at desc, capped at 50).
+- **Inspector / AI Agent** (200-500px or 40px collapsed): Toggles between Inspector (frontmatter, relationships, instances, backlinks, git history) and AI Agent panel (Claude CLI subprocess with tool execution). The Sparkle icon in the breadcrumb bar toggles between them. When viewing a Type note, the Inspector shows an **Instances** section listing all notes of that type (sorted by modified_at desc, capped at 50).
 
 Panels are separated by `ResizeHandle` components that support drag-to-resize.
 
@@ -202,16 +198,6 @@ Notes can be opened in separate Tauri windows for focused editing. Secondary win
 - Capabilities config (`src-tauri/capabilities/default.json`) grants permissions to both `main` and `note-*` window labels
 
 ## AI System
-
-Laputa has two AI interfaces with distinct architectures:
-
-### AI Chat (AIChatPanel)
-
-Simple chat mode — no tool execution, streaming text responses.
-
-1. **Frontend** (`AIChatPanel` + `useAIChat` hook) — UI and state management
-2. **API Proxy** (Vite middleware in dev, Rust `ai_chat` command in Tauri) — routes to Anthropic
-3. **Context picker** — selected notes sent as system context with token estimation
 
 ### AI Agent (AiPanel)
 
@@ -263,7 +249,7 @@ When the agent writes or edits vault files, `useAiAgent` detects this from tool 
 
 ### Context Building
 
-Both AI modes use context from the active note and linked entries. The agent panel (`ai-context.ts`) builds a structured JSON snapshot:
+The agent panel (`ai-context.ts`) builds a structured JSON snapshot from the active note and linked entries:
 
 ```json
 {
@@ -277,19 +263,9 @@ Both AI modes use context from the active note and linked entries. The agent pan
 
 Token budget: 60% of 180k context limit (~108k tokens max). Active note gets priority, then linked notes, then truncation.
 
-### Models (Chat mode)
+### Authentication
 
-| Model | ID | Use case |
-|-------|----|----------|
-| Haiku 3.5 | `claude-3-5-haiku-20241022` | Fast, cheap — default |
-| Sonnet 4 | `claude-sonnet-4-20250514` | Balanced |
-| Opus 4 | `claude-opus-4-20250514` | Most capable |
-
-### API Key Management
-
-- Stored in app settings (`~/.config/com.laputa.app/settings.json`) under `anthropic_key`
-- Configurable via Settings panel (also supports `openai_key`, `google_key`)
-- Claude CLI (agent mode) uses its own authentication — no API key needed
+Claude CLI (agent mode) uses its own authentication — no API key configuration needed in Laputa.
 
 ## MCP Server
 
@@ -589,7 +565,6 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `github/` | GitHub OAuth + API (`auth.rs`, `api.rs`, `clone.rs`) |
 | `search.rs` | Keyword search — walkdir-based vault file scan |
 | `claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing |
-| `ai_chat.rs` | Direct Anthropic API client (non-streaming, for Tauri builds) |
 | `mcp.rs` | MCP server spawning + config registration |
 | `commands/` | Tauri command handlers (split into submodules) |
 | `settings.rs` | App settings persistence |
@@ -674,7 +649,6 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 
 | Command | Description |
 |---------|-------------|
-| `ai_chat` | Direct Anthropic API call (non-streaming) |
 | `stream_claude_chat` | Claude CLI chat mode (streaming) |
 | `stream_claude_agent` | Claude CLI agent mode (streaming + tools) |
 | `check_claude_cli` | Check if Claude CLI is available |
@@ -726,7 +700,6 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useTabManagement` | Navigation history, note switching | Note navigation lifecycle |
 | `useVaultSwitcher` | `vaultPath`, `extraVaults` | Vault switching |
 | `useTheme` | Editor theme CSS vars | Editor typography theme |
-| `useAIChat` | `messages`, `isStreaming` | AI chat conversation |
 | `useAiAgent` | `messages`, `status`, tool actions | AI agent conversation |
 | `useAutoSync` | Sync interval, pull/push state | Git auto-sync |
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |

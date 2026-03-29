@@ -293,7 +293,7 @@ fn build_note_menu(app: &App) -> MenuResult {
         .id(EDIT_TOGGLE_RAW_EDITOR)
         .accelerator("CmdOrCtrl+\\")
         .build(app)?;
-    let toggle_ai_chat = MenuItemBuilder::new("Toggle AI Chat")
+    let toggle_ai_chat = MenuItemBuilder::new("Toggle AI Panel")
         .id(VIEW_TOGGLE_AI_CHAT)
         .accelerator("CmdOrCtrl+I")
         .build(app)?;

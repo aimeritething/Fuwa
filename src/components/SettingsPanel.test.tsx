@@ -18,7 +18,7 @@ vi.mock('../utils/url', () => ({
 }))
 
 const emptySettings: Settings = {
-  anthropic_key: null,
+
   openai_key: null,
   google_key: null,
   github_token: null,
@@ -32,7 +32,6 @@ const emptySettings: Settings = {
 }
 
 const populatedSettings: Settings = {
-  anthropic_key: 'sk-ant-api03-test123',
   openai_key: 'sk-openai-test456',
   google_key: null,
   github_token: null,
@@ -98,7 +97,7 @@ describe('SettingsPanel', () => {
     fireEvent.click(screen.getByTestId('settings-save'))
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-      anthropic_key: null,
+    
       openai_key: 'sk-openai-test',
       google_key: null,
       github_token: null,
@@ -119,7 +118,7 @@ describe('SettingsPanel', () => {
     fireEvent.click(screen.getByTestId('settings-save'))
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-      anthropic_key: null,
+    
       openai_key: null,
       google_key: null,
       github_token: null,
@@ -161,7 +160,7 @@ describe('SettingsPanel', () => {
     fireEvent.keyDown(screen.getByTestId('settings-panel'), { key: 'Enter', metaKey: true })
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-      anthropic_key: null,
+    
       openai_key: 'sk-openai-test',
       google_key: null,
       github_token: null,

@@ -1,4 +1,3 @@
-pub mod ai_chat;
 pub mod claude_cli;
 mod commands;
 pub mod frontmatter;
@@ -138,7 +137,6 @@ pub fn run() {
             commands::get_conflict_mode,
             commands::git_resolve_conflict,
             commands::git_commit_conflict_resolution,
-            commands::ai_chat,
             commands::check_claude_cli,
             commands::stream_claude_chat,
             commands::stream_claude_agent,

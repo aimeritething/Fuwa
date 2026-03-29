@@ -193,7 +193,6 @@ describe('dispatchMenuEvent', () => {
     expect(h.onToggleDiff).toHaveBeenCalled()
   })
 
-  // New View menu items
   it('view-toggle-ai-chat triggers toggle AI chat', () => {
     const h = makeHandlers()
     dispatchMenuEvent('view-toggle-ai-chat', h)

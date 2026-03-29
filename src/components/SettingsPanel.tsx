@@ -139,7 +139,6 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
   }, [])
 
   const buildSettings = useCallback((ghOverride?: { token: string | null; username: string | null }): Settings => ({
-    anthropic_key: null,
     openai_key: openaiKey.trim() || null,
     google_key: googleKey.trim() || null,
     github_token: ghOverride ? ghOverride.token : (githubToken ?? null),

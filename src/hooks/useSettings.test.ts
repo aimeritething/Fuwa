@@ -4,7 +4,7 @@ import type { Settings } from '../types'
 import { useSettings } from './useSettings'
 
 const defaultSettings: Settings = {
-  anthropic_key: null,
+
   openai_key: null,
   google_key: null,
   github_token: null,
@@ -18,7 +18,6 @@ const defaultSettings: Settings = {
 }
 
 const savedSettings: Settings = {
-  anthropic_key: 'sk-ant-test123',
   openai_key: null,
   google_key: 'AIza-test',
   github_token: null,
@@ -71,7 +70,6 @@ describe('useSettings', () => {
       expect(result.current.loaded).toBe(true)
     })
 
-    expect(result.current.settings.anthropic_key).toBe('sk-ant-test123')
     expect(result.current.settings.google_key).toBe('AIza-test')
     expect(mockInvokeFn).toHaveBeenCalledWith('get_settings', {})
   })
@@ -84,7 +82,6 @@ describe('useSettings', () => {
     })
 
     const newSettings: Settings = {
-      anthropic_key: 'sk-ant-new',
       openai_key: 'sk-openai-new',
       google_key: null,
       github_token: null,

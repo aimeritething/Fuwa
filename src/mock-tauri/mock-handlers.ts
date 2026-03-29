@@ -75,7 +75,6 @@ let mockHasChanges = true
 const mockSavedSinceCommit = new Set<string>()
 
 let mockSettings: Settings = {
-  anthropic_key: null,
   openai_key: null,
   google_key: null,
   github_token: null,
@@ -197,7 +196,6 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   save_settings: (args: { settings: Settings }) => {
     const s = args.settings
     mockSettings = {
-      anthropic_key: trimOrNull(s.anthropic_key),
       openai_key: trimOrNull(s.openai_key),
       google_key: trimOrNull(s.google_key),
       github_token: trimOrNull(s.github_token),

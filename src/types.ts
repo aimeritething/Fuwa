@@ -63,7 +63,6 @@ export interface ModifiedFile {
 }
 
 export interface Settings {
-  anthropic_key: string | null
   openai_key: string | null
   google_key: string | null
   github_token: string | null

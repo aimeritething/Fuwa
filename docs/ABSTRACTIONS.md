@@ -523,7 +523,6 @@ App-level settings persisted at `~/.config/com.laputa.app/settings.json`:
 
 ```typescript
 interface Settings {
-  anthropic_key: string | null
   openai_key: string | null
   google_key: string | null
   github_token: string | null

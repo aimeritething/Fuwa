@@ -1,14 +1,8 @@
-use crate::ai_chat::{AiChatRequest, AiChatResponse};
 #[cfg(desktop)]
 use crate::claude_cli::ClaudeStreamEvent;
 use crate::claude_cli::{AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus};
 
-// ── AI / Claude commands (desktop) ──────────────────────────────────────────
-
-#[tauri::command]
-pub async fn ai_chat(request: AiChatRequest) -> Result<AiChatResponse, String> {
-    crate::ai_chat::send_chat(request).await
-}
+// ── Claude CLI commands (desktop) ───────────────────────────────────────────
 
 #[cfg(desktop)]
 #[tauri::command]

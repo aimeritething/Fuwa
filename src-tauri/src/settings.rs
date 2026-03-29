@@ -4,7 +4,6 @@ use std::path::PathBuf;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Settings {
-    pub anthropic_key: Option<String>,
     pub openai_key: Option<String>,
     pub google_key: Option<String>,
     pub github_token: Option<String>,
@@ -40,10 +39,6 @@ fn save_settings_at(path: &PathBuf, settings: Settings) -> Result<(), String> {
 
     // Trim whitespace and convert empty strings to None
     let cleaned = Settings {
-        anthropic_key: settings
-            .anthropic_key
-            .map(|k| k.trim().to_string())
-            .filter(|k| !k.is_empty()),
         openai_key: settings
             .openai_key
             .map(|k| k.trim().to_string())
@@ -132,7 +127,6 @@ mod tests {
     #[test]
     fn test_default_settings_all_none() {
         let s = Settings::default();
-        assert!(s.anthropic_key.is_none());
         assert!(s.openai_key.is_none());
         assert!(s.google_key.is_none());
         assert!(s.github_token.is_none());
@@ -148,7 +142,6 @@ mod tests {
     #[test]
     fn test_settings_json_roundtrip() {
         let settings = Settings {
-            anthropic_key: Some("sk-ant-test123".to_string()),
             openai_key: None,
             google_key: Some("AIza-test".to_string()),
             github_token: Some("gho_xyz789".to_string()),
@@ -161,7 +154,6 @@ mod tests {
         };
         let json = serde_json::to_string(&settings).unwrap();
         let parsed: Settings = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed.anthropic_key, settings.anthropic_key);
         assert_eq!(parsed.google_key, settings.google_key);
         assert_eq!(parsed.github_token, settings.github_token);
         assert_eq!(parsed.github_username, settings.github_username);
@@ -176,13 +168,12 @@ mod tests {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("nonexistent.json");
         let result = get_settings_at(&path).unwrap();
-        assert!(result.anthropic_key.is_none());
+        assert!(result.openai_key.is_none());
     }
 
     #[test]
     fn test_save_and_load_preserves_values() {
         let loaded = save_and_reload(Settings {
-            anthropic_key: Some("sk-ant-key".to_string()),
             openai_key: Some("sk-openai".to_string()),
             google_key: None,
             github_token: Some("gho_token123".to_string()),
@@ -190,7 +181,6 @@ mod tests {
             auto_pull_interval_minutes: Some(10),
             ..Default::default()
         });
-        assert_eq!(loaded.anthropic_key.as_deref(), Some("sk-ant-key"));
         assert_eq!(loaded.openai_key.as_deref(), Some("sk-openai"));
         assert_eq!(loaded.github_token.as_deref(), Some("gho_token123"));
         assert_eq!(loaded.github_username.as_deref(), Some("lucaong"));
@@ -200,12 +190,10 @@ mod tests {
     #[test]
     fn test_save_trims_whitespace() {
         let loaded = save_and_reload(Settings {
-            anthropic_key: Some("  sk-ant-test  ".to_string()),
             github_token: Some("  gho_abc  ".to_string()),
             github_username: Some("  lucaong  ".to_string()),
             ..Default::default()
         });
-        assert_eq!(loaded.anthropic_key.as_deref(), Some("sk-ant-test"));
         assert_eq!(loaded.github_token.as_deref(), Some("gho_abc"));
         assert_eq!(loaded.github_username.as_deref(), Some("lucaong"));
     }
@@ -213,12 +201,10 @@ mod tests {
     #[test]
     fn test_save_filters_empty_and_whitespace_only() {
         let loaded = save_and_reload(Settings {
-            anthropic_key: Some("".to_string()),
             openai_key: Some("   ".to_string()),
             github_username: Some("".to_string()),
             ..Default::default()
         });
-        assert!(loaded.anthropic_key.is_none());
         assert!(loaded.openai_key.is_none());
         assert!(loaded.github_username.is_none());
     }
@@ -231,14 +217,14 @@ mod tests {
         save_settings_at(
             &path,
             Settings {
-                anthropic_key: Some("key".to_string()),
+                openai_key: Some("key".to_string()),
                 ..Default::default()
             },
         )
         .unwrap();
         assert!(path.exists());
         assert_eq!(
-            get_settings_at(&path).unwrap().anthropic_key.as_deref(),
+            get_settings_at(&path).unwrap().openai_key.as_deref(),
             Some("key")
         );
     }
@@ -273,9 +259,9 @@ mod tests {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("settings.json");
         // Simulate old settings.json without telemetry fields
-        fs::write(&path, r#"{"anthropic_key":"sk-test"}"#).unwrap();
+        fs::write(&path, r#"{"openai_key":"sk-test"}"#).unwrap();
         let loaded = get_settings_at(&path).unwrap();
-        assert_eq!(loaded.anthropic_key.as_deref(), Some("sk-test"));
+        assert_eq!(loaded.openai_key.as_deref(), Some("sk-test"));
         assert!(loaded.telemetry_consent.is_none());
         assert!(loaded.crash_reporting_enabled.is_none());
         assert!(loaded.analytics_enabled.is_none());

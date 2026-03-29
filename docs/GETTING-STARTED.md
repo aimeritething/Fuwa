@@ -53,7 +53,6 @@ laputa-app/
 │   │   ├── RawEditorView.tsx     # CodeMirror raw editor
 │   │   ├── Inspector.tsx         # Fourth panel: metadata + relationships
 │   │   ├── DynamicPropertiesPanel.tsx  # Editable frontmatter properties
-│   │   ├── AIChatPanel.tsx       # AI chat (API-based)
 │   │   ├── AiPanel.tsx           # AI agent (Claude CLI subprocess)
 │   │   ├── AiMessage.tsx         # Agent message display
 │   │   ├── AiActionCard.tsx      # Agent tool action cards
@@ -86,7 +85,6 @@ laputa-app/
 │   │   ├── useNoteActions.ts     # Composes creation + rename + frontmatter
 │   │   ├── useNoteCreation.ts   # Note/type/daily-note creation
 │   │   ├── useNoteRename.ts     # Note renaming + wikilink updates
-│   │   ├── useAIChat.ts          # AI chat state
 │   │   ├── useAiAgent.ts         # AI agent state + tool tracking
 │   │   ├── useAiActivity.ts      # MCP UI bridge listener
 │   │   ├── useAutoSync.ts        # Auto git pull/push
@@ -110,7 +108,7 @@ laputa-app/
 │   │   ├── wikilinks.ts          # Wikilink preprocessing pipeline
 │   │   ├── frontmatter.ts        # TypeScript YAML parser
 │   │   ├── ai-agent.ts           # Agent stream utilities
-│   │   ├── ai-chat.ts            # Chat API client + token estimation
+│   │   ├── ai-chat.ts            # Token estimation utilities
 │   │   ├── ai-context.ts         # Context snapshot builder
 │   │   ├── noteListHelpers.ts    # Sorting, filtering, date formatting
 │   │   ├── wikilink.ts           # Wikilink resolution
@@ -155,7 +153,6 @@ laputa-app/
 │   │   ├── telemetry.rs          # Sentry init + path scrubber
 │   │   ├── search.rs             # Keyword search (walkdir-based)
 │   │   ├── claude_cli.rs         # Claude CLI subprocess management
-│   │   ├── ai_chat.rs            # Direct Anthropic API client
 │   │   ├── mcp.rs                # MCP server lifecycle + registration
 │   │   ├── settings.rs           # App settings persistence
 │   │   ├── vault_config.rs       # Per-vault UI config
@@ -231,7 +228,6 @@ laputa-app/
 | File | Why it matters |
 |------|---------------|
 | `src/components/AiPanel.tsx` | AI agent panel — Claude CLI with tool execution, reasoning, actions. |
-| `src/components/AIChatPanel.tsx` | AI chat panel — API-based chat without tools. |
 | `src/hooks/useAiAgent.ts` | Agent state: messages, streaming, tool tracking, file detection. |
 | `src/utils/ai-context.ts` | Context snapshot builder for AI conversations. |
 
