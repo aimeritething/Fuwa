@@ -13,11 +13,10 @@ export function StatusPill({ status, className }: { status: string; className?: 
         color: style.color,
         borderRadius: 16,
         padding: '1px 6px',
-        fontFamily: "'IBM Plex Mono', monospace",
+        fontFamily: "'Inter', sans-serif",
         fontSize: 10,
         fontWeight: 600,
         letterSpacing: '0',
-        textTransform: 'uppercase' as const,
         maxWidth: 160,
       }}
       title={status}
@@ -98,11 +97,10 @@ function StatusOption({
 }
 
 const SECTION_LABEL_STYLE = {
-  fontFamily: "'IBM Plex Mono', monospace",
+  fontFamily: "'Inter', sans-serif",
   fontSize: 9,
   fontWeight: 500,
   letterSpacing: '0',
-  textTransform: 'uppercase' as const,
 }
 
 function SectionLabel({ children }: { children: string }) {

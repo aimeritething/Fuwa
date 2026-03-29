@@ -13,11 +13,10 @@ export function TagPill({ tag, className }: { tag: string; className?: string })
         color: style.color,
         borderRadius: 16,
         padding: '1px 6px',
-        fontFamily: "'IBM Plex Mono', monospace",
+        fontFamily: "'Inter', sans-serif",
         fontSize: 10,
         fontWeight: 600,
-        letterSpacing: '1.2px',
-        textTransform: 'uppercase' as const,
+        letterSpacing: '0',
         maxWidth: 160,
       }}
       title={tag}
@@ -90,11 +89,10 @@ function TagOption({
 }
 
 const SECTION_LABEL_STYLE = {
-  fontFamily: "'IBM Plex Mono', monospace",
+  fontFamily: "'Inter', sans-serif",
   fontSize: 9,
   fontWeight: 500,
-  letterSpacing: '1.2px',
-  textTransform: 'uppercase' as const,
+  letterSpacing: '0',
 }
 
 function SectionLabel({ children }: { children: string }) {

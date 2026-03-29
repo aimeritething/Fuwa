@@ -315,7 +315,7 @@ export const Sidebar = memo(function Sidebar({
         {/* Sections header + visibility popover */}
         <div ref={customizeRef} style={{ position: 'relative', padding: '4px 6px 0' }}>
           <div className="flex w-full select-none items-center justify-between" style={{ padding: '4px 16px' }}>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">Sections</span>
+            <span className="text-[11px] font-medium text-muted-foreground">Sections</span>
             <button className="flex shrink-0 cursor-pointer items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground transition-colors hover:text-foreground" style={{ width: 20, height: 20 }} onClick={() => setShowCustomize((v) => !v)} aria-label="Customize sections" title="Customize sections">
               <SlidersHorizontal size={14} />
             </button>

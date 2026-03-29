@@ -55,7 +55,7 @@ export function CreateNoteDialog({ open, onClose, onCreate, defaultType, customT
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <label className="text-xs font-medium text-muted-foreground">
               Title
             </label>
             <Input
@@ -66,7 +66,7 @@ export function CreateNoteDialog({ open, onClose, onCreate, defaultType, customT
             />
           </div>
           <div className="space-y-1.5">
-            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <label className="text-xs font-medium text-muted-foreground">
               Type
             </label>
             <div className="flex flex-wrap gap-1.5">

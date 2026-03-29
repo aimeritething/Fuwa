@@ -140,7 +140,7 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
               runningIndex += items.length
               return (
                 <div key={group}>
-                  <div className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                  <div className="px-4 pb-1 pt-2 text-[11px] font-medium text-muted-foreground">
                     {group}
                   </div>
                   {items.map((cmd, i) => {

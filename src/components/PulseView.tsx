@@ -167,7 +167,7 @@ function DayGroup({ label, commits, onOpenNote }: {
         onClick={() => setCollapsed((v) => !v)}
       >
         <Chevron size={12} className="text-muted-foreground" />
-        <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+        <span className="text-[11px] font-medium text-muted-foreground">
           {label}
         </span>
         <span className="text-[11px] text-muted-foreground">

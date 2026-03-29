@@ -31,7 +31,7 @@ export function ReferencedByPanel({ items, typeEntryMap, onNavigate }: {
       <div className="flex flex-col gap-2.5">
         {grouped.map(([viaKey, groupEntries]) => (
           <div key={viaKey}>
-            <span className="mb-1 block font-mono text-muted-foreground" style={{ fontSize: 9, fontWeight: 400, letterSpacing: '1.2px', textTransform: 'uppercase', opacity: 0.7 }}>
+            <span className="mb-1 block text-muted-foreground" style={{ fontSize: 9, fontWeight: 400, letterSpacing: '0.02em', opacity: 0.7 }}>
               ← {viaKey}
             </span>
             <div className="flex flex-col gap-0.5">

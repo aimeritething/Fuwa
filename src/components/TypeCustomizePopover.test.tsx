@@ -66,9 +66,9 @@ describe('TypeCustomizePopover', () => {
 
   it('renders color, icon, and template sections', () => {
     renderPopover()
-    expect(screen.getByText('COLOR')).toBeInTheDocument()
-    expect(screen.getByText('ICON')).toBeInTheDocument()
-    expect(screen.getByText('TEMPLATE')).toBeInTheDocument()
+    expect(screen.getByText('Color')).toBeInTheDocument()
+    expect(screen.getByText('Icon')).toBeInTheDocument()
+    expect(screen.getByText('Template')).toBeInTheDocument()
     expect(screen.getByText('Done')).toBeInTheDocument()
   })
 

@@ -208,7 +208,8 @@ describe('CommandPalette', () => {
       const groupHeaders = screen.getAllByText(
         (_content, el) =>
           el?.tagName === 'DIV' &&
-          el.classList.contains('uppercase') &&
+          el.classList.contains('text-[11px]') &&
+          el.classList.contains('font-medium') &&
           !!el.textContent,
       ).map(el => el.textContent)
 

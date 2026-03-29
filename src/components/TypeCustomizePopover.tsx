@@ -75,7 +75,7 @@ export function TypeCustomizePopover({
       onContextMenu={(e) => e.stopPropagation()}
     >
       {/* Color section */}
-      <div className="font-mono-overline mb-2 text-muted-foreground">COLOR</div>
+      <div className="font-mono-overline mb-2 text-muted-foreground">Color</div>
       <div className="flex gap-2 mb-3 flex-wrap">
         {ACCENT_COLORS.map((c) => (
           <button
@@ -92,7 +92,7 @@ export function TypeCustomizePopover({
       </div>
 
       {/* Icon section */}
-      <div className="font-mono-overline mb-2 text-muted-foreground">ICON</div>
+      <div className="font-mono-overline mb-2 text-muted-foreground">Icon</div>
 
       {/* Search input */}
       <div className="relative mb-2">
@@ -136,7 +136,7 @@ export function TypeCustomizePopover({
       </div>
 
       {/* Template section */}
-      <div className="font-mono-overline mb-2 mt-3 text-muted-foreground">TEMPLATE</div>
+      <div className="font-mono-overline mb-2 mt-3 text-muted-foreground">Template</div>
       <textarea
         value={templateText}
         onChange={(e) => handleTemplateChange(e.target.value)}

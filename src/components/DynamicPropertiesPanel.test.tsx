@@ -112,7 +112,7 @@ describe('DynamicPropertiesPanel', () => {
         frontmatter={{ Status: 'Active' }}
       />
     )
-    // Status rendered with CSS text-transform: uppercase, DOM text is still "Active"
+    // Status rendered as sentence case
     expect(screen.getByTestId('status-badge')).toBeInTheDocument()
   })
 

@@ -36,7 +36,7 @@ export function CreateTypeDialog({ open, onClose, onCreate }: CreateTypeDialogPr
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <label className="text-xs font-medium text-muted-foreground">
               Type Name
             </label>
             <Input

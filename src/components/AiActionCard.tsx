@@ -74,7 +74,7 @@ function DetailBlock({ label, content, isError }: {
     <div style={{ marginTop: 6 }}>
       <div
         className="text-muted-foreground"
-        style={{ fontSize: 10, fontWeight: 600, textTransform: 'uppercase', marginBottom: 2 }}
+        style={{ fontSize: 10, fontWeight: 600, marginBottom: 2 }}
       >
         {label}
       </div>
