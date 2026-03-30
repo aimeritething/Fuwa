@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react'
 export const COLUMN_MIN_WIDTHS = {
   sidebar: 180,
   noteList: 220,
-  editor: 400,
+  editor: 800,
   inspector: 240,
 } as const
 

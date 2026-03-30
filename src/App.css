@@ -39,7 +39,7 @@
 
 .app__editor {
   flex: 1;
-  min-width: 400px;
+  min-width: 800px;
   min-height: 0;
   overflow: hidden;
   display: flex;

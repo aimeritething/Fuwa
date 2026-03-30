@@ -6,7 +6,7 @@ describe('useLayoutPanels', () => {
   it('exports column minimum widths', () => {
     expect(COLUMN_MIN_WIDTHS.sidebar).toBe(180)
     expect(COLUMN_MIN_WIDTHS.noteList).toBe(220)
-    expect(COLUMN_MIN_WIDTHS.editor).toBe(400)
+    expect(COLUMN_MIN_WIDTHS.editor).toBe(800)
     expect(COLUMN_MIN_WIDTHS.inspector).toBe(240)
   })
 
