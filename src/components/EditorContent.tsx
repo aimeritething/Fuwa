@@ -215,7 +215,7 @@ export function EditorContent({
                 />
               </div>
             )}
-            <div className="title-section__row">
+            <div className={`title-section__row${emojiIcon ? '' : ' title-section__row--no-icon'}`}>
               {emojiIcon && (
                 <NoteIcon
                   icon={emojiIcon}

@@ -194,6 +194,11 @@
   margin-left: 8px;
 }
 
+/* No emoji: title aligns flush left (no indent for icon area) */
+.title-section__row--no-icon {
+  margin-left: 0;
+}
+
 /* When emoji is present, restore top padding to the row itself */
 .title-section__row:has(.note-icon-button--active) {
   padding-top: 32px;
