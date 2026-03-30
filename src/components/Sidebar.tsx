@@ -120,7 +120,7 @@ function SortableSection({ group, sectionProps }: {
   const isRenaming = sectionProps.renamingType === group.type
 
   return (
-    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, padding: '4px 6px' }} {...attributes}>
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, padding: isCollapsed ? '0 6px' : '4px 6px' }} {...attributes}>
       <SectionContent
         group={group} items={items} isCollapsed={isCollapsed}
         selection={sectionProps.selection} onSelect={sectionProps.onSelect}
