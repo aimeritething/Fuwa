@@ -40,7 +40,7 @@ export function EditorRightPanel({
     return (
       <div
         className="shrink-0 flex flex-col min-h-0"
-        style={{ width: inspectorWidth, height: '100%' }}
+        style={{ width: inspectorWidth, minWidth: 240, height: '100%' }}
       >
         <AiPanel
           onClose={() => onToggleAIChat?.()}
