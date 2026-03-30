@@ -179,12 +179,24 @@
   flex-shrink: 0;
 }
 
+.title-section__add-icon {
+  /* "Add icon" button above the title when no emoji — Notion-style */
+  padding-top: 24px;
+  margin-left: 8px;
+  min-height: 28px;
+}
+
 .title-section__row {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
-  padding-top: 32px;
+  padding-top: 8px;
   margin-left: 8px;
+}
+
+/* When emoji is present, restore top padding to the row itself */
+.title-section__row:has(.note-icon-button--active) {
+  padding-top: 32px;
 }
 
 .title-section__separator {

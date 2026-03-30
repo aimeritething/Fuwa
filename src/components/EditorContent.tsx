@@ -205,13 +205,25 @@ export function EditorContent({
       {showEditor && activeTab && (
         <div className="editor-scroll-area" style={cssVars as React.CSSProperties}>
           <div className="title-section">
+            {!emojiIcon && (
+              <div className="title-section__add-icon">
+                <NoteIcon
+                  icon={null}
+                  editable={!isTrashed}
+                  onSetIcon={handleSetIcon}
+                  onRemoveIcon={handleRemoveIcon}
+                />
+              </div>
+            )}
             <div className="title-section__row">
-              <NoteIcon
-                icon={emojiIcon}
-                editable={!isTrashed}
-                onSetIcon={handleSetIcon}
-                onRemoveIcon={handleRemoveIcon}
-              />
+              {emojiIcon && (
+                <NoteIcon
+                  icon={emojiIcon}
+                  editable={!isTrashed}
+                  onSetIcon={handleSetIcon}
+                  onRemoveIcon={handleRemoveIcon}
+                />
+              )}
               <TitleField
                 title={activeTab.entry.title}
                 filename={activeTab.entry.filename}
