@@ -200,4 +200,22 @@ describe('useAppKeyboard', () => {
     fireKey('o', { metaKey: true, shiftKey: true })
     expect(onOpenInNewWindow).toHaveBeenCalled()
   })
+
+  it('Cmd+Shift+I triggers toggle inspector', () => {
+    const actions = makeActions()
+    const onToggleInspector = vi.fn()
+    renderHook(() => useAppKeyboard({ ...actions, onToggleInspector }))
+    fireKey('i', { metaKey: true, shiftKey: true })
+    expect(onToggleInspector).toHaveBeenCalled()
+  })
+
+  it('Cmd+Shift+I does not trigger AI chat toggle', () => {
+    const actions = makeActions()
+    const onToggleAIChat = vi.fn()
+    const onToggleInspector = vi.fn()
+    renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat, onToggleInspector }))
+    fireKey('i', { metaKey: true, shiftKey: true })
+    expect(onToggleInspector).toHaveBeenCalled()
+    expect(onToggleAIChat).not.toHaveBeenCalled()
+  })
 })

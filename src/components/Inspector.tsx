@@ -92,14 +92,14 @@ function InspectorHeader({ collapsed, onToggle }: { collapsed: boolean; onToggle
   return (
     <div className="flex shrink-0 items-center border-b border-border" style={{ height: 45, padding: '6px 12px', gap: 8, cursor: 'default' }} onMouseDown={onMouseDown}>
       {collapsed ? (
-        <button className="shrink-0 border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground" onClick={onToggle}>
+        <button className="shrink-0 border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground" onClick={onToggle} title="Properties (⌘⇧I)">
           <SlidersHorizontal size={16} />
         </button>
       ) : (
         <>
           <SlidersHorizontal size={16} className="shrink-0 text-muted-foreground" />
           <span className="flex-1 text-muted-foreground" style={{ fontSize: 13, fontWeight: 600 }}>Properties</span>
-          <button className="shrink-0 border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground" onClick={onToggle}>
+          <button className="shrink-0 border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground" onClick={onToggle} title="Close Properties (⌘⇧I)">
             <X size={16} />
           </button>
         </>

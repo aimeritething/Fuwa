@@ -19,6 +19,7 @@ interface KeyboardActions {
   onGoForward?: () => void
   onToggleAIChat?: () => void
   onToggleRawEditor?: () => void
+  onToggleInspector?: () => void
   onOpenInNewWindow?: () => void
   activeTabPathRef: React.MutableRefObject<string | null>
 }
@@ -64,7 +65,7 @@ function handleCmdKey(e: KeyboardEvent, keyMap: Record<string, ShortcutHandler>)
 
 export function useAppKeyboard({
   onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onTrashNote, onArchiveNote,
-  onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onOpenInNewWindow, activeTabPathRef,
+  onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onToggleInspector, onOpenInNewWindow, activeTabPathRef,
 }: KeyboardActions) {
   useEffect(() => {
     const withActiveTab = (fn: (path: string) => void): ShortcutHandler => () => {
@@ -99,6 +100,12 @@ export function useAppKeyboard({
         onSearch()
         return
       }
+      // Cmd+Shift+I: toggle properties/inspector panel
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'i' || e.key === 'I')) {
+        e.preventDefault()
+        onToggleInspector?.()
+        return
+      }
       // Cmd+Shift+O: open active note in new window
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'o' || e.key === 'O')) {
         e.preventDefault()
@@ -111,5 +118,5 @@ export function useAppKeyboard({
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onTrashNote, onArchiveNote, activeTabPathRef, onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onOpenInNewWindow])
+  }, [onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onTrashNote, onArchiveNote, activeTabPathRef, onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onToggleInspector, onOpenInNewWindow])
 }

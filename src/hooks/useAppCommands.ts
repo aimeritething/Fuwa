@@ -111,6 +111,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onGoForward: config.onGoForward,
     onToggleAIChat: config.onToggleAIChat,
     onToggleRawEditor: config.onToggleRawEditor,
+    onToggleInspector: config.onToggleInspector,
     onOpenInNewWindow: config.onOpenInNewWindow,
     activeTabPathRef: config.activeTabPathRef,
   })

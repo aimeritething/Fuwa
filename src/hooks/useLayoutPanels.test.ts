@@ -52,4 +52,14 @@ describe('useLayoutPanels', () => {
     act(() => result.current.handleInspectorResize(-500))
     expect(result.current.inspectorWidth).toBe(500)
   })
+
+  it('defaults inspector to collapsed', () => {
+    const { result } = renderHook(() => useLayoutPanels())
+    expect(result.current.inspectorCollapsed).toBe(true)
+  })
+
+  it('accepts initial inspector collapsed override', () => {
+    const { result } = renderHook(() => useLayoutPanels({ initialInspectorCollapsed: false }))
+    expect(result.current.inspectorCollapsed).toBe(false)
+  })
 })
