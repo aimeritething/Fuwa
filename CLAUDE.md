@@ -38,9 +38,11 @@ This moves the task to In Review, notifies Brian, and self-dispatches the next t
 
 nal (steps 1–3 above).
 
-**Phase 1 — Playwright (you):**
+**Phase 1 — Playwright (you, only when needed):**
 
-Write a smoke test in `tests/smoke/<slug>.spec.ts` covering every acceptance criterion. Must fail before fix, pass after.
+Write a smoke test in `tests/smoke/<slug>.spec.ts` only if the feature touches a **core user flow**: vault open, note create/save/delete, search, wikilink navigation, git commit/push, conflict resolution. Do NOT write Playwright tests for cosmetic/UI-only changes (padding, chip size, label text, color, border) — use Vitest instead.
+
+The full Playwright suite must stay under **10 minutes**. If your new test would push it over, remove an existing non-core test first.
 
 ```bash
 pnpm dev --port 5201 &
