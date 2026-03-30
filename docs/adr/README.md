@@ -82,4 +82,7 @@ proposed → active → superseded
 | [0024](0024-cache-outside-vault.md) | Vault cache stored outside vault directory | active |
 | [0025](0025-type-field-canonical.md) | type: as canonical field (replacing Is A:) | active |
 | [0026](0026-props-down-no-global-state.md) | Props-down callbacks-up (no global state) | active |
-| [0027](0027-dual-ai-architecture.md) | Dual AI architecture (API chat + CLI agent) | active |
+| [0027](0027-dual-ai-architecture.md) | Dual AI architecture (API chat + CLI agent) | superseded |
+| [0028](0028-cli-agent-only-no-api-key.md) | CLI agent only — no direct Anthropic API key | active |
+| [0029](0029-domain-command-builder-pattern.md) | Domain command builder pattern for useCommandRegistry | active |
+| [0030](0030-rust-commands-module-split.md) | Rust commands/ module split by domain | active |
