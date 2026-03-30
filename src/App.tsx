@@ -55,6 +55,7 @@ import type { SidebarSelection, InboxPeriod } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
+import { isNoteWindow, getNoteWindowParams } from './utils/windowMode'
 import './App.css'
 
 // Type declarations for mock content storage and test overrides
@@ -70,6 +71,7 @@ const DEFAULT_SELECTION: SidebarSelection = { kind: 'filter', filter: 'all' }
 
 /** Wraps useEditorSave to also keep outgoingLinks in sync on save and on content change. */
 function App() {
+  const noteWindowParams = useMemo(() => isNoteWindow() ? getNoteWindowParams() : null, [])
   const [selection, setSelection] = useState<SidebarSelection>(DEFAULT_SELECTION)
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>('open')
   const [inboxPeriod, setInboxPeriod] = useState<InboxPeriod>('month')
@@ -77,7 +79,7 @@ function App() {
     setSelection(sel)
     setNoteListFilter('open')
   }, [])
-  const layout = useLayoutPanels()
+  const layout = useLayoutPanels(noteWindowParams ? { initialInspectorCollapsed: true } : undefined)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const dialogs = useDialogs()
 
@@ -92,7 +94,7 @@ function App() {
   const onboarding = useOnboarding(vaultSwitcher.vaultPath)
 
   // When onboarding resolves to a different vault path, update the switcher
-  const resolvedPath = onboarding.state.status === 'ready' ? onboarding.state.vaultPath : vaultSwitcher.vaultPath
+  const resolvedPath = noteWindowParams?.vaultPath ?? (onboarding.state.status === 'ready' ? onboarding.state.vaultPath : vaultSwitcher.vaultPath)
   const vault = useVaultLoader(resolvedPath)
   useVaultConfig(resolvedPath)
   const { settings, loaded: settingsLoaded, saveSettings } = useSettings()
@@ -124,6 +126,28 @@ function App() {
   })
 
   const notes = useNoteActions({ addEntry: vault.addEntry, removeEntry: vault.removeEntry, entries: vault.entries, setToastMessage, updateEntry: vault.updateEntry, vaultPath: resolvedPath, addPendingSave: vault.addPendingSave, removePendingSave: vault.removePendingSave, trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths, markContentPending: (path, content) => appSave.contentChangeRef.current(path, content), onNewNotePersisted: vault.loadModifiedFiles, replaceEntry: vault.replaceEntry })
+
+  // Note window: auto-open the note from URL params once vault entries load
+  const noteWindowOpenedRef = useRef(false)
+  useEffect(() => {
+    if (!noteWindowParams || noteWindowOpenedRef.current || vault.entries.length === 0) return
+    const entry = vault.entries.find(e => e.path === noteWindowParams.notePath)
+    if (entry) {
+      noteWindowOpenedRef.current = true
+      notes.handleSelectNote(entry)
+    }
+  }, [vault.entries]) // eslint-disable-line react-hooks/exhaustive-deps -- run when entries load, params are stable
+
+  // Note window: update window title when active note changes
+  useEffect(() => {
+    if (!noteWindowParams) return
+    const activeEntry = notes.tabs.find(t => t.entry.path === notes.activeTabPath)?.entry
+    const title = activeEntry?.title ?? noteWindowParams.noteTitle
+    if (!isTauri()) { document.title = title; return }
+    import('@tauri-apps/api/window').then(({ getCurrentWindow }) => {
+      getCurrentWindow().setTitle(title)
+    }).catch(() => {})
+  }, [noteWindowParams, notes.tabs, notes.activeTabPath])
 
   // Keep note entry in sync with vault entries so banners (trash/archive)
   // and read-only state react immediately without reopening the note.
@@ -245,7 +269,7 @@ function App() {
   // Diff-toggle ref: Editor registers its handleToggleDiff here so the command palette can call it
   const diffToggleRef = useRef<() => void>(() => {})
 
-  const { setViewMode, sidebarVisible, noteListVisible } = useViewMode()
+  const { setViewMode, sidebarVisible, noteListVisible } = useViewMode(noteWindowParams ? 'editor-only' : undefined)
   const zoom = useZoom()
   const buildNumber = useBuildNumber()
 
@@ -352,18 +376,18 @@ function App() {
     return { type: null, query: '' }
   }, [selection])
 
-  // Show welcome/onboarding screen when vault doesn't exist
-  if (onboarding.state.status === 'welcome' || onboarding.state.status === 'vault-missing') {
+  // Show welcome/onboarding screen when vault doesn't exist (skip for note windows — vault path is known)
+  if (!noteWindowParams && (onboarding.state.status === 'welcome' || onboarding.state.status === 'vault-missing')) {
     return <WelcomeView onboarding={onboarding} />
   }
 
-  // Show loading spinner while checking vault
-  if (onboarding.state.status === 'loading') {
+  // Show loading spinner while checking vault (skip for note windows)
+  if (!noteWindowParams && onboarding.state.status === 'loading') {
     return <LoadingView />
   }
 
-  // Show telemetry consent dialog on first launch (or first upgrade with telemetry)
-  if (settingsLoaded && settings.telemetry_consent === null) {
+  // Show telemetry consent dialog on first launch (skip for note windows)
+  if (!noteWindowParams && settingsLoaded && settings.telemetry_consent === null) {
     return (
       <TelemetryConsentDialog
         onAccept={() => {

@@ -18,8 +18,8 @@ function loadViewMode(): ViewMode {
   return 'all'
 }
 
-export function useViewMode() {
-  const [viewMode, setViewModeState] = useState<ViewMode>(loadViewMode)
+export function useViewMode(initialOverride?: ViewMode) {
+  const [viewMode, setViewModeState] = useState<ViewMode>(initialOverride ?? loadViewMode)
 
   // Re-sync when vault config becomes available
   useEffect(() => {
