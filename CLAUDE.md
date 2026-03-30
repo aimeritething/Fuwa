@@ -16,6 +16,10 @@ When starting a task:
 - Read the task description and comments fully
 - For To Rework: the ❌ QA failed comment tells you exactly what to fix
 - Check `docs/adr/` for relevant architecture decisions before making structural choices
+- **Add a comment** when you move the task to In Progress:
+  ```
+  🚀 Starting work on this task. [Brief description of approach]
+  ```
 
 ### 1b. Implement
 

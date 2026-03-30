@@ -18,7 +18,16 @@ curl -s -X POST "https://api.todoist.com/api/v1/tasks/<task_id>/move" \
   -d '{"section_id": "6g3XjWjfmJFcGgHM"}'
 ```
 
-5. Fetch the full task details (description, comments) from Todoist:
+5. Add a "started" comment to the task:
+
+```bash
+curl -s -X POST "https://api.todoist.com/api/v1/comments" \
+  -H "Authorization: Bearer $TODOIST_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"task_id": "<task_id>", "content": "🚀 Starting work. [Brief description of approach or what needs to be fixed]"}'
+```
+
+6. Fetch the full task details (description, comments) from Todoist:
 
 ```bash
 curl -s "https://api.todoist.com/api/v1/tasks/<task_id>" \
