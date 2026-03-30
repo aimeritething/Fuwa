@@ -10,13 +10,11 @@ This is how you pick up and complete a task. Follow this order every time.
 
 ### 1a. Pick up a task
 
-Tasks come from Todoist (project `6g3XjQFwv9V8Pxfv`). Priority order:
-1. **To Rework** (`6g6QqvR9rRpvJWvv`) — fix failed tasks before starting new ones
-2. **Open** (`6g3XjWR832hVHhCM`) — sorted by Todoist priority (p1 → p4)
+Run `/laputa-next-task` — it fetches the next task from Todoist (To Rework first, then Open), moves it to In Progress, and returns the full description.
 
 When starting a task:
-- Read the task description fully
-- For To Rework: read the ❌ QA failed comment — it tells you exactly what to fix
+- Read the task description and comments fully
+- For To Rework: the ❌ QA failed comment tells you exactly what to fix
 - Check `docs/adr/` for relevant architecture decisions before making structural choices
 
 ### 1b. Implement
@@ -28,68 +26,17 @@ When starting a task:
 
 ### 1c. When done — three mandatory steps
 
-**Step 1: Move task to In Review**
-```bash
-curl -s -X POST "https://api.todoist.com/api/v1/tasks/<task_id>/move" \
-  -H "Authorization: Bearer $TODOIST_API_KEY" \
-  -H "Content-Type: application/json" \
-  -d '{"section_id": "6g3XjX33FF4Vj86M"}'
+**Step 1: Move task to In### 1c. When done
+
+After Phase 1 (Playwright) and Phase 2 (native QA) both pass, run:
+
+```
+/laputa-done <task_id>
 ```
 
-**Step 2: Notify Brian**
-```bash
-openclaw system event --text "laputa-task-done:<task_id>" --mode now
-```
+This moves the task to In Review, notifies Brian, and self-dispatches the next task automatically.
 
-**Step 3: Self-dispatch — pick the next task**
-
-Check Todoist for the next task (To Rework first, then Open, sorted by priority). Skip To Rework tasks whose last comment is ❌ with no follow-up human feedback. If a task is available, move it to In Progress (`6g3XjWjfmJFcGgHM`) and start immediately. If nothing is available, exit — the watchdog will restart you.
-
-```python
-# Todoist section IDs:
-# To Rework: 6g6QqvR9rRpvJWvv | Open: 6g3XjWR832hVHhCM | In Progress: 6g3XjWjfmJFcGgHM
-import os, json, urllib.request, sys
-
-token = os.environ["TODOIST_API_KEY"]
-
-def get_tasks(section_id):
-    req = urllib.request.Request(
-        f"https://api.todoist.com/api/v1/tasks?project_id=6g3XjQFwv9V8Pxfv&section_id={section_id}",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    with urllib.request.urlopen(req) as r:
-        data = json.load(r)
-    return data if isinstance(data, list) else data.get("results", [])
-
-def get_comments(task_id):
-    req = urllib.request.Request(
-        f"https://api.todoist.com/api/v1/comments?task_id={task_id}",
-        headers={"Authorization": f"Bearer {token}"}
-    )
-    with urllib.request.urlopen(req) as r:
-        data = json.load(r)
-    return data if isinstance(data, list) else data.get("results", [])
-
-for section_id in ["6g6QqvR9rRpvJWvv", "6g3XjWR832hVHhCM"]:
-    tasks = sorted(get_tasks(section_id), key=lambda t: t.get("priority", 4), reverse=True)
-    for task in tasks:
-        req = urllib.request.Request(
-            f"https://api.todoist.com/api/v1/tasks/{task['id']}/move",
-            data=json.dumps({"section_id": "6g3XjWjfmJFcGgHM"}).encode(),
-            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
-            method="POST"
-        )
-        with urllib.request.urlopen(req) as r:
-            t = json.load(r)
-        print(f"Next task: {t['content']} ({t['id']})")
-        sys.exit(0)
-
-print("NO_TASKS — exiting")
-```
-
-### 1d. QA phases
-
-Both phases run **before** you fire the done signal (steps 1–3 above).
+nal (steps 1–3 above).
 
 **Phase 1 — Playwright (you):**
 
