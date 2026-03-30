@@ -46,7 +46,7 @@ BASE_URL="http://localhost:5201" npx playwright test tests/smoke/<slug>.spec.ts
 
 Brian installs the release build and runs keyboard-only QA. Phase 1 must pass first or the task goes to To Rework.
 
-Fire done signal only after Phase 1 passes — **two steps, both required**:
+Fire done signal only after Phase 1 passes — **three steps, all required**:
 
 ```bash
 # 1. Move task to In Review on Todoist
@@ -57,7 +57,74 @@ curl -s -X POST "https://api.todoist.com/api/v1/tasks/<task_id>/move" \
 
 # 2. Notify Brian
 openclaw system event --text "laputa-task-done:<task_id>" --mode now
+
+# 3. Self-dispatch: pick next task autonomously
+# Priority: To Rework first, then Open (sorted by Todoist priority p1→p4)
+# Skip To Rework tasks whose last comment is ❌ QA failed with no follow-up human feedback
+# If next task found: move it to In Progress and start working on it immediately
+# If nothing available: exit — Brian's watchdog (laputa-dispatch cron, hourly) will restart you
+python3 - <<'PYEOF'
+import os, json, urllib.request, sys
+
+token = os.environ["TODOIST_API_KEY"]
+
+def get_tasks(section_id):
+    req = urllib.request.Request(
+        f"https://api.todoist.com/api/v1/tasks?project_id=6g3XjQFwv9V8Pxfv&section_id={section_id}",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    with urllib.request.urlopen(req) as r:
+        data = json.load(r)
+    return data if isinstance(data, list) else data.get("results", [])
+
+def get_comments(task_id):
+    req = urllib.request.Request(
+        f"https://api.todoist.com/api/v1/comments?task_id={task_id}",
+        headers={"Authorization": f"Bearer {token}"}
+    )
+    with urllib.request.urlopen(req) as r:
+        data = json.load(r)
+    return data if isinstance(data, list) else data.get("results", [])
+
+def skip_rework_task(task_id):
+    """Return True if this To Rework task has no follow-up human feedback after the last QA fail."""
+    comments = get_comments(task_id)
+    last_fail_idx = -1
+    for i, c in enumerate(comments):
+        if isinstance(c, dict) and "\u274c" in c.get("content", ""):
+            last_fail_idx = i
+    if last_fail_idx == -1:
+        return False  # No QA fail found — can proceed
+    after = comments[last_fail_idx + 1:]
+    human_keywords = ["feedback", "Luca", "Brian", "\u26a0\ufe0f", "fix", "should", "must", "rework"]
+    for c in after:
+        if any(kw.lower() in c.get("content", "").lower() for kw in human_keywords):
+            return False  # Human weighed in — can proceed
+    return True  # No human feedback yet — skip
+
+for section_id, is_rework in [("6g6QqvR9rRpvJWvv", True), ("6g3XjWR832hVHhCM", False)]:
+    tasks = sorted(get_tasks(section_id), key=lambda t: t.get("priority", 4), reverse=True)
+    for task in tasks:
+        if is_rework and skip_rework_task(task["id"]):
+            continue
+        # Move to In Progress
+        req = urllib.request.Request(
+            f"https://api.todoist.com/api/v1/tasks/{task['id']}/move",
+            data=json.dumps({"section_id": "6g3XjWjfmJFcGgHM"}).encode(),
+            headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+            method="POST"
+        )
+        with urllib.request.urlopen(req) as r:
+            t = json.load(r)
+        print(f"NEXT_TASK_ID={t['id']}")
+        print(f"NEXT_TASK_TITLE={t['content']}")
+        sys.exit(0)
+
+print("NO_TASKS")
+PYEOF
 ```
+
+**After running step 3:** if output contains `NEXT_TASK_ID=...`, read that task's full description from Todoist and implement it (repeating this entire CLAUDE.md flow). If output is `NO_TASKS`, you are done — exit cleanly.
 
 ## Project
 
