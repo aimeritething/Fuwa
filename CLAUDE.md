@@ -10,10 +10,14 @@ This is how you pick up and complete a task. Follow this order every time.
 
 ### 1a. Pick up a task
 
-Your task comes from Todoist (project `6g3XjQFwv9V8Pxfv`). When you start:
-1. Read the task description fully
-2. For To Rework tasks: read the ❌ QA failed comment to understand what went wrong
-3. Check `docs/adr/` for relevant architecture decisions before making structural choices
+Tasks come from Todoist (project `6g3XjQFwv9V8Pxfv`). Priority order:
+1. **To Rework** (`6g6QqvR9rRpvJWvv`) — fix failed tasks before starting new ones
+2. **Open** (`6g3XjWR832hVHhCM`) — sorted by Todoist priority (p1 → p4)
+
+When starting a task:
+- Read the task description fully
+- For To Rework: read the ❌ QA failed comment — it tells you exactly what to fix
+- Check `docs/adr/` for relevant architecture decisions before making structural choices
 
 ### 1b. Implement
 
@@ -66,26 +70,9 @@ def get_comments(task_id):
         data = json.load(r)
     return data if isinstance(data, list) else data.get("results", [])
 
-def skip_rework_task(task_id):
-    comments = get_comments(task_id)
-    last_fail_idx = -1
-    for i, c in enumerate(comments):
-        if isinstance(c, dict) and "\u274c" in c.get("content", ""):
-            last_fail_idx = i
-    if last_fail_idx == -1:
-        return False
-    after = comments[last_fail_idx + 1:]
-    human_keywords = ["feedback", "Luca", "Brian", "\u26a0\ufe0f", "fix", "should", "must", "rework"]
-    for c in after:
-        if any(kw.lower() in c.get("content", "").lower() for kw in human_keywords):
-            return False
-    return True
-
-for section_id, is_rework in [("6g6QqvR9rRpvJWvv", True), ("6g3XjWR832hVHhCM", False)]:
+for section_id in ["6g6QqvR9rRpvJWvv", "6g3XjWR832hVHhCM"]:
     tasks = sorted(get_tasks(section_id), key=lambda t: t.get("priority", 4), reverse=True)
     for task in tasks:
-        if is_rework and skip_rework_task(task["id"]):
-            continue
         req = urllib.request.Request(
             f"https://api.todoist.com/api/v1/tasks/{task['id']}/move",
             data=json.dumps({"section_id": "6g3XjWjfmJFcGgHM"}).encode(),
