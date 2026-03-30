@@ -104,10 +104,10 @@ Exception: pure CSS/layout changes with no logic.
 ### Code health (mandatory)
 
 Pre-commit and pre-push hooks enforce:
-- **Hotspot Code Health ≥ 9.5** (most-edited files)
-- **Average Code Health ≥ 9.31** (project-wide)
+- **Hotspot Code Health** ≥ threshold in `.codescene-thresholds`
+- **Average Code Health** ≥ threshold in `.codescene-thresholds`
 
-Both gates block commit/push. Never add `// eslint-disable`, `#[allow(...)]`, or `as any` to pass them.
+Both gates block commit/push. Thresholds are a **ratchet** — they only go up, auto-updated after each successful push. Never add `// eslint-disable`, `#[allow(...)]`, or `as any` to pass them.
 
 **Before every commit:** run checks via MCP CodeScene:
 - `mcp__codescene__code_health_review` — check file before touching it

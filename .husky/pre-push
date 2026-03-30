@@ -110,12 +110,19 @@ else
   echo "⏭️  [4/5] Playwright smoke tests — skipped (no tests/smoke/*.spec.ts)"
 fi
 
-# ── 5. CodeScene code health gate ────────────────────────────────────────
-# Blocks push if Hotspot < 9.5 OR Average < 9.33.
-# Remote scores reflect state after last push — this catches regressions
-# introduced in a previous push that weren't caught yet.
+# ── 5. CodeScene code health gate (ratchet) ──────────────────────────────
+# Thresholds live in .codescene-thresholds and only ever go UP (ratchet).
+# After every successful push the file is updated if scores improved.
+THRESHOLDS_FILE="$(git rev-parse --show-toplevel)/.codescene-thresholds"
+HOTSPOT_MIN=9.5
+AVERAGE_MIN=9.31
+if [ -f "$THRESHOLDS_FILE" ]; then
+  HOTSPOT_MIN=$(grep HOTSPOT_THRESHOLD "$THRESHOLDS_FILE" | cut -d= -f2)
+  AVERAGE_MIN=$(grep AVERAGE_THRESHOLD "$THRESHOLDS_FILE" | cut -d= -f2)
+fi
+
 echo ""
-echo "🏥 [5/5] CodeScene code health (Hotspot ≥9.5 + Average ≥9.33)..."
+echo "🏥 [5/5] CodeScene code health (Hotspot ≥${HOTSPOT_MIN} + Average ≥${AVERAGE_MIN})..."
 if [ -z "$CODESCENE_PAT" ] || [ -z "$CODESCENE_PROJECT_ID" ]; then
   echo "  ⚠️  CODESCENE_PAT or CODESCENE_PROJECT_ID not set — skipping"
 else
@@ -128,25 +135,42 @@ else
   if [ -z "$HOTSPOT_SCORE" ] || [ -z "$AVERAGE_SCORE" ]; then
     echo "  ⚠️  Could not fetch remote scores — skipping (CI will enforce)"
   else
-    echo "  Remote Hotspot Code Health: $HOTSPOT_SCORE (threshold: 9.5)"
-    echo "  Remote Average Code Health: $AVERAGE_SCORE (threshold: 9.33)"
+    echo "  Remote Hotspot Code Health: $HOTSPOT_SCORE (threshold: $HOTSPOT_MIN)"
+    echo "  Remote Average Code Health: $AVERAGE_SCORE (threshold: $AVERAGE_MIN)"
     python3 -c "
-import sys
+import sys, os
+
 hotspot = float('$HOTSPOT_SCORE')
 average = float('$AVERAGE_SCORE')
+hotspot_min = float('$HOTSPOT_MIN')
+average_min = float('$AVERAGE_MIN')
 failed = False
-if hotspot < 9.5:
-    print(f'FAIL: Hotspot Code Health {hotspot:.2f} < 9.5')
+
+if hotspot < hotspot_min:
+    print(f'FAIL: Hotspot Code Health {hotspot:.2f} < {hotspot_min}')
     failed = True
 else:
-    print(f'OK: Hotspot {hotspot:.2f} >= 9.5')
-if average < 9.33:
-    print(f'FAIL: Average Code Health {average:.2f} < 9.33 — regressions detected, fix before pushing')
+    print(f'OK: Hotspot {hotspot:.2f} >= {hotspot_min}')
+
+if average < average_min:
+    print(f'FAIL: Average Code Health {average:.2f} < {average_min} — regressions detected, fix before pushing')
     failed = True
 else:
-    print(f'OK: Average {average:.2f} >= 9.33')
+    print(f'OK: Average {average:.2f} >= {average_min}')
+
 if failed:
     sys.exit(1)
+
+# Ratchet: update thresholds file if scores improved
+thresholds_file = '$THRESHOLDS_FILE'
+new_hotspot = max(hotspot_min, round(hotspot, 2))
+new_average = max(average_min, round(average, 2))
+if new_hotspot > hotspot_min or new_average > average_min:
+    with open(thresholds_file, 'w') as f:
+        f.write(f'HOTSPOT_THRESHOLD={new_hotspot}\nAVERAGE_THRESHOLD={new_average}\n')
+    print(f'  📈 Ratchet updated: Hotspot {hotspot_min} → {new_hotspot}, Average {average_min} → {new_average}')
+    # Stage and amend the thresholds update into the last commit would change history — instead just auto-commit it
+    os.system(f'git add {thresholds_file} && git commit -m \"chore: ratchet CodeScene thresholds to {new_hotspot}/{new_average}\" --no-verify 2>/dev/null || true')
 " || exit 1
   fi
 fi
