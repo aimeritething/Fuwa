@@ -25,6 +25,7 @@ import { useViewMode } from './hooks/useViewMode'
 import { useEntryActions } from './hooks/useEntryActions'
 import { useAppCommands } from './hooks/useAppCommands'
 import { isEmoji } from './utils/emoji'
+import { generateCommitMessage } from './utils/commitMessage'
 import { useDialogs } from './hooks/useDialogs'
 import { useVaultSwitcher } from './hooks/useVaultSwitcher'
 import { useGitHistory } from './hooks/useGitHistory'
@@ -211,6 +212,7 @@ function App() {
   }, [resolvedPath])
 
   const commitFlow = useCommitFlow({ savePending: appSave.savePending, loadModifiedFiles: vault.loadModifiedFiles, commitAndPush: vault.commitAndPush, setToastMessage, onPushRejected: autoSync.handlePushRejected })
+  const suggestedCommitMessage = useMemo(() => generateCommitMessage(vault.modifiedFiles), [vault.modifiedFiles])
 
   const entryActions = useEntryActions({
     entries: vault.entries, updateEntry: vault.updateEntry,
@@ -468,7 +470,7 @@ function App() {
       <CommandPalette open={dialogs.showCommandPalette} commands={commands} onClose={dialogs.closeCommandPalette} />
       <SearchPanel open={dialogs.showSearch} vaultPath={resolvedPath} entries={vault.entries} onSelectNote={notes.handleSelectNote} onClose={dialogs.closeSearch} />
       <CreateTypeDialog open={dialogs.showCreateTypeDialog} onClose={dialogs.closeCreateType} onCreate={handleCreateType} />
-      <CommitDialog open={commitFlow.showCommitDialog} modifiedCount={vault.modifiedFiles.length} onCommit={commitFlow.handleCommitPush} onClose={commitFlow.closeCommitDialog} />
+      <CommitDialog open={commitFlow.showCommitDialog} modifiedCount={vault.modifiedFiles.length} suggestedMessage={suggestedCommitMessage} onCommit={commitFlow.handleCommitPush} onClose={commitFlow.closeCommitDialog} />
       <ConflictResolverModal
         open={dialogs.showConflictResolver}
         fileStates={conflictResolver.fileStates}

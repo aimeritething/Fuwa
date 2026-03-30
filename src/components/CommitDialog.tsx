@@ -6,20 +6,21 @@ import { Badge } from '@/components/ui/badge'
 interface CommitDialogProps {
   open: boolean
   modifiedCount: number
+  suggestedMessage?: string
   onCommit: (message: string) => void
   onClose: () => void
 }
 
-export function CommitDialog({ open, modifiedCount, onCommit, onClose }: CommitDialogProps) {
+export function CommitDialog({ open, modifiedCount, suggestedMessage, onCommit, onClose }: CommitDialogProps) {
   const [message, setMessage] = useState('')
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (open) {
-      setMessage('') // eslint-disable-line react-hooks/set-state-in-effect -- reset on dialog open
+      setMessage(suggestedMessage ?? '') // eslint-disable-line react-hooks/set-state-in-effect -- reset on dialog open
       setTimeout(() => inputRef.current?.focus(), 50)
     }
-  }, [open])
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps -- only reset when dialog opens
 
   const handleSubmit = () => {
     const trimmed = message.trim()

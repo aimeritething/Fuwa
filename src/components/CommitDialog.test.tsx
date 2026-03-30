@@ -78,4 +78,30 @@ describe('CommitDialog', () => {
     const { container } = render(<CommitDialog open={false} modifiedCount={3} onCommit={onCommit} onClose={onClose} />)
     expect(container.querySelector('textarea')).toBeNull()
   })
+
+  it('pre-populates message with suggestedMessage', () => {
+    render(<CommitDialog open={true} modifiedCount={3} suggestedMessage="Update alpha, beta" onCommit={onCommit} onClose={onClose} />)
+    const textarea = screen.getByPlaceholderText('Commit message...')
+    expect(textarea).toHaveValue('Update alpha, beta')
+  })
+
+  it('enables Commit button when suggestedMessage is provided', () => {
+    render(<CommitDialog open={true} modifiedCount={3} suggestedMessage="Update alpha" onCommit={onCommit} onClose={onClose} />)
+    expect(getCommitButton()).not.toBeDisabled()
+  })
+
+  it('submits suggestedMessage on Cmd+Enter without user edits', () => {
+    render(<CommitDialog open={true} modifiedCount={3} suggestedMessage="Update alpha" onCommit={onCommit} onClose={onClose} />)
+    const textarea = screen.getByPlaceholderText('Commit message...')
+    fireEvent.keyDown(textarea, { key: 'Enter', metaKey: true })
+    expect(onCommit).toHaveBeenCalledWith('Update alpha')
+  })
+
+  it('allows user to edit the suggested message', () => {
+    render(<CommitDialog open={true} modifiedCount={3} suggestedMessage="Update alpha" onCommit={onCommit} onClose={onClose} />)
+    const textarea = screen.getByPlaceholderText('Commit message...')
+    fireEvent.change(textarea, { target: { value: 'fix: corrected typo in alpha' } })
+    fireEvent.click(getCommitButton())
+    expect(onCommit).toHaveBeenCalledWith('fix: corrected typo in alpha')
+  })
 })
