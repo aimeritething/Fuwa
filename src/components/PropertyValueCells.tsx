@@ -84,7 +84,7 @@ function TagsValue({ propKey, value, isEditing, vaultTags, onSave, onStartEdit }
           <span
             key={tag}
             className="group/tag relative inline-flex items-center overflow-hidden rounded-md"
-            style={{ backgroundColor: style.bg, padding: '2px 8px', maxWidth: 120 }}
+            style={{ backgroundColor: style.bg, padding: '4px 8px', maxWidth: 120 }}
           >
             <span
               className="transition-[max-width] duration-150 group-hover/tag:[mask-image:linear-gradient(to_right,black_60%,transparent_100%)]"
@@ -111,7 +111,7 @@ function TagsValue({ propKey, value, isEditing, vaultTags, onSave, onStartEdit }
       })}
       <button
         className="inline-flex shrink-0 items-center justify-center rounded-md border-none bg-muted text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        style={{ padding: '2px 8px' }}
+        style={{ padding: '4px 8px' }}
         onClick={() => onStartEdit(propKey)}
         title="Add tag"
         data-testid="tags-add-button"

@@ -64,9 +64,9 @@ export function UrlValue({
   }
 
   return (
-    <span className="group/url inline-flex min-w-0 items-center gap-1">
+    <span className="group/url flex min-w-0 max-w-full items-center gap-1">
       <span
-        className="min-w-0 cursor-pointer truncate rounded px-1 py-0.5 text-right text-[12px] text-[var(--accent-blue)] underline decoration-[var(--accent-blue)]/40 transition-colors hover:decoration-[var(--accent-blue)]"
+        className="min-w-0 cursor-pointer truncate rounded-md px-2 py-1 text-right text-[12px] text-[var(--accent-blue)] underline decoration-[var(--accent-blue)]/40 transition-colors hover:decoration-[var(--accent-blue)]"
         onClick={handleOpen}
         title={value}
         data-testid="url-link"
@@ -125,7 +125,7 @@ export function EditableValue({
 
   return (
     <span
-      className="min-w-0 cursor-pointer truncate rounded px-1 py-0.5 text-right text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
+      className="min-w-0 max-w-full cursor-pointer truncate rounded-md px-2 py-1 text-right text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
       onClick={onStartEdit}
       title={value || 'Click to edit'}
     >
@@ -216,7 +216,7 @@ export function TagPillList({
             style={{
               ...getTagStyle(item),
               backgroundColor: getTagStyle(item).bg,
-              padding: '2px 8px',
+              padding: '4px 8px',
               fontSize: 12,
               fontWeight: 500,
             }}
@@ -256,7 +256,7 @@ export function TagPillList({
       ) : (
         <button
           className="inline-flex items-center justify-center rounded-md border-none bg-muted px-2 text-[12px] font-medium leading-none text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          style={{ padding: '2px 8px' }}
+          style={{ padding: '4px 8px' }}
           onClick={() => setIsAddingNew(true)}
           title={`Add ${label.toLowerCase()}`}
         >
