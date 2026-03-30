@@ -124,10 +124,11 @@ describe('Editor', () => {
         activeTabPath={mockEntry.path}
       />
     )
-    expect(screen.getAllByText('Test Project').length).toBeGreaterThan(0)
+    // Tab bar renders when a tab is active
+    expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
   })
 
-  it('renders breadcrumb bar with note info', () => {
+  it('renders breadcrumb bar with action buttons', () => {
     render(
       <Editor
         {...defaultProps}
@@ -135,10 +136,8 @@ describe('Editor', () => {
         activeTabPath={mockEntry.path}
       />
     )
-    // Breadcrumb shows type and title
-    expect(screen.getByText('Project')).toBeInTheDocument()
-    // Word count shown
-    expect(screen.getByText(/words/)).toBeInTheDocument()
+    // Breadcrumb bar shows action buttons (e.g. search, archive)
+    expect(screen.getByTitle('Search in file')).toBeInTheDocument()
   })
 
   it('shows BlockNote editor when a tab is active', () => {
@@ -152,7 +151,7 @@ describe('Editor', () => {
     expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
   })
 
-  it('shows modified indicator when file is modified', () => {
+  it('renders editor for modified file without breadcrumb status', () => {
     render(
       <Editor
         {...defaultProps}
@@ -161,11 +160,11 @@ describe('Editor', () => {
         getNoteStatus={() => 'modified'}
       />
     )
-    // Modified indicator shows "M" in the breadcrumb
-    expect(screen.getByText('M')).toBeInTheDocument()
+    // Editor still renders; breadcrumb bar no longer shows status indicators
+    expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
   })
 
-  it('shows new indicator when file is new', () => {
+  it('renders editor for new file without breadcrumb status', () => {
     render(
       <Editor
         {...defaultProps}
@@ -174,8 +173,8 @@ describe('Editor', () => {
         getNoteStatus={() => 'new'}
       />
     )
-    // New indicator shows "N" in the breadcrumb
-    expect(screen.getByText('N')).toBeInTheDocument()
+    // Editor still renders; breadcrumb bar no longer shows status indicators
+    expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
   })
 
   it('renders diff toggle button when file is modified', () => {

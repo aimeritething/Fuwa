@@ -130,7 +130,6 @@ function ActiveTabBreadcrumb({ activeTab, props }: {
     <BreadcrumbBar
       entry={activeTab.entry}
       wordCount={wordCount}
-      noteStatus={props.activeStatus}
       showDiffToggle={props.showDiffToggle}
       diffMode={props.diffMode}
       diffLoading={props.diffLoading}

@@ -41,7 +41,6 @@ const trashedEntry: VaultEntry = {
 
 const defaultProps = {
   wordCount: 100,
-  noteStatus: 'clean' as const,
   showDiffToggle: false,
   diffMode: false,
   diffLoading: false,
@@ -81,18 +80,6 @@ describe('BreadcrumbBar — trash/restore', () => {
     render(<BreadcrumbBar entry={trashedEntry} {...defaultProps} onTrash={vi.fn()} onRestore={onRestore} />)
     fireEvent.click(screen.getByTitle('Restore from trash'))
     expect(onRestore).toHaveBeenCalledOnce()
-  })
-})
-
-describe('BreadcrumbBar — pending save indicator', () => {
-  it('shows "Saving…" text when noteStatus is pendingSave', () => {
-    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} noteStatus={'pendingSave'} />)
-    expect(screen.getByText('Saving…')).toBeInTheDocument()
-  })
-
-  it('does not show "Saving…" text for clean status', () => {
-    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} noteStatus={'clean'} />)
-    expect(screen.queryByText('Saving…')).not.toBeInTheDocument()
   })
 })
 

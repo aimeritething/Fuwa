@@ -1,7 +1,6 @@
 import { memo } from 'react'
-import type { VaultEntry, NoteStatus } from '../types'
+import type { VaultEntry } from '../types'
 import { cn } from '@/lib/utils'
-import { isEmoji } from '../utils/emoji'
 import {
   MagnifyingGlass,
   GitBranch,
@@ -19,7 +18,6 @@ import {
 interface BreadcrumbBarProps {
   entry: VaultEntry
   wordCount: number
-  noteStatus: NoteStatus
   showDiffToggle: boolean
   diffMode: boolean
   diffLoading: boolean
@@ -57,7 +55,7 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
   rawMode, onToggleRaw,
   showAIChat, onToggleAIChat, inspectorCollapsed, onToggleInspector,
   onTrash, onRestore, onArchive, onUnarchive,
-}: Omit<BreadcrumbBarProps, 'wordCount' | 'noteStatus'>) {
+}: Omit<BreadcrumbBarProps, 'wordCount'>) {
   return (
     <div className="flex items-center" style={{ gap: 12 }}>
       <button
@@ -164,50 +162,18 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
 }
 
 export const BreadcrumbBar = memo(function BreadcrumbBar({
-  entry, wordCount, noteStatus, ...actionProps
+  entry, ...actionProps
 }: BreadcrumbBarProps) {
   return (
     <div
       data-tauri-drag-region
-      className="flex shrink-0 items-center justify-between"
+      className="flex shrink-0 items-center justify-end"
       style={{
         height: 52,
         background: 'var(--background)',
-        borderBottom: '1px solid var(--border)',
         padding: '6px 16px',
       }}
     >
-      {/* Left: breadcrumb */}
-      <div className="flex items-center gap-1 min-w-0 whitespace-nowrap" style={{ fontSize: 12 }}>
-        <span className="shrink-0 text-muted-foreground">{entry.isA || 'Note'}</span>
-        <span className="shrink-0 text-muted-foreground" style={{ margin: '0 2px' }}>&rsaquo;</span>
-        <span className="truncate font-medium text-foreground" style={{ maxWidth: '40vw' }}>
-          {entry.icon && isEmoji(entry.icon) && <span className="mr-1">{entry.icon}</span>}
-          {entry.title}
-        </span>
-        <span className="shrink-0 text-muted-foreground" style={{ margin: '0 4px' }}>&middot;</span>
-        <span className="shrink-0 text-muted-foreground">{wordCount.toLocaleString()} words</span>
-        {noteStatus === 'pendingSave' && (
-          <>
-            <span className="text-muted-foreground" style={{ margin: '0 4px' }}>&middot;</span>
-            <span className="font-semibold tab-status-pulse" style={{ color: 'var(--accent-green)' }}>Saving…</span>
-          </>
-        )}
-        {noteStatus === 'new' && (
-          <>
-            <span className="text-muted-foreground" style={{ margin: '0 4px' }}>&middot;</span>
-            <span className="font-semibold" style={{ color: 'var(--accent-green)' }}>N</span>
-          </>
-        )}
-        {noteStatus === 'modified' && (
-          <>
-            <span className="text-muted-foreground" style={{ margin: '0 4px' }}>&middot;</span>
-            <span className="font-semibold" style={{ color: 'var(--accent-yellow)' }}>M</span>
-          </>
-        )}
-      </div>
-
-      {/* Right: action icons */}
       <BreadcrumbActions entry={entry} {...actionProps} />
     </div>
   )
