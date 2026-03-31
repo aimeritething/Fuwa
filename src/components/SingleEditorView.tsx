@@ -92,16 +92,16 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   const getWikilinkItems = useCallback(async (query: string): Promise<WikilinkSuggestionItem[]> => {
     if (query.length < MIN_QUERY_LENGTH) return []
     const candidates = preFilterWikilinks(baseItems, query)
-    const items = attachClickHandlers(candidates, insertWikilink)
+    const items = attachClickHandlers(candidates, insertWikilink, vaultPath ?? '')
     return enrichSuggestionItems(items, query, typeEntryMap)
-  }, [baseItems, insertWikilink, typeEntryMap])
+  }, [baseItems, insertWikilink, typeEntryMap, vaultPath])
 
   const getPersonMentionItems = useCallback(async (query: string): Promise<WikilinkSuggestionItem[]> => {
     if (query.length < PERSON_MENTION_MIN_QUERY) return []
     const candidates = filterPersonMentions(baseItems, query)
-    const items = attachClickHandlers(candidates, insertWikilink)
+    const items = attachClickHandlers(candidates, insertWikilink, vaultPath ?? '')
     return enrichSuggestionItems(items, query, typeEntryMap)
-  }, [baseItems, insertWikilink, typeEntryMap])
+  }, [baseItems, insertWikilink, typeEntryMap, vaultPath])
 
   return (
     <div ref={containerRef} className={`editor__blocknote-container${isDragOver ? ' editor__blocknote-container--drag-over' : ''}`} style={cssVars as React.CSSProperties} onClick={handleContainerClick}>

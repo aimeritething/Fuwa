@@ -5,6 +5,7 @@ import { deduplicateByPath, disambiguateTitles } from './wikilinkSuggestions'
 import { bestSearchRank } from './fuzzyMatch'
 import { filterSuggestionItems } from '@blocknote/core/extensions'
 import type { WikilinkSuggestionItem } from '../components/WikilinkSuggestionMenu'
+import { relativePathStem } from './wikilink'
 
 const MAX_RESULTS = 20
 
@@ -16,31 +17,25 @@ interface BaseSuggestionItem {
   path: string
 }
 
-/** Build a filename-based target with pipe display: "slug|Title" */
-function buildPathTarget(item: BaseSuggestionItem): string {
-  const filename = item.path.split('/').pop() ?? ''
-  const slug = filename.replace(/\.md$/, '')
-  return `${slug}|${item.entryTitle}`
+/** Build the wikilink target: relative path stem with pipe display for the title.
+ *  e.g. "docs/adr/0001-tauri-stack|Tauri Stack" for subfolders,
+ *  "roadmap|Roadmap" for root files. */
+function buildTarget(item: BaseSuggestionItem, vaultPath: string): string {
+  const stem = relativePathStem(item.path, vaultPath)
+  return stem === item.entryTitle ? stem : `${stem}|${item.entryTitle}`
 }
 
 /** Add onItemClick to raw suggestion candidates.
- *  When multiple candidates share the same title, inserts a path-based
- *  target with pipe syntax so the wikilink uniquely identifies the note. */
+ *  Always inserts the vault-relative path as the wikilink target
+ *  so links are unambiguous and work across subfolders. */
 export function attachClickHandlers(
   candidates: BaseSuggestionItem[],
   insertWikilink: (target: string) => void,
+  vaultPath: string,
 ) {
-  const titleCounts = new Map<string, number>()
-  for (const item of candidates) {
-    titleCounts.set(item.entryTitle, (titleCounts.get(item.entryTitle) ?? 0) + 1)
-  }
-
   return candidates.map(item => ({
     ...item,
-    onItemClick: () => {
-      const isDuplicate = (titleCounts.get(item.entryTitle) ?? 0) > 1
-      insertWikilink(isDuplicate ? buildPathTarget(item) : item.entryTitle)
-    },
+    onItemClick: () => insertWikilink(buildTarget(item, vaultPath)),
   }))
 }
 

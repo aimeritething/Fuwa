@@ -92,7 +92,7 @@ function DiffModeView({ diffContent, onToggleDiff }: { diffContent: string | nul
 }
 
 function RawModeEditorSection({
-  rawMode, activeTab, entries, onContentChange, onSave, latestContentRef,
+  rawMode, activeTab, entries, onContentChange, onSave, latestContentRef, vaultPath,
 }: {
   rawMode: boolean
   activeTab: Tab | null
@@ -100,6 +100,7 @@ function RawModeEditorSection({
   onContentChange?: (path: string, content: string) => void
   onSave?: () => void
   latestContentRef?: React.MutableRefObject<string | null>
+  vaultPath?: string
 }) {
   if (!rawMode || !activeTab) return null
   return (
@@ -111,6 +112,7 @@ function RawModeEditorSection({
       onContentChange={onContentChange ?? (() => {})}
       onSave={onSave ?? (() => {})}
       latestContentRef={latestContentRef}
+      vaultPath={vaultPath}
     />
   )
 }
@@ -221,7 +223,7 @@ export function EditorContent({
         />
       )}
       {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
-      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} latestContentRef={rawLatestContentRef} />
+      <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} latestContentRef={rawLatestContentRef} vaultPath={vaultPath} />
       {showEditor && activeTab && (
         <div className="editor-scroll-area" style={cssVars as React.CSSProperties}>
           <div ref={titleSectionRef} className="title-section">

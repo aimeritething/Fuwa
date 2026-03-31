@@ -19,56 +19,55 @@ function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
 }
 
 describe('attachClickHandlers', () => {
-  it('adds onItemClick to each candidate', () => {
+  const vaultPath = '/vault'
+
+  it('inserts relative path stem as wikilink target', () => {
     const insertWikilink = vi.fn()
     const candidates = [
-      { title: 'Note A', aliases: [], group: 'Note', entryTitle: 'Note A', path: '/a.md' },
-      { title: 'Note B', aliases: [], group: 'Project', entryTitle: 'Note B', path: '/b.md' },
+      { title: 'Note A', aliases: [], group: 'Note', entryTitle: 'Note A', path: '/vault/a.md' },
+      { title: 'Note B', aliases: [], group: 'Project', entryTitle: 'Note B', path: '/vault/b.md' },
     ]
 
-    const result = attachClickHandlers(candidates, insertWikilink)
+    const result = attachClickHandlers(candidates, insertWikilink, vaultPath)
 
     expect(result).toHaveLength(2)
     result[0].onItemClick()
-    expect(insertWikilink).toHaveBeenCalledWith('Note A')
+    expect(insertWikilink).toHaveBeenCalledWith('a|Note A')
     result[1].onItemClick()
-    expect(insertWikilink).toHaveBeenCalledWith('Note B')
+    expect(insertWikilink).toHaveBeenCalledWith('b|Note B')
   })
 
   it('preserves all original properties', () => {
     const result = attachClickHandlers(
-      [{ title: 'X', aliases: ['y'], group: 'Topic', entryTitle: 'X', path: '/x.md' }],
+      [{ title: 'X', aliases: ['y'], group: 'Topic', entryTitle: 'X', path: '/vault/x.md' }],
       vi.fn(),
+      vaultPath,
     )
-    expect(result[0]).toMatchObject({ title: 'X', aliases: ['y'], group: 'Topic', path: '/x.md' })
+    expect(result[0]).toMatchObject({ title: 'X', aliases: ['y'], group: 'Topic', path: '/vault/x.md' })
   })
 
-  it('uses slug|title target when candidates have duplicate titles', () => {
+  it('includes subfolder path in wikilink target', () => {
     const insertWikilink = vi.fn()
     const candidates = [
-      { title: 'Status Update', aliases: [], group: 'Project', entryTitle: 'Status Update', path: '/vault/status-update.md' },
-      { title: 'Status Update', aliases: [], group: 'Journal', entryTitle: 'Status Update', path: '/vault/status-update-2.md' },
+      { title: 'ADR 001', aliases: [], group: 'Note', entryTitle: 'ADR 001', path: '/vault/docs/adr/0001-tauri-stack.md' },
     ]
 
-    const result = attachClickHandlers(candidates, insertWikilink)
+    const result = attachClickHandlers(candidates, insertWikilink, vaultPath)
 
     result[0].onItemClick()
-    expect(insertWikilink).toHaveBeenCalledWith('status-update|Status Update')
-    result[1].onItemClick()
-    expect(insertWikilink).toHaveBeenCalledWith('status-update-2|Status Update')
+    expect(insertWikilink).toHaveBeenCalledWith('docs/adr/0001-tauri-stack|ADR 001')
   })
 
-  it('uses title-only target when titles are unique', () => {
+  it('omits pipe display when title matches path stem', () => {
     const insertWikilink = vi.fn()
     const candidates = [
-      { title: 'Alpha', aliases: [], group: 'Note', entryTitle: 'Alpha', path: '/vault/alpha.md' },
-      { title: 'Beta', aliases: [], group: 'Note', entryTitle: 'Beta', path: '/vault/beta.md' },
+      { title: 'roadmap', aliases: [], group: 'Note', entryTitle: 'roadmap', path: '/vault/roadmap.md' },
     ]
 
-    const result = attachClickHandlers(candidates, insertWikilink)
+    const result = attachClickHandlers(candidates, insertWikilink, vaultPath)
 
     result[0].onItemClick()
-    expect(insertWikilink).toHaveBeenCalledWith('Alpha')
+    expect(insertWikilink).toHaveBeenCalledWith('roadmap')
   })
 })
 

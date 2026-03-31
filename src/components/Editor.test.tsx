@@ -467,7 +467,7 @@ describe('wikilink autocomplete', () => {
     expect(items.length).toBeGreaterThan(0)
     items[0].onItemClick()
     expect(mockEditor.insertInlineContent).toHaveBeenCalledWith([
-      { type: 'wikilink', props: { target: 'Alpha Project' } },
+      { type: 'wikilink', props: { target: 'vault/project/test|Alpha Project' } },
       ' ',
     ])
   })
@@ -620,7 +620,7 @@ describe('person @mention autocomplete', () => {
     expect(items.length).toBeGreaterThan(0)
     items[0].onItemClick()
     expect(mockEditor.insertInlineContent).toHaveBeenCalledWith([
-      { type: 'wikilink', props: { target: 'Matteo Cellini' } },
+      { type: 'wikilink', props: { target: 'vault/person/matteo-cellini|Matteo Cellini' } },
       ' ',
     ])
   })

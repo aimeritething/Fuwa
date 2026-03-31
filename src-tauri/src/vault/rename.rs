@@ -144,9 +144,10 @@ fn to_path_stem<'a>(abs_path: &'a str, vault_prefix: &str) -> &'a str {
 }
 
 /// Determine a unique destination path, appending -2, -3, etc. if a file already exists.
-fn unique_dest_path(dest_dir: &Path, filename: &str) -> std::path::PathBuf {
+/// `exclude` is the source file being renamed — it should not be treated as a collision.
+fn unique_dest_path(dest_dir: &Path, filename: &str, exclude: &Path) -> std::path::PathBuf {
     let dest = dest_dir.join(filename);
-    if !dest.exists() {
+    if !dest.exists() || dest == exclude {
         return dest;
     }
     let stem = Path::new(filename)
@@ -160,7 +161,7 @@ fn unique_dest_path(dest_dir: &Path, filename: &str) -> std::path::PathBuf {
     let mut counter = 2;
     loop {
         let candidate = dest_dir.join(format!("{}-{}{}", stem, counter, ext));
-        if !candidate.exists() {
+        if !candidate.exists() || candidate == exclude {
             return candidate;
         }
         counter += 1;
@@ -223,7 +224,7 @@ pub fn rename_note(
     let parent_dir = old_file
         .parent()
         .ok_or("Cannot determine parent directory")?;
-    let new_file = unique_dest_path(parent_dir, &expected_filename);
+    let new_file = unique_dest_path(parent_dir, &expected_filename, old_file);
     let new_path_str = new_file.to_string_lossy().to_string();
 
     fs::write(&new_file, &updated_content)

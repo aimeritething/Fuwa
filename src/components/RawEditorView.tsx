@@ -21,6 +21,7 @@ export interface RawEditorViewProps {
   path: string
   entries: VaultEntry[]
   onContentChange: (path: string, content: string) => void
+  vaultPath?: string
   onSave: () => void
   /** Mutable ref updated on every keystroke with the latest doc string.
    *  Allows the parent to flush debounced content before unmount. */
@@ -37,7 +38,7 @@ function getCursorCoords(view: EditorView): { top: number; left: number } | null
   return { top: coords.bottom, left: coords.left }
 }
 
-export function RawEditorView({ content, path, entries, onContentChange, onSave, latestContentRef }: RawEditorViewProps) {
+export function RawEditorView({ content, path, entries, onContentChange, onSave, latestContentRef, vaultPath }: RawEditorViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const pathRef = useRef(path)
@@ -92,10 +93,10 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave,
     const coords = getCursorCoords(view)
     if (!coords) { setAutocomplete(null); return }
     const candidates = preFilterWikilinks(baseItems, query)
-    const withHandlers = attachClickHandlers(candidates, (title: string) => insertWikilinkRef.current(title))
+    const withHandlers = attachClickHandlers(candidates, (title: string) => insertWikilinkRef.current(title), vaultPath ?? '')
     const items = enrichSuggestionItems(withHandlers, query, typeEntryMap)
     setAutocomplete({ caretTop: coords.top, caretLeft: coords.left, selectedIndex: 0, items })
-  }, [baseItems, typeEntryMap])
+  }, [baseItems, typeEntryMap, vaultPath])
 
   const handleSave = useCallback(() => {
     if (debounceRef.current) {
