@@ -298,8 +298,8 @@ pub fn update_wikilinks_for_renames(vault_path: &str, renames: &[DetectedRename]
     for rename in renames {
         let old_stem = rename.old_path.strip_suffix(".md").unwrap_or(&rename.old_path);
         let new_stem = rename.new_path.strip_suffix(".md").unwrap_or(&rename.new_path);
-        let old_filename_stem = old_stem.split('/').last().unwrap_or(old_stem);
-        let new_filename_stem = new_stem.split('/').last().unwrap_or(new_stem);
+        let old_filename_stem = old_stem.split('/').next_back().unwrap_or(old_stem);
+        let new_filename_stem = new_stem.split('/').next_back().unwrap_or(new_stem);
 
         // Build title from filename stem (kebab-case → Title Case)
         let old_title = super::parsing::slug_to_title(old_filename_stem);
