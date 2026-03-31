@@ -4,6 +4,7 @@ import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
 import { updateMockFrontmatter, deleteMockFrontmatterProperty } from './mockFrontmatterHelpers'
 import { updateMockContent, trackMockChange } from '../mock-tauri'
+import { parseFrontmatter } from '../utils/frontmatter'
 
 const ENTRY_DELETE_MAP: Record<string, Partial<VaultEntry>> = {
   type: { isA: null }, is_a: { isA: null }, status: { status: null }, color: { color: null },
@@ -63,6 +64,17 @@ export function frontmatterToEntryPatch(
   const relationshipPatch: RelationshipPatch | null =
     wikilinks.length > 0 ? { [key]: wikilinks } : null
   return { patch: updates[k] ?? {}, relationshipPatch }
+}
+
+/** Parse frontmatter from full content and return a merged VaultEntry patch for all known fields. */
+export function contentToEntryPatch(content: string): Partial<VaultEntry> {
+  const fm = parseFrontmatter(content)
+  const merged: Partial<VaultEntry> = {}
+  for (const [key, value] of Object.entries(fm)) {
+    const { patch } = frontmatterToEntryPatch('update', key, value)
+    Object.assign(merged, patch)
+  }
+  return merged
 }
 
 async function invokeFrontmatter(command: string, args: Record<string, unknown>): Promise<string> {

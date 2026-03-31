@@ -19,7 +19,7 @@ import {
   resolveTemplate,
 } from './useNoteCreation'
 import { needsRenameOnSave } from './useNoteRename'
-import { frontmatterToEntryPatch, applyRelationshipPatch } from './frontmatterOps'
+import { frontmatterToEntryPatch, applyRelationshipPatch, contentToEntryPatch } from './frontmatterOps'
 import { useNoteActions } from './useNoteActions'
 import type { NoteActionsConfig } from './useNoteActions'
 
@@ -437,6 +437,36 @@ describe('applyRelationshipPatch', () => {
     const existing = { Notes: ['[[a]]'] }
     applyRelationshipPatch(existing, { Notes: ['[[b]]'] })
     expect(existing).toEqual({ Notes: ['[[a]]'] })
+  })
+})
+
+describe('contentToEntryPatch', () => {
+  it('extracts type from frontmatter', () => {
+    const content = '---\ntype: Project\nstatus: Active\n---\nBody text'
+    expect(contentToEntryPatch(content)).toEqual({ isA: 'Project', status: 'Active' })
+  })
+
+  it('returns empty patch when no frontmatter', () => {
+    expect(contentToEntryPatch('Just a body')).toEqual({})
+  })
+
+  it('returns empty patch for empty content', () => {
+    expect(contentToEntryPatch('')).toEqual({})
+  })
+
+  it('extracts color, icon, and aliases', () => {
+    const content = '---\ncolor: red\nicon: star\naliases:\n  - Foo\n  - Bar\n---\n'
+    expect(contentToEntryPatch(content)).toEqual({ color: 'red', icon: 'star', aliases: ['Foo', 'Bar'] })
+  })
+
+  it('handles is_a as alias for type', () => {
+    const content = '---\nis_a: Essay\n---\n'
+    expect(contentToEntryPatch(content)).toEqual({ isA: 'Essay' })
+  })
+
+  it('ignores unknown frontmatter keys', () => {
+    const content = '---\ntype: Note\ncustom: value\n---\n'
+    expect(contentToEntryPatch(content)).toEqual({ isA: 'Note' })
   })
 })
 
