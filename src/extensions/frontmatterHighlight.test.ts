@@ -39,22 +39,6 @@ describe('frontmatterHighlightPlugin', () => {
     parent.remove()
   })
 
-  it('applies heading class to markdown headings', () => {
-    const { view, parent } = createView('# Heading One\n\nSome text\n\n## Heading Two')
-    const headings = parent.querySelectorAll('.cm-md-heading')
-    expect(headings.length).toBeGreaterThanOrEqual(2)
-    view.destroy()
-    parent.remove()
-  })
-
-  it('does not apply heading class to plain text', () => {
-    const { view, parent } = createView('Just some plain text\nAnother line')
-    const headings = parent.querySelectorAll('.cm-md-heading')
-    expect(headings.length).toBe(0)
-    view.destroy()
-    parent.remove()
-  })
-
   it('handles content without frontmatter', () => {
     const { view, parent } = createView('# Just a heading\n\nNo frontmatter here.')
     const delimiters = parent.querySelectorAll('.cm-frontmatter-delimiter')

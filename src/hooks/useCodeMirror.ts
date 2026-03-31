@@ -3,6 +3,7 @@ import { EditorView, lineNumbers, highlightActiveLine, keymap } from '@codemirro
 import { EditorState } from '@codemirror/state'
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { frontmatterHighlightPlugin, frontmatterHighlightTheme } from '../extensions/frontmatterHighlight'
+import { markdownLanguage } from '../extensions/markdownHighlight'
 import { zoomCursorFix } from '../extensions/zoomCursorFix'
 
 const FONT_FAMILY = '"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
@@ -109,6 +110,7 @@ export function useCodeMirror(
         keymap.of([...defaultKeymap, ...historyKeymap]),
         buildSaveKeymap(callbacksRef),
         buildBaseTheme(),
+        markdownLanguage(),
         frontmatterHighlightTheme(),
         frontmatterHighlightPlugin,
         zoomCursorFix(),

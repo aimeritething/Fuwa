@@ -4,7 +4,6 @@ import { RangeSetBuilder } from '@codemirror/state'
 const frontmatterDelimiter = Decoration.mark({ class: 'cm-frontmatter-delimiter' })
 const frontmatterKey = Decoration.mark({ class: 'cm-frontmatter-key' })
 const frontmatterValue = Decoration.mark({ class: 'cm-frontmatter-value' })
-const markdownHeading = Decoration.mark({ class: 'cm-md-heading' })
 
 function findFrontmatterEnd(doc: { lines: number; line(n: number): { text: string } }): number {
   if (doc.lines < 1) return -1
@@ -27,8 +26,6 @@ function buildDecorations(view: EditorView): DecorationSet {
 
     if (i <= fmEnd) {
       decorateFrontmatterLine(builder, line.from, text, i === 1 || i === fmEnd)
-    } else {
-      decorateMarkdownLine(builder, line.from, text)
     }
   }
 
@@ -60,16 +57,6 @@ function decorateFrontmatterLine(
   }
 }
 
-function decorateMarkdownLine(
-  builder: RangeSetBuilder<Decoration>,
-  from: number,
-  text: string,
-): void {
-  if (/^#{1,6}\s/.test(text)) {
-    builder.add(from, from + text.length, markdownHeading)
-  }
-}
-
 export const frontmatterHighlightPlugin = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet
@@ -89,12 +76,9 @@ export function frontmatterHighlightTheme() {
   const keyColor = '#c9383e'
   const valueColor = '#2a7e4f'
   const delimiterColor = '#c9383e'
-  const headingColor = '#0969da'
-
   return EditorView.baseTheme({
     '.cm-frontmatter-delimiter': { color: delimiterColor, fontWeight: '600' },
     '.cm-frontmatter-key': { color: keyColor },
     '.cm-frontmatter-value': { color: valueColor },
-    '.cm-md-heading': { color: headingColor, fontWeight: '600' },
   })
 }
