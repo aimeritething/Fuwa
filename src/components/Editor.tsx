@@ -41,6 +41,7 @@ interface EditorProps {
   onDeleteProperty?: (path: string, key: string) => Promise<void>
   onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
+  onInitializeProperties?: (path: string) => void
   showAIChat?: boolean
   onToggleAIChat?: () => void
   vaultPath?: string
@@ -202,7 +203,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     getNoteStatus,
     inspectorCollapsed, onToggleInspector, inspectorWidth, onInspectorResize,
     inspectorEntry, inspectorContent, gitHistory,
-    onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateAndOpenNote,
+    onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateAndOpenNote, onInitializeProperties,
     showAIChat, onToggleAIChat,
     vaultPath, noteList, noteListFilter,
     onTrashNote, onRestoreNote, onDeleteNote, onArchiveNote, onUnarchiveNote,
@@ -286,6 +287,8 @@ export const Editor = memo(function Editor(props: EditorProps) {
           onDeleteProperty={onDeleteProperty}
           onAddProperty={onAddProperty}
           onCreateAndOpenNote={onCreateAndOpenNote}
+          onInitializeProperties={onInitializeProperties}
+          onToggleRawEditor={handleToggleRawExclusive}
           onOpenNote={onNavigateWikilink}
           onFileCreated={onFileCreated}
           onFileModified={onFileModified}

@@ -210,6 +210,12 @@ function App() {
     onVaultChanged: () => { vault.reloadVault() },
   })
 
+  const handleInitializeProperties = useCallback(async (path: string) => {
+    const filename = path.split('/').pop()?.replace(/\.md$/, '') ?? 'Untitled'
+    await notes.handleUpdateFrontmatter(path, 'type', 'Note', { silent: true })
+    await notes.handleUpdateFrontmatter(path, 'title', filename)
+  }, [notes])
+
   const handleSetNoteIcon = useCallback(async (path: string, emoji: string) => {
     await notes.handleUpdateFrontmatter(path, 'icon', emoji)
   }, [notes])
@@ -445,6 +451,7 @@ function App() {
             onDeleteProperty={notes.handleDeleteProperty}
             onAddProperty={notes.handleAddProperty}
             onCreateAndOpenNote={notes.handleCreateNoteForRelationship}
+            onInitializeProperties={handleInitializeProperties}
             showAIChat={dialogs.showAIChat}
             onToggleAIChat={dialogs.toggleAIChat}
             vaultPath={resolvedPath}

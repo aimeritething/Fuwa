@@ -29,6 +29,20 @@ function parseScalar(value: string): FrontmatterValue {
   return clean
 }
 
+export type FrontmatterState = 'valid' | 'empty' | 'none' | 'invalid'
+
+/** Detect whether content has valid, empty, missing, or invalid frontmatter. */
+export function detectFrontmatterState(content: string | null): FrontmatterState {
+  if (!content) return 'none'
+  const match = content.match(/^---\n([\s\S]*?)---/)
+  if (!match) return 'none'
+  const body = match[1].trim()
+  if (!body) return 'empty'
+  // Valid frontmatter needs at least one line starting with a word character followed by colon
+  const hasValidLine = body.split('\n').some(line => /^[A-Za-z][\w -]*:/.test(line))
+  return hasValidLine ? 'valid' : 'invalid'
+}
+
 /** Parse YAML frontmatter from content */
 export function parseFrontmatter(content: string | null): ParsedFrontmatter {
   if (!content) return {}

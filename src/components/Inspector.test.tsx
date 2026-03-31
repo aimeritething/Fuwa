@@ -619,4 +619,96 @@ Status: Active
       expect(screen.queryByText('Referenced by')).not.toBeInTheDocument()
     })
   })
+
+  describe('frontmatter state handling', () => {
+    const noFrontmatterEntry: VaultEntry = {
+      ...mockEntry,
+      path: '/vault/plain-note.md',
+      filename: 'plain-note.md',
+      title: 'plain-note',
+      isA: null,
+    }
+
+    it('shows "Initialize properties" button when note has no frontmatter', () => {
+      render(
+        <Inspector
+          {...defaultProps}
+          entry={noFrontmatterEntry}
+          content="# Just a plain note\n\nNo frontmatter here."
+          onInitializeProperties={vi.fn()}
+        />
+      )
+      expect(screen.getByText('Initialize properties')).toBeInTheDocument()
+      expect(screen.queryByText('Type')).not.toBeInTheDocument()
+    })
+
+    it('shows "Initialize properties" button when frontmatter is empty', () => {
+      render(
+        <Inspector
+          {...defaultProps}
+          entry={noFrontmatterEntry}
+          content="---\n---\n# Note with empty frontmatter"
+          onInitializeProperties={vi.fn()}
+        />
+      )
+      expect(screen.getByText('Initialize properties')).toBeInTheDocument()
+    })
+
+    it('calls onInitializeProperties when button is clicked', () => {
+      const onInit = vi.fn()
+      render(
+        <Inspector
+          {...defaultProps}
+          entry={noFrontmatterEntry}
+          content="# Plain note"
+          onInitializeProperties={onInit}
+        />
+      )
+      fireEvent.click(screen.getByText('Initialize properties'))
+      expect(onInit).toHaveBeenCalledWith('/vault/plain-note.md')
+    })
+
+    it('shows invalid frontmatter notice with fix button', () => {
+      render(
+        <Inspector
+          {...defaultProps}
+          entry={noFrontmatterEntry}
+          content={'---\n{broken yaml\n---\nBody'}
+          onToggleRawEditor={vi.fn()}
+        />
+      )
+      expect(screen.getByText('Invalid properties')).toBeInTheDocument()
+      expect(screen.getByText('Fix in editor')).toBeInTheDocument()
+    })
+
+    it('calls onToggleRawEditor when fix button is clicked', () => {
+      const onToggle = vi.fn()
+      render(
+        <Inspector
+          {...defaultProps}
+          entry={noFrontmatterEntry}
+          content={'---\n{broken yaml\n---\nBody'}
+          onToggleRawEditor={onToggle}
+        />
+      )
+      fireEvent.click(screen.getByText('Fix in editor'))
+      expect(onToggle).toHaveBeenCalledOnce()
+    })
+
+    it('still shows backlinks and history for notes without frontmatter', () => {
+      render(
+        <Inspector
+          {...defaultProps}
+          entry={noFrontmatterEntry}
+          content="# Plain note"
+          entries={[noFrontmatterEntry, { ...referrerEntry, outgoingLinks: ['plain-note'] }]}
+          gitHistory={mockGitHistory}
+          onInitializeProperties={vi.fn()}
+        />
+      )
+      expect(screen.getByText('Initialize properties')).toBeInTheDocument()
+      expect(screen.getByText('Backlinks')).toBeInTheDocument()
+      expect(screen.getByText('History')).toBeInTheDocument()
+    })
+  })
 })

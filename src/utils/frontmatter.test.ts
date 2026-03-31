@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { parseFrontmatter } from './frontmatter'
+import { parseFrontmatter, detectFrontmatterState } from './frontmatter'
 
 describe('parseFrontmatter', () => {
   describe('boolean-like Yes/No values', () => {
@@ -42,5 +42,39 @@ describe('parseFrontmatter', () => {
       const fm = parseFrontmatter('---\nArchived: false\n---\nBody')
       expect(fm['Archived']).toBe(false)
     })
+  })
+})
+
+describe('detectFrontmatterState', () => {
+  it('returns "none" for null content', () => {
+    expect(detectFrontmatterState(null)).toBe('none')
+  })
+
+  it('returns "none" when no --- block exists', () => {
+    expect(detectFrontmatterState('Just a plain markdown file')).toBe('none')
+  })
+
+  it('returns "empty" for empty frontmatter block', () => {
+    expect(detectFrontmatterState('---\n---\nBody')).toBe('empty')
+  })
+
+  it('returns "empty" for whitespace-only frontmatter', () => {
+    expect(detectFrontmatterState('---\n  \n---\nBody')).toBe('empty')
+  })
+
+  it('returns "valid" for well-formed frontmatter', () => {
+    expect(detectFrontmatterState('---\ntitle: Hello\ntype: Note\n---\nBody')).toBe('valid')
+  })
+
+  it('returns "valid" for frontmatter with only a title', () => {
+    expect(detectFrontmatterState('---\ntitle: Test\n---\n')).toBe('valid')
+  })
+
+  it('returns "invalid" for malformed YAML (missing colon)', () => {
+    expect(detectFrontmatterState('---\nthis is not yaml\n---\nBody')).toBe('invalid')
+  })
+
+  it('returns "invalid" for frontmatter with only garbage text', () => {
+    expect(detectFrontmatterState('---\n{broken: [yaml\n---\nBody')).toBe('invalid')
   })
 })

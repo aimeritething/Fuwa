@@ -2,9 +2,9 @@ import { useMemo, useCallback } from 'react'
 import { useDragRegion } from '../hooks/useDragRegion'
 import type { VaultEntry, GitCommit } from '../types'
 import { cn } from '@/lib/utils'
-import { SlidersHorizontal, X } from '@phosphor-icons/react'
+import { SlidersHorizontal, X, Sparkle, WarningCircle, PencilSimple } from '@phosphor-icons/react'
 import { Separator } from './ui/separator'
-import { parseFrontmatter } from '../utils/frontmatter'
+import { parseFrontmatter, detectFrontmatterState } from '../utils/frontmatter'
 import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
 import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel, InstancesPanel } from './InspectorPanels'
 import { wikilinkTarget } from '../utils/wikilink'
@@ -25,6 +25,8 @@ interface InspectorProps {
   onDeleteProperty?: (path: string, key: string) => Promise<void>
   onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
+  onInitializeProperties?: (path: string) => void
+  onToggleRawEditor?: () => void
 }
 
 function useBacklinks(
@@ -114,13 +116,46 @@ function EmptyInspector() {
   )
 }
 
+function InitializePropertiesPrompt({ onClick }: { onClick: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-border px-4 py-6">
+      <Sparkle size={24} className="text-muted-foreground" />
+      <p className="m-0 text-center text-[13px] text-muted-foreground">This note has no properties yet</p>
+      <button
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
+        onClick={onClick}
+      >
+        Initialize properties
+      </button>
+    </div>
+  )
+}
+
+function InvalidFrontmatterNotice({ onFix }: { onFix: () => void }) {
+  return (
+    <div className="flex flex-col items-center gap-3 rounded-lg border border-dashed border-destructive/40 bg-destructive/5 px-4 py-6">
+      <WarningCircle size={24} className="text-destructive" />
+      <p className="m-0 text-center text-[13px] text-muted-foreground">Invalid properties</p>
+      <button
+        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-background px-3 py-1.5 text-[13px] font-medium text-foreground transition-colors hover:bg-muted"
+        onClick={onFix}
+      >
+        <PencilSimple size={14} />
+        Fix in editor
+      </button>
+    </div>
+  )
+}
+
 export function Inspector({
   collapsed, onToggle, entry, content, entries, gitHistory, onNavigate,
   onViewCommitDiff, onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateAndOpenNote,
+  onInitializeProperties, onToggleRawEditor,
 }: InspectorProps) {
   const referencedBy = useReferencedBy(entry, entries)
   const backlinks = useBacklinks(entry, entries, referencedBy)
   const frontmatter = useMemo(() => parseFrontmatter(content), [content])
+  const fmState = useMemo(() => detectFrontmatterState(content), [content])
   const typeEntryMap = useMemo(() => {
     const map: Record<string, VaultEntry> = {}
     for (const e of entries) { if (e.isA === 'Type') map[e.title] = e }
@@ -146,23 +181,31 @@ export function Inspector({
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-3">
           {entry ? (
             <>
-              <DynamicPropertiesPanel
-                entry={entry} content={content} frontmatter={frontmatter}
-                entries={entries}
-                onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}
-                onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
-                onAddProperty={onAddProperty ? handleAddProperty : undefined}
-                onNavigate={onNavigate}
-              />
-              <DynamicRelationshipsPanel
-                frontmatter={frontmatter} entries={entries} typeEntryMap={typeEntryMap} onNavigate={onNavigate}
-                onAddProperty={onAddProperty ? handleAddProperty : undefined}
-                onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}
-                onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
-                onCreateAndOpenNote={onCreateAndOpenNote}
-              />
-              <InstancesPanel entry={entry} entries={entries} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
-              <ReferencedByPanel items={referencedBy} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+              {fmState === 'valid' ? (
+                <>
+                  <DynamicPropertiesPanel
+                    entry={entry} content={content} frontmatter={frontmatter}
+                    entries={entries}
+                    onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}
+                    onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
+                    onAddProperty={onAddProperty ? handleAddProperty : undefined}
+                    onNavigate={onNavigate}
+                  />
+                  <DynamicRelationshipsPanel
+                    frontmatter={frontmatter} entries={entries} typeEntryMap={typeEntryMap} onNavigate={onNavigate}
+                    onAddProperty={onAddProperty ? handleAddProperty : undefined}
+                    onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}
+                    onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
+                    onCreateAndOpenNote={onCreateAndOpenNote}
+                  />
+                  <InstancesPanel entry={entry} entries={entries} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+                  <ReferencedByPanel items={referencedBy} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+                </>
+              ) : fmState === 'invalid' ? (
+                onToggleRawEditor && <InvalidFrontmatterNotice onFix={onToggleRawEditor} />
+              ) : (
+                onInitializeProperties && <InitializePropertiesPrompt onClick={() => onInitializeProperties(entry.path)} />
+              )}
               {backlinks.length > 0 && <Separator />}
               <BacklinksPanel backlinks={backlinks} onNavigate={onNavigate} />
               {gitHistory.length > 0 && <Separator />}
