@@ -169,17 +169,21 @@ interface ImmediateCreateDeps {
 
 /** Create an untitled note without persisting to disk (deferred save). */
 function createNoteImmediate(deps: ImmediateCreateDeps, type?: string): void {
-  const noteType = type || 'Note'
-  const title = generateUntitledName(deps.entries, noteType, deps.pendingNames)
-  deps.pendingNames.add(title)
-  const template = resolveTemplate(deps.entries, noteType)
-  const resolved = resolveNewNote(title, noteType, deps.vaultPath, template)
-  deps.openTabWithContent(resolved.entry, resolved.content)
-  addEntryWithMock(resolved.entry, resolved.content, deps.addEntry)
-  deps.trackUnsaved?.(resolved.entry.path)
-  deps.markContentPending?.(resolved.entry.path, resolved.content)
-  signalFocusEditor({ selectTitle: true })
-  setTimeout(() => deps.pendingNames.delete(title), 500)
+  try {
+    const noteType = type || 'Note'
+    const title = generateUntitledName(deps.entries, noteType, deps.pendingNames)
+    deps.pendingNames.add(title)
+    const template = resolveTemplate(deps.entries, noteType)
+    const resolved = resolveNewNote(title, noteType, deps.vaultPath, template)
+    deps.openTabWithContent(resolved.entry, resolved.content)
+    addEntryWithMock(resolved.entry, resolved.content, deps.addEntry)
+    deps.trackUnsaved?.(resolved.entry.path)
+    deps.markContentPending?.(resolved.entry.path, resolved.content)
+    signalFocusEditor({ selectTitle: true })
+    setTimeout(() => deps.pendingNames.delete(title), 500)
+  } catch (err) {
+    console.error('Failed to create note:', err)
+  }
 }
 
 interface RelationshipCreateDeps {
