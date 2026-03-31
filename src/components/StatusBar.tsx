@@ -437,7 +437,7 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
 
   return (
     <footer style={{ height: 30, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--sidebar)', borderTop: '1px solid var(--border)', padding: '0 8px', fontSize: 11, color: 'var(--muted-foreground)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, overflow: 'hidden' }}>
         <VaultMenu vaults={vaults} vaultPath={vaultPath} onSwitchVault={onSwitchVault} onOpenLocalFolder={onOpenLocalFolder} onConnectGitHub={onConnectGitHub} hasGitHub={hasGitHub} onRemoveVault={onRemoveVault} />
         <span style={SEP_STYLE}>|</span>
         <span
@@ -449,15 +449,15 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
           onMouseEnter={onCheckForUpdates ? (e) => { e.currentTarget.style.background = 'var(--hover)' } : undefined}
           onMouseLeave={onCheckForUpdates ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
         ><Package size={13} />{buildNumber ?? 'b?'}</span>
+        <ChangesBadge count={modifiedCount} onClick={onClickPending} onCommitPush={onCommitPush} />
         <span style={SEP_STYLE}>|</span>
         <SyncBadge status={syncStatus} lastSyncTime={lastSyncTime} remoteStatus={remoteStatus} onTriggerSync={onTriggerSync} onPullAndPush={onPullAndPush} onOpenConflictResolver={onOpenConflictResolver} />
         {lastCommitInfo && <CommitBadge info={lastCommitInfo} />}
         <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} />
-        <ChangesBadge count={modifiedCount} onClick={onClickPending} onCommitPush={onCommitPush} />
         <PulseBadge onClick={onClickPulse} disabled={!isGitVault} />
         {mcpStatus && <McpBadge status={mcpStatus} onInstall={onInstallMcp} />}
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         <span style={ICON_STYLE}><FileText size={13} />{noteCount.toLocaleString()} notes</span>
         {zoomLevel !== 100 && (
           <span
