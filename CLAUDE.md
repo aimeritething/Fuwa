@@ -6,47 +6,27 @@
 
 ## 1. Task Workflow
 
-This is how you pick up and complete a task. Follow this order every time.
-
 ### 1a. Pick up a task
 
-Run `/laputa-next-task` — it fetches the next task from Todoist (To Rework first, then Open), moves it to In Progress, and returns the full description.
+Run `/laputa-next-task` — fetches next task (To Rework first, then Open), moves to In Progress, returns full description.
 
-When starting a task:
-- Read the task description and comments fully
+- Read task description and all comments fully
 - For To Rework: the ❌ QA failed comment tells you exactly what to fix
-- Check `docs/adr/` for relevant architecture decisions before making structural choices
-- **Add a comment** when you move the task to In Progress:
-  ```
-  🚀 Starting work on this task. [Brief description of approach]
-  ```
+- Check `docs/adr/` for relevant architecture decisions before structural choices
+- Add a comment: `🚀 Starting work on this task. [Brief description of approach]`
 
 ### 1b. Implement
 
 - Work on `main` branch — **no branches, no PRs, ever**
 - Commit every 20–30 min: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`
 - **⛔ NEVER use --no-verify**
-- For UI tasks: open `ui-design.pen` first, study the visual language, design in light mode
+- For UI tasks: open `ui-design.pen` first, study visual language, design in light mode
 
-### 1c. When done — three mandatory steps
+### 1c. When done
 
-**Step 1: Move task to In### 1c. When done
+**Phase 1 — Playwright (only for core user flows):**
 
-After Phase 1 (Playwright) and Phase 2 (native QA) both pass, run:
-
-```
-/laputa-done <task_id>
-```
-
-This moves the task to In Review, notifies Brian, and self-dispatches the next task automatically.
-
-nal (steps 1–3 above).
-
-**Phase 1 — Playwright (you, only when needed):**
-
-Write a smoke test in `tests/smoke/<slug>.spec.ts` only if the feature touches a **core user flow**: vault open, note create/save/delete, search, wikilink navigation, git commit/push, conflict resolution. Do NOT write Playwright tests for cosmetic/UI-only changes (padding, chip size, label text, color, border) — use Vitest instead.
-
-The full Playwright suite must stay under **10 minutes**. If your new test would push it over, remove an existing non-core test first.
+Write smoke test in `tests/smoke/<slug>.spec.ts` only if feature touches: vault open, note create/save/delete, search, wikilink navigation, git commit/push, conflict resolution. Do NOT write Playwright tests for cosmetic changes — use Vitest instead. Suite must stay under **10 minutes**.
 
 ```bash
 pnpm dev --port 5201 &
@@ -54,28 +34,18 @@ sleep 3
 BASE_URL="http://localhost:5201" npx playwright test tests/smoke/<slug>.spec.ts
 ```
 
-**Phase 2 — Native app QA (also you):**
-
-Run the app in dev mode and test natively — no need to build a release DMG:
+**Phase 2 — Native app QA:**
 
 ```bash
 pnpm tauri dev &
-sleep 10  # wait for app to start
-```
-
-Then use the QA scripts:
-```bash
+sleep 10
 bash ~/.openclaw/skills/laputa-qa/scripts/focus-app.sh laputa
 bash ~/.openclaw/skills/laputa-qa/scripts/screenshot.sh /tmp/qa-native.png
-# Analyze screenshot with image tool — verify the feature looks correct
-bash ~/.openclaw/skills/laputa-qa/scripts/shortcut.sh "command" "s"
 ```
 
-Use `osascript` for keyboard interactions. Write the result as a Todoist comment on the task:
-- ✅ if native QA passes (describe what you tested and saw)
-- ❌ if it fails (describe what's wrong) — fix and repeat from Phase 1
+Use `osascript` for keyboard interactions. Write result as Todoist comment (✅ or ❌). **⚠️ WKWebView:** `osascript keystroke` blocked inside editor — rely on Playwright for text input features.
 
-**⚠️ WKWebView limitation:** `osascript keystroke` is blocked inside the editor for text input. For features requiring text input: verify app launches + stability, then rely on Playwright for correctness.
+After both phases pass, run `/laputa-done <task_id>` → moves to In Review, notifies Brian, self-dispatches next task.
 
 ---
 
@@ -84,31 +54,24 @@ Use `osascript` for keyboard interactions. Write the result as a Todoist comment
 ### Commits & pushes
 
 - Push directly to `main` — no PRs, no branches
-- The pre-push hook runs the full check suite (build + tests + Playwright + CodeScene)
+- Pre-push hook runs full check suite (build + tests + Playwright + CodeScene)
 - **⛔ NEVER use --no-verify**
-- Commit message format: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`
 
 ### TDD (mandatory)
 
-Red → Green → Refactor → Commit. One cycle per commit.
-For bugs: write a failing regression test first, then fix.
-Exception: pure CSS/layout changes with no logic.
+Red → Green → Refactor → Commit. One cycle per commit. For bugs: write failing regression test first, then fix. Exception: pure CSS/layout changes.
 
 **Test quality (Kent Beck's Desiderata):** Isolated · Deterministic · Fast · Behavioral · Structure-insensitive · Specific · Predictive. Fix flaky tests before adding new ones. Prefer E2E over unit tests for user flows.
 
 ### Code health (mandatory)
 
-Pre-commit and pre-push hooks enforce:
-- **Hotspot Code Health** ≥ threshold in `.codescene-thresholds`
-- **Average Code Health** ≥ threshold in `.codescene-thresholds`
+Pre-commit and pre-push hooks enforce **Hotspot Code Health** and **Average Code Health** ≥ thresholds in `.codescene-thresholds`. Both gates block commit/push. Thresholds are a **ratchet** — only go up, auto-updated after each successful push. Never add `// eslint-disable`, `#[allow(...)]`, or `as any`.
 
-Both gates block commit/push. Thresholds are a **ratchet** — they only go up, auto-updated after each successful push. Never add `// eslint-disable`, `#[allow(...)]`, or `as any` to pass them.
+**Before every commit:**
+- `mcp__codescene__code_health_review` — check file before touching
+- `mcp__codescene__code_health_score` — verify score is higher after changes
 
-**Before every commit:** run checks via MCP CodeScene:
-- `mcp__codescene__code_health_review` — check file before touching it
-- `mcp__codescene__code_health_score` — verify score is higher after your changes
-
-**Boy Scout Rule:** every file you touch must leave with a higher score than it had. If Average drops below 9.0, fix regressions before pushing.
+**Boy Scout Rule:** every file you touch must leave with a higher score. If Average drops below 9.0, fix regressions before pushing.
 
 ### Check suite (runs on every push)
 ```bash
@@ -121,19 +84,13 @@ cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-line
 
 ### Architecture Decision Records (ADRs)
 
-ADRs live in `docs/adr/`. Check them before making structural choices.
+ADRs live in `docs/adr/`. Check before structural choices. Create the ADR **in the same commit as the code**. Never edit existing ADRs — create a new one that supersedes. Use `/create-adr` for template.
 
-**When to create one:** storage strategy, new dependency, platform support, core abstraction change, cross-cutting concern. Use `/create-adr` for the template.
-
-**Timing:** create the ADR **in the same commit as the code** — never before, never after.
-
-**Superseding:** never edit an existing ADR — create a new one that supersedes it.
-
-**Don't create ADRs for:** bug fixes, UI styling, refactors, test additions.
+**When to create one:** new dependency, storage strategy, platform target, core abstraction change, cross-cutting pattern. **Not for:** bug fixes, UI styling, refactors, test additions.
 
 ### Keep docs/ in sync
 
-After adding a Tauri command, new component/hook, data model change, or new integration: update `docs/ARCHITECTURE.md`, `docs/ABSTRACTIONS.md`, and/or `docs/GETTING-STARTED.md` in the same commit.
+After Tauri command, new component/hook, data model change, or new integration: update `docs/ARCHITECTURE.md`, `docs/ABSTRACTIONS.md`, and/or `docs/GETTING-STARTED.md` in the same commit.
 
 ---
 
@@ -141,10 +98,7 @@ After adding a Tauri command, new component/hook, data model change, or new inte
 
 ### User vault (`~/Laputa/`)
 
-You may use `~/Laputa/` for testing when the demo vault isn't sufficient (e.g. verifying against real git history). But:
-- **Never commit changes to `~/Laputa/`** — discard them before finishing
-- After any testing that touched the vault, run: `cd ~/Laputa && git checkout -- . && git clean -fd`
-- Default to `demo-vault-v2/` whenever possible
+Default to `demo-vault-v2/`. If you must use `~/Laputa/` for testing: **never commit changes** — always run `cd ~/Laputa && git checkout -- . && git clean -fd` when done.
 
 ### UI design
 
