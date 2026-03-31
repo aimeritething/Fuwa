@@ -46,7 +46,7 @@ export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 
   const textClass = compact ? 'text-[12px]' : 'text-[13px]'
   const padding = compact ? '4px 16px' : '6px 16px'
   const resolvedBadgeClass = isActive && activeBadgeClassName ? activeBadgeClassName : badgeClassName
-  const resolvedBadgeStyle = isActive && activeBadgeStyle ? activeBadgeStyle : badgeStyle
+  const resolvedBadgeStyle = isActive && activeBadgeClassName ? activeBadgeStyle : badgeStyle
 
   if (disabled) {
     return (
