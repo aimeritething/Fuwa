@@ -1,6 +1,6 @@
 use crate::frontmatter::FrontmatterValue;
 use crate::search::SearchResponse;
-use crate::vault::{RenameResult, VaultEntry};
+use crate::vault::{FolderNode, RenameResult, VaultEntry};
 use crate::{frontmatter, git, search, vault};
 
 use super::expand_tilde;
@@ -11,6 +11,12 @@ use super::expand_tilde;
 pub fn list_vault(path: String) -> Result<Vec<VaultEntry>, String> {
     let path = expand_tilde(&path);
     vault::scan_vault_cached(std::path::Path::new(path.as_ref()))
+}
+
+#[tauri::command]
+pub fn list_vault_folders(path: String) -> Result<Vec<FolderNode>, String> {
+    let path = expand_tilde(&path);
+    vault::scan_vault_folders(std::path::Path::new(path.as_ref()))
 }
 
 #[tauri::command]

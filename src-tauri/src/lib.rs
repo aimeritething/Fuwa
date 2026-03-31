@@ -117,6 +117,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::list_vault,
+            commands::list_vault_folders,
             commands::get_note_content,
             commands::save_note_content,
             commands::update_frontmatter,

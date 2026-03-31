@@ -13,7 +13,7 @@ mod trash;
 
 pub use cache::{invalidate_cache, scan_vault_cached};
 pub use config_seed::{migrate_agents_md, repair_config_files, seed_config_files};
-pub use entry::VaultEntry;
+pub use entry::{FolderNode, VaultEntry};
 pub use file::{get_note_content, save_note_content};
 pub use getting_started::{create_getting_started_vault, default_vault_path, vault_exists};
 pub use image::{copy_image_to_vault, save_image};
@@ -114,9 +114,12 @@ pub fn reload_entry(path: &Path) -> Result<VaultEntry, String> {
     parse_md_file(path)
 }
 
-/// Folders that are scanned recursively (attachments, assets).
-/// All other subfolders are ignored — notes and type definitions live flat at the vault root.
-const PROTECTED_FOLDERS: &[&str] = &["attachments", "assets"];
+/// Directories that are never shown in the folder tree or scanned for notes.
+const HIDDEN_DIRS: &[&str] = &[".git", ".laputa", ".DS_Store"];
+
+fn is_hidden_dir(name: &str) -> bool {
+    name.starts_with('.') || HIDDEN_DIRS.contains(&name)
+}
 
 fn is_md_file(path: &Path) -> bool {
     path.is_file() && path.extension().is_some_and(|ext| ext == "md")
@@ -129,31 +132,25 @@ fn try_parse_md(path: &Path, entries: &mut Vec<VaultEntry>) {
     }
 }
 
-fn scan_root_md_files(vault_path: &Path, entries: &mut Vec<VaultEntry>) {
-    let dir_entries = match fs::read_dir(vault_path) {
-        Ok(d) => d,
-        Err(_) => return,
-    };
-    for dir_entry in dir_entries.flatten() {
-        let path = dir_entry.path();
-        if is_md_file(&path) {
-            try_parse_md(&path, entries);
-        }
-    }
-}
-
-fn scan_protected_folders(vault_path: &Path, entries: &mut Vec<VaultEntry>) {
-    for folder in PROTECTED_FOLDERS {
-        let folder_path = vault_path.join(folder);
-        if !folder_path.is_dir() {
-            continue;
-        }
-        let md_files = WalkDir::new(&folder_path)
-            .follow_links(true)
-            .into_iter()
-            .filter_map(|e| e.ok())
-            .filter(|e| is_md_file(e.path()));
-        for entry in md_files {
+/// Scan all .md files in the vault, including subdirectories.
+/// Hidden directories (starting with `.`) are excluded.
+fn scan_all_md_files(vault_path: &Path, entries: &mut Vec<VaultEntry>) {
+    let walker = WalkDir::new(vault_path)
+        .follow_links(true)
+        .into_iter()
+        .filter_entry(|e| {
+            if e.file_type().is_dir() {
+                let name = e.file_name().to_string_lossy();
+                // Skip the vault root itself (depth 0) — we only filter subdirs
+                if e.depth() == 0 {
+                    return true;
+                }
+                return !is_hidden_dir(&name);
+            }
+            true
+        });
+    for entry in walker.filter_map(|e| e.ok()) {
+        if is_md_file(entry.path()) {
             try_parse_md(entry.path(), entries);
         }
     }
@@ -175,11 +172,49 @@ pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     }
 
     let mut entries = Vec::new();
-    scan_root_md_files(vault_path, &mut entries);
-    scan_protected_folders(vault_path, &mut entries);
+    scan_all_md_files(vault_path, &mut entries);
 
     entries.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
     Ok(entries)
+}
+
+/// Build a tree of visible folders in the vault.
+/// Excludes hidden directories (starting with `.`).
+pub fn scan_vault_folders(vault_path: &Path) -> Result<Vec<FolderNode>, String> {
+    if !vault_path.is_dir() {
+        return Err(format!("Not a directory: {}", vault_path.display()));
+    }
+    fn build_tree(dir: &Path, vault_root: &Path) -> Vec<FolderNode> {
+        let mut nodes: Vec<FolderNode> = Vec::new();
+        let entries = match fs::read_dir(dir) {
+            Ok(d) => d,
+            Err(_) => return nodes,
+        };
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if !path.is_dir() {
+                continue;
+            }
+            let name = entry.file_name().to_string_lossy().to_string();
+            if is_hidden_dir(&name) {
+                continue;
+            }
+            let rel_path = path
+                .strip_prefix(vault_root)
+                .unwrap_or(&path)
+                .to_string_lossy()
+                .replace('\\', "/");
+            let children = build_tree(&path, vault_root);
+            nodes.push(FolderNode {
+                name,
+                path: rel_path,
+                children,
+            });
+        }
+        nodes.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        nodes
+    }
+    Ok(build_tree(vault_path, vault_path))
 }
 
 #[cfg(test)]

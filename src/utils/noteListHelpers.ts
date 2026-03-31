@@ -313,8 +313,21 @@ function applySubFilter(entries: VaultEntry[], subFilter: NoteListFilter): Vault
   return entries.filter(isActive)
 }
 
+function isInFolder(entryPath: string, folderRelPath: string): boolean {
+  const sep = '/'
+  const suffix = sep + folderRelPath + sep
+  const dirEnd = entryPath.lastIndexOf(sep)
+  if (dirEnd < 0) return false
+  const entryDir = entryPath.slice(0, dirEnd + 1)
+  return entryDir.endsWith(suffix)
+}
+
 function filterByKind(entries: VaultEntry[], selection: SidebarSelection, subFilter?: NoteListFilter): VaultEntry[] {
   if (selection.kind === 'entity') return []
+  if (selection.kind === 'folder') {
+    const folderEntries = entries.filter((e) => isInFolder(e.path, selection.path))
+    return subFilter ? applySubFilter(folderEntries, subFilter) : folderEntries.filter(isActive)
+  }
   if (selection.kind === 'sectionGroup') {
     const typeEntries = entries.filter((e) => e.isA === selection.type)
     return subFilter ? applySubFilter(typeEntries, subFilter) : typeEntries.filter(isActive)

@@ -145,7 +145,7 @@ fn test_scan_vault_root_and_protected_folders() {
 }
 
 #[test]
-fn test_scan_vault_skips_non_protected_subfolders() {
+fn test_scan_vault_includes_subdirectory_notes() {
     let dir = TempDir::new().unwrap();
     create_test_file(dir.path(), "root.md", "# Root Note\n");
     create_test_file(
@@ -160,8 +160,11 @@ fn test_scan_vault_skips_non_protected_subfolders() {
     );
 
     let entries = scan_vault(dir.path()).unwrap();
-    assert_eq!(entries.len(), 1, "only root .md files should be scanned");
-    assert_eq!(entries[0].filename, "root.md");
+    assert_eq!(entries.len(), 3, "all .md files including subdirs should be scanned");
+    let filenames: Vec<&str> = entries.iter().map(|e| e.filename.as_str()).collect();
+    assert!(filenames.contains(&"root.md"));
+    assert!(filenames.contains(&"nested.md"));
+    assert!(filenames.contains(&"old-project.md"));
 }
 
 #[test]
@@ -1209,6 +1212,46 @@ fn test_array_field_does_not_break_type_detection() {
     );
 
     assert_eq!(entry.status, Some("Active".to_string()));
+}
+
+// ── Folder tree tests ──────────────────────────────────────────────────────
+
+#[test]
+fn test_scan_vault_folders_returns_tree() {
+    let dir = TempDir::new().unwrap();
+    fs::create_dir_all(dir.path().join("projects/laputa")).unwrap();
+    fs::create_dir_all(dir.path().join("areas")).unwrap();
+
+    let folders = scan_vault_folders(dir.path()).unwrap();
+    let names: Vec<&str> = folders.iter().map(|f| f.name.as_str()).collect();
+    assert!(names.contains(&"projects"));
+    assert!(names.contains(&"areas"));
+
+    let projects = folders.iter().find(|f| f.name == "projects").unwrap();
+    assert_eq!(projects.children.len(), 1);
+    assert_eq!(projects.children[0].name, "laputa");
+    assert_eq!(projects.children[0].path, "projects/laputa");
+}
+
+#[test]
+fn test_scan_vault_folders_excludes_hidden() {
+    let dir = TempDir::new().unwrap();
+    fs::create_dir_all(dir.path().join(".git")).unwrap();
+    fs::create_dir_all(dir.path().join(".laputa")).unwrap();
+    fs::create_dir_all(dir.path().join("visible")).unwrap();
+
+    let folders = scan_vault_folders(dir.path()).unwrap();
+    assert_eq!(folders.len(), 1);
+    assert_eq!(folders[0].name, "visible");
+}
+
+#[test]
+fn test_scan_vault_folders_flat_vault() {
+    let dir = TempDir::new().unwrap();
+    create_test_file(dir.path(), "note.md", "# Note\n");
+
+    let folders = scan_vault_folders(dir.path()).unwrap();
+    assert!(folders.is_empty(), "flat vault has no visible folders");
 }
 
 // Frontmatter update/delete tests are in frontmatter.rs

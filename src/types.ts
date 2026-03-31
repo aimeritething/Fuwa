@@ -178,4 +178,12 @@ export type InboxPeriod = 'week' | 'month' | 'quarter' | 'all'
 export type SidebarSelection =
   | { kind: 'filter'; filter: SidebarFilter }
   | { kind: 'sectionGroup'; type: string }
+  | { kind: 'folder'; path: string }
   | { kind: 'entity'; entry: VaultEntry }
+
+/** A node in the vault's folder tree (directories only, no files). */
+export interface FolderNode {
+  name: string
+  path: string
+  children: FolderNode[]
+}
