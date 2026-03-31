@@ -1,6 +1,6 @@
 use crate::frontmatter::FrontmatterValue;
 use crate::search::SearchResponse;
-use crate::vault::{FolderNode, RenameResult, VaultEntry};
+use crate::vault::{DetectedRename, FolderNode, RenameResult, VaultEntry};
 use crate::{frontmatter, git, search, vault};
 
 use super::expand_tilde;
@@ -41,6 +41,18 @@ pub fn rename_note(
     let vault_path = expand_tilde(&vault_path);
     let old_path = expand_tilde(&old_path);
     vault::rename_note(&vault_path, &old_path, &new_title, old_title.as_deref())
+}
+
+#[tauri::command]
+pub fn detect_renames(vault_path: String) -> Result<Vec<DetectedRename>, String> {
+    let vault_path = expand_tilde(&vault_path);
+    vault::detect_renames(&vault_path)
+}
+
+#[tauri::command]
+pub fn update_wikilinks_for_renames(vault_path: String, renames: Vec<DetectedRename>) -> Result<usize, String> {
+    let vault_path = expand_tilde(&vault_path);
+    vault::update_wikilinks_for_renames(&vault_path, &renames)
 }
 
 #[tauri::command]

@@ -57,6 +57,7 @@ import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/
 import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { isNoteWindow, getNoteWindowParams } from './utils/windowMode'
 import { GitRequiredModal } from './components/GitRequiredModal'
+import { RenameDetectedBanner, type DetectedRename } from './components/RenameDetectedBanner'
 import './App.css'
 
 // Type declarations for mock content storage and test overrides
@@ -131,6 +132,33 @@ function App() {
     },
     onToast: (msg) => setToastMessage(msg),
   })
+
+  // Detect external file renames on window focus
+  const [detectedRenames, setDetectedRenames] = useState<DetectedRename[]>([])
+  useEffect(() => {
+    if (!isTauri() || !resolvedPath) return
+    const handleFocus = () => {
+      invoke<DetectedRename[]>('detect_renames', { vaultPath: resolvedPath })
+        .then(renames => { if (renames.length > 0) setDetectedRenames(renames) })
+        .catch(() => {}) // ignore errors (e.g., no git)
+    }
+    window.addEventListener('focus', handleFocus)
+    return () => window.removeEventListener('focus', handleFocus)
+  }, [resolvedPath])
+
+  const handleUpdateWikilinks = useCallback(async () => {
+    if (!isTauri()) return
+    try {
+      const count = await invoke<number>('update_wikilinks_for_renames', { vaultPath: resolvedPath, renames: detectedRenames })
+      setDetectedRenames([])
+      vault.reloadVault()
+      setToastMessage(`Updated wikilinks in ${count} file${count !== 1 ? 's' : ''}`)
+    } catch (err) {
+      setToastMessage(`Failed to update wikilinks: ${err}`)
+    }
+  }, [resolvedPath, detectedRenames, vault, setToastMessage])
+
+  const handleDismissRenames = useCallback(() => setDetectedRenames([]), [])
 
   const conflictResolver = useConflictResolver({
     vaultPath: resolvedPath,
@@ -531,6 +559,7 @@ function App() {
         />
       )}
       <UpdateBanner status={updateStatus} actions={updateActions} />
+      <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />
       <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isGitVault={!vault.modifiedFilesError} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />

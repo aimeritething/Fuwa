@@ -250,6 +250,77 @@ pub fn rename_note(
     })
 }
 
+/// A detected rename: old path → new path (both relative to vault root).
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct DetectedRename {
+    pub old_path: String,
+    pub new_path: String,
+}
+
+/// Detect renamed files by comparing working tree against HEAD using git diff.
+pub fn detect_renames(vault_path: &str) -> Result<Vec<DetectedRename>, String> {
+    let vault = Path::new(vault_path);
+    let output = std::process::Command::new("git")
+        .args(["diff", "HEAD", "--name-status", "--diff-filter=R", "-M"])
+        .current_dir(vault)
+        .output()
+        .map_err(|e| format!("Failed to run git diff: {e}"))?;
+
+    if !output.status.success() {
+        return Ok(vec![]); // No HEAD yet or other git issue — no renames
+    }
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let renames: Vec<DetectedRename> = stdout
+        .lines()
+        .filter_map(|line| {
+            let parts: Vec<&str> = line.split('\t').collect();
+            if parts.len() >= 3 && parts[0].starts_with('R') {
+                let old = parts[1].to_string();
+                let new = parts[2].to_string();
+                if old.ends_with(".md") && new.ends_with(".md") {
+                    return Some(DetectedRename { old_path: old, new_path: new });
+                }
+            }
+            None
+        })
+        .collect();
+
+    Ok(renames)
+}
+
+/// Update wikilinks across the vault for a list of detected renames.
+/// Returns the total number of files updated.
+pub fn update_wikilinks_for_renames(vault_path: &str, renames: &[DetectedRename]) -> Result<usize, String> {
+    let vault = Path::new(vault_path);
+    let mut total_updated = 0;
+
+    for rename in renames {
+        let old_stem = rename.old_path.strip_suffix(".md").unwrap_or(&rename.old_path);
+        let new_stem = rename.new_path.strip_suffix(".md").unwrap_or(&rename.new_path);
+        let old_filename_stem = old_stem.split('/').last().unwrap_or(old_stem);
+        let new_filename_stem = new_stem.split('/').last().unwrap_or(new_stem);
+
+        // Build title from filename stem (kebab-case → Title Case)
+        let old_title = super::parsing::slug_to_title(old_filename_stem);
+        let new_title = super::parsing::slug_to_title(new_filename_stem);
+
+        // The new file is the exclude target (don't rewrite wikilinks inside the renamed file itself)
+        let new_file = vault.join(&rename.new_path);
+
+        let updated = update_wikilinks_in_vault(&WikilinkReplacement {
+            vault_path: vault,
+            old_title: &old_title,
+            new_title: &new_title,
+            old_path_stem: old_filename_stem,
+            exclude_path: &new_file,
+        });
+        total_updated += updated;
+    }
+
+    Ok(total_updated)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
