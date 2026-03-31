@@ -28,7 +28,7 @@ function ReadOnlyType({ isA, customColorKey, onNavigate }: { isA?: string | null
         {onNavigate ? (
           <button
             className="min-w-0 max-w-full truncate border-none cursor-pointer ring-inset hover:ring-1 hover:ring-current"
-            style={{ background: getTypeLightColor(isA, customColorKey), color: getTypeColor(isA, customColorKey), borderRadius: 6, padding: '2px 8px', fontSize: 12, fontWeight: 500 }}
+            style={{ background: getTypeLightColor(isA, customColorKey), color: getTypeColor(isA, customColorKey), borderRadius: 6, padding: '0 8px', fontSize: 12, fontWeight: 500, height: 24, display: 'inline-flex', alignItems: 'center' }}
             onClick={() => onNavigate(isA.toLowerCase())} title={isA}
           >{isA}</button>
         ) : (
@@ -68,7 +68,8 @@ export function TypeSelector({ isA, customColorKey, availableTypes, typeColorKey
               background: typeLightColor ?? undefined,
               color: typeColor ?? undefined,
               borderRadius: 6,
-              padding: '4px 8px',
+              padding: '0 8px',
+              height: 24,
               fontSize: 12,
               fontWeight: 500,
             }}

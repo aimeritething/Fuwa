@@ -66,7 +66,7 @@ export function UrlValue({
   return (
     <span className="group/url flex min-w-0 max-w-full items-center gap-1">
       <span
-        className="min-w-0 cursor-pointer truncate rounded-md px-2 py-1 text-right text-[12px] text-[var(--accent-blue)] underline decoration-[var(--accent-blue)]/40 transition-colors hover:decoration-[var(--accent-blue)]"
+        className="inline-flex h-6 min-w-0 cursor-pointer items-center truncate rounded-md px-2 text-right text-[12px] text-[var(--accent-blue)] underline decoration-[var(--accent-blue)]/40 transition-colors hover:decoration-[var(--accent-blue)]"
         onClick={handleOpen}
         title={value}
         data-testid="url-link"
@@ -125,7 +125,7 @@ export function EditableValue({
 
   return (
     <span
-      className="min-w-0 max-w-full cursor-pointer truncate rounded-md px-2 py-1 text-right text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
+      className="inline-flex h-6 min-w-0 max-w-full cursor-pointer items-center truncate rounded-md px-2 text-right text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
       onClick={onStartEdit}
       title={value || 'Click to edit'}
     >
@@ -212,11 +212,11 @@ export function TagPillList({
         ) : (
           <span
             key={idx}
-            className="group/pill relative inline-flex cursor-pointer items-center rounded-md transition-colors"
+            className="group/pill relative inline-flex h-6 cursor-pointer items-center rounded-md transition-colors"
             style={{
               ...getTagStyle(item),
               backgroundColor: getTagStyle(item).bg,
-              padding: '4px 8px',
+              padding: '0 8px',
               fontSize: 12,
               fontWeight: 500,
             }}
@@ -255,8 +255,8 @@ export function TagPillList({
         />
       ) : (
         <button
-          className="inline-flex items-center justify-center rounded-md border-none bg-muted px-2 text-[12px] font-medium leading-none text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          style={{ padding: '4px 8px' }}
+          className="inline-flex h-6 items-center justify-center rounded-md border-none bg-muted px-2 text-[12px] font-medium leading-none text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          style={{ padding: '0 8px' }}
           onClick={() => setIsAddingNew(true)}
           title={`Add ${label.toLowerCase()}`}
         >

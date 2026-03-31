@@ -42,7 +42,7 @@ function StatusValue({ propKey, value, isEditing, vaultStatuses, onSave, onStart
   return (
     <span className="relative inline-flex min-w-0 items-center">
       <span
-        className="inline-flex cursor-pointer items-center gap-1.5 rounded-md px-2 py-1 text-[12px] font-medium transition-opacity hover:opacity-80"
+        className="inline-flex h-6 cursor-pointer items-center gap-1.5 rounded-md px-2 text-[12px] font-medium transition-opacity hover:opacity-80"
         style={{ backgroundColor: style.bg, color: style.color }}
         onClick={() => onStartEdit(propKey)}
         data-testid="status-badge"
@@ -83,8 +83,8 @@ function TagsValue({ propKey, value, isEditing, vaultTags, onSave, onStartEdit }
         return (
           <span
             key={tag}
-            className="group/tag relative inline-flex items-center overflow-hidden rounded-md"
-            style={{ backgroundColor: style.bg, padding: '4px 8px', maxWidth: 120 }}
+            className="group/tag relative inline-flex h-6 items-center overflow-hidden rounded-md"
+            style={{ backgroundColor: style.bg, padding: '0 8px', maxWidth: 120 }}
           >
             <span
               className="transition-[max-width] duration-150 group-hover/tag:[mask-image:linear-gradient(to_right,black_60%,transparent_100%)]"
@@ -110,8 +110,8 @@ function TagsValue({ propKey, value, isEditing, vaultTags, onSave, onStartEdit }
         )
       })}
       <button
-        className="inline-flex shrink-0 items-center justify-center rounded-md border-none bg-muted text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-        style={{ padding: '4px 8px' }}
+        className="inline-flex h-6 shrink-0 items-center justify-center rounded-md border-none bg-muted text-[12px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        style={{ padding: '0 8px' }}
         onClick={() => onStartEdit(propKey)}
         title="Add tag"
         data-testid="tags-add-button"
@@ -130,7 +130,7 @@ function TagsValue({ propKey, value, isEditing, vaultTags, onSave, onStartEdit }
 
 function BooleanToggle({ value, onToggle }: { value: boolean; onToggle: () => void }) {
   return (
-    <label className="inline-flex cursor-pointer items-center gap-1.5" data-testid="boolean-toggle">
+    <label className="inline-flex h-6 cursor-pointer items-center gap-1.5" data-testid="boolean-toggle">
       <input
         type="checkbox"
         checked={value}
@@ -164,7 +164,7 @@ function DateValue({ value, onSave }: {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
-          className={`inline-flex min-w-0 cursor-pointer items-center gap-1 border-none px-2 py-1 text-right text-[12px] font-medium transition-colors hover:opacity-80${formatted ? ' rounded-md bg-muted text-accent-foreground' : ' bg-transparent text-muted-foreground'}`}
+          className={`inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 border-none px-2 text-right text-[12px] font-medium transition-colors hover:opacity-80${formatted ? ' rounded-md bg-muted text-accent-foreground' : ' bg-transparent text-muted-foreground'}`}
           title={value}
           data-testid="date-display"
         >

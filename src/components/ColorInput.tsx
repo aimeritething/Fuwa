@@ -99,10 +99,10 @@ export function ColorEditableValue({ value, isEditing, onStartEdit, onSave, onCa
   }
 
   return (
-    <span className="inline-flex min-w-0 items-center gap-1.5">
+    <span className="inline-flex h-6 min-w-0 items-center gap-1.5">
       {showSwatch && <ColorSwatch color={value} onChange={handlePickerChange} />}
       <span
-        className="min-w-0 cursor-pointer truncate rounded px-1 py-0.5 text-right text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
+        className="min-w-0 cursor-pointer truncate rounded px-1 text-right text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
         onClick={onStartEdit}
         title={value || 'Click to edit'}
       >
