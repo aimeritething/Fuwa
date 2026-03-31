@@ -111,14 +111,9 @@ describe('BreadcrumbBar — archive/unarchive', () => {
   })
 })
 
-describe('BreadcrumbBar — title in breadcrumb on scroll', () => {
-  it('does not show title when titleHidden is false', () => {
-    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} titleHidden={false} />)
-    expect(screen.queryByText('Test Note')).not.toBeInTheDocument()
-  })
-
-  it('shows type and title when titleHidden is true', () => {
-    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} titleHidden={true} />)
+describe('BreadcrumbBar — title in breadcrumb (always rendered, CSS-toggled)', () => {
+  it('always renders title elements in the DOM', () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
     expect(screen.getByText('Note')).toBeInTheDocument()
     expect(screen.getByText('›')).toBeInTheDocument()
     expect(screen.getByText('Test Note')).toBeInTheDocument()
@@ -126,20 +121,28 @@ describe('BreadcrumbBar — title in breadcrumb on scroll', () => {
 
   it('shows emoji icon when entry has an emoji icon', () => {
     const entryWithEmoji = { ...baseEntry, icon: '🚀' }
-    render(<BreadcrumbBar entry={entryWithEmoji} {...defaultProps} titleHidden={true} />)
+    render(<BreadcrumbBar entry={entryWithEmoji} {...defaultProps} />)
     expect(screen.getByText('🚀')).toBeInTheDocument()
   })
 
   it('does not show icon when entry has a non-emoji icon', () => {
     const entryWithPhosphor = { ...baseEntry, icon: 'cooking-pot' }
-    render(<BreadcrumbBar entry={entryWithPhosphor} {...defaultProps} titleHidden={true} />)
+    render(<BreadcrumbBar entry={entryWithPhosphor} {...defaultProps} />)
     expect(screen.queryByText('cooking-pot')).not.toBeInTheDocument()
   })
 
   it('falls back to "Note" when isA is null', () => {
     const entryNoType = { ...baseEntry, isA: null }
-    render(<BreadcrumbBar entry={entryNoType} {...defaultProps} titleHidden={true} />)
+    render(<BreadcrumbBar entry={entryNoType} {...defaultProps} />)
     expect(screen.getByText('Note')).toBeInTheDocument()
+  })
+
+  it('shadow is controlled by data-title-hidden attribute via CSS', () => {
+    const { container } = render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
+    const bar = container.querySelector('.breadcrumb-bar')!
+    expect(bar).not.toHaveAttribute('data-title-hidden')
+    bar.setAttribute('data-title-hidden', '')
+    expect(bar).toHaveAttribute('data-title-hidden')
   })
 })
 

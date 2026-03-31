@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useCallback, useRef, useState, useEffect } from 'react'
+import { useCallback, useRef, useEffect } from 'react'
 import type { VaultEntry, NoteStatus } from '../types'
 import type { useCreateBlockNote } from '@blocknote/react'
 import { DiffView } from './DiffView'
@@ -120,9 +120,9 @@ function bindPath(cb: ((path: string) => void) | undefined, path: string) {
   return cb ? () => cb(path) : undefined
 }
 
-function ActiveTabBreadcrumb({ activeTab, titleHidden, props }: {
+function ActiveTabBreadcrumb({ activeTab, barRef, props }: {
   activeTab: Tab
-  titleHidden: boolean
+  barRef: React.RefObject<HTMLDivElement | null>
   props: Omit<EditorContentProps, 'activeTab' | 'isLoadingNewTab' | 'entries' | 'editor' | 'onNavigateWikilink' | 'onEditorChange' | 'onRawContentChange' | 'onSave' | 'onDeleteNote'>
 }) {
   const wordCount = countWords(activeTab.content)
@@ -131,7 +131,7 @@ function ActiveTabBreadcrumb({ activeTab, titleHidden, props }: {
     <BreadcrumbBar
       entry={activeTab.entry}
       wordCount={wordCount}
-      titleHidden={titleHidden}
+      barRef={barRef}
       showDiffToggle={props.showDiffToggle}
       diffMode={props.diffMode}
       diffLoading={props.diffLoading}
@@ -171,18 +171,21 @@ export function EditorContent({
   const emojiIcon = entryIcon && isEmoji(entryIcon) ? entryIcon : null
 
   const titleSectionRef = useRef<HTMLDivElement | null>(null)
-  const [titleScrolledAway, setTitleScrolledAway] = useState(false)
-  const titleHidden = showEditor && titleScrolledAway
+  const breadcrumbBarRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
     const el = titleSectionRef.current
-    if (!el) return
+    const bar = breadcrumbBarRef.current
+    if (!el || !bar) return
     const observer = new IntersectionObserver(
-      ([e]) => setTitleScrolledAway(!e.isIntersecting),
+      ([e]) => {
+        if (e.isIntersecting) bar.removeAttribute('data-title-hidden')
+        else bar.setAttribute('data-title-hidden', '')
+      },
       { threshold: 0 },
     )
     observer.observe(el)
-    return () => observer.disconnect()
+    return () => { observer.disconnect(); bar.removeAttribute('data-title-hidden') }
   }, [activeTab?.entry.path, showEditor])
 
   const handleSetIcon = useCallback((emoji: string) => {
@@ -198,7 +201,7 @@ export function EditorContent({
       {activeTab && (
         <ActiveTabBreadcrumb
           activeTab={activeTab}
-          titleHidden={titleHidden}
+          barRef={breadcrumbBarRef}
           props={{ diffMode, diffContent, onToggleDiff, rawMode, onToggleRaw, ...breadcrumbProps }}
         />
       )}

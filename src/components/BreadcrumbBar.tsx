@@ -32,8 +32,8 @@ interface BreadcrumbBarProps {
   onRestore?: () => void
   onArchive?: () => void
   onUnarchive?: () => void
-  /** When true, the note title is scrolled out of view — show it inline. */
-  titleHidden?: boolean
+  /** Ref for direct DOM manipulation — avoids re-render on scroll. */
+  barRef?: React.Ref<HTMLDivElement>
 }
 
 const DISABLED_ICON_STYLE = { opacity: 0.4, cursor: 'not-allowed' } as const
@@ -178,22 +178,21 @@ function BreadcrumbTitle({ entry }: { entry: VaultEntry }) {
 }
 
 export const BreadcrumbBar = memo(function BreadcrumbBar({
-  entry, titleHidden, ...actionProps
+  entry, barRef, ...actionProps
 }: BreadcrumbBarProps) {
   return (
     <div
+      ref={barRef}
       data-tauri-drag-region
-      className="flex shrink-0 items-center"
+      className="breadcrumb-bar flex shrink-0 items-center"
       style={{
         height: 52,
         background: 'var(--background)',
         padding: '6px 16px',
-        boxShadow: titleHidden ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
-        transition: 'box-shadow 0.2s ease',
       }}
     >
-      <div className="flex-1 min-w-0">
-        {titleHidden && <BreadcrumbTitle entry={entry} />}
+      <div className="breadcrumb-bar__title flex-1 min-w-0">
+        <BreadcrumbTitle entry={entry} />
       </div>
       <BreadcrumbActions entry={entry} {...actionProps} />
     </div>
