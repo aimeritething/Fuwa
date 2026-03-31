@@ -88,3 +88,4 @@ proposed → active → superseded
 | [0030](0030-rust-commands-module-split.md) | Rust commands/ module split by domain | active |
 | [0031](0031-full-app-for-note-windows.md) | Full App instance for secondary note windows | active |
 | [0032](0032-status-bar-for-git-actions.md) | Git actions (Changes, Pulse, Commit) in status bar, not sidebar | active |
+| [0033](0033-subfolder-scanning-and-folder-tree.md) | Subfolder scanning and folder tree navigation | active |

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { formatSubtitle, formatSearchSubtitle, relativeDate, buildRelationshipGroups, getSortComparator, extractSortableProperties, getSortOptionLabel, getDefaultDirection, parseSortConfig, serializeSortConfig, buildValidLinkTargets, isInboxEntry, filterInboxEntries } from './noteListHelpers'
+import { formatSubtitle, formatSearchSubtitle, relativeDate, buildRelationshipGroups, getSortComparator, extractSortableProperties, getSortOptionLabel, getDefaultDirection, parseSortConfig, serializeSortConfig, buildValidLinkTargets, isInboxEntry, filterInboxEntries, filterEntries } from './noteListHelpers'
 import type { VaultEntry } from '../types'
 
 function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
@@ -693,5 +693,44 @@ describe('filterInboxEntries', () => {
     ]
     const result = filterInboxEntries(linked, 'all')
     expect(result).toEqual([])
+  })
+})
+
+describe('filterEntries — folder selection', () => {
+  const entries = [
+    makeEntry({ path: '/vault/projects/laputa/note1.md', title: 'Note 1' }),
+    makeEntry({ path: '/vault/projects/laputa/note2.md', title: 'Note 2' }),
+    makeEntry({ path: '/vault/projects/portfolio/site.md', title: 'Site' }),
+    makeEntry({ path: '/vault/areas/health.md', title: 'Health' }),
+    makeEntry({ path: '/vault/root-note.md', title: 'Root' }),
+  ]
+
+  it('filters entries by folder path', () => {
+    const result = filterEntries(entries, { kind: 'folder', path: 'projects/laputa' })
+    expect(result.map(e => e.title)).toEqual(['Note 1', 'Note 2'])
+  })
+
+  it('does not include notes from sibling folders', () => {
+    const result = filterEntries(entries, { kind: 'folder', path: 'projects/laputa' })
+    expect(result.find(e => e.title === 'Site')).toBeUndefined()
+  })
+
+  it('filters by parent folder (non-recursive — direct children only)', () => {
+    const result = filterEntries(entries, { kind: 'folder', path: 'areas' })
+    expect(result.map(e => e.title)).toEqual(['Health'])
+  })
+
+  it('returns empty for root when entries are in subfolders', () => {
+    const result = filterEntries(entries, { kind: 'folder', path: 'nonexistent' })
+    expect(result).toEqual([])
+  })
+
+  it('excludes archived and trashed entries by default', () => {
+    const withArchived = [
+      ...entries,
+      makeEntry({ path: '/vault/projects/laputa/archived.md', title: 'Archived', archived: true }),
+    ]
+    const result = filterEntries(withArchived, { kind: 'folder', path: 'projects/laputa' })
+    expect(result.find(e => e.title === 'Archived')).toBeUndefined()
   })
 })
