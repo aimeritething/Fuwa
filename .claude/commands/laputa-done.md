@@ -2,7 +2,13 @@
 
 Mark a Laputa task as done: add completion comment, move to In Review, notify Brian, then self-dispatch the next task.
 
-Run this after Phase 1 (Playwright) and Phase 2 (native app QA) both pass.
+Run this after Phase 1 (Playwright) and Phase 2 (native app QA) both pass **and `git push origin main` has succeeded**.
+
+⚠️ A task is NOT done until the push succeeds. If the push is blocked by the pre-push hook (clippy, tests, CodeScene, build):
+- Read the error
+- Fix it (never use `--no-verify`)
+- Commit the fix and push again
+- Repeat until push exits with code 0
 
 ## Steps
 

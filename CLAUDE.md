@@ -55,6 +55,7 @@ After both phases pass, run `/laputa-done <task_id>` → moves to In Review, not
 
 - Push directly to `main` — no PRs, no branches
 - Pre-push hook runs full check suite (build + tests + Playwright + CodeScene)
+- **A task is NOT done until `git push origin main` succeeds.** If the hook blocks: read the error, fix it (clippy, tests, CodeScene, build), commit the fix, push again. Never use `--no-verify`.
 - **⛔ NEVER use --no-verify**
 
 ### TDD (mandatory)
