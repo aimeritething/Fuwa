@@ -29,11 +29,13 @@ curl -s -X POST "https://api.todoist.com/api/v1/tasks/$ARGUMENTS/move" \
   -d '{"section_id": "6g3XjX33FF4Vj86M"}'
 ```
 
-**3. Notify Brian**
+**3. Notify Luca (informational only — no action needed from him)**
 
 ```bash
 openclaw system event --text "laputa-task-done:$ARGUMENTS" --mode now
 ```
+
+This is a passive notification. Luca reviews tasks in his own time. Do NOT wait for approval — proceed immediately to step 4.
 
 **4. Pick the next task**
 
