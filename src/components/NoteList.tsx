@@ -47,14 +47,15 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
 
   const isSectionGroup = selection.kind === 'sectionGroup'
+  const isFolderView = selection.kind === 'folder'
   const isInboxView = selection.kind === 'filter' && selection.filter === 'inbox'
   const isAllNotesView = selection.kind === 'filter' && selection.filter === 'all'
-  const showFilterPills = isSectionGroup || isAllNotesView
+  const showFilterPills = isSectionGroup || isFolderView || isAllNotesView
   const subFilter = showFilterPills ? noteListFilter : undefined
 
   const filterCounts = useMemo(
-    () => isSectionGroup ? countByFilter(entries, selection.type) : isAllNotesView ? countAllByFilter(entries) : { open: 0, archived: 0, trashed: 0 },
-    [entries, isSectionGroup, isAllNotesView, selection],
+    () => isSectionGroup ? countByFilter(entries, selection.type) : (isAllNotesView || isFolderView) ? countAllByFilter(entries) : { open: 0, archived: 0, trashed: 0 },
+    [entries, isSectionGroup, isAllNotesView, isFolderView, selection],
   )
 
   const inboxCounts = useMemo(

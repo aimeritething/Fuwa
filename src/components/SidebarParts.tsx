@@ -19,6 +19,7 @@ export function isSelectionActive(current: SidebarSelection, check: SidebarSelec
   switch (check.kind) {
     case 'filter': return (current as typeof check).filter === check.filter
     case 'sectionGroup': return (current as typeof check).type === check.type
+    case 'folder': return (current as typeof check).path === check.path
     case 'entity': return (current as typeof check).entry.path === check.entry.path
     default: return false
   }

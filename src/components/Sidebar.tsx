@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react'
-import type { VaultEntry, SidebarSelection } from '../types'
+import type { VaultEntry, FolderNode, SidebarSelection } from '../types'
 import { buildTypeEntryMap } from '../utils/typeColors'
 import { buildDynamicSections, sortSections } from '../utils/sidebarSections'
 import { TypeCustomizePopover } from './TypeCustomizePopover'
@@ -20,6 +20,7 @@ import {
   NavItem, SectionContent, type SectionContentProps, VisibilityPopover,
 } from './SidebarParts'
 import { useDragRegion } from '../hooks/useDragRegion'
+import { FolderTree } from './FolderTree'
 
 interface SidebarProps {
   entries: VaultEntry[]
@@ -33,6 +34,7 @@ interface SidebarProps {
   onReorderSections?: (orderedTypes: { typeName: string; order: number }[]) => void
   onRenameSection?: (typeName: string, label: string) => void
   onToggleTypeVisibility?: (typeName: string) => void
+  folders?: FolderNode[]
   inboxCount?: number
   onCollapse?: () => void
 }
@@ -205,7 +207,7 @@ export const Sidebar = memo(function Sidebar({
   entries, selection, onSelect, onSelectNote, onCreateType, onCreateNewType,
   onCustomizeType, onUpdateTypeTemplate, onReorderSections, onRenameSection,
   onToggleTypeVisibility,
-  inboxCount = 0, onCollapse,
+  folders = [], inboxCount = 0, onCollapse,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
@@ -313,6 +315,9 @@ export const Sidebar = memo(function Sidebar({
             ))}
           </SortableContext>
         </DndContext>
+
+        {/* Folder tree */}
+        <FolderTree folders={folders} selection={selection} onSelect={onSelect} />
       </nav>
 
       <ContextMenuOverlay pos={contextMenuPos} type={contextMenuType} innerRef={contextMenuRef} onOpenCustomize={(type) => { closeContextMenu(); setCustomizeTarget(type) }} onStartRename={handleStartRename} />
