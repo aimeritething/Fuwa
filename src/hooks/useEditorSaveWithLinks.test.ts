@@ -125,6 +125,42 @@ describe('useEditorSaveWithLinks', () => {
     })
   })
 
+  it('handleContentChange calls updateEntry with frontmatter patch when type changes', () => {
+    const { result } = renderHookWithLinks()
+
+    act(() => {
+      result.current.handleContentChange('/note.md', '---\ntype: Project\nstatus: Active\n---\nBody')
+    })
+
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', { isA: 'Project', status: 'Active' })
+  })
+
+  it('handleContentChange does NOT call updateEntry for frontmatter when unchanged', () => {
+    const { result } = renderHookWithLinks()
+    const content = '---\ntype: Essay\n---\nBody text'
+
+    act(() => { result.current.handleContentChange('/note.md', content) })
+    const callCount = updateEntry.mock.calls.length
+
+    act(() => { result.current.handleContentChange('/note.md', content + ' more') })
+    // Same frontmatter, only body changed — no extra updateEntry for frontmatter
+    expect(updateEntry).toHaveBeenCalledTimes(callCount)
+  })
+
+  it('handleContentChange updates entry when type changes in frontmatter', () => {
+    const { result } = renderHookWithLinks()
+
+    act(() => {
+      result.current.handleContentChange('/note.md', '---\ntype: Essay\n---\nBody')
+    })
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', { isA: 'Essay' })
+
+    act(() => {
+      result.current.handleContentChange('/note.md', '---\ntype: Note\n---\nBody')
+    })
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', { isA: 'Note' })
+  })
+
   it('spreads all properties from useEditorSave onto the return value', () => {
     const { result } = renderHookWithLinks()
 
