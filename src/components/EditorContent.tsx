@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useCallback } from 'react'
+import { useCallback, useRef, useState, useEffect } from 'react'
 import type { VaultEntry, NoteStatus } from '../types'
 import type { useCreateBlockNote } from '@blocknote/react'
 import { DiffView } from './DiffView'
@@ -120,8 +120,9 @@ function bindPath(cb: ((path: string) => void) | undefined, path: string) {
   return cb ? () => cb(path) : undefined
 }
 
-function ActiveTabBreadcrumb({ activeTab, props }: {
+function ActiveTabBreadcrumb({ activeTab, titleHidden, props }: {
   activeTab: Tab
+  titleHidden: boolean
   props: Omit<EditorContentProps, 'activeTab' | 'isLoadingNewTab' | 'entries' | 'editor' | 'onNavigateWikilink' | 'onEditorChange' | 'onRawContentChange' | 'onSave' | 'onDeleteNote'>
 }) {
   const wordCount = countWords(activeTab.content)
@@ -130,6 +131,7 @@ function ActiveTabBreadcrumb({ activeTab, props }: {
     <BreadcrumbBar
       entry={activeTab.entry}
       wordCount={wordCount}
+      titleHidden={titleHidden}
       showDiffToggle={props.showDiffToggle}
       diffMode={props.diffMode}
       diffLoading={props.diffLoading}
@@ -168,6 +170,21 @@ export function EditorContent({
   const entryIcon = activeTab?.entry.icon ?? null
   const emojiIcon = entryIcon && isEmoji(entryIcon) ? entryIcon : null
 
+  const titleSectionRef = useRef<HTMLDivElement | null>(null)
+  const [titleScrolledAway, setTitleScrolledAway] = useState(false)
+  const titleHidden = showEditor && titleScrolledAway
+
+  useEffect(() => {
+    const el = titleSectionRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      ([e]) => setTitleScrolledAway(!e.isIntersecting),
+      { threshold: 0 },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [activeTab?.entry.path, showEditor])
+
   const handleSetIcon = useCallback((emoji: string) => {
     if (activeTab) onSetNoteIcon?.(activeTab.entry.path, emoji)
   }, [activeTab, onSetNoteIcon])
@@ -181,6 +198,7 @@ export function EditorContent({
       {activeTab && (
         <ActiveTabBreadcrumb
           activeTab={activeTab}
+          titleHidden={titleHidden}
           props={{ diffMode, diffContent, onToggleDiff, rawMode, onToggleRaw, ...breadcrumbProps }}
         />
       )}
@@ -203,7 +221,7 @@ export function EditorContent({
       <RawModeEditorSection rawMode={rawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} latestContentRef={rawLatestContentRef} />
       {showEditor && activeTab && (
         <div className="editor-scroll-area" style={cssVars as React.CSSProperties}>
-          <div className="title-section">
+          <div ref={titleSectionRef} className="title-section">
             {!emojiIcon && (
               <div className="title-section__add-icon">
                 <NoteIcon

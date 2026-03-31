@@ -111,6 +111,38 @@ describe('BreadcrumbBar — archive/unarchive', () => {
   })
 })
 
+describe('BreadcrumbBar — title in breadcrumb on scroll', () => {
+  it('does not show title when titleHidden is false', () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} titleHidden={false} />)
+    expect(screen.queryByText('Test Note')).not.toBeInTheDocument()
+  })
+
+  it('shows type and title when titleHidden is true', () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} titleHidden={true} />)
+    expect(screen.getByText('Note')).toBeInTheDocument()
+    expect(screen.getByText('›')).toBeInTheDocument()
+    expect(screen.getByText('Test Note')).toBeInTheDocument()
+  })
+
+  it('shows emoji icon when entry has an emoji icon', () => {
+    const entryWithEmoji = { ...baseEntry, icon: '🚀' }
+    render(<BreadcrumbBar entry={entryWithEmoji} {...defaultProps} titleHidden={true} />)
+    expect(screen.getByText('🚀')).toBeInTheDocument()
+  })
+
+  it('does not show icon when entry has a non-emoji icon', () => {
+    const entryWithPhosphor = { ...baseEntry, icon: 'cooking-pot' }
+    render(<BreadcrumbBar entry={entryWithPhosphor} {...defaultProps} titleHidden={true} />)
+    expect(screen.queryByText('cooking-pot')).not.toBeInTheDocument()
+  })
+
+  it('falls back to "Note" when isA is null', () => {
+    const entryNoType = { ...baseEntry, isA: null }
+    render(<BreadcrumbBar entry={entryNoType} {...defaultProps} titleHidden={true} />)
+    expect(screen.getByText('Note')).toBeInTheDocument()
+  })
+})
+
 describe('BreadcrumbBar — raw editor toggle', () => {
   it('shows Raw editor button with tooltip "Raw editor" when rawMode is off', () => {
     const onToggleRaw = vi.fn()

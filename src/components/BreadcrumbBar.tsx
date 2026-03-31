@@ -32,6 +32,8 @@ interface BreadcrumbBarProps {
   onRestore?: () => void
   onArchive?: () => void
   onUnarchive?: () => void
+  /** When true, the note title is scrolled out of view — show it inline. */
+  titleHidden?: boolean
 }
 
 const DISABLED_ICON_STYLE = { opacity: 0.4, cursor: 'not-allowed' } as const
@@ -161,19 +163,38 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
   )
 }
 
+function BreadcrumbTitle({ entry }: { entry: VaultEntry }) {
+  const typeLabel = entry.isA ?? 'Note'
+  const icon = entry.icon
+  const emojiIcon = icon && /^\p{Emoji}/u.test(icon) ? icon : null
+  return (
+    <div className="flex items-center gap-1.5 min-w-0 text-sm text-muted-foreground">
+      <span className="shrink-0">{typeLabel}</span>
+      <span className="shrink-0 text-border">›</span>
+      {emojiIcon && <span className="shrink-0">{emojiIcon}</span>}
+      <span className="truncate font-medium text-foreground">{entry.title}</span>
+    </div>
+  )
+}
+
 export const BreadcrumbBar = memo(function BreadcrumbBar({
-  entry, ...actionProps
+  entry, titleHidden, ...actionProps
 }: BreadcrumbBarProps) {
   return (
     <div
       data-tauri-drag-region
-      className="flex shrink-0 items-center justify-end"
+      className="flex shrink-0 items-center"
       style={{
         height: 52,
         background: 'var(--background)',
         padding: '6px 16px',
+        boxShadow: titleHidden ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
+        transition: 'box-shadow 0.2s ease',
       }}
     >
+      <div className="flex-1 min-w-0">
+        {titleHidden && <BreadcrumbTitle entry={entry} />}
+      </div>
       <BreadcrumbActions entry={entry} {...actionProps} />
     </div>
   )
