@@ -334,7 +334,7 @@ describe('StatusBar', () => {
     expect(onClickPulse).not.toHaveBeenCalled()
   })
 
-  it('shows Commit & Push button next to Changes badge', () => {
+  it('shows Commit button in status bar', () => {
     const onCommitPush = vi.fn()
     render(<StatusBar noteCount={100} modifiedCount={5} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onCommitPush={onCommitPush} />)
     expect(screen.getByTestId('status-commit-push')).toBeInTheDocument()
@@ -342,8 +342,13 @@ describe('StatusBar', () => {
     expect(onCommitPush).toHaveBeenCalledOnce()
   })
 
-  it('hides Commit & Push button when no modified files', () => {
+  it('shows Commit button even when no modified files', () => {
     render(<StatusBar noteCount={100} modifiedCount={0} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onCommitPush={vi.fn()} />)
+    expect(screen.getByTestId('status-commit-push')).toBeInTheDocument()
+  })
+
+  it('hides Commit button when no onCommitPush callback', () => {
+    render(<StatusBar noteCount={100} modifiedCount={5} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
     expect(screen.queryByTestId('status-commit-push')).not.toBeInTheDocument()
   })
 

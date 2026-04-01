@@ -332,7 +332,7 @@ function ConflictBadge({ count, onClick }: { count: number; onClick?: () => void
   )
 }
 
-function ChangesBadge({ count, onClick, onCommitPush }: { count: number; onClick?: () => void; onCommitPush?: () => void }) {
+function ChangesBadge({ count, onClick }: { count: number; onClick?: () => void }) {
   if (count <= 0) return null
   return (
     <>
@@ -350,19 +350,27 @@ function ChangesBadge({ count, onClick, onCommitPush }: { count: number; onClick
         <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--accent-orange)', color: '#fff', borderRadius: 9, padding: '0 5px', fontSize: 10, fontWeight: 600, minWidth: 16, lineHeight: '16px' }}>{count}</span>
         Changes
       </span>
-      {onCommitPush && (
-        <span
-          role="button"
-          onClick={onCommitPush}
-          style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
-          title="Commit & Push"
-          onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)' }}
-          onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
-          data-testid="status-commit-push"
-        >
-          <GitCommitHorizontal size={13} style={{ color: 'var(--accent-orange)' }} />
-        </span>
-      )}
+    </>
+  )
+}
+
+function CommitButton({ onClick }: { onClick?: () => void }) {
+  if (!onClick) return null
+  return (
+    <>
+      <span style={SEP_STYLE}>|</span>
+      <span
+        role="button"
+        onClick={onClick}
+        style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
+        title="Commit & Push"
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
+        data-testid="status-commit-push"
+      >
+        <GitCommitHorizontal size={13} />
+        Commit
+      </span>
     </>
   )
 }
@@ -449,8 +457,8 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
           onMouseEnter={onCheckForUpdates ? (e) => { e.currentTarget.style.background = 'var(--hover)' } : undefined}
           onMouseLeave={onCheckForUpdates ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
         ><Package size={13} />{buildNumber ?? 'b?'}</span>
-        <ChangesBadge count={modifiedCount} onClick={onClickPending} onCommitPush={onCommitPush} />
-        <span style={SEP_STYLE}>|</span>
+        <ChangesBadge count={modifiedCount} onClick={onClickPending} />
+        <CommitButton onClick={onCommitPush} />
         <SyncBadge status={syncStatus} lastSyncTime={lastSyncTime} remoteStatus={remoteStatus} onTriggerSync={onTriggerSync} onPullAndPush={onPullAndPush} onOpenConflictResolver={onOpenConflictResolver} />
         {lastCommitInfo && <CommitBadge info={lastCommitInfo} />}
         <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} />
