@@ -4,7 +4,7 @@ import { compactMarkdown } from './compact-markdown'
 describe('compactMarkdown', () => {
   it('collapses blank lines between bullet list items (tight list)', () => {
     const input = '* Item one\n\n* Item two\n\n* Item three\n'
-    expect(compactMarkdown(input)).toBe('* Item one\n* Item two\n* Item three\n')
+    expect(compactMarkdown(input)).toBe('- Item one\n- Item two\n- Item three\n')
   })
 
   it('collapses blank lines between dash list items', () => {
@@ -19,7 +19,7 @@ describe('compactMarkdown', () => {
 
   it('removes extra blank line after heading', () => {
     const input = '## Personal\n\n* Back on track\n\n* Good health\n'
-    expect(compactMarkdown(input)).toBe('## Personal\n\n* Back on track\n* Good health\n')
+    expect(compactMarkdown(input)).toBe('## Personal\n\n- Back on track\n- Good health\n')
   })
 
   it('preserves single blank line between heading and content', () => {
@@ -54,17 +54,17 @@ describe('compactMarkdown', () => {
 
   it('handles the exact bug scenario from the issue', () => {
     const input = '## Personal\n\n* Back on track with Flavia\n\n* Good health vitals in place\n\n'
-    expect(compactMarkdown(input)).toBe('## Personal\n\n* Back on track with Flavia\n* Good health vitals in place\n')
+    expect(compactMarkdown(input)).toBe('## Personal\n\n- Back on track with Flavia\n- Good health vitals in place\n')
   })
 
   it('handles heading followed immediately by list (no blank line)', () => {
     const input = '## Title\n* Item one\n\n* Item two\n'
-    expect(compactMarkdown(input)).toBe('## Title\n* Item one\n* Item two\n')
+    expect(compactMarkdown(input)).toBe('## Title\n- Item one\n- Item two\n')
   })
 
   it('handles mixed content: heading, paragraph, list', () => {
     const input = '# Title\n\nSome intro.\n\n* Item one\n\n* Item two\n\nConclusion.\n'
-    expect(compactMarkdown(input)).toBe('# Title\n\nSome intro.\n\n* Item one\n* Item two\n\nConclusion.\n')
+    expect(compactMarkdown(input)).toBe('# Title\n\nSome intro.\n\n- Item one\n- Item two\n\nConclusion.\n')
   })
 
   it('preserves empty input', () => {
@@ -82,21 +82,41 @@ describe('compactMarkdown', () => {
 
   it('handles list after code block', () => {
     const input = '```\ncode\n```\n\n* Item one\n\n* Item two\n'
-    expect(compactMarkdown(input)).toBe('```\ncode\n```\n\n* Item one\n* Item two\n')
+    expect(compactMarkdown(input)).toBe('```\ncode\n```\n\n- Item one\n- Item two\n')
   })
 
   it('handles nested list items', () => {
     const input = '* Parent\n\n  * Child one\n\n  * Child two\n'
-    expect(compactMarkdown(input)).toBe('* Parent\n  * Child one\n  * Child two\n')
+    expect(compactMarkdown(input)).toBe('- Parent\n  - Child one\n  - Child two\n')
   })
 
   it('handles checklist items', () => {
     const input = '* [ ] Todo one\n\n* [ ] Todo two\n\n* [x] Done\n'
-    expect(compactMarkdown(input)).toBe('* [ ] Todo one\n* [ ] Todo two\n* [x] Done\n')
+    expect(compactMarkdown(input)).toBe('- [ ] Todo one\n- [ ] Todo two\n- [x] Done\n')
   })
 
   it('handles blockquotes normally', () => {
     const input = '> Quote line one\n\n> Quote line two\n'
     expect(compactMarkdown(input)).toBe('> Quote line one\n\n> Quote line two\n')
+  })
+
+  it('does not normalize * inside code blocks', () => {
+    const input = '```\n* not a list\n```\n'
+    expect(compactMarkdown(input)).toBe('```\n* not a list\n```\n')
+  })
+
+  it('decodes &#x20; HTML entities from BlockNote bold+code output', () => {
+    const input = '**Remove&#x20;**`NoteWindow`**&#x20;and render the full&#x20;**`App`**&#x20;component.**\n'
+    expect(compactMarkdown(input)).toBe('**Remove **`NoteWindow`** and render the full **`App`** component.**\n')
+  })
+
+  it('decodes multiple HTML entity types', () => {
+    const input = 'Use &#x26; for ampersand and &#x3C; for less-than.\n'
+    expect(compactMarkdown(input)).toBe('Use & for ampersand and < for less-than.\n')
+  })
+
+  it('does not decode HTML entities inside code blocks', () => {
+    const input = '```\n&#x20; should stay\n```\n'
+    expect(compactMarkdown(input)).toBe('```\n&#x20; should stay\n```\n')
   })
 })

@@ -2,6 +2,8 @@
  * Post-process BlockNote's blocksToMarkdownLossy output to produce
  * standard-convention Markdown:
  * - Tight lists (no blank lines between consecutive list items)
+ * - Bullet list markers normalized to `-` (BlockNote outputs `*`)
+ * - HTML entities like `&#x20;` decoded back to spaces
  * - No runs of 3+ blank lines (collapsed to one blank line)
  * - No trailing blank lines
  * - Code block content is never modified
@@ -14,7 +16,7 @@ export function compactMarkdown(md: string): string {
   let inCodeBlock = false
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+    let line = lines[i]
 
     // Track fenced code blocks — never modify content inside them
     if (line.trimStart().startsWith('```')) {
@@ -27,6 +29,12 @@ export function compactMarkdown(md: string): string {
       result.push(line)
       continue
     }
+
+    // Normalize bullet markers: BlockNote uses `*`, convention is `-`
+    line = normalizeBulletMarker(line)
+
+    // Decode HTML entities that BlockNote inserts (e.g. &#x20; for spaces)
+    line = decodeHtmlEntities(line)
 
     // Skip blank lines that sit between two list items (tight list rule)
     if (line.trim() === '') {
@@ -79,4 +87,16 @@ function findNextNonBlank(lines: string[], idx: number): number | null {
     if (lines[i].trim() !== '') return i
   }
   return null
+}
+
+const BULLET_RE = /^(\s*)\*(\s)/
+/** Normalize `*` bullet markers to `-` (BlockNote default → standard convention) */
+function normalizeBulletMarker(line: string): string {
+  return line.replace(BULLET_RE, '$1-$2')
+}
+
+/** Decode HTML entities that BlockNote inserts (&#x20; &#x26; etc.) */
+function decodeHtmlEntities(line: string): string {
+  if (!line.includes('&#x')) return line
+  return line.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
 }
