@@ -95,8 +95,7 @@ pub fn create_vault_folder(vault_path: String, folder_name: String) -> Result<St
     if folder_path.exists() {
         return Err(format!("Folder '{}' already exists", folder_name));
     }
-    std::fs::create_dir_all(&folder_path)
-        .map_err(|e| format!("Failed to create folder: {}", e))?;
+    std::fs::create_dir_all(&folder_path).map_err(|e| format!("Failed to create folder: {}", e))?;
     Ok(folder_name)
 }
 
