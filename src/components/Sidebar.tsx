@@ -35,6 +35,7 @@ interface SidebarProps {
   onRenameSection?: (typeName: string, label: string) => void
   onToggleTypeVisibility?: (typeName: string) => void
   folders?: FolderNode[]
+  onCreateFolder?: (name: string) => void
   inboxCount?: number
   onCollapse?: () => void
 }
@@ -207,7 +208,7 @@ export const Sidebar = memo(function Sidebar({
   entries, selection, onSelect, onSelectNote, onCreateType, onCreateNewType,
   onCustomizeType, onUpdateTypeTemplate, onReorderSections, onRenameSection,
   onToggleTypeVisibility,
-  folders = [], inboxCount = 0, onCollapse,
+  folders = [], onCreateFolder, inboxCount = 0, onCollapse,
 }: SidebarProps) {
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
@@ -317,7 +318,7 @@ export const Sidebar = memo(function Sidebar({
         </DndContext>
 
         {/* Folder tree */}
-        <FolderTree folders={folders} selection={selection} onSelect={onSelect} />
+        <FolderTree folders={folders} selection={selection} onSelect={onSelect} onCreateFolder={onCreateFolder} />
       </nav>
 
       <ContextMenuOverlay pos={contextMenuPos} type={contextMenuType} innerRef={contextMenuRef} onOpenCustomize={(type) => { closeContextMenu(); setCustomizeTarget(type) }} onStartRename={handleStartRename} />

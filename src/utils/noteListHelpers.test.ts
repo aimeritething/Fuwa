@@ -715,7 +715,12 @@ describe('filterEntries — folder selection', () => {
     expect(result.find(e => e.title === 'Site')).toBeUndefined()
   })
 
-  it('filters by parent folder (non-recursive — direct children only)', () => {
+  it('filters recursively — includes notes from subfolders', () => {
+    const result = filterEntries(entries, { kind: 'folder', path: 'projects' })
+    expect(result.map(e => e.title)).toEqual(['Note 1', 'Note 2', 'Site'])
+  })
+
+  it('filters direct children', () => {
     const result = filterEntries(entries, { kind: 'folder', path: 'areas' })
     expect(result.map(e => e.title)).toEqual(['Health'])
   })

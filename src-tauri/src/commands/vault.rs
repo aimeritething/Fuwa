@@ -89,15 +89,15 @@ pub fn migrate_is_a_to_type(vault_path: String) -> Result<usize, String> {
 }
 
 #[tauri::command]
-pub fn flatten_vault(vault_path: String) -> Result<usize, String> {
+pub fn create_vault_folder(vault_path: String, folder_name: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
-    vault::flatten_vault(&vault_path)
-}
-
-#[tauri::command]
-pub fn vault_health_check(vault_path: String) -> Result<vault::VaultHealthReport, String> {
-    let vault_path = expand_tilde(&vault_path);
-    vault::vault_health_check(&vault_path)
+    let folder_path = std::path::Path::new(vault_path.as_ref()).join(&folder_name);
+    if folder_path.exists() {
+        return Err(format!("Folder '{}' already exists", folder_name));
+    }
+    std::fs::create_dir_all(&folder_path)
+        .map_err(|e| format!("Failed to create folder: {}", e))?;
+    Ok(folder_name)
 }
 
 #[tauri::command]
@@ -227,7 +227,6 @@ pub async fn search_vault(
 pub fn repair_vault(vault_path: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
     vault::migrate_is_a_to_type(&vault_path)?;
-    vault::flatten_vault(&vault_path)?;
     vault::repair_config_files(&vault_path)?;
     git::ensure_gitignore(&vault_path)?;
     Ok("Vault repaired".to_string())
@@ -362,7 +361,7 @@ mod tests {
     }
 
     #[test]
-    fn test_repair_vault_flattens_type_folders() {
+    fn test_repair_vault_migrates_is_a_to_type() {
         let dir = tempfile::TempDir::new().unwrap();
         let vault_path = dir.path();
         let note_dir = vault_path.join("note");
@@ -371,9 +370,8 @@ mod tests {
 
         let result = repair_vault(vault_path.to_str().unwrap().to_string());
         assert!(result.is_ok());
-        assert!(vault_path.join("hello.md").exists());
-        assert!(!note_dir.join("hello.md").exists());
-        let content = std::fs::read_to_string(vault_path.join("hello.md")).unwrap();
+        assert!(note_dir.join("hello.md").exists());
+        let content = std::fs::read_to_string(note_dir.join("hello.md")).unwrap();
         assert!(content.contains("type: Note"));
         assert!(!content.contains("is_a:"));
     }

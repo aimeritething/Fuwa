@@ -129,6 +129,9 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
           {entry.title}
           <StateBadge archived={entry.archived} trashed={entry.trashed} />
         </div>
+        {entry.path.includes('/') && (
+          <div className="truncate text-[10px] text-muted-foreground" data-testid="note-path">{entry.path}</div>
+        )}
       </div>
       {entry.snippet && (
         <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" data-testid="note-snippet" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>

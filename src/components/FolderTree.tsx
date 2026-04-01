@@ -1,4 +1,4 @@
-import { useState, useCallback, memo } from 'react'
+import { useState, useCallback, useRef, useEffect, memo } from 'react'
 import { Folder, FolderOpen, CaretDown, CaretRight, Plus } from '@phosphor-icons/react'
 import type { FolderNode, SidebarSelection } from '../types'
 import { cn } from '@/lib/utils'
@@ -7,6 +7,7 @@ interface FolderTreeProps {
   folders: FolderNode[]
   selection: SidebarSelection
   onSelect: (selection: SidebarSelection) => void
+  onCreateFolder?: (name: string) => void
 }
 
 function FolderItem({
@@ -71,15 +72,31 @@ function FolderItem({
   )
 }
 
-export const FolderTree = memo(function FolderTree({ folders, selection, onSelect }: FolderTreeProps) {
+export const FolderTree = memo(function FolderTree({ folders, selection, onSelect, onCreateFolder }: FolderTreeProps) {
   const [sectionCollapsed, setSectionCollapsed] = useState(false)
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+  const [isCreating, setIsCreating] = useState(false)
+  const [newFolderName, setNewFolderName] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
 
   const toggleFolder = useCallback((path: string) => {
     setExpanded((prev) => ({ ...prev, [path]: !prev[path] }))
   }, [])
 
-  if (folders.length === 0) return null
+  useEffect(() => {
+    if (isCreating) inputRef.current?.focus()
+  }, [isCreating])
+
+  const handleCreateFolder = () => {
+    const name = newFolderName.trim()
+    if (name && onCreateFolder) {
+      onCreateFolder(name)
+    }
+    setIsCreating(false)
+    setNewFolderName('')
+  }
+
+  if (folders.length === 0 && !isCreating) return null
 
   return (
     <div style={{ padding: '8px 0' }}>
@@ -93,7 +110,14 @@ export const FolderTree = memo(function FolderTree({ folders, selection, onSelec
           {sectionCollapsed ? <CaretRight size={12} /> : <CaretDown size={12} />}
           <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>FOLDERS</span>
         </div>
-        <Plus size={12} className="text-muted-foreground" />
+        {onCreateFolder && (
+          <Plus
+            size={12}
+            className="text-muted-foreground hover:text-foreground"
+            onClick={(e) => { e.stopPropagation(); setIsCreating(true); setSectionCollapsed(false) }}
+            data-testid="create-folder-btn"
+          />
+        )}
       </button>
 
       {/* Tree */}
@@ -110,6 +134,24 @@ export const FolderTree = memo(function FolderTree({ folders, selection, onSelec
               onSelect={onSelect}
             />
           ))}
+          {isCreating && (
+            <div className="flex items-center gap-2" style={{ padding: '4px 8px' }}>
+              <Folder size={18} className="shrink-0 text-muted-foreground" />
+              <input
+                ref={inputRef}
+                className="flex-1 border border-border rounded bg-background px-1.5 py-0.5 text-[13px] text-foreground outline-none focus:border-primary"
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleCreateFolder()
+                  if (e.key === 'Escape') { setIsCreating(false); setNewFolderName('') }
+                }}
+                onBlur={handleCreateFolder}
+                placeholder="Folder name"
+                data-testid="new-folder-input"
+              />
+            </div>
+          )}
         </div>
       )}
     </div>

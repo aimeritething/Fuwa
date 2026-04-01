@@ -17,7 +17,7 @@ pub use entry::{FolderNode, VaultEntry};
 pub use file::{get_note_content, save_note_content};
 pub use getting_started::{create_getting_started_vault, default_vault_path, vault_exists};
 pub use image::{copy_image_to_vault, save_image};
-pub use migration::{flatten_vault, migrate_is_a_to_type, vault_health_check, VaultHealthReport};
+pub use migration::migrate_is_a_to_type;
 pub use rename::{
     detect_renames, rename_note, update_wikilinks_for_renames, DetectedRename, RenameResult,
 };

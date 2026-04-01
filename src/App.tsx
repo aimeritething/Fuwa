@@ -47,8 +47,6 @@ import { useVaultBridge } from './hooks/useVaultBridge'
 import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { ConfirmDeleteDialog } from './components/ConfirmDeleteDialog'
 import { UpdateBanner } from './components/UpdateBanner'
-import { FlatVaultMigrationBanner } from './components/FlatVaultMigrationBanner'
-import { useFlatVaultMigration } from './hooks/useFlatVaultMigration'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
 import type { SidebarSelection, InboxPeriod } from './types'
@@ -119,7 +117,6 @@ function App() {
   useVaultConfig(resolvedPath)
   const { settings, loaded: settingsLoaded, saveSettings } = useSettings()
   useTelemetry(settings, settingsLoaded)
-  const flatVaultMigration = useFlatVaultMigration(resolvedPath, vault.entries.length > 0, vault.reloadVault)
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
 
   const autoSync = useAutoSync({
@@ -274,6 +271,20 @@ function App() {
   const handleSetNoteIconCommand = useCallback(() => {
     window.dispatchEvent(new CustomEvent('laputa:open-icon-picker'))
   }, [])
+
+  const handleCreateFolder = useCallback(async (name: string) => {
+    try {
+      if (isTauri()) {
+        await invoke('create_vault_folder', { vaultPath: resolvedPath, folderName: name })
+      } else {
+        await mockInvoke('create_vault_folder', { vaultPath: resolvedPath, folderName: name })
+      }
+      await vault.reloadVault()
+      setToastMessage(`Created folder "${name}"`)
+    } catch (e) {
+      setToastMessage(`Failed to create folder: ${e}`)
+    }
+  }, [resolvedPath, vault, setToastMessage])
 
   const handleRemoveNoteIconCommand = useCallback(() => {
     if (notes.activeTabPath) handleRemoveNoteIcon(notes.activeTabPath)
@@ -477,7 +488,7 @@ function App() {
         {sidebarVisible && (
           <>
             <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-              <Sidebar entries={vault.entries} folders={vault.folders} selection={selection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} inboxCount={inboxCount} />
+              <Sidebar entries={vault.entries} folders={vault.folders} selection={selection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} inboxCount={inboxCount} />
             </div>
             <ResizeHandle onResize={layout.handleSidebarResize} />
           </>
@@ -547,17 +558,6 @@ function App() {
           />
         </div>
       </div>
-      {flatVaultMigration.needsMigration && (
-        <FlatVaultMigrationBanner
-          strayFileCount={flatVaultMigration.strayFiles.length}
-          isMigrating={flatVaultMigration.isMigrating}
-          onMigrate={async () => {
-            const count = await flatVaultMigration.migrate()
-            setToastMessage(`Migrated ${count} file${count !== 1 ? 's' : ''} to vault root`)
-          }}
-          onDismiss={flatVaultMigration.dismiss}
-        />
-      )}
       <UpdateBanner status={updateStatus} actions={updateActions} />
       <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />
       <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onConnectGitHub={dialogs.openGitHubVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isGitVault={!vault.modifiedFilesError} hasGitHub={!!settings.github_token} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} />
