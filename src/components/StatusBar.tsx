@@ -436,7 +436,7 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
   }, [])
 
   return (
-    <footer style={{ height: 30, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--sidebar)', borderTop: '1px solid var(--border)', padding: '0 8px', fontSize: 11, color: 'var(--muted-foreground)' }}>
+    <footer style={{ height: 30, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--sidebar)', borderTop: '1px solid var(--border)', padding: '0 8px', fontSize: 11, color: 'var(--muted-foreground)', position: 'relative', zIndex: 10 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0, overflow: 'hidden' }}>
         <VaultMenu vaults={vaults} vaultPath={vaultPath} onSwitchVault={onSwitchVault} onOpenLocalFolder={onOpenLocalFolder} onConnectGitHub={onConnectGitHub} hasGitHub={hasGitHub} onRemoveVault={onRemoveVault} />
         <span style={SEP_STYLE}>|</span>
