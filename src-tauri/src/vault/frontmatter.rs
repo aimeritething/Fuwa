@@ -284,20 +284,113 @@ fn pod_to_json(pod: gray_matter::Pod) -> serde_json::Value {
     }
 }
 
+/// Strip matching outer quotes (single or double) from a YAML scalar.
+fn unquote(s: &str) -> &str {
+    s.strip_prefix('"')
+        .and_then(|rest| rest.strip_suffix('"'))
+        .or_else(|| s.strip_prefix('\'').and_then(|rest| rest.strip_suffix('\'')))
+        .unwrap_or(s)
+}
+
+/// Parse a scalar YAML value into a JSON value.
+fn parse_scalar(s: &str) -> serde_json::Value {
+    let trimmed = unquote(s);
+    match trimmed.to_lowercase().as_str() {
+        "true" | "yes" => serde_json::Value::Bool(true),
+        "false" | "no" => serde_json::Value::Bool(false),
+        _ => trimmed
+            .parse::<i64>()
+            .map(|n| serde_json::json!(n))
+            .unwrap_or_else(|_| serde_json::Value::String(trimmed.to_string())),
+    }
+}
+
+/// Return the key from a top-level `key:` or `"key":` YAML line.
+/// Returns `None` for indented, blank, or non-key lines.
+fn extract_yaml_key(line: &str) -> Option<&str> {
+    if line.is_empty() || line.starts_with(' ') || line.starts_with('\t') {
+        return None;
+    }
+    let (k, _) = line.split_once(':')?;
+    Some(k.trim().trim_matches('"'))
+}
+
+/// Flush a pending list accumulator into the map.
+fn flush_list(
+    map: &mut HashMap<String, serde_json::Value>,
+    key: &mut Option<String>,
+    items: &mut Vec<serde_json::Value>,
+) {
+    if let Some(k) = key.take() {
+        if !items.is_empty() {
+            map.insert(k, serde_json::Value::Array(std::mem::take(items)));
+        }
+    }
+}
+
+/// Fallback parser for when gray_matter fails to parse YAML (returns raw string).
+/// Extracts simple `key: value` lines, handling booleans, numbers, quoted strings,
+/// and YAML lists.
+fn fallback_parse_yaml_string(raw: &str) -> HashMap<String, serde_json::Value> {
+    let mut map = HashMap::new();
+    let mut list_key: Option<String> = None;
+    let mut list_items: Vec<serde_json::Value> = Vec::new();
+
+    for line in raw.lines() {
+        // Accumulate list items under the current key
+        if list_key.is_some() {
+            if let Some(item) = line.strip_prefix("  - ") {
+                list_items.push(parse_scalar(item.trim()));
+                continue;
+            }
+            flush_list(&mut map, &mut list_key, &mut list_items);
+        }
+
+        let Some(key) = extract_yaml_key(line) else { continue };
+        let value_part = line.split_once(':').map(|(_, v)| v.trim()).unwrap_or("");
+        if value_part.is_empty() {
+            list_key = Some(key.to_string());
+        } else {
+            map.insert(key.to_string(), parse_scalar(value_part));
+        }
+    }
+    flush_list(&mut map, &mut list_key, &mut list_items);
+    map
+}
+
+/// Extract the raw YAML frontmatter string from between `---` delimiters.
+fn extract_raw_frontmatter(content: &str) -> Option<&str> {
+    let rest = content.strip_prefix("---")?;
+    let rest = rest.strip_prefix('\n').or_else(|| rest.strip_prefix("\r\n"))?;
+    let end = rest.find("\n---")?;
+    Some(&rest[..end])
+}
+
 /// Extract frontmatter, relationships, and custom properties from parsed gray_matter data.
+/// When gray_matter fails to parse YAML (e.g. malformed quotes from Notion exports),
+/// `raw_content` is used as a fallback: simple key:value pairs are extracted line-by-line
+/// so that critical fields like Trashed, Archived, type are not silently lost.
 pub(crate) fn extract_fm_and_rels(
     data: Option<gray_matter::Pod>,
+    raw_content: &str,
 ) -> (
     Frontmatter,
     HashMap<String, Vec<String>>,
     HashMap<String, serde_json::Value>,
 ) {
-    let hash = match data {
-        Some(gray_matter::Pod::Hash(map)) => map,
-        _ => return (Frontmatter::default(), HashMap::new(), HashMap::new()),
+    let json_map = match data {
+        Some(gray_matter::Pod::Hash(map)) => {
+            map.into_iter().map(|(k, v)| (k, pod_to_json(v))).collect()
+        }
+        _ => {
+            // gray_matter returned Null, String, or None — YAML parse failed.
+            // Fall back to line-by-line extraction from the raw frontmatter block.
+            match extract_raw_frontmatter(raw_content) {
+                Some(raw) => fallback_parse_yaml_string(raw),
+                None => return (Frontmatter::default(), HashMap::new(), HashMap::new()),
+            }
+        }
     };
-    let json_map: HashMap<String, serde_json::Value> =
-        hash.into_iter().map(|(k, v)| (k, pod_to_json(v))).collect();
     (
         parse_frontmatter(&json_map),
         extract_relationships(&json_map),

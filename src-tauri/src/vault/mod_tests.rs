@@ -1103,6 +1103,142 @@ fn test_parse_visible_missing_defaults_to_none() {
     assert_eq!(entry.visible, None);
 }
 
+// --- Regression: trashed/archived must survive unquoted date in "Trashed at" ---
+
+#[test]
+fn test_trashed_true_with_unquoted_date_in_trashed_at() {
+    let dir = TempDir::new().unwrap();
+    // Reproduces the engineering-management.md scenario: Trashed at has an
+    // unquoted YAML date (2026-03-11) which gray_matter may parse as a non-string.
+    // The entire Frontmatter deserialization must NOT fail because of this.
+    let content = "---\ntype: Topic\nTrashed: true\n\"Trashed at\": 2026-03-11\n---\n# Engineering Management\n";
+    let entry = parse_test_entry(&dir, "engineering-management.md", content);
+    assert!(
+        entry.trashed,
+        "Trashed must be true even when 'Trashed at' contains an unquoted date"
+    );
+}
+
+#[test]
+fn test_archived_true_with_extra_non_string_fields() {
+    let dir = TempDir::new().unwrap();
+    // If any StringOrList field gets a non-string value, archived must still parse.
+    let content = "---\nArchived: true\norder: 5\n---\n# Archived Note\n";
+    let entry = parse_test_entry(&dir, "archived-extra.md", content);
+    assert!(
+        entry.archived,
+        "Archived must be true even with other fields present"
+    );
+}
+
+#[test]
+fn test_trashed_with_reviewed_false_field() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\ntype: Topic\nReviewed: False\nTrashed: true\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "reviewed-test.md", content);
+    assert!(
+        entry.trashed,
+        "Trashed must be true even when frontmatter contains Reviewed: False"
+    );
+    assert_eq!(entry.is_a, Some("Topic".to_string()));
+}
+
+/// Regression: wikilinks containing curly braces + nested quotes in YAML arrays
+/// cause gray_matter to produce Hash values instead of strings for array elements.
+/// This must NOT make parse_frontmatter fall back to default (losing trashed/archived).
+#[test]
+fn test_trashed_survives_malformed_wikilinks_in_yaml() {
+    let dir = TempDir::new().unwrap();
+    // This YAML has curly braces inside a double-quoted string, producing nested
+    // Hash values in some YAML parsers. The Frontmatter serde must not fail.
+    let content = "---\ntype: Topic\nNotes:\n  - \"[[foo|bar]]\"\n  - \"[[slug|{'Title': 'Subtitle'}]]\"\nTrashed: true\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "malformed-links.md", content);
+    assert!(
+        entry.trashed,
+        "Trashed must be true even with curly-brace wikilinks in frontmatter arrays"
+    );
+}
+
+/// Regression: files with malformed YAML (e.g. Notion exports with unescaped quotes
+/// in wikilinks) cause gray_matter to return Null instead of a Hash. The fallback
+/// parser must still extract Trashed, type, and other simple key:value fields.
+#[test]
+fn test_parse_real_engineering_management_file() {
+    let path = std::path::Path::new("/Users/luca/Laputa/engineering-management.md");
+    if !path.exists() {
+        return; // Skip when the Laputa vault is not available
+    }
+    let entry = parse_md_file(path).unwrap();
+    assert!(
+        entry.trashed,
+        "engineering-management.md must be trashed (has Trashed: true in frontmatter)"
+    );
+    assert_eq!(entry.is_a, Some("Topic".to_string()));
+}
+
+#[test]
+fn test_fallback_parser_extracts_trashed_from_malformed_yaml() {
+    let dir = TempDir::new().unwrap();
+    // Simulate malformed YAML that gray_matter can't parse: unescaped double
+    // quotes inside a double-quoted YAML string cause the YAML parser to fail.
+    // The fallback line-by-line parser must still extract simple key:value pairs.
+    //
+    // Write the file manually with literal unescaped quotes (can't use Rust string
+    // escaping for this since the YAML itself is the malformed part).
+    let fm = [
+        "---",
+        "type: Topic",
+        "Status: Draft",
+        "Belongs to:",
+        "  - \"[[engineering|Engineering]]\"",
+        "aliases:",
+        "  - Engineering Management",
+        "Notes:",
+        // This line has unescaped " inside a "-quoted YAML string — malformed YAML
+        "  - \"[[slug|{\"Title\": 'Subtitle'}]]\"",
+        "Trashed: true",
+        "\"Trashed at\": 2026-03-11",
+        "---",
+        "",
+        "# Engineering Management",
+    ];
+    let content = fm.join("\n");
+    create_test_file(dir.path(), "eng-mgmt.md", &content);
+    let entry = parse_md_file(&dir.path().join("eng-mgmt.md")).unwrap();
+    assert!(
+        entry.trashed,
+        "Trashed must be true even when YAML is malformed (fallback parser)"
+    );
+    assert_eq!(
+        entry.is_a,
+        Some("Topic".to_string()),
+        "isA must be extracted by fallback parser"
+    );
+}
+
+#[test]
+fn test_fallback_parser_extracts_archived_from_malformed_yaml() {
+    let dir = TempDir::new().unwrap();
+    let fm = [
+        "---",
+        "type: Essay",
+        "Notes:",
+        "  - \"[[slug|{\"Broken\": 'quotes'}]]\"",
+        "Archived: true",
+        "---",
+        "",
+        "# Archived Essay",
+    ];
+    let content = fm.join("\n");
+    create_test_file(dir.path(), "archived-essay.md", &content);
+    let entry = parse_md_file(&dir.path().join("archived-essay.md")).unwrap();
+    assert!(
+        entry.archived,
+        "Archived must be true even when YAML is malformed"
+    );
+    assert_eq!(entry.is_a, Some("Essay".to_string()));
+}
+
 #[test]
 fn test_visible_not_in_relationships() {
     let dir = TempDir::new().unwrap();
