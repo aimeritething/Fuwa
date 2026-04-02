@@ -101,4 +101,19 @@ describe('TitleField', () => {
     window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
     expect(document.activeElement).toBe(input)
   })
+
+  it('shows vault-relative path for notes in subdirectories', () => {
+    render(<TitleField title="ADR" filename="0001-tauri-stack.md" notePath="/Users/luca/Laputa/docs/adr/0001-tauri-stack.md" vaultPath="/Users/luca/Laputa" onTitleChange={() => {}} />)
+    expect(screen.getByTestId('title-field-path')).toHaveTextContent('docs/adr/0001-tauri-stack.md')
+  })
+
+  it('hides path for notes at vault root', () => {
+    render(<TitleField title="Root Note" filename="root-note.md" notePath="/Users/luca/Laputa/root-note.md" vaultPath="/Users/luca/Laputa" onTitleChange={() => {}} />)
+    expect(screen.queryByTestId('title-field-path')).not.toBeInTheDocument()
+  })
+
+  it('hides path when vaultPath is not provided', () => {
+    render(<TitleField title="Note" filename="note.md" onTitleChange={() => {}} />)
+    expect(screen.queryByTestId('title-field-path')).not.toBeInTheDocument()
+  })
 })

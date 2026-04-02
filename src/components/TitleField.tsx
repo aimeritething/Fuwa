@@ -5,6 +5,10 @@ interface TitleFieldProps {
   title: string
   filename: string
   editable?: boolean
+  /** Absolute path of the note file. */
+  notePath?: string
+  /** Absolute path of the vault root. */
+  vaultPath?: string
   /** Called when the user finishes editing the title (blur or Enter). */
   onTitleChange: (newTitle: string) => void
 }
@@ -48,7 +52,7 @@ function useOptimisticTitle(title: string, onTitleChange: (t: string) => void) {
  * Dedicated title input field above the editor.
  * Displays the title as an editable field and shows the resulting filename below.
  */
-export function TitleField({ title, filename, editable = true, onTitleChange }: TitleFieldProps) {
+export function TitleField({ title, filename, editable = true, notePath, vaultPath, onTitleChange }: TitleFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const { value, isEditing, handleFocus, commitTitle, revert, setEdit } =
     useOptimisticTitle(title, onTitleChange)
@@ -80,6 +84,12 @@ export function TitleField({ title, filename, editable = true, onTitleChange }: 
   const currentStem = filename.replace(/\.md$/, '')
   const showFilename = isEditing || currentStem !== expectedSlug
 
+  // Compute vault-relative path (only for notes in subdirectories)
+  const relativePath = notePath && vaultPath
+    ? notePath.replace(vaultPath + '/', '')
+    : null
+  const showRelativePath = relativePath && relativePath.includes('/')
+
   return (
     <div className="title-field" data-testid="title-field">
       <input
@@ -98,6 +108,11 @@ export function TitleField({ title, filename, editable = true, onTitleChange }: 
       {showFilename && (
         <span className="title-field__filename" data-testid="title-field-filename">
           {expectedSlug}.md
+        </span>
+      )}
+      {showRelativePath && (
+        <span className="title-field__path" data-testid="title-field-path" style={{ display: 'block', fontSize: 11, color: 'var(--muted-foreground)', marginTop: 2 }}>
+          {relativePath}
         </span>
       )}
     </div>
