@@ -64,6 +64,7 @@ const mockAllContent: Record<string, string> = {
 const mockCommandResults: Record<string, unknown> = {
   list_vault: mockEntries,
   list_vault_folders: [],
+  list_views: [],
   get_all_content: mockAllContent,
   get_modified_files: [],
   get_note_content: mockAllContent['/vault/project/test.md'] || '',

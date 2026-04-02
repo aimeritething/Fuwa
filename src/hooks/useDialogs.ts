@@ -9,6 +9,7 @@ export function useDialogs() {
   const [showGitHubVault, setShowGitHubVault] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showConflictResolver, setShowConflictResolver] = useState(false)
+  const [showCreateViewDialog, setShowCreateViewDialog] = useState(false)
 
   const openCreateType = useCallback(() => setShowCreateTypeDialog(true), [])
   const closeCreateType = useCallback(() => setShowCreateTypeDialog(false), [])
@@ -25,6 +26,8 @@ export function useDialogs() {
   const closeSearch = useCallback(() => setShowSearch(false), [])
   const openConflictResolver = useCallback(() => setShowConflictResolver(true), [])
   const closeConflictResolver = useCallback(() => setShowConflictResolver(false), [])
+  const openCreateView = useCallback(() => setShowCreateViewDialog(true), [])
+  const closeCreateView = useCallback(() => setShowCreateViewDialog(false), [])
 
   return {
     showCreateTypeDialog, openCreateType, closeCreateType,
@@ -35,5 +38,6 @@ export function useDialogs() {
     showGitHubVault, openGitHubVault, closeGitHubVault,
     showSearch, openSearch, closeSearch,
     showConflictResolver, openConflictResolver, closeConflictResolver,
+    showCreateViewDialog, openCreateView, closeCreateView,
   }
 }

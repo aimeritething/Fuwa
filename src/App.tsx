@@ -4,6 +4,7 @@ import { NoteList } from './components/NoteList'
 import { Editor } from './components/Editor'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CreateTypeDialog } from './components/CreateTypeDialog'
+import { CreateViewDialog } from './components/CreateViewDialog'
 import { QuickOpenPalette } from './components/QuickOpenPalette'
 import { CommandPalette } from './components/CommandPalette'
 import { SearchPanel } from './components/SearchPanel'
@@ -326,6 +327,37 @@ function App() {
     setToastMessage(`Type "${name}" created`)
   }, [notes])
 
+  const handleCreateView = useCallback(async (definition: import('./types').ViewDefinition) => {
+    const filename = definition.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    const target = isTauri() ? invoke : mockInvoke
+    await target('save_view_cmd', { vaultPath: resolvedPath, filename, definition })
+    await vault.reloadViews()
+    setToastMessage(`View "${definition.name}" created`)
+    handleSetSelection({ kind: 'view', filename })
+  }, [resolvedPath, vault, handleSetSelection])
+
+  const handleDeleteView = useCallback(async (filename: string) => {
+    const target = isTauri() ? invoke : mockInvoke
+    await target('delete_view_cmd', { vaultPath: resolvedPath, filename })
+    await vault.reloadViews()
+    if (selection.kind === 'view' && selection.filename === filename) {
+      handleSetSelection({ kind: 'filter', filter: 'all' })
+    }
+    setToastMessage('View deleted')
+  }, [resolvedPath, vault, selection, handleSetSelection])
+
+  const availableFields = useMemo(() => {
+    const builtIn = ['type', 'status', 'title', 'favorite']
+    if (!vault.entries?.length) return builtIn
+    const customProps = new Set<string>()
+    for (const e of vault.entries) {
+      if (e.properties) {
+        for (const key of Object.keys(e.properties)) customProps.add(key)
+      }
+    }
+    return [...builtIn, ...Array.from(customProps).sort()]
+  }, [vault.entries])
+
   const bulkActions = useBulkActions(entryActions, setToastMessage)
 
   // Raw-toggle ref: Editor registers its handleToggleRaw here so the command palette can call it
@@ -488,7 +520,7 @@ function App() {
         {sidebarVisible && (
           <>
             <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-              <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={selection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={notes.handleSelectNote} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} inboxCount={inboxCount} />
+              <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={selection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={notes.handleSelectNote} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onCreateView={dialogs.openCreateView} onDeleteView={handleDeleteView} inboxCount={inboxCount} />
             </div>
             <ResizeHandle onResize={layout.handleSidebarResize} />
           </>
@@ -567,6 +599,7 @@ function App() {
       <CommandPalette open={dialogs.showCommandPalette} commands={commands} onClose={dialogs.closeCommandPalette} />
       <SearchPanel open={dialogs.showSearch} vaultPath={resolvedPath} entries={vault.entries} onSelectNote={notes.handleSelectNote} onClose={dialogs.closeSearch} />
       <CreateTypeDialog open={dialogs.showCreateTypeDialog} onClose={dialogs.closeCreateType} onCreate={handleCreateType} />
+      <CreateViewDialog open={dialogs.showCreateViewDialog} onClose={dialogs.closeCreateView} onCreate={handleCreateView} availableFields={availableFields} />
       <CommitDialog open={commitFlow.showCommitDialog} modifiedCount={vault.modifiedFiles.length} suggestedMessage={suggestedCommitMessage} onCommit={commitFlow.handleCommitPush} onClose={commitFlow.closeCommitDialog} />
       <ConflictResolverModal
         open={dialogs.showConflictResolver}

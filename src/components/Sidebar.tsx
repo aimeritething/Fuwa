@@ -40,6 +40,7 @@ interface SidebarProps {
   onReorderFavorites?: (orderedPaths: string[]) => void
   views?: ViewFile[]
   onCreateView?: () => void
+  onDeleteView?: (filename: string) => void
   folders?: FolderNode[]
   onCreateFolder?: (name: string) => void
   inboxCount?: number
@@ -303,7 +304,7 @@ export const Sidebar = memo(function Sidebar({
   entries, selection, onSelect,
   onCustomizeType, onUpdateTypeTemplate, onReorderSections, onRenameSection,
   onToggleTypeVisibility, onSelectFavorite, onReorderFavorites,
-  views = [], onCreateView,
+  views = [], onCreateView, onDeleteView,
   folders = [], onCreateFolder, inboxCount = 0, onCollapse,
 }: SidebarProps) {
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
@@ -392,7 +393,7 @@ export const Sidebar = memo(function Sidebar({
         <FavoritesSection entries={entries} selection={selection} onSelect={onSelect} onSelectNote={onSelectFavorite} onReorder={onReorderFavorites} />
 
         {/* Views */}
-        {views.length > 0 && (
+        {(views.length > 0 || onCreateView) && (
           <div style={{ padding: '4px 6px' }}>
             <div className="flex w-full select-none items-center justify-between" style={{ padding: '4px 16px' }}>
               <span className="text-[11px] font-medium text-muted-foreground">Views</span>
@@ -403,14 +404,24 @@ export const Sidebar = memo(function Sidebar({
               )}
             </div>
             {views.map((v) => (
-              <NavItem
-                key={v.filename}
-                icon={Funnel}
-                label={v.definition.name}
-                isActive={isSelectionActive(selection, { kind: 'view', filename: v.filename })}
-                onClick={() => onSelect({ kind: 'view', filename: v.filename })}
-                compact
-              />
+              <div key={v.filename} className="group relative">
+                <NavItem
+                  icon={Funnel}
+                  label={v.definition.name}
+                  isActive={isSelectionActive(selection, { kind: 'view', filename: v.filename })}
+                  onClick={() => onSelect({ kind: 'view', filename: v.filename })}
+                  compact
+                />
+                {onDeleteView && (
+                  <button
+                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                    onClick={(e) => { e.stopPropagation(); onDeleteView(v.filename) }}
+                    title="Delete view"
+                  >
+                    <Trash size={12} />
+                  </button>
+                )}
+              </div>
             ))}
           </div>
         )}
