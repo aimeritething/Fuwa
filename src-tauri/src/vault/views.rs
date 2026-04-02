@@ -320,7 +320,7 @@ fn evaluate_condition(cond: &FilterCondition, entry: &VaultEntry) -> bool {
             }
         }
         FilterOp::IsEmpty => field_value.as_deref().map_or(true, |s| s.is_empty()),
-        FilterOp::IsNotEmpty => field_value.as_deref().map_or(false, |s| !s.is_empty()),
+        FilterOp::IsNotEmpty => field_value.as_deref().is_some_and(|s| !s.is_empty()),
         FilterOp::Before => match (&field_value, &cond_value) {
             (Some(f), Some(v)) => f < v,
             _ => false,
