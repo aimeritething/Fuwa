@@ -126,7 +126,10 @@ pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<Vault
 
 /// Parse a non-markdown file into a minimal VaultEntry.
 /// Uses filename as title, no frontmatter extraction.
-pub(crate) fn parse_non_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<VaultEntry, String> {
+pub(crate) fn parse_non_md_file(
+    path: &Path,
+    git_dates: Option<(u64, u64)>,
+) -> Result<VaultEntry, String> {
     let filename = path
         .file_name()
         .map(|f| f.to_string_lossy().to_string())
@@ -176,12 +179,71 @@ pub(crate) fn is_md_file(path: &Path) -> bool {
 
 /// Extensions recognized as editable text files (opened in raw editor).
 const TEXT_EXTENSIONS: &[&str] = &[
-    "yml", "yaml", "json", "txt", "toml", "csv", "xml", "html", "htm", "css", "scss", "less",
-    "ts", "tsx", "js", "jsx", "py", "rs", "sh", "bash", "zsh", "fish", "rb", "go", "java",
-    "kt", "c", "cpp", "h", "hpp", "swift", "lua", "sql", "graphql", "env", "ini", "cfg",
-    "conf", "properties", "makefile", "dockerfile", "gitignore", "editorconfig", "mdx",
-    "svelte", "vue", "astro", "tf", "hcl", "nix", "zig", "hs", "ml", "ex", "exs", "erl",
-    "clj", "lisp", "el", "vim", "r", "jl", "ps1", "bat", "cmd",
+    "yml",
+    "yaml",
+    "json",
+    "txt",
+    "toml",
+    "csv",
+    "xml",
+    "html",
+    "htm",
+    "css",
+    "scss",
+    "less",
+    "ts",
+    "tsx",
+    "js",
+    "jsx",
+    "py",
+    "rs",
+    "sh",
+    "bash",
+    "zsh",
+    "fish",
+    "rb",
+    "go",
+    "java",
+    "kt",
+    "c",
+    "cpp",
+    "h",
+    "hpp",
+    "swift",
+    "lua",
+    "sql",
+    "graphql",
+    "env",
+    "ini",
+    "cfg",
+    "conf",
+    "properties",
+    "makefile",
+    "dockerfile",
+    "gitignore",
+    "editorconfig",
+    "mdx",
+    "svelte",
+    "vue",
+    "astro",
+    "tf",
+    "hcl",
+    "nix",
+    "zig",
+    "hs",
+    "ml",
+    "ex",
+    "exs",
+    "erl",
+    "clj",
+    "lisp",
+    "el",
+    "vim",
+    "r",
+    "jl",
+    "ps1",
+    "bat",
+    "cmd",
 ];
 
 /// Classify a file extension into "markdown", "text", or "binary".
@@ -190,10 +252,24 @@ pub(crate) fn classify_file_kind(path: &Path) -> &'static str {
         Some(e) => e.to_string_lossy().to_lowercase(),
         None => {
             // Files without extension: check if name itself is a known text file
-            let name = path.file_name().map(|n| n.to_string_lossy().to_lowercase()).unwrap_or_default();
-            return if ["makefile", "dockerfile", "rakefile", "gemfile", "procfile", "brewfile",
-                       ".gitignore", ".gitattributes", ".editorconfig", ".env"]
-                .contains(&name.as_str()) {
+            let name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().to_lowercase())
+                .unwrap_or_default();
+            return if [
+                "makefile",
+                "dockerfile",
+                "rakefile",
+                "gemfile",
+                "procfile",
+                "brewfile",
+                ".gitignore",
+                ".gitattributes",
+                ".editorconfig",
+                ".env",
+            ]
+            .contains(&name.as_str())
+            {
                 "text"
             } else {
                 "binary"

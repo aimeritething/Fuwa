@@ -133,7 +133,11 @@ fn test_scan_vault_root_and_protected_folders() {
         "---\ntype: Type\n---\n# Project\n",
     );
     create_test_file(dir.path(), "attachments/notes.md", "# Attachment note\n");
-    create_test_file(dir.path(), "not-markdown.txt", "This should be included as text");
+    create_test_file(
+        dir.path(),
+        "not-markdown.txt",
+        "This should be included as text",
+    );
 
     let entries = scan_vault(dir.path(), &HashMap::new()).unwrap();
     assert_eq!(entries.len(), 4);
@@ -144,7 +148,10 @@ fn test_scan_vault_root_and_protected_folders() {
     assert!(filenames.contains(&"notes.md"));
     assert!(filenames.contains(&"not-markdown.txt"));
 
-    let txt_entry = entries.iter().find(|e| e.filename == "not-markdown.txt").unwrap();
+    let txt_entry = entries
+        .iter()
+        .find(|e| e.filename == "not-markdown.txt")
+        .unwrap();
     assert_eq!(txt_entry.file_kind, "text");
     assert_eq!(txt_entry.title, "not-markdown.txt");
 }
