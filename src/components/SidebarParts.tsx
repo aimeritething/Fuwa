@@ -19,6 +19,7 @@ export function isSelectionActive(current: SidebarSelection, check: SidebarSelec
     case 'sectionGroup': return (current as typeof check).type === check.type
     case 'folder': return (current as typeof check).path === check.path
     case 'entity': return (current as typeof check).entry.path === check.entry.path
+    case 'view': return (current as typeof check).filename === check.filename
     default: return false
   }
 }

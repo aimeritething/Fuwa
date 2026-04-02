@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, startTransition } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
-import type { VaultEntry, FolderNode, GitCommit, ModifiedFile, NoteStatus, GitPushResult } from '../types'
+import type { VaultEntry, FolderNode, GitCommit, ModifiedFile, NoteStatus, GitPushResult, ViewFile } from '../types'
 import { clearPrefetchCache } from './useTabManagement'
 
 function tauriCall<T>(command: string, tauriArgs: Record<string, unknown>, mockArgs?: Record<string, unknown>): Promise<T> {
@@ -90,6 +90,7 @@ export function resolveNoteStatus(
 export function useVaultLoader(vaultPath: string) {
   const [entries, setEntries] = useState<VaultEntry[]>([])
   const [folders, setFolders] = useState<FolderNode[]>([])
+  const [views, setViews] = useState<ViewFile[]>([])
   const [modifiedFiles, setModifiedFiles] = useState<ModifiedFile[]>([])
   const [modifiedFilesError, setModifiedFilesError] = useState<string | null>(null)
   const tracker = useNewNoteTracker()
@@ -98,13 +99,16 @@ export function useVaultLoader(vaultPath: string) {
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale data then load new vault
-    setEntries([]); setFolders([]); setModifiedFiles([]); setModifiedFilesError(null); tracker.clear(); unsaved.clearAll()
+    setEntries([]); setFolders([]); setViews([]); setModifiedFiles([]); setModifiedFilesError(null); tracker.clear(); unsaved.clearAll()
     loadVaultData(vaultPath)
       .then(({ entries: e }) => { setEntries(e) })
       .catch((err) => console.warn('Vault scan failed:', err))
     tauriCall<FolderNode[]>('list_vault_folders', { path: vaultPath })
       .then((f) => { setFolders(f ?? []) })
       .catch(() => { /* folders are optional — ignore errors */ })
+    tauriCall<ViewFile[]>('list_views', { vaultPath })
+      .then((v) => { setViews(v ?? []) })
+      .catch(() => { /* views are optional — ignore errors */ })
   }, [vaultPath]) // eslint-disable-line react-hooks/exhaustive-deps -- tracker.clear is stable
 
   const loadModifiedFiles = useCallback(async () => {
@@ -186,11 +190,17 @@ export function useVaultLoader(vaultPath: string) {
     [vaultPath, loadModifiedFiles],
   )
 
+  const reloadViews = useCallback(async () => {
+    try {
+      setViews(await tauriCall<ViewFile[]>('list_views', { vaultPath }) ?? [])
+    } catch { /* views are optional */ }
+  }, [vaultPath])
+
   return {
-    entries, folders, modifiedFiles, modifiedFilesError,
+    entries, folders, views, modifiedFiles, modifiedFilesError,
     addEntry, updateEntry, removeEntry, replaceEntry,
     loadModifiedFiles, loadGitHistory, loadDiff, loadDiffAtCommit,
-    getNoteStatus, commitAndPush, reloadVault, reloadFolders,
+    getNoteStatus, commitAndPush, reloadVault, reloadFolders, reloadViews,
     addPendingSave: pendingSave.addPendingSave,
     removePendingSave: pendingSave.removePendingSave,
     unsavedPaths: unsaved.unsavedPaths,

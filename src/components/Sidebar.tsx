@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback, memo } from 'react'
-import type { VaultEntry, FolderNode, SidebarSelection } from '../types'
+import type { VaultEntry, FolderNode, SidebarSelection, ViewFile } from '../types'
 import { buildTypeEntryMap } from '../utils/typeColors'
 import { buildDynamicSections, sortSections } from '../utils/sidebarSections'
 import { TypeCustomizePopover } from './TypeCustomizePopover'
@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  FileText, Trash, Archive, CaretLeft, Tray, CaretRight, CaretDown,
+  FileText, Trash, Archive, CaretLeft, Tray, CaretRight, CaretDown, Plus, Funnel,
 } from '@phosphor-icons/react'
 import { isEmoji } from '../utils/emoji'
 import { arrayMove } from '@dnd-kit/sortable'
@@ -38,6 +38,8 @@ interface SidebarProps {
   onToggleTypeVisibility?: (typeName: string) => void
   onSelectFavorite?: (entry: VaultEntry) => void
   onReorderFavorites?: (orderedPaths: string[]) => void
+  views?: ViewFile[]
+  onCreateView?: () => void
   folders?: FolderNode[]
   onCreateFolder?: (name: string) => void
   inboxCount?: number
@@ -301,6 +303,7 @@ export const Sidebar = memo(function Sidebar({
   entries, selection, onSelect,
   onCustomizeType, onUpdateTypeTemplate, onReorderSections, onRenameSection,
   onToggleTypeVisibility, onSelectFavorite, onReorderFavorites,
+  views = [], onCreateView,
   folders = [], onCreateFolder, inboxCount = 0, onCollapse,
 }: SidebarProps) {
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
@@ -387,6 +390,30 @@ export const Sidebar = memo(function Sidebar({
 
         {/* Favorites */}
         <FavoritesSection entries={entries} selection={selection} onSelect={onSelect} onSelectNote={onSelectFavorite} onReorder={onReorderFavorites} />
+
+        {/* Views */}
+        {views.length > 0 && (
+          <div style={{ padding: '4px 6px' }}>
+            <div className="flex w-full select-none items-center justify-between" style={{ padding: '4px 16px' }}>
+              <span className="text-[11px] font-medium text-muted-foreground">Views</span>
+              {onCreateView && (
+                <button className="flex shrink-0 cursor-pointer items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground transition-colors hover:text-foreground" style={{ width: 20, height: 20 }} onClick={onCreateView} aria-label="Create view" title="Create view">
+                  <Plus size={14} />
+                </button>
+              )}
+            </div>
+            {views.map((v) => (
+              <NavItem
+                key={v.filename}
+                icon={Funnel}
+                label={v.definition.name}
+                isActive={isSelectionActive(selection, { kind: 'view', filename: v.filename })}
+                onClick={() => onSelect({ kind: 'view', filename: v.filename })}
+                compact
+              />
+            ))}
+          </div>
+        )}
 
         {/* Sections header + visibility popover */}
         <div ref={customizeRef} style={{ position: 'relative', padding: '4px 6px 0' }}>

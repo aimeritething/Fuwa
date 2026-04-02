@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, memo } from 'react'
-import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus, InboxPeriod } from '../types'
+import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus, InboxPeriod, ViewFile } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import { countByFilter, countAllByFilter, countInboxByPeriod } from '../utils/noteListHelpers'
 import { NoteItem } from './NoteItem'
@@ -41,9 +41,10 @@ interface NoteListProps {
   onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
   onOpenInNewWindow?: (entry: VaultEntry) => void
+  views?: ViewFile[]
 }
 
-function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'month', onInboxPeriodChange, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry, onOpenInNewWindow }: NoteListProps) {
+function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'month', onInboxPeriodChange, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry, onOpenInNewWindow, views }: NoteListProps) {
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
 
   const isSectionGroup = selection.kind === 'sectionGroup'
@@ -68,7 +69,7 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   const typeEntryMap = useTypeEntryMap(entries)
-  const { isEntityView, isTrashView, isArchivedView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod: isInboxView ? inboxPeriod : undefined })
+  const { isEntityView, isTrashView, isArchivedView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod: isInboxView ? inboxPeriod : undefined, views })
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
   const deletedCount = useMemo(
     () => isChangesView ? (modifiedFiles ?? []).filter((f) => f.status === 'deleted').length : 0,
@@ -101,7 +102,7 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
     onCreateNote(selection.kind === 'sectionGroup' ? selection.type : undefined)
   }, [onCreateNote, selection])
   const toggleGroup = useCallback((label: string) => { setCollapsedGroups((prev) => toggleSetMember(prev, label)) }, [])
-  const title = resolveHeaderTitle(selection, typeDocument)
+  const title = resolveHeaderTitle(selection, typeDocument, views)
 
   return (
     <div className="flex flex-col select-none overflow-hidden border-r border-border bg-card text-foreground" style={{ height: '100%' }}>

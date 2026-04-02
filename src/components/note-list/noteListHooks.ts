@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus } from '../../types'
+import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus, ViewFile } from '../../types'
 import {
   type SortOption, type SortDirection, type SortConfig, type NoteListFilter,
   getSortComparator, extractSortableProperties,
@@ -20,7 +20,7 @@ export function useTypeEntryMap(entries: VaultEntry[]) {
 
 // --- useFilteredEntries ---
 
-export function useFilteredEntries(entries: VaultEntry[], selection: SidebarSelection, modifiedPathSet: Set<string>, modifiedSuffixes: string[], subFilter?: NoteListFilter, inboxPeriod?: InboxPeriod) {
+export function useFilteredEntries(entries: VaultEntry[], selection: SidebarSelection, modifiedPathSet: Set<string>, modifiedSuffixes: string[], subFilter?: NoteListFilter, inboxPeriod?: InboxPeriod, views?: ViewFile[]) {
   const isEntityView = selection.kind === 'entity'
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
   const isInboxView = selection.kind === 'filter' && selection.filter === 'inbox'
@@ -28,8 +28,8 @@ export function useFilteredEntries(entries: VaultEntry[], selection: SidebarSele
     if (isEntityView) return []
     if (isChangesView) return entries.filter((e) => isModifiedEntry(e.path, modifiedPathSet, modifiedSuffixes))
     if (isInboxView) return filterInboxEntries(entries, inboxPeriod ?? 'month')
-    return filterEntries(entries, selection, subFilter)
-  }, [entries, selection, isEntityView, isChangesView, isInboxView, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod])
+    return filterEntries(entries, selection, subFilter, views)
+  }, [entries, selection, isEntityView, isChangesView, isInboxView, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod, views])
 }
 
 // --- useNoteListData ---
@@ -40,14 +40,15 @@ interface NoteListDataParams {
   modifiedPathSet: Set<string>; modifiedSuffixes: string[]
   subFilter?: NoteListFilter
   inboxPeriod?: InboxPeriod
+  views?: ViewFile[]
 }
 
-export function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod }: NoteListDataParams) {
+export function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod, views }: NoteListDataParams) {
   const isEntityView = selection.kind === 'entity'
   const isTrashView = (selection.kind === 'filter' && selection.filter === 'trash') || subFilter === 'trashed'
   const isArchivedView = (selection.kind === 'filter' && selection.filter === 'archived') || subFilter === 'archived'
 
-  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod)
+  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod, views)
 
   const searched = useMemo(() => {
     const sorted = [...filteredEntries].sort(getSortComparator(listSort, listDirection))

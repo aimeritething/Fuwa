@@ -1,4 +1,5 @@
-import type { VaultEntry, SidebarSelection, InboxPeriod } from '../types'
+import type { VaultEntry, SidebarSelection, InboxPeriod, ViewFile } from '../types'
+import { evaluateView } from './viewFilters'
 import { wikilinkTarget, resolveEntry } from './wikilink'
 
 export type NoteListFilter = 'open' | 'archived' | 'trashed'
@@ -318,8 +319,13 @@ function isInFolder(entryPath: string, folderRelPath: string): boolean {
   return entryPath.includes(needle) || entryPath.startsWith(folderRelPath + '/')
 }
 
-function filterByKind(entries: VaultEntry[], selection: SidebarSelection, subFilter?: NoteListFilter): VaultEntry[] {
+function filterByKind(entries: VaultEntry[], selection: SidebarSelection, subFilter?: NoteListFilter, views?: ViewFile[]): VaultEntry[] {
   if (selection.kind === 'entity') return []
+  if (selection.kind === 'view') {
+    const view = views?.find((v) => v.filename === selection.filename)
+    if (!view) return []
+    return evaluateView(view.definition, entries)
+  }
   if (selection.kind === 'folder') {
     const folderEntries = entries.filter((e) => isInFolder(e.path, selection.path))
     return subFilter ? applySubFilter(folderEntries, subFilter) : folderEntries.filter(isActive)
@@ -341,8 +347,8 @@ function filterByFilterType(entries: VaultEntry[], filter: string): VaultEntry[]
   return []
 }
 
-export function filterEntries(entries: VaultEntry[], selection: SidebarSelection, subFilter?: NoteListFilter): VaultEntry[] {
-  return filterByKind(entries, selection, subFilter)
+export function filterEntries(entries: VaultEntry[], selection: SidebarSelection, subFilter?: NoteListFilter, views?: ViewFile[]): VaultEntry[] {
+  return filterByKind(entries, selection, subFilter, views)
 }
 
 /** Count notes per sub-filter for a given type. */

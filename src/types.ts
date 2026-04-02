@@ -184,6 +184,33 @@ export type SidebarSelection =
   | { kind: 'sectionGroup'; type: string }
   | { kind: 'folder'; path: string }
   | { kind: 'entity'; entry: VaultEntry }
+  | { kind: 'view'; filename: string }
+
+// --- Custom Views ---
+
+export type FilterOp = 'equals' | 'not_equals' | 'contains' | 'not_contains' | 'any_of' | 'none_of' | 'is_empty' | 'is_not_empty' | 'before' | 'after'
+
+export interface FilterCondition {
+  field: string
+  op: FilterOp
+  value?: unknown
+}
+
+export type FilterGroup = { all: FilterNode[] } | { any: FilterNode[] }
+export type FilterNode = FilterCondition | FilterGroup
+
+export interface ViewDefinition {
+  name: string
+  icon: string | null
+  color: string | null
+  sort: string | null
+  filters: FilterGroup
+}
+
+export interface ViewFile {
+  filename: string
+  definition: ViewDefinition
+}
 
 /** A node in the vault's folder tree (directories only, no files). */
 export interface FolderNode {

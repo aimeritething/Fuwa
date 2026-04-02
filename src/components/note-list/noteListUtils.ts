@@ -1,7 +1,11 @@
-import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus } from '../../types'
+import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus, ViewFile } from '../../types'
 import type { RelationshipGroup } from '../../utils/noteListHelpers'
 
-export function resolveHeaderTitle(selection: SidebarSelection, typeDocument: VaultEntry | null): string {
+export function resolveHeaderTitle(selection: SidebarSelection, typeDocument: VaultEntry | null, views?: ViewFile[]): string {
+  if (selection.kind === 'view') {
+    const view = views?.find((v) => v.filename === selection.filename)
+    return view?.definition.name ?? 'View'
+  }
   if (selection.kind === 'entity') return selection.entry.title
   if (typeDocument) return typeDocument.title
   if (selection.kind === 'filter' && selection.filter === 'archived') return 'Archive'
