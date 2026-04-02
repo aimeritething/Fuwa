@@ -3,12 +3,15 @@ use std::fs;
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 
+use crate::git::{get_all_file_dates, GitDates};
+use std::collections::HashMap;
+
 use super::{parse_md_file, scan_vault, VaultEntry};
 
 // --- Vault Cache ---
 
 /// Bump this when VaultEntry fields change to force a full rescan.
-const CACHE_VERSION: u32 = 9;
+const CACHE_VERSION: u32 = 10;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct VaultCache {
@@ -173,13 +176,20 @@ fn to_relative_path(abs_path: &str, vault: &Path) -> String {
 }
 
 /// Parse .md files from a list of relative paths, skipping any that don't exist.
-fn parse_files_at(vault: &Path, rel_paths: &[String]) -> Vec<VaultEntry> {
+fn parse_files_at(
+    vault: &Path,
+    rel_paths: &[String],
+    git_dates: &HashMap<String, GitDates>,
+) -> Vec<VaultEntry> {
     rel_paths
         .iter()
         .filter_map(|rel| {
             let abs = vault.join(rel);
             if abs.is_file() {
-                parse_md_file(&abs).ok()
+                let dates = git_dates
+                    .get(rel.as_str())
+                    .map(|d| (d.modified_at, d.created_at));
+                parse_md_file(&abs, dates).ok()
             } else {
                 None
             }
@@ -264,13 +274,17 @@ fn finalize_and_cache(vault: &Path, mut entries: Vec<VaultEntry>, hash: String) 
 /// Handle same-commit cache hit: re-parse any uncommitted changes (new or modified files).
 /// Always prunes stale entries even when git reports no changes, so that files
 /// deleted outside git (e.g., via Finder) are removed from the cache on vault open.
-fn update_same_commit(vault: &Path, cache: VaultCache) -> Vec<VaultEntry> {
+fn update_same_commit(
+    vault: &Path,
+    cache: VaultCache,
+    git_dates: &HashMap<String, GitDates>,
+) -> Vec<VaultEntry> {
     let changed = git_uncommitted_files(vault);
     let mut entries = cache.entries;
     if !changed.is_empty() {
         let changed_set: std::collections::HashSet<String> = changed.iter().cloned().collect();
         entries.retain(|e| !changed_set.contains(&to_relative_path(&e.path, vault)));
-        entries.extend(parse_files_at(vault, &changed));
+        entries.extend(parse_files_at(vault, &changed, git_dates));
     }
     // Always finalize: prune_stale_entries inside finalize_and_cache removes
     // entries for files deleted outside git (e.g., via Finder or another app).
@@ -282,6 +296,7 @@ fn update_different_commit(
     vault: &Path,
     cache: VaultCache,
     current_hash: String,
+    git_dates: &HashMap<String, GitDates>,
 ) -> Vec<VaultEntry> {
     let changed_files = git_changed_files(vault, &cache.commit_hash, &current_hash);
     let changed_set: std::collections::HashSet<String> = changed_files.iter().cloned().collect();
@@ -291,7 +306,7 @@ fn update_different_commit(
         .into_iter()
         .filter(|e| !changed_set.contains(&to_relative_path(&e.path, vault)))
         .collect();
-    entries.extend(parse_files_at(vault, &changed_files));
+    entries.extend(parse_files_at(vault, &changed_files, git_dates));
 
     finalize_and_cache(vault, entries, current_hash)
 }
@@ -319,26 +334,34 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
 
     let current_hash = match git_head_hash(vault_path) {
         Some(h) => h,
-        None => return scan_vault(vault_path),
+        None => return scan_vault(vault_path, &HashMap::new()),
     };
+
+    // Build git dates map once — used by all code paths below
+    let git_dates = get_all_file_dates(vault_path);
 
     if let Some(cache) = load_cache(vault_path) {
         let current_vault_str = vault_path.to_string_lossy();
         let cache_stale = cache.version != CACHE_VERSION
             || (!cache.vault_path.is_empty() && cache.vault_path != current_vault_str.as_ref());
         if cache_stale {
-            let entries = scan_vault(vault_path)?;
+            let entries = scan_vault(vault_path, &git_dates)?;
             return Ok(finalize_and_cache(vault_path, entries, current_hash));
         }
         return if cache.commit_hash == current_hash {
-            Ok(update_same_commit(vault_path, cache))
+            Ok(update_same_commit(vault_path, cache, &git_dates))
         } else {
-            Ok(update_different_commit(vault_path, cache, current_hash))
+            Ok(update_different_commit(
+                vault_path,
+                cache,
+                current_hash,
+                &git_dates,
+            ))
         };
     }
 
     // No cache — full scan and write cache
-    let entries = scan_vault(vault_path)?;
+    let entries = scan_vault(vault_path, &git_dates)?;
     Ok(finalize_and_cache(vault_path, entries, current_hash))
 }
 
@@ -930,7 +953,7 @@ mod tests {
 
         // Simulate a stale cache written by old code that parsed Archived: Yes as false
         let stale_entry = {
-            let mut e = parse_md_file(&vault.join("note.md")).unwrap();
+            let mut e = parse_md_file(&vault.join("note.md"), None).unwrap();
             e.archived = false; // simulate old parser behavior
             e
         };

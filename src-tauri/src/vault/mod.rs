@@ -35,7 +35,14 @@ use std::path::Path;
 use walkdir::WalkDir;
 
 /// Parse a single markdown file into a VaultEntry.
-pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
+///
+/// If `git_dates` is provided, those timestamps override filesystem metadata
+/// for `modified_at` and `created_at`. Pass `None` to use filesystem dates
+/// (appropriate for newly-saved files not yet committed, or non-git vaults).
+pub fn parse_md_file(
+    path: &Path,
+    git_dates: Option<(u64, u64)>,
+) -> Result<VaultEntry, String> {
     let content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
     let filename = path
@@ -51,7 +58,11 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
     let snippet = extract_snippet(&content);
     let word_count = count_body_words(&content);
     let outgoing_links = extract_outgoing_links(&parsed.content);
-    let (modified_at, created_at, file_size) = read_file_metadata(path)?;
+    let (fs_modified, fs_created, file_size) = read_file_metadata(path)?;
+    let (modified_at, created_at) = match git_dates {
+        Some((git_mod, git_create)) => (Some(git_mod), Some(git_create)),
+        None => (fs_modified, fs_created),
+    };
     let is_a = resolve_is_a(frontmatter.is_a);
 
     // Add "Type" relationship: isA becomes a navigable link to the type document.
@@ -111,11 +122,12 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
 }
 
 /// Re-read a single file from disk and return a fresh VaultEntry.
+/// Uses filesystem dates (no git lookup) since the file was likely just saved.
 pub fn reload_entry(path: &Path) -> Result<VaultEntry, String> {
     if !path.exists() {
         return Err(format!("File does not exist: {}", path.display()));
     }
-    parse_md_file(path)
+    parse_md_file(path, None)
 }
 
 /// Directories that are never shown in the folder tree or scanned for notes.
@@ -129,8 +141,32 @@ fn is_md_file(path: &Path) -> bool {
     path.is_file() && path.extension().is_some_and(|ext| ext == "md")
 }
 
-fn try_parse_md(path: &Path, entries: &mut Vec<VaultEntry>) {
-    match parse_md_file(path) {
+use crate::git::GitDates;
+use std::collections::HashMap;
+
+fn lookup_git_dates(
+    path: &Path,
+    vault_path: &Path,
+    git_dates: &HashMap<String, GitDates>,
+) -> Option<(u64, u64)> {
+    let rel = path
+        .strip_prefix(vault_path)
+        .ok()?
+        .to_string_lossy()
+        .to_string();
+    git_dates
+        .get(&rel)
+        .map(|d| (d.modified_at, d.created_at))
+}
+
+fn try_parse_md(
+    path: &Path,
+    vault_path: &Path,
+    git_dates: &HashMap<String, GitDates>,
+    entries: &mut Vec<VaultEntry>,
+) {
+    let dates = lookup_git_dates(path, vault_path, git_dates);
+    match parse_md_file(path, dates) {
         Ok(vault_entry) => entries.push(vault_entry),
         Err(e) => log::warn!("Skipping file: {}", e),
     }
@@ -138,7 +174,11 @@ fn try_parse_md(path: &Path, entries: &mut Vec<VaultEntry>) {
 
 /// Scan all .md files in the vault, including subdirectories.
 /// Hidden directories (starting with `.`) are excluded.
-fn scan_all_md_files(vault_path: &Path, entries: &mut Vec<VaultEntry>) {
+fn scan_all_md_files(
+    vault_path: &Path,
+    git_dates: &HashMap<String, GitDates>,
+    entries: &mut Vec<VaultEntry>,
+) {
     let walker = WalkDir::new(vault_path)
         .follow_links(true)
         .into_iter()
@@ -155,13 +195,17 @@ fn scan_all_md_files(vault_path: &Path, entries: &mut Vec<VaultEntry>) {
         });
     for entry in walker.filter_map(|e| e.ok()) {
         if is_md_file(entry.path()) {
-            try_parse_md(entry.path(), entries);
+            try_parse_md(entry.path(), vault_path, git_dates, entries);
         }
     }
 }
 
 /// Scan a directory recursively for .md files and return VaultEntry for each.
-pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
+/// Pass an empty map for `git_dates` to use filesystem dates only.
+pub fn scan_vault(
+    vault_path: &Path,
+    git_dates: &HashMap<String, GitDates>,
+) -> Result<Vec<VaultEntry>, String> {
     if !vault_path.exists() {
         return Err(format!(
             "Vault path does not exist: {}",
@@ -176,7 +220,7 @@ pub fn scan_vault(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     }
 
     let mut entries = Vec::new();
-    scan_all_md_files(vault_path, &mut entries);
+    scan_all_md_files(vault_path, git_dates, &mut entries);
 
     entries.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
     Ok(entries)

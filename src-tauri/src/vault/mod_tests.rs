@@ -15,7 +15,7 @@ fn create_test_file(dir: &Path, name: &str, content: &str) {
 
 fn parse_test_entry(dir: &TempDir, name: &str, content: &str) -> VaultEntry {
     create_test_file(dir.path(), name, content);
-    parse_md_file(&dir.path().join(name)).unwrap()
+    parse_md_file(&dir.path().join(name), None).unwrap()
 }
 
 #[test]
@@ -108,7 +108,7 @@ fn test_parse_no_frontmatter() {
     let content = "# A Note Without Frontmatter\n\nJust markdown.";
     create_test_file(dir.path(), "a-note-without-frontmatter.md", content);
 
-    let entry = parse_md_file(&dir.path().join("a-note-without-frontmatter.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("a-note-without-frontmatter.md"), None).unwrap();
     // No title in frontmatter → derived from filename
     assert_eq!(entry.title, "A Note Without Frontmatter");
 }
@@ -119,7 +119,7 @@ fn test_parse_single_string_aliases() {
     let content = "---\naliases: SingleAlias\n---\n# Test\n";
     create_test_file(dir.path(), "single-alias.md", content);
 
-    let entry = parse_md_file(&dir.path().join("single-alias.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("single-alias.md"), None).unwrap();
     assert_eq!(entry.aliases, vec!["SingleAlias"]);
 }
 
@@ -135,7 +135,7 @@ fn test_scan_vault_root_and_protected_folders() {
     create_test_file(dir.path(), "attachments/notes.md", "# Attachment note\n");
     create_test_file(dir.path(), "not-markdown.txt", "This should be ignored");
 
-    let entries = scan_vault(dir.path()).unwrap();
+    let entries = scan_vault(dir.path(), &HashMap::new()).unwrap();
     assert_eq!(entries.len(), 3);
 
     let filenames: Vec<&str> = entries.iter().map(|e| e.filename.as_str()).collect();
@@ -159,7 +159,7 @@ fn test_scan_vault_includes_subdirectory_notes() {
         "---\ntype: Project\n---\n# Old\n",
     );
 
-    let entries = scan_vault(dir.path()).unwrap();
+    let entries = scan_vault(dir.path(), &HashMap::new()).unwrap();
     assert_eq!(
         entries.len(),
         3,
@@ -178,7 +178,7 @@ fn test_scan_vault_includes_all_protected_folders() {
     create_test_file(dir.path(), "attachments/notes.md", "# Attachment note\n");
     create_test_file(dir.path(), "assets/image.md", "# Asset\n");
 
-    let entries = scan_vault(dir.path()).unwrap();
+    let entries = scan_vault(dir.path(), &HashMap::new()).unwrap();
     assert_eq!(entries.len(), 3);
 }
 
@@ -189,14 +189,14 @@ fn test_scan_vault_skips_hidden_folders() {
     create_test_file(dir.path(), ".laputa/cache.md", "# Cache\n");
     create_test_file(dir.path(), ".git/objects.md", "# Git\n");
 
-    let entries = scan_vault(dir.path()).unwrap();
+    let entries = scan_vault(dir.path(), &HashMap::new()).unwrap();
     assert_eq!(entries.len(), 1);
     assert_eq!(entries[0].filename, "root.md");
 }
 
 #[test]
 fn test_scan_vault_nonexistent_path() {
-    let result = scan_vault(Path::new("/nonexistent/path/that/does/not/exist"));
+    let result = scan_vault(Path::new("/nonexistent/path/that/does/not/exist"), &HashMap::new());
     assert!(result.is_err());
 }
 
@@ -207,7 +207,7 @@ fn test_parse_malformed_yaml() {
     let content = "---\nIs A: [unclosed bracket\n---\n# Malformed\n";
     create_test_file(dir.path(), "malformed.md", content);
 
-    let entry = parse_md_file(&dir.path().join("malformed.md"));
+    let entry = parse_md_file(&dir.path().join("malformed.md"), None);
     // Should still succeed — gray_matter may parse partially or skip
     assert!(entry.is_ok());
 }
@@ -236,7 +236,7 @@ fn test_parse_md_file_has_snippet() {
     let content = "---\nIs A: Note\n---\n# Test Note\n\nHello, world! This is a snippet.";
     create_test_file(dir.path(), "test.md", content);
 
-    let entry = parse_md_file(&dir.path().join("test.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("test.md"), None).unwrap();
     assert_eq!(entry.snippet, "Hello, world! This is a snippet.");
 }
 
@@ -247,7 +247,7 @@ fn test_parse_md_file_has_word_count() {
         "---\nIs A: Note\n---\n# Test Note\n\nHello world. This is a test with seven words.";
     create_test_file(dir.path(), "test.md", content);
 
-    let entry = parse_md_file(&dir.path().join("test.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("test.md"), None).unwrap();
     assert_eq!(entry.word_count, 9);
 }
 
@@ -257,7 +257,7 @@ fn test_parse_md_file_word_count_empty_body() {
     let content = "---\nIs A: Note\n---\n# Empty Note\n";
     create_test_file(dir.path(), "test.md", content);
 
-    let entry = parse_md_file(&dir.path().join("test.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("test.md"), None).unwrap();
     assert_eq!(entry.word_count, 0);
 }
 
@@ -278,7 +278,7 @@ Status: Active
 "#;
     create_test_file(dir.path(), "publish-essays.md", content);
 
-    let entry = parse_md_file(&dir.path().join("publish-essays.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("publish-essays.md"), None).unwrap();
     assert_eq!(entry.relationships.len(), 3); // Has, Topics, Type
     assert_eq!(
         entry.relationships.get("Has").unwrap(),
@@ -310,7 +310,7 @@ Belongs to:
 "#;
     create_test_file(dir.path(), "some-project.md", content);
 
-    let entry = parse_md_file(&dir.path().join("some-project.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("some-project.md"), None).unwrap();
 
     // Owner with wikilink should appear in relationships
     assert!(entry.relationships.get("Owner").is_some());
@@ -342,7 +342,7 @@ Custom Field: just a plain string
 "#;
     create_test_file(dir.path(), "plain-note.md", content);
 
-    let entry = parse_md_file(&dir.path().join("plain-note.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("plain-note.md"), None).unwrap();
     // Tags and Custom Field don't contain wikilinks — only the auto-generated "Type" relationship
     assert_eq!(entry.relationships.len(), 1);
     assert_eq!(
@@ -404,7 +404,7 @@ Context: "[[area/research]]"
 "#;
     create_test_file(dir.path(), "single-vs-array.md", content);
 
-    let entry = parse_md_file(&dir.path().join("single-vs-array.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("single-vs-array.md"), None).unwrap();
 
     // Single string → Vec with one element
     assert_eq!(
@@ -481,7 +481,7 @@ References:
 "#;
     create_test_file(dir.path(), "mixed-array.md", content);
 
-    let entry = parse_md_file(&dir.path().join("mixed-array.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("mixed-array.md"), None).unwrap();
 
     // Only the wikilink entries should be captured
     assert_eq!(
@@ -545,7 +545,7 @@ title: No Code
 # No Code
 "#;
     create_test_file(dir.path(), "no-code.md", content);
-    let entry = parse_md_file(&dir.path().join("no-code.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("no-code.md"), None).unwrap();
 
     let notes = entry
         .relationships
@@ -572,7 +572,7 @@ title: No Code
 fn test_type_from_frontmatter_only() {
     let dir = TempDir::new().unwrap();
     create_test_file(dir.path(), "test.md", "---\ntype: Custom\n---\n# Test\n");
-    let entry = parse_md_file(&dir.path().join("test.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("test.md"), None).unwrap();
     assert_eq!(entry.is_a, Some("Custom".to_string()));
 }
 
@@ -580,7 +580,7 @@ fn test_type_from_frontmatter_only() {
 fn test_no_type_when_frontmatter_missing() {
     let dir = TempDir::new().unwrap();
     create_test_file(dir.path(), "note/test.md", "# Test\n");
-    let entry = parse_md_file(&dir.path().join("note/test.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("note/test.md"), None).unwrap();
     assert_eq!(entry.is_a, None, "type should not be inferred from folder");
 }
 
@@ -592,7 +592,7 @@ fn test_created_at_from_filesystem() {
     let content = "---\nIs A: Note\n---\n# Test\n";
     create_test_file(dir.path(), "test.md", content);
 
-    let entry = parse_md_file(&dir.path().join("test.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("test.md"), None).unwrap();
     // created_at should be set from filesystem metadata (not None)
     assert!(
         entry.created_at.is_some(),
@@ -1168,7 +1168,7 @@ fn test_parse_real_engineering_management_file() {
     if !path.exists() {
         return; // Skip when the Laputa vault is not available
     }
-    let entry = parse_md_file(path).unwrap();
+    let entry = parse_md_file(path, None).unwrap();
     assert!(
         entry.trashed,
         "engineering-management.md must be trashed (has Trashed: true in frontmatter)"
@@ -1204,7 +1204,7 @@ fn test_fallback_parser_extracts_trashed_from_malformed_yaml() {
     ];
     let content = fm.join("\n");
     create_test_file(dir.path(), "eng-mgmt.md", &content);
-    let entry = parse_md_file(&dir.path().join("eng-mgmt.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("eng-mgmt.md"), None).unwrap();
     assert!(
         entry.trashed,
         "Trashed must be true even when YAML is malformed (fallback parser)"
@@ -1231,7 +1231,7 @@ fn test_fallback_parser_extracts_archived_from_malformed_yaml() {
     ];
     let content = fm.join("\n");
     create_test_file(dir.path(), "archived-essay.md", &content);
-    let entry = parse_md_file(&dir.path().join("archived-essay.md")).unwrap();
+    let entry = parse_md_file(&dir.path().join("archived-essay.md"), None).unwrap();
     assert!(
         entry.archived,
         "Archived must be true even when YAML is malformed"

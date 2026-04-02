@@ -503,7 +503,7 @@ mod tests {
         let vault_path = dir.path().join("parse-vault");
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
-        let entries = crate::vault::scan_vault(&vault_path).unwrap();
+        let entries = crate::vault::scan_vault(&vault_path, &std::collections::HashMap::new()).unwrap();
         // SAMPLE_FILES + AGENTS.md
         assert_eq!(entries.len(), SAMPLE_FILES.len() + 1);
     }
@@ -537,7 +537,7 @@ mod tests {
         let vault_path = dir.path().join("agents-parse-vault");
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
-        let entry = crate::vault::parse_md_file(&vault_path.join("AGENTS.md")).unwrap();
+        let entry = crate::vault::parse_md_file(&vault_path.join("AGENTS.md"), None).unwrap();
         // No frontmatter title → derived from filename slug (H1 is body content)
         assert_eq!(entry.title, "AGENTS");
         // Config files have no frontmatter type field — type is None

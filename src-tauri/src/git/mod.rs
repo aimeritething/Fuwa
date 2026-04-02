@@ -1,5 +1,6 @@
 mod commit;
 mod conflict;
+mod dates;
 mod history;
 mod pulse;
 mod remote;
@@ -13,6 +14,7 @@ pub use conflict::{
     get_conflict_files, get_conflict_mode, git_commit_conflict_resolution, git_resolve_conflict,
     is_merge_in_progress, is_rebase_in_progress,
 };
+pub use dates::{get_all_file_dates, GitDates};
 pub use history::{get_file_diff, get_file_diff_at_commit, get_file_history};
 pub use pulse::{get_last_commit_info, get_vault_pulse, LastCommitInfo, PulseCommit, PulseFile};
 pub use remote::{
