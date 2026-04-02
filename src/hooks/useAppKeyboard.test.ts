@@ -175,22 +175,30 @@ describe('useAppKeyboard', () => {
     expect(actions.onZoomReset).toHaveBeenCalled()
   })
 
-  it('Cmd+I triggers toggle AI chat', () => {
+  it('Cmd+Option+I triggers toggle AI chat', () => {
     const actions = makeActions()
     const onToggleAIChat = vi.fn()
     renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat }))
-    fireKey('i', { metaKey: true })
+    fireKey('i', { metaKey: true, altKey: true })
     expect(onToggleAIChat).toHaveBeenCalled()
   })
 
-  it('Cmd+I works when text input is focused', () => {
+  it('Cmd+Option+I works when text input is focused', () => {
     const actions = makeActions()
     const onToggleAIChat = vi.fn()
     renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat }))
     withFocusedInput(() => {
-      fireKey('i', { metaKey: true })
+      fireKey('i', { metaKey: true, altKey: true })
       expect(onToggleAIChat).toHaveBeenCalled()
     })
+  })
+
+  it('Cmd+I does not trigger AI chat (reserved for italic)', () => {
+    const actions = makeActions()
+    const onToggleAIChat = vi.fn()
+    renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat }))
+    fireKey('i', { metaKey: true })
+    expect(onToggleAIChat).not.toHaveBeenCalled()
   })
 
   it('Cmd+Shift+O triggers open in new window', () => {
@@ -217,5 +225,15 @@ describe('useAppKeyboard', () => {
     fireKey('i', { metaKey: true, shiftKey: true })
     expect(onToggleInspector).toHaveBeenCalled()
     expect(onToggleAIChat).not.toHaveBeenCalled()
+  })
+
+  it('Cmd+Option+I does not trigger inspector toggle', () => {
+    const actions = makeActions()
+    const onToggleAIChat = vi.fn()
+    const onToggleInspector = vi.fn()
+    renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat, onToggleInspector }))
+    fireKey('i', { metaKey: true, altKey: true })
+    expect(onToggleAIChat).toHaveBeenCalled()
+    expect(onToggleInspector).not.toHaveBeenCalled()
   })
 })

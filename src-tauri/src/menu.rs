@@ -295,7 +295,7 @@ fn build_note_menu(app: &App) -> MenuResult {
         .build(app)?;
     let toggle_ai_chat = MenuItemBuilder::new("Toggle AI Panel")
         .id(VIEW_TOGGLE_AI_CHAT)
-        .accelerator("CmdOrCtrl+I")
+        .accelerator("CmdOrCtrl+Alt+I")
         .build(app)?;
     let toggle_backlinks = MenuItemBuilder::new("Toggle Backlinks")
         .id(VIEW_TOGGLE_BACKLINKS)

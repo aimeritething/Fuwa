@@ -89,11 +89,16 @@ export function useAppKeyboard({
       '+': onZoomIn,
       '-': onZoomOut,
       '0': onZoomReset,
-      i: () => onToggleAIChat?.(),
       '\\': () => onToggleRawEditor?.(),
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+Option+I: toggle AI panel
+      if ((e.metaKey || e.ctrlKey) && e.altKey && !e.shiftKey && (e.key === 'i' || e.key === 'I' || e.key === 'ˆ')) {
+        e.preventDefault()
+        onToggleAIChat?.()
+        return
+      }
       // Cmd+Shift+F: full-text search (distinct from Cmd+F browser find)
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
         e.preventDefault()
