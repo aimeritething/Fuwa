@@ -112,24 +112,21 @@ function applyCustomization(
 
 function SortableSection({ group, sectionProps }: {
   group: SectionGroup
-  sectionProps: Omit<SectionContentProps, 'group' | 'items' | 'isCollapsed' | 'onToggle' | 'isRenaming' | 'renameInitialValue'>
-    & { entries: VaultEntry[]; collapsed: Record<string, boolean>; onToggle: (type: string) => void; renamingType: string | null; renameInitialValue: string }
+  sectionProps: Omit<SectionContentProps, 'group' | 'itemCount' | 'isRenaming' | 'renameInitialValue'>
+    & { entries: VaultEntry[]; renamingType: string | null; renameInitialValue: string }
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.type })
-  const items = sectionProps.entries.filter((e) =>
+  const itemCount = sectionProps.entries.filter((e) =>
     !e.archived && !e.trashed && (group.type === 'Note' ? (e.isA === 'Note' || !e.isA) : e.isA === group.type),
-  )
-  const isCollapsed = sectionProps.collapsed[group.type] ?? true
+  ).length
   const isRenaming = sectionProps.renamingType === group.type
 
   return (
-    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, padding: isCollapsed ? '0 6px' : '4px 6px' }} {...attributes}>
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1, padding: '0 6px' }} {...attributes}>
       <SectionContent
-        group={group} items={items} isCollapsed={isCollapsed}
+        group={group} itemCount={itemCount}
         selection={sectionProps.selection} onSelect={sectionProps.onSelect}
-        onSelectNote={sectionProps.onSelectNote} onCreateType={sectionProps.onCreateType}
-        onCreateNewType={sectionProps.onCreateNewType} onContextMenu={sectionProps.onContextMenu}
-        onToggle={() => sectionProps.onToggle(group.type)}
+        onContextMenu={sectionProps.onContextMenu}
         dragHandleProps={listeners}
         isRenaming={isRenaming}
         renameInitialValue={isRenaming ? sectionProps.renameInitialValue : undefined}
@@ -205,12 +202,11 @@ function CustomizeOverlay({ target, typeEntryMap, innerRef, onCustomize, onChang
 // --- Main Sidebar ---
 
 export const Sidebar = memo(function Sidebar({
-  entries, selection, onSelect, onSelectNote, onCreateType, onCreateNewType,
+  entries, selection, onSelect,
   onCustomizeType, onUpdateTypeTemplate, onReorderSections, onRenameSection,
   onToggleTypeVisibility,
   folders = [], onCreateFolder, inboxCount = 0, onCollapse,
 }: SidebarProps) {
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>({})
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
   const [renamingType, setRenamingType] = useState<string | null>(null)
@@ -235,10 +231,6 @@ export const Sidebar = memo(function Sidebar({
   useOutsideClick(customizeRef, showCustomize, closeCustomize)
   useOutsideClick(contextMenuRef, !!contextMenuPos, closeContextMenu)
   useOutsideClick(popoverRef, !!customizeTarget, closeCustomizeTarget)
-
-  const toggleSection = useCallback((type: string) => {
-    setCollapsed((prev) => ({ ...prev, [type]: !(prev[type] ?? true) }))
-  }, [])
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -280,8 +272,8 @@ export const Sidebar = memo(function Sidebar({
   }, [customizeTarget, onUpdateTypeTemplate])
 
   const sectionProps = {
-    entries, collapsed, selection, onSelect, onSelectNote, onCreateType, onCreateNewType,
-    onContextMenu: handleContextMenu, onToggle: toggleSection,
+    entries, selection, onSelect,
+    onContextMenu: handleContextMenu,
     renamingType, renameInitialValue, onRenameSubmit: handleRenameSubmit, onRenameCancel: cancelRename,
   }
 

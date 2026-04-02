@@ -252,50 +252,18 @@ describe('Sidebar', () => {
     expect(screen.queryByText('Types')).not.toBeInTheDocument()
   })
 
-  it('shows entity names under their section groups after expanding', () => {
+  it('does not show inline entity names — sections are flat rows', () => {
     render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
-    // Sections start collapsed by default — expand them first
-    fireEvent.click(screen.getByLabelText('Expand Projects'))
-    fireEvent.click(screen.getByLabelText('Expand Responsibilities'))
-    fireEvent.click(screen.getByLabelText('Expand Experiments'))
-    fireEvent.click(screen.getByLabelText('Expand Procedures'))
-    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-    expect(screen.getByText('Grow Newsletter')).toBeInTheDocument()
-    expect(screen.getByText('Stock Screener')).toBeInTheDocument()
-    expect(screen.getByText('Write Weekly Essays')).toBeInTheDocument()
-  })
-
-  it('shows People and Events items after expanding', () => {
-    render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
-    fireEvent.click(screen.getByLabelText('Expand People'))
-    fireEvent.click(screen.getByLabelText('Expand Events'))
-    expect(screen.getByText('Alice')).toBeInTheDocument()
-    expect(screen.getByText('Kickoff Meeting')).toBeInTheDocument()
-  })
-
-  it('collapses and expands sections', () => {
-    render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
-    // Start collapsed — items hidden
+    // Individual entries should NOT appear inline in the sidebar
     expect(screen.queryByText('Build Laputa App')).not.toBeInTheDocument()
-
-    // Expand
-    fireEvent.click(screen.getByLabelText('Expand Projects'))
-    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-
-    // Collapse
-    fireEvent.click(screen.getByLabelText('Collapse Projects'))
-    expect(screen.queryByText('Build Laputa App')).not.toBeInTheDocument()
+    expect(screen.queryByText('Grow Newsletter')).not.toBeInTheDocument()
   })
 
-  it('calls onSelect when clicking an entity', () => {
-    const onSelect = vi.fn()
-    render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={onSelect} />)
-    fireEvent.click(screen.getByLabelText('Expand Projects'))
-    fireEvent.click(screen.getByText('Build Laputa App'))
-    expect(onSelect).toHaveBeenCalledWith({
-      kind: 'entity',
-      entry: mockEntries[0],
-    })
+  it('shows note count chip on type sections', () => {
+    render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
+    // Projects section has 1 entry — count chip should be a sibling of the label
+    const projectsHeader = screen.getByText('Projects').closest('[class*="group/section"]')!
+    expect(projectsHeader.textContent).toContain('1')
   })
 
   it('calls onSelect when clicking a section header', () => {
@@ -308,37 +276,12 @@ describe('Sidebar', () => {
     })
   })
 
-  it('expands a collapsed section when clicking its header', () => {
-    render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
-    // Sections start collapsed — items hidden
-    expect(screen.queryByText('Build Laputa App')).not.toBeInTheDocument()
-    // Click the section header text (not the chevron)
-    fireEvent.click(screen.getByText('Projects'))
-    // Section should now be expanded
-    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-  })
-
-  it('collapses an expanded+selected section when clicking its header again', () => {
-    const projectSelection: SidebarSelection = { kind: 'sectionGroup', type: 'Project' }
-    render(<Sidebar entries={mockEntries} selection={projectSelection} onSelect={() => {}} />)
-    // First click expands (starts collapsed) and selects
-    fireEvent.click(screen.getByText('Projects'))
-    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-    // Second click: section is expanded + selected → should collapse
-    fireEvent.click(screen.getByText('Projects'))
-    expect(screen.queryByText('Build Laputa App')).not.toBeInTheDocument()
-  })
-
-  it('selects but keeps expanded an unselected expanded section when clicking its header', () => {
+  it('selects on every click — no expand/collapse toggle', () => {
     const onSelect = vi.fn()
     render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={onSelect} />)
-    // Expand via chevron first
-    fireEvent.click(screen.getByLabelText('Expand Projects'))
-    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-    // Click the header — section is expanded but not selected → should select and stay expanded
     fireEvent.click(screen.getByText('Projects'))
-    expect(onSelect).toHaveBeenCalledWith({ kind: 'sectionGroup', type: 'Project' })
-    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+    fireEvent.click(screen.getByText('Projects'))
+    expect(onSelect).toHaveBeenCalledTimes(2)
   })
 
   it('calls onSelect with sectionGroup for People', () => {
@@ -351,41 +294,15 @@ describe('Sidebar', () => {
     })
   })
 
-  it('renders Topics section with topic entries after expanding', () => {
+  it('renders Topics section header', () => {
     render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
     expect(screen.getByText('Topics')).toBeInTheDocument()
-    fireEvent.click(screen.getByLabelText('Expand Topics'))
-    expect(screen.getByText('Software Development')).toBeInTheDocument()
-    expect(screen.getByText('Trading')).toBeInTheDocument()
+    // Topic entries are NOT shown inline
+    expect(screen.queryByText('Software Development')).not.toBeInTheDocument()
   })
 
-  it('calls onSelect with entity kind when clicking a topic', () => {
-    const onSelect = vi.fn()
-    render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={onSelect} />)
-    fireEvent.click(screen.getByLabelText('Expand Topics'))
-    fireEvent.click(screen.getByText('Software Development'))
-    expect(onSelect).toHaveBeenCalledWith({
-      kind: 'entity',
-      entry: mockEntries[4],
-    })
-  })
-
-  it('renders + buttons for each section group when onCreateType is provided', () => {
-    const onCreateType = vi.fn()
-    render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} onCreateType={onCreateType} />)
-    const createButtons = screen.getAllByTitle(/^New /)
-    expect(createButtons.length).toBe(7) // Projects, Experiments, Responsibilities, Procedures, People, Events, Topics (no Type entries → no Types section)
-  })
-
-  it('calls onCreateType with correct type when + button is clicked', () => {
-    const onCreateType = vi.fn()
-    render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} onCreateType={onCreateType} />)
-    fireEvent.click(screen.getByTitle('New Project'))
-    expect(onCreateType).toHaveBeenCalledWith('Project')
-  })
-
-  it('does not render + buttons when onCreateType is not provided', () => {
-    render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
+  it('does not render + buttons on type sections', () => {
+    render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} onCreateType={() => {}} />)
     expect(screen.queryByTitle('New Project')).not.toBeInTheDocument()
   })
 
@@ -517,24 +434,9 @@ describe('Sidebar', () => {
       expect(screen.getByText('Recipes')).toBeInTheDocument()
     })
 
-    it('shows instances of custom types under their section after expanding', () => {
+    it('does not show inline instances — sections are flat rows', () => {
       render(<Sidebar entries={entriesWithCustomTypes} selection={defaultSelection} onSelect={() => {}} onCreateType={() => {}} />)
-      fireEvent.click(screen.getByLabelText('Expand Recipes'))
-      expect(screen.getByText('Pasta Carbonara')).toBeInTheDocument()
-    })
-
-    it('renders + button on custom type sections for creating instances', () => {
-      const onCreateType = vi.fn()
-      render(<Sidebar entries={entriesWithCustomTypes} selection={defaultSelection} onSelect={() => {}} onCreateType={onCreateType} />)
-      fireEvent.click(screen.getByTitle('New Recipe'))
-      expect(onCreateType).toHaveBeenCalledWith('Recipe')
-    })
-
-    it('calls onCreateNewType when + is clicked on Types section', () => {
-      const onCreateNewType = vi.fn()
-      render(<Sidebar entries={entriesWithCustomTypes} selection={defaultSelection} onSelect={() => {}} onCreateNewType={onCreateNewType} />)
-      fireEvent.click(screen.getByTitle('New Type'))
-      expect(onCreateNewType).toHaveBeenCalled()
+      expect(screen.queryByText('Pasta Carbonara')).not.toBeInTheDocument()
     })
 
     it('does not show section for type with zero active entries', () => {
@@ -926,11 +828,10 @@ describe('Sidebar', () => {
       expect(screen.getByText('Notes')).toBeInTheDocument()
     })
 
-    it('includes both explicit and untyped notes under Notes section', () => {
+    it('counts both explicit and untyped notes in Notes section chip', () => {
       render(<Sidebar entries={noteEntries} selection={defaultSelection} onSelect={() => {}} />)
-      fireEvent.click(screen.getByLabelText('Expand Notes'))
-      expect(screen.getByText('Explicit Note')).toBeInTheDocument()
-      expect(screen.getByText('Untyped Note')).toBeInTheDocument()
+      const notesHeader = screen.getByText('Notes').closest('[class*="group/section"]')!
+      expect(notesHeader.textContent).toContain('2')
     })
 
     it('shows Notes section for untyped entries even without explicit Note entries', () => {
@@ -1007,16 +908,8 @@ describe('Sidebar', () => {
     expect(onSelect).toHaveBeenCalledWith({ kind: 'filter', filter: 'inbox' })
   })
 
-  describe('emoji icon in sidebar section children', () => {
+  it('does not show inline entries — no child items in type sections', () => {
     const entriesWithEmoji: VaultEntry[] = [
-      {
-        path: '/vault/project.md', filename: 'project.md', title: 'Project', isA: 'Type',
-        aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
-        archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null,
-        fileSize: 200, snippet: '', wordCount: 0, relationships: {},
-        icon: 'rocket-launch', color: 'purple', order: null, sidebarLabel: null, template: null,
-        sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
-      },
       {
         path: '/vault/project/build-app.md', filename: 'build-app.md', title: 'Build App',
         isA: 'Project', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
@@ -1025,30 +918,8 @@ describe('Sidebar', () => {
         icon: '🚀', color: null, order: null, sidebarLabel: null, template: null,
         sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
       },
-      {
-        path: '/vault/project/no-icon.md', filename: 'no-icon.md', title: 'No Icon Project',
-        isA: 'Project', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-        cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
-        createdAt: null, fileSize: 150, snippet: '', wordCount: 0, relationships: {},
-        icon: null, color: null, order: null, sidebarLabel: null, template: null,
-        sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
-      },
     ]
-
-    it('shows emoji icon before title in expanded section child', () => {
-      render(<Sidebar entries={entriesWithEmoji} selection={defaultSelection} onSelect={() => {}} />)
-      fireEvent.click(screen.getByLabelText('Expand Projects'))
-      const buildApp = screen.getByText('Build App')
-      const parent = buildApp.closest('div')!
-      expect(parent.textContent).toBe('🚀Build App')
-    })
-
-    it('does not show emoji for notes without icon', () => {
-      render(<Sidebar entries={entriesWithEmoji} selection={defaultSelection} onSelect={() => {}} />)
-      fireEvent.click(screen.getByLabelText('Expand Projects'))
-      const noIcon = screen.getByText('No Icon Project')
-      const parent = noIcon.closest('div')!
-      expect(parent.textContent).toBe('No Icon Project')
-    })
+    render(<Sidebar entries={entriesWithEmoji} selection={defaultSelection} onSelect={() => {}} />)
+    expect(screen.queryByText('Build App')).not.toBeInTheDocument()
   })
 })

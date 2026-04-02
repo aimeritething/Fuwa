@@ -1,9 +1,7 @@
 import { type ComponentType, useState, useEffect, useRef } from 'react'
-import type { VaultEntry, SidebarSelection } from '../types'
+import type { SidebarSelection } from '../types'
 import { cn } from '@/lib/utils'
-import { isEmoji } from '../utils/emoji'
-import { ChevronRight, ChevronDown, Plus } from 'lucide-react'
-import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
+import { getTypeColor } from '../utils/typeColors'
 import { type IconProps } from '@phosphor-icons/react'
 
 export interface SectionGroup {
@@ -77,15 +75,10 @@ export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 
 
 export interface SectionContentProps {
   group: SectionGroup
-  items: VaultEntry[]
-  isCollapsed: boolean
+  itemCount: number
   selection: SidebarSelection
   onSelect: (sel: SidebarSelection) => void
-  onSelectNote?: (entry: VaultEntry) => void
-  onCreateType?: (type: string) => void
-  onCreateNewType?: () => void
   onContextMenu: (e: React.MouseEvent, type: string) => void
-  onToggle: () => void
   dragHandleProps?: Record<string, unknown>
   isRenaming?: boolean
   renameInitialValue?: string
@@ -93,75 +86,28 @@ export interface SectionContentProps {
   onRenameCancel?: () => void
 }
 
-function childSelection(entry: VaultEntry): SidebarSelection {
-  return { kind: 'entity', entry }
-}
-
-function resolveCreateHandler(type: string, onCreateType?: (type: string) => void, onCreateNewType?: () => void): (() => void) | undefined {
-  const isType = type === 'Type'
-  if (!onCreateType && !(isType && onCreateNewType)) return undefined
-  return isType ? () => onCreateNewType?.() : () => onCreateType?.(type)
-}
-
 export function SectionContent({
-  group, items, isCollapsed, selection, onSelect, onSelectNote,
-  onCreateType, onCreateNewType, onContextMenu, onToggle, dragHandleProps,
+  group, itemCount, selection, onSelect,
+  onContextMenu, dragHandleProps,
   isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel,
 }: SectionContentProps) {
   const { label, type, Icon, customColor } = group
   const sectionColor = getTypeColor(type, customColor)
-  const sectionLightColor = getTypeLightColor(type, customColor)
-  const onCreate = resolveCreateHandler(type, onCreateType, onCreateNewType)
 
   return (
-    <>
-      <SectionHeader
-        label={label} type={type} Icon={Icon}
-        sectionColor={sectionColor}
-        isCollapsed={isCollapsed}
-        isActive={isSelectionActive(selection, { kind: 'sectionGroup', type })}
-        showCreate={!!onCreate}
-        onSelect={() => onSelect({ kind: 'sectionGroup', type })}
-        onContextMenu={(e) => onContextMenu(e, type)}
-        onToggle={onToggle}
-        onCreate={(e) => { e.stopPropagation(); onCreate?.() }}
-        dragHandleProps={dragHandleProps}
-        isRenaming={isRenaming}
-        renameInitialValue={renameInitialValue}
-        onRenameSubmit={onRenameSubmit}
-        onRenameCancel={onRenameCancel}
-      />
-      {!isCollapsed && items.length > 0 && (
-        <SectionChildList
-          items={items} selection={selection}
-          sectionColor={sectionColor} sectionLightColor={sectionLightColor}
-          onSelect={onSelect} onSelectNote={onSelectNote}
-        />
-      )}
-    </>
-  )
-}
-
-function SectionChildList({ items, selection, sectionColor, sectionLightColor, onSelect, onSelectNote }: {
-  items: VaultEntry[]; selection: SidebarSelection
-  sectionColor: string; sectionLightColor: string
-  onSelect: (sel: SidebarSelection) => void; onSelectNote?: (entry: VaultEntry) => void
-}) {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-      {items.map((entry) => {
-        const sel = childSelection(entry)
-        const active = isSelectionActive(selection, sel)
-        return (
-          <SectionChildItem
-            key={entry.path} title={entry.title} icon={entry.icon} isActive={active}
-            sectionColor={active ? sectionColor : undefined}
-            sectionLightColor={active ? sectionLightColor : undefined}
-            onClick={() => { onSelect(sel); onSelectNote?.(entry) }}
-          />
-        )
-      })}
-    </div>
+    <SectionHeader
+      label={label} type={type} Icon={Icon}
+      sectionColor={sectionColor}
+      itemCount={itemCount}
+      isActive={isSelectionActive(selection, { kind: 'sectionGroup', type })}
+      onSelect={() => onSelect({ kind: 'sectionGroup', type })}
+      onContextMenu={(e) => onContextMenu(e, type)}
+      dragHandleProps={dragHandleProps}
+      isRenaming={isRenaming}
+      renameInitialValue={renameInitialValue}
+      onRenameSubmit={onRenameSubmit}
+      onRenameCancel={onRenameCancel}
+    />
   )
 }
 
@@ -195,11 +141,10 @@ function InlineRenameInput({ initialValue, onSubmit, onCancel }: {
   )
 }
 
-function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive, showCreate, onSelect, onContextMenu, onToggle, onCreate, dragHandleProps, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
+function SectionHeader({ label, type, Icon, sectionColor, itemCount, isActive, onSelect, onContextMenu, dragHandleProps, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
   label: string; type: string; Icon: ComponentType<IconProps>
-  sectionColor: string; isCollapsed: boolean; isActive: boolean; showCreate: boolean
+  sectionColor: string; itemCount: number; isActive: boolean
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void
-  onToggle: () => void; onCreate: (e: React.MouseEvent) => void
   dragHandleProps?: Record<string, unknown>
   isRenaming?: boolean; renameInitialValue?: string
   onRenameSubmit?: (value: string) => void; onRenameCancel?: () => void
@@ -209,12 +154,8 @@ function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive,
       className={cn("group/section flex cursor-pointer select-none items-center justify-between rounded transition-colors", isActive ? "bg-secondary" : "hover:bg-accent")}
       style={{ padding: '6px 8px 6px 16px', borderRadius: 4, gap: 4 }}
       {...dragHandleProps}
-      onClick={() => {
-        if (isRenaming) return
-        if (isCollapsed) { onToggle(); onSelect() }
-        else if (isActive) { onToggle() }
-        else { onSelect() }
-      }} onContextMenu={isRenaming ? undefined : onContextMenu}
+      onClick={() => { if (!isRenaming) onSelect() }}
+      onContextMenu={isRenaming ? undefined : onContextMenu}
     >
       <div className="flex min-w-0 flex-1 items-center" style={{ gap: 4 }}>
         <Icon size={16} style={{ color: sectionColor, flexShrink: 0 }} />
@@ -229,32 +170,11 @@ function SectionHeader({ label, type, Icon, sectionColor, isCollapsed, isActive,
           <span className="text-[13px] font-medium text-foreground" style={{ marginLeft: 4 }}>{label}</span>
         )}
       </div>
-      <div className="flex items-center" style={{ gap: 2 }}>
-        {showCreate && (
-          <button className="flex shrink-0 items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground opacity-0 transition-opacity hover:text-foreground group-hover/section:opacity-100 cursor-pointer" style={{ width: 20, height: 20 }} onClick={onCreate} aria-label={type === 'Type' ? 'Create new Type' : `Create new ${type}`} title={type === 'Type' ? 'New Type' : `New ${type}`}>
-            <Plus size={14} />
-          </button>
-        )}
-        <button className="flex shrink-0 items-center border-none bg-transparent p-0 text-inherit cursor-pointer" onClick={(e) => { e.stopPropagation(); onToggle() }} aria-label={isCollapsed ? `Expand ${label}` : `Collapse ${label}`}>
-          {isCollapsed ? <ChevronRight size={12} /> : <ChevronDown size={12} />}
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function SectionChildItem({ title, icon, isActive, sectionColor, sectionLightColor, onClick }: {
-  title: string; icon?: string | null; isActive: boolean
-  sectionColor?: string; sectionLightColor?: string
-  onClick: () => void
-}) {
-  return (
-    <div
-      className={cn("cursor-pointer truncate rounded-md text-[13px] font-normal transition-colors", isActive ? "text-foreground" : "text-muted-foreground hover:bg-accent")}
-      style={{ padding: '4px 16px 4px 28px', ...(isActive && { backgroundColor: sectionLightColor, color: sectionColor }) }}
-      onClick={onClick}
-    >
-      {icon && isEmoji(icon) && <span className="mr-1">{icon}</span>}{title}
+      {itemCount > 0 && (
+        <span className="flex items-center justify-center text-muted-foreground" style={{ height: 20, borderRadius: 9999, padding: '0 6px', fontSize: 10, background: 'var(--muted)' }}>
+          {itemCount}
+        </span>
+      )}
     </div>
   )
 }
