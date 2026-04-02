@@ -521,6 +521,94 @@ describe('useEntryActions', () => {
     })
   })
 
+  describe('handleToggleFavorite', () => {
+    it('favorites a note: writes _favorite and _favorite_index', async () => {
+      const entry = makeEntry({ path: '/vault/note/test.md', favorite: false, favoriteIndex: null })
+      const { result } = setup([entry])
+
+      await act(async () => {
+        await result.current.handleToggleFavorite('/vault/note/test.md')
+      })
+
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', '_favorite', true, { silent: true })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', '_favorite_index', 1, { silent: true })
+      expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', { favorite: true, favoriteIndex: 1 })
+      expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
+    })
+
+    it('unfavorites a note: deletes _favorite and _favorite_index', async () => {
+      const entry = makeEntry({ path: '/vault/note/test.md', favorite: true, favoriteIndex: 0 })
+      const { result } = setup([entry])
+
+      await act(async () => {
+        await result.current.handleToggleFavorite('/vault/note/test.md')
+      })
+
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', '_favorite', { silent: true })
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', '_favorite_index', { silent: true })
+      expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', { favorite: false, favoriteIndex: null })
+    })
+
+    it('assigns next available index when favoriting', async () => {
+      const entries = [
+        makeEntry({ path: '/vault/a.md', favorite: true, favoriteIndex: 3 }),
+        makeEntry({ path: '/vault/b.md', favorite: true, favoriteIndex: 5 }),
+        makeEntry({ path: '/vault/c.md', favorite: false, favoriteIndex: null }),
+      ]
+      const { result } = setup(entries)
+
+      await act(async () => {
+        await result.current.handleToggleFavorite('/vault/c.md')
+      })
+
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/c.md', '_favorite_index', 6, { silent: true })
+    })
+
+    it('rolls back on failure', async () => {
+      const entry = makeEntry({ path: '/vault/note/test.md', favorite: false, favoriteIndex: null })
+      handleUpdateFrontmatter.mockRejectedValueOnce(new Error('disk full'))
+      const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const { result } = setup([entry])
+
+      await act(async () => {
+        await result.current.handleToggleFavorite('/vault/note/test.md')
+      })
+
+      expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', { favorite: false, favoriteIndex: null })
+      expect(setToastMessage).toHaveBeenCalledWith('Failed to favorite — rolled back')
+      errorSpy.mockRestore()
+    })
+
+    it('does nothing if entry not found', async () => {
+      const { result } = setup([])
+
+      await act(async () => {
+        await result.current.handleToggleFavorite('/vault/nonexistent.md')
+      })
+
+      expect(handleUpdateFrontmatter).not.toHaveBeenCalled()
+      expect(handleDeleteProperty).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('handleReorderFavorites', () => {
+    it('updates _favorite_index for all reordered paths', async () => {
+      const { result } = setup()
+
+      await act(async () => {
+        await result.current.handleReorderFavorites(['/vault/a.md', '/vault/b.md', '/vault/c.md'])
+      })
+
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/a.md', '_favorite_index', 0, { silent: true })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/b.md', '_favorite_index', 1, { silent: true })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/c.md', '_favorite_index', 2, { silent: true })
+      expect(updateEntry).toHaveBeenCalledWith('/vault/a.md', { favoriteIndex: 0 })
+      expect(updateEntry).toHaveBeenCalledWith('/vault/b.md', { favoriteIndex: 1 })
+      expect(updateEntry).toHaveBeenCalledWith('/vault/c.md', { favoriteIndex: 2 })
+      expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
+    })
+  })
+
   describe('onBeforeAction callback', () => {
     function setupWithBeforeAction(onBeforeAction: ReturnType<typeof vi.fn>) {
       return renderHook(() =>

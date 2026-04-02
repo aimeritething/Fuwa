@@ -1117,6 +1117,26 @@ fn test_parse_underscore_archived_canonical() {
     );
 }
 
+// --- favorite field tests ---
+
+#[test]
+fn test_parse_favorite_true() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\n_favorite: true\n_favorite_index: 3\n---\n# Fav\n";
+    let entry = parse_test_entry(&dir, "fav.md", content);
+    assert!(entry.favorite, "'_favorite: true' must be parsed as favorite");
+    assert_eq!(entry.favorite_index, Some(3));
+}
+
+#[test]
+fn test_parse_favorite_absent_defaults_false() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\ntype: Note\n---\n# Not Fav\n";
+    let entry = parse_test_entry(&dir, "not-fav.md", content);
+    assert!(!entry.favorite, "absent _favorite must default to false");
+    assert_eq!(entry.favorite_index, None);
+}
+
 // --- visible field tests ---
 
 #[test]
