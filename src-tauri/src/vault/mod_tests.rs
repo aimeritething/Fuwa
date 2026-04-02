@@ -196,7 +196,10 @@ fn test_scan_vault_skips_hidden_folders() {
 
 #[test]
 fn test_scan_vault_nonexistent_path() {
-    let result = scan_vault(Path::new("/nonexistent/path/that/does/not/exist"), &HashMap::new());
+    let result = scan_vault(
+        Path::new("/nonexistent/path/that/does/not/exist"),
+        &HashMap::new(),
+    );
     assert!(result.is_err());
 }
 

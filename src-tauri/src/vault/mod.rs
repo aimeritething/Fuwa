@@ -39,10 +39,7 @@ use walkdir::WalkDir;
 /// If `git_dates` is provided, those timestamps override filesystem metadata
 /// for `modified_at` and `created_at`. Pass `None` to use filesystem dates
 /// (appropriate for newly-saved files not yet committed, or non-git vaults).
-pub fn parse_md_file(
-    path: &Path,
-    git_dates: Option<(u64, u64)>,
-) -> Result<VaultEntry, String> {
+pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<VaultEntry, String> {
     let content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
     let filename = path
@@ -154,9 +151,7 @@ fn lookup_git_dates(
         .ok()?
         .to_string_lossy()
         .to_string();
-    git_dates
-        .get(&rel)
-        .map(|d| (d.modified_at, d.created_at))
+    git_dates.get(&rel).map(|d| (d.modified_at, d.created_at))
 }
 
 fn try_parse_md(

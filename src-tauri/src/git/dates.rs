@@ -218,10 +218,7 @@ notes/daily.md
         // So modified_at > created_at (or equal if commits are same second)
         assert!(map["first.md"].modified_at >= map["first.md"].created_at);
         // second.md: only in commit 2
-        assert_eq!(
-            map["second.md"].modified_at,
-            map["second.md"].created_at
-        );
+        assert_eq!(map["second.md"].modified_at, map["second.md"].created_at);
     }
 
     #[test]

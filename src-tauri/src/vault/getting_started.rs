@@ -503,7 +503,8 @@ mod tests {
         let vault_path = dir.path().join("parse-vault");
         create_getting_started_vault(vault_path.to_str().unwrap()).unwrap();
 
-        let entries = crate::vault::scan_vault(&vault_path, &std::collections::HashMap::new()).unwrap();
+        let entries =
+            crate::vault::scan_vault(&vault_path, &std::collections::HashMap::new()).unwrap();
         // SAMPLE_FILES + AGENTS.md
         assert_eq!(entries.len(), SAMPLE_FILES.len() + 1);
     }
