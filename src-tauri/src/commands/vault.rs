@@ -207,7 +207,7 @@ pub fn batch_archive_notes(paths: Vec<String>) -> Result<usize, String> {
     let mut count = 0;
     for path in &paths {
         let path = expand_tilde(path);
-        frontmatter::update_frontmatter(&path, "Archived", FrontmatterValue::Bool(true))?;
+        frontmatter::update_frontmatter(&path, "_archived", FrontmatterValue::Bool(true))?;
         count += 1;
     }
     Ok(count)
@@ -219,10 +219,10 @@ pub fn batch_trash_notes(paths: Vec<String>) -> Result<usize, String> {
     let mut count = 0;
     for path in &paths {
         let path = expand_tilde(path);
-        frontmatter::update_frontmatter(&path, "Trashed", FrontmatterValue::Bool(true))?;
+        frontmatter::update_frontmatter(&path, "_trashed", FrontmatterValue::Bool(true))?;
         frontmatter::update_frontmatter(
             &path,
-            "Trashed at",
+            "_trashed_at",
             FrontmatterValue::String(now.clone()),
         )?;
         count += 1;
@@ -276,7 +276,7 @@ mod tests {
             1
         );
         let content = std::fs::read_to_string(&note).unwrap();
-        assert!(content.contains("Archived: true"));
+        assert!(content.contains("_archived: true"));
         assert!(content.contains("Status: Active"));
     }
 
@@ -288,8 +288,8 @@ mod tests {
             1
         );
         let content = std::fs::read_to_string(&note).unwrap();
-        assert!(content.contains("Trashed: true"));
-        assert!(content.contains("Trashed at"));
+        assert!(content.contains("_trashed: true"));
+        assert!(content.contains("_trashed_at"));
     }
 
     #[test]

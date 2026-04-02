@@ -14,7 +14,10 @@ fn extract_trashed_at_string(data: &Option<gray_matter::Pod>) -> Option<String> 
     let gray_matter::Pod::Hash(ref map) = data.as_ref()? else {
         return None;
     };
-    let pod = map.get("Trashed at").or_else(|| map.get("trashed_at"))?;
+    let pod = map
+        .get("_trashed_at")
+        .or_else(|| map.get("Trashed at"))
+        .or_else(|| map.get("trashed_at"))?;
     match pod {
         gray_matter::Pod::String(s) => Some(s.clone()),
         _ => None,
@@ -74,7 +77,11 @@ pub fn is_file_trashed(path: &Path) -> bool {
 
     // Check for "Trashed: true"
     if let Some(gray_matter::Pod::Hash(ref map)) = parsed.data {
-        if let Some(pod) = map.get("Trashed").or_else(|| map.get("trashed")) {
+        if let Some(pod) = map
+            .get("_trashed")
+            .or_else(|| map.get("Trashed"))
+            .or_else(|| map.get("trashed"))
+        {
             return match pod {
                 gray_matter::Pod::Boolean(b) => *b,
                 gray_matter::Pod::String(s) => {
@@ -371,6 +378,28 @@ mod tests {
     #[test]
     fn test_is_file_trashed_nonexistent_file() {
         assert!(!is_file_trashed(Path::new("/nonexistent/path.md")));
+    }
+
+    #[test]
+    fn test_is_file_trashed_with_underscore_trashed() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(
+            dir.path(),
+            "trashed.md",
+            "---\n_trashed: true\n---\n# Gone\n",
+        );
+        assert!(is_file_trashed(&dir.path().join("trashed.md")));
+    }
+
+    #[test]
+    fn test_is_file_trashed_with_underscore_trashed_at() {
+        let dir = TempDir::new().unwrap();
+        create_test_file(
+            dir.path(),
+            "trashed.md",
+            "---\n_trashed_at: \"2026-03-15\"\n---\n# Gone\n",
+        );
+        assert!(is_file_trashed(&dir.path().join("trashed.md")));
     }
 
     #[test]

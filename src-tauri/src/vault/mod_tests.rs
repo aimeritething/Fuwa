@@ -1092,6 +1092,31 @@ fn test_parse_trashed_no() {
     assert!(!entry.trashed, "'Trashed: No' must be parsed as false");
 }
 
+// --- new canonical underscore-prefixed keys ---
+
+#[test]
+fn test_parse_underscore_trashed_canonical() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\n_trashed: true\n_trashed_at: \"2026-03-15\"\n---\n# Gone\n";
+    let entry = parse_test_entry(&dir, "gone-new.md", content);
+    assert!(entry.trashed, "'_trashed: true' must be parsed as trashed");
+    assert!(
+        entry.trashed_at.is_some(),
+        "'_trashed_at' must be parsed as trashed_at"
+    );
+}
+
+#[test]
+fn test_parse_underscore_archived_canonical() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\n_archived: true\n---\n# Old\n";
+    let entry = parse_test_entry(&dir, "old-new.md", content);
+    assert!(
+        entry.archived,
+        "'_archived: true' must be parsed as archived"
+    );
+}
+
 // --- visible field tests ---
 
 #[test]

@@ -35,8 +35,8 @@ export function useEntryActions({
     setToastMessage('Note moved to trash')
     const now = new Date().toISOString().slice(0, 10)
     try {
-      await handleUpdateFrontmatter(path, 'Trashed', true, { silent: true })
-      await handleUpdateFrontmatter(path, 'Trashed at', now, { silent: true })
+      await handleUpdateFrontmatter(path, '_trashed', true, { silent: true })
+      await handleUpdateFrontmatter(path, '_trashed_at', now, { silent: true })
       onFrontmatterPersisted?.()
     } catch (err) {
       updateEntry(path, { trashed: false, trashedAt: null })
@@ -50,8 +50,8 @@ export function useEntryActions({
     updateEntry(path, { trashed: false, trashedAt: null })
     setToastMessage('Note restored from trash')
     try {
-      await handleDeleteProperty(path, 'Trashed', { silent: true })
-      await handleDeleteProperty(path, 'Trashed at', { silent: true })
+      await handleDeleteProperty(path, '_trashed', { silent: true })
+      await handleDeleteProperty(path, '_trashed_at', { silent: true })
       onFrontmatterPersisted?.()
     } catch (err) {
       updateEntry(path, { trashed: true, trashedAt: Date.now() / 1000 })
@@ -66,7 +66,7 @@ export function useEntryActions({
     updateEntry(path, { archived: true })
     setToastMessage('Note archived')
     try {
-      await handleUpdateFrontmatter(path, 'archived', true, { silent: true })
+      await handleUpdateFrontmatter(path, '_archived', true, { silent: true })
       onFrontmatterPersisted?.()
     } catch (err) {
       updateEntry(path, { archived: false })
@@ -80,7 +80,7 @@ export function useEntryActions({
     updateEntry(path, { archived: false })
     setToastMessage('Note unarchived')
     try {
-      await handleDeleteProperty(path, 'archived', { silent: true })
+      await handleDeleteProperty(path, '_archived', { silent: true })
       onFrontmatterPersisted?.()
     } catch (err) {
       updateEntry(path, { archived: true })

@@ -67,8 +67,8 @@ describe('useEntryActions', () => {
         await result.current.handleTrashNote('/vault/note/test.md')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed', true, { silent: true })
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed at', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), { silent: true })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', '_trashed', true, { silent: true })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', '_trashed_at', expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), { silent: true })
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', {
         trashed: true,
         trashedAt: expect.any(Number),
@@ -99,8 +99,8 @@ describe('useEntryActions', () => {
         await result.current.handleRestoreNote('/vault/note/test.md')
       })
 
-      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed', { silent: true })
-      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', 'Trashed at', { silent: true })
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', '_trashed', { silent: true })
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', '_trashed_at', { silent: true })
       expect(handleUpdateFrontmatter).not.toHaveBeenCalled()
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', {
         trashed: false,
@@ -119,7 +119,7 @@ describe('useEntryActions', () => {
         await result.current.handleArchiveNote('/vault/note/test.md')
       })
 
-      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', 'archived', true, { silent: true })
+      expect(handleUpdateFrontmatter).toHaveBeenCalledWith('/vault/note/test.md', '_archived', true, { silent: true })
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', { archived: true })
       expect(setToastMessage).toHaveBeenCalledWith('Note archived')
       expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
@@ -146,7 +146,7 @@ describe('useEntryActions', () => {
         await result.current.handleUnarchiveNote('/vault/note/test.md')
       })
 
-      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', 'archived', { silent: true })
+      expect(handleDeleteProperty).toHaveBeenCalledWith('/vault/note/test.md', '_archived', { silent: true })
       expect(handleUpdateFrontmatter).not.toHaveBeenCalled()
       expect(updateEntry).toHaveBeenCalledWith('/vault/note/test.md', { archived: false })
       expect(setToastMessage).toHaveBeenCalledWith('Note unarchived')
