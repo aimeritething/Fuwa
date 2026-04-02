@@ -359,3 +359,13 @@
 .editor__blocknote-container [data-node-type="blockContainer"]:first-child:has([data-content-type="heading"][data-level="1"]) {
   display: none;
 }
+
+/* Reduce padding at narrow editor widths so content isn't cramped */
+@container editor (max-width: 600px) {
+  .editor__blocknote-container .bn-editor {
+    padding: 12px 16px;
+  }
+  .title-section {
+    padding: 0 16px;
+  }
+}

@@ -39,11 +39,13 @@
 
 .app__editor {
   flex: 1;
-  min-width: 800px;
+  min-width: 400px;
   min-height: 0;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  container-type: inline-size;
+  container-name: editor;
 }
 
 .app__editor > * {
