@@ -32,7 +32,7 @@ interface NoteListProps {
   sidebarCollapsed?: boolean
   onSelectNote: (entry: VaultEntry) => void
   onReplaceActiveTab: (entry: VaultEntry) => void
-  onCreateNote: () => void
+  onCreateNote: (type?: string) => void
   onBulkArchive?: (paths: string[]) => void
   onBulkTrash?: (paths: string[]) => void
   onBulkRestore?: (paths: string[]) => void
@@ -97,12 +97,15 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
     <NoteItem key={entry.path} entry={entry} isSelected={selectedNote?.path === entry.path} isMultiSelected={multiSelect.selectedPaths.has(entry.path)} isHighlighted={entry.path === noteListKeyboard.highlightedPath} noteStatus={resolvedGetNoteStatus(entry.path)} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} onPrefetch={prefetchNoteContent} />
   ), [selectedNote?.path, handleClickNote, typeEntryMap, resolvedGetNoteStatus, multiSelect.selectedPaths, noteListKeyboard.highlightedPath])
 
+  const handleCreateNote = useCallback(() => {
+    onCreateNote(selection.kind === 'sectionGroup' ? selection.type : undefined)
+  }, [onCreateNote, selection])
   const toggleGroup = useCallback((label: string) => { setCollapsedGroups((prev) => toggleSetMember(prev, label)) }, [])
   const title = resolveHeaderTitle(selection, typeDocument)
 
   return (
     <div className="flex flex-col select-none overflow-hidden border-r border-border bg-card text-foreground" style={{ height: '100%' }}>
-      <NoteListHeader title={title} typeDocument={typeDocument} isEntityView={isEntityView} isTrashView={isTrashView} trashCount={searched.length} listSort={listSort} listDirection={listDirection} customProperties={customProperties} sidebarCollapsed={sidebarCollapsed} searchVisible={searchVisible} search={search} onSortChange={handleSortChange} onCreateNote={onCreateNote} onOpenType={onReplaceActiveTab} onToggleSearch={toggleSearch} onSearchChange={setSearch} onEmptyTrash={onEmptyTrash} />
+      <NoteListHeader title={title} typeDocument={typeDocument} isEntityView={isEntityView} isTrashView={isTrashView} trashCount={searched.length} listSort={listSort} listDirection={listDirection} customProperties={customProperties} sidebarCollapsed={sidebarCollapsed} searchVisible={searchVisible} search={search} onSortChange={handleSortChange} onCreateNote={handleCreateNote} onOpenType={onReplaceActiveTab} onToggleSearch={toggleSearch} onSearchChange={setSearch} onEmptyTrash={onEmptyTrash} />
       <div className="relative flex flex-1 flex-col overflow-hidden outline-none" style={{ minHeight: 0 }} tabIndex={0} onKeyDown={noteListKeyboard.handleKeyDown} onFocus={noteListKeyboard.handleFocus} data-testid="note-list-container">
         <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
           {entitySelection ? (

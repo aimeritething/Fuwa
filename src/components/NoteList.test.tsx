@@ -208,6 +208,20 @@ describe('NoteList', () => {
     expect(screen.queryByText('Matteo Cellini')).not.toBeInTheDocument()
   })
 
+  it('passes selected type when creating note from type section', () => {
+    const onCreate = vi.fn()
+    render(<NoteList {...defaultFilterProps} entries={mockEntries} selection={{ kind: 'sectionGroup', type: 'Project' }} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={onCreate} />)
+    fireEvent.click(screen.getByTitle('Create new note'))
+    expect(onCreate).toHaveBeenCalledWith('Project')
+  })
+
+  it('passes undefined type when creating note from All Notes', () => {
+    const onCreate = vi.fn()
+    render(<NoteList {...defaultFilterProps} entries={mockEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={onCreate} />)
+    fireEvent.click(screen.getByTitle('Create new note'))
+    expect(onCreate).toHaveBeenCalledWith(undefined)
+  })
+
   it('shows entity pinned at top with grouped children', () => {
     render(
       <NoteList {...defaultFilterProps} entries={mockEntries} selection={{ kind: 'entity', entry: mockEntries[0] }} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
