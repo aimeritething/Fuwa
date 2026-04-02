@@ -102,6 +102,8 @@ pub fn parse_md_file(path: &Path) -> Result<VaultEntry, String> {
         sort: frontmatter.sort.and_then(|v| v.into_scalar()),
         view: frontmatter.view.and_then(|v| v.into_scalar()),
         visible: frontmatter.visible,
+        favorite: frontmatter.favorite.unwrap_or(false),
+        favorite_index: frontmatter.favorite_index,
         word_count,
         outgoing_links,
         properties,

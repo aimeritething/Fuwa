@@ -41,6 +41,7 @@ interface EditorContentProps {
   onToggleInspector: () => void
   onNavigateWikilink: (target: string) => void
   onEditorChange?: () => void
+  onToggleFavorite?: (path: string) => void
   onTrashNote?: (path: string) => void
   onRestoreNote?: (path: string) => void
   onDeleteNote?: (path: string) => void
@@ -144,6 +145,7 @@ function ActiveTabBreadcrumb({ activeTab, barRef, props }: {
       onToggleAIChat={props.onToggleAIChat}
       inspectorCollapsed={props.inspectorCollapsed}
       onToggleInspector={props.onToggleInspector}
+      onToggleFavorite={bindPath(props.onToggleFavorite, path)}
       onTrash={bindPath(props.onTrashNote, path)}
       onRestore={bindPath(props.onRestoreNote, path)}
       onArchive={bindPath(props.onArchiveNote, path)}
@@ -250,6 +252,8 @@ export function EditorContent({
                 title={activeTab.entry.title}
                 filename={activeTab.entry.filename}
                 editable={!isTrashed}
+                notePath={activeTab.entry.path}
+                vaultPath={vaultPath}
                 onTitleChange={(newTitle) => onTitleChange?.(activeTab.entry.path, newTitle)}
               />
             </div>

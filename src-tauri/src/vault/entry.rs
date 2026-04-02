@@ -59,6 +59,11 @@ pub struct VaultEntry {
     pub view: Option<String>,
     /// Whether this Type is visible in the sidebar. Defaults to true when absent.
     pub visible: Option<bool>,
+    /// Whether this note is a user favorite (shown in FAVORITES sidebar section).
+    pub favorite: bool,
+    /// Display order within the FAVORITES section (lower = higher).
+    #[serde(rename = "favoriteIndex")]
+    pub favorite_index: Option<i64>,
     /// Word count of the note body (excludes frontmatter and H1 title).
     #[serde(rename = "wordCount")]
     pub word_count: u32,

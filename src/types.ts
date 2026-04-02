@@ -35,6 +35,10 @@ export interface VaultEntry {
   view: string | null
   /** Whether this Type is visible in the sidebar. Defaults to true when absent. */
   visible: boolean | null
+  /** Whether this note is a user favorite (shown in FAVORITES sidebar section). */
+  favorite: boolean
+  /** Display order within the FAVORITES section (lower = higher). */
+  favoriteIndex: number | null
   /** All wikilink targets found in the note content. Extracted from [[target]] patterns. */
   outgoingLinks: string[]
   /** Custom scalar frontmatter properties (non-relationship, non-structural). */
@@ -171,7 +175,7 @@ export interface PulseCommit {
   deleted: number
 }
 
-export type SidebarFilter = 'all' | 'archived' | 'trash' | 'changes' | 'pulse' | 'inbox'
+export type SidebarFilter = 'all' | 'archived' | 'trash' | 'changes' | 'pulse' | 'inbox' | 'favorites'
 
 export type InboxPeriod = 'week' | 'month' | 'quarter' | 'all'
 

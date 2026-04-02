@@ -922,4 +922,40 @@ describe('Sidebar', () => {
     render(<Sidebar entries={entriesWithEmoji} selection={defaultSelection} onSelect={() => {}} />)
     expect(screen.queryByText('Build App')).not.toBeInTheDocument()
   })
+
+  describe('FAVORITES section', () => {
+    const favEntry: VaultEntry = {
+      path: '/vault/project/fav.md', filename: 'fav.md', title: 'My Favorite Note',
+      isA: 'Project', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
+      cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+      createdAt: null, fileSize: 100, snippet: '', wordCount: 0, relationships: {},
+      icon: null, color: null, order: null, sidebarLabel: null, template: null,
+      sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
+      favorite: true, favoriteIndex: 0,
+    }
+
+    it('shows FAVORITES section when there are favorites', () => {
+      render(<Sidebar entries={[...mockEntries, favEntry]} selection={defaultSelection} onSelect={() => {}} />)
+      expect(screen.getByText('FAVORITES')).toBeInTheDocument()
+      expect(screen.getByText('My Favorite Note')).toBeInTheDocument()
+    })
+
+    it('hides FAVORITES section when no favorites', () => {
+      render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
+      expect(screen.queryByText('FAVORITES')).not.toBeInTheDocument()
+    })
+
+    it('hides trashed favorites from the section', () => {
+      const trashedFav = { ...favEntry, trashed: true }
+      render(<Sidebar entries={[...mockEntries, trashedFav]} selection={defaultSelection} onSelect={() => {}} />)
+      expect(screen.queryByText('FAVORITES')).not.toBeInTheDocument()
+    })
+
+    it('calls onSelect with favorites filter when clicking a favorite', () => {
+      const onSelect = vi.fn()
+      render(<Sidebar entries={[...mockEntries, favEntry]} selection={defaultSelection} onSelect={onSelect} />)
+      fireEvent.click(screen.getByText('My Favorite Note'))
+      expect(onSelect).toHaveBeenCalledWith({ kind: 'filter', filter: 'favorites' })
+    })
+  })
 })

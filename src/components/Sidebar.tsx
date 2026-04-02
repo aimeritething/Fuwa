@@ -12,8 +12,10 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  FileText, Trash, Archive, CaretLeft, Tray,
+  FileText, Trash, Archive, CaretLeft, Tray, CaretRight, CaretDown,
 } from '@phosphor-icons/react'
+import { isEmoji } from '../utils/emoji'
+import { arrayMove } from '@dnd-kit/sortable'
 import { SlidersHorizontal } from 'lucide-react'
 import {
   type SectionGroup, isSelectionActive,
@@ -34,6 +36,8 @@ interface SidebarProps {
   onReorderSections?: (orderedTypes: { typeName: string; order: number }[]) => void
   onRenameSection?: (typeName: string, label: string) => void
   onToggleTypeVisibility?: (typeName: string) => void
+  onSelectFavorite?: (entry: VaultEntry) => void
+  onReorderFavorites?: (orderedPaths: string[]) => void
   folders?: FolderNode[]
   onCreateFolder?: (name: string) => void
   inboxCount?: number
@@ -137,6 +141,98 @@ function SortableSection({ group, sectionProps }: {
   )
 }
 
+function SortableFavoriteItem({ entry, isActive, onSelect }: {
+  entry: VaultEntry; isActive: boolean; onSelect: () => void
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.path })
+  const icon = entry.icon && isEmoji(entry.icon) ? entry.icon : null
+  return (
+    <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }} {...attributes} {...listeners}>
+      <div
+        className={`flex cursor-pointer select-none items-center gap-1.5 rounded text-[13px] font-normal transition-colors ${isActive ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-accent'}`}
+        style={{ padding: '4px 16px 4px 28px' }}
+        onClick={onSelect}
+      >
+        {icon && <span className="shrink-0">{icon}</span>}
+        <span className="truncate">{entry.title}</span>
+      </div>
+    </div>
+  )
+}
+
+function FavoritesSection({ entries, selection, onSelect, onSelectNote, onReorder }: {
+  entries: VaultEntry[]
+  selection: SidebarSelection
+  onSelect: (sel: SidebarSelection) => void
+  onSelectNote?: (entry: VaultEntry) => void
+  onReorder?: (orderedPaths: string[]) => void
+}) {
+  const [collapsed, setCollapsed] = useState(false)
+  const favorites = useMemo(
+    () => entries
+      .filter((e) => e.favorite && !e.archived && !e.trashed)
+      .sort((a, b) => (a.favoriteIndex ?? Infinity) - (b.favoriteIndex ?? Infinity)),
+    [entries],
+  )
+  const favIds = useMemo(() => favorites.map((f) => f.path), [favorites])
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+  )
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = favIds.indexOf(active.id as string)
+    const newIndex = favIds.indexOf(over.id as string)
+    if (oldIndex === -1 || newIndex === -1) return
+    const reordered = arrayMove(favIds, oldIndex, newIndex)
+    onReorder?.(reordered)
+  }, [favIds, onReorder])
+
+  if (favorites.length === 0) return null
+
+  return (
+    <div style={{ padding: '4px 6px 0' }}>
+      <button
+        className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
+        style={{ padding: '6px 14px 6px 16px' }}
+        onClick={() => setCollapsed((v) => !v)}
+      >
+        <div className="flex items-center gap-1">
+          {collapsed ? <CaretRight size={12} /> : <CaretDown size={12} />}
+          <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>FAVORITES</span>
+        </div>
+        <span className="flex items-center justify-center text-muted-foreground" style={{ height: 18, borderRadius: 9999, padding: '0 5px', fontSize: 10, background: 'var(--muted)' }}>
+          {favorites.length}
+        </span>
+      </button>
+      {!collapsed && (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={favIds} strategy={verticalListSortingStrategy}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+              {favorites.map((entry) => {
+                const isActive = isSelectionActive(selection, { kind: 'entity', entry })
+                return (
+                  <SortableFavoriteItem
+                    key={entry.path}
+                    entry={entry}
+                    isActive={isActive}
+                    onSelect={() => {
+                      onSelect({ kind: 'filter', filter: 'favorites' })
+                      onSelectNote?.(entry)
+                    }}
+                  />
+                )
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
+      )}
+    </div>
+  )
+}
+
 function SidebarTitleBar({ onCollapse }: { onCollapse?: () => void }) {
   const { onMouseDown } = useDragRegion()
   return (
@@ -204,7 +300,7 @@ function CustomizeOverlay({ target, typeEntryMap, innerRef, onCustomize, onChang
 export const Sidebar = memo(function Sidebar({
   entries, selection, onSelect,
   onCustomizeType, onUpdateTypeTemplate, onReorderSections, onRenameSection,
-  onToggleTypeVisibility,
+  onToggleTypeVisibility, onSelectFavorite, onReorderFavorites,
   folders = [], onCreateFolder, inboxCount = 0, onCollapse,
 }: SidebarProps) {
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
@@ -288,6 +384,9 @@ export const Sidebar = memo(function Sidebar({
           <NavItem icon={Archive} label="Archive" count={archivedCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'archived' })} badgeClassName="text-muted-foreground" badgeStyle={{ background: 'var(--muted)' }} activeBadgeClassName="bg-primary text-primary-foreground" onClick={() => onSelect({ kind: 'filter', filter: 'archived' })} />
           <NavItem icon={Trash} label="Trash" count={trashedCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'trash' })} activeClassName="bg-destructive/10 text-destructive" badgeClassName="text-muted-foreground" badgeStyle={{ background: 'var(--muted)' }} activeBadgeClassName="bg-destructive text-destructive-foreground" onClick={() => onSelect({ kind: 'filter', filter: 'trash' })} />
         </div>
+
+        {/* Favorites */}
+        <FavoritesSection entries={entries} selection={selection} onSelect={onSelect} onSelectNote={onSelectFavorite} onReorder={onReorderFavorites} />
 
         {/* Sections header + visibility popover */}
         <div ref={customizeRef} style={{ position: 'relative', padding: '4px 6px 0' }}>

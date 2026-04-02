@@ -13,6 +13,7 @@ import {
   ArrowCounterClockwise,
   Archive,
   ArrowUUpLeft,
+  Star,
 } from '@phosphor-icons/react'
 
 interface BreadcrumbBarProps {
@@ -28,6 +29,7 @@ interface BreadcrumbBarProps {
   onToggleAIChat?: () => void
   inspectorCollapsed?: boolean
   onToggleInspector?: () => void
+  onToggleFavorite?: () => void
   onTrash?: () => void
   onRestore?: () => void
   onArchive?: () => void
@@ -56,10 +58,20 @@ function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggle
 function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onToggleDiff,
   rawMode, onToggleRaw,
   showAIChat, onToggleAIChat, inspectorCollapsed, onToggleInspector,
-  onTrash, onRestore, onArchive, onUnarchive,
+  onToggleFavorite, onTrash, onRestore, onArchive, onUnarchive,
 }: Omit<BreadcrumbBarProps, 'wordCount'>) {
   return (
     <div className="flex items-center" style={{ gap: 12 }}>
+      <button
+        className={cn(
+          "flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors",
+          entry.favorite ? "text-yellow-500" : "text-muted-foreground hover:text-foreground"
+        )}
+        onClick={onToggleFavorite}
+        title={entry.favorite ? 'Remove from favorites' : 'Add to favorites'}
+      >
+        <Star size={16} weight={entry.favorite ? 'fill' : 'regular'} />
+      </button>
       <button
         className="flex items-center justify-center border-none bg-transparent p-0 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
         title="Search in file"

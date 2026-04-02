@@ -12,6 +12,7 @@ const ENTRY_DELETE_MAP: Record<string, Partial<VaultEntry>> = {
   aliases: { aliases: [] }, belongs_to: { belongsTo: [] }, related_to: { relatedTo: [] },
   archived: { archived: false }, trashed: { trashed: false }, order: { order: null },
   template: { template: null }, sort: { sort: null }, visible: { visible: null },
+  _favorite: { favorite: false }, _favorite_index: { favoriteIndex: null },
 }
 
 /** Check if a string contains a wikilink pattern `[[...]]`. */
@@ -58,6 +59,8 @@ export function frontmatterToEntryPatch(
     sort: { sort: str },
     view: { view: str },
     visible: { visible: value === false ? false : null },
+    _favorite: { favorite: Boolean(value) },
+    _favorite_index: { favoriteIndex: typeof value === 'number' ? value : null },
   }
   // Also update the relationships map for wikilink-containing values
   const wikilinks = value != null ? extractWikilinks(value) : []

@@ -125,6 +125,42 @@ export function useEntryActions({
     onFrontmatterPersisted?.()
   }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
+  const handleToggleFavorite = useCallback(async (path: string) => {
+    const entry = entries.find((e) => e.path === path)
+    if (!entry) return
+    if (entry.favorite) {
+      updateEntry(path, { favorite: false, favoriteIndex: null })
+      try {
+        await handleDeleteProperty(path, '_favorite', { silent: true })
+        await handleDeleteProperty(path, '_favorite_index', { silent: true })
+        onFrontmatterPersisted?.()
+      } catch {
+        updateEntry(path, { favorite: true, favoriteIndex: entry.favoriteIndex })
+        setToastMessage('Failed to unfavorite — rolled back')
+      }
+    } else {
+      const maxIndex = entries.filter((e) => e.favorite).reduce((max, e) => Math.max(max, e.favoriteIndex ?? 0), 0)
+      const newIndex = maxIndex + 1
+      updateEntry(path, { favorite: true, favoriteIndex: newIndex })
+      try {
+        await handleUpdateFrontmatter(path, '_favorite', true, { silent: true })
+        await handleUpdateFrontmatter(path, '_favorite_index', newIndex, { silent: true })
+        onFrontmatterPersisted?.()
+      } catch {
+        updateEntry(path, { favorite: false, favoriteIndex: null })
+        setToastMessage('Failed to favorite — rolled back')
+      }
+    }
+  }, [entries, updateEntry, handleUpdateFrontmatter, handleDeleteProperty, setToastMessage, onFrontmatterPersisted])
+
+  const handleReorderFavorites = useCallback(async (orderedPaths: string[]) => {
+    for (let i = 0; i < orderedPaths.length; i++) {
+      updateEntry(orderedPaths[i], { favoriteIndex: i })
+      await handleUpdateFrontmatter(orderedPaths[i], '_favorite_index', i, { silent: true })
+    }
+    onFrontmatterPersisted?.()
+  }, [updateEntry, handleUpdateFrontmatter, onFrontmatterPersisted])
+
   const handleToggleTypeVisibility = useCallback(async (typeName: string) => {
     const typeEntry = await findOrCreateType(entries, typeName, createTypeEntry)
     if (typeEntry.visible === false) {
@@ -137,5 +173,5 @@ export function useEntryActions({
     onFrontmatterPersisted?.()
   }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
-  return { handleTrashNote, handleRestoreNote, handleArchiveNote, handleUnarchiveNote, handleCustomizeType, handleReorderSections, handleUpdateTypeTemplate, handleRenameSection, handleToggleTypeVisibility }
+  return { handleTrashNote, handleRestoreNote, handleArchiveNote, handleUnarchiveNote, handleCustomizeType, handleReorderSections, handleUpdateTypeTemplate, handleRenameSection, handleToggleTypeVisibility, handleToggleFavorite, handleReorderFavorites }
 }

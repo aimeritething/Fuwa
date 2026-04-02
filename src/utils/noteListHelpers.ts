@@ -336,6 +336,7 @@ function filterByFilterType(entries: VaultEntry[], filter: string): VaultEntry[]
   if (filter === 'all') return entries.filter(isActive)
   if (filter === 'archived') return entries.filter((e) => e.archived && !e.trashed)
   if (filter === 'trash') return entries.filter((e) => e.trashed)
+  if (filter === 'favorites') return entries.filter((e) => e.favorite && !e.archived && !e.trashed)
   if (filter === 'pulse') return []
   return []
 }
