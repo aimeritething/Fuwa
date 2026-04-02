@@ -217,24 +217,24 @@ describe('entryMatchesTarget', () => {
 describe('buildNoteContent', () => {
   it('generates frontmatter with status for regular types', () => {
     const content = buildNoteContent('My Note', 'Note', 'Active')
-    expect(content).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n\n# My Note\n\n')
+    expect(content).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n')
   })
 
   it('omits status when null', () => {
     const content = buildNoteContent('AI', 'Topic', null)
-    expect(content).toBe('---\ntitle: AI\ntype: Topic\n---\n\n# AI\n\n')
+    expect(content).toBe('---\ntitle: AI\ntype: Topic\n---\n')
   })
 
   it('includes template body when provided', () => {
     const content = buildNoteContent('My Project', 'Project', 'Active', '## Objective\n\n## Notes\n\n')
-    expect(content).toContain('# My Project')
+    expect(content).not.toContain('# My Project')
     expect(content).toContain('## Objective')
     expect(content).toContain('## Notes')
   })
 
   it('ignores null template', () => {
     const content = buildNoteContent('My Note', 'Note', 'Active', null)
-    expect(content).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n\n# My Note\n\n')
+    expect(content).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n')
   })
 })
 
@@ -319,7 +319,7 @@ describe('resolveNewType', () => {
     expect(entry.isA).toBe('Type')
     expect(entry.status).toBeNull()
     expect(content).toContain('type: Type')
-    expect(content).toContain('# Recipe')
+    expect(content).not.toContain('# Recipe')
   })
 
   it('uses provided vault path instead of hardcoded path', () => {
@@ -491,9 +491,9 @@ describe('buildDailyNoteContent', () => {
     expect(content).toContain('## Reflections')
   })
 
-  it('includes H1 heading with the date', () => {
+  it('does not include H1 heading with the date', () => {
     const content = buildDailyNoteContent('2026-03-02')
-    expect(content).toContain('# 2026-03-02')
+    expect(content).not.toMatch(/^# /m)
   })
 })
 

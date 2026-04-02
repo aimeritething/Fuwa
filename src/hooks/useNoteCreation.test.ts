@@ -116,11 +116,11 @@ describe('entryMatchesTarget', () => {
 
 describe('buildNoteContent', () => {
   it('generates frontmatter with status', () => {
-    expect(buildNoteContent('My Note', 'Note', 'Active')).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n\n# My Note\n\n')
+    expect(buildNoteContent('My Note', 'Note', 'Active')).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n')
   })
 
   it('omits status when null', () => {
-    expect(buildNoteContent('AI', 'Topic', null)).toBe('---\ntitle: AI\ntype: Topic\n---\n\n# AI\n\n')
+    expect(buildNoteContent('AI', 'Topic', null)).toBe('---\ntitle: AI\ntype: Topic\n---\n')
   })
 
   it('includes template body when provided', () => {

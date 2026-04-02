@@ -138,7 +138,7 @@ test('create note saves file to disk with correct slug', async ({ page }) => {
   }).toPass({ timeout: 5_000 })
 
   const content = fs.readFileSync(expectedPath, 'utf-8')
-  expect(content).toContain('# Untitled note')
+  expect(content).not.toContain('# Untitled note')
   expect(content).toContain('type: Note')
 })
 

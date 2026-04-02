@@ -66,8 +66,8 @@ export function buildNoteContent(title: string, type: string, status: string | n
   const lines = ['---', `title: ${title}`, `type: ${type}`]
   if (status) lines.push(`status: ${status}`)
   lines.push('---')
-  const body = template ? `\n${template}` : '\n'
-  return `${lines.join('\n')}\n\n# ${title}\n${body}`
+  const body = template ? `\n${template}` : ''
+  return `${lines.join('\n')}\n${body}`
 }
 
 export function resolveNewNote(title: string, type: string, vaultPath: string, template?: string | null): { entry: VaultEntry; content: string } {
@@ -80,7 +80,7 @@ export function resolveNewNote(title: string, type: string, vaultPath: string, t
 export function resolveNewType(typeName: string, vaultPath: string): { entry: VaultEntry; content: string } {
   const slug = slugify(typeName)
   const entry = buildNewEntry({ path: `${vaultPath}/${slug}.md`, slug, title: typeName, type: 'Type', status: null })
-  return { entry, content: `---\ntype: Type\n---\n\n# ${typeName}\n\n` }
+  return { entry, content: `---\ntype: Type\n---\n` }
 }
 
 export function todayDateString(): string {
@@ -89,7 +89,7 @@ export function todayDateString(): string {
 
 export function buildDailyNoteContent(date: string): string {
   const lines = ['---', `title: ${date}`, 'type: Journal', `date: ${date}`, '---']
-  return `${lines.join('\n')}\n\n# ${date}\n\n## Intentions\n\n\n\n## Reflections\n\n`
+  return `${lines.join('\n')}\n\n## Intentions\n\n\n\n## Reflections\n\n`
 }
 
 export function resolveDailyNote(date: string, vaultPath: string): { entry: VaultEntry; content: string } {
