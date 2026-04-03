@@ -20,6 +20,7 @@ interface KeyboardActions {
   onToggleAIChat?: () => void
   onToggleRawEditor?: () => void
   onToggleInspector?: () => void
+  onToggleFavorite?: (path: string) => void
   onOpenInNewWindow?: () => void
   activeTabPathRef: React.MutableRefObject<string | null>
 }
@@ -65,7 +66,7 @@ function handleCmdKey(e: KeyboardEvent, keyMap: Record<string, ShortcutHandler>)
 
 export function useAppKeyboard({
   onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onTrashNote, onArchiveNote,
-  onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onToggleInspector, onOpenInNewWindow, activeTabPathRef,
+  onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onToggleInspector, onToggleFavorite, onOpenInNewWindow, activeTabPathRef,
 }: KeyboardActions) {
   useEffect(() => {
     const withActiveTab = (fn: (path: string) => void): ShortcutHandler => () => {
@@ -80,6 +81,7 @@ export function useAppKeyboard({
       j: onOpenDailyNote,
       s: onSave,
       ',': onOpenSettings,
+      d: withActiveTab((path) => onToggleFavorite?.(path)),
       e: withActiveTab(onArchiveNote),
       Backspace: withActiveTab(onTrashNote),
       Delete: withActiveTab(onTrashNote),

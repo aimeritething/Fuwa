@@ -30,6 +30,7 @@ interface CommandRegistryConfig {
   onSetNoteIcon?: () => void
   onRemoveNoteIcon?: () => void
   onOpenInNewWindow?: () => void
+  onToggleFavorite?: (path: string) => void
   onQuickOpen: () => void
   onCreateNote: () => void
   onCreateNoteOfType: (type: string) => void
@@ -85,7 +86,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     mcpStatus, onInstallMcp, onEmptyTrash, trashedCount,
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
-    onOpenInNewWindow,
+    onOpenInNewWindow, onToggleFavorite,
     selection, noteListFilter, onSetNoteListFilter,
   } = config
 
@@ -97,6 +98,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   )
   const isArchived = activeEntry?.archived ?? false
   const isTrashed = activeEntry?.trashed ?? false
+  const isFavorite = activeEntry?.favorite ?? false
   const isSectionGroup = selection?.kind === 'sectionGroup'
 
   const vaultTypes = useMemo(() => extractVaultTypes(entries), [entries])
@@ -107,7 +109,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
       hasActiveNote, activeTabPath, isArchived, isTrashed,
       onCreateNote, onCreateType, onOpenDailyNote, onSave,
       onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
-      onEmptyTrash, trashedCount, onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow,
+      onEmptyTrash, trashedCount, onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
     }),
     ...buildGitCommands({ modifiedCount, onCommitPush, onPull, onResolveConflicts, onSelect }),
     ...buildViewCommands({
@@ -136,6 +138,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     isSectionGroup, noteListFilter, onSetNoteListFilter,
-    onOpenInNewWindow,
+    onOpenInNewWindow, onToggleFavorite, isFavorite,
   ])
 }

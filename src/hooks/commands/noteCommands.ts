@@ -19,6 +19,8 @@ interface NoteCommandsConfig {
   onSetNoteIcon?: () => void
   onRemoveNoteIcon?: () => void
   onOpenInNewWindow?: () => void
+  onToggleFavorite?: (path: string) => void
+  isFavorite?: boolean
 }
 
 export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
@@ -28,7 +30,7 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
     onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
     onEmptyTrash, trashedCount,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
-    onOpenInNewWindow,
+    onOpenInNewWindow, onToggleFavorite, isFavorite,
   } = config
 
   return [
@@ -46,6 +48,12 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
       id: 'archive-note', label: isArchived ? 'Unarchive Note' : 'Archive Note', group: 'Note', shortcut: '⌘E',
       keywords: ['archive'], enabled: hasActiveNote,
       execute: () => { if (activeTabPath) (isArchived ? onUnarchiveNote : onArchiveNote)(activeTabPath) },
+    },
+    {
+      id: 'toggle-favorite', label: isFavorite ? 'Remove from Favorites' : 'Add to Favorites', group: 'Note', shortcut: '⌘D',
+      keywords: ['favorite', 'star', 'bookmark', 'pin'],
+      enabled: hasActiveNote && !!onToggleFavorite,
+      execute: () => { if (activeTabPath) onToggleFavorite?.(activeTabPath) },
     },
     {
       id: 'set-note-icon', label: 'Set Note Icon', group: 'Note',

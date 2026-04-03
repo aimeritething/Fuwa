@@ -466,6 +466,7 @@ function App() {
     noteListFilter,
     onSetNoteListFilter: setNoteListFilter,
     onOpenInNewWindow: handleOpenInNewWindow,
+    onToggleFavorite: entryActions.handleToggleFavorite,
   })
 
   const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null

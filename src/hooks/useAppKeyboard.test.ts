@@ -79,6 +79,14 @@ describe('useAppKeyboard', () => {
     expect(actions.onCreateNote).toHaveBeenCalled()
   })
 
+  it('Cmd+D triggers toggle favorite on active note', () => {
+    const actions = makeActions()
+    actions.onToggleFavorite = vi.fn()
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('d', { metaKey: true })
+    expect(actions.onToggleFavorite).toHaveBeenCalledWith('/vault/test.md')
+  })
+
   it('Cmd+J triggers open daily note', () => {
     const actions = makeActions()
     renderHook(() => useAppKeyboard(actions))

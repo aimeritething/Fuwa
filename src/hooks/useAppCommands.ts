@@ -65,6 +65,7 @@ interface AppCommandsConfig {
   noteListFilter?: NoteListFilter
   onSetNoteListFilter?: (filter: NoteListFilter) => void
   onOpenInNewWindow?: () => void
+  onToggleFavorite?: (path: string) => void
 }
 
 /** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
@@ -112,6 +113,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onToggleAIChat: config.onToggleAIChat,
     onToggleRawEditor: config.onToggleRawEditor,
     onToggleInspector: config.onToggleInspector,
+    onToggleFavorite: config.onToggleFavorite,
     onOpenInNewWindow: config.onOpenInNewWindow,
     activeTabPathRef: config.activeTabPathRef,
   })
