@@ -328,7 +328,7 @@ function App() {
   }, [notes])
 
   const handleCreateView = useCallback(async (definition: import('./types').ViewDefinition) => {
-    const filename = definition.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    const filename = definition.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.yml'
     const target = isTauri() ? invoke : mockInvoke
     await target('save_view_cmd', { vaultPath: resolvedPath, filename, definition })
     await vault.reloadViews()
@@ -349,13 +349,27 @@ function App() {
   const availableFields = useMemo(() => {
     const builtIn = ['type', 'status', 'title', 'favorite']
     if (!vault.entries?.length) return builtIn
-    const customProps = new Set<string>()
+    const customFields = new Set<string>()
     for (const e of vault.entries) {
       if (e.properties) {
-        for (const key of Object.keys(e.properties)) customProps.add(key)
+        for (const key of Object.keys(e.properties)) customFields.add(key)
+      }
+      if (e.relationships) {
+        for (const key of Object.keys(e.relationships)) customFields.add(key)
       }
     }
-    return [...builtIn, ...Array.from(customProps).sort()]
+    return [...builtIn, ...Array.from(customFields).sort()]
+  }, [vault.entries])
+
+  const valueSuggestionsForField = useCallback((field: string): string[] => {
+    if (!vault.entries?.length) return []
+    const values = new Set<string>()
+    for (const e of vault.entries) {
+      if (field === 'type' && e.isA) values.add(e.isA)
+      else if (field === 'status' && e.status) values.add(e.status)
+      else if (e.properties?.[field] != null) values.add(String(e.properties[field]))
+    }
+    return Array.from(values).sort()
   }, [vault.entries])
 
   const bulkActions = useBulkActions(entryActions, setToastMessage)
@@ -599,7 +613,7 @@ function App() {
       <CommandPalette open={dialogs.showCommandPalette} commands={commands} onClose={dialogs.closeCommandPalette} />
       <SearchPanel open={dialogs.showSearch} vaultPath={resolvedPath} entries={vault.entries} onSelectNote={notes.handleSelectNote} onClose={dialogs.closeSearch} />
       <CreateTypeDialog open={dialogs.showCreateTypeDialog} onClose={dialogs.closeCreateType} onCreate={handleCreateType} />
-      <CreateViewDialog open={dialogs.showCreateViewDialog} onClose={dialogs.closeCreateView} onCreate={handleCreateView} availableFields={availableFields} />
+      <CreateViewDialog open={dialogs.showCreateViewDialog} onClose={dialogs.closeCreateView} onCreate={handleCreateView} availableFields={availableFields} valueSuggestions={valueSuggestionsForField} />
       <CommitDialog open={commitFlow.showCommitDialog} modifiedCount={vault.modifiedFiles.length} suggestedMessage={suggestedCommitMessage} onCommit={commitFlow.handleCommitPush} onClose={commitFlow.closeCommitDialog} />
       <ConflictResolverModal
         open={dialogs.showConflictResolver}
