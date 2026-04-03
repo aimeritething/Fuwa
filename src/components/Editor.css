@@ -333,6 +333,9 @@
   letter-spacing: var(--headings-h1-letter-spacing, -0.015em);
   color: var(--foreground);
   padding: 0;
+  resize: none;
+  overflow: hidden;
+  font-family: inherit;
 }
 
 .title-field__input::placeholder {

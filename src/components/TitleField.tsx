@@ -62,10 +62,20 @@ function useOptimisticTitle(title: string, onTitleChange: (t: string) => void) {
  * Displays the title as an editable field and shows the resulting filename below.
  */
 export function TitleField({ title, filename, editable = true, notePath, vaultPath, onTitleChange }: TitleFieldProps) {
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const [isFocused, setIsFocused] = useState(false)
   const { value, isEditing, handleFocus, commitTitle, revert, setEdit } =
     useOptimisticTitle(title, onTitleChange)
+
+  // Auto-resize textarea to fit content
+  const autoResize = useCallback(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = el.scrollHeight + 'px'
+  }, [])
+
+  useEffect(() => { autoResize() }, [value, autoResize])
 
   useEffect(() => {
     const handler = (e: Event) => {
@@ -106,11 +116,12 @@ export function TitleField({ title, filename, editable = true, notePath, vaultPa
 
   return (
     <div className="title-field" data-testid="title-field">
-      <input
+      <textarea
         ref={inputRef}
         className="title-field__input"
         value={value}
-        onChange={e => setEdit(e.target.value)}
+        rows={1}
+        onChange={e => { setEdit(e.target.value); autoResize() }}
         onFocus={() => { setIsFocused(true); handleFocus() }}
         onBlur={() => { setIsFocused(false); commitTitle() }}
         onKeyDown={handleKeyDown}
