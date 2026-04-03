@@ -457,7 +457,6 @@ export const Sidebar = memo(function Sidebar({
                       label={v.definition.name}
                       isActive={isSelectionActive(selection, { kind: 'view', filename: v.filename })}
                       onClick={() => onSelect({ kind: 'view', filename: v.filename })}
-                      compact
                     />
                     {onDeleteView && (
                       <button
