@@ -71,6 +71,32 @@ function useSidebarSections(entries: VaultEntry[]) {
   return { typeEntryMap, allSectionGroups, visibleSections, sectionIds }
 }
 
+const SIDEBAR_COLLAPSED_KEY = 'laputa:sidebar-collapsed'
+
+type SidebarGroupKey = 'favorites' | 'views' | 'sections' | 'folders'
+
+function loadCollapsedState(): Record<SidebarGroupKey, boolean> {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch { /* ignore */ }
+  return { favorites: false, views: false, sections: false, folders: false }
+}
+
+function useSidebarCollapsed() {
+  const [collapsed, setCollapsed] = useState<Record<SidebarGroupKey, boolean>>(loadCollapsedState)
+
+  const toggle = useCallback((key: SidebarGroupKey) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [key]: !prev[key] }
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, JSON.stringify(next))
+      return next
+    })
+  }, [])
+
+  return { collapsed, toggle }
+}
+
 function useEntryCounts(entries: VaultEntry[]) {
   return useMemo(() => {
     let active = 0, archived = 0, trashed = 0
@@ -163,14 +189,15 @@ function SortableFavoriteItem({ entry, isActive, onSelect }: {
   )
 }
 
-function FavoritesSection({ entries, selection, onSelect, onSelectNote, onReorder }: {
+function FavoritesSection({ entries, selection, onSelect, onSelectNote, onReorder, collapsed, onToggle }: {
   entries: VaultEntry[]
   selection: SidebarSelection
   onSelect: (sel: SidebarSelection) => void
   onSelectNote?: (entry: VaultEntry) => void
   onReorder?: (orderedPaths: string[]) => void
+  collapsed: boolean
+  onToggle: () => void
 }) {
-  const [collapsed, setCollapsed] = useState(false)
   const favorites = useMemo(
     () => entries
       .filter((e) => e.favorite && !e.archived && !e.trashed)
@@ -200,7 +227,7 @@ function FavoritesSection({ entries, selection, onSelect, onSelectNote, onReorde
       <button
         className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
         style={{ padding: '6px 14px 6px 16px' }}
-        onClick={() => setCollapsed((v) => !v)}
+        onClick={onToggle}
       >
         <div className="flex items-center gap-1">
           {collapsed ? <CaretRight size={12} /> : <CaretDown size={12} />}
@@ -377,6 +404,11 @@ export const Sidebar = memo(function Sidebar({
     renamingType, renameInitialValue, onRenameSubmit: handleRenameSubmit, onRenameCancel: cancelRename,
   }
 
+  const { collapsed: groupCollapsed, toggle: toggleGroup } = useSidebarCollapsed()
+
+  const hasFavorites = entries.some((e) => e.favorite && !e.archived && !e.trashed)
+  const hasViews = views.length > 0 || !!onCreateView
+
   return (
     <aside className="flex h-full flex-col overflow-hidden border-r border-[var(--sidebar-border)] bg-sidebar text-sidebar-foreground">
       <SidebarTitleBar onCollapse={onCollapse} />
@@ -390,64 +422,95 @@ export const Sidebar = memo(function Sidebar({
         </div>
 
         {/* Favorites */}
-        <FavoritesSection entries={entries} selection={selection} onSelect={onSelect} onSelectNote={onSelectFavorite} onReorder={onReorderFavorites} />
+        {hasFavorites && (
+          <div className="border-b border-border">
+            <FavoritesSection entries={entries} selection={selection} onSelect={onSelect} onSelectNote={onSelectFavorite} onReorder={onReorderFavorites} collapsed={groupCollapsed.favorites} onToggle={() => toggleGroup('favorites')} />
+          </div>
+        )}
 
         {/* Views */}
-        {(views.length > 0 || onCreateView) && (
-          <div style={{ padding: '4px 6px' }}>
-            <div className="flex w-full select-none items-center justify-between" style={{ padding: '4px 16px' }}>
-              <span className="text-[11px] font-medium text-muted-foreground">Views</span>
-              {onCreateView && (
-                <button className="flex shrink-0 cursor-pointer items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground transition-colors hover:text-foreground" style={{ width: 20, height: 20 }} onClick={onCreateView} aria-label="Create view" title="Create view">
-                  <Plus size={14} />
-                </button>
-              )}
-            </div>
-            {views.map((v) => (
-              <div key={v.filename} className="group relative">
-                <NavItem
-                  icon={Funnel}
-                  label={v.definition.name}
-                  isActive={isSelectionActive(selection, { kind: 'view', filename: v.filename })}
-                  onClick={() => onSelect({ kind: 'view', filename: v.filename })}
-                  compact
-                />
-                {onDeleteView && (
-                  <button
-                    className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                    onClick={(e) => { e.stopPropagation(); onDeleteView(v.filename) }}
-                    title="Delete view"
-                  >
-                    <Trash size={12} />
-                  </button>
-                )}
+        {hasViews && (
+          <div className="border-b border-border" style={{ padding: '4px 6px 0' }}>
+            <button
+              className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
+              style={{ padding: '6px 14px 6px 16px' }}
+              onClick={() => toggleGroup('views')}
+            >
+              <div className="flex items-center gap-1">
+                {groupCollapsed.views ? <CaretRight size={12} /> : <CaretDown size={12} />}
+                <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>VIEWS</span>
               </div>
-            ))}
+              {onCreateView && (
+                <Plus
+                  size={12}
+                  className="text-muted-foreground hover:text-foreground"
+                  onClick={(e) => { e.stopPropagation(); onCreateView() }}
+                />
+              )}
+            </button>
+            {!groupCollapsed.views && (
+              <div style={{ paddingBottom: 4 }}>
+                {views.map((v) => (
+                  <div key={v.filename} className="group relative">
+                    <NavItem
+                      icon={Funnel}
+                      label={v.definition.name}
+                      isActive={isSelectionActive(selection, { kind: 'view', filename: v.filename })}
+                      onClick={() => onSelect({ kind: 'view', filename: v.filename })}
+                      compact
+                    />
+                    {onDeleteView && (
+                      <button
+                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
+                        onClick={(e) => { e.stopPropagation(); onDeleteView(v.filename) }}
+                        title="Delete view"
+                      >
+                        <Trash size={12} />
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
         {/* Sections header + visibility popover */}
-        <div ref={customizeRef} style={{ position: 'relative', padding: '4px 6px 0' }}>
-          <div className="flex w-full select-none items-center justify-between" style={{ padding: '4px 16px' }}>
-            <span className="text-[11px] font-medium text-muted-foreground">Sections</span>
-            <button className="flex shrink-0 cursor-pointer items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground transition-colors hover:text-foreground" style={{ width: 20, height: 20 }} onClick={() => setShowCustomize((v) => !v)} aria-label="Customize sections" title="Customize sections">
-              <SlidersHorizontal size={14} />
-            </button>
-          </div>
+        <div ref={customizeRef} className="border-b border-border" style={{ position: 'relative', padding: '4px 6px 0' }}>
+          <button
+            className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
+            style={{ padding: '6px 14px 6px 16px' }}
+            onClick={() => toggleGroup('sections')}
+          >
+            <div className="flex items-center gap-1">
+              {groupCollapsed.sections ? <CaretRight size={12} /> : <CaretDown size={12} />}
+              <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>SECTIONS</span>
+            </div>
+            <span
+              role="button"
+              title="Customize sections"
+              aria-label="Customize sections"
+              onClick={(e) => { e.stopPropagation(); setShowCustomize((v) => !v) }}
+            >
+              <SlidersHorizontal size={12} className="text-muted-foreground hover:text-foreground" />
+            </span>
+          </button>
           {showCustomize && <VisibilityPopover sections={allSectionGroups} isSectionVisible={isSectionVisible} onToggle={toggleVisibility} />}
         </div>
 
         {/* Sortable section groups */}
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-            {visibleSections.map((g) => (
-              <SortableSection key={g.type} group={g} sectionProps={sectionProps} />
-            ))}
-          </SortableContext>
-        </DndContext>
+        {!groupCollapsed.sections && (
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
+              {visibleSections.map((g) => (
+                <SortableSection key={g.type} group={g} sectionProps={sectionProps} />
+              ))}
+            </SortableContext>
+          </DndContext>
+        )}
 
         {/* Folder tree */}
-        <FolderTree folders={folders} selection={selection} onSelect={onSelect} onCreateFolder={onCreateFolder} />
+        <FolderTree folders={folders} selection={selection} onSelect={onSelect} onCreateFolder={onCreateFolder} collapsed={groupCollapsed.folders} onToggle={() => toggleGroup('folders')} />
       </nav>
 
       <ContextMenuOverlay pos={contextMenuPos} type={contextMenuType} innerRef={contextMenuRef} onOpenCustomize={(type) => { closeContextMenu(); setCustomizeTarget(type) }} onStartRename={handleStartRename} />

@@ -8,6 +8,8 @@ interface FolderTreeProps {
   selection: SidebarSelection
   onSelect: (selection: SidebarSelection) => void
   onCreateFolder?: (name: string) => void
+  collapsed?: boolean
+  onToggle?: () => void
 }
 
 function FolderItem({
@@ -72,8 +74,9 @@ function FolderItem({
   )
 }
 
-export const FolderTree = memo(function FolderTree({ folders, selection, onSelect, onCreateFolder }: FolderTreeProps) {
-  const [sectionCollapsed, setSectionCollapsed] = useState(false)
+export const FolderTree = memo(function FolderTree({ folders, selection, onSelect, onCreateFolder, collapsed: externalCollapsed, onToggle }: FolderTreeProps) {
+  const [internalCollapsed, setInternalCollapsed] = useState(false)
+  const sectionCollapsed = externalCollapsed ?? internalCollapsed
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
   const [isCreating, setIsCreating] = useState(false)
   const [newFolderName, setNewFolderName] = useState('')
@@ -104,7 +107,7 @@ export const FolderTree = memo(function FolderTree({ folders, selection, onSelec
       <button
         className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
         style={{ padding: '6px 14px 6px 16px' }}
-        onClick={() => setSectionCollapsed((v) => !v)}
+        onClick={() => onToggle ? onToggle() : setInternalCollapsed((v) => !v)}
       >
         <div className="flex items-center gap-1">
           {sectionCollapsed ? <CaretRight size={12} /> : <CaretDown size={12} />}
@@ -114,7 +117,7 @@ export const FolderTree = memo(function FolderTree({ folders, selection, onSelec
           <Plus
             size={12}
             className="text-muted-foreground hover:text-foreground"
-            onClick={(e) => { e.stopPropagation(); setIsCreating(true); setSectionCollapsed(false) }}
+            onClick={(e) => { e.stopPropagation(); setIsCreating(true); if (sectionCollapsed && onToggle) onToggle(); else if (sectionCollapsed) setInternalCollapsed(false) }}
             data-testid="create-folder-btn"
           />
         )}
