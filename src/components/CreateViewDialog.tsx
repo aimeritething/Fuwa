@@ -60,11 +60,11 @@ export function CreateViewDialog({ open, onClose, onCreate, availableFields, val
 
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
-      <DialogContent showCloseButton={false} className="sm:max-w-[520px]">
+      <DialogContent showCloseButton={false} className="flex max-h-[80vh] flex-col sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Create View</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
           <div className="flex gap-2">
             <div className="w-16 space-y-1.5 relative">
               <label className="text-xs font-medium text-muted-foreground">Icon</label>
@@ -90,7 +90,7 @@ export function CreateViewDialog({ open, onClose, onCreate, availableFields, val
               />
             </div>
           </div>
-          <div className="space-y-1.5">
+          <div className="min-h-0 flex-1 space-y-1.5 overflow-y-auto">
             <label className="text-xs font-medium text-muted-foreground">Filters</label>
             <FilterBuilder
               group={filters}
