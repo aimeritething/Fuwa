@@ -19,6 +19,15 @@ function useOptimisticTitle(title: string, onTitleChange: (t: string) => void) {
   // [optimisticTitle, forPropTitle]: shown after commit until title prop catches up
   const [optimistic, setOptimistic] = useState<[string, string] | null>(null)
   const isFocusedRef = useRef(false)
+  const prevTitleRef = useRef(title)
+
+  // Reset local edit when the title prop changes (e.g. note switch).
+  // This prevents a stale handleFocus closure from locking in the old note's title
+  // when focus-editor fires before React re-renders with the new tab.
+  if (prevTitleRef.current !== title) {
+    prevTitleRef.current = title
+    if (localValue !== null) setLocalValue(null)
+  }
 
   // Clear optimistic once the prop changes (rename completed or tab switched)
   const optimisticValue = optimistic && optimistic[1] === title ? optimistic[0] : null

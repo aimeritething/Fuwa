@@ -102,6 +102,21 @@ describe('TitleField', () => {
     expect(document.activeElement).toBe(input)
   })
 
+  it('resets stale localValue when title prop changes after focus', () => {
+    // Regression: creating a new note fires focus-editor before React re-renders,
+    // so handleFocus captures the OLD note's title into localValue.
+    // When React re-renders with the new title, localValue should be cleared.
+    const onChange = vi.fn()
+    const { rerender } = render(<TitleField title="Old Note" filename="old-note.md" onTitleChange={onChange} />)
+    const input = screen.getByTestId('title-field-input')
+    // Simulate: focus fires while title prop is still "Old Note"
+    fireEvent.focus(input)
+    expect(input).toHaveValue('Old Note')
+    // React re-renders with new note's title (tab switched)
+    rerender(<TitleField title="Untitled note" filename="untitled-note.md" onTitleChange={onChange} />)
+    expect(input).toHaveValue('Untitled note')
+  })
+
   it('shows vault-relative path for notes in subdirectories', () => {
     render(<TitleField title="ADR" filename="0001-tauri-stack.md" notePath="/Users/luca/Laputa/docs/adr/0001-tauri-stack.md" vaultPath="/Users/luca/Laputa" onTitleChange={() => {}} />)
     expect(screen.getByTestId('title-field-path')).toHaveTextContent('docs/adr/0001-tauri-stack.md')

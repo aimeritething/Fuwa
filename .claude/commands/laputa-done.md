@@ -39,4 +39,4 @@ curl -s -X POST "https://api.todoist.com/api/v1/tasks/$ARGUMENTS/move" \
 
 Run `/laputa-next-task` to get the next task and start working on it immediately.
 
-If `/laputa-next-task` returns `NO_TASKS` → exit cleanly. The hourly watchdog will restart you when new tasks arrive.
+If there are no tasks, `/laputa-next-task` will wait 10 minutes and retry automatically. Do NOT exit — stay alive and let it loop.

@@ -40,4 +40,17 @@ curl -s "https://api.todoist.com/api/v1/comments?task_id=<task_id>" \
 6. For To Rework tasks: read the ❌ QA failed comment — it tells you exactly what to fix
 7. Output: task ID, title, and full description so you can start working immediately
 
-If no tasks are available in either section → output `NO_TASKS` and exit cleanly.
+If no tasks are available in either section → wait 10 minutes and try again (loop forever):
+
+```bash
+while true; do
+  # ... check tasks ...
+  if no_tasks; then
+    sleep 600  # 10 minutes
+  else
+    break  # got a task, proceed
+  fi
+done
+```
+
+Do NOT exit when there are no tasks. Keep looping until a task appears. This keeps Claude Code alive permanently — the watchdog is a safety net only, not the primary dispatcher.
