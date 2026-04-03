@@ -1,4 +1,5 @@
 import { useRef, useState, useCallback, useEffect, useMemo } from 'react'
+import { trackEvent } from '../lib/telemetry'
 import type { EditorView } from '@codemirror/view'
 import { preFilterWikilinks, deduplicateByPath, MIN_QUERY_LENGTH } from '../utils/wikilinkSuggestions'
 import { attachClickHandlers, enrichSuggestionItems } from '../utils/suggestionEnrichment'
@@ -136,6 +137,7 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave,
       changes: { from: 0, to: doc.length, insert: newText },
       selection: { anchor: newCursor },
     })
+    trackEvent('wikilink_inserted')
     setAutocomplete(null)
 
     if (debounceRef.current) clearTimeout(debounceRef.current)

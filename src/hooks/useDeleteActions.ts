@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { VaultEntry } from '../types'
+import { trackEvent } from '../lib/telemetry'
 
 interface ConfirmDeleteState {
   title: string
@@ -50,7 +51,10 @@ export function useDeleteActions({
       onConfirm: async () => {
         setConfirmDelete(null)
         const ok = await deleteNoteFromDisk(path)
-        if (ok) setToastMessage('Note permanently deleted')
+        if (ok) {
+          trackEvent('note_deleted')
+          setToastMessage('Note permanently deleted')
+        }
       },
     })
   }, [deleteNoteFromDisk, setToastMessage])

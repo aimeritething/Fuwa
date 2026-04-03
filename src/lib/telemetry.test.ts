@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { _scrubPathsForTest as scrubPaths } from './telemetry'
+import { _scrubPathsForTest as scrubPaths, trackEvent } from './telemetry'
 
 describe('telemetry scrubPaths', () => {
   it('redacts macOS absolute paths', () => {
@@ -27,5 +27,19 @@ describe('telemetry scrubPaths', () => {
   it('redacts multiple paths in one string', () => {
     const input = 'Failed copying /a/b/c to /x/y/z'
     expect(scrubPaths(input)).toBe('Failed copying <redacted-path> to <redacted-path>')
+  })
+})
+
+describe('trackEvent', () => {
+  it('does not throw when PostHog is not initialized', () => {
+    expect(() => trackEvent('test_event', { count: 1 })).not.toThrow()
+  })
+
+  it('accepts event name with no properties', () => {
+    expect(() => trackEvent('note_created')).not.toThrow()
+  })
+
+  it('accepts event name with string and number properties', () => {
+    expect(() => trackEvent('note_created', { has_type: 1, creation_path: 'cmd_n' })).not.toThrow()
   })
 })

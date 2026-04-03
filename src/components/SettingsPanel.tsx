@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { X, Eye, EyeSlash, GithubLogo, SignOut } from '@phosphor-icons/react'
 import { GitHubDeviceFlow } from './GitHubDeviceFlow'
 import type { Settings } from '../types'
+import { trackEvent } from '../lib/telemetry'
 
 interface SettingsPanelProps {
   open: boolean
@@ -152,6 +153,10 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
   }), [openaiKey, googleKey, githubToken, githubUsername, pullInterval, updateChannel, crashReporting, analytics, settings.telemetry_consent, settings.anonymous_id])
 
   const handleSave = () => {
+    const prevAnalytics = settings.analytics_enabled ?? false
+    const newAnalytics = analytics
+    if (!prevAnalytics && newAnalytics) trackEvent('telemetry_opted_in')
+    if (prevAnalytics && !newAnalytics) trackEvent('telemetry_opted_out')
     onSave(buildSettings())
     onClose()
   }

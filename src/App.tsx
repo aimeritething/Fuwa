@@ -57,6 +57,7 @@ import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { isNoteWindow, getNoteWindowParams } from './utils/windowMode'
 import { GitRequiredModal } from './components/GitRequiredModal'
 import { RenameDetectedBanner, type DetectedRename } from './components/RenameDetectedBanner'
+import { trackEvent } from './lib/telemetry'
 import './App.css'
 
 // Type declarations for mock content storage and test overrides
@@ -118,6 +119,14 @@ function App() {
   useVaultConfig(resolvedPath)
   const { settings, loaded: settingsLoaded, saveSettings } = useSettings()
   useTelemetry(settings, settingsLoaded)
+
+  const vaultOpenedRef = useRef('')
+  useEffect(() => {
+    if (vault.entries.length > 0 && gitRepoState !== 'checking' && resolvedPath !== vaultOpenedRef.current) {
+      vaultOpenedRef.current = resolvedPath
+      trackEvent('vault_opened', { has_git: gitRepoState === 'ready' ? 1 : 0, note_count: vault.entries.length })
+    }
+  }, [vault.entries.length, gitRepoState, resolvedPath])
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
 
   const autoSync = useAutoSync({
@@ -331,6 +340,7 @@ function App() {
     const filename = definition.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.yml'
     const target = isTauri() ? invoke : mockInvoke
     await target('save_view_cmd', { vaultPath: resolvedPath, filename, definition })
+    trackEvent('view_created')
     await vault.reloadViews()
     setToastMessage(`View "${definition.name}" created`)
     handleSetSelection({ kind: 'view', filename })

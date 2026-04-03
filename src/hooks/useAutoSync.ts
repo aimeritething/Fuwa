@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { GitPullResult, GitPushResult, GitRemoteStatus, LastCommitInfo, SyncStatus } from '../types'
+import { trackEvent } from '../lib/telemetry'
 
 const DEFAULT_INTERVAL_MS = 5 * 60_000
 
@@ -219,5 +220,10 @@ export function useAutoSync({
   const pausePull = useCallback(() => { pauseRef.current = true }, [])
   const resumePull = useCallback(() => { pauseRef.current = false }, [])
 
-  return { syncStatus, lastSyncTime, conflictFiles, lastCommitInfo, remoteStatus, triggerSync: performPull, pullAndPush, pausePull, resumePull, handlePushRejected }
+  const triggerSync = useCallback(() => {
+    trackEvent('sync_triggered')
+    performPull()
+  }, [performPull])
+
+  return { syncStatus, lastSyncTime, conflictFiles, lastCommitInfo, remoteStatus, triggerSync, pullAndPush, pausePull, resumePull, handlePushRejected }
 }

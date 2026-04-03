@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react'
 import type { GitPushResult } from '../types'
+import { trackEvent } from '../lib/telemetry'
 
 interface CommitFlowConfig {
   savePending: () => Promise<void | boolean>
@@ -25,6 +26,7 @@ export function useCommitFlow({ savePending, loadModifiedFiles, commitAndPush, s
       await savePending()
       const result = await commitAndPush(message)
       if (result.status === 'ok') {
+        trackEvent('commit_made')
         setToastMessage('Committed and pushed')
       } else if (result.status === 'rejected') {
         setToastMessage('Committed, but push rejected — remote has new commits. Pull first.')

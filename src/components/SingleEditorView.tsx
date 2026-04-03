@@ -1,4 +1,5 @@
 import { useEffect, useCallback, useMemo, useRef } from 'react'
+import { trackEvent } from '../lib/telemetry'
 import { useCreateBlockNote, SuggestionMenuController } from '@blocknote/react'
 import { BlockNoteView } from '@blocknote/mantine'
 import { useEditorTheme } from '../hooks/useTheme'
@@ -87,6 +88,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
       { type: 'wikilink' as const, props: { target } },
       " ",
     ])
+    trackEvent('wikilink_inserted')
   }, [editor])
 
   const getWikilinkItems = useCallback(async (query: string): Promise<WikilinkSuggestionItem[]> => {

@@ -4,6 +4,7 @@ import { isTauri, mockInvoke } from '../mock-tauri'
 import { pickFolder } from '../utils/vault-dialog'
 import { loadVaultList, saveVaultList } from '../utils/vaultListStore'
 import type { VaultOption } from '../components/StatusBar'
+import { trackEvent } from '../lib/telemetry'
 
 export type { PersistedVaultList } from '../utils/vaultListStore'
 
@@ -91,6 +92,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
   }, [])
 
   const switchVault = useCallback((path: string) => {
+    trackEvent('vault_switched')
     setVaultPath(path)
     onSwitchRef.current()
   }, [])

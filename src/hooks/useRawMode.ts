@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect } from 'react'
 import { getVaultConfig, updateVaultConfigField, subscribeVaultConfig } from '../utils/vaultConfigStore'
+import { trackEvent } from '../lib/telemetry'
 
 interface UseRawModeParams {
   activeTabPath: string | null
@@ -32,6 +33,7 @@ export function useRawMode({ activeTabPath, onFlushPending, onBeforeRawEnd }: Us
   const rawMode = rawEnabled && activeTabPath !== null
 
   const handleToggleRaw = useCallback(async () => {
+    trackEvent('raw_mode_toggled')
     if (rawEnabled) {
       onBeforeRawEnd?.()
       setRawEnabled(false)

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import type { ViewMode } from './useViewMode'
+import { trackEvent } from '../lib/telemetry'
 
 interface KeyboardActions {
   onQuickOpen: () => void
@@ -104,6 +105,7 @@ export function useAppKeyboard({
       // Cmd+Shift+F: full-text search (distinct from Cmd+F browser find)
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
         e.preventDefault()
+        trackEvent('search_used')
         onSearch()
         return
       }

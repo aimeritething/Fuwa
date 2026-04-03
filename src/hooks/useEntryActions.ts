@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import type { VaultEntry } from '../types'
 import type { FrontmatterOpOptions } from './frontmatterOps'
+import { trackEvent } from '../lib/telemetry'
 
 interface EntryActionsConfig {
   entries: VaultEntry[]
@@ -32,6 +33,7 @@ export function useEntryActions({
     // Optimistic: update UI immediately, write to disk async with rollback on failure
     const trashedAt = Date.now() / 1000
     updateEntry(path, { trashed: true, trashedAt })
+    trackEvent('note_trashed')
     setToastMessage('Note moved to trash')
     const now = new Date().toISOString().slice(0, 10)
     try {
@@ -64,6 +66,7 @@ export function useEntryActions({
     await onBeforeAction?.(path)
     // Optimistic: update UI immediately, write to disk async with rollback on failure
     updateEntry(path, { archived: true })
+    trackEvent('note_archived')
     setToastMessage('Note archived')
     try {
       await handleUpdateFrontmatter(path, '_archived', true, { silent: true })
@@ -129,6 +132,7 @@ export function useEntryActions({
     const entry = entries.find((e) => e.path === path)
     if (!entry) return
     if (entry.favorite) {
+      trackEvent('note_unfavorited')
       updateEntry(path, { favorite: false, favoriteIndex: null })
       try {
         await handleDeleteProperty(path, '_favorite', { silent: true })
@@ -139,6 +143,7 @@ export function useEntryActions({
         setToastMessage('Failed to unfavorite — rolled back')
       }
     } else {
+      trackEvent('note_favorited')
       const maxIndex = entries.filter((e) => e.favorite).reduce((max, e) => Math.max(max, e.favoriteIndex ?? 0), 0)
       const newIndex = maxIndex + 1
       updateEntry(path, { favorite: true, favoriteIndex: newIndex })

@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { isTauri, addMockEntry } from '../mock-tauri'
 import type { VaultEntry } from '../types'
 import { resolveEntry } from '../utils/wikilink'
+import { trackEvent } from '../lib/telemetry'
 
 export interface NewEntryParams {
   path: string
@@ -250,6 +251,7 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
   const handleCreateNote = useCallback((title: string, type: string) => {
     const template = resolveTemplate(entries, type)
     persistNew(resolveNewNote(title, type, config.vaultPath, template))
+    trackEvent('note_created', { has_type: type !== 'Note' ? 1 : 0, creation_path: 'plus_button' })
   }, [entries, persistNew, config.vaultPath])
 
   const handleCreateNoteImmediate = useCallback((type?: string) => {
@@ -257,6 +259,7 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
       entries, vaultPath: config.vaultPath, pendingNames: pendingNamesRef.current,
       openTabWithContent, addEntry, trackUnsaved: config.trackUnsaved, markContentPending: config.markContentPending,
     }, type)
+    trackEvent('note_created', { has_type: type ? 1 : 0, creation_path: type ? 'type_section' : 'cmd_n' })
   }, [entries, openTabWithContent, addEntry, config.vaultPath, config.trackUnsaved, config.markContentPending])
 
   const handleCreateNoteForRelationship = useCallback((title: string): Promise<boolean> => {
@@ -269,7 +272,10 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
 
   const handleOpenDailyNote = useCallback(() => openDailyNote(entries, handleSelectNote, persistNew, config.vaultPath), [entries, handleSelectNote, persistNew, config.vaultPath])
 
-  const handleCreateType = useCallback((typeName: string) => persistNew(resolveNewType(typeName, config.vaultPath)), [persistNew, config.vaultPath])
+  const handleCreateType = useCallback((typeName: string) => {
+    persistNew(resolveNewType(typeName, config.vaultPath))
+    trackEvent('type_created')
+  }, [persistNew, config.vaultPath])
 
   /** Create a Type entry file silently (no tab opened). Adds to state and persists to disk. */
   const createTypeEntrySilent = useCallback(async (typeName: string): Promise<VaultEntry> => {
