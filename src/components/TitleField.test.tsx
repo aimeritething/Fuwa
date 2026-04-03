@@ -117,18 +117,35 @@ describe('TitleField', () => {
     expect(input).toHaveValue('Untitled note')
   })
 
-  it('shows vault-relative path for notes in subdirectories', () => {
+  it('shows vault-relative path (without .md) only when title is focused', () => {
     render(<TitleField title="ADR" filename="0001-tauri-stack.md" notePath="/Users/luca/Laputa/docs/adr/0001-tauri-stack.md" vaultPath="/Users/luca/Laputa" onTitleChange={() => {}} />)
-    expect(screen.getByTestId('title-field-path')).toHaveTextContent('docs/adr/0001-tauri-stack.md')
+    // Path hidden by default
+    expect(screen.queryByTestId('title-field-path')).not.toBeInTheDocument()
+    // Focus title → path appears
+    fireEvent.focus(screen.getByTestId('title-field-input'))
+    expect(screen.getByTestId('title-field-path')).toHaveTextContent('docs/adr/0001-tauri-stack')
+    // No bare filename shown when path is visible
+    expect(screen.queryByTestId('title-field-filename')).not.toBeInTheDocument()
   })
 
-  it('hides path for notes at vault root', () => {
+  it('hides path on blur', () => {
+    render(<TitleField title="ADR" filename="0001-tauri-stack.md" notePath="/Users/luca/Laputa/docs/adr/0001-tauri-stack.md" vaultPath="/Users/luca/Laputa" onTitleChange={() => {}} />)
+    const input = screen.getByTestId('title-field-input')
+    fireEvent.focus(input)
+    expect(screen.getByTestId('title-field-path')).toBeInTheDocument()
+    fireEvent.blur(input)
+    expect(screen.queryByTestId('title-field-path')).not.toBeInTheDocument()
+  })
+
+  it('hides path for notes at vault root even when focused', () => {
     render(<TitleField title="Root Note" filename="root-note.md" notePath="/Users/luca/Laputa/root-note.md" vaultPath="/Users/luca/Laputa" onTitleChange={() => {}} />)
+    fireEvent.focus(screen.getByTestId('title-field-input'))
     expect(screen.queryByTestId('title-field-path')).not.toBeInTheDocument()
   })
 
   it('hides path when vaultPath is not provided', () => {
     render(<TitleField title="Note" filename="note.md" onTitleChange={() => {}} />)
+    fireEvent.focus(screen.getByTestId('title-field-input'))
     expect(screen.queryByTestId('title-field-path')).not.toBeInTheDocument()
   })
 })

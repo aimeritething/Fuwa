@@ -63,6 +63,7 @@ function useOptimisticTitle(title: string, onTitleChange: (t: string) => void) {
  */
 export function TitleField({ title, filename, editable = true, notePath, vaultPath, onTitleChange }: TitleFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null)
+  const [isFocused, setIsFocused] = useState(false)
   const { value, isEditing, handleFocus, commitTitle, revert, setEdit } =
     useOptimisticTitle(title, onTitleChange)
 
@@ -91,13 +92,17 @@ export function TitleField({ title, filename, editable = true, notePath, vaultPa
 
   const expectedSlug = slugify(value.trim() || title)
   const currentStem = filename.replace(/\.md$/, '')
-  const showFilename = isEditing || currentStem !== expectedSlug
 
   // Compute vault-relative path (only for notes in subdirectories)
   const relativePath = notePath && vaultPath
-    ? notePath.replace(vaultPath + '/', '')
+    ? notePath.replace(vaultPath + '/', '').replace(/\.md$/, '')
     : null
-  const showRelativePath = relativePath && relativePath.includes('/')
+  const isSubdirectory = relativePath != null && relativePath.includes('/')
+
+  // Show path only when title is focused and note is in a subdirectory
+  const showRelativePath = isFocused && isSubdirectory
+  // Show filename hint when slug differs, but suppress when path is already visible
+  const showFilename = !showRelativePath && (isEditing || currentStem !== expectedSlug)
 
   return (
     <div className="title-field" data-testid="title-field">
@@ -106,8 +111,8 @@ export function TitleField({ title, filename, editable = true, notePath, vaultPa
         className="title-field__input"
         value={value}
         onChange={e => setEdit(e.target.value)}
-        onFocus={handleFocus}
-        onBlur={commitTitle}
+        onFocus={() => { setIsFocused(true); handleFocus() }}
+        onBlur={() => { setIsFocused(false); commitTitle() }}
         onKeyDown={handleKeyDown}
         disabled={!editable}
         placeholder="Untitled"
