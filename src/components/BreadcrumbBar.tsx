@@ -61,7 +61,7 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
   onToggleFavorite, onTrash, onRestore, onArchive, onUnarchive,
 }: Omit<BreadcrumbBarProps, 'wordCount'>) {
   return (
-    <div className="flex items-center" style={{ gap: 12 }}>
+    <div className="breadcrumb-bar__actions ml-auto flex items-center" style={{ gap: 12 }}>
       <button
         className={cn(
           "flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors",

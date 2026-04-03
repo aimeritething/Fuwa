@@ -146,6 +146,15 @@ describe('BreadcrumbBar — title in breadcrumb (always rendered, CSS-toggled)',
   })
 })
 
+describe('BreadcrumbBar — action buttons always right-aligned', () => {
+  it('actions container has ml-auto so buttons are always right-aligned', () => {
+    const { container } = render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
+    const actions = container.querySelector('.breadcrumb-bar__actions')
+    expect(actions).toBeInTheDocument()
+    expect(actions).toHaveClass('ml-auto')
+  })
+})
+
 describe('BreadcrumbBar — raw editor toggle', () => {
   it('shows Raw editor button with tooltip "Raw editor" when rawMode is off', () => {
     const onToggleRaw = vi.fn()
