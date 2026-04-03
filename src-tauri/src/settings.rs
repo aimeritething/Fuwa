@@ -14,6 +14,7 @@ pub struct Settings {
     pub analytics_enabled: Option<bool>,
     pub anonymous_id: Option<String>,
     pub update_channel: Option<String>,
+    pub release_channel: Option<String>,
 }
 
 fn settings_path() -> Result<PathBuf, String> {
@@ -65,6 +66,10 @@ fn save_settings_at(path: &PathBuf, settings: Settings) -> Result<(), String> {
             .filter(|k| !k.is_empty()),
         update_channel: settings
             .update_channel
+            .map(|k| k.trim().to_string())
+            .filter(|k| !k.is_empty()),
+        release_channel: settings
+            .release_channel
             .map(|k| k.trim().to_string())
             .filter(|k| !k.is_empty()),
     };

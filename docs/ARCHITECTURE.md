@@ -826,9 +826,13 @@ flowchart LR
 - **Canary**: `useUpdater` hook fetches `latest-canary.json` via HTTP, compares versions, and opens the GitHub release page for manual download
 - Canary versions use semver prerelease: `0.YYYYMMDD.N-canary`
 
-### Feature Flags (Local V1)
+### Feature Flags (PostHog + Release Channels)
 
-Feature flags use a local-only system with no external dependencies:
+Feature flags are backed by PostHog and evaluated per release channel:
+
+- **Alpha**: all features always enabled (no PostHog lookup)
+- **Beta**: sees features where the PostHog flag targets `release_channel = beta`
+- **Stable** (default): sees features where the flag targets `release_channel = stable`
 
 ```typescript
 import { useFeatureFlag } from './hooks/useFeatureFlag'
@@ -838,18 +842,14 @@ const enabled = useFeatureFlag('example_flag') // boolean
 
 **Resolution order:**
 1. `localStorage` override: key `ff_<name>` with value `"true"` or `"false"`
-2. Compile-time default in `FLAG_DEFAULTS` map
+2. `isFeatureEnabled(flag)` in `telemetry.ts` → checks release channel, then PostHog, then hardcoded defaults
 
 **How to add a new flag:**
 1. Add the flag name to the `FeatureFlagName` union type in `src/hooks/useFeatureFlag.ts`
-2. Set its default in the `FLAG_DEFAULTS` record
+2. Create the flag on PostHog dashboard with rollout rules per channel
 3. Use `useFeatureFlag('your_flag')` in components
 
-**Design decisions:**
-- No remote fetching, no PostHog dependency — zero privacy concerns
-- `localStorage` overrides allow dev/QA testing without rebuilding
-- Type-safe flag names via TypeScript union type
-- API surface is compatible with future migration to remote flags
+Release channel is selectable in Settings (alpha / beta / stable) and passed to PostHog as a person property via `identify()`. See ADR-0042.
 
 ## Platform Support — iOS / iPadOS (Prototype)
 

@@ -40,7 +40,7 @@ export function teardownSentry(): void {
   sentryInitialized = false
 }
 
-export async function initPostHog(anonymousId: string): Promise<void> {
+export async function initPostHog(anonymousId: string, releaseChannel?: string): Promise<void> {
   if (posthogInstance || !POSTHOG_KEY) return
   const posthog = (await import('posthog-js')).default
   posthog.init(POSTHOG_KEY, {
@@ -50,7 +50,7 @@ export async function initPostHog(anonymousId: string): Promise<void> {
     persistence: 'memory',
     disable_session_recording: true,
   })
-  posthog.identify(anonymousId)
+  posthog.identify(anonymousId, releaseChannel ? { release_channel: releaseChannel } : undefined)
   posthogInstance = posthog
 }
 
@@ -59,6 +59,24 @@ export function teardownPostHog(): void {
   posthogInstance.opt_out_capturing()
   posthogInstance.reset()
   posthogInstance = null
+}
+
+export function updatePostHogIdentify(releaseChannel: string): void {
+  posthogInstance?.identify(undefined, { release_channel: releaseChannel })
+}
+
+/** Hardcoded defaults for first launch with no network (PostHog cache empty). */
+const FEATURE_DEFAULTS: Record<string, boolean> = {}
+
+let currentReleaseChannel: string = 'stable'
+
+export function setReleaseChannel(channel: string): void {
+  currentReleaseChannel = channel
+}
+
+export function isFeatureEnabled(flagKey: string): boolean {
+  if (currentReleaseChannel === 'alpha') return true
+  return posthogInstance?.isFeatureEnabled(flagKey) ?? FEATURE_DEFAULTS[flagKey] ?? false
 }
 
 export function trackEvent(name: string, properties?: Record<string, string | number>): void {

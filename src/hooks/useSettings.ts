@@ -18,6 +18,7 @@ const EMPTY_SETTINGS: Settings = {
   analytics_enabled: null,
   anonymous_id: null,
   update_channel: null,
+  release_channel: null,
 }
 
 export function useSettings() {

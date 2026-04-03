@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { _scrubPathsForTest as scrubPaths, trackEvent } from './telemetry'
+import { _scrubPathsForTest as scrubPaths, trackEvent, isFeatureEnabled, setReleaseChannel } from './telemetry'
 
 describe('telemetry scrubPaths', () => {
   it('redacts macOS absolute paths', () => {
@@ -41,5 +41,23 @@ describe('trackEvent', () => {
 
   it('accepts event name with string and number properties', () => {
     expect(() => trackEvent('note_created', { has_type: 1, creation_path: 'cmd_n' })).not.toThrow()
+  })
+})
+
+describe('isFeatureEnabled', () => {
+  it('returns true for alpha channel regardless of flag state', () => {
+    setReleaseChannel('alpha')
+    expect(isFeatureEnabled('any_flag')).toBe(true)
+    expect(isFeatureEnabled('nonexistent_flag')).toBe(true)
+  })
+
+  it('returns false for stable channel when PostHog is not initialized', () => {
+    setReleaseChannel('stable')
+    expect(isFeatureEnabled('some_flag')).toBe(false)
+  })
+
+  it('returns false for beta channel when PostHog is not initialized', () => {
+    setReleaseChannel('beta')
+    expect(isFeatureEnabled('some_flag')).toBe(false)
   })
 })

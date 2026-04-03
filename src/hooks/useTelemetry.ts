@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
-import { initSentry, teardownSentry, initPostHog, teardownPostHog } from '../lib/telemetry'
+import { initSentry, teardownSentry, initPostHog, teardownPostHog, updatePostHogIdentify, setReleaseChannel } from '../lib/telemetry'
 import type { Settings } from '../types'
 
 function tauriCall(command: string): Promise<void> {
@@ -29,13 +29,18 @@ export function useTelemetry(settings: Settings, loaded: boolean): void {
       tauriCall('reinit_telemetry').catch(() => {})
     }
 
+    const channel = settings.release_channel ?? 'stable'
+    setReleaseChannel(channel)
+
     if (analyticsEnabled && id && !prevAnalytics.current) {
-      initPostHog(id)
+      initPostHog(id, channel)
     } else if (!analyticsEnabled && prevAnalytics.current) {
       teardownPostHog()
+    } else if (analyticsEnabled && id) {
+      updatePostHogIdentify(channel)
     }
 
     prevCrash.current = crashEnabled
     prevAnalytics.current = analyticsEnabled
-  }, [loaded, settings.crash_reporting_enabled, settings.analytics_enabled, settings.anonymous_id])
+  }, [loaded, settings.crash_reporting_enabled, settings.analytics_enabled, settings.anonymous_id, settings.release_channel])
 }

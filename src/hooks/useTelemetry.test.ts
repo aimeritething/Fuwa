@@ -13,13 +13,15 @@ vi.mock('../lib/telemetry', () => ({
   teardownSentry: () => mockTeardownSentry(),
   initPostHog: (...args: unknown[]) => mockInitPostHog(...args),
   teardownPostHog: () => mockTeardownPostHog(),
+  updatePostHogIdentify: vi.fn(),
+  setReleaseChannel: vi.fn(),
 }))
 
 const baseSettings: Settings = {
   openai_key: null, google_key: null,
   github_token: null, github_username: null, auto_pull_interval_minutes: null,
   telemetry_consent: null, crash_reporting_enabled: null,
-  analytics_enabled: null, anonymous_id: null, update_channel: null,
+  analytics_enabled: null, anonymous_id: null, update_channel: null, release_channel: null,
 }
 
 describe('useTelemetry', () => {
@@ -50,7 +52,7 @@ describe('useTelemetry', () => {
     renderHook(() =>
       useTelemetry({ ...baseSettings, analytics_enabled: true, anonymous_id: 'test-uuid' }, true)
     )
-    expect(mockInitPostHog).toHaveBeenCalledWith('test-uuid')
+    expect(mockInitPostHog).toHaveBeenCalledWith('test-uuid', 'stable')
   })
 
   it('tears down Sentry when crash reporting is disabled after being enabled', () => {

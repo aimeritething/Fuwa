@@ -85,6 +85,7 @@ let mockSettings: Settings = {
   analytics_enabled: null,
   anonymous_id: null,
   update_channel: null,
+  release_channel: null,
 }
 
 let mockLastVaultPath: string | null = null
@@ -210,6 +211,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
       analytics_enabled: s.analytics_enabled,
       anonymous_id: s.anonymous_id,
       update_channel: s.update_channel,
+      release_channel: s.release_channel,
     }
     return null
   },

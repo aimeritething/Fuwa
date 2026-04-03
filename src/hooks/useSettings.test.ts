@@ -15,6 +15,7 @@ const defaultSettings: Settings = {
   analytics_enabled: null,
   anonymous_id: null,
   update_channel: null,
+  release_channel: null,
 }
 
 const savedSettings: Settings = {
@@ -28,6 +29,7 @@ const savedSettings: Settings = {
   analytics_enabled: null,
   anonymous_id: null,
   update_channel: null,
+  release_channel: null,
 }
 
 let mockSettingsStore: Settings = { ...defaultSettings }

@@ -126,6 +126,7 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
   const [githubUsername, setGithubUsername] = useState(settings.github_username)
   const [pullInterval, setPullInterval] = useState(settings.auto_pull_interval_minutes ?? 5)
   const [updateChannel, setUpdateChannel] = useState(settings.update_channel ?? 'stable')
+  const [releaseChannel, setReleaseChannel] = useState(settings.release_channel ?? 'stable')
   const [crashReporting, setCrashReporting] = useState(settings.crash_reporting_enabled ?? false)
   const [analytics, setAnalytics] = useState(settings.analytics_enabled ?? false)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -150,7 +151,8 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
     analytics_enabled: analytics,
     anonymous_id: (crashReporting || analytics) ? (settings.anonymous_id ?? crypto.randomUUID()) : settings.anonymous_id,
     update_channel: updateChannel === 'stable' ? null : updateChannel,
-  }), [openaiKey, googleKey, githubToken, githubUsername, pullInterval, updateChannel, crashReporting, analytics, settings.telemetry_consent, settings.anonymous_id])
+    release_channel: releaseChannel === 'stable' ? null : releaseChannel,
+  }), [openaiKey, googleKey, githubToken, githubUsername, pullInterval, updateChannel, releaseChannel, crashReporting, analytics, settings.telemetry_consent, settings.anonymous_id])
 
   const handleSave = () => {
     const prevAnalytics = settings.analytics_enabled ?? false
@@ -205,6 +207,7 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
           onGitHubConnected={handleGitHubConnected} onGitHubDisconnect={handleGitHubDisconnect}
           pullInterval={pullInterval} setPullInterval={setPullInterval}
           updateChannel={updateChannel} setUpdateChannel={setUpdateChannel}
+          releaseChannel={releaseChannel} setReleaseChannel={setReleaseChannel}
           crashReporting={crashReporting} setCrashReporting={setCrashReporting}
           analytics={analytics} setAnalytics={setAnalytics}
         />
@@ -240,6 +243,7 @@ interface SettingsBodyProps {
   onGitHubDisconnect: () => void
   pullInterval: number; setPullInterval: (v: number) => void
   updateChannel: string; setUpdateChannel: (v: string) => void
+  releaseChannel: string; setReleaseChannel: (v: string) => void
   crashReporting: boolean; setCrashReporting: (v: boolean) => void
   analytics: boolean; setAnalytics: (v: boolean) => void
 }
@@ -321,6 +325,24 @@ function SettingsBody(props: SettingsBodyProps) {
           <option value="stable">Stable</option>
           <option value="canary">Canary (pre-release)</option>
         </select>
+      </div>
+
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--foreground)' }}>Release channel</label>
+        <select
+          value={props.releaseChannel}
+          onChange={(e) => props.setReleaseChannel(e.target.value)}
+          className="border border-border bg-transparent text-foreground rounded"
+          style={{ fontSize: 13, padding: '8px 10px', outline: 'none', fontFamily: 'inherit' }}
+          data-testid="settings-release-channel"
+        >
+          <option value="stable">Stable</option>
+          <option value="beta">Beta</option>
+          <option value="alpha">Alpha (bleeding edge)</option>
+        </select>
+        <div style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>
+          Alpha users see all features. Beta/Stable see features as they are promoted.
+        </div>
       </div>
 
       <div style={{ height: 1, background: 'var(--border)' }} />
