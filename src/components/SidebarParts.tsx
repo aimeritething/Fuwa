@@ -1,7 +1,7 @@
 import { type ComponentType, useState, useEffect, useRef } from 'react'
 import type { SidebarSelection } from '../types'
 import { cn } from '@/lib/utils'
-import { getTypeColor } from '../utils/typeColors'
+import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { type IconProps } from '@phosphor-icons/react'
 
 export interface SectionGroup {
@@ -94,11 +94,13 @@ export function SectionContent({
 }: SectionContentProps) {
   const { label, type, Icon, customColor } = group
   const sectionColor = getTypeColor(type, customColor)
+  const sectionLightColor = getTypeLightColor(type, customColor)
 
   return (
     <SectionHeader
       label={label} type={type} Icon={Icon}
       sectionColor={sectionColor}
+      sectionLightColor={sectionLightColor}
       itemCount={itemCount}
       isActive={isSelectionActive(selection, { kind: 'sectionGroup', type })}
       onSelect={() => onSelect({ kind: 'sectionGroup', type })}
@@ -142,9 +144,9 @@ function InlineRenameInput({ initialValue, onSubmit, onCancel }: {
   )
 }
 
-function SectionHeader({ label, type, Icon, sectionColor, itemCount, isActive, onSelect, onContextMenu, dragHandleProps, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
+function SectionHeader({ label, type, Icon, sectionColor, sectionLightColor, itemCount, isActive, onSelect, onContextMenu, dragHandleProps, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
   label: string; type: string; Icon: ComponentType<IconProps>
-  sectionColor: string; itemCount: number; isActive: boolean
+  sectionColor: string; sectionLightColor: string; itemCount: number; isActive: boolean
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void
   dragHandleProps?: Record<string, unknown>
   isRenaming?: boolean; renameInitialValue?: string
@@ -152,14 +154,14 @@ function SectionHeader({ label, type, Icon, sectionColor, itemCount, isActive, o
 }) {
   return (
     <div
-      className={cn("group/section flex cursor-pointer select-none items-center justify-between rounded transition-colors", isActive ? "bg-secondary" : "hover:bg-accent")}
-      style={{ padding: '6px 8px 6px 16px', borderRadius: 4, gap: 4 }}
+      className={cn("group/section flex cursor-pointer select-none items-center justify-between rounded transition-colors", !isActive && "hover:bg-accent")}
+      style={{ padding: '6px 8px 6px 16px', borderRadius: 4, gap: 4, ...(isActive ? { background: sectionLightColor } : {}) }}
       {...dragHandleProps}
       onClick={() => { if (!isRenaming) onSelect() }}
       onContextMenu={isRenaming ? undefined : onContextMenu}
     >
       <div className="flex min-w-0 flex-1 items-center" style={{ gap: 4 }}>
-        <Icon size={16} style={{ color: sectionColor, flexShrink: 0 }} />
+        <Icon size={16} weight={isActive ? 'fill' : 'regular'} style={{ color: sectionColor, flexShrink: 0 }} />
         {isRenaming && onRenameSubmit && onRenameCancel ? (
           <InlineRenameInput
             key={`rename-${type}`}
@@ -168,11 +170,14 @@ function SectionHeader({ label, type, Icon, sectionColor, itemCount, isActive, o
             onCancel={onRenameCancel}
           />
         ) : (
-          <span className="text-[13px] font-medium text-foreground" style={{ marginLeft: 4 }}>{label}</span>
+          <span className="text-[13px] font-medium" style={{ marginLeft: 4, color: isActive ? sectionColor : undefined }}>{label}</span>
         )}
       </div>
       {itemCount > 0 && (
-        <span className="flex items-center justify-center text-muted-foreground" style={{ height: 20, borderRadius: 9999, padding: '0 6px', fontSize: 10, background: 'var(--muted)' }}>
+        <span
+          className={cn("flex items-center justify-center", !isActive && "text-muted-foreground")}
+          style={{ height: 20, borderRadius: 9999, padding: '0 6px', fontSize: 10, ...(isActive ? { background: sectionColor, color: 'white' } : { background: 'var(--muted)' }) }}
+        >
           {itemCount}
         </span>
       )}
