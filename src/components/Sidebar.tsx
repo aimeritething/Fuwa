@@ -475,39 +475,41 @@ export const Sidebar = memo(function Sidebar({
           </div>
         )}
 
-        {/* Sections header + visibility popover */}
-        <div ref={customizeRef} className="border-b border-border" style={{ position: 'relative', padding: '4px 6px' }}>
-          <button
-            className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
-            style={{ padding: '6px 14px 6px 16px' }}
-            onClick={() => toggleGroup('sections')}
-          >
-            <div className="flex items-center gap-1">
-              {groupCollapsed.sections ? <CaretRight size={12} /> : <CaretDown size={12} />}
-              <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>SECTIONS</span>
-            </div>
-            <span
-              role="button"
-              title="Customize sections"
-              aria-label="Customize sections"
-              onClick={(e) => { e.stopPropagation(); setShowCustomize((v) => !v) }}
+        {/* Sections header + entries */}
+        <div className="border-b border-border">
+          <div ref={customizeRef} style={{ position: 'relative', padding: '4px 6px' }}>
+            <button
+              className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
+              style={{ padding: '6px 14px 6px 16px' }}
+              onClick={() => toggleGroup('sections')}
             >
-              <SlidersHorizontal size={12} className="text-muted-foreground hover:text-foreground" />
-            </span>
-          </button>
-          {showCustomize && <VisibilityPopover sections={allSectionGroups} isSectionVisible={isSectionVisible} onToggle={toggleVisibility} />}
-        </div>
+              <div className="flex items-center gap-1">
+                {groupCollapsed.sections ? <CaretRight size={12} /> : <CaretDown size={12} />}
+                <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>SECTIONS</span>
+              </div>
+              <span
+                role="button"
+                title="Customize sections"
+                aria-label="Customize sections"
+                onClick={(e) => { e.stopPropagation(); setShowCustomize((v) => !v) }}
+              >
+                <SlidersHorizontal size={12} className="text-muted-foreground hover:text-foreground" />
+              </span>
+            </button>
+            {showCustomize && <VisibilityPopover sections={allSectionGroups} isSectionVisible={isSectionVisible} onToggle={toggleVisibility} />}
+          </div>
 
-        {/* Sortable section groups */}
-        {!groupCollapsed.sections && (
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-            <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-              {visibleSections.map((g) => (
-                <SortableSection key={g.type} group={g} sectionProps={sectionProps} />
-              ))}
-            </SortableContext>
-          </DndContext>
-        )}
+          {/* Sortable section groups */}
+          {!groupCollapsed.sections && (
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
+                {visibleSections.map((g) => (
+                  <SortableSection key={g.type} group={g} sectionProps={sectionProps} />
+                ))}
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
 
         {/* Folder tree */}
         <FolderTree folders={folders} selection={selection} onSelect={onSelect} onCreateFolder={onCreateFolder} collapsed={groupCollapsed.folders} onToggle={() => toggleGroup('folders')} />

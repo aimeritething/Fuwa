@@ -958,4 +958,17 @@ describe('Sidebar', () => {
       expect(onSelect).toHaveBeenCalledWith({ kind: 'filter', filter: 'favorites' })
     })
   })
+
+  describe('group separators', () => {
+    it('SECTIONS header and its entries share the same border-b container (no separator inside group)', () => {
+      render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
+      const sectionsHeader = screen.getByText('SECTIONS')
+      const projectsSection = screen.getByText('Projects')
+      // Walk up from SECTIONS header to find the border-b container
+      const borderContainer = sectionsHeader.closest('.border-b')
+      expect(borderContainer).not.toBeNull()
+      // The section entry should be inside the same border-b container
+      expect(borderContainer!.contains(projectsSection)).toBe(true)
+    })
+  })
 })
