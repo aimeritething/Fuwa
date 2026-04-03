@@ -468,6 +468,24 @@ describe('contentToEntryPatch', () => {
     const content = '---\ntype: Note\ncustom: value\n---\n'
     expect(contentToEntryPatch(content)).toEqual({ isA: 'Note' })
   })
+
+  it('preserves _favorite_index as a number (not null)', () => {
+    const content = '---\n_favorite: true\n_favorite_index: 2\n---\nBody'
+    const patch = contentToEntryPatch(content)
+    expect(patch.favorite).toBe(true)
+    expect(patch.favoriteIndex).toBe(2)
+  })
+
+  it('preserves _favorite_index: 0 as number 0', () => {
+    const content = '---\n_favorite: true\n_favorite_index: 0\n---\nBody'
+    const patch = contentToEntryPatch(content)
+    expect(patch.favoriteIndex).toBe(0)
+  })
+
+  it('preserves order as a number', () => {
+    const content = '---\ntype: Type\norder: 3\n---\n'
+    expect(contentToEntryPatch(content)).toEqual({ isA: 'Type', order: 3 })
+  })
 })
 
 describe('todayDateString', () => {

@@ -2,6 +2,33 @@ import { describe, it, expect } from 'vitest'
 import { parseFrontmatter, detectFrontmatterState } from './frontmatter'
 
 describe('parseFrontmatter', () => {
+  describe('numeric values', () => {
+    it('parses integer values as numbers', () => {
+      const fm = parseFrontmatter('---\n_favorite_index: 2\n---\nBody')
+      expect(fm['_favorite_index']).toBe(2)
+    })
+
+    it('parses zero as number 0', () => {
+      const fm = parseFrontmatter('---\n_favorite_index: 0\n---\nBody')
+      expect(fm['_favorite_index']).toBe(0)
+    })
+
+    it('parses float values as numbers', () => {
+      const fm = parseFrontmatter('---\norder: 3.5\n---\nBody')
+      expect(fm['order']).toBe(3.5)
+    })
+
+    it('parses negative numbers', () => {
+      const fm = parseFrontmatter('---\norder: -1\n---\nBody')
+      expect(fm['order']).toBe(-1)
+    })
+
+    it('does not parse quoted numbers as numbers', () => {
+      const fm = parseFrontmatter('---\nversion: "42"\n---\nBody')
+      expect(fm['version']).toBe('42')
+    })
+  })
+
   describe('boolean-like Yes/No values', () => {
     it('parses Archived: Yes as true', () => {
       const fm = parseFrontmatter('---\nArchived: Yes\n---\nBody')

@@ -26,6 +26,7 @@ function parseScalar(value: string): FrontmatterValue {
   const lower = clean.toLowerCase()
   if (lower === 'true' || lower === 'yes') return true
   if (lower === 'false' || lower === 'no') return false
+  if (clean === value && /^-?\d+(\.\d+)?$/.test(clean)) return Number(clean)
   return clean
 }
 
