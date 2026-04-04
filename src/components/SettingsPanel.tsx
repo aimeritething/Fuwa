@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { X, Eye, EyeSlash, GithubLogo, SignOut } from '@phosphor-icons/react'
+import { X, GithubLogo, SignOut } from '@phosphor-icons/react'
 import { GitHubDeviceFlow } from './GitHubDeviceFlow'
 import type { Settings } from '../types'
 import { trackEvent } from '../lib/telemetry'
@@ -11,61 +11,6 @@ interface SettingsPanelProps {
   onClose: () => void
 }
 
-
-interface KeyFieldProps {
-  label: string
-  placeholder: string
-  value: string
-  onChange: (value: string) => void
-  onClear: () => void
-}
-
-function KeyField({ label, placeholder, value, onChange, onClear }: KeyFieldProps) {
-  const [revealed, setRevealed] = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-      <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--foreground)' }}>{label}</label>
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
-        <input
-          ref={inputRef}
-          type={revealed ? 'text' : 'password'}
-          value={value}
-          onChange={e => onChange(e.target.value)}
-          placeholder={placeholder}
-          className="w-full border border-border bg-transparent text-foreground rounded"
-          style={{ fontSize: 13, padding: '8px 60px 8px 10px', outline: 'none', fontFamily: 'inherit' }}
-          autoComplete="off"
-          data-testid={`settings-key-${label.toLowerCase().replace(/\s+/g, '-')}`}
-        />
-        <div style={{ position: 'absolute', right: 8, display: 'flex', gap: 4, alignItems: 'center' }}>
-          {value && (
-            <>
-              <button
-                className="border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground"
-                onClick={() => setRevealed(r => !r)}
-                title={revealed ? 'Hide key' : 'Reveal key'}
-                type="button"
-              >
-                {revealed ? <EyeSlash size={14} /> : <Eye size={14} />}
-              </button>
-              <button
-                className="border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground"
-                onClick={() => { onClear(); setRevealed(false) }}
-                title="Clear key"
-                type="button"
-                data-testid={`clear-${label.toLowerCase().replace(/\s+/g, '-')}`}
-              >
-                <X size={14} />
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </div>
-  )
-}
 
 // --- GitHub OAuth Section ---
 
@@ -120,8 +65,6 @@ export function SettingsPanel({ open, settings, onSave, onClose }: SettingsPanel
 }
 
 function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelProps, 'open'>) {
-  const [openaiKey, setOpenaiKey] = useState(settings.openai_key ?? '')
-  const [googleKey, setGoogleKey] = useState(settings.google_key ?? '')
   const [githubToken, setGithubToken] = useState(settings.github_token)
   const [githubUsername, setGithubUsername] = useState(settings.github_username)
   const [pullInterval, setPullInterval] = useState(settings.auto_pull_interval_minutes ?? 5)
@@ -140,8 +83,6 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
   }, [])
 
   const buildSettings = useCallback((ghOverride?: { token: string | null; username: string | null }): Settings => ({
-    openai_key: openaiKey.trim() || null,
-    google_key: googleKey.trim() || null,
     github_token: ghOverride ? ghOverride.token : (githubToken ?? null),
     github_username: ghOverride ? ghOverride.username : (githubUsername ?? null),
     auto_pull_interval_minutes: pullInterval,
@@ -150,7 +91,7 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
     analytics_enabled: analytics,
     anonymous_id: (crashReporting || analytics) ? (settings.anonymous_id ?? crypto.randomUUID()) : settings.anonymous_id,
     release_channel: releaseChannel === 'stable' ? null : releaseChannel,
-  }), [openaiKey, googleKey, githubToken, githubUsername, pullInterval, releaseChannel, crashReporting, analytics, settings.telemetry_consent, settings.anonymous_id])
+  }), [githubToken, githubUsername, pullInterval, releaseChannel, crashReporting, analytics, settings.telemetry_consent, settings.anonymous_id])
 
   const handleSave = () => {
     const prevAnalytics = settings.analytics_enabled ?? false
@@ -199,8 +140,6 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
       >
         <SettingsHeader onClose={onClose} />
         <SettingsBody
-          openaiKey={openaiKey} setOpenaiKey={setOpenaiKey}
-          googleKey={googleKey} setGoogleKey={setGoogleKey}
           githubToken={githubToken ?? null} githubUsername={githubUsername ?? null}
           onGitHubConnected={handleGitHubConnected} onGitHubDisconnect={handleGitHubDisconnect}
           pullInterval={pullInterval} setPullInterval={setPullInterval}
@@ -233,8 +172,6 @@ function SettingsHeader({ onClose }: { onClose: () => void }) {
 }
 
 interface SettingsBodyProps {
-  openaiKey: string; setOpenaiKey: (v: string) => void
-  googleKey: string; setGoogleKey: (v: string) => void
   githubToken: string | null; githubUsername: string | null
   onGitHubConnected: (token: string, username: string) => void
   onGitHubDisconnect: () => void
@@ -247,18 +184,6 @@ interface SettingsBodyProps {
 function SettingsBody(props: SettingsBodyProps) {
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, overflow: 'auto' }}>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>AI Provider Keys</div>
-        <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
-          API keys are stored locally on your device. Never sent to our servers.
-        </div>
-      </div>
-
-      <KeyField label="OpenAI" placeholder="sk-..." value={props.openaiKey} onChange={props.setOpenaiKey} onClear={() => props.setOpenaiKey('')} />
-      <KeyField label="Google AI" placeholder="AIza..." value={props.googleKey} onChange={props.setGoogleKey} onClear={() => props.setGoogleKey('')} />
-
-      <div style={{ height: 1, background: 'var(--border)' }} />
-
       <div>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>GitHub</div>
         <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>

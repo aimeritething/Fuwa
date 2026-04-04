@@ -18,7 +18,6 @@ vi.mock('../lib/telemetry', () => ({
 }))
 
 const baseSettings: Settings = {
-  openai_key: null, google_key: null,
   github_token: null, github_username: null, auto_pull_interval_minutes: null,
   telemetry_consent: null, crash_reporting_enabled: null,
   analytics_enabled: null, anonymous_id: null, release_channel: null,

@@ -18,25 +18,9 @@ vi.mock('../utils/url', () => ({
 }))
 
 const emptySettings: Settings = {
-
-  openai_key: null,
-  google_key: null,
   github_token: null,
   github_username: null,
   auto_pull_interval_minutes: null,
-  telemetry_consent: null,
-  crash_reporting_enabled: null,
-  analytics_enabled: null,
-  anonymous_id: null,
-  release_channel: null,
-}
-
-const populatedSettings: Settings = {
-  openai_key: 'sk-openai-test456',
-  google_key: null,
-  github_token: null,
-  github_username: null,
-  auto_pull_interval_minutes: 5,
   telemetry_consent: null,
   crash_reporting_enabled: null,
   analytics_enabled: null,
@@ -64,67 +48,31 @@ describe('SettingsPanel', () => {
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     expect(screen.getByText('Settings')).toBeInTheDocument()
-    expect(screen.getByText('AI Provider Keys')).toBeInTheDocument()
-    expect(screen.getByText(/stored locally/)).toBeInTheDocument()
+    expect(screen.getByText('GitHub')).toBeInTheDocument()
   })
 
-  it('shows two key fields with labels', () => {
+  it('does not show AI Provider Keys section', () => {
     render(
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
-    expect(screen.getByText('OpenAI')).toBeInTheDocument()
-    expect(screen.getByText('Google AI')).toBeInTheDocument()
+    expect(screen.queryByText('AI Provider Keys')).not.toBeInTheDocument()
+    expect(screen.queryByText('OpenAI')).not.toBeInTheDocument()
+    expect(screen.queryByText('Google AI')).not.toBeInTheDocument()
   })
 
-  it('populates fields from settings', () => {
-    render(
-      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} />
-    )
-    const openaiInput = screen.getByTestId('settings-key-openai') as HTMLInputElement
-    const googleInput = screen.getByTestId('settings-key-google-ai') as HTMLInputElement
-
-    expect(openaiInput.value).toBe('sk-openai-test456')
-    expect(googleInput.value).toBe('')
-  })
-
-  it('calls onSave with trimmed keys on save', () => {
+  it('calls onSave with settings on save', () => {
     render(
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
-    const openaiInput = screen.getByTestId('settings-key-openai')
-    fireEvent.change(openaiInput, { target: { value: '  sk-openai-test  ' } })
 
     fireEvent.click(screen.getByTestId('settings-save'))
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-    
-      openai_key: 'sk-openai-test',
-      google_key: null,
       github_token: null,
       github_username: null,
       auto_pull_interval_minutes: 5,
     }))
     expect(onClose).toHaveBeenCalled()
-  })
-
-  it('converts empty/whitespace keys to null', () => {
-    render(
-      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} />
-    )
-    // Clear the openai key field
-    const openaiInput = screen.getByTestId('settings-key-openai')
-    fireEvent.change(openaiInput, { target: { value: '   ' } })
-
-    fireEvent.click(screen.getByTestId('settings-save'))
-
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-    
-      openai_key: null,
-      google_key: null,
-      github_token: null,
-      github_username: null,
-      auto_pull_interval_minutes: 5,
-    }))
   })
 
   it('calls onClose when Cancel is clicked', () => {
@@ -155,14 +103,9 @@ describe('SettingsPanel', () => {
     render(
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
-    const openaiInput = screen.getByTestId('settings-key-openai')
-    fireEvent.change(openaiInput, { target: { value: 'sk-openai-test' } })
     fireEvent.keyDown(screen.getByTestId('settings-panel'), { key: 'Enter', metaKey: true })
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
-    
-      openai_key: 'sk-openai-test',
-      google_key: null,
       github_token: null,
       github_username: null,
       auto_pull_interval_minutes: 5,
@@ -177,16 +120,6 @@ describe('SettingsPanel', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-  it('clears a key field when X button is clicked', () => {
-    render(
-      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} />
-    )
-    const clearBtn = screen.getByTestId('clear-openai')
-    fireEvent.click(clearBtn)
-
-    const openaiInput = screen.getByTestId('settings-key-openai') as HTMLInputElement
-    expect(openaiInput.value).toBe('')
-  })
 
   it('shows keyboard shortcut hint in footer', () => {
     render(
@@ -195,25 +128,6 @@ describe('SettingsPanel', () => {
     expect(screen.getByText(/to open settings/)).toBeInTheDocument()
   })
 
-  it('resets fields when reopened with different settings', () => {
-    const { rerender } = render(
-      <SettingsPanel open={true} settings={populatedSettings} onSave={onSave} onClose={onClose} />
-    )
-    // Verify initial state
-    const openaiInput = screen.getByTestId('settings-key-openai') as HTMLInputElement
-    expect(openaiInput.value).toBe('sk-openai-test456')
-
-    // Close and reopen with different settings
-    rerender(
-      <SettingsPanel open={false} settings={populatedSettings} onSave={onSave} onClose={onClose} />
-    )
-    const newSettings: Settings = { ...emptySettings, openai_key: 'new-key' }
-    rerender(
-      <SettingsPanel open={true} settings={newSettings} onSave={onSave} onClose={onClose} />
-    )
-    const updatedInput = screen.getByTestId('settings-key-openai') as HTMLInputElement
-    expect(updatedInput.value).toBe('new-key')
-  })
 
   describe('GitHub OAuth section', () => {
     it('shows Login with GitHub button when not connected', () => {

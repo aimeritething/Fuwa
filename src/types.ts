@@ -74,8 +74,6 @@ export interface ModifiedFile {
 }
 
 export interface Settings {
-  openai_key: string | null
-  google_key: string | null
   github_token: string | null
   github_username: string | null
   auto_pull_interval_minutes: number | null

@@ -4,9 +4,6 @@ import type { Settings } from '../types'
 import { useSettings } from './useSettings'
 
 const defaultSettings: Settings = {
-
-  openai_key: null,
-  google_key: null,
   github_token: null,
   github_username: null,
   auto_pull_interval_minutes: null,
@@ -18,9 +15,7 @@ const defaultSettings: Settings = {
 }
 
 const savedSettings: Settings = {
-  openai_key: null,
-  google_key: 'AIza-test',
-  github_token: null,
+  github_token: 'gho_saved_token',
   github_username: null,
   auto_pull_interval_minutes: null,
   telemetry_consent: null,
@@ -70,7 +65,7 @@ describe('useSettings', () => {
       expect(result.current.loaded).toBe(true)
     })
 
-    expect(result.current.settings.google_key).toBe('AIza-test')
+    expect(result.current.settings.github_token).toBe('gho_saved_token')
     expect(mockInvokeFn).toHaveBeenCalledWith('get_settings', {})
   })
 
@@ -82,8 +77,6 @@ describe('useSettings', () => {
     })
 
     const newSettings: Settings = {
-      openai_key: 'sk-openai-new',
-      google_key: null,
       github_token: null,
       github_username: null,
       auto_pull_interval_minutes: null,
