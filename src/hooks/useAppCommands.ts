@@ -55,6 +55,8 @@ interface AppCommandsConfig {
   vaultCount?: number
   mcpStatus?: string
   onInstallMcp?: () => void
+  claudeCodeStatus?: string
+  claudeCodeVersion?: string
   onEmptyTrash?: () => void
   trashedCount?: number
   onReloadVault?: () => void
