@@ -7,8 +7,12 @@ Priority order: **To Rework** first, then **Open** (sorted by Todoist priority p
 ## Steps
 
 1. Fetch tasks from To Rework (`6g6QqvR9rRpvJWvv`), then Open (`6g3XjWR832hVHhCM`)
-2. Sort each section by priority (p1 highest)
-3. Take the first available task
+2. **Sort by priority — this is mandatory.** Todoist returns tasks in arbitrary order. You must sort them yourself:
+   - Todoist priority field: `4` = p1 (urgent), `3` = p2, `2` = p3, `1` = p4
+   - Sort descending by `priority` field (4 first, 1 last)
+   - To Rework tasks always come before Open tasks regardless of priority
+   - **Never pick a p3/p4 task if a p1/p2 task exists in the same section**
+3. Take the first task from the sorted list
 4. Move it to In Progress (`6g3XjWjfmJFcGgHM`) via Todoist API:
 
 ```bash
