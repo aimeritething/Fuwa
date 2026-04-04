@@ -439,11 +439,13 @@ describe('Sidebar', () => {
       expect(screen.queryByText('Pasta Carbonara')).not.toBeInTheDocument()
     })
 
-    it('does not show section for type with zero active entries', () => {
+    it('shows section for type with zero active entries when type definition exists', () => {
       // Only Type definitions exist for Book, no actual Book instances
+      // New behavior: types are shown in sidebar as long as the Type definition exists (not trashed/archived)
       const entriesNoBookInstance = entriesWithCustomTypes.filter((e) => !(e.isA === 'Book' && e.title !== 'Book'))
       render(<Sidebar entries={entriesNoBookInstance} selection={defaultSelection} onSelect={() => {}} />)
-      expect(screen.queryByText('Books')).not.toBeInTheDocument()
+      // Books should still appear because the Book type definition exists
+      expect(screen.getByText('Books')).toBeInTheDocument()
       // Recipes still has an instance (Pasta Carbonara)
       expect(screen.getByText('Recipes')).toBeInTheDocument()
     })
