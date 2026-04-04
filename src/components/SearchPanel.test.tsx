@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { SearchPanel } from './SearchPanel'
 import type { VaultEntry } from '../types'
@@ -239,12 +239,12 @@ describe('SearchPanel', () => {
       expect(screen.getByText('How to Design AI-first APIs')).toBeInTheDocument()
     })
 
-    fireEvent.keyDown(window, { key: 'Enter' })
-
-    await waitFor(() => {
-      expect(onSelectNote).toHaveBeenCalledWith(MOCK_ENTRIES[0])
-      expect(onClose).toHaveBeenCalled()
+    await act(async () => {
+      fireEvent.keyDown(window, { key: 'Enter' })
     })
+
+    expect(onSelectNote).toHaveBeenCalledWith(MOCK_ENTRIES[0])
+    expect(onClose).toHaveBeenCalled()
   })
 
   it('shows result count and elapsed time', async () => {
