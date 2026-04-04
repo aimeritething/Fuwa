@@ -13,9 +13,11 @@ interface CreateViewDialogProps {
   availableFields: string[]
   /** Returns known values for a given field (for autocomplete). */
   valueSuggestions?: (field: string) => string[]
+  /** When provided, the dialog operates in edit mode with pre-populated fields. */
+  editingView?: ViewDefinition | null
 }
 
-export function CreateViewDialog({ open, onClose, onCreate, availableFields, valueSuggestions }: CreateViewDialogProps) {
+export function CreateViewDialog({ open, onClose, onCreate, availableFields, valueSuggestions, editingView }: CreateViewDialogProps) {
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -23,16 +25,23 @@ export function CreateViewDialog({ open, onClose, onCreate, availableFields, val
     all: [{ field: 'type', op: 'equals', value: '' }],
   })
   const inputRef = useRef<HTMLInputElement>(null)
+  const isEditing = !!editingView
 
   useEffect(() => {
     if (open) {
-      setName('') // eslint-disable-line react-hooks/set-state-in-effect -- reset on dialog open
-      setIcon('') // eslint-disable-line react-hooks/set-state-in-effect -- reset on dialog open
+      if (editingView) {
+        setName(editingView.name) // eslint-disable-line react-hooks/set-state-in-effect -- populate on dialog open
+        setIcon(editingView.icon ?? '') // eslint-disable-line react-hooks/set-state-in-effect -- populate on dialog open
+        setFilters(editingView.filters) // eslint-disable-line react-hooks/set-state-in-effect -- populate on dialog open
+      } else {
+        setName('') // eslint-disable-line react-hooks/set-state-in-effect -- reset on dialog open
+        setIcon('') // eslint-disable-line react-hooks/set-state-in-effect -- reset on dialog open
+        setFilters({ all: [{ field: availableFields[0] ?? 'type', op: 'equals', value: '' }] }) // eslint-disable-line react-hooks/set-state-in-effect -- reset on dialog open
+      }
       setShowEmojiPicker(false) // eslint-disable-line react-hooks/set-state-in-effect -- reset on dialog open
-      setFilters({ all: [{ field: availableFields[0] ?? 'type', op: 'equals', value: '' }] }) // eslint-disable-line react-hooks/set-state-in-effect -- reset on dialog open
       setTimeout(() => inputRef.current?.focus(), 50)
     }
-  }, [open, availableFields])
+  }, [open, availableFields, editingView])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -62,7 +71,7 @@ export function CreateViewDialog({ open, onClose, onCreate, availableFields, val
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
       <DialogContent showCloseButton={false} className="flex max-h-[80vh] flex-col sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Create View</DialogTitle>
+          <DialogTitle>{isEditing ? 'Edit View' : 'Create View'}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="flex min-h-0 flex-1 flex-col gap-4">
           <div className="flex gap-2">
@@ -101,7 +110,7 @@ export function CreateViewDialog({ open, onClose, onCreate, availableFields, val
           </div>
           <DialogFooter>
             <Button type="button" variant="outline" onClick={onClose}>Cancel</Button>
-            <Button type="submit" disabled={!name.trim()}>Create</Button>
+            <Button type="submit" disabled={!name.trim()}>{isEditing ? 'Save' : 'Create'}</Button>
           </DialogFooter>
         </form>
       </DialogContent>

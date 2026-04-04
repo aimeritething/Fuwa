@@ -12,7 +12,7 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import {
-  FileText, Trash, Archive, CaretLeft, Tray, CaretRight, CaretDown, Plus, Funnel,
+  FileText, Trash, Archive, CaretLeft, Tray, CaretRight, CaretDown, Plus, Funnel, PencilSimple,
 } from '@phosphor-icons/react'
 import { isEmoji } from '../utils/emoji'
 import { arrayMove } from '@dnd-kit/sortable'
@@ -40,6 +40,7 @@ interface SidebarProps {
   onReorderFavorites?: (orderedPaths: string[]) => void
   views?: ViewFile[]
   onCreateView?: () => void
+  onEditView?: (filename: string) => void
   onDeleteView?: (filename: string) => void
   folders?: FolderNode[]
   onCreateFolder?: (name: string) => void
@@ -331,7 +332,7 @@ export const Sidebar = memo(function Sidebar({
   entries, selection, onSelect,
   onCustomizeType, onUpdateTypeTemplate, onReorderSections, onRenameSection,
   onToggleTypeVisibility, onSelectFavorite, onReorderFavorites,
-  views = [], onCreateView, onDeleteView,
+  views = [], onCreateView, onEditView, onDeleteView,
   folders = [], onCreateFolder, inboxCount = 0, onCollapse,
 }: SidebarProps) {
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
@@ -459,15 +460,26 @@ export const Sidebar = memo(function Sidebar({
                       isActive={isSelectionActive(selection, { kind: 'view', filename: v.filename })}
                       onClick={() => onSelect({ kind: 'view', filename: v.filename })}
                     />
-                    {onDeleteView && (
-                      <button
-                        className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"
-                        onClick={(e) => { e.stopPropagation(); onDeleteView(v.filename) }}
-                        title="Delete view"
-                      >
-                        <Trash size={12} />
-                      </button>
-                    )}
+                    <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+                      {onEditView && (
+                        <button
+                          className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+                          onClick={(e) => { e.stopPropagation(); onEditView(v.filename) }}
+                          title="Edit view"
+                        >
+                          <PencilSimple size={12} />
+                        </button>
+                      )}
+                      {onDeleteView && (
+                        <button
+                          className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+                          onClick={(e) => { e.stopPropagation(); onDeleteView(v.filename) }}
+                          title="Delete view"
+                        >
+                          <Trash size={12} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

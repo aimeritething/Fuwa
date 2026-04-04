@@ -971,4 +971,42 @@ describe('Sidebar', () => {
       expect(borderContainer!.contains(projectsSection)).toBe(true)
     })
   })
+
+  describe('view edit button', () => {
+    const mockViews = [
+      {
+        filename: 'active-projects.yml',
+        definition: {
+          name: 'Active Projects',
+          icon: '🚀',
+          color: null,
+          sort: null,
+          filters: { all: [{ field: 'type', op: 'equals' as const, value: 'Project' }] },
+        },
+      },
+    ]
+
+    it('renders edit button for each view item when onEditView is provided', () => {
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} views={mockViews} onEditView={() => {}} onDeleteView={() => {}} />
+      )
+      expect(screen.getByTitle('Edit view')).toBeInTheDocument()
+    })
+
+    it('does not render edit button when onEditView is not provided', () => {
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} views={mockViews} onDeleteView={() => {}} />
+      )
+      expect(screen.queryByTitle('Edit view')).not.toBeInTheDocument()
+    })
+
+    it('calls onEditView with correct filename when clicked', () => {
+      const onEditView = vi.fn()
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} views={mockViews} onEditView={onEditView} onDeleteView={() => {}} />
+      )
+      fireEvent.click(screen.getByTitle('Edit view'))
+      expect(onEditView).toHaveBeenCalledWith('active-projects.yml')
+    })
+  })
 })

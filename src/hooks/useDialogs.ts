@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react'
+import type { ViewDefinition } from '../types'
 
 export function useDialogs() {
   const [showCreateTypeDialog, setShowCreateTypeDialog] = useState(false)
@@ -10,6 +11,7 @@ export function useDialogs() {
   const [showSearch, setShowSearch] = useState(false)
   const [showConflictResolver, setShowConflictResolver] = useState(false)
   const [showCreateViewDialog, setShowCreateViewDialog] = useState(false)
+  const [editingView, setEditingView] = useState<{ filename: string; definition: ViewDefinition } | null>(null)
 
   const openCreateType = useCallback(() => setShowCreateTypeDialog(true), [])
   const closeCreateType = useCallback(() => setShowCreateTypeDialog(false), [])
@@ -26,8 +28,12 @@ export function useDialogs() {
   const closeSearch = useCallback(() => setShowSearch(false), [])
   const openConflictResolver = useCallback(() => setShowConflictResolver(true), [])
   const closeConflictResolver = useCallback(() => setShowConflictResolver(false), [])
-  const openCreateView = useCallback(() => setShowCreateViewDialog(true), [])
-  const closeCreateView = useCallback(() => setShowCreateViewDialog(false), [])
+  const openCreateView = useCallback(() => { setEditingView(null); setShowCreateViewDialog(true) }, [])
+  const closeCreateView = useCallback(() => { setShowCreateViewDialog(false); setEditingView(null) }, [])
+  const openEditView = useCallback((filename: string, definition: ViewDefinition) => {
+    setEditingView({ filename, definition })
+    setShowCreateViewDialog(true)
+  }, [])
 
   return {
     showCreateTypeDialog, openCreateType, closeCreateType,
@@ -38,6 +44,6 @@ export function useDialogs() {
     showGitHubVault, openGitHubVault, closeGitHubVault,
     showSearch, openSearch, closeSearch,
     showConflictResolver, openConflictResolver, closeConflictResolver,
-    showCreateViewDialog, openCreateView, closeCreateView,
+    showCreateViewDialog, openCreateView, closeCreateView, editingView, openEditView,
   }
 }

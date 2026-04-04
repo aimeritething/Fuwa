@@ -336,15 +336,23 @@ function App() {
     setToastMessage(`Type "${name}" created`)
   }, [notes])
 
-  const handleCreateView = useCallback(async (definition: import('./types').ViewDefinition) => {
-    const filename = definition.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.yml'
+  const handleCreateOrUpdateView = useCallback(async (definition: import('./types').ViewDefinition) => {
+    const editing = dialogs.editingView
+    const filename = editing
+      ? editing.filename
+      : definition.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.yml'
     const target = isTauri() ? invoke : mockInvoke
     await target('save_view_cmd', { vaultPath: resolvedPath, filename, definition })
-    trackEvent('view_created')
+    trackEvent(editing ? 'view_updated' : 'view_created')
     await vault.reloadViews()
-    setToastMessage(`View "${definition.name}" created`)
+    setToastMessage(editing ? `View "${definition.name}" updated` : `View "${definition.name}" created`)
     handleSetSelection({ kind: 'view', filename })
-  }, [resolvedPath, vault, handleSetSelection])
+  }, [resolvedPath, vault, handleSetSelection, dialogs.editingView])
+
+  const handleEditView = useCallback((filename: string) => {
+    const view = vault.views.find((v) => v.filename === filename)
+    if (view) dialogs.openEditView(filename, view.definition)
+  }, [vault.views, dialogs])
 
   const handleDeleteView = useCallback(async (filename: string) => {
     const target = isTauri() ? invoke : mockInvoke
@@ -545,7 +553,7 @@ function App() {
         {sidebarVisible && (
           <>
             <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-              <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={selection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={notes.handleSelectNote} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onCreateView={dialogs.openCreateView} onDeleteView={handleDeleteView} inboxCount={inboxCount} />
+              <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={selection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={notes.handleSelectNote} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} inboxCount={inboxCount} />
             </div>
             <ResizeHandle onResize={layout.handleSidebarResize} />
           </>
@@ -624,7 +632,7 @@ function App() {
       <CommandPalette open={dialogs.showCommandPalette} commands={commands} onClose={dialogs.closeCommandPalette} />
       <SearchPanel open={dialogs.showSearch} vaultPath={resolvedPath} entries={vault.entries} onSelectNote={notes.handleSelectNote} onClose={dialogs.closeSearch} />
       <CreateTypeDialog open={dialogs.showCreateTypeDialog} onClose={dialogs.closeCreateType} onCreate={handleCreateType} />
-      <CreateViewDialog open={dialogs.showCreateViewDialog} onClose={dialogs.closeCreateView} onCreate={handleCreateView} availableFields={availableFields} valueSuggestions={valueSuggestionsForField} />
+      <CreateViewDialog open={dialogs.showCreateViewDialog} onClose={dialogs.closeCreateView} onCreate={handleCreateOrUpdateView} availableFields={availableFields} valueSuggestions={valueSuggestionsForField} editingView={dialogs.editingView?.definition ?? null} />
       <CommitDialog open={commitFlow.showCommitDialog} modifiedCount={vault.modifiedFiles.length} suggestedMessage={suggestedCommitMessage} onCommit={commitFlow.handleCommitPush} onClose={commitFlow.closeCommitDialog} />
       <ConflictResolverModal
         open={dialogs.showConflictResolver}
