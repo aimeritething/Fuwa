@@ -71,6 +71,7 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
             <div className="grid grid-cols-8 gap-0.5">
               {searchResults.map(entry => (
                 <button
+                  type="button"
                   key={entry.emoji}
                   className="flex h-8 w-8 items-center justify-center rounded text-xl transition-colors hover:bg-accent"
                   onClick={() => handleSelect(entry.emoji)}
@@ -98,6 +99,7 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
                 <div className="grid grid-cols-8 gap-0.5">
                   {emojis.map(entry => (
                     <button
+                      type="button"
                       key={entry.emoji}
                       className="flex h-8 w-8 items-center justify-center rounded text-xl transition-colors hover:bg-accent"
                       onClick={() => handleSelect(entry.emoji)}

@@ -715,6 +715,30 @@ filters:
     }
 
     #[test]
+    fn test_save_and_read_view_with_emoji_icon() {
+        let dir = tempfile::TempDir::new().unwrap();
+
+        let def = ViewDefinition {
+            name: "Monday".to_string(),
+            icon: Some("🗂️".to_string()),
+            color: None,
+            sort: None,
+            filters: FilterGroup::All(vec![FilterNode::Condition(FilterCondition {
+                field: "type".to_string(),
+                op: FilterOp::Equals,
+                value: Some(serde_yaml::Value::String("Project".to_string())),
+            })]),
+        };
+
+        save_view(dir.path(), "monday.yml", &def).unwrap();
+
+        let views = scan_views(dir.path());
+        assert_eq!(views.len(), 1);
+        assert_eq!(views[0].definition.name, "Monday");
+        assert_eq!(views[0].definition.icon.as_deref(), Some("🗂️"));
+    }
+
+    #[test]
     fn test_wikilink_stem_matching() {
         let yaml = r#"
 name: Linked
