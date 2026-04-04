@@ -4,8 +4,9 @@ import type { SortOption, SortDirection } from '../../utils/noteListHelpers'
 import { Input } from '@/components/ui/input'
 import { useDragRegion } from '../../hooks/useDragRegion'
 import { SortDropdown } from '../SortDropdown'
+import { ListPropertiesPopover } from './ListPropertiesPopover'
 
-export function NoteListHeader({ title, typeDocument, isEntityView, isTrashView, trashCount, listSort, listDirection, customProperties, sidebarCollapsed, searchVisible, search, onSortChange, onCreateNote, onOpenType, onToggleSearch, onSearchChange, onEmptyTrash }: {
+export function NoteListHeader({ title, typeDocument, isEntityView, isTrashView, trashCount, listSort, listDirection, customProperties, sidebarCollapsed, searchVisible, search, isSectionGroup, entries, onSortChange, onCreateNote, onOpenType, onToggleSearch, onSearchChange, onEmptyTrash, onUpdateTypeProperty }: {
   title: string
   typeDocument: VaultEntry | null
   isEntityView: boolean
@@ -17,12 +18,15 @@ export function NoteListHeader({ title, typeDocument, isEntityView, isTrashView,
   sidebarCollapsed?: boolean
   searchVisible: boolean
   search: string
+  isSectionGroup?: boolean
+  entries?: VaultEntry[]
   onSortChange: (groupLabel: string, option: SortOption, direction: SortDirection) => void
   onCreateNote: () => void
   onOpenType: (entry: VaultEntry) => void
   onToggleSearch: () => void
   onSearchChange: (value: string) => void
   onEmptyTrash?: () => void
+  onUpdateTypeProperty?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
 }) {
   const { onMouseDown: onDragMouseDown } = useDragRegion()
   return (
@@ -41,6 +45,9 @@ export function NoteListHeader({ title, typeDocument, isEntityView, isTrashView,
           <button className="flex items-center text-muted-foreground transition-colors hover:text-foreground" onClick={onToggleSearch} title="Search notes">
             <MagnifyingGlass size={16} />
           </button>
+          {isSectionGroup && typeDocument && entries && onUpdateTypeProperty && (
+            <ListPropertiesPopover typeDocument={typeDocument} entries={entries} onSave={onUpdateTypeProperty} />
+          )}
           {isTrashView && trashCount > 0 && (
             <button
               className="flex items-center text-destructive transition-colors hover:text-destructive/80"

@@ -39,6 +39,8 @@ export interface VaultEntry {
   favorite: boolean
   /** Display order within the FAVORITES section (lower = higher). */
   favoriteIndex: number | null
+  /** Properties to display as chips in the note list for this Type's notes. */
+  listPropertiesDisplay: string[]
   /** All wikilink targets found in the note content. Extracted from [[target]] patterns. */
   outgoingLinks: string[]
   /** Custom scalar frontmatter properties (non-relationship, non-structural). */

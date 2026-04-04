@@ -10,6 +10,7 @@ import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { resolveIcon } from '../utils/iconRegistry'
 import { relativeDate, getDisplayDate } from '../utils/noteListHelpers'
 import { isEmoji } from '../utils/emoji'
+import { wikilinkDisplay } from '../utils/wikilink'
 
 const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>> = {
   Project: Wrench,
@@ -85,6 +86,59 @@ function StateBadge({ archived, trashed }: { archived: boolean; trashed: boolean
   return null
 }
 
+function formatChipValue(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null
+  const s = String(value)
+  // URL: show only hostname
+  try {
+    if (s.startsWith('http://') || s.startsWith('https://')) return new URL(s).hostname
+  } catch { /* not a URL */ }
+  return s.length > 40 ? s.slice(0, 37) + '…' : s
+}
+
+function resolveChipValues(entry: VaultEntry, propName: string): string[] {
+  // Check relationships first (wikilink values)
+  const relKey = Object.keys(entry.relationships).find((k) => k.toLowerCase() === propName.toLowerCase())
+  if (relKey) {
+    return entry.relationships[relKey].map((ref) => wikilinkDisplay(ref)).filter(Boolean)
+  }
+  // Check scalar properties
+  const propKey = Object.keys(entry.properties).find((k) => k.toLowerCase() === propName.toLowerCase())
+  if (!propKey) return []
+  const val = entry.properties[propKey]
+  if (Array.isArray(val)) return val.map((v) => formatChipValue(v)).filter((v): v is string => v !== null)
+  const formatted = formatChipValue(val)
+  return formatted ? [formatted] : []
+}
+
+function PropertyChips({ entry, displayProps }: { entry: VaultEntry; displayProps: string[] }) {
+  const chips = useMemo(() => {
+    const result: { key: string; values: string[] }[] = []
+    for (const prop of displayProps) {
+      const values = resolveChipValues(entry, prop)
+      if (values.length > 0) result.push({ key: prop, values })
+    }
+    return result
+  }, [entry, displayProps])
+
+  if (chips.length === 0) return null
+
+  return (
+    <div className="mt-1 flex flex-wrap gap-1" data-testid="property-chips">
+      {chips.map(({ key, values }) =>
+        values.map((v, i) => (
+          <span
+            key={`${key}-${i}`}
+            className="inline-block max-w-full truncate rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+          >
+            {v}
+          </span>
+        ))
+      )}
+    </div>
+  )
+}
+
 function noteItemStyle(isSelected: boolean, isMultiSelected: boolean, typeColor: string, typeLightColor: string): React.CSSProperties {
   const base: React.CSSProperties = { padding: isSelected && !isMultiSelected ? '14px 16px 14px 13px' : '14px 16px' }
   if (isMultiSelected) base.backgroundColor = 'color-mix(in srgb, var(--accent-blue) 10%, transparent)'
@@ -152,6 +206,9 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
         <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" data-testid="note-snippet" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
           {entry.snippet}
         </div>
+      )}
+      {!isBinary && te?.listPropertiesDisplay && te.listPropertiesDisplay.length > 0 && (
+        <PropertyChips entry={entry} displayProps={te.listPropertiesDisplay} />
       )}
       {!isBinary && (entry.trashed && entry.trashedAt
         ? <TrashDateLine entry={entry} />

@@ -401,6 +401,16 @@ describe('frontmatterToEntryPatch', () => {
     },
   )
 
+  it('maps _list_properties_display update to listPropertiesDisplay array', () => {
+    const result = frontmatterToEntryPatch('update', '_list_properties_display', ['rating', 'genre'])
+    expect(result.patch).toEqual({ listPropertiesDisplay: ['rating', 'genre'] })
+  })
+
+  it('maps _list_properties_display delete to empty array', () => {
+    const result = frontmatterToEntryPatch('delete', '_list_properties_display')
+    expect(result.patch).toEqual({ listPropertiesDisplay: [] })
+  })
+
   it('returns empty patch for unknown key on delete, with relationship removal', () => {
     const result = frontmatterToEntryPatch('delete', 'unknown_key')
     expect(result.patch).toEqual({})

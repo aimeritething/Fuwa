@@ -55,6 +55,8 @@ pub(crate) struct Frontmatter {
     pub favorite: Option<bool>,
     #[serde(rename = "_favorite_index", default)]
     pub favorite_index: Option<i64>,
+    #[serde(rename = "_list_properties_display", default)]
+    pub list_properties_display: Option<Vec<String>>,
 }
 
 /// Custom deserializer for boolean fields that may arrive as strings.
@@ -169,6 +171,7 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
         "status",
         "_favorite",
         "_favorite_index",
+        "_list_properties_display",
     ];
     let filtered: serde_json::Map<String, serde_json::Value> = data
         .iter()
@@ -205,6 +208,7 @@ const SKIP_KEYS: &[&str] = &[
     "status",
     "_favorite",
     "_favorite_index",
+    "_list_properties_display",
 ];
 
 /// Extract all wikilink-containing fields from raw YAML frontmatter.

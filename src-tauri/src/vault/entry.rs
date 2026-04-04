@@ -75,6 +75,10 @@ pub struct VaultEntry {
     /// Only includes strings, numbers, and booleans — arrays/objects are excluded.
     #[serde(default)]
     pub properties: HashMap<String, serde_json::Value>,
+    /// Properties to display as chips in the note list for this Type's notes.
+    /// Configured via `_list_properties_display` in the type file's frontmatter.
+    #[serde(rename = "listPropertiesDisplay", default)]
+    pub list_properties_display: Vec<String>,
     /// File kind: "markdown", "text", or "binary".
     /// Determines how the frontend renders and opens the file.
     #[serde(rename = "fileKind", default = "default_file_kind")]
