@@ -1,8 +1,12 @@
+import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { Plus, X } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import type { FilterCondition, FilterOp, FilterGroup, FilterNode } from '../types'
+import type { FilterCondition, FilterOp, FilterGroup, FilterNode, VaultEntry } from '../types'
+import { buildTypeEntryMap, getTypeColor, getTypeLightColor } from '../utils/typeColors'
+import { getTypeIcon } from './NoteItem'
+import './WikilinkSuggestionMenu.css'
 
 const OPERATORS: { value: FilterOp; label: string }[] = [
   { value: 'equals', label: 'equals' },
@@ -80,10 +84,197 @@ function OperatorSelect({ value, onChange }: {
   )
 }
 
-function ValueInput({ value, suggestions, isDateOp, onChange }: {
+const MAX_WIKILINK_RESULTS = 10
+const MIN_WIKILINK_QUERY = 2
+
+function entryMatchesQuery(e: VaultEntry, lowerQuery: string): boolean {
+  return e.title.toLowerCase().includes(lowerQuery) ||
+    e.aliases.some(a => a.toLowerCase().includes(lowerQuery))
+}
+
+function toWikilinkMatch(e: VaultEntry, typeEntryMap: Record<string, VaultEntry>) {
+  const isA = e.isA
+  const te = typeEntryMap[isA ?? '']
+  const noteType = isA || undefined
+  return {
+    title: e.title,
+    noteType,
+    typeColor: noteType ? getTypeColor(isA, te?.color) : undefined,
+    typeLightColor: noteType ? getTypeLightColor(isA, te?.color) : undefined,
+    TypeIcon: noteType ? getTypeIcon(isA, te?.icon) : undefined,
+  }
+}
+
+function matchWikilinkEntries(entries: VaultEntry[], typeEntryMap: Record<string, VaultEntry>, query: string) {
+  if (query.length < MIN_WIKILINK_QUERY) return []
+  const lowerQuery = query.toLowerCase()
+  return entries
+    .filter(e => !e.trashed && entryMatchesQuery(e, lowerQuery))
+    .slice(0, MAX_WIKILINK_RESULTS)
+    .map(e => toWikilinkMatch(e, typeEntryMap))
+}
+
+type WikilinkMatch = ReturnType<typeof toWikilinkMatch>
+
+function extractWikilinkQuery(value: string): string | null {
+  return value.startsWith('[[') ? value.slice(2).replace(/]]$/, '') : null
+}
+
+function useOutsideClick(refs: React.RefObject<HTMLElement | null>[], onClose: () => void) {
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as Node
+      if (refs.every(r => !r.current?.contains(target))) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [refs, onClose])
+}
+
+function WikilinkDropdown({ matches, selectedIndex, onSelect, onHover, menuRef }: {
+  matches: WikilinkMatch[]
+  selectedIndex: number
+  onSelect: (title: string) => void
+  onHover: (index: number) => void
+  menuRef: React.RefObject<HTMLDivElement | null>
+}) {
+  return (
+    <div
+      className="wikilink-menu"
+      ref={menuRef}
+      style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 2, zIndex: 50 }}
+      data-testid="wikilink-dropdown"
+    >
+      {matches.map((item, index) => (
+        <div
+          key={item.title}
+          className={`wikilink-menu__item${index === selectedIndex ? ' wikilink-menu__item--selected' : ''}`}
+          onMouseDown={e => e.preventDefault()}
+          onClick={() => onSelect(item.title)}
+          onMouseEnter={() => onHover(index)}
+        >
+          <span className="wikilink-menu__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            {item.TypeIcon && <item.TypeIcon width={14} height={14} style={{ color: item.typeColor, flexShrink: 0 }} />}
+            {item.title}
+          </span>
+          {item.noteType && (
+            <span className="wikilink-menu__type" style={{ color: item.typeColor, backgroundColor: item.typeLightColor, borderRadius: 9999, padding: '1px 8px' }}>
+              {item.noteType}
+            </span>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function useWikilinkMatches(entries: VaultEntry[], value: string, open: boolean) {
+  const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
+  const wikilinkQuery = extractWikilinkQuery(value)
+  return useMemo(
+    () => (open && wikilinkQuery !== null) ? matchWikilinkEntries(entries, typeEntryMap, wikilinkQuery) : [],
+    [entries, typeEntryMap, wikilinkQuery, open],
+  )
+}
+
+function useScrollSelectedIntoView(menuRef: React.RefObject<HTMLDivElement | null>, selectedIndex: number) {
+  useEffect(() => {
+    if (selectedIndex < 0 || !menuRef.current) return
+    const el = menuRef.current.children[selectedIndex] as HTMLElement | undefined
+    el?.scrollIntoView?.({ block: 'nearest' })
+  }, [selectedIndex, menuRef])
+}
+
+function useDropdownKeyboard(
+  matches: WikilinkMatch[],
+  open: boolean,
+  onSelect: (title: string) => void,
+  onClose: () => void,
+) {
+  const [selectedIndex, setSelectedIndex] = useState(-1)
+
+  const resetIndex = useCallback(() => setSelectedIndex(-1), [])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!open || matches.length === 0) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setSelectedIndex(i => (i + 1) % matches.length)
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setSelectedIndex(i => (i <= 0 ? matches.length - 1 : i - 1))
+    } else if (e.key === 'Enter' && selectedIndex >= 0) {
+      e.preventDefault()
+      onSelect(matches[selectedIndex].title)
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      onClose()
+    }
+  }, [open, matches, selectedIndex, onSelect, onClose])
+
+  return { selectedIndex, setSelectedIndex, resetIndex, handleKeyDown }
+}
+
+function WikilinkValueInput({ value, entries, onChange }: {
+  value: string
+  entries: VaultEntry[]
+  onChange: (v: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  const matches = useWikilinkMatches(entries, value, open)
+
+  const handleSelect = useCallback((title: string) => {
+    onChange(`[[${title}]]`)
+    setOpen(false)
+  }, [onChange])
+
+  const closeMenu = useCallback(() => setOpen(false), [])
+  useOutsideClick([inputRef, menuRef], closeMenu)
+
+  const { selectedIndex, setSelectedIndex, resetIndex, handleKeyDown } =
+    useDropdownKeyboard(matches, open, handleSelect, closeMenu)
+
+  useScrollSelectedIntoView(menuRef, selectedIndex)
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    onChange(e.target.value)
+    setOpen(e.target.value.startsWith('[['))
+    resetIndex()
+  }, [onChange, resetIndex])
+
+  return (
+    <div style={{ position: 'relative' }} className="flex-1 min-w-0">
+      <Input
+        ref={inputRef}
+        className="h-8 w-full text-sm"
+        placeholder="value"
+        value={value}
+        onChange={handleChange}
+        onFocus={() => { if (value.startsWith('[[')) setOpen(true) }}
+        onKeyDown={handleKeyDown}
+        data-testid="filter-value-input"
+      />
+      {open && matches.length > 0 && (
+        <WikilinkDropdown
+          matches={matches}
+          selectedIndex={selectedIndex}
+          onSelect={handleSelect}
+          onHover={setSelectedIndex}
+          menuRef={menuRef}
+        />
+      )}
+    </div>
+  )
+}
+
+function ValueInput({ value, suggestions, isDateOp, entries, onChange }: {
   value: string
   suggestions: string[]
   isDateOp: boolean
+  entries: VaultEntry[]
   onChange: (v: string) => void
 }) {
   if (isDateOp) {
@@ -118,6 +309,10 @@ function ValueInput({ value, suggestions, isDateOp, onChange }: {
     )
   }
 
+  if (entries.length > 0) {
+    return <WikilinkValueInput value={value} entries={entries} onChange={onChange} />
+  }
+
   return (
     <Input
       className="h-8 flex-1 min-w-0 text-sm"
@@ -128,9 +323,10 @@ function ValueInput({ value, suggestions, isDateOp, onChange }: {
   )
 }
 
-function FilterRow({ condition, fields, valueSuggestions, onUpdate, onRemove }: {
+function FilterRow({ condition, fields, entries, valueSuggestions, onUpdate, onRemove }: {
   condition: FilterCondition
   fields: string[]
+  entries: VaultEntry[]
   valueSuggestions: (field: string) => string[]
   onUpdate: (c: FilterCondition) => void
   onRemove: () => void
@@ -153,6 +349,7 @@ function FilterRow({ condition, fields, valueSuggestions, onUpdate, onRemove }: 
           value={String(condition.value ?? '')}
           suggestions={suggestions}
           isDateOp={isDateOp}
+          entries={entries}
           onChange={(v) => onUpdate({ ...condition, value: v })}
         />
       )}
@@ -170,9 +367,10 @@ function FilterRow({ condition, fields, valueSuggestions, onUpdate, onRemove }: 
   )
 }
 
-function FilterGroupView({ group, fields, valueSuggestions, depth, onChange, onRemove }: {
+function FilterGroupView({ group, fields, entries, valueSuggestions, depth, onChange, onRemove }: {
   group: FilterGroup
   fields: string[]
+  entries: VaultEntry[]
   valueSuggestions: (field: string) => string[]
   depth: number
   onChange: (g: FilterGroup) => void
@@ -241,6 +439,7 @@ function FilterGroupView({ group, fields, valueSuggestions, depth, onChange, onR
               key={i}
               group={child}
               fields={fields}
+              entries={entries}
               valueSuggestions={valueSuggestions}
               depth={depth + 1}
               onChange={(g) => updateChild(i, g)}
@@ -251,6 +450,7 @@ function FilterGroupView({ group, fields, valueSuggestions, depth, onChange, onR
               key={i}
               condition={child}
               fields={fields}
+              entries={entries}
               valueSuggestions={valueSuggestions}
               onUpdate={(c) => updateChild(i, c)}
               onRemove={() => removeChild(i)}
@@ -276,16 +476,19 @@ export interface FilterBuilderProps {
   availableFields: string[]
   /** Returns known values for a given field (for autocomplete). */
   valueSuggestions?: (field: string) => string[]
+  /** Vault entries for wikilink autocomplete in value fields. */
+  entries?: VaultEntry[]
 }
 
 const defaultSuggestions = () => [] as string[]
 
-export function FilterBuilder({ group, onChange, availableFields, valueSuggestions }: FilterBuilderProps) {
+export function FilterBuilder({ group, onChange, availableFields, valueSuggestions, entries }: FilterBuilderProps) {
   const fields = availableFields.length > 0 ? availableFields : ['type']
   return (
     <FilterGroupView
       group={group}
       fields={fields}
+      entries={entries ?? []}
       valueSuggestions={valueSuggestions ?? defaultSuggestions}
       depth={0}
       onChange={onChange}

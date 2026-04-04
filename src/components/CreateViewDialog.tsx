@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { FilterBuilder } from './FilterBuilder'
 import { EmojiPicker } from './EmojiPicker'
-import type { FilterGroup, ViewDefinition } from '../types'
+import type { FilterGroup, ViewDefinition, VaultEntry } from '../types'
 
 interface CreateViewDialogProps {
   open: boolean
@@ -13,11 +13,13 @@ interface CreateViewDialogProps {
   availableFields: string[]
   /** Returns known values for a given field (for autocomplete). */
   valueSuggestions?: (field: string) => string[]
+  /** Vault entries for wikilink autocomplete in filter value fields. */
+  entries?: VaultEntry[]
   /** When provided, the dialog operates in edit mode with pre-populated fields. */
   editingView?: ViewDefinition | null
 }
 
-export function CreateViewDialog({ open, onClose, onCreate, availableFields, valueSuggestions, editingView }: CreateViewDialogProps) {
+export function CreateViewDialog({ open, onClose, onCreate, availableFields, valueSuggestions, entries, editingView }: CreateViewDialogProps) {
   const [name, setName] = useState('')
   const [icon, setIcon] = useState('')
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
@@ -106,6 +108,7 @@ export function CreateViewDialog({ open, onClose, onCreate, availableFields, val
               onChange={setFilters}
               availableFields={availableFields}
               valueSuggestions={valueSuggestions}
+              entries={entries}
             />
           </div>
           <DialogFooter>
