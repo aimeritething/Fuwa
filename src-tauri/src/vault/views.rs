@@ -306,6 +306,7 @@ fn evaluate_condition(cond: &FilterCondition, entry: &VaultEntry) -> bool {
         "type" | "isA" => entry.is_a.clone(),
         "status" => entry.status.clone(),
         "title" => Some(entry.title.clone()),
+        "body" => Some(entry.snippet.clone()),
         _ => {
             // Check properties first, then relationships
             if let Some(prop) = entry.properties.get(field) {
@@ -761,6 +762,112 @@ filters:
         let non_matching = make_entry(|e| e.relationships = rels2);
 
         let entries = vec![matching, non_matching];
+        let result = evaluate_view(&def, &entries);
+        assert_eq!(result, vec![0]);
+    }
+
+    #[test]
+    fn test_body_contains_filters_on_snippet() {
+        let yaml = r#"
+name: Body Search
+filters:
+  all:
+    - field: body
+      op: contains
+      value: "quarterly"
+"#;
+        let def: ViewDefinition = serde_yaml::from_str(yaml).unwrap();
+
+        let matching = make_entry(|e| {
+            e.title = "Match".to_string();
+            e.snippet = "This is the quarterly review summary".to_string();
+        });
+        let non_matching = make_entry(|e| {
+            e.title = "No match".to_string();
+            e.snippet = "Daily standup notes".to_string();
+        });
+        let case_match = make_entry(|e| {
+            e.title = "Case match".to_string();
+            e.snippet = "QUARTERLY PLANNING session".to_string();
+        });
+
+        let entries = vec![matching, non_matching, case_match];
+        let result = evaluate_view(&def, &entries);
+        assert_eq!(result, vec![0, 2]);
+    }
+
+    #[test]
+    fn test_body_not_contains() {
+        let yaml = r#"
+name: Body Exclude
+filters:
+  all:
+    - field: body
+      op: not_contains
+      value: "draft"
+"#;
+        let def: ViewDefinition = serde_yaml::from_str(yaml).unwrap();
+
+        let final_note = make_entry(|e| {
+            e.snippet = "Final version of the document".to_string();
+        });
+        let draft_note = make_entry(|e| {
+            e.snippet = "This is a draft version".to_string();
+        });
+
+        let entries = vec![final_note, draft_note];
+        let result = evaluate_view(&def, &entries);
+        assert_eq!(result, vec![0]);
+    }
+
+    #[test]
+    fn test_body_combined_with_type_filter() {
+        let yaml = r#"
+name: Combined
+filters:
+  all:
+    - field: type
+      op: equals
+      value: Note
+    - field: body
+      op: contains
+      value: "important"
+"#;
+        let def: ViewDefinition = serde_yaml::from_str(yaml).unwrap();
+
+        let yes = make_entry(|e| {
+            e.is_a = Some("Note".to_string());
+            e.snippet = "This is important content".to_string();
+        });
+        let wrong_type = make_entry(|e| {
+            e.is_a = Some("Project".to_string());
+            e.snippet = "This is important content".to_string();
+        });
+        let no_match = make_entry(|e| {
+            e.is_a = Some("Note".to_string());
+            e.snippet = "Regular content".to_string();
+        });
+
+        let entries = vec![yes, wrong_type, no_match];
+        let result = evaluate_view(&def, &entries);
+        assert_eq!(result, vec![0]);
+    }
+
+    #[test]
+    fn test_body_is_empty() {
+        let yaml = r#"
+name: Empty Body
+filters:
+  all:
+    - field: body
+      op: is_empty
+"#;
+        let def: ViewDefinition = serde_yaml::from_str(yaml).unwrap();
+
+        let empty = make_entry(|e| e.snippet = String::new());
+        let has_content = make_entry(|e| e.snippet = "Some text here".to_string());
+
+        let entries = vec![empty, has_content];
         let result = evaluate_view(&def, &entries);
         assert_eq!(result, vec![0]);
     }
