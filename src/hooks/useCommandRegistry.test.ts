@@ -192,6 +192,33 @@ describe('extractVaultTypes', () => {
     ] as never[]
     expect(extractVaultTypes(entries)).toEqual(['Event', 'Person', 'Project', 'Note'])
   })
+
+  it('includes types from Type definition entries', () => {
+    const entries = [
+      { path: '/book.md', title: 'Book', isA: 'Type', trashed: false },
+    ] as never[]
+    const types = extractVaultTypes(entries)
+    expect(types).toContain('Book')
+  })
+
+  it('includes types from both definitions and instances', () => {
+    const entries = [
+      { path: '/book.md', title: 'Book', isA: 'Type', trashed: false },
+      { path: '/hp.md', title: 'Harry Potter', isA: 'Book', trashed: false },
+      { path: '/person.md', title: 'Person', isA: 'Type', trashed: false },
+    ] as never[]
+    const types = extractVaultTypes(entries)
+    expect(types).toContain('Book')
+    expect(types).toContain('Person')
+    expect(types).toHaveLength(2)
+  })
+
+  it('excludes trashed Type definition entries', () => {
+    const entries = [
+      { path: '/book.md', title: 'Book', isA: 'Type', trashed: true },
+    ] as never[]
+    expect(extractVaultTypes(entries)).toEqual(['Event', 'Person', 'Project', 'Note'])
+  })
 })
 
 describe('groupSortKey', () => {
