@@ -6,7 +6,7 @@ belongs_to: "[[Getting Started]]"
 
 ## Main sections
 
-- **Inbox** — notes you haven't organized yet. Once you've added relationships or toggled "organized", they leave the Inbox.
+- **Inbox** — notes you haven't organized yet. A note leaves the Inbox when you mark it as "organized" using the ✓ button in the breadcrumb bar.
 - **All Notes** — every note in your vault
 - **Archive** — notes you've finished with but want to keep
 - **Trash** — deleted notes, recoverable for 30 days
@@ -20,3 +20,13 @@ Use the sliders icon next to **TYPES** to show or hide types from the sidebar. U
 ## Favorites
 
 Star any note to pin it to the top of the sidebar. Click the ⭐ icon in the breadcrumb bar at the top of the editor, or use **Cmd+K → Favorite**.
+
+## Keyboard shortcuts
+
+| Action | Shortcut |
+|--------|----------|
+| Quick open | Cmd+P |
+| Command palette | Cmd+K |
+| New note | Cmd+N |
+| Settings | Cmd+, |
+| Search | Cmd+F |
