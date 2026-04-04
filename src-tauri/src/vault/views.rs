@@ -142,9 +142,63 @@ pub struct ViewFile {
     pub definition: ViewDefinition,
 }
 
-/// Scan all `.yml` files from `vault_path/.laputa/views/` and return parsed views.
+/// Migrate views from `.laputa/views/` to `views/` in the vault root (one-time).
+pub fn migrate_views(vault_path: &Path) {
+    let old_dir = vault_path.join(".laputa").join("views");
+    if !old_dir.is_dir() {
+        return;
+    }
+
+    let entries = match fs::read_dir(&old_dir) {
+        Ok(e) => e,
+        Err(_) => return,
+    };
+
+    let yml_files: Vec<_> = entries
+        .flatten()
+        .filter(|e| {
+            e.path()
+                .extension()
+                .and_then(|ext| ext.to_str())
+                == Some("yml")
+        })
+        .collect();
+
+    if yml_files.is_empty() {
+        return;
+    }
+
+    let new_dir = vault_path.join("views");
+    if fs::create_dir_all(&new_dir).is_err() {
+        log::warn!("Failed to create views/ directory for migration");
+        return;
+    }
+
+    for entry in yml_files {
+        let src = entry.path();
+        let dst = new_dir.join(entry.file_name());
+        if !dst.exists() {
+            if let Err(e) = fs::rename(&src, &dst) {
+                log::warn!("Failed to migrate view {:?}: {}", src, e);
+            } else {
+                log::info!("Migrated view {:?} → {:?}", src, dst);
+            }
+        }
+    }
+
+    // Clean up old directory if empty
+    if fs::read_dir(&old_dir)
+        .map(|mut d| d.next().is_none())
+        .unwrap_or(false)
+    {
+        let _ = fs::remove_dir(&old_dir);
+    }
+}
+
+/// Scan all `.yml` files from `vault_path/views/` and return parsed views.
 pub fn scan_views(vault_path: &Path) -> Vec<ViewFile> {
-    let views_dir = vault_path.join(".laputa").join("views");
+    migrate_views(vault_path);
+    let views_dir = vault_path.join("views");
     if !views_dir.is_dir() {
         return Vec::new();
     }
@@ -180,7 +234,7 @@ pub fn scan_views(vault_path: &Path) -> Vec<ViewFile> {
     views
 }
 
-/// Save a view definition as YAML to `vault_path/.laputa/views/{filename}`.
+/// Save a view definition as YAML to `vault_path/views/{filename}`.
 pub fn save_view(
     vault_path: &Path,
     filename: &str,
@@ -189,7 +243,7 @@ pub fn save_view(
     if !filename.ends_with(".yml") {
         return Err("Filename must end with .yml".to_string());
     }
-    let views_dir = vault_path.join(".laputa").join("views");
+    let views_dir = vault_path.join("views");
     fs::create_dir_all(&views_dir)
         .map_err(|e| format!("Failed to create views directory: {}", e))?;
     let yaml = serde_yaml::to_string(definition)
@@ -198,9 +252,9 @@ pub fn save_view(
         .map_err(|e| format!("Failed to write view file: {}", e))
 }
 
-/// Delete a view file at `vault_path/.laputa/views/{filename}`.
+/// Delete a view file at `vault_path/views/{filename}`.
 pub fn delete_view(vault_path: &Path, filename: &str) -> Result<(), String> {
-    let path = vault_path.join(".laputa").join("views").join(filename);
+    let path = vault_path.join("views").join(filename);
     fs::remove_file(&path).map_err(|e| format!("Failed to delete view: {}", e))
 }
 
@@ -599,7 +653,7 @@ filters:
     #[test]
     fn test_scan_views_reads_yml_files() {
         let dir = tempfile::TempDir::new().unwrap();
-        let views_dir = dir.path().join(".laputa").join("views");
+        let views_dir = dir.path().join("views");
         fs::create_dir_all(&views_dir).unwrap();
 
         let yaml_a = "name: Alpha\nfilters:\n  all:\n    - field: type\n      op: equals\n      value: Note\n";
@@ -615,6 +669,26 @@ filters:
         assert_eq!(views[0].definition.name, "Alpha");
         assert_eq!(views[1].filename, "b-view.yml");
         assert_eq!(views[1].definition.name, "Beta");
+    }
+
+    #[test]
+    fn test_migrate_views_from_old_location() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let old_dir = dir.path().join(".laputa").join("views");
+        fs::create_dir_all(&old_dir).unwrap();
+
+        let yaml = "name: Migrated\nfilters:\n  all:\n    - field: type\n      op: equals\n      value: Note\n";
+        fs::write(old_dir.join("test.yml"), yaml).unwrap();
+
+        // scan_views should trigger migration and find the view
+        let views = scan_views(dir.path());
+        assert_eq!(views.len(), 1);
+        assert_eq!(views[0].definition.name, "Migrated");
+
+        // File should now be in new location
+        assert!(dir.path().join("views").join("test.yml").exists());
+        // Old file should be gone
+        assert!(!old_dir.join("test.yml").exists());
     }
 
     #[test]
