@@ -84,7 +84,6 @@ let mockSettings: Settings = {
   crash_reporting_enabled: null,
   analytics_enabled: null,
   anonymous_id: null,
-  update_channel: null,
   release_channel: null,
 }
 
@@ -210,7 +209,6 @@ export const mockHandlers: Record<string, (args: any) => any> = {
       crash_reporting_enabled: s.crash_reporting_enabled,
       analytics_enabled: s.analytics_enabled,
       anonymous_id: s.anonymous_id,
-      update_channel: s.update_channel,
       release_channel: s.release_channel,
     }
     return null

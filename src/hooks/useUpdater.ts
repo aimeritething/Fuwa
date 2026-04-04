@@ -3,7 +3,6 @@ import { isTauri } from '../mock-tauri'
 import { openExternalUrl } from '../utils/url'
 
 const RELEASE_NOTES_URL = 'https://refactoringhq.github.io/laputa-app/'
-const CANARY_ENDPOINT = 'https://refactoringhq.github.io/laputa-app/latest-canary.json'
 
 export type UpdateStatus =
   | { state: 'idle' }
@@ -21,45 +20,14 @@ export interface UpdateActions {
   dismiss: () => void
 }
 
-interface CanaryRelease {
-  version: string
-  notes: string
-  platforms: Record<string, { url: string; signature: string }>
-}
-
-async function checkCanaryUpdate(): Promise<{ version: string; notes: string; downloadUrl: string } | null> {
-  const response = await fetch(CANARY_ENDPOINT)
-  if (!response.ok) return null
-
-  const data = await response.json() as CanaryRelease
-  const { getVersion } = await import('@tauri-apps/api/app')
-  const currentVersion = await getVersion()
-
-  if (data.version === currentVersion) return null
-
-  const platform = data.platforms['darwin-aarch64']
-  const downloadUrl = platform?.url?.replace(/\.tar\.gz$/, '').replace(/\.app$/, '') ?? ''
-
-  return { version: data.version, notes: data.notes, downloadUrl }
-}
-
-export function useUpdater(channel: string | null = null): { status: UpdateStatus; actions: UpdateActions } {
+export function useUpdater(): { status: UpdateStatus; actions: UpdateActions } {
   const [status, setStatus] = useState<UpdateStatus>({ state: 'idle' })
   const updateRef = useRef<unknown>(null)
-  const canaryUrlRef = useRef<string | null>(null)
 
   const checkForUpdates = useCallback(async (): Promise<UpdateCheckResult> => {
     if (!isTauri()) return 'up-to-date'
 
     try {
-      if (channel === 'canary') {
-        const canary = await checkCanaryUpdate()
-        if (!canary) return 'up-to-date'
-        canaryUrlRef.current = canary.downloadUrl
-        setStatus({ state: 'available', version: canary.version, notes: canary.notes })
-        return 'available'
-      }
-
       const { check } = await import('@tauri-apps/plugin-updater')
       const update = await check()
       if (!update) return 'up-to-date'
@@ -75,7 +43,7 @@ export function useUpdater(channel: string | null = null): { status: UpdateStatu
       console.warn('[updater] Failed to check for updates')
       return 'error'
     }
-  }, [channel])
+  }, [])
 
   useEffect(() => {
     if (!isTauri()) return
@@ -84,12 +52,6 @@ export function useUpdater(channel: string | null = null): { status: UpdateStatu
   }, [checkForUpdates])
 
   const startDownload = useCallback(async () => {
-    // Canary: open the GitHub release page for manual download
-    if (canaryUrlRef.current) {
-      openExternalUrl(canaryUrlRef.current)
-      return
-    }
-
     const update = updateRef.current as {
       version: string
       downloadAndInstall: (cb: (event: { event: string; data?: { contentLength?: number; chunkLength?: number } }) => void) => Promise<void>

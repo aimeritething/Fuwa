@@ -9,32 +9,34 @@ async function openSettings(page: import('@playwright/test').Page) {
   return panel
 }
 
-test.describe('Canary release channel + feature flags', () => {
+test.describe('Release channel settings', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')
   })
 
-  test('Settings panel shows Update channel dropdown defaulting to Stable', async ({ page }) => {
+  test('Settings panel shows Release channel dropdown defaulting to Stable', async ({ page }) => {
     await openSettings(page)
 
-    // Check the Updates section exists
-    await expect(page.getByText('Updates')).toBeVisible()
-    await expect(page.getByText('Canary builds include')).toBeVisible()
+    // Check the Release Channel section exists
+    await expect(page.getByText('Release Channel')).toBeVisible()
 
     // Check the dropdown defaults to stable
-    const select = page.locator('[data-testid="settings-update-channel"]')
+    const select = page.locator('[data-testid="settings-release-channel"]')
     await expect(select).toBeVisible()
     await expect(select).toHaveValue('stable')
+
+    // Update channel should NOT be present
+    await expect(page.locator('[data-testid="settings-update-channel"]')).not.toBeVisible()
   })
 
-  test('Update channel can be changed to canary and saved', async ({ page }) => {
+  test('Release channel can be changed to alpha and saved', async ({ page }) => {
     await openSettings(page)
 
-    // Change to canary
-    const select = page.locator('[data-testid="settings-update-channel"]')
-    await select.selectOption('canary')
-    await expect(select).toHaveValue('canary')
+    // Change to alpha
+    const select = page.locator('[data-testid="settings-release-channel"]')
+    await select.selectOption('alpha')
+    await expect(select).toHaveValue('alpha')
 
     // Save (closes the panel)
     await page.click('[data-testid="settings-save"]')
@@ -42,7 +44,7 @@ test.describe('Canary release channel + feature flags', () => {
 
     // Reopen settings and verify the value persisted
     await openSettings(page)
-    const reopenedSelect = page.locator('[data-testid="settings-update-channel"]')
-    await expect(reopenedSelect).toHaveValue('canary')
+    const reopenedSelect = page.locator('[data-testid="settings-release-channel"]')
+    await expect(reopenedSelect).toHaveValue('alpha')
   })
 })

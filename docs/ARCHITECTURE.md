@@ -802,29 +802,13 @@ sequenceDiagram
 - **Settings:** `telemetry_consent`, `crash_reporting_enabled`, `analytics_enabled`, `anonymous_id` in `Settings` struct
 - **Consent:** `TelemetryConsentDialog` shown when `telemetry_consent === null`
 
-### Update Channels (Stable / Canary)
+### Updates
 
-Laputa supports two release channels:
+Laputa uses the Tauri updater plugin for automatic updates:
 
-- **Stable** (default): builds from `main` branch, published as full GitHub Releases
-- **Canary**: builds from `canary` branch, published as pre-release GitHub Releases
-
-```mermaid
-flowchart LR
-    main["main branch"] -->|push| stable["Stable build<br/>latest.json"]
-    canary["canary branch"] -->|push| canaryBuild["Canary build<br/>latest-canary.json"]
-    stable --> ghPages["GitHub Pages"]
-    canaryBuild --> ghPages
-    ghPages -->|"update_channel = stable"| stableUsers["Stable users<br/>(auto-update via plugin)"]
-    ghPages -->|"update_channel = canary"| canaryUsers["Canary users<br/>(fetch + manual download)"]
-```
-
-**How it works:**
-- Both channels publish to GitHub Pages: `latest.json` (stable) and `latest-canary.json` (canary)
-- `update_channel` is stored in `Settings` (`settings.json`), configurable in Settings panel
-- **Stable**: uses the Tauri updater plugin with automatic download and install
-- **Canary**: `useUpdater` hook fetches `latest-canary.json` via HTTP, compares versions, and opens the GitHub release page for manual download
-- Canary versions use semver prerelease: `0.YYYYMMDD.N-canary`
+- Builds from `main` branch are published as GitHub Releases
+- `latest.json` is published to GitHub Pages for the updater plugin
+- `useUpdater()` hook checks for updates automatically and supports download + install
 
 ### Feature Flags (PostHog + Release Channels)
 

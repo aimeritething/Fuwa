@@ -79,7 +79,6 @@ export interface Settings {
   crash_reporting_enabled: boolean | null
   analytics_enabled: boolean | null
   anonymous_id: string | null
-  update_channel: string | null
   release_channel: string | null
 }
 

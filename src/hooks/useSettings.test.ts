@@ -14,7 +14,6 @@ const defaultSettings: Settings = {
   crash_reporting_enabled: null,
   analytics_enabled: null,
   anonymous_id: null,
-  update_channel: null,
   release_channel: null,
 }
 
@@ -28,7 +27,6 @@ const savedSettings: Settings = {
   crash_reporting_enabled: null,
   analytics_enabled: null,
   anonymous_id: null,
-  update_channel: null,
   release_channel: null,
 }
 
@@ -93,7 +91,7 @@ describe('useSettings', () => {
       crash_reporting_enabled: null,
       analytics_enabled: null,
       anonymous_id: null,
-      update_channel: null,
+      release_channel: null,
     }
 
     await act(async () => {
