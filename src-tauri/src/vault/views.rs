@@ -156,12 +156,7 @@ pub fn migrate_views(vault_path: &Path) {
 
     let yml_files: Vec<_> = entries
         .flatten()
-        .filter(|e| {
-            e.path()
-                .extension()
-                .and_then(|ext| ext.to_str())
-                == Some("yml")
-        })
+        .filter(|e| e.path().extension().and_then(|ext| ext.to_str()) == Some("yml"))
         .collect();
 
     if yml_files.is_empty() {
