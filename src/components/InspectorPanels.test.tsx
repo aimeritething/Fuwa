@@ -199,6 +199,52 @@ describe('DynamicRelationshipsPanel', () => {
     expect(screen.getByText('+ Add relationship')).toBeInTheDocument()
   })
 
+  describe('suggested relationship slots', () => {
+    it('shows Belongs to/Related to/Has slots when no relationships exist', () => {
+      render(
+        <DynamicRelationshipsPanel
+          typeEntryMap={{}}
+          frontmatter={{}}
+          entries={entries}
+          onNavigate={onNavigate}
+          onAddProperty={onAddProperty}
+        />
+      )
+      const slots = screen.getAllByTestId('suggested-relationship')
+      expect(slots.length).toBe(3)
+      expect(screen.getByText('Belongs to')).toBeInTheDocument()
+      expect(screen.getByText('Related to')).toBeInTheDocument()
+      expect(screen.getByText('Has')).toBeInTheDocument()
+    })
+
+    it('hides slot when relationship already exists', () => {
+      render(
+        <DynamicRelationshipsPanel
+          typeEntryMap={{}}
+          frontmatter={{ 'Belongs to': '[[Project Alpha]]' }}
+          entries={entries}
+          onNavigate={onNavigate}
+          onAddProperty={onAddProperty}
+        />
+      )
+      const slots = screen.getAllByTestId('suggested-relationship')
+      expect(slots.length).toBe(2)
+      expect(screen.queryAllByText('Belongs to').every(el => !el.closest('[data-testid="suggested-relationship"]'))).toBe(true)
+    })
+
+    it('does not show slots when onAddProperty not provided', () => {
+      render(
+        <DynamicRelationshipsPanel
+          typeEntryMap={{}}
+          frontmatter={{}}
+          entries={entries}
+          onNavigate={onNavigate}
+        />
+      )
+      expect(screen.queryByTestId('suggested-relationship')).not.toBeInTheDocument()
+    })
+  })
+
   it('dims archived entries', () => {
     const archivedEntry = makeEntry({
       path: '/vault/project/old.md', filename: 'old.md', title: 'Old Project', isA: 'Project', archived: true,

@@ -551,6 +551,76 @@ describe('DynamicPropertiesPanel', () => {
     })
   })
 
+  describe('suggested property slots', () => {
+    it('shows Status/Date/URL slots when no properties exist and onAddProperty provided', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{}}
+          onAddProperty={onAddProperty}
+        />
+      )
+      const slots = screen.getAllByTestId('suggested-property')
+      expect(slots.length).toBe(3)
+      expect(screen.getByText('Status')).toBeInTheDocument()
+      expect(screen.getByText('Date')).toBeInTheDocument()
+      expect(screen.getByText('URL')).toBeInTheDocument()
+    })
+
+    it('hides Status slot when Status property already exists', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{ Status: 'Active' }}
+          onAddProperty={onAddProperty}
+          onUpdateProperty={onUpdateProperty}
+        />
+      )
+      const slots = screen.getAllByTestId('suggested-property')
+      expect(slots.length).toBe(2)
+      expect(screen.queryAllByText('Status').some(el => el.closest('[data-testid="suggested-property"]'))).toBe(false)
+    })
+
+    it('hides all slots when all suggested properties exist', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{ Status: 'Active', Date: '2024-01-01', URL: 'https://example.com' }}
+          onAddProperty={onAddProperty}
+          onUpdateProperty={onUpdateProperty}
+        />
+      )
+      expect(screen.queryByTestId('suggested-property')).not.toBeInTheDocument()
+    })
+
+    it('does not show slots when onAddProperty is not provided', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{}}
+        />
+      )
+      expect(screen.queryByTestId('suggested-property')).not.toBeInTheDocument()
+    })
+
+    it('calls onAddProperty when clicking a suggested slot', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{}}
+          onAddProperty={onAddProperty}
+        />
+      )
+      fireEvent.click(screen.getByText('Status'))
+      expect(onAddProperty).toHaveBeenCalledWith('Status', '')
+    })
+  })
+
   describe('URL property rendering', () => {
     it('renders URL values with link styling instead of plain EditableValue', () => {
       render(

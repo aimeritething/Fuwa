@@ -394,6 +394,43 @@ function DisabledLinkButton() {
   )
 }
 
+const SUGGESTED_RELATIONSHIPS = ['Belongs to', 'Related to', 'Has'] as const
+
+function SuggestedRelationshipSlot({ label, entries, onAdd, onCreateAndOpenNote }: {
+  label: string
+  entries: VaultEntry[]
+  onAdd: (noteTitle: string) => void
+  onCreateAndOpenNote?: (title: string) => Promise<boolean>
+}) {
+  const [active, setActive] = useState(false)
+
+  if (active) {
+    return (
+      <div className="mb-2.5">
+        <span className="font-mono-overline mb-1 block text-muted-foreground/50">{label}</span>
+        <InlineAddNote
+          entries={entries}
+          onAdd={(noteTitle) => { onAdd(noteTitle); setActive(false) }}
+          onCreateAndOpenNote={onCreateAndOpenNote}
+        />
+      </div>
+    )
+  }
+
+  return (
+    <button
+      className="mb-2.5 flex w-full cursor-pointer items-center gap-2 rounded border-none bg-transparent px-0 py-1 text-left outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary"
+      tabIndex={0}
+      onClick={() => setActive(true)}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActive(true) } }}
+      data-testid="suggested-relationship"
+    >
+      <span className="font-mono-overline text-muted-foreground/50">{label}</span>
+      <span className="text-[12px] text-muted-foreground/30">{'\u2014'}</span>
+    </button>
+  )
+}
+
 export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, onNavigate, onAddProperty, onUpdateProperty, onDeleteProperty, onCreateAndOpenNote }: {
   frontmatter: ParsedFrontmatter; entries: VaultEntry[]; typeEntryMap: Record<string, VaultEntry>
   onNavigate: (target: string) => void
@@ -422,6 +459,15 @@ export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, 
 
   const canEdit = !!onUpdateProperty && !!onDeleteProperty
 
+  const existingRelKeys = useMemo(
+    () => new Set(relationshipEntries.map(g => g.key.toLowerCase())),
+    [relationshipEntries],
+  )
+
+  const missingSuggestedRels = onAddProperty
+    ? SUGGESTED_RELATIONSHIPS.filter(r => !existingRelKeys.has(r.toLowerCase()))
+    : []
+
   return (
     <div>
       {relationshipEntries.map(({ key, refs }) => (
@@ -430,6 +476,15 @@ export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, 
           onRemoveRef={canEdit ? (ref) => handleRemoveRef(key, ref) : undefined}
           onAddRef={canEdit ? (noteTitle) => handleAddRef(key, noteTitle) : undefined}
           onCreateAndOpenNote={canEdit ? onCreateAndOpenNote : undefined}
+        />
+      ))}
+      {missingSuggestedRels.map(label => (
+        <SuggestedRelationshipSlot
+          key={label}
+          label={label}
+          entries={entries}
+          onAdd={(noteTitle) => onAddProperty!(label, `[[${noteTitle}]]`)}
+          onCreateAndOpenNote={onCreateAndOpenNote}
         />
       ))}
       {onAddProperty

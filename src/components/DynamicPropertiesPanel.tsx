@@ -1,3 +1,4 @@
+import { useMemo, useCallback } from 'react'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from './Inspector'
 import type { ParsedFrontmatter } from '../utils/frontmatter'
@@ -65,6 +66,23 @@ function AddPropertyButton({ onClick, disabled }: { onClick: () => void; disable
   )
 }
 
+const SUGGESTED_PROPERTIES = ['Status', 'Date', 'URL'] as const
+
+function SuggestedPropertySlot({ label, onAdd }: { label: string; onAdd: () => void }) {
+  return (
+    <button
+      className="grid min-h-7 min-w-0 grid-cols-2 items-center gap-2 rounded border-none bg-transparent px-1.5 outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary cursor-pointer"
+      tabIndex={0}
+      onClick={onAdd}
+      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAdd() } }}
+      data-testid="suggested-property"
+    >
+      <span className="min-w-0 truncate text-[12px] text-muted-foreground/50">{label}</span>
+      <span className="min-w-0 truncate text-right text-[12px] text-muted-foreground/30">{'\u2014'}</span>
+    </button>
+  )
+}
+
 export function DynamicPropertiesPanel({
   entry, frontmatter, entries,
   onUpdateProperty, onDeleteProperty, onAddProperty, onNavigate,
@@ -84,6 +102,24 @@ export function DynamicPropertiesPanel({
     handleSaveValue, handleSaveList, handleAdd, handleDisplayModeChange,
   } = usePropertyPanelState({ entries, entryIsA: entry.isA, frontmatter, onUpdateProperty, onDeleteProperty, onAddProperty })
 
+  const existingKeys = useMemo(() => {
+    const keys = new Set(propertyEntries.map(([k]) => k.toLowerCase()))
+    // Also check full frontmatter for relationship keys that are filtered out of propertyEntries
+    for (const k of Object.keys(frontmatter)) keys.add(k.toLowerCase())
+    return keys
+  }, [propertyEntries, frontmatter])
+
+  const missingSuggested = onAddProperty
+    ? SUGGESTED_PROPERTIES.filter(p => !existingKeys.has(p.toLowerCase()))
+    : []
+
+  const handleSuggestedAdd = useCallback((key: string) => {
+    if (!onAddProperty) return
+    onAddProperty(key, '')
+    // Auto-focus the new property value
+    setTimeout(() => setEditingKey(key), 0)
+  }, [onAddProperty, setEditingKey])
+
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-col gap-1.5">
@@ -99,6 +135,9 @@ export function DynamicPropertiesPanel({
             onDelete={onDeleteProperty}
             onDisplayModeChange={handleDisplayModeChange}
           />
+        ))}
+        {missingSuggested.map(key => (
+          <SuggestedPropertySlot key={key} label={key} onAdd={() => handleSuggestedAdd(key)} />
         ))}
       </div>
       {showAddDialog
