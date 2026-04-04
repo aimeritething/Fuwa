@@ -198,4 +198,16 @@ describe('FilterBuilder wikilink autocomplete', () => {
     expect(input).toBeInTheDocument()
     expect(input).not.toHaveAttribute('data-testid', 'filter-value-input')
   })
+
+  it('shows body field in field dropdown separated from property fields', () => {
+    render(
+      <FilterBuilder
+        group={{ all: [{ field: 'body', op: 'contains', value: 'test' }] }}
+        onChange={vi.fn()}
+        availableFields={['type', 'status', 'body']}
+      />,
+    )
+    // Body field should be selected as the current value
+    expect(screen.getByText('body')).toBeInTheDocument()
+  })
 })

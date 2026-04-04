@@ -244,4 +244,61 @@ describe('evaluateView', () => {
     const result = evaluateView(view, entries)
     expect(result.map((e) => e.title)).toEqual(['Match'])
   })
+
+  it('body contains filters on snippet text (case-insensitive)', () => {
+    const view: ViewDefinition = {
+      name: 'Body search', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'body', op: 'contains', value: 'quarterly' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Match', snippet: 'This is the quarterly review summary' }),
+      makeEntry({ title: 'No match', snippet: 'Daily standup notes' }),
+      makeEntry({ title: 'Case match', snippet: 'QUARTERLY PLANNING session' }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Match', 'Case match'])
+  })
+
+  it('body not_contains excludes matching notes', () => {
+    const view: ViewDefinition = {
+      name: 'Body exclude', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'body', op: 'not_contains', value: 'draft' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Final', snippet: 'Final version of the document' }),
+      makeEntry({ title: 'Draft', snippet: 'This is a draft version' }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Final'])
+  })
+
+  it('body filter combines with property filters (AND)', () => {
+    const view: ViewDefinition = {
+      name: 'Combined', icon: null, color: null, sort: null,
+      filters: { all: [
+        { field: 'type', op: 'equals', value: 'Note' },
+        { field: 'body', op: 'contains', value: 'important' },
+      ] },
+    }
+    const entries = [
+      makeEntry({ title: 'Yes', isA: 'Note', snippet: 'This is important content' }),
+      makeEntry({ title: 'Wrong type', isA: 'Project', snippet: 'This is important content' }),
+      makeEntry({ title: 'No match', isA: 'Note', snippet: 'Regular content' }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Yes'])
+  })
+
+  it('body is_empty matches notes with empty snippet', () => {
+    const view: ViewDefinition = {
+      name: 'Empty body', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'body', op: 'is_empty' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Empty', snippet: '' }),
+      makeEntry({ title: 'Has content', snippet: 'Some text here' }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Empty'])
+  })
 })

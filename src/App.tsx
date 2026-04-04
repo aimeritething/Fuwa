@@ -376,7 +376,7 @@ function App() {
   }, [resolvedPath, vault, selection, handleSetSelection])
 
   const availableFields = useMemo(() => {
-    const builtIn = ['type', 'status', 'title', 'favorite']
+    const builtIn = ['type', 'status', 'title', 'favorite', 'body']
     if (!vault.entries?.length) return builtIn
     const customFields = new Set<string>()
     for (const e of vault.entries) {

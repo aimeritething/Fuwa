@@ -29,6 +29,7 @@ function resolveField(entry: VaultEntry, field: string): { scalar?: string | num
   if (lower === 'archived') return { scalar: entry.archived }
   if (lower === 'trashed') return { scalar: entry.trashed }
   if (lower === 'favorite') return { scalar: entry.favorite }
+  if (lower === 'body') return { scalar: entry.snippet }
 
   // Check relationships first (returns string[])
   const relKey = Object.keys(entry.relationships).find((k) => k.toLowerCase() === lower)

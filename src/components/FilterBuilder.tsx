@@ -2,7 +2,7 @@ import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
 import { Plus, X } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { FilterCondition, FilterOp, FilterGroup, FilterNode, VaultEntry } from '../types'
 import { buildTypeEntryMap, getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { getTypeIcon } from './NoteItem'
@@ -38,12 +38,16 @@ function setGroupChildren(mode: 'all' | 'any', children: FilterNode[]): FilterGr
   return mode === 'all' ? { all: children } : { any: children }
 }
 
+const CONTENT_FIELDS = new Set(['body'])
+
 function FieldSelect({ value, fields, onChange }: {
   value: string
   fields: string[]
   onChange: (v: string) => void
 }) {
   const isCustom = value !== '' && !fields.includes(value)
+  const propertyFields = fields.filter(f => !CONTENT_FIELDS.has(f))
+  const contentFields = fields.filter(f => CONTENT_FIELDS.has(f))
   return (
     <Select value={value} onValueChange={onChange}>
       <SelectTrigger
@@ -54,9 +58,17 @@ function FieldSelect({ value, fields, onChange }: {
       </SelectTrigger>
       <SelectContent position="popper">
         {isCustom && <SelectItem value={value}>{value}</SelectItem>}
-        {fields.map((f) => (
+        {propertyFields.map((f) => (
           <SelectItem key={f} value={f}>{f}</SelectItem>
         ))}
+        {contentFields.length > 0 && (
+          <>
+            <SelectSeparator />
+            {contentFields.map((f) => (
+              <SelectItem key={f} value={f}>{f}</SelectItem>
+            ))}
+          </>
+        )}
       </SelectContent>
     </Select>
   )
