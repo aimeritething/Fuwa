@@ -81,29 +81,38 @@ fn parse_porcelain_line(line: &str) -> Option<(&str, String)> {
     Some((&line[..2], line[3..].trim().to_string()))
 }
 
-/// Extract .md file paths from git diff --name-only output.
-fn collect_md_paths_from_diff(stdout: &str) -> Vec<String> {
+/// Extract file paths from git diff --name-only output.
+/// Includes all non-hidden files (not just .md) so the cache picks up
+/// view files (.yml), binary assets, etc.
+fn collect_paths_from_diff(stdout: &str) -> Vec<String> {
     stdout
         .lines()
-        .filter(|line| !line.is_empty() && line.ends_with(".md"))
+        .filter(|line| !line.is_empty() && !has_hidden_segment(line))
         .map(|line| line.to_string())
         .collect()
 }
 
-/// Extract .md file paths from git status --porcelain output.
-fn collect_md_paths_from_porcelain(stdout: &str) -> Vec<String> {
+/// Extract file paths from git status --porcelain output.
+/// Includes all non-hidden files so incremental cache updates cover
+/// every file type the vault scanner recognises.
+fn collect_paths_from_porcelain(stdout: &str) -> Vec<String> {
     stdout
         .lines()
         .filter_map(parse_porcelain_line)
-        .filter(|(_, path)| path.ends_with(".md"))
+        .filter(|(_, path)| !has_hidden_segment(path))
         .map(|(_, path)| path)
         .collect()
+}
+
+/// Return true if any path segment starts with `.` (hidden file/directory).
+fn has_hidden_segment(path: &str) -> bool {
+    path.split('/').any(|seg| seg.starts_with('.'))
 }
 
 fn git_changed_files(vault: &Path, from_hash: &str, to_hash: &str) -> Vec<String> {
     let diff_arg = format!("{}..{}", from_hash, to_hash);
     let mut files = run_git(vault, &["diff", &diff_arg, "--name-only"])
-        .map(|s| collect_md_paths_from_diff(&s))
+        .map(|s| collect_paths_from_diff(&s))
         .unwrap_or_default();
 
     // Include uncommitted changes (modified, staged, and untracked files).
@@ -121,16 +130,16 @@ fn git_changed_files(vault: &Path, from_hash: &str, to_hash: &str) -> Vec<String
 fn git_uncommitted_files(vault: &Path) -> Vec<String> {
     // Modified/staged tracked files from git status --porcelain
     let mut files: Vec<String> = run_git(vault, &["status", "--porcelain"])
-        .map(|s| collect_md_paths_from_porcelain(&s))
+        .map(|s| collect_paths_from_porcelain(&s))
         .unwrap_or_default();
 
     // Untracked files via ls-files (lists individual files, not just directories).
     // git status --porcelain shows `?? dir/` for new directories, hiding individual
-    // files inside — ls-files resolves them so the cache picks up all new .md files.
+    // files inside — ls-files resolves them so the cache picks up all new files.
     let untracked = run_git(vault, &["ls-files", "--others", "--exclude-standard"])
         .map(|s| {
             s.lines()
-                .filter(|l| !l.is_empty() && l.ends_with(".md"))
+                .filter(|l| !l.is_empty() && !has_hidden_segment(l))
                 .map(|l| l.to_string())
                 .collect::<Vec<_>>()
         })
@@ -976,6 +985,58 @@ mod tests {
         assert!(
             entries[0].archived,
             "stale cache with old version must be invalidated, re-parsing 'Archived: Yes' as true"
+        );
+    }
+
+    #[test]
+    fn test_update_same_commit_picks_up_new_yml_file() {
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
+        let vault = dir.path();
+
+        create_test_file(vault, "note.md", "# Note\n\nContent.");
+        git_add_commit(vault, "init");
+
+        // Prime cache
+        let entries = scan_vault_cached(vault).unwrap();
+        assert_eq!(entries.len(), 1);
+
+        // Create a new .yml view file (untracked, like save_view does)
+        create_test_file(vault, "views/my-view.yml", "name: My View\nfilters: []\n");
+
+        // Same commit — new .yml file must appear in entries
+        let entries2 = scan_vault_cached(vault).unwrap();
+        assert!(
+            entries2.len() >= 2,
+            "new .yml file must be picked up by cache update, got {} entries",
+            entries2.len()
+        );
+        assert!(
+            entries2.iter().any(|e| e.path.contains("my-view.yml")),
+            "entries must include the new .yml file"
+        );
+    }
+
+    #[test]
+    fn test_incremental_different_commit_picks_up_yml_file() {
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
+        let vault = dir.path();
+
+        create_test_file(vault, "note.md", "# Note\n\nContent.");
+        git_add_commit(vault, "init");
+
+        // Prime cache
+        let entries = scan_vault_cached(vault).unwrap();
+        assert_eq!(entries.len(), 1);
+
+        // Add a .yml file and commit
+        create_test_file(vault, "views/my-view.yml", "name: My View\nfilters: []\n");
+        git_add_commit(vault, "add view");
+
+        // Different commit — .yml file must appear in entries
+        let entries2 = scan_vault_cached(vault).unwrap();
+        assert!(
+            entries2.iter().any(|e| e.path.contains("my-view.yml")),
+            "committed .yml file must be picked up by incremental cache update"
         );
     }
 }
