@@ -1,7 +1,7 @@
 import { useState, useMemo, useCallback, useEffect, memo } from 'react'
 import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus, InboxPeriod, ViewFile } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
-import { countByFilter, countAllByFilter, countInboxByPeriod } from '../utils/noteListHelpers'
+import { countByFilter, countAllByFilter } from '../utils/noteListHelpers'
 import { NoteItem } from './NoteItem'
 import { prefetchNoteContent } from '../hooks/useTabManagement'
 import { BulkActionBar } from './BulkActionBar'
@@ -9,7 +9,6 @@ import { useMultiSelect } from '../hooks/useMultiSelect'
 import { useNoteListKeyboard } from '../hooks/useNoteListKeyboard'
 import { NoteListHeader } from './note-list/NoteListHeader'
 import { FilterPills } from './note-list/FilterPills'
-import { InboxFilterPills } from './note-list/InboxFilterPills'
 import { EntityView, ListView } from './note-list/NoteListViews'
 import { DeletedNotesBanner } from './note-list/TrashWarningBanner'
 import { routeNoteClick, toggleSetMember, resolveHeaderTitle } from './note-list/noteListUtils'
@@ -44,7 +43,7 @@ interface NoteListProps {
   views?: ViewFile[]
 }
 
-function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'month', onInboxPeriodChange, modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry, onOpenInNewWindow, views }: NoteListProps) {
+function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'all', modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry, onOpenInNewWindow, views }: NoteListProps) {
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
 
   const isSectionGroup = selection.kind === 'sectionGroup'
@@ -57,11 +56,6 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
   const filterCounts = useMemo(
     () => isSectionGroup ? countByFilter(entries, selection.type) : (isAllNotesView || isFolderView) ? countAllByFilter(entries) : { open: 0, archived: 0, trashed: 0 },
     [entries, isSectionGroup, isAllNotesView, isFolderView, selection],
-  )
-
-  const inboxCounts = useMemo(
-    () => isInboxView ? countInboxByPeriod(entries) : { week: 0, month: 0, quarter: 0, all: 0 },
-    [entries, isInboxView],
   )
 
   const { listSort, listDirection, customProperties, handleSortChange, sortPrefs, typeDocument } = useNoteListSort({ entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod: isInboxView ? inboxPeriod : undefined, onUpdateTypeSort, updateEntry })
@@ -117,7 +111,6 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
         </div>
         {isChangesView && deletedCount > 0 && <DeletedNotesBanner count={deletedCount} />}
         {showFilterPills && <FilterPills active={noteListFilter} counts={filterCounts} onChange={onNoteListFilterChange} position="bottom" />}
-        {isInboxView && onInboxPeriodChange && <InboxFilterPills active={inboxPeriod} counts={inboxCounts} onChange={onInboxPeriodChange} position="bottom" />}
       </div>
       {multiSelect.isMultiSelecting && (
         <BulkActionBar count={multiSelect.selectedPaths.size} isTrashView={isTrashView} isArchivedView={isArchivedView} onArchive={handleBulkArchive} onTrash={handleBulkTrash} onRestore={handleBulkRestore} onDeletePermanently={handleBulkDeletePermanently} onUnarchive={handleBulkUnarchive} onClear={multiSelect.clear} />
