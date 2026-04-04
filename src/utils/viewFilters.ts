@@ -75,7 +75,10 @@ function evaluateCondition(cond: FilterCondition, entry: VaultEntry): boolean {
 
   if (resolved.array) {
     const stem = wikilinkStem(condVal)
-    const arrayMatch = (arr: string[]) => arr.some((item) => wikilinkStem(item) === stem)
+    const isWikilink = condVal.trim().startsWith('[[')
+    const arrayMatch = (arr: string[]) => arr.some((item) =>
+      isWikilink ? wikilinkStem(item) === stem : wikilinkStem(item).includes(stem)
+    )
     if (op === 'contains') return arrayMatch(resolved.array)
     if (op === 'not_contains') return !arrayMatch(resolved.array)
     if (op === 'any_of' && Array.isArray(value)) {

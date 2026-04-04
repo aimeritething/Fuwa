@@ -136,4 +136,58 @@ describe('evaluateView', () => {
     const result = evaluateView(view, entries)
     expect(result.map((e) => e.title)).toEqual(['A', 'B'])
   })
+
+  it('contains on relationship uses substring match for plain text', () => {
+    const view: ViewDefinition = {
+      name: 'Monday', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'belongs to', op: 'contains', value: 'Monday' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'A', relationships: { 'belongs to': ['[[Monday Ideas]]'] } }),
+      makeEntry({ title: 'B', relationships: { 'belongs to': ['[[Monday Recap]]'] } }),
+      makeEntry({ title: 'C', relationships: { 'belongs to': ['[[Tuesday Ideas]]'] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['A', 'B'])
+  })
+
+  it('not_contains on relationship uses substring match for plain text', () => {
+    const view: ViewDefinition = {
+      name: 'Not Monday', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'belongs to', op: 'not_contains', value: 'Monday' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'A', relationships: { 'belongs to': ['[[Monday Ideas]]'] } }),
+      makeEntry({ title: 'B', relationships: { 'belongs to': ['[[Tuesday Ideas]]'] } }),
+      makeEntry({ title: 'C', relationships: { 'belongs to': [] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['B', 'C'])
+  })
+
+  it('contains on relationship uses exact match for wikilink syntax', () => {
+    const view: ViewDefinition = {
+      name: 'Exact', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'belongs to', op: 'contains', value: '[[Monday Ideas]]' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'A', relationships: { 'belongs to': ['[[Monday Ideas]]'] } }),
+      makeEntry({ title: 'B', relationships: { 'belongs to': ['[[Monday Recap]]'] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['A'])
+  })
+
+  it('any_of / none_of on relationship always use exact stem match', () => {
+    const view: ViewDefinition = {
+      name: 'Exact list', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'belongs to', op: 'any_of', value: ['[[Monday]]'] }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Exact', relationships: { 'belongs to': ['[[Monday]]'] } }),
+      makeEntry({ title: 'Partial', relationships: { 'belongs to': ['[[Monday Ideas]]'] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Exact'])
+  })
 })
