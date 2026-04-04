@@ -224,10 +224,10 @@ function FavoritesSection({ entries, selection, onSelect, onSelectNote, onReorde
   if (favorites.length === 0) return null
 
   return (
-    <div style={{ padding: '4px 6px' }}>
+    <div style={{ padding: '0 6px' }}>
       <button
         className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
-        style={{ padding: '6px 14px 6px 16px' }}
+        style={{ padding: '8px 14px 8px 16px' }}
         onClick={onToggle}
       >
         <div className="flex items-center gap-1">
@@ -431,10 +431,10 @@ export const Sidebar = memo(function Sidebar({
 
         {/* Views */}
         {hasViews && (
-          <div className="border-b border-border" style={{ padding: '4px 6px' }}>
+          <div className="border-b border-border" style={{ padding: '0 6px' }}>
             <button
               className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
-              style={{ padding: '6px 14px 6px 16px' }}
+              style={{ padding: '8px 14px 8px 16px' }}
               onClick={() => toggleGroup('views')}
             >
               <div className="flex items-center gap-1">
@@ -489,15 +489,15 @@ export const Sidebar = memo(function Sidebar({
 
         {/* Sections header + entries */}
         <div className="border-b border-border">
-          <div ref={customizeRef} style={{ position: 'relative', padding: '4px 6px' }}>
+          <div ref={customizeRef} style={{ position: 'relative', padding: '0 6px' }}>
             <button
               className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
-              style={{ padding: '6px 14px 6px 16px' }}
+              style={{ padding: '8px 14px 8px 16px' }}
               onClick={() => toggleGroup('sections')}
             >
               <div className="flex items-center gap-1">
                 {groupCollapsed.sections ? <CaretRight size={12} /> : <CaretDown size={12} />}
-                <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>SECTIONS</span>
+                <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>TYPES</span>
               </div>
               <span
                 role="button"
