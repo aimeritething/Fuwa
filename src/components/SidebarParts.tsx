@@ -26,8 +26,9 @@ export function isSelectionActive(current: SidebarSelection, check: SidebarSelec
 
 // --- NavItem ---
 
-export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 'bg-primary/10 text-primary', badgeClassName, badgeStyle, activeBadgeClassName, activeBadgeStyle, onClick, disabled, disabledTooltip, compact }: {
+export function NavItem({ icon: Icon, emoji, label, count, isActive, activeClassName = 'bg-primary/10 text-primary', badgeClassName, badgeStyle, activeBadgeClassName, activeBadgeStyle, onClick, disabled, disabledTooltip, compact }: {
   icon: ComponentType<IconProps>
+  emoji?: string | null
   label: string
   count?: number
   isActive?: boolean
@@ -46,11 +47,14 @@ export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 
   const padding = compact ? '4px 16px' : '6px 16px'
   const resolvedBadgeClass = isActive && activeBadgeClassName ? activeBadgeClassName : badgeClassName
   const resolvedBadgeStyle = isActive && activeBadgeClassName ? activeBadgeStyle : badgeStyle
+  const iconEl = emoji
+    ? <span style={{ fontSize: iconSize, lineHeight: 1, width: iconSize, textAlign: 'center' }}>{emoji}</span>
+    : <Icon size={iconSize} weight={isActive ? 'fill' : 'regular'} />
 
   if (disabled) {
     return (
       <div className="flex select-none items-center gap-2 rounded text-foreground" style={{ padding, borderRadius: 4, opacity: 0.4, cursor: 'not-allowed' }} title={disabledTooltip ?? "Coming soon"}>
-        <Icon size={iconSize} />
+        {iconEl}
         <span className={cn("flex-1 font-medium", textClass)}>{label}</span>
       </div>
     )
@@ -61,7 +65,7 @@ export function NavItem({ icon: Icon, label, count, isActive, activeClassName = 
       style={{ padding, borderRadius: 4 }}
       onClick={onClick}
     >
-      <Icon size={iconSize} weight={isActive ? 'fill' : 'regular'} />
+      {iconEl}
       <span className={cn("flex-1 font-medium", textClass)}>{label}</span>
       {count !== undefined && count > 0 && (
         <span className={cn("flex items-center justify-center", resolvedBadgeClass)} style={{ height: compact ? 18 : 20, borderRadius: 9999, padding: '0 6px', fontSize: 10, ...resolvedBadgeStyle }}>

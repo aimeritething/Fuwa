@@ -454,6 +454,7 @@ export const Sidebar = memo(function Sidebar({
                   <div key={v.filename} className="group relative">
                     <NavItem
                       icon={Funnel}
+                      emoji={v.definition.icon}
                       label={v.definition.name}
                       isActive={isSelectionActive(selection, { kind: 'view', filename: v.filename })}
                       onClick={() => onSelect({ kind: 'view', filename: v.filename })}
