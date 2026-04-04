@@ -6,7 +6,6 @@ import { getEffectiveDisplayMode, detectPropertyType } from '../utils/propertyTy
 import { SmartPropertyValueCell, DisplayModeSelector } from './PropertyValueCells'
 import { TypeSelector } from './TypeSelector'
 import { AddPropertyForm } from './AddPropertyForm'
-import { countWords } from '../utils/wikilinks'
 import type { PropertyDisplayMode } from '../utils/propertyTypes'
 
 function toSentenceCase(key: string): string {
@@ -20,20 +19,6 @@ export function containsWikilinks(value: FrontmatterValue): boolean {
   if (typeof value === 'string') return /^\[\[.*\]\]$/.test(value)
   if (Array.isArray(value)) return value.some(v => typeof v === 'string' && /^\[\[.*\]\]$/.test(v))
   return false
-}
-
-function formatDate(timestamp: number | null): string {
-  if (!timestamp) return '\u2014'
-  const d = new Date(timestamp * 1000)
-  return d.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
-}
-
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  const kb = bytes / 1024
-  if (kb < 1024) return `${kb.toFixed(1)} KB`
-  const mb = kb / 1024
-  return `${mb.toFixed(1)} MB`
 }
 
 function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultStatuses, vaultTags, onStartEdit, onSave, onSaveList, onUpdate, onDelete, onDisplayModeChange }: {
@@ -68,15 +53,6 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
   )
 }
 
-function InfoRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="grid min-w-0 grid-cols-2 items-center gap-2 px-1.5" data-testid="readonly-property">
-      <span className="min-w-0 truncate text-[12px] text-muted-foreground">{label}</span>
-      <span className="min-w-0 truncate text-right text-[12px]" style={{ color: 'var(--text-muted)' }}>{value}</span>
-    </div>
-  )
-}
-
 function AddPropertyButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
   return (
     <button
@@ -89,26 +65,12 @@ function AddPropertyButton({ onClick, disabled }: { onClick: () => void; disable
   )
 }
 
-function NoteInfoSection({ entry, wordCount }: { entry: VaultEntry; wordCount: number }) {
-  return (
-    <div className="border-t border-border pt-3">
-      <h4 className="font-mono-overline mb-2 text-muted-foreground">Info</h4>
-      <div className="flex flex-col gap-1.5">
-        <InfoRow label="Modified" value={formatDate(entry.modifiedAt)} />
-        <InfoRow label="Created" value={formatDate(entry.createdAt)} />
-        <InfoRow label="Words" value={String(wordCount)} />
-        <InfoRow label="Size" value={formatFileSize(entry.fileSize)} />
-      </div>
-    </div>
-  )
-}
-
 export function DynamicPropertiesPanel({
-  entry, content, frontmatter, entries,
+  entry, frontmatter, entries,
   onUpdateProperty, onDeleteProperty, onAddProperty, onNavigate,
 }: {
   entry: VaultEntry
-  content: string | null
+  content?: string | null
   frontmatter: ParsedFrontmatter
   entries?: VaultEntry[]
   onUpdateProperty?: (key: string, value: FrontmatterValue) => void
@@ -121,8 +83,6 @@ export function DynamicPropertiesPanel({
     availableTypes, customColorKey, typeColorKeys, typeIconKeys, vaultStatuses, vaultTagsByKey, propertyEntries,
     handleSaveValue, handleSaveList, handleAdd, handleDisplayModeChange,
   } = usePropertyPanelState({ entries, entryIsA: entry.isA, frontmatter, onUpdateProperty, onDeleteProperty, onAddProperty })
-
-  const wordCount = countWords(content ?? '')
 
   return (
     <div className="flex flex-col gap-3">
@@ -145,7 +105,6 @@ export function DynamicPropertiesPanel({
         ? <AddPropertyForm onAdd={handleAdd} onCancel={() => setShowAddDialog(false)} vaultStatuses={vaultStatuses} />
         : <AddPropertyButton onClick={() => setShowAddDialog(true)} disabled={!onAddProperty} />
       }
-      <NoteInfoSection entry={entry} wordCount={wordCount} />
     </div>
   )
 }

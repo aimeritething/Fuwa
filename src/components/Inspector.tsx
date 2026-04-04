@@ -6,7 +6,7 @@ import { SlidersHorizontal, X, Sparkle, WarningCircle, PencilSimple } from '@pho
 import { Separator } from './ui/separator'
 import { parseFrontmatter, detectFrontmatterState } from '../utils/frontmatter'
 import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
-import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel, InstancesPanel } from './InspectorPanels'
+import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel, InstancesPanel, NoteInfoPanel } from './InspectorPanels'
 import { wikilinkTarget } from '../utils/wikilink'
 import type { ReferencedByItem, BacklinkItem } from './InspectorPanels'
 
@@ -189,7 +189,7 @@ export function Inspector({
               {fmState === 'valid' ? (
                 <>
                   <DynamicPropertiesPanel
-                    entry={entry} content={content} frontmatter={frontmatter}
+                    entry={entry} frontmatter={frontmatter}
                     entries={entries}
                     onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}
                     onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
@@ -213,6 +213,8 @@ export function Inspector({
               )}
               {backlinks.length > 0 && <Separator />}
               <BacklinksPanel backlinks={backlinks} onNavigate={onNavigate} />
+              <Separator />
+              <NoteInfoPanel entry={entry} content={content} />
               {gitHistory.length > 0 && <Separator />}
               <GitHistoryPanel commits={gitHistory} onViewCommitDiff={onViewCommitDiff} />
             </>
