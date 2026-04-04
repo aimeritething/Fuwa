@@ -1462,7 +1462,8 @@ fn test_scan_vault_folders_flat_vault() {
 #[test]
 fn test_parse_list_properties_display() {
     let dir = TempDir::new().unwrap();
-    let content = "---\ntype: Type\n_list_properties_display:\n  - rating\n  - genre\n---\n# Movies\n";
+    let content =
+        "---\ntype: Type\n_list_properties_display:\n  - rating\n  - genre\n---\n# Movies\n";
     let entry = parse_test_entry(&dir, "movies.md", content);
     assert_eq!(entry.list_properties_display, vec!["rating", "genre"]);
 }
@@ -1478,19 +1479,14 @@ fn test_parse_list_properties_display_absent_defaults_empty() {
 #[test]
 fn test_list_properties_display_not_in_properties_or_relationships() {
     let dir = TempDir::new().unwrap();
-    let content =
-        "---\ntype: Type\n_list_properties_display:\n  - rating\n---\n# Movies\n";
+    let content = "---\ntype: Type\n_list_properties_display:\n  - rating\n---\n# Movies\n";
     let entry = parse_test_entry(&dir, "movies.md", content);
     assert!(
-        !entry
-            .properties
-            .contains_key("_list_properties_display"),
+        !entry.properties.contains_key("_list_properties_display"),
         "_list_properties_display must not leak into properties map"
     );
     assert!(
-        !entry
-            .relationships
-            .contains_key("_list_properties_display"),
+        !entry.relationships.contains_key("_list_properties_display"),
         "_list_properties_display must not leak into relationships map"
     );
 }
