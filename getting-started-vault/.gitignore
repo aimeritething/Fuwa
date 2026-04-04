@@ -1,16 +1,3 @@
-# Laputa app files (machine-specific, never commit)
-.laputa/settings.json
-
-# macOS
 .DS_Store
-.AppleDouble
-.LSOverride
-
-# Thumbnails
-._*
-
-# Editors
-.vscode/
-.idea/
 *.swp
 *.swo

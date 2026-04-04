@@ -1,9 +1,8 @@
 ---
-title: "Note"
-type: Type
-icon: note
-color: blue
-order: 1
+title: Note
+is_a: Type
+_icon: FileText
+_color: "#6366f1"
 ---
 
-A Note is a general-purpose document — research notes, meeting notes, ideas, drafts, or anything that doesn't fit a more specific type.
+A Note is a general-purpose document — ideas, references, meeting notes, or anything that doesn't fit a more specific type.

@@ -1,25 +1,15 @@
 ---
-title: "What is Laputa"
-type: Note
-Related to:
-  - "[[Getting Started]]"
-  - "[[Topic: Personal Knowledge Management]]"
+title: What is Laputa
+is_a: Note
+belongs_to: "[[Getting Started]]"
 ---
 
-Laputa is a local-first knowledge management app built on three principles:
+Laputa is a personal knowledge base built on three principles:
 
-## Your files, your data
+**Plain files.** Every note is a markdown file on your filesystem. No proprietary database, no lock-in. You can open, edit, and search your notes with any text editor.
 
-Every note is a plain markdown file on your filesystem. There is no proprietary database, no cloud lock-in, no import/export ceremony. Your vault is a folder — you can open it in any text editor, back it up however you want, and it will outlive any app.
+**Git as sync.** Your vault is a Git repository. Version history, branching, and remote sync come for free. Use GitHub, GitLab, or any remote.
 
-## The filesystem is the truth
+**Structure without rigidity.** Notes have types, properties, and relationships — but they're just YAML frontmatter. The structure lives in the file, not in a schema.
 
-Laputa reads your files and derives everything from them. Types, relationships, views, and sidebar sections are all computed from the frontmatter and folder structure. There is no hidden state. If you move a file in Finder, Laputa reflects the change. If you edit a file in VS Code, Laputa picks it up.
-
-## Git for sync and history
-
-Your vault is a git repository. Every change is a commit. Sync between devices by pushing and pulling to a remote. Resolve conflicts with standard git tools. Your entire edit history is preserved.
-
-## How it fits together
-
-A Laputa vault is a collection of markdown files with YAML frontmatter. The `type` field in the frontmatter determines what kind of entity the note represents. Wiki-links (`[[Note Title]]`) create a web of connections between notes. The app provides a visual interface on top of these files — a rich editor, sidebar navigation, inspector panel, and filtered views — but the files remain the source of truth.
+Laputa is designed to grow with you. Start with a few notes, add types as patterns emerge, connect ideas with wikilinks. Over time, your vault becomes a map of how you think.

@@ -1,9 +1,8 @@
 ---
-title: "Person"
-type: Type
-icon: user
-color: green
-order: 3
+title: Person
+is_a: Type
+_icon: UserCircle
+_color: "#f59e0b"
 ---
 
-A Person represents someone you interact with — a colleague, collaborator, mentor, or friend. People can own projects, attend events, and appear in relationships across your vault.
+A Person is someone you interact with — colleagues, collaborators, mentors, or friends.
