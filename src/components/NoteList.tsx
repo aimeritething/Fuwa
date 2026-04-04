@@ -22,6 +22,98 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 
+function useViewFlags(selection: SidebarSelection) {
+  const isSectionGroup = selection.kind === 'sectionGroup'
+  const isFolderView = selection.kind === 'folder'
+  const isInboxView = selection.kind === 'filter' && selection.filter === 'inbox'
+  const isAllNotesView = selection.kind === 'filter' && selection.filter === 'all'
+  const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
+  const showFilterPills = isSectionGroup || isFolderView || isAllNotesView
+  return { isSectionGroup, isFolderView, isInboxView, isAllNotesView, isChangesView, showFilterPills }
+}
+
+function useBulkActions(
+  multiSelect: ReturnType<typeof useMultiSelect>,
+  onBulkArchive: NoteListProps['onBulkArchive'],
+  onBulkTrash: NoteListProps['onBulkTrash'],
+  onBulkRestore: NoteListProps['onBulkRestore'],
+  onBulkDeletePermanently: NoteListProps['onBulkDeletePermanently'],
+  isTrashView: boolean,
+  isArchivedView: boolean,
+) {
+  const handleBulkArchive = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkArchive?.(paths) }, [multiSelect, onBulkArchive])
+  const handleBulkTrash = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkTrash?.(paths) }, [multiSelect, onBulkTrash])
+  const handleBulkRestore = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkRestore?.(paths) }, [multiSelect, onBulkRestore])
+  const handleBulkDeletePermanently = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkDeletePermanently?.(paths) }, [multiSelect, onBulkDeletePermanently])
+  const handleBulkUnarchive = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkRestore?.(paths) }, [multiSelect, onBulkRestore])
+  const bulkArchiveOrRestore = isTrashView ? handleBulkRestore : isArchivedView ? handleBulkUnarchive : handleBulkArchive
+  const bulkTrashOrDelete = isTrashView ? handleBulkDeletePermanently : handleBulkTrash
+  return { handleBulkArchive, handleBulkTrash, handleBulkRestore, handleBulkDeletePermanently, handleBulkUnarchive, bulkArchiveOrRestore, bulkTrashOrDelete }
+}
+
+function ChangesContextMenu({ isChangesView, onDiscardFile, modifiedFiles }: { isChangesView: boolean; onDiscardFile?: (relativePath: string) => Promise<void>; modifiedFiles?: ModifiedFile[] }) {
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; entry: VaultEntry } | null>(null)
+  const [discardTarget, setDiscardTarget] = useState<VaultEntry | null>(null)
+  const ctxMenuRef = useRef<HTMLDivElement>(null)
+
+  const handleNoteContextMenu = useCallback((entry: VaultEntry, e: React.MouseEvent) => {
+    if (!isChangesView || !onDiscardFile) return
+    e.preventDefault()
+    e.stopPropagation()
+    setCtxMenu({ x: e.clientX, y: e.clientY, entry })
+  }, [isChangesView, onDiscardFile])
+
+  const closeCtxMenu = useCallback(() => setCtxMenu(null), [])
+
+  useEffect(() => {
+    if (!ctxMenu) return
+    const handler = (e: MouseEvent) => {
+      if (ctxMenuRef.current && !ctxMenuRef.current.contains(e.target as Node)) closeCtxMenu()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [ctxMenu, closeCtxMenu])
+
+  const handleDiscardConfirm = useCallback(async () => {
+    if (!discardTarget || !onDiscardFile) return
+    const mf = modifiedFiles?.find((f) => f.path === discardTarget.path)
+    if (!mf) return
+    await onDiscardFile(mf.relativePath)
+    setDiscardTarget(null)
+  }, [discardTarget, onDiscardFile, modifiedFiles])
+
+  const contextMenuNode = ctxMenu ? (
+    <div ref={ctxMenuRef} className="fixed z-50 rounded-md border bg-popover p-1 shadow-md" style={{ left: ctxMenu.x, top: ctxMenu.y, minWidth: 180 }} data-testid="changes-context-menu">
+      <button
+        className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm cursor-default hover:bg-accent hover:text-accent-foreground transition-colors border-none bg-transparent text-left text-destructive"
+        onClick={() => { setDiscardTarget(ctxMenu.entry); closeCtxMenu() }}
+        data-testid="discard-changes-button"
+      >
+        Discard changes
+      </button>
+    </div>
+  ) : null
+
+  const dialogNode = (
+    <Dialog open={!!discardTarget} onOpenChange={(open) => { if (!open) setDiscardTarget(null) }}>
+      <DialogContent showCloseButton={false} data-testid="discard-confirm-dialog">
+        <DialogHeader>
+          <DialogTitle>Discard changes</DialogTitle>
+          <DialogDescription>
+            Discard changes to <strong>{discardTarget?.title ?? 'this file'}</strong>? This cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => setDiscardTarget(null)}>Cancel</Button>
+          <Button variant="destructive" onClick={handleDiscardConfirm} data-testid="discard-confirm-button">Discard</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+
+  return { handleNoteContextMenu, contextMenuNode, dialogNode }
+}
+
 interface NoteListProps {
   entries: VaultEntry[]
   selection: SidebarSelection
@@ -52,15 +144,11 @@ interface NoteListProps {
 function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'all', modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry, onOpenInNewWindow, onDiscardFile, views }: NoteListProps) {
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
 
-  const isSectionGroup = selection.kind === 'sectionGroup'
-  const isFolderView = selection.kind === 'folder'
-  const isInboxView = selection.kind === 'filter' && selection.filter === 'inbox'
-  const isAllNotesView = selection.kind === 'filter' && selection.filter === 'all'
-  const showFilterPills = isSectionGroup || isFolderView || isAllNotesView
+  const { isSectionGroup, isFolderView, isInboxView, isAllNotesView, isChangesView, showFilterPills } = useViewFlags(selection)
   const subFilter = showFilterPills ? noteListFilter : undefined
 
   const filterCounts = useMemo(
-    () => isSectionGroup ? countByFilter(entries, selection.type) : (isAllNotesView || isFolderView) ? countAllByFilter(entries) : { open: 0, archived: 0, trashed: 0 },
+    () => isSectionGroup && selection.kind === 'sectionGroup' ? countByFilter(entries, selection.type) : (isAllNotesView || isFolderView) ? countAllByFilter(entries) : { open: 0, archived: 0, trashed: 0 },
     [entries, isSectionGroup, isAllNotesView, isFolderView, selection],
   )
 
@@ -70,7 +158,6 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
 
   const typeEntryMap = useTypeEntryMap(entries)
   const { isEntityView, isTrashView, isArchivedView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod: isInboxView ? inboxPeriod : undefined, views })
-  const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
   const deletedCount = useMemo(
     () => isChangesView ? (modifiedFiles ?? []).filter((f) => f.status === 'deleted').length : 0,
     [isChangesView, modifiedFiles],
@@ -85,46 +172,10 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
     routeNoteClick(entry, e, { onReplace: onReplaceActiveTab, onSelect: onSelectNote, onOpenInNewWindow, multiSelect })
   }, [onReplaceActiveTab, onSelectNote, onOpenInNewWindow, multiSelect])
 
-  const handleBulkArchive = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkArchive?.(paths) }, [multiSelect, onBulkArchive])
-  const handleBulkTrash = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkTrash?.(paths) }, [multiSelect, onBulkTrash])
-  const handleBulkRestore = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkRestore?.(paths) }, [multiSelect, onBulkRestore])
-  const handleBulkDeletePermanently = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkDeletePermanently?.(paths) }, [multiSelect, onBulkDeletePermanently])
-  const handleBulkUnarchive = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkRestore?.(paths) }, [multiSelect, onBulkRestore])
-  const bulkArchiveOrRestore = isTrashView ? handleBulkRestore : isArchivedView ? handleBulkUnarchive : handleBulkArchive
-  const bulkTrashOrDelete = isTrashView ? handleBulkDeletePermanently : handleBulkTrash
+  const { handleBulkArchive, handleBulkTrash, handleBulkRestore, handleBulkDeletePermanently, handleBulkUnarchive, bulkArchiveOrRestore, bulkTrashOrDelete } = useBulkActions(multiSelect, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, isTrashView, isArchivedView)
   useMultiSelectKeyboard(multiSelect, isEntityView, bulkArchiveOrRestore, bulkTrashOrDelete)
 
-  // ── Changes view: context menu + discard confirmation ──
-  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number; entry: VaultEntry } | null>(null)
-  const [discardTarget, setDiscardTarget] = useState<VaultEntry | null>(null)
-  const ctxMenuRef = useRef<HTMLDivElement>(null)
-
-  const handleNoteContextMenu = useCallback((entry: VaultEntry, e: React.MouseEvent) => {
-    if (!isChangesView || !onDiscardFile) return
-    e.preventDefault()
-    e.stopPropagation()
-    setCtxMenu({ x: e.clientX, y: e.clientY, entry })
-  }, [isChangesView, onDiscardFile])
-
-  const closeCtxMenu = useCallback(() => setCtxMenu(null), [])
-
-  // Close context menu on outside click
-  useEffect(() => {
-    if (!ctxMenu) return
-    const handler = (e: MouseEvent) => {
-      if (ctxMenuRef.current && !ctxMenuRef.current.contains(e.target as Node)) closeCtxMenu()
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [ctxMenu, closeCtxMenu])
-
-  const handleDiscardConfirm = useCallback(async () => {
-    if (!discardTarget || !onDiscardFile) return
-    const mf = modifiedFiles?.find((f) => f.path === discardTarget.path)
-    if (!mf) return
-    await onDiscardFile(mf.relativePath)
-    setDiscardTarget(null)
-  }, [discardTarget, onDiscardFile, modifiedFiles])
+  const { handleNoteContextMenu, contextMenuNode, dialogNode } = ChangesContextMenu({ isChangesView, onDiscardFile, modifiedFiles })
 
   const renderItem = useCallback((entry: VaultEntry) => (
     <NoteItem key={entry.path} entry={entry} isSelected={selectedNote?.path === entry.path} isMultiSelected={multiSelect.selectedPaths.has(entry.path)} isHighlighted={entry.path === noteListKeyboard.highlightedPath} noteStatus={resolvedGetNoteStatus(entry.path)} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} onPrefetch={prefetchNoteContent} onContextMenu={isChangesView && onDiscardFile ? handleNoteContextMenu : undefined} />
@@ -153,35 +204,8 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
       {multiSelect.isMultiSelecting && (
         <BulkActionBar count={multiSelect.selectedPaths.size} isTrashView={isTrashView} isArchivedView={isArchivedView} onArchive={handleBulkArchive} onTrash={handleBulkTrash} onRestore={handleBulkRestore} onDeletePermanently={handleBulkDeletePermanently} onUnarchive={handleBulkUnarchive} onClear={multiSelect.clear} />
       )}
-
-      {/* Changes view: context menu */}
-      {ctxMenu && (
-        <div ref={ctxMenuRef} className="fixed z-50 rounded-md border bg-popover p-1 shadow-md" style={{ left: ctxMenu.x, top: ctxMenu.y, minWidth: 180 }} data-testid="changes-context-menu">
-          <button
-            className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm cursor-default hover:bg-accent hover:text-accent-foreground transition-colors border-none bg-transparent text-left text-destructive"
-            onClick={() => { setDiscardTarget(ctxMenu.entry); closeCtxMenu() }}
-            data-testid="discard-changes-button"
-          >
-            Discard changes
-          </button>
-        </div>
-      )}
-
-      {/* Discard confirmation dialog */}
-      <Dialog open={!!discardTarget} onOpenChange={(open) => { if (!open) setDiscardTarget(null) }}>
-        <DialogContent showCloseButton={false} data-testid="discard-confirm-dialog">
-          <DialogHeader>
-            <DialogTitle>Discard changes</DialogTitle>
-            <DialogDescription>
-              Discard changes to <strong>{discardTarget?.title ?? 'this file'}</strong>? This cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setDiscardTarget(null)}>Cancel</Button>
-            <Button variant="destructive" onClick={handleDiscardConfirm} data-testid="discard-confirm-button">Discard</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {contextMenuNode}
+      {dialogNode}
     </div>
   )
 }

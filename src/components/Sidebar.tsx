@@ -587,7 +587,7 @@ export const Sidebar = memo(function Sidebar({
         )}
 
         {/* Types */}
-        <TypesSection entries={entries} visibleSections={visibleSections} allSectionGroups={allSectionGroups} sectionIds={sectionIds} selection={selection} onSelect={onSelect} sensors={sensors} handleDragEnd={handleDragEnd} sectionProps={sectionProps} collapsed={groupCollapsed.sections} onToggle={() => toggleGroup('sections')} showCustomize={showCustomize} setShowCustomize={setShowCustomize} isSectionVisible={isSectionVisible} toggleVisibility={toggleVisibility} onCreateNewType={onCreateNewType} customizeRef={customizeRef} />
+        <TypesSection visibleSections={visibleSections} allSectionGroups={allSectionGroups} sectionIds={sectionIds} sensors={sensors} handleDragEnd={handleDragEnd} sectionProps={sectionProps} collapsed={groupCollapsed.sections} onToggle={() => toggleGroup('sections')} showCustomize={showCustomize} setShowCustomize={setShowCustomize} isSectionVisible={isSectionVisible} toggleVisibility={toggleVisibility} onCreateNewType={onCreateNewType} customizeRef={customizeRef} />
 
         {/* Folder tree */}
         <FolderTree folders={folders} selection={selection} onSelect={onSelect} onCreateFolder={onCreateFolder} collapsed={groupCollapsed.folders} onToggle={() => toggleGroup('folders')} />
