@@ -21,6 +21,8 @@ interface NoteCommandsConfig {
   onOpenInNewWindow?: () => void
   onToggleFavorite?: (path: string) => void
   isFavorite?: boolean
+  onToggleOrganized?: (path: string) => void
+  isOrganized?: boolean
 }
 
 export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
@@ -31,6 +33,7 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
     onEmptyTrash, trashedCount,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     onOpenInNewWindow, onToggleFavorite, isFavorite,
+    onToggleOrganized, isOrganized,
   } = config
 
   return [
@@ -54,6 +57,12 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
       keywords: ['favorite', 'star', 'bookmark', 'pin'],
       enabled: hasActiveNote && !!onToggleFavorite,
       execute: () => { if (activeTabPath) onToggleFavorite?.(activeTabPath) },
+    },
+    {
+      id: 'toggle-organized', label: isOrganized ? 'Mark as Unorganized' : 'Mark as Organized', group: 'Note',
+      keywords: ['organized', 'inbox', 'triage', 'done'],
+      enabled: hasActiveNote && !!onToggleOrganized,
+      execute: () => { if (activeTabPath) onToggleOrganized?.(activeTabPath) },
     },
     {
       id: 'set-note-icon', label: 'Set Note Icon', group: 'Note',

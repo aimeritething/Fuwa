@@ -12,8 +12,7 @@ secondary-foreground: "#111111"
 muted: "#F5F5F5"
 muted-foreground: "#666666"
 accent: "#F0F0F0"
-accent-foreground: "#111111"
-destructive: "#CC0000"
+accent-foreground: destructive: "#CC0000"
 border: "#E0E0E0"
 input: "#E0E0E0"
 ring: "#000000"
@@ -47,8 +46,8 @@ font-size-base: 13px
 editor-font-size: 15
 editor-line-height: 1.6
 editor-max-width: 680
+title: Minimal
 ---
-
 # Minimal
 
 High contrast, minimal chrome. Monospace typography throughout.

@@ -158,6 +158,32 @@ export function useEntryActions({
     }
   }, [entries, updateEntry, handleUpdateFrontmatter, handleDeleteProperty, setToastMessage, onFrontmatterPersisted])
 
+  const handleToggleOrganized = useCallback(async (path: string) => {
+    const entry = entries.find((e) => e.path === path)
+    if (!entry) return
+    if (entry.organized) {
+      trackEvent('note_unorganized')
+      updateEntry(path, { organized: false })
+      try {
+        await handleDeleteProperty(path, '_organized', { silent: true })
+        onFrontmatterPersisted?.()
+      } catch {
+        updateEntry(path, { organized: true })
+        setToastMessage('Failed to unorganize — rolled back')
+      }
+    } else {
+      trackEvent('note_organized')
+      updateEntry(path, { organized: true })
+      try {
+        await handleUpdateFrontmatter(path, '_organized', true, { silent: true })
+        onFrontmatterPersisted?.()
+      } catch {
+        updateEntry(path, { organized: false })
+        setToastMessage('Failed to organize — rolled back')
+      }
+    }
+  }, [entries, updateEntry, handleUpdateFrontmatter, handleDeleteProperty, setToastMessage, onFrontmatterPersisted])
+
   const handleReorderFavorites = useCallback(async (orderedPaths: string[]) => {
     for (let i = 0; i < orderedPaths.length; i++) {
       updateEntry(orderedPaths[i], { favoriteIndex: i })
@@ -178,5 +204,5 @@ export function useEntryActions({
     onFrontmatterPersisted?.()
   }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
-  return { handleTrashNote, handleRestoreNote, handleArchiveNote, handleUnarchiveNote, handleCustomizeType, handleReorderSections, handleUpdateTypeTemplate, handleRenameSection, handleToggleTypeVisibility, handleToggleFavorite, handleReorderFavorites }
+  return { handleTrashNote, handleRestoreNote, handleArchiveNote, handleUnarchiveNote, handleCustomizeType, handleReorderSections, handleUpdateTypeTemplate, handleRenameSection, handleToggleTypeVisibility, handleToggleFavorite, handleToggleOrganized, handleReorderFavorites }
 }

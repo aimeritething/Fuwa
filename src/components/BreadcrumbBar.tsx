@@ -14,6 +14,7 @@ import {
   Archive,
   ArrowUUpLeft,
   Star,
+  CheckCircle,
 } from '@phosphor-icons/react'
 
 interface BreadcrumbBarProps {
@@ -30,6 +31,7 @@ interface BreadcrumbBarProps {
   inspectorCollapsed?: boolean
   onToggleInspector?: () => void
   onToggleFavorite?: () => void
+  onToggleOrganized?: () => void
   onTrash?: () => void
   onRestore?: () => void
   onArchive?: () => void
@@ -58,7 +60,7 @@ function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggle
 function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onToggleDiff,
   rawMode, onToggleRaw,
   showAIChat, onToggleAIChat, inspectorCollapsed, onToggleInspector,
-  onToggleFavorite, onTrash, onRestore, onArchive, onUnarchive,
+  onToggleFavorite, onToggleOrganized, onTrash, onRestore, onArchive, onUnarchive,
 }: Omit<BreadcrumbBarProps, 'wordCount'>) {
   return (
     <div className="breadcrumb-bar__actions ml-auto flex items-center" style={{ gap: 12 }}>
@@ -71,6 +73,16 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
         title={entry.favorite ? 'Remove from favorites' : 'Add to favorites'}
       >
         <Star size={16} weight={entry.favorite ? 'fill' : 'regular'} />
+      </button>
+      <button
+        className={cn(
+          "flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors",
+          entry.organized ? "text-green-600" : "text-muted-foreground hover:text-foreground"
+        )}
+        onClick={onToggleOrganized}
+        title={entry.organized ? 'Mark as unorganized (back to Inbox)' : 'Mark as organized (remove from Inbox)'}
+      >
+        <CheckCircle size={16} weight={entry.organized ? 'fill' : 'regular'} />
       </button>
       <button
         className="flex items-center justify-center border-none bg-transparent p-0 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"

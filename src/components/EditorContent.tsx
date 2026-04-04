@@ -42,6 +42,7 @@ interface EditorContentProps {
   onNavigateWikilink: (target: string) => void
   onEditorChange?: () => void
   onToggleFavorite?: (path: string) => void
+  onToggleOrganized?: (path: string) => void
   onTrashNote?: (path: string) => void
   onRestoreNote?: (path: string) => void
   onDeleteNote?: (path: string) => void
@@ -146,6 +147,7 @@ function ActiveTabBreadcrumb({ activeTab, barRef, props }: {
       inspectorCollapsed={props.inspectorCollapsed}
       onToggleInspector={props.onToggleInspector}
       onToggleFavorite={bindPath(props.onToggleFavorite, path)}
+      onToggleOrganized={bindPath(props.onToggleOrganized, path)}
       onTrash={bindPath(props.onTrashNote, path)}
       onRestore={bindPath(props.onRestoreNote, path)}
       onArchive={bindPath(props.onArchiveNote, path)}

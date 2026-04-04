@@ -48,6 +48,7 @@ interface EditorProps {
   noteList?: NoteListItem[]
   noteListFilter?: { type: string | null; query: string }
   onToggleFavorite?: (path: string) => void
+  onToggleOrganized?: (path: string) => void
   onTrashNote?: (path: string) => void
   onRestoreNote?: (path: string) => void
   onDeleteNote?: (path: string) => void
@@ -207,7 +208,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateAndOpenNote, onInitializeProperties,
     showAIChat, onToggleAIChat,
     vaultPath, noteList, noteListFilter,
-    onToggleFavorite, onTrashNote, onRestoreNote, onDeleteNote, onArchiveNote, onUnarchiveNote,
+    onToggleFavorite, onToggleOrganized, onTrashNote, onRestoreNote, onDeleteNote, onArchiveNote, onUnarchiveNote,
     onContentChange, onSave, onTitleSync,
     onFileCreated, onFileModified, onVaultChanged,
     onSetNoteIcon, onRemoveNoteIcon,
@@ -254,6 +255,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
               onNavigateWikilink={onNavigateWikilink}
               onEditorChange={handleEditorChange}
               onToggleFavorite={onToggleFavorite}
+              onToggleOrganized={onToggleOrganized}
               onTrashNote={onTrashNote}
               onRestoreNote={onRestoreNote}
               onDeleteNote={onDeleteNote}

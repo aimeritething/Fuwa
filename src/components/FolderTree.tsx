@@ -102,11 +102,11 @@ export const FolderTree = memo(function FolderTree({ folders, selection, onSelec
   if (folders.length === 0 && !isCreating) return null
 
   return (
-    <div style={{ padding: '4px 6px' }}>
+    <div style={{ padding: '0 6px' }}>
       {/* Header */}
       <button
         className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
-        style={{ padding: '6px 14px 6px 16px' }}
+        style={{ padding: '8px 14px 8px 16px' }}
         onClick={() => onToggle ? onToggle() : setInternalCollapsed((v) => !v)}
       >
         <div className="flex items-center gap-1">

@@ -31,6 +31,7 @@ interface CommandRegistryConfig {
   onRemoveNoteIcon?: () => void
   onOpenInNewWindow?: () => void
   onToggleFavorite?: (path: string) => void
+  onToggleOrganized?: (path: string) => void
   onQuickOpen: () => void
   onCreateNote: () => void
   onCreateNoteOfType: (type: string) => void
@@ -86,7 +87,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     mcpStatus, onInstallMcp, onEmptyTrash, trashedCount,
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
-    onOpenInNewWindow, onToggleFavorite,
+    onOpenInNewWindow, onToggleFavorite, onToggleOrganized,
     selection, noteListFilter, onSetNoteListFilter,
   } = config
 
@@ -110,6 +111,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
       onCreateNote, onCreateType, onOpenDailyNote, onSave,
       onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
       onEmptyTrash, trashedCount, onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
+      onToggleOrganized, isOrganized: activeEntry?.organized ?? false,
     }),
     ...buildGitCommands({ modifiedCount, onCommitPush, onPull, onResolveConflicts, onSelect }),
     ...buildViewCommands({
@@ -139,5 +141,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     isSectionGroup, noteListFilter, onSetNoteListFilter,
     onOpenInNewWindow, onToggleFavorite, isFavorite,
+    onToggleOrganized, activeEntry,
   ])
 }

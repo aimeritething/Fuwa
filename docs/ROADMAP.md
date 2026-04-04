@@ -1,3 +1,6 @@
+---
+title: ROADMAP
+---
 # Laputa — Product Roadmap
 
 *Strategic directions, not implementation tasks. Each item here represents a direction that will be broken down into many smaller tasks when the time comes.*
@@ -106,3 +109,5 @@ These are not features — they are the foundation everything else is built on.
 
 *For active tasks and bugs, see the Todoist board (Laputa App project).*
 *For architectural decisions and design principles, see [ARCHITECTURE.md](./ARCHITECTURE.md) and [VISION.md](./VISION.md).*
+
+<!-- QA test edit Wed Apr  1 16:17:01 CEST 2026 -->

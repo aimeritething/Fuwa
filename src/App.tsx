@@ -507,6 +507,7 @@ function App() {
     onSetNoteListFilter: setNoteListFilter,
     onOpenInNewWindow: handleOpenInNewWindow,
     onToggleFavorite: entryActions.handleToggleFavorite,
+    onToggleOrganized: entryActions.handleToggleOrganized,
   })
 
   const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null
@@ -620,6 +621,7 @@ function App() {
             noteList={aiNoteList}
             noteListFilter={aiNoteListFilter}
             onToggleFavorite={entryActions.handleToggleFavorite}
+            onToggleOrganized={entryActions.handleToggleOrganized}
             onTrashNote={entryActions.handleTrashNote}
             onRestoreNote={entryActions.handleRestoreNote}
             onDeleteNote={deleteActions.handleDeleteNote}
