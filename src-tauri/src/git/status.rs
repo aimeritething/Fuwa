@@ -103,9 +103,7 @@ pub fn discard_file_changes(vault_path: &str, relative_path: &str) -> Result<(),
     let stdout = String::from_utf8_lossy(&output.stdout);
     let line = stdout.lines().find(|l| l.len() >= 4);
 
-    let status_code = line
-        .map(|l| l[..2].trim().to_string())
-        .unwrap_or_default();
+    let status_code = line.map(|l| l[..2].trim().to_string()).unwrap_or_default();
 
     match status_code.as_str() {
         "??" => {
@@ -318,7 +316,11 @@ mod tests {
         git_commit(vp, "initial").unwrap();
 
         let result = discard_file_changes(vp, "../../../etc/passwd");
-        assert!(result.is_err(), "Should reject path outside vault, got: {:?}", result);
+        assert!(
+            result.is_err(),
+            "Should reject path outside vault, got: {:?}",
+            result
+        );
         assert!(
             result.unwrap_err().contains("outside the vault"),
             "Error should mention 'outside the vault'"
