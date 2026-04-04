@@ -352,4 +352,42 @@ describe('StatusBar', () => {
     expect(screen.queryByTestId('status-commit-push')).not.toBeInTheDocument()
   })
 
+  it('shows Claude Code badge when installed', () => {
+    render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} claudeCodeStatus="installed" claudeCodeVersion="1.0.20" />)
+    const badge = screen.getByTestId('status-claude-code')
+    expect(badge).toBeInTheDocument()
+    expect(screen.getByText('Claude Code')).toBeInTheDocument()
+    expect(badge.getAttribute('title')).toBe('Claude Code 1.0.20')
+  })
+
+  it('shows Claude Code missing badge with warning when missing', () => {
+    render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} claudeCodeStatus="missing" />)
+    const badge = screen.getByTestId('status-claude-code')
+    expect(badge).toBeInTheDocument()
+    expect(screen.getByText('Claude Code missing')).toBeInTheDocument()
+    expect(badge.getAttribute('title')).toBe('Claude Code not found — click to install')
+  })
+
+  it('opens install URL when clicking missing Claude Code badge', () => {
+    render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} claudeCodeStatus="missing" />)
+    fireEvent.click(screen.getByTestId('status-claude-code'))
+    expect(openExternalUrl).toHaveBeenCalledWith('https://docs.anthropic.com/en/docs/claude-code')
+  })
+
+  it('opens install URL on Enter key for missing Claude Code badge', () => {
+    render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} claudeCodeStatus="missing" />)
+    fireEvent.keyDown(screen.getByTestId('status-claude-code'), { key: 'Enter' })
+    expect(openExternalUrl).toHaveBeenCalledWith('https://docs.anthropic.com/en/docs/claude-code')
+  })
+
+  it('hides Claude Code badge when status is checking', () => {
+    render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} claudeCodeStatus="checking" />)
+    expect(screen.queryByTestId('status-claude-code')).not.toBeInTheDocument()
+  })
+
+  it('hides Claude Code badge when no claudeCodeStatus prop provided', () => {
+    render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
+    expect(screen.queryByTestId('status-claude-code')).not.toBeInTheDocument()
+  })
+
 })

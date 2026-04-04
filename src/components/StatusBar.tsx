@@ -1,8 +1,9 @@
 import { useState, useRef, useEffect } from 'react'
-import { Package, RefreshCw, FileText, Bell, Settings, FolderOpen, Check, Github, AlertTriangle, Loader2, GitCommitHorizontal, X, Cpu, ArrowDown, GitBranch } from 'lucide-react'
+import { Package, RefreshCw, FileText, Bell, Settings, FolderOpen, Check, Github, AlertTriangle, Loader2, GitCommitHorizontal, X, Cpu, ArrowDown, GitBranch, Terminal } from 'lucide-react'
 import { GitDiff, Pulse } from '@phosphor-icons/react'
 import type { GitRemoteStatus, LastCommitInfo, SyncStatus } from '../types'
 import type { McpStatus } from '../hooks/useMcpStatus'
+import type { ClaudeCodeStatus } from '../hooks/useClaudeCodeStatus'
 import { openExternalUrl } from '../utils/url'
 
 export interface VaultOption {
@@ -40,6 +41,8 @@ interface StatusBarProps {
   onRemoveVault?: (path: string) => void
   mcpStatus?: McpStatus
   onInstallMcp?: () => void
+  claudeCodeStatus?: ClaudeCodeStatus
+  claudeCodeVersion?: string | null
 }
 
 function VaultMenuIcon({ isActive, unavailable }: { isActive: boolean; unavailable: boolean }) {
@@ -436,7 +439,44 @@ function McpBadge({ status, onInstall }: { status: McpStatus; onInstall?: () => 
   )
 }
 
-export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, onClickPulse, onCommitPush, isGitVault = false, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, remoteStatus, onTriggerSync, onPullAndPush, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber, onCheckForUpdates, onRemoveVault, mcpStatus, onInstallMcp }: StatusBarProps) {
+const CLAUDE_INSTALL_URL = 'https://docs.anthropic.com/en/docs/claude-code'
+
+function ClaudeCodeBadge({ status, version }: { status: ClaudeCodeStatus; version?: string | null }) {
+  if (status === 'checking') return null
+  const isMissing = status === 'missing'
+  const tooltip = isMissing
+    ? 'Claude Code not found — click to install'
+    : `Claude Code${version ? ` ${version}` : ''}`
+  return (
+    <>
+      <span style={SEP_STYLE}>|</span>
+      <span
+        role={isMissing ? 'button' : undefined}
+        tabIndex={isMissing ? 0 : undefined}
+        onClick={isMissing ? () => openExternalUrl(CLAUDE_INSTALL_URL) : undefined}
+        onKeyDown={isMissing ? (e) => { if (e.key === 'Enter') openExternalUrl(CLAUDE_INSTALL_URL) } : undefined}
+        style={{
+          ...ICON_STYLE,
+          color: isMissing ? 'var(--accent-orange)' : 'var(--muted-foreground)',
+          cursor: isMissing ? 'pointer' : 'default',
+          padding: '2px 4px',
+          borderRadius: 3,
+          background: 'transparent',
+        }}
+        title={tooltip}
+        data-testid="status-claude-code"
+        onMouseEnter={isMissing ? (e) => { e.currentTarget.style.background = 'var(--hover)' } : undefined}
+        onMouseLeave={isMissing ? (e) => { e.currentTarget.style.background = 'transparent' } : undefined}
+      >
+        <Terminal size={13} />
+        {isMissing ? 'Claude Code missing' : 'Claude Code'}
+        {isMissing && <AlertTriangle size={10} style={{ marginLeft: 2 }} />}
+      </span>
+    </>
+  )
+}
+
+export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onSwitchVault, onOpenSettings, onOpenLocalFolder, onConnectGitHub, onClickPending, onClickPulse, onCommitPush, isGitVault = false, hasGitHub, syncStatus = 'idle', lastSyncTime = null, conflictCount = 0, lastCommitInfo, remoteStatus, onTriggerSync, onPullAndPush, onOpenConflictResolver, zoomLevel = 100, onZoomReset, buildNumber, onCheckForUpdates, onRemoveVault, mcpStatus, onInstallMcp, claudeCodeStatus, claudeCodeVersion }: StatusBarProps) {
   const [, setTick] = useState(0)
   useEffect(() => {
     const id = setInterval(() => setTick((t) => t + 1), 30_000)
@@ -464,6 +504,7 @@ export function StatusBar({ noteCount, modifiedCount = 0, vaultPath, vaults, onS
         <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} />
         <PulseBadge onClick={onClickPulse} disabled={!isGitVault} />
         {mcpStatus && <McpBadge status={mcpStatus} onInstall={onInstallMcp} />}
+        {claudeCodeStatus && <ClaudeCodeBadge status={claudeCodeStatus} version={claudeCodeVersion} />}
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
         <span style={ICON_STYLE}><FileText size={13} />{noteCount.toLocaleString()} notes</span>
