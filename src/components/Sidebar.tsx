@@ -334,6 +334,7 @@ export const Sidebar = memo(function Sidebar({
   onToggleTypeVisibility, onSelectFavorite, onReorderFavorites,
   views = [], onCreateView, onEditView, onDeleteView,
   folders = [], onCreateFolder, inboxCount = 0, onCollapse,
+  onCreateNewType,
 }: SidebarProps) {
   const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
   const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
@@ -499,14 +500,24 @@ export const Sidebar = memo(function Sidebar({
                 {groupCollapsed.sections ? <CaretRight size={12} /> : <CaretDown size={12} />}
                 <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>TYPES</span>
               </div>
-              <span
-                role="button"
-                title="Customize sections"
-                aria-label="Customize sections"
-                onClick={(e) => { e.stopPropagation(); setShowCustomize((v) => !v) }}
-              >
-                <SlidersHorizontal size={12} className="text-muted-foreground hover:text-foreground" />
-              </span>
+              <div className="flex items-center gap-1.5">
+                <span
+                  role="button"
+                  title="Customize sections"
+                  aria-label="Customize sections"
+                  onClick={(e) => { e.stopPropagation(); setShowCustomize((v) => !v) }}
+                >
+                  <SlidersHorizontal size={12} className="text-muted-foreground hover:text-foreground" />
+                </span>
+                {onCreateNewType && (
+                  <Plus
+                    size={12}
+                    className="text-muted-foreground hover:text-foreground"
+                    data-testid="create-type-btn"
+                    onClick={(e) => { e.stopPropagation(); onCreateNewType() }}
+                  />
+                )}
+              </div>
             </button>
             {showCustomize && <VisibilityPopover sections={allSectionGroups} isSectionVisible={isSectionVisible} onToggle={toggleVisibility} />}
           </div>

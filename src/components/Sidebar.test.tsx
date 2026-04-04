@@ -1009,4 +1009,29 @@ describe('Sidebar', () => {
       expect(onEditView).toHaveBeenCalledWith('active-projects.yml')
     })
   })
+
+  describe('create type button', () => {
+    it('renders + button in TYPES header when onCreateNewType is provided', () => {
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} onCreateNewType={() => {}} />
+      )
+      expect(screen.getByTestId('create-type-btn')).toBeInTheDocument()
+    })
+
+    it('does not render + button when onCreateNewType is not provided', () => {
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />
+      )
+      expect(screen.queryByTestId('create-type-btn')).not.toBeInTheDocument()
+    })
+
+    it('calls onCreateNewType when + button is clicked', () => {
+      const onCreateNewType = vi.fn()
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} onCreateNewType={onCreateNewType} />
+      )
+      fireEvent.click(screen.getByTestId('create-type-btn'))
+      expect(onCreateNewType).toHaveBeenCalledOnce()
+    })
+  })
 })
