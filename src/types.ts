@@ -35,6 +35,8 @@ export interface VaultEntry {
   view: string | null
   /** Whether this Type is visible in the sidebar. Defaults to true when absent. */
   visible: boolean | null
+  /** Whether this note has been explicitly organized (removed from Inbox). */
+  organized: boolean
   /** Whether this note is a user favorite (shown in FAVORITES sidebar section). */
   favorite: boolean
   /** Display order within the FAVORITES section (lower = higher). */

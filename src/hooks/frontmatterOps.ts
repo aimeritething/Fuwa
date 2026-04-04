@@ -14,6 +14,7 @@ const ENTRY_DELETE_MAP: Record<string, Partial<VaultEntry>> = {
   _trashed: { trashed: false }, trashed: { trashed: false },
   order: { order: null },
   template: { template: null }, sort: { sort: null }, visible: { visible: null },
+  _organized: { organized: false },
   _favorite: { favorite: false }, _favorite_index: { favoriteIndex: null },
   _list_properties_display: { listPropertiesDisplay: [] },
 }
@@ -63,6 +64,7 @@ export function frontmatterToEntryPatch(
     sort: { sort: str },
     view: { view: str },
     visible: { visible: value === false ? false : null },
+    _organized: { organized: Boolean(value) },
     _favorite: { favorite: Boolean(value) },
     _favorite_index: { favoriteIndex: typeof value === 'number' ? value : null },
     _list_properties_display: { listPropertiesDisplay: Array.isArray(value) ? value.map(String) : [] },

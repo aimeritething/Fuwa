@@ -381,82 +381,30 @@ export function countAllByFilter(entries: VaultEntry[]): Record<NoteListFilter, 
 
 // --- Inbox ---
 
-/** Build a set of all valid link targets (titles, aliases, filename stems, path stems). */
-export function buildValidLinkTargets(entries: VaultEntry[]): Set<string> {
-  const targets = new Set<string>()
-  for (const e of entries) {
-    targets.add(e.title)
-    const fileStem = e.filename.replace(/\.md$/, '')
-    targets.add(fileStem)
-    // path stem: everything after vault root, minus .md
-    // E.g. /Users/luca/Laputa/project/foo.md → project/foo
-    const parts = e.path.replace(/\.md$/, '').split('/')
-    // Try from index that gives "folder/name" pattern — skip first segments
-    if (parts.length >= 2) {
-      const last2 = parts.slice(-2).join('/')
-      if (last2 !== fileStem) targets.add(last2)
-    }
-    for (const alias of e.aliases) targets.add(alias)
-  }
-  return targets
-}
-
-function extractRef(raw: string): string {
-  return raw.replace(/^\[\[/, '').replace(/\]\]$/, '').split('|')[0]
-}
-
-function hasValidRef(refs: string[], validTargets: Set<string>): boolean {
-  return refs.some((raw) => {
-    const inner = extractRef(raw)
-    return validTargets.has(inner) || validTargets.has(inner.split('/').pop() ?? '')
-  })
-}
-
-/** Check if entry has any valid outgoing link (body or frontmatter) that resolves to a real note. */
-export function isInboxEntry(entry: VaultEntry, validTargets: Set<string>): boolean {
+/** Check if entry belongs in the Inbox (not organized, not trashed/archived, not a Type). */
+export function isInboxEntry(entry: VaultEntry): boolean {
   if (entry.trashed || entry.archived) return false
   if (entry.isA === 'Type') return false
-  return !hasAnyValidLinks(entry, validTargets)
-}
-
-function hasAnyValidLinks(entry: VaultEntry, validTargets: Set<string>): boolean {
-  return hasValidBodyLinks(entry.outgoingLinks, validTargets) || hasValidFrontmatterLinks(entry, validTargets)
-}
-
-function hasValidBodyLinks(outgoingLinks: string[], validTargets: Set<string>): boolean {
-  return outgoingLinks.some((link) => validTargets.has(link) || validTargets.has(link.split('/').pop() ?? ''))
-}
-
-function hasValidFrontmatterLinks(entry: VaultEntry, validTargets: Set<string>): boolean {
-  if (entry.belongsTo?.length && hasValidRef(entry.belongsTo, validTargets)) return true
-  if (entry.relatedTo?.length && hasValidRef(entry.relatedTo, validTargets)) return true
-
-  if (entry.relationships) {
-    return Object.values(entry.relationships).some((refs) => hasValidRef(refs, validTargets))
-  }
-
-  return false
+  return !entry.organized
 }
 
 const INBOX_PERIOD_DAYS: Record<InboxPeriod, number> = {
   week: 7, month: 30, quarter: 90, all: Infinity,
 }
 
-/** Filter entries for the Inbox view: no valid relationships, within the given time period, sorted by createdAt desc. */
+/** Filter entries for the Inbox view: not organized, within the given time period, sorted by createdAt desc. */
 export function filterInboxEntries(entries: VaultEntry[], period: InboxPeriod): VaultEntry[] {
-  const validTargets = buildValidLinkTargets(entries)
   const now = Math.floor(Date.now() / 1000)
   const cutoff = period === 'all' ? 0 : now - INBOX_PERIOD_DAYS[period] * 86400
 
   return entries
-    .filter((e) => isInboxEntry(e, validTargets) && (e.createdAt ?? 0) >= cutoff)
+    .filter((e) => isInboxEntry(e) && (e.createdAt ?? 0) >= cutoff)
     .sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0))
 }
 
 /** Count inbox entries per period. */
 export function countInboxByPeriod(entries: VaultEntry[]): Record<InboxPeriod, number> {
-  const validTargets = buildValidLinkTargets(entries)
-  const inbox = entries.filter((e) => isInboxEntry(e, validTargets))
+  const inbox = entries.filter((e) => isInboxEntry(e))
   const now = Math.floor(Date.now() / 1000)
 
   let week = 0, month = 0, quarter = 0

@@ -48,6 +48,12 @@ pub(crate) struct Frontmatter {
     #[serde(default)]
     pub visible: Option<bool>,
     #[serde(
+        rename = "_organized",
+        default,
+        deserialize_with = "deserialize_bool_or_string"
+    )]
+    pub organized: Option<bool>,
+    #[serde(
         rename = "_favorite",
         default,
         deserialize_with = "deserialize_bool_or_string"
@@ -169,6 +175,7 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
         "notion_id",
         "Status",
         "status",
+        "_organized",
         "_favorite",
         "_favorite_index",
         "_list_properties_display",
@@ -206,6 +213,7 @@ const SKIP_KEYS: &[&str] = &[
     "view",
     "visible",
     "status",
+    "_organized",
     "_favorite",
     "_favorite_index",
     "_list_properties_display",

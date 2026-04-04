@@ -115,6 +115,7 @@ pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<Vault
         sort: frontmatter.sort.and_then(|v| v.into_scalar()),
         view: frontmatter.view.and_then(|v| v.into_scalar()),
         visible: frontmatter.visible,
+        organized: frontmatter.organized.unwrap_or(false),
         favorite: frontmatter.favorite.unwrap_or(false),
         favorite_index: frontmatter.favorite_index,
         list_properties_display: frontmatter.list_properties_display.unwrap_or_default(),

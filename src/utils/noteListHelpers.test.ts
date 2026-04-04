@@ -1,12 +1,12 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { formatSubtitle, formatSearchSubtitle, relativeDate, buildRelationshipGroups, getSortComparator, extractSortableProperties, getSortOptionLabel, getDefaultDirection, parseSortConfig, serializeSortConfig, buildValidLinkTargets, isInboxEntry, filterInboxEntries, filterEntries } from './noteListHelpers'
+import { formatSubtitle, formatSearchSubtitle, relativeDate, buildRelationshipGroups, getSortComparator, extractSortableProperties, getSortOptionLabel, getDefaultDirection, parseSortConfig, serializeSortConfig, isInboxEntry, filterInboxEntries, filterEntries } from './noteListHelpers'
 import type { VaultEntry } from '../types'
 
 function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
   return {
     path: '/vault/note/test.md', filename: 'test.md', title: 'Test',
     isA: 'Note', aliases: [], belongsTo: [], relatedTo: [],
-    status: null, archived: false,
+    status: null, organized: false, archived: false,
     trashed: false, trashedAt: null,
     modifiedAt: null, createdAt: null, fileSize: 0,
     snippet: '', wordCount: 0, relationships: {},
@@ -566,79 +566,35 @@ describe('parseSortConfig', () => {
 
 // --- Inbox ---
 
-describe('buildValidLinkTargets', () => {
-  it('builds a set of titles, filename stems, and path stems', () => {
-    const entries = [
-      makeEntry({ path: '/vault/project/my-project.md', filename: 'my-project.md', title: 'My Project', aliases: ['MP'] }),
-      makeEntry({ path: '/vault/note/test.md', filename: 'test.md', title: 'Test Note' }),
-    ]
-    const targets = buildValidLinkTargets(entries)
-    expect(targets.has('My Project')).toBe(true)
-    expect(targets.has('Test Note')).toBe(true)
-    expect(targets.has('my-project')).toBe(true)
-    expect(targets.has('test')).toBe(true)
-    expect(targets.has('MP')).toBe(true)
-    // path stems (last 2 segments without .md)
-    expect(targets.has('project/my-project')).toBe(true)
-    expect(targets.has('note/test')).toBe(true)
-  })
-})
-
 describe('isInboxEntry', () => {
-  const allEntries = [
-    makeEntry({ path: '/vault/topic/ai.md', filename: 'ai.md', title: 'AI', aliases: [] }),
-    makeEntry({ path: '/vault/project/laputa.md', filename: 'laputa.md', title: 'Laputa' }),
-  ]
-  const validTargets = buildValidLinkTargets(allEntries)
+  it('returns true for a note that is not organized', () => {
+    const note = makeEntry({ organized: false })
+    expect(isInboxEntry(note)).toBe(true)
+  })
 
-  it('returns true for a note with no outgoing links and no relationships', () => {
-    const note = makeEntry({ outgoingLinks: [], relationships: {}, belongsTo: [], relatedTo: [] })
-    expect(isInboxEntry(note, validTargets)).toBe(true)
+  it('returns false for an organized note', () => {
+    const note = makeEntry({ organized: true })
+    expect(isInboxEntry(note)).toBe(false)
   })
 
   it('returns false for a trashed note', () => {
-    const note = makeEntry({ trashed: true, outgoingLinks: [], relationships: {} })
-    expect(isInboxEntry(note, validTargets)).toBe(false)
+    const note = makeEntry({ trashed: true })
+    expect(isInboxEntry(note)).toBe(false)
   })
 
   it('returns false for an archived note', () => {
-    const note = makeEntry({ archived: true, outgoingLinks: [], relationships: {} })
-    expect(isInboxEntry(note, validTargets)).toBe(false)
-  })
-
-  it('returns false for a note with valid outgoing links', () => {
-    const note = makeEntry({ outgoingLinks: ['AI'] })
-    expect(isInboxEntry(note, validTargets)).toBe(false)
-  })
-
-  it('returns true for a note with only broken outgoing links (non-existent targets)', () => {
-    const note = makeEntry({ outgoingLinks: ['NonExistent Page', 'Another Missing'] })
-    expect(isInboxEntry(note, validTargets)).toBe(true)
-  })
-
-  it('returns false for a note with valid frontmatter relationships', () => {
-    const note = makeEntry({ outgoingLinks: [], relationships: { 'Related to': ['[[AI]]'] } })
-    expect(isInboxEntry(note, validTargets)).toBe(false)
-  })
-
-  it('returns false for a note with belongsTo pointing to real note', () => {
-    const note = makeEntry({ outgoingLinks: [], belongsTo: ['[[Laputa]]'] })
-    expect(isInboxEntry(note, validTargets)).toBe(false)
-  })
-
-  it('returns false for a note with relatedTo pointing to real note', () => {
-    const note = makeEntry({ outgoingLinks: [], relatedTo: ['[[AI]]'] })
-    expect(isInboxEntry(note, validTargets)).toBe(false)
-  })
-
-  it('returns true for a note with only broken relationship refs', () => {
-    const note = makeEntry({ outgoingLinks: [], relationships: { 'Relates': ['[[Ghost]]'] }, belongsTo: ['[[Missing]]'] })
-    expect(isInboxEntry(note, validTargets)).toBe(true)
+    const note = makeEntry({ archived: true })
+    expect(isInboxEntry(note)).toBe(false)
   })
 
   it('excludes Type entries from inbox', () => {
-    const note = makeEntry({ isA: 'Type', outgoingLinks: [], relationships: {} })
-    expect(isInboxEntry(note, validTargets)).toBe(false)
+    const note = makeEntry({ isA: 'Type' })
+    expect(isInboxEntry(note)).toBe(false)
+  })
+
+  it('returns true for a note without _organized field (defaults to false)', () => {
+    const note = makeEntry({})
+    expect(isInboxEntry(note)).toBe(true)
   })
 })
 
@@ -647,11 +603,11 @@ describe('filterInboxEntries', () => {
   const DAY = 86400
 
   const allEntries = [
-    makeEntry({ path: '/vault/a.md', filename: 'a.md', title: 'A', createdAt: now - 2 * DAY, outgoingLinks: [] }),
-    makeEntry({ path: '/vault/b.md', filename: 'b.md', title: 'B', createdAt: now - 15 * DAY, outgoingLinks: [] }),
-    makeEntry({ path: '/vault/c.md', filename: 'c.md', title: 'C', createdAt: now - 60 * DAY, outgoingLinks: [] }),
-    makeEntry({ path: '/vault/d.md', filename: 'd.md', title: 'D', createdAt: now - 120 * DAY, outgoingLinks: [] }),
-    makeEntry({ path: '/vault/linked.md', filename: 'linked.md', title: 'Linked', createdAt: now - 1 * DAY, outgoingLinks: ['A'] }),
+    makeEntry({ path: '/vault/a.md', filename: 'a.md', title: 'A', createdAt: now - 2 * DAY }),
+    makeEntry({ path: '/vault/b.md', filename: 'b.md', title: 'B', createdAt: now - 15 * DAY }),
+    makeEntry({ path: '/vault/c.md', filename: 'c.md', title: 'C', createdAt: now - 60 * DAY }),
+    makeEntry({ path: '/vault/d.md', filename: 'd.md', title: 'D', createdAt: now - 120 * DAY }),
+    makeEntry({ path: '/vault/org.md', filename: 'org.md', title: 'Organized', createdAt: now - 1 * DAY, organized: true }),
   ]
 
   it('filters by "week" period (last 7 days)', () => {
@@ -681,17 +637,17 @@ describe('filterInboxEntries', () => {
     }
   })
 
-  it('excludes linked notes', () => {
+  it('excludes organized notes', () => {
     const result = filterInboxEntries(allEntries, 'all')
-    expect(result.find(e => e.title === 'Linked')).toBeUndefined()
+    expect(result.find(e => e.title === 'Organized')).toBeUndefined()
   })
 
-  it('returns empty array when all notes have valid outgoing links', () => {
-    const linked = [
-      makeEntry({ path: '/vault/x.md', title: 'X', outgoingLinks: ['Y'] }),
-      makeEntry({ path: '/vault/y.md', title: 'Y', outgoingLinks: ['X'] }),
+  it('returns empty array when all notes are organized', () => {
+    const organized = [
+      makeEntry({ path: '/vault/x.md', title: 'X', organized: true }),
+      makeEntry({ path: '/vault/y.md', title: 'Y', organized: true }),
     ]
-    const result = filterInboxEntries(linked, 'all')
+    const result = filterInboxEntries(organized, 'all')
     expect(result).toEqual([])
   })
 })
