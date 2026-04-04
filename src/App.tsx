@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { VaultEntry } from './types'
 import { Sidebar } from './components/Sidebar'
 import { NoteList } from './components/NoteList'
 import { Editor } from './components/Editor'
@@ -345,6 +346,13 @@ function App() {
     await target('save_view_cmd', { vaultPath: resolvedPath, filename, definition })
     trackEvent(editing ? 'view_updated' : 'view_created')
     await vault.reloadViews()
+    // Update vault entries so the .yml file appears in FOLDERS immediately
+    const filePath = resolvedPath + '/views/' + filename
+    try {
+      const entry = await target<VaultEntry>('reload_vault_entry', { path: filePath })
+      if (editing) { vault.updateEntry(filePath, entry) } else { vault.addEntry(entry) }
+    } catch { /* non-critical — will appear after next vault reload */ }
+    vault.reloadFolders()
     setToastMessage(editing ? `View "${definition.name}" updated` : `View "${definition.name}" created`)
     handleSetSelection({ kind: 'view', filename })
   }, [resolvedPath, vault, handleSetSelection, dialogs.editingView])
@@ -358,6 +366,9 @@ function App() {
     const target = isTauri() ? invoke : mockInvoke
     await target('delete_view_cmd', { vaultPath: resolvedPath, filename })
     await vault.reloadViews()
+    // Remove the .yml file from vault entries so it disappears from FOLDERS immediately
+    vault.removeEntry(resolvedPath + '/views/' + filename)
+    vault.reloadFolders()
     if (selection.kind === 'view' && selection.filename === filename) {
       handleSetSelection({ kind: 'filter', filter: 'all' })
     }
