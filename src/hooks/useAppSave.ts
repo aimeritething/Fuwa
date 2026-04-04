@@ -30,6 +30,7 @@ interface AppSaveDeps {
   setTabs: Parameters<typeof useEditorSaveWithLinks>[0]['setTabs']
   setToastMessage: (msg: string | null) => void
   loadModifiedFiles: () => void
+  reloadViews?: () => Promise<void>
   clearUnsaved: (path: string) => void
   unsavedPaths: Set<string>
   tabs: TabState[]
@@ -41,7 +42,7 @@ interface AppSaveDeps {
 
 export function useAppSave({
   updateEntry, setTabs, setToastMessage,
-  loadModifiedFiles, clearUnsaved, unsavedPaths,
+  loadModifiedFiles, reloadViews, clearUnsaved, unsavedPaths,
   tabs, activeTabPath,
   handleRenameNote, replaceEntry, resolvedPath,
 }: AppSaveDeps) {
@@ -53,7 +54,8 @@ export function useAppSave({
 
   const onNotePersisted = useCallback((path: string) => {
     clearUnsaved(path)
-  }, [clearUnsaved])
+    if (path.endsWith('.yml')) reloadViews?.()
+  }, [clearUnsaved, reloadViews])
 
   const { handleSave: handleSaveRaw, handleContentChange, savePendingForPath, savePending } = useEditorSaveWithLinks({
     updateEntry, setTabs, setToastMessage, onAfterSave, onNotePersisted,

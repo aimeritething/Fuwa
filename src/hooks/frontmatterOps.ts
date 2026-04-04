@@ -7,8 +7,9 @@ import { updateMockContent, trackMockChange } from '../mock-tauri'
 import { parseFrontmatter } from '../utils/frontmatter'
 
 const ENTRY_DELETE_MAP: Record<string, Partial<VaultEntry>> = {
+  title: { title: '' },
   type: { isA: null }, is_a: { isA: null }, status: { status: null }, color: { color: null },
-  icon: { icon: null },
+  icon: { icon: null }, sidebar_label: { sidebarLabel: null },
   aliases: { aliases: [] }, belongs_to: { belongsTo: [] }, related_to: { relatedTo: [] },
   _archived: { archived: false }, archived: { archived: false },
   _trashed: { trashed: false }, trashed: { trashed: false },
@@ -54,8 +55,9 @@ export function frontmatterToEntryPatch(
   const str = value != null ? String(value) : null
   const arr = Array.isArray(value) ? value.map(String) : []
   const updates: Record<string, Partial<VaultEntry>> = {
+    title: { title: str ?? '' },
     type: { isA: str }, is_a: { isA: str }, status: { status: str }, color: { color: str },
-    icon: { icon: str },
+    icon: { icon: str }, sidebar_label: { sidebarLabel: str },
     aliases: { aliases: arr }, belongs_to: { belongsTo: arr }, related_to: { relatedTo: arr },
     _archived: { archived: Boolean(value) }, archived: { archived: Boolean(value) },
     _trashed: { trashed: Boolean(value) }, trashed: { trashed: Boolean(value) },

@@ -331,11 +331,13 @@ describe('resolveNewType', () => {
 
 describe('frontmatterToEntryPatch', () => {
   it.each([
+    ['title', 'My Note', { title: 'My Note' }],
     ['type', 'Project', { isA: 'Project' }],
     ['is_a', 'Project', { isA: 'Project' }],
     ['status', 'Done', { status: 'Done' }],
     ['color', 'red', { color: 'red' }],
     ['icon', 'star', { icon: 'star' }],
+    ['sidebar_label', 'Projects', { sidebarLabel: 'Projects' }],
     ['archived', true, { archived: true }],
     ['trashed', true, { trashed: true }],
     ['order', 5, { order: 5 }],
@@ -472,6 +474,16 @@ describe('contentToEntryPatch', () => {
   it('handles is_a as alias for type', () => {
     const content = '---\nis_a: Essay\n---\n'
     expect(contentToEntryPatch(content)).toEqual({ isA: 'Essay' })
+  })
+
+  it('extracts title from frontmatter', () => {
+    const content = '---\ntitle: My Title\ntype: Note\n---\nBody'
+    expect(contentToEntryPatch(content)).toEqual({ title: 'My Title', isA: 'Note' })
+  })
+
+  it('extracts sidebar_label from frontmatter', () => {
+    const content = '---\ntype: Type\nsidebar_label: Projects\n---\n'
+    expect(contentToEntryPatch(content)).toEqual({ isA: 'Type', sidebarLabel: 'Projects' })
   })
 
   it('ignores unknown frontmatter keys', () => {
