@@ -11,7 +11,6 @@ interface InboxFilterPillsProps {
 const PILLS: { value: InboxPeriod; label: string }[] = [
   { value: 'week', label: 'Week' },
   { value: 'month', label: 'Month' },
-  { value: 'quarter', label: 'Quarter' },
   { value: 'all', label: 'All' },
 ]
 
