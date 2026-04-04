@@ -170,6 +170,7 @@ pub fn run() {
             commands::github_device_flow_poll,
             commands::github_get_user,
             commands::search_vault,
+            commands::create_empty_vault,
             commands::create_getting_started_vault,
             commands::check_vault_exists,
             commands::get_default_vault_path,

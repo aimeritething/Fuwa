@@ -78,6 +78,22 @@ export function useOnboarding(initialVaultPath: string) {
     }
   }, [])
 
+  const handleCreateNewVault = useCallback(async () => {
+    try {
+      const path = await pickFolder('Choose where to create your vault')
+      if (!path) return
+      setCreating(true)
+      setError(null)
+      const vaultPath = await tauriCall<string>('create_empty_vault', { targetPath: path })
+      markDismissed()
+      setState({ status: 'ready', vaultPath })
+    } catch (err) {
+      setError(typeof err === 'string' ? err : `Failed to create vault: ${err}`)
+    } finally {
+      setCreating(false)
+    }
+  }, [])
+
   const handleOpenFolder = useCallback(async () => {
     try {
       const path = await pickFolder('Open vault folder')
@@ -94,5 +110,5 @@ export function useOnboarding(initialVaultPath: string) {
     setState({ status: 'ready', vaultPath: initialVaultPath })
   }, [initialVaultPath])
 
-  return { state, creating, error, handleCreateVault, handleOpenFolder, handleDismiss }
+  return { state, creating, error, handleCreateVault, handleCreateNewVault, handleOpenFolder, handleDismiss }
 }

@@ -1,11 +1,12 @@
 import { useState } from 'react'
-import { FolderOpen, Plus, AlertTriangle, Loader2 } from 'lucide-react'
+import { FolderOpen, Plus, AlertTriangle, Loader2, Rocket } from 'lucide-react'
 
 interface WelcomeScreenProps {
   mode: 'welcome' | 'vault-missing'
   missingPath?: string
   defaultVaultPath: string
   onCreateVault: () => void
+  onCreateNewVault: () => void
   onOpenFolder: () => void
   creating: boolean
   error: string | null
@@ -64,43 +65,42 @@ const DIVIDER_STYLE: React.CSSProperties = {
   background: 'var(--border)',
 }
 
-const PRIMARY_BTN_STYLE: React.CSSProperties = {
+const OPTION_BTN_STYLE: React.CSSProperties = {
   width: '100%',
-  height: 44,
-  borderRadius: 8,
-  border: 'none',
-  background: 'var(--primary)',
-  color: 'white',
-  fontSize: 14,
-  fontWeight: 600,
-  cursor: 'pointer',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  gap: 8,
-}
-
-const SECONDARY_BTN_STYLE: React.CSSProperties = {
-  width: '100%',
-  height: 44,
   borderRadius: 8,
   border: '1px solid var(--border)',
   background: 'var(--background)',
-  color: 'var(--foreground)',
-  fontSize: 14,
-  fontWeight: 500,
   cursor: 'pointer',
   display: 'flex',
   alignItems: 'center',
-  justifyContent: 'center',
-  gap: 8,
+  gap: 14,
+  padding: '14px 16px',
+  textAlign: 'left',
+  transition: 'background 0.15s',
 }
 
-const HINT_STYLE: React.CSSProperties = {
+const OPTION_ICON_STYLE: React.CSSProperties = {
+  width: 36,
+  height: 36,
+  borderRadius: 8,
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+}
+
+const OPTION_LABEL_STYLE: React.CSSProperties = {
+  fontSize: 14,
+  fontWeight: 600,
+  color: 'var(--foreground)',
+  margin: 0,
+}
+
+const OPTION_DESC_STYLE: React.CSSProperties = {
   fontSize: 12,
   color: 'var(--muted-foreground)',
-  textAlign: 'center',
   margin: 0,
+  marginTop: 2,
 }
 
 const PATH_BADGE_STYLE: React.CSSProperties = {
@@ -118,10 +118,44 @@ const ERROR_STYLE: React.CSSProperties = {
   margin: 0,
 }
 
-export function WelcomeScreen({ mode, missingPath, defaultVaultPath, onCreateVault, onOpenFolder, creating, error }: WelcomeScreenProps) {
-  const [hoverPrimary, setHoverPrimary] = useState(false)
-  const [hoverSecondary, setHoverSecondary] = useState(false)
+interface OptionButtonProps {
+  icon: React.ReactNode
+  iconBg: string
+  label: string
+  description: string
+  onClick: () => void
+  disabled: boolean
+  loading?: boolean
+  testId: string
+}
 
+function OptionButton({ icon, iconBg, label, description, onClick, disabled, loading, testId }: OptionButtonProps) {
+  const [hover, setHover] = useState(false)
+  return (
+    <button
+      style={{
+        ...OPTION_BTN_STYLE,
+        background: hover ? 'var(--sidebar)' : 'var(--background)',
+        opacity: disabled ? 0.7 : 1,
+      }}
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      data-testid={testId}
+    >
+      <div style={{ ...OPTION_ICON_STYLE, background: iconBg }}>
+        {loading ? <Loader2 size={18} className="animate-spin" style={{ color: 'var(--muted-foreground)' }} /> : icon}
+      </div>
+      <div>
+        <p style={OPTION_LABEL_STYLE}>{loading ? 'Creating vault\u2026' : label}</p>
+        <p style={OPTION_DESC_STYLE}>{description}</p>
+      </div>
+    </button>
+  )
+}
+
+export function WelcomeScreen({ mode, missingPath, defaultVaultPath, onCreateVault, onCreateNewVault, onOpenFolder, creating, error }: WelcomeScreenProps) {
   const isWelcome = mode === 'welcome'
 
   return (
@@ -134,7 +168,7 @@ export function WelcomeScreen({ mode, missingPath, defaultVaultPath, onCreateVau
           }}
         >
           {isWelcome
-            ? <span style={{ fontSize: 28, color: 'var(--accent-blue)' }}>✦</span>
+            ? <span style={{ fontSize: 28, color: 'var(--accent-blue)' }}>&#10022;</span>
             : <AlertTriangle size={28} style={{ color: 'var(--accent-orange)' }} />
           }
         </div>
@@ -161,45 +195,40 @@ export function WelcomeScreen({ mode, missingPath, defaultVaultPath, onCreateVau
 
         <div style={DIVIDER_STYLE} />
 
-        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <button
-            style={{
-              ...PRIMARY_BTN_STYLE,
-              opacity: creating ? 0.7 : hoverPrimary ? 0.9 : 1,
-            }}
-            onClick={onCreateVault}
+        <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
+          <OptionButton
+            icon={<Plus size={18} style={{ color: 'var(--accent-blue)' }} />}
+            iconBg="var(--accent-blue-light, #EBF4FF)"
+            label="Create a new vault"
+            description="Start fresh in a folder you choose"
+            onClick={onCreateNewVault}
             disabled={creating}
-            onMouseEnter={() => setHoverPrimary(true)}
-            onMouseLeave={() => setHoverPrimary(false)}
-            data-testid="welcome-create-vault"
-          >
-            {creating ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-            {creating ? 'Creating vault…' : 'Create Getting Started vault'}
-          </button>
+            testId="welcome-create-new"
+          />
 
-          <button
-            style={{
-              ...SECONDARY_BTN_STYLE,
-              background: hoverSecondary ? 'var(--sidebar)' : 'var(--background)',
-            }}
+          <OptionButton
+            icon={<FolderOpen size={18} style={{ color: 'var(--accent-green)' }} />}
+            iconBg="var(--accent-green-light, #E8F5E9)"
+            label={isWelcome ? 'Open existing vault' : 'Choose a different folder'}
+            description="Point to a folder you already have"
             onClick={onOpenFolder}
             disabled={creating}
-            onMouseEnter={() => setHoverSecondary(true)}
-            onMouseLeave={() => setHoverSecondary(false)}
-            data-testid="welcome-open-folder"
-          >
-            <FolderOpen size={16} />
-            {isWelcome ? 'Open an existing folder' : 'Choose a different folder'}
-          </button>
+            testId="welcome-open-folder"
+          />
+
+          <OptionButton
+            icon={<Rocket size={18} style={{ color: 'var(--accent-purple)' }} />}
+            iconBg="var(--accent-purple-light, #F3E8FF)"
+            label="Get started with a template"
+            description={`A ready-made vault to explore first \u2014 ${defaultVaultPath}`}
+            onClick={onCreateVault}
+            disabled={creating}
+            loading={creating}
+            testId="welcome-create-vault"
+          />
         </div>
 
         {error && <p style={ERROR_STYLE} data-testid="welcome-error">{error}</p>}
-
-        {isWelcome && !error && (
-          <p style={HINT_STYLE}>
-            The Getting Started vault will be created in {defaultVaultPath}
-          </p>
-        )}
       </div>
     </div>
   )

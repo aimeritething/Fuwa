@@ -6,6 +6,7 @@ const defaultProps = {
   mode: 'welcome' as const,
   defaultVaultPath: '~/Documents/Laputa',
   onCreateVault: vi.fn(),
+  onCreateNewVault: vi.fn(),
   onOpenFolder: vi.fn(),
   creating: false,
   error: null,
@@ -19,19 +20,26 @@ describe('WelcomeScreen', () => {
       expect(screen.getByText(/Wiki-linked knowledge management/)).toBeInTheDocument()
     })
 
-    it('shows create vault and open folder buttons', () => {
+    it('shows all three option buttons', () => {
       render(<WelcomeScreen {...defaultProps} />)
-      expect(screen.getByTestId('welcome-create-vault')).toHaveTextContent('Create Getting Started vault')
-      expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Open an existing folder')
+      expect(screen.getByTestId('welcome-create-new')).toHaveTextContent('Create a new vault')
+      expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Open existing vault')
+      expect(screen.getByTestId('welcome-create-vault')).toHaveTextContent('Get started with a template')
     })
 
-    it('shows default vault path hint', () => {
+    it('shows default vault path in template option description', () => {
       render(<WelcomeScreen {...defaultProps} />)
-      expect(screen.getByText(/will be created in/)).toBeInTheDocument()
       expect(screen.getByText(/~\/Documents\/Laputa/)).toBeInTheDocument()
     })
 
-    it('calls onCreateVault when create button is clicked', () => {
+    it('calls onCreateNewVault when create new button is clicked', () => {
+      const onCreateNewVault = vi.fn()
+      render(<WelcomeScreen {...defaultProps} onCreateNewVault={onCreateNewVault} />)
+      fireEvent.click(screen.getByTestId('welcome-create-new'))
+      expect(onCreateNewVault).toHaveBeenCalledOnce()
+    })
+
+    it('calls onCreateVault when template button is clicked', () => {
       const onCreateVault = vi.fn()
       render(<WelcomeScreen {...defaultProps} onCreateVault={onCreateVault} />)
       fireEvent.click(screen.getByTestId('welcome-create-vault'))
@@ -45,15 +53,16 @@ describe('WelcomeScreen', () => {
       expect(onOpenFolder).toHaveBeenCalledOnce()
     })
 
-    it('disables buttons while creating', () => {
+    it('disables all buttons while creating', () => {
       render(<WelcomeScreen {...defaultProps} creating={true} />)
-      expect(screen.getByTestId('welcome-create-vault')).toBeDisabled()
+      expect(screen.getByTestId('welcome-create-new')).toBeDisabled()
       expect(screen.getByTestId('welcome-open-folder')).toBeDisabled()
+      expect(screen.getByTestId('welcome-create-vault')).toBeDisabled()
     })
 
-    it('shows loading text while creating', () => {
+    it('shows loading text on template button while creating', () => {
       render(<WelcomeScreen {...defaultProps} creating={true} />)
-      expect(screen.getByTestId('welcome-create-vault')).toHaveTextContent('Creating vault…')
+      expect(screen.getByTestId('welcome-create-vault')).toHaveTextContent(/Creating vault/)
     })
 
     it('shows error message when error is set', () => {
@@ -90,14 +99,9 @@ describe('WelcomeScreen', () => {
       expect(screen.getByText('~/Laputa')).toBeInTheDocument()
     })
 
-    it('shows "Choose a different folder" instead of "Open an existing folder"', () => {
+    it('shows "Choose a different folder" instead of "Open existing vault"', () => {
       render(<WelcomeScreen {...missingProps} />)
       expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Choose a different folder')
-    })
-
-    it('does not show vault path hint in vault-missing mode', () => {
-      render(<WelcomeScreen {...missingProps} />)
-      expect(screen.queryByText(/will be created in/)).not.toBeInTheDocument()
     })
   })
 

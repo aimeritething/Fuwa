@@ -131,6 +131,50 @@ describe('useOnboarding', () => {
     expect(result.current.state.status).toBe('welcome')
   })
 
+  it('handleCreateNewVault picks folder, creates empty vault, and transitions to ready', async () => {
+    mockInvokeFn.mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
+      if (cmd === 'check_vault_exists') return false
+      if (cmd === 'create_empty_vault') return (args as { targetPath: string }).targetPath
+      return null
+    })
+    vi.mocked(pickFolder).mockResolvedValue('/new/vault')
+
+    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('welcome')
+    })
+
+    await act(async () => {
+      await result.current.handleCreateNewVault()
+    })
+
+    expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/new/vault' })
+    expect(localStorage.getItem('laputa_welcome_dismissed')).toBe('1')
+  })
+
+  it('handleCreateNewVault does nothing when picker is cancelled', async () => {
+    mockInvokeFn.mockImplementation(async (cmd: string) => {
+      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
+      if (cmd === 'check_vault_exists') return false
+      return null
+    })
+    vi.mocked(pickFolder).mockResolvedValue(null)
+
+    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('welcome')
+    })
+
+    await act(async () => {
+      await result.current.handleCreateNewVault()
+    })
+
+    expect(result.current.state.status).toBe('welcome')
+  })
+
   it('handleOpenFolder opens folder picker and transitions to ready', async () => {
     mockInvokeFn.mockImplementation(async (cmd: string) => {
       if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'

@@ -691,6 +691,7 @@ function WelcomeView({ onboarding }: { onboarding: OnboardingState }) {
         missingPath={state.status === 'vault-missing' ? state.vaultPath : undefined}
         defaultVaultPath={state.defaultPath}
         onCreateVault={onboarding.handleCreateVault}
+        onCreateNewVault={onboarding.handleCreateNewVault}
         onOpenFolder={onboarding.handleOpenFolder}
         creating={onboarding.creating}
         error={onboarding.error}

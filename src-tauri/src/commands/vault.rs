@@ -102,6 +102,23 @@ pub fn create_vault_folder(vault_path: String, folder_name: String) -> Result<St
 }
 
 #[tauri::command]
+pub fn create_empty_vault(target_path: String) -> Result<String, String> {
+    let path = expand_tilde(&target_path).into_owned();
+    let vault_dir = std::path::Path::new(&path);
+
+    std::fs::create_dir_all(vault_dir)
+        .map_err(|e| format!("Failed to create vault directory: {}", e))?;
+
+    crate::git::init_repo(&path)?;
+
+    Ok(vault_dir
+        .canonicalize()
+        .unwrap_or_else(|_| vault_dir.to_path_buf())
+        .to_string_lossy()
+        .to_string())
+}
+
+#[tauri::command]
 pub fn create_getting_started_vault(target_path: Option<String>) -> Result<String, String> {
     let path = match target_path {
         Some(p) if !p.is_empty() => expand_tilde(&p).into_owned(),
