@@ -107,6 +107,27 @@ Default to `demo-vault-v2/`. If you must use `~/Laputa/` for testing: **never co
 2. Design in light mode. Create `design/<slug>.pen` for the task
 3. On completion: merge frames into `ui-design.pen`, delete `design/<slug>.pen`
 
+### UI components — mandatory rules
+
+**Always use shadcn/ui components.** Never use raw HTML form elements (`<input>`, `<select>`, `<button>`, native `<input type="date">`, etc.) for user-facing UI. Every interactive element must use the shadcn/ui equivalent:
+
+| Need | Use |
+|---|---|
+| Text input | `Input` from shadcn/ui |
+| Dropdown/select | `Select` from shadcn/ui |
+| Date picker | `Calendar` + `Popover` from shadcn/ui (NOT native `<input type="date">`) |
+| Button | `Button` from shadcn/ui |
+| Autocomplete/combobox | Reuse existing combobox components from the app (check `src/components/`) |
+| Wikilink picker | Reuse the wikilink autocomplete component already used in the editor and Properties panel |
+| Emoji picker | Reuse the emoji picker component already used for note/type icons |
+| Color picker | Reuse the color swatch picker used for type customization |
+| Toggle/switch | `Switch` or `ToggleGroup` from shadcn/ui |
+| Dialog/modal | `Dialog` from shadcn/ui |
+
+**When in doubt:** search `src/components/` for an existing component that does what you need before building a new one. The app already has many reusable pieces — use them.
+
+**Visual language:** all new UI must feel native to Laputa. Take inspiration from `ui-design.pen` and existing components. If something looks like a browser default, it's wrong.
+
 ---
 
 ## 4. Reference
