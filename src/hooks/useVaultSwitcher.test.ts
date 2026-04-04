@@ -353,6 +353,28 @@ describe('useVaultSwitcher', () => {
     })
   })
 
+  describe('default vault path', () => {
+    it('does not contain CI runner paths', () => {
+      // Regression: production builds must never bake in the CI runner's absolute path
+      expect(DEFAULT_VAULTS[0].path).not.toContain('/Users/runner/')
+      expect(DEFAULT_VAULTS[0].path).not.toContain('/home/runner/')
+    })
+
+    it('keeps persisted active vault when one exists', async () => {
+      const persistedPath = '/Users/luca/MyVault'
+      mockVaultListStore = {
+        vaults: [{ label: 'My Vault', path: persistedPath }],
+        active_vault: persistedPath,
+        hidden_defaults: [],
+      }
+
+      const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+      await waitFor(() => { expect(result.current.loaded).toBe(true) })
+
+      expect(result.current.vaultPath).toBe(persistedPath)
+    })
+  })
+
   describe('isGettingStartedHidden', () => {
     it('is false by default', async () => {
       const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))

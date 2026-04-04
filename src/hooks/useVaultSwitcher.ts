@@ -10,10 +10,14 @@ export type { PersistedVaultList } from '../utils/vaultListStore'
 
 export const GETTING_STARTED_LABEL = 'Getting Started'
 
-declare const __DEMO_VAULT_PATH__: string
+declare const __DEMO_VAULT_PATH__: string | undefined
+
+/** Build-time demo vault path (dev only). In production Tauri builds this is
+ *  undefined and the real path is resolved at runtime via get_default_vault_path. */
+const STATIC_DEFAULT_PATH = typeof __DEMO_VAULT_PATH__ !== 'undefined' ? __DEMO_VAULT_PATH__ : ''
 
 export const DEFAULT_VAULTS: VaultOption[] = [
-  { label: GETTING_STARTED_LABEL, path: typeof __DEMO_VAULT_PATH__ !== 'undefined' ? __DEMO_VAULT_PATH__ : '/Users/luca/Workspace/laputa-app/demo-vault-v2' },
+  { label: GETTING_STARTED_LABEL, path: STATIC_DEFAULT_PATH },
 ]
 
 interface UseVaultSwitcherOptions {
@@ -32,14 +36,20 @@ function tauriCall<T>(command: string, args: Record<string, unknown>): Promise<T
 /** Manages vault path, extra vaults, switching, cloning, and local folder opening.
  *  Vault list and active vault are persisted via Tauri backend to survive app updates. */
 export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions) {
-  const [vaultPath, setVaultPath] = useState(DEFAULT_VAULTS[0].path)
+  const [vaultPath, setVaultPath] = useState(STATIC_DEFAULT_PATH)
   const [extraVaults, setExtraVaults] = useState<VaultOption[]>([])
   const [hiddenDefaults, setHiddenDefaults] = useState<string[]>([])
   const [loaded, setLoaded] = useState(false)
+  const [defaultPath, setDefaultPath] = useState(STATIC_DEFAULT_PATH)
+
+  const defaultVaults: VaultOption[] = useMemo(
+    () => [{ label: GETTING_STARTED_LABEL, path: defaultPath }],
+    [defaultPath],
+  )
 
   const visibleDefaults = useMemo(
-    () => DEFAULT_VAULTS.filter(v => !hiddenDefaults.includes(v.path)),
-    [hiddenDefaults],
+    () => defaultVaults.filter(v => !hiddenDefaults.includes(v.path)),
+    [defaultVaults, hiddenDefaults],
   )
   const allVaults = useMemo(
     () => [...visibleDefaults, ...extraVaults],
@@ -47,8 +57,8 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
   )
 
   const isGettingStartedHidden = useMemo(
-    () => hiddenDefaults.includes(DEFAULT_VAULTS[0].path),
-    [hiddenDefaults],
+    () => hiddenDefaults.includes(defaultPath),
+    [hiddenDefaults, defaultPath],
   )
 
   const onSwitchRef = useRef(onSwitch)
@@ -60,13 +70,26 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
   useEffect(() => {
     let cancelled = false
     loadVaultList()
-      .then(({ vaults, activeVault, hiddenDefaults: hidden }) => {
+      .then(async ({ vaults, activeVault, hiddenDefaults: hidden }) => {
         if (cancelled) return
         setExtraVaults(vaults)
         setHiddenDefaults(hidden)
         if (activeVault) {
           setVaultPath(activeVault)
           onSwitchRef.current()
+        } else if (!STATIC_DEFAULT_PATH) {
+          // Production build: resolve the Getting Started path at runtime
+          try {
+            const runtimePath = await tauriCall<string>('get_default_vault_path', {})
+            if (!cancelled && runtimePath) {
+              setDefaultPath(runtimePath)
+              setVaultPath(runtimePath)
+              // Keep the module-level export in sync for external consumers
+              DEFAULT_VAULTS[0] = { label: GETTING_STARTED_LABEL, path: runtimePath }
+            }
+          } catch {
+            // In mock/test mode, command may not exist
+          }
         }
       })
       .catch(err => console.warn('Failed to load vault list:', err))
@@ -116,7 +139,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
   }, [addAndSwitch])
 
   const removeVault = useCallback((path: string) => {
-    const isDefault = DEFAULT_VAULTS.some(v => v.path === path)
+    const isDefault = defaultVaults.some(v => v.path === path)
     if (isDefault) {
       setHiddenDefaults(prev => prev.includes(path) ? prev : [...prev, path])
     } else {
@@ -127,7 +150,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
     setVaultPath(currentPath => {
       if (currentPath !== path) return currentPath
       const remaining = [
-        ...DEFAULT_VAULTS.filter(v => v.path !== path && !(isDefault ? [] : hiddenDefaults).includes(v.path)),
+        ...defaultVaults.filter(v => v.path !== path && !(isDefault ? [] : hiddenDefaults).includes(v.path)),
         ...extraVaults.filter(v => v.path !== path),
       ]
       if (remaining.length > 0) {
@@ -137,26 +160,26 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
       return currentPath
     })
 
-    const vault = [...DEFAULT_VAULTS, ...extraVaults].find(v => v.path === path)
+    const vault = [...defaultVaults, ...extraVaults].find(v => v.path === path)
     onToastRef.current(`Vault "${vault?.label ?? labelFromPath(path)}" removed from list`)
-  }, [extraVaults, hiddenDefaults])
+  }, [defaultVaults, extraVaults, hiddenDefaults])
 
   const restoreGettingStarted = useCallback(async () => {
-    const defaultPath = DEFAULT_VAULTS[0].path
+    const gsPath = defaultPath
     // Un-hide the Getting Started vault
-    setHiddenDefaults(prev => prev.filter(p => p !== defaultPath))
+    setHiddenDefaults(prev => prev.filter(p => p !== gsPath))
     // Try to create the vault if it doesn't exist on disk
     try {
-      const exists = await tauriCall<boolean>('check_vault_exists', { path: defaultPath })
+      const exists = await tauriCall<boolean>('check_vault_exists', { path: gsPath })
       if (!exists) {
-        await tauriCall<string>('create_getting_started_vault', { targetPath: defaultPath })
+        await tauriCall<string>('create_getting_started_vault', { targetPath: gsPath })
       }
     } catch {
       // In mock/test mode, creation may fail — that's fine
     }
-    switchVault(defaultPath)
+    switchVault(gsPath)
     onToastRef.current('Getting Started vault restored')
-  }, [switchVault])
+  }, [defaultPath, switchVault])
 
   return {
     vaultPath, allVaults, switchVault, handleVaultCloned, handleOpenLocalFolder, loaded,
