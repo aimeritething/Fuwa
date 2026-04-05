@@ -70,7 +70,7 @@ declare global {
   }
 }
 
-const DEFAULT_SELECTION: SidebarSelection = { kind: 'filter', filter: 'all' }
+const DEFAULT_SELECTION: SidebarSelection = { kind: 'filter', filter: 'inbox' }
 
 /** Wraps useEditorSave to also keep outgoingLinks in sync on save and on content change. */
 function App() {
