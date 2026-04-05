@@ -71,14 +71,14 @@ const SUGGESTED_PROPERTIES = ['Status', 'Date', 'URL'] as const
 function SuggestedPropertySlot({ label, onAdd }: { label: string; onAdd: () => void }) {
   return (
     <button
-      className="grid min-h-7 min-w-0 grid-cols-2 items-center gap-2 rounded border-none bg-transparent px-1.5 outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary cursor-pointer"
+      className="grid min-h-7 min-w-0 grid-cols-2 items-center gap-2 rounded border-none bg-transparent px-1.5 text-left outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary cursor-pointer"
       tabIndex={0}
       onClick={onAdd}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAdd() } }}
       data-testid="suggested-property"
     >
       <span className="min-w-0 truncate text-[12px] text-muted-foreground/50">{label}</span>
-      <span className="min-w-0 truncate text-right text-[12px] text-muted-foreground/30">{'\u2014'}</span>
+      <span className="min-w-0 truncate text-[12px] text-muted-foreground/30">{'\u2014'}</span>
     </button>
   )
 }
