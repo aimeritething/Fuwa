@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { buildSectionGroup } from '../utils/sidebarSections'
+import { buildSectionGroup, buildDynamicSections, collectActiveTypes } from '../utils/sidebarSections'
 import { resolveIcon } from '../utils/iconRegistry'
 import type { VaultEntry } from '../types'
 import { GearSix, CookingPot, FileText } from '@phosphor-icons/react'
@@ -69,5 +69,73 @@ describe('buildSectionGroup', () => {
     expect(group.label).toBe('Config')
     expect(group.customColor).toBe('gray')
     expect(group.Icon).toBe(GearSix)
+  })
+})
+
+describe('buildDynamicSections', () => {
+  it('includes types with 0 notes from typeEntryMap', () => {
+    const entries: VaultEntry[] = [
+      { ...baseEntry, title: 'My Note', isA: 'Note' },
+    ]
+    const typeEntryMap: Record<string, VaultEntry> = {
+      Recipe: { ...baseEntry, title: 'Recipe', isA: 'Type', icon: 'cooking-pot' },
+      recipe: { ...baseEntry, title: 'Recipe', isA: 'Type', icon: 'cooking-pot' },
+    }
+    const sections = buildDynamicSections(entries, typeEntryMap)
+    const types = sections.map((s) => s.type)
+    expect(types).toContain('Note')
+    expect(types).toContain('Recipe')
+  })
+
+  it('does not duplicate types that have both entries and type definitions', () => {
+    const entries: VaultEntry[] = [
+      { ...baseEntry, title: 'My Project', isA: 'Project' },
+    ]
+    const typeEntryMap: Record<string, VaultEntry> = {
+      Project: { ...baseEntry, title: 'Project', isA: 'Type' },
+      project: { ...baseEntry, title: 'Project', isA: 'Type' },
+    }
+    const sections = buildDynamicSections(entries, typeEntryMap)
+    const projectSections = sections.filter((s) => s.type === 'Project')
+    expect(projectSections).toHaveLength(1)
+  })
+
+  it('excludes trashed type definitions', () => {
+    const entries: VaultEntry[] = []
+    const typeEntryMap: Record<string, VaultEntry> = {
+      Deleted: { ...baseEntry, title: 'Deleted', isA: 'Type', trashed: true },
+    }
+    const sections = buildDynamicSections(entries, typeEntryMap)
+    expect(sections.map((s) => s.type)).not.toContain('Deleted')
+  })
+
+  it('excludes archived type definitions', () => {
+    const entries: VaultEntry[] = []
+    const typeEntryMap: Record<string, VaultEntry> = {
+      Old: { ...baseEntry, title: 'Old', isA: 'Type', archived: true },
+    }
+    const sections = buildDynamicSections(entries, typeEntryMap)
+    expect(sections.map((s) => s.type)).not.toContain('Old')
+  })
+})
+
+describe('collectActiveTypes', () => {
+  it('excludes non-markdown entries from type collection', () => {
+    const entries: VaultEntry[] = [
+      { ...baseEntry, title: 'My Note', isA: 'Note', fileKind: 'markdown' },
+      { ...baseEntry, title: 'config.yml', isA: null, fileKind: 'text' },
+      { ...baseEntry, title: 'photo.png', isA: null, fileKind: 'binary' },
+    ]
+    const types = collectActiveTypes(entries)
+    expect(types).toContain('Note')
+    expect(types.size).toBe(1)
+  })
+
+  it('treats entries without fileKind as markdown', () => {
+    const entries: VaultEntry[] = [
+      { ...baseEntry, title: 'Legacy Note', isA: 'Note' },
+    ]
+    const types = collectActiveTypes(entries)
+    expect(types).toContain('Note')
   })
 })

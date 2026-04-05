@@ -26,13 +26,20 @@ const BUILT_IN_SECTION_GROUPS: SectionGroup[] = [
 /** Metadata lookup for well-known types (icon/label only — NOT used to determine which sections to show) */
 const BUILT_IN_TYPE_MAP = new Map(BUILT_IN_SECTION_GROUPS.map((sg) => [sg.type, sg]))
 
-/** Collect unique isA values from active (non-trashed, non-archived) entries. Untyped entries count as 'Note'. */
+const isMarkdown = (e: VaultEntry) => e.fileKind === 'markdown' || !e.fileKind
+const isActive = (e: VaultEntry) => !e.trashed && !e.archived
+
+/** Collect unique isA values from active (non-trashed, non-archived) markdown entries. Untyped entries count as 'Note'. */
 export function collectActiveTypes(entries: VaultEntry[]): Set<string> {
   const types = new Set<string>()
   for (const e of entries) {
-    if (!e.trashed && !e.archived) types.add(e.isA || 'Note')
+    if (isActive(e) && isMarkdown(e)) types.add(e.isA || 'Note')
   }
   return types
+}
+
+function resolveLabel(type: string, typeEntry: VaultEntry | undefined, builtIn: SectionGroup | undefined): string {
+  return typeEntry?.sidebarLabel || builtIn?.label || pluralizeType(type)
 }
 
 /** Build a single SectionGroup for a type, using built-in metadata or Type entry for icon/label */
@@ -40,17 +47,22 @@ export function buildSectionGroup(type: string, typeEntryMap: Record<string, Vau
   const builtIn = BUILT_IN_TYPE_MAP.get(type)
   const typeEntry = typeEntryMap[type]
   const customColor = typeEntry?.color ?? null
-  const label = typeEntry?.sidebarLabel || (builtIn?.label ?? pluralizeType(type))
+  const label = resolveLabel(type, typeEntry, builtIn)
+  const icon = resolveIcon(typeEntry?.icon ?? null)
   if (builtIn) {
-    const Icon = typeEntry?.icon ? resolveIcon(typeEntry.icon) : builtIn.Icon
-    return { ...builtIn, label, Icon, customColor }
+    return { ...builtIn, label, Icon: typeEntry?.icon ? icon : builtIn.Icon, customColor }
   }
-  return { label, type, Icon: resolveIcon(typeEntry?.icon ?? null), customColor }
+  return { label, type, Icon: icon, customColor }
 }
 
-/** Build sections dynamically from actual vault entries — only types with ≥1 active note appear */
+/** Build sections dynamically from vault entries and defined types — types with 0 notes still appear */
 export function buildDynamicSections(entries: VaultEntry[], typeEntryMap: Record<string, VaultEntry>): SectionGroup[] {
   const activeTypes = collectActiveTypes(entries)
+  for (const [name, entry] of Object.entries(typeEntryMap)) {
+    if (name === entry.title && isActive(entry)) {
+      activeTypes.add(name)
+    }
+  }
   return Array.from(activeTypes, (type) => buildSectionGroup(type, typeEntryMap))
 }
 
