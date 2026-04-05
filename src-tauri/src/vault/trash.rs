@@ -71,8 +71,7 @@ fn trash_or_remove(path: &Path) -> Result<(), String> {
                 path.display(),
                 trash_err
             );
-            fs::remove_file(path)
-                .map_err(|e| format!("Failed to delete {}: {}", path.display(), e))
+            fs::remove_file(path).map_err(|e| format!("Failed to delete {}: {}", path.display(), e))
         }
     }
 }
@@ -309,7 +308,11 @@ pub fn purge_old_trash(vault_path: &Path, dry_run: bool) -> Result<Vec<PathBuf>,
         checked += 1;
 
         if dry_run {
-            log::info!("[DRY-RUN] Would purge: {} (trashed {} days ago)", path.display(), age.num_days());
+            log::info!(
+                "[DRY-RUN] Would purge: {} (trashed {} days ago)",
+                path.display(),
+                age.num_days()
+            );
             purged.push(path.to_string_lossy().to_string());
             purged_paths.push(path.to_path_buf());
         } else if let Some(p) = try_purge_file(path) {
@@ -450,7 +453,11 @@ mod tests {
     #[test]
     fn test_purge_old_trash_nested_directories() {
         let dir = TempDir::new().unwrap();
-        create_test_file(dir.path(), "sub/deep/old.md", &trashed_content("2025-01-01"));
+        create_test_file(
+            dir.path(),
+            "sub/deep/old.md",
+            &trashed_content("2025-01-01"),
+        );
 
         let purged = purge_old_trash(dir.path(), false).unwrap();
         assert_eq!(purged.len(), 1);
@@ -463,7 +470,10 @@ mod tests {
 
         let purged = purge_old_trash(dir.path(), true).unwrap();
         assert_eq!(purged.len(), 1);
-        assert!(dir.path().join("old.md").exists(), "dry-run must not delete files");
+        assert!(
+            dir.path().join("old.md").exists(),
+            "dry-run must not delete files"
+        );
     }
 
     #[test]
