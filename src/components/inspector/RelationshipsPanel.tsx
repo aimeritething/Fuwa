@@ -217,7 +217,7 @@ function RelationshipGroup({ label, refs, entries, typeEntryMap, onNavigate, onR
   if (refs.length === 0) return null
   return (
     <div className="mb-2.5">
-      <span className="font-mono-overline mb-1 block text-muted-foreground">{label}</span>
+      <span className="mb-1 block text-[12px] text-muted-foreground">{label}</span>
       <div className="flex flex-col gap-1">
         {refs.map((ref, idx) => {
           const props = resolveRefProps(ref, entries, typeEntryMap)
@@ -368,7 +368,7 @@ function AddRelationshipForm({ entries, onAddProperty, onCreateAndOpenNote }: {
         onSubmitWithCreate={handleCreateAndSubmit}
       />
       <div className="flex gap-1.5">
-        <button className="flex-1 border border-border bg-transparent text-xs text-foreground" style={{ borderRadius: 4, padding: '4px 0' }} onClick={() => submitForm()} disabled={!relKey.trim() || !relTarget.trim()}>Add</button>
+        <button className="flex-1 border border-border bg-transparent text-xs text-foreground" style={{ borderRadius: 4, padding: '4px 0' }} onClick={() => submitForm()} disabled={!relKey.trim() || !relTarget.trim()} data-testid="submit-add-relationship">Add</button>
         <button className="border border-border bg-transparent text-xs text-muted-foreground" style={{ borderRadius: 4, padding: '4px 8px' }} onClick={resetForm}>Cancel</button>
       </div>
     </div>
@@ -402,32 +402,15 @@ function SuggestedRelationshipSlot({ label, entries, onAdd, onCreateAndOpenNote 
   onAdd: (noteTitle: string) => void
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
 }) {
-  const [active, setActive] = useState(false)
-
-  if (active) {
-    return (
-      <div className="mb-2.5">
-        <span className="font-mono-overline mb-1 block text-muted-foreground/50">{label}</span>
-        <InlineAddNote
-          entries={entries}
-          onAdd={(noteTitle) => { onAdd(noteTitle); setActive(false) }}
-          onCreateAndOpenNote={onCreateAndOpenNote}
-        />
-      </div>
-    )
-  }
-
   return (
-    <button
-      className="mb-2.5 flex w-full cursor-pointer items-center gap-2 rounded border-none bg-transparent px-0 py-1 text-left outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary"
-      tabIndex={0}
-      onClick={() => setActive(true)}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActive(true) } }}
-      data-testid="suggested-relationship"
-    >
-      <span className="font-mono-overline text-muted-foreground/50">{label}</span>
-      <span className="text-[12px] text-muted-foreground/30">{'\u2014'}</span>
-    </button>
+    <div className="mb-2.5" data-testid="suggested-relationship">
+      <span className="mb-1 block text-[12px] text-muted-foreground/50">{label}</span>
+      <InlineAddNote
+        entries={entries}
+        onAdd={onAdd}
+        onCreateAndOpenNote={onCreateAndOpenNote}
+      />
+    </div>
   )
 }
 

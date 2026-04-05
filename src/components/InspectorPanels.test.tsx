@@ -180,7 +180,7 @@ describe('DynamicRelationshipsPanel', () => {
     fireEvent.click(screen.getByText('+ Add relationship'))
     fireEvent.change(screen.getByPlaceholderText('Relationship name'), { target: { value: 'Related to' } })
     fireEvent.change(screen.getByPlaceholderText('Note title'), { target: { value: 'AI' } })
-    fireEvent.click(screen.getByText('Add'))
+    fireEvent.click(screen.getByTestId('submit-add-relationship'))
     expect(onAddProperty).toHaveBeenCalledWith('Related to', '[[AI]]')
   })
 
