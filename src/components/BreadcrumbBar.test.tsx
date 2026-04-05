@@ -174,4 +174,17 @@ describe('BreadcrumbBar — raw editor toggle', () => {
     fireEvent.click(screen.getByTitle('Raw editor'))
     expect(onToggleRaw).toHaveBeenCalledOnce()
   })
+
+  it('hides raw toggle when forceRawMode is true (non-markdown file)', () => {
+    const onToggleRaw = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode={true} onToggleRaw={onToggleRaw} forceRawMode={true} />)
+    expect(screen.queryByTitle('Raw editor')).not.toBeInTheDocument()
+    expect(screen.queryByTitle('Back to editor')).not.toBeInTheDocument()
+  })
+
+  it('shows raw toggle when forceRawMode is false (markdown file)', () => {
+    const onToggleRaw = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode={false} onToggleRaw={onToggleRaw} forceRawMode={false} />)
+    expect(screen.getByTitle('Raw editor')).toBeInTheDocument()
+  })
 })

@@ -26,6 +26,8 @@ interface BreadcrumbBarProps {
   onToggleDiff: () => void
   rawMode?: boolean
   onToggleRaw?: () => void
+  /** When true, raw mode is forced (non-markdown file) — hide the toggle. */
+  forceRawMode?: boolean
   showAIChat?: boolean
   onToggleAIChat?: () => void
   inspectorCollapsed?: boolean
@@ -58,7 +60,7 @@ function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggle
 }
 
 function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onToggleDiff,
-  rawMode, onToggleRaw,
+  rawMode, onToggleRaw, forceRawMode,
   showAIChat, onToggleAIChat, inspectorCollapsed, onToggleInspector,
   onToggleFavorite, onToggleOrganized, onTrash, onRestore, onArchive, onUnarchive,
 }: Omit<BreadcrumbBarProps, 'wordCount'>) {
@@ -112,7 +114,7 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
           <GitBranch size={16} />
         </button>
       )}
-      <RawToggleButton rawMode={rawMode} onToggleRaw={onToggleRaw} />
+      {!forceRawMode && <RawToggleButton rawMode={rawMode} onToggleRaw={onToggleRaw} />}
       <button
         className="flex items-center justify-center border-none bg-transparent p-0 text-muted-foreground"
         style={DISABLED_ICON_STYLE}

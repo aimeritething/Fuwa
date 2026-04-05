@@ -222,7 +222,7 @@ export function EditorContent({
       <ActiveTabBreadcrumb
         activeTab={activeTab}
         barRef={breadcrumbBarRef}
-        props={{ diffMode, diffContent, onToggleDiff, rawMode: effectiveRawMode, onToggleRaw, ...breadcrumbProps }}
+        props={{ diffMode, diffContent, onToggleDiff, rawMode: effectiveRawMode, onToggleRaw, forceRawMode: isNonMarkdownText, ...breadcrumbProps }}
       />
       {isTrashed && (
         <TrashedNoteBanner

@@ -1521,6 +1521,36 @@ fn test_non_yml_file_uses_filename_as_title() {
     assert_eq!(entry.title, "notes.txt");
 }
 
+#[test]
+fn test_classify_file_kind_yml_is_text() {
+    assert_eq!(classify_file_kind(Path::new("views/active-projects.yml")), "text");
+    assert_eq!(classify_file_kind(Path::new("config.yaml")), "text");
+    assert_eq!(classify_file_kind(Path::new("data.json")), "text");
+    assert_eq!(classify_file_kind(Path::new("script.py")), "text");
+    assert_eq!(classify_file_kind(Path::new("readme.txt")), "text");
+}
+
+#[test]
+fn test_classify_file_kind_md_is_markdown() {
+    assert_eq!(classify_file_kind(Path::new("note.md")), "markdown");
+    assert_eq!(classify_file_kind(Path::new("README.markdown")), "markdown");
+}
+
+#[test]
+fn test_classify_file_kind_unknown_is_binary() {
+    assert_eq!(classify_file_kind(Path::new("photo.png")), "binary");
+    assert_eq!(classify_file_kind(Path::new("archive.zip")), "binary");
+}
+
+#[test]
+fn test_non_md_file_gets_text_file_kind() {
+    let dir = TempDir::new().unwrap();
+    create_test_file(dir.path(), "views/my-view.yml", "name: My View\nicon: rocket\n");
+    let entry = super::parse_non_md_file(&dir.path().join("views/my-view.yml"), None).unwrap();
+    assert_eq!(entry.file_kind, "text");
+    assert_eq!(entry.title, "My View");
+}
+
 // Frontmatter update/delete tests are in frontmatter.rs
 // save_image tests are in vault/image.rs
 // purge_trash tests are in vault/trash.rs
