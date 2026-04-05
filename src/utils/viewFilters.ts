@@ -51,6 +51,23 @@ function wikilinkStem(raw: string): string {
   return s.toLowerCase()
 }
 
+/** Extract all comparable parts (path and alias) from a wikilink string. */
+function wikilinkParts(raw: string): string[] {
+  let s = raw.trim()
+  if (s.startsWith('[[')) s = s.slice(2)
+  if (s.endsWith(']]')) s = s.slice(0, -2)
+  const pipe = s.indexOf('|')
+  if (pipe >= 0) return [s.substring(0, pipe).toLowerCase(), s.substring(pipe + 1).toLowerCase()]
+  return [s.toLowerCase()]
+}
+
+/** Check if two wikilink values match by comparing all path/alias combinations. */
+function wikilinkEquals(a: string, b: string): boolean {
+  const partsA = wikilinkParts(a)
+  const partsB = wikilinkParts(b)
+  return partsA.some(pa => partsB.some(pb => pa === pb))
+}
+
 function toString(v: unknown): string {
   if (v == null) return ''
   if (typeof v === 'string') return v
@@ -78,17 +95,19 @@ function evaluateCondition(cond: FilterCondition, entry: VaultEntry): boolean {
     const stem = wikilinkStem(condVal)
     const isWikilink = condVal.trim().startsWith('[[')
     const arrayMatch = (arr: string[]) => arr.some((item) =>
-      isWikilink ? wikilinkStem(item) === stem : wikilinkStem(item).includes(stem)
+      isWikilink ? wikilinkEquals(item, condVal) : wikilinkStem(item).includes(stem)
     )
     if (op === 'contains') return arrayMatch(resolved.array)
     if (op === 'not_contains') return !arrayMatch(resolved.array)
     if (op === 'any_of' && Array.isArray(value)) {
-      const stems = (value as string[]).map(wikilinkStem)
-      return resolved.array.some((item) => stems.includes(wikilinkStem(item)))
+      return resolved.array.some((item) =>
+        (value as string[]).some((v) => wikilinkEquals(item, v))
+      )
     }
     if (op === 'none_of' && Array.isArray(value)) {
-      const stems = (value as string[]).map(wikilinkStem)
-      return !resolved.array.some((item) => stems.includes(wikilinkStem(item)))
+      return !resolved.array.some((item) =>
+        (value as string[]).some((v) => wikilinkEquals(item, v))
+      )
     }
     return false
   }

@@ -112,8 +112,10 @@ function toWikilinkMatch(e: VaultEntry, typeEntryMap: Record<string, VaultEntry>
   const isA = e.isA
   const te = typeEntryMap[isA ?? '']
   const noteType = isA || undefined
+  const stem = e.filename.replace(/\.md$/, '')
   return {
     title: e.title,
+    stem,
     noteType,
     typeColor: noteType ? getTypeColor(isA, te?.color) : undefined,
     typeLightColor: noteType ? getTypeLightColor(isA, te?.color) : undefined,
@@ -150,7 +152,7 @@ function useOutsideClick(refs: React.RefObject<HTMLElement | null>[], onClose: (
 function WikilinkDropdown({ matches, selectedIndex, onSelect, onHover, menuRef, anchorRef }: {
   matches: WikilinkMatch[]
   selectedIndex: number
-  onSelect: (title: string) => void
+  onSelect: (title: string, stem?: string) => void
   onHover: (index: number) => void
   menuRef: React.RefObject<HTMLDivElement | null>
   anchorRef: React.RefObject<HTMLElement | null>
@@ -178,7 +180,7 @@ function WikilinkDropdown({ matches, selectedIndex, onSelect, onHover, menuRef, 
           key={item.title}
           className={`wikilink-menu__item${index === selectedIndex ? ' wikilink-menu__item--selected' : ''}`}
           onMouseDown={e => e.preventDefault()}
-          onClick={() => onSelect(item.title)}
+          onClick={() => onSelect(item.title, item.stem)}
           onMouseEnter={() => onHover(index)}
         >
           <span className="wikilink-menu__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -217,7 +219,7 @@ function useScrollSelectedIntoView(menuRef: React.RefObject<HTMLDivElement | nul
 function useDropdownKeyboard(
   matches: WikilinkMatch[],
   open: boolean,
-  onSelect: (title: string) => void,
+  onSelect: (title: string, stem?: string) => void,
   onClose: () => void,
 ) {
   const [selectedIndex, setSelectedIndex] = useState(-1)
@@ -234,7 +236,8 @@ function useDropdownKeyboard(
       setSelectedIndex(i => (i <= 0 ? matches.length - 1 : i - 1))
     } else if (e.key === 'Enter' && selectedIndex >= 0) {
       e.preventDefault()
-      onSelect(matches[selectedIndex].title)
+      const m = matches[selectedIndex]
+      onSelect(m.title, m.stem)
     } else if (e.key === 'Escape') {
       e.preventDefault()
       onClose()
@@ -255,8 +258,9 @@ function WikilinkValueInput({ value, entries, onChange }: {
 
   const matches = useWikilinkMatches(entries, value, open)
 
-  const handleSelect = useCallback((title: string) => {
-    onChange(`[[${title}]]`)
+  const handleSelect = useCallback((title: string, stem?: string) => {
+    const wikilink = stem && stem !== title ? `[[${stem}|${title}]]` : `[[${title}]]`
+    onChange(wikilink)
     setOpen(false)
   }, [onChange])
 

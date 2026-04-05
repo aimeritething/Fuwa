@@ -289,6 +289,58 @@ describe('evaluateView', () => {
     expect(result.map((e) => e.title)).toEqual(['Yes'])
   })
 
+  it('wikilink filter matches frontmatter with alias via path', () => {
+    const view: ViewDefinition = {
+      name: 'By path', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'belongs to', op: 'contains', value: '[[monday-112]]' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Match', relationships: { 'belongs to': ['[[monday-112|Monday #112]]'] } }),
+      makeEntry({ title: 'No match', relationships: { 'belongs to': ['[[tuesday-200|Tuesday]]'] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Match'])
+  })
+
+  it('wikilink filter matches frontmatter with alias via alias', () => {
+    const view: ViewDefinition = {
+      name: 'By alias', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'belongs to', op: 'contains', value: '[[Monday #112]]' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Match', relationships: { 'belongs to': ['[[monday-112|Monday #112]]'] } }),
+      makeEntry({ title: 'No match', relationships: { 'belongs to': ['[[tuesday-200|Tuesday]]'] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Match'])
+  })
+
+  it('wikilink filter with stem|title format matches frontmatter path', () => {
+    const view: ViewDefinition = {
+      name: 'Stem format', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'belongs to', op: 'contains', value: '[[monday-112|Monday 112]]' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Match', relationships: { 'belongs to': ['[[monday-112|Monday #112]]'] } }),
+      makeEntry({ title: 'No match', relationships: { 'belongs to': ['[[other]]'] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Match'])
+  })
+
+  it('any_of on relationship uses alias matching', () => {
+    const view: ViewDefinition = {
+      name: 'Any of', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'belongs to', op: 'any_of', value: ['[[monday-112|Monday 112]]'] }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Match', relationships: { 'belongs to': ['[[monday-112|Monday #112]]'] } }),
+      makeEntry({ title: 'No', relationships: { 'belongs to': ['[[other]]'] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Match'])
+  })
+
   it('body is_empty matches notes with empty snippet', () => {
     const view: ViewDefinition = {
       name: 'Empty body', icon: null, color: null, sort: null,

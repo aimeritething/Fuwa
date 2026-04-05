@@ -91,7 +91,7 @@ describe('FilterBuilder wikilink autocomplete', () => {
     expect(screen.queryByTestId('wikilink-dropdown')).not.toBeInTheDocument()
   })
 
-  it('inserts [[note-title]] when a note is selected', () => {
+  it('inserts [[stem|title]] when a note is selected', () => {
     renderWithEntries({
       all: [{ field: 'title', op: 'contains', value: '[[Alpha' }],
     })
@@ -100,7 +100,7 @@ describe('FilterBuilder wikilink autocomplete', () => {
     fireEvent.click(screen.getByText('Alpha Project'))
     expect(onChange).toHaveBeenCalledWith(
       expect.objectContaining({
-        all: [{ field: 'title', op: 'contains', value: '[[Alpha Project]]' }],
+        all: [{ field: 'title', op: 'contains', value: '[[alpha|Alpha Project]]' }],
       }),
     )
   })
