@@ -10,3 +10,49 @@
   max-width: 400px;
   z-index: 9999;
 }
+
+.wikilink-menu__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.wikilink-menu__item:hover,
+.wikilink-menu__item--selected {
+  background: hsl(var(--accent));
+}
+
+.wikilink-menu__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.wikilink-menu__type {
+  flex-shrink: 0;
+  font-size: 10px;
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+/* Compact variant for FilterBuilder inside dialogs */
+.wikilink-menu--filter {
+  font-size: 12px;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.wikilink-menu--filter .wikilink-menu__item {
+  padding: 4px 8px;
+  font-size: 12px;
+}
+
+.wikilink-menu--filter .wikilink-menu__type {
+  font-size: 10px;
+}

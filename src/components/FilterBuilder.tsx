@@ -1,4 +1,5 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { Plus, X, CalendarBlank } from '@phosphor-icons/react'
 import { format, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/button'
@@ -146,18 +147,30 @@ function useOutsideClick(refs: React.RefObject<HTMLElement | null>[], onClose: (
   }, [refs, onClose])
 }
 
-function WikilinkDropdown({ matches, selectedIndex, onSelect, onHover, menuRef }: {
+function WikilinkDropdown({ matches, selectedIndex, onSelect, onHover, menuRef, anchorRef }: {
   matches: WikilinkMatch[]
   selectedIndex: number
   onSelect: (title: string) => void
   onHover: (index: number) => void
   menuRef: React.RefObject<HTMLDivElement | null>
+  anchorRef: React.RefObject<HTMLElement | null>
 }) {
-  return (
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null)
+
+  useEffect(() => {
+    const el = anchorRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    setPos({ top: rect.bottom + 2, left: rect.left, width: rect.width })
+  }, [anchorRef, matches])
+
+  if (!pos) return null
+
+  return createPortal(
     <div
-      className="wikilink-menu"
+      className="wikilink-menu wikilink-menu--filter"
       ref={menuRef}
-      style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 2, zIndex: 50 }}
+      style={{ position: 'fixed', top: pos.top, left: pos.left, width: pos.width }}
       data-testid="wikilink-dropdown"
     >
       {matches.map((item, index) => (
@@ -169,17 +182,18 @@ function WikilinkDropdown({ matches, selectedIndex, onSelect, onHover, menuRef }
           onMouseEnter={() => onHover(index)}
         >
           <span className="wikilink-menu__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            {item.TypeIcon && <item.TypeIcon width={14} height={14} style={{ color: item.typeColor, flexShrink: 0 }} />}
+            {item.TypeIcon && <item.TypeIcon width={12} height={12} style={{ color: item.typeColor, flexShrink: 0 }} />}
             {item.title}
           </span>
           {item.noteType && (
-            <span className="wikilink-menu__type" style={{ color: item.typeColor, backgroundColor: item.typeLightColor, borderRadius: 9999, padding: '1px 8px' }}>
+            <span className="wikilink-menu__type" style={{ color: item.typeColor, backgroundColor: item.typeLightColor, borderRadius: 9999, padding: '1px 6px' }}>
               {item.noteType}
             </span>
           )}
         </div>
       ))}
-    </div>
+    </div>,
+    document.body,
   )
 }
 
@@ -261,7 +275,7 @@ function WikilinkValueInput({ value, entries, onChange }: {
   }, [onChange, resetIndex])
 
   return (
-    <div style={{ position: 'relative' }} className="flex-1 min-w-0">
+    <div className="flex-1 min-w-0">
       <Input
         ref={inputRef}
         className="h-8 w-full text-sm"
@@ -279,6 +293,7 @@ function WikilinkValueInput({ value, entries, onChange }: {
           onSelect={handleSelect}
           onHover={setSelectedIndex}
           menuRef={menuRef}
+          anchorRef={inputRef}
         />
       )}
     </div>
