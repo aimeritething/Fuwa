@@ -182,19 +182,16 @@ export function EditorContent({
   const titleSectionRef = useRef<HTMLDivElement | null>(null)
   const breadcrumbBarRef = useRef<HTMLDivElement | null>(null)
 
+  // When in normal editor mode: use IntersectionObserver to show/hide the breadcrumb title
+  // based on whether the title section has scrolled out of view.
+  // In raw/diff mode, BreadcrumbBar handles title visibility via its rawMode/diffMode props.
   useEffect(() => {
+    if (!showEditor) return
+
     const bar = breadcrumbBarRef.current
-    if (!bar) return
-
-    // In raw/diff mode the title section is not rendered, so there is nothing
-    // for the IntersectionObserver to watch.  Force the title visible instead.
-    if (!showEditor) {
-      bar.setAttribute('data-title-hidden', '')
-      return () => { bar.removeAttribute('data-title-hidden') }
-    }
-
     const el = titleSectionRef.current
-    if (!el) return
+    if (!bar || !el) return
+
     const observer = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting) bar.removeAttribute('data-title-hidden')

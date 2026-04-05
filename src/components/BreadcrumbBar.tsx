@@ -204,10 +204,14 @@ function BreadcrumbTitle({ entry }: { entry: VaultEntry }) {
 export const BreadcrumbBar = memo(function BreadcrumbBar({
   entry, barRef, ...actionProps
 }: BreadcrumbBarProps) {
+  // In raw/diff mode the title section is not rendered — always show title in breadcrumb.
+  // Using a prop-driven attribute avoids the timing issues of DOM mutation in useEffect.
+  const titleAlwaysVisible = actionProps.rawMode || actionProps.diffMode
   return (
     <div
       ref={barRef}
       data-tauri-drag-region
+      {...(titleAlwaysVisible ? { 'data-title-hidden': '' } : {})}
       className="breadcrumb-bar flex shrink-0 items-center"
       style={{
         height: 52,
