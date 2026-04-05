@@ -139,6 +139,28 @@ function PropertyChips({ entry, displayProps }: { entry: VaultEntry; displayProp
   )
 }
 
+const CHANGE_STATUS_DISPLAY: Record<string, { label: string; color: string; symbol: string }> = {
+  modified: { label: 'Modified', color: 'var(--accent-orange, #f59e0b)', symbol: '·' },
+  added: { label: 'Added', color: 'var(--accent-green, #22c55e)', symbol: '+' },
+  untracked: { label: 'Added', color: 'var(--accent-green, #22c55e)', symbol: '+' },
+  deleted: { label: 'Deleted', color: 'var(--destructive, #ef4444)', symbol: '−' },
+  renamed: { label: 'Renamed', color: 'var(--accent-orange, #f59e0b)', symbol: 'R' },
+}
+
+function ChangeStatusIcon({ status }: { status: string }) {
+  const display = CHANGE_STATUS_DISPLAY[status] ?? CHANGE_STATUS_DISPLAY.modified
+  return (
+    <span
+      className="absolute right-3 top-2.5 text-xs font-bold"
+      style={{ color: display.color, fontSize: status === 'modified' ? 18 : 14 }}
+      title={display.label}
+      data-testid="change-status-icon"
+    >
+      {display.symbol}
+    </span>
+  )
+}
+
 function noteItemStyle(isSelected: boolean, isMultiSelected: boolean, typeColor: string, typeLightColor: string): React.CSSProperties {
   const base: React.CSSProperties = { padding: isSelected && !isMultiSelected ? '14px 16px 14px 13px' : '14px 16px' }
   if (isMultiSelected) base.backgroundColor = 'color-mix(in srgb, var(--accent-blue) 10%, transparent)'
@@ -152,12 +174,14 @@ function getFileKindIcon(fileKind: string | undefined): ComponentType<SVGAttribu
   return FileText
 }
 
-export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlighted = false, noteStatus = 'clean', typeEntryMap, onClickNote, onPrefetch, onContextMenu }: {
+export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlighted = false, noteStatus = 'clean', changeStatus, typeEntryMap, onClickNote, onPrefetch, onContextMenu }: {
   entry: VaultEntry
   isSelected: boolean
   isMultiSelected?: boolean
   isHighlighted?: boolean
   noteStatus?: NoteStatus
+  /** When set, renders in Changes-view style: filename + change type icon */
+  changeStatus?: 'modified' | 'added' | 'deleted' | 'untracked' | 'renamed'
   typeEntryMap: Record<string, VaultEntry>
   onClickNote: (entry: VaultEntry, e: React.MouseEvent) => void
   onPrefetch?: (path: string) => void
@@ -194,27 +218,40 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
       data-highlighted={isHighlighted || undefined}
       title={isBinary ? 'Cannot open this file type' : undefined}
     >
-      {/* eslint-disable-next-line react-hooks/static-components -- icon lookup from static map, no internal state */}
-      <TypeIcon width={14} height={14} className="absolute right-3 top-2.5" style={{ color: typeColor }} data-testid="type-icon" />
-      <div className="pr-5">
-        <div className={cn("truncate text-[13px]", isBinary ? "text-muted-foreground" : "text-foreground", isSelected && !isBinary ? "font-semibold" : "font-medium")}>
-          {noteStatus !== 'clean' && !isBinary && <StatusDot noteStatus={noteStatus} />}
-          {entry.icon && isEmoji(entry.icon) && <span className="mr-1">{entry.icon}</span>}
-          {entry.title}
-          {!isBinary && <StateBadge archived={entry.archived} trashed={entry.trashed} />}
-        </div>
-      </div>
-      {entry.snippet && !isBinary && (
-        <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" data-testid="note-snippet" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-          {entry.snippet}
-        </div>
-      )}
-      {!isBinary && te?.listPropertiesDisplay && te.listPropertiesDisplay.length > 0 && (
-        <PropertyChips entry={entry} displayProps={te.listPropertiesDisplay} />
-      )}
-      {!isBinary && (entry.trashed && entry.trashedAt
-        ? <TrashDateLine entry={entry} />
-        : <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>
+      {changeStatus ? (
+        <>
+          <ChangeStatusIcon status={changeStatus} />
+          <div className="pr-5">
+            <div className={cn("truncate text-[13px] font-mono", isSelected ? "font-semibold" : "font-normal")} style={{ fontSize: 12 }}>
+              {entry.filename}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* eslint-disable-next-line react-hooks/static-components -- icon lookup from static map, no internal state */}
+          <TypeIcon width={14} height={14} className="absolute right-3 top-2.5" style={{ color: typeColor }} data-testid="type-icon" />
+          <div className="pr-5">
+            <div className={cn("truncate text-[13px]", isBinary ? "text-muted-foreground" : "text-foreground", isSelected && !isBinary ? "font-semibold" : "font-medium")}>
+              {noteStatus !== 'clean' && !isBinary && <StatusDot noteStatus={noteStatus} />}
+              {entry.icon && isEmoji(entry.icon) && <span className="mr-1">{entry.icon}</span>}
+              {entry.title}
+              {!isBinary && <StateBadge archived={entry.archived} trashed={entry.trashed} />}
+            </div>
+          </div>
+          {entry.snippet && !isBinary && (
+            <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" data-testid="note-snippet" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {entry.snippet}
+            </div>
+          )}
+          {!isBinary && te?.listPropertiesDisplay && te.listPropertiesDisplay.length > 0 && (
+            <PropertyChips entry={entry} displayProps={te.listPropertiesDisplay} />
+          )}
+          {!isBinary && (entry.trashed && entry.trashedAt
+            ? <TrashDateLine entry={entry} />
+            : <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>
+          )}
+        </>
       )}
     </div>
   )

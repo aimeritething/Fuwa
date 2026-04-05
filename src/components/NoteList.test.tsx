@@ -950,12 +950,13 @@ describe('NoteList — virtual list with large datasets', () => {
       { path: mockEntries[1].path, relativePath: 'note/facebook-ads-strategy.md', status: 'modified' as const },
     ]
 
-    it('shows only modified notes in changes view', () => {
+    it('shows only modified notes in changes view with filenames', () => {
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
       )
-      expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-      expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
+      // Changes view shows filenames instead of titles
+      expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
+      expect(screen.getByText('facebook-ads-strategy.md')).toBeInTheDocument()
       expect(screen.queryByText('Matteo Cellini')).not.toBeInTheDocument()
       expect(screen.queryByText('Kickoff Meeting')).not.toBeInTheDocument()
     })
@@ -978,16 +979,16 @@ describe('NoteList — virtual list with large datasets', () => {
       const { rerender } = render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
       )
-      expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-      expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
+      expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
+      expect(screen.getByText('facebook-ads-strategy.md')).toBeInTheDocument()
 
       // Simulate one file being committed (removed from modifiedFiles)
       const fewerModified = [modifiedFiles[0]]
       rerender(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={fewerModified} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
       )
-      expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-      expect(screen.queryByText('Facebook Ads Strategy')).not.toBeInTheDocument()
+      expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
+      expect(screen.queryByText('facebook-ads-strategy.md')).not.toBeInTheDocument()
     })
 
     it('shows modified notes when both getNoteStatus and modifiedFiles are provided', () => {
@@ -997,9 +998,9 @@ describe('NoteList — virtual list with large datasets', () => {
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} getNoteStatus={getNoteStatus} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
       )
-      expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-      expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
-      expect(screen.queryByText('Matteo Cellini')).not.toBeInTheDocument()
+      expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
+      expect(screen.getByText('facebook-ads-strategy.md')).toBeInTheDocument()
+      expect(screen.queryByText('matteo-cellini.md')).not.toBeInTheDocument()
     })
 
     it('matches entries by relative path suffix when absolute paths differ (cross-machine)', () => {
@@ -1016,9 +1017,9 @@ describe('NoteList — virtual list with large datasets', () => {
         <NoteList {...defaultFilterProps} entries={crossMachineEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFromCurrentMachine} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
       )
       // Even though absolute paths differ, entries should match via relative path suffix
-      expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-      expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
-      expect(screen.queryByText('Matteo Cellini')).not.toBeInTheDocument()
+      expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
+      expect(screen.getByText('facebook-ads-strategy.md')).toBeInTheDocument()
+      expect(screen.queryByText('matteo-cellini.md')).not.toBeInTheDocument()
     })
 
     it('shows error message when modifiedFilesError is set', () => {
@@ -1037,9 +1038,21 @@ describe('NoteList — virtual list with large datasets', () => {
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={mixedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
       )
-      expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-      expect(screen.getByText('Matteo Cellini')).toBeInTheDocument()
-      expect(screen.queryByText('Facebook Ads Strategy')).not.toBeInTheDocument()
+      expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
+      expect(screen.getByText('matteo-cellini.md')).toBeInTheDocument()
+      expect(screen.queryByText('facebook-ads-strategy.md')).not.toBeInTheDocument()
+    })
+
+    it('shows change status icons for each modified file', () => {
+      const mixedFiles = [
+        { path: mockEntries[0].path, relativePath: 'project/26q1-laputa-app.md', status: 'modified' as const },
+        { path: mockEntries[2].path, relativePath: 'person/matteo-cellini.md', status: 'untracked' as const },
+      ]
+      render(
+        <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={mixedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
+      )
+      const icons = screen.getAllByTestId('change-status-icon')
+      expect(icons).toHaveLength(2)
     })
 
     it('shows deleted notes banner when files are deleted', () => {
@@ -1051,7 +1064,7 @@ describe('NoteList — virtual list with large datasets', () => {
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={filesWithDeleted} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
       )
-      expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+      expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
       expect(screen.getByText('2 notes deleted')).toBeInTheDocument()
     })
 
@@ -1087,7 +1100,7 @@ describe('NoteList — virtual list with large datasets', () => {
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onDiscardFile={onDiscard} />
       )
-      const noteItem = screen.getByText('Build Laputa App').closest('[class*="border-b"]')!
+      const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
       fireEvent.contextMenu(noteItem)
       expect(screen.getByTestId('changes-context-menu')).toBeInTheDocument()
       expect(screen.getByTestId('discard-changes-button')).toBeInTheDocument()
@@ -1097,7 +1110,7 @@ describe('NoteList — virtual list with large datasets', () => {
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
       )
-      const noteItem = screen.getByText('Build Laputa App').closest('[class*="border-b"]')!
+      const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
       fireEvent.contextMenu(noteItem)
       expect(screen.queryByTestId('changes-context-menu')).not.toBeInTheDocument()
     })
@@ -1107,7 +1120,7 @@ describe('NoteList — virtual list with large datasets', () => {
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onDiscardFile={onDiscard} />
       )
-      const noteItem = screen.getByText('Build Laputa App').closest('[class*="border-b"]')!
+      const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
       fireEvent.contextMenu(noteItem)
       fireEvent.click(screen.getByTestId('discard-changes-button'))
       expect(screen.getByTestId('discard-confirm-dialog')).toBeInTheDocument()
@@ -1121,7 +1134,7 @@ describe('NoteList — virtual list with large datasets', () => {
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onDiscardFile={onDiscard} />
       )
-      const noteItem = screen.getByText('Build Laputa App').closest('[class*="border-b"]')!
+      const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
       fireEvent.contextMenu(noteItem)
       fireEvent.click(screen.getByTestId('discard-changes-button'))
       fireEvent.click(screen.getByTestId('discard-confirm-button'))
@@ -1133,7 +1146,7 @@ describe('NoteList — virtual list with large datasets', () => {
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onDiscardFile={onDiscard} />
       )
-      const noteItem = screen.getByText('Build Laputa App').closest('[class*="border-b"]')!
+      const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
       fireEvent.contextMenu(noteItem)
       fireEvent.click(screen.getByTestId('discard-changes-button'))
       fireEvent.click(screen.getByText('Cancel'))
@@ -1551,5 +1564,36 @@ describe('NoteItem — binary file rendering', () => {
     const item = screen.getByText('config.yml').closest('div')!
     fireEvent.click(item)
     expect(onClick).toHaveBeenCalled()
+  })
+})
+
+describe('NoteItem — changeStatus rendering', () => {
+  it('shows filename instead of title when changeStatus is set', () => {
+    const entry = makeEntry({ filename: 'my-note.md', title: 'My Note Title' })
+    render(<NoteItem entry={entry} isSelected={false} typeEntryMap={{}} onClickNote={vi.fn()} changeStatus="modified" />)
+    expect(screen.getByText('my-note.md')).toBeInTheDocument()
+    expect(screen.queryByText('My Note Title')).not.toBeInTheDocument()
+  })
+
+  it('shows change status icon with correct symbol for modified', () => {
+    const entry = makeEntry({ filename: 'note.md' })
+    render(<NoteItem entry={entry} isSelected={false} typeEntryMap={{}} onClickNote={vi.fn()} changeStatus="modified" />)
+    const icon = screen.getByTestId('change-status-icon')
+    expect(icon.textContent).toBe('·')
+  })
+
+  it('shows + symbol for added files', () => {
+    const entry = makeEntry({ filename: 'new-note.md' })
+    render(<NoteItem entry={entry} isSelected={false} typeEntryMap={{}} onClickNote={vi.fn()} changeStatus="added" />)
+    const icon = screen.getByTestId('change-status-icon')
+    expect(icon.textContent).toBe('+')
+  })
+
+  it('shows normal title rendering when changeStatus is not set', () => {
+    const entry = makeEntry({ filename: 'note.md', title: 'My Note' })
+    render(<NoteItem entry={entry} isSelected={false} typeEntryMap={{}} onClickNote={vi.fn()} />)
+    expect(screen.getByText('My Note')).toBeInTheDocument()
+    expect(screen.queryByText('note.md')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('change-status-icon')).not.toBeInTheDocument()
   })
 })

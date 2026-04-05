@@ -138,10 +138,11 @@ interface NoteListProps {
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
   onOpenInNewWindow?: (entry: VaultEntry) => void
   onDiscardFile?: (relativePath: string) => Promise<void>
+  onAutoTriggerDiff?: () => void
   views?: ViewFile[]
 }
 
-function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'all', modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry, onOpenInNewWindow, onDiscardFile, views }: NoteListProps) {
+function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'all', modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry, onOpenInNewWindow, onDiscardFile, onAutoTriggerDiff, views }: NoteListProps) {
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
 
   const { isSectionGroup, isFolderView, isInboxView, isAllNotesView, isChangesView, showFilterPills } = useViewFlags(selection)
@@ -157,6 +158,16 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
   const typeEntryMap = useTypeEntryMap(entries)
+  const changeStatusMap = useMemo(() => {
+    if (!isChangesView || !modifiedFiles) return undefined
+    const map = new Map<string, ModifiedFile['status']>()
+    for (const mf of modifiedFiles) {
+      map.set(mf.path, mf.status)
+      // Also index by suffix for matching (vault entries may use different path formats)
+      map.set('/' + mf.relativePath, mf.status)
+    }
+    return map
+  }, [isChangesView, modifiedFiles])
   const { isEntityView, isTrashView, isArchivedView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod: isInboxView ? inboxPeriod : undefined, views })
   const deletedCount = useMemo(
     () => isChangesView ? (modifiedFiles ?? []).filter((f) => f.status === 'deleted').length : 0,
@@ -170,16 +181,31 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
 
   const handleClickNote = useCallback((entry: VaultEntry, e: React.MouseEvent) => {
     routeNoteClick(entry, e, { onReplace: onReplaceActiveTab, onSelect: onSelectNote, onOpenInNewWindow, multiSelect })
-  }, [onReplaceActiveTab, onSelectNote, onOpenInNewWindow, multiSelect])
+    if (isChangesView && onAutoTriggerDiff) {
+      // Small delay to let the tab open before triggering diff
+      setTimeout(onAutoTriggerDiff, 50)
+    }
+  }, [onReplaceActiveTab, onSelectNote, onOpenInNewWindow, multiSelect, isChangesView, onAutoTriggerDiff])
 
   const { handleBulkArchive, handleBulkTrash, handleBulkRestore, handleBulkDeletePermanently, handleBulkUnarchive, bulkArchiveOrRestore, bulkTrashOrDelete } = useBulkActions(multiSelect, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, isTrashView, isArchivedView)
   useMultiSelectKeyboard(multiSelect, isEntityView, bulkArchiveOrRestore, bulkTrashOrDelete)
 
   const { handleNoteContextMenu, contextMenuNode, dialogNode } = ChangesContextMenu({ isChangesView, onDiscardFile, modifiedFiles })
 
+  const getChangeStatus = useCallback((path: string) => {
+    if (!changeStatusMap) return undefined
+    const direct = changeStatusMap.get(path)
+    if (direct) return direct
+    // Try suffix match
+    for (const [key, status] of changeStatusMap) {
+      if (path.endsWith(key) || key.endsWith(path.split('/').slice(-1)[0])) return status
+    }
+    return undefined
+  }, [changeStatusMap])
+
   const renderItem = useCallback((entry: VaultEntry) => (
-    <NoteItem key={entry.path} entry={entry} isSelected={selectedNote?.path === entry.path} isMultiSelected={multiSelect.selectedPaths.has(entry.path)} isHighlighted={entry.path === noteListKeyboard.highlightedPath} noteStatus={resolvedGetNoteStatus(entry.path)} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} onPrefetch={prefetchNoteContent} onContextMenu={isChangesView && onDiscardFile ? handleNoteContextMenu : undefined} />
-  ), [selectedNote?.path, handleClickNote, typeEntryMap, resolvedGetNoteStatus, multiSelect.selectedPaths, noteListKeyboard.highlightedPath, isChangesView, onDiscardFile, handleNoteContextMenu])
+    <NoteItem key={entry.path} entry={entry} isSelected={selectedNote?.path === entry.path} isMultiSelected={multiSelect.selectedPaths.has(entry.path)} isHighlighted={entry.path === noteListKeyboard.highlightedPath} noteStatus={resolvedGetNoteStatus(entry.path)} changeStatus={getChangeStatus(entry.path)} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} onPrefetch={prefetchNoteContent} onContextMenu={isChangesView && onDiscardFile ? handleNoteContextMenu : undefined} />
+  ), [selectedNote?.path, handleClickNote, typeEntryMap, resolvedGetNoteStatus, getChangeStatus, multiSelect.selectedPaths, noteListKeyboard.highlightedPath, isChangesView, onDiscardFile, handleNoteContextMenu])
 
   const handleCreateNote = useCallback(() => {
     onCreateNote(selection.kind === 'sectionGroup' ? selection.type : undefined)
