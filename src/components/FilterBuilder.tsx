@@ -1,7 +1,10 @@
 import { useState, useRef, useMemo, useEffect, useCallback } from 'react'
-import { Plus, X } from '@phosphor-icons/react'
+import { Plus, X, CalendarBlank } from '@phosphor-icons/react'
+import { format, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Calendar } from '@/components/ui/calendar'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { FilterCondition, FilterOp, FilterGroup, FilterNode, VaultEntry } from '../types'
 import { buildTypeEntryMap, getTypeColor, getTypeLightColor } from '../utils/typeColors'
@@ -282,6 +285,32 @@ function WikilinkValueInput({ value, entries, onChange }: {
   )
 }
 
+function DateValueInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const parsed = value ? parseISO(value) : undefined
+  const selected = parsed && !isNaN(parsed.getTime()) ? parsed : undefined
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          data-testid="date-picker-trigger"
+          className="h-8 flex-1 min-w-0 justify-start gap-2 px-2 text-sm font-normal"
+        >
+          <CalendarBlank size={14} className="shrink-0 text-muted-foreground" />
+          {selected ? format(selected, 'MMM d, yyyy') : <span className="text-muted-foreground">Pick a date</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          onSelect={(day) => onChange(day ? format(day, 'yyyy-MM-dd') : '')}
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
+
 function ValueInput({ value, suggestions, isDateOp, entries, onChange }: {
   value: string
   suggestions: string[]
@@ -290,14 +319,7 @@ function ValueInput({ value, suggestions, isDateOp, entries, onChange }: {
   onChange: (v: string) => void
 }) {
   if (isDateOp) {
-    return (
-      <Input
-        type="date"
-        className="h-8 flex-1 min-w-0 text-sm"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-      />
-    )
+    return <DateValueInput value={value} onChange={onChange} />
   }
 
   if (suggestions.length > 0) {

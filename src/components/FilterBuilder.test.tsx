@@ -199,6 +199,25 @@ describe('FilterBuilder wikilink autocomplete', () => {
     expect(input).not.toHaveAttribute('data-testid', 'filter-value-input')
   })
 
+  it('renders calendar date picker button for date operators', () => {
+    renderWithEntries({
+      all: [{ field: 'created', op: 'before', value: '2024-06-01' }],
+    })
+    const dateButton = screen.getByTestId('date-picker-trigger')
+    expect(dateButton).toBeInTheDocument()
+    expect(dateButton).toHaveTextContent('Jun 1, 2024')
+    // Should NOT have a native input type="date"
+    expect(screen.queryByDisplayValue('2024-06-01')).not.toBeInTheDocument()
+  })
+
+  it('renders date picker placeholder when no date is selected', () => {
+    renderWithEntries({
+      all: [{ field: 'created', op: 'after', value: '' }],
+    })
+    const dateButton = screen.getByTestId('date-picker-trigger')
+    expect(dateButton).toHaveTextContent('Pick a date')
+  })
+
   it('shows body field in field dropdown separated from property fields', () => {
     render(
       <FilterBuilder
