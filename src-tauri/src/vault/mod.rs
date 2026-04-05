@@ -127,7 +127,7 @@ pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<Vault
 }
 
 /// Parse a non-markdown file into a minimal VaultEntry.
-/// Uses filename as title, no frontmatter extraction.
+/// Uses filename as title, except for `.yml` files where the YAML `name` field is used.
 pub(crate) fn parse_non_md_file(
     path: &Path,
     git_dates: Option<(u64, u64)>,
@@ -142,17 +142,29 @@ pub(crate) fn parse_non_md_file(
         None => (fs_modified, fs_created),
     };
     let file_kind = classify_file_kind(path).to_string();
+    let title = extract_yml_name(path).unwrap_or_else(|| filename.clone());
 
     Ok(VaultEntry {
         path: path.to_string_lossy().to_string(),
         filename: filename.clone(),
-        title: filename,
+        title,
         file_kind,
         modified_at,
         created_at,
         file_size,
         ..VaultEntry::default()
     })
+}
+
+/// For `.yml` files, try to extract the `name` field from the YAML content.
+fn extract_yml_name(path: &Path) -> Option<String> {
+    let ext = path.extension()?.to_str()?;
+    if ext != "yml" && ext != "yaml" {
+        return None;
+    }
+    let content = std::fs::read_to_string(path).ok()?;
+    let mapping: serde_yaml::Value = serde_yaml::from_str(&content).ok()?;
+    mapping.get("name")?.as_str().map(|s| s.to_string())
 }
 
 /// Re-read a single file from disk and return a fresh VaultEntry.

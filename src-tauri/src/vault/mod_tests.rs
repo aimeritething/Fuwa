@@ -1491,6 +1491,36 @@ fn test_list_properties_display_not_in_properties_or_relationships() {
     );
 }
 
+#[test]
+fn test_yml_file_uses_name_field_as_title() {
+    let dir = TempDir::new().unwrap();
+    let yml_content = "name: Active Projects\nicon: rocket\ncolor: blue\n";
+    let yml_path = dir.path().join("active-projects.yml");
+    std::fs::write(&yml_path, yml_content).unwrap();
+    let entry = super::parse_non_md_file(&yml_path, None).unwrap();
+    assert_eq!(entry.title, "Active Projects");
+    assert_eq!(entry.filename, "active-projects.yml");
+}
+
+#[test]
+fn test_yml_file_without_name_falls_back_to_filename() {
+    let dir = TempDir::new().unwrap();
+    let yml_content = "key: value\n";
+    let yml_path = dir.path().join("config.yml");
+    std::fs::write(&yml_path, yml_content).unwrap();
+    let entry = super::parse_non_md_file(&yml_path, None).unwrap();
+    assert_eq!(entry.title, "config.yml");
+}
+
+#[test]
+fn test_non_yml_file_uses_filename_as_title() {
+    let dir = TempDir::new().unwrap();
+    let txt_path = dir.path().join("notes.txt");
+    std::fs::write(&txt_path, "some content").unwrap();
+    let entry = super::parse_non_md_file(&txt_path, None).unwrap();
+    assert_eq!(entry.title, "notes.txt");
+}
+
 // Frontmatter update/delete tests are in frontmatter.rs
 // save_image tests are in vault/image.rs
 // purge_trash tests are in vault/trash.rs
