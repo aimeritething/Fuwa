@@ -18,44 +18,56 @@ pnpm test --run --silent
 echo "✅ Pre-commit passed"
 
 # ── CodeScene Code Health gate ────────────────────────────────────────────
-# Blocks commit if Hotspot < 9.5 OR Average < 9.0.
+# Blocks commit if scores drop below thresholds in .codescene-thresholds.
+# Thresholds are a ratchet — only go up, auto-updated after each successful push.
 # Note: remote scores lag behind local changes (update after push + re-analysis).
-# This catches regressions from previous pushes and notifies Claude Code immediately.
-# If `pre_commit_code_health_safeguard` fails: extract hooks, split components,
-# reduce complexity. Never use eslint-disable, #[allow(...)], or `as any`.
+# If check fails: extract hooks, split components, reduce complexity.
+# Never use eslint-disable, #[allow(...)], or `as any`.
 echo "🏥 CodeScene code health check..."
+THRESHOLDS_FILE=".codescene-thresholds"
 if [ -z "$CODESCENE_PAT" ] || [ -z "$CODESCENE_PROJECT_ID" ]; then
   echo "  ⚠️  CODESCENE_PAT or CODESCENE_PROJECT_ID not set — skipping (CI will enforce)"
+elif [ ! -f "$THRESHOLDS_FILE" ]; then
+  echo "  ⚠️  $THRESHOLDS_FILE not found — skipping (CI will enforce)"
 else
-  API_RESPONSE=$(curl -sf \
-    -H "Authorization: Bearer $CODESCENE_PAT" \
-    -H "Accept: application/json" \
-    "https://api.codescene.io/v2/projects/$CODESCENE_PROJECT_ID" 2>/dev/null || echo "{}")
-  HOTSPOT_SCORE=$(echo "$API_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['analysis']['hotspot_code_health']['now'])" 2>/dev/null || echo "")
-  AVERAGE_SCORE=$(echo "$API_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['analysis']['code_health']['now'])" 2>/dev/null || echo "")
-  if [ -z "$HOTSPOT_SCORE" ] || [ -z "$AVERAGE_SCORE" ]; then
-    echo "  ⚠️  Could not fetch CodeScene scores — skipping (CI will enforce)"
+  # Read ratchet thresholds
+  HOTSPOT_THRESHOLD=$(grep '^HOTSPOT_THRESHOLD=' "$THRESHOLDS_FILE" | cut -d= -f2)
+  AVERAGE_THRESHOLD=$(grep '^AVERAGE_THRESHOLD=' "$THRESHOLDS_FILE" | cut -d= -f2)
+  if [ -z "$HOTSPOT_THRESHOLD" ] || [ -z "$AVERAGE_THRESHOLD" ]; then
+    echo "  ⚠️  Could not parse thresholds from $THRESHOLDS_FILE — skipping"
   else
-    echo "  Hotspot Code Health: $HOTSPOT_SCORE (threshold: 9.5)"
-    echo "  Average Code Health: $AVERAGE_SCORE (threshold: 9.33)"
-    python3 -c "
+    API_RESPONSE=$(curl -sf \
+      -H "Authorization: Bearer $CODESCENE_PAT" \
+      -H "Accept: application/json" \
+      "https://api.codescene.io/v2/projects/$CODESCENE_PROJECT_ID" 2>/dev/null || echo "{}")
+    HOTSPOT_SCORE=$(echo "$API_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['analysis']['hotspot_code_health']['now'])" 2>/dev/null || echo "")
+    AVERAGE_SCORE=$(echo "$API_RESPONSE" | python3 -c "import sys,json; d=json.load(sys.stdin); print(d['analysis']['code_health']['now'])" 2>/dev/null || echo "")
+    if [ -z "$HOTSPOT_SCORE" ] || [ -z "$AVERAGE_SCORE" ]; then
+      echo "  ⚠️  Could not fetch CodeScene scores — skipping (CI will enforce)"
+    else
+      echo "  Hotspot Code Health: $HOTSPOT_SCORE (threshold: $HOTSPOT_THRESHOLD)"
+      echo "  Average Code Health: $AVERAGE_SCORE (threshold: $AVERAGE_THRESHOLD)"
+      python3 -c "
 import sys
 hotspot = float('$HOTSPOT_SCORE')
 average = float('$AVERAGE_SCORE')
+h_thresh = float('$HOTSPOT_THRESHOLD')
+a_thresh = float('$AVERAGE_THRESHOLD')
 failed = False
-if hotspot < 9.5:
-    print(f'FAIL: Hotspot Code Health {hotspot:.2f} < 9.5 — extract hooks, split components, reduce complexity')
+if hotspot < h_thresh:
+    print(f'FAIL: Hotspot Code Health {hotspot:.2f} < {h_thresh} — extract hooks, split components, reduce complexity')
     failed = True
 else:
-    print(f'OK: Hotspot {hotspot:.2f} >= 9.5')
-if average < 9.33:
-    print(f'FAIL: Average Code Health {average:.2f} < 9.33 — recent changes introduced regressions in non-hotspot files')
+    print(f'OK: Hotspot {hotspot:.2f} >= {h_thresh}')
+if average < a_thresh:
+    print(f'FAIL: Average Code Health {average:.2f} < {a_thresh} — recent changes introduced regressions in non-hotspot files')
     print('     Review files changed in this task. Never use eslint-disable, #[allow(...)], or as any to bypass.')
     failed = True
 else:
-    print(f'OK: Average {average:.2f} >= 9.33')
+    print(f'OK: Average {average:.2f} >= {a_thresh}')
 if failed:
     sys.exit(1)
 " || exit 1
+    fi
   fi
 fi

@@ -16,9 +16,14 @@ pub mod vault_list;
 use std::process::Child;
 #[cfg(desktop)]
 use std::sync::Mutex;
+#[cfg(desktop)]
+use std::time::Instant;
 
 #[cfg(desktop)]
 struct WsBridgeChild(Mutex<Option<Child>>);
+
+#[cfg(desktop)]
+struct LastPurgeTime(Mutex<Instant>);
 
 #[cfg(desktop)]
 fn log_startup_result(label: &str, result: Result<usize, String>) {
@@ -81,6 +86,8 @@ pub fn run() {
 
     #[cfg(desktop)]
     let builder = builder.manage(WsBridgeChild(Mutex::new(None)));
+    #[cfg(desktop)]
+    let builder = builder.manage(LastPurgeTime(Mutex::new(Instant::now())));
 
     builder
         .setup(|app| {
@@ -189,13 +196,39 @@ pub fn run() {
             #[cfg(desktop)]
             {
                 use tauri::Manager;
-                if let tauri::RunEvent::Exit = _event {
-                    let state: tauri::State<'_, WsBridgeChild> = _app_handle.state();
-                    let mut guard = state.0.lock().unwrap();
-                    if let Some(ref mut child) = *guard {
-                        let _ = child.kill();
-                        log::info!("ws-bridge child process killed on exit");
+                match _event {
+                    tauri::RunEvent::Exit => {
+                        let state: tauri::State<'_, WsBridgeChild> = _app_handle.state();
+                        let mut guard = state.0.lock().unwrap();
+                        if let Some(ref mut child) = *guard {
+                            let _ = child.kill();
+                            log::info!("ws-bridge child process killed on exit");
+                        }
                     }
+                    tauri::RunEvent::WindowEvent {
+                        event: tauri::WindowEvent::Focused(true),
+                        ..
+                    } => {
+                        let state: tauri::State<'_, LastPurgeTime> = _app_handle.state();
+                        let mut last = state.0.lock().unwrap();
+                        if last.elapsed() >= std::time::Duration::from_secs(3600) {
+                            *last = Instant::now();
+                            drop(last);
+                            std::thread::spawn(|| {
+                                let vault_path = dirs::home_dir()
+                                    .map(|h| h.join("Laputa"))
+                                    .unwrap_or_default();
+                                if vault_path.is_dir() {
+                                    log_startup_result(
+                                        "Purged trashed files on focus",
+                                        vault::purge_trash(vault_path.to_str().unwrap_or_default())
+                                            .map(|d| d.len()),
+                                    );
+                                }
+                            });
+                        }
+                    }
+                    _ => {}
                 }
             }
         });
