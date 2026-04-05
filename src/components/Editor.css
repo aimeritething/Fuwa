@@ -55,7 +55,6 @@
   flex: 1;
   min-height: 0;
   display: flex;
-  justify-content: center;
   position: relative;
   cursor: text;
 }
@@ -113,9 +112,7 @@
 
 .editor__blocknote-container .bn-editor {
   width: 100%;
-  padding: 20px 40px;
-  max-width: var(--editor-max-width, 760px);
-  margin: 0 auto;
+  padding: 20px 0;
 }
 
 /* =============================================
@@ -188,12 +185,21 @@
   opacity: 1 !important;
 }
 
-/* --- Title Section: wraps icon + title + separator, aligned to editor --- */
-.title-section {
-  width: 100%;
+/* --- Editor content wrapper: single source of truth for horizontal padding --- */
+.editor-content-wrapper {
   max-width: var(--editor-max-width, 760px);
   margin: 0 auto;
   padding: 0 var(--editor-padding-horizontal, 40px);
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+}
+
+/* --- Title Section: wraps icon + title + separator --- */
+.title-section {
+  width: 100%;
   flex-shrink: 0;
 }
 
@@ -364,12 +370,25 @@
   display: none;
 }
 
+/* =============================================
+   Disable BlockNote/Mantine editor animations
+   =============================================
+   Scoped to .editor__blocknote-container so app-wide
+   components (dialogs, sidebar, etc.) are unaffected.
+   Preserves cursor blink and text selection. */
+.editor__blocknote-container *,
+.editor__blocknote-container *::before,
+.editor__blocknote-container *::after {
+  transition: none !important;
+  animation: none !important;
+}
+
 /* Reduce padding at narrow editor widths so content isn't cramped */
 @container editor (max-width: 600px) {
-  .editor__blocknote-container .bn-editor {
-    padding: 12px 16px;
-  }
-  .title-section {
+  .editor-content-wrapper {
     padding: 0 16px;
+  }
+  .editor__blocknote-container .bn-editor {
+    padding: 12px 0;
   }
 }
