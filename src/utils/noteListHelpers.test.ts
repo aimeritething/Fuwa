@@ -730,3 +730,16 @@ describe('filterEntries — fileKind filtering', () => {
     expect(result.map(e => e.title)).toEqual(['Old'])
   })
 })
+
+describe('filterInboxEntries — excludes non-markdown files', () => {
+  it('only shows markdown files in inbox', () => {
+    const now = Math.floor(Date.now() / 1000)
+    const entries = [
+      makeEntry({ path: '/vault/note.md', title: 'Note', fileKind: 'markdown', createdAt: now }),
+      makeEntry({ path: '/vault/config.yml', title: 'config.yml', fileKind: 'text', createdAt: now }),
+      makeEntry({ path: '/vault/photo.png', title: 'photo.png', fileKind: 'binary', createdAt: now }),
+    ]
+    const result = filterInboxEntries(entries, 'all')
+    expect(result.map(e => e.title)).toEqual(['Note'])
+  })
+})

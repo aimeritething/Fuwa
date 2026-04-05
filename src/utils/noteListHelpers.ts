@@ -381,8 +381,9 @@ export function countAllByFilter(entries: VaultEntry[]): Record<NoteListFilter, 
 
 // --- Inbox ---
 
-/** Check if entry belongs in the Inbox (not organized, not trashed/archived, not a Type). */
+/** Check if entry belongs in the Inbox (markdown only, not organized, not trashed/archived, not a Type). */
 export function isInboxEntry(entry: VaultEntry): boolean {
+  if (!isMarkdown(entry)) return false
   if (entry.trashed || entry.archived) return false
   if (entry.isA === 'Type') return false
   return !entry.organized
