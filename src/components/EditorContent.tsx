@@ -183,9 +183,18 @@ export function EditorContent({
   const breadcrumbBarRef = useRef<HTMLDivElement | null>(null)
 
   useEffect(() => {
-    const el = titleSectionRef.current
     const bar = breadcrumbBarRef.current
-    if (!el || !bar) return
+    if (!bar) return
+
+    // In raw/diff mode the title section is not rendered, so there is nothing
+    // for the IntersectionObserver to watch.  Force the title visible instead.
+    if (!showEditor) {
+      bar.setAttribute('data-title-hidden', '')
+      return () => { bar.removeAttribute('data-title-hidden') }
+    }
+
+    const el = titleSectionRef.current
+    if (!el) return
     const observer = new IntersectionObserver(
       ([e]) => {
         if (e.isIntersecting) bar.removeAttribute('data-title-hidden')
@@ -205,66 +214,62 @@ export function EditorContent({
     if (activeTab) onRemoveNoteIcon?.(activeTab.entry.path)
   }, [activeTab, onRemoveNoteIcon])
 
+  if (!activeTab) {
+    return <div className="flex flex-1 flex-col min-w-0 min-h-0" />
+  }
+
+  const path = activeTab.entry.path
+
   return (
     <div className="flex flex-1 flex-col min-w-0 min-h-0">
-      {activeTab && (
-        <ActiveTabBreadcrumb
-          activeTab={activeTab}
-          barRef={breadcrumbBarRef}
-          props={{ diffMode, diffContent, onToggleDiff, rawMode: effectiveRawMode, onToggleRaw, ...breadcrumbProps }}
-        />
-      )}
-      {activeTab && isTrashed && (
+      <ActiveTabBreadcrumb
+        activeTab={activeTab}
+        barRef={breadcrumbBarRef}
+        props={{ diffMode, diffContent, onToggleDiff, rawMode: effectiveRawMode, onToggleRaw, ...breadcrumbProps }}
+      />
+      {isTrashed && (
         <TrashedNoteBanner
-          onRestore={() => breadcrumbProps.onRestoreNote?.(activeTab.entry.path)}
-          onDeletePermanently={() => onDeleteNote?.(activeTab.entry.path)}
+          onRestore={() => breadcrumbProps.onRestoreNote?.(path)}
+          onDeletePermanently={() => onDeleteNote?.(path)}
         />
       )}
-      {activeTab && isArchived && breadcrumbProps.onUnarchiveNote && (
-        <ArchivedNoteBanner onUnarchive={() => breadcrumbProps.onUnarchiveNote!(activeTab.entry.path)} />
+      {isArchived && breadcrumbProps.onUnarchiveNote && (
+        <ArchivedNoteBanner onUnarchive={() => breadcrumbProps.onUnarchiveNote!(path)} />
       )}
-      {activeTab && isConflicted && (
+      {isConflicted && (
         <ConflictNoteBanner
-          onKeepMine={() => onKeepMine?.(activeTab.entry.path)}
-          onKeepTheirs={() => onKeepTheirs?.(activeTab.entry.path)}
+          onKeepMine={() => onKeepMine?.(path)}
+          onKeepTheirs={() => onKeepTheirs?.(path)}
         />
       )}
       {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
       <RawModeEditorSection rawMode={effectiveRawMode} activeTab={activeTab} entries={entries} onContentChange={onRawContentChange} onSave={onSave} latestContentRef={rawLatestContentRef} vaultPath={vaultPath} />
-      {showEditor && activeTab && (
+      {showEditor && (
         <div className="editor-scroll-area" style={cssVars as React.CSSProperties}>
-          <div ref={titleSectionRef} className="title-section">
-            {!emojiIcon && (
-              <div className="title-section__add-icon">
-                <NoteIcon
-                  icon={null}
+          <div className="editor-content-wrapper">
+            <div ref={titleSectionRef} className="title-section">
+              {!emojiIcon && (
+                <div className="title-section__add-icon">
+                  <NoteIcon icon={null} editable={!isTrashed} onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
+                </div>
+              )}
+              <div className={`title-section__row${emojiIcon ? '' : ' title-section__row--no-icon'}`}>
+                {emojiIcon && (
+                  <NoteIcon icon={emojiIcon} editable={!isTrashed} onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
+                )}
+                <TitleField
+                  title={activeTab.entry.title}
+                  filename={activeTab.entry.filename}
                   editable={!isTrashed}
-                  onSetIcon={handleSetIcon}
-                  onRemoveIcon={handleRemoveIcon}
+                  notePath={path}
+                  vaultPath={vaultPath}
+                  onTitleChange={(newTitle) => onTitleChange?.(path, newTitle)}
                 />
               </div>
-            )}
-            <div className={`title-section__row${emojiIcon ? '' : ' title-section__row--no-icon'}`}>
-              {emojiIcon && (
-                <NoteIcon
-                  icon={emojiIcon}
-                  editable={!isTrashed}
-                  onSetIcon={handleSetIcon}
-                  onRemoveIcon={handleRemoveIcon}
-                />
-              )}
-              <TitleField
-                title={activeTab.entry.title}
-                filename={activeTab.entry.filename}
-                editable={!isTrashed}
-                notePath={activeTab.entry.path}
-                vaultPath={vaultPath}
-                onTitleChange={(newTitle) => onTitleChange?.(activeTab.entry.path, newTitle)}
-              />
+              <div className="title-section__separator" />
             </div>
-            <div className="title-section__separator" />
+            <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} editable={!isTrashed} />
           </div>
-          <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} editable={!isTrashed} />
         </div>
       )}
       {isLoadingNewTab && showEditor && <EditorLoadingSkeleton />}
