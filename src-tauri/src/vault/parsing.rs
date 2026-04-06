@@ -21,15 +21,40 @@ pub(super) fn slug_to_title(stem: &str) -> String {
         .join(" ")
 }
 
+/// Extract the H1 title from the first non-empty line of the body (after frontmatter).
+/// Returns `None` if no H1 is found on the first non-empty line.
+pub(super) fn extract_h1_title(content: &str) -> Option<String> {
+    let body = strip_frontmatter(content);
+    for line in body.lines() {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        if let Some(title) = trimmed.strip_prefix("# ") {
+            let title = strip_markdown_chars(title).trim().to_string();
+            if !title.is_empty() {
+                return Some(title);
+            }
+        }
+        break; // first non-empty line is not H1
+    }
+    None
+}
+
 /// Extract the display title for a note.
-/// Priority: frontmatter `title:` → filename-derived title.
-/// H1 headings are treated as body content, not title source.
-pub(super) fn extract_title(fm_title: Option<&str>, _content: &str, filename: &str) -> String {
+/// Priority: H1 on first non-empty line → frontmatter `title:` → filename-derived title.
+pub(super) fn extract_title(fm_title: Option<&str>, content: &str, filename: &str) -> String {
+    // 1. H1 on first non-empty line of body
+    if let Some(h1) = extract_h1_title(content) {
+        return h1;
+    }
+    // 2. frontmatter title (legacy, backward compat)
     if let Some(title) = fm_title {
         if !title.is_empty() {
             return title.to_string();
         }
     }
+    // 3. filename slug
     let stem = filename.strip_suffix(".md").unwrap_or(filename);
     slug_to_title(stem)
 }

@@ -63,8 +63,6 @@ const mockEntry: VaultEntry = {
   belongsTo: [],
   relatedTo: [],
   status: 'Active',
-  owner: 'Luca',
-  cadence: null,
   archived: false,
   modifiedAt: 1700000000,
   createdAt: null,
@@ -74,9 +72,18 @@ const mockEntry: VaultEntry = {
   relationships: {},
   icon: null,
   color: null,
-    order: null,
+  order: null,
   template: null, sort: null,
   outgoingLinks: [],
+  sidebarLabel: null,
+  view: null,
+  visible: null,
+  properties: {},
+  organized: false,
+  favorite: false,
+  favoriteIndex: null,
+  listPropertiesDisplay: [],
+  hasH1: false,
 }
 
 const mockContent = `---

@@ -20,13 +20,18 @@ export function buildNewEntry({ path, slug, title, type, status }: NewEntryParam
     aliases: [], belongsTo: [], relatedTo: [],
     status, archived: false,
     modifiedAt: now, createdAt: now, fileSize: 0,
-    snippet: '', wordCount: 0, relationships: {}, icon: null, color: null, order: null, outgoingLinks: [], sidebarLabel: null, template: null, sort: null, view: null, visible: null, properties: {}, organized: false, favorite: false, favoriteIndex: null, listPropertiesDisplay: [],
+    snippet: '', wordCount: 0, relationships: {}, icon: null, color: null, order: null, outgoingLinks: [], sidebarLabel: null, template: null, sort: null, view: null, visible: null, properties: {}, organized: false, favorite: false, favoriteIndex: null, listPropertiesDisplay: [], hasH1: false,
   }
 }
 
 export function slugify(text: string): string {
   const result = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
   return result || 'untitled'
+}
+
+/** Convert a filename slug to a human-readable title (hyphens → spaces, title case). */
+function slug_to_title(slug: string): string {
+  return slug.split('-').filter(Boolean).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
 }
 
 /** Generate a unique "Untitled <type>" name by checking existing entries and pending names. */
@@ -63,8 +68,10 @@ export function resolveTemplate(entries: VaultEntry[], typeName: string): string
   return typeEntry?.template ?? DEFAULT_TEMPLATES[typeName] ?? null
 }
 
-export function buildNoteContent(title: string, type: string, status: string | null, template?: string | null): string {
-  const lines = ['---', `title: ${title}`, `type: ${type}`]
+export function buildNoteContent(title: string | null, type: string, status: string | null, template?: string | null): string {
+  const lines = ['---']
+  if (title) lines.push(`title: ${title}`)
+  lines.push(`type: ${type}`)
   if (status) lines.push(`status: ${status}`)
   lines.push('---')
   const body = template ? `\n${template}` : ''
@@ -168,19 +175,27 @@ interface ImmediateCreateDeps {
   markContentPending?: (path: string, content: string) => void
 }
 
+/** Generate a unique untitled filename using a timestamp. */
+function generateUntitledFilename(type: string): string {
+  const ts = Math.floor(Date.now() / 1000)
+  const prefix = type === 'Note' ? 'untitled-note' : `untitled-${type.toLowerCase()}`
+  return `${prefix}-${ts}`
+}
+
 /** Create an untitled note without persisting to disk (deferred save). */
 function createNoteImmediate(deps: ImmediateCreateDeps, type?: string): void {
   const noteType = type || 'Note'
-  const title = generateUntitledName(deps.entries, noteType, deps.pendingNames)
-  deps.pendingNames.add(title)
+  const slug = generateUntitledFilename(noteType)
+  const title = slug_to_title(slug)
   const template = resolveTemplate(deps.entries, noteType)
-  const resolved = resolveNewNote(title, noteType, deps.vaultPath, template)
-  deps.openTabWithContent(resolved.entry, resolved.content)
-  addEntryWithMock(resolved.entry, resolved.content, deps.addEntry)
-  deps.trackUnsaved?.(resolved.entry.path)
-  deps.markContentPending?.(resolved.entry.path, resolved.content)
-  signalFocusEditor({ selectTitle: true })
-  setTimeout(() => deps.pendingNames.delete(title), 500)
+  const status = NO_STATUS_TYPES.has(noteType) ? null : 'Active'
+  const entry = buildNewEntry({ path: `${deps.vaultPath}/${slug}.md`, slug, title, type: noteType, status })
+  const content = buildNoteContent(null, noteType, status, template)
+  deps.openTabWithContent(entry, content)
+  addEntryWithMock(entry, content, deps.addEntry)
+  deps.trackUnsaved?.(entry.path)
+  deps.markContentPending?.(entry.path, content)
+  signalFocusEditor()
 }
 
 interface RelationshipCreateDeps {

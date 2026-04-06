@@ -78,6 +78,10 @@ pub struct VaultEntry {
     /// Configured via `_list_properties_display` in the type file's frontmatter.
     #[serde(rename = "listPropertiesDisplay", default)]
     pub list_properties_display: Vec<String>,
+    /// Whether the note body has an H1 heading on the first non-empty line.
+    /// Used by the frontend to decide whether to show the TitleField.
+    #[serde(rename = "hasH1")]
+    pub has_h1: bool,
     /// File kind: "markdown", "text", or "binary".
     /// Determines how the frontend renders and opens the file.
     #[serde(rename = "fileKind", default = "default_file_kind")]

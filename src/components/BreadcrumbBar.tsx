@@ -179,14 +179,12 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
 
 function BreadcrumbTitle({ entry }: { entry: VaultEntry }) {
   const typeLabel = entry.isA ?? 'Note'
-  const icon = entry.icon
-  const emojiIcon = icon && /^\p{Emoji}/u.test(icon) ? icon : null
+  const filenameStem = entry.filename.replace(/\.md$/, '')
   return (
     <div className="flex items-center gap-1.5 min-w-0 text-sm text-muted-foreground">
       <span className="shrink-0">{typeLabel}</span>
       <span className="shrink-0 text-border">›</span>
-      {emojiIcon && <span className="shrink-0">{emojiIcon}</span>}
-      <span className="truncate font-medium text-foreground">{entry.title}</span>
+      <span className="truncate font-medium text-foreground">{filenameStem}</span>
     </div>
   )
 }

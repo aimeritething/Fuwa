@@ -166,6 +166,7 @@ export function EditorContent({
   const { cssVars } = useEditorTheme()
   const freshEntry = activeTab ? entries.find(e => e.path === activeTab.entry.path) : undefined
   const isArchived = freshEntry?.archived ?? activeTab?.entry.archived ?? false
+  const hasH1 = freshEntry?.hasH1 ?? activeTab?.entry.hasH1 ?? false
   // Non-markdown text files always use the raw editor (no BlockNote)
   const isNonMarkdownText = activeTab?.entry.fileKind === 'text'
   const effectiveRawMode = rawMode || isNonMarkdownText
@@ -232,26 +233,30 @@ export function EditorContent({
       {showEditor && (
         <div className="editor-scroll-area" style={cssVars as React.CSSProperties}>
           <div className="editor-content-wrapper">
-            <div ref={titleSectionRef} className="title-section">
-              {!emojiIcon && (
-                <div className="title-section__add-icon">
-                  <NoteIcon icon={null} editable onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
-                </div>
+            <div ref={titleSectionRef} className="title-section" data-has-h1={hasH1 || undefined}>
+              {!hasH1 && (
+                <>
+                  {!emojiIcon && (
+                    <div className="title-section__add-icon">
+                      <NoteIcon icon={null} editable onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
+                    </div>
+                  )}
+                  <div className={`title-section__row${emojiIcon ? '' : ' title-section__row--no-icon'}`}>
+                    {emojiIcon && (
+                      <NoteIcon icon={emojiIcon} editable onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
+                    )}
+                    <TitleField
+                      title={activeTab.entry.title}
+                      filename={activeTab.entry.filename}
+                      editable
+                      notePath={path}
+                      vaultPath={vaultPath}
+                      onTitleChange={(newTitle) => onTitleChange?.(path, newTitle)}
+                    />
+                  </div>
+                  <div className="title-section__separator" />
+                </>
               )}
-              <div className={`title-section__row${emojiIcon ? '' : ' title-section__row--no-icon'}`}>
-                {emojiIcon && (
-                  <NoteIcon icon={emojiIcon} editable onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
-                )}
-                <TitleField
-                  title={activeTab.entry.title}
-                  filename={activeTab.entry.filename}
-                  editable
-                  notePath={path}
-                  vaultPath={vaultPath}
-                  onTitleChange={(newTitle) => onTitleChange?.(path, newTitle)}
-                />
-              </div>
-              <div className="title-section__separator" />
             </div>
             <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} editable />
           </div>

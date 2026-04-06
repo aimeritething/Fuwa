@@ -12,8 +12,6 @@ const baseEntry: VaultEntry = {
   belongsTo: [],
   relatedTo: [],
   status: null,
-  owner: null,
-  cadence: null,
   archived: false,
   modifiedAt: 1700000000,
   createdAt: null,
@@ -24,6 +22,18 @@ const baseEntry: VaultEntry = {
   icon: null,
   color: null,
   order: null,
+  outgoingLinks: [],
+  template: null,
+  sort: null,
+  sidebarLabel: null,
+  view: null,
+  visible: null,
+  properties: {},
+  organized: false,
+  favorite: false,
+  favoriteIndex: null,
+  listPropertiesDisplay: [],
+  hasH1: false,
 }
 
 const archivedEntry: VaultEntry = {
@@ -94,13 +104,14 @@ describe('BreadcrumbBar — title in breadcrumb (always rendered, CSS-toggled)',
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
     expect(screen.getByText('Note')).toBeInTheDocument()
     expect(screen.getByText('›')).toBeInTheDocument()
-    expect(screen.getByText('Test Note')).toBeInTheDocument()
+    expect(screen.getByText('test')).toBeInTheDocument()
   })
 
-  it('shows emoji icon when entry has an emoji icon', () => {
+  it('does not render emoji icon in breadcrumb (icon removed from breadcrumb title)', () => {
     const entryWithEmoji = { ...baseEntry, icon: '🚀' }
     render(<BreadcrumbBar entry={entryWithEmoji} {...defaultProps} />)
-    expect(screen.getByText('🚀')).toBeInTheDocument()
+    // BreadcrumbTitle now only shows type label and filename stem — no icon
+    expect(screen.queryByText('🚀')).not.toBeInTheDocument()
   })
 
   it('does not show icon when entry has a non-emoji icon', () => {

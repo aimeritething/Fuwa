@@ -36,7 +36,8 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   modifiedAt: 1700000000, createdAt: 1700000000, fileSize: 100, snippet: '',
   wordCount: 0, relationships: {}, icon: null, color: null, order: null,
   outgoingLinks: [], template: null, sort: null, sidebarLabel: null,
-  view: null, visible: null, properties: {},
+  view: null, visible: null, properties: {}, organized: false, favorite: false,
+  favoriteIndex: null, listPropertiesDisplay: [], hasH1: false,
   ...overrides,
 })
 
@@ -114,8 +115,12 @@ describe('entryMatchesTarget', () => {
 })
 
 describe('buildNoteContent', () => {
-  it('generates frontmatter with status', () => {
+  it('generates frontmatter with title and status', () => {
     expect(buildNoteContent('My Note', 'Note', 'Active')).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n')
+  })
+
+  it('omits title when null', () => {
+    expect(buildNoteContent(null, 'Note', 'Active')).toBe('---\ntype: Note\nstatus: Active\n---\n')
   })
 
   it('omits status when null', () => {
@@ -233,22 +238,32 @@ describe('useNoteCreation hook', () => {
     expect(createdEntry.isA).toBe('Note')
   })
 
-  it('handleCreateNoteImmediate generates untitled name', () => {
+  it('handleCreateNoteImmediate generates timestamp-based title', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
     const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
     act(() => { result.current.handleCreateNoteImmediate() })
     expect(addEntry).toHaveBeenCalledTimes(1)
-    expect(addEntry.mock.calls[0][0].title).toBe('Untitled note')
+    expect(addEntry.mock.calls[0][0].title).toBe('Untitled Note 1700000000')
+    expect(addEntry.mock.calls[0][0].filename).toBe('untitled-note-1700000000.md')
+    vi.restoreAllMocks()
   })
 
-  it('handleCreateNoteImmediate generates unique names on rapid calls', () => {
+  it('handleCreateNoteImmediate generates unique names on rapid calls via timestamp', () => {
+    let ts = 1700000000000
+    vi.spyOn(Date, 'now').mockImplementation(() => { ts += 1000; return ts })
     const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
     act(() => {
       result.current.handleCreateNoteImmediate()
       result.current.handleCreateNoteImmediate()
       result.current.handleCreateNoteImmediate()
     })
-    const titles = addEntry.mock.calls.map(([e]: [VaultEntry]) => e.title)
-    expect(titles).toEqual(['Untitled note', 'Untitled note 2', 'Untitled note 3'])
+    const filenames = addEntry.mock.calls.map(([e]: [VaultEntry]) => e.filename)
+    // Each call consumes Date.now() multiple times (filename + buildNewEntry), so just verify uniqueness
+    expect(new Set(filenames).size).toBe(3)
+    for (const fn of filenames) {
+      expect(fn).toMatch(/^untitled-note-\d+\.md$/)
+    }
+    vi.restoreAllMocks()
   })
 
   it('handleCreateNoteImmediate accepts custom type', () => {
@@ -265,7 +280,7 @@ describe('useNoteCreation hook', () => {
     config.markContentPending = markContentPending
     const { result } = renderHook(() => useNoteCreation(config, tabDeps))
     await act(async () => { result.current.handleCreateNoteImmediate() })
-    expect(trackUnsaved).toHaveBeenCalledWith(expect.stringContaining('untitled-note.md'))
+    expect(trackUnsaved).toHaveBeenCalledWith(expect.stringMatching(/untitled-note-\d+\.md$/))
     expect(markContentPending).toHaveBeenCalled()
   })
 

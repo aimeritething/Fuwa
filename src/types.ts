@@ -45,6 +45,8 @@ export interface VaultEntry {
   outgoingLinks: string[]
   /** Custom scalar frontmatter properties (non-relationship, non-structural). */
   properties: Record<string, string | number | boolean | null>
+  /** Whether the note body has an H1 heading on the first non-empty line. */
+  hasH1: boolean
   /** File kind: "markdown", "text", or "binary". Determines editor behavior.
    *  Defaults to "markdown" when absent (for backwards compatibility). */
   fileKind?: 'markdown' | 'text' | 'binary'

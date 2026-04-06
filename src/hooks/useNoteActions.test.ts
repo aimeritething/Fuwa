@@ -57,7 +57,10 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   color: null,
   order: null,
   outgoingLinks: [],
-  template: null, sort: null,
+  template: null, sort: null, sidebarLabel: null,
+  view: null, visible: null, properties: {}, organized: false,
+  favorite: false, favoriteIndex: null, listPropertiesDisplay: [],
+  hasH1: false,
   ...overrides,
 })
 
@@ -212,9 +215,14 @@ describe('entryMatchesTarget', () => {
 })
 
 describe('buildNoteContent', () => {
-  it('generates frontmatter with status for regular types', () => {
+  it('generates frontmatter with title and status for regular types', () => {
     const content = buildNoteContent('My Note', 'Note', 'Active')
     expect(content).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n')
+  })
+
+  it('omits title when null', () => {
+    const content = buildNoteContent(null, 'Note', 'Active')
+    expect(content).toBe('---\ntype: Note\nstatus: Active\n---\n')
   })
 
   it('omits status when null', () => {
@@ -701,7 +709,8 @@ describe('useNoteActions hook', () => {
     expect(setToastMessage).toHaveBeenCalledWith('Property deleted')
   })
 
-  it('handleCreateNoteImmediate creates note with auto-generated title', () => {
+  it('handleCreateNoteImmediate creates note with timestamp-based title', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
     const { result } = renderHook(() => useNoteActions(makeConfig()))
 
     act(() => {
@@ -710,11 +719,15 @@ describe('useNoteActions hook', () => {
 
     expect(addEntry).toHaveBeenCalledTimes(1)
     const [createdEntry] = addEntry.mock.calls[0]
-    expect(createdEntry.title).toBe('Untitled note')
+    expect(createdEntry.title).toBe('Untitled Note 1700000000')
+    expect(createdEntry.filename).toBe('untitled-note-1700000000.md')
     expect(createdEntry.isA).toBe('Note')
+    vi.restoreAllMocks()
   })
 
-  it('handleCreateNoteImmediate generates unique names on rapid calls', () => {
+  it('handleCreateNoteImmediate generates unique names on rapid calls via timestamp', () => {
+    let ts = 1700000000000
+    vi.spyOn(Date, 'now').mockImplementation(() => { ts += 1000; return ts })
     const { result } = renderHook(() => useNoteActions(makeConfig()))
 
     act(() => {
@@ -724,13 +737,17 @@ describe('useNoteActions hook', () => {
     })
 
     expect(addEntry).toHaveBeenCalledTimes(3)
-    const titles = addEntry.mock.calls.map(([e]: [VaultEntry]) => e.title)
-    expect(titles[0]).toBe('Untitled note')
-    expect(titles[1]).toBe('Untitled note 2')
-    expect(titles[2]).toBe('Untitled note 3')
+    const filenames = addEntry.mock.calls.map(([e]: [VaultEntry]) => e.filename)
+    // Each call consumes Date.now() multiple times, so just verify uniqueness and pattern
+    expect(new Set(filenames).size).toBe(3)
+    for (const fn of filenames) {
+      expect(fn).toMatch(/^untitled-note-\d+\.md$/)
+    }
+    vi.restoreAllMocks()
   })
 
   it('handleCreateNoteImmediate accepts custom type', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
     const { result } = renderHook(() => useNoteActions(makeConfig()))
 
     act(() => {
@@ -739,8 +756,9 @@ describe('useNoteActions hook', () => {
 
     expect(addEntry).toHaveBeenCalledTimes(1)
     const [createdEntry] = addEntry.mock.calls[0]
-    expect(createdEntry.title).toBe('Untitled project')
+    expect(createdEntry.filename).toMatch(/^untitled-project-\d+\.md$/)
     expect(createdEntry.isA).toBe('Project')
+    vi.restoreAllMocks()
   })
 
   it('handleCreateNote uses default template for Project type', () => {
@@ -918,8 +936,8 @@ describe('useNoteActions hook', () => {
         await new Promise((r) => setTimeout(r, 0))
       })
 
-      expect(trackUnsaved).toHaveBeenCalledWith(expect.stringContaining('untitled-note.md'))
-      expect(markContentPending).toHaveBeenCalledWith(expect.stringContaining('untitled-note.md'), expect.stringContaining('Untitled note'))
+      expect(trackUnsaved).toHaveBeenCalledWith(expect.stringMatching(/untitled-note-\d+\.md$/))
+      expect(markContentPending).toHaveBeenCalledWith(expect.stringMatching(/untitled-note-\d+\.md$/), expect.stringContaining('type: Note'))
     })
 
     it('calls onNewNotePersisted after successful disk write (non-Tauri)', async () => {

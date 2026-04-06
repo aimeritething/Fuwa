@@ -361,12 +361,13 @@
   margin-top: 2px;
 }
 
-/* Hide the first H1 heading in BlockNote — title is shown in TitleField above */
-.editor__blocknote-container [data-node-type="blockContainer"]:first-child [data-content-type="heading"][data-level="1"] {
+/* When TitleField is shown (no H1 in body), hide the first H1 heading in
+   BlockNote to avoid duplicate title display. When hasH1 is set, the
+   TitleField is hidden and the H1 in the editor serves as the title. */
+.title-section:not([data-has-h1]) ~ .editor__blocknote-container [data-node-type="blockContainer"]:first-child [data-content-type="heading"][data-level="1"] {
   display: none;
 }
-/* Also hide the BlockContainer wrapper if its heading is hidden */
-.editor__blocknote-container [data-node-type="blockContainer"]:first-child:has([data-content-type="heading"][data-level="1"]) {
+.title-section:not([data-has-h1]) ~ .editor__blocknote-container [data-node-type="blockContainer"]:first-child:has([data-content-type="heading"][data-level="1"]) {
   display: none;
 }
 

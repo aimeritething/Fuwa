@@ -57,6 +57,7 @@ pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<Vault
     let (frontmatter, mut relationships, properties) = extract_fm_and_rels(parsed.data, &content);
 
     let title = extract_title(frontmatter.title.as_deref(), &content, &filename);
+    let has_h1 = parsing::extract_h1_title(&content).is_some();
     let snippet = extract_snippet(&content);
     let word_count = count_body_words(&content);
     let outgoing_links = extract_outgoing_links(&parsed.content);
@@ -116,6 +117,7 @@ pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<Vault
         word_count,
         outgoing_links,
         properties,
+        has_h1,
         file_kind: "markdown".to_string(),
     })
 }
