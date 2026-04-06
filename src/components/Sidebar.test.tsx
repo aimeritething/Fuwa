@@ -987,4 +987,67 @@ describe('Sidebar', () => {
       expect(onCreateNewType).toHaveBeenCalledOnce()
     })
   })
+
+  describe('view note count chips', () => {
+    const mockViews = [
+      {
+        filename: 'active-projects.yml',
+        definition: {
+          name: 'Active Projects',
+          icon: '🚀',
+          color: null,
+          sort: null,
+          filters: { all: [{ field: 'type', op: 'equals' as const, value: 'Project' }] },
+        },
+      },
+      {
+        filename: 'all-topics.yml',
+        definition: {
+          name: 'All Topics',
+          icon: null,
+          color: null,
+          sort: null,
+          filters: { all: [{ field: 'type', op: 'equals' as const, value: 'Topic' }] },
+        },
+      },
+    ]
+
+    it('shows note count chip for each view matching the filter results', () => {
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} views={mockViews} />
+      )
+      // 'Active Projects' filters for type=Project -> mockEntries has 1 Project (build-app.md)
+      const projectLabel = screen.getByText('Active Projects')
+      const projectNavItem = projectLabel.closest('[class*="cursor-pointer"]')!
+      // The count chip is a sibling span inside the NavItem
+      const projectCount = projectNavItem.querySelector('span:last-child')
+      expect(projectCount?.textContent).toBe('1')
+
+      // 'All Topics' filters for type=Topic -> mockEntries has 2 Topics
+      const topicLabel = screen.getByText('All Topics')
+      const topicNavItem = topicLabel.closest('[class*="cursor-pointer"]')!
+      const topicCount = topicNavItem.querySelector('span:last-child')
+      expect(topicCount?.textContent).toBe('2')
+    })
+
+    it('does not show count chip for views with 0 matching notes', () => {
+      const emptyView = [{
+        filename: 'empty.yml',
+        definition: {
+          name: 'Empty View',
+          icon: null,
+          color: null,
+          sort: null,
+          filters: { all: [{ field: 'type', op: 'equals' as const, value: 'Nonexistent' }] },
+        },
+      }]
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} views={emptyView} />
+      )
+      expect(screen.getByText('Empty View')).toBeInTheDocument()
+      // No count chip rendered for 0 results (NavItem hides count <= 0)
+      const viewContainer = screen.getByText('Empty View').closest('div')
+      expect(viewContainer?.querySelector('span:last-child')?.textContent).not.toBe('0')
+    })
+  })
 })

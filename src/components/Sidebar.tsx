@@ -15,6 +15,7 @@ import {
   FileText, Trash, Archive, CaretLeft, Tray, CaretRight, CaretDown, Plus, Funnel, PencilSimple,
 } from '@phosphor-icons/react'
 import { isEmoji } from '../utils/emoji'
+import { evaluateView } from '../utils/viewFilters'
 import { arrayMove } from '@dnd-kit/sortable'
 import { SlidersHorizontal } from 'lucide-react'
 import {
@@ -169,19 +170,22 @@ function SidebarGroupHeader({ label, collapsed, onToggle, count, children }: {
   )
 }
 
-function ViewItem({ view, isActive, onSelect, onEditView, onDeleteView }: {
+function ViewItem({ view, isActive, onSelect, onEditView, onDeleteView, entries }: {
   view: ViewFile
   isActive: boolean
   onSelect: () => void
   onEditView?: (filename: string) => void
   onDeleteView?: (filename: string) => void
+  entries: VaultEntry[]
 }) {
+  const count = useMemo(() => evaluateView(view.definition, entries).length, [view.definition, entries])
   return (
     <div className="group relative">
       <NavItem
         icon={Funnel}
         emoji={view.definition.icon}
         label={view.definition.name}
+        count={count}
         isActive={isActive}
         onClick={onSelect}
       />
@@ -209,7 +213,7 @@ function ViewItem({ view, isActive, onSelect, onEditView, onDeleteView }: {
   )
 }
 
-function ViewsSection({ views, selection, onSelect, collapsed, onToggle, onCreateView, onEditView, onDeleteView }: {
+function ViewsSection({ views, selection, onSelect, collapsed, onToggle, onCreateView, onEditView, onDeleteView, entries }: {
   views: ViewFile[]
   selection: SidebarSelection
   onSelect: (sel: SidebarSelection) => void
@@ -218,6 +222,7 @@ function ViewsSection({ views, selection, onSelect, collapsed, onToggle, onCreat
   onCreateView?: () => void
   onEditView?: (filename: string) => void
   onDeleteView?: (filename: string) => void
+  entries: VaultEntry[]
 }) {
   return (
     <div className="border-b border-border" style={{ padding: '0 6px' }}>
@@ -240,6 +245,7 @@ function ViewsSection({ views, selection, onSelect, collapsed, onToggle, onCreat
               onSelect={() => onSelect({ kind: 'view', filename: v.filename })}
               onEditView={onEditView}
               onDeleteView={onDeleteView}
+              entries={entries}
             />
           ))}
         </div>
@@ -581,7 +587,7 @@ export const Sidebar = memo(function Sidebar({
 
         {/* Views */}
         {hasViews && (
-          <ViewsSection views={views} selection={selection} onSelect={onSelect} collapsed={groupCollapsed.views} onToggle={() => toggleGroup('views')} onCreateView={onCreateView} onEditView={onEditView} onDeleteView={onDeleteView} />
+          <ViewsSection views={views} selection={selection} onSelect={onSelect} collapsed={groupCollapsed.views} onToggle={() => toggleGroup('views')} onCreateView={onCreateView} onEditView={onEditView} onDeleteView={onDeleteView} entries={entries} />
         )}
 
         {/* Types */}
