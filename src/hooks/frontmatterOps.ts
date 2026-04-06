@@ -37,9 +37,14 @@ function extractWikilinks(value: FrontmatterValue): string[] {
  */
 export type RelationshipPatch = Record<string, string[] | null>
 
+/** Properties patch: a partial update to merge into `entry.properties`.
+ *  Keys map to their new scalar values. A `null` value means "remove this key". */
+export type PropertiesPatch = Record<string, string | number | boolean | null>
+
 export interface EntryPatchResult {
   patch: Partial<VaultEntry>
   relationshipPatch: RelationshipPatch | null
+  propertiesPatch: PropertiesPatch | null
 }
 
 /** Map a frontmatter key+value to the corresponding VaultEntry field(s). */
@@ -49,7 +54,8 @@ export function frontmatterToEntryPatch(
   const k = key.toLowerCase().replace(/\s+/g, '_')
   if (op === 'delete') {
     const relPatch: RelationshipPatch = { [key]: null }
-    return { patch: ENTRY_DELETE_MAP[k] ?? {}, relationshipPatch: relPatch }
+    const propPatch: PropertiesPatch | null = !(k in ENTRY_DELETE_MAP) ? { [key]: null } : null
+    return { patch: ENTRY_DELETE_MAP[k] ?? {}, relationshipPatch: relPatch, propertiesPatch: propPatch }
   }
   const str = value != null ? String(value) : null
   const arr = Array.isArray(value) ? value.map(String) : []
@@ -73,17 +79,24 @@ export function frontmatterToEntryPatch(
   const wikilinks = value != null ? extractWikilinks(value) : []
   const relationshipPatch: RelationshipPatch | null =
     wikilinks.length > 0 ? { [key]: wikilinks } : null
-  return { patch: updates[k] ?? {}, relationshipPatch }
+  // For unknown keys (custom properties), produce a propertiesPatch
+  const isKnownKey = k in updates
+  const propertiesPatch: PropertiesPatch | null =
+    !isKnownKey && value != null ? { [key]: typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? value : String(value) } : null
+  return { patch: updates[k] ?? {}, relationshipPatch, propertiesPatch }
 }
 
 /** Parse frontmatter from full content and return a merged VaultEntry patch for all known fields. */
 export function contentToEntryPatch(content: string): Partial<VaultEntry> {
   const fm = parseFrontmatter(content)
   const merged: Partial<VaultEntry> = {}
+  const customProps: Record<string, string | number | boolean | null> = {}
   for (const [key, value] of Object.entries(fm)) {
-    const { patch } = frontmatterToEntryPatch('update', key, value)
+    const { patch, propertiesPatch } = frontmatterToEntryPatch('update', key, value)
     Object.assign(merged, patch)
+    if (propertiesPatch) Object.assign(customProps, propertiesPatch)
   }
+  if (Object.keys(customProps).length > 0) merged.properties = customProps
   return merged
 }
 
@@ -117,6 +130,18 @@ export interface FrontmatterOpOptions {
   silent?: boolean
 }
 
+/** Apply a properties patch by merging into the existing properties map. */
+export function applyPropertiesPatch(
+  existing: Record<string, string | number | boolean | null>, propPatch: PropertiesPatch,
+): Record<string, string | number | boolean | null> {
+  const merged = { ...existing }
+  for (const [k, v] of Object.entries(propPatch)) {
+    if (v === null) delete merged[k]
+    else merged[k] = v
+  }
+  return merged
+}
+
 /** Apply a relationship patch by merging into the existing relationships map. */
 export function applyRelationshipPatch(
   existing: Record<string, string[]>, relPatch: RelationshipPatch,
@@ -144,12 +169,17 @@ export async function runFrontmatterAndApply(
   try {
     const newContent = await executeFrontmatterOp(op, path, key, value)
     callbacks.updateTab(path, newContent)
-    const { patch, relationshipPatch } = frontmatterToEntryPatch(op, key, value)
+    const { patch, relationshipPatch, propertiesPatch } = frontmatterToEntryPatch(op, key, value)
     const fullPatch = { ...patch }
-    if (relationshipPatch && callbacks.getEntry) {
+    if ((relationshipPatch || propertiesPatch) && callbacks.getEntry) {
       const current = callbacks.getEntry(path)
       if (current) {
-        fullPatch.relationships = applyRelationshipPatch(current.relationships, relationshipPatch)
+        if (relationshipPatch) {
+          fullPatch.relationships = applyRelationshipPatch(current.relationships, relationshipPatch)
+        }
+        if (propertiesPatch) {
+          fullPatch.properties = applyPropertiesPatch(current.properties, propertiesPatch)
+        }
       }
     }
     if (Object.keys(fullPatch).length > 0) callbacks.updateEntry(path, fullPatch)

@@ -373,9 +373,10 @@ describe('frontmatterToEntryPatch', () => {
     expect(result.relationshipPatch).toEqual({ 'Belongs to': ['[[x]]'] })
   })
 
-  it('returns empty patch for unknown non-wikilink keys', () => {
+  it('returns propertiesPatch for unknown non-wikilink keys', () => {
     const result = frontmatterToEntryPatch('update', 'custom_field', 'value')
     expect(result.patch).toEqual({})
+    expect(result.propertiesPatch).toEqual({ custom_field: 'value' })
     // Non-wikilink value → no relationship change
     expect(result.relationshipPatch).toBeNull()
   })
@@ -417,10 +418,11 @@ describe('frontmatterToEntryPatch', () => {
     expect(result.patch).toEqual({ listPropertiesDisplay: [] })
   })
 
-  it('returns empty patch for unknown key on delete, with relationship removal', () => {
+  it('returns empty patch for unknown key on delete, with relationship and properties removal', () => {
     const result = frontmatterToEntryPatch('delete', 'unknown_key')
     expect(result.patch).toEqual({})
     expect(result.relationshipPatch).toEqual({ unknown_key: null })
+    expect(result.propertiesPatch).toEqual({ unknown_key: null })
   })
 
   it('delete of known key also produces relationship removal', () => {
@@ -490,9 +492,9 @@ describe('contentToEntryPatch', () => {
     expect(contentToEntryPatch(content)).toEqual({ isA: 'Type', sidebarLabel: 'Projects' })
   })
 
-  it('ignores unknown frontmatter keys', () => {
+  it('includes custom frontmatter keys in properties patch', () => {
     const content = '---\ntype: Note\ncustom: value\n---\n'
-    expect(contentToEntryPatch(content)).toEqual({ isA: 'Note' })
+    expect(contentToEntryPatch(content)).toEqual({ isA: 'Note', properties: { custom: 'value' } })
   })
 
   it('preserves _favorite_index as a number (not null)', () => {
