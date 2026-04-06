@@ -10,6 +10,8 @@
 
 Run `/laputa-next-task` — fetches next task (To Rework first, then Open), moves to In Progress, returns full description.
 
+**Before writing a single line of code:** run `mcp__codescene__code_health_score` to check the current codebase health against `.codescene-thresholds`. If the score is already below the threshold, **stop and refactor first** — find the worst files with the MCP, improve them, commit, then start the task. Never start feature work on a codebase that is already below the gate.
+
 - Read task description and all comments fully
 - For To Rework: the ❌ QA failed comment tells you exactly what to fix
 - Check `docs/adr/` for relevant architecture decisions before structural choices
