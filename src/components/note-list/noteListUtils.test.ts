@@ -6,7 +6,7 @@ function makeEntry(path = '/test.md'): VaultEntry {
   return {
     path, filename: 'test.md', title: 'Test', isA: null,
     aliases: [], belongsTo: [], relatedTo: [], status: null,
-    archived: false, trashed: false, trashedAt: null,
+    archived: false,
     modifiedAt: null, createdAt: null, fileSize: 0,
     snippet: '', wordCount: 0, relationships: {},
     icon: null, color: null, order: null, sidebarLabel: null,

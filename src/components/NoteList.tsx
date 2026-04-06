@@ -35,20 +35,14 @@ function useViewFlags(selection: SidebarSelection) {
 function useBulkActions(
   multiSelect: ReturnType<typeof useMultiSelect>,
   onBulkArchive: NoteListProps['onBulkArchive'],
-  onBulkTrash: NoteListProps['onBulkTrash'],
-  onBulkRestore: NoteListProps['onBulkRestore'],
   onBulkDeletePermanently: NoteListProps['onBulkDeletePermanently'],
-  isTrashView: boolean,
   isArchivedView: boolean,
 ) {
   const handleBulkArchive = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkArchive?.(paths) }, [multiSelect, onBulkArchive])
-  const handleBulkTrash = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkTrash?.(paths) }, [multiSelect, onBulkTrash])
-  const handleBulkRestore = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkRestore?.(paths) }, [multiSelect, onBulkRestore])
   const handleBulkDeletePermanently = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkDeletePermanently?.(paths) }, [multiSelect, onBulkDeletePermanently])
-  const handleBulkUnarchive = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkRestore?.(paths) }, [multiSelect, onBulkRestore])
-  const bulkArchiveOrRestore = isTrashView ? handleBulkRestore : isArchivedView ? handleBulkUnarchive : handleBulkArchive
-  const bulkTrashOrDelete = isTrashView ? handleBulkDeletePermanently : handleBulkTrash
-  return { handleBulkArchive, handleBulkTrash, handleBulkRestore, handleBulkDeletePermanently, handleBulkUnarchive, bulkArchiveOrRestore, bulkTrashOrDelete }
+  const handleBulkUnarchive = useCallback(() => { const paths = [...multiSelect.selectedPaths]; multiSelect.clear(); onBulkArchive?.(paths) }, [multiSelect, onBulkArchive])
+  const bulkArchiveOrUnarchive = isArchivedView ? handleBulkUnarchive : handleBulkArchive
+  return { handleBulkArchive, handleBulkDeletePermanently, handleBulkUnarchive, bulkArchiveOrUnarchive }
 }
 
 function ChangesContextMenu({ isChangesView, onDiscardFile, modifiedFiles }: { isChangesView: boolean; onDiscardFile?: (relativePath: string) => Promise<void>; modifiedFiles?: ModifiedFile[] }) {
@@ -130,10 +124,7 @@ interface NoteListProps {
   onReplaceActiveTab: (entry: VaultEntry) => void
   onCreateNote: (type?: string) => void
   onBulkArchive?: (paths: string[]) => void
-  onBulkTrash?: (paths: string[]) => void
-  onBulkRestore?: (paths: string[]) => void
   onBulkDeletePermanently?: (paths: string[]) => void
-  onEmptyTrash?: () => void
   onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
   onOpenInNewWindow?: (entry: VaultEntry) => void
@@ -143,14 +134,14 @@ interface NoteListProps {
   visibleNotesRef?: React.MutableRefObject<VaultEntry[]>
 }
 
-function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'all', modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry, onOpenInNewWindow, onDiscardFile, onAutoTriggerDiff, views, visibleNotesRef }: NoteListProps) {
+function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'all', modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkDeletePermanently, onUpdateTypeSort, updateEntry, onOpenInNewWindow, onDiscardFile, onAutoTriggerDiff, views, visibleNotesRef }: NoteListProps) {
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
 
   const { isSectionGroup, isFolderView, isInboxView, isAllNotesView, isChangesView, showFilterPills } = useViewFlags(selection)
   const subFilter = showFilterPills ? noteListFilter : undefined
 
   const filterCounts = useMemo(
-    () => isSectionGroup && selection.kind === 'sectionGroup' ? countByFilter(entries, selection.type) : (isAllNotesView || isFolderView) ? countAllByFilter(entries) : { open: 0, archived: 0, trashed: 0 },
+    () => isSectionGroup && selection.kind === 'sectionGroup' ? countByFilter(entries, selection.type) : (isAllNotesView || isFolderView) ? countAllByFilter(entries) : { open: 0, archived: 0 },
     [entries, isSectionGroup, isAllNotesView, isFolderView, selection],
   )
 
@@ -169,7 +160,7 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
     }
     return map
   }, [isChangesView, modifiedFiles])
-  const { isEntityView, isTrashView, isArchivedView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod: isInboxView ? inboxPeriod : undefined, views })
+  const { isEntityView, isArchivedView, searched, searchedGroups } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod: isInboxView ? inboxPeriod : undefined, views })
   // Keep the visible notes ref in sync for keyboard navigation (Cmd+Option+Arrow)
   if (visibleNotesRef) {
     visibleNotesRef.current = isEntityView
@@ -194,8 +185,8 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
     }
   }, [onReplaceActiveTab, onSelectNote, onOpenInNewWindow, multiSelect, isChangesView, onAutoTriggerDiff])
 
-  const { handleBulkArchive, handleBulkTrash, handleBulkRestore, handleBulkDeletePermanently, handleBulkUnarchive, bulkArchiveOrRestore, bulkTrashOrDelete } = useBulkActions(multiSelect, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, isTrashView, isArchivedView)
-  useMultiSelectKeyboard(multiSelect, isEntityView, bulkArchiveOrRestore, bulkTrashOrDelete)
+  const { handleBulkArchive, handleBulkDeletePermanently, handleBulkUnarchive, bulkArchiveOrUnarchive } = useBulkActions(multiSelect, onBulkArchive, onBulkDeletePermanently, isArchivedView)
+  useMultiSelectKeyboard(multiSelect, isEntityView, bulkArchiveOrUnarchive, handleBulkDeletePermanently)
 
   const { handleNoteContextMenu, contextMenuNode, dialogNode } = ChangesContextMenu({ isChangesView, onDiscardFile, modifiedFiles })
 
@@ -222,20 +213,20 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
 
   return (
     <div className="flex flex-col select-none overflow-hidden border-r border-border bg-card text-foreground" style={{ height: '100%' }}>
-      <NoteListHeader title={title} typeDocument={typeDocument} isEntityView={isEntityView} isTrashView={isTrashView} trashCount={searched.length} listSort={listSort} listDirection={listDirection} customProperties={customProperties} sidebarCollapsed={sidebarCollapsed} searchVisible={searchVisible} search={search} isSectionGroup={isSectionGroup} entries={entries} onSortChange={handleSortChange} onCreateNote={handleCreateNote} onOpenType={onReplaceActiveTab} onToggleSearch={toggleSearch} onSearchChange={setSearch} onEmptyTrash={onEmptyTrash} onUpdateTypeProperty={onUpdateTypeSort} />
+      <NoteListHeader title={title} typeDocument={typeDocument} isEntityView={isEntityView} listSort={listSort} listDirection={listDirection} customProperties={customProperties} sidebarCollapsed={sidebarCollapsed} searchVisible={searchVisible} search={search} isSectionGroup={isSectionGroup} entries={entries} onSortChange={handleSortChange} onCreateNote={handleCreateNote} onOpenType={onReplaceActiveTab} onToggleSearch={toggleSearch} onSearchChange={setSearch} onUpdateTypeProperty={onUpdateTypeSort} />
       <div className="relative flex flex-1 flex-col overflow-hidden outline-none" style={{ minHeight: 0 }} tabIndex={0} onKeyDown={noteListKeyboard.handleKeyDown} onFocus={noteListKeyboard.handleFocus} data-testid="note-list-container">
         <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
           {entitySelection ? (
             <EntityView entity={entitySelection.entry} groups={searchedGroups} query={query} collapsedGroups={collapsedGroups} sortPrefs={sortPrefs} onToggleGroup={toggleGroup} onSortChange={handleSortChange} renderItem={renderItem} typeEntryMap={typeEntryMap} onClickNote={handleClickNote} />
           ) : (
-            <ListView isTrashView={isTrashView} isArchivedView={isArchivedView} isChangesView={isChangesView} isInboxView={isInboxView} changesError={modifiedFilesError} expiredTrashCount={expiredTrashCount} deletedCount={deletedCount} searched={searched} query={query} renderItem={renderItem} virtuosoRef={noteListKeyboard.virtuosoRef} />
+            <ListView isArchivedView={isArchivedView} isChangesView={isChangesView} isInboxView={isInboxView} changesError={modifiedFilesError} deletedCount={deletedCount} searched={searched} query={query} renderItem={renderItem} virtuosoRef={noteListKeyboard.virtuosoRef} />
           )}
         </div>
         {isChangesView && deletedCount > 0 && <DeletedNotesBanner count={deletedCount} />}
         {showFilterPills && <FilterPills active={noteListFilter} counts={filterCounts} onChange={onNoteListFilterChange} position="bottom" />}
       </div>
       {multiSelect.isMultiSelecting && (
-        <BulkActionBar count={multiSelect.selectedPaths.size} isTrashView={isTrashView} isArchivedView={isArchivedView} onArchive={handleBulkArchive} onTrash={handleBulkTrash} onRestore={handleBulkRestore} onDeletePermanently={handleBulkDeletePermanently} onUnarchive={handleBulkUnarchive} onClear={multiSelect.clear} />
+        <BulkActionBar count={multiSelect.selectedPaths.size} isArchivedView={isArchivedView} onArchive={handleBulkArchive} onDelete={handleBulkDeletePermanently} onUnarchive={handleBulkUnarchive} onClear={multiSelect.clear} />
       )}
       {contextMenuNode}
       {dialogNode}

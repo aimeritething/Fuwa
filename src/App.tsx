@@ -339,8 +339,6 @@ function App() {
   })
 
   const deleteActions = useDeleteActions({
-    vaultPath: resolvedPath,
-    entries: vault.entries,
     onDeselectNote: (path: string) => { if (notes.activeTabPath === path) notes.closeAllTabs() },
     removeEntry: vault.removeEntry,
     setToastMessage,
@@ -467,7 +465,7 @@ function App() {
     onCreateNoteOfType: notes.handleCreateNoteImmediate,
     onSave: appSave.handleSave,
     onOpenSettings: dialogs.openSettings,
-    onTrashNote: entryActions.handleTrashNote, onRestoreNote: entryActions.handleRestoreNote,
+    onDeleteNote: deleteActions.handleDeleteNote,
     onArchiveNote: entryActions.handleArchiveNote, onUnarchiveNote: entryActions.handleUnarchiveNote,
     onCommitPush: commitFlow.openCommitDialog,
     onPull: autoSync.triggerSync,
@@ -495,8 +493,6 @@ function App() {
     onInstallMcp: installMcp,
     claudeCodeStatus: claudeCodeStatus ?? undefined,
     claudeCodeVersion: claudeCodeVersion ?? undefined,
-    onEmptyTrash: deleteActions.handleEmptyTrash,
-    trashedCount: deleteActions.trashedCount,
     onReloadVault: vault.reloadVault,
     onRepairVault: handleRepairVault,
     onSetNoteIcon: handleSetNoteIconCommand,
@@ -589,7 +585,7 @@ function App() {
               {selection.kind === 'filter' && selection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={vaultBridge.handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onBulkRestore={bulkActions.handleBulkRestore} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onEmptyTrash={deleteActions.handleEmptyTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} views={vault.views} visibleNotesRef={visibleNotesRef} />
+                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} views={vault.views} visibleNotesRef={visibleNotesRef} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />
@@ -624,8 +620,6 @@ function App() {
             noteListFilter={aiNoteListFilter}
             onToggleFavorite={entryActions.handleToggleFavorite}
             onToggleOrganized={entryActions.handleToggleOrganized}
-            onTrashNote={entryActions.handleTrashNote}
-            onRestoreNote={entryActions.handleRestoreNote}
             onDeleteNote={deleteActions.handleDeleteNote}
             onArchiveNote={entryActions.handleArchiveNote}
             onUnarchiveNote={entryActions.handleUnarchiveNote}

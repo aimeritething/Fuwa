@@ -13,8 +13,7 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     onCreateNoteOfType: vi.fn(),
     onSave: vi.fn(),
     onOpenSettings: vi.fn(),
-    onTrashNote: vi.fn(),
-    onRestoreNote: vi.fn(),
+    onDeleteNote: vi.fn(),
     onArchiveNote: vi.fn(),
     onUnarchiveNote: vi.fn(),
     onCommitPush: vi.fn(),
@@ -186,16 +185,9 @@ describe('extractVaultTypes', () => {
     expect(types).toHaveLength(2)
   })
 
-  it('excludes trashed entries', () => {
-    const entries = [
-      { path: '/a', title: 'A', isA: 'Project', trashed: true },
-    ] as never[]
-    expect(extractVaultTypes(entries)).toEqual(['Event', 'Person', 'Project', 'Note'])
-  })
-
   it('includes types from Type definition entries', () => {
     const entries = [
-      { path: '/book.md', title: 'Book', isA: 'Type', trashed: false },
+      { path: '/book.md', title: 'Book', isA: 'Type' },
     ] as never[]
     const types = extractVaultTypes(entries)
     expect(types).toContain('Book')
@@ -203,9 +195,9 @@ describe('extractVaultTypes', () => {
 
   it('includes types from both definitions and instances', () => {
     const entries = [
-      { path: '/book.md', title: 'Book', isA: 'Type', trashed: false },
-      { path: '/hp.md', title: 'Harry Potter', isA: 'Book', trashed: false },
-      { path: '/person.md', title: 'Person', isA: 'Type', trashed: false },
+      { path: '/book.md', title: 'Book', isA: 'Type' },
+      { path: '/hp.md', title: 'Harry Potter', isA: 'Book' },
+      { path: '/person.md', title: 'Person', isA: 'Type' },
     ] as never[]
     const types = extractVaultTypes(entries)
     expect(types).toContain('Book')
@@ -213,12 +205,6 @@ describe('extractVaultTypes', () => {
     expect(types).toHaveLength(2)
   })
 
-  it('excludes trashed Type definition entries', () => {
-    const entries = [
-      { path: '/book.md', title: 'Book', isA: 'Type', trashed: true },
-    ] as never[]
-    expect(extractVaultTypes(entries)).toEqual(['Event', 'Person', 'Project', 'Note'])
-  })
 })
 
 describe('groupSortKey', () => {

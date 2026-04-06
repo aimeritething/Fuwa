@@ -285,32 +285,6 @@ pub(super) fn extract_outgoing_links(content: &str) -> Vec<String> {
     links
 }
 
-/// Parse an ISO 8601 date string to Unix timestamp (seconds since epoch).
-/// Handles "2025-05-23T14:35:00.000Z" and "2025-05-23" formats.
-pub(super) fn parse_iso_date(date_str: &str) -> Option<u64> {
-    use chrono::{NaiveDate, NaiveDateTime};
-
-    let trimmed = date_str.trim().trim_matches('"');
-
-    // Try full datetime with optional fractional seconds and Z suffix
-    if let Ok(dt) = NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%dT%H:%M:%S%.fZ") {
-        return Some(dt.and_utc().timestamp() as u64);
-    }
-    if let Ok(dt) = NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%dT%H:%M:%SZ") {
-        return Some(dt.and_utc().timestamp() as u64);
-    }
-    if let Ok(dt) = NaiveDateTime::parse_from_str(trimmed, "%Y-%m-%dT%H:%M:%S") {
-        return Some(dt.and_utc().timestamp() as u64);
-    }
-
-    // Try date-only
-    if let Ok(d) = NaiveDate::parse_from_str(trimmed, "%Y-%m-%d") {
-        return Some(d.and_hms_opt(0, 0, 0)?.and_utc().timestamp() as u64);
-    }
-
-    None
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -745,50 +719,6 @@ mod tests {
     fn test_contains_wikilink_false_partial_markers() {
         assert!(!contains_wikilink("only [[ opening"));
         assert!(!contains_wikilink("only ]] closing"));
-    }
-
-    // --- parse_iso_date tests ---
-
-    #[test]
-    fn test_parse_iso_date_full_datetime_with_z() {
-        let ts = parse_iso_date("2025-05-23T14:35:00.000Z");
-        assert!(ts.is_some());
-        assert_eq!(ts.unwrap(), 1748010900);
-    }
-
-    #[test]
-    fn test_parse_iso_date_datetime_no_fractional() {
-        let ts = parse_iso_date("2025-05-23T14:35:00Z");
-        assert!(ts.is_some());
-        assert_eq!(ts.unwrap(), 1748010900);
-    }
-
-    #[test]
-    fn test_parse_iso_date_datetime_no_z() {
-        let ts = parse_iso_date("2025-05-23T14:35:00");
-        assert!(ts.is_some());
-        assert_eq!(ts.unwrap(), 1748010900);
-    }
-
-    #[test]
-    fn test_parse_iso_date_date_only() {
-        let ts = parse_iso_date("2025-05-23");
-        assert!(ts.is_some());
-        assert_eq!(ts.unwrap(), 1747958400);
-    }
-
-    #[test]
-    fn test_parse_iso_date_with_quotes_and_whitespace() {
-        let ts = parse_iso_date("  \"2025-05-23\"  ");
-        assert!(ts.is_some());
-        assert_eq!(ts.unwrap(), 1747958400);
-    }
-
-    #[test]
-    fn test_parse_iso_date_invalid() {
-        assert!(parse_iso_date("not-a-date").is_none());
-        assert!(parse_iso_date("").is_none());
-        assert!(parse_iso_date("2025-13-45").is_none());
     }
 
     // --- extract_outgoing_links tests ---

@@ -17,7 +17,7 @@ export interface MenuEventHandlers {
   onZoomOut: () => void
   onZoomReset: () => void
   onArchiveNote: (path: string) => void
-  onTrashNote: (path: string) => void
+  onDeleteNote: (path: string) => void
   onSearch: () => void
   onToggleRawEditor?: () => void
   onToggleDiff?: () => void
@@ -37,7 +37,6 @@ export interface MenuEventHandlers {
   onOpenInNewWindow?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
-  onEmptyTrash?: () => void
   activeTabPathRef: React.MutableRefObject<string | null>
   activeTabPath: string | null
   modifiedCount?: number
@@ -70,7 +69,6 @@ const SIMPLE_EVENT_MAP: Record<string, SimpleHandler> = {
 const FILTER_MAP: Record<string, SidebarFilter> = {
   'go-all-notes': 'all',
   'go-archived': 'archived',
-  'go-trash': 'trash',
   'go-changes': 'changes',
   'go-inbox': 'inbox',
 }
@@ -80,7 +78,6 @@ type OptionalHandler =
   | 'onCreateType' | 'onToggleRawEditor' | 'onToggleDiff' | 'onToggleAIChat'
   | 'onOpenVault' | 'onRemoveActiveVault' | 'onRestoreGettingStarted'
   | 'onCommitPush' | 'onPull' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReloadVault' | 'onRepairVault'
-  | 'onEmptyTrash'
   | 'onOpenInNewWindow'
 
 const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
@@ -101,15 +98,14 @@ const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'vault-install-mcp': 'onInstallMcp',
   'vault-reload': 'onReloadVault',
   'vault-repair': 'onRepairVault',
-  'note-empty-trash': 'onEmptyTrash',
   'note-open-in-new-window': 'onOpenInNewWindow',
 }
 
 function dispatchActiveTabEvent(id: string, h: MenuEventHandlers): boolean {
   const path = h.activeTabPathRef.current
-  if (!path) return id === 'note-archive' || id === 'note-trash'
+  if (!path) return id === 'note-archive' || id === 'note-delete'
   if (id === 'note-archive') { h.onArchiveNote(path); return true }
-  if (id === 'note-trash') { h.onTrashNote(path); return true }
+  if (id === 'note-delete') { h.onDeleteNote(path); return true }
   return false
 }
 

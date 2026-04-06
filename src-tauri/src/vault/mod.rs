@@ -23,7 +23,7 @@ pub use rename::{
     detect_renames, rename_note, update_wikilinks_for_renames, DetectedRename, RenameResult,
 };
 pub use title_sync::{sync_title_on_open, SyncAction};
-pub use trash::{batch_delete_notes, delete_note, empty_trash, is_file_trashed, purge_trash};
+pub use trash::{batch_delete_notes, delete_note};
 pub use views::{
     delete_view, evaluate_view, save_view, scan_views, FilterCondition, FilterGroup, FilterNode,
     FilterOp, ViewDefinition, ViewFile,
@@ -98,12 +98,6 @@ pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<Vault
         related_to,
         status: frontmatter.status.and_then(|v| v.into_scalar()),
         archived: frontmatter.archived.unwrap_or(false),
-        trashed: frontmatter.trashed.unwrap_or(false),
-        trashed_at: frontmatter
-            .trashed_at
-            .and_then(|v| v.into_scalar())
-            .as_deref()
-            .and_then(parsing::parse_iso_date),
         modified_at,
         created_at,
         file_size,

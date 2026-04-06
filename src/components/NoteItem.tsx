@@ -29,26 +29,6 @@ export function getTypeIcon(isA: string | null, customIcon?: string | null): Com
   return (isA && TYPE_ICON_MAP[isA]) || FileText
 }
 
-const THIRTY_DAYS_SECS = 86400 * 30
-
-function TrashDateLine({ entry }: { entry: VaultEntry }) {
-  const { isExpired, suffix } = useMemo(() => {
-    // eslint-disable-next-line react-hooks/purity -- Date.now() intentionally memoized on trashedAt
-    const trashedAge = entry.trashedAt ? (Date.now() / 1000 - entry.trashedAt) : 0
-    const expired = trashedAge >= THIRTY_DAYS_SECS
-    return {
-      isExpired: expired,
-      suffix: expired ? ' — will be permanently deleted' : '',
-    }
-  }, [entry.trashedAt])
-  const style = isExpired ? { color: 'var(--destructive)', fontWeight: 500 } as const : undefined
-  return (
-    <div className="mt-0.5 text-[10px] text-muted-foreground" style={style}>
-      Trashed {relativeDate(entry.trashedAt)}{suffix}
-    </div>
-  )
-}
-
 const NOTE_STATUS_DOT: Record<string, { color: string; testId: string; title: string }> = {
   pendingSave: { color: 'var(--accent-green)', testId: 'pending-save-indicator', title: 'Saving to disk…' },
   new: { color: 'var(--accent-green)', testId: 'new-indicator', title: 'New (uncommitted)' },
@@ -68,18 +48,11 @@ function StatusDot({ noteStatus }: { noteStatus: NoteStatus }) {
   )
 }
 
-function StateBadge({ archived, trashed }: { archived: boolean; trashed: boolean }) {
+function StateBadge({ archived }: { archived: boolean }) {
   if (archived) {
     return (
       <span className="ml-1.5 inline-block align-middle text-muted-foreground" style={{ fontSize: 9, fontWeight: 500, background: 'var(--muted)', borderRadius: 4, padding: '1px 4px', verticalAlign: 'middle' }}>
         ARCHIVED
-      </span>
-    )
-  }
-  if (trashed) {
-    return (
-      <span className="ml-1.5 inline-block align-middle" style={{ fontSize: 9, fontWeight: 500, background: 'var(--destructive-light, #ef44441a)', color: 'var(--destructive)', borderRadius: 4, padding: '1px 4px', verticalAlign: 'middle' }}>
-        TRASHED
       </span>
     )
   }
@@ -236,7 +209,7 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
               {noteStatus !== 'clean' && !isBinary && <StatusDot noteStatus={noteStatus} />}
               {entry.icon && isEmoji(entry.icon) && <span className="mr-1">{entry.icon}</span>}
               {entry.title}
-              {!isBinary && <StateBadge archived={entry.archived} trashed={entry.trashed} />}
+              {!isBinary && <StateBadge archived={entry.archived} />}
             </div>
           </div>
           {entry.snippet && !isBinary && (
@@ -247,9 +220,8 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
           {!isBinary && te?.listPropertiesDisplay && te.listPropertiesDisplay.length > 0 && (
             <PropertyChips entry={entry} displayProps={te.listPropertiesDisplay} />
           )}
-          {!isBinary && (entry.trashed && entry.trashedAt
-            ? <TrashDateLine entry={entry} />
-            : <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>
+          {!isBinary && (
+            <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>
           )}
         </>
       )}

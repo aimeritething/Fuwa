@@ -16,7 +16,7 @@ export function InstancesPanel({ entry, entries, typeEntryMap, onNavigate }: {
   const instances = useMemo(() => {
     if (entry.isA !== 'Type') return []
     return entries
-      .filter((e) => e.isA === entry.title && !e.trashed)
+      .filter((e) => e.isA === entry.title)
       .sort((a, b) => (b.modifiedAt ?? 0) - (a.modifiedAt ?? 0))
   }, [entry, entries])
 
@@ -39,7 +39,6 @@ export function InstancesPanel({ entry, entries, typeEntryMap, onNavigate }: {
               label={e.title}
               typeColor={getTypeColor(e.isA, te?.color)}
               isArchived={e.archived}
-              isTrashed={false}
               onClick={() => onNavigate(e.title)}
               title={entryStatusTitle(e)}
               TypeIcon={getTypeIcon(e.isA, te?.icon)}

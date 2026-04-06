@@ -7,7 +7,6 @@ function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
     path: '/vault/note/test.md', filename: 'test.md', title: 'Test',
     isA: 'Note', aliases: [], belongsTo: [], relatedTo: [],
     status: null, organized: false, archived: false,
-    trashed: false, trashedAt: null,
     modifiedAt: null, createdAt: null, fileSize: 0,
     snippet: '', wordCount: 0, relationships: {},
     icon: null, color: null, order: null, template: null, sort: null, outgoingLinks: [],
@@ -577,11 +576,6 @@ describe('isInboxEntry', () => {
     expect(isInboxEntry(note)).toBe(false)
   })
 
-  it('returns false for a trashed note', () => {
-    const note = makeEntry({ trashed: true })
-    expect(isInboxEntry(note)).toBe(false)
-  })
-
   it('returns false for an archived note', () => {
     const note = makeEntry({ archived: true })
     expect(isInboxEntry(note)).toBe(false)
@@ -686,7 +680,7 @@ describe('filterEntries — folder selection', () => {
     expect(result).toEqual([])
   })
 
-  it('excludes archived and trashed entries by default', () => {
+  it('excludes archived entries by default', () => {
     const withArchived = [
       ...entries,
       makeEntry({ path: '/vault/projects/laputa/archived.md', title: 'Archived', archived: true }),

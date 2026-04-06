@@ -10,7 +10,6 @@ import {
   SlidersHorizontal,
   DotsThree,
   Trash,
-  ArrowCounterClockwise,
   Archive,
   ArrowUUpLeft,
   Star,
@@ -34,8 +33,7 @@ interface BreadcrumbBarProps {
   onToggleInspector?: () => void
   onToggleFavorite?: () => void
   onToggleOrganized?: () => void
-  onTrash?: () => void
-  onRestore?: () => void
+  onDelete?: () => void
   onArchive?: () => void
   onUnarchive?: () => void
   /** Ref for direct DOM manipulation — avoids re-render on scroll. */
@@ -62,7 +60,7 @@ function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggle
 function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onToggleDiff,
   rawMode, onToggleRaw, forceRawMode,
   showAIChat, onToggleAIChat, inspectorCollapsed, onToggleInspector,
-  onToggleFavorite, onToggleOrganized, onTrash, onRestore, onArchive, onUnarchive,
+  onToggleFavorite, onToggleOrganized, onDelete, onArchive, onUnarchive,
 }: Omit<BreadcrumbBarProps, 'wordCount'>) {
   return (
     <div className="breadcrumb-bar__actions ml-auto flex items-center" style={{ gap: 12 }}>
@@ -151,23 +149,13 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
           <Archive size={16} />
         </button>
       )}
-      {entry.trashed ? (
-        <button
-          className="flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors text-muted-foreground hover:text-foreground"
-          onClick={onRestore}
-          title="Restore from trash"
-        >
-          <ArrowCounterClockwise size={16} />
-        </button>
-      ) : (
-        <button
-          className="flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors text-muted-foreground hover:text-destructive"
-          onClick={onTrash}
-          title="Move to trash (Cmd+Delete)"
-        >
-          <Trash size={16} />
-        </button>
-      )}
+      <button
+        className="flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors text-muted-foreground hover:text-destructive"
+        onClick={onDelete}
+        title="Delete (Cmd+Delete)"
+      >
+        <Trash size={16} />
+      </button>
       {inspectorCollapsed && (
         <button
           className="flex items-center justify-center border-none bg-transparent p-0 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"

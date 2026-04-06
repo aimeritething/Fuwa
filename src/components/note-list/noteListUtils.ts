@@ -24,11 +24,6 @@ export function filterGroupsByQuery(groups: RelationshipGroup[], query: string):
   return groups.map((g) => ({ ...g, entries: filterByQuery(g.entries, query) })).filter((g) => g.entries.length > 0)
 }
 
-export function countExpiredTrash(entries: VaultEntry[]): number {
-  const now = Date.now() / 1000
-  return entries.filter((e) => e.trashedAt && (now - e.trashedAt) >= 86400 * 30).length
-}
-
 export interface ClickActions {
   onReplace: (entry: VaultEntry) => void
   onSelect: (entry: VaultEntry) => void

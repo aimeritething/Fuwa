@@ -8,7 +8,7 @@ function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
     path: '/vault/test.md', filename: 'test.md', title: 'Test', isA: 'Note',
     aliases: [], outgoingLinks: [], relationships: {}, tags: [],
     modifiedAt: 1700000000, createdAt: 1700000000, fileSize: 1024,
-    icon: null, color: null, archived: false, trashed: false, favorite: false,
+    icon: null, color: null, archived: false, favorite: false,
     ...overrides,
   }
 }

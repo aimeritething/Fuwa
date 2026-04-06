@@ -24,7 +24,7 @@ function makeActions() {
     onOpenDailyNote: vi.fn(),
     onSave: vi.fn(),
     onOpenSettings: vi.fn(),
-    onTrashNote: vi.fn(),
+    onDeleteNote: vi.fn(),
     onArchiveNote: vi.fn(),
     onSetViewMode: vi.fn(),
     onZoomIn: vi.fn(),
@@ -130,20 +130,20 @@ describe('useAppKeyboard', () => {
     try { fn() } finally { document.body.removeChild(input) }
   }
 
-  it('Cmd+Backspace does not trash note when text input is focused', () => {
+  it('Cmd+Backspace does not delete note when text input is focused', () => {
     const actions = makeActions()
     renderHook(() => useAppKeyboard(actions))
     withFocusedInput(() => {
       fireKey('Backspace', { metaKey: true })
-      expect(actions.onTrashNote).not.toHaveBeenCalled()
+      expect(actions.onDeleteNote).not.toHaveBeenCalled()
     })
   })
 
-  it('Cmd+Backspace trashes note when no text input is focused', () => {
+  it('Cmd+Backspace deletes note when no text input is focused', () => {
     const actions = makeActions()
     renderHook(() => useAppKeyboard(actions))
     fireKey('Backspace', { metaKey: true })
-    expect(actions.onTrashNote).toHaveBeenCalledWith('/vault/test.md')
+    expect(actions.onDeleteNote).toHaveBeenCalledWith('/vault/test.md')
   })
 
   it('Cmd+K still works when text input is focused', () => {

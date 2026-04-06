@@ -13,8 +13,6 @@ function makeEntry(overrides: Partial<VaultEntry>): VaultEntry {
     relatedTo: [],
     status: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: null,
     createdAt: null,
     fileSize: 100,

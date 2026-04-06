@@ -43,9 +43,8 @@ export function ReferencedByPanel({ items, typeEntryMap, onNavigate }: {
                     label={e.title}
                     typeColor={getTypeColor(e.isA, te?.color)}
                     isArchived={e.archived}
-                    isTrashed={e.trashed}
                     onClick={() => onNavigate(e.title)}
-                    title={e.trashed ? 'Trashed' : e.archived ? 'Archived' : undefined}
+                    title={e.archived ? 'Archived' : undefined}
                     TypeIcon={getTypeIcon(e.isA, te?.icon)}
                   />
                 )

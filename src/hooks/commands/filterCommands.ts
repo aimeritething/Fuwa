@@ -12,6 +12,5 @@ export function buildFilterCommands(config: FilterCommandsConfig): CommandAction
   return [
     { id: 'filter-open', label: 'Show Open Notes', group: 'Navigation', keywords: ['filter', 'open', 'active', 'pill'], enabled: !!isSectionGroup && noteListFilter !== 'open', execute: () => onSetNoteListFilter?.('open') },
     { id: 'filter-archived', label: 'Show Archived Notes', group: 'Navigation', keywords: ['filter', 'archived', 'pill'], enabled: !!isSectionGroup && noteListFilter !== 'archived', execute: () => onSetNoteListFilter?.('archived') },
-    { id: 'filter-trashed', label: 'Show Trashed Notes', group: 'Navigation', keywords: ['filter', 'trashed', 'trash', 'pill', 'deleted'], enabled: !!isSectionGroup && noteListFilter !== 'trashed', execute: () => onSetNoteListFilter?.('trashed') },
   ]
 }

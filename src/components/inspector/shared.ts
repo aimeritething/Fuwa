@@ -22,7 +22,6 @@ export function resolveRef(ref: string, entries: VaultEntry[]): VaultEntry | und
 }
 
 export function entryStatusTitle(entry: VaultEntry | undefined): string | undefined {
-  if (entry?.trashed) return 'Trashed'
   if (entry?.archived) return 'Archived'
   return undefined
 }
@@ -38,7 +37,6 @@ export function resolveRefProps(ref: string, entries: VaultEntry[], typeEntryMap
     typeColor: getTypeColor(refType, te?.color),
     bgColor: getTypeLightColor(refType, te?.color),
     isArchived: resolved?.archived ?? false,
-    isTrashed: resolved?.trashed ?? false,
     target: wikilinkTarget(ref),
     title: entryStatusTitle(resolved),
     TypeIcon: getTypeIcon(refType, te?.icon),

@@ -32,13 +32,11 @@ const VIEW_GO_FORWARD: &str = "view-go-forward";
 
 const GO_ALL_NOTES: &str = "go-all-notes";
 const GO_ARCHIVED: &str = "go-archived";
-const GO_TRASH: &str = "go-trash";
 const GO_CHANGES: &str = "go-changes";
 const GO_INBOX: &str = "go-inbox";
 
 const NOTE_ARCHIVE: &str = "note-archive";
-const NOTE_TRASH: &str = "note-trash";
-const NOTE_EMPTY_TRASH: &str = "note-empty-trash";
+const NOTE_DELETE: &str = "note-delete";
 const NOTE_OPEN_IN_NEW_WINDOW: &str = "note-open-in-new-window";
 
 const VAULT_OPEN: &str = "vault-open";
@@ -77,11 +75,9 @@ const CUSTOM_IDS: &[&str] = &[
     VIEW_GO_FORWARD,
     GO_ALL_NOTES,
     GO_ARCHIVED,
-    GO_TRASH,
     GO_CHANGES,
     NOTE_ARCHIVE,
-    NOTE_TRASH,
-    NOTE_EMPTY_TRASH,
+    NOTE_DELETE,
     NOTE_OPEN_IN_NEW_WINDOW,
     VAULT_OPEN,
     VAULT_REMOVE,
@@ -99,7 +95,7 @@ const CUSTOM_IDS: &[&str] = &[
 const NOTE_DEPENDENT_IDS: &[&str] = &[
     FILE_SAVE,
     NOTE_ARCHIVE,
-    NOTE_TRASH,
+    NOTE_DELETE,
     EDIT_TOGGLE_RAW_EDITOR,
     EDIT_TOGGLE_DIFF,
     VIEW_TOGGLE_BACKLINKS,
@@ -249,7 +245,6 @@ fn build_go_menu(app: &App) -> MenuResult {
     let archived = MenuItemBuilder::new("Archived")
         .id(GO_ARCHIVED)
         .build(app)?;
-    let trash = MenuItemBuilder::new("Trash").id(GO_TRASH).build(app)?;
     let changes = MenuItemBuilder::new("Changes").id(GO_CHANGES).build(app)?;
     let inbox = MenuItemBuilder::new("Inbox").id(GO_INBOX).build(app)?;
     let go_back = MenuItemBuilder::new("Go Back")
@@ -264,7 +259,6 @@ fn build_go_menu(app: &App) -> MenuResult {
     Ok(SubmenuBuilder::new(app, "Go")
         .item(&all_notes)
         .item(&archived)
-        .item(&trash)
         .item(&changes)
         .item(&inbox)
         .separator()
@@ -278,12 +272,9 @@ fn build_note_menu(app: &App) -> MenuResult {
         .id(NOTE_ARCHIVE)
         .accelerator("CmdOrCtrl+E")
         .build(app)?;
-    let trash_note = MenuItemBuilder::new("Trash Note")
-        .id(NOTE_TRASH)
+    let delete_note = MenuItemBuilder::new("Delete Note")
+        .id(NOTE_DELETE)
         .accelerator("CmdOrCtrl+Backspace")
-        .build(app)?;
-    let empty_trash = MenuItemBuilder::new("Empty Trash…")
-        .id(NOTE_EMPTY_TRASH)
         .build(app)?;
     let open_new_window = MenuItemBuilder::new("Open in New Window")
         .id(NOTE_OPEN_IN_NEW_WINDOW)
@@ -303,8 +294,7 @@ fn build_note_menu(app: &App) -> MenuResult {
 
     Ok(SubmenuBuilder::new(app, "Note")
         .item(&archive_note)
-        .item(&trash_note)
-        .item(&empty_trash)
+        .item(&delete_note)
         .separator()
         .item(&open_new_window)
         .separator()
@@ -462,11 +452,9 @@ mod tests {
             VIEW_GO_FORWARD,
             GO_ALL_NOTES,
             GO_ARCHIVED,
-            GO_TRASH,
             GO_CHANGES,
             NOTE_ARCHIVE,
-            NOTE_TRASH,
-            NOTE_EMPTY_TRASH,
+            NOTE_DELETE,
             NOTE_OPEN_IN_NEW_WINDOW,
             VAULT_OPEN,
             VAULT_REMOVE,

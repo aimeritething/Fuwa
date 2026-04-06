@@ -59,7 +59,7 @@ describe('getTypeLightColor', () => {
 
 const baseEntry: VaultEntry = {
   path: '', filename: '', title: '', isA: null, aliases: [], belongsTo: [], relatedTo: [],
-  status: null, archived: false, trashed: false, trashedAt: null,
+  status: null, archived: false,
   modifiedAt: null, createdAt: null, fileSize: 0, snippet: '', relationships: {},
   wordCount: 0,
   icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,

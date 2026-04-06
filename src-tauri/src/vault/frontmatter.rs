@@ -19,18 +19,8 @@ pub(crate) struct Frontmatter {
         deserialize_with = "deserialize_bool_or_string"
     )]
     pub archived: Option<bool>,
-    #[serde(
-        rename = "_trashed",
-        alias = "Trashed",
-        alias = "trashed",
-        default,
-        deserialize_with = "deserialize_bool_or_string"
-    )]
-    pub trashed: Option<bool>,
     #[serde(rename = "Status", alias = "status", default)]
     pub status: Option<StringOrList>,
-    #[serde(rename = "_trashed_at", alias = "Trashed at", alias = "trashed_at")]
-    pub trashed_at: Option<StringOrList>,
     #[serde(default)]
     pub icon: Option<StringOrList>,
     #[serde(default)]
@@ -158,12 +148,6 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
         "_archived",
         "Archived",
         "archived",
-        "_trashed",
-        "Trashed",
-        "trashed",
-        "_trashed_at",
-        "Trashed at",
-        "trashed_at",
         "icon",
         "color",
         "order",
@@ -199,11 +183,6 @@ const SKIP_KEYS: &[&str] = &[
     "aliases",
     "_archived",
     "archived",
-    "_trashed",
-    "trashed",
-    "_trashed_at",
-    "trashed at",
-    "trashed_at",
     "icon",
     "color",
     "order",

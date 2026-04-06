@@ -7,7 +7,7 @@ function entry(title: string, path = `/vault/note/${title}.md`) {
   return {
     path, filename: `${title}.md`, title, isA: 'Note',
     aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-    cadence: null, archived: false, trashed: false, trashedAt: null,
+    cadence: null, archived: false,
     modifiedAt: null, createdAt: null, fileSize: 0, snippet: '', wordCount: 0,
     relationships: {}, icon: null, color: null, order: null,
     sidebarLabel: null, template: null, sort: null, outgoingLinks: [],

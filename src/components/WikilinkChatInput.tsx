@@ -49,7 +49,7 @@ function matchEntries(
   const lower = query.toLowerCase()
   const matches = entries
     .filter(e =>
-      !e.trashed && !e.archived && (
+      !e.archived && (
         e.title.toLowerCase().includes(lower) ||
         e.aliases.some(a => a.toLowerCase().includes(lower))
       ),

@@ -1,4 +1,4 @@
-import { MagnifyingGlass, Plus, Trash } from '@phosphor-icons/react'
+import { MagnifyingGlass, Plus } from '@phosphor-icons/react'
 import type { VaultEntry } from '../../types'
 import type { SortOption, SortDirection } from '../../utils/noteListHelpers'
 import { Input } from '@/components/ui/input'
@@ -6,12 +6,10 @@ import { useDragRegion } from '../../hooks/useDragRegion'
 import { SortDropdown } from '../SortDropdown'
 import { ListPropertiesPopover } from './ListPropertiesPopover'
 
-export function NoteListHeader({ title, typeDocument, isEntityView, isTrashView, trashCount, listSort, listDirection, customProperties, sidebarCollapsed, searchVisible, search, isSectionGroup, entries, onSortChange, onCreateNote, onOpenType, onToggleSearch, onSearchChange, onEmptyTrash, onUpdateTypeProperty }: {
+export function NoteListHeader({ title, typeDocument, isEntityView, listSort, listDirection, customProperties, sidebarCollapsed, searchVisible, search, isSectionGroup, entries, onSortChange, onCreateNote, onOpenType, onToggleSearch, onSearchChange, onUpdateTypeProperty }: {
   title: string
   typeDocument: VaultEntry | null
   isEntityView: boolean
-  isTrashView: boolean
-  trashCount: number
   listSort: SortOption
   listDirection: SortDirection
   customProperties: string[]
@@ -25,7 +23,6 @@ export function NoteListHeader({ title, typeDocument, isEntityView, isTrashView,
   onOpenType: (entry: VaultEntry) => void
   onToggleSearch: () => void
   onSearchChange: (value: string) => void
-  onEmptyTrash?: () => void
   onUpdateTypeProperty?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
 }) {
   const { onMouseDown: onDragMouseDown } = useDragRegion()
@@ -48,21 +45,9 @@ export function NoteListHeader({ title, typeDocument, isEntityView, isTrashView,
           {isSectionGroup && typeDocument && entries && onUpdateTypeProperty && (
             <ListPropertiesPopover typeDocument={typeDocument} entries={entries} onSave={onUpdateTypeProperty} />
           )}
-          {isTrashView && trashCount > 0 && (
-            <button
-              className="flex items-center text-destructive transition-colors hover:text-destructive/80"
-              onClick={onEmptyTrash}
-              title="Empty Trash"
-              data-testid="empty-trash-btn"
-            >
-              <Trash size={16} />
-            </button>
-          )}
-          {!isTrashView && (
-            <button className="flex items-center text-muted-foreground transition-colors hover:text-foreground" onClick={() => onCreateNote()} title="Create new note">
-              <Plus size={16} />
-            </button>
-          )}
+          <button className="flex items-center text-muted-foreground transition-colors hover:text-foreground" onClick={() => onCreateNote()} title="Create new note">
+            <Plus size={16} />
+          </button>
         </div>
       </div>
       {searchVisible && (

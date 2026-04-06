@@ -15,8 +15,6 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   owner: null,
   cadence: null,
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: 1700000000,
   fileSize: 100,
@@ -35,7 +33,6 @@ const entries: VaultEntry[] = [
   makeEntry({ path: '/vault/topic/ai.md', filename: 'ai.md', title: 'AI Research', isA: 'Topic' }),
   makeEntry({ path: '/vault/note/plain.md', filename: 'plain.md', title: 'Plain Note', isA: null }),
   makeEntry({ path: '/vault/person/alice.md', filename: 'alice.md', title: 'Alice Smith', isA: 'Person', aliases: ['Alice'] }),
-  makeEntry({ path: '/vault/trashed.md', filename: 'trashed.md', title: 'Trashed Note', isA: null, trashed: true }),
 ]
 
 describe('FilterBuilder wikilink autocomplete', () => {
@@ -127,15 +124,6 @@ describe('FilterBuilder wikilink autocomplete', () => {
     expect(screen.getByTestId('wikilink-dropdown')).toBeInTheDocument()
     fireEvent.keyDown(input, { key: 'Escape' })
     expect(screen.queryByTestId('wikilink-dropdown')).not.toBeInTheDocument()
-  })
-
-  it('excludes trashed notes from autocomplete', () => {
-    renderWithEntries({
-      all: [{ field: 'title', op: 'contains', value: '[[Trashed' }],
-    })
-    const input = screen.getByTestId('filter-value-input')
-    fireEvent.focus(input)
-    expect(screen.queryByText('Trashed Note')).not.toBeInTheDocument()
   })
 
   it('matches on aliases', () => {

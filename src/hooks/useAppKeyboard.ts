@@ -10,7 +10,7 @@ interface KeyboardActions {
   onOpenDailyNote: () => void
   onSave: () => void
   onOpenSettings: () => void
-  onTrashNote: (path: string) => void
+  onDeleteNote: (path: string) => void
   onArchiveNote: (path: string) => void
   onSetViewMode: (mode: ViewMode) => void
   onZoomIn: () => void
@@ -66,7 +66,7 @@ function handleCmdKey(e: KeyboardEvent, keyMap: Record<string, ShortcutHandler>)
 }
 
 export function useAppKeyboard({
-  onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onTrashNote, onArchiveNote,
+  onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onDeleteNote, onArchiveNote,
   onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onToggleInspector, onToggleFavorite, onOpenInNewWindow, activeTabPathRef,
 }: KeyboardActions) {
   useEffect(() => {
@@ -84,8 +84,8 @@ export function useAppKeyboard({
       ',': onOpenSettings,
       d: withActiveTab((path) => onToggleFavorite?.(path)),
       e: withActiveTab(onArchiveNote),
-      Backspace: withActiveTab(onTrashNote),
-      Delete: withActiveTab(onTrashNote),
+      Backspace: withActiveTab(onDeleteNote),
+      Delete: withActiveTab(onDeleteNote),
       '[': () => onGoBack?.(),
       ']': () => onGoForward?.(),
       '=': onZoomIn,
@@ -127,5 +127,5 @@ export function useAppKeyboard({
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onTrashNote, onArchiveNote, activeTabPathRef, onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onToggleInspector, onOpenInNewWindow])
+  }, [onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onDeleteNote, onArchiveNote, activeTabPathRef, onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onToggleInspector, onOpenInNewWindow])
 }

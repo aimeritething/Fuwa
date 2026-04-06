@@ -361,7 +361,7 @@ Search is keyword-based, using `walkdir` to scan all `.md` files in the vault di
 - Matches query against file titles and content (case-insensitive)
 - Scores results: title matches ranked higher than content-only matches
 - Extracts contextual snippets around the first match
-- Skips trashed and hidden files
+- Skips hidden files
 
 The `search_vault` Tauri command runs the scan in a blocking Tokio task and returns results sorted by relevance score.
 
@@ -466,7 +466,7 @@ sequenceDiagram
     participant MCP as MCP Server
     participant U as User
 
-    T->>T: run_startup_tasks()<br/>(purge trash, register MCP)
+    T->>T: run_startup_tasks()<br/>(register MCP)
     T->>MCP: spawn_ws_bridge() — ports 9710 + 9711
     T->>A: App mounts
 
@@ -548,7 +548,6 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `parsing.rs` | Text processing: snippet extraction, markdown stripping, ISO date parsing, `extract_title`, `slug_to_title` |
 | `title_sync.rs` | `sync_title_on_open` — ensures `title` frontmatter matches filename on note open |
 | `cache.rs` | Git-based incremental vault caching (`scan_vault_cached`), git helpers |
-| `trash.rs` | `purge_trash` — deletes trashed notes older than 30 days |
 | `rename.rs` | `rename_note` — renames files, updates `title` frontmatter, and updates wikilinks across the vault |
 | `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
 | `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
@@ -559,7 +558,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 
 | Module | Purpose |
 |--------|---------|
-| `vault/` | Vault scanning, caching, parsing, trash, rename, image, migration |
+| `vault/` | Vault scanning, caching, parsing, rename, image, migration |
 | `frontmatter/` | YAML frontmatter read/write (`mod.rs`, `yaml.rs`, `ops.rs`) |
 | `git/` | Git operations (`commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`) |
 | `github/` | GitHub OAuth + API (`auth.rs`, `api.rs`, `clone.rs`) |
@@ -581,14 +580,11 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `list_vault` | Scan vault (cached) → `Vec<VaultEntry>` |
 | `get_note_content` | Read note file content |
 | `save_note_content` | Write note content to disk |
-| `delete_note` | Move note to trash |
+| `delete_note` | Permanently delete note from disk (with confirm dialog) |
 | `rename_note` | Rename note + update `title` frontmatter + cross-vault wikilinks |
 | `sync_note_title` | Sync `title` frontmatter with filename on note open → `bool` (modified) |
 | `batch_archive_notes` | Archive multiple notes |
-| `batch_trash_notes` | Trash multiple notes |
 | `batch_delete_notes` | Permanently delete notes from disk |
-| `empty_trash` | Permanently delete all trashed notes from disk |
-| `purge_trash` | Delete notes trashed >30 days ago |
 | `reload_vault` | Invalidate cache and full rescan from filesystem → `Vec<VaultEntry>` |
 | `reload_vault_entry` | Re-read a single file from disk → `VaultEntry` |
 | `check_vault_exists` | Check if vault path exists |
@@ -857,7 +853,7 @@ Desktop-only features gated at the function level in `commands/`:
 - Menu state updates
 
 Features that work on both platforms without changes:
-- Vault scan, note read/write, rename, delete, trash, archive
+- Vault scan, note read/write, rename, delete, archive
 - Frontmatter read/write/delete
 - AI chat (Anthropic API via `reqwest`)
 - Search (pure Rust in-memory)

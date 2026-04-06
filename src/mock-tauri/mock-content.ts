@@ -624,44 +624,6 @@ A **book** you're reading or have read. Track reading progress, notes, and key t
 - **Status**: Reading, Finished, Abandoned
 - **Rating**: 1-5 stars
 `,
-  '/Users/luca/Laputa/old-draft-notes.md': `---
-title: Old Draft Notes
-type: Note
-trashed: true
-trashed_at: ${new Date(Date.now() - 86400000 * 5).toISOString().slice(0, 10)}
-belongs_to:
-  - "[[26q1-laputa-app]]"
----
-
-# Old Draft Notes
-
-Some rough draft content that is no longer relevant. Moving to trash.
-`,
-  '/Users/luca/Laputa/deprecated-api-notes.md': `---
-title: Deprecated API Notes
-type: Note
-trashed: true
-trashed_at: ${new Date(Date.now() - 86400000 * 35).toISOString().slice(0, 10)}
----
-
-# Deprecated API Notes
-
-Old API documentation for the v1 endpoint. Replaced by v2 docs.
-`,
-  '/Users/luca/Laputa/failed-seo-experiment.md': `---
-title: Failed SEO Experiment
-type: Experiment
-status: Dropped
-trashed: true
-trashed_at: ${new Date(Date.now() - 86400000 * 10).toISOString().slice(0, 10)}
-related_to:
-  - "[[grow-newsletter]]"
----
-
-# Failed SEO Experiment
-
-Tried programmatic SEO pages. Results were negligible — trashing this.
-`,
   '/Users/luca/Laputa/25q3-website-redesign.md': `---
 title: Website Redesign
 type: Project

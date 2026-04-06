@@ -23,8 +23,6 @@ interface CommandRegistryConfig {
   activeNoteHasIcon?: boolean
   mcpStatus?: string
   onInstallMcp?: () => void
-  onEmptyTrash?: () => void
-  trashedCount?: number
   onReloadVault?: () => void
   onRepairVault?: () => void
   onSetNoteIcon?: () => void
@@ -39,8 +37,7 @@ interface CommandRegistryConfig {
   onOpenSettings: () => void
   onOpenVault?: () => void
   onCreateType?: () => void
-  onTrashNote: (path: string) => void
-  onRestoreNote: (path: string) => void
+  onDeleteNote: (path: string) => void
   onArchiveNote: (path: string) => void
   onUnarchiveNote: (path: string) => void
   onCommitPush: () => void
@@ -76,7 +73,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   const {
     activeTabPath, entries, modifiedCount,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onSave, onOpenSettings,
-    onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
+    onDeleteNote, onArchiveNote, onUnarchiveNote,
     onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
     activeNoteModified,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
@@ -84,7 +81,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates, onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
-    mcpStatus, onInstallMcp, onEmptyTrash, trashedCount,
+    mcpStatus, onInstallMcp,
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     onOpenInNewWindow, onToggleFavorite, onToggleOrganized,
@@ -98,7 +95,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     [entries, activeTabPath, hasActiveNote],
   )
   const isArchived = activeEntry?.archived ?? false
-  const isTrashed = activeEntry?.trashed ?? false
   const isFavorite = activeEntry?.favorite ?? false
   const isSectionGroup = selection?.kind === 'sectionGroup'
 
@@ -107,10 +103,10 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   return useMemo(() => [
     ...buildNavigationCommands({ onQuickOpen, onSelect, onOpenDailyNote, onGoBack, onGoForward, canGoBack, canGoForward }),
     ...buildNoteCommands({
-      hasActiveNote, activeTabPath, isArchived, isTrashed,
+      hasActiveNote, activeTabPath, isArchived,
       onCreateNote, onCreateType, onOpenDailyNote, onSave,
-      onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
-      onEmptyTrash, trashedCount, onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
+      onDeleteNote, onArchiveNote, onUnarchiveNote,
+      onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
       onToggleOrganized, isOrganized: activeEntry?.organized ?? false,
     }),
     ...buildGitCommands({ modifiedCount, onCommitPush, onPull, onResolveConflicts, onSelect }),
@@ -126,9 +122,9 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
     ...buildFilterCommands({ isSectionGroup, noteListFilter, onSetNoteListFilter }),
   ], [
-    hasActiveNote, activeTabPath, isArchived, isTrashed, modifiedCount, activeNoteModified,
+    hasActiveNote, activeTabPath, isArchived, modifiedCount, activeNoteModified,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onCreateType, onSave, onOpenSettings,
-    onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
+    onDeleteNote, onArchiveNote, onUnarchiveNote,
     onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
     onCheckForUpdates,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
@@ -136,7 +132,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onGoBack, onGoForward, canGoBack, canGoForward,
     vaultTypes,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
-    mcpStatus, onInstallMcp, onEmptyTrash, trashedCount,
+    mcpStatus, onInstallMcp,
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     isSectionGroup, noteListFilter, onSetNoteListFilter,

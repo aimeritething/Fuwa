@@ -18,7 +18,6 @@ export function pluralizeType(type: string): string {
 export function extractVaultTypes(entries: VaultEntry[]): string[] {
   const typeSet = new Set<string>()
   for (const e of entries) {
-    if (e.trashed) continue
     if (e.isA === 'Type' && e.title) {
       typeSet.add(e.title)
     } else if (e.isA && e.isA !== 'Type') {

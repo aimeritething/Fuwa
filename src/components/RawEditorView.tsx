@@ -58,7 +58,7 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave,
   const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
 
   const baseItems = useMemo(
-    () => deduplicateByPath(entries.filter(e => !e.trashed).map(entry => ({
+    () => deduplicateByPath(entries.map(entry => ({
       title: entry.title,
       aliases: [...new Set([entry.filename.replace(/\.md$/, ''), ...entry.aliases])],
       group: entry.isA || 'Note',

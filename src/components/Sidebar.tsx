@@ -100,13 +100,12 @@ function useSidebarCollapsed() {
 
 function useEntryCounts(entries: VaultEntry[]) {
   return useMemo(() => {
-    let active = 0, archived = 0, trashed = 0
+    let active = 0, archived = 0
     for (const e of entries) {
-      if (e.trashed) trashed++
-      else if (e.archived) archived++
+      if (e.archived) archived++
       else active++
     }
-    return { activeCount: active, archivedCount: archived, trashedCount: trashed }
+    return { activeCount: active, archivedCount: archived }
   }, [entries])
 }
 
@@ -314,7 +313,7 @@ function SortableSection({ group, sectionProps }: {
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.type })
   const itemCount = sectionProps.entries.filter((e) =>
-    !e.archived && !e.trashed && (group.type === 'Note' ? (e.isA === 'Note' || !e.isA) : e.isA === group.type),
+    !e.archived && (group.type === 'Note' ? (e.isA === 'Note' || !e.isA) : e.isA === group.type),
   ).length
   const isRenaming = sectionProps.renamingType === group.type
 
@@ -364,7 +363,7 @@ function FavoritesSection({ entries, selection, onSelect, onSelectNote, onReorde
 }) {
   const favorites = useMemo(
     () => entries
-      .filter((e) => e.favorite && !e.archived && !e.trashed)
+      .filter((e) => e.favorite && !e.archived)
       .sort((a, b) => (a.favoriteIndex ?? Infinity) - (b.favoriteIndex ?? Infinity)),
     [entries],
   )
@@ -502,7 +501,7 @@ export const Sidebar = memo(function Sidebar({
 
   const isSectionVisible = useCallback((type: string) => typeEntryMap[type]?.visible !== false, [typeEntryMap])
   const toggleVisibility = useCallback((type: string) => onToggleTypeVisibility?.(type), [onToggleTypeVisibility])
-  const { activeCount, archivedCount, trashedCount } = useEntryCounts(entries)
+  const { activeCount, archivedCount } = useEntryCounts(entries)
 
   const closeContextMenu = useCallback(() => { setContextMenuPos(null); setContextMenuType(null) }, [])
   const closeCustomize = useCallback(() => setShowCustomize(false), [])
@@ -559,7 +558,7 @@ export const Sidebar = memo(function Sidebar({
 
   const { collapsed: groupCollapsed, toggle: toggleGroup } = useSidebarCollapsed()
 
-  const hasFavorites = entries.some((e) => e.favorite && !e.archived && !e.trashed)
+  const hasFavorites = entries.some((e) => e.favorite && !e.archived)
   const hasViews = views.length > 0 || !!onCreateView
 
   return (
@@ -571,7 +570,6 @@ export const Sidebar = memo(function Sidebar({
           <NavItem icon={Tray} label="Inbox" count={inboxCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'inbox' })} badgeClassName="text-muted-foreground" badgeStyle={{ background: 'var(--muted)' }} activeBadgeClassName="bg-primary text-primary-foreground" onClick={() => onSelect({ kind: 'filter', filter: 'inbox' })} />
           <NavItem icon={FileText} label="All Notes" count={activeCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'all' })} badgeClassName="text-muted-foreground" badgeStyle={{ background: 'var(--muted)' }} activeBadgeClassName="bg-primary text-primary-foreground" onClick={() => onSelect({ kind: 'filter', filter: 'all' })} />
           <NavItem icon={Archive} label="Archive" count={archivedCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'archived' })} badgeClassName="text-muted-foreground" badgeStyle={{ background: 'var(--muted)' }} activeBadgeClassName="bg-primary text-primary-foreground" onClick={() => onSelect({ kind: 'filter', filter: 'archived' })} />
-          <NavItem icon={Trash} label="Trash" count={trashedCount} isActive={isSelectionActive(selection, { kind: 'filter', filter: 'trash' })} activeClassName="bg-destructive/10 text-destructive" badgeClassName="text-muted-foreground" badgeStyle={{ background: 'var(--muted)' }} activeBadgeClassName="bg-destructive text-destructive-foreground" onClick={() => onSelect({ kind: 'filter', filter: 'trash' })} />
         </div>
 
         {/* Favorites */}

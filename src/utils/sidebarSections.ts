@@ -27,9 +27,9 @@ const BUILT_IN_SECTION_GROUPS: SectionGroup[] = [
 const BUILT_IN_TYPE_MAP = new Map(BUILT_IN_SECTION_GROUPS.map((sg) => [sg.type, sg]))
 
 const isMarkdown = (e: VaultEntry) => e.fileKind === 'markdown' || !e.fileKind
-const isActive = (e: VaultEntry) => !e.trashed && !e.archived
+const isActive = (e: VaultEntry) => !e.archived
 
-/** Collect unique isA values from active (non-trashed, non-archived) markdown entries. Untyped entries count as 'Note'. */
+/** Collect unique isA values from active (non-archived) markdown entries. Untyped entries count as 'Note'. */
 export function collectActiveTypes(entries: VaultEntry[]): Set<string> {
   const types = new Set<string>()
   for (const e of entries) {

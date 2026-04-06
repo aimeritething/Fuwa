@@ -2,7 +2,7 @@ import type { VaultEntry, ViewDefinition, FilterGroup, FilterNode, FilterConditi
 
 /** Evaluate a view's filters against a list of entries, returning only matches. */
 export function evaluateView(definition: ViewDefinition, entries: VaultEntry[]): VaultEntry[] {
-  return entries.filter((e) => !e.trashed && !e.archived && evaluateGroup(definition.filters, e))
+  return entries.filter((e) => !e.archived && evaluateGroup(definition.filters, e))
 }
 
 function evaluateGroup(group: FilterGroup, entry: VaultEntry): boolean {
@@ -27,7 +27,6 @@ function resolveField(entry: VaultEntry, field: string): { scalar?: string | num
   if (lower === 'title') return { scalar: entry.title }
   if (lower === 'filename') return { scalar: entry.filename }
   if (lower === 'archived') return { scalar: entry.archived }
-  if (lower === 'trashed') return { scalar: entry.trashed }
   if (lower === 'favorite') return { scalar: entry.favorite }
   if (lower === 'body') return { scalar: entry.snippet }
 

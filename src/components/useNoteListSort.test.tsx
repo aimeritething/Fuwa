@@ -19,7 +19,7 @@ function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
     path: '/test/note.md', filename: 'note.md', title: 'Test Note',
     isA: 'Note', aliases: [], belongsTo: [], relatedTo: [],
     status: null, owner: null, cadence: null, archived: false,
-    trashed: false, trashedAt: null, modifiedAt: 1700000000,
+    modifiedAt: 1700000000,
     createdAt: null, fileSize: 100, snippet: '', wordCount: 0,
     relationships: {}, icon: null, color: null, order: null,
     sidebarLabel: null, template: null, sort: null,

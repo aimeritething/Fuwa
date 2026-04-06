@@ -11,7 +11,6 @@ interface FilterPillsProps {
 const PILLS: { value: NoteListFilter; label: string }[] = [
   { value: 'open', label: 'Open' },
   { value: 'archived', label: 'Archived' },
-  { value: 'trashed', label: 'Trashed' },
 ]
 
 const BOTTOM_GRADIENT = 'linear-gradient(to bottom, transparent 0%, var(--card, #fff) 30%, var(--card, #fff) 100%)'

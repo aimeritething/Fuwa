@@ -15,8 +15,6 @@ const baseEntry: VaultEntry = {
   owner: null,
   cadence: null,
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: null,
   fileSize: 100,
@@ -31,12 +29,6 @@ const baseEntry: VaultEntry = {
 const archivedEntry: VaultEntry = {
   ...baseEntry,
   archived: true,
-}
-
-const trashedEntry: VaultEntry = {
-  ...baseEntry,
-  trashed: true,
-  trashedAt: Date.now() / 1000 - 86400 * 5,
 }
 
 const defaultProps = {
@@ -55,31 +47,17 @@ describe('BreadcrumbBar — drag region', () => {
   })
 })
 
-describe('BreadcrumbBar — trash/restore', () => {
-  it('shows trash button for non-trashed note', () => {
-    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onTrash={vi.fn()} onRestore={vi.fn()} />)
-    expect(screen.getByTitle('Move to trash (Cmd+Delete)')).toBeInTheDocument()
-    expect(screen.queryByTitle('Restore from trash')).not.toBeInTheDocument()
+describe('BreadcrumbBar — delete', () => {
+  it('shows delete button', () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onDelete={vi.fn()} />)
+    expect(screen.getByTitle('Delete (Cmd+Delete)')).toBeInTheDocument()
   })
 
-  it('shows restore button for trashed note', () => {
-    render(<BreadcrumbBar entry={trashedEntry} {...defaultProps} onTrash={vi.fn()} onRestore={vi.fn()} />)
-    expect(screen.getByTitle('Restore from trash')).toBeInTheDocument()
-    expect(screen.queryByTitle('Move to trash (Cmd+Delete)')).not.toBeInTheDocument()
-  })
-
-  it('calls onTrash when trash button is clicked', () => {
-    const onTrash = vi.fn()
-    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onTrash={onTrash} onRestore={vi.fn()} />)
-    fireEvent.click(screen.getByTitle('Move to trash (Cmd+Delete)'))
-    expect(onTrash).toHaveBeenCalledOnce()
-  })
-
-  it('calls onRestore when restore button is clicked', () => {
-    const onRestore = vi.fn()
-    render(<BreadcrumbBar entry={trashedEntry} {...defaultProps} onTrash={vi.fn()} onRestore={onRestore} />)
-    fireEvent.click(screen.getByTitle('Restore from trash'))
-    expect(onRestore).toHaveBeenCalledOnce()
+  it('calls onDelete when delete button is clicked', () => {
+    const onDelete = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onDelete={onDelete} />)
+    fireEvent.click(screen.getByTitle('Delete (Cmd+Delete)'))
+    expect(onDelete).toHaveBeenCalledOnce()
   })
 })
 

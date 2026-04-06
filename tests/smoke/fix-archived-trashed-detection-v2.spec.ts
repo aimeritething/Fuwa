@@ -20,7 +20,7 @@ function getResultTitles(container: import('@playwright/test').Locator) {
   return container.locator('span.truncate').allTextContents()
 }
 
-test.describe('Archived/Trashed Yes/No detection', () => {
+test.describe('Archived Yes/No detection', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await page.waitForLoadState('networkidle')

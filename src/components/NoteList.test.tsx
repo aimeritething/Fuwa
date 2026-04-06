@@ -25,8 +25,6 @@ const mockEntries: VaultEntry[] = [
     owner: 'Luca',
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 1024,
@@ -54,8 +52,6 @@ const mockEntries: VaultEntry[] = [
     owner: null,
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 847,
@@ -84,8 +80,6 @@ const mockEntries: VaultEntry[] = [
     owner: null,
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 320,
@@ -111,8 +105,6 @@ const mockEntries: VaultEntry[] = [
     owner: null,
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 512,
@@ -138,8 +130,6 @@ const mockEntries: VaultEntry[] = [
     owner: null,
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 256,
@@ -158,7 +148,7 @@ const mockEntries: VaultEntry[] = [
 const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   path: '/test.md', filename: 'test.md', title: 'Test', isA: null,
   aliases: [], belongsTo: [], relatedTo: [], status: null,
-  archived: false, trashed: false, trashedAt: null,
+  archived: false,
   modifiedAt: null, createdAt: null, fileSize: 100, snippet: '', wordCount: 0,
   relationships: {}, icon: null, color: null, order: null, sidebarLabel: null,
   template: null, sort: null, view: null, visible: null,
@@ -685,95 +675,7 @@ describe('NoteList sort controls', () => {
   })
 })
 
-// --- Trash feature tests ---
-
-const trashedEntry: VaultEntry = {
-  path: '/vault/note/old-draft.md',
-  filename: 'old-draft.md',
-  title: 'Old Draft Notes',
-  isA: 'Note',
-  aliases: [],
-  belongsTo: [],
-  relatedTo: [],
-  status: null,
-  owner: null,
-  cadence: null,
-  archived: false,
-  trashed: true,
-  trashedAt: Date.now() / 1000 - 86400 * 5,
-  modifiedAt: 1700000000,
-  createdAt: null,
-  fileSize: 280,
-  snippet: 'Some draft content that is no longer needed.',
-  wordCount: 0,
-  relationships: {},
-  icon: null,
-  color: null,
-  order: null,
-  template: null, sort: null,
-  outgoingLinks: [],
-  properties: {},
-}
-
-const expiredTrashedEntry: VaultEntry = {
-  path: '/vault/note/deprecated-api.md',
-  filename: 'deprecated-api.md',
-  title: 'Deprecated API Notes',
-  isA: 'Note',
-  aliases: [],
-  belongsTo: [],
-  relatedTo: [],
-  status: null,
-  owner: null,
-  cadence: null,
-  archived: false,
-  trashed: true,
-  trashedAt: Date.now() / 1000 - 86400 * 35,
-  modifiedAt: 1700000000,
-  createdAt: null,
-  fileSize: 190,
-  snippet: 'Old API docs replaced by v2.',
-  wordCount: 0,
-  relationships: {},
-  icon: null,
-  color: null,
-  order: null,
-  template: null, sort: null,
-  outgoingLinks: [],
-  properties: {},
-}
-
-const entriesWithTrashed = [...mockEntries, trashedEntry, expiredTrashedEntry]
-
-describe('filterEntries — trash', () => {
-  it('excludes trashed entries from "all" filter', () => {
-    const result = filterEntries(entriesWithTrashed, { kind: 'filter', filter: 'all' })
-    expect(result.find((e) => e.title === 'Old Draft Notes')).toBeUndefined()
-    expect(result.find((e) => e.title === 'Build Laputa App')).toBeDefined()
-  })
-
-  it('excludes trashed entries from section group', () => {
-    const result = filterEntries(entriesWithTrashed, { kind: 'sectionGroup', type: 'Note' })
-    expect(result.find((e) => e.title === 'Old Draft Notes')).toBeUndefined()
-  })
-
-  it('trash filter returns only trashed entries', () => {
-    const result = filterEntries(entriesWithTrashed, { kind: 'filter', filter: 'trash' })
-    expect(result).toHaveLength(2)
-    expect(result.every((e) => e.trashed)).toBe(true)
-  })
-
-  it('archived filter excludes trashed entries', () => {
-    const archivedAndTrashed = [
-      ...mockEntries,
-      { ...mockEntries[0], path: '/archived.md', archived: true, trashed: false, trashedAt: null, title: 'Archived Note' },
-      trashedEntry,
-    ]
-    const result = filterEntries(archivedAndTrashed, { kind: 'filter', filter: 'archived' })
-    expect(result.find((e) => e.title === 'Archived Note')).toBeDefined()
-    expect(result.find((e) => e.title === 'Old Draft Notes')).toBeUndefined()
-  })
-
+describe('filterEntries — entity', () => {
   it('entity filter returns empty (entity view uses relationship groups instead)', () => {
     const result = filterEntries(mockEntries, { kind: 'entity', entry: mockEntries[4] })
     expect(result).toHaveLength(0)
@@ -825,39 +727,6 @@ describe('NoteList — status indicators', () => {
     )
     expect(screen.getAllByTestId('new-indicator')).toHaveLength(1)
     expect(screen.queryByTestId('modified-indicator')).not.toBeInTheDocument()
-  })
-})
-
-describe('NoteList — trash view', () => {
-  const trashSelection: SidebarSelection = { kind: 'filter', filter: 'trash' }
-
-  it('shows "Trash" header when trash filter is active', () => {
-    render(<NoteList {...defaultFilterProps} entries={entriesWithTrashed} selection={trashSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />)
-    expect(screen.getByText('Trash')).toBeInTheDocument()
-  })
-
-  it('shows only trashed entries in trash view', () => {
-    render(<NoteList {...defaultFilterProps} entries={entriesWithTrashed} selection={trashSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />)
-    expect(screen.getByText('Old Draft Notes')).toBeInTheDocument()
-    expect(screen.getByText('Deprecated API Notes')).toBeInTheDocument()
-    expect(screen.queryByText('Build Laputa App')).not.toBeInTheDocument()
-  })
-
-  it('shows TRASHED badge on trashed entries', () => {
-    render(<NoteList {...defaultFilterProps} entries={entriesWithTrashed} selection={trashSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />)
-    const badges = screen.getAllByText('TRASHED')
-    expect(badges.length).toBeGreaterThanOrEqual(1)
-  })
-
-  it('shows 30-day warning banner when expired notes exist', () => {
-    render(<NoteList {...defaultFilterProps} entries={entriesWithTrashed} selection={trashSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />)
-    expect(screen.getByText('Notes in trash for 30+ days will be permanently deleted')).toBeInTheDocument()
-    expect(screen.getByText(/1 note is past the 30-day retention period/)).toBeInTheDocument()
-  })
-
-  it('shows "Trash is empty" when no trashed entries', () => {
-    render(<NoteList {...defaultFilterProps} entries={mockEntries} selection={trashSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />)
-    expect(screen.getByText('Trash is empty')).toBeInTheDocument()
   })
 })
 
@@ -1214,10 +1083,10 @@ describe('NoteList — multi-select', () => {
 
   it.each([
     { label: 'bulk archive via button', prop: 'onBulkArchive', trigger: () => fireEvent.click(screen.getByTestId('bulk-archive-btn')) },
-    { label: 'bulk trash via button', prop: 'onBulkTrash', trigger: () => fireEvent.click(screen.getByTestId('bulk-trash-btn')) },
+    { label: 'bulk delete via button', prop: 'onBulkDeletePermanently', trigger: () => fireEvent.click(screen.getByTestId('bulk-delete-btn')) },
     { label: 'Cmd+E archives', prop: 'onBulkArchive', trigger: () => fireEvent.keyDown(window, { key: 'e', metaKey: true }) },
-    { label: 'Cmd+Backspace trashes', prop: 'onBulkTrash', trigger: () => fireEvent.keyDown(window, { key: 'Backspace', metaKey: true }) },
-    { label: 'Cmd+Delete trashes', prop: 'onBulkTrash', trigger: () => fireEvent.keyDown(window, { key: 'Delete', metaKey: true }) },
+    { label: 'Cmd+Backspace deletes', prop: 'onBulkDeletePermanently', trigger: () => fireEvent.keyDown(window, { key: 'Backspace', metaKey: true }) },
+    { label: 'Cmd+Delete deletes', prop: 'onBulkDeletePermanently', trigger: () => fireEvent.keyDown(window, { key: 'Delete', metaKey: true }) },
   ])('$label selected notes and clears selection', ({ prop, trigger }) => {
     const handler = vi.fn()
     selectTwoNotes({ [prop]: handler })
@@ -1254,8 +1123,6 @@ const typeEntry: VaultEntry = {
   owner: null,
   cadence: null,
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: null,
   fileSize: 200,
@@ -1335,28 +1202,19 @@ describe('NoteList — traffic light padding when sidebar collapsed', () => {
 })
 
 describe('countByFilter', () => {
-  it('counts open, archived, and trashed notes per type', () => {
+  it('counts open and archived notes per type', () => {
     const entries = [
       makeEntry({ path: '/1.md', isA: 'Project' }),
       makeEntry({ path: '/2.md', isA: 'Project', archived: true }),
-      makeEntry({ path: '/3.md', isA: 'Project', trashed: true }),
-      makeEntry({ path: '/4.md', isA: 'Project' }),
-      makeEntry({ path: '/5.md', isA: 'Note' }),
+      makeEntry({ path: '/3.md', isA: 'Project' }),
+      makeEntry({ path: '/4.md', isA: 'Note' }),
     ]
     const counts = countByFilter(entries, 'Project')
-    expect(counts).toEqual({ open: 2, archived: 1, trashed: 1 })
+    expect(counts).toEqual({ open: 2, archived: 1 })
   })
 
   it('returns zeros when type has no entries', () => {
-    expect(countByFilter([], 'Project')).toEqual({ open: 0, archived: 0, trashed: 0 })
-  })
-
-  it('counts trashed note that is also archived as trashed only', () => {
-    const entries = [
-      makeEntry({ path: '/1.md', isA: 'Project', archived: true, trashed: true }),
-    ]
-    const counts = countByFilter(entries, 'Project')
-    expect(counts).toEqual({ open: 0, archived: 0, trashed: 1 })
+    expect(countByFilter([], 'Project')).toEqual({ open: 0, archived: 0 })
   })
 })
 
@@ -1365,7 +1223,6 @@ describe('NoteList — filter pills', () => {
     makeEntry({ path: '/p1.md', title: 'Open Project 1', isA: 'Project' }),
     makeEntry({ path: '/p2.md', title: 'Open Project 2', isA: 'Project' }),
     makeEntry({ path: '/p3.md', title: 'Archived Project', isA: 'Project', archived: true }),
-    makeEntry({ path: '/p4.md', title: 'Trashed Project', isA: 'Project', trashed: true, trashedAt: 1700000000 }),
     makeEntry({ path: '/n1.md', title: 'Some Note', isA: 'Note' }),
   ]
 
@@ -1376,7 +1233,6 @@ describe('NoteList — filter pills', () => {
     expect(screen.getByTestId('filter-pills')).toBeInTheDocument()
     expect(screen.getByTestId('filter-pill-open')).toBeInTheDocument()
     expect(screen.getByTestId('filter-pill-archived')).toBeInTheDocument()
-    expect(screen.getByTestId('filter-pill-trashed')).toBeInTheDocument()
   })
 
   it('shows filter pills in All Notes view', () => {
@@ -1386,20 +1242,17 @@ describe('NoteList — filter pills', () => {
     expect(screen.getByTestId('filter-pills')).toBeInTheDocument()
     expect(screen.getByTestId('filter-pill-open')).toBeInTheDocument()
     expect(screen.getByTestId('filter-pill-archived')).toBeInTheDocument()
-    expect(screen.getByTestId('filter-pill-trashed')).toBeInTheDocument()
   })
 
   it('shows correct All Notes count badges across all types', () => {
     render(
       <NoteList {...defaultFilterProps} entries={projectEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
     )
-    // projectEntries: 2 open Projects + 1 open Note = 3 open, 1 archived, 1 trashed
+    // projectEntries: 2 open Projects + 1 open Note = 3 open, 1 archived
     const openPill = screen.getByTestId('filter-pill-open')
     const archivedPill = screen.getByTestId('filter-pill-archived')
-    const trashedPill = screen.getByTestId('filter-pill-trashed')
     expect(openPill).toHaveTextContent('3')
     expect(archivedPill).toHaveTextContent('1')
-    expect(trashedPill).toHaveTextContent('1')
   })
 
   it('shows archived notes in All Notes when filter is archived', () => {
@@ -1411,28 +1264,17 @@ describe('NoteList — filter pills', () => {
     expect(screen.queryByText('Some Note')).not.toBeInTheDocument()
   })
 
-  it('shows trashed notes in All Notes when filter is trashed', () => {
-    render(
-      <NoteList noteListFilter="trashed" onNoteListFilterChange={noopFilterChange} entries={projectEntries} selection={allSelection} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
-    )
-    expect(screen.getByText('Trashed Project')).toBeInTheDocument()
-    expect(screen.queryByText('Open Project 1')).not.toBeInTheDocument()
-  })
-
   it('shows correct count badges for each filter', () => {
     render(
       <NoteList {...defaultFilterProps} entries={projectEntries} selection={{ kind: 'sectionGroup', type: 'Project' }} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
     )
-    // Open pill should show 2, Archived 1, Trashed 1
+    // Open pill should show 2, Archived 1
     const openPill = screen.getByTestId('filter-pill-open')
     const archivedPill = screen.getByTestId('filter-pill-archived')
-    const trashedPill = screen.getByTestId('filter-pill-trashed')
     expect(openPill).toHaveTextContent('Open')
     expect(openPill).toHaveTextContent('2')
     expect(archivedPill).toHaveTextContent('Archived')
     expect(archivedPill).toHaveTextContent('1')
-    expect(trashedPill).toHaveTextContent('Trashed')
-    expect(trashedPill).toHaveTextContent('1')
   })
 
   it('calls onNoteListFilterChange when a pill is clicked', () => {
@@ -1452,14 +1294,6 @@ describe('NoteList — filter pills', () => {
     expect(screen.queryByText('Open Project 1')).not.toBeInTheDocument()
   })
 
-  it('shows trashed notes when filter is set to trashed', () => {
-    render(
-      <NoteList noteListFilter="trashed" onNoteListFilterChange={noopFilterChange} entries={projectEntries} selection={{ kind: 'sectionGroup', type: 'Project' }} selectedNote={null} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
-    )
-    expect(screen.getByText('Trashed Project')).toBeInTheDocument()
-    expect(screen.queryByText('Open Project 1')).not.toBeInTheDocument()
-  })
-
   it('shows empty state for archived filter when no archived notes exist', () => {
     const entriesNoArchived = projectEntries.filter(e => !e.archived)
     render(
@@ -1473,7 +1307,6 @@ describe('NoteList — filterEntries with subFilter', () => {
   const entries = [
     makeEntry({ path: '/1.md', title: 'Active', isA: 'Project' }),
     makeEntry({ path: '/2.md', title: 'Archived', isA: 'Project', archived: true }),
-    makeEntry({ path: '/3.md', title: 'Trashed', isA: 'Project', trashed: true }),
     makeEntry({ path: '/4.md', title: 'Other', isA: 'Note' }),
   ]
 
@@ -1485,11 +1318,6 @@ describe('NoteList — filterEntries with subFilter', () => {
   it('filters sectionGroup by archived sub-filter', () => {
     const result = filterEntries(entries, { kind: 'sectionGroup', type: 'Project' }, 'archived')
     expect(result.map(e => e.title)).toEqual(['Archived'])
-  })
-
-  it('filters sectionGroup by trashed sub-filter', () => {
-    const result = filterEntries(entries, { kind: 'sectionGroup', type: 'Project' }, 'trashed')
-    expect(result.map(e => e.title)).toEqual(['Trashed'])
   })
 
   it('without sub-filter, defaults to active only', () => {
@@ -1506,11 +1334,6 @@ describe('NoteList — filterEntries with subFilter', () => {
     const result = filterEntries(entries, { kind: 'filter', filter: 'all' }, 'archived')
     expect(result.map(e => e.title)).toEqual(['Archived'])
   })
-
-  it('filters all notes by trashed sub-filter', () => {
-    const result = filterEntries(entries, { kind: 'filter', filter: 'all' }, 'trashed')
-    expect(result.map(e => e.title)).toEqual(['Trashed'])
-  })
 })
 
 describe('countAllByFilter', () => {
@@ -1519,11 +1342,9 @@ describe('countAllByFilter', () => {
       makeEntry({ path: '/1.md', isA: 'Project' }),
       makeEntry({ path: '/2.md', isA: 'Note' }),
       makeEntry({ path: '/3.md', isA: 'Project', archived: true }),
-      makeEntry({ path: '/4.md', isA: 'Note', trashed: true }),
-      makeEntry({ path: '/5.md', isA: 'Person', archived: true, trashed: true }),
     ]
     const counts = countAllByFilter(entries)
-    expect(counts).toEqual({ open: 2, archived: 1, trashed: 2 })
+    expect(counts).toEqual({ open: 2, archived: 1 })
   })
 
   it('excludes non-markdown files from counts', () => {
@@ -1533,7 +1354,7 @@ describe('countAllByFilter', () => {
       makeEntry({ path: '/3.png', isA: undefined, fileKind: 'binary' }),
     ]
     const counts = countAllByFilter(entries)
-    expect(counts).toEqual({ open: 1, archived: 0, trashed: 0 })
+    expect(counts).toEqual({ open: 1, archived: 0 })
   })
 })
 

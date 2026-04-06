@@ -66,8 +66,6 @@ const mockEntry: VaultEntry = {
   owner: 'Luca',
   cadence: null,
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: null,
   fileSize: 1024,
@@ -236,71 +234,6 @@ describe('Editor', () => {
     mockEditor.replaceBlocks.mockClear()
     mockEditor.insertBlocks.mockClear()
   })
-  describe('trashed note behavior', () => {
-    const trashedEntry: VaultEntry = { ...mockEntry, trashed: true, trashedAt: Date.now() / 1000 }
-    const trashedTab = { entry: trashedEntry, content: mockContent }
-
-    function renderTrashed(overrides: Partial<Parameters<typeof Editor>[0]> = {}) {
-      return render(<Editor {...defaultProps} entries={[trashedEntry]} tabs={[trashedTab]} activeTabPath={trashedEntry.path} {...overrides} />)
-    }
-
-    it('shows banner and read-only editor when note is trashed', () => {
-      renderTrashed()
-      expect(screen.getByTestId('trashed-note-banner')).toBeInTheDocument()
-      expect(screen.getByText('This note is in the Trash')).toBeInTheDocument()
-      expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
-    })
-
-    it('does not show banner and sets editable for normal notes', () => {
-      render(<Editor {...defaultProps} tabs={[mockTab]} activeTabPath={mockEntry.path} />)
-      expect(screen.queryByTestId('trashed-note-banner')).not.toBeInTheDocument()
-      expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'true')
-    })
-
-    it('calls onRestoreNote when banner restore is clicked', () => {
-      const onRestoreNote = vi.fn()
-      renderTrashed({ onRestoreNote })
-      fireEvent.click(screen.getByTestId('trashed-banner-restore'))
-      expect(onRestoreNote).toHaveBeenCalledWith(trashedEntry.path)
-    })
-
-    it('calls onDeleteNote when banner delete is clicked', () => {
-      const onDeleteNote = vi.fn()
-      renderTrashed({ onDeleteNote })
-      fireEvent.click(screen.getByTestId('trashed-banner-delete'))
-      expect(onDeleteNote).toHaveBeenCalledWith(trashedEntry.path)
-    })
-
-    it('shows trash banner immediately when entry changes to trashed (reactive)', () => {
-      const { rerender } = render(
-        <Editor {...defaultProps} tabs={[mockTab]} activeTabPath={mockEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
-      )
-      expect(screen.queryByTestId('trashed-note-banner')).not.toBeInTheDocument()
-
-      const trashedEntryUpdated = { ...mockEntry, trashed: true, trashedAt: Date.now() / 1000 }
-      const updatedTab = { entry: trashedEntryUpdated, content: mockContent }
-      rerender(
-        <Editor {...defaultProps} entries={[trashedEntryUpdated]} tabs={[updatedTab]} activeTabPath={mockEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
-      )
-      expect(screen.getByTestId('trashed-note-banner')).toBeInTheDocument()
-      expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'false')
-    })
-
-    it('removes trash banner immediately when entry is restored (reactive)', () => {
-      const { rerender } = render(
-        <Editor {...defaultProps} entries={[trashedEntry]} tabs={[trashedTab]} activeTabPath={trashedEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
-      )
-      expect(screen.getByTestId('trashed-note-banner')).toBeInTheDocument()
-
-      const restoredEntry = { ...trashedEntry, trashed: false, trashedAt: null }
-      const restoredTab = { entry: restoredEntry, content: mockContent }
-      rerender(
-        <Editor {...defaultProps} entries={[restoredEntry]} tabs={[restoredTab]} activeTabPath={trashedEntry.path} onRestoreNote={vi.fn()} onDeleteNote={vi.fn()} />
-      )
-      expect(screen.queryByTestId('trashed-note-banner')).not.toBeInTheDocument()
-      expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'true')
-    })
-  })
 })
 
 describe('click empty editor space', () => {
@@ -343,27 +276,6 @@ describe('click empty editor space', () => {
     container.removeChild(editableDiv)
   })
 
-  it('does not focus editor when note is not editable (trashed)', () => {
-    mockEditor.focus.mockClear()
-    mockEditor.setTextCursorPosition.mockClear()
-
-    const trashedEntry: VaultEntry = { ...mockEntry, trashed: true, trashedAt: Date.now() / 1000 }
-    render(
-      <Editor
-        {...defaultProps}
-        entries={[trashedEntry]}
-        tabs={[{ entry: trashedEntry, content: mockContent }]}
-        activeTabPath={trashedEntry.path}
-      />
-    )
-
-    const container = document.querySelector('.editor__blocknote-container')
-    expect(container).toBeTruthy()
-    fireEvent.click(container!)
-
-    expect(mockEditor.setTextCursorPosition).not.toHaveBeenCalled()
-    expect(mockEditor.focus).not.toHaveBeenCalled()
-  })
 })
 
 describe('archived note behavior', () => {

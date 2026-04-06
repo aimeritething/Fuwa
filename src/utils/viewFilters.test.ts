@@ -8,7 +8,7 @@ function makeEntry(overrides: Partial<VaultEntry>): VaultEntry {
   return {
     path: '/vault/test.md', filename: 'test.md', title: 'Test', isA: null,
     aliases: [], belongsTo: [], relatedTo: [], status: null,
-    archived: false, trashed: false, trashedAt: null,
+    archived: false,
     modifiedAt: NOW, createdAt: NOW, fileSize: 100, snippet: '',
     wordCount: 0, relationships: {}, icon: null, color: null,
     order: null, sidebarLabel: null, template: null, sort: null, view: null,
@@ -95,7 +95,7 @@ describe('evaluateView', () => {
     expect(result.map((e) => e.title)).toEqual(['Has'])
   })
 
-  it('excludes archived and trashed entries', () => {
+  it('excludes archived entries', () => {
     const view: ViewDefinition = {
       name: 'All', icon: null, color: null, sort: null,
       filters: { all: [{ field: 'type', op: 'equals', value: 'Note' }] },
@@ -103,7 +103,6 @@ describe('evaluateView', () => {
     const entries = [
       makeEntry({ isA: 'Note', title: 'Active' }),
       makeEntry({ isA: 'Note', title: 'Archived', archived: true }),
-      makeEntry({ isA: 'Note', title: 'Trashed', trashed: true }),
     ]
     const result = evaluateView(view, entries)
     expect(result.map((e) => e.title)).toEqual(['Active'])

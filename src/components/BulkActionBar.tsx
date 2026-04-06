@@ -3,12 +3,9 @@ import { Archive, ArrowCounterClockwise, Trash, X } from '@phosphor-icons/react'
 
 interface BulkActionBarProps {
   count: number
-  isTrashView: boolean
   isArchivedView?: boolean
   onArchive: () => void
-  onTrash: () => void
-  onRestore: () => void
-  onDeletePermanently: () => void
+  onDelete: () => void
   onUnarchive?: () => void
   onClear: () => void
 }
@@ -16,49 +13,33 @@ interface BulkActionBarProps {
 const actionBtnStyle = { padding: '5px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.12)', color: 'inherit', fontSize: 12, fontWeight: 500 } as const
 const destructiveBtnStyle = { padding: '5px 10px', borderRadius: 6, background: 'rgba(224,62,62,0.2)', color: 'var(--destructive)', fontSize: 12, fontWeight: 500 } as const
 
-function renderTrashActions(onRestore: () => void, onArchive: () => void, onDeletePermanently: () => void) {
-  return (
-    <>
-      <button className="flex items-center gap-1.5 border-none bg-transparent cursor-pointer" style={actionBtnStyle} onClick={onRestore} title="Restore selected notes" data-testid="bulk-restore-btn">
-        <ArrowCounterClockwise size={14} /> Restore
-      </button>
-      <button className="flex items-center gap-1.5 border-none bg-transparent cursor-pointer" style={actionBtnStyle} onClick={onArchive} title="Archive selected notes" data-testid="bulk-archive-btn">
-        <Archive size={14} /> Archive
-      </button>
-      <button className="flex items-center gap-1.5 border-none cursor-pointer" style={destructiveBtnStyle} onClick={onDeletePermanently} title="Permanently delete selected notes" data-testid="bulk-delete-btn">
-        <Trash size={14} /> Delete permanently
-      </button>
-    </>
-  )
-}
-
-function renderArchivedActions(onUnarchive: (() => void) | undefined, onTrash: () => void) {
+function renderArchivedActions(onUnarchive: (() => void) | undefined, onDelete: () => void) {
   return (
     <>
       <button className="flex items-center gap-1.5 border-none bg-transparent cursor-pointer" style={actionBtnStyle} onClick={onUnarchive} title="Unarchive selected notes" data-testid="bulk-unarchive-btn">
         <ArrowCounterClockwise size={14} /> Unarchive
       </button>
-      <button className="flex items-center gap-1.5 border-none cursor-pointer" style={destructiveBtnStyle} onClick={onTrash} title="Move selected notes to trash" data-testid="bulk-trash-btn">
-        <Trash size={14} /> Trash
+      <button className="flex items-center gap-1.5 border-none cursor-pointer" style={destructiveBtnStyle} onClick={onDelete} title="Permanently delete selected notes" data-testid="bulk-delete-btn">
+        <Trash size={14} /> Delete
       </button>
     </>
   )
 }
 
-function renderDefaultActions(onArchive: () => void, onTrash: () => void) {
+function renderDefaultActions(onArchive: () => void, onDelete: () => void) {
   return (
     <>
       <button className="flex items-center gap-1.5 border-none bg-transparent cursor-pointer" style={actionBtnStyle} onClick={onArchive} title="Archive selected notes" data-testid="bulk-archive-btn">
         <Archive size={14} /> Archive
       </button>
-      <button className="flex items-center gap-1.5 border-none cursor-pointer" style={destructiveBtnStyle} onClick={onTrash} title="Move selected notes to trash" data-testid="bulk-trash-btn">
-        <Trash size={14} /> Trash
+      <button className="flex items-center gap-1.5 border-none cursor-pointer" style={destructiveBtnStyle} onClick={onDelete} title="Permanently delete selected notes" data-testid="bulk-delete-btn">
+        <Trash size={14} /> Delete
       </button>
     </>
   )
 }
 
-function BulkActionBarInner({ count, isTrashView, isArchivedView, onArchive, onTrash, onRestore, onDeletePermanently, onUnarchive, onClear }: BulkActionBarProps) {
+function BulkActionBarInner({ count, isArchivedView, onArchive, onDelete, onUnarchive, onClear }: BulkActionBarProps) {
   return (
     <div
       className="flex shrink-0 items-center justify-between"
@@ -74,9 +55,8 @@ function BulkActionBarInner({ count, isTrashView, isArchivedView, onArchive, onT
         {count} selected
       </span>
       <div className="flex items-center gap-1">
-        {isTrashView ? renderTrashActions(onRestore, onArchive, onDeletePermanently)
-          : isArchivedView ? renderArchivedActions(onUnarchive, onTrash)
-          : renderDefaultActions(onArchive, onTrash)}
+        {isArchivedView ? renderArchivedActions(onUnarchive, onDelete)
+          : renderDefaultActions(onArchive, onDelete)}
         <button
           className="flex items-center border-none bg-transparent cursor-pointer"
           style={{ padding: '5px 6px', color: 'rgba(255,255,255,0.5)' }}

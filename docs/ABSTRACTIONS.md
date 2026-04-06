@@ -77,8 +77,8 @@ classDiagram
         +Number wordCount
         +String? snippet
         +Boolean archived
-        +Boolean trashed
-        +Number? trashedAt
+        +Boolean trashed ⚠ legacy
+        +Number? trashedAt ⚠ legacy
         +Record~string,string~ properties
     }
 
@@ -127,8 +127,8 @@ interface VaultEntry {
   wordCount: number | null  // Body word count (excludes frontmatter)
   snippet: string | null    // First 200 chars of body
   archived: boolean         // Archived flag
-  trashed: boolean          // Trashed flag
-  trashedAt: number | null  // When trashed (for auto-purge)
+  trashed: boolean          // Kept for backward compatibility (Trash system removed — delete is permanent)
+  trashedAt: number | null  // Kept for backward compatibility (Trash system removed)
   properties: Record<string, string>  // Scalar frontmatter fields (custom properties)
 }
 ```
@@ -248,7 +248,7 @@ The editor displays a dedicated `TitleField` component above the BlockNote edito
 Navigation state is modeled as a discriminated union:
 
 ```typescript
-type SidebarFilter = 'all' | 'archived' | 'trash' | 'changes' | 'pulse'
+type SidebarFilter = 'all' | 'archived' | 'changes' | 'pulse'
 
 type SidebarSelection =
   | { kind: 'filter'; filter: SidebarFilter }

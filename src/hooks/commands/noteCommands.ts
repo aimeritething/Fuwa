@@ -4,18 +4,14 @@ interface NoteCommandsConfig {
   hasActiveNote: boolean
   activeTabPath: string | null
   isArchived: boolean
-  isTrashed: boolean
   activeNoteHasIcon?: boolean
-  trashedCount?: number
   onCreateNote: () => void
   onCreateType?: () => void
   onOpenDailyNote: () => void
   onSave: () => void
-  onTrashNote: (path: string) => void
-  onRestoreNote: (path: string) => void
+  onDeleteNote: (path: string) => void
   onArchiveNote: (path: string) => void
   onUnarchiveNote: (path: string) => void
-  onEmptyTrash?: () => void
   onSetNoteIcon?: () => void
   onRemoveNoteIcon?: () => void
   onOpenInNewWindow?: () => void
@@ -27,10 +23,9 @@ interface NoteCommandsConfig {
 
 export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
   const {
-    hasActiveNote, activeTabPath, isArchived, isTrashed,
+    hasActiveNote, activeTabPath, isArchived,
     onCreateNote, onCreateType, onOpenDailyNote, onSave,
-    onTrashNote, onRestoreNote, onArchiveNote, onUnarchiveNote,
-    onEmptyTrash, trashedCount,
+    onDeleteNote, onArchiveNote, onUnarchiveNote,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     onOpenInNewWindow, onToggleFavorite, isFavorite,
     onToggleOrganized, isOrganized,
@@ -41,11 +36,10 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
     { id: 'create-type', label: 'New Type', group: 'Note', keywords: ['new', 'create', 'type', 'template'], enabled: !!onCreateType, execute: () => onCreateType?.() },
     { id: 'open-daily-note', label: "Open Today's Note", group: 'Note', shortcut: '⌘J', keywords: ['daily', 'journal', 'today'], enabled: true, execute: onOpenDailyNote },
     { id: 'save-note', label: 'Save Note', group: 'Note', shortcut: '⌘S', keywords: ['write'], enabled: hasActiveNote, execute: onSave },
-    { id: 'empty-trash', label: 'Empty Trash', group: 'Note', keywords: ['delete', 'permanently', 'purge', 'clear', 'trash'], enabled: (trashedCount ?? 0) > 0, execute: () => onEmptyTrash?.() },
     {
-      id: 'trash-note', label: isTrashed ? 'Restore Note' : 'Trash Note', group: 'Note', shortcut: '⌘⌫',
-      keywords: ['delete', 'remove', 'restore', 'trash'], enabled: hasActiveNote,
-      execute: () => { if (activeTabPath) (isTrashed ? onRestoreNote : onTrashNote)(activeTabPath) },
+      id: 'delete-note', label: 'Delete Note', group: 'Note', shortcut: '⌘⌫',
+      keywords: ['delete', 'remove'], enabled: hasActiveNote,
+      execute: () => { if (activeTabPath) onDeleteNote(activeTabPath) },
     },
     {
       id: 'archive-note', label: isArchived ? 'Unarchive Note' : 'Archive Note', group: 'Note', shortcut: '⌘E',

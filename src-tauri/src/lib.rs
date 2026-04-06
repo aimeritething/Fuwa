@@ -16,14 +16,9 @@ pub mod vault_list;
 use std::process::Child;
 #[cfg(desktop)]
 use std::sync::Mutex;
-#[cfg(desktop)]
-use std::time::Instant;
 
 #[cfg(desktop)]
 struct WsBridgeChild(Mutex<Option<Child>>);
-
-#[cfg(desktop)]
-struct LastPurgeTime(Mutex<Instant>);
 
 #[cfg(desktop)]
 fn log_startup_result(label: &str, result: Result<usize, String>) {
@@ -34,7 +29,7 @@ fn log_startup_result(label: &str, result: Result<usize, String>) {
     }
 }
 
-/// Run startup housekeeping on the default vault (purge old trash, migrate legacy frontmatter).
+/// Run startup housekeeping on the default vault (migrate legacy frontmatter, seed configs).
 #[cfg(desktop)]
 fn run_startup_tasks() {
     let vault_path = dirs::home_dir()
@@ -44,10 +39,6 @@ fn run_startup_tasks() {
         return;
     }
     let vp_str = vault_path.to_str().unwrap_or_default();
-    log_startup_result(
-        "Purged trashed files on startup",
-        vault::purge_trash(vp_str).map(|d| d.len()),
-    );
     log_startup_result(
         "Migrated is_a to type on startup",
         vault::migrate_is_a_to_type(vp_str),
@@ -86,8 +77,6 @@ pub fn run() {
 
     #[cfg(desktop)]
     let builder = builder.manage(WsBridgeChild(Mutex::new(None)));
-    #[cfg(desktop)]
-    let builder = builder.manage(LastPurgeTime(Mutex::new(Instant::now())));
 
     builder
         .setup(|app| {
@@ -158,14 +147,11 @@ pub fn run() {
             commands::sync_note_title,
             commands::save_image,
             commands::copy_image_to_vault,
-            commands::purge_trash,
             commands::delete_note,
             commands::batch_delete_notes,
-            commands::empty_trash,
             commands::migrate_is_a_to_type,
             commands::create_vault_folder,
             commands::batch_archive_notes,
-            commands::batch_trash_notes,
             commands::get_settings,
             commands::update_menu_state,
             commands::save_settings,
@@ -196,39 +182,13 @@ pub fn run() {
             #[cfg(desktop)]
             {
                 use tauri::Manager;
-                match _event {
-                    tauri::RunEvent::Exit => {
-                        let state: tauri::State<'_, WsBridgeChild> = _app_handle.state();
-                        let mut guard = state.0.lock().unwrap();
-                        if let Some(ref mut child) = *guard {
-                            let _ = child.kill();
-                            log::info!("ws-bridge child process killed on exit");
-                        }
+                if let tauri::RunEvent::Exit = _event {
+                    let state: tauri::State<'_, WsBridgeChild> = _app_handle.state();
+                    let mut guard = state.0.lock().unwrap();
+                    if let Some(ref mut child) = *guard {
+                        let _ = child.kill();
+                        log::info!("ws-bridge child process killed on exit");
                     }
-                    tauri::RunEvent::WindowEvent {
-                        event: tauri::WindowEvent::Focused(true),
-                        ..
-                    } => {
-                        let state: tauri::State<'_, LastPurgeTime> = _app_handle.state();
-                        let mut last = state.0.lock().unwrap();
-                        if last.elapsed() >= std::time::Duration::from_secs(3600) {
-                            *last = Instant::now();
-                            drop(last);
-                            std::thread::spawn(|| {
-                                let vault_path = dirs::home_dir()
-                                    .map(|h| h.join("Laputa"))
-                                    .unwrap_or_default();
-                                if vault_path.is_dir() {
-                                    log_startup_result(
-                                        "Purged trashed files on focus",
-                                        vault::purge_trash(vault_path.to_str().unwrap_or_default())
-                                            .map(|d| d.len()),
-                                    );
-                                }
-                            });
-                        }
-                    }
-                    _ => {}
                 }
             }
         });

@@ -8,7 +8,7 @@ const mockEntries: VaultEntry[] = [
     path: '/vault/note/hello.md', filename: 'hello.md', title: 'Hello',
     isA: 'Note', aliases: [], belongsTo: [], relatedTo: [],
     status: 'Active',
-    archived: false, trashed: false, trashedAt: null,
+    archived: false,
     modifiedAt: 1700000000, createdAt: 1700000000, fileSize: 100,
     snippet: '', wordCount: 0, relationships: {}, icon: null, color: null, order: null, template: null, sort: null, outgoingLinks: [],
   },

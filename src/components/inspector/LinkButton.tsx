@@ -1,25 +1,23 @@
 import type { ComponentType, SVGAttributes } from 'react'
-import { Trash, X } from '@phosphor-icons/react'
+import { X } from '@phosphor-icons/react'
 
-export function StatusSuffix({ isArchived, isTrashed }: { isArchived: boolean; isTrashed: boolean }) {
-  if (isTrashed) return <span style={{ fontSize: 10, opacity: 0.8 }}>(trashed)</span>
+export function StatusSuffix({ isArchived }: { isArchived: boolean }) {
   if (isArchived) return <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.8 }}>(archived)</span>
   return null
 }
 
-export function LinkButton({ label, emoji, typeColor, bgColor, isArchived, isTrashed, onClick, onRemove, title, TypeIcon }: {
+export function LinkButton({ label, emoji, typeColor, bgColor, isArchived, onClick, onRemove, title, TypeIcon }: {
   label: string
   emoji?: string | null
   typeColor: string
   bgColor?: string
   isArchived: boolean
-  isTrashed: boolean
   onClick: () => void
   onRemove?: () => void
   title?: string
   TypeIcon: ComponentType<SVGAttributes<SVGSVGElement>>
 }) {
-  const isDimmed = isArchived || isTrashed
+  const isDimmed = isArchived
   const color = isDimmed ? 'var(--muted-foreground)' : typeColor
   return (
     <button
@@ -33,10 +31,9 @@ export function LinkButton({ label, emoji, typeColor, bgColor, isArchived, isTra
       title={title}
     >
       <span className="flex items-center gap-1 flex-1 truncate">
-        {isTrashed && <Trash size={12} className="shrink-0" />}
         {emoji && <span className="shrink-0">{emoji}</span>}
         {label}
-        <StatusSuffix isArchived={isArchived} isTrashed={isTrashed} />
+        <StatusSuffix isArchived={isArchived} />
       </span>
       <span className="flex items-center gap-1.5 shrink-0">
         {onRemove && (

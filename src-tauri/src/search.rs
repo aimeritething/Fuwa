@@ -1,4 +1,3 @@
-use crate::vault;
 use serde::Serialize;
 use std::path::Path;
 use std::time::Instant;
@@ -73,9 +72,6 @@ pub fn search_vault(
     for entry in WalkDir::new(vault_dir).into_iter().filter_map(|e| e.ok()) {
         let path = entry.path();
         if !path.extension().is_some_and(|ext| ext == "md") {
-            continue;
-        }
-        if vault::is_file_trashed(path) {
             continue;
         }
         // Skip hidden dirs and .laputa config

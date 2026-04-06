@@ -138,7 +138,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   save_view_cmd: () => {},
   delete_view_cmd: () => {},
   reload_vault: () => MOCK_ENTRIES,
-  reload_vault_entry: (args: { path: string }) => MOCK_ENTRIES.find(e => e.path === args.path) ?? { path: args.path, title: 'Unknown', filename: 'unknown.md', aliases: [], belongsTo: [], relatedTo: [], archived: false, trashed: false, snippet: '', wordCount: 0, fileSize: 0, relationships: {}, outgoingLinks: [], properties: {} },
+  reload_vault_entry: (args: { path: string }) => MOCK_ENTRIES.find(e => e.path === args.path) ?? { path: args.path, title: 'Unknown', filename: 'unknown.md', aliases: [], belongsTo: [], relatedTo: [], archived: false, snippet: '', wordCount: 0, fileSize: 0, relationships: {}, outgoingLinks: [], properties: {} },
   sync_note_title: () => false,
   get_note_content: (args: { path: string }) => MOCK_CONTENT[args.path] ?? '',
   get_all_content: () => MOCK_CONTENT,
@@ -250,7 +250,6 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     if (!q) return { results: [], elapsed_ms: 0, query: q, mode: args.mode }
     const matches = MOCK_ENTRIES
       .filter(e => {
-        if (e.trashed) return false
         const content = MOCK_CONTENT[e.path] ?? ''
         return e.title.toLowerCase().includes(q) || content.toLowerCase().includes(q)
       })

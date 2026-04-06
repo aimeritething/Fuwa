@@ -10,8 +10,6 @@ export interface VaultEntry {
   // Note: owner and cadence are now stored in the generic `properties` map,
   // accessed via entry.properties?.Owner and entry.properties?.Cadence
   archived: boolean
-  trashed: boolean
-  trashedAt: number | null
   modifiedAt: number | null
   createdAt: number | null
   fileSize: number
@@ -180,7 +178,7 @@ export interface PulseCommit {
   deleted: number
 }
 
-export type SidebarFilter = 'all' | 'archived' | 'trash' | 'changes' | 'pulse' | 'inbox' | 'favorites'
+export type SidebarFilter = 'all' | 'archived' | 'changes' | 'pulse' | 'inbox' | 'favorites'
 
 export type InboxPeriod = 'week' | 'month' | 'quarter' | 'all'
 

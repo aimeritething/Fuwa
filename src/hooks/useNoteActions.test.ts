@@ -47,8 +47,6 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   relatedTo: [],
   status: 'Active',
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: 1700000000,
   fileSize: 100,
@@ -125,7 +123,6 @@ describe('buildNewEntry', () => {
     expect(entry.isA).toBe('Note')
     expect(entry.status).toBe('Active')
     expect(entry.archived).toBe(false)
-    expect(entry.trashed).toBe(false)
     expect(entry.modifiedAt).toBeGreaterThan(0)
     expect(entry.createdAt).toBe(entry.modifiedAt)
   })
@@ -339,7 +336,6 @@ describe('frontmatterToEntryPatch', () => {
     ['icon', 'star', { icon: 'star' }],
     ['sidebar_label', 'Projects', { sidebarLabel: 'Projects' }],
     ['archived', true, { archived: true }],
-    ['trashed', true, { trashed: true }],
     ['order', 5, { order: 5 }],
     ['template', '## Heading\n\n', { template: '## Heading\n\n' }],
     ['visible', false, { visible: false }],

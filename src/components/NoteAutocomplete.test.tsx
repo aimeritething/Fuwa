@@ -15,8 +15,6 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   owner: null,
   cadence: null,
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: 1700000000,
   fileSize: 100,

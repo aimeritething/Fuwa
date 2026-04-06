@@ -16,8 +16,6 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   owner: null,
   cadence: null,
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: 1700000000,
   fileSize: 100,
@@ -35,7 +33,6 @@ const entries: VaultEntry[] = [
   makeEntry({ path: '/vault/alpha.md', title: 'Alpha', filename: 'alpha.md', isA: 'Project' }),
   makeEntry({ path: '/vault/beta.md', title: 'Beta', filename: 'beta.md', isA: 'Person' }),
   makeEntry({ path: '/vault/gamma.md', title: 'Gamma', filename: 'gamma.md' }),
-  makeEntry({ path: '/vault/trashed.md', title: 'Trashed', filename: 'trashed.md', trashed: true }),
   makeEntry({ path: '/vault/archived.md', title: 'Archived', filename: 'archived.md', archived: true }),
 ]
 
@@ -101,13 +98,12 @@ describe('WikilinkChatInput', () => {
     vi.useRealTimers()
   })
 
-  it('excludes trashed and archived entries from suggestions', async () => {
+  it('excludes archived entries from suggestions', async () => {
     vi.useFakeTimers()
     render(<Controlled entries={entries} />)
-    await typeAndWait('[[t')
+    await typeAndWait('[[arch')
     const menu = screen.queryByTestId('wikilink-menu')
     if (menu) {
-      expect(menu.textContent).not.toContain('Trashed')
       expect(menu.textContent).not.toContain('Archived')
     }
     vi.useRealTimers()

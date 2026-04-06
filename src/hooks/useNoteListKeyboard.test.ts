@@ -15,8 +15,6 @@ function makeEntry(path: string, title: string): VaultEntry {
     status: null,
     favorite: false,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     createdAt: null,
     modifiedAt: null,
     fileSize: 100,

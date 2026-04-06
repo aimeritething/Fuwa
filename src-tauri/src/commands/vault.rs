@@ -61,12 +61,6 @@ pub fn update_wikilinks_for_renames(
 }
 
 #[tauri::command]
-pub fn purge_trash(vault_path: String) -> Result<Vec<String>, String> {
-    let vault_path = expand_tilde(&vault_path);
-    vault::purge_trash(&vault_path)
-}
-
-#[tauri::command]
 pub fn delete_note(path: String) -> Result<String, String> {
     let path = expand_tilde(&path);
     vault::delete_note(&path)
@@ -76,12 +70,6 @@ pub fn delete_note(path: String) -> Result<String, String> {
 pub fn batch_delete_notes(paths: Vec<String>) -> Result<Vec<String>, String> {
     let expanded: Vec<String> = paths.iter().map(|p| expand_tilde(p).into_owned()).collect();
     vault::batch_delete_notes(&expanded)
-}
-
-#[tauri::command]
-pub fn empty_trash(vault_path: String) -> Result<Vec<String>, String> {
-    let vault_path = expand_tilde(&vault_path);
-    vault::empty_trash(&vault_path)
 }
 
 #[tauri::command]
@@ -230,23 +218,6 @@ pub fn batch_archive_notes(paths: Vec<String>) -> Result<usize, String> {
     Ok(count)
 }
 
-#[tauri::command]
-pub fn batch_trash_notes(paths: Vec<String>) -> Result<usize, String> {
-    let now = chrono::Utc::now().format("%Y-%m-%dT%H:%M:%SZ").to_string();
-    let mut count = 0;
-    for path in &paths {
-        let path = expand_tilde(path);
-        frontmatter::update_frontmatter(&path, "_trashed", FrontmatterValue::Bool(true))?;
-        frontmatter::update_frontmatter(
-            &path,
-            "_trashed_at",
-            FrontmatterValue::String(now.clone()),
-        )?;
-        count += 1;
-    }
-    Ok(count)
-}
-
 // ── Search commands ─────────────────────────────────────────────────────────
 
 #[tauri::command]
@@ -295,18 +266,6 @@ mod tests {
         let content = std::fs::read_to_string(&note).unwrap();
         assert!(content.contains("_archived: true"));
         assert!(content.contains("Status: Active"));
-    }
-
-    #[test]
-    fn test_batch_trash_notes() {
-        let (_dir, note) = temp_note("---\nStatus: Active\n---\n# Note\n");
-        assert_eq!(
-            batch_trash_notes(vec![note.to_str().unwrap().to_string()]).unwrap(),
-            1
-        );
-        let content = std::fs::read_to_string(&note).unwrap();
-        assert!(content.contains("_trashed: true"));
-        assert!(content.contains("_trashed_at"));
     }
 
     #[test]
@@ -359,7 +318,7 @@ mod tests {
 
         std::fs::write(
             vault_path.join("note.md"),
-            "---\nTrashed: false\n---\n# Note\n",
+            "---\n_archived: false\n---\n# Note\n",
         )
         .unwrap();
         std::process::Command::new("git")
@@ -374,11 +333,11 @@ mod tests {
             .unwrap();
 
         let entries = list_vault(vault_path.to_str().unwrap().to_string()).unwrap();
-        assert!(!entries[0].trashed);
+        assert!(!entries[0].archived);
 
         std::fs::write(
             vault_path.join("note.md"),
-            "---\nTrashed: true\n---\n# Note\n",
+            "---\n_archived: true\n---\n# Note\n",
         )
         .unwrap();
 
@@ -386,8 +345,8 @@ mod tests {
         crate::vault::invalidate_cache(std::path::Path::new(vp_str));
         let fresh = crate::vault::scan_vault_cached(std::path::Path::new(vp_str)).unwrap();
         assert!(
-            fresh[0].trashed,
-            "reload_vault must reflect disk state after trashing"
+            fresh[0].archived,
+            "reload_vault must reflect disk state after archiving"
         );
     }
 

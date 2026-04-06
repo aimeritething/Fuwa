@@ -1,7 +1,6 @@
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
-import type { VaultEntry } from '../types'
 import { trackEvent } from '../lib/telemetry'
 
 interface ConfirmDeleteState {
@@ -12,8 +11,6 @@ interface ConfirmDeleteState {
 }
 
 interface UseDeleteActionsInput {
-  vaultPath: string
-  entries: VaultEntry[]
   /** Called to deselect the note if it is currently open. */
   onDeselectNote: (path: string) => void
   removeEntry: (path: string) => void
@@ -21,15 +18,11 @@ interface UseDeleteActionsInput {
 }
 
 export function useDeleteActions({
-  vaultPath,
-  entries,
   onDeselectNote,
   removeEntry,
   setToastMessage,
 }: UseDeleteActionsInput) {
   const [confirmDelete, setConfirmDelete] = useState<ConfirmDeleteState | null>(null)
-
-  const trashedCount = useMemo(() => entries.filter(e => e.trashed).length, [entries])
 
   const deleteNoteFromDisk = useCallback(async (path: string) => {
     try {
@@ -47,7 +40,7 @@ export function useDeleteActions({
   const handleDeleteNote = useCallback(async (path: string) => {
     setConfirmDelete({
       title: 'Delete permanently?',
-      message: 'This note will be permanently deleted. This cannot be undone.',
+      message: 'Delete permanently? This cannot be undone. You can recover it from Git history.',
       onConfirm: async () => {
         setConfirmDelete(null)
         const ok = await deleteNoteFromDisk(path)
@@ -75,36 +68,11 @@ export function useDeleteActions({
     })
   }, [deleteNoteFromDisk, setToastMessage])
 
-  const handleEmptyTrash = useCallback(() => {
-    if (trashedCount === 0) return
-    setConfirmDelete({
-      title: 'Empty Trash?',
-      message: `Permanently delete all ${trashedCount} trashed ${trashedCount === 1 ? 'note' : 'notes'}? This cannot be undone.`,
-      confirmLabel: 'Empty Trash',
-      onConfirm: async () => {
-        setConfirmDelete(null)
-        try {
-          const tauriInvoke = isTauri() ? invoke : mockInvoke
-          const deleted = await tauriInvoke<string[]>('empty_trash', { vaultPath })
-          for (const path of deleted) {
-            onDeselectNote(path)
-            removeEntry(path)
-          }
-          setToastMessage(`${deleted.length} note${deleted.length !== 1 ? 's' : ''} permanently deleted`)
-        } catch (e) {
-          setToastMessage(`Failed to empty trash: ${e}`)
-        }
-      },
-    })
-  }, [trashedCount, vaultPath, onDeselectNote, removeEntry, setToastMessage])
-
   return {
     confirmDelete,
     setConfirmDelete,
-    trashedCount,
     deleteNoteFromDisk,
     handleDeleteNote,
     handleBulkDeletePermanently,
-    handleEmptyTrash,
   }
 }

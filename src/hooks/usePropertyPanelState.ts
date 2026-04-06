@@ -12,7 +12,7 @@ import { containsWikilinks } from '../components/DynamicPropertiesPanel'
 
 // Keys to skip showing in Properties (handled by dedicated UI or internal)
 // Compared case-insensitively via isVisibleProperty()
-const SKIP_KEYS = new Set(['aliases', 'workspace', 'title', 'type', 'is_a', 'is a', '_trashed', 'trashed', '_trashed_at', 'trashed_at', 'trashed at', '_archived', 'archived', 'archived_at', 'icon', '_favorite', '_favorite_index', '_organized'])
+const SKIP_KEYS = new Set(['aliases', 'workspace', 'title', 'type', 'is_a', 'is a', '_archived', 'archived', 'archived_at', 'icon', '_favorite', '_favorite_index', '_organized'])
 
 function coerceValue(raw: string): FrontmatterValue {
   if (raw.toLowerCase() === 'true') return true

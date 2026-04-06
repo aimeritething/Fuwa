@@ -6,7 +6,6 @@ import { DiffView } from './DiffView'
 import { BreadcrumbBar } from './BreadcrumbBar'
 import { TitleField } from './TitleField'
 import { NoteIcon } from './NoteIcon'
-import { TrashedNoteBanner } from './TrashedNoteBanner'
 import { ArchivedNoteBanner } from './ArchivedNoteBanner'
 import { ConflictNoteBanner } from './ConflictNoteBanner'
 import { RawEditorView } from './RawEditorView'
@@ -43,8 +42,6 @@ interface EditorContentProps {
   onEditorChange?: () => void
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
-  onTrashNote?: (path: string) => void
-  onRestoreNote?: (path: string) => void
   onDeleteNote?: (path: string) => void
   onArchiveNote?: (path: string) => void
   onUnarchiveNote?: (path: string) => void
@@ -127,7 +124,7 @@ function bindPath(cb: ((path: string) => void) | undefined, path: string) {
 function ActiveTabBreadcrumb({ activeTab, barRef, props }: {
   activeTab: Tab
   barRef: React.RefObject<HTMLDivElement | null>
-  props: Omit<EditorContentProps, 'activeTab' | 'isLoadingNewTab' | 'entries' | 'editor' | 'onNavigateWikilink' | 'onEditorChange' | 'onRawContentChange' | 'onSave' | 'onDeleteNote'> & { forceRawMode?: boolean }
+  props: Omit<EditorContentProps, 'activeTab' | 'isLoadingNewTab' | 'entries' | 'editor' | 'onNavigateWikilink' | 'onEditorChange' | 'onRawContentChange' | 'onSave'> & { forceRawMode?: boolean }
 }) {
   const wordCount = countWords(activeTab.content)
   const path = activeTab.entry.path
@@ -149,8 +146,7 @@ function ActiveTabBreadcrumb({ activeTab, barRef, props }: {
       onToggleInspector={props.onToggleInspector}
       onToggleFavorite={bindPath(props.onToggleFavorite, path)}
       onToggleOrganized={bindPath(props.onToggleOrganized, path)}
-      onTrash={bindPath(props.onTrashNote, path)}
-      onRestore={bindPath(props.onRestoreNote, path)}
+      onDelete={bindPath(props.onDeleteNote, path)}
       onArchive={bindPath(props.onArchiveNote, path)}
       onUnarchive={bindPath(props.onUnarchiveNote, path)}
     />
@@ -162,16 +158,13 @@ export function EditorContent({
   diffMode, diffContent, onToggleDiff,
   rawMode, onToggleRaw, onRawContentChange, onSave,
   onNavigateWikilink, onEditorChange, vaultPath,
-  onDeleteNote, rawLatestContentRef, onTitleChange,
+  rawLatestContentRef, onTitleChange,
   onSetNoteIcon, onRemoveNoteIcon,
   isConflicted, onKeepMine, onKeepTheirs,
   ...breadcrumbProps
 }: EditorContentProps) {
-  // Look up trashed/archived from the latest vault entries, not the tab snapshot,
-  // so the banner appears regardless of navigation context.
   const { cssVars } = useEditorTheme()
   const freshEntry = activeTab ? entries.find(e => e.path === activeTab.entry.path) : undefined
-  const isTrashed = freshEntry?.trashed ?? activeTab?.entry.trashed ?? false
   const isArchived = freshEntry?.archived ?? activeTab?.entry.archived ?? false
   // Non-markdown text files always use the raw editor (no BlockNote)
   const isNonMarkdownText = activeTab?.entry.fileKind === 'text'
@@ -225,12 +218,6 @@ export function EditorContent({
         barRef={breadcrumbBarRef}
         props={{ diffMode, diffContent, onToggleDiff, rawMode: effectiveRawMode, onToggleRaw, forceRawMode: isNonMarkdownText, ...breadcrumbProps }}
       />
-      {isTrashed && (
-        <TrashedNoteBanner
-          onRestore={() => breadcrumbProps.onRestoreNote?.(path)}
-          onDeletePermanently={() => onDeleteNote?.(path)}
-        />
-      )}
       {isArchived && breadcrumbProps.onUnarchiveNote && (
         <ArchivedNoteBanner onUnarchive={() => breadcrumbProps.onUnarchiveNote!(path)} />
       )}
@@ -248,17 +235,17 @@ export function EditorContent({
             <div ref={titleSectionRef} className="title-section">
               {!emojiIcon && (
                 <div className="title-section__add-icon">
-                  <NoteIcon icon={null} editable={!isTrashed} onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
+                  <NoteIcon icon={null} editable onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
                 </div>
               )}
               <div className={`title-section__row${emojiIcon ? '' : ' title-section__row--no-icon'}`}>
                 {emojiIcon && (
-                  <NoteIcon icon={emojiIcon} editable={!isTrashed} onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
+                  <NoteIcon icon={emojiIcon} editable onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
                 )}
                 <TitleField
                   title={activeTab.entry.title}
                   filename={activeTab.entry.filename}
-                  editable={!isTrashed}
+                  editable
                   notePath={path}
                   vaultPath={vaultPath}
                   onTitleChange={(newTitle) => onTitleChange?.(path, newTitle)}
@@ -266,7 +253,7 @@ export function EditorContent({
               </div>
               <div className="title-section__separator" />
             </div>
-            <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} editable={!isTrashed} />
+            <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} editable />
           </div>
         </div>
       )}

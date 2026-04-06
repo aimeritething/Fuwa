@@ -127,7 +127,7 @@ function matchWikilinkEntries(entries: VaultEntry[], typeEntryMap: Record<string
   if (query.length < MIN_WIKILINK_QUERY) return []
   const lowerQuery = query.toLowerCase()
   return entries
-    .filter(e => !e.trashed && entryMatchesQuery(e, lowerQuery))
+    .filter(e => entryMatchesQuery(e, lowerQuery))
     .slice(0, MAX_WIKILINK_RESULTS)
     .map(e => toWikilinkMatch(e, typeEntryMap))
 }

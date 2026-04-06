@@ -16,7 +16,7 @@ function makeHandlers(): MenuEventHandlers {
     onZoomOut: vi.fn(),
     onZoomReset: vi.fn(),
     onArchiveNote: vi.fn(),
-    onTrashNote: vi.fn(),
+    onDeleteNote: vi.fn(),
     onSearch: vi.fn(),
     onToggleRawEditor: vi.fn(),
     onToggleDiff: vi.fn(),
@@ -141,17 +141,17 @@ describe('dispatchMenuEvent', () => {
     expect(h.onArchiveNote).not.toHaveBeenCalled()
   })
 
-  it('note-trash triggers trash on active tab', () => {
+  it('note-delete triggers delete on active tab', () => {
     const h = makeHandlers()
-    dispatchMenuEvent('note-trash', h)
-    expect(h.onTrashNote).toHaveBeenCalledWith('/vault/test.md')
+    dispatchMenuEvent('note-delete', h)
+    expect(h.onDeleteNote).toHaveBeenCalledWith('/vault/test.md')
   })
 
-  it('note-trash does nothing when no active tab', () => {
+  it('note-delete does nothing when no active tab', () => {
     const h = makeHandlers()
     h.activeTabPathRef = { current: null }
-    dispatchMenuEvent('note-trash', h)
-    expect(h.onTrashNote).not.toHaveBeenCalled()
+    dispatchMenuEvent('note-delete', h)
+    expect(h.onDeleteNote).not.toHaveBeenCalled()
   })
 
   // Optional handler events
@@ -216,12 +216,6 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('go-archived', h)
     expect(h.onSelectFilter).toHaveBeenCalledWith('archived')
-  })
-
-  it('go-trash selects trash filter', () => {
-    const h = makeHandlers()
-    dispatchMenuEvent('go-trash', h)
-    expect(h.onSelectFilter).toHaveBeenCalledWith('trash')
   })
 
   it('go-changes selects changes filter', () => {

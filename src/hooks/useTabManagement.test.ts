@@ -19,8 +19,6 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   relatedTo: [],
   status: 'Active',
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: 1700000000,
   fileSize: 100,
@@ -171,20 +169,20 @@ describe('useTabManagement (single-note model)', () => {
   describe('setTabs entry sync', () => {
     it('updates note entry via setTabs mapper (vault entry sync pattern)', async () => {
       const { result } = renderHook(() => useTabManagement())
-      const entry = makeEntry({ path: '/vault/a.md', trashed: false })
+      const entry = makeEntry({ path: '/vault/a.md', archived: false })
 
       await act(async () => {
         await result.current.handleSelectNote(entry)
       })
 
-      const freshEntry = { ...entry, trashed: true, trashedAt: Date.now() / 1000 }
+      const freshEntry = { ...entry, archived: true }
       act(() => {
         result.current.setTabs(prev => prev.map(tab =>
           tab.entry.path === freshEntry.path ? { ...tab, entry: freshEntry } : tab
         ))
       })
 
-      expect(result.current.tabs[0].entry.trashed).toBe(true)
+      expect(result.current.tabs[0].entry.archived).toBe(true)
     })
   })
 

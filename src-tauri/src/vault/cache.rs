@@ -888,18 +888,18 @@ mod tests {
         let (_lock, _cache_tmp, dir) = setup_git_vault();
         let vault = dir.path();
 
-        create_test_file(vault, "note.md", "---\nTrashed: false\n---\n# Note\n");
+        create_test_file(vault, "note.md", "---\n_archived: false\n---\n# Note\n");
         git_add_commit(vault, "init");
 
-        // Build cache — note is not trashed
+        // Build cache — note is not archived
         let entries = scan_vault_cached(vault).unwrap();
         assert_eq!(entries.len(), 1);
-        assert!(!entries[0].trashed, "note must not be trashed initially");
+        assert!(!entries[0].archived, "note must not be archived initially");
 
-        // Simulate trashing the note on disk (update frontmatter directly)
-        create_test_file(vault, "note.md", "---\nTrashed: true\n---\n# Note\n");
+        // Simulate archiving the note on disk (update frontmatter directly)
+        create_test_file(vault, "note.md", "---\n_archived: true\n---\n# Note\n");
         // Stage the change so git sees it
-        git_add_commit(vault, "trash");
+        git_add_commit(vault, "archive");
 
         // Without invalidation, scan_vault_cached uses incremental update.
         // With invalidation, it must do a full rescan from disk.
@@ -907,8 +907,8 @@ mod tests {
         let entries2 = scan_vault_cached(vault).unwrap();
         assert_eq!(entries2.len(), 1);
         assert!(
-            entries2[0].trashed,
-            "note must be trashed after invalidate + rescan"
+            entries2[0].archived,
+            "note must be archived after invalidate + rescan"
         );
     }
 
@@ -933,23 +933,6 @@ mod tests {
         assert!(
             entries[0].archived,
             "'Archived: Yes' must be parsed as true through the cached vault path"
-        );
-    }
-
-    /// Integration test: `Trashed: Yes` (string) through full cached path.
-    #[test]
-    fn test_cached_vault_trashed_yes_string() {
-        let (_lock, _cache_tmp, dir) = setup_git_vault();
-        let vault = dir.path();
-
-        create_test_file(vault, "trashed-note.md", "---\nTrashed: Yes\n---\n# Gone\n");
-        git_add_commit(vault, "init");
-
-        let entries = scan_vault_cached(vault).unwrap();
-        assert_eq!(entries.len(), 1);
-        assert!(
-            entries[0].trashed,
-            "'Trashed: Yes' must be parsed as true through the cached vault path"
         );
     }
 

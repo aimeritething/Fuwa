@@ -296,7 +296,6 @@ fn evaluate_condition(cond: &FilterCondition, entry: &VaultEntry) -> bool {
     // Boolean fields
     match field {
         "archived" => return evaluate_bool_field(entry.archived, &cond.op, &cond.value),
-        "trashed" => return evaluate_bool_field(entry.trashed, &cond.op, &cond.value),
         "favorite" => return evaluate_bool_field(entry.favorite, &cond.op, &cond.value),
         _ => {}
     }

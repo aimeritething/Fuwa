@@ -6,7 +6,7 @@ import { GearSix, CookingPot, FileText } from '@phosphor-icons/react'
 
 const baseEntry: VaultEntry = {
   path: '', filename: '', title: '', isA: null, aliases: [], belongsTo: [], relatedTo: [],
-  status: null, archived: false, trashed: false, trashedAt: null,
+  status: null, archived: false,
   modifiedAt: null, createdAt: null, fileSize: 0, snippet: '', relationships: {},
   wordCount: 0,
   icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
@@ -98,15 +98,6 @@ describe('buildDynamicSections', () => {
     const sections = buildDynamicSections(entries, typeEntryMap)
     const projectSections = sections.filter((s) => s.type === 'Project')
     expect(projectSections).toHaveLength(1)
-  })
-
-  it('excludes trashed type definitions', () => {
-    const entries: VaultEntry[] = []
-    const typeEntryMap: Record<string, VaultEntry> = {
-      Deleted: { ...baseEntry, title: 'Deleted', isA: 'Type', trashed: true },
-    }
-    const sections = buildDynamicSections(entries, typeEntryMap)
-    expect(sections.map((s) => s.type)).not.toContain('Deleted')
   })
 
   it('excludes archived type definitions', () => {

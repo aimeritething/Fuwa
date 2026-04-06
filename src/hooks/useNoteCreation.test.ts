@@ -32,7 +32,7 @@ vi.mock('../mock-tauri', () => ({
 
 const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   path: '/vault/test.md', filename: 'test.md', title: 'Test Note', isA: 'Note',
-  aliases: [], belongsTo: [], relatedTo: [], status: 'Active', archived: false, trashed: false, trashedAt: null,
+  aliases: [], belongsTo: [], relatedTo: [], status: 'Active', archived: false,
   modifiedAt: 1700000000, createdAt: 1700000000, fileSize: 100, snippet: '',
   wordCount: 0, relationships: {}, icon: null, color: null, order: null,
   outgoingLinks: [], template: null, sort: null, sidebarLabel: null,
@@ -68,7 +68,6 @@ describe('buildNewEntry', () => {
     expect(entry.isA).toBe('Note')
     expect(entry.status).toBe('Active')
     expect(entry.archived).toBe(false)
-    expect(entry.trashed).toBe(false)
   })
 
   it('sets null status when provided', () => {

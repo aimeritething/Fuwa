@@ -138,7 +138,6 @@ laputa-app/
 │   │   │   ├── mod.rs            # Core types, parse_md_file, scan_vault
 │   │   │   ├── cache.rs          # Git-based incremental caching
 │   │   │   ├── parsing.rs        # Text processing + title extraction
-│   │   │   ├── trash.rs          # Trash auto-purge
 │   │   │   ├── rename.rs         # Rename + cross-vault wikilink update
 │   │   │   ├── image.rs          # Image attachment saving
 │   │   │   ├── migration.rs      # Frontmatter migration

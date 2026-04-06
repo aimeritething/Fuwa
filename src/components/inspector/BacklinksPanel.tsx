@@ -1,5 +1,5 @@
 import type { VaultEntry } from '../../types'
-import { ArrowUpRight, Trash } from '@phosphor-icons/react'
+import { ArrowUpRight } from '@phosphor-icons/react'
 import { isEmoji } from '../../utils/emoji'
 import { entryStatusTitle } from './shared'
 import { StatusSuffix } from './LinkButton'
@@ -14,7 +14,7 @@ function BacklinkEntry({ entry, context, onNavigate }: {
   context: string | null
   onNavigate: (target: string) => void
 }) {
-  const isDimmed = entry.archived || entry.trashed
+  const isDimmed = entry.archived
   return (
     <button
       className="flex w-full cursor-pointer flex-col items-start gap-0.5 border-none bg-transparent p-0 text-left hover:underline"
@@ -25,10 +25,9 @@ function BacklinkEntry({ entry, context, onNavigate }: {
         className="flex items-center gap-1 text-xs text-primary"
         style={isDimmed ? { color: 'var(--muted-foreground)' } : undefined}
       >
-        {entry.trashed && <Trash size={12} className="shrink-0" />}
         {entry.icon && isEmoji(entry.icon) && <span className="shrink-0">{entry.icon}</span>}
         {entry.title}
-        <StatusSuffix isArchived={entry.archived} isTrashed={entry.trashed} />
+        <StatusSuffix isArchived={entry.archived} />
       </span>
       {context && (
         <span className="line-clamp-2 text-[11px] leading-snug text-muted-foreground">

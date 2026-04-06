@@ -28,40 +28,6 @@ async function findOrCreateType(
 export function useEntryActions({
   entries, updateEntry, handleUpdateFrontmatter, handleDeleteProperty, setToastMessage, createTypeEntry, onFrontmatterPersisted, onBeforeAction,
 }: EntryActionsConfig) {
-  const handleTrashNote = useCallback(async (path: string) => {
-    await onBeforeAction?.(path)
-    // Optimistic: update UI immediately, write to disk async with rollback on failure
-    const trashedAt = Date.now() / 1000
-    updateEntry(path, { trashed: true, trashedAt })
-    trackEvent('note_trashed')
-    setToastMessage('Note moved to trash')
-    const now = new Date().toISOString().slice(0, 10)
-    try {
-      await handleUpdateFrontmatter(path, '_trashed', true, { silent: true })
-      await handleUpdateFrontmatter(path, '_trashed_at', now, { silent: true })
-      onFrontmatterPersisted?.()
-    } catch (err) {
-      updateEntry(path, { trashed: false, trashedAt: null })
-      setToastMessage('Failed to trash note — rolled back')
-      console.error('Optimistic trash rollback:', err)
-    }
-  }, [onBeforeAction, handleUpdateFrontmatter, updateEntry, setToastMessage, onFrontmatterPersisted])
-
-  const handleRestoreNote = useCallback(async (path: string) => {
-    // Optimistic: update UI immediately
-    updateEntry(path, { trashed: false, trashedAt: null })
-    setToastMessage('Note restored from trash')
-    try {
-      await handleDeleteProperty(path, '_trashed', { silent: true })
-      await handleDeleteProperty(path, '_trashed_at', { silent: true })
-      onFrontmatterPersisted?.()
-    } catch (err) {
-      updateEntry(path, { trashed: true, trashedAt: Date.now() / 1000 })
-      setToastMessage('Failed to restore note — rolled back')
-      console.error('Optimistic restore rollback:', err)
-    }
-  }, [handleDeleteProperty, updateEntry, setToastMessage, onFrontmatterPersisted])
-
   const handleArchiveNote = useCallback(async (path: string) => {
     await onBeforeAction?.(path)
     // Optimistic: update UI immediately, write to disk async with rollback on failure
@@ -204,5 +170,5 @@ export function useEntryActions({
     onFrontmatterPersisted?.()
   }, [entries, handleUpdateFrontmatter, handleDeleteProperty, updateEntry, createTypeEntry, onFrontmatterPersisted])
 
-  return { handleTrashNote, handleRestoreNote, handleArchiveNote, handleUnarchiveNote, handleCustomizeType, handleReorderSections, handleUpdateTypeTemplate, handleRenameSection, handleToggleTypeVisibility, handleToggleFavorite, handleToggleOrganized, handleReorderFavorites }
+  return { handleArchiveNote, handleUnarchiveNote, handleCustomizeType, handleReorderSections, handleUpdateTypeTemplate, handleRenameSection, handleToggleTypeVisibility, handleToggleFavorite, handleToggleOrganized, handleReorderFavorites }
 }

@@ -2,7 +2,7 @@ import type { VaultEntry, SidebarSelection, InboxPeriod, ViewFile } from '../typ
 import { evaluateView } from './viewFilters'
 import { wikilinkTarget, resolveEntry } from './wikilink'
 
-export type NoteListFilter = 'open' | 'archived' | 'trashed'
+export type NoteListFilter = 'open' | 'archived'
 
 export interface RelationshipGroup {
   label: string
@@ -306,12 +306,11 @@ export function buildRelationshipGroups(
   return b.groups
 }
 
-const isActive = (e: VaultEntry) => !e.archived && !e.trashed
+const isActive = (e: VaultEntry) => !e.archived
 const isMarkdown = (e: VaultEntry) => e.fileKind === 'markdown' || !e.fileKind
 
 function applySubFilter(entries: VaultEntry[], subFilter: NoteListFilter): VaultEntry[] {
-  if (subFilter === 'archived') return entries.filter((e) => e.archived && !e.trashed)
-  if (subFilter === 'trashed') return entries.filter((e) => e.trashed)
+  if (subFilter === 'archived') return entries.filter((e) => e.archived)
   return entries.filter(isActive)
 }
 
@@ -344,9 +343,8 @@ function filterByKind(entries: VaultEntry[], selection: SidebarSelection, subFil
 
 function filterByFilterType(entries: VaultEntry[], filter: string): VaultEntry[] {
   if (filter === 'all') return entries.filter(isActive)
-  if (filter === 'archived') return entries.filter((e) => e.archived && !e.trashed)
-  if (filter === 'trash') return entries.filter((e) => e.trashed)
-  if (filter === 'favorites') return entries.filter((e) => e.favorite && !e.archived && !e.trashed)
+  if (filter === 'archived') return entries.filter((e) => e.archived)
+  if (filter === 'favorites') return entries.filter((e) => e.favorite && !e.archived)
   if (filter === 'pulse') return []
   return []
 }
@@ -357,34 +355,32 @@ export function filterEntries(entries: VaultEntry[], selection: SidebarSelection
 
 /** Count notes per sub-filter for a given type. */
 export function countByFilter(entries: VaultEntry[], type: string): Record<NoteListFilter, number> {
-  let open = 0, archived = 0, trashed = 0
+  let open = 0, archived = 0
   for (const e of entries) {
     if (!isMarkdown(e) || e.isA !== type) continue
-    if (e.trashed) trashed++
-    else if (e.archived) archived++
+    if (e.archived) archived++
     else open++
   }
-  return { open, archived, trashed }
+  return { open, archived }
 }
 
 /** Count notes per sub-filter across all entries (no type filter). */
 export function countAllByFilter(entries: VaultEntry[]): Record<NoteListFilter, number> {
-  let open = 0, archived = 0, trashed = 0
+  let open = 0, archived = 0
   for (const e of entries) {
     if (!isMarkdown(e)) continue
-    if (e.trashed) trashed++
-    else if (e.archived) archived++
+    if (e.archived) archived++
     else open++
   }
-  return { open, archived, trashed }
+  return { open, archived }
 }
 
 // --- Inbox ---
 
-/** Check if entry belongs in the Inbox (markdown only, not organized, not trashed/archived, not a Type). */
+/** Check if entry belongs in the Inbox (markdown only, not organized, not archived, not a Type). */
 export function isInboxEntry(entry: VaultEntry): boolean {
   if (!isMarkdown(entry)) return false
-  if (entry.trashed || entry.archived) return false
+  if (entry.archived) return false
   if (entry.isA === 'Type') return false
   return !entry.organized
 }

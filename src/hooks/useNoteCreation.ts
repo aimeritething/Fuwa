@@ -18,7 +18,7 @@ export function buildNewEntry({ path, slug, title, type, status }: NewEntryParam
   return {
     path, filename: `${slug}.md`, title, isA: type,
     aliases: [], belongsTo: [], relatedTo: [],
-    status, archived: false, trashed: false, trashedAt: null,
+    status, archived: false,
     modifiedAt: now, createdAt: now, fileSize: 0,
     snippet: '', wordCount: 0, relationships: {}, icon: null, color: null, order: null, outgoingLinks: [], sidebarLabel: null, template: null, sort: null, view: null, visible: null, properties: {}, organized: false, favorite: false, favoriteIndex: null, listPropertiesDisplay: [],
   }

@@ -16,8 +16,6 @@ const mockEntries: VaultEntry[] = [
     owner: 'Luca',
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 1024,
@@ -44,8 +42,6 @@ const mockEntries: VaultEntry[] = [
     owner: 'Luca',
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 512,
@@ -72,8 +68,6 @@ const mockEntries: VaultEntry[] = [
     owner: 'Luca',
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 256,
@@ -100,8 +94,6 @@ const mockEntries: VaultEntry[] = [
     owner: 'Luca',
     cadence: 'Weekly',
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 128,
@@ -128,8 +120,6 @@ const mockEntries: VaultEntry[] = [
     owner: null,
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 256,
@@ -156,8 +146,6 @@ const mockEntries: VaultEntry[] = [
     owner: null,
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 180,
@@ -184,8 +172,6 @@ const mockEntries: VaultEntry[] = [
     owner: null,
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 100,
@@ -212,8 +198,6 @@ const mockEntries: VaultEntry[] = [
     owner: null,
     cadence: null,
     archived: false,
-    trashed: false,
-    trashedAt: null,
     modifiedAt: 1700000000,
     createdAt: null,
     fileSize: 200,
@@ -328,8 +312,6 @@ describe('Sidebar', () => {
         owner: null,
         cadence: null,
         archived: false,
-        trashed: false,
-        trashedAt: null,
         modifiedAt: 1700000000,
         createdAt: null,
         fileSize: 200,
@@ -356,8 +338,6 @@ describe('Sidebar', () => {
         owner: null,
         cadence: null,
         archived: false,
-        trashed: false,
-        trashedAt: null,
         modifiedAt: 1700000000,
         createdAt: null,
         fileSize: 200,
@@ -384,8 +364,6 @@ describe('Sidebar', () => {
         owner: null,
         cadence: null,
         archived: false,
-        trashed: false,
-        trashedAt: null,
         modifiedAt: 1700000000,
         createdAt: null,
         fileSize: 300,
@@ -411,8 +389,6 @@ describe('Sidebar', () => {
         owner: null,
         cadence: null,
         archived: false,
-        trashed: false,
-        trashedAt: null,
         modifiedAt: 1700000000,
         createdAt: null,
         fileSize: 400,
@@ -441,28 +417,13 @@ describe('Sidebar', () => {
 
     it('shows section for type with zero active entries when type definition exists', () => {
       // Only Type definitions exist for Book, no actual Book instances
-      // New behavior: types are shown in sidebar as long as the Type definition exists (not trashed/archived)
+      // New behavior: types are shown in sidebar as long as the Type definition exists (not archived)
       const entriesNoBookInstance = entriesWithCustomTypes.filter((e) => !(e.isA === 'Book' && e.title !== 'Book'))
       render(<Sidebar entries={entriesNoBookInstance} selection={defaultSelection} onSelect={() => {}} />)
       // Books should still appear because the Book type definition exists
       expect(screen.getByText('Books')).toBeInTheDocument()
       // Recipes still has an instance (Pasta Carbonara)
       expect(screen.getByText('Recipes')).toBeInTheDocument()
-    })
-
-    it('hides type section when all entries of that type are trashed', () => {
-      const entriesWithTrashedOnly: VaultEntry[] = [
-        {
-          path: '/vault/event/cancelled.md', filename: 'cancelled.md', title: 'Cancelled Event',
-          isA: 'Event', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-          cadence: null, archived: false, trashed: true, trashedAt: 1700000000,
-          modifiedAt: 1700000000, createdAt: null, fileSize: 100, snippet: '', wordCount: 0,
-          relationships: {}, icon: null, color: null, order: null, sidebarLabel: null, outgoingLinks: [],
-          properties: {},
-        },
-      ]
-      render(<Sidebar entries={entriesWithTrashedOnly} selection={defaultSelection} onSelect={() => {}} />)
-      expect(screen.queryByText('Events')).not.toBeInTheDocument()
     })
 
     it('shows no sections when entries list is empty', () => {
@@ -485,8 +446,6 @@ describe('Sidebar', () => {
         owner: null,
         cadence: null,
         archived: false,
-        trashed: false,
-        trashedAt: null,
         modifiedAt: 1700000000,
         createdAt: null,
         fileSize: 200,
@@ -513,7 +472,7 @@ describe('Sidebar', () => {
         {
           path: '/vault/news.md', filename: 'news.md', title: 'News', isA: 'Type',
           aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
-          archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null,
+          archived: false, modifiedAt: 1700000000, createdAt: null,
           fileSize: 200, snippet: '', wordCount: 0, relationships: {},
           icon: null, color: null, order: null, sidebarLabel: 'News', outgoingLinks: [],
           properties: {},
@@ -521,7 +480,7 @@ describe('Sidebar', () => {
         {
           path: '/vault/news/breaking.md', filename: 'breaking.md', title: 'Breaking Story', isA: 'News',
           aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
-          archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null,
+          archived: false, modifiedAt: 1700000000, createdAt: null,
           fileSize: 300, snippet: '', wordCount: 0, relationships: {},
           icon: null, color: null, order: null, sidebarLabel: null, outgoingLinks: [],
           properties: {},
@@ -539,7 +498,7 @@ describe('Sidebar', () => {
         {
           path: '/vault/person.md', filename: 'person.md', title: 'Person', isA: 'Type',
           aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
-          archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null,
+          archived: false, modifiedAt: 1700000000, createdAt: null,
           fileSize: 200, snippet: '', wordCount: 0, relationships: {},
           icon: null, color: null, order: null, sidebarLabel: 'Contacts', outgoingLinks: [],
           properties: {},
@@ -570,8 +529,6 @@ describe('Sidebar', () => {
       owner: null,
       cadence: null,
       archived: false,
-      trashed: false,
-      trashedAt: null,
       modifiedAt: 1700000000,
       createdAt: null,
       fileSize: 200,
@@ -693,7 +650,7 @@ describe('Sidebar', () => {
       {
         path: '/vault/project.md', filename: 'project.md', title: 'Project', isA: 'Type',
         aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
-        archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null, fileSize: 200, snippet: '',
+        archived: false, modifiedAt: 1700000000, createdAt: null, fileSize: 200, snippet: '',
         wordCount: 0,
         relationships: {}, icon: null, color: null, order: 5, sidebarLabel: null, outgoingLinks: [],
         properties: {},
@@ -701,7 +658,7 @@ describe('Sidebar', () => {
       {
         path: '/vault/topic.md', filename: 'topic.md', title: 'Topic', isA: 'Type',
         aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
-        archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null, fileSize: 200, snippet: '',
+        archived: false, modifiedAt: 1700000000, createdAt: null, fileSize: 200, snippet: '',
         wordCount: 0,
         relationships: {}, icon: null, color: null, order: 0, sidebarLabel: null, outgoingLinks: [],
         properties: {},
@@ -709,7 +666,7 @@ describe('Sidebar', () => {
       {
         path: '/vault/person.md', filename: 'person.md', title: 'Person', isA: 'Type',
         aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
-        archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null, fileSize: 200, snippet: '',
+        archived: false, modifiedAt: 1700000000, createdAt: null, fileSize: 200, snippet: '',
         wordCount: 0,
         relationships: {}, icon: null, color: null, order: 1, sidebarLabel: null, outgoingLinks: [],
         properties: {},
@@ -802,7 +759,7 @@ describe('Sidebar', () => {
       {
         path: '/vault/note.md', filename: 'note.md', title: 'Note', isA: 'Type',
         aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null, cadence: null,
-        archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000, createdAt: null,
+        archived: false, modifiedAt: 1700000000, createdAt: null,
         fileSize: 200, snippet: '', wordCount: 0, relationships: {},
         icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
         outgoingLinks: [], properties: {},
@@ -810,7 +767,7 @@ describe('Sidebar', () => {
       {
         path: '/vault/explicit-note.md', filename: 'explicit-note.md', title: 'Explicit Note',
         isA: 'Note', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-        cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+        cadence: null, archived: false, modifiedAt: 1700000000,
         createdAt: null, fileSize: 300, snippet: '', wordCount: 0, relationships: {},
         icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
         outgoingLinks: [], properties: {},
@@ -818,7 +775,7 @@ describe('Sidebar', () => {
       {
         path: '/vault/untyped-note.md', filename: 'untyped-note.md', title: 'Untyped Note',
         isA: null, aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-        cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+        cadence: null, archived: false, modifiedAt: 1700000000,
         createdAt: null, fileSize: 150, snippet: '', wordCount: 0, relationships: {},
         icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
         outgoingLinks: [], properties: {},
@@ -841,7 +798,7 @@ describe('Sidebar', () => {
         {
           path: '/vault/plain.md', filename: 'plain.md', title: 'Plain Note',
           isA: null, aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-          cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+          cadence: null, archived: false, modifiedAt: 1700000000,
           createdAt: null, fileSize: 100, snippet: '', wordCount: 0, relationships: {},
           icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
           outgoingLinks: [], properties: {},
@@ -862,7 +819,7 @@ describe('Sidebar', () => {
         isA: 'Monday Ideas',
         aliases: [], belongsTo: [], relatedTo: [],
         status: null, owner: null, cadence: null,
-        archived: false, trashed: false, trashedAt: null,
+        archived: false,
         modifiedAt: 1700000000, createdAt: null,
         fileSize: 310, snippet: '', wordCount: 120,
         relationships: {}, icon: null, color: null, order: null,
@@ -876,7 +833,7 @@ describe('Sidebar', () => {
         isA: 'Monday Ideas',
         aliases: [], belongsTo: [], relatedTo: [],
         status: null, owner: null, cadence: null,
-        archived: false, trashed: false, trashedAt: null,
+        archived: false,
         modifiedAt: 1700000000, createdAt: null,
         fileSize: 280, snippet: '', wordCount: 95,
         relationships: {}, icon: null, color: null, order: null,
@@ -915,7 +872,7 @@ describe('Sidebar', () => {
       {
         path: '/vault/project/build-app.md', filename: 'build-app.md', title: 'Build App',
         isA: 'Project', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-        cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+        cadence: null, archived: false, modifiedAt: 1700000000,
         createdAt: null, fileSize: 300, snippet: '', wordCount: 0, relationships: {},
         icon: '🚀', color: null, order: null, sidebarLabel: null, template: null,
         sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
@@ -929,7 +886,7 @@ describe('Sidebar', () => {
     const favEntry: VaultEntry = {
       path: '/vault/project/fav.md', filename: 'fav.md', title: 'My Favorite Note',
       isA: 'Project', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
-      cadence: null, archived: false, trashed: false, trashedAt: null, modifiedAt: 1700000000,
+      cadence: null, archived: false, modifiedAt: 1700000000,
       createdAt: null, fileSize: 100, snippet: '', wordCount: 0, relationships: {},
       icon: null, color: null, order: null, sidebarLabel: null, template: null,
       sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
@@ -944,12 +901,6 @@ describe('Sidebar', () => {
 
     it('hides FAVORITES section when no favorites', () => {
       render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
-      expect(screen.queryByText('FAVORITES')).not.toBeInTheDocument()
-    })
-
-    it('hides trashed favorites from the section', () => {
-      const trashedFav = { ...favEntry, trashed: true }
-      render(<Sidebar entries={[...mockEntries, trashedFav]} selection={defaultSelection} onSelect={() => {}} />)
       expect(screen.queryByText('FAVORITES')).not.toBeInTheDocument()
     })
 

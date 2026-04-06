@@ -19,8 +19,6 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   owner: null,
   cadence: null,
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: 1700000000,
   fileSize: 100,
@@ -259,21 +257,6 @@ describe('DynamicRelationshipsPanel', () => {
     )
     // The button title should indicate "Archived" status
     expect(screen.getByTitle('Archived')).toBeInTheDocument()
-  })
-
-  it('shows trashed indicator for trashed entries', () => {
-    const trashedEntry = makeEntry({
-      path: '/vault/project/trash.md', filename: 'trash.md', title: 'Trash Project', isA: 'Project', trashed: true,
-    })
-    render(
-      <DynamicRelationshipsPanel
-        typeEntryMap={{}}
-        frontmatter={{ 'Belongs to': ['[[project/trash]]'] }}
-        entries={[trashedEntry]}
-        onNavigate={onNavigate}
-      />
-    )
-    expect(screen.getByTitle('Trashed')).toBeInTheDocument()
   })
 
   it('handles aliased wikilinks [[path|Display]]', () => {
@@ -774,13 +757,6 @@ describe('ReferencedByPanel', () => {
     expect(screen.getByTitle('Archived')).toBeInTheDocument()
   })
 
-  it('shows trashed indicator for trashed entries', () => {
-    const items: ReferencedByItem[] = [
-      { entry: makeEntry({ path: '/vault/a.md', title: 'Trash Note', trashed: true }), viaKey: 'Has' },
-    ]
-    render(<ReferencedByPanel typeEntryMap={{}} items={items} onNavigate={onNavigate} />)
-    expect(screen.getByTitle('Trashed')).toBeInTheDocument()
-  })
 })
 
 describe('GitHistoryPanel', () => {
@@ -871,18 +847,6 @@ describe('InstancesPanel', () => {
     expect(buttons[0].textContent).toContain('Q2 2026')
     expect(buttons[1].textContent).toContain('Q3 2026')
     expect(buttons[2].textContent).toContain('Q1 2026')
-  })
-
-  it('excludes trashed instances', () => {
-    const instances = [
-      makeEntry({ path: '/vault/quarter/q1.md', title: 'Q1 2026', isA: 'Quarter', modifiedAt: 2000 }),
-      makeEntry({ path: '/vault/quarter/q2.md', title: 'Q2 Trashed', isA: 'Quarter', trashed: true, modifiedAt: 3000 }),
-    ]
-    render(
-      <InstancesPanel entry={quarterType} entries={instances} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
-    )
-    expect(screen.getByText('Q1 2026')).toBeInTheDocument()
-    expect(screen.queryByText('Q2 Trashed')).not.toBeInTheDocument()
   })
 
   it('dims archived instances', () => {

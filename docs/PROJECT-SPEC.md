@@ -180,7 +180,6 @@ Minimize custom UI behavior per entity type. Everything is a file, everything ge
 - Favorites
 - People
 - Events
-- Trash
 
 **Section Groups** (expandable, show entity list):
 - PROJECTS +
@@ -280,7 +279,7 @@ bc75647 Remove unused Vite scaffold files
 
 ### M2: Sidebar & Note List
 **Goal:** Navigate the vault via sidebar, see filtered note lists.
-- [ ] Sidebar: Filters section (All Notes, Favorites, Trash)
+- [ ] Sidebar: Filters section (All Notes, Favorites)
 - [ ] Sidebar: Section Groups (Projects, Experiments, Responsibilities, Procedures) — populated from frontmatter `type:`
 - [ ] Sidebar: Topics — flat list, populated from `Related to` topic links
 - [ ] Note list: show title, preview snippet, date, type indicator
@@ -315,7 +314,7 @@ bc75647 Remove unused Vite scaffold files
 **Goal:** Create, rename, delete files. Polish for daily-driver use.
 - [ ] Create new note (with type selector → sets `type:` in frontmatter, created at vault root)
 - [ ] Rename file (updates filename + title)
-- [ ] Delete → move to trash
+- [ ] Delete → permanent delete with confirm dialog
 - [ ] Keyboard shortcuts (Cmd+N new, Cmd+S save, Cmd+P quick open/search)
 - [ ] Quick open palette (Cmd+P) — fuzzy search across all files
 - [ ] People and Events filters in sidebar

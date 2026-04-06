@@ -9,7 +9,7 @@ import {
 } from '../../utils/noteListHelpers'
 import type { InboxPeriod } from '../../types'
 import { buildTypeEntryMap } from '../../utils/typeColors'
-import { filterByQuery, filterGroupsByQuery, countExpiredTrash, createNoteStatusResolver, isModifiedEntry } from './noteListUtils'
+import { filterByQuery, filterGroupsByQuery, createNoteStatusResolver, isModifiedEntry } from './noteListUtils'
 import type { MultiSelectState } from '../../hooks/useMultiSelect'
 
 // --- useTypeEntryMap ---
@@ -45,7 +45,6 @@ interface NoteListDataParams {
 
 export function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod, views }: NoteListDataParams) {
   const isEntityView = selection.kind === 'entity'
-  const isTrashView = (selection.kind === 'filter' && selection.filter === 'trash') || subFilter === 'trashed'
   const isArchivedView = (selection.kind === 'filter' && selection.filter === 'archived') || subFilter === 'archived'
 
   const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod, views)
@@ -64,12 +63,7 @@ export function useNoteListData({ entries, selection, query, listSort, listDirec
     return filterGroupsByQuery(groups, query)
   }, [isEntityView, selection, entries, query])
 
-  const expiredTrashCount = useMemo(
-    () => isTrashView ? countExpiredTrash(searched) : 0,
-    [isTrashView, searched],
-  )
-
-  return { isEntityView, isTrashView, isArchivedView, searched, searchedGroups, expiredTrashCount }
+  return { isEntityView, isArchivedView, searched, searchedGroups }
 }
 
 // --- useNoteListSearch ---
@@ -193,22 +187,22 @@ function handleSelectAllKey(e: KeyboardEvent, multiSelect: MultiSelectState, isE
   multiSelect.selectAll()
 }
 
-function handleBulkActionKey(e: KeyboardEvent, multiSelect: MultiSelectState, onArchive: () => void, onTrash: () => void) {
+function handleBulkActionKey(e: KeyboardEvent, multiSelect: MultiSelectState, onArchive: () => void, onDelete: () => void) {
   if (!multiSelect.isMultiSelecting || !(e.metaKey || e.ctrlKey)) return
   if (e.key === 'e') { e.preventDefault(); e.stopPropagation(); onArchive() }
-  if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); onTrash() }
+  if (e.key === 'Backspace' || e.key === 'Delete') { e.preventDefault(); e.stopPropagation(); onDelete() }
 }
 
-export function useMultiSelectKeyboard(multiSelect: MultiSelectState, isEntityView: boolean, onBulkArchive: () => void, onBulkTrash: () => void) {
+export function useMultiSelectKeyboard(multiSelect: MultiSelectState, isEntityView: boolean, onBulkArchive: () => void, onBulkDelete: () => void) {
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
       handleEscapeKey(e, multiSelect)
       handleSelectAllKey(e, multiSelect, isEntityView)
-      handleBulkActionKey(e, multiSelect, onBulkArchive, onBulkTrash)
+      handleBulkActionKey(e, multiSelect, onBulkArchive, onBulkDelete)
     }
     window.addEventListener('keydown', handleKeyDown, true)
     return () => window.removeEventListener('keydown', handleKeyDown, true)
-  }, [multiSelect, isEntityView, onBulkArchive, onBulkTrash])
+  }, [multiSelect, isEntityView, onBulkArchive, onBulkDelete])
 }
 
 // --- useModifiedFilesState ---

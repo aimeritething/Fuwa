@@ -12,8 +12,6 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   relatedTo: [],
   status: null,
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: 1700000000,
   fileSize: 100,

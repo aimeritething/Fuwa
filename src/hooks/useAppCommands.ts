@@ -23,8 +23,7 @@ interface AppCommandsConfig {
   onCreateNoteOfType: (type: string) => void
   onSave: () => void
   onOpenSettings: () => void
-  onTrashNote: (path: string) => void
-  onRestoreNote: (path: string) => void
+  onDeleteNote: (path: string) => void
   onArchiveNote: (path: string) => void
   onUnarchiveNote: (path: string) => void
   onCommitPush: () => void
@@ -58,8 +57,6 @@ interface AppCommandsConfig {
   onInstallMcp?: () => void
   claudeCodeStatus?: string
   claudeCodeVersion?: string
-  onEmptyTrash?: () => void
-  trashedCount?: number
   onReloadVault?: () => void
   onRepairVault?: () => void
   onSetNoteIcon?: () => void
@@ -83,10 +80,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     ;(entry?.archived ? config.onUnarchiveNote : config.onArchiveNote)(path)
   }, [config.onArchiveNote, config.onUnarchiveNote])
 
-  const toggleTrash = useCallback((path: string) => {
-    const entry = entriesRef.current.find(e => e.path === path)
-    ;(entry?.trashed ? config.onRestoreNote : config.onTrashNote)(path)
-  }, [config.onTrashNote, config.onRestoreNote])
 
   const { onSelect } = config
 
@@ -106,7 +99,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onOpenDailyNote: config.onOpenDailyNote,
     onSave: config.onSave,
     onOpenSettings: config.onOpenSettings,
-    onTrashNote: toggleTrash,
+    onDeleteNote: config.onDeleteNote,
     onArchiveNote: toggleArchive,
     onSetViewMode: config.onSetViewMode,
     onZoomIn: config.onZoomIn,
@@ -136,7 +129,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onZoomOut: config.onZoomOut,
     onZoomReset: config.onZoomReset,
     onArchiveNote: toggleArchive,
-    onTrashNote: toggleTrash,
+    onDeleteNote: config.onDeleteNote,
     onSearch: config.onSearch,
     onToggleRawEditor: config.onToggleRawEditor,
     onToggleDiff: config.onToggleDiff,
@@ -155,7 +148,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onInstallMcp: config.onInstallMcp,
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
-    onEmptyTrash: config.onEmptyTrash,
     onOpenInNewWindow: config.onOpenInNewWindow,
     activeTabPathRef: config.activeTabPathRef,
     activeTabPath: config.activeTabPath,
@@ -171,8 +163,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onCreateNoteOfType: config.onCreateNoteOfType,
     onSave: config.onSave,
     onOpenSettings: config.onOpenSettings,
-    onTrashNote: config.onTrashNote,
-    onRestoreNote: config.onRestoreNote,
+    onDeleteNote: config.onDeleteNote,
     onArchiveNote: config.onArchiveNote,
     onUnarchiveNote: config.onUnarchiveNote,
     onCommitPush: config.onCommitPush,
@@ -203,8 +194,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     vaultCount: config.vaultCount,
     mcpStatus: config.mcpStatus,
     onInstallMcp: config.onInstallMcp,
-    onEmptyTrash: config.onEmptyTrash,
-    trashedCount: config.trashedCount,
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
     onSetNoteIcon: config.onSetNoteIcon,

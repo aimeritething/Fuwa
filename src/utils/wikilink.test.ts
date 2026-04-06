@@ -5,7 +5,7 @@ import { wikilinkTarget, wikilinkDisplay, resolveEntry, relativePathStem } from 
 function makeEntry(overrides: Partial<VaultEntry>): VaultEntry {
   return {
     path: '/vault/note.md', filename: 'note.md', title: 'Note', isA: null,
-    aliases: [], belongsTo: [], relatedTo: [], status: null, archived: false, trashed: false, trashedAt: null,
+    aliases: [], belongsTo: [], relatedTo: [], status: null, archived: false,
     modifiedAt: null, createdAt: null, fileSize: 100, snippet: '', wordCount: 0,
     relationships: {}, icon: null, color: null, order: null, template: null,
     sort: null, outgoingLinks: [], sidebarLabel: null, view: null, visible: null,

@@ -28,8 +28,6 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   owner: null,
   cadence: null,
   archived: false,
-  trashed: false,
-  trashedAt: null,
   modifiedAt: 1700000000,
   createdAt: 1700000000,
   fileSize: 100,
@@ -851,17 +849,15 @@ describe('DynamicPropertiesPanel', () => {
   })
 
   describe('system property filtering', () => {
-    it('hides trashed, trashed_at, archived, archived_at, icon from properties panel', () => {
+    it('hides archived, archived_at, icon from properties panel', () => {
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
           content=""
-          frontmatter={{ trashed: true, trashed_at: '2026-01-01', archived: false, archived_at: '', icon: '📝', cadence: 'Weekly' }}
+          frontmatter={{ archived: false, archived_at: '', icon: '📝', cadence: 'Weekly' }}
           onUpdateProperty={onUpdateProperty}
         />
       )
-      expect(screen.queryByText('Trashed')).not.toBeInTheDocument()
-      expect(screen.queryByText('Trashed at')).not.toBeInTheDocument()
       expect(screen.queryByText('Archived')).not.toBeInTheDocument()
       expect(screen.queryByText('Archived at')).not.toBeInTheDocument()
       expect(screen.queryByText('Icon')).not.toBeInTheDocument()
@@ -874,11 +870,10 @@ describe('DynamicPropertiesPanel', () => {
         <DynamicPropertiesPanel
           entry={makeEntry()}
           content=""
-          frontmatter={{ Trashed: true, Archived: false, Icon: '🎯', cadence: 'Daily' }}
+          frontmatter={{ Archived: false, Icon: '🎯', cadence: 'Daily' }}
           onUpdateProperty={onUpdateProperty}
         />
       )
-      expect(screen.queryByText('Trashed')).not.toBeInTheDocument()
       expect(screen.queryByText('Archived')).not.toBeInTheDocument()
       expect(screen.queryByText('Icon')).not.toBeInTheDocument()
       expect(screen.getByText('Cadence')).toBeInTheDocument()
