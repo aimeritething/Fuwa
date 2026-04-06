@@ -1411,8 +1411,15 @@ Owner: "[[person-luca|Luca]]"
 Content here.
 "#;
     let entry = parse_test_entry(&dir, "complex-note.md", content);
-    assert_eq!(entry.is_a, Some("Note".to_string()), "type must be parsed correctly with complex frontmatter");
-    assert!(entry.organized, "_organized must be true with complex frontmatter");
+    assert_eq!(
+        entry.is_a,
+        Some("Note".to_string()),
+        "type must be parsed correctly with complex frontmatter"
+    );
+    assert!(
+        entry.organized,
+        "_organized must be true with complex frontmatter"
+    );
 }
 
 #[test]
@@ -1434,8 +1441,15 @@ notion_id: "abc123def456"
 Content.
 "#;
     let entry = parse_test_entry(&dir, "writing-note.md", content);
-    assert_eq!(entry.is_a, Some("Evergreen".to_string()), "Is A must be parsed correctly with quoted keys nearby");
-    assert!(entry.organized, "_organized must be true even with complex surrounding fields");
+    assert_eq!(
+        entry.is_a,
+        Some("Evergreen".to_string()),
+        "Is A must be parsed correctly with quoted keys nearby"
+    );
+    assert!(
+        entry.organized,
+        "_organized must be true even with complex surrounding fields"
+    );
 }
 
 #[test]
@@ -1457,8 +1471,15 @@ fn test_complex_frontmatter_unquoted_timestamp() {
 
     let content = "---\ntype: Note\n_organized: true\nCreated at: 2021-12-31T14:19:00.000Z\nTopics:\n  - \"[[topic-writing]]\"\n---\n# Test\n";
     let entry = parse_test_entry(&dir, "timestamp-note.md", content);
-    assert_eq!(entry.is_a, Some("Note".to_string()), "type must survive unquoted timestamp in sibling field");
-    assert!(entry.organized, "_organized must survive unquoted timestamp in sibling field");
+    assert_eq!(
+        entry.is_a,
+        Some("Note".to_string()),
+        "type must survive unquoted timestamp in sibling field"
+    );
+    assert!(
+        entry.organized,
+        "_organized must survive unquoted timestamp in sibling field"
+    );
 }
 
 /// Regression: gray_matter may fail with flow-style arrays containing wikilinks
@@ -1476,8 +1497,15 @@ Has: ["[[note-one]]", "[[note-two]]", "[[note-three]]"]
 # Test
 "#;
     let entry = parse_test_entry(&dir, "flow-array.md", content);
-    assert_eq!(entry.is_a, Some("Evergreen".to_string()), "type must survive flow arrays with wikilinks");
-    assert!(entry.organized, "_organized must survive flow arrays with wikilinks");
+    assert_eq!(
+        entry.is_a,
+        Some("Evergreen".to_string()),
+        "type must survive flow arrays with wikilinks"
+    );
+    assert!(
+        entry.organized,
+        "_organized must survive flow arrays with wikilinks"
+    );
 }
 
 /// Regression: YAML that gray_matter cannot parse at all (returns Pod::String)
@@ -1486,14 +1514,19 @@ Has: ["[[note-one]]", "[[note-two]]", "[[note-three]]"]
 fn test_fallback_parser_extracts_type_and_organized() {
     use super::frontmatter::extract_fm_and_rels;
     // Simulate gray_matter returning String (parse failure) by passing None
-    let raw_content = "---\ntype: Note\n_organized: true\nBroken: value: with: colons\n---\n# Test\n";
+    let raw_content =
+        "---\ntype: Note\n_organized: true\nBroken: value: with: colons\n---\n# Test\n";
     let (fm, _, _) = extract_fm_and_rels(None, raw_content);
     assert_eq!(
         fm.is_a.as_ref().and_then(|v| v.clone().into_scalar()),
         Some("Note".to_string()),
         "fallback parser must extract type"
     );
-    assert_eq!(fm.organized, Some(true), "fallback parser must extract _organized");
+    assert_eq!(
+        fm.organized,
+        Some(true),
+        "fallback parser must extract _organized"
+    );
 }
 
 /// Regression: real-world Notion-imported note with quoted keys containing
@@ -1523,8 +1556,15 @@ _organized: true
 Content.
 "#;
     let entry = parse_test_entry(&dir, "1-to-1s.md", content);
-    assert_eq!(entry.is_a, Some("Readings".to_string()), "type must be parsed with Notion-style quoted keys");
-    assert!(entry.organized, "_organized must be true with Notion-style frontmatter");
+    assert_eq!(
+        entry.is_a,
+        Some("Readings".to_string()),
+        "type must be parsed with Notion-style quoted keys"
+    );
+    assert!(
+        entry.organized,
+        "_organized must be true with Notion-style frontmatter"
+    );
 }
 
 /// Regression: unquoted colon in YAML list item causes gray_matter to mis-parse.
@@ -1649,7 +1689,10 @@ fn test_real_vault_type_and_organized_consistency() {
         // Check if frontmatter has _organized: true
         let has_organized_true = fm_block.lines().any(|l| {
             let t = l.trim();
-            t == "_organized: true" || t == "_organized: True" || t == "_organized: yes" || t == "_organized: Yes"
+            t == "_organized: true"
+                || t == "_organized: True"
+                || t == "_organized: yes"
+                || t == "_organized: Yes"
         });
 
         if !has_type_with_value && !has_organized_true {
