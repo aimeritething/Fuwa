@@ -67,13 +67,11 @@ Red → Green → Refactor → Commit. One cycle per commit. For bugs: write fai
 
 Pre-commit and pre-push hooks enforce **Hotspot Code Health** and **Average Code Health** ≥ thresholds in `.codescene-thresholds`. Both gates block commit/push. Thresholds are a **ratchet** — only go up, auto-updated after each successful push. Never add `// eslint-disable`, `#[allow(...)]`, or `as any`.
 
-**Before every commit:**
-- `mcp__codescene__code_health_review` — check file before touching
-- `mcp__codescene__code_health_score` — verify score is higher after changes
+**⛔ NEVER edit `.codescene-thresholds` to lower the values.** If the gate blocks you, improve the code — do not lower the bar.
 
-**Boy Scout Rule:** every file you touch must leave with a higher score. If Average drops below 9.0, fix regressions before pushing.
+**Before every commit:** run `mcp__codescene__code_health_review` on files you touched and verify score is higher. **Boy Scout Rule:** every file you touch must leave with a higher score.
 
-**If CodeScene gate blocks your push:** use `mcp__codescene__code_health_score` to find the worst file, refactor it (extract function, reduce complexity), commit the refactor, push again. Do NOT stop or wait for laputa-refactor — that is a background loop, not a substitute for fixing your own regressions.
+**If CodeScene gate blocks your push:** use `mcp__codescene__code_health_score` to find the worst file, refactor it, commit, push again. Do NOT stop or wait for laputa-refactor — that is a background loop, not a substitute for fixing your own regressions.
 
 ### Check suite (runs on every push)
 ```bash
