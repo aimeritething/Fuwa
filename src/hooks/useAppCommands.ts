@@ -12,6 +12,7 @@ interface AppCommandsConfig {
   activeTabPath: string | null
   activeTabPathRef: React.MutableRefObject<string | null>
   entries: VaultEntry[]
+  visibleNotesRef: React.RefObject<VaultEntry[]>
   modifiedCount: number
   selection: SidebarSelection
   onQuickOpen: () => void
@@ -219,8 +220,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
 
   useKeyboardNavigation({
     activeTabPath: config.activeTabPath,
-    entries: config.entries,
-    selection: config.selection,
+    visibleNotesRef: config.visibleNotesRef,
     onReplaceActiveTab: config.onReplaceActiveTab,
     onSelectNote: config.onSelectNote,
   })

@@ -140,9 +140,10 @@ interface NoteListProps {
   onDiscardFile?: (relativePath: string) => Promise<void>
   onAutoTriggerDiff?: () => void
   views?: ViewFile[]
+  visibleNotesRef?: React.MutableRefObject<VaultEntry[]>
 }
 
-function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'all', modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry, onOpenInNewWindow, onDiscardFile, onAutoTriggerDiff, views }: NoteListProps) {
+function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNoteListFilterChange, inboxPeriod = 'all', modifiedFiles, modifiedFilesError, getNoteStatus, sidebarCollapsed, onSelectNote, onReplaceActiveTab, onCreateNote, onBulkArchive, onBulkTrash, onBulkRestore, onBulkDeletePermanently, onEmptyTrash, onUpdateTypeSort, updateEntry, onOpenInNewWindow, onDiscardFile, onAutoTriggerDiff, views, visibleNotesRef }: NoteListProps) {
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
 
   const { isSectionGroup, isFolderView, isInboxView, isAllNotesView, isChangesView, showFilterPills } = useViewFlags(selection)
@@ -169,6 +170,12 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
     return map
   }, [isChangesView, modifiedFiles])
   const { isEntityView, isTrashView, isArchivedView, searched, searchedGroups, expiredTrashCount } = useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod: isInboxView ? inboxPeriod : undefined, views })
+  // Keep the visible notes ref in sync for keyboard navigation (Cmd+Option+Arrow)
+  if (visibleNotesRef) {
+    visibleNotesRef.current = isEntityView
+      ? searchedGroups.flatMap((g) => g.entries)
+      : searched
+  }
   const deletedCount = useMemo(
     () => isChangesView ? (modifiedFiles ?? []).filter((f) => f.status === 'deleted').length : 0,
     [isChangesView, modifiedFiles],

@@ -1,24 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { filterEntries, sortByModified, buildRelationshipGroups } from '../utils/noteListHelpers'
-import type { VaultEntry, SidebarSelection } from '../types'
+import { useEffect, useRef } from 'react'
+import type { VaultEntry } from '../types'
 
 interface KeyboardNavigationOptions {
   activeTabPath: string | null
-  entries: VaultEntry[]
-  selection: SidebarSelection
+  visibleNotesRef: React.RefObject<VaultEntry[]>
   onReplaceActiveTab: (entry: VaultEntry) => void
   onSelectNote: (entry: VaultEntry) => void
-}
-
-function computeVisibleNotes(
-  entries: VaultEntry[],
-  selection: SidebarSelection,
-): VaultEntry[] {
-  if (selection.kind === 'entity') {
-    return buildRelationshipGroups(selection.entry, entries)
-      .flatMap((g) => g.entries)
-  }
-  return [...filterEntries(entries, selection)].sort(sortByModified)
 }
 
 function navigateNote(
@@ -36,7 +23,10 @@ function navigateNote(
 
   const nextIndex = currentIndex === -1
     ? (direction === 1 ? 0 : notes.length - 1)
-    : (currentIndex + direction + notes.length) % notes.length
+    : currentIndex + direction
+
+  // Clamp to list bounds — don't wrap around
+  if (nextIndex < 0 || nextIndex >= notes.length) return
 
   const nextNote = notes[nextIndex]
   if (currentPath) {
@@ -53,16 +43,10 @@ function useLatestRef<T>(value: T): React.RefObject<T> {
 }
 
 export function useKeyboardNavigation({
-  activeTabPath, entries, selection,
+  activeTabPath, visibleNotesRef,
   onReplaceActiveTab, onSelectNote,
 }: KeyboardNavigationOptions) {
-  const visibleNotes = useMemo(
-    () => computeVisibleNotes(entries, selection),
-    [entries, selection],
-  )
-
   const activeTabPathRef = useLatestRef(activeTabPath)
-  const visibleNotesRef = useLatestRef(visibleNotes)
   const onReplaceRef = useLatestRef(onReplaceActiveTab)
   const onSelectNoteRef = useLatestRef(onSelectNote)
 

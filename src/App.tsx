@@ -51,7 +51,7 @@ import { ConfirmDeleteDialog } from './components/ConfirmDeleteDialog'
 import { UpdateBanner } from './components/UpdateBanner'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
-import type { SidebarSelection, InboxPeriod } from './types'
+import type { SidebarSelection, InboxPeriod, VaultEntry } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
@@ -83,6 +83,7 @@ function App() {
     setNoteListFilter('open')
   }, [])
   const layout = useLayoutPanels(noteWindowParams ? { initialInspectorCollapsed: true } : undefined)
+  const visibleNotesRef = useRef<VaultEntry[]>([])
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const dialogs = useDialogs()
 
@@ -455,6 +456,7 @@ function App() {
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
     entries: vault.entries,
+    visibleNotesRef,
     modifiedCount: vault.modifiedFiles.length,
     activeNoteModified: vault.modifiedFiles.some(f => f.path === notes.activeTabPath),
     selection,
@@ -587,7 +589,7 @@ function App() {
               {selection.kind === 'filter' && selection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={vaultBridge.handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onBulkRestore={bulkActions.handleBulkRestore} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onEmptyTrash={deleteActions.handleEmptyTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} views={vault.views} />
+                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkTrash={bulkActions.handleBulkTrash} onBulkRestore={bulkActions.handleBulkRestore} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onEmptyTrash={deleteActions.handleEmptyTrash} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} views={vault.views} visibleNotesRef={visibleNotesRef} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />
