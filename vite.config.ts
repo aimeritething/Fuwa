@@ -414,11 +414,11 @@ export default defineConfig({
     },
   },
 
-  // Inject the demo-vault-v2 path in dev mode only — production Tauri builds must
-  // resolve the default vault path at runtime via the backend to avoid baking
-  // the CI runner's absolute path into the distributed bundle.
+  // Inject the demo-vault-v2 path in local dev only — production Tauri builds and
+  // CI must resolve the default vault path at runtime via the backend to avoid
+  // baking the CI runner's absolute path into the distributed bundle.
   define: {
-    ...(process.env.TAURI_PLATFORM && !process.env.TAURI_DEBUG
+    ...(process.env.CI || (process.env.TAURI_PLATFORM && !process.env.TAURI_DEBUG)
       ? {}
       : { __DEMO_VAULT_PATH__: JSON.stringify(path.resolve(__dirname, 'demo-vault-v2')) }),
   },
