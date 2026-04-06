@@ -1388,6 +1388,311 @@ fn test_non_md_file_gets_text_file_kind() {
     assert_eq!(entry.title, "My View");
 }
 
+/// Regression test: notes with complex frontmatter (quoted values, wikilinks
+/// in arrays, Notion-imported fields) must parse type and _organized correctly.
+/// Bug: initial load showed Type: None and notes appeared in Inbox despite
+/// having type and _organized: true in frontmatter.
+#[test]
+fn test_complex_frontmatter_type_and_organized() {
+    let dir = TempDir::new().unwrap();
+
+    // Notion-style frontmatter with quoted dates, wikilinks in arrays, non-standard fields
+    let content = r#"---
+type: Note
+_organized: true
+aliases: ["My Complex Note"]
+Topics: ["[[topic-writing]]", "[[topic-productivity|Productivity]]"]
+"Created at": "2021-12-31T14:19:00.000Z"
+Status: Published
+Owner: "[[person-luca|Luca]]"
+---
+# My Complex Note
+
+Content here.
+"#;
+    let entry = parse_test_entry(&dir, "complex-note.md", content);
+    assert_eq!(entry.is_a, Some("Note".to_string()), "type must be parsed correctly with complex frontmatter");
+    assert!(entry.organized, "_organized must be true with complex frontmatter");
+}
+
+#[test]
+fn test_complex_frontmatter_is_a_alias_with_extra_fields() {
+    let dir = TempDir::new().unwrap();
+
+    // Uses "Is A" instead of "type", plus many non-standard fields
+    let content = r#"---
+Is A: Evergreen
+_organized: true
+aliases: ["Writing for Clarity vs. Writing for Credit"]
+Topics: ["[[topic-writing]]"]
+Status: Published
+"Last edited": "2024-06-15T10:30:00.000Z"
+notion_id: "abc123def456"
+---
+# Writing for Clarity vs. Writing for Credit
+
+Content.
+"#;
+    let entry = parse_test_entry(&dir, "writing-note.md", content);
+    assert_eq!(entry.is_a, Some("Evergreen".to_string()), "Is A must be parsed correctly with quoted keys nearby");
+    assert!(entry.organized, "_organized must be true even with complex surrounding fields");
+}
+
+#[test]
+fn test_complex_frontmatter_boolean_as_yaml_yes() {
+    let dir = TempDir::new().unwrap();
+
+    // _organized as YAML boolean Yes (not true)
+    let content = "---\ntype: Note\n_organized: Yes\nStatus: Draft\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "yes-note.md", content);
+    assert_eq!(entry.is_a, Some("Note".to_string()));
+    assert!(entry.organized, "_organized: Yes must be parsed as true");
+}
+
+/// Regression: gray_matter may fail to parse YAML with unquoted timestamp values
+/// (colons in values like "14:19:00"), causing the entire frontmatter to be lost.
+#[test]
+fn test_complex_frontmatter_unquoted_timestamp() {
+    let dir = TempDir::new().unwrap();
+
+    let content = "---\ntype: Note\n_organized: true\nCreated at: 2021-12-31T14:19:00.000Z\nTopics:\n  - \"[[topic-writing]]\"\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "timestamp-note.md", content);
+    assert_eq!(entry.is_a, Some("Note".to_string()), "type must survive unquoted timestamp in sibling field");
+    assert!(entry.organized, "_organized must survive unquoted timestamp in sibling field");
+}
+
+/// Regression: gray_matter may fail with flow-style arrays containing wikilinks
+/// whose brackets look like nested YAML structures.
+#[test]
+fn test_complex_frontmatter_flow_array_with_wikilinks() {
+    let dir = TempDir::new().unwrap();
+
+    let content = r#"---
+type: Evergreen
+_organized: true
+Topics: ["[[topic-writing]]", "[[topic-productivity|Productivity]]"]
+Has: ["[[note-one]]", "[[note-two]]", "[[note-three]]"]
+---
+# Test
+"#;
+    let entry = parse_test_entry(&dir, "flow-array.md", content);
+    assert_eq!(entry.is_a, Some("Evergreen".to_string()), "type must survive flow arrays with wikilinks");
+    assert!(entry.organized, "_organized must survive flow arrays with wikilinks");
+}
+
+/// Regression: YAML that gray_matter cannot parse at all (returns Pod::String)
+/// must still extract type and _organized via fallback parser.
+#[test]
+fn test_fallback_parser_extracts_type_and_organized() {
+    use super::frontmatter::extract_fm_and_rels;
+    // Simulate gray_matter returning String (parse failure) by passing None
+    let raw_content = "---\ntype: Note\n_organized: true\nBroken: value: with: colons\n---\n# Test\n";
+    let (fm, _, _) = extract_fm_and_rels(None, raw_content);
+    assert_eq!(
+        fm.is_a.as_ref().and_then(|v| v.clone().into_scalar()),
+        Some("Note".to_string()),
+        "fallback parser must extract type"
+    );
+    assert_eq!(fm.organized, Some(true), "fallback parser must extract _organized");
+}
+
+/// Regression: real-world Notion-imported note with quoted keys containing
+/// special characters (?, spaces) and many non-standard fields.
+#[test]
+fn test_notion_imported_frontmatter_with_special_quoted_keys() {
+    let dir = TempDir::new().unwrap();
+    let content = r#"---
+type: Readings
+aliases:
+  - "1 to 1s"
+"Discarded for digest?": false
+"Note Status": Saved
+URL: "http://theengineeringmanager.com/management-101/121s/"
+Author: James Stanier
+Category: Articles
+"Full Title": 1 to 1s
+Highlights: 21
+"Last Synced": 2025-12-10
+"Last Highlighted": 2021-04-12
+notion_id: 2c5bdf02-815c-81ce-9dce-eca60ddaeb08
+_organized: true
+---
+
+# 1 to 1s
+
+Content.
+"#;
+    let entry = parse_test_entry(&dir, "1-to-1s.md", content);
+    assert_eq!(entry.is_a, Some("Readings".to_string()), "type must be parsed with Notion-style quoted keys");
+    assert!(entry.organized, "_organized must be true with Notion-style frontmatter");
+}
+
+/// Regression: unquoted colon in YAML list item causes gray_matter to mis-parse.
+/// `aliases:\n  - Bitcoin: Net Unrealized...` has an unquoted `:` in a list item.
+/// gray_matter may return a partial/mangled Hash instead of failing cleanly.
+#[test]
+fn test_unquoted_colon_in_list_item_breaks_parsing() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\ntype: Note\n_organized: true\naliases:\n  - Bitcoin: Net Unrealized Profit/Loss\n  - Note\n---\n# Test\n";
+    let entry = parse_test_entry(&dir, "colon-alias.md", content);
+    assert_eq!(
+        entry.is_a,
+        Some("Note".to_string()),
+        "type must be parsed correctly even when gray_matter fails due to unquoted colon in list item"
+    );
+    assert!(
+        entry.organized,
+        "_organized must be true even when gray_matter fails due to unquoted colon in list item"
+    );
+}
+
+/// Regression: `# ` in a YAML list item is interpreted as a comment by gray_matter,
+/// truncating the frontmatter and losing subsequent fields.
+#[test]
+fn test_hash_in_list_item_treated_as_comment() {
+    let dir = TempDir::new().unwrap();
+    let content = "---\ntype: Note\n_organized: true\naliases:\n  - # Writing a Good CLAUDE.md\n  - Note\n---\n# Title\n";
+    let entry = parse_test_entry(&dir, "hash-alias.md", content);
+    assert_eq!(
+        entry.is_a,
+        Some("Note".to_string()),
+        "type must be parsed even when alias starts with # (YAML comment char)"
+    );
+    assert!(
+        entry.organized,
+        "_organized must be true even when alias starts with # (YAML comment char)"
+    );
+}
+
+/// Full reproduction: real-world Notion-imported note with unquoted colon in alias.
+#[test]
+fn test_real_world_notion_note_with_unquoted_colon() {
+    let dir = TempDir::new().unwrap();
+    let content = r#"---
+type: Note
+workspace: personal
+notion_id: de48a4ad-e7ad-42aa-a5ce-1efdc259d7f9
+"Created at": "2021-12-17T10:21:00.000Z"
+Reviewed: True
+Topics:
+  - "[[web3|Web3 / Crypto]]"
+URL: https://studio.glassnode.com/metrics?a=BTC&category=Market%20Indicators&m=indicators.NetUnrealizedProfitLoss&s=1320105600&u=1639267199&zoom=
+aliases:
+  - Bitcoin: Net Unrealized Profit/Loss (NUPL) - Glassnode Studio
+  - Note
+Trashed: true
+"Trashed at": 2026-03-11
+_organized: true
+---
+
+# Bitcoin: Net Unrealized Profit/Loss (NUPL) - Glassnode Studio
+
+"#;
+    let entry = parse_test_entry(&dir, "bitcoin-note.md", content);
+    assert_eq!(
+        entry.is_a,
+        Some("Note".to_string()),
+        "type must be parsed correctly even with unquoted colon in alias"
+    );
+    assert!(
+        entry.organized,
+        "_organized must be true even with unquoted colon in alias"
+    );
+}
+
+/// Scan the real user vault and verify all notes with type/organized in frontmatter
+/// have those fields correctly parsed.
+#[test]
+fn test_real_vault_type_and_organized_consistency() {
+    let vault_path = std::path::Path::new("/Users/luca/Laputa");
+    if !vault_path.exists() {
+        eprintln!("Skipping: ~/Laputa vault not found");
+        return;
+    }
+
+    let mut mismatches = Vec::new();
+    let walker = walkdir::WalkDir::new(vault_path)
+        .into_iter()
+        .filter_entry(|e| !e.file_name().to_string_lossy().starts_with('.'));
+
+    for dir_entry in walker.filter_map(|e| e.ok()) {
+        let path = dir_entry.path();
+        if !path.is_file() || path.extension().is_none_or(|ext| ext != "md") {
+            continue;
+        }
+        let content = match std::fs::read_to_string(path) {
+            Ok(c) => c,
+            Err(_) => continue,
+        };
+
+        // Only check files that have frontmatter
+        if !content.starts_with("---\n") {
+            continue;
+        }
+        let fm_end = match content[4..].find("\n---") {
+            Some(pos) => pos + 4,
+            None => continue,
+        };
+        let fm_block = &content[4..fm_end];
+
+        // Check if frontmatter has type with a non-empty value
+        let has_type_with_value = fm_block.lines().any(|l| {
+            let trimmed = l.trim();
+            for prefix in &["type:", "Is A:", "is_a:"] {
+                if let Some(rest) = trimmed.strip_prefix(prefix) {
+                    return !rest.trim().is_empty();
+                }
+            }
+            false
+        });
+
+        // Check if frontmatter has _organized: true
+        let has_organized_true = fm_block.lines().any(|l| {
+            let t = l.trim();
+            t == "_organized: true" || t == "_organized: True" || t == "_organized: yes" || t == "_organized: Yes"
+        });
+
+        if !has_type_with_value && !has_organized_true {
+            continue;
+        }
+
+        let parsed = match parse_md_file(path, None) {
+            Ok(e) => e,
+            Err(err) => {
+                mismatches.push(format!("PARSE ERROR: {} -> {}", path.display(), err));
+                continue;
+            }
+        };
+
+        if has_type_with_value && parsed.is_a.is_none() {
+            mismatches.push(format!(
+                "TYPE MISSING: {} (raw has type with value but parsed isA=None)",
+                path.display()
+            ));
+        }
+        if has_organized_true && !parsed.organized {
+            mismatches.push(format!(
+                "ORGANIZED MISSING: {} (raw has _organized: true but parsed organized=false)",
+                path.display()
+            ));
+        }
+    }
+
+    if !mismatches.is_empty() {
+        let summary = mismatches
+            .iter()
+            .take(20)
+            .cloned()
+            .collect::<Vec<_>>()
+            .join("\n");
+        panic!(
+            "Found {} parsing mismatches in real vault:\n{}",
+            mismatches.len(),
+            summary
+        );
+    }
+}
+
 // Frontmatter update/delete tests are in frontmatter.rs
 // save_image tests are in vault/image.rs
 // purge_trash tests are in vault/trash.rs

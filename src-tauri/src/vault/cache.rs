@@ -11,7 +11,8 @@ use super::{is_md_file, parse_md_file, parse_non_md_file, scan_vault, VaultEntry
 // --- Vault Cache ---
 
 /// Bump this when VaultEntry fields change to force a full rescan.
-const CACHE_VERSION: u32 = 11;
+/// v12: fix gray_matter YAML sanitization (unquoted colons / hash comments in list items)
+const CACHE_VERSION: u32 = 12;
 
 #[derive(Debug, Serialize, Deserialize)]
 struct VaultCache {

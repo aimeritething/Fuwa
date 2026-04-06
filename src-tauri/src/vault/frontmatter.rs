@@ -137,6 +137,44 @@ impl StringOrList {
     }
 }
 
+/// Sanitize a JSON value so that arrays of mixed types (strings + objects + nulls)
+/// are flattened to arrays of strings. gray_matter mis-parses certain YAML patterns:
+///
+/// 1. Unquoted colons in list items: `- Bitcoin: Net Unrealized` becomes
+///    `{"Bitcoin": "Net Unrealized"}` instead of a plain string.
+/// 2. Hash comments in list items: `- # Heading` becomes `Null` because
+///    gray_matter treats `#` as a YAML comment.
+///
+/// This sanitizer converts objects back to "key: value" strings and removes nulls,
+/// preventing serde deserialization of the entire Frontmatter struct from failing.
+fn sanitize_value(value: &serde_json::Value) -> serde_json::Value {
+    match value {
+        serde_json::Value::Array(arr) => {
+            let sanitized: Vec<serde_json::Value> = arr
+                .iter()
+                .filter_map(|item| match item {
+                    // Drop nulls (from `# comment` in list items)
+                    serde_json::Value::Null => None,
+                    // Convert mis-parsed objects back to "key: value" strings
+                    serde_json::Value::Object(map) if !map.is_empty() => {
+                        let parts: Vec<String> = map
+                            .iter()
+                            .map(|(k, v)| match v {
+                                serde_json::Value::String(s) => format!("{}: {}", k, s),
+                                _ => format!("{}: {}", k, v),
+                            })
+                            .collect();
+                        Some(serde_json::Value::String(parts.join(", ")))
+                    }
+                    other => Some(other.clone()),
+                })
+                .collect();
+            serde_json::Value::Array(sanitized)
+        }
+        other => other.clone(),
+    }
+}
+
 /// Parse frontmatter from raw YAML data extracted by gray_matter.
 fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
     static KNOWN_KEYS: &[&str] = &[
@@ -167,7 +205,7 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
     let filtered: serde_json::Map<String, serde_json::Value> = data
         .iter()
         .filter(|(k, _)| KNOWN_KEYS.contains(&k.as_str()))
-        .map(|(k, v)| (k.clone(), v.clone()))
+        .map(|(k, v)| (k.clone(), sanitize_value(v)))
         .collect();
     let value = serde_json::Value::Object(filtered);
     serde_json::from_value(value).unwrap_or_default()
