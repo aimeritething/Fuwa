@@ -47,7 +47,15 @@ bash ~/.openclaw/skills/laputa-qa/scripts/screenshot.sh /tmp/qa-native.png
 
 Use `osascript` for keyboard interactions. Write result as Todoist comment (✅ or ❌). **⚠️ WKWebView:** `osascript keystroke` blocked inside editor — rely on Playwright for text input features.
 
-After both phases pass, run `/laputa-done <task_id>` → moves to In Review, notifies Brian, self-dispatches next task.
+After both phases pass, add a **completion comment** to the Todoist task before running `/laputa-done`. The comment must include:
+- What was implemented (1–2 lines)
+- QA: what was tested and how (Playwright / native screenshot / osascript)
+- Refactoring: any files refactored to meet the CodeScene gate (or "none needed")
+- ADRs: any new/updated ADRs (or "none")
+- Docs: any updated docs (ARCHITECTURE.md, ABSTRACTIONS.md, etc.) (or "none")
+- Code health: final Hotspot and Average scores after push
+
+Then run `/laputa-done <task_id>` → moves to In Review, notifies Brian, self-dispatches next task.
 
 ---
 
@@ -63,7 +71,7 @@ After both phases pass, run `/laputa-done <task_id>` → moves to In Review, not
 
 Red → Green → Refactor → Commit. One cycle per commit. For bugs: write failing regression test first, then fix. Exception: pure CSS/layout changes.
 
-**Test quality (Kent Beck's Desiderata):** Isolated · Deterministic · Fast · Behavioral · Structure-insensitive · Specific · Predictive. Fix flaky tests before adding new ones. Prefer E2E over unit tests for user flows.
+**Test quality (Kent Beck's Desiderata):** Isolated · Deterministic · Fast · Behavioral · Structure-insensitive · Specific · Predictive. Fix flaky tests first. Prefer E2E over unit tests for user flows.
 
 ### Code health (mandatory)
 
@@ -77,22 +85,15 @@ Pre-commit and pre-push hooks enforce **Hotspot Code Health** and **Average Code
 
 ### Check suite (runs on every push)
 ```bash
-pnpm lint && npx tsc --noEmit
-pnpm test
-pnpm test:coverage        # frontend ≥70%
-cargo test
-cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-lines 85
+pnpm lint && npx tsc --noEmit && pnpm test && pnpm test:coverage  # frontend ≥70%
+cargo test && cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-lines 85
 ```
 
-### Architecture Decision Records (ADRs)
+### ADRs & docs
 
-ADRs live in `docs/adr/`. Check before structural choices. Create the ADR **in the same commit as the code**. Never edit existing ADRs — create a new one that supersedes. Use `/create-adr` for template.
+ADRs live in `docs/adr/`. Create in the same commit as the code. Never edit existing — create a new one that supersedes. Use `/create-adr`. **When:** new dependency, storage strategy, platform target, core abstraction, cross-cutting pattern. **Not for:** bug fixes, styling, refactors.
 
-**When to create one:** new dependency, storage strategy, platform target, core abstraction change, cross-cutting pattern. **Not for:** bug fixes, UI styling, refactors, test additions.
-
-### Keep docs/ in sync
-
-After Tauri command, new component/hook, data model change, or new integration: update `docs/ARCHITECTURE.md`, `docs/ABSTRACTIONS.md`, and/or `docs/GETTING-STARTED.md` in the same commit.
+After any Tauri command, new component/hook, data model change, or new integration: update `docs/ARCHITECTURE.md`, `docs/ABSTRACTIONS.md`, and/or `docs/GETTING-STARTED.md` in the same commit.
 
 ---
 
@@ -104,9 +105,7 @@ Default to `demo-vault-v2/`. If you must use `~/Laputa/` for testing: **never co
 
 ### UI design
 
-1. Open `ui-design.pen` first — study existing frames for visual language
-2. Design in light mode. Create `design/<slug>.pen` for the task
-3. On completion: merge frames into `ui-design.pen`, delete `design/<slug>.pen`
+Open `ui-design.pen` first (light mode). Create `design/<slug>.pen` for the task; on completion merge into `ui-design.pen` and delete it.
 
 ### UI components — mandatory rules
 
