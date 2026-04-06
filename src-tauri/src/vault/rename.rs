@@ -251,6 +251,42 @@ pub fn rename_note(
     })
 }
 
+/// Check if a filename matches the untitled pattern (e.g. "untitled-note-1234567890.md").
+fn is_untitled_filename(filename: &str) -> bool {
+    let stem = filename.strip_suffix(".md").unwrap_or(filename);
+    // Match: untitled-note-{digits} or untitled-{type}-{digits}
+    stem.starts_with("untitled-") && stem.rsplit('-').next().is_some_and(|s| s.chars().all(|c| c.is_ascii_digit()))
+}
+
+/// Auto-rename an untitled note based on its H1 heading.
+/// Returns `Some(RenameResult)` if renamed, `None` if conditions not met.
+/// This is a ONE-SHOT rename: only fires for untitled-* files with an H1.
+pub fn auto_rename_untitled(
+    vault_path: &str,
+    note_path: &str,
+) -> Result<Option<RenameResult>, String> {
+    let path = Path::new(note_path);
+    let filename = path
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    if !is_untitled_filename(&filename) {
+        return Ok(None);
+    }
+
+    let content = fs::read_to_string(path)
+        .map_err(|e| format!("Failed to read {}: {}", note_path, e))?;
+
+    let h1_title = match super::parsing::extract_h1_title(&content) {
+        Some(t) => t,
+        None => return Ok(None),
+    };
+
+    let result = rename_note(vault_path, note_path, &h1_title, None)?;
+    Ok(Some(result))
+}
+
 /// A detected rename: old path → new path (both relative to vault root).
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct DetectedRename {

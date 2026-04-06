@@ -341,29 +341,65 @@ mod tests {
         assert_eq!(slug_to_title("a--b"), "A B");
     }
 
+    // --- extract_h1_title tests ---
+
+    #[test]
+    fn test_extract_h1_title_basic() {
+        assert_eq!(extract_h1_title("# Hello World\n\nBody."), Some("Hello World".to_string()));
+    }
+
+    #[test]
+    fn test_extract_h1_title_after_frontmatter() {
+        let content = "---\ntype: Note\n---\n# My Note\n\nBody.";
+        assert_eq!(extract_h1_title(content), Some("My Note".to_string()));
+    }
+
+    #[test]
+    fn test_extract_h1_title_with_empty_lines_before() {
+        let content = "---\ntype: Note\n---\n\n# Spaced Title\n\nBody.";
+        assert_eq!(extract_h1_title(content), Some("Spaced Title".to_string()));
+    }
+
+    #[test]
+    fn test_extract_h1_title_none_when_no_h1() {
+        assert_eq!(extract_h1_title("Just body text."), None);
+    }
+
+    #[test]
+    fn test_extract_h1_title_none_when_h1_not_first() {
+        assert_eq!(extract_h1_title("Some text\n# Not first\n"), None);
+    }
+
     // --- extract_title tests ---
 
     #[test]
-    fn test_extract_title_from_frontmatter() {
+    fn test_extract_title_h1_takes_priority_over_frontmatter() {
         assert_eq!(
-            extract_title(Some("My Great Note"), "", "my-great-note.md"),
-            "My Great Note"
+            extract_title(Some("FM Title"), "---\ntitle: FM Title\n---\n# H1 Title\n\nBody.", "note.md"),
+            "H1 Title"
         );
     }
 
     #[test]
-    fn test_extract_title_ignores_h1_uses_filename() {
-        // H1 is body content, not a title source
+    fn test_extract_title_h1_when_no_frontmatter_title() {
         assert_eq!(
             extract_title(None, "# Hello World\n\nBody text.", "some-file.md"),
-            "Some File"
+            "Hello World"
         );
     }
 
     #[test]
-    fn test_extract_title_ignores_h1_after_frontmatter() {
+    fn test_extract_title_h1_after_frontmatter() {
         let content = "---\nIs A: Note\n---\n# My Note\n\nBody.";
-        assert_eq!(extract_title(None, content, "fallback.md"), "Fallback");
+        assert_eq!(extract_title(None, content, "fallback.md"), "My Note");
+    }
+
+    #[test]
+    fn test_extract_title_frontmatter_when_no_h1() {
+        assert_eq!(
+            extract_title(Some("My Great Note"), "Just body text.", "my-great-note.md"),
+            "My Great Note"
+        );
     }
 
     #[test]
@@ -375,11 +411,10 @@ mod tests {
     }
 
     #[test]
-    fn test_extract_title_empty_fm_falls_back_to_filename() {
-        // Empty frontmatter title falls back to filename, not H1
+    fn test_extract_title_h1_wins_over_empty_frontmatter() {
         assert_eq!(
             extract_title(Some(""), "# From H1\n", "empty-h1.md"),
-            "Empty H1"
+            "From H1"
         );
     }
 

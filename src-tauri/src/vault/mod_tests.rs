@@ -94,8 +94,8 @@ fn test_parse_empty_frontmatter() {
         "just-a-title.md",
         "---\n---\n# Just a Title\n\nNo frontmatter fields.",
     );
-    // No title in frontmatter → derived from filename slug (H1 is body content)
-    assert_eq!(entry.title, "Just A Title");
+    // H1 is now the primary title source
+    assert_eq!(entry.title, "Just a Title");
     assert!(entry.aliases.is_empty());
 
     assert!(entry.belongs_to.is_empty());

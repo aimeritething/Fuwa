@@ -46,6 +46,16 @@ pub fn rename_note(
 }
 
 #[tauri::command]
+pub fn auto_rename_untitled(
+    vault_path: String,
+    note_path: String,
+) -> Result<Option<RenameResult>, String> {
+    let vault_path = expand_tilde(&vault_path);
+    let note_path = expand_tilde(&note_path);
+    vault::auto_rename_untitled(&vault_path, &note_path)
+}
+
+#[tauri::command]
 pub fn detect_renames(vault_path: String) -> Result<Vec<DetectedRename>, String> {
     let vault_path = expand_tilde(&vault_path);
     vault::detect_renames(&vault_path)

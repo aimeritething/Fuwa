@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import { useEditorSaveWithLinks } from './useEditorSaveWithLinks'
 import { needsRenameOnSave } from './useNoteRename'
 import { flushEditorContent } from '../utils/autoSave'
+import { isTauri } from '../mock-tauri'
 import type { VaultEntry } from '../types'
 
 interface TabState {
@@ -55,7 +57,27 @@ export function useAppSave({
   const onNotePersisted = useCallback((path: string) => {
     clearUnsaved(path)
     if (path.endsWith('.yml')) reloadViews?.()
-  }, [clearUnsaved, reloadViews])
+    // Auto-rename untitled notes when they have an H1 heading
+    const filename = path.split('/').pop() ?? ''
+    const stem = filename.replace(/\.md$/, '')
+    if (isTauri() && stem.startsWith('untitled-') && /\d+$/.test(stem)) {
+      invoke<{ new_path: string; updated_files: number } | null>('auto_rename_untitled', {
+        vaultPath: resolvedPath,
+        notePath: path,
+      }).then((result) => {
+        if (result) {
+          // Re-read the renamed file content and entry, then replace
+          Promise.all([
+            invoke<VaultEntry>('reload_vault_entry', { path: result.new_path }),
+            invoke<string>('get_note_content', { path: result.new_path }),
+          ]).then(([newEntry, newContent]) => {
+            replaceEntry(path, { ...newEntry, path: result.new_path }, newContent)
+            loadModifiedFiles()
+          }).catch(() => { /* ignore reload failure */ })
+        }
+      }).catch(() => { /* auto-rename is best-effort */ })
+    }
+  }, [clearUnsaved, reloadViews, resolvedPath, replaceEntry, loadModifiedFiles])
 
   const { handleSave: handleSaveRaw, handleContentChange, savePendingForPath, savePending } = useEditorSaveWithLinks({
     updateEntry, setTabs, setToastMessage, onAfterSave, onNotePersisted,

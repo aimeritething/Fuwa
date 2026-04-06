@@ -119,6 +119,7 @@ pub fn run() {
             commands::update_frontmatter,
             commands::delete_frontmatter_property,
             commands::rename_note,
+            commands::auto_rename_untitled,
             commands::detect_renames,
             commands::update_wikilinks_for_renames,
             commands::get_file_history,
