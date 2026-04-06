@@ -55,8 +55,7 @@ After both phases pass, run `/laputa-done <task_id>` → moves to In Review, not
 
 - Push directly to `main` — no PRs, no branches
 - Pre-push hook runs full check suite (build + tests + Playwright + CodeScene)
-- **A task is NOT done until `git push origin main` succeeds.** If the hook blocks: read the error, fix it (clippy, tests, CodeScene, build), commit the fix, push again. Never use `--no-verify`.
-- **⛔ NEVER use --no-verify**
+- **A task is NOT done until `git push origin main` succeeds.** If the hook blocks: read the error, fix it (clippy, tests, CodeScene, build), commit the fix, push again. **⛔ NEVER use --no-verify**
 
 ### TDD (mandatory)
 
@@ -73,6 +72,8 @@ Pre-commit and pre-push hooks enforce **Hotspot Code Health** and **Average Code
 - `mcp__codescene__code_health_score` — verify score is higher after changes
 
 **Boy Scout Rule:** every file you touch must leave with a higher score. If Average drops below 9.0, fix regressions before pushing.
+
+**If CodeScene gate blocks your push:** use `mcp__codescene__code_health_score` to find the worst file, refactor it (extract function, reduce complexity), commit the refactor, push again. Do NOT stop or wait for laputa-refactor — that is a background loop, not a substitute for fixing your own regressions.
 
 ### Check suite (runs on every push)
 ```bash
@@ -124,9 +125,7 @@ Default to `demo-vault-v2/`. If you must use `~/Laputa/` for testing: **never co
 | Toggle/switch | `Switch` or `ToggleGroup` from shadcn/ui |
 | Dialog/modal | `Dialog` from shadcn/ui |
 
-**When in doubt:** search `src/components/` for an existing component that does what you need before building a new one. The app already has many reusable pieces — use them.
-
-**Visual language:** all new UI must feel native to Laputa. Take inspiration from `ui-design.pen` and existing components. If something looks like a browser default, it's wrong.
+**When in doubt:** search `src/components/` for an existing component before building new. **Visual language:** all new UI must feel native to Laputa — if it looks like a browser default, it's wrong.
 
 ---
 
@@ -138,7 +137,6 @@ Default to `demo-vault-v2/`. If you must use `~/Laputa/` for testing: **never co
 - Tauri menu accelerators: `MenuItemBuilder::new(label).accelerator("CmdOrCtrl+1")`
 - `app.set_menu()` replaces the ENTIRE menu bar — include all submenus
 - `mock-tauri.ts` silently swallows Tauri calls — not a substitute for native testing
-
 ### QA scripts
 
 ```bash

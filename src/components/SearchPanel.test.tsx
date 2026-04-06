@@ -207,7 +207,9 @@ describe('SearchPanel', () => {
       expect(screen.getByText('How to Design AI-first APIs')).toBeInTheDocument()
     })
 
-    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    await act(async () => {
+      fireEvent.keyDown(input, { key: 'ArrowDown' })
+    })
 
     await waitFor(() => {
       const resultTwo = screen.getByText('Refactoring Retreat').closest('[class*="cursor-pointer"]')!
@@ -239,7 +241,9 @@ describe('SearchPanel', () => {
       fireEvent.keyDown(window, { key: 'Enter' })
     })
 
-    expect(onSelectNote).toHaveBeenCalledWith(MOCK_ENTRIES[0])
+    await waitFor(() => {
+      expect(onSelectNote).toHaveBeenCalledWith(MOCK_ENTRIES[0])
+    })
     expect(onClose).toHaveBeenCalled()
   })
 
