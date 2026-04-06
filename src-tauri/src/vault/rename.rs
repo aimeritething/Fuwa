@@ -255,7 +255,11 @@ pub fn rename_note(
 fn is_untitled_filename(filename: &str) -> bool {
     let stem = filename.strip_suffix(".md").unwrap_or(filename);
     // Match: untitled-note-{digits} or untitled-{type}-{digits}
-    stem.starts_with("untitled-") && stem.rsplit('-').next().is_some_and(|s| s.chars().all(|c| c.is_ascii_digit()))
+    stem.starts_with("untitled-")
+        && stem
+            .rsplit('-')
+            .next()
+            .is_some_and(|s| s.chars().all(|c| c.is_ascii_digit()))
 }
 
 /// Auto-rename an untitled note based on its H1 heading.
@@ -275,8 +279,8 @@ pub fn auto_rename_untitled(
         return Ok(None);
     }
 
-    let content = fs::read_to_string(path)
-        .map_err(|e| format!("Failed to read {}: {}", note_path, e))?;
+    let content =
+        fs::read_to_string(path).map_err(|e| format!("Failed to read {}: {}", note_path, e))?;
 
     let h1_title = match super::parsing::extract_h1_title(&content) {
         Some(t) => t,

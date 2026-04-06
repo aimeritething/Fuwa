@@ -345,7 +345,10 @@ mod tests {
 
     #[test]
     fn test_extract_h1_title_basic() {
-        assert_eq!(extract_h1_title("# Hello World\n\nBody."), Some("Hello World".to_string()));
+        assert_eq!(
+            extract_h1_title("# Hello World\n\nBody."),
+            Some("Hello World".to_string())
+        );
     }
 
     #[test]
@@ -375,7 +378,11 @@ mod tests {
     #[test]
     fn test_extract_title_h1_takes_priority_over_frontmatter() {
         assert_eq!(
-            extract_title(Some("FM Title"), "---\ntitle: FM Title\n---\n# H1 Title\n\nBody.", "note.md"),
+            extract_title(
+                Some("FM Title"),
+                "---\ntitle: FM Title\n---\n# H1 Title\n\nBody.",
+                "note.md"
+            ),
             "H1 Title"
         );
     }
