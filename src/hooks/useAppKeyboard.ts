@@ -96,8 +96,8 @@ export function useAppKeyboard({
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+Option+I: toggle AI panel
-      if ((e.metaKey || e.ctrlKey) && e.altKey && !e.shiftKey && (e.key === 'i' || e.key === 'I' || e.key === 'ˆ')) {
+      // Cmd+Shift+L: toggle AI panel
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey && (e.key === 'l' || e.key === 'L')) {
         e.preventDefault()
         onToggleAIChat?.()
         return
