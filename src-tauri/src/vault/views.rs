@@ -1,3 +1,4 @@
+use regex::RegexBuilder;
 use serde::de::{self, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
@@ -109,6 +110,8 @@ pub struct FilterCondition {
     pub op: FilterOp,
     #[serde(default)]
     pub value: Option<serde_yaml::Value>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub regex: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -290,8 +293,36 @@ fn wikilink_stem(link: &str) -> &str {
     }
 }
 
+fn relationship_candidates(link: &str) -> Vec<String> {
+    let trimmed = link.trim();
+    let inner = trimmed
+        .strip_prefix("[[")
+        .unwrap_or(trimmed)
+        .strip_suffix("]]")
+        .unwrap_or(trimmed);
+    match inner.split_once('|') {
+        Some((stem, alias)) => vec![trimmed.to_string(), stem.to_string(), alias.to_string()],
+        None => vec![trimmed.to_string(), inner.to_string()],
+    }
+}
+
+fn build_regex(pattern: &str) -> Option<regex::Regex> {
+    RegexBuilder::new(pattern)
+        .case_insensitive(true)
+        .build()
+        .ok()
+}
+
+fn supports_regex(op: &FilterOp) -> bool {
+    matches!(
+        op,
+        FilterOp::Contains | FilterOp::Equals | FilterOp::NotContains | FilterOp::NotEquals
+    )
+}
+
 fn evaluate_condition(cond: &FilterCondition, entry: &VaultEntry) -> bool {
     let field = cond.field.as_str();
+    let mut relationship_values: Option<&[String]> = None;
 
     // Boolean fields
     match field {
@@ -316,8 +347,8 @@ fn evaluate_condition(cond: &FilterCondition, entry: &VaultEntry) -> bool {
                     _ => None,
                 }
             } else if let Some(rels) = entry.relationships.get(field) {
-                // For relationship fields, handle specially in contains/any_of etc.
-                return evaluate_relationship_op(&cond.op, rels, &cond.value);
+                relationship_values = Some(rels);
+                None
             } else {
                 None
             }
@@ -325,6 +356,38 @@ fn evaluate_condition(cond: &FilterCondition, entry: &VaultEntry) -> bool {
     };
 
     let cond_value = cond.value.as_ref().and_then(yaml_value_to_string);
+    let regex = if cond.regex && supports_regex(&cond.op) {
+        cond_value.as_deref().and_then(build_regex)
+    } else {
+        None
+    };
+
+    if cond.regex && supports_regex(&cond.op) && regex.is_none() {
+        return false;
+    }
+
+    if let Some(re) = regex.as_ref() {
+        let matched = if let Some(prop) = field_value.as_deref() {
+            re.is_match(prop)
+        } else if let Some(rels) = relationship_values {
+            rels.iter().any(|item| {
+                relationship_candidates(item)
+                    .into_iter()
+                    .any(|candidate| re.is_match(&candidate))
+            })
+        } else {
+            false
+        };
+        return match cond.op {
+            FilterOp::Contains | FilterOp::Equals => matched,
+            FilterOp::NotContains | FilterOp::NotEquals => !matched,
+            _ => false,
+        };
+    }
+
+    if let Some(rels) = relationship_values {
+        return evaluate_relationship_op(&cond.op, rels, &cond.value);
+    }
 
     match cond.op {
         FilterOp::Equals => match (&field_value, &cond_value) {
@@ -578,6 +641,86 @@ filters:
     }
 
     #[test]
+    fn test_evaluate_regex_on_scalar_field() {
+        let yaml = r#"
+name: Regex Title
+filters:
+  all:
+    - field: title
+      op: contains
+      value: "^alpha\\s+project$"
+      regex: true
+"#;
+        let def: ViewDefinition = serde_yaml::from_str(yaml).unwrap();
+
+        let matching = make_entry(|e| e.title = "Alpha Project".to_string());
+        let case_matching = make_entry(|e| e.title = "alpha project".to_string());
+        let non_matching = make_entry(|e| e.title = "Alpha Notes".to_string());
+        let entries = vec![matching, case_matching, non_matching];
+
+        let result = evaluate_view(&def, &entries);
+        assert_eq!(result, vec![0, 1]);
+    }
+
+    #[test]
+    fn test_evaluate_regex_on_relationship_field() {
+        let yaml = r#"
+name: Regex Relationship
+filters:
+  all:
+    - field: Related to
+      op: contains
+      value: "monday-(112|113)|Monday #112"
+      regex: true
+"#;
+        let def: ViewDefinition = serde_yaml::from_str(yaml).unwrap();
+
+        let mut alias_rels = HashMap::new();
+        alias_rels.insert(
+            "Related to".to_string(),
+            vec!["[[monday-112|Monday #112]]".to_string()],
+        );
+        let alias_match = make_entry(|e| e.relationships = alias_rels);
+
+        let mut stem_rels = HashMap::new();
+        stem_rels.insert("Related to".to_string(), vec!["[[monday-113]]".to_string()]);
+        let stem_match = make_entry(|e| e.relationships = stem_rels);
+
+        let mut other_rels = HashMap::new();
+        other_rels.insert(
+            "Related to".to_string(),
+            vec!["[[tuesday-200|Tuesday]]".to_string()],
+        );
+        let non_matching = make_entry(|e| e.relationships = other_rels);
+
+        let entries = vec![alias_match, stem_match, non_matching];
+        let result = evaluate_view(&def, &entries);
+        assert_eq!(result, vec![0, 1]);
+    }
+
+    #[test]
+    fn test_invalid_regex_matches_nothing() {
+        let yaml = r#"
+name: Broken Regex
+filters:
+  all:
+    - field: title
+      op: contains
+      value: "("
+      regex: true
+"#;
+        let def: ViewDefinition = serde_yaml::from_str(yaml).unwrap();
+
+        let entries = vec![
+            make_entry(|e| e.title = "Alpha Project".to_string()),
+            make_entry(|e| e.title = "Beta Project".to_string()),
+        ];
+
+        let result = evaluate_view(&def, &entries);
+        assert!(result.is_empty());
+    }
+
+    #[test]
     fn test_evaluate_nested_and_or() {
         let yaml = r#"
 name: Complex
@@ -699,6 +842,7 @@ filters:
                 field: "type".to_string(),
                 op: FilterOp::Equals,
                 value: Some(serde_yaml::Value::String("Project".to_string())),
+                regex: false,
             })]),
         };
 
@@ -727,6 +871,7 @@ filters:
                 field: "type".to_string(),
                 op: FilterOp::Equals,
                 value: Some(serde_yaml::Value::String("Project".to_string())),
+                regex: false,
             })]),
         };
 

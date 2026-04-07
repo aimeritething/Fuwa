@@ -352,4 +352,45 @@ describe('evaluateView', () => {
     const result = evaluateView(view, entries)
     expect(result.map((e) => e.title)).toEqual(['Empty'])
   })
+
+  it('supports regex matching on scalar fields', () => {
+    const view: ViewDefinition = {
+      name: 'Regex title', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'title', op: 'contains', value: '^alpha\\s+project$', regex: true }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Alpha Project' }),
+      makeEntry({ title: 'Alpha Notes' }),
+      makeEntry({ title: 'alpha project' }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Alpha Project', 'alpha project'])
+  })
+
+  it('supports regex matching on relationship aliases and stems', () => {
+    const view: ViewDefinition = {
+      name: 'Regex relationship', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'belongs to', op: 'contains', value: 'monday-(112|113)|Monday #112', regex: true }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Alias match', relationships: { 'belongs to': ['[[monday-112|Monday #112]]'] } }),
+      makeEntry({ title: 'Stem match', relationships: { 'belongs to': ['[[monday-113]]'] } }),
+      makeEntry({ title: 'No match', relationships: { 'belongs to': ['[[tuesday-200|Tuesday]]'] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Alias match', 'Stem match'])
+  })
+
+  it('treats invalid regex filters as matching nothing', () => {
+    const view: ViewDefinition = {
+      name: 'Broken regex', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'title', op: 'contains', value: '(', regex: true }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Alpha Project' }),
+      makeEntry({ title: 'Beta Project' }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result).toEqual([])
+  })
 })

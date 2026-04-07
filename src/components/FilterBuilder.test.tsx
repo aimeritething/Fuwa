@@ -29,6 +29,12 @@ describe('FilterBuilder value inputs', () => {
     expect(screen.getByTestId('filter-value-input')).toHaveAttribute('placeholder', 'value')
   })
 
+  it('renders a regex toggle for supported text operators', () => {
+    renderBuilder()
+    expect(screen.getByTestId('filter-regex-toggle')).toBeInTheDocument()
+    expect(screen.getByTestId('filter-regex-toggle')).toHaveAttribute('aria-pressed', 'false')
+  })
+
   it('keeps wikilink-style values in the plain text input without opening a dropdown', () => {
     renderBuilder({
       all: [{ field: 'belongs to', op: 'contains', value: '[[Alpha Project]]' }],
@@ -55,12 +61,35 @@ describe('FilterBuilder value inputs', () => {
     )
   })
 
+  it('toggles regex mode in the emitted filter payload', () => {
+    renderBuilder()
+
+    fireEvent.click(screen.getByTestId('filter-regex-toggle'))
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        all: [{ field: 'title', op: 'contains', value: '', regex: true }],
+      }),
+    )
+  })
+
+  it('shows an invalid-regex indicator when regex mode is enabled with a broken pattern', () => {
+    renderBuilder({
+      all: [{ field: 'title', op: 'contains', value: '(', regex: true }],
+    })
+
+    expect(screen.getByTestId('filter-regex-invalid')).toBeInTheDocument()
+    expect(screen.getByTestId('filter-value-input')).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.getByTestId('filter-regex-toggle')).toHaveAttribute('aria-pressed', 'true')
+  })
+
   it('does not render a value input for empty-check operators', () => {
     renderBuilder({
       all: [{ field: 'title', op: 'is_empty' }],
     })
 
     expect(screen.queryByTestId('filter-value-input')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('filter-regex-toggle')).not.toBeInTheDocument()
   })
 
   it('renders calendar date picker button for date operators', () => {
@@ -80,6 +109,7 @@ describe('FilterBuilder value inputs', () => {
     })
 
     expect(screen.getByTestId('date-picker-trigger')).toHaveTextContent('Pick a date')
+    expect(screen.queryByTestId('filter-regex-toggle')).not.toBeInTheDocument()
   })
 
   it('shows body field in field dropdown separated from property fields', () => {

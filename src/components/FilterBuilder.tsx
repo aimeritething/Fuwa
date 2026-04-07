@@ -1,10 +1,11 @@
-import { Plus, X, CalendarBlank } from '@phosphor-icons/react'
+import { Plus, X, CalendarBlank, WarningCircle } from '@phosphor-icons/react'
 import { format, parseISO } from 'date-fns'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import type { FilterCondition, FilterOp, FilterGroup, FilterNode } from '../types'
 
 const OPERATORS: { value: FilterOp; label: string }[] = [
@@ -20,6 +21,25 @@ const OPERATORS: { value: FilterOp; label: string }[] = [
 
 const NO_VALUE_OPS = new Set<FilterOp>(['is_empty', 'is_not_empty'])
 const DATE_OPS = new Set<FilterOp>(['before', 'after'])
+const REGEX_OPS = new Set<FilterOp>(['contains', 'not_contains', 'equals', 'not_equals'])
+
+function supportsRegex(op: FilterOp): boolean {
+  return REGEX_OPS.has(op)
+}
+
+function normalizeRegexFlag(op: FilterOp, enabled: boolean): boolean | undefined {
+  return supportsRegex(op) && enabled ? true : undefined
+}
+
+function hasInvalidRegex(value: string, regexEnabled: boolean): boolean {
+  if (!regexEnabled) return false
+  try {
+    new RegExp(value, 'i')
+    return false
+  } catch {
+    return true
+  }
+}
 
 function isFilterGroup(node: FilterNode): node is FilterGroup {
   return 'all' in node || 'any' in node
@@ -121,18 +141,55 @@ function DateValueInput({ value, onChange }: { value: string; onChange: (v: stri
   )
 }
 
-function TextValueInput({ value, onChange }: {
+function TextValueInput({ value, onChange, regexEnabled, regexSupported, invalidRegex, onToggleRegex }: {
   value: string
   onChange: (v: string) => void
+  regexEnabled: boolean
+  regexSupported: boolean
+  invalidRegex: boolean
+  onToggleRegex: () => void
 }) {
   return (
-    <Input
-      className="h-8 flex-1 min-w-0 text-sm"
-      placeholder="value"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      data-testid="filter-value-input"
-    />
+    <div className="flex flex-1 min-w-0 items-center gap-1">
+      <div className="relative min-w-0 flex-1">
+        <Input
+          className={cn(
+            'h-8 w-full min-w-0 text-sm',
+            invalidRegex && 'border-destructive pr-7 focus-visible:ring-destructive/20',
+          )}
+          placeholder="value"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          data-testid="filter-value-input"
+          aria-invalid={invalidRegex || undefined}
+        />
+        {invalidRegex && (
+          <WarningCircle
+            size={14}
+            className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-destructive"
+            data-testid="filter-regex-invalid"
+            aria-hidden="true"
+          />
+        )}
+      </div>
+      {regexSupported && (
+        <Button
+          type="button"
+          variant={regexEnabled ? 'secondary' : 'outline'}
+          size="sm"
+          className={cn(
+            'h-8 shrink-0 px-2 font-mono text-[11px]',
+            !regexEnabled && 'text-muted-foreground',
+          )}
+          onClick={onToggleRegex}
+          aria-pressed={regexEnabled}
+          data-testid="filter-regex-toggle"
+          title="Treat value as regex"
+        >
+          .*
+        </Button>
+      )}
+    </div>
   )
 }
 
@@ -143,6 +200,9 @@ function FilterRow({ condition, fields, onUpdate, onRemove }: {
   onRemove: () => void
 }) {
   const isDateOp = DATE_OPS.has(condition.op)
+  const regexSupported = supportsRegex(condition.op)
+  const regexEnabled = regexSupported && condition.regex === true
+  const invalidRegex = regexSupported && hasInvalidRegex(String(condition.value ?? ''), regexEnabled)
   return (
     <div className="flex items-center gap-1.5">
       <FieldSelect
@@ -152,12 +212,21 @@ function FilterRow({ condition, fields, onUpdate, onRemove }: {
       />
       <OperatorSelect
         value={condition.op}
-        onChange={(op) => onUpdate({ ...condition, op })}
+        onChange={(op) => onUpdate({ ...condition, op, regex: normalizeRegexFlag(op, regexEnabled) })}
       />
       {!NO_VALUE_OPS.has(condition.op) && (
         isDateOp
           ? <DateValueInput value={String(condition.value ?? '')} onChange={(v) => onUpdate({ ...condition, value: v })} />
-          : <TextValueInput value={String(condition.value ?? '')} onChange={(v) => onUpdate({ ...condition, value: v })} />
+          : (
+            <TextValueInput
+              value={String(condition.value ?? '')}
+              onChange={(v) => onUpdate({ ...condition, value: v })}
+              regexEnabled={regexEnabled}
+              regexSupported={regexSupported}
+              invalidRegex={invalidRegex}
+              onToggleRegex={() => onUpdate({ ...condition, regex: regexEnabled ? undefined : true })}
+            />
+          )
       )}
       <Button
         type="button"

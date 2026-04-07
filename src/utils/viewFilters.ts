@@ -50,6 +50,18 @@ function wikilinkStem(raw: string): string {
   return s.toLowerCase()
 }
 
+function relationshipCandidates(raw: string): string[] {
+  const trimmed = raw.trim()
+  let inner = trimmed
+  if (inner.startsWith('[[')) inner = inner.slice(2)
+  if (inner.endsWith(']]')) inner = inner.slice(0, -2)
+  const pipe = inner.indexOf('|')
+  if (pipe >= 0) {
+    return [trimmed, inner.slice(0, pipe), inner.slice(pipe + 1)]
+  }
+  return [trimmed, inner]
+}
+
 /** Extract all comparable parts (path and alias) from a wikilink string. */
 function wikilinkParts(raw: string): string[] {
   let s = raw.trim()
@@ -73,6 +85,20 @@ function toString(v: unknown): string {
   return String(v)
 }
 
+function compileRegex(cond: FilterCondition, value: string): RegExp | null {
+  if (cond.regex !== true) return null
+  try {
+    return new RegExp(value, 'i')
+  } catch {
+    return null
+  }
+}
+
+function usesRegex(cond: FilterCondition): boolean {
+  return cond.regex === true
+    && (cond.op === 'contains' || cond.op === 'not_contains' || cond.op === 'equals' || cond.op === 'not_equals')
+}
+
 function evaluateCondition(cond: FilterCondition, entry: VaultEntry): boolean {
   const resolved = resolveField(entry, cond.field)
   const { op, value } = cond
@@ -89,8 +115,17 @@ function evaluateCondition(cond: FilterCondition, entry: VaultEntry): boolean {
   }
 
   const condVal = toString(value)
+  const regex = usesRegex(cond) ? compileRegex(cond, condVal) : null
+
+  if (usesRegex(cond) && !regex) return false
 
   if (resolved.array) {
+    if (regex) {
+      const matched = resolved.array.some((item) => relationshipCandidates(item).some((candidate) => regex.test(candidate)))
+      if (op === 'contains' || op === 'equals') return matched
+      if (op === 'not_contains' || op === 'not_equals') return !matched
+    }
+
     const stem = wikilinkStem(condVal)
     const isWikilink = condVal.trim().startsWith('[[')
     const arrayMatch = (arr: string[]) => arr.some((item) =>
@@ -111,7 +146,14 @@ function evaluateCondition(cond: FilterCondition, entry: VaultEntry): boolean {
     return false
   }
 
-  const fieldStr = toString(resolved.scalar).toLowerCase()
+  const fieldRaw = toString(resolved.scalar)
+  if (regex) {
+    const matched = regex.test(fieldRaw)
+    if (op === 'equals' || op === 'contains') return matched
+    if (op === 'not_equals' || op === 'not_contains') return !matched
+  }
+
+  const fieldStr = fieldRaw.toLowerCase()
   const condStr = condVal.toLowerCase()
 
   if (op === 'equals') return fieldStr === condStr

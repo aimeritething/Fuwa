@@ -205,6 +205,7 @@ export interface FilterCondition {
   field: string
   op: FilterOp
   value?: unknown
+  regex?: boolean
 }
 
 export type FilterGroup = { all: FilterNode[] } | { any: FilterNode[] }
