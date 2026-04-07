@@ -1,25 +1,23 @@
 import { test, expect } from '@playwright/test'
-import { sendShortcut } from './helpers'
 
 test.describe('AI chat empty body fix — no regression', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/vault/ping', route => route.fulfill({ status: 503 }))
     await page.goto('/')
-    await page.waitForTimeout(500)
+    await expect(page.locator('[data-testid="note-list-container"]')).toBeVisible({ timeout: 5_000 })
   })
 
-  test('AI panel opens, note is selected, message can be sent and response renders', async ({ page }) => {
+  test('AI panel opens, note is selected, message can be sent and response renders @smoke', async ({ page }) => {
     // Select a note so the AI panel has context
     const noteItem = page.locator('.app__note-list .cursor-pointer').first()
     await noteItem.click()
-    await page.waitForTimeout(500)
 
     // Verify editor has content (note body is loaded)
     const editor = page.locator('.bn-editor')
     await expect(editor).toBeVisible({ timeout: 3000 })
 
-    // Open AI Chat with Ctrl+I
-    await sendShortcut(page, 'i', ['Control'])
+    // Open AI Chat from the editor toolbar
+    await page.getByTitle('Open AI Chat').click()
     await expect(page.getByTestId('ai-panel')).toBeVisible({ timeout: 3000 })
 
     // Send a message

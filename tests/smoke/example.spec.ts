@@ -13,12 +13,12 @@ test.describe('Command Palette smoke tests', () => {
     await page.waitForLoadState('networkidle')
   })
 
-  test('Cmd+K opens the command palette', async ({ page }) => {
+  test('Cmd+K opens the command palette @smoke', async ({ page }) => {
     await openCommandPalette(page)
     await verifyVisible(page, 'input[placeholder="Type a command..."]')
   })
 
-  test('Escape closes the command palette', async ({ page }) => {
+  test('Escape closes the command palette @smoke', async ({ page }) => {
     await openCommandPalette(page)
     await closeCommandPalette(page)
     await expect(
@@ -26,7 +26,7 @@ test.describe('Command Palette smoke tests', () => {
     ).not.toBeVisible()
   })
 
-  test('typing filters the command list', async ({ page }) => {
+  test('typing filters the command list @smoke', async ({ page }) => {
     await openCommandPalette(page)
     const found = await findCommand(page, 'reload')
     expect(found).toBe(true)
@@ -53,7 +53,7 @@ test.describe('Keyboard shortcuts smoke tests', () => {
     await page.waitForLoadState('networkidle')
   })
 
-  test('Cmd+P opens quick open palette', async ({ page }) => {
+  test('Cmd+P opens quick open palette @smoke', async ({ page }) => {
     await page.locator('body').click()
     await sendShortcut(page, 'p', ['Control'])
     await expect(

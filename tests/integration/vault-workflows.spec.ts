@@ -73,11 +73,21 @@ async function openNote(page: import('@playwright/test').Page, title: string) {
   await page.waitForTimeout(300)
 }
 
+/** Helper: rename the active note through the stable TitleField. */
+async function renameActiveNote(page: import('@playwright/test').Page, nextTitle: string) {
+  const titleInput = page.getByTestId('title-field-input')
+  await expect(titleInput).toBeVisible({ timeout: 5_000 })
+  await titleInput.click()
+  await titleInput.fill(nextTitle)
+  await titleInput.press('Enter')
+  await expect(titleInput).toHaveValue(nextTitle, { timeout: 5_000 })
+}
+
 // ---------------------------------------------------------------------------
 // 1. Vault loads entries from real fixture files
 // ---------------------------------------------------------------------------
 
-test('vault loads entries from fixture files', async ({ page }) => {
+test('vault loads entries from fixture files @smoke', async ({ page }) => {
   const list = noteList(page)
   await expect(list.getByText('Alpha Project', { exact: true })).toBeVisible()
   await expect(list.getByText('Note B', { exact: true })).toBeVisible()
@@ -120,24 +130,27 @@ test('trashed note does not appear in All Notes', async ({ page }) => {
 // 4. Create note saves file to disk with correct slug
 // ---------------------------------------------------------------------------
 
-test('create note saves file to disk with correct slug', async ({ page }) => {
+test('create note saves file to disk with correct slug @smoke', async ({ page }) => {
+  const beforeFiles = new Set(fs.readdirSync(tempVaultDir))
+
   // "Create new note" instantly creates "Untitled note" and opens in editor
   await page.locator('button[title="Create new note"]').click()
-  await page.waitForTimeout(500)
-
-  // Verify the new note opens — H1 heading should appear in the WYSIWYG editor
-  await expect(page.getByRole('heading', { name: /Untitled note/i, level: 1 })).toBeVisible({ timeout: 5_000 })
+  await expect(noteList(page).getByText(/Untitled Note \d+/).first()).toBeVisible({ timeout: 5_000 })
 
   // Save to disk via Cmd+S
   await page.keyboard.press('Meta+s')
 
-  // Poll for the file to appear on disk
-  const expectedPath = path.join(tempVaultDir, 'note', 'untitled-note.md')
+  // Poll for the new timestamp-based file to appear on disk.
   await expect(async () => {
-    expect(fs.existsSync(expectedPath)).toBe(true)
+    const afterFiles = fs.readdirSync(tempVaultDir)
+    const createdFiles = afterFiles.filter(name => !beforeFiles.has(name) && /^untitled-note-\d+\.md$/.test(name))
+    expect(createdFiles).toHaveLength(1)
   }).toPass({ timeout: 5_000 })
 
-  const content = fs.readFileSync(expectedPath, 'utf-8')
+  const createdFile = fs.readdirSync(tempVaultDir).find(name => !beforeFiles.has(name) && /^untitled-note-\d+\.md$/.test(name))
+  expect(createdFile).toBeTruthy()
+
+  const content = fs.readFileSync(path.join(tempVaultDir, createdFile!), 'utf-8')
   expect(content).not.toContain('# Untitled note')
   expect(content).toContain('type: Note')
 })
@@ -146,22 +159,11 @@ test('create note saves file to disk with correct slug', async ({ page }) => {
 // 5. Rename note updates filename on disk
 // ---------------------------------------------------------------------------
 
-test('rename note updates filename on disk', async ({ page }) => {
+test('rename note updates filename on disk @smoke', async ({ page }) => {
   // Open Note B
   await openNote(page, 'Note B')
 
-  // Double-click the tab title — scope to the draggable tab element to avoid
-  // matching the breadcrumb span that also has class "truncate".
-  await page.locator('[draggable="true"] span.truncate', { hasText: 'Note B' }).dblclick()
-  await page.waitForTimeout(200)
-
-  // In rename mode, draggable becomes false and an <input> appears in the tab.
-  // It's the only <input> element on the page at this point.
-  const input = page.locator('input').first()
-  await expect(input).toBeVisible({ timeout: 2_000 })
-  await input.fill('Note B Renamed')
-  await input.press('Enter')
-  await page.waitForTimeout(500)
+  await renameActiveNote(page, 'Note B Renamed')
 
   // Verify filesystem: old file gone, new file exists
   const oldPath = path.join(tempVaultDir, 'note', 'note-b.md')
@@ -180,17 +182,10 @@ test('rename note updates filename on disk', async ({ page }) => {
 // 6. Wikilink update on rename — other files' [[Note B]] updated
 // ---------------------------------------------------------------------------
 
-test('rename note updates wikilinks in other files', async ({ page }) => {
+test('rename note updates wikilinks in other files @smoke', async ({ page }) => {
   // Open Note B and rename it
   await openNote(page, 'Note B')
-
-  await page.locator('[draggable="true"] span.truncate', { hasText: 'Note B' }).dblclick()
-  await page.waitForTimeout(200)
-
-  const input = page.locator('input').first()
-  await expect(input).toBeVisible({ timeout: 2_000 })
-  await input.fill('Note B Updated')
-  await input.press('Enter')
+  await renameActiveNote(page, 'Note B Updated')
 
   // Wait for rename to complete (file to be moved)
   const newPath = path.join(tempVaultDir, 'note', 'note-b-updated.md')

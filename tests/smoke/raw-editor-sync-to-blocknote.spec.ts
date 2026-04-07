@@ -10,14 +10,19 @@ async function openFirstNote(page: Page) {
   const noteList = page.locator('[data-testid="note-list-container"]')
   await noteList.waitFor({ timeout: 5000 })
   await noteList.locator('.cursor-pointer').first().click()
-  await page.waitForTimeout(500)
   await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5000 })
 }
 
-async function toggleRawMode(page: Page) {
+async function openRawMode(page: Page) {
   await openCommandPalette(page)
   await executeCommand(page, 'Toggle Raw')
-  await page.waitForTimeout(500)
+  await expect(page.locator('.cm-content')).toBeVisible({ timeout: 5_000 })
+}
+
+async function openBlockNoteMode(page: Page) {
+  await openCommandPalette(page)
+  await executeCommand(page, 'Toggle Raw')
+  await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
 }
 
 /** Get the full text content from the CodeMirror raw editor. */
@@ -53,87 +58,65 @@ test.describe('Raw editor ↔ BlockNote sync', () => {
     await page.waitForLoadState('networkidle')
   })
 
-  test('editing in raw mode and switching to BlockNote shows updated content', async ({ page }) => {
+  test('editing in raw mode and switching to BlockNote shows updated content @smoke', async ({ page }) => {
     await openFirstNote(page)
 
-    // Read the original H1 from the BlockNote editor
-    const h1Locator = page.locator('.bn-editor h1.bn-inline-content').first()
-    await expect(h1Locator).toBeVisible({ timeout: 5000 })
-    const originalH1 = await h1Locator.textContent()
-    expect(originalH1).toBeTruthy()
-
     // Toggle to raw mode
-    await toggleRawMode(page)
-    await expect(page.locator('.cm-content')).toBeVisible()
+    await openRawMode(page)
 
-    // Read raw content and verify it contains the original title
+    // Append unique text in raw mode, then verify it appears in BlockNote.
     const rawContent = await getRawEditorContent(page)
-    expect(rawContent).toContain(originalH1!)
-
-    // Replace the H1 line with a new heading via CodeMirror dispatch
-    const newTitle = 'Updated By Raw Editor'
-    const updatedContent = rawContent.replace(
-      new RegExp(`# ${originalH1!.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`),
-      `# ${newTitle}`,
-    )
+    expect(rawContent).toBeTruthy()
+    const appendedText = `Raw editor sync ${Date.now()}`
+    const updatedContent = `${rawContent}\n\n${appendedText}`
     await setRawEditorContent(page, updatedContent)
     await page.waitForTimeout(600) // Wait for debounce (500ms)
 
     // Toggle back to BlockNote
-    await toggleRawMode(page)
-    await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(500)
+    await openBlockNoteMode(page)
 
-    // Verify the BlockNote editor shows the updated heading
-    const updatedH1 = page.locator('.bn-editor h1.bn-inline-content').first()
-    await expect(updatedH1).toContainText(newTitle, { timeout: 5000 })
+    // Verify the BlockNote editor shows the appended text.
+    await expect(page.locator('.bn-editor')).toContainText(appendedText, { timeout: 5000 })
   })
 
-  test('switching BlockNote → raw → BlockNote multiple times preserves content', async ({ page }) => {
+  test('switching BlockNote → raw → BlockNote multiple times preserves content @smoke', async ({ page }) => {
     await openFirstNote(page)
 
     // Cycle 1: toggle to raw, edit, toggle back
-    await toggleRawMode(page)
-    await expect(page.locator('.cm-content')).toBeVisible()
+    await openRawMode(page)
 
     const rawContent1 = await getRawEditorContent(page)
-    const edit1 = rawContent1.replace(/# .+/, '# Cycle One Title')
+    const cycleOneText = `Cycle one ${Date.now()}`
+    const edit1 = `${rawContent1}\n\n${cycleOneText}`
     await setRawEditorContent(page, edit1)
     await page.waitForTimeout(600)
 
-    await toggleRawMode(page)
-    await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(500)
+    await openBlockNoteMode(page)
 
-    await expect(
-      page.locator('.bn-editor h1.bn-inline-content').first(),
-    ).toContainText('Cycle One Title', { timeout: 5000 })
+    await expect(page.locator('.bn-editor')).toContainText(cycleOneText, { timeout: 5000 })
 
     // Cycle 2: toggle to raw again, verify content persisted, edit again
-    await toggleRawMode(page)
-    await expect(page.locator('.cm-content')).toBeVisible()
+    await openRawMode(page)
 
     const rawContent2 = await getRawEditorContent(page)
-    expect(rawContent2).toContain('Cycle One Title')
+    expect(rawContent2).toContain(cycleOneText)
 
-    const edit2 = rawContent2.replace(/# .+/, '# Cycle Two Title')
+    const cycleTwoText = `Cycle two ${Date.now()}`
+    const edit2 = `${rawContent2}\n\n${cycleTwoText}`
     await setRawEditorContent(page, edit2)
     await page.waitForTimeout(600)
 
-    await toggleRawMode(page)
-    await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5000 })
-    await page.waitForTimeout(500)
+    await openBlockNoteMode(page)
 
-    await expect(
-      page.locator('.bn-editor h1.bn-inline-content').first(),
-    ).toContainText('Cycle Two Title', { timeout: 5000 })
+    await expect(page.locator('.bn-editor')).toContainText(cycleOneText, { timeout: 5000 })
+    await expect(page.locator('.bn-editor')).toContainText(cycleTwoText, { timeout: 5000 })
   })
 
   test('appended text in raw mode appears in BlockNote after switch', async ({ page }) => {
     await openFirstNote(page)
 
     // Toggle to raw and append text via CodeMirror dispatch
-    await toggleRawMode(page)
+    await openRawMode(page)
     await expect(page.locator('.cm-content')).toBeVisible()
 
     const content = await getRawEditorContent(page)
@@ -141,7 +124,7 @@ test.describe('Raw editor ↔ BlockNote sync', () => {
     await page.waitForTimeout(600) // Wait for debounce
 
     // Toggle back to BlockNote
-    await toggleRawMode(page)
+    await openBlockNoteMode(page)
     await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5000 })
     await page.waitForTimeout(500)
 

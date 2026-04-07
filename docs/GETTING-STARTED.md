@@ -24,7 +24,8 @@ pnpm tauri dev
 # Run tests
 pnpm test          # Vitest unit tests
 cargo test         # Rust tests (from src-tauri/)
-pnpm playwright:smoke  # Playwright smoke tests
+pnpm playwright:smoke  # Curated Playwright core smoke lane (~5 min)
+pnpm playwright:regression  # Full Playwright regression suite
 ```
 
 ## Directory Structure
@@ -167,7 +168,7 @@ laputa-app/
 │   └── package.json
 │
 ├── e2e/                          # Playwright E2E tests (~26 specs)
-├── tests/smoke/                  # Smoke tests (~10 specs)
+├── tests/smoke/                  # Playwright specs (full regression + @smoke subset)
 ├── design/                       # Per-task design files
 ├── demo-vault-v2/                # Getting Started demo vault
 ├── scripts/                      # Build/utility scripts
@@ -175,7 +176,8 @@ laputa-app/
 ├── package.json                  # Frontend dependencies + scripts
 ├── vite.config.ts                # Vite bundler config
 ├── tsconfig.json                 # TypeScript config
-├── playwright.config.ts          # E2E test config
+├── playwright.config.ts          # Full Playwright regression config
+├── playwright.smoke.config.ts    # Curated pre-push Playwright config
 ├── ui-design.pen                 # Master design file
 ├── AGENTS.md                     # Shared project instructions for coding agents
 ├── CLAUDE.md                     # Claude Code compatibility shim importing AGENTS.md
@@ -295,8 +297,11 @@ cargo test
 # Rust coverage (must pass ≥85% line coverage)
 cargo llvm-cov --manifest-path src-tauri/Cargo.toml --no-clean --fail-under-lines 85
 
-# Playwright smoke tests (requires dev server)
+# Playwright core smoke lane (requires dev server)
 BASE_URL="http://localhost:5173" pnpm playwright:smoke
+
+# Full Playwright regression suite
+BASE_URL="http://localhost:5173" pnpm playwright:regression
 
 # Single Playwright test
 BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts

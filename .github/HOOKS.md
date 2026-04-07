@@ -42,7 +42,7 @@ If `CODESCENE_PAT` or `CODESCENE_PROJECT_ID` is missing, the CodeScene portion i
 - TypeScript and the Vite build pass
 - frontend coverage passes
 - Rust lint and Rust coverage pass when `src-tauri/` changed
-- Playwright smoke tests pass when `tests/smoke/*.spec.ts` exists
+- the curated Playwright core smoke lane passes via `pnpm playwright:smoke`
 - current CodeScene Hotspot and Average health are both at or above `.codescene-thresholds`
 
 If the remote CodeScene scores are better than the current thresholds, the hook updates `.codescene-thresholds`, stages it, and stops the push. Commit that file normally, then push again. The hook does not auto-commit or bypass itself.

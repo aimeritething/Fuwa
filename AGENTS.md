@@ -28,7 +28,7 @@ Run `/laputa-next-task` — fetches next task (To Rework first, then Open), move
 
 **Phase 1 — Playwright (only for core user flows):**
 
-Write smoke test in `tests/smoke/<slug>.spec.ts` only if feature touches: vault open, note create/save/delete, search, wikilink navigation, git commit/push, conflict resolution. Do NOT write Playwright tests for cosmetic changes — use Vitest instead. Suite must stay under **10 minutes**.
+Write Playwright test in `tests/smoke/<slug>.spec.ts` only if feature touches: vault open, note create/save/delete, search, wikilink navigation, git commit/push, conflict resolution. Tag a test with `@smoke` only if it protects a core pre-push workflow. Do NOT tag cosmetic or mock-heavy checks — keep those in the full regression lane. The curated `pnpm playwright:smoke` suite must stay under **5 minutes**; use `pnpm playwright:regression` for the full Playwright pass.
 
 ```bash
 pnpm dev --port 5201 &
@@ -64,7 +64,7 @@ Then run `/laputa-done <task_id>` → moves to In Review, notifies Brian, self-d
 ### Commits & pushes
 
 - Push directly to `main` — no PRs, no branches. Pre-push blocks non-`main` pushes.
-- Pre-push hook runs full check suite (build + tests + Playwright + CodeScene)
+- Pre-push hook runs full check suite (build + tests + core Playwright smoke + CodeScene)
 - **A task is NOT done until `git push origin main` succeeds.** If the hook blocks: read the error, fix it (clippy, tests, CodeScene, build), commit the fix, push again. **⛔ NEVER use --no-verify**
 
 ### TDD (mandatory)
