@@ -27,7 +27,6 @@ import { useCommitFlow } from './hooks/useCommitFlow'
 import { useViewMode } from './hooks/useViewMode'
 import { useEntryActions } from './hooks/useEntryActions'
 import { useAppCommands } from './hooks/useAppCommands'
-import { isEmoji } from './utils/emoji'
 import { generateCommitMessage } from './utils/commitMessage'
 import { useDialogs } from './hooks/useDialogs'
 import { useVaultSwitcher } from './hooks/useVaultSwitcher'
@@ -60,8 +59,10 @@ import { isNoteWindow, getNoteWindowParams } from './utils/windowMode'
 import { GitRequiredModal } from './components/GitRequiredModal'
 import { RenameDetectedBanner, type DetectedRename } from './components/RenameDetectedBanner'
 import { openNoteListPropertiesPicker } from './components/note-list/noteListPropertiesEvents'
+import { focusNoteIconPropertyEditor } from './components/noteIconPropertyEvents'
 import { trackEvent } from './lib/telemetry'
 import { extractDeletedContentFromDiff } from './components/note-list/noteListUtils'
+import { hasNoteIconValue } from './utils/noteIcon'
 import './App.css'
 
 // Type declarations for mock content storage and test overrides
@@ -86,6 +87,7 @@ function App() {
     setNoteListFilter('open')
   }, [])
   const layout = useLayoutPanels(noteWindowParams ? { initialInspectorCollapsed: true } : undefined)
+  const { setInspectorCollapsed } = layout
   const visibleNotesRef = useRef<VaultEntry[]>([])
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const dialogs = useDialogs()
@@ -276,17 +278,18 @@ function App() {
     await notes.handleUpdateFrontmatter(path, 'title', filename)
   }, [notes])
 
-  const handleSetNoteIcon = useCallback(async (path: string, emoji: string) => {
-    await notes.handleUpdateFrontmatter(path, 'icon', emoji)
-  }, [notes])
-
   const handleRemoveNoteIcon = useCallback(async (path: string) => {
     await notes.handleDeleteProperty(path, 'icon')
   }, [notes])
 
   const handleSetNoteIconCommand = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('laputa:open-icon-picker'))
-  }, [])
+    setInspectorCollapsed(false)
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        focusNoteIconPropertyEditor()
+      })
+    })
+  }, [setInspectorCollapsed])
 
   const handleCustomizeInboxColumns = useCallback(() => {
     openNoteListPropertiesPicker('inbox')
@@ -541,7 +544,7 @@ function App() {
     onRemoveNoteIcon: handleRemoveNoteIconCommand,
     activeNoteHasIcon: (() => {
       const ae = vault.entries.find(e => e.path === notes.activeTabPath)
-      return !!(ae?.icon && isEmoji(ae.icon))
+      return hasNoteIconValue(ae?.icon)
     })(),
     noteListFilter,
     onSetNoteListFilter: setNoteListFilter,
@@ -682,8 +685,6 @@ function App() {
             onFileCreated={vaultBridge.handleAgentFileCreated}
             onFileModified={vaultBridge.handleAgentFileModified}
             onVaultChanged={vaultBridge.handleAgentVaultChanged}
-            onSetNoteIcon={activeDeletedFile ? undefined : handleSetNoteIcon}
-            onRemoveNoteIcon={activeDeletedFile ? undefined : handleRemoveNoteIcon}
             isConflicted={conflictFlow.isConflicted}
             onKeepMine={conflictFlow.handleKeepMine}
             onKeepTheirs={conflictFlow.handleKeepTheirs}

@@ -2,7 +2,7 @@ import type { VaultEntry } from '../../types'
 import { getTypeColor, getTypeLightColor } from '../../utils/typeColors'
 import { getTypeIcon } from '../NoteItem'
 import { relativeDate, getDisplayDate } from '../../utils/noteListHelpers'
-import { isEmoji } from '../../utils/emoji'
+import { NoteTitleIcon } from '../NoteTitleIcon'
 
 export function PinnedCard({ entry, typeEntryMap, onClickNote, showDate }: {
   entry: VaultEntry
@@ -19,7 +19,7 @@ export function PinnedCard({ entry, typeEntryMap, onClickNote, showDate }: {
       {/* eslint-disable-next-line react-hooks/static-components */}
       <Icon width={16} height={16} className="absolute right-3 top-3.5" style={{ color }} data-testid="type-icon" />
       <div className="pr-6 text-[14px] font-bold" style={{ color }}>
-        {entry.icon && isEmoji(entry.icon) && <span className="mr-1">{entry.icon}</span>}
+        <NoteTitleIcon icon={entry.icon} size={15} className="mr-1" />
         {entry.title}
       </div>
       <div className="mt-1 text-[12px] leading-[1.5] opacity-80" style={{ color, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{entry.snippet}</div>

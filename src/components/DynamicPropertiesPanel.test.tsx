@@ -550,7 +550,7 @@ describe('DynamicPropertiesPanel', () => {
   })
 
   describe('suggested property slots', () => {
-    it('shows Status/Date/URL slots when no properties exist and onAddProperty provided', () => {
+    it('shows Status/Date/URL/Icon slots when no properties exist and onAddProperty provided', () => {
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
@@ -560,10 +560,11 @@ describe('DynamicPropertiesPanel', () => {
         />
       )
       const slots = screen.getAllByTestId('suggested-property')
-      expect(slots.length).toBe(3)
+      expect(slots.length).toBe(4)
       expect(screen.getByText('Status')).toBeInTheDocument()
       expect(screen.getByText('Date')).toBeInTheDocument()
       expect(screen.getByText('URL')).toBeInTheDocument()
+      expect(screen.getByText('Icon')).toBeInTheDocument()
     })
 
     it('hides Status slot when Status property already exists', () => {
@@ -577,7 +578,7 @@ describe('DynamicPropertiesPanel', () => {
         />
       )
       const slots = screen.getAllByTestId('suggested-property')
-      expect(slots.length).toBe(2)
+      expect(slots.length).toBe(3)
       expect(screen.queryAllByText('Status').some(el => el.closest('[data-testid="suggested-property"]'))).toBe(false)
     })
 
@@ -586,7 +587,7 @@ describe('DynamicPropertiesPanel', () => {
         <DynamicPropertiesPanel
           entry={makeEntry()}
           content=""
-          frontmatter={{ Status: 'Active', Date: '2024-01-01', URL: 'https://example.com' }}
+          frontmatter={{ Status: 'Active', Date: '2024-01-01', URL: 'https://example.com', icon: 'star' }}
           onAddProperty={onAddProperty}
           onUpdateProperty={onUpdateProperty}
         />
@@ -647,7 +648,7 @@ describe('DynamicPropertiesPanel', () => {
 
       // The suggested slot for Status should be gone
       const remainingSlots = screen.getAllByTestId('suggested-property')
-      expect(remainingSlots.length).toBe(2) // Date and URL remain
+      expect(remainingSlots.length).toBe(3) // Date, URL, and Icon remain
       // Status dropdown is portaled to body — check for it there
       const dropdown = document.querySelector('[data-testid="status-dropdown-popover"]')
       expect(dropdown).toBeInTheDocument()
@@ -886,7 +887,7 @@ describe('DynamicPropertiesPanel', () => {
   })
 
   describe('system property filtering', () => {
-    it('hides archived, archived_at, icon from properties panel', () => {
+    it('hides archived and archived_at but keeps icon visible in properties panel', () => {
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
@@ -897,12 +898,13 @@ describe('DynamicPropertiesPanel', () => {
       )
       expect(screen.queryByText('Archived')).not.toBeInTheDocument()
       expect(screen.queryByText('Archived at')).not.toBeInTheDocument()
-      expect(screen.queryByText('Icon')).not.toBeInTheDocument()
+      expect(screen.getByText('Icon')).toBeInTheDocument()
+      expect(screen.getByText('📝')).toBeInTheDocument()
       // Custom property still visible
       expect(screen.getByText('Cadence')).toBeInTheDocument()
     })
 
-    it('filters system properties case-insensitively', () => {
+    it('keeps icon visible even when cased differently', () => {
       render(
         <DynamicPropertiesPanel
           entry={makeEntry()}
@@ -912,7 +914,8 @@ describe('DynamicPropertiesPanel', () => {
         />
       )
       expect(screen.queryByText('Archived')).not.toBeInTheDocument()
-      expect(screen.queryByText('Icon')).not.toBeInTheDocument()
+      expect(screen.getByText('Icon')).toBeInTheDocument()
+      expect(screen.getByText('🎯')).toBeInTheDocument()
       expect(screen.getByText('Cadence')).toBeInTheDocument()
     })
 
@@ -927,6 +930,23 @@ describe('DynamicPropertiesPanel', () => {
       )
       expect(screen.getByText('Is Trashed')).toBeInTheDocument()
       expect(screen.getByText('Archive date')).toBeInTheDocument()
+    })
+  })
+
+  describe('icon property rendering', () => {
+    it('keeps icon values in plain text mode even when they are urls', () => {
+      render(
+        <DynamicPropertiesPanel
+          entry={makeEntry()}
+          content=""
+          frontmatter={{ icon: 'https://example.com/favicon.png' }}
+          onUpdateProperty={onUpdateProperty}
+        />
+      )
+
+      expect(screen.getByText('Icon')).toBeInTheDocument()
+      expect(screen.getByText('https://example.com/favicon.png')).toBeInTheDocument()
+      expect(screen.queryByTestId('url-link')).not.toBeInTheDocument()
     })
   })
 

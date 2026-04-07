@@ -107,17 +107,16 @@ describe('BreadcrumbBar — title in breadcrumb (always rendered, CSS-toggled)',
     expect(screen.getByText('test')).toBeInTheDocument()
   })
 
-  it('does not render emoji icon in breadcrumb (icon removed from breadcrumb title)', () => {
+  it('renders emoji note icons in the breadcrumb title', () => {
     const entryWithEmoji = { ...baseEntry, icon: '🚀' }
     render(<BreadcrumbBar entry={entryWithEmoji} {...defaultProps} />)
-    // BreadcrumbTitle now only shows type label and filename stem — no icon
-    expect(screen.queryByText('🚀')).not.toBeInTheDocument()
+    expect(screen.getByTestId('breadcrumb-note-icon')).toHaveTextContent('🚀')
   })
 
-  it('does not show icon when entry has a non-emoji icon', () => {
+  it('renders Phosphor note icons in the breadcrumb title', () => {
     const entryWithPhosphor = { ...baseEntry, icon: 'cooking-pot' }
     render(<BreadcrumbBar entry={entryWithPhosphor} {...defaultProps} />)
-    expect(screen.queryByText('cooking-pot')).not.toBeInTheDocument()
+    expect(screen.getByTestId('breadcrumb-note-icon').tagName.toLowerCase()).toBe('svg')
   })
 
   it('falls back to "Note" when isA is null', () => {

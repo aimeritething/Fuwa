@@ -1,9 +1,11 @@
 import { useRef, useEffect, type ComponentType, type SVGAttributes } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
+import { NoteTitleIcon } from './NoteTitleIcon'
 
 export interface NoteSearchResultItem {
   title: string
+  noteIcon?: string | null
   noteType?: string
   typeColor?: string
   typeLightColor?: string
@@ -68,6 +70,7 @@ export function NoteSearchList<T extends NoteSearchResultItem>({
                 style={item.typeColor ? { color: item.typeColor } : undefined}
               />
             )}
+            <NoteTitleIcon icon={item.noteIcon} size={14} testId="note-search-item-icon" />
             <span className="truncate">{item.title}</span>
           </span>
           {item.noteType && (

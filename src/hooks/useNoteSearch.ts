@@ -4,7 +4,6 @@ import { fuzzyMatch, bestSearchRank } from '../utils/fuzzyMatch'
 import { getTypeColor, getTypeLightColor, buildTypeEntryMap } from '../utils/typeColors'
 import { getTypeIcon } from '../components/NoteItem'
 import type { NoteSearchResultItem } from '../components/NoteSearchList'
-import { isEmoji } from '../utils/emoji'
 
 const DEFAULT_MAX_RESULTS = 20
 
@@ -15,10 +14,10 @@ export interface NoteSearchResult extends NoteSearchResultItem {
 function toResult(e: VaultEntry, typeEntryMap: Record<string, VaultEntry>): NoteSearchResult {
   const noteType = e.isA || undefined
   const te = typeEntryMap[e.isA ?? '']
-  const emojiPrefix = e.icon && isEmoji(e.icon) ? `${e.icon} ` : ''
   return {
     entry: e,
-    title: `${emojiPrefix}${e.title}`,
+    title: e.title,
+    noteIcon: e.icon,
     noteType,
     typeColor: noteType ? getTypeColor(e.isA, te?.color) : undefined,
     typeLightColor: noteType ? getTypeLightColor(e.isA, te?.color) : undefined,

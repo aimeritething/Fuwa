@@ -15,6 +15,7 @@ import {
   Star,
   CheckCircle,
 } from '@phosphor-icons/react'
+import { NoteTitleIcon } from './NoteTitleIcon'
 
 interface BreadcrumbBarProps {
   entry: VaultEntry
@@ -184,7 +185,10 @@ function BreadcrumbTitle({ entry }: { entry: VaultEntry }) {
     <div className="flex items-center gap-1.5 min-w-0 text-sm text-muted-foreground">
       <span className="shrink-0">{typeLabel}</span>
       <span className="shrink-0 text-border">›</span>
-      <span className="truncate font-medium text-foreground">{filenameStem}</span>
+      <span className="flex min-w-0 items-center gap-1 truncate font-medium text-foreground">
+        <NoteTitleIcon icon={entry.icon} size={15} testId="breadcrumb-note-icon" />
+        <span className="truncate">{filenameStem}</span>
+      </span>
     </div>
   )
 }

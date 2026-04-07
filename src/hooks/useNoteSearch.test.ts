@@ -78,6 +78,14 @@ describe('useNoteSearch', () => {
     expect(result.current.results[0].entry).toBe(entries[0])
   })
 
+  it('keeps the plain title text and exposes the icon separately', () => {
+    const withIcon = [makeEntry({ path: '/vault/icon.md', title: 'Icon Note', icon: '🚀' })]
+    const { result } = renderHook(() => useNoteSearch(withIcon, ''))
+
+    expect(result.current.results[0].title).toBe('Icon Note')
+    expect(result.current.results[0].noteIcon).toBe('🚀')
+  })
+
   it('starts with selectedIndex 0', () => {
     const { result } = renderHook(() => useNoteSearch(entries, ''))
     expect(result.current.selectedIndex).toBe(0)

@@ -277,7 +277,8 @@ function toBooleanValue(value: FrontmatterValue): boolean {
   return false
 }
 
-function autoDetectFromValue(value: FrontmatterValue): PropertyDisplayMode {
+function autoDetectFromValue(propKey: string, value: FrontmatterValue): PropertyDisplayMode {
+  if (propKey.toLowerCase() === 'icon') return 'text'
   if (typeof value === 'boolean') return 'boolean'
   if (typeof value === 'string' && isUrlValue(value)) return 'url'
   if (typeof value === 'string' && isValidCssColor(value) && value.startsWith('#')) return 'color'
@@ -293,7 +294,7 @@ type SmartCellProps = {
 
 function ScalarValueCell({ propKey, value, displayMode, isEditing, vaultStatuses, vaultTags, onStartEdit, onSave, onSaveList, onUpdate }: SmartCellProps) {
   const editProps = { value: String(value ?? ''), isEditing, onStartEdit: () => onStartEdit(propKey), onSave: (v: string) => onSave(propKey, v), onCancel: () => onStartEdit(null) }
-  const resolvedMode = displayMode === 'text' ? autoDetectFromValue(value) : displayMode
+  const resolvedMode = displayMode === 'text' ? autoDetectFromValue(propKey, value) : displayMode
   switch (resolvedMode) {
     case 'status':
       return <StatusValue propKey={propKey} value={value ?? ''} isEditing={isEditing} vaultStatuses={vaultStatuses} onSave={onSave} onStartEdit={onStartEdit} />
@@ -324,4 +325,3 @@ export function SmartPropertyValueCell(props: SmartCellProps) {
   }
   return <ScalarValueCell {...props} />
 }
-

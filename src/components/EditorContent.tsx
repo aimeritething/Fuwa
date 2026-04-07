@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useCallback, useRef, useEffect } from 'react'
+import { useRef, useEffect } from 'react'
 import type { VaultEntry, NoteStatus } from '../types'
 import type { useCreateBlockNote } from '@blocknote/react'
 import { DiffView } from './DiffView'
@@ -11,8 +11,8 @@ import { ConflictNoteBanner } from './ConflictNoteBanner'
 import { RawEditorView } from './RawEditorView'
 import { countWords } from '../utils/wikilinks'
 import { SingleEditorView } from './SingleEditorView'
-import { isEmoji } from '../utils/emoji'
 import { useEditorTheme } from '../hooks/useTheme'
+import { resolveNoteIcon } from '../utils/noteIcon'
 
 interface Tab {
   entry: VaultEntry
@@ -50,10 +50,6 @@ interface EditorContentProps {
   rawLatestContentRef?: React.MutableRefObject<string | null>
   /** Called when the user edits the dedicated title field. */
   onTitleChange?: (path: string, newTitle: string) => void
-  /** Called when user sets or changes an emoji icon via the picker. */
-  onSetNoteIcon?: (path: string, emoji: string) => void
-  /** Called when user removes an emoji icon. */
-  onRemoveNoteIcon?: (path: string) => void
   /** Whether the active note has a merge conflict. */
   isConflicted?: boolean
   /** Resolve conflict by keeping the local version. */
@@ -160,7 +156,6 @@ export function EditorContent({
   activeStatus,
   onNavigateWikilink, onEditorChange, vaultPath,
   rawLatestContentRef, onTitleChange,
-  onSetNoteIcon, onRemoveNoteIcon,
   isConflicted, onKeepMine, onKeepTheirs,
   ...breadcrumbProps
 }: EditorContentProps) {
@@ -174,7 +169,7 @@ export function EditorContent({
   const effectiveRawMode = rawMode || isNonMarkdownText
   const showEditor = !diffMode && !effectiveRawMode
   const entryIcon = activeTab?.entry.icon ?? null
-  const emojiIcon = entryIcon && isEmoji(entryIcon) ? entryIcon : null
+  const hasDisplayIcon = resolveNoteIcon(entryIcon).kind !== 'none'
   const isUntitledDraft = !!activeTab
     && activeTab.entry.filename.startsWith('untitled-')
     && (activeStatus === 'new' || activeStatus === 'unsaved' || activeStatus === 'pendingSave')
@@ -203,14 +198,6 @@ export function EditorContent({
     observer.observe(el)
     return () => { observer.disconnect(); bar.removeAttribute('data-title-hidden') }
   }, [activeTab?.entry.path, showEditor])
-
-  const handleSetIcon = useCallback((emoji: string) => {
-    if (activeTab) onSetNoteIcon?.(activeTab.entry.path, emoji)
-  }, [activeTab, onSetNoteIcon])
-
-  const handleRemoveIcon = useCallback(() => {
-    if (activeTab) onRemoveNoteIcon?.(activeTab.entry.path)
-  }, [activeTab, onRemoveNoteIcon])
 
   if (!activeTab) {
     return <div className="flex flex-1 flex-col min-w-0 min-h-0" />
@@ -242,14 +229,14 @@ export function EditorContent({
             <div ref={titleSectionRef} className="title-section" data-title-ui-visible={showTitleSection || undefined}>
               {showTitleSection && (
                 <>
-                  {!emojiIcon && (
+                  {!hasDisplayIcon && (
                     <div className="title-section__add-icon">
-                      <NoteIcon icon={null} editable onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
+                      <NoteIcon icon={null} editable />
                     </div>
                   )}
-                  <div className={`title-section__row${emojiIcon ? '' : ' title-section__row--no-icon'}`}>
-                    {emojiIcon && (
-                      <NoteIcon icon={emojiIcon} editable onSetIcon={handleSetIcon} onRemoveIcon={handleRemoveIcon} />
+                  <div className={`title-section__row${hasDisplayIcon ? '' : ' title-section__row--no-icon'}`}>
+                    {hasDisplayIcon && (
+                      <NoteIcon icon={entryIcon} editable />
                     )}
                     <TitleField
                       title={activeTab.entry.title}

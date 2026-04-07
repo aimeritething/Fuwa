@@ -41,6 +41,7 @@ export function ReferencedByPanel({ items, typeEntryMap, onNavigate }: {
                   <LinkButton
                     key={e.path}
                     label={e.title}
+                    noteIcon={e.icon}
                     typeColor={getTypeColor(e.isA, te?.color)}
                     isArchived={e.archived}
                     onClick={() => onNavigate(e.title)}

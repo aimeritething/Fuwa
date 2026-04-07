@@ -1,8 +1,8 @@
 import type { VaultEntry } from '../../types'
 import { ArrowUpRight } from '@phosphor-icons/react'
-import { isEmoji } from '../../utils/emoji'
 import { entryStatusTitle } from './shared'
 import { StatusSuffix } from './LinkButton'
+import { NoteTitleIcon } from '../NoteTitleIcon'
 
 export interface BacklinkItem {
   entry: VaultEntry
@@ -25,7 +25,7 @@ function BacklinkEntry({ entry, context, onNavigate }: {
         className="flex items-center gap-1 text-xs text-primary"
         style={isDimmed ? { color: 'var(--muted-foreground)' } : undefined}
       >
-        {entry.icon && isEmoji(entry.icon) && <span className="shrink-0">{entry.icon}</span>}
+        <NoteTitleIcon icon={entry.icon} size={14} />
         {entry.title}
         <StatusSuffix isArchived={entry.archived} />
       </span>

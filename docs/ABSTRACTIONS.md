@@ -17,6 +17,7 @@ These frontmatter field names have special meaning in Laputa's UI:
 | `title:` | Human-readable title (synced with filename) | Breadcrumb, sidebar. Filename = `slugify(title).md` |
 | `type:` | Entity type (Project, Person, Quarter…) | Type chip in note list + sidebar grouping |
 | `status:` | Lifecycle stage (active, done, blocked…) | Colored chip in note list + editor header |
+| `icon:` | Per-note icon (emoji, Phosphor name, or HTTP/HTTPS image URL) | Rendered on note title surfaces; editable from the Properties panel |
 | `url:` | External link | Clickable link chip in editor header |
 | `date:` | Single date | Formatted date badge |
 | `start_date:` + `end_date:` | Duration/timespan | Date range badge |
@@ -167,7 +168,7 @@ Each entity type can have a corresponding **type document** in the `type/` folde
 
 | Property | Type | Description |
 |----------|------|-------------|
-| `icon` | string | Phosphor icon name (kebab-case, e.g., "cooking-pot") |
+| `icon` | string | Type icon as a Phosphor name (kebab-case, e.g., "cooking-pot") |
 | `color` | string | Accent color: red, purple, blue, green, yellow, orange |
 | `order` | number | Sidebar display order (lower = higher priority) |
 | `sidebar_label` | string | Custom label overriding auto-pluralization |

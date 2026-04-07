@@ -18,6 +18,10 @@ const STATUS_KEY_PATTERNS = ['status']
 const DATE_KEY_PATTERNS = ['date', 'deadline', 'due', 'start', 'end', 'scheduled']
 const TAGS_KEY_PATTERNS = ['tags', 'keywords', 'categories', 'labels']
 
+function isIconKey(key: string): boolean {
+  return key.toLowerCase() === 'icon'
+}
+
 function keyMatchesPatterns(key: string, patterns: string[]): boolean {
   const lower = key.toLowerCase()
   return patterns.some(p => lower === p || lower.includes(p))
@@ -28,6 +32,7 @@ function isDateString(value: string): boolean {
 }
 
 function detectStringType(key: string, strValue: string): PropertyDisplayMode {
+  if (isIconKey(key)) return 'text'
   if (keyMatchesPatterns(key, STATUS_KEY_PATTERNS)) return 'status'
   if (STATUS_VALUES.has(strValue.toLowerCase()) && !keyMatchesPatterns(key, DATE_KEY_PATTERNS)) return 'status'
   if (isDateString(strValue)) return 'date'
@@ -38,6 +43,7 @@ function detectStringType(key: string, strValue: string): PropertyDisplayMode {
 export function detectPropertyType(key: string, value: FrontmatterValue): PropertyDisplayMode {
   if (value === null || value === undefined) return 'text'
   if (typeof value === 'boolean') return 'boolean'
+  if (isIconKey(key)) return 'text'
   if (keyMatchesPatterns(key, TAGS_KEY_PATTERNS)) return 'tags'
   if (Array.isArray(value)) return 'text'
   return detectStringType(key, String(value))

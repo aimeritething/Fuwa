@@ -334,7 +334,17 @@ const ICON_MAP: Record<string, ComponentType<IconProps>> = Object.fromEntries(
   ICON_OPTIONS.map((o) => [o.name, o.Icon]),
 )
 
+function normalizeIconName(name: string): string {
+  return name.trim().toLowerCase().replace(/[_\s]+/g, '-')
+}
+
+/** Resolves a Phosphor icon name to its component, without a fallback. */
+export function findIcon(name: string | null | undefined): ComponentType<IconProps> | null {
+  if (!name) return null
+  return ICON_MAP[normalizeIconName(name)] ?? null
+}
+
 /** Resolves a Phosphor icon name to its component, with fallback to FileText */
 export function resolveIcon(name: string | null): ComponentType<IconProps> {
-  return (name && ICON_MAP[name]) || FileText
+  return findIcon(name) ?? FileText
 }

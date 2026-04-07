@@ -131,3 +131,35 @@ describe('NoteItem property chips', () => {
     expect(screen.queryByTestId('property-chips')).not.toBeInTheDocument()
   })
 })
+
+describe('NoteItem note icons', () => {
+  it('renders a Phosphor note icon in the note row', () => {
+    render(
+      <NoteItem
+        entry={makeEntry({ icon: 'star' })}
+        isSelected={false}
+        noteStatus="clean"
+        typeEntryMap={{ Movie: makeTypeEntry() }}
+        onClickNote={noop}
+      />
+    )
+
+    expect(screen.getByTestId('note-title-icon').tagName.toLowerCase()).toBe('svg')
+  })
+
+  it('renders an image note icon in the note row', () => {
+    render(
+      <NoteItem
+        entry={makeEntry({ icon: 'https://example.com/favicon.png' })}
+        isSelected={false}
+        noteStatus="clean"
+        typeEntryMap={{ Movie: makeTypeEntry() }}
+        onClickNote={noop}
+      />
+    )
+
+    const icon = screen.getByTestId('note-title-icon')
+    expect(icon.tagName.toLowerCase()).toBe('img')
+    expect(icon).toHaveAttribute('src', 'https://example.com/favicon.png')
+  })
+})

@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useMemo, useEffect, type ComponentType, 
 import type { VaultEntry } from '../types'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { getTypeIcon } from './NoteItem'
+import { NoteTitleIcon } from './NoteTitleIcon'
 import './WikilinkSuggestionMenu.css'
 
 const MIN_QUERY_LENGTH = 2
@@ -21,6 +22,7 @@ interface NoteAutocompleteProps {
 
 interface MatchedEntry {
   title: string
+  noteIcon: string | null
   noteType?: string
   typeColor?: string
   typeLightColor?: string
@@ -40,6 +42,7 @@ function matchEntries(entries: VaultEntry[], typeEntryMap: Record<string, VaultE
     const noteType = isA || undefined
     return {
       title: e.title,
+      noteIcon: e.icon,
       noteType,
       typeColor: noteType ? getTypeColor(isA, te?.color) : undefined,
       typeLightColor: noteType ? getTypeLightColor(isA, te?.color) : undefined,
@@ -142,6 +145,7 @@ export function NoteAutocomplete({ entries, typeEntryMap, value, onChange, onSel
             >
               <span className="wikilink-menu__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 {item.TypeIcon && <item.TypeIcon width={14} height={14} style={{ color: item.typeColor, flexShrink: 0 }} />}
+                <NoteTitleIcon icon={item.noteIcon} size={14} />
                 {item.title}
               </span>
               {item.noteType && (

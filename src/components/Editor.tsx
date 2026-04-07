@@ -68,10 +68,6 @@ interface EditorProps {
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
-  /** Called when user sets an emoji icon on a note. */
-  onSetNoteIcon?: (path: string, emoji: string) => void
-  /** Called when user removes an emoji icon from a note. */
-  onRemoveNoteIcon?: (path: string) => void
   /** Whether the active note has a merge conflict. */
   isConflicted?: boolean
   /** Resolve conflict by keeping the local version. */
@@ -209,7 +205,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
     onToggleFavorite, onToggleOrganized, onDeleteNote, onArchiveNote, onUnarchiveNote,
     onContentChange, onSave, onTitleSync,
     onFileCreated, onFileModified, onVaultChanged,
-    onSetNoteIcon, onRemoveNoteIcon,
     isConflicted, onKeepMine, onKeepTheirs,
   } = props
 
@@ -260,8 +255,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
               vaultPath={vaultPath}
               rawLatestContentRef={rawLatestContentRef}
               onTitleChange={onTitleSync}
-              onSetNoteIcon={onSetNoteIcon}
-              onRemoveNoteIcon={onRemoveNoteIcon}
               isConflicted={isConflicted}
               onKeepMine={onKeepMine}
               onKeepTheirs={onKeepTheirs}

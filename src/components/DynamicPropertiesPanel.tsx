@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo, useCallback, useEffect } from 'react'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from './Inspector'
 import type { ParsedFrontmatter } from '../utils/frontmatter'
@@ -8,6 +8,7 @@ import { SmartPropertyValueCell, DisplayModeSelector } from './PropertyValueCell
 import { TypeSelector } from './TypeSelector'
 import { AddPropertyForm } from './AddPropertyForm'
 import type { PropertyDisplayMode } from '../utils/propertyTypes'
+import { FOCUS_NOTE_ICON_PROPERTY_EVENT } from './noteIconPropertyEvents'
 
 function toSentenceCase(key: string): string {
   const spaced = key.replace(/[_-]/g, ' ')
@@ -66,7 +67,12 @@ function AddPropertyButton({ onClick, disabled }: { onClick: () => void; disable
   )
 }
 
-const SUGGESTED_PROPERTIES = ['Status', 'Date', 'URL'] as const
+const SUGGESTED_PROPERTIES = [
+  { key: 'Status', label: 'Status' },
+  { key: 'Date', label: 'Date' },
+  { key: 'URL', label: 'URL' },
+  { key: 'icon', label: 'Icon' },
+] as const
 
 function SuggestedPropertySlot({ label, onAdd }: { label: string; onAdd: () => void }) {
   return (
@@ -110,7 +116,7 @@ export function DynamicPropertiesPanel({
   }, [propertyEntries, frontmatter])
 
   const missingSuggested = onAddProperty
-    ? SUGGESTED_PROPERTIES.filter(p => !existingKeys.has(p.toLowerCase()))
+    ? SUGGESTED_PROPERTIES.filter(p => !existingKeys.has(p.key.toLowerCase()))
     : []
 
   const handleSuggestedAdd = useCallback((key: string) => {
@@ -119,6 +125,20 @@ export function DynamicPropertiesPanel({
     setEditingKey(key)
     onAddProperty(key, '')
   }, [onAddProperty, setEditingKey])
+
+  useEffect(() => {
+    const handleFocusNoteIcon = () => {
+      const existingIconKey = propertyEntries.find(([key]) => key.toLowerCase() === 'icon')?.[0]
+
+      if (!existingIconKey && !onAddProperty) return
+      if (!existingIconKey) onAddProperty('icon', '')
+
+      setEditingKey(existingIconKey ?? 'icon')
+    }
+
+    window.addEventListener(FOCUS_NOTE_ICON_PROPERTY_EVENT, handleFocusNoteIcon)
+    return () => window.removeEventListener(FOCUS_NOTE_ICON_PROPERTY_EVENT, handleFocusNoteIcon)
+  }, [onAddProperty, propertyEntries, setEditingKey])
 
   return (
     <div className="flex flex-col gap-3">
@@ -136,8 +156,8 @@ export function DynamicPropertiesPanel({
             onDisplayModeChange={handleDisplayModeChange}
           />
         ))}
-        {missingSuggested.map(key => (
-          <SuggestedPropertySlot key={key} label={key} onAdd={() => handleSuggestedAdd(key)} />
+        {missingSuggested.map(({ key, label }) => (
+          <SuggestedPropertySlot key={key} label={label} onAdd={() => handleSuggestedAdd(key)} />
         ))}
       </div>
       {showAddDialog

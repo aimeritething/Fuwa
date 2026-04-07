@@ -14,7 +14,6 @@ import { CSS } from '@dnd-kit/utilities'
 import {
   FileText, Trash, Archive, CaretLeft, Tray, CaretRight, CaretDown, Plus, Funnel, PencilSimple,
 } from '@phosphor-icons/react'
-import { isEmoji } from '../utils/emoji'
 import { evaluateView } from '../utils/viewFilters'
 import { arrayMove } from '@dnd-kit/sortable'
 import { SlidersHorizontal } from 'lucide-react'
@@ -24,6 +23,7 @@ import {
 } from './SidebarParts'
 import { useDragRegion } from '../hooks/useDragRegion'
 import { FolderTree } from './FolderTree'
+import { NoteTitleIcon } from './NoteTitleIcon'
 
 interface SidebarProps {
   entries: VaultEntry[]
@@ -343,7 +343,6 @@ function SortableFavoriteItem({ entry, isActive, onSelect }: {
   entry: VaultEntry; isActive: boolean; onSelect: () => void
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.path })
-  const icon = entry.icon && isEmoji(entry.icon) ? entry.icon : null
   return (
     <div ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }} {...attributes} {...listeners}>
       <div
@@ -351,7 +350,7 @@ function SortableFavoriteItem({ entry, isActive, onSelect }: {
         style={{ padding: '4px 16px 4px 28px' }}
         onClick={onSelect}
       >
-        {icon && <span className="shrink-0">{icon}</span>}
+        <NoteTitleIcon icon={entry.icon} size={14} />
         <span className="truncate">{entry.title}</span>
       </div>
     </div>

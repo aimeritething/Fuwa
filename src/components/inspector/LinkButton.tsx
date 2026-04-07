@@ -1,14 +1,15 @@
 import type { ComponentType, SVGAttributes } from 'react'
 import { X } from '@phosphor-icons/react'
+import { NoteTitleIcon } from '../NoteTitleIcon'
 
 export function StatusSuffix({ isArchived }: { isArchived: boolean }) {
   if (isArchived) return <span style={{ marginLeft: 4, fontSize: 10, opacity: 0.8 }}>(archived)</span>
   return null
 }
 
-export function LinkButton({ label, emoji, typeColor, bgColor, isArchived, onClick, onRemove, title, TypeIcon }: {
+export function LinkButton({ label, noteIcon, typeColor, bgColor, isArchived, onClick, onRemove, title, TypeIcon }: {
   label: string
-  emoji?: string | null
+  noteIcon?: string | null
   typeColor: string
   bgColor?: string
   isArchived: boolean
@@ -31,7 +32,7 @@ export function LinkButton({ label, emoji, typeColor, bgColor, isArchived, onCli
       title={title}
     >
       <span className="flex items-center gap-1 flex-1 truncate">
-        {emoji && <span className="shrink-0">{emoji}</span>}
+        <NoteTitleIcon icon={noteIcon} size={14} />
         {label}
         <StatusSuffix isArchived={isArchived} />
       </span>
