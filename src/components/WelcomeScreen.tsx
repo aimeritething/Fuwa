@@ -103,14 +103,6 @@ const OPTION_DESC_STYLE: React.CSSProperties = {
   marginTop: 2,
 }
 
-const PATH_BADGE_STYLE: React.CSSProperties = {
-  width: '100%',
-  background: 'var(--sidebar)',
-  borderRadius: 6,
-  padding: '8px 12px',
-  textAlign: 'center',
-}
-
 const ERROR_STYLE: React.CSSProperties = {
   fontSize: 13,
   color: 'var(--destructive, #e03e3e)',
@@ -155,7 +147,7 @@ function OptionButton({ icon, iconBg, label, description, onClick, disabled, loa
   )
 }
 
-export function WelcomeScreen({ mode, missingPath, defaultVaultPath, onCreateVault, onCreateNewVault, onOpenFolder, creating, error }: WelcomeScreenProps) {
+export function WelcomeScreen({ mode, defaultVaultPath, onCreateVault, onCreateNewVault, onOpenFolder, creating, error }: WelcomeScreenProps) {
   const isWelcome = mode === 'welcome'
 
   return (
@@ -184,14 +176,6 @@ export function WelcomeScreen({ mode, missingPath, defaultVaultPath, onCreateVau
             }
           </p>
         </div>
-
-        {!isWelcome && missingPath && (
-          <div style={PATH_BADGE_STYLE}>
-            <code style={{ fontSize: 12, color: 'var(--muted-foreground)', fontFamily: 'var(--font-mono, monospace)' }}>
-              {missingPath}
-            </code>
-          </div>
-        )}
 
         <div style={DIVIDER_STYLE} />
 

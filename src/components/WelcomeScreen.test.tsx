@@ -94,9 +94,9 @@ describe('WelcomeScreen', () => {
       expect(screen.getByText(/could not be found on disk/)).toBeInTheDocument()
     })
 
-    it('shows the missing vault path in a badge', () => {
+    it('does not show the missing vault path in a badge', () => {
       render(<WelcomeScreen {...missingProps} />)
-      expect(screen.getByText('~/Laputa')).toBeInTheDocument()
+      expect(screen.queryByText('~/Laputa')).not.toBeInTheDocument()
     })
 
     it('shows "Choose a different folder" instead of "Open existing vault"', () => {

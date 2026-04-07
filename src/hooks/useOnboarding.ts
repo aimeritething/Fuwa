@@ -15,6 +15,12 @@ function tauriCall<T>(command: string, args: Record<string, unknown>): Promise<T
 
 const DISMISSED_KEY = 'laputa_welcome_dismissed'
 
+interface PersistedVaultList {
+  vaults?: Array<{ label: string; path: string }>
+  active_vault?: string | null
+  hidden_defaults?: string[]
+}
+
 function wasDismissed(): boolean {
   try {
     return localStorage.getItem(DISMISSED_KEY) === '1'
@@ -28,6 +34,22 @@ function markDismissed(): void {
     localStorage.setItem(DISMISSED_KEY, '1')
   } catch {
     // localStorage may be unavailable in some contexts
+  }
+}
+
+async function clearMissingActiveVault(missingPath: string): Promise<void> {
+  try {
+    const list = await tauriCall<PersistedVaultList>('load_vault_list', {})
+    if (!list || list.active_vault !== missingPath) return
+    await tauriCall('save_vault_list', {
+      list: {
+        vaults: list.vaults ?? [],
+        active_vault: null,
+        hidden_defaults: list.hidden_defaults ?? [],
+      },
+    })
+  } catch {
+    // Best effort only — onboarding should still proceed
   }
 }
 
@@ -48,7 +70,16 @@ export function useOnboarding(initialVaultPath: string) {
 
         if (exists) {
           setState({ status: 'ready', vaultPath: initialVaultPath })
-        } else if (wasDismissed()) {
+        } else {
+          await clearMissingActiveVault(initialVaultPath)
+          if (cancelled) return
+        }
+
+        if (exists) {
+          return
+        }
+
+        if (wasDismissed()) {
           // User previously dismissed — show vault-missing instead of welcome
           setState({ status: 'vault-missing', vaultPath: initialVaultPath, defaultPath })
         } else {

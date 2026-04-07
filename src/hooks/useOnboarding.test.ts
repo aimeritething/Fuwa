@@ -87,6 +87,38 @@ describe('useOnboarding', () => {
     })
   })
 
+  it('clears the persisted active vault when the saved path no longer exists', async () => {
+    localStorage.setItem('laputa_welcome_dismissed', '1')
+
+    mockInvokeFn.mockImplementation(async (cmd: string) => {
+      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
+      if (cmd === 'check_vault_exists') return false
+      if (cmd === 'load_vault_list') {
+        return {
+          vaults: [{ label: 'Old Vault', path: '/vault/deleted' }],
+          active_vault: '/vault/deleted',
+          hidden_defaults: [],
+        }
+      }
+      if (cmd === 'save_vault_list') return null
+      return null
+    })
+
+    const { result } = renderHook(() => useOnboarding('/vault/deleted'))
+
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('vault-missing')
+    })
+
+    expect(mockInvokeFn).toHaveBeenCalledWith('save_vault_list', {
+      list: {
+        vaults: [{ label: 'Old Vault', path: '/vault/deleted' }],
+        active_vault: null,
+        hidden_defaults: [],
+      },
+    })
+  })
+
   it('handleCreateVault creates vault and transitions to ready', async () => {
     mockInvokeFn.mockImplementation(async (cmd: string) => {
       if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
