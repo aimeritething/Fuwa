@@ -124,7 +124,7 @@ function bindPath(cb: ((path: string) => void) | undefined, path: string) {
 function ActiveTabBreadcrumb({ activeTab, barRef, props }: {
   activeTab: Tab
   barRef: React.RefObject<HTMLDivElement | null>
-  props: Omit<EditorContentProps, 'activeTab' | 'isLoadingNewTab' | 'entries' | 'editor' | 'onNavigateWikilink' | 'onEditorChange' | 'onRawContentChange' | 'onSave'> & { forceRawMode?: boolean }
+  props: Omit<EditorContentProps, 'activeTab' | 'isLoadingNewTab' | 'entries' | 'editor' | 'onNavigateWikilink' | 'onEditorChange' | 'onRawContentChange' | 'onSave' | 'activeStatus'> & { forceRawMode?: boolean }
 }) {
   const wordCount = countWords(activeTab.content)
   const path = activeTab.entry.path
