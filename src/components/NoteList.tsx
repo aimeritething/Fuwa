@@ -339,8 +339,8 @@ function NoteListInner({ entries, selection, selectedNote, noteListFilter, onNot
   }, [isChangesView, onDiscardFile, noteListKeyboard, searched, openContextMenuForEntry])
 
   const renderItem = useCallback((entry: VaultEntry) => (
-    <NoteItem key={entry.path} entry={entry} isSelected={selectedNote?.path === entry.path} isMultiSelected={multiSelect.selectedPaths.has(entry.path)} isHighlighted={entry.path === noteListKeyboard.highlightedPath} noteStatus={resolvedGetNoteStatus(entry.path)} changeStatus={getChangeStatus(entry.path)} typeEntryMap={typeEntryMap} displayPropsOverride={inboxDisplayOverride} onClickNote={handleClickNote} onPrefetch={isDeletedNoteEntry(entry) ? undefined : prefetchNoteContent} onContextMenu={isChangesView && onDiscardFile ? handleNoteContextMenu : undefined} />
-  ), [selectedNote?.path, handleClickNote, typeEntryMap, resolvedGetNoteStatus, getChangeStatus, multiSelect.selectedPaths, noteListKeyboard.highlightedPath, isChangesView, onDiscardFile, handleNoteContextMenu, inboxDisplayOverride])
+    <NoteItem key={entry.path} entry={entry} isSelected={selectedNote?.path === entry.path} isMultiSelected={multiSelect.selectedPaths.has(entry.path)} isHighlighted={entry.path === noteListKeyboard.highlightedPath} noteStatus={resolvedGetNoteStatus(entry.path)} changeStatus={getChangeStatus(entry.path)} typeEntryMap={typeEntryMap} allEntries={entries} displayPropsOverride={inboxDisplayOverride} onClickNote={handleClickNote} onPrefetch={isDeletedNoteEntry(entry) ? undefined : prefetchNoteContent} onContextMenu={isChangesView && onDiscardFile ? handleNoteContextMenu : undefined} />
+  ), [entries, selectedNote?.path, handleClickNote, typeEntryMap, resolvedGetNoteStatus, getChangeStatus, multiSelect.selectedPaths, noteListKeyboard.highlightedPath, isChangesView, onDiscardFile, handleNoteContextMenu, inboxDisplayOverride])
 
   const handleCreateNote = useCallback(() => {
     onCreateNote(selection.kind === 'sectionGroup' ? selection.type : undefined)

@@ -1,4 +1,4 @@
-import { useMemo, type ComponentType, type SVGAttributes } from 'react'
+import { createElement, useMemo, useState, type ComponentType, type SVGAttributes } from 'react'
 import type { VaultEntry, NoteStatus } from '../types'
 import { cn } from '@/lib/utils'
 import {
@@ -7,9 +7,10 @@ import {
   File, FileDashed,
 } from '@phosphor-icons/react'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
-import { resolveIcon } from '../utils/iconRegistry'
+import { findIcon, resolveIcon } from '../utils/iconRegistry'
 import { relativeDate, getDisplayDate } from '../utils/noteListHelpers'
-import { wikilinkDisplay } from '../utils/wikilink'
+import { resolveNoteIcon } from '../utils/noteIcon'
+import { resolveEntry, wikilinkDisplay, wikilinkTarget } from '../utils/wikilink'
 import { NoteTitleIcon } from './NoteTitleIcon'
 
 const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>> = {
@@ -69,30 +70,100 @@ function formatChipValue(value: unknown): string | null {
   return s.length > 40 ? s.slice(0, 37) + '…' : s
 }
 
-function resolveChipValues(entry: VaultEntry, propName: string): string[] {
+interface PropertyChipValue {
+  label: string
+  noteIcon?: string | null
+  typeIcon?: string | null
+}
+
+function resolveChipValues(
+  entry: VaultEntry,
+  propName: string,
+  allEntries: VaultEntry[],
+  typeEntryMap: Record<string, VaultEntry>,
+): PropertyChipValue[] {
   // Check relationships first (wikilink values)
   const relKey = Object.keys(entry.relationships).find((k) => k.toLowerCase() === propName.toLowerCase())
   if (relKey) {
-    return entry.relationships[relKey].map((ref) => wikilinkDisplay(ref)).filter(Boolean)
+    return entry.relationships[relKey]
+      .map((ref) => {
+        const targetEntry = resolveEntry(allEntries, wikilinkTarget(ref))
+        const label = wikilinkDisplay(ref)
+        return label ? {
+          label,
+          noteIcon: targetEntry?.icon ?? null,
+          typeIcon: targetEntry?.isA ? typeEntryMap[targetEntry.isA]?.icon ?? null : null,
+        } : null
+      })
+      .filter((value): value is PropertyChipValue => value !== null)
   }
   // Check scalar properties
   const propKey = Object.keys(entry.properties).find((k) => k.toLowerCase() === propName.toLowerCase())
   if (!propKey) return []
   const val = entry.properties[propKey]
-  if (Array.isArray(val)) return val.map((v) => formatChipValue(v)).filter((v): v is string => v !== null)
+  if (Array.isArray(val)) {
+    return val
+      .map((v) => formatChipValue(v))
+      .filter((v): v is string => v !== null)
+      .map((label) => ({ label }))
+  }
   const formatted = formatChipValue(val)
-  return formatted ? [formatted] : []
+  return formatted ? [{ label: formatted }] : []
 }
 
-function PropertyChips({ entry, displayProps }: { entry: VaultEntry; displayProps: string[] }) {
+function PropertyChipIcon({ noteIcon, typeIcon }: { noteIcon?: string | null; typeIcon?: string | null }) {
+  const [imageFailed, setImageFailed] = useState(false)
+  const resolvedNoteIcon = resolveNoteIcon(noteIcon)
+  const TypeIcon = findIcon(typeIcon)
+
+  if (resolvedNoteIcon.kind === 'emoji') {
+    return (
+      <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center leading-none" style={{ fontSize: 11, lineHeight: 1 }}>
+        {resolvedNoteIcon.value}
+      </span>
+    )
+  }
+
+  if (resolvedNoteIcon.kind === 'phosphor') {
+    return <resolvedNoteIcon.Icon aria-hidden="true" width={11} height={11} className="shrink-0" />
+  }
+
+  if (resolvedNoteIcon.kind === 'image' && !imageFailed) {
+    return (
+      <img
+        src={resolvedNoteIcon.src}
+        alt=""
+        aria-hidden="true"
+        className="h-[11px] w-[11px] shrink-0 rounded-sm object-cover"
+        onError={() => setImageFailed(true)}
+      />
+    )
+  }
+
+  if (!TypeIcon) return null
+
+  return createElement(TypeIcon, { 'aria-hidden': true, width: 11, height: 11, className: 'shrink-0' })
+}
+
+function PropertyChips({
+  entry,
+  displayProps,
+  allEntries,
+  typeEntryMap,
+}: {
+  entry: VaultEntry
+  displayProps: string[]
+  allEntries: VaultEntry[]
+  typeEntryMap: Record<string, VaultEntry>
+}) {
   const chips = useMemo(() => {
-    const result: { key: string; values: string[] }[] = []
+    const result: { key: string; values: PropertyChipValue[] }[] = []
     for (const prop of displayProps) {
-      const values = resolveChipValues(entry, prop)
+      const values = resolveChipValues(entry, prop, allEntries, typeEntryMap)
       if (values.length > 0) result.push({ key: prop, values })
     }
     return result
-  }, [entry, displayProps])
+  }, [entry, displayProps, allEntries, typeEntryMap])
 
   if (chips.length === 0) return null
 
@@ -102,9 +173,10 @@ function PropertyChips({ entry, displayProps }: { entry: VaultEntry; displayProp
         values.map((v, i) => (
           <span
             key={`${key}-${i}`}
-            className="inline-block max-w-full truncate rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+            className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
           >
-            {v}
+            <PropertyChipIcon noteIcon={v.noteIcon} typeIcon={v.typeIcon} />
+            <span className="truncate whitespace-nowrap">{v.label}</span>
           </span>
         ))
       )}
@@ -152,7 +224,7 @@ function resolveDisplayProps(entry: VaultEntry, typeEntryMap: Record<string, Vau
   return typeEntryMap[entry.isA ?? '']?.listPropertiesDisplay ?? []
 }
 
-export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlighted = false, noteStatus = 'clean', changeStatus, typeEntryMap, displayPropsOverride, onClickNote, onPrefetch, onContextMenu }: {
+export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlighted = false, noteStatus = 'clean', changeStatus, typeEntryMap, allEntries, displayPropsOverride, onClickNote, onPrefetch, onContextMenu }: {
   entry: VaultEntry
   isSelected: boolean
   isMultiSelected?: boolean
@@ -161,6 +233,7 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
   /** When set, renders in Changes-view style: filename + change type icon */
   changeStatus?: 'modified' | 'added' | 'deleted' | 'untracked' | 'renamed'
   typeEntryMap: Record<string, VaultEntry>
+  allEntries?: VaultEntry[]
   displayPropsOverride?: string[] | null
   onClickNote: (entry: VaultEntry, e: React.MouseEvent) => void
   onPrefetch?: (path: string) => void
@@ -235,7 +308,7 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
             </div>
           )}
           {!isBinary && displayProps.length > 0 && (
-            <PropertyChips entry={entry} displayProps={displayProps} />
+            <PropertyChips entry={entry} displayProps={displayProps} allEntries={allEntries ?? [entry]} typeEntryMap={typeEntryMap} />
           )}
           {!isBinary && (
             <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>

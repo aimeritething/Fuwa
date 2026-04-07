@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { NoteItem } from './NoteItem'
 import type { VaultEntry } from '../types'
@@ -85,6 +85,148 @@ describe('NoteItem property chips', () => {
     )
 
     expect(screen.getByText('Steven Spielberg')).toBeInTheDocument()
+  })
+
+  it('shows the target note icon as a prefix on relationship chips', () => {
+    const entry = makeEntry({
+      relationships: { Director: ['[[spielberg|Steven Spielberg]]'] },
+    })
+    const director = makeEntry({
+      path: '/vault/spielberg.md',
+      filename: 'spielberg.md',
+      title: 'Steven Spielberg',
+      isA: 'Person',
+      icon: 'star',
+    })
+    const movieType = makeTypeEntry({ listPropertiesDisplay: ['Director'] })
+    const personType = makeTypeEntry({
+      path: '/vault/person.md',
+      filename: 'person.md',
+      title: 'Person',
+      icon: 'users',
+    })
+
+    render(
+      <NoteItem
+        entry={entry}
+        isSelected={false}
+        noteStatus="clean"
+        typeEntryMap={{ Movie: movieType, Person: personType }}
+        allEntries={[entry, director, movieType, personType]}
+        onClickNote={noop}
+      />
+    )
+
+    const chip = screen.getByText('Steven Spielberg').parentElement
+    expect(chip?.querySelector('svg')).toBeInTheDocument()
+    expect(chip?.querySelector('svg')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it('falls back to the target type icon when the target note has no icon', () => {
+    const entry = makeEntry({
+      relationships: { Director: ['[[spielberg|Steven Spielberg]]'] },
+    })
+    const director = makeEntry({
+      path: '/vault/spielberg.md',
+      filename: 'spielberg.md',
+      title: 'Steven Spielberg',
+      isA: 'Person',
+      icon: null,
+    })
+    const movieType = makeTypeEntry({ listPropertiesDisplay: ['Director'] })
+    const personType = makeTypeEntry({
+      path: '/vault/person.md',
+      filename: 'person.md',
+      title: 'Person',
+      icon: 'users',
+    })
+
+    render(
+      <NoteItem
+        entry={entry}
+        isSelected={false}
+        noteStatus="clean"
+        typeEntryMap={{ Movie: movieType, Person: personType }}
+        allEntries={[entry, director, movieType, personType]}
+        onClickNote={noop}
+      />
+    )
+
+    const chip = screen.getByText('Steven Spielberg').parentElement
+    expect(chip?.querySelector('svg')).toBeInTheDocument()
+  })
+
+  it('renders relationship chips without a prefix when neither note nor type has an icon', () => {
+    const entry = makeEntry({
+      relationships: { Director: ['[[spielberg|Steven Spielberg]]'] },
+    })
+    const director = makeEntry({
+      path: '/vault/spielberg.md',
+      filename: 'spielberg.md',
+      title: 'Steven Spielberg',
+      isA: 'Person',
+      icon: null,
+    })
+    const movieType = makeTypeEntry({ listPropertiesDisplay: ['Director'] })
+    const personType = makeTypeEntry({
+      path: '/vault/person.md',
+      filename: 'person.md',
+      title: 'Person',
+      icon: null,
+    })
+
+    render(
+      <NoteItem
+        entry={entry}
+        isSelected={false}
+        noteStatus="clean"
+        typeEntryMap={{ Movie: movieType, Person: personType }}
+        allEntries={[entry, director, movieType, personType]}
+        onClickNote={noop}
+      />
+    )
+
+    const chip = screen.getByText('Steven Spielberg').parentElement
+    expect(chip?.querySelector('svg')).toBeNull()
+    expect(chip?.querySelector('img')).toBeNull()
+  })
+
+  it('falls back to the target type icon when the target note image icon fails to load', () => {
+    const entry = makeEntry({
+      relationships: { Director: ['[[spielberg|Steven Spielberg]]'] },
+    })
+    const director = makeEntry({
+      path: '/vault/spielberg.md',
+      filename: 'spielberg.md',
+      title: 'Steven Spielberg',
+      isA: 'Person',
+      icon: 'https://example.com/director.png',
+    })
+    const movieType = makeTypeEntry({ listPropertiesDisplay: ['Director'] })
+    const personType = makeTypeEntry({
+      path: '/vault/person.md',
+      filename: 'person.md',
+      title: 'Person',
+      icon: 'users',
+    })
+
+    render(
+      <NoteItem
+        entry={entry}
+        isSelected={false}
+        noteStatus="clean"
+        typeEntryMap={{ Movie: movieType, Person: personType }}
+        allEntries={[entry, director, movieType, personType]}
+        onClickNote={noop}
+      />
+    )
+
+    const chip = screen.getByText('Steven Spielberg').parentElement
+    const image = chip?.querySelector('img')
+    expect(image).toBeInTheDocument()
+    fireEvent.error(image!)
+    expect(chip?.querySelector('img')).toBeNull()
+    expect(chip?.querySelector('svg')).toBeInTheDocument()
   })
 
   it('shows hostname for URL properties', () => {
