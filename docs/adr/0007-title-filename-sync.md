@@ -2,8 +2,9 @@
 type: ADR
 id: "0007"
 title: "Title equals filename (slug sync)"
-status: active
+status: superseded
 date: 2026-03-15
+superseded_by: "0044"
 ---
 
 ## Context

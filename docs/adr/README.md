@@ -97,4 +97,7 @@ proposed → active → superseded
 | [0039](0039-git-history-for-note-dates.md) | Git history as source of truth for note creation/modification dates | active |
 | [0040](0040-custom-views-yml-filter-engine.md) | Custom Views — .laputa/views/*.yml with YAML filter engine | active |
 | [0041](0041-filekind-all-files-in-vault-scanner.md) | fileKind field — scan all vault files, not just markdown | active |
-| [0042](0042-trash-auto-purge-safety-model.md) | Trash auto-purge safety model | active |
+| [0042](0042-trash-auto-purge-safety-model.md) | Trash auto-purge safety model | superseded → [0045](0045-permanent-delete-no-trash.md) |
+| [0043](0043-reactive-vault-state-on-save.md) | Reactive vault state: editor changes propagate immediately to all UI | active |
+| [0044](0044-h1-as-title-primary-source.md) | H1 as primary title source — filename as stable identifier | active |
+| [0045](0045-permanent-delete-no-trash.md) | Permanent delete with confirm modal — no Trash system | active |

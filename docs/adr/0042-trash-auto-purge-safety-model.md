@@ -2,8 +2,9 @@
 type: ADR
 id: "0042"
 title: "Trash auto-purge safety model"
-status: active
+status: superseded
 date: 2026-04-05
+superseded_by: "0045"
 ---
 
 ## Context
