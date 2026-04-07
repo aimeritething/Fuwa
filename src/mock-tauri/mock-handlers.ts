@@ -35,6 +35,22 @@ function mockModifiedFiles(): ModifiedFile[] {
 
 function mockFileDiff(path: string): string {
   const filename = path.split('/').pop() ?? 'unknown'
+  if (filename === 'old-draft.md') {
+    return `diff --git a/${filename} b/${filename}
+deleted file mode 100644
+index abc1234..0000000
+--- a/${filename}
++++ /dev/null
+@@ -1,7 +0,0 @@
+----
+-title: Old Draft
+-type: Note
+----
+-
+-# Old Draft
+-
+-This note was deleted.`
+  }
   return `diff --git a/${filename} b/${filename}
 index abc1234..def5678 100644
 --- a/${filename}

@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NoteList } from './NoteList'
 import { NoteItem } from './NoteItem'
@@ -924,7 +924,7 @@ describe('NoteList — virtual list with large datasets', () => {
       expect(icons).toHaveLength(2)
     })
 
-    it('shows deleted notes banner when files are deleted', () => {
+    it('shows deleted notes as individual rows when files are deleted', () => {
       const filesWithDeleted = [
         { path: mockEntries[0].path, relativePath: 'project/26q1-laputa-app.md', status: 'modified' as const },
         { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
@@ -934,17 +934,20 @@ describe('NoteList — virtual list with large datasets', () => {
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={filesWithDeleted} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
       )
       expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
-      expect(screen.getByText('2 notes deleted')).toBeInTheDocument()
+      expect(screen.getByText('gone.md')).toBeInTheDocument()
+      expect(screen.getByText('also-gone.md')).toBeInTheDocument()
+      expect(screen.queryByText(/notes? deleted/)).not.toBeInTheDocument()
     })
 
-    it('shows singular form for single deleted note', () => {
+    it('renders deleted rows with dimmed strikethrough styling', () => {
       const filesWithOneDeleted = [
         { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
       ]
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={filesWithOneDeleted} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
       )
-      expect(screen.getByText('1 note deleted')).toBeInTheDocument()
+      expect(screen.getByText('gone.md')).toHaveClass('line-through')
+      expect(screen.getByText('gone.md')).toHaveClass('opacity-70')
     })
 
     it('does not show deleted banner when no files are deleted', () => {
@@ -975,6 +978,20 @@ describe('NoteList — virtual list with large datasets', () => {
       expect(screen.getByTestId('discard-changes-button')).toBeInTheDocument()
     })
 
+    it('shows "Restore note" on deleted rows in the changes context menu', () => {
+      const onDiscard = vi.fn()
+      const filesWithDeleted = [
+        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
+      ]
+      render(
+        <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={filesWithDeleted} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onDiscardFile={onDiscard} />
+      )
+      const noteItem = screen.getByText('gone.md').closest('[class*="border-b"]')!
+      fireEvent.contextMenu(noteItem)
+      expect(screen.getByTestId('changes-context-menu')).toBeInTheDocument()
+      expect(screen.getByTestId('restore-note-button')).toBeInTheDocument()
+    })
+
     it('does not show context menu when onDiscardFile is not provided', () => {
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} />
@@ -998,15 +1015,41 @@ describe('NoteList — virtual list with large datasets', () => {
       expect(dialog.textContent).toContain('Build Laputa App')
     })
 
+    it('opens the restore context menu action from Shift+F10 on a highlighted deleted row', () => {
+      const onDiscard = vi.fn()
+      const filesWithDeleted = [
+        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
+      ]
+      render(
+        <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={filesWithDeleted} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onDiscardFile={onDiscard} />
+      )
+      const container = screen.getByTestId('note-list-container')
+      act(() => {
+        fireEvent.focus(container)
+      })
+      act(() => {
+        fireEvent.keyDown(container, { key: 'F10', shiftKey: true })
+      })
+      expect(screen.getByTestId('changes-context-menu')).toBeInTheDocument()
+      expect(screen.getByTestId('restore-note-button')).toBeInTheDocument()
+    })
+
     it('calls onDiscardFile with relativePath when discard is confirmed', async () => {
       const onDiscard = vi.fn().mockResolvedValue(undefined)
       render(
         <NoteList {...defaultFilterProps} entries={mockEntries} selection={changesSelection} selectedNote={null} modifiedFiles={modifiedFiles} onSelectNote={noopSelect} onReplaceActiveTab={noopReplace} onCreateNote={vi.fn()} onDiscardFile={onDiscard} />
       )
       const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
-      fireEvent.contextMenu(noteItem)
-      fireEvent.click(screen.getByTestId('discard-changes-button'))
-      fireEvent.click(screen.getByTestId('discard-confirm-button'))
+      act(() => {
+        fireEvent.contextMenu(noteItem)
+      })
+      act(() => {
+        fireEvent.click(screen.getByTestId('discard-changes-button'))
+      })
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('discard-confirm-button'))
+        await Promise.resolve()
+      })
       expect(onDiscard).toHaveBeenCalledWith('project/26q1-laputa-app.md')
     })
 

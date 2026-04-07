@@ -1,6 +1,11 @@
 import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus, ViewFile } from '../../types'
 import type { RelationshipGroup } from '../../utils/noteListHelpers'
 
+export interface DeletedNoteEntry extends VaultEntry {
+  __deletedNotePreview: true
+  __deletedRelativePath: string
+}
+
 export function resolveHeaderTitle(selection: SidebarSelection, typeDocument: VaultEntry | null, views?: ViewFile[]): string {
   if (selection.kind === 'view') {
     const view = views?.find((v) => v.filename === selection.filename)
@@ -59,4 +64,85 @@ export function toggleSetMember<T>(set: Set<T>, member: T): Set<T> {
 export function isModifiedEntry(path: string, pathSet: Set<string>, suffixes: string[]): boolean {
   if (pathSet.has(path)) return true
   return suffixes.some((suffix) => path.endsWith(suffix))
+}
+
+export function isDeletedNoteEntry(entry: VaultEntry): entry is DeletedNoteEntry {
+  return '__deletedNotePreview' in entry && entry.__deletedNotePreview === true
+}
+
+function matchesModifiedFile(entry: VaultEntry, file: ModifiedFile): boolean {
+  return entry.path === file.path || entry.path.endsWith('/' + file.relativePath)
+}
+
+function createDeletedNoteEntry(file: ModifiedFile): DeletedNoteEntry {
+  const filename = file.relativePath.split('/').pop() ?? file.relativePath
+  return {
+    path: file.path,
+    filename,
+    title: filename.replace(/\.md$/, ''),
+    isA: 'Note',
+    aliases: [],
+    belongsTo: [],
+    relatedTo: [],
+    status: null,
+    archived: false,
+    modifiedAt: null,
+    createdAt: null,
+    fileSize: 0,
+    snippet: '',
+    wordCount: 0,
+    relationships: {},
+    icon: null,
+    color: null,
+    order: null,
+    sidebarLabel: null,
+    template: null,
+    sort: null,
+    view: null,
+    visible: null,
+    organized: false,
+    favorite: false,
+    favoriteIndex: null,
+    listPropertiesDisplay: [],
+    outgoingLinks: [],
+    properties: {},
+    hasH1: true,
+    fileKind: 'markdown',
+    __deletedNotePreview: true,
+    __deletedRelativePath: file.relativePath,
+  }
+}
+
+export function buildChangesEntries(entries: VaultEntry[], modifiedFiles: ModifiedFile[] | undefined): VaultEntry[] {
+  if (!modifiedFiles || modifiedFiles.length === 0) return []
+
+  const liveEntries = entries.filter((entry) =>
+    modifiedFiles.some((file) => file.status !== 'deleted' && matchesModifiedFile(entry, file)),
+  )
+
+  const deletedEntries = modifiedFiles
+    .filter((file) => file.status === 'deleted')
+    .filter((file) => !entries.some((entry) => matchesModifiedFile(entry, file)))
+    .map(createDeletedNoteEntry)
+
+  return [...liveEntries, ...deletedEntries]
+}
+
+export function extractDeletedContentFromDiff(diff: string): string | null {
+  const lines: string[] = []
+  let inHunk = false
+
+  for (const line of diff.split('\n')) {
+    if (line.startsWith('@@')) {
+      inHunk = true
+      continue
+    }
+    if (!inHunk) continue
+    if (line.startsWith('\\')) continue
+    if (line.startsWith('-') || line.startsWith(' ')) {
+      lines.push(line.slice(1))
+    }
+  }
+
+  return lines.length > 0 ? lines.join('\n') : null
 }

@@ -83,7 +83,7 @@ export function resolveNoteStatus(
   const gitEntry = modifiedFiles.find((f) => f.path === path)
   if (!gitEntry) return 'clean'
   if (gitEntry.status === 'untracked' || gitEntry.status === 'added') return 'new'
-  if (gitEntry.status === 'modified') return 'modified'
+  if (gitEntry.status === 'modified' || gitEntry.status === 'deleted') return 'modified'
   return 'clean'
 }
 

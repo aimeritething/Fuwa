@@ -9,7 +9,7 @@ import {
 } from '../../utils/noteListHelpers'
 import type { InboxPeriod } from '../../types'
 import { buildTypeEntryMap } from '../../utils/typeColors'
-import { filterByQuery, filterGroupsByQuery, createNoteStatusResolver, isModifiedEntry } from './noteListUtils'
+import { buildChangesEntries, filterByQuery, filterGroupsByQuery, createNoteStatusResolver, isModifiedEntry } from './noteListUtils'
 import type { MultiSelectState } from '../../hooks/useMultiSelect'
 
 // --- useTypeEntryMap ---
@@ -20,16 +20,19 @@ export function useTypeEntryMap(entries: VaultEntry[]) {
 
 // --- useFilteredEntries ---
 
-export function useFilteredEntries(entries: VaultEntry[], selection: SidebarSelection, modifiedPathSet: Set<string>, modifiedSuffixes: string[], subFilter?: NoteListFilter, inboxPeriod?: InboxPeriod, views?: ViewFile[]) {
+export function useFilteredEntries(entries: VaultEntry[], selection: SidebarSelection, modifiedPathSet: Set<string>, modifiedSuffixes: string[], modifiedFiles?: ModifiedFile[], subFilter?: NoteListFilter, inboxPeriod?: InboxPeriod, views?: ViewFile[]) {
   const isEntityView = selection.kind === 'entity'
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
   const isInboxView = selection.kind === 'filter' && selection.filter === 'inbox'
   return useMemo(() => {
     if (isEntityView) return []
-    if (isChangesView) return entries.filter((e) => isModifiedEntry(e.path, modifiedPathSet, modifiedSuffixes))
+    if (isChangesView) {
+      if (modifiedFiles) return buildChangesEntries(entries, modifiedFiles)
+      return entries.filter((e) => isModifiedEntry(e.path, modifiedPathSet, modifiedSuffixes))
+    }
     if (isInboxView) return filterInboxEntries(entries, inboxPeriod ?? 'month')
     return filterEntries(entries, selection, subFilter, views)
-  }, [entries, selection, isEntityView, isChangesView, isInboxView, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod, views])
+  }, [entries, selection, isEntityView, isChangesView, isInboxView, modifiedPathSet, modifiedSuffixes, modifiedFiles, subFilter, inboxPeriod, views])
 }
 
 // --- useNoteListData ---
@@ -38,16 +41,17 @@ interface NoteListDataParams {
   entries: VaultEntry[]; selection: SidebarSelection
   query: string; listSort: SortOption; listDirection: SortDirection
   modifiedPathSet: Set<string>; modifiedSuffixes: string[]
+  modifiedFiles?: ModifiedFile[]
   subFilter?: NoteListFilter
   inboxPeriod?: InboxPeriod
   views?: ViewFile[]
 }
 
-export function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod, views }: NoteListDataParams) {
+export function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, modifiedFiles, subFilter, inboxPeriod, views }: NoteListDataParams) {
   const isEntityView = selection.kind === 'entity'
   const isArchivedView = (selection.kind === 'filter' && selection.filter === 'archived') || subFilter === 'archived'
 
-  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod, views)
+  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, modifiedFiles, subFilter, inboxPeriod, views)
 
   const searched = useMemo(() => {
     const sorted = [...filteredEntries].sort(getSortComparator(listSort, listDirection))
@@ -160,7 +164,7 @@ export function useNoteListSort({ entries, selection, modifiedPathSet, modifiedS
     }
   }, [typeDocument, persistence])
 
-  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, subFilter, inboxPeriod)
+  const filteredEntries = useFilteredEntries(entries, selection, modifiedPathSet, modifiedSuffixes, undefined, subFilter, inboxPeriod)
   const customProperties = useMemo(() => extractSortableProperties(filteredEntries), [filteredEntries])
   const listSort = useMemo<SortOption>(() => deriveEffectiveSort(listConfig.option, customProperties), [listConfig.option, customProperties])
   const listDirection = listSort === listConfig.option ? listConfig.direction : 'desc'

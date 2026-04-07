@@ -162,6 +162,7 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
 }) {
   const isBinary = entry.fileKind === 'binary'
   const isNonMarkdown = !!entry.fileKind && entry.fileKind !== 'markdown'
+  const isDeletedChange = changeStatus === 'deleted'
   const te = typeEntryMap[entry.isA ?? '']
   const typeColor = isBinary ? 'var(--muted-foreground)' : getTypeColor(entry.isA ?? 'Note', te?.color)
   const typeLightColor = getTypeLightColor(entry.isA ?? 'Note', te?.color)
@@ -189,13 +190,22 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
       onMouseEnter={!isBinary && onPrefetch ? () => onPrefetch(entry.path) : undefined}
       data-testid={isMultiSelected ? 'multi-selected-item' : isBinary ? 'binary-file-item' : undefined}
       data-highlighted={isHighlighted || undefined}
+      data-note-path={entry.path}
+      data-change-status={changeStatus}
       title={isBinary ? 'Cannot open this file type' : undefined}
     >
       {changeStatus ? (
         <>
           <ChangeStatusIcon status={changeStatus} />
           <div className="pr-5">
-            <div className={cn("truncate text-[13px] font-mono", isSelected ? "font-semibold" : "font-normal")} style={{ fontSize: 12 }}>
+            <div
+              className={cn(
+                "truncate text-[13px] font-mono",
+                isSelected ? "font-semibold" : "font-normal",
+                isDeletedChange && "text-muted-foreground line-through opacity-70",
+              )}
+              style={{ fontSize: 12 }}
+            >
               {entry.filename}
             </div>
           </div>

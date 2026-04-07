@@ -38,6 +38,7 @@ const GO_INBOX: &str = "go-inbox";
 const NOTE_ARCHIVE: &str = "note-archive";
 const NOTE_DELETE: &str = "note-delete";
 const NOTE_OPEN_IN_NEW_WINDOW: &str = "note-open-in-new-window";
+const NOTE_RESTORE_DELETED: &str = "note-restore-deleted";
 
 const VAULT_OPEN: &str = "vault-open";
 const VAULT_REMOVE: &str = "vault-remove";
@@ -79,6 +80,7 @@ const CUSTOM_IDS: &[&str] = &[
     NOTE_ARCHIVE,
     NOTE_DELETE,
     NOTE_OPEN_IN_NEW_WINDOW,
+    NOTE_RESTORE_DELETED,
     VAULT_OPEN,
     VAULT_REMOVE,
     VAULT_RESTORE_GETTING_STARTED,
@@ -101,6 +103,9 @@ const NOTE_DEPENDENT_IDS: &[&str] = &[
     VIEW_TOGGLE_BACKLINKS,
     NOTE_OPEN_IN_NEW_WINDOW,
 ];
+
+/// IDs of menu items that depend on a deleted-note preview being active.
+const RESTORE_DELETED_DEPENDENT_IDS: &[&str] = &[NOTE_RESTORE_DELETED];
 
 /// IDs of menu items that depend on having uncommitted changes.
 const GIT_COMMIT_DEPENDENT_IDS: &[&str] = &[VAULT_COMMIT_PUSH];
@@ -276,6 +281,10 @@ fn build_note_menu(app: &App) -> MenuResult {
         .id(NOTE_DELETE)
         .accelerator("CmdOrCtrl+Backspace")
         .build(app)?;
+    let restore_deleted_note = MenuItemBuilder::new("Restore Deleted Note")
+        .id(NOTE_RESTORE_DELETED)
+        .enabled(false)
+        .build(app)?;
     let open_new_window = MenuItemBuilder::new("Open in New Window")
         .id(NOTE_OPEN_IN_NEW_WINDOW)
         .accelerator("CmdOrCtrl+Shift+O")
@@ -295,6 +304,7 @@ fn build_note_menu(app: &App) -> MenuResult {
     Ok(SubmenuBuilder::new(app, "Note")
         .item(&archive_note)
         .item(&delete_note)
+        .item(&restore_deleted_note)
         .separator()
         .item(&open_new_window)
         .separator()
@@ -419,6 +429,11 @@ pub fn set_git_commit_items_enabled(app_handle: &AppHandle, enabled: bool) {
 /// Enable or disable menu items that depend on having merge conflicts.
 pub fn set_git_conflict_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_items_enabled(app_handle, GIT_CONFLICT_DEPENDENT_IDS, enabled);
+}
+
+/// Enable or disable menu items that depend on a deleted note preview being active.
+pub fn set_restore_deleted_item_enabled(app_handle: &AppHandle, enabled: bool) {
+    set_items_enabled(app_handle, RESTORE_DELETED_DEPENDENT_IDS, enabled);
 }
 
 #[cfg(test)]

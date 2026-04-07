@@ -30,6 +30,8 @@ interface CommandRegistryConfig {
   onOpenInNewWindow?: () => void
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
+  onRestoreDeletedNote?: () => void
+  canRestoreDeletedNote?: boolean
   onQuickOpen: () => void
   onCreateNote: () => void
   onCreateNoteOfType: (type: string) => void
@@ -85,6 +87,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     onOpenInNewWindow, onToggleFavorite, onToggleOrganized,
+    onRestoreDeletedNote, canRestoreDeletedNote,
     selection, noteListFilter, onSetNoteListFilter,
   } = config
 
@@ -108,6 +111,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
       onDeleteNote, onArchiveNote, onUnarchiveNote,
       onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
       onToggleOrganized, isOrganized: activeEntry?.organized ?? false,
+      onRestoreDeletedNote, canRestoreDeletedNote,
     }),
     ...buildGitCommands({ modifiedCount, onCommitPush, onPull, onResolveConflicts, onSelect }),
     ...buildViewCommands({
@@ -137,6 +141,6 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     isSectionGroup, noteListFilter, onSetNoteListFilter,
     onOpenInNewWindow, onToggleFavorite, isFavorite,
-    onToggleOrganized, activeEntry,
+    onToggleOrganized, onRestoreDeletedNote, canRestoreDeletedNote, activeEntry,
   ])
 }

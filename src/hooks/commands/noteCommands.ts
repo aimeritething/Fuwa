@@ -19,6 +19,8 @@ interface NoteCommandsConfig {
   isFavorite?: boolean
   onToggleOrganized?: (path: string) => void
   isOrganized?: boolean
+  onRestoreDeletedNote?: () => void
+  canRestoreDeletedNote?: boolean
 }
 
 export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
@@ -29,6 +31,7 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     onOpenInNewWindow, onToggleFavorite, isFavorite,
     onToggleOrganized, isOrganized,
+    onRestoreDeletedNote, canRestoreDeletedNote,
   } = config
 
   return [
@@ -45,6 +48,12 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
       id: 'archive-note', label: isArchived ? 'Unarchive Note' : 'Archive Note', group: 'Note', shortcut: '⌘E',
       keywords: ['archive'], enabled: hasActiveNote,
       execute: () => { if (activeTabPath) (isArchived ? onUnarchiveNote : onArchiveNote)(activeTabPath) },
+    },
+    {
+      id: 'restore-deleted-note', label: 'Restore Deleted Note', group: 'Note',
+      keywords: ['restore', 'deleted', 'undelete', 'git', 'checkout'],
+      enabled: !!canRestoreDeletedNote && !!onRestoreDeletedNote,
+      execute: () => onRestoreDeletedNote?.(),
     },
     {
       id: 'toggle-favorite', label: isFavorite ? 'Remove from Favorites' : 'Add to Favorites', group: 'Note', shortcut: '⌘D',

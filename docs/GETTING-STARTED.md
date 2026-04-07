@@ -282,6 +282,8 @@ type SidebarSelection =
 
 `useCommandRegistry` + `useAppCommands` build a centralized command registry. Commands are registered with labels, shortcuts, and handlers. The `CommandPalette` (Cmd+K) fuzzy-searches this registry. The native macOS menu bar also triggers commands via `useMenuEvents`.
 
+Commands whose availability depends on the current note or Git state must also flow through `update_menu_state` so the native menu stays in sync with the command palette. The deleted-note restore action in Changes view is the reference example: the row opens a deleted diff preview, the command palette exposes "Restore Deleted Note", and the Note menu enables the same action only while that preview is active.
+
 ## Running Tests
 
 ```bash
@@ -336,6 +338,7 @@ BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 1. Register the command in `useAppCommands.ts` via the command registry
 2. Add a corresponding menu bar item in `menu.rs` for discoverability
 3. If it has a keyboard shortcut, register it in `useAppKeyboard.ts`
+4. If its enabled state depends on runtime selection (active note, deleted preview, Git status, etc.), thread that flag through `useMenuEvents.ts` and `update_menu_state` so the native menu enables/disables correctly
 
 ### Modify styling
 

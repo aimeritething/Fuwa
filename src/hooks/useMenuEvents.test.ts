@@ -35,8 +35,10 @@ function makeHandlers(): MenuEventHandlers {
     onInstallMcp: vi.fn(),
     onReloadVault: vi.fn(),
     onOpenInNewWindow: vi.fn(),
+    onRestoreDeletedNote: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
     activeTabPath: '/vault/test.md',
+    hasRestorableDeletedNote: false,
   }
 }
 
@@ -197,6 +199,12 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('view-toggle-ai-chat', h)
     expect(h.onToggleAIChat).toHaveBeenCalled()
+  })
+
+  it('note-restore-deleted triggers restore deleted note', () => {
+    const h = makeHandlers()
+    dispatchMenuEvent('note-restore-deleted', h)
+    expect(h.onRestoreDeletedNote).toHaveBeenCalled()
   })
 
   it('view-toggle-backlinks triggers toggle inspector', () => {

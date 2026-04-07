@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Sidebar } from './components/Sidebar'
 import { NoteList } from './components/NoteList'
+import type { DeletedNoteEntry } from './components/note-list/noteListUtils'
 import { Editor } from './components/Editor'
 import { ResizeHandle } from './components/ResizeHandle'
 import { CreateTypeDialog } from './components/CreateTypeDialog'
@@ -59,6 +60,7 @@ import { isNoteWindow, getNoteWindowParams } from './utils/windowMode'
 import { GitRequiredModal } from './components/GitRequiredModal'
 import { RenameDetectedBanner, type DetectedRename } from './components/RenameDetectedBanner'
 import { trackEvent } from './lib/telemetry'
+import { extractDeletedContentFromDiff } from './components/note-list/noteListUtils'
 import './App.css'
 
 // Type declarations for mock content storage and test overrides
@@ -313,18 +315,48 @@ function App() {
   }, [resolvedPath])
 
   const handleDiscardFile = useCallback(async (relativePath: string) => {
+    const targetFile = vault.modifiedFiles.find((file) => file.relativePath === relativePath)
+    const activePathBefore = notes.activeTabPath
     try {
       if (isTauri()) {
         await invoke('git_discard_file', { vaultPath: resolvedPath, relativePath })
       } else {
         await mockInvoke('git_discard_file', { vaultPath: resolvedPath, relativePath })
       }
-      await vault.loadModifiedFiles()
-      await vault.reloadVault()
+      const reloadedEntries = await vault.reloadVault()
+      const affectedActiveTab = !!activePathBefore
+        && (activePathBefore === targetFile?.path || activePathBefore.endsWith('/' + relativePath))
+      if (!affectedActiveTab) return
+      const refreshedEntry = reloadedEntries.find((entry) =>
+        entry.path === targetFile?.path || entry.path.endsWith('/' + relativePath),
+      )
+      if (refreshedEntry) {
+        await notes.handleReplaceActiveTab(refreshedEntry)
+      } else {
+        notes.closeAllTabs()
+      }
     } catch (err) {
       setToastMessage(typeof err === 'string' ? err : 'Failed to discard changes')
     }
-  }, [resolvedPath, vault, setToastMessage])
+  }, [resolvedPath, vault, notes, setToastMessage])
+
+  const handleOpenDeletedNote = useCallback(async (entry: DeletedNoteEntry) => {
+    let previewContent = 'Content not available (untracked)'
+    let hasDiff = false
+    try {
+      const diff = await vault.loadDiff(entry.path)
+      hasDiff = diff.length > 0
+      previewContent = extractDeletedContentFromDiff(diff) ?? previewContent
+    } catch (err) {
+      console.warn('Failed to load deleted note preview:', err)
+    }
+    notes.openTabWithContent(entry, previewContent)
+    if (hasDiff) {
+      setTimeout(() => diffToggleRef.current(), 50)
+    } else {
+      setToastMessage('Content not available (untracked)')
+    }
+  }, [vault, notes, setToastMessage])
 
   const commitFlow = useCommitFlow({ savePending: appSave.savePending, loadModifiedFiles: vault.loadModifiedFiles, commitAndPush: vault.commitAndPush, setToastMessage, onPushRejected: autoSync.handlePushRejected })
   const suggestedCommitMessage = useMemo(() => generateCommitMessage(vault.modifiedFiles), [vault.modifiedFiles])
@@ -440,6 +472,14 @@ function App() {
     }
   }, [resolvedPath, vault, setToastMessage])
 
+  const activeDeletedFile = useMemo(() => {
+    if (!notes.activeTabPath) return null
+    return vault.modifiedFiles.find((file) =>
+      file.status === 'deleted'
+      && (file.path === notes.activeTabPath || notes.activeTabPath.endsWith('/' + file.relativePath)),
+    ) ?? null
+  }, [notes.activeTabPath, vault.modifiedFiles])
+
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
     entries: vault.entries,
@@ -462,7 +502,7 @@ function App() {
     onSetViewMode: setViewMode,
     onToggleInspector: () => layout.setInspectorCollapsed(c => !c),
     onToggleDiff: () => diffToggleRef.current(),
-    onToggleRawEditor: () => rawToggleRef.current(),
+    onToggleRawEditor: activeDeletedFile ? undefined : () => rawToggleRef.current(),
     onZoomIn: zoom.zoomIn, onZoomOut: zoom.zoomOut, onZoomReset: zoom.zoomReset,
     zoomLevel: zoom.zoomLevel,
     onSelect: handleSetSelection,
@@ -495,6 +535,8 @@ function App() {
     onOpenInNewWindow: handleOpenInNewWindow,
     onToggleFavorite: entryActions.handleToggleFavorite,
     onToggleOrganized: entryActions.handleToggleOrganized,
+    onRestoreDeletedNote: activeDeletedFile ? () => { void handleDiscardFile(activeDeletedFile.relativePath) } : undefined,
+    canRestoreDeletedNote: !!activeDeletedFile,
   })
 
   const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null
@@ -507,7 +549,7 @@ function App() {
     return filtered.map(e => ({
       path: e.path, title: e.title, type: e.isA ?? 'Note',
     }))
-  }, [vault.entries, selection, inboxPeriod])
+  }, [vault.entries, vault.views, selection, inboxPeriod])
 
   const aiNoteListFilter = useMemo(() => {
     if (selection.kind === 'sectionGroup') return { type: selection.type, query: '' }
@@ -574,7 +616,7 @@ function App() {
               {selection.kind === 'filter' && selection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={vaultBridge.handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} views={vault.views} visibleNotesRef={visibleNotesRef} />
+                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} views={vault.views} visibleNotesRef={visibleNotesRef} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />
@@ -607,14 +649,14 @@ function App() {
             vaultPath={resolvedPath}
             noteList={aiNoteList}
             noteListFilter={aiNoteListFilter}
-            onToggleFavorite={entryActions.handleToggleFavorite}
-            onToggleOrganized={entryActions.handleToggleOrganized}
-            onDeleteNote={deleteActions.handleDeleteNote}
-            onArchiveNote={entryActions.handleArchiveNote}
-            onUnarchiveNote={entryActions.handleUnarchiveNote}
+            onToggleFavorite={activeDeletedFile ? undefined : entryActions.handleToggleFavorite}
+            onToggleOrganized={activeDeletedFile ? undefined : entryActions.handleToggleOrganized}
+            onDeleteNote={activeDeletedFile ? undefined : deleteActions.handleDeleteNote}
+            onArchiveNote={activeDeletedFile ? undefined : entryActions.handleArchiveNote}
+            onUnarchiveNote={activeDeletedFile ? undefined : entryActions.handleUnarchiveNote}
             onContentChange={appSave.handleContentChange}
             onSave={appSave.handleSave}
-            onTitleSync={appSave.handleTitleSync}
+            onTitleSync={activeDeletedFile ? undefined : appSave.handleTitleSync}
             rawToggleRef={rawToggleRef}
             diffToggleRef={diffToggleRef}
             canGoBack={canGoBack}
@@ -625,8 +667,8 @@ function App() {
             onFileCreated={vaultBridge.handleAgentFileCreated}
             onFileModified={vaultBridge.handleAgentFileModified}
             onVaultChanged={vaultBridge.handleAgentVaultChanged}
-            onSetNoteIcon={handleSetNoteIcon}
-            onRemoveNoteIcon={handleRemoveNoteIcon}
+            onSetNoteIcon={activeDeletedFile ? undefined : handleSetNoteIcon}
+            onRemoveNoteIcon={activeDeletedFile ? undefined : handleRemoveNoteIcon}
             isConflicted={conflictFlow.isConflicted}
             onKeepMine={conflictFlow.handleKeepMine}
             onKeepTheirs={conflictFlow.handleKeepTheirs}

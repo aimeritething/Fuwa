@@ -150,6 +150,21 @@ describe('useCommandRegistry', () => {
     findCommand(result.current, 'set-note-icon')!.execute()
     expect(onSetNoteIcon).toHaveBeenCalled()
   })
+
+  it('includes restore deleted note command when provided', () => {
+    const config = makeConfig({ onRestoreDeletedNote: vi.fn(), canRestoreDeletedNote: true })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'restore-deleted-note')
+    expect(cmd).toBeDefined()
+    expect(cmd!.enabled).toBe(true)
+  })
+
+  it('disables restore deleted note when there is no deleted preview', () => {
+    const config = makeConfig({ onRestoreDeletedNote: vi.fn(), canRestoreDeletedNote: false })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'restore-deleted-note')
+    expect(cmd!.enabled).toBe(false)
+  })
 })
 
 describe('pluralizeType', () => {

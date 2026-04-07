@@ -168,6 +168,7 @@ export function EditorContent({
   const freshEntry = activeTab ? entries.find(e => e.path === activeTab.entry.path) : undefined
   const isArchived = freshEntry?.archived ?? activeTab?.entry.archived ?? false
   const hasH1 = freshEntry?.hasH1 ?? activeTab?.entry.hasH1 ?? false
+  const isDeletedPreview = !!activeTab && !freshEntry
   // Non-markdown text files always use the raw editor (no BlockNote)
   const isNonMarkdownText = activeTab?.entry.fileKind === 'text'
   const effectiveRawMode = rawMode || isNonMarkdownText
@@ -177,7 +178,7 @@ export function EditorContent({
   const isUntitledDraft = !!activeTab
     && activeTab.entry.filename.startsWith('untitled-')
     && (activeStatus === 'new' || activeStatus === 'unsaved' || activeStatus === 'pendingSave')
-  const showTitleSection = !hasH1 && !isUntitledDraft
+  const showTitleSection = !isDeletedPreview && !hasH1 && !isUntitledDraft
 
   const titleSectionRef = useRef<HTMLDivElement | null>(null)
   const breadcrumbBarRef = useRef<HTMLDivElement | null>(null)
@@ -222,7 +223,7 @@ export function EditorContent({
       <ActiveTabBreadcrumb
         activeTab={activeTab}
         barRef={breadcrumbBarRef}
-        props={{ diffMode, diffContent, onToggleDiff, rawMode: effectiveRawMode, onToggleRaw, forceRawMode: isNonMarkdownText, ...breadcrumbProps }}
+        props={{ diffMode, diffContent, onToggleDiff, rawMode: effectiveRawMode, onToggleRaw, forceRawMode: isNonMarkdownText || isDeletedPreview, ...breadcrumbProps }}
       />
       {isArchived && breadcrumbProps.onUnarchiveNote && (
         <ArchivedNoteBanner onUnarchive={() => breadcrumbProps.onUnarchiveNote!(path)} />
@@ -263,7 +264,7 @@ export function EditorContent({
                 </>
               )}
             </div>
-            <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} editable />
+            <SingleEditorView editor={editor} entries={entries} onNavigateWikilink={onNavigateWikilink} onChange={onEditorChange} vaultPath={vaultPath} editable={!isDeletedPreview} />
           </div>
         </div>
       )}

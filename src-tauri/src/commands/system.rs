@@ -48,6 +48,7 @@ pub fn update_menu_state(
     has_active_note: bool,
     has_modified_files: Option<bool>,
     has_conflicts: Option<bool>,
+    has_restorable_deleted_note: Option<bool>,
 ) -> Result<(), String> {
     menu::set_note_items_enabled(&app_handle, has_active_note);
     if let Some(v) = has_modified_files {
@@ -55,6 +56,9 @@ pub fn update_menu_state(
     }
     if let Some(v) = has_conflicts {
         menu::set_git_conflict_items_enabled(&app_handle, v);
+    }
+    if let Some(v) = has_restorable_deleted_note {
+        menu::set_restore_deleted_item_enabled(&app_handle, v);
     }
     Ok(())
 }
@@ -66,6 +70,7 @@ pub fn update_menu_state(
     _has_active_note: bool,
     _has_modified_files: Option<bool>,
     _has_conflicts: Option<bool>,
+    _has_restorable_deleted_note: Option<bool>,
 ) -> Result<(), String> {
     Ok(())
 }

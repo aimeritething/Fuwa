@@ -13,25 +13,24 @@ test.describe('Show deleted notes in Changes view', () => {
     await page.waitForLoadState('networkidle')
   })
 
-  test('changes view shows deleted notes banner', async ({ page }) => {
+  test('changes view shows deleted notes as rows instead of a banner', async ({ page }) => {
     await navigateToChanges(page)
-    const banner = page.locator('[data-testid="deleted-notes-banner"]')
-    await expect(banner).toBeVisible({ timeout: 5000 })
-    await expect(banner).toContainText('1 note deleted')
+    const deletedRow = page.locator('[data-change-status="deleted"]').filter({ hasText: 'old-draft.md' })
+    await expect(deletedRow).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('[data-testid="deleted-notes-banner"]')).toHaveCount(0)
   })
 
-  test('deleted banner is visually distinct from note items', async ({ page }) => {
+  test('clicking a deleted row opens its deleted diff preview', async ({ page }) => {
     await navigateToChanges(page)
-    const banner = page.locator('[data-testid="deleted-notes-banner"]')
-    await expect(banner).toBeVisible({ timeout: 5000 })
-    // Banner should have reduced opacity (visually distinct)
-    const opacity = await banner.evaluate((el) => window.getComputedStyle(el).opacity)
-    expect(parseFloat(opacity)).toBeLessThan(1)
+    await page.getByText('old-draft.md').click()
+    await expect(page.getByText('Back to editor')).toBeVisible({ timeout: 5000 })
+    await expect(page.getByText('This note was deleted.')).toBeVisible({ timeout: 5000 })
   })
 
-  test('changes counter in sidebar matches list items plus deleted count', async ({ page }) => {
-    // The sidebar badge should show the total count (modified + added + deleted)
-    const changesBadge = page.locator('text=Changes').locator('..')
-    await expect(changesBadge).toBeVisible({ timeout: 5000 })
+  test('deleted rows expose a restore action from the context menu', async ({ page }) => {
+    await navigateToChanges(page)
+    await page.getByText('old-draft.md').click({ button: 'right' })
+    await expect(page.locator('[data-testid="changes-context-menu"]')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('[data-testid="restore-note-button"]')).toBeVisible({ timeout: 5000 })
   })
 })

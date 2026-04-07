@@ -490,8 +490,8 @@ describe('resolveNoteStatus', () => {
     expect(resolveNoteStatus('/vault/x.md', new Set(), [])).toBe('clean')
   })
 
-  it('returns clean for deleted files', () => {
-    expect(resolveNoteStatus('/vault/x.md', new Set(), [mf('/vault/x.md', 'deleted')])).toBe('clean')
+  it('returns modified for deleted files so deleted previews keep diff affordances', () => {
+    expect(resolveNoteStatus('/vault/x.md', new Set(), [mf('/vault/x.md', 'deleted')])).toBe('modified')
   })
 
   it('newPaths takes priority over git modified', () => {

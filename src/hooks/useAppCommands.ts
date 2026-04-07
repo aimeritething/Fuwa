@@ -67,6 +67,8 @@ interface AppCommandsConfig {
   onOpenInNewWindow?: () => void
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
+  onRestoreDeletedNote?: () => void
+  canRestoreDeletedNote?: boolean
 }
 
 /** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
@@ -149,9 +151,11 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
     onOpenInNewWindow: config.onOpenInNewWindow,
+    onRestoreDeletedNote: config.onRestoreDeletedNote,
     activeTabPathRef: config.activeTabPathRef,
     activeTabPath: config.activeTabPath,
     modifiedCount: config.modifiedCount,
+    hasRestorableDeletedNote: config.canRestoreDeletedNote,
   })
 
   const commands = useCommandRegistry({
@@ -205,6 +209,8 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onOpenInNewWindow: config.onOpenInNewWindow,
     onToggleFavorite: config.onToggleFavorite,
     onToggleOrganized: config.onToggleOrganized,
+    onRestoreDeletedNote: config.onRestoreDeletedNote,
+    canRestoreDeletedNote: config.canRestoreDeletedNote,
   })
 
   useKeyboardNavigation({

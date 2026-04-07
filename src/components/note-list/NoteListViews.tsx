@@ -33,25 +33,20 @@ export function EntityView({ entity, groups, query, collapsedGroups, sortPrefs, 
   )
 }
 
-export function ListView({ isArchivedView, isChangesView, isInboxView, changesError, deletedCount = 0, searched, query, renderItem, virtuosoRef }: {
+export function ListView({ isArchivedView, isChangesView, isInboxView, changesError, searched, query, renderItem, virtuosoRef }: {
   isArchivedView?: boolean; isChangesView?: boolean; isInboxView?: boolean; changesError?: string | null
-  deletedCount?: number; searched: VaultEntry[]; query: string
+  searched: VaultEntry[]; query: string
   renderItem: (entry: VaultEntry) => React.ReactNode
   virtuosoRef?: React.RefObject<VirtuosoHandle | null>
 }) {
   const emptyText = resolveEmptyText(!!isChangesView, changesError ?? null, !!isArchivedView, !!isInboxView, query)
-  const hasDeletedOnly = !!isChangesView && deletedCount > 0 && searched.length === 0
 
-  if (searched.length === 0 && !hasDeletedOnly) {
+  if (searched.length === 0) {
     return (
       <div className="h-full overflow-y-auto">
         <EmptyMessage text={emptyText} />
       </div>
     )
-  }
-
-  if (hasDeletedOnly) {
-    return <div className="h-full" />
   }
 
   return (

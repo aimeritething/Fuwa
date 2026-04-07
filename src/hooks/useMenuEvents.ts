@@ -37,10 +37,12 @@ export interface MenuEventHandlers {
   onOpenInNewWindow?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
+  onRestoreDeletedNote?: () => void
   activeTabPathRef: React.MutableRefObject<string | null>
   activeTabPath: string | null
   modifiedCount?: number
   conflictCount?: number
+  hasRestorableDeletedNote?: boolean
 }
 
 const VIEW_MODE_MAP: Record<string, ViewMode> = {
@@ -78,7 +80,7 @@ type OptionalHandler =
   | 'onCreateType' | 'onToggleRawEditor' | 'onToggleDiff' | 'onToggleAIChat'
   | 'onOpenVault' | 'onRemoveActiveVault' | 'onRestoreGettingStarted'
   | 'onCommitPush' | 'onPull' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReloadVault' | 'onRepairVault'
-  | 'onOpenInNewWindow'
+  | 'onOpenInNewWindow' | 'onRestoreDeletedNote'
 
 const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'view-go-back': 'onGoBack',
@@ -99,6 +101,7 @@ const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
   'vault-reload': 'onReloadVault',
   'vault-repair': 'onRepairVault',
   'note-open-in-new-window': 'onOpenInNewWindow',
+  'note-restore-deleted': 'onRestoreDeletedNote',
 }
 
 function dispatchActiveTabEvent(id: string, h: MenuEventHandlers): boolean {
@@ -162,7 +165,8 @@ export function useMenuEvents(handlers: MenuEventHandlers) {
         hasActiveNote: handlers.activeTabPath !== null,
         hasModifiedFiles: handlers.modifiedCount != null ? handlers.modifiedCount > 0 : undefined,
         hasConflicts: handlers.conflictCount != null ? handlers.conflictCount > 0 : undefined,
+        hasRestorableDeletedNote: handlers.hasRestorableDeletedNote,
       })
     }).catch(() => {})
-  }, [handlers.activeTabPath, handlers.modifiedCount, handlers.conflictCount])
+  }, [handlers.activeTabPath, handlers.modifiedCount, handlers.conflictCount, handlers.hasRestorableDeletedNote])
 }

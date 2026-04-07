@@ -665,7 +665,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `get_build_number` | Get app build number |
 | `save_image` | Save base64 image to vault |
 | `copy_image_to_vault` | Copy image file to vault |
-| `update_menu_state` | Update native menu checkmarks |
+| `update_menu_state` | Update native menu checkmarks and enabled/disabled state for selection-dependent actions |
 
 ## Mock Layer
 
@@ -717,6 +717,8 @@ Data flows unidirectionally: `App` passes data and callbacks as props to child c
 | Cmd+1–9 | Switch to tab N |
 | Cmd+[ / Cmd+] | Navigate back / forward |
 | `[[` in editor | Open wikilink suggestion menu |
+
+Selection-dependent note actions are wired through both the command palette and the native Note menu. For example, a deleted file opened from Changes view becomes a read-only diff preview, and that state enables the "Restore Deleted Note" menu/command while normal note mutation actions stay disabled.
 
 ## Auto-Release & In-App Updates
 
