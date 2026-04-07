@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useRef, useEffect } from 'react'
+import { useMemo, useCallback } from 'react'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from './Inspector'
 import type { ParsedFrontmatter } from '../utils/frontmatter'
@@ -113,20 +113,12 @@ export function DynamicPropertiesPanel({
     ? SUGGESTED_PROPERTIES.filter(p => !existingKeys.has(p.toLowerCase()))
     : []
 
-  const pendingEditKeyRef = useRef<string | null>(null)
-
-  useEffect(() => {
-    if (pendingEditKeyRef.current && propertyEntries.some(([k]) => k === pendingEditKeyRef.current)) {
-      setEditingKey(pendingEditKeyRef.current)
-      pendingEditKeyRef.current = null
-    }
-  }, [propertyEntries, setEditingKey])
-
   const handleSuggestedAdd = useCallback((key: string) => {
     if (!onAddProperty) return
-    pendingEditKeyRef.current = key
+    // Open the editor immediately - no need to wait for frontmatter to update
+    setEditingKey(key)
     onAddProperty(key, '')
-  }, [onAddProperty])
+  }, [onAddProperty, setEditingKey])
 
   return (
     <div className="flex flex-col gap-3">
