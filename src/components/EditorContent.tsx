@@ -157,6 +157,7 @@ export function EditorContent({
   activeTab, isLoadingNewTab, entries, editor,
   diffMode, diffContent, onToggleDiff,
   rawMode, onToggleRaw, onRawContentChange, onSave,
+  activeStatus,
   onNavigateWikilink, onEditorChange, vaultPath,
   rawLatestContentRef, onTitleChange,
   onSetNoteIcon, onRemoveNoteIcon,
@@ -173,6 +174,10 @@ export function EditorContent({
   const showEditor = !diffMode && !effectiveRawMode
   const entryIcon = activeTab?.entry.icon ?? null
   const emojiIcon = entryIcon && isEmoji(entryIcon) ? entryIcon : null
+  const isUntitledDraft = !!activeTab
+    && activeTab.entry.filename.startsWith('untitled-')
+    && (activeStatus === 'new' || activeStatus === 'unsaved' || activeStatus === 'pendingSave')
+  const showTitleSection = !hasH1 && !isUntitledDraft
 
   const titleSectionRef = useRef<HTMLDivElement | null>(null)
   const breadcrumbBarRef = useRef<HTMLDivElement | null>(null)
@@ -233,8 +238,8 @@ export function EditorContent({
       {showEditor && (
         <div className="editor-scroll-area" style={cssVars as React.CSSProperties}>
           <div className="editor-content-wrapper">
-            <div ref={titleSectionRef} className="title-section" data-has-h1={hasH1 || undefined}>
-              {!hasH1 && (
+            <div ref={titleSectionRef} className="title-section" data-title-ui-visible={showTitleSection || undefined}>
+              {showTitleSection && (
                 <>
                   {!emojiIcon && (
                     <div className="title-section__add-icon">

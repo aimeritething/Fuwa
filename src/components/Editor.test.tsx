@@ -182,6 +182,33 @@ describe('Editor', () => {
     expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
   })
 
+  it('hides the legacy title field for untitled draft notes', () => {
+    const draftEntry: VaultEntry = {
+      ...mockEntry,
+      path: '/vault/untitled-note-1700000000.md',
+      filename: 'untitled-note-1700000000.md',
+      title: 'Untitled Note 1700000000',
+      hasH1: false,
+    }
+    const draftTab = {
+      entry: draftEntry,
+      content: '---\ntype: Note\nstatus: Active\n---\n',
+    }
+
+    render(
+      <Editor
+        {...defaultProps}
+        tabs={[draftTab]}
+        activeTabPath={draftEntry.path}
+        entries={[draftEntry]}
+        getNoteStatus={() => 'unsaved'}
+      />
+    )
+
+    expect(screen.queryByTestId('title-field-input')).not.toBeInTheDocument()
+    expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
+  })
+
   it('renders diff toggle button when file is modified', () => {
     render(
       <Editor
