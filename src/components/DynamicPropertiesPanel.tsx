@@ -130,8 +130,10 @@ export function DynamicPropertiesPanel({
     const handleFocusNoteIcon = () => {
       const existingIconKey = propertyEntries.find(([key]) => key.toLowerCase() === 'icon')?.[0]
 
-      if (!existingIconKey && !onAddProperty) return
-      if (!existingIconKey) onAddProperty('icon', '')
+      if (!existingIconKey) {
+        if (!onAddProperty) return
+        onAddProperty('icon', '')
+      }
 
       setEditingKey(existingIconKey ?? 'icon')
     }

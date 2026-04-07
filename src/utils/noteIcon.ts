@@ -18,7 +18,7 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
-export function hasNoteIconValue(icon: string | null | undefined): boolean {
+export function hasNoteIconValue(icon: string | null | undefined): icon is string {
   return typeof icon === 'string' && icon.trim().length > 0
 }
 
