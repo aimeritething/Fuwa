@@ -528,10 +528,7 @@ mod tests {
 
         let entry = crate::vault::parse_md_file(&vault_path.join("AGENTS.md"), None).unwrap();
         // H1 is now the primary title source
-        assert_eq!(
-            entry.title,
-            "AGENTS.md \u{2014} Laputa Vault"
-        );
+        assert_eq!(entry.title, "AGENTS.md \u{2014} Laputa Vault");
         // Config files have no frontmatter type field — type is None
         assert_eq!(entry.is_a, None);
     }
