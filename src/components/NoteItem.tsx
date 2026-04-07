@@ -72,8 +72,8 @@ function formatChipValue(value: unknown): string | null {
 
 interface PropertyChipValue {
   label: string
-  noteIcon?: string | null
-  typeIcon?: string | null
+  noteIcon: string | null
+  typeIcon: string | null
 }
 
 function resolveChipValues(
@@ -105,10 +105,10 @@ function resolveChipValues(
     return val
       .map((v) => formatChipValue(v))
       .filter((v): v is string => v !== null)
-      .map((label) => ({ label }))
+      .map((label) => ({ label, noteIcon: null, typeIcon: null }))
   }
   const formatted = formatChipValue(val)
-  return formatted ? [{ label: formatted }] : []
+  return formatted ? [{ label: formatted, noteIcon: null, typeIcon: null }] : []
 }
 
 function PropertyChipIcon({ noteIcon, typeIcon }: { noteIcon?: string | null; typeIcon?: string | null }) {
