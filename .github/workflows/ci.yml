@@ -2,8 +2,6 @@ name: CI
 
 on:
   push:
-    branches: [main, experiment/*]
-  pull_request:
     branches: [main]
 
 jobs:
@@ -82,16 +80,14 @@ jobs:
 
       # ── 3. Code Health (CodeScene — Hotspot + Average Code Health gates) ──
       # Enforces minimum floors on BOTH hotspot and average code health.
-      # Hotspot: weighted avg of most-edited files (9.6 current | target 9.8)
-      # Average: project-wide avg across all files (9.37 current | target 9.5)
-      # Both gates must pass — average catches regressions in non-hotspot files.
-      - name: Code Health gates (Hotspot ≥9.5 + Average ≥9.0)
+      # Thresholds come from .codescene-thresholds so CI and local hooks match.
+      - name: Code Health gates
         env:
           CODESCENE_PAT: ${{ secrets.CODESCENE_PAT }}
           CODESCENE_PROJECT_ID: ${{ secrets.CODESCENE_PROJECT_ID }}
         run: |
-          HOTSPOT_THRESHOLD=9.5
-          AVERAGE_THRESHOLD=9.33
+          HOTSPOT_THRESHOLD=$(grep '^HOTSPOT_THRESHOLD=' .codescene-thresholds | cut -d= -f2)
+          AVERAGE_THRESHOLD=$(grep '^AVERAGE_THRESHOLD=' .codescene-thresholds | cut -d= -f2)
           API_RESPONSE=$(curl -sf \
             -H "Authorization: Bearer $CODESCENE_PAT" \
             -H "Accept: application/json" \

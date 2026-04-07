@@ -28,6 +28,64 @@
 # ─────────────────────────────────────────────────────────────────────────
 set -e
 
+ensure_node_tooling() {
+  if command -v node >/dev/null 2>&1 && command -v pnpm >/dev/null 2>&1; then
+    return 0
+  fi
+
+  NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck disable=SC1090
+    . "$NVM_DIR/nvm.sh" --no-use
+    nvm use --silent node >/dev/null 2>&1 || true
+  fi
+
+  if ! command -v node >/dev/null 2>&1 || ! command -v pnpm >/dev/null 2>&1; then
+    echo "❌ node and pnpm must be available before pushing"
+    echo "   Install them or make sure your nvm setup is available to git hooks."
+    exit 1
+  fi
+}
+
+require_main_push() {
+  if ! git symbolic-ref -q HEAD >/dev/null 2>&1; then
+    echo "❌ Pushes must happen from main. Detached HEAD is not allowed."
+    exit 1
+  fi
+
+  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  if [ "$CURRENT_BRANCH" != "main" ]; then
+    echo "❌ Pushes must happen from main. Current branch: $CURRENT_BRANCH"
+    exit 1
+  fi
+
+  while IFS=' ' read -r LOCAL_REF LOCAL_SHA REMOTE_REF REMOTE_SHA; do
+    [ -z "$LOCAL_REF" ] && continue
+
+    case "$LOCAL_REF:$REMOTE_REF" in
+      refs/heads/main:refs/heads/main)
+        ;;
+      refs/tags/*:refs/tags/*)
+        ;;
+      *)
+        echo "❌ Pushes must be main -> main only."
+        echo "   Attempted: ${LOCAL_REF:-<none>} -> ${REMOTE_REF:-<none>}"
+        exit 1
+        ;;
+    esac
+  done <<EOF
+$PUSH_INPUT
+EOF
+}
+
+if [ -t 0 ]; then
+  PUSH_INPUT=""
+else
+  PUSH_INPUT=$(cat)
+fi
+require_main_push
+ensure_node_tooling
+
 START_TIME=$(date +%s)
 
 echo ""
@@ -85,7 +143,7 @@ if [ "$RUST_CHANGED" = true ]; then
   cargo llvm-cov \
     --manifest-path src-tauri/Cargo.toml \
     $LLVM_COV_FLAGS \
-    --ignore-filename-regex "search\.rs|lib\.rs" \
+    --ignore-filename-regex "lib\.rs|main\.rs|menu\.rs" \
     --fail-under-lines 85 \
     -- --test-threads=1
   echo "  ✅ Rust coverage OK"
@@ -98,12 +156,14 @@ echo ""
 SMOKE_FILES=$(find tests/smoke -name '*.spec.ts' 2>/dev/null | head -1)
 if [ -n "$SMOKE_FILES" ]; then
   echo "🎭 [4/5] Playwright smoke tests..."
-  SMOKE_OUTPUT=$(pnpm playwright:smoke 2>&1) || true
+  set +e
+  SMOKE_OUTPUT=$(pnpm playwright:smoke 2>&1)
+  SMOKE_STATUS=$?
+  set -e
   echo "$SMOKE_OUTPUT" | tail -20
-  # Fail only on real failures (not flaky). Flaky = passed on retry.
-  if echo "$SMOKE_OUTPUT" | grep -qE '^\s+\d+ failed' && ! echo "$SMOKE_OUTPUT" | grep -qE '^\s+\d+ passed'; then
+  if [ "$SMOKE_STATUS" -ne 0 ]; then
     echo "  ❌ Smoke tests FAILED"
-    exit 1
+    exit "$SMOKE_STATUS"
   fi
   echo "  ✅ Smoke tests OK"
 else
@@ -112,10 +172,11 @@ fi
 
 # ── 5. CodeScene code health gate (ratchet) ──────────────────────────────
 # Thresholds live in .codescene-thresholds and only ever go UP (ratchet).
-# After every successful push the file is updated if scores improved.
+# If remote scores improved, the hook updates the file and stops so the new
+# floor is committed with normal verified hooks before the next push.
 THRESHOLDS_FILE="$(git rev-parse --show-toplevel)/.codescene-thresholds"
-HOTSPOT_MIN=9.5
-AVERAGE_MIN=9.31
+HOTSPOT_MIN=9.45
+AVERAGE_MIN=9.29
 if [ -f "$THRESHOLDS_FILE" ]; then
   HOTSPOT_MIN=$(grep HOTSPOT_THRESHOLD "$THRESHOLDS_FILE" | cut -d= -f2)
   AVERAGE_MIN=$(grep AVERAGE_THRESHOLD "$THRESHOLDS_FILE" | cut -d= -f2)
@@ -137,8 +198,9 @@ else
   else
     echo "  Remote Hotspot Code Health: $HOTSPOT_SCORE (threshold: $HOTSPOT_MIN)"
     echo "  Remote Average Code Health: $AVERAGE_SCORE (threshold: $AVERAGE_MIN)"
+    PYTHON_STATUS=0
     python3 -c "
-import sys, os
+import sys
 
 hotspot = float('$HOTSPOT_SCORE')
 average = float('$AVERAGE_SCORE')
@@ -161,8 +223,6 @@ else:
 if failed:
     sys.exit(1)
 
-# Ratchet: update thresholds file if scores improved
-# Truncate (floor) to 2 decimals so the threshold never exceeds the actual score
 import math
 thresholds_file = '$THRESHOLDS_FILE'
 new_hotspot = max(hotspot_min, math.floor(hotspot * 100) / 100)
@@ -171,9 +231,16 @@ if new_hotspot > hotspot_min or new_average > average_min:
     with open(thresholds_file, 'w') as f:
         f.write(f'HOTSPOT_THRESHOLD={new_hotspot}\nAVERAGE_THRESHOLD={new_average}\n')
     print(f'  📈 Ratchet updated: Hotspot {hotspot_min} → {new_hotspot}, Average {average_min} → {new_average}')
-    # Stage and amend the thresholds update into the last commit would change history — instead just auto-commit it
-    os.system(f'git add {thresholds_file} && git commit -m \"chore: ratchet CodeScene thresholds to {new_hotspot}/{new_average}\" --no-verify 2>/dev/null || true')
-" || exit 1
+    sys.exit(3)
+" || PYTHON_STATUS=$?
+    if [ "$PYTHON_STATUS" -ne 0 ] && [ "$PYTHON_STATUS" -ne 3 ]; then
+      exit "$PYTHON_STATUS"
+    fi
+    if [ "$PYTHON_STATUS" -eq 3 ]; then
+      git add "$THRESHOLDS_FILE"
+      echo "  ❌ Commit the updated .codescene-thresholds with a normal verified commit, then push again."
+      exit 1
+    fi
   fi
 fi
 

@@ -12,7 +12,7 @@ Laputa integrates with [Claude Code](https://docs.anthropic.com/claude-code) —
 claude "Create a note for the book Zero to One by Peter Thiel, with a rating and a topic"
 ```
 
-Claude understands Laputa's format (frontmatter, types, wikilinks, relationships) and creates or edits files accordingly. Your vault's `CLAUDE.md` file gives it full context.
+Claude understands Laputa's format (frontmatter, types, wikilinks, relationships) and creates or edits files accordingly. Your vault's `AGENTS.md` file gives any coding agent full context, and `CLAUDE.md` imports it for Claude Code compatibility.
 
 ## Git sync
 

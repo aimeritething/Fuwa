@@ -1,257 +1,64 @@
 # Git Hooks
 
-## Pre-Commit Hook: CodeScene Check
+This repo uses Husky hooks from `.husky/`. Those files are the source of truth.
 
-Il repository ha un pre-commit hook che verifica la qualità del codice prima di ogni commit.
+## Installation
 
-## Post-Commit Hook: Auto-Implement Design Changes
+`pnpm install` runs the `prepare` script and installs the hooks into `.git/hooks`.
 
-Quando committi modifiche a `ui-design.pen`, il post-commit hook:
-1. Analizza automaticamente le modifiche (colori, typography, spacing, layout)
-2. Spawna Claude Code in background per implementare le modifiche
-3. Ti notifica quando l'implementazione è completa
-
----
-
-## Pre-Commit Hook Details
-
-### Cosa Fa
-
-1. **Analizza file staged** — controlla solo TypeScript/Rust modificati
-2. **Confronta con base branch** — `origin/main` per branch, `HEAD~1` per main
-3. **Avvisa per file grandi** — >500 linee modificate
-4. **Suggerisce review** — con Claude Code + CodeScene MCP per analisi dettagliata
-
-### Bypass Hook
-
-Se sai cosa stai facendo:
+If you need to reinstall them manually:
 
 ```bash
-# Skip hook per questo commit
-git commit --no-verify -m "your message"
-
-# O includi nel commit message
-git commit -m "your message [skip codescene]"
+pnpm exec husky
 ```
 
-### Installazione (già fatto per questa repo)
+The hooks expect `node` and `pnpm` to be available. If they are installed via `nvm`, the hooks will try to load `~/.nvm/nvm.sh` automatically.
 
-L'hook è già installato in `.git/hooks/pre-commit`.
+## Policy
 
-Se cloni la repo altrove, copia l'hook:
-```bash
-cp .github/hooks/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
-```
+- Commit on `main` only.
+- Push from `main` to `origin/main` only.
+- Never use `--no-verify`.
+- `.codescene-thresholds` is a ratchet. It can only move up.
 
-### Esempio Output
+## Pre-commit
 
-#### ✅ Commit Normale
-```
-🔍 Running CodeScene Code Health check...
-   Comparing against: origin/main
-   Analyzing code changes...
-✅ CodeScene check passed
-   +42 -18 lines
+`.husky/pre-commit` blocks commits unless all of the following are true:
 
-   💡 For detailed code health analysis, run:
-      claude 'Check code health of this commit with CodeScene MCP'
-```
+- `HEAD` is attached to `main`
+- staged TypeScript files pass `pnpm lint --quiet`
+- TypeScript passes `npx tsc --noEmit`
+- frontend tests pass via `pnpm test --run --silent`
+- current CodeScene Hotspot and Average health are both at or above `.codescene-thresholds`
 
-#### ⚠️ File Grandi
-```
-🔍 Running CodeScene Code Health check...
-   Comparing against: origin/main
-   Analyzing code changes...
-⚠️  Large file changes detected (>500 lines):
-   - src/components/Editor.tsx
-   - src-tauri/src/vault.rs
+If `CODESCENE_PAT` or `CODESCENE_PROJECT_ID` is missing, the CodeScene portion is skipped, but the rest of the hook still runs.
 
-   Consider:
-   - Breaking into smaller commits
-   - Reviewing with Claude Code + CodeScene MCP
-   - Running: claude 'Review code health of staged changes'
+## Pre-push
 
-   Continue anyway? (y/N) 
-```
+`.husky/pre-push` blocks pushes unless all of the following are true:
 
-### CodeScene MCP Integration
+- the current branch is `main`
+- every pushed branch ref is `refs/heads/main -> refs/heads/main`
+- TypeScript and the Vite build pass
+- frontend coverage passes
+- Rust lint and Rust coverage pass when `src-tauri/` changed
+- Playwright smoke tests pass when `tests/smoke/*.spec.ts` exists
+- current CodeScene Hotspot and Average health are both at or above `.codescene-thresholds`
 
-Per analisi dettagliata del code health, usa Claude Code:
+If the remote CodeScene scores are better than the current thresholds, the hook updates `.codescene-thresholds`, stages it, and stops the push. Commit that file normally, then push again. The hook does not auto-commit or bypass itself.
+
+## Legacy Files
+
+The legacy `pre-commit` and `post-commit` files under `.github/hooks/` are archival only. Do not copy them into `.git/hooks`; use Husky and `.husky/` instead. `install-hooks.sh` remains as a reinstall helper that runs Husky.
+
+## Troubleshooting
+
+If a hook cannot find `node` or `pnpm`:
 
 ```bash
-# Analizza staged changes
-claude 'Check code health of staged changes with CodeScene MCP'
-
-# Analizza file specifico
-claude 'What is the code health score of src/components/Editor.tsx?'
-
-# Pre-commit safeguard
-claude 'Run pre_commit_code_health_safeguard on staged changes'
+export NVM_DIR="$HOME/.nvm"
+. "$NVM_DIR/nvm.sh"
+nvm use node
 ```
 
-### Troubleshooting
-
-**Hook non si attiva:**
-- Verifica che `.git/hooks/pre-commit` esista ed sia eseguibile
-- `ls -la .git/hooks/pre-commit` — dovrebbe mostrare `-rwxr-xr-x`
-
-**Vuoi disabilitare temporaneamente:**
-```bash
-mv .git/hooks/pre-commit .git/hooks/pre-commit.disabled
-```
-
-**Vuoi riabilitare:**
-```bash
-mv .git/hooks/pre-commit.disabled .git/hooks/pre-commit
-```
-
-### Future Improvements
-
-Possibili miglioramenti:
-- [ ] Integrazione diretta API CodeScene per score numerico
-- [ ] Fail automatico se code health < soglia
-- [ ] Cache dei risultati per evitare re-analisi
-- [ ] Hook pre-push più pesante per analisi completa
-
----
-
-## Post-Commit Hook: Auto-Implement Design Changes
-
-### Cosa Fa
-
-Quando committi modifiche a `ui-design.pen`, il hook:
-
-1. **Analizza il diff** — usa `scripts/design-diff-analyzer.js`
-2. **Identifica modifiche significative:**
-   - 🎨 Colori (fill, backgroundColor)
-   - 📝 Typography (fontSize, fontFamily)
-   - 📏 Spacing (padding, margin, gap)
-   - 🔲 Layout (nuovi componenti, riorganizzazioni)
-3. **Spawna Claude Code** — in background via `openclaw sessions spawn`
-4. **Auto-notifica** — quando l'implementazione è completa
-
-### Cosa Implementa
-
-| Tipo Modifica | Azione |
-|--------------|--------|
-| Colori | Aggiorna `src/theme.json` o CSS variables |
-| Typography | Aggiorna `src/theme.json` typography |
-| Spacing | Aggiorna `src/theme.json` spacing |
-| Layout | Modifica/crea componenti React |
-| Testi mockup | Nessuna azione (solo design) |
-
-### Esempio Output
-
-```
-🎨 Design file changed - analyzing...
-
-📋 Implementation tasks:
-
-1. [HIGH] Update color palette
-  - fill: $--muted-foreground → #666666
-  - backgroundColor: #FFFFFF → #F5F5F5
-
-Update src/theme.json or CSS variables to match the design.
-
-2. [MEDIUM] Update typography
-  - fontSize: 14px → 16px
-
-Update src/theme.json typography settings.
-
-🚀 Spawning Claude Code to implement changes...
-
-✅ Claude Code spawned - you'll be notified when implementation is complete
-```
-
-### Workflow Completo
-
-```
-You                    Post-Commit Hook              Claude Code              Brian (AI)
- │                            │                            │                      │
- ├─ Modify ui-design.pen      │                            │                      │
- ├─ git add ui-design.pen     │                            │                      │
- ├─ git commit                 │                            │                      │
- │                            │                            │                      │
- │                            ├─ Analyze diff              │                      │
- │                            ├─ Generate tasks            │                      │
- │                            ├─ Spawn Claude Code ────────>                     │
- │                            │                            │                      │
- │                            │                     ├─ Implement changes         │
- │                            │                     ├─ Test visually             │
- │                            │                     ├─ Run tests                 │
- │                            │                     ├─ Commit                    │
- │                            │                     ├─ openclaw system event ────>
- │                            │                            │                      │
- │                            │                            │              ├─ Notify Telegram
- │ <─────────────────────────────────────────────────────────────────────────────┘
- │  "✅ Design changes implemented and tested"
-```
-
-### Design Diff Analyzer
-
-Lo script `scripts/design-diff-analyzer.js` rileva:
-
-- **Color changes** — `"fill": "#OLD" → "#NEW"`
-- **Font changes** — `"fontSize": 14 → 16`
-- **Spacing** — `"padding": 8 → 12`
-- **Content** — testi mockup (no implementation)
-
-Uso:
-```bash
-# Analizza ultimo commit
-node scripts/design-diff-analyzer.js
-
-# Output JSON per automation
-node scripts/design-diff-analyzer.js --json
-```
-
-### Disabilitare Temporaneamente
-
-Se vuoi committare il design senza auto-implementazione:
-
-```bash
-# Disabilita hook
-mv .git/hooks/post-commit .git/hooks/post-commit.disabled
-
-# Commit
-git commit -m "design: update mockup"
-
-# Riabilita hook
-mv .git/hooks/post-commit.disabled .git/hooks/post-commit
-```
-
-### Monitorare Claude Code
-
-Mentre Claude Code lavora in background:
-
-```bash
-# Lista sub-agent attivi
-openclaw sessions list --kinds isolated
-
-# Vedi log di un sub-agent
-openclaw sessions history --session-key <key>
-
-# Ferma sub-agent (se necessario)
-openclaw subagents kill --target design-auto-implement
-```
-
-### Troubleshooting
-
-**Hook non parte:**
-- Verifica che `ui-design.pen` sia effettivamente cambiato: `git diff HEAD~1 ui-design.pen`
-- Verifica che lo script analyzer esista: `ls -la scripts/design-diff-analyzer.js`
-
-**Nessuna notifica:**
-- Claude Code potrebbe essere ancora in esecuzione — controlla `openclaw sessions list`
-- Verifica che il prompt includa `openclaw system event` al termine
-
-**Modifiche non implementate:**
-- Controlla i log di Claude Code: `openclaw sessions history --session-key <key>`
-- Il sub-agent viene auto-eliminato dopo completion (cleanup=delete)
-
-### Limitazioni
-
-- **Modifiche complesse** — layout completamente nuovi potrebbero richiedere intervento manuale
-- **Timeout** — 10 minuti max (configurabile in hook)
-- **Solo modifiche recenti** — analizza solo HEAD vs HEAD~1
+Then retry the commit or push.

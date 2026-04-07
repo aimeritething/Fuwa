@@ -1,6 +1,43 @@
 #!/bin/sh
-# Pre-commit: same checks as CI. Fix here, not in CI.
+# Pre-commit: fast local gate before commit. Full suite runs in pre-push/CI.
 set -e
+
+ensure_node_tooling() {
+  if command -v node >/dev/null 2>&1 && command -v pnpm >/dev/null 2>&1; then
+    return 0
+  fi
+
+  NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck disable=SC1090
+    . "$NVM_DIR/nvm.sh" --no-use
+    nvm use --silent node >/dev/null 2>&1 || true
+  fi
+
+  if ! command -v node >/dev/null 2>&1 || ! command -v pnpm >/dev/null 2>&1; then
+    echo "❌ node and pnpm must be available before committing"
+    echo "   Install them or make sure your nvm setup is available to git hooks."
+    exit 1
+  fi
+}
+
+require_main_branch() {
+  if ! git symbolic-ref -q HEAD >/dev/null 2>&1; then
+    echo "❌ Commits must happen on main. Detached HEAD is not allowed."
+    exit 1
+  fi
+
+  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+  if [ "$CURRENT_BRANCH" != "main" ]; then
+    echo "❌ Commits must happen on main. Current branch: $CURRENT_BRANCH"
+    echo "   Merge or cherry-pick your work onto main, then commit there."
+    exit 1
+  fi
+}
+
+require_main_branch
+ensure_node_tooling
+
 echo "🔍 Pre-commit checks..."
 
 # Lint + types (only if TS files staged)
@@ -19,7 +56,9 @@ echo "✅ Pre-commit passed"
 
 # ── CodeScene Code Health gate ────────────────────────────────────────────
 # Blocks commit if scores drop below thresholds in .codescene-thresholds.
-# Thresholds are a ratchet — only go up, auto-updated after each successful push.
+# Thresholds are a ratchet — only go up.
+# When remote scores improve, pre-push updates .codescene-thresholds and stops
+# so the new floor is committed with normal verified hooks.
 # Note: remote scores lag behind local changes (update after push + re-analysis).
 # If check fails: extract hooks, split components, reduce complexity.
 # Never use eslint-disable, #[allow(...)], or `as any`.

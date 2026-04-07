@@ -1,25 +1,26 @@
 #!/bin/bash
-# Install git hooks for laputa-app
+set -e
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOOKS_DIR="$(git rev-parse --git-dir)/hooks"
+if ! command -v pnpm >/dev/null 2>&1 || ! command -v node >/dev/null 2>&1; then
+  export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
+  if [ -s "$NVM_DIR/nvm.sh" ]; then
+    # shellcheck disable=SC1090
+    . "$NVM_DIR/nvm.sh" --no-use
+    nvm use --silent node >/dev/null 2>&1 || true
+  fi
+fi
 
-echo "Installing git hooks..."
+if ! command -v pnpm >/dev/null 2>&1 || ! command -v node >/dev/null 2>&1; then
+  echo "❌ node and pnpm must be available to install Husky hooks"
+  exit 1
+fi
 
-# Copy pre-commit hook
-cp "$SCRIPT_DIR/pre-commit" "$HOOKS_DIR/pre-commit"
-chmod +x "$HOOKS_DIR/pre-commit"
-echo "✅ Installed pre-commit hook"
-
-# Copy post-commit hook
-cp "$SCRIPT_DIR/post-commit" "$HOOKS_DIR/post-commit"
-chmod +x "$HOOKS_DIR/post-commit"
-echo "✅ Installed post-commit hook"
-
+echo "Installing Husky hooks from .husky/ ..."
+pnpm exec husky
+echo "✅ Husky hooks installed"
 echo ""
-echo "Hooks installed:"
-echo "  - pre-commit: CodeScene code health check"
-echo "  - post-commit: Auto-implement design changes via Claude Code"
+echo "Source of truth:"
+echo "  - .husky/pre-commit"
+echo "  - .husky/pre-push"
 echo ""
-echo "To bypass pre-commit, use: git commit --no-verify"
-echo "Or include [skip codescene] in your commit message"
+echo "Never use --no-verify in this repo."

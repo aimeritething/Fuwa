@@ -24,9 +24,6 @@ Personal knowledge and life management desktop app built with Tauri v2 + React +
 # Install dependencies
 pnpm install
 
-# Install git hooks (optional but recommended)
-.github/hooks/install-hooks.sh
-
 # Run dev server
 pnpm dev
 
@@ -69,7 +66,7 @@ claude 'Check code health with CodeScene MCP'
 
 ## Development Workflow
 
-See [CLAUDE.md](CLAUDE.md) for coding guidelines and workflow.
+See [AGENTS.md](AGENTS.md) for coding guidelines and workflow. [CLAUDE.md](CLAUDE.md) remains as a compatibility shim for Claude Code.
 
 **Key principles:**
 - Small, atomic commits
@@ -79,7 +76,7 @@ See [CLAUDE.md](CLAUDE.md) for coding guidelines and workflow.
 
 ## CI/CD
 
-GitHub Actions runs on every push/PR:
+GitHub Actions runs on every push to `main`:
 - ✅ Tests (frontend + Rust)
 - 📊 Coverage (70% threshold)
 - 🎨 Lint & format
@@ -89,7 +86,7 @@ See [.github/SETUP.md](.github/SETUP.md) for CI/CD configuration.
 
 ## Git Hooks
 
-Pre-commit hook checks code health before every commit. See [.github/HOOKS.md](.github/HOOKS.md) for details.
+Husky installs the git hooks from `.husky/` during `pnpm install`. The repo enforces `main`-only commits and pushes; see [.github/HOOKS.md](.github/HOOKS.md) for details.
 
 ## License
 

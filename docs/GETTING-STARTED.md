@@ -177,7 +177,8 @@ laputa-app/
 ├── tsconfig.json                 # TypeScript config
 ├── playwright.config.ts          # E2E test config
 ├── ui-design.pen                 # Master design file
-├── CLAUDE.md                     # Project instructions
+├── AGENTS.md                     # Shared project instructions for coding agents
+├── CLAUDE.md                     # Claude Code compatibility shim importing AGENTS.md
 └── docs/                         # This documentation
 ```
 
