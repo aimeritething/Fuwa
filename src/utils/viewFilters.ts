@@ -1,4 +1,5 @@
 import type { VaultEntry, ViewDefinition, FilterGroup, FilterNode, FilterCondition } from '../types'
+import { toDateFilterTimestamp } from './filterDates'
 
 /** Evaluate a view's filters against a list of entries, returning only matches. */
 export function evaluateView(definition: ViewDefinition, entries: VaultEntry[]): VaultEntry[] {
@@ -169,12 +170,11 @@ function evaluateCondition(cond: FilterCondition, entry: VaultEntry): boolean {
     if (typeof resolved.scalar === 'number') {
       tsMs = resolved.scalar * 1000 // Unix timestamp (seconds) → milliseconds
     } else if (typeof resolved.scalar === 'string') {
-      const parsed = Date.parse(resolved.scalar)
-      tsMs = isNaN(parsed) ? null : parsed
+      tsMs = toDateFilterTimestamp(resolved.scalar)
     }
     if (tsMs == null) return false
-    const target = Date.parse(condVal)
-    if (isNaN(target)) return false
+    const target = toDateFilterTimestamp(condVal)
+    if (target == null) return false
     return op === 'before' ? tsMs < target : tsMs > target
   }
 

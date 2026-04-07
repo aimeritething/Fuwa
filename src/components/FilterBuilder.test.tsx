@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { FilterBuilder } from './FilterBuilder'
 import type { FilterGroup } from '../types'
@@ -8,6 +8,10 @@ describe('FilterBuilder value inputs', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   function renderBuilder(group?: FilterGroup) {
@@ -97,10 +101,10 @@ describe('FilterBuilder value inputs', () => {
       all: [{ field: 'created', op: 'before', value: '2024-06-01' }],
     })
 
+    expect(screen.getByTestId('date-value-input')).toHaveValue('2024-06-01')
     const dateButton = screen.getByTestId('date-picker-trigger')
     expect(dateButton).toBeInTheDocument()
-    expect(dateButton).toHaveTextContent('Jun 1, 2024')
-    expect(screen.queryByDisplayValue('2024-06-01')).not.toBeInTheDocument()
+    expect(dateButton).toHaveAttribute('title', 'Jun 1, 2024')
   })
 
   it('renders date picker placeholder when no date is selected', () => {
@@ -108,8 +112,21 @@ describe('FilterBuilder value inputs', () => {
       all: [{ field: 'created', op: 'after', value: '' }],
     })
 
-    expect(screen.getByTestId('date-picker-trigger')).toHaveTextContent('Pick a date')
+    expect(screen.getByTestId('date-value-input')).toHaveValue('')
+    expect(screen.getByTestId('date-picker-trigger')).toHaveAttribute('title', 'Pick a date')
     expect(screen.queryByTestId('filter-regex-toggle')).not.toBeInTheDocument()
+  })
+
+  it('allows free-text relative date phrases for date operators', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-07T12:00:00Z'))
+
+    renderBuilder({
+      all: [{ field: 'created', op: 'after', value: '10 days ago' }],
+    })
+
+    expect(screen.getByTestId('date-value-input')).toHaveValue('10 days ago')
+    expect(screen.getByTestId('date-picker-trigger')).toHaveAttribute('title', 'Mar 28, 2026')
   })
 
   it('shows body field in field dropdown separated from property fields', () => {

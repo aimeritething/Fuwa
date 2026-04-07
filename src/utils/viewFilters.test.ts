@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { afterEach, describe, it, expect, vi } from 'vitest'
 import { evaluateView } from './viewFilters'
 import type { VaultEntry, ViewDefinition } from '../types'
 
@@ -19,6 +19,10 @@ function makeEntry(overrides: Partial<VaultEntry>): VaultEntry {
 }
 
 describe('evaluateView', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('filters by type equals', () => {
     const view: ViewDefinition = {
       name: 'Projects', icon: null, color: null, sort: null,
@@ -242,6 +246,22 @@ describe('evaluateView', () => {
     ]
     const result = evaluateView(view, entries)
     expect(result.map((e) => e.title)).toEqual(['Match'])
+  })
+
+  it('before/after accept natural-language relative date phrases', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-07T12:00:00Z'))
+
+    const view: ViewDefinition = {
+      name: 'Recent', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'Date', op: 'after', value: '10 days ago' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Older', properties: { Date: '2026-03-20' } }),
+      makeEntry({ title: 'Recent', properties: { Date: '2026-03-30' } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Recent'])
   })
 
   it('body contains filters on snippet text (case-insensitive)', () => {
