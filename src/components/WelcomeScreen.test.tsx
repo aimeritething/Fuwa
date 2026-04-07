@@ -6,10 +6,12 @@ const defaultProps = {
   mode: 'welcome' as const,
   defaultVaultPath: '~/Documents/Laputa',
   onCreateVault: vi.fn(),
+  onRetryCreateVault: vi.fn(),
   onCreateNewVault: vi.fn(),
   onOpenFolder: vi.fn(),
-  creating: false,
+  creatingAction: null as 'template' | 'empty' | null,
   error: null,
+  canRetryTemplate: false,
 }
 
 describe('WelcomeScreen', () => {
@@ -54,25 +56,47 @@ describe('WelcomeScreen', () => {
     })
 
     it('disables all buttons while creating', () => {
-      render(<WelcomeScreen {...defaultProps} creating={true} />)
+      render(<WelcomeScreen {...defaultProps} creatingAction="template" />)
       expect(screen.getByTestId('welcome-create-new')).toBeDisabled()
       expect(screen.getByTestId('welcome-open-folder')).toBeDisabled()
       expect(screen.getByTestId('welcome-create-vault')).toBeDisabled()
     })
 
     it('shows loading text on template button while creating', () => {
-      render(<WelcomeScreen {...defaultProps} creating={true} />)
-      expect(screen.getByTestId('welcome-create-vault')).toHaveTextContent(/Creating vault/)
+      render(<WelcomeScreen {...defaultProps} creatingAction="template" />)
+      expect(screen.getByTestId('welcome-create-vault')).toHaveTextContent(/Downloading template/)
+      expect(screen.getByTestId('welcome-status')).toHaveAttribute('aria-live', 'polite')
+    })
+
+    it('shows loading text on create-new button while creating an empty vault', () => {
+      render(<WelcomeScreen {...defaultProps} creatingAction="empty" />)
+      expect(screen.getByTestId('welcome-create-new')).toHaveTextContent(/Creating vault/)
     })
 
     it('shows error message when error is set', () => {
       render(<WelcomeScreen {...defaultProps} error="Permission denied" />)
       expect(screen.getByTestId('welcome-error')).toHaveTextContent('Permission denied')
+      expect(screen.getByTestId('welcome-error')).toHaveAttribute('aria-live', 'assertive')
     })
 
     it('does not show error when error is null', () => {
       render(<WelcomeScreen {...defaultProps} />)
       expect(screen.queryByTestId('welcome-error')).not.toBeInTheDocument()
+    })
+
+    it('shows a retry button after template download errors', () => {
+      const onRetryCreateVault = vi.fn()
+      render(
+        <WelcomeScreen
+          {...defaultProps}
+          error="Could not download Getting Started vault. Check your connection and try again."
+          canRetryTemplate={true}
+          onRetryCreateVault={onRetryCreateVault}
+        />,
+      )
+
+      fireEvent.click(screen.getByTestId('welcome-retry-template'))
+      expect(onRetryCreateVault).toHaveBeenCalledOnce()
     })
 
     it('does not show path badge in welcome mode', () => {

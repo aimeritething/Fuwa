@@ -142,7 +142,7 @@ laputa-app/
 │   │   │   ├── rename.rs         # Rename + cross-vault wikilink update
 │   │   │   ├── image.rs          # Image attachment saving
 │   │   │   ├── migration.rs      # Frontmatter migration
-│   │   │   └── getting_started.rs # Getting Started vault creation
+│   │   │   └── getting_started.rs # Getting Started vault clone orchestration
 │   │   ├── frontmatter/          # Frontmatter module
 │   │   │   ├── mod.rs, yaml.rs, ops.rs
 │   │   ├── git/                  # Git module
@@ -201,7 +201,7 @@ laputa-app/
 |------|---------------|
 | `src/hooks/useVaultLoader.ts` | How vault data is loaded and managed. The Tauri/mock branching pattern. |
 | `src/hooks/useNoteActions.ts` | Orchestrates note operations: composes `useNoteCreation`, `useNoteRename`, frontmatter CRUD, and wikilink navigation. |
-| `src/hooks/useVaultSwitcher.ts` | Multi-vault management, vault switching, Getting Started vault. |
+| `src/hooks/useVaultSwitcher.ts` | Multi-vault management, vault switching, and restoring the cloned Getting Started vault. |
 | `src/mock-tauri.ts` | Mock data for browser testing. Shows the shape of all Tauri responses. |
 
 ### Backend

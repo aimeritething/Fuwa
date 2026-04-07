@@ -423,9 +423,12 @@ Per-vault UI settings stored locally per vault path (currently in browser/Tauri 
 
 ### Getting Started Vault
 
-On first launch, `useOnboarding` checks if the default vault exists. If not, shows `WelcomeScreen` with two options:
-- **Create Getting Started vault** → calls `create_getting_started_vault()` Tauri command
+On first launch, `useOnboarding` checks if the default vault exists. If not, it shows `WelcomeScreen` with three options:
+- **Create a new vault** → creates an empty git repo in a folder the user chooses
 - **Open an existing folder** → system file picker
+- **Get started with a template** → pick a folder, then call `create_getting_started_vault()` to clone the public starter repo at runtime
+
+The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` only holds the public GitHub URL and delegates the actual clone to the existing git backend.
 
 ### GitHub OAuth Integration
 
@@ -589,7 +592,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `reload_vault` | Invalidate cache and full rescan from filesystem → `Vec<VaultEntry>` |
 | `reload_vault_entry` | Re-read a single file from disk → `VaultEntry` |
 | `check_vault_exists` | Check if vault path exists |
-| `create_getting_started_vault` | Bootstrap demo vault |
+| `create_getting_started_vault` | Clone the public Getting Started vault into a chosen local folder |
 
 ### Frontmatter
 

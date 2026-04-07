@@ -6,10 +6,12 @@ interface WelcomeScreenProps {
   missingPath?: string
   defaultVaultPath: string
   onCreateVault: () => void
+  onRetryCreateVault: () => void
   onCreateNewVault: () => void
   onOpenFolder: () => void
-  creating: boolean
+  creatingAction: 'template' | 'empty' | null
   error: string | null
+  canRetryTemplate: boolean
 }
 
 const CONTAINER_STYLE: React.CSSProperties = {
@@ -110,21 +112,61 @@ const ERROR_STYLE: React.CSSProperties = {
   margin: 0,
 }
 
+const STATUS_STYLE: React.CSSProperties = {
+  fontSize: 13,
+  color: 'var(--muted-foreground)',
+  textAlign: 'center',
+  margin: 0,
+}
+
+const ERROR_BLOCK_STYLE: React.CSSProperties = {
+  width: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'center',
+  gap: 10,
+}
+
+const RETRY_BUTTON_STYLE: React.CSSProperties = {
+  borderRadius: 8,
+  border: '1px solid var(--border)',
+  background: 'var(--background)',
+  color: 'var(--foreground)',
+  cursor: 'pointer',
+  padding: '8px 12px',
+  fontSize: 13,
+  fontWeight: 600,
+}
+
 interface OptionButtonProps {
   icon: React.ReactNode
   iconBg: string
   label: string
   description: string
+  loadingLabel?: string
+  loadingDescription?: string
   onClick: () => void
   disabled: boolean
   loading?: boolean
   testId: string
 }
 
-function OptionButton({ icon, iconBg, label, description, onClick, disabled, loading, testId }: OptionButtonProps) {
+function OptionButton({
+  icon,
+  iconBg,
+  label,
+  description,
+  loadingLabel,
+  loadingDescription,
+  onClick,
+  disabled,
+  loading,
+  testId,
+}: OptionButtonProps) {
   const [hover, setHover] = useState(false)
   return (
     <button
+      type="button"
       style={{
         ...OPTION_BTN_STYLE,
         background: hover ? 'var(--sidebar)' : 'var(--background)',
@@ -140,15 +182,26 @@ function OptionButton({ icon, iconBg, label, description, onClick, disabled, loa
         {loading ? <Loader2 size={18} className="animate-spin" style={{ color: 'var(--muted-foreground)' }} /> : icon}
       </div>
       <div>
-        <p style={OPTION_LABEL_STYLE}>{loading ? 'Creating vault\u2026' : label}</p>
-        <p style={OPTION_DESC_STYLE}>{description}</p>
+        <p style={OPTION_LABEL_STYLE}>{loading ? (loadingLabel ?? label) : label}</p>
+        <p style={OPTION_DESC_STYLE}>{loading ? (loadingDescription ?? description) : description}</p>
       </div>
     </button>
   )
 }
 
-export function WelcomeScreen({ mode, defaultVaultPath, onCreateVault, onCreateNewVault, onOpenFolder, creating, error }: WelcomeScreenProps) {
+export function WelcomeScreen({
+  mode,
+  defaultVaultPath,
+  onCreateVault,
+  onRetryCreateVault,
+  onCreateNewVault,
+  onOpenFolder,
+  creatingAction,
+  error,
+  canRetryTemplate,
+}: WelcomeScreenProps) {
   const isWelcome = mode === 'welcome'
+  const busy = creatingAction !== null
 
   return (
     <div style={CONTAINER_STYLE} data-testid="welcome-screen">
@@ -185,8 +238,11 @@ export function WelcomeScreen({ mode, defaultVaultPath, onCreateVault, onCreateN
             iconBg="var(--accent-blue-light, #EBF4FF)"
             label="Create a new vault"
             description="Start fresh in a folder you choose"
+            loadingLabel="Creating vault…"
+            loadingDescription="Preparing an empty vault in the selected folder"
             onClick={onCreateNewVault}
-            disabled={creating}
+            disabled={busy}
+            loading={creatingAction === 'empty'}
             testId="welcome-create-new"
           />
 
@@ -196,7 +252,7 @@ export function WelcomeScreen({ mode, defaultVaultPath, onCreateVault, onCreateN
             label={isWelcome ? 'Open existing vault' : 'Choose a different folder'}
             description="Point to a folder you already have"
             onClick={onOpenFolder}
-            disabled={creating}
+            disabled={busy}
             testId="welcome-open-folder"
           />
 
@@ -204,15 +260,39 @@ export function WelcomeScreen({ mode, defaultVaultPath, onCreateVault, onCreateN
             icon={<Rocket size={18} style={{ color: 'var(--accent-purple)' }} />}
             iconBg="var(--accent-purple-light, #F3E8FF)"
             label="Get started with a template"
-            description={`A ready-made vault to explore first \u2014 ${defaultVaultPath}`}
+            description={`Download the starter vault from GitHub \u2014 suggested path: ${defaultVaultPath}`}
+            loadingLabel="Downloading template…"
+            loadingDescription="Cloning the Getting Started vault from GitHub"
             onClick={onCreateVault}
-            disabled={creating}
-            loading={creating}
+            disabled={busy}
+            loading={creatingAction === 'template'}
             testId="welcome-create-vault"
           />
         </div>
 
-        {error && <p style={ERROR_STYLE} data-testid="welcome-error">{error}</p>}
+        {creatingAction === 'template' && (
+          <p style={STATUS_STYLE} data-testid="welcome-status" role="status" aria-live="polite">
+            Downloading the Getting Started vault from GitHub…
+          </p>
+        )}
+
+        {error && (
+          <div style={ERROR_BLOCK_STYLE}>
+            <p style={ERROR_STYLE} data-testid="welcome-error" role="alert" aria-live="assertive">
+              {error}
+            </p>
+            {canRetryTemplate && (
+              <button
+                type="button"
+                style={RETRY_BUTTON_STYLE}
+                onClick={onRetryCreateVault}
+                data-testid="welcome-retry-template"
+              >
+                Retry download
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   )

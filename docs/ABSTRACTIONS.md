@@ -510,7 +510,7 @@ Per-vault settings stored locally and scoped by vault path:
 
 `useOnboarding` hook detects first launch:
 - If vault path doesn't exist → show `WelcomeScreen`
-- User can create Getting Started vault or open existing folder
+- User can create a new empty vault, open an existing folder, or clone the public Getting Started vault into a chosen folder
 - Welcome state tracked in localStorage (`laputa_welcome_dismissed`)
 
 ### GitHub Integration

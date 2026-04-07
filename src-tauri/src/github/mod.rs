@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 pub use api::{github_create_repo, github_get_user, github_list_repos};
 pub use auth::{github_device_flow_poll, github_device_flow_start};
-pub use clone::clone_repo;
+pub use clone::{clone_public_repo, clone_repo};
 
 /// GitHub App client ID for OAuth device flow.
 /// To set up: GitHub Settings → Developer settings → GitHub Apps → New GitHub App.

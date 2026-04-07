@@ -1,0 +1,56 @@
+import { test, expect } from '@playwright/test'
+
+test('Getting Started template shows inline retry on clone failure and opens after retry @smoke', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.clear()
+
+    let ref: Record<string, unknown> | null = null
+    let cloneAttempts = 0
+
+    Object.defineProperty(window, '__mockHandlers', {
+      configurable: true,
+      set(value) {
+        ref = value as Record<string, unknown>
+        ref.load_vault_list = () => ({
+          vaults: [],
+          active_vault: null,
+          hidden_defaults: [],
+        })
+        ref.get_default_vault_path = () => '/Users/mock/Documents/Getting Started'
+        ref.check_vault_exists = () => false
+        ref.create_getting_started_vault = (args: { targetPath?: string | null }) => {
+          cloneAttempts += 1
+          if (cloneAttempts === 1) {
+            throw 'git clone failed: fatal: unable to access'
+          }
+          return args.targetPath || '/Users/mock/Documents/Getting Started'
+        }
+      },
+      get() {
+        return ref
+      },
+    })
+
+    Object.defineProperty(window, 'prompt', {
+      configurable: true,
+      value: () => '/Users/mock/Documents/Getting Started',
+    })
+  })
+
+  await page.goto('/')
+  await page.waitForLoadState('networkidle')
+
+  await expect(page.getByTestId('welcome-screen')).toBeVisible()
+
+  await page.getByTestId('welcome-create-vault').click()
+
+  await expect(page.getByTestId('welcome-error')).toContainText(
+    'Could not download Getting Started vault. Check your connection and try again.',
+  )
+  await expect(page.getByTestId('welcome-retry-template')).toBeVisible()
+
+  await page.getByTestId('welcome-retry-template').click()
+
+  await expect(page.getByTestId('welcome-screen')).not.toBeVisible()
+  await expect(page.locator('[data-testid="note-list-container"]')).toBeVisible()
+})

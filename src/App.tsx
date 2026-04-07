@@ -747,10 +747,12 @@ function WelcomeView({ onboarding }: { onboarding: OnboardingState }) {
         missingPath={state.status === 'vault-missing' ? state.vaultPath : undefined}
         defaultVaultPath={state.defaultPath}
         onCreateVault={onboarding.handleCreateVault}
+        onRetryCreateVault={onboarding.retryCreateVault}
         onCreateNewVault={onboarding.handleCreateNewVault}
         onOpenFolder={onboarding.handleOpenFolder}
-        creating={onboarding.creating}
+        creatingAction={onboarding.creatingAction}
         error={onboarding.error}
+        canRetryTemplate={onboarding.canRetryTemplate}
       />
     </div>
   )

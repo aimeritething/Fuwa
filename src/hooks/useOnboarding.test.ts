@@ -120,12 +120,13 @@ describe('useOnboarding', () => {
   })
 
   it('handleCreateVault creates vault and transitions to ready', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
+    mockInvokeFn.mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
       if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
       if (cmd === 'check_vault_exists') return false
-      if (cmd === 'create_getting_started_vault') return '/mock/Documents/Getting Started'
+      if (cmd === 'create_getting_started_vault') return (args as { targetPath: string }).targetPath
       return null
     })
+    vi.mocked(pickFolder).mockResolvedValue('/mock/Documents/Getting Started')
 
     const { result } = renderHook(() => useOnboarding('/vault/missing'))
 
@@ -138,16 +139,19 @@ describe('useOnboarding', () => {
     })
 
     expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/mock/Documents/Getting Started' })
+    expect(mockInvokeFn).toHaveBeenCalledWith('create_getting_started_vault', {
+      targetPath: '/mock/Documents/Getting Started',
+    })
     expect(localStorage.getItem('laputa_welcome_dismissed')).toBe('1')
   })
 
-  it('handleCreateVault sets error on failure', async () => {
+  it('handleCreateVault does nothing when picker is cancelled', async () => {
     mockInvokeFn.mockImplementation(async (cmd: string) => {
       if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
       if (cmd === 'check_vault_exists') return false
-      if (cmd === 'create_getting_started_vault') throw 'Permission denied'
       return null
     })
+    vi.mocked(pickFolder).mockResolvedValue(null)
 
     const { result } = renderHook(() => useOnboarding('/vault/missing'))
 
@@ -159,8 +163,67 @@ describe('useOnboarding', () => {
       await result.current.handleCreateVault()
     })
 
-    expect(result.current.error).toBe('Permission denied')
     expect(result.current.state.status).toBe('welcome')
+    expect(mockInvokeFn).not.toHaveBeenCalledWith('create_getting_started_vault', expect.anything())
+  })
+
+  it('handleCreateVault sets a friendly download error on clone failure', async () => {
+    mockInvokeFn.mockImplementation(async (cmd: string) => {
+      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
+      if (cmd === 'check_vault_exists') return false
+      if (cmd === 'create_getting_started_vault') throw 'git clone failed: fatal: unable to access'
+      return null
+    })
+    vi.mocked(pickFolder).mockResolvedValue('/mock/Documents/Getting Started')
+
+    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('welcome')
+    })
+
+    await act(async () => {
+      await result.current.handleCreateVault()
+    })
+
+    expect(result.current.error).toBe('Could not download Getting Started vault. Check your connection and try again.')
+    expect(result.current.state.status).toBe('welcome')
+  })
+
+  it('retryCreateVault reuses the last selected template path', async () => {
+    let attempts = 0
+    mockInvokeFn.mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
+      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
+      if (cmd === 'check_vault_exists') return false
+      if (cmd === 'create_getting_started_vault') {
+        attempts += 1
+        if (attempts === 1) throw 'git clone failed: fatal: unable to access'
+        return (args as { targetPath: string }).targetPath
+      }
+      return null
+    })
+    vi.mocked(pickFolder).mockResolvedValue('/mock/Documents/Getting Started')
+
+    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+
+    await waitFor(() => {
+      expect(result.current.state.status).toBe('welcome')
+    })
+
+    await act(async () => {
+      await result.current.handleCreateVault()
+    })
+
+    expect(result.current.canRetryTemplate).toBe(true)
+
+    await act(async () => {
+      await result.current.retryCreateVault()
+    })
+
+    expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/mock/Documents/Getting Started' })
+    expect(mockInvokeFn).toHaveBeenLastCalledWith('create_getting_started_vault', {
+      targetPath: '/mock/Documents/Getting Started',
+    })
   })
 
   it('handleCreateNewVault picks folder, creates empty vault, and transitions to ready', async () => {

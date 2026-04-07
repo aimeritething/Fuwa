@@ -4,41 +4,37 @@ use std::process::Command;
 /// Clones a GitHub repo to a local path using HTTPS + token auth.
 pub fn clone_repo(url: &str, token: &str, local_path: &str) -> Result<String, String> {
     let dest = Path::new(local_path);
-
-    if dest.exists()
-        && dest
-            .read_dir()
-            .map(|mut d| d.next().is_some())
-            .unwrap_or(false)
-    {
-        return Err(format!(
-            "Destination '{}' already exists and is not empty",
-            local_path
-        ));
-    }
+    prepare_clone_destination(dest, local_path)?;
 
     // Inject token into HTTPS URL: https://github.com/... → https://oauth2:TOKEN@github.com/...
     let auth_url = inject_token_into_url(url, token)?;
 
-    let output = Command::new("git")
-        .args(["clone", "--progress", &auth_url, local_path])
-        .output()
-        .map_err(|e| format!("Failed to run git clone: {}", e))?;
-
-    if !output.status.success() {
-        // Clean up partial clone on failure
-        if dest.exists() {
-            let _ = std::fs::remove_dir_all(dest);
-        }
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("git clone failed: {}", stderr));
+    if let Err(err) = run_clone(&auth_url, local_path) {
+        cleanup_failed_clone(dest);
+        return Err(err);
     }
 
     // Configure the remote to use token auth for future pushes
-    configure_remote_auth(local_path, url, token)?;
+    if let Err(err) = configure_remote_auth(local_path, url, token) {
+        cleanup_failed_clone(dest);
+        return Err(err);
+    }
 
     // Ensure sensible .gitignore defaults (especially .DS_Store on macOS)
     crate::git::ensure_gitignore(local_path)?;
+
+    Ok(format!("Cloned to {}", local_path))
+}
+
+/// Clones a public repo to a local path without modifying the remote URL.
+pub fn clone_public_repo(url: &str, local_path: &str) -> Result<String, String> {
+    let dest = Path::new(local_path);
+    prepare_clone_destination(dest, local_path)?;
+
+    if let Err(err) = run_clone(url, local_path) {
+        cleanup_failed_clone(dest);
+        return Err(err);
+    }
 
     Ok(format!("Cloned to {}", local_path))
 }
@@ -55,6 +51,62 @@ fn inject_token_into_url(url: &str, token: &str) -> Result<String, String> {
             "Unsupported URL format: {}. Use an HTTPS URL.",
             url
         ))
+    }
+}
+
+fn prepare_clone_destination(dest: &Path, local_path: &str) -> Result<(), String> {
+    if dest.exists() {
+        if !dest.is_dir() {
+            return Err(format!(
+                "Destination '{}' already exists and is not a directory",
+                local_path
+            ));
+        }
+        let has_entries = dest
+            .read_dir()
+            .map_err(|e| format!("Failed to inspect destination '{}': {}", local_path, e))?
+            .next()
+            .is_some();
+        if has_entries {
+            return Err(format!(
+                "Destination '{}' already exists and is not empty",
+                local_path
+            ));
+        }
+        return Ok(());
+    }
+
+    if let Some(parent) = dest.parent() {
+        if !parent.as_os_str().is_empty() {
+            std::fs::create_dir_all(parent).map_err(|e| {
+                format!(
+                    "Failed to create parent directory for '{}': {}",
+                    local_path, e
+                )
+            })?;
+        }
+    }
+
+    Ok(())
+}
+
+fn run_clone(url: &str, local_path: &str) -> Result<(), String> {
+    let output = Command::new("git")
+        .args(["clone", "--progress", url, local_path])
+        .output()
+        .map_err(|e| format!("Failed to run git clone: {}", e))?;
+
+    if output.status.success() {
+        return Ok(());
+    }
+
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    Err(format!("git clone failed: {}", stderr.trim()))
+}
+
+fn cleanup_failed_clone(dest: &Path) {
+    if dest.exists() && dest.is_dir() {
+        let _ = std::fs::remove_dir_all(dest);
     }
 }
 
@@ -202,5 +254,71 @@ mod tests {
             .unwrap();
         let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
         assert_eq!(url, "https://oauth2:gho_test123@github.com/user/repo.git");
+    }
+
+    fn init_local_repo(path: &Path) {
+        std::fs::create_dir_all(path).unwrap();
+        std::fs::write(path.join("welcome.md"), "# Welcome\n").unwrap();
+
+        StdCommand::new("git")
+            .args(["init"])
+            .current_dir(path)
+            .output()
+            .unwrap();
+        StdCommand::new("git")
+            .args(["config", "user.email", "laputa@app.local"])
+            .current_dir(path)
+            .output()
+            .unwrap();
+        StdCommand::new("git")
+            .args(["config", "user.name", "Laputa App"])
+            .current_dir(path)
+            .output()
+            .unwrap();
+        StdCommand::new("git")
+            .args(["add", "."])
+            .current_dir(path)
+            .output()
+            .unwrap();
+        StdCommand::new("git")
+            .args(["commit", "-m", "Initial vault"])
+            .current_dir(path)
+            .output()
+            .unwrap();
+    }
+
+    #[test]
+    fn test_clone_public_repo_clones_local_repo() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let source = dir.path().join("source");
+        let dest = dir.path().join("dest");
+        init_local_repo(&source);
+
+        let result = clone_public_repo(source.to_str().unwrap(), dest.to_str().unwrap());
+
+        assert_eq!(
+            result.unwrap(),
+            format!("Cloned to {}", dest.to_string_lossy())
+        );
+        assert!(dest.join("welcome.md").exists());
+
+        let status = StdCommand::new("git")
+            .args(["status", "--porcelain"])
+            .current_dir(&dest)
+            .output()
+            .unwrap();
+        assert!(String::from_utf8_lossy(&status.stdout).trim().is_empty());
+    }
+
+    #[test]
+    fn test_clone_public_repo_cleans_failed_clone_destination() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let dest = dir.path().join("dest");
+        let missing = dir.path().join("missing-repo");
+
+        let result = clone_public_repo(missing.to_str().unwrap(), dest.to_str().unwrap());
+
+        assert!(result.unwrap_err().contains("git clone failed"));
+        assert!(!dest.exists());
     }
 }

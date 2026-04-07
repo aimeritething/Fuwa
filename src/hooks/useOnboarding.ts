@@ -9,6 +9,8 @@ type OnboardingState =
   | { status: 'vault-missing'; vaultPath: string; defaultPath: string }
   | { status: 'ready'; vaultPath: string }
 
+type CreatingAction = 'template' | 'empty' | null
+
 function tauriCall<T>(command: string, args: Record<string, unknown>): Promise<T> {
   return isTauri() ? invoke<T>(command, args) : mockInvoke<T>(command, args)
 }
@@ -37,6 +39,26 @@ function markDismissed(): void {
   }
 }
 
+function formatTemplateError(err: unknown): string {
+  const message =
+    typeof err === 'string'
+      ? err
+      : err instanceof Error
+        ? err.message
+        : `${err}`
+
+  if (
+    message.includes('already exists and is not empty')
+    || message.includes('already exists and is not a directory')
+    || message.includes('Failed to create parent directory')
+    || message.includes('Target path is required')
+  ) {
+    return message
+  }
+
+  return 'Could not download Getting Started vault. Check your connection and try again.'
+}
+
 async function clearMissingActiveVault(missingPath: string): Promise<void> {
   try {
     const list = await tauriCall<PersistedVaultList>('load_vault_list', {})
@@ -55,8 +77,9 @@ async function clearMissingActiveVault(missingPath: string): Promise<void> {
 
 export function useOnboarding(initialVaultPath: string) {
   const [state, setState] = useState<OnboardingState>({ status: 'loading' })
-  const [creating, setCreating] = useState(false)
+  const [creatingAction, setCreatingAction] = useState<CreatingAction>(null)
   const [error, setError] = useState<string | null>(null)
+  const [lastTemplatePath, setLastTemplatePath] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -95,38 +118,51 @@ export function useOnboarding(initialVaultPath: string) {
     return () => { cancelled = true }
   }, [initialVaultPath])
 
-  const handleCreateVault = useCallback(async () => {
-    setCreating(true)
+  const createTemplateVault = useCallback(async (targetPath: string) => {
+    setCreatingAction('template')
     setError(null)
+    setLastTemplatePath(targetPath)
     try {
-      const vaultPath = await tauriCall<string>('create_getting_started_vault', { targetPath: null })
+      const vaultPath = await tauriCall<string>('create_getting_started_vault', { targetPath })
       markDismissed()
       setState({ status: 'ready', vaultPath })
     } catch (err) {
-      setError(typeof err === 'string' ? err : `Failed to create vault: ${err}`)
+      setError(formatTemplateError(err))
     } finally {
-      setCreating(false)
+      setCreatingAction(null)
     }
   }, [])
 
+  const handleCreateVault = useCallback(async () => {
+    const path = await pickFolder('Choose where to clone the Getting Started vault')
+    if (!path) return
+    await createTemplateVault(path)
+  }, [createTemplateVault])
+
+  const retryCreateVault = useCallback(async () => {
+    if (!lastTemplatePath) return
+    await createTemplateVault(lastTemplatePath)
+  }, [createTemplateVault, lastTemplatePath])
+
   const handleCreateNewVault = useCallback(async () => {
     try {
+      setError(null)
       const path = await pickFolder('Choose where to create your vault')
       if (!path) return
-      setCreating(true)
-      setError(null)
+      setCreatingAction('empty')
       const vaultPath = await tauriCall<string>('create_empty_vault', { targetPath: path })
       markDismissed()
       setState({ status: 'ready', vaultPath })
     } catch (err) {
       setError(typeof err === 'string' ? err : `Failed to create vault: ${err}`)
     } finally {
-      setCreating(false)
+      setCreatingAction(null)
     }
   }, [])
 
   const handleOpenFolder = useCallback(async () => {
     try {
+      setError(null)
       const path = await pickFolder('Open vault folder')
       if (!path) return
       markDismissed()
@@ -141,5 +177,16 @@ export function useOnboarding(initialVaultPath: string) {
     setState({ status: 'ready', vaultPath: initialVaultPath })
   }, [initialVaultPath])
 
-  return { state, creating, error, handleCreateVault, handleCreateNewVault, handleOpenFolder, handleDismiss }
+  return {
+    state,
+    creating: creatingAction !== null,
+    creatingAction,
+    error,
+    canRetryTemplate: !!error && !!lastTemplatePath && creatingAction === null,
+    handleCreateVault,
+    retryCreateVault,
+    handleCreateNewVault,
+    handleOpenFolder,
+    handleDismiss,
+  }
 }
