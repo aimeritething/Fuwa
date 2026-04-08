@@ -11,6 +11,7 @@ import { attachClickHandlers, enrichSuggestionItems } from '../utils/suggestionE
 import { WikilinkSuggestionMenu, type WikilinkSuggestionItem } from './WikilinkSuggestionMenu'
 import type { VaultEntry } from '../types'
 import { _wikilinkEntriesRef } from './editorSchema'
+import { useEditorLinkActivation } from './useEditorLinkActivation'
 
 /** Insert an image block after the current cursor position. */
 function useInsertImageCallback(editor: ReturnType<typeof useCreateBlockNote>) {
@@ -32,12 +33,11 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   vaultPath?: string
   editable?: boolean
 }) {
-  const navigateRef = useRef(onNavigateWikilink)
-  useEffect(() => { navigateRef.current = onNavigateWikilink }, [onNavigateWikilink])
   const { cssVars } = useEditorTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const onImageUrl = useInsertImageCallback(editor)
   const { isDragOver } = useImageDrop({ containerRef, onImageUrl, vaultPath })
+  useEditorLinkActivation(containerRef, onNavigateWikilink)
 
   const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!editable) return
@@ -53,22 +53,6 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   useEffect(() => {
     _wikilinkEntriesRef.current = entries
   }, [entries])
-
-  useEffect(() => {
-    const container = document.querySelector('.editor__blocknote-container')
-    if (!container) return
-    const handler = (e: MouseEvent) => {
-      const wikilink = (e.target as HTMLElement).closest('.wikilink')
-      if (wikilink) {
-        e.preventDefault()
-        e.stopPropagation()
-        const target = (wikilink as HTMLElement).dataset.target
-        if (target) navigateRef.current(target)
-      }
-    }
-    container.addEventListener('click', handler as EventListener, true)
-    return () => container.removeEventListener('click', handler as EventListener, true)
-  }, [editor])
 
   const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
 

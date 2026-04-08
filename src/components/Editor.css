@@ -1,6 +1,5 @@
 /* Wikilink inline content — color is set via inline style per note type */
 .wikilink {
-  cursor: pointer;
   text-decoration: underline;
   text-decoration-style: dotted;
   text-underline-offset: 2px;

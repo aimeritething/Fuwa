@@ -214,6 +214,7 @@
 .editor__blocknote-container .bn-editor a {
   color: var(--inline-styles-link-color);
   text-decoration: var(--inline-styles-link-text-decoration);
+  cursor: text;
 }
 
 /* --- Wikilinks (override from Editor.css with theme vars) --- */
@@ -221,7 +222,12 @@
   color: var(--inline-styles-wikilink-color);
   text-decoration: var(--inline-styles-wikilink-text-decoration);
   border-bottom: var(--inline-styles-wikilink-border-bottom);
-  cursor: var(--inline-styles-wikilink-cursor);
+  cursor: text;
+}
+
+.editor__blocknote-container[data-follow-links] .bn-editor a,
+.editor__blocknote-container[data-follow-links] .wikilink {
+  cursor: pointer;
 }
 
 /* --- Code blocks --- */

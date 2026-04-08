@@ -49,7 +49,7 @@ test.describe('Wikilink insertion and navigation', () => {
     expect(target).toBeTruthy()
   })
 
-  test('clicking an inserted wikilink navigates to the note', async ({ page }) => {
+  test('@smoke Cmd+clicking an inserted wikilink navigates to the note', async ({ page }) => {
     // Insert a wikilink via autocomplete
     const editor = page.locator('.bn-editor')
     await expect(editor).toBeVisible({ timeout: 5000 })
@@ -69,15 +69,17 @@ test.describe('Wikilink insertion and navigation', () => {
     await expect(wikilink).toBeVisible()
     const targetTitle = await wikilink.textContent()
 
-    // Click the wikilink to navigate
-    await wikilink.click()
+    // Cmd+click the wikilink to navigate
+    await wikilink.click({ modifiers: ['Meta'] })
     await page.waitForTimeout(1000)
 
-    // The editor should now show the target note
-    const heading = page.locator('.bn-editor h1')
-    await expect(heading).toBeVisible({ timeout: 3000 })
-    const headingText = await heading.textContent()
-    // The heading should match the beginning of the target note's title
-    expect(headingText?.toLowerCase()).toContain(targetTitle?.toLowerCase().substring(0, 4) || '')
+    const expected = targetTitle?.substring(0, 4) ?? ''
+    await expect.poll(async () => {
+      const titleInput = page.getByTestId('title-field-input')
+      if (await titleInput.count()) return await titleInput.inputValue()
+      const heading = page.locator('.bn-editor h1').first()
+      if (await heading.count()) return (await heading.textContent()) ?? ''
+      return ''
+    }, { timeout: 5000 }).toContain(expected)
   })
 })
