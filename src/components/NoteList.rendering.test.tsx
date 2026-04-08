@@ -193,6 +193,83 @@ describe('NoteList rendering', () => {
     expect(onUpdateInboxNoteListProperties).toHaveBeenCalledWith(['Priority', 'Owner'])
   })
 
+  it('shows status in the type column picker when at least one note has it set', () => {
+    const entries = [
+      makeTypeDefinition('Book'),
+      makeEntry({
+        path: '/vault/book.md',
+        filename: 'book.md',
+        title: 'Book Note',
+        isA: 'Book',
+        status: 'Active',
+        createdAt: 1700000000,
+      }),
+    ]
+
+    renderNoteList({
+      entries,
+      selection: { kind: 'sectionGroup', type: 'Book' },
+      onUpdateTypeSort: () => undefined,
+    })
+
+    act(() => {
+      openNoteListPropertiesPicker('type')
+    })
+
+    expect(screen.getByTestId('list-properties-popover')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'status' })).toBeInTheDocument()
+  })
+
+  it('keeps blank statuses out of the type column picker', () => {
+    const entries = [
+      makeTypeDefinition('Book'),
+      makeEntry({
+        path: '/vault/book.md',
+        filename: 'book.md',
+        title: 'Book Note',
+        isA: 'Book',
+        status: '',
+        properties: { Owner: 'Luca' },
+        createdAt: 1700000000,
+      }),
+    ]
+
+    renderNoteList({
+      entries,
+      selection: { kind: 'sectionGroup', type: 'Book' },
+      onUpdateTypeSort: () => undefined,
+    })
+
+    act(() => {
+      openNoteListPropertiesPicker('type')
+    })
+
+    expect(screen.getByTestId('list-properties-popover')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Owner' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'status' })).not.toBeInTheDocument()
+  })
+
+  it('renders status as a note-list chip when a type displays it', () => {
+    const entries = [
+      makeTypeDefinition('Book', ['status']),
+      makeEntry({
+        path: '/vault/book.md',
+        filename: 'book.md',
+        title: 'Book Note',
+        isA: 'Book',
+        status: 'Active',
+        createdAt: 1700000000,
+      }),
+    ]
+
+    renderNoteList({
+      entries,
+      selection: { kind: 'sectionGroup', type: 'Book' },
+    })
+
+    expect(screen.getByTestId('property-chips')).toHaveTextContent('Active')
+  })
+
   it('uses inbox overrides when configured', () => {
     const entries = [
       makeTypeDefinition('Book', ['Priority']),

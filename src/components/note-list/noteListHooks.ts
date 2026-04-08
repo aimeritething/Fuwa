@@ -288,9 +288,14 @@ export function useVisibleNotesSync({ visibleNotesRef, isEntityView, searched, s
 
 // --- useListPropertyPicker ---
 
+function hasScalarListPropertyValue(value: string | null): boolean {
+  return value !== null && value.trim() !== ''
+}
+
 function collectAvailableProperties(entries: VaultEntry[]): string[] {
   const keys = new Set<string>()
   for (const entry of entries) {
+    if (hasScalarListPropertyValue(entry.status)) keys.add('status')
     for (const key of Object.keys(entry.properties ?? {})) keys.add(key)
     for (const key of Object.keys(entry.relationships ?? {})) keys.add(key)
   }
@@ -322,6 +327,58 @@ export interface NoteListPropertyPicker {
   currentDisplay: string[]
   onSave: (value: string[] | null) => void
   triggerTitle: string
+}
+
+interface BuildInboxPropertyPickerParams {
+  isInboxView: boolean
+  onUpdateInboxNoteListProperties?: (value: string[] | null) => void
+  inboxAvailableProperties: string[]
+  hasCustomInboxProperties: boolean
+  inboxNoteListProperties?: string[] | null
+  inboxDefaultDisplay: string[]
+}
+
+function buildInboxPropertyPicker({
+  isInboxView,
+  onUpdateInboxNoteListProperties,
+  inboxAvailableProperties,
+  hasCustomInboxProperties,
+  inboxNoteListProperties,
+  inboxDefaultDisplay,
+}: BuildInboxPropertyPickerParams): NoteListPropertyPicker | null {
+  if (!isInboxView || !onUpdateInboxNoteListProperties) return null
+
+  return {
+    scope: 'inbox',
+    availableProperties: inboxAvailableProperties,
+    currentDisplay: hasCustomInboxProperties ? inboxNoteListProperties ?? [] : inboxDefaultDisplay,
+    onSave: onUpdateInboxNoteListProperties,
+    triggerTitle: 'Customize Inbox columns',
+  }
+}
+
+interface BuildTypePropertyPickerParams {
+  isSectionGroup: boolean
+  typeDocument: VaultEntry | null
+  onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
+  typeAvailableProperties: string[]
+}
+
+function buildTypePropertyPicker({
+  isSectionGroup,
+  typeDocument,
+  onUpdateTypeSort,
+  typeAvailableProperties,
+}: BuildTypePropertyPickerParams): NoteListPropertyPicker | null {
+  if (!isSectionGroup || !typeDocument || !onUpdateTypeSort) return null
+
+  return {
+    scope: 'type',
+    availableProperties: typeAvailableProperties,
+    currentDisplay: typeDocument.listPropertiesDisplay ?? [],
+    onSave: (value: string[] | null) => onUpdateTypeSort(typeDocument.path, '_list_properties_display', value),
+    triggerTitle: 'Customize columns',
+  }
 }
 
 interface UseListPropertyPickerParams {
@@ -368,27 +425,19 @@ export function useListPropertyPicker({
   const inboxDisplayOverride = isInboxView && hasCustomInboxProperties ? inboxNoteListProperties : null
 
   const propertyPicker = useMemo<NoteListPropertyPicker | null>(() => {
-    if (isInboxView && onUpdateInboxNoteListProperties) {
-      return {
-        scope: 'inbox',
-        availableProperties: inboxAvailableProperties,
-        currentDisplay: hasCustomInboxProperties ? inboxNoteListProperties ?? [] : inboxDefaultDisplay,
-        onSave: onUpdateInboxNoteListProperties,
-        triggerTitle: 'Customize Inbox columns',
-      }
-    }
-
-    if (isSectionGroup && typeDocument && onUpdateTypeSort) {
-      return {
-        scope: 'type',
-        availableProperties: typeAvailableProperties,
-        currentDisplay: typeDocument.listPropertiesDisplay ?? [],
-        onSave: (value: string[] | null) => onUpdateTypeSort(typeDocument.path, '_list_properties_display', value),
-        triggerTitle: 'Customize columns',
-      }
-    }
-
-    return null
+    return buildInboxPropertyPicker({
+      isInboxView,
+      onUpdateInboxNoteListProperties,
+      inboxAvailableProperties,
+      hasCustomInboxProperties,
+      inboxNoteListProperties,
+      inboxDefaultDisplay,
+    }) ?? buildTypePropertyPicker({
+      isSectionGroup,
+      typeDocument,
+      onUpdateTypeSort,
+      typeAvailableProperties,
+    })
   }, [
     hasCustomInboxProperties,
     inboxAvailableProperties,

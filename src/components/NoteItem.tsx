@@ -82,6 +82,10 @@ function resolveChipValues(
   allEntries: VaultEntry[],
   typeEntryMap: Record<string, VaultEntry>,
 ): PropertyChipValue[] {
+  if (propName.toLowerCase() === 'status') {
+    const formatted = formatChipValue(entry.status)
+    return formatted ? [{ label: formatted, noteIcon: null, typeIcon: null }] : []
+  }
   // Check relationships first (wikilink values)
   const relKey = Object.keys(entry.relationships).find((k) => k.toLowerCase() === propName.toLowerCase())
   if (relKey) {
