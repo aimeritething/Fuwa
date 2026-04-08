@@ -69,14 +69,21 @@ describe('useEditorSaveWithLinks', () => {
     act(() => {
       result.current.handleContentChange('/note.md', 'text [[Alpha]] more text')
     })
-    expect(updateEntry).toHaveBeenCalledTimes(1)
+    expect(updateEntry).toHaveBeenCalledTimes(2)
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
+      outgoingLinks: ['Alpha'],
+    })
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
+      title: 'Note',
+      hasH1: false,
+    })
 
     // Same link, different surrounding text
     act(() => {
       result.current.handleContentChange('/note.md', 'different text [[Alpha]] still')
     })
     // updateEntry should NOT have been called again — links unchanged
-    expect(updateEntry).toHaveBeenCalledTimes(1)
+    expect(updateEntry).toHaveBeenCalledTimes(2)
   })
 
   it('handleContentChange calls updateEntry again when links change on subsequent edit', () => {
@@ -85,32 +92,37 @@ describe('useEditorSaveWithLinks', () => {
     act(() => {
       result.current.handleContentChange('/note.md', 'see [[Alpha]]')
     })
-    expect(updateEntry).toHaveBeenCalledTimes(1)
+    expect(updateEntry).toHaveBeenCalledTimes(2)
     expect(updateEntry).toHaveBeenCalledWith('/note.md', {
       outgoingLinks: ['Alpha'],
+    })
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
+      title: 'Note',
+      hasH1: false,
     })
 
     // Now links change
     act(() => {
       result.current.handleContentChange('/note.md', 'see [[Alpha]] and [[Beta]]')
     })
-    expect(updateEntry).toHaveBeenCalledTimes(2)
+    expect(updateEntry).toHaveBeenCalledTimes(3)
     expect(updateEntry).toHaveBeenLastCalledWith('/note.md', {
       outgoingLinks: ['Alpha', 'Beta'],
     })
   })
 
-  it('handleContentChange calls updateEntry with empty links on first call with no links', () => {
+  it('handleContentChange updates the fallback filename title on first call with no links', () => {
     const { result } = renderHookWithLinks()
 
-    // First call with no links — prevLinksKeyRef starts as '' and extracted key is also ''
-    // but since they're equal, updateEntry should NOT be called
     act(() => {
       result.current.handleContentChange('/note.md', 'plain text no links')
     })
 
-    // The initial ref is '' and no-links key is also '' — no change
-    expect(updateEntry).not.toHaveBeenCalled()
+    expect(updateEntry).toHaveBeenCalledTimes(1)
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
+      title: 'Note',
+      hasH1: false,
+    })
   })
 
   it('handles pipe-separated wikilinks (display text syntax)', () => {
@@ -132,7 +144,12 @@ describe('useEditorSaveWithLinks', () => {
       result.current.handleContentChange('/note.md', '---\ntype: Project\nstatus: Active\n---\nBody')
     })
 
-    expect(updateEntry).toHaveBeenCalledWith('/note.md', { isA: 'Project', status: 'Active' })
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
+      isA: 'Project',
+      status: 'Active',
+      title: 'Note',
+      hasH1: false,
+    })
   })
 
   it('handleContentChange does NOT call updateEntry for frontmatter when unchanged', () => {
@@ -153,12 +170,33 @@ describe('useEditorSaveWithLinks', () => {
     act(() => {
       result.current.handleContentChange('/note.md', '---\ntype: Essay\n---\nBody')
     })
-    expect(updateEntry).toHaveBeenCalledWith('/note.md', { isA: 'Essay' })
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
+      isA: 'Essay',
+      title: 'Note',
+      hasH1: false,
+    })
 
     act(() => {
       result.current.handleContentChange('/note.md', '---\ntype: Note\n---\nBody')
     })
-    expect(updateEntry).toHaveBeenCalledWith('/note.md', { isA: 'Note' })
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
+      isA: 'Note',
+      title: 'Note',
+      hasH1: false,
+    })
+  })
+
+  it.each([
+    ['/old-title.md', '# Renamed Note\n\nBody', { title: 'Renamed Note', hasH1: true }],
+    ['/renamed-note.md', 'Body without a heading', { title: 'Renamed Note', hasH1: false }],
+  ])('handleContentChange derives the displayed title for %s', (path, content, expected) => {
+    const { result } = renderHookWithLinks()
+
+    act(() => {
+      result.current.handleContentChange(path, content)
+    })
+
+    expect(updateEntry).toHaveBeenCalledWith(path, expected)
   })
 
   it('spreads all properties from useEditorSave onto the return value', () => {

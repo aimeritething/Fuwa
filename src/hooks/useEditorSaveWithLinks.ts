@@ -2,6 +2,7 @@ import { useCallback, useRef } from 'react'
 import { useEditorSave } from './useEditorSave'
 import { extractOutgoingLinks, extractSnippet, countWords } from '../utils/wikilinks'
 import { contentToEntryPatch } from './frontmatterOps'
+import { deriveDisplayTitleState } from '../utils/noteTitle'
 import type { VaultEntry } from '../types'
 
 export function useEditorSaveWithLinks(config: {
@@ -31,7 +32,16 @@ export function useEditorSaveWithLinks(config: {
       prevLinksKeyRef.current = key
       updateEntry(path, { outgoingLinks: links })
     }
-    const fmPatch = contentToEntryPatch(content)
+    const frontmatterPatch = contentToEntryPatch(content)
+    const filename = path.split('/').pop() ?? path
+    const fmPatch = {
+      ...frontmatterPatch,
+      ...deriveDisplayTitleState(
+        content,
+        filename,
+        typeof frontmatterPatch.title === 'string' ? frontmatterPatch.title : null,
+      ),
+    }
     const fmKey = JSON.stringify(fmPatch)
     if (fmKey !== prevFmKeyRef.current) {
       prevFmKeyRef.current = fmKey

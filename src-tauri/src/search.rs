@@ -88,11 +88,8 @@ pub fn search_vault(
         };
 
         let content_lower = content.to_lowercase();
-        let title = path
-            .file_stem()
-            .and_then(|s| s.to_str())
-            .unwrap_or("")
-            .to_string();
+        let filename = path.file_name().and_then(|value| value.to_str()).unwrap_or("");
+        let title = crate::vault::derive_markdown_title_from_content(&content, filename);
         let title_lower = title.to_lowercase();
 
         if !title_lower.contains(&query_lower) && !content_lower.contains(&query_lower) {
@@ -132,6 +129,8 @@ pub fn search_vault(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use tempfile::Builder;
 
     #[test]
     fn test_extract_snippet_basic() {
@@ -165,5 +164,24 @@ mod tests {
         let content = format!("start\n{}keyword{}\nend", long_line, long_line);
         let snippet = extract_snippet(&content, "keyword");
         assert!(snippet.len() <= 203); // 200 + "…" (3 bytes UTF-8)
+    }
+
+    #[test]
+    fn test_search_vault_uses_h1_for_result_title() {
+        let dir = Builder::new()
+            .prefix("search-vault-")
+            .tempdir_in(std::env::current_dir().unwrap())
+            .unwrap();
+        let note_path = dir.path().join("legacy-name.md");
+        fs::write(
+            &note_path,
+            "# Updated Display Title\n\nThe body contains keyword for search.",
+        )
+        .unwrap();
+
+        let response = search_vault(dir.path().to_str().unwrap(), "keyword", "keyword", 10).unwrap();
+
+        assert_eq!(response.results.len(), 1);
+        assert_eq!(response.results[0].title, "Updated Display Title");
     }
 }

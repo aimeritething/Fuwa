@@ -40,6 +40,13 @@ use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
 
+pub(crate) fn derive_markdown_title_from_content(content: &str, filename: &str) -> String {
+    let matter = Matter::<YAML>::new();
+    let parsed = matter.parse(content);
+    let (frontmatter, _, _) = extract_fm_and_rels(parsed.data, content);
+    extract_title(frontmatter.title.as_deref(), content, filename)
+}
+
 /// Parse a single markdown file into a VaultEntry.
 ///
 /// If `git_dates` is provided, those timestamps override filesystem metadata
@@ -57,7 +64,7 @@ pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<Vault
     let parsed = matter.parse(&content);
     let (frontmatter, mut relationships, properties) = extract_fm_and_rels(parsed.data, &content);
 
-    let title = extract_title(frontmatter.title.as_deref(), &content, &filename);
+    let title = derive_markdown_title_from_content(&content, &filename);
     let has_h1 = parsing::extract_h1_title(&content).is_some();
     let snippet = extract_snippet(&content);
     let word_count = count_body_words(&content);
