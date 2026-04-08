@@ -1,0 +1,101 @@
+import { useState, useMemo, useEffect, useCallback, type RefObject } from 'react'
+import type { VaultEntry } from '../../types'
+import { buildTypeEntryMap } from '../../utils/typeColors'
+import { buildDynamicSections, sortSections } from '../../utils/sidebarSections'
+
+const SIDEBAR_COLLAPSED_KEY = 'laputa:sidebar-collapsed'
+
+export type SidebarGroupKey = 'favorites' | 'views' | 'sections' | 'folders'
+
+export function useOutsideClick(ref: RefObject<HTMLElement | null>, isOpen: boolean, onClose: () => void) {
+  useEffect(() => {
+    if (!isOpen) return
+    const handler = (event: MouseEvent) => {
+      if (ref.current && !ref.current.contains(event.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [ref, isOpen, onClose])
+}
+
+export function useSidebarSections(entries: VaultEntry[]) {
+  const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
+  const allSectionGroups = useMemo(() => {
+    const sections = buildDynamicSections(entries, typeEntryMap)
+    return sortSections(sections, typeEntryMap)
+  }, [entries, typeEntryMap])
+  const visibleSections = useMemo(
+    () => allSectionGroups.filter((group) => typeEntryMap[group.type]?.visible !== false),
+    [allSectionGroups, typeEntryMap],
+  )
+  const sectionIds = useMemo(() => visibleSections.map((group) => group.type), [visibleSections])
+  return { typeEntryMap, allSectionGroups, visibleSections, sectionIds }
+}
+
+function loadCollapsedState(): Record<SidebarGroupKey, boolean> {
+  try {
+    const raw = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+    if (raw) return JSON.parse(raw)
+  } catch {
+    // Ignore localStorage failures and fall back to defaults.
+  }
+  return { favorites: false, views: false, sections: false, folders: false }
+}
+
+export function useSidebarCollapsed() {
+  const [collapsed, setCollapsed] = useState<Record<SidebarGroupKey, boolean>>(loadCollapsedState)
+
+  const toggle = useCallback((key: SidebarGroupKey) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [key]: !prev[key] }
+      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, JSON.stringify(next))
+      return next
+    })
+  }, [])
+
+  return { collapsed, toggle }
+}
+
+export function useEntryCounts(entries: VaultEntry[]) {
+  return useMemo(() => {
+    let active = 0
+    let archived = 0
+    for (const entry of entries) {
+      if (entry.archived) archived++
+      else active++
+    }
+    return { activeCount: active, archivedCount: archived }
+  }, [entries])
+}
+
+export function computeReorder(sectionIds: string[], activeId: string, overId: string): string[] | null {
+  const oldIndex = sectionIds.indexOf(activeId)
+  const newIndex = sectionIds.indexOf(overId)
+  if (oldIndex === -1 || newIndex === -1) return null
+  const reordered = [...sectionIds]
+  reordered.splice(oldIndex, 1)
+  reordered.splice(newIndex, 0, activeId)
+  return reordered
+}
+
+function buildCustomizeArgs(typeEntry: VaultEntry, prop: 'icon' | 'color', value: string): [string, string] {
+  return [
+    prop === 'icon' ? value : (typeEntry.icon ?? 'file-text'),
+    prop === 'color' ? value : (typeEntry.color ?? 'blue'),
+  ]
+}
+
+export function applyCustomization(
+  target: string | null,
+  typeEntryMap: Record<string, VaultEntry>,
+  onCustomizeType: ((typeName: string, icon: string, color: string) => void) | undefined,
+  prop: 'icon' | 'color',
+  value: string,
+): void {
+  if (!target || !onCustomizeType) return
+  const typeEntry = typeEntryMap[target]
+  const [icon, color] = typeEntry
+    ? buildCustomizeArgs(typeEntry, prop, value)
+    : [prop === 'icon' ? value : 'file-text', prop === 'color' ? value : 'blue']
+  onCustomizeType(target, icon, color)
+}

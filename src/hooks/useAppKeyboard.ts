@@ -1,131 +1,20 @@
-import { useEffect } from 'react'
-import type { ViewMode } from './useViewMode'
-import { trackEvent } from '../lib/telemetry'
+import { useEffect, useEffectEvent } from 'react'
+import { handleAppKeyboardEvent } from './appKeyboardShortcuts'
+import type { KeyboardActions } from './appKeyboardShortcuts'
 
-interface KeyboardActions {
-  onQuickOpen: () => void
-  onCommandPalette: () => void
-  onSearch: () => void
-  onCreateNote: () => void
-  onOpenDailyNote: () => void
-  onSave: () => void
-  onOpenSettings: () => void
-  onDeleteNote: (path: string) => void
-  onArchiveNote: (path: string) => void
-  onSetViewMode: (mode: ViewMode) => void
-  onZoomIn: () => void
-  onZoomOut: () => void
-  onZoomReset: () => void
-  onGoBack?: () => void
-  onGoForward?: () => void
-  onToggleAIChat?: () => void
-  onToggleRawEditor?: () => void
-  onToggleInspector?: () => void
-  onToggleFavorite?: (path: string) => void
-  onOpenInNewWindow?: () => void
-  activeTabPathRef: React.MutableRefObject<string | null>
-}
+export type { KeyboardActions } from './appKeyboardShortcuts'
 
-type ShortcutHandler = () => void
+export function useAppKeyboard(actions: KeyboardActions) {
+  const onKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    handleAppKeyboardEvent(actions, event)
+  })
 
-const TEXT_EDITING_KEYS = new Set(['Backspace', 'Delete'])
-
-function isTextInputFocused(): boolean {
-  const tag = document.activeElement?.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA'
-}
-
-const VIEW_MODE_KEYS: Record<string, ViewMode> = {
-  '1': 'editor-only',
-  '2': 'editor-list',
-  '3': 'all',
-}
-
-function isCmdOnly(e: KeyboardEvent): boolean {
-  return (e.metaKey || e.ctrlKey) && !e.altKey
-}
-
-function handleViewModeKey(e: KeyboardEvent, onSetViewMode: (m: ViewMode) => void): boolean {
-  if (!isCmdOnly(e)) return false
-  const mode = VIEW_MODE_KEYS[e.key]
-  if (!mode) return false
-  e.preventDefault()
-  onSetViewMode(mode)
-  return true
-}
-
-function handleCmdKey(e: KeyboardEvent, keyMap: Record<string, ShortcutHandler>): boolean {
-  const mod = e.metaKey || e.ctrlKey
-  if (!mod) return false
-  const handler = keyMap[e.key]
-  if (!handler) return false
-  if (TEXT_EDITING_KEYS.has(e.key) && isTextInputFocused()) return false
-  e.preventDefault()
-  handler()
-  return true
-}
-
-export function useAppKeyboard({
-  onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onDeleteNote, onArchiveNote,
-  onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onToggleInspector, onToggleFavorite, onOpenInNewWindow, activeTabPathRef,
-}: KeyboardActions) {
   useEffect(() => {
-    const withActiveTab = (fn: (path: string) => void): ShortcutHandler => () => {
-      const path = activeTabPathRef.current
-      if (path) fn(path)
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      onKeyDown(event)
     }
 
-    const cmdKeyMap: Record<string, ShortcutHandler> = {
-      k: onCommandPalette,
-      p: onQuickOpen,
-      n: onCreateNote,
-      j: onOpenDailyNote,
-      s: onSave,
-      ',': onOpenSettings,
-      d: withActiveTab((path) => onToggleFavorite?.(path)),
-      e: withActiveTab(onArchiveNote),
-      Backspace: withActiveTab(onDeleteNote),
-      Delete: withActiveTab(onDeleteNote),
-      '[': () => onGoBack?.(),
-      ']': () => onGoForward?.(),
-      '=': onZoomIn,
-      '+': onZoomIn,
-      '-': onZoomOut,
-      '0': onZoomReset,
-      '\\': () => onToggleRawEditor?.(),
-    }
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Cmd+Shift+L: toggle AI panel
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && !e.altKey && (e.key === 'l' || e.key === 'L')) {
-        e.preventDefault()
-        onToggleAIChat?.()
-        return
-      }
-      // Cmd+Shift+F: full-text search (distinct from Cmd+F browser find)
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
-        e.preventDefault()
-        trackEvent('search_used')
-        onSearch()
-        return
-      }
-      // Cmd+Shift+I: toggle properties/inspector panel
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'i' || e.key === 'I')) {
-        e.preventDefault()
-        onToggleInspector?.()
-        return
-      }
-      // Cmd+Shift+O: open active note in new window
-      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'o' || e.key === 'O')) {
-        e.preventDefault()
-        onOpenInNewWindow?.()
-        return
-      }
-      if (!handleViewModeKey(e, onSetViewMode)) {
-        handleCmdKey(e, cmdKeyMap)
-      }
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onQuickOpen, onCommandPalette, onSearch, onCreateNote, onOpenDailyNote, onSave, onOpenSettings, onDeleteNote, onArchiveNote, activeTabPathRef, onSetViewMode, onZoomIn, onZoomOut, onZoomReset, onGoBack, onGoForward, onToggleAIChat, onToggleRawEditor, onToggleInspector, onOpenInNewWindow])
+    window.addEventListener('keydown', handleWindowKeyDown)
+    return () => window.removeEventListener('keydown', handleWindowKeyDown)
+  }, [])
 }

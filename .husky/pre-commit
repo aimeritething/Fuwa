@@ -50,7 +50,7 @@ fi
 
 # Unit tests
 echo "  → tests..."
-pnpm test --run --silent
+pnpm exec vitest run --silent
 
 echo "✅ Pre-commit passed"
 

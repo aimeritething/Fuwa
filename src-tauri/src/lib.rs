@@ -56,7 +56,7 @@ fn run_startup_tasks() {
 }
 
 #[cfg(desktop)]
-fn spawn_ws_bridge(app: &mut tauri::App) {
+fn spawn_ws_bridge<R: tauri::Runtime>(app: &mut tauri::App<R>) {
     use tauri::Manager;
     let vault_path = dirs::home_dir()
         .map(|h| h.join("Laputa"))
@@ -71,6 +71,140 @@ fn spawn_ws_bridge(app: &mut tauri::App) {
     }
 }
 
+fn setup_common_plugins<R: tauri::Runtime>(
+    app: &mut tauri::App<R>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    if cfg!(debug_assertions) {
+        app.handle().plugin(
+            tauri_plugin_log::Builder::default()
+                .level(log::LevelFilter::Info)
+                .build(),
+        )?;
+    }
+
+    app.handle().plugin(tauri_plugin_dialog::init())?;
+    Ok(())
+}
+
+#[cfg(desktop)]
+fn setup_desktop_plugins<R: tauri::Runtime>(
+    app: &mut tauri::App<R>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    app.handle()
+        .plugin(tauri_plugin_updater::Builder::new().build())?;
+    app.handle().plugin(tauri_plugin_process::init())?;
+    app.handle().plugin(tauri_plugin_opener::init())?;
+    menu::setup_menu(app)?;
+    Ok(())
+}
+
+fn setup_app<R: tauri::Runtime>(
+    app: &mut tauri::App<R>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    setup_common_plugins(app)?;
+
+    #[cfg(desktop)]
+    setup_desktop_plugins(app)?;
+
+    if telemetry::init_sentry_from_settings() {
+        log::info!("Sentry initialized (crash reporting enabled)");
+    }
+
+    #[cfg(desktop)]
+    {
+        run_startup_tasks();
+        spawn_ws_bridge(app);
+    }
+
+    Ok(())
+}
+
+fn configure_builder<R: tauri::Runtime>(builder: tauri::Builder<R>) -> tauri::Builder<R> {
+    builder.setup(setup_app).invoke_handler(tauri::generate_handler![
+        commands::list_vault,
+        commands::list_vault_folders,
+        commands::get_note_content,
+        commands::save_note_content,
+        commands::update_frontmatter,
+        commands::delete_frontmatter_property,
+        commands::rename_note,
+        commands::auto_rename_untitled,
+        commands::detect_renames,
+        commands::update_wikilinks_for_renames,
+        commands::get_file_history,
+        commands::get_modified_files,
+        commands::get_file_diff,
+        commands::get_file_diff_at_commit,
+        commands::get_vault_pulse,
+        commands::git_commit,
+        commands::get_build_number,
+        commands::get_last_commit_info,
+        commands::git_pull,
+        commands::git_push,
+        commands::git_remote_status,
+        commands::get_conflict_files,
+        commands::get_conflict_mode,
+        commands::git_resolve_conflict,
+        commands::git_commit_conflict_resolution,
+        commands::git_discard_file,
+        commands::is_git_repo,
+        commands::init_git_repo,
+        commands::check_claude_cli,
+        commands::stream_claude_chat,
+        commands::stream_claude_agent,
+        commands::reload_vault,
+        commands::reload_vault_entry,
+        commands::sync_note_title,
+        commands::save_image,
+        commands::copy_image_to_vault,
+        commands::delete_note,
+        commands::batch_delete_notes,
+        commands::migrate_is_a_to_type,
+        commands::create_vault_folder,
+        commands::batch_archive_notes,
+        commands::get_settings,
+        commands::update_menu_state,
+        commands::save_settings,
+        commands::load_vault_list,
+        commands::save_vault_list,
+        commands::github_list_repos,
+        commands::github_create_repo,
+        commands::clone_repo,
+        commands::github_device_flow_start,
+        commands::github_device_flow_poll,
+        commands::github_get_user,
+        commands::search_vault,
+        commands::create_empty_vault,
+        commands::create_getting_started_vault,
+        commands::check_vault_exists,
+        commands::get_default_vault_path,
+        commands::register_mcp_tools,
+        commands::check_mcp_status,
+        commands::repair_vault,
+        commands::reinit_telemetry,
+        commands::list_views,
+        commands::save_view_cmd,
+        commands::delete_view_cmd
+    ])
+}
+
+#[cfg(desktop)]
+fn handle_run_event<R: tauri::Runtime>(
+    app_handle: &tauri::AppHandle<R>,
+    event: &tauri::RunEvent,
+) {
+    use tauri::Manager;
+
+    if let tauri::RunEvent::Exit = event {
+        let state: tauri::State<'_, WsBridgeChild> = app_handle.state();
+        let mut guard = state.0.lock().unwrap();
+        if let Some(ref mut child) = *guard {
+            let _ = child.kill();
+            log::info!("ws-bridge child process killed on exit");
+        }
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -78,119 +212,11 @@ pub fn run() {
     #[cfg(desktop)]
     let builder = builder.manage(WsBridgeChild(Mutex::new(None)));
 
-    builder
-        .setup(|app| {
-            if cfg!(debug_assertions) {
-                app.handle().plugin(
-                    tauri_plugin_log::Builder::default()
-                        .level(log::LevelFilter::Info)
-                        .build(),
-                )?;
-            }
-
-            app.handle().plugin(tauri_plugin_dialog::init())?;
-
-            #[cfg(desktop)]
-            {
-                app.handle()
-                    .plugin(tauri_plugin_updater::Builder::new().build())?;
-                app.handle().plugin(tauri_plugin_process::init())?;
-                app.handle().plugin(tauri_plugin_opener::init())?;
-                menu::setup_menu(app)?;
-            }
-
-            if telemetry::init_sentry_from_settings() {
-                log::info!("Sentry initialized (crash reporting enabled)");
-            }
-
-            #[cfg(desktop)]
-            {
-                run_startup_tasks();
-                spawn_ws_bridge(app);
-            }
-
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![
-            commands::list_vault,
-            commands::list_vault_folders,
-            commands::get_note_content,
-            commands::save_note_content,
-            commands::update_frontmatter,
-            commands::delete_frontmatter_property,
-            commands::rename_note,
-            commands::auto_rename_untitled,
-            commands::detect_renames,
-            commands::update_wikilinks_for_renames,
-            commands::get_file_history,
-            commands::get_modified_files,
-            commands::get_file_diff,
-            commands::get_file_diff_at_commit,
-            commands::get_vault_pulse,
-            commands::git_commit,
-            commands::get_build_number,
-            commands::get_last_commit_info,
-            commands::git_pull,
-            commands::git_push,
-            commands::git_remote_status,
-            commands::get_conflict_files,
-            commands::get_conflict_mode,
-            commands::git_resolve_conflict,
-            commands::git_commit_conflict_resolution,
-            commands::git_discard_file,
-            commands::is_git_repo,
-            commands::init_git_repo,
-            commands::check_claude_cli,
-            commands::stream_claude_chat,
-            commands::stream_claude_agent,
-            commands::reload_vault,
-            commands::reload_vault_entry,
-            commands::sync_note_title,
-            commands::save_image,
-            commands::copy_image_to_vault,
-            commands::delete_note,
-            commands::batch_delete_notes,
-            commands::migrate_is_a_to_type,
-            commands::create_vault_folder,
-            commands::batch_archive_notes,
-            commands::get_settings,
-            commands::update_menu_state,
-            commands::save_settings,
-            commands::load_vault_list,
-            commands::save_vault_list,
-            commands::github_list_repos,
-            commands::github_create_repo,
-            commands::clone_repo,
-            commands::github_device_flow_start,
-            commands::github_device_flow_poll,
-            commands::github_get_user,
-            commands::search_vault,
-            commands::create_empty_vault,
-            commands::create_getting_started_vault,
-            commands::check_vault_exists,
-            commands::get_default_vault_path,
-            commands::register_mcp_tools,
-            commands::check_mcp_status,
-            commands::repair_vault,
-            commands::reinit_telemetry,
-            commands::list_views,
-            commands::save_view_cmd,
-            commands::delete_view_cmd
-        ])
+    configure_builder(builder)
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|_app_handle, _event| {
+        .run(|app_handle, event| {
             #[cfg(desktop)]
-            {
-                use tauri::Manager;
-                if let tauri::RunEvent::Exit = _event {
-                    let state: tauri::State<'_, WsBridgeChild> = _app_handle.state();
-                    let mut guard = state.0.lock().unwrap();
-                    if let Some(ref mut child) = *guard {
-                        let _ = child.kill();
-                        log::info!("ws-bridge child process killed on exit");
-                    }
-                }
-            }
+            handle_run_event(app_handle, &event);
         });
 }
