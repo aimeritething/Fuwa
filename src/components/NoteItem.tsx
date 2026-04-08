@@ -1,4 +1,4 @@
-import { createElement, useMemo, useState, type ComponentType, type SVGAttributes } from 'react'
+import { useMemo, type ComponentType, type SVGAttributes } from 'react'
 import type { VaultEntry, NoteStatus } from '../types'
 import { cn } from '@/lib/utils'
 import {
@@ -7,11 +7,10 @@ import {
   File, FileDashed,
 } from '@phosphor-icons/react'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
-import { findIcon, resolveIcon } from '../utils/iconRegistry'
+import { resolveIcon } from '../utils/iconRegistry'
 import { relativeDate, getDisplayDate } from '../utils/noteListHelpers'
-import { resolveNoteIcon } from '../utils/noteIcon'
-import { resolveEntry, wikilinkDisplay, wikilinkTarget } from '../utils/wikilink'
 import { NoteTitleIcon } from './NoteTitleIcon'
+import { PropertyChips } from './note-item/PropertyChips'
 
 const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>> = {
   Project: Wrench,
@@ -60,134 +59,6 @@ function StateBadge({ archived }: { archived: boolean }) {
   return null
 }
 
-function formatChipValue(value: unknown): string | null {
-  if (value === null || value === undefined || value === '') return null
-  const s = String(value)
-  // URL: show only hostname
-  try {
-    if (s.startsWith('http://') || s.startsWith('https://')) return new URL(s).hostname
-  } catch { /* not a URL */ }
-  return s.length > 40 ? s.slice(0, 37) + '…' : s
-}
-
-interface PropertyChipValue {
-  label: string
-  noteIcon: string | null
-  typeIcon: string | null
-}
-
-function resolveChipValues(
-  entry: VaultEntry,
-  propName: string,
-  allEntries: VaultEntry[],
-  typeEntryMap: Record<string, VaultEntry>,
-): PropertyChipValue[] {
-  if (propName.toLowerCase() === 'status') {
-    const formatted = formatChipValue(entry.status)
-    return formatted ? [{ label: formatted, noteIcon: null, typeIcon: null }] : []
-  }
-  // Check relationships first (wikilink values)
-  const relKey = Object.keys(entry.relationships).find((k) => k.toLowerCase() === propName.toLowerCase())
-  if (relKey) {
-    return entry.relationships[relKey]
-      .map((ref) => {
-        const targetEntry = resolveEntry(allEntries, wikilinkTarget(ref))
-        const label = wikilinkDisplay(ref)
-        return label ? {
-          label,
-          noteIcon: targetEntry?.icon ?? null,
-          typeIcon: targetEntry?.isA ? typeEntryMap[targetEntry.isA]?.icon ?? null : null,
-        } : null
-      })
-      .filter((value): value is PropertyChipValue => value !== null)
-  }
-  // Check scalar properties
-  const propKey = Object.keys(entry.properties).find((k) => k.toLowerCase() === propName.toLowerCase())
-  if (!propKey) return []
-  const val = entry.properties[propKey]
-  if (Array.isArray(val)) {
-    return val
-      .map((v) => formatChipValue(v))
-      .filter((v): v is string => v !== null)
-      .map((label) => ({ label, noteIcon: null, typeIcon: null }))
-  }
-  const formatted = formatChipValue(val)
-  return formatted ? [{ label: formatted, noteIcon: null, typeIcon: null }] : []
-}
-
-function PropertyChipIcon({ noteIcon, typeIcon }: { noteIcon?: string | null; typeIcon?: string | null }) {
-  const [imageFailed, setImageFailed] = useState(false)
-  const resolvedNoteIcon = resolveNoteIcon(noteIcon)
-  const TypeIcon = findIcon(typeIcon)
-
-  if (resolvedNoteIcon.kind === 'emoji') {
-    return (
-      <span aria-hidden="true" className="inline-flex shrink-0 items-center justify-center leading-none" style={{ fontSize: 11, lineHeight: 1 }}>
-        {resolvedNoteIcon.value}
-      </span>
-    )
-  }
-
-  if (resolvedNoteIcon.kind === 'phosphor') {
-    return <resolvedNoteIcon.Icon aria-hidden="true" width={11} height={11} className="shrink-0" />
-  }
-
-  if (resolvedNoteIcon.kind === 'image' && !imageFailed) {
-    return (
-      <img
-        src={resolvedNoteIcon.src}
-        alt=""
-        aria-hidden="true"
-        className="h-[11px] w-[11px] shrink-0 rounded-sm object-cover"
-        onError={() => setImageFailed(true)}
-      />
-    )
-  }
-
-  if (!TypeIcon) return null
-
-  return createElement(TypeIcon, { 'aria-hidden': true, width: 11, height: 11, className: 'shrink-0' })
-}
-
-function PropertyChips({
-  entry,
-  displayProps,
-  allEntries,
-  typeEntryMap,
-}: {
-  entry: VaultEntry
-  displayProps: string[]
-  allEntries: VaultEntry[]
-  typeEntryMap: Record<string, VaultEntry>
-}) {
-  const chips = useMemo(() => {
-    const result: { key: string; values: PropertyChipValue[] }[] = []
-    for (const prop of displayProps) {
-      const values = resolveChipValues(entry, prop, allEntries, typeEntryMap)
-      if (values.length > 0) result.push({ key: prop, values })
-    }
-    return result
-  }, [entry, displayProps, allEntries, typeEntryMap])
-
-  if (chips.length === 0) return null
-
-  return (
-    <div className="mt-1 flex flex-wrap gap-1" data-testid="property-chips">
-      {chips.map(({ key, values }) =>
-        values.map((v, i) => (
-          <span
-            key={`${key}-${i}`}
-            className="inline-flex max-w-full items-center gap-1 rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
-          >
-            <PropertyChipIcon noteIcon={v.noteIcon} typeIcon={v.typeIcon} />
-            <span className="truncate whitespace-nowrap">{v.label}</span>
-          </span>
-        ))
-      )}
-    </div>
-  )
-}
-
 const CHANGE_STATUS_DISPLAY: Record<string, { label: string; color: string; symbol: string }> = {
   modified: { label: 'Modified', color: 'var(--accent-orange, #f59e0b)', symbol: '·' },
   added: { label: 'Added', color: 'var(--accent-green, #22c55e)', symbol: '+' },
@@ -210,6 +81,117 @@ function ChangeStatusIcon({ status }: { status: string }) {
   )
 }
 
+function noteItemClassName({
+  isBinary,
+  isSelected,
+  isMultiSelected,
+  isHighlighted,
+}: {
+  isBinary: boolean
+  isSelected: boolean
+  isMultiSelected: boolean
+  isHighlighted: boolean
+}) {
+  return cn(
+    'relative border-b border-[var(--border)] transition-colors',
+    isBinary ? 'cursor-default opacity-50' : 'cursor-pointer',
+    isSelected && !isMultiSelected && !isBinary && 'border-l-[3px]',
+    !isSelected && !isMultiSelected && !isBinary && 'hover:bg-muted',
+    isHighlighted && !isSelected && !isMultiSelected && !isBinary && 'bg-muted',
+  )
+}
+
+function ChangeStatusContent({
+  entry,
+  changeStatus,
+  isSelected,
+  isDeletedChange,
+}: {
+  entry: VaultEntry
+  changeStatus: NonNullable<NoteItemProps['changeStatus']>
+  isSelected: boolean
+  isDeletedChange: boolean
+}) {
+  return (
+    <>
+      <ChangeStatusIcon status={changeStatus} />
+      <div className="pr-5">
+        <div
+          className={cn(
+            'truncate text-[13px] font-mono',
+            isSelected ? 'font-semibold' : 'font-normal',
+            isDeletedChange && 'text-muted-foreground line-through opacity-70',
+          )}
+          style={{ fontSize: 12 }}
+        >
+          {entry.filename}
+        </div>
+      </div>
+    </>
+  )
+}
+
+function StandardNoteContent({
+  entry,
+  isBinary,
+  noteStatus,
+  isSelected,
+  typeColor,
+  displayProps,
+  allEntries,
+  typeEntryMap,
+  onClickNote,
+}: {
+  entry: VaultEntry
+  isBinary: boolean
+  noteStatus: NoteStatus
+  isSelected: boolean
+  typeColor: string
+  displayProps: string[]
+  allEntries: VaultEntry[]
+  typeEntryMap: Record<string, VaultEntry>
+  onClickNote: NoteItemProps['onClickNote']
+}) {
+  const isNonMarkdown = !!entry.fileKind && entry.fileKind !== 'markdown'
+  const te = typeEntryMap[entry.isA ?? '']
+  const TypeIcon = useMemo(() => {
+    if (isNonMarkdown) return getFileKindIcon(entry.fileKind)
+    return getTypeIcon(entry.isA, te?.icon)
+  }, [entry.fileKind, entry.isA, isNonMarkdown, te?.icon])
+
+  return (
+    <>
+      {/* eslint-disable-next-line react-hooks/static-components -- icon lookup from static map, no internal state */}
+      <TypeIcon width={14} height={14} className="absolute right-3 top-2.5" style={{ color: typeColor }} data-testid="type-icon" />
+      <div className="pr-5">
+        <div className={cn('truncate text-[13px]', isBinary ? 'text-muted-foreground' : 'text-foreground', isSelected && !isBinary ? 'font-semibold' : 'font-medium')}>
+          {noteStatus !== 'clean' && !isBinary && <StatusDot noteStatus={noteStatus} />}
+          <NoteTitleIcon icon={entry.icon} size={15} className="mr-1" testId="note-title-icon" />
+          {entry.title}
+          {!isBinary && <StateBadge archived={entry.archived} />}
+        </div>
+      </div>
+      {entry.snippet && !isBinary && (
+        <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" data-testid="note-snippet" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+          {entry.snippet}
+        </div>
+      )}
+      {!isBinary && displayProps.length > 0 && (
+        <PropertyChips
+          entry={entry}
+          displayProps={displayProps}
+          allEntries={allEntries}
+          typeEntryMap={typeEntryMap}
+          onOpenNote={onClickNote}
+        />
+      )}
+      {!isBinary && (
+        <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>
+      )}
+    </>
+  )
+}
+
 function noteItemStyle(isSelected: boolean, isMultiSelected: boolean, typeColor: string, typeLightColor: string): React.CSSProperties {
   const base: React.CSSProperties = { padding: isSelected && !isMultiSelected ? '14px 16px 14px 13px' : '14px 16px' }
   if (isMultiSelected) base.backgroundColor = 'color-mix(in srgb, var(--accent-blue) 10%, transparent)'
@@ -228,7 +210,7 @@ function resolveDisplayProps(entry: VaultEntry, typeEntryMap: Record<string, Vau
   return typeEntryMap[entry.isA ?? '']?.listPropertiesDisplay ?? []
 }
 
-export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlighted = false, noteStatus = 'clean', changeStatus, typeEntryMap, allEntries, displayPropsOverride, onClickNote, onPrefetch, onContextMenu }: {
+type NoteItemProps = {
   entry: VaultEntry
   isSelected: boolean
   isMultiSelected?: boolean
@@ -242,32 +224,34 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
   onClickNote: (entry: VaultEntry, e: React.MouseEvent) => void
   onPrefetch?: (path: string) => void
   onContextMenu?: (entry: VaultEntry, e: React.MouseEvent) => void
-}) {
+}
+
+function createNoteItemClickHandler(
+  entry: VaultEntry,
+  isBinary: boolean,
+  onClickNote: NoteItemProps['onClickNote'],
+) {
+  if (isBinary) {
+    return (event: React.MouseEvent) => {
+      event.preventDefault()
+      event.stopPropagation()
+    }
+  }
+  return (event: React.MouseEvent) => onClickNote(entry, event)
+}
+
+export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlighted = false, noteStatus = 'clean', changeStatus, typeEntryMap, allEntries, displayPropsOverride, onClickNote, onPrefetch, onContextMenu }: NoteItemProps) {
   const isBinary = entry.fileKind === 'binary'
-  const isNonMarkdown = !!entry.fileKind && entry.fileKind !== 'markdown'
   const isDeletedChange = changeStatus === 'deleted'
   const te = typeEntryMap[entry.isA ?? '']
   const displayProps = resolveDisplayProps(entry, typeEntryMap, displayPropsOverride)
   const typeColor = isBinary ? 'var(--muted-foreground)' : getTypeColor(entry.isA ?? 'Note', te?.color)
   const typeLightColor = getTypeLightColor(entry.isA ?? 'Note', te?.color)
-  const TypeIcon = useMemo(() => {
-    if (isNonMarkdown) return getFileKindIcon(entry.fileKind)
-    return getTypeIcon(entry.isA, te?.icon)
-  }, [entry.isA, te?.icon, entry.fileKind, isNonMarkdown])
-
-  const handleClick = isBinary
-    ? (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation() }
-    : (e: React.MouseEvent) => onClickNote(entry, e)
+  const handleClick = createNoteItemClickHandler(entry, isBinary, onClickNote)
 
   return (
     <div
-      className={cn(
-        "relative border-b border-[var(--border)] transition-colors",
-        isBinary ? "cursor-default opacity-50" : "cursor-pointer",
-        isSelected && !isMultiSelected && !isBinary && "border-l-[3px]",
-        !isSelected && !isMultiSelected && !isBinary && "hover:bg-muted",
-        isHighlighted && !isSelected && !isMultiSelected && !isBinary && "bg-muted"
-      )}
+      className={noteItemClassName({ isBinary, isSelected, isMultiSelected, isHighlighted })}
       style={isBinary ? { padding: '14px 16px' } : noteItemStyle(isSelected, isMultiSelected, typeColor, typeLightColor)}
       onClick={handleClick}
       onContextMenu={onContextMenu ? (e) => onContextMenu(entry, e) : undefined}
@@ -279,45 +263,24 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
       title={isBinary ? 'Cannot open this file type' : undefined}
     >
       {changeStatus ? (
-        <>
-          <ChangeStatusIcon status={changeStatus} />
-          <div className="pr-5">
-            <div
-              className={cn(
-                "truncate text-[13px] font-mono",
-                isSelected ? "font-semibold" : "font-normal",
-                isDeletedChange && "text-muted-foreground line-through opacity-70",
-              )}
-              style={{ fontSize: 12 }}
-            >
-              {entry.filename}
-            </div>
-          </div>
-        </>
+        <ChangeStatusContent
+          entry={entry}
+          changeStatus={changeStatus}
+          isSelected={isSelected}
+          isDeletedChange={isDeletedChange}
+        />
       ) : (
-        <>
-          {/* eslint-disable-next-line react-hooks/static-components -- icon lookup from static map, no internal state */}
-          <TypeIcon width={14} height={14} className="absolute right-3 top-2.5" style={{ color: typeColor }} data-testid="type-icon" />
-          <div className="pr-5">
-            <div className={cn("truncate text-[13px]", isBinary ? "text-muted-foreground" : "text-foreground", isSelected && !isBinary ? "font-semibold" : "font-medium")}>
-              {noteStatus !== 'clean' && !isBinary && <StatusDot noteStatus={noteStatus} />}
-              <NoteTitleIcon icon={entry.icon} size={15} className="mr-1" testId="note-title-icon" />
-              {entry.title}
-              {!isBinary && <StateBadge archived={entry.archived} />}
-            </div>
-          </div>
-          {entry.snippet && !isBinary && (
-            <div className="mt-0.5 text-[12px] leading-[1.5] text-muted-foreground" data-testid="note-snippet" style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-              {entry.snippet}
-            </div>
-          )}
-          {!isBinary && displayProps.length > 0 && (
-            <PropertyChips entry={entry} displayProps={displayProps} allEntries={allEntries ?? [entry]} typeEntryMap={typeEntryMap} />
-          )}
-          {!isBinary && (
-            <div className="mt-0.5 text-[10px] text-muted-foreground">{relativeDate(getDisplayDate(entry))}</div>
-          )}
-        </>
+        <StandardNoteContent
+          entry={entry}
+          isBinary={isBinary}
+          noteStatus={noteStatus}
+          isSelected={isSelected}
+          typeColor={typeColor}
+          displayProps={displayProps}
+          allEntries={allEntries ?? [entry]}
+          typeEntryMap={typeEntryMap}
+          onClickNote={onClickNote}
+        />
       )}
     </div>
   )

@@ -1,9 +1,22 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NoteItem } from './NoteItem'
 import { makeEntry } from '../test-utils/noteListTestUtils'
 
+vi.mock('../utils/url', async () => {
+  const actual = await vi.importActual('../utils/url') as typeof import('../utils/url')
+  return { ...actual, openExternalUrl: vi.fn().mockResolvedValue(undefined) }
+})
+
+const { openExternalUrl } = await import('../utils/url') as typeof import('../utils/url') & {
+  openExternalUrl: ReturnType<typeof vi.fn>
+}
+
 describe('NoteItem', () => {
+  beforeEach(() => {
+    openExternalUrl.mockClear()
+  })
+
   it('renders binary files as non-clickable muted rows', () => {
     const binaryEntry = makeEntry({
       path: '/vault/photo.png',
@@ -72,5 +85,114 @@ describe('NoteItem', () => {
     expect(screen.getByText('My Note')).toBeInTheDocument()
     expect(screen.queryByText('note.md')).not.toBeInTheDocument()
     expect(screen.queryByTestId('change-status-icon')).not.toBeInTheDocument()
+  })
+
+  it('colors relationship chips by target type and opens the related note on Cmd+click only', () => {
+    const linkedProject = makeEntry({
+      path: '/vault/project/build-app.md',
+      filename: 'build-app.md',
+      title: 'Build App',
+      isA: 'Project',
+    })
+    const projectType = makeEntry({
+      path: '/vault/type/project.md',
+      filename: 'project.md',
+      title: 'Project',
+      isA: 'Type',
+      color: 'red',
+      icon: 'wrench',
+    })
+    const sourceEntry = makeEntry({
+      path: '/vault/note/source.md',
+      filename: 'source.md',
+      title: 'Source',
+      isA: 'Note',
+      relationships: { 'Belongs to': ['[[project/build-app]]'] },
+    })
+    const onClickNote = vi.fn()
+
+    render(
+      <NoteItem
+        entry={sourceEntry}
+        isSelected={false}
+        typeEntryMap={{ Project: projectType }}
+        allEntries={[sourceEntry, linkedProject, projectType]}
+        displayPropsOverride={['Belongs to']}
+        onClickNote={onClickNote}
+      />,
+    )
+
+    const chip = screen.getByTestId('property-chip-belongs-to-0')
+    expect(chip).toHaveTextContent('Build App')
+    expect(chip.className).toContain('cursor-pointer')
+    expect(chip).toHaveStyle({ color: 'var(--accent-red)', backgroundColor: 'var(--accent-red-light)' })
+
+    fireEvent.click(chip)
+    expect(onClickNote).not.toHaveBeenCalled()
+
+    fireEvent.click(chip, { metaKey: true })
+    expect(onClickNote).toHaveBeenCalledWith(linkedProject, expect.objectContaining({ metaKey: true }))
+  })
+
+  it('opens URL chips on Cmd+click only and keeps regular clicks inert', () => {
+    const entry = makeEntry({
+      path: '/vault/note/source.md',
+      filename: 'source.md',
+      title: 'Source',
+      properties: { URL: 'https://example.com/docs' },
+    })
+    const onClickNote = vi.fn()
+
+    render(
+      <NoteItem
+        entry={entry}
+        isSelected={false}
+        typeEntryMap={{}}
+        displayPropsOverride={['URL']}
+        onClickNote={onClickNote}
+      />,
+    )
+
+    const chip = screen.getByTestId('property-chip-url-0')
+    expect(chip).toHaveTextContent('example.com')
+    expect(chip.className).toContain('cursor-pointer')
+    expect(chip).toHaveStyle({ color: 'var(--accent-blue)', backgroundColor: 'var(--accent-blue-light)' })
+
+    fireEvent.click(chip)
+    expect(openExternalUrl).not.toHaveBeenCalled()
+    expect(onClickNote).not.toHaveBeenCalled()
+
+    fireEvent.click(chip, { metaKey: true })
+    expect(openExternalUrl).toHaveBeenCalledWith('https://example.com/docs')
+    expect(onClickNote).not.toHaveBeenCalled()
+  })
+
+  it('renders broken relationship chips as neutral and non-interactive', () => {
+    const entry = makeEntry({
+      path: '/vault/note/source.md',
+      filename: 'source.md',
+      title: 'Source',
+      relationships: { Related: ['[[missing/note]]'] },
+    })
+    const onClickNote = vi.fn()
+
+    render(
+      <NoteItem
+        entry={entry}
+        isSelected={false}
+        typeEntryMap={{}}
+        allEntries={[entry]}
+        displayPropsOverride={['Related']}
+        onClickNote={onClickNote}
+      />,
+    )
+
+    const chip = screen.getByTestId('property-chip-related-0')
+    expect(chip).toHaveTextContent('Note')
+    expect(chip.className).not.toContain('cursor-pointer')
+
+    fireEvent.click(chip, { metaKey: true })
+    expect(onClickNote).not.toHaveBeenCalled()
+    expect(openExternalUrl).not.toHaveBeenCalled()
   })
 })

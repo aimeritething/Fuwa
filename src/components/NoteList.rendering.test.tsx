@@ -293,6 +293,41 @@ describe('NoteList rendering', () => {
     expect(screen.getByText('Luca')).toBeInTheDocument()
     expect(screen.queryByText('High')).not.toBeInTheDocument()
   })
+
+  it('Cmd+clicks relationship chips through the note list without triggering the row click', () => {
+    const projectType = makeTypeDefinition('Project')
+    const taskType = makeTypeDefinition('Task', ['Belongs to'])
+    const projectEntry = makeEntry({
+      path: '/vault/project/build-app.md',
+      filename: 'build-app.md',
+      title: 'Build App',
+      isA: 'Project',
+      createdAt: 1700000000,
+    })
+    const taskEntry = makeEntry({
+      path: '/vault/task/write-tests.md',
+      filename: 'write-tests.md',
+      title: 'Write tests',
+      isA: 'Task',
+      relationships: { 'Belongs to': ['[[project/build-app]]'] },
+      createdAt: 1700000001,
+    })
+
+    const { onReplaceActiveTab, onSelectNote } = renderNoteList({
+      entries: [projectType, taskType, projectEntry, taskEntry],
+      selection: { kind: 'sectionGroup', type: 'Task' },
+    })
+
+    const chip = screen.getByTestId('property-chip-belongs-to-0')
+
+    fireEvent.click(chip)
+    expect(onReplaceActiveTab).not.toHaveBeenCalled()
+    expect(onSelectNote).not.toHaveBeenCalled()
+
+    fireEvent.click(chip, { metaKey: true })
+    expect(onSelectNote).toHaveBeenCalledWith(projectEntry)
+    expect(onReplaceActiveTab).not.toHaveBeenCalled()
+  })
 })
 
 describe('NoteList click behavior', () => {
