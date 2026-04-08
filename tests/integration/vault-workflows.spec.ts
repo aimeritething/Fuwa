@@ -142,7 +142,7 @@ test('rename note updates filename on disk', async ({ page }) => {
 // 6. Wikilink update on rename — other files' [[Note B]] updated
 // ---------------------------------------------------------------------------
 
-test('rename note updates wikilinks in other files @smoke', async ({ page }) => {
+test('rename note updates wikilinks in other files', async ({ page }) => {
   // Open Note B and rename it
   await openNote(page, 'Note B')
   await renameActiveNote(page, 'Note B Updated')

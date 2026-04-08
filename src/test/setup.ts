@@ -1,5 +1,5 @@
 import '@testing-library/jest-dom/vitest'
-import { vi } from 'vitest'
+import { afterEach, vi } from 'vitest'
 import { createElement, type ReactNode, type ComponentType } from 'react'
 
 // Stub fetch to prevent jsdom@28 + Node 22 undici incompatibility.
@@ -56,6 +56,11 @@ globalThis.IntersectionObserver = class {
 vi.mock('@tauri-apps/plugin-opener', () => ({
   openUrl: vi.fn(),
 }))
+
+afterEach(() => {
+  vi.clearAllTimers()
+  vi.useRealTimers()
+})
 
 // Mock react-day-picker: Calendar component uses DayPicker which needs real DOM APIs not available in jsdom
 vi.mock('react-day-picker', () => ({

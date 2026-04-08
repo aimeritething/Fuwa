@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { TypeCustomizePopover } from './TypeCustomizePopover'
 import { resolveIcon, ICON_OPTIONS } from '../utils/iconRegistry'
 
@@ -156,18 +156,23 @@ describe('TypeCustomizePopover', () => {
 
   it('calls onChangeTemplate after debounce', async () => {
     vi.useFakeTimers()
-    renderPopover()
-    const textarea = screen.getByTestId('template-textarea')
-    fireEvent.change(textarea, { target: { value: '## Debounced' } })
+    try {
+      renderPopover()
+      const textarea = screen.getByTestId('template-textarea')
+      fireEvent.change(textarea, { target: { value: '## Debounced' } })
 
-    // Should not be called immediately
-    expect(onChangeTemplate).not.toHaveBeenCalled()
+      // Should not be called immediately
+      expect(onChangeTemplate).not.toHaveBeenCalled()
 
-    // Fast-forward past debounce
-    vi.advanceTimersByTime(600)
-    expect(onChangeTemplate).toHaveBeenCalledWith('## Debounced')
+      // Fast-forward past debounce and flush the resulting state update.
+      await act(async () => {
+        vi.advanceTimersByTime(600)
+      })
 
-    vi.useRealTimers()
+      expect(onChangeTemplate).toHaveBeenCalledWith('## Debounced')
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('treats null template as empty string', () => {
