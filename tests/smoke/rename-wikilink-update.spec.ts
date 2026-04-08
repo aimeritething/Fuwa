@@ -7,7 +7,7 @@ test.describe('Renaming a note updates wikilinks across the vault', () => {
     await page.waitForLoadState('networkidle')
   })
 
-  test('title field rename triggers rename flow and shows toast', async ({ page }) => {
+  test('title field rename triggers rename flow and shows toast @smoke', async ({ page }) => {
     // 1. Click the first note in the list to open it
     const noteListContainer = page.locator('[data-testid="note-list-container"]')
     await noteListContainer.waitFor({ timeout: 5000 })

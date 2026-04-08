@@ -13,7 +13,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "playwright:smoke": "playwright test --config playwright.smoke.config.ts tests/smoke/example.spec.ts tests/smoke/fix-ai-chat-empty-body-v3.spec.ts tests/smoke/raw-editor-sync-to-blocknote.spec.ts tests/integration/vault-workflows.spec.ts",
+    "playwright:smoke": "playwright test --config playwright.smoke.config.ts tests/smoke/example.spec.ts tests/smoke/fix-ai-chat-empty-body-v3.spec.ts tests/smoke/create-note-crash.spec.ts tests/smoke/raw-editor-sync-to-blocknote.spec.ts tests/smoke/rename-wikilink-update.spec.ts",
     "playwright:regression": "playwright test tests/smoke/",
     "playwright:integration": "playwright test --config playwright.integration.config.ts",
     "test:coverage": "vitest run --coverage",

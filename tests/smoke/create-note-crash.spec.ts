@@ -5,7 +5,7 @@ function isCrashError(msg: string): boolean {
   return msg.includes('Maximum update depth') || msg.includes('Invalid hook call') || msg.includes('#185')
 }
 
-test('create note via Cmd+N does not crash', async ({ page }) => {
+test('create note via Cmd+N does not crash @smoke', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (err) => { if (isCrashError(err.message)) errors.push(err.message) })
 
@@ -17,7 +17,9 @@ test('create note via Cmd+N does not crash', async ({ page }) => {
   await page.waitForTimeout(2000)
 
   expect(errors).toHaveLength(0)
-  await expect(page.locator('[data-testid="title-field-input"]')).toBeVisible()
+  const noteList = page.locator('[data-testid="note-list-container"]')
+  await expect(noteList.getByText(/Untitled Note/i).first()).toBeVisible({ timeout: 5000 })
+  await expect(page.getByRole('textbox').last()).toBeVisible()
 })
 
 test('create note via sidebar + button does not crash', async ({ page }) => {

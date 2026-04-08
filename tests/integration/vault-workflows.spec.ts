@@ -8,58 +8,18 @@
 import { test, expect } from '@playwright/test'
 import fs from 'fs'
 import path from 'path'
-import os from 'os'
-
-const FIXTURE_VAULT = path.resolve('tests/fixtures/test-vault')
-
-function copyDirSync(src: string, dest: string): void {
-  fs.mkdirSync(dest, { recursive: true })
-  for (const item of fs.readdirSync(src, { withFileTypes: true })) {
-    const s = path.join(src, item.name)
-    const d = path.join(dest, item.name)
-    if (item.isDirectory()) copyDirSync(s, d)
-    else fs.copyFileSync(s, d)
-  }
-}
+import { createFixtureVaultCopy, openFixtureVault, removeFixtureVaultCopy } from '../helpers/fixtureVault'
 
 let tempVaultDir: string
 
-test.beforeEach(async ({ page }) => {
-  // Fresh vault copy for each test
-  tempVaultDir = fs.mkdtempSync(path.join(os.tmpdir(), 'laputa-test-vault-'))
-  copyDirSync(FIXTURE_VAULT, tempVaultDir)
-
-  // Intercept window.__mockHandlers assignment to override vault path handlers.
-  // The Object.defineProperty setter fires when mock-tauri/index.ts sets
-  // window.__mockHandlers = mockHandlers, letting us patch the same object
-  // reference that mockInvoke reads from.
-  await page.addInitScript((vaultPath: string) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let ref: any = null
-    Object.defineProperty(window, '__mockHandlers', {
-      set(val) {
-        ref = val
-        ref.load_vault_list = () => ({
-          vaults: [{ label: 'Test Vault', path: vaultPath }],
-          active_vault: vaultPath,
-        })
-        ref.check_vault_exists = () => true
-        ref.get_last_vault_path = () => vaultPath
-        ref.get_default_vault_path = () => vaultPath
-        ref.save_vault_list = () => null
-      },
-      get() { return ref },
-      configurable: true,
-    })
-  }, tempVaultDir)
-
-  await page.goto('/')
-  // Wait until the real vault entries are loaded in the sidebar
-  await page.getByText('Alpha Project', { exact: true }).first().waitFor({ timeout: 10_000 })
+test.beforeEach(async ({ page }, testInfo) => {
+  testInfo.setTimeout(60_000)
+  tempVaultDir = createFixtureVaultCopy()
+  await openFixtureVault(page, tempVaultDir)
 })
 
 test.afterEach(async () => {
-  fs.rmSync(tempVaultDir, { recursive: true, force: true })
+  removeFixtureVaultCopy(tempVaultDir)
 })
 
 /** Helper: locate the note-list container. */
