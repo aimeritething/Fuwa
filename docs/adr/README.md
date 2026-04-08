@@ -101,3 +101,7 @@ proposed → active → superseded
 | [0043](0043-reactive-vault-state-on-save.md) | Reactive vault state: editor changes propagate immediately to all UI | active |
 | [0044](0044-h1-as-title-primary-source.md) | H1 as primary title source — filename as stable identifier | active |
 | [0045](0045-permanent-delete-no-trash.md) | Permanent delete with confirm modal — no Trash system | active |
+| [0046](0046-starter-vault-cloned-from-github.md) | Starter vault cloned from GitHub at runtime — no bundled content | active |
+| [0047](0047-regex-mode-for-view-filter-conditions.md) | Regex mode for view filter conditions | active |
+| [0048](0048-relative-date-expressions-in-view-filters.md) | Relative date expressions in view filter conditions | active |
+| [0049](0049-per-note-icon-property.md) | Per-note icon property (_icon on individual notes) | active |
