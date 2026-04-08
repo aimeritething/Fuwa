@@ -18,6 +18,12 @@ describe('filterDates', () => {
     expect(parsed && format(parsed, 'yyyy-MM-dd')).toBe('2026-03-28')
   })
 
+  it('parses numeric relative year phrases', () => {
+    const reference = new Date('2026-04-08T12:00:00Z')
+    const parsed = parseDateFilterInput('10 years ago', reference)
+    expect(parsed && format(parsed, 'yyyy-MM-dd')).toBe('2016-04-08')
+  })
+
   it('parses word-based relative week phrases', () => {
     const reference = new Date('2026-04-07T12:00:00Z')
     const parsed = parseDateFilterInput('one week ago', reference)
