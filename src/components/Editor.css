@@ -202,17 +202,31 @@
   flex-shrink: 0;
 }
 
-.title-section__add-icon {
-  /* "Add icon" button above the title when no emoji — Notion-style */
-  padding-top: 24px;
-  margin-left: 8px;
-  min-height: 28px;
+.title-section__heading {
+  position: relative;
+}
+
+.title-section__inline-add-icon {
+  position: absolute;
+  left: 8px;
+  top: 0;
+  z-index: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+}
+
+.title-section:hover .title-section__inline-add-icon,
+.title-section__inline-add-icon:focus-within {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .title-section__row {
   display: flex;
   flex-direction: row;
   align-items: flex-start;
+  gap: 10px;
   padding-top: 8px;
   margin-left: 8px;
 }
@@ -235,6 +249,8 @@
 
 /* --- Note Icon Area --- */
 .note-icon-area {
+  display: flex;
+  align-items: flex-start;
   flex-shrink: 0;
 }
 
@@ -251,14 +267,22 @@
 }
 
 .note-icon-button--active {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
   font-size: 36px;
   line-height: 1;
   transition: transform 0.1s;
-  margin-right: 10px;
 }
 
 .note-icon-button--active:hover:not(:disabled) {
   transform: scale(1.1);
+}
+
+.note-icon-button--active :is(img, svg) {
+  display: block;
 }
 
 .note-icon-button--add {

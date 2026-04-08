@@ -19,6 +19,7 @@ import { getStatusStyle } from '../utils/statusStyles'
 import { TagsDropdown } from './TagsDropdown'
 import { getTagStyle } from '../utils/tagStyles'
 import { ColorEditableValue } from './ColorInput'
+import { IconEditableValue } from './IconEditableValue'
 
 function parseDateValue(value: string): Date | undefined {
   const iso = toISODate(value)
@@ -301,9 +302,52 @@ type SmartCellProps = {
   onSaveList: (key: string, items: string[]) => void; onUpdate?: (key: string, value: FrontmatterValue) => void
 }
 
-function ScalarValueCell({ propKey, value, displayMode, isEditing, vaultStatuses, vaultTags, onStartEdit, onSave, onSaveList, onUpdate }: SmartCellProps) {
-  const editProps = { value: String(value ?? ''), isEditing, onStartEdit: () => onStartEdit(propKey), onSave: (v: string) => onSave(propKey, v), onCancel: () => onStartEdit(null) }
-  const resolvedMode = displayMode === 'text' ? autoDetectFromValue(propKey, value) : displayMode
+interface ScalarEditProps {
+  value: string
+  isEditing: boolean
+  onStartEdit: () => void
+  onSave: (nextValue: string) => void
+  onCancel: () => void
+}
+
+function createScalarEditProps({
+  propKey,
+  value,
+  isEditing,
+  onStartEdit,
+  onSave,
+}: {
+  propKey: string
+  value: FrontmatterValue
+  isEditing: boolean
+  onStartEdit: (key: string | null) => void
+  onSave: (key: string, value: string) => void
+}): ScalarEditProps {
+  return {
+    value: String(value ?? ''),
+    isEditing,
+    onStartEdit: () => onStartEdit(propKey),
+    onSave: (nextValue: string) => onSave(propKey, nextValue),
+    onCancel: () => onStartEdit(null),
+  }
+}
+
+function renderScalarDisplayMode({
+  propKey,
+  value,
+  isEditing,
+  resolvedMode,
+  vaultStatuses,
+  vaultTags,
+  onSave,
+  onSaveList,
+  onStartEdit,
+  onUpdate,
+  editProps,
+}: SmartCellProps & {
+  resolvedMode: PropertyDisplayMode
+  editProps: ScalarEditProps
+}) {
   switch (resolvedMode) {
     case 'status':
       return <StatusValue propKey={propKey} value={value ?? ''} isEditing={isEditing} vaultStatuses={vaultStatuses} onSave={onSave} onStartEdit={onStartEdit} />
@@ -330,6 +374,24 @@ function ScalarValueCell({ propKey, value, displayMode, isEditing, vaultStatuses
     default:
       return <EditableValue {...editProps} />
   }
+}
+
+function ScalarValueCell(props: SmartCellProps) {
+  const { propKey, value, displayMode, isEditing, onStartEdit, onSave } = props
+  const editProps = createScalarEditProps({
+    propKey,
+    value,
+    isEditing,
+    onStartEdit,
+    onSave,
+  })
+
+  if (propKey.toLowerCase() === 'icon') {
+    return <IconEditableValue {...editProps} />
+  }
+
+  const resolvedMode = displayMode === 'text' ? autoDetectFromValue(propKey, value) : displayMode
+  return renderScalarDisplayMode({ ...props, resolvedMode, editProps })
 }
 
 export function SmartPropertyValueCell(props: SmartCellProps) {

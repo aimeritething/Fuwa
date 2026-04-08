@@ -150,25 +150,119 @@ function TitleSection({
     <div ref={titleSectionRef} className="title-section" data-title-ui-visible={showTitleSection || undefined}>
       {showTitleSection && (
         <>
-          {!hasDisplayIcon && (
-            <div className="title-section__add-icon">
-              <NoteIcon icon={null} editable />
+          <div className="title-section__heading">
+            {!hasDisplayIcon && (
+              <div className="title-section__inline-add-icon">
+                <NoteIcon icon={null} editable />
+              </div>
+            )}
+            <div className={`title-section__row${hasDisplayIcon ? '' : ' title-section__row--no-icon'}`}>
+              {hasDisplayIcon && <NoteIcon icon={entryIcon} editable />}
+              <TitleField
+                title={activeTab.entry.title}
+                filename={activeTab.entry.filename}
+                editable
+                notePath={path}
+                vaultPath={vaultPath}
+                onTitleChange={(newTitle) => onTitleChange?.(path, newTitle)}
+              />
             </div>
-          )}
-          <div className={`title-section__row${hasDisplayIcon ? '' : ' title-section__row--no-icon'}`}>
-            {hasDisplayIcon && <NoteIcon icon={entryIcon} editable />}
-            <TitleField
-              title={activeTab.entry.title}
-              filename={activeTab.entry.filename}
-              editable
-              notePath={path}
-              vaultPath={vaultPath}
-              onTitleChange={(newTitle) => onTitleChange?.(path, newTitle)}
-            />
           </div>
           <div className="title-section__separator" />
         </>
       )}
+    </div>
+  )
+}
+
+function EditorChrome({
+  isArchived,
+  onUnarchiveNote,
+  path,
+  isConflicted,
+  onKeepMine,
+  onKeepTheirs,
+  diffMode,
+  diffContent,
+  onToggleDiff,
+}: Pick<
+  EditorContentModel,
+  'isArchived' | 'onUnarchiveNote' | 'path' | 'isConflicted' | 'onKeepMine' | 'onKeepTheirs' | 'diffMode' | 'diffContent' | 'onToggleDiff'
+>) {
+  return (
+    <>
+      {isArchived && onUnarchiveNote && (
+        <ArchivedNoteBanner onUnarchive={() => onUnarchiveNote(path)} />
+      )}
+      {isConflicted && (
+        <ConflictNoteBanner
+          onKeepMine={() => onKeepMine?.(path)}
+          onKeepTheirs={() => onKeepTheirs?.(path)}
+        />
+      )}
+      {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
+    </>
+  )
+}
+
+function EditorCanvas({
+  showEditor,
+  cssVars,
+  activeTab,
+  entryIcon,
+  hasDisplayIcon,
+  path,
+  showTitleSection,
+  titleSectionRef,
+  vaultPath,
+  onTitleChange,
+  editor,
+  entries,
+  onNavigateWikilink,
+  onEditorChange,
+  isDeletedPreview,
+}: Pick<
+  EditorContentModel,
+  | 'showEditor'
+  | 'cssVars'
+  | 'activeTab'
+  | 'entryIcon'
+  | 'hasDisplayIcon'
+  | 'path'
+  | 'showTitleSection'
+  | 'titleSectionRef'
+  | 'vaultPath'
+  | 'onTitleChange'
+  | 'editor'
+  | 'entries'
+  | 'onNavigateWikilink'
+  | 'onEditorChange'
+  | 'isDeletedPreview'
+>) {
+  if (!showEditor) return null
+
+  return (
+    <div className="editor-scroll-area" style={cssVars as React.CSSProperties}>
+      <div className="editor-content-wrapper">
+        <TitleSection
+          activeTab={activeTab}
+          entryIcon={entryIcon}
+          hasDisplayIcon={hasDisplayIcon}
+          path={path}
+          showTitleSection={showTitleSection}
+          titleSectionRef={titleSectionRef}
+          vaultPath={vaultPath}
+          onTitleChange={onTitleChange}
+        />
+        <SingleEditorView
+          editor={editor}
+          entries={entries}
+          onNavigateWikilink={onNavigateWikilink}
+          onChange={onEditorChange}
+          vaultPath={vaultPath}
+          editable={!isDeletedPreview}
+        />
+      </div>
     </div>
   )
 }
@@ -237,16 +331,17 @@ export function EditorContentLayout(model: EditorContentModel) {
           onUnarchiveNote: model.onUnarchiveNote,
         }}
       />
-      {isArchived && onUnarchiveNote && (
-        <ArchivedNoteBanner onUnarchive={() => onUnarchiveNote(path)} />
-      )}
-      {isConflicted && (
-        <ConflictNoteBanner
-          onKeepMine={() => onKeepMine?.(path)}
-          onKeepTheirs={() => onKeepTheirs?.(path)}
-        />
-      )}
-      {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
+      <EditorChrome
+        isArchived={isArchived}
+        onUnarchiveNote={onUnarchiveNote}
+        path={path}
+        isConflicted={isConflicted}
+        onKeepMine={onKeepMine}
+        onKeepTheirs={onKeepTheirs}
+        diffMode={diffMode}
+        diffContent={diffContent}
+        onToggleDiff={onToggleDiff}
+      />
       <RawModeEditorSection
         activeTab={activeTab}
         entries={entries}
@@ -256,30 +351,23 @@ export function EditorContentLayout(model: EditorContentModel) {
         rawLatestContentRef={rawLatestContentRef}
         vaultPath={vaultPath}
       />
-      {showEditor && (
-        <div className="editor-scroll-area" style={cssVars as React.CSSProperties}>
-          <div className="editor-content-wrapper">
-            <TitleSection
-              activeTab={activeTab}
-              entryIcon={entryIcon}
-              hasDisplayIcon={hasDisplayIcon}
-              path={path}
-              showTitleSection={showTitleSection}
-              titleSectionRef={titleSectionRef}
-              vaultPath={vaultPath}
-              onTitleChange={onTitleChange}
-            />
-            <SingleEditorView
-              editor={editor}
-              entries={entries}
-              onNavigateWikilink={onNavigateWikilink}
-              onChange={onEditorChange}
-              vaultPath={vaultPath}
-              editable={!isDeletedPreview}
-            />
-          </div>
-        </div>
-      )}
+      <EditorCanvas
+        showEditor={showEditor}
+        cssVars={cssVars}
+        activeTab={activeTab}
+        entryIcon={entryIcon}
+        hasDisplayIcon={hasDisplayIcon}
+        path={path}
+        showTitleSection={showTitleSection}
+        titleSectionRef={titleSectionRef}
+        vaultPath={vaultPath}
+        onTitleChange={onTitleChange}
+        editor={editor}
+        entries={entries}
+        onNavigateWikilink={onNavigateWikilink}
+        onEditorChange={onEditorChange}
+        isDeletedPreview={isDeletedPreview}
+      />
       {isLoadingNewTab && showEditor && <EditorLoadingSkeleton />}
     </div>
   )
