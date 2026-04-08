@@ -27,6 +27,12 @@ describe('FilterBuilder value inputs', () => {
     )
   }
 
+  function openFieldCombobox() {
+    const input = screen.getByTestId('filter-field-combobox-input')
+    fireEvent.focus(input)
+    return input
+  }
+
   it('renders a plain text input for text operators', () => {
     renderBuilder()
     expect(screen.getByTestId('filter-value-input')).toBeInTheDocument()
@@ -129,7 +135,74 @@ describe('FilterBuilder value inputs', () => {
     expect(screen.getByTestId('date-picker-trigger')).toHaveAttribute('title', 'Mar 28, 2026')
   })
 
-  it('shows body field in field dropdown separated from property fields', () => {
+  it('filters the field combobox as the user types', () => {
+    render(
+      <FilterBuilder
+        group={{ all: [{ field: 'title', op: 'contains', value: '' }] }}
+        onChange={vi.fn()}
+        availableFields={['type', 'status', 'title', 'Owner']}
+      />,
+    )
+
+    const input = openFieldCombobox()
+    fireEvent.change(input, { target: { value: 'tit' } })
+
+    expect(screen.getByTestId('filter-field-option-title')).toBeInTheDocument()
+    expect(screen.queryByTestId('filter-field-option-status')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('filter-field-option-Owner')).not.toBeInTheDocument()
+  })
+
+  it('supports keyboard navigation and Enter selection in the field combobox', () => {
+    render(
+      <FilterBuilder
+        group={{ all: [{ field: 'title', op: 'contains', value: '' }] }}
+        onChange={onChange}
+        availableFields={['title', 'status', 'Owner']}
+      />,
+    )
+
+    const input = openFieldCombobox()
+    fireEvent.change(input, { target: { value: 'sta' } })
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onChange).toHaveBeenCalledWith(
+      expect.objectContaining({
+        all: [{ field: 'status', op: 'contains', value: '' }],
+      }),
+    )
+  })
+
+  it('shows an empty state when no field matches the search text', () => {
+    renderBuilder()
+
+    const input = openFieldCombobox()
+    fireEvent.change(input, { target: { value: 'zzz' } })
+
+    expect(screen.getByTestId('filter-field-combobox-empty')).toHaveTextContent('No results')
+  })
+
+  it('reopens the field combobox with the selected field prefilled and all options visible', () => {
+    render(
+      <FilterBuilder
+        group={{ all: [{ field: 'status', op: 'contains', value: '' }] }}
+        onChange={vi.fn()}
+        availableFields={['type', 'status', 'title']}
+      />,
+    )
+
+    const input = openFieldCombobox()
+
+    expect(input).toHaveValue('status')
+    expect(screen.getByTestId('filter-field-option-type')).toBeInTheDocument()
+    expect(screen.getByTestId('filter-field-option-status')).toBeInTheDocument()
+    expect(screen.getByTestId('filter-field-option-title')).toBeInTheDocument()
+
+    fireEvent.keyDown(input, { key: 'Escape' })
+    expect(screen.queryByTestId('filter-field-combobox-options')).not.toBeInTheDocument()
+  })
+
+  it('shows body field in the searchable field combobox', () => {
     render(
       <FilterBuilder
         group={{ all: [{ field: 'body', op: 'contains', value: 'test' }] }}
@@ -138,6 +211,8 @@ describe('FilterBuilder value inputs', () => {
       />,
     )
 
-    expect(screen.getByText('body')).toBeInTheDocument()
+    openFieldCombobox()
+
+    expect(screen.getByTestId('filter-field-option-body')).toBeInTheDocument()
   })
 })

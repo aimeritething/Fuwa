@@ -4,10 +4,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Calendar } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/lib/utils'
 import type { FilterCondition, FilterOp, FilterGroup, FilterNode } from '../types'
 import { parseDateFilterInput } from '../utils/filterDates'
+import { FilterFieldCombobox } from './FilterFieldCombobox'
 
 const OPERATORS: { value: FilterOp; label: string }[] = [
   { value: 'equals', label: 'equals' },
@@ -56,42 +57,6 @@ function getGroupMode(group: FilterGroup): 'all' | 'any' {
 
 function setGroupChildren(mode: 'all' | 'any', children: FilterNode[]): FilterGroup {
   return mode === 'all' ? { all: children } : { any: children }
-}
-
-const CONTENT_FIELDS = new Set(['body'])
-
-function FieldSelect({ value, fields, onChange }: {
-  value: string
-  fields: string[]
-  onChange: (v: string) => void
-}) {
-  const isCustom = value !== '' && !fields.includes(value)
-  const propertyFields = fields.filter(f => !CONTENT_FIELDS.has(f))
-  const contentFields = fields.filter(f => CONTENT_FIELDS.has(f))
-  return (
-    <Select value={value} onValueChange={onChange}>
-      <SelectTrigger
-        size="sm"
-        className="h-8 min-w-[100px] flex-1 gap-1 border-input bg-background px-2 text-sm shadow-none"
-      >
-        <SelectValue placeholder="field" />
-      </SelectTrigger>
-      <SelectContent position="popper">
-        {isCustom && <SelectItem value={value}>{value}</SelectItem>}
-        {propertyFields.map((f) => (
-          <SelectItem key={f} value={f}>{f}</SelectItem>
-        ))}
-        {contentFields.length > 0 && (
-          <>
-            <SelectSeparator />
-            {contentFields.map((f) => (
-              <SelectItem key={f} value={f}>{f}</SelectItem>
-            ))}
-          </>
-        )}
-      </SelectContent>
-    </Select>
-  )
 }
 
 function OperatorSelect({ value, onChange }: {
@@ -217,7 +182,7 @@ function FilterRow({ condition, fields, onUpdate, onRemove }: {
   const invalidRegex = regexSupported && hasInvalidRegex(String(condition.value ?? ''), regexEnabled)
   return (
     <div className="flex items-center gap-1.5">
-      <FieldSelect
+      <FilterFieldCombobox
         value={condition.field}
         fields={fields}
         onChange={(v) => onUpdate({ ...condition, field: v })}
