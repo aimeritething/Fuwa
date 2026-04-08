@@ -201,6 +201,14 @@ describe('useAppKeyboard', () => {
     })
   })
 
+  it('Ctrl+Shift+L does not trigger toggle AI chat', () => {
+    const actions = makeActions()
+    const onToggleAIChat = vi.fn()
+    renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat }))
+    fireKey('l', { ctrlKey: true, shiftKey: true })
+    expect(onToggleAIChat).not.toHaveBeenCalled()
+  })
+
   it('Cmd+I does not trigger AI chat (reserved for italic)', () => {
     const actions = makeActions()
     const onToggleAIChat = vi.fn()

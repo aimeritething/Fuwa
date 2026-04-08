@@ -42,12 +42,16 @@ function isTextInputFocused(): boolean {
   return tag === 'INPUT' || tag === 'TEXTAREA'
 }
 
-function isCmdOnly(e: KeyboardEvent): boolean {
+function isCommandOrCtrlOnly(e: KeyboardEvent): boolean {
   return (e.metaKey || e.ctrlKey) && e.altKey === false
 }
 
-function isCmdShiftOnly(e: KeyboardEvent): boolean {
-  return isCmdOnly(e) && e.shiftKey
+function isCommandOrCtrlShiftOnly(e: KeyboardEvent): boolean {
+  return isCommandOrCtrlOnly(e) && e.shiftKey
+}
+
+function isCommandShiftOnly(e: KeyboardEvent): boolean {
+  return e.metaKey && e.ctrlKey === false && e.altKey === false && e.shiftKey
 }
 
 function withActiveTab(
@@ -86,7 +90,6 @@ export function createCommandKeyMap(actions: KeyboardActions): ShortcutMap {
 
 export function createShiftCommandKeyMap(actions: KeyboardActions): ShortcutMap {
   return {
-    l: () => actions.onToggleAIChat?.(),
     f: () => {
       trackEvent('search_used')
       actions.onSearch()
@@ -97,7 +100,7 @@ export function createShiftCommandKeyMap(actions: KeyboardActions): ShortcutMap 
 }
 
 export function handleViewModeKey(e: KeyboardEvent, onSetViewMode: (mode: ViewMode) => void): boolean {
-  if (isCmdOnly(e) === false || e.shiftKey) return false
+  if (isCommandOrCtrlOnly(e) === false || e.shiftKey) return false
   const mode = VIEW_MODE_KEYS[e.key]
   if (mode === undefined) return false
   e.preventDefault()
@@ -106,7 +109,7 @@ export function handleViewModeKey(e: KeyboardEvent, onSetViewMode: (mode: ViewMo
 }
 
 export function handleCommandKey(e: KeyboardEvent, keyMap: ShortcutMap): boolean {
-  if (isCmdOnly(e) === false || e.shiftKey) return false
+  if (isCommandOrCtrlOnly(e) === false || e.shiftKey) return false
   const handler = keyMap[e.key]
   if (handler === undefined) return false
   if (TEXT_EDITING_KEYS.has(e.key) && isTextInputFocused()) return false
@@ -115,8 +118,15 @@ export function handleCommandKey(e: KeyboardEvent, keyMap: ShortcutMap): boolean
   return true
 }
 
+export function handleAiPanelKey(e: KeyboardEvent, onToggleAIChat?: () => void): boolean {
+  if (isCommandShiftOnly(e) === false || e.key.toLowerCase() !== 'l' || onToggleAIChat === undefined) return false
+  e.preventDefault()
+  onToggleAIChat()
+  return true
+}
+
 export function handleShiftCommandKey(e: KeyboardEvent, keyMap: ShortcutMap): boolean {
-  if (isCmdShiftOnly(e) === false) return false
+  if (isCommandOrCtrlShiftOnly(e) === false) return false
   const handler = keyMap[e.key.toLowerCase()]
   if (handler === undefined) return false
   e.preventDefault()
@@ -125,6 +135,7 @@ export function handleShiftCommandKey(e: KeyboardEvent, keyMap: ShortcutMap): bo
 }
 
 export function handleAppKeyboardEvent(actions: KeyboardActions, event: KeyboardEvent) {
+  if (handleAiPanelKey(event, actions.onToggleAIChat)) return
   const shiftKeyMap = createShiftCommandKeyMap(actions)
   if (handleShiftCommandKey(event, shiftKeyMap)) return
   if (handleViewModeKey(event, actions.onSetViewMode)) return
