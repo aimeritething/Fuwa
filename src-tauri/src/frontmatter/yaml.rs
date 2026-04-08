@@ -11,49 +11,72 @@ pub enum FrontmatterValue {
     Null,
 }
 
-/// Characters that require a YAML string value to be quoted.
-fn has_yaml_special_chars(s: &str) -> bool {
-    s.contains(':') || s.contains('#')
+#[derive(Clone, Copy)]
+struct YamlText<'a>(&'a str);
+
+impl<'a> YamlText<'a> {
+    /// Characters that require a YAML string value to be quoted.
+    fn has_special_chars(self) -> bool {
+        self.0.contains(':') || self.0.contains('#')
+    }
+
+    /// Check if a string starts with a YAML collection indicator (array or map).
+    fn starts_as_collection(self) -> bool {
+        self.0.starts_with('[') || self.0.starts_with('{')
+    }
+
+    /// Check whether a YAML string value needs quoting to avoid ambiguity.
+    fn needs_quoting(self) -> bool {
+        self.has_special_chars()
+            || self.starts_as_collection()
+            || matches!(self.0, "true" | "false" | "null")
+            || self.0.parse::<f64>().is_ok()
+    }
+
+    /// Quote a string value for YAML, escaping internal double quotes.
+    fn quoted(self) -> String {
+        format!("\"{}\"", self.0.replace('\"', "\\\""))
+    }
+
+    /// Format a single YAML list item as `  - "value"`.
+    fn as_list_item(self) -> String {
+        format!("  - {}", self.quoted())
+    }
+
+    /// Format a multi-line string as a YAML block scalar (`|`).
+    /// Each line is indented by 2 spaces; empty lines are preserved as blank.
+    fn as_block_scalar(self) -> String {
+        let indented = self
+            .0
+            .lines()
+            .map(|line| {
+                if line.is_empty() {
+                    String::new()
+                } else {
+                    format!("  {}", line)
+                }
+            })
+            .collect::<Vec<_>>()
+            .join("\n");
+        format!("|\n{}", indented)
+    }
+
+    /// Check whether a YAML key needs quoting (contains spaces, special chars, etc.).
+    fn needs_key_quoting(self) -> bool {
+        self.0
+            .chars()
+            .any(|c| !c.is_ascii_alphanumeric() && c != '_' && c != '-')
+    }
 }
 
-/// Check if a string starts with a YAML collection indicator (array or map).
-fn starts_as_yaml_collection(s: &str) -> bool {
-    s.starts_with('[') || s.starts_with('{')
-}
-
-/// Check whether a YAML string value needs quoting to avoid ambiguity.
-fn needs_yaml_quoting(s: &str) -> bool {
-    has_yaml_special_chars(s)
-        || starts_as_yaml_collection(s)
-        || matches!(s, "true" | "false" | "null")
-        || s.parse::<f64>().is_ok()
-}
-
-/// Quote a string value for YAML, escaping internal double quotes.
-fn quote_yaml_string(s: &str) -> String {
-    format!("\"{}\"", s.replace('\"', "\\\""))
-}
-
-/// Format a single YAML list item as `  - "value"`.
-fn format_list_item(item: &str) -> String {
-    format!("  - {}", quote_yaml_string(item))
-}
-
-/// Format a multi-line string as a YAML block scalar (`|`).
-/// Each line is indented by 2 spaces; empty lines are preserved as blank.
-fn format_block_scalar(s: &str) -> String {
-    let indented = s
-        .lines()
-        .map(|l| {
-            if l.is_empty() {
-                String::new()
-            } else {
-                format!("  {}", l)
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    format!("|\n{}", indented)
+/// Format a key for YAML output (quote if necessary)
+pub fn format_yaml_key(key: &str) -> String {
+    let yaml_key = YamlText(key);
+    if yaml_key.needs_key_quoting() {
+        yaml_key.quoted()
+    } else {
+        key.to_string()
+    }
 }
 
 /// Format a number for YAML (integers without decimal, floats with).
@@ -69,10 +92,11 @@ impl FrontmatterValue {
     pub fn to_yaml_value(&self) -> String {
         match self {
             FrontmatterValue::String(s) => {
+                let yaml_text = YamlText(s);
                 if s.contains('\n') {
-                    format_block_scalar(s)
-                } else if needs_yaml_quoting(s) {
-                    quote_yaml_string(s)
+                    yaml_text.as_block_scalar()
+                } else if yaml_text.needs_quoting() {
+                    yaml_text.quoted()
                 } else {
                     s.clone()
                 }
@@ -82,26 +106,11 @@ impl FrontmatterValue {
             FrontmatterValue::List(items) if items.is_empty() => "[]".to_string(),
             FrontmatterValue::List(items) => items
                 .iter()
-                .map(|item| format_list_item(item))
+                .map(|item| YamlText(item).as_list_item())
                 .collect::<Vec<_>>()
                 .join("\n"),
             FrontmatterValue::Null => "null".to_string(),
         }
-    }
-}
-
-/// Check whether a YAML key needs quoting (contains spaces, special chars, etc.).
-fn needs_key_quoting(key: &str) -> bool {
-    key.chars()
-        .any(|c| !c.is_ascii_alphanumeric() && c != '_' && c != '-')
-}
-
-/// Format a key for YAML output (quote if necessary)
-pub fn format_yaml_key(key: &str) -> String {
-    if needs_key_quoting(key) {
-        format!("\"{}\"", key)
-    } else {
-        key.to_string()
     }
 }
 
@@ -112,7 +121,7 @@ pub fn format_yaml_field(key: &str, value: &FrontmatterValue) -> Vec<String> {
     if yaml_value.starts_with("|\n") {
         // Block scalar: key and indicator on the same line, content follows
         vec![format!("{}: {}", yaml_key, yaml_value)]
-    } else if yaml_value.contains('\n') {
+    } else if matches!(value, FrontmatterValue::List(items) if !items.is_empty()) {
         vec![format!("{}:", yaml_key), yaml_value]
     } else {
         vec![format!("{}: {}", yaml_key, yaml_value)]
@@ -123,66 +132,40 @@ pub fn format_yaml_field(key: &str, value: &FrontmatterValue) -> Vec<String> {
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_to_yaml_value_string_needs_quoting_colon() {
-        let v = FrontmatterValue::String("key: value".to_string());
-        assert_eq!(v.to_yaml_value(), "\"key: value\"");
+    fn assert_string_yaml_value(input: &str, expected: &str) {
+        let value = FrontmatterValue::String(input.to_string());
+        assert_eq!(value.to_yaml_value(), expected);
+    }
+
+    fn assert_field_lines(key: &str, value: FrontmatterValue, expected: &[&str]) {
+        let lines = format_yaml_field(key, &value);
+        let expected_lines = expected
+            .iter()
+            .map(|line| line.to_string())
+            .collect::<Vec<_>>();
+        assert_eq!(lines, expected_lines);
     }
 
     #[test]
-    fn test_to_yaml_value_string_needs_quoting_hash() {
-        let v = FrontmatterValue::String("has # comment".to_string());
-        assert_eq!(v.to_yaml_value(), "\"has # comment\"");
-    }
-
-    #[test]
-    fn test_to_yaml_value_string_needs_quoting_bracket() {
-        let v = FrontmatterValue::String("[array-like]".to_string());
-        assert_eq!(v.to_yaml_value(), "\"[array-like]\"");
-    }
-
-    #[test]
-    fn test_to_yaml_value_string_needs_quoting_brace() {
-        let v = FrontmatterValue::String("{object-like}".to_string());
-        assert_eq!(v.to_yaml_value(), "\"{object-like}\"");
-    }
-
-    #[test]
-    fn test_to_yaml_value_string_needs_quoting_bool_like() {
-        assert_eq!(
-            FrontmatterValue::String("true".to_string()).to_yaml_value(),
-            "\"true\""
-        );
-        assert_eq!(
-            FrontmatterValue::String("false".to_string()).to_yaml_value(),
-            "\"false\""
-        );
-    }
-
-    #[test]
-    fn test_to_yaml_value_string_needs_quoting_null_like() {
-        assert_eq!(
-            FrontmatterValue::String("null".to_string()).to_yaml_value(),
-            "\"null\""
-        );
-    }
-
-    #[test]
-    fn test_to_yaml_value_string_needs_quoting_number_like() {
-        assert_eq!(
-            FrontmatterValue::String("42".to_string()).to_yaml_value(),
-            "\"42\""
-        );
-        assert_eq!(
-            FrontmatterValue::String("3.14".to_string()).to_yaml_value(),
-            "\"3.14\""
-        );
+    fn test_to_yaml_value_string_needs_quoting_cases() {
+        for (input, expected) in [
+            ("key: value", "\"key: value\""),
+            ("has # comment", "\"has # comment\""),
+            ("[array-like]", "\"[array-like]\""),
+            ("{object-like}", "\"{object-like}\""),
+            ("true", "\"true\""),
+            ("false", "\"false\""),
+            ("null", "\"null\""),
+            ("42", "\"42\""),
+            ("3.14", "\"3.14\""),
+        ] {
+            assert_string_yaml_value(input, expected);
+        }
     }
 
     #[test]
     fn test_to_yaml_value_string_plain() {
-        let v = FrontmatterValue::String("Hello World".to_string());
-        assert_eq!(v.to_yaml_value(), "Hello World");
+        assert_string_yaml_value("Hello World", "Hello World");
     }
 
     #[test]
@@ -225,29 +208,22 @@ mod tests {
 
     #[test]
     fn test_format_yaml_key_simple() {
-        assert_eq!(format_yaml_key("Status"), "Status");
-        assert_eq!(format_yaml_key("is_a"), "is_a");
+        for (input, expected) in [("Status", "Status"), ("is_a", "is_a")] {
+            assert_eq!(format_yaml_key(input), expected);
+        }
     }
 
     #[test]
-    fn test_format_yaml_key_with_spaces() {
-        assert_eq!(format_yaml_key("Is A"), "\"Is A\"");
-        assert_eq!(format_yaml_key("Created at"), "\"Created at\"");
-    }
-
-    #[test]
-    fn test_format_yaml_key_with_colon() {
-        assert_eq!(format_yaml_key("key:value"), "\"key:value\"");
-    }
-
-    #[test]
-    fn test_format_yaml_key_with_hash() {
-        assert_eq!(format_yaml_key("has#tag"), "\"has#tag\"");
-    }
-
-    #[test]
-    fn test_format_yaml_key_with_period() {
-        assert_eq!(format_yaml_key("key.name"), "\"key.name\"");
+    fn test_format_yaml_key_quotes_when_needed() {
+        for (input, expected) in [
+            ("Is A", "\"Is A\""),
+            ("Created at", "\"Created at\""),
+            ("key:value", "\"key:value\""),
+            ("has#tag", "\"has#tag\""),
+            ("key.name", "\"key.name\""),
+        ] {
+            assert_eq!(format_yaml_key(input), expected);
+        }
     }
 
     #[test]
@@ -258,5 +234,20 @@ mod tests {
         assert!(lines[0].starts_with("template: |\n"));
         assert!(lines[0].contains("  ## Objective"));
         assert!(lines[0].contains("  ## Timeline"));
+    }
+
+    #[test]
+    fn test_format_yaml_field_list_layouts() {
+        assert_field_lines(
+            "_list_properties_display",
+            FrontmatterValue::List(vec!["Belongs to".to_string()]),
+            &["_list_properties_display:", "  - \"Belongs to\""],
+        );
+        assert_field_lines("tags", FrontmatterValue::List(vec![]), &["tags: []"]);
+        assert_field_lines(
+            "tags",
+            FrontmatterValue::List(vec!["Alpha".to_string(), "Beta".to_string()]),
+            &["tags:", "  - \"Alpha\"\n  - \"Beta\""],
+        );
     }
 }
