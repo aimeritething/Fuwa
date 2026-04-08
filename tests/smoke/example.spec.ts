@@ -18,7 +18,7 @@ test.describe('Command Palette smoke tests', () => {
     await verifyVisible(page, 'input[placeholder="Type a command..."]')
   })
 
-  test('Escape closes the command palette @smoke', async ({ page }) => {
+  test('Escape closes the command palette', async ({ page }) => {
     await openCommandPalette(page)
     await closeCommandPalette(page)
     await expect(
@@ -26,7 +26,7 @@ test.describe('Command Palette smoke tests', () => {
     ).not.toBeVisible()
   })
 
-  test('typing filters the command list @smoke', async ({ page }) => {
+  test('typing filters the command list', async ({ page }) => {
     await openCommandPalette(page)
     const found = await findCommand(page, 'reload')
     expect(found).toBe(true)

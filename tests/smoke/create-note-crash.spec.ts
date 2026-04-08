@@ -5,7 +5,7 @@ function isCrashError(msg: string): boolean {
   return msg.includes('Maximum update depth') || msg.includes('Invalid hook call') || msg.includes('#185')
 }
 
-test('create note via Cmd+N does not crash @smoke', async ({ page }) => {
+test('create note via Cmd+N does not crash', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (err) => { if (isCrashError(err.message)) errors.push(err.message) })
 

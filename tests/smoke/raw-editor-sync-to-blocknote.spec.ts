@@ -58,7 +58,7 @@ test.describe('Raw editor ↔ BlockNote sync', () => {
     await page.waitForLoadState('networkidle')
   })
 
-  test('editing in raw mode and switching to BlockNote shows updated content @smoke', async ({ page }) => {
+  test('editing in raw mode and switching to BlockNote shows updated content', async ({ page }) => {
     await openFirstNote(page)
 
     // Toggle to raw mode
@@ -79,7 +79,7 @@ test.describe('Raw editor ↔ BlockNote sync', () => {
     await expect(page.locator('.bn-editor')).toContainText(appendedText, { timeout: 5000 })
   })
 
-  test('switching BlockNote → raw → BlockNote multiple times preserves content @smoke', async ({ page }) => {
+  test('switching BlockNote → raw → BlockNote multiple times preserves content', async ({ page }) => {
     await openFirstNote(page)
 
     // Cycle 1: toggle to raw, edit, toggle back

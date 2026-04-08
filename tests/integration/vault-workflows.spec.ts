@@ -119,7 +119,7 @@ test('create note saves file to disk with correct slug @smoke', async ({ page })
 // 5. Rename note updates filename on disk
 // ---------------------------------------------------------------------------
 
-test('rename note updates filename on disk @smoke', async ({ page }) => {
+test('rename note updates filename on disk', async ({ page }) => {
   // Open Note B
   await openNote(page, 'Note B')
 
