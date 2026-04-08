@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test'
 test.describe('AI chat empty body fix — no regression', () => {
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/vault/ping', route => route.fulfill({ status: 503 }))
-    await page.goto('/')
+    await page.goto('/', { waitUntil: 'domcontentloaded' })
     await expect(page.locator('[data-testid="note-list-container"]')).toBeVisible({ timeout: 5_000 })
   })
 

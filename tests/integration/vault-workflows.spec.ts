@@ -56,8 +56,8 @@ test('vault loads entries from fixture files @smoke', async ({ page }) => {
 
   // Open a note and verify editor shows its content from disk
   await openNote(page, 'Alpha Project')
-  // The WYSIWYG editor renders the title as an H1 heading
-  await expect(page.getByRole('heading', { name: 'Alpha Project', level: 1 })).toBeVisible({ timeout: 5_000 })
+  // Verify the stable title field rather than the editor heading rendering.
+  await expect(page.getByTestId('title-field-input')).toHaveValue('Alpha Project', { timeout: 5_000 })
 })
 
 // ---------------------------------------------------------------------------
@@ -90,7 +90,7 @@ test('trashed note does not appear in All Notes', async ({ page }) => {
 // 4. Create note saves file to disk with correct slug
 // ---------------------------------------------------------------------------
 
-test('create note saves file to disk with correct slug @smoke', async ({ page }) => {
+test('create note saves file to disk with correct slug', async ({ page }) => {
   const beforeFiles = new Set(fs.readdirSync(tempVaultDir))
 
   // "Create new note" instantly creates "Untitled note" and opens in editor

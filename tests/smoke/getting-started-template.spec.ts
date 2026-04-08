@@ -37,8 +37,7 @@ test('Getting Started template shows inline retry on clone failure and opens aft
     })
   })
 
-  await page.goto('/')
-  await page.waitForLoadState('networkidle')
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
 
   await expect(page.getByTestId('welcome-screen')).toBeVisible()
 
