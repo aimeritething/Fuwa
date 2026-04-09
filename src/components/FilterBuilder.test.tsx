@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { FilterBuilder } from './FilterBuilder'
 import type { FilterGroup } from '../types'
 
@@ -133,6 +133,23 @@ describe('FilterBuilder value inputs', () => {
 
     expect(screen.getByTestId('date-value-input')).toHaveValue('10 days ago')
     expect(screen.getByTestId('date-picker-trigger')).toHaveAttribute('title', 'Mar 28, 2026')
+  })
+
+  it('keeps filter controls top-aligned when the date preview adds a second line', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-07T12:00:00Z'))
+
+    renderBuilder({
+      all: [{ field: 'created', op: 'after', value: '10 days ago' }],
+    })
+
+    fireEvent.focus(screen.getByTestId('date-value-input'))
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+
+    expect(screen.getByTestId('date-value-preview')).toHaveTextContent('Resolves to March 28, 2026')
+    expect(screen.getByTestId('filter-row')).toHaveClass('items-start')
   })
 
   it('filters the field combobox as the user types', () => {

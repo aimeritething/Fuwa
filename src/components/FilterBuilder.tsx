@@ -141,7 +141,7 @@ function FilterRow({ condition, fields, onUpdate, onRemove }: {
   const regexEnabled = regexSupported && condition.regex === true
   const invalidRegex = regexSupported && hasInvalidRegex(String(condition.value ?? ''), regexEnabled)
   return (
-    <div className="flex items-center gap-1.5">
+    <div className="flex items-start gap-1.5" data-testid="filter-row">
       <FilterFieldCombobox
         value={condition.field}
         fields={fields}
