@@ -69,9 +69,14 @@ test('creating an untitled draft hides the legacy title section in the editor', 
   await expect(page.locator('.title-section[data-title-ui-visible]')).toHaveCount(0)
 })
 
-test('@smoke older notes with an H1 do not render the legacy title section', async ({ page }) => {
+test('@smoke older notes with a document title do not render the legacy title section', async ({ page }) => {
   await openNote(page, 'Alpha Project')
 
+  await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByTestId('title-field-input')).toHaveCount(0)
+  await expect(page.locator('.title-section[data-title-ui-visible]')).toHaveCount(0)
+
+  await openNote(page, 'Spring 2026')
   await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
   await expect(page.getByTestId('title-field-input')).toHaveCount(0)
   await expect(page.locator('.title-section[data-title-ui-visible]')).toHaveCount(0)

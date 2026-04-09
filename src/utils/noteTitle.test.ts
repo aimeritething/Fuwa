@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { deriveDisplayTitleState, extractH1TitleFromContent, filenameStemToTitle } from './noteTitle'
+import {
+  contentDefinesDisplayTitle,
+  deriveDisplayTitleState,
+  extractFrontmatterTitleFromContent,
+  extractH1TitleFromContent,
+  filenameStemToTitle,
+} from './noteTitle'
 
 describe('filenameStemToTitle', () => {
   it('converts kebab-case filenames into title case', () => {
@@ -23,10 +29,32 @@ describe('extractH1TitleFromContent', () => {
   })
 })
 
+describe('extractFrontmatterTitleFromContent', () => {
+  it('extracts the frontmatter title when present', () => {
+    const content = '---\ntitle: Legacy Title\nstatus: Active\n---\n## Body'
+    expect(extractFrontmatterTitleFromContent(content)).toBe('Legacy Title')
+  })
+
+  it('returns null when the frontmatter title is missing', () => {
+    expect(extractFrontmatterTitleFromContent('---\nstatus: Active\n---\n## Body')).toBeNull()
+  })
+})
+
+describe('contentDefinesDisplayTitle', () => {
+  it('returns true when the document title comes from frontmatter', () => {
+    const content = '---\ntitle: Spring 2026\n---\n## Goals'
+    expect(contentDefinesDisplayTitle(content)).toBe(true)
+  })
+
+  it('returns false when title still comes from the filename', () => {
+    expect(contentDefinesDisplayTitle('Body only')).toBe(false)
+  })
+})
+
 describe('deriveDisplayTitleState', () => {
   it('prefers H1 over frontmatter title and filename', () => {
     const content = '---\ntitle: Legacy Title\n---\n# Updated Title\n\nBody'
-    expect(deriveDisplayTitleState(content, 'legacy-title.md', 'Legacy Title')).toEqual({
+    expect(deriveDisplayTitleState({ content, filename: 'legacy-title.md', frontmatterTitle: 'Legacy Title' })).toEqual({
       title: 'Updated Title',
       hasH1: true,
     })
@@ -34,14 +62,22 @@ describe('deriveDisplayTitleState', () => {
 
   it('falls back to frontmatter title when no H1 is present', () => {
     const content = '---\ntitle: Legacy Title\n---\nBody'
-    expect(deriveDisplayTitleState(content, 'legacy-title.md', 'Legacy Title')).toEqual({
+    expect(deriveDisplayTitleState({ content, filename: 'legacy-title.md', frontmatterTitle: 'Legacy Title' })).toEqual({
       title: 'Legacy Title',
       hasH1: false,
     })
   })
 
+  it('reads the frontmatter title from content when no explicit title is passed', () => {
+    const content = '---\ntitle: Spring 2026\n---\n## Goals'
+    expect(deriveDisplayTitleState({ content, filename: 'spring-2026.md' })).toEqual({
+      title: 'Spring 2026',
+      hasH1: false,
+    })
+  })
+
   it('falls back to filename title when there is no H1 or frontmatter title', () => {
-    expect(deriveDisplayTitleState('Body only', 'renamed-note.md')).toEqual({
+    expect(deriveDisplayTitleState({ content: 'Body only', filename: 'renamed-note.md' })).toEqual({
       title: 'Renamed Note',
       hasH1: false,
     })

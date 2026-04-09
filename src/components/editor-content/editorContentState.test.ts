@@ -63,6 +63,26 @@ describe('deriveEditorContentState', () => {
     })
 
     expect(state.hasH1).toBe(false)
+    expect(state.showTitleSection).toBe(false)
+  })
+
+  it('hides the legacy title section when a frontmatter title drives the display title', () => {
+    const state = deriveState({
+      entry: baseEntry,
+      content: '---\ntitle: Spring 2026\nstatus: Active\n---\n## Goals',
+    })
+
+    expect(state.hasH1).toBe(false)
+    expect(state.showTitleSection).toBe(false)
+  })
+
+  it('keeps the title section when the document title still comes from the filename', () => {
+    const state = deriveState({
+      entry: baseEntry,
+      content: '---\nstatus: Active\n---\nBody without a heading',
+    })
+
+    expect(state.hasH1).toBe(false)
     expect(state.showTitleSection).toBe(true)
   })
 

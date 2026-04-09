@@ -1,4 +1,21 @@
+import { parseFrontmatter } from './frontmatter'
 import { splitFrontmatter } from './wikilinks'
+
+interface ResolvedContentTitle {
+  source: 'h1' | 'frontmatter'
+  title: string
+}
+
+interface DisplayTitleInput {
+  content: string
+  filename: string
+  frontmatterTitle?: string | null
+}
+
+interface DisplayTitleState {
+  title: string
+  hasH1: boolean
+}
 
 function replaceWikilinkAliases(text: string): string {
   return text.replace(/\[\[[^|\]]+\|([^\]]+)\]\]/g, '$1')
@@ -49,20 +66,46 @@ export function extractH1TitleFromContent(content: string): string | null {
   return null
 }
 
-export function deriveDisplayTitleState(
-  content: string,
-  filename: string,
-  frontmatterTitle?: string | null,
-): { title: string, hasH1: boolean } {
+export function extractFrontmatterTitleFromContent(content: string): string | null {
+  const title = parseFrontmatter(content).title
+  if (typeof title !== 'string') return null
+  const trimmed = title.trim()
+  return trimmed || null
+}
+
+function resolveContentTitle(content: string, frontmatterTitle?: string | null): ResolvedContentTitle | null {
   const h1Title = extractH1TitleFromContent(content)
   if (h1Title) {
-    return { title: h1Title, hasH1: true }
+    return { title: h1Title, source: 'h1' }
   }
 
-  const trimmedFrontmatterTitle = frontmatterTitle?.trim()
-  if (trimmedFrontmatterTitle) {
-    return { title: trimmedFrontmatterTitle, hasH1: false }
+  const resolvedFrontmatterTitle = frontmatterTitle?.trim() || extractFrontmatterTitleFromContent(content)
+  if (resolvedFrontmatterTitle) {
+    return { title: resolvedFrontmatterTitle, source: 'frontmatter' }
   }
 
-  return { title: filenameStemToTitle(filename), hasH1: false }
+  return null
+}
+
+export function contentDefinesDisplayTitle(content: string): boolean {
+  return resolveContentTitle(content) !== null
+}
+
+export function deriveDisplayTitleState({
+  content,
+  filename,
+  frontmatterTitle,
+}: DisplayTitleInput): DisplayTitleState {
+  const resolvedTitle = resolveContentTitle(content, frontmatterTitle)
+  if (resolvedTitle) {
+    return {
+      title: resolvedTitle.title,
+      hasH1: resolvedTitle.source === 'h1',
+    }
+  }
+
+  return {
+    title: filenameStemToTitle(filename),
+    hasH1: false,
+  }
 }

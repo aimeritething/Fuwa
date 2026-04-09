@@ -36,11 +36,11 @@ export function useEditorSaveWithLinks(config: {
     const filename = path.split('/').pop() ?? path
     const fmPatch = {
       ...frontmatterPatch,
-      ...deriveDisplayTitleState(
+      ...deriveDisplayTitleState({
         content,
         filename,
-        typeof frontmatterPatch.title === 'string' ? frontmatterPatch.title : null,
-      ),
+        frontmatterTitle: typeof frontmatterPatch.title === 'string' ? frontmatterPatch.title : null,
+      }),
     }
     const fmKey = JSON.stringify(fmPatch)
     if (fmKey !== prevFmKeyRef.current) {
