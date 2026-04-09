@@ -1,7 +1,8 @@
 import { CaretUpDown } from '@phosphor-icons/react'
-import { useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type ChangeEvent, type FocusEvent, type KeyboardEvent, type RefObject } from 'react'
 import { Input } from '@/components/ui/input'
-import { cn } from '@/lib/utils'
+import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
+import { FilterFieldOptionsList } from './filter-builder/FilterFieldOptionsList'
 
 const CONTENT_FIELDS = new Set(['body'])
 
@@ -47,8 +48,154 @@ function initialHighlightIndex(options: string[], currentValue: string): number 
   return currentIndex >= 0 ? currentIndex : 0
 }
 
-function optionTestId(field: string): string {
-  return `filter-field-option-${field.replace(/[^a-z0-9_-]+/gi, '-')}`
+function stepHighlightedIndex(current: number, optionCount: number, direction: 'next' | 'previous'): number {
+  if (current < 0) return direction === 'next' ? 0 : optionCount - 1
+  if (direction === 'next') return (current + 1) % optionCount
+  return (current - 1 + optionCount) % optionCount
+}
+
+function handleFilterFieldKeyDown({
+  event,
+  open,
+  options,
+  highlightedIndex,
+  openCombobox,
+  setHighlightedIndex,
+  selectOption,
+  closeCombobox,
+}: {
+  event: KeyboardEvent<HTMLInputElement>
+  open: boolean
+  options: string[]
+  highlightedIndex: number
+  openCombobox: () => void
+  setHighlightedIndex: (updater: number | ((current: number) => number)) => void
+  selectOption: (value: string) => void
+  closeCombobox: () => void
+}) {
+  switch (event.key) {
+    case 'ArrowDown':
+      event.preventDefault()
+      if (!open) {
+        openCombobox()
+        return
+      }
+      if (options.length === 0) return
+      setHighlightedIndex((current) => stepHighlightedIndex(current, options.length, 'next'))
+      return
+    case 'ArrowUp':
+      event.preventDefault()
+      if (!open) {
+        openCombobox()
+        return
+      }
+      if (options.length === 0) return
+      setHighlightedIndex((current) => stepHighlightedIndex(current, options.length, 'previous'))
+      return
+    case 'Enter':
+      if (!open || highlightedIndex < 0 || options[highlightedIndex] === undefined) return
+      event.preventDefault()
+      selectOption(options[highlightedIndex])
+      return
+    case 'Escape':
+      if (!open) return
+      event.preventDefault()
+      closeCombobox()
+      return
+    default:
+      return
+  }
+}
+
+function FilterFieldInput({
+  inputRef,
+  open,
+  query,
+  value,
+  listboxId,
+  highlightedIndex,
+  onFocus,
+  onChange,
+  onKeyDown,
+}: {
+  inputRef: RefObject<HTMLInputElement | null>
+  open: boolean
+  query: string
+  value: string
+  listboxId: string
+  highlightedIndex: number
+  onFocus: () => void
+  onChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
+}) {
+  return (
+    <>
+      <Input
+        ref={inputRef}
+        value={open ? query : value}
+        onFocus={onFocus}
+        onChange={onChange}
+        onKeyDown={onKeyDown}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls={listboxId}
+        aria-expanded={open}
+        aria-activedescendant={highlightedIndex >= 0 ? `${listboxId}-option-${highlightedIndex}` : undefined}
+        className="h-8 pr-7 text-sm"
+        data-testid="filter-field-combobox-input"
+      />
+      <CaretUpDown
+        size={14}
+        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
+        aria-hidden="true"
+      />
+    </>
+  )
+}
+
+function FilterFieldPopoverPanel({
+  open,
+  contentWidth,
+  listboxId,
+  fieldGroups,
+  options,
+  highlightedIndex,
+  onHighlight,
+  onSelect,
+}: {
+  open: boolean
+  contentWidth: number
+  listboxId: string
+  fieldGroups: FieldGroup[]
+  options: string[]
+  highlightedIndex: number
+  onHighlight: (index: number) => void
+  onSelect: (value: string) => void
+}) {
+  if (!open) return null
+
+  return (
+    <PopoverContent
+      align="start"
+      sideOffset={4}
+      className="max-h-60 overflow-y-auto p-1"
+      style={{ width: contentWidth }}
+      onOpenAutoFocus={(event) => event.preventDefault()}
+      onCloseAutoFocus={(event) => event.preventDefault()}
+      data-testid="filter-field-combobox-popover"
+    >
+      <div id={listboxId} role="listbox" data-testid="filter-field-combobox-options">
+        <FilterFieldOptionsList
+          listboxId={listboxId}
+          fieldGroups={fieldGroups}
+          options={options}
+          highlightedIndex={highlightedIndex}
+          onHighlight={onHighlight}
+          onSelect={onSelect}
+        />
+      </div>
+    </PopoverContent>
+  )
 }
 
 export function FilterFieldCombobox({ value, fields, onChange }: FilterFieldComboboxProps) {
@@ -56,6 +203,7 @@ export function FilterFieldCombobox({ value, fields, onChange }: FilterFieldComb
   const [query, setQuery] = useState(value)
   const [hasTyped, setHasTyped] = useState(false)
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [contentWidth, setContentWidth] = useState<number>(220)
   const rootRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listboxId = useId()
@@ -88,128 +236,79 @@ export function FilterFieldCombobox({ value, fields, onChange }: FilterFieldComb
     setOpen(false)
   }
 
+  useEffect(() => {
+    if (!open) return
+
+    const updateWidth = () => {
+      const nextWidth = rootRef.current?.getBoundingClientRect().width ?? 220
+      setContentWidth(Math.max(nextWidth, 220))
+    }
+
+    updateWidth()
+    window.addEventListener('resize', updateWidth)
+    return () => window.removeEventListener('resize', updateWidth)
+  }, [open])
+
+  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    if (rootRef.current?.contains(event.relatedTarget as Node | null)) return
+    closeCombobox()
+  }
+
+  const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const nextQuery = event.target.value
+    const nextGroups = buildFieldGroups(fields, value, nextQuery)
+    const nextOptions = flattenGroups(nextGroups)
+    setOpen(true)
+    setQuery(nextQuery)
+    setHasTyped(true)
+    setHighlightedIndex(nextOptions.length > 0 ? 0 : -1)
+  }
+
+  const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    handleFilterFieldKeyDown({
+      event,
+      open,
+      options,
+      highlightedIndex,
+      openCombobox,
+      setHighlightedIndex,
+      selectOption,
+      closeCombobox,
+    })
+  }
+
   return (
-    <div
-      ref={rootRef}
-      className="relative flex-1 min-w-[160px]"
-      onBlur={(event) => {
-        if (rootRef.current?.contains(event.relatedTarget as Node | null)) return
-        closeCombobox()
-      }}
-      data-testid="filter-field-combobox"
-    >
-      <Input
-        ref={inputRef}
-        value={open ? query : value}
-        onFocus={() => openCombobox()}
-        onChange={(event) => {
-          const nextQuery = event.target.value
-          const nextGroups = buildFieldGroups(fields, value, nextQuery)
-          const nextOptions = flattenGroups(nextGroups)
-          setOpen(true)
-          setQuery(nextQuery)
-          setHasTyped(true)
-          setHighlightedIndex(nextOptions.length > 0 ? 0 : -1)
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'ArrowDown') {
-            event.preventDefault()
-            if (!open) {
-              openCombobox()
-              return
-            }
-            if (options.length === 0) return
-            setHighlightedIndex((current) => {
-              if (current < 0) return 0
-              return (current + 1) % options.length
-            })
-            return
-          }
-
-          if (event.key === 'ArrowUp') {
-            event.preventDefault()
-            if (!open) {
-              openCombobox()
-              return
-            }
-            if (options.length === 0) return
-            setHighlightedIndex((current) => {
-              if (current < 0) return options.length - 1
-              return (current - 1 + options.length) % options.length
-            })
-            return
-          }
-
-          if (event.key === 'Enter') {
-            if (!open || highlightedIndex < 0 || options[highlightedIndex] === undefined) return
-            event.preventDefault()
-            selectOption(options[highlightedIndex])
-            return
-          }
-
-          if (event.key === 'Escape') {
-            if (!open) return
-            event.preventDefault()
-            closeCombobox()
-          }
-        }}
-        role="combobox"
-        aria-autocomplete="list"
-        aria-controls={listboxId}
-        aria-expanded={open}
-        aria-activedescendant={highlightedIndex >= 0 ? `${listboxId}-option-${highlightedIndex}` : undefined}
-        className="h-8 pr-7 text-sm"
-        data-testid="filter-field-combobox-input"
-      />
-      <CaretUpDown
-        size={14}
-        className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground"
-        aria-hidden="true"
-      />
-      {open && (
+    <Popover open={open}>
+      <PopoverAnchor asChild>
         <div
-          id={listboxId}
-          role="listbox"
-          className="absolute left-0 top-full z-50 mt-1 max-h-60 w-full min-w-[220px] overflow-y-auto rounded-md border border-border bg-popover p-1 shadow-md"
-          data-testid="filter-field-combobox-options"
+          ref={rootRef}
+          className="relative flex-1 min-w-[160px]"
+          onBlur={handleBlur}
+          data-testid="filter-field-combobox"
         >
-          {options.length === 0 ? (
-            <div className="px-2 py-6 text-center text-sm text-muted-foreground" data-testid="filter-field-combobox-empty">
-              No results
-            </div>
-          ) : (
-            fieldGroups.map((group, groupIndex) => (
-              <div key={group.key}>
-                {groupIndex > 0 && <div className="my-1 border-t border-border" />}
-                {group.options.map((field) => {
-                  const optionIndex = options.indexOf(field)
-                  return (
-                    <button
-                      key={field}
-                      id={`${listboxId}-option-${optionIndex}`}
-                      type="button"
-                      role="option"
-                      aria-selected={optionIndex === highlightedIndex}
-                      className={cn(
-                        'flex w-full items-center rounded px-2 py-1.5 text-left text-sm',
-                        optionIndex === highlightedIndex
-                          ? 'bg-accent text-accent-foreground'
-                          : 'text-foreground hover:bg-accent hover:text-accent-foreground',
-                      )}
-                      onMouseDown={(event) => event.preventDefault()}
-                      onMouseEnter={() => setHighlightedIndex(optionIndex)}
-                      onClick={() => selectOption(field)}
-                      data-testid={optionTestId(field)}
-                    >
-                      <span className="truncate">{field}</span>
-                    </button>
-                  )
-                })}
-              </div>
-            ))
-          )}
+          <FilterFieldInput
+            inputRef={inputRef}
+            open={open}
+            query={query}
+            value={value}
+            listboxId={listboxId}
+            highlightedIndex={highlightedIndex}
+            onFocus={openCombobox}
+            onChange={handleInputChange}
+            onKeyDown={handleInputKeyDown}
+          />
         </div>
-      )}
-    </div>
+      </PopoverAnchor>
+      <FilterFieldPopoverPanel
+        open={open}
+        contentWidth={contentWidth}
+        listboxId={listboxId}
+        fieldGroups={fieldGroups}
+        options={options}
+        highlightedIndex={highlightedIndex}
+        onHighlight={setHighlightedIndex}
+        onSelect={selectOption}
+      />
+    </Popover>
   )
 }
