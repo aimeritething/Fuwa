@@ -8,9 +8,10 @@ test.describe('AI panel shortcut', () => {
     await expect(page.locator('[data-testid="note-list-container"]')).toBeVisible({ timeout: 5_000 })
   })
 
-  test('Cmd/Ctrl+Shift+L opens the AI panel', async ({ page }) => {
+  test('Cmd+Shift+L opens the AI panel from the editor', async ({ page }) => {
     await page.locator('.app__note-list .cursor-pointer').first().click()
-    await sendShortcut(page, 'L', ['Control', 'Shift'])
+    await page.locator('.bn-editor').click()
+    await sendShortcut(page, 'L', ['Meta', 'Shift'])
     await expect(page.getByTestId('ai-panel')).toBeVisible({ timeout: 3_000 })
     await expect(page.getByTitle('Close AI panel')).toBeVisible()
   })

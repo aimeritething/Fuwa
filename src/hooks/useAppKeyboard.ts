@@ -14,7 +14,7 @@ export function useAppKeyboard(actions: KeyboardActions) {
       onKeyDown(event)
     }
 
-    window.addEventListener('keydown', handleWindowKeyDown)
-    return () => window.removeEventListener('keydown', handleWindowKeyDown)
+    window.addEventListener('keydown', handleWindowKeyDown, true)
+    return () => window.removeEventListener('keydown', handleWindowKeyDown, true)
   }, [])
 }

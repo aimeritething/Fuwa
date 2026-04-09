@@ -3,6 +3,14 @@ import { renderHook } from '@testing-library/react'
 import { useAppKeyboard } from './useAppKeyboard'
 
 function fireKey(key: string, mods: { altKey?: boolean; metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean } = {}) {
+  fireKeyOnTarget(window, key, mods)
+}
+
+function fireKeyOnTarget(
+  target: EventTarget,
+  key: string,
+  mods: { altKey?: boolean; metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean } = {},
+) {
   const event = new KeyboardEvent('keydown', {
     key,
     altKey: mods.altKey ?? false,
@@ -12,7 +20,7 @@ function fireKey(key: string, mods: { altKey?: boolean; metaKey?: boolean; ctrlK
     bubbles: true,
     cancelable: true,
   })
-  window.dispatchEvent(event)
+  target.dispatchEvent(event)
 }
 
 function makeActions() {
@@ -130,11 +138,28 @@ describe('useAppKeyboard', () => {
     try { fn() } finally { document.body.removeChild(input) }
   }
 
+  function withFocusedContentEditable(fn: (editable: HTMLDivElement) => void) {
+    const editable = document.createElement('div')
+    editable.setAttribute('contenteditable', 'true')
+    document.body.appendChild(editable)
+    editable.focus()
+    try { fn(editable) } finally { document.body.removeChild(editable) }
+  }
+
   it('Cmd+Backspace does not delete note when text input is focused', () => {
     const actions = makeActions()
     renderHook(() => useAppKeyboard(actions))
     withFocusedInput(() => {
       fireKey('Backspace', { metaKey: true })
+      expect(actions.onDeleteNote).not.toHaveBeenCalled()
+    })
+  })
+
+  it('Cmd+Backspace does not delete note when contenteditable is focused', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    withFocusedContentEditable((editable) => {
+      fireKeyOnTarget(editable, 'Backspace', { metaKey: true })
       expect(actions.onDeleteNote).not.toHaveBeenCalled()
     })
   })
@@ -197,6 +222,17 @@ describe('useAppKeyboard', () => {
     renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat }))
     withFocusedInput(() => {
       fireKey('l', { metaKey: true, shiftKey: true })
+      expect(onToggleAIChat).toHaveBeenCalled()
+    })
+  })
+
+  it('Cmd+Shift+L works when editor stops propagation', () => {
+    const actions = makeActions()
+    const onToggleAIChat = vi.fn()
+    renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat }))
+    withFocusedContentEditable((editable) => {
+      editable.addEventListener('keydown', (event) => event.stopPropagation())
+      fireKeyOnTarget(editable, 'l', { metaKey: true, shiftKey: true })
       expect(onToggleAIChat).toHaveBeenCalled()
     })
   })

@@ -38,8 +38,10 @@ const VIEW_MODE_KEYS: Record<string, ViewMode> = {
 }
 
 function isTextInputFocused(): boolean {
-  const tag = document.activeElement?.tagName
-  return tag === 'INPUT' || tag === 'TEXTAREA'
+  const active = document.activeElement
+  if (!(active instanceof HTMLElement)) return false
+  if (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA') return true
+  return active.isContentEditable || active.closest('[contenteditable="true"]') !== null
 }
 
 function isCommandOrCtrlOnly(e: KeyboardEvent): boolean {
