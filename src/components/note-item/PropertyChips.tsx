@@ -164,8 +164,8 @@ function RelationshipTypeIcon({
 
 function renderResolvedNoteIcon(
   noteIcon: string | null | undefined,
-  imageFailed,
-  onImageError,
+  imageFailed: boolean,
+  onImageError: () => void,
 ): ReactNode {
   const resolvedNoteIcon = resolveNoteIcon(noteIcon)
 
