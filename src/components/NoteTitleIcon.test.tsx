@@ -10,18 +10,20 @@ describe('NoteTitleIcon', () => {
   })
 
   it('renders a Phosphor icon when the name is recognized', () => {
-    render(<NoteTitleIcon icon="cooking pot" testId="note-title-icon" />)
+    const { container } = render(<NoteTitleIcon icon="cooking pot" testId="note-title-icon" className="mr-1" />)
 
     const icon = screen.getByTestId('note-title-icon')
     expect(icon.tagName.toLowerCase()).toBe('svg')
+    expect(container.querySelector('span.inline-flex.mr-1')).not.toBeNull()
   })
 
   it('renders an image when the icon is an http url', () => {
-    render(<NoteTitleIcon icon="https://example.com/favicon.png" testId="note-title-icon" />)
+    const { container } = render(<NoteTitleIcon icon="https://example.com/favicon.png" testId="note-title-icon" className="mr-1" />)
 
     const icon = screen.getByTestId('note-title-icon')
     expect(icon.tagName.toLowerCase()).toBe('img')
     expect(icon).toHaveAttribute('src', 'https://example.com/favicon.png')
+    expect(container.querySelector('span.inline-flex.mr-1')).not.toBeNull()
   })
 
   it('renders nothing for an unrecognized icon value', () => {

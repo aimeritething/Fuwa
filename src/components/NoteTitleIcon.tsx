@@ -9,6 +9,21 @@ interface NoteTitleIconProps {
   testId?: string
 }
 
+function IconWrapper({
+  children,
+  className,
+  size,
+}: Pick<NoteTitleIconProps, 'className' | 'size'> & { children: React.ReactNode }) {
+  return (
+    <span
+      className={cn('inline-flex shrink-0 items-center justify-center align-middle', className)}
+      style={{ width: size, height: size, lineHeight: 1 }}
+    >
+      {children}
+    </span>
+  )
+}
+
 export function NoteTitleIcon({ icon, size = 14, className, color, testId }: NoteTitleIconProps) {
   const resolved = resolveNoteIcon(icon)
 
@@ -16,39 +31,40 @@ export function NoteTitleIcon({ icon, size = 14, className, color, testId }: Not
 
   if (resolved.kind === 'emoji') {
     return (
-      <span
-        className={cn('inline-flex shrink-0 items-center justify-center', className)}
-        style={{ fontSize: size, lineHeight: 1 }}
-        data-testid={testId}
-      >
-        {resolved.value}
-      </span>
+      <IconWrapper className={className} size={size}>
+        <span style={{ fontSize: size, lineHeight: 1 }} data-testid={testId}>
+          {resolved.value}
+        </span>
+      </IconWrapper>
     )
   }
 
   if (resolved.kind === 'image') {
     return (
-      <img
-        src={resolved.src}
-        alt=""
-        aria-hidden="true"
-        className={cn('shrink-0 rounded-sm object-cover', className)}
-        style={{ width: size, height: size }}
-        onError={(event) => {
-          event.currentTarget.style.display = 'none'
-        }}
-        data-testid={testId}
-      />
+      <IconWrapper className={className} size={size}>
+        <img
+          src={resolved.src}
+          alt=""
+          aria-hidden="true"
+          className="block h-full w-full rounded-sm object-cover"
+          onError={(event) => {
+            event.currentTarget.style.display = 'none'
+          }}
+          data-testid={testId}
+        />
+      </IconWrapper>
     )
   }
 
   return (
-    <resolved.Icon
-      width={size}
-      height={size}
-      className={cn('shrink-0', className)}
-      style={color ? { color } : undefined}
-      data-testid={testId}
-    />
+    <IconWrapper className={className} size={size}>
+      <resolved.Icon
+        width={size}
+        height={size}
+        className="block"
+        style={color ? { color } : undefined}
+        data-testid={testId}
+      />
+    </IconWrapper>
   )
 }
