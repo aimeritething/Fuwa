@@ -185,6 +185,41 @@ function makeMockEditor(docRef: { current: unknown[] }) {
 describe('useEditorTabSwap raw mode sync', () => {
   afterEach(() => { vi.restoreAllMocks() })
 
+  it('swaps in the new note when the path updates before tabs catch up', async () => {
+    vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+
+    const docRef = { current: blocksA as unknown[] }
+    const mockEditor = makeMockEditor(docRef)
+    Object.defineProperty(mockEditor, 'document', { get: () => docRef.current })
+
+    const tabA = makeTab('a.md', 'Note A')
+    const tabB = makeTab('b.md', 'March 2024')
+
+    const { rerender } = renderHook(
+      ({ tabs, activeTabPath, rawMode }) => useEditorTabSwap({
+        tabs, activeTabPath, editor: mockEditor as never, rawMode,
+      }),
+      { initialProps: { tabs: [tabA], activeTabPath: 'a.md', rawMode: false as boolean } },
+    )
+
+    await act(() => new Promise(r => setTimeout(r, 0)))
+    mockEditor.tryParseMarkdownToBlocks.mockClear()
+    mockEditor.replaceBlocks.mockClear()
+
+    rerender({ tabs: [tabA], activeTabPath: 'b.md', rawMode: false })
+    await act(() => new Promise(r => setTimeout(r, 0)))
+    expect(mockEditor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
+
+    rerender({ tabs: [tabB], activeTabPath: 'b.md', rawMode: false })
+    await act(() => new Promise(r => setTimeout(r, 0)))
+
+    expect(mockEditor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(
+      expect.stringContaining('March 2024'),
+    )
+    expect(mockEditor.replaceBlocks).toHaveBeenCalled()
+  })
+
   it('re-parses from tab.content when rawMode transitions from true to false', async () => {
     vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
