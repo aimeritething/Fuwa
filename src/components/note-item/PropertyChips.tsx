@@ -1,17 +1,17 @@
-import { createElement, useMemo, useState, type CSSProperties, type MouseEvent } from 'react'
+import { createElement, useMemo, useState, type ComponentType, type CSSProperties, type MouseEvent, type ReactNode, type SVGAttributes } from 'react'
 import { Link } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import type { VaultEntry } from '../../types'
-import { findIcon } from '../../utils/iconRegistry'
 import { resolveNoteIcon } from '../../utils/noteIcon'
 import { getTypeColor, getTypeLightColor } from '../../utils/typeColors'
 import { isUrlValue, normalizeUrl, openExternalUrl } from '../../utils/url'
 import { resolveEntry, wikilinkDisplay, wikilinkTarget } from '../../utils/wikilink'
+import { getTypeIcon } from './typeIcon'
 
 interface PropertyChipValue {
   label: string
   noteIcon: string | null
-  typeIcon: string | null
+  typeIcon: ComponentType<SVGAttributes<SVGSVGElement>> | null
   style?: CSSProperties
   action?: { kind: 'note'; entry: VaultEntry } | { kind: 'url'; url: string }
   tone: 'neutral' | 'relationship' | 'url'
@@ -46,8 +46,16 @@ function formatChipLabel(value: unknown): string | null {
   return raw.length > 40 ? `${raw.slice(0, 37)}…` : raw
 }
 
+function resolveTargetTypeEntry(targetEntry: VaultEntry, typeEntryMap: Record<string, VaultEntry>): VaultEntry | undefined {
+  return targetEntry.isA ? (typeEntryMap[targetEntry.isA] ?? typeEntryMap[targetEntry.isA.toLowerCase()]) : undefined
+}
+
+function findMatchingKey(values: Record<string, unknown>, propName: string): string | undefined {
+  return Object.keys(values).find((key) => key.toLowerCase() === propName.toLowerCase())
+}
+
 function resolveRelationshipChipStyle(targetEntry: VaultEntry, typeEntryMap: Record<string, VaultEntry>): CSSProperties | undefined {
-  const typeEntry = targetEntry.isA ? (typeEntryMap[targetEntry.isA] ?? typeEntryMap[targetEntry.isA.toLowerCase()]) : undefined
+  const typeEntry = resolveTargetTypeEntry(targetEntry, typeEntryMap)
   const color = getTypeColor(targetEntry.isA, typeEntry?.color)
   const backgroundColor = getTypeLightColor(targetEntry.isA, typeEntry?.color)
   if (color === 'var(--muted-foreground)' && backgroundColor === 'var(--muted)') return undefined
@@ -72,11 +80,11 @@ function resolveRelationshipChip(
     }
   }
 
-  const typeEntry = targetEntry.isA ? (typeEntryMap[targetEntry.isA] ?? typeEntryMap[targetEntry.isA.toLowerCase()]) : undefined
+  const typeEntry = resolveTargetTypeEntry(targetEntry, typeEntryMap)
   return {
     label,
     noteIcon: targetEntry.icon ?? null,
-    typeIcon: targetEntry.isA ? typeEntry?.icon ?? null : null,
+    typeIcon: targetEntry.isA ? getTypeIcon(targetEntry.isA, typeEntry?.icon) : null,
     style: resolveRelationshipChipStyle(targetEntry, typeEntryMap),
     action: { kind: 'note', entry: targetEntry },
     tone: 'relationship',
@@ -107,6 +115,30 @@ function resolveScalarChip(value: unknown): PropertyChipValue | null {
   }
 }
 
+function resolveRelationshipChipValues(
+  entry: VaultEntry,
+  propName: string,
+  allEntries: VaultEntry[],
+  typeEntryMap: Record<string, VaultEntry>,
+): PropertyChipValue[] | null {
+  const relationshipKey = findMatchingKey(entry.relationships, propName)
+  if (!relationshipKey) return null
+  return entry.relationships[relationshipKey]
+    .map((ref) => resolveRelationshipChip(ref, allEntries, typeEntryMap))
+    .filter((chip): chip is PropertyChipValue => chip !== null)
+}
+
+function resolveScalarChipValues(entry: VaultEntry, propName: string): PropertyChipValue[] {
+  const propertyKey = findMatchingKey(entry.properties, propName)
+  if (!propertyKey) return []
+
+  const rawValue = entry.properties[propertyKey]
+  const values = Array.isArray(rawValue) ? rawValue : [rawValue]
+  return values
+    .map((value) => resolveScalarChip(value))
+    .filter((chip): chip is PropertyChipValue => chip !== null)
+}
+
 function resolvePropertyChipValues(
   entry: VaultEntry,
   propName: string,
@@ -118,40 +150,24 @@ function resolvePropertyChipValues(
     return statusChip ? [statusChip] : []
   }
 
-  const relationshipKey = Object.keys(entry.relationships).find((key) => key.toLowerCase() === propName.toLowerCase())
-  if (relationshipKey) {
-    return entry.relationships[relationshipKey]
-      .map((ref) => resolveRelationshipChip(ref, allEntries, typeEntryMap))
-      .filter((chip): chip is PropertyChipValue => chip !== null)
-  }
-
-  const propertyKey = Object.keys(entry.properties).find((key) => key.toLowerCase() === propName.toLowerCase())
-  if (!propertyKey) return []
-
-  const rawValue = entry.properties[propertyKey]
-  const values = Array.isArray(rawValue) ? rawValue : [rawValue]
-  return values
-    .map((value) => resolveScalarChip(value))
-    .filter((chip): chip is PropertyChipValue => chip !== null)
+  return resolveRelationshipChipValues(entry, propName, allEntries, typeEntryMap) ?? resolveScalarChipValues(entry, propName)
 }
 
-function PropertyChipIcon({
-  noteIcon,
+function RelationshipTypeIcon({
   typeIcon,
-  tone,
 }: {
-  noteIcon?: string | null
-  typeIcon?: string | null
-  tone: PropertyChipValue['tone']
+  typeIcon?: ComponentType<SVGAttributes<SVGSVGElement>> | null
 }) {
-  const [imageFailed, setImageFailed] = useState(false)
+  if (!typeIcon) return null
+  return createElement(typeIcon, { 'aria-hidden': true, width: 11, height: 11, className: 'shrink-0' })
+}
 
-  if (tone === 'url') {
-    return <Link aria-hidden="true" width={11} height={11} className="shrink-0" />
-  }
-
+function renderResolvedNoteIcon(
+  noteIcon: string | null | undefined,
+  imageFailed,
+  onImageError,
+): ReactNode {
   const resolvedNoteIcon = resolveNoteIcon(noteIcon)
-  const TypeIcon = findIcon(typeIcon)
 
   if (resolvedNoteIcon.kind === 'emoji') {
     return (
@@ -165,20 +181,37 @@ function PropertyChipIcon({
     return <resolvedNoteIcon.Icon aria-hidden="true" width={11} height={11} className="shrink-0" />
   }
 
-  if (resolvedNoteIcon.kind === 'image' && !imageFailed) {
-    return (
-      <img
-        src={resolvedNoteIcon.src}
-        alt=""
-        aria-hidden="true"
-        className="h-[11px] w-[11px] shrink-0 rounded-sm object-cover"
-        onError={() => setImageFailed(true)}
-      />
-    )
+  if (resolvedNoteIcon.kind !== 'image' || imageFailed) return null
+
+  return (
+    <img
+      src={resolvedNoteIcon.src}
+      alt=""
+      aria-hidden="true"
+      className="h-[11px] w-[11px] shrink-0 rounded-sm object-cover"
+      onError={onImageError}
+    />
+  )
+}
+
+function PropertyChipIcon({
+  noteIcon,
+  typeIcon,
+  tone,
+}: {
+  noteIcon?: string | null
+  typeIcon?: ComponentType<SVGAttributes<SVGSVGElement>> | null
+  tone: PropertyChipValue['tone']
+}) {
+  const [imageFailed, setImageFailed] = useState(false)
+
+  if (tone === 'url') {
+    return <Link aria-hidden="true" width={11} height={11} className="shrink-0" />
   }
 
-  if (!TypeIcon) return null
-  return createElement(TypeIcon, { 'aria-hidden': true, width: 11, height: 11, className: 'shrink-0' })
+  const noteIconElement = renderResolvedNoteIcon(noteIcon, imageFailed, () => setImageFailed(true))
+  if (noteIconElement) return noteIconElement
+  return <RelationshipTypeIcon typeIcon={typeIcon} />
 }
 
 async function handleChipClick(

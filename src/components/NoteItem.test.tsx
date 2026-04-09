@@ -134,6 +134,46 @@ describe('NoteItem', () => {
     expect(onClickNote).toHaveBeenCalledWith(linkedProject, expect.objectContaining({ metaKey: true }))
   })
 
+  it('falls back to the built-in type icon for relationship chips when the Type has no custom icon', () => {
+    const linkedTopic = makeEntry({
+      path: '/vault/topic/ai.md',
+      filename: 'ai.md',
+      title: 'AI',
+      isA: 'topic',
+    })
+    const topicType = makeEntry({
+      path: '/vault/type/topic.md',
+      filename: 'topic.md',
+      title: 'Topic',
+      isA: 'Type',
+      color: 'green',
+      icon: null,
+    })
+    const sourceEntry = makeEntry({
+      path: '/vault/note/source.md',
+      filename: 'source.md',
+      title: 'Source',
+      isA: 'Note',
+      relationships: { Topics: ['[[topic/ai]]'] },
+    })
+
+    render(
+      <NoteItem
+        entry={sourceEntry}
+        isSelected={false}
+        typeEntryMap={{ Topic: topicType, topic: topicType }}
+        allEntries={[sourceEntry, linkedTopic, topicType]}
+        displayPropsOverride={['Topics']}
+        onClickNote={vi.fn()}
+      />,
+    )
+
+    const chip = screen.getByTestId('property-chip-topics-0')
+    expect(chip).toHaveTextContent('Ai')
+    expect(chip).toHaveStyle({ color: 'var(--accent-green)', backgroundColor: 'var(--accent-green-light)' })
+    expect(chip.querySelector('svg')).not.toBeNull()
+  })
+
   it('opens URL chips on Cmd+click only and keeps regular clicks inert', () => {
     const entry = makeEntry({
       path: '/vault/note/source.md',
