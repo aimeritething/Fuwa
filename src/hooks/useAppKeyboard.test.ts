@@ -2,17 +2,21 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useAppKeyboard } from './useAppKeyboard'
 
-function fireKey(key: string, mods: { altKey?: boolean; metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean } = {}) {
+function fireKey(
+  key: string,
+  mods: { altKey?: boolean; metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; code?: string } = {},
+) {
   fireKeyOnTarget(window, key, mods)
 }
 
 function fireKeyOnTarget(
   target: EventTarget,
   key: string,
-  mods: { altKey?: boolean; metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean } = {},
+  mods: { altKey?: boolean; metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; code?: string } = {},
 ) {
   const event = new KeyboardEvent('keydown', {
     key,
+    code: mods.code,
     altKey: mods.altKey ?? false,
     metaKey: mods.metaKey ?? false,
     ctrlKey: mods.ctrlKey ?? false,
@@ -235,6 +239,14 @@ describe('useAppKeyboard', () => {
       fireKeyOnTarget(editable, 'l', { metaKey: true, shiftKey: true })
       expect(onToggleAIChat).toHaveBeenCalled()
     })
+  })
+
+  it('Cmd+Shift+L matches by physical key code when the localized key differs', () => {
+    const actions = makeActions()
+    const onToggleAIChat = vi.fn()
+    renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat }))
+    fireKey('¬', { code: 'KeyL', metaKey: true, shiftKey: true })
+    expect(onToggleAIChat).toHaveBeenCalled()
   })
 
   it('Ctrl+Shift+L does not trigger toggle AI chat', () => {

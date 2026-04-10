@@ -121,7 +121,8 @@ export function handleCommandKey(e: KeyboardEvent, keyMap: ShortcutMap): boolean
 }
 
 export function handleAiPanelKey(e: KeyboardEvent, onToggleAIChat?: () => void): boolean {
-  if (isCommandShiftOnly(e) === false || e.key.toLowerCase() !== 'l' || onToggleAIChat === undefined) return false
+  const matchesAiPanelShortcut = e.code === 'KeyL' || e.key.toLowerCase() === 'l'
+  if (isCommandShiftOnly(e) === false || matchesAiPanelShortcut === false || onToggleAIChat === undefined) return false
   e.preventDefault()
   onToggleAIChat()
   return true
