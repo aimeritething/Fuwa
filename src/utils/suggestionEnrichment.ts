@@ -17,17 +17,14 @@ interface BaseSuggestionItem {
   path: string
 }
 
-/** Build the wikilink target: relative path stem with pipe display for the title.
- *  e.g. "docs/adr/0001-tauri-stack|Tauri Stack" for subfolders,
- *  "roadmap|Roadmap" for root files. */
+/** Build the canonical wikilink target: vault-relative path stem without a default alias. */
 function buildTarget(item: BaseSuggestionItem, vaultPath: string): string {
-  const stem = relativePathStem(item.path, vaultPath)
-  return stem === item.entryTitle ? stem : `${stem}|${item.entryTitle}`
+  return relativePathStem(item.path, vaultPath)
 }
 
 /** Add onItemClick to raw suggestion candidates.
- *  Always inserts the vault-relative path as the wikilink target
- *  so links are unambiguous and work across subfolders. */
+ *  Always inserts the canonical vault-relative path target so links are
+ *  unambiguous and remain stable across renames. */
 export function attachClickHandlers(
   candidates: BaseSuggestionItem[],
   insertWikilink: (target: string) => void,

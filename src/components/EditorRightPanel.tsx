@@ -75,6 +75,7 @@ export function EditorRightPanel({
         content={inspectorContent}
         entries={entries}
         gitHistory={gitHistory}
+        vaultPath={vaultPath}
         onNavigate={onNavigateWikilink}
         onViewCommitDiff={onViewCommitDiff}
         onUpdateFrontmatter={onUpdateFrontmatter}

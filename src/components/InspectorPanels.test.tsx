@@ -179,7 +179,7 @@ describe('DynamicRelationshipsPanel', () => {
     fireEvent.change(screen.getByPlaceholderText('Relationship name'), { target: { value: 'Related to' } })
     fireEvent.change(screen.getByPlaceholderText('Note title'), { target: { value: 'AI' } })
     fireEvent.click(screen.getByTestId('submit-add-relationship'))
-    expect(onAddProperty).toHaveBeenCalledWith('Related to', '[[AI]]')
+    expect(onAddProperty).toHaveBeenCalledWith('Related to', '[[topic/ai]]')
   })
 
   it('cancels add relationship form', () => {
@@ -427,14 +427,14 @@ describe('DynamicRelationshipsPanel', () => {
       const input = screen.getByTestId('add-relation-ref-input')
       fireEvent.change(input, { target: { value: 'AI' } })
       fireEvent.keyDown(input, { key: 'Enter' })
-      expect(onUpdateProperty).toHaveBeenCalledWith('Belongs to', ['[[project/my-project]]', '[[AI]]'])
+      expect(onUpdateProperty).toHaveBeenCalledWith('Belongs to', ['[[project/my-project]]', '[[topic/ai]]'])
     })
 
     it('does not add duplicate refs', () => {
       render(
         <DynamicRelationshipsPanel
           typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[AI]]'] }}
+          frontmatter={{ 'Belongs to': ['[[topic/ai]]'] }}
           entries={entries}
           onNavigate={onNavigate}
           onUpdateProperty={onUpdateProperty}
@@ -533,7 +533,7 @@ describe('DynamicRelationshipsPanel', () => {
       fireEvent.click(screen.getByTestId('create-and-open-option'))
       expect(onCreateAndOpenNote).toHaveBeenCalledWith('Brand New Note')
       await vi.waitFor(() => {
-        expect(onUpdateProperty).toHaveBeenCalledWith('Belongs to', ['[[project/my-project]]', '[[Brand New Note]]'])
+        expect(onUpdateProperty).toHaveBeenCalledWith('Belongs to', ['[[project/my-project]]', '[[brand-new-note]]'])
       })
     })
 
@@ -647,7 +647,7 @@ describe('DynamicRelationshipsPanel', () => {
       fireEvent.click(screen.getByTestId('create-and-open-option'))
       expect(onCreateAndOpenNote).toHaveBeenCalledWith('New Person')
       await vi.waitFor(() => {
-        expect(onAddProperty).toHaveBeenCalledWith('Mentions', '[[New Person]]')
+        expect(onAddProperty).toHaveBeenCalledWith('Mentions', '[[new-person]]')
       })
     })
   })

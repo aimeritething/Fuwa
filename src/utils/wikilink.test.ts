@@ -1,6 +1,15 @@
 import { describe, it, expect } from 'vitest'
 import type { VaultEntry } from '../types'
-import { wikilinkTarget, wikilinkDisplay, resolveEntry, relativePathStem } from './wikilink'
+import {
+  wikilinkTarget,
+  wikilinkDisplay,
+  resolveEntry,
+  relativePathStem,
+  slugifyWikilinkTarget,
+  canonicalWikilinkTargetForEntry,
+  canonicalWikilinkTargetForTitle,
+  formatWikilinkRef,
+} from './wikilink'
 
 function makeEntry(overrides: Partial<VaultEntry>): VaultEntry {
   return {
@@ -122,5 +131,44 @@ describe('relativePathStem', () => {
 
   it('falls back to filename stem when vault path does not match', () => {
     expect(relativePathStem('/other/path/note.md', '/Users/luca/Vault')).toBe('note')
+  })
+})
+
+describe('slugifyWikilinkTarget', () => {
+  it('slugifies a human title to a canonical target', () => {
+    expect(slugifyWikilinkTarget('Weekly Review')).toBe('weekly-review')
+  })
+
+  it('falls back to untitled when the title has no slug characters', () => {
+    expect(slugifyWikilinkTarget('+++')).toBe('untitled')
+  })
+})
+
+describe('canonicalWikilinkTargetForEntry', () => {
+  it('returns a vault-relative path stem', () => {
+    const entry = makeEntry({ path: '/vault/projects/alpha.md', filename: 'alpha.md', title: 'Alpha' })
+    expect(canonicalWikilinkTargetForEntry(entry, '/vault')).toBe('projects/alpha')
+  })
+})
+
+describe('canonicalWikilinkTargetForTitle', () => {
+  const project = makeEntry({ path: '/vault/projects/alpha.md', filename: 'alpha.md', title: 'Alpha Project' })
+
+  it('resolves an existing entry to its canonical path target', () => {
+    expect(canonicalWikilinkTargetForTitle('Alpha Project', [project], '/vault')).toBe('projects/alpha')
+  })
+
+  it('keeps a canonical path input canonical', () => {
+    expect(canonicalWikilinkTargetForTitle('projects/alpha', [project], '/vault')).toBe('projects/alpha')
+  })
+
+  it('falls back to a slug for a newly created note title', () => {
+    expect(canonicalWikilinkTargetForTitle('Brand New Note', [], '/vault')).toBe('brand-new-note')
+  })
+})
+
+describe('formatWikilinkRef', () => {
+  it('wraps a canonical target in wikilink syntax', () => {
+    expect(formatWikilinkRef('projects/alpha')).toBe('[[projects/alpha]]')
   })
 })

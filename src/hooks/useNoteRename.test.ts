@@ -66,11 +66,11 @@ describe('renameToastMessage', () => {
   })
 
   it('returns singular when 1 file updated', () => {
-    expect(renameToastMessage(1)).toBe('Renamed — updated 1 wiki link')
+    expect(renameToastMessage(1)).toBe('Updated 1 note')
   })
 
   it('returns plural when multiple files updated', () => {
-    expect(renameToastMessage(3)).toBe('Renamed — updated 3 wiki links')
+    expect(renameToastMessage(3)).toBe('Updated 3 notes')
   })
 })
 
@@ -110,7 +110,7 @@ describe('useNoteRename hook', () => {
       new_title: 'New',
       old_title: 'Old',
     }))
-    expect(setToastMessage).toHaveBeenCalledWith('Renamed — updated 2 wiki links')
+    expect(setToastMessage).toHaveBeenCalledWith('Updated 2 notes')
     expect(onEntryRenamed).toHaveBeenCalled()
   })
 
@@ -199,7 +199,7 @@ describe('useNoteRename hook', () => {
       }),
       '# Project Kickoff\n',
     )
-    expect(setToastMessage).toHaveBeenCalledWith('Renamed — updated 1 wiki link')
+    expect(setToastMessage).toHaveBeenCalledWith('Updated 1 note')
   })
 
   it('handleRenameFilename surfaces backend conflict errors', async () => {

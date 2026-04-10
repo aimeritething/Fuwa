@@ -24,6 +24,7 @@ interface InspectorProps {
   content: string | null
   entries: VaultEntry[]
   gitHistory: GitCommit[]
+  vaultPath?: string
   onNavigate: (target: string) => void
   onViewCommitDiff?: (commitHash: string) => void
   onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
@@ -41,6 +42,7 @@ export function Inspector({
   content,
   entries,
   gitHistory,
+  vaultPath,
   onNavigate,
   onViewCommitDiff,
   onUpdateFrontmatter,
@@ -96,6 +98,7 @@ export function Inspector({
                     frontmatter={frontmatter}
                     entries={entries}
                     typeEntryMap={typeEntryMap}
+                    vaultPath={vaultPath}
                     onNavigate={onNavigate}
                     onAddProperty={onAddProperty ? handleAddProperty : undefined}
                     onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}

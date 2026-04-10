@@ -566,7 +566,7 @@ describe('useNoteActions hook', () => {
         new_title: 'Sprint Retro',
         old_title: 'Weekly Review',
       }))
-      expect(setToastMessage).toHaveBeenCalledWith('Renamed — updated 2 wiki links')
+      expect(setToastMessage).toHaveBeenCalledWith('Updated 2 notes')
     })
 
     it('handleRenameNote passes null old_title when entry not found', async () => {

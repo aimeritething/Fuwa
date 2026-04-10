@@ -6,13 +6,73 @@ import { containsWikilinks } from '../DynamicPropertiesPanel'
 import type { FrontmatterValue } from '../Inspector'
 import { NoteSearchList } from '../NoteSearchList'
 import { useNoteSearch } from '../../hooks/useNoteSearch'
-import { resolveEntry } from '../../utils/wikilink'
+import {
+  resolveEntry,
+  canonicalWikilinkTargetForEntry,
+  canonicalWikilinkTargetForTitle,
+  formatWikilinkRef,
+} from '../../utils/wikilink'
 import { isWikilink, resolveRefProps } from './shared'
 import { LinkButton } from './LinkButton'
 
 /** Check whether any entry resolves for the given title (exact match via wikilink resolution). */
 function hasExactTitleMatch(entries: VaultEntry[], title: string): boolean {
   return resolveEntry(entries, title) !== undefined
+}
+
+function inferVaultPath(entries: VaultEntry[]): string {
+  if (entries.length === 0) return ''
+  const segments = entries.map((entry) => entry.path.split('/').slice(0, -1))
+  const prefix: string[] = []
+  const maxDepth = Math.min(...segments.map((parts) => parts.length))
+  for (let i = 0; i < maxDepth; i += 1) {
+    const segment = segments[0][i]
+    if (segments.every((parts) => parts[i] === segment)) prefix.push(segment)
+    else break
+  }
+  return prefix.join('/')
+}
+
+function canonicalRefForEntry(entry: VaultEntry, vaultPath: string): string {
+  return formatWikilinkRef(canonicalWikilinkTargetForEntry(entry, vaultPath))
+}
+
+function canonicalRefForTitle(title: string, entries: VaultEntry[], vaultPath: string): string {
+  return formatWikilinkRef(canonicalWikilinkTargetForTitle(title, entries, vaultPath))
+}
+
+function shouldShowSearchDropdown(focused: boolean, trimmed: string, resultCount: number, showCreate: boolean): boolean {
+  return focused && trimmed.length > 0 && (resultCount > 0 || showCreate)
+}
+
+function confirmRelationshipSelection({
+  showCreate,
+  selectedIndex,
+  createIndex,
+  trimmed,
+  selectedEntry,
+  onCreate,
+  onSelectEntry,
+  onFallback,
+}: {
+  showCreate: boolean
+  selectedIndex: number
+  createIndex: number
+  trimmed: string
+  selectedEntry?: VaultEntry
+  onCreate?: (title: string) => void
+  onSelectEntry?: (entry: VaultEntry) => void
+  onFallback?: () => void
+}): void {
+  if (showCreate && selectedIndex === createIndex && trimmed) {
+    onCreate?.(trimmed)
+    return
+  }
+  if (selectedEntry) {
+    onSelectEntry?.(selectedEntry)
+    return
+  }
+  onFallback?.()
 }
 
 /** Shared keyboard navigation for search dropdowns with an optional "create" item. */
@@ -90,7 +150,7 @@ function CreateAndOpenOption({ title, selected, onClick, onHover }: {
 
 function SearchDropdownWithCreate({ search, onSelect, query, entries, onCreateAndOpen }: {
   search: ReturnType<typeof useNoteSearch>
-  onSelect: (title: string) => void
+  onSelect: (entry: VaultEntry) => void
   query: string
   entries: VaultEntry[]
   onCreateAndOpen?: (title: string) => void
@@ -108,7 +168,7 @@ function SearchDropdownWithCreate({ search, onSelect, query, entries, onCreateAn
           items={search.results}
           selectedIndex={search.selectedIndex}
           getItemKey={(item) => item.entry.path}
-          onItemClick={(item) => onSelect(item.entry.title)}
+          onItemClick={(item) => onSelect(item.entry)}
           onItemHover={(i) => search.setSelectedIndex(i)}
           className="max-h-[160px] overflow-y-auto"
         />
@@ -125,11 +185,12 @@ function SearchDropdownWithCreate({ search, onSelect, query, entries, onCreateAn
   )
 }
 
-function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
-  entries: VaultEntry[]
-  onAdd: (noteTitle: string) => void
-  onCreateAndOpenNote?: (title: string) => Promise<boolean>
-}) {
+function useInlineAddNoteState(
+  entries: VaultEntry[],
+  vaultPath: string,
+  onAdd: (ref: string) => void,
+  onCreateAndOpenNote?: (title: string) => Promise<boolean>,
+) {
   const [active, setActive] = useState(false)
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
@@ -138,25 +199,82 @@ function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
   const trimmed = query.trim()
   const { showCreate, createIndex, totalItems } = useCreateOption(entries, trimmed, search.results.length, !!onCreateAndOpenNote)
 
-  const dismiss = useCallback(() => { setQuery(''); setActive(false) }, [])
+  const dismiss = useCallback(() => {
+    setQuery('')
+    setActive(false)
+  }, [])
 
-  const selectAndClose = useCallback((title: string) => {
-    onAdd(title)
+  const selectAndClose = useCallback((ref: string) => {
+    onAdd(ref)
     dismiss()
   }, [onAdd, dismiss])
 
-  const handleCreateAndOpen = useCreateAndOpen(onCreateAndOpenNote, onAdd, dismiss)
+  const selectEntryAndClose = useCallback((entry: VaultEntry) => {
+    selectAndClose(canonicalRefForEntry(entry, vaultPath))
+  }, [selectAndClose, vaultPath])
+
+  const handleCreateAndOpen = useCreateAndOpen(
+    onCreateAndOpenNote,
+    (title) => onAdd(canonicalRefForTitle(title, entries, vaultPath)),
+    dismiss,
+  )
+
+  const handleFallback = useCallback(() => {
+    if (!trimmed) return
+    selectAndClose(canonicalRefForTitle(trimmed, entries, vaultPath))
+  }, [trimmed, selectAndClose, entries, vaultPath])
 
   const handleConfirm = useCallback(() => {
-    if (showCreate && search.selectedIndex === createIndex) {
-      handleCreateAndOpen(trimmed)
-      return
-    }
-    const title = search.selectedEntry?.title ?? trimmed
-    if (title) selectAndClose(title)
-  }, [search.selectedEntry, search.selectedIndex, trimmed, selectAndClose, showCreate, createIndex, handleCreateAndOpen])
+    confirmRelationshipSelection({
+      showCreate,
+      selectedIndex: search.selectedIndex,
+      createIndex,
+      trimmed,
+      selectedEntry: search.selectedEntry,
+      onCreate: handleCreateAndOpen,
+      onSelectEntry: selectEntryAndClose,
+      onFallback: handleFallback,
+    })
+  }, [showCreate, search.selectedIndex, search.selectedEntry, createIndex, trimmed, handleCreateAndOpen, selectEntryAndClose, handleFallback])
 
   const handleKeyDown = useSearchKeyboard(search, totalItems, handleConfirm, dismiss)
+  const showDropdown = shouldShowSearchDropdown(active, trimmed, search.results.length, showCreate)
+
+  return {
+    active,
+    setActive,
+    query,
+    setQuery,
+    inputRef,
+    search,
+    dismiss,
+    handleKeyDown,
+    showDropdown,
+    selectEntryAndClose,
+    showCreate,
+    handleCreateAndOpen,
+  }
+}
+
+function InlineAddNote({ entries, vaultPath, onAdd, onCreateAndOpenNote }: {
+  entries: VaultEntry[]
+  vaultPath: string
+  onAdd: (ref: string) => void
+  onCreateAndOpenNote?: (title: string) => Promise<boolean>
+}) {
+  const {
+    active,
+    setActive,
+    query,
+    setQuery,
+    inputRef,
+    search,
+    dismiss,
+    handleKeyDown,
+    showDropdown,
+    selectEntryAndClose,
+    handleCreateAndOpen,
+  } = useInlineAddNoteState(entries, vaultPath, onAdd, onCreateAndOpenNote)
 
   if (!active) {
     return (
@@ -170,8 +288,6 @@ function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
       </button>
     )
   }
-
-  const showDropdown = trimmed.length > 0 && (search.results.length > 0 || showCreate)
 
   return (
     <div className="relative mt-1">
@@ -197,7 +313,7 @@ function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
       {showDropdown && (
         <SearchDropdownWithCreate
           search={search}
-          onSelect={selectAndClose}
+          onSelect={selectEntryAndClose}
           query={query}
           entries={entries}
           onCreateAndOpen={onCreateAndOpenNote ? (title) => { handleCreateAndOpen(title) } : undefined}
@@ -207,11 +323,11 @@ function InlineAddNote({ entries, onAdd, onCreateAndOpenNote }: {
   )
 }
 
-function RelationshipGroup({ label, refs, entries, typeEntryMap, onNavigate, onRemoveRef, onAddRef, onCreateAndOpenNote }: {
-  label: string; refs: string[]; entries: VaultEntry[]; typeEntryMap: Record<string, VaultEntry>
+function RelationshipGroup({ label, refs, entries, typeEntryMap, vaultPath, onNavigate, onRemoveRef, onAddRef, onCreateAndOpenNote }: {
+  label: string; refs: string[]; entries: VaultEntry[]; typeEntryMap: Record<string, VaultEntry>; vaultPath: string
   onNavigate: (target: string) => void
   onRemoveRef?: (ref: string) => void
-  onAddRef?: (noteTitle: string) => void
+  onAddRef?: (ref: string) => void
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
 }) {
   if (refs.length === 0) return null
@@ -234,6 +350,7 @@ function RelationshipGroup({ label, refs, entries, typeEntryMap, onNavigate, onR
       {onAddRef && (
         <InlineAddNote
           entries={entries}
+          vaultPath={vaultPath}
           onAdd={onAddRef}
           onCreateAndOpenNote={onCreateAndOpenNote}
         />
@@ -269,22 +386,30 @@ function NoteTargetInput({ entries, value, onChange, onSubmit, onCancel, onCreat
   const trimmed = value.trim()
   const { showCreate, createIndex, totalItems } = useCreateOption(entries, trimmed, search.results.length, !!onCreateAndOpenNote)
 
-  const handleConfirm = useCallback(() => {
-    if (showCreate && search.selectedIndex === createIndex) {
-      onSubmitWithCreate?.(trimmed)
-    } else if (search.selectedEntry) {
-      onChange(search.selectedEntry.title)
-      setFocused(false)
-    } else {
-      onSubmit?.()
-    }
-  }, [showCreate, search.selectedIndex, search.selectedEntry, createIndex, trimmed, onChange, onSubmit, onSubmitWithCreate])
+  const selectEntry = useCallback((entry: VaultEntry) => {
+    onChange(entry.title)
+    setFocused(false)
+  }, [onChange])
 
-  const handleEscape = useCallback(() => { onCancel?.() }, [onCancel])
+  const handleConfirm = useCallback(() => {
+    confirmRelationshipSelection({
+      showCreate,
+      selectedIndex: search.selectedIndex,
+      createIndex,
+      trimmed,
+      selectedEntry: search.selectedEntry,
+      onCreate: onSubmitWithCreate,
+      onSelectEntry: selectEntry,
+      onFallback: onSubmit,
+    })
+  }, [showCreate, search.selectedIndex, search.selectedEntry, createIndex, trimmed, onSubmitWithCreate, selectEntry, onSubmit])
+
+  const handleEscape = useCallback(() => {
+    onCancel?.()
+  }, [onCancel])
 
   const handleKeyDown = useSearchKeyboard(search, totalItems, handleConfirm, handleEscape)
-
-  const showDropdown = focused && trimmed.length > 0 && (search.results.length > 0 || showCreate)
+  const showDropdown = shouldShowSearchDropdown(focused, trimmed, search.results.length, showCreate)
 
   return (
     <div className="relative">
@@ -301,7 +426,7 @@ function NoteTargetInput({ entries, value, onChange, onSubmit, onCancel, onCreat
       {showDropdown && (
         <SearchDropdownWithCreate
           search={search}
-          onSelect={(title) => { onChange(title); setFocused(false) }}
+          onSelect={selectEntry}
           query={value}
           entries={entries}
           onCreateAndOpen={onCreateAndOpenNote ? (title) => onSubmitWithCreate?.(title) : undefined}
@@ -311,8 +436,56 @@ function NoteTargetInput({ entries, value, onChange, onSubmit, onCancel, onCreat
   )
 }
 
-function AddRelationshipForm({ entries, onAddProperty, onCreateAndOpenNote }: {
+function useRelationshipPanelState(
+  frontmatter: ParsedFrontmatter,
+  entries: VaultEntry[],
+  vaultPath: string | undefined,
+  onAddProperty?: (key: string, value: FrontmatterValue) => void,
+  onUpdateProperty?: (key: string, value: FrontmatterValue) => void,
+  onDeleteProperty?: (key: string) => void,
+) {
+  const relationshipEntries = useMemo(() => extractRelationshipRefs(frontmatter), [frontmatter])
+  const resolvedVaultPath = useMemo(() => vaultPath ?? inferVaultPath(entries), [vaultPath, entries])
+
+  const handleRemoveRef = useCallback((key: string, refToRemove: string) => {
+    if (!onUpdateProperty || !onDeleteProperty) return
+    const group = relationshipEntries.find(g => g.key === key)
+    if (!group) return
+    const result = updateRefsForRemoval(group.refs, refToRemove)
+    if (result === null) onDeleteProperty(key)
+    else onUpdateProperty(key, result)
+  }, [relationshipEntries, onUpdateProperty, onDeleteProperty])
+
+  const handleAddRef = useCallback((key: string, ref: string) => {
+    if (!onUpdateProperty) return
+    const existing = relationshipEntries.find(g => g.key === key)?.refs ?? []
+    const result = updateRefsForAddition(existing, ref)
+    if (result !== false) onUpdateProperty(key, result)
+  }, [relationshipEntries, onUpdateProperty])
+
+  const canEdit = !!onUpdateProperty && !!onDeleteProperty
+  const existingRelKeys = useMemo(
+    () => new Set(relationshipEntries.map(g => g.key.toLowerCase())),
+    [relationshipEntries],
+  )
+  const missingSuggestedRels = useMemo(
+    () => (onAddProperty ? SUGGESTED_RELATIONSHIPS.filter(r => !existingRelKeys.has(r.toLowerCase())) : []),
+    [onAddProperty, existingRelKeys],
+  )
+
+  return {
+    relationshipEntries,
+    resolvedVaultPath,
+    handleRemoveRef,
+    handleAddRef,
+    canEdit,
+    missingSuggestedRels,
+  }
+}
+
+function AddRelationshipForm({ entries, vaultPath, onAddProperty, onCreateAndOpenNote }: {
   entries: VaultEntry[]
+  vaultPath: string
   onAddProperty: (key: string, value: FrontmatterValue) => void
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
 }) {
@@ -327,16 +500,16 @@ function AddRelationshipForm({ entries, onAddProperty, onCreateAndOpenNote }: {
 
   const submitForm = useCallback((targetOverride?: string) => {
     const key = relKey.trim()
-    const target = (targetOverride ?? relTarget).trim()
-    if (!key || !target) return
-    onAddProperty(key, `[[${target}]]`)
+    const rawTarget = (targetOverride ?? relTarget).trim()
+    if (!key || !rawTarget) return
+    onAddProperty(key, canonicalRefForTitle(rawTarget, entries, vaultPath))
     resetForm()
-  }, [relKey, relTarget, onAddProperty, resetForm])
+  }, [relKey, relTarget, entries, vaultPath, onAddProperty, resetForm])
 
   const addPropertyForKey = useCallback((title: string) => {
     const key = relKey.trim()
-    if (key) onAddProperty(key, `[[${title}]]`)
-  }, [relKey, onAddProperty])
+    if (key) onAddProperty(key, canonicalRefForTitle(title, entries, vaultPath))
+  }, [relKey, entries, vaultPath, onAddProperty])
 
   const handleCreateAndSubmit = useCreateAndOpen(onCreateAndOpenNote, addPropertyForKey, resetForm)
 
@@ -381,10 +554,9 @@ function updateRefsForRemoval(refs: string[], refToRemove: string): FrontmatterV
   return remaining.length === 1 ? remaining[0] : remaining
 }
 
-function updateRefsForAddition(refs: string[], noteTitle: string): FrontmatterValue | false {
-  const newRef = `[[${noteTitle}]]`
-  if (refs.includes(newRef)) return false
-  const updated = [...refs, newRef]
+function updateRefsForAddition(refs: string[], refToAdd: string): FrontmatterValue | false {
+  if (refs.includes(refToAdd)) return false
+  const updated = [...refs, refToAdd]
   return updated.length === 1 ? updated[0] : updated
 }
 
@@ -396,10 +568,11 @@ function DisabledLinkButton() {
 
 const SUGGESTED_RELATIONSHIPS = ['Belongs to', 'Related to', 'Has'] as const
 
-function SuggestedRelationshipSlot({ label, entries, onAdd, onCreateAndOpenNote }: {
+function SuggestedRelationshipSlot({ label, entries, vaultPath, onAdd, onCreateAndOpenNote }: {
   label: string
   entries: VaultEntry[]
-  onAdd: (noteTitle: string) => void
+  vaultPath: string
+  onAdd: (ref: string) => void
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
 }) {
   return (
@@ -407,6 +580,7 @@ function SuggestedRelationshipSlot({ label, entries, onAdd, onCreateAndOpenNote 
       <span className="mb-1 block text-[12px] text-muted-foreground/50">{label}</span>
       <InlineAddNote
         entries={entries}
+        vaultPath={vaultPath}
         onAdd={onAdd}
         onCreateAndOpenNote={onCreateAndOpenNote}
       />
@@ -414,50 +588,30 @@ function SuggestedRelationshipSlot({ label, entries, onAdd, onCreateAndOpenNote 
   )
 }
 
-export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, onNavigate, onAddProperty, onUpdateProperty, onDeleteProperty, onCreateAndOpenNote }: {
-  frontmatter: ParsedFrontmatter; entries: VaultEntry[]; typeEntryMap: Record<string, VaultEntry>
+export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, vaultPath, onNavigate, onAddProperty, onUpdateProperty, onDeleteProperty, onCreateAndOpenNote }: {
+  frontmatter: ParsedFrontmatter; entries: VaultEntry[]; typeEntryMap: Record<string, VaultEntry>; vaultPath?: string
   onNavigate: (target: string) => void
   onAddProperty?: (key: string, value: FrontmatterValue) => void
   onUpdateProperty?: (key: string, value: FrontmatterValue) => void
   onDeleteProperty?: (key: string) => void
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
 }) {
-  const relationshipEntries = useMemo(() => extractRelationshipRefs(frontmatter), [frontmatter])
-
-  const handleRemoveRef = useCallback((key: string, refToRemove: string) => {
-    if (!onUpdateProperty || !onDeleteProperty) return
-    const group = relationshipEntries.find(g => g.key === key)
-    if (!group) return
-    const result = updateRefsForRemoval(group.refs, refToRemove)
-    if (result === null) onDeleteProperty(key)
-    else onUpdateProperty(key, result)
-  }, [relationshipEntries, onUpdateProperty, onDeleteProperty])
-
-  const handleAddRef = useCallback((key: string, noteTitle: string) => {
-    if (!onUpdateProperty) return
-    const existing = relationshipEntries.find(g => g.key === key)?.refs ?? []
-    const result = updateRefsForAddition(existing, noteTitle)
-    if (result !== false) onUpdateProperty(key, result)
-  }, [relationshipEntries, onUpdateProperty])
-
-  const canEdit = !!onUpdateProperty && !!onDeleteProperty
-
-  const existingRelKeys = useMemo(
-    () => new Set(relationshipEntries.map(g => g.key.toLowerCase())),
-    [relationshipEntries],
-  )
-
-  const missingSuggestedRels = onAddProperty
-    ? SUGGESTED_RELATIONSHIPS.filter(r => !existingRelKeys.has(r.toLowerCase()))
-    : []
+  const {
+    relationshipEntries,
+    resolvedVaultPath,
+    handleRemoveRef,
+    handleAddRef,
+    canEdit,
+    missingSuggestedRels,
+  } = useRelationshipPanelState(frontmatter, entries, vaultPath, onAddProperty, onUpdateProperty, onDeleteProperty)
 
   return (
     <div>
       {relationshipEntries.map(({ key, refs }) => (
         <RelationshipGroup
-          key={key} label={key} refs={refs} entries={entries} typeEntryMap={typeEntryMap} onNavigate={onNavigate}
+          key={key} label={key} refs={refs} entries={entries} typeEntryMap={typeEntryMap} vaultPath={resolvedVaultPath} onNavigate={onNavigate}
           onRemoveRef={canEdit ? (ref) => handleRemoveRef(key, ref) : undefined}
-          onAddRef={canEdit ? (noteTitle) => handleAddRef(key, noteTitle) : undefined}
+          onAddRef={canEdit ? (ref) => handleAddRef(key, ref) : undefined}
           onCreateAndOpenNote={canEdit ? onCreateAndOpenNote : undefined}
         />
       ))}
@@ -466,12 +620,13 @@ export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, 
           key={label}
           label={label}
           entries={entries}
-          onAdd={(noteTitle) => onAddProperty!(label, `[[${noteTitle}]]`)}
+          vaultPath={resolvedVaultPath}
+          onAdd={(ref) => onAddProperty!(label, ref)}
           onCreateAndOpenNote={onCreateAndOpenNote}
         />
       ))}
       {onAddProperty
-        ? <AddRelationshipForm entries={entries} onAddProperty={onAddProperty} onCreateAndOpenNote={onCreateAndOpenNote} />
+        ? <AddRelationshipForm entries={entries} vaultPath={resolvedVaultPath} onAddProperty={onAddProperty} onCreateAndOpenNote={onCreateAndOpenNote} />
         : <DisabledLinkButton />
       }
     </div>

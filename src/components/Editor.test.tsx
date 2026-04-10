@@ -413,7 +413,7 @@ describe('wikilink autocomplete', () => {
     expect(items.length).toBeGreaterThan(0)
     items[0].onItemClick()
     expect(mockEditor.insertInlineContent).toHaveBeenCalledWith([
-      { type: 'wikilink', props: { target: 'vault/project/test|Alpha Project' } },
+      { type: 'wikilink', props: { target: 'vault/project/test' } },
       ' ',
     ])
   })
@@ -566,7 +566,7 @@ describe('person @mention autocomplete', () => {
     expect(items.length).toBeGreaterThan(0)
     items[0].onItemClick()
     expect(mockEditor.insertInlineContent).toHaveBeenCalledWith([
-      { type: 'wikilink', props: { target: 'vault/person/matteo-cellini|Matteo Cellini' } },
+      { type: 'wikilink', props: { target: 'vault/person/matteo-cellini' } },
       ' ',
     ])
   })

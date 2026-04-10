@@ -65,7 +65,7 @@ export async function loadNoteContent(path: string): Promise<string> {
 
 export function renameToastMessage(updatedFiles: number): string {
   if (updatedFiles === 0) return 'Renamed'
-  return `Renamed — updated ${updatedFiles} wiki link${updatedFiles > 1 ? 's' : ''}`
+  return `Updated ${updatedFiles} note${updatedFiles > 1 ? 's' : ''}`
 }
 
 /** Reload content for open tabs whose wikilinks may have changed after a rename. */

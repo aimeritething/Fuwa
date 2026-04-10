@@ -11,10 +11,10 @@ function targetMatchesEntry(target: string, entryPath: string, matchTargets: Set
   return false
 }
 
-function refsMatchTargets(refs: string[], targets: Set<string>): boolean {
+function refsMatchTargets(refs: string[], entryPath: string, targets: Set<string>): boolean {
   return refs.some((ref) => {
     const target = wikilinkTarget(ref)
-    return targets.has(target) || targets.has(target.split('/').pop() ?? '')
+    return targetMatchesEntry(target, entryPath, targets)
   })
 }
 
@@ -29,7 +29,7 @@ export function useReferencedBy(entry: VaultEntry | null, entries: VaultEntry[])
     for (const other of entries) {
       if (other.path === entry.path) continue
       for (const [key, refs] of Object.entries(other.relationships)) {
-        if (key !== 'Type' && refsMatchTargets(refs, matchTargets)) {
+        if (key !== 'Type' && refsMatchTargets(refs, entry.path, matchTargets)) {
           results.push({ entry: other, viaKey: key })
         }
       }

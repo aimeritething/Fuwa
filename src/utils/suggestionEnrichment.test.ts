@@ -32,9 +32,9 @@ describe('attachClickHandlers', () => {
 
     expect(result).toHaveLength(2)
     result[0].onItemClick()
-    expect(insertWikilink).toHaveBeenCalledWith('a|Note A')
+    expect(insertWikilink).toHaveBeenCalledWith('a')
     result[1].onItemClick()
-    expect(insertWikilink).toHaveBeenCalledWith('b|Note B')
+    expect(insertWikilink).toHaveBeenCalledWith('b')
   })
 
   it('preserves all original properties', () => {
@@ -55,13 +55,13 @@ describe('attachClickHandlers', () => {
     const result = attachClickHandlers(candidates, insertWikilink, vaultPath)
 
     result[0].onItemClick()
-    expect(insertWikilink).toHaveBeenCalledWith('docs/adr/0001-tauri-stack|ADR 001')
+    expect(insertWikilink).toHaveBeenCalledWith('docs/adr/0001-tauri-stack')
   })
 
-  it('omits pipe display when title matches path stem', () => {
+  it('omits any default alias even when the title differs from the path stem', () => {
     const insertWikilink = vi.fn()
     const candidates = [
-      { title: 'roadmap', aliases: [], group: 'Note', entryTitle: 'roadmap', path: '/vault/roadmap.md' },
+      { title: 'Roadmap', aliases: [], group: 'Note', entryTitle: 'Roadmap', path: '/vault/roadmap.md' },
     ]
 
     const result = attachClickHandlers(candidates, insertWikilink, vaultPath)

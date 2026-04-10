@@ -27,6 +27,86 @@ export function relativePathStem(absolutePath: string, vaultPath: string): strin
   return filename.replace(/\.md$/, '')
 }
 
+/** Slugify a human-readable title into the canonical wikilink filename stem. */
+export function slugifyWikilinkTarget(title: string): string {
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+  return slug || 'untitled'
+}
+
+/** Build the canonical wikilink target for a vault entry. */
+export function canonicalWikilinkTargetForEntry(entry: VaultEntry, vaultPath: string): string {
+  return relativePathStem(entry.path, vaultPath)
+}
+
+/** Resolve a user-facing title/path input to the canonical wikilink target. */
+export function canonicalWikilinkTargetForTitle(
+  titleOrTarget: string,
+  entries: VaultEntry[],
+  vaultPath: string,
+): string {
+  const trimmed = titleOrTarget.trim()
+  const resolved = resolveEntry(entries, trimmed)
+  return resolved
+    ? canonicalWikilinkTargetForEntry(resolved, vaultPath)
+    : trimmed.includes('/')
+      ? trimmed.replace(/^\/+/, '').replace(/\.md$/, '')
+      : slugifyWikilinkTarget(trimmed)
+}
+
+/** Wrap a target in wikilink syntax. */
+export function formatWikilinkRef(target: string): string {
+  return `[[${target}]]`
+}
+
+interface ResolutionKey {
+  exactTarget: string
+  lastSegment: string
+  pathSuffix: string | null
+  humanizedTarget: string | null
+}
+
+function buildResolutionKey(rawTarget: string): ResolutionKey {
+  const exactTarget = rawTarget.includes('|') ? rawTarget.split('|')[0] : rawTarget
+  const normalizedTarget = exactTarget.toLowerCase()
+  const lastSegment = exactTarget.includes('/') ? (exactTarget.split('/').pop() ?? exactTarget).toLowerCase() : normalizedTarget
+  const humanizedTarget = lastSegment.replace(/-/g, ' ')
+
+  return {
+    exactTarget: normalizedTarget,
+    lastSegment,
+    pathSuffix: exactTarget.includes('/') ? `/${normalizedTarget}.md` : null,
+    humanizedTarget: humanizedTarget === normalizedTarget ? null : humanizedTarget,
+  }
+}
+
+function findEntryByPathSuffix(entries: VaultEntry[], pathSuffix: string | null): VaultEntry | undefined {
+  if (!pathSuffix) return undefined
+  return entries.find(entry => entry.path.toLowerCase().endsWith(pathSuffix))
+}
+
+function findEntryByFilename(entries: VaultEntry[], { exactTarget, lastSegment }: ResolutionKey): VaultEntry | undefined {
+  return entries.find((entry) => {
+    const stem = entry.filename.replace(/\.md$/, '').toLowerCase()
+    return stem === exactTarget || stem === lastSegment
+  })
+}
+
+function findEntryByAlias(entries: VaultEntry[], exactTarget: string): VaultEntry | undefined {
+  return entries.find(entry => entry.aliases.some(alias => alias.toLowerCase() === exactTarget))
+}
+
+function findEntryByTitle(entries: VaultEntry[], exactTarget: string, lastSegment: string): VaultEntry | undefined {
+  return entries.find((entry) => {
+    const lowerTitle = entry.title.toLowerCase()
+    return lowerTitle === exactTarget || lowerTitle === lastSegment
+  })
+}
+
+function findEntryByHumanizedTitle(entries: VaultEntry[], humanizedTarget: string | null): VaultEntry | undefined {
+  if (!humanizedTarget) return undefined
+  return entries.find(entry => entry.title.toLowerCase() === humanizedTarget)
+}
+
 /**
  * Unified wikilink resolution: find the VaultEntry matching a wikilink target.
  * Handles pipe syntax, case-insensitive matching.
@@ -38,37 +118,12 @@ export function relativePathStem(absolutePath: string, vaultPath: string): strin
  *   5. Humanized title match (kebab-case → words)
  */
 export function resolveEntry(entries: VaultEntry[], rawTarget: string): VaultEntry | undefined {
-  const key = rawTarget.includes('|') ? rawTarget.split('|')[0] : rawTarget
-  const keyLower = key.toLowerCase()
-  const lastSegment = key.includes('/') ? (key.split('/').pop() ?? key) : key
-  const lastSegmentLower = lastSegment.toLowerCase()
-  const asWords = lastSegmentLower.replace(/-/g, ' ')
-  const pathSuffix = key.includes('/') ? '/' + key.toLowerCase() + '.md' : null
-
-  // Pass 1: path-suffix match (for subfolder targets like "docs/adr/0031-foo")
-  if (pathSuffix) {
-    for (const e of entries) {
-      if (e.path.toLowerCase().endsWith(pathSuffix)) return e
-    }
-  }
-  // Pass 2: filename stem (strongest for flat vault)
-  for (const e of entries) {
-    const stem = e.filename.replace(/\.md$/, '').toLowerCase()
-    if (stem === keyLower || stem === lastSegmentLower) return e
-  }
-  // Pass 3: alias
-  for (const e of entries) {
-    if (e.aliases.some(a => a.toLowerCase() === keyLower)) return e
-  }
-  // Pass 4: exact title
-  for (const e of entries) {
-    if (e.title.toLowerCase() === keyLower || e.title.toLowerCase() === lastSegmentLower) return e
-  }
-  // Pass 5: humanized title (kebab-case → words)
-  if (asWords !== keyLower) {
-    for (const e of entries) {
-      if (e.title.toLowerCase() === asWords) return e
-    }
-  }
-  return undefined
+  const resolutionKey = buildResolutionKey(rawTarget)
+  return (
+    findEntryByPathSuffix(entries, resolutionKey.pathSuffix)
+    ?? findEntryByFilename(entries, resolutionKey)
+    ?? findEntryByAlias(entries, resolutionKey.exactTarget)
+    ?? findEntryByTitle(entries, resolutionKey.exactTarget, resolutionKey.lastSegment)
+    ?? findEntryByHumanizedTitle(entries, resolutionKey.humanizedTarget)
+  )
 }

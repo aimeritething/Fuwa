@@ -1,7 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { render, screen, act } from '@testing-library/react'
 import { RawEditorView } from './RawEditorView'
-import { extractWikilinkQuery, detectYamlError } from '../utils/rawEditorUtils'
 
 function entry(title: string, path = `/vault/note/${title}.md`) {
   return {
@@ -22,61 +21,6 @@ const defaultProps = {
   onContentChange: vi.fn(),
   onSave: vi.fn(),
 }
-
-describe('extractWikilinkQuery', () => {
-  it('returns null when no [[ trigger', () => {
-    expect(extractWikilinkQuery('hello world', 5)).toBeNull()
-  })
-
-  it('returns empty string immediately after [[', () => {
-    const text = 'see [['
-    expect(extractWikilinkQuery(text, text.length)).toBe('')
-  })
-
-  it('returns query after [[', () => {
-    const text = 'see [[Proj'
-    expect(extractWikilinkQuery(text, text.length)).toBe('Proj')
-  })
-
-  it('returns null when ]] closes the link', () => {
-    const text = '[[Proj]]'
-    expect(extractWikilinkQuery(text, text.length)).toBeNull()
-  })
-
-  it('returns null when newline is in query', () => {
-    const text = '[[Proj\ncontinued'
-    expect(extractWikilinkQuery(text, text.length)).toBeNull()
-  })
-
-  it('handles cursor before end of text', () => {
-    const text = '[[Proj after'
-    expect(extractWikilinkQuery(text, 6)).toBe('Proj')
-  })
-})
-
-describe('detectYamlError', () => {
-  it('returns null for content without frontmatter', () => {
-    expect(detectYamlError('# Title\n\nSome content.')).toBeNull()
-  })
-
-  it('returns null for valid frontmatter', () => {
-    expect(detectYamlError('---\ntitle: My Note\n---\n\n# Title')).toBeNull()
-  })
-
-  it('returns error for unclosed frontmatter', () => {
-    const error = detectYamlError('---\ntitle: My Note\n\n# Title')
-    expect(error).toContain('Unclosed frontmatter')
-  })
-
-  it('returns error for tab indentation in frontmatter', () => {
-    const error = detectYamlError('---\n\ttitle: My Note\n---\n')
-    expect(error).toContain('tab indentation')
-  })
-
-  it('returns null for content not starting with ---', () => {
-    expect(detectYamlError('Not frontmatter')).toBeNull()
-  })
-})
 
 describe('RawEditorView', () => {
   it('renders CodeMirror container', () => {

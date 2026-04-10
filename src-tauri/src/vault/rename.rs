@@ -1,5 +1,6 @@
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
@@ -48,28 +49,19 @@ fn is_replaceable_md_file(path: &Path, exclude: &Path) -> bool {
 }
 
 /// Replace wikilink references in a single file's content. Returns updated content if changed.
-fn replace_wikilinks_in_content(content: &str, re: &Regex, new_title: &str) -> Option<String> {
+fn replace_wikilinks_in_content(content: &str, re: &Regex, new_target: &str) -> Option<String> {
     if !re.is_match(content) {
         return None;
     }
     let replaced = re.replace_all(content, |caps: &regex::Captures| match caps.get(1) {
-        Some(pipe) => format!("[[{}{}]]", new_title, pipe.as_str()),
-        None => format!("[[{}]]", new_title),
+        Some(pipe) => format!("[[{}{}]]", new_target, pipe.as_str()),
+        None => format!("[[{}]]", new_target),
     });
     if replaced != content {
         Some(replaced.into_owned())
     } else {
         None
     }
-}
-
-/// Parameters for a vault-wide wikilink replacement.
-struct WikilinkReplacement<'a> {
-    vault_path: &'a Path,
-    old_title: &'a str,
-    new_title: &'a str,
-    old_path_stem: &'a str,
-    exclude_path: &'a Path,
 }
 
 /// Collect all .md file paths in vault eligible for wikilink replacement.
@@ -83,16 +75,35 @@ fn collect_md_files(vault_path: &Path, exclude: &Path) -> Vec<std::path::PathBuf
         .collect()
 }
 
+fn unique_wikilink_targets<'a>(targets: Vec<&'a str>) -> Vec<&'a str> {
+    let mut seen = HashSet::new();
+    targets
+        .into_iter()
+        .filter(|target| !target.is_empty())
+        .filter(|target| seen.insert(*target))
+        .collect()
+}
+
+fn collect_legacy_wikilink_targets<'a>(old_title: &'a str, old_path_stem: &'a str) -> Vec<&'a str> {
+    let old_filename_stem = old_path_stem.rsplit('/').next().unwrap_or(old_path_stem);
+    unique_wikilink_targets(vec![old_title, old_path_stem, old_filename_stem])
+}
+
 /// Replace wiki link references across all vault markdown files.
-fn update_wikilinks_in_vault(params: &WikilinkReplacement) -> usize {
-    let re = match build_wikilink_pattern(&[params.old_title, params.old_path_stem]) {
+fn update_wikilinks_in_vault(
+    vault_path: &Path,
+    old_targets: &[&str],
+    new_target: &str,
+    exclude_path: &Path,
+) -> usize {
+    let re = match build_wikilink_pattern(old_targets) {
         Some(r) => r,
         None => return 0,
     };
     replace_wikilinks_in_files(
-        collect_md_files(params.vault_path, params.exclude_path),
+        collect_md_files(vault_path, exclude_path),
         &re,
-        params.new_title,
+        new_target,
     )
 }
 
@@ -117,23 +128,6 @@ fn rewrite_wikilinks_in_file(path: &Path, re: &Regex, replacement: &str) -> bool
     };
 
     fs::write(path, &new_content).is_ok()
-}
-
-fn update_path_wikilinks_in_vault(
-    vault_path: &Path,
-    old_path_stem: &str,
-    new_path_stem: &str,
-    exclude_path: &Path,
-) -> usize {
-    let re = match build_wikilink_pattern(&[old_path_stem]) {
-        Some(r) => r,
-        None => return 0,
-    };
-    replace_wikilinks_in_files(
-        collect_md_files(vault_path, exclude_path),
-        &re,
-        new_path_stem,
-    )
 }
 
 /// Extract the value of the `title:` frontmatter field from raw content.
@@ -288,13 +282,9 @@ pub fn rename_note(
     // Update wikilinks across the vault
     let vault_prefix = format!("{}/", vault.to_string_lossy());
     let old_path_stem = to_path_stem(old_path, &vault_prefix);
-    let updated_files = update_wikilinks_in_vault(&WikilinkReplacement {
-        vault_path: vault,
-        old_title,
-        new_title,
-        old_path_stem,
-        exclude_path: &new_file,
-    });
+    let new_path_stem = to_path_stem(&new_path_str, &vault_prefix).to_string();
+    let old_targets = collect_legacy_wikilink_targets(old_title, old_path_stem);
+    let updated_files = update_wikilinks_in_vault(vault, &old_targets, &new_path_stem, &new_file);
 
     Ok(RenameResult {
         new_path: new_path_str,
@@ -320,6 +310,10 @@ pub fn rename_note_filename(
         .file_name()
         .map(|f| f.to_string_lossy().to_string())
         .unwrap_or_default();
+    let content =
+        fs::read_to_string(old_file).map_err(|e| format!("Failed to read {}: {}", old_path, e))?;
+    let fm_title = extract_fm_title_value(&content);
+    let old_title = super::extract_title(fm_title.as_deref(), &content, &old_filename);
     let new_filename = format!("{}.md", normalized_stem);
 
     if old_filename == new_filename {
@@ -350,8 +344,8 @@ pub fn rename_note_filename(
     let old_path_stem = to_path_stem(old_path, &vault_prefix);
     let new_path = new_file.to_string_lossy().to_string();
     let new_path_stem = to_path_stem(&new_path, &vault_prefix).to_string();
-    let updated_files =
-        update_path_wikilinks_in_vault(vault, old_path_stem, &new_path_stem, &new_file);
+    let old_targets = collect_legacy_wikilink_targets(&old_title, old_path_stem);
+    let updated_files = update_wikilinks_in_vault(vault, &old_targets, &new_path_stem, &new_file);
 
     Ok(RenameResult {
         new_path,
@@ -460,22 +454,12 @@ pub fn update_wikilinks_for_renames(
             .strip_suffix(".md")
             .unwrap_or(&rename.new_path);
         let old_filename_stem = old_stem.split('/').next_back().unwrap_or(old_stem);
-        let new_filename_stem = new_stem.split('/').next_back().unwrap_or(new_stem);
-
         // Build title from filename stem (kebab-case → Title Case)
         let old_title = super::parsing::slug_to_title(old_filename_stem);
-        let new_title = super::parsing::slug_to_title(new_filename_stem);
-
         // The new file is the exclude target (don't rewrite wikilinks inside the renamed file itself)
         let new_file = vault.join(&rename.new_path);
-
-        let updated = update_wikilinks_in_vault(&WikilinkReplacement {
-            vault_path: vault,
-            old_title: &old_title,
-            new_title: &new_title,
-            old_path_stem: old_filename_stem,
-            exclude_path: &new_file,
-        });
+        let old_targets = collect_legacy_wikilink_targets(&old_title, old_stem);
+        let updated = update_wikilinks_in_vault(vault, &old_targets, new_stem, &new_file);
         total_updated += updated;
     }
 
@@ -565,11 +549,11 @@ mod tests {
         assert_eq!(result.updated_files, 2);
 
         let other_content = fs::read_to_string(vault.join("note/other.md")).unwrap();
-        assert!(other_content.contains("[[Sprint Retrospective]]"));
+        assert!(other_content.contains("[[note/sprint-retrospective]]"));
         assert!(!other_content.contains("[[Weekly Review]]"));
 
         let project_content = fs::read_to_string(vault.join("project/my-project.md")).unwrap();
-        assert!(project_content.contains("[[Sprint Retrospective]]"));
+        assert!(project_content.contains("[[note/sprint-retrospective]]"));
     }
 
     #[test]
@@ -629,7 +613,29 @@ mod tests {
 
         assert_eq!(result.updated_files, 1);
         let ref_content = fs::read_to_string(vault.join("note/ref.md")).unwrap();
-        assert!(ref_content.contains("[[Sprint Retro|my review]]"));
+        assert!(ref_content.contains("[[note/sprint-retro|my review]]"));
+    }
+
+    #[test]
+    fn test_rename_note_updates_filename_only_wikilinks_to_canonical_path() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        create_test_file(vault, "note/weekly-review.md", "# Weekly Review\n");
+        create_test_file(vault, "note/ref.md", "# Ref\n\nSee [[weekly-review]] for info.\n");
+
+        let old_path = vault.join("note/weekly-review.md");
+        let result = rename_note(
+            vault.to_str().unwrap(),
+            old_path.to_str().unwrap(),
+            "Sprint Retro",
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(result.updated_files, 1);
+        let ref_content = fs::read_to_string(vault.join("note/ref.md")).unwrap();
+        assert!(ref_content.contains("[[note/sprint-retro]]"));
+        assert!(!ref_content.contains("[[weekly-review]]"));
     }
 
     #[test]
@@ -838,7 +844,7 @@ mod tests {
 
         let ref_content = fs::read_to_string(vault.join("note/ref.md")).unwrap();
         assert!(ref_content.contains("[[note/manual-name]]"));
-        assert!(ref_content.contains("[[Project Kickoff]]"));
+        assert!(!ref_content.contains("[[Project Kickoff]]"));
         assert!(!ref_content.contains("[[note/project-kickoff]]"));
     }
 
@@ -896,11 +902,11 @@ mod tests {
         assert!(!vault.join("note/weekly-review.md").exists());
 
         let other_content = fs::read_to_string(vault.join("note/other.md")).unwrap();
-        assert!(other_content.contains("[[Sprint Retrospective]]"));
+        assert!(other_content.contains("[[note/sprint-retrospective]]"));
         assert!(!other_content.contains("[[Weekly Review]]"));
 
         let project_content = fs::read_to_string(vault.join("project/my-project.md")).unwrap();
-        assert!(project_content.contains("[[Sprint Retrospective]]"));
+        assert!(project_content.contains("[[note/sprint-retrospective]]"));
     }
 
     #[test]
@@ -930,7 +936,7 @@ mod tests {
 
         assert_eq!(result.updated_files, 1);
         let other_content = fs::read_to_string(vault.join("note/other.md")).unwrap();
-        assert!(other_content.contains("[[Sprint Retrospective]]"));
+        assert!(other_content.contains("[[note/sprint-retrospective]]"));
     }
 
     #[test]
