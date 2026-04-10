@@ -155,6 +155,7 @@ export type SearchMode = 'keyword' | 'semantic' | 'hybrid'
 /** Vault-scoped UI configuration stored locally per vault path. */
 export interface InboxConfig {
   noteListProperties: string[] | null
+  explicitOrganization?: boolean | null
 }
 
 /** Vault-scoped UI configuration stored locally per vault path. */

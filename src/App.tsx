@@ -64,6 +64,11 @@ import { focusNoteIconPropertyEditor } from './components/noteIconPropertyEvents
 import { trackEvent } from './lib/telemetry'
 import { extractDeletedContentFromDiff } from './components/note-list/noteListUtils'
 import { hasNoteIconValue } from './utils/noteIcon'
+import {
+  INBOX_SELECTION,
+  isExplicitOrganizationEnabled,
+  sanitizeSelectionForOrganization,
+} from './utils/organizationWorkflow'
 import './App.css'
 
 // Type declarations for mock content storage and test overrides
@@ -75,7 +80,7 @@ declare global {
   }
 }
 
-const DEFAULT_SELECTION: SidebarSelection = { kind: 'filter', filter: 'inbox' }
+const DEFAULT_SELECTION: SidebarSelection = INBOX_SELECTION
 
 /** Wraps useEditorSave to also keep outgoingLinks in sync on save and on content change. */
 function App() {
@@ -128,6 +133,22 @@ function App() {
 
   const vault = useVaultLoader(resolvedPath)
   const { config: vaultConfig, updateConfig } = useVaultConfig(resolvedPath)
+  const explicitOrganizationEnabled = isExplicitOrganizationEnabled(vaultConfig.inbox?.explicitOrganization)
+  const effectiveSelection = sanitizeSelectionForOrganization(selection, vaultConfig.inbox?.explicitOrganization)
+
+  useEffect(() => {
+    if (effectiveSelection !== selection) {
+      setSelection(effectiveSelection)
+      setNoteListFilter('open')
+    }
+  }, [effectiveSelection, selection])
+
+  const handleSaveExplicitOrganization = useCallback((enabled: boolean) => {
+    updateConfig('inbox', {
+      noteListProperties: vaultConfig.inbox?.noteListProperties ?? null,
+      explicitOrganization: enabled,
+    })
+  }, [updateConfig, vaultConfig.inbox?.noteListProperties])
   const { settings, loaded: settingsLoaded, saveSettings } = useSettings()
   useTelemetry(settings, settingsLoaded)
 
@@ -505,7 +526,7 @@ function App() {
     visibleNotesRef,
     modifiedCount: vault.modifiedFiles.length,
     activeNoteModified: vault.modifiedFiles.some(f => f.path === notes.activeTabPath),
-    selection,
+    selection: effectiveSelection,
     onQuickOpen: dialogs.openQuickOpen, onCommandPalette: dialogs.openCommandPalette,
     onSearch: dialogs.openSearch,
     onCreateNote: notes.handleCreateNoteImmediate,
@@ -526,6 +547,7 @@ function App() {
     onZoomIn: zoom.zoomIn, onZoomOut: zoom.zoomOut, onZoomReset: zoom.zoomReset,
     zoomLevel: zoom.zoomLevel,
     onSelect: handleSetSelection,
+    showInbox: explicitOrganizationEnabled,
     onReplaceActiveTab: notes.handleReplaceActiveTab,
     onSelectNote: notes.handleSelectNote,
     onGoBack: handleGoBack, onGoForward: handleGoForward,
@@ -554,9 +576,9 @@ function App() {
     onSetNoteListFilter: setNoteListFilter,
     onOpenInNewWindow: handleOpenInNewWindow,
     onToggleFavorite: entryActions.handleToggleFavorite,
-    onToggleOrganized: entryActions.handleToggleOrganized,
+    onToggleOrganized: explicitOrganizationEnabled ? entryActions.handleToggleOrganized : undefined,
     onCustomizeInboxColumns: handleCustomizeInboxColumns,
-    canCustomizeInboxColumns: selection.kind === 'filter' && selection.filter === 'inbox',
+    canCustomizeInboxColumns: explicitOrganizationEnabled && effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'inbox',
     onRestoreDeletedNote: activeDeletedFile ? () => { void handleDiscardFile(activeDeletedFile.relativePath) } : undefined,
     canRestoreDeletedNote: !!activeDeletedFile,
   })
@@ -566,18 +588,18 @@ function App() {
   const inboxCount = useMemo(() => filterInboxEntries(vault.entries, inboxPeriod).length, [vault.entries, inboxPeriod])
 
   const aiNoteList = useMemo<NoteListItem[]>(() => {
-    const isInbox = selection.kind === 'filter' && selection.filter === 'inbox'
-    const filtered = isInbox ? filterInboxEntries(vault.entries, inboxPeriod) : filterEntries(vault.entries, selection, undefined, vault.views)
+    const isInbox = effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'inbox'
+    const filtered = isInbox ? filterInboxEntries(vault.entries, inboxPeriod) : filterEntries(vault.entries, effectiveSelection, undefined, vault.views)
     return filtered.map(e => ({
       path: e.path, title: e.title, type: e.isA ?? 'Note',
     }))
-  }, [vault.entries, vault.views, selection, inboxPeriod])
+  }, [vault.entries, vault.views, effectiveSelection, inboxPeriod])
 
   const aiNoteListFilter = useMemo(() => {
-    if (selection.kind === 'sectionGroup') return { type: selection.type, query: '' }
-    if (selection.kind === 'entity') return { type: null, query: selection.entry.title }
+    if (effectiveSelection.kind === 'sectionGroup') return { type: effectiveSelection.type, query: '' }
+    if (effectiveSelection.kind === 'entity') return { type: null, query: effectiveSelection.entry.title }
     return { type: null, query: '' }
-  }, [selection])
+  }, [effectiveSelection])
 
   // Show welcome/onboarding screen when vault doesn't exist (skip for note windows — vault path is known)
   if (!noteWindowParams && (onboarding.state.status === 'welcome' || onboarding.state.status === 'vault-missing')) {
@@ -627,7 +649,7 @@ function App() {
         {sidebarVisible && (
           <>
             <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-              <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={selection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={notes.handleSelectNote} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} inboxCount={inboxCount} />
+              <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={notes.handleSelectNote} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} />
             </div>
             <ResizeHandle onResize={layout.handleSidebarResize} />
           </>
@@ -635,10 +657,10 @@ function App() {
         {noteListVisible && (
           <>
             <div className={`app__note-list${aiActivity.highlightElement === 'notelist' ? ' ai-highlight' : ''}`} style={{ width: layout.noteListWidth }}>
-              {selection.kind === 'filter' && selection.filter === 'pulse' ? (
+              {effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={vaultBridge.handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={selection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} />
+                <NoteList entries={vault.entries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />
@@ -672,7 +694,7 @@ function App() {
             noteList={aiNoteList}
             noteListFilter={aiNoteListFilter}
             onToggleFavorite={activeDeletedFile ? undefined : entryActions.handleToggleFavorite}
-            onToggleOrganized={activeDeletedFile ? undefined : entryActions.handleToggleOrganized}
+            onToggleOrganized={activeDeletedFile || !explicitOrganizationEnabled ? undefined : entryActions.handleToggleOrganized}
             onDeleteNote={activeDeletedFile ? undefined : deleteActions.handleDeleteNote}
             onArchiveNote={activeDeletedFile ? undefined : entryActions.handleArchiveNote}
             onUnarchiveNote={activeDeletedFile ? undefined : entryActions.handleUnarchiveNote}
@@ -716,7 +738,7 @@ function App() {
         onCommit={conflictResolver.commitResolution}
         onClose={conflictFlow.handleCloseConflictResolver}
       />
-      <SettingsPanel open={dialogs.showSettings} settings={settings} onSave={saveSettings} onClose={dialogs.closeSettings} />
+      <SettingsPanel open={dialogs.showSettings} settings={settings} onSave={saveSettings} explicitOrganizationEnabled={explicitOrganizationEnabled} onSaveExplicitOrganization={handleSaveExplicitOrganization} onClose={dialogs.closeSettings} />
       <FeedbackDialog open={showFeedback} onClose={closeFeedback} />
       <GitHubVaultModal
         open={dialogs.showGitHubVault}

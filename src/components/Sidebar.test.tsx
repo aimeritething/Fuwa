@@ -867,6 +867,13 @@ describe('Sidebar', () => {
     expect(onSelect).toHaveBeenCalledWith({ kind: 'filter', filter: 'inbox' })
   })
 
+  it('hides Inbox when explicit organization is disabled', () => {
+    render(<Sidebar entries={[]} selection={defaultSelection} onSelect={() => {}} showInbox={false} inboxCount={3} />)
+    expect(screen.queryByText('Inbox')).not.toBeInTheDocument()
+    const topNav = screen.getByTestId('sidebar-top-nav')
+    expect(topNav.children[0].textContent).toContain('All Notes')
+  })
+
   it('does not show inline entries — no child items in type sections', () => {
     const entriesWithEmoji: VaultEntry[] = [
       {

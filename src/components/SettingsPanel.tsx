@@ -3,11 +3,14 @@ import { X, GithubLogo, SignOut } from '@phosphor-icons/react'
 import { GitHubDeviceFlow } from './GitHubDeviceFlow'
 import type { Settings } from '../types'
 import { trackEvent } from '../lib/telemetry'
+import { Switch } from './ui/switch'
 
 interface SettingsPanelProps {
   open: boolean
   settings: Settings
   onSave: (settings: Settings) => void
+  explicitOrganizationEnabled?: boolean
+  onSaveExplicitOrganization?: (enabled: boolean) => void
   onClose: () => void
 }
 
@@ -59,18 +62,44 @@ function GitHubConnectedRow({ username, onDisconnect }: { username: string; onDi
 
 // --- Settings Panel ---
 
-export function SettingsPanel({ open, settings, onSave, onClose }: SettingsPanelProps) {
-  if (!open) return null
-  return <SettingsPanelInner settings={settings} onSave={onSave} onClose={onClose} />
+function isSaveShortcut(event: React.KeyboardEvent): boolean {
+  return event.key === 'Enter' && (event.metaKey || event.ctrlKey)
 }
 
-function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelProps, 'open'>) {
+export function SettingsPanel({
+  open,
+  settings,
+  onSave,
+  explicitOrganizationEnabled = true,
+  onSaveExplicitOrganization,
+  onClose,
+}: SettingsPanelProps) {
+  if (!open) return null
+  return (
+    <SettingsPanelInner
+      settings={settings}
+      onSave={onSave}
+      explicitOrganizationEnabled={explicitOrganizationEnabled}
+      onSaveExplicitOrganization={onSaveExplicitOrganization}
+      onClose={onClose}
+    />
+  )
+}
+
+function SettingsPanelInner({
+  settings,
+  onSave,
+  explicitOrganizationEnabled,
+  onSaveExplicitOrganization,
+  onClose,
+}: Omit<SettingsPanelProps, 'open'>) {
   const [githubToken, setGithubToken] = useState(settings.github_token)
   const [githubUsername, setGithubUsername] = useState(settings.github_username)
   const [pullInterval, setPullInterval] = useState(settings.auto_pull_interval_minutes ?? 5)
   const [releaseChannel, setReleaseChannel] = useState(settings.release_channel ?? 'stable')
   const [crashReporting, setCrashReporting] = useState(settings.crash_reporting_enabled ?? false)
   const [analytics, setAnalytics] = useState(settings.analytics_enabled ?? false)
+  const [explicitOrganization, setExplicitOrganization] = useState(explicitOrganizationEnabled)
   const panelRef = useRef<HTMLDivElement>(null)
 
   // Auto-focus first input when settings panel opens
@@ -99,6 +128,7 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
     if (!prevAnalytics && newAnalytics) trackEvent('telemetry_opted_in')
     if (prevAnalytics && !newAnalytics) trackEvent('telemetry_opted_out')
     onSave(buildSettings())
+    onSaveExplicitOrganization?.(explicitOrganization)
     onClose()
   }
 
@@ -119,7 +149,7 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
       e.stopPropagation()
       onClose()
     }
-    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+    if (isSaveShortcut(e)) {
       e.preventDefault()
       handleSave()
     }
@@ -144,6 +174,8 @@ function SettingsPanelInner({ settings, onSave, onClose }: Omit<SettingsPanelPro
           onGitHubConnected={handleGitHubConnected} onGitHubDisconnect={handleGitHubDisconnect}
           pullInterval={pullInterval} setPullInterval={setPullInterval}
           releaseChannel={releaseChannel} setReleaseChannel={setReleaseChannel}
+          explicitOrganization={explicitOrganization}
+          setExplicitOrganization={setExplicitOrganization}
           crashReporting={crashReporting} setCrashReporting={setCrashReporting}
           analytics={analytics} setAnalytics={setAnalytics}
         />
@@ -177,6 +209,7 @@ interface SettingsBodyProps {
   onGitHubDisconnect: () => void
   pullInterval: number; setPullInterval: (v: number) => void
   releaseChannel: string; setReleaseChannel: (v: string) => void
+  explicitOrganization: boolean; setExplicitOrganization: (v: boolean) => void
   crashReporting: boolean; setCrashReporting: (v: boolean) => void
   analytics: boolean; setAnalytics: (v: boolean) => void
 }
@@ -251,6 +284,13 @@ function SettingsBody(props: SettingsBodyProps) {
 
       <div style={{ height: 1, background: 'var(--border)' }} />
 
+      <OrganizationWorkflowSection
+        checked={props.explicitOrganization}
+        onChange={props.setExplicitOrganization}
+      />
+
+      <div style={{ height: 1, background: 'var(--border)' }} />
+
       <div>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>Privacy &amp; Telemetry</div>
         <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
@@ -261,6 +301,39 @@ function SettingsBody(props: SettingsBodyProps) {
       <TelemetryToggle label="Crash reporting" description="Send anonymous error reports" checked={props.crashReporting} onChange={props.setCrashReporting} testId="settings-crash-reporting" />
       <TelemetryToggle label="Usage analytics" description="Share anonymous usage patterns" checked={props.analytics} onChange={props.setAnalytics} testId="settings-analytics" />
     </div>
+  )
+}
+
+function OrganizationWorkflowSection({
+  checked,
+  onChange,
+}: {
+  checked: boolean
+  onChange: (value: boolean) => void
+}) {
+  return (
+    <>
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>Workflow</div>
+        <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
+          Choose whether Laputa shows the Inbox workflow and the organized toggle.
+        </div>
+      </div>
+
+      <label
+        className="flex items-start justify-between gap-3"
+        style={{ cursor: 'pointer' }}
+        data-testid="settings-explicit-organization"
+      >
+        <div className="space-y-1">
+          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--foreground)' }}>Organize notes explicitly</div>
+          <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
+            When enabled, an Inbox section shows unorganized notes, and a toggle lets you mark notes as organized.
+          </div>
+        </div>
+        <Switch checked={checked} onCheckedChange={onChange} aria-label="Organize notes explicitly" />
+      </label>
+    </>
   )
 }
 

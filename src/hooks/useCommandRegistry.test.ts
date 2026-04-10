@@ -201,6 +201,12 @@ describe('useCommandRegistry', () => {
     expect(findCommand(result.current, 'archive-note')?.shortcut).toBeUndefined()
   })
 
+  it('omits Inbox navigation when the explicit workflow is disabled', () => {
+    const config = makeConfig({ showInbox: false })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    expect(findCommand(result.current, 'go-inbox')).toBeUndefined()
+  })
+
   it('includes Give Feedback in the Settings group when available', () => {
     const onOpenFeedback = vi.fn()
     const config = makeConfig({ onOpenFeedback })

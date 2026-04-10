@@ -104,6 +104,11 @@ describe('BreadcrumbBar — organized shortcut hint', () => {
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onToggleOrganized={vi.fn()} />)
     expect(screen.getByTitle('Mark as organized (remove from Inbox) (Cmd+E)')).toBeInTheDocument()
   })
+
+  it('hides the organized toggle when the workflow is disabled', () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
+    expect(screen.queryByTitle('Mark as organized (remove from Inbox) (Cmd+E)')).not.toBeInTheDocument()
+  })
 })
 
 describe('BreadcrumbBar — title in breadcrumb (always rendered, CSS-toggled)', () => {

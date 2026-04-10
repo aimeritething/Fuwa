@@ -61,6 +61,7 @@ interface CommandRegistryConfig {
   zoomLevel: number
   onSelect: (sel: SidebarSelection) => void
   onOpenDailyNote: () => void
+  showInbox?: boolean
   onGoBack?: () => void
   onGoForward?: () => void
   canGoBack?: boolean
@@ -83,6 +84,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     activeNoteModified,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onOpenDailyNote,
+    showInbox,
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates, onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
@@ -108,7 +110,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   const vaultTypes = useMemo(() => extractVaultTypes(entries), [entries])
 
   return useMemo(() => [
-    ...buildNavigationCommands({ onQuickOpen, onSelect, onOpenDailyNote, onGoBack, onGoForward, canGoBack, canGoForward }),
+    ...buildNavigationCommands({ onQuickOpen, onSelect, onOpenDailyNote, showInbox, onGoBack, onGoForward, canGoBack, canGoForward }),
     ...buildNoteCommands({
       hasActiveNote, activeTabPath, isArchived,
       onCreateNote, onCreateType, onOpenDailyNote, onSave,
@@ -138,6 +140,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onCheckForUpdates,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onOpenDailyNote,
+    showInbox,
     onGoBack, onGoForward, canGoBack, canGoForward,
     vaultTypes,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,

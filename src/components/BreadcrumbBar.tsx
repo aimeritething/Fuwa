@@ -75,16 +75,18 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
       >
         <Star size={16} weight={entry.favorite ? 'fill' : 'regular'} />
       </button>
-      <button
-        className={cn(
-          "flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors",
-          entry.organized ? "text-green-600" : "text-muted-foreground hover:text-foreground"
-        )}
-        onClick={onToggleOrganized}
-        title={entry.organized ? 'Mark as unorganized (back to Inbox) (Cmd+E)' : 'Mark as organized (remove from Inbox) (Cmd+E)'}
-      >
-        <CheckCircle size={16} weight={entry.organized ? 'fill' : 'regular'} />
-      </button>
+      {onToggleOrganized && (
+        <button
+          className={cn(
+            "flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors",
+            entry.organized ? "text-green-600" : "text-muted-foreground hover:text-foreground"
+          )}
+          onClick={onToggleOrganized}
+          title={entry.organized ? 'Mark as unorganized (back to Inbox) (Cmd+E)' : 'Mark as organized (remove from Inbox) (Cmd+E)'}
+        >
+          <CheckCircle size={16} weight={entry.organized ? 'fill' : 'regular'} />
+        </button>
+      )}
       <button
         className="flex items-center justify-center border-none bg-transparent p-0 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
         title="Search in file"

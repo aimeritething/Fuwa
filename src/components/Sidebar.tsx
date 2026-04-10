@@ -44,6 +44,7 @@ interface SidebarProps {
   onDeleteView?: (filename: string) => void
   folders?: FolderNode[]
   onCreateFolder?: (name: string) => void
+  showInbox?: boolean
   inboxCount?: number
   onCollapse?: () => void
 }
@@ -65,6 +66,7 @@ export const Sidebar = memo(function Sidebar({
   onDeleteView,
   folders = [],
   onCreateFolder,
+  showInbox = true,
   inboxCount = 0,
   onCollapse,
   onCreateNewType,
@@ -160,6 +162,7 @@ export const Sidebar = memo(function Sidebar({
         <SidebarTopNav
           selection={selection}
           onSelect={onSelect}
+          showInbox={showInbox}
           inboxCount={inboxCount}
           activeCount={activeCount}
           archivedCount={archivedCount}

@@ -185,6 +185,27 @@ describe('App', () => {
     })
   })
 
+  it('defaults to All Notes when explicit organization is disabled in vault config', async () => {
+    const disabledWorkflowConfig = JSON.stringify({
+      zoom: null,
+      view_mode: null,
+      editor_mode: null,
+      tag_colors: null,
+      status_colors: null,
+      property_display_modes: null,
+      inbox: { noteListProperties: null, explicitOrganization: false },
+    })
+    localStorage.setItem('laputa:vault-config:/Users/mock/Documents/Getting Started', disabledWorkflowConfig)
+    localStorage.setItem('laputa:vault-config:/Volumes/Jupiter/Workspace/laputa-app/demo-vault-v2', disabledWorkflowConfig)
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.queryByText('Inbox')).not.toBeInTheDocument()
+      expect(screen.getByText('All Notes')).toBeInTheDocument()
+    })
+  })
+
   it('renders status bar', async () => {
     render(<App />)
     // StatusBar should be present

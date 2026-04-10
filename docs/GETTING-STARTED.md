@@ -245,8 +245,8 @@ laputa-app/
 | File | Why it matters |
 |------|---------------|
 | `src/hooks/useSettings.ts` | App settings (API keys, GitHub token, sync interval). |
-| `src/hooks/useVaultConfig.ts` | Per-vault local UI preferences (zoom, view mode, colors, Inbox columns). |
-| `src/components/SettingsPanel.tsx` | Settings UI including GitHub OAuth connection. |
+| `src/hooks/useVaultConfig.ts` | Per-vault local UI preferences (zoom, view mode, colors, Inbox columns, explicit organization workflow). |
+| `src/components/SettingsPanel.tsx` | Settings UI including GitHub OAuth connection and the vault-level explicit organization toggle. |
 
 ## Architecture Patterns
 

@@ -75,6 +75,32 @@ describe('SettingsPanel', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('defaults the organization workflow switch to on', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+    expect(screen.getByRole('switch', { name: 'Organize notes explicitly' })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('saves the organization workflow preference when toggled off', () => {
+    const onSaveExplicitOrganization = vi.fn()
+    render(
+      <SettingsPanel
+        open={true}
+        settings={emptySettings}
+        onSave={onSave}
+        explicitOrganizationEnabled={true}
+        onSaveExplicitOrganization={onSaveExplicitOrganization}
+        onClose={onClose}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Organize notes explicitly' }))
+    fireEvent.click(screen.getByTestId('settings-save'))
+
+    expect(onSaveExplicitOrganization).toHaveBeenCalledWith(false)
+  })
+
   it('calls onClose when Cancel is clicked', () => {
     render(
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />

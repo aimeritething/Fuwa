@@ -40,6 +40,7 @@ interface AppCommandsConfig {
   onZoomReset: () => void
   zoomLevel: number
   onSelect: (sel: SidebarSelection) => void
+  showInbox?: boolean
   onReplaceActiveTab: (entry: VaultEntry) => void
   onSelectNote: (entry: VaultEntry) => void
   onGoBack?: () => void
@@ -89,8 +90,9 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
   const { onSelect } = config
 
   const selectFilter = useCallback((filter: SidebarFilter) => {
-    onSelect({ kind: 'filter', filter })
-  }, [onSelect])
+    const safeFilter = !config.showInbox && filter === 'inbox' ? 'all' : filter
+    onSelect({ kind: 'filter', filter: safeFilter })
+  }, [config.showInbox, onSelect])
 
   const viewChanges = useCallback(() => {
     onSelect({ kind: 'filter', filter: 'changes' })
@@ -191,6 +193,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onZoomReset: config.onZoomReset,
     zoomLevel: config.zoomLevel,
     onSelect: config.onSelect,
+    showInbox: config.showInbox,
     onOpenDailyNote: config.onOpenDailyNote,
     onGoBack: config.onGoBack,
     onGoForward: config.onGoForward,

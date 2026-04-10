@@ -420,6 +420,7 @@ Per-vault UI settings stored locally per vault path (currently in browser/Tauri 
 - `tag_colors`, `status_colors`: Custom color overrides
 - `property_display_modes`: Property display preferences
 - `inbox.noteListProperties`: Optional Inbox-only property chip override for the note list
+- `inbox.explicitOrganization`: When `false`, hide Inbox and the organized toggle so the vault behaves like a plain note collection
 
 ### Getting Started Vault
 
