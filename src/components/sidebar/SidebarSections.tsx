@@ -360,7 +360,7 @@ const FAVORITE_TYPE_ICON_MAP: Record<string, string> = {
 
 function getFavoriteIcon(entry: VaultEntry, typeEntryMap: Record<string, VaultEntry>) {
   const typeEntry = entry.isA ? typeEntryMap[entry.isA] : undefined
-  return typeEntry?.icon ?? FAVORITE_TYPE_ICON_MAP[entry.isA ?? ''] ?? 'file-text'
+  return entry.icon ?? typeEntry?.icon ?? FAVORITE_TYPE_ICON_MAP[entry.isA ?? ''] ?? 'file-text'
 }
 
 function SortableFavoriteItem({

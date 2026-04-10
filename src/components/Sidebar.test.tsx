@@ -900,6 +900,46 @@ describe('Sidebar', () => {
       favorite: true, favoriteIndex: 0,
     }
 
+    function getFavoriteAndTypeRows(favoriteTitle = 'My Favorite Note') {
+      const favoriteLabel = screen.getByText(favoriteTitle)
+      const favoriteRow = favoriteLabel.closest('.cursor-pointer')
+      const typeLabel = screen.getByText('Projects')
+      const typeRow = typeLabel.closest('.cursor-pointer')
+      expect(favoriteRow).not.toBeNull()
+      expect(typeRow).not.toBeNull()
+
+      return {
+        favoriteLabel,
+        favoriteRow: favoriteRow as HTMLElement,
+        typeLabel,
+        typeRow: typeRow as HTMLElement,
+      }
+    }
+
+    function expectFavoriteIconToMatchTypeSizing(favoriteRow: HTMLElement) {
+      const favoriteIcon = favoriteRow.querySelector('svg')
+      expect(favoriteIcon).not.toBeNull()
+      expect(favoriteIcon!.getAttribute('width')).toBe('16')
+      expect(favoriteIcon!.getAttribute('height')).toBe('16')
+      expect(favoriteIcon!.getAttribute('style')).toContain('var(--accent-red)')
+      return favoriteIcon as SVGElement
+    }
+
+    function expectFavoriteRowToMatchTypeRow(favoriteTitle = 'My Favorite Note') {
+      const { favoriteLabel, favoriteRow, typeLabel, typeRow } = getFavoriteAndTypeRows(favoriteTitle)
+
+      expect(favoriteRow.className).toBe(typeRow.className)
+      expect(favoriteRow.style.padding).toBe(typeRow.style.padding)
+      expect(favoriteRow.style.gap).toBe(typeRow.style.gap)
+      expect(favoriteLabel.className).toContain(typeLabel.className)
+      expect(favoriteLabel.className).toContain('truncate')
+      return {
+        favoriteRow,
+        typeRow,
+        favoriteIcon: expectFavoriteIconToMatchTypeSizing(favoriteRow),
+      }
+    }
+
     it('shows FAVORITES section when there are favorites', () => {
       render(<Sidebar entries={[...mockEntries, favEntry]} selection={defaultSelection} onSelect={() => {}} />)
       expect(screen.getByText('FAVORITES')).toBeInTheDocument()
@@ -920,21 +960,28 @@ describe('Sidebar', () => {
 
     it('matches the Types row styling and type color for favorites', () => {
       render(<Sidebar entries={[...mockEntries, favEntry]} selection={defaultSelection} onSelect={() => {}} />)
+      expectFavoriteRowToMatchTypeRow()
+    })
 
-      const favoriteLabel = screen.getByText('My Favorite Note')
-      const favoriteRow = favoriteLabel.closest('.cursor-pointer')
-      const typeLabel = screen.getByText('Projects')
-      const typeRow = typeLabel.closest('.cursor-pointer')
-      const favoriteIcon = favoriteRow?.querySelector('svg')
+    it('prefers a favorite note emoji icon over the type icon fallback', () => {
+      const emojiFavorite = { ...favEntry, title: 'Emoji Favorite', icon: '🚀' }
 
-      expect(favoriteRow?.className).toBe(typeRow?.className)
-      expect(favoriteRow?.style.padding).toBe(typeRow?.style.padding)
-      expect(favoriteRow?.style.gap).toBe(typeRow?.style.gap)
-      expect(favoriteLabel.className).toContain(typeLabel.className)
-      expect(favoriteLabel.className).toContain('truncate')
-      expect(favoriteIcon?.getAttribute('width')).toBe('16')
-      expect(favoriteIcon?.getAttribute('height')).toBe('16')
-      expect(favoriteIcon?.getAttribute('style')).toContain('var(--accent-red)')
+      render(<Sidebar entries={[...mockEntries, emojiFavorite]} selection={defaultSelection} onSelect={() => {}} />)
+
+      const emojiRow = screen.getByText('Emoji Favorite').closest('.cursor-pointer')
+      expect(within(emojiRow as HTMLElement).getByText('🚀')).toBeInTheDocument()
+      expect(emojiRow?.querySelector('svg')).toBeNull()
+    })
+
+    it('uses a favorite note phosphor icon and keeps the type color', () => {
+      const iconFavorite = { ...favEntry, title: 'Icon Favorite', icon: 'rocket' }
+
+      render(<Sidebar entries={[...mockEntries, iconFavorite]} selection={defaultSelection} onSelect={() => {}} />)
+
+      const { favoriteIcon, typeRow } = expectFavoriteRowToMatchTypeRow('Icon Favorite')
+      const typeIcon = typeRow.querySelector('svg')
+      expect(typeIcon).not.toBeNull()
+      expect(favoriteIcon.innerHTML).not.toBe(typeIcon!.innerHTML)
     })
 
     it('falls back to a neutral icon color when the favorite type has no defined color', () => {
