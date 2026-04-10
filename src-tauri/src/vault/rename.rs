@@ -75,7 +75,7 @@ fn collect_md_files(vault_path: &Path, exclude: &Path) -> Vec<std::path::PathBuf
         .collect()
 }
 
-fn unique_wikilink_targets<'a>(targets: Vec<&'a str>) -> Vec<&'a str> {
+fn unique_wikilink_targets(targets: Vec<&str>) -> Vec<&str> {
     let mut seen = HashSet::new();
     targets
         .into_iter()

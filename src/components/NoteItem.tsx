@@ -224,7 +224,7 @@ function NoteDateRow({ entry }: { entry: VaultEntry }) {
   return (
     <div className="flex items-center justify-between gap-3 text-[10px] text-muted-foreground" data-testid="note-date-row">
       <span>{modifiedLabel}</span>
-      {createdLabel && <span className="shrink-0">{createdLabel}</span>}
+      {createdLabel && <span className="ml-auto">{createdLabel}</span>}
     </div>
   )
 }
