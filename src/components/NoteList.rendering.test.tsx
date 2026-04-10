@@ -9,6 +9,23 @@ import {
   renderNoteList,
 } from '../test-utils/noteListTestUtils'
 
+function makeBookTypeEntries(
+  displayProps: string[] = [],
+  entryOverrides: Parameters<typeof makeEntry>[0] = {},
+) {
+  return [
+    makeTypeDefinition('Book', displayProps),
+    makeEntry({
+      path: '/vault/book.md',
+      filename: 'book.md',
+      title: 'Book Note',
+      isA: 'Book',
+      createdAt: 1700000000,
+      ...entryOverrides,
+    }),
+  ]
+}
+
 describe('NoteList rendering', () => {
   it('shows an empty state when there are no entries', () => {
     renderNoteList({ entries: [] })
@@ -137,20 +154,8 @@ describe('NoteList rendering', () => {
   })
 
   it('shows the inbox customize-columns action and falls back to type-defined chips', () => {
-    const entries = [
-      makeTypeDefinition('Book', ['Priority']),
-      makeEntry({
-        path: '/vault/book.md',
-        filename: 'book.md',
-        title: 'Book Note',
-        isA: 'Book',
-        properties: { Priority: 'High', Owner: 'Luca' },
-        createdAt: 1700000000,
-      }),
-    ]
-
     renderNoteList({
-      entries,
+      entries: makeBookTypeEntries(['Priority'], { properties: { Priority: 'High', Owner: 'Luca' } }),
       selection: { kind: 'filter', filter: 'inbox' },
       inboxNoteListProperties: null,
       onUpdateInboxNoteListProperties: () => undefined,
@@ -163,20 +168,9 @@ describe('NoteList rendering', () => {
 
   it('opens the inbox column picker from the global event and saves new columns', () => {
     const onUpdateInboxNoteListProperties = vi.fn()
-    const entries = [
-      makeTypeDefinition('Book', ['Priority']),
-      makeEntry({
-        path: '/vault/book.md',
-        filename: 'book.md',
-        title: 'Book Note',
-        isA: 'Book',
-        properties: { Priority: 'High', Owner: 'Luca' },
-        createdAt: 1700000000,
-      }),
-    ]
 
     renderNoteList({
-      entries,
+      entries: makeBookTypeEntries(['Priority'], { properties: { Priority: 'High', Owner: 'Luca' } }),
       selection: { kind: 'filter', filter: 'inbox' },
       inboxNoteListProperties: null,
       onUpdateInboxNoteListProperties,
@@ -194,20 +188,8 @@ describe('NoteList rendering', () => {
   })
 
   it('shows status in the type column picker when at least one note has it set', () => {
-    const entries = [
-      makeTypeDefinition('Book'),
-      makeEntry({
-        path: '/vault/book.md',
-        filename: 'book.md',
-        title: 'Book Note',
-        isA: 'Book',
-        status: 'Active',
-        createdAt: 1700000000,
-      }),
-    ]
-
     renderNoteList({
-      entries,
+      entries: makeBookTypeEntries([], { status: 'Active' }),
       selection: { kind: 'sectionGroup', type: 'Book' },
       onUpdateTypeSort: () => undefined,
     })
@@ -221,21 +203,8 @@ describe('NoteList rendering', () => {
   })
 
   it('keeps blank statuses out of the type column picker', () => {
-    const entries = [
-      makeTypeDefinition('Book'),
-      makeEntry({
-        path: '/vault/book.md',
-        filename: 'book.md',
-        title: 'Book Note',
-        isA: 'Book',
-        status: '',
-        properties: { Owner: 'Luca' },
-        createdAt: 1700000000,
-      }),
-    ]
-
     renderNoteList({
-      entries,
+      entries: makeBookTypeEntries([], { status: '', properties: { Owner: 'Luca' } }),
       selection: { kind: 'sectionGroup', type: 'Book' },
       onUpdateTypeSort: () => undefined,
     })
@@ -250,41 +219,41 @@ describe('NoteList rendering', () => {
   })
 
   it('renders status as a note-list chip when a type displays it', () => {
-    const entries = [
-      makeTypeDefinition('Book', ['status']),
-      makeEntry({
-        path: '/vault/book.md',
-        filename: 'book.md',
-        title: 'Book Note',
-        isA: 'Book',
-        status: 'Active',
-        createdAt: 1700000000,
-      }),
-    ]
-
     renderNoteList({
-      entries,
+      entries: makeBookTypeEntries(['status'], { status: 'Active' }),
       selection: { kind: 'sectionGroup', type: 'Book' },
     })
 
-    expect(screen.getByTestId('property-chips')).toHaveTextContent('Active')
+    const chip = screen.getByTestId('property-chip-status-0')
+    expect(chip).toHaveTextContent('• Active')
+    expect(chip).toHaveStyle({ backgroundColor: 'var(--accent-green-light)', color: 'var(--accent-green)' })
+  })
+
+  it('auto-detects status-like property values in note-list chips', () => {
+    renderNoteList({
+      entries: makeBookTypeEntries(['Phase'], { properties: { Phase: 'Draft' } }),
+      selection: { kind: 'sectionGroup', type: 'Book' },
+    })
+
+    const chip = screen.getByTestId('property-chip-phase-0')
+    expect(chip).toHaveTextContent('• Draft')
+    expect(chip).toHaveStyle({ backgroundColor: 'var(--accent-yellow-light)', color: 'var(--accent-yellow)' })
+  })
+
+  it('keeps unknown status values on neutral note-list chip styling', () => {
+    renderNoteList({
+      entries: makeBookTypeEntries(['status'], { status: 'Needs Review' }),
+      selection: { kind: 'sectionGroup', type: 'Book' },
+    })
+
+    const chip = screen.getByTestId('property-chip-status-0')
+    expect(chip).toHaveTextContent('• Needs Review')
+    expect(chip.getAttribute('style')).toBeNull()
   })
 
   it('uses inbox overrides when configured', () => {
-    const entries = [
-      makeTypeDefinition('Book', ['Priority']),
-      makeEntry({
-        path: '/vault/book.md',
-        filename: 'book.md',
-        title: 'Book Note',
-        isA: 'Book',
-        properties: { Priority: 'High', Owner: 'Luca' },
-        createdAt: 1700000000,
-      }),
-    ]
-
     renderNoteList({
-      entries,
+      entries: makeBookTypeEntries(['Priority'], { properties: { Priority: 'High', Owner: 'Luca' } }),
       selection: { kind: 'filter', filter: 'inbox' },
       inboxNoteListProperties: ['Owner'],
       onUpdateInboxNoteListProperties: () => undefined,

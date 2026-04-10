@@ -3,6 +3,8 @@ import { Link } from '@phosphor-icons/react'
 import { cn } from '@/lib/utils'
 import type { VaultEntry } from '../../types'
 import { resolveNoteIcon } from '../../utils/noteIcon'
+import { detectPropertyType } from '../../utils/propertyTypes'
+import { getMappedStatusStyle } from '../../utils/statusStyles'
 import { getTypeColor, getTypeLightColor } from '../../utils/typeColors'
 import { isUrlValue, normalizeUrl, openExternalUrl } from '../../utils/url'
 import { resolveEntry, wikilinkDisplay, wikilinkTarget } from '../../utils/wikilink'
@@ -14,13 +16,15 @@ interface PropertyChipValue {
   typeIcon: ComponentType<SVGAttributes<SVGSVGElement>> | null
   style?: CSSProperties
   action?: { kind: 'note'; entry: VaultEntry } | { kind: 'url'; url: string }
-  tone: 'neutral' | 'relationship' | 'url'
+  tone: 'neutral' | 'relationship' | 'status' | 'url'
 }
 
 const URL_CHIP_STYLE: CSSProperties = {
   backgroundColor: 'var(--accent-blue-light)',
   color: 'var(--accent-blue)',
 }
+
+type ChipScalarValue = string | number | boolean | null
 
 function toChipTestId(propName: string, index: number): string {
   const slug = propName.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
@@ -115,6 +119,29 @@ function resolveScalarChip(value: unknown): PropertyChipValue | null {
   }
 }
 
+function resolveStatusChip(value: ChipScalarValue): PropertyChipValue | null {
+  const label = formatChipLabel(value)
+  if (!label) return null
+
+  const status = String(value)
+  const style = getMappedStatusStyle(status)
+  return {
+    label: `• ${label}`,
+    noteIcon: null,
+    typeIcon: null,
+    style: style ? { backgroundColor: style.bg, color: style.color } : undefined,
+    tone: 'status',
+  }
+}
+
+function resolvePropertyValueChip(propName: string, value: ChipScalarValue | undefined): PropertyChipValue | null {
+  if (value === undefined) return null
+  if (detectPropertyType(propName, value) !== 'status') {
+    return resolveScalarChip(value)
+  }
+  return resolveStatusChip(value)
+}
+
 function resolveRelationshipChipValues(
   entry: VaultEntry,
   propName: string,
@@ -135,7 +162,7 @@ function resolveScalarChipValues(entry: VaultEntry, propName: string): PropertyC
   const rawValue = entry.properties[propertyKey]
   const values = Array.isArray(rawValue) ? rawValue : [rawValue]
   return values
-    .map((value) => resolveScalarChip(value))
+    .map((value) => resolvePropertyValueChip(propertyKey, value))
     .filter((chip): chip is PropertyChipValue => chip !== null)
 }
 
@@ -146,7 +173,7 @@ function resolvePropertyChipValues(
   typeEntryMap: Record<string, VaultEntry>,
 ): PropertyChipValue[] {
   if (propName.toLowerCase() === 'status') {
-    const statusChip = resolveScalarChip(entry.status)
+    const statusChip = resolvePropertyValueChip(propName, entry.status)
     return statusChip ? [statusChip] : []
   }
 

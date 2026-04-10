@@ -81,11 +81,15 @@ export function getStatusColorKey(status: string): string | null {
   return colorOverrides[status] ?? null
 }
 
-export function getStatusStyle(status: string): StatusStyle {
+export function getMappedStatusStyle(status: string): StatusStyle | null {
   const overrideKey = colorOverrides[status]
   if (overrideKey) {
     const style = COLOR_KEY_TO_STYLE[overrideKey]
     if (style) return style
   }
-  return STATUS_STYLES[status] ?? DEFAULT_STATUS_STYLE
+  return STATUS_STYLES[status] ?? null
+}
+
+export function getStatusStyle(status: string): StatusStyle {
+  return getMappedStatusStyle(status) ?? DEFAULT_STATUS_STYLE
 }
