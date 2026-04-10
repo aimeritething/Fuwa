@@ -54,6 +54,62 @@ function stepHighlightedIndex(current: number, optionCount: number, direction: '
   return (current - 1 + optionCount) % optionCount
 }
 
+function moveHighlightedOption({
+  event,
+  open,
+  options,
+  direction,
+  openCombobox,
+  setHighlightedIndex,
+}: {
+  event: KeyboardEvent<HTMLInputElement>
+  open: boolean
+  options: string[]
+  direction: 'next' | 'previous'
+  openCombobox: () => void
+  setHighlightedIndex: (updater: number | ((current: number) => number)) => void
+}) {
+  event.preventDefault()
+  if (!open) {
+    openCombobox()
+    return
+  }
+  if (options.length === 0) return
+  setHighlightedIndex((current) => stepHighlightedIndex(current, options.length, direction))
+}
+
+function selectHighlightedOption({
+  event,
+  open,
+  options,
+  highlightedIndex,
+  selectOption,
+}: {
+  event: KeyboardEvent<HTMLInputElement>
+  open: boolean
+  options: string[]
+  highlightedIndex: number
+  selectOption: (value: string) => void
+}) {
+  if (!open || highlightedIndex < 0 || options[highlightedIndex] === undefined) return
+  event.preventDefault()
+  selectOption(options[highlightedIndex])
+}
+
+function closeOpenCombobox({
+  event,
+  open,
+  closeCombobox,
+}: {
+  event: KeyboardEvent<HTMLInputElement>
+  open: boolean
+  closeCombobox: () => void
+}) {
+  if (!open) return
+  event.preventDefault()
+  closeCombobox()
+}
+
 function handleFilterFieldKeyDown({
   event,
   open,
@@ -75,32 +131,16 @@ function handleFilterFieldKeyDown({
 }) {
   switch (event.key) {
     case 'ArrowDown':
-      event.preventDefault()
-      if (!open) {
-        openCombobox()
-        return
-      }
-      if (options.length === 0) return
-      setHighlightedIndex((current) => stepHighlightedIndex(current, options.length, 'next'))
+      moveHighlightedOption({ event, open, options, direction: 'next', openCombobox, setHighlightedIndex })
       return
     case 'ArrowUp':
-      event.preventDefault()
-      if (!open) {
-        openCombobox()
-        return
-      }
-      if (options.length === 0) return
-      setHighlightedIndex((current) => stepHighlightedIndex(current, options.length, 'previous'))
+      moveHighlightedOption({ event, open, options, direction: 'previous', openCombobox, setHighlightedIndex })
       return
     case 'Enter':
-      if (!open || highlightedIndex < 0 || options[highlightedIndex] === undefined) return
-      event.preventDefault()
-      selectOption(options[highlightedIndex])
+      selectHighlightedOption({ event, open, options, highlightedIndex, selectOption })
       return
     case 'Escape':
-      if (!open) return
-      event.preventDefault()
-      closeCombobox()
+      closeOpenCombobox({ event, open, closeCombobox })
       return
     default:
       return
@@ -178,21 +218,27 @@ function FilterFieldPopoverPanel({
     <PopoverContent
       align="start"
       sideOffset={4}
-      className="max-h-60 overflow-y-auto p-1"
+      className="overflow-hidden p-1"
       style={{ width: contentWidth }}
       onOpenAutoFocus={(event) => event.preventDefault()}
       onCloseAutoFocus={(event) => event.preventDefault()}
       data-testid="filter-field-combobox-popover"
     >
-      <div id={listboxId} role="listbox" data-testid="filter-field-combobox-options">
-        <FilterFieldOptionsList
-          listboxId={listboxId}
-          fieldGroups={fieldGroups}
-          options={options}
-          highlightedIndex={highlightedIndex}
-          onHighlight={onHighlight}
-          onSelect={onSelect}
-        />
+      <div
+        className="max-h-60 overflow-y-auto overscroll-contain"
+        data-testid="filter-field-combobox-scroll-area"
+        onWheelCapture={(event) => event.stopPropagation()}
+      >
+        <div id={listboxId} role="listbox" data-testid="filter-field-combobox-options">
+          <FilterFieldOptionsList
+            listboxId={listboxId}
+            fieldGroups={fieldGroups}
+            options={options}
+            highlightedIndex={highlightedIndex}
+            onHighlight={onHighlight}
+            onSelect={onSelect}
+          />
+        </div>
       </div>
     </PopoverContent>
   )
