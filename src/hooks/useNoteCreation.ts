@@ -35,10 +35,16 @@ function slug_to_title(slug: string): string {
 }
 
 /** Generate a unique "Untitled <type>" name by checking existing entries and pending names. */
-export function generateUntitledName(entries: VaultEntry[], type: string, pending?: Set<string>): string {
+export interface UntitledNameParams {
+  entries: VaultEntry[]
+  type: string
+  pendingTitles?: Set<string>
+}
+
+export function generateUntitledName({ entries, type, pendingTitles }: UntitledNameParams): string {
   const baseName = `Untitled ${type.toLowerCase()}`
   const existingTitles = new Set(entries.map(e => e.title))
-  if (pending) pending.forEach(n => existingTitles.add(n))
+  if (pendingTitles) pendingTitles.forEach((title) => existingTitles.add(title))
   let title = baseName
   let counter = 2
   while (existingTitles.has(title)) {
@@ -48,8 +54,13 @@ export function generateUntitledName(entries: VaultEntry[], type: string, pendin
   return title
 }
 
-export function entryMatchesTarget(e: VaultEntry, target: string): boolean {
-  return resolveEntry([e], target) === e
+export interface EntryMatchParams {
+  entry: VaultEntry
+  target: string
+}
+
+export function entryMatchesTarget({ entry, target }: EntryMatchParams): boolean {
+  return resolveEntry([entry], target) === entry
 }
 
 const NO_STATUS_TYPES = new Set(['Topic', 'Person', 'Journal'])
@@ -63,12 +74,24 @@ export const DEFAULT_TEMPLATES: Record<string, string> = {
 }
 
 /** Look up the template for a given type from the type entry or defaults. */
-export function resolveTemplate(entries: VaultEntry[], typeName: string): string | null {
-  const typeEntry = entries.find(e => e.isA === 'Type' && e.title === typeName)
+export interface TemplateLookupParams {
+  entries: VaultEntry[]
+  typeName: string
+}
+
+export function resolveTemplate({ entries, typeName }: TemplateLookupParams): string | null {
+  const typeEntry = entries.find((entry) => entry.isA === 'Type' && entry.title === typeName)
   return typeEntry?.template ?? DEFAULT_TEMPLATES[typeName] ?? null
 }
 
-export function buildNoteContent(title: string | null, type: string, status: string | null, template?: string | null): string {
+export interface NoteContentParams {
+  title: string | null
+  type: string
+  status: string | null
+  template?: string | null
+}
+
+export function buildNoteContent({ title, type, status, template }: NoteContentParams): string {
   const lines = ['---']
   if (title) lines.push(`title: ${title}`)
   lines.push(`type: ${type}`)
@@ -78,14 +101,26 @@ export function buildNoteContent(title: string | null, type: string, status: str
   return `${lines.join('\n')}\n${body}`
 }
 
-export function resolveNewNote(title: string, type: string, vaultPath: string, template?: string | null): { entry: VaultEntry; content: string } {
+export interface NewNoteParams {
+  title: string
+  type: string
+  vaultPath: string
+  template?: string | null
+}
+
+export function resolveNewNote({ title, type, vaultPath, template }: NewNoteParams): { entry: VaultEntry; content: string } {
   const slug = slugify(title)
   const status = NO_STATUS_TYPES.has(type) ? null : 'Active'
   const entry = buildNewEntry({ path: `${vaultPath}/${slug}.md`, slug, title, type, status })
-  return { entry, content: buildNoteContent(title, type, status, template) }
+  return { entry, content: buildNoteContent({ title, type, status, template }) }
 }
 
-export function resolveNewType(typeName: string, vaultPath: string): { entry: VaultEntry; content: string } {
+export interface NewTypeParams {
+  typeName: string
+  vaultPath: string
+}
+
+export function resolveNewType({ typeName, vaultPath }: NewTypeParams): { entry: VaultEntry; content: string } {
   const slug = slugify(typeName)
   const entry = buildNewEntry({ path: `${vaultPath}/${slug}.md`, slug, title: typeName, type: 'Type', status: null })
   return { entry, content: `---\ntype: Type\n---\n` }
@@ -168,7 +203,7 @@ function openDailyNote(entries: VaultEntry[], selectNote: (e: VaultEntry) => voi
 interface ImmediateCreateDeps {
   entries: VaultEntry[]
   vaultPath: string
-  pendingNames: Set<string>
+  pendingSlugs: Set<string>
   openTabWithContent: (entry: VaultEntry, content: string) => void
   addEntry: (entry: VaultEntry) => void
   trackUnsaved?: (path: string) => void
@@ -176,21 +211,32 @@ interface ImmediateCreateDeps {
 }
 
 /** Generate a unique untitled filename using a timestamp. */
-function generateUntitledFilename(type: string): string {
+function generateUntitledFilename(entries: VaultEntry[], type: string, pendingSlugs?: Set<string>): string {
   const ts = Math.floor(Date.now() / 1000)
-  const prefix = type === 'Note' ? 'untitled-note' : `untitled-${type.toLowerCase()}`
-  return `${prefix}-${ts}`
+  const typeSlug = type === 'Note' ? 'note' : slugify(type)
+  const base = `untitled-${typeSlug}-${ts}`
+  const existingSlugs = new Set(entries.map((entry) => entry.filename.replace(/\.md$/, '')))
+
+  let candidate = base
+  let suffix = 2
+  while (existingSlugs.has(candidate) || pendingSlugs?.has(candidate)) {
+    candidate = `${base}-${suffix}`
+    suffix += 1
+  }
+
+  pendingSlugs?.add(candidate)
+  return candidate
 }
 
 /** Create an untitled note without persisting to disk (deferred save). */
 function createNoteImmediate(deps: ImmediateCreateDeps, type?: string): void {
   const noteType = type || 'Note'
-  const slug = generateUntitledFilename(noteType)
+  const slug = generateUntitledFilename(deps.entries, noteType, deps.pendingSlugs)
   const title = slug_to_title(slug)
-  const template = resolveTemplate(deps.entries, noteType)
+  const template = resolveTemplate({ entries: deps.entries, typeName: noteType })
   const status = NO_STATUS_TYPES.has(noteType) ? null : 'Active'
   const entry = buildNewEntry({ path: `${deps.vaultPath}/${slug}.md`, slug, title, type: noteType, status })
-  const content = buildNoteContent(null, noteType, status, template)
+  const content = buildNoteContent({ title: null, type: noteType, status, template })
   deps.openTabWithContent(entry, content)
   addEntryWithMock(entry, content, deps.addEntry)
   deps.trackUnsaved?.(entry.path)
@@ -210,8 +256,8 @@ interface RelationshipCreateDeps {
 
 /** Create a note for a relationship link; persist in background. */
 function createNoteForRelationship(deps: RelationshipCreateDeps, title: string): void {
-  const template = resolveTemplate(deps.entries, 'Note')
-  const resolved = resolveNewNote(title, 'Note', deps.vaultPath, template)
+  const template = resolveTemplate({ entries: deps.entries, typeName: 'Note' })
+  const resolved = resolveNewNote({ title, type: 'Note', vaultPath: deps.vaultPath, template })
   deps.openTabWithContent(resolved.entry, resolved.content)
   addEntryWithMock(resolved.entry, resolved.content, deps.addEntry)
   persistNewNote(resolved.entry.path, resolved.content)
@@ -251,7 +297,7 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
     setToastMessage('Failed to create note — disk write error')
   }, [removeEntry, setToastMessage])
 
-  const pendingNamesRef = useRef<Set<string>>(new Set())
+  const pendingSlugsRef = useRef<Set<string>>(new Set())
 
   const persistNew: PersistFn = useCallback(
     (resolved) => createAndPersist(resolved, addEntry, openTabWithContent, {
@@ -264,14 +310,14 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
   )
 
   const handleCreateNote = useCallback((title: string, type: string) => {
-    const template = resolveTemplate(entries, type)
-    persistNew(resolveNewNote(title, type, config.vaultPath, template))
+    const template = resolveTemplate({ entries, typeName: type })
+    persistNew(resolveNewNote({ title, type, vaultPath: config.vaultPath, template }))
     trackEvent('note_created', { has_type: type !== 'Note' ? 1 : 0, creation_path: 'plus_button' })
   }, [entries, persistNew, config.vaultPath])
 
   const handleCreateNoteImmediate = useCallback((type?: string) => {
     createNoteImmediate({
-      entries, vaultPath: config.vaultPath, pendingNames: pendingNamesRef.current,
+      entries, vaultPath: config.vaultPath, pendingSlugs: pendingSlugsRef.current,
       openTabWithContent, addEntry, trackUnsaved: config.trackUnsaved, markContentPending: config.markContentPending,
     }, type)
     trackEvent('note_created', { has_type: type ? 1 : 0, creation_path: type ? 'type_section' : 'cmd_n' })
@@ -288,13 +334,13 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
   const handleOpenDailyNote = useCallback(() => openDailyNote(entries, handleSelectNote, persistNew, config.vaultPath), [entries, handleSelectNote, persistNew, config.vaultPath])
 
   const handleCreateType = useCallback((typeName: string) => {
-    persistNew(resolveNewType(typeName, config.vaultPath))
+    persistNew(resolveNewType({ typeName, vaultPath: config.vaultPath }))
     trackEvent('type_created')
   }, [persistNew, config.vaultPath])
 
   /** Create a Type entry file silently (no tab opened). Adds to state and persists to disk. */
   const createTypeEntrySilent = useCallback(async (typeName: string): Promise<VaultEntry> => {
-    const resolved = resolveNewType(typeName, config.vaultPath)
+    const resolved = resolveNewType({ typeName, vaultPath: config.vaultPath })
     addEntryWithMock(resolved.entry, resolved.content, addEntry)
     await persistNewNote(resolved.entry.path, resolved.content)
     return resolved.entry

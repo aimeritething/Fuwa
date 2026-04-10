@@ -79,11 +79,11 @@ describe('buildNewEntry', () => {
 
 describe('generateUntitledName', () => {
   it('returns base name when no conflicts', () => {
-    expect(generateUntitledName([], 'Note')).toBe('Untitled note')
+    expect(generateUntitledName({ entries: [], type: 'Note' })).toBe('Untitled note')
   })
 
   it('appends counter when base name exists', () => {
-    expect(generateUntitledName([makeEntry({ title: 'Untitled note' })], 'Note')).toBe('Untitled note 2')
+    expect(generateUntitledName({ entries: [makeEntry({ title: 'Untitled note' })], type: 'Note' })).toBe('Untitled note 2')
   })
 
   it('increments counter past existing numbered entries', () => {
@@ -92,50 +92,50 @@ describe('generateUntitledName', () => {
       makeEntry({ title: 'Untitled note 2' }),
       makeEntry({ title: 'Untitled note 3' }),
     ]
-    expect(generateUntitledName(entries, 'Note')).toBe('Untitled note 4')
+    expect(generateUntitledName({ entries, type: 'Note' })).toBe('Untitled note 4')
   })
 
   it('avoids names in the pending set', () => {
-    expect(generateUntitledName([], 'Note', new Set(['Untitled note']))).toBe('Untitled note 2')
+    expect(generateUntitledName({ entries: [], type: 'Note', pendingTitles: new Set(['Untitled note']) })).toBe('Untitled note 2')
   })
 })
 
 describe('entryMatchesTarget', () => {
   it('matches by exact title (case-insensitive)', () => {
-    expect(entryMatchesTarget(makeEntry({ title: 'My Project' }), 'my project')).toBe(true)
+    expect(entryMatchesTarget({ entry: makeEntry({ title: 'My Project' }), target: 'my project' })).toBe(true)
   })
 
   it('matches by alias', () => {
-    expect(entryMatchesTarget(makeEntry({ aliases: ['MP'] }), 'mp')).toBe(true)
+    expect(entryMatchesTarget({ entry: makeEntry({ aliases: ['MP'] }), target: 'mp' })).toBe(true)
   })
 
   it('returns false when nothing matches', () => {
-    expect(entryMatchesTarget(makeEntry({ title: 'Something' }), 'nonexistent')).toBe(false)
+    expect(entryMatchesTarget({ entry: makeEntry({ title: 'Something' }), target: 'nonexistent' })).toBe(false)
   })
 })
 
 describe('buildNoteContent', () => {
   it('generates frontmatter with title and status', () => {
-    expect(buildNoteContent('My Note', 'Note', 'Active')).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n')
+    expect(buildNoteContent({ title: 'My Note', type: 'Note', status: 'Active' })).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n')
   })
 
   it('omits title when null', () => {
-    expect(buildNoteContent(null, 'Note', 'Active')).toBe('---\ntype: Note\nstatus: Active\n---\n')
+    expect(buildNoteContent({ title: null, type: 'Note', status: 'Active' })).toBe('---\ntype: Note\nstatus: Active\n---\n')
   })
 
   it('omits status when null', () => {
-    expect(buildNoteContent('AI', 'Topic', null)).toBe('---\ntitle: AI\ntype: Topic\n---\n')
+    expect(buildNoteContent({ title: 'AI', type: 'Topic', status: null })).toBe('---\ntitle: AI\ntype: Topic\n---\n')
   })
 
   it('includes template body when provided', () => {
-    const content = buildNoteContent('P', 'Project', 'Active', '## Objective\n\n')
+    const content = buildNoteContent({ title: 'P', type: 'Project', status: 'Active', template: '## Objective\n\n' })
     expect(content).toContain('## Objective')
   })
 })
 
 describe('resolveNewNote', () => {
   it('creates note at vault root', () => {
-    const { entry, content } = resolveNewNote('My Project', 'Project', '/vault')
+    const { entry, content } = resolveNewNote({ title: 'My Project', type: 'Project', vaultPath: '/vault' })
     expect(entry.path).toBe('/vault/my-project.md')
     expect(entry.isA).toBe('Project')
     expect(entry.status).toBe('Active')
@@ -143,14 +143,14 @@ describe('resolveNewNote', () => {
   })
 
   it('omits status for Topic type', () => {
-    const { entry } = resolveNewNote('ML', 'Topic', '/vault')
+    const { entry } = resolveNewNote({ title: 'ML', type: 'Topic', vaultPath: '/vault' })
     expect(entry.status).toBeNull()
   })
 })
 
 describe('resolveNewType', () => {
   it('creates a type entry', () => {
-    const { entry, content } = resolveNewType('Recipe', '/vault')
+    const { entry, content } = resolveNewType({ typeName: 'Recipe', vaultPath: '/vault' })
     expect(entry.path).toBe('/vault/recipe.md')
     expect(entry.isA).toBe('Type')
     expect(content).toContain('type: Type')
@@ -160,15 +160,15 @@ describe('resolveNewType', () => {
 describe('resolveTemplate', () => {
   it('returns template from type entry when set', () => {
     const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', template: '## Ingredients\n\n' })
-    expect(resolveTemplate([typeEntry], 'Recipe')).toBe('## Ingredients\n\n')
+    expect(resolveTemplate({ entries: [typeEntry], typeName: 'Recipe' })).toBe('## Ingredients\n\n')
   })
 
   it('falls back to DEFAULT_TEMPLATES', () => {
-    expect(resolveTemplate([], 'Project')).toBe(DEFAULT_TEMPLATES.Project)
+    expect(resolveTemplate({ entries: [], typeName: 'Project' })).toBe(DEFAULT_TEMPLATES.Project)
   })
 
   it('returns null when no template and no default', () => {
-    expect(resolveTemplate([], 'CustomType')).toBeNull()
+    expect(resolveTemplate({ entries: [], typeName: 'CustomType' })).toBeNull()
   })
 })
 
@@ -266,10 +266,40 @@ describe('useNoteCreation hook', () => {
     vi.restoreAllMocks()
   })
 
+  it('handleCreateNoteImmediate avoids filename collisions when called twice in the same second', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
+    const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
+
+    act(() => {
+      result.current.handleCreateNoteImmediate()
+      result.current.handleCreateNoteImmediate()
+    })
+
+    const filenames = addEntry.mock.calls.map(([entry]: [VaultEntry]) => entry.filename)
+    expect(filenames).toEqual([
+      'untitled-note-1700000000.md',
+      'untitled-note-1700000000-2.md',
+    ])
+
+    vi.restoreAllMocks()
+  })
+
   it('handleCreateNoteImmediate accepts custom type', () => {
     const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
     act(() => { result.current.handleCreateNoteImmediate('Project') })
     expect(addEntry.mock.calls[0][0].isA).toBe('Project')
+  })
+
+  it('handleCreateNoteImmediate slugifies custom type names for filenames', () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
+    const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
+
+    act(() => {
+      result.current.handleCreateNoteImmediate('Q&A / Ops')
+    })
+
+    expect(addEntry.mock.calls[0][0].filename).toBe('untitled-q-a-ops-1700000000.md')
+    vi.restoreAllMocks()
   })
 
   it('handleCreateNoteImmediate tracks unsaved state', async () => {

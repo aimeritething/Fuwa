@@ -114,12 +114,12 @@ describe('buildNewEntry', () => {
 
 describe('generateUntitledName', () => {
   it('returns base name when no conflicts', () => {
-    expect(generateUntitledName([], 'Note')).toBe('Untitled note')
+    expect(generateUntitledName({ entries: [], type: 'Note' })).toBe('Untitled note')
   })
 
   it('appends counter when base name exists', () => {
     const entries = [makeEntry({ title: 'Untitled note' })]
-    expect(generateUntitledName(entries, 'Note')).toBe('Untitled note 2')
+    expect(generateUntitledName({ entries, type: 'Note' })).toBe('Untitled note 2')
   })
 
   it('increments counter past existing numbered entries', () => {
@@ -128,87 +128,87 @@ describe('generateUntitledName', () => {
       makeEntry({ title: 'Untitled note 2' }),
       makeEntry({ title: 'Untitled note 3' }),
     ]
-    expect(generateUntitledName(entries, 'Note')).toBe('Untitled note 4')
+    expect(generateUntitledName({ entries, type: 'Note' })).toBe('Untitled note 4')
   })
 
   it('uses type name in lowercase', () => {
-    expect(generateUntitledName([], 'Project')).toBe('Untitled project')
+    expect(generateUntitledName({ entries: [], type: 'Project' })).toBe('Untitled project')
   })
 
   it('avoids names in the pending set', () => {
     const pending = new Set(['Untitled note'])
-    expect(generateUntitledName([], 'Note', pending)).toBe('Untitled note 2')
+    expect(generateUntitledName({ entries: [], type: 'Note', pendingTitles: pending })).toBe('Untitled note 2')
   })
 
   it('avoids both existing and pending names', () => {
     const entries = [makeEntry({ title: 'Untitled note' })]
     const pending = new Set(['Untitled note 2'])
-    expect(generateUntitledName(entries, 'Note', pending)).toBe('Untitled note 3')
+    expect(generateUntitledName({ entries, type: 'Note', pendingTitles: pending })).toBe('Untitled note 3')
   })
 })
 
 describe('entryMatchesTarget', () => {
   it('matches by exact title (case-insensitive)', () => {
     const entry = makeEntry({ title: 'My Project' })
-    expect(entryMatchesTarget(entry, 'my project')).toBe(true)
+    expect(entryMatchesTarget({ entry, target: 'my project' })).toBe(true)
   })
 
   it('matches by alias', () => {
     const entry = makeEntry({ aliases: ['MP', 'TheProject'] })
-    expect(entryMatchesTarget(entry, 'mp')).toBe(true)
+    expect(entryMatchesTarget({ entry, target: 'mp' })).toBe(true)
   })
 
   it('matches legacy path-style target via filename stem', () => {
     const entry = makeEntry({ filename: 'my-project.md' })
-    expect(entryMatchesTarget(entry, 'project/my-project')).toBe(true)
+    expect(entryMatchesTarget({ entry, target: 'project/my-project' })).toBe(true)
   })
 
   it('matches by filename stem', () => {
     const entry = makeEntry({ filename: 'my-project.md' })
-    expect(entryMatchesTarget(entry, 'my-project')).toBe(true)
+    expect(entryMatchesTarget({ entry, target: 'my-project' })).toBe(true)
   })
 
   it('matches when target as words matches title', () => {
     const entry = makeEntry({ title: 'my project' })
-    expect(entryMatchesTarget(entry, 'my-project')).toBe(true)
+    expect(entryMatchesTarget({ entry, target: 'my-project' })).toBe(true)
   })
 
   it('returns false when nothing matches', () => {
     const entry = makeEntry({ title: 'Something Else', aliases: [], filename: 'else.md' })
-    expect(entryMatchesTarget(entry, 'nonexistent')).toBe(false)
+    expect(entryMatchesTarget({ entry, target: 'nonexistent' })).toBe(false)
   })
 
   it('handles pipe syntax targets', () => {
     const entry = makeEntry({ path: '/vault/project/alpha.md', filename: 'alpha.md', title: 'Alpha' })
-    expect(entryMatchesTarget(entry, 'project/alpha|Alpha Project')).toBe(true)
+    expect(entryMatchesTarget({ entry, target: 'project/alpha|Alpha Project' })).toBe(true)
   })
 })
 
 describe('buildNoteContent', () => {
   it('generates frontmatter with title and status for regular types', () => {
-    const content = buildNoteContent('My Note', 'Note', 'Active')
+    const content = buildNoteContent({ title: 'My Note', type: 'Note', status: 'Active' })
     expect(content).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n')
   })
 
   it('omits title when null', () => {
-    const content = buildNoteContent(null, 'Note', 'Active')
+    const content = buildNoteContent({ title: null, type: 'Note', status: 'Active' })
     expect(content).toBe('---\ntype: Note\nstatus: Active\n---\n')
   })
 
   it('omits status when null', () => {
-    const content = buildNoteContent('AI', 'Topic', null)
+    const content = buildNoteContent({ title: 'AI', type: 'Topic', status: null })
     expect(content).toBe('---\ntitle: AI\ntype: Topic\n---\n')
   })
 
   it('includes template body when provided', () => {
-    const content = buildNoteContent('My Project', 'Project', 'Active', '## Objective\n\n## Notes\n\n')
+    const content = buildNoteContent({ title: 'My Project', type: 'Project', status: 'Active', template: '## Objective\n\n## Notes\n\n' })
     expect(content).not.toContain('# My Project')
     expect(content).toContain('## Objective')
     expect(content).toContain('## Notes')
   })
 
   it('ignores null template', () => {
-    const content = buildNoteContent('My Note', 'Note', 'Active', null)
+    const content = buildNoteContent({ title: 'My Note', type: 'Note', status: 'Active', template: null })
     expect(content).toBe('---\ntitle: My Note\ntype: Note\nstatus: Active\n---\n')
   })
 })
@@ -216,20 +216,20 @@ describe('buildNoteContent', () => {
 describe('resolveTemplate', () => {
   it('returns template from type entry when set', () => {
     const typeEntry = makeEntry({ isA: 'Type', title: 'Recipe', template: '## Ingredients\n\n## Steps\n\n' })
-    expect(resolveTemplate([typeEntry], 'Recipe')).toBe('## Ingredients\n\n## Steps\n\n')
+    expect(resolveTemplate({ entries: [typeEntry], typeName: 'Recipe' })).toBe('## Ingredients\n\n## Steps\n\n')
   })
 
   it('falls back to DEFAULT_TEMPLATES for built-in types', () => {
-    expect(resolveTemplate([], 'Project')).toBe(DEFAULT_TEMPLATES.Project)
+    expect(resolveTemplate({ entries: [], typeName: 'Project' })).toBe(DEFAULT_TEMPLATES.Project)
   })
 
   it('returns null when no template and no default', () => {
-    expect(resolveTemplate([], 'CustomType')).toBeNull()
+    expect(resolveTemplate({ entries: [], typeName: 'CustomType' })).toBeNull()
   })
 
   it('type entry template overrides default', () => {
     const typeEntry = makeEntry({ isA: 'Type', title: 'Project', template: '## Custom\n\n' })
-    expect(resolveTemplate([typeEntry], 'Project')).toBe('## Custom\n\n')
+    expect(resolveTemplate({ entries: [typeEntry], typeName: 'Project' })).toBe('## Custom\n\n')
   })
 })
 
@@ -244,7 +244,7 @@ describe('DEFAULT_TEMPLATES', () => {
 
 describe('resolveNewNote', () => {
   it('creates note at vault root', () => {
-    const { entry, content } = resolveNewNote('My Project', 'Project', '/my/vault')
+    const { entry, content } = resolveNewNote({ title: 'My Project', type: 'Project', vaultPath: '/my/vault' })
     expect(entry.path).toBe('/my/vault/my-project.md')
     expect(entry.isA).toBe('Project')
     expect(entry.status).toBe('Active')
@@ -253,35 +253,35 @@ describe('resolveNewNote', () => {
   })
 
   it('creates custom type note at vault root', () => {
-    const { entry } = resolveNewNote('First Recipe', 'Recipe', '/my/vault')
+    const { entry } = resolveNewNote({ title: 'First Recipe', type: 'Recipe', vaultPath: '/my/vault' })
     expect(entry.path).toBe('/my/vault/first-recipe.md')
   })
 
   it('omits status for Topic type', () => {
-    const { entry, content } = resolveNewNote('Machine Learning', 'Topic', '/my/vault')
+    const { entry, content } = resolveNewNote({ title: 'Machine Learning', type: 'Topic', vaultPath: '/my/vault' })
     expect(entry.status).toBeNull()
     expect(content).not.toContain('status:')
   })
 
   it('omits status for Person type', () => {
-    const { entry } = resolveNewNote('John Doe', 'Person', '/my/vault')
+    const { entry } = resolveNewNote({ title: 'John Doe', type: 'Person', vaultPath: '/my/vault' })
     expect(entry.status).toBeNull()
   })
 
   it('uses provided vault path', () => {
-    const { entry } = resolveNewNote('Test', 'Note', '/other/vault')
+    const { entry } = resolveNewNote({ title: 'Test', type: 'Note', vaultPath: '/other/vault' })
     expect(entry.path).toBe('/other/vault/test.md')
   })
 
   it('produces a valid path for custom types with special characters', () => {
-    const { entry } = resolveNewNote('My Note', 'Q&A', '/vault')
+    const { entry } = resolveNewNote({ title: 'My Note', type: 'Q&A', vaultPath: '/vault' })
     expect(entry.path).not.toContain('//')
     expect(entry.path).toMatch(/\.md$/)
     expect(entry.filename).not.toBe('.md')
   })
 
   it('produces a valid path when type is all special characters', () => {
-    const { entry } = resolveNewNote('My Note', '+++', '/vault')
+    const { entry } = resolveNewNote({ title: 'My Note', type: '+++', vaultPath: '/vault' })
     expect(entry.path).not.toContain('//')
     expect(entry.path).toMatch(/\.md$/)
   })
@@ -289,7 +289,7 @@ describe('resolveNewNote', () => {
 
 describe('resolveNewType', () => {
   it('creates a type entry at vault root', () => {
-    const { entry, content } = resolveNewType('Recipe', '/my/vault')
+    const { entry, content } = resolveNewType({ typeName: 'Recipe', vaultPath: '/my/vault' })
     expect(entry.path).toBe('/my/vault/recipe.md')
     expect(entry.isA).toBe('Type')
     expect(entry.status).toBeNull()
@@ -298,7 +298,7 @@ describe('resolveNewType', () => {
   })
 
   it('uses provided vault path instead of hardcoded path', () => {
-    const { entry } = resolveNewType('Responsibility', '/other/vault')
+    const { entry } = resolveNewType({ typeName: 'Responsibility', vaultPath: '/other/vault' })
     expect(entry.path).toBe('/other/vault/responsibility.md')
     expect(entry.path).not.toContain('/Users/luca/Laputa')
   })
