@@ -86,7 +86,7 @@ function ViewItem({
   const count = useMemo(() => evaluateView(view.definition, entries).length, [view.definition, entries])
 
   return (
-    <div className="group relative">
+    <div className="group relative [&>div>span:last-child]:transition-opacity group-hover:[&>div>span:last-child]:opacity-0 group-focus-within:[&>div>span:last-child]:opacity-0">
       <NavItem
         icon={Funnel}
         emoji={view.definition.icon}
@@ -95,7 +95,7 @@ function ViewItem({
         isActive={isActive}
         onClick={onSelect}
       />
-      <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+      <div className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
         {onEditView && (
           <button
             className="rounded p-0.5 text-muted-foreground hover:text-foreground"

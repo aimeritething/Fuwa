@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { Sidebar } from './Sidebar'
 import type { VaultEntry, SidebarSelection } from '../types'
@@ -1048,6 +1048,33 @@ describe('Sidebar', () => {
       // No count chip rendered for 0 results (NavItem hides count <= 0)
       const viewContainer = screen.getByText('Empty View').closest('div')
       expect(viewContainer?.querySelector('span:last-child')?.textContent).not.toBe('0')
+    })
+
+    it('adds hover and focus classes that hide the view count chip while showing the action buttons', () => {
+      render(
+        <Sidebar
+          entries={mockEntries}
+          selection={defaultSelection}
+          onSelect={() => {}}
+          views={mockViews}
+          onEditView={() => {}}
+          onDeleteView={() => {}}
+        />
+      )
+
+      const label = screen.getByText('Active Projects')
+      const viewItem = label.closest('.group.relative') as HTMLElement
+      const navItem = label.closest('[class*="cursor-pointer"]') as HTMLElement
+      const countChip = navItem.querySelector('span:last-child') as HTMLElement
+      expect(countChip).toBeTruthy()
+      expect(viewItem.className).toContain('[&>div>span:last-child]:transition-opacity')
+      expect(viewItem.className).toContain('group-hover:[&>div>span:last-child]:opacity-0')
+      expect(viewItem.className).toContain('group-focus-within:[&>div>span:last-child]:opacity-0')
+
+      const actionButton = within(viewItem).getByTitle('Edit view')
+      const actionContainer = actionButton.parentElement as HTMLElement
+      expect(actionContainer.className).toContain('group-hover:opacity-100')
+      expect(actionContainer.className).toContain('group-focus-within:opacity-100')
     })
   })
 })
