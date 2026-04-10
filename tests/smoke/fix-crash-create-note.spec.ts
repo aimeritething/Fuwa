@@ -1,8 +1,28 @@
+import fs from 'fs'
+import path from 'path'
 import { test, expect, type Page } from '@playwright/test'
-import { sendShortcut } from './helpers'
+import { executeCommand, openCommandPalette, sendShortcut } from './helpers'
 import { createFixtureVaultCopy, openFixtureVault, removeFixtureVaultCopy } from '../helpers/fixtureVault'
 
 let tempVaultDir: string
+
+function seedTypeEntry(vaultPath: string, typeName: string, template: string): void {
+  const slug = typeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') || 'type'
+  const body = [
+    '---',
+    `title: ${typeName}`,
+    'type: Type',
+    'template: |',
+    ...template.split('\n').map((line) => `  ${line}`),
+    '---',
+    '',
+  ].join('\n')
+  fs.writeFileSync(path.join(vaultPath, `${slug}.md`), body)
+}
+
+async function openTestVault(page: Page): Promise<void> {
+  await openFixtureVault(page, tempVaultDir)
+}
 
 async function selectSection(page: Page, label: string): Promise<void> {
   await page.locator('aside').getByText(label, { exact: true }).first().click()
@@ -17,19 +37,19 @@ function untitledRow(page: Page, typeLabel: string) {
 }
 
 test.describe('Create note crash fix', () => {
-  test.beforeEach(async ({ page }) => {
+  test.beforeEach(() => {
     tempVaultDir = createFixtureVaultCopy()
-    await openFixtureVault(page, tempVaultDir)
   })
 
   test.afterEach(() => {
     removeFixtureVaultCopy(tempVaultDir)
   })
 
-  test('clicking + next to a type section creates a note without crashing', async ({ page }) => {
+  test('clicking + next to a type section creates a note without crashing @smoke', async ({ page }) => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
+    await openTestVault(page)
     await selectSection(page, 'Projects')
     await createNoteFromListHeader(page)
     await expect(untitledRow(page, 'project')).toBeVisible({ timeout: 5_000 })
@@ -41,6 +61,8 @@ test.describe('Create note crash fix', () => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
+    await openTestVault(page)
+    await page.waitForTimeout(300)
     await page.locator('body').click()
     await sendShortcut(page, 'n', ['Control'])
     await expect(untitledRow(page, 'note')).toBeVisible({ timeout: 5_000 })
@@ -52,10 +74,25 @@ test.describe('Create note crash fix', () => {
     const errors: string[] = []
     page.on('pageerror', (err) => errors.push(err.message))
 
+    await openTestVault(page)
     await selectSection(page, 'Events')
     await createNoteFromListHeader(page)
     await expect(untitledRow(page, 'event')).toBeVisible({ timeout: 5_000 })
 
+    expect(errors).toEqual([])
+  })
+
+  test('command palette creates typed notes without crashing when a type template is present @smoke', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (err) => errors.push(err.message))
+
+    seedTypeEntry(tempVaultDir, 'Procedure', '## Checklist\n\n- first step\n- [[Alpha Project]]\n- unmatched [link')
+    await openTestVault(page)
+
+    await openCommandPalette(page)
+    await executeCommand(page, 'new procedure')
+
+    await expect(untitledRow(page, 'procedure')).toBeVisible({ timeout: 5_000 })
     expect(errors).toEqual([])
   })
 })
