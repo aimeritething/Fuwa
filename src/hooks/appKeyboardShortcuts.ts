@@ -1,6 +1,7 @@
 import type { MutableRefObject } from 'react'
 import type { ViewMode } from './useViewMode'
 import { trackEvent } from '../lib/telemetry'
+import { isTauri } from '../mock-tauri'
 
 export interface KeyboardActions {
   onQuickOpen: () => void
@@ -29,8 +30,13 @@ export interface KeyboardActions {
 
 type ShortcutHandler = () => void
 type ShortcutMap = Record<string, ShortcutHandler>
+type NativeMenuCombo = 'command' | 'command-shift'
 
 const TEXT_EDITING_KEYS = new Set(['Backspace', 'Delete'])
+const TAURI_NATIVE_MENU_KEYS: Record<NativeMenuCombo, Set<string>> = {
+  command: new Set(['1', '2', '3', 'n', 'j', 'p', 's', 'k', '=', '+', '-', '0', '[', ']', '\\', 'Backspace', 'Delete']),
+  'command-shift': new Set(['f', 'i', 'o', 'l']),
+}
 
 const VIEW_MODE_KEYS: Record<string, ViewMode> = {
   '1': 'editor-only',
@@ -55,6 +61,20 @@ function isCommandOrCtrlShiftOnly(e: KeyboardEvent): boolean {
 
 function isCommandShiftOnly(e: KeyboardEvent): boolean {
   return e.metaKey && e.ctrlKey === false && e.altKey === false && e.shiftKey
+}
+
+function nativeMenuComboForEvent(e: KeyboardEvent): NativeMenuCombo | null {
+  if (isCommandShiftOnly(e)) return 'command-shift'
+  if (isCommandOrCtrlOnly(e) && e.shiftKey === false) return 'command'
+  return null
+}
+
+function shouldDeferToNativeMenu(e: KeyboardEvent): boolean {
+  if (!isTauri()) return false
+  const combo = nativeMenuComboForEvent(e)
+  if (combo === null) return false
+  const normalizedKey = combo === 'command-shift' ? e.key.toLowerCase() : e.key
+  return TAURI_NATIVE_MENU_KEYS[combo].has(normalizedKey)
 }
 
 function withActiveTab(
@@ -139,6 +159,7 @@ export function handleShiftCommandKey(e: KeyboardEvent, keyMap: ShortcutMap): bo
 }
 
 export function handleAppKeyboardEvent(actions: KeyboardActions, event: KeyboardEvent) {
+  if (shouldDeferToNativeMenu(event)) return
   if (handleAiPanelKey(event, actions.onToggleAIChat)) return
   const shiftKeyMap = createShiftCommandKeyMap(actions)
   if (handleShiftCommandKey(event, shiftKeyMap)) return

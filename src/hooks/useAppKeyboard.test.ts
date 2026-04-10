@@ -48,7 +48,10 @@ function makeActions() {
 }
 
 describe('useAppKeyboard', () => {
-  afterEach(() => vi.restoreAllMocks())
+  afterEach(() => {
+    delete (window as typeof window & { __TAURI__?: unknown }).__TAURI__
+    vi.restoreAllMocks()
+  })
 
   it('Cmd+1 sets view mode to editor-only', () => {
     const actions = makeActions()
@@ -92,9 +95,26 @@ describe('useAppKeyboard', () => {
     expect(actions.onCreateNote).toHaveBeenCalled()
   })
 
+  it('Cmd+N defers to native menu in Tauri', () => {
+    const actions = makeActions()
+    ;(window as typeof window & { __TAURI__?: object }).__TAURI__ = {}
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('n', { metaKey: true })
+    expect(actions.onCreateNote).not.toHaveBeenCalled()
+  })
+
   it('Cmd+D triggers toggle favorite on active note', () => {
     const actions = makeActions()
     actions.onToggleFavorite = vi.fn()
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('d', { metaKey: true })
+    expect(actions.onToggleFavorite).toHaveBeenCalledWith('/vault/test.md')
+  })
+
+  it('Cmd+D still uses JS shortcut in Tauri when no native menu owns it', () => {
+    const actions = makeActions()
+    actions.onToggleFavorite = vi.fn()
+    ;(window as typeof window & { __TAURI__?: object }).__TAURI__ = {}
     renderHook(() => useAppKeyboard(actions))
     fireKey('d', { metaKey: true })
     expect(actions.onToggleFavorite).toHaveBeenCalledWith('/vault/test.md')
