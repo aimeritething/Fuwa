@@ -22,14 +22,13 @@
   opacity: 0.55;
 }
 
-/* Breadcrumb bar: title + shadow toggled via data attribute (no React re-render) */
+/* Breadcrumb bar: title + border toggled via data attribute (no React re-render) */
 .breadcrumb-bar {
-  transition: box-shadow 0.2s ease;
-  box-shadow: none;
+  transition: border-color 0.2s ease;
 }
 
 .breadcrumb-bar[data-title-hidden] {
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  border-bottom-color: var(--border);
 }
 
 .breadcrumb-bar__title {

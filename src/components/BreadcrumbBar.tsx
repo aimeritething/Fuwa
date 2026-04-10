@@ -204,11 +204,12 @@ export const BreadcrumbBar = memo(function BreadcrumbBar({
       ref={barRef}
       data-tauri-drag-region
       {...(titleAlwaysVisible ? { 'data-title-hidden': '' } : {})}
-      className="breadcrumb-bar flex shrink-0 items-center"
+      className="breadcrumb-bar flex shrink-0 items-center border-b border-transparent"
       style={{
         height: 52,
         background: 'var(--background)',
         padding: '6px 16px',
+        boxSizing: 'border-box',
       }}
     >
       <div className="breadcrumb-bar__title flex-1 min-w-0">

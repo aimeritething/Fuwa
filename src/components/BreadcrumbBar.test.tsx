@@ -132,12 +132,21 @@ describe('BreadcrumbBar — title in breadcrumb (always rendered, CSS-toggled)',
     expect(screen.getByText('Note')).toBeInTheDocument()
   })
 
-  it('shadow is controlled by data-title-hidden attribute via CSS', () => {
+  it('separator visibility is controlled by data-title-hidden while using the shared border chrome', () => {
     const { container } = render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
     const bar = container.querySelector('.breadcrumb-bar')!
+    expect(bar).toHaveClass('border-b', 'border-transparent')
     expect(bar).not.toHaveAttribute('data-title-hidden')
     bar.setAttribute('data-title-hidden', '')
     expect(bar).toHaveAttribute('data-title-hidden')
+  })
+
+  it('uses the active separator state when raw mode forces the title into the breadcrumb', () => {
+    const { container } = render(
+      <BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode onToggleRaw={vi.fn()} />,
+    )
+
+    expect(container.querySelector('.breadcrumb-bar')).toHaveAttribute('data-title-hidden')
   })
 })
 
