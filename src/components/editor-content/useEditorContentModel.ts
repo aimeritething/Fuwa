@@ -40,9 +40,52 @@ export interface EditorContentProps {
   vaultPath?: string
   rawLatestContentRef?: React.MutableRefObject<string | null>
   onTitleChange?: (path: string, newTitle: string) => void
+  onRenameFilename?: (path: string, newFilenameStem: string) => void
   isConflicted?: boolean
   onKeepMine?: (path: string) => void
   onKeepTheirs?: (path: string) => void
+}
+
+function useBreadcrumbTitleVisibility({
+  showEditor,
+  showTitleSection,
+  path,
+  breadcrumbBarRef,
+  titleSectionRef,
+}: {
+  showEditor: boolean
+  showTitleSection: boolean
+  path: string
+  breadcrumbBarRef: React.RefObject<HTMLDivElement | null>
+  titleSectionRef: React.RefObject<HTMLDivElement | null>
+}) {
+  useEffect(() => {
+    if (!showEditor) return
+
+    const bar = breadcrumbBarRef.current
+    const titleSection = titleSectionRef.current
+    if (!bar || !titleSection) return
+
+    if (!showTitleSection) {
+      bar.setAttribute('data-title-hidden', '')
+      return () => {
+        bar.removeAttribute('data-title-hidden')
+      }
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) bar.removeAttribute('data-title-hidden')
+        else bar.setAttribute('data-title-hidden', '')
+      },
+      { threshold: 0 },
+    )
+    observer.observe(titleSection)
+    return () => {
+      observer.disconnect()
+      bar.removeAttribute('data-title-hidden')
+    }
+  }, [path, showEditor, showTitleSection, breadcrumbBarRef, titleSectionRef])
 }
 
 export function useEditorContentModel(props: EditorContentProps) {
@@ -77,26 +120,13 @@ export function useEditorContentModel(props: EditorContentProps) {
   const titleSectionRef = useRef<HTMLDivElement | null>(null)
   const breadcrumbBarRef = useRef<HTMLDivElement | null>(null)
 
-  useEffect(() => {
-    if (!showEditor) return
-
-    const bar = breadcrumbBarRef.current
-    const titleSection = titleSectionRef.current
-    if (!bar || !titleSection) return
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) bar.removeAttribute('data-title-hidden')
-        else bar.setAttribute('data-title-hidden', '')
-      },
-      { threshold: 0 },
-    )
-    observer.observe(titleSection)
-    return () => {
-      observer.disconnect()
-      bar.removeAttribute('data-title-hidden')
-    }
-  }, [path, showEditor])
+  useBreadcrumbTitleVisibility({
+    showEditor,
+    showTitleSection,
+    path,
+    breadcrumbBarRef,
+    titleSectionRef,
+  })
 
   return {
     ...props,

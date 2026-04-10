@@ -46,6 +46,16 @@ const VAULT_API_COMMANDS: Record<string, (args: Record<string, unknown>) => Vaul
     args.path ? { url: '/api/vault/save', method: 'POST', body: { path: args.path, content: args.content } } : null,
   rename_note: (args) =>
     args.old_path ? { url: '/api/vault/rename', method: 'POST', body: { vault_path: args.vault_path, old_path: args.old_path, new_title: args.new_title } } : null,
+  rename_note_filename: (args) =>
+    args.old_path ? {
+      url: '/api/vault/rename-filename',
+      method: 'POST',
+      body: {
+        vault_path: args.vault_path,
+        old_path: args.old_path,
+        new_filename_stem: args.new_filename_stem,
+      },
+    } : null,
   delete_note: (args) =>
     args.path ? { url: '/api/vault/delete', method: 'POST', body: { path: args.path } } : null,
   search_vault: (args) => {

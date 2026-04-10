@@ -29,6 +29,7 @@ type BreadcrumbActions = Pick<
   | 'onDeleteNote'
   | 'onArchiveNote'
   | 'onUnarchiveNote'
+  | 'onRenameFilename'
 >
 
 function EditorLoadingSkeleton() {
@@ -98,12 +99,14 @@ function ActiveTabBreadcrumb({
   barRef,
   wordCount,
   path,
+  showTitleSection,
   actions,
 }: {
   activeTab: NonNullable<EditorContentModel['activeTab']>
   barRef: React.RefObject<HTMLDivElement | null>
   wordCount: number
   path: string
+  showTitleSection: boolean
   actions: BreadcrumbActions
 }) {
   return (
@@ -111,6 +114,7 @@ function ActiveTabBreadcrumb({
       entry={activeTab.entry}
       wordCount={wordCount}
       barRef={barRef}
+      showTitleSection={showTitleSection}
       showDiffToggle={actions.showDiffToggle}
       diffMode={actions.diffMode}
       diffLoading={actions.diffLoading}
@@ -127,6 +131,7 @@ function ActiveTabBreadcrumb({
       onDelete={bindPath(actions.onDeleteNote, path)}
       onArchive={bindPath(actions.onArchiveNote, path)}
       onUnarchive={bindPath(actions.onUnarchiveNote, path)}
+      onRenameFilename={actions.onRenameFilename}
     />
   )
 }
@@ -316,6 +321,7 @@ export function EditorContentLayout(model: EditorContentModel) {
         barRef={breadcrumbBarRef}
         wordCount={wordCount}
         path={path}
+        showTitleSection={showTitleSection}
         actions={{
           diffMode: model.diffMode,
           diffLoading: model.diffLoading,
@@ -333,6 +339,7 @@ export function EditorContentLayout(model: EditorContentModel) {
           onDeleteNote: model.onDeleteNote,
           onArchiveNote: model.onArchiveNote,
           onUnarchiveNote: model.onUnarchiveNote,
+          onRenameFilename: model.onRenameFilename,
         }}
       />
       <EditorChrome

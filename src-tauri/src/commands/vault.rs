@@ -46,6 +46,17 @@ pub fn rename_note(
 }
 
 #[tauri::command]
+pub fn rename_note_filename(
+    vault_path: String,
+    old_path: String,
+    new_filename_stem: String,
+) -> Result<RenameResult, String> {
+    let vault_path = expand_tilde(&vault_path);
+    let old_path = expand_tilde(&old_path);
+    vault::rename_note_filename(&vault_path, &old_path, &new_filename_stem)
+}
+
+#[tauri::command]
 pub fn auto_rename_untitled(
     vault_path: String,
     note_path: String,

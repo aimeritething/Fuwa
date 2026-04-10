@@ -167,4 +167,53 @@ describe('useNoteRename hook', () => {
 
     expect(handleSwitchTab).toHaveBeenCalledWith('/vault/new.md')
   })
+
+  it('handleRenameFilename renames the file while preserving the existing title', async () => {
+    const entry = makeEntry({ path: '/vault/old-name.md', filename: 'old-name.md', title: 'Project Kickoff' })
+    vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
+      if (cmd === 'rename_note_filename') return { new_path: '/vault/manual-name.md', updated_files: 1 }
+      if (cmd === 'get_note_content') return '# Project Kickoff\n'
+      return ''
+    })
+
+    const { result } = renderHook(() => useNoteRename(
+      { entries: [entry], setToastMessage },
+      { tabs: [], setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
+    ))
+
+    const onEntryRenamed = vi.fn()
+    await act(async () => {
+      await result.current.handleRenameFilename('/vault/old-name.md', 'manual-name', '/vault', onEntryRenamed)
+    })
+
+    expect(mockInvoke).toHaveBeenCalledWith('rename_note_filename', expect.objectContaining({
+      old_path: '/vault/old-name.md',
+      new_filename_stem: 'manual-name',
+    }))
+    expect(onEntryRenamed).toHaveBeenCalledWith(
+      '/vault/old-name.md',
+      expect.objectContaining({
+        path: '/vault/manual-name.md',
+        filename: 'manual-name.md',
+        title: 'Project Kickoff',
+      }),
+      '# Project Kickoff\n',
+    )
+    expect(setToastMessage).toHaveBeenCalledWith('Renamed — updated 1 wiki link')
+  })
+
+  it('handleRenameFilename surfaces backend conflict errors', async () => {
+    vi.mocked(mockInvoke).mockRejectedValueOnce(new Error('A note with that name already exists'))
+
+    const { result } = renderHook(() => useNoteRename(
+      { entries: [makeEntry({ path: '/vault/old-name.md', filename: 'old-name.md' })], setToastMessage },
+      { tabs: [], setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
+    ))
+
+    await act(async () => {
+      await result.current.handleRenameFilename('/vault/old-name.md', 'manual-name', '/vault', vi.fn())
+    })
+
+    expect(setToastMessage).toHaveBeenCalledWith('A note with that name already exists')
+  })
 })

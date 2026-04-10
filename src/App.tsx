@@ -288,6 +288,13 @@ function App() {
     replaceEntry: vault.replaceEntry, resolvedPath,
   })
 
+  const handleFilenameRename = useCallback((path: string, newFilenameStem: string) => {
+    appSave.savePendingForPath(path)
+      .then(() => notes.handleRenameFilename(path, newFilenameStem, resolvedPath, vault.replaceEntry))
+      .then(vault.loadModifiedFiles)
+      .catch((err) => console.error('Filename rename failed:', err))
+  }, [appSave, notes, resolvedPath, vault])
+
   const aiActivity = useAiActivity({
     onOpenNote: vaultBridge.openNoteByPath,
     onOpenTab: vaultBridge.openNoteByPath,
@@ -701,6 +708,7 @@ function App() {
             onContentChange={appSave.handleContentChange}
             onSave={appSave.handleSave}
             onTitleSync={activeDeletedFile ? undefined : appSave.handleTitleSync}
+            onRenameFilename={activeDeletedFile ? undefined : handleFilenameRename}
             rawToggleRef={rawToggleRef}
             diffToggleRef={diffToggleRef}
             canGoBack={canGoBack}

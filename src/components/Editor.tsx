@@ -56,6 +56,8 @@ interface EditorProps {
   onSave?: () => void
   /** Called when the user edits the title in TitleField. */
   onTitleSync?: (path: string, newTitle: string) => void
+  /** Called when the user explicitly renames the filename from the breadcrumb. */
+  onRenameFilename?: (path: string, newFilenameStem: string) => void
   canGoBack?: boolean
   canGoForward?: boolean
   onGoBack?: () => void
@@ -203,7 +205,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     showAIChat, onToggleAIChat,
     vaultPath, noteList, noteListFilter,
     onToggleFavorite, onToggleOrganized, onDeleteNote, onArchiveNote, onUnarchiveNote,
-    onContentChange, onSave, onTitleSync,
+    onContentChange, onSave, onTitleSync, onRenameFilename,
     onFileCreated, onFileModified, onVaultChanged,
     isConflicted, onKeepMine, onKeepTheirs,
   } = props
@@ -255,6 +257,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
               vaultPath={vaultPath}
               rawLatestContentRef={rawLatestContentRef}
               onTitleChange={onTitleSync}
+              onRenameFilename={onRenameFilename}
               isConflicted={isConflicted}
               onKeepMine={onKeepMine}
               onKeepTheirs={onKeepTheirs}

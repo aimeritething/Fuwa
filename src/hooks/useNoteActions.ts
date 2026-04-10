@@ -148,5 +148,6 @@ export function useNoteActions(config: NoteActionsConfig) {
       config.onFrontmatterPersisted?.()
     }, [runFrontmatterOp, config]),
     handleRenameNote: rename.handleRenameNote,
+    handleRenameFilename: rename.handleRenameFilename,
   }
 }

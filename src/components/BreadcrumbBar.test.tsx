@@ -153,6 +153,79 @@ describe('BreadcrumbBar — title in breadcrumb (always rendered, CSS-toggled)',
 
     expect(container.querySelector('.breadcrumb-bar')).toHaveAttribute('data-title-hidden')
   })
+
+  it('keeps the breadcrumb title visible when the separate title section is absent', () => {
+    const { container } = render(
+      <BreadcrumbBar entry={baseEntry} {...defaultProps} showTitleSection={false} />,
+    )
+
+    expect(container.querySelector('.breadcrumb-bar')).toHaveAttribute('data-title-hidden')
+  })
+})
+
+describe('BreadcrumbBar — filename controls', () => {
+  it('shows the sync button when the filename diverges from the title slug', () => {
+    const entry = { ...baseEntry, title: 'Fresh Title', filename: 'untitled-note-123.md' }
+    render(<BreadcrumbBar entry={entry} {...defaultProps} onRenameFilename={vi.fn()} />)
+    expect(screen.getByTestId('breadcrumb-sync-button')).toBeInTheDocument()
+  })
+
+  it('hides the sync button when the filename already matches the title slug', () => {
+    const entry = { ...baseEntry, title: 'Test Note', filename: 'test-note.md' }
+    render(<BreadcrumbBar entry={entry} {...defaultProps} onRenameFilename={vi.fn()} />)
+    expect(screen.queryByTestId('breadcrumb-sync-button')).not.toBeInTheDocument()
+  })
+
+  it('clicking the sync button renames the file to the title slug', () => {
+    const onRenameFilename = vi.fn()
+    const entry = { ...baseEntry, title: 'Fresh Title', filename: 'untitled-note-123.md' }
+    render(<BreadcrumbBar entry={entry} {...defaultProps} onRenameFilename={onRenameFilename} />)
+    fireEvent.click(screen.getByTestId('breadcrumb-sync-button'))
+    expect(onRenameFilename).toHaveBeenCalledWith(entry.path, 'fresh-title')
+  })
+
+  it('lets keyboard users press Enter on the filename to start editing', () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onRenameFilename={vi.fn()} />)
+    fireEvent.keyDown(screen.getByTestId('breadcrumb-filename-trigger'), { key: 'Enter' })
+    expect(screen.getByTestId('breadcrumb-filename-input')).toHaveValue('test')
+  })
+
+  it('double-clicking the filename enters edit mode and Enter confirms the rename', () => {
+    const onRenameFilename = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onRenameFilename={onRenameFilename} />)
+
+    fireEvent.doubleClick(screen.getByTestId('breadcrumb-filename-trigger'))
+    const input = screen.getByTestId('breadcrumb-filename-input')
+    fireEvent.change(input, { target: { value: 'renamed-file' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+
+    expect(onRenameFilename).toHaveBeenCalledWith(baseEntry.path, 'renamed-file')
+  })
+
+  it('pressing Escape while editing cancels the inline rename', () => {
+    const onRenameFilename = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onRenameFilename={onRenameFilename} />)
+
+    fireEvent.doubleClick(screen.getByTestId('breadcrumb-filename-trigger'))
+    const input = screen.getByTestId('breadcrumb-filename-input')
+    fireEvent.change(input, { target: { value: 'renamed-file' } })
+    fireEvent.keyDown(input, { key: 'Escape' })
+
+    expect(onRenameFilename).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('breadcrumb-filename-input')).not.toBeInTheDocument()
+  })
+
+  it('blur confirms the inline rename when the value changed', () => {
+    const onRenameFilename = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onRenameFilename={onRenameFilename} />)
+
+    fireEvent.doubleClick(screen.getByTestId('breadcrumb-filename-trigger'))
+    const input = screen.getByTestId('breadcrumb-filename-input')
+    fireEvent.change(input, { target: { value: 'renamed-on-blur' } })
+    fireEvent.blur(input)
+
+    expect(onRenameFilename).toHaveBeenCalledWith(baseEntry.path, 'renamed-on-blur')
+  })
 })
 
 describe('BreadcrumbBar — action buttons always right-aligned', () => {

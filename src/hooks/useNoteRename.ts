@@ -28,9 +28,33 @@ export async function performRename(
   return mockInvoke<RenameResult>('rename_note', { vault_path: vaultPath, old_path: path, new_title: newTitle, old_title: oldTitle ?? null })
 }
 
+export async function performFilenameRename(
+  path: string,
+  newFilenameStem: string,
+  vaultPath: string,
+): Promise<RenameResult> {
+  if (isTauri()) {
+    return invoke<RenameResult>('rename_note_filename', {
+      vaultPath,
+      oldPath: path,
+      newFilenameStem,
+    })
+  }
+  return mockInvoke<RenameResult>('rename_note_filename', {
+    vault_path: vaultPath,
+    old_path: path,
+    new_filename_stem: newFilenameStem,
+  })
+}
+
 export function buildRenamedEntry(entry: VaultEntry, newTitle: string, newPath: string): VaultEntry {
   const slug = newTitle.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
   return { ...entry, path: newPath, filename: `${slug}.md`, title: newTitle }
+}
+
+export function buildFilenameRenamedEntry(entry: VaultEntry, newPath: string): VaultEntry {
+  const filename = newPath.split('/').pop() ?? entry.filename
+  return { ...entry, path: newPath, filename }
 }
 
 export async function loadNoteContent(path: string): Promise<string> {
@@ -61,6 +85,18 @@ interface Tab {
   content: string
 }
 
+function renameErrorMessage(err: unknown): string {
+  const message = typeof err === 'string'
+    ? err.trim()
+    : err instanceof Error
+      ? err.message.trim()
+      : ''
+  if (message === 'A note with that name already exists' || message === 'Invalid filename') {
+    return message
+  }
+  return 'Failed to rename note'
+}
+
 export interface NoteRenameConfig {
   entries: VaultEntry[]
   setToastMessage: (msg: string | null) => void
@@ -82,6 +118,23 @@ export function useNoteRename(config: NoteRenameConfig, tabDeps: RenameTabDeps) 
   // eslint-disable-next-line react-hooks/refs
   tabsRef.current = tabDeps.tabs
 
+  const applyRenameResult = useCallback(async (
+    oldPath: string,
+    result: RenameResult,
+    buildEntry: (entry: VaultEntry | undefined, newPath: string) => VaultEntry,
+    onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void,
+  ) => {
+    const entry = entries.find((item) => item.path === oldPath)
+    const newContent = await loadNoteContent(result.new_path)
+    const newEntry = buildEntry(entry, result.new_path)
+    const otherTabPaths = tabsRef.current.filter((tab) => tab.entry.path !== oldPath).map((tab) => tab.entry.path)
+    setTabs((prev) => prev.map((tab) => tab.entry.path === oldPath ? { entry: newEntry, content: newContent } : tab))
+    if (activeTabPathRef.current === oldPath) handleSwitchTab(result.new_path)
+    onEntryRenamed(oldPath, newEntry, newContent)
+    await reloadTabsAfterRename(otherTabPaths, updateTabContent)
+    setToastMessage(renameToastMessage(result.updated_files))
+  }, [entries, setTabs, activeTabPathRef, handleSwitchTab, updateTabContent, setToastMessage])
+
   const handleRenameNote = useCallback(async (
     path: string, newTitle: string, vaultPath: string,
     onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void,
@@ -89,19 +142,37 @@ export function useNoteRename(config: NoteRenameConfig, tabDeps: RenameTabDeps) 
     try {
       const entry = entries.find((e) => e.path === path)
       const result = await performRename(path, newTitle, vaultPath, entry?.title)
-      const newContent = await loadNoteContent(result.new_path)
-      const newEntry = buildRenamedEntry(entry ?? {} as VaultEntry, newTitle, result.new_path)
-      const otherTabPaths = tabsRef.current.filter(t => t.entry.path !== path).map(t => t.entry.path)
-      setTabs((prev) => prev.map((t) => t.entry.path === path ? { entry: newEntry, content: newContent } : t))
-      if (activeTabPathRef.current === path) handleSwitchTab(result.new_path)
-      onEntryRenamed(path, newEntry, newContent)
-      await reloadTabsAfterRename(otherTabPaths, updateTabContent)
-      setToastMessage(renameToastMessage(result.updated_files))
+      await applyRenameResult(
+        path,
+        result,
+        (currentEntry, newPath) => buildRenamedEntry(currentEntry ?? {} as VaultEntry, newTitle, newPath),
+        onEntryRenamed,
+      )
     } catch (err) {
       console.error('Failed to rename note:', err)
-      setToastMessage('Failed to rename note')
+      setToastMessage(renameErrorMessage(err))
     }
-  }, [entries, setTabs, activeTabPathRef, handleSwitchTab, updateTabContent, setToastMessage])
+  }, [entries, applyRenameResult, setToastMessage])
 
-  return { handleRenameNote, tabsRef }
+  const handleRenameFilename = useCallback(async (
+    path: string,
+    newFilenameStem: string,
+    vaultPath: string,
+    onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void,
+  ) => {
+    try {
+      const result = await performFilenameRename(path, newFilenameStem, vaultPath)
+      await applyRenameResult(
+        path,
+        result,
+        (currentEntry, newPath) => buildFilenameRenamedEntry(currentEntry ?? {} as VaultEntry, newPath),
+        onEntryRenamed,
+      )
+    } catch (err) {
+      console.error('Failed to rename note filename:', err)
+      setToastMessage(renameErrorMessage(err))
+    }
+  }, [applyRenameResult, setToastMessage])
+
+  return { handleRenameNote, handleRenameFilename, tabsRef }
 }
