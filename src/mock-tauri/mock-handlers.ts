@@ -190,6 +190,43 @@ function handleRenameNote(args: { vault_path: string; old_path: string; new_titl
   return { new_path: newPath, updated_files: updatedFiles }
 }
 
+function handleRenameNoteFilename(args: {
+  vault_path: string
+  old_path: string
+  new_filename_stem: string
+}) {
+  const oldEntry = MOCK_ENTRIES.find(e => e.path === args.old_path)
+  const oldContent = MOCK_CONTENT[args.old_path] ?? ''
+  const oldTitle = oldEntry?.title ?? ''
+  const normalizedStem = args.new_filename_stem.trim().replace(/\.md$/, '')
+  const oldFilename = args.old_path.split('/').pop() ?? ''
+  const newFilename = `${normalizedStem}.md`
+
+  if (!normalizedStem) {
+    throw new Error('Invalid filename')
+  }
+  if (oldFilename === newFilename) {
+    return { new_path: args.old_path, updated_files: 0 }
+  }
+
+  const parentDir = args.old_path.replace(/\/[^/]+$/, '')
+  const newPath = `${parentDir}/${newFilename}`
+  if (newPath !== args.old_path && Object.prototype.hasOwnProperty.call(MOCK_CONTENT, newPath)) {
+    throw new Error('A note with that name already exists')
+  }
+
+  delete MOCK_CONTENT[args.old_path]
+  MOCK_CONTENT[newPath] = oldContent
+
+  const oldPathStem = relativePathStem({ path: args.old_path, vaultPath: args.vault_path })
+  const newPathStem = relativePathStem({ path: newPath, vaultPath: args.vault_path })
+  const oldTargets = canonicalRenameTargets({ oldTitle, oldPathStem })
+  const updatedFiles = updateMockRenameReferences({ newPath, newPathStem, oldTargets })
+
+  syncWindowContent()
+  return { new_path: newPath, updated_files: updatedFiles }
+}
+
 const trimOrNull = (v: string | null | undefined): string | null => v?.trim() || null
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock handler map accepts heterogeneous arg types
@@ -275,6 +312,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   load_vault_list: () => ({ ...mockVaultList, vaults: [...mockVaultList.vaults] }),
   save_vault_list: (args: { list: typeof mockVaultList }) => { mockVaultList = { ...args.list }; return null },
   rename_note: handleRenameNote,
+  rename_note_filename: handleRenameNoteFilename,
   github_list_repos: () => [
     { name: 'laputa-vault', full_name: 'lucaong/laputa-vault', description: 'Personal knowledge vault — markdown + YAML frontmatter', private: true, clone_url: 'https://github.com/lucaong/laputa-vault.git', html_url: 'https://github.com/lucaong/laputa-vault', updated_at: '2026-02-20T10:30:00Z' },
     { name: 'laputa-app', full_name: 'lucaong/laputa-app', description: 'Laputa desktop app — Tauri + React + CodeMirror 6', private: false, clone_url: 'https://github.com/lucaong/laputa-app.git', html_url: 'https://github.com/lucaong/laputa-app', updated_at: '2026-02-19T15:00:00Z' },

@@ -33,14 +33,14 @@ async function openNote(page: import('@playwright/test').Page, title: string) {
   await page.waitForTimeout(300)
 }
 
-/** Helper: rename the active note through the stable TitleField. */
-async function renameActiveNote(page: import('@playwright/test').Page, nextTitle: string) {
-  const titleInput = page.getByTestId('title-field-input')
-  await expect(titleInput).toBeVisible({ timeout: 5_000 })
-  await titleInput.click()
-  await titleInput.fill(nextTitle)
-  await titleInput.press('Enter')
-  await expect(titleInput).toHaveValue(nextTitle, { timeout: 5_000 })
+/** Helper: rename the active note filename through the breadcrumb control. */
+async function renameActiveNoteFilename(page: import('@playwright/test').Page, nextFilename: string) {
+  await page.getByTestId('breadcrumb-filename-trigger').dblclick()
+  const filenameInput = page.getByTestId('breadcrumb-filename-input')
+  await expect(filenameInput).toBeVisible({ timeout: 5_000 })
+  await filenameInput.fill(nextFilename)
+  await filenameInput.press('Enter')
+  await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText(nextFilename, { timeout: 5_000 })
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +123,7 @@ test('rename note updates filename on disk', async ({ page }) => {
   // Open Note B
   await openNote(page, 'Note B')
 
-  await renameActiveNote(page, 'Note B Renamed')
+  await renameActiveNoteFilename(page, 'note-b-renamed')
 
   // Verify filesystem: old file gone, new file exists
   const oldPath = path.join(tempVaultDir, 'note', 'note-b.md')
@@ -135,7 +135,7 @@ test('rename note updates filename on disk', async ({ page }) => {
   }).toPass({ timeout: 5_000 })
 
   const newContent = fs.readFileSync(newPath, 'utf-8')
-  expect(newContent).toContain('# Note B Renamed')
+  expect(newContent).toContain('# Note B')
 })
 
 // ---------------------------------------------------------------------------
@@ -145,7 +145,7 @@ test('rename note updates filename on disk', async ({ page }) => {
 test('rename note updates wikilinks in other files', async ({ page }) => {
   // Open Note B and rename it
   await openNote(page, 'Note B')
-  await renameActiveNote(page, 'Note B Updated')
+  await renameActiveNoteFilename(page, 'note-b-updated')
 
   // Wait for rename to complete (file to be moved)
   const newPath = path.join(tempVaultDir, 'note', 'note-b-updated.md')
@@ -153,9 +153,10 @@ test('rename note updates wikilinks in other files', async ({ page }) => {
     expect(fs.existsSync(newPath)).toBe(true)
   }).toPass({ timeout: 5_000 })
 
-  // Verify alpha-project.md now references [[Note B Updated]] instead of [[Note B]]
+  // Verify alpha-project.md now references the canonical path target.
   const alphaContent = fs.readFileSync(path.join(tempVaultDir, 'project', 'alpha-project.md'), 'utf-8')
-  expect(alphaContent).toContain('[[Note B Updated]]')
+  expect(alphaContent).toContain('[[note/note-b-updated]]')
+  expect(alphaContent).not.toContain('[[note/note-b]]')
   expect(alphaContent).not.toContain('[[Note B]]')
 })
 

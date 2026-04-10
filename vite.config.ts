@@ -210,18 +210,30 @@ function readExistingQueryPath(url: URL, res: ServerResponse, key: string): stri
   return filePath
 }
 
-function updateTitleWikilinks(vaultPath: string, oldTitle: string, newTitle: string, excludePath: string): number {
-  if (!oldTitle) return 0
+function updateTitleWikilinks(vaultPath: string, oldTitle: string, _newTitle: string, excludePath: string): number {
+  const newPathStem = path.relative(vaultPath, excludePath).replace(/\.md$/i, '')
+  const oldTargets = collectLegacyWikilinkTargets(oldTitle, excludePath, vaultPath)
+  return updateWikilinksForTargets(vaultPath, oldTargets, newPathStem, excludePath)
+}
+
+function collectLegacyWikilinkTargets(oldTitle: string, oldPath: string, vaultPath: string): string[] {
+  const oldRelativeStem = path.relative(vaultPath, oldPath).replace(/\.md$/i, '')
+  const oldFilenameStem = path.basename(oldPath, '.md')
+  return [...new Set([oldTitle, oldRelativeStem, oldFilenameStem].filter(Boolean))]
+}
+
+function updateWikilinksForTargets(vaultPath: string, oldTargets: string[], newTarget: string, excludePath: string): number {
+  if (oldTargets.length === 0) return 0
   const allFiles = findMarkdownFiles(vaultPath)
-  const escaped = oldTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = new RegExp(`\\[\\[${escaped}(\\|[^\\]]*?)?\\]\\]`, 'g')
+  const escaped = oldTargets.map(target => target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const pattern = new RegExp(`\\[\\[(?:${escaped.join('|')})(\\|[^\\]]*?)?\\]\\]`, 'g')
   let updatedFiles = 0
   for (const filePath of allFiles) {
     if (filePath === excludePath) continue
     try {
       const content = fs.readFileSync(filePath, 'utf-8')
       const replaced = content.replace(pattern, (_m: string, pipe: string | undefined) =>
-        pipe ? `[[${newTitle}${pipe}]]` : `[[${newTitle}]]`
+        pipe ? `[[${newTarget}${pipe}]]` : `[[${newTarget}]]`
       )
       if (replaced !== content) {
         fs.writeFileSync(filePath, replaced, 'utf-8')
@@ -234,28 +246,10 @@ function updateTitleWikilinks(vaultPath: string, oldTitle: string, newTitle: str
   return updatedFiles
 }
 
-function updatePathWikilinks(vaultPath: string, oldPath: string, newPath: string): number {
-  const oldRelativeStem = path.relative(vaultPath, oldPath).replace(/\.md$/i, '')
+function updatePathWikilinks(vaultPath: string, oldPath: string, newPath: string, oldTitle: string): number {
   const newRelativeStem = path.relative(vaultPath, newPath).replace(/\.md$/i, '')
-  const escaped = oldRelativeStem.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-  const pattern = new RegExp(`\\[\\[${escaped}(\\|[^\\]]*?)?\\]\\]`, 'g')
-  let updatedFiles = 0
-  for (const filePath of findMarkdownFiles(vaultPath)) {
-    if (filePath === newPath) continue
-    try {
-      const content = fs.readFileSync(filePath, 'utf-8')
-      const replaced = content.replace(pattern, (_m: string, pipe: string | undefined) =>
-        pipe ? `[[${newRelativeStem}${pipe}]]` : `[[${newRelativeStem}]]`
-      )
-      if (replaced !== content) {
-        fs.writeFileSync(filePath, replaced, 'utf-8')
-        updatedFiles++
-      }
-    } catch {
-      // Skip unreadable files in the dev vault API.
-    }
-  }
-  return updatedFiles
+  const oldTargets = collectLegacyWikilinkTargets(oldTitle, oldPath, vaultPath)
+  return updateWikilinksForTargets(vaultPath, oldTargets, newRelativeStem, newPath)
 }
 
 function handleVaultPing(url: URL, res: ServerResponse): boolean {
@@ -388,13 +382,14 @@ async function handleVaultRenameFilename(url: URL, req: IncomingMessage, res: Se
     }
 
     const newPath = path.join(path.dirname(oldPath), `${trimmed}.md`)
+    const oldTitle = parseMarkdownFile(oldPath)?.title ?? path.basename(oldPath, '.md')
     if (newPath !== oldPath && fs.existsSync(newPath)) {
       sendJson(res, { error: 'A note with that name already exists' }, 409)
       return true
     }
 
     fs.renameSync(oldPath, newPath)
-    const updatedFiles = vaultPath ? updatePathWikilinks(vaultPath, oldPath, newPath) : 0
+    const updatedFiles = vaultPath ? updatePathWikilinks(vaultPath, oldPath, newPath, oldTitle) : 0
     sendJson(res, { new_path: newPath, updated_files: updatedFiles })
   } catch (err: unknown) {
     sendJson(res, { error: err instanceof Error ? err.message : 'Rename failed' }, 500)
