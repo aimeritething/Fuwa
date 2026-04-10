@@ -1,14 +1,22 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useEditorSaveWithLinks } from './useEditorSaveWithLinks'
 import { needsRenameOnSave } from './useNoteRename'
 import { flushEditorContent } from '../utils/autoSave'
+import { extractH1TitleFromContent } from '../utils/noteTitle'
 import { isTauri } from '../mock-tauri'
 import type { VaultEntry } from '../types'
 
 interface TabState {
   entry: VaultEntry
   content: string
+}
+
+const UNTITLED_RENAME_DEBOUNCE_MS = 2500
+
+interface PendingUntitledRename {
+  path: string
+  timer: ReturnType<typeof setTimeout>
 }
 
 function findUnsavedFallback(
@@ -25,6 +33,74 @@ function activeTabNeedsRename(tabs: TabState[], activeTabPath: string | null): {
   return needsRenameOnSave(activeTab.entry.title, activeTab.entry.filename)
     ? { path: activeTab.entry.path, title: activeTab.entry.title }
     : null
+}
+
+function isUntitledRenameCandidate(path: string): boolean {
+  const filename = path.split('/').pop() ?? ''
+  const stem = filename.replace(/\.md$/, '')
+  return stem.startsWith('untitled-') && /\d+$/.test(stem)
+}
+
+function shouldScheduleUntitledRename(path: string, content: string): boolean {
+  return isTauri()
+    && isUntitledRenameCandidate(path)
+    && extractH1TitleFromContent(content) !== null
+}
+
+function matchingPendingRename(
+  pending: PendingUntitledRename | null,
+  path?: string,
+): PendingUntitledRename | null {
+  if (!pending) return null
+  if (path && pending.path !== path) return null
+  return pending
+}
+
+function takePendingRename(
+  pendingRenameRef: MutableRefObject<PendingUntitledRename | null>,
+  path?: string,
+): PendingUntitledRename | null {
+  const pending = matchingPendingRename(pendingRenameRef.current, path)
+  if (!pending) return null
+  clearTimeout(pending.timer)
+  pendingRenameRef.current = null
+  return pending
+}
+
+function schedulePendingRename(
+  pendingRenameRef: MutableRefObject<PendingUntitledRename | null>,
+  path: string,
+  onFire: (path: string) => void,
+): void {
+  takePendingRename(pendingRenameRef)
+  const timer = setTimeout(() => {
+    const pending = takePendingRename(pendingRenameRef, path)
+    if (pending) onFire(pending.path)
+  }, UNTITLED_RENAME_DEBOUNCE_MS)
+  pendingRenameRef.current = { path, timer }
+}
+
+function pendingRenameOutsideActiveTab(
+  pendingRenameRef: MutableRefObject<PendingUntitledRename | null>,
+  activeTabPath: string | null,
+): string | null {
+  const pending = pendingRenameRef.current
+  if (!pending || pending.path === activeTabPath) return null
+  return pending.path
+}
+
+async function reloadAutoRenamedNote(
+  oldPath: string,
+  newPath: string,
+  replaceEntry: AppSaveDeps['replaceEntry'],
+  loadModifiedFiles: AppSaveDeps['loadModifiedFiles'],
+): Promise<void> {
+  const [newEntry, newContent] = await Promise.all([
+    invoke<VaultEntry>('reload_vault_entry', { path: newPath }),
+    invoke<string>('get_note_content', { path: newPath }),
+  ])
+  replaceEntry(oldPath, { ...newEntry, path: newPath }, newContent)
+  loadModifiedFiles()
 }
 
 interface AppSaveDeps {
@@ -49,41 +125,63 @@ export function useAppSave({
   handleRenameNote, replaceEntry, resolvedPath,
 }: AppSaveDeps) {
   const contentChangeRef = useRef<(path: string, content: string) => void>(() => {})
+  const pendingUntitledRenameRef = useRef<PendingUntitledRename | null>(null)
 
   const onAfterSave = useCallback(() => {
     loadModifiedFiles()
   }, [loadModifiedFiles])
 
-  const onNotePersisted = useCallback((path: string) => {
-    clearUnsaved(path)
-    if (path.endsWith('.yml')) reloadViews?.()
-    // Auto-rename untitled notes when they have an H1 heading
-    const filename = path.split('/').pop() ?? ''
-    const stem = filename.replace(/\.md$/, '')
-    if (isTauri() && stem.startsWith('untitled-') && /\d+$/.test(stem)) {
-      invoke<{ new_path: string; updated_files: number } | null>('auto_rename_untitled', {
+  const cancelPendingUntitledRename = useCallback((path?: string) => (
+    takePendingRename(pendingUntitledRenameRef, path) !== null
+  ), [])
+
+  const executeUntitledRename = useCallback(async (path: string) => {
+    try {
+      const result = await invoke<{ new_path: string; updated_files: number } | null>('auto_rename_untitled', {
         vaultPath: resolvedPath,
         notePath: path,
-      }).then((result) => {
-        if (result) {
-          // Re-read the renamed file content and entry, then replace
-          Promise.all([
-            invoke<VaultEntry>('reload_vault_entry', { path: result.new_path }),
-            invoke<string>('get_note_content', { path: result.new_path }),
-          ]).then(([newEntry, newContent]) => {
-            replaceEntry(path, { ...newEntry, path: result.new_path }, newContent)
-            loadModifiedFiles()
-          }).catch(() => { /* ignore reload failure */ })
-        }
-      }).catch(() => { /* auto-rename is best-effort */ })
+      })
+      if (!result) return false
+      await reloadAutoRenamedNote(path, result.new_path, replaceEntry, loadModifiedFiles)
+      return true
+    } catch {
+      return false
     }
-  }, [clearUnsaved, reloadViews, resolvedPath, replaceEntry, loadModifiedFiles])
+  }, [resolvedPath, replaceEntry, loadModifiedFiles])
+
+  const flushPendingUntitledRename = useCallback(async (path?: string) => {
+    const pending = takePendingRename(pendingUntitledRenameRef, path)
+    if (!pending) return false
+    return executeUntitledRename(pending.path)
+  }, [executeUntitledRename])
+
+  const scheduleUntitledRename = useCallback((path: string, content: string) => {
+    if (!shouldScheduleUntitledRename(path, content)) {
+      cancelPendingUntitledRename(path)
+      return
+    }
+
+    schedulePendingRename(pendingUntitledRenameRef, path, (pendingPath) => {
+      void executeUntitledRename(pendingPath)
+    })
+  }, [cancelPendingUntitledRename, executeUntitledRename])
+
+  const onNotePersisted = useCallback((path: string, content: string) => {
+    clearUnsaved(path)
+    if (path.endsWith('.yml')) reloadViews?.()
+    scheduleUntitledRename(path, content)
+  }, [clearUnsaved, reloadViews, scheduleUntitledRename])
 
   const { handleSave: handleSaveRaw, handleContentChange, savePendingForPath, savePending } = useEditorSaveWithLinks({
     updateEntry, setTabs, setToastMessage, onAfterSave, onNotePersisted,
   })
 
   useEffect(() => { contentChangeRef.current = handleContentChange }, [handleContentChange])
+  useEffect(() => () => { cancelPendingUntitledRename() }, [cancelPendingUntitledRename])
+  useEffect(() => {
+    const pendingPath = pendingRenameOutsideActiveTab(pendingUntitledRenameRef, activeTabPath)
+    if (pendingPath) cancelPendingUntitledRename(pendingPath)
+  }, [activeTabPath, cancelPendingUntitledRename])
 
   // Refs for stable closure in flushBeforeAction
   const tabsRef = useRef(tabs)
@@ -99,29 +197,33 @@ export function useAppSave({
         isUnsaved: (p) => unsavedPathsRef.current.has(p),
         onSaved: (p) => { clearUnsaved(p) },
       })
+      await flushPendingUntitledRename(path)
     } catch (err) {
       setToastMessage(`Auto-save failed: ${err}`)
       throw err
     }
-  }, [savePendingForPath, clearUnsaved, setToastMessage])
+  }, [savePendingForPath, clearUnsaved, setToastMessage, flushPendingUntitledRename])
 
   const handleRenameTab = useCallback(async (path: string, newTitle: string) => {
     await savePendingForPath(path)
+    cancelPendingUntitledRename(path)
     await handleRenameNote(path, newTitle, resolvedPath, replaceEntry).then(loadModifiedFiles)
-  }, [handleRenameNote, resolvedPath, replaceEntry, savePendingForPath, loadModifiedFiles])
+  }, [handleRenameNote, resolvedPath, replaceEntry, savePendingForPath, loadModifiedFiles, cancelPendingUntitledRename])
 
   const handleSave = useCallback(async () => {
     await handleSaveRaw(findUnsavedFallback(tabs, activeTabPath, unsavedPaths))
+    const flushedUntitledRename = await flushPendingUntitledRename(activeTabPath ?? undefined)
     const rename = activeTabNeedsRename(tabs, activeTabPath)
-    if (rename) await handleRenameTab(rename.path, rename.title)
-  }, [handleSaveRaw, handleRenameTab, tabs, activeTabPath, unsavedPaths])
+    if (!flushedUntitledRename && rename) await handleRenameTab(rename.path, rename.title)
+  }, [handleSaveRaw, handleRenameTab, tabs, activeTabPath, unsavedPaths, flushPendingUntitledRename])
 
   const handleTitleSync = useCallback((path: string, newTitle: string) => {
+    cancelPendingUntitledRename(path)
     savePendingForPath(path)
       .then(() => handleRenameNote(path, newTitle, resolvedPath, replaceEntry))
       .then(loadModifiedFiles)
       .catch((err) => console.error('Title rename failed:', err))
-  }, [handleRenameNote, resolvedPath, replaceEntry, savePendingForPath, loadModifiedFiles])
+  }, [handleRenameNote, resolvedPath, replaceEntry, savePendingForPath, loadModifiedFiles, cancelPendingUntitledRename])
 
   return {
     contentChangeRef,
