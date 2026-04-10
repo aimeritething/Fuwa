@@ -910,6 +910,53 @@ describe('Sidebar', () => {
       fireEvent.click(screen.getByText('My Favorite Note'))
       expect(onSelect).toHaveBeenCalledWith({ kind: 'filter', filter: 'favorites' })
     })
+
+    it('matches the Types row styling and type color for favorites', () => {
+      render(<Sidebar entries={[...mockEntries, favEntry]} selection={defaultSelection} onSelect={() => {}} />)
+
+      const favoriteLabel = screen.getByText('My Favorite Note')
+      const favoriteRow = favoriteLabel.closest('.cursor-pointer')
+      const typeLabel = screen.getByText('Projects')
+      const typeRow = typeLabel.closest('.cursor-pointer')
+      const favoriteIcon = favoriteRow?.querySelector('svg')
+
+      expect(favoriteRow?.className).toBe(typeRow?.className)
+      expect(favoriteRow?.style.padding).toBe(typeRow?.style.padding)
+      expect(favoriteRow?.style.gap).toBe(typeRow?.style.gap)
+      expect(favoriteLabel.className).toContain(typeLabel.className)
+      expect(favoriteLabel.className).toContain('truncate')
+      expect(favoriteIcon?.getAttribute('width')).toBe('16')
+      expect(favoriteIcon?.getAttribute('height')).toBe('16')
+      expect(favoriteIcon?.getAttribute('style')).toContain('var(--accent-red)')
+    })
+
+    it('falls back to a neutral icon color when the favorite type has no defined color', () => {
+      const customType: VaultEntry = {
+        path: '/vault/types/recipe.md', filename: 'recipe.md', title: 'Recipe',
+        isA: 'Type', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
+        cadence: null, archived: false, modifiedAt: 1700000000,
+        createdAt: null, fileSize: 120, snippet: '', wordCount: 0, relationships: {},
+        icon: 'flask', color: null, order: null, sidebarLabel: null, template: null,
+        sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
+      }
+      const recipeFavorite: VaultEntry = {
+        path: '/vault/recipe/sourdough.md', filename: 'sourdough.md', title: 'Sourdough',
+        isA: 'Recipe', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
+        cadence: null, archived: false, modifiedAt: 1700000000,
+        createdAt: null, fileSize: 120, snippet: '', wordCount: 0, relationships: {},
+        icon: null, color: null, order: null, sidebarLabel: null, template: null,
+        sort: null, view: null, visible: null, outgoingLinks: [], properties: {},
+        favorite: true, favoriteIndex: 0,
+      }
+
+      render(<Sidebar entries={[...mockEntries, customType, recipeFavorite]} selection={defaultSelection} onSelect={() => {}} />)
+
+      const recipeRow = screen.getByText('Sourdough').closest('.cursor-pointer')
+      const recipeIcon = recipeRow?.querySelector('svg')
+
+      expect(recipeIcon?.getAttribute('style')).toContain('var(--muted-foreground)')
+      expect(within(recipeRow as HTMLElement).getByText('Sourdough')).toBeInTheDocument()
+    })
   })
 
   describe('group separators', () => {

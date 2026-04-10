@@ -20,6 +20,7 @@ import {
 } from '../SidebarParts'
 import { TypeCustomizePopover } from '../TypeCustomizePopover'
 import { useDragRegion } from '../../hooks/useDragRegion'
+import { buildTypeEntryMap, getTypeColor, getTypeLightColor } from '../../utils/typeColors'
 import { NoteTitleIcon } from '../NoteTitleIcon'
 
 export interface SidebarSectionProps {
@@ -334,16 +335,46 @@ export function TypesSection({
   )
 }
 
+const FAVORITE_TYPE_ICON_MAP: Record<string, string> = {
+  Project: 'wrench',
+  project: 'wrench',
+  Experiment: 'flask',
+  experiment: 'flask',
+  Responsibility: 'target',
+  responsibility: 'target',
+  Procedure: 'arrows-clockwise',
+  procedure: 'arrows-clockwise',
+  Person: 'users',
+  person: 'users',
+  Event: 'calendar-blank',
+  event: 'calendar-blank',
+  Topic: 'tag',
+  topic: 'tag',
+  Type: 'stack-simple',
+  type: 'stack-simple',
+}
+
+function getFavoriteIcon(entry: VaultEntry, typeEntryMap: Record<string, VaultEntry>) {
+  const typeEntry = entry.isA ? typeEntryMap[entry.isA] : undefined
+  return typeEntry?.icon ?? FAVORITE_TYPE_ICON_MAP[entry.isA ?? ''] ?? 'file-text'
+}
+
 function SortableFavoriteItem({
   entry,
   isActive,
   onSelect,
+  typeEntryMap,
 }: {
   entry: VaultEntry
   isActive: boolean
   onSelect: () => void
+  typeEntryMap: Record<string, VaultEntry>
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.path })
+  const typeEntry = entry.isA ? typeEntryMap[entry.isA] : undefined
+  const icon = getFavoriteIcon(entry, typeEntryMap)
+  const typeColor = getTypeColor(entry.isA ?? null, typeEntry?.color)
+  const typeLightColor = getTypeLightColor(entry.isA ?? null, typeEntry?.color)
 
   return (
     <div
@@ -353,15 +384,34 @@ function SortableFavoriteItem({
       {...listeners}
     >
       <div
-        className={`flex cursor-pointer select-none items-center gap-1.5 rounded text-[13px] font-normal transition-colors ${isActive ? 'bg-secondary text-foreground' : 'text-muted-foreground hover:bg-accent'}`}
-        style={{ padding: '4px 16px 4px 28px' }}
+        className={`group/section flex cursor-pointer select-none items-center justify-between rounded transition-colors ${isActive ? '' : 'hover:bg-accent'}`}
+        style={{ padding: '6px 8px 6px 16px', borderRadius: 4, gap: 4, ...(isActive ? { background: typeLightColor } : {}) }}
         onClick={onSelect}
       >
-        <NoteTitleIcon icon={entry.icon} size={14} />
-        <span className="truncate">{entry.title}</span>
+        <div className="flex min-w-0 flex-1 items-center" style={{ gap: 4 }}>
+          <NoteTitleIcon icon={icon} size={16} color={typeColor} />
+          <span className="truncate text-[13px] font-medium" style={{ marginLeft: 4, color: isActive ? typeColor : undefined }}>
+            {entry.title}
+          </span>
+        </div>
       </div>
     </div>
   )
+}
+
+function sortFavorites(entries: VaultEntry[]) {
+  return entries
+    .filter((entry) => entry.favorite && !entry.archived)
+    .sort((a, b) => (a.favoriteIndex ?? Infinity) - (b.favoriteIndex ?? Infinity))
+}
+
+function reorderFavoriteIds(favoriteIds: string[], event: DragEndEvent) {
+  const { active, over } = event
+  if (!over || active.id === over.id) return null
+  const oldIndex = favoriteIds.indexOf(active.id as string)
+  const newIndex = favoriteIds.indexOf(over.id as string)
+  if (oldIndex === -1 || newIndex === -1) return null
+  return arrayMove(favoriteIds, oldIndex, newIndex)
 }
 
 export function FavoritesSection({
@@ -381,22 +431,14 @@ export function FavoritesSection({
   collapsed: boolean
   onToggle: () => void
 }) {
-  const favorites = useMemo(
-    () => entries
-      .filter((entry) => entry.favorite && !entry.archived)
-      .sort((a, b) => (a.favoriteIndex ?? Infinity) - (b.favoriteIndex ?? Infinity)),
-    [entries],
-  )
+  const favorites = useMemo(() => sortFavorites(entries), [entries])
   const favoriteIds = useMemo(() => favorites.map((entry) => entry.path), [favorites])
+  const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
-    const oldIndex = favoriteIds.indexOf(active.id as string)
-    const newIndex = favoriteIds.indexOf(over.id as string)
-    if (oldIndex === -1 || newIndex === -1) return
-    onReorder?.(arrayMove(favoriteIds, oldIndex, newIndex))
+    const reordered = reorderFavoriteIds(favoriteIds, event)
+    if (reordered) onReorder?.(reordered)
   }, [favoriteIds, onReorder])
 
   if (favorites.length === 0) return null
@@ -413,6 +455,7 @@ export function FavoritesSection({
                   key={entry.path}
                   entry={entry}
                   isActive={isSelectionActive(selection, { kind: 'entity', entry })}
+                  typeEntryMap={typeEntryMap}
                   onSelect={() => {
                     onSelect({ kind: 'filter', filter: 'favorites' })
                     onSelectNote?.(entry)
