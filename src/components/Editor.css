@@ -36,6 +36,18 @@
   display: flex;
 }
 
+.breadcrumb-bar__actions [data-slot='button'] {
+  width: auto;
+  height: auto;
+  min-width: 0;
+  padding: 0;
+  border-radius: 0;
+}
+
+.breadcrumb-bar__actions [data-slot='button']:hover {
+  background: transparent;
+}
+
 /* Scroll area wrapping title + editor — single scroll context for alignment */
 .editor-scroll-area {
   flex: 1;
