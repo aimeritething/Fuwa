@@ -22,7 +22,8 @@
   opacity: 0.55;
 }
 
-/* Breadcrumb bar: title + border toggled via data attribute (no React re-render) */
+/* Breadcrumb bar: border can still react to the data attribute, but the
+   breadcrumb filename/title stays visible at all times. */
 .breadcrumb-bar {
   transition: border-color 0.2s ease;
 }
@@ -32,10 +33,6 @@
 }
 
 .breadcrumb-bar__title {
-  display: none;
-}
-
-.breadcrumb-bar[data-title-hidden] .breadcrumb-bar__title {
   display: flex;
 }
 
