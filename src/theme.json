@@ -48,7 +48,7 @@
   },
   "lists": {
     "bulletSymbol": "•",
-    "bulletSize": 28,
+    "bulletSize": 24,
     "bulletColor": "#177bfd",
     "indentSize": 24,
     "itemSpacing": 4,
