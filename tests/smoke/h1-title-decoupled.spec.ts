@@ -61,6 +61,10 @@ async function openQuickOpen(page: Page) {
   await expect(page.locator('input[placeholder="Search notes..."]')).toBeVisible({ timeout: 5_000 })
 }
 
+function quickOpenSelectedTitle(page: Page) {
+  return page.getByTestId('quick-open-palette').locator('[class*="bg-accent"] span.truncate').first()
+}
+
 test('creating an untitled draft hides the legacy title section in the editor', async ({ page }) => {
   await page.locator('button[title="Create new note"]').click()
 
@@ -104,7 +108,7 @@ test('@smoke edited H1 titles drive note list, search, and wikilink autocomplete
   await openQuickOpen(page)
   const quickOpenInput = page.locator('input[placeholder="Search notes..."]')
   await quickOpenInput.fill(updatedTitle)
-  await expect(page.locator('[class*="bg-accent"] span.truncate').first()).toHaveText(updatedTitle, { timeout: 5_000 })
+  await expect(quickOpenSelectedTitle(page)).toHaveText(updatedTitle, { timeout: 5_000 })
   await page.keyboard.press('Escape')
 
   await openNote(page, 'Alpha Project')

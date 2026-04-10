@@ -15,7 +15,7 @@ async function openQuickOpen(page: import('@playwright/test').Page) {
  */
 async function getFirstResultTitle(page: import('@playwright/test').Page): Promise<string> {
   // The selected result row contains the title in a span.truncate
-  const titleSpan = page.locator('[class*="bg-accent"] span.truncate')
+  const titleSpan = page.getByTestId('quick-open-palette').locator('[class*="bg-accent"] span.truncate')
   await titleSpan.first().waitFor({ timeout: 3000 })
   return (await titleSpan.first().textContent()) ?? ''
 }
