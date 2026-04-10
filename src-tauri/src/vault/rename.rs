@@ -100,11 +100,7 @@ fn update_wikilinks_in_vault(
         Some(r) => r,
         None => return 0,
     };
-    replace_wikilinks_in_files(
-        collect_md_files(vault_path, exclude_path),
-        &re,
-        new_target,
-    )
+    replace_wikilinks_in_files(collect_md_files(vault_path, exclude_path), &re, new_target)
 }
 
 fn replace_wikilinks_in_files(
@@ -621,7 +617,11 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let vault = dir.path();
         create_test_file(vault, "note/weekly-review.md", "# Weekly Review\n");
-        create_test_file(vault, "note/ref.md", "# Ref\n\nSee [[weekly-review]] for info.\n");
+        create_test_file(
+            vault,
+            "note/ref.md",
+            "# Ref\n\nSee [[weekly-review]] for info.\n",
+        );
 
         let old_path = vault.join("note/weekly-review.md");
         let result = rename_note(
