@@ -38,7 +38,7 @@ export function ArchivedNoteBanner({ onUnarchive }: ArchivedNoteBannerProps) {
           color: 'var(--muted-foreground)',
           cursor: 'pointer',
         }}
-        title="Unarchive (Cmd+E)"
+        title="Unarchive"
       >
         <ArrowUUpLeft size={12} />
         Unarchive

@@ -38,6 +38,7 @@ function makeActions() {
     onOpenSettings: vi.fn(),
     onDeleteNote: vi.fn(),
     onArchiveNote: vi.fn(),
+    onToggleOrganized: vi.fn(),
     onSetViewMode: vi.fn(),
     onZoomIn: vi.fn(),
     onZoomOut: vi.fn(),
@@ -97,6 +98,14 @@ describe('useAppKeyboard', () => {
     renderHook(() => useAppKeyboard(actions))
     fireKey('d', { metaKey: true })
     expect(actions.onToggleFavorite).toHaveBeenCalledWith('/vault/test.md')
+  })
+
+  it('Cmd+E triggers toggle organized on active note, not archive', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('e', { metaKey: true })
+    expect(actions.onToggleOrganized).toHaveBeenCalledWith('/vault/test.md')
+    expect(actions.onArchiveNote).not.toHaveBeenCalled()
   })
 
   it('Cmd+J triggers open daily note', () => {

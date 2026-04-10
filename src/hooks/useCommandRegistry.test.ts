@@ -16,6 +16,7 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     onDeleteNote: vi.fn(),
     onArchiveNote: vi.fn(),
     onUnarchiveNote: vi.fn(),
+    onToggleOrganized: vi.fn(),
     onCommitPush: vi.fn(),
     onResolveConflicts: vi.fn(),
     onSetViewMode: vi.fn(),
@@ -191,6 +192,13 @@ describe('useCommandRegistry', () => {
     const { result } = renderHook(() => useCommandRegistry(config))
     const cmd = findCommand(result.current, 'customize-inbox-columns')
     expect(cmd!.enabled).toBe(false)
+  })
+
+  it('shows Cmd+E on toggle organized and removes it from archive note', () => {
+    const config = makeConfig()
+    const { result } = renderHook(() => useCommandRegistry(config))
+    expect(findCommand(result.current, 'toggle-organized')?.shortcut).toBe('⌘E')
+    expect(findCommand(result.current, 'archive-note')?.shortcut).toBeUndefined()
   })
 })
 

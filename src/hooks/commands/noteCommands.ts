@@ -45,7 +45,7 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
       execute: () => { if (activeTabPath) onDeleteNote(activeTabPath) },
     },
     {
-      id: 'archive-note', label: isArchived ? 'Unarchive Note' : 'Archive Note', group: 'Note', shortcut: '⌘E',
+      id: 'archive-note', label: isArchived ? 'Unarchive Note' : 'Archive Note', group: 'Note',
       keywords: ['archive'], enabled: hasActiveNote,
       execute: () => { if (activeTabPath) (isArchived ? onUnarchiveNote : onArchiveNote)(activeTabPath) },
     },
@@ -62,7 +62,7 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
       execute: () => { if (activeTabPath) onToggleFavorite?.(activeTabPath) },
     },
     {
-      id: 'toggle-organized', label: isOrganized ? 'Mark as Unorganized' : 'Mark as Organized', group: 'Note',
+      id: 'toggle-organized', label: isOrganized ? 'Mark as Unorganized' : 'Mark as Organized', group: 'Note', shortcut: '⌘E',
       keywords: ['organized', 'inbox', 'triage', 'done'],
       enabled: hasActiveNote && !!onToggleOrganized,
       execute: () => { if (activeTabPath) onToggleOrganized?.(activeTabPath) },

@@ -81,7 +81,7 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
           entry.organized ? "text-green-600" : "text-muted-foreground hover:text-foreground"
         )}
         onClick={onToggleOrganized}
-        title={entry.organized ? 'Mark as unorganized (back to Inbox)' : 'Mark as organized (remove from Inbox)'}
+        title={entry.organized ? 'Mark as unorganized (back to Inbox) (Cmd+E)' : 'Mark as organized (remove from Inbox) (Cmd+E)'}
       >
         <CheckCircle size={16} weight={entry.organized ? 'fill' : 'regular'} />
       </button>
@@ -137,7 +137,7 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
         <button
           className="flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors text-muted-foreground hover:text-foreground"
           onClick={onUnarchive}
-          title="Unarchive (Cmd+E)"
+          title="Unarchive"
         >
           <ArrowUUpLeft size={16} />
         </button>
@@ -145,7 +145,7 @@ function BreadcrumbActions({ entry, showDiffToggle, diffMode, diffLoading, onTog
         <button
           className="flex items-center justify-center border-none bg-transparent p-0 cursor-pointer transition-colors text-muted-foreground hover:text-foreground"
           onClick={onArchive}
-          title="Archive (Cmd+E)"
+          title="Archive"
         >
           <Archive size={16} />
         </button>

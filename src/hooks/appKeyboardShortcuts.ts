@@ -22,6 +22,7 @@ export interface KeyboardActions {
   onToggleRawEditor?: () => void
   onToggleInspector?: () => void
   onToggleFavorite?: (path: string) => void
+  onToggleOrganized?: (path: string) => void
   onOpenInNewWindow?: () => void
   activeTabPathRef: MutableRefObject<string | null>
 }
@@ -77,7 +78,7 @@ export function createCommandKeyMap(actions: KeyboardActions): ShortcutMap {
     s: actions.onSave,
     ',': actions.onOpenSettings,
     d: withActiveTab(activeTabPathRef, (path) => actions.onToggleFavorite?.(path)),
-    e: withActiveTab(activeTabPathRef, actions.onArchiveNote),
+    e: withActiveTab(activeTabPathRef, (path) => actions.onToggleOrganized?.(path)),
     Backspace: withActiveTab(activeTabPathRef, actions.onDeleteNote),
     Delete: withActiveTab(activeTabPathRef, actions.onDeleteNote),
     '[': () => actions.onGoBack?.(),

@@ -35,6 +35,7 @@ const GO_ARCHIVED: &str = "go-archived";
 const GO_CHANGES: &str = "go-changes";
 const GO_INBOX: &str = "go-inbox";
 
+const NOTE_TOGGLE_ORGANIZED: &str = "note-toggle-organized";
 const NOTE_ARCHIVE: &str = "note-archive";
 const NOTE_DELETE: &str = "note-delete";
 const NOTE_OPEN_IN_NEW_WINDOW: &str = "note-open-in-new-window";
@@ -77,6 +78,7 @@ const CUSTOM_IDS: &[&str] = &[
     GO_ALL_NOTES,
     GO_ARCHIVED,
     GO_CHANGES,
+    NOTE_TOGGLE_ORGANIZED,
     NOTE_ARCHIVE,
     NOTE_DELETE,
     NOTE_OPEN_IN_NEW_WINDOW,
@@ -96,6 +98,7 @@ const CUSTOM_IDS: &[&str] = &[
 /// IDs of menu items that should be disabled when no note tab is active.
 const NOTE_DEPENDENT_IDS: &[&str] = &[
     FILE_SAVE,
+    NOTE_TOGGLE_ORGANIZED,
     NOTE_ARCHIVE,
     NOTE_DELETE,
     EDIT_TOGGLE_RAW_EDITOR,
@@ -273,9 +276,12 @@ fn build_go_menu(app: &App) -> MenuResult {
 }
 
 fn build_note_menu(app: &App) -> MenuResult {
+    let toggle_organized = MenuItemBuilder::new("Toggle Organized")
+        .id(NOTE_TOGGLE_ORGANIZED)
+        .accelerator("CmdOrCtrl+E")
+        .build(app)?;
     let archive_note = MenuItemBuilder::new("Archive Note")
         .id(NOTE_ARCHIVE)
-        .accelerator("CmdOrCtrl+E")
         .build(app)?;
     let delete_note = MenuItemBuilder::new("Delete Note")
         .id(NOTE_DELETE)
@@ -302,6 +308,7 @@ fn build_note_menu(app: &App) -> MenuResult {
         .build(app)?;
 
     Ok(SubmenuBuilder::new(app, "Note")
+        .item(&toggle_organized)
         .item(&archive_note)
         .item(&delete_note)
         .item(&restore_deleted_note)

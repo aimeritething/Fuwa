@@ -16,6 +16,7 @@ export interface MenuEventHandlers {
   onZoomIn: () => void
   onZoomOut: () => void
   onZoomReset: () => void
+  onToggleOrganized?: (path: string) => void
   onArchiveNote: (path: string) => void
   onDeleteNote: (path: string) => void
   onSearch: () => void
@@ -106,7 +107,8 @@ const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
 
 function dispatchActiveTabEvent(id: string, h: MenuEventHandlers): boolean {
   const path = h.activeTabPathRef.current
-  if (!path) return id === 'note-archive' || id === 'note-delete'
+  if (!path) return id === 'note-toggle-organized' || id === 'note-archive' || id === 'note-delete'
+  if (id === 'note-toggle-organized') { h.onToggleOrganized?.(path); return true }
   if (id === 'note-archive') { h.onArchiveNote(path); return true }
   if (id === 'note-delete') { h.onDeleteNote(path); return true }
   return false

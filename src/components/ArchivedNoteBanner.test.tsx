@@ -9,12 +9,12 @@ describe('ArchivedNoteBanner', () => {
     expect(screen.getByText('Archived')).toBeTruthy()
   })
 
-  it('renders unarchive button with keyboard hint', () => {
+  it('renders unarchive button without the stale archive shortcut hint', () => {
     render(<ArchivedNoteBanner onUnarchive={vi.fn()} />)
     const btn = screen.getByTestId('unarchive-btn')
     expect(btn).toBeTruthy()
     expect(btn.textContent).toContain('Unarchive')
-    expect(btn.title).toBe('Unarchive (Cmd+E)')
+    expect(btn.title).toBe('Unarchive')
   })
 
   it('calls onUnarchive when button is clicked', () => {

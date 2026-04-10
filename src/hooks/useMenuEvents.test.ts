@@ -15,6 +15,7 @@ function makeHandlers(): MenuEventHandlers {
     onZoomIn: vi.fn(),
     onZoomOut: vi.fn(),
     onZoomReset: vi.fn(),
+    onToggleOrganized: vi.fn(),
     onArchiveNote: vi.fn(),
     onDeleteNote: vi.fn(),
     onSearch: vi.fn(),
@@ -141,6 +142,19 @@ describe('dispatchMenuEvent', () => {
     h.activeTabPathRef = { current: null }
     dispatchMenuEvent('note-archive', h)
     expect(h.onArchiveNote).not.toHaveBeenCalled()
+  })
+
+  it('note-toggle-organized triggers organized toggle on active tab', () => {
+    const h = makeHandlers()
+    dispatchMenuEvent('note-toggle-organized', h)
+    expect(h.onToggleOrganized).toHaveBeenCalledWith('/vault/test.md')
+  })
+
+  it('note-toggle-organized does nothing when no active tab', () => {
+    const h = makeHandlers()
+    h.activeTabPathRef = { current: null }
+    dispatchMenuEvent('note-toggle-organized', h)
+    expect(h.onToggleOrganized).not.toHaveBeenCalled()
   })
 
   it('note-delete triggers delete on active tab', () => {

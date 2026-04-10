@@ -115,6 +115,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onToggleRawEditor: config.onToggleRawEditor,
     onToggleInspector: config.onToggleInspector,
     onToggleFavorite: config.onToggleFavorite,
+    onToggleOrganized: config.onToggleOrganized,
     onOpenInNewWindow: config.onOpenInNewWindow,
     activeTabPathRef: config.activeTabPathRef,
   })
@@ -138,6 +139,7 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onToggleRawEditor: config.onToggleRawEditor,
     onToggleDiff: config.onToggleDiff,
     onToggleAIChat: config.onToggleAIChat,
+    onToggleOrganized: config.onToggleOrganized,
     onGoBack: config.onGoBack,
     onGoForward: config.onGoForward,
     onCheckForUpdates: config.onCheckForUpdates,
