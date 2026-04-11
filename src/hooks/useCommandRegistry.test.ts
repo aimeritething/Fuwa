@@ -219,6 +219,24 @@ describe('useCommandRegistry', () => {
     cmd!.execute()
     expect(onOpenFeedback).toHaveBeenCalledOnce()
   })
+
+  it('keeps a single canonical New Note command when generic note types are present', () => {
+    const config = makeConfig({
+      entries: [
+        { path: '/type-note.md', title: 'Note', isA: 'Type' },
+        { path: '/lowercase-note.md', title: 'lowercase-note', isA: 'note' },
+      ],
+    })
+    const { result } = renderHook(() => useCommandRegistry(config))
+
+    const newNoteCommands = result.current.filter(command => command.label.toLowerCase() === 'new note')
+
+    expect(newNoteCommands).toHaveLength(1)
+    expect(newNoteCommands[0]).toMatchObject({
+      id: 'create-note',
+      shortcut: '⌘N',
+    })
+  })
 })
 
 describe('pluralizeType', () => {
@@ -274,6 +292,15 @@ describe('extractVaultTypes', () => {
     expect(types).toHaveLength(2)
   })
 
+  it('deduplicates default types case-insensitively and keeps canonical casing', () => {
+    const entries = [
+      { path: '/note-type.md', title: 'note', isA: 'Type' },
+      { path: '/note-instance.md', title: 'Example', isA: 'Note' },
+      { path: '/project-instance.md', title: 'Project Plan', isA: 'project' },
+    ] as never[]
+
+    expect(extractVaultTypes(entries)).toEqual(['Note', 'Project'])
+  })
 })
 
 describe('groupSortKey', () => {
@@ -395,5 +422,17 @@ describe('buildTypeCommands', () => {
     expect(commands[1].id).toBe('list-project')
     expect(commands[2].id).toBe('new-event')
     expect(commands[3].id).toBe('list-event')
+  })
+
+  it('omits the generic Note create command while keeping navigation for notes', () => {
+    const onCreateNoteOfType = vi.fn()
+    const onSelect = vi.fn()
+    const commands = buildTypeCommands(['Note', 'Project'], onCreateNoteOfType, onSelect)
+
+    expect(commands.map(command => command.id)).toEqual([
+      'list-note',
+      'new-project',
+      'list-project',
+    ])
   })
 })

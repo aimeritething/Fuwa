@@ -19,7 +19,7 @@ const makeCommand = (overrides: Partial<CommandAction> = {}): CommandAction => (
 
 const commands: CommandAction[] = [
   makeCommand({ id: 'search-notes', label: 'Search Notes', group: 'Navigation', shortcut: '⌘P', keywords: ['find'] }),
-  makeCommand({ id: 'create-note', label: 'Create New Note', group: 'Note', shortcut: '⌘N' }),
+  makeCommand({ id: 'create-note', label: 'New Note', group: 'Note', shortcut: '⌘N' }),
   makeCommand({ id: 'commit-push', label: 'Commit & Push', group: 'Git', keywords: ['git', 'sync'] }),
   makeCommand({ id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,' }),
   makeCommand({ id: 'disabled-cmd', label: 'Disabled Command', group: 'Note', enabled: false }),
@@ -47,7 +47,7 @@ describe('CommandPalette', () => {
   it('shows all enabled commands grouped by category', () => {
     render(<CommandPalette open={true} commands={commands} onClose={onClose} />)
     expect(screen.getByText('Search Notes')).toBeInTheDocument()
-    expect(screen.getByText('Create New Note')).toBeInTheDocument()
+    expect(screen.getByText('New Note')).toBeInTheDocument()
     expect(screen.getByText('Commit & Push')).toBeInTheDocument()
     expect(screen.getByText('Open Settings')).toBeInTheDocument()
     // Disabled command should not appear
@@ -115,7 +115,7 @@ describe('CommandPalette', () => {
     fireEvent.keyDown(window, { key: 'ArrowDown' })
     fireEvent.keyDown(window, { key: 'Enter' })
 
-    // Second enabled command (Create New Note) should execute
+    // Second enabled command (New Note) should execute
     expect(commands[1].execute).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
   })
@@ -168,7 +168,7 @@ describe('CommandPalette', () => {
 
   describe('relevance ranking', () => {
     const relevanceCommands: CommandAction[] = [
-      makeCommand({ id: 'create-note', label: 'Create New Note', group: 'Note' }),
+      makeCommand({ id: 'create-note', label: 'New Note', group: 'Note' }),
       makeCommand({ id: 'toggle-raw', label: 'Toggle Raw Editor', group: 'View' }),
       makeCommand({ id: 'search-notes', label: 'Search Notes', group: 'Navigation' }),
     ]
@@ -182,24 +182,20 @@ describe('CommandPalette', () => {
       ).map(el => el.textContent)
     }
 
-    it('ranks "Toggle Raw Editor" before "Create New Note" for query "raw"', () => {
+    it('shows only the relevant raw command for query "raw"', () => {
       render(<CommandPalette open={true} commands={relevanceCommands} onClose={onClose} />)
       fireEvent.change(screen.getByPlaceholderText('Type a command...'), { target: { value: 'raw' } })
 
       const labels = getVisibleLabels()
-      const rawIdx = labels.indexOf('Toggle Raw Editor')
-      const createIdx = labels.indexOf('Create New Note')
-      expect(rawIdx).toBeGreaterThanOrEqual(0)
-      expect(createIdx).toBeGreaterThanOrEqual(0)
-      expect(rawIdx).toBeLessThan(createIdx)
+      expect(labels).toEqual(['Toggle Raw Editor'])
     })
 
-    it('ranks "Create New Note" first for query "new note"', () => {
+    it('ranks "New Note" first for query "new note"', () => {
       render(<CommandPalette open={true} commands={relevanceCommands} onClose={onClose} />)
       fireEvent.change(screen.getByPlaceholderText('Type a command...'), { target: { value: 'new note' } })
 
       const labels = getVisibleLabels()
-      expect(labels[0]).toBe('Create New Note')
+      expect(labels[0]).toBe('New Note')
     })
 
     it('preserves default section order with empty query', () => {

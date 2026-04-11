@@ -35,7 +35,7 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
   } = config
 
   return [
-    { id: 'create-note', label: 'Create New Note', group: 'Note', shortcut: '⌘N', keywords: ['new', 'add'], enabled: true, execute: onCreateNote },
+    { id: 'create-note', label: 'New Note', group: 'Note', shortcut: '⌘N', keywords: ['new', 'create', 'add'], enabled: true, execute: onCreateNote },
     { id: 'create-type', label: 'New Type', group: 'Note', keywords: ['new', 'create', 'type', 'template'], enabled: !!onCreateType, execute: () => onCreateType?.() },
     { id: 'open-daily-note', label: "Open Today's Note", group: 'Note', shortcut: '⌘J', keywords: ['daily', 'journal', 'today'], enabled: true, execute: onOpenDailyNote },
     { id: 'save-note', label: 'Save Note', group: 'Note', shortcut: '⌘S', keywords: ['write'], enabled: hasActiveNote, execute: onSave },

@@ -7,6 +7,15 @@ const PLURAL_OVERRIDES: Record<string, string> = {
 }
 
 const DEFAULT_TYPES = ['Event', 'Person', 'Project', 'Note']
+const DEFAULT_TYPE_CANONICAL_CASE = new Map(
+  DEFAULT_TYPES.map(type => [type.toLowerCase(), type] as const),
+)
+
+function canonicalizeTypeName(type: string): string | null {
+  const trimmedType = type.trim()
+  if (!trimmedType) return null
+  return DEFAULT_TYPE_CANONICAL_CASE.get(trimmedType.toLowerCase()) ?? trimmedType
+}
 
 export function pluralizeType(type: string): string {
   if (PLURAL_OVERRIDES[type]) return PLURAL_OVERRIDES[type]
@@ -16,16 +25,26 @@ export function pluralizeType(type: string): string {
 }
 
 export function extractVaultTypes(entries: VaultEntry[]): string[] {
-  const typeSet = new Set<string>()
+  const typeMap = new Map<string, string>()
   for (const e of entries) {
-    if (e.isA === 'Type' && e.title) {
-      typeSet.add(e.title)
-    } else if (e.isA && e.isA !== 'Type') {
-      typeSet.add(e.isA)
+    const rawType =
+      e.isA === 'Type'
+        ? e.title
+        : e.isA && e.isA !== 'Type'
+          ? e.isA
+          : null
+    if (!rawType) continue
+
+    const canonicalType = canonicalizeTypeName(rawType)
+    if (!canonicalType) continue
+
+    const typeKey = canonicalType.toLowerCase()
+    if (!typeMap.has(typeKey)) {
+      typeMap.set(typeKey, canonicalType)
     }
   }
-  if (typeSet.size === 0) return DEFAULT_TYPES
-  return Array.from(typeSet).sort()
+  if (typeMap.size === 0) return DEFAULT_TYPES
+  return Array.from(typeMap.values()).sort()
 }
 
 export function buildTypeCommands(
@@ -34,19 +53,27 @@ export function buildTypeCommands(
   onSelect: (sel: SidebarSelection) => void,
 ): CommandAction[] {
   return types.flatMap((type) => {
-    const slug = type.toLowerCase().replace(/\s+/g, '-')
-    const plural = pluralizeType(type)
-    return [
-      {
-        id: `new-${slug}`, label: `New ${type}`, group: 'Note' as const,
-        keywords: ['new', 'create', type.toLowerCase()],
-        enabled: true, execute: () => onCreateNoteOfType(type),
-      },
-      {
-        id: `list-${slug}`, label: `List ${plural}`, group: 'Navigation' as const,
-        keywords: ['list', 'show', 'filter', type.toLowerCase(), plural.toLowerCase()],
-        enabled: true, execute: () => onSelect({ kind: 'sectionGroup', type }),
-      },
-    ]
+    const canonicalType = canonicalizeTypeName(type)
+    if (!canonicalType) return []
+
+    const slug = canonicalType.toLowerCase().replace(/\s+/g, '-')
+    const plural = pluralizeType(canonicalType)
+    const commands: CommandAction[] = []
+
+    if (canonicalType.toLowerCase() !== 'note') {
+      commands.push({
+        id: `new-${slug}`, label: `New ${canonicalType}`, group: 'Note' as const,
+        keywords: ['new', 'create', canonicalType.toLowerCase()],
+        enabled: true, execute: () => onCreateNoteOfType(canonicalType),
+      })
+    }
+
+    commands.push({
+      id: `list-${slug}`, label: `List ${plural}`, group: 'Navigation' as const,
+      keywords: ['list', 'show', 'filter', canonicalType.toLowerCase(), plural.toLowerCase()],
+      enabled: true, execute: () => onSelect({ kind: 'sectionGroup', type: canonicalType }),
+    })
+
+    return commands
   })
 }
