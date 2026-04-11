@@ -1168,9 +1168,9 @@ describe('Sidebar', () => {
       const navItem = label.closest('[class*="cursor-pointer"]') as HTMLElement
       const countChip = navItem.querySelector('span:last-child') as HTMLElement
       expect(countChip).toBeTruthy()
-      expect(viewItem.className).toContain('[&>button>span:last-child]:transition-opacity')
-      expect(viewItem.className).toContain('group-hover:[&>button>span:last-child]:opacity-0')
-      expect(viewItem.className).toContain('group-focus-within:[&>button>span:last-child]:opacity-0')
+      expect(countChip.className).toContain('transition-opacity')
+      expect(countChip.className).toContain('group-hover:opacity-0')
+      expect(countChip.className).toContain('group-focus-within:opacity-0')
 
       const actionButton = within(viewItem).getByTitle('Edit view')
       const actionContainer = actionButton.parentElement as HTMLElement

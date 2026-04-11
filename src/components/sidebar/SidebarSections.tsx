@@ -87,12 +87,13 @@ function ViewItem({
   const count = useMemo(() => evaluateView(view.definition, entries).length, [view.definition, entries])
 
   return (
-    <div className="group relative [&>button>span:last-child]:transition-opacity group-hover:[&>button>span:last-child]:opacity-0 group-focus-within:[&>button>span:last-child]:opacity-0">
+    <div className="group relative">
       <NavItem
         icon={Funnel}
         emoji={view.definition.icon}
         label={view.definition.name}
         count={count}
+        badgeClassName="transition-opacity group-hover:opacity-0 group-focus-within:opacity-0"
         isActive={isActive}
         onClick={onSelect}
       />
