@@ -529,9 +529,14 @@ export const BreadcrumbBar = memo(function BreadcrumbBar({
         boxSizing: 'border-box',
       }}
     >
-      <div className="breadcrumb-bar__title flex-1 min-w-0">
+      <div className="breadcrumb-bar__title min-w-0">
         <BreadcrumbTitle entry={entry} onRenameFilename={onRenameFilename} />
       </div>
+      <div
+        aria-hidden="true"
+        data-tauri-drag-region
+        className="breadcrumb-bar__drag-spacer min-w-0 flex-1"
+      />
       <BreadcrumbActions entry={entry} {...actionProps} />
     </div>
   )

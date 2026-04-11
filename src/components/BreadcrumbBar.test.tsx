@@ -55,6 +55,13 @@ describe('BreadcrumbBar — drag region', () => {
     const bar = container.firstElementChild as HTMLElement
     expect(bar.dataset.tauriDragRegion).toBeDefined()
   })
+
+  it('marks the center spacer as a drag region', () => {
+    const { container } = render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
+    const spacer = container.querySelector('.breadcrumb-bar__drag-spacer')
+    expect(spacer).toHaveAttribute('data-tauri-drag-region')
+    expect(spacer).toHaveAttribute('aria-hidden', 'true')
+  })
 })
 
 describe('BreadcrumbBar — delete', () => {
