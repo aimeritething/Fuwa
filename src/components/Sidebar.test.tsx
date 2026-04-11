@@ -946,6 +946,14 @@ describe('Sidebar', () => {
       expect(screen.getByText('My Favorite Note')).toBeInTheDocument()
     })
 
+    it('preserves plain square brackets in favorite titles', () => {
+      const bracketedFavorite = { ...favEntry, title: '[26Q2] Tolaria MVP' }
+
+      render(<Sidebar entries={[...mockEntries, bracketedFavorite]} selection={defaultSelection} onSelect={() => {}} />)
+
+      expect(screen.getByText('[26Q2] Tolaria MVP')).toBeInTheDocument()
+    })
+
     it('hides FAVORITES section when no favorites', () => {
       render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} />)
       expect(screen.queryByText('FAVORITES')).not.toBeInTheDocument()

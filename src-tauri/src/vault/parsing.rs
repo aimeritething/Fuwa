@@ -249,7 +249,9 @@ fn extract_wikilink_display(inner: &str) -> &str {
     inner.find('|').map_or(inner, |idx| &inner[idx + 1..])
 }
 
-/// Process a markdown link `[text](url)`, extracting only the link text.
+/// Process bracketed text.
+/// Real markdown links `[text](url)` are unwrapped to `text`.
+/// Plain bracketed text `[text]` is preserved verbatim.
 fn process_markdown_link(
     chars: &mut std::iter::Peekable<impl Iterator<Item = char>>,
     result: &mut String,
@@ -258,8 +260,13 @@ fn process_markdown_link(
     if chars.peek() == Some(&'(') {
         chars.next();
         skip_until(chars, ')');
+        result.push_str(&inner);
+        return;
     }
+
+    result.push('[');
     result.push_str(&inner);
+    result.push(']');
 }
 
 /// Collect chars inside a wikilink until `]]`, consuming both closing brackets.
@@ -361,6 +368,15 @@ mod tests {
     fn test_extract_h1_title_with_empty_lines_before() {
         let content = "---\ntype: Note\n---\n\n# Spaced Title\n\nBody.";
         assert_eq!(extract_h1_title(content), Some("Spaced Title".to_string()));
+    }
+
+    #[test]
+    fn test_extract_h1_title_preserves_plain_square_brackets() {
+        let content = "# [26Q2] Tolaria MVP\n\nBody.";
+        assert_eq!(
+            extract_h1_title(content),
+            Some("[26Q2] Tolaria MVP".to_string())
+        );
     }
 
     #[test]
@@ -726,7 +742,7 @@ mod tests {
 
     #[test]
     fn test_strip_markdown_chars_bracket_without_url() {
-        assert_eq!(strip_markdown_chars("[just brackets]"), "just brackets");
+        assert_eq!(strip_markdown_chars("[just brackets]"), "[just brackets]");
     }
 
     #[test]

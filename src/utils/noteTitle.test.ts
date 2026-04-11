@@ -24,6 +24,11 @@ describe('extractH1TitleFromContent', () => {
     expect(extractH1TitleFromContent(content)).toBe('Bold Link and code')
   })
 
+  it('preserves plain square brackets in the H1', () => {
+    const content = '# [26Q2] Tolaria MVP'
+    expect(extractH1TitleFromContent(content)).toBe('[26Q2] Tolaria MVP')
+  })
+
   it('returns null when the first non-empty line is not an H1', () => {
     expect(extractH1TitleFromContent('Body first\n# Not the title')).toBeNull()
   })
@@ -80,6 +85,14 @@ describe('deriveDisplayTitleState', () => {
     expect(deriveDisplayTitleState({ content: 'Body only', filename: 'renamed-note.md' })).toEqual({
       title: 'Renamed Note',
       hasH1: false,
+    })
+  })
+
+  it('keeps plain square brackets when deriving the display title from H1', () => {
+    const content = '# [26Q2] Tolaria MVP\n\nBody'
+    expect(deriveDisplayTitleState({ content, filename: 'tolaria-mvp.md' })).toEqual({
+      title: '[26Q2] Tolaria MVP',
+      hasH1: true,
     })
   })
 })
