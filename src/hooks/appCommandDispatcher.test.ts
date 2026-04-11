@@ -84,6 +84,12 @@ describe('appCommandDispatcher', () => {
       supportsNativeMenuCommand: true,
       requiresManualNativeAcceleratorQa: true,
     })
+    expect(getDeterministicShortcutQaDefinition(APP_COMMAND_IDS.viewToggleProperties)).toMatchObject({
+      preferredMode: 'renderer-shortcut-event',
+      supportsRendererShortcutEvent: true,
+      supportsNativeMenuCommand: true,
+      requiresManualNativeAcceleratorQa: false,
+    })
     expect(getDeterministicShortcutQaDefinition(APP_COMMAND_IDS.noteToggleFavorite)).toMatchObject({
       preferredMode: 'renderer-shortcut-event',
       supportsRendererShortcutEvent: true,

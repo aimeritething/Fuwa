@@ -45,6 +45,18 @@ test.describe('keyboard command routing', () => {
     await expect(page.getByTitle('Properties (⌘⇧I)')).toBeVisible({ timeout: 5_000 })
   })
 
+  test('desktop keyboard shortcut toggles the properties panel through the renderer shortcut path @smoke', async ({ page }) => {
+    await openFixtureVaultDesktopHarness(page, tempVaultDir)
+    await page.getByText('Alpha Project', { exact: true }).first().click()
+    await page.locator('.bn-editor').click()
+
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+I' : 'Control+Shift+I')
+    await expect(page.getByTitle('Close Properties (⌘⇧I)')).toBeVisible({ timeout: 5_000 })
+
+    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+I' : 'Control+Shift+I')
+    await expect(page.getByTitle('Properties (⌘⇧I)')).toBeVisible({ timeout: 5_000 })
+  })
+
   test('desktop menu-command bridge toggles organized state through the shared command path @smoke', async ({ page }) => {
     await openFixtureVaultDesktopHarness(page, tempVaultDir)
     await page.getByText('Alpha Project', { exact: true }).first().click()

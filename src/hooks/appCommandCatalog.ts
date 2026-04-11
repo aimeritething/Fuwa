@@ -128,6 +128,7 @@ export interface AppCommandDefinition {
   route: AppCommandRoute
   menuOwned: boolean
   shortcut?: AppCommandShortcutDefinition
+  preferredShortcutQaMode?: AppCommandDeterministicQaMode
 }
 
 export const APP_COMMAND_DEFINITIONS: Record<AppCommandId, AppCommandDefinition> = {
@@ -196,6 +197,7 @@ export const APP_COMMAND_DEFINITIONS: Record<AppCommandId, AppCommandDefinition>
   [APP_COMMAND_IDS.viewToggleProperties]: {
     route: { kind: 'handler', handler: 'onToggleInspector' },
     menuOwned: true,
+    preferredShortcutQaMode: 'renderer-shortcut-event',
     shortcut: { combo: 'command-or-ctrl-shift', key: 'i', code: 'KeyI', display: '⌘⇧I' },
   },
   [APP_COMMAND_IDS.viewToggleAiChat]: {
@@ -338,7 +340,6 @@ const MANUAL_NATIVE_ACCELERATOR_QA_COMMAND_SET = new Set<AppCommandId>([
   APP_COMMAND_IDS.fileQuickOpen,
   APP_COMMAND_IDS.fileSave,
   APP_COMMAND_IDS.editFindInVault,
-  APP_COMMAND_IDS.viewToggleProperties,
   APP_COMMAND_IDS.viewToggleAiChat,
   APP_COMMAND_IDS.viewCommandPalette,
   APP_COMMAND_IDS.noteToggleOrganized,
@@ -393,7 +394,9 @@ export function getDeterministicShortcutQaDefinition(
   if (!definition.shortcut) return null
 
   return {
-    preferredMode: definition.menuOwned ? 'native-menu-command' : 'renderer-shortcut-event',
+    preferredMode:
+      definition.preferredShortcutQaMode
+      ?? (definition.menuOwned ? 'native-menu-command' : 'renderer-shortcut-event'),
     supportsRendererShortcutEvent: true,
     supportsNativeMenuCommand: definition.menuOwned,
     requiresManualNativeAcceleratorQa: MANUAL_NATIVE_ACCELERATOR_QA_COMMAND_SET.has(id),

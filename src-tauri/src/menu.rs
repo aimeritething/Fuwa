@@ -212,9 +212,10 @@ fn build_view_menu(app: &App) -> MenuResult {
         .id(VIEW_ALL)
         .accelerator("CmdOrCtrl+3")
         .build(app)?;
+    // Keep Cmd+Shift+I on the renderer path. The menu item stays available,
+    // but the native accelerator has proven unreliable for this command.
     let toggle_properties = MenuItemBuilder::new("Toggle Properties Panel")
         .id(VIEW_TOGGLE_PROPERTIES)
-        .accelerator("CmdOrCtrl+Shift+I")
         .build(app)?;
     let command_palette = MenuItemBuilder::new("Command Palette")
         .id(VIEW_COMMAND_PALETTE)
