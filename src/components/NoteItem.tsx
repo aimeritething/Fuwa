@@ -163,7 +163,7 @@ function StandardNoteContent({
     <>
       {/* eslint-disable-next-line react-hooks/static-components -- icon lookup from static map, no internal state */}
       <TypeIcon width={14} height={14} className="absolute right-3 top-2.5" style={{ color: typeColor }} data-testid="type-icon" />
-      <div className="space-y-2 pr-5" data-testid="note-content-stack">
+      <div className="space-y-2" data-testid="note-content-stack">
         <NoteTitleRow
           entry={entry}
           isBinary={isBinary}
@@ -206,7 +206,7 @@ function NoteTitleRow({
   noteStatus: NoteStatus
 }) {
   return (
-    <div className={cn('truncate text-[13px]', isBinary ? 'text-muted-foreground' : 'text-foreground', isSelected && !isBinary ? 'font-semibold' : 'font-medium')}>
+    <div className={cn('truncate pr-5 text-[13px]', isBinary ? 'text-muted-foreground' : 'text-foreground', isSelected && !isBinary ? 'font-semibold' : 'font-medium')}>
       {noteStatus !== 'clean' && !isBinary && <StatusDot noteStatus={noteStatus} />}
       <NoteTitleIcon icon={entry.icon} size={15} className="mr-1" testId="note-title-icon" />
       {entry.title}
@@ -222,9 +222,9 @@ function NoteDateRow({ entry }: { entry: VaultEntry }) {
   if (!modifiedLabel && !createdLabel) return null
 
   return (
-    <div className="flex items-center justify-between gap-3 text-[10px] text-muted-foreground" data-testid="note-date-row">
+    <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-[10px] text-muted-foreground" data-testid="note-date-row">
       <span>{modifiedLabel}</span>
-      {createdLabel && <span className="ml-auto">{createdLabel}</span>}
+      {createdLabel && <span className="justify-self-end text-right">{createdLabel}</span>}
     </div>
   )
 }

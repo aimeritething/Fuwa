@@ -123,7 +123,7 @@ describe('NoteItem', () => {
     render(<NoteItem entry={entry} isSelected={false} typeEntryMap={{}} onClickNote={vi.fn()} />)
 
     const dateRow = screen.getByTestId('note-date-row')
-    expect(dateRow.className).toContain('justify-between')
+    expect(dateRow.className).toContain('grid')
     expect(dateRow).toHaveTextContent('2d ago')
     expect(dateRow).toHaveTextContent('Created 5d ago')
   })
