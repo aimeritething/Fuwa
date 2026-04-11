@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 
@@ -47,6 +47,9 @@ export function CommitDialog({ open, modifiedCount, suggestedMessage, onCommit, 
               {modifiedCount} file{modifiedCount !== 1 ? 's' : ''} changed
             </Badge>
           </div>
+          <DialogDescription className="sr-only">
+            Review changed files and enter a commit message before committing and pushing.
+          </DialogDescription>
         </DialogHeader>
         <textarea
           ref={inputRef}

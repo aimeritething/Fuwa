@@ -8,6 +8,9 @@ patchedDependencies:
   '@blocknote/core@0.46.2':
     hash: 9a6d8a53058a8b6127326d40e8188f6b132b9b9e364b87e88e1c9aa3a1867aec
     path: patches/@blocknote__core@0.46.2.patch
+  prosemirror-tables@1.8.5:
+    hash: cd456f0d1d88a3ce11bcf53122a0e0575c0d82810eddd887adae21d6ec570a8b
+    path: patches/prosemirror-tables@1.8.5.patch
 
 importers:
 
@@ -4491,7 +4494,7 @@ snapshots:
       prosemirror-highlight: 0.13.1(@shikijs/types@3.22.0)(@types/hast@3.0.4)(highlight.js@11.11.1)(lowlight@3.3.0)(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-transform@1.11.0)(prosemirror-view@1.41.6)
       prosemirror-model: 1.25.4
       prosemirror-state: 1.4.4
-      prosemirror-tables: 1.8.5
+      prosemirror-tables: 1.8.5(patch_hash=cd456f0d1d88a3ce11bcf53122a0e0575c0d82810eddd887adae21d6ec570a8b)
       prosemirror-transform: 1.11.0
       prosemirror-view: 1.41.6
       rehype-format: 5.0.1
@@ -6245,7 +6248,7 @@ snapshots:
       prosemirror-schema-basic: 1.2.4
       prosemirror-schema-list: 1.5.1
       prosemirror-state: 1.4.4
-      prosemirror-tables: 1.8.5
+      prosemirror-tables: 1.8.5(patch_hash=cd456f0d1d88a3ce11bcf53122a0e0575c0d82810eddd887adae21d6ec570a8b)
       prosemirror-trailing-node: 3.0.0(prosemirror-model@1.25.4)(prosemirror-state@1.4.4)(prosemirror-view@1.41.6)
       prosemirror-transform: 1.11.0
       prosemirror-view: 1.41.6
@@ -8099,7 +8102,7 @@ snapshots:
       prosemirror-transform: 1.11.0
       prosemirror-view: 1.41.6
 
-  prosemirror-tables@1.8.5:
+  prosemirror-tables@1.8.5(patch_hash=cd456f0d1d88a3ce11bcf53122a0e0575c0d82810eddd887adae21d6ec570a8b):
     dependencies:
       prosemirror-keymap: 1.2.3
       prosemirror-model: 1.25.4

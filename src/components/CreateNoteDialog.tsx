@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -52,6 +52,9 @@ export function CreateNoteDialog({ open, onClose, onCreate, defaultType, customT
       <DialogContent showCloseButton={false} className="sm:max-w-[420px]">
         <DialogHeader>
           <DialogTitle>Create New Note</DialogTitle>
+          <DialogDescription className="sr-only">
+            Enter a title and choose a type for the new note.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">

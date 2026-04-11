@@ -6,3 +6,4 @@ ignoredBuiltDependencies:
 
 patchedDependencies:
   '@blocknote/core@0.46.2': patches/@blocknote__core@0.46.2.patch
+  prosemirror-tables@1.8.5: patches/prosemirror-tables@1.8.5.patch
