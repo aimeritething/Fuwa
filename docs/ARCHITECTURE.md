@@ -727,12 +727,13 @@ Data flows unidirectionally: `App` passes data and callbacks as props to child c
 
 Selection-dependent note actions are wired through both the command palette and the native Note menu. For example, a deleted file opened from Changes view becomes a read-only diff preview, and that state enables the "Restore Deleted Note" menu/command while normal note mutation actions stay disabled.
 
-Shortcut ownership is explicit:
+Shortcut routing is explicit:
 
-- `appCommandCatalog.ts` is the shared shortcut manifest for command IDs, modifier rules, and ownership
-- Renderer-owned shortcuts flow through `useAppKeyboard` into `appCommandDispatcher.ts`
-- Native-owned shortcuts flow through `menu.rs` into `useMenuEvents`, then into `appCommandDispatcher.ts`
-- Deterministic QA uses `trigger_menu_command` in Tauri and `window.__laputaTest.triggerMenuCommand()` in browser runs to exercise the native-menu command path without flaky macOS key synthesis
+- `appCommandCatalog.ts` is the shared shortcut manifest for command IDs and modifier rules
+- `useAppKeyboard` is the primary execution path for real shortcut keypresses, including Tauri runs
+- `menu.rs` and `useMenuEvents` emit the same command IDs for native menu clicks and accelerators
+- `appCommandDispatcher.ts` suppresses the paired native-menu/renderer echo from a single shortcut so the command runs once
+- Deterministic QA uses both real key events in a Tauri-like environment and `trigger_menu_command` to prove the keyboard path and the native menu path without relying on flaky macOS key synthesis
 
 ## Auto-Release & In-App Updates
 

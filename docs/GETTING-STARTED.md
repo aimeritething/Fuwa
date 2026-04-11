@@ -97,7 +97,7 @@ laputa-app/
 │   │   ├── useCommandRegistry.ts # Command palette registry
 │   │   ├── useAppCommands.ts     # App-level commands
 │   │   ├── useAppKeyboard.ts     # Keyboard shortcuts
-│   │   ├── appCommandCatalog.ts  # Shortcut ownership + command metadata
+│   │   ├── appCommandCatalog.ts  # Shortcut combos + command metadata
 │   │   ├── appCommandDispatcher.ts # Shared shortcut/menu command IDs + dispatch
 │   │   ├── useSettings.ts        # App settings
 │   │   ├── useOnboarding.ts      # First-launch flow
@@ -282,11 +282,11 @@ type SidebarSelection =
 
 ### Command Registry
 
-`useCommandRegistry` + `useAppCommands` build a centralized command registry. Commands are registered with labels, shortcuts, and handlers. The `CommandPalette` (Cmd+K) fuzzy-searches this registry. Shortcut ownership now lives in `appCommandCatalog.ts`: renderer shortcuts (`useAppKeyboard`) resolve commands from that catalog, native menu events (`useMenuEvents`) emit the same command IDs, and `appCommandDispatcher.ts` owns execution rather than duplicate shortcut facts.
+`useCommandRegistry` + `useAppCommands` build a centralized command registry. Commands are registered with labels, shortcuts, and handlers. The `CommandPalette` (Cmd+K) fuzzy-searches this registry. Shortcut combos live in `appCommandCatalog.ts`; real keypresses always flow through `useAppKeyboard`, native menu clicks emit the same command IDs through `useMenuEvents`, and `appCommandDispatcher.ts` suppresses the duplicate native/renderer echo from a single shortcut.
 
 Commands whose availability depends on the current note or Git state must also flow through `update_menu_state` so the native menu stays in sync with the command palette. The deleted-note restore action in Changes view is the reference example: the row opens a deleted diff preview, the command palette exposes "Restore Deleted Note", and the Note menu enables the same action only while that preview is active.
 
-For automated QA, prefer the `window.__laputaTest.triggerMenuCommand()` bridge for native-owned shortcuts and `window.__laputaTest.dispatchAppCommand()` only for renderer-only command paths. Do not treat flaky synthesized macOS keystrokes as proof that a native accelerator works.
+For automated QA, prefer real key events in a Tauri-like environment for shortcut behavior and `window.__laputaTest.triggerMenuCommand()` for the native menu click path. Do not treat flaky synthesized macOS keystrokes as proof that a shortcut works.
 
 ## Running Tests
 
@@ -341,7 +341,7 @@ BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 
 1. Register the command in `useAppCommands.ts` via the command registry
 2. Add a corresponding menu bar item in `menu.rs` for discoverability
-3. If it has a keyboard shortcut, register it in `appCommandCatalog.ts` with the canonical command ID, ownership (`renderer` vs `native-menu`), and modifier rule
+3. If it has a keyboard shortcut, register it in `appCommandCatalog.ts` with the canonical command ID and modifier rule, then wire the matching native menu item in `menu.rs` if it should also appear in the menu bar
 4. If its enabled state depends on runtime selection (active note, deleted preview, Git status, etc.), thread that flag through `useMenuEvents.ts` and `update_menu_state` so the native menu enables/disables correctly
 
 ### Modify styling

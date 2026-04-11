@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { isTauri } from '../mock-tauri'
 import {
   APP_COMMAND_EVENT_NAME,
-  dispatchAppCommand,
+  executeAppCommand,
   isAppCommandId,
   type AppCommandHandlers,
 } from './appCommandDispatcher'
@@ -92,7 +92,7 @@ function useWindowAppCommandListener(handlersRef: { current: MenuEventHandlers }
   useEffect(() => {
     const handleCommandEvent = createWindowCommandListener((detail) => {
       if (isAppCommandId(detail)) {
-        dispatchAppCommand(detail, handlersRef.current)
+        executeAppCommand(detail, handlersRef.current, 'app-event')
       }
     })
 
@@ -129,7 +129,7 @@ function useNativeMenuStateSync(state: MenuStatePayload) {
 /** Dispatch a Tauri menu event ID to the matching handler. Exported for testing. */
 export function dispatchMenuEvent(id: string, h: MenuEventHandlers): void {
   if (!isAppCommandId(id)) return
-  dispatchAppCommand(id, h)
+  executeAppCommand(id, h, 'native-menu')
 }
 
 /** Listen for native macOS menu events and dispatch them to the appropriate handlers. */

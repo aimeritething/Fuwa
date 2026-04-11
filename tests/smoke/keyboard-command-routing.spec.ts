@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test'
 import { triggerMenuCommand } from './testBridge'
-import { createFixtureVaultCopy, openFixtureVault, removeFixtureVaultCopy } from '../helpers/fixtureVault'
+import { createFixtureVaultCopy, openFixtureVaultTauri, removeFixtureVaultCopy } from '../helpers/fixtureVault'
 
 let tempVaultDir: string
 
@@ -21,7 +21,7 @@ test.describe('keyboard command routing', () => {
     const errors: string[] = []
     page.on('pageerror', (error) => errors.push(error.message))
 
-    await openFixtureVault(page, tempVaultDir)
+    await openFixtureVaultTauri(page, tempVaultDir)
     await triggerMenuCommand(page, 'file-new-note')
 
     await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText(/untitled-note-\d+/i, { timeout: 5_000 })
@@ -31,32 +31,22 @@ test.describe('keyboard command routing', () => {
     expect(errors).toEqual([])
   })
 
-  test('native menu trigger toggles the properties panel through the shared command path', async ({ page }) => {
-    await openFixtureVault(page, tempVaultDir)
+  test('Meta+Shift+I toggles the properties panel in Tauri mode through the shared keyboard path @smoke', async ({ page }) => {
+    await openFixtureVaultTauri(page, tempVaultDir)
     await page.getByText('Alpha Project', { exact: true }).first().click()
+    await page.locator('.bn-editor').click()
 
-    await triggerMenuCommand(page, 'view-toggle-properties')
+    await page.keyboard.press('Meta+Shift+I')
     await expect(page.getByTitle('Close Properties (⌘⇧I)')).toBeVisible({ timeout: 5_000 })
 
-    await triggerMenuCommand(page, 'view-toggle-properties')
+    await page.keyboard.press('Meta+Shift+I')
     await expect(page.getByTitle('Properties (⌘⇧I)')).toBeVisible({ timeout: 5_000 })
   })
 
-  test('native menu trigger toggles the raw editor through the shared command path', async ({ page }) => {
-    await openFixtureVault(page, tempVaultDir)
+  test('Meta+Backslash toggles the raw editor in Tauri mode through the shared keyboard path @smoke', async ({ page }) => {
+    await openFixtureVaultTauri(page, tempVaultDir)
     await page.getByText('Alpha Project', { exact: true }).first().click()
-
-    await triggerMenuCommand(page, 'edit-toggle-raw-editor')
-    await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible({ timeout: 5_000 })
-
-    await triggerMenuCommand(page, 'edit-toggle-raw-editor')
-    await expect(page.getByTestId('raw-editor-codemirror')).not.toBeVisible({ timeout: 5_000 })
-    await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
-  })
-
-  test('Meta+Backslash toggles the raw editor through the keyboard path', async ({ page }) => {
-    await openFixtureVault(page, tempVaultDir)
-    await page.getByText('Alpha Project', { exact: true }).first().click()
+    await page.locator('.bn-editor').click()
 
     await page.keyboard.press('Meta+Backslash')
     await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible({ timeout: 5_000 })
@@ -66,15 +56,20 @@ test.describe('keyboard command routing', () => {
     await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
   })
 
-  test('native menu trigger toggles the AI panel through the shared command path', async ({ page }) => {
-    await openFixtureVault(page, tempVaultDir)
+  test('Meta+Shift+L toggles the AI panel in Tauri mode, while Ctrl+Shift+L does not @smoke', async ({ page }) => {
+    await openFixtureVaultTauri(page, tempVaultDir)
     await page.getByText('Alpha Project', { exact: true }).first().click()
+    await page.locator('.bn-editor').click()
 
-    await triggerMenuCommand(page, 'view-toggle-ai-chat')
+    await page.keyboard.press('Control+Shift+L')
+    await page.waitForTimeout(200)
+    await expect(page.getByTestId('ai-panel')).not.toBeVisible()
+
+    await page.keyboard.press('Meta+Shift+L')
     await expect(page.getByTestId('ai-panel')).toBeVisible({ timeout: 5_000 })
     await expect(page.getByTitle('Close AI panel')).toBeVisible()
 
-    await triggerMenuCommand(page, 'view-toggle-ai-chat')
+    await page.keyboard.press('Meta+Shift+L')
     await expect(page.getByTestId('ai-panel')).not.toBeVisible({ timeout: 5_000 })
   })
 })

@@ -1,12 +1,13 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
   APP_COMMAND_IDS,
   dispatchAppCommand,
+  executeAppCommand,
   findShortcutCommandId,
   findShortcutCommandIdForEvent,
   isAppCommandId,
   isNativeMenuCommandId,
-  isNativeMenuShortcutCommand,
+  resetAppCommandDispatchStateForTests,
   type AppCommandHandlers,
 } from './appCommandDispatcher'
 
@@ -53,6 +54,10 @@ function makeHandlers(): AppCommandHandlers {
 }
 
 describe('appCommandDispatcher', () => {
+  afterEach(() => {
+    resetAppCommandDispatchStateForTests()
+  })
+
   it('recognizes valid command ids', () => {
     expect(isAppCommandId(APP_COMMAND_IDS.fileNewNote)).toBe(true)
     expect(isAppCommandId('not-a-command')).toBe(false)
@@ -61,11 +66,6 @@ describe('appCommandDispatcher', () => {
   it('distinguishes native menu ids from keyboard-only ids', () => {
     expect(isNativeMenuCommandId(APP_COMMAND_IDS.fileNewNote)).toBe(true)
     expect(isNativeMenuCommandId(APP_COMMAND_IDS.noteToggleFavorite)).toBe(false)
-  })
-
-  it('matches shortcut ownership from the shared catalog', () => {
-    expect(isNativeMenuShortcutCommand(APP_COMMAND_IDS.fileNewNote)).toBe(true)
-    expect(isNativeMenuShortcutCommand(APP_COMMAND_IDS.noteToggleFavorite)).toBe(false)
   })
 
   it('finds raw editor and AI shortcuts from the shared catalog', () => {
@@ -149,5 +149,21 @@ describe('appCommandDispatcher', () => {
     const handlers = makeHandlers()
     expect(dispatchAppCommand(APP_COMMAND_IDS.goChanges, handlers)).toBe(true)
     expect(handlers.onSelectFilter).toHaveBeenCalledWith('changes')
+  })
+
+  it('suppresses a native-menu echo after renderer keyboard dispatch', () => {
+    const handlers = makeHandlers()
+
+    expect(executeAppCommand(APP_COMMAND_IDS.viewToggleProperties, handlers, 'renderer-keyboard')).toBe(true)
+    expect(executeAppCommand(APP_COMMAND_IDS.viewToggleProperties, handlers, 'native-menu')).toBe(false)
+    expect(handlers.onToggleInspector).toHaveBeenCalledTimes(1)
+  })
+
+  it('suppresses a renderer keyboard echo after native-menu dispatch', () => {
+    const handlers = makeHandlers()
+
+    expect(executeAppCommand(APP_COMMAND_IDS.viewToggleAiChat, handlers, 'native-menu')).toBe(true)
+    expect(executeAppCommand(APP_COMMAND_IDS.viewToggleAiChat, handlers, 'renderer-keyboard')).toBe(false)
+    expect(handlers.onToggleAIChat).toHaveBeenCalledTimes(1)
   })
 })

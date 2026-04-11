@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useAppKeyboard } from './useAppKeyboard'
+import { resetAppCommandDispatchStateForTests } from './appCommandDispatcher'
 
 function fireKey(
   key: string,
@@ -50,6 +51,7 @@ function makeActions() {
 describe('useAppKeyboard', () => {
   afterEach(() => {
     delete (window as typeof window & { __TAURI__?: unknown }).__TAURI__
+    resetAppCommandDispatchStateForTests()
     vi.restoreAllMocks()
   })
 
@@ -95,39 +97,39 @@ describe('useAppKeyboard', () => {
     expect(actions.onCreateNote).toHaveBeenCalled()
   })
 
-  it('Cmd+N defers to native menu in Tauri', () => {
+  it('Cmd+N still works in Tauri mode', () => {
     const actions = makeActions()
     ;(window as typeof window & { __TAURI__?: object }).__TAURI__ = {}
     renderHook(() => useAppKeyboard(actions))
     fireKey('n', { metaKey: true })
-    expect(actions.onCreateNote).not.toHaveBeenCalled()
+    expect(actions.onCreateNote).toHaveBeenCalled()
   })
 
-  it('Cmd+\\ defers to native menu in Tauri', () => {
+  it('Cmd+\\ still works in Tauri mode', () => {
     const actions = makeActions()
     actions.onToggleRawEditor = vi.fn()
     ;(window as typeof window & { __TAURI__?: object }).__TAURI__ = {}
     renderHook(() => useAppKeyboard(actions))
     fireKey('\\', { metaKey: true })
-    expect(actions.onToggleRawEditor).not.toHaveBeenCalled()
+    expect(actions.onToggleRawEditor).toHaveBeenCalled()
   })
 
-  it('Cmd+Shift+I defers to native menu in Tauri', () => {
+  it('Cmd+Shift+I still works in Tauri mode', () => {
     const actions = makeActions()
     const onToggleInspector = vi.fn()
     ;(window as typeof window & { __TAURI__?: object }).__TAURI__ = {}
     renderHook(() => useAppKeyboard({ ...actions, onToggleInspector }))
     fireKey('i', { metaKey: true, shiftKey: true })
-    expect(onToggleInspector).not.toHaveBeenCalled()
+    expect(onToggleInspector).toHaveBeenCalled()
   })
 
-  it('Cmd+Shift+L defers to native menu in Tauri', () => {
+  it('Cmd+Shift+L still works in Tauri mode', () => {
     const actions = makeActions()
     const onToggleAIChat = vi.fn()
     ;(window as typeof window & { __TAURI__?: object }).__TAURI__ = {}
     renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat }))
     fireKey('l', { metaKey: true, shiftKey: true })
-    expect(onToggleAIChat).not.toHaveBeenCalled()
+    expect(onToggleAIChat).toHaveBeenCalled()
   })
 
   it('Cmd+D triggers toggle favorite on active note', () => {
@@ -138,7 +140,7 @@ describe('useAppKeyboard', () => {
     expect(actions.onToggleFavorite).toHaveBeenCalledWith('/vault/test.md')
   })
 
-  it('Cmd+D still uses JS shortcut in Tauri when no native menu owns it', () => {
+  it('Cmd+D still works in Tauri mode', () => {
     const actions = makeActions()
     actions.onToggleFavorite = vi.fn()
     ;(window as typeof window & { __TAURI__?: object }).__TAURI__ = {}

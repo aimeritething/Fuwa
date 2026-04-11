@@ -15,9 +15,14 @@ export {
   findShortcutCommandIdForEvent,
   isAppCommandId,
   isNativeMenuCommandId,
-  isNativeMenuShortcutCommand,
 } from './appCommandCatalog'
 export type { AppCommandDefinition, AppCommandId, AppCommandShortcutCombo } from './appCommandCatalog'
+
+export type AppCommandDispatchSource =
+  | 'direct'
+  | 'renderer-keyboard'
+  | 'native-menu'
+  | 'app-event'
 
 export interface AppCommandHandlers {
   onSetViewMode: (mode: ViewMode) => void
@@ -138,6 +143,36 @@ const ACTIVE_TAB_HANDLER_EXECUTORS: Record<ActiveTabHandlerKey, (handlers: AppCo
   onDeleteNote: (handlers, path) => handlers.onDeleteNote(path),
 }
 
+const SHORTCUT_ECHO_DEDUPE_WINDOW_MS = 150
+let lastCommandDispatch:
+  | {
+      id: AppCommandId
+      source: AppCommandDispatchSource
+      timestamp: number
+    }
+  | null = null
+
+function now(): number {
+  return globalThis.performance?.now?.() ?? Date.now()
+}
+
+function isShortcutEchoPair(a: AppCommandDispatchSource, b: AppCommandDispatchSource): boolean {
+  return (
+    (a === 'renderer-keyboard' && b === 'native-menu') ||
+    (a === 'native-menu' && b === 'renderer-keyboard')
+  )
+}
+
+function shouldSuppressDuplicateCommand(
+  id: AppCommandId,
+  source: AppCommandDispatchSource,
+  currentTimestamp: number,
+): boolean {
+  if (!lastCommandDispatch || lastCommandDispatch.id !== id) return false
+  if (!isShortcutEchoPair(source, lastCommandDispatch.source)) return false
+  return currentTimestamp - lastCommandDispatch.timestamp <= SHORTCUT_ECHO_DEDUPE_WINDOW_MS
+}
+
 function dispatchActiveTabCommand(
   pathRef: MutableRefObject<string | null>,
   handler: (path: string) => void,
@@ -175,5 +210,26 @@ function dispatchDefinition(
 }
 
 export function dispatchAppCommand(id: AppCommandId, handlers: AppCommandHandlers): boolean {
-  return dispatchDefinition(APP_COMMAND_DEFINITIONS[id], handlers)
+  return executeAppCommand(id, handlers, 'direct')
+}
+
+export function executeAppCommand(
+  id: AppCommandId,
+  handlers: AppCommandHandlers,
+  source: AppCommandDispatchSource,
+): boolean {
+  const timestamp = now()
+  if (shouldSuppressDuplicateCommand(id, source, timestamp)) {
+    return false
+  }
+
+  const dispatched = dispatchDefinition(APP_COMMAND_DEFINITIONS[id], handlers)
+  if (dispatched) {
+    lastCommandDispatch = { id, source, timestamp }
+  }
+  return dispatched
+}
+
+export function resetAppCommandDispatchStateForTests(): void {
+  lastCommandDispatch = null
 }

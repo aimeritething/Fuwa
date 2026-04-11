@@ -1,10 +1,8 @@
 import { trackEvent } from '../lib/telemetry'
-import { isTauri } from '../mock-tauri'
 import {
   APP_COMMAND_IDS,
-  dispatchAppCommand,
+  executeAppCommand,
   findShortcutCommandIdForEvent,
-  isNativeMenuShortcutCommand,
   type AppCommandHandlers,
 } from './appCommandDispatcher'
 
@@ -47,11 +45,10 @@ export function handleAppKeyboardEvent(actions: KeyboardActions, event: Keyboard
   const commandId = findShortcutCommandIdForEvent(event)
   if (commandId === null) return
   if (TEXT_EDITING_KEYS.has(event.key) && isTextInputFocused()) return
-  if (isTauri() && isNativeMenuShortcutCommand(commandId)) return
 
   event.preventDefault()
   if (commandId === APP_COMMAND_IDS.editFindInVault) {
     trackEvent('search_used')
   }
-  dispatchAppCommand(commandId, actions)
+  executeAppCommand(commandId, actions, 'renderer-keyboard')
 }
