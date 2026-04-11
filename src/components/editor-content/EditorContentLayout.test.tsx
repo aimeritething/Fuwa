@@ -7,18 +7,6 @@ vi.mock('../BreadcrumbBar', () => ({
   BreadcrumbBar: () => <div data-testid="breadcrumb-bar" />,
 }))
 
-vi.mock('../TitleField', () => ({
-  TitleField: () => <div data-testid="title-field-input" />,
-}))
-
-vi.mock('../NoteIcon', () => ({
-  NoteIcon: ({ icon }: { icon: string | null }) => (
-    icon
-      ? <button type="button" data-testid="note-icon-display" />
-      : <button type="button" data-testid="note-icon-add" />
-  ),
-}))
-
 vi.mock('../ArchivedNoteBanner', () => ({
   ArchivedNoteBanner: () => <div data-testid="archived-banner" />,
 }))
@@ -69,12 +57,7 @@ function createModel(overrides: Record<string, unknown> = {}) {
     onKeepTheirs: vi.fn(),
     breadcrumbBarRef: createRef<HTMLDivElement>(),
     wordCount: 12,
-    titleSectionRef: createRef<HTMLDivElement>(),
-    showTitleSection: true,
-    hasDisplayIcon: false,
-    entryIcon: null,
     vaultPath: '/vault',
-    onTitleChange: vi.fn(),
     cssVars: {},
     onNavigateWikilink: vi.fn(),
     onEditorChange: vi.fn(),
@@ -95,27 +78,12 @@ function createModel(overrides: Record<string, unknown> = {}) {
 }
 
 describe('EditorContentLayout', () => {
-  it('does not render a standalone add-icon row when the note has no icon', () => {
+  it('never renders the legacy title section', () => {
     const { container } = render(<EditorContentLayout {...createModel()} />)
 
-    expect(container.querySelector('.title-section__add-icon')).toBeNull()
-    expect(container.querySelector('.title-section__inline-add-icon')).not.toBeNull()
-    expect(screen.getByTestId('note-icon-add')).toBeInTheDocument()
-  })
-
-  it('keeps the existing icon and title inside the same title row', () => {
-    const { container } = render(
-      <EditorContentLayout
-        {...createModel({
-          hasDisplayIcon: true,
-          entryIcon: 'rocket',
-        })}
-      />,
-    )
-
-    const titleRow = container.querySelector('.title-section__row')
-    expect(titleRow?.querySelector('[data-testid="note-icon-display"]')).not.toBeNull()
-    expect(titleRow?.querySelector('[data-testid="title-field-input"]')).not.toBeNull()
+    expect(container.querySelector('.title-section')).toBeNull()
+    expect(screen.queryByTestId('title-field-input')).not.toBeInTheDocument()
+    expect(screen.getByTestId('single-editor-view')).toBeInTheDocument()
   })
 
   it('shows the loading skeleton instead of stale editor chrome while switching tabs', () => {

@@ -56,8 +56,7 @@ test('vault loads entries from fixture files @smoke', async ({ page }) => {
 
   // Open a note and verify editor shows its content from disk
   await openNote(page, 'Alpha Project')
-  // Verify the stable title field rather than the editor heading rendering.
-  await expect(page.getByTestId('title-field-input')).toHaveValue('Alpha Project', { timeout: 5_000 })
+  await expect(page.getByRole('heading', { name: 'Alpha Project', level: 1 })).toBeVisible({ timeout: 5_000 })
 })
 
 // ---------------------------------------------------------------------------

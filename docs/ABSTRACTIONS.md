@@ -14,7 +14,7 @@ These frontmatter field names have special meaning in Laputa's UI:
 
 | Field | Meaning | UI behavior |
 |---|---|---|
-| `title:` | Human-readable title (synced with filename) | Breadcrumb, sidebar. Filename = `slugify(title).md` |
+| `title:` | Legacy display-title fallback for older notes | Used only when a note has no H1; new notes do not write it automatically |
 | `type:` | Entity type (Project, Person, Quarter…) | Type chip in note list + sidebar grouping |
 | `status:` | Lifecycle stage (active, done, blocked…) | Colored chip in note list + editor header |
 | `icon:` | Per-note icon (emoji, Phosphor name, or HTTP/HTTPS image URL) | Rendered on note title surfaces; editable from the Properties panel |
@@ -237,16 +237,17 @@ Laputa separates **display title** from the file identifier:
 
 - **Display title resolution** (`extract_title` in `vault/parsing.rs`): first `# H1` on the first non-empty body line, then legacy frontmatter `title:`, then slug-to-title from the filename stem.
 - **Opening a note is read-only**: selecting a note does not inject or auto-correct `title:` frontmatter.
-- **On rename / explicit title edits** (`rename_note`): Laputa updates both filename and `title` frontmatter atomically, plus wikilinks across the vault.
+- **Explicit filename actions** (`rename_note`): breadcrumb rename/sync actions update the filename and wikilinks across the vault. The editor body remains the title editing surface.
 - **Untitled drafts** start as `untitled-*.md` and are auto-renamed on save once the note gains an H1.
 
-### Title Field (UI)
+### Title Surface (UI)
 
-The dedicated `TitleField` is a fallback editing surface, not the canonical one:
+The BlockNote body is the only title editing surface:
 
-- If the note already has an H1, the editor body is the primary title surface and the dedicated title row is hidden.
-- If the note has no H1 and is not an untitled draft, `TitleField` appears above the editor and `onTitleSync` updates `title:` frontmatter plus the filename.
-- `TitleField` also responds to `laputa:focus-editor` events with `selectTitle: true` for new-note flows that start without an H1.
+- The first H1 is the canonical display title.
+- There is no separate title row above the editor, even when a note has no H1.
+- Notes without an H1 show the editor body and placeholder only.
+- Filename changes are explicit breadcrumb actions, not a dedicated title-input side effect.
 
 ### Sidebar Selection
 

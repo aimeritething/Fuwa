@@ -1,8 +1,6 @@
 import type React from 'react'
 import { DiffView } from '../DiffView'
 import { BreadcrumbBar } from '../BreadcrumbBar'
-import { TitleField } from '../TitleField'
-import { NoteIcon } from '../NoteIcon'
 import { ArchivedNoteBanner } from '../ArchivedNoteBanner'
 import { ConflictNoteBanner } from '../ConflictNoteBanner'
 import { RawEditorView } from '../RawEditorView'
@@ -99,14 +97,12 @@ function ActiveTabBreadcrumb({
   barRef,
   wordCount,
   path,
-  showTitleSection,
   actions,
 }: {
   activeTab: NonNullable<EditorContentModel['activeTab']>
   barRef: React.RefObject<HTMLDivElement | null>
   wordCount: number
   path: string
-  showTitleSection: boolean
   actions: BreadcrumbActions
 }) {
   return (
@@ -114,7 +110,6 @@ function ActiveTabBreadcrumb({
       entry={activeTab.entry}
       wordCount={wordCount}
       barRef={barRef}
-      showTitleSection={showTitleSection}
       showDiffToggle={actions.showDiffToggle}
       diffMode={actions.diffMode}
       diffLoading={actions.diffLoading}
@@ -133,50 +128,6 @@ function ActiveTabBreadcrumb({
       onUnarchive={bindPath(actions.onUnarchiveNote, path)}
       onRenameFilename={actions.onRenameFilename}
     />
-  )
-}
-
-function TitleSection({
-  activeTab,
-  entryIcon,
-  hasDisplayIcon,
-  path,
-  showTitleSection,
-  titleSectionRef,
-  vaultPath,
-  onTitleChange,
-}: Pick<
-  EditorContentModel,
-  'activeTab' | 'entryIcon' | 'hasDisplayIcon' | 'path' | 'showTitleSection' | 'titleSectionRef' | 'vaultPath' | 'onTitleChange'
->) {
-  if (!activeTab) return null
-
-  return (
-    <div ref={titleSectionRef} className="title-section" data-title-ui-visible={showTitleSection || undefined}>
-      {showTitleSection && (
-        <>
-          <div className="title-section__heading">
-            {!hasDisplayIcon && (
-              <div className="title-section__inline-add-icon">
-                <NoteIcon icon={null} editable />
-              </div>
-            )}
-            <div className={`title-section__row${hasDisplayIcon ? '' : ' title-section__row--no-icon'}`}>
-              {hasDisplayIcon && <NoteIcon icon={entryIcon} editable />}
-              <TitleField
-                title={activeTab.entry.title}
-                filename={activeTab.entry.filename}
-                editable
-                notePath={path}
-                vaultPath={vaultPath}
-                onTitleChange={(newTitle) => onTitleChange?.(path, newTitle)}
-              />
-            </div>
-          </div>
-          <div className="title-section__separator" />
-        </>
-      )}
-    </div>
   )
 }
 
@@ -213,52 +164,28 @@ function EditorChrome({
 function EditorCanvas({
   showEditor,
   cssVars,
-  activeTab,
-  entryIcon,
-  hasDisplayIcon,
-  path,
-  showTitleSection,
-  titleSectionRef,
-  vaultPath,
-  onTitleChange,
   editor,
   entries,
   onNavigateWikilink,
   onEditorChange,
   isDeletedPreview,
+  vaultPath,
 }: Pick<
   EditorContentModel,
   | 'showEditor'
   | 'cssVars'
-  | 'activeTab'
-  | 'entryIcon'
-  | 'hasDisplayIcon'
-  | 'path'
-  | 'showTitleSection'
-  | 'titleSectionRef'
-  | 'vaultPath'
-  | 'onTitleChange'
   | 'editor'
   | 'entries'
   | 'onNavigateWikilink'
   | 'onEditorChange'
   | 'isDeletedPreview'
+  | 'vaultPath'
 >) {
   if (!showEditor) return null
 
   return (
     <div className="editor-scroll-area" style={cssVars as React.CSSProperties}>
       <div className="editor-content-wrapper">
-        <TitleSection
-          activeTab={activeTab}
-          entryIcon={entryIcon}
-          hasDisplayIcon={hasDisplayIcon}
-          path={path}
-          showTitleSection={showTitleSection}
-          titleSectionRef={titleSectionRef}
-          vaultPath={vaultPath}
-          onTitleChange={onTitleChange}
-        />
         <SingleEditorView
           editor={editor}
           entries={entries}
@@ -293,12 +220,7 @@ export function EditorContentLayout(model: EditorContentModel) {
     onKeepTheirs,
     breadcrumbBarRef,
     wordCount,
-    titleSectionRef,
-    showTitleSection,
-    hasDisplayIcon,
-    entryIcon,
     vaultPath,
-    onTitleChange,
     cssVars,
     onNavigateWikilink,
     onEditorChange,
@@ -321,7 +243,6 @@ export function EditorContentLayout(model: EditorContentModel) {
         barRef={breadcrumbBarRef}
         wordCount={wordCount}
         path={path}
-        showTitleSection={showTitleSection}
         actions={{
           diffMode: model.diffMode,
           diffLoading: model.diffLoading,
@@ -365,14 +286,7 @@ export function EditorContentLayout(model: EditorContentModel) {
       <EditorCanvas
         showEditor={showEditor}
         cssVars={cssVars}
-        activeTab={activeTab}
-        entryIcon={entryIcon}
-        hasDisplayIcon={hasDisplayIcon}
-        path={path}
-        showTitleSection={showTitleSection}
-        titleSectionRef={titleSectionRef}
         vaultPath={vaultPath}
-        onTitleChange={onTitleChange}
         editor={editor}
         entries={entries}
         onNavigateWikilink={onNavigateWikilink}

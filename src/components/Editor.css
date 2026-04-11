@@ -204,57 +204,6 @@
   width: 100%;
 }
 
-/* --- Title Section: wraps icon + title + separator --- */
-.title-section {
-  width: 100%;
-  flex-shrink: 0;
-}
-
-.title-section__heading {
-  position: relative;
-}
-
-.title-section__inline-add-icon {
-  position: absolute;
-  left: 8px;
-  top: 0;
-  z-index: 1;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.15s;
-}
-
-.title-section:hover .title-section__inline-add-icon,
-.title-section__inline-add-icon:focus-within {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.title-section__row {
-  display: flex;
-  flex-direction: row;
-  align-items: flex-start;
-  gap: 10px;
-  padding-top: 8px;
-  margin-left: 8px;
-}
-
-/* No emoji: title aligns flush left (no indent for icon area) */
-.title-section__row--no-icon {
-  margin-left: 0;
-}
-
-/* When emoji is present, restore top padding to the row itself */
-.title-section__row:has(.note-icon-button--active) {
-  padding-top: 32px;
-}
-
-.title-section__separator {
-  border-bottom: 1px solid var(--border-primary, rgba(0, 0, 0, 0.08));
-  margin-top: 12px;
-  margin-left: 8px;
-}
-
 /* --- Note Icon Area --- */
 .note-icon-area {
   display: flex;
@@ -303,7 +252,6 @@
   transition: opacity 0.15s;
 }
 
-.title-section:hover .note-icon-button--add,
 .note-icon-button--add:focus-visible {
   opacity: 1;
 }
@@ -350,56 +298,6 @@
 
 .note-icon-menu__item--danger {
   color: var(--destructive, #ef4444);
-}
-
-/* --- Title Field --- */
-.title-field {
-  flex: 1;
-  min-width: 0;
-}
-
-.title-field__input {
-  display: block;
-  width: 100%;
-  border: none;
-  outline: none;
-  background: transparent;
-  font-size: var(--headings-h1-font-size, 32px);
-  font-weight: var(--headings-h1-font-weight, 700);
-  line-height: var(--headings-h1-line-height, 1.2);
-  letter-spacing: var(--headings-h1-letter-spacing, -0.015em);
-  color: var(--foreground);
-  padding: 0;
-  resize: none;
-  overflow: hidden;
-  font-family: inherit;
-  field-sizing: content;
-}
-
-.title-field__input::placeholder {
-  color: var(--text-faint, #ccc);
-}
-
-.title-field__input:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.title-field__filename {
-  display: block;
-  font-size: 11px;
-  color: var(--text-faint, #999);
-  margin-top: 2px;
-}
-
-/* When the legacy title UI is shown, hide the first H1 heading in BlockNote
-   to avoid duplicate title display. Otherwise the editor's H1 remains visible
-   and serves as the title surface. */
-.title-section[data-title-ui-visible] ~ .editor__blocknote-container [data-node-type="blockContainer"]:first-child [data-content-type="heading"][data-level="1"] {
-  display: none;
-}
-.title-section[data-title-ui-visible] ~ .editor__blocknote-container [data-node-type="blockContainer"]:first-child:has([data-content-type="heading"][data-level="1"]) {
-  display: none;
 }
 
 /* =============================================

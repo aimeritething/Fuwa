@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { executeCommand, openCommandPalette } from './helpers'
 
 test('clicking + in type section creates note with that type', async ({ page }) => {
   await page.goto('/')
@@ -11,26 +12,19 @@ test('clicking + in type section creates note with that type', async ({ page }) 
 
   // Click the "+" button to create a new note
   await page.click('[title="Create new note"]')
-  await page.waitForTimeout(1000)
+  await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5000 })
 
-  // The new note should have type-based naming (e.g., "Untitled project N")
-  const titleInput = page.locator('[data-testid="title-field-input"]')
-  if (await titleInput.count() > 0) {
-    const value = await titleInput.inputValue()
-    console.log('New note title:', value)
-    expect(value.toLowerCase()).toContain('project')
-  }
+  // The new note should use a type-specific untitled filename.
+  await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText(/untitled-project-\d+/i)
 
   // Toggle raw editor to see frontmatter
-  await page.keyboard.press('Meta+Shift+m')
-  await page.waitForTimeout(500)
+  await openCommandPalette(page)
+  await executeCommand(page, 'Toggle Raw')
+  await expect(page.locator('.cm-content')).toBeVisible({ timeout: 5000 })
 
   const rawEditor = page.locator('.cm-content')
-  if (await rawEditor.count() > 0) {
-    const content = await rawEditor.textContent()
-    console.log('Raw content:', content?.substring(0, 200))
-    expect(content).toContain('type: Project')
-  }
+  const content = await rawEditor.textContent()
+  expect(content).toContain('type: Project')
 })
 
 test('clicking + in All Notes creates generic note', async ({ page }) => {
@@ -43,14 +37,9 @@ test('clicking + in All Notes creates generic note', async ({ page }) => {
 
   // Click the "+" button
   await page.click('[title="Create new note"]')
-  await page.waitForTimeout(1000)
+  await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5000 })
 
-  // The new note should be a generic "Note" type
-  const titleInput = page.locator('[data-testid="title-field-input"]')
-  if (await titleInput.count() > 0) {
-    const value = await titleInput.inputValue()
-    console.log('New note title:', value)
-    expect(value.toLowerCase()).toContain('note')
-    expect(value.toLowerCase()).not.toContain('project')
-  }
+  // The new note should be a generic untitled note, not a typed one.
+  await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText(/untitled-note-\d+/i)
+  await expect(page.getByTestId('breadcrumb-filename-trigger')).not.toContainText(/untitled-project-\d+/i)
 })

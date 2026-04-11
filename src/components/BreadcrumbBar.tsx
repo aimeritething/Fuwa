@@ -43,7 +43,6 @@ interface BreadcrumbBarProps {
   onArchive?: () => void
   onUnarchive?: () => void
   onRenameFilename?: (path: string, newFilenameStem: string) => void
-  showTitleSection?: boolean
   /** Ref for direct DOM manipulation — avoids re-render on scroll. */
   barRef?: React.Ref<HTMLDivElement>
 }
@@ -515,17 +514,13 @@ export const BreadcrumbBar = memo(function BreadcrumbBar({
   entry,
   barRef,
   onRenameFilename,
-  showTitleSection = true,
   ...actionProps
 }: BreadcrumbBarProps) {
-  // In raw/diff mode the title section is not rendered — always show title in breadcrumb.
-  // Using a prop-driven attribute avoids the timing issues of DOM mutation in useEffect.
-  const titleAlwaysVisible = !showTitleSection || actionProps.rawMode || actionProps.diffMode
   return (
     <div
       ref={barRef}
       data-tauri-drag-region
-      {...(titleAlwaysVisible ? { 'data-title-hidden': '' } : {})}
+      data-title-hidden=""
       className="breadcrumb-bar flex shrink-0 items-center border-b border-transparent"
       style={{
         height: 52,

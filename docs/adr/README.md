@@ -99,7 +99,7 @@ proposed → active → superseded
 | [0041](0041-filekind-all-files-in-vault-scanner.md) | fileKind field — scan all vault files, not just markdown | active |
 | [0042](0042-trash-auto-purge-safety-model.md) | Trash auto-purge safety model | superseded → [0045](0045-permanent-delete-no-trash.md) |
 | [0043](0043-reactive-vault-state-on-save.md) | Reactive vault state: editor changes propagate immediately to all UI | active |
-| [0044](0044-h1-as-title-primary-source.md) | H1 as primary title source — filename as stable identifier | active |
+| [0044](0044-h1-as-title-primary-source.md) | H1 as primary title source — filename as stable identifier | superseded → [0055](0055-h1-is-the-only-editor-title-surface.md) |
 | [0045](0045-permanent-delete-no-trash.md) | Permanent delete with confirm modal — no Trash system | active |
 | [0046](0046-starter-vault-cloned-from-github.md) | Starter vault cloned from GitHub at runtime — no bundled content | active |
 | [0047](0047-regex-mode-for-view-filter-conditions.md) | Regex mode for view filter conditions | active |
@@ -110,3 +110,4 @@ proposed → active → superseded
 | [0052](0052-renderer-first-shortcut-execution-with-native-menu-dedupe.md) | Renderer-first shortcut execution with native-menu dedupe | active |
 | [0053](0053-webview-init-prevention-for-browser-reserved-shortcuts.md) | Webview-init prevention for browser-reserved shortcuts | active |
 | [0054](0054-deterministic-shortcut-qa-matrix.md) | Deterministic shortcut QA matrix | active |
+| [0055](0055-h1-is-the-only-editor-title-surface.md) | H1 is the only editor title surface | active |

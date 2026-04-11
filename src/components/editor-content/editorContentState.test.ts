@@ -46,47 +46,47 @@ function deriveState(tab: EditorContentTab | null, overrides?: Partial<VaultEntr
 }
 
 describe('deriveEditorContentState', () => {
-  it('hides the legacy title section when loaded content contains a top-level H1', () => {
+  it('marks loaded content with a top-level H1 as titled', () => {
     const state = deriveState({
       entry: baseEntry,
       content: '---\ntitle: Legacy Project\n---\n# Legacy Project\n\nBody',
     })
 
     expect(state.hasH1).toBe(true)
-    expect(state.showTitleSection).toBe(false)
+    expect(state.showEditor).toBe(true)
   })
 
-  it('keeps the title section for notes without an H1', () => {
+  it('keeps editor content visible for notes without an H1', () => {
     const state = deriveState({
       entry: baseEntry,
       content: '---\ntitle: Legacy Project\n---\nBody without a heading',
     })
 
     expect(state.hasH1).toBe(false)
-    expect(state.showTitleSection).toBe(false)
+    expect(state.showEditor).toBe(true)
   })
 
-  it('hides the legacy title section when a frontmatter title drives the display title', () => {
+  it('keeps editor content visible when a legacy frontmatter title exists', () => {
     const state = deriveState({
       entry: baseEntry,
       content: '---\ntitle: Spring 2026\nstatus: Active\n---\n## Goals',
     })
 
     expect(state.hasH1).toBe(false)
-    expect(state.showTitleSection).toBe(false)
+    expect(state.showEditor).toBe(true)
   })
 
-  it('keeps the title section when the document title still comes from the filename', () => {
+  it('does not fall back to a separate title section when the filename drives the display title', () => {
     const state = deriveState({
       entry: baseEntry,
       content: '---\nstatus: Active\n---\nBody without a heading',
     })
 
     expect(state.hasH1).toBe(false)
-    expect(state.showTitleSection).toBe(true)
+    expect(state.showEditor).toBe(true)
   })
 
-  it('hides the title section for untitled drafts before they get an H1', () => {
+  it('keeps untitled drafts in the editor even before they get an H1', () => {
     const draftEntry = {
       ...baseEntry,
       path: '/vault/untitled-note-1700000000.md',
@@ -105,6 +105,6 @@ describe('deriveEditorContentState', () => {
     })
 
     expect(state.hasH1).toBe(false)
-    expect(state.showTitleSection).toBe(false)
+    expect(state.showEditor).toBe(true)
   })
 })

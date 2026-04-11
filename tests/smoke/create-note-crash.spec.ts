@@ -30,12 +30,10 @@ test('create note via sidebar + button does not crash', async ({ page }) => {
   await page.waitForSelector('[data-testid="sidebar-top-nav"]', { timeout: 10000 })
   await page.waitForTimeout(500)
 
-  const plusButtons = page.locator('button[aria-label*="Create new"]')
-  if (await plusButtons.count() > 0) {
-    await plusButtons.first().click()
-    await page.waitForTimeout(2000)
-  }
+  await page.locator('button[title="Create new note"]').first().click()
+  await page.waitForTimeout(2000)
 
   expect(errors).toHaveLength(0)
-  await expect(page.locator('[data-testid="title-field-input"]')).toBeVisible()
+  await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText(/untitled-note-\d+/i)
 })

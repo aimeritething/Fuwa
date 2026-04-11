@@ -86,6 +86,23 @@ test('@smoke older notes with a document title do not render the legacy title se
   await expect(page.locator('.title-section[data-title-ui-visible]')).toHaveCount(0)
 })
 
+test('deleting the H1 does not resurrect the legacy title section', async ({ page }) => {
+  await openNote(page, 'Alpha Project')
+  await openRawMode(page)
+
+  const rawContent = await getRawEditorContent(page)
+  expect(rawContent).toContain('# Alpha Project')
+
+  await setRawEditorContent(page, rawContent.replace('# Alpha Project\n\n', ''))
+  await page.keyboard.press('Meta+s')
+  await openBlockNoteMode(page)
+
+  await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByTestId('title-field-input')).toHaveCount(0)
+  await expect(page.locator('.title-section')).toHaveCount(0)
+  await expect(page.getByRole('heading', { name: 'Alpha Project', level: 1 })).toHaveCount(0)
+})
+
 test('@smoke edited H1 titles drive note list, search, and wikilink autocomplete', async ({ page }) => {
   const updatedTitle = 'Updated Display Title'
   const noteList = page.locator('[data-testid="note-list-container"]')

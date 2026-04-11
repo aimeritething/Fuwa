@@ -707,7 +707,6 @@ function App() {
             onUnarchiveNote={activeDeletedFile ? undefined : entryActions.handleUnarchiveNote}
             onContentChange={appSave.handleContentChange}
             onSave={appSave.handleSave}
-            onTitleSync={activeDeletedFile ? undefined : appSave.handleTitleSync}
             onRenameFilename={activeDeletedFile ? undefined : handleFilenameRename}
             rawToggleRef={rawToggleRef}
             diffToggleRef={diffToggleRef}

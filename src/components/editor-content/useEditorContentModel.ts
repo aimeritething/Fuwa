@@ -1,9 +1,8 @@
 import type React from 'react'
-import { useEffect, useRef } from 'react'
+import { useRef } from 'react'
 import type { useCreateBlockNote } from '@blocknote/react'
 import type { NoteStatus, VaultEntry } from '../../types'
 import { useEditorTheme } from '../../hooks/useTheme'
-import { resolveNoteIcon } from '../../utils/noteIcon'
 import { deriveEditorContentState } from './editorContentState'
 
 export interface Tab {
@@ -39,53 +38,10 @@ export interface EditorContentProps {
   onUnarchiveNote?: (path: string) => void
   vaultPath?: string
   rawLatestContentRef?: React.MutableRefObject<string | null>
-  onTitleChange?: (path: string, newTitle: string) => void
   onRenameFilename?: (path: string, newFilenameStem: string) => void
   isConflicted?: boolean
   onKeepMine?: (path: string) => void
   onKeepTheirs?: (path: string) => void
-}
-
-function useBreadcrumbTitleVisibility({
-  showEditor,
-  showTitleSection,
-  path,
-  breadcrumbBarRef,
-  titleSectionRef,
-}: {
-  showEditor: boolean
-  showTitleSection: boolean
-  path: string
-  breadcrumbBarRef: React.RefObject<HTMLDivElement | null>
-  titleSectionRef: React.RefObject<HTMLDivElement | null>
-}) {
-  useEffect(() => {
-    if (!showEditor) return
-
-    const bar = breadcrumbBarRef.current
-    const titleSection = titleSectionRef.current
-    if (!bar || !titleSection) return
-
-    if (!showTitleSection) {
-      bar.setAttribute('data-title-hidden', '')
-      return () => {
-        bar.removeAttribute('data-title-hidden')
-      }
-    }
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) bar.removeAttribute('data-title-hidden')
-        else bar.setAttribute('data-title-hidden', '')
-      },
-      { threshold: 0 },
-    )
-    observer.observe(titleSection)
-    return () => {
-      observer.disconnect()
-      bar.removeAttribute('data-title-hidden')
-    }
-  }, [path, showEditor, showTitleSection, breadcrumbBarRef, titleSectionRef])
 }
 
 export function useEditorContentModel(props: EditorContentProps) {
@@ -93,7 +49,6 @@ export function useEditorContentModel(props: EditorContentProps) {
     activeTab,
     entries,
     rawMode,
-    activeStatus,
     diffMode,
   } = props
 
@@ -105,28 +60,16 @@ export function useEditorContentModel(props: EditorContentProps) {
     effectiveRawMode,
     showEditor: showContentEditor,
     path,
-    showTitleSection,
     wordCount,
   } = deriveEditorContentState({
     activeTab,
     entries,
     rawMode,
-    activeStatus,
+    activeStatus: props.activeStatus,
   })
   const showEditor = !diffMode && showContentEditor
-  const entryIcon = activeTab?.entry.icon ?? null
-  const hasDisplayIcon = resolveNoteIcon(entryIcon).kind !== 'none'
 
-  const titleSectionRef = useRef<HTMLDivElement | null>(null)
   const breadcrumbBarRef = useRef<HTMLDivElement | null>(null)
-
-  useBreadcrumbTitleVisibility({
-    showEditor,
-    showTitleSection,
-    path,
-    breadcrumbBarRef,
-    titleSectionRef,
-  })
 
   return {
     ...props,
@@ -136,11 +79,7 @@ export function useEditorContentModel(props: EditorContentProps) {
     effectiveRawMode,
     forceRawMode: isNonMarkdownText || isDeletedPreview,
     showEditor,
-    entryIcon,
-    hasDisplayIcon,
     path,
-    showTitleSection,
-    titleSectionRef,
     breadcrumbBarRef,
     wordCount,
   }

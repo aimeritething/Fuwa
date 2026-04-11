@@ -65,7 +65,6 @@ laputa-app/
 │   │   ├── WelcomeScreen.tsx     # Onboarding screen
 │   │   ├── GitHubVaultModal.tsx  # GitHub vault clone/create
 │   │   ├── GitHubDeviceFlow.tsx  # GitHub OAuth device flow
-│   │   ├── TitleField.tsx         # Editable note title above editor
 │   │   ├── ConflictResolverModal.tsx # Git conflict resolution
 │   │   ├── CommitDialog.tsx      # Git commit modal
 │   │   ├── CreateNoteDialog.tsx  # New note modal

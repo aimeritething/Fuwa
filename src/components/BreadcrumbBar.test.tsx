@@ -141,22 +141,12 @@ describe('BreadcrumbBar — title in breadcrumb (always rendered, CSS-toggled)',
     const { container } = render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
     const bar = container.querySelector('.breadcrumb-bar')!
     expect(bar).toHaveClass('border-b', 'border-transparent')
-    expect(bar).not.toHaveAttribute('data-title-hidden')
-    bar.setAttribute('data-title-hidden', '')
     expect(bar).toHaveAttribute('data-title-hidden')
   })
 
-  it('uses the active separator state when raw mode forces the title into the breadcrumb', () => {
+  it('keeps the breadcrumb title visible in raw mode', () => {
     const { container } = render(
       <BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode onToggleRaw={vi.fn()} />,
-    )
-
-    expect(container.querySelector('.breadcrumb-bar')).toHaveAttribute('data-title-hidden')
-  })
-
-  it('keeps the breadcrumb title visible when the separate title section is absent', () => {
-    const { container } = render(
-      <BreadcrumbBar entry={baseEntry} {...defaultProps} showTitleSection={false} />,
     )
 
     expect(container.querySelector('.breadcrumb-bar')).toHaveAttribute('data-title-hidden')

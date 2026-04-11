@@ -75,8 +75,6 @@ test.describe('Wikilink insertion and navigation', () => {
 
     const expected = targetTitle?.substring(0, 4) ?? ''
     await expect.poll(async () => {
-      const titleInput = page.getByTestId('title-field-input')
-      if (await titleInput.count()) return await titleInput.inputValue()
       const heading = page.locator('.bn-editor h1').first()
       if (await heading.count()) return (await heading.textContent()) ?? ''
       return ''
