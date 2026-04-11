@@ -1,38 +1,54 @@
 import { useEffect } from 'react'
+import { focusEditorWithRetries, type FocusableEditor } from './editorFocusUtils'
 
 const TAB_SWAP_EVENT_NAME = 'laputa:editor-tab-swapped'
 const FOCUS_EVENT_NAME = 'laputa:focus-editor'
 const SWAP_WAIT_FALLBACK_MS = 250
 
-interface TiptapChain {
-  setTextSelection: (pos: { from: number; to: number }) => TiptapChain
-  run: () => void
+interface FocusEventDetail {
+  t0?: number
+  selectTitle?: boolean
+  path?: string | null
 }
 
-interface TiptapEditor {
-  state: { doc: { descendants: (cb: (node: { type: { name: string }; nodeSize: number }, pos: number) => boolean | void) => void } }
-  chain: () => TiptapChain
+function scheduleEditorFocus(
+  editor: FocusableEditor,
+  editorMountedRef: React.RefObject<boolean>,
+  selectTitle: boolean,
+  t0: number | undefined,
+): void {
+  if (editorMountedRef.current) {
+    requestAnimationFrame(() => focusEditorWithRetries(editor, selectTitle, t0))
+    return
+  }
+  setTimeout(() => focusEditorWithRetries(editor, selectTitle, t0), 80)
 }
 
-/** Select all text in the first heading block via the TipTap chain API. */
-function selectFirstHeading(editor: { _tiptapEditor?: TiptapEditor }): void {
-  const tiptap = editor._tiptapEditor
-  if (!tiptap?.state?.doc) return
+function registerPendingTabFocus(
+  targetPath: string,
+  scheduleFocus: () => void,
+  pendingCleanups: Set<() => void>,
+): void {
+  const handleTabSwap = (event: Event) => {
+    const swapPath = (event as CustomEvent).detail?.path
+    if (swapPath !== targetPath) return
+    cleanupPending()
+    scheduleFocus()
+  }
 
-  let from = -1
-  let to = -1
+  const fallbackTimer = window.setTimeout(() => {
+    cleanupPending()
+    scheduleFocus()
+  }, SWAP_WAIT_FALLBACK_MS)
 
-  tiptap.state.doc.descendants((node, pos) => {
-    if (from !== -1) return false
-    if (node.type.name === 'heading') {
-      from = pos + 1
-      to = pos + node.nodeSize - 1
-      return false
-    }
-  })
+  const cleanupPending = () => {
+    window.clearTimeout(fallbackTimer)
+    window.removeEventListener(TAB_SWAP_EVENT_NAME, handleTabSwap)
+    pendingCleanups.delete(cleanupPending)
+  }
 
-  if (from === -1 || from >= to) return
-  tiptap.chain().setTextSelection({ from, to }).run()
+  pendingCleanups.add(cleanupPending)
+  window.addEventListener(TAB_SWAP_EVENT_NAME, handleTabSwap)
 }
 
 /**
@@ -42,68 +58,24 @@ function selectFirstHeading(editor: { _tiptapEditor?: TiptapEditor }): void {
  * When selectTitle is true, also selects all text in the first H1 block.
  */
 export function useEditorFocus(
-  editor: { focus: () => void; _tiptapEditor?: TiptapEditor },
+  editor: FocusableEditor,
   editorMountedRef: React.RefObject<boolean>,
 ) {
   useEffect(() => {
     const pendingCleanups = new Set<() => void>()
 
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { t0?: number; selectTitle?: boolean; path?: string | null } | undefined
+      const detail = (e as CustomEvent).detail as FocusEventDetail | undefined
       const t0 = detail?.t0
       const selectTitle = detail?.selectTitle ?? false
       const targetPath = detail?.path ?? null
-      const doFocus = () => {
-        editor.focus()
-        if (!selectTitle) {
-          if (t0) console.debug(`[perf] createNote → focus: ${(performance.now() - t0).toFixed(1)}ms`)
-          return
-        }
-        // Defer selection to the next animation frame so the new note's content
-        // (applied via queueMicrotask inside a React effect triggered by the tab
-        // change) is in the document before we try to select the heading.
-        // Between two rAF callbacks, all pending macrotasks — including React's
-        // MessageChannel re-render and the subsequent queueMicrotask content swap
-        // — complete, so the heading block is guaranteed to exist by rAF 2.
-        requestAnimationFrame(() => {
-          selectFirstHeading(editor)
-          if (t0) console.debug(`[perf] createNote → focus+select: ${(performance.now() - t0).toFixed(1)}ms`)
-        })
-      }
-
-      const scheduleFocus = () => {
-        if (editorMountedRef.current) {
-          requestAnimationFrame(doFocus)
-          return
-        }
-        setTimeout(doFocus, 80)
-      }
+      const scheduleFocus = () => scheduleEditorFocus(editor, editorMountedRef, selectTitle, t0)
 
       if (!targetPath) {
         scheduleFocus()
         return
       }
-
-      const handleTabSwap = (event: Event) => {
-        const swapPath = (event as CustomEvent).detail?.path
-        if (swapPath !== targetPath) return
-        cleanupPending()
-        scheduleFocus()
-      }
-
-      const fallbackTimer = window.setTimeout(() => {
-        cleanupPending()
-        scheduleFocus()
-      }, SWAP_WAIT_FALLBACK_MS)
-
-      const cleanupPending = () => {
-        window.clearTimeout(fallbackTimer)
-        window.removeEventListener(TAB_SWAP_EVENT_NAME, handleTabSwap)
-        pendingCleanups.delete(cleanupPending)
-      }
-
-      pendingCleanups.add(cleanupPending)
-      window.addEventListener(TAB_SWAP_EVENT_NAME, handleTabSwap)
+      registerPendingTabFocus(targetPath, scheduleFocus, pendingCleanups)
     }
 
     window.addEventListener(FOCUS_EVENT_NAME, handler)

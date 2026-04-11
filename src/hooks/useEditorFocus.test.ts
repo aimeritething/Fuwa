@@ -16,14 +16,21 @@ function makeTiptapMock(hasHeading = true) {
 }
 
 describe('useEditorFocus', () => {
-  afterEach(() => { vi.restoreAllMocks() })
+  afterEach(() => {
+    vi.restoreAllMocks()
+    document.body.innerHTML = ''
+  })
 
   function setup(isMounted: boolean, tiptap?: ReturnType<typeof makeTiptapMock>) {
+    const editable = document.createElement('div')
+    editable.setAttribute('contenteditable', 'true')
+    editable.tabIndex = -1
+    document.body.appendChild(editable)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- minimal mock for test
-    const editor = { focus: vi.fn(), _tiptapEditor: tiptap } as any
+    const editor = { focus: vi.fn(() => editable.focus()), _tiptapEditor: tiptap } as any
     const mountedRef = { current: isMounted }
     renderHook(() => useEditorFocus(editor, mountedRef))
-    return { editor, tiptap }
+    return { editor, tiptap, editable }
   }
 
   it('focuses editor via rAF when already mounted', async () => {
@@ -84,8 +91,12 @@ describe('useEditorFocus', () => {
   })
 
   it('cleans up event listener on unmount', () => {
+    const editable = document.createElement('div')
+    editable.setAttribute('contenteditable', 'true')
+    editable.tabIndex = -1
+    document.body.appendChild(editable)
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- minimal mock for test
-    const editor = { focus: vi.fn() } as any
+    const editor = { focus: vi.fn(() => editable.focus()) } as any
     const mountedRef = { current: true }
     const { unmount } = renderHook(() => useEditorFocus(editor, mountedRef))
 
@@ -94,6 +105,25 @@ describe('useEditorFocus', () => {
     window.dispatchEvent(new CustomEvent('laputa:focus-editor'))
 
     expect(editor.focus).not.toHaveBeenCalled()
+  })
+
+  it('falls back to focusing the editable DOM node when editor.focus does not make it active', () => {
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    const editable = document.createElement('div')
+    editable.className = 'ProseMirror'
+    editable.setAttribute('contenteditable', 'true')
+    editable.tabIndex = -1
+    document.body.appendChild(editable)
+    const editableFocus = vi.spyOn(editable, 'focus')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- minimal mock for test
+    const editor = { focus: vi.fn(), _tiptapEditor: undefined } as any
+    const mountedRef = { current: true }
+    renderHook(() => useEditorFocus(editor, mountedRef))
+
+    window.dispatchEvent(new CustomEvent('laputa:focus-editor'))
+
+    expect(editor.focus).toHaveBeenCalled()
+    expect(editableFocus).toHaveBeenCalled()
   })
 
   describe('selectTitle behavior', () => {
