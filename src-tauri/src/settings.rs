@@ -18,8 +18,7 @@ pub struct Settings {
 }
 
 fn app_config_dir() -> Result<PathBuf, String> {
-    dirs::config_dir()
-        .ok_or_else(|| "Could not determine config directory".to_string())
+    dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())
 }
 
 fn preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
@@ -32,7 +31,9 @@ fn resolve_existing_or_preferred_app_config_path(file_name: &str) -> Result<Path
         return Ok(preferred);
     }
 
-    let legacy = app_config_dir()?.join(LEGACY_APP_CONFIG_DIR).join(file_name);
+    let legacy = app_config_dir()?
+        .join(LEGACY_APP_CONFIG_DIR)
+        .join(file_name);
     if legacy.exists() {
         return Ok(legacy);
     }
@@ -282,7 +283,11 @@ mod tests {
     fn test_preferred_settings_path_uses_tolaria_namespace() {
         let result = preferred_app_config_path("settings.json");
         assert!(result.is_ok());
-        assert!(result.unwrap().to_str().unwrap().contains("com.tolaria.app"));
+        assert!(result
+            .unwrap()
+            .to_str()
+            .unwrap()
+            .contains("com.tolaria.app"));
     }
 
     #[test]

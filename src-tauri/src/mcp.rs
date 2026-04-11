@@ -53,7 +53,11 @@ fn fallback_node_path() -> Option<PathBuf> {
                 .collect::<Vec<_>>();
             versions.sort();
             versions.reverse();
-            candidates.extend(versions.into_iter().map(|version| version.join("bin").join("node")));
+            candidates.extend(
+                versions
+                    .into_iter()
+                    .map(|version| version.join("bin").join("node")),
+            );
         }
     }
 
@@ -271,7 +275,10 @@ mod tests {
 
         let raw = std::fs::read_to_string(&config_path).unwrap();
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
-        assert_eq!(config["mcpServers"][MCP_SERVER_NAME]["args"][0], "/test/index.js");
+        assert_eq!(
+            config["mcpServers"][MCP_SERVER_NAME]["args"][0],
+            "/test/index.js"
+        );
         assert_eq!(
             config["mcpServers"][MCP_SERVER_NAME]["env"]["VAULT_PATH"],
             "/test/vault"
@@ -321,7 +328,10 @@ mod tests {
         let raw = std::fs::read_to_string(&config_path).unwrap();
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
         assert!(config["mcpServers"][LEGACY_MCP_SERVER_NAME].is_null());
-        assert_eq!(config["mcpServers"][MCP_SERVER_NAME]["args"][0], "/test/index.js");
+        assert_eq!(
+            config["mcpServers"][MCP_SERVER_NAME]["args"][0],
+            "/test/index.js"
+        );
     }
 
     #[test]
@@ -424,7 +434,10 @@ mod tests {
 
         let raw = std::fs::read_to_string(&claude_cfg).unwrap();
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
-        assert_eq!(config["mcpServers"][MCP_SERVER_NAME]["args"][0], "/test/index.js");
+        assert_eq!(
+            config["mcpServers"][MCP_SERVER_NAME]["args"][0],
+            "/test/index.js"
+        );
     }
     #[test]
     fn upsert_returns_error_for_invalid_json() {

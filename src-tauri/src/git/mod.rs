@@ -101,7 +101,10 @@ fn run_git(dir: &Path, args: &[&str]) -> Result<(), String> {
 
 /// Set local user.name and user.email if not already configured.
 fn ensure_author_config(dir: &Path) -> Result<(), String> {
-    for (key, fallback) in [("user.name", "Tolaria"), ("user.email", "vault@tolaria.app")] {
+    for (key, fallback) in [
+        ("user.name", "Tolaria"),
+        ("user.email", "vault@tolaria.app"),
+    ] {
         let check = Command::new("git")
             .args(["config", key])
             .current_dir(dir)
