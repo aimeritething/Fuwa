@@ -57,50 +57,54 @@ function syncNativeMenuState(state: MenuStatePayload): void {
     .catch(() => {})
 }
 
-/** Dispatch a Tauri menu event ID to the matching handler. Exported for testing. */
-export function dispatchMenuEvent(id: string, h: MenuEventHandlers): void {
-  if (!isAppCommandId(id)) return
-  dispatchAppCommand(id, h)
-}
-
-/** Listen for native macOS menu events and dispatch them to the appropriate handlers. */
-export function useMenuEvents(handlers: MenuEventHandlers) {
-  const ref = useRef(handlers)
-  ref.current = handlers
-  const hasActiveNote = handlers.activeTabPath !== null
-  const hasModifiedFiles = handlers.modifiedCount != null ? handlers.modifiedCount > 0 : undefined
-  const hasConflicts = handlers.conflictCount != null ? handlers.conflictCount > 0 : undefined
-  const hasRestorableDeletedNote = handlers.hasRestorableDeletedNote
-
-  // Subscribe once to Tauri menu events
+function useNativeMenuEventListener(handlersRef: { current: MenuEventHandlers }) {
   useEffect(() => {
     if (!isTauri()) return
 
-    let cleanup: (() => void) | undefined
-    import('@tauri-apps/api/event').then(({ listen }) => {
-      const unlisten = listen<string>('menu-event', (event) => {
-        dispatchMenuEvent(event.payload, ref.current)
+    let disposed = false
+    let unlisten: (() => void) | null = null
+
+    import('@tauri-apps/api/event')
+      .then(async ({ listen }) => {
+        const teardown = await listen<string>('menu-event', (event) => {
+          dispatchMenuEvent(event.payload, handlersRef.current)
+        })
+
+        if (disposed) {
+          teardown()
+          return
+        }
+
+        unlisten = teardown
       })
-      cleanup = () => { unlisten.then(fn => fn()) }
-    }).catch(() => { /* not in Tauri */ })
+      .catch(() => {
+        /* not in Tauri */
+      })
 
-    return () => cleanup?.()
-  }, [])
+    return () => {
+      disposed = true
+      unlisten?.()
+    }
+  }, [handlersRef])
+}
 
+function useWindowAppCommandListener(handlersRef: { current: MenuEventHandlers }) {
   useEffect(() => {
     const handleCommandEvent = createWindowCommandListener((detail) => {
       if (isAppCommandId(detail)) {
-        dispatchAppCommand(detail, ref.current)
+        dispatchAppCommand(detail, handlersRef.current)
       }
     })
 
     window.addEventListener(APP_COMMAND_EVENT_NAME, handleCommandEvent)
     return () => window.removeEventListener(APP_COMMAND_EVENT_NAME, handleCommandEvent)
-  }, [])
+  }, [handlersRef])
+}
 
+function useTestMenuCommandBridge(handlersRef: { current: MenuEventHandlers }) {
   useEffect(() => {
     const bridge = (id: string) => {
-      dispatchMenuEvent(id, ref.current)
+      dispatchMenuEvent(id, handlersRef.current)
     }
 
     window.__laputaTest = {
@@ -113,15 +117,40 @@ export function useMenuEvents(handlers: MenuEventHandlers) {
         delete window.__laputaTest.dispatchBrowserMenuCommand
       }
     }
-  }, [])
+  }, [handlersRef])
+}
 
-  // Sync menu item enabled state when active note or git state changes
+function useNativeMenuStateSync(state: MenuStatePayload) {
   useEffect(() => {
-    syncNativeMenuState({
-      hasActiveNote,
-      hasModifiedFiles,
-      hasConflicts,
-      hasRestorableDeletedNote,
-    })
-  }, [hasActiveNote, hasModifiedFiles, hasConflicts, hasRestorableDeletedNote])
+    syncNativeMenuState(state)
+  }, [state])
+}
+
+/** Dispatch a Tauri menu event ID to the matching handler. Exported for testing. */
+export function dispatchMenuEvent(id: string, h: MenuEventHandlers): void {
+  if (!isAppCommandId(id)) return
+  dispatchAppCommand(id, h)
+}
+
+/** Listen for native macOS menu events and dispatch them to the appropriate handlers. */
+export function useMenuEvents(handlers: MenuEventHandlers) {
+  const ref = useRef(handlers)
+  const hasActiveNote = handlers.activeTabPath !== null
+  const hasModifiedFiles = handlers.modifiedCount != null ? handlers.modifiedCount > 0 : undefined
+  const hasConflicts = handlers.conflictCount != null ? handlers.conflictCount > 0 : undefined
+  const hasRestorableDeletedNote = handlers.hasRestorableDeletedNote
+
+  useEffect(() => {
+    ref.current = handlers
+  }, [handlers])
+
+  useNativeMenuEventListener(ref)
+  useWindowAppCommandListener(ref)
+  useTestMenuCommandBridge(ref)
+  useNativeMenuStateSync({
+    hasActiveNote,
+    hasModifiedFiles,
+    hasConflicts,
+    hasRestorableDeletedNote,
+  })
 }

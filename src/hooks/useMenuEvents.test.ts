@@ -1,5 +1,22 @@
-import { describe, it, expect, vi } from 'vitest'
-import { dispatchMenuEvent, type MenuEventHandlers } from './useMenuEvents'
+import { renderHook } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { useMenuEvents, dispatchMenuEvent, type MenuEventHandlers } from './useMenuEvents'
+
+const isTauriMock = vi.fn(() => false)
+const listenMock = vi.fn()
+const invokeMock = vi.fn().mockResolvedValue(undefined)
+
+vi.mock('../mock-tauri', () => ({
+  isTauri: () => isTauriMock(),
+}))
+
+vi.mock('@tauri-apps/api/event', () => ({
+  listen: (...args: unknown[]) => listenMock(...args),
+}))
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: (...args: unknown[]) => invokeMock(...args),
+}))
 
 function makeHandlers(): MenuEventHandlers {
   return {
@@ -42,6 +59,36 @@ function makeHandlers(): MenuEventHandlers {
     hasRestorableDeletedNote: false,
   }
 }
+
+describe('useMenuEvents', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    isTauriMock.mockReturnValue(false)
+  })
+
+  it('cleans up a native menu listener even if unmounted before listen resolves', async () => {
+    isTauriMock.mockReturnValue(true)
+
+    let resolveListen: ((teardown: () => void) => void) | null = null
+    const teardown = vi.fn()
+
+    listenMock.mockImplementationOnce(() => new Promise((resolve) => {
+      resolveListen = resolve
+    }))
+
+    const { unmount } = renderHook(() => useMenuEvents(makeHandlers()))
+    await vi.dynamicImportSettled()
+
+    expect(listenMock).toHaveBeenCalledTimes(1)
+
+    unmount()
+
+    resolveListen?.(teardown)
+    await vi.dynamicImportSettled()
+
+    expect(teardown).toHaveBeenCalledTimes(1)
+  })
+})
 
 describe('dispatchMenuEvent', () => {
   // View mode events

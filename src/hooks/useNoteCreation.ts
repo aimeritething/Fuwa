@@ -310,25 +310,23 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
   const queuedImmediateCreatesRef = useRef<ImmediateCreateRequest[]>([])
   const immediateCreateLockedRef = useRef(false)
   const immediateCreateTimerRef = useRef<number | null>(null)
-  const latestImmediateCreateDepsRef = useRef<ImmediateCreateDeps>({
-    entries,
-    vaultPath: config.vaultPath,
-    pendingSlugs: pendingSlugsRef.current,
-    openTabWithContent,
-    addEntry,
-    trackUnsaved: config.trackUnsaved,
-    markContentPending: config.markContentPending,
-  })
+  const latestImmediateCreateDepsRef = useRef<ImmediateCreateDeps | null>(null)
 
-  latestImmediateCreateDepsRef.current = {
-    entries,
-    vaultPath: config.vaultPath,
-    pendingSlugs: pendingSlugsRef.current,
-    openTabWithContent,
-    addEntry,
-    trackUnsaved: config.trackUnsaved,
-    markContentPending: config.markContentPending,
-  }
+  const syncImmediateCreateDeps = useCallback(() => {
+    latestImmediateCreateDepsRef.current = {
+      entries,
+      vaultPath: config.vaultPath,
+      pendingSlugs: pendingSlugsRef.current,
+      openTabWithContent,
+      addEntry,
+      trackUnsaved: config.trackUnsaved,
+      markContentPending: config.markContentPending,
+    }
+  }, [entries, config.vaultPath, openTabWithContent, addEntry, config.trackUnsaved, config.markContentPending])
+
+  useEffect(() => {
+    syncImmediateCreateDeps()
+  }, [syncImmediateCreateDeps])
 
   const persistNew: PersistFn = useCallback(
     (resolved) => createAndPersist(resolved, addEntry, openTabWithContent, {
@@ -347,12 +345,13 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
   }, [entries, persistNew, config.vaultPath])
 
   const executeImmediateCreateRequest = useCallback((request: ImmediateCreateRequest) => {
-    createNoteImmediate(latestImmediateCreateDepsRef.current, request.type)
+    const deps = latestImmediateCreateDepsRef.current
+    if (!deps) return
+    createNoteImmediate(deps, request.type)
     trackEvent('note_created', { has_type: request.type ? 1 : 0, creation_path: request.type ? 'type_section' : 'cmd_n' })
   }, [])
 
-  const continueImmediateCreateBurstRef = useRef<() => void>(() => {})
-  continueImmediateCreateBurstRef.current = () => {
+  const continueImmediateCreateBurst = useCallback(function scheduleImmediateCreateBurst() {
     if (immediateCreateTimerRef.current !== null) return
 
     immediateCreateTimerRef.current = window.setTimeout(() => {
@@ -364,11 +363,12 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
       }
 
       executeImmediateCreateRequest(next)
-      continueImmediateCreateBurstRef.current()
+      scheduleImmediateCreateBurst()
     }, RAPID_CREATE_NOTE_SETTLE_MS)
-  }
+  }, [executeImmediateCreateRequest])
 
   const handleCreateNoteImmediate = useCallback((type?: string) => {
+    syncImmediateCreateDeps()
     const request = { type }
     if (immediateCreateLockedRef.current) {
       queuedImmediateCreatesRef.current.push(request)
@@ -377,8 +377,8 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
 
     immediateCreateLockedRef.current = true
     executeImmediateCreateRequest(request)
-    continueImmediateCreateBurstRef.current()
-  }, [executeImmediateCreateRequest])
+    continueImmediateCreateBurst()
+  }, [syncImmediateCreateDeps, executeImmediateCreateRequest, continueImmediateCreateBurst])
 
   useEffect(() => () => {
     if (immediateCreateTimerRef.current !== null) {
