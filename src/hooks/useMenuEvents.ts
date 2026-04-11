@@ -10,7 +10,9 @@ import {
 declare global {
   interface Window {
     __laputaTest?: {
+      dispatchAppCommand: (id: string) => void
       dispatchBrowserMenuCommand?: (id: string) => void
+      triggerMenuCommand?: (id: string) => Promise<unknown>
     }
   }
 }
