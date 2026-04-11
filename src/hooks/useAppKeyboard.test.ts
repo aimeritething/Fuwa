@@ -157,6 +157,18 @@ describe('useAppKeyboard', () => {
     expect(actions.onArchiveNote).not.toHaveBeenCalled()
   })
 
+  it('Cmd+E still works when editor focus stops propagation', () => {
+    const actions = makeActions()
+    const onToggleOrganized = vi.fn()
+    renderHook(() => useAppKeyboard({ ...actions, onToggleOrganized }))
+    withFocusedContentEditable((editable) => {
+      editable.addEventListener('keydown', (event) => event.stopPropagation())
+      fireKeyOnTarget(editable, 'e', { metaKey: true })
+      expect(onToggleOrganized).toHaveBeenCalledWith('/vault/test.md')
+      expect(actions.onArchiveNote).not.toHaveBeenCalled()
+    })
+  })
+
   it('Cmd+J triggers open daily note', () => {
     const actions = makeActions()
     renderHook(() => useAppKeyboard(actions))

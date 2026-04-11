@@ -43,6 +43,22 @@ test.describe('keyboard command routing', () => {
     await expect(page.getByTitle('Properties (⌘⇧I)')).toBeVisible({ timeout: 5_000 })
   })
 
+  test('native menu trigger toggles organized state through the shared command path @smoke', async ({ page }) => {
+    await openFixtureVaultTauri(page, tempVaultDir)
+    await page.getByText('Alpha Project', { exact: true }).first().click()
+    await page.locator('.bn-editor').click()
+
+    await expect(page.getByTitle('Mark as organized (remove from Inbox) (Cmd+E)')).toBeVisible({ timeout: 5_000 })
+
+    // Chromium reserves Meta+E for the browser chrome, so the exact keystroke
+    // needs native-app QA. The smoke suite proves the shared command path here.
+    await triggerMenuCommand(page, 'note-toggle-organized')
+    await expect(page.getByTitle('Mark as unorganized (back to Inbox) (Cmd+E)')).toBeVisible({ timeout: 5_000 })
+
+    await triggerMenuCommand(page, 'note-toggle-organized')
+    await expect(page.getByTitle('Mark as organized (remove from Inbox) (Cmd+E)')).toBeVisible({ timeout: 5_000 })
+  })
+
   test('Meta+Backslash toggles the raw editor in Tauri mode through the shared keyboard path @smoke', async ({ page }) => {
     await openFixtureVaultTauri(page, tempVaultDir)
     await page.getByText('Alpha Project', { exact: true }).first().click()

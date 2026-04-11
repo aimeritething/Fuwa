@@ -122,6 +122,116 @@ export async function openFixtureVaultTauri(
     const jsonHeaders = { 'Content-Type': 'application/json' }
     const nativeFetch = window.fetch.bind(window)
 
+    const FRONTMATTER_OPEN = '---\n'
+    const FRONTMATTER_CLOSE = '\n---\n'
+
+    const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+    const splitFrontmatter = (content: string) => {
+      if (!content.startsWith(FRONTMATTER_OPEN)) {
+        return { frontmatter: null as string | null, body: content }
+      }
+
+      const closeIndex = content.indexOf(FRONTMATTER_CLOSE, FRONTMATTER_OPEN.length)
+      if (closeIndex === -1) {
+        return { frontmatter: null as string | null, body: content }
+      }
+
+      return {
+        frontmatter: content.slice(FRONTMATTER_OPEN.length, closeIndex),
+        body: content.slice(closeIndex + FRONTMATTER_CLOSE.length),
+      }
+    }
+
+    const splitFrontmatterEntries = (frontmatter: string) => {
+      const lines = frontmatter.split('\n')
+      const entries: Array<{ key: string; lines: string[] }> = []
+      let current: { key: string; lines: string[] } | null = null
+
+      for (const line of lines) {
+        const match = line.match(/^([^:\n]+):(.*)$/)
+        if (match && !line.startsWith(' ')) {
+          if (current) entries.push(current)
+          current = { key: match[1].trim(), lines: [line] }
+          continue
+        }
+
+        if (current) {
+          current.lines.push(line)
+        } else if (line.trim() !== '') {
+          current = { key: '', lines: [line] }
+        }
+      }
+
+      if (current) entries.push(current)
+      return entries
+    }
+
+    const serializeFrontmatterValue = (value: unknown): string[] => {
+      if (Array.isArray(value)) {
+        if (value.length === 0) return ['[]']
+        return [''].concat(value.map((item) => `  - ${JSON.stringify(String(item))}`))
+      }
+      if (typeof value === 'boolean' || typeof value === 'number') {
+        return [String(value)]
+      }
+      return [JSON.stringify(String(value ?? ''))]
+    }
+
+    const replaceFrontmatterEntry = (content: string, key: string, value: unknown) => {
+      const { frontmatter, body } = splitFrontmatter(content)
+      const entryLines = serializeFrontmatterValue(value)
+      const nextEntryLines =
+        entryLines[0] === ''
+          ? [`${key}:`, ...entryLines.slice(1)]
+          : [`${key}: ${entryLines[0]}`]
+
+      if (frontmatter === null) {
+        return `${FRONTMATTER_OPEN}${nextEntryLines.join('\n')}${FRONTMATTER_CLOSE}${body}`
+      }
+
+      const entries = splitFrontmatterEntries(frontmatter).filter((entry) => entry.key !== '')
+      const keyPattern = new RegExp(`^${escapeRegExp(key)}$`)
+      let replaced = false
+      const nextEntries = entries.map((entry) => {
+        if (!keyPattern.test(entry.key)) return entry
+        replaced = true
+        return { key, lines: nextEntryLines }
+      })
+
+      if (!replaced) {
+        nextEntries.push({ key, lines: nextEntryLines })
+      }
+
+      return `${FRONTMATTER_OPEN}${nextEntries.flatMap((entry) => entry.lines).join('\n')}${FRONTMATTER_CLOSE}${body}`
+    }
+
+    const removeFrontmatterEntry = (content: string, key: string) => {
+      const { frontmatter, body } = splitFrontmatter(content)
+      if (frontmatter === null) return content
+
+      const keyPattern = new RegExp(`^${escapeRegExp(key)}$`)
+      const nextEntries = splitFrontmatterEntries(frontmatter)
+        .filter((entry) => entry.key !== '' && !keyPattern.test(entry.key))
+
+      if (nextEntries.length === 0) {
+        return body
+      }
+
+      return `${FRONTMATTER_OPEN}${nextEntries.flatMap((entry) => entry.lines).join('\n')}${FRONTMATTER_CLOSE}${body}`
+    }
+
+    const persistFrontmatterChange = async (path: string, transform: (content: string) => string) => {
+      const current = await readJson(`/api/vault/content?path=${encodeURIComponent(path)}`) as { content: string }
+      const updatedContent = transform(current.content)
+      await readJson('/api/vault/save', {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify({ path, content: updatedContent }),
+      })
+      return updatedContent
+    }
+
     const readJson = async (url: string, init?: RequestInit) => {
       const response = await nativeFetch(url, init)
       if (!response.ok) {
@@ -199,6 +309,16 @@ export async function openFixtureVaultTauri(
             headers: jsonHeaders,
             body: JSON.stringify({ path: args?.path, content: args?.content }),
           })
+        case 'update_frontmatter':
+          return persistFrontmatterChange(
+            String(args?.path ?? ''),
+            (content) => replaceFrontmatterEntry(content, String(args?.key ?? ''), args?.value),
+          )
+        case 'delete_frontmatter_property':
+          return persistFrontmatterChange(
+            String(args?.path ?? ''),
+            (content) => removeFrontmatterEntry(content, String(args?.key ?? '')),
+          )
         case 'rename_note':
           return readJson('/api/vault/rename', {
             method: 'POST',
