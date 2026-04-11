@@ -54,6 +54,18 @@ test.describe('keyboard command routing', () => {
     await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
   })
 
+  test('Meta+Backslash toggles the raw editor through the keyboard path', async ({ page }) => {
+    await openFixtureVault(page, tempVaultDir)
+    await page.getByText('Alpha Project', { exact: true }).first().click()
+
+    await page.keyboard.press('Meta+Backslash')
+    await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible({ timeout: 5_000 })
+
+    await page.keyboard.press('Meta+Backslash')
+    await expect(page.getByTestId('raw-editor-codemirror')).not.toBeVisible({ timeout: 5_000 })
+    await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
+  })
+
   test('native menu trigger toggles the AI panel through the shared command path', async ({ page }) => {
     await openFixtureVault(page, tempVaultDir)
     await page.getByText('Alpha Project', { exact: true }).first().click()
