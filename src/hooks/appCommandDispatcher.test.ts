@@ -2,8 +2,11 @@ import { describe, expect, it, vi } from 'vitest'
 import {
   APP_COMMAND_IDS,
   dispatchAppCommand,
+  findShortcutCommandId,
+  findShortcutCommandIdForEvent,
   isAppCommandId,
   isNativeMenuCommandId,
+  isNativeMenuShortcutCommand,
   type AppCommandHandlers,
 } from './appCommandDispatcher'
 
@@ -58,6 +61,49 @@ describe('appCommandDispatcher', () => {
   it('distinguishes native menu ids from keyboard-only ids', () => {
     expect(isNativeMenuCommandId(APP_COMMAND_IDS.fileNewNote)).toBe(true)
     expect(isNativeMenuCommandId(APP_COMMAND_IDS.noteToggleFavorite)).toBe(false)
+  })
+
+  it('matches shortcut ownership from the shared catalog', () => {
+    expect(isNativeMenuShortcutCommand(APP_COMMAND_IDS.fileNewNote)).toBe(true)
+    expect(isNativeMenuShortcutCommand(APP_COMMAND_IDS.noteToggleFavorite)).toBe(false)
+  })
+
+  it('finds raw editor and AI shortcuts from the shared catalog', () => {
+    expect(findShortcutCommandId('command-or-ctrl', '\\')).toBe(APP_COMMAND_IDS.editToggleRawEditor)
+    expect(findShortcutCommandId('command-shift', '¬', 'KeyL')).toBe(APP_COMMAND_IDS.viewToggleAiChat)
+  })
+
+  it('resolves event modifiers through the shared shortcut catalog', () => {
+    expect(
+      findShortcutCommandIdForEvent({
+        key: '¬',
+        code: 'KeyL',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: true,
+        shiftKey: true,
+      }),
+    ).toBe(APP_COMMAND_IDS.viewToggleAiChat)
+    expect(
+      findShortcutCommandIdForEvent({
+        key: 'I',
+        code: 'KeyI',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: true,
+        shiftKey: true,
+      }),
+    ).toBe(APP_COMMAND_IDS.viewToggleProperties)
+    expect(
+      findShortcutCommandIdForEvent({
+        key: 'l',
+        code: 'KeyL',
+        altKey: false,
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: true,
+      }),
+    ).toBeNull()
   })
 
   it('dispatches create note through the shared command path', () => {

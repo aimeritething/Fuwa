@@ -729,6 +729,7 @@ Selection-dependent note actions are wired through both the command palette and 
 
 Shortcut ownership is explicit:
 
+- `appCommandCatalog.ts` is the shared shortcut manifest for command IDs, modifier rules, and ownership
 - Renderer-owned shortcuts flow through `useAppKeyboard` into `appCommandDispatcher.ts`
 - Native-owned shortcuts flow through `menu.rs` into `useMenuEvents`, then into `appCommandDispatcher.ts`
 - Deterministic QA uses `trigger_menu_command` in Tauri and `window.__laputaTest.triggerMenuCommand()` in browser runs to exercise the native-menu command path without flaky macOS key synthesis

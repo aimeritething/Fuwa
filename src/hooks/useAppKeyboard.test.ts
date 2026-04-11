@@ -103,6 +103,33 @@ describe('useAppKeyboard', () => {
     expect(actions.onCreateNote).not.toHaveBeenCalled()
   })
 
+  it('Cmd+\\ defers to native menu in Tauri', () => {
+    const actions = makeActions()
+    actions.onToggleRawEditor = vi.fn()
+    ;(window as typeof window & { __TAURI__?: object }).__TAURI__ = {}
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('\\', { metaKey: true })
+    expect(actions.onToggleRawEditor).not.toHaveBeenCalled()
+  })
+
+  it('Cmd+Shift+I defers to native menu in Tauri', () => {
+    const actions = makeActions()
+    const onToggleInspector = vi.fn()
+    ;(window as typeof window & { __TAURI__?: object }).__TAURI__ = {}
+    renderHook(() => useAppKeyboard({ ...actions, onToggleInspector }))
+    fireKey('i', { metaKey: true, shiftKey: true })
+    expect(onToggleInspector).not.toHaveBeenCalled()
+  })
+
+  it('Cmd+Shift+L defers to native menu in Tauri', () => {
+    const actions = makeActions()
+    const onToggleAIChat = vi.fn()
+    ;(window as typeof window & { __TAURI__?: object }).__TAURI__ = {}
+    renderHook(() => useAppKeyboard({ ...actions, onToggleAIChat }))
+    fireKey('l', { metaKey: true, shiftKey: true })
+    expect(onToggleAIChat).not.toHaveBeenCalled()
+  })
+
   it('Cmd+D triggers toggle favorite on active note', () => {
     const actions = makeActions()
     actions.onToggleFavorite = vi.fn()

@@ -105,4 +105,5 @@ proposed → active → superseded
 | [0047](0047-regex-mode-for-view-filter-conditions.md) | Regex mode for view filter conditions | active |
 | [0048](0048-relative-date-expressions-in-view-filters.md) | Relative date expressions in view filter conditions | active |
 | [0049](0049-per-note-icon-property.md) | Per-note icon property (_icon on individual notes) | active |
-| [0050](0050-deterministic-shortcut-command-routing.md) | Deterministic shortcut command routing | active |
+| [0050](0050-deterministic-shortcut-command-routing.md) | Deterministic shortcut command routing | superseded → [0051](0051-shared-shortcut-manifest-for-testable-routing.md) |
+| [0051](0051-shared-shortcut-manifest-for-testable-routing.md) | Shared shortcut manifest for testable routing | active |
