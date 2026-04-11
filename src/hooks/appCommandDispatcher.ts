@@ -287,4 +287,6 @@ export function dispatchAppCommand(id: AppCommandId, handlers: AppCommandHandler
       handlers.onRepairVault?.()
       return true
   }
+
+  return false
 }
