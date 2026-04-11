@@ -49,6 +49,52 @@ interface BreadcrumbBarProps {
 }
 
 const DISABLED_ICON_STYLE = { opacity: 0.4, cursor: 'not-allowed' } as const
+const BREADCRUMB_ICON_CLASS = 'size-[16px]'
+
+function focusFilenameInput(
+  isEditing: boolean,
+  inputRef: React.RefObject<HTMLInputElement | null>,
+) {
+  if (!isEditing) return
+  inputRef.current?.focus()
+  inputRef.current?.select()
+}
+
+function beginFilenameEditing(
+  onRenameFilename: BreadcrumbBarProps['onRenameFilename'],
+  filenameStem: string,
+  setDraftStem: (value: string) => void,
+  setIsEditing: (value: boolean) => void,
+) {
+  if (!onRenameFilename) return
+  setDraftStem(filenameStem)
+  setIsEditing(true)
+}
+
+function resolveFilenameRenameTarget(draftStem: string, filenameStem: string): string | null {
+  const nextStem = normalizeFilenameStemInput(draftStem)
+  if (!nextStem || nextStem === filenameStem) return null
+  return nextStem
+}
+
+function handleFilenameInputKeyDown(
+  event: KeyboardEvent<HTMLInputElement>,
+  submitRename: () => void,
+  cancelEditing: () => void,
+) {
+  switch (event.key) {
+    case 'Enter':
+      event.preventDefault()
+      submitRename()
+      return
+    case 'Escape':
+      event.preventDefault()
+      cancelEditing()
+      return
+    default:
+      return
+  }
+}
 
 function IconActionButton({
   title,
@@ -74,7 +120,7 @@ function IconActionButton({
       type="button"
       variant="ghost"
       size="icon-xs"
-      className={cn('text-muted-foreground', className)}
+      className={cn('text-muted-foreground [&_svg:not([class*=size-])]:size-4', className)}
       style={style}
       onClick={onClick}
       disabled={disabled}
@@ -94,7 +140,7 @@ function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggle
       onClick={onToggleRaw}
       className={cn(rawMode ? 'text-foreground' : 'hover:text-foreground')}
     >
-      <Code size={16} />
+      <Code size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -106,7 +152,7 @@ function FavoriteAction({ favorite, onToggleFavorite }: { favorite: boolean; onT
       onClick={onToggleFavorite}
       className={cn(favorite ? 'text-yellow-500' : 'hover:text-foreground')}
     >
-      <Star size={16} weight={favorite ? 'fill' : 'regular'} />
+      <Star size={16} weight={favorite ? 'fill' : 'regular'} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -125,7 +171,7 @@ function OrganizedAction({
       onClick={onToggleOrganized}
       className={cn(organized ? 'text-green-600' : 'hover:text-foreground')}
     >
-      <CheckCircle size={16} weight={organized ? 'fill' : 'regular'} />
+      <CheckCircle size={16} weight={organized ? 'fill' : 'regular'} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -133,7 +179,7 @@ function OrganizedAction({
 function SearchAction() {
   return (
     <IconActionButton title="Search in file" className="hover:text-foreground">
-      <MagnifyingGlass size={16} />
+      <MagnifyingGlass size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -147,7 +193,7 @@ function DiffAction({
   if (!showDiffToggle) {
     return (
       <IconActionButton title="No changes" style={DISABLED_ICON_STYLE} tabIndex={-1}>
-        <GitBranch size={16} />
+        <GitBranch size={16} className={BREADCRUMB_ICON_CLASS} />
       </IconActionButton>
     )
   }
@@ -159,7 +205,7 @@ function DiffAction({
       disabled={diffLoading}
       className={cn(diffMode ? 'text-foreground' : 'hover:text-foreground')}
     >
-      <GitBranch size={16} />
+      <GitBranch size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -179,7 +225,7 @@ function AIChatAction({ showAIChat, onToggleAIChat }: Pick<BreadcrumbBarProps, '
       onClick={onToggleAIChat}
       className={cn(showAIChat ? 'text-primary' : 'hover:text-foreground')}
     >
-      <Sparkle size={16} weight={showAIChat ? 'fill' : 'regular'} />
+      <Sparkle size={16} weight={showAIChat ? 'fill' : 'regular'} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -192,14 +238,14 @@ function ArchiveAction({
   if (archived) {
     return (
       <IconActionButton title="Unarchive" onClick={onUnarchive} className="hover:text-foreground">
-        <ArrowUUpLeft size={16} />
+        <ArrowUUpLeft size={16} className={BREADCRUMB_ICON_CLASS} />
       </IconActionButton>
     )
   }
 
   return (
     <IconActionButton title="Archive" onClick={onArchive} className="hover:text-foreground">
-      <Archive size={16} />
+      <Archive size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -207,7 +253,7 @@ function ArchiveAction({
 function DeleteAction({ onDelete }: Pick<BreadcrumbBarProps, 'onDelete'>) {
   return (
     <IconActionButton title="Delete (Cmd+Delete)" onClick={onDelete} className="hover:text-destructive">
-      <Trash size={16} />
+      <Trash size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -219,7 +265,7 @@ function InspectorAction({
   if (!inspectorCollapsed) return null
   return (
     <IconActionButton title="Properties (⌘⇧I)" onClick={onToggleInspector} className="hover:text-foreground">
-      <SlidersHorizontal size={16} />
+      <SlidersHorizontal size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -358,15 +404,11 @@ function FilenameCrumb({ entry, onRenameFilename }: Pick<BreadcrumbBarProps, 'en
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!isEditing) return
-    inputRef.current?.focus()
-    inputRef.current?.select()
+    focusFilenameInput(isEditing, inputRef)
   }, [isEditing])
 
   const startEditing = useCallback(() => {
-    if (!onRenameFilename) return
-    setDraftStem(filenameStem)
-    setIsEditing(true)
+    beginFilenameEditing(onRenameFilename, filenameStem, setDraftStem, setIsEditing)
   }, [onRenameFilename, filenameStem])
 
   const cancelEditing = useCallback(() => {
@@ -375,22 +417,14 @@ function FilenameCrumb({ entry, onRenameFilename }: Pick<BreadcrumbBarProps, 'en
   }, [filenameStem])
 
   const submitRename = useCallback(() => {
-    const nextStem = normalizeFilenameStemInput(draftStem)
     setIsEditing(false)
-    if (!nextStem || nextStem === filenameStem) return
+    const nextStem = resolveFilenameRenameTarget(draftStem, filenameStem)
+    if (!nextStem) return
     onRenameFilename?.(entry.path, nextStem)
   }, [draftStem, filenameStem, onRenameFilename, entry.path])
 
   const handleInputKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      submitRename()
-      return
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      cancelEditing()
-    }
+    handleFilenameInputKeyDown(event, submitRename, cancelEditing)
   }, [submitRename, cancelEditing])
 
   if (isEditing) {
@@ -448,14 +482,14 @@ function BreadcrumbActions({
       />
       {!forceRawMode && <RawToggleButton rawMode={rawMode} onToggleRaw={onToggleRaw} />}
       <PlaceholderAction title="Coming soon">
-        <CursorText size={16} />
+        <CursorText size={16} className={BREADCRUMB_ICON_CLASS} />
       </PlaceholderAction>
       <AIChatAction showAIChat={showAIChat} onToggleAIChat={onToggleAIChat} />
       <ArchiveAction archived={entry.archived} onArchive={onArchive} onUnarchive={onUnarchive} />
       <DeleteAction onDelete={onDelete} />
       <InspectorAction inspectorCollapsed={inspectorCollapsed} onToggleInspector={onToggleInspector} />
       <PlaceholderAction title="Coming soon">
-        <DotsThree size={16} />
+        <DotsThree size={16} className={BREADCRUMB_ICON_CLASS} />
       </PlaceholderAction>
     </div>
   )

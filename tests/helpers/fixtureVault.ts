@@ -4,6 +4,7 @@ import os from 'os'
 import path from 'path'
 
 const FIXTURE_VAULT = path.resolve('tests/fixtures/test-vault')
+const FIXTURE_VAULT_READY_TIMEOUT = 30_000
 
 function copyDirSync(src: string, dest: string): void {
   fs.mkdirSync(dest, { recursive: true })
@@ -54,29 +55,60 @@ export async function openFixtureVault(
       return nativeFetch(input, init)
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    let ref: any = null
+    const applyFixtureVaultOverrides = (
+      handlers: Record<string, ((args?: unknown) => unknown)> | null | undefined,
+    ) => {
+      if (!handlers) return handlers
+      handlers.load_vault_list = () => ({
+        vaults: [{ label: 'Test Vault', path: resolvedVaultPath }],
+        active_vault: resolvedVaultPath,
+        hidden_defaults: [],
+      })
+      handlers.check_vault_exists = () => true
+      handlers.get_last_vault_path = () => resolvedVaultPath
+      handlers.get_default_vault_path = () => resolvedVaultPath
+      handlers.save_vault_list = () => null
+      return handlers
+    }
+
+    let ref = applyFixtureVaultOverrides(
+      (window.__mockHandlers as Record<string, ((args?: unknown) => unknown)> | undefined),
+    ) ?? null
+
     Object.defineProperty(window, '__mockHandlers', {
       configurable: true,
       set(value) {
-        ref = value
-        ref.load_vault_list = () => ({
-          vaults: [{ label: 'Test Vault', path: resolvedVaultPath }],
-          active_vault: resolvedVaultPath,
-          hidden_defaults: [],
-        })
-        ref.check_vault_exists = () => true
-        ref.get_last_vault_path = () => resolvedVaultPath
-        ref.get_default_vault_path = () => resolvedVaultPath
-        ref.save_vault_list = () => null
+        ref = applyFixtureVaultOverrides(
+          value as Record<string, ((args?: unknown) => unknown)> | undefined,
+        ) ?? null
       },
       get() {
-        return ref
+        return applyFixtureVaultOverrides(ref) ?? ref
       },
     })
   }, vaultPath)
 
-  await page.goto('/')
-  await page.locator('[data-testid="note-list-container"]').waitFor({ timeout: 15_000 })
-  await expect(page.getByText('Alpha Project', { exact: true }).first()).toBeVisible({ timeout: 15_000 })
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.waitForFunction(() => Boolean(window.__mockHandlers))
+  await page.evaluate((resolvedVaultPath: string) => {
+    const handlers = window.__mockHandlers
+    if (!handlers) {
+      throw new Error('Mock handlers unavailable for fixture vault override')
+    }
+
+    handlers.load_vault_list = () => ({
+      vaults: [{ label: 'Test Vault', path: resolvedVaultPath }],
+      active_vault: resolvedVaultPath,
+      hidden_defaults: [],
+    })
+    handlers.check_vault_exists = () => true
+    handlers.get_last_vault_path = () => resolvedVaultPath
+    handlers.get_default_vault_path = () => resolvedVaultPath
+    handlers.save_vault_list = () => null
+  }, vaultPath)
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  await page.locator('[data-testid="note-list-container"]').waitFor({ timeout: FIXTURE_VAULT_READY_TIMEOUT })
+  await expect(page.getByText('Alpha Project', { exact: true }).first()).toBeVisible({
+    timeout: FIXTURE_VAULT_READY_TIMEOUT,
+  })
 }
