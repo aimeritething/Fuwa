@@ -8,13 +8,20 @@ import {
   isAppCommandId,
   isNativeMenuCommandId,
 } from './hooks/appCommandDispatcher'
+import {
+  getShortcutEventInit,
+  type AppCommandShortcutEventInit,
+  type AppCommandShortcutEventOptions,
+} from './hooks/appCommandCatalog'
 
 declare global {
   interface Window {
     __laputaTest?: {
       dispatchAppCommand?: (id: string) => void
+      dispatchShortcutEvent?: (init: AppCommandShortcutEventInit) => void
       dispatchBrowserMenuCommand?: (id: string) => void
       triggerMenuCommand?: (id: string) => Promise<unknown>
+      triggerShortcutCommand?: (id: string, options?: AppCommandShortcutEventOptions) => void
     }
   }
 }
@@ -27,12 +34,24 @@ if ('__TAURI__' in window || '__TAURI_INTERNALS__' in window) {
   document.addEventListener('contextmenu', (e) => e.preventDefault(), true)
 }
 
+function dispatchDeterministicShortcutEvent(init: AppCommandShortcutEventInit) {
+  const target =
+    document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : document.body ?? window
+
+  target.dispatchEvent(new KeyboardEvent('keydown', init))
+}
+
 window.__laputaTest = {
   dispatchAppCommand(id: string) {
     if (!isAppCommandId(id)) {
       throw new Error(`Unknown app command: ${id}`)
     }
     window.dispatchEvent(new CustomEvent(APP_COMMAND_EVENT_NAME, { detail: id }))
+  },
+  dispatchShortcutEvent(init: AppCommandShortcutEventInit) {
+    dispatchDeterministicShortcutEvent(init)
   },
   async triggerMenuCommand(id: string) {
     if (!isNativeMenuCommandId(id)) {
@@ -50,6 +69,18 @@ window.__laputaTest = {
 
     window.__laputaTest.dispatchBrowserMenuCommand(id)
     return undefined
+  },
+  triggerShortcutCommand(id: string, options?: AppCommandShortcutEventOptions) {
+    if (!isAppCommandId(id)) {
+      throw new Error(`Unknown app command: ${id}`)
+    }
+
+    const init = getShortcutEventInit(id, options)
+    if (!init) {
+      throw new Error(`Command ${id} does not define a keyboard shortcut`)
+    }
+
+    dispatchDeterministicShortcutEvent(init)
   },
 }
 

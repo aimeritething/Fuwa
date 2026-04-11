@@ -10,6 +10,10 @@ import {
   resetAppCommandDispatchStateForTests,
   type AppCommandHandlers,
 } from './appCommandDispatcher'
+import {
+  getDeterministicShortcutQaDefinition,
+  getShortcutEventInit,
+} from './appCommandCatalog'
 
 function makeHandlers(): AppCommandHandlers {
   return {
@@ -71,6 +75,39 @@ describe('appCommandDispatcher', () => {
   it('finds raw editor and AI shortcuts from the shared catalog', () => {
     expect(findShortcutCommandId('command-or-ctrl', '\\')).toBe(APP_COMMAND_IDS.editToggleRawEditor)
     expect(findShortcutCommandId('command-shift', '¬', 'KeyL')).toBe(APP_COMMAND_IDS.viewToggleAiChat)
+  })
+
+  it('gives every shortcut command an explicit deterministic QA strategy', () => {
+    expect(getDeterministicShortcutQaDefinition(APP_COMMAND_IDS.fileNewNote)).toMatchObject({
+      preferredMode: 'native-menu-command',
+      supportsRendererShortcutEvent: true,
+      supportsNativeMenuCommand: true,
+      requiresManualNativeAcceleratorQa: true,
+    })
+    expect(getDeterministicShortcutQaDefinition(APP_COMMAND_IDS.noteToggleFavorite)).toMatchObject({
+      preferredMode: 'renderer-shortcut-event',
+      supportsRendererShortcutEvent: true,
+      supportsNativeMenuCommand: false,
+      requiresManualNativeAcceleratorQa: true,
+    })
+  })
+
+  it('builds deterministic keyboard events from the shared shortcut manifest', () => {
+    expect(getShortcutEventInit(APP_COMMAND_IDS.viewToggleAiChat)).toMatchObject({
+      key: 'l',
+      code: 'KeyL',
+      metaKey: true,
+      ctrlKey: false,
+      shiftKey: true,
+    })
+    expect(getShortcutEventInit(APP_COMMAND_IDS.viewToggleAiChat, { preferControl: true })).toMatchObject({
+      key: 'l',
+      code: 'KeyL',
+      metaKey: false,
+      ctrlKey: true,
+      shiftKey: true,
+    })
+    expect(getShortcutEventInit(APP_COMMAND_IDS.appCheckForUpdates)).toBeNull()
   })
 
   it('resolves event modifiers through the shared shortcut catalog', () => {

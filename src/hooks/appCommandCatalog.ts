@@ -51,7 +51,26 @@ export type AppCommandShortcutCombo =
   | 'command-or-ctrl'
   | 'command-or-ctrl-shift'
   | 'command-shift'
+export type AppCommandDeterministicQaMode =
+  | 'renderer-shortcut-event'
+  | 'native-menu-command'
 type ShortcutEventLike = Pick<KeyboardEvent, 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey' | 'key' | 'code'>
+
+export interface AppCommandDeterministicQaDefinition {
+  preferredMode: AppCommandDeterministicQaMode
+  supportsRendererShortcutEvent: boolean
+  supportsNativeMenuCommand: boolean
+  requiresManualNativeAcceleratorQa: boolean
+}
+
+export interface AppCommandShortcutEventOptions {
+  preferControl?: boolean
+}
+
+export type AppCommandShortcutEventInit = Pick<
+  KeyboardEventInit,
+  'altKey' | 'bubbles' | 'cancelable' | 'code' | 'ctrlKey' | 'key' | 'metaKey' | 'shiftKey'
+>
 
 type SimpleHandlerKey =
   | 'onOpenSettings'
@@ -312,6 +331,20 @@ const NATIVE_MENU_COMMAND_SET = new Set<string>(
     .map(([id]) => id),
 )
 
+const MANUAL_NATIVE_ACCELERATOR_QA_COMMAND_SET = new Set<AppCommandId>([
+  APP_COMMAND_IDS.appSettings,
+  APP_COMMAND_IDS.fileNewNote,
+  APP_COMMAND_IDS.fileDailyNote,
+  APP_COMMAND_IDS.fileQuickOpen,
+  APP_COMMAND_IDS.fileSave,
+  APP_COMMAND_IDS.editFindInVault,
+  APP_COMMAND_IDS.viewToggleProperties,
+  APP_COMMAND_IDS.viewToggleAiChat,
+  APP_COMMAND_IDS.viewCommandPalette,
+  APP_COMMAND_IDS.noteToggleOrganized,
+  APP_COMMAND_IDS.noteToggleFavorite,
+])
+
 const shortcutKeyMaps = {
   'command-or-ctrl': new Map<string, AppCommandId>(),
   'command-or-ctrl-shift': new Map<string, AppCommandId>(),
@@ -351,6 +384,41 @@ export function isAppCommandId(value: string): value is AppCommandId {
 
 export function isNativeMenuCommandId(value: string): value is AppCommandId {
   return NATIVE_MENU_COMMAND_SET.has(value)
+}
+
+export function getDeterministicShortcutQaDefinition(
+  id: AppCommandId,
+): AppCommandDeterministicQaDefinition | null {
+  const definition = APP_COMMAND_DEFINITIONS[id]
+  if (!definition.shortcut) return null
+
+  return {
+    preferredMode: definition.menuOwned ? 'native-menu-command' : 'renderer-shortcut-event',
+    supportsRendererShortcutEvent: true,
+    supportsNativeMenuCommand: definition.menuOwned,
+    requiresManualNativeAcceleratorQa: MANUAL_NATIVE_ACCELERATOR_QA_COMMAND_SET.has(id),
+  }
+}
+
+export function getShortcutEventInit(
+  id: AppCommandId,
+  options: AppCommandShortcutEventOptions = {},
+): AppCommandShortcutEventInit | null {
+  const shortcut = APP_COMMAND_DEFINITIONS[id].shortcut
+  if (!shortcut) return null
+
+  const useControl = options.preferControl ?? false
+
+  return {
+    key: shortcut.key,
+    code: shortcut.code,
+    altKey: false,
+    bubbles: true,
+    cancelable: true,
+    ctrlKey: useControl,
+    metaKey: !useControl,
+    shiftKey: shortcut.combo !== 'command-or-ctrl',
+  }
 }
 
 export function shortcutCombosForEvent({

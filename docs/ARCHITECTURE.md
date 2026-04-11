@@ -729,12 +729,15 @@ Selection-dependent note actions are wired through both the command palette and 
 
 Shortcut routing is explicit:
 
-- `appCommandCatalog.ts` is the shared shortcut manifest for command IDs and modifier rules
+- `appCommandCatalog.ts` is the shared shortcut manifest for command IDs, modifier rules, and deterministic QA metadata
 - `useAppKeyboard` is the primary execution path for real shortcut keypresses, including Tauri runs
 - macOS browser-reserved chords such as `Cmd+Shift+L` are unblocked at webview init via `tauri-plugin-prevent-default`, then continue through the same renderer-first command path
 - `menu.rs` and `useMenuEvents` emit the same command IDs for native menu clicks and accelerators
 - `appCommandDispatcher.ts` suppresses the paired native-menu/renderer echo from a single shortcut so the command runs once
-- Deterministic QA uses both real key events in a Tauri-like environment and `trigger_menu_command` to prove the keyboard path and the native menu path without relying on flaky macOS key synthesis
+- Deterministic QA uses two explicit proof paths from the shared manifest:
+  - renderer shortcut-event proof through `window.__laputaTest.triggerShortcutCommand()`
+  - native menu-command proof through `trigger_menu_command`
+- The browser harness is only a deterministic desktop command bridge; exact native accelerator delivery still requires real Tauri QA for commands flagged as manual-native-critical
 
 ## Auto-Release & In-App Updates
 

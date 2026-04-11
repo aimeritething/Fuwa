@@ -1,4 +1,9 @@
 import { type Page } from '@playwright/test'
+import type {
+  AppCommandId,
+  AppCommandShortcutEventInit,
+  AppCommandShortcutEventOptions,
+} from '../../src/hooks/appCommandCatalog'
 
 export async function triggerMenuCommand(page: Page, id: string): Promise<void> {
   await page.evaluate(async (commandId) => {
@@ -31,4 +36,31 @@ export async function triggerMenuCommand(page: Page, id: string): Promise<void> 
 
     throw new Error('Laputa test bridge is missing dispatchBrowserMenuCommand')
   }, id)
+}
+
+export async function dispatchShortcutEvent(
+  page: Page,
+  init: AppCommandShortcutEventInit,
+): Promise<void> {
+  await page.evaluate((eventInit) => {
+    const bridge = window.__laputaTest?.dispatchShortcutEvent
+    if (typeof bridge !== 'function') {
+      throw new Error('Laputa test bridge is missing dispatchShortcutEvent')
+    }
+    bridge(eventInit)
+  }, init)
+}
+
+export async function triggerShortcutCommand(
+  page: Page,
+  id: AppCommandId,
+  options?: AppCommandShortcutEventOptions,
+): Promise<void> {
+  await page.evaluate((payload) => {
+    const bridge = window.__laputaTest?.triggerShortcutCommand
+    if (typeof bridge !== 'function') {
+      throw new Error('Laputa test bridge is missing triggerShortcutCommand')
+    }
+    bridge(payload.id, payload.options)
+  }, { id, options })
 }

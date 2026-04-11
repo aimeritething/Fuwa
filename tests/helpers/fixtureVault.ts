@@ -120,7 +120,14 @@ export async function openFixtureVault(
   })
 }
 
-export async function openFixtureVaultTauri(
+/**
+ * Browser harness for desktop command-routing tests.
+ *
+ * This stubs the Tauri invoke bridge inside Playwright so tests can exercise
+ * renderer shortcut dispatch and desktop menu-command dispatch without a native
+ * shell. It is deterministic, but it is not a substitute for real native QA.
+ */
+export async function openFixtureVaultDesktopHarness(
   page: Page,
   vaultPath: string,
 ): Promise<void> {
@@ -388,3 +395,5 @@ export async function openFixtureVaultTauri(
 
   await page.waitForFunction(() => Boolean(window.__TAURI_INTERNALS__))
 }
+
+export const openFixtureVaultTauri = openFixtureVaultDesktopHarness

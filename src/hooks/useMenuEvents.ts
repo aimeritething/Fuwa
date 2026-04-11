@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { isTauri } from '../mock-tauri'
+import type { AppCommandShortcutEventInit, AppCommandShortcutEventOptions } from './appCommandCatalog'
 import {
   APP_COMMAND_EVENT_NAME,
   executeAppCommand,
@@ -11,8 +12,10 @@ declare global {
   interface Window {
     __laputaTest?: {
       dispatchAppCommand?: (id: string) => void
+      dispatchShortcutEvent?: (init: AppCommandShortcutEventInit) => void
       dispatchBrowserMenuCommand?: (id: string) => void
       triggerMenuCommand?: (id: string) => Promise<unknown>
+      triggerShortcutCommand?: (id: string, options?: AppCommandShortcutEventOptions) => void
     }
   }
 }
