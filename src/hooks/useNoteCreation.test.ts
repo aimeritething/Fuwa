@@ -342,6 +342,20 @@ describe('useNoteCreation hook', () => {
     expect(markContentPending).toHaveBeenCalled()
   })
 
+  it('handleCreateNoteImmediate requests editor focus for the new path', () => {
+    const focusListener = vi.fn()
+    window.addEventListener('laputa:focus-editor', focusListener)
+    const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
+
+    act(() => { result.current.handleCreateNoteImmediate() })
+
+    expect(focusListener).toHaveBeenCalledTimes(1)
+    const event = focusListener.mock.calls[0][0] as CustomEvent
+    expect(event.detail.path).toMatch(/\/test\/vault\/untitled-note-\d+\.md$/)
+
+    window.removeEventListener('laputa:focus-editor', focusListener)
+  })
+
   it('handleOpenDailyNote creates new daily note when none exists', () => {
     const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
     act(() => { result.current.handleOpenDailyNote() })
@@ -356,6 +370,21 @@ describe('useNoteCreation hook', () => {
     act(() => { result.current.handleOpenDailyNote() })
     expect(addEntry).not.toHaveBeenCalled()
     expect(handleSelectNote).toHaveBeenCalledWith(existing)
+  })
+
+  it('handleOpenDailyNote requests focus for the daily note path', () => {
+    const focusListener = vi.fn()
+    window.addEventListener('laputa:focus-editor', focusListener)
+    const today = todayDateString()
+    const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
+
+    act(() => { result.current.handleOpenDailyNote() })
+
+    expect(focusListener).toHaveBeenCalledTimes(1)
+    const event = focusListener.mock.calls[0][0] as CustomEvent
+    expect(event.detail.path).toBe(`/test/vault/${today}.md`)
+
+    window.removeEventListener('laputa:focus-editor', focusListener)
   })
 
   it('handleCreateType creates type entry', () => {

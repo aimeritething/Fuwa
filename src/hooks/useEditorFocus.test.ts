@@ -48,6 +48,41 @@ describe('useEditorFocus', () => {
     vi.useRealTimers()
   })
 
+  it('waits for the matching tab swap event when a target path is provided', () => {
+    const rAF = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    vi.spyOn(window, 'setTimeout')
+    const { editor } = setup(true)
+
+    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+
+    expect(editor.focus).not.toHaveBeenCalled()
+    expect(rAF).not.toHaveBeenCalled()
+
+    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/other.md' } }))
+    expect(editor.focus).not.toHaveBeenCalled()
+
+    window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', { detail: { path: '/vault/new-note.md' } }))
+    expect(rAF).toHaveBeenCalled()
+    expect(editor.focus).toHaveBeenCalled()
+  })
+
+  it('falls back to focusing when the swap event never arrives', () => {
+    vi.useFakeTimers()
+    const rAF = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    const { editor } = setup(true)
+
+    window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { path: '/vault/new-note.md' } }))
+
+    expect(editor.focus).not.toHaveBeenCalled()
+    vi.advanceTimersByTime(249)
+    expect(editor.focus).not.toHaveBeenCalled()
+
+    vi.advanceTimersByTime(1)
+    expect(rAF).toHaveBeenCalled()
+    expect(editor.focus).toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
   it('cleans up event listener on unmount', () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- minimal mock for test
     const editor = { focus: vi.fn() } as any

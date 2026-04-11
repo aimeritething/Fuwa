@@ -161,9 +161,9 @@ function addEntryWithMock(entry: VaultEntry, content: string, addEntry: (e: Vaul
 }
 
 /** Dispatch focus-editor event with perf timing marker. */
-function signalFocusEditor(opts?: { selectTitle?: boolean }): void {
+function signalFocusEditor(opts?: { selectTitle?: boolean; path?: string }): void {
   window.dispatchEvent(new CustomEvent('laputa:focus-editor', {
-    detail: { t0: performance.now(), selectTitle: opts?.selectTitle ?? false },
+    detail: { t0: performance.now(), selectTitle: opts?.selectTitle ?? false, path: opts?.path ?? null },
   }))
 }
 
@@ -200,9 +200,10 @@ function createAndPersist(
 function openDailyNote(entries: VaultEntry[], selectNote: (e: VaultEntry) => void, persist: PersistFn, vaultPath: string): void {
   const date = todayDateString()
   const existing = findDailyNote(entries, date)
+  const targetPath = existing?.path ?? `${vaultPath}/${date}.md`
   if (existing) selectNote(existing)
   else persist(resolveDailyNote(date, vaultPath))
-  signalFocusEditor()
+  signalFocusEditor({ path: targetPath })
 }
 
 interface ImmediateCreateDeps {
@@ -250,7 +251,7 @@ function createNoteImmediate(deps: ImmediateCreateDeps, type?: string): void {
   addEntryWithMock(entry, content, deps.addEntry)
   deps.trackUnsaved?.(entry.path)
   deps.markContentPending?.(entry.path, content)
-  signalFocusEditor()
+  signalFocusEditor({ path: entry.path })
 }
 
 interface RelationshipCreateDeps {

@@ -1,5 +1,9 @@
 import { useEffect } from 'react'
 
+const TAB_SWAP_EVENT_NAME = 'laputa:editor-tab-swapped'
+const FOCUS_EVENT_NAME = 'laputa:focus-editor'
+const SWAP_WAIT_FALLBACK_MS = 250
+
 interface TiptapChain {
   setTextSelection: (pos: { from: number; to: number }) => TiptapChain
   run: () => void
@@ -42,10 +46,13 @@ export function useEditorFocus(
   editorMountedRef: React.RefObject<boolean>,
 ) {
   useEffect(() => {
+    const pendingCleanups = new Set<() => void>()
+
     const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail as { t0?: number; selectTitle?: boolean } | undefined
+      const detail = (e as CustomEvent).detail as { t0?: number; selectTitle?: boolean; path?: string | null } | undefined
       const t0 = detail?.t0
       const selectTitle = detail?.selectTitle ?? false
+      const targetPath = detail?.path ?? null
       const doFocus = () => {
         editor.focus()
         if (!selectTitle) {
@@ -63,13 +70,47 @@ export function useEditorFocus(
           if (t0) console.debug(`[perf] createNote → focus+select: ${(performance.now() - t0).toFixed(1)}ms`)
         })
       }
-      if (editorMountedRef.current) {
-        requestAnimationFrame(doFocus)
-      } else {
+
+      const scheduleFocus = () => {
+        if (editorMountedRef.current) {
+          requestAnimationFrame(doFocus)
+          return
+        }
         setTimeout(doFocus, 80)
       }
+
+      if (!targetPath) {
+        scheduleFocus()
+        return
+      }
+
+      const handleTabSwap = (event: Event) => {
+        const swapPath = (event as CustomEvent).detail?.path
+        if (swapPath !== targetPath) return
+        cleanupPending()
+        scheduleFocus()
+      }
+
+      const fallbackTimer = window.setTimeout(() => {
+        cleanupPending()
+        scheduleFocus()
+      }, SWAP_WAIT_FALLBACK_MS)
+
+      const cleanupPending = () => {
+        window.clearTimeout(fallbackTimer)
+        window.removeEventListener(TAB_SWAP_EVENT_NAME, handleTabSwap)
+        pendingCleanups.delete(cleanupPending)
+      }
+
+      pendingCleanups.add(cleanupPending)
+      window.addEventListener(TAB_SWAP_EVENT_NAME, handleTabSwap)
     }
-    window.addEventListener('laputa:focus-editor', handler)
-    return () => window.removeEventListener('laputa:focus-editor', handler)
+
+    window.addEventListener(FOCUS_EVENT_NAME, handler)
+    return () => {
+      window.removeEventListener(FOCUS_EVENT_NAME, handler)
+      pendingCleanups.forEach((cleanup) => cleanup())
+      pendingCleanups.clear()
+    }
   }, [editor, editorMountedRef])
 }

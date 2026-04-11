@@ -22,6 +22,12 @@ interface UseEditorTabSwapOptions {
   rawMode?: boolean
 }
 
+function signalEditorTabSwapped(path: string): void {
+  window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', {
+    detail: { path },
+  }))
+}
+
 /** Strip the YAML frontmatter from raw file content, returning the body
  *  (including any H1 heading) that should appear in the editor. */
 export function extractEditorBody(rawFileContent: string): string {
@@ -81,6 +87,14 @@ function buildFastPathBlocks(preprocessed: string): EditorBlocks | null {
     { type: 'heading', props: { level: 1, textColor: 'default', backgroundColor: 'default', textAlignment: 'left' }, content: [{ type: 'text', text: h1OnlyMatch[1], styles: {} }], children: [] },
     { type: 'paragraph', content: [], children: [] },
   ]
+}
+
+function isBlankBodyContent(content: string): boolean {
+  return extractEditorBody(content).trim() === ''
+}
+
+function blankParagraphBlocks(): EditorBlocks {
+  return [{ type: 'paragraph', content: [], children: [] }]
 }
 
 async function parseMarkdownBlocks(
@@ -150,6 +164,26 @@ function applyBlocksToEditor(
   requestAnimationFrame(() => {
     const scrollEl = document.querySelector('.editor__blocknote-container')
     if (scrollEl) scrollEl.scrollTop = scrollTop
+  })
+}
+
+function applyBlankStateToEditor(
+  editor: ReturnType<typeof useCreateBlockNote>,
+  suppressChangeRef: MutableRefObject<boolean>,
+) {
+  suppressChangeRef.current = true
+  try {
+    editor._tiptapEditor.commands.setContent('<p></p>')
+  } catch (err) {
+    console.error('applyBlankStateToEditor failed, falling back to replaceBlocks:', err)
+    applyBlocksToEditor(editor, blankParagraphBlocks(), 0, suppressChangeRef)
+    return
+  }
+
+  queueMicrotask(() => { suppressChangeRef.current = false })
+  requestAnimationFrame(() => {
+    const scrollEl = document.querySelector('.editor__blocknote-container')
+    if (scrollEl) scrollEl.scrollTop = 0
   })
 }
 
@@ -319,10 +353,19 @@ function scheduleTabSwap(options: {
   const doSwap = () => {
     if (prevActivePathRef.current !== targetPath) return
     rawSwapPendingRef.current = false
+
+    if (isBlankBodyContent(activeTab.content)) {
+      cache.set(targetPath, { blocks: blankParagraphBlocks(), scrollTop: 0 })
+      applyBlankStateToEditor(editor, suppressChangeRef)
+      requestAnimationFrame(() => signalEditorTabSwapped(targetPath))
+      return
+    }
+
     void resolveBlocksForTarget(editor, cache, targetPath, activeTab.content)
       .then(({ blocks, scrollTop }) => {
         if (prevActivePathRef.current !== targetPath) return
         applyBlocksToEditor(editor, blocks, scrollTop, suppressChangeRef)
+        requestAnimationFrame(() => signalEditorTabSwapped(targetPath))
       })
       .catch((err: unknown) => {
         console.error('Failed to parse/swap editor content:', err)

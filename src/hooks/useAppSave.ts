@@ -92,6 +92,10 @@ function pendingRenameOutsideActiveTab(
 async function reloadAutoRenamedNote(
   oldPath: string,
   newPath: string,
+  tabs: TabState[],
+  activeTabPath: string | null,
+  setTabs: AppSaveDeps['setTabs'],
+  handleSwitchTab: AppSaveDeps['handleSwitchTab'],
   replaceEntry: AppSaveDeps['replaceEntry'],
   loadModifiedFiles: AppSaveDeps['loadModifiedFiles'],
 ): Promise<void> {
@@ -99,13 +103,31 @@ async function reloadAutoRenamedNote(
     invoke<VaultEntry>('reload_vault_entry', { path: newPath }),
     invoke<string>('get_note_content', { path: newPath }),
   ])
+
+  const otherTabPaths = tabs
+    .filter((tab) => tab.entry.path !== oldPath && tab.entry.path !== newPath)
+    .map((tab) => tab.entry.path)
+
+  setTabs((prev: TabState[]) => prev.map((tab) => (
+    tab.entry.path === oldPath
+      ? { entry: { ...tab.entry, ...newEntry, path: newPath }, content: newContent }
+      : tab
+  )))
+  if (activeTabPath === oldPath) handleSwitchTab(newPath)
   replaceEntry(oldPath, { ...newEntry, path: newPath }, newContent)
+  await Promise.all(otherTabPaths.map(async (path) => {
+    const content = await invoke<string>('get_note_content', { path })
+    setTabs((prev: TabState[]) => prev.map((tab) => (
+      tab.entry.path === path ? { ...tab, content } : tab
+    )))
+  }))
   loadModifiedFiles()
 }
 
 interface AppSaveDeps {
   updateEntry: (path: string, patch: Partial<VaultEntry>) => void
   setTabs: Parameters<typeof useEditorSaveWithLinks>[0]['setTabs']
+  handleSwitchTab: (path: string) => void
   setToastMessage: (msg: string | null) => void
   loadModifiedFiles: () => void
   reloadViews?: () => Promise<void>
@@ -119,7 +141,7 @@ interface AppSaveDeps {
 }
 
 export function useAppSave({
-  updateEntry, setTabs, setToastMessage,
+  updateEntry, setTabs, handleSwitchTab, setToastMessage,
   loadModifiedFiles, reloadViews, clearUnsaved, unsavedPaths,
   tabs, activeTabPath,
   handleRenameNote, replaceEntry, resolvedPath,
@@ -142,12 +164,21 @@ export function useAppSave({
         notePath: path,
       })
       if (!result) return false
-      await reloadAutoRenamedNote(path, result.new_path, replaceEntry, loadModifiedFiles)
+      await reloadAutoRenamedNote(
+        path,
+        result.new_path,
+        tabs,
+        activeTabPath,
+        setTabs,
+        handleSwitchTab,
+        replaceEntry,
+        loadModifiedFiles,
+      )
       return true
     } catch {
       return false
     }
-  }, [resolvedPath, replaceEntry, loadModifiedFiles])
+  }, [resolvedPath, tabs, activeTabPath, setTabs, handleSwitchTab, replaceEntry, loadModifiedFiles])
 
   const flushPendingUntitledRename = useCallback(async (path?: string) => {
     const pending = takePendingRename(pendingUntitledRenameRef, path)

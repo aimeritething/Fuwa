@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
+import type { SetStateAction } from 'react'
 import { useAppSave } from './useAppSave'
 import type { VaultEntry } from '../types'
 import { isTauri } from '../mock-tauri'
@@ -22,6 +23,7 @@ describe('useAppSave', () => {
   const deps = {
     updateEntry: vi.fn(),
     setTabs: vi.fn(),
+    handleSwitchTab: vi.fn(),
     setToastMessage: vi.fn(),
     loadModifiedFiles: vi.fn(),
     clearUnsaved: vi.fn(),
@@ -145,6 +147,44 @@ describe('useAppSave', () => {
       expect.objectContaining({ path: '/vault/fresh-title.md', filename: 'fresh-title.md' }),
       '# Fresh Title\n\nBody',
     )
+  })
+
+  it('switches the active tab to the renamed path after untitled H1 auto-rename', async () => {
+    vi.useFakeTimers()
+    vi.mocked(isTauri).mockReturnValue(true)
+
+    const oldPath = '/vault/untitled-note-123.md'
+    const newPath = '/vault/fresh-title.md'
+    const entry = makeEntry(oldPath, 'Untitled Note 123', 'untitled-note-123.md')
+    let tabsState = [{ entry, content: '# Fresh Title\n\nBody' }]
+    const setTabs = vi.fn((updater: SetStateAction<typeof tabsState>) => {
+      tabsState = typeof updater === 'function' ? updater(tabsState) : updater
+    })
+
+    vi.mocked(invoke).mockImplementation(async (command: string, args?: Record<string, unknown>) => {
+      if (command === 'save_note_content') return undefined
+      if (command === 'auto_rename_untitled') return { new_path: newPath, updated_files: 0 }
+      if (command === 'reload_vault_entry') return makeEntry(newPath, 'Fresh Title', 'fresh-title.md')
+      if (command === 'get_note_content' && args?.path === newPath) return '# Fresh Title\n\nBody'
+      return undefined
+    })
+
+    const { result } = renderSave({
+      setTabs,
+      tabs: tabsState,
+      activeTabPath: oldPath,
+      unsavedPaths: new Set([oldPath]),
+    })
+
+    await act(async () => {
+      result.current.handleContentChange(oldPath, '# Fresh Title\n\nBody')
+      await vi.advanceTimersByTimeAsync(3_000)
+    })
+
+    expect(deps.handleSwitchTab).toHaveBeenCalledWith(newPath)
+    expect(tabsState[0].entry.path).toBe(newPath)
+    expect(tabsState[0].entry.filename).toBe('fresh-title.md')
+    expect(tabsState[0].content).toBe('# Fresh Title\n\nBody')
   })
 
   it('cancels a pending untitled auto-rename when the user navigates away', async () => {
