@@ -91,7 +91,7 @@ describe('useMcpStatus', () => {
     })
 
     expect(result.current.mcpStatus).toBe('installed')
-    expect(onToast).toHaveBeenCalledWith('MCP server installed successfully')
+    expect(onToast).toHaveBeenCalledWith('Tolaria MCP server installed successfully')
   })
 
   it('install action shows error toast on failure', async () => {
@@ -127,7 +127,7 @@ describe('useMcpStatus', () => {
     renderHook(() => useMcpStatus('/vault', onToast))
 
     await waitFor(() => {
-      expect(onToast).toHaveBeenCalledWith('Laputa registered as MCP tool for Claude Code')
+      expect(onToast).toHaveBeenCalledWith('Tolaria registered as MCP tool for Claude Code')
     })
   })
 
@@ -155,7 +155,7 @@ describe('useMcpStatus', () => {
     })
 
     expect(result.current.mcpStatus).toBe('installed')
-    expect(onToast).toHaveBeenCalledWith('MCP server restored successfully')
+    expect(onToast).toHaveBeenCalledWith('Tolaria MCP server restored successfully')
   })
 
   it('does not show toast when already registered', async () => {
@@ -173,6 +173,6 @@ describe('useMcpStatus', () => {
     })
 
     // 'updated' should not trigger a toast
-    expect(onToast).not.toHaveBeenCalledWith('Laputa registered as MCP tool for Claude Code')
+    expect(onToast).not.toHaveBeenCalledWith('Tolaria registered as MCP tool for Claude Code')
   })
 })

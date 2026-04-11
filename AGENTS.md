@@ -1,4 +1,4 @@
-# AGENTS.md — Laputa App
+# AGENTS.md — Tolaria App
 
 > Quick links: [Project Spec](docs/PROJECT-SPEC.md) · [Architecture](docs/ARCHITECTURE.md) · [Abstractions](docs/ABSTRACTIONS.md) · [Wireframes](ui-design.pen)
 
@@ -130,7 +130,7 @@ Open `ui-design.pen` first (light mode). Create `design/<slug>.pen` for the task
 | Toggle/switch | `Switch` or `ToggleGroup` from shadcn/ui |
 | Dialog/modal | `Dialog` from shadcn/ui |
 
-**When in doubt:** search `src/components/` for an existing component before building new. **Visual language:** all new UI must feel native to Laputa — if it looks like a browser default, it's wrong.
+**When in doubt:** search `src/components/` for an existing component before building new. **Visual language:** all new UI must feel native to Tolaria — if it looks like a browser default, it's wrong.
 
 ---
 

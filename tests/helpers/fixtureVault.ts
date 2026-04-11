@@ -266,7 +266,7 @@ export async function openFixtureVaultDesktopHarness(
         case 'trigger_menu_command': {
           const commandId = String(args?.id ?? '')
           const bridge = window.__laputaTest?.dispatchBrowserMenuCommand
-          if (!bridge) throw new Error('Laputa test bridge is missing dispatchBrowserMenuCommand')
+          if (!bridge) throw new Error('Tolaria test bridge is missing dispatchBrowserMenuCommand')
           bridge(commandId)
           return null
         }

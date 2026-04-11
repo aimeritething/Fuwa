@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { getAppStorageItem } from '../constants/appStorage'
 import { getVaultConfig, updateVaultConfigField, subscribeVaultConfig } from '../utils/vaultConfigStore'
 
 export type ViewMode = 'editor-only' | 'editor-list' | 'all'
@@ -11,10 +12,8 @@ function loadViewMode(): ViewMode {
   const stored = getVaultConfig().view_mode
   if (isViewMode(stored)) return stored
   // Fallback to localStorage during initial load (before vault config is ready)
-  try {
-    const ls = localStorage.getItem('laputa-view-mode')
-    if (isViewMode(ls)) return ls
-  } catch { /* ignore */ }
+  const ls = getAppStorageItem('viewMode')
+  if (isViewMode(ls)) return ls
   return 'all'
 }
 

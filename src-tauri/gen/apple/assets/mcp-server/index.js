@@ -28077,7 +28077,7 @@ var TOOLS = [
   },
   {
     name: "open_note",
-    description: "Open a note in the Laputa UI as a new tab. Use after creating or editing a note so the user can see it.",
+    description: "Open a note in the Tolaria UI as a new tab. Use after creating or editing a note so the user can see it.",
     inputSchema: {
       type: "object",
       properties: {
@@ -28088,7 +28088,7 @@ var TOOLS = [
   },
   {
     name: "highlight_editor",
-    description: "Visually highlight a UI element in Laputa (editor, tab, properties panel, or note list). The highlight auto-clears after a short delay.",
+    description: "Visually highlight a UI element in Tolaria (editor, tab, properties panel, or note list). The highlight auto-clears after a short delay.",
     inputSchema: {
       type: "object",
       properties: {
@@ -28100,7 +28100,7 @@ var TOOLS = [
   },
   {
     name: "refresh_vault",
-    description: "Trigger a vault rescan so new or modified files appear immediately in the Laputa note list.",
+    description: "Trigger a vault rescan so new or modified files appear immediately in the Tolaria note list.",
     inputSchema: {
       type: "object",
       properties: {
@@ -28134,7 +28134,7 @@ async function handleGetNote(args) {
 function handleOpenNote(args) {
   broadcastUiAction("vault_changed", { path: args.path });
   broadcastUiAction("open_tab", { path: args.path });
-  return { content: [{ type: "text", text: `Opening ${args.path} in Laputa` }] };
+  return { content: [{ type: "text", text: `Opening ${args.path} in Tolaria` }] };
 }
 function handleHighlightEditor(args) {
   broadcastUiAction("highlight", { element: args.element, path: args.path });
@@ -28145,7 +28145,7 @@ function handleRefreshVault(args) {
   return { content: [{ type: "text", text: "Vault refresh triggered" }] };
 }
 var server = new Server(
-  { name: "laputa-mcp-server", version: "0.3.0" },
+  { name: "tolaria-mcp-server", version: "0.3.0" },
   { capabilities: { tools: {} } }
 );
 server.setRequestHandler(ListToolsRequestSchema, async () => ({
@@ -28169,7 +28169,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport();
   await server.connect(transport);
-  console.error(`Laputa MCP server running (vault: ${VAULT_PATH})`);
+  console.error(`Tolaria MCP server running (vault: ${VAULT_PATH})`);
 }
 main().catch(console.error);
 /*! Bundled license information:

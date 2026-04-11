@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+const APP_CONFIG_DIR: &str = "com.tolaria.app";
+const LEGACY_APP_CONFIG_DIR: &str = "com.laputa.app";
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Settings {
     pub github_token: Option<String>,
@@ -14,10 +17,31 @@ pub struct Settings {
     pub release_channel: Option<String>,
 }
 
-fn settings_path() -> Result<PathBuf, String> {
+fn app_config_dir() -> Result<PathBuf, String> {
     dirs::config_dir()
-        .map(|d| d.join("com.laputa.app").join("settings.json"))
         .ok_or_else(|| "Could not determine config directory".to_string())
+}
+
+fn preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
+    Ok(app_config_dir()?.join(APP_CONFIG_DIR).join(file_name))
+}
+
+fn resolve_existing_or_preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
+    let preferred = preferred_app_config_path(file_name)?;
+    if preferred.exists() {
+        return Ok(preferred);
+    }
+
+    let legacy = app_config_dir()?.join(LEGACY_APP_CONFIG_DIR).join(file_name);
+    if legacy.exists() {
+        return Ok(legacy);
+    }
+
+    Ok(preferred)
+}
+
+fn settings_path() -> Result<PathBuf, String> {
+    resolve_existing_or_preferred_app_config_path("settings.json")
 }
 
 fn get_settings_at(path: &PathBuf) -> Result<Settings, String> {
@@ -69,13 +93,11 @@ pub fn get_settings() -> Result<Settings, String> {
 }
 
 pub fn save_settings(settings: Settings) -> Result<(), String> {
-    save_settings_at(&settings_path()?, settings)
+    save_settings_at(&preferred_app_config_path("settings.json")?, settings)
 }
 
 fn last_vault_file() -> Result<PathBuf, String> {
-    dirs::config_dir()
-        .map(|d| d.join("com.laputa.app").join("last-vault.txt"))
-        .ok_or_else(|| "Could not determine config directory".to_string())
+    resolve_existing_or_preferred_app_config_path("last-vault.txt")
 }
 
 fn get_last_vault_at(path: &PathBuf) -> Option<String> {
@@ -99,7 +121,7 @@ pub fn get_last_vault() -> Option<String> {
 }
 
 pub fn set_last_vault(vault_path: &str) -> Result<(), String> {
-    set_last_vault_at(&last_vault_file()?, vault_path)
+    set_last_vault_at(&preferred_app_config_path("last-vault.txt")?, vault_path)
 }
 
 #[cfg(test)]
@@ -251,7 +273,16 @@ mod tests {
     fn test_settings_path_returns_ok() {
         let result = settings_path();
         assert!(result.is_ok());
-        assert!(result.unwrap().to_str().unwrap().contains("com.laputa.app"));
+        let path = result.unwrap();
+        let path = path.to_str().unwrap();
+        assert!(path.contains("com.tolaria.app") || path.contains("com.laputa.app"));
+    }
+
+    #[test]
+    fn test_preferred_settings_path_uses_tolaria_namespace() {
+        let result = preferred_app_config_path("settings.json");
+        assert!(result.is_ok());
+        assert!(result.unwrap().to_str().unwrap().contains("com.tolaria.app"));
     }
 
     #[test]

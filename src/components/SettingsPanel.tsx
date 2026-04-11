@@ -298,7 +298,7 @@ function SettingsBody(props: SettingsBodyProps) {
       <div>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>Privacy &amp; Telemetry</div>
         <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
-          Anonymous data helps us fix bugs and improve Laputa. No vault content, note titles, or file paths are ever sent.
+          Anonymous data helps us fix bugs and improve Tolaria. No vault content, note titles, or file paths are ever sent.
         </div>
       </div>
 
@@ -320,7 +320,7 @@ function OrganizationWorkflowSection({
       <div>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>Workflow</div>
         <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
-          Choose whether Laputa shows the Inbox workflow and the organized toggle.
+          Choose whether Tolaria shows the Inbox workflow and the organized toggle.
         </div>
       </div>
 

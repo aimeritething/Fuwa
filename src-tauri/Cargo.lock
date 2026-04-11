@@ -2272,37 +2272,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "laputa"
-version = "0.1.0"
-dependencies = [
- "base64 0.22.1",
- "chrono",
- "dirs 5.0.1",
- "futures-util",
- "gray_matter",
- "log",
- "mockito",
- "regex",
- "reqwest 0.12.28",
- "sentry",
- "serde",
- "serde_json",
- "serde_yaml",
- "tauri",
- "tauri-build",
- "tauri-plugin-dialog",
- "tauri-plugin-log",
- "tauri-plugin-opener",
- "tauri-plugin-prevent-default",
- "tauri-plugin-process",
- "tauri-plugin-updater",
- "tempfile",
- "tokio",
- "uuid",
- "walkdir",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5262,6 +5231,37 @@ dependencies = [
  "futures-sink",
  "pin-project-lite",
  "tokio",
+]
+
+[[package]]
+name = "tolaria"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "chrono",
+ "dirs 5.0.1",
+ "futures-util",
+ "gray_matter",
+ "log",
+ "mockito",
+ "regex",
+ "reqwest 0.12.28",
+ "sentry",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tauri",
+ "tauri-build",
+ "tauri-plugin-dialog",
+ "tauri-plugin-log",
+ "tauri-plugin-opener",
+ "tauri-plugin-prevent-default",
+ "tauri-plugin-process",
+ "tauri-plugin-updater",
+ "tempfile",
+ "tokio",
+ "uuid",
+ "walkdir",
 ]
 
 [[package]]

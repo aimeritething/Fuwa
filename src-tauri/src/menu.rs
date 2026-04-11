@@ -128,7 +128,7 @@ fn build_app_menu(app: &App) -> MenuResult {
         .id(APP_CHECK_FOR_UPDATES)
         .build(app)?;
 
-    Ok(SubmenuBuilder::new(app, "Laputa")
+    Ok(SubmenuBuilder::new(app, "Tolaria")
         .about(None)
         .separator()
         .item(&check_updates_item)

@@ -2,6 +2,9 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+const APP_CONFIG_DIR: &str = "com.tolaria.app";
+const LEGACY_APP_CONFIG_DIR: &str = "com.laputa.app";
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct VaultEntry {
     pub label: String,
@@ -16,10 +19,31 @@ pub struct VaultList {
     pub hidden_defaults: Vec<String>,
 }
 
-fn vault_list_path() -> Result<PathBuf, String> {
+fn app_config_dir() -> Result<PathBuf, String> {
     dirs::config_dir()
-        .map(|d| d.join("com.laputa.app").join("vaults.json"))
         .ok_or_else(|| "Could not determine config directory".to_string())
+}
+
+fn preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
+    Ok(app_config_dir()?.join(APP_CONFIG_DIR).join(file_name))
+}
+
+fn resolve_existing_or_preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
+    let preferred = preferred_app_config_path(file_name)?;
+    if preferred.exists() {
+        return Ok(preferred);
+    }
+
+    let legacy = app_config_dir()?.join(LEGACY_APP_CONFIG_DIR).join(file_name);
+    if legacy.exists() {
+        return Ok(legacy);
+    }
+
+    Ok(preferred)
+}
+
+fn vault_list_path() -> Result<PathBuf, String> {
+    resolve_existing_or_preferred_app_config_path("vaults.json")
 }
 
 fn load_at(path: &PathBuf) -> Result<VaultList, String> {
@@ -46,7 +70,7 @@ pub fn load_vault_list() -> Result<VaultList, String> {
 }
 
 pub fn save_vault_list(list: &VaultList) -> Result<(), String> {
-    save_at(&vault_list_path()?, list)
+    save_at(&preferred_app_config_path("vaults.json")?, list)
 }
 
 #[cfg(test)]
@@ -131,7 +155,16 @@ mod tests {
     fn vault_list_path_returns_ok() {
         let result = vault_list_path();
         assert!(result.is_ok());
-        assert!(result.unwrap().to_str().unwrap().contains("com.laputa.app"));
+        let path = result.unwrap();
+        let path = path.to_str().unwrap();
+        assert!(path.contains("com.tolaria.app") || path.contains("com.laputa.app"));
+    }
+
+    #[test]
+    fn preferred_vault_list_path_uses_tolaria_namespace() {
+        let result = preferred_app_config_path("vaults.json");
+        assert!(result.is_ok());
+        assert!(result.unwrap().to_str().unwrap().contains("com.tolaria.app"));
     }
 
     #[test]

@@ -8,7 +8,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
-import { LAPUTA_GITHUB_ISSUES_URL } from '../constants/feedback'
+import { TOLARIA_GITHUB_ISSUES_URL } from '../constants/feedback'
 import { openExternalUrl } from '../utils/url'
 
 interface FeedbackDialogProps {
@@ -18,7 +18,7 @@ interface FeedbackDialogProps {
 
 export function FeedbackDialog({ open, onClose }: FeedbackDialogProps) {
   const handleOpenIssues = () => {
-    void openExternalUrl(LAPUTA_GITHUB_ISSUES_URL)
+    void openExternalUrl(TOLARIA_GITHUB_ISSUES_URL)
   }
 
   return (

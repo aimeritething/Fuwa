@@ -27,7 +27,7 @@ export function GitRequiredModal({ onCreateRepo, onChooseVault }: GitRequiredMod
         <GitBranch size={36} className="text-muted-foreground" />
         <h2 className="m-0 text-lg font-semibold text-foreground">Git repository required</h2>
         <p className="m-0 text-center text-[13px] leading-relaxed text-muted-foreground">
-          Laputa uses a git repository to track changes, detect moved files, and keep your vault safe.
+          Tolaria uses a git repository to track changes, detect moved files, and keep your vault safe.
           We'll create a local repo — no remote needed.
         </p>
         {error && (

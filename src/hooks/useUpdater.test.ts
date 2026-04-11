@@ -165,7 +165,7 @@ describe('useUpdater', () => {
     })
 
     expect(mockOpenExternalUrl).toHaveBeenCalledWith(
-      'https://refactoringhq.github.io/laputa-app/'
+      'https://refactoringhq.github.io/tolaria/'
     )
   })
 

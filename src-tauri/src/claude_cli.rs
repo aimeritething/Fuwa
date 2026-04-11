@@ -208,7 +208,7 @@ fn build_mcp_config(vault_path: &str) -> Result<String, String> {
     let index_js = server_dir.join("index.js");
     let config = serde_json::json!({
         "mcpServers": {
-            "laputa": {
+            "tolaria": {
                 "command": "node",
                 "args": [index_js.to_string_lossy()],
                 "env": { "VAULT_PATH": vault_path }
@@ -508,9 +508,9 @@ mod tests {
     fn build_mcp_config_is_valid_json() {
         if let Ok(config_str) = build_mcp_config("/tmp/test-vault") {
             let parsed: serde_json::Value = serde_json::from_str(&config_str).unwrap();
-            assert!(parsed["mcpServers"]["laputa"]["command"].is_string());
+            assert!(parsed["mcpServers"]["tolaria"]["command"].is_string());
             assert_eq!(
-                parsed["mcpServers"]["laputa"]["env"]["VAULT_PATH"],
+                parsed["mcpServers"]["tolaria"]["env"]["VAULT_PATH"],
                 "/tmp/test-vault"
             );
         }

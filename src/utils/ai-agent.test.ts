@@ -12,14 +12,14 @@ import { buildAgentSystemPrompt, streamClaudeAgent } from './ai-agent'
 describe('buildAgentSystemPrompt', () => {
   it('returns preamble when no vault context', () => {
     const prompt = buildAgentSystemPrompt()
-    expect(prompt).toContain('working inside Laputa')
+    expect(prompt).toContain('working inside Tolaria')
     expect(prompt).toContain('full shell access')
     expect(prompt).not.toContain('Vault context')
   })
 
   it('appends vault context when provided', () => {
     const prompt = buildAgentSystemPrompt('Recent notes: foo, bar')
-    expect(prompt).toContain('working inside Laputa')
+    expect(prompt).toContain('working inside Tolaria')
     expect(prompt).toContain('Vault context:')
     expect(prompt).toContain('Recent notes: foo, bar')
   })

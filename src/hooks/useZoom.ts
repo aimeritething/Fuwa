@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { getAppStorageItem } from '../constants/appStorage'
 import { getVaultConfig, updateVaultConfigField, subscribeVaultConfig } from '../utils/vaultConfigStore'
 
 const MIN_ZOOM = 80
@@ -17,13 +18,11 @@ function loadPersistedZoom(): number {
   const fromConfig = configToPercent(getVaultConfig().zoom)
   if (fromConfig !== null) return fromConfig
   // Fallback to localStorage during initial load
-  try {
-    const stored = localStorage.getItem('laputa:zoom-level')
-    if (stored !== null) {
-      const val = Number(stored)
-      if (val >= MIN_ZOOM && val <= MAX_ZOOM && val % STEP === 0) return val
-    }
-  } catch { /* ignore */ }
+  const stored = getAppStorageItem('zoom')
+  if (stored !== null) {
+    const val = Number(stored)
+    if (val >= MIN_ZOOM && val <= MAX_ZOOM && val % STEP === 0) return val
+  }
   return DEFAULT_ZOOM
 }
 

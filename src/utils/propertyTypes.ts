@@ -1,4 +1,5 @@
 import type { FrontmatterValue } from '../components/Inspector'
+import { getAppStorageItem } from '../constants/appStorage'
 import { isValidCssColor, isColorKeyName } from './colorUtils'
 import { updateVaultConfigField } from './vaultConfigStore'
 import { CalendarIcon, Type, ToggleLeft, Circle, Link, Tag, Palette } from 'lucide-react'
@@ -49,8 +50,6 @@ export function detectPropertyType(key: string, value: FrontmatterValue): Proper
   return detectStringType(key, String(value))
 }
 
-const STORAGE_KEY = 'laputa:display-mode-overrides'
-
 let vaultOverrides: Record<string, PropertyDisplayMode> | null = null
 
 /** Initialize display mode overrides from vault config (replaces localStorage). */
@@ -60,9 +59,10 @@ export function initDisplayModeOverrides(overrides: Record<string, string>): voi
 
 export function loadDisplayModeOverrides(): Record<string, PropertyDisplayMode> {
   if (vaultOverrides !== null) return { ...vaultOverrides }
+  const raw = getAppStorageItem('propertyModes')
+  if (!raw) return {}
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? JSON.parse(raw) : {}
+    return JSON.parse(raw)
   } catch {
     return {}
   }

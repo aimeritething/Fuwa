@@ -1,15 +1,15 @@
 #!/usr/bin/env node
 /**
- * Laputa MCP Server — lightweight vault tools for AI agents.
+ * Tolaria MCP Server — lightweight vault tools for AI agents.
  *
  * The agent has full shell access (bash, read, write, edit).
- * These MCP tools provide Laputa-specific capabilities that
+ * These MCP tools provide Tolaria-specific capabilities that
  * native tools cannot replace:
  *
  *   - search_notes: full-text search across vault notes
  *   - get_vault_context: vault structure overview (types, note count, folders)
  *   - get_note: parsed frontmatter + content (convenience over raw cat)
- *   - open_note: signal Laputa UI to open a note as a tab
+ *   - open_note: signal Tolaria UI to open a note as a tab
  *   - highlight_editor: visually highlight a UI element (editor, tab, etc.)
  *   - refresh_vault: trigger vault rescan so new/modified files appear
  */
@@ -87,7 +87,7 @@ const TOOLS = [
   },
   {
     name: 'open_note',
-    description: 'Open a note in the Laputa UI as a new tab. Use after creating or editing a note so the user can see it.',
+    description: 'Open a note in the Tolaria UI as a new tab. Use after creating or editing a note so the user can see it.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -98,7 +98,7 @@ const TOOLS = [
   },
   {
     name: 'highlight_editor',
-    description: 'Visually highlight a UI element in Laputa (editor, tab, properties panel, or note list). The highlight auto-clears after a short delay.',
+    description: 'Visually highlight a UI element in Tolaria (editor, tab, properties panel, or note list). The highlight auto-clears after a short delay.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -110,7 +110,7 @@ const TOOLS = [
   },
   {
     name: 'refresh_vault',
-    description: 'Trigger a vault rescan so new or modified files appear immediately in the Laputa note list.',
+    description: 'Trigger a vault rescan so new or modified files appear immediately in the Tolaria note list.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -152,7 +152,7 @@ function handleOpenNote(args) {
   // then signal the UI to open it in a tab.
   broadcastUiAction('vault_changed', { path: args.path })
   broadcastUiAction('open_tab', { path: args.path })
-  return { content: [{ type: 'text', text: `Opening ${args.path} in Laputa` }] }
+  return { content: [{ type: 'text', text: `Opening ${args.path} in Tolaria` }] }
 }
 
 function handleHighlightEditor(args) {
@@ -168,7 +168,7 @@ function handleRefreshVault(args) {
 // --- Server setup ---
 
 const server = new Server(
-  { name: 'laputa-mcp-server', version: '0.3.0' },
+  { name: 'tolaria-mcp-server', version: '0.3.0' },
   { capabilities: { tools: {} } },
 )
 
@@ -195,7 +195,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
 async function main() {
   const transport = new StdioServerTransport()
   await server.connect(transport)
-  console.error(`Laputa MCP server running (vault: ${VAULT_PATH})`)
+  console.error(`Tolaria MCP server running (vault: ${VAULT_PATH})`)
 }
 
 main().catch(console.error)

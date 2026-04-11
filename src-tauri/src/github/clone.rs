@@ -128,11 +128,11 @@ fn configure_remote_auth(local_path: &str, original_url: &str, token: &str) -> R
 
     // Also configure git user if not set
     let _ = Command::new("git")
-        .args(["config", "user.email", "laputa@app.local"])
+        .args(["config", "user.email", "tolaria@app.local"])
         .current_dir(vault)
         .output();
     let _ = Command::new("git")
-        .args(["config", "user.name", "Laputa App"])
+        .args(["config", "user.name", "Tolaria App"])
         .current_dir(vault)
         .output();
 
@@ -266,12 +266,12 @@ mod tests {
             .output()
             .unwrap();
         StdCommand::new("git")
-            .args(["config", "user.email", "laputa@app.local"])
+            .args(["config", "user.email", "tolaria@app.local"])
             .current_dir(path)
             .output()
             .unwrap();
         StdCommand::new("git")
-            .args(["config", "user.name", "Laputa App"])
+            .args(["config", "user.name", "Tolaria App"])
             .current_dir(path)
             .output()
             .unwrap();

@@ -22,7 +22,7 @@ async fn github_list_repos_with_base(
             .get(&url)
             .header("Authorization", format!("Bearer {}", token))
             .header("Accept", "application/vnd.github+json")
-            .header("User-Agent", "Laputa-App")
+            .header("User-Agent", "Tolaria-App")
             .header("X-GitHub-Api-Version", "2022-11-28")
             .send()
             .await
@@ -74,14 +74,14 @@ async fn github_create_repo_with_base(
         "name": name,
         "private": private,
         "auto_init": true,
-        "description": "Laputa vault"
+        "description": "Tolaria vault"
     });
 
     let response = client
         .post(format!("{}/user/repos", api_base))
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Laputa-App")
+        .header("User-Agent", "Tolaria-App")
         .header("X-GitHub-Api-Version", "2022-11-28")
         .json(&body)
         .send()
@@ -114,7 +114,7 @@ async fn github_get_user_with_base(token: &str, api_base: &str) -> Result<GitHub
         .get(format!("{}/user", api_base))
         .header("Authorization", format!("Bearer {}", token))
         .header("Accept", "application/vnd.github+json")
-        .header("User-Agent", "Laputa-App")
+        .header("User-Agent", "Tolaria-App")
         .header("X-GitHub-Api-Version", "2022-11-28")
         .send()
         .await
@@ -256,7 +256,7 @@ mod tests {
     async fn test_github_create_repo_success() {
         let repo = mock_create_repo(
             201,
-            r#"{"name":"new-repo","full_name":"user/new-repo","description":"Laputa vault","private":true,"clone_url":"https://github.com/user/new-repo.git","html_url":"https://github.com/user/new-repo","updated_at":"2026-02-01T00:00:00Z"}"#,
+            r#"{"name":"new-repo","full_name":"user/new-repo","description":"Tolaria vault","private":true,"clone_url":"https://github.com/user/new-repo.git","html_url":"https://github.com/user/new-repo","updated_at":"2026-02-01T00:00:00Z"}"#,
         )
         .await
         .unwrap();

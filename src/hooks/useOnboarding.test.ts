@@ -1,5 +1,6 @@
 import { renderHook, waitFor, act } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS } from '../constants/appStorage'
 
 // localStorage mock
 const localStorageMock = (() => {
@@ -67,7 +68,7 @@ describe('useOnboarding', () => {
   })
 
   it('shows vault-missing when previously dismissed and vault gone', async () => {
-    localStorage.setItem('laputa_welcome_dismissed', '1')
+    localStorage.setItem(APP_STORAGE_KEYS.welcomeDismissed, '1')
 
     mockInvokeFn.mockImplementation(async (cmd: string) => {
       if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
@@ -88,7 +89,7 @@ describe('useOnboarding', () => {
   })
 
   it('clears the persisted active vault when the saved path no longer exists', async () => {
-    localStorage.setItem('laputa_welcome_dismissed', '1')
+    localStorage.setItem(LEGACY_APP_STORAGE_KEYS.welcomeDismissed, '1')
 
     mockInvokeFn.mockImplementation(async (cmd: string) => {
       if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
@@ -142,7 +143,7 @@ describe('useOnboarding', () => {
     expect(mockInvokeFn).toHaveBeenCalledWith('create_getting_started_vault', {
       targetPath: '/mock/Documents/Getting Started',
     })
-    expect(localStorage.getItem('laputa_welcome_dismissed')).toBe('1')
+    expect(localStorage.getItem(APP_STORAGE_KEYS.welcomeDismissed)).toBe('1')
   })
 
   it('handleCreateVault does nothing when picker is cancelled', async () => {
@@ -246,7 +247,7 @@ describe('useOnboarding', () => {
     })
 
     expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/new/vault' })
-    expect(localStorage.getItem('laputa_welcome_dismissed')).toBe('1')
+    expect(localStorage.getItem(APP_STORAGE_KEYS.welcomeDismissed)).toBe('1')
   })
 
   it('handleCreateNewVault does nothing when picker is cancelled', async () => {
@@ -289,7 +290,7 @@ describe('useOnboarding', () => {
     })
 
     expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/selected/folder' })
-    expect(localStorage.getItem('laputa_welcome_dismissed')).toBe('1')
+    expect(localStorage.getItem(APP_STORAGE_KEYS.welcomeDismissed)).toBe('1')
   })
 
   it('handleOpenFolder does nothing when picker is cancelled', async () => {
@@ -331,7 +332,7 @@ describe('useOnboarding', () => {
     })
 
     expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/vault/missing' })
-    expect(localStorage.getItem('laputa_welcome_dismissed')).toBe('1')
+    expect(localStorage.getItem(APP_STORAGE_KEYS.welcomeDismissed)).toBe('1')
   })
 
   it('falls back to ready if commands fail', async () => {

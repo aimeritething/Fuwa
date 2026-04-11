@@ -40,7 +40,7 @@ describe('UpdateBanner', () => {
     render(<UpdateBanner status={status} actions={actions} />)
 
     expect(screen.getByTestId('update-banner')).toBeTruthy()
-    expect(screen.getByText(/Laputa 1\.5\.0/)).toBeTruthy()
+    expect(screen.getByText(/Tolaria 1\.5\.0/)).toBeTruthy()
     expect(screen.getByText('is available')).toBeTruthy()
     expect(screen.getByTestId('update-now-btn')).toBeTruthy()
     expect(screen.getByTestId('update-release-notes')).toBeTruthy()
@@ -78,7 +78,7 @@ describe('UpdateBanner', () => {
     const status: UpdateStatus = { state: 'downloading', version: '1.5.0', progress: 0.65 }
     render(<UpdateBanner status={status} actions={makeActions()} />)
 
-    expect(screen.getByText(/Downloading Laputa 1\.5\.0/)).toBeTruthy()
+    expect(screen.getByText(/Downloading Tolaria 1\.5\.0/)).toBeTruthy()
     expect(screen.getByText('65%')).toBeTruthy()
 
     const progressBar = screen.getByTestId('update-progress')
@@ -98,7 +98,7 @@ describe('UpdateBanner', () => {
     const status: UpdateStatus = { state: 'ready', version: '1.5.0' }
     render(<UpdateBanner status={status} actions={makeActions()} />)
 
-    expect(screen.getByText(/Laputa 1\.5\.0/)).toBeTruthy()
+    expect(screen.getByText(/Tolaria 1\.5\.0/)).toBeTruthy()
     expect(screen.getByText(/restart to apply/)).toBeTruthy()
     expect(screen.getByTestId('update-restart-btn')).toBeTruthy()
   })

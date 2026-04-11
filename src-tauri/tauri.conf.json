@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "laputa",
+  "productName": "Tolaria",
   "version": "0.1.0",
-  "identifier": "club.refactoring.laputa",
+  "identifier": "club.refactoring.tolaria",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5202",
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "windows": [
       {
-        "title": "Laputa",
+        "title": "Tolaria",
         "width": 1400,
         "height": 900,
         "minWidth": 1200,
@@ -54,7 +54,7 @@
   "plugins": {
     "updater": {
       "endpoints": [
-        "https://refactoringhq.github.io/laputa-app/latest.json"
+        "https://refactoringhq.github.io/tolaria/latest.json"
       ],
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE4NkQ5MDI3REVCRkFGNUMKUldSY3I3L2VKNUJ0cU5JRlRZZlp3NGhnU3ZwbkVKeGVvREpmb2sxRVJndHFpVFZPNlArbEE5R1IK"
     }

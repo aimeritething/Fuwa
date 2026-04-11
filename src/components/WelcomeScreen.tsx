@@ -220,7 +220,7 @@ export function WelcomeScreen({
 
         <div style={{ textAlign: 'center' }}>
           <h1 style={TITLE_STYLE}>
-            {isWelcome ? 'Welcome to Laputa' : 'Vault not found'}
+            {isWelcome ? 'Welcome to Tolaria' : 'Vault not found'}
           </h1>
           <p style={{ ...SUBTITLE_STYLE, marginTop: 8 }}>
             {isWelcome

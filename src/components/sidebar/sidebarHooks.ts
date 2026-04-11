@@ -1,9 +1,8 @@
 import { useState, useMemo, useEffect, useCallback, type RefObject } from 'react'
 import type { VaultEntry } from '../../types'
+import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS, getAppStorageItem } from '../../constants/appStorage'
 import { buildTypeEntryMap } from '../../utils/typeColors'
 import { buildDynamicSections, sortSections } from '../../utils/sidebarSections'
-
-const SIDEBAR_COLLAPSED_KEY = 'laputa:sidebar-collapsed'
 
 export type SidebarGroupKey = 'favorites' | 'views' | 'sections' | 'folders'
 
@@ -34,7 +33,7 @@ export function useSidebarSections(entries: VaultEntry[]) {
 
 function loadCollapsedState(): Record<SidebarGroupKey, boolean> {
   try {
-    const raw = localStorage.getItem(SIDEBAR_COLLAPSED_KEY)
+    const raw = getAppStorageItem('sidebarCollapsed')
     if (raw) return JSON.parse(raw)
   } catch {
     // Ignore localStorage failures and fall back to defaults.
@@ -48,7 +47,8 @@ export function useSidebarCollapsed() {
   const toggle = useCallback((key: SidebarGroupKey) => {
     setCollapsed((prev) => {
       const next = { ...prev, [key]: !prev[key] }
-      localStorage.setItem(SIDEBAR_COLLAPSED_KEY, JSON.stringify(next))
+      localStorage.setItem(APP_STORAGE_KEYS.sidebarCollapsed, JSON.stringify(next))
+      localStorage.removeItem(LEGACY_APP_STORAGE_KEYS.sidebarCollapsed)
       return next
     })
   }, [])

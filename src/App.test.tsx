@@ -128,7 +128,10 @@ describe('App', () => {
     vi.clearAllMocks()
 
     // Reset view mode and onboarding state between tests
+    localStorage.removeItem('tolaria-view-mode')
+    localStorage.removeItem('tolaria-view-mode')
     localStorage.removeItem('laputa-view-mode')
+    localStorage.removeItem('tolaria_welcome_dismissed')
     localStorage.removeItem('laputa_welcome_dismissed')
   })
 

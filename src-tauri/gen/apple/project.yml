@@ -1,6 +1,6 @@
-name: laputa
+name: Tolaria
 options:
-  bundleIdPrefix: club.refactoring.laputa
+  bundleIdPrefix: club.refactoring.tolaria
   deploymentTarget:
     iOS: 14.0
 fileGroups: [../../src]
@@ -10,8 +10,8 @@ configs:
 settingGroups:
   app:
     base:
-      PRODUCT_NAME: laputa
-      PRODUCT_BUNDLE_IDENTIFIER: club.refactoring.laputa
+      PRODUCT_NAME: Tolaria
+      PRODUCT_BUNDLE_IDENTIFIER: club.refactoring.tolaria
 targetTemplates:
   app:
     type: application

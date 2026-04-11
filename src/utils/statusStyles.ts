@@ -1,3 +1,4 @@
+import { getAppStorageItem } from '../constants/appStorage'
 import { ACCENT_COLORS } from './typeColors'
 import { updateVaultConfigField } from './vaultConfigStore'
 
@@ -41,8 +42,6 @@ export const SUGGESTED_STATUSES = [
   'Archived',
 ]
 
-const STORAGE_KEY = 'laputa:status-color-overrides'
-
 const COLOR_KEY_TO_STYLE: Record<string, StatusStyle> = Object.fromEntries(
   ACCENT_COLORS.map(c => [c.key, { bg: c.cssLight, color: c.css }]),
 )
@@ -55,9 +54,10 @@ export function initStatusColors(overrides: Record<string, string>): void {
 }
 
 function loadColorOverrides(): Record<string, string> {
+  const raw = getAppStorageItem('statusColors')
+  if (!raw) return {}
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as Record<string, string>) : {}
+    return JSON.parse(raw) as Record<string, string>
   } catch {
     return {}
   }

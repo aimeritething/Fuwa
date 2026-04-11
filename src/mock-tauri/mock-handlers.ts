@@ -315,13 +315,13 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   rename_note_filename: handleRenameNoteFilename,
   github_list_repos: () => [
     { name: 'laputa-vault', full_name: 'lucaong/laputa-vault', description: 'Personal knowledge vault — markdown + YAML frontmatter', private: true, clone_url: 'https://github.com/lucaong/laputa-vault.git', html_url: 'https://github.com/lucaong/laputa-vault', updated_at: '2026-02-20T10:30:00Z' },
-    { name: 'laputa-app', full_name: 'lucaong/laputa-app', description: 'Laputa desktop app — Tauri + React + CodeMirror 6', private: false, clone_url: 'https://github.com/lucaong/laputa-app.git', html_url: 'https://github.com/lucaong/laputa-app', updated_at: '2026-02-19T15:00:00Z' },
+    { name: 'tolaria', full_name: 'lucaong/tolaria', description: 'Tolaria desktop app — Tauri + React + CodeMirror 6', private: false, clone_url: 'https://github.com/lucaong/tolaria.git', html_url: 'https://github.com/lucaong/tolaria', updated_at: '2026-02-19T15:00:00Z' },
     { name: 'dotfiles', full_name: 'lucaong/dotfiles', description: 'My macOS dotfiles and config', private: false, clone_url: 'https://github.com/lucaong/dotfiles.git', html_url: 'https://github.com/lucaong/dotfiles', updated_at: '2026-01-15T08:00:00Z' },
     { name: 'notes-archive', full_name: 'lucaong/notes-archive', description: 'Archived notes from 2024', private: true, clone_url: 'https://github.com/lucaong/notes-archive.git', html_url: 'https://github.com/lucaong/notes-archive', updated_at: '2025-12-01T12:00:00Z' },
     { name: 'obsidian-vault', full_name: 'lucaong/obsidian-vault', description: null, private: true, clone_url: 'https://github.com/lucaong/obsidian-vault.git', html_url: 'https://github.com/lucaong/obsidian-vault', updated_at: '2025-11-05T09:00:00Z' },
   ],
   github_create_repo: (args: { name: string; private: boolean }) => ({
-    name: args.name, full_name: `lucaong/${args.name}`, description: 'Laputa vault', private: args.private,
+    name: args.name, full_name: `lucaong/${args.name}`, description: 'Tolaria vault', private: args.private,
     clone_url: `https://github.com/lucaong/${args.name}.git`, html_url: `https://github.com/lucaong/${args.name}`,
     updated_at: new Date().toISOString(),
   }),

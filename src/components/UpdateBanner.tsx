@@ -29,7 +29,7 @@ export function UpdateBanner({ status, actions }: UpdateBannerProps) {
         <>
           <Download size={14} style={{ color: '#fff', flexShrink: 0 }} />
           <span>
-            <strong>Laputa {status.version}</strong> is available
+            <strong>Tolaria {status.version}</strong> is available
           </span>
           <button
             data-testid="update-release-notes"
@@ -87,7 +87,7 @@ export function UpdateBanner({ status, actions }: UpdateBannerProps) {
       {status.state === 'downloading' && (
         <>
           <RefreshCw size={14} style={{ color: '#fff', flexShrink: 0, animation: 'spin 1s linear infinite' }} />
-          <span>Downloading Laputa {status.version}...</span>
+          <span>Downloading Tolaria {status.version}...</span>
           <div
             style={{
               flex: 1,
@@ -119,7 +119,7 @@ export function UpdateBanner({ status, actions }: UpdateBannerProps) {
         <>
           <RefreshCw size={14} style={{ color: 'var(--accent-green, #0F7B0F)', flexShrink: 0 }} />
           <span>
-            <strong>Laputa {status.version}</strong> is ready — restart to apply
+            <strong>Tolaria {status.version}</strong> is ready — restart to apply
           </span>
           <button
             data-testid="update-restart-btn"

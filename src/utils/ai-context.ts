@@ -163,7 +163,7 @@ export function buildContextSnapshot(params: ContextSnapshotParams): string {
   }
 
   const preamble = [
-    'You are an AI assistant integrated into Laputa, a personal knowledge management app.',
+    'You are an AI assistant integrated into Tolaria, a personal knowledge management app.',
     'The user is viewing a specific note. Use the structured context below to answer questions accurately.',
     'You can also use MCP tools to search, read, create, or edit notes in the vault.',
     'If the body field is empty but wordCount is > 0, the content may be stale — use get_note to read the full note from disk.',
@@ -179,7 +179,7 @@ export function buildContextualPrompt(
   linkedEntries: VaultEntry[],
 ): string {
   const parts: string[] = [
-    'You are an AI assistant integrated into Laputa, a personal knowledge management app.',
+    'You are an AI assistant integrated into Tolaria, a personal knowledge management app.',
     'The user is viewing a specific note. Use the note and its linked context to answer questions accurately.',
     'You can also use MCP tools to search, read, create, or edit notes in the vault.',
     '',

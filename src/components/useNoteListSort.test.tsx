@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { NoteList } from './NoteList'
+import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS } from '../constants/appStorage'
 import type { VaultEntry, SidebarSelection } from '../types'
 
 const localStorageMock = (() => {
@@ -88,7 +89,7 @@ describe('useNoteListSort (via NoteList)', () => {
   })
 
   it('migrates localStorage sort to type frontmatter when type has no sort', () => {
-    localStorageMock.setItem('laputa-sort-preferences', JSON.stringify({ '__list__': { option: 'title', direction: 'asc' } }))
+    localStorageMock.setItem(APP_STORAGE_KEYS.sortPreferences, JSON.stringify({ '__list__': { option: 'title', direction: 'asc' } }))
     const onUpdateTypeSort = vi.fn()
     const updateEntry = vi.fn()
     const typeDoc = makeEntry({ path: '/project.md', title: 'Project', isA: 'Type', sort: null })
@@ -106,7 +107,7 @@ describe('useNoteListSort (via NoteList)', () => {
   })
 
   it('does not migrate if type already has sort', () => {
-    localStorageMock.setItem('laputa-sort-preferences', JSON.stringify({ '__list__': { option: 'title', direction: 'asc' } }))
+    localStorageMock.setItem(APP_STORAGE_KEYS.sortPreferences, JSON.stringify({ '__list__': { option: 'title', direction: 'asc' } }))
     const onUpdateTypeSort = vi.fn()
     const updateEntry = vi.fn()
     const typeDoc = makeEntry({ path: '/project.md', title: 'Project', isA: 'Type', sort: 'modified:desc' })
@@ -123,7 +124,7 @@ describe('useNoteListSort (via NoteList)', () => {
   })
 
   it('falls back to modified when property sort references missing property', () => {
-    localStorageMock.setItem('laputa-sort-preferences', JSON.stringify({ '__list__': { option: 'property:priority', direction: 'asc' } }))
+    localStorageMock.setItem(APP_STORAGE_KEYS.sortPreferences, JSON.stringify({ '__list__': { option: 'property:priority', direction: 'asc' } }))
     const entries = [
       makeEntry({ path: '/a.md', title: 'Alpha', modifiedAt: 1000, properties: {} }),
       makeEntry({ path: '/b.md', title: 'Beta', modifiedAt: 3000, properties: {} }),
@@ -136,7 +137,7 @@ describe('useNoteListSort (via NoteList)', () => {
   })
 
   it('uses property sort when property exists in entries', () => {
-    localStorageMock.setItem('laputa-sort-preferences', JSON.stringify({ '__list__': { option: 'property:priority', direction: 'asc' } }))
+    localStorageMock.setItem(APP_STORAGE_KEYS.sortPreferences, JSON.stringify({ '__list__': { option: 'property:priority', direction: 'asc' } }))
     const entries = [
       makeEntry({ path: '/b.md', title: 'Beta', modifiedAt: 3000, properties: { priority: 2 } }),
       makeEntry({ path: '/a.md', title: 'Alpha', modifiedAt: 1000, properties: { priority: 1 } }),
@@ -146,5 +147,18 @@ describe('useNoteListSort (via NoteList)', () => {
     // Should be sorted by priority asc: Alpha (1) first, then Beta (2)
     expect(items[0].textContent).toBe('Alpha')
     expect(items[1].textContent).toBe('Beta')
+  })
+
+  it('reads legacy list sort preferences when Tolaria key is absent', () => {
+    localStorageMock.setItem(LEGACY_APP_STORAGE_KEYS.sortPreferences, JSON.stringify({ '__list__': { option: 'title', direction: 'asc' } }))
+    const entries = [
+      makeEntry({ path: '/c.md', title: 'Charlie', modifiedAt: 3000 }),
+      makeEntry({ path: '/a.md', title: 'Alpha', modifiedAt: 1000 }),
+    ]
+
+    renderNoteList({ entries, selection: { kind: 'filter', filter: 'all' } })
+    const items = screen.getAllByText(/Alpha|Charlie/)
+    expect(items[0].textContent).toBe('Alpha')
+    expect(items[1].textContent).toBe('Charlie')
   })
 })

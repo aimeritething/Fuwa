@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { FeedbackDialog } from './FeedbackDialog'
-import { LAPUTA_GITHUB_ISSUES_URL } from '../constants/feedback'
+import { TOLARIA_GITHUB_ISSUES_URL } from '../constants/feedback'
 
 vi.mock('../utils/url', () => ({
   openExternalUrl: vi.fn().mockResolvedValue(undefined),
@@ -32,7 +32,7 @@ describe('FeedbackDialog', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Go to Issues' }))
 
-    await waitFor(() => expect(openExternalUrl).toHaveBeenCalledWith(LAPUTA_GITHUB_ISSUES_URL))
+    await waitFor(() => expect(openExternalUrl).toHaveBeenCalledWith(TOLARIA_GITHUB_ISSUES_URL))
     expect(onClose).not.toHaveBeenCalled()
     expect(screen.getByTestId('feedback-dialog')).toBeInTheDocument()
   })

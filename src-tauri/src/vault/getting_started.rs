@@ -19,9 +19,9 @@ pub fn vault_exists(path: &str) -> bool {
 /// Default AGENTS.md content — vault instructions for AI agents.
 /// Describes Laputa vault mechanics only; no vault-specific structure.
 /// The vault scanner will pick this up as a regular entry.
-pub(super) const AGENTS_MD: &str = r##"# AGENTS.md — Laputa Vault
+pub(super) const AGENTS_MD: &str = r##"# AGENTS.md — Tolaria Vault
 
-This is a [Laputa](https://github.com/refactoringhq/laputa-app) vault — a folder of markdown files with YAML frontmatter forming a personal knowledge graph.
+This is a [Tolaria](https://github.com/refactoringhq/tolaria) vault — a folder of markdown files with YAML frontmatter forming a personal knowledge graph.
 
 ## Note structure
 
@@ -120,7 +120,8 @@ fn create_getting_started_vault_from_repo(
 }
 
 fn getting_started_repo_url() -> String {
-    std::env::var("LAPUTA_GETTING_STARTED_REPO_URL")
+    std::env::var("TOLARIA_GETTING_STARTED_REPO_URL")
+        .or_else(|_| std::env::var("LAPUTA_GETTING_STARTED_REPO_URL"))
         .unwrap_or_else(|_| GETTING_STARTED_REPO_URL.to_string())
 }
 
@@ -143,7 +144,7 @@ mod tests {
         fs::create_dir_all(path.join("views")).unwrap();
         fs::write(
             path.join("welcome.md"),
-            "# Welcome to Laputa\n\nThis is the starter vault.\n",
+            "# Welcome to Tolaria\n\nThis is the starter vault.\n",
         )
         .unwrap();
         fs::write(
@@ -158,12 +159,12 @@ mod tests {
             .output()
             .unwrap();
         StdCommand::new("git")
-            .args(["config", "user.email", "laputa@app.local"])
+            .args(["config", "user.email", "tolaria@app.local"])
             .current_dir(path)
             .output()
             .unwrap();
         StdCommand::new("git")
-            .args(["config", "user.name", "Laputa App"])
+            .args(["config", "user.name", "Tolaria App"])
             .current_dir(path)
             .output()
             .unwrap();

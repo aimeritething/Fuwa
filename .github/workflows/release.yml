@@ -173,7 +173,9 @@ jobs:
         run: |
           VERSION="${{ needs.version.outputs.version }}"
           TAG="${{ needs.version.outputs.tag }}"
-          REPO="refactoringhq/laputa-app"
+          REPO="${GITHUB_REPOSITORY}"
+          REPO_NAME="${REPO#*/}"
+          PAGES_URL="https://refactoringhq.github.io/${REPO_NAME}/"
 
           ARM_SIG=$(cat updater-aarch64/*.app.tar.gz.sig)
           ARM_TARBALL=$(ls updater-aarch64/*.app.tar.gz | xargs basename)
@@ -181,7 +183,7 @@ jobs:
           cat > latest.json << EOF
           {
             "version": "${VERSION}",
-            "notes": "See https://refactoringhq.github.io/laputa-app/ for full release notes.",
+            "notes": "See ${PAGES_URL} for full release notes.",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "darwin-aarch64": {
@@ -197,7 +199,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: Laputa ${{ needs.version.outputs.version }}
+          name: Tolaria ${{ needs.version.outputs.version }}
           body_path: release_notes.md
           draft: false
           prerelease: false
@@ -228,17 +230,18 @@ jobs:
         run: |
           mkdir -p _site
           gh api repos/${{ github.repository }}/releases --paginate > _site/releases.json
+          PAGES_URL="https://refactoringhq.github.io/${GITHUB_REPOSITORY#*/}"
           # Copy latest.json to GitHub Pages for auto-updater endpoint
           gh release download --repo ${{ github.repository }} --pattern "latest.json" --output _site/latest.json || true
           # Preserve canary latest.json from existing GH Pages
-          curl -fsSL "https://refactoringhq.github.io/laputa-app/latest-canary.json" -o _site/latest-canary.json || true
+          curl -fsSL "${PAGES_URL}/latest-canary.json" -o _site/latest-canary.json || true
           cat > _site/index.html << 'HTMLEOF'
           <!DOCTYPE html>
           <html lang="en">
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Laputa — Release History</title>
+            <title>Tolaria — Release History</title>
             <style>
               * { margin: 0; padding: 0; box-sizing: border-box; }
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F7F6F3; color: #37352F; line-height: 1.6; padding: 2rem; max-width: 720px; margin: 0 auto; }
@@ -255,7 +258,7 @@ jobs:
             </style>
           </head>
           <body>
-            <h1>Laputa Release History</h1>
+            <h1>Tolaria Release History</h1>
             <p class="subtitle">Auto-updated on every release</p>
             <div id="releases"></div>
             <script>

@@ -18,7 +18,7 @@ describe('WelcomeScreen', () => {
   describe('welcome mode', () => {
     it('renders welcome title and subtitle', () => {
       render(<WelcomeScreen {...defaultProps} />)
-      expect(screen.getByText('Welcome to Laputa')).toBeInTheDocument()
+      expect(screen.getByText('Welcome to Tolaria')).toBeInTheDocument()
       expect(screen.getByText(/Wiki-linked knowledge management/)).toBeInTheDocument()
     })
 

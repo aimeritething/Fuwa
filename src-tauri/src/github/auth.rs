@@ -12,7 +12,7 @@ async fn github_device_flow_start_with_base(base_url: &str) -> Result<DeviceFlow
     let response = client
         .post(format!("{}/login/device/code", base_url))
         .header("Accept", "application/json")
-        .header("User-Agent", "Laputa-App")
+        .header("User-Agent", "Tolaria-App")
         .form(&[("client_id", GITHUB_CLIENT_ID), ("scope", "repo")])
         .send()
         .await
@@ -50,7 +50,7 @@ async fn github_device_flow_poll_with_base(
     let response = client
         .post(format!("{}/login/oauth/access_token", base_url))
         .header("Accept", "application/json")
-        .header("User-Agent", "Laputa-App")
+        .header("User-Agent", "Tolaria-App")
         .form(&[
             ("client_id", GITHUB_CLIENT_ID),
             ("device_code", device_code),

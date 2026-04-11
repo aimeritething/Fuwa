@@ -1,6 +1,6 @@
 # Architecture
 
-Laputa is a personal knowledge and life management desktop app. It reads a vault of markdown files with YAML frontmatter and presents them in a four-panel UI inspired by Bear Notes.
+Tolaria is a personal knowledge and life management desktop app. It reads a vault of markdown files with YAML frontmatter and presents them in a four-panel UI inspired by Bear Notes.
 
 ## Design Principles
 
@@ -10,13 +10,13 @@ The vault is a folder of plain markdown files. The app never owns the data — i
 
 ### Convention over configuration
 
-Laputa is opinionated. Standard field names (`type:`, `status:`, `url:`, `Workspace:`, `Belongs to:`, `start_date:`, `end_date:`) have well-defined meanings and trigger specific UI behavior — without any setup. This is not convention *instead of* configuration: users can override defaults via config files in their vault (e.g. `config/relations.md`, `config/semantic-properties.md`). But the defaults work out of the box, and most users never need to touch them.
+Tolaria is opinionated. Standard field names (`type:`, `status:`, `url:`, `Workspace:`, `Belongs to:`, `start_date:`, `end_date:`) have well-defined meanings and trigger specific UI behavior — without any setup. This is not convention *instead of* configuration: users can override defaults via config files in their vault (e.g. `config/relations.md`, `config/semantic-properties.md`). But the defaults work out of the box, and most users never need to touch them.
 
 This principle directly serves AI-readability: the more structure comes from shared conventions rather than per-user custom configurations, the easier it is for an AI agent to understand and navigate the vault correctly — without needing bespoke instructions for every setup.
 
 ### Where to store state: vault vs. app settings
 
-When deciding where to persist a piece of data, ask: **"Would the user want this to follow them across all their Laputa installations — other devices, future platforms (tablet, web)?"**
+When deciding where to persist a piece of data, ask: **"Would the user want this to follow them across all their Tolaria installations — other devices, future platforms (tablet, web)?"**
 
 | Follows the vault | Stays with the installation |
 |-------------------|-----------------------------|
@@ -26,7 +26,7 @@ When deciding where to persist a piece of data, ask: **"Would the user want this
 | Property display order | Window size / position |
 | Any user-visible customization of how content is organized or displayed | Any machine-specific or credential-type setting |
 
-**Rule:** If the information is about *how the content is structured or presented* and the user would expect it to be consistent wherever they open their vault, store it in the vault (frontmatter of the relevant note, using the `_field` underscore convention for system properties). If it's about *this specific installation of the app*, store it in `~/.config/com.laputa.app/settings.json` or localStorage.
+**Rule:** If the information is about *how the content is structured or presented* and the user would expect it to be consistent wherever they open their vault, store it in the vault (frontmatter of the relevant note, using the `_field` underscore convention for system properties). If it's about *this specific installation of the app*, store it in `~/.config/com.tolaria.app/settings.json` or localStorage.
 
 Examples:
 - ✅ Vault: `_pinned_properties` in a Type note (every device should show the same pinned properties)
@@ -265,7 +265,7 @@ Token budget: 60% of 180k context limit (~108k tokens max). Active note gets pri
 
 ### Authentication
 
-Claude CLI (agent mode) uses its own authentication — no API key configuration needed in Laputa.
+Claude CLI (agent mode) uses its own authentication — no API key configuration needed in Tolaria.
 
 ## MCP Server
 
@@ -285,7 +285,7 @@ The MCP server (`mcp-server/`) exposes vault operations as tools for AI assistan
 | `link_notes` | `source_path, property, target_title` | Add a target to an array property in frontmatter |
 | `list_notes` | `[type_filter], [sort]` | List all notes, optionally filtered by type |
 | `vault_context` | — | Get vault summary: entity types + 20 recent notes + configFiles |
-| `ui_open_note` | `path` | Open a note in the Laputa UI editor |
+| `ui_open_note` | `path` | Open a note in the Tolaria UI editor |
 | `ui_open_tab` | `path` | Open a note in a new UI tab |
 | `ui_highlight` | `element, [path]` | Highlight a UI element (editor, tab, properties, notelist) |
 | `ui_set_filter` | `type` | Set the sidebar filter to a specific type |
@@ -293,13 +293,13 @@ The MCP server (`mcp-server/`) exposes vault operations as tools for AI assistan
 ### Transports
 
 - **stdio** — standard MCP transport for Claude Code / Cursor (`node mcp-server/index.js`)
-- **WebSocket** — live bridge for Laputa app integration:
+- **WebSocket** — live bridge for Tolaria app integration:
   - Port **9710**: Tool bridge — AI/Claude clients call vault tools here
   - Port **9711**: UI bridge — Frontend listens for UI action broadcasts from MCP tools
 
 ### Auto-Registration
 
-On app startup, Laputa automatically registers itself as an MCP server in:
+On app startup, Tolaria automatically registers itself as an MCP server in:
 - `~/.claude/mcp.json` (Claude Code)
 - `~/.cursor/mcp.json` (Cursor)
 
@@ -349,7 +349,7 @@ flowchart LR
 | Function | Purpose |
 |----------|---------|
 | `spawn_ws_bridge(vault_path)` | Spawns `ws-bridge.js` as child process with VAULT_PATH env |
-| `register_mcp(vault_path)` | Writes Laputa entry to Claude Code and Cursor MCP configs |
+| `register_mcp(vault_path)` | Writes Tolaria entry to Claude Code and Cursor MCP configs |
 | `upsert_mcp_config(path, entry)` | Atomic config file update (create/merge, preserves others) |
 
 The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is killed on app exit via `RunEvent::Exit` handler.
@@ -400,7 +400,7 @@ The app uses a single light theme with no user-configurable theming (see [ADR-00
 
 ### Vault List
 
-Persisted at `~/.config/com.laputa.app/vaults.json`:
+Persisted at `~/.config/com.tolaria.app/vaults.json` (reads legacy `com.laputa.app` on upgrade):
 ```json
 {
   "vaults": [{ "label": "My Vault", "path": "/path/to/vault" }],
@@ -440,7 +440,7 @@ Implements GitHub Device Authorization Flow for cloning/creating GitHub-backed v
 2. `github_device_flow_start()` returns a user code + verification URL
 3. User authorizes at `github.com/login/device`
 4. App polls `github_device_flow_poll()` until authorized
-5. Token stored in `~/.config/com.laputa.app/settings.json`
+5. Token stored in `~/.config/com.tolaria.app/settings.json`
 
 **Vault operations:**
 - `GitHubVaultModal`: Clone existing repo or create new private/public repo
@@ -821,7 +821,7 @@ sequenceDiagram
 
 ### Updates
 
-Laputa uses the Tauri updater plugin for automatic updates:
+Tolaria uses the Tauri updater plugin for automatic updates:
 
 - Builds from `main` branch are published as GitHub Releases
 - `latest.json` is published to GitHub Pages for the updater plugin

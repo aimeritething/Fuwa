@@ -34,7 +34,7 @@ export async function triggerMenuCommand(page: Page, id: string): Promise<void> 
       await new Promise((resolve) => window.setTimeout(resolve, 50))
     }
 
-    throw new Error('Laputa test bridge is missing dispatchBrowserMenuCommand')
+    throw new Error('Tolaria test bridge is missing dispatchBrowserMenuCommand')
   }, id)
 }
 
@@ -45,7 +45,7 @@ export async function dispatchShortcutEvent(
   await page.evaluate((eventInit) => {
     const bridge = window.__laputaTest?.dispatchShortcutEvent
     if (typeof bridge !== 'function') {
-      throw new Error('Laputa test bridge is missing dispatchShortcutEvent')
+      throw new Error('Tolaria test bridge is missing dispatchShortcutEvent')
     }
     bridge(eventInit)
   }, init)
@@ -59,7 +59,7 @@ export async function triggerShortcutCommand(
   await page.evaluate((payload) => {
     const bridge = window.__laputaTest?.triggerShortcutCommand
     if (typeof bridge !== 'function') {
-      throw new Error('Laputa test bridge is missing triggerShortcutCommand')
+      throw new Error('Tolaria test bridge is missing triggerShortcutCommand')
     }
     bridge(payload.id, payload.options)
   }, { id, options })

@@ -8,7 +8,7 @@
  * Response text accumulates internally and is revealed as a complete block on done.
  *
  * Detects file operations (Write/Edit/Bash) and notifies the parent via callbacks
- * so the Laputa UI can auto-open new notes and live-refresh modified notes.
+ * so the Tolaria UI can auto-open new notes and live-refresh modified notes.
  */
 import { useState, useCallback, useRef, useEffect } from 'react'
 import type { AiAction } from '../components/AiMessage'
@@ -316,7 +316,7 @@ function formatToolLabel(toolName: string, input?: string): string {
       break
   }
 
-  // Laputa MCP tools
+  // Tolaria MCP tools
   const mcpLabels: Record<string, string> = {
     search_notes: 'Searching notes',
     get_vault_context: 'Loading vault context',

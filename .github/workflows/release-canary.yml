@@ -172,7 +172,9 @@ jobs:
         run: |
           VERSION="${{ needs.version.outputs.version }}"
           TAG="${{ needs.version.outputs.tag }}"
-          REPO="refactoringhq/laputa-app"
+          REPO="${GITHUB_REPOSITORY}"
+          REPO_NAME="${REPO#*/}"
+          PAGES_URL="https://refactoringhq.github.io/${REPO_NAME}/"
 
           ARM_SIG=$(cat updater-aarch64/*.app.tar.gz.sig)
           ARM_TARBALL=$(ls updater-aarch64/*.app.tar.gz | xargs basename)
@@ -180,7 +182,7 @@ jobs:
           cat > latest-canary.json << EOF
           {
             "version": "${VERSION}",
-            "notes": "Canary build. See https://refactoringhq.github.io/laputa-app/ for release notes.",
+            "notes": "Canary build. See ${PAGES_URL} for release notes.",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "darwin-aarch64": {
@@ -196,7 +198,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: Laputa ${{ needs.version.outputs.version }} (Canary)
+          name: Tolaria ${{ needs.version.outputs.version }} (Canary)
           body_path: release_notes.md
           draft: false
           prerelease: true
@@ -227,8 +229,9 @@ jobs:
         run: |
           mkdir -p _site
           gh api repos/${{ github.repository }}/releases --paginate > _site/releases.json
+          PAGES_URL="https://refactoringhq.github.io/${GITHUB_REPOSITORY#*/}"
           # Download stable latest.json from existing GH Pages (preserve it)
-          curl -fsSL "https://refactoringhq.github.io/laputa-app/latest.json" -o _site/latest.json || echo '{}' > _site/latest.json
+          curl -fsSL "${PAGES_URL}/latest.json" -o _site/latest.json || echo '{}' > _site/latest.json
           # Copy canary latest.json from this release
           gh release download --repo ${{ github.repository }} "${{ needs.version.outputs.tag }}" --pattern "latest-canary.json" --output _site/latest-canary.json || true
           cat > _site/index.html << 'HTMLEOF'
@@ -237,7 +240,7 @@ jobs:
           <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Laputa — Release History</title>
+            <title>Tolaria — Release History</title>
             <style>
               * { margin: 0; padding: 0; box-sizing: border-box; }
               body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #F7F6F3; color: #37352F; line-height: 1.6; padding: 2rem; max-width: 720px; margin: 0 auto; }
@@ -255,7 +258,7 @@ jobs:
             </style>
           </head>
           <body>
-            <h1>Laputa Release History</h1>
+            <h1>Tolaria Release History</h1>
             <p class="subtitle">Auto-updated on every release</p>
             <div id="releases"></div>
             <script>

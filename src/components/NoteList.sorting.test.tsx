@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
+import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS } from '../constants/appStorage'
 import { getSortComparator } from '../utils/noteListHelpers'
 import { makeEntry, mockEntries, renderNoteList } from '../test-utils/noteListTestUtils'
 
@@ -107,7 +108,8 @@ describe('getSortComparator', () => {
 describe('NoteList sort controls', () => {
   beforeEach(() => {
     try {
-      localStorage.removeItem('laputa-sort-preferences')
+      localStorage.removeItem(APP_STORAGE_KEYS.sortPreferences)
+      localStorage.removeItem(LEGACY_APP_STORAGE_KEYS.sortPreferences)
     } catch {
       // ignore storage failures in tests
     }

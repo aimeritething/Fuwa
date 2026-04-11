@@ -1,16 +1,16 @@
 # Abstractions
 
-Key abstractions and domain models in Laputa.
+Key abstractions and domain models in Tolaria.
 
 ## Design Philosophy
 
-Laputa's abstractions follow the **convention over configuration** principle: standard field names and folder structures have well-defined meanings and trigger UI behavior automatically. This makes vaults legible both to humans and to AI agents — the more a vault follows conventions, the less custom configuration an AI needs to navigate it correctly.
+Tolaria's abstractions follow the **convention over configuration** principle: standard field names and folder structures have well-defined meanings and trigger UI behavior automatically. This makes vaults legible both to humans and to AI agents — the more a vault follows conventions, the less custom configuration an AI needs to navigate it correctly.
 
 The full set of design principles is documented in [ARCHITECTURE.md](./ARCHITECTURE.md#design-principles).
 
 ## Semantic Field Names (conventions)
 
-These frontmatter field names have special meaning in Laputa's UI:
+These frontmatter field names have special meaning in Tolaria's UI:
 
 | Field | Meaning | UI behavior |
 |---|---|---|
@@ -35,7 +35,7 @@ Any frontmatter field whose name starts with `_` is a **system property**:
 - It is **not shown** in the Properties panel (neither for notes nor for Type notes)
 - It is **not exposed** as a user-visible property in search, filters, or the UI
 - It **is editable** directly in the raw editor (power users can access it if needed)
-- It is used by Laputa internally for configuration, behavior, and UI preferences
+- It is used by Tolaria internally for configuration, behavior, and UI preferences
 
 Examples:
 ```yaml
@@ -233,7 +233,7 @@ All `[[wikilinks]]` in the note body (not frontmatter) are extracted by regex an
 
 ### Title / Filename Sync
 
-Laputa separates **display title** from the file identifier:
+Tolaria separates **display title** from the file identifier:
 
 - **Display title resolution** (`extract_title` in `vault/parsing.rs`): first `# H1` on the first non-empty body line, then legacy frontmatter `title:`, then slug-to-title from the filename stem.
 - **Opening a note is read-only**: selecting a note does not inject or auto-correct `title:` frontmatter.
@@ -495,7 +495,7 @@ No indexing step required — search runs directly against the filesystem.
 ### Vault Switching
 
 `useVaultSwitcher` hook manages multiple vaults:
-- Persists vault list to `~/.config/com.laputa.app/vaults.json`
+- Persists vault list to `~/.config/com.tolaria.app/vaults.json` (reads legacy `com.laputa.app` on upgrade)
 - Switching closes all tabs and resets sidebar
 - Supports adding, removing, hiding/restoring vaults
 - Default vault: Getting Started demo vault
@@ -512,7 +512,7 @@ Per-vault settings stored locally and scoped by vault path:
 `useOnboarding` hook detects first launch:
 - If vault path doesn't exist → show `WelcomeScreen`
 - User can create a new empty vault, open an existing folder, or clone the public Getting Started vault into a chosen folder
-- Welcome state tracked in localStorage (`laputa_welcome_dismissed`)
+- Welcome state tracked in localStorage (`tolaria_welcome_dismissed`, with legacy fallback)
 
 ### GitHub Integration
 
@@ -524,7 +524,7 @@ Device Authorization Flow for GitHub-backed vaults:
 
 ## Settings
 
-App-level settings persisted at `~/.config/com.laputa.app/settings.json`:
+App-level settings persisted at `~/.config/com.tolaria.app/settings.json` (reads legacy `com.laputa.app` on upgrade):
 
 ```typescript
 interface Settings {

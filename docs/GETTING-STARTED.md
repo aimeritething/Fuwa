@@ -31,7 +31,7 @@ pnpm playwright:regression  # Full Playwright regression suite
 ## Directory Structure
 
 ```
-laputa-app/
+tolaria/
 ├── src/                          # React frontend
 │   ├── main.tsx                  # Entry point (renders <App />)
 │   ├── App.tsx                   # Root component — orchestrates layout + state

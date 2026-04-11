@@ -49,7 +49,7 @@ export function useMcpStatus(
     tauriCall<string>('register_mcp_tools', { vaultPath })
       .then((result) => {
         if (result === 'registered') {
-          onToastRef.current('Laputa registered as MCP tool for Claude Code')
+          onToastRef.current('Tolaria registered as MCP tool for Claude Code')
         }
         setStatus('installed')
       })
@@ -64,7 +64,7 @@ export function useMcpStatus(
     try {
       await tauriCall<string>('register_mcp_tools', { vaultPath })
       setStatus('installed')
-      onToastRef.current(wasInstalled ? 'MCP server restored successfully' : 'MCP server installed successfully')
+      onToastRef.current(wasInstalled ? 'Tolaria MCP server restored successfully' : 'Tolaria MCP server installed successfully')
     } catch (e) {
       setStatus('not_installed')
       onToastRef.current(`MCP install failed: ${e}`)

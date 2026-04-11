@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
+import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS, getAppStorageItem } from '../constants/appStorage'
 import { pickFolder } from '../utils/vault-dialog'
 
 type OnboardingState =
@@ -15,8 +16,6 @@ function tauriCall<T>(command: string, args: Record<string, unknown>): Promise<T
   return isTauri() ? invoke<T>(command, args) : mockInvoke<T>(command, args)
 }
 
-const DISMISSED_KEY = 'laputa_welcome_dismissed'
-
 interface PersistedVaultList {
   vaults?: Array<{ label: string; path: string }>
   active_vault?: string | null
@@ -25,7 +24,7 @@ interface PersistedVaultList {
 
 function wasDismissed(): boolean {
   try {
-    return localStorage.getItem(DISMISSED_KEY) === '1'
+    return getAppStorageItem('welcomeDismissed') === '1'
   } catch {
     return false
   }
@@ -33,7 +32,8 @@ function wasDismissed(): boolean {
 
 function markDismissed(): void {
   try {
-    localStorage.setItem(DISMISSED_KEY, '1')
+    localStorage.setItem(APP_STORAGE_KEYS.welcomeDismissed, '1')
+    localStorage.removeItem(LEGACY_APP_STORAGE_KEYS.welcomeDismissed)
   } catch {
     // localStorage may be unavailable in some contexts
   }

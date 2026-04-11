@@ -1,4 +1,5 @@
 import type { VaultEntry, SidebarSelection, InboxPeriod, ViewFile } from '../types'
+import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS, getAppStorageItem } from '../constants/appStorage'
 import { evaluateView } from './viewFilters'
 import { wikilinkTarget, resolveEntry } from './wikilink'
 
@@ -176,8 +177,6 @@ export function getSortComparator(option: SortOption, direction?: SortDirection)
   return makeBuiltinComparator(option, flip)
 }
 
-const SORT_STORAGE_KEY = 'laputa-sort-preferences'
-
 /** Serialize a SortConfig to the string format stored in type frontmatter: "option:direction". */
 export function serializeSortConfig(config: SortConfig): string {
   return `${config.option}:${config.direction}`
@@ -197,7 +196,7 @@ export function parseSortConfig(raw: string | null | undefined): SortConfig | nu
 
 export function loadSortPreferences(): Record<string, SortConfig> {
   try {
-    const raw = localStorage.getItem(SORT_STORAGE_KEY)
+    const raw = getAppStorageItem('sortPreferences')
     if (!raw) return {}
     const parsed = JSON.parse(raw)
     const result: Record<string, SortConfig> = {}
@@ -218,21 +217,24 @@ export function loadSortPreferences(): Record<string, SortConfig> {
 
 export function saveSortPreferences(prefs: Record<string, SortConfig>) {
   try {
-    localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(prefs))
+    localStorage.setItem(APP_STORAGE_KEYS.sortPreferences, JSON.stringify(prefs))
+    localStorage.removeItem(LEGACY_APP_STORAGE_KEYS.sortPreferences)
   } catch { /* ignore */ }
 }
 
 /** Remove the `__list__` key from localStorage sort preferences (used during migration). */
 export function clearListSortFromLocalStorage(): void {
   try {
-    const raw = localStorage.getItem(SORT_STORAGE_KEY)
+    const raw = getAppStorageItem('sortPreferences')
     if (!raw) return
     const parsed = JSON.parse(raw)
     delete parsed['__list__']
     if (Object.keys(parsed).length === 0) {
-      localStorage.removeItem(SORT_STORAGE_KEY)
+      localStorage.removeItem(APP_STORAGE_KEYS.sortPreferences)
+      localStorage.removeItem(LEGACY_APP_STORAGE_KEYS.sortPreferences)
     } else {
-      localStorage.setItem(SORT_STORAGE_KEY, JSON.stringify(parsed))
+      localStorage.setItem(APP_STORAGE_KEYS.sortPreferences, JSON.stringify(parsed))
+      localStorage.removeItem(LEGACY_APP_STORAGE_KEYS.sortPreferences)
     }
   } catch { /* ignore */ }
 }

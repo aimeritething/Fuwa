@@ -48,7 +48,7 @@ fn run_startup_tasks() {
     // Seed AGENTS.md and config.md at vault root if missing
     vault::seed_config_files(vp_str);
 
-    // Register Laputa MCP server in Claude Code and Cursor configs
+    // Register Tolaria MCP server in Claude Code and Cursor configs
     match mcp::register_mcp(vp_str) {
         Ok(status) => log::info!("MCP registration: {status}"),
         Err(e) => log::warn!("MCP registration failed: {e}"),

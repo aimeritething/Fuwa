@@ -2,7 +2,7 @@
  * AI Agent utilities — Claude CLI agent mode with full shell access + MCP vault tools.
  *
  * The agent has full native tool access (bash, read, write, edit) plus
- * Laputa-specific MCP tools (search_notes, get_vault_context, get_note, open_note).
+ * Tolaria-specific MCP tools (search_notes, get_vault_context, get_note, open_note).
  * The frontend receives streaming events for text, tool calls, and completion.
  */
 
@@ -10,13 +10,13 @@ import { isTauri } from '../mock-tauri'
 
 // --- Agent system prompt ---
 
-const AGENT_SYSTEM_PREAMBLE = `You are working inside Laputa, a personal knowledge management app.
+const AGENT_SYSTEM_PREAMBLE = `You are working inside Tolaria, a personal knowledge management app.
 
 Notes are markdown files with YAML frontmatter. Standard fields: title, type (aliased is_a), date, tags.
 You have full shell access. Use bash for file operations, search, bulk edits.
 Use the provided MCP tools for: full-text search (search_notes), vault orientation (get_vault_context), parsed note reading (get_note), and opening notes in the UI (open_note).
 
-When you create or edit a note, call open_note(path) so the user sees it in Laputa.
+When you create or edit a note, call open_note(path) so the user sees it in Tolaria.
 When you mention or reference a note by name, always use [[Note Title]] wikilink syntax so the user can click to open it.
 Be concise and helpful. When you've completed a task, briefly summarize what you did.`
 

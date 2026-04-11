@@ -1,3 +1,4 @@
+import { getAppStorageItem } from '../constants/appStorage'
 import { ACCENT_COLORS } from './typeColors'
 import { updateVaultConfigField } from './vaultConfigStore'
 
@@ -22,8 +23,6 @@ function hashTagColor(tag: string): TagStyle {
   return { bg: accent.cssLight, color: accent.css }
 }
 
-const STORAGE_KEY = 'laputa:tag-color-overrides'
-
 const COLOR_KEY_TO_STYLE: Record<string, TagStyle> = Object.fromEntries(
   ACCENT_COLORS.map(c => [c.key, { bg: c.cssLight, color: c.css }]),
 )
@@ -36,9 +35,10 @@ export function initTagColors(overrides: Record<string, string>): void {
 }
 
 function loadColorOverrides(): Record<string, string> {
+  const raw = getAppStorageItem('tagColors')
+  if (!raw) return {}
   try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? (JSON.parse(raw) as Record<string, string>) : {}
+    return JSON.parse(raw) as Record<string, string>
   } catch {
     return {}
   }

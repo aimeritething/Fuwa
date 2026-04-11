@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { isTauri } from '../mock-tauri'
 import { openExternalUrl } from '../utils/url'
 
-const RELEASE_NOTES_URL = 'https://refactoringhq.github.io/laputa-app/'
+const RELEASE_NOTES_URL = 'https://refactoringhq.github.io/tolaria/'
 
 export type UpdateStatus =
   | { state: 'idle' }

@@ -2,6 +2,9 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 
+const MCP_SERVER_NAME: &str = "tolaria";
+const LEGACY_MCP_SERVER_NAME: &str = "laputa";
+
 /// Status of the MCP server installation.
 #[derive(Debug, Serialize, Clone, PartialEq)]
 #[serde(rename_all = "snake_case")]
@@ -20,11 +23,41 @@ pub(crate) fn find_node() -> Result<PathBuf, String> {
         .arg("node")
         .output()
         .map_err(|e| format!("Failed to run `which node`: {e}"))?;
-    if !output.status.success() {
-        return Err("node not found in PATH".into());
+    if output.status.success() {
+        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        if !path.is_empty() {
+            return Ok(PathBuf::from(path));
+        }
     }
-    let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    Ok(PathBuf::from(path))
+
+    if let Some(path) = fallback_node_path() {
+        return Ok(path);
+    }
+
+    Err("node not found in PATH or common install locations".into())
+}
+
+fn fallback_node_path() -> Option<PathBuf> {
+    let mut candidates = vec![
+        PathBuf::from("/opt/homebrew/bin/node"),
+        PathBuf::from("/usr/local/bin/node"),
+    ];
+
+    if let Some(home) = dirs::home_dir() {
+        candidates.push(home.join(".volta").join("bin").join("node"));
+
+        let nvm_dir = home.join(".nvm").join("versions").join("node");
+        if let Ok(entries) = std::fs::read_dir(nvm_dir) {
+            let mut versions = entries
+                .filter_map(|entry| entry.ok().map(|entry| entry.path()))
+                .collect::<Vec<_>>();
+            versions.sort();
+            versions.reverse();
+            candidates.extend(versions.into_iter().map(|version| version.join("bin").join("node")));
+        }
+    }
+
+    candidates.into_iter().find(|path| path.is_file())
 }
 
 /// Resolve the path to `mcp-server/`.
@@ -102,7 +135,7 @@ fn register_mcp_to_configs(entry: &serde_json::Value, config_paths: &[PathBuf]) 
     status.to_string()
 }
 
-/// Register Laputa as an MCP server in Claude Code and Cursor config files.
+/// Register Tolaria as an MCP server in Claude Code and Cursor config files.
 pub fn register_mcp(vault_path: &str) -> Result<String, String> {
     let server_dir = mcp_server_dir()?;
     let index_js = server_dir.join("index.js").to_string_lossy().into_owned();
@@ -120,7 +153,7 @@ pub fn register_mcp(vault_path: &str) -> Result<String, String> {
     Ok(register_mcp_to_configs(&entry, &configs))
 }
 
-/// Insert or update the "laputa" entry in an MCP config file.
+/// Insert or update the Tolaria entry in an MCP config file.
 fn upsert_mcp_config(config_path: &Path, entry: &serde_json::Value) -> Result<bool, String> {
     if let Some(parent) = config_path.parent() {
         std::fs::create_dir_all(parent)
@@ -142,12 +175,14 @@ fn upsert_mcp_config(config_path: &Path, entry: &serde_json::Value) -> Result<bo
         .entry("mcpServers")
         .or_insert_with(|| serde_json::json!({}));
 
-    let was_update = servers.get("laputa").is_some();
-
-    servers
+    let servers = servers
         .as_object_mut()
-        .ok_or("mcpServers is not a JSON object")?
-        .insert("laputa".to_string(), entry.clone());
+        .ok_or("mcpServers is not a JSON object")?;
+
+    let was_update =
+        servers.get(MCP_SERVER_NAME).is_some() || servers.get(LEGACY_MCP_SERVER_NAME).is_some();
+    servers.remove(LEGACY_MCP_SERVER_NAME);
+    servers.insert(MCP_SERVER_NAME.to_string(), entry.clone());
 
     let json = serde_json::to_string_pretty(&config)
         .map_err(|e| format!("Failed to serialize config: {e}"))?;
@@ -159,7 +194,7 @@ fn upsert_mcp_config(config_path: &Path, entry: &serde_json::Value) -> Result<bo
 
 /// Check whether the MCP server is properly installed and registered.
 ///
-/// Returns `Installed` when the laputa entry exists in `~/.claude/mcp.json`
+/// Returns `Installed` when the Tolaria entry exists in `~/.claude/mcp.json`
 /// and the referenced index.js file is present. Returns `NoClaudeCli` when
 /// the Claude CLI binary cannot be found. Otherwise returns `NotInstalled`.
 pub fn check_mcp_status() -> McpStatus {
@@ -187,10 +222,15 @@ pub fn check_mcp_status() -> McpStatus {
         Err(_) => return McpStatus::NotInstalled,
     };
 
-    let entry = &config["mcpServers"]["laputa"];
-    if entry.is_null() {
+    let Some(servers) = config.get("mcpServers").and_then(|value| value.as_object()) else {
         return McpStatus::NotInstalled;
-    }
+    };
+    let Some(entry) = servers
+        .get(MCP_SERVER_NAME)
+        .or_else(|| servers.get(LEGACY_MCP_SERVER_NAME))
+    else {
+        return McpStatus::NotInstalled;
+    };
 
     // Verify the referenced index.js actually exists on disk
     if let Some(index_js) = entry["args"]
@@ -231,9 +271,9 @@ mod tests {
 
         let raw = std::fs::read_to_string(&config_path).unwrap();
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
-        assert_eq!(config["mcpServers"]["laputa"]["args"][0], "/test/index.js");
+        assert_eq!(config["mcpServers"][MCP_SERVER_NAME]["args"][0], "/test/index.js");
         assert_eq!(
-            config["mcpServers"]["laputa"]["env"]["VAULT_PATH"],
+            config["mcpServers"][MCP_SERVER_NAME]["env"]["VAULT_PATH"],
             "/test/vault"
         );
     }
@@ -253,9 +293,35 @@ mod tests {
         let raw = std::fs::read_to_string(&config_path).unwrap();
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
         assert_eq!(
-            config["mcpServers"]["laputa"]["env"]["VAULT_PATH"],
+            config["mcpServers"][MCP_SERVER_NAME]["env"]["VAULT_PATH"],
             "/vault/v2"
         );
+    }
+
+    #[test]
+    fn upsert_migrates_legacy_server_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_path = tmp.path().join("mcp.json");
+
+        let existing = serde_json::json!({
+            "mcpServers": {
+                "laputa": {
+                    "command": "node",
+                    "args": ["/old/index.js"],
+                    "env": { "VAULT_PATH": "/old" }
+                }
+            }
+        });
+        std::fs::write(&config_path, serde_json::to_string(&existing).unwrap()).unwrap();
+
+        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let was_update = upsert_mcp_config(&config_path, &entry).unwrap();
+        assert!(was_update);
+
+        let raw = std::fs::read_to_string(&config_path).unwrap();
+        let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        assert!(config["mcpServers"][LEGACY_MCP_SERVER_NAME].is_null());
+        assert_eq!(config["mcpServers"][MCP_SERVER_NAME]["args"][0], "/test/index.js");
     }
 
     #[test]
@@ -276,7 +342,7 @@ mod tests {
         let raw = std::fs::read_to_string(&config_path).unwrap();
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
         assert!(config["mcpServers"]["other-server"].is_object());
-        assert!(config["mcpServers"]["laputa"].is_object());
+        assert!(config["mcpServers"][MCP_SERVER_NAME].is_object());
     }
 
     #[test]
@@ -358,7 +424,7 @@ mod tests {
 
         let raw = std::fs::read_to_string(&claude_cfg).unwrap();
         let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
-        assert_eq!(config["mcpServers"]["laputa"]["args"][0], "/test/index.js");
+        assert_eq!(config["mcpServers"][MCP_SERVER_NAME]["args"][0], "/test/index.js");
     }
     #[test]
     fn upsert_returns_error_for_invalid_json() {
