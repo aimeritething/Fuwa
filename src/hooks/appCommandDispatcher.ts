@@ -159,14 +159,18 @@ function dispatchDefinition(
     case 'filter':
       handlers.onSelectFilter?.(definition.route.value)
       return true
-    case 'handler':
-      SIMPLE_HANDLER_EXECUTORS[definition.route.handler as SimpleHandlerKey](handlers)
+    case 'handler': {
+      const handler = definition.route.handler
+      SIMPLE_HANDLER_EXECUTORS[handler as SimpleHandlerKey](handlers)
       return true
-    case 'active-tab-handler':
+    }
+    case 'active-tab-handler': {
+      const handler = definition.route.handler
       return dispatchActiveTabCommand(
         handlers.activeTabPathRef,
-        (path) => ACTIVE_TAB_HANDLER_EXECUTORS[definition.route.handler as ActiveTabHandlerKey](handlers, path),
+        (path) => ACTIVE_TAB_HANDLER_EXECUTORS[handler as ActiveTabHandlerKey](handlers, path),
       )
+    }
   }
 }
 
