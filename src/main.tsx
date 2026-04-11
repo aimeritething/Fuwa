@@ -5,7 +5,6 @@ import './index.css'
 import App from './App.tsx'
 import {
   APP_COMMAND_EVENT_NAME,
-  APP_MENU_EVENT_NAME,
   isAppCommandId,
   isNativeMenuCommandId,
 } from './hooks/appCommandDispatcher'
@@ -14,6 +13,7 @@ declare global {
   interface Window {
     __laputaTest?: {
       dispatchAppCommand: (id: string) => void
+      dispatchBrowserMenuCommand?: (id: string) => void
       triggerMenuCommand?: (id: string) => Promise<unknown>
     }
   }
@@ -40,11 +40,15 @@ window.__laputaTest = {
     }
 
     if ('__TAURI__' in window || '__TAURI_INTERNALS__' in window) {
-        const { invoke } = await import('@tauri-apps/api/core')
-        return invoke('trigger_menu_command', { id })
-      }
+      const { invoke } = await import('@tauri-apps/api/core')
+      return invoke('trigger_menu_command', { id })
+    }
 
-    window.dispatchEvent(new CustomEvent(APP_MENU_EVENT_NAME, { detail: id }))
+    if (!window.__laputaTest?.dispatchBrowserMenuCommand) {
+      throw new Error('Laputa test bridge is missing dispatchBrowserMenuCommand')
+    }
+
+    window.__laputaTest.dispatchBrowserMenuCommand(id)
     return undefined
   },
 }

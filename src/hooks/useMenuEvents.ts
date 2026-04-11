@@ -2,11 +2,18 @@ import { useEffect, useRef } from 'react'
 import { isTauri } from '../mock-tauri'
 import {
   APP_COMMAND_EVENT_NAME,
-  APP_MENU_EVENT_NAME,
   dispatchAppCommand,
   isAppCommandId,
   type AppCommandHandlers,
 } from './appCommandDispatcher'
+
+declare global {
+  interface Window {
+    __laputaTest?: {
+      dispatchBrowserMenuCommand?: (id: string) => void
+    }
+  }
+}
 
 export interface MenuEventHandlers extends AppCommandHandlers {
   activeTabPath: string | null
@@ -90,12 +97,20 @@ export function useMenuEvents(handlers: MenuEventHandlers) {
   }, [])
 
   useEffect(() => {
-    const handleMenuCommandEvent = createWindowCommandListener((detail) => {
-      dispatchMenuEvent(detail, ref.current)
-    })
+    const bridge = (id: string) => {
+      dispatchMenuEvent(id, ref.current)
+    }
 
-    window.addEventListener(APP_MENU_EVENT_NAME, handleMenuCommandEvent)
-    return () => window.removeEventListener(APP_MENU_EVENT_NAME, handleMenuCommandEvent)
+    window.__laputaTest = {
+      ...window.__laputaTest,
+      dispatchBrowserMenuCommand: bridge,
+    }
+
+    return () => {
+      if (window.__laputaTest?.dispatchBrowserMenuCommand === bridge) {
+        delete window.__laputaTest.dispatchBrowserMenuCommand
+      }
+    }
   }, [])
 
   // Sync menu item enabled state when active note or git state changes

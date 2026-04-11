@@ -1,11 +1,11 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect } from '@playwright/test'
 import { triggerMenuCommand } from './testBridge'
 import { createFixtureVaultCopy, openFixtureVault, removeFixtureVaultCopy } from '../helpers/fixtureVault'
 
 let tempVaultDir: string
 
-function untitledRow(page: Page, typeLabel: string) {
-  return page.getByText(new RegExp(`^Untitled ${typeLabel}(?: \\d+)?$`, 'i')).first()
+function untitledNoteListMatcher(typeLabel: string) {
+  return new RegExp(`Untitled ${typeLabel}(?: \\d+)?`, 'i')
 }
 
 test.describe('keyboard command routing', () => {
@@ -24,7 +24,10 @@ test.describe('keyboard command routing', () => {
     await openFixtureVault(page, tempVaultDir)
     await triggerMenuCommand(page, 'file-new-note')
 
-    await expect(untitledRow(page, 'note')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText(/untitled-note-\d+/i, { timeout: 5_000 })
+    await expect(
+      page.locator('[data-testid="note-list-container"]').getByText(untitledNoteListMatcher('note')).first(),
+    ).toBeVisible({ timeout: 5_000 })
     expect(errors).toEqual([])
   })
 
