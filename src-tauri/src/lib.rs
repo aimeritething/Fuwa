@@ -86,11 +86,41 @@ fn setup_common_plugins(app: &mut tauri::App) -> Result<(), Box<dyn std::error::
 
 #[cfg(desktop)]
 fn setup_desktop_plugins(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    setup_macos_webview_shortcut_prevention(app)?;
     app.handle()
         .plugin(tauri_plugin_updater::Builder::new().build())?;
     app.handle().plugin(tauri_plugin_process::init())?;
     app.handle().plugin(tauri_plugin_opener::init())?;
     menu::setup_menu(app)?;
+    Ok(())
+}
+
+const MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS: &[&str] = &["L"];
+
+#[cfg(all(desktop, target_os = "macos"))]
+fn setup_macos_webview_shortcut_prevention(
+    app: &mut tauri::App,
+) -> Result<(), Box<dyn std::error::Error>> {
+    use tauri_plugin_prevent_default::ModifierKey::{MetaKey, ShiftKey};
+    use tauri_plugin_prevent_default::{Flags, KeyboardShortcut};
+
+    let mut builder = tauri_plugin_prevent_default::Builder::new().with_flags(Flags::empty());
+
+    // WKWebView can swallow some browser-reserved chords before our shared
+    // renderer shortcut handler sees them. Keep this list narrow and verify
+    // every addition with native QA.
+    for key in MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS {
+        builder = builder.shortcut(KeyboardShortcut::with_modifiers(key, &[MetaKey, ShiftKey]));
+    }
+
+    app.handle().plugin(builder.build())?;
+    Ok(())
+}
+
+#[cfg(not(all(desktop, target_os = "macos")))]
+fn setup_macos_webview_shortcut_prevention(
+    _app: &mut tauri::App,
+) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
@@ -213,4 +243,14 @@ pub fn run() {
             #[cfg(desktop)]
             handle_run_event(app_handle, &event);
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS;
+
+    #[test]
+    fn macos_webview_shortcut_prevention_includes_ai_panel_shortcut() {
+        assert_eq!(MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS, ["L"]);
+    }
 }
