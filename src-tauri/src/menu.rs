@@ -78,6 +78,7 @@ const CUSTOM_IDS: &[&str] = &[
     GO_ALL_NOTES,
     GO_ARCHIVED,
     GO_CHANGES,
+    GO_INBOX,
     NOTE_TOGGLE_ORGANIZED,
     NOTE_ARCHIVE,
     NOTE_DELETE,
@@ -213,6 +214,7 @@ fn build_view_menu(app: &App) -> MenuResult {
         .build(app)?;
     let toggle_properties = MenuItemBuilder::new("Toggle Properties Panel")
         .id(VIEW_TOGGLE_PROPERTIES)
+        .accelerator("CmdOrCtrl+Shift+I")
         .build(app)?;
     let command_palette = MenuItemBuilder::new("Command Palette")
         .id(VIEW_COMMAND_PALETTE)
@@ -404,12 +406,19 @@ pub fn setup_menu(app: &App) -> Result<(), Box<dyn std::error::Error>> {
 
     app.on_menu_event(|app_handle, event| {
         let id = event.id().0.as_str();
-        if CUSTOM_IDS.contains(&id) {
-            let _ = app_handle.emit("menu-event", id);
-        }
+        let _ = emit_custom_menu_event(app_handle, id);
     });
 
     Ok(())
+}
+
+pub fn emit_custom_menu_event(app_handle: &AppHandle, id: &str) -> Result<(), String> {
+    if !CUSTOM_IDS.contains(&id) {
+        return Err(format!("Unknown custom menu event: {id}"));
+    }
+    app_handle
+        .emit("menu-event", id)
+        .map_err(|err| format!("Failed to emit menu-event {id}: {err}"))
 }
 
 fn set_items_enabled(app_handle: &AppHandle, ids: &[&str], enabled: bool) {

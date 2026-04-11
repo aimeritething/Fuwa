@@ -671,6 +671,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `save_image` | Save base64 image to vault |
 | `copy_image_to_vault` | Copy image file to vault |
 | `update_menu_state` | Update native menu checkmarks and enabled/disabled state for selection-dependent actions |
+| `trigger_menu_command` | Emit a native menu command ID for deterministic shortcut QA |
 
 ## Mock Layer
 
@@ -706,6 +707,7 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |
 | `useSettings` | App settings (API keys, GitHub token) | Persistent settings |
 | `useVaultConfig` | Per-vault UI preferences | Vault-specific config |
+| `appCommandDispatcher` | Canonical shortcut/menu command IDs | Shared execution path for renderer and native menu commands |
 
 Data flows unidirectionally: `App` passes data and callbacks as props to child components. No child-to-child communication — everything goes through `App`.
 
@@ -724,6 +726,12 @@ Data flows unidirectionally: `App` passes data and callbacks as props to child c
 | `[[` in editor | Open wikilink suggestion menu |
 
 Selection-dependent note actions are wired through both the command palette and the native Note menu. For example, a deleted file opened from Changes view becomes a read-only diff preview, and that state enables the "Restore Deleted Note" menu/command while normal note mutation actions stay disabled.
+
+Shortcut ownership is explicit:
+
+- Renderer-owned shortcuts flow through `useAppKeyboard` into `appCommandDispatcher.ts`
+- Native-owned shortcuts flow through `menu.rs` into `useMenuEvents`, then into `appCommandDispatcher.ts`
+- Deterministic QA uses `trigger_menu_command` in Tauri and `window.__laputaTest.triggerMenuCommand()` in browser runs to exercise the native-menu command path without flaky macOS key synthesis
 
 ## Auto-Release & In-App Updates
 

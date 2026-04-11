@@ -1,148 +1,67 @@
 import { useEffect, useRef } from 'react'
 import { isTauri } from '../mock-tauri'
-import type { SidebarFilter } from '../types'
-import type { ViewMode } from './useViewMode'
+import {
+  APP_COMMAND_EVENT_NAME,
+  APP_MENU_EVENT_NAME,
+  dispatchAppCommand,
+  isAppCommandId,
+  type AppCommandHandlers,
+} from './appCommandDispatcher'
 
-export interface MenuEventHandlers {
-  onSetViewMode: (mode: ViewMode) => void
-  onCreateNote: () => void
-  onCreateType?: () => void
-  onOpenDailyNote: () => void
-  onQuickOpen: () => void
-  onSave: () => void
-  onOpenSettings: () => void
-  onToggleInspector: () => void
-  onCommandPalette: () => void
-  onZoomIn: () => void
-  onZoomOut: () => void
-  onZoomReset: () => void
-  onToggleOrganized?: (path: string) => void
-  onArchiveNote: (path: string) => void
-  onDeleteNote: (path: string) => void
-  onSearch: () => void
-  onToggleRawEditor?: () => void
-  onToggleDiff?: () => void
-  onToggleAIChat?: () => void
-  onGoBack?: () => void
-  onGoForward?: () => void
-  onCheckForUpdates?: () => void
-  onSelectFilter?: (filter: SidebarFilter) => void
-  onOpenVault?: () => void
-  onRemoveActiveVault?: () => void
-  onRestoreGettingStarted?: () => void
-  onCommitPush?: () => void
-  onPull?: () => void
-  onResolveConflicts?: () => void
-  onViewChanges?: () => void
-  onInstallMcp?: () => void
-  onOpenInNewWindow?: () => void
-  onReloadVault?: () => void
-  onRepairVault?: () => void
-  onRestoreDeletedNote?: () => void
-  activeTabPathRef: React.MutableRefObject<string | null>
+export interface MenuEventHandlers extends AppCommandHandlers {
   activeTabPath: string | null
   modifiedCount?: number
   conflictCount?: number
   hasRestorableDeletedNote?: boolean
 }
 
-const VIEW_MODE_MAP: Record<string, ViewMode> = {
-  'view-editor-only': 'editor-only',
-  'view-editor-list': 'editor-list',
-  'view-all': 'all',
+interface MenuStatePayload {
+  hasActiveNote: boolean
+  hasModifiedFiles?: boolean
+  hasConflicts?: boolean
+  hasRestorableDeletedNote?: boolean
 }
 
-type SimpleHandler = 'onCreateNote' | 'onOpenDailyNote' | 'onQuickOpen' | 'onSave' | 'onOpenSettings' | 'onToggleInspector' | 'onCommandPalette' | 'onZoomIn' | 'onZoomOut' | 'onZoomReset' | 'onSearch'
-
-const SIMPLE_EVENT_MAP: Record<string, SimpleHandler> = {
-  'file-new-note': 'onCreateNote',
-  'file-daily-note': 'onOpenDailyNote',
-  'file-quick-open': 'onQuickOpen',
-  'file-save': 'onSave',
-  'app-settings': 'onOpenSettings',
-  'view-toggle-properties': 'onToggleInspector',
-  'view-toggle-backlinks': 'onToggleInspector',
-  'view-command-palette': 'onCommandPalette',
-  'view-zoom-in': 'onZoomIn',
-  'view-zoom-out': 'onZoomOut',
-  'view-zoom-reset': 'onZoomReset',
-  'edit-find-in-vault': 'onSearch',
+function readCustomEventDetail(event: Event): string | null {
+  if (!(event instanceof CustomEvent) || typeof event.detail !== 'string') {
+    return null
+  }
+  return event.detail
 }
 
-const FILTER_MAP: Record<string, SidebarFilter> = {
-  'go-all-notes': 'all',
-  'go-archived': 'archived',
-  'go-changes': 'changes',
-  'go-inbox': 'inbox',
+function createWindowCommandListener(
+  dispatch: (id: string) => void,
+): (event: Event) => void {
+  return (event: Event) => {
+    const detail = readCustomEventDetail(event)
+    if (detail) {
+      dispatch(detail)
+    }
+  }
 }
 
-type OptionalHandler =
-  | 'onGoBack' | 'onGoForward' | 'onCheckForUpdates'
-  | 'onCreateType' | 'onToggleRawEditor' | 'onToggleDiff' | 'onToggleAIChat'
-  | 'onOpenVault' | 'onRemoveActiveVault' | 'onRestoreGettingStarted'
-  | 'onCommitPush' | 'onPull' | 'onResolveConflicts' | 'onViewChanges' | 'onInstallMcp' | 'onReloadVault' | 'onRepairVault'
-  | 'onOpenInNewWindow' | 'onRestoreDeletedNote'
+function syncNativeMenuState(state: MenuStatePayload): void {
+  if (!isTauri()) return
 
-const OPTIONAL_EVENT_MAP: Record<string, OptionalHandler> = {
-  'view-go-back': 'onGoBack',
-  'view-go-forward': 'onGoForward',
-  'app-check-for-updates': 'onCheckForUpdates',
-  'file-new-type': 'onCreateType',
-  'edit-toggle-raw-editor': 'onToggleRawEditor',
-  'edit-toggle-diff': 'onToggleDiff',
-  'view-toggle-ai-chat': 'onToggleAIChat',
-  'vault-open': 'onOpenVault',
-  'vault-remove': 'onRemoveActiveVault',
-  'vault-restore-getting-started': 'onRestoreGettingStarted',
-  'vault-commit-push': 'onCommitPush',
-  'vault-pull': 'onPull',
-  'vault-resolve-conflicts': 'onResolveConflicts',
-  'vault-view-changes': 'onViewChanges',
-  'vault-install-mcp': 'onInstallMcp',
-  'vault-reload': 'onReloadVault',
-  'vault-repair': 'onRepairVault',
-  'note-open-in-new-window': 'onOpenInNewWindow',
-  'note-restore-deleted': 'onRestoreDeletedNote',
-}
-
-function dispatchActiveTabEvent(id: string, h: MenuEventHandlers): boolean {
-  const path = h.activeTabPathRef.current
-  if (!path) return id === 'note-toggle-organized' || id === 'note-archive' || id === 'note-delete'
-  if (id === 'note-toggle-organized') { h.onToggleOrganized?.(path); return true }
-  if (id === 'note-archive') { h.onArchiveNote(path); return true }
-  if (id === 'note-delete') { h.onDeleteNote(path); return true }
-  return false
-}
-
-function dispatchOptionalEvent(id: string, h: MenuEventHandlers): boolean {
-  const handler = OPTIONAL_EVENT_MAP[id]
-  if (handler) { h[handler]?.(); return true }
-  return false
-}
-
-function dispatchFilterEvent(id: string, h: MenuEventHandlers): boolean {
-  const filter = FILTER_MAP[id]
-  if (filter) { h.onSelectFilter?.(filter); return true }
-  return false
+  import('@tauri-apps/api/core')
+    .then(({ invoke }) => invoke('update_menu_state', { state }))
+    .catch(() => {})
 }
 
 /** Dispatch a Tauri menu event ID to the matching handler. Exported for testing. */
 export function dispatchMenuEvent(id: string, h: MenuEventHandlers): void {
-  const viewMode = VIEW_MODE_MAP[id]
-  if (viewMode) { h.onSetViewMode(viewMode); return }
-
-  const simple = SIMPLE_EVENT_MAP[id]
-  if (simple) { h[simple](); return }
-
-  if (dispatchActiveTabEvent(id, h)) return
-  if (dispatchFilterEvent(id, h)) return
-  dispatchOptionalEvent(id, h)
+  if (!isAppCommandId(id)) return
+  dispatchAppCommand(id, h)
 }
 
 /** Listen for native macOS menu events and dispatch them to the appropriate handlers. */
 export function useMenuEvents(handlers: MenuEventHandlers) {
   const ref = useRef(handlers)
   ref.current = handlers
+  const hasActiveNote = handlers.activeTabPath !== null
+  const hasModifiedFiles = handlers.modifiedCount != null ? handlers.modifiedCount > 0 : undefined
+  const hasConflicts = handlers.conflictCount != null ? handlers.conflictCount > 0 : undefined
+  const hasRestorableDeletedNote = handlers.hasRestorableDeletedNote
 
   // Subscribe once to Tauri menu events
   useEffect(() => {
@@ -159,16 +78,33 @@ export function useMenuEvents(handlers: MenuEventHandlers) {
     return () => cleanup?.()
   }, [])
 
+  useEffect(() => {
+    const handleCommandEvent = createWindowCommandListener((detail) => {
+      if (isAppCommandId(detail)) {
+        dispatchAppCommand(detail, ref.current)
+      }
+    })
+
+    window.addEventListener(APP_COMMAND_EVENT_NAME, handleCommandEvent)
+    return () => window.removeEventListener(APP_COMMAND_EVENT_NAME, handleCommandEvent)
+  }, [])
+
+  useEffect(() => {
+    const handleMenuCommandEvent = createWindowCommandListener((detail) => {
+      dispatchMenuEvent(detail, ref.current)
+    })
+
+    window.addEventListener(APP_MENU_EVENT_NAME, handleMenuCommandEvent)
+    return () => window.removeEventListener(APP_MENU_EVENT_NAME, handleMenuCommandEvent)
+  }, [])
+
   // Sync menu item enabled state when active note or git state changes
   useEffect(() => {
-    if (!isTauri()) return
-    import('@tauri-apps/api/core').then(({ invoke }) => {
-      invoke('update_menu_state', {
-        hasActiveNote: handlers.activeTabPath !== null,
-        hasModifiedFiles: handlers.modifiedCount != null ? handlers.modifiedCount > 0 : undefined,
-        hasConflicts: handlers.conflictCount != null ? handlers.conflictCount > 0 : undefined,
-        hasRestorableDeletedNote: handlers.hasRestorableDeletedNote,
-      })
-    }).catch(() => {})
-  }, [handlers.activeTabPath, handlers.modifiedCount, handlers.conflictCount, handlers.hasRestorableDeletedNote])
+    syncNativeMenuState({
+      hasActiveNote,
+      hasModifiedFiles,
+      hasConflicts,
+      hasRestorableDeletedNote,
+    })
+  }, [hasActiveNote, hasModifiedFiles, hasConflicts, hasRestorableDeletedNote])
 }

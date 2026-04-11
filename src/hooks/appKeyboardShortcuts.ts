@@ -1,40 +1,45 @@
-import type { MutableRefObject } from 'react'
 import type { ViewMode } from './useViewMode'
 import { trackEvent } from '../lib/telemetry'
 import { isTauri } from '../mock-tauri'
+import {
+  APP_COMMAND_IDS,
+  dispatchAppCommand,
+  type AppCommandId,
+  type AppCommandHandlers,
+} from './appCommandDispatcher'
 
-export interface KeyboardActions {
-  onQuickOpen: () => void
-  onCommandPalette: () => void
-  onSearch: () => void
-  onCreateNote: () => void
-  onOpenDailyNote: () => void
-  onSave: () => void
-  onOpenSettings: () => void
-  onDeleteNote: (path: string) => void
-  onArchiveNote: (path: string) => void
-  onSetViewMode: (mode: ViewMode) => void
-  onZoomIn: () => void
-  onZoomOut: () => void
-  onZoomReset: () => void
-  onGoBack?: () => void
-  onGoForward?: () => void
-  onToggleAIChat?: () => void
-  onToggleRawEditor?: () => void
-  onToggleInspector?: () => void
-  onToggleFavorite?: (path: string) => void
-  onToggleOrganized?: (path: string) => void
-  onOpenInNewWindow?: () => void
-  activeTabPathRef: MutableRefObject<string | null>
-}
+export type KeyboardActions = Pick<
+  AppCommandHandlers,
+  | 'onQuickOpen'
+  | 'onCommandPalette'
+  | 'onSearch'
+  | 'onCreateNote'
+  | 'onOpenDailyNote'
+  | 'onSave'
+  | 'onOpenSettings'
+  | 'onDeleteNote'
+  | 'onArchiveNote'
+  | 'onSetViewMode'
+  | 'onZoomIn'
+  | 'onZoomOut'
+  | 'onZoomReset'
+  | 'onGoBack'
+  | 'onGoForward'
+  | 'onToggleAIChat'
+  | 'onToggleRawEditor'
+  | 'onToggleInspector'
+  | 'onToggleFavorite'
+  | 'onToggleOrganized'
+  | 'onOpenInNewWindow'
+  | 'activeTabPathRef'
+>
 
-type ShortcutHandler = () => void
-type ShortcutMap = Record<string, ShortcutHandler>
+type ShortcutMap = Record<string, AppCommandId>
 type NativeMenuCombo = 'command' | 'command-shift'
 
 const TEXT_EDITING_KEYS = new Set(['Backspace', 'Delete'])
 const TAURI_NATIVE_MENU_KEYS: Record<NativeMenuCombo, Set<string>> = {
-  command: new Set(['1', '2', '3', 'n', 'j', 'p', 's', 'k', '=', '+', '-', '0', '[', ']', '\\', 'Backspace', 'Delete']),
+  command: new Set([',', '1', '2', '3', 'n', 'j', 'p', 's', 'k', '=', '+', '-', '0', '[', ']', '\\', 'e', 'Backspace', 'Delete']),
   'command-shift': new Set(['f', 'i', 'o', 'l']),
 }
 
@@ -77,48 +82,33 @@ function shouldDeferToNativeMenu(e: KeyboardEvent): boolean {
   return TAURI_NATIVE_MENU_KEYS[combo].has(normalizedKey)
 }
 
-function withActiveTab(
-  activeTabPathRef: MutableRefObject<string | null>,
-  handler: (path: string) => void,
-): ShortcutHandler {
-  return () => {
-    const path = activeTabPathRef.current
-    if (path) handler(path)
+export function createCommandKeyMap(): ShortcutMap {
+  return {
+    k: APP_COMMAND_IDS.viewCommandPalette,
+    p: APP_COMMAND_IDS.fileQuickOpen,
+    n: APP_COMMAND_IDS.fileNewNote,
+    j: APP_COMMAND_IDS.fileDailyNote,
+    s: APP_COMMAND_IDS.fileSave,
+    ',': APP_COMMAND_IDS.appSettings,
+    d: APP_COMMAND_IDS.noteToggleFavorite,
+    e: APP_COMMAND_IDS.noteToggleOrganized,
+    Backspace: APP_COMMAND_IDS.noteDelete,
+    Delete: APP_COMMAND_IDS.noteDelete,
+    '[': APP_COMMAND_IDS.viewGoBack,
+    ']': APP_COMMAND_IDS.viewGoForward,
+    '=': APP_COMMAND_IDS.viewZoomIn,
+    '+': APP_COMMAND_IDS.viewZoomIn,
+    '-': APP_COMMAND_IDS.viewZoomOut,
+    '0': APP_COMMAND_IDS.viewZoomReset,
+    '\\': APP_COMMAND_IDS.editToggleRawEditor,
   }
 }
 
-export function createCommandKeyMap(actions: KeyboardActions): ShortcutMap {
-  const { activeTabPathRef } = actions
-
+export function createShiftCommandKeyMap(): ShortcutMap {
   return {
-    k: actions.onCommandPalette,
-    p: actions.onQuickOpen,
-    n: actions.onCreateNote,
-    j: actions.onOpenDailyNote,
-    s: actions.onSave,
-    ',': actions.onOpenSettings,
-    d: withActiveTab(activeTabPathRef, (path) => actions.onToggleFavorite?.(path)),
-    e: withActiveTab(activeTabPathRef, (path) => actions.onToggleOrganized?.(path)),
-    Backspace: withActiveTab(activeTabPathRef, actions.onDeleteNote),
-    Delete: withActiveTab(activeTabPathRef, actions.onDeleteNote),
-    '[': () => actions.onGoBack?.(),
-    ']': () => actions.onGoForward?.(),
-    '=': actions.onZoomIn,
-    '+': actions.onZoomIn,
-    '-': actions.onZoomOut,
-    '0': actions.onZoomReset,
-    '\\': () => actions.onToggleRawEditor?.(),
-  }
-}
-
-export function createShiftCommandKeyMap(actions: KeyboardActions): ShortcutMap {
-  return {
-    f: () => {
-      trackEvent('search_used')
-      actions.onSearch()
-    },
-    i: () => actions.onToggleInspector?.(),
-    o: () => actions.onOpenInNewWindow?.(),
+    f: APP_COMMAND_IDS.editFindInVault,
+    i: APP_COMMAND_IDS.viewToggleProperties,
+    o: APP_COMMAND_IDS.noteOpenInNewWindow,
   }
 }
 
@@ -131,39 +121,42 @@ export function handleViewModeKey(e: KeyboardEvent, onSetViewMode: (mode: ViewMo
   return true
 }
 
-export function handleCommandKey(e: KeyboardEvent, keyMap: ShortcutMap): boolean {
+export function handleCommandKey(e: KeyboardEvent, keyMap: ShortcutMap, actions: KeyboardActions): boolean {
   if (isCommandOrCtrlOnly(e) === false || e.shiftKey) return false
-  const handler = keyMap[e.key]
-  if (handler === undefined) return false
+  const commandId = keyMap[e.key]
+  if (commandId === undefined) return false
   if (TEXT_EDITING_KEYS.has(e.key) && isTextInputFocused()) return false
   e.preventDefault()
-  handler()
+  dispatchAppCommand(commandId, actions)
   return true
 }
 
-export function handleAiPanelKey(e: KeyboardEvent, onToggleAIChat?: () => void): boolean {
+export function handleAiPanelKey(e: KeyboardEvent, actions: KeyboardActions): boolean {
   const matchesAiPanelShortcut = e.code === 'KeyL' || e.key.toLowerCase() === 'l'
-  if (isCommandShiftOnly(e) === false || matchesAiPanelShortcut === false || onToggleAIChat === undefined) return false
+  if (isCommandShiftOnly(e) === false || matchesAiPanelShortcut === false || actions.onToggleAIChat === undefined) return false
   e.preventDefault()
-  onToggleAIChat()
+  dispatchAppCommand(APP_COMMAND_IDS.viewToggleAiChat, actions)
   return true
 }
 
-export function handleShiftCommandKey(e: KeyboardEvent, keyMap: ShortcutMap): boolean {
+export function handleShiftCommandKey(e: KeyboardEvent, keyMap: ShortcutMap, actions: KeyboardActions): boolean {
   if (isCommandOrCtrlShiftOnly(e) === false) return false
-  const handler = keyMap[e.key.toLowerCase()]
-  if (handler === undefined) return false
+  const commandId = keyMap[e.key.toLowerCase()]
+  if (commandId === undefined) return false
   e.preventDefault()
-  handler()
+  if (commandId === APP_COMMAND_IDS.editFindInVault) {
+    trackEvent('search_used')
+  }
+  dispatchAppCommand(commandId, actions)
   return true
 }
 
 export function handleAppKeyboardEvent(actions: KeyboardActions, event: KeyboardEvent) {
   if (shouldDeferToNativeMenu(event)) return
-  if (handleAiPanelKey(event, actions.onToggleAIChat)) return
-  const shiftKeyMap = createShiftCommandKeyMap(actions)
-  if (handleShiftCommandKey(event, shiftKeyMap)) return
+  if (handleAiPanelKey(event, actions)) return
+  const shiftKeyMap = createShiftCommandKeyMap()
+  if (handleShiftCommandKey(event, shiftKeyMap, actions)) return
   if (handleViewModeKey(event, actions.onSetViewMode)) return
-  const cmdKeyMap = createCommandKeyMap(actions)
-  handleCommandKey(event, cmdKeyMap)
+  const cmdKeyMap = createCommandKeyMap()
+  handleCommandKey(event, cmdKeyMap, actions)
 }

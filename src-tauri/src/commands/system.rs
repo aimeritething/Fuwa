@@ -3,6 +3,7 @@ use crate::menu;
 use crate::settings::Settings;
 use crate::vault_list;
 use crate::vault_list::VaultList;
+use serde::Deserialize;
 
 use super::parse_build_label;
 
@@ -41,23 +42,29 @@ pub async fn check_mcp_status() -> Result<crate::mcp::McpStatus, String> {
 
 // ── Menu commands ───────────────────────────────────────────────────────────
 
-#[cfg(desktop)]
-#[tauri::command]
-pub fn update_menu_state(
-    app_handle: tauri::AppHandle,
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct MenuStateUpdate {
     has_active_note: bool,
     has_modified_files: Option<bool>,
     has_conflicts: Option<bool>,
     has_restorable_deleted_note: Option<bool>,
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+pub fn update_menu_state(
+    app_handle: tauri::AppHandle,
+    state: MenuStateUpdate,
 ) -> Result<(), String> {
-    menu::set_note_items_enabled(&app_handle, has_active_note);
-    if let Some(v) = has_modified_files {
+    menu::set_note_items_enabled(&app_handle, state.has_active_note);
+    if let Some(v) = state.has_modified_files {
         menu::set_git_commit_items_enabled(&app_handle, v);
     }
-    if let Some(v) = has_conflicts {
+    if let Some(v) = state.has_conflicts {
         menu::set_git_conflict_items_enabled(&app_handle, v);
     }
-    if let Some(v) = has_restorable_deleted_note {
+    if let Some(v) = state.has_restorable_deleted_note {
         menu::set_restore_deleted_item_enabled(&app_handle, v);
     }
     Ok(())
@@ -67,12 +74,21 @@ pub fn update_menu_state(
 #[tauri::command]
 pub fn update_menu_state(
     _app_handle: tauri::AppHandle,
-    _has_active_note: bool,
-    _has_modified_files: Option<bool>,
-    _has_conflicts: Option<bool>,
-    _has_restorable_deleted_note: Option<bool>,
+    _state: MenuStateUpdate,
 ) -> Result<(), String> {
     Ok(())
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+pub fn trigger_menu_command(app_handle: tauri::AppHandle, id: String) -> Result<(), String> {
+    menu::emit_custom_menu_event(&app_handle, &id)
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn trigger_menu_command(_app_handle: tauri::AppHandle, _id: String) -> Result<(), String> {
+    Err("Native menu commands are not available on mobile".into())
 }
 
 // ── Settings & config commands ──────────────────────────────────────────────
