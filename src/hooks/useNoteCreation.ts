@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, addMockEntry } from '../mock-tauri'
 import type { VaultEntry } from '../types'
@@ -150,6 +150,11 @@ export function persistNewNote(path: string, content: string): Promise<void> {
   return invoke<void>('save_note_content', { path, content }).then(() => {})
 }
 
+// Rapid Cmd+N bursts can outpace the note-list render path on desktop. Keep
+// the first create immediate, then serialize the rest so each new note settles
+// before the next one is opened.
+export const RAPID_CREATE_NOTE_SETTLE_MS = 200
+
 function addEntryWithMock(entry: VaultEntry, content: string, addEntry: (e: VaultEntry) => void) {
   if (!isTauri()) addMockEntry(entry, content)
   addEntry(entry)
@@ -208,6 +213,10 @@ interface ImmediateCreateDeps {
   addEntry: (entry: VaultEntry) => void
   trackUnsaved?: (path: string) => void
   markContentPending?: (path: string, content: string) => void
+}
+
+interface ImmediateCreateRequest {
+  type?: string
 }
 
 /** Generate a unique untitled filename using a timestamp. */
@@ -298,6 +307,28 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
   }, [removeEntry, setToastMessage])
 
   const pendingSlugsRef = useRef<Set<string>>(new Set())
+  const queuedImmediateCreatesRef = useRef<ImmediateCreateRequest[]>([])
+  const immediateCreateLockedRef = useRef(false)
+  const immediateCreateTimerRef = useRef<number | null>(null)
+  const latestImmediateCreateDepsRef = useRef<ImmediateCreateDeps>({
+    entries,
+    vaultPath: config.vaultPath,
+    pendingSlugs: pendingSlugsRef.current,
+    openTabWithContent,
+    addEntry,
+    trackUnsaved: config.trackUnsaved,
+    markContentPending: config.markContentPending,
+  })
+
+  latestImmediateCreateDepsRef.current = {
+    entries,
+    vaultPath: config.vaultPath,
+    pendingSlugs: pendingSlugsRef.current,
+    openTabWithContent,
+    addEntry,
+    trackUnsaved: config.trackUnsaved,
+    markContentPending: config.markContentPending,
+  }
 
   const persistNew: PersistFn = useCallback(
     (resolved) => createAndPersist(resolved, addEntry, openTabWithContent, {
@@ -315,13 +346,45 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
     trackEvent('note_created', { has_type: type !== 'Note' ? 1 : 0, creation_path: 'plus_button' })
   }, [entries, persistNew, config.vaultPath])
 
+  const executeImmediateCreateRequest = useCallback((request: ImmediateCreateRequest) => {
+    createNoteImmediate(latestImmediateCreateDepsRef.current, request.type)
+    trackEvent('note_created', { has_type: request.type ? 1 : 0, creation_path: request.type ? 'type_section' : 'cmd_n' })
+  }, [])
+
+  const continueImmediateCreateBurstRef = useRef<() => void>(() => {})
+  continueImmediateCreateBurstRef.current = () => {
+    if (immediateCreateTimerRef.current !== null) return
+
+    immediateCreateTimerRef.current = window.setTimeout(() => {
+      immediateCreateTimerRef.current = null
+      const next = queuedImmediateCreatesRef.current.shift()
+      if (!next) {
+        immediateCreateLockedRef.current = false
+        return
+      }
+
+      executeImmediateCreateRequest(next)
+      continueImmediateCreateBurstRef.current()
+    }, RAPID_CREATE_NOTE_SETTLE_MS)
+  }
+
   const handleCreateNoteImmediate = useCallback((type?: string) => {
-    createNoteImmediate({
-      entries, vaultPath: config.vaultPath, pendingSlugs: pendingSlugsRef.current,
-      openTabWithContent, addEntry, trackUnsaved: config.trackUnsaved, markContentPending: config.markContentPending,
-    }, type)
-    trackEvent('note_created', { has_type: type ? 1 : 0, creation_path: type ? 'type_section' : 'cmd_n' })
-  }, [entries, openTabWithContent, addEntry, config.vaultPath, config.trackUnsaved, config.markContentPending])
+    const request = { type }
+    if (immediateCreateLockedRef.current) {
+      queuedImmediateCreatesRef.current.push(request)
+      return
+    }
+
+    immediateCreateLockedRef.current = true
+    executeImmediateCreateRequest(request)
+    continueImmediateCreateBurstRef.current()
+  }, [executeImmediateCreateRequest])
+
+  useEffect(() => () => {
+    if (immediateCreateTimerRef.current !== null) {
+      window.clearTimeout(immediateCreateTimerRef.current)
+    }
+  }, [])
 
   const handleCreateNoteForRelationship = useCallback((title: string): Promise<boolean> => {
     createNoteForRelationship({

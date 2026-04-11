@@ -17,6 +17,7 @@ import {
   buildDailyNoteContent,
   resolveDailyNote,
   findDailyNote,
+  RAPID_CREATE_NOTE_SETTLE_MS,
   useNoteCreation,
 } from './useNoteCreation'
 import type { NoteCreationConfig } from './useNoteCreation'
@@ -226,6 +227,7 @@ describe('useNoteCreation hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(isTauri).mockReturnValue(false)
+    vi.useRealTimers()
   })
 
   it('handleCreateNote creates entry and opens tab', () => {
@@ -249,6 +251,7 @@ describe('useNoteCreation hook', () => {
   })
 
   it('handleCreateNoteImmediate generates unique names on rapid calls via timestamp', () => {
+    vi.useFakeTimers()
     let ts = 1700000000000
     vi.spyOn(Date, 'now').mockImplementation(() => { ts += 1000; return ts })
     const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
@@ -257,6 +260,7 @@ describe('useNoteCreation hook', () => {
       result.current.handleCreateNoteImmediate()
       result.current.handleCreateNoteImmediate()
     })
+    act(() => { vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS * 2) })
     const filenames = addEntry.mock.calls.map(([e]: [VaultEntry]) => e.filename)
     // Each call consumes Date.now() multiple times (filename + buildNewEntry), so just verify uniqueness
     expect(new Set(filenames).size).toBe(3)
@@ -267,6 +271,7 @@ describe('useNoteCreation hook', () => {
   })
 
   it('handleCreateNoteImmediate avoids filename collisions when called twice in the same second', () => {
+    vi.useFakeTimers()
     vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
     const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
 
@@ -274,12 +279,35 @@ describe('useNoteCreation hook', () => {
       result.current.handleCreateNoteImmediate()
       result.current.handleCreateNoteImmediate()
     })
+    act(() => { vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS) })
 
     const filenames = addEntry.mock.calls.map(([entry]: [VaultEntry]) => entry.filename)
     expect(filenames).toEqual([
       'untitled-note-1700000000.md',
       'untitled-note-1700000000-2.md',
     ])
+
+    vi.restoreAllMocks()
+  })
+
+  it('serializes rapid immediate-create bursts after the first note', () => {
+    vi.useFakeTimers()
+    vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
+    const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
+
+    act(() => {
+      result.current.handleCreateNoteImmediate()
+      result.current.handleCreateNoteImmediate()
+      result.current.handleCreateNoteImmediate()
+    })
+
+    expect(addEntry).toHaveBeenCalledTimes(1)
+
+    act(() => { vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS) })
+    expect(addEntry).toHaveBeenCalledTimes(2)
+
+    act(() => { vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS) })
+    expect(addEntry).toHaveBeenCalledTimes(3)
 
     vi.restoreAllMocks()
   })

@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { VaultEntry } from '../types'
-import { todayDateString } from './useNoteCreation'
+import { RAPID_CREATE_NOTE_SETTLE_MS, todayDateString } from './useNoteCreation'
 import { useNoteActions } from './useNoteActions'
 import type { NoteActionsConfig } from './useNoteActions'
 
@@ -67,6 +67,7 @@ describe('useNoteActions hook', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(isTauri).mockReturnValue(false)
+    vi.useRealTimers()
   })
 
   it('handleCreateNote calls addEntry and creates correct entry', () => {
@@ -193,6 +194,7 @@ describe('useNoteActions hook', () => {
   })
 
   it('handleCreateNoteImmediate generates unique names on rapid calls via timestamp', () => {
+    vi.useFakeTimers()
     let ts = 1700000000000
     vi.spyOn(Date, 'now').mockImplementation(() => { ts += 1000; return ts })
     const { result } = renderHook(() => useNoteActions(makeConfig()))
@@ -202,6 +204,7 @@ describe('useNoteActions hook', () => {
       result.current.handleCreateNoteImmediate()
       result.current.handleCreateNoteImmediate()
     })
+    act(() => { vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS * 2) })
 
     expect(addEntry).toHaveBeenCalledTimes(3)
     const filenames = addEntry.mock.calls.map(([e]: [VaultEntry]) => e.filename)
@@ -477,14 +480,15 @@ describe('useNoteActions hook', () => {
     })
 
     it('handleCreateNoteImmediate does not call invoke (no disk write)', async () => {
+      vi.useFakeTimers()
       const { result } = renderHook(() => useNoteActions(makeConfig()))
 
-      await act(async () => {
+      act(() => {
         result.current.handleCreateNoteImmediate()
         result.current.handleCreateNoteImmediate()
         result.current.handleCreateNoteImmediate()
-        await new Promise((r) => setTimeout(r, 0))
       })
+      act(() => { vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS * 2) })
 
       expect(addEntry).toHaveBeenCalledTimes(3)
       // No disk writes for immediate creation — notes are unsaved/in-memory

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, startTransition } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { VaultEntry, FolderNode, GitCommit, ModifiedFile, NoteStatus, GitPushResult, ViewFile } from '../types'
@@ -125,16 +125,12 @@ export function useVaultLoader(vaultPath: string) {
 
   useEffect(() => { loadModifiedFiles() }, [loadModifiedFiles]) // eslint-disable-line react-hooks/set-state-in-effect -- trigger initial load
 
-  // PERF: startTransition defers the expensive entries update (filter/sort on
-  // 9000+ entries) so the high-priority tab render completes in <50ms first.
   const addEntry = useCallback((entry: VaultEntry) => {
-    startTransition(() => {
-      setEntries((prev) => {
-        if (prev.some(e => e.path === entry.path)) return prev
-        return [entry, ...prev]
-      })
-      tracker.trackNew(entry.path)
+    setEntries((prev) => {
+      if (prev.some(e => e.path === entry.path)) return prev
+      return [entry, ...prev]
     })
+    tracker.trackNew(entry.path)
   }, [tracker])
 
   const updateEntry = useCallback((path: string, patch: Partial<VaultEntry>) => {
