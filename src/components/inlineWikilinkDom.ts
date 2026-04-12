@@ -32,12 +32,15 @@ function selectionFallsOutsideEditor(
 }
 
 export function readSelectionIndex(root: HTMLDivElement): number {
-  const selection = window.getSelection()
-  if (selectionFallsOutsideEditor(selection, root)) {
+  const currentSelection = window.getSelection()
+  if (
+    !currentSelection ||
+    selectionFallsOutsideEditor(currentSelection, root)
+  ) {
     return serializeInlineNode(root).length
   }
 
-  const range = selection.getRangeAt(0).cloneRange()
+  const range = currentSelection.getRangeAt(0).cloneRange()
   range.setStart(root, 0)
   return serializeInlineNode(range.cloneContents()).length
 }
