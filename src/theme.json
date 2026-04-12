@@ -100,7 +100,7 @@
     "fontFamily": "'SF Mono', 'Fira Code', monospace",
     "fontSize": 13,
     "lineHeight": 1.5,
-    "backgroundColor": "var(--bg-card)",
+    "backgroundColor": "var(--bg-hover-subtle)",
     "paddingHorizontal": 16,
     "paddingVertical": 12,
     "borderRadius": 6,
