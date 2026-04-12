@@ -432,6 +432,8 @@ On first launch, `useOnboarding` checks if the default vault exists. If not, it 
 - **Open an existing folder** → system file picker
 - **Get started with a template** → pick a folder, then call `create_getting_started_vault()` to clone the public starter repo at runtime
 
+Once a vault is ready, `useClaudeCodeOnboarding` can show a one-time `ClaudeCodeOnboardingPrompt`. That prompt reuses `useClaudeCodeStatus` so first launch surfaces whether the `claude` CLI is installed, offers the install link when it is missing, and stores local dismissal so the prompt does not repeat on every launch.
+
 The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` only holds the public starter repo URL and delegates the actual clone to the git backend.
 
 ### Remote Clone & Auth Model

@@ -527,6 +527,11 @@ Per-vault settings stored locally and scoped by vault path:
 - User can create a new empty vault, open an existing folder, or clone the public Getting Started vault into a chosen folder
 - Welcome state tracked in localStorage (`tolaria_welcome_dismissed`, with legacy fallback)
 
+`useClaudeCodeOnboarding(enabled)` adds a separate first-launch agent step:
+- Reads a local dismissal flag for the Claude Code prompt
+- Only shows after vault onboarding has already resolved to a ready state
+- Persists dismissal locally once the user continues
+
 ### Remote Git Operations
 
 Tolaria delegates remote auth to the user's system git setup:

@@ -123,6 +123,8 @@ vi.mock('@blocknote/mantine/style.css', () => ({}))
 
 import App from './App'
 
+const CLAUDE_CODE_ONBOARDING_DISMISSED_KEY = 'tolaria:claude-code-onboarding-dismissed'
+
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -133,6 +135,7 @@ describe('App', () => {
     localStorage.removeItem('laputa-view-mode')
     localStorage.removeItem('tolaria_welcome_dismissed')
     localStorage.removeItem('laputa_welcome_dismissed')
+    localStorage.setItem(CLAUDE_CODE_ONBOARDING_DISMISSED_KEY, '1')
   })
 
   it('renders the four-panel layout', async () => {

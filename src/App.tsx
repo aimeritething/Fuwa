@@ -16,10 +16,12 @@ import { StatusBar } from './components/StatusBar'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CloneVaultModal } from './components/CloneVaultModal'
 import { WelcomeScreen } from './components/WelcomeScreen'
+import { ClaudeCodeOnboardingPrompt } from './components/ClaudeCodeOnboardingPrompt'
 import { TelemetryConsentDialog } from './components/TelemetryConsentDialog'
 import { FeedbackDialog } from './components/FeedbackDialog'
 import { useTelemetry } from './hooks/useTelemetry'
 import { useMcpStatus } from './hooks/useMcpStatus'
+import { useClaudeCodeOnboarding } from './hooks/useClaudeCodeOnboarding'
 import { useClaudeCodeStatus } from './hooks/useClaudeCodeStatus'
 import { useVaultLoader } from './hooks/useVaultLoader'
 import { useSettings } from './hooks/useSettings'
@@ -124,6 +126,8 @@ function App() {
   })
 
   const onboarding = useOnboarding(vaultSwitcher.vaultPath)
+  const { status: claudeCodeStatus, version: claudeCodeVersion } = useClaudeCodeStatus()
+  const claudeCodeOnboarding = useClaudeCodeOnboarding(onboarding.state.status === 'ready' && !noteWindowParams)
 
   // When onboarding resolves to a different vault path, update the switcher
   const resolvedPath = noteWindowParams?.vaultPath ?? (onboarding.state.status === 'ready' ? onboarding.state.vaultPath : vaultSwitcher.vaultPath)
@@ -174,7 +178,6 @@ function App() {
     }
   }, [vault.entries.length, gitRepoState, resolvedPath])
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
-  const { status: claudeCodeStatus, version: claudeCodeVersion } = useClaudeCodeStatus()
 
   const autoSync = useAutoSync({
     vaultPath: resolvedPath,
@@ -640,6 +643,15 @@ function App() {
     return <LoadingView />
   }
 
+  if (!noteWindowParams && onboarding.state.status === 'ready' && claudeCodeOnboarding.showPrompt) {
+    return (
+      <ClaudeCodeOnboardingView
+        status={claudeCodeStatus}
+        onContinue={claudeCodeOnboarding.dismissPrompt}
+      />
+    )
+  }
+
   // Show git-required modal when vault has no git repo (skip for note windows)
   if (!noteWindowParams && gitRepoState === 'required') {
     return (
@@ -817,6 +829,20 @@ function WelcomeView({ onboarding, isOffline }: { onboarding: OnboardingState; i
         error={onboarding.error}
         canRetryTemplate={onboarding.canRetryTemplate}
       />
+    </div>
+  )
+}
+
+function ClaudeCodeOnboardingView({
+  status,
+  onContinue,
+}: {
+  status: ReturnType<typeof useClaudeCodeStatus>['status']
+  onContinue: () => void
+}) {
+  return (
+    <div className="app-shell">
+      <ClaudeCodeOnboardingPrompt status={status} onContinue={onContinue} />
     </div>
   )
 }
