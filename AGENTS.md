@@ -41,8 +41,8 @@ BASE_URL="http://localhost:5201" npx playwright test tests/smoke/<slug>.spec.ts
 ```bash
 pnpm tauri dev &
 sleep 10
-bash ~/.openclaw/skills/laputa-qa/scripts/focus-app.sh laputa
-bash ~/.openclaw/skills/laputa-qa/scripts/screenshot.sh /tmp/qa-native.png
+bash ~/.openclaw/skills/tolaria-qa/scripts/focus-app.sh laputa
+bash ~/.openclaw/skills/tolaria-qa/scripts/screenshot.sh /tmp/qa-native.png
 ```
 
 Use `osascript` for keyboard interactions. Write result as Todoist comment (✅ or ❌). **⚠️ WKWebView:** `osascript keystroke` blocked inside editor — rely on Playwright for text input features.
@@ -107,7 +107,10 @@ After any Tauri command, new component/hook, data model change, or new integrati
 
 ### User vault (`~/Laputa/`)
 
-Default to `demo-vault-v2/`. If you must use `~/Laputa/` for testing: **never commit changes** — always run `cd ~/Laputa && git checkout -- . && git clean -fd` when done.
+Default to `demo-vault-v2/`. If you must use `~/Laputa/` for testing:
+- **Never commit or push** any test notes to the remote vault
+- **Delete all test notes from disk** when done — do not leave untitled or temporary notes on the filesystem. Run `cd ~/Laputa && git checkout -- . && git clean -fd` to restore the vault to its last committed state.
+- **Rationale:** test notes pollute the local vault over time, making it a collection of nonsensical untitled files. The vault must stay clean on disk, not just on the remote.
 
 ### UI design
 
@@ -145,9 +148,9 @@ Open `ui-design.pen` first (light mode). Create `design/<slug>.pen` for the task
 ### QA scripts
 
 ```bash
-bash ~/.openclaw/skills/laputa-qa/scripts/focus-app.sh laputa
-bash ~/.openclaw/skills/laputa-qa/scripts/screenshot.sh /tmp/out.png
-bash ~/.openclaw/skills/laputa-qa/scripts/shortcut.sh "command" "s"
+bash ~/.openclaw/skills/tolaria-qa/scripts/focus-app.sh laputa
+bash ~/.openclaw/skills/tolaria-qa/scripts/screenshot.sh /tmp/out.png
+bash ~/.openclaw/skills/tolaria-qa/scripts/shortcut.sh "command" "s"
 ```
 
 ### Diagrams
