@@ -9,6 +9,7 @@ const defaultProps = {
   onRetryCreateVault: vi.fn(),
   onCreateNewVault: vi.fn(),
   onOpenFolder: vi.fn(),
+  isOffline: false,
   creatingAction: null as 'template' | 'empty' | null,
   error: null,
   canRetryTemplate: false,
@@ -32,6 +33,12 @@ describe('WelcomeScreen', () => {
     it('shows default vault path in template option description', () => {
       render(<WelcomeScreen {...defaultProps} />)
       expect(screen.getByText(/~\/Documents\/Laputa/)).toBeInTheDocument()
+    })
+
+    it('shows offline guidance and disables the template option when offline', () => {
+      render(<WelcomeScreen {...defaultProps} isOffline={true} />)
+      expect(screen.getByTestId('welcome-create-vault')).toBeDisabled()
+      expect(screen.getByText(/Requires internet — clone later/)).toBeInTheDocument()
     })
 
     it('calls onCreateNewVault when create new button is clicked', () => {

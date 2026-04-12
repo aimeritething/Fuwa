@@ -19,9 +19,11 @@ interface StatusBarProps {
   onOpenSettings?: () => void
   onOpenLocalFolder?: () => void
   onCloneVault?: () => void
+  onCloneGettingStarted?: () => void
   onClickPending?: () => void
   onClickPulse?: () => void
   onCommitPush?: () => void
+  isOffline?: boolean
   isGitVault?: boolean
   syncStatus?: SyncStatus
   lastSyncTime?: number | null
@@ -52,9 +54,11 @@ export function StatusBar({
   onOpenSettings,
   onOpenLocalFolder,
   onCloneVault,
+  onCloneGettingStarted,
   onClickPending,
   onClickPulse,
   onCommitPush,
+  isOffline = false,
   isGitVault = false,
   syncStatus = 'idle',
   lastSyncTime = null,
@@ -106,9 +110,11 @@ export function StatusBar({
         onSwitchVault={onSwitchVault}
         onOpenLocalFolder={onOpenLocalFolder}
         onCloneVault={onCloneVault}
+        onCloneGettingStarted={onCloneGettingStarted}
         onClickPending={onClickPending}
         onClickPulse={onClickPulse}
         onCommitPush={onCommitPush}
+        isOffline={isOffline}
         isGitVault={isGitVault}
         syncStatus={syncStatus}
         lastSyncTime={lastSyncTime}

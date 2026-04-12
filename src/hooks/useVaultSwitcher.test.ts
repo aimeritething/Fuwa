@@ -321,7 +321,7 @@ describe('useVaultSwitcher', () => {
       })
 
       expect(result.current.vaultPath).toBe(DEFAULT_VAULTS[0].path)
-      expect(onToast).toHaveBeenCalledWith('Getting Started vault restored')
+      expect(onToast).toHaveBeenCalledWith('Getting Started vault ready')
     })
 
     it('attempts to create vault on disk if it does not exist', async () => {
@@ -350,6 +350,37 @@ describe('useVaultSwitcher', () => {
 
       expect(mockInvokeFn).toHaveBeenCalledWith('check_vault_exists', { path: DEFAULT_VAULTS[0].path })
       expect(mockInvokeFn).toHaveBeenCalledWith('create_getting_started_vault', { targetPath: DEFAULT_VAULTS[0].path })
+    })
+
+    it('shows a friendly toast and keeps the hidden vault hidden when cloning fails', async () => {
+      mockVaultListStore = {
+        vaults: [{ label: 'Work', path: '/work/vault' }],
+        active_vault: '/work/vault',
+        hidden_defaults: [DEFAULT_VAULTS[0].path],
+      }
+      mockInvokeFn.mockImplementation((cmd: string, args?: Record<string, unknown>) => {
+        if (cmd === 'load_vault_list') return Promise.resolve({ ...mockVaultListStore })
+        if (cmd === 'save_vault_list') {
+          mockVaultListStore = { ...(args as { list: PersistedVaultList }).list }
+          return Promise.resolve(null)
+        }
+        if (cmd === 'check_vault_exists') return Promise.resolve(false)
+        if (cmd === 'create_getting_started_vault') {
+          return Promise.reject('git clone failed: fatal: unable to access')
+        }
+        return Promise.resolve(null)
+      })
+
+      const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+      await waitFor(() => { expect(result.current.loaded).toBe(true) })
+
+      await act(async () => {
+        await result.current.restoreGettingStarted()
+      })
+
+      expect(result.current.vaultPath).toBe('/work/vault')
+      expect(result.current.isGettingStartedHidden).toBe(true)
+      expect(onToast).toHaveBeenCalledWith('Getting Started requires internet. Clone it later.')
     })
   })
 

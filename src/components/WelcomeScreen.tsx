@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { FolderOpen, Plus, AlertTriangle, Loader2, Rocket } from 'lucide-react'
 
 interface WelcomeScreenProps {
@@ -9,9 +10,19 @@ interface WelcomeScreenProps {
   onRetryCreateVault: () => void
   onCreateNewVault: () => void
   onOpenFolder: () => void
+  isOffline: boolean
   creatingAction: 'template' | 'empty' | null
   error: string | null
   canRetryTemplate: boolean
+}
+
+interface WelcomeScreenPresentation {
+  heroBackground: string
+  heroIcon: ReactNode
+  openFolderLabel: string
+  subtitle: string
+  templateDescription: string
+  title: string
 }
 
 const CONTAINER_STYLE: React.CSSProperties = {
@@ -189,6 +200,36 @@ function OptionButton({
   )
 }
 
+function getWelcomeScreenPresentation(
+  mode: WelcomeScreenProps['mode'],
+  defaultVaultPath: string,
+  isOffline: boolean,
+): WelcomeScreenPresentation {
+  if (mode === 'welcome') {
+    return {
+      heroBackground: 'var(--accent-blue-light, #EBF4FF)',
+      heroIcon: <span style={{ fontSize: 28, color: 'var(--accent-blue)' }}>&#10022;</span>,
+      openFolderLabel: 'Open existing vault',
+      subtitle: 'Wiki-linked knowledge management for deep thinkers.\nChoose how to get started.',
+      templateDescription: isOffline
+        ? `Requires internet — clone later. Suggested path: ${defaultVaultPath}`
+        : `Download the starter vault template — suggested path: ${defaultVaultPath}`,
+      title: 'Welcome to Tolaria',
+    }
+  }
+
+  return {
+    heroBackground: 'var(--accent-yellow-light, #FFF3E0)',
+    heroIcon: <AlertTriangle size={28} style={{ color: 'var(--accent-orange)' }} />,
+    openFolderLabel: 'Choose a different folder',
+    subtitle: 'The vault folder could not be found on disk.\nIt may have been moved or deleted.',
+    templateDescription: isOffline
+      ? `Requires internet — clone later. Suggested path: ${defaultVaultPath}`
+      : `Download the starter vault template — suggested path: ${defaultVaultPath}`,
+    title: 'Vault not found',
+  }
+}
+
 export function WelcomeScreen({
   mode,
   defaultVaultPath,
@@ -196,12 +237,13 @@ export function WelcomeScreen({
   onRetryCreateVault,
   onCreateNewVault,
   onOpenFolder,
+  isOffline,
   creatingAction,
   error,
   canRetryTemplate,
 }: WelcomeScreenProps) {
-  const isWelcome = mode === 'welcome'
   const busy = creatingAction !== null
+  const presentation = getWelcomeScreenPresentation(mode, defaultVaultPath, isOffline)
 
   return (
     <div style={CONTAINER_STYLE} data-testid="welcome-screen">
@@ -209,24 +251,16 @@ export function WelcomeScreen({
         <div
           style={{
             ...ICON_WRAP_STYLE,
-            background: isWelcome ? 'var(--accent-blue-light, #EBF4FF)' : 'var(--accent-yellow-light, #FFF3E0)',
+            background: presentation.heroBackground,
           }}
         >
-          {isWelcome
-            ? <span style={{ fontSize: 28, color: 'var(--accent-blue)' }}>&#10022;</span>
-            : <AlertTriangle size={28} style={{ color: 'var(--accent-orange)' }} />
-          }
+          {presentation.heroIcon}
         </div>
 
         <div style={{ textAlign: 'center' }}>
-          <h1 style={TITLE_STYLE}>
-            {isWelcome ? 'Welcome to Tolaria' : 'Vault not found'}
-          </h1>
+          <h1 style={TITLE_STYLE}>{presentation.title}</h1>
           <p style={{ ...SUBTITLE_STYLE, marginTop: 8 }}>
-            {isWelcome
-              ? 'Wiki-linked knowledge management for deep thinkers.\nChoose how to get started.'
-              : 'The vault folder could not be found on disk.\nIt may have been moved or deleted.'
-            }
+            {presentation.subtitle}
           </p>
         </div>
 
@@ -249,7 +283,7 @@ export function WelcomeScreen({
           <OptionButton
             icon={<FolderOpen size={18} style={{ color: 'var(--accent-green)' }} />}
             iconBg="var(--accent-green-light, #E8F5E9)"
-            label={isWelcome ? 'Open existing vault' : 'Choose a different folder'}
+            label={presentation.openFolderLabel}
             description="Point to a folder you already have"
             onClick={onOpenFolder}
             disabled={busy}
@@ -260,11 +294,11 @@ export function WelcomeScreen({
             icon={<Rocket size={18} style={{ color: 'var(--accent-purple)' }} />}
             iconBg="var(--accent-purple-light, #F3E8FF)"
             label="Get started with a template"
-            description={`Download the starter vault template \u2014 suggested path: ${defaultVaultPath}`}
+            description={presentation.templateDescription}
             loadingLabel="Downloading template…"
             loadingDescription="Cloning the Getting Started vault template"
             onClick={onCreateVault}
-            disabled={busy}
+            disabled={busy || isOffline}
             loading={creatingAction === 'template'}
             testId="welcome-create-vault"
           />

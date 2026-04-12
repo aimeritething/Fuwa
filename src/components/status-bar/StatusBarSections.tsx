@@ -11,6 +11,7 @@ import {
   ConflictBadge,
   ChangesBadge,
   McpBadge,
+  OfflineBadge,
   PulseBadge,
   SyncBadge,
 } from './StatusBarBadges'
@@ -25,9 +26,11 @@ interface StatusBarPrimarySectionProps {
   onSwitchVault: (path: string) => void
   onOpenLocalFolder?: () => void
   onCloneVault?: () => void
+  onCloneGettingStarted?: () => void
   onClickPending?: () => void
   onClickPulse?: () => void
   onCommitPush?: () => void
+  isOffline?: boolean
   isGitVault?: boolean
   syncStatus: SyncStatus
   lastSyncTime: number | null
@@ -61,9 +64,11 @@ export function StatusBarPrimarySection({
   onSwitchVault,
   onOpenLocalFolder,
   onCloneVault,
+  onCloneGettingStarted,
   onClickPending,
   onClickPulse,
   onCommitPush,
+  isOffline = false,
   isGitVault = false,
   syncStatus,
   lastSyncTime,
@@ -89,6 +94,7 @@ export function StatusBarPrimarySection({
         onSwitchVault={onSwitchVault}
         onOpenLocalFolder={onOpenLocalFolder}
         onCloneVault={onCloneVault}
+        onCloneGettingStarted={onCloneGettingStarted}
         onRemoveVault={onRemoveVault}
       />
       <span style={SEP_STYLE}>|</span>
@@ -104,6 +110,7 @@ export function StatusBarPrimarySection({
         <Package size={13} />
         {buildNumber ?? 'b?'}
       </span>
+      <OfflineBadge isOffline={isOffline} />
       <ChangesBadge count={modifiedCount} onClick={onClickPending} />
       <CommitButton onClick={onCommitPush} />
       <SyncBadge

@@ -304,6 +304,33 @@ export function CommitBadge({ info }: { info: LastCommitInfo }) {
   )
 }
 
+export function OfflineBadge({ isOffline }: { isOffline?: boolean }) {
+  if (!isOffline) return null
+
+  return (
+    <>
+      <span style={SEP_STYLE}>|</span>
+      <span
+        style={{
+          ...ICON_STYLE,
+          color: 'var(--destructive, #e03e3e)',
+          background: 'rgba(224, 62, 62, 0.12)',
+          borderRadius: 999,
+          padding: '2px 6px',
+          fontWeight: 600,
+        }}
+        title="No internet connection"
+        data-testid="status-offline"
+      >
+        <span aria-hidden="true" style={{ fontSize: 10, lineHeight: 1 }}>
+          ●
+        </span>
+        Offline
+      </span>
+    </>
+  )
+}
+
 export function SyncBadge({
   status,
   lastSyncTime,

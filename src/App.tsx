@@ -39,6 +39,7 @@ import { useZoom } from './hooks/useZoom'
 import { useVaultConfig } from './hooks/useVaultConfig'
 import { useBuildNumber } from './hooks/useBuildNumber'
 import { useOnboarding } from './hooks/useOnboarding'
+import { useNetworkStatus } from './hooks/useNetworkStatus'
 import { useAppNavigation } from './hooks/useAppNavigation'
 import { useAiActivity } from './hooks/useAiActivity'
 import { useBulkActions } from './hooks/useBulkActions'
@@ -102,6 +103,7 @@ function App() {
   const [showFeedback, setShowFeedback] = useState(false)
   const openFeedback = useCallback(() => setShowFeedback(true), [])
   const closeFeedback = useCallback(() => setShowFeedback(false), [])
+  const networkStatus = useNetworkStatus()
 
   useEffect(() => {
     const handleOpenAiChat = () => {
@@ -621,7 +623,7 @@ function App() {
 
   // Show welcome/onboarding screen when vault doesn't exist (skip for note windows — vault path is known)
   if (!noteWindowParams && (onboarding.state.status === 'welcome' || onboarding.state.status === 'vault-missing')) {
-    return <WelcomeView onboarding={onboarding} />
+    return <WelcomeView onboarding={onboarding} isOffline={networkStatus.isOffline} />
   }
 
   // Show loading spinner while checking vault (skip for note windows)
@@ -737,7 +739,7 @@ function App() {
       </div>
       <UpdateBanner status={updateStatus} actions={updateActions} />
       <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isGitVault={!vault.modifiedFilesError} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} claudeCodeStatus={claudeCodeStatus} claudeCodeVersion={claudeCodeVersion} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={vaultSwitcher.restoreGettingStarted} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isOffline={networkStatus.isOffline} isGitVault={!vault.modifiedFilesError} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} claudeCodeStatus={claudeCodeStatus} claudeCodeVersion={claudeCodeVersion} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
       <CommandPalette
@@ -782,7 +784,7 @@ function App() {
 type OnboardingState = ReturnType<typeof useOnboarding>
 
 /** Welcome screen view - extracted from main App component */
-function WelcomeView({ onboarding }: { onboarding: OnboardingState }) {
+function WelcomeView({ onboarding, isOffline }: { onboarding: OnboardingState; isOffline: boolean }) {
   const state = onboarding.state as { status: 'welcome' | 'vault-missing'; defaultPath: string; vaultPath?: string }
   return (
     <div className="app-shell">
@@ -794,6 +796,7 @@ function WelcomeView({ onboarding }: { onboarding: OnboardingState }) {
         onRetryCreateVault={onboarding.retryCreateVault}
         onCreateNewVault={onboarding.handleCreateNewVault}
         onOpenFolder={onboarding.handleOpenFolder}
+        isOffline={isOffline}
         creatingAction={onboarding.creatingAction}
         error={onboarding.error}
         canRetryTemplate={onboarding.canRetryTemplate}

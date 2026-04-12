@@ -195,6 +195,38 @@ describe('StatusBar', () => {
     expect(screen.getByText('Clone Git repo')).toBeInTheDocument()
   })
 
+  it('shows the Getting Started clone action in the vault menu when provided', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        onCloneGettingStarted={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByTitle('Switch vault'))
+    expect(screen.getByText('Clone Getting Started Vault')).toBeInTheDocument()
+  })
+
+  it('calls onCloneGettingStarted when clicking the vault menu action', () => {
+    const onCloneGettingStarted = vi.fn()
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        onCloneGettingStarted={onCloneGettingStarted}
+      />
+    )
+
+    fireEvent.click(screen.getByTitle('Switch vault'))
+    fireEvent.click(screen.getByText('Clone Getting Started Vault'))
+    expect(onCloneGettingStarted).toHaveBeenCalledOnce()
+  })
+
   it('shows Changes badge with count when modifiedCount is > 0', () => {
     render(<StatusBar noteCount={100} modifiedCount={3} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
     expect(screen.getByTestId('status-modified-count')).toBeInTheDocument()
@@ -298,6 +330,13 @@ describe('StatusBar', () => {
       <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} syncStatus="pull_required" />
     )
     expect(screen.getByText('Pull required')).toBeInTheDocument()
+  })
+
+  it('shows an offline chip when offline', () => {
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} isOffline={true} />
+    )
+    expect(screen.getByTestId('status-offline')).toHaveTextContent('Offline')
   })
 
   it('calls onPullAndPush when clicking Pull required badge', () => {

@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { AlertTriangle, Check, FolderOpen, GitBranch, X } from 'lucide-react'
+import { AlertTriangle, Check, FolderOpen, GitBranch, Rocket, X } from 'lucide-react'
 import type { VaultOption } from './types'
 import { useDismissibleLayer } from './useDismissibleLayer'
 
@@ -10,6 +10,7 @@ interface VaultMenuProps {
   onSwitchVault: (path: string) => void
   onOpenLocalFolder?: () => void
   onCloneVault?: () => void
+  onCloneGettingStarted?: () => void
   onRemoveVault?: (path: string) => void
 }
 
@@ -36,6 +37,47 @@ interface VaultAction {
   testId: string
   accent?: boolean
   onClick: () => void
+}
+
+function buildVaultActions({
+  onCloneGettingStarted,
+  onCloneVault,
+  onOpenLocalFolder,
+}: Pick<VaultMenuProps, 'onCloneGettingStarted' | 'onCloneVault' | 'onOpenLocalFolder'>): VaultAction[] {
+  const items: VaultAction[] = []
+
+  if (onOpenLocalFolder) {
+    items.push({
+      key: 'open-local',
+      icon: <FolderOpen size={12} />,
+      label: 'Open local folder',
+      testId: 'vault-menu-open-local',
+      onClick: onOpenLocalFolder,
+    })
+  }
+
+  if (onCloneVault) {
+    items.push({
+      key: 'clone-git',
+      icon: <GitBranch size={12} />,
+      label: 'Clone Git repo',
+      testId: 'vault-menu-clone-git',
+      onClick: onCloneVault,
+    })
+  }
+
+  if (onCloneGettingStarted) {
+    items.push({
+      key: 'clone-getting-started',
+      icon: <Rocket size={12} />,
+      label: 'Clone Getting Started Vault',
+      testId: 'vault-menu-clone-getting-started',
+      accent: true,
+      onClick: onCloneGettingStarted,
+    })
+  }
+
+  return items
 }
 
 function VaultMenuIcon({ isActive, unavailable }: { isActive: boolean; unavailable: boolean }) {
@@ -142,6 +184,7 @@ export function VaultMenu({
   onSwitchVault,
   onOpenLocalFolder,
   onCloneVault,
+  onCloneGettingStarted,
   onRemoveVault,
 }: VaultMenuProps) {
   const [open, setOpen] = useState(false)
@@ -152,30 +195,12 @@ export function VaultMenu({
   useDismissibleLayer(open, menuRef, () => setOpen(false))
 
   const actions = useMemo<VaultAction[]>(() => {
-    const items: VaultAction[] = []
-
-    if (onOpenLocalFolder) {
-      items.push({
-        key: 'open-local',
-        icon: <FolderOpen size={12} />,
-        label: 'Open local folder',
-        testId: 'vault-menu-open-local',
-        onClick: onOpenLocalFolder,
-      })
-    }
-
-    if (onCloneVault) {
-      items.push({
-        key: 'clone-git',
-        icon: <GitBranch size={12} />,
-        label: 'Clone Git repo',
-        testId: 'vault-menu-clone-git',
-        onClick: onCloneVault,
-      })
-    }
-
-    return items
-  }, [onCloneVault, onOpenLocalFolder])
+    return buildVaultActions({
+      onCloneGettingStarted,
+      onCloneVault,
+      onOpenLocalFolder,
+    })
+  }, [onCloneGettingStarted, onCloneVault, onOpenLocalFolder])
 
   return (
     <div ref={menuRef} style={{ position: 'relative' }}>
