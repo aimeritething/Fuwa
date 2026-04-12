@@ -69,7 +69,7 @@ const mockCommandResults: Record<string, unknown> = {
   get_modified_files: [],
   get_note_content: mockAllContent['/vault/project/test.md'] || '',
   get_file_history: [],
-  get_settings: { github_token: null, github_username: null, auto_pull_interval_minutes: null, telemetry_consent: true, crash_reporting_enabled: null, analytics_enabled: null, anonymous_id: null, release_channel: null },
+  get_settings: { auto_pull_interval_minutes: null, telemetry_consent: true, crash_reporting_enabled: null, analytics_enabled: null, anonymous_id: null, release_channel: null },
   git_pull: { status: 'up_to_date', message: 'Already up to date', updatedFiles: [], conflictFiles: [] },
   save_settings: null,
   check_vault_exists: true,

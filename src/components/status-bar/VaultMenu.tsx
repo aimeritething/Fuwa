@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
-import { AlertTriangle, Check, FolderOpen, Github, X } from 'lucide-react'
+import { AlertTriangle, Check, FolderOpen, GitBranch, X } from 'lucide-react'
 import type { VaultOption } from './types'
 import { useDismissibleLayer } from './useDismissibleLayer'
 
@@ -9,8 +9,7 @@ interface VaultMenuProps {
   vaultPath: string
   onSwitchVault: (path: string) => void
   onOpenLocalFolder?: () => void
-  onConnectGitHub?: () => void
-  hasGitHub?: boolean
+  onCloneVault?: () => void
   onRemoveVault?: (path: string) => void
 }
 
@@ -142,8 +141,7 @@ export function VaultMenu({
   vaultPath,
   onSwitchVault,
   onOpenLocalFolder,
-  onConnectGitHub,
-  hasGitHub,
+  onCloneVault,
   onRemoveVault,
 }: VaultMenuProps) {
   const [open, setOpen] = useState(false)
@@ -166,19 +164,18 @@ export function VaultMenu({
       })
     }
 
-    if (onConnectGitHub) {
+    if (onCloneVault) {
       items.push({
-        key: 'connect-github',
-        icon: <Github size={12} />,
-        label: 'Connect GitHub repo',
-        testId: 'vault-menu-connect-github',
-        accent: !hasGitHub,
-        onClick: onConnectGitHub,
+        key: 'clone-git',
+        icon: <GitBranch size={12} />,
+        label: 'Clone Git repo',
+        testId: 'vault-menu-clone-git',
+        onClick: onCloneVault,
       })
     }
 
     return items
-  }, [hasGitHub, onConnectGitHub, onOpenLocalFolder])
+  }, [onCloneVault, onOpenLocalFolder])
 
   return (
     <div ref={menuRef} style={{ position: 'relative' }}>

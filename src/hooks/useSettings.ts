@@ -8,8 +8,6 @@ function tauriCall<T>(command: string, tauriArgs: Record<string, unknown>, mockA
 }
 
 const EMPTY_SETTINGS: Settings = {
-  github_token: null,
-  github_username: null,
   auto_pull_interval_minutes: null,
   telemetry_consent: null,
   crash_reporting_enabled: null,

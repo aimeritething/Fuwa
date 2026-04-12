@@ -1,3 +1,4 @@
+mod clone;
 mod commit;
 mod conflict;
 mod dates;
@@ -9,6 +10,7 @@ mod status;
 use std::path::Path;
 use std::process::Command;
 
+pub use clone::clone_repo;
 pub use commit::git_commit;
 pub use conflict::{
     get_conflict_files, get_conflict_mode, git_commit_conflict_resolution, git_resolve_conflict,
@@ -122,28 +124,27 @@ fn ensure_author_config(dir: &Path) -> Result<(), String> {
 /// Extract "owner/repo" from a GitHub remote URL.
 /// Supports HTTPS (https://github.com/owner/repo.git) and
 /// SSH (git@github.com:owner/repo.git) formats.
+fn normalize_github_repo_path(repo_path: &str) -> Option<String> {
+    let repo_path = repo_path.strip_suffix(".git").unwrap_or(repo_path);
+    repo_path.contains('/').then(|| repo_path.to_string())
+}
+
+fn github_remote_suffix(url: &str) -> Option<&str> {
+    const GITHUB_PREFIXES: [&str; 4] = [
+        "git@github.com:",
+        "https://github.com/",
+        "http://github.com/",
+        "ssh://git@github.com/",
+    ];
+
+    GITHUB_PREFIXES
+        .iter()
+        .find_map(|prefix| url.strip_prefix(prefix))
+        .or_else(|| url.split_once("@github.com/").map(|(_, suffix)| suffix))
+}
+
 fn parse_github_repo_path(url: &str) -> Option<String> {
-    let trimmed = url.trim();
-
-    // SSH format: git@github.com:owner/repo.git
-    if let Some(rest) = trimmed.strip_prefix("git@github.com:") {
-        let path = rest.strip_suffix(".git").unwrap_or(rest);
-        if path.contains('/') {
-            return Some(path.to_string());
-        }
-    }
-
-    // HTTPS format: https://github.com/owner/repo.git
-    // Also handle token-embedded URLs: https://token@github.com/owner/repo.git
-    if trimmed.contains("github.com/") {
-        let after = trimmed.split("github.com/").nth(1)?;
-        let path = after.strip_suffix(".git").unwrap_or(after);
-        if path.contains('/') {
-            return Some(path.to_string());
-        }
-    }
-
-    None
+    github_remote_suffix(url.trim()).and_then(normalize_github_repo_path)
 }
 
 #[cfg(test)]
@@ -152,6 +153,13 @@ mod tests {
     use std::fs;
     use std::process::Command;
     use tempfile::TempDir;
+
+    fn assert_repo_path(url: &str, expected: Option<&str>) {
+        assert_eq!(
+            parse_github_repo_path(url),
+            expected.map(ToString::to_string)
+        );
+    }
 
     pub(crate) fn setup_git_repo() -> TempDir {
         let dir = TempDir::new().unwrap();
@@ -348,42 +356,23 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_github_repo_path_https() {
-        assert_eq!(
-            parse_github_repo_path("https://github.com/owner/repo.git"),
-            Some("owner/repo".to_string())
-        );
-        assert_eq!(
-            parse_github_repo_path("https://github.com/owner/repo"),
-            Some("owner/repo".to_string())
-        );
-    }
-
-    #[test]
-    fn test_parse_github_repo_path_ssh() {
-        assert_eq!(
-            parse_github_repo_path("git@github.com:owner/repo.git"),
-            Some("owner/repo".to_string())
-        );
-        assert_eq!(
-            parse_github_repo_path("git@github.com:owner/repo"),
-            Some("owner/repo".to_string())
-        );
-    }
-
-    #[test]
-    fn test_parse_github_repo_path_token_embedded() {
-        assert_eq!(
-            parse_github_repo_path("https://gho_abc123@github.com/owner/repo.git"),
-            Some("owner/repo".to_string())
-        );
+    fn test_parse_github_repo_path_variants() {
+        for url in [
+            "https://github.com/owner/repo.git",
+            "https://github.com/owner/repo",
+            "http://github.com/owner/repo.git",
+            "git@github.com:owner/repo.git",
+            "git@github.com:owner/repo",
+            "ssh://git@github.com/owner/repo.git",
+            "https://gho_abc123@github.com/owner/repo.git",
+        ] {
+            assert_repo_path(url, Some("owner/repo"));
+        }
     }
 
     #[test]
     fn test_parse_github_repo_path_non_github() {
-        assert_eq!(
-            parse_github_repo_path("https://gitlab.com/owner/repo.git"),
-            None
-        );
+        assert_repo_path("https://gitlab.com/owner/repo.git", None);
+        assert_repo_path("owner/repo", None);
     }
 }

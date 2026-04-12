@@ -22,7 +22,7 @@ When deciding where to persist a piece of data, ask: **"Would the user want this
 |-------------------|-----------------------------|
 | Type icon, type color | Editor zoom level |
 | Pinned properties per type | API keys (OpenAI, Google) |
-| Sidebar label overrides | GitHub token |
+| Sidebar label overrides | Auto-sync interval |
 | Property display order | Window size / position |
 | Any user-visible customization of how content is organized or displayed | Any machine-specific or credential-type setting |
 
@@ -124,11 +124,10 @@ flowchart TD
         end
 
         subgraph RB["Rust Backend"]
-            LIB["lib.rs → 64 Tauri commands"]
+            LIB["lib.rs → Tauri commands"]
             VAULT["vault/"]
             FM["frontmatter/"]
-            GIT["git/"]
-            GH["github/"]
+            GIT["git/\n(commit, sync, clone)"]
             SETTINGS["settings.rs"]
             SEARCH["search.rs"]
             CLI["claude_cli.rs"]
@@ -137,11 +136,15 @@ flowchart TD
         subgraph EXT["External Services"]
             CCLI["Claude CLI\n(agent subprocess)"]
             MCP["MCP Server\n(ws://9710, 9711)"]
-            GHAPI["GitHub API\n(OAuth, repos, clone)"]
+            GCLI["git CLI\n(system executable)"]
+            REMOTE["Git remotes\n(GitHub/GitLab/Gitea/etc.)"]
         end
 
         FE -->|"Tauri IPC"| RB
-        FE -->|"Vite Proxy / WS"| EXT
+        CLI -->|"spawn subprocess"| CCLI
+        LIB -->|"register / monitor"| MCP
+        GIT -->|"clone / fetch / push / pull"| GCLI
+        GCLI -->|"network auth via user config"| REMOTE
     end
 
     style FE fill:#e8f4fd,stroke:#2196f3,color:#000
@@ -429,23 +432,23 @@ On first launch, `useOnboarding` checks if the default vault exists. If not, it 
 - **Open an existing folder** → system file picker
 - **Get started with a template** → pick a folder, then call `create_getting_started_vault()` to clone the public starter repo at runtime
 
-The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` only holds the public GitHub URL and delegates the actual clone to the existing git backend.
+The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` only holds the public starter repo URL and delegates the actual clone to the git backend.
 
-### GitHub OAuth Integration
+### Remote Clone & Auth Model
 
-Implements GitHub Device Authorization Flow for cloning/creating GitHub-backed vaults.
+Tolaria no longer implements provider-specific OAuth or remote-repository APIs. All remote git work goes through the user's existing system git configuration.
 
 **Flow:**
-1. User clicks "Login with GitHub" in Settings panel
-2. `github_device_flow_start()` returns a user code + verification URL
-3. User authorizes at `github.com/login/device`
-4. App polls `github_device_flow_poll()` until authorized
-5. Token stored in `~/.config/com.tolaria.app/settings.json`
+1. User opens `CloneVaultModal` from onboarding or the vault menu
+2. User pastes any git URL and chooses a local destination
+3. `clone_repo()` shells out to `git clone`
+4. `git_push()` / `git_pull()` continue to use the same system git path
+5. If auth fails, the raw git stderr is surfaced in the UI
 
-**Vault operations:**
-- `GitHubVaultModal`: Clone existing repo or create new private/public repo
-- `clone_repo()`: Clones with token-injected HTTPS URL
-- Token persists for future git push/pull operations
+**Auth model:**
+- SSH keys, Git Credential Manager, macOS Keychain helpers, `gh auth`, and other git helpers all work without app-specific setup
+- No provider tokens are stored in Tolaria settings
+- The same flow works for GitHub, GitLab, Bitbucket, Gitea, and self-hosted remotes
 
 ## Pulse View
 
@@ -565,8 +568,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 |--------|---------|
 | `vault/` | Vault scanning, caching, parsing, rename, image, migration |
 | `frontmatter/` | YAML frontmatter read/write (`mod.rs`, `yaml.rs`, `ops.rs`) |
-| `git/` | Git operations (`commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`) |
-| `github/` | GitHub OAuth + API (`auth.rs`, `api.rs`, `clone.rs`) |
+| `git/` | Git operations (`commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`, `clone.rs`) |
 | `search.rs` | Keyword search — walkdir-based vault file scan |
 | `claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing |
 | `mcp.rs` | MCP server spawning + config registration |
@@ -576,7 +578,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `vault_list.rs` | Vault list persistence |
 | `menu.rs` | Native macOS menu bar |
 
-## Tauri IPC Commands (65 total)
+## Tauri IPC Commands
 
 ### Vault Operations
 
@@ -620,17 +622,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `get_conflict_mode` | Get conflict resolution mode |
 | `get_vault_pulse` | Git activity feed (paginated) |
 | `get_last_commit_info` | Latest commit metadata |
-
-### GitHub
-
-| Command | Description |
-|---------|-------------|
-| `github_device_flow_start` | Begin OAuth device flow |
-| `github_device_flow_poll` | Poll for authorization |
-| `github_get_user` | Get authenticated user info |
-| `github_list_repos` | List user's repos |
-| `github_create_repo` | Create new repo |
-| `clone_repo` | Clone repo with token auth |
+| `clone_repo` | Clone a remote repository into a local folder using system git |
 
 ### Search
 
@@ -705,7 +697,7 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useAiAgent` | `messages`, `status`, tool actions | AI agent conversation |
 | `useAutoSync` | Sync interval, pull/push state | Git auto-sync |
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |
-| `useSettings` | App settings (API keys, GitHub token) | Persistent settings |
+| `useSettings` | App settings (telemetry, release channel, auto-sync interval) | Persistent settings |
 | `useVaultConfig` | Per-vault UI preferences | Vault-specific config |
 | `appCommandDispatcher` | Canonical shortcut/menu command IDs | Shared execution path for renderer and native menu commands |
 
@@ -868,7 +860,7 @@ Desktop-only modules gated at the crate level:
 
 Desktop-only features gated at the function level in `commands/`:
 - Git operations (commit, pull, push, status, history, diff, conflicts)
-- GitHub operations (clone, list repos, device flow auth)
+- Clone-by-URL via system git (`clone_repo`)
 - Claude CLI streaming (check, chat, agent)
 - MCP registration and status
 - Menu state updates

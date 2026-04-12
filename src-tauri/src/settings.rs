@@ -7,8 +7,6 @@ const LEGACY_APP_CONFIG_DIR: &str = "com.laputa.app";
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Settings {
-    pub github_token: Option<String>,
-    pub github_username: Option<String>,
     pub auto_pull_interval_minutes: Option<u32>,
     pub telemetry_consent: Option<bool>,
     pub crash_reporting_enabled: Option<bool>,
@@ -60,16 +58,8 @@ fn save_settings_at(path: &PathBuf, settings: Settings) -> Result<(), String> {
             .map_err(|e| format!("Failed to create config directory: {}", e))?;
     }
 
-    // Trim whitespace and convert empty strings to None
+    // Trim whitespace and convert empty strings to None.
     let cleaned = Settings {
-        github_token: settings
-            .github_token
-            .map(|k| k.trim().to_string())
-            .filter(|k| !k.is_empty()),
-        github_username: settings
-            .github_username
-            .map(|k| k.trim().to_string())
-            .filter(|k| !k.is_empty()),
         auto_pull_interval_minutes: settings.auto_pull_interval_minutes,
         telemetry_consent: settings.telemetry_consent,
         crash_reporting_enabled: settings.crash_reporting_enabled,
@@ -129,6 +119,33 @@ pub fn set_last_vault(vault_path: &str) -> Result<(), String> {
 mod tests {
     use super::*;
 
+    fn settings_snapshot(
+        settings: &Settings,
+    ) -> (
+        Option<u32>,
+        Option<bool>,
+        Option<bool>,
+        Option<bool>,
+        Option<&str>,
+        Option<&str>,
+    ) {
+        (
+            settings.auto_pull_interval_minutes,
+            settings.telemetry_consent,
+            settings.crash_reporting_enabled,
+            settings.analytics_enabled,
+            settings.anonymous_id.as_deref(),
+            settings.release_channel.as_deref(),
+        )
+    }
+
+    fn assert_empty_settings(settings: &Settings) {
+        assert_eq!(
+            settings_snapshot(settings),
+            (None, None, None, None, None, None)
+        );
+    }
+
     /// Helper: save settings to a temp file and reload them.
     fn save_and_reload(settings: Settings) -> Settings {
         let dir = tempfile::TempDir::new().unwrap();
@@ -137,37 +154,38 @@ mod tests {
         get_settings_at(&path).unwrap()
     }
 
+    fn create_last_vault_path(path_parts: &[&str]) -> (tempfile::TempDir, PathBuf) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = path_parts
+            .iter()
+            .fold(dir.path().to_path_buf(), |acc, part| acc.join(part));
+        (dir, path)
+    }
+
+    fn write_and_assert_last_vault(path: &PathBuf, value: &str) {
+        set_last_vault_at(path, value).unwrap();
+        assert_eq!(get_last_vault_at(path).as_deref(), Some(value));
+    }
+
     #[test]
     fn test_default_settings_all_none() {
-        let s = Settings::default();
-        assert!(s.github_token.is_none());
-        assert!(s.github_username.is_none());
-        assert!(s.auto_pull_interval_minutes.is_none());
-        assert!(s.telemetry_consent.is_none());
-        assert!(s.crash_reporting_enabled.is_none());
-        assert!(s.analytics_enabled.is_none());
-        assert!(s.anonymous_id.is_none());
+        assert_empty_settings(&Settings::default());
     }
 
     #[test]
     fn test_settings_json_roundtrip() {
         let settings = Settings {
-            github_token: Some("gho_xyz789".to_string()),
-            github_username: Some("lucaong".to_string()),
+            auto_pull_interval_minutes: Some(10),
             telemetry_consent: Some(true),
             crash_reporting_enabled: Some(true),
             analytics_enabled: Some(false),
             anonymous_id: Some("abc-123-uuid".to_string()),
+            release_channel: Some("beta".to_string()),
             ..Default::default()
         };
         let json = serde_json::to_string(&settings).unwrap();
         let parsed: Settings = serde_json::from_str(&json).unwrap();
-        assert_eq!(parsed.github_token, settings.github_token);
-        assert_eq!(parsed.github_username, settings.github_username);
-        assert_eq!(parsed.telemetry_consent, Some(true));
-        assert_eq!(parsed.crash_reporting_enabled, Some(true));
-        assert_eq!(parsed.analytics_enabled, Some(false));
-        assert_eq!(parsed.anonymous_id.as_deref(), Some("abc-123-uuid"));
+        assert_eq!(settings_snapshot(&parsed), settings_snapshot(&settings));
     }
 
     #[test]
@@ -175,40 +193,38 @@ mod tests {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("nonexistent.json");
         let result = get_settings_at(&path).unwrap();
-        assert!(result.github_token.is_none());
+        assert!(result.auto_pull_interval_minutes.is_none());
     }
 
     #[test]
     fn test_save_and_load_preserves_values() {
         let loaded = save_and_reload(Settings {
-            github_token: Some("gho_token123".to_string()),
-            github_username: Some("lucaong".to_string()),
             auto_pull_interval_minutes: Some(10),
+            release_channel: Some("alpha".to_string()),
             ..Default::default()
         });
-        assert_eq!(loaded.github_token.as_deref(), Some("gho_token123"));
-        assert_eq!(loaded.github_username.as_deref(), Some("lucaong"));
         assert_eq!(loaded.auto_pull_interval_minutes, Some(10));
+        assert_eq!(loaded.release_channel.as_deref(), Some("alpha"));
     }
 
     #[test]
     fn test_save_trims_whitespace() {
         let loaded = save_and_reload(Settings {
-            github_token: Some("  gho_abc  ".to_string()),
-            github_username: Some("  lucaong  ".to_string()),
+            anonymous_id: Some("  test-uuid  ".to_string()),
+            release_channel: Some("  beta  ".to_string()),
             ..Default::default()
         });
-        assert_eq!(loaded.github_token.as_deref(), Some("gho_abc"));
-        assert_eq!(loaded.github_username.as_deref(), Some("lucaong"));
+        assert_eq!(loaded.anonymous_id.as_deref(), Some("test-uuid"));
+        assert_eq!(loaded.release_channel.as_deref(), Some("beta"));
     }
 
     #[test]
     fn test_save_filters_empty_and_whitespace_only() {
         let loaded = save_and_reload(Settings {
-            github_username: Some("".to_string()),
+            release_channel: Some("".to_string()),
             ..Default::default()
         });
-        assert!(loaded.github_username.is_none());
+        assert!(loaded.release_channel.is_none());
     }
 
     #[test]
@@ -219,15 +235,15 @@ mod tests {
         save_settings_at(
             &path,
             Settings {
-                github_token: Some("gho_test".to_string()),
+                anonymous_id: Some("test-uuid".to_string()),
                 ..Default::default()
             },
         )
         .unwrap();
         assert!(path.exists());
         assert_eq!(
-            get_settings_at(&path).unwrap().github_token.as_deref(),
-            Some("gho_test")
+            get_settings_at(&path).unwrap().anonymous_id.as_deref(),
+            Some("test-uuid")
         );
     }
 
@@ -250,24 +266,31 @@ mod tests {
             anonymous_id: Some("test-uuid-v4".to_string()),
             ..Default::default()
         });
-        assert_eq!(loaded.telemetry_consent, Some(true));
-        assert_eq!(loaded.crash_reporting_enabled, Some(true));
-        assert_eq!(loaded.analytics_enabled, Some(false));
-        assert_eq!(loaded.anonymous_id.as_deref(), Some("test-uuid-v4"));
+        assert_eq!(
+            settings_snapshot(&loaded),
+            (
+                None,
+                Some(true),
+                Some(true),
+                Some(false),
+                Some("test-uuid-v4"),
+                None
+            )
+        );
     }
 
     #[test]
     fn test_old_settings_json_missing_telemetry_fields() {
         let dir = tempfile::TempDir::new().unwrap();
         let path = dir.path().join("settings.json");
-        // Simulate old settings.json without telemetry fields
-        fs::write(&path, r#"{"github_token":"gho_test"}"#).unwrap();
+        // Simulate an old settings.json that still contains removed GitHub auth fields.
+        fs::write(
+            &path,
+            r#"{"github_token":"gho_test","github_username":"lucaong"}"#,
+        )
+        .unwrap();
         let loaded = get_settings_at(&path).unwrap();
-        assert_eq!(loaded.github_token.as_deref(), Some("gho_test"));
-        assert!(loaded.telemetry_consent.is_none());
-        assert!(loaded.crash_reporting_enabled.is_none());
-        assert!(loaded.analytics_enabled.is_none());
-        assert!(loaded.anonymous_id.is_none());
+        assert_empty_settings(&loaded);
     }
 
     #[test]
@@ -299,24 +322,14 @@ mod tests {
 
     #[test]
     fn test_set_and_get_last_vault_roundtrip() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("last-vault.txt");
-        set_last_vault_at(&path, "/Users/test/MyVault").unwrap();
-        assert_eq!(
-            get_last_vault_at(&path).as_deref(),
-            Some("/Users/test/MyVault")
-        );
+        let (_dir, path) = create_last_vault_path(&["last-vault.txt"]);
+        write_and_assert_last_vault(&path, "/Users/test/MyVault");
     }
 
     #[test]
     fn test_set_last_vault_trims_whitespace() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("last-vault.txt");
-        set_last_vault_at(&path, "  /Users/test/Vault  ").unwrap();
-        assert_eq!(
-            get_last_vault_at(&path).as_deref(),
-            Some("/Users/test/Vault")
-        );
+        let (_dir, path) = create_last_vault_path(&["last-vault.txt"]);
+        write_and_assert_last_vault(&path, "/Users/test/Vault");
     }
 
     #[test]
@@ -329,25 +342,15 @@ mod tests {
 
     #[test]
     fn test_set_last_vault_creates_parent_directories() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("nested").join("dir").join("last-vault.txt");
-        set_last_vault_at(&path, "/Users/test/Vault").unwrap();
+        let (_dir, path) = create_last_vault_path(&["nested", "dir", "last-vault.txt"]);
+        write_and_assert_last_vault(&path, "/Users/test/Vault");
         assert!(path.exists());
-        assert_eq!(
-            get_last_vault_at(&path).as_deref(),
-            Some("/Users/test/Vault")
-        );
     }
 
     #[test]
     fn test_set_last_vault_overwrites_previous() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let path = dir.path().join("last-vault.txt");
-        set_last_vault_at(&path, "/Users/test/OldVault").unwrap();
-        set_last_vault_at(&path, "/Users/test/NewVault").unwrap();
-        assert_eq!(
-            get_last_vault_at(&path).as_deref(),
-            Some("/Users/test/NewVault")
-        );
+        let (_dir, path) = create_last_vault_path(&["last-vault.txt"]);
+        write_and_assert_last_vault(&path, "/Users/test/OldVault");
+        write_and_assert_last_vault(&path, "/Users/test/NewVault");
     }
 }

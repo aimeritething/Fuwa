@@ -151,6 +151,13 @@ pub fn init_git_repo(vault_path: String) -> Result<(), String> {
     crate::git::init_repo(&vault_path)
 }
 
+#[cfg(desktop)]
+#[tauri::command]
+pub fn clone_repo(url: String, local_path: String) -> Result<String, String> {
+    let local_path = expand_tilde(&local_path);
+    crate::git::clone_repo(&url, &local_path)
+}
+
 // ── Git commands (mobile stubs) ─────────────────────────────────────────────
 
 #[cfg(mobile)]
@@ -270,4 +277,10 @@ pub fn is_git_repo(_vault_path: String) -> bool {
 #[tauri::command]
 pub fn init_git_repo(_vault_path: String) -> Result<(), String> {
     Err("Git init is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn clone_repo(_url: String, _local_path: String) -> Result<String, String> {
+    Err("Git clone is not available on mobile".into())
 }

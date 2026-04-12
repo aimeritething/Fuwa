@@ -1,6 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
-import { X, GithubLogo, SignOut } from '@phosphor-icons/react'
-import { GitHubDeviceFlow } from './GitHubDeviceFlow'
+import { X } from '@phosphor-icons/react'
 import type { Settings } from '../types'
 import { trackEvent } from '../lib/telemetry'
 import { Switch } from './ui/switch'
@@ -12,52 +11,6 @@ interface SettingsPanelProps {
   explicitOrganizationEnabled?: boolean
   onSaveExplicitOrganization?: (enabled: boolean) => void
   onClose: () => void
-}
-
-
-// --- GitHub OAuth Section ---
-
-interface GitHubSectionProps {
-  githubUsername: string | null
-  githubToken: string | null
-  onConnected: (token: string, username: string) => void
-  onDisconnect: () => void
-}
-
-function GitHubSection({ githubUsername, githubToken, onConnected, onDisconnect }: GitHubSectionProps) {
-  const isConnected = !!githubToken && !!githubUsername
-
-  if (isConnected) {
-    return <GitHubConnectedRow username={githubUsername!} onDisconnect={onDisconnect} />
-  }
-
-  return <GitHubDeviceFlow onConnected={onConnected} />
-}
-
-function GitHubConnectedRow({ username, onDisconnect }: { username: string; onDisconnect: () => void }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-      <div
-        className="flex items-center gap-2 border border-border rounded px-3 py-2 flex-1"
-        style={{ minHeight: 36 }}
-        data-testid="github-connected"
-      >
-        <GithubLogo size={16} weight="fill" style={{ color: 'var(--foreground)' }} />
-        <span style={{ fontSize: 13, color: 'var(--foreground)', fontWeight: 500 }}>{username}</span>
-        <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>Connected</span>
-      </div>
-      <button
-        className="border border-border bg-transparent text-muted-foreground rounded cursor-pointer hover:text-foreground hover:border-foreground"
-        style={{ fontSize: 12, padding: '6px 12px', display: 'flex', alignItems: 'center', gap: 4 }}
-        onClick={onDisconnect}
-        title="Disconnect GitHub account"
-        data-testid="github-disconnect"
-      >
-        <SignOut size={14} />
-        Disconnect
-      </button>
-    </div>
-  )
 }
 
 // --- Settings Panel ---
@@ -97,8 +50,6 @@ function SettingsPanelInner({
   onSaveExplicitOrganization,
   onClose,
 }: SettingsPanelInnerProps) {
-  const [githubToken, setGithubToken] = useState(settings.github_token)
-  const [githubUsername, setGithubUsername] = useState(settings.github_username)
   const [pullInterval, setPullInterval] = useState(settings.auto_pull_interval_minutes ?? 5)
   const [releaseChannel, setReleaseChannel] = useState(settings.release_channel ?? 'stable')
   const [crashReporting, setCrashReporting] = useState(settings.crash_reporting_enabled ?? false)
@@ -115,16 +66,14 @@ function SettingsPanelInner({
     return () => clearTimeout(timer)
   }, [])
 
-  const buildSettings = useCallback((ghOverride?: { token: string | null; username: string | null }): Settings => ({
-    github_token: ghOverride ? ghOverride.token : (githubToken ?? null),
-    github_username: ghOverride ? ghOverride.username : (githubUsername ?? null),
+  const buildSettings = useCallback((): Settings => ({
     auto_pull_interval_minutes: pullInterval,
     telemetry_consent: (crashReporting || analytics) ? true : (settings.telemetry_consent === null ? null : false),
     crash_reporting_enabled: crashReporting,
     analytics_enabled: analytics,
     anonymous_id: (crashReporting || analytics) ? (settings.anonymous_id ?? crypto.randomUUID()) : settings.anonymous_id,
     release_channel: releaseChannel === 'stable' ? null : releaseChannel,
-  }), [githubToken, githubUsername, pullInterval, releaseChannel, crashReporting, analytics, settings.telemetry_consent, settings.anonymous_id])
+  }), [pullInterval, releaseChannel, crashReporting, analytics, settings.telemetry_consent, settings.anonymous_id])
 
   const handleSave = () => {
     const prevAnalytics = settings.analytics_enabled ?? false
@@ -135,18 +84,6 @@ function SettingsPanelInner({
     onSaveExplicitOrganization?.(explicitOrganization)
     onClose()
   }
-
-  const handleGitHubConnected = useCallback((token: string, username: string) => {
-    setGithubToken(token)
-    setGithubUsername(username)
-    onSave(buildSettings({ token, username }))
-  }, [onSave, buildSettings])
-
-  const handleGitHubDisconnect = useCallback(() => {
-    setGithubToken(null)
-    setGithubUsername(null)
-    onSave(buildSettings({ token: null, username: null }))
-  }, [onSave, buildSettings])
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Escape') {
@@ -174,8 +111,6 @@ function SettingsPanelInner({
       >
         <SettingsHeader onClose={onClose} />
         <SettingsBody
-          githubToken={githubToken ?? null} githubUsername={githubUsername ?? null}
-          onGitHubConnected={handleGitHubConnected} onGitHubDisconnect={handleGitHubDisconnect}
           pullInterval={pullInterval} setPullInterval={setPullInterval}
           releaseChannel={releaseChannel} setReleaseChannel={setReleaseChannel}
           explicitOrganization={explicitOrganization}
@@ -208,9 +143,6 @@ function SettingsHeader({ onClose }: { onClose: () => void }) {
 }
 
 interface SettingsBodyProps {
-  githubToken: string | null; githubUsername: string | null
-  onGitHubConnected: (token: string, username: string) => void
-  onGitHubDisconnect: () => void
   pullInterval: number; setPullInterval: (v: number) => void
   releaseChannel: string; setReleaseChannel: (v: string) => void
   explicitOrganization: boolean; setExplicitOrganization: (v: boolean) => void
@@ -221,22 +153,6 @@ interface SettingsBodyProps {
 function SettingsBody(props: SettingsBodyProps) {
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, overflow: 'auto' }}>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>GitHub</div>
-        <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
-          Connect your GitHub account to clone and sync vaults.
-        </div>
-      </div>
-
-      <GitHubSection
-        githubUsername={props.githubUsername}
-        githubToken={props.githubToken}
-        onConnected={props.onGitHubConnected}
-        onDisconnect={props.onGitHubDisconnect}
-      />
-
-      <div style={{ height: 1, background: 'var(--border)' }} />
-
       <div>
         <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>Sync</div>
         <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>

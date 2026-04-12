@@ -63,8 +63,7 @@ tolaria/
 │   │   ├── CommandPalette.tsx    # Cmd+K command launcher
 │   │   ├── BreadcrumbBar.tsx     # Breadcrumb + word count + actions
 │   │   ├── WelcomeScreen.tsx     # Onboarding screen
-│   │   ├── GitHubVaultModal.tsx  # GitHub vault clone/create
-│   │   ├── GitHubDeviceFlow.tsx  # GitHub OAuth device flow
+│   │   ├── CloneVaultModal.tsx   # Clone a vault from any git URL
 │   │   ├── ConflictResolverModal.tsx # Git conflict resolution
 │   │   ├── CommitDialog.tsx      # Git commit modal
 │   │   ├── CreateNoteDialog.tsx  # New note modal
@@ -134,7 +133,7 @@ tolaria/
 │   ├── capabilities/             # Tauri v2 security capabilities
 │   ├── src/
 │   │   ├── main.rs               # Entry point (calls lib::run())
-│   │   ├── lib.rs                # Tauri setup + command registration (61 commands)
+│   │   ├── lib.rs                # Tauri setup + command registration
 │   │   ├── commands/             # Tauri command handlers (split into modules)
 │   │   ├── vault/                # Vault module
 │   │   │   ├── mod.rs            # Core types, parse_md_file, scan_vault
@@ -147,10 +146,8 @@ tolaria/
 │   │   ├── frontmatter/          # Frontmatter module
 │   │   │   ├── mod.rs, yaml.rs, ops.rs
 │   │   ├── git/                  # Git module
-│   │   │   ├── mod.rs, commit.rs, status.rs, history.rs
+│   │   │   ├── mod.rs, commit.rs, status.rs, history.rs, clone.rs
 │   │   │   ├── conflict.rs, remote.rs, pulse.rs
-│   │   ├── github/               # GitHub module
-│   │   │   ├── mod.rs, auth.rs, api.rs, clone.rs
 │   │   ├── telemetry.rs          # Sentry init + path scrubber
 │   │   ├── search.rs             # Keyword search (walkdir-based)
 │   │   ├── claude_cli.rs         # Claude CLI subprocess management
@@ -212,8 +209,7 @@ tolaria/
 | `src-tauri/src/vault/mod.rs` | Vault scanning, frontmatter parsing, entity type inference, relationship extraction. |
 | `src-tauri/src/vault/cache.rs` | Git-based incremental caching — how large vaults load fast. |
 | `src-tauri/src/frontmatter/ops.rs` | YAML manipulation — how properties are updated/deleted in files. |
-| `src-tauri/src/git/` | All git operations (commit, pull, push, conflicts, pulse). |
-| `src-tauri/src/github/` | GitHub OAuth device flow + repo clone/create. |
+| `src-tauri/src/git/` | All git operations (clone, commit, pull, push, conflicts, pulse). |
 | `src-tauri/src/search.rs` | Keyword search — scans vault files with walkdir. |
 | `src-tauri/src/claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing. |
 
@@ -245,9 +241,9 @@ tolaria/
 
 | File | Why it matters |
 |------|---------------|
-| `src/hooks/useSettings.ts` | App settings (API keys, GitHub token, sync interval). |
+| `src/hooks/useSettings.ts` | App settings (telemetry, release channel, auto-sync interval). |
 | `src/hooks/useVaultConfig.ts` | Per-vault local UI preferences (zoom, view mode, colors, Inbox columns, explicit organization workflow). |
-| `src/components/SettingsPanel.tsx` | Settings UI including GitHub OAuth connection and the vault-level explicit organization toggle. |
+| `src/components/SettingsPanel.tsx` | Settings UI for telemetry, release channel, sync interval, and the vault-level explicit organization toggle. |
 
 ## Architecture Patterns
 

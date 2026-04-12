@@ -7,7 +7,7 @@ export function useDialogs() {
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [showAIChat, setShowAIChat] = useState(false)
   const [showSettings, setShowSettings] = useState(false)
-  const [showGitHubVault, setShowGitHubVault] = useState(false)
+  const [showCloneVault, setShowCloneVault] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const [showConflictResolver, setShowConflictResolver] = useState(false)
   const [showCreateViewDialog, setShowCreateViewDialog] = useState(false)
@@ -21,8 +21,8 @@ export function useDialogs() {
   const closeCommandPalette = useCallback(() => setShowCommandPalette(false), [])
   const openSettings = useCallback(() => setShowSettings(true), [])
   const closeSettings = useCallback(() => setShowSettings(false), [])
-  const openGitHubVault = useCallback(() => setShowGitHubVault(true), [])
-  const closeGitHubVault = useCallback(() => setShowGitHubVault(false), [])
+  const openCloneVault = useCallback(() => setShowCloneVault(true), [])
+  const closeCloneVault = useCallback(() => setShowCloneVault(false), [])
   const toggleAIChat = useCallback(() => setShowAIChat((c) => !c), [])
   const openSearch = useCallback(() => setShowSearch(true), [])
   const closeSearch = useCallback(() => setShowSearch(false), [])
@@ -41,7 +41,7 @@ export function useDialogs() {
     showCommandPalette, openCommandPalette, closeCommandPalette,
     showAIChat, toggleAIChat,
     showSettings, openSettings, closeSettings,
-    showGitHubVault, openGitHubVault, closeGitHubVault,
+    showCloneVault, openCloneVault, closeCloneVault,
     showSearch, openSearch, closeSearch,
     showConflictResolver, openConflictResolver, closeConflictResolver,
     showCreateViewDialog, openCreateView, closeCreateView, editingView, openEditView,

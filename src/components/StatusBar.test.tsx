@@ -187,12 +187,12 @@ describe('StatusBar', () => {
         vaults={vaults}
         onSwitchVault={vi.fn()}
         onOpenLocalFolder={vi.fn()}
-        onConnectGitHub={vi.fn()}
+        onCloneVault={vi.fn()}
       />
     )
     fireEvent.click(screen.getByTitle('Switch vault'))
     expect(screen.getByText('Open local folder')).toBeInTheDocument()
-    expect(screen.getByText('Connect GitHub repo')).toBeInTheDocument()
+    expect(screen.getByText('Clone Git repo')).toBeInTheDocument()
   })
 
   it('shows Changes badge with count when modifiedCount is > 0', () => {

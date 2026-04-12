@@ -514,13 +514,13 @@ Per-vault settings stored locally and scoped by vault path:
 - User can create a new empty vault, open an existing folder, or clone the public Getting Started vault into a chosen folder
 - Welcome state tracked in localStorage (`tolaria_welcome_dismissed`, with legacy fallback)
 
-### GitHub Integration
+### Remote Git Operations
 
-Device Authorization Flow for GitHub-backed vaults:
-- `GitHubDeviceFlow` component handles OAuth
-- `GitHubVaultModal` for cloning existing repos or creating new ones
-- Token persisted in app settings for future git operations
-- `SettingsPanel` shows connection status with disconnect option
+Tolaria delegates remote auth to the user's system git setup:
+- `CloneVaultModal` captures a remote URL and local destination
+- `clone_repo` shells out to system git for clone operations
+- Existing `git_pull` / `git_push` commands keep surfacing raw git errors
+- No provider-specific token or username is stored in app settings
 
 ## Settings
 
@@ -528,11 +528,12 @@ App-level settings persisted at `~/.config/com.tolaria.app/settings.json` (reads
 
 ```typescript
 interface Settings {
-  openai_key: string | null
-  google_key: string | null
-  github_token: string | null
-  github_username: string | null
   auto_pull_interval_minutes: number | null
+  telemetry_consent: boolean | null
+  crash_reporting_enabled: boolean | null
+  analytics_enabled: boolean | null
+  anonymous_id: string | null
+  release_channel: string | null
 }
 ```
 

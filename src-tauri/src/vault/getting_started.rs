@@ -115,7 +115,7 @@ fn create_getting_started_vault_from_repo(
         return Err("Target path is required".to_string());
     }
 
-    crate::github::clone_public_repo(repo_url, target_path)?;
+    crate::git::clone_repo(repo_url, target_path)?;
     canonical_vault_path(target_path)
 }
 

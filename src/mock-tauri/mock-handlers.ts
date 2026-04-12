@@ -3,7 +3,7 @@
  * Each handler simulates a Tauri backend command.
  */
 
-import type { VaultEntry, ModifiedFile, Settings, DeviceFlowStart, DeviceFlowPollResult, GitHubUser, GitPullResult, GitPushResult, GitRemoteStatus, LastCommitInfo, PulseCommit } from '../types'
+import type { VaultEntry, ModifiedFile, Settings, GitPullResult, GitPushResult, GitRemoteStatus, LastCommitInfo, PulseCommit } from '../types'
 import { MOCK_CONTENT } from './mock-content'
 import { MOCK_ENTRIES } from './mock-entries'
 
@@ -91,8 +91,6 @@ let mockHasChanges = true
 const mockSavedSinceCommit = new Set<string>()
 
 let mockSettings: Settings = {
-  github_token: null,
-  github_username: null,
   auto_pull_interval_minutes: 5,
   telemetry_consent: false,
   crash_reporting_enabled: null,
@@ -107,8 +105,6 @@ let mockVaultList: { vaults: Array<{ label: string; path: string }>; active_vaul
   vaults: [],
   active_vault: null,
 }
-
-let mockDeviceFlowPollCount = 0
 
 function escapeRegex({ text }: { text: string }) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -227,8 +223,6 @@ function handleRenameNoteFilename(args: {
   return { new_path: newPath, updated_files: updatedFiles }
 }
 
-const trimOrNull = (v: string | null | undefined): string | null => v?.trim() || null
-
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock handler map accepts heterogeneous arg types
 export const mockHandlers: Record<string, (args: any) => any> = {
   list_vault: () => MOCK_ENTRIES,
@@ -298,8 +292,6 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   save_settings: (args: { settings: Settings }) => {
     const s = args.settings
     mockSettings = {
-      github_token: trimOrNull(s.github_token),
-      github_username: trimOrNull(s.github_username),
       auto_pull_interval_minutes: s.auto_pull_interval_minutes ?? 5,
       telemetry_consent: s.telemetry_consent,
       crash_reporting_enabled: s.crash_reporting_enabled,
@@ -313,19 +305,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   save_vault_list: (args: { list: typeof mockVaultList }) => { mockVaultList = { ...args.list }; return null },
   rename_note: handleRenameNote,
   rename_note_filename: handleRenameNoteFilename,
-  github_list_repos: () => [
-    { name: 'laputa-vault', full_name: 'lucaong/laputa-vault', description: 'Personal knowledge vault — markdown + YAML frontmatter', private: true, clone_url: 'https://github.com/lucaong/laputa-vault.git', html_url: 'https://github.com/lucaong/laputa-vault', updated_at: '2026-02-20T10:30:00Z' },
-    { name: 'tolaria', full_name: 'lucaong/tolaria', description: 'Tolaria desktop app — Tauri + React + CodeMirror 6', private: false, clone_url: 'https://github.com/lucaong/tolaria.git', html_url: 'https://github.com/lucaong/tolaria', updated_at: '2026-02-19T15:00:00Z' },
-    { name: 'dotfiles', full_name: 'lucaong/dotfiles', description: 'My macOS dotfiles and config', private: false, clone_url: 'https://github.com/lucaong/dotfiles.git', html_url: 'https://github.com/lucaong/dotfiles', updated_at: '2026-01-15T08:00:00Z' },
-    { name: 'notes-archive', full_name: 'lucaong/notes-archive', description: 'Archived notes from 2024', private: true, clone_url: 'https://github.com/lucaong/notes-archive.git', html_url: 'https://github.com/lucaong/notes-archive', updated_at: '2025-12-01T12:00:00Z' },
-    { name: 'obsidian-vault', full_name: 'lucaong/obsidian-vault', description: null, private: true, clone_url: 'https://github.com/lucaong/obsidian-vault.git', html_url: 'https://github.com/lucaong/obsidian-vault', updated_at: '2025-11-05T09:00:00Z' },
-  ],
-  github_create_repo: (args: { name: string; private: boolean }) => ({
-    name: args.name, full_name: `lucaong/${args.name}`, description: 'Tolaria vault', private: args.private,
-    clone_url: `https://github.com/lucaong/${args.name}.git`, html_url: `https://github.com/lucaong/${args.name}`,
-    updated_at: new Date().toISOString(),
-  }),
-  clone_repo: (args: { url: string; local_path: string }) => `Cloned to ${args.local_path}`,
+  clone_repo: (args: { url: string; localPath?: string; local_path?: string }) => `Cloned to ${args.localPath ?? args.local_path ?? ''}`,
   purge_trash: () => [],
   delete_note: (args: { path: string }) => args.path,
   batch_delete_notes: (args: { paths: string[] }) => args.paths,
@@ -333,18 +313,6 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   migrate_is_a_to_type: () => 0,
   batch_archive_notes: (args: { paths: string[] }) => args.paths.length,
   batch_trash_notes: (args: { paths: string[] }) => args.paths.length,
-  github_device_flow_start: (): DeviceFlowStart => {
-    mockDeviceFlowPollCount = 0
-    return { device_code: 'mock_device_code_abc123', user_code: 'ABCD-1234', verification_uri: 'https://github.com/login/device', expires_in: 900, interval: 5 }
-  },
-  github_device_flow_poll: (): DeviceFlowPollResult => {
-    mockDeviceFlowPollCount++
-    if (mockDeviceFlowPollCount <= 1) {
-      return { status: 'pending', access_token: null, error: 'authorization_pending' }
-    }
-    return { status: 'complete', access_token: 'gho_mock_oauth_token_xyz', error: null }
-  },
-  github_get_user: (): GitHubUser => ({ login: 'lucaong', name: 'Luca Ongaro', avatar_url: 'https://avatars.githubusercontent.com/u/123456?v=4' }),
   search_vault: (args: { query: string; mode: string }) => {
     const q = (args.query ?? '').toLowerCase()
     if (!q) return { results: [], elapsed_ms: 0, query: q, mode: args.mode }

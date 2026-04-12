@@ -2,7 +2,6 @@ pub mod claude_cli;
 mod commands;
 pub mod frontmatter;
 pub mod git;
-pub mod github;
 pub mod mcp;
 #[cfg(desktop)]
 pub mod menu;
@@ -193,12 +192,7 @@ fn with_invoke_handler(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
         commands::save_settings,
         commands::load_vault_list,
         commands::save_vault_list,
-        commands::github_list_repos,
-        commands::github_create_repo,
         commands::clone_repo,
-        commands::github_device_flow_start,
-        commands::github_device_flow_poll,
-        commands::github_get_user,
         commands::search_vault,
         commands::create_empty_vault,
         commands::create_getting_started_vault,

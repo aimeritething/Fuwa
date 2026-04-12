@@ -260,9 +260,9 @@ export function WelcomeScreen({
             icon={<Rocket size={18} style={{ color: 'var(--accent-purple)' }} />}
             iconBg="var(--accent-purple-light, #F3E8FF)"
             label="Get started with a template"
-            description={`Download the starter vault from GitHub \u2014 suggested path: ${defaultVaultPath}`}
+            description={`Download the starter vault template \u2014 suggested path: ${defaultVaultPath}`}
             loadingLabel="Downloading template…"
-            loadingDescription="Cloning the Getting Started vault from GitHub"
+            loadingDescription="Cloning the Getting Started vault template"
             onClick={onCreateVault}
             disabled={busy}
             loading={creatingAction === 'template'}
@@ -272,7 +272,7 @@ export function WelcomeScreen({
 
         {creatingAction === 'template' && (
           <p style={STATUS_STYLE} data-testid="welcome-status" role="status" aria-live="polite">
-            Downloading the Getting Started vault from GitHub…
+            Downloading the Getting Started vault template…
           </p>
         )}
 

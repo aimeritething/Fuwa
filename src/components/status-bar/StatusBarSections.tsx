@@ -24,8 +24,7 @@ interface StatusBarPrimarySectionProps {
   vaults: VaultOption[]
   onSwitchVault: (path: string) => void
   onOpenLocalFolder?: () => void
-  onConnectGitHub?: () => void
-  hasGitHub?: boolean
+  onCloneVault?: () => void
   onClickPending?: () => void
   onClickPulse?: () => void
   onCommitPush?: () => void
@@ -61,8 +60,7 @@ export function StatusBarPrimarySection({
   vaults,
   onSwitchVault,
   onOpenLocalFolder,
-  onConnectGitHub,
-  hasGitHub,
+  onCloneVault,
   onClickPending,
   onClickPulse,
   onCommitPush,
@@ -90,8 +88,7 @@ export function StatusBarPrimarySection({
         vaultPath={vaultPath}
         onSwitchVault={onSwitchVault}
         onOpenLocalFolder={onOpenLocalFolder}
-        onConnectGitHub={onConnectGitHub}
-        hasGitHub={hasGitHub}
+        onCloneVault={onCloneVault}
         onRemoveVault={onRemoveVault}
       />
       <span style={SEP_STYLE}>|</span>

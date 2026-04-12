@@ -18,12 +18,11 @@ interface StatusBarProps {
   onSwitchVault: (path: string) => void
   onOpenSettings?: () => void
   onOpenLocalFolder?: () => void
-  onConnectGitHub?: () => void
+  onCloneVault?: () => void
   onClickPending?: () => void
   onClickPulse?: () => void
   onCommitPush?: () => void
   isGitVault?: boolean
-  hasGitHub?: boolean
   syncStatus?: SyncStatus
   lastSyncTime?: number | null
   conflictCount?: number
@@ -52,12 +51,11 @@ export function StatusBar({
   onSwitchVault,
   onOpenSettings,
   onOpenLocalFolder,
-  onConnectGitHub,
+  onCloneVault,
   onClickPending,
   onClickPulse,
   onCommitPush,
   isGitVault = false,
-  hasGitHub,
   syncStatus = 'idle',
   lastSyncTime = null,
   conflictCount = 0,
@@ -107,8 +105,7 @@ export function StatusBar({
         vaults={vaults}
         onSwitchVault={onSwitchVault}
         onOpenLocalFolder={onOpenLocalFolder}
-        onConnectGitHub={onConnectGitHub}
-        hasGitHub={hasGitHub}
+        onCloneVault={onCloneVault}
         onClickPending={onClickPending}
         onClickPulse={onClickPulse}
         onCommitPush={onCommitPush}

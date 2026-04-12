@@ -1,6 +1,5 @@
 mod ai;
 mod git;
-mod github;
 mod system;
 mod vault;
 
@@ -8,7 +7,6 @@ use std::borrow::Cow;
 
 pub use ai::*;
 pub use git::*;
-pub use github::*;
 pub use system::*;
 pub use vault::*;
 
@@ -16,16 +14,17 @@ pub use vault::*;
 /// Returns the original string unchanged if it doesn't start with `~` or if the
 /// home directory cannot be determined.
 pub fn expand_tilde(path: &str) -> Cow<'_, str> {
-    if path == "~" {
-        if let Some(home) = dirs::home_dir() {
-            return Cow::Owned(home.to_string_lossy().into_owned());
-        }
-    } else if let Some(rest) = path.strip_prefix("~/") {
-        if let Some(home) = dirs::home_dir() {
-            return Cow::Owned(format!("{}/{}", home.to_string_lossy(), rest));
-        }
+    let Some(home) = dirs::home_dir() else {
+        return Cow::Borrowed(path);
+    };
+
+    match path {
+        "~" => Cow::Owned(home.to_string_lossy().into_owned()),
+        _ => path
+            .strip_prefix("~/")
+            .map(|rest| Cow::Owned(home.join(rest).to_string_lossy().into_owned()))
+            .unwrap_or(Cow::Borrowed(path)),
     }
-    Cow::Borrowed(path)
 }
 
 pub fn parse_build_label(version: &str) -> String {

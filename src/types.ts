@@ -74,8 +74,6 @@ export interface ModifiedFile {
 }
 
 export interface Settings {
-  github_token: string | null
-  github_username: string | null
   auto_pull_interval_minutes: number | null
   telemetry_consent: boolean | null
   crash_reporting_enabled: boolean | null
@@ -103,36 +101,6 @@ export interface GitRemoteStatus {
   ahead: number
   behind: number
   hasRemote: boolean
-}
-
-export interface DeviceFlowStart {
-  device_code: string
-  user_code: string
-  verification_uri: string
-  expires_in: number
-  interval: number
-}
-
-export interface DeviceFlowPollResult {
-  status: 'pending' | 'complete' | 'expired' | 'error'
-  access_token: string | null
-  error: string | null
-}
-
-export interface GitHubUser {
-  login: string
-  name: string | null
-  avatar_url: string
-}
-
-export interface GithubRepo {
-  name: string
-  full_name: string
-  description: string | null
-  private: boolean
-  clone_url: string
-  html_url: string
-  updated_at: string | null
 }
 
 export interface SearchResult {

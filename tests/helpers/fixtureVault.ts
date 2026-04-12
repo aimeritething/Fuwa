@@ -261,126 +261,130 @@ export async function openFixtureVaultDesktopHarness(
       return response.json()
     }
 
+    const activeVaultList = {
+      vaults: [{ label: 'Test Vault', path: resolvedVaultPath }],
+      active_vault: resolvedVaultPath,
+      hidden_defaults: [],
+    }
+
+    const readVaultList = (commandArgs?: Record<string, unknown>, reload = false) => {
+      const resolvedPath = String(commandArgs?.path ?? resolvedVaultPath)
+      return readJson(
+        `/api/vault/list?path=${encodeURIComponent(resolvedPath)}&reload=${reload ? '1' : '0'}`,
+      )
+    }
+
+    const renameNoteRequest = (payload: Record<string, unknown>) =>
+      readJson('/api/vault/rename', {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify(payload),
+      })
+
+    const commandHandlers: Record<string, (commandArgs?: Record<string, unknown>) => Promise<unknown> | unknown> = {
+      trigger_menu_command: (commandArgs) => {
+        const commandId = String(commandArgs?.id ?? '')
+        const bridge = window.__laputaTest?.dispatchBrowserMenuCommand
+        if (!bridge) throw new Error('Tolaria test bridge is missing dispatchBrowserMenuCommand')
+        bridge(commandId)
+        return null
+      },
+      load_vault_list: () => activeVaultList,
+      check_vault_exists: () => true,
+      is_git_repo: () => true,
+      get_last_vault_path: () => resolvedVaultPath,
+      get_default_vault_path: () => resolvedVaultPath,
+      save_vault_list: () => null,
+      save_settings: () => null,
+      register_mcp_tools: () => null,
+      reinit_telemetry: () => null,
+      update_menu_state: () => null,
+      get_settings: () => ({
+        auto_pull_interval_minutes: 5,
+        telemetry_consent: false,
+        crash_reporting_enabled: null,
+        analytics_enabled: null,
+        anonymous_id: null,
+        release_channel: null,
+      }),
+      list_vault: (commandArgs) => readVaultList(commandArgs),
+      reload_vault: (commandArgs) => readVaultList(commandArgs, true),
+      list_vault_folders: () => [],
+      list_views: () => [],
+      get_modified_files: () => [],
+      detect_renames: () => [],
+      reload_vault_entry: (commandArgs) =>
+        readJson(`/api/vault/entry?path=${encodeURIComponent(String(commandArgs?.path ?? ''))}`),
+      get_note_content: async (commandArgs) => {
+        const data = await readJson(
+          `/api/vault/content?path=${encodeURIComponent(String(commandArgs?.path ?? ''))}`,
+        ) as { content: string }
+        return data.content
+      },
+      get_all_content: (commandArgs) =>
+        readJson(
+          `/api/vault/all-content?path=${encodeURIComponent(String(commandArgs?.path ?? resolvedVaultPath))}`,
+        ),
+      save_note_content: (commandArgs) =>
+        readJson('/api/vault/save', {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({ path: commandArgs?.path, content: commandArgs?.content }),
+        }),
+      update_frontmatter: (commandArgs) =>
+        persistFrontmatterChange(
+          String(commandArgs?.path ?? ''),
+          (content) => replaceFrontmatterEntry(content, String(commandArgs?.key ?? ''), commandArgs?.value),
+        ),
+      delete_frontmatter_property: (commandArgs) =>
+        persistFrontmatterChange(
+          String(commandArgs?.path ?? ''),
+          (content) => removeFrontmatterEntry(content, String(commandArgs?.key ?? '')),
+        ),
+      rename_note: (commandArgs) =>
+        renameNoteRequest({
+          vault_path: commandArgs?.vaultPath ?? resolvedVaultPath,
+          old_path: commandArgs?.oldPath,
+          new_title: commandArgs?.newTitle,
+          old_title: commandArgs?.oldTitle ?? null,
+        }),
+      rename_note_filename: (commandArgs) =>
+        readJson('/api/vault/rename-filename', {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({
+            vault_path: commandArgs?.vaultPath ?? resolvedVaultPath,
+            old_path: commandArgs?.oldPath,
+            new_filename_stem: commandArgs?.newFilenameStem,
+          }),
+        }),
+      search_vault: (commandArgs) => {
+        const resolvedPath = String(commandArgs?.path ?? commandArgs?.vaultPath ?? resolvedVaultPath)
+        const query = encodeURIComponent(String(commandArgs?.query ?? ''))
+        const mode = encodeURIComponent(String(commandArgs?.mode ?? 'all'))
+        return readJson(
+          `/api/vault/search?vault_path=${encodeURIComponent(resolvedPath)}&query=${query}&mode=${mode}`,
+        )
+      },
+      auto_rename_untitled: async (commandArgs) => {
+        const notePath = String(commandArgs?.notePath ?? '')
+        const contentData = await readJson(
+          `/api/vault/content?path=${encodeURIComponent(notePath)}`,
+        ) as { content: string }
+        const match = contentData.content.match(/^#\s+(.+)$/m)
+        if (!match) return null
+        return renameNoteRequest({
+          vault_path: commandArgs?.vaultPath ?? resolvedVaultPath,
+          old_path: notePath,
+          new_title: match[1].trim(),
+        })
+      },
+    }
+
     const invoke = async (command: string, args?: Record<string, unknown>) => {
-      switch (command) {
-        case 'trigger_menu_command': {
-          const commandId = String(args?.id ?? '')
-          const bridge = window.__laputaTest?.dispatchBrowserMenuCommand
-          if (!bridge) throw new Error('Tolaria test bridge is missing dispatchBrowserMenuCommand')
-          bridge(commandId)
-          return null
-        }
-        case 'load_vault_list':
-          return {
-            vaults: [{ label: 'Test Vault', path: resolvedVaultPath }],
-            active_vault: resolvedVaultPath,
-            hidden_defaults: [],
-          }
-        case 'check_vault_exists':
-        case 'is_git_repo':
-          return true
-        case 'get_last_vault_path':
-        case 'get_default_vault_path':
-          return resolvedVaultPath
-        case 'save_vault_list':
-        case 'save_settings':
-        case 'register_mcp_tools':
-        case 'reinit_telemetry':
-        case 'update_menu_state':
-          return null
-        case 'get_settings':
-          return {
-            github_token: null,
-            github_username: null,
-            auto_pull_interval_minutes: 5,
-            telemetry_consent: false,
-            crash_reporting_enabled: null,
-            analytics_enabled: null,
-            anonymous_id: null,
-            release_channel: null,
-          }
-        case 'list_vault':
-        case 'reload_vault': {
-          const path = String(args?.path ?? resolvedVaultPath)
-          return readJson(`/api/vault/list?path=${encodeURIComponent(path)}&reload=${command === 'reload_vault' ? '1' : '0'}`)
-        }
-        case 'list_vault_folders':
-        case 'list_views':
-        case 'get_modified_files':
-        case 'detect_renames':
-          return []
-        case 'reload_vault_entry':
-          return readJson(`/api/vault/entry?path=${encodeURIComponent(String(args?.path ?? ''))}`)
-        case 'get_note_content': {
-          const data = await readJson(`/api/vault/content?path=${encodeURIComponent(String(args?.path ?? ''))}`) as { content: string }
-          return data.content
-        }
-        case 'get_all_content':
-          return readJson(`/api/vault/all-content?path=${encodeURIComponent(String(args?.path ?? resolvedVaultPath))}`)
-        case 'save_note_content':
-          return readJson('/api/vault/save', {
-            method: 'POST',
-            headers: jsonHeaders,
-            body: JSON.stringify({ path: args?.path, content: args?.content }),
-          })
-        case 'update_frontmatter':
-          return persistFrontmatterChange(
-            String(args?.path ?? ''),
-            (content) => replaceFrontmatterEntry(content, String(args?.key ?? ''), args?.value),
-          )
-        case 'delete_frontmatter_property':
-          return persistFrontmatterChange(
-            String(args?.path ?? ''),
-            (content) => removeFrontmatterEntry(content, String(args?.key ?? '')),
-          )
-        case 'rename_note':
-          return readJson('/api/vault/rename', {
-            method: 'POST',
-            headers: jsonHeaders,
-            body: JSON.stringify({
-              vault_path: args?.vaultPath ?? resolvedVaultPath,
-              old_path: args?.oldPath,
-              new_title: args?.newTitle,
-              old_title: args?.oldTitle ?? null,
-            }),
-          })
-        case 'rename_note_filename':
-          return readJson('/api/vault/rename-filename', {
-            method: 'POST',
-            headers: jsonHeaders,
-            body: JSON.stringify({
-              vault_path: args?.vaultPath ?? resolvedVaultPath,
-              old_path: args?.oldPath,
-              new_filename_stem: args?.newFilenameStem,
-            }),
-          })
-        case 'search_vault': {
-          const path = String(args?.path ?? args?.vaultPath ?? resolvedVaultPath)
-          const query = encodeURIComponent(String(args?.query ?? ''))
-          const mode = encodeURIComponent(String(args?.mode ?? 'all'))
-          return readJson(`/api/vault/search?vault_path=${encodeURIComponent(path)}&query=${query}&mode=${mode}`)
-        }
-        case 'auto_rename_untitled': {
-          const notePath = String(args?.notePath ?? '')
-          const contentData = await readJson(`/api/vault/content?path=${encodeURIComponent(notePath)}`) as { content: string }
-          const match = contentData.content.match(/^#\s+(.+)$/m)
-          if (!match) return null
-          return readJson('/api/vault/rename', {
-            method: 'POST',
-            headers: jsonHeaders,
-            body: JSON.stringify({
-              vault_path: args?.vaultPath ?? resolvedVaultPath,
-              old_path: notePath,
-              new_title: match[1].trim(),
-            }),
-          })
-        }
-        default: {
-          const handler = window.__mockHandlers?.[command]
-          if (!handler) throw new Error(`Unhandled invoke: ${command}`)
-          return handler(args)
-        }
-      }
+      const handler = commandHandlers[command] ?? window.__mockHandlers?.[command]
+      if (!handler) throw new Error(`Unhandled invoke: ${command}`)
+      return handler(args)
     }
 
     Object.defineProperty(window, '__TAURI__', {

@@ -4,8 +4,6 @@ import type { Settings } from '../types'
 import { useSettings } from './useSettings'
 
 const defaultSettings: Settings = {
-  github_token: null,
-  github_username: null,
   auto_pull_interval_minutes: null,
   telemetry_consent: null,
   crash_reporting_enabled: null,
@@ -15,9 +13,7 @@ const defaultSettings: Settings = {
 }
 
 const savedSettings: Settings = {
-  github_token: 'gho_saved_token',
-  github_username: null,
-  auto_pull_interval_minutes: null,
+  auto_pull_interval_minutes: 15,
   telemetry_consent: null,
   crash_reporting_enabled: null,
   analytics_enabled: null,
@@ -65,7 +61,7 @@ describe('useSettings', () => {
       expect(result.current.loaded).toBe(true)
     })
 
-    expect(result.current.settings.github_token).toBe('gho_saved_token')
+    expect(result.current.settings.auto_pull_interval_minutes).toBe(15)
     expect(mockInvokeFn).toHaveBeenCalledWith('get_settings', {})
   })
 
@@ -77,8 +73,6 @@ describe('useSettings', () => {
     })
 
     const newSettings: Settings = {
-      github_token: null,
-      github_username: null,
       auto_pull_interval_minutes: null,
       telemetry_consent: null,
       crash_reporting_enabled: null,
