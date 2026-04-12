@@ -3,6 +3,7 @@ import { SlidersHorizontal, DotsSixVertical } from '@phosphor-icons/react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { cn } from '@/lib/utils'
 import {
   OPEN_NOTE_LIST_PROPERTIES_EVENT,
   type NoteListPropertiesScope,
@@ -18,19 +19,53 @@ import {
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 
+type NoteListPropertyKey = string
+
 export interface ListPropertiesPopoverProps {
   scope: NoteListPropertiesScope
-  availableProperties: string[]
-  currentDisplay: string[]
-  onSave: (value: string[] | null) => void
+  availableProperties: NoteListPropertyKey[]
+  currentDisplay: NoteListPropertyKey[]
+  onSave: (value: NoteListPropertyKey[] | null) => void
   triggerTitle: string
+  triggerClassName?: string
 }
 
-function propertyInputId(id: string): string {
+function propertyInputId(id: NoteListPropertyKey): string {
   return `list-prop-${id.replace(/[^a-z0-9_-]+/gi, '-')}`
 }
 
-function SortablePropertyItem({ id, checked, onToggle }: { id: string; checked: boolean; onToggle: (key: string) => void }) {
+function getSelectedProperties(currentDisplay: NoteListPropertyKey[], availableProperties: NoteListPropertyKey[]) {
+  return currentDisplay.filter((property) => availableProperties.includes(property))
+}
+
+function getOrderedItems(currentDisplay: NoteListPropertyKey[], availableProperties: NoteListPropertyKey[]) {
+  const selected = getSelectedProperties(currentDisplay, availableProperties)
+  const unselected = availableProperties.filter((property) => !selected.includes(property))
+  return [...selected, ...unselected]
+}
+
+function toggleDisplayProperty(currentDisplay: NoteListPropertyKey[], selectedSet: Set<NoteListPropertyKey>, key: NoteListPropertyKey) {
+  if (selectedSet.has(key)) {
+    const filtered = currentDisplay.filter((property) => property !== key)
+    return filtered.length > 0 ? filtered : null
+  }
+
+  return [...currentDisplay, key]
+}
+
+function reorderDisplayProperties(event: DragEndEvent, currentDisplay: NoteListPropertyKey[], availableProperties: NoteListPropertyKey[]) {
+  const { active, over } = event
+  if (!over || active.id === over.id) return undefined
+
+  const selected = getSelectedProperties(currentDisplay, availableProperties)
+  const oldIndex = selected.indexOf(String(active.id) as NoteListPropertyKey)
+  const newIndex = selected.indexOf(String(over.id) as NoteListPropertyKey)
+  if (oldIndex === -1 || newIndex === -1) return undefined
+
+  return arrayMove(selected, oldIndex, newIndex)
+}
+
+function SortablePropertyItem({ id, checked, onToggle }: { id: NoteListPropertyKey; checked: boolean; onToggle: (key: NoteListPropertyKey) => void }) {
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id })
   const style = { transform: CSS.Transform.toString(transform), transition }
   const inputId = propertyInputId(id)
@@ -80,14 +115,14 @@ export function ListPropertiesPopover({
   currentDisplay,
   onSave,
   triggerTitle,
+  triggerClassName,
 }: ListPropertiesPopoverProps) {
   const [open, setOpen] = useState(false)
 
-  const orderedItems = useMemo(() => {
-    const selected = currentDisplay.filter((property) => availableProperties.includes(property))
-    const unselected = availableProperties.filter((property) => !selected.includes(property))
-    return [...selected, ...unselected]
-  }, [availableProperties, currentDisplay])
+  const orderedItems = useMemo(
+    () => getOrderedItems(currentDisplay, availableProperties),
+    [availableProperties, currentDisplay],
+  )
 
   const selectedSet = useMemo(() => new Set(currentDisplay), [currentDisplay])
 
@@ -105,23 +140,15 @@ export function ListPropertiesPopover({
   }, [scope])
 
   const handleToggle = useCallback((key: string) => {
-    const nextSelected = selectedSet.has(key)
-      ? currentDisplay.filter((property) => property !== key)
-      : [...currentDisplay, key]
-    onSave(nextSelected.length > 0 ? nextSelected : null)
+    const nextSelected = toggleDisplayProperty(currentDisplay, selectedSet, key)
+    onSave(nextSelected)
   }, [currentDisplay, onSave, selectedSet])
 
   const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const { active, over } = event
-    if (!over || active.id === over.id) return
+    const reordered = reorderDisplayProperties(event, currentDisplay, availableProperties)
+    if (!reordered) return
 
-    const selected = currentDisplay.filter((property) => availableProperties.includes(property))
-    const oldIndex = selected.indexOf(String(active.id))
-    const newIndex = selected.indexOf(String(over.id))
-    if (oldIndex === -1 || newIndex === -1) return
-
-    const reordered = arrayMove(selected, oldIndex, newIndex)
-    onSave(reordered.length > 0 ? reordered : null)
+    onSave(reordered)
   }, [availableProperties, currentDisplay, onSave])
 
   if (availableProperties.length === 0) return null
@@ -133,7 +160,7 @@ export function ListPropertiesPopover({
           type="button"
           variant="ghost"
           size="icon-xs"
-          className="text-muted-foreground hover:text-foreground"
+          className={cn('h-7 w-7 text-muted-foreground', triggerClassName)}
           title={triggerTitle}
           aria-label={triggerTitle}
           data-testid="list-properties-btn"

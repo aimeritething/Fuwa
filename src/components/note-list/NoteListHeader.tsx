@@ -1,10 +1,13 @@
 import { MagnifyingGlass, Plus } from '@phosphor-icons/react'
 import type { VaultEntry } from '../../types'
 import type { SortOption, SortDirection } from '../../utils/noteListHelpers'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useDragRegion } from '../../hooks/useDragRegion'
 import { SortDropdown } from '../SortDropdown'
 import { ListPropertiesPopover, type ListPropertiesPopoverProps } from './ListPropertiesPopover'
+
+const NOTE_LIST_ACTION_BUTTON_CLASSNAME = 'h-7 w-7 text-muted-foreground'
 
 export function NoteListHeader({ title, typeDocument, isEntityView, listSort, listDirection, customProperties, sidebarCollapsed, searchVisible, search, propertyPicker, onSortChange, onCreateNote, onOpenType, onToggleSearch, onSearchChange }: {
   title: string
@@ -37,13 +40,13 @@ export function NoteListHeader({ title, typeDocument, isEntityView, listSort, li
         </h3>
         <div className="flex items-center gap-3" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           {!isEntityView && <SortDropdown groupLabel="__list__" current={listSort} direction={listDirection} customProperties={customProperties} onChange={onSortChange} />}
-          <button className="flex items-center text-muted-foreground transition-colors hover:text-foreground" onClick={onToggleSearch} title="Search notes">
+          <Button type="button" variant="ghost" size="icon-xs" className={NOTE_LIST_ACTION_BUTTON_CLASSNAME} onClick={onToggleSearch} title="Search notes" aria-label="Search notes">
             <MagnifyingGlass size={16} />
-          </button>
-          {propertyPicker && <ListPropertiesPopover {...propertyPicker} />}
-          <button className="flex items-center text-muted-foreground transition-colors hover:text-foreground" onClick={() => onCreateNote()} title="Create new note">
+          </Button>
+          {propertyPicker && <ListPropertiesPopover {...propertyPicker} triggerClassName={NOTE_LIST_ACTION_BUTTON_CLASSNAME} />}
+          <Button type="button" variant="ghost" size="icon-xs" className={NOTE_LIST_ACTION_BUTTON_CLASSNAME} onClick={onCreateNote} title="Create new note" aria-label="Create new note">
             <Plus size={16} />
-          </button>
+          </Button>
         </div>
       </div>
       {searchVisible && (
