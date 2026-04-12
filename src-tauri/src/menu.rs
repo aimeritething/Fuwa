@@ -9,7 +9,6 @@ const APP_CHECK_FOR_UPDATES: &str = "app-check-for-updates";
 
 const FILE_NEW_NOTE: &str = "file-new-note";
 const FILE_NEW_TYPE: &str = "file-new-type";
-const FILE_DAILY_NOTE: &str = "file-daily-note";
 const FILE_QUICK_OPEN: &str = "file-quick-open";
 const FILE_SAVE: &str = "file-save";
 
@@ -57,7 +56,6 @@ const CUSTOM_IDS: &[&str] = &[
     APP_CHECK_FOR_UPDATES,
     FILE_NEW_NOTE,
     FILE_NEW_TYPE,
-    FILE_DAILY_NOTE,
     FILE_QUICK_OPEN,
     FILE_SAVE,
     EDIT_FIND_IN_VAULT,
@@ -153,10 +151,6 @@ fn build_file_menu(app: &App) -> MenuResult {
     let new_type = MenuItemBuilder::new("New Type")
         .id(FILE_NEW_TYPE)
         .build(app)?;
-    let daily_note = MenuItemBuilder::new("Open Today's Note")
-        .id(FILE_DAILY_NOTE)
-        .accelerator("CmdOrCtrl+J")
-        .build(app)?;
     let quick_open = MenuItemBuilder::new("Quick Open")
         .id(FILE_QUICK_OPEN)
         .accelerator("CmdOrCtrl+P")
@@ -168,7 +162,6 @@ fn build_file_menu(app: &App) -> MenuResult {
     Ok(SubmenuBuilder::new(app, "File")
         .item(&new_note)
         .item(&new_type)
-        .item(&daily_note)
         .item(&quick_open)
         .separator()
         .item(&save)

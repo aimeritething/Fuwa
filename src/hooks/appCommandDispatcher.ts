@@ -28,7 +28,6 @@ export interface AppCommandHandlers {
   onSetViewMode: (mode: ViewMode) => void
   onCreateNote: () => void
   onCreateType?: () => void
-  onOpenDailyNote: () => void
   onQuickOpen: () => void
   onSave: () => void
   onOpenSettings: () => void
@@ -70,7 +69,6 @@ type SimpleHandlerKey = keyof Pick<
   | 'onCheckForUpdates'
   | 'onCreateNote'
   | 'onCreateType'
-  | 'onOpenDailyNote'
   | 'onQuickOpen'
   | 'onSave'
   | 'onSearch'
@@ -108,7 +106,6 @@ const SIMPLE_HANDLER_EXECUTORS: Record<SimpleHandlerKey, (handlers: AppCommandHa
   onCheckForUpdates: (handlers) => handlers.onCheckForUpdates?.(),
   onCreateNote: (handlers) => handlers.onCreateNote(),
   onCreateType: (handlers) => handlers.onCreateType?.(),
-  onOpenDailyNote: (handlers) => handlers.onOpenDailyNote(),
   onQuickOpen: (handlers) => handlers.onQuickOpen(),
   onSave: (handlers) => handlers.onSave(),
   onSearch: (handlers) => handlers.onSearch(),

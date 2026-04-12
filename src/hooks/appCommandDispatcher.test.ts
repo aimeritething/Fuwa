@@ -20,7 +20,6 @@ function makeHandlers(): AppCommandHandlers {
     onSetViewMode: vi.fn(),
     onCreateNote: vi.fn(),
     onCreateType: vi.fn(),
-    onOpenDailyNote: vi.fn(),
     onQuickOpen: vi.fn(),
     onSave: vi.fn(),
     onOpenSettings: vi.fn(),
@@ -65,6 +64,10 @@ describe('appCommandDispatcher', () => {
   it('recognizes valid command ids', () => {
     expect(isAppCommandId(APP_COMMAND_IDS.fileNewNote)).toBe(true)
     expect(isAppCommandId('not-a-command')).toBe(false)
+  })
+
+  it('no longer recognizes the removed daily-note menu id', () => {
+    expect(isAppCommandId('file-daily-note')).toBe(false)
   })
 
   it('distinguishes native menu ids from keyboard-only ids', () => {

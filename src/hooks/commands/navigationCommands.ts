@@ -5,7 +5,6 @@ interface NavigationCommandsConfig {
   onQuickOpen: () => void
   onSelect: (sel: SidebarSelection) => void
   showInbox?: boolean
-  onOpenDailyNote: () => void
   onGoBack?: () => void
   onGoForward?: () => void
   canGoBack?: boolean

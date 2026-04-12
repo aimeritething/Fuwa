@@ -6,7 +6,6 @@ export const APP_COMMAND_IDS = {
   appCheckForUpdates: 'app-check-for-updates',
   fileNewNote: 'file-new-note',
   fileNewType: 'file-new-type',
-  fileDailyNote: 'file-daily-note',
   fileQuickOpen: 'file-quick-open',
   fileSave: 'file-save',
   editFindInVault: 'edit-find-in-vault',
@@ -77,7 +76,6 @@ type SimpleHandlerKey =
   | 'onCheckForUpdates'
   | 'onCreateNote'
   | 'onCreateType'
-  | 'onOpenDailyNote'
   | 'onQuickOpen'
   | 'onSave'
   | 'onSearch'
@@ -149,11 +147,6 @@ export const APP_COMMAND_DEFINITIONS: Record<AppCommandId, AppCommandDefinition>
   [APP_COMMAND_IDS.fileNewType]: {
     route: { kind: 'handler', handler: 'onCreateType' },
     menuOwned: true,
-  },
-  [APP_COMMAND_IDS.fileDailyNote]: {
-    route: { kind: 'handler', handler: 'onOpenDailyNote' },
-    menuOwned: true,
-    shortcut: { combo: 'command-or-ctrl', key: 'j', code: 'KeyJ', display: '⌘J' },
   },
   [APP_COMMAND_IDS.fileQuickOpen]: {
     route: { kind: 'handler', handler: 'onQuickOpen' },
@@ -336,7 +329,6 @@ const NATIVE_MENU_COMMAND_SET = new Set<string>(
 const MANUAL_NATIVE_ACCELERATOR_QA_COMMAND_SET = new Set<AppCommandId>([
   APP_COMMAND_IDS.appSettings,
   APP_COMMAND_IDS.fileNewNote,
-  APP_COMMAND_IDS.fileDailyNote,
   APP_COMMAND_IDS.fileQuickOpen,
   APP_COMMAND_IDS.fileSave,
   APP_COMMAND_IDS.editFindInVault,

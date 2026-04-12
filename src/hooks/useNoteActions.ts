@@ -46,13 +46,25 @@ interface TitleRenameDeps {
   updateTabContent: (path: string, content: string) => void
 }
 
-function applyFrontmatterCallbacks(config: NoteActionsConfig, path: string, newContent: string | undefined): boolean {
+interface FrontmatterCallbackParams {
+  config: NoteActionsConfig
+  path: string
+  newContent: string | undefined
+}
+
+function applyFrontmatterCallbacks({ config, path, newContent }: FrontmatterCallbackParams): boolean {
   if (!newContent) return false
   config.onFrontmatterContentChanged?.(path, newContent)
   return true
 }
 
-async function renameAfterTitleChange(path: string, newTitle: string, deps: TitleRenameDeps): Promise<void> {
+interface RenameAfterTitleChangeParams {
+  path: string
+  newTitle: string
+  deps: TitleRenameDeps
+}
+
+async function renameAfterTitleChange({ path, newTitle, deps }: RenameAfterTitleChangeParams): Promise<void> {
   const oldTitle = deps.tabsRef.current.find(t => t.entry.path === path)?.entry.title
   const result = await performRename(path, newTitle, deps.vaultPath, oldTitle)
   if (result.new_path !== path) {
@@ -73,21 +85,34 @@ function shouldRenameOnTitleUpdate(key: string, value: FrontmatterValue): value 
   return isTitleKey(key) && typeof value === 'string' && value !== ''
 }
 
-function navigateWikilink(entries: VaultEntry[], target: string, selectNote: (e: VaultEntry) => void): void {
+interface NavigateWikilinkParams {
+  entries: VaultEntry[]
+  target: string
+  selectNote: (entry: VaultEntry) => void
+}
+
+function navigateWikilink({ entries, target, selectNote }: NavigateWikilinkParams): void {
   const found = resolveEntry(entries, target)
   if (found) selectNote(found)
   else console.warn(`Navigation target not found: ${target}`)
 }
 
-async function maybeRenameAfterFrontmatterUpdate(
-  path: string,
-  key: string,
-  value: FrontmatterValue,
-  deps: TitleRenameDeps,
-): Promise<void> {
+interface MaybeRenameAfterFrontmatterUpdateParams {
+  path: string
+  key: string
+  value: FrontmatterValue
+  deps: TitleRenameDeps
+}
+
+async function maybeRenameAfterFrontmatterUpdate({
+  path,
+  key,
+  value,
+  deps,
+}: MaybeRenameAfterFrontmatterUpdateParams): Promise<void> {
   if (!shouldRenameOnTitleUpdate(key, value)) return
   try {
-    await renameAfterTitleChange(path, value, deps)
+    await renameAfterTitleChange({ path, newTitle: value, deps })
   } catch (err) {
     console.error('Failed to rename note after title change:', err)
   }
@@ -102,14 +127,14 @@ export function useNoteActions(config: NoteActionsConfig) {
     setTabs((prev) => prev.map((t) => t.entry.path === path ? { ...t, content: newContent } : t))
   }, [setTabs])
 
-  const creation = useNoteCreation(config, { openTabWithContent, handleSelectNote })
+  const creation = useNoteCreation(config, { openTabWithContent })
   const rename = useNoteRename(
     { entries, setToastMessage },
     { tabs: tabMgmt.tabs, setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
   )
 
   const handleNavigateWikilink = useCallback(
-    (target: string) => navigateWikilink(entries, target, handleSelectNote),
+    (target: string) => navigateWikilink({ entries, target, selectNote: handleSelectNote }),
     [entries, handleSelectNote],
   )
 
@@ -125,26 +150,36 @@ export function useNoteActions(config: NoteActionsConfig) {
     handleCreateNote: creation.handleCreateNote,
     handleCreateNoteImmediate: creation.handleCreateNoteImmediate,
     handleCreateNoteForRelationship: creation.handleCreateNoteForRelationship,
-    handleOpenDailyNote: creation.handleOpenDailyNote,
     handleCreateType: creation.handleCreateType,
     createTypeEntrySilent: creation.createTypeEntrySilent,
     handleUpdateFrontmatter: useCallback(async (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => {
       const newContent = await runFrontmatterOp('update', path, key, value, options)
-      if (!applyFrontmatterCallbacks(config, path, newContent)) return
-      await maybeRenameAfterFrontmatterUpdate(path, key, value, {
-        vaultPath: config.vaultPath, tabsRef: rename.tabsRef, replaceEntry: config.replaceEntry,
-        setTabs, activeTabPathRef, handleSwitchTab, setToastMessage, updateTabContent,
+      if (!applyFrontmatterCallbacks({ config, path, newContent })) return
+      await maybeRenameAfterFrontmatterUpdate({
+        path,
+        key,
+        value,
+        deps: {
+          vaultPath: config.vaultPath,
+          tabsRef: rename.tabsRef,
+          replaceEntry: config.replaceEntry,
+          setTabs,
+          activeTabPathRef,
+          handleSwitchTab,
+          setToastMessage,
+          updateTabContent,
+        },
       })
       config.onFrontmatterPersisted?.()
     }, [runFrontmatterOp, config, rename.tabsRef, setTabs, activeTabPathRef, handleSwitchTab, setToastMessage, updateTabContent]),
     handleDeleteProperty: useCallback(async (path: string, key: string, options?: FrontmatterOpOptions) => {
       const newContent = await runFrontmatterOp('delete', path, key, undefined, options)
-      if (!applyFrontmatterCallbacks(config, path, newContent)) return
+      if (!applyFrontmatterCallbacks({ config, path, newContent })) return
       config.onFrontmatterPersisted?.()
     }, [runFrontmatterOp, config]),
     handleAddProperty: useCallback(async (path: string, key: string, value: FrontmatterValue) => {
       const newContent = await runFrontmatterOp('update', path, key, value)
-      if (!applyFrontmatterCallbacks(config, path, newContent)) return
+      if (!applyFrontmatterCallbacks({ config, path, newContent })) return
       config.onFrontmatterPersisted?.()
     }, [runFrontmatterOp, config]),
     handleRenameNote: rename.handleRenameNote,

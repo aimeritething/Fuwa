@@ -60,7 +60,6 @@ interface CommandRegistryConfig {
   onZoomReset: () => void
   zoomLevel: number
   onSelect: (sel: SidebarSelection) => void
-  onOpenDailyNote: () => void
   showInbox?: boolean
   onGoBack?: () => void
   onGoForward?: () => void
@@ -83,7 +82,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
     activeNoteModified,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
-    onSelect, onOpenDailyNote,
+    onSelect,
     showInbox,
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates, onCreateType,
@@ -110,10 +109,10 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   const vaultTypes = useMemo(() => extractVaultTypes(entries), [entries])
 
   return useMemo(() => [
-    ...buildNavigationCommands({ onQuickOpen, onSelect, onOpenDailyNote, showInbox, onGoBack, onGoForward, canGoBack, canGoForward }),
+    ...buildNavigationCommands({ onQuickOpen, onSelect, showInbox, onGoBack, onGoForward, canGoBack, canGoForward }),
     ...buildNoteCommands({
       hasActiveNote, activeTabPath, isArchived,
-      onCreateNote, onCreateType, onOpenDailyNote, onSave,
+      onCreateNote, onCreateType, onSave,
       onDeleteNote, onArchiveNote, onUnarchiveNote,
       onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
       onToggleOrganized, isOrganized: activeEntry?.organized ?? false,
@@ -139,7 +138,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault,
     onCheckForUpdates,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
-    onSelect, onOpenDailyNote,
+    onSelect,
     showInbox,
     onGoBack, onGoForward, canGoBack, canGoForward,
     vaultTypes,

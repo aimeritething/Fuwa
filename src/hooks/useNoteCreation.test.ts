@@ -13,10 +13,6 @@ import {
   resolveNewType,
   resolveTemplate,
   DEFAULT_TEMPLATES,
-  todayDateString,
-  buildDailyNoteContent,
-  resolveDailyNote,
-  findDailyNote,
   RAPID_CREATE_NOTE_SETTLE_MS,
   useNoteCreation,
 } from './useNoteCreation'
@@ -188,56 +184,16 @@ describe('resolveTemplate', () => {
   })
 })
 
-describe('todayDateString', () => {
-  it('returns date in YYYY-MM-DD format', () => {
-    expect(todayDateString()).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-  })
-})
-
-describe('buildDailyNoteContent', () => {
-  it('generates frontmatter with Journal type and date', () => {
-    const content = buildDailyNoteContent('2026-03-02')
-    expect(content).toContain('type: Journal')
-    expect(content).toContain('date: 2026-03-02')
-    expect(content).toContain('## Intentions')
-  })
-})
-
-describe('resolveDailyNote', () => {
-  it('creates entry with date as filename', () => {
-    const { entry } = resolveDailyNote('2026-03-02', '/vault')
-    expect(entry.path).toBe('/vault/2026-03-02.md')
-    expect(entry.isA).toBe('Journal')
-  })
-})
-
-describe('findDailyNote', () => {
-  it('finds entry by filename and Journal type', () => {
-    const entries = [makeEntry({ filename: '2026-03-02.md', isA: 'Journal' })]
-    expect(findDailyNote(entries, '2026-03-02')).toBeDefined()
-  })
-
-  it('returns undefined when no match', () => {
-    expect(findDailyNote([], '2026-03-02')).toBeUndefined()
-  })
-
-  it('does not match non-Journal notes', () => {
-    const entries = [makeEntry({ filename: '2026-03-02.md', isA: 'Note' })]
-    expect(findDailyNote(entries, '2026-03-02')).toBeUndefined()
-  })
-})
-
 describe('useNoteCreation hook', () => {
   const addEntry = vi.fn()
   const removeEntry = vi.fn()
   const setToastMessage = vi.fn()
   const openTabWithContent = vi.fn()
-  const handleSelectNote = vi.fn()
   const makeConfig = (entries: VaultEntry[] = []): NoteCreationConfig => ({
     addEntry, removeEntry, entries, setToastMessage, vaultPath: '/test/vault',
   })
 
-  const tabDeps = { openTabWithContent, handleSelectNote }
+  const tabDeps = { openTabWithContent }
 
   beforeEach(() => {
     vi.clearAllMocks()
@@ -369,37 +325,6 @@ describe('useNoteCreation hook', () => {
     const event = focusListener.mock.calls[0][0] as CustomEvent
     expect(event.detail.path).toMatch(/\/test\/vault\/untitled-note-\d+\.md$/)
     expect(event.detail.selectTitle).toBe(true)
-
-    window.removeEventListener('laputa:focus-editor', focusListener)
-  })
-
-  it('handleOpenDailyNote creates new daily note when none exists', () => {
-    const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
-    act(() => { result.current.handleOpenDailyNote() })
-    expect(addEntry).toHaveBeenCalledTimes(1)
-    expect(addEntry.mock.calls[0][0].isA).toBe('Journal')
-  })
-
-  it('handleOpenDailyNote opens existing daily note', () => {
-    const today = todayDateString()
-    const existing = makeEntry({ filename: `${today}.md`, isA: 'Journal' })
-    const { result } = renderHook(() => useNoteCreation(makeConfig([existing]), tabDeps))
-    act(() => { result.current.handleOpenDailyNote() })
-    expect(addEntry).not.toHaveBeenCalled()
-    expect(handleSelectNote).toHaveBeenCalledWith(existing)
-  })
-
-  it('handleOpenDailyNote requests focus for the daily note path', () => {
-    const focusListener = vi.fn()
-    window.addEventListener('laputa:focus-editor', focusListener)
-    const today = todayDateString()
-    const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
-
-    act(() => { result.current.handleOpenDailyNote() })
-
-    expect(focusListener).toHaveBeenCalledTimes(1)
-    const event = focusListener.mock.calls[0][0] as CustomEvent
-    expect(event.detail.path).toBe(`/test/vault/${today}.md`)
 
     window.removeEventListener('laputa:focus-editor', focusListener)
   })

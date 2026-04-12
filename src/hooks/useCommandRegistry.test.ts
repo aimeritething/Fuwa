@@ -31,7 +31,6 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     onZoomReset: vi.fn(),
     zoomLevel: 100,
     onSelect: vi.fn(),
-    onOpenDailyNote: vi.fn(),
     onCloseTab: vi.fn(),
     onGoBack: vi.fn(),
     onGoForward: vi.fn(),
@@ -205,6 +204,12 @@ describe('useCommandRegistry', () => {
     const config = makeConfig({ showInbox: false })
     const { result } = renderHook(() => useCommandRegistry(config))
     expect(findCommand(result.current, 'go-inbox')).toBeUndefined()
+  })
+
+  it('omits the removed daily-note command', () => {
+    const config = makeConfig()
+    const { result } = renderHook(() => useCommandRegistry(config))
+    expect(findCommand(result.current, 'open-daily-note')).toBeUndefined()
   })
 
   it('includes Give Feedback in the Settings group when available', () => {

@@ -8,10 +8,6 @@ import {
   buildNoteContent,
   resolveNewNote,
   resolveNewType,
-  todayDateString,
-  buildDailyNoteContent,
-  resolveDailyNote,
-  findDailyNote,
   DEFAULT_TEMPLATES,
   resolveTemplate,
 } from './useNoteCreation'
@@ -317,78 +313,5 @@ describe('resolveNewType', () => {
     const { entry } = resolveNewType({ typeName: 'Responsibility', vaultPath: '/other/vault' })
     expect(entry.path).toBe('/other/vault/responsibility.md')
     expect(entry.path).not.toContain('/Users/luca/Laputa')
-  })
-})
-
-describe('todayDateString', () => {
-  it('returns date in YYYY-MM-DD format', () => {
-    const result = todayDateString()
-    expect(result).toMatch(/^\d{4}-\d{2}-\d{2}$/)
-  })
-})
-
-describe('buildDailyNoteContent', () => {
-  it('generates frontmatter with Journal type and date', () => {
-    const content = buildDailyNoteContent('2026-03-02')
-    expect(content).toContain('type: Journal')
-    expect(content).toContain('date: 2026-03-02')
-    expect(content).toContain('title: 2026-03-02')
-  })
-
-  it('includes Intentions and Reflections sections', () => {
-    const content = buildDailyNoteContent('2026-03-02')
-    expect(content).toContain('## Intentions')
-    expect(content).toContain('## Reflections')
-  })
-
-  it('does not include H1 heading with the date', () => {
-    const content = buildDailyNoteContent('2026-03-02')
-    expect(content).not.toMatch(/^# /m)
-  })
-})
-
-describe('resolveDailyNote', () => {
-  it('creates entry at vault root with date as filename', () => {
-    const { entry } = resolveDailyNote('2026-03-02', '/my/vault')
-    expect(entry.path).toBe('/my/vault/2026-03-02.md')
-    expect(entry.filename).toBe('2026-03-02.md')
-    expect(entry.title).toBe('2026-03-02')
-    expect(entry.isA).toBe('Journal')
-    expect(entry.status).toBeNull()
-  })
-
-  it('returns content with daily note template', () => {
-    const { content } = resolveDailyNote('2026-03-02', '/my/vault')
-    expect(content).toContain('type: Journal')
-    expect(content).toContain('## Intentions')
-  })
-
-  it('uses provided vault path', () => {
-    const { entry } = resolveDailyNote('2026-03-02', '/other/vault')
-    expect(entry.path).toBe('/other/vault/2026-03-02.md')
-  })
-})
-
-describe('findDailyNote', () => {
-  it('finds entry by filename and Journal type', () => {
-    const entries = [
-      makeEntry({ path: '/Users/luca/Laputa/2026-03-02.md', filename: '2026-03-02.md', isA: 'Journal' }),
-      makeEntry({ path: '/Users/luca/Laputa/other.md' }),
-    ]
-    const found = findDailyNote(entries, '2026-03-02')
-    expect(found).toBeDefined()
-    expect(found!.path).toBe('/Users/luca/Laputa/2026-03-02.md')
-  })
-
-  it('returns undefined when no matching entry exists', () => {
-    const entries = [makeEntry({ path: '/Users/luca/Laputa/other.md' })]
-    expect(findDailyNote(entries, '2026-03-02')).toBeUndefined()
-  })
-
-  it('does not match non-Journal notes with date filename', () => {
-    const entries = [
-      makeEntry({ path: '/vault/2026-03-02.md', filename: '2026-03-02.md', isA: 'Note' }),
-    ]
-    expect(findDailyNote(entries, '2026-03-02')).toBeUndefined()
   })
 })

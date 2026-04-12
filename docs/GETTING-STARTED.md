@@ -82,7 +82,7 @@ tolaria/
 │   │   ├── useVaultSwitcher.ts   # Multi-vault management
 │   │   ├── useVaultConfig.ts     # Per-vault UI settings
 │   │   ├── useNoteActions.ts     # Composes creation + rename + frontmatter
-│   │   ├── useNoteCreation.ts   # Note/type/daily-note creation
+│   │   ├── useNoteCreation.ts    # Note/type creation
 │   │   ├── useNoteRename.ts     # Note renaming + wikilink updates
 │   │   ├── useAiAgent.ts         # AI agent state + tool tracking
 │   │   ├── useAiActivity.ts      # MCP UI bridge listener

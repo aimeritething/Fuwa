@@ -7,7 +7,6 @@ interface NoteCommandsConfig {
   activeNoteHasIcon?: boolean
   onCreateNote: () => void
   onCreateType?: () => void
-  onOpenDailyNote: () => void
   onSave: () => void
   onDeleteNote: (path: string) => void
   onArchiveNote: (path: string) => void
@@ -23,10 +22,34 @@ interface NoteCommandsConfig {
   canRestoreDeletedNote?: boolean
 }
 
+interface ActivePathCommandConfig {
+  id: string
+  label: string
+  keywords: string[]
+  enabled: boolean
+  path: string | null
+  shortcut?: string
+  run: (path: string) => void
+}
+
+function createActivePathCommand(config: ActivePathCommandConfig): CommandAction {
+  return {
+    id: config.id,
+    label: config.label,
+    group: 'Note',
+    shortcut: config.shortcut,
+    keywords: config.keywords,
+    enabled: config.enabled,
+    execute: () => {
+      if (config.path) config.run(config.path)
+    },
+  }
+}
+
 export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
   const {
     hasActiveNote, activeTabPath, isArchived,
-    onCreateNote, onCreateType, onOpenDailyNote, onSave,
+    onCreateNote, onCreateType, onSave,
     onDeleteNote, onArchiveNote, onUnarchiveNote,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     onOpenInNewWindow, onToggleFavorite, isFavorite,
@@ -37,36 +60,48 @@ export function buildNoteCommands(config: NoteCommandsConfig): CommandAction[] {
   return [
     { id: 'create-note', label: 'New Note', group: 'Note', shortcut: '⌘N', keywords: ['new', 'create', 'add'], enabled: true, execute: onCreateNote },
     { id: 'create-type', label: 'New Type', group: 'Note', keywords: ['new', 'create', 'type', 'template'], enabled: !!onCreateType, execute: () => onCreateType?.() },
-    { id: 'open-daily-note', label: "Open Today's Note", group: 'Note', shortcut: '⌘J', keywords: ['daily', 'journal', 'today'], enabled: true, execute: onOpenDailyNote },
     { id: 'save-note', label: 'Save Note', group: 'Note', shortcut: '⌘S', keywords: ['write'], enabled: hasActiveNote, execute: onSave },
-    {
-      id: 'delete-note', label: 'Delete Note', group: 'Note', shortcut: '⌘⌫',
-      keywords: ['delete', 'remove'], enabled: hasActiveNote,
-      execute: () => { if (activeTabPath) onDeleteNote(activeTabPath) },
-    },
-    {
-      id: 'archive-note', label: isArchived ? 'Unarchive Note' : 'Archive Note', group: 'Note',
-      keywords: ['archive'], enabled: hasActiveNote,
-      execute: () => { if (activeTabPath) (isArchived ? onUnarchiveNote : onArchiveNote)(activeTabPath) },
-    },
+    createActivePathCommand({
+      id: 'delete-note',
+      label: 'Delete Note',
+      shortcut: '⌘⌫',
+      keywords: ['delete', 'remove'],
+      enabled: hasActiveNote,
+      path: activeTabPath,
+      run: onDeleteNote,
+    }),
+    createActivePathCommand({
+      id: 'archive-note',
+      label: isArchived ? 'Unarchive Note' : 'Archive Note',
+      keywords: ['archive'],
+      enabled: hasActiveNote,
+      path: activeTabPath,
+      run: isArchived ? onUnarchiveNote : onArchiveNote,
+    }),
     {
       id: 'restore-deleted-note', label: 'Restore Deleted Note', group: 'Note',
       keywords: ['restore', 'deleted', 'undelete', 'git', 'checkout'],
       enabled: !!canRestoreDeletedNote && !!onRestoreDeletedNote,
       execute: () => onRestoreDeletedNote?.(),
     },
-    {
-      id: 'toggle-favorite', label: isFavorite ? 'Remove from Favorites' : 'Add to Favorites', group: 'Note', shortcut: '⌘D',
+    createActivePathCommand({
+      id: 'toggle-favorite',
+      label: isFavorite ? 'Remove from Favorites' : 'Add to Favorites',
+      shortcut: '⌘D',
       keywords: ['favorite', 'star', 'bookmark', 'pin'],
       enabled: hasActiveNote && !!onToggleFavorite,
-      execute: () => { if (activeTabPath) onToggleFavorite?.(activeTabPath) },
-    },
-    {
-      id: 'toggle-organized', label: isOrganized ? 'Mark as Unorganized' : 'Mark as Organized', group: 'Note', shortcut: '⌘E',
+      path: activeTabPath,
+      run: (path) => onToggleFavorite?.(path),
+    }),
+    createActivePathCommand({
+      id: 'toggle-organized',
+      label: isOrganized ? 'Mark as Unorganized' : 'Mark as Organized',
+      shortcut: '⌘E',
       keywords: ['organized', 'inbox', 'triage', 'done'],
       enabled: hasActiveNote && !!onToggleOrganized,
-      execute: () => { if (activeTabPath) onToggleOrganized?.(activeTabPath) },
-    },
+      path: activeTabPath,
+      run: (path) => onToggleOrganized?.(path),
+    }),
     {
       id: 'set-note-icon', label: 'Set Note Icon', group: 'Note',
       keywords: ['icon', 'emoji', 'set', 'add', 'change', 'picker'],

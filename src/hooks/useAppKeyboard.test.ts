@@ -34,7 +34,6 @@ function makeActions() {
     onCommandPalette: vi.fn(),
     onSearch: vi.fn(),
     onCreateNote: vi.fn(),
-    onOpenDailyNote: vi.fn(),
     onSave: vi.fn(),
     onOpenSettings: vi.fn(),
     onDeleteNote: vi.fn(),
@@ -169,11 +168,12 @@ describe('useAppKeyboard', () => {
     })
   })
 
-  it('Cmd+J triggers open daily note', () => {
+  it('Cmd+J no longer triggers any app command', () => {
     const actions = makeActions()
     renderHook(() => useAppKeyboard(actions))
     fireKey('j', { metaKey: true })
-    expect(actions.onOpenDailyNote).toHaveBeenCalled()
+    expect(actions.onCreateNote).not.toHaveBeenCalled()
+    expect(actions.onQuickOpen).not.toHaveBeenCalled()
   })
 
   it('Alt+4 does not trigger any view mode', () => {

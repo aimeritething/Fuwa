@@ -3,7 +3,7 @@ import { renderHook, act } from '@testing-library/react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { VaultEntry } from '../types'
-import { RAPID_CREATE_NOTE_SETTLE_MS, todayDateString } from './useNoteCreation'
+import { RAPID_CREATE_NOTE_SETTLE_MS } from './useNoteCreation'
 import { useNoteActions } from './useNoteActions'
 import type { NoteActionsConfig } from './useNoteActions'
 
@@ -305,34 +305,6 @@ describe('useNoteActions hook', () => {
 
     expect(updateEntry).not.toHaveBeenCalled()
     expect(setToastMessage).toHaveBeenCalledWith('Property updated')
-  })
-
-  it('handleOpenDailyNote creates a new daily note when none exists', () => {
-    const { result } = renderHook(() => useNoteActions(makeConfig()))
-
-    act(() => {
-      result.current.handleOpenDailyNote()
-    })
-
-    expect(addEntry).toHaveBeenCalledTimes(1)
-    const [createdEntry] = addEntry.mock.calls[0]
-    expect(createdEntry.isA).toBe('Journal')
-    expect(createdEntry.path).toMatch(/\/\d{4}-\d{2}-\d{2}\.md$/)
-  })
-
-  it('handleOpenDailyNote opens existing daily note instead of creating', async () => {
-    const today = todayDateString()
-    const existing = makeEntry({ path: `/Users/luca/Laputa/${today}.md`, filename: `${today}.md`, title: today, isA: 'Journal' })
-    const { result } = renderHook(() => useNoteActions(makeConfig([existing])))
-
-    await act(async () => {
-      result.current.handleOpenDailyNote()
-      await new Promise((r) => setTimeout(r, 0))
-    })
-
-    // Should open existing note, not create a new one
-    expect(addEntry).not.toHaveBeenCalled()
-    expect(result.current.activeTabPath).toBe(`/Users/luca/Laputa/${today}.md`)
   })
 
   describe('pending save lifecycle', () => {

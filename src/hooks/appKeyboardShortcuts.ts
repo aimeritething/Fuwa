@@ -12,7 +12,6 @@ export type KeyboardActions = Pick<
   | 'onCommandPalette'
   | 'onSearch'
   | 'onCreateNote'
-  | 'onOpenDailyNote'
   | 'onSave'
   | 'onOpenSettings'
   | 'onDeleteNote'

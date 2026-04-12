@@ -19,7 +19,6 @@ interface AppCommandsConfig {
   onCommandPalette: () => void
   onSearch: () => void
   onCreateNote: () => void
-  onOpenDailyNote: () => void
   onCreateNoteOfType: (type: string) => void
   onSave: () => void
   onOpenSettings: () => void
@@ -75,39 +74,17 @@ interface AppCommandsConfig {
   canRestoreDeletedNote?: boolean
 }
 
-/** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
-export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
-  const entriesRef = useRef(config.entries)
-  // eslint-disable-next-line react-hooks/refs
-  entriesRef.current = config.entries
-
-  const toggleArchive = useCallback((path: string) => {
-    const entry = entriesRef.current.find(e => e.path === path)
-    ;(entry?.archived ? config.onUnarchiveNote : config.onArchiveNote)(path)
-  }, [config.onArchiveNote, config.onUnarchiveNote])
-
-
-  const { onSelect } = config
-
-  const selectFilter = useCallback((filter: SidebarFilter) => {
-    const safeFilter = !config.showInbox && filter === 'inbox' ? 'all' : filter
-    onSelect({ kind: 'filter', filter: safeFilter })
-  }, [config.showInbox, onSelect])
-
-  const viewChanges = useCallback(() => {
-    onSelect({ kind: 'filter', filter: 'changes' })
-  }, [onSelect])
-
-  useAppKeyboard({
+function createKeyboardActions(
+  config: AppCommandsConfig,
+): Omit<Parameters<typeof useAppKeyboard>[0], 'onArchiveNote'> {
+  return {
     onQuickOpen: config.onQuickOpen,
     onCommandPalette: config.onCommandPalette,
     onSearch: config.onSearch,
     onCreateNote: config.onCreateNote,
-    onOpenDailyNote: config.onOpenDailyNote,
     onSave: config.onSave,
     onOpenSettings: config.onOpenSettings,
     onDeleteNote: config.onDeleteNote,
-    onArchiveNote: toggleArchive,
     onSetViewMode: config.onSetViewMode,
     onZoomIn: config.onZoomIn,
     onZoomOut: config.onZoomOut,
@@ -121,13 +98,18 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onToggleOrganized: config.onToggleOrganized,
     onOpenInNewWindow: config.onOpenInNewWindow,
     activeTabPathRef: config.activeTabPathRef,
-  })
+  }
+}
 
-  useMenuEvents({
+function createMenuEventHandlers(
+  config: AppCommandsConfig,
+  selectFilter: (filter: SidebarFilter) => void,
+  viewChanges: () => void,
+): Omit<Parameters<typeof useMenuEvents>[0], 'onArchiveNote'> {
+  return {
     onSetViewMode: config.onSetViewMode,
     onCreateNote: config.onCreateNote,
     onCreateType: config.onCreateType,
-    onOpenDailyNote: config.onOpenDailyNote,
     onQuickOpen: config.onQuickOpen,
     onSave: config.onSave,
     onOpenSettings: config.onOpenSettings,
@@ -136,7 +118,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     onZoomIn: config.onZoomIn,
     onZoomOut: config.onZoomOut,
     onZoomReset: config.onZoomReset,
-    onArchiveNote: toggleArchive,
     onDeleteNote: config.onDeleteNote,
     onSearch: config.onSearch,
     onToggleRawEditor: config.onToggleRawEditor,
@@ -163,9 +144,11 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     activeTabPath: config.activeTabPath,
     modifiedCount: config.modifiedCount,
     hasRestorableDeletedNote: config.canRestoreDeletedNote,
-  })
+  }
+}
 
-  const commands = useCommandRegistry({
+function createCommandRegistryConfig(config: AppCommandsConfig): Parameters<typeof useCommandRegistry>[0] {
+  return {
     activeTabPath: config.activeTabPath,
     entries: config.entries,
     modifiedCount: config.modifiedCount,
@@ -194,7 +177,6 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     zoomLevel: config.zoomLevel,
     onSelect: config.onSelect,
     showInbox: config.showInbox,
-    onOpenDailyNote: config.onOpenDailyNote,
     onGoBack: config.onGoBack,
     onGoForward: config.onGoForward,
     canGoBack: config.canGoBack,
@@ -222,7 +204,40 @@ export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
     canCustomizeInboxColumns: config.canCustomizeInboxColumns,
     onRestoreDeletedNote: config.onRestoreDeletedNote,
     canRestoreDeletedNote: config.canRestoreDeletedNote,
-  })
+  }
+}
+
+/** Sets up keyboard shortcuts, command registry, menu events, and keyboard navigation. */
+export function useAppCommands(config: AppCommandsConfig): CommandAction[] {
+  const entriesRef = useRef(config.entries)
+  // eslint-disable-next-line react-hooks/refs
+  entriesRef.current = config.entries
+
+  const toggleArchive = useCallback((path: string) => {
+    const entry = entriesRef.current.find(e => e.path === path)
+    ;(entry?.archived ? config.onUnarchiveNote : config.onArchiveNote)(path)
+  }, [config.onArchiveNote, config.onUnarchiveNote])
+
+
+  const { onSelect } = config
+
+  const selectFilter = useCallback((filter: SidebarFilter) => {
+    const safeFilter = !config.showInbox && filter === 'inbox' ? 'all' : filter
+    onSelect({ kind: 'filter', filter: safeFilter })
+  }, [config.showInbox, onSelect])
+
+  const viewChanges = useCallback(() => {
+    onSelect({ kind: 'filter', filter: 'changes' })
+  }, [onSelect])
+
+  const keyboardActions = createKeyboardActions(config)
+  const menuEventHandlers = createMenuEventHandlers(config, selectFilter, viewChanges)
+
+  useAppKeyboard({ ...keyboardActions, onArchiveNote: toggleArchive })
+
+  useMenuEvents({ ...menuEventHandlers, onArchiveNote: toggleArchive })
+
+  const commands = useCommandRegistry(createCommandRegistryConfig(config))
 
   useKeyboardNavigation({
     activeTabPath: config.activeTabPath,
