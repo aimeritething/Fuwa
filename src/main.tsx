@@ -22,6 +22,7 @@ declare global {
       dispatchBrowserMenuCommand?: (id: string) => void
       triggerMenuCommand?: (id: string) => Promise<unknown>
       triggerShortcutCommand?: (id: string, options?: AppCommandShortcutEventOptions) => void
+      seedBlockNoteTable?: (columnWidths?: Array<number | null>) => Promise<void> | void
     }
   }
 }

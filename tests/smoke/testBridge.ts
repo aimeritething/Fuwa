@@ -38,6 +38,19 @@ export async function triggerMenuCommand(page: Page, id: string): Promise<void> 
   }, id)
 }
 
+export async function seedBlockNoteTable(
+  page: Page,
+  columnWidths?: Array<number | null>,
+): Promise<void> {
+  await page.evaluate((widths) => {
+    const bridge = window.__laputaTest?.seedBlockNoteTable
+    if (typeof bridge !== 'function') {
+      throw new Error('Tolaria test bridge is missing seedBlockNoteTable')
+    }
+    return bridge(widths ?? undefined)
+  }, columnWidths)
+}
+
 export async function dispatchShortcutEvent(
   page: Page,
   init: AppCommandShortcutEventInit,

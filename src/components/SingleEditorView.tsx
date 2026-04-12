@@ -13,6 +13,76 @@ import type { VaultEntry } from '../types'
 import { _wikilinkEntriesRef } from './editorSchema'
 import { useEditorLinkActivation } from './useEditorLinkActivation'
 
+declare global {
+  interface Window {
+    __laputaTest?: {
+      seedBlockNoteTable?: (columnWidths?: Array<number | null>) => Promise<void> | void
+    }
+  }
+}
+
+const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
+| --- | --- | --- |
+| A | B | C |
+| D | E | F |
+`
+
+type TestTableBlock = {
+  type?: string
+  content?: { type?: string; columnWidths?: Array<number | null> }
+}
+
+function applySeededColumnWidths(
+  parsedBlocks: Array<TestTableBlock>,
+  columnWidths?: Array<number | null>,
+) {
+  const tableBlock = parsedBlocks[0]
+  const isSeededTable =
+    tableBlock?.type === 'table' &&
+    tableBlock.content?.type === 'tableContent' &&
+    columnWidths
+
+  if (!isSeededTable) return
+  tableBlock.content.columnWidths = [...columnWidths]
+}
+
+async function seedEditorWithTestTable(
+  editor: ReturnType<typeof useCreateBlockNote>,
+  columnWidths?: Array<number | null>,
+) {
+  const parsedBlocks = await Promise.resolve(
+    editor.tryParseMarkdownToBlocks(TEST_TABLE_MARKDOWN),
+  ) as Array<TestTableBlock>
+
+  applySeededColumnWidths(parsedBlocks, columnWidths)
+
+  const tableHtml = editor.blocksToHTMLLossy([
+    ...parsedBlocks,
+    { type: 'paragraph', content: [], children: [] },
+  ] as typeof editor.document)
+  editor._tiptapEditor.commands.setContent(tableHtml)
+  editor.focus()
+}
+
+function useSeedBlockNoteTableBridge(editor: ReturnType<typeof useCreateBlockNote>) {
+  useEffect(() => {
+    const seedBlockNoteTable = (columnWidths?: Array<number | null>) => (
+      seedEditorWithTestTable(editor, columnWidths)
+    )
+
+    window.__laputaTest = {
+      ...window.__laputaTest,
+      seedBlockNoteTable,
+    }
+
+    return () => {
+      if (window.__laputaTest?.seedBlockNoteTable === seedBlockNoteTable) {
+        delete window.__laputaTest.seedBlockNoteTable
+      }
+    }
+  }, [editor])
+}
+
 /** Insert an image block after the current cursor position. */
 function useInsertImageCallback(editor: ReturnType<typeof useCreateBlockNote>) {
   const editorRef = useRef(editor)
@@ -53,6 +123,8 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   useEffect(() => {
     _wikilinkEntriesRef.current = entries
   }, [entries])
+
+  useSeedBlockNoteTableBridge(editor)
 
   const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
 

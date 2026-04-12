@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, memo } from 'react'
+import { useRef, useEffect, useCallback, useState, memo } from 'react'
 import { useEditorTabSwap } from '../hooks/useEditorTabSwap'
 import { useCreateBlockNote } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
@@ -13,6 +13,16 @@ import { useEditorFocus } from '../hooks/useEditorFocus'
 import { EditorRightPanel } from './EditorRightPanel'
 import { EditorContent } from './EditorContent'
 import { schema } from './editorSchema'
+import { clearTableResizeState } from './tableResizeState'
+import {
+  type PendingRawExitContent,
+  applyPendingRawExitContent,
+  buildPendingRawExitContent,
+  rememberPendingRawExitContent,
+  resolvePendingRawExitContent,
+  resolveRawModeContent,
+  syncActiveTabIntoRawBuffer,
+} from './editorRawModeSync'
 import './Editor.css'
 import './EditorTheme.css'
 
@@ -129,23 +139,45 @@ interface EditorSetupParams {
 }
 
 function useRawModeWithFlush(
+  editor: ReturnType<typeof useCreateBlockNote>,
   activeTabPath: string | null,
+  activeTabContent: string | null,
   onContentChange?: (path: string, content: string) => void,
 ) {
   const rawLatestContentRef = useRef<string | null>(null)
+  const [pendingRawExitContent, setPendingRawExitContent] = useState<PendingRawExitContent | null>(null)
+  const [rawModeContentOverride, setRawModeContentOverride] = useState<PendingRawExitContent | null>(null)
+
+  const handleFlushPending = useCallback(async () => {
+    const syncedContent = syncActiveTabIntoRawBuffer({
+      editor,
+      activeTabPath,
+      activeTabContent,
+      rawLatestContentRef,
+      onContentChange,
+    })
+    setRawModeContentOverride(buildPendingRawExitContent(activeTabPath, syncedContent))
+    clearTableResizeState(editor)
+    return true
+  }, [activeTabContent, activeTabPath, editor, onContentChange])
 
   const handleBeforeRawEnd = useCallback(() => {
-    if (rawLatestContentRef.current != null && activeTabPath) {
-      onContentChange?.(activeTabPath, rawLatestContentRef.current)
-    }
+    setPendingRawExitContent(rememberPendingRawExitContent({
+      activeTabPath,
+      rawLatestContentRef,
+      onContentChange,
+    }))
+    setRawModeContentOverride(null)
     rawLatestContentRef.current = null
   }, [activeTabPath, onContentChange])
 
   const { rawMode, handleToggleRaw } = useRawMode({
-    activeTabPath, onBeforeRawEnd: handleBeforeRawEnd,
+    activeTabPath,
+    onFlushPending: handleFlushPending,
+    onBeforeRawEnd: handleBeforeRawEnd,
   })
 
-  return { rawMode, handleToggleRaw, rawLatestContentRef }
+  return { rawMode, handleToggleRaw, rawLatestContentRef, pendingRawExitContent, setPendingRawExitContent, rawModeContentOverride }
 }
 
 function useEditorSetup({
@@ -160,15 +192,33 @@ function useEditorSetup({
     schema,
     uploadFile: (file: File) => uploadImageFile(file, vaultPathRef.current),
   })
-
   const activeTab = tabs.find((t) => t.entry.path === activeTabPath) ?? null
-
-  const { rawMode, handleToggleRaw, rawLatestContentRef } = useRawModeWithFlush(
-    activeTabPath, onContentChange,
+  const {
+    rawMode,
+    handleToggleRaw,
+    rawLatestContentRef,
+    pendingRawExitContent,
+    setPendingRawExitContent,
+    rawModeContentOverride,
+  } = useRawModeWithFlush(
+    editor,
+    activeTabPath,
+    activeTab?.content ?? null,
+    onContentChange,
   )
+  const tabsForEditorSwap = applyPendingRawExitContent(tabs, pendingRawExitContent)
+  const rawModeContent = resolveRawModeContent({ activeTab, rawModeContentOverride })
+
+  useEffect(() => {
+    setPendingRawExitContent((current) => resolvePendingRawExitContent({
+      activeTabPath,
+      tabs,
+      pendingRawExitContent: current,
+    }))
+  }, [activeTabPath, setPendingRawExitContent, tabs])
 
   const { handleEditorChange, editorMountedRef } = useEditorTabSwap({
-    tabs, activeTabPath, editor, onContentChange, rawMode,
+    tabs: tabsForEditorSwap, activeTabPath, editor, onContentChange, rawMode,
   })
   useEditorFocus(editor, editorMountedRef)
 
@@ -185,7 +235,7 @@ function useEditorSetup({
   const showDiffToggle = !!(activeTab && (diffMode || activeStatus === 'modified'))
 
   return {
-    editor, activeTab, rawLatestContentRef,
+    editor, activeTab, rawLatestContentRef, rawModeContent,
     rawMode, diffMode, diffContent, diffLoading,
     handleToggleDiffExclusive, handleToggleRawExclusive,
     handleEditorChange, handleViewCommitDiff,
@@ -209,7 +259,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
   } = props
 
   const {
-    editor, activeTab, rawLatestContentRef,
+    editor, activeTab, rawLatestContentRef, rawModeContent,
     rawMode, diffMode, diffContent, diffLoading,
     handleToggleDiffExclusive, handleToggleRawExclusive,
     handleEditorChange, handleViewCommitDiff,
@@ -253,6 +303,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
               onArchiveNote={onArchiveNote}
               onUnarchiveNote={onUnarchiveNote}
               vaultPath={vaultPath}
+              rawModeContent={rawModeContent}
               rawLatestContentRef={rawLatestContentRef}
               onRenameFilename={onRenameFilename}
               isConflicted={isConflicted}

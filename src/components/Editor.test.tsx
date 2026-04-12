@@ -52,6 +52,7 @@ vi.mock('@blocknote/mantine', () => ({
 vi.mock('@blocknote/mantine/style.css', () => ({}))
 
 import { Editor } from './Editor'
+import { applyPendingRawExitContent } from './editorRawModeSync'
 import type { VaultEntry } from '../types'
 
 const mockEntry: VaultEntry = {
@@ -98,6 +99,13 @@ This is a test note with some words to count.
 `
 
 const mockTab = { entry: mockEntry, content: mockContent }
+const otherEntry: VaultEntry = {
+  ...mockEntry,
+  path: '/vault/other.md',
+  filename: 'other.md',
+  title: 'Other Note',
+}
+const otherTab = { entry: otherEntry, content: '# Other\n' }
 
 const defaultProps = {
   tabs: [] as { entry: VaultEntry; content: string }[],
@@ -267,6 +275,27 @@ describe('Editor', () => {
     mockEditor.tryParseMarkdownToBlocks.mockResolvedValue([])
     mockEditor.replaceBlocks.mockClear()
     mockEditor.insertBlocks.mockClear()
+  })
+})
+
+describe('applyPendingRawExitContent', () => {
+  it('overrides only the matching tab when raw content is newer than tab state', () => {
+    const pending = {
+      path: mockEntry.path,
+      content: '---\ntype: Note\nstatus: Active\n---\n| Head 1 | Head 2 | Head 3 |\n| --- | --- | --- |\n| A | B | C |\n',
+    }
+
+    const result = applyPendingRawExitContent([mockTab, otherTab], pending)
+
+    expect(result[0]).toEqual({ ...mockTab, content: pending.content })
+    expect(result[1]).toBe(otherTab)
+  })
+
+  it('returns the original tabs array when the pending raw content is already synced', () => {
+    const tabs = [mockTab, otherTab]
+    const pending = { path: mockEntry.path, content: mockContent }
+
+    expect(applyPendingRawExitContent(tabs, pending)).toBe(tabs)
   })
 })
 

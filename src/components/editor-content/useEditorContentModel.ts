@@ -37,6 +37,7 @@ export interface EditorContentProps {
   onArchiveNote?: (path: string) => void
   onUnarchiveNote?: (path: string) => void
   vaultPath?: string
+  rawModeContent?: string | null
   rawLatestContentRef?: React.MutableRefObject<string | null>
   onRenameFilename?: (path: string, newFilenameStem: string) => void
   isConflicted?: boolean

@@ -62,13 +62,14 @@ function RawModeEditorSection({
   activeTab,
   entries,
   rawMode,
+  rawModeContent,
   onRawContentChange,
   onSave,
   rawLatestContentRef,
   vaultPath,
 }: Pick<
   EditorContentModel,
-  'activeTab' | 'entries' | 'onRawContentChange' | 'onSave' | 'rawLatestContentRef' | 'vaultPath'
+  'activeTab' | 'entries' | 'onRawContentChange' | 'onSave' | 'rawLatestContentRef' | 'rawModeContent' | 'vaultPath'
 > & {
   rawMode: boolean
 }) {
@@ -77,7 +78,7 @@ function RawModeEditorSection({
   return (
     <RawEditorView
       key={activeTab.entry.path}
-      content={activeTab.content}
+      content={rawModeContent ?? activeTab.content}
       path={activeTab.entry.path}
       entries={entries}
       onContentChange={onRawContentChange ?? (() => {})}
@@ -226,6 +227,7 @@ export function EditorContentLayout(model: EditorContentModel) {
     onEditorChange,
     isDeletedPreview,
     rawLatestContentRef,
+    rawModeContent,
   } = model
 
   if (!activeTab) {
@@ -278,6 +280,7 @@ export function EditorContentLayout(model: EditorContentModel) {
         activeTab={activeTab}
         entries={entries}
         rawMode={effectiveRawMode}
+        rawModeContent={rawModeContent}
         onRawContentChange={onRawContentChange}
         onSave={onSave}
         rawLatestContentRef={rawLatestContentRef}
