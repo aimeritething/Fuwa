@@ -4,7 +4,7 @@ export function clearTableResizeState(editor: ReturnType<typeof useCreateBlockNo
   const view = editor._tiptapEditor?.view
   if (!view || view.isDestroyed) return
 
-  const resizePluginKey = view.state.plugins.find((plugin) => (
+  const resizePluginKey = view.state.plugins.find((plugin: { key?: unknown }) => (
     typeof plugin.key === 'string' && plugin.key.startsWith('tableColumnResizing')
   ))?.key
   if (!resizePluginKey) return

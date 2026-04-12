@@ -14,19 +14,6 @@ import {
   type AppCommandShortcutEventOptions,
 } from './hooks/appCommandCatalog'
 
-declare global {
-  interface Window {
-    __laputaTest?: {
-      dispatchAppCommand?: (id: string) => void
-      dispatchShortcutEvent?: (init: AppCommandShortcutEventInit) => void
-      dispatchBrowserMenuCommand?: (id: string) => void
-      triggerMenuCommand?: (id: string) => Promise<unknown>
-      triggerShortcutCommand?: (id: string, options?: AppCommandShortcutEventOptions) => void
-      seedBlockNoteTable?: (columnWidths?: Array<number | null>) => Promise<void> | void
-    }
-  }
-}
-
 // Disable native WebKit context menu in Tauri (WKWebView intercepts right-click
 // at native level before React's synthetic events can call preventDefault).
 // Capture phase fires first → prevents native menu; React bubble phase still fires

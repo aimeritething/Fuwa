@@ -13,14 +13,6 @@ import type { VaultEntry } from '../types'
 import { _wikilinkEntriesRef } from './editorSchema'
 import { useEditorLinkActivation } from './useEditorLinkActivation'
 
-declare global {
-  interface Window {
-    __laputaTest?: {
-      seedBlockNoteTable?: (columnWidths?: Array<number | null>) => Promise<void> | void
-    }
-  }
-}
-
 const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
 | --- | --- | --- |
 | A | B | C |
@@ -37,13 +29,17 @@ function applySeededColumnWidths(
   columnWidths?: Array<number | null>,
 ) {
   const tableBlock = parsedBlocks[0]
-  const isSeededTable =
-    tableBlock?.type === 'table' &&
-    tableBlock.content?.type === 'tableContent' &&
-    columnWidths
+  const tableContent = tableBlock?.content
 
-  if (!isSeededTable) return
-  tableBlock.content.columnWidths = [...columnWidths]
+  if (
+    !columnWidths ||
+    tableBlock?.type !== 'table' ||
+    tableContent?.type !== 'tableContent'
+  ) {
+    return
+  }
+
+  tableContent.columnWidths = [...columnWidths]
 }
 
 async function seedEditorWithTestTable(
