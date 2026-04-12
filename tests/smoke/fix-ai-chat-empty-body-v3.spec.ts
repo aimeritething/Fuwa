@@ -21,7 +21,7 @@ test.describe('AI chat empty body fix — no regression', () => {
     await expect(page.getByTestId('ai-panel')).toBeVisible({ timeout: 3000 })
 
     // Send a message
-    const input = page.locator('input[placeholder*="Ask"]')
+    const input = page.getByTestId('agent-input')
     await expect(input).toBeVisible()
     await input.fill('What does this note contain?')
     await page.getByTestId('agent-send').click()
