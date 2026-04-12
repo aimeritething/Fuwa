@@ -83,8 +83,15 @@ interface RemoveVaultStateOptions extends RemainingVaultOptions {
   setVaultPath: Dispatch<SetStateAction<string>>
 }
 
-interface RemoveVaultActionOptions extends RemoveVaultStateOptions {
+interface RemoveVaultActionOptions {
+  defaultVaults: VaultOption[]
+  extraVaults: VaultOption[]
+  hiddenDefaults: string[]
+  onSwitchRef: MutableRefObject<() => void>
   onToastRef: MutableRefObject<(msg: string) => void>
+  setExtraVaults: Dispatch<SetStateAction<VaultOption[]>>
+  setHiddenDefaults: Dispatch<SetStateAction<string[]>>
+  setVaultPath: Dispatch<SetStateAction<string>>
 }
 
 function labelFromPath(path: string): string {
@@ -145,7 +152,7 @@ function applyResolvedDefaultPath(
 }
 
 function applyInitialVaultTarget(
-  activeVault: string,
+  activeVault: string | null,
   resolvedDefaultPath: string,
   setVaultPath: Dispatch<SetStateAction<string>>,
   onSwitchRef: MutableRefObject<() => void>,
