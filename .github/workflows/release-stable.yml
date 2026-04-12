@@ -1,31 +1,32 @@
-name: Release (Canary)
+name: Release (Stable)
 
 on:
   push:
-    branches:
-      - canary
+    tags:
+      - 'stable-v*'
 
 concurrency:
-  group: release-canary-${{ github.ref }}
+  group: release-stable-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   # ─────────────────────────────────────────────────────────────
-  # Phase 1: Compute the canary version string
+  # Phase 1: Compute the stable version string once
   # ─────────────────────────────────────────────────────────────
   version:
-    name: Compute version
+    name: Compute stable version
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ver.outputs.version }}
       tag: ${{ steps.ver.outputs.tag }}
     steps:
       - id: ver
+        shell: bash
         run: |
-          VERSION="0.$(date -u +%Y%m%d).${GITHUB_RUN_NUMBER}-canary"
+          VERSION="${GITHUB_REF_NAME#stable-v}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=v$VERSION"    >> "$GITHUB_OUTPUT"
-          echo "### Canary version: \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
+          echo "### Stable version: \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
 
   # ─────────────────────────────────────────────────────────────
   # Phase 2: Build each architecture in parallel
@@ -131,10 +132,10 @@ jobs:
           retention-days: 1
 
   # ─────────────────────────────────────────────────────────────
-  # Phase 3: Publish GitHub Release (prerelease)
+  # Phase 3: Publish GitHub Release
   # ─────────────────────────────────────────────────────────────
   release:
-    name: GitHub Release (canary)
+    name: GitHub Release (stable)
     needs: [version, build]
     runs-on: ubuntu-latest
     permissions:
@@ -149,26 +150,26 @@ jobs:
 
       - name: Generate release notes
         run: |
-          PREV_TAG=$(git tag --sort=-version:refname | grep canary | head -n 1 || echo "")
+          PREV_TAG=$(git tag --list 'stable-v*' --sort=-version:refname | grep -vx "${{ needs.version.outputs.tag }}" | head -n 1 || echo "")
           if [ -z "$PREV_TAG" ]; then
             NOTES=$(git log --oneline --no-merges -20)
           else
-            NOTES=$(git log --oneline --no-merges "${PREV_TAG}..HEAD")
+            NOTES=$(git log --oneline --no-merges "${PREV_TAG}..${{ needs.version.outputs.tag }}")
           fi
           {
-            echo "## What's Changed (Canary)"
+            echo "## What's Changed"
             echo ""
             echo "$NOTES" | while IFS= read -r line; do echo "- $line"; done
             echo ""
             echo "---"
-            echo "**Canary build — pre-release, may be unstable**"
+            echo "**Stable release — manually promoted from \`main\`**"
             echo ""
             echo "**Requires Apple Silicon (M1/M2/M3)**"
             echo ""
-            echo "*Built from \`$(git rev-parse --short HEAD)\` on $(date -u +%Y-%m-%d)*"
+            echo "*Built from \`$(git rev-parse --short ${{ needs.version.outputs.tag }})\` on $(date -u +%Y-%m-%d)*"
           } > release_notes.md
 
-      - name: Build latest-canary.json
+      - name: Build stable-latest.json
         run: |
           VERSION="${{ needs.version.outputs.version }}"
           TAG="${{ needs.version.outputs.tag }}"
@@ -179,10 +180,10 @@ jobs:
           ARM_SIG=$(cat updater-aarch64/*.app.tar.gz.sig)
           ARM_TARBALL=$(ls updater-aarch64/*.app.tar.gz | xargs basename)
 
-          cat > latest-canary.json << EOF
+          cat > stable-latest.json << EOF
           {
             "version": "${VERSION}",
-            "notes": "Canary build. See ${PAGES_URL} for release notes.",
+            "notes": "Stable release. See ${PAGES_URL} for full release notes.",
             "pub_date": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
             "platforms": {
               "darwin-aarch64": {
@@ -192,24 +193,24 @@ jobs:
             }
           }
           EOF
-          echo "latest-canary.json:"; cat latest-canary.json
+          echo "stable-latest.json:"; cat stable-latest.json
 
-      - name: Publish GitHub Release (prerelease)
+      - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: Tolaria ${{ needs.version.outputs.version }} (Canary)
+          name: Tolaria ${{ needs.version.outputs.version }}
           body_path: release_notes.md
           draft: false
-          prerelease: true
+          prerelease: false
           files: |
             dmg-aarch64/*.dmg
             updater-aarch64/*.app.tar.gz
             updater-aarch64/*.app.tar.gz.sig
-            latest-canary.json
+            stable-latest.json
 
   # ─────────────────────────────────────────────────────────────
-  # Phase 4: Update GitHub Pages (preserve stable latest.json)
+  # Phase 4: Update GitHub Pages
   # ─────────────────────────────────────────────────────────────
   pages:
     name: Update release history page
@@ -227,13 +228,16 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p _site
+          mkdir -p _site/alpha _site/stable
           gh api repos/${{ github.repository }}/releases --paginate > _site/releases.json
           PAGES_URL="https://refactoringhq.github.io/${GITHUB_REPOSITORY#*/}"
-          # Download stable latest.json from existing GH Pages (preserve it)
-          curl -fsSL "${PAGES_URL}/latest.json" -o _site/latest.json || echo '{}' > _site/latest.json
-          # Copy canary latest.json from this release
-          gh release download --repo ${{ github.repository }} "${{ needs.version.outputs.tag }}" --pattern "latest-canary.json" --output _site/latest-canary.json || true
+
+          curl -fsSL "${PAGES_URL}/alpha/latest.json" -o _site/alpha/latest.json || echo '{}' > _site/alpha/latest.json
+          gh release download --repo ${{ github.repository }} "${{ needs.version.outputs.tag }}" --pattern "stable-latest.json" --output _site/stable/latest.json || echo '{}' > _site/stable/latest.json
+
+          cp _site/alpha/latest.json _site/latest.json
+          cp _site/alpha/latest.json _site/latest-canary.json
+
           cat > _site/index.html << 'HTMLEOF'
           <!DOCTYPE html>
           <html lang="en">
@@ -253,13 +257,13 @@ jobs:
               .release .downloads { margin-top: 0.75rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
               .release .downloads a { display: inline-block; padding: 0.375rem 0.75rem; background: #155DFF; color: #fff; border-radius: 6px; text-decoration: none; font-size: 0.8125rem; font-weight: 500; }
               .release .downloads a:hover { background: #1248CC; }
-              .canary { border-left: 3px solid #f59e0b; }
+              .alpha { border-left: 3px solid #f59e0b; }
               .empty { color: #787774; text-align: center; padding: 3rem; }
             </style>
           </head>
           <body>
             <h1>Tolaria Release History</h1>
-            <p class="subtitle">Auto-updated on every release</p>
+            <p class="subtitle">Alpha builds update on every push to main. Stable builds appear when a stable-vX.Y.Z tag is promoted.</p>
             <div id="releases"></div>
             <script>
               fetch('releases.json').then(r=>r.json()).then(releases=>{
@@ -271,8 +275,8 @@ jobs:
                   const links=dmgs.map(a=>'<a href="'+a.browser_download_url+'">'+a.name+'</a>').join('');
                   const body=(r.body||'').replace(/</g,'&lt;').replace(/>/g,'&gt;');
                   const div=document.createElement('div');
-                  div.className='release'+(r.prerelease?' canary':'');
-                  div.innerHTML='<h2>'+(r.name||r.tag_name)+'</h2><div class="meta">'+date+' · '+r.tag_name+(r.prerelease?' · <strong>Canary</strong>':'')+'</div><div class="body">'+body+'</div>'+(links?'<div class="downloads">'+links+'</div>':'');
+                  div.className='release'+(r.prerelease?' alpha':'');
+                  div.innerHTML='<h2>'+(r.name||r.tag_name)+'</h2><div class="meta">'+date+' · '+r.tag_name+(r.prerelease?' · <strong>Alpha</strong>':'')+'</div><div class="body">'+body+'</div>'+(links?'<div class="downloads">'+links+'</div>':'');
                   el.appendChild(div);
                 });
               });
@@ -286,4 +290,4 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
-          commit_message: "Update release history for canary ${{ needs.version.outputs.tag }}"
+          commit_message: "Update release history for ${{ needs.version.outputs.tag }}"

@@ -121,6 +121,8 @@ tolaria/
 │   │   └── ...
 │   │
 │   ├── lib/
+│   │   ├── appUpdater.ts         # Frontend wrapper around channel-aware updater commands
+│   │   ├── releaseChannel.ts     # Alpha/stable normalization helpers
 │   │   └── utils.ts              # Tailwind merge + cn() helper
 │   │
 │   └── test/
@@ -152,6 +154,7 @@ tolaria/
 │   │   ├── search.rs             # Keyword search (walkdir-based)
 │   │   ├── claude_cli.rs         # Claude CLI subprocess management
 │   │   ├── mcp.rs                # MCP server lifecycle + registration
+│   │   ├── app_updater.rs        # Alpha/stable updater endpoint selection
 │   │   ├── settings.rs           # App settings persistence
 │   │   ├── vault_config.rs       # Per-vault UI config
 │   │   ├── vault_list.rs         # Vault list persistence
@@ -212,6 +215,7 @@ tolaria/
 | `src-tauri/src/git/` | All git operations (clone, commit, pull, push, conflicts, pulse). |
 | `src-tauri/src/search.rs` | Keyword search — scans vault files with walkdir. |
 | `src-tauri/src/claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing. |
+| `src-tauri/src/app_updater.rs` | Desktop updater bridge — selects alpha/stable manifests and streams install progress. |
 
 ### Editor
 
@@ -242,8 +246,11 @@ tolaria/
 | File | Why it matters |
 |------|---------------|
 | `src/hooks/useSettings.ts` | App settings (telemetry, release channel, auto-sync interval). |
+| `src/lib/releaseChannel.ts` | Normalizes persisted updater-channel values (`stable` default, optional `alpha`). |
+| `src/lib/appUpdater.ts` | Frontend wrapper for channel-aware updater commands. |
 | `src/hooks/useVaultConfig.ts` | Per-vault local UI preferences (zoom, view mode, colors, Inbox columns, explicit organization workflow). |
 | `src/components/SettingsPanel.tsx` | Settings UI for telemetry, release channel, sync interval, and the vault-level explicit organization toggle. |
+| `src/hooks/useUpdater.ts` | In-app updates using the selected alpha/stable feed. |
 
 ## Architecture Patterns
 

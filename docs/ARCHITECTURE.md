@@ -749,24 +749,45 @@ Every push to `main` triggers `.github/workflows/release.yml`:
 
 ```
 push to main
-  → version job: compute 0.YYYYMMDD.RUN_NUMBER
-  → build job (matrix: aarch64 + x86_64):
-      → pnpm install, stamp version, pnpm build, tauri build --target <arch>
-      → upload .app, .tar.gz + .sig, .dmg as artifacts
+  → version job: read latest stable-vX.Y.Z tag
+  → compute next patch prerelease X.Y.(Z+1)-alpha.UTCSTAMP.RUN_NUMBER
+  → build job:
+      → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin
+      → upload signed .app.tar.gz + .sig and .dmg artifacts
   → release job:
-      → download both arch artifacts
-      → lipo aarch64 + x86_64 → universal binary
-      → create universal .dmg + signed updater tarball
-      → generate latest.json (per-arch + universal platform entries)
-      → publish GitHub Release with all assets + auto-generated notes
+      → generate alpha-latest.json
+      → publish GitHub prerelease alpha-v<version>
   → pages job:
       → build static HTML release history page
+      → publish alpha/latest.json
+      → refresh latest.json + latest-canary.json as compatibility aliases to alpha
+      → preserve stable/latest.json
+      → deploy to gh-pages
+```
+
+Stable promotions trigger `.github/workflows/release-stable.yml`:
+
+```
+push stable-vX.Y.Z tag
+  → version job: use X.Y.Z from the tag
+  → build job:
+      → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin
+      → upload signed .app.tar.gz + .sig and .dmg artifacts
+  → release job:
+      → generate stable-latest.json
+      → publish GitHub release Tolaria X.Y.Z
+  → pages job:
+      → publish stable/latest.json
+      → preserve alpha/latest.json
       → deploy to gh-pages
 ```
 
 ### Versioning
 
-Format: `0.YYYYMMDD.GITHUB_RUN_NUMBER` (e.g. `0.20260223.42`). Stamped into `tauri.conf.json` and `Cargo.toml` dynamically.
+- Stable promotions use git tags in the form `stable-vX.Y.Z`.
+- Alpha builds are prereleases of the next stable patch version, for example stable `1.2.3` → alpha `1.2.4-alpha.202604122135.7`.
+- The workflows stamp the computed version into `tauri.conf.json` and `Cargo.toml` at build time.
+- This keeps semver monotonic when a user switches between Stable and Alpha.
 
 ### In-App Updates
 
@@ -825,17 +846,18 @@ sequenceDiagram
 
 Tolaria uses the Tauri updater plugin for automatic updates:
 
-- Builds from `main` branch are published as GitHub Releases
-- `latest.json` is published to GitHub Pages for the updater plugin
-- `useUpdater()` hook checks for updates automatically and supports download + install
+- `src-tauri/tauri.conf.json` points the default desktop feed at `stable/latest.json`
+- `useUpdater(releaseChannel)` waits 3 seconds after launch, then calls Rust commands instead of hard-coding one updater endpoint in the frontend
+- `src-tauri/src/app_updater.rs` maps the selected channel to `alpha/latest.json` or `stable/latest.json`
+- `download_and_install_app_update` streams progress events back into `UpdateBanner`
 
 ### Feature Flags (PostHog + Release Channels)
 
 Feature flags are backed by PostHog and evaluated per release channel:
 
 - **Alpha**: all features always enabled (no PostHog lookup)
-- **Beta**: sees features where the PostHog flag targets `release_channel = beta`
-- **Stable** (default): sees features where the flag targets `release_channel = stable`
+- **Stable** (default): PostHog rules decide which features are enabled
+- **Beta cohorts**: modeled in PostHog as tags or person-property targeting, not as a separate updater build or Settings option
 
 ```typescript
 import { useFeatureFlag } from './hooks/useFeatureFlag'
@@ -845,14 +867,14 @@ const enabled = useFeatureFlag('example_flag') // boolean
 
 **Resolution order:**
 1. `localStorage` override: key `ff_<name>` with value `"true"` or `"false"`
-2. `isFeatureEnabled(flag)` in `telemetry.ts` → checks release channel, then PostHog, then hardcoded defaults
+2. `isFeatureEnabled(flag)` in `telemetry.ts` → Alpha short-circuit, then PostHog, then hardcoded defaults
 
 **How to add a new flag:**
 1. Add the flag name to the `FeatureFlagName` union type in `src/hooks/useFeatureFlag.ts`
-2. Create the flag on PostHog dashboard with rollout rules per channel
+2. Create the flag on PostHog with Stable rollout rules and any optional beta-cohort targeting
 3. Use `useFeatureFlag('your_flag')` in components
 
-Release channel is selectable in Settings (alpha / beta / stable) and passed to PostHog as a person property via `identify()`. See ADR-0042.
+Release channel is selectable in Settings as `alpha` or `stable` and passed to PostHog as a person property via `identify()`. Beta targeting is managed in PostHog, not in the updater settings. See ADR-0057.
 
 ## Platform Support — iOS / iPadOS (Prototype)
 

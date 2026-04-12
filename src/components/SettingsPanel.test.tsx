@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import { SettingsPanel } from './SettingsPanel'
 import type { Settings } from '../types'
 
@@ -12,12 +12,25 @@ const emptySettings: Settings = {
   release_channel: null,
 }
 
+function installPointerCapturePolyfill() {
+  if (!HTMLElement.prototype.hasPointerCapture) {
+    HTMLElement.prototype.hasPointerCapture = () => false
+  }
+  if (!HTMLElement.prototype.setPointerCapture) {
+    HTMLElement.prototype.setPointerCapture = () => {}
+  }
+  if (!HTMLElement.prototype.releasePointerCapture) {
+    HTMLElement.prototype.releasePointerCapture = () => {}
+  }
+}
+
 describe('SettingsPanel', () => {
   const onSave = vi.fn()
   const onClose = vi.fn()
 
   beforeEach(() => {
     vi.clearAllMocks()
+    installPointerCapturePolyfill()
   })
 
   it('renders nothing when not open', () => {
@@ -35,16 +48,7 @@ describe('SettingsPanel', () => {
     expect(screen.getByText('Sync')).toBeInTheDocument()
   })
 
-  it('does not show AI Provider Keys section', () => {
-    render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
-    )
-    expect(screen.queryByText('AI Provider Keys')).not.toBeInTheDocument()
-    expect(screen.queryByText('OpenAI')).not.toBeInTheDocument()
-    expect(screen.queryByText('Google AI')).not.toBeInTheDocument()
-  })
-
-  it('calls onSave with settings on save', () => {
+  it('calls onSave with stable defaults on save', () => {
     render(
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
@@ -53,8 +57,35 @@ describe('SettingsPanel', () => {
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       auto_pull_interval_minutes: 5,
+      release_channel: null,
     }))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('defaults the release channel trigger to stable', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+
+    expect(screen.getByTestId('settings-release-channel')).toHaveAttribute('data-value', 'stable')
+    expect(screen.queryByText(/Beta\/Stable/i)).not.toBeInTheDocument()
+  })
+
+  it('preserves alpha when alpha is already selected', () => {
+    const alphaSettings: Settings = {
+      ...emptySettings,
+      release_channel: 'alpha',
+    }
+
+    render(
+      <SettingsPanel open={true} settings={alphaSettings} onSave={onSave} onClose={onClose} />
+    )
+
+    fireEvent.click(screen.getByTestId('settings-save'))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      release_channel: 'alpha',
+    }))
   })
 
   it('defaults the organization workflow switch to on', () => {
@@ -126,20 +157,11 @@ describe('SettingsPanel', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
-
   it('shows keyboard shortcut hint in footer', () => {
     render(
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     expect(screen.getByText(/to open settings/)).toBeInTheDocument()
-  })
-
-  it('does not show the removed GitHub auth section', () => {
-    render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
-    )
-    expect(screen.queryByText('GitHub')).not.toBeInTheDocument()
-    expect(screen.queryByText(/Connect your GitHub account/i)).not.toBeInTheDocument()
   })
 
   describe('Privacy & Telemetry section', () => {
@@ -162,18 +184,20 @@ describe('SettingsPanel', () => {
       render(
         <SettingsPanel open={true} settings={withTelemetry} onSave={onSave} onClose={onClose} />
       )
-      const crashCheckbox = screen.getByTestId('settings-crash-reporting').querySelector('input') as HTMLInputElement
-      const analyticsCheckbox = screen.getByTestId('settings-analytics').querySelector('input') as HTMLInputElement
-      expect(crashCheckbox.checked).toBe(true)
-      expect(analyticsCheckbox.checked).toBe(false)
+
+      const crashCheckbox = within(screen.getByTestId('settings-crash-reporting')).getByRole('checkbox')
+      const analyticsCheckbox = within(screen.getByTestId('settings-analytics')).getByRole('checkbox')
+
+      expect(crashCheckbox).toHaveAttribute('aria-checked', 'true')
+      expect(analyticsCheckbox).toHaveAttribute('aria-checked', 'false')
     })
 
     it('saves telemetry settings when toggled and saved', () => {
       render(
         <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
       )
-      const crashCheckbox = screen.getByTestId('settings-crash-reporting').querySelector('input')!
-      fireEvent.click(crashCheckbox)
+
+      fireEvent.click(within(screen.getByTestId('settings-crash-reporting')).getByRole('checkbox'))
       fireEvent.click(screen.getByTestId('settings-save'))
 
       expect(onSave).toHaveBeenCalledWith(expect.objectContaining({

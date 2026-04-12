@@ -72,7 +72,7 @@ proposed → active → superseded
 | [0014](0014-git-based-vault-cache.md) | Git-based incremental vault cache | active |
 | [0015](0015-auto-save-with-debounce.md) | Auto-save with 500ms debounce | active |
 | [0016](0016-sentry-posthog-telemetry.md) | Sentry + PostHog telemetry with consent | active |
-| [0017](0017-canary-release-channel.md) | Canary release channel and feature flags | active |
+| [0017](canary-release-channel-and-local-feature-flags.md) | Canary release channel and feature flags | superseded → [0057](0057-alpha-stable-release-channels-and-beta-cohorts.md) |
 | [0018](0018-codescene-code-health-gates.md) | CodeScene code health gates in CI | active |
 | [0019](0019-github-device-flow-oauth.md) | GitHub device flow OAuth for vault sync | superseded → [0056](0056-system-git-cli-auth-no-provider-oauth.md) |
 | [0020](0020-keyboard-first-design.md) | Keyboard-first design principle | active |
@@ -112,3 +112,4 @@ proposed → active → superseded
 | [0054](0054-deterministic-shortcut-qa-matrix.md) | Deterministic shortcut QA matrix | active |
 | [0055](0055-h1-is-the-only-editor-title-surface.md) | H1 is the only editor title surface | active |
 | [0056](0056-system-git-cli-auth-no-provider-oauth.md) | System git auth only — no provider-specific OAuth or repo APIs | active |
+| [0057](0057-alpha-stable-release-channels-and-beta-cohorts.md) | Alpha/stable release channels with PostHog beta cohorts | active |

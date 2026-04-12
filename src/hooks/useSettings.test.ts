@@ -48,9 +48,12 @@ describe('useSettings', () => {
   })
 
   it('returns empty settings initially', () => {
-    const { result } = renderHook(() => useSettings())
+    mockInvokeFn.mockImplementationOnce(() => new Promise(() => {}))
+
+    const { result, unmount } = renderHook(() => useSettings())
     expect(result.current.settings).toEqual(defaultSettings)
     expect(result.current.loaded).toBe(false)
+    unmount()
   })
 
   it('loads settings from backend on mount', async () => {

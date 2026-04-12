@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
+import { normalizeReleaseChannel, serializeReleaseChannel } from '../lib/releaseChannel'
 import type { Settings } from '../types'
 
 function tauriCall<T>(command: string, tauriArgs: Record<string, unknown>, mockArgs?: Record<string, unknown>): Promise<T> {
@@ -16,6 +17,15 @@ const EMPTY_SETTINGS: Settings = {
   release_channel: null,
 }
 
+function normalizeSettings(settings: Settings): Settings {
+  return {
+    ...settings,
+    release_channel: serializeReleaseChannel(
+      normalizeReleaseChannel(settings.release_channel),
+    ),
+  }
+}
+
 export function useSettings() {
   const [settings, setSettings] = useState<Settings>(EMPTY_SETTINGS)
   const [loaded, setLoaded] = useState(false)
@@ -23,7 +33,7 @@ export function useSettings() {
   const loadSettings = useCallback(async () => {
     try {
       const s = await tauriCall<Settings>('get_settings', {})
-      setSettings(s)
+      setSettings(normalizeSettings(s))
     } catch (err) {
       console.warn('Failed to load settings:', err)
     } finally {
@@ -36,9 +46,10 @@ export function useSettings() {
   }, [loadSettings])
 
   const saveSettings = useCallback(async (newSettings: Settings) => {
+    const normalizedSettings = normalizeSettings(newSettings)
     try {
-      await tauriCall<null>('save_settings', { settings: newSettings })
-      setSettings(newSettings)
+      await tauriCall<null>('save_settings', { settings: normalizedSettings })
+      setSettings(normalizedSettings)
     } catch (err) {
       console.error('Failed to save settings:', err)
     }

@@ -1,5 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import { isTauri } from '../mock-tauri'
+import {
+  checkForAppUpdate,
+  downloadAndInstallAppUpdate,
+  type AppUpdateDownloadEvent,
+  type AppUpdateMetadata,
+} from '../lib/appUpdater'
 import { openExternalUrl } from '../utils/url'
 
 const RELEASE_NOTES_URL = 'https://refactoringhq.github.io/tolaria/'
@@ -20,30 +26,63 @@ export interface UpdateActions {
   dismiss: () => void
 }
 
-export function useUpdater(): { status: UpdateStatus; actions: UpdateActions } {
+function toAvailableStatus(update: AppUpdateMetadata): UpdateStatus {
+  return {
+    state: 'available',
+    version: update.version,
+    notes: update.body ?? undefined,
+  }
+}
+
+function createDownloadProgressHandler(
+  version: string,
+  setStatus: Dispatch<SetStateAction<UpdateStatus>>,
+): (event: AppUpdateDownloadEvent) => void {
+  let totalBytes = 0
+  let downloadedBytes = 0
+
+  return (event) => {
+    if (event.event === 'Started') {
+      totalBytes = event.data.contentLength ?? 0
+      return
+    }
+
+    if (event.event === 'Progress') {
+      downloadedBytes += event.data.chunkLength
+      const progress = totalBytes > 0 ? Math.min(downloadedBytes / totalBytes, 1) : 0
+      setStatus({ state: 'downloading', version, progress })
+      return
+    }
+
+    setStatus({ state: 'ready', version })
+  }
+}
+
+export function useUpdater(
+  releaseChannel: string | null | undefined,
+): { status: UpdateStatus; actions: UpdateActions } {
   const [status, setStatus] = useState<UpdateStatus>({ state: 'idle' })
-  const updateRef = useRef<unknown>(null)
+  const updateRef = useRef<AppUpdateMetadata | null>(null)
 
   const checkForUpdates = useCallback(async (): Promise<UpdateCheckResult> => {
     if (!isTauri()) return 'up-to-date'
 
     try {
-      const { check } = await import('@tauri-apps/plugin-updater')
-      const update = await check()
-      if (!update) return 'up-to-date'
+      const update = await checkForAppUpdate(releaseChannel)
+      if (!update) {
+        updateRef.current = null
+        setStatus({ state: 'idle' })
+        return 'up-to-date'
+      }
 
       updateRef.current = update
-      setStatus({
-        state: 'available',
-        version: update.version,
-        notes: update.body ?? undefined,
-      })
+      setStatus(toAvailableStatus(update))
       return 'available'
     } catch {
       console.warn('[updater] Failed to check for updates')
       return 'error'
     }
-  }, [])
+  }, [releaseChannel])
 
   useEffect(() => {
     if (!isTauri()) return
@@ -52,29 +91,17 @@ export function useUpdater(): { status: UpdateStatus; actions: UpdateActions } {
   }, [checkForUpdates])
 
   const startDownload = useCallback(async () => {
-    const update = updateRef.current as {
-      version: string
-      downloadAndInstall: (cb: (event: { event: string; data?: { contentLength?: number; chunkLength?: number } }) => void) => Promise<void>
-    } | null
+    const update = updateRef.current
     if (!update) return
-
-    let totalBytes = 0
-    let downloadedBytes = 0
 
     setStatus({ state: 'downloading', version: update.version, progress: 0 })
 
     try {
-      await update.downloadAndInstall((event) => {
-        if (event.event === 'Started' && event.data?.contentLength) {
-          totalBytes = event.data.contentLength
-        } else if (event.event === 'Progress' && event.data?.chunkLength) {
-          downloadedBytes += event.data.chunkLength
-          const progress = totalBytes > 0 ? Math.min(downloadedBytes / totalBytes, 1) : 0
-          setStatus({ state: 'downloading', version: update.version, progress })
-        } else if (event.event === 'Finished') {
-          setStatus({ state: 'ready', version: update.version })
-        }
-      })
+      await downloadAndInstallAppUpdate(
+        releaseChannel,
+        update.version,
+        createDownloadProgressHandler(update.version, setStatus),
+      )
 
       // If Finished wasn't emitted via callback, set ready after await resolves
       setStatus((prev) => (prev.state === 'downloading' ? { state: 'ready', version: update.version } : prev))
@@ -82,13 +109,14 @@ export function useUpdater(): { status: UpdateStatus; actions: UpdateActions } {
       console.warn('[updater] Download failed')
       setStatus({ state: 'error' })
     }
-  }, [])
+  }, [releaseChannel])
 
   const openReleaseNotes = useCallback(() => {
     openExternalUrl(RELEASE_NOTES_URL)
   }, [])
 
   const dismiss = useCallback(() => {
+    updateRef.current = null
     setStatus({ state: 'idle' })
   }, [])
 

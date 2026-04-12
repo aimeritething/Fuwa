@@ -15,6 +15,38 @@ pub struct Settings {
     pub release_channel: Option<String>,
 }
 
+fn normalize_optional_string(value: Option<String>) -> Option<String> {
+    value
+        .map(|candidate| candidate.trim().to_string())
+        .filter(|candidate| !candidate.is_empty())
+}
+
+pub fn normalize_release_channel(value: Option<&str>) -> Option<String> {
+    match value.map(|candidate| candidate.trim().to_ascii_lowercase()) {
+        Some(channel) if channel == "alpha" => Some(channel),
+        _ => None,
+    }
+}
+
+pub fn effective_release_channel(value: Option<&str>) -> &'static str {
+    if normalize_release_channel(value).is_some() {
+        "alpha"
+    } else {
+        "stable"
+    }
+}
+
+fn normalize_settings(settings: Settings) -> Settings {
+    Settings {
+        auto_pull_interval_minutes: settings.auto_pull_interval_minutes,
+        telemetry_consent: settings.telemetry_consent,
+        crash_reporting_enabled: settings.crash_reporting_enabled,
+        analytics_enabled: settings.analytics_enabled,
+        anonymous_id: normalize_optional_string(settings.anonymous_id),
+        release_channel: normalize_release_channel(settings.release_channel.as_deref()),
+    }
+}
+
 fn app_config_dir() -> Result<PathBuf, String> {
     dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())
 }
@@ -49,7 +81,9 @@ fn get_settings_at(path: &PathBuf) -> Result<Settings, String> {
     }
     let content =
         fs::read_to_string(path).map_err(|e| format!("Failed to read settings: {}", e))?;
-    serde_json::from_str(&content).map_err(|e| format!("Failed to parse settings: {}", e))
+    let settings =
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse settings: {}", e))?;
+    Ok(normalize_settings(settings))
 }
 
 fn save_settings_at(path: &PathBuf, settings: Settings) -> Result<(), String> {
@@ -58,21 +92,7 @@ fn save_settings_at(path: &PathBuf, settings: Settings) -> Result<(), String> {
             .map_err(|e| format!("Failed to create config directory: {}", e))?;
     }
 
-    // Trim whitespace and convert empty strings to None.
-    let cleaned = Settings {
-        auto_pull_interval_minutes: settings.auto_pull_interval_minutes,
-        telemetry_consent: settings.telemetry_consent,
-        crash_reporting_enabled: settings.crash_reporting_enabled,
-        analytics_enabled: settings.analytics_enabled,
-        anonymous_id: settings
-            .anonymous_id
-            .map(|k| k.trim().to_string())
-            .filter(|k| !k.is_empty()),
-        release_channel: settings
-            .release_channel
-            .map(|k| k.trim().to_string())
-            .filter(|k| !k.is_empty()),
-    };
+    let cleaned = normalize_settings(settings);
 
     let json = serde_json::to_string_pretty(&cleaned)
         .map_err(|e| format!("Failed to serialize settings: {}", e))?;
@@ -180,7 +200,7 @@ mod tests {
             crash_reporting_enabled: Some(true),
             analytics_enabled: Some(false),
             anonymous_id: Some("abc-123-uuid".to_string()),
-            release_channel: Some("beta".to_string()),
+            release_channel: Some("alpha".to_string()),
             ..Default::default()
         };
         let json = serde_json::to_string(&settings).unwrap();
@@ -211,11 +231,11 @@ mod tests {
     fn test_save_trims_whitespace() {
         let loaded = save_and_reload(Settings {
             anonymous_id: Some("  test-uuid  ".to_string()),
-            release_channel: Some("  beta  ".to_string()),
+            release_channel: Some("  alpha  ".to_string()),
             ..Default::default()
         });
         assert_eq!(loaded.anonymous_id.as_deref(), Some("test-uuid"));
-        assert_eq!(loaded.release_channel.as_deref(), Some("beta"));
+        assert_eq!(loaded.release_channel.as_deref(), Some("alpha"));
     }
 
     #[test]
@@ -224,6 +244,25 @@ mod tests {
             release_channel: Some("".to_string()),
             ..Default::default()
         });
+        assert!(loaded.release_channel.is_none());
+    }
+
+    #[test]
+    fn test_non_alpha_release_channels_normalize_to_stable() {
+        let loaded = save_and_reload(Settings {
+            release_channel: Some("beta".to_string()),
+            ..Default::default()
+        });
+        assert!(loaded.release_channel.is_none());
+    }
+
+    #[test]
+    fn test_get_settings_normalizes_legacy_beta_channel() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let path = dir.path().join("settings.json");
+        fs::write(&path, r#"{"release_channel":"beta"}"#).unwrap();
+
+        let loaded = get_settings_at(&path).unwrap();
         assert!(loaded.release_channel.is_none());
     }
 

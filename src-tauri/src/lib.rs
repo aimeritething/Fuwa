@@ -1,3 +1,4 @@
+pub mod app_updater;
 pub mod claude_cli;
 mod commands;
 pub mod frontmatter;
@@ -187,9 +188,11 @@ fn with_invoke_handler(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
         commands::create_vault_folder,
         commands::batch_archive_notes,
         commands::get_settings,
+        commands::check_for_app_update,
         commands::update_menu_state,
         commands::trigger_menu_command,
         commands::save_settings,
+        commands::download_and_install_app_update,
         commands::load_vault_list,
         commands::save_vault_list,
         commands::clone_repo,

@@ -1,31 +1,108 @@
 import { renderHook, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest'
 import { useUpdater } from './useUpdater'
 
-// Mock isTauri
 vi.mock('../mock-tauri', () => ({
   isTauri: vi.fn(() => false),
 }))
 
-// Mock openExternalUrl
 const mockOpenExternalUrl = vi.fn()
 vi.mock('../utils/url', () => ({
   openExternalUrl: (...args: unknown[]) => mockOpenExternalUrl(...args),
 }))
 
-// Mock the dynamic imports
-const mockCheck = vi.fn()
-const mockRelaunch = vi.fn()
+const mockInvoke = vi.fn()
 
-vi.mock('@tauri-apps/plugin-updater', () => ({
-  check: (...args: unknown[]) => mockCheck(...args),
-}))
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: (...args: unknown[]) => mockInvoke(...args),
+  Channel: class {
+    onmessage: (response: unknown) => void
 
-vi.mock('@tauri-apps/plugin-process', () => ({
-  relaunch: (...args: unknown[]) => mockRelaunch(...args),
+    constructor(onmessage?: (response: unknown) => void) {
+      this.onmessage = onmessage ?? (() => {})
+    }
+  },
 }))
 
 import { isTauri } from '../mock-tauri'
+
+interface AppUpdateMetadata {
+  currentVersion: string
+  version: string
+  date?: string
+  body?: string
+}
+
+type DownloadArgs = {
+  releaseChannel: string
+  expectedVersion: string
+  onEvent: {
+    onmessage: (
+      response:
+        | { event: 'Started'; data: { contentLength?: number } }
+        | { event: 'Progress'; data: { chunkLength: number } }
+        | { event: 'Finished' },
+    ) => void
+  }
+}
+
+function makeUpdate(overrides: Partial<AppUpdateMetadata> = {}): AppUpdateMetadata {
+  return {
+    currentVersion: '1.0.0',
+    version: '1.2.0',
+    body: 'Bug fixes and improvements',
+    ...overrides,
+  }
+}
+
+function installInvokeHandlers({
+  checkResult = null,
+  downloadImpl,
+}: {
+  checkResult?: AppUpdateMetadata | null | Error
+  downloadImpl?: (args: DownloadArgs) => Promise<void>
+}) {
+  mockInvoke.mockImplementation((command: string, args?: unknown) => {
+    if (command === 'check_for_app_update') {
+      if (checkResult instanceof Error) return Promise.reject(checkResult)
+      return Promise.resolve(checkResult)
+    }
+
+    if (command === 'download_and_install_app_update') {
+      if (downloadImpl) return downloadImpl(args as DownloadArgs)
+      return Promise.resolve(null)
+    }
+
+    return Promise.resolve(null)
+  })
+}
+
+function renderUpdater(releaseChannel: string) {
+  return renderHook(() => useUpdater(releaseChannel))
+}
+
+async function performManualCheck(
+  releaseChannel: string,
+  checkResult: AppUpdateMetadata | null | Error,
+) {
+  vi.mocked(isTauri).mockReturnValue(true)
+  installInvokeHandlers({ checkResult })
+
+  const hook = renderUpdater(releaseChannel)
+  let outcome: string | undefined
+
+  await act(async () => {
+    outcome = await hook.result.current.actions.checkForUpdates()
+  })
+
+  return { result: hook.result, outcome }
+}
+
+async function advanceAutoCheck() {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(3500)
+  })
+}
 
 describe('useUpdater', () => {
   beforeEach(() => {
@@ -41,111 +118,90 @@ describe('useUpdater', () => {
 
   it('starts in idle state', () => {
     vi.mocked(isTauri).mockReturnValue(false)
-    const { result } = renderHook(() => useUpdater())
+
+    const { result } = renderUpdater('stable')
+
     expect(result.current.status).toEqual({ state: 'idle' })
   })
 
-  it('does nothing when not in Tauri', async () => {
+  it('does not check for updates when not running in Tauri', async () => {
     vi.mocked(isTauri).mockReturnValue(false)
-    renderHook(() => useUpdater())
-    await vi.advanceTimersByTimeAsync(5000)
-    expect(mockCheck).not.toHaveBeenCalled()
+
+    renderUpdater('stable')
+    await advanceAutoCheck()
+
+    expect(mockInvoke).not.toHaveBeenCalled()
   })
 
-  it('checks for updates after 3s delay when in Tauri', async () => {
+  it('checks for stable updates after the startup delay', async () => {
     vi.mocked(isTauri).mockReturnValue(true)
-    mockCheck.mockResolvedValue(null) // no update
+    installInvokeHandlers({ checkResult: null })
 
-    renderHook(() => useUpdater())
-    expect(mockCheck).not.toHaveBeenCalled()
+    renderUpdater('stable')
+    await advanceAutoCheck()
 
-    await vi.advanceTimersByTimeAsync(3500)
-    await vi.waitFor(() => {
-      expect(mockCheck).toHaveBeenCalledOnce()
+    expect(mockInvoke).toHaveBeenCalledWith('check_for_app_update', {
+      releaseChannel: 'stable',
     })
   })
 
-  it('stays idle when no update is available', async () => {
-    vi.mocked(isTauri).mockReturnValue(true)
-    mockCheck.mockResolvedValue(null)
+  it('transitions to available when an alpha update is found', async () => {
+    const { result } = await performManualCheck(
+      'alpha',
+      makeUpdate({ version: '1.2.4-alpha.202604121830.10' }),
+    )
 
-    const { result } = renderHook(() => useUpdater())
-    await vi.advanceTimersByTimeAsync(3500)
-
-    await vi.waitFor(() => {
-      expect(mockCheck).toHaveBeenCalled()
+    expect(result.current.status).toEqual({
+      state: 'available',
+      version: '1.2.4-alpha.202604121830.10',
+      notes: 'Bug fixes and improvements',
     })
+
+    expect(mockInvoke).toHaveBeenCalledWith('check_for_app_update', {
+      releaseChannel: 'alpha',
+    })
+  })
+
+  it('returns up-to-date when no update is available', async () => {
+    const { result, outcome } = await performManualCheck('stable', null)
+
+    expect(outcome).toBe('up-to-date')
     expect(result.current.status).toEqual({ state: 'idle' })
   })
 
-  it('transitions to available when update is found', async () => {
-    vi.mocked(isTauri).mockReturnValue(true)
-    mockCheck.mockResolvedValue({
+  it('returns available and sets status when an update exists', async () => {
+    const { result, outcome } = await performManualCheck(
+      'stable',
+      makeUpdate({ body: undefined }),
+    )
+
+    expect(outcome).toBe('available')
+    expect(result.current.status).toEqual({
+      state: 'available',
       version: '1.2.0',
-      body: 'Bug fixes and improvements',
-      downloadAndInstall: vi.fn(),
-    })
-
-    const { result } = renderHook(() => useUpdater())
-    await vi.advanceTimersByTimeAsync(3500)
-
-    await vi.waitFor(() => {
-      expect(result.current.status).toEqual({
-        state: 'available',
-        version: '1.2.0',
-        notes: 'Bug fixes and improvements',
-      })
+      notes: undefined,
     })
   })
 
-  it('handles missing body gracefully', async () => {
-    vi.mocked(isTauri).mockReturnValue(true)
-    mockCheck.mockResolvedValue({
-      version: '2.0.0',
-      body: null,
-      downloadAndInstall: vi.fn(),
-    })
+  it('returns error when the update check fails', async () => {
+    const { result, outcome } = await performManualCheck(
+      'stable',
+      new Error('network error'),
+    )
 
-    const { result } = renderHook(() => useUpdater())
-    await vi.advanceTimersByTimeAsync(3500)
-
-    await vi.waitFor(() => {
-      expect(result.current.status).toEqual({
-        state: 'available',
-        version: '2.0.0',
-        notes: undefined,
-      })
-    })
-  })
-
-  it('stays idle on network error (fails silently)', async () => {
-    vi.mocked(isTauri).mockReturnValue(true)
-    mockCheck.mockRejectedValue(new Error('Network error'))
-
-    const { result } = renderHook(() => useUpdater())
-    await vi.advanceTimersByTimeAsync(3500)
-
-    await vi.waitFor(() => {
-      expect(console.warn).toHaveBeenCalledWith(
-        '[updater] Failed to check for updates'
-      )
-    })
+    expect(outcome).toBe('error')
+    expect(console.warn).toHaveBeenCalledWith('[updater] Failed to check for updates')
     expect(result.current.status).toEqual({ state: 'idle' })
   })
 
-  it('dismiss returns to idle from available', async () => {
+  it('dismiss resets the banner state', async () => {
     vi.mocked(isTauri).mockReturnValue(true)
-    mockCheck.mockResolvedValue({
-      version: '1.2.0',
-      body: 'Notes',
-      downloadAndInstall: vi.fn(),
-    })
+    installInvokeHandlers({ checkResult: makeUpdate() })
 
-    const { result } = renderHook(() => useUpdater())
-    await vi.advanceTimersByTimeAsync(3500)
+    const { result } = renderUpdater('stable')
 
-    await vi.waitFor(() => {
-      expect(result.current.status.state).toBe('available')
+    await act(async () => {
+      await result.current.actions.checkForUpdates()
     })
 
     act(() => {
@@ -155,10 +211,10 @@ describe('useUpdater', () => {
     expect(result.current.status).toEqual({ state: 'idle' })
   })
 
-  it('openReleaseNotes opens the release notes URL via openExternalUrl', async () => {
+  it('openReleaseNotes opens the release notes page', () => {
     vi.mocked(isTauri).mockReturnValue(false)
 
-    const { result } = renderHook(() => useUpdater())
+    const { result } = renderUpdater('stable')
 
     act(() => {
       result.current.actions.openReleaseNotes()
@@ -169,27 +225,24 @@ describe('useUpdater', () => {
     )
   })
 
-  it('startDownload transitions through downloading to ready', async () => {
+  it('downloads and installs the available update with progress', async () => {
     vi.mocked(isTauri).mockReturnValue(true)
-
-    const mockDownload = vi.fn(async (callback: (event: { event: string; data?: Record<string, unknown> }) => void) => {
-      callback({ event: 'Started', data: { contentLength: 1000 } })
-      callback({ event: 'Progress', data: { chunkLength: 500 } })
-      callback({ event: 'Progress', data: { chunkLength: 500 } })
-      callback({ event: 'Finished' })
+    installInvokeHandlers({
+      checkResult: makeUpdate(),
+      downloadImpl: async (args) => {
+        expect(args.releaseChannel).toBe('stable')
+        expect(args.expectedVersion).toBe('1.2.0')
+        args.onEvent.onmessage({ event: 'Started', data: { contentLength: 1000 } })
+        args.onEvent.onmessage({ event: 'Progress', data: { chunkLength: 500 } })
+        args.onEvent.onmessage({ event: 'Progress', data: { chunkLength: 500 } })
+        args.onEvent.onmessage({ event: 'Finished' })
+      },
     })
 
-    mockCheck.mockResolvedValue({
-      version: '1.2.0',
-      body: 'Notes',
-      downloadAndInstall: mockDownload,
-    })
+    const { result } = renderUpdater('stable')
 
-    const { result } = renderHook(() => useUpdater())
-    await vi.advanceTimersByTimeAsync(3500)
-
-    await vi.waitFor(() => {
-      expect(result.current.status.state).toBe('available')
+    await act(async () => {
+      await result.current.actions.checkForUpdates()
     })
 
     await act(async () => {
@@ -197,75 +250,28 @@ describe('useUpdater', () => {
     })
 
     expect(result.current.status).toEqual({ state: 'ready', version: '1.2.0' })
-    expect(mockDownload).toHaveBeenCalled()
   })
 
-  describe('checkForUpdates (manual)', () => {
-    it('returns up-to-date when no update is available', async () => {
-      vi.mocked(isTauri).mockReturnValue(true)
-      mockCheck.mockResolvedValue(null)
-
-      const { result } = renderHook(() => useUpdater())
-
-      let checkResult: string | undefined
-      await act(async () => {
-        checkResult = await result.current.actions.checkForUpdates()
-      })
-
-      expect(checkResult).toBe('up-to-date')
-      expect(result.current.status).toEqual({ state: 'idle' })
+  it('transitions to error when download fails', async () => {
+    vi.mocked(isTauri).mockReturnValue(true)
+    installInvokeHandlers({
+      checkResult: makeUpdate(),
+      downloadImpl: async () => {
+        throw new Error('download failed')
+      },
     })
 
-    it('returns available and sets status when update exists', async () => {
-      vi.mocked(isTauri).mockReturnValue(true)
-      mockCheck.mockResolvedValue({
-        version: '3.0.0',
-        body: 'Major release',
-        downloadAndInstall: vi.fn(),
-      })
+    const { result } = renderUpdater('stable')
 
-      const { result } = renderHook(() => useUpdater())
-
-      let checkResult: string | undefined
-      await act(async () => {
-        checkResult = await result.current.actions.checkForUpdates()
-      })
-
-      expect(checkResult).toBe('available')
-      expect(result.current.status).toEqual({
-        state: 'available',
-        version: '3.0.0',
-        notes: 'Major release',
-      })
+    await act(async () => {
+      await result.current.actions.checkForUpdates()
     })
 
-    it('returns error on network failure', async () => {
-      vi.mocked(isTauri).mockReturnValue(true)
-      mockCheck.mockRejectedValue(new Error('No internet'))
-
-      const { result } = renderHook(() => useUpdater())
-
-      let checkResult: string | undefined
-      await act(async () => {
-        checkResult = await result.current.actions.checkForUpdates()
-      })
-
-      expect(checkResult).toBe('error')
-      expect(console.warn).toHaveBeenCalledWith('[updater] Failed to check for updates')
+    await act(async () => {
+      await result.current.actions.startDownload()
     })
 
-    it('returns up-to-date when not in Tauri', async () => {
-      vi.mocked(isTauri).mockReturnValue(false)
-
-      const { result } = renderHook(() => useUpdater())
-
-      let checkResult: string | undefined
-      await act(async () => {
-        checkResult = await result.current.actions.checkForUpdates()
-      })
-
-      expect(checkResult).toBe('up-to-date')
-      expect(mockCheck).not.toHaveBeenCalled()
-    })
+    expect(console.warn).toHaveBeenCalledWith('[updater] Download failed')
+    expect(result.current.status).toEqual({ state: 'error' })
   })
 })

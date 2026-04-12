@@ -551,7 +551,7 @@ interface Settings {
   crash_reporting_enabled: boolean | null
   analytics_enabled: boolean | null
   anonymous_id: string | null
-  release_channel: string | null
+  release_channel: string | null // null = stable default, "alpha" = every-push prerelease feed
 }
 ```
 
@@ -578,8 +578,21 @@ Managed by `useSettings` hook and `SettingsPanel` component.
 ## Updates & Feature Flags
 
 ### Hooks
-- **`useUpdater()`** — Checks for updates using the Tauri updater plugin. Automatic download and install.
-- **`useFeatureFlag(flag)`** — Returns boolean for a named feature flag. Checks `localStorage` override (`ff_<name>`), then falls back to compile-time default. Type-safe via `FeatureFlagName` union.
+- **`useUpdater(releaseChannel)`** — Channel-aware updater state machine. Checks the selected feed, surfaces available/downloading/ready states, and delegates install work to Rust.
+- **`useFeatureFlag(flag)`** — Returns boolean for a named feature flag. Checks `localStorage` override (`ff_<name>`), then falls back to telemetry-backed evaluation. Type-safe via `FeatureFlagName` union.
+
+### Frontend helpers
+- **`src/lib/releaseChannel.ts`** — Normalizes persisted channel values so legacy or invalid settings fall back to Stable, while Stable serializes back to `null`.
+- **`src/lib/appUpdater.ts`** — Thin wrapper around the Tauri updater commands. Keeps the React hook free of endpoint-selection details.
+
+### Rust
+- **`src-tauri/src/app_updater.rs`** — Chooses the correct update endpoint (`alpha/latest.json` or `stable/latest.json`) and adapts Tauri updater results into frontend-friendly payloads.
+
+### Tauri Commands
+- **`check_for_app_update`** — Channel-aware update manifest lookup.
+- **`download_and_install_app_update`** — Channel-aware download/install with streamed progress events.
 
 ### CI/CD
-- **`.github/workflows/release.yml`** — Stable builds from `main`. Produces `latest.json` on GitHub Pages.
+- **`.github/workflows/release.yml`** — Alpha prereleases from every push to `main`. Publishes `alpha/latest.json` and refreshes the legacy `latest.json` / `latest-canary.json` aliases to the alpha feed.
+- **`.github/workflows/release-stable.yml`** — Stable releases from `stable-v*` tags. Publishes `stable/latest.json`.
+- **Beta cohorts** are handled in PostHog targeting only. There is no beta updater feed.
