@@ -1,12 +1,18 @@
-import { useState, useRef, useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
+import type { VaultEntry } from '../types'
 import { fuzzyMatch } from '../utils/fuzzyMatch'
+import { queueAiPrompt, requestOpenAiChat } from '../utils/aiPromptBridge'
+import type { NoteReference } from '../utils/ai-context'
 import type { CommandAction, CommandGroup } from '../hooks/useCommandRegistry'
 import { groupSortKey } from '../hooks/useCommandRegistry'
+import { CommandPaletteAiMode } from './CommandPaletteAiMode'
 
 interface CommandPaletteProps {
   open: boolean
   commands: CommandAction[]
+  entries?: VaultEntry[]
+  claudeCodeReady?: boolean
   onClose: () => void
 }
 
@@ -15,17 +21,17 @@ interface ScoredCommand {
   score: number
 }
 
-function matchCommand(query: string, cmd: CommandAction): ScoredCommand | null {
-  const labelResult = fuzzyMatch(query, cmd.label)
-  if (labelResult.match) return { command: cmd, score: labelResult.score }
+function matchCommand(query: string, command: CommandAction): ScoredCommand | null {
+  const labelResult = fuzzyMatch(query, command.label)
+  if (labelResult.match) return { command, score: labelResult.score }
 
-  for (const kw of cmd.keywords ?? []) {
-    const kwResult = fuzzyMatch(query, kw)
-    if (kwResult.match) return { command: cmd, score: kwResult.score - 1 }
+  for (const keyword of command.keywords ?? []) {
+    const keywordResult = fuzzyMatch(query, keyword)
+    if (keywordResult.match) return { command, score: keywordResult.score - 1 }
   }
 
-  const groupResult = fuzzyMatch(query, cmd.group)
-  if (groupResult.match) return { command: cmd, score: groupResult.score - 2 }
+  const groupResult = fuzzyMatch(query, command.group)
+  if (groupResult.match) return { command, score: groupResult.score - 2 }
 
   return null
 }
@@ -34,83 +40,262 @@ function groupResults(
   commands: CommandAction[],
   byRelevance: boolean,
 ): { group: CommandGroup; items: CommandAction[] }[] {
-  const map = new Map<CommandGroup, CommandAction[]>()
-  for (const cmd of commands) {
-    const list = map.get(cmd.group)
-    if (list) list.push(cmd)
-    else map.set(cmd.group, [cmd])
+  const groupedCommands = new Map<CommandGroup, CommandAction[]>()
+
+  for (const command of commands) {
+    const existing = groupedCommands.get(command.group)
+    if (existing) {
+      existing.push(command)
+      continue
+    }
+    groupedCommands.set(command.group, [command])
   }
-  const entries = Array.from(map.entries())
+
+  const entries = Array.from(groupedCommands.entries())
   if (!byRelevance) {
-    entries.sort((a, b) => groupSortKey(a[0]) - groupSortKey(b[0]))
+    entries.sort((left, right) => groupSortKey(left[0]) - groupSortKey(right[0]))
   }
+
   return entries.map(([group, items]) => ({ group, items }))
 }
 
-export function CommandPalette({ open, commands, onClose }: CommandPaletteProps) {
-  const [query, setQuery] = useState('')
-  const [selectedIndex, setSelectedIndex] = useState(0)
-  const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (open) {
-      setQuery('') // eslint-disable-line react-hooks/set-state-in-effect -- reset on open
-      setSelectedIndex(0)
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
-  }, [open])
-
+function usePaletteResults(commands: CommandAction[], query: string) {
   const enabledCommands = useMemo(
-    () => commands.filter(c => c.enabled),
+    () => commands.filter((command) => command.enabled),
     [commands],
   )
 
-  const filtered = useMemo(() => {
+  const filteredCommands = useMemo(() => {
     if (!query.trim()) return enabledCommands
     return enabledCommands
-      .map(cmd => matchCommand(query, cmd))
-      .filter((r): r is ScoredCommand => r !== null)
-      .sort((a, b) => b.score - a.score)
-      .map(r => r.command)
+      .map((command) => matchCommand(query, command))
+      .filter((result): result is ScoredCommand => result !== null)
+      .sort((left, right) => right.score - left.score)
+      .map((result) => result.command)
   }, [enabledCommands, query])
 
-  const hasQuery = !!query.trim()
-  const groups = useMemo(() => groupResults(filtered, hasQuery), [filtered, hasQuery])
-  const flatList = useMemo(() => groups.flatMap(g => g.items), [groups])
+  const hasQuery = query.trim().length > 0
+  const groups = useMemo(
+    () => groupResults(filteredCommands, hasQuery),
+    [filteredCommands, hasQuery],
+  )
+
+  return {
+    groups,
+    flatList: groups.flatMap((group) => group.items),
+  }
+}
+
+function CommandPaletteInput({
+  inputRef,
+  query,
+  onChange,
+}: {
+  inputRef: React.RefObject<HTMLInputElement | null>
+  query: string
+  onChange: (value: string) => void
+}) {
+  return (
+    <input
+      ref={inputRef}
+      className="border-b border-border bg-transparent px-4 py-3 text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
+      type="text"
+      placeholder="Type a command..."
+      value={query}
+      onChange={(event) => onChange(event.target.value)}
+    />
+  )
+}
+
+function CommandPaletteResults({
+  groups,
+  selectedIndex,
+  listRef,
+  onHover,
+  onSelect,
+}: {
+  groups: { group: CommandGroup; items: CommandAction[] }[]
+  selectedIndex: number
+  listRef: React.RefObject<HTMLDivElement | null>
+  onHover: (index: number) => void
+  onSelect: (command: CommandAction) => void
+}) {
+  const flatList = groups.flatMap((group) => group.items)
+
+  if (flatList.length === 0) {
+    return (
+      <div className="flex-1 overflow-y-auto py-1" ref={listRef}>
+        <div className="px-4 py-6 text-center text-[13px] text-muted-foreground">
+          No matching commands
+        </div>
+      </div>
+    )
+  }
+
+  const sections = groups.reduce<Array<{ group: CommandGroup; items: CommandAction[]; startIndex: number }>>(
+    (acc, group) => {
+      const previous = acc.at(-1)
+      acc.push({
+        ...group,
+        startIndex: previous ? previous.startIndex + previous.items.length : 0,
+      })
+      return acc
+    },
+    [],
+  )
+
+  return (
+    <div className="flex-1 overflow-y-auto py-1" ref={listRef}>
+      {sections.map(({ group, items, startIndex }) => {
+        return (
+          <div key={group}>
+            <div className="px-4 pb-1 pt-2 text-[11px] font-medium text-muted-foreground">
+              {group}
+            </div>
+            {items.map((command, index) => {
+              const globalIndex = startIndex + index
+              return (
+                <CommandRow
+                  key={command.id}
+                  command={command}
+                  selected={globalIndex === selectedIndex}
+                  onHover={() => onHover(globalIndex)}
+                  onSelect={() => onSelect(command)}
+                />
+              )
+            })}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function CommandPaletteFooter({
+  aiMode,
+}: {
+  aiMode: boolean
+}) {
+  return (
+    <div className="flex items-center gap-4 border-t border-border px-4 py-1.5 text-[11px] text-muted-foreground">
+      <span>{aiMode ? 'Claude mode' : '↑↓ navigate'}</span>
+      <span>{aiMode ? '↵ send' : '↵ select'}</span>
+      <span>esc close</span>
+    </div>
+  )
+}
+
+export function CommandPalette({ open, ...props }: CommandPaletteProps) {
+  if (!open) return null
+  return <OpenCommandPalette {...props} />
+}
+
+function OpenCommandPalette({
+  commands,
+  entries = [],
+  claudeCodeReady = true,
+  onClose,
+}: Omit<CommandPaletteProps, 'open'>) {
+  const [query, setQuery] = useState('')
+  const [aiValue, setAiValue] = useState('')
+  const [selectedIndex, setSelectedIndex] = useState(0)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const aiInputRef = useRef<HTMLDivElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const aiMode = aiValue.startsWith(' ')
+  const { groups, flatList } = usePaletteResults(commands, query)
 
   useEffect(() => {
-    setSelectedIndex(0) // eslint-disable-line react-hooks/set-state-in-effect -- reset on query change
-  }, [query])
+    const focusTimer = window.setTimeout(() => {
+      if (aiMode) {
+        aiInputRef.current?.focus()
+        return
+      }
+      inputRef.current?.focus()
+    }, 50)
+    return () => window.clearTimeout(focusTimer)
+  }, [aiMode])
 
   useEffect(() => {
-    if (!listRef.current) return
-    const el = listRef.current.querySelector('[data-selected="true"]') as HTMLElement | undefined
-    el?.scrollIntoView({ block: 'nearest' })
-  }, [selectedIndex])
+    if (aiMode || !listRef.current) return
+    const selectedElement = listRef.current.querySelector('[data-selected="true"]') as HTMLElement | null
+    selectedElement?.scrollIntoView({ block: 'nearest' })
+  }, [aiMode, selectedIndex])
 
   useEffect(() => {
-    if (!open) return
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.preventDefault(); onClose()
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault(); setSelectedIndex(i => Math.min(i + 1, flatList.length - 1))
-      } else if (e.key === 'ArrowUp') {
-        e.preventDefault(); setSelectedIndex(i => Math.max(i - 1, 0))
-      } else if (e.key === 'Enter') {
-        e.preventDefault()
-        const cmd = flatList[selectedIndex]
-        if (cmd) { onClose(); cmd.execute() }
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault()
+        onClose()
+        return
+      }
+
+      if (aiMode) return
+
+      if (event.key === 'ArrowDown') {
+        event.preventDefault()
+        setSelectedIndex((current) => Math.min(current + 1, flatList.length - 1))
+        return
+      }
+
+      if (event.key === 'ArrowUp') {
+        event.preventDefault()
+        setSelectedIndex((current) => Math.max(current - 1, 0))
+        return
+      }
+
+      if (event.key === 'Enter') {
+        event.preventDefault()
+        const command = flatList[selectedIndex]
+        if (!command) return
+        onClose()
+        command.execute()
       }
     }
-    window.addEventListener('keydown', handleKey)
-    return () => window.removeEventListener('keydown', handleKey)
-  }, [open, flatList, selectedIndex, onClose])
 
-  if (!open) return null
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [aiMode, flatList, onClose, selectedIndex])
 
-  let runningIndex = 0
+  const handleQueryChange = (nextQuery: string) => {
+    setSelectedIndex(0)
+    if (nextQuery.startsWith(' ')) {
+      setAiValue(nextQuery)
+      setQuery('')
+      return
+    }
+
+    setQuery(nextQuery)
+  }
+
+  const handleAiValueChange = (nextValue: string) => {
+    setSelectedIndex(0)
+    if (nextValue.startsWith(' ')) {
+      setAiValue(nextValue)
+      return
+    }
+
+    setAiValue('')
+    setQuery(nextValue)
+  }
+
+  const handleSelectCommand = (command: CommandAction) => {
+    onClose()
+    command.execute()
+  }
+
+  const handleSubmitAiPrompt = (text: string, references: NoteReference[]) => {
+    if (!text.trim()) {
+      onClose()
+      return
+    }
+
+    if (!claudeCodeReady) return
+
+    queueAiPrompt(text, references)
+    requestOpenAiChat()
+    onClose()
+  }
 
   return (
     <div
@@ -118,53 +303,33 @@ export function CommandPalette({ open, commands, onClose }: CommandPaletteProps)
       onClick={onClose}
     >
       <div
-        className="flex w-[520px] max-w-[90vw] max-h-[440px] flex-col self-start overflow-hidden rounded-xl border border-[var(--border-dialog)] bg-popover shadow-[0_8px_32px_var(--shadow-dialog)]"
-        onClick={e => e.stopPropagation()}
+        className={cn(
+          'flex w-[520px] max-h-[440px] max-w-[90vw] flex-col self-start overflow-hidden rounded-xl border border-[var(--border-dialog)] bg-popover shadow-[0_8px_32px_var(--shadow-dialog)]',
+          aiMode && 'min-h-[220px]',
+        )}
+        onClick={(event) => event.stopPropagation()}
       >
-        <input
-          ref={inputRef}
-          className="border-b border-border bg-transparent px-4 py-3 text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
-          type="text"
-          placeholder="Type a command..."
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-        />
-        <div className="flex-1 overflow-y-auto py-1" ref={listRef}>
-          {flatList.length === 0 ? (
-            <div className="px-4 py-6 text-center text-[13px] text-muted-foreground">
-              No matching commands
-            </div>
-          ) : (
-            groups.map(({ group, items }) => {
-              const startIndex = runningIndex
-              runningIndex += items.length
-              return (
-                <div key={group}>
-                  <div className="px-4 pb-1 pt-2 text-[11px] font-medium text-muted-foreground">
-                    {group}
-                  </div>
-                  {items.map((cmd, i) => {
-                    const globalIdx = startIndex + i
-                    return (
-                      <CommandRow
-                        key={cmd.id}
-                        command={cmd}
-                        selected={globalIdx === selectedIndex}
-                        onHover={() => setSelectedIndex(globalIdx)}
-                        onSelect={() => { onClose(); cmd.execute() }}
-                      />
-                    )
-                  })}
-                </div>
-              )
-            })
-          )}
-        </div>
-        <div className="flex items-center gap-4 border-t border-border px-4 py-1.5 text-[11px] text-muted-foreground">
-          <span>↑↓ navigate</span>
-          <span>↵ select</span>
-          <span>esc close</span>
-        </div>
+        {aiMode ? (
+          <CommandPaletteAiMode
+            entries={entries}
+            value={aiValue}
+            claudeCodeReady={claudeCodeReady}
+            onChange={handleAiValueChange}
+            onSubmit={handleSubmitAiPrompt}
+          />
+        ) : (
+          <>
+            <CommandPaletteInput inputRef={inputRef} query={query} onChange={handleQueryChange} />
+            <CommandPaletteResults
+              groups={groups}
+              selectedIndex={selectedIndex}
+              listRef={listRef}
+              onHover={setSelectedIndex}
+              onSelect={handleSelectCommand}
+            />
+            <CommandPaletteFooter aiMode={false} />
+          </>
+        )}
       </div>
     </div>
   )

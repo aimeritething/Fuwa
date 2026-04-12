@@ -2,16 +2,20 @@ import { describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent, act } from '@testing-library/react'
 import { AiPanel } from './AiPanel'
 import type { VaultEntry } from '../types'
+import { queueAiPrompt } from '../utils/aiPromptBridge'
 
 // Mock the hooks and utils to isolate component tests
 let mockMessages: ReturnType<typeof import('../hooks/useAiAgent').useAiAgent>['messages'] = []
 let mockStatus: ReturnType<typeof import('../hooks/useAiAgent').useAiAgent>['status'] = 'idle'
+const mockSendMessage = vi.fn()
+const mockClearConversation = vi.fn()
+
 vi.mock('../hooks/useAiAgent', () => ({
   useAiAgent: () => ({
     messages: mockMessages,
     status: mockStatus,
-    sendMessage: vi.fn(),
-    clearConversation: vi.fn(),
+    sendMessage: mockSendMessage,
+    clearConversation: mockClearConversation,
   }),
 }))
 
@@ -48,6 +52,8 @@ describe('AiPanel', () => {
   beforeEach(() => {
     mockMessages = []
     mockStatus = 'idle'
+    mockSendMessage.mockReset()
+    mockClearConversation.mockReset()
   })
 
   it('renders panel with AI Chat header', () => {
@@ -114,7 +120,7 @@ describe('AiPanel', () => {
     render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)
     const input = screen.getByTestId('agent-input')
     expect(input).toBeTruthy()
-    expect((input as HTMLInputElement).disabled).toBe(false)
+    expect(input).toHaveAttribute('contenteditable', 'true')
   })
 
   it('has send button disabled when input is empty', () => {
@@ -128,14 +134,14 @@ describe('AiPanel', () => {
     render(
       <AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" activeEntry={entry} entries={[entry]} />
     )
-    const input = screen.getByTestId('agent-input') as HTMLInputElement
-    expect(input.placeholder).toBe('Ask about this note...')
+    const input = screen.getByTestId('agent-input')
+    expect(input).toHaveAttribute('aria-placeholder', 'Ask about this note...')
   })
 
   it('shows generic placeholder when no active entry', () => {
     render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)
-    const input = screen.getByTestId('agent-input') as HTMLInputElement
-    expect(input.placeholder).toBe('Ask the AI agent...')
+    const input = screen.getByTestId('agent-input')
+    expect(input).toHaveAttribute('aria-placeholder', 'Ask the AI agent...')
   })
 
   it('auto-focuses input on mount', async () => {
@@ -202,5 +208,21 @@ describe('AiPanel', () => {
     expect(onOpenNote).toHaveBeenCalledWith('Meeting — 2024/01/15')
     fireEvent.click(wikilinks[1])
     expect(onOpenNote).toHaveBeenCalledWith('Pasta Carbonara')
+  })
+
+  it('auto-sends a queued prompt from the command palette bridge', async () => {
+    render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" entries={[makeEntry({ path: '/vault/alpha.md', filename: 'alpha.md', title: 'Alpha', isA: 'Project' })]} />)
+
+    await act(async () => {
+      queueAiPrompt('summarize [[alpha]]', [
+        { title: 'Alpha', path: '/vault/alpha.md', type: 'Project' },
+      ])
+    })
+
+    expect(mockClearConversation).toHaveBeenCalledOnce()
+    expect(mockSendMessage).toHaveBeenCalledWith('summarize [[alpha]]', [
+      { title: 'Alpha', path: '/vault/alpha.md', type: 'Project' },
+    ])
+    expect(screen.getByTestId('agent-send')).toBeDisabled()
   })
 })

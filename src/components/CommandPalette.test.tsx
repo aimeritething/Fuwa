@@ -1,10 +1,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import type { VaultEntry } from '../types'
+import { queueAiPrompt, requestOpenAiChat } from '../utils/aiPromptBridge'
 import { CommandPalette } from './CommandPalette'
 import type { CommandAction } from '../hooks/useCommandRegistry'
 
 // jsdom doesn't implement scrollIntoView
 Element.prototype.scrollIntoView = vi.fn()
+
+vi.mock('../utils/aiPromptBridge', () => ({
+  queueAiPrompt: vi.fn(),
+  requestOpenAiChat: vi.fn(),
+}))
 
 const makeCommand = (overrides: Partial<CommandAction> = {}): CommandAction => ({
   id: 'test-cmd',
@@ -24,6 +31,59 @@ const commands: CommandAction[] = [
   makeCommand({ id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,' }),
   makeCommand({ id: 'disabled-cmd', label: 'Disabled Command', group: 'Note', enabled: false }),
 ]
+
+const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
+  path: '/vault/note/test.md',
+  filename: 'test.md',
+  title: 'Test Note',
+  isA: 'Note',
+  aliases: [],
+  belongsTo: [],
+  relatedTo: [],
+  status: null,
+  owner: null,
+  cadence: null,
+  archived: false,
+  modifiedAt: 1700000000,
+  createdAt: 1700000000,
+  fileSize: 100,
+  snippet: '',
+  wordCount: 0,
+  relationships: {},
+  icon: null,
+  color: null,
+  order: null,
+  outgoingLinks: [],
+  ...overrides,
+})
+
+const entries: VaultEntry[] = [
+  makeEntry({ path: '/vault/alpha.md', filename: 'alpha.md', title: 'Alpha', isA: 'Project' }),
+]
+
+function setSelection(editor: HTMLElement, offset: number) {
+  const selection = window.getSelection()
+  if (!selection) return
+
+  const targetNode = editor.firstChild ?? editor
+  const safeOffset = targetNode.nodeType === Node.TEXT_NODE
+    ? Math.min(offset, targetNode.textContent?.length ?? 0)
+    : Math.min(offset, targetNode.childNodes.length)
+
+  const range = document.createRange()
+  range.setStart(targetNode, safeOffset)
+  range.collapse(true)
+  selection.removeAllRanges()
+  selection.addRange(range)
+}
+
+function updateAiInput(text: string) {
+  const editor = screen.getByTestId('command-palette-ai-input')
+  editor.textContent = text
+  setSelection(editor, text.length)
+  fireEvent.input(editor)
+  return editor
+}
 
 describe('CommandPalette', () => {
   const onClose = vi.fn()
@@ -164,6 +224,54 @@ describe('CommandPalette', () => {
     expect(screen.getByText('↑↓ navigate')).toBeInTheDocument()
     expect(screen.getByText('↵ select')).toBeInTheDocument()
     expect(screen.getByText('esc close')).toBeInTheDocument()
+  })
+
+  it('switches into AI mode when the query starts with a leading space', () => {
+    render(<CommandPalette open={true} commands={commands} onClose={onClose} />)
+    fireEvent.change(screen.getByPlaceholderText('Type a command...'), { target: { value: ' ' } })
+
+    expect(screen.getByTestId('command-palette-ai-input')).toBeInTheDocument()
+    expect(screen.getAllByText('Ask Claude Code').length).toBeGreaterThan(0)
+    expect(screen.queryByText('Search Notes')).not.toBeInTheDocument()
+  })
+
+  it('returns to command mode when the leading space is deleted', () => {
+    render(
+      <CommandPalette open={true} commands={commands} entries={entries} onClose={onClose} />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('Type a command...'), { target: { value: ' ' } })
+    updateAiInput('new')
+
+    const input = screen.getByPlaceholderText('Type a command...') as HTMLInputElement
+    expect(screen.queryByTestId('command-palette-ai-input')).toBeNull()
+    expect(input.value).toBe('new')
+    expect(screen.getByText('New Note')).toBeInTheDocument()
+  })
+
+  it('queues a stripped AI prompt and closes on Enter in AI mode', () => {
+    render(
+      <CommandPalette open={true} commands={commands} entries={entries} onClose={onClose} />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('Type a command...'), { target: { value: ' ' } })
+    const editor = updateAiInput(' hello world')
+    fireEvent.keyDown(editor, { key: 'Enter' })
+
+    expect(queueAiPrompt).toHaveBeenCalledWith('hello world', [])
+    expect(requestOpenAiChat).toHaveBeenCalledOnce()
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('closes without queueing when AI mode only contains the trigger space', () => {
+    render(<CommandPalette open={true} commands={commands} onClose={onClose} />)
+
+    fireEvent.change(screen.getByPlaceholderText('Type a command...'), { target: { value: ' ' } })
+    fireEvent.keyDown(screen.getByTestId('command-palette-ai-input'), { key: 'Enter' })
+
+    expect(queueAiPrompt).not.toHaveBeenCalled()
+    expect(requestOpenAiChat).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
   describe('relevance ranking', () => {

@@ -1,10 +1,14 @@
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react'
+import { useEffect, useRef } from 'react'
 import { Robot, X, PaperPlaneRight, Plus, Link } from '@phosphor-icons/react'
 import { AiMessage } from './AiMessage'
 import { WikilinkChatInput } from './WikilinkChatInput'
-import { useAiAgent, type AiAgentMessage, type AgentFileCallbacks } from '../hooks/useAiAgent'
-import { collectLinkedEntries, buildContextSnapshot, type NoteReference, type NoteListItem } from '../utils/ai-context'
+import { type AiAgentMessage } from '../hooks/useAiAgent'
+import { type NoteReference, type NoteListItem } from '../utils/ai-context'
 import type { VaultEntry } from '../types'
+import { extractInlineWikilinkReferences } from './inlineWikilinkText'
+import { useAiPanelController } from './useAiPanelController'
+import { useAiPanelPromptQueue } from './useAiPanelPromptQueue'
+import { useAiPanelFocus } from './useAiPanelFocus'
 
 export type { AiAgentMessage } from '../hooks/useAiAgent'
 
@@ -111,75 +115,89 @@ function MessageHistory({ messages, isActive, onOpenNote, onNavigateWikilink, ha
   )
 }
 
+function AiPanelComposer({
+  entries,
+  hasContext,
+  input,
+  inputRef,
+  isActive,
+  onChange,
+  onSend,
+}: {
+  entries: VaultEntry[]
+  hasContext: boolean
+  input: string
+  inputRef: React.RefObject<HTMLDivElement | null>
+  isActive: boolean
+  onChange: (value: string) => void
+  onSend: (text: string, references: NoteReference[]) => void
+}) {
+  return (
+    <div
+      className="flex shrink-0 flex-col border-t border-border"
+      style={{ padding: '8px 12px' }}
+    >
+      <div className="flex items-end gap-2">
+        <div className="flex-1">
+          <WikilinkChatInput
+            entries={entries}
+            value={input}
+            onChange={onChange}
+            onSend={onSend}
+            disabled={isActive}
+            placeholder={hasContext ? 'Ask about this note...' : 'Ask the AI agent...'}
+            inputRef={inputRef}
+          />
+        </div>
+        <button
+          className="shrink-0 flex items-center justify-center border-none cursor-pointer transition-colors"
+          style={{
+            background: (isActive || !input.trim()) ? 'var(--muted)' : 'var(--primary)',
+            color: (isActive || !input.trim()) ? 'var(--muted-foreground)' : 'white',
+            borderRadius: 8, width: 32, height: 34,
+            cursor: (isActive || !input.trim()) ? 'not-allowed' : 'pointer',
+          }}
+          onClick={() => onSend(input, extractInlineWikilinkReferences(input, entries))}
+          disabled={isActive || !input.trim()}
+          title="Send message"
+          data-testid="agent-send"
+        >
+          <PaperPlaneRight size={16} />
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export function AiPanel({ onClose, onOpenNote, onFileCreated, onFileModified, onVaultChanged, vaultPath, activeEntry, activeNoteContent, entries, openTabs, noteList, noteListFilter }: AiPanelProps) {
-  const [input, setInput] = useState('')
-  const [pendingRefs, setPendingRefs] = useState<NoteReference[]>([])
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
 
-  const linkedEntries = useMemo(() => {
-    if (!activeEntry || !entries) return []
-    return collectLinkedEntries(activeEntry, entries)
-  }, [activeEntry, entries])
-
-  const contextPrompt = useMemo(() => {
-    if (!activeEntry || !entries) return undefined
-    return buildContextSnapshot({
-      activeEntry,
-      activeNoteContent: activeNoteContent ?? undefined,
-      openTabs,
-      noteList,
-      noteListFilter,
-      entries,
-      references: pendingRefs.length > 0 ? pendingRefs : undefined,
-    })
-  }, [activeEntry, activeNoteContent, openTabs, noteList, noteListFilter, entries, pendingRefs])
-
-  const fileCallbacks = useMemo<AgentFileCallbacks>(() => ({
+  const {
+    agent,
+    input,
+    setInput,
+    linkedEntries,
+    hasContext,
+    isActive,
+    handleSend,
+    handleNavigateWikilink,
+  } = useAiPanelController({
+    vaultPath,
+    activeEntry,
+    activeNoteContent,
+    entries,
+    openTabs,
+    noteList,
+    noteListFilter,
+    onOpenNote,
     onFileCreated,
     onFileModified,
     onVaultChanged,
-  }), [onFileCreated, onFileModified, onVaultChanged])
+  })
 
-  const agent = useAiAgent(vaultPath, contextPrompt, fileCallbacks)
-  const hasContext = !!activeEntry
-  const isActive = agent.status === 'thinking' || agent.status === 'tool-executing'
-
-  useEffect(() => {
-    const timer = setTimeout(() => inputRef.current?.focus(), 0)
-    return () => clearTimeout(timer)
-  }, [])
-
-  useEffect(() => {
-    if (isActive) {
-      panelRef.current?.focus()
-    } else {
-      inputRef.current?.focus()
-    }
-  }, [isActive])
-
-  const handleEscape = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape' && panelRef.current?.contains(document.activeElement)) {
-      e.preventDefault()
-      onClose()
-    }
-  }, [onClose])
-
-  useEffect(() => {
-    window.addEventListener('keydown', handleEscape)
-    return () => window.removeEventListener('keydown', handleEscape)
-  }, [handleEscape])
-
-  const handleNavigateWikilink = useCallback((target: string) => {
-    onOpenNote?.(target)
-  }, [onOpenNote])
-
-  const handleSend = useCallback((text: string, references: NoteReference[]) => {
-    if (!text.trim() || isActive) return
-    setPendingRefs(references)
-    agent.sendMessage(text, references)
-    setInput('')
-  }, [isActive, agent])
+  useAiPanelPromptQueue({ agent, input, isActive, setInput })
+  useAiPanelFocus({ inputRef, panelRef, isActive, onClose })
 
   return (
     <aside
@@ -208,39 +226,15 @@ export function AiPanel({ onClose, onOpenNote, onFileCreated, onFileModified, on
         onNavigateWikilink={handleNavigateWikilink}
         hasContext={hasContext}
       />
-      <div
-        className="flex shrink-0 flex-col border-t border-border"
-        style={{ padding: '8px 12px' }}
-      >
-        <div className="flex items-end gap-2">
-          <div className="flex-1">
-            <WikilinkChatInput
-              entries={entries ?? []}
-              value={input}
-              onChange={setInput}
-              onSend={handleSend}
-              disabled={isActive}
-              placeholder={hasContext ? 'Ask about this note...' : 'Ask the AI agent...'}
-              inputRef={inputRef}
-            />
-          </div>
-          <button
-            className="shrink-0 flex items-center justify-center border-none cursor-pointer transition-colors"
-            style={{
-              background: (isActive || !input.trim()) ? 'var(--muted)' : 'var(--primary)',
-              color: (isActive || !input.trim()) ? 'var(--muted-foreground)' : 'white',
-              borderRadius: 8, width: 32, height: 34,
-              cursor: (isActive || !input.trim()) ? 'not-allowed' : 'pointer',
-            }}
-            onClick={() => handleSend(input, pendingRefs)}
-            disabled={isActive || !input.trim()}
-            title="Send message"
-            data-testid="agent-send"
-          >
-            <PaperPlaneRight size={16} />
-          </button>
-        </div>
-      </div>
+      <AiPanelComposer
+        entries={entries ?? []}
+        hasContext={hasContext}
+        input={input}
+        inputRef={inputRef}
+        isActive={isActive}
+        onChange={setInput}
+        onSend={handleSend}
+      />
     </aside>
   )
 }
