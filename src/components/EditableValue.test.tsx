@@ -42,6 +42,11 @@ describe('EditableValue', () => {
     expect(value).toHaveClass('truncate')
   })
 
+  it('left-aligns plain text values in view mode', () => {
+    render(<EditableValue value="Active" onSave={onSave} onCancel={onCancel} isEditing={false} onStartEdit={onStartEdit} />)
+    expect(screen.getByText('Active').parentElement).toHaveClass('justify-start', 'text-left')
+  })
+
   it('shows input in editing mode', () => {
     render(<EditableValue value="Active" onSave={onSave} onCancel={onCancel} isEditing={true} onStartEdit={onStartEdit} />)
     const input = screen.getByDisplayValue('Active')
@@ -236,6 +241,11 @@ describe('UrlValue', () => {
   it('displays URL text in view mode', () => {
     render(<UrlValue value="https://example.com" onSave={onSave} onCancel={onCancel} isEditing={false} onStartEdit={onStartEdit} />)
     expect(screen.getByTestId('url-link')).toHaveTextContent('https://example.com')
+  })
+
+  it('left-aligns URL values in view mode', () => {
+    render(<UrlValue value="https://example.com" onSave={onSave} onCancel={onCancel} isEditing={false} onStartEdit={onStartEdit} />)
+    expect(screen.getByTestId('url-link')).toHaveClass('justify-start', 'text-left')
   })
 
   it('opens URL via openExternalUrl on click', () => {

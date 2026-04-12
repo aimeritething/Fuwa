@@ -48,6 +48,11 @@ describe('ColorSwatch', () => {
 })
 
 describe('ColorEditableValue', () => {
+  it('left-aligns the text display in view mode', () => {
+    render(<ColorEditableValue value="#3b82f6" isEditing={false} onStartEdit={vi.fn()} onSave={vi.fn()} onCancel={vi.fn()} />)
+    expect(screen.getByText('#3b82f6')).toHaveClass('text-left')
+  })
+
   it('shows swatch when value is a valid hex color', () => {
     render(<ColorEditableValue value="#3b82f6" isEditing={false} onStartEdit={vi.fn()} onSave={vi.fn()} onCancel={vi.fn()} />)
     expect(screen.getByTestId('color-swatch')).toBeTruthy()

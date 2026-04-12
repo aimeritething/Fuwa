@@ -174,7 +174,7 @@ function DateValue({ value, onSave, autoOpen = false, onCancel }: {
     >
       <PopoverTrigger asChild>
         <button
-          className={`inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 border-none px-2 text-right text-[12px] font-medium transition-colors hover:opacity-80${formatted ? ' rounded-md bg-muted text-accent-foreground' : ' bg-transparent text-muted-foreground'}`}
+          className={`inline-flex h-6 min-w-0 cursor-pointer items-center gap-1 border-none px-2 text-left text-[12px] font-medium transition-colors hover:opacity-80${formatted ? ' rounded-md bg-muted text-accent-foreground' : ' bg-transparent text-muted-foreground'}`}
           title={value}
           data-testid="date-display"
         >

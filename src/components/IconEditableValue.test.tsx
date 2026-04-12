@@ -22,6 +22,20 @@ function renderIconValue(overrides: Partial<React.ComponentProps<typeof IconEdit
 }
 
 describe('IconEditableValue', () => {
+  it('left-aligns the icon display in view mode', () => {
+    render(
+      <IconEditableValue
+        value="rocket"
+        onSave={vi.fn()}
+        onCancel={vi.fn()}
+        isEditing={false}
+        onStartEdit={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('icon-editable-display')).toHaveClass('text-left')
+  })
+
   it('shows searchable icon results with previews while editing', () => {
     renderIconValue()
 

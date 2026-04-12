@@ -129,6 +129,30 @@ describe('DynamicPropertiesPanel', () => {
     expect(screen.getByText('Luca')).toBeInTheDocument()
   })
 
+  it('left-aligns mixed property value displays', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={makeEntry()}
+        content=""
+        frontmatter={{
+          Owner: 'Luca',
+          History_confidence: 0.84,
+          Date: '2026-04-11',
+          icon: 'rocket',
+          color: '#3b82f6',
+          Window_end: null,
+        }}
+      />,
+    )
+
+    expect(screen.getByText('Luca').parentElement).toHaveClass('justify-start', 'text-left')
+    expect(screen.getByText('0.84').parentElement).toHaveClass('justify-start', 'text-left')
+    expect(screen.getByTestId('date-display')).toHaveClass('text-left')
+    expect(screen.getByTestId('icon-editable-display')).toHaveClass('text-left')
+    expect(screen.getByText('#3b82f6')).toHaveClass('text-left')
+    expect(screen.getByText('\u2014').parentElement).toHaveClass('justify-start', 'text-left')
+  })
+
   it('hides Owner with wikilink value from Properties panel', () => {
     render(
       <DynamicPropertiesPanel

@@ -66,7 +66,7 @@ export function UrlValue({
   return (
     <span className="group/url flex w-full min-w-0 items-center gap-1">
       <span
-        className="inline-flex h-6 min-w-0 flex-1 cursor-pointer items-center justify-end overflow-hidden rounded-md px-2 text-right text-[12px] text-[var(--accent-blue)] underline decoration-[var(--accent-blue)]/40 transition-colors hover:decoration-[var(--accent-blue)]"
+        className="inline-flex h-6 min-w-0 flex-1 cursor-pointer items-center justify-start overflow-hidden rounded-md px-2 text-left text-[12px] text-[var(--accent-blue)] underline decoration-[var(--accent-blue)]/40 transition-colors hover:decoration-[var(--accent-blue)]"
         onClick={handleOpen}
         title={value}
         data-testid="url-link"
@@ -125,7 +125,7 @@ export function EditableValue({
 
   return (
     <span
-      className="inline-flex h-6 w-full min-w-0 cursor-pointer items-center justify-end overflow-hidden rounded-md px-2 text-right text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
+      className="inline-flex h-6 w-full min-w-0 cursor-pointer items-center justify-start overflow-hidden rounded-md px-2 text-left text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
       onClick={onStartEdit}
       title={value || 'Click to edit'}
     >
