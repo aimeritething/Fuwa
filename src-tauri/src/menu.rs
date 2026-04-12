@@ -457,7 +457,6 @@ mod tests {
             APP_CHECK_FOR_UPDATES,
             FILE_NEW_NOTE,
             FILE_NEW_TYPE,
-            FILE_DAILY_NOTE,
             FILE_QUICK_OPEN,
             FILE_SAVE,
             EDIT_FIND_IN_VAULT,
