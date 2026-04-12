@@ -7,6 +7,7 @@ const FIXTURE_VAULT = path.resolve('tests/fixtures/test-vault')
 const FIXTURE_VAULT_READY_TIMEOUT = 30_000
 const FIXTURE_VAULT_REMOVE_RETRIES = 10
 const FIXTURE_VAULT_REMOVE_RETRY_DELAY_MS = 100
+const CLAUDE_CODE_ONBOARDING_DISMISSED_KEY = 'tolaria:claude-code-onboarding-dismissed'
 
 function copyDirSync(src: string, dest: string): void {
   fs.mkdirSync(dest, { recursive: true })
@@ -41,8 +42,9 @@ export async function openFixtureVault(
   page: Page,
   vaultPath: string,
 ): Promise<void> {
-  await page.addInitScript((resolvedVaultPath: string) => {
+  await page.addInitScript(({ dismissedKey, resolvedVaultPath }: { dismissedKey: string; resolvedVaultPath: string }) => {
     localStorage.clear()
+    localStorage.setItem(dismissedKey, '1')
 
     const nativeFetch = window.fetch.bind(window)
     window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
@@ -93,7 +95,7 @@ export async function openFixtureVault(
         return applyFixtureVaultOverrides(ref) ?? ref
       },
     })
-  }, vaultPath)
+  }, { dismissedKey: CLAUDE_CODE_ONBOARDING_DISMISSED_KEY, resolvedVaultPath: vaultPath })
 
   await page.goto('/', { waitUntil: 'domcontentloaded' })
   await page.waitForFunction(() => Boolean(window.__mockHandlers))

@@ -51,5 +51,8 @@ test('Getting Started template shows inline retry on clone failure and opens aft
   await page.getByTestId('welcome-retry-template').click()
 
   await expect(page.getByTestId('welcome-screen')).not.toBeVisible()
+  await expect(page.getByTestId('claude-onboarding-screen')).toBeVisible()
+  await expect(page.getByText('Claude Code not detected')).toBeVisible()
+  await page.getByTestId('claude-onboarding-continue').click()
   await expect(page.locator('[data-testid="note-list-container"]')).toBeVisible()
 })
