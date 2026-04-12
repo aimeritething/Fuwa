@@ -522,8 +522,13 @@ flowchart TD
     PC -->|Fast-forward| RV["reload vault"]
     PC -->|Up to date| DONE["idle"]
 
-    MAN["Manual commit\n(CommitDialog)"] --> GC["invoke('git_commit', message)"]
-    GC --> GP["invoke('git_push')"]
+    MAN["Manual commit\n(CommitDialog)"] --> RS["useGitRemoteStatus\n(commit-time check)"]
+    RS --> RCHK["invoke('git_remote_status')"]
+    RCHK --> RMODE{Remote configured?}
+    RMODE -->|No| GC["invoke('git_commit', message)"]
+    GC --> LOCAL["Local commit only\nNo remote chip + local toast"]
+    RMODE -->|Yes| GC2["invoke('git_commit', message)"]
+    GC2 --> GP["invoke('git_push')"]
     GP --> PR{Push result?}
     PR -->|ok| RM["Reload modified files"]
     PR -->|rejected| DIV["syncStatus = pull_required"]
@@ -535,6 +540,8 @@ flowchart TD
     CMD["Cmd+K → Pull\nor Menu → Pull"] --> PULL
     STATUS["Click sync badge"] --> POPUP["GitStatusPopup\n(branch, ahead/behind)"]
 ```
+
+`useGitRemoteStatus` re-checks `git_remote_status` when the commit dialog opens and again right before submit. If `hasRemote` is false, Tolaria keeps the flow local-only: the status bar shows a neutral `No remote` chip, the dialog copy switches from "Commit & Push" to "Commit", and no `git_push` call is attempted.
 
 #### Sync States
 
@@ -696,6 +703,7 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useTheme` | Editor theme CSS vars | Editor typography theme |
 | `useAiAgent` | `messages`, `status`, tool actions | AI agent conversation |
 | `useAutoSync` | Sync interval, pull/push state | Git auto-sync |
+| `useGitRemoteStatus` | `remoteStatus`, `refreshRemoteStatus()` | On-demand remote detection for commit UI |
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |
 | `useSettings` | App settings (telemetry, release channel, auto-sync interval) | Persistent settings |
 | `useVaultConfig` | Per-vault UI preferences | Vault-specific config |

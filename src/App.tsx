@@ -25,6 +25,7 @@ import { useVaultLoader } from './hooks/useVaultLoader'
 import { useSettings } from './hooks/useSettings'
 import { useNoteActions } from './hooks/useNoteActions'
 import { useCommitFlow } from './hooks/useCommitFlow'
+import { useGitRemoteStatus } from './hooks/useGitRemoteStatus'
 import { useViewMode } from './hooks/useViewMode'
 import { useEntryActions } from './hooks/useEntryActions'
 import { useAppCommands } from './hooks/useAppCommands'
@@ -185,6 +186,7 @@ function App() {
     },
     onToast: (msg) => setToastMessage(msg),
   })
+  const gitRemoteStatus = useGitRemoteStatus(resolvedPath)
 
   // Detect external file renames on window focus
   const [detectedRenames, setDetectedRenames] = useState<DetectedRename[]>([])
@@ -418,7 +420,14 @@ function App() {
     }
   }, [vault, notes, setToastMessage])
 
-  const commitFlow = useCommitFlow({ savePending: appSave.savePending, loadModifiedFiles: vault.loadModifiedFiles, commitAndPush: vault.commitAndPush, setToastMessage, onPushRejected: autoSync.handlePushRejected })
+  const commitFlow = useCommitFlow({
+    savePending: appSave.savePending,
+    loadModifiedFiles: vault.loadModifiedFiles,
+    resolveRemoteStatus: gitRemoteStatus.refreshRemoteStatus,
+    setToastMessage,
+    onPushRejected: autoSync.handlePushRejected,
+    vaultPath: resolvedPath,
+  })
   const suggestedCommitMessage = useMemo(() => generateCommitMessage(vault.modifiedFiles), [vault.modifiedFiles])
 
   const entryActions = useEntryActions({
@@ -752,7 +761,14 @@ function App() {
       <SearchPanel open={dialogs.showSearch} vaultPath={resolvedPath} entries={vault.entries} onSelectNote={notes.handleSelectNote} onClose={dialogs.closeSearch} />
       <CreateTypeDialog open={dialogs.showCreateTypeDialog} onClose={dialogs.closeCreateType} onCreate={handleCreateType} />
       <CreateViewDialog open={dialogs.showCreateViewDialog} onClose={dialogs.closeCreateView} onCreate={handleCreateOrUpdateView} availableFields={availableFields} editingView={dialogs.editingView?.definition ?? null} />
-      <CommitDialog open={commitFlow.showCommitDialog} modifiedCount={vault.modifiedFiles.length} suggestedMessage={suggestedCommitMessage} onCommit={commitFlow.handleCommitPush} onClose={commitFlow.closeCommitDialog} />
+      <CommitDialog
+        open={commitFlow.showCommitDialog}
+        modifiedCount={vault.modifiedFiles.length}
+        commitMode={commitFlow.commitMode}
+        suggestedMessage={suggestedCommitMessage}
+        onCommit={commitFlow.handleCommitPush}
+        onClose={commitFlow.closeCommitDialog}
+      />
       <ConflictResolverModal
         open={dialogs.showConflictResolver}
         fileStates={conflictResolver.fileStates}

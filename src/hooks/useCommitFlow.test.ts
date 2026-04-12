@@ -2,28 +2,58 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useCommitFlow } from './useCommitFlow'
 
+const mockInvokeFn = vi.fn()
+const mockTrackEvent = vi.fn()
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: (command: string, args: Record<string, unknown>) => mockInvokeFn(command, args),
+}))
+
+vi.mock('../mock-tauri', () => ({
+  isTauri: () => false,
+  mockInvoke: (command: string, args: Record<string, unknown>) => mockInvokeFn(command, args),
+}))
+
+vi.mock('../lib/telemetry', () => ({
+  trackEvent: (event: string, properties?: Record<string, unknown>) => mockTrackEvent(event, properties),
+}))
+
 describe('useCommitFlow', () => {
   let savePending: vi.Mock
   let loadModifiedFiles: vi.Mock
-  let commitAndPush: vi.Mock
+  let resolveRemoteStatus: vi.Mock
   let setToastMessage: vi.Mock
   let onPushRejected: vi.Mock
 
   beforeEach(() => {
     savePending = vi.fn().mockResolvedValue(undefined)
     loadModifiedFiles = vi.fn().mockResolvedValue(undefined)
-    commitAndPush = vi.fn().mockResolvedValue({ status: 'ok', message: 'Pushed to remote' })
+    resolveRemoteStatus = vi.fn().mockResolvedValue({ branch: 'main', ahead: 0, behind: 0, hasRemote: true })
     setToastMessage = vi.fn()
     onPushRejected = vi.fn()
+    mockTrackEvent.mockReset()
+    mockInvokeFn.mockReset()
+    mockInvokeFn.mockImplementation((command: string) => {
+      if (command === 'git_commit') return Promise.resolve('[main abc1234] test commit')
+      if (command === 'git_push') return Promise.resolve({ status: 'ok', message: 'Pushed to remote' })
+      throw new Error(`Unexpected command: ${command}`)
+    })
   })
 
   function renderCommitFlow() {
-    return renderHook(() => useCommitFlow({ savePending, loadModifiedFiles, commitAndPush, setToastMessage, onPushRejected }))
+    return renderHook(() => useCommitFlow({
+      savePending,
+      loadModifiedFiles,
+      resolveRemoteStatus,
+      setToastMessage,
+      onPushRejected,
+      vaultPath: '/vault',
+    }))
   }
 
-  it('openCommitDialog saves pending, refreshes files, then opens dialog', async () => {
+  it('openCommitDialog saves pending, refreshes files, and sets local mode when no remote exists', async () => {
+    resolveRemoteStatus.mockResolvedValueOnce({ branch: 'main', ahead: 0, behind: 0, hasRemote: false })
     const { result } = renderCommitFlow()
-    expect(result.current.showCommitDialog).toBe(false)
 
     await act(async () => {
       await result.current.openCommitDialog()
@@ -31,10 +61,12 @@ describe('useCommitFlow', () => {
 
     expect(savePending).toHaveBeenCalledTimes(1)
     expect(loadModifiedFiles).toHaveBeenCalledTimes(1)
+    expect(resolveRemoteStatus).toHaveBeenCalledTimes(1)
     expect(result.current.showCommitDialog).toBe(true)
+    expect(result.current.commitMode).toBe('local')
   })
 
-  it('handleCommitPush saves pending, commits, shows toast, and refreshes files', async () => {
+  it('handleCommitPush commits and pushes when a remote is configured', async () => {
     const { result } = renderCommitFlow()
 
     await act(async () => {
@@ -42,14 +74,39 @@ describe('useCommitFlow', () => {
     })
 
     expect(savePending).toHaveBeenCalled()
-    expect(commitAndPush).toHaveBeenCalledWith('test message')
+    expect(mockInvokeFn).toHaveBeenNthCalledWith(1, 'git_commit', { vaultPath: '/vault', message: 'test message' })
+    expect(mockInvokeFn).toHaveBeenNthCalledWith(2, 'git_push', { vaultPath: '/vault' })
     expect(setToastMessage).toHaveBeenCalledWith('Committed and pushed')
     expect(loadModifiedFiles).toHaveBeenCalled()
+    expect(resolveRemoteStatus).toHaveBeenCalledTimes(2)
+    expect(mockTrackEvent).toHaveBeenCalledWith('commit_made', undefined)
     expect(result.current.showCommitDialog).toBe(false)
   })
 
+  it('handleCommitPush commits locally and skips push when no remote is configured', async () => {
+    resolveRemoteStatus.mockResolvedValue({ branch: 'main', ahead: 0, behind: 0, hasRemote: false })
+    mockInvokeFn.mockImplementation((command: string) => {
+      if (command === 'git_commit') return Promise.resolve('[main abc1234] test message')
+      throw new Error(`Unexpected command: ${command}`)
+    })
+    const { result } = renderCommitFlow()
+
+    await act(async () => {
+      await result.current.handleCommitPush('test message')
+    })
+
+    expect(mockInvokeFn).toHaveBeenCalledTimes(1)
+    expect(mockInvokeFn).toHaveBeenCalledWith('git_commit', { vaultPath: '/vault', message: 'test message' })
+    expect(setToastMessage).toHaveBeenCalledWith('Committed locally (no remote configured)')
+    expect(onPushRejected).not.toHaveBeenCalled()
+  })
+
   it('handleCommitPush calls onPushRejected when push is rejected', async () => {
-    commitAndPush.mockResolvedValueOnce({ status: 'rejected', message: 'Push rejected' })
+    mockInvokeFn.mockImplementation((command: string) => {
+      if (command === 'git_commit') return Promise.resolve('[main abc1234] test message')
+      if (command === 'git_push') return Promise.resolve({ status: 'rejected', message: 'Push rejected' })
+      throw new Error(`Unexpected command: ${command}`)
+    })
     const { result } = renderCommitFlow()
 
     await act(async () => {
@@ -61,7 +118,7 @@ describe('useCommitFlow', () => {
   })
 
   it('handleCommitPush shows error toast on failure', async () => {
-    commitAndPush.mockRejectedValueOnce(new Error('push failed'))
+    mockInvokeFn.mockImplementation(() => Promise.reject(new Error('push failed')))
     const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
     const { result } = renderCommitFlow()
 
@@ -69,7 +126,7 @@ describe('useCommitFlow', () => {
       await result.current.handleCommitPush('test')
     })
 
-    expect(setToastMessage).toHaveBeenCalledWith(expect.stringContaining('Commit failed'))
+    expect(setToastMessage).toHaveBeenCalledWith('Commit failed: push failed')
     consoleSpy.mockRestore()
   })
 

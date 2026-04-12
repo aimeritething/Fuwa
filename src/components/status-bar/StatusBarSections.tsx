@@ -11,6 +11,7 @@ import {
   ConflictBadge,
   ChangesBadge,
   McpBadge,
+  NoRemoteBadge,
   OfflineBadge,
   PulseBadge,
   SyncBadge,
@@ -111,8 +112,9 @@ export function StatusBarPrimarySection({
         {buildNumber ?? 'b?'}
       </span>
       <OfflineBadge isOffline={isOffline} />
+      <NoRemoteBadge remoteStatus={remoteStatus} />
       <ChangesBadge count={modifiedCount} onClick={onClickPending} />
-      <CommitButton onClick={onCommitPush} />
+      <CommitButton onClick={onCommitPush} remoteStatus={remoteStatus} />
       <SyncBadge
         status={syncStatus}
         lastSyncTime={lastSyncTime}

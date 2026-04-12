@@ -10,9 +10,8 @@ describe('CommitDialog', () => {
     vi.clearAllMocks()
   })
 
-  function getCommitButton() {
-    // "Commit & Push" appears in both dialog title and button — use role to disambiguate
-    return screen.getByRole('button', { name: 'Commit & Push' })
+  function getActionButton(name = 'Commit & Push') {
+    return screen.getByRole('button', { name })
   }
 
   it('shows file count badge', () => {
@@ -27,21 +26,21 @@ describe('CommitDialog', () => {
 
   it('disables Commit button when message is empty', () => {
     render(<CommitDialog open={true} modifiedCount={3} onCommit={onCommit} onClose={onClose} />)
-    expect(getCommitButton()).toBeDisabled()
+    expect(getActionButton()).toBeDisabled()
   })
 
   it('enables Commit button when message is typed', () => {
     render(<CommitDialog open={true} modifiedCount={3} onCommit={onCommit} onClose={onClose} />)
     const textarea = screen.getByPlaceholderText('Commit message...')
     fireEvent.change(textarea, { target: { value: 'fix: bug fix' } })
-    expect(getCommitButton()).not.toBeDisabled()
+    expect(getActionButton()).not.toBeDisabled()
   })
 
   it('calls onCommit with trimmed message on button click', () => {
     render(<CommitDialog open={true} modifiedCount={3} onCommit={onCommit} onClose={onClose} />)
     const textarea = screen.getByPlaceholderText('Commit message...')
     fireEvent.change(textarea, { target: { value: '  fix: bug fix  ' } })
-    fireEvent.click(getCommitButton())
+    fireEvent.click(getActionButton())
     expect(onCommit).toHaveBeenCalledWith('fix: bug fix')
   })
 
@@ -70,7 +69,7 @@ describe('CommitDialog', () => {
     render(<CommitDialog open={true} modifiedCount={3} onCommit={onCommit} onClose={onClose} />)
     const textarea = screen.getByPlaceholderText('Commit message...')
     fireEvent.change(textarea, { target: { value: '   ' } })
-    fireEvent.click(getCommitButton())
+    fireEvent.click(getActionButton())
     expect(onCommit).not.toHaveBeenCalled()
   })
 
@@ -87,7 +86,7 @@ describe('CommitDialog', () => {
 
   it('enables Commit button when suggestedMessage is provided', () => {
     render(<CommitDialog open={true} modifiedCount={3} suggestedMessage="Update alpha" onCommit={onCommit} onClose={onClose} />)
-    expect(getCommitButton()).not.toBeDisabled()
+    expect(getActionButton()).not.toBeDisabled()
   })
 
   it('submits suggestedMessage on Cmd+Enter without user edits', () => {
@@ -101,7 +100,16 @@ describe('CommitDialog', () => {
     render(<CommitDialog open={true} modifiedCount={3} suggestedMessage="Update alpha" onCommit={onCommit} onClose={onClose} />)
     const textarea = screen.getByPlaceholderText('Commit message...')
     fireEvent.change(textarea, { target: { value: 'fix: corrected typo in alpha' } })
-    fireEvent.click(getCommitButton())
+    fireEvent.click(getActionButton())
     expect(onCommit).toHaveBeenCalledWith('fix: corrected typo in alpha')
+  })
+
+  it('switches to local-only copy when commitMode is local', () => {
+    render(<CommitDialog open={true} modifiedCount={2} commitMode="local" onCommit={onCommit} onClose={onClose} />)
+
+    expect(screen.getByRole('heading', { name: 'Commit' })).toBeInTheDocument()
+    expect(screen.getByText('This vault has no git remote configured. Tolaria will create a local commit only.')).toBeInTheDocument()
+    expect(screen.getByText('Cmd+Enter to commit locally')).toBeInTheDocument()
+    expect(getActionButton('Commit')).toBeDisabled()
   })
 })

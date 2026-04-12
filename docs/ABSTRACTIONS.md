@@ -336,6 +336,13 @@ interface ModifiedFile {
   status: 'modified' | 'added' | 'deleted' | 'untracked' | 'renamed'
 }
 
+interface GitRemoteStatus {
+  branch: string
+  ahead: number
+  behind: number
+  hasRemote: boolean
+}
+
 interface PulseCommit {
   hash: string
   shortHash: string
@@ -372,12 +379,18 @@ interface PulseCommit {
 - `pullAndPush()`: pulls then auto-pushes for divergence recovery
 - `ConflictNoteBanner`: inline banner in editor for conflicted notes (Keep mine / Keep theirs)
 
+`useGitRemoteStatus` is the commit-time companion to `useAutoSync`:
+- Re-checks `git_remote_status` when the Commit dialog opens and right before submit
+- Converts `hasRemote: false` into a local-only commit path
+- Keeps the normal push path unchanged for vaults that do have a remote
+
 ### Frontend Integration
 
 - **Modified file badges**: Orange dots in sidebar
 - **Diff view**: Toggle in breadcrumb bar → shows unified diff
 - **Git history**: Shown in Inspector panel for active note
 - **Commit dialog**: Triggered from sidebar or Cmd+K
+- **No remote indicator**: Neutral chip in the bottom bar when `GitRemoteStatus.hasRemote === false`
 - **Pulse view**: Activity feed when Pulse filter is selected
 - **Pull command**: Cmd+K → "Pull from Remote", also in Vault menu
 - **Git status popup**: Click sync badge → shows branch, ahead/behind, Pull button

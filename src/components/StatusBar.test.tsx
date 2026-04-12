@@ -339,6 +339,19 @@ describe('StatusBar', () => {
     expect(screen.getByTestId('status-offline')).toHaveTextContent('Offline')
   })
 
+  it('shows a no-remote chip when the active git vault has no remote', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        remoteStatus={{ branch: 'main', ahead: 0, behind: 0, hasRemote: false }}
+      />
+    )
+    expect(screen.getByTestId('status-no-remote')).toHaveTextContent('No remote')
+  })
+
   it('calls onPullAndPush when clicking Pull required badge', () => {
     const onPullAndPush = vi.fn()
     render(
@@ -392,6 +405,21 @@ describe('StatusBar', () => {
     expect(screen.getByTestId('status-commit-push')).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('status-commit-push'))
     expect(onCommitPush).toHaveBeenCalledOnce()
+  })
+
+  it('uses a local-only tooltip for the commit button when no remote is configured', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        modifiedCount={5}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        onCommitPush={vi.fn()}
+        remoteStatus={{ branch: 'main', ahead: 0, behind: 0, hasRemote: false }}
+      />
+    )
+    expect(screen.getByTestId('status-commit-push')).toHaveAttribute('title', 'Commit locally (no remote configured)')
   })
 
   it('shows Commit button even when no modified files', () => {

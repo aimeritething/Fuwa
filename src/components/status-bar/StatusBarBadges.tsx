@@ -122,6 +122,16 @@ function hasRemote(remoteStatus: GitRemoteStatus | null): boolean {
   return remoteStatus?.hasRemote ?? false
 }
 
+function isRemoteMissing(remoteStatus: GitRemoteStatus | null | undefined): boolean {
+  return remoteStatus?.hasRemote === false
+}
+
+function commitButtonTitle(remoteStatus: GitRemoteStatus | null | undefined): string {
+  return isRemoteMissing(remoteStatus)
+    ? 'Commit locally (no remote configured)'
+    : 'Commit & Push'
+}
+
 function getMcpBadgeConfig(status: McpStatus, onInstall?: () => void) {
   if (status === 'installed' || status === 'checking') return null
   const clickable = status === 'not_installed' && Boolean(onInstall)
@@ -331,6 +341,31 @@ export function OfflineBadge({ isOffline }: { isOffline?: boolean }) {
   )
 }
 
+export function NoRemoteBadge({ remoteStatus }: { remoteStatus?: GitRemoteStatus | null }) {
+  if (!isRemoteMissing(remoteStatus)) return null
+
+  return (
+    <>
+      <span style={SEP_STYLE}>|</span>
+      <span
+        style={{
+          ...ICON_STYLE,
+          color: 'var(--muted-foreground)',
+          background: 'var(--hover)',
+          borderRadius: 999,
+          padding: '2px 6px',
+          fontWeight: 600,
+        }}
+        title="This git vault has no remote configured. Commits stay local until you add one."
+        data-testid="status-no-remote"
+      >
+        <GitBranch size={12} />
+        No remote
+      </span>
+    </>
+  )
+}
+
 export function SyncBadge({
   status,
   lastSyncTime,
@@ -459,7 +494,13 @@ export function ChangesBadge({ count, onClick }: { count: number; onClick?: () =
   )
 }
 
-export function CommitButton({ onClick }: { onClick?: () => void }) {
+export function CommitButton({
+  onClick,
+  remoteStatus,
+}: {
+  onClick?: () => void
+  remoteStatus?: GitRemoteStatus | null
+}) {
   if (!onClick) return null
 
   return (
@@ -469,7 +510,7 @@ export function CommitButton({ onClick }: { onClick?: () => void }) {
         role="button"
         onClick={onClick}
         style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
-        title="Commit & Push"
+        title={commitButtonTitle(remoteStatus)}
         onMouseEnter={(event) => { event.currentTarget.style.background = 'var(--hover)' }}
         onMouseLeave={(event) => { event.currentTarget.style.background = 'transparent' }}
         data-testid="status-commit-push"
