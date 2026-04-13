@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 
@@ -13,6 +13,7 @@ const mockEditor = vi.hoisted(() => ({
   onMount: vi.fn((cb: () => void) => { cb(); return () => {} }),
   prosemirrorView: {} as Record<string, unknown>,
   blocksToHTMLLossy: vi.fn(() => ''),
+  blocksToMarkdownLossy: vi.fn(() => '# Test Project\n\nThis is a test note with some words to count.\n'),
   _tiptapEditor: { commands: { setContent: vi.fn() } },
   focus: vi.fn(),
   setTextCursorPosition: vi.fn(),
@@ -55,6 +56,7 @@ vi.mock('@blocknote/mantine/style.css', () => ({}))
 import { Editor } from './Editor'
 import { applyPendingRawExitContent } from './editorRawModeSync'
 import type { VaultEntry } from '../types'
+import { bindVaultConfigStore, resetVaultConfigStore } from '../utils/vaultConfigStore'
 
 type EditorComponentProps = ComponentProps<typeof Editor>
 
@@ -253,6 +255,101 @@ describe('Editor', () => {
     mockEditor.tryParseMarkdownToBlocks.mockResolvedValue([])
     mockEditor.replaceBlocks.mockClear()
     mockEditor.insertBlocks.mockClear()
+  })
+
+  it('does not apply note A raw content to note B when raw mode closes during note B load', async () => {
+    resetVaultConfigStore()
+    bindVaultConfigStore(
+      {
+        zoom: null,
+        view_mode: null,
+        editor_mode: null,
+        tag_colors: null,
+        status_colors: null,
+        property_display_modes: null,
+        inbox: null,
+      },
+      vi.fn(),
+    )
+
+    const rawToggleRef = { current: (() => {}) as () => void }
+    const onContentChange = vi.fn()
+    const noteA = {
+      entry: {
+        ...mockEntry,
+        path: '/vault/project/note-a.md',
+        filename: 'note-a.md',
+        title: 'Note A',
+      },
+      content: '---\ntitle: Note A\n---\n\n# Note A\n\nAlpha body.',
+    }
+    const noteBEntry: VaultEntry = {
+      ...mockEntry,
+      path: '/vault/project/note-b.md',
+      filename: 'note-b.md',
+      title: 'Note B',
+    }
+    const noteB = {
+      entry: noteBEntry,
+      content: '---\ntitle: Note B\n---\n\n# Note B\n\nBravo body.',
+    }
+
+    const { rerender } = render(
+      <Editor
+        {...defaultProps}
+        tabs={[noteA]}
+        activeTabPath={noteA.entry.path}
+        entries={[noteA.entry, noteBEntry]}
+        onContentChange={onContentChange}
+        rawToggleRef={rawToggleRef}
+      />,
+    )
+
+    await vi.waitFor(() => {
+      expect(typeof rawToggleRef.current).toBe('function')
+    })
+
+    await act(async () => {
+      await rawToggleRef.current()
+    })
+    onContentChange.mockClear()
+    mockEditor.tryParseMarkdownToBlocks.mockClear()
+    mockEditor.replaceBlocks.mockClear()
+
+    rerender(
+      <Editor
+        {...defaultProps}
+        tabs={[noteA]}
+        activeTabPath={noteB.entry.path}
+        entries={[noteA.entry, noteBEntry]}
+        onContentChange={onContentChange}
+        rawToggleRef={rawToggleRef}
+      />,
+    )
+
+    await act(async () => {
+      await rawToggleRef.current()
+    })
+
+    expect(onContentChange).not.toHaveBeenCalledWith(noteB.entry.path, noteA.content)
+
+    rerender(
+      <Editor
+        {...defaultProps}
+        tabs={[noteA, noteB]}
+        activeTabPath={noteB.entry.path}
+        entries={[noteA.entry, noteB.entry]}
+        onContentChange={onContentChange}
+        rawToggleRef={rawToggleRef}
+      />,
+    )
+
+    await vi.waitFor(() => {
+      expect(mockEditor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(expect.stringContaining('Note B'))
+    })
+    expect(mockEditor.tryParseMarkdownToBlocks).not.toHaveBeenCalledWith(expect.stringContaining('Note A'))
+
+    resetVaultConfigStore()
   })
 })
 

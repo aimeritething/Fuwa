@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState, memo } from 'react'
+import { useRef, useEffect, useLayoutEffect, useCallback, useState, memo } from 'react'
 import { useEditorTabSwap } from '../hooks/useEditorTabSwap'
 import { useCreateBlockNote } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
@@ -159,8 +159,24 @@ function useRawModeWithFlush(
   onContentChange?: (path: string, content: string) => void,
 ) {
   const rawLatestContentRef = useRef<string | null>(null)
+  const rawBufferPathRef = useRef<string | null>(null)
   const [pendingRawExitContent, setPendingRawExitContent] = useState<PendingRawExitContent | null>(null)
   const [rawModeContentOverride, setRawModeContentOverride] = useState<PendingRawExitContent | null>(null)
+
+  useLayoutEffect(() => {
+    if (!activeTabPath) {
+      rawLatestContentRef.current = null
+      rawBufferPathRef.current = null
+      return
+    }
+
+    if (rawBufferPathRef.current === activeTabPath) {
+      return
+    }
+
+    rawLatestContentRef.current = activeTabContent
+    rawBufferPathRef.current = activeTabContent === null ? null : activeTabPath
+  }, [activeTabContent, activeTabPath])
 
   const handleFlushPending = useCallback(async () => {
     const syncedContent = syncActiveTabIntoRawBuffer({
@@ -182,6 +198,7 @@ function useRawModeWithFlush(
       onContentChange,
     }))
     setRawModeContentOverride(null)
+    rawBufferPathRef.current = null
     rawLatestContentRef.current = null
   }, [activeTabPath, onContentChange])
 
