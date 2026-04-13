@@ -7,6 +7,7 @@ import type { VaultEntry } from '../types'
 import type { SectionGroup } from '../components/SidebarParts'
 import { resolveIcon } from './iconRegistry'
 import { pluralizeType } from '../hooks/useCommandRegistry'
+import { isLegacyJournalingType } from './legacyTypes'
 import {
   Wrench, Flask, Target, ArrowsClockwise,
   Users, CalendarBlank, Tag, StackSimple,
@@ -28,12 +29,28 @@ const BUILT_IN_TYPE_MAP = new Map(BUILT_IN_SECTION_GROUPS.map((sg) => [sg.type, 
 
 const isMarkdown = (e: VaultEntry) => e.fileKind === 'markdown' || !e.fileKind
 const isActive = (e: VaultEntry) => !e.archived
+const isSupportedSectionType = (type: string) => !isLegacyJournalingType(type)
+
+function resolveEntrySectionType(entry: VaultEntry): string {
+  return entry.isA || 'Note'
+}
+
+function shouldCollectActiveType(entry: VaultEntry): boolean {
+  if (!isActive(entry) || !isMarkdown(entry)) return false
+  return isSupportedSectionType(resolveEntrySectionType(entry))
+}
+
+function shouldIncludeTypeDefinition(name: string, entry: VaultEntry): boolean {
+  if (name !== entry.title || !isActive(entry)) return false
+  return isSupportedSectionType(name)
+}
 
 /** Collect unique isA values from active (non-archived) markdown entries. Untyped entries count as 'Note'. */
 export function collectActiveTypes(entries: VaultEntry[]): Set<string> {
   const types = new Set<string>()
   for (const e of entries) {
-    if (isActive(e) && isMarkdown(e)) types.add(e.isA || 'Note')
+    if (!shouldCollectActiveType(e)) continue
+    types.add(resolveEntrySectionType(e))
   }
   return types
 }
@@ -59,9 +76,8 @@ export function buildSectionGroup(type: string, typeEntryMap: Record<string, Vau
 export function buildDynamicSections(entries: VaultEntry[], typeEntryMap: Record<string, VaultEntry>): SectionGroup[] {
   const activeTypes = collectActiveTypes(entries)
   for (const [name, entry] of Object.entries(typeEntryMap)) {
-    if (name === entry.title && isActive(entry)) {
-      activeTypes.add(name)
-    }
+    if (!shouldIncludeTypeDefinition(name, entry)) continue
+    activeTypes.add(name)
   }
   return Array.from(activeTypes, (type) => buildSectionGroup(type, typeEntryMap))
 }

@@ -158,6 +158,12 @@ describe('resolveNewNote', () => {
     const { entry } = resolveNewNote({ title: 'ML', type: 'Topic', vaultPath: '/vault' })
     expect(entry.status).toBeNull()
   })
+
+  it('treats Journal as a regular type after removing the journaling flow', () => {
+    const { entry, content } = resolveNewNote({ title: 'Reflection', type: 'Journal', vaultPath: '/vault' })
+    expect(entry.status).toBe('Active')
+    expect(content).toContain('status: Active')
+  })
 })
 
 describe('resolveNewType', () => {

@@ -8,13 +8,15 @@ import { buildGitCommands } from './commands/gitCommands'
 import { buildViewCommands } from './commands/viewCommands'
 import { buildSettingsCommands } from './commands/settingsCommands'
 import { buildAiAgentCommands } from './commands/aiAgentCommands'
-import { buildTypeCommands, extractVaultTypes } from './commands/typeCommands'
+import { buildTypeCommands } from './commands/typeCommands'
 import { buildFilterCommands } from './commands/filterCommands'
+import { extractVaultTypes } from '../utils/vaultTypes'
 
 // Re-export types and helpers for backward compatibility
 export type { CommandAction, CommandGroup } from './commands/types'
 export { groupSortKey } from './commands/types'
-export { pluralizeType, extractVaultTypes, buildTypeCommands } from './commands/typeCommands'
+export { pluralizeType, buildTypeCommands } from './commands/typeCommands'
+export { extractVaultTypes } from '../utils/vaultTypes'
 export { buildViewCommands } from './commands/viewCommands'
 
 interface CommandRegistryConfig {

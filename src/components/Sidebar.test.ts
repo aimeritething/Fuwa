@@ -108,6 +108,20 @@ describe('buildDynamicSections', () => {
     const sections = buildDynamicSections(entries, typeEntryMap)
     expect(sections.map((s) => s.type)).not.toContain('Old')
   })
+
+  it('excludes the legacy Journal section even when journal notes still exist', () => {
+    const entries: VaultEntry[] = [
+      { ...baseEntry, title: 'Daily Log', isA: 'Journal' },
+    ]
+    const typeEntryMap: Record<string, VaultEntry> = {
+      Journal: { ...baseEntry, title: 'Journal', isA: 'Type' },
+      journal: { ...baseEntry, title: 'Journal', isA: 'Type' },
+    }
+
+    const sections = buildDynamicSections(entries, typeEntryMap)
+
+    expect(sections.map((section) => section.type)).not.toContain('Journal')
+  })
 })
 
 describe('collectActiveTypes', () => {

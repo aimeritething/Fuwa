@@ -63,7 +63,7 @@ export function entryMatchesTarget({ entry, target }: EntryMatchParams): boolean
   return resolveEntry([entry], target) === entry
 }
 
-const NO_STATUS_TYPES = new Set(['Topic', 'Person', 'Journal'])
+const NO_STATUS_TYPES = new Set(['Topic', 'Person'])
 
 /** Default templates for built-in types. Used when the type entry has no custom template. */
 export const DEFAULT_TEMPLATES: Record<string, string> = {

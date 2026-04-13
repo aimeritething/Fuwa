@@ -306,6 +306,26 @@ describe('extractVaultTypes', () => {
 
     expect(extractVaultTypes(entries)).toEqual(['Note', 'Project'])
   })
+
+  it('omits the legacy Journal type from extracted command-palette types', () => {
+    const entries = [
+      { path: '/journal.md', title: 'Journal', isA: 'Type' },
+      { path: '/2026-03-11.md', title: 'March 11', isA: 'Journal' },
+      { path: '/note.md', title: 'General Note', isA: 'Note' },
+    ] as never[]
+
+    expect(extractVaultTypes(entries)).toEqual(['Note'])
+  })
+
+  it('omits hidden types from extracted command-palette types', () => {
+    const entries = [
+      { path: '/recipe.md', title: 'Recipe', isA: 'Type', visible: false },
+      { path: '/dinner.md', title: 'Dinner', isA: 'Recipe' },
+      { path: '/project.md', title: 'Project', isA: 'Type' },
+    ] as never[]
+
+    expect(extractVaultTypes(entries)).toEqual(['Project'])
+  })
 })
 
 describe('groupSortKey', () => {
