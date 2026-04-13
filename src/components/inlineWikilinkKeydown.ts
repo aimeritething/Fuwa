@@ -70,7 +70,7 @@ function handleInsertText({
   onInsertText,
 }: HandleInsertTextArgs): boolean {
   if (event.metaKey || event.ctrlKey || event.altKey) return false
-  if (event.isComposing) return false
+  if (event.nativeEvent.isComposing) return false
   if (event.key.length !== 1) return false
 
   event.preventDefault()

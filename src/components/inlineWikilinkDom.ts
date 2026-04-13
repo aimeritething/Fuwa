@@ -95,7 +95,7 @@ function boundaryForChip(
   index: number,
   remaining: number,
 ): { boundary: SelectionBoundary | null; remaining: number } {
-  const tokenLength = chipToken(child.dataset.chipTarget).length
+  const tokenLength = chipToken(child.dataset.chipTarget ?? '').length
   if (remaining <= 0) {
     return {
       boundary: { container: node, offset: index },
