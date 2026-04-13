@@ -33,6 +33,10 @@ async function backgroundColor(locator: Locator) {
   return locator.evaluate((element) => getComputedStyle(element).backgroundColor)
 }
 
+async function textColor(locator: Locator) {
+  return locator.evaluate((element) => getComputedStyle(element).color)
+}
+
 test.describe('Editor code block theme', () => {
   let tempVaultDir: string
 
@@ -47,15 +51,26 @@ test.describe('Editor code block theme', () => {
 
   test('fenced code blocks keep the dark BlockNote surface while inline code stays muted', async ({ page }) => {
     await openFixtureVault(page, tempVaultDir)
-    await page.getByText(CODE_NOTE_TITLE, { exact: true }).first().click()
+    const noteList = page.locator('[data-testid="note-list-container"]')
+    const noteItem = noteList.getByText(CODE_NOTE_TITLE, { exact: true })
+    await expect(noteItem).toBeVisible({ timeout: 10_000 })
+    await noteItem.click()
 
-    const inlineCode = page.locator('.bn-inline-content code').first()
+    const inlineCode = page
+      .locator('[data-content-type="paragraph"] [data-style-type="code"], [data-content-type="paragraph"] code')
+      .first()
     const codeBlock = page.locator('.bn-block-content[data-content-type="codeBlock"]').first()
+    const fencedCode = codeBlock.locator('pre code').first()
+    const highlightedToken = codeBlock.locator('.shiki').first()
 
-    await expect(inlineCode).toBeVisible()
-    await expect(codeBlock).toBeVisible()
+    await expect(codeBlock).toBeVisible({ timeout: 10_000 })
+    await expect(inlineCode).toBeVisible({ timeout: 10_000 })
+    await expect(fencedCode).toBeVisible()
 
     await expect.poll(() => backgroundColor(inlineCode)).toBe('rgb(240, 240, 239)')
     await expect.poll(() => backgroundColor(codeBlock)).toBe('rgb(22, 22, 22)')
+    await expect.poll(() => backgroundColor(fencedCode)).toBe('rgba(0, 0, 0, 0)')
+    await expect.poll(() => textColor(fencedCode)).toBe('rgb(255, 255, 255)')
+    await expect(highlightedToken).toBeVisible()
   })
 })

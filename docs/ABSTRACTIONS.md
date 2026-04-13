@@ -415,6 +415,15 @@ const WikiLink = createReactInlineContentSpec(
 )
 ```
 
+### Code Block Highlighting
+
+Defined in `src/components/editorSchema.tsx` and styled in `src/components/EditorTheme.css`:
+
+- The schema overrides BlockNote's default `codeBlock` spec with `createCodeBlockSpec({ ...codeBlockOptions, defaultLanguage: "text" })` from `@blocknote/code-block`.
+- Fenced code blocks now use BlockNote's supported Shiki-backed highlighter path, which renders `.shiki` token spans directly inside the editor DOM.
+- Tolaria keeps `defaultLanguage: "text"` so unlabeled code blocks do not silently become JavaScript while still supporting the packaged language aliases such as `ts` → `typescript`.
+- Inline-code chip styling remains scoped to `.bn-inline-content code`, so fenced `pre > code` nodes keep BlockNote's dark shell instead of inheriting the muted inline surface.
+
 ### Markdown-to-BlockNote Pipeline
 
 ```mermaid

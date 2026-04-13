@@ -21,9 +21,14 @@ const mockEditor = vi.hoisted(() => ({
 
 // Mock BlockNote components
 vi.mock('@blocknote/core', () => ({
-  BlockNoteSchema: { create: () => ({}) },
+  BlockNoteSchema: { create: () => ({ extend: () => ({}) }) },
+  createCodeBlockSpec: vi.fn(() => ({})),
   defaultInlineContentSpecs: {},
   filterSuggestionItems: vi.fn(() => []),
+}))
+
+vi.mock('@blocknote/code-block', () => ({
+  codeBlockOptions: {},
 }))
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock

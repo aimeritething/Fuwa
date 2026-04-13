@@ -118,3 +118,4 @@ proposed → active → superseded
 | [0060](0060-network-aware-ui-gating-for-remote-features.md) | Network-aware UI gating for remote-dependent features | active |
 | [0061](0061-ai-prompt-bridge-event-bus.md) | AI prompt bridge — module-level event bus for cross-component prompt routing | active |
 | [0062](0062-selectable-cli-ai-agents.md) | Selectable CLI AI agents with a shared panel architecture | active |
+| [0063](0063-blocknote-code-block-package-for-editor-highlighting.md) | BlockNote code-block package for editor syntax highlighting | active |

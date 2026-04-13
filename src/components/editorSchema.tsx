@@ -1,5 +1,6 @@
 /* eslint-disable react-refresh/only-export-components -- module-level schema, not a component file */
-import { BlockNoteSchema, defaultInlineContentSpecs } from '@blocknote/core'
+import { createCodeBlockSpec, BlockNoteSchema, defaultInlineContentSpecs } from '@blocknote/core'
+import { codeBlockOptions } from '@blocknote/code-block'
 import { createReactInlineContentSpec } from '@blocknote/react'
 import { resolveWikilinkColor as resolveColor } from '../utils/wikilinkColors'
 import { resolveEntry } from '../utils/wikilink'
@@ -56,9 +57,18 @@ export const WikiLink = createReactInlineContentSpec(
   }
 )
 
+const codeBlock = createCodeBlockSpec({
+  ...codeBlockOptions,
+  defaultLanguage: 'text',
+})
+
 export const schema = BlockNoteSchema.create({
   inlineContentSpecs: {
     ...defaultInlineContentSpecs,
     wikilink: WikiLink,
+  },
+}).extend({
+  blockSpecs: {
+    codeBlock,
   },
 })

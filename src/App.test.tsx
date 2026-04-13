@@ -94,9 +94,14 @@ vi.mock('./utils/ai-chat', () => ({
 
 // Mock BlockNote components (they need DOM APIs not available in jsdom)
 vi.mock('@blocknote/core', () => ({
-  BlockNoteSchema: { create: () => ({}) },
+  BlockNoteSchema: { create: () => ({ extend: () => ({}) }) },
+  createCodeBlockSpec: vi.fn(() => ({})),
   defaultInlineContentSpecs: {},
   filterSuggestionItems: vi.fn(() => []),
+}))
+
+vi.mock('@blocknote/code-block', () => ({
+  codeBlockOptions: {},
 }))
 
 vi.mock('@blocknote/core/extensions', () => ({

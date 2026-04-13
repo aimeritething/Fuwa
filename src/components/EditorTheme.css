@@ -207,7 +207,7 @@
 }
 
 /* --- Inline: code --- */
-.editor__blocknote-container .bn-editor code {
+.editor__blocknote-container .bn-inline-content code {
   font-family: var(--inline-styles-code-font-family);
   font-size: var(--inline-styles-code-font-size);
   background-color: var(--inline-styles-code-background-color);
@@ -236,7 +236,16 @@
   cursor: pointer;
 }
 
-/* Code blocks intentionally use BlockNote's default dark styling. */
+/* Code blocks intentionally keep BlockNote's dark shell and syntax-highlighted content. */
+.editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] pre code {
+  background-color: transparent;
+  padding: 0;
+  border-radius: 0;
+}
+
+.editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] pre code .shiki {
+  background-color: transparent !important;
+}
 
 /* --- Blockquote --- */
 .editor__blocknote-container [data-content-type="blockquote"],

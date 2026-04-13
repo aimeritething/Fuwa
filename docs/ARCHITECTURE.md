@@ -89,6 +89,7 @@ flowchart LR
 | Desktop shell | Tauri v2 | 2.10.0 |
 | Frontend | React + TypeScript | React 19, TS 5.9 |
 | Editor | BlockNote | 0.46.2 |
+| Code block highlighting | @blocknote/code-block | 0.46.2 |
 | Raw editor | CodeMirror 6 | - |
 | Styling | Tailwind CSS v4 + CSS variables | 4.1.18 |
 | UI primitives | Radix UI + shadcn/ui | - |
@@ -177,7 +178,7 @@ flowchart TD
 
 - **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Changes, Pulse) and collapsible type-based section groups. Each type can have a custom icon, color, sort, and visibility set via its type document in `type/`.
 - **Note List / Pulse View** (200-500px, resizable): When a section group or filter is selected, shows filtered notes with snippets, modified dates, and status indicators. When Pulse filter is active, shows `PulseView` — a chronological git activity feed grouped by day.
-- **Editor** (flex, fills remaining space): Single note open at a time (no tabs — see ADR-0003). Breadcrumb bar with word count, BlockNote rich text editor with wikilink support. Can toggle to diff view (modified files) or raw CodeMirror view. Decomposed into `Editor` (orchestrator), `EditorContent`, `EditorRightPanel`, `SingleEditorView`, with hooks `useDiffMode`, `useEditorFocus`, `useEditorSave`, `useRawMode`. Navigation history (Cmd+[/]) replaces tabs.
+- **Editor** (flex, fills remaining space): Single note open at a time (no tabs — see ADR-0003). Breadcrumb bar with word count, BlockNote rich text editor with wikilink support, and schema-backed fenced code block highlighting via `@blocknote/code-block`. Can toggle to diff view (modified files) or raw CodeMirror view. Decomposed into `Editor` (orchestrator), `EditorContent`, `EditorRightPanel`, `SingleEditorView`, with hooks `useDiffMode`, `useEditorFocus`, `useEditorSave`, and `useRawMode`. Navigation history (Cmd+[/]) replaces tabs.
 - **Inspector / AI Agent** (200-500px or 40px collapsed): Toggles between Inspector (frontmatter, relationships, instances, backlinks, git history) and AI Agent panel (the selected CLI agent with tool execution). The Sparkle icon in the breadcrumb bar toggles between them. Per-note `icon` is a suggested Inspector property and the command palette's "Set Note Icon" action opens that field directly. When viewing a Type note, the Inspector shows an **Instances** section listing all notes of that type (sorted by modified_at desc, capped at 50).
 
 Panels are separated by `ResizeHandle` components that support drag-to-resize.
