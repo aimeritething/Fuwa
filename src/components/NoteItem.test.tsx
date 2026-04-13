@@ -54,7 +54,7 @@ describe('NoteItem', () => {
     expect(onClickNote).toHaveBeenCalled()
   })
 
-  it('shows filenames instead of titles when a change status is present', () => {
+  it('shows the title with filename metadata when a change status is present', () => {
     const entry = {
       ...makeEntry({ filename: 'my-note.md', title: 'My Note Title' }),
       __changeAddedLines: 42,
@@ -64,7 +64,8 @@ describe('NoteItem', () => {
     render(<NoteItem entry={entry} isSelected={false} typeEntryMap={{}} onClickNote={vi.fn()} changeStatus="modified" />)
 
     expect(screen.getByText('My Note Title')).toBeInTheDocument()
-    expect(screen.queryByText('my-note.md')).not.toBeInTheDocument()
+    expect(screen.getByText('my-note.md')).toBeInTheDocument()
+    expect(screen.getByTestId('change-note-filename')).toHaveClass('truncate', 'text-[12px]', 'leading-[1.5]', 'text-muted-foreground')
     expect(screen.getByTestId('change-stat-added')).toHaveTextContent('+42')
     expect(screen.getByTestId('change-stat-deleted')).toHaveTextContent('-7')
   })

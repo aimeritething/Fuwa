@@ -143,6 +143,13 @@ export function ChangeNoteContent({
             <NoteTitleIcon icon={entry.icon} size={15} className="mr-1" testId="change-note-icon" />
             {entry.title}
           </div>
+          <div
+            className={cn('truncate text-[12px] leading-[1.5] text-muted-foreground', isDeletedChange && 'opacity-70')}
+            data-testid="change-note-filename"
+            title={entry.filename}
+          >
+            {entry.filename}
+          </div>
           <ChangeStatsRow entry={entry} changeStatus={changeStatus} />
         </div>
       </div>

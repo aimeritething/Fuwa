@@ -13,6 +13,22 @@ test.describe('Show deleted notes in Changes view', () => {
     await page.waitForLoadState('networkidle')
   })
 
+  test('changes rows show title, filename, and diff summary while keyboard navigation still opens notes', async ({ page }) => {
+    await navigateToChanges(page)
+
+    const deletedRow = page.locator('[data-change-status="deleted"]').filter({ hasText: 'Old Draft' }).first()
+    await expect(deletedRow).toContainText('Old Draft')
+    await expect(deletedRow).toContainText('old-draft.md')
+    await expect(deletedRow).toContainText('Diff unavailable')
+
+    const noteList = page.getByTestId('note-list-container')
+    await noteList.focus()
+    await page.keyboard.press('Enter')
+
+    await expect(page.getByText('Back to editor')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByText('This note was deleted.')).toBeVisible({ timeout: 5_000 })
+  })
+
   test('changes view shows deleted notes as rows instead of a banner', async ({ page }) => {
     await navigateToChanges(page)
     const deletedRow = page.locator('[data-change-status="deleted"]').filter({ hasText: 'old-draft.md' })

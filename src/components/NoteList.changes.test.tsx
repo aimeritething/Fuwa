@@ -25,10 +25,12 @@ const modifiedFiles = [
 ]
 
 describe('NoteList changes view', () => {
-  it('shows only modified notes in changes view with note titles', () => {
+  it('shows only modified notes in changes view with note titles and filenames', () => {
     renderNoteList({ selection: changesSelection, modifiedFiles })
     expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
     expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
+    expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
+    expect(screen.getByText('facebook-ads-strategy.md')).toBeInTheDocument()
     expect(screen.queryByText('Matteo Cellini')).not.toBeInTheDocument()
     expect(screen.queryByText('Kickoff Meeting')).not.toBeInTheDocument()
   })
@@ -125,7 +127,9 @@ describe('NoteList changes view', () => {
     renderNoteList({ selection: changesSelection, modifiedFiles: filesWithDeleted })
     expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
     expect(screen.getByText('Gone')).toBeInTheDocument()
+    expect(screen.getByText('gone.md')).toBeInTheDocument()
     expect(screen.getByText('Also Gone')).toBeInTheDocument()
+    expect(screen.getByText('also-gone.md')).toBeInTheDocument()
     expect(screen.queryByText(/notes? deleted/)).not.toBeInTheDocument()
   })
 
