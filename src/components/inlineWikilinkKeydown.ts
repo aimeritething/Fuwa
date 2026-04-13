@@ -38,24 +38,44 @@ function handleSuggestionKeys({
 
 interface HandleDeleteKeysArgs {
   event: React.KeyboardEvent<HTMLDivElement>
-  onDeleteAdjacentChip: (direction: 'backward' | 'forward') => boolean
+  onDeleteContent: (direction: 'backward' | 'forward') => void
 }
 
 function handleDeleteKeys({
   event,
-  onDeleteAdjacentChip,
+  onDeleteContent,
 }: HandleDeleteKeysArgs): boolean {
-  if (event.key === 'Backspace' && onDeleteAdjacentChip('backward')) {
+  if (event.key === 'Backspace') {
     event.preventDefault()
+    onDeleteContent('backward')
     return true
   }
 
-  if (event.key === 'Delete' && onDeleteAdjacentChip('forward')) {
+  if (event.key === 'Delete') {
     event.preventDefault()
+    onDeleteContent('forward')
     return true
   }
 
   return false
+}
+
+interface HandleInsertTextArgs {
+  event: React.KeyboardEvent<HTMLDivElement>
+  onInsertText: (text: string) => void
+}
+
+function handleInsertText({
+  event,
+  onInsertText,
+}: HandleInsertTextArgs): boolean {
+  if (event.metaKey || event.ctrlKey || event.altKey) return false
+  if (event.isComposing) return false
+  if (event.key.length !== 1) return false
+
+  event.preventDefault()
+  onInsertText(event.key)
+  return true
 }
 
 interface HandleSubmitKeyArgs {
@@ -83,7 +103,8 @@ interface HandleInlineWikilinkKeyDownArgs {
   suggestionsOpen: boolean
   onCycleSuggestions: (direction: 1 | -1) => void
   onSelectSuggestion: () => void
-  onDeleteAdjacentChip: (direction: 'backward' | 'forward') => boolean
+  onDeleteContent: (direction: 'backward' | 'forward') => void
+  onInsertText: (text: string) => void
   canSubmit: boolean
   onSubmit: () => void
 }
@@ -94,7 +115,8 @@ export function handleInlineWikilinkKeyDown({
   suggestionsOpen,
   onCycleSuggestions,
   onSelectSuggestion,
-  onDeleteAdjacentChip,
+  onDeleteContent,
+  onInsertText,
   canSubmit,
   onSubmit,
 }: HandleInlineWikilinkKeyDownArgs) {
@@ -109,7 +131,11 @@ export function handleInlineWikilinkKeyDown({
     return
   }
 
-  if (handleDeleteKeys({ event, onDeleteAdjacentChip })) {
+  if (handleDeleteKeys({ event, onDeleteContent })) {
+    return
+  }
+
+  if (handleInsertText({ event, onInsertText })) {
     return
   }
 

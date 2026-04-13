@@ -5,9 +5,10 @@ import {
   useState,
 } from 'react'
 import {
-  applySelectionIndex,
-  readSelectionIndex,
+  applySelectionRange,
+  readSelectionRange,
   serializeInlineNode,
+  type InlineSelectionRange,
 } from './inlineWikilinkDom'
 import { normalizeInlineWikilinkValue } from './inlineWikilinkTokens'
 
@@ -23,7 +24,10 @@ export function useInlineWikilinkSelection({
   inputRef,
 }: UseInlineWikilinkSelectionArgs) {
   const editorRef = useRef<HTMLDivElement | null>(null)
-  const [selectionIndex, setSelectionIndex] = useState(value.length)
+  const [selectionRange, setSelectionRange] = useState<InlineSelectionRange>({
+    start: value.length,
+    end: value.length,
+  })
 
   const setCombinedRef = useCallback((node: HTMLDivElement | null) => {
     editorRef.current = node
@@ -32,41 +36,45 @@ export function useInlineWikilinkSelection({
     }
   }, [inputRef])
 
-  const syncSelectionIndex = useCallback(() => {
+  const syncSelectionRange = useCallback(() => {
     if (!editorRef.current) return
-    setSelectionIndex(readSelectionIndex(editorRef.current))
+    setSelectionRange(readSelectionRange(editorRef.current))
   }, [])
 
-  const focusSelectionAt = useCallback((nextSelectionIndex: number) => {
+  const focusSelectionRange = useCallback((nextSelectionRange: InlineSelectionRange) => {
     const editor = editorRef.current
     if (!editor) return
     editor.focus()
-    applySelectionIndex(editor, nextSelectionIndex)
+    applySelectionRange(editor, nextSelectionRange)
   }, [])
 
   const commitValueFromEditor = useCallback(() => {
     if (!editorRef.current) return
 
     const nextValue = normalizeInlineWikilinkValue(serializeInlineNode(editorRef.current))
-    const nextSelectionIndex = readSelectionIndex(editorRef.current)
+    const nextSelectionRange = readSelectionRange(editorRef.current)
 
     onChange(nextValue)
-    setSelectionIndex(Math.min(nextSelectionIndex, nextValue.length))
+    setSelectionRange({
+      start: Math.min(nextSelectionRange.start, nextValue.length),
+      end: Math.min(nextSelectionRange.end, nextValue.length),
+    })
   }, [onChange])
 
   useLayoutEffect(() => {
     const editor = editorRef.current
     if (!editor) return
     if (document.activeElement !== editor) return
-    applySelectionIndex(editor, selectionIndex)
-  }, [selectionIndex, value])
+    applySelectionRange(editor, selectionRange)
+  }, [selectionRange, value])
 
   return {
-    selectionIndex,
-    setSelectionIndex,
+    selectionRange,
+    selectionIndex: selectionRange.end,
+    setSelectionRange,
     setCombinedRef,
-    syncSelectionIndex,
-    focusSelectionAt,
+    syncSelectionRange,
+    focusSelectionRange,
     commitValueFromEditor,
   }
 }

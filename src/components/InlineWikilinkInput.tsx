@@ -6,10 +6,13 @@ import type { VaultEntry } from '../types'
 import type { NoteReference } from '../utils/ai-context'
 import { buildTypeEntryMap } from '../utils/typeColors'
 import {
+  deleteInlineSelection,
+  replaceInlineSelection,
+} from './inlineWikilinkEdits'
+import {
   buildInlineWikilinkSegments,
   extractInlineWikilinkReferences,
   findActiveWikilinkQuery,
-  findInlineChipDeletionRange,
 } from './inlineWikilinkText'
 import {
   InlineWikilinkEditorField,
@@ -39,27 +42,11 @@ interface InlineWikilinkInputProps {
   paletteFooter?: ReactNode
 }
 
-function deleteInlineChip({
-  direction,
-  segments,
-  selectionIndex,
-  value,
-  onChange,
-  onSelectionIndexChange,
-}: {
-  direction: 'backward' | 'forward'
-  segments: ReturnType<typeof buildInlineWikilinkSegments>
-  selectionIndex: number
-  value: string
-  onChange: (value: string) => void
-  onSelectionIndexChange: (selectionIndex: number) => void
-}) {
-  const deletionRange = findInlineChipDeletionRange(segments, selectionIndex, direction)
-  if (!deletionRange) return false
-
-  onChange(value.slice(0, deletionRange.start) + value.slice(deletionRange.end))
-  onSelectionIndexChange(deletionRange.start)
-  return true
+function collapseSelectionRange(nextSelectionIndex: number) {
+  return {
+    start: nextSelectionIndex,
+    end: nextSelectionIndex,
+  }
 }
 
 function submitInlineValue({
@@ -77,6 +64,80 @@ function submitInlineValue({
   const normalizedValue = normalizeInlineWikilinkValue(value)
   if (!submitOnEmpty && !normalizedValue.trim()) return
   onSubmit(normalizedValue, references)
+}
+
+function renderInlineEditorField({
+  value,
+  placeholder,
+  disabled,
+  inputRef,
+  dataTestId,
+  editorClassName,
+  onInput,
+  onKeyDown,
+  onSelectionChange,
+  segments,
+  typeEntryMap,
+}: {
+  value: string
+  placeholder?: string
+  disabled: boolean
+  inputRef: React.Ref<HTMLDivElement>
+  dataTestId: string
+  editorClassName?: string
+  onInput: () => void
+  onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void
+  onSelectionChange: () => void
+  segments: ReturnType<typeof buildInlineWikilinkSegments>
+  typeEntryMap: Record<string, VaultEntry>
+}) {
+  return (
+    <InlineWikilinkEditorField
+      value={value}
+      placeholder={placeholder}
+      disabled={disabled}
+      inputRef={inputRef}
+      dataTestId={dataTestId}
+      editorClassName={editorClassName}
+      onInput={onInput}
+      onKeyDown={onKeyDown}
+      onSelectionChange={onSelectionChange}
+      segments={segments}
+      typeEntryMap={typeEntryMap}
+    />
+  )
+}
+
+function renderInlineSuggestionList({
+  suggestions,
+  selectedSuggestionIndex,
+  setSuggestionIndex,
+  selectSuggestion,
+  typeEntryMap,
+  suggestionListVariant,
+  suggestionEmptyLabel,
+}: {
+  suggestions: ReturnType<typeof useInlineWikilinkSuggestionsState>['suggestions']
+  selectedSuggestionIndex: number
+  setSuggestionIndex: (index: number) => void
+  selectSuggestion: (index: number) => void
+  typeEntryMap: Record<string, VaultEntry>
+  suggestionListVariant: 'floating' | 'palette'
+  suggestionEmptyLabel: string
+}) {
+  if (suggestions.length === 0) return null
+
+  return (
+    <InlineWikilinkSuggestionList
+      suggestions={suggestions}
+      selectedIndex={selectedSuggestionIndex}
+      onHover={setSuggestionIndex}
+      onSelect={selectSuggestion}
+      typeEntryMap={typeEntryMap}
+      variant={suggestionListVariant}
+      emptyLabel={suggestionEmptyLabel}
+    />
+  )
 }
 
 export function InlineWikilinkInput({
@@ -102,20 +163,23 @@ export function InlineWikilinkInput({
   )
   const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
   const {
+    selectionRange,
     selectionIndex,
-    setSelectionIndex,
+    setSelectionRange,
     setCombinedRef,
-    syncSelectionIndex,
+    syncSelectionRange,
     commitValueFromEditor,
-    focusSelectionAt,
+    focusSelectionRange,
   } = useInlineWikilinkSelection({
     value,
     onChange,
     inputRef,
   })
   const activeQuery = useMemo(
-    () => findActiveWikilinkQuery(value, selectionIndex),
-    [selectionIndex, value],
+    () => selectionRange.start === selectionRange.end
+      ? findActiveWikilinkQuery(value, selectionIndex)
+      : null,
+    [selectionIndex, selectionRange.end, selectionRange.start, value],
   )
   const references = useMemo(() => extractInlineWikilinkReferences(value, entries), [entries, value])
   const {
@@ -131,18 +195,19 @@ export function InlineWikilinkInput({
     value,
     selectionIndex,
     onChange,
-    onSelectionIndexChange: setSelectionIndex,
-    focusSelectionAt,
+    onSelectionIndexChange: (nextSelectionIndex) => setSelectionRange(collapseSelectionRange(nextSelectionIndex)),
+    focusSelectionAt: (nextSelectionIndex) => focusSelectionRange(collapseSelectionRange(nextSelectionIndex)),
   })
-  const deleteAdjacentChip = (direction: 'backward' | 'forward') => {
-    return deleteInlineChip({
-      direction,
-      segments,
-      selectionIndex,
-      value,
-      onChange,
-      onSelectionIndexChange: setSelectionIndex,
-    })
+  const insertText = (text: string) => {
+    const nextState = replaceInlineSelection(value, selectionRange, text)
+    onChange(nextState.value)
+    setSelectionRange(nextState.selection)
+  }
+  const deleteContent = (direction: 'backward' | 'forward') => {
+    const nextState = deleteInlineSelection(value, selectionRange, segments, direction)
+    if (!nextState) return
+    onChange(nextState.value)
+    setSelectionRange(nextState.selection)
   }
   const submitValue = () =>
     submitInlineValue({ onSubmit, submitOnEmpty, value, references })
@@ -153,36 +218,33 @@ export function InlineWikilinkInput({
       suggestionsOpen: suggestions.length > 0,
       onCycleSuggestions: cycleSuggestions,
       onSelectSuggestion: () => selectSuggestion(selectedSuggestionIndex),
-      onDeleteAdjacentChip: deleteAdjacentChip,
+      onDeleteContent: deleteContent,
+      onInsertText: insertText,
       canSubmit: onSubmit !== undefined,
       onSubmit: submitValue,
     })
-  const editor = (
-    <InlineWikilinkEditorField
-      value={value}
-      placeholder={placeholder}
-      disabled={disabled}
-      inputRef={setCombinedRef}
-      dataTestId={dataTestId}
-      editorClassName={editorClassName}
-      onInput={commitValueFromEditor}
-      onKeyDown={handleKeyDown}
-      onSelectionChange={syncSelectionIndex}
-      segments={segments}
-      typeEntryMap={typeEntryMap}
-    />
-  )
-  const suggestionList = suggestions.length > 0 ? (
-    <InlineWikilinkSuggestionList
-      suggestions={suggestions}
-      selectedIndex={selectedSuggestionIndex}
-      onHover={setSuggestionIndex}
-      onSelect={selectSuggestion}
-      typeEntryMap={typeEntryMap}
-      variant={suggestionListVariant}
-      emptyLabel={suggestionEmptyLabel}
-    />
-  ) : null
+  const editor = renderInlineEditorField({
+    value,
+    placeholder,
+    disabled,
+    inputRef: setCombinedRef,
+    dataTestId,
+    editorClassName,
+    onInput: commitValueFromEditor,
+    onKeyDown: handleKeyDown,
+    onSelectionChange: syncSelectionRange,
+    segments,
+    typeEntryMap,
+  })
+  const suggestionList = renderInlineSuggestionList({
+    suggestions,
+    selectedSuggestionIndex,
+    setSuggestionIndex,
+    selectSuggestion,
+    typeEntryMap,
+    suggestionListVariant,
+    suggestionEmptyLabel,
+  })
   if (suggestionListVariant === 'palette') {
     return (
       <InlineWikilinkPaletteLayout

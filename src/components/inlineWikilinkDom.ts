@@ -3,6 +3,16 @@ import {
   normalizeInlineWikilinkValue,
 } from './inlineWikilinkTokens'
 
+export interface InlineSelectionRange {
+  start: number
+  end: number
+}
+
+interface SelectionBoundary {
+  container: Node
+  offset: number
+}
+
 export function serializeInlineNode(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) {
     return normalizeInlineWikilinkValue(node.textContent ?? '')
@@ -23,112 +33,147 @@ function selectionFallsOutsideEditor(
   selection: Selection | null,
   root: HTMLDivElement,
 ): boolean {
-  return (
-    !selection ||
-    selection.rangeCount === 0 ||
-    !selection.anchorNode ||
-    !root.contains(selection.anchorNode)
-  )
+  if (!selection || selection.rangeCount === 0) return true
+  const range = selection.getRangeAt(0)
+  return !root.contains(range.startContainer) || !root.contains(range.endContainer)
 }
 
-export function readSelectionIndex(root: HTMLDivElement): number {
-  const currentSelection = window.getSelection()
-  if (
-    !currentSelection ||
-    selectionFallsOutsideEditor(currentSelection, root)
-  ) {
-    return serializeInlineNode(root).length
-  }
-
-  const range = currentSelection.getRangeAt(0).cloneRange()
+function serializedSelectionBoundary(
+  root: HTMLDivElement,
+  container: Node,
+  offset: number,
+): number {
+  const range = document.createRange()
   range.setStart(root, 0)
+  range.setEnd(container, offset)
   return serializeInlineNode(range.cloneContents()).length
 }
 
-export function applySelectionIndex(
-  root: HTMLDivElement,
-  selectionIndex: number,
-) {
-  const selection = window.getSelection()
-  if (!selection) return
-
-  const range = document.createRange()
-  const clampedIndex = Math.max(0, selectionIndex)
-  const found = placeRangeAtIndex(root, clampedIndex, range)
-
-  if (!found) {
-    range.selectNodeContents(root)
-    range.collapse(false)
+export function readSelectionRange(root: HTMLDivElement): InlineSelectionRange {
+  const currentSelection = window.getSelection()
+  if (!currentSelection || selectionFallsOutsideEditor(currentSelection, root)) {
+    const index = serializeInlineNode(root).length
+    return { start: index, end: index }
   }
 
-  selection.removeAllRanges()
-  selection.addRange(range)
+  const range = currentSelection.getRangeAt(0)
+  return {
+    start: serializedSelectionBoundary(root, range.startContainer, range.startOffset),
+    end: serializedSelectionBoundary(root, range.endContainer, range.endOffset),
+  }
 }
 
-function placeRangeAtIndex(
+export function readSelectionIndex(root: HTMLDivElement): number {
+  return readSelectionRange(root).end
+}
+
+function boundaryAtEditorEnd(root: HTMLDivElement): SelectionBoundary {
+  return { container: root, offset: root.childNodes.length }
+}
+
+function boundaryForTextNode(
+  child: Node,
+  remaining: number,
+): { boundary: SelectionBoundary | null; remaining: number } {
+  const textLength = normalizeInlineWikilinkValue(child.textContent ?? '').length
+  if (remaining <= textLength) {
+    return {
+      boundary: { container: child, offset: remaining },
+      remaining: 0,
+    }
+  }
+
+  return {
+    boundary: null,
+    remaining: remaining - textLength,
+  }
+}
+
+function boundaryForChip(
+  node: Node,
+  child: HTMLElement,
+  index: number,
+  remaining: number,
+): { boundary: SelectionBoundary | null; remaining: number } {
+  const tokenLength = chipToken(child.dataset.chipTarget).length
+  if (remaining <= 0) {
+    return {
+      boundary: { container: node, offset: index },
+      remaining: 0,
+    }
+  }
+
+  if (remaining <= tokenLength) {
+    return {
+      boundary: { container: node, offset: index + 1 },
+      remaining: 0,
+    }
+  }
+
+  return {
+    boundary: null,
+    remaining: remaining - tokenLength,
+  }
+}
+
+function findSelectionBoundary(
   node: Node,
   selectionIndex: number,
-  range: Range,
-): boolean {
-  let remaining = selectionIndex
+): SelectionBoundary | null {
+  let remaining = Math.max(0, selectionIndex)
+  const children = Array.from(node.childNodes)
 
-  for (const child of Array.from(node.childNodes)) {
+  for (const [index, child] of children.entries()) {
     if (child.nodeType === Node.TEXT_NODE) {
-      const textPlacement = placeRangeInTextNode(child, remaining, range)
-      if (textPlacement.placed) return true
-      remaining = textPlacement.remaining
+      const textBoundary = boundaryForTextNode(child, remaining)
+      if (textBoundary.boundary) return textBoundary.boundary
+      remaining = textBoundary.remaining
       continue
     }
 
     if (!(child instanceof HTMLElement)) continue
 
     if (child.dataset.chipTarget) {
-      const chipPlacement = placeRangeAroundChip(child, remaining, range)
-      if (chipPlacement.placed) return true
-      remaining = chipPlacement.remaining
+      const chipBoundary = boundaryForChip(node, child, index, remaining)
+      if (chipBoundary.boundary) return chipBoundary.boundary
+      remaining = chipBoundary.remaining
       continue
     }
 
-    if (placeRangeAtIndex(child, remaining, range)) return true
-    remaining -= serializeInlineNode(child).length
+    const childLength = serializeInlineNode(child).length
+    if (remaining <= childLength) {
+      return findSelectionBoundary(child, remaining)
+    }
+    remaining -= childLength
   }
 
-  return false
+  return null
 }
 
-function placeRangeInTextNode(
-  node: Node,
-  remaining: number,
-  range: Range,
+export function applySelectionRange(
+  root: HTMLDivElement,
+  selectionRange: InlineSelectionRange,
 ) {
-  const textLength = normalizeInlineWikilinkValue(node.textContent ?? '').length
-  if (remaining <= textLength) {
-    range.setStart(node, remaining)
-    range.collapse(true)
-    return { placed: true, remaining: 0 }
-  }
+  const selection = window.getSelection()
+  if (!selection) return
 
-  return { placed: false, remaining: remaining - textLength }
+  const range = document.createRange()
+  const serializedLength = serializeInlineNode(root).length
+  const start = Math.max(0, Math.min(selectionRange.start, selectionRange.end, serializedLength))
+  const end = Math.max(start, Math.min(Math.max(selectionRange.start, selectionRange.end), serializedLength))
+  const startBoundary = findSelectionBoundary(root, start) ?? boundaryAtEditorEnd(root)
+  const endBoundary = findSelectionBoundary(root, end) ?? boundaryAtEditorEnd(root)
+
+  range.setStart(startBoundary.container, startBoundary.offset)
+  range.setEnd(endBoundary.container, endBoundary.offset)
+
+  selection.removeAllRanges()
+  selection.addRange(range)
 }
 
-function placeRangeAroundChip(
-  node: HTMLElement,
-  remaining: number,
-  range: Range,
+export function applySelectionIndex(
+  root: HTMLDivElement,
+  selectionIndex: number,
 ) {
-  const tokenLength = chipToken(node.dataset.chipTarget ?? '').length
-
-  if (remaining <= 0) {
-    range.setStartBefore(node)
-    range.collapse(true)
-    return { placed: true, remaining: 0 }
-  }
-
-  if (remaining <= tokenLength) {
-    range.setStartAfter(node)
-    range.collapse(true)
-    return { placed: true, remaining: 0 }
-  }
-
-  return { placed: false, remaining: remaining - tokenLength }
+  applySelectionRange(root, { start: selectionIndex, end: selectionIndex })
 }

@@ -314,6 +314,7 @@ function OpenCommandPalette({
             entries={entries}
             value={aiValue}
             claudeCodeReady={claudeCodeReady}
+            inputRef={aiInputRef}
             onChange={handleAiValueChange}
             onSubmit={handleSubmitAiPrompt}
           />

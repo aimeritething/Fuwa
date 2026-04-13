@@ -7,6 +7,7 @@ interface CommandPaletteAiModeProps {
   entries: VaultEntry[]
   value: string
   claudeCodeReady: boolean
+  inputRef?: React.RefObject<HTMLDivElement | null>
   onChange: (value: string) => void
   onSubmit: (text: string, references: NoteReference[]) => void
 }
@@ -19,6 +20,7 @@ export function CommandPaletteAiMode({
   entries,
   value,
   claudeCodeReady,
+  inputRef,
   onChange,
   onSubmit,
 }: CommandPaletteAiModeProps) {
@@ -26,6 +28,7 @@ export function CommandPaletteAiMode({
     <InlineWikilinkInput
       entries={entries}
       value={value}
+      inputRef={inputRef}
       onChange={onChange}
       onSubmit={(text, references) => onSubmit(stripLeadingSpace(text), references)}
       submitOnEmpty={true}
