@@ -29,7 +29,7 @@ Every note is a markdown file. The **first H1 heading in the body is the title**
 
 ```yaml
 ---
-is_a: TypeName        # the note's type (must match the title of a type file in the vault)
+type: TypeName        # the note's type (must match the title of a type file in the vault)
 url: https://...      # example property
 belongs_to: "[[other-note]]"
 related_to:
@@ -46,11 +46,11 @@ System properties are prefixed with `_` (e.g. `_organized`, `_pinned`, `_icon`) 
 
 ## Types
 
-A type is a note with `is_a: Type`. Type files live in the vault root:
+A type is a note with `type: Type`. Type files live in the vault root:
 
 ```yaml
 ---
-is_a: Type
+type: Type
 _icon: books          # Phosphor icon name in kebab-case
 _color: "#8b5cf6"     # hex color
 ---
@@ -58,7 +58,7 @@ _color: "#8b5cf6"     # hex color
 # TypeName
 ```
 
-To find what types exist: look for files with `is_a: Type` in the vault root.
+To find what types exist: look for files with `type: Type` in the vault root.
 
 ## Relationships
 
@@ -80,7 +80,7 @@ Saved filters live in `views/` as `.view.json` files:
 {
   "title": "Active Notes",
   "filters": [
-    {"property": "is_a", "operator": "equals", "value": "Note"},
+    {"property": "type", "operator": "equals", "value": "Note"},
     {"property": "status", "operator": "equals", "value": "Active"}
   ],
   "sort": {"property": "title", "direction": "asc"}
