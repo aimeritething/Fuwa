@@ -35,14 +35,10 @@ jobs:
             BASE_VERSION="${LAST_STABLE_TAG#stable-v}"
           fi
 
-          export BASE_VERSION
-          NEXT_PATCH_VERSION=$(python3 - <<'PY'
-import os
-
-major, minor, patch = os.environ["BASE_VERSION"].split(".")
-print(f"{major}.{minor}.{int(patch) + 1}")
-PY
-)
+          IFS='.' read -r MAJOR MINOR PATCH <<EOF
+          $BASE_VERSION
+          EOF
+          NEXT_PATCH_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
 
           VERSION="${NEXT_PATCH_VERSION}-alpha.$(date -u +%Y%m%d%H%M).${GITHUB_RUN_NUMBER}"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
