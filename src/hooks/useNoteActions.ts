@@ -6,7 +6,7 @@ import { resolveEntry } from '../utils/wikilink'
 import { useNoteCreation } from './useNoteCreation'
 import {
   useNoteRename,
-  performRename, loadNoteContent, renameToastMessage, reloadTabsAfterRename,
+  performRename, loadNoteContent, renameToastMessage, reloadTabsAfterRename, reloadVaultAfterRename,
 } from './useNoteRename'
 import { runFrontmatterAndApply, type FrontmatterOpOptions } from './frontmatterOps'
 
@@ -14,6 +14,7 @@ export interface NoteActionsConfig {
   addEntry: (entry: VaultEntry) => void
   removeEntry: (path: string) => void
   entries: VaultEntry[]
+  reloadVault?: () => Promise<unknown>
   setToastMessage: (msg: string | null) => void
   updateEntry: (path: string, patch: Partial<VaultEntry>) => void
   vaultPath: string
@@ -38,6 +39,7 @@ function isTitleKey(key: string): boolean {
 interface TitleRenameDeps {
   vaultPath: string
   tabsRef: React.MutableRefObject<{ entry: VaultEntry; content: string }[]>
+  reloadVault?: () => Promise<unknown>
   replaceEntry?: (oldPath: string, patch: Partial<VaultEntry> & { path: string }) => void
   setTabs: React.Dispatch<React.SetStateAction<{ entry: VaultEntry; content: string }[]>>
   activeTabPathRef: React.MutableRefObject<string | null>
@@ -66,18 +68,19 @@ interface RenameAfterTitleChangeParams {
 
 async function renameAfterTitleChange({ path, newTitle, deps }: RenameAfterTitleChangeParams): Promise<void> {
   const oldTitle = deps.tabsRef.current.find(t => t.entry.path === path)?.entry.title
-  const result = await performRename(path, newTitle, deps.vaultPath, oldTitle)
+  const result = await performRename({ path, newTitle, vaultPath: deps.vaultPath, oldTitle })
   if (result.new_path !== path) {
     const newFilename = result.new_path.split('/').pop() ?? ''
     deps.replaceEntry?.(path, { path: result.new_path, filename: newFilename, title: newTitle } as Partial<VaultEntry> & { path: string })
-    const newContent = await loadNoteContent(result.new_path)
+    const newContent = await loadNoteContent({ path: result.new_path })
     deps.setTabs(prev => prev.map(t => t.entry.path === path
       ? { entry: { ...t.entry, path: result.new_path, filename: newFilename, title: newTitle }, content: newContent }
       : t))
     if (deps.activeTabPathRef.current === path) deps.handleSwitchTab(result.new_path)
     const otherTabPaths = deps.tabsRef.current.filter(t => t.entry.path !== path && t.entry.path !== result.new_path).map(t => t.entry.path)
-    await reloadTabsAfterRename(otherTabPaths, deps.updateTabContent)
+    await reloadTabsAfterRename({ tabPaths: otherTabPaths, updateTabContent: deps.updateTabContent })
   }
+  await reloadVaultAfterRename(deps.reloadVault)
   deps.setToastMessage(renameToastMessage(result.updated_files))
 }
 
@@ -129,7 +132,7 @@ export function useNoteActions(config: NoteActionsConfig) {
 
   const creation = useNoteCreation(config, { openTabWithContent })
   const rename = useNoteRename(
-    { entries, setToastMessage },
+    { entries, setToastMessage, reloadVault: config.reloadVault },
     { tabs: tabMgmt.tabs, setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
   )
 
@@ -162,6 +165,7 @@ export function useNoteActions(config: NoteActionsConfig) {
         deps: {
           vaultPath: config.vaultPath,
           tabsRef: rename.tabsRef,
+          reloadVault: config.reloadVault,
           replaceEntry: config.replaceEntry,
           setTabs,
           activeTabPathRef,
