@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { cn } from '@/lib/utils'
 import type { VaultEntry } from '../types'
 import { fuzzyMatch } from '../utils/fuzzyMatch'
@@ -205,15 +205,17 @@ function OpenCommandPalette({
   const aiMode = aiValue.startsWith(' ')
   const { groups, flatList } = usePaletteResults(commands, query)
 
-  useEffect(() => {
-    const focusTimer = window.setTimeout(() => {
-      if (aiMode) {
-        aiInputRef.current?.focus()
-        return
-      }
-      inputRef.current?.focus()
-    }, 50)
-    return () => window.clearTimeout(focusTimer)
+  useLayoutEffect(() => {
+    const target = aiMode ? aiInputRef.current : inputRef.current
+    if (!target) return
+
+    target.focus()
+    if (document.activeElement === target) return
+
+    const focusRetry = window.requestAnimationFrame(() => {
+      target.focus()
+    })
+    return () => window.cancelAnimationFrame(focusRetry)
   }, [aiMode])
 
   useEffect(() => {

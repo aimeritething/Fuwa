@@ -235,6 +235,16 @@ describe('CommandPalette', () => {
     expect(screen.queryByText('Search Notes')).not.toBeInTheDocument()
   })
 
+  it('focuses the AI editor immediately when the leading space triggers AI mode', () => {
+    render(<CommandPalette open={true} commands={commands} entries={entries} onClose={onClose} />)
+
+    const input = screen.getByPlaceholderText('Type a command...')
+    input.focus()
+    fireEvent.change(input, { target: { value: ' ' } })
+
+    expect(screen.getByTestId('command-palette-ai-input')).toHaveFocus()
+  })
+
   it('returns to command mode when the leading space is deleted', () => {
     render(
       <CommandPalette open={true} commands={commands} entries={entries} onClose={onClose} />,
