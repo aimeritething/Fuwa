@@ -10,6 +10,7 @@ import { ResizeHandle } from './ResizeHandle'
 import { useDiffMode } from '../hooks/useDiffMode'
 import { useRawMode } from '../hooks/useRawMode'
 import { useEditorFocus } from '../hooks/useEditorFocus'
+import { useDragRegion } from '../hooks/useDragRegion'
 import { EditorRightPanel } from './EditorRightPanel'
 import { EditorContent } from './EditorContent'
 import { schema } from './editorSchema'
@@ -118,10 +119,23 @@ function useEditorModeExclusion({
 }
 
 function EditorEmptyState() {
+  const breadcrumbBarHeight = 52
+  const { onMouseDown } = useDragRegion()
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-      <p className="m-0 text-[15px]">Select a note to start editing</p>
-      <span className="text-xs text-muted-foreground">Cmd+P to search &middot; Cmd+N to create</span>
+    <div className="flex flex-1 flex-col overflow-hidden">
+      <div
+        aria-hidden="true"
+        data-tauri-drag-region
+        data-testid="editor-empty-state-drag-region"
+        className="shrink-0"
+        onMouseDown={onMouseDown}
+        style={{ height: breadcrumbBarHeight }}
+      />
+      <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+        <p className="m-0 text-[15px]">Select a note to start editing</p>
+        <span className="text-xs text-muted-foreground">Cmd+P to search &middot; Cmd+N to create</span>
+      </div>
     </div>
   )
 }

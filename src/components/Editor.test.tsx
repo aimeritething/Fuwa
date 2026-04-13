@@ -1,4 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
+import type { ComponentProps } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 
 // Hoisted mock editor — available before vi.mock factory runs.
@@ -54,6 +55,8 @@ vi.mock('@blocknote/mantine/style.css', () => ({}))
 import { Editor } from './Editor'
 import { applyPendingRawExitContent } from './editorRawModeSync'
 import type { VaultEntry } from '../types'
+
+type EditorComponentProps = ComponentProps<typeof Editor>
 
 const mockEntry: VaultEntry = {
   path: '/vault/project/test.md',
@@ -122,72 +125,47 @@ const defaultProps = {
   onCreateNote: vi.fn(),
 }
 
+function renderEditor(overrides: Partial<EditorComponentProps> = {}) {
+  return render(<Editor {...defaultProps} {...overrides} />)
+}
+
 describe('Editor', () => {
   it('shows empty state when no tabs are open', () => {
-    render(<Editor {...defaultProps} />)
+    renderEditor()
     expect(screen.getByText('Select a note to start editing')).toBeInTheDocument()
     expect(screen.getByText(/Cmd\+P to search/)).toBeInTheDocument()
   })
 
-  it('renders tab bar with open tabs', () => {
-    render(
-      <Editor
-        {...defaultProps}
-        tabs={[mockTab]}
-        activeTabPath={mockEntry.path}
-      />
-    )
-    // Tab bar renders when a tab is active
+  it('renders an invisible drag region in the empty state', () => {
+    const { container } = renderEditor()
+    const dragRegion = container.querySelector('[data-testid="editor-empty-state-drag-region"]')
+
+    expect(dragRegion).toHaveAttribute('data-tauri-drag-region')
+    expect(dragRegion).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  it.each([
+    ['renders tab bar with open tabs', {}],
+    ['shows BlockNote editor when a tab is active', {}],
+    ['renders editor for modified file without breadcrumb status', { getNoteStatus: () => 'modified' as const }],
+    ['renders editor for new file without breadcrumb status', { getNoteStatus: () => 'new' as const }],
+  ])('%s', (_label, overrides) => {
+    renderEditor({
+      tabs: [mockTab],
+      activeTabPath: mockEntry.path,
+      ...overrides,
+    })
+
     expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
   })
 
   it('renders breadcrumb bar with action buttons', () => {
-    render(
-      <Editor
-        {...defaultProps}
-        tabs={[mockTab]}
-        activeTabPath={mockEntry.path}
-      />
-    )
-    // Breadcrumb bar shows action buttons (e.g. search, archive)
+    renderEditor({
+      tabs: [mockTab],
+      activeTabPath: mockEntry.path,
+    })
+
     expect(screen.getByTitle('Search in file')).toBeInTheDocument()
-  })
-
-  it('shows BlockNote editor when a tab is active', () => {
-    render(
-      <Editor
-        {...defaultProps}
-        tabs={[mockTab]}
-        activeTabPath={mockEntry.path}
-      />
-    )
-    expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
-  })
-
-  it('renders editor for modified file without breadcrumb status', () => {
-    render(
-      <Editor
-        {...defaultProps}
-        tabs={[mockTab]}
-        activeTabPath={mockEntry.path}
-        getNoteStatus={() => 'modified'}
-      />
-    )
-    // Editor still renders; breadcrumb bar no longer shows status indicators
-    expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
-  })
-
-  it('renders editor for new file without breadcrumb status', () => {
-    render(
-      <Editor
-        {...defaultProps}
-        tabs={[mockTab]}
-        activeTabPath={mockEntry.path}
-        getNoteStatus={() => 'new'}
-      />
-    )
-    // Editor still renders; breadcrumb bar no longer shows status indicators
-    expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
   })
 
   it('hides the legacy title field for untitled draft notes', () => {
