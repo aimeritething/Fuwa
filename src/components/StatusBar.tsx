@@ -1,3 +1,4 @@
+import type { AiAgentId, AiAgentsStatus } from '../lib/aiAgents'
 import { useEffect, useState } from 'react'
 import type { ClaudeCodeStatus } from '../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../hooks/useMcpStatus'
@@ -41,6 +42,8 @@ interface StatusBarProps {
   onRemoveVault?: (path: string) => void
   mcpStatus?: McpStatus
   onInstallMcp?: () => void
+  aiAgentsStatus?: AiAgentsStatus
+  defaultAiAgent?: AiAgentId
   claudeCodeStatus?: ClaudeCodeStatus
   claudeCodeVersion?: string | null
 }
@@ -76,6 +79,8 @@ export function StatusBar({
   onRemoveVault,
   mcpStatus,
   onInstallMcp,
+  aiAgentsStatus,
+  defaultAiAgent,
   claudeCodeStatus,
   claudeCodeVersion,
 }: StatusBarProps) {
@@ -129,6 +134,8 @@ export function StatusBar({
         onRemoveVault={onRemoveVault}
         mcpStatus={mcpStatus}
         onInstallMcp={onInstallMcp}
+        aiAgentsStatus={aiAgentsStatus}
+        defaultAiAgent={defaultAiAgent}
         claudeCodeStatus={claudeCodeStatus}
         claudeCodeVersion={claudeCodeVersion}
       />

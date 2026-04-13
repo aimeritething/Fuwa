@@ -1,4 +1,12 @@
 import {
+  AI_AGENT_DEFINITIONS,
+  createMissingAiAgentsStatus,
+  getAiAgentDefinition,
+  resolveDefaultAiAgent,
+  type AiAgentId,
+  type AiAgentsStatus,
+} from '../lib/aiAgents'
+import {
   useState,
   useRef,
   useCallback,
@@ -24,6 +32,7 @@ import { Switch } from './ui/switch'
 interface SettingsPanelProps {
   open: boolean
   settings: Settings
+  aiAgentsStatus?: AiAgentsStatus
   onSave: (settings: Settings) => void
   explicitOrganizationEnabled?: boolean
   onSaveExplicitOrganization?: (enabled: boolean) => void
@@ -32,6 +41,7 @@ interface SettingsPanelProps {
 
 interface SettingsDraft {
   pullInterval: number
+  defaultAiAgent: AiAgentId
   releaseChannel: ReleaseChannel
   crashReporting: boolean
   analytics: boolean
@@ -41,6 +51,9 @@ interface SettingsDraft {
 interface SettingsBodyProps {
   pullInterval: number
   setPullInterval: (value: number) => void
+  aiAgentsStatus: AiAgentsStatus
+  defaultAiAgent: AiAgentId
+  setDefaultAiAgent: (value: AiAgentId) => void
   releaseChannel: ReleaseChannel
   setReleaseChannel: (value: ReleaseChannel) => void
   explicitOrganization: boolean
@@ -63,6 +76,7 @@ function createSettingsDraft(
 ): SettingsDraft {
   return {
     pullInterval: settings.auto_pull_interval_minutes ?? 5,
+    defaultAiAgent: resolveDefaultAiAgent(settings.default_ai_agent),
     releaseChannel: normalizeReleaseChannel(settings.release_channel),
     crashReporting: settings.crash_reporting_enabled ?? false,
     analytics: settings.analytics_enabled ?? false,
@@ -91,6 +105,7 @@ function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Setti
     analytics_enabled: draft.analytics,
     anonymous_id: resolveAnonymousId(settings, draft),
     release_channel: serializeReleaseChannel(draft.releaseChannel),
+    default_ai_agent: draft.defaultAiAgent,
   }
 }
 
@@ -106,6 +121,7 @@ function isChecked(checked: CheckedState): boolean {
 export function SettingsPanel({
   open,
   settings,
+  aiAgentsStatus = createMissingAiAgentsStatus(),
   onSave,
   explicitOrganizationEnabled = true,
   onSaveExplicitOrganization,
@@ -116,6 +132,7 @@ export function SettingsPanel({
   return (
     <SettingsPanelInner
       settings={settings}
+      aiAgentsStatus={aiAgentsStatus}
       onSave={onSave}
       explicitOrganizationEnabled={explicitOrganizationEnabled}
       onSaveExplicitOrganization={onSaveExplicitOrganization}
@@ -124,12 +141,14 @@ export function SettingsPanel({
   )
 }
 
-type SettingsPanelInnerProps = Omit<SettingsPanelProps, 'open' | 'explicitOrganizationEnabled'> & {
+type SettingsPanelInnerProps = Omit<SettingsPanelProps, 'open' | 'explicitOrganizationEnabled' | 'aiAgentsStatus'> & {
+  aiAgentsStatus: AiAgentsStatus
   explicitOrganizationEnabled: boolean
 }
 
 function SettingsPanelInner({
   settings,
+  aiAgentsStatus,
   onSave,
   explicitOrganizationEnabled,
   onSaveExplicitOrganization,
@@ -200,6 +219,9 @@ function SettingsPanelInner({
         <SettingsBody
           pullInterval={draft.pullInterval}
           setPullInterval={(value) => updateDraft('pullInterval', value)}
+          aiAgentsStatus={aiAgentsStatus}
+          defaultAiAgent={draft.defaultAiAgent}
+          setDefaultAiAgent={(value) => updateDraft('defaultAiAgent', value)}
           releaseChannel={draft.releaseChannel}
           setReleaseChannel={(value) => updateDraft('releaseChannel', value)}
           explicitOrganization={draft.explicitOrganization}
@@ -238,6 +260,9 @@ function SettingsHeader({ onClose }: { onClose: () => void }) {
 function SettingsBody({
   pullInterval,
   setPullInterval,
+  aiAgentsStatus,
+  defaultAiAgent,
+  setDefaultAiAgent,
   releaseChannel,
   setReleaseChannel,
   explicitOrganization,
@@ -265,6 +290,34 @@ function SettingsBody({
         testId="settings-pull-interval"
         autoFocus={true}
       />
+
+      <Divider />
+
+      <SectionHeading
+        title="AI Agents"
+        description="Choose which CLI AI agent Tolaria uses in the AI panel and command palette."
+      />
+
+      <LabeledSelect
+        label="Default AI agent"
+        value={defaultAiAgent}
+        onValueChange={(value) => setDefaultAiAgent(value as AiAgentId)}
+        options={AI_AGENT_DEFINITIONS.map((definition) => {
+          const status = aiAgentsStatus[definition.id]
+          const suffix = status.status === 'installed'
+            ? ` (installed${status.version ? ` ${status.version}` : ''})`
+            : ' (missing)'
+          return {
+            value: definition.id,
+            label: `${definition.label}${suffix}`,
+          }
+        })}
+        testId="settings-default-ai-agent"
+      />
+
+      <div style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
+        {renderDefaultAiAgentSummary(defaultAiAgent, aiAgentsStatus)}
+      </div>
 
       <Divider />
 
@@ -335,6 +388,15 @@ function SectionHeading({
 
 function Divider() {
   return <div style={{ height: 1, background: 'var(--border)' }} />
+}
+
+function renderDefaultAiAgentSummary(defaultAiAgent: AiAgentId, aiAgentsStatus: AiAgentsStatus): string {
+  const definition = getAiAgentDefinition(defaultAiAgent)
+  const status = aiAgentsStatus[defaultAiAgent]
+  if (status.status === 'installed') {
+    return `${definition.label}${status.version ? ` ${status.version}` : ''} is ready to use.`
+  }
+  return `${definition.label} is not installed yet. You can still select it now and install it later.`
 }
 
 function LabeledSelect({

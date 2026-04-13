@@ -1,8 +1,10 @@
 import { Bell, FileText, Package, Settings } from 'lucide-react'
 import { Megaphone } from '@phosphor-icons/react'
+import type { AiAgentId, AiAgentsStatus } from '../../lib/aiAgents'
 import type { ClaudeCodeStatus } from '../../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../../hooks/useMcpStatus'
 import type { GitRemoteStatus, LastCommitInfo, SyncStatus } from '../../types'
+import { AiAgentsBadge } from './AiAgentsBadge'
 import { Button } from '@/components/ui/button'
 import {
   ClaudeCodeBadge,
@@ -46,6 +48,8 @@ interface StatusBarPrimarySectionProps {
   onRemoveVault?: (path: string) => void
   mcpStatus?: McpStatus
   onInstallMcp?: () => void
+  aiAgentsStatus?: AiAgentsStatus
+  defaultAiAgent?: AiAgentId
   claudeCodeStatus?: ClaudeCodeStatus
   claudeCodeVersion?: string | null
 }
@@ -84,6 +88,8 @@ export function StatusBarPrimarySection({
   onRemoveVault,
   mcpStatus,
   onInstallMcp,
+  aiAgentsStatus,
+  defaultAiAgent,
   claudeCodeStatus,
   claudeCodeVersion,
 }: StatusBarPrimarySectionProps) {
@@ -127,7 +133,9 @@ export function StatusBarPrimarySection({
       <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} />
       <PulseBadge onClick={onClickPulse} disabled={isGitVault === false} />
       {mcpStatus && <McpBadge status={mcpStatus} onInstall={onInstallMcp} />}
-      {claudeCodeStatus && <ClaudeCodeBadge status={claudeCodeStatus} version={claudeCodeVersion} />}
+      {aiAgentsStatus && defaultAiAgent
+        ? <AiAgentsBadge statuses={aiAgentsStatus} defaultAgent={defaultAiAgent} />
+        : claudeCodeStatus && <ClaudeCodeBadge status={claudeCodeStatus} version={claudeCodeVersion} />}
     </div>
   )
 }

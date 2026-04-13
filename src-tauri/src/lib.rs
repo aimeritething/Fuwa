@@ -1,3 +1,4 @@
+pub mod ai_agents;
 pub mod app_updater;
 pub mod claude_cli;
 mod commands;
@@ -175,8 +176,10 @@ fn with_invoke_handler(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
         commands::is_git_repo,
         commands::init_git_repo,
         commands::check_claude_cli,
+        commands::get_ai_agents_status,
         commands::stream_claude_chat,
         commands::stream_claude_agent,
+        commands::stream_ai_agent,
         commands::reload_vault,
         commands::reload_vault_entry,
         commands::sync_note_title,

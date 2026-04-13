@@ -13,6 +13,8 @@ interface CommandPaletteProps {
   commands: CommandAction[]
   entries?: VaultEntry[]
   claudeCodeReady?: boolean
+  aiAgentReady?: boolean
+  aiAgentLabel?: string
   onClose: () => void
 }
 
@@ -173,12 +175,14 @@ function CommandPaletteResults({
 
 function CommandPaletteFooter({
   aiMode,
+  aiAgentLabel = 'Claude Code',
 }: {
   aiMode: boolean
+  aiAgentLabel?: string
 }) {
   return (
     <div className="flex items-center gap-4 border-t border-border px-4 py-1.5 text-[11px] text-muted-foreground">
-      <span>{aiMode ? 'Claude mode' : '↑↓ navigate'}</span>
+      <span>{aiMode ? `${aiAgentLabel} mode` : '↑↓ navigate'}</span>
       <span>{aiMode ? '↵ send' : '↵ select'}</span>
       <span>esc close</span>
     </div>
@@ -194,6 +198,8 @@ function OpenCommandPalette({
   commands,
   entries = [],
   claudeCodeReady = true,
+  aiAgentReady,
+  aiAgentLabel = 'Claude Code',
   onClose,
 }: Omit<CommandPaletteProps, 'open'>) {
   const [query, setQuery] = useState('')
@@ -203,6 +209,7 @@ function OpenCommandPalette({
   const aiInputRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
   const aiMode = aiValue.startsWith(' ')
+  const resolvedAiAgentReady = aiAgentReady ?? claudeCodeReady
   const { groups, flatList } = usePaletteResults(commands, query)
 
   useLayoutEffect(() => {
@@ -292,7 +299,7 @@ function OpenCommandPalette({
       return
     }
 
-    if (!claudeCodeReady) return
+    if (!resolvedAiAgentReady) return
 
     queueAiPrompt(text, references)
     requestOpenAiChat()
@@ -316,6 +323,8 @@ function OpenCommandPalette({
             entries={entries}
             value={aiValue}
             claudeCodeReady={claudeCodeReady}
+            aiAgentReady={resolvedAiAgentReady}
+            aiAgentLabel={aiAgentLabel}
             inputRef={aiInputRef}
             onChange={handleAiValueChange}
             onSubmit={handleSubmitAiPrompt}
@@ -330,7 +339,7 @@ function OpenCommandPalette({
               onHover={setSelectedIndex}
               onSelect={handleSelectCommand}
             />
-            <CommandPaletteFooter aiMode={false} />
+            <CommandPaletteFooter aiMode={false} aiAgentLabel={aiAgentLabel} />
           </>
         )}
       </div>

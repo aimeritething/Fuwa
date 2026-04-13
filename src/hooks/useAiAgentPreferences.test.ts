@@ -1,0 +1,58 @@
+import { renderHook, act } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useAiAgentPreferences } from './useAiAgentPreferences'
+
+const settings = {
+  auto_pull_interval_minutes: 5,
+  telemetry_consent: true,
+  crash_reporting_enabled: false,
+  analytics_enabled: false,
+  anonymous_id: null,
+  release_channel: 'stable',
+  default_ai_agent: 'claude_code' as const,
+}
+
+const aiAgentsStatus = {
+  claude_code: { status: 'installed' as const, version: '1.0.20' },
+  codex: { status: 'missing' as const, version: null },
+}
+
+describe('useAiAgentPreferences', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('resolves the selected label and readiness', () => {
+    const { result } = renderHook(() => useAiAgentPreferences({
+      settings,
+      saveSettings: vi.fn(),
+      aiAgentsStatus,
+    }))
+
+    expect(result.current.defaultAiAgent).toBe('claude_code')
+    expect(result.current.defaultAiAgentLabel).toBe('Claude Code')
+    expect(result.current.defaultAiAgentReady).toBe(true)
+  })
+
+  it('cycles to the next agent and persists the selection', () => {
+    const saveSettings = vi.fn()
+    const onToast = vi.fn()
+
+    const { result } = renderHook(() => useAiAgentPreferences({
+      settings,
+      saveSettings,
+      aiAgentsStatus,
+      onToast,
+    }))
+
+    act(() => {
+      result.current.cycleDefaultAiAgent()
+    })
+
+    expect(saveSettings).toHaveBeenCalledWith({
+      ...settings,
+      default_ai_agent: 'codex',
+    })
+    expect(onToast).toHaveBeenCalledWith('Default AI agent: Codex')
+  })
+})

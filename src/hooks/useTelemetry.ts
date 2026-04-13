@@ -9,8 +9,8 @@ function tauriCall(command: string): Promise<void> {
   return isTauri() ? invoke<void>(command) : mockInvoke<void>(command)
 }
 
-function resolveReleaseChannel(settings: Settings): ReleaseChannel {
-  return normalizeReleaseChannel(settings.release_channel)
+function resolveReleaseChannel(releaseChannel: Settings['release_channel']): ReleaseChannel {
+  return normalizeReleaseChannel(releaseChannel)
 }
 
 function syncCrashReporting(
@@ -63,7 +63,7 @@ export function useTelemetry(settings: Settings, loaded: boolean): void {
     const crashEnabled = settings.crash_reporting_enabled === true
     const analyticsEnabled = settings.analytics_enabled === true
     const anonymousId = settings.anonymous_id
-    const releaseChannel = resolveReleaseChannel(settings)
+    const releaseChannel = resolveReleaseChannel(settings.release_channel)
 
     syncCrashReporting(crashEnabled, anonymousId, prevCrash.current)
     setReleaseChannel(releaseChannel)

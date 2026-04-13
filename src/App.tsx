@@ -16,14 +16,15 @@ import { StatusBar } from './components/StatusBar'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CloneVaultModal } from './components/CloneVaultModal'
 import { WelcomeScreen } from './components/WelcomeScreen'
-import { ClaudeCodeOnboardingPrompt } from './components/ClaudeCodeOnboardingPrompt'
+import { AiAgentsOnboardingPrompt } from './components/AiAgentsOnboardingPrompt'
 import { TelemetryConsentDialog } from './components/TelemetryConsentDialog'
 import { FeedbackDialog } from './components/FeedbackDialog'
 import { useTelemetry } from './hooks/useTelemetry'
 import { useMcpStatus } from './hooks/useMcpStatus'
-import { useClaudeCodeOnboarding } from './hooks/useClaudeCodeOnboarding'
-import { useClaudeCodeStatus } from './hooks/useClaudeCodeStatus'
+import { useAiAgentsOnboarding } from './hooks/useAiAgentsOnboarding'
+import { useAiAgentsStatus } from './hooks/useAiAgentsStatus'
 import { useVaultLoader } from './hooks/useVaultLoader'
+import { useAiAgentPreferences } from './hooks/useAiAgentPreferences'
 import { useSettings } from './hooks/useSettings'
 import { useNoteActions } from './hooks/useNoteActions'
 import { useCommitFlow } from './hooks/useCommitFlow'
@@ -126,8 +127,8 @@ function App() {
   })
 
   const onboarding = useOnboarding(vaultSwitcher.vaultPath)
-  const { status: claudeCodeStatus, version: claudeCodeVersion } = useClaudeCodeStatus()
-  const claudeCodeOnboarding = useClaudeCodeOnboarding(onboarding.state.status === 'ready' && !noteWindowParams)
+  const aiAgentsStatus = useAiAgentsStatus()
+  const aiAgentsOnboarding = useAiAgentsOnboarding(onboarding.state.status === 'ready' && !noteWindowParams)
 
   // When onboarding resolves to a different vault path, update the switcher
   const resolvedPath = noteWindowParams?.vaultPath ?? (onboarding.state.status === 'ready' ? onboarding.state.vaultPath : vaultSwitcher.vaultPath)
@@ -168,6 +169,12 @@ function App() {
     })
   }, [updateConfig, vaultConfig.inbox?.noteListProperties])
   const { settings, loaded: settingsLoaded, saveSettings } = useSettings()
+  const aiAgentPreferences = useAiAgentPreferences({
+    settings,
+    saveSettings,
+    aiAgentsStatus,
+    onToast: setToastMessage,
+  })
   useTelemetry(settings, settingsLoaded)
 
   const vaultOpenedRef = useRef('')
@@ -593,8 +600,9 @@ function App() {
     vaultCount: vaultSwitcher.allVaults.length,
     mcpStatus,
     onInstallMcp: installMcp,
-    claudeCodeStatus: claudeCodeStatus ?? undefined,
-    claudeCodeVersion: claudeCodeVersion ?? undefined,
+    onOpenAiAgents: dialogs.openSettings,
+    onCycleDefaultAiAgent: aiAgentPreferences.cycleDefaultAiAgent,
+    selectedAiAgentLabel: aiAgentPreferences.defaultAiAgentLabel,
     onReloadVault: vault.reloadVault,
     onRepairVault: handleRepairVault,
     onSetNoteIcon: handleSetNoteIconCommand,
@@ -642,11 +650,11 @@ function App() {
     return <LoadingView />
   }
 
-  if (!noteWindowParams && onboarding.state.status === 'ready' && claudeCodeOnboarding.showPrompt) {
+  if (!noteWindowParams && onboarding.state.status === 'ready' && aiAgentsOnboarding.showPrompt) {
     return (
-      <ClaudeCodeOnboardingView
-        status={claudeCodeStatus}
-        onContinue={claudeCodeOnboarding.dismissPrompt}
+      <AiAgentsOnboardingView
+        statuses={aiAgentsStatus}
+        onContinue={aiAgentsOnboarding.dismissPrompt}
       />
     )
   }
@@ -719,6 +727,8 @@ function App() {
             inspectorCollapsed={layout.inspectorCollapsed}
             onToggleInspector={() => layout.setInspectorCollapsed((c) => !c)}
             inspectorWidth={layout.inspectorWidth}
+            defaultAiAgent={aiAgentPreferences.defaultAiAgent}
+            defaultAiAgentReady={aiAgentPreferences.defaultAiAgentReady}
             onInspectorResize={layout.handleInspectorResize}
             inspectorEntry={activeTab?.entry ?? null}
             inspectorContent={activeTab?.content ?? null}
@@ -759,14 +769,15 @@ function App() {
       </div>
       <UpdateBanner status={updateStatus} actions={updateActions} />
       <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={vaultSwitcher.restoreGettingStarted} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isOffline={networkStatus.isOffline} isGitVault={!vault.modifiedFilesError} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} claudeCodeStatus={claudeCodeStatus} claudeCodeVersion={claudeCodeVersion} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={vaultSwitcher.restoreGettingStarted} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isOffline={networkStatus.isOffline} isGitVault={!vault.modifiedFilesError} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} aiAgentsStatus={aiAgentsStatus} defaultAiAgent={aiAgentPreferences.defaultAiAgent} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
       <CommandPalette
         open={dialogs.showCommandPalette}
         commands={commands}
         entries={vault.entries}
-        claudeCodeReady={claudeCodeStatus === 'installed'}
+        aiAgentReady={aiAgentPreferences.defaultAiAgentReady}
+        aiAgentLabel={aiAgentPreferences.defaultAiAgentLabel}
         onClose={dialogs.closeCommandPalette}
       />
       <SearchPanel open={dialogs.showSearch} vaultPath={resolvedPath} entries={vault.entries} onSelectNote={notes.handleSelectNote} onClose={dialogs.closeSearch} />
@@ -791,7 +802,7 @@ function App() {
         onCommit={conflictResolver.commitResolution}
         onClose={conflictFlow.handleCloseConflictResolver}
       />
-      <SettingsPanel open={dialogs.showSettings} settings={settings} onSave={saveSettings} explicitOrganizationEnabled={explicitOrganizationEnabled} onSaveExplicitOrganization={handleSaveExplicitOrganization} onClose={dialogs.closeSettings} />
+      <SettingsPanel open={dialogs.showSettings} settings={settings} aiAgentsStatus={aiAgentsStatus} onSave={saveSettings} explicitOrganizationEnabled={explicitOrganizationEnabled} onSaveExplicitOrganization={handleSaveExplicitOrganization} onClose={dialogs.closeSettings} />
       <FeedbackDialog open={showFeedback} onClose={closeFeedback} />
       <CloneVaultModal key={dialogs.showCloneVault ? 'clone-open' : 'clone-closed'} open={dialogs.showCloneVault} onClose={dialogs.closeCloneVault} onVaultCloned={vaultSwitcher.handleVaultCloned} />
       {deleteActions.confirmDelete && (
@@ -832,16 +843,16 @@ function WelcomeView({ onboarding, isOffline }: { onboarding: OnboardingState; i
   )
 }
 
-function ClaudeCodeOnboardingView({
-  status,
+function AiAgentsOnboardingView({
+  statuses,
   onContinue,
 }: {
-  status: ReturnType<typeof useClaudeCodeStatus>['status']
+  statuses: ReturnType<typeof useAiAgentsStatus>
   onContinue: () => void
 }) {
   return (
     <div className="app-shell">
-      <ClaudeCodeOnboardingPrompt status={status} onContinue={onContinue} />
+      <AiAgentsOnboardingPrompt statuses={statuses} onContinue={onContinue} />
     </div>
   )
 }

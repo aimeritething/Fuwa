@@ -5,13 +5,13 @@ import type { VaultEntry } from '../types'
 import { queueAiPrompt } from '../utils/aiPromptBridge'
 
 // Mock the hooks and utils to isolate component tests
-let mockMessages: ReturnType<typeof import('../hooks/useAiAgent').useAiAgent>['messages'] = []
-let mockStatus: ReturnType<typeof import('../hooks/useAiAgent').useAiAgent>['status'] = 'idle'
+let mockMessages: ReturnType<typeof import('../hooks/useCliAiAgent').useCliAiAgent>['messages'] = []
+let mockStatus: ReturnType<typeof import('../hooks/useCliAiAgent').useCliAiAgent>['status'] = 'idle'
 const mockSendMessage = vi.fn()
 const mockClearConversation = vi.fn()
 
-vi.mock('../hooks/useAiAgent', () => ({
-  useAiAgent: () => ({
+vi.mock('../hooks/useCliAiAgent', () => ({
+  useCliAiAgent: () => ({
     messages: mockMessages,
     status: mockStatus,
     sendMessage: mockSendMessage,

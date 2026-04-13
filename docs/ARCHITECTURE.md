@@ -96,7 +96,7 @@ flowchart LR
 | Build | Vite | 7.3.1 |
 | Backend language | Rust (edition 2021) | 1.77.2 |
 | Frontmatter parsing | gray_matter | 0.2 |
-| AI (agent panel) | Claude CLI subprocess (streaming NDJSON) | - |
+| AI (agent panel) | CLI agent adapters (Claude Code + Codex) | - |
 | Search | Keyword (walkdir-based file scan) | - |
 | MCP | @modelcontextprotocol/sdk | 1.0 |
 | Tests | Vitest (unit), Playwright (E2E/smoke), cargo test (Rust) | - |
@@ -114,7 +114,7 @@ flowchart TD
             NL["NoteList / PulseView\n(filtered list / activity)"]
             ED["Editor\n(BlockNote + diff + raw)"]
             IN["Inspector\n(metadata + relationships)"]
-            AIP["AiPanel\n(Claude CLI agent + tools)"]
+            AIP["AiPanel\n(selected CLI agent + tools)"]
             SP["SearchPanel\n(keyword search)"]
             ST["StatusBar\n(vault picker + sync + version)"]
             CP["CommandPalette\n(Cmd+K launcher)"]
@@ -130,11 +130,11 @@ flowchart TD
             GIT["git/\n(commit, sync, clone)"]
             SETTINGS["settings.rs"]
             SEARCH["search.rs"]
-            CLI["claude_cli.rs"]
+            CLI["ai_agents.rs\n+ claude_cli.rs"]
         end
 
         subgraph EXT["External Services"]
-            CCLI["Claude CLI\n(agent subprocess)"]
+            CCLI["Claude CLI / Codex CLI\n(agent subprocesses)"]
             MCP["MCP Server\n(ws://9710, 9711)"]
             GCLI["git CLI\n(system executable)"]
             REMOTE["Git remotes\n(GitHub/GitLab/Gitea/etc.)"]
@@ -178,7 +178,7 @@ flowchart TD
 - **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Changes, Pulse) and collapsible type-based section groups. Each type can have a custom icon, color, sort, and visibility set via its type document in `type/`.
 - **Note List / Pulse View** (200-500px, resizable): When a section group or filter is selected, shows filtered notes with snippets, modified dates, and status indicators. When Pulse filter is active, shows `PulseView` — a chronological git activity feed grouped by day.
 - **Editor** (flex, fills remaining space): Single note open at a time (no tabs — see ADR-0003). Breadcrumb bar with word count, BlockNote rich text editor with wikilink support. Can toggle to diff view (modified files) or raw CodeMirror view. Decomposed into `Editor` (orchestrator), `EditorContent`, `EditorRightPanel`, `SingleEditorView`, with hooks `useDiffMode`, `useEditorFocus`, `useEditorSave`, `useRawMode`. Navigation history (Cmd+[/]) replaces tabs.
-- **Inspector / AI Agent** (200-500px or 40px collapsed): Toggles between Inspector (frontmatter, relationships, instances, backlinks, git history) and AI Agent panel (Claude CLI subprocess with tool execution). The Sparkle icon in the breadcrumb bar toggles between them. Per-note `icon` is a suggested Inspector property and the command palette's "Set Note Icon" action opens that field directly. When viewing a Type note, the Inspector shows an **Instances** section listing all notes of that type (sorted by modified_at desc, capped at 50).
+- **Inspector / AI Agent** (200-500px or 40px collapsed): Toggles between Inspector (frontmatter, relationships, instances, backlinks, git history) and AI Agent panel (the selected CLI agent with tool execution). The Sparkle icon in the breadcrumb bar toggles between them. Per-note `icon` is a suggested Inspector property and the command palette's "Set Note Icon" action opens that field directly. When viewing a Type note, the Inspector shows an **Instances** section listing all notes of that type (sorted by modified_at desc, capped at 50).
 
 Panels are separated by `ResizeHandle` components that support drag-to-resize.
 
@@ -204,30 +204,32 @@ Notes can be opened in separate Tauri windows for focused editing. Secondary win
 
 ### AI Agent (AiPanel)
 
-Full agent mode — spawns Claude CLI as a subprocess with tool access and MCP vault integration.
+Full agent mode — spawns the selected local CLI agent as a subprocess with tool access and MCP vault integration.
 
-1. **Frontend** (`AiPanel` + `useAiAgent` hook) — streaming UI with reasoning blocks, tool action cards, and response display
-2. **Backend** (`claude_cli.rs`) — spawns `claude` binary with `--output-format stream-json`, parses NDJSON events
-3. **MCP Integration** — passes vault MCP config via `--mcp-config` flag so the agent can search, read, and modify vault notes
+1. **Frontend** (`AiPanel` + `useCliAiAgent` + `aiAgents.ts`) — streaming UI with reasoning blocks, tool action cards, response display, onboarding, and default-agent selection
+2. **Backend** (`ai_agents.rs`) — normalizes agent availability and streaming, dispatching to per-agent adapters
+3. **Agent adapters** — Claude Code still uses `claude_cli.rs`; Codex runs through `codex exec --json`
+4. **MCP Integration** — Claude receives the generated MCP config file path, while Codex receives the same Tolaria MCP server via transient `-c mcp_servers.tolaria.*` config overrides
 
 #### Agent Event Flow
 
 ```mermaid
 sequenceDiagram
     participant U as User (AiPanel)
-    participant FE as useAiAgent (Frontend)
-    participant R as claude_cli.rs (Rust)
-    participant C as Claude CLI
+    participant FE as useCliAiAgent (Frontend)
+    participant R as ai_agents.rs (Rust)
+    participant C as Selected CLI Agent
     participant V as Vault (MCP)
 
     U->>FE: sendMessage(text, references)
     FE->>FE: buildContextSnapshot(activeNote, linkedNotes, openTabs)
-    FE->>R: invoke('stream_claude_agent', {message, systemPrompt, vaultPath})
-    R->>C: spawn claude -p <msg> --output-format stream-json --mcp-config <json>
+    FE->>R: invoke('stream_ai_agent', {agent, message, systemPrompt, vaultPath})
+    R->>R: pick adapter for claude_code or codex
+    R->>C: spawn agent with MCP-enabled config
 
-    loop NDJSON stream
-        C-->>R: Init | TextDelta | ThinkingDelta | ToolStart | ToolDone | Result | Done
-        R-->>FE: emit("claude-agent-stream", event)
+    loop Normalized stream
+        C-->>R: Claude NDJSON or Codex JSONL events
+        R-->>FE: emit("ai-agent-stream", event)
         alt TextDelta
             FE->>FE: accumulate response (revealed on Done)
         else ThinkingDelta
@@ -248,7 +250,7 @@ sequenceDiagram
 
 #### File Operation Detection
 
-When the agent writes or edits vault files, `useAiAgent` detects this from tool inputs (Write/Edit tool JSON) and calls `onFileCreated` or `onFileModified` callbacks to trigger vault reload.
+When the agent writes or edits vault files, `useCliAiAgent` detects this from normalized tool inputs and calls `onFileCreated` or `onFileModified` callbacks to trigger vault reload.
 
 ### Context Building
 
@@ -268,7 +270,7 @@ Token budget: 60% of 180k context limit (~108k tokens max). Active note gets pri
 
 ### Authentication
 
-Claude CLI (agent mode) uses its own authentication — no API key configuration needed in Tolaria.
+Each CLI agent authenticates itself outside Tolaria. Claude Code uses its existing CLI login; Codex surfaces a friendly prompt to run `codex login` when needed. Tolaria does not store model-provider API keys in app settings.
 
 ## MCP Server
 
@@ -432,7 +434,7 @@ On first launch, `useOnboarding` checks if the default vault exists. If not, it 
 - **Open an existing folder** → system file picker
 - **Get started with a template** → pick a folder, then call `create_getting_started_vault()` to clone the public starter repo at runtime
 
-Once a vault is ready, `useClaudeCodeOnboarding` can show a one-time `ClaudeCodeOnboardingPrompt`. That prompt reuses `useClaudeCodeStatus` so first launch surfaces whether the `claude` CLI is installed, offers the install link when it is missing, and stores local dismissal so the prompt does not repeat on every launch.
+Once a vault is ready, `useAiAgentsOnboarding` can show a one-time `AiAgentsOnboardingPrompt`. That prompt reads `useAiAgentsStatus` so first launch surfaces whether Claude Code and Codex are installed, offers per-agent install links when they are missing, and stores local dismissal so the prompt does not repeat on every launch.
 
 The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` only holds the public starter repo URL and delegates the actual clone to the git backend.
 
@@ -579,7 +581,8 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `frontmatter/` | YAML frontmatter read/write (`mod.rs`, `yaml.rs`, `ops.rs`) |
 | `git/` | Git operations (`commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`, `clone.rs`) |
 | `search.rs` | Keyword search — walkdir-based vault file scan |
-| `claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing |
+| `ai_agents.rs` | Shared CLI-agent detection, stream normalization, and adapter dispatch |
+| `claude_cli.rs` | Claude Code subprocess spawning + NDJSON stream parsing |
 | `mcp.rs` | MCP server spawning + config registration |
 | `commands/` | Tauri command handlers (split into submodules) |
 | `settings.rs` | App settings persistence |
@@ -654,6 +657,8 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `stream_claude_chat` | Claude CLI chat mode (streaming) |
 | `stream_claude_agent` | Claude CLI agent mode (streaming + tools) |
 | `check_claude_cli` | Check if Claude CLI is available |
+| `get_ai_agents_status` | Check Claude Code + Codex availability |
+| `stream_ai_agent` | Stream the selected CLI agent through the normalized event layer |
 | `register_mcp_tools` | Register MCP in Claude/Cursor config |
 | `check_mcp_status` | Check MCP registration state |
 
@@ -703,7 +708,7 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useTabManagement` | Navigation history, note switching | Note navigation lifecycle |
 | `useVaultSwitcher` | `vaultPath`, `extraVaults` | Vault switching |
 | `useTheme` | Editor theme CSS vars | Editor typography theme |
-| `useAiAgent` | `messages`, `status`, tool actions | AI agent conversation |
+| `useCliAiAgent` | `messages`, `status`, tool actions | Selected AI agent conversation |
 | `useAutoSync` | Sync interval, pull/push state | Git auto-sync |
 | `useGitRemoteStatus` | `remoteStatus`, `refreshRemoteStatus()` | On-demand remote detection for commit UI |
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |
@@ -883,7 +888,7 @@ Tauri v2 supports iOS as a beta target. The Rust backend cross-compiles to `aarc
 **Conditional compilation strategy:**
 
 ```
-#[cfg(desktop)]  — git CLI, menu bar, MCP server, Claude CLI, updater
+#[cfg(desktop)]  — git CLI, menu bar, MCP server, CLI AI agents, updater
 #[cfg(mobile)]   — stub commands returning graceful errors or empty results
 ```
 
@@ -893,7 +898,7 @@ Desktop-only modules gated at the crate level:
 Desktop-only features gated at the function level in `commands/`:
 - Git operations (commit, pull, push, status, history, diff, conflicts)
 - Clone-by-URL via system git (`clone_repo`)
-- Claude CLI streaming (check, chat, agent)
+- CLI AI agent streaming (Claude, Codex)
 - MCP registration and status
 - Menu state updates
 

@@ -1,3 +1,4 @@
+import { DEFAULT_AI_AGENT, type AiAgentId } from '../lib/aiAgents'
 import type { VaultEntry, GitCommit } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import { Inspector, type FrontmatterValue } from './Inspector'
@@ -7,6 +8,8 @@ interface EditorRightPanelProps {
   showAIChat?: boolean
   inspectorCollapsed: boolean
   inspectorWidth: number
+  defaultAiAgent?: AiAgentId
+  defaultAiAgentReady?: boolean
   inspectorEntry: VaultEntry | null
   inspectorContent: string | null
   entries: VaultEntry[]
@@ -32,6 +35,7 @@ interface EditorRightPanelProps {
 
 export function EditorRightPanel({
   showAIChat, inspectorCollapsed, inspectorWidth,
+  defaultAiAgent = DEFAULT_AI_AGENT, defaultAiAgentReady = true,
   inspectorEntry, inspectorContent, entries, gitHistory, vaultPath,
   noteList, noteListFilter,
   onToggleInspector, onToggleAIChat, onNavigateWikilink, onViewCommitDiff,
@@ -47,6 +51,8 @@ export function EditorRightPanel({
         <AiPanel
           onClose={() => onToggleAIChat?.()}
           onOpenNote={onOpenNote}
+          defaultAiAgent={defaultAiAgent}
+          defaultAiAgentReady={defaultAiAgentReady}
           onFileCreated={onFileCreated}
           onFileModified={onFileModified}
           onVaultChanged={onVaultChanged}

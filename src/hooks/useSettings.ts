@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
+import { normalizeStoredAiAgent } from '../lib/aiAgents'
 import { normalizeReleaseChannel, serializeReleaseChannel } from '../lib/releaseChannel'
 import type { Settings } from '../types'
 
@@ -15,6 +16,7 @@ const EMPTY_SETTINGS: Settings = {
   analytics_enabled: null,
   anonymous_id: null,
   release_channel: null,
+  default_ai_agent: null,
 }
 
 function normalizeSettings(settings: Settings): Settings {
@@ -23,6 +25,7 @@ function normalizeSettings(settings: Settings): Settings {
     release_channel: serializeReleaseChannel(
       normalizeReleaseChannel(settings.release_channel),
     ),
+    default_ai_agent: normalizeStoredAiAgent(settings.default_ai_agent),
   }
 }
 

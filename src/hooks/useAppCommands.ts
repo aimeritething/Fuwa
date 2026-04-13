@@ -56,6 +56,9 @@ interface AppCommandsConfig {
   vaultCount?: number
   mcpStatus?: string
   onInstallMcp?: () => void
+  onOpenAiAgents?: () => void
+  onCycleDefaultAiAgent?: () => void
+  selectedAiAgentLabel?: string
   claudeCodeStatus?: string
   claudeCodeVersion?: string
   onReloadVault?: () => void
@@ -189,6 +192,9 @@ function createCommandRegistryConfig(config: AppCommandsConfig): Parameters<type
     vaultCount: config.vaultCount,
     mcpStatus: config.mcpStatus,
     onInstallMcp: config.onInstallMcp,
+    onOpenAiAgents: config.onOpenAiAgents,
+    onCycleDefaultAiAgent: config.onCycleDefaultAiAgent,
+    selectedAiAgentLabel: config.selectedAiAgentLabel,
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
     onSetNoteIcon: config.onSetNoteIcon,

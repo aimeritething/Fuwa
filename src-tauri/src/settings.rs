@@ -13,6 +13,7 @@ pub struct Settings {
     pub analytics_enabled: Option<bool>,
     pub anonymous_id: Option<String>,
     pub release_channel: Option<String>,
+    pub default_ai_agent: Option<String>,
 }
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
@@ -36,6 +37,13 @@ pub fn effective_release_channel(value: Option<&str>) -> &'static str {
     }
 }
 
+pub fn normalize_default_ai_agent(value: Option<&str>) -> Option<String> {
+    match value.map(|candidate| candidate.trim().to_ascii_lowercase()) {
+        Some(agent) if agent == "claude_code" || agent == "codex" => Some(agent),
+        _ => None,
+    }
+}
+
 fn normalize_settings(settings: Settings) -> Settings {
     Settings {
         auto_pull_interval_minutes: settings.auto_pull_interval_minutes,
@@ -44,6 +52,7 @@ fn normalize_settings(settings: Settings) -> Settings {
         analytics_enabled: settings.analytics_enabled,
         anonymous_id: normalize_optional_string(settings.anonymous_id),
         release_channel: normalize_release_channel(settings.release_channel.as_deref()),
+        default_ai_agent: normalize_default_ai_agent(settings.default_ai_agent.as_deref()),
     }
 }
 
@@ -148,6 +157,7 @@ mod tests {
         Option<bool>,
         Option<&str>,
         Option<&str>,
+        Option<&str>,
     ) {
         (
             settings.auto_pull_interval_minutes,
@@ -156,13 +166,14 @@ mod tests {
             settings.analytics_enabled,
             settings.anonymous_id.as_deref(),
             settings.release_channel.as_deref(),
+            settings.default_ai_agent.as_deref(),
         )
     }
 
     fn assert_empty_settings(settings: &Settings) {
         assert_eq!(
             settings_snapshot(settings),
-            (None, None, None, None, None, None)
+            (None, None, None, None, None, None, None)
         );
     }
 
@@ -201,6 +212,7 @@ mod tests {
             analytics_enabled: Some(false),
             anonymous_id: Some("abc-123-uuid".to_string()),
             release_channel: Some("alpha".to_string()),
+            default_ai_agent: Some("codex".to_string()),
             ..Default::default()
         };
         let json = serde_json::to_string(&settings).unwrap();
@@ -221,10 +233,12 @@ mod tests {
         let loaded = save_and_reload(Settings {
             auto_pull_interval_minutes: Some(10),
             release_channel: Some("alpha".to_string()),
+            default_ai_agent: Some("codex".to_string()),
             ..Default::default()
         });
         assert_eq!(loaded.auto_pull_interval_minutes, Some(10));
         assert_eq!(loaded.release_channel.as_deref(), Some("alpha"));
+        assert_eq!(loaded.default_ai_agent.as_deref(), Some("codex"));
     }
 
     #[test]
@@ -232,10 +246,12 @@ mod tests {
         let loaded = save_and_reload(Settings {
             anonymous_id: Some("  test-uuid  ".to_string()),
             release_channel: Some("  alpha  ".to_string()),
+            default_ai_agent: Some("  codex  ".to_string()),
             ..Default::default()
         });
         assert_eq!(loaded.anonymous_id.as_deref(), Some("test-uuid"));
         assert_eq!(loaded.release_channel.as_deref(), Some("alpha"));
+        assert_eq!(loaded.default_ai_agent.as_deref(), Some("codex"));
     }
 
     #[test]
@@ -254,6 +270,15 @@ mod tests {
             ..Default::default()
         });
         assert!(loaded.release_channel.is_none());
+    }
+
+    #[test]
+    fn test_invalid_default_ai_agent_is_filtered() {
+        let loaded = save_and_reload(Settings {
+            default_ai_agent: Some("cursor".to_string()),
+            ..Default::default()
+        });
+        assert!(loaded.default_ai_agent.is_none());
     }
 
     #[test]
@@ -313,7 +338,8 @@ mod tests {
                 Some(true),
                 Some(false),
                 Some("test-uuid-v4"),
-                None
+                None,
+                None,
             )
         );
     }

@@ -1,3 +1,5 @@
+import type { AiAgentId } from './lib/aiAgents'
+
 export interface VaultEntry {
   path: string
   filename: string
@@ -83,6 +85,7 @@ export interface Settings {
   analytics_enabled: boolean | null
   anonymous_id: string | null
   release_channel: string | null
+  default_ai_agent?: AiAgentId | null
 }
 
 export interface GitPullResult {

@@ -1,0 +1,53 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { renderHook, waitFor } from '@testing-library/react'
+import { useAiAgentsStatus } from './useAiAgentsStatus'
+
+vi.mock('@tauri-apps/api/core', () => ({
+  invoke: vi.fn(),
+}))
+
+vi.mock('../mock-tauri', () => ({
+  isTauri: () => false,
+  mockInvoke: vi.fn(),
+}))
+
+const { mockInvoke } = await import('../mock-tauri') as { mockInvoke: ReturnType<typeof vi.fn> }
+
+describe('useAiAgentsStatus', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('starts in checking state and resolves both agent statuses', async () => {
+    mockInvoke.mockImplementation((command: string) => {
+      if (command === 'get_ai_agents_status') {
+        return Promise.resolve({
+          claude_code: { installed: true, version: '1.0.20' },
+          codex: { installed: false, version: null },
+        })
+      }
+      return Promise.resolve(null)
+    })
+
+    const { result } = renderHook(() => useAiAgentsStatus())
+
+    expect(result.current.claude_code.status).toBe('checking')
+    expect(result.current.codex.status).toBe('checking')
+
+    await waitFor(() => {
+      expect(result.current.claude_code).toEqual({ status: 'installed', version: '1.0.20' })
+      expect(result.current.codex).toEqual({ status: 'missing', version: null })
+    })
+  })
+
+  it('falls back to missing when the status call fails', async () => {
+    mockInvoke.mockRejectedValue(new Error('failed'))
+
+    const { result } = renderHook(() => useAiAgentsStatus())
+
+    await waitFor(() => {
+      expect(result.current.claude_code.status).toBe('missing')
+      expect(result.current.codex.status).toBe('missing')
+    })
+  })
+})

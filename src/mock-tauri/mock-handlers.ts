@@ -97,6 +97,7 @@ let mockSettings: Settings = {
   analytics_enabled: null,
   anonymous_id: null,
   release_channel: null,
+  default_ai_agent: 'claude_code',
 }
 
 let mockLastVaultPath: string | null = null
@@ -271,8 +272,13 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   get_conflict_files: (): string[] => [],
   get_conflict_mode: () => 'none',
   check_claude_cli: () => ({ installed: false, version: null }),
+  get_ai_agents_status: () => ({
+    claude_code: { installed: false, version: null },
+    codex: { installed: false, version: null },
+  }),
   stream_claude_chat: () => 'mock-session',
   stream_claude_agent: () => null,
+  stream_ai_agent: () => null,
   save_note_content: (args: { path: string; content: string }) => {
     MOCK_CONTENT[args.path] = args.content
     mockSavedSinceCommit.add(args.path)
@@ -298,6 +304,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
       analytics_enabled: s.analytics_enabled,
       anonymous_id: s.anonymous_id,
       release_channel: s.release_channel,
+      default_ai_agent: s.default_ai_agent ?? null,
     }
     return null
   },

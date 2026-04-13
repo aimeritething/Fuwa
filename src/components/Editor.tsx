@@ -3,6 +3,7 @@ import { useEditorTabSwap } from '../hooks/useEditorTabSwap'
 import { useCreateBlockNote } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
 import { uploadImageFile } from '../hooks/useImageDrop'
+import { DEFAULT_AI_AGENT, type AiAgentId } from '../lib/aiAgents'
 import type { VaultEntry, GitCommit, NoteStatus } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { FrontmatterValue } from './Inspector'
@@ -44,6 +45,8 @@ interface EditorProps {
   inspectorCollapsed: boolean
   onToggleInspector: () => void
   inspectorWidth: number
+  defaultAiAgent?: AiAgentId
+  defaultAiAgentReady?: boolean
   onInspectorResize: (delta: number) => void
   inspectorEntry: VaultEntry | null
   inspectorContent: string | null
@@ -278,7 +281,9 @@ export const Editor = memo(function Editor(props: EditorProps) {
   const {
     tabs, activeTabPath, entries, onNavigateWikilink,
     getNoteStatus,
-    inspectorCollapsed, onToggleInspector, inspectorWidth, onInspectorResize,
+    inspectorCollapsed, onToggleInspector, inspectorWidth,
+    defaultAiAgent = DEFAULT_AI_AGENT, defaultAiAgentReady = true,
+    onInspectorResize,
     inspectorEntry, inspectorContent, gitHistory,
     onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateAndOpenNote, onInitializeProperties,
     showAIChat, onToggleAIChat,
@@ -347,6 +352,8 @@ export const Editor = memo(function Editor(props: EditorProps) {
           showAIChat={showAIChat}
           inspectorCollapsed={inspectorCollapsed}
           inspectorWidth={inspectorWidth}
+          defaultAiAgent={defaultAiAgent}
+          defaultAiAgentReady={defaultAiAgentReady}
           inspectorEntry={inspectorEntry}
           inspectorContent={inspectorContent}
           entries={entries}

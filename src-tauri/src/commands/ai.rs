@@ -1,6 +1,48 @@
 #[cfg(desktop)]
-use crate::claude_cli::ClaudeStreamEvent;
+use crate::ai_agents::{AiAgentStreamRequest, AiAgentsStatus};
 use crate::claude_cli::{AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus};
+
+#[cfg(desktop)]
+type StreamEmitter<Event> = Box<dyn Fn(Event) + Send>;
+
+#[cfg(desktop)]
+async fn run_desktop_stream<Event, Request, Runner>(
+    app_handle: tauri::AppHandle,
+    event_name: &'static str,
+    request: Request,
+    runner: Runner,
+) -> Result<String, String>
+where
+    Event: serde::Serialize + Send + 'static,
+    Request: Send + 'static,
+    Runner: FnOnce(Request, StreamEmitter<Event>) -> Result<String, String> + Send + 'static,
+{
+    use tauri::Emitter;
+
+    tokio::task::spawn_blocking(move || {
+        runner(
+            request,
+            Box::new(move |event| {
+                let _ = app_handle.emit(event_name, &event);
+            }),
+        )
+    })
+    .await
+    .map_err(|e| format!("Task failed: {e}"))?
+}
+
+#[cfg(desktop)]
+macro_rules! define_desktop_stream_command {
+    ($name:ident, $request:ty, $event_name:literal, $runner:path) => {
+        #[tauri::command]
+        pub async fn $name(
+            app_handle: tauri::AppHandle,
+            request: $request,
+        ) -> Result<String, String> {
+            run_desktop_stream(app_handle, $event_name, request, $runner).await
+        }
+    };
+}
 
 // ── Claude CLI commands (desktop) ───────────────────────────────────────────
 
@@ -12,35 +54,33 @@ pub fn check_claude_cli() -> ClaudeCliStatus {
 
 #[cfg(desktop)]
 #[tauri::command]
-pub async fn stream_claude_chat(
-    app_handle: tauri::AppHandle,
-    request: ChatStreamRequest,
-) -> Result<String, String> {
-    use tauri::Emitter;
-    tokio::task::spawn_blocking(move || {
-        crate::claude_cli::run_chat_stream(request, |event: ClaudeStreamEvent| {
-            let _ = app_handle.emit("claude-stream", &event);
-        })
-    })
-    .await
-    .map_err(|e| format!("Task failed: {e}"))?
+pub fn get_ai_agents_status() -> AiAgentsStatus {
+    crate::ai_agents::get_ai_agents_status()
 }
 
 #[cfg(desktop)]
-#[tauri::command]
-pub async fn stream_claude_agent(
-    app_handle: tauri::AppHandle,
-    request: AgentStreamRequest,
-) -> Result<String, String> {
-    use tauri::Emitter;
-    tokio::task::spawn_blocking(move || {
-        crate::claude_cli::run_agent_stream(request, |event: ClaudeStreamEvent| {
-            let _ = app_handle.emit("claude-agent-stream", &event);
-        })
-    })
-    .await
-    .map_err(|e| format!("Task failed: {e}"))?
-}
+define_desktop_stream_command!(
+    stream_claude_chat,
+    ChatStreamRequest,
+    "claude-stream",
+    crate::claude_cli::run_chat_stream
+);
+
+#[cfg(desktop)]
+define_desktop_stream_command!(
+    stream_claude_agent,
+    AgentStreamRequest,
+    "claude-agent-stream",
+    crate::claude_cli::run_agent_stream
+);
+
+#[cfg(desktop)]
+define_desktop_stream_command!(
+    stream_ai_agent,
+    AiAgentStreamRequest,
+    "ai-agent-stream",
+    crate::ai_agents::run_ai_agent_stream
+);
 
 // ── Claude CLI (mobile stubs) ───────────────────────────────────────────────
 
@@ -50,6 +90,21 @@ pub fn check_claude_cli() -> ClaudeCliStatus {
     ClaudeCliStatus {
         installed: false,
         version: None,
+    }
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn get_ai_agents_status() -> AiAgentsStatus {
+    AiAgentsStatus {
+        claude_code: crate::ai_agents::AiAgentAvailability {
+            installed: false,
+            version: None,
+        },
+        codex: crate::ai_agents::AiAgentAvailability {
+            installed: false,
+            version: None,
+        },
     }
 }
 
@@ -69,4 +124,13 @@ pub async fn stream_claude_agent(
     _request: AgentStreamRequest,
 ) -> Result<String, String> {
     Err("Claude CLI is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn stream_ai_agent(
+    _app_handle: tauri::AppHandle,
+    _request: AiAgentStreamRequest,
+) -> Result<String, String> {
+    Err("CLI AI agents are not available on mobile".into())
 }

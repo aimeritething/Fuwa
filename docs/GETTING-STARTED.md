@@ -54,9 +54,10 @@ tolaria/
 │   │   ├── RawEditorView.tsx     # CodeMirror raw editor
 │   │   ├── Inspector.tsx         # Fourth panel: metadata + relationships
 │   │   ├── DynamicPropertiesPanel.tsx  # Editable frontmatter properties
-│   │   ├── AiPanel.tsx           # AI agent (Claude CLI subprocess)
+│   │   ├── AiPanel.tsx           # AI agent panel (selected CLI agent)
 │   │   ├── AiMessage.tsx         # Agent message display
 │   │   ├── AiActionCard.tsx      # Agent tool action cards
+│   │   ├── AiAgentsOnboardingPrompt.tsx # First-launch AI agent installer prompt
 │   │   ├── SearchPanel.tsx       # Search interface
 │   │   ├── SettingsPanel.tsx     # App settings
 │   │   ├── StatusBar.tsx         # Bottom bar: vault picker + sync
@@ -84,7 +85,10 @@ tolaria/
 │   │   ├── useNoteActions.ts     # Composes creation + rename + frontmatter
 │   │   ├── useNoteCreation.ts    # Note/type creation
 │   │   ├── useNoteRename.ts     # Note renaming + wikilink updates
-│   │   ├── useAiAgent.ts         # AI agent state + tool tracking
+│   │   ├── useAiAgent.ts         # Legacy Claude-specific stream helpers reused by the shared agent hook
+│   │   ├── useCliAiAgent.ts      # Selected AI agent state + normalized tool tracking
+│   │   ├── useAiAgentsStatus.ts  # Claude/Codex availability polling
+│   │   ├── useAiAgentPreferences.ts # Default-agent persistence + cycling
 │   │   ├── useAiActivity.ts      # MCP UI bridge listener
 │   │   ├── useAutoSync.ts        # Auto git pull/push
 │   │   ├── useConflictResolver.ts # Git conflict handling
@@ -121,6 +125,7 @@ tolaria/
 │   │   └── ...
 │   │
 │   ├── lib/
+│   │   ├── aiAgents.ts           # Shared agent registry + status helpers
 │   │   ├── appUpdater.ts         # Frontend wrapper around channel-aware updater commands
 │   │   ├── releaseChannel.ts     # Alpha/stable normalization helpers
 │   │   └── utils.ts              # Tailwind merge + cn() helper
@@ -152,6 +157,7 @@ tolaria/
 │   │   │   ├── conflict.rs, remote.rs, pulse.rs
 │   │   ├── telemetry.rs          # Sentry init + path scrubber
 │   │   ├── search.rs             # Keyword search (walkdir-based)
+│   │   ├── ai_agents.rs          # Shared CLI-agent detection + stream adapters
 │   │   ├── claude_cli.rs         # Claude CLI subprocess management
 │   │   ├── mcp.rs                # MCP server lifecycle + registration
 │   │   ├── app_updater.rs        # Alpha/stable updater endpoint selection
@@ -214,6 +220,7 @@ tolaria/
 | `src-tauri/src/frontmatter/ops.rs` | YAML manipulation — how properties are updated/deleted in files. |
 | `src-tauri/src/git/` | All git operations (clone, commit, pull, push, conflicts, pulse). |
 | `src-tauri/src/search.rs` | Keyword search — scans vault files with walkdir. |
+| `src-tauri/src/ai_agents.rs` | Shared CLI-agent availability checks, Codex adapter, and stream normalization. |
 | `src-tauri/src/claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing. |
 | `src-tauri/src/app_updater.rs` | Desktop updater bridge — selects alpha/stable manifests and streams install progress. |
 
@@ -230,8 +237,9 @@ tolaria/
 
 | File | Why it matters |
 |------|---------------|
-| `src/components/AiPanel.tsx` | AI agent panel — Claude CLI with tool execution, reasoning, actions. |
-| `src/hooks/useAiAgent.ts` | Agent state: messages, streaming, tool tracking, file detection. |
+| `src/components/AiPanel.tsx` | AI agent panel — selected CLI agent with tool execution, reasoning, and actions. |
+| `src/hooks/useCliAiAgent.ts` | Agent state: messages, streaming, tool tracking, file detection. |
+| `src/lib/aiAgents.ts` | Supported agent definitions, status normalization, and default-agent helpers. |
 | `src/utils/ai-context.ts` | Context snapshot builder for AI conversations. |
 
 ### Styling
@@ -245,11 +253,11 @@ tolaria/
 
 | File | Why it matters |
 |------|---------------|
-| `src/hooks/useSettings.ts` | App settings (telemetry, release channel, auto-sync interval). |
+| `src/hooks/useSettings.ts` | App settings (telemetry, release channel, auto-sync interval, default AI agent). |
 | `src/lib/releaseChannel.ts` | Normalizes persisted updater-channel values (`stable` default, optional `alpha`). |
 | `src/lib/appUpdater.ts` | Frontend wrapper for channel-aware updater commands. |
 | `src/hooks/useVaultConfig.ts` | Per-vault local UI preferences (zoom, view mode, colors, Inbox columns, explicit organization workflow). |
-| `src/components/SettingsPanel.tsx` | Settings UI for telemetry, release channel, sync interval, and the vault-level explicit organization toggle. |
+| `src/components/SettingsPanel.tsx` | Settings UI for telemetry, release channel, sync interval, default AI agent, and the vault-level explicit organization toggle. |
 | `src/hooks/useUpdater.ts` | In-app updates using the selected alpha/stable feed. |
 
 ## Architecture Patterns
@@ -362,3 +370,4 @@ BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 2. **Context building**: Edit `src/utils/ai-context.ts` for what data is sent to the agent
 3. **Tool action display**: Edit `src/components/AiActionCard.tsx`
 4. **Claude CLI arguments**: Edit `src-tauri/src/claude_cli.rs` (`run_agent_stream()`)
+5. **Shared agent adapters / Codex args**: Edit `src-tauri/src/ai_agents.rs`

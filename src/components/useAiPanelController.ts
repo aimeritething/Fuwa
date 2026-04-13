@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { useAiAgent, type AgentFileCallbacks } from '../hooks/useAiAgent'
+import type { AiAgentId } from '../lib/aiAgents'
+import { useCliAiAgent, type AgentFileCallbacks } from '../hooks/useCliAiAgent'
 import type { VaultEntry } from '../types'
 import {
   type NoteListItem,
@@ -9,6 +10,8 @@ import { useAiPanelContextSnapshot } from './useAiPanelContextSnapshot'
 
 interface UseAiPanelControllerArgs {
   vaultPath: string
+  defaultAiAgent: AiAgentId
+  defaultAiAgentReady: boolean
   activeEntry?: VaultEntry | null
   activeNoteContent?: string | null
   entries?: VaultEntry[]
@@ -23,6 +26,8 @@ interface UseAiPanelControllerArgs {
 
 export function useAiPanelController({
   vaultPath,
+  defaultAiAgent,
+  defaultAiAgentReady,
   activeEntry,
   activeNoteContent,
   entries,
@@ -51,7 +56,10 @@ export function useAiPanelController({
     onVaultChanged,
   }), [onFileCreated, onFileModified, onVaultChanged])
 
-  const agent = useAiAgent(vaultPath, contextPrompt, fileCallbacks)
+  const agent = useCliAiAgent(vaultPath, contextPrompt, fileCallbacks, {
+    agent: defaultAiAgent,
+    agentReady: defaultAiAgentReady,
+  })
   const hasContext = !!activeEntry
   const isActive = agent.status === 'thinking' || agent.status === 'tool-executing'
 

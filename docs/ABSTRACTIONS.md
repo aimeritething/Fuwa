@@ -527,8 +527,8 @@ Per-vault settings stored locally and scoped by vault path:
 - User can create a new empty vault, open an existing folder, or clone the public Getting Started vault into a chosen folder
 - Welcome state tracked in localStorage (`tolaria_welcome_dismissed`, with legacy fallback)
 
-`useClaudeCodeOnboarding(enabled)` adds a separate first-launch agent step:
-- Reads a local dismissal flag for the Claude Code prompt
+`useAiAgentsOnboarding(enabled)` adds a separate first-launch agent step:
+- Reads a local dismissal flag for the AI agents prompt (with a legacy fallback to the older Claude-only key)
 - Only shows after vault onboarding has already resolved to a ready state
 - Persists dismissal locally once the user continues
 
@@ -552,10 +552,11 @@ interface Settings {
   analytics_enabled: boolean | null
   anonymous_id: string | null
   release_channel: string | null // null = stable default, "alpha" = every-push prerelease feed
+  default_ai_agent: 'claude_code' | 'codex' | null
 }
 ```
 
-Managed by `useSettings` hook and `SettingsPanel` component.
+Managed by `useSettings` hook and `SettingsPanel` component. `default_ai_agent` is an installation-local preference that selects which supported CLI agent the AI panel, command palette AI mode, and status bar should target by default.
 
 ## Telemetry
 
