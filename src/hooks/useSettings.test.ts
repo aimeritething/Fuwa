@@ -68,6 +68,21 @@ describe('useSettings', () => {
     expect(mockInvokeFn).toHaveBeenCalledWith('get_settings', {})
   })
 
+  it('normalizes a legacy beta release channel back to stable on load', async () => {
+    mockSettingsStore = {
+      ...savedSettings,
+      release_channel: 'beta',
+    }
+
+    const { result } = renderHook(() => useSettings())
+
+    await waitFor(() => {
+      expect(result.current.loaded).toBe(true)
+    })
+
+    expect(result.current.settings.release_channel).toBeNull()
+  })
+
   it('saves settings via backend', async () => {
     const { result } = renderHook(() => useSettings())
 

@@ -71,6 +71,20 @@ describe('SettingsPanel', () => {
     expect(screen.queryByText(/Beta\/Stable/i)).not.toBeInTheDocument()
   })
 
+  it('treats a legacy beta release channel as stable', () => {
+    render(
+      <SettingsPanel
+        open={true}
+        settings={{ ...emptySettings, release_channel: 'beta' }}
+        onSave={onSave}
+        onClose={onClose}
+      />
+    )
+
+    expect(screen.getByTestId('settings-release-channel')).toHaveAttribute('data-value', 'stable')
+    expect(screen.queryByText('Beta')).not.toBeInTheDocument()
+  })
+
   it('preserves alpha when alpha is already selected', () => {
     const alphaSettings: Settings = {
       ...emptySettings,

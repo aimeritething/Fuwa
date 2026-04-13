@@ -2,10 +2,52 @@ import { useEffect, useRef } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import { initSentry, teardownSentry, initPostHog, teardownPostHog, updatePostHogIdentify, setReleaseChannel } from '../lib/telemetry'
+import { normalizeReleaseChannel, type ReleaseChannel } from '../lib/releaseChannel'
 import type { Settings } from '../types'
 
 function tauriCall(command: string): Promise<void> {
   return isTauri() ? invoke<void>(command) : mockInvoke<void>(command)
+}
+
+function resolveReleaseChannel(settings: Settings): ReleaseChannel {
+  return normalizeReleaseChannel(settings.release_channel)
+}
+
+function syncCrashReporting(
+  crashEnabled: boolean,
+  anonymousId: string | null,
+  wasEnabled: boolean,
+): void {
+  if (crashEnabled && anonymousId) {
+    if (!wasEnabled) initSentry(anonymousId)
+    return
+  }
+
+  if (!wasEnabled) return
+
+  teardownSentry()
+  tauriCall('reinit_telemetry').catch(() => {})
+}
+
+function syncAnalytics(
+  analyticsEnabled: boolean,
+  anonymousId: string | null,
+  releaseChannel: ReleaseChannel,
+  wasEnabled: boolean,
+): void {
+  if (!analyticsEnabled) {
+    if (wasEnabled) teardownPostHog()
+    return
+  }
+
+  if (!anonymousId) return
+
+  if (wasEnabled) {
+    updatePostHogIdentify(releaseChannel)
+    return
+  }
+
+  initPostHog(anonymousId, releaseChannel)
 }
 
 /**
@@ -20,25 +62,12 @@ export function useTelemetry(settings: Settings, loaded: boolean): void {
     if (!loaded) return
     const crashEnabled = settings.crash_reporting_enabled === true
     const analyticsEnabled = settings.analytics_enabled === true
-    const id = settings.anonymous_id
+    const anonymousId = settings.anonymous_id
+    const releaseChannel = resolveReleaseChannel(settings)
 
-    if (crashEnabled && id && !prevCrash.current) {
-      initSentry(id)
-    } else if (!crashEnabled && prevCrash.current) {
-      teardownSentry()
-      tauriCall('reinit_telemetry').catch(() => {})
-    }
-
-    const channel = settings.release_channel ?? 'stable'
-    setReleaseChannel(channel)
-
-    if (analyticsEnabled && id && !prevAnalytics.current) {
-      initPostHog(id, channel)
-    } else if (!analyticsEnabled && prevAnalytics.current) {
-      teardownPostHog()
-    } else if (analyticsEnabled && id) {
-      updatePostHogIdentify(channel)
-    }
+    syncCrashReporting(crashEnabled, anonymousId, prevCrash.current)
+    setReleaseChannel(releaseChannel)
+    syncAnalytics(analyticsEnabled, anonymousId, releaseChannel, prevAnalytics.current)
 
     prevCrash.current = crashEnabled
     prevAnalytics.current = analyticsEnabled

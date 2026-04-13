@@ -7,14 +7,16 @@ const mockInitSentry = vi.fn()
 const mockTeardownSentry = vi.fn()
 const mockInitPostHog = vi.fn()
 const mockTeardownPostHog = vi.fn()
+const mockUpdatePostHogIdentify = vi.fn()
+const mockSetReleaseChannel = vi.fn()
 
 vi.mock('../lib/telemetry', () => ({
   initSentry: (...args: unknown[]) => mockInitSentry(...args),
   teardownSentry: () => mockTeardownSentry(),
   initPostHog: (...args: unknown[]) => mockInitPostHog(...args),
   teardownPostHog: () => mockTeardownPostHog(),
-  updatePostHogIdentify: vi.fn(),
-  setReleaseChannel: vi.fn(),
+  updatePostHogIdentify: (...args: unknown[]) => mockUpdatePostHogIdentify(...args),
+  setReleaseChannel: (...args: unknown[]) => mockSetReleaseChannel(...args),
 }))
 
 const baseSettings: Settings = {
@@ -23,35 +25,49 @@ const baseSettings: Settings = {
   analytics_enabled: null, anonymous_id: null, release_channel: null,
 }
 
+function renderTelemetry(settings: Settings, loaded = true) {
+  return renderHook(() => useTelemetry(settings, loaded))
+}
+
+function analyticsSettings(releaseChannel: string | null = null): Settings {
+  return {
+    ...baseSettings,
+    analytics_enabled: true,
+    anonymous_id: 'test-uuid',
+    release_channel: releaseChannel,
+  }
+}
+
 describe('useTelemetry', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('does nothing when settings are not loaded', () => {
-    renderHook(() => useTelemetry(baseSettings, false))
+    renderTelemetry(baseSettings, false)
     expect(mockInitSentry).not.toHaveBeenCalled()
     expect(mockInitPostHog).not.toHaveBeenCalled()
   })
 
   it('does nothing when consent is not granted', () => {
-    renderHook(() => useTelemetry({ ...baseSettings, telemetry_consent: false }, true))
+    renderTelemetry({ ...baseSettings, telemetry_consent: false })
     expect(mockInitSentry).not.toHaveBeenCalled()
     expect(mockInitPostHog).not.toHaveBeenCalled()
   })
 
   it('initializes Sentry when crash reporting is enabled', () => {
-    renderHook(() =>
-      useTelemetry({ ...baseSettings, crash_reporting_enabled: true, anonymous_id: 'test-uuid' }, true)
-    )
+    renderTelemetry({ ...baseSettings, crash_reporting_enabled: true, anonymous_id: 'test-uuid' })
     expect(mockInitSentry).toHaveBeenCalledWith('test-uuid')
   })
 
-  it('initializes PostHog when analytics is enabled', () => {
-    renderHook(() =>
-      useTelemetry({ ...baseSettings, analytics_enabled: true, anonymous_id: 'test-uuid' }, true)
-    )
-    expect(mockInitPostHog).toHaveBeenCalledWith('test-uuid', 'stable')
+  it.each([
+    { name: 'stable defaults', releaseChannel: null, expectedChannel: 'stable' },
+    { name: 'legacy beta release channels', releaseChannel: 'beta', expectedChannel: 'stable' },
+  ])('initializes PostHog for $name', ({ releaseChannel, expectedChannel }) => {
+    renderTelemetry(analyticsSettings(releaseChannel))
+
+    expect(mockInitPostHog).toHaveBeenCalledWith('test-uuid', expectedChannel)
+    expect(mockSetReleaseChannel).toHaveBeenCalledWith(expectedChannel)
   })
 
   it('tears down Sentry when crash reporting is disabled after being enabled', () => {
@@ -68,9 +84,36 @@ describe('useTelemetry', () => {
   })
 
   it('does not initialize without anonymous_id', () => {
-    renderHook(() =>
-      useTelemetry({ ...baseSettings, crash_reporting_enabled: true, anonymous_id: null }, true)
-    )
+    renderTelemetry({ ...baseSettings, crash_reporting_enabled: true, anonymous_id: null })
     expect(mockInitSentry).not.toHaveBeenCalled()
+  })
+
+  it('updates the analytics identity when the normalized channel changes', () => {
+    const { rerender } = renderHook(
+      ({ settings, loaded }) => useTelemetry(settings, loaded),
+      {
+        initialProps: {
+          settings: {
+            ...baseSettings,
+            analytics_enabled: true,
+            anonymous_id: 'test-uuid',
+            release_channel: 'alpha',
+          },
+          loaded: true,
+        },
+      },
+    )
+
+    rerender({
+      settings: {
+        ...baseSettings,
+        analytics_enabled: true,
+        anonymous_id: 'test-uuid',
+        release_channel: 'beta',
+      },
+      loaded: true,
+    })
+
+    expect(mockUpdatePostHogIdentify).toHaveBeenCalledWith('stable')
   })
 })
