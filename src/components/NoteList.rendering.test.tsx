@@ -123,7 +123,7 @@ describe('NoteList rendering', () => {
     expect(screen.getByTitle('Create new note')).toBeInTheDocument()
   })
 
-  it('uses matching ghost icon button styling for note-list header actions', () => {
+  it('uses breadcrumbs-like button styling for note-list header actions', () => {
     renderNoteList({
       entries: makeBookTypeEntries(['Priority'], { properties: { Priority: 'High' } }),
       selection: { kind: 'filter', filter: 'inbox' },
@@ -138,9 +138,18 @@ describe('NoteList rendering', () => {
     ]
 
     for (const button of buttons) {
-      expect(button).toHaveAttribute('data-size', 'icon-xs')
       expect(button).toHaveAttribute('data-variant', 'ghost')
-      expect(button).toHaveClass('h-7', 'w-7', 'text-muted-foreground', 'hover:bg-accent')
+      expect(button).toHaveClass(
+        '!h-auto',
+        '!w-auto',
+        '!min-w-0',
+        '!rounded-none',
+        '!p-0',
+        '!text-muted-foreground',
+        'hover:!bg-transparent',
+        'hover:!text-foreground',
+      )
+      expect(button).not.toHaveAttribute('tabindex', '-1')
     }
   })
 

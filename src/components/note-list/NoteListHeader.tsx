@@ -7,7 +7,7 @@ import { useDragRegion } from '../../hooks/useDragRegion'
 import { SortDropdown } from '../SortDropdown'
 import { ListPropertiesPopover, type ListPropertiesPopoverProps } from './ListPropertiesPopover'
 
-const NOTE_LIST_ACTION_BUTTON_CLASSNAME = 'h-7 w-7 text-muted-foreground'
+const NOTE_LIST_ACTION_BUTTON_CLASSNAME = '!h-auto !w-auto !min-w-0 !rounded-none !p-0 !text-muted-foreground hover:!bg-transparent hover:!text-foreground focus-visible:!bg-transparent data-[state=open]:!bg-transparent data-[state=open]:!text-foreground [&_svg]:!size-4'
 
 export function NoteListHeader({ title, typeDocument, isEntityView, listSort, listDirection, customProperties, sidebarCollapsed, searchVisible, search, propertyPicker, onSortChange, onCreateNote, onOpenType, onToggleSearch, onSearchChange }: {
   title: string
@@ -38,7 +38,7 @@ export function NoteListHeader({ title, typeDocument, isEntityView, listSort, li
         >
           {title}
         </h3>
-        <div className="flex items-center gap-3" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+        <div className="ml-3 flex shrink-0 items-center justify-end gap-2" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
           {!isEntityView && <SortDropdown groupLabel="__list__" current={listSort} direction={listDirection} customProperties={customProperties} onChange={onSortChange} />}
           <Button type="button" variant="ghost" size="icon-xs" className={NOTE_LIST_ACTION_BUTTON_CLASSNAME} onClick={onToggleSearch} title="Search notes" aria-label="Search notes">
             <MagnifyingGlass size={16} />
