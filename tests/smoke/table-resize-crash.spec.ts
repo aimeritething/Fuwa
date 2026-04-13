@@ -30,6 +30,16 @@ async function seedResizedTable(page: Page): Promise<void> {
   await seedBlockNoteTable(page, [180, 120, 120])
 }
 
+async function toggleRawEditorRoundTrip(page: Page): Promise<void> {
+  await triggerMenuCommand(page, 'edit-toggle-raw-editor')
+  await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible({ timeout: 5_000 })
+  await expect(page.locator('.cm-content')).toContainText('| Head 1 | Head 2 | Head 3 |')
+
+  await triggerMenuCommand(page, 'edit-toggle-raw-editor')
+  await expect(page.getByTestId('raw-editor-codemirror')).not.toBeVisible({ timeout: 5_000 })
+  await expect(page.locator('table')).toHaveCount(1, { timeout: 5_000 })
+}
+
 test.describe('table resize crash fix', () => {
   test.beforeEach(({ page }, testInfo) => {
     void page
@@ -48,13 +58,20 @@ test.describe('table resize crash fix', () => {
     await createUntitledNote(page)
     await seedResizedTable(page)
 
-    await triggerMenuCommand(page, 'edit-toggle-raw-editor')
-    await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible({ timeout: 5_000 })
-    await expect(page.locator('.cm-content')).toContainText('| Head 1 | Head 2 | Head 3 |')
+    await toggleRawEditorRoundTrip(page)
 
-    await triggerMenuCommand(page, 'edit-toggle-raw-editor')
-    await expect(page.getByTestId('raw-editor-codemirror')).not.toBeVisible({ timeout: 5_000 })
-    await expect(page.locator('table')).toHaveCount(1, { timeout: 5_000 })
+    expect(errors).toEqual([])
+  })
+
+  test('clicking a seeded table before the raw-mode roundtrip does not crash', async ({ page }) => {
+    const errors = trackUnexpectedErrors(page)
+
+    await openFixtureVaultTauri(page, tempVaultDir)
+    await createUntitledNote(page)
+    await seedResizedTable(page)
+    await page.locator('table td').first().click()
+
+    await toggleRawEditorRoundTrip(page)
 
     expect(errors).toEqual([])
   })
