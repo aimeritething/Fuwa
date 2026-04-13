@@ -113,3 +113,5 @@ proposed → active → superseded
 | [0055](0055-h1-is-the-only-editor-title-surface.md) | H1 is the only editor title surface | active |
 | [0056](0056-system-git-cli-auth-no-provider-oauth.md) | System git auth only — no provider-specific OAuth or repo APIs | active |
 | [0057](0057-alpha-stable-release-channels-and-beta-cohorts.md) | Alpha/stable release channels with PostHog beta cohorts | active |
+| [0058](0058-claude-code-first-launch-onboarding-gate.md) | Claude Code first-launch onboarding gate | active |
+| [0059](0059-local-only-git-commits-without-remote.md) | Local-only git commits for vaults without a remote | active |
