@@ -305,11 +305,17 @@ mod tests {
         assert!(statuses.contains(&"modified"));
         assert!(statuses.contains(&"untracked"));
 
-        let modified_entry = modified.iter().find(|file| file.relative_path == "note.md").unwrap();
+        let modified_entry = modified
+            .iter()
+            .find(|file| file.relative_path == "note.md")
+            .unwrap();
         assert!(modified_entry.added_lines.is_some());
         assert!(!modified_entry.binary);
 
-        let untracked_entry = modified.iter().find(|file| file.relative_path == "new.md").unwrap();
+        let untracked_entry = modified
+            .iter()
+            .find(|file| file.relative_path == "new.md")
+            .unwrap();
         assert_eq!(untracked_entry.added_lines, Some(1));
         assert_eq!(untracked_entry.deleted_lines, None);
     }
