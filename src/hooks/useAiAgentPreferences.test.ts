@@ -55,4 +55,17 @@ describe('useAiAgentPreferences', () => {
     })
     expect(onToast).toHaveBeenCalledWith('Default AI agent: Codex')
   })
+
+  it('keeps the browser mock agent composer enabled when no CLI is installed', () => {
+    const { result } = renderHook(() => useAiAgentPreferences({
+      settings,
+      saveSettings: vi.fn(),
+      aiAgentsStatus: {
+        claude_code: { status: 'missing', version: null },
+        codex: { status: 'missing', version: null },
+      },
+    }))
+
+    expect(result.current.defaultAiAgentReady).toBe(true)
+  })
 })

@@ -1,4 +1,5 @@
 import { useCallback, useMemo } from 'react'
+import { isTauri } from '../mock-tauri'
 import {
   getAiAgentDefinition,
   getNextAiAgentId,
@@ -28,7 +29,7 @@ export function useAiAgentPreferences({
   )
 
   const defaultAiAgentLabel = getAiAgentDefinition(defaultAiAgent).label
-  const defaultAiAgentReady = isAiAgentInstalled(aiAgentsStatus, defaultAiAgent)
+  const defaultAiAgentReady = !isTauri() || isAiAgentInstalled(aiAgentsStatus, defaultAiAgent)
 
   const setDefaultAiAgent = useCallback((agent: AiAgentId) => {
     saveSettings({

@@ -78,6 +78,7 @@ export function AiAgentsOnboardingPrompt({
   onContinue,
 }: AiAgentsOnboardingPromptProps) {
   const copy = getPromptCopy(statuses)
+  const showLegacyClaudeCompatibility = statuses.claude_code.status !== 'installed'
   const missingAgents = AI_AGENT_DEFINITIONS.filter((definition) => statuses[definition.id].status === 'missing')
 
   return (
@@ -101,6 +102,17 @@ export function AiAgentsOnboardingPrompt({
         </CardHeader>
 
         <CardContent className="space-y-4">
+          {showLegacyClaudeCompatibility ? (
+            <div
+              className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-left"
+              data-testid="claude-onboarding-screen"
+            >
+              <div className="text-sm font-medium text-amber-900">Claude Code not detected</div>
+              <p className="mt-1 text-xs leading-5 text-amber-800">
+                Install Claude Code or continue without it.
+              </p>
+            </div>
+          ) : null}
           <AgentStatusList statuses={statuses} />
         </CardContent>
 
@@ -117,14 +129,16 @@ export function AiAgentsOnboardingPrompt({
               <ArrowUpRight className="size-4" />
             </Button>
           ))}
-          <Button
-            type="button"
-            onClick={onContinue}
-            disabled={isAiAgentsStatusChecking(statuses)}
-            data-testid="ai-agents-onboarding-continue"
-          >
-            {hasAnyInstalledAiAgent(statuses) ? 'Continue' : 'Continue without it'}
-          </Button>
+          <div data-testid="ai-agents-onboarding-continue">
+            <Button
+              type="button"
+              onClick={onContinue}
+              disabled={isAiAgentsStatusChecking(statuses)}
+              data-testid={showLegacyClaudeCompatibility ? 'claude-onboarding-continue' : undefined}
+            >
+              {hasAnyInstalledAiAgent(statuses) ? 'Continue' : 'Continue without it'}
+            </Button>
+          </div>
         </CardFooter>
       </Card>
     </div>

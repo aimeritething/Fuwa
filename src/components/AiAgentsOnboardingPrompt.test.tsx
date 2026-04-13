@@ -41,6 +41,8 @@ describe('AiAgentsOnboardingPrompt', () => {
     )
 
     expect(screen.getByText('No AI agents detected')).toBeInTheDocument()
+    expect(screen.getByTestId('claude-onboarding-screen')).toBeInTheDocument()
+    expect(screen.getByText('Claude Code not detected')).toBeInTheDocument()
     expect(screen.getByTestId('ai-agents-onboarding-install-claude_code')).toBeInTheDocument()
     expect(screen.getByTestId('ai-agents-onboarding-install-codex')).toBeInTheDocument()
     expect(screen.getByTestId('ai-agents-onboarding-continue')).toHaveTextContent('Continue without it')
