@@ -2,10 +2,16 @@ import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useEditorFocus } from './useEditorFocus'
 
-function makeTiptapMock(hasHeading = true, headingNodeSize = 15) {
+function makeTiptapMock(hasHeading: boolean | Array<number | null> = true, headingNodeSize = 15) {
+  const headingSizes = Array.isArray(hasHeading)
+    ? hasHeading
+    : [hasHeading ? headingNodeSize : null]
   const chainResult = { setTextSelection: vi.fn().mockReturnThis(), run: vi.fn() }
+  let headingAttempt = 0
   const descendantsMock = vi.fn().mockImplementation((cb: (node: { type: { name: string }; nodeSize: number }, pos: number) => boolean | void) => {
-    if (hasHeading) cb({ type: { name: 'heading' }, nodeSize: headingNodeSize }, 2)
+    const currentHeadingSize = headingSizes[Math.min(headingAttempt, headingSizes.length - 1)]
+    headingAttempt += 1
+    if (currentHeadingSize !== null) cb({ type: { name: 'heading' }, nodeSize: currentHeadingSize }, 2)
   })
   return {
     state: { doc: { descendants: descendantsMock } },
@@ -13,6 +19,15 @@ function makeTiptapMock(hasHeading = true, headingNodeSize = 15) {
     _chainResult: chainResult,
     _descendantsMock: descendantsMock,
   }
+}
+
+function expectSelectionRange(
+  tiptap: ReturnType<typeof makeTiptapMock>,
+  range: { from: number; to: number },
+) {
+  expect(tiptap.chain).toHaveBeenCalled()
+  expect(tiptap._chainResult.setTextSelection).toHaveBeenCalledWith(range)
+  expect(tiptap._chainResult.run).toHaveBeenCalled()
 }
 
 describe('useEditorFocus', () => {
@@ -135,9 +150,7 @@ describe('useEditorFocus', () => {
       window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
 
       expect(editor.focus).toHaveBeenCalled()
-      expect(tiptap.chain).toHaveBeenCalled()
-      expect(tiptap._chainResult.setTextSelection).toHaveBeenCalledWith({ from: 3, to: 16 })
-      expect(tiptap._chainResult.run).toHaveBeenCalled()
+      expectSelectionRange(tiptap, { from: 3, to: 16 })
     })
 
     it('does not select title when selectTitle is false (default)', () => {
@@ -218,9 +231,35 @@ describe('useEditorFocus', () => {
       callbacks[1](0)
 
       // After rAF 2: heading is selected
-      expect(tiptap.chain).toHaveBeenCalled()
-      expect(tiptap._chainResult.setTextSelection).toHaveBeenCalledWith({ from: 3, to: 16 })
-      expect(tiptap._chainResult.run).toHaveBeenCalled()
+      expectSelectionRange(tiptap, { from: 3, to: 16 })
+    })
+
+    it('retries title selection until the heading arrives on a later frame', () => {
+      const callbacks: FrameRequestCallback[] = []
+      vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+        callbacks.push(cb)
+        return callbacks.length
+      })
+      const tiptap = makeTiptapMock([null, 15])
+      const { editor } = setup(true, tiptap)
+
+      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
+
+      expect(callbacks.length).toBe(1)
+      callbacks[0](0)
+
+      expect(editor.focus).toHaveBeenCalled()
+      expect(tiptap.chain).not.toHaveBeenCalled()
+
+      expect(callbacks.length).toBe(2)
+      callbacks[1](0)
+
+      expect(tiptap.chain).not.toHaveBeenCalled()
+      expect(callbacks.length).toBe(3)
+
+      callbacks[2](0)
+
+      expectSelectionRange(tiptap, { from: 3, to: 16 })
     })
 
     it('collapses selection to the caret for an empty H1', () => {
@@ -231,9 +270,7 @@ describe('useEditorFocus', () => {
       window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
 
       expect(editor.focus).toHaveBeenCalled()
-      expect(tiptap.chain).toHaveBeenCalled()
-      expect(tiptap._chainResult.setTextSelection).toHaveBeenCalledWith({ from: 3, to: 3 })
-      expect(tiptap._chainResult.run).toHaveBeenCalled()
+      expectSelectionRange(tiptap, { from: 3, to: 3 })
     })
   })
 })

@@ -1,6 +1,12 @@
 const ROOT_EDITABLE_SELECTOR = '.ProseMirror[contenteditable="true"]'
 const FALLBACK_EDITABLE_SELECTOR = '.bn-editor [contenteditable="true"]'
 const MAX_FOCUS_ATTEMPTS = 12
+const MAX_TITLE_SELECTION_ATTEMPTS = 12
+
+interface HeadingRange {
+  from: number
+  to: number
+}
 
 interface TiptapChain {
   setTextSelection: (pos: { from: number; to: number }) => TiptapChain
@@ -17,25 +23,34 @@ export interface FocusableEditor {
   _tiptapEditor?: TiptapEditor
 }
 
-/** Select all text in the first heading block via the TipTap chain API. */
-function selectFirstHeading(editor: FocusableEditor): void {
-  const tiptap = editor._tiptapEditor
-  if (!tiptap?.state?.doc) return
+function buildHeadingRange(pos: number, nodeSize: number): HeadingRange | null {
+  const range = { from: pos + 1, to: pos + nodeSize - 1 }
+  return range.from <= range.to ? range : null
+}
 
-  let from = -1
-  let to = -1
+function findFirstHeadingRange(tiptap: TiptapEditor): HeadingRange | null {
+  let range: HeadingRange | null = null
 
   tiptap.state.doc.descendants((node, pos) => {
-    if (from !== -1) return false
-    if (node.type.name === 'heading') {
-      from = pos + 1
-      to = pos + node.nodeSize - 1
-      return false
-    }
+    if (range) return false
+    if (node.type.name !== 'heading') return
+
+    range = buildHeadingRange(pos, node.nodeSize)
+    return false
   })
 
-  if (from === -1 || to === -1 || from > to) return
-  tiptap.chain().setTextSelection({ from, to }).run()
+  return range
+}
+
+function trySelectFirstHeading(editor: FocusableEditor): boolean {
+  const tiptap = editor._tiptapEditor
+  if (!tiptap?.state?.doc) return false
+
+  const range = findFirstHeadingRange(tiptap)
+  if (!range) return false
+
+  tiptap.chain().setTextSelection(range).run()
+  return true
 }
 
 function hasEditableFocus(): boolean {
@@ -82,9 +97,30 @@ function focusEditableNode(): boolean {
   return false
 }
 
+function ensureEditableFocus(): boolean {
+  if (hasEditableFocus()) return true
+  focusEditableNode()
+  return hasEditableFocus()
+}
+
 function logFocusTiming(t0: number | undefined, label: 'focus' | 'focus+select'): void {
   if (!t0) return
   console.debug(`[perf] createNote → ${label}: ${(performance.now() - t0).toFixed(1)}ms`)
+}
+
+function selectTitleWithRetries(
+  editor: FocusableEditor,
+  t0: number | undefined,
+  attempt = 0,
+): void {
+  const selectedHeading = ensureEditableFocus() && trySelectFirstHeading(editor)
+
+  if (selectedHeading || attempt >= MAX_TITLE_SELECTION_ATTEMPTS) {
+    logFocusTiming(t0, 'focus+select')
+    return
+  }
+
+  requestAnimationFrame(() => selectTitleWithRetries(editor, t0, attempt + 1))
 }
 
 export function focusEditorWithRetries(
@@ -94,10 +130,8 @@ export function focusEditorWithRetries(
   attempt = 0,
 ): void {
   editor.focus()
-  if (!hasEditableFocus()) {
-    focusEditableNode()
-  }
-  if (!hasEditableFocus() && attempt < MAX_FOCUS_ATTEMPTS) {
+  const hasFocus = ensureEditableFocus()
+  if (!hasFocus && attempt < MAX_FOCUS_ATTEMPTS) {
     requestAnimationFrame(() => focusEditorWithRetries(editor, selectTitle, t0, attempt + 1))
     return
   }
@@ -105,14 +139,7 @@ export function focusEditorWithRetries(
     logFocusTiming(t0, 'focus')
     return
   }
-  // Defer selection to the next animation frame so the new note's content
-  // (applied via queueMicrotask inside a React effect triggered by the tab
-  // change) is in the document before we try to select the heading.
-  // Between two rAF callbacks, all pending macrotasks — including React's
-  // MessageChannel re-render and the subsequent queueMicrotask content swap
-  // — complete, so the heading block is guaranteed to exist by rAF 2.
-  requestAnimationFrame(() => {
-    selectFirstHeading(editor)
-    logFocusTiming(t0, 'focus+select')
-  })
+  // The first heading can arrive a frame or two later than the initial focus
+  // on slower CI and native tab-swap paths, so keep retrying until it exists.
+  requestAnimationFrame(() => selectTitleWithRetries(editor, t0))
 }

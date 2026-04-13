@@ -17,6 +17,20 @@ function slugifyTitle(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
 }
 
+interface FileExpectation {
+  vaultPath: string
+  filename: string
+}
+
+interface FileContentExpectation extends FileExpectation {
+  text: string
+}
+
+interface EmptyTitleHeadingState {
+  contentType: string | null
+  placeholder: string | null
+}
+
 async function createUntitledNote(page: Page): Promise<void> {
   await page.locator('body').click()
   await triggerMenuCommand(page, 'file-new-note')
@@ -32,13 +46,13 @@ async function writeNewHeading(page: Page, title: string): Promise<void> {
   await page.keyboard.press('Enter')
 }
 
-async function expectRenamedFile(vaultPath: string, filename: string): Promise<void> {
+async function expectRenamedFile({ vaultPath, filename }: FileExpectation): Promise<void> {
   await expect(async () => {
     expect(markdownFiles(vaultPath)).toContain(filename)
   }).toPass({ timeout: 10_000 })
 }
 
-async function expectFileContentContains(vaultPath: string, filename: string, text: string): Promise<void> {
+async function expectFileContentContains({ vaultPath, filename, text }: FileContentExpectation): Promise<void> {
   await expect(async () => {
     const content = fs.readFileSync(`${vaultPath}/${filename}`, 'utf-8')
     expect(content).toContain(text)
@@ -58,21 +72,36 @@ async function expectEditorFocused(page: Page): Promise<void> {
   }).toBe(true)
 }
 
-async function expectReadyEmptyTitleHeading(page: Page): Promise<void> {
-  await expectEditorFocused(page)
-  await expect.poll(async () => page.evaluate(() => {
+async function readEmptyTitleHeadingState(page: Page): Promise<EmptyTitleHeadingState> {
+  return page.evaluate(() => {
     const firstBlock = document.querySelector('.bn-block-content') as HTMLElement | null
     const inlineHeading = firstBlock?.querySelector('.bn-inline-content') as HTMLElement | null
     return {
       contentType: firstBlock?.getAttribute('data-content-type') ?? null,
       placeholder: inlineHeading ? getComputedStyle(inlineHeading, '::before').content : null,
     }
-  }), {
+  })
+}
+
+async function selectionInsideEmptyTitleHeading(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const firstBlock = document.querySelector('.bn-block-content') as HTMLElement | null
+    const selection = window.getSelection()
+    const anchorNode = selection?.anchorNode ?? null
+    const anchorElement = anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement ?? null
+    return Boolean(selection?.rangeCount && anchorElement && firstBlock?.contains(anchorElement))
+  })
+}
+
+async function expectReadyEmptyTitleHeading(page: Page): Promise<void> {
+  await expectEditorFocused(page)
+  await expect.poll(() => readEmptyTitleHeadingState(page), {
     timeout: 5_000,
   }).toEqual({
     contentType: 'heading',
     placeholder: '"Title"',
   })
+  await expect.poll(() => selectionInsideEmptyTitleHeading(page), { timeout: 5_000 }).toBe(true)
 }
 
 let tempVaultDir: string
@@ -105,13 +134,21 @@ test('@smoke new-note H1 auto-rename keeps the editor usable and leaves no untit
     await createUntitledNote(page)
     await writeNewHeading(page, title)
     await expectActiveFilename(page, slugifyTitle(title))
-    await expectRenamedFile(tempVaultDir, `${slugifyTitle(title)}.md`)
+    await expectRenamedFile({ vaultPath: tempVaultDir, filename: `${slugifyTitle(title)}.md` })
     await expectEditorFocused(page)
-    await expectFileContentContains(tempVaultDir, `${slugifyTitle(title)}.md`, `# ${title}`)
+    await expectFileContentContains({
+      vaultPath: tempVaultDir,
+      filename: `${slugifyTitle(title)}.md`,
+      text: `# ${title}`,
+    })
 
     if (index === 0) {
       await page.keyboard.type(' focus-probe')
-      await expectFileContentContains(tempVaultDir, 'fresh-focus-title.md', 'focus-probe')
+      await expectFileContentContains({
+        vaultPath: tempVaultDir,
+        filename: 'fresh-focus-title.md',
+        text: 'focus-probe',
+      })
     }
   }
 
