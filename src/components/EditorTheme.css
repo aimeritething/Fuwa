@@ -236,17 +236,7 @@
   cursor: pointer;
 }
 
-/* --- Code blocks --- */
-.editor__blocknote-container [data-content-type="codeBlock"] {
-  font-family: var(--code-blocks-font-family);
-  font-size: var(--code-blocks-font-size);
-  line-height: var(--code-blocks-line-height);
-  background-color: var(--code-blocks-background-color);
-  padding: var(--code-blocks-padding-vertical) var(--code-blocks-padding-horizontal);
-  border-radius: var(--code-blocks-border-radius);
-  margin-top: var(--code-blocks-margin-vertical);
-  margin-bottom: var(--code-blocks-margin-vertical);
-}
+/* Code blocks intentionally use BlockNote's default dark styling. */
 
 /* --- Blockquote --- */
 .editor__blocknote-container [data-content-type="blockquote"],
