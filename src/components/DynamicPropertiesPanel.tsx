@@ -9,7 +9,7 @@ import { TypeSelector } from './TypeSelector'
 import { AddPropertyForm } from './AddPropertyForm'
 import type { PropertyDisplayMode } from '../utils/propertyTypes'
 import { FOCUS_NOTE_ICON_PROPERTY_EVENT } from './noteIconPropertyEvents'
-import { PROPERTY_PANEL_COLUMN_STYLE } from './propertyPanelLayout'
+import { PROPERTY_PANEL_GRID_STYLE, PROPERTY_PANEL_ROW_STYLE } from './propertyPanelLayout'
 
 function toSentenceCase(key: string): string {
   const spaced = key.replace(/[_-]/g, ' ')
@@ -45,7 +45,7 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
   }
 
   return (
-    <div className={PROPERTY_ROW_CLASS_NAME} style={PROPERTY_PANEL_COLUMN_STYLE} tabIndex={0} onKeyDown={handleKeyDown} data-testid="editable-property">
+    <div className={PROPERTY_ROW_CLASS_NAME} style={PROPERTY_PANEL_ROW_STYLE} tabIndex={0} onKeyDown={handleKeyDown} data-testid="editable-property">
       <span className={PROPERTY_LABEL_CLASS_NAME}>
         <span className="min-w-0 flex-1 truncate">{toSentenceCase(propKey)}</span>
         {onDelete && (
@@ -94,7 +94,7 @@ function SuggestedPropertySlot({ label, onAdd }: { label: string; onAdd: () => v
   return (
     <button
       className={SUGGESTED_PROPERTY_SLOT_CLASS_NAME}
-      style={PROPERTY_PANEL_COLUMN_STYLE}
+      style={PROPERTY_PANEL_ROW_STYLE}
       tabIndex={0}
       onClick={onAdd}
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAdd() } }}
@@ -204,7 +204,7 @@ export function DynamicPropertiesPanel({
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-col gap-1.5">
+      <div className="grid min-w-0 gap-x-2 gap-y-1.5" style={PROPERTY_PANEL_GRID_STYLE}>
         <TypeSelector isA={entry.isA} customColorKey={customColorKey} availableTypes={availableTypes} typeColorKeys={typeColorKeys} typeIconKeys={typeIconKeys} onUpdateProperty={onUpdateProperty} onNavigate={onNavigate} />
         {propertyEntries.map(([key, value]) => (
           <PropertyRow
