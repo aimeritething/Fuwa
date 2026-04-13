@@ -1,7 +1,8 @@
-import { useEffect, useCallback, useMemo, useRef } from 'react'
+import { useEffect, useCallback, useMemo, useRef, useContext } from 'react'
 import { trackEvent } from '../lib/telemetry'
-import { useCreateBlockNote, SuggestionMenuController } from '@blocknote/react'
-import { BlockNoteView } from '@blocknote/mantine'
+import { useCreateBlockNote, SuggestionMenuController, BlockNoteViewRaw, ComponentsContext } from '@blocknote/react'
+import { components } from '@blocknote/mantine'
+import { MantineContext, MantineProvider } from '@mantine/core'
 import { useEditorTheme } from '../hooks/useTheme'
 import { useImageDrop } from '../hooks/useImageDrop'
 import { buildTypeEntryMap } from '../utils/typeColors'
@@ -24,20 +25,37 @@ type TestTableBlock = {
   content?: { type?: string; columnWidths?: Array<number | null> }
 }
 
+function SharedContextBlockNoteView(props: React.ComponentProps<typeof BlockNoteViewRaw>) {
+  const mantineContext = useContext(MantineContext)
+  const view = (
+    <ComponentsContext.Provider value={components}>
+      <BlockNoteViewRaw {...props} />
+    </ComponentsContext.Provider>
+  )
+
+  if (mantineContext) return view
+
+  return (
+    <MantineProvider
+      withCssVariables={false}
+      getRootElement={() => undefined}
+    >
+      {view}
+    </MantineProvider>
+  )
+}
+
 function applySeededColumnWidths(
   parsedBlocks: Array<TestTableBlock>,
   columnWidths?: Array<number | null>,
 ) {
-  const tableBlock = parsedBlocks[0]
-  const tableContent = tableBlock?.content
+  if (!columnWidths) return
 
-  if (
-    !columnWidths ||
-    tableBlock?.type !== 'table' ||
-    tableContent?.type !== 'tableContent'
-  ) {
-    return
-  }
+  const tableBlock = parsedBlocks[0]
+  if (tableBlock?.type !== 'table') return
+
+  const tableContent = tableBlock.content
+  if (tableContent?.type !== 'tableContent') return
 
   tableContent.columnWidths = [...columnWidths]
 }
@@ -164,7 +182,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
           <div className="editor__drop-overlay-label">Drop image here</div>
         </div>
       )}
-      <BlockNoteView
+      <SharedContextBlockNoteView
         editor={editor}
         theme="light"
         onChange={onChange}
@@ -182,7 +200,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
           suggestionMenuComponent={WikilinkSuggestionMenu}
           onItemClick={(item: WikilinkSuggestionItem) => item.onItemClick()}
         />
-      </BlockNoteView>
+      </SharedContextBlockNoteView>
     </div>
   )
 }

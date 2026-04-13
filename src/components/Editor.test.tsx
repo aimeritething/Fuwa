@@ -1,6 +1,20 @@
 import { render, screen, fireEvent, act } from '@testing-library/react'
-import type { ComponentProps } from 'react'
+import type { ComponentProps, PropsWithChildren } from 'react'
 import { describe, it, expect, vi } from 'vitest'
+
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation(() => ({
+    matches: false,
+    media: '',
+    onchange: null,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+  })),
+})
 
 // Hoisted mock editor — available before vi.mock factory runs.
 // Tests can reconfigure spies (e.g. mockTryParse.mockResolvedValue) before rendering.
@@ -44,6 +58,14 @@ let capturedGetItems: ((query: string) => Promise<any[]>) | null = null
 vi.mock('@blocknote/react', () => ({
   createReactInlineContentSpec: () => ({ render: () => null }),
   useCreateBlockNote: () => mockEditor,
+  ComponentsContext: {
+    Provider: ({ children }: PropsWithChildren) => <>{children}</>,
+  },
+  BlockNoteViewRaw: ({ children, editable }: PropsWithChildren<{ editable?: boolean }>) => (
+    <div data-testid="blocknote-view" data-editable={editable !== false ? 'true' : 'false'}>
+      {children}
+    </div>
+  ),
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
   SuggestionMenuController: (props: any) => {
     capturedGetItemsByTrigger[props.triggerCharacter] = props.getItems
@@ -53,7 +75,7 @@ vi.mock('@blocknote/react', () => ({
 }))
 
 vi.mock('@blocknote/mantine', () => ({
-  BlockNoteView: ({ children, editable }: { children?: React.ReactNode; editable?: boolean }) => <div data-testid="blocknote-view" data-editable={editable !== false ? 'true' : 'false'}>{children}</div>,
+  components: {},
 }))
 
 vi.mock('@blocknote/mantine/style.css', () => ({}))
