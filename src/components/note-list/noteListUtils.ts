@@ -1,9 +1,24 @@
 import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus, ViewFile } from '../../types'
 import type { RelationshipGroup } from '../../utils/noteListHelpers'
+import { filenameStemToTitle } from '../../utils/noteTitle'
 
 export interface DeletedNoteEntry extends VaultEntry {
   __deletedNotePreview: true
   __deletedRelativePath: string
+  __changeAddedLines: number | null
+  __changeDeletedLines: number | null
+  __changeBinary: boolean
+}
+
+const FILTER_TITLES: Partial<Record<'archived' | 'changes' | 'inbox', string>> = {
+  archived: 'Archive',
+  changes: 'Changes',
+  inbox: 'Inbox',
+}
+
+function resolveSelectionFilterTitle(selection: SidebarSelection): string | null {
+  if (selection.kind !== 'filter') return null
+  return FILTER_TITLES[selection.filter as keyof typeof FILTER_TITLES] ?? null
 }
 
 export function resolveHeaderTitle(selection: SidebarSelection, typeDocument: VaultEntry | null, views?: ViewFile[]): string {
@@ -13,10 +28,8 @@ export function resolveHeaderTitle(selection: SidebarSelection, typeDocument: Va
   }
   if (selection.kind === 'entity') return selection.entry.title
   if (typeDocument) return typeDocument.title
-  if (selection.kind === 'filter' && selection.filter === 'archived') return 'Archive'
-  if (selection.kind === 'filter' && selection.filter === 'changes') return 'Changes'
-  if (selection.kind === 'filter' && selection.filter === 'inbox') return 'Inbox'
-  return 'Notes'
+
+  return resolveSelectionFilterTitle(selection) ?? 'Notes'
 }
 
 export function filterByQuery<T extends { title: string }>(items: T[], query: string): T[] {
@@ -36,10 +49,24 @@ export interface ClickActions {
 }
 
 export function routeNoteClick(entry: VaultEntry, e: React.MouseEvent, actions: ClickActions) {
-  if ((e.metaKey || e.ctrlKey) && e.shiftKey) { actions.onOpenInNewWindow?.(entry) }
-  else if (e.shiftKey) { actions.multiSelect.selectRange(entry.path) }
-  else if (e.metaKey || e.ctrlKey) { actions.multiSelect.clear(); actions.onSelect(entry) }
-  else { actions.multiSelect.clear(); actions.multiSelect.setAnchor(entry.path); actions.onReplace(entry) }
+  if ((e.metaKey || e.ctrlKey) && e.shiftKey) {
+    actions.onOpenInNewWindow?.(entry)
+    return
+  }
+
+  if (e.shiftKey) {
+    actions.multiSelect.selectRange(entry.path)
+    return
+  }
+
+  actions.multiSelect.clear()
+  if (e.metaKey || e.ctrlKey) {
+    actions.onSelect(entry)
+    return
+  }
+
+  actions.multiSelect.setAnchor(entry.path)
+  actions.onReplace(entry)
 }
 
 export function createNoteStatusResolver(
@@ -74,12 +101,21 @@ function matchesModifiedFile(entry: VaultEntry, file: ModifiedFile): boolean {
   return entry.path === file.path || entry.path.endsWith('/' + file.relativePath)
 }
 
+function applyChangeStats<T extends VaultEntry>(entry: T, file: ModifiedFile): T {
+  return {
+    ...entry,
+    __changeAddedLines: file.addedLines ?? null,
+    __changeDeletedLines: file.deletedLines ?? null,
+    __changeBinary: Boolean(file.binary),
+  }
+}
+
 function createDeletedNoteEntry(file: ModifiedFile): DeletedNoteEntry {
   const filename = file.relativePath.split('/').pop() ?? file.relativePath
   return {
     path: file.path,
     filename,
-    title: filename.replace(/\.md$/, ''),
+    title: filenameStemToTitle(filename),
     isA: 'Note',
     aliases: [],
     belongsTo: [],
@@ -110,15 +146,19 @@ function createDeletedNoteEntry(file: ModifiedFile): DeletedNoteEntry {
     fileKind: 'markdown',
     __deletedNotePreview: true,
     __deletedRelativePath: file.relativePath,
+    __changeAddedLines: file.addedLines ?? null,
+    __changeDeletedLines: file.deletedLines ?? null,
+    __changeBinary: Boolean(file.binary),
   }
 }
 
 export function buildChangesEntries(entries: VaultEntry[], modifiedFiles: ModifiedFile[] | undefined): VaultEntry[] {
   if (!modifiedFiles || modifiedFiles.length === 0) return []
 
-  const liveEntries = entries.filter((entry) =>
-    modifiedFiles.some((file) => file.status !== 'deleted' && matchesModifiedFile(entry, file)),
-  )
+  const liveEntries = entries.flatMap((entry) => {
+    const file = modifiedFiles.find((candidate) => candidate.status !== 'deleted' && matchesModifiedFile(entry, candidate))
+    return file ? [applyChangeStats(entry, file)] : []
+  })
 
   const deletedEntries = modifiedFiles
     .filter((file) => file.status === 'deleted')

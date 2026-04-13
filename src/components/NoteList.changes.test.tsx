@@ -1,20 +1,34 @@
 import { act, fireEvent, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { NoteList } from './NoteList'
-import type { SidebarSelection, VaultEntry } from '../types'
+import type { ModifiedFile, SidebarSelection, VaultEntry } from '../types'
 import { allSelection, mockEntries, renderNoteList } from '../test-utils/noteListTestUtils'
 
 const changesSelection: SidebarSelection = { kind: 'filter', filter: 'changes' }
+
+function changeFile(
+  entry: VaultEntry,
+  status: ModifiedFile['status'],
+  overrides: Partial<ModifiedFile> = {},
+): ModifiedFile {
+  return {
+    path: entry.path,
+    relativePath: entry.path.replace('/Users/luca/Laputa/', ''),
+    status,
+    ...overrides,
+  }
+}
+
 const modifiedFiles = [
-  { path: mockEntries[0].path, relativePath: 'project/26q1-laputa-app.md', status: 'modified' as const },
-  { path: mockEntries[1].path, relativePath: 'note/facebook-ads-strategy.md', status: 'modified' as const },
+  changeFile(mockEntries[0], 'modified', { addedLines: 42, deletedLines: 7 }),
+  changeFile(mockEntries[1], 'modified', { addedLines: 5, deletedLines: 2 }),
 ]
 
 describe('NoteList changes view', () => {
-  it('shows only modified notes in changes view with filenames', () => {
+  it('shows only modified notes in changes view with note titles', () => {
     renderNoteList({ selection: changesSelection, modifiedFiles })
-    expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
-    expect(screen.getByText('facebook-ads-strategy.md')).toBeInTheDocument()
+    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+    expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
     expect(screen.queryByText('Matteo Cellini')).not.toBeInTheDocument()
     expect(screen.queryByText('Kickoff Meeting')).not.toBeInTheDocument()
   })
@@ -31,20 +45,20 @@ describe('NoteList changes view', () => {
 
   it('updates the list when modifiedFiles changes', () => {
     const { rerender, props } = renderNoteList({ selection: changesSelection, modifiedFiles })
-    expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
-    expect(screen.getByText('facebook-ads-strategy.md')).toBeInTheDocument()
+    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+    expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
 
     rerender(<NoteList {...props} modifiedFiles={[modifiedFiles[0]]} />)
-    expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
-    expect(screen.queryByText('facebook-ads-strategy.md')).not.toBeInTheDocument()
+    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+    expect(screen.queryByText('Facebook Ads Strategy')).not.toBeInTheDocument()
   })
 
   it('uses modifiedFiles for filtering even when getNoteStatus is also provided', () => {
     const getNoteStatus = (path: string) => modifiedFiles.some((file) => file.path === path) ? 'modified' as const : 'clean' as const
     renderNoteList({ selection: changesSelection, modifiedFiles, getNoteStatus })
 
-    expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
-    expect(screen.getByText('facebook-ads-strategy.md')).toBeInTheDocument()
+    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+    expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
     expect(screen.queryByText('matteo-cellini.md')).not.toBeInTheDocument()
   })
 
@@ -60,8 +74,8 @@ describe('NoteList changes view', () => {
       modifiedFiles,
     })
 
-    expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
-    expect(screen.getByText('facebook-ads-strategy.md')).toBeInTheDocument()
+    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+    expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
     expect(screen.queryByText('matteo-cellini.md')).not.toBeInTheDocument()
   })
 
@@ -78,20 +92,23 @@ describe('NoteList changes view', () => {
 
   it('shows untracked notes alongside modified notes', () => {
     const mixedFiles = [
-      { path: mockEntries[0].path, relativePath: 'project/26q1-laputa-app.md', status: 'modified' as const },
-      { path: mockEntries[2].path, relativePath: 'person/matteo-cellini.md', status: 'untracked' as const },
+      changeFile(mockEntries[0], 'modified', { addedLines: 42, deletedLines: 7 }),
+      changeFile(mockEntries[2], 'untracked', { addedLines: 3 }),
     ]
 
     renderNoteList({ selection: changesSelection, modifiedFiles: mixedFiles })
-    expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
-    expect(screen.getByText('matteo-cellini.md')).toBeInTheDocument()
-    expect(screen.queryByText('facebook-ads-strategy.md')).not.toBeInTheDocument()
+    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+    expect(screen.getByText('Matteo Cellini')).toBeInTheDocument()
+    expect(screen.queryByText('Facebook Ads Strategy')).not.toBeInTheDocument()
+    expect(screen.getAllByTestId('change-stat-added').map((node) => node.textContent)).toEqual(
+      expect.arrayContaining(['+42', '+3']),
+    )
   })
 
   it('shows change-status icons for each modified file', () => {
     const mixedFiles = [
-      { path: mockEntries[0].path, relativePath: 'project/26q1-laputa-app.md', status: 'modified' as const },
-      { path: mockEntries[2].path, relativePath: 'person/matteo-cellini.md', status: 'untracked' as const },
+      changeFile(mockEntries[0], 'modified', { addedLines: 42, deletedLines: 7 }),
+      changeFile(mockEntries[2], 'untracked', { addedLines: 3 }),
     ]
 
     renderNoteList({ selection: changesSelection, modifiedFiles: mixedFiles })
@@ -100,15 +117,15 @@ describe('NoteList changes view', () => {
 
   it('shows deleted notes as rows when files are deleted', () => {
     const filesWithDeleted = [
-      { path: mockEntries[0].path, relativePath: 'project/26q1-laputa-app.md', status: 'modified' as const },
-      { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
-      { path: '/Users/luca/Laputa/note/also-gone.md', relativePath: 'note/also-gone.md', status: 'deleted' as const },
+      changeFile(mockEntries[0], 'modified', { addedLines: 42, deletedLines: 7 }),
+      { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const, deletedLines: 5 },
+      { path: '/Users/luca/Laputa/note/also-gone.md', relativePath: 'note/also-gone.md', status: 'deleted' as const, deletedLines: 2 },
     ]
 
     renderNoteList({ selection: changesSelection, modifiedFiles: filesWithDeleted })
-    expect(screen.getByText('26q1-laputa-app.md')).toBeInTheDocument()
-    expect(screen.getByText('gone.md')).toBeInTheDocument()
-    expect(screen.getByText('also-gone.md')).toBeInTheDocument()
+    expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
+    expect(screen.getByText('Gone')).toBeInTheDocument()
+    expect(screen.getByText('Also Gone')).toBeInTheDocument()
     expect(screen.queryByText(/notes? deleted/)).not.toBeInTheDocument()
   })
 
@@ -116,12 +133,13 @@ describe('NoteList changes view', () => {
     renderNoteList({
       selection: changesSelection,
       modifiedFiles: [
-        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
+        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const, deletedLines: 5 },
       ],
     })
 
-    expect(screen.getByText('gone.md')).toHaveClass('line-through')
-    expect(screen.getByText('gone.md')).toHaveClass('opacity-70')
+    expect(screen.getByText('Gone')).toHaveClass('line-through')
+    expect(screen.getByText('Gone')).toHaveClass('opacity-70')
+    expect(screen.getByTestId('change-stat-deleted')).toHaveTextContent('-5')
   })
 
   it('does not show a deleted banner in or outside changes view', () => {
@@ -131,7 +149,7 @@ describe('NoteList changes view', () => {
     renderNoteList({
       selection: allSelection,
       modifiedFiles: [
-        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
+        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const, deletedLines: 5 },
       ],
     })
     expect(screen.queryByText(/notes? deleted/)).not.toBeInTheDocument()
@@ -139,7 +157,7 @@ describe('NoteList changes view', () => {
 
   it('shows the discard context menu when onDiscardFile is provided', () => {
     renderNoteList({ selection: changesSelection, modifiedFiles, onDiscardFile: vi.fn() })
-    const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
+    const noteItem = screen.getByText('Build Laputa App').closest('[class*="border-b"]')!
     fireEvent.contextMenu(noteItem)
 
     expect(screen.getByTestId('changes-context-menu')).toBeInTheDocument()
@@ -150,12 +168,12 @@ describe('NoteList changes view', () => {
     renderNoteList({
       selection: changesSelection,
       modifiedFiles: [
-        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
+        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const, deletedLines: 5 },
       ],
       onDiscardFile: vi.fn(),
     })
 
-    const noteItem = screen.getByText('gone.md').closest('[class*="border-b"]')!
+    const noteItem = screen.getByText('Gone').closest('[class*="border-b"]')!
     fireEvent.contextMenu(noteItem)
 
     expect(screen.getByTestId('changes-context-menu')).toBeInTheDocument()
@@ -164,7 +182,7 @@ describe('NoteList changes view', () => {
 
   it('does not show a context menu when discard is unavailable', () => {
     renderNoteList({ selection: changesSelection, modifiedFiles })
-    const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
+    const noteItem = screen.getByText('Build Laputa App').closest('[class*="border-b"]')!
     fireEvent.contextMenu(noteItem)
 
     expect(screen.queryByTestId('changes-context-menu')).not.toBeInTheDocument()
@@ -172,7 +190,7 @@ describe('NoteList changes view', () => {
 
   it('shows the confirmation dialog after clicking discard changes', () => {
     renderNoteList({ selection: changesSelection, modifiedFiles, onDiscardFile: vi.fn() })
-    const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
+    const noteItem = screen.getByText('Build Laputa App').closest('[class*="border-b"]')!
 
     fireEvent.contextMenu(noteItem)
     fireEvent.click(screen.getByTestId('discard-changes-button'))
@@ -186,7 +204,7 @@ describe('NoteList changes view', () => {
     renderNoteList({
       selection: changesSelection,
       modifiedFiles: [
-        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const },
+        { path: '/Users/luca/Laputa/note/gone.md', relativePath: 'note/gone.md', status: 'deleted' as const, deletedLines: 5 },
       ],
       onDiscardFile: vi.fn(),
     })
@@ -207,7 +225,7 @@ describe('NoteList changes view', () => {
     const onDiscardFile = vi.fn().mockResolvedValue(undefined)
     renderNoteList({ selection: changesSelection, modifiedFiles, onDiscardFile })
 
-    const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
+    const noteItem = screen.getByText('Build Laputa App').closest('[class*="border-b"]')!
     act(() => {
       fireEvent.contextMenu(noteItem)
     })
@@ -226,7 +244,7 @@ describe('NoteList changes view', () => {
     const onDiscardFile = vi.fn()
     renderNoteList({ selection: changesSelection, modifiedFiles, onDiscardFile })
 
-    const noteItem = screen.getByText('26q1-laputa-app.md').closest('[class*="border-b"]')!
+    const noteItem = screen.getByText('Build Laputa App').closest('[class*="border-b"]')!
     fireEvent.contextMenu(noteItem)
     fireEvent.click(screen.getByTestId('discard-changes-button'))
     fireEvent.click(screen.getByText('Cancel'))

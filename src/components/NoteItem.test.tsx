@@ -55,12 +55,18 @@ describe('NoteItem', () => {
   })
 
   it('shows filenames instead of titles when a change status is present', () => {
-    const entry = makeEntry({ filename: 'my-note.md', title: 'My Note Title' })
+    const entry = {
+      ...makeEntry({ filename: 'my-note.md', title: 'My Note Title' }),
+      __changeAddedLines: 42,
+      __changeDeletedLines: 7,
+    }
 
     render(<NoteItem entry={entry} isSelected={false} typeEntryMap={{}} onClickNote={vi.fn()} changeStatus="modified" />)
 
-    expect(screen.getByText('my-note.md')).toBeInTheDocument()
-    expect(screen.queryByText('My Note Title')).not.toBeInTheDocument()
+    expect(screen.getByText('My Note Title')).toBeInTheDocument()
+    expect(screen.queryByText('my-note.md')).not.toBeInTheDocument()
+    expect(screen.getByTestId('change-stat-added')).toHaveTextContent('+42')
+    expect(screen.getByTestId('change-stat-deleted')).toHaveTextContent('-7')
   })
 
   it('renders the correct symbol for modified files', () => {
@@ -77,6 +83,14 @@ describe('NoteItem', () => {
     render(<NoteItem entry={entry} isSelected={false} typeEntryMap={{}} onClickNote={vi.fn()} changeStatus="added" />)
 
     expect(screen.getByTestId('change-status-icon').textContent).toBe('+')
+  })
+
+  it('shows a neutral fallback when line stats are unavailable', () => {
+    const entry = makeEntry({ filename: 'binary-note.md', title: 'Binary Note' })
+
+    render(<NoteItem entry={entry} isSelected={false} typeEntryMap={{}} onClickNote={vi.fn()} changeStatus="modified" />)
+
+    expect(screen.getByTestId('change-stat-fallback')).toHaveTextContent('Diff unavailable')
   })
 
   it('renders the regular title when no change status is set', () => {

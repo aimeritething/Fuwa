@@ -71,6 +71,9 @@ export interface ModifiedFile {
   path: string
   relativePath: string
   status: 'modified' | 'added' | 'deleted' | 'untracked' | 'renamed'
+  addedLines?: number | null
+  deletedLines?: number | null
+  binary?: boolean
 }
 
 export interface Settings {

@@ -11,6 +11,7 @@ import { resolveIcon } from '../utils/iconRegistry'
 import { relativeDate, getDisplayDate } from '../utils/noteListHelpers'
 import { NoteTitleIcon } from './NoteTitleIcon'
 import { PropertyChips } from './note-item/PropertyChips'
+import { ChangeNoteContent } from './note-item/ChangeNoteContent'
 
 const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>> = {
   Project: Wrench,
@@ -59,28 +60,6 @@ function StateBadge({ archived }: { archived: boolean }) {
   return null
 }
 
-const CHANGE_STATUS_DISPLAY: Record<string, { label: string; color: string; symbol: string }> = {
-  modified: { label: 'Modified', color: 'var(--accent-orange, #f59e0b)', symbol: '·' },
-  added: { label: 'Added', color: 'var(--accent-green, #22c55e)', symbol: '+' },
-  untracked: { label: 'Added', color: 'var(--accent-green, #22c55e)', symbol: '+' },
-  deleted: { label: 'Deleted', color: 'var(--destructive, #ef4444)', symbol: '−' },
-  renamed: { label: 'Renamed', color: 'var(--accent-orange, #f59e0b)', symbol: 'R' },
-}
-
-function ChangeStatusIcon({ status }: { status: string }) {
-  const display = CHANGE_STATUS_DISPLAY[status] ?? CHANGE_STATUS_DISPLAY.modified
-  return (
-    <span
-      className="absolute right-3 top-2.5 text-xs font-bold"
-      style={{ color: display.color, fontSize: status === 'modified' ? 18 : 14 }}
-      title={display.label}
-      data-testid="change-status-icon"
-    >
-      {display.symbol}
-    </span>
-  )
-}
-
 function noteItemClassName({
   isBinary,
   isSelected,
@@ -92,42 +71,17 @@ function noteItemClassName({
   isMultiSelected: boolean
   isHighlighted: boolean
 }) {
+  const isInteractive = !isBinary
+  const isSingleSelected = isInteractive && isSelected && !isMultiSelected
+  const isHoverable = isInteractive && !isSelected && !isMultiSelected
+  const isHighlightedOnly = isHoverable && isHighlighted
+
   return cn(
     'relative border-b border-[var(--border)] transition-colors',
     isBinary ? 'cursor-default opacity-50' : 'cursor-pointer',
-    isSelected && !isMultiSelected && !isBinary && 'border-l-[3px]',
-    !isSelected && !isMultiSelected && !isBinary && 'hover:bg-muted',
-    isHighlighted && !isSelected && !isMultiSelected && !isBinary && 'bg-muted',
-  )
-}
-
-function ChangeStatusContent({
-  entry,
-  changeStatus,
-  isSelected,
-  isDeletedChange,
-}: {
-  entry: VaultEntry
-  changeStatus: NonNullable<NoteItemProps['changeStatus']>
-  isSelected: boolean
-  isDeletedChange: boolean
-}) {
-  return (
-    <>
-      <ChangeStatusIcon status={changeStatus} />
-      <div className="pr-5">
-        <div
-          className={cn(
-            'truncate text-[13px] font-mono',
-            isSelected ? 'font-semibold' : 'font-normal',
-            isDeletedChange && 'text-muted-foreground line-through opacity-70',
-          )}
-          style={{ fontSize: 12 }}
-        >
-          {entry.filename}
-        </div>
-      </div>
-    </>
+    isSingleSelected && 'border-l-[3px]',
+    isHoverable && 'hover:bg-muted',
+    isHighlightedOnly && 'bg-muted',
   )
 }
 
@@ -300,7 +254,7 @@ export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlig
       title={isBinary ? 'Cannot open this file type' : undefined}
     >
       {changeStatus ? (
-        <ChangeStatusContent
+        <ChangeNoteContent
           entry={entry}
           changeStatus={changeStatus}
           isSelected={isSelected}
