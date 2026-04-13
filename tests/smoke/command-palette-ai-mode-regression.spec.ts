@@ -23,6 +23,13 @@ test.describe('Command palette AI mode regression', () => {
     await expect(aiInput).toBeVisible()
     await expect(aiInput).toBeFocused()
 
+    await page.keyboard.type('a')
+    await expect(aiInput).toBeVisible()
+    await expect(aiInput).toBeFocused()
+    await expect(page.locator('input[placeholder="Type a command..."]')).toHaveCount(0)
+    await expectNormalizedEditorText(aiInput, 'a')
+    await page.keyboard.press('Backspace')
+
     await page.keyboard.type('edit my [[b')
     await expect(page.getByTestId('wikilink-menu')).toContainText('Build Laputa App')
 

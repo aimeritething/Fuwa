@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import type { VaultEntry } from '../types'
 import { queueAiPrompt, requestOpenAiChat } from '../utils/aiPromptBridge'
+import { readSelectionRange } from './inlineWikilinkDom'
 import { CommandPalette } from './CommandPalette'
 import type { CommandAction } from '../hooks/useCommandRegistry'
 
@@ -243,6 +244,18 @@ describe('CommandPalette', () => {
     fireEvent.change(input, { target: { value: ' ' } })
 
     expect(screen.getByTestId('command-palette-ai-input')).toHaveFocus()
+  })
+
+  it('places the AI editor caret after the trigger space on mode entry', () => {
+    render(<CommandPalette open={true} commands={commands} entries={entries} onClose={onClose} />)
+
+    const input = screen.getByPlaceholderText('Type a command...')
+    input.focus()
+    fireEvent.change(input, { target: { value: ' ' } })
+
+    const editor = screen.getByTestId('command-palette-ai-input') as HTMLDivElement
+    expect(editor).toHaveFocus()
+    expect(readSelectionRange(editor)).toEqual({ start: 1, end: 1 })
   })
 
   it('returns to command mode when the leading space is deleted', () => {

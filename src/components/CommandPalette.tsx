@@ -23,6 +23,23 @@ interface ScoredCommand {
   score: number
 }
 
+function focusPaletteTarget(target: HTMLInputElement | HTMLDivElement | null) {
+  if (!target) return
+
+  target.focus()
+
+  if (!(target instanceof HTMLDivElement)) return
+
+  const selection = window.getSelection()
+  if (!selection) return
+
+  const range = document.createRange()
+  range.selectNodeContents(target)
+  range.collapse(false)
+  selection.removeAllRanges()
+  selection.addRange(range)
+}
+
 function matchCommand(query: string, command: CommandAction): ScoredCommand | null {
   const labelResult = fuzzyMatch(query, command.label)
   if (labelResult.match) return { command, score: labelResult.score }
@@ -216,11 +233,11 @@ function OpenCommandPalette({
     const target = aiMode ? aiInputRef.current : inputRef.current
     if (!target) return
 
-    target.focus()
+    focusPaletteTarget(target)
     if (document.activeElement === target) return
 
     const focusRetry = window.requestAnimationFrame(() => {
-      target.focus()
+      focusPaletteTarget(target)
     })
     return () => window.cancelAnimationFrame(focusRetry)
   }, [aiMode])
