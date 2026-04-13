@@ -105,6 +105,16 @@ After any Tauri command, new component/hook, data model change, or new integrati
 
 ## 3. Product Rules
 
+### Demo vault hygiene (`demo-vault/`, `demo-vault-v2/`)
+
+Default to `demo-vault-v2/` for testing.
+
+- Treat `demo-vault/` and `demo-vault-v2/` as disposable QA fixtures unless the task explicitly changes demo content.
+- If you create untracked notes, attachments, or other temporary files there for testing, delete them before the task is complete.
+- If you modify tracked demo-vault files only to test or QA behavior, revert those edits before the final commit.
+- Before declaring a task done, make sure `git status --short -- demo-vault demo-vault-v2` is empty unless demo fixture changes are part of the task.
+- If a fresh run starts and the only local dirt is inside `demo-vault/` or `demo-vault-v2/`, clean those paths first and continue. That case is recoverable QA residue, not a blocker.
+
 ### User vault (`~/Laputa/`)
 
 Default to `demo-vault-v2/`. If you must use `~/Laputa/` for testing:
