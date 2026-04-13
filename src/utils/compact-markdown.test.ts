@@ -47,6 +47,21 @@ describe('compactMarkdown', () => {
     expect(compactMarkdown(input)).toBe('```js\nconst a = 1\n\nconst b = 2\n```\n')
   })
 
+  it('removes stray hard-break-only lines after a hard line break', () => {
+    const input = 'some text\\\\\n\\\\\nafter\n'
+    expect(compactMarkdown(input)).toBe('some text\\\\\nafter\n')
+  })
+
+  it('removes stray hard-break-only lines after formatted hard line breaks', () => {
+    const input = '**text\\\\**\n\\\\\nafter\n'
+    expect(compactMarkdown(input)).toBe('**text\\\\**\nafter\n')
+  })
+
+  it('preserves intentional backslash-only lines when no hard line break precedes them', () => {
+    const input = 'just text\n\\\\\nafter\n'
+    expect(compactMarkdown(input)).toBe('just text\n\\\\\nafter\n')
+  })
+
   it('does not add trailing blank lines', () => {
     const input = '## Title\n\nText.\n\n\n'
     expect(compactMarkdown(input)).toBe('## Title\n\nText.\n')
