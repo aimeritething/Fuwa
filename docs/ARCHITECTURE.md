@@ -680,6 +680,8 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `update_menu_state` | Update native menu checkmarks and enabled/disabled state for selection-dependent actions |
 | `trigger_menu_command` | Emit a native menu command ID for deterministic shortcut QA |
 
+`get_build_number` feeds the bottom status bar label. It preserves legacy `bNNN` date-build labels, renders local `0.1.0` / `0.0.0` builds as `dev`, and formats semver alpha prereleases as `alpha <version>` so signed alpha builds never fall back to `?`.
+
 ## Mock Layer
 
 When running outside Tauri (browser at `localhost:5173`), `src/mock-tauri.ts` provides a transparent mock layer:
