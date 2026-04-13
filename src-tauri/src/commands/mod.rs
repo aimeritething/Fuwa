@@ -49,9 +49,7 @@ fn is_legacy_build_version(minor: &str, patch: &str) -> bool {
 fn parse_legacy_build_label(version: &str) -> Option<String> {
     let parts: Vec<&str> = version.split('.').collect();
     match parts.as_slice() {
-        [_, minor, patch] if is_legacy_build_version(minor, patch) => {
-            Some(format!("b{}", patch))
-        }
+        [_, minor, patch] if is_legacy_build_version(minor, patch) => Some(format!("b{}", patch)),
         _ => None,
     }
 }
