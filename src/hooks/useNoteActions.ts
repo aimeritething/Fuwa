@@ -26,6 +26,7 @@ export interface NoteActionsConfig {
   markContentPending?: (path: string, content: string) => void
   onNewNotePersisted?: () => void
   replaceEntry?: (oldPath: string, patch: Partial<VaultEntry> & { path: string }) => void
+  onPathRenamed?: (oldPath: string, newPath: string) => void
   /** Called after frontmatter is written to disk — used for live-reloading theme CSS vars. */
   onFrontmatterContentChanged?: (path: string, content: string) => void
   /** Called after a frontmatter mutation is fully persisted, including follow-up renames. */
@@ -41,6 +42,7 @@ interface TitleRenameDeps {
   tabsRef: React.MutableRefObject<{ entry: VaultEntry; content: string }[]>
   reloadVault?: () => Promise<unknown>
   replaceEntry?: (oldPath: string, patch: Partial<VaultEntry> & { path: string }) => void
+  onPathRenamed?: (oldPath: string, newPath: string) => void
   setTabs: React.Dispatch<React.SetStateAction<{ entry: VaultEntry; content: string }[]>>
   activeTabPathRef: React.MutableRefObject<string | null>
   handleSwitchTab: (path: string) => void
@@ -71,6 +73,7 @@ async function renameAfterTitleChange({ path, newTitle, deps }: RenameAfterTitle
   const result = await performRename({ path, newTitle, vaultPath: deps.vaultPath, oldTitle })
   if (result.new_path !== path) {
     const newFilename = result.new_path.split('/').pop() ?? ''
+    deps.onPathRenamed?.(path, result.new_path)
     deps.replaceEntry?.(path, { path: result.new_path, filename: newFilename, title: newTitle } as Partial<VaultEntry> & { path: string })
     const newContent = await loadNoteContent({ path: result.new_path })
     deps.setTabs(prev => prev.map(t => t.entry.path === path
@@ -167,6 +170,7 @@ export function useNoteActions(config: NoteActionsConfig) {
           tabsRef: rename.tabsRef,
           reloadVault: config.reloadVault,
           replaceEntry: config.replaceEntry,
+          onPathRenamed: config.onPathRenamed,
           setTabs,
           activeTabPathRef,
           handleSwitchTab,

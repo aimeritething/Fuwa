@@ -249,7 +249,7 @@ function App() {
     onOpenFile: (relativePath) => conflictFlow.openConflictFileRef.current(relativePath),
   })
 
-  const notes = useNoteActions({ addEntry: vault.addEntry, removeEntry: vault.removeEntry, entries: vault.entries, reloadVault: vault.reloadVault, setToastMessage, updateEntry: vault.updateEntry, vaultPath: resolvedPath, addPendingSave: vault.addPendingSave, removePendingSave: vault.removePendingSave, trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths, markContentPending: (path, content) => appSave.contentChangeRef.current(path, content), onNewNotePersisted: vault.loadModifiedFiles, replaceEntry: vault.replaceEntry, onFrontmatterPersisted: vault.loadModifiedFiles })
+  const notes = useNoteActions({ addEntry: vault.addEntry, removeEntry: vault.removeEntry, entries: vault.entries, reloadVault: vault.reloadVault, setToastMessage, updateEntry: vault.updateEntry, vaultPath: resolvedPath, addPendingSave: vault.addPendingSave, removePendingSave: vault.removePendingSave, trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths, markContentPending: (path, content) => appSave.contentChangeRef.current(path, content), onNewNotePersisted: vault.loadModifiedFiles, replaceEntry: vault.replaceEntry, onFrontmatterPersisted: vault.loadModifiedFiles, onPathRenamed: (oldPath, newPath) => appSave.trackRenamedPath(oldPath, newPath) })
 
   // Note window: auto-open the note from URL params once vault entries load
   const noteWindowOpenedRef = useRef(false)
@@ -321,16 +321,9 @@ function App() {
     loadModifiedFiles: vault.loadModifiedFiles, reloadViews: vault.reloadViews,
     clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths,
     tabs: notes.tabs, activeTabPath: notes.activeTabPath,
-    handleRenameNote: notes.handleRenameNote,
+    handleRenameNote: notes.handleRenameNote, handleRenameFilename: notes.handleRenameFilename,
     replaceEntry: vault.replaceEntry, resolvedPath,
   })
-
-  const handleFilenameRename = useCallback((path: string, newFilenameStem: string) => {
-    appSave.savePendingForPath(path)
-      .then(() => notes.handleRenameFilename(path, newFilenameStem, resolvedPath, vault.replaceEntry))
-      .then(vault.loadModifiedFiles)
-      .catch((err) => console.error('Filename rename failed:', err))
-  }, [appSave, notes, resolvedPath, vault])
 
   const aiActivity = useAiActivity({
     onOpenNote: vaultBridge.openNoteByPath,
@@ -463,6 +456,7 @@ function App() {
   const deleteActions = useDeleteActions({
     onDeselectNote: (path: string) => { if (notes.activeTabPath === path) notes.closeAllTabs() },
     removeEntry: vault.removeEntry,
+    removeEntries: vault.removeEntries,
     refreshModifiedFiles: vault.loadModifiedFiles,
     reloadVault: vault.reloadVault,
     setToastMessage,
@@ -783,7 +777,7 @@ function App() {
             onUnarchiveNote={activeDeletedFile ? undefined : entryActions.handleUnarchiveNote}
             onContentChange={appSave.handleContentChange}
             onSave={appSave.handleSave}
-            onRenameFilename={activeDeletedFile ? undefined : handleFilenameRename}
+            onRenameFilename={activeDeletedFile ? undefined : appSave.handleFilenameRename}
             rawToggleRef={rawToggleRef}
             diffToggleRef={diffToggleRef}
             canGoBack={canGoBack}

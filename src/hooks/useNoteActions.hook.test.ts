@@ -573,8 +573,10 @@ describe('useNoteActions hook', () => {
         filename: 'old-name.md',
         title: 'Old Name',
       })
+      const onPathRenamed = vi.fn()
       const replaceEntry = vi.fn()
       const config = makeConfig([entry])
+      config.onPathRenamed = onPathRenamed
       config.replaceEntry = replaceEntry
 
       vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
@@ -601,6 +603,7 @@ describe('useNoteActions hook', () => {
         '/test/vault/old-name.md',
         expect.objectContaining({ path: '/test/vault/new-name.md', title: 'New Name' }),
       )
+      expect(onPathRenamed).toHaveBeenCalledWith('/test/vault/old-name.md', '/test/vault/new-name.md')
     })
 
     it('handleUpdateFrontmatter does not trigger rename for non-title keys', async () => {

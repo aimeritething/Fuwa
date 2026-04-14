@@ -31,6 +31,7 @@ describe('useAppSave', () => {
     tabs: [] as Array<{ entry: VaultEntry; content: string }>,
     activeTabPath: null as string | null,
     handleRenameNote: vi.fn().mockResolvedValue(undefined),
+    handleRenameFilename: vi.fn().mockResolvedValue(undefined),
     replaceEntry: vi.fn(),
     resolvedPath: '/vault',
   }
@@ -43,6 +44,7 @@ describe('useAppSave', () => {
     deps.tabs = []
     deps.activeTabPath = null
     deps.handleRenameNote.mockResolvedValue(undefined)
+    deps.handleRenameFilename.mockResolvedValue(undefined)
   })
 
   afterEach(() => {
@@ -220,5 +222,104 @@ describe('useAppSave', () => {
     })
 
     expect(vi.mocked(invoke)).not.toHaveBeenCalledWith('auto_rename_untitled', expect.anything())
+  })
+
+  it('redirects stale editor saves to the latest renamed path', async () => {
+    vi.useFakeTimers()
+    vi.mocked(isTauri).mockReturnValue(true)
+
+    const oldPath = '/vault/untitled-note-123.md'
+    const newPath = '/vault/fresh-title.md'
+    const entry = makeEntry(oldPath, 'Untitled Note 123', 'untitled-note-123.md')
+    let tabsState = [{ entry, content: '# Fresh Title\n\nBody' }]
+    const setTabs = vi.fn((updater: SetStateAction<typeof tabsState>) => {
+      tabsState = typeof updater === 'function' ? updater(tabsState) : updater
+    })
+
+    vi.mocked(invoke).mockImplementation(async (command: string, args?: Record<string, unknown>) => {
+      if (command === 'save_note_content') return undefined
+      if (command === 'auto_rename_untitled') return { new_path: newPath, updated_files: 0 }
+      if (command === 'reload_vault_entry') return makeEntry(newPath, 'Fresh Title', 'fresh-title.md')
+      if (command === 'get_note_content' && args?.path === newPath) return '# Fresh Title\n\nBody'
+      return undefined
+    })
+
+    const { result } = renderSave({
+      setTabs,
+      tabs: tabsState,
+      activeTabPath: oldPath,
+      unsavedPaths: new Set([oldPath]),
+    })
+
+    await act(async () => {
+      result.current.handleContentChange(oldPath, '# Fresh Title\n\nBody')
+      await vi.advanceTimersByTimeAsync(3_000)
+    })
+
+    await act(async () => {
+      result.current.handleContentChange(oldPath, '# Fresh Title\n\nBody\n\nMore text')
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    const saveCalls = vi.mocked(invoke).mock.calls.filter(([command]) => command === 'save_note_content')
+    expect(saveCalls.at(-1)).toEqual([
+      'save_note_content',
+      { path: newPath, content: '# Fresh Title\n\nBody\n\nMore text' },
+    ])
+    expect(saveCalls).not.toContainEqual([
+      'save_note_content',
+      { path: oldPath, content: '# Fresh Title\n\nBody\n\nMore text' },
+    ])
+  })
+
+  it('tracks filename renames so follow-up saves do not recreate the old path', async () => {
+    vi.useFakeTimers()
+    vi.mocked(isTauri).mockReturnValue(true)
+
+    const oldPath = '/vault/fresh-title.md'
+    const newPath = '/vault/manual-name.md'
+    const entry = makeEntry(oldPath, 'Fresh Title', 'fresh-title.md')
+
+    vi.mocked(invoke).mockImplementation(async (command: string) => {
+      if (command === 'save_note_content') return undefined
+      return undefined
+    })
+
+    deps.handleRenameFilename.mockImplementation(async (path, newFilenameStem, vaultPath, onEntryRenamed) => {
+      expect(path).toBe(oldPath)
+      expect(newFilenameStem).toBe('manual-name')
+      expect(vaultPath).toBe('/vault')
+      onEntryRenamed(path, { path: newPath, filename: 'manual-name.md', title: 'Fresh Title' }, '# Fresh Title\n\nBody')
+    })
+
+    const { result } = renderSave({
+      tabs: [{ entry, content: '# Fresh Title\n\nBody' }],
+      activeTabPath: oldPath,
+      unsavedPaths: new Set([oldPath]),
+    })
+
+    await act(async () => {
+      await result.current.handleFilenameRename(oldPath, 'manual-name')
+    })
+
+    await act(async () => {
+      result.current.handleContentChange(oldPath, '# Fresh Title\n\nBody\n\nMore text')
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    const saveCalls = vi.mocked(invoke).mock.calls.filter(([command]) => command === 'save_note_content')
+    expect(saveCalls.at(-1)).toEqual([
+      'save_note_content',
+      { path: newPath, content: '# Fresh Title\n\nBody\n\nMore text' },
+    ])
+    expect(saveCalls).not.toContainEqual([
+      'save_note_content',
+      { path: oldPath, content: '# Fresh Title\n\nBody\n\nMore text' },
+    ])
+    expect(deps.replaceEntry).toHaveBeenCalledWith(
+      oldPath,
+      expect.objectContaining({ path: newPath, filename: 'manual-name.md' }),
+      '# Fresh Title\n\nBody',
+    )
   })
 })

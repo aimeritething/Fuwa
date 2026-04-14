@@ -19,6 +19,27 @@ interface PendingUntitledRename {
   timer: ReturnType<typeof setTimeout>
 }
 
+type RenamedPathMap = Map<string, string>
+
+function resolveLatestPath(renamedPaths: RenamedPathMap, path: string): string {
+  let current = path
+  const visited = new Set<string>()
+
+  while (!visited.has(current)) {
+    visited.add(current)
+    const next = renamedPaths.get(current)
+    if (!next || next === current) break
+    current = next
+  }
+
+  return current
+}
+
+function trackRenamedPath(renamedPaths: RenamedPathMap, oldPath: string, newPath: string): void {
+  if (oldPath === newPath) return
+  renamedPaths.set(oldPath, newPath)
+}
+
 function findUnsavedFallback(
   tabs: TabState[], activeTabPath: string | null, unsavedPaths: Set<string>,
 ): { path: string; content: string } | undefined {
@@ -136,6 +157,7 @@ interface AppSaveDeps {
   tabs: TabState[]
   activeTabPath: string | null
   handleRenameNote: (path: string, newTitle: string, vaultPath: string, onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void) => Promise<void>
+  handleRenameFilename: (path: string, newFilenameStem: string, vaultPath: string, onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void) => Promise<void>
   replaceEntry: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void
   resolvedPath: string
 }
@@ -144,10 +166,11 @@ export function useAppSave({
   updateEntry, setTabs, handleSwitchTab, setToastMessage,
   loadModifiedFiles, reloadViews, clearUnsaved, unsavedPaths,
   tabs, activeTabPath,
-  handleRenameNote, replaceEntry, resolvedPath,
+  handleRenameNote, handleRenameFilename: handleRenameFilenameRaw, replaceEntry, resolvedPath,
 }: AppSaveDeps) {
   const contentChangeRef = useRef<(path: string, content: string) => void>(() => {})
   const pendingUntitledRenameRef = useRef<PendingUntitledRename | null>(null)
+  const renamedPathsRef = useRef<RenamedPathMap>(new Map())
 
   const onAfterSave = useCallback(() => {
     loadModifiedFiles()
@@ -164,6 +187,7 @@ export function useAppSave({
         notePath: path,
       })
       if (!result) return false
+      trackRenamedPath(renamedPathsRef.current, path, result.new_path)
       await reloadAutoRenamedNote(
         path,
         result.new_path,
@@ -203,9 +227,26 @@ export function useAppSave({
     scheduleUntitledRename(path, content)
   }, [clearUnsaved, reloadViews, scheduleUntitledRename])
 
-  const { handleSave: handleSaveRaw, handleContentChange, savePendingForPath, savePending } = useEditorSaveWithLinks({
+  const { handleSave: handleSaveRaw, handleContentChange: handleContentChangeRaw, savePendingForPath: savePendingForPathRaw, savePending } = useEditorSaveWithLinks({
     updateEntry, setTabs, setToastMessage, onAfterSave, onNotePersisted,
   })
+
+  const registerRenamedPath = useCallback((oldPath: string, newPath: string) => {
+    trackRenamedPath(renamedPathsRef.current, oldPath, newPath)
+  }, [])
+
+  const resolveCurrentPath = useCallback((path: string) => resolveLatestPath(renamedPathsRef.current, path), [])
+
+  const handleContentChange = useCallback((path: string, content: string) => {
+    handleContentChangeRaw(resolveCurrentPath(path), content)
+  }, [handleContentChangeRaw, resolveCurrentPath])
+
+  const savePendingForPath = useCallback((path: string) => savePendingForPathRaw(resolveCurrentPath(path)), [savePendingForPathRaw, resolveCurrentPath])
+
+  const replaceRenamedEntry = useCallback((oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => {
+    registerRenamedPath(oldPath, newEntry.path)
+    replaceEntry(oldPath, newEntry, newContent)
+  }, [registerRenamedPath, replaceEntry])
 
   useEffect(() => { contentChangeRef.current = handleContentChange }, [handleContentChange])
   useEffect(() => () => { cancelPendingUntitledRename() }, [cancelPendingUntitledRename])
@@ -221,48 +262,61 @@ export function useAppSave({
   unsavedPathsRef.current = unsavedPaths // eslint-disable-line react-hooks/refs -- ref sync pattern
 
   const flushBeforeAction = useCallback(async (path: string) => {
+    const currentPath = resolveCurrentPath(path)
     try {
-      await flushEditorContent(path, {
+      await flushEditorContent(currentPath, {
         savePendingForPath,
         getTabContent: (p) => tabsRef.current.find(t => t.entry.path === p)?.content,
         isUnsaved: (p) => unsavedPathsRef.current.has(p),
         onSaved: (p) => { clearUnsaved(p) },
       })
-      await flushPendingUntitledRename(path)
+      await flushPendingUntitledRename(currentPath)
     } catch (err) {
       setToastMessage(`Auto-save failed: ${err}`)
       throw err
     }
-  }, [savePendingForPath, clearUnsaved, setToastMessage, flushPendingUntitledRename])
+  }, [resolveCurrentPath, savePendingForPath, clearUnsaved, setToastMessage, flushPendingUntitledRename])
 
   const handleRenameTab = useCallback(async (path: string, newTitle: string) => {
-    await savePendingForPath(path)
-    cancelPendingUntitledRename(path)
-    await handleRenameNote(path, newTitle, resolvedPath, replaceEntry).then(loadModifiedFiles)
-  }, [handleRenameNote, resolvedPath, replaceEntry, savePendingForPath, loadModifiedFiles, cancelPendingUntitledRename])
+    const currentPath = resolveCurrentPath(path)
+    await savePendingForPath(currentPath)
+    cancelPendingUntitledRename(currentPath)
+    await handleRenameNote(currentPath, newTitle, resolvedPath, replaceRenamedEntry).then(loadModifiedFiles)
+  }, [resolveCurrentPath, handleRenameNote, resolvedPath, replaceRenamedEntry, savePendingForPath, loadModifiedFiles, cancelPendingUntitledRename])
+
+  const handleFilenameRename = useCallback(async (path: string, newFilenameStem: string) => {
+    const currentPath = resolveCurrentPath(path)
+    await savePendingForPath(currentPath)
+    cancelPendingUntitledRename(currentPath)
+    await handleRenameFilenameRaw(currentPath, newFilenameStem, resolvedPath, replaceRenamedEntry).then(loadModifiedFiles)
+  }, [resolveCurrentPath, handleRenameFilenameRaw, resolvedPath, replaceRenamedEntry, savePendingForPath, loadModifiedFiles, cancelPendingUntitledRename])
 
   const handleSave = useCallback(async () => {
-    await handleSaveRaw(findUnsavedFallback(tabs, activeTabPath, unsavedPaths))
-    const flushedUntitledRename = await flushPendingUntitledRename(activeTabPath ?? undefined)
-    const rename = activeTabNeedsRename(tabs, activeTabPath)
+    const resolvedActiveTabPath = activeTabPath ? resolveCurrentPath(activeTabPath) : null
+    await handleSaveRaw(findUnsavedFallback(tabs, resolvedActiveTabPath, unsavedPaths))
+    const flushedUntitledRename = await flushPendingUntitledRename(resolvedActiveTabPath ?? undefined)
+    const rename = activeTabNeedsRename(tabs, resolvedActiveTabPath)
     if (!flushedUntitledRename && rename) await handleRenameTab(rename.path, rename.title)
-  }, [handleSaveRaw, handleRenameTab, tabs, activeTabPath, unsavedPaths, flushPendingUntitledRename])
+  }, [handleSaveRaw, handleRenameTab, tabs, activeTabPath, unsavedPaths, flushPendingUntitledRename, resolveCurrentPath])
 
   const handleTitleSync = useCallback((path: string, newTitle: string) => {
-    cancelPendingUntitledRename(path)
-    savePendingForPath(path)
-      .then(() => handleRenameNote(path, newTitle, resolvedPath, replaceEntry))
+    const currentPath = resolveCurrentPath(path)
+    cancelPendingUntitledRename(currentPath)
+    savePendingForPath(currentPath)
+      .then(() => handleRenameNote(currentPath, newTitle, resolvedPath, replaceRenamedEntry))
       .then(loadModifiedFiles)
       .catch((err) => console.error('Title rename failed:', err))
-  }, [handleRenameNote, resolvedPath, replaceEntry, savePendingForPath, loadModifiedFiles, cancelPendingUntitledRename])
+  }, [resolveCurrentPath, handleRenameNote, resolvedPath, replaceRenamedEntry, savePendingForPath, loadModifiedFiles, cancelPendingUntitledRename])
 
   return {
     contentChangeRef,
     handleContentChange,
+    handleFilenameRename,
     handleSave,
     handleTitleSync,
     savePending,
     savePendingForPath,
+    trackRenamedPath: registerRenamedPath,
     flushBeforeAction,
   }
 }

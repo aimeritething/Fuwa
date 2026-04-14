@@ -13,6 +13,7 @@ const mockInvokeFn = mockInvoke as ReturnType<typeof vi.fn>
 describe('useDeleteActions', () => {
   let onDeselectNote: ReturnType<typeof vi.fn>
   let removeEntry: ReturnType<typeof vi.fn>
+  let removeEntries: ReturnType<typeof vi.fn>
   let refreshModifiedFiles: ReturnType<typeof vi.fn>
   let reloadVault: ReturnType<typeof vi.fn>
   let setToastMessage: ReturnType<typeof vi.fn>
@@ -20,6 +21,7 @@ describe('useDeleteActions', () => {
   beforeEach(() => {
     onDeselectNote = vi.fn()
     removeEntry = vi.fn()
+    removeEntries = vi.fn()
     refreshModifiedFiles = vi.fn().mockResolvedValue(undefined)
     reloadVault = vi.fn().mockResolvedValue(undefined)
     setToastMessage = vi.fn()
@@ -31,6 +33,7 @@ describe('useDeleteActions', () => {
       useDeleteActions({
         onDeselectNote,
         removeEntry,
+        removeEntries,
         refreshModifiedFiles,
         reloadVault,
         setToastMessage,
@@ -92,7 +95,8 @@ describe('useDeleteActions', () => {
       expect(result.current.pendingDeleteCount).toBe(1)
       expect(mockInvokeFn).toHaveBeenCalledWith('batch_delete_notes', { paths: ['/vault/a.md'] })
       expect(onDeselectNote).toHaveBeenCalledWith('/vault/a.md')
-      expect(removeEntry).toHaveBeenCalledWith('/vault/a.md')
+      expect(removeEntries).toHaveBeenCalledWith(['/vault/a.md'])
+      expect(removeEntry).not.toHaveBeenCalled()
       expect(setToastMessage).toHaveBeenNthCalledWith(1, 'Deleting note...')
 
       let ok: boolean | undefined
@@ -153,6 +157,7 @@ describe('useDeleteActions', () => {
 
     it('onConfirm deletes all paths in one backend call and shows toast', async () => {
       await confirmDeleteAndExpectBatchCall(['/vault/a.md', '/vault/b.md'])
+      expect(removeEntries).toHaveBeenCalledWith(['/vault/a.md', '/vault/b.md'])
       expect(setToastMessage).toHaveBeenCalledWith('2 notes permanently deleted')
     })
 

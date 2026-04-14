@@ -14,6 +14,7 @@ interface UseDeleteActionsInput {
   /** Called to deselect the note if it is currently open. */
   onDeselectNote: (path: string) => void
   removeEntry: (path: string) => void
+  removeEntries?: (paths: string[]) => void
   refreshModifiedFiles: () => Promise<unknown> | void
   reloadVault: () => Promise<unknown> | void
   setToastMessage: (msg: string | null) => void
@@ -50,6 +51,7 @@ async function runDeleteCommand(paths: string[]): Promise<string[]> {
 function useDeleteRunner({
   onDeselectNote,
   removeEntry,
+  removeEntries,
   refreshModifiedFiles,
   reloadVault,
   setToastMessage,
@@ -65,12 +67,14 @@ function useDeleteRunner({
 
   const optimisticallyRemoveEntries = useCallback((paths: string[]) => {
     startTransition(() => {
-      for (const path of paths) {
-        onDeselectNote(path)
-        removeEntry(path)
+      for (const path of paths) onDeselectNote(path)
+      if (removeEntries) {
+        removeEntries(paths)
+        return
       }
+      for (const path of paths) removeEntry(path)
     })
-  }, [onDeselectNote, removeEntry])
+  }, [onDeselectNote, removeEntries, removeEntry])
 
   const deleteNotesFromDisk = useCallback(async (paths: string[]) => {
     if (paths.length === 0) return 0
@@ -120,6 +124,7 @@ function useDeleteRunner({
 export function useDeleteActions({
   onDeselectNote,
   removeEntry,
+  removeEntries,
   refreshModifiedFiles,
   reloadVault,
   setToastMessage,
@@ -132,6 +137,7 @@ export function useDeleteActions({
   } = useDeleteRunner({
     onDeselectNote,
     removeEntry,
+    removeEntries,
     refreshModifiedFiles,
     reloadVault,
     setToastMessage,

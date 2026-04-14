@@ -119,6 +119,20 @@ describe('useVaultLoader', () => {
     })
   })
 
+  describe('removeEntries', () => {
+    it('removes multiple entries in one state update', async () => {
+      const { result } = await renderVaultLoader()
+      const secondEntry: VaultEntry = { ...mockEntries[0], path: '/vault/note/second.md', filename: 'second.md', title: 'Second' }
+
+      act(() => {
+        result.current.addEntry(secondEntry)
+        result.current.removeEntries(['/vault/note/hello.md', '/vault/note/second.md'])
+      })
+
+      expect(result.current.entries).toHaveLength(0)
+    })
+  })
+
   describe('updateEntry', () => {
     it('patches an existing entry by path', async () => {
       const { result } = await renderVaultLoader()

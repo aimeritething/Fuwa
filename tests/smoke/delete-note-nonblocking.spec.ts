@@ -26,8 +26,10 @@ test.describe('responsive note deletion', () => {
     await page.evaluate(() => {
       const handlers = window.__mockHandlers
       if (!handlers) throw new Error('Mock handlers unavailable for delete override')
-      handlers.batch_delete_notes = (args?: { paths?: string[] }) =>
-        new Promise((resolve) => window.setTimeout(() => resolve(args?.paths ?? []), 1_200))
+      const delayedDelete = (args?: { paths?: string[] }) =>
+        new Promise((resolve) => window.setTimeout(() => resolve(args?.paths ?? []), 3_000))
+      handlers.batch_delete_notes = delayedDelete
+      handlers.batch_delete_notes_async = delayedDelete
     })
 
     await triggerShortcutCommand(page, APP_COMMAND_IDS.noteDelete)
