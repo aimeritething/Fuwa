@@ -10,6 +10,13 @@ import {
   type AiAgentDefinition,
   type AiAgentsStatus,
 } from '../../lib/aiAgents'
+import {
+  getVaultAiGuidanceSummary,
+  isVaultAiGuidanceStatusChecking,
+  vaultAiGuidanceNeedsRestore,
+  vaultAiGuidanceUsesCustomFiles,
+  type VaultAiGuidanceStatus,
+} from '../../lib/vaultAiGuidance'
 import { openExternalUrl } from '../../utils/url'
 import {
   DropdownMenu,
@@ -25,18 +32,35 @@ import { ICON_STYLE, SEP_STYLE } from './styles'
 
 interface AiAgentsBadgeProps {
   statuses: AiAgentsStatus
+  guidanceStatus?: VaultAiGuidanceStatus
   defaultAgent: AiAgentId
   onSetDefaultAgent?: (agent: AiAgentId) => void
+  onRestoreGuidance?: () => void
 }
 
-function badgeTooltip(statuses: AiAgentsStatus, defaultAgent: AiAgentId): string {
+function badgeTooltip(
+  statuses: AiAgentsStatus,
+  defaultAgent: AiAgentId,
+  guidanceStatus?: VaultAiGuidanceStatus,
+): string {
+  const guidanceSummary = guidanceStatus && !isVaultAiGuidanceStatusChecking(guidanceStatus)
+    ? getVaultAiGuidanceSummary(guidanceStatus)
+    : null
   if (!hasAnyInstalledAiAgent(statuses)) return 'No AI agents detected — click for setup details'
   const definition = getAiAgentDefinition(defaultAgent)
   if (!isAiAgentInstalled(statuses, defaultAgent)) {
     return `${definition.label} is selected but not installed — click for setup details`
   }
   const version = statuses[defaultAgent].version
-  return `Default AI agent: ${definition.label}${version ? ` ${version}` : ''}`
+  const base = `Default AI agent: ${definition.label}${version ? ` ${version}` : ''}`
+  if (!guidanceSummary) return base
+  if (vaultAiGuidanceNeedsRestore(guidanceStatus!)) {
+    return `${base}. ${guidanceSummary} — click for restore details`
+  }
+  if (vaultAiGuidanceUsesCustomFiles(guidanceStatus!)) {
+    return `${base}. ${guidanceSummary}`
+  }
+  return base
 }
 
 function installedAgentDefinitions(statuses: AiAgentsStatus): AiAgentDefinition[] {
@@ -72,11 +96,38 @@ function canSwitchAgents(
   return installedAgents.some((definition) => definition.id !== defaultAgent)
 }
 
+function GuidanceMenuSection({
+  guidanceStatus,
+  onRestoreGuidance,
+}: Pick<AiAgentsBadgeProps, 'guidanceStatus' | 'onRestoreGuidance'>) {
+  if (!guidanceStatus || isVaultAiGuidanceStatusChecking(guidanceStatus)) return null
+
+  return (
+    <>
+      <DropdownMenuSeparator />
+      <DropdownMenuLabel>Vault guidance</DropdownMenuLabel>
+      <DropdownMenuItem disabled data-testid="status-ai-guidance-summary">
+        {getVaultAiGuidanceSummary(guidanceStatus)}
+      </DropdownMenuItem>
+      {vaultAiGuidanceNeedsRestore(guidanceStatus) && guidanceStatus.canRestore && (
+        <DropdownMenuItem
+          onSelect={() => onRestoreGuidance?.()}
+          data-testid="status-ai-guidance-restore"
+        >
+          Restore Tolaria AI Guidance
+        </DropdownMenuItem>
+      )}
+    </>
+  )
+}
+
 function AgentMenuContent({
   statuses,
+  guidanceStatus,
   defaultAgent,
   selectedAgentReady,
   onSetDefaultAgent,
+  onRestoreGuidance,
 }: AiAgentsBadgeProps & { selectedAgentReady: boolean }) {
   const installedAgents = installedAgentDefinitions(statuses)
   const missingAgents = missingAgentDefinitions(statuses)
@@ -120,14 +171,26 @@ function AgentMenuContent({
           ))}
         </>
       )}
+      <GuidanceMenuSection
+        guidanceStatus={guidanceStatus}
+        onRestoreGuidance={onRestoreGuidance}
+      />
     </DropdownMenuContent>
   )
 }
 
-export function AiAgentsBadge({ statuses, defaultAgent, onSetDefaultAgent }: AiAgentsBadgeProps) {
+export function AiAgentsBadge({
+  statuses,
+  guidanceStatus,
+  defaultAgent,
+  onSetDefaultAgent,
+  onRestoreGuidance,
+}: AiAgentsBadgeProps) {
   const hasInstalledAgent = hasAnyInstalledAiAgent(statuses)
   const selectedAgentReady = isAiAgentInstalled(statuses, defaultAgent)
-  const showWarning = !hasInstalledAgent || !selectedAgentReady
+  const showWarning = !hasInstalledAgent
+    || !selectedAgentReady
+    || !!(guidanceStatus && vaultAiGuidanceNeedsRestore(guidanceStatus))
   const showSwitcherCue = canSwitchAgents(installedAgentDefinitions(statuses), defaultAgent)
 
   if (isAiAgentsStatusChecking(statuses)) return null
@@ -142,7 +205,7 @@ export function AiAgentsBadge({ statuses, defaultAgent, onSetDefaultAgent }: AiA
             variant="ghost"
             size="xs"
             className="h-6 px-2 text-[11px] font-medium"
-            title={badgeTooltip(statuses, defaultAgent)}
+            title={badgeTooltip(statuses, defaultAgent, guidanceStatus)}
             data-testid="status-ai-agents"
           >
             <span style={{ ...ICON_STYLE, color: showWarning ? 'var(--accent-orange)' : 'var(--muted-foreground)' }}>
@@ -155,8 +218,10 @@ export function AiAgentsBadge({ statuses, defaultAgent, onSetDefaultAgent }: AiA
         </DropdownMenuTrigger>
         <AgentMenuContent
           statuses={statuses}
+          guidanceStatus={guidanceStatus}
           defaultAgent={defaultAgent}
           onSetDefaultAgent={onSetDefaultAgent}
+          onRestoreGuidance={onRestoreGuidance}
           selectedAgentReady={selectedAgentReady}
         />
       </DropdownMenu>

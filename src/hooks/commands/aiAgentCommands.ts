@@ -4,13 +4,20 @@ import {
   type AiAgentId,
   type AiAgentsStatus,
 } from '../../lib/aiAgents'
+import {
+  isVaultAiGuidanceStatusChecking,
+  vaultAiGuidanceNeedsRestore,
+  type VaultAiGuidanceStatus,
+} from '../../lib/vaultAiGuidance'
 import type { CommandAction } from './types'
 
 interface AiAgentCommandsConfig {
   aiAgentsStatus?: AiAgentsStatus
+  vaultAiGuidanceStatus?: VaultAiGuidanceStatus
   selectedAiAgent?: AiAgentId
   selectedAiAgentLabel?: string
   onOpenAiAgents?: () => void
+  onRestoreVaultAiGuidance?: () => void
   onCycleDefaultAiAgent?: () => void
   onSetDefaultAiAgent?: (agent: AiAgentId) => void
 }
@@ -35,11 +42,33 @@ function explicitSwitchCommands({
     }))
 }
 
+function restoreGuidanceCommands({
+  vaultAiGuidanceStatus,
+  onRestoreVaultAiGuidance,
+}: Pick<AiAgentCommandsConfig, 'vaultAiGuidanceStatus' | 'onRestoreVaultAiGuidance'>): CommandAction[] {
+  if (!vaultAiGuidanceStatus || !onRestoreVaultAiGuidance) return []
+  if (isVaultAiGuidanceStatusChecking(vaultAiGuidanceStatus)) return []
+  if (!vaultAiGuidanceNeedsRestore(vaultAiGuidanceStatus)) return []
+
+  return [
+    {
+      id: 'restore-vault-ai-guidance',
+      label: 'Restore Tolaria AI Guidance',
+      group: 'Settings',
+      keywords: ['ai', 'agent', 'guidance', 'restore', 'repair', 'claude', 'codex', 'agents'],
+      enabled: true,
+      execute: () => onRestoreVaultAiGuidance(),
+    },
+  ]
+}
+
 export function buildAiAgentCommands({
   aiAgentsStatus,
+  vaultAiGuidanceStatus,
   selectedAiAgent,
   selectedAiAgentLabel,
   onOpenAiAgents,
+  onRestoreVaultAiGuidance,
   onCycleDefaultAiAgent,
   onSetDefaultAiAgent,
 }: AiAgentCommandsConfig): CommandAction[] {
@@ -53,6 +82,11 @@ export function buildAiAgentCommands({
       execute: () => onOpenAiAgents?.(),
     },
   ]
+
+  commands.push(...restoreGuidanceCommands({
+    vaultAiGuidanceStatus,
+    onRestoreVaultAiGuidance,
+  }))
 
   const switchCommands = explicitSwitchCommands({
     aiAgentsStatus,

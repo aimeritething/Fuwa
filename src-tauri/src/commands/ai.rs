@@ -1,6 +1,9 @@
 #[cfg(desktop)]
 use crate::ai_agents::{AiAgentStreamRequest, AiAgentsStatus};
 use crate::claude_cli::{AgentStreamRequest, ChatStreamRequest, ClaudeCliStatus};
+use crate::vault::VaultAiGuidanceStatus;
+
+use super::expand_tilde;
 
 #[cfg(desktop)]
 type StreamEmitter<Event> = Box<dyn Fn(Event) + Send>;
@@ -56,6 +59,18 @@ pub fn check_claude_cli() -> ClaudeCliStatus {
 #[tauri::command]
 pub fn get_ai_agents_status() -> AiAgentsStatus {
     crate::ai_agents::get_ai_agents_status()
+}
+
+#[tauri::command]
+pub fn get_vault_ai_guidance_status(vault_path: String) -> Result<VaultAiGuidanceStatus, String> {
+    let vault_path = expand_tilde(&vault_path);
+    crate::vault::get_ai_guidance_status(vault_path.as_ref())
+}
+
+#[tauri::command]
+pub fn restore_vault_ai_guidance(vault_path: String) -> Result<VaultAiGuidanceStatus, String> {
+    let vault_path = expand_tilde(&vault_path);
+    crate::vault::restore_ai_guidance_files(vault_path.as_ref())
 }
 
 #[cfg(desktop)]

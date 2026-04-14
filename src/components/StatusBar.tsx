@@ -1,4 +1,5 @@
 import type { AiAgentId, AiAgentsStatus } from '../lib/aiAgents'
+import type { VaultAiGuidanceStatus } from '../lib/vaultAiGuidance'
 import { useEffect, useState } from 'react'
 import type { ClaudeCodeStatus } from '../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../hooks/useMcpStatus'
@@ -43,8 +44,10 @@ interface StatusBarProps {
   mcpStatus?: McpStatus
   onInstallMcp?: () => void
   aiAgentsStatus?: AiAgentsStatus
+  vaultAiGuidanceStatus?: VaultAiGuidanceStatus
   defaultAiAgent?: AiAgentId
   onSetDefaultAiAgent?: (agent: AiAgentId) => void
+  onRestoreVaultAiGuidance?: () => void
   claudeCodeStatus?: ClaudeCodeStatus
   claudeCodeVersion?: string | null
 }
@@ -81,8 +84,10 @@ export function StatusBar({
   mcpStatus,
   onInstallMcp,
   aiAgentsStatus,
+  vaultAiGuidanceStatus,
   defaultAiAgent,
   onSetDefaultAiAgent,
+  onRestoreVaultAiGuidance,
   claudeCodeStatus,
   claudeCodeVersion,
 }: StatusBarProps) {
@@ -137,8 +142,10 @@ export function StatusBar({
         mcpStatus={mcpStatus}
         onInstallMcp={onInstallMcp}
         aiAgentsStatus={aiAgentsStatus}
+        vaultAiGuidanceStatus={vaultAiGuidanceStatus}
         defaultAiAgent={defaultAiAgent}
         onSetDefaultAiAgent={onSetDefaultAiAgent}
+        onRestoreVaultAiGuidance={onRestoreVaultAiGuidance}
         claudeCodeStatus={claudeCodeStatus}
         claudeCodeVersion={claudeCodeVersion}
       />

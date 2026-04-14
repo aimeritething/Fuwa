@@ -146,12 +146,13 @@ Type is determined **purely** from the `type:` frontmatter field — it is never
 ├── weekly-review.md       ← type: Procedure
 ├── john-doe.md            ← type: Person
 ├── some-topic.md          ← type: Topic
+├── AGENTS.md              ← canonical Tolaria AI guidance
+├── CLAUDE.md              ← compatibility shim pointing at AGENTS.md
 ├── ...
-├── type/                  ← type definition documents
-└── config/                ← meta-configuration files (agents.md, etc.)
+└── type/                  ← type definition documents
 ```
 
-New notes are created at the vault root: `{vault}/{slug}.md`. Changing a note's type only requires updating the `type:` field in frontmatter — the file does not move. The `type/` folder exists solely for type definition documents, and `config/` for configuration files.
+New notes are created at the vault root: `{vault}/{slug}.md`. Changing a note's type only requires updating the `type:` field in frontmatter — the file does not move. The `type/` folder exists solely for type definition documents. Legacy `config/` content is still recognized during migration and repair, but Tolaria's managed AI guidance now lives at the vault root.
 
 A `flatten_vault` migration command is available to move existing notes from type-based subfolders to the vault root.
 
@@ -271,7 +272,7 @@ type SidebarSelection =
 
 1. Validates the path exists and is a directory
 2. Scans root-level `.md` files (non-recursive)
-3. Recursively scans protected folders: `type/`, `config/`, `attachments/`
+3. Recursively scans protected folders: `type/`, legacy `config/`, `attachments/`
 4. Files in non-protected subfolders are **not indexed** (flat vault enforcement)
 5. For each `.md` file, calls `parse_md_file()`:
    - Reads content with `fs::read_to_string()`
@@ -528,6 +529,15 @@ Per-vault settings stored locally and scoped by vault path:
 - Managed by `useVaultConfig` hook and `vaultConfigStore`
 - Settings: zoom, view mode, tag colors, status colors, property display modes, Inbox note-list column overrides, explicit organization workflow toggle
 - One-time migration from localStorage (`configMigration.ts`)
+
+### AI Guidance Files
+
+Tolaria tracks managed vault-level AI guidance separately from normal note content:
+- `AGENTS.md` is the canonical managed guidance file for Tolaria-aware coding agents
+- `CLAUDE.md` is a compatibility shim that points Claude Code back to `AGENTS.md`
+- `useVaultAiGuidanceStatus` reads `get_vault_ai_guidance_status` and normalizes the backend state into four UI cases: `managed`, `missing`, `broken`, and `custom`
+- `restore_vault_ai_guidance` repairs only Tolaria-managed files; user-authored custom `AGENTS.md` / `CLAUDE.md` files are surfaced as custom and left untouched
+- The status bar AI badge and command palette consume that abstraction to expose restore actions only when the managed guidance is missing or broken
 
 ### Getting Started / Onboarding
 

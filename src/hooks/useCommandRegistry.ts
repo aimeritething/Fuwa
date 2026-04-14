@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { AiAgentId, AiAgentsStatus } from '../lib/aiAgents'
+import type { VaultAiGuidanceStatus } from '../lib/vaultAiGuidance'
 import type { SidebarSelection, VaultEntry } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
@@ -28,7 +29,9 @@ interface CommandRegistryConfig {
   mcpStatus?: string
   onInstallMcp?: () => void
   aiAgentsStatus?: AiAgentsStatus
+  vaultAiGuidanceStatus?: VaultAiGuidanceStatus
   onOpenAiAgents?: () => void
+  onRestoreVaultAiGuidance?: () => void
   onSetDefaultAiAgent?: (agent: AiAgentId) => void
   selectedAiAgent?: AiAgentId
   onCycleDefaultAiAgent?: () => void
@@ -97,8 +100,8 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates, onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
-    mcpStatus, onInstallMcp, aiAgentsStatus,
-    onOpenAiAgents, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
+    mcpStatus, onInstallMcp, aiAgentsStatus, vaultAiGuidanceStatus,
+    onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     onOpenInNewWindow, onToggleFavorite, onToggleOrganized,
@@ -142,9 +145,11 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     }),
     ...buildAiAgentCommands({
       aiAgentsStatus,
+      vaultAiGuidanceStatus,
       selectedAiAgent,
       selectedAiAgentLabel,
       onOpenAiAgents,
+      onRestoreVaultAiGuidance,
       onSetDefaultAiAgent,
       onCycleDefaultAiAgent,
     }),
@@ -162,8 +167,8 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onGoBack, onGoForward, canGoBack, canGoForward,
     vaultTypes,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
-    mcpStatus, onInstallMcp, aiAgentsStatus,
-    onOpenAiAgents, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
+    mcpStatus, onInstallMcp, aiAgentsStatus, vaultAiGuidanceStatus,
+    onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     isSectionGroup, noteListFilter, onSetNoteListFilter,

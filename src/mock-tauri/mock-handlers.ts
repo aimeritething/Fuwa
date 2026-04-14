@@ -107,6 +107,12 @@ let mockVaultList: { vaults: Array<{ label: string; path: string }>; active_vaul
   active_vault: null,
 }
 
+let mockVaultAiGuidanceStatus = {
+  agents_state: 'managed',
+  claude_state: 'managed',
+  can_restore: false,
+} as const
+
 function escapeRegex({ text }: { text: string }) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
@@ -276,6 +282,15 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     claude_code: { installed: false, version: null },
     codex: { installed: false, version: null },
   }),
+  get_vault_ai_guidance_status: () => ({ ...mockVaultAiGuidanceStatus }),
+  restore_vault_ai_guidance: () => {
+    mockVaultAiGuidanceStatus = {
+      agents_state: 'managed',
+      claude_state: 'managed',
+      can_restore: false,
+    }
+    return { ...mockVaultAiGuidanceStatus }
+  },
   stream_claude_chat: () => 'mock-session',
   stream_claude_agent: () => null,
   stream_ai_agent: () => null,
@@ -349,7 +364,14 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   create_getting_started_vault: (args: { targetPath?: string | null }) => args.targetPath || '/Users/mock/Documents/Getting Started',
   register_mcp_tools: () => 'registered',
   check_mcp_status: () => 'installed',
-  repair_vault: (): string => 'Vault repaired',
+  repair_vault: (): string => {
+    mockVaultAiGuidanceStatus = {
+      agents_state: 'managed',
+      claude_state: 'managed',
+      can_restore: false,
+    }
+    return 'Vault repaired'
+  },
   reinit_telemetry: (): null => null,
 }
 

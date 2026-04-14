@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react'
 import type { AiAgentId, AiAgentsStatus } from '../lib/aiAgents'
+import type { VaultAiGuidanceStatus } from '../lib/vaultAiGuidance'
 import { useAppKeyboard } from './useAppKeyboard'
 import { useCommandRegistry } from './useCommandRegistry'
 import type { CommandAction } from './useCommandRegistry'
@@ -58,7 +59,9 @@ interface AppCommandsConfig {
   mcpStatus?: string
   onInstallMcp?: () => void
   aiAgentsStatus?: AiAgentsStatus
+  vaultAiGuidanceStatus?: VaultAiGuidanceStatus
   onOpenAiAgents?: () => void
+  onRestoreVaultAiGuidance?: () => void
   onSetDefaultAiAgent?: (agent: AiAgentId) => void
   selectedAiAgent?: AiAgentId
   onCycleDefaultAiAgent?: () => void
@@ -197,7 +200,9 @@ function createCommandRegistryConfig(config: AppCommandsConfig): Parameters<type
     mcpStatus: config.mcpStatus,
     onInstallMcp: config.onInstallMcp,
     aiAgentsStatus: config.aiAgentsStatus,
+    vaultAiGuidanceStatus: config.vaultAiGuidanceStatus,
     onOpenAiAgents: config.onOpenAiAgents,
+    onRestoreVaultAiGuidance: config.onRestoreVaultAiGuidance,
     onSetDefaultAiAgent: config.onSetDefaultAiAgent,
     selectedAiAgent: config.selectedAiAgent,
     onCycleDefaultAiAgent: config.onCycleDefaultAiAgent,

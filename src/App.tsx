@@ -23,6 +23,7 @@ import { useTelemetry } from './hooks/useTelemetry'
 import { useMcpStatus } from './hooks/useMcpStatus'
 import { useAiAgentsOnboarding } from './hooks/useAiAgentsOnboarding'
 import { useAiAgentsStatus } from './hooks/useAiAgentsStatus'
+import { useVaultAiGuidanceStatus } from './hooks/useVaultAiGuidanceStatus'
 import { useVaultLoader } from './hooks/useVaultLoader'
 import { useAiAgentPreferences } from './hooks/useAiAgentPreferences'
 import { useSettings } from './hooks/useSettings'
@@ -68,6 +69,9 @@ import { RenameDetectedBanner, type DetectedRename } from './components/RenameDe
 import { openNoteListPropertiesPicker } from './components/note-list/noteListPropertiesEvents'
 import { focusNoteIconPropertyEditor } from './components/noteIconPropertyEvents'
 import { trackEvent } from './lib/telemetry'
+import {
+  buildVaultAiGuidanceRefreshKey,
+} from './lib/vaultAiGuidance'
 import { extractDeletedContentFromDiff } from './components/note-list/noteListUtils'
 import { hasNoteIconValue } from './utils/noteIcon'
 import { OPEN_AI_CHAT_EVENT } from './utils/aiPromptBridge'
@@ -152,6 +156,13 @@ function App() {
   }, [resolvedPath])
 
   const vault = useVaultLoader(resolvedPath)
+  const {
+    status: vaultAiGuidanceStatus,
+    refresh: refreshVaultAiGuidance,
+  } = useVaultAiGuidanceStatus(
+    resolvedPath,
+    buildVaultAiGuidanceRefreshKey(vault.entries),
+  )
   const { config: vaultConfig, updateConfig } = useVaultConfig(resolvedPath)
   const explicitOrganizationEnabled = isExplicitOrganizationEnabled(vaultConfig.inbox?.explicitOrganization)
   const effectiveSelection = sanitizeSelectionForOrganization(selection, vaultConfig.inbox?.explicitOrganization)
@@ -547,11 +558,25 @@ function App() {
       const tauriInvoke = isTauri() ? invoke : mockInvoke
       const msg = await tauriInvoke<string>('repair_vault', { vaultPath: resolvedPath })
       await vault.reloadVault()
+      await refreshVaultAiGuidance()
       setToastMessage(msg)
     } catch (err) {
       setToastMessage(`Failed to repair vault: ${err}`)
     }
-  }, [resolvedPath, vault, setToastMessage])
+  }, [refreshVaultAiGuidance, resolvedPath, vault, setToastMessage])
+
+  const restoreVaultAiGuidance = useCallback(async (successToast: string | null = 'Tolaria AI guidance restored') => {
+    if (!resolvedPath) return
+    try {
+      const tauriInvoke = isTauri() ? invoke : mockInvoke
+      await tauriInvoke('restore_vault_ai_guidance', { vaultPath: resolvedPath })
+      await vault.reloadVault()
+      await refreshVaultAiGuidance()
+      if (successToast) setToastMessage(successToast)
+    } catch (err) {
+      setToastMessage(`Failed to restore Tolaria AI guidance: ${err}`)
+    }
+  }, [refreshVaultAiGuidance, resolvedPath, vault, setToastMessage])
 
   const activeDeletedFile = useMemo(() => {
     const activeTabPath = notes.activeTabPath
@@ -605,6 +630,8 @@ function App() {
     onInstallMcp: installMcp,
     onOpenAiAgents: dialogs.openSettings,
     aiAgentsStatus,
+    vaultAiGuidanceStatus,
+    onRestoreVaultAiGuidance: () => { void restoreVaultAiGuidance() },
     selectedAiAgent: aiAgentPreferences.defaultAiAgent,
     onSetDefaultAiAgent: aiAgentPreferences.setDefaultAiAgent,
     onCycleDefaultAiAgent: aiAgentPreferences.cycleDefaultAiAgent,
@@ -775,7 +802,7 @@ function App() {
       </div>
       <UpdateBanner status={updateStatus} actions={updateActions} />
       <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={vaultSwitcher.restoreGettingStarted} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isOffline={networkStatus.isOffline} isGitVault={!vault.modifiedFilesError} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} aiAgentsStatus={aiAgentsStatus} defaultAiAgent={aiAgentPreferences.defaultAiAgent} onSetDefaultAiAgent={aiAgentPreferences.setDefaultAiAgent} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={vaultSwitcher.restoreGettingStarted} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isOffline={networkStatus.isOffline} isGitVault={!vault.modifiedFilesError} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} aiAgentsStatus={aiAgentsStatus} vaultAiGuidanceStatus={vaultAiGuidanceStatus} defaultAiAgent={aiAgentPreferences.defaultAiAgent} onSetDefaultAiAgent={aiAgentPreferences.setDefaultAiAgent} onRestoreVaultAiGuidance={() => { void restoreVaultAiGuidance() }} />
       <DeleteProgressNotice count={deleteActions.pendingDeleteCount} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />

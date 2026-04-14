@@ -186,7 +186,7 @@ tolaria/
 ├── playwright.config.ts          # Full Playwright regression config
 ├── playwright.smoke.config.ts    # Curated pre-push Playwright config
 ├── ui-design.pen                 # Master design file
-├── AGENTS.md                     # Shared project instructions for coding agents
+├── AGENTS.md                     # Canonical shared instructions for coding agents
 ├── CLAUDE.md                     # Claude Code compatibility shim importing AGENTS.md
 └── docs/                         # This documentation
 ```
