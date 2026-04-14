@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::Path;
 
-use super::getting_started::AGENTS_MD;
+use super::getting_started::{AGENTS_MD, LEGACY_AGENTS_MD};
 
 /// Content for `config.md` — gives the Config type a sidebar icon and label.
 const CONFIG_TYPE_DEFINITION: &str = "\
@@ -27,16 +27,30 @@ fn write_if_missing(path: &Path, content: &str) -> Result<bool, String> {
     Ok(needs_write)
 }
 
+fn root_agents_can_be_replaced(path: &Path) -> bool {
+    !path.exists()
+        || fs::read_to_string(path).map_or(true, |content| {
+            content.is_empty()
+                || content.contains("See config/agents.md")
+                || content == LEGACY_AGENTS_MD
+                || content.contains("Do not add `title:` frontmatter.")
+        })
+}
+
+pub(super) fn sync_default_agents_file(vault_path: &str) -> Result<bool, String> {
+    let agents_path = Path::new(vault_path).join("AGENTS.md");
+    if root_agents_can_be_replaced(&agents_path) {
+        fs::write(&agents_path, AGENTS_MD)
+            .map_err(|e| format!("Failed to write {}: {e}", agents_path.display()))?;
+        return Ok(true);
+    }
+    Ok(false)
+}
+
 /// Seed `AGENTS.md` at vault root if missing or empty (idempotent, per-file).
 /// Also seeds `config.md` type definition for sidebar visibility.
 pub fn seed_config_files(vault_path: &str) {
-    let vault = Path::new(vault_path);
-
-    let agents_path = vault.join("AGENTS.md");
-    let needs_write =
-        !agents_path.exists() || fs::metadata(&agents_path).map_or(true, |m| m.len() == 0);
-    if needs_write {
-        let _ = fs::write(&agents_path, AGENTS_MD);
+    if sync_default_agents_file(vault_path).unwrap_or(false) {
         log::info!("Seeded AGENTS.md at vault root");
     }
 
@@ -70,11 +84,7 @@ pub fn migrate_agents_md(vault_path: &str) {
         let config_content = fs::read_to_string(&config_agents).unwrap_or_default();
         if !config_content.is_empty() {
             // Only migrate if root AGENTS.md is missing, empty, or is a stub
-            let root_is_stub_or_missing = !root_agents.exists()
-                || fs::read_to_string(&root_agents)
-                    .map_or(true, |c| c.is_empty() || c.contains("See config/agents.md"));
-
-            if root_is_stub_or_missing {
+            if root_agents_can_be_replaced(&root_agents) {
                 let _ = fs::write(&root_agents, &config_content);
                 log::info!("Migrated config/agents.md content to root AGENTS.md");
             }
@@ -95,9 +105,7 @@ pub fn migrate_agents_md(vault_path: &str) {
     }
 
     // Ensure root AGENTS.md exists with content
-    if !root_agents.exists() {
-        let _ = fs::write(&root_agents, AGENTS_MD);
-    }
+    let _ = sync_default_agents_file(vault_path);
 }
 
 /// Repair config files: ensure `AGENTS.md` at vault root and `config.md` type definition.
@@ -112,11 +120,7 @@ pub fn repair_config_files(vault_path: &str) -> Result<String, String> {
     if config_agents.exists() {
         let config_content = fs::read_to_string(&config_agents).unwrap_or_default();
         if !config_content.is_empty() {
-            let root_is_stub_or_missing = !root_agents.exists()
-                || fs::read_to_string(&root_agents)
-                    .map_or(true, |c| c.is_empty() || c.contains("See config/agents.md"));
-
-            if root_is_stub_or_missing {
+            if root_agents_can_be_replaced(&root_agents) {
                 fs::write(&root_agents, &config_content)
                     .map_err(|e| format!("Failed to write AGENTS.md: {e}"))?;
             }
@@ -135,7 +139,7 @@ pub fn repair_config_files(vault_path: &str) -> Result<String, String> {
     }
 
     // Step 3: Seed AGENTS.md with defaults if still missing or empty
-    write_if_missing(&root_agents, AGENTS_MD)?;
+    sync_default_agents_file(vault_path)?;
 
     // Step 4: Ensure config.md type definition at vault root
     write_if_missing(&vault.join("config.md"), CONFIG_TYPE_DEFINITION)?;
@@ -206,6 +210,25 @@ mod tests {
         seed_config_files(vault.to_str().unwrap());
         let content = fs::read_to_string(vault.join("AGENTS.md")).unwrap();
         assert!(content.contains("Tolaria Vault"));
+    }
+
+    #[test]
+    fn test_seed_config_files_refreshes_stale_default_agents() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path().join("vault");
+        fs::create_dir_all(&vault).unwrap();
+        fs::write(
+            vault.join("AGENTS.md"),
+            "# AGENTS.md — Tolaria Vault\n\n- The first H1 in the body is the note title. Do not add `title:` frontmatter.\n",
+        )
+        .unwrap();
+
+        seed_config_files(vault.to_str().unwrap());
+
+        let content = fs::read_to_string(vault.join("AGENTS.md")).unwrap();
+        assert!(content.contains("Legacy `title:` frontmatter is still read as a fallback"));
+        assert!(content.contains("views/*.yml"));
+        assert!(content.contains("Belongs to:"));
     }
 
     #[test]

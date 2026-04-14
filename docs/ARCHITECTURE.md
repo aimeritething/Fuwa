@@ -437,7 +437,7 @@ On first launch, `useOnboarding` checks if the default vault exists. If not, it 
 
 Once a vault is ready, `useAiAgentsOnboarding` can show a one-time `AiAgentsOnboardingPrompt`. That prompt reads `useAiAgentsStatus` so first launch surfaces whether Claude Code and Codex are installed, offers per-agent install links when they are missing, and stores local dismissal so the prompt does not repeat on every launch.
 
-The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` only holds the public starter repo URL and delegates the actual clone to the git backend.
+The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` holds the public starter repo URL, delegates the clone to the git backend, then normalizes Tolaria-managed config files (`AGENTS.md`, `config.md`) so fresh starter vaults pick up the current default guidance even when the remote starter repo still carries a legacy copy.
 
 ### Remote Clone & Auth Model
 
@@ -608,7 +608,8 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `reload_vault` | Invalidate cache and full rescan from filesystem → `Vec<VaultEntry>` |
 | `reload_vault_entry` | Re-read a single file from disk → `VaultEntry` |
 | `check_vault_exists` | Check if vault path exists |
-| `create_getting_started_vault` | Clone the public Getting Started vault into a chosen local folder |
+| `create_empty_vault` | Create a git-backed vault, then seed root `AGENTS.md` and `config.md` defaults |
+| `create_getting_started_vault` | Clone the public Getting Started vault, refresh Tolaria-managed config defaults, and keep the cloned repo clean |
 
 ### Frontmatter
 

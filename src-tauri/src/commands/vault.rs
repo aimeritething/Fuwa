@@ -102,38 +102,59 @@ pub fn migrate_is_a_to_type(vault_path: String) -> Result<usize, String> {
 #[tauri::command]
 pub fn create_vault_folder(vault_path: String, folder_name: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
-    let folder_path = std::path::Path::new(vault_path.as_ref()).join(&folder_name);
+    let folder_path = build_vault_folder_path(std::path::Path::new(vault_path.as_ref()), &folder_name);
+    ensure_missing_folder(&folder_path, &folder_name)?;
+    std::fs::create_dir_all(&folder_path).map_err(|e| format!("Failed to create folder: {}", e))?;
+    Ok(folder_name)
+}
+
+fn build_vault_folder_path(vault_root: &std::path::Path, folder_name: &str) -> std::path::PathBuf {
+    vault_root.join(folder_name)
+}
+
+fn ensure_missing_folder(folder_path: &std::path::Path, folder_name: &str) -> Result<(), String> {
     if folder_path.exists() {
         return Err(format!("Folder '{}' already exists", folder_name));
     }
-    std::fs::create_dir_all(&folder_path).map_err(|e| format!("Failed to create folder: {}", e))?;
-    Ok(folder_name)
+    Ok(())
+}
+
+fn initialize_empty_vault(vault_dir: &std::path::Path, vault_path: &str) -> Result<(), String> {
+    std::fs::create_dir_all(vault_dir)
+        .map_err(|e| format!("Failed to create vault directory: {}", e))?;
+
+    git::init_repo(vault_path)?;
+    vault::seed_config_files(vault_path);
+    Ok(())
+}
+
+fn canonical_vault_path_string(vault_dir: &std::path::Path) -> String {
+    vault_dir
+        .canonicalize()
+        .unwrap_or_else(|_| vault_dir.to_path_buf())
+        .to_string_lossy()
+        .to_string()
 }
 
 #[tauri::command]
 pub fn create_empty_vault(target_path: String) -> Result<String, String> {
     let path = expand_tilde(&target_path).into_owned();
     let vault_dir = std::path::Path::new(&path);
-
-    std::fs::create_dir_all(vault_dir)
-        .map_err(|e| format!("Failed to create vault directory: {}", e))?;
-
-    crate::git::init_repo(&path)?;
-
-    Ok(vault_dir
-        .canonicalize()
-        .unwrap_or_else(|_| vault_dir.to_path_buf())
-        .to_string_lossy()
-        .to_string())
+    initialize_empty_vault(vault_dir, &path)?;
+    Ok(canonical_vault_path_string(vault_dir))
 }
 
 #[tauri::command]
 pub fn create_getting_started_vault(target_path: Option<String>) -> Result<String, String> {
-    let path = match target_path {
-        Some(p) if !p.is_empty() => expand_tilde(&p).into_owned(),
-        _ => vault::default_vault_path()?.to_string_lossy().to_string(),
-    };
+    let path = resolve_getting_started_target(target_path.as_deref())?;
     vault::create_getting_started_vault(&path)
+}
+
+fn resolve_getting_started_target(target_path: Option<&str>) -> Result<String, String> {
+    match target_path {
+        Some(path) if !path.is_empty() => Ok(expand_tilde(path).into_owned()),
+        _ => vault::default_vault_path().map(|path| path.to_string_lossy().to_string()),
+    }
 }
 
 #[tauri::command]
@@ -408,5 +429,21 @@ mod tests {
         assert!(vault_path.join("AGENTS.md").exists());
         assert!(vault_path.join("config.md").exists());
         assert!(vault_path.join(".gitignore").exists());
+    }
+
+    #[test]
+    fn test_create_empty_vault_seeds_agents_and_config() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().join("fresh-vault");
+
+        let result = create_empty_vault(vault_path.to_string_lossy().to_string());
+        assert!(result.is_ok());
+        assert!(vault_path.join(".git").exists());
+        assert!(vault_path.join("AGENTS.md").exists());
+        assert!(vault_path.join("config.md").exists());
+
+        let agents = std::fs::read_to_string(vault_path.join("AGENTS.md")).unwrap();
+        assert!(agents.contains("Legacy `title:` frontmatter is still read as a fallback"));
+        assert!(agents.contains("views/*.yml"));
     }
 }
