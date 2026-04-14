@@ -176,6 +176,8 @@ export function InlineWikilinkEditorField({
   segments: InlineWikilinkSegment[]
   typeEntryMap: Record<string, VaultEntry>
 }) {
+  const needsTrailingCaretAnchor = segments[segments.length - 1]?.kind === 'chip'
+
   return (
     <div className="relative">
       {value.length === 0 && placeholder && (
@@ -218,6 +220,7 @@ export function InlineWikilinkEditorField({
                 />
               )
         ))}
+        {needsTrailingCaretAnchor ? '\u200B' : null}
       </div>
     </div>
   )

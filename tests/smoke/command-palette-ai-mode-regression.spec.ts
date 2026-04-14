@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { openCommandPalette } from './helpers'
 import {
   expectNoPageErrors,
@@ -6,6 +6,32 @@ import {
   selectEditorTextRange,
   trackPageErrors,
 } from './inlineWikilinkEditorHelpers'
+
+async function readCaretGapAfterChip(page: Page) {
+  return page.evaluate(() => {
+    const editor = document.querySelector('[data-testid="command-palette-ai-input"]')
+    if (!(editor instanceof HTMLElement)) return null
+
+    const chip = editor.querySelector('[data-testid="inline-wikilink-chip"]')
+    if (!(chip instanceof HTMLElement)) return null
+
+    const selection = window.getSelection()
+    if (selection === null) return null
+    if (selection.rangeCount === 0) return null
+
+    const range = selection.getRangeAt(0).cloneRange()
+    range.collapse(true)
+
+    const caretRect = range.getBoundingClientRect()
+    if (caretRect.height === 0) return null
+
+    return caretRect.left - chip.getBoundingClientRect().right
+  })
+}
+
+async function expectCaretAfterChip(page: Page) {
+  await expect.poll(() => readCaretGapAfterChip(page)).toBeLessThan(24)
+}
 
 test.describe('Command palette AI mode regression', () => {
   test.beforeEach(async ({ page }) => {
@@ -35,6 +61,7 @@ test.describe('Command palette AI mode regression', () => {
 
     await page.getByTestId('wikilink-menu').getByText('Build Laputa App').click()
     await expect(aiInput.getByTestId('inline-wikilink-chip')).toContainText('Build Laputa App')
+    await expectCaretAfterChip(page)
 
     await page.keyboard.type(' essay')
     await expectNormalizedEditorText(aiInput, 'edit my Build Laputa App essay')

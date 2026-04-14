@@ -68,7 +68,30 @@ export function readSelectionIndex(root: HTMLDivElement): number {
 }
 
 function boundaryAtEditorEnd(root: HTMLDivElement): SelectionBoundary {
-  return { container: root, offset: root.childNodes.length }
+  const endBoundary = findTextBoundaryAtEdge(root, 'end')
+  return endBoundary ?? { container: root, offset: root.childNodes.length }
+}
+
+function findTextBoundaryAtEdge(
+  node: Node,
+  edge: 'start' | 'end',
+): SelectionBoundary | null {
+  if (node.nodeType === Node.TEXT_NODE) {
+    return {
+      container: node,
+      offset: edge === 'start' ? 0 : node.textContent?.length ?? 0,
+    }
+  }
+
+  const children = Array.from(node.childNodes)
+  const orderedChildren = edge === 'start' ? children : children.toReversed()
+
+  for (const child of orderedChildren) {
+    const boundary = findTextBoundaryAtEdge(child, edge)
+    if (boundary) return boundary
+  }
+
+  return null
 }
 
 function boundaryForTextNode(
@@ -97,15 +120,21 @@ function boundaryForChip(
 ): { boundary: SelectionBoundary | null; remaining: number } {
   const tokenLength = chipToken(child.dataset.chipTarget ?? '').length
   if (remaining <= 0) {
+    const previousSibling = node.childNodes.item(index - 1)
     return {
-      boundary: { container: node, offset: index },
+      boundary: previousSibling
+        ? findTextBoundaryAtEdge(previousSibling, 'end') ?? { container: node, offset: index }
+        : { container: node, offset: index },
       remaining: 0,
     }
   }
 
   if (remaining <= tokenLength) {
+    const nextSibling = node.childNodes.item(index + 1)
     return {
-      boundary: { container: node, offset: index + 1 },
+      boundary: nextSibling
+        ? findTextBoundaryAtEdge(nextSibling, 'start') ?? { container: node, offset: index + 1 }
+        : { container: node, offset: index + 1 },
       remaining: 0,
     }
   }
