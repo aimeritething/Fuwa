@@ -83,6 +83,10 @@ jobs:
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Clear cached bundle artifacts
+        run: |
+          rm -rf src-tauri/target/${{ matrix.target }}/release/bundle
+
       - name: Set version
         run: |
           VERSION="${{ needs.version.outputs.version }}"
