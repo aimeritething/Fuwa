@@ -49,7 +49,7 @@ If the remote CodeScene scores are better than the current thresholds, the hook 
 
 ## Legacy Files
 
-The legacy `pre-commit` and `post-commit` files under `.github/hooks/` are archival only. Do not copy them into `.git/hooks`; use Husky and `.husky/` instead. `install-hooks.sh` remains as a reinstall helper that runs Husky.
+The legacy `pre-commit` file under `.github/hooks/` is archival only. Do not copy it into `.git/hooks`; use Husky and `.husky/` instead. The old design `post-commit` auto-implementation hook was removed because it depended on obsolete one-off scripts. `install-hooks.sh` remains as a reinstall helper that runs Husky.
 
 ## Troubleshooting
 
