@@ -102,7 +102,8 @@ pub fn migrate_is_a_to_type(vault_path: String) -> Result<usize, String> {
 #[tauri::command]
 pub fn create_vault_folder(vault_path: String, folder_name: String) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
-    let folder_path = build_vault_folder_path(std::path::Path::new(vault_path.as_ref()), &folder_name);
+    let folder_path =
+        build_vault_folder_path(std::path::Path::new(vault_path.as_ref()), &folder_name);
     ensure_missing_folder(&folder_path, &folder_name)?;
     std::fs::create_dir_all(&folder_path).map_err(|e| format!("Failed to create folder: {}", e))?;
     Ok(folder_name)
