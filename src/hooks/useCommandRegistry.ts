@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import type { AiAgentId, AiAgentsStatus } from '../lib/aiAgents'
 import type { SidebarSelection, VaultEntry } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
@@ -26,7 +27,10 @@ interface CommandRegistryConfig {
   activeNoteHasIcon?: boolean
   mcpStatus?: string
   onInstallMcp?: () => void
+  aiAgentsStatus?: AiAgentsStatus
   onOpenAiAgents?: () => void
+  onSetDefaultAiAgent?: (agent: AiAgentId) => void
+  selectedAiAgent?: AiAgentId
   onCycleDefaultAiAgent?: () => void
   selectedAiAgentLabel?: string
   onReloadVault?: () => void
@@ -93,8 +97,8 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates, onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
-    mcpStatus, onInstallMcp,
-    onOpenAiAgents, onCycleDefaultAiAgent, selectedAiAgentLabel,
+    mcpStatus, onInstallMcp, aiAgentsStatus,
+    onOpenAiAgents, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     onOpenInNewWindow, onToggleFavorite, onToggleOrganized,
@@ -137,8 +141,11 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
       onCheckForUpdates, onInstallMcp, onReloadVault, onRepairVault,
     }),
     ...buildAiAgentCommands({
+      aiAgentsStatus,
+      selectedAiAgent,
       selectedAiAgentLabel,
       onOpenAiAgents,
+      onSetDefaultAiAgent,
       onCycleDefaultAiAgent,
     }),
     ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
@@ -155,8 +162,8 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onGoBack, onGoForward, canGoBack, canGoForward,
     vaultTypes,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
-    mcpStatus, onInstallMcp,
-    onOpenAiAgents, onCycleDefaultAiAgent, selectedAiAgentLabel,
+    mcpStatus, onInstallMcp, aiAgentsStatus,
+    onOpenAiAgents, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     isSectionGroup, noteListFilter, onSetNoteListFilter,

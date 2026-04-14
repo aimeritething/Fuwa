@@ -435,6 +435,42 @@ describe('reload-vault command', () => {
     expect(cmd!.keywords).toContain('refresh')
     expect(cmd!.keywords).toContain('rescan')
   })
+
+  it('builds explicit AI agent switch commands for installed alternatives', () => {
+    const onSetDefaultAiAgent = vi.fn()
+    const config = makeConfig({
+      aiAgentsStatus: {
+        claude_code: { status: 'installed', version: '1.0.20' },
+        codex: { status: 'installed', version: '0.37.0' },
+      },
+      selectedAiAgent: 'claude_code',
+      onSetDefaultAiAgent,
+    })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'switch-ai-agent-codex')
+
+    expect(cmd).toBeDefined()
+    expect(cmd!.label).toBe('Switch AI Agent to Codex')
+
+    cmd!.execute()
+    expect(onSetDefaultAiAgent).toHaveBeenCalledWith('codex')
+    expect(findCommand(result.current, 'switch-default-ai-agent')).toBeUndefined()
+  })
+
+  it('omits explicit AI switch commands when no alternate installed agent exists', () => {
+    const config = makeConfig({
+      aiAgentsStatus: {
+        claude_code: { status: 'installed', version: '1.0.20' },
+        codex: { status: 'missing', version: null },
+      },
+      selectedAiAgent: 'claude_code',
+      onSetDefaultAiAgent: vi.fn(),
+    })
+    const { result } = renderHook(() => useCommandRegistry(config))
+
+    expect(findCommand(result.current, 'switch-ai-agent-codex')).toBeUndefined()
+    expect(findCommand(result.current, 'switch-default-ai-agent')).toBeUndefined()
+  })
 })
 
 describe('buildTypeCommands', () => {

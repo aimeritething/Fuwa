@@ -44,6 +44,7 @@ interface StatusBarProps {
   onInstallMcp?: () => void
   aiAgentsStatus?: AiAgentsStatus
   defaultAiAgent?: AiAgentId
+  onSetDefaultAiAgent?: (agent: AiAgentId) => void
   claudeCodeStatus?: ClaudeCodeStatus
   claudeCodeVersion?: string | null
 }
@@ -81,6 +82,7 @@ export function StatusBar({
   onInstallMcp,
   aiAgentsStatus,
   defaultAiAgent,
+  onSetDefaultAiAgent,
   claudeCodeStatus,
   claudeCodeVersion,
 }: StatusBarProps) {
@@ -136,6 +138,7 @@ export function StatusBar({
         onInstallMcp={onInstallMcp}
         aiAgentsStatus={aiAgentsStatus}
         defaultAiAgent={defaultAiAgent}
+        onSetDefaultAiAgent={onSetDefaultAiAgent}
         claudeCodeStatus={claudeCodeStatus}
         claudeCodeVersion={claudeCodeVersion}
       />

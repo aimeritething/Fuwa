@@ -50,6 +50,7 @@ interface StatusBarPrimarySectionProps {
   onInstallMcp?: () => void
   aiAgentsStatus?: AiAgentsStatus
   defaultAiAgent?: AiAgentId
+  onSetDefaultAiAgent?: (agent: AiAgentId) => void
   claudeCodeStatus?: ClaudeCodeStatus
   claudeCodeVersion?: string | null
 }
@@ -90,6 +91,7 @@ export function StatusBarPrimarySection({
   onInstallMcp,
   aiAgentsStatus,
   defaultAiAgent,
+  onSetDefaultAiAgent,
   claudeCodeStatus,
   claudeCodeVersion,
 }: StatusBarPrimarySectionProps) {
@@ -134,7 +136,7 @@ export function StatusBarPrimarySection({
       <PulseBadge onClick={onClickPulse} disabled={isGitVault === false} />
       {mcpStatus && <McpBadge status={mcpStatus} onInstall={onInstallMcp} />}
       {aiAgentsStatus && defaultAiAgent
-        ? <AiAgentsBadge statuses={aiAgentsStatus} defaultAgent={defaultAiAgent} />
+        ? <AiAgentsBadge statuses={aiAgentsStatus} defaultAgent={defaultAiAgent} onSetDefaultAgent={onSetDefaultAiAgent} />
         : claudeCodeStatus && <ClaudeCodeBadge status={claudeCodeStatus} version={claudeCodeVersion} />}
     </div>
   )

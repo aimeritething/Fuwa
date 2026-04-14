@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { act, render, screen, fireEvent } from '@testing-library/react'
 import { StatusBar } from './StatusBar'
 import type { VaultOption } from './StatusBar'
 vi.mock('../utils/url', async () => {
@@ -13,6 +13,11 @@ const vaults: VaultOption[] = [
   { label: 'Main Vault', path: '/Users/luca/Laputa' },
   { label: 'Work Vault', path: '/Users/luca/Work' },
 ]
+
+const installedAiAgentsStatus = {
+  claude_code: { status: 'installed' as const, version: '1.0.20' },
+  codex: { status: 'installed' as const, version: '0.37.0' },
+}
 
 describe('StatusBar', () => {
   beforeEach(() => {
@@ -468,6 +473,51 @@ describe('StatusBar', () => {
   it('hides Claude Code badge when no claudeCodeStatus prop provided', () => {
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
     expect(screen.queryByTestId('status-claude-code')).not.toBeInTheDocument()
+  })
+
+  it('shows the active AI agent directly in the bottom bar', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        aiAgentsStatus={installedAiAgentsStatus}
+        defaultAiAgent="claude_code"
+        onSetDefaultAiAgent={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('status-ai-agents')).toHaveTextContent('AI: Claude')
+  })
+
+  it('opens the AI agent switcher from the keyboard and switches agents', () => {
+    const onSetDefaultAiAgent = vi.fn()
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        aiAgentsStatus={installedAiAgentsStatus}
+        defaultAiAgent="claude_code"
+        onSetDefaultAiAgent={onSetDefaultAiAgent}
+      />,
+    )
+
+    const trigger = screen.getByTestId('status-ai-agents')
+    trigger.focus()
+    act(() => {
+      fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+    })
+
+    const codexOption = screen.getByRole('menuitemradio', { name: /Codex/ })
+    codexOption.focus()
+    act(() => {
+      fireEvent.keyDown(codexOption, { key: 'Enter' })
+    })
+
+    expect(onSetDefaultAiAgent).toHaveBeenCalledWith('codex')
   })
 
 })

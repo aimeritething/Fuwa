@@ -1,17 +1,49 @@
+import {
+  AI_AGENT_DEFINITIONS,
+  isAiAgentInstalled,
+  type AiAgentId,
+  type AiAgentsStatus,
+} from '../../lib/aiAgents'
 import type { CommandAction } from './types'
 
 interface AiAgentCommandsConfig {
+  aiAgentsStatus?: AiAgentsStatus
+  selectedAiAgent?: AiAgentId
   selectedAiAgentLabel?: string
   onOpenAiAgents?: () => void
   onCycleDefaultAiAgent?: () => void
+  onSetDefaultAiAgent?: (agent: AiAgentId) => void
+}
+
+function explicitSwitchCommands({
+  aiAgentsStatus,
+  selectedAiAgent,
+  onSetDefaultAiAgent,
+}: Pick<AiAgentCommandsConfig, 'aiAgentsStatus' | 'selectedAiAgent' | 'onSetDefaultAiAgent'>): CommandAction[] {
+  if (!aiAgentsStatus || !selectedAiAgent || !onSetDefaultAiAgent) return []
+
+  return AI_AGENT_DEFINITIONS
+    .filter((definition) => definition.id !== selectedAiAgent)
+    .filter((definition) => isAiAgentInstalled(aiAgentsStatus, definition.id))
+    .map((definition) => ({
+      id: `switch-ai-agent-${definition.id}`,
+      label: `Switch AI Agent to ${definition.label}`,
+      group: 'Settings' as const,
+      keywords: ['ai', 'agent', 'default', 'switch', 'claude', 'codex', definition.shortLabel.toLowerCase()],
+      enabled: true,
+      execute: () => onSetDefaultAiAgent(definition.id),
+    }))
 }
 
 export function buildAiAgentCommands({
+  aiAgentsStatus,
+  selectedAiAgent,
   selectedAiAgentLabel,
   onOpenAiAgents,
   onCycleDefaultAiAgent,
+  onSetDefaultAiAgent,
 }: AiAgentCommandsConfig): CommandAction[] {
-  return [
+  const commands: CommandAction[] = [
     {
       id: 'open-ai-agents',
       label: 'Open AI Agents',
@@ -20,13 +52,25 @@ export function buildAiAgentCommands({
       enabled: !!onOpenAiAgents,
       execute: () => onOpenAiAgents?.(),
     },
-    {
-      id: 'switch-default-ai-agent',
-      label: selectedAiAgentLabel ? `Switch Default AI Agent (${selectedAiAgentLabel})` : 'Switch Default AI Agent',
-      group: 'Settings',
-      keywords: ['ai', 'agent', 'default', 'switch', 'claude', 'codex'],
-      enabled: !!onCycleDefaultAiAgent,
-      execute: () => onCycleDefaultAiAgent?.(),
-    },
   ]
+
+  const switchCommands = explicitSwitchCommands({
+    aiAgentsStatus,
+    selectedAiAgent,
+    onSetDefaultAiAgent,
+  })
+  if (aiAgentsStatus && selectedAiAgent) {
+    return [...commands, ...switchCommands]
+  }
+
+  commands.push({
+    id: 'switch-default-ai-agent',
+    label: selectedAiAgentLabel ? `Switch Default AI Agent (${selectedAiAgentLabel})` : 'Switch Default AI Agent',
+    group: 'Settings',
+    keywords: ['ai', 'agent', 'default', 'switch', 'claude', 'codex'],
+    enabled: !!onCycleDefaultAiAgent,
+    execute: () => onCycleDefaultAiAgent?.(),
+  })
+
+  return commands
 }
