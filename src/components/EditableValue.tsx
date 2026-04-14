@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react'
 import { normalizeUrl, openExternalUrl } from '../utils/url'
 import { getTagStyle } from '../utils/tagStyles'
+import { PROPERTY_CHIP_STYLE } from './propertyChipStyles'
 
 export function UrlValue({
   value,
@@ -212,13 +213,11 @@ export function TagPillList({
         ) : (
           <span
             key={idx}
-            className="group/pill relative inline-flex h-6 max-w-full min-w-0 cursor-pointer items-center overflow-hidden rounded-md transition-colors"
+            className="group/pill relative inline-flex max-w-full min-w-0 cursor-pointer items-center overflow-hidden transition-colors"
             style={{
-              ...getTagStyle(item),
+              ...PROPERTY_CHIP_STYLE,
               backgroundColor: getTagStyle(item).bg,
-              padding: '0 8px',
-              fontSize: 12,
-              fontWeight: 500,
+              color: getTagStyle(item).color,
             }}
             onClick={() => handleStartEdit(idx)}
             title="Click to edit"
@@ -255,8 +254,8 @@ export function TagPillList({
         />
       ) : (
         <button
-          className="inline-flex h-6 items-center justify-center rounded-md border-none bg-muted px-2 text-[12px] font-medium leading-none text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-          style={{ padding: '0 8px' }}
+          className="inline-flex items-center justify-center border-none bg-muted leading-none text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          style={PROPERTY_CHIP_STYLE}
           onClick={() => setIsAddingNew(true)}
           title={`Add ${label.toLowerCase()}`}
         >

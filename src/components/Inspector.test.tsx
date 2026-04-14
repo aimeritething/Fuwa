@@ -122,7 +122,7 @@ describe('Inspector', () => {
     render(<Inspector {...defaultProps} entry={mockEntry} content={mockContent} />)
     const badge = screen.getByTestId('status-badge')
     expect(badge).toHaveTextContent('Active')
-    expect(badge.className).toContain('rounded')
+    expect(badge.style.borderRadius).toBe('6px')
   })
 
   it('computes word count from content minus frontmatter and title', () => {

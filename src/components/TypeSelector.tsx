@@ -2,6 +2,7 @@ import type { FrontmatterValue } from './Inspector'
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { getTypeIcon } from './NoteItem'
+import { PROPERTY_CHIP_STYLE } from './propertyChipStyles'
 import { PROPERTY_PANEL_ROW_STYLE } from './propertyPanelLayout'
 
 const TYPE_NONE = '__none__'
@@ -29,7 +30,13 @@ function ReadOnlyType({ isA, customColorKey, onNavigate }: { isA?: string | null
         {onNavigate ? (
           <button
             className="min-w-0 max-w-full truncate border-none cursor-pointer ring-inset hover:ring-1 hover:ring-current"
-            style={{ background: getTypeLightColor(isA, customColorKey), color: getTypeColor(isA, customColorKey), borderRadius: 6, padding: '0 8px', fontSize: 12, fontWeight: 500, height: 24, display: 'inline-flex', alignItems: 'center' }}
+            style={{
+              ...PROPERTY_CHIP_STYLE,
+              background: getTypeLightColor(isA, customColorKey),
+              color: getTypeColor(isA, customColorKey),
+              display: 'inline-flex',
+              alignItems: 'center',
+            }}
             onClick={() => onNavigate(isA.toLowerCase())} title={isA}
           >{isA}</button>
         ) : (
@@ -66,13 +73,9 @@ export function TypeSelector({ isA, customColorKey, availableTypes, typeColorKey
             size="sm"
             className={`h-auto max-w-full gap-1 border-none shadow-none [&_svg]:text-current ring-inset${isA ? ' hover:ring-1 hover:ring-current' : ' bg-muted hover:opacity-80'}`}
             style={{
+              ...PROPERTY_CHIP_STYLE,
               background: typeLightColor ?? undefined,
               color: typeColor ?? undefined,
-              borderRadius: 6,
-              padding: '0 8px',
-              height: 24,
-              fontSize: 12,
-              fontWeight: 500,
             }}
           >
             <SelectValue placeholder="None" />
