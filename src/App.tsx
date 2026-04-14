@@ -54,6 +54,7 @@ import { useAppSave } from './hooks/useAppSave'
 import { useVaultBridge } from './hooks/useVaultBridge'
 import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { ConfirmDeleteDialog } from './components/ConfirmDeleteDialog'
+import { DeleteProgressNotice } from './components/DeleteProgressNotice'
 import { UpdateBanner } from './components/UpdateBanner'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
@@ -451,6 +452,8 @@ function App() {
   const deleteActions = useDeleteActions({
     onDeselectNote: (path: string) => { if (notes.activeTabPath === path) notes.closeAllTabs() },
     removeEntry: vault.removeEntry,
+    refreshModifiedFiles: vault.loadModifiedFiles,
+    reloadVault: vault.reloadVault,
     setToastMessage,
   })
 
@@ -770,6 +773,7 @@ function App() {
       <UpdateBanner status={updateStatus} actions={updateActions} />
       <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />
       <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={vaultSwitcher.restoreGettingStarted} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isOffline={networkStatus.isOffline} isGitVault={!vault.modifiedFilesError} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} aiAgentsStatus={aiAgentsStatus} defaultAiAgent={aiAgentPreferences.defaultAiAgent} />
+      <DeleteProgressNotice count={deleteActions.pendingDeleteCount} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
       <CommandPalette

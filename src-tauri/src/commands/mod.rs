@@ -1,4 +1,5 @@
 mod ai;
+mod delete;
 mod git;
 mod system;
 mod vault;
@@ -6,6 +7,7 @@ mod vault;
 use std::borrow::Cow;
 
 pub use ai::*;
+pub use delete::*;
 pub use git::*;
 pub use system::*;
 pub use vault::*;

@@ -13,11 +13,15 @@ const mockInvokeFn = mockInvoke as ReturnType<typeof vi.fn>
 describe('useDeleteActions', () => {
   let onDeselectNote: ReturnType<typeof vi.fn>
   let removeEntry: ReturnType<typeof vi.fn>
+  let refreshModifiedFiles: ReturnType<typeof vi.fn>
+  let reloadVault: ReturnType<typeof vi.fn>
   let setToastMessage: ReturnType<typeof vi.fn>
 
   beforeEach(() => {
     onDeselectNote = vi.fn()
     removeEntry = vi.fn()
+    refreshModifiedFiles = vi.fn().mockResolvedValue(undefined)
+    reloadVault = vi.fn().mockResolvedValue(undefined)
     setToastMessage = vi.fn()
     mockInvokeFn.mockReset()
   })
@@ -27,28 +31,83 @@ describe('useDeleteActions', () => {
       useDeleteActions({
         onDeselectNote,
         removeEntry,
+        refreshModifiedFiles,
+        reloadVault,
         setToastMessage,
       }),
     )
   }
 
+  async function openDeleteDialog(
+    result: ReturnType<typeof renderDeleteActions>['result'],
+    paths: string[],
+  ) {
+    if (paths.length === 1) {
+      await act(async () => {
+        await result.current.handleDeleteNote(paths[0])
+      })
+      return
+    }
+
+    act(() => {
+      result.current.handleBulkDeletePermanently(paths)
+    })
+  }
+
+  async function confirmCurrentDelete(result: ReturnType<typeof renderDeleteActions>['result']) {
+    await act(async () => {
+      await result.current.confirmDelete!.onConfirm()
+    })
+  }
+
+  async function confirmDeleteAndExpectBatchCall(paths: string[], deletedPaths = paths) {
+    mockInvokeFn.mockResolvedValue(deletedPaths)
+    const { result } = renderDeleteActions()
+
+    await openDeleteDialog(result, paths)
+    await confirmCurrentDelete(result)
+
+    expect(result.current.confirmDelete).toBeNull()
+    expect(mockInvokeFn).toHaveBeenCalledTimes(1)
+    expect(mockInvokeFn).toHaveBeenCalledWith('batch_delete_notes', { paths })
+
+    return { result }
+  }
+
   // --- deleteNoteFromDisk ---
 
   describe('deleteNoteFromDisk', () => {
-    it('invokes delete_note, closes tab, removes entry, returns true', async () => {
-      mockInvokeFn.mockResolvedValue(undefined)
+    it('invokes batch_delete_notes, updates pending state, and returns true', async () => {
+      let resolveDelete: ((paths: string[]) => void) | null = null
+      mockInvokeFn.mockImplementation(() => new Promise((resolve) => {
+        resolveDelete = resolve as (paths: string[]) => void
+      }))
       const { result } = renderDeleteActions()
-      let ok: boolean | undefined
-      await act(async () => {
-        ok = await result.current.deleteNoteFromDisk('/vault/a.md')
+      let okPromise: Promise<boolean> | undefined
+
+      act(() => {
+        okPromise = result.current.deleteNoteFromDisk('/vault/a.md')
       })
-      expect(ok).toBe(true)
-      expect(mockInvokeFn).toHaveBeenCalledWith('delete_note', { path: '/vault/a.md' })
+
+      expect(result.current.pendingDeleteCount).toBe(1)
+      expect(mockInvokeFn).toHaveBeenCalledWith('batch_delete_notes', { paths: ['/vault/a.md'] })
       expect(onDeselectNote).toHaveBeenCalledWith('/vault/a.md')
       expect(removeEntry).toHaveBeenCalledWith('/vault/a.md')
+      expect(setToastMessage).toHaveBeenNthCalledWith(1, 'Deleting note...')
+
+      let ok: boolean | undefined
+      await act(async () => {
+        resolveDelete?.(['/vault/a.md'])
+        ok = await okPromise
+      })
+
+      expect(ok).toBe(true)
+      expect(result.current.pendingDeleteCount).toBe(0)
+      expect(refreshModifiedFiles).toHaveBeenCalledTimes(1)
+      expect(setToastMessage).toHaveBeenLastCalledWith('Note permanently deleted')
     })
 
-    it('shows toast and returns false on failure', async () => {
+    it('reloads the vault and returns false on failure', async () => {
       mockInvokeFn.mockRejectedValue(new Error('disk full'))
       const { result } = renderDeleteActions()
       let ok: boolean | undefined
@@ -56,6 +115,8 @@ describe('useDeleteActions', () => {
         ok = await result.current.deleteNoteFromDisk('/vault/a.md')
       })
       expect(ok).toBe(false)
+      expect(reloadVault).toHaveBeenCalledTimes(1)
+      expect(refreshModifiedFiles).toHaveBeenCalledTimes(1)
       expect(setToastMessage).toHaveBeenCalledWith(expect.stringContaining('Failed to delete'))
     })
   })
@@ -65,24 +126,13 @@ describe('useDeleteActions', () => {
   describe('handleDeleteNote', () => {
     it('sets confirmDelete dialog state', async () => {
       const { result } = renderDeleteActions()
-      await act(async () => {
-        await result.current.handleDeleteNote('/vault/a.md')
-      })
+      await openDeleteDialog(result, ['/vault/a.md'])
       expect(result.current.confirmDelete).not.toBeNull()
       expect(result.current.confirmDelete?.title).toBe('Delete permanently?')
     })
 
     it('onConfirm deletes the note and clears dialog', async () => {
-      mockInvokeFn.mockResolvedValue(undefined)
-      const { result } = renderDeleteActions()
-      await act(async () => {
-        await result.current.handleDeleteNote('/vault/a.md')
-      })
-      await act(async () => {
-        await result.current.confirmDelete!.onConfirm()
-      })
-      expect(result.current.confirmDelete).toBeNull()
-      expect(mockInvokeFn).toHaveBeenCalledWith('delete_note', { path: '/vault/a.md' })
+      await confirmDeleteAndExpectBatchCall(['/vault/a.md'])
       expect(setToastMessage).toHaveBeenCalledWith('Note permanently deleted')
     })
   })
@@ -90,34 +140,30 @@ describe('useDeleteActions', () => {
   // --- handleBulkDeletePermanently ---
 
   describe('handleBulkDeletePermanently', () => {
-    it('sets confirmDelete with correct plural title', () => {
+    it.each([
+      { paths: ['/vault/a.md'], expectedTitle: 'Delete 1 note permanently?' },
+      { paths: ['/vault/a.md', '/vault/b.md'], expectedTitle: 'Delete 2 notes permanently?' },
+    ])('sets confirmDelete title for $expectedTitle', ({ paths, expectedTitle }) => {
       const { result } = renderDeleteActions()
       act(() => {
-        result.current.handleBulkDeletePermanently(['/vault/a.md', '/vault/b.md'])
+        result.current.handleBulkDeletePermanently(paths)
       })
-      expect(result.current.confirmDelete?.title).toBe('Delete 2 notes permanently?')
+      expect(result.current.confirmDelete?.title).toBe(expectedTitle)
     })
 
-    it('sets confirmDelete with singular title for one note', () => {
-      const { result } = renderDeleteActions()
-      act(() => {
-        result.current.handleBulkDeletePermanently(['/vault/a.md'])
-      })
-      expect(result.current.confirmDelete?.title).toBe('Delete 1 note permanently?')
-    })
-
-    it('onConfirm deletes all paths and shows toast', async () => {
-      mockInvokeFn.mockResolvedValue(undefined)
-      const { result } = renderDeleteActions()
-      act(() => {
-        result.current.handleBulkDeletePermanently(['/vault/a.md', '/vault/b.md'])
-      })
-      await act(async () => {
-        await result.current.confirmDelete!.onConfirm()
-      })
-      expect(result.current.confirmDelete).toBeNull()
-      expect(mockInvokeFn).toHaveBeenCalledTimes(2)
+    it('onConfirm deletes all paths in one backend call and shows toast', async () => {
+      await confirmDeleteAndExpectBatchCall(['/vault/a.md', '/vault/b.md'])
       expect(setToastMessage).toHaveBeenCalledWith('2 notes permanently deleted')
+    })
+
+    it('reloads the note list when a batch delete only partially succeeds', async () => {
+      await confirmDeleteAndExpectBatchCall(['/vault/a.md', '/vault/b.md'], ['/vault/a.md'])
+
+      expect(reloadVault).toHaveBeenCalledTimes(1)
+      expect(refreshModifiedFiles).toHaveBeenCalledTimes(1)
+      expect(setToastMessage).toHaveBeenLastCalledWith(
+        'Deleted 1 of 2 notes. The note list was reloaded to recover failed items.',
+      )
     })
   })
 
@@ -126,9 +172,7 @@ describe('useDeleteActions', () => {
   describe('setConfirmDelete', () => {
     it('can clear confirmDelete via setConfirmDelete(null)', async () => {
       const { result } = renderDeleteActions()
-      await act(async () => {
-        await result.current.handleDeleteNote('/vault/a.md')
-      })
+      await openDeleteDialog(result, ['/vault/a.md'])
       expect(result.current.confirmDelete).not.toBeNull()
       act(() => {
         result.current.setConfirmDelete(null)
