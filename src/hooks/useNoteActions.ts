@@ -14,6 +14,7 @@ export interface NoteActionsConfig {
   addEntry: (entry: VaultEntry) => void
   removeEntry: (path: string) => void
   entries: VaultEntry[]
+  flushBeforePathRename?: (path: string) => Promise<void>
   reloadVault?: () => Promise<unknown>
   setToastMessage: (msg: string | null) => void
   updateEntry: (path: string, patch: Partial<VaultEntry>) => void
@@ -110,6 +111,22 @@ interface MaybeRenameAfterFrontmatterUpdateParams {
   deps: TitleRenameDeps
 }
 
+async function flushBeforeTitleRename(
+  path: string,
+  key: string,
+  value: FrontmatterValue,
+  flushBeforePathRename?: (path: string) => Promise<void>,
+): Promise<boolean> {
+  if (!shouldRenameOnTitleUpdate(key, value) || !flushBeforePathRename) return true
+
+  try {
+    await flushBeforePathRename(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function maybeRenameAfterFrontmatterUpdate({
   path,
   key,
@@ -122,6 +139,41 @@ async function maybeRenameAfterFrontmatterUpdate({
   } catch (err) {
     console.error('Failed to rename note after title change:', err)
   }
+}
+
+interface UpdateFrontmatterAndMaybeRenameParams {
+  config: NoteActionsConfig
+  deps: TitleRenameDeps
+  key: string
+  options?: FrontmatterOpOptions
+  path: string
+  runFrontmatterOp: (
+    op: 'update' | 'delete',
+    path: string,
+    key: string,
+    value?: FrontmatterValue,
+    options?: FrontmatterOpOptions,
+  ) => Promise<string | undefined>
+  value: FrontmatterValue
+}
+
+async function updateFrontmatterAndMaybeRename({
+  config,
+  deps,
+  key,
+  options,
+  path,
+  runFrontmatterOp,
+  value,
+}: UpdateFrontmatterAndMaybeRenameParams): Promise<void> {
+  const canRename = await flushBeforeTitleRename(path, key, value, config.flushBeforePathRename)
+  if (!canRename) return
+
+  const newContent = await runFrontmatterOp('update', path, key, value, options)
+  if (!applyFrontmatterCallbacks({ config, path, newContent })) return
+
+  await maybeRenameAfterFrontmatterUpdate({ path, key, value, deps })
+  config.onFrontmatterPersisted?.()
 }
 
 export function useNoteActions(config: NoteActionsConfig) {
@@ -159,12 +211,8 @@ export function useNoteActions(config: NoteActionsConfig) {
     handleCreateType: creation.handleCreateType,
     createTypeEntrySilent: creation.createTypeEntrySilent,
     handleUpdateFrontmatter: useCallback(async (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => {
-      const newContent = await runFrontmatterOp('update', path, key, value, options)
-      if (!applyFrontmatterCallbacks({ config, path, newContent })) return
-      await maybeRenameAfterFrontmatterUpdate({
-        path,
-        key,
-        value,
+      await updateFrontmatterAndMaybeRename({
+        config,
         deps: {
           vaultPath: config.vaultPath,
           tabsRef: rename.tabsRef,
@@ -177,8 +225,12 @@ export function useNoteActions(config: NoteActionsConfig) {
           setToastMessage,
           updateTabContent,
         },
+        path,
+        key,
+        value,
+        options,
+        runFrontmatterOp,
       })
-      config.onFrontmatterPersisted?.()
     }, [runFrontmatterOp, config, rename.tabsRef, setTabs, activeTabPathRef, handleSwitchTab, setToastMessage, updateTabContent]),
     handleDeleteProperty: useCallback(async (path: string, key: string, options?: FrontmatterOpOptions) => {
       const newContent = await runFrontmatterOp('delete', path, key, undefined, options)

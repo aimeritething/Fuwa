@@ -249,7 +249,26 @@ function App() {
     onOpenFile: (relativePath) => conflictFlow.openConflictFileRef.current(relativePath),
   })
 
-  const notes = useNoteActions({ addEntry: vault.addEntry, removeEntry: vault.removeEntry, entries: vault.entries, reloadVault: vault.reloadVault, setToastMessage, updateEntry: vault.updateEntry, vaultPath: resolvedPath, addPendingSave: vault.addPendingSave, removePendingSave: vault.removePendingSave, trackUnsaved: vault.trackUnsaved, clearUnsaved: vault.clearUnsaved, unsavedPaths: vault.unsavedPaths, markContentPending: (path, content) => appSave.contentChangeRef.current(path, content), onNewNotePersisted: vault.loadModifiedFiles, replaceEntry: vault.replaceEntry, onFrontmatterPersisted: vault.loadModifiedFiles, onPathRenamed: (oldPath, newPath) => appSave.trackRenamedPath(oldPath, newPath) })
+  const notes = useNoteActions({
+    addEntry: vault.addEntry,
+    removeEntry: vault.removeEntry,
+    entries: vault.entries,
+    flushBeforePathRename: (path) => appSave.flushBeforeAction(path),
+    reloadVault: vault.reloadVault,
+    setToastMessage,
+    updateEntry: vault.updateEntry,
+    vaultPath: resolvedPath,
+    addPendingSave: vault.addPendingSave,
+    removePendingSave: vault.removePendingSave,
+    trackUnsaved: vault.trackUnsaved,
+    clearUnsaved: vault.clearUnsaved,
+    unsavedPaths: vault.unsavedPaths,
+    markContentPending: (path, content) => appSave.contentChangeRef.current(path, content),
+    onNewNotePersisted: vault.loadModifiedFiles,
+    replaceEntry: vault.replaceEntry,
+    onFrontmatterPersisted: vault.loadModifiedFiles,
+    onPathRenamed: (oldPath, newPath) => appSave.trackRenamedPath(oldPath, newPath),
+  })
 
   // Note window: auto-open the note from URL params once vault entries load
   const noteWindowOpenedRef = useRef(false)
