@@ -84,7 +84,7 @@ function findTextBoundaryAtEdge(
   }
 
   const children = Array.from(node.childNodes)
-  const orderedChildren = edge === 'start' ? children : children.toReversed()
+  const orderedChildren = edge === 'start' ? children : [...children].reverse()
 
   for (const child of orderedChildren) {
     const boundary = findTextBoundaryAtEdge(child, edge)
