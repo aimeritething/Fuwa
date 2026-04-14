@@ -322,4 +322,64 @@ describe('useAppSave', () => {
       '# Fresh Title\n\nBody',
     )
   })
+
+  it('uses the latest active tab content when untitled auto-rename resolves after continued typing', async () => {
+    vi.useFakeTimers()
+    vi.mocked(isTauri).mockReturnValue(true)
+
+    const oldPath = '/vault/untitled-note-123.md'
+    const newPath = '/vault/fresh-title.md'
+    const entry = makeEntry(oldPath, 'Untitled Note 123', 'untitled-note-123.md')
+    let tabsState = [{ entry, content: '# Fresh Title\n\nBody' }]
+    const setTabs = vi.fn((updater: SetStateAction<typeof tabsState>) => {
+      tabsState = typeof updater === 'function' ? updater(tabsState) : updater
+    })
+
+    vi.mocked(invoke).mockImplementation(async (command: string, args?: Record<string, unknown>) => {
+      if (command === 'save_note_content') return undefined
+      if (command === 'auto_rename_untitled') return { new_path: newPath, updated_files: 0 }
+      if (command === 'reload_vault_entry') return makeEntry(newPath, 'Fresh Title', 'fresh-title.md')
+      if (command === 'get_note_content' && args?.path === newPath) return '# Fresh Title\n\nBody from disk'
+      return undefined
+    })
+
+    const { result, rerender } = renderHook(
+      ({ currentTabs, currentActiveTabPath }: { currentTabs: typeof tabsState; currentActiveTabPath: string | null }) => useAppSave({
+        ...deps,
+        setTabs,
+        tabs: currentTabs,
+        activeTabPath: currentActiveTabPath,
+        unsavedPaths: new Set([oldPath]),
+      }),
+      {
+        initialProps: {
+          currentTabs: tabsState,
+          currentActiveTabPath: oldPath,
+        },
+      },
+    )
+
+    await act(async () => {
+      result.current.handleContentChange(oldPath, '# Fresh Title\n\nBody')
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    tabsState = [{ entry, content: '# Fresh Title\n\nBody that keeps changing while rename is pending' }]
+    rerender({
+      currentTabs: tabsState,
+      currentActiveTabPath: oldPath,
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_500)
+    })
+
+    expect(deps.replaceEntry).toHaveBeenCalledWith(
+      oldPath,
+      expect.objectContaining({ path: newPath, filename: 'fresh-title.md' }),
+      '# Fresh Title\n\nBody that keeps changing while rename is pending',
+    )
+    expect(tabsState[0].entry.path).toBe(newPath)
+    expect(tabsState[0].content).toBe('# Fresh Title\n\nBody that keeps changing while rename is pending')
+  })
 })

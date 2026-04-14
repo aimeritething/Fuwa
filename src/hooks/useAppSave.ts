@@ -40,15 +40,27 @@ function trackRenamedPath(renamedPaths: RenamedPathMap, oldPath: string, newPath
   renamedPaths.set(oldPath, newPath)
 }
 
-function findUnsavedFallback(
-  tabs: TabState[], activeTabPath: string | null, unsavedPaths: Set<string>,
-): { path: string; content: string } | undefined {
+function findUnsavedFallback({
+  tabs,
+  activeTabPath,
+  unsavedPaths,
+}: {
+  tabs: TabState[]
+  activeTabPath: string | null
+  unsavedPaths: Set<string>
+}): { path: string; content: string } | undefined {
   const activeTab = tabs.find(t => t.entry.path === activeTabPath)
   if (!activeTab || !unsavedPaths.has(activeTab.entry.path)) return undefined
   return { path: activeTab.entry.path, content: activeTab.content }
 }
 
-function activeTabNeedsRename(tabs: TabState[], activeTabPath: string | null): { path: string; title: string } | null {
+function activeTabNeedsRename({
+  tabs,
+  activeTabPath,
+}: {
+  tabs: TabState[]
+  activeTabPath: string | null
+}): { path: string; title: string } | null {
   const activeTab = tabs.find(t => t.entry.path === activeTabPath)
   if (!activeTab) return null
   return needsRenameOnSave(activeTab.entry.title, activeTab.entry.filename)
@@ -62,48 +74,65 @@ function isUntitledRenameCandidate(path: string): boolean {
   return stem.startsWith('untitled-') && /\d+$/.test(stem)
 }
 
-function shouldScheduleUntitledRename(path: string, content: string): boolean {
+function shouldScheduleUntitledRename({ path, content }: { path: string; content: string }): boolean {
   return isTauri()
     && isUntitledRenameCandidate(path)
     && extractH1TitleFromContent(content) !== null
 }
 
-function matchingPendingRename(
-  pending: PendingUntitledRename | null,
-  path?: string,
+function matchingPendingRename({
+  pending,
+  path,
+}: {
+  pending: PendingUntitledRename | null
+  path?: string
+},
 ): PendingUntitledRename | null {
   if (!pending) return null
   if (path && pending.path !== path) return null
   return pending
 }
 
-function takePendingRename(
-  pendingRenameRef: MutableRefObject<PendingUntitledRename | null>,
-  path?: string,
+function takePendingRename({
+  pendingRenameRef,
+  path,
+}: {
+  pendingRenameRef: MutableRefObject<PendingUntitledRename | null>
+  path?: string
+},
 ): PendingUntitledRename | null {
-  const pending = matchingPendingRename(pendingRenameRef.current, path)
+  const pending = matchingPendingRename({ pending: pendingRenameRef.current, path })
   if (!pending) return null
   clearTimeout(pending.timer)
   pendingRenameRef.current = null
   return pending
 }
 
-function schedulePendingRename(
-  pendingRenameRef: MutableRefObject<PendingUntitledRename | null>,
-  path: string,
-  onFire: (path: string) => void,
+function schedulePendingRename({
+  pendingRenameRef,
+  path,
+  onFire,
+}: {
+  pendingRenameRef: MutableRefObject<PendingUntitledRename | null>
+  path: string
+  onFire: (path: string) => void
+},
 ): void {
-  takePendingRename(pendingRenameRef)
+  takePendingRename({ pendingRenameRef })
   const timer = setTimeout(() => {
-    const pending = takePendingRename(pendingRenameRef, path)
+    const pending = takePendingRename({ pendingRenameRef, path })
     if (pending) onFire(pending.path)
   }, UNTITLED_RENAME_DEBOUNCE_MS)
   pendingRenameRef.current = { path, timer }
 }
 
-function pendingRenameOutsideActiveTab(
-  pendingRenameRef: MutableRefObject<PendingUntitledRename | null>,
-  activeTabPath: string | null,
+function pendingRenameOutsideActiveTab({
+  pendingRenameRef,
+  activeTabPath,
+}: {
+  pendingRenameRef: MutableRefObject<PendingUntitledRename | null>
+  activeTabPath: string | null
+},
 ): string | null {
   const pending = pendingRenameRef.current
   if (!pending || pending.path === activeTabPath) return null
@@ -111,31 +140,46 @@ function pendingRenameOutsideActiveTab(
 }
 
 async function reloadAutoRenamedNote(
-  oldPath: string,
-  newPath: string,
-  tabs: TabState[],
-  activeTabPath: string | null,
-  setTabs: AppSaveDeps['setTabs'],
-  handleSwitchTab: AppSaveDeps['handleSwitchTab'],
-  replaceEntry: AppSaveDeps['replaceEntry'],
-  loadModifiedFiles: AppSaveDeps['loadModifiedFiles'],
+  {
+    oldPath,
+    newPath,
+    tabsRef,
+    activeTabPathRef,
+    setTabs,
+    handleSwitchTab,
+    replaceEntry,
+    loadModifiedFiles,
+  }: {
+    oldPath: string
+    newPath: string
+    tabsRef: MutableRefObject<TabState[]>
+    activeTabPathRef: MutableRefObject<string | null>
+    setTabs: AppSaveDeps['setTabs']
+    handleSwitchTab: AppSaveDeps['handleSwitchTab']
+    replaceEntry: AppSaveDeps['replaceEntry']
+    loadModifiedFiles: AppSaveDeps['loadModifiedFiles']
+  },
 ): Promise<void> {
   const [newEntry, newContent] = await Promise.all([
     invoke<VaultEntry>('reload_vault_entry', { path: newPath }),
     invoke<string>('get_note_content', { path: newPath }),
   ])
 
-  const otherTabPaths = tabs
+  const preservedContent = activeTabPathRef.current === oldPath
+    ? tabsRef.current.find((tab) => tab.entry.path === oldPath)?.content ?? newContent
+    : newContent
+
+  const otherTabPaths = tabsRef.current
     .filter((tab) => tab.entry.path !== oldPath && tab.entry.path !== newPath)
     .map((tab) => tab.entry.path)
 
   setTabs((prev: TabState[]) => prev.map((tab) => (
     tab.entry.path === oldPath
-      ? { entry: { ...tab.entry, ...newEntry, path: newPath }, content: newContent }
+      ? { entry: { ...tab.entry, ...newEntry, path: newPath }, content: preservedContent }
       : tab
   )))
-  if (activeTabPath === oldPath) handleSwitchTab(newPath)
-  replaceEntry(oldPath, { ...newEntry, path: newPath }, newContent)
+  if (activeTabPathRef.current === oldPath) handleSwitchTab(newPath)
+  replaceEntry(oldPath, { ...newEntry, path: newPath }, preservedContent)
   await Promise.all(otherTabPaths.map(async (path) => {
     const content = await invoke<string>('get_note_content', { path })
     setTabs((prev: TabState[]) => prev.map((tab) => (
@@ -171,13 +215,19 @@ export function useAppSave({
   const contentChangeRef = useRef<(path: string, content: string) => void>(() => {})
   const pendingUntitledRenameRef = useRef<PendingUntitledRename | null>(null)
   const renamedPathsRef = useRef<RenamedPathMap>(new Map())
+  const tabsRef = useRef(tabs)
+  tabsRef.current = tabs // eslint-disable-line react-hooks/refs -- ref sync pattern
+  const activeTabPathRef = useRef(activeTabPath)
+  activeTabPathRef.current = activeTabPath // eslint-disable-line react-hooks/refs -- ref sync pattern
+  const unsavedPathsRef = useRef(unsavedPaths)
+  unsavedPathsRef.current = unsavedPaths // eslint-disable-line react-hooks/refs -- ref sync pattern
 
   const onAfterSave = useCallback(() => {
     loadModifiedFiles()
   }, [loadModifiedFiles])
 
   const cancelPendingUntitledRename = useCallback((path?: string) => (
-    takePendingRename(pendingUntitledRenameRef, path) !== null
+    takePendingRename({ pendingRenameRef: pendingUntitledRenameRef, path }) !== null
   ), [])
 
   const executeUntitledRename = useCallback(async (path: string) => {
@@ -188,36 +238,40 @@ export function useAppSave({
       })
       if (!result) return false
       trackRenamedPath(renamedPathsRef.current, path, result.new_path)
-      await reloadAutoRenamedNote(
-        path,
-        result.new_path,
-        tabs,
-        activeTabPath,
+      await reloadAutoRenamedNote({
+        oldPath: path,
+        newPath: result.new_path,
+        tabsRef,
+        activeTabPathRef,
         setTabs,
         handleSwitchTab,
         replaceEntry,
         loadModifiedFiles,
-      )
+      })
       return true
     } catch {
       return false
     }
-  }, [resolvedPath, tabs, activeTabPath, setTabs, handleSwitchTab, replaceEntry, loadModifiedFiles])
+  }, [resolvedPath, setTabs, handleSwitchTab, replaceEntry, loadModifiedFiles])
 
   const flushPendingUntitledRename = useCallback(async (path?: string) => {
-    const pending = takePendingRename(pendingUntitledRenameRef, path)
+    const pending = takePendingRename({ pendingRenameRef: pendingUntitledRenameRef, path })
     if (!pending) return false
     return executeUntitledRename(pending.path)
   }, [executeUntitledRename])
 
   const scheduleUntitledRename = useCallback((path: string, content: string) => {
-    if (!shouldScheduleUntitledRename(path, content)) {
+    if (!shouldScheduleUntitledRename({ path, content })) {
       cancelPendingUntitledRename(path)
       return
     }
 
-    schedulePendingRename(pendingUntitledRenameRef, path, (pendingPath) => {
+    schedulePendingRename({
+      pendingRenameRef: pendingUntitledRenameRef,
+      path,
+      onFire: (pendingPath) => {
       void executeUntitledRename(pendingPath)
+      },
     })
   }, [cancelPendingUntitledRename, executeUntitledRename])
 
@@ -251,15 +305,12 @@ export function useAppSave({
   useEffect(() => { contentChangeRef.current = handleContentChange }, [handleContentChange])
   useEffect(() => () => { cancelPendingUntitledRename() }, [cancelPendingUntitledRename])
   useEffect(() => {
-    const pendingPath = pendingRenameOutsideActiveTab(pendingUntitledRenameRef, activeTabPath)
+    const pendingPath = pendingRenameOutsideActiveTab({
+      pendingRenameRef: pendingUntitledRenameRef,
+      activeTabPath,
+    })
     if (pendingPath) cancelPendingUntitledRename(pendingPath)
   }, [activeTabPath, cancelPendingUntitledRename])
-
-  // Refs for stable closure in flushBeforeAction
-  const tabsRef = useRef(tabs)
-  tabsRef.current = tabs // eslint-disable-line react-hooks/refs -- ref sync pattern
-  const unsavedPathsRef = useRef(unsavedPaths)
-  unsavedPathsRef.current = unsavedPaths // eslint-disable-line react-hooks/refs -- ref sync pattern
 
   const flushBeforeAction = useCallback(async (path: string) => {
     const currentPath = resolveCurrentPath(path)
@@ -293,9 +344,13 @@ export function useAppSave({
 
   const handleSave = useCallback(async () => {
     const resolvedActiveTabPath = activeTabPath ? resolveCurrentPath(activeTabPath) : null
-    await handleSaveRaw(findUnsavedFallback(tabs, resolvedActiveTabPath, unsavedPaths))
+    await handleSaveRaw(findUnsavedFallback({
+      tabs,
+      activeTabPath: resolvedActiveTabPath,
+      unsavedPaths,
+    }))
     const flushedUntitledRename = await flushPendingUntitledRename(resolvedActiveTabPath ?? undefined)
-    const rename = activeTabNeedsRename(tabs, resolvedActiveTabPath)
+    const rename = activeTabNeedsRename({ tabs, activeTabPath: resolvedActiveTabPath })
     if (!flushedUntitledRename && rename) await handleRenameTab(rename.path, rename.title)
   }, [handleSaveRaw, handleRenameTab, tabs, activeTabPath, unsavedPaths, flushPendingUntitledRename, resolveCurrentPath])
 
