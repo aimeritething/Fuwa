@@ -4,12 +4,13 @@ import { isTauri, mockInvoke } from '../mock-tauri'
 import {
   createCheckingVaultAiGuidanceStatus,
   normalizeVaultAiGuidanceStatus,
+  type VaultAiGuidanceFileState,
   type VaultAiGuidanceStatus,
 } from '../lib/vaultAiGuidance'
 
 type RawVaultAiGuidanceStatus = Partial<{
-  agents_state: string | null
-  claude_state: string | null
+  agents_state: VaultAiGuidanceFileState | null
+  claude_state: VaultAiGuidanceFileState | null
   can_restore: boolean | null
 }>
 
