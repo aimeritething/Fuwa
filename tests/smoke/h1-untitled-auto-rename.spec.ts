@@ -38,7 +38,7 @@ async function createUntitledNote(page: Page): Promise<void> {
   await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText(/untitled-note-\d+(?:-\d+)?/i, {
     timeout: 5_000,
   })
-  await expectReadyEmptyTitleHeading(page)
+  await expectStableEmptyTitleHeading(page)
 }
 
 async function writeNewHeading(page: Page, title: string): Promise<void> {
@@ -102,6 +102,12 @@ async function expectReadyEmptyTitleHeading(page: Page): Promise<void> {
     placeholder: '"Title"',
   })
   await expect.poll(() => selectionInsideEmptyTitleHeading(page), { timeout: 5_000 }).toBe(true)
+}
+
+async function expectStableEmptyTitleHeading(page: Page): Promise<void> {
+  await expectReadyEmptyTitleHeading(page)
+  await page.waitForTimeout(300)
+  await expectReadyEmptyTitleHeading(page)
 }
 
 let tempVaultDir: string
