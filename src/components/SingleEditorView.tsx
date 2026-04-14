@@ -26,10 +26,17 @@ type TestTableBlock = {
 }
 
 function SharedContextBlockNoteView(props: React.ComponentProps<typeof BlockNoteViewRaw>) {
+  const { className, theme, ...rest } = props
   const mantineContext = useContext(MantineContext)
+  const colorScheme = theme === 'dark' ? 'dark' : 'light'
   const view = (
     <ComponentsContext.Provider value={components}>
-      <BlockNoteViewRaw {...props} />
+      <BlockNoteViewRaw
+        {...rest}
+        className={['bn-mantine', className].filter(Boolean).join(' ')}
+        data-mantine-color-scheme={colorScheme}
+        theme={theme}
+      />
     </ComponentsContext.Provider>
   )
 
@@ -37,6 +44,7 @@ function SharedContextBlockNoteView(props: React.ComponentProps<typeof BlockNote
 
   return (
     <MantineProvider
+      // BlockNote scopes Mantine defaults under `.bn-mantine` instead of `:root`.
       withCssVariables={false}
       getRootElement={() => undefined}
     >
