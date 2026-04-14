@@ -240,9 +240,45 @@ describe('NoteItem', () => {
     )
 
     const chip = screen.getByTestId('property-chip-topics-0')
-    expect(chip).toHaveTextContent('Ai')
+    expect(chip).toHaveTextContent('AI')
     expect(chip).toHaveStyle({ color: 'var(--accent-green)', backgroundColor: 'var(--accent-green-light)' })
     expect(chip.querySelector('svg')).not.toBeNull()
+  })
+
+  it('preserves exact linked note title formatting in relationship chips', () => {
+    const linkedTopic = makeEntry({
+      path: '/vault/topic/ai-ml.md',
+      filename: 'ai-ml.md',
+      title: 'AI / ML',
+      isA: 'Topic',
+    })
+    const topicType = makeEntry({
+      path: '/vault/type/topic.md',
+      filename: 'topic.md',
+      title: 'Topic',
+      isA: 'Type',
+      color: 'green',
+    })
+    const sourceEntry = makeEntry({
+      path: '/vault/note/source.md',
+      filename: 'source.md',
+      title: 'Source',
+      isA: 'Note',
+      relationships: { Topics: ['[[topic/ai-ml]]'] },
+    })
+
+    render(
+      <NoteItem
+        entry={sourceEntry}
+        isSelected={false}
+        typeEntryMap={{ Topic: topicType }}
+        allEntries={[sourceEntry, linkedTopic, topicType]}
+        displayPropsOverride={['Topics']}
+        onClickNote={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('property-chip-topics-0')).toHaveTextContent('AI / ML')
   })
 
   it('opens URL chips on Cmd+click only and keeps regular clicks inert', () => {

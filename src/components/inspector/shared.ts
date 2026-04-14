@@ -31,7 +31,7 @@ export function resolveRefProps(ref: string, entries: VaultEntry[], typeEntryMap
   const te = typeEntryMap[refType ?? '']
   const icon = resolved?.icon
   return {
-    label: wikilinkDisplay(ref),
+    label: resolved?.title ?? wikilinkDisplay(ref),
     noteIcon: icon ?? null,
     typeColor: getTypeColor(refType, te?.color),
     bgColor: getTypeLightColor(refType, te?.color),
