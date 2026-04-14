@@ -2,7 +2,8 @@
 type: ADR
 id: "0058"
 title: "Claude Code first-launch onboarding gate"
-status: active
+status: superseded
+superseded_by: "0062"
 date: 2026-04-12
 ---
 
