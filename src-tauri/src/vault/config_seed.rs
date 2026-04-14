@@ -2,7 +2,7 @@ use serde::Serialize;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use super::getting_started::{AGENTS_MD, LEGACY_AGENTS_MD};
+use super::getting_started::{agents_content_can_be_refreshed, AGENTS_MD};
 
 /// Content for `config.md` — gives the Config type a sidebar icon and label.
 const CONFIG_TYPE_DEFINITION: &str = "\
@@ -60,10 +60,7 @@ fn read_file_or_empty(path: &Path) -> String {
 }
 
 fn agents_content_can_be_replaced(content: &str) -> bool {
-    content.is_empty()
-        || content.contains("See config/agents.md")
-        || content == LEGACY_AGENTS_MD
-        || content.contains("Do not add `title:` frontmatter.")
+    content.contains("See config/agents.md") || agents_content_can_be_refreshed(content)
 }
 
 fn root_agents_can_be_replaced(path: &Path) -> bool {
@@ -321,6 +318,93 @@ mod tests {
         fs::read_to_string(vault.join("CLAUDE.md")).unwrap()
     }
 
+    type VaultOperation = fn(&Path);
+
+    fn run_seed(vault: &Path) {
+        seed_config_files(vault.to_str().unwrap());
+    }
+
+    fn run_migrate(vault: &Path) {
+        migrate_agents_md(vault.to_str().unwrap());
+    }
+
+    fn run_repair(vault: &Path) {
+        repair_config_files(vault.to_str().unwrap()).unwrap();
+    }
+
+    fn run_with_agents(
+        run: VaultOperation,
+        root_agents: Option<&str>,
+        legacy_agents: Option<&str>,
+    ) -> (TempDir, PathBuf) {
+        let (dir, vault) = create_vault();
+        if let Some(content) = root_agents {
+            write_root_agents(&vault, content);
+        }
+        if let Some(content) = legacy_agents {
+            write_legacy_agents(&vault, content);
+        }
+
+        run(&vault);
+        (dir, vault)
+    }
+
+    fn assert_preserves_custom_agents(run: VaultOperation) {
+        let (_dir, vault) = run_with_agents(
+            run,
+            Some("# Custom Agent Config\nMy custom instructions\n"),
+            None,
+        );
+
+        assert!(
+            read_root_agents(&vault).contains("Custom Agent Config"),
+            "must preserve existing content"
+        );
+    }
+
+    fn assert_refreshes_outdated_managed_agents(run: VaultOperation) {
+        let outdated_agents = AGENTS_MD.replacen(
+            "Store note type in the `type:` frontmatter field.",
+            "`type:` is the preferred type field. Tolaria still understands legacy aliases such as `Is A`.",
+            1,
+        );
+        let (_dir, vault) = run_with_agents(run, Some(&outdated_agents), None);
+
+        let content = read_root_agents(&vault);
+        assert!(content.contains("Store note type in the `type:` frontmatter field."));
+        assert!(!content.contains("Tolaria still understands legacy aliases such as `Is A`."));
+    }
+
+    fn assert_legacy_agents_move_to_root(
+        run: VaultOperation,
+        legacy_agents: &str,
+        expected_root_text: &str,
+        expect_config_dir_removed: bool,
+    ) {
+        let (_dir, vault) = run_with_agents(run, None, Some(legacy_agents));
+
+        let config_dir = vault.join("config");
+        let root_content = read_root_agents(&vault);
+        assert!(root_content.contains(expected_root_text));
+        assert!(!config_dir.join("agents.md").exists());
+        assert_eq!(config_dir.exists(), !expect_config_dir_removed);
+    }
+
+    fn assert_stub_agents_are_replaced(
+        run: VaultOperation,
+        legacy_agents: &str,
+        expected_root_text: &str,
+    ) {
+        let (_dir, vault) = run_with_agents(
+            run,
+            Some("# Agent Instructions\nSee config/agents.md for vault instructions.\n"),
+            Some(legacy_agents),
+        );
+
+        let content = read_root_agents(&vault);
+        assert!(content.contains(expected_root_text));
+    }
+
     #[test]
     fn test_seed_config_files_creates_guidance_files_at_root() {
         let (_dir, vault) = create_vault();
@@ -347,16 +431,7 @@ mod tests {
 
     #[test]
     fn test_seed_config_files_preserves_custom_agents() {
-        let (_dir, vault) = create_vault();
-
-        seed_config_files(vault.to_str().unwrap());
-        write_root_agents(&vault, "# Custom Agent Config\nMy custom instructions\n");
-
-        seed_config_files(vault.to_str().unwrap());
-        assert!(
-            read_root_agents(&vault).contains("Custom Agent Config"),
-            "must preserve existing content"
-        );
+        assert_preserves_custom_agents(run_seed);
     }
 
     #[test]
@@ -385,6 +460,11 @@ mod tests {
     }
 
     #[test]
+    fn test_seed_config_files_refreshes_outdated_managed_agents() {
+        assert_refreshes_outdated_managed_agents(run_seed);
+    }
+
+    #[test]
     fn test_seed_config_files_preserves_custom_claude() {
         let (_dir, vault) = create_vault();
         write_root_claude(&vault, "# Custom Claude instructions\nDo not overwrite\n");
@@ -396,16 +476,12 @@ mod tests {
 
     #[test]
     fn test_migrate_agents_md_moves_config_to_root() {
-        let (_dir, vault) = create_vault();
-        write_legacy_agents(&vault, "# My vault agent instructions\nCustom content\n");
-
-        migrate_agents_md(vault.to_str().unwrap());
-
-        let config_dir = vault.join("config");
-        let root_content = read_root_agents(&vault);
-        assert!(root_content.contains("My vault agent instructions"));
-        assert!(!config_dir.join("agents.md").exists());
-        assert!(!config_dir.exists());
+        assert_legacy_agents_move_to_root(
+            run_migrate,
+            "# My vault agent instructions\nCustom content\n",
+            "My vault agent instructions",
+            true,
+        );
     }
 
     #[test]
@@ -424,17 +500,11 @@ mod tests {
 
     #[test]
     fn test_migrate_agents_md_replaces_stub_with_config_content() {
-        let (_dir, vault) = create_vault();
-        write_root_agents(
-            &vault,
-            "# Agent Instructions\nSee config/agents.md for vault instructions.\n",
+        assert_stub_agents_are_replaced(
+            run_migrate,
+            "# Real Agent Config\nImportant instructions\n",
+            "Real Agent Config",
         );
-        write_legacy_agents(&vault, "# Real Agent Config\nImportant instructions\n");
-
-        migrate_agents_md(vault.to_str().unwrap());
-
-        let content = read_root_agents(&vault);
-        assert!(content.contains("Real Agent Config"));
     }
 
     #[test]
@@ -481,46 +551,31 @@ mod tests {
 
     #[test]
     fn test_repair_config_files_preserves_custom_content() {
-        let (_dir, vault) = create_vault();
-        write_root_agents(&vault, "# My custom agent config\nDo not overwrite me\n");
-
-        repair_config_files(vault.to_str().unwrap()).unwrap();
-
-        assert!(
-            read_root_agents(&vault).contains("My custom agent config"),
-            "must preserve existing content"
-        );
+        assert_preserves_custom_agents(run_repair);
     }
 
     #[test]
     fn test_repair_config_files_migrates_legacy_config() {
-        let (_dir, vault) = create_vault();
-        write_legacy_agents(
-            &vault,
-            "# My vault agents instructions\nCustom content here\n",
+        assert_legacy_agents_move_to_root(
+            run_repair,
+            "# My vault agent instructions\nCustom content\n",
+            "My vault agent instructions",
+            true,
         );
-
-        repair_config_files(vault.to_str().unwrap()).unwrap();
-
-        let config_dir = vault.join("config");
-        let root = read_root_agents(&vault);
-        assert!(root.contains("My vault agents instructions"));
-        assert!(!config_dir.join("agents.md").exists());
     }
 
     #[test]
     fn test_repair_config_files_replaces_stub_with_legacy() {
-        let (_dir, vault) = create_vault();
-        write_root_agents(
-            &vault,
-            "# Agent Instructions\nSee config/agents.md for vault instructions.\n",
+        assert_stub_agents_are_replaced(
+            run_repair,
+            "# Real Instructions\nImportant stuff\n",
+            "Real Instructions",
         );
-        write_legacy_agents(&vault, "# Real Instructions\nImportant stuff\n");
+    }
 
-        repair_config_files(vault.to_str().unwrap()).unwrap();
-
-        let content = read_root_agents(&vault);
-        assert!(content.contains("Real Instructions"));
+    #[test]
+    fn test_repair_config_files_refreshes_outdated_managed_agents() {
+        assert_refreshes_outdated_managed_agents(run_repair);
     }
 
     #[test]

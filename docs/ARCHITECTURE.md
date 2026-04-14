@@ -437,7 +437,7 @@ On first launch, `useOnboarding` checks if the default vault exists. If not, it 
 
 Once a vault is ready, `useAiAgentsOnboarding` can show a one-time `AiAgentsOnboardingPrompt`. That prompt reads `useAiAgentsStatus` so first launch surfaces whether Claude Code and Codex are installed, offers per-agent install links when they are missing, and stores local dismissal so the prompt does not repeat on every launch.
 
-The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` holds the public starter repo URL, delegates the clone to the git backend, then normalizes Tolaria-managed config files (`AGENTS.md`, `CLAUDE.md`, `config.md`) so fresh starter vaults pick up the current default guidance even when the remote starter repo still carries a legacy copy. `AGENTS.md` stays the canonical vault guidance file; `CLAUDE.md` is a compatibility shim that imports it for Claude Code without duplicating the instructions.
+The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` holds the public starter repo URL, delegates the clone to the git backend, then normalizes Tolaria-managed config files (`AGENTS.md`, `CLAUDE.md`, `config.md`) so fresh starter vaults pick up the current default guidance even when the remote starter repo still carries a legacy copy or an older pre-`type:` `is_a`-era template. `AGENTS.md` stays the canonical vault guidance file; `CLAUDE.md` is a compatibility shim that imports it for Claude Code without duplicating the instructions.
 
 ### Remote Clone & Auth Model
 

@@ -116,6 +116,112 @@ Use kebab-case: `my-note-title.md`. One note per file.
 - Do not rewrite installation-specific app config unless the user explicitly asks.
 "##;
 
+/// Older Tolaria-managed AGENTS.md content from before the `type:` migration.
+/// Existing vaults can still contain this exact text, so Tolaria treats it as
+/// managed content that is safe to refresh automatically.
+const PRE_TYPE_AGENTS_MD: &str = r##"# AGENTS.md — Tolaria Vault
+
+This is a [Tolaria](https://github.com/refactoringhq/tolaria) vault — a folder of markdown files with YAML frontmatter forming a personal knowledge graph.
+
+## Note structure
+
+Every note is a markdown file. The **first H1 heading in the body is the title** — there is no `title:` frontmatter field.
+
+```yaml
+---
+is_a: TypeName        # the note's type (must match the title of a type file in the vault)
+url: https://...      # example property
+belongs_to: "[[other-note]]"
+related_to:
+  - "[[note-a]]"
+  - "[[note-b]]"
+---
+
+# Note Title
+
+Body content in markdown.
+```
+
+System properties are prefixed with `_` (e.g. `_organized`, `_pinned`, `_icon`) — these are app-managed, do not set or show them to users unless specifically asked.
+
+## Types
+
+A type is a note with `is_a: Type`. Type files live in the vault root:
+
+```yaml
+---
+is_a: Type
+_icon: books          # Phosphor icon name in kebab-case
+_color: "#8b5cf6"     # hex color
+---
+
+# TypeName
+```
+
+To find what types exist: look for files with `is_a: Type` in the vault root.
+
+## Relationships
+
+Any frontmatter property whose value is a wikilink is a relationship. Backlinks are computed automatically.
+
+Standard names: `belongs_to`, `related_to`, `has`. Custom names are valid.
+
+## Wikilinks
+
+- `[[filename]]` or `[[Note Title]]` — link by filename or title
+- `[[filename|display text]]` — with custom display text
+- Works in frontmatter values and markdown body
+
+## Views
+
+Saved filters live in `views/` as `.view.json` files:
+
+```json
+{
+  "title": "Active Notes",
+  "filters": [
+    {"property": "is_a", "operator": "equals", "value": "Note"},
+    {"property": "status", "operator": "equals", "value": "Active"}
+  ],
+  "sort": {"property": "title", "direction": "asc"}
+}
+```
+
+## Filenames
+
+Use kebab-case: `my-note-title.md`. One note per file.
+
+## What you can do
+
+- Create/edit notes with correct frontmatter and H1 title
+- Create new type files
+- Add or modify relationships
+- Create/edit views in `views/`
+- Edit `AGENTS.md` (this file)
+
+Do not modify app configuration files — those are local to each installation.
+"##;
+
+const OUTDATED_AGENTS_MARKERS: [&str; 3] = [
+    "# AGENTS.md — Tolaria Vault",
+    "Legacy `title:` frontmatter is still read as a fallback",
+    "Tolaria still understands legacy aliases such as `Is A`.",
+];
+
+pub(super) fn agents_content_can_be_refreshed(content: &str) -> bool {
+    let is_outdated_managed_template = OUTDATED_AGENTS_MARKERS
+        .iter()
+        .all(|marker| content.contains(marker));
+    let is_stale_title_stub = content.contains("Do not add `title:` frontmatter.");
+
+    content.trim().is_empty()
+        || content == PRE_TYPE_AGENTS_MD
+        || content == LEGACY_AGENTS_MD
+        || content == STALE_AGENTS_MD
+        || is_stale_title_stub
+        || is_outdated_managed_template
+}
+
 /// Default AGENTS.md content — vault instructions for AI agents.
 /// Describes Tolaria vault mechanics only; no user-specific structure.
 /// The vault scanner will pick this up as a regular entry.
@@ -130,7 +236,7 @@ Keep edits compatible with Tolaria's current conventions. Prefer small, human-re
 - One Markdown note per file.
 - The first H1 in the body is the preferred display title.
 - Legacy `title:` frontmatter is still read as a fallback when a note has no H1. Do not add it to new notes unless you are maintaining an older file.
-- `type:` is the preferred type field. Tolaria still understands legacy aliases such as `Is A`.
+- Store note type in the `type:` frontmatter field.
 - Most notes live at the vault root as flat `.md` files. Type definitions live in `type/`. Saved views live in `views/`.
 - Any frontmatter field containing `[[wikilinks]]` is treated as a relationship. Common names include `Belongs to:`, `Related to:`, `Workspace:`, and custom relationship names.
 - Frontmatter properties that start with `_` are usually Tolaria-managed state. Leave them alone unless the user explicitly asks for them to change.
@@ -345,7 +451,7 @@ fn refresh_cloned_vault_config_files(vault_path: &str) -> Result<(), String> {
     } else {
         let content = fs::read_to_string(&agents_path)
             .map_err(|e| format!("Failed to read {}: {e}", agents_path.display()))?;
-        content.trim().is_empty() || content == LEGACY_AGENTS_MD || content == STALE_AGENTS_MD
+        agents_content_can_be_refreshed(&content)
     };
 
     if refresh_agents {
@@ -463,6 +569,20 @@ mod tests {
             .unwrap();
     }
 
+    fn assert_getting_started_vault_replaces_template(agents_content: &str) {
+        let dir = tempfile::TempDir::new().unwrap();
+        let source = dir.path().join("starter");
+        let dest = dir.path().join("Getting Started");
+        init_source_repo(&source, Some(agents_content));
+
+        create_getting_started_vault_from_repo(dest.to_str().unwrap(), source.to_str().unwrap())
+            .unwrap();
+
+        let content = fs::read_to_string(dest.join("AGENTS.md")).unwrap();
+        assert_eq!(content, AGENTS_MD);
+        assert!(dest.join("config.md").exists());
+    }
+
     #[test]
     fn test_default_vault_path_appends_getting_started() {
         let path = default_vault_path().unwrap();
@@ -548,17 +668,17 @@ mod tests {
 
     #[test]
     fn test_create_getting_started_vault_replaces_legacy_agents_template() {
-        let dir = tempfile::TempDir::new().unwrap();
-        let source = dir.path().join("starter");
-        let dest = dir.path().join("Getting Started");
-        init_source_repo(&source, Some(LEGACY_AGENTS_MD));
+        assert_getting_started_vault_replaces_template(LEGACY_AGENTS_MD);
+    }
 
-        create_getting_started_vault_from_repo(dest.to_str().unwrap(), source.to_str().unwrap())
-            .unwrap();
+    #[test]
+    fn test_create_getting_started_vault_replaces_pre_type_agents_template() {
+        assert_getting_started_vault_replaces_template(PRE_TYPE_AGENTS_MD);
+    }
 
-        let content = fs::read_to_string(dest.join("AGENTS.md")).unwrap();
-        assert_eq!(content, AGENTS_MD);
-        assert!(dest.join("config.md").exists());
+    #[test]
+    fn test_agents_refresh_detection_accepts_pre_type_managed_template() {
+        assert!(agents_content_can_be_refreshed(PRE_TYPE_AGENTS_MD));
     }
 
     #[test]
@@ -568,8 +688,11 @@ mod tests {
         assert!(AGENTS_MD.contains("views/"));
         assert!(AGENTS_MD.contains("sidebar label"));
         assert!(AGENTS_MD.contains("Legacy `title:` frontmatter is still read as a fallback"));
+        assert!(AGENTS_MD.contains("Store note type in the `type:` frontmatter field."));
         assert!(AGENTS_MD.contains("views/*.yml"));
         assert!(AGENTS_MD.contains("Belongs to:"));
         assert!(!AGENTS_MD.contains("Laputa"));
+        assert!(!AGENTS_MD.contains("Is A"));
+        assert!(!AGENTS_MD.contains("is_a"));
     }
 }
