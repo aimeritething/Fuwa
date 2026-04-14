@@ -11,6 +11,7 @@ export function useEditorSaveWithLinks(config: {
   setToastMessage: (msg: string | null) => void
   onAfterSave: () => void
   onNotePersisted?: (path: string, content: string) => void
+  resolvePath?: (path: string) => string
 }) {
   const { updateEntry } = config
   const saveContent = useCallback((path: string, content: string) => {
@@ -20,7 +21,14 @@ export function useEditorSaveWithLinks(config: {
       wordCount: countWords(content),
     })
   }, [updateEntry])
-  const editor = useEditorSave({ updateVaultContent: saveContent, setTabs: config.setTabs, setToastMessage: config.setToastMessage, onAfterSave: config.onAfterSave, onNotePersisted: config.onNotePersisted })
+  const editor = useEditorSave({
+    updateVaultContent: saveContent,
+    setTabs: config.setTabs,
+    setToastMessage: config.setToastMessage,
+    onAfterSave: config.onAfterSave,
+    onNotePersisted: config.onNotePersisted,
+    resolvePath: config.resolvePath,
+  })
   const { handleContentChange: rawOnChange } = editor
   const prevLinksKeyRef = useRef('')
   const prevFmKeyRef = useRef('')

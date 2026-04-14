@@ -382,4 +382,59 @@ describe('useAppSave', () => {
     expect(tabsState[0].entry.path).toBe(newPath)
     expect(tabsState[0].content).toBe('# Fresh Title\n\nBody that keeps changing while rename is pending')
   })
+
+  it('remaps a buffered auto-save to the renamed path when untitled rename lands mid-idle window', async () => {
+    vi.useFakeTimers()
+    vi.mocked(isTauri).mockReturnValue(true)
+
+    const oldPath = '/vault/untitled-note-123.md'
+    const newPath = '/vault/fresh-title.md'
+    const initialContent = '# Fresh Title\n\nInitial body'
+    const bufferedContent = '# Fresh Title\n\nBody typed right before rename'
+    const entry = makeEntry(oldPath, 'Untitled Note 123', 'untitled-note-123.md')
+    let tabsState = [{ entry, content: initialContent }]
+    const setTabs = vi.fn((updater: SetStateAction<typeof tabsState>) => {
+      tabsState = typeof updater === 'function' ? updater(tabsState) : updater
+    })
+
+    vi.mocked(invoke).mockImplementation(async (command: string, args?: Record<string, unknown>) => {
+      if (command === 'save_note_content') return undefined
+      if (command === 'auto_rename_untitled') return { new_path: newPath, updated_files: 0 }
+      if (command === 'reload_vault_entry') return makeEntry(newPath, 'Fresh Title', 'fresh-title.md')
+      if (command === 'get_note_content' && args?.path === newPath) return initialContent
+      return undefined
+    })
+
+    const { result } = renderSave({
+      setTabs,
+      tabs: tabsState,
+      activeTabPath: oldPath,
+      unsavedPaths: new Set([oldPath]),
+    })
+
+    await act(async () => {
+      result.current.handleContentChange(oldPath, initialContent)
+      await vi.advanceTimersByTimeAsync(500)
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_300)
+      result.current.handleContentChange(oldPath, bufferedContent)
+      await vi.advanceTimersByTimeAsync(200)
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(300)
+    })
+
+    const saveCalls = vi.mocked(invoke).mock.calls.filter(([command]) => command === 'save_note_content')
+    expect(saveCalls.at(-1)).toEqual([
+      'save_note_content',
+      { path: newPath, content: bufferedContent },
+    ])
+    expect(saveCalls).not.toContainEqual([
+      'save_note_content',
+      { path: oldPath, content: bufferedContent },
+    ])
+  })
 })

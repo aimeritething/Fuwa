@@ -230,6 +230,12 @@ export function useAppSave({
     takePendingRename({ pendingRenameRef: pendingUntitledRenameRef, path }) !== null
   ), [])
 
+  const registerRenamedPath = useCallback((oldPath: string, newPath: string) => {
+    trackRenamedPath(renamedPathsRef.current, oldPath, newPath)
+  }, [])
+
+  const resolveCurrentPath = useCallback((path: string) => resolveLatestPath(renamedPathsRef.current, path), [])
+
   const executeUntitledRename = useCallback(async (path: string) => {
     try {
       const result = await invoke<{ new_path: string; updated_files: number } | null>('auto_rename_untitled', {
@@ -282,14 +288,8 @@ export function useAppSave({
   }, [clearUnsaved, reloadViews, scheduleUntitledRename])
 
   const { handleSave: handleSaveRaw, handleContentChange: handleContentChangeRaw, savePendingForPath: savePendingForPathRaw, savePending } = useEditorSaveWithLinks({
-    updateEntry, setTabs, setToastMessage, onAfterSave, onNotePersisted,
+    updateEntry, setTabs, setToastMessage, onAfterSave, onNotePersisted, resolvePath: resolveCurrentPath,
   })
-
-  const registerRenamedPath = useCallback((oldPath: string, newPath: string) => {
-    trackRenamedPath(renamedPathsRef.current, oldPath, newPath)
-  }, [])
-
-  const resolveCurrentPath = useCallback((path: string) => resolveLatestPath(renamedPathsRef.current, path), [])
 
   const handleContentChange = useCallback((path: string, content: string) => {
     handleContentChangeRaw(resolveCurrentPath(path), content)

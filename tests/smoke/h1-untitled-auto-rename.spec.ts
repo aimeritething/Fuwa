@@ -58,6 +58,12 @@ async function expectRenamedFile({ vaultPath, filename }: FileExpectation): Prom
   }).toPass({ timeout: 10_000 })
 }
 
+async function expectFileMissing({ vaultPath, filename }: FileExpectation): Promise<void> {
+  await expect(async () => {
+    expect(markdownFiles(vaultPath)).not.toContain(filename)
+  }).toPass({ timeout: 10_000 })
+}
+
 async function expectFileContentContains({ vaultPath, filename, text }: FileContentExpectation): Promise<void> {
   await expect(async () => {
     const content = fs.readFileSync(`${vaultPath}/${filename}`, 'utf-8')
@@ -223,4 +229,31 @@ test('@smoke new-note H1 auto-rename preserves body typing and cursor while rena
   })
   await expectEditorFocused(page)
   await expect(errors).toEqual([])
+})
+
+test('@smoke new-note H1 auto-rename does not recreate the untitled file when a buffered save lands after rename', async ({ page }) => {
+  const title = 'Late Save Guard'
+  const lateBody = 'Body typed right before rename'
+
+  await createUntitledNote(page)
+  const untitledStem = (await page.getByTestId('breadcrumb-filename-trigger').textContent())?.trim()
+  expect(untitledStem).toMatch(/^untitled-note-\d+(?:-\d+)?$/i)
+
+  await writeNewHeading(page, title)
+  await page.waitForTimeout(2_600)
+  await page.keyboard.type(lateBody)
+
+  await expectActiveFilename(page, 'late-save-guard')
+  await expectRenamedFile({ vaultPath: tempVaultDir, filename: 'late-save-guard.md' })
+  await expectFileContentContains({
+    vaultPath: tempVaultDir,
+    filename: 'late-save-guard.md',
+    text: lateBody,
+  })
+
+  await page.waitForTimeout(800)
+  await expectFileMissing({
+    vaultPath: tempVaultDir,
+    filename: `${untitledStem}.md`,
+  })
 })
