@@ -1129,14 +1129,53 @@ describe('Sidebar', () => {
       const projectLabel = screen.getByText('Active Projects')
       const projectNavItem = projectLabel.closest('[class*="cursor-pointer"]')!
       // The count chip is a sibling span inside the NavItem
-      const projectCount = projectNavItem.querySelector('span:last-child')
+      const projectCount = within(projectNavItem as HTMLElement).getByTestId('view-count-chip')
       expect(projectCount?.textContent).toBe('1')
 
       // 'All Topics' filters for type=Topic -> mockEntries has 2 Topics
       const topicLabel = screen.getByText('All Topics')
       const topicNavItem = topicLabel.closest('[class*="cursor-pointer"]')!
-      const topicCount = topicNavItem.querySelector('span:last-child')
+      const topicCount = within(topicNavItem as HTMLElement).getByTestId('view-count-chip')
       expect(topicCount?.textContent).toBe('2')
+    })
+
+    it('styles view note count chips like the shared sidebar count pills', () => {
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} views={mockViews} />
+      )
+
+      const viewLabel = screen.getByText('Active Projects')
+      const navItem = viewLabel.closest('[class*="cursor-pointer"]') as HTMLElement
+      const countChip = within(navItem).getByTestId('view-count-chip')
+
+      expect(navItem).toHaveStyle({ padding: '6px 8px 6px 16px' })
+      expect(countChip).toHaveStyle({
+        background: 'var(--muted)',
+        height: '20px',
+        padding: '0 6px',
+      })
+      expect(countChip.className).toContain('text-muted-foreground')
+    })
+
+    it('renders phosphor view icons without leaking the raw icon name', () => {
+      const iconViews = [{
+        filename: 'active-projects.yml',
+        definition: {
+          name: 'Active Projects',
+          icon: 'rocket',
+          color: null,
+          sort: null,
+          filters: { all: [{ field: 'type', op: 'equals' as const, value: 'Project' }] },
+        },
+      }]
+
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} views={iconViews} />
+      )
+
+      const navItem = screen.getByText('Active Projects').closest('[class*="cursor-pointer"]') as HTMLElement
+      expect(navItem.querySelector('svg')).not.toBeNull()
+      expect(screen.queryByText('rocket')).not.toBeInTheDocument()
     })
 
     it('does not show count chip for views with 0 matching notes', () => {
@@ -1174,7 +1213,7 @@ describe('Sidebar', () => {
       const label = screen.getByText('Active Projects')
       const viewItem = label.closest('.group.relative') as HTMLElement
       const navItem = label.closest('[class*="cursor-pointer"]') as HTMLElement
-      const countChip = navItem.querySelector('span:last-child') as HTMLElement
+      const countChip = within(navItem).getByTestId('view-count-chip')
       expect(countChip).toBeTruthy()
       expect(countChip.className).toContain('transition-opacity')
       expect(countChip.className).toContain('group-hover:opacity-0')

@@ -2,7 +2,6 @@ import {
   useMemo, useCallback, type Dispatch, type Ref, type RefObject, type SetStateAction,
 } from 'react'
 import type { VaultEntry, SidebarSelection, ViewFile } from '../../types'
-import { evaluateView } from '../../utils/viewFilters'
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
@@ -13,7 +12,7 @@ import { arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { SlidersHorizontal } from 'lucide-react'
 import {
-  FileText, Trash, Archive, CaretLeft, Tray, CaretRight, CaretDown, Plus, Funnel, PencilSimple,
+  FileText, Archive, CaretLeft, Tray, CaretRight, CaretDown, Plus,
 } from '@phosphor-icons/react'
 import {
   type SectionGroup, isSelectionActive, NavItem, SectionContent, VisibilityPopover,
@@ -22,6 +21,7 @@ import { TypeCustomizePopover } from '../TypeCustomizePopover'
 import { useDragRegion } from '../../hooks/useDragRegion'
 import { buildTypeEntryMap, getTypeColor, getTypeLightColor } from '../../utils/typeColors'
 import { NoteTitleIcon } from '../NoteTitleIcon'
+import { SidebarViewItem } from './SidebarViewItem'
 
 export interface SidebarSectionProps {
   entries: VaultEntry[]
@@ -66,58 +66,6 @@ function SidebarGroupHeader({
         </span>
       ))}
     </button>
-  )
-}
-
-function ViewItem({
-  view,
-  isActive,
-  onSelect,
-  onEditView,
-  onDeleteView,
-  entries,
-}: {
-  view: ViewFile
-  isActive: boolean
-  onSelect: () => void
-  onEditView?: (filename: string) => void
-  onDeleteView?: (filename: string) => void
-  entries: VaultEntry[]
-}) {
-  const count = useMemo(() => evaluateView(view.definition, entries).length, [view.definition, entries])
-
-  return (
-    <div className="group relative">
-      <NavItem
-        icon={Funnel}
-        emoji={view.definition.icon}
-        label={view.definition.name}
-        count={count}
-        badgeClassName="transition-opacity group-hover:opacity-0 group-focus-within:opacity-0"
-        isActive={isActive}
-        onClick={onSelect}
-      />
-      <div className="pointer-events-none absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
-        {onEditView && (
-          <button
-            className="rounded p-0.5 text-muted-foreground hover:text-foreground"
-            onClick={(event) => { event.stopPropagation(); onEditView(view.filename) }}
-            title="Edit view"
-          >
-            <PencilSimple size={12} />
-          </button>
-        )}
-        {onDeleteView && (
-          <button
-            className="rounded p-0.5 text-muted-foreground hover:text-destructive"
-            onClick={(event) => { event.stopPropagation(); onDeleteView(view.filename) }}
-            title="Delete view"
-          >
-            <Trash size={12} />
-          </button>
-        )}
-      </div>
-    </div>
   )
 }
 
@@ -209,7 +157,7 @@ export function ViewsSection({
       {!collapsed && (
         <div style={{ paddingBottom: 4 }}>
           {views.map((view) => (
-            <ViewItem
+            <SidebarViewItem
               key={view.filename}
               view={view}
               isActive={isSelectionActive(selection, { kind: 'view', filename: view.filename })}
