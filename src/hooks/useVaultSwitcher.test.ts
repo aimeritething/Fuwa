@@ -3,6 +3,9 @@ import { renderHook, act, waitFor } from '@testing-library/react'
 import { useVaultSwitcher, DEFAULT_VAULTS } from './useVaultSwitcher'
 import type { PersistedVaultList } from './useVaultSwitcher'
 
+const mockDefaultVaultPath = '/mock/Documents/Getting Started'
+const expectedDefaultVaultPath = DEFAULT_VAULTS[0].path || mockDefaultVaultPath
+
 let mockVaultListStore: PersistedVaultList = { vaults: [], active_vault: null, hidden_defaults: [] }
 
 const mockInvokeFn = vi.fn((cmd: string, args?: Record<string, unknown>): Promise<unknown> => {
@@ -11,6 +14,7 @@ const mockInvokeFn = vi.fn((cmd: string, args?: Record<string, unknown>): Promis
     mockVaultListStore = { ...(args as { list: PersistedVaultList }).list }
     return Promise.resolve(null)
   }
+  if (cmd === 'get_default_vault_path') return Promise.resolve(mockDefaultVaultPath)
   if (cmd === 'check_vault_exists') return Promise.resolve(true)
   return Promise.resolve(null)
 })
@@ -42,6 +46,7 @@ describe('useVaultSwitcher', () => {
         mockVaultListStore = { ...(args as { list: PersistedVaultList }).list }
         return Promise.resolve(null)
       }
+      if (cmd === 'get_default_vault_path') return Promise.resolve(mockDefaultVaultPath)
       if (cmd === 'check_vault_exists') return Promise.resolve(true)
       return Promise.resolve(null)
     })
@@ -155,7 +160,9 @@ describe('useVaultSwitcher', () => {
     await waitFor(() => { expect(result.current.loaded).toBe(true) })
 
     // Should fall back to defaults
-    expect(result.current.allVaults).toEqual(DEFAULT_VAULTS)
+    expect(result.current.allVaults).toHaveLength(1)
+    expect(result.current.allVaults[0].label).toBe('Getting Started')
+    expect(result.current.allVaults[0].path).toBe(result.current.vaultPath)
     warnSpy.mockRestore()
   })
 
@@ -290,7 +297,7 @@ describe('useVaultSwitcher', () => {
       mockVaultListStore = {
         vaults: [{ label: 'Work', path: '/work/vault' }],
         active_vault: '/work/vault',
-        hidden_defaults: [DEFAULT_VAULTS[0].path],
+        hidden_defaults: [expectedDefaultVaultPath],
       }
 
       const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
@@ -303,14 +310,14 @@ describe('useVaultSwitcher', () => {
       })
 
       expect(result.current.isGettingStartedHidden).toBe(false)
-      expect(result.current.allVaults.some(v => v.path === DEFAULT_VAULTS[0].path)).toBe(true)
+      expect(result.current.allVaults.some(v => v.path === expectedDefaultVaultPath)).toBe(true)
     })
 
     it('switches to the Getting Started vault after restoring', async () => {
       mockVaultListStore = {
         vaults: [{ label: 'Work', path: '/work/vault' }],
         active_vault: '/work/vault',
-        hidden_defaults: [DEFAULT_VAULTS[0].path],
+        hidden_defaults: [expectedDefaultVaultPath],
       }
 
       const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
@@ -320,7 +327,7 @@ describe('useVaultSwitcher', () => {
         await result.current.restoreGettingStarted()
       })
 
-      expect(result.current.vaultPath).toBe(DEFAULT_VAULTS[0].path)
+      expect(result.current.vaultPath).toBe(expectedDefaultVaultPath)
       expect(onToast).toHaveBeenCalledWith('Getting Started vault ready')
     })
 
@@ -328,7 +335,7 @@ describe('useVaultSwitcher', () => {
       mockVaultListStore = {
         vaults: [{ label: 'Work', path: '/work/vault' }],
         active_vault: '/work/vault',
-        hidden_defaults: [DEFAULT_VAULTS[0].path],
+        hidden_defaults: [expectedDefaultVaultPath],
       }
       mockInvokeFn.mockImplementation((cmd: string, args?: Record<string, unknown>) => {
         if (cmd === 'load_vault_list') return Promise.resolve({ ...mockVaultListStore })
@@ -336,8 +343,9 @@ describe('useVaultSwitcher', () => {
           mockVaultListStore = { ...(args as { list: PersistedVaultList }).list }
           return Promise.resolve(null)
         }
+        if (cmd === 'get_default_vault_path') return Promise.resolve(mockDefaultVaultPath)
         if (cmd === 'check_vault_exists') return Promise.resolve(false)
-        if (cmd === 'create_getting_started_vault') return Promise.resolve(DEFAULT_VAULTS[0].path)
+        if (cmd === 'create_getting_started_vault') return Promise.resolve(expectedDefaultVaultPath)
         return Promise.resolve(null)
       })
 
@@ -348,15 +356,15 @@ describe('useVaultSwitcher', () => {
         await result.current.restoreGettingStarted()
       })
 
-      expect(mockInvokeFn).toHaveBeenCalledWith('check_vault_exists', { path: DEFAULT_VAULTS[0].path })
-      expect(mockInvokeFn).toHaveBeenCalledWith('create_getting_started_vault', { targetPath: DEFAULT_VAULTS[0].path })
+      expect(mockInvokeFn).toHaveBeenCalledWith('check_vault_exists', { path: expectedDefaultVaultPath })
+      expect(mockInvokeFn).toHaveBeenCalledWith('create_getting_started_vault', { targetPath: expectedDefaultVaultPath })
     })
 
     it('shows a friendly toast and keeps the hidden vault hidden when cloning fails', async () => {
       mockVaultListStore = {
         vaults: [{ label: 'Work', path: '/work/vault' }],
         active_vault: '/work/vault',
-        hidden_defaults: [DEFAULT_VAULTS[0].path],
+        hidden_defaults: [expectedDefaultVaultPath],
       }
       mockInvokeFn.mockImplementation((cmd: string, args?: Record<string, unknown>) => {
         if (cmd === 'load_vault_list') return Promise.resolve({ ...mockVaultListStore })
@@ -364,6 +372,7 @@ describe('useVaultSwitcher', () => {
           mockVaultListStore = { ...(args as { list: PersistedVaultList }).list }
           return Promise.resolve(null)
         }
+        if (cmd === 'get_default_vault_path') return Promise.resolve(mockDefaultVaultPath)
         if (cmd === 'check_vault_exists') return Promise.resolve(false)
         if (cmd === 'create_getting_started_vault') {
           return Promise.reject('git clone failed: fatal: unable to access')
@@ -417,7 +426,7 @@ describe('useVaultSwitcher', () => {
       mockVaultListStore = {
         vaults: [],
         active_vault: null,
-        hidden_defaults: [DEFAULT_VAULTS[0].path],
+        hidden_defaults: [expectedDefaultVaultPath],
       }
 
       const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))

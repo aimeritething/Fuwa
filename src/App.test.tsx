@@ -62,6 +62,7 @@ const mockAllContent: Record<string, string> = {
 }
 
 const mockCommandResults: Record<string, unknown> = {
+  load_vault_list: { vaults: [], active_vault: null, hidden_defaults: [] },
   list_vault: mockEntries,
   list_vault_folders: [],
   list_views: [],
@@ -133,13 +134,7 @@ const CLAUDE_CODE_ONBOARDING_DISMISSED_KEY = 'tolaria:claude-code-onboarding-dis
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-
-    // Reset view mode and onboarding state between tests
-    localStorage.removeItem('tolaria-view-mode')
-    localStorage.removeItem('tolaria-view-mode')
-    localStorage.removeItem('laputa-view-mode')
-    localStorage.removeItem('tolaria_welcome_dismissed')
-    localStorage.removeItem('laputa_welcome_dismissed')
+    localStorage.clear()
     localStorage.setItem(CLAUDE_CODE_ONBOARDING_DISMISSED_KEY, '1')
   })
 
