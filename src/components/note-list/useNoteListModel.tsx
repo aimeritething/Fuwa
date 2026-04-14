@@ -32,7 +32,7 @@ function useViewFlags(selection: SidebarSelection) {
   const isInboxView = selection.kind === 'filter' && selection.filter === 'inbox'
   const isAllNotesView = selection.kind === 'filter' && selection.filter === 'all'
   const isChangesView = selection.kind === 'filter' && selection.filter === 'changes'
-  const showFilterPills = isSectionGroup || isFolderView || isAllNotesView
+  const showFilterPills = isSectionGroup || isFolderView
   return { isSectionGroup, isFolderView, isInboxView, isAllNotesView, isChangesView, showFilterPills }
 }
 

@@ -191,24 +191,17 @@ describe('NoteList filter pills', () => {
     expect(screen.getByTestId('filter-pill-archived')).toBeInTheDocument()
   })
 
-  it('shows filter pills in all-notes view', () => {
+  it('does not show filter pills in all-notes view', () => {
     renderNoteList({ entries: projectEntries })
-    expect(screen.getByTestId('filter-pills')).toBeInTheDocument()
-    expect(screen.getByTestId('filter-pill-open')).toBeInTheDocument()
-    expect(screen.getByTestId('filter-pill-archived')).toBeInTheDocument()
+    expect(screen.queryByTestId('filter-pills')).not.toBeInTheDocument()
   })
 
-  it('shows the correct all-notes count badges', () => {
-    renderNoteList({ entries: projectEntries })
-    expect(screen.getByTestId('filter-pill-open')).toHaveTextContent('3')
-    expect(screen.getByTestId('filter-pill-archived')).toHaveTextContent('1')
-  })
-
-  it('shows archived notes in all-notes archived mode', () => {
+  it('ignores the archived sub-filter in all-notes view', () => {
     renderNoteList({ entries: projectEntries, noteListFilter: 'archived' })
-    expect(screen.getByText('Archived Project')).toBeInTheDocument()
-    expect(screen.queryByText('Open Project 1')).not.toBeInTheDocument()
-    expect(screen.queryByText('Some Note')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('filter-pills')).not.toBeInTheDocument()
+    expect(screen.getByText('Open Project 1')).toBeInTheDocument()
+    expect(screen.getByText('Some Note')).toBeInTheDocument()
+    expect(screen.queryByText('Archived Project')).not.toBeInTheDocument()
   })
 
   it('shows the correct counts for a type filter', () => {
