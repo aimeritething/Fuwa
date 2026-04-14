@@ -139,14 +139,9 @@ jobs:
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          pnpm tauri build --target ${{ matrix.target }}
-
-      - name: Upload .dmg
-        uses: actions/upload-artifact@v4
-        with:
-          name: dmg-${{ matrix.arch }}
-          path: src-tauri/target/${{ matrix.target }}/release/bundle/dmg/*.dmg
-          retention-days: 1
+          # Alpha releases only need the notarized app bundle and updater tarball.
+          # Skipping DMG packaging avoids fragile bundle_dmg.sh failures on macOS runners.
+          pnpm tauri build --target ${{ matrix.target }} --bundles app
 
       - name: Upload updater artifacts (.tar.gz + .sig)
         uses: actions/upload-artifact@v4
@@ -231,7 +226,6 @@ jobs:
           draft: false
           prerelease: true
           files: |
-            dmg-aarch64/*.dmg
             updater-aarch64/*.app.tar.gz
             updater-aarch64/*.app.tar.gz.sig
             alpha-latest.json
