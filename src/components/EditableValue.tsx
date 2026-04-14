@@ -125,7 +125,7 @@ export function EditableValue({
 
   return (
     <span
-      className="inline-flex h-6 w-full min-w-0 cursor-pointer items-center justify-start overflow-hidden rounded-md px-2 text-left text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
+      className="inline-flex h-6 w-full min-w-0 cursor-pointer items-center justify-start overflow-hidden rounded-md px-0 text-left text-[12px] text-secondary-foreground transition-colors hover:bg-muted"
       onClick={onStartEdit}
       title={value || 'Click to edit'}
     >

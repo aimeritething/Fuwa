@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState, useRef } from 'react'
+import { useMemo, useCallback, useState, useRef, type ReactNode } from 'react'
 import type { VaultEntry } from '../../types'
 import { Plus, X } from '@phosphor-icons/react'
 import type { ParsedFrontmatter } from '../../utils/frontmatter'
@@ -14,6 +14,45 @@ import {
 } from '../../utils/wikilink'
 import { isWikilink, resolveRefProps } from './shared'
 import { LinkButton } from './LinkButton'
+import { PROPERTY_PANEL_GRID_STYLE, PROPERTY_PANEL_ROW_STYLE } from '../propertyPanelLayout'
+
+const RELATIONSHIP_SECTION_ROW_CLASS_NAME = 'grid min-w-0 items-start gap-2 px-1.5'
+const RELATIONSHIP_SECTION_LABEL_CLASS_NAME = 'min-w-0 pt-1 text-[12px] text-muted-foreground'
+const RELATIONSHIP_SECTION_VALUE_CLASS_NAME = 'min-w-0'
+const SUGGESTED_RELATIONSHIPS = ['Belongs to', 'Related to', 'Has'] as const
+
+type RelationshipEntryGroup = {
+  key: string
+  refs: string[]
+}
+
+type RelationshipPanelEditHandlers = {
+  onAddProperty?: (key: string, value: FrontmatterValue) => void
+  onUpdateProperty?: (key: string, value: FrontmatterValue) => void
+  onDeleteProperty?: (key: string) => void
+}
+
+function RelationshipSectionRow({ label, children, dataTestId }: {
+  label: string
+  children: ReactNode
+  dataTestId?: string
+}) {
+  return (
+    <div className={RELATIONSHIP_SECTION_ROW_CLASS_NAME} style={PROPERTY_PANEL_ROW_STYLE} data-testid={dataTestId}>
+      <span className={RELATIONSHIP_SECTION_LABEL_CLASS_NAME}>{label}</span>
+      <div className={RELATIONSHIP_SECTION_VALUE_CLASS_NAME}>{children}</div>
+    </div>
+  )
+}
+
+function RelationshipActionRow({ children }: { children: ReactNode }) {
+  return (
+    <div className={RELATIONSHIP_SECTION_ROW_CLASS_NAME} style={PROPERTY_PANEL_ROW_STYLE}>
+      <span aria-hidden="true" />
+      <div className={RELATIONSHIP_SECTION_VALUE_CLASS_NAME}>{children}</div>
+    </div>
+  )
+}
 
 /** Check whether any entry resolves for the given title (exact match via wikilink resolution). */
 function hasExactTitleMatch(entries: VaultEntry[], title: string): boolean {
@@ -64,15 +103,47 @@ function confirmRelationshipSelection({
   onSelectEntry?: (entry: VaultEntry) => void
   onFallback?: () => void
 }): void {
-  if (showCreate && selectedIndex === createIndex && trimmed) {
+  if (shouldCreateRelationship(titleSelectionState(showCreate, selectedIndex, createIndex, trimmed))) {
     onCreate?.(trimmed)
     return
   }
-  if (selectedEntry) {
+  if (hasSelectedRelationshipEntry(selectedEntry)) {
     onSelectEntry?.(selectedEntry)
     return
   }
   onFallback?.()
+}
+
+function titleSelectionState(
+  showCreate: boolean,
+  selectedIndex: number,
+  createIndex: number,
+  trimmed: string,
+) {
+  return {
+    showCreate,
+    selectedIndex,
+    createIndex,
+    trimmed,
+  }
+}
+
+function shouldCreateRelationship({
+  showCreate,
+  selectedIndex,
+  createIndex,
+  trimmed,
+}: {
+  showCreate: boolean
+  selectedIndex: number
+  createIndex: number
+  trimmed: string
+}): boolean {
+  return showCreate && selectedIndex === createIndex && trimmed.length > 0
+}
+
+function hasSelectedRelationshipEntry(selectedEntry?: VaultEntry): selectedEntry is VaultEntry {
+  return selectedEntry !== undefined
 }
 
 /** Shared keyboard navigation for search dropdowns with an optional "create" item. */
@@ -332,8 +403,7 @@ function RelationshipGroup({ label, refs, entries, typeEntryMap, vaultPath, onNa
 }) {
   if (refs.length === 0) return null
   return (
-    <div className="mb-2.5">
-      <span className="mb-1 block text-[12px] text-muted-foreground">{label}</span>
+    <RelationshipSectionRow label={label}>
       <div className="flex flex-col gap-1">
         {refs.map((ref, idx) => {
           const props = resolveRefProps(ref, entries, typeEntryMap)
@@ -355,7 +425,7 @@ function RelationshipGroup({ label, refs, entries, typeEntryMap, vaultPath, onNa
           onCreateAndOpenNote={onCreateAndOpenNote}
         />
       )}
-    </div>
+    </RelationshipSectionRow>
   )
 }
 
@@ -436,16 +506,11 @@ function NoteTargetInput({ entries, value, onChange, onSubmit, onCancel, onCreat
   )
 }
 
-function useRelationshipPanelState(
-  frontmatter: ParsedFrontmatter,
-  entries: VaultEntry[],
-  vaultPath: string | undefined,
-  onAddProperty?: (key: string, value: FrontmatterValue) => void,
-  onUpdateProperty?: (key: string, value: FrontmatterValue) => void,
-  onDeleteProperty?: (key: string) => void,
+function useRelationshipMutations(
+  relationshipEntries: RelationshipEntryGroup[],
+  handlers: RelationshipPanelEditHandlers,
 ) {
-  const relationshipEntries = useMemo(() => extractRelationshipRefs(frontmatter), [frontmatter])
-  const resolvedVaultPath = useMemo(() => vaultPath ?? inferVaultPath(entries), [vaultPath, entries])
+  const { onUpdateProperty, onDeleteProperty } = handlers
 
   const handleRemoveRef = useCallback((key: string, refToRemove: string) => {
     if (!onUpdateProperty || !onDeleteProperty) return
@@ -463,15 +528,47 @@ function useRelationshipPanelState(
     if (result !== false) onUpdateProperty(key, result)
   }, [relationshipEntries, onUpdateProperty])
 
-  const canEdit = !!onUpdateProperty && !!onDeleteProperty
+  return {
+    handleRemoveRef,
+    handleAddRef,
+    canEdit: Boolean(onUpdateProperty && onDeleteProperty),
+  }
+}
+
+function useMissingSuggestedRelationships(
+  relationshipEntries: RelationshipEntryGroup[],
+  onAddProperty?: RelationshipPanelEditHandlers['onAddProperty'],
+) {
   const existingRelKeys = useMemo(
     () => new Set(relationshipEntries.map(g => g.key.toLowerCase())),
     [relationshipEntries],
   )
-  const missingSuggestedRels = useMemo(
+  return useMemo(
     () => (onAddProperty ? SUGGESTED_RELATIONSHIPS.filter(r => !existingRelKeys.has(r.toLowerCase())) : []),
     [onAddProperty, existingRelKeys],
   )
+}
+
+function useRelationshipPanelState({
+  frontmatter,
+  entries,
+  vaultPath,
+  onAddProperty,
+  onUpdateProperty,
+  onDeleteProperty,
+}: {
+  frontmatter: ParsedFrontmatter
+  entries: VaultEntry[]
+  vaultPath?: string
+} & RelationshipPanelEditHandlers) {
+  const relationshipEntries = useMemo(() => extractRelationshipRefs(frontmatter), [frontmatter])
+  const resolvedVaultPath = useMemo(() => vaultPath ?? inferVaultPath(entries), [vaultPath, entries])
+  const { handleRemoveRef, handleAddRef, canEdit } = useRelationshipMutations(relationshipEntries, {
+    onAddProperty,
+    onUpdateProperty,
+    onDeleteProperty,
+  })
+  const missingSuggestedRels = useMissingSuggestedRelationships(relationshipEntries, onAddProperty)
 
   return {
     relationshipEntries,
@@ -566,8 +663,6 @@ function DisabledLinkButton() {
   )
 }
 
-const SUGGESTED_RELATIONSHIPS = ['Belongs to', 'Related to', 'Has'] as const
-
 function SuggestedRelationshipSlot({ label, entries, vaultPath, onAdd, onCreateAndOpenNote }: {
   label: string
   entries: VaultEntry[]
@@ -576,15 +671,14 @@ function SuggestedRelationshipSlot({ label, entries, vaultPath, onAdd, onCreateA
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
 }) {
   return (
-    <div className="mb-2.5" data-testid="suggested-relationship">
-      <span className="mb-1 block text-[12px] text-muted-foreground/50">{label}</span>
+    <RelationshipSectionRow label={label} dataTestId="suggested-relationship">
       <InlineAddNote
         entries={entries}
         vaultPath={vaultPath}
         onAdd={onAdd}
         onCreateAndOpenNote={onCreateAndOpenNote}
       />
-    </div>
+    </RelationshipSectionRow>
   )
 }
 
@@ -603,10 +697,17 @@ export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, 
     handleAddRef,
     canEdit,
     missingSuggestedRels,
-  } = useRelationshipPanelState(frontmatter, entries, vaultPath, onAddProperty, onUpdateProperty, onDeleteProperty)
+  } = useRelationshipPanelState({
+    frontmatter,
+    entries,
+    vaultPath,
+    onAddProperty,
+    onUpdateProperty,
+    onDeleteProperty,
+  })
 
   return (
-    <div>
+    <div className="grid min-w-0 gap-x-2 gap-y-1.5" style={PROPERTY_PANEL_GRID_STYLE}>
       {relationshipEntries.map(({ key, refs }) => (
         <RelationshipGroup
           key={key} label={key} refs={refs} entries={entries} typeEntryMap={typeEntryMap} vaultPath={resolvedVaultPath} onNavigate={onNavigate}
@@ -625,10 +726,12 @@ export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, 
           onCreateAndOpenNote={onCreateAndOpenNote}
         />
       ))}
-      {onAddProperty
-        ? <AddRelationshipForm entries={entries} vaultPath={resolvedVaultPath} onAddProperty={onAddProperty} onCreateAndOpenNote={onCreateAndOpenNote} />
-        : <DisabledLinkButton />
-      }
+      <RelationshipActionRow>
+        {onAddProperty
+          ? <AddRelationshipForm entries={entries} vaultPath={resolvedVaultPath} onAddProperty={onAddProperty} onCreateAndOpenNote={onCreateAndOpenNote} />
+          : <DisabledLinkButton />
+        }
+      </RelationshipActionRow>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
+import { DynamicRelationshipsPanel } from './InspectorPanels'
 import type { VaultEntry } from '../types'
 
 const entry: VaultEntry = {
@@ -73,5 +74,42 @@ describe('property panel shared grid layout', () => {
       expect(row.style.gridTemplateColumns).toBe('subgrid')
       expect(row.style.gridColumn).toBe('1 / -1')
     })
+  })
+
+  it('renders plain text values flush with the shared value column', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={entry}
+        frontmatter={{ Owner: 'Luca' }}
+        onUpdateProperty={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('Luca').parentElement).toHaveClass('px-0')
+  })
+
+  it('keeps relationship groups on the shared grid', () => {
+    const relatedEntry: VaultEntry = {
+      ...entry,
+      path: '/vault/project-alpha.md',
+      filename: 'project-alpha.md',
+      title: 'Project Alpha',
+      isA: 'Project',
+    }
+
+    render(
+      <DynamicRelationshipsPanel
+        frontmatter={{ 'Belongs to': '[[Project Alpha]]' }}
+        entries={[relatedEntry]}
+        typeEntryMap={{}}
+        onNavigate={vi.fn()}
+      />
+    )
+
+    const relationshipRow = screen.getByText('Belongs to').parentElement
+
+    expect(relationshipRow).not.toBeNull()
+    expect(relationshipRow?.style.gridTemplateColumns).toBe('subgrid')
+    expect(relationshipRow?.style.gridColumn).toBe('1 / -1')
   })
 })
