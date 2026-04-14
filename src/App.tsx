@@ -63,7 +63,7 @@ import type { SidebarSelection, InboxPeriod, VaultEntry } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
-import { isNoteWindow, getNoteWindowParams } from './utils/windowMode'
+import { isNoteWindow, getNoteWindowParams, getNoteWindowPathCandidates, findNoteWindowEntry, type NoteWindowParams } from './utils/windowMode'
 import { GitRequiredModal } from './components/GitRequiredModal'
 import { RenameDetectedBanner, type DetectedRename } from './components/RenameDetectedBanner'
 import { openNoteListPropertiesPicker } from './components/note-list/noteListPropertiesEvents'
@@ -92,6 +92,28 @@ declare global {
 }
 
 const DEFAULT_SELECTION: SidebarSelection = INBOX_SELECTION
+
+async function resolveNoteWindowEntry(
+  noteWindowParams: NoteWindowParams,
+  entries: VaultEntry[],
+): Promise<VaultEntry | undefined> {
+  const fallbackEntry = () =>
+    findNoteWindowEntry(entries, noteWindowParams)
+
+  if (!isTauri()) {
+    return fallbackEntry()
+  }
+
+  for (const path of getNoteWindowPathCandidates(noteWindowParams)) {
+    try {
+      return await invoke<VaultEntry>('reload_vault_entry', { path })
+    } catch {
+      // Try the next normalized candidate before falling back to the scanned entries.
+    }
+  }
+
+  return fallbackEntry()
+}
 
 /** Wraps useEditorSave to also keep outgoingLinks in sync on save and on content change. */
 function App() {
@@ -269,17 +291,32 @@ function App() {
     onFrontmatterPersisted: vault.loadModifiedFiles,
     onPathRenamed: (oldPath, newPath) => appSave.trackRenamedPath(oldPath, newPath),
   })
+  const { handleSelectNote } = notes
 
   // Note window: auto-open the note from URL params once vault entries load
   const noteWindowOpenedRef = useRef(false)
+  const noteWindowMissingPathRef = useRef<string | null>(null)
   useEffect(() => {
-    if (!noteWindowParams || noteWindowOpenedRef.current || vault.entries.length === 0) return
-    const entry = vault.entries.find(e => e.path === noteWindowParams.notePath)
-    if (entry) {
-      noteWindowOpenedRef.current = true
-      notes.handleSelectNote(entry)
+    if (!noteWindowParams || noteWindowOpenedRef.current) return
+    let cancelled = false
+
+    void resolveNoteWindowEntry(noteWindowParams, vault.entries).then((entry) => {
+      if (cancelled || noteWindowOpenedRef.current) return
+      if (entry) {
+        noteWindowOpenedRef.current = true
+        noteWindowMissingPathRef.current = null
+        void handleSelectNote(entry)
+        return
+      }
+      if (noteWindowMissingPathRef.current === noteWindowParams.notePath) return
+      noteWindowMissingPathRef.current = noteWindowParams.notePath
+      setToastMessage(`Could not open "${noteWindowParams.noteTitle}" in this window`)
+    })
+
+    return () => {
+      cancelled = true
     }
-  }, [vault.entries]) // eslint-disable-line react-hooks/exhaustive-deps -- run when entries load, params are stable
+  }, [handleSelectNote, noteWindowParams, setToastMessage, vault.entries])
 
   // Note window: update window title when active note changes
   useEffect(() => {

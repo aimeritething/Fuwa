@@ -1,5 +1,16 @@
 import { isTauri } from '../mock-tauri'
 
+export function buildNoteWindowUrl(notePath: string, vaultPath: string, noteTitle: string): string {
+  const params = new URLSearchParams({
+    window: 'note',
+    path: notePath,
+    vault: vaultPath,
+    title: noteTitle,
+  })
+
+  return `/?${params.toString()}`
+}
+
 /**
  * Opens a note in a new Tauri window with a minimal editor-only layout.
  * In browser mode (non-Tauri), this is a no-op.
@@ -9,10 +20,9 @@ export async function openNoteInNewWindow(notePath: string, vaultPath: string, n
 
   const { WebviewWindow } = await import('@tauri-apps/api/webviewWindow')
   const label = `note-${Date.now()}`
-  const url = `index.html?window=note&path=${encodeURIComponent(notePath)}&vault=${encodeURIComponent(vaultPath)}&title=${encodeURIComponent(noteTitle)}`
 
   new WebviewWindow(label, {
-    url,
+    url: buildNoteWindowUrl(notePath, vaultPath, noteTitle),
     title: noteTitle,
     width: 800,
     height: 700,
