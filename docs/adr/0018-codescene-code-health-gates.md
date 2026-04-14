@@ -2,8 +2,9 @@
 type: ADR
 id: "0018"
 title: "CodeScene code health gates in CI and git hooks"
-status: active
+status: superseded
 date: 2026-03-13
+superseded_by: "0064"
 ---
 
 ## Context
