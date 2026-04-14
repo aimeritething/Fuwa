@@ -59,6 +59,19 @@ export function replaceTitleInFrontmatter(frontmatter: string, newTitle: string)
   return frontmatter.replace(/^(title:\s*).+$/m, `$1${newTitle}`)
 }
 
+function pathStem(path: string): string {
+  const filename = path.split('/').pop() ?? path
+  return filename.replace(/\.md$/, '')
+}
+
+function slugifyPathStem(title: string): string {
+  return title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+}
+
+function isUntitledPath(path: string): boolean {
+  return pathStem(path).startsWith('untitled-')
+}
+
 function readEditorScrollTop(): number {
   const scrollEl = document.querySelector('.editor__blocknote-container')
   return scrollEl?.scrollTop ?? 0
@@ -251,6 +264,38 @@ function findActiveTab(tabs: Tab[], activeTabPath: string | null): Tab | undefin
     : undefined
 }
 
+function serializeEditorBody(editor: ReturnType<typeof useCreateBlockNote>): string {
+  const restored = restoreWikilinksInBlocks(editor.document)
+  return compactMarkdown(editor.blocksToMarkdownLossy(restored as typeof editor.document))
+}
+
+function normalizeTabBody(content: string): string {
+  return compactMarkdown(extractEditorBody(content))
+}
+
+function renameBodiesOverlap(currentBody: string, nextBody: string): boolean {
+  return currentBody === nextBody
+    || currentBody.startsWith(nextBody)
+    || nextBody.startsWith(currentBody)
+}
+
+function isUntitledRenameTransition(
+  prevPath: string | null,
+  nextPath: string | null,
+  activeTab: Tab | undefined,
+  editor: ReturnType<typeof useCreateBlockNote>,
+): boolean {
+  if (!prevPath || !nextPath || !activeTab || !isUntitledPath(prevPath)) return false
+
+  const currentHeading = getH1TextFromBlocks(editor.document)
+  if (!currentHeading || slugifyPathStem(currentHeading) !== pathStem(nextPath)) return false
+
+  return renameBodiesOverlap(
+    serializeEditorBody(editor),
+    normalizeTabBody(activeTab.content),
+  )
+}
+
 function useLatestRef<T>(value: T): MutableRefObject<T> {
   const ref = useRef(value)
   useEffect(() => {
@@ -381,10 +426,157 @@ function handleStableActivePath(options: {
   if (pendingTabArrival) return false
   if (rawSwapPendingRef.current) return true
 
-  if (activeTabPath && activeTab && editorMountedRef.current) {
-    cacheEditorState(cache, activeTabPath, editor.document)
-  }
+  cacheStableActivePath({
+    cache,
+    activeTabPath,
+    activeTab,
+    editor,
+    editorMountedRef,
+  })
   return true
+}
+
+function cacheStableActivePath(options: {
+  cache: Map<string, CachedTabState>
+  activeTabPath: string | null
+  activeTab: Tab | undefined
+  editor: ReturnType<typeof useCreateBlockNote>
+  editorMountedRef: MutableRefObject<boolean>
+}) {
+  const {
+    cache,
+    activeTabPath,
+    activeTab,
+    editor,
+    editorMountedRef,
+  } = options
+
+  if (!activeTabPath || !activeTab || !editorMountedRef.current) return
+  cacheEditorState(cache, activeTabPath, editor.document)
+}
+
+function preserveUntitledRenameState(options: {
+  prevPath: string | null
+  activeTabPath: string | null
+  activeTab: Tab | undefined
+  cache: Map<string, CachedTabState>
+  editor: ReturnType<typeof useCreateBlockNote>
+  editorMountedRef: MutableRefObject<boolean>
+}) {
+  const {
+    prevPath,
+    activeTabPath,
+    activeTab,
+    cache,
+    editor,
+    editorMountedRef,
+  } = options
+
+  if (!prevPath || !activeTabPath) return false
+  if (!isUntitledRenameTransition(prevPath, activeTabPath, activeTab, editor)) return false
+
+  cache.delete(prevPath)
+  cacheStableActivePath({
+    cache,
+    activeTabPath,
+    activeTab,
+    editor,
+    editorMountedRef,
+  })
+  requestAnimationFrame(() => signalEditorTabSwapped(activeTabPath))
+  return true
+}
+
+function signalTabSwap(path: string) {
+  requestAnimationFrame(() => signalEditorTabSwapped(path))
+}
+
+function clearStaleSwap(
+  targetPath: string,
+  prevActivePathRef: MutableRefObject<string | null>,
+  suppressChangeRef: MutableRefObject<boolean>,
+): boolean {
+  if (prevActivePathRef.current === targetPath) return false
+  suppressChangeRef.current = false
+  return true
+}
+
+function applyBlankTabState(options: {
+  cache: Map<string, CachedTabState>
+  targetPath: string
+  editor: ReturnType<typeof useCreateBlockNote>
+  suppressChangeRef: MutableRefObject<boolean>
+}) {
+  const {
+    cache,
+    targetPath,
+    editor,
+    suppressChangeRef,
+  } = options
+
+  cache.set(targetPath, { blocks: blankParagraphBlocks(), scrollTop: 0 })
+  applyBlankStateToEditor(editor, suppressChangeRef)
+  signalTabSwap(targetPath)
+}
+
+function scheduleEmptyHeadingSwap(options: {
+  editor: ReturnType<typeof useCreateBlockNote>
+  targetPath: string
+  content: string
+  prevActivePathRef: MutableRefObject<string | null>
+  suppressChangeRef: MutableRefObject<boolean>
+}) {
+  const {
+    editor,
+    targetPath,
+    content,
+    prevActivePathRef,
+    suppressChangeRef,
+  } = options
+
+  if (extractBodyRemainderAfterEmptyH1(content) === null) return false
+
+  void resolveEmptyHeadingHtml(editor, content)
+    .then((html) => {
+      if (prevActivePathRef.current !== targetPath || !html) return
+      applyHtmlStateToEditor(editor, html, suppressChangeRef)
+      signalTabSwap(targetPath)
+    })
+    .catch((err: unknown) => {
+      suppressChangeRef.current = false
+      console.error('Failed to render empty heading state:', err)
+    })
+
+  return true
+}
+
+function scheduleParsedBlockSwap(options: {
+  editor: ReturnType<typeof useCreateBlockNote>
+  cache: Map<string, CachedTabState>
+  targetPath: string
+  content: string
+  prevActivePathRef: MutableRefObject<string | null>
+  suppressChangeRef: MutableRefObject<boolean>
+}) {
+  const {
+    editor,
+    cache,
+    targetPath,
+    content,
+    prevActivePathRef,
+    suppressChangeRef,
+  } = options
+
+  void resolveBlocksForTarget(editor, cache, targetPath, content)
+    .then(({ blocks, scrollTop }) => {
+      if (prevActivePathRef.current !== targetPath) return
+      applyBlocksToEditor(editor, blocks, scrollTop, suppressChangeRef)
+      signalTabSwap(targetPath)
+    })
+    .catch((err: unknown) => {
+      suppressChangeRef.current = false
+      console.error('Failed to parse/swap editor content:', err)
+    })
 }
 
 function scheduleTabSwap(options: {
@@ -411,44 +603,32 @@ function scheduleTabSwap(options: {
   suppressChangeRef.current = true
 
   const doSwap = () => {
-    if (prevActivePathRef.current !== targetPath) {
-      suppressChangeRef.current = false
-      return
-    }
+    if (clearStaleSwap(targetPath, prevActivePathRef, suppressChangeRef)) return
     rawSwapPendingRef.current = false
 
     if (isBlankBodyContent(activeTab.content)) {
-      cache.set(targetPath, { blocks: blankParagraphBlocks(), scrollTop: 0 })
-      applyBlankStateToEditor(editor, suppressChangeRef)
-      requestAnimationFrame(() => signalEditorTabSwapped(targetPath))
+      applyBlankTabState({ cache, targetPath, editor, suppressChangeRef })
       return
     }
 
-    void resolveEmptyHeadingHtml(editor, activeTab.content)
-      .then((html) => {
-        if (prevActivePathRef.current !== targetPath || !html) return
-        applyHtmlStateToEditor(editor, html, suppressChangeRef)
-        requestAnimationFrame(() => signalEditorTabSwapped(targetPath))
-      })
-      .catch((err: unknown) => {
-        suppressChangeRef.current = false
-        console.error('Failed to render empty heading state:', err)
-      })
-
-    if (extractBodyRemainderAfterEmptyH1(activeTab.content) !== null) {
+    if (scheduleEmptyHeadingSwap({
+      editor,
+      targetPath,
+      content: activeTab.content,
+      prevActivePathRef,
+      suppressChangeRef,
+    })) {
       return
     }
 
-    void resolveBlocksForTarget(editor, cache, targetPath, activeTab.content)
-      .then(({ blocks, scrollTop }) => {
-        if (prevActivePathRef.current !== targetPath) return
-        applyBlocksToEditor(editor, blocks, scrollTop, suppressChangeRef)
-        requestAnimationFrame(() => signalEditorTabSwapped(targetPath))
-      })
-      .catch((err: unknown) => {
-        suppressChangeRef.current = false
-        console.error('Failed to parse/swap editor content:', err)
-      })
+    scheduleParsedBlockSwap({
+      editor,
+      cache,
+      targetPath,
+      content: activeTab.content,
+      prevActivePathRef,
+      suppressChangeRef,
+    })
   }
 
   if (editor.prosemirrorView) {
@@ -499,6 +679,17 @@ function useTabSwapEffect(options: {
     if (rawMode) return
     cachePreviousTabOnPathChange({ prevPath, pathChanged, editorMountedRef, cache, editor })
     prevActivePathRef.current = activeTabPath
+
+    if (preserveUntitledRenameState({
+      prevPath,
+      activeTabPath,
+      activeTab,
+      cache,
+      editor,
+      editorMountedRef,
+    })) {
+      return
+    }
 
     if (handleStableActivePath({
       pathChanged,

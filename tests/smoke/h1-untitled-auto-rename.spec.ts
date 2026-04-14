@@ -46,6 +46,12 @@ async function writeNewHeading(page: Page, title: string): Promise<void> {
   await page.keyboard.press('Enter')
 }
 
+async function writeNewHeadingAndBody(page: Page, title: string, body: string): Promise<void> {
+  await page.keyboard.type(title, { delay: 20 })
+  await page.keyboard.press('Enter')
+  await page.keyboard.type(body, { delay: 20 })
+}
+
 async function expectRenamedFile({ vaultPath, filename }: FileExpectation): Promise<void> {
   await expect(async () => {
     expect(markdownFiles(vaultPath)).toContain(filename)
@@ -110,6 +116,15 @@ async function expectStableEmptyTitleHeading(page: Page): Promise<void> {
   await expectReadyEmptyTitleHeading(page)
 }
 
+async function activeSelectionBlockType(page: Page): Promise<string | null> {
+  return page.evaluate(() => {
+    const selection = window.getSelection()
+    const anchorNode = selection?.anchorNode ?? null
+    const anchorElement = anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement ?? null
+    return anchorElement?.closest('.bn-block-content')?.getAttribute('data-content-type') ?? null
+  })
+}
+
 let tempVaultDir: string
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -138,7 +153,11 @@ test('@smoke new-note H1 auto-rename keeps the editor usable and leaves no untit
 
   for (const [index, title] of titles.entries()) {
     await createUntitledNote(page)
-    await writeNewHeading(page, title)
+    if (index === 0) {
+      await writeNewHeadingAndBody(page, title, 'Body continues while rename is pending.')
+    } else {
+      await writeNewHeading(page, title)
+    }
     await expectActiveFilename(page, slugifyTitle(title))
     await expectRenamedFile({ vaultPath: tempVaultDir, filename: `${slugifyTitle(title)}.md` })
     await expectEditorFocused(page)
@@ -149,6 +168,11 @@ test('@smoke new-note H1 auto-rename keeps the editor usable and leaves no untit
     })
 
     if (index === 0) {
+      await expectFileContentContains({
+        vaultPath: tempVaultDir,
+        filename: 'fresh-focus-title.md',
+        text: 'Body continues while rename is pending.',
+      })
       await page.keyboard.type(' focus-probe')
       await expectFileContentContains({
         vaultPath: tempVaultDir,
@@ -163,4 +187,40 @@ test('@smoke new-note H1 auto-rename keeps the editor usable and leaves no untit
   expect(files.filter((name) => name.startsWith('untitled-note-'))).toEqual([])
   expect(files.filter((name) => /^rapid-rename-\d+\.md$/.test(name))).toHaveLength(4)
   expect(errors).toEqual([])
+})
+
+test('@smoke new-note H1 auto-rename preserves body typing and cursor while rename lands', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', (err) => {
+    if (!isKnownEditorError(err.message)) errors.push(err.message)
+  })
+
+  await createUntitledNote(page)
+  await page.keyboard.type('Cursor Stable Rename', { delay: 30 })
+  await page.keyboard.press('Enter')
+
+  // Let the initial untitled save settle so the rename timer can fire mid-body typing.
+  await page.waitForTimeout(700)
+
+  const bodyText = 'Body keeps flowing through the rename without losing the caret or freezing.'
+  await page.keyboard.type(bodyText, { delay: 70 })
+
+  await expectActiveFilename(page, 'cursor-stable-rename')
+  await expectRenamedFile({ vaultPath: tempVaultDir, filename: 'cursor-stable-rename.md' })
+  await expectFileContentContains({
+    vaultPath: tempVaultDir,
+    filename: 'cursor-stable-rename.md',
+    text: bodyText,
+  })
+  await expectEditorFocused(page)
+  await expect.poll(() => activeSelectionBlockType(page), { timeout: 5_000 }).toBe('paragraph')
+
+  await page.keyboard.type(' Still typing after rename.')
+  await expectFileContentContains({
+    vaultPath: tempVaultDir,
+    filename: 'cursor-stable-rename.md',
+    text: 'Still typing after rename.',
+  })
+  await expectEditorFocused(page)
+  await expect(errors).toEqual([])
 })
