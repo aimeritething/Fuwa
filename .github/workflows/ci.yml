@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+env:
+  # Bump this when Tauri/Rust target artifacts capture stale absolute paths.
+  RUST_TARGET_CACHE_VERSION: v2026-04-14-tolaria
+
 jobs:
   test:
     name: Tests & Quality Checks
@@ -37,9 +41,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          key: ${{ runner.os }}-cargo-${{ env.RUST_TARGET_CACHE_VERSION }}-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-cargo-
+            ${{ runner.os }}-cargo-${{ env.RUST_TARGET_CACHE_VERSION }}-
 
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@cargo-llvm-cov

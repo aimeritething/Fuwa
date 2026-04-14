@@ -5,6 +5,10 @@ on:
     tags:
       - 'stable-v*'
 
+env:
+  # Bump this when Tauri/Rust target artifacts capture stale absolute paths.
+  RUST_TARGET_CACHE_VERSION: v2026-04-14-tolaria
+
 concurrency:
   group: release-stable-${{ github.ref }}
   cancel-in-progress: true
@@ -72,9 +76,9 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             src-tauri/target
-          key: ${{ runner.os }}-release-cargo-${{ hashFiles('src-tauri/Cargo.lock') }}
+          key: ${{ runner.os }}-release-cargo-${{ matrix.target }}-${{ env.RUST_TARGET_CACHE_VERSION }}-${{ hashFiles('src-tauri/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-release-cargo-
+            ${{ runner.os }}-release-cargo-${{ matrix.target }}-${{ env.RUST_TARGET_CACHE_VERSION }}-
 
       - name: Install frontend dependencies
         run: pnpm install --frozen-lockfile
