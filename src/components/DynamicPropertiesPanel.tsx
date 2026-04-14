@@ -38,6 +38,9 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
   onDisplayModeChange: (key: string, mode: PropertyDisplayMode | null) => void
 }) {
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.target !== e.currentTarget) {
+      return
+    }
     if (e.key === 'Enter' && editingKey !== propKey) {
       e.preventDefault()
       onStartEdit(propKey)
@@ -47,11 +50,11 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
   return (
     <div className={PROPERTY_ROW_CLASS_NAME} style={PROPERTY_PANEL_ROW_STYLE} tabIndex={0} onKeyDown={handleKeyDown} data-testid="editable-property">
       <span className={PROPERTY_LABEL_CLASS_NAME}>
+        <DisplayModeSelector propKey={propKey} currentMode={displayMode} autoMode={autoMode} onSelect={onDisplayModeChange} />
         <span className="min-w-0 flex-1 truncate">{toSentenceCase(propKey)}</span>
         {onDelete && (
           <button className="border-none bg-transparent p-0 text-sm leading-none text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover/prop:opacity-100" onClick={() => onDelete(propKey)} title="Delete property">&times;</button>
         )}
-        <DisplayModeSelector propKey={propKey} currentMode={displayMode} autoMode={autoMode} onSelect={onDisplayModeChange} />
       </span>
       <div className="min-w-0">
         <SmartPropertyValueCell propKey={propKey} value={value} displayMode={displayMode} isEditing={editingKey === propKey} vaultStatuses={vaultStatuses} vaultTags={vaultTags} onStartEdit={onStartEdit} onSave={onSave} onSaveList={onSaveList} onUpdate={onUpdate} />

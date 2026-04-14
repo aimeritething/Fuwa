@@ -212,6 +212,7 @@ export function DisplayModeSelector({ propKey, currentMode, autoMode, onSelect }
 }) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
+  const CurrentIcon = DISPLAY_MODE_ICONS[currentMode]
 
   const positionMenu = useCallback((node: HTMLDivElement | null) => {
     if (!node) return
@@ -238,12 +239,14 @@ export function DisplayModeSelector({ propKey, currentMode, autoMode, onSelect }
     <div className="relative">
       <button
         ref={triggerRef}
-        className="flex h-4 w-4 items-center justify-center rounded border-none bg-transparent p-0 text-[10px] leading-none text-muted-foreground opacity-0 transition-all hover:bg-muted hover:text-foreground group-hover/prop:opacity-100"
+        type="button"
+        className="inline-flex size-5 shrink-0 items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground transition-colors hover:bg-background hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
         onClick={() => setOpen(!open)}
-        title="Change display mode"
+        title={`Change ${propKey} type`}
+        aria-label={`Change ${propKey} type`}
         data-testid="display-mode-trigger"
       >
-        {'\u25BE'}
+        <CurrentIcon className="size-3.5" data-testid={`display-mode-icon-${currentMode}`} />
       </button>
       {open && createPortal(
         <>
