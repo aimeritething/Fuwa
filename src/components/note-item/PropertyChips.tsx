@@ -72,7 +72,8 @@ function resolveRelationshipChip(
   typeEntryMap: Record<string, VaultEntry>,
 ): PropertyChipValue | null {
   const targetEntry = resolveEntry(allEntries, wikilinkTarget(ref))
-  const label = targetEntry?.title ?? wikilinkDisplay(ref)
+  const displayLabel = wikilinkDisplay(ref)
+  const label = ref.includes('|') ? displayLabel : (targetEntry?.title ?? displayLabel)
   if (!label) return null
   if (!targetEntry) {
     return {

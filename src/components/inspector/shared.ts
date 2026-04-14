@@ -25,13 +25,19 @@ export function entryStatusTitle(entry: VaultEntry | undefined): string | undefi
   return undefined
 }
 
+function resolveRefLabel(ref: string, resolvedTitle: string | undefined): string {
+  const displayLabel = wikilinkDisplay(ref)
+  if (ref.includes('|')) return displayLabel
+  return resolvedTitle ?? displayLabel
+}
+
 export function resolveRefProps(ref: string, entries: VaultEntry[], typeEntryMap: Record<string, VaultEntry>) {
   const resolved = resolveRef(ref, entries)
   const refType = resolved?.isA ?? null
   const te = typeEntryMap[refType ?? '']
   const icon = resolved?.icon
   return {
-    label: resolved?.title ?? wikilinkDisplay(ref),
+    label: resolveRefLabel(ref, resolved?.title),
     noteIcon: icon ?? null,
     typeColor: getTypeColor(refType, te?.color),
     bgColor: getTypeLightColor(refType, te?.color),

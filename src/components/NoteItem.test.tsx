@@ -281,6 +281,35 @@ describe('NoteItem', () => {
     expect(screen.getByTestId('property-chip-topics-0')).toHaveTextContent('AI / ML')
   })
 
+  it('keeps explicit wikilink aliases in relationship chips', () => {
+    const linkedProject = makeEntry({
+      path: '/vault/project/my-project.md',
+      filename: 'my-project.md',
+      title: 'My Project',
+      isA: 'Project',
+    })
+    const sourceEntry = makeEntry({
+      path: '/vault/note/source.md',
+      filename: 'source.md',
+      title: 'Source',
+      isA: 'Note',
+      relationships: { 'Belongs to': ['[[project/my-project|My Cool Project]]'] },
+    })
+
+    render(
+      <NoteItem
+        entry={sourceEntry}
+        isSelected={false}
+        typeEntryMap={{}}
+        allEntries={[sourceEntry, linkedProject]}
+        displayPropsOverride={['Belongs to']}
+        onClickNote={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('property-chip-belongs-to-0')).toHaveTextContent('My Cool Project')
+  })
+
   it('opens URL chips on Cmd+click only and keeps regular clicks inert', () => {
     const entry = makeEntry({
       path: '/vault/note/source.md',

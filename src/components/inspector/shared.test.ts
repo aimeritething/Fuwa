@@ -22,4 +22,17 @@ describe('resolveRefProps', () => {
 
     expect(props.label).toBe('AI / ML')
   })
+
+  it('keeps explicit wikilink aliases for relationship labels', () => {
+    const linkedProject = makeEntry({
+      path: '/vault/project/my-project.md',
+      filename: 'my-project.md',
+      title: 'My Project',
+      isA: 'Project',
+    })
+
+    const props = resolveRefProps('[[project/my-project|My Cool Project]]', [linkedProject], {})
+
+    expect(props.label).toBe('My Cool Project')
+  })
 })
