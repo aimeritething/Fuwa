@@ -1,4 +1,4 @@
-import { Bell, FileText, Package, Settings } from 'lucide-react'
+import { Bell, Package, Settings } from 'lucide-react'
 import { Megaphone } from '@phosphor-icons/react'
 import type { AiAgentId, AiAgentsStatus } from '../../lib/aiAgents'
 import type { VaultAiGuidanceStatus } from '../../lib/vaultAiGuidance'
@@ -162,12 +162,10 @@ export function StatusBarSecondarySection({
   onOpenFeedback,
   onOpenSettings,
 }: StatusBarSecondarySectionProps) {
+  void noteCount
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
-      <span style={ICON_STYLE}>
-        <FileText size={13} />
-        {noteCount.toLocaleString()} notes
-      </span>
       {zoomLevel === 100 ? null : (
         <span
           role="button"

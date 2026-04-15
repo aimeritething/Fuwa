@@ -24,9 +24,9 @@ describe('StatusBar', () => {
     vi.clearAllMocks()
   })
 
-  it('displays note count', () => {
+  it('does not display the bottom-bar note count readout', () => {
     render(<StatusBar noteCount={9200} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
-    expect(screen.getByText('9,200 notes')).toBeInTheDocument()
+    expect(screen.queryByText('9,200 notes')).not.toBeInTheDocument()
   })
 
   it('displays build number when provided', () => {
