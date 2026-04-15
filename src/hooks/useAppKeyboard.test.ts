@@ -44,6 +44,7 @@ function makeActions() {
     onZoomOut: vi.fn(),
     onZoomReset: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
+    multiSelectionCommandRef: { current: null },
   }
 }
 
@@ -156,6 +157,21 @@ describe('useAppKeyboard', () => {
     expect(actions.onArchiveNote).not.toHaveBeenCalled()
   })
 
+  it('Cmd+E uses the current multi-selection instead of the active note', () => {
+    const actions = makeActions()
+    const organizeSelected = vi.fn()
+    actions.multiSelectionCommandRef.current = {
+      selectedPaths: ['/vault/a.md', '/vault/b.md'],
+      organizeSelected,
+    }
+
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('e', { metaKey: true })
+
+    expect(organizeSelected).toHaveBeenCalledTimes(1)
+    expect(actions.onToggleOrganized).not.toHaveBeenCalled()
+  })
+
   it('Cmd+E still works when editor focus stops propagation', () => {
     const actions = makeActions()
     const onToggleOrganized = vi.fn()
@@ -243,6 +259,21 @@ describe('useAppKeyboard', () => {
     renderHook(() => useAppKeyboard(actions))
     fireKey('Backspace', { metaKey: true })
     expect(actions.onDeleteNote).toHaveBeenCalledWith('/vault/test.md')
+  })
+
+  it('Cmd+Backspace deletes the current multi-selection instead of the active note', () => {
+    const actions = makeActions()
+    const deleteSelected = vi.fn()
+    actions.multiSelectionCommandRef.current = {
+      selectedPaths: ['/vault/a.md', '/vault/b.md'],
+      deleteSelected,
+    }
+
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('Backspace', { metaKey: true })
+
+    expect(deleteSelected).toHaveBeenCalledTimes(1)
+    expect(actions.onDeleteNote).not.toHaveBeenCalled()
   })
 
   it('Cmd+K still works when text input is focused', () => {

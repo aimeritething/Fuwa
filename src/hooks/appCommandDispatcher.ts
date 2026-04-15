@@ -6,6 +6,7 @@ import {
   type AppCommandDefinition,
 } from './appCommandCatalog'
 import type { ViewMode } from './useViewMode'
+import type { NoteListMultiSelectionCommands } from '../components/note-list/multiSelectionCommands'
 
 export const APP_COMMAND_EVENT_NAME = 'laputa:dispatch-command'
 
@@ -61,6 +62,7 @@ export interface AppCommandHandlers {
   onRepairVault?: () => void
   onRestoreDeletedNote?: () => void
   activeTabPathRef: MutableRefObject<string | null>
+  multiSelectionCommandRef?: MutableRefObject<NoteListMultiSelectionCommands | null>
 }
 
 type SimpleHandlerKey = keyof Pick<
@@ -180,6 +182,26 @@ function dispatchActiveTabCommand(
   return true
 }
 
+function dispatchMultiSelectionCommand(
+  selectionRef: MutableRefObject<NoteListMultiSelectionCommands | null> | undefined,
+  handler: ActiveTabHandlerKey,
+): boolean | null {
+  const selection = selectionRef?.current
+  if (!selection || selection.selectedPaths.length <= 1) return null
+
+  if (handler === 'onDeleteNote') {
+    selection.deleteSelected?.()
+    return !!selection.deleteSelected
+  }
+
+  if (handler === 'onToggleOrganized') {
+    selection.organizeSelected?.()
+    return !!selection.organizeSelected
+  }
+
+  return false
+}
+
 function dispatchDefinition(
   definition: AppCommandDefinition,
   handlers: AppCommandHandlers,
@@ -198,6 +220,14 @@ function dispatchDefinition(
     }
     case 'active-tab-handler': {
       const handler = definition.route.handler
+      const multiSelectionResult = dispatchMultiSelectionCommand(
+        handlers.multiSelectionCommandRef,
+        handler as ActiveTabHandlerKey,
+      )
+      if (multiSelectionResult !== null) {
+        return multiSelectionResult
+      }
+
       return dispatchActiveTabCommand(
         handlers.activeTabPathRef,
         (path) => ACTIVE_TAB_HANDLER_EXECUTORS[handler as ActiveTabHandlerKey](handlers, path),

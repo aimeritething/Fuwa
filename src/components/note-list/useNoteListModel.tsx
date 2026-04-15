@@ -16,7 +16,6 @@ import {
   useChangeStatusResolver,
   useListPropertyPicker,
   useModifiedFilesState,
-  useMultiSelectKeyboard,
   useNoteListData,
   useNoteListInteractions,
   useNoteListSearch,
@@ -207,9 +206,7 @@ export function useNoteListModel({
     handleBulkArchive,
     handleBulkDeletePermanently,
     handleBulkUnarchive,
-    bulkArchiveOrUnarchive,
   } = useBulkActions(multiSelect, onBulkArchive, onBulkDeletePermanently, isArchivedView)
-  useMultiSelectKeyboard(multiSelect, isEntityView, bulkArchiveOrUnarchive, handleBulkDeletePermanently)
 
   const renderItem = useCallback((entry: VaultEntry) => (
     <NoteItem

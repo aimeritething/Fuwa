@@ -9,12 +9,14 @@ import { useMenuEvents } from './useMenuEvents'
 import type { SidebarSelection, SidebarFilter, VaultEntry } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
+import type { NoteListMultiSelectionCommands } from '../components/note-list/multiSelectionCommands'
 
 interface AppCommandsConfig {
   activeTabPath: string | null
   activeTabPathRef: React.MutableRefObject<string | null>
   entries: VaultEntry[]
   visibleNotesRef: React.RefObject<VaultEntry[]>
+  multiSelectionCommandRef: React.MutableRefObject<NoteListMultiSelectionCommands | null>
   modifiedCount: number
   selection: SidebarSelection
   onQuickOpen: () => void
@@ -108,6 +110,7 @@ function createKeyboardActions(
     onToggleOrganized: config.onToggleOrganized,
     onOpenInNewWindow: config.onOpenInNewWindow,
     activeTabPathRef: config.activeTabPathRef,
+    multiSelectionCommandRef: config.multiSelectionCommandRef,
   }
 }
 
@@ -151,6 +154,7 @@ function createMenuEventHandlers(
     onOpenInNewWindow: config.onOpenInNewWindow,
     onRestoreDeletedNote: config.onRestoreDeletedNote,
     activeTabPathRef: config.activeTabPathRef,
+    multiSelectionCommandRef: config.multiSelectionCommandRef,
     activeTabPath: config.activeTabPath,
     modifiedCount: config.modifiedCount,
     hasRestorableDeletedNote: config.canRestoreDeletedNote,

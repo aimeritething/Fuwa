@@ -54,6 +54,7 @@ function makeHandlers(): MenuEventHandlers {
     onOpenInNewWindow: vi.fn(),
     onRestoreDeletedNote: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
+    multiSelectionCommandRef: { current: null },
     activeTabPath: '/vault/test.md',
     hasRestorableDeletedNote: false,
   }
@@ -197,6 +198,20 @@ describe('dispatchMenuEvent', () => {
     expect(h.onToggleOrganized).toHaveBeenCalledWith('/vault/test.md')
   })
 
+  it('note-toggle-organized uses the current multi-selection when available', () => {
+    const h = makeHandlers()
+    const organizeSelected = vi.fn()
+    h.multiSelectionCommandRef.current = {
+      selectedPaths: ['/vault/a.md', '/vault/b.md'],
+      organizeSelected,
+    }
+
+    dispatchMenuEvent('note-toggle-organized', h)
+
+    expect(organizeSelected).toHaveBeenCalledTimes(1)
+    expect(h.onToggleOrganized).not.toHaveBeenCalled()
+  })
+
   it('note-toggle-organized does nothing when no active tab', () => {
     const h = makeHandlers()
     h.activeTabPathRef = { current: null }
@@ -208,6 +223,20 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('note-delete', h)
     expect(h.onDeleteNote).toHaveBeenCalledWith('/vault/test.md')
+  })
+
+  it('note-delete uses the current multi-selection when available', () => {
+    const h = makeHandlers()
+    const deleteSelected = vi.fn()
+    h.multiSelectionCommandRef.current = {
+      selectedPaths: ['/vault/a.md', '/vault/b.md'],
+      deleteSelected,
+    }
+
+    dispatchMenuEvent('note-delete', h)
+
+    expect(deleteSelected).toHaveBeenCalledTimes(1)
+    expect(h.onDeleteNote).not.toHaveBeenCalled()
   })
 
   it('note-delete does nothing when no active tab', () => {

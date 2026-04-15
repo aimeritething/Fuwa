@@ -69,6 +69,7 @@ import { isNoteWindow, getNoteWindowParams, getNoteWindowPathCandidates, findNot
 import { GitRequiredModal } from './components/GitRequiredModal'
 import { RenameDetectedBanner, type DetectedRename } from './components/RenameDetectedBanner'
 import { openNoteListPropertiesPicker } from './components/note-list/noteListPropertiesEvents'
+import type { NoteListMultiSelectionCommands } from './components/note-list/multiSelectionCommands'
 import { focusNoteIconPropertyEditor } from './components/noteIconPropertyEvents'
 import { trackEvent } from './lib/telemetry'
 import {
@@ -173,6 +174,7 @@ function App() {
   const layout = useLayoutPanels(noteWindowParams ? { initialInspectorCollapsed: true } : undefined)
   const { setInspectorCollapsed } = layout
   const visibleNotesRef = useRef<VaultEntry[]>([])
+  const multiSelectionCommandRef = useRef<NoteListMultiSelectionCommands | null>(null)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
   const dialogs = useDialogs()
   const { showAIChat, toggleAIChat } = dialogs
@@ -735,6 +737,7 @@ function App() {
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
     entries: vault.entries,
     visibleNotesRef,
+    multiSelectionCommandRef,
     modifiedCount: vault.modifiedFiles.length,
     activeNoteModified: vault.modifiedFiles.some(f => f.path === notes.activeTabPath),
     selection: effectiveSelection,
@@ -888,7 +891,7 @@ function App() {
               {effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} />
+                <NoteList entries={vault.entries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} multiSelectionCommandRef={multiSelectionCommandRef} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />

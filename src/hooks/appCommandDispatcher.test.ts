@@ -53,6 +53,7 @@ function makeHandlers(): AppCommandHandlers {
     onRepairVault: vi.fn(),
     onRestoreDeletedNote: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' },
+    multiSelectionCommandRef: { current: null },
   }
 }
 
@@ -178,6 +179,35 @@ describe('appCommandDispatcher', () => {
     expect(handlers.onToggleFavorite).toHaveBeenCalledWith('/vault/test.md')
     expect(handlers.onToggleOrganized).toHaveBeenCalledWith('/vault/test.md')
     expect(handlers.onDeleteNote).toHaveBeenCalledWith('/vault/test.md')
+  })
+
+  it('uses the current multi-selection for delete and organize commands', () => {
+    const handlers = makeHandlers()
+    const deleteSelected = vi.fn()
+    const organizeSelected = vi.fn()
+    handlers.multiSelectionCommandRef.current = {
+      selectedPaths: ['/vault/a.md', '/vault/b.md'],
+      deleteSelected,
+      organizeSelected,
+    }
+
+    expect(dispatchAppCommand(APP_COMMAND_IDS.noteToggleOrganized, handlers)).toBe(true)
+    expect(dispatchAppCommand(APP_COMMAND_IDS.noteDelete, handlers)).toBe(true)
+
+    expect(organizeSelected).toHaveBeenCalledTimes(1)
+    expect(deleteSelected).toHaveBeenCalledTimes(1)
+    expect(handlers.onToggleOrganized).not.toHaveBeenCalled()
+    expect(handlers.onDeleteNote).not.toHaveBeenCalled()
+  })
+
+  it('does not fall back to the active note when multi-selection cannot handle the command', () => {
+    const handlers = makeHandlers()
+    handlers.multiSelectionCommandRef.current = {
+      selectedPaths: ['/vault/a.md', '/vault/b.md'],
+    }
+
+    expect(dispatchAppCommand(APP_COMMAND_IDS.noteToggleOrganized, handlers)).toBe(false)
+    expect(handlers.onToggleOrganized).not.toHaveBeenCalled()
   })
 
   it('no-ops note-scoped commands when there is no active note', () => {
