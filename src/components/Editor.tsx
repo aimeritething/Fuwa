@@ -8,7 +8,7 @@ import type { VaultEntry, GitCommit, NoteStatus } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { FrontmatterValue } from './Inspector'
 import { ResizeHandle } from './ResizeHandle'
-import { useDiffMode } from '../hooks/useDiffMode'
+import { useDiffMode, type CommitDiffRequest } from '../hooks/useDiffMode'
 import { useRawMode } from '../hooks/useRawMode'
 import { useEditorFocus } from '../hooks/useEditorFocus'
 import { useDragRegion } from '../hooks/useDragRegion'
@@ -40,6 +40,8 @@ interface EditorProps {
   onNavigateWikilink: (target: string) => void
   onLoadDiff?: (path: string) => Promise<string>
   onLoadDiffAtCommit?: (path: string, commitHash: string) => Promise<string>
+  pendingCommitDiffRequest?: CommitDiffRequest | null
+  onPendingCommitDiffHandled?: (requestId: number) => void
   getNoteStatus?: (path: string) => NoteStatus
   onCreateNote?: () => void
   inspectorCollapsed: boolean
@@ -150,6 +152,8 @@ interface EditorSetupParams {
   onContentChange?: (path: string, content: string) => void
   onLoadDiff?: (path: string) => Promise<string>
   onLoadDiffAtCommit?: (path: string, commitHash: string) => Promise<string>
+  pendingCommitDiffRequest?: CommitDiffRequest | null
+  onPendingCommitDiffHandled?: (requestId: number) => void
   getNoteStatus?: (path: string) => NoteStatus
   rawToggleRef?: React.MutableRefObject<() => void>
   diffToggleRef?: React.MutableRefObject<() => void>
@@ -216,7 +220,7 @@ function useRawModeWithFlush(
 
 function useEditorSetup({
   tabs, activeTabPath, vaultPath, onContentChange,
-  onLoadDiff, onLoadDiffAtCommit, getNoteStatus,
+  onLoadDiff, onLoadDiffAtCommit, pendingCommitDiffRequest, onPendingCommitDiffHandled, getNoteStatus,
   rawToggleRef, diffToggleRef,
 }: EditorSetupParams) {
   const vaultPathRef = useRef(vaultPath)
@@ -257,7 +261,11 @@ function useEditorSetup({
   useEditorFocus(editor, editorMountedRef)
 
   const { diffMode, diffContent, diffLoading, handleToggleDiff, handleViewCommitDiff } = useDiffMode({
-    activeTabPath, onLoadDiff, onLoadDiffAtCommit,
+    activeTabPath,
+    onLoadDiff,
+    onLoadDiffAtCommit,
+    pendingCommitDiffRequest,
+    onPendingCommitDiffHandled,
   })
 
   const { handleToggleDiffExclusive, handleToggleRawExclusive } = useEditorModeExclusion({
@@ -303,7 +311,10 @@ export const Editor = memo(function Editor(props: EditorProps) {
   } = useEditorSetup({
     tabs, activeTabPath, vaultPath, onContentChange,
     onLoadDiff: props.onLoadDiff,
-    onLoadDiffAtCommit: props.onLoadDiffAtCommit, getNoteStatus,
+    onLoadDiffAtCommit: props.onLoadDiffAtCommit,
+    pendingCommitDiffRequest: props.pendingCommitDiffRequest,
+    onPendingCommitDiffHandled: props.onPendingCommitDiffHandled,
+    getNoteStatus,
     rawToggleRef: props.rawToggleRef, diffToggleRef: props.diffToggleRef,
   })
 

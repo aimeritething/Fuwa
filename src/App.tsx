@@ -54,6 +54,7 @@ import { useLayoutPanels } from './hooks/useLayoutPanels'
 import { useConflictFlow } from './hooks/useConflictFlow'
 import { useAppSave } from './hooks/useAppSave'
 import { useVaultBridge } from './hooks/useVaultBridge'
+import type { CommitDiffRequest } from './hooks/useDiffMode'
 import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { ConfirmDeleteDialog } from './components/ConfirmDeleteDialog'
 import { DeleteProgressNotice } from './components/DeleteProgressNotice'
@@ -75,6 +76,7 @@ import {
 } from './lib/vaultAiGuidance'
 import { extractDeletedContentFromDiff } from './components/note-list/noteListUtils'
 import { hasNoteIconValue } from './utils/noteIcon'
+import { filenameStemToTitle } from './utils/noteTitle'
 import { OPEN_AI_CHAT_EVENT } from './utils/aiPromptBridge'
 import {
   INBOX_SELECTION,
@@ -114,6 +116,48 @@ async function resolveNoteWindowEntry(
   }
 
   return fallbackEntry()
+}
+
+function createPulseDeletedNoteEntry(fullPath: string, relativePath: string): DeletedNoteEntry {
+  const filename = relativePath.split('/').pop() ?? relativePath
+  return {
+    path: fullPath,
+    filename,
+    title: filenameStemToTitle(filename),
+    isA: 'Note',
+    aliases: [],
+    belongsTo: [],
+    relatedTo: [],
+    status: null,
+    archived: false,
+    modifiedAt: null,
+    createdAt: null,
+    fileSize: 0,
+    snippet: '',
+    wordCount: 0,
+    relationships: {},
+    icon: null,
+    color: null,
+    order: null,
+    sidebarLabel: null,
+    template: null,
+    sort: null,
+    view: null,
+    visible: null,
+    organized: false,
+    favorite: false,
+    favoriteIndex: null,
+    listPropertiesDisplay: [],
+    outgoingLinks: [],
+    properties: {},
+    hasH1: true,
+    fileKind: 'markdown',
+    __deletedNotePreview: true,
+    __deletedRelativePath: relativePath,
+    __changeAddedLines: null,
+    __changeDeletedLines: null,
+    __changeBinary: false,
+  }
 }
 
 /** Wraps useEditorSave to also keep outgoingLinks in sync on save and on content change. */
@@ -304,7 +348,9 @@ function App() {
     onFrontmatterPersisted: vault.loadModifiedFiles,
     onPathRenamed: (oldPath, newPath) => appSave.trackRenamedPath(oldPath, newPath),
   })
-  const { handleSelectNote } = notes
+  const { handleSelectNote, openTabWithContent } = notes
+  const pulseCommitDiffRequestIdRef = useRef(0)
+  const [pulseCommitDiffRequest, setPulseCommitDiffRequest] = useState<CommitDiffRequest | null>(null)
 
   // Note window: auto-open the note from URL params once vault entries load
   const noteWindowOpenedRef = useRef(false)
@@ -364,6 +410,41 @@ function App() {
     activeTabPath: notes.activeTabPath,
     onSelectNote: notes.handleSelectNote,
   })
+
+  const queuePulseCommitDiff = useCallback((path: string, commitHash: string) => {
+    pulseCommitDiffRequestIdRef.current += 1
+    setPulseCommitDiffRequest({
+      requestId: pulseCommitDiffRequestIdRef.current,
+      path,
+      commitHash,
+    })
+  }, [])
+
+  const handlePulseCommitDiffHandled = useCallback((requestId: number) => {
+    setPulseCommitDiffRequest((current) =>
+      current?.requestId === requestId ? null : current,
+    )
+  }, [])
+
+  const handlePulseOpenNote = useCallback((relativePath: string, commitHash?: string) => {
+    const fullPath = `${resolvedPath}/${relativePath}`
+    const entry = entriesByPath.get(fullPath) ?? entriesByPath.get(relativePath)
+
+    if (commitHash) {
+      const targetPath = entry?.path ?? fullPath
+      queuePulseCommitDiff(targetPath, commitHash)
+      if (entry) {
+        void handleSelectNote(entry)
+      } else {
+        openTabWithContent(createPulseDeletedNoteEntry(fullPath, relativePath), 'Content not available')
+      }
+      return
+    }
+
+    if (entry) {
+      void handleSelectNote(entry)
+    }
+  }, [entriesByPath, resolvedPath, queuePulseCommitDiff, handleSelectNote, openTabWithContent])
 
   const vaultBridge = useVaultBridge({
     entriesByPath, resolvedPath,
@@ -805,7 +886,7 @@ function App() {
           <>
             <div className={`app__note-list${aiActivity.highlightElement === 'notelist' ? ' ai-highlight' : ''}`} style={{ width: layout.noteListWidth }}>
               {effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'pulse' ? (
-                <PulseView vaultPath={resolvedPath} onOpenNote={vaultBridge.handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
+                <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
                 <NoteList entries={vault.entries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} />
               )}
@@ -821,6 +902,8 @@ function App() {
             onNavigateWikilink={notes.handleNavigateWikilink}
             onLoadDiff={vault.loadDiff}
             onLoadDiffAtCommit={vault.loadDiffAtCommit}
+            pendingCommitDiffRequest={pulseCommitDiffRequest}
+            onPendingCommitDiffHandled={handlePulseCommitDiffHandled}
             getNoteStatus={vault.getNoteStatus}
             onCreateNote={notes.handleCreateNoteImmediate}
             inspectorCollapsed={layout.inspectorCollapsed}

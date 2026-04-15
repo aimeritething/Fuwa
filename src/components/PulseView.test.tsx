@@ -122,44 +122,36 @@ describe('PulseView', () => {
     expect(screen.getByText('old')).toBeInTheDocument()
   })
 
-  it('calls onOpenNote when clicking a non-deleted file', async () => {
+  it.each([
+    {
+      label: 'a non-deleted file',
+      rowLabels: ['Update project notes'],
+      fileText: 'my project',
+      expected: ['project/my-project.md', 'abc123def456'],
+    },
+    {
+      label: 'a deleted file to open commit diff',
+      rowLabels: ['Update project notes', 'Remove old notes'],
+      fileText: 'old',
+      expected: ['note/old.md', 'def456abc789'],
+    },
+  ])('calls onOpenNote when clicking $label', async ({ rowLabels, fileText, expected }) => {
     mockInvokeFn.mockResolvedValue(mockCommits)
     const onOpenNote = vi.fn()
 
     render(<PulseView vaultPath="/test/vault" onOpenNote={onOpenNote} />)
 
-    // Expand first commit card
     await waitFor(() => {
       expect(screen.getAllByLabelText('Expand files').length).toBeGreaterThan(0)
     })
-    fireEvent.click(screen.getAllByLabelText('Expand files')[0])
+    rowLabels.forEach((rowLabel) => fireEvent.click(screen.getByText(rowLabel)))
 
     await waitFor(() => {
-      expect(screen.getByText('my project')).toBeInTheDocument()
+      expect(screen.getByText(fileText)).toBeInTheDocument()
     })
 
-    fireEvent.click(screen.getByText('my project'))
-    expect(onOpenNote).toHaveBeenCalledWith('project/my-project.md')
-  })
-
-  it('does not call onOpenNote when clicking a deleted file', async () => {
-    mockInvokeFn.mockResolvedValue(mockCommits)
-    const onOpenNote = vi.fn()
-
-    render(<PulseView vaultPath="/test/vault" onOpenNote={onOpenNote} />)
-
-    // Expand all commit cards to find the deleted file
-    await waitFor(() => {
-      expect(screen.getAllByLabelText('Expand files').length).toBeGreaterThan(0)
-    })
-    screen.getAllByLabelText('Expand files').forEach((btn) => fireEvent.click(btn))
-
-    await waitFor(() => {
-      expect(screen.getByText('old')).toBeInTheDocument()
-    })
-
-    fireEvent.click(screen.getByText('old'))
-    expect(onOpenNote).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByText(fileText))
+    expect(onOpenNote).toHaveBeenCalledWith(...expected)
   })
 
   it('shows empty state when no commits', async () => {
@@ -203,7 +195,7 @@ describe('PulseView', () => {
     })
   })
 
-  it('toggles file list visibility when clicking expand/collapse button', async () => {
+  it('toggles file list visibility when clicking anywhere on the commit row', async () => {
     mockInvokeFn.mockResolvedValue(mockCommits)
 
     render(<PulseView vaultPath="/test/vault" />)
@@ -214,18 +206,32 @@ describe('PulseView', () => {
     })
     expect(screen.queryByText('my project')).not.toBeInTheDocument()
 
-    // Click expand on first commit card
-    fireEvent.click(screen.getAllByLabelText('Expand files')[0])
+    fireEvent.click(screen.getByText('Update project notes'))
 
-    // Files should now be visible
     await waitFor(() => {
       expect(screen.getByText('my project')).toBeInTheDocument()
     })
 
-    // Click collapse to hide again
-    fireEvent.click(screen.getAllByLabelText('Collapse files')[0])
+    fireEvent.click(screen.getByText('Update project notes'))
 
     expect(screen.queryByText('my project')).not.toBeInTheDocument()
+  })
+
+  it('supports keyboard activation for commit rows and file rows', async () => {
+    mockInvokeFn.mockResolvedValue(mockCommits)
+    const onOpenNote = vi.fn()
+
+    render(<PulseView vaultPath="/test/vault" onOpenNote={onOpenNote} />)
+
+    const commitRow = await screen.findByRole('button', { name: /Update project notes/i })
+    commitRow.focus()
+    fireEvent.keyDown(commitRow, { key: 'Enter' })
+
+    const fileButton = await screen.findByRole('button', { name: 'my project' })
+    fileButton.focus()
+    fireEvent.keyDown(fileButton, { key: 'Enter' })
+
+    expect(onOpenNote).toHaveBeenCalledWith('project/my-project.md', 'abc123def456')
   })
 
   it('renders Pulse header', async () => {

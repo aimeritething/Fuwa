@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef, memo } from 'react'
+import { useState, useEffect, useCallback, useRef, memo, type KeyboardEvent } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { PulseCommit, PulseFile } from '../types'
@@ -14,7 +14,7 @@ function tauriCall<T>(command: string, args: Record<string, unknown>): Promise<T
 
 interface PulseViewProps {
   vaultPath: string
-  onOpenNote?: (relativePath: string) => void
+  onOpenNote?: (relativePath: string, commitHash?: string) => void
   sidebarCollapsed?: boolean
   onExpandSidebar?: () => void
 }
@@ -73,35 +73,72 @@ function SummaryBadges({ added, modified, deleted }: { added: number; modified: 
   )
 }
 
-function FileItem({ file, onOpenNote }: { file: PulseFile; onOpenNote?: (path: string) => void }) {
+function handleActivationKey(event: KeyboardEvent<HTMLElement>, action: () => void) {
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  action()
+}
+
+function FileItem({
+  file,
+  commitHash,
+  onOpenNote,
+}: {
+  file: PulseFile
+  commitHash: string
+  onOpenNote?: (path: string, commitHash?: string) => void
+}) {
   const Icon = STATUS_ICON[file.status] ?? FileText
   const color = STATUS_COLOR[file.status] ?? 'var(--muted-foreground)'
-  const isDeleted = file.status === 'deleted'
+  const handleOpen = useCallback(() => {
+    onOpenNote?.(file.path, commitHash)
+  }, [commitHash, file.path, onOpenNote])
 
   return (
-    <div
-      className={`flex items-center rounded transition-colors ${isDeleted ? '' : 'cursor-pointer hover:bg-accent'}`}
+    <button
+      type="button"
+      className="flex w-full items-center rounded text-left transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
       style={{ gap: 6, padding: '3px 8px' }}
-      onClick={isDeleted ? undefined : () => onOpenNote?.(file.path)}
+      onClick={handleOpen}
+      onKeyDown={(event) => handleActivationKey(event, handleOpen)}
       title={file.path}
+      disabled={!onOpenNote}
     >
       <Icon size={12} style={{ color, flexShrink: 0 }} weight="bold" />
       <span
-        className={`truncate text-[12px] ${isDeleted ? 'text-muted-foreground line-through' : 'text-foreground'}`}
+        className={`truncate text-[12px] ${file.status === 'deleted' ? 'text-muted-foreground line-through' : 'text-foreground'}`}
       >
         {file.title}
       </span>
-    </div>
+    </button>
   )
 }
 
-function CommitCard({ commit, onOpenNote }: { commit: PulseCommit; onOpenNote?: (path: string) => void }) {
+function CommitCard({
+  commit,
+  onOpenNote,
+}: {
+  commit: PulseCommit
+  onOpenNote?: (path: string, commitHash?: string) => void
+}) {
   const [expanded, setExpanded] = useState(false)
   const Chevron = expanded ? CaretDown : CaretRight
+  const toggleExpanded = useCallback(() => setExpanded((value) => !value), [])
 
   return (
-    <div className="border-b border-border" style={{ padding: '10px 16px' }}>
-      <div className="flex items-start justify-between" style={{ gap: 8 }}>
+    <div className="border-b border-border px-4 py-2">
+      <div
+        className="flex cursor-pointer items-start justify-between rounded-md px-0 py-2 transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        style={{ gap: 8 }}
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        onClick={toggleExpanded}
+        onKeyDown={(event) => {
+          if (event.target !== event.currentTarget) return
+          handleActivationKey(event, toggleExpanded)
+        }}
+      >
         <div className="min-w-0 flex-1">
           <div className="flex items-center" style={{ gap: 6, marginBottom: 2 }}>
             <GitCommit size={13} className="text-muted-foreground" style={{ flexShrink: 0 }} />
@@ -116,6 +153,7 @@ function CommitCard({ commit, onOpenNote }: { commit: PulseCommit; onOpenNote?: 
                 href={commit.githubUrl}
                 onClick={(e) => {
                   e.preventDefault()
+                  e.stopPropagation()
                   if (isTauri()) {
                     import('@tauri-apps/plugin-opener').then((mod) => mod.openUrl(commit.githubUrl!))
                   } else {
@@ -134,9 +172,13 @@ function CommitCard({ commit, onOpenNote }: { commit: PulseCommit; onOpenNote?: 
           </div>
         </div>
         <button
+          type="button"
           className="flex shrink-0 cursor-pointer items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground hover:text-foreground"
           style={{ width: 20, height: 20 }}
-          onClick={() => setExpanded((v) => !v)}
+          onClick={(event) => {
+            event.stopPropagation()
+            toggleExpanded()
+          }}
           aria-label={expanded ? 'Collapse files' : 'Expand files'}
         >
           <Chevron size={12} />
@@ -145,7 +187,7 @@ function CommitCard({ commit, onOpenNote }: { commit: PulseCommit; onOpenNote?: 
       {expanded && commit.files.length > 0 && (
         <div style={{ marginTop: 6, marginLeft: 4 }}>
           {commit.files.map((file) => (
-            <FileItem key={file.path} file={file} onOpenNote={onOpenNote} />
+            <FileItem key={file.path} file={file} commitHash={commit.hash} onOpenNote={onOpenNote} />
           ))}
         </div>
       )}
@@ -154,17 +196,24 @@ function CommitCard({ commit, onOpenNote }: { commit: PulseCommit; onOpenNote?: 
 }
 
 function DayGroup({ label, commits, onOpenNote }: {
-  label: string; commits: PulseCommit[]; onOpenNote?: (path: string) => void
+  label: string
+  commits: PulseCommit[]
+  onOpenNote?: (path: string, commitHash?: string) => void
 }) {
   const [collapsed, setCollapsed] = useState(false)
   const Chevron = collapsed ? CaretRight : CaretDown
+  const toggleCollapsed = useCallback(() => setCollapsed((value) => !value), [])
 
   return (
     <div>
       <div
         className="flex cursor-pointer select-none items-center border-b border-border bg-muted/50 transition-colors hover:bg-muted"
         style={{ padding: '6px 16px', gap: 6 }}
-        onClick={() => setCollapsed((v) => !v)}
+        role="button"
+        tabIndex={0}
+        aria-expanded={!collapsed}
+        onClick={toggleCollapsed}
+        onKeyDown={(event) => handleActivationKey(event, toggleCollapsed)}
       >
         <Chevron size={12} className="text-muted-foreground" />
         <span className="text-[11px] font-medium text-muted-foreground">
@@ -177,6 +226,31 @@ function DayGroup({ label, commits, onOpenNote }: {
       {!collapsed && commits.map((commit) => (
         <CommitCard key={commit.hash} commit={commit} onOpenNote={onOpenNote} />
       ))}
+    </div>
+  )
+}
+
+function PulseHeader({
+  sidebarCollapsed,
+  onExpandSidebar,
+}: Pick<PulseViewProps, 'sidebarCollapsed' | 'onExpandSidebar'>) {
+  return (
+    <div className="flex shrink-0 items-center justify-between border-b border-border" style={{ height: 52, padding: '0 16px' }}>
+      <div className="flex items-center" style={{ gap: 8 }}>
+        {sidebarCollapsed && onExpandSidebar && (
+          <button
+            type="button"
+            className="flex shrink-0 cursor-pointer items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+            style={{ width: 24, height: 24 }}
+            onClick={onExpandSidebar}
+            aria-label="Expand sidebar"
+          >
+            <CaretRight size={14} weight="bold" />
+          </button>
+        )}
+        <Pulse size={16} className="text-primary" />
+        <span className="text-[14px] font-semibold text-foreground">Pulse</span>
+      </div>
     </div>
   )
 }
@@ -204,6 +278,61 @@ function ErrorState({ message, onRetry }: { message: string; onRetry: () => void
         Retry
       </button>
     </div>
+  )
+}
+
+function PulseFeed({
+  commits,
+  dayGroups,
+  loading,
+  loadingMore,
+  error,
+  onOpenNote,
+  onRetry,
+  sentinelRef,
+}: {
+  commits: PulseCommit[]
+  dayGroups: Map<string, PulseCommit[]>
+  loading: boolean
+  loadingMore: boolean
+  error: string | null
+  onOpenNote?: (path: string, commitHash?: string) => void
+  onRetry: () => void
+  sentinelRef: React.RefObject<HTMLDivElement | null>
+}) {
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center" style={{ padding: 32 }}>
+        <span className="text-[13px] text-muted-foreground">Loading activity…</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={onRetry} />
+  }
+
+  if (commits.length === 0) {
+    return <EmptyState />
+  }
+
+  return (
+    <>
+      {Array.from(dayGroups.entries()).map(([day, dayCommits]) => (
+        <DayGroup
+          key={day}
+          label={formatDayLabel(day)}
+          commits={dayCommits}
+          onOpenNote={onOpenNote}
+        />
+      ))}
+      <div ref={sentinelRef} style={{ height: 1 }} />
+      {loadingMore && (
+        <div className="flex items-center justify-center" style={{ padding: 12 }}>
+          <span className="text-[12px] text-muted-foreground">Loading…</span>
+        </div>
+      )}
+    </>
   )
 }
 
@@ -272,53 +401,19 @@ export const PulseView = memo(function PulseView({ vaultPath, onOpenNote, sideba
 
   return (
     <div className="flex h-full flex-col overflow-hidden border-r border-[var(--sidebar-border)] bg-background">
-      {/* Header */}
-      <div className="flex shrink-0 items-center justify-between border-b border-border" style={{ height: 52, padding: '0 16px' }}>
-        <div className="flex items-center" style={{ gap: 8 }}>
-          {sidebarCollapsed && onExpandSidebar && (
-            <button
-              className="flex shrink-0 cursor-pointer items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-              style={{ width: 24, height: 24 }}
-              onClick={onExpandSidebar}
-              aria-label="Expand sidebar"
-            >
-              <CaretRight size={14} weight="bold" />
-            </button>
-          )}
-          <Pulse size={16} className="text-primary" />
-          <span className="text-[14px] font-semibold text-foreground">Pulse</span>
-        </div>
-      </div>
+      <PulseHeader sidebarCollapsed={sidebarCollapsed} onExpandSidebar={onExpandSidebar} />
 
-      {/* Feed */}
       <div className="flex-1 overflow-y-auto">
-        {loading ? (
-          <div className="flex items-center justify-center" style={{ padding: 32 }}>
-            <span className="text-[13px] text-muted-foreground">Loading activity…</span>
-          </div>
-        ) : error ? (
-          <ErrorState message={error} onRetry={loadInitial} />
-        ) : commits.length === 0 ? (
-          <EmptyState />
-        ) : (
-          <>
-            {Array.from(dayGroups.entries()).map(([day, dayCommits]) => (
-              <DayGroup
-                key={day}
-                label={formatDayLabel(day)}
-                commits={dayCommits}
-                onOpenNote={onOpenNote}
-              />
-            ))}
-            {/* Sentinel for infinite scroll */}
-            <div ref={sentinelRef} style={{ height: 1 }} />
-            {loadingMore && (
-              <div className="flex items-center justify-center" style={{ padding: 12 }}>
-                <span className="text-[12px] text-muted-foreground">Loading…</span>
-              </div>
-            )}
-          </>
-        )}
+        <PulseFeed
+          commits={commits}
+          dayGroups={dayGroups}
+          loading={loading}
+          loadingMore={loadingMore}
+          error={error}
+          onOpenNote={onOpenNote}
+          onRetry={loadInitial}
+          sentinelRef={sentinelRef}
+        />
       </div>
     </div>
   )

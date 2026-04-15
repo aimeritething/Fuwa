@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { useDiffMode } from './useDiffMode'
 
 describe('useDiffMode', () => {
@@ -16,6 +16,23 @@ describe('useDiffMode', () => {
       ({ path }) => useDiffMode({ activeTabPath: path, onLoadDiff, onLoadDiffAtCommit }),
       { initialProps: { path: activeTabPath } },
     )
+  }
+
+  async function expectLoadError(action: 'toggle' | 'commit') {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const { result } = renderDiffHook()
+
+    if (action === 'toggle') {
+      onLoadDiff.mockRejectedValue(new Error('network'))
+      await act(async () => { await result.current.handleToggleDiff() })
+    } else {
+      onLoadDiffAtCommit.mockRejectedValue(new Error('fail'))
+      await act(async () => { await result.current.handleViewCommitDiff('abc123') })
+    }
+
+    expect(result.current.diffMode).toBe(false)
+    expect(result.current.diffLoading).toBe(false)
+    warn.mockRestore()
   }
 
   it('starts with diff mode off', () => {
@@ -78,16 +95,7 @@ describe('useDiffMode', () => {
   })
 
   it('handles load error gracefully', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    onLoadDiff.mockRejectedValue(new Error('network'))
-    const { result } = renderDiffHook()
-
-    await act(async () => { await result.current.handleToggleDiff() })
-
-    expect(result.current.diffMode).toBe(false)
-    expect(result.current.diffLoading).toBe(false)
-    expect(warn).toHaveBeenCalled()
-    warn.mockRestore()
+    await expectLoadError('toggle')
   })
 
   it('loads diff at specific commit', async () => {
@@ -109,14 +117,43 @@ describe('useDiffMode', () => {
   })
 
   it('handles commit diff error gracefully', async () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
-    onLoadDiffAtCommit.mockRejectedValue(new Error('fail'))
-    const { result } = renderDiffHook()
+    await expectLoadError('commit')
+  })
 
-    await act(async () => { await result.current.handleViewCommitDiff('abc123') })
+  it('loads a pending commit diff request when the matching tab is active', async () => {
+    onLoadDiffAtCommit.mockResolvedValue('pulse diff')
+    const onPendingCommitDiffHandled = vi.fn()
 
-    expect(result.current.diffMode).toBe(false)
-    expect(result.current.diffLoading).toBe(false)
-    warn.mockRestore()
+    const { result } = renderHook(() => useDiffMode({
+      activeTabPath: '/note.md',
+      onLoadDiffAtCommit,
+      pendingCommitDiffRequest: { requestId: 7, path: '/note.md', commitHash: 'abc123' },
+      onPendingCommitDiffHandled,
+    }))
+
+    await waitFor(() => {
+      expect(onLoadDiffAtCommit).toHaveBeenCalledWith('/note.md', 'abc123')
+    })
+    await waitFor(() => {
+      expect(result.current.diffMode).toBe(true)
+      expect(result.current.diffContent).toBe('pulse diff')
+      expect(onPendingCommitDiffHandled).toHaveBeenCalledWith(7)
+    })
+  })
+
+  it('ignores pending commit diff requests for a different path', async () => {
+    const onPendingCommitDiffHandled = vi.fn()
+
+    renderHook(() => useDiffMode({
+      activeTabPath: '/note.md',
+      onLoadDiffAtCommit,
+      pendingCommitDiffRequest: { requestId: 8, path: '/other.md', commitHash: 'abc123' },
+      onPendingCommitDiffHandled,
+    }))
+
+    await act(async () => { await Promise.resolve() })
+
+    expect(onLoadDiffAtCommit).not.toHaveBeenCalled()
+    expect(onPendingCommitDiffHandled).not.toHaveBeenCalled()
   })
 })
