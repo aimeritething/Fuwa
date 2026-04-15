@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
+import { startTransition, useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useEditorSaveWithLinks } from './useEditorSaveWithLinks'
 import { needsRenameOnSave } from './useNoteRename'
@@ -183,33 +183,36 @@ async function reloadAutoRenamedNote(
     loadModifiedFiles: AppSaveDeps['loadModifiedFiles']
   },
 ): Promise<void> {
-  const [newEntry, newContent] = await Promise.all([
-    invoke<VaultEntry>('reload_vault_entry', { path: newPath }),
-    invoke<string>('get_note_content', { path: newPath }),
-  ])
-
-  const preservedContent = activeTabPathRef.current === oldPath
-    ? tabsRef.current.find((tab) => tab.entry.path === oldPath)?.content ?? newContent
-    : newContent
+  const newEntry = await invoke<VaultEntry>('reload_vault_entry', { path: newPath })
+  const preservedContent = tabsRef.current.find((tab) => tab.entry.path === oldPath)?.content
+    ?? await invoke<string>('get_note_content', { path: newPath })
 
   const otherTabPaths = tabsRef.current
     .filter((tab) => tab.entry.path !== oldPath && tab.entry.path !== newPath)
     .map((tab) => tab.entry.path)
 
-  setTabs((prev: TabState[]) => prev.map((tab) => (
-    tab.entry.path === oldPath
-      ? { entry: { ...tab.entry, ...newEntry, path: newPath }, content: preservedContent }
-      : tab
-  )))
-  if (activeTabPathRef.current === oldPath) handleSwitchTab(newPath)
-  replaceEntry(oldPath, { ...newEntry, path: newPath }, preservedContent)
-  await Promise.all(otherTabPaths.map(async (path) => {
-    const content = await invoke<string>('get_note_content', { path })
+  startTransition(() => {
     setTabs((prev: TabState[]) => prev.map((tab) => (
-      tab.entry.path === path ? { ...tab, content } : tab
+      tab.entry.path === oldPath
+        ? { entry: { ...tab.entry, ...newEntry, path: newPath }, content: preservedContent }
+        : tab
     )))
-  }))
-  loadModifiedFiles()
+    if (activeTabPathRef.current === oldPath) handleSwitchTab(newPath)
+    replaceEntry(oldPath, { ...newEntry, path: newPath }, preservedContent)
+  })
+
+  void Promise.all(otherTabPaths.map(async (path) => {
+    const content = await invoke<string>('get_note_content', { path })
+    startTransition(() => {
+      setTabs((prev: TabState[]) => prev.map((tab) => (
+        tab.entry.path === path ? { ...tab, content } : tab
+      )))
+    })
+  })).finally(() => {
+    startTransition(() => {
+      loadModifiedFiles()
+    })
+  })
 }
 
 function useCurrentValueRef<T>(value: T) {

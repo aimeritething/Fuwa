@@ -6,6 +6,18 @@ import type { VaultEntry } from '../types'
 import { isTauri } from '../mock-tauri'
 import { invoke } from '@tauri-apps/api/core'
 
+const { startTransitionMock } = vi.hoisted(() => ({
+  startTransitionMock: vi.fn((callback: () => void) => callback()),
+}))
+
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react')>()
+  return {
+    ...actual,
+    startTransition: startTransitionMock,
+  }
+})
+
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn().mockResolvedValue(undefined),
 }))
@@ -216,6 +228,17 @@ describe('useAppSave', () => {
     expect(getTabs()[0].entry.path).toBe(newPath)
     expect(getTabs()[0].entry.filename).toBe('fresh-title.md')
     expect(getTabs()[0].content).toBe('# Fresh Title\n\nBody')
+  })
+
+  it('reconciles untitled auto-rename state in a React transition', async () => {
+    const { result } = setupUntitledRenameHarness()
+
+    await act(async () => {
+      result.current.handleContentChange('/vault/untitled-note-123.md', '# Fresh Title\n\nBody')
+      await vi.advanceTimersByTimeAsync(3_000)
+    })
+
+    expect(startTransitionMock).toHaveBeenCalled()
   })
 
   it('cancels a pending untitled auto-rename when the user navigates away', async () => {
