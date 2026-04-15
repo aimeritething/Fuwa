@@ -1,45 +1,74 @@
 import { memo } from 'react'
-import { Archive, ArrowCounterClockwise, Trash, X } from '@phosphor-icons/react'
+import { Archive, ArrowCounterClockwise, CheckCircle, Trash, X } from '@phosphor-icons/react'
+import { Button } from '@/components/ui/button'
 
 interface BulkActionBarProps {
   count: number
   isArchivedView?: boolean
+  onOrganize?: () => void
   onArchive: () => void
   onDelete: () => void
   onUnarchive?: () => void
   onClear: () => void
 }
 
-const actionBtnStyle = { padding: '5px 10px', borderRadius: 6, background: 'rgba(255,255,255,0.12)', color: 'inherit', fontSize: 12, fontWeight: 500 } as const
-const destructiveBtnStyle = { padding: '5px 10px', borderRadius: 6, background: 'rgba(224,62,62,0.2)', color: 'var(--destructive)', fontSize: 12, fontWeight: 500 } as const
+interface BulkActionButtonProps {
+  ariaLabel: string
+  children: React.ReactNode
+  destructive?: boolean
+  onClick?: () => void
+  testId: string
+}
 
-function renderArchivedActions(onUnarchive: (() => void) | undefined, onDelete: () => void) {
+function BulkActionButton({ ariaLabel, children, destructive = false, onClick, testId }: BulkActionButtonProps) {
+  return (
+    <Button
+      type="button"
+      size="icon-sm"
+      variant={destructive ? 'destructive' : 'ghost'}
+      className={
+        destructive
+          ? 'h-8 w-8 rounded-lg bg-destructive text-white hover:bg-destructive/90 focus-visible:ring-destructive/30'
+          : 'h-8 w-8 rounded-lg bg-white/10 text-background hover:bg-white/20 focus-visible:ring-white/35 disabled:bg-white/5 disabled:text-white/35'
+      }
+      onClick={onClick}
+      disabled={!onClick}
+      aria-label={ariaLabel}
+      title={ariaLabel}
+      data-testid={testId}
+    >
+      {children}
+    </Button>
+  )
+}
+
+function renderPrimaryActions(
+  isArchivedView: boolean,
+  onOrganize: (() => void) | undefined,
+  onArchive: () => void,
+  onDelete: () => void,
+  onUnarchive: (() => void) | undefined,
+) {
+  const archiveLabel = isArchivedView ? 'Unarchive selected notes' : 'Archive selected notes'
+  const archiveIcon = isArchivedView ? <ArrowCounterClockwise size={16} /> : <Archive size={16} />
+  const archiveHandler = isArchivedView ? onUnarchive : onArchive
+
   return (
     <>
-      <button className="flex items-center gap-1.5 border-none bg-transparent cursor-pointer" style={actionBtnStyle} onClick={onUnarchive} title="Unarchive selected notes" data-testid="bulk-unarchive-btn">
-        <ArrowCounterClockwise size={14} /> Unarchive
-      </button>
-      <button className="flex items-center gap-1.5 border-none cursor-pointer" style={destructiveBtnStyle} onClick={onDelete} title="Permanently delete selected notes" data-testid="bulk-delete-btn">
-        <Trash size={14} /> Delete
-      </button>
+      <BulkActionButton ariaLabel="Organize selected notes" onClick={onOrganize} testId="bulk-organize-btn">
+        <CheckCircle size={16} weight="fill" />
+      </BulkActionButton>
+      <BulkActionButton ariaLabel={archiveLabel} onClick={archiveHandler} testId={isArchivedView ? 'bulk-unarchive-btn' : 'bulk-archive-btn'}>
+        {archiveIcon}
+      </BulkActionButton>
+      <BulkActionButton ariaLabel="Permanently delete selected notes" destructive onClick={onDelete} testId="bulk-delete-btn">
+        <Trash size={16} />
+      </BulkActionButton>
     </>
   )
 }
 
-function renderDefaultActions(onArchive: () => void, onDelete: () => void) {
-  return (
-    <>
-      <button className="flex items-center gap-1.5 border-none bg-transparent cursor-pointer" style={actionBtnStyle} onClick={onArchive} title="Archive selected notes" data-testid="bulk-archive-btn">
-        <Archive size={14} /> Archive
-      </button>
-      <button className="flex items-center gap-1.5 border-none cursor-pointer" style={destructiveBtnStyle} onClick={onDelete} title="Permanently delete selected notes" data-testid="bulk-delete-btn">
-        <Trash size={14} /> Delete
-      </button>
-    </>
-  )
-}
-
-function BulkActionBarInner({ count, isArchivedView, onArchive, onDelete, onUnarchive, onClear }: BulkActionBarProps) {
+function BulkActionBarInner({ count, isArchivedView, onOrganize, onArchive, onDelete, onUnarchive, onClear }: BulkActionBarProps) {
   return (
     <div
       className="flex shrink-0 items-center justify-between"
@@ -54,18 +83,20 @@ function BulkActionBarInner({ count, isArchivedView, onArchive, onDelete, onUnar
       <span style={{ fontSize: 13, fontWeight: 500 }}>
         {count} selected
       </span>
-      <div className="flex items-center gap-1">
-        {isArchivedView ? renderArchivedActions(onUnarchive, onDelete)
-          : renderDefaultActions(onArchive, onDelete)}
-        <button
-          className="flex items-center border-none bg-transparent cursor-pointer"
-          style={{ padding: '5px 6px', color: 'rgba(255,255,255,0.5)' }}
+      <div className="flex items-center gap-1.5">
+        {renderPrimaryActions(Boolean(isArchivedView), onOrganize, onArchive, onDelete, onUnarchive)}
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          className="h-8 w-8 rounded-lg text-white/55 hover:bg-white/10 hover:text-background focus-visible:ring-white/30"
           onClick={onClear}
+          aria-label="Clear selection"
           title="Clear selection"
           data-testid="bulk-clear-btn"
         >
-          <X size={14} />
-        </button>
+          <X size={16} />
+        </Button>
       </div>
     </div>
   )

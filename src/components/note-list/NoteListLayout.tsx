@@ -4,7 +4,32 @@ import { NoteListHeader } from './NoteListHeader'
 import { EntityView, ListView } from './NoteListViews'
 import type { useNoteListModel } from './useNoteListModel'
 
-type NoteListLayoutProps = ReturnType<typeof useNoteListModel>
+type NoteListLayoutProps = ReturnType<typeof useNoteListModel> & {
+  handleBulkOrganize?: () => void
+}
+
+function MultiSelectBar({
+  multiSelect,
+  isArchivedView,
+  handleBulkOrganize,
+  handleBulkArchive,
+  handleBulkDeletePermanently,
+  handleBulkUnarchive,
+}: Pick<NoteListLayoutProps, 'multiSelect' | 'isArchivedView' | 'handleBulkOrganize' | 'handleBulkArchive' | 'handleBulkDeletePermanently' | 'handleBulkUnarchive'>) {
+  if (!multiSelect.isMultiSelecting) return null
+
+  return (
+    <BulkActionBar
+      count={multiSelect.selectedPaths.size}
+      isArchivedView={isArchivedView}
+      onOrganize={handleBulkOrganize}
+      onArchive={handleBulkArchive}
+      onDelete={handleBulkDeletePermanently}
+      onUnarchive={handleBulkUnarchive}
+      onClear={multiSelect.clear}
+    />
+  )
+}
 
 export function NoteListLayout({
   title,
@@ -43,6 +68,7 @@ export function NoteListLayout({
   filterCounts,
   onNoteListFilterChange,
   multiSelect,
+  handleBulkOrganize,
   handleBulkArchive,
   handleBulkDeletePermanently,
   handleBulkUnarchive,
@@ -115,16 +141,14 @@ export function NoteListLayout({
           />
         )}
       </div>
-      {multiSelect.isMultiSelecting && (
-        <BulkActionBar
-          count={multiSelect.selectedPaths.size}
-          isArchivedView={isArchivedView}
-          onArchive={handleBulkArchive}
-          onDelete={handleBulkDeletePermanently}
-          onUnarchive={handleBulkUnarchive}
-          onClear={multiSelect.clear}
-        />
-      )}
+      <MultiSelectBar
+        multiSelect={multiSelect}
+        isArchivedView={isArchivedView}
+        handleBulkOrganize={handleBulkOrganize}
+        handleBulkArchive={handleBulkArchive}
+        handleBulkDeletePermanently={handleBulkDeletePermanently}
+        handleBulkUnarchive={handleBulkUnarchive}
+      />
       {contextMenuNode}
       {dialogNode}
     </div>

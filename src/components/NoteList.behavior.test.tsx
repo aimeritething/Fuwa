@@ -150,6 +150,7 @@ describe('NoteList multi-select', () => {
   })
 
   it.each([
+    { label: 'organizes via button', prop: 'onBulkOrganize', trigger: () => fireEvent.click(screen.getByTestId('bulk-organize-btn')) },
     { label: 'archives via button', prop: 'onBulkArchive', trigger: () => fireEvent.click(screen.getByTestId('bulk-archive-btn')) },
     { label: 'deletes via button', prop: 'onBulkDeletePermanently', trigger: () => fireEvent.click(screen.getByTestId('bulk-delete-btn')) },
     { label: 'archives via Cmd+E', prop: 'onBulkArchive', trigger: () => fireEvent.keyDown(window, { key: 'e', metaKey: true }) },
