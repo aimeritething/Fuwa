@@ -1,6 +1,12 @@
 import { useEffect, useCallback, useMemo, useRef, useContext } from 'react'
 import { trackEvent } from '../lib/telemetry'
-import { useCreateBlockNote, SuggestionMenuController, BlockNoteViewRaw, ComponentsContext } from '@blocknote/react'
+import {
+  useCreateBlockNote,
+  SuggestionMenuController,
+  BlockNoteViewRaw,
+  ComponentsContext,
+  FormattingToolbarController,
+} from '@blocknote/react'
 import { components } from '@blocknote/mantine'
 import { MantineContext, MantineProvider } from '@mantine/core'
 import { useEditorTheme } from '../hooks/useTheme'
@@ -13,6 +19,8 @@ import { WikilinkSuggestionMenu, type WikilinkSuggestionItem } from './WikilinkS
 import type { VaultEntry } from '../types'
 import { _wikilinkEntriesRef } from './editorSchema'
 import { useBlockNoteSideMenuHoverGuard } from './blockNoteSideMenuHoverGuard'
+import { getTolariaSlashMenuItems } from './tolariaEditorFormattingConfig'
+import { TolariaFormattingToolbar } from './tolariaEditorFormatting'
 import { useEditorLinkActivation } from './useEditorLinkActivation'
 
 const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
@@ -27,7 +35,7 @@ type TestTableBlock = {
 }
 
 function SharedContextBlockNoteView(props: React.ComponentProps<typeof BlockNoteViewRaw>) {
-  const { className, theme, ...rest } = props
+  const { children, className, theme, ...rest } = props
   const mantineContext = useContext(MantineContext)
   const colorScheme = theme === 'dark' ? 'dark' : 'light'
   const view = (
@@ -37,7 +45,9 @@ function SharedContextBlockNoteView(props: React.ComponentProps<typeof BlockNote
         className={['bn-mantine', className].filter(Boolean).join(' ')}
         data-mantine-color-scheme={colorScheme}
         theme={theme}
-      />
+      >
+        {children}
+      </BlockNoteViewRaw>
     </ComponentsContext.Provider>
   )
 
@@ -185,6 +195,10 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
     return enrichSuggestionItems(items, query, typeEntryMap)
   }, [baseItems, insertWikilink, typeEntryMap, vaultPath])
 
+  const getSlashMenuItems = useCallback(async (query: string) => (
+    getTolariaSlashMenuItems(editor, query)
+  ), [editor])
+
   return (
     <div ref={containerRef} className={`editor__blocknote-container${isDragOver ? ' editor__blocknote-container--drag-over' : ''}`} style={cssVars as React.CSSProperties} onClick={handleContainerClick}>
       {isDragOver && (
@@ -197,7 +211,27 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
         theme="light"
         onChange={onChange}
         editable={editable}
+        formattingToolbar={false}
+        slashMenu={false}
       >
+        <FormattingToolbarController
+          formattingToolbar={TolariaFormattingToolbar}
+          floatingUIOptions={{
+            elementProps: {
+              onMouseDownCapture: (event) => {
+                const target = event.target as HTMLElement
+                if (target.closest('button[aria-haspopup], [role="menu"], [role="dialog"]')) {
+                  return
+                }
+                event.preventDefault()
+              },
+            },
+          }}
+        />
+        <SuggestionMenuController
+          triggerCharacter="/"
+          getItems={getSlashMenuItems}
+        />
         <SuggestionMenuController
           triggerCharacter="[["
           getItems={getWikilinkItems}

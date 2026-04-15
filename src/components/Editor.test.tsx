@@ -58,6 +58,9 @@ let capturedGetItems: ((query: string) => Promise<any[]>) | null = null
 vi.mock('@blocknote/react', () => ({
   createReactInlineContentSpec: () => ({ render: () => null }),
   useCreateBlockNote: () => mockEditor,
+  FormattingToolbar: ({ children }: PropsWithChildren) => <>{children}</>,
+  getFormattingToolbarItems: () => [],
+  getDefaultReactSlashMenuItems: () => [],
   ComponentsContext: {
     Provider: ({ children }: PropsWithChildren) => <>{children}</>,
   },
@@ -66,6 +69,7 @@ vi.mock('@blocknote/react', () => ({
       {children}
     </div>
   ),
+  FormattingToolbarController: () => null,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
   SuggestionMenuController: (props: any) => {
     capturedGetItemsByTrigger[props.triggerCharacter] = props.getItems

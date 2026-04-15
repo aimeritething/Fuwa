@@ -425,6 +425,14 @@ Defined in `src/components/editorSchema.tsx` and styled in `src/components/Edito
 - Tolaria keeps `defaultLanguage: "text"` so unlabeled code blocks do not silently become JavaScript while still supporting the packaged language aliases such as `ts` → `typescript`.
 - Inline-code chip styling remains scoped to `.bn-inline-content code`, so fenced `pre > code` nodes keep BlockNote's dark shell instead of inheriting the muted inline surface.
 
+### Formatting Surface Policy
+
+Defined in `src/components/tolariaEditorFormatting.tsx` and `src/components/tolariaEditorFormattingConfig.ts`:
+
+- `SingleEditorView` disables BlockNote's default formatting toolbar and `/` menu, then mounts Tolaria-owned controllers so the visible formatting surface matches Tolaria's markdown round-trip guarantees.
+- The formatting toolbar only exposes inline controls that persist through `blocksToMarkdownLossy()` in Tolaria's save pipeline: bold, italic, strike, nesting, and link creation. Controls that BlockNote can render temporarily but Tolaria cannot faithfully persist, such as underline, color, alignment, and the block-type dropdown, are hidden instead of appearing to work and later disappearing.
+- The `/` slash menu remains the supported path for markdown-safe block transformations such as headings, quotes, and list blocks. Tolaria filters out BlockNote's toggle-heading and toggle-list variants because those do not map cleanly to the markdown note model.
+
 ### Markdown-to-BlockNote Pipeline
 
 ```mermaid

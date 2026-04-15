@@ -231,7 +231,10 @@ tolaria/
 | File | Why it matters |
 |------|---------------|
 | `src/components/Editor.tsx` | BlockNote setup, breadcrumb bar, diff/raw toggle. |
+| `src/components/SingleEditorView.tsx` | Shared BlockNote shell, Tolaria formatting controllers, and suggestion menus. |
 | `src/components/editorSchema.tsx` | Custom wikilink inline content type definition. |
+| `src/components/tolariaEditorFormatting.tsx` | Markdown-safe formatting toolbar surface for BlockNote. |
+| `src/components/tolariaEditorFormattingConfig.ts` | Filters toolbar and slash-menu commands to markdown-roundtrippable actions. |
 | `src/utils/wikilinks.ts` | Wikilink preprocessing pipeline (markdown ↔ BlockNote). |
 | `src/components/RawEditorView.tsx` | CodeMirror 6 raw markdown editor. |
 
