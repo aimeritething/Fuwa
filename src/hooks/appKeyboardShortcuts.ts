@@ -29,6 +29,7 @@ export type KeyboardActions = Pick<
   | 'onToggleOrganized'
   | 'onOpenInNewWindow'
   | 'activeTabPathRef'
+  | 'multiSelectionCommandRef'
 >
 
 const TEXT_EDITING_KEYS = new Set(['Backspace', 'Delete'])
