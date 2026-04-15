@@ -543,8 +543,13 @@ Tolaria tracks managed vault-level AI guidance separately from normal note conte
 
 `useOnboarding` hook detects first launch:
 - If vault path doesn't exist → show `WelcomeScreen`
-- User can create a new empty vault, open an existing folder, or clone the public Getting Started vault into a chosen folder
+- User can create a new empty vault, open an existing folder, or clone the public Getting Started vault into a chosen parent folder; Tolaria derives the final `Getting Started` child path before cloning
 - Welcome state tracked in localStorage (`tolaria_welcome_dismissed`, with legacy fallback)
+
+`useGettingStartedClone` encapsulates the non-onboarding Getting Started action:
+- Opens the same parent-folder picker used by onboarding
+- Derives the final `.../Getting Started` destination path
+- Surfaces the resolved path through the app toast after a successful clone
 
 `useAiAgentsOnboarding(enabled)` adds a separate first-launch agent step:
 - Reads a local dismissal flag for the AI agents prompt (with a legacy fallback to the older Claude-only key)

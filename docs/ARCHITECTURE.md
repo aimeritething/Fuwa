@@ -433,9 +433,11 @@ Per-vault UI settings stored locally per vault path (currently in browser/Tauri 
 On first launch, `useOnboarding` checks if the default vault exists. If not, it shows `WelcomeScreen` with three options:
 - **Create a new vault** → creates an empty git repo in a folder the user chooses
 - **Open an existing folder** → system file picker
-- **Get started with a template** → pick a folder, then call `create_getting_started_vault()` to clone the public starter repo at runtime
+- **Get started with a template** → pick a parent folder, then call `create_getting_started_vault()` with the derived `.../Getting Started` child path so the cloned vault opens into the populated repo root immediately
 
 Once a vault is ready, `useAiAgentsOnboarding` can show a one-time `AiAgentsOnboardingPrompt`. That prompt reads `useAiAgentsStatus` so first launch surfaces whether Claude Code and Codex are installed, offers per-agent install links when they are missing, and stores local dismissal so the prompt does not repeat on every launch.
+
+`useGettingStartedClone` reuses the same parent-folder semantics for the status-bar / command-palette clone action, and `Toast` is rendered through the AI-agents onboarding gate so the resolved destination path stays visible right after a successful clone.
 
 The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` holds the public starter repo URL, delegates the clone to the git backend, then normalizes Tolaria-managed config files (`AGENTS.md`, `CLAUDE.md`, `config.md`) so fresh starter vaults pick up the current default guidance even when the remote starter repo still carries a legacy copy or an older pre-`type:` `is_a`-era template. `AGENTS.md` stays the canonical vault guidance file; `CLAUDE.md` is a compatibility shim that imports it for Claude Code without duplicating the instructions.
 

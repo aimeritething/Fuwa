@@ -1,6 +1,13 @@
-import { renderHook, waitFor, act } from '@testing-library/react'
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS } from '../constants/appStorage'
+
+const DEFAULT_GETTING_STARTED_PATH = '/mock/Documents/Getting Started'
+const DEFAULT_PARENT_PATH = '/mock/Documents'
+const MISSING_VAULT_PATH = '/vault/missing'
+
+type MockArgs = Record<string, unknown> | undefined
+type MockOverride = unknown | ((args?: MockArgs) => unknown)
 
 // localStorage mock
 const localStorageMock = (() => {
@@ -21,15 +28,49 @@ vi.mock('../mock-tauri', () => ({
   mockInvoke: (...args: unknown[]) => mockInvokeFn(...args),
 }))
 
-vi.mock('./useVaultSwitcher', () => ({
-}))
+vi.mock('./useVaultSwitcher', () => ({}))
 
 vi.mock('../utils/vault-dialog', () => ({
   pickFolder: vi.fn(),
 }))
 
-import { useOnboarding } from './useOnboarding'
 import { pickFolder } from '../utils/vault-dialog'
+import { useOnboarding } from './useOnboarding'
+
+function mockCommands(overrides: Record<string, MockOverride> = {}) {
+  mockInvokeFn.mockImplementation(async (cmd: string, args?: MockArgs) => {
+    const override = overrides[cmd]
+    if (typeof override === 'function') {
+      return override(args)
+    }
+    if (override !== undefined) {
+      return override
+    }
+    if (cmd === 'get_default_vault_path') return DEFAULT_GETTING_STARTED_PATH
+    if (cmd === 'check_vault_exists') return false
+    return null
+  })
+}
+
+async function renderOnboarding(
+  initialVaultPath = MISSING_VAULT_PATH,
+  onTemplateVaultReady?: (vaultPath: string) => void,
+) {
+  const rendered = renderHook(() => useOnboarding(initialVaultPath, onTemplateVaultReady))
+  await waitFor(() => {
+    expect(rendered.result.current.state.status).not.toBe('loading')
+  })
+  return rendered
+}
+
+async function expectStatus(
+  result: { current: ReturnType<typeof useOnboarding> },
+  status: 'ready' | 'welcome' | 'vault-missing',
+) {
+  await waitFor(() => {
+    expect(result.current.state.status).toBe(status)
+  })
+}
 
 describe('useOnboarding', () => {
   beforeEach(() => {
@@ -37,80 +78,49 @@ describe('useOnboarding', () => {
     localStorage.clear()
   })
 
-  it('transitions to ready when vault exists', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return true
-      return null
-    })
+  it('transitions to ready when the vault already exists', async () => {
+    mockCommands({ check_vault_exists: true })
 
-    const { result } = renderHook(() => useOnboarding('/vault/path'))
+    const { result } = await renderOnboarding('/vault/path')
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('ready')
-    })
     expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/vault/path' })
   })
 
-  it('shows welcome screen when vault does not exist', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      return null
-    })
+  it('shows the welcome screen when the vault does not exist', async () => {
+    mockCommands()
 
-    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+    const { result } = await renderOnboarding()
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('welcome')
-    })
-    expect(result.current.state).toEqual({ status: 'welcome', defaultPath: '/mock/Documents/Getting Started' })
+    expect(result.current.state).toEqual({ status: 'welcome', defaultPath: DEFAULT_GETTING_STARTED_PATH })
   })
 
-  it('shows vault-missing when previously dismissed and vault gone', async () => {
+  it('shows vault-missing when the welcome screen was previously dismissed', async () => {
     localStorage.setItem(APP_STORAGE_KEYS.welcomeDismissed, '1')
+    mockCommands()
 
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      return null
-    })
+    const { result } = await renderOnboarding('/vault/deleted')
 
-    const { result } = renderHook(() => useOnboarding('/vault/deleted'))
-
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('vault-missing')
-    })
     expect(result.current.state).toEqual({
       status: 'vault-missing',
       vaultPath: '/vault/deleted',
-      defaultPath: '/mock/Documents/Getting Started',
+      defaultPath: DEFAULT_GETTING_STARTED_PATH,
     })
   })
 
   it('clears the persisted active vault when the saved path no longer exists', async () => {
     localStorage.setItem(LEGACY_APP_STORAGE_KEYS.welcomeDismissed, '1')
-
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      if (cmd === 'load_vault_list') {
-        return {
-          vaults: [{ label: 'Old Vault', path: '/vault/deleted' }],
-          active_vault: '/vault/deleted',
-          hidden_defaults: [],
-        }
-      }
-      if (cmd === 'save_vault_list') return null
-      return null
+    mockCommands({
+      load_vault_list: {
+        vaults: [{ label: 'Old Vault', path: '/vault/deleted' }],
+        active_vault: '/vault/deleted',
+        hidden_defaults: [],
+      },
+      save_vault_list: null,
     })
 
-    const { result } = renderHook(() => useOnboarding('/vault/deleted'))
+    const { result } = await renderOnboarding('/vault/deleted')
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('vault-missing')
-    })
-
+    await expectStatus(result, 'vault-missing')
     expect(mockInvokeFn).toHaveBeenCalledWith('save_vault_list', {
       list: {
         vaults: [{ label: 'Old Vault', path: '/vault/deleted' }],
@@ -120,46 +130,35 @@ describe('useOnboarding', () => {
     })
   })
 
-  it('handleCreateVault creates vault and transitions to ready', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      if (cmd === 'create_getting_started_vault') return (args as { targetPath: string }).targetPath
-      return null
+  it('creates the template vault inside the selected parent folder', async () => {
+    const onTemplateVaultReady = vi.fn()
+    mockCommands({
+      create_getting_started_vault: (args?: MockArgs) => (args as { targetPath: string }).targetPath,
     })
-    vi.mocked(pickFolder).mockResolvedValue('/mock/Documents/Getting Started')
+    vi.mocked(pickFolder).mockResolvedValue(DEFAULT_PARENT_PATH)
 
-    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+    const { result } = await renderOnboarding(MISSING_VAULT_PATH, onTemplateVaultReady)
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('welcome')
-    })
-
+    await expectStatus(result, 'welcome')
     await act(async () => {
       await result.current.handleCreateVault()
     })
 
-    expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/mock/Documents/Getting Started' })
+    expect(result.current.state).toEqual({ status: 'ready', vaultPath: DEFAULT_GETTING_STARTED_PATH })
     expect(mockInvokeFn).toHaveBeenCalledWith('create_getting_started_vault', {
-      targetPath: '/mock/Documents/Getting Started',
+      targetPath: DEFAULT_GETTING_STARTED_PATH,
     })
+    expect(onTemplateVaultReady).toHaveBeenCalledWith(DEFAULT_GETTING_STARTED_PATH)
     expect(localStorage.getItem(APP_STORAGE_KEYS.welcomeDismissed)).toBe('1')
   })
 
-  it('handleCreateVault does nothing when picker is cancelled', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      return null
-    })
+  it('does nothing when the template folder picker is cancelled', async () => {
+    mockCommands()
     vi.mocked(pickFolder).mockResolvedValue(null)
 
-    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+    const { result } = await renderOnboarding()
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('welcome')
-    })
-
+    await expectStatus(result, 'welcome')
     await act(async () => {
       await result.current.handleCreateVault()
     })
@@ -168,21 +167,15 @@ describe('useOnboarding', () => {
     expect(mockInvokeFn).not.toHaveBeenCalledWith('create_getting_started_vault', expect.anything())
   })
 
-  it('handleCreateVault sets a friendly download error on clone failure', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      if (cmd === 'create_getting_started_vault') throw 'git clone failed: fatal: unable to access'
-      return null
+  it('sets a friendly template error on clone failure', async () => {
+    mockCommands({
+      create_getting_started_vault: () => { throw 'git clone failed: fatal: unable to access' },
     })
-    vi.mocked(pickFolder).mockResolvedValue('/mock/Documents/Getting Started')
+    vi.mocked(pickFolder).mockResolvedValue(DEFAULT_PARENT_PATH)
 
-    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+    const { result } = await renderOnboarding()
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('welcome')
-    })
-
+    await expectStatus(result, 'welcome')
     await act(async () => {
       await result.current.handleCreateVault()
     })
@@ -191,57 +184,46 @@ describe('useOnboarding', () => {
     expect(result.current.state.status).toBe('welcome')
   })
 
-  it('retryCreateVault reuses the last selected template path', async () => {
+  it('retries the last template clone without reopening the picker', async () => {
     let attempts = 0
-    mockInvokeFn.mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      if (cmd === 'create_getting_started_vault') {
+    mockCommands({
+      create_getting_started_vault: (args?: MockArgs) => {
         attempts += 1
-        if (attempts === 1) throw 'git clone failed: fatal: unable to access'
+        if (attempts === 1) {
+          throw 'git clone failed: fatal: unable to access'
+        }
         return (args as { targetPath: string }).targetPath
-      }
-      return null
+      },
     })
-    vi.mocked(pickFolder).mockResolvedValue('/mock/Documents/Getting Started')
+    vi.mocked(pickFolder).mockResolvedValue(DEFAULT_PARENT_PATH)
 
-    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+    const { result } = await renderOnboarding()
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('welcome')
-    })
-
+    await expectStatus(result, 'welcome')
     await act(async () => {
       await result.current.handleCreateVault()
     })
 
     expect(result.current.canRetryTemplate).toBe(true)
-
     await act(async () => {
       await result.current.retryCreateVault()
     })
 
-    expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/mock/Documents/Getting Started' })
+    expect(result.current.state).toEqual({ status: 'ready', vaultPath: DEFAULT_GETTING_STARTED_PATH })
     expect(mockInvokeFn).toHaveBeenLastCalledWith('create_getting_started_vault', {
-      targetPath: '/mock/Documents/Getting Started',
+      targetPath: DEFAULT_GETTING_STARTED_PATH,
     })
   })
 
-  it('handleCreateNewVault picks folder, creates empty vault, and transitions to ready', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string, args?: Record<string, unknown>) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      if (cmd === 'create_empty_vault') return (args as { targetPath: string }).targetPath
-      return null
+  it('creates a new empty vault and transitions to ready', async () => {
+    mockCommands({
+      create_empty_vault: (args?: MockArgs) => (args as { targetPath: string }).targetPath,
     })
     vi.mocked(pickFolder).mockResolvedValue('/new/vault')
 
-    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+    const { result } = await renderOnboarding()
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('welcome')
-    })
-
+    await expectStatus(result, 'welcome')
     await act(async () => {
       await result.current.handleCreateNewVault()
     })
@@ -250,20 +232,13 @@ describe('useOnboarding', () => {
     expect(localStorage.getItem(APP_STORAGE_KEYS.welcomeDismissed)).toBe('1')
   })
 
-  it('handleCreateNewVault does nothing when picker is cancelled', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      return null
-    })
+  it('does nothing when the empty-vault picker is cancelled', async () => {
+    mockCommands()
     vi.mocked(pickFolder).mockResolvedValue(null)
 
-    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+    const { result } = await renderOnboarding()
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('welcome')
-    })
-
+    await expectStatus(result, 'welcome')
     await act(async () => {
       await result.current.handleCreateNewVault()
     })
@@ -271,20 +246,13 @@ describe('useOnboarding', () => {
     expect(result.current.state.status).toBe('welcome')
   })
 
-  it('handleOpenFolder opens folder picker and transitions to ready', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      return null
-    })
+  it('opens an existing folder and transitions to ready', async () => {
+    mockCommands()
     vi.mocked(pickFolder).mockResolvedValue('/selected/folder')
 
-    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+    const { result } = await renderOnboarding()
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('welcome')
-    })
-
+    await expectStatus(result, 'welcome')
     await act(async () => {
       await result.current.handleOpenFolder()
     })
@@ -293,20 +261,13 @@ describe('useOnboarding', () => {
     expect(localStorage.getItem(APP_STORAGE_KEYS.welcomeDismissed)).toBe('1')
   })
 
-  it('handleOpenFolder does nothing when picker is cancelled', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      return null
-    })
+  it('does nothing when the open-folder picker is cancelled', async () => {
+    mockCommands()
     vi.mocked(pickFolder).mockResolvedValue(null)
 
-    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+    const { result } = await renderOnboarding()
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('welcome')
-    })
-
+    await expectStatus(result, 'welcome')
     await act(async () => {
       await result.current.handleOpenFolder()
     })
@@ -314,34 +275,25 @@ describe('useOnboarding', () => {
     expect(result.current.state.status).toBe('welcome')
   })
 
-  it('handleDismiss marks dismissed and transitions to ready', async () => {
-    mockInvokeFn.mockImplementation(async (cmd: string) => {
-      if (cmd === 'get_default_vault_path') return '/mock/Documents/Getting Started'
-      if (cmd === 'check_vault_exists') return false
-      return null
-    })
+  it('marks the welcome screen dismissed and keeps the initial vault path', async () => {
+    mockCommands()
 
-    const { result } = renderHook(() => useOnboarding('/vault/missing'))
+    const { result } = await renderOnboarding()
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('welcome')
-    })
-
+    await expectStatus(result, 'welcome')
     act(() => {
       result.current.handleDismiss()
     })
 
-    expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/vault/missing' })
+    expect(result.current.state).toEqual({ status: 'ready', vaultPath: MISSING_VAULT_PATH })
     expect(localStorage.getItem(APP_STORAGE_KEYS.welcomeDismissed)).toBe('1')
   })
 
-  it('falls back to ready if commands fail', async () => {
+  it('falls back to ready if onboarding commands fail', async () => {
     mockInvokeFn.mockRejectedValue(new Error('command not found'))
 
-    const { result } = renderHook(() => useOnboarding('/vault/path'))
+    const { result } = await renderOnboarding('/vault/path')
 
-    await waitFor(() => {
-      expect(result.current.state.status).toBe('ready')
-    })
+    expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/vault/path' })
   })
 })

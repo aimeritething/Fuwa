@@ -102,6 +102,7 @@ tolaria/
 │   │   ├── appCommandCatalog.ts  # Shortcut combos + command metadata
 │   │   ├── appCommandDispatcher.ts # Shared shortcut/menu command IDs + dispatch
 │   │   ├── useSettings.ts        # App settings
+│   │   ├── useGettingStartedClone.ts # Shared Getting Started clone action
 │   │   ├── useOnboarding.ts      # First-launch flow
 │   │   ├── useCodeMirror.ts      # CodeMirror raw editor
 │   │   ├── useMcpBridge.ts       # MCP WebSocket client
@@ -208,7 +209,8 @@ tolaria/
 |------|---------------|
 | `src/hooks/useVaultLoader.ts` | How vault data is loaded and managed. The Tauri/mock branching pattern. |
 | `src/hooks/useNoteActions.ts` | Orchestrates note operations: composes `useNoteCreation`, `useNoteRename`, frontmatter CRUD, and wikilink navigation. |
-| `src/hooks/useVaultSwitcher.ts` | Multi-vault management, vault switching, and restoring the cloned Getting Started vault. |
+| `src/hooks/useVaultSwitcher.ts` | Multi-vault management, vault switching, and persisting cloned vaults in the switcher list. |
+| `src/hooks/useGettingStartedClone.ts` | Shared "Clone Getting Started Vault" action for the status bar and command palette. |
 | `src/mock-tauri.ts` | Mock data for browser testing. Shows the shape of all Tauri responses. |
 
 ### Backend

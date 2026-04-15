@@ -1,0 +1,37 @@
+import { useCallback } from 'react'
+import { invoke } from '@tauri-apps/api/core'
+import { isTauri, mockInvoke } from '../mock-tauri'
+import { pickFolder } from '../utils/vault-dialog'
+import {
+  buildGettingStartedVaultPath,
+  formatGettingStartedCloneError,
+  labelFromPath,
+} from '../utils/gettingStartedVault'
+
+interface UseGettingStartedCloneOptions {
+  onError: (message: string) => void
+  onSuccess: (path: string, label: string) => void
+}
+
+function tauriCall<T>(command: string, args: Record<string, unknown>): Promise<T> {
+  return isTauri() ? invoke<T>(command, args) : mockInvoke<T>(command, args)
+}
+
+export function useGettingStartedClone({
+  onError,
+  onSuccess,
+}: UseGettingStartedCloneOptions) {
+  return useCallback(async () => {
+    const parentPath = await pickFolder('Choose a parent folder for the Getting Started vault')
+    if (!parentPath) return
+
+    const targetPath = buildGettingStartedVaultPath(parentPath)
+
+    try {
+      const vaultPath = await tauriCall<string>('create_getting_started_vault', { targetPath })
+      onSuccess(vaultPath, labelFromPath(vaultPath))
+    } catch (err) {
+      onError(formatGettingStartedCloneError(err))
+    }
+  }, [onError, onSuccess])
+}

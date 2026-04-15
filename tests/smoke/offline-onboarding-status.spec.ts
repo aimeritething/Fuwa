@@ -18,7 +18,10 @@ async function installOnboardingMocks(page: Page, offline: boolean) {
         ref.get_default_vault_path = () => '/Users/mock/Documents/Getting Started'
         ref.check_vault_exists = () => false
         ref.create_getting_started_vault = (args: { targetPath?: string | null }) => {
-          return args.targetPath || '/Users/mock/Documents/Getting Started'
+          if (args.targetPath !== '/Users/mock/Documents/Getting Started') {
+            throw new Error(`Unexpected Getting Started target: ${args.targetPath}`)
+          }
+          return args.targetPath
         }
       },
       get() {
@@ -28,7 +31,7 @@ async function installOnboardingMocks(page: Page, offline: boolean) {
 
     Object.defineProperty(window, 'prompt', {
       configurable: true,
-      value: () => '/Users/mock/Documents/Getting Started',
+      value: () => '/Users/mock/Documents',
     })
 
     Object.defineProperty(window.navigator, 'onLine', {
@@ -58,6 +61,9 @@ test('status bar keeps a Getting Started clone entry available after onboarding'
 
   await page.getByTestId('welcome-create-vault').click()
 
+  await expect(page.getByText('Getting Started vault cloned and opened at /Users/mock/Documents/Getting Started')).toBeVisible()
+  await expect(page.getByTestId('claude-onboarding-screen')).toBeVisible()
+  await page.getByTestId('claude-onboarding-continue').click()
   await expect(page.locator('[data-testid="note-list-container"]')).toBeVisible()
   await page.getByTitle('Switch vault').click()
   await expect(page.getByTestId('vault-menu-clone-getting-started')).toBeVisible()

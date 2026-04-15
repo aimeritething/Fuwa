@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS, getAppStorageItem } from '../constants/appStorage'
+import { buildGettingStartedVaultPath, formatGettingStartedCloneError } from '../utils/gettingStartedVault'
 import { pickFolder } from '../utils/vault-dialog'
 
 type OnboardingState =
@@ -39,26 +40,6 @@ function markDismissed(): void {
   }
 }
 
-function formatTemplateError(err: unknown): string {
-  const message =
-    typeof err === 'string'
-      ? err
-      : err instanceof Error
-        ? err.message
-        : `${err}`
-
-  if (
-    message.includes('already exists and is not empty')
-    || message.includes('already exists and is not a directory')
-    || message.includes('Failed to create parent directory')
-    || message.includes('Target path is required')
-  ) {
-    return message
-  }
-
-  return 'Could not download Getting Started vault. Check your connection and try again.'
-}
-
 async function clearMissingActiveVault(missingPath: string): Promise<void> {
   try {
     const list = await tauriCall<PersistedVaultList>('load_vault_list', {})
@@ -75,7 +56,10 @@ async function clearMissingActiveVault(missingPath: string): Promise<void> {
   }
 }
 
-export function useOnboarding(initialVaultPath: string) {
+export function useOnboarding(
+  initialVaultPath: string,
+  onTemplateVaultReady?: (vaultPath: string) => void,
+) {
   const [state, setState] = useState<OnboardingState>({ status: 'loading' })
   const [creatingAction, setCreatingAction] = useState<CreatingAction>(null)
   const [error, setError] = useState<string | null>(null)
@@ -126,17 +110,18 @@ export function useOnboarding(initialVaultPath: string) {
       const vaultPath = await tauriCall<string>('create_getting_started_vault', { targetPath })
       markDismissed()
       setState({ status: 'ready', vaultPath })
+      onTemplateVaultReady?.(vaultPath)
     } catch (err) {
-      setError(formatTemplateError(err))
+      setError(formatGettingStartedCloneError(err))
     } finally {
       setCreatingAction(null)
     }
-  }, [])
+  }, [onTemplateVaultReady])
 
   const handleCreateVault = useCallback(async () => {
-    const path = await pickFolder('Choose where to clone the Getting Started vault')
-    if (!path) return
-    await createTemplateVault(path)
+    const parentPath = await pickFolder('Choose a parent folder for the Getting Started vault')
+    if (!parentPath) return
+    await createTemplateVault(buildGettingStartedVaultPath(parentPath))
   }, [createTemplateVault])
 
   const retryCreateVault = useCallback(async () => {

@@ -35,7 +35,7 @@ import { useEntryActions } from './hooks/useEntryActions'
 import { useAppCommands } from './hooks/useAppCommands'
 import { generateCommitMessage } from './utils/commitMessage'
 import { useDialogs } from './hooks/useDialogs'
-import { useVaultSwitcher } from './hooks/useVaultSwitcher'
+import { GETTING_STARTED_LABEL, useVaultSwitcher } from './hooks/useVaultSwitcher'
 import { useGitHistory } from './hooks/useGitHistory'
 import { useUpdater, restartApp } from './hooks/useUpdater'
 import { useAutoSync } from './hooks/useAutoSync'
@@ -44,6 +44,7 @@ import { useZoom } from './hooks/useZoom'
 import { useVaultConfig } from './hooks/useVaultConfig'
 import { useBuildNumber } from './hooks/useBuildNumber'
 import { useOnboarding } from './hooks/useOnboarding'
+import { useGettingStartedClone } from './hooks/useGettingStartedClone'
 import { useNetworkStatus } from './hooks/useNetworkStatus'
 import { useAppNavigation } from './hooks/useAppNavigation'
 import { useAiActivity } from './hooks/useAiActivity'
@@ -152,12 +153,24 @@ function App() {
     onSwitch: () => { handleSetSelection(DEFAULT_SELECTION); notes.closeAllTabs() },
     onToast: (msg) => setToastMessage(msg),
   })
+  const { handleVaultCloned } = vaultSwitcher
 
-  const onboarding = useOnboarding(vaultSwitcher.vaultPath)
+  const handleGettingStartedVaultReady = useCallback((vaultPath: string, label: string) => {
+    handleVaultCloned(vaultPath, label)
+    setToastMessage(`Getting Started vault cloned and opened at ${vaultPath}`)
+  }, [handleVaultCloned])
+  const cloneGettingStartedVault = useGettingStartedClone({
+    onError: (message) => setToastMessage(message),
+    onSuccess: handleGettingStartedVaultReady,
+  })
+  const onboarding = useOnboarding(vaultSwitcher.vaultPath, (vaultPath) => {
+    handleGettingStartedVaultReady(vaultPath, GETTING_STARTED_LABEL)
+  })
   const aiAgentsStatus = useAiAgentsStatus()
   const aiAgentsOnboarding = useAiAgentsOnboarding(onboarding.state.status === 'ready' && !noteWindowParams)
 
-  // When onboarding resolves to a different vault path, update the switcher
+  // The active vault path can temporarily come from onboarding before the
+  // persisted vault switcher catches up to the newly cloned starter vault.
   const resolvedPath = noteWindowParams?.vaultPath ?? (onboarding.state.status === 'ready' ? onboarding.state.vaultPath : vaultSwitcher.vaultPath)
   // Git repo check: 'checking' | 'required' | 'ready'
   const [gitRepoState, setGitRepoState] = useState<'checking' | 'required' | 'ready'>('checking')
@@ -673,7 +686,7 @@ function App() {
     onToggleAIChat: dialogs.toggleAIChat,
     onCheckForUpdates: handleCheckForUpdates,
     onRemoveActiveVault: () => vaultSwitcher.removeVault(vaultSwitcher.vaultPath),
-    onRestoreGettingStarted: vaultSwitcher.restoreGettingStarted,
+    onRestoreGettingStarted: cloneGettingStartedVault,
     isGettingStartedHidden: vaultSwitcher.isGettingStartedHidden,
     vaultCount: vaultSwitcher.allVaults.length,
     mcpStatus,
@@ -735,10 +748,13 @@ function App() {
 
   if (!noteWindowParams && onboarding.state.status === 'ready' && aiAgentsOnboarding.showPrompt) {
     return (
-      <AiAgentsOnboardingView
-        statuses={aiAgentsStatus}
-        onContinue={aiAgentsOnboarding.dismissPrompt}
-      />
+      <>
+        <AiAgentsOnboardingView
+          statuses={aiAgentsStatus}
+          onContinue={aiAgentsOnboarding.dismissPrompt}
+        />
+        <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
+      </>
     )
   }
 
@@ -852,7 +868,7 @@ function App() {
       </div>
       <UpdateBanner status={updateStatus} actions={updateActions} />
       <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={vaultSwitcher.vaultPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={vaultSwitcher.restoreGettingStarted} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isOffline={networkStatus.isOffline} isGitVault={!vault.modifiedFilesError} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} aiAgentsStatus={aiAgentsStatus} vaultAiGuidanceStatus={vaultAiGuidanceStatus} defaultAiAgent={aiAgentPreferences.defaultAiAgent} onSetDefaultAiAgent={aiAgentPreferences.setDefaultAiAgent} onRestoreVaultAiGuidance={() => { void restoreVaultAiGuidance() }} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={resolvedPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={cloneGettingStartedVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isOffline={networkStatus.isOffline} isGitVault={!vault.modifiedFilesError} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} lastCommitInfo={autoSync.lastCommitInfo} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} aiAgentsStatus={aiAgentsStatus} vaultAiGuidanceStatus={vaultAiGuidanceStatus} defaultAiAgent={aiAgentPreferences.defaultAiAgent} onSetDefaultAiAgent={aiAgentPreferences.setDefaultAiAgent} onRestoreVaultAiGuidance={() => { void restoreVaultAiGuidance() }} />
       <DeleteProgressNotice count={deleteActions.pendingDeleteCount} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />

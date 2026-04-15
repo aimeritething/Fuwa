@@ -1,6 +1,8 @@
 import { test, expect } from '@playwright/test'
 
 test('Getting Started template shows inline retry on clone failure and opens after retry @smoke', async ({ page }) => {
+  const clonedPath = '/Users/mock/Documents/Getting Started'
+
   await page.addInitScript(() => {
     localStorage.clear()
 
@@ -23,7 +25,10 @@ test('Getting Started template shows inline retry on clone failure and opens aft
           if (cloneAttempts === 1) {
             throw 'git clone failed: fatal: unable to access'
           }
-          return args.targetPath || '/Users/mock/Documents/Getting Started'
+          if (args.targetPath !== '/Users/mock/Documents/Getting Started') {
+            throw new Error(`Unexpected Getting Started target: ${args.targetPath}`)
+          }
+          return args.targetPath
         }
       },
       get() {
@@ -33,7 +38,7 @@ test('Getting Started template shows inline retry on clone failure and opens aft
 
     Object.defineProperty(window, 'prompt', {
       configurable: true,
-      value: () => '/Users/mock/Documents/Getting Started',
+      value: () => '/Users/mock/Documents',
     })
   })
 
@@ -51,6 +56,7 @@ test('Getting Started template shows inline retry on clone failure and opens aft
   await page.getByTestId('welcome-retry-template').click()
 
   await expect(page.getByTestId('welcome-screen')).not.toBeVisible()
+  await expect(page.getByText(`Getting Started vault cloned and opened at ${clonedPath}`)).toBeVisible()
   await expect(page.getByTestId('claude-onboarding-screen')).toBeVisible()
   await expect(page.getByText('Claude Code not detected')).toBeVisible()
   await page.getByTestId('claude-onboarding-continue').click()
