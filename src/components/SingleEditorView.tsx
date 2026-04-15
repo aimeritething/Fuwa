@@ -12,6 +12,7 @@ import { attachClickHandlers, enrichSuggestionItems } from '../utils/suggestionE
 import { WikilinkSuggestionMenu, type WikilinkSuggestionItem } from './WikilinkSuggestionMenu'
 import type { VaultEntry } from '../types'
 import { _wikilinkEntriesRef } from './editorSchema'
+import { useBlockNoteSideMenuHoverGuard } from './blockNoteSideMenuHoverGuard'
 import { useEditorLinkActivation } from './useEditorLinkActivation'
 
 const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
@@ -129,6 +130,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   const containerRef = useRef<HTMLDivElement>(null)
   const onImageUrl = useInsertImageCallback(editor)
   const { isDragOver } = useImageDrop({ containerRef, onImageUrl, vaultPath })
+  useBlockNoteSideMenuHoverGuard(containerRef)
   useEditorLinkActivation(containerRef, onNavigateWikilink)
 
   const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
