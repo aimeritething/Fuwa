@@ -12,6 +12,7 @@ export function useEditorSaveWithLinks(config: {
   onAfterSave: () => void
   onNotePersisted?: (path: string, content: string) => void
   resolvePath?: (path: string) => string
+  resolvePathBeforeSave?: (path: string) => Promise<string>
 }) {
   const { updateEntry } = config
   const saveContent = useCallback((path: string, content: string) => {
@@ -28,6 +29,7 @@ export function useEditorSaveWithLinks(config: {
     onAfterSave: config.onAfterSave,
     onNotePersisted: config.onNotePersisted,
     resolvePath: config.resolvePath,
+    resolvePathBeforeSave: config.resolvePathBeforeSave,
   })
   const { handleContentChange: rawOnChange } = editor
   const prevLinksKeyRef = useRef('')

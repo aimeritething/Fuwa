@@ -17,6 +17,8 @@ interface EditorSaveConfig {
   onNotePersisted?: (path: string, content: string) => void
   /** Resolve stale paths (for example after a note rename) before persisting buffered content. */
   resolvePath?: (path: string) => string
+  /** Wait for an in-flight path change to settle before persisting buffered content. */
+  resolvePathBeforeSave?: (path: string) => Promise<string>
 }
 
 /**
@@ -36,6 +38,15 @@ function resolveBufferedPath(path: string, resolvePath?: EditorSaveConfig['resol
   return resolvePath?.(path) ?? path
 }
 
+async function resolvePersistPath(
+  path: string,
+  resolvePath?: EditorSaveConfig['resolvePath'],
+  resolvePathBeforeSave?: EditorSaveConfig['resolvePathBeforeSave'],
+): Promise<string> {
+  const currentPath = resolveBufferedPath(path, resolvePath)
+  return resolvePathBeforeSave ? resolvePathBeforeSave(currentPath) : currentPath
+}
+
 function matchesPendingPath(
   pending: PendingContent | null,
   pathFilter?: string,
@@ -52,14 +63,16 @@ async function persistResolvedContent({
   saveNote,
   onNotePersisted,
   resolvePath,
+  resolvePathBeforeSave,
 }: {
   path: string
   content: string
   saveNote: (path: string, content: string) => Promise<void>
   onNotePersisted?: EditorSaveConfig['onNotePersisted']
   resolvePath?: EditorSaveConfig['resolvePath']
+  resolvePathBeforeSave?: EditorSaveConfig['resolvePathBeforeSave']
 }): Promise<void> {
-  const targetPath = resolveBufferedPath(path, resolvePath)
+  const targetPath = await resolvePersistPath(path, resolvePath, resolvePathBeforeSave)
   await saveNote(targetPath, content)
   onNotePersisted?.(targetPath, content)
 }
@@ -94,6 +107,202 @@ function scheduleAutoSave({
   }, AUTO_SAVE_DEBOUNCE_MS)
 }
 
+function useOnAfterSaveRef(onAfterSave: () => void) {
+  const onAfterSaveRef = useRef(onAfterSave)
+  useEffect(() => { onAfterSaveRef.current = onAfterSave }, [onAfterSave])
+  return onAfterSaveRef
+}
+
+function usePendingContentFlush({
+  pendingContentRef,
+  saveNote,
+  onNotePersisted,
+  resolvePath,
+  resolvePathBeforeSave,
+}: {
+  pendingContentRef: MutableRefObject<PendingContent | null>
+  saveNote: (path: string, content: string) => Promise<void>
+  onNotePersisted?: EditorSaveConfig['onNotePersisted']
+  resolvePath?: EditorSaveConfig['resolvePath']
+  resolvePathBeforeSave?: EditorSaveConfig['resolvePathBeforeSave']
+}) {
+  return useCallback(async (pathFilter?: string): Promise<boolean> => {
+    const pending = pendingContentRef.current
+    if (!matchesPendingPath(pending, pathFilter, resolvePath)) return false
+    const { path, content } = pending
+    await persistResolvedContent({
+      path,
+      content,
+      saveNote,
+      onNotePersisted,
+      resolvePath,
+      resolvePathBeforeSave,
+    })
+    pendingContentRef.current = null
+    return true
+  }, [onNotePersisted, pendingContentRef, resolvePath, resolvePathBeforeSave, saveNote])
+}
+
+function useCancelAutoSave(autoSaveTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>) {
+  const cancelAutoSave = useCallback(() => {
+    if (!autoSaveTimerRef.current) return
+    clearTimeout(autoSaveTimerRef.current)
+    autoSaveTimerRef.current = null
+  }, [autoSaveTimerRef])
+
+  useEffect(() => () => cancelAutoSave(), [cancelAutoSave])
+  return cancelAutoSave
+}
+
+async function persistUnsavedFallback({
+  unsavedFallback,
+  saveNote,
+  onNotePersisted,
+  resolvePath,
+  resolvePathBeforeSave,
+}: {
+  unsavedFallback?: { path: string; content: string }
+  saveNote: (path: string, content: string) => Promise<void>
+  onNotePersisted?: EditorSaveConfig['onNotePersisted']
+  resolvePath?: EditorSaveConfig['resolvePath']
+  resolvePathBeforeSave?: EditorSaveConfig['resolvePathBeforeSave']
+}): Promise<boolean> {
+  if (!unsavedFallback) return false
+  await persistResolvedContent({
+    path: unsavedFallback.path,
+    content: unsavedFallback.content,
+    saveNote,
+    onNotePersisted,
+    resolvePath,
+    resolvePathBeforeSave,
+  })
+  return true
+}
+
+function useImmediateSaveCommands({
+  cancelAutoSave,
+  flushPending,
+  setToastMessage,
+  onAfterSave,
+  saveNote,
+  onNotePersisted,
+  resolvePath,
+  resolvePathBeforeSave,
+}: {
+  cancelAutoSave: () => void
+  flushPending: (pathFilter?: string) => Promise<boolean>
+  setToastMessage: EditorSaveConfig['setToastMessage']
+  onAfterSave: () => void
+  saveNote: (path: string, content: string) => Promise<void>
+  onNotePersisted?: EditorSaveConfig['onNotePersisted']
+  resolvePath?: EditorSaveConfig['resolvePath']
+  resolvePathBeforeSave?: EditorSaveConfig['resolvePathBeforeSave']
+}) {
+  const handleSave = useCallback(async (unsavedFallback?: { path: string; content: string }) => {
+    cancelAutoSave()
+    try {
+      const saved = await flushPending()
+      const savedFallback = !saved && await persistUnsavedFallback({
+        unsavedFallback,
+        saveNote,
+        onNotePersisted,
+        resolvePath,
+        resolvePathBeforeSave,
+      })
+      setToastMessage(saved || savedFallback ? 'Saved' : 'Nothing to save')
+      onAfterSave()
+    } catch (err) {
+      console.error('Save failed:', err)
+      setToastMessage(`Save failed: ${err}`)
+    }
+  }, [cancelAutoSave, flushPending, onAfterSave, onNotePersisted, resolvePath, resolvePathBeforeSave, saveNote, setToastMessage])
+
+  const savePendingForPath = useCallback(
+    (path: string): Promise<boolean> => { cancelAutoSave(); return flushPending(path) },
+    [cancelAutoSave, flushPending],
+  )
+
+  const savePending = useCallback((): Promise<boolean> => { cancelAutoSave(); return flushPending() }, [cancelAutoSave, flushPending])
+
+  return { handleSave, savePendingForPath, savePending }
+}
+
+function useContentChangeCommand({
+  pendingContentRef,
+  autoSaveTimerRef,
+  setTabs,
+  cancelAutoSave,
+  flushPending,
+  onAfterSaveRef,
+}: {
+  pendingContentRef: MutableRefObject<PendingContent | null>
+  autoSaveTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>
+  setTabs: EditorSaveConfig['setTabs']
+  cancelAutoSave: () => void
+  flushPending: () => Promise<boolean>
+  onAfterSaveRef: MutableRefObject<() => void>
+}) {
+  return useCallback((path: string, content: string) => {
+    pendingContentRef.current = { path, content }
+    applyTabContent(setTabs, path, content)
+    cancelAutoSave()
+    scheduleAutoSave({ autoSaveTimerRef, flushPending, onAfterSaveRef })
+  }, [autoSaveTimerRef, cancelAutoSave, flushPending, onAfterSaveRef, pendingContentRef, setTabs])
+}
+
+function useEditorSaveCommands({
+  pendingContentRef,
+  autoSaveTimerRef,
+  setTabs,
+  setToastMessage,
+  saveNote,
+  onAfterSave,
+  onAfterSaveRef,
+  onNotePersisted,
+  resolvePath,
+  resolvePathBeforeSave,
+}: {
+  pendingContentRef: MutableRefObject<PendingContent | null>
+  autoSaveTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>
+  setTabs: EditorSaveConfig['setTabs']
+  setToastMessage: EditorSaveConfig['setToastMessage']
+  saveNote: (path: string, content: string) => Promise<void>
+  onAfterSave: () => void
+  onAfterSaveRef: MutableRefObject<() => void>
+  onNotePersisted?: EditorSaveConfig['onNotePersisted']
+  resolvePath?: EditorSaveConfig['resolvePath']
+  resolvePathBeforeSave?: EditorSaveConfig['resolvePathBeforeSave']
+}) {
+  const flushPending = usePendingContentFlush({
+    pendingContentRef,
+    saveNote,
+    onNotePersisted,
+    resolvePath,
+    resolvePathBeforeSave,
+  })
+  const cancelAutoSave = useCancelAutoSave(autoSaveTimerRef)
+  const { handleSave, savePendingForPath, savePending } = useImmediateSaveCommands({
+    cancelAutoSave,
+    flushPending,
+    setToastMessage,
+    onAfterSave,
+    saveNote,
+    onNotePersisted,
+    resolvePath,
+    resolvePathBeforeSave,
+  })
+  const handleContentChange = useContentChangeCommand({
+    pendingContentRef,
+    autoSaveTimerRef,
+    setTabs,
+    cancelAutoSave,
+    flushPending: () => flushPending(),
+    onAfterSaveRef,
+  })
+
+  return { handleSave, handleContentChange, savePendingForPath, savePending }
+}
+
 export function useEditorSave({
   updateVaultContent,
   setTabs,
@@ -101,6 +310,7 @@ export function useEditorSave({
   onAfterSave = noop,
   onNotePersisted,
   resolvePath,
+  resolvePathBeforeSave,
 }: EditorSaveConfig) {
   const pendingContentRef = useRef<{ path: string; content: string } | null>(null)
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -111,74 +321,18 @@ export function useEditorSave({
   }, [updateVaultContent, setTabs])
 
   const { saveNote } = useSaveNote(updateTabAndContent)
+  const onAfterSaveRef = useOnAfterSaveRef(onAfterSave)
 
-  /** Persist pending content matching an optional path filter; returns true if saved */
-  const flushPending = useCallback(async (pathFilter?: string): Promise<boolean> => {
-    const pending = pendingContentRef.current
-    if (!matchesPendingPath(pending, pathFilter, resolvePath)) return false
-    const { path, content: savedContent } = pending
-    await persistResolvedContent({ path, content: savedContent, saveNote, onNotePersisted, resolvePath })
-    pendingContentRef.current = null
-    return true
-  }, [saveNote, onNotePersisted, resolvePath])
-
-  // Stable ref for onAfterSave so the auto-save timer closure always calls the latest version
-  const onAfterSaveRef = useRef(onAfterSave)
-  useEffect(() => { onAfterSaveRef.current = onAfterSave }, [onAfterSave])
-
-  /** Cancel any pending auto-save timer. */
-  const cancelAutoSave = useCallback(() => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current)
-      autoSaveTimerRef.current = null
-    }
-  }, [])
-
-  /** Called by Cmd+S — persists the current editor content to disk.
-   *  Accepts optional fallback for unsaved notes with no pending edits. */
-  const handleSave = useCallback(async (unsavedFallback?: { path: string; content: string }) => {
-    cancelAutoSave()
-    try {
-      const saved = await flushPending()
-      const savedFallback = !saved && !!unsavedFallback && await (async () => {
-        await persistResolvedContent({
-          path: unsavedFallback.path,
-          content: unsavedFallback.content,
-          saveNote,
-          onNotePersisted,
-          resolvePath,
-        })
-        return true
-      })()
-      setToastMessage(saved || savedFallback ? 'Saved' : 'Nothing to save')
-      onAfterSave()
-    } catch (err) {
-      console.error('Save failed:', err)
-      setToastMessage(`Save failed: ${err}`)
-    }
-  }, [cancelAutoSave, flushPending, setToastMessage, onAfterSave, saveNote, onNotePersisted, resolvePath])
-
-  /** Called by Editor onChange — buffers the latest content, syncs tab state,
-   *  and schedules an auto-save after 500ms of inactivity. */
-  const handleContentChange = useCallback((path: string, content: string) => {
-    pendingContentRef.current = { path, content }
-    applyTabContent(setTabs, path, content)
-    cancelAutoSave()
-    scheduleAutoSave({ autoSaveTimerRef, flushPending: () => flushPending(), onAfterSaveRef })
-  }, [setTabs, cancelAutoSave, flushPending])
-
-  // Clear auto-save timer on unmount
-  useEffect(() => () => cancelAutoSave(), [cancelAutoSave])
-
-  /** Save pending content for a specific path (used before rename / tab close) */
-  const savePendingForPath = useCallback(
-    (path: string): Promise<boolean> => { cancelAutoSave(); return flushPending(path) },
-    [cancelAutoSave, flushPending],
-  )
-
-  /** Flush any pending content to disk silently (used before git commit).
-   * Does NOT call onAfterSave — callers manage their own refresh. */
-  const savePending = useCallback((): Promise<boolean> => { cancelAutoSave(); return flushPending() }, [cancelAutoSave, flushPending])
-
-  return { handleSave, handleContentChange, savePendingForPath, savePending }
+  return useEditorSaveCommands({
+    pendingContentRef,
+    autoSaveTimerRef,
+    setTabs,
+    setToastMessage,
+    saveNote,
+    onAfterSave,
+    onAfterSaveRef,
+    onNotePersisted,
+    resolvePath,
+    resolvePathBeforeSave,
+  })
 }
