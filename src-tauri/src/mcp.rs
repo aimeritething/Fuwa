@@ -116,6 +116,32 @@ pub fn spawn_ws_bridge(vault_path: &str) -> Result<Child, String> {
     Ok(child)
 }
 
+fn claude_mcp_config_path() -> Option<PathBuf> {
+    dirs::home_dir().map(|home| home.join(".claude").join("mcp.json"))
+}
+
+fn read_registered_mcp_entry(config_path: &Path) -> Option<serde_json::Value> {
+    let raw = std::fs::read_to_string(config_path).ok()?;
+    let config: serde_json::Value = serde_json::from_str(&raw).ok()?;
+    config
+        .get("mcpServers")
+        .and_then(|value| value.as_object())
+        .and_then(|servers| {
+            servers
+                .get(MCP_SERVER_NAME)
+                .or_else(|| servers.get(LEGACY_MCP_SERVER_NAME))
+        })
+        .cloned()
+}
+
+fn entry_index_js_exists(entry: &serde_json::Value) -> bool {
+    entry["args"]
+        .as_array()
+        .and_then(|args| args.first())
+        .and_then(|value| value.as_str())
+        .is_some_and(|index_js| Path::new(index_js).exists())
+}
+
 /// Build the MCP server entry JSON for a given vault path and index.js path.
 fn build_mcp_entry(index_js: &str, vault_path: &str) -> serde_json::Value {
     serde_json::json!({
@@ -207,54 +233,32 @@ pub fn check_mcp_status() -> McpStatus {
         return McpStatus::NoClaudeCli;
     }
 
-    let config_path = match dirs::home_dir() {
-        Some(h) => h.join(".claude").join("mcp.json"),
-        None => return McpStatus::NotInstalled,
+    let Some(config_path) = claude_mcp_config_path() else {
+        return McpStatus::NotInstalled;
     };
-
     if !config_path.exists() {
         return McpStatus::NotInstalled;
     }
 
-    let raw = match std::fs::read_to_string(&config_path) {
-        Ok(r) => r,
-        Err(_) => return McpStatus::NotInstalled,
-    };
-
-    let config: serde_json::Value = match serde_json::from_str(&raw) {
-        Ok(c) => c,
-        Err(_) => return McpStatus::NotInstalled,
-    };
-
-    let Some(servers) = config.get("mcpServers").and_then(|value| value.as_object()) else {
-        return McpStatus::NotInstalled;
-    };
-    let Some(entry) = servers
-        .get(MCP_SERVER_NAME)
-        .or_else(|| servers.get(LEGACY_MCP_SERVER_NAME))
-    else {
+    let Some(entry) = read_registered_mcp_entry(&config_path) else {
         return McpStatus::NotInstalled;
     };
 
-    // Verify the referenced index.js actually exists on disk
-    if let Some(index_js) = entry["args"]
-        .as_array()
-        .and_then(|a| a.first())
-        .and_then(|v| v.as_str())
-    {
-        if !Path::new(index_js).exists() {
-            return McpStatus::NotInstalled;
-        }
+    if entry_index_js_exists(&entry) {
+        McpStatus::Installed
     } else {
-        return McpStatus::NotInstalled;
+        McpStatus::NotInstalled
     }
-
-    McpStatus::Installed
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn read_config(config_path: &Path) -> serde_json::Value {
+        let raw = std::fs::read_to_string(config_path).unwrap();
+        serde_json::from_str(&raw).unwrap()
+    }
 
     #[test]
     fn build_mcp_entry_produces_correct_json() {
@@ -273,8 +277,7 @@ mod tests {
         let was_update = upsert_mcp_config(&config_path, &entry).unwrap();
         assert!(!was_update);
 
-        let raw = std::fs::read_to_string(&config_path).unwrap();
-        let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        let config = read_config(&config_path);
         assert_eq!(
             config["mcpServers"][MCP_SERVER_NAME]["args"][0],
             "/test/index.js"
@@ -297,8 +300,7 @@ mod tests {
         let was_update = upsert_mcp_config(&config_path, &entry2).unwrap();
         assert!(was_update);
 
-        let raw = std::fs::read_to_string(&config_path).unwrap();
-        let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        let config = read_config(&config_path);
         assert_eq!(
             config["mcpServers"][MCP_SERVER_NAME]["env"]["VAULT_PATH"],
             "/vault/v2"
@@ -325,8 +327,7 @@ mod tests {
         let was_update = upsert_mcp_config(&config_path, &entry).unwrap();
         assert!(was_update);
 
-        let raw = std::fs::read_to_string(&config_path).unwrap();
-        let config: serde_json::Value = serde_json::from_str(&raw).unwrap();
+        let config = read_config(&config_path);
         assert!(config["mcpServers"][LEGACY_MCP_SERVER_NAME].is_null());
         assert_eq!(
             config["mcpServers"][MCP_SERVER_NAME]["args"][0],
@@ -382,7 +383,7 @@ mod tests {
         let entry = build_mcp_entry("/test/index.js", "/vault");
 
         // First call
-        register_mcp_to_configs(&entry, &[config.clone()]);
+        register_mcp_to_configs(&entry, std::slice::from_ref(&config));
         // Second call
         let status = register_mcp_to_configs(&entry, &[config]);
         assert_eq!(status, "updated");

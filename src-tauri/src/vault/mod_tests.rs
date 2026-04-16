@@ -67,8 +67,8 @@ fn test_parse_full_frontmatter_lists() {
     // As arrays of plain strings (no wikilinks), they don't appear in
     // relationships or properties — only wikilink arrays become relationships,
     // and only scalars become properties.
-    assert!(entry.relationships.get("Belongs to").is_none());
-    assert!(entry.relationships.get("Related to").is_none());
+    assert!(!entry.relationships.contains_key("Belongs to"));
+    assert!(!entry.relationships.contains_key("Related to"));
 }
 
 #[test]
@@ -328,9 +328,9 @@ Belongs to:
     let entry = parse_md_file(&dir.path().join("some-project.md"), None).unwrap();
 
     // Owner with wikilink should appear in relationships
-    assert!(entry.relationships.get("Owner").is_some());
+    assert!(entry.relationships.contains_key("Owner"));
     // Wikilinks don't go to properties
-    assert!(entry.properties.get("Owner").is_none());
+    assert!(!entry.properties.contains_key("Owner"));
 
     // Belongs to is a wikilink array, should appear in relationships
     let belongs = entry.relationships.get("Belongs to").unwrap();
@@ -387,7 +387,7 @@ fn test_parse_relationships_owner_and_notes() {
     let rels = parse_big_project_rels();
     assert_eq!(rels.get("Notes").unwrap().len(), 3);
     // Owner with wikilink should be in relationships
-    assert!(rels.get("Owner").is_some());
+    assert!(rels.contains_key("Owner"));
 }
 
 #[test]
@@ -400,8 +400,8 @@ fn test_parse_relationships_builtin_wikilink_fields() {
 #[test]
 fn test_parse_relationships_skip_keys_excluded_from_generic() {
     let rels = parse_big_project_rels();
-    assert!(rels.get("Status").is_none());
-    assert!(rels.get("Is A").is_none());
+    assert!(!rels.contains_key("Status"));
+    assert!(!rels.contains_key("Is A"));
 }
 
 #[test]
@@ -453,17 +453,17 @@ fn parse_skip_keys_rels() -> (HashMap<String, Vec<String>>, usize) {
 #[test]
 fn test_skip_keys_identity_fields_excluded() {
     let (rels, _) = parse_skip_keys_rels();
-    assert!(rels.get("Is A").is_none());
-    assert!(rels.get("Aliases").is_none());
-    assert!(rels.get("Status").is_none());
+    assert!(!rels.contains_key("Is A"));
+    assert!(!rels.contains_key("Aliases"));
+    assert!(!rels.contains_key("Status"));
 }
 
 #[test]
 fn test_skip_keys_temporal_fields_excluded() {
     let (rels, _) = parse_skip_keys_rels();
-    assert!(rels.get("Cadence").is_some());
-    assert!(rels.get("Created at").is_some());
-    assert!(rels.get("Created time").is_some());
+    assert!(rels.contains_key("Cadence"));
+    assert!(rels.contains_key("Created at"));
+    assert!(rels.contains_key("Created time"));
 }
 
 #[test]
@@ -476,9 +476,9 @@ fn test_skip_keys_real_relation_included() {
     // "Real Relation" + "Type" + "Cadence" + "Created at" + "Created time"
     assert_eq!(len, 5);
     assert_eq!(rels.get("Type").unwrap(), &vec!["[[project]]".to_string()]);
-    assert!(rels.get("Cadence").is_some());
-    assert!(rels.get("Created at").is_some());
-    assert!(rels.get("Created time").is_some());
+    assert!(rels.contains_key("Cadence"));
+    assert!(rels.contains_key("Created at"));
+    assert!(rels.contains_key("Created time"));
 }
 
 #[test]
@@ -633,7 +633,7 @@ fn test_type_relationship_skipped_for_type_documents() {
     let dir = TempDir::new().unwrap();
     let content = "---\nIs A: Type\n---\n# Project\n";
     let entry = parse_test_entry(&dir, "project.md", content);
-    assert!(entry.relationships.get("Type").is_none());
+    assert!(!entry.relationships.contains_key("Type"));
 }
 
 #[test]
@@ -642,7 +642,7 @@ fn test_no_type_relationship_without_frontmatter() {
     let content = "# A Person\n\nSome content.";
     let entry = parse_test_entry(&dir, "someone.md", content);
     assert_eq!(entry.is_a, None);
-    assert!(entry.relationships.get("Type").is_none());
+    assert!(!entry.relationships.contains_key("Type"));
 }
 
 #[test]
@@ -693,8 +693,8 @@ fn test_type_key_not_in_relationships_as_generic() {
     // "type" key itself should not appear as a relationship (it's in SKIP_KEYS)
     // Only "Has" and the auto-generated "Type" should be relationships
     assert_eq!(entry.relationships.len(), 2);
-    assert!(entry.relationships.get("Has").is_some());
-    assert!(entry.relationships.get("Type").is_some());
+    assert!(entry.relationships.contains_key("Has"));
+    assert!(entry.relationships.contains_key("Type"));
 }
 
 // --- outgoing_links tests ---
@@ -784,7 +784,7 @@ fn test_sidebar_label_not_in_relationships() {
     let dir = TempDir::new().unwrap();
     let content = "---\ntype: Type\nsidebar label: My Series\n---\n# Series\n";
     let entry = parse_test_entry(&dir, "series.md", content);
-    assert!(entry.relationships.get("sidebar label").is_none());
+    assert!(!entry.relationships.contains_key("sidebar label"));
 }
 
 // --- template field tests ---
@@ -822,7 +822,7 @@ fn test_template_not_in_relationships() {
     let dir = TempDir::new().unwrap();
     let content = "---\ntype: Type\ntemplate: \"## Heading\"\n---\n# Project\n";
     let entry = parse_test_entry(&dir, "project.md", content);
-    assert!(entry.relationships.get("template").is_none());
+    assert!(!entry.relationships.contains_key("template"));
 }
 
 // --- sort field tests ---
@@ -848,7 +848,7 @@ fn test_sort_not_in_relationships() {
     let dir = TempDir::new().unwrap();
     let content = "---\ntype: Type\nsort: \"title:asc\"\n---\n# Project\n";
     let entry = parse_test_entry(&dir, "project.md", content);
-    assert!(entry.relationships.get("sort").is_none());
+    assert!(!entry.relationships.contains_key("sort"));
 }
 
 #[test]
@@ -856,7 +856,7 @@ fn test_sort_not_in_properties() {
     let dir = TempDir::new().unwrap();
     let content = "---\ntype: Type\nsort: \"title:asc\"\n---\n# Project\n";
     let entry = parse_test_entry(&dir, "project.md", content);
-    assert!(entry.properties.get("sort").is_none());
+    assert!(!entry.properties.contains_key("sort"));
 }
 
 // --- custom properties tests ---
@@ -916,42 +916,6 @@ Priority: High
     assert_eq!(
         entry.properties.get("Cadence").and_then(|v| v.as_str()),
         Some("Weekly")
-    );
-}
-
-#[test]
-fn test_extract_properties_skips_wikilinks() {
-    let dir = TempDir::new().unwrap();
-    let content = r#"---
-Mentor: "[[person/alice]]"
-Company: Acme Corp
----
-# Test
-"#;
-    let entry = parse_test_entry(&dir, "test.md", content);
-    assert!(entry.properties.get("Mentor").is_none());
-    assert_eq!(
-        entry.properties.get("Company").and_then(|v| v.as_str()),
-        Some("Acme Corp")
-    );
-}
-
-#[test]
-fn test_extract_properties_skips_arrays() {
-    let dir = TempDir::new().unwrap();
-    let content = r#"---
-Tags:
-  - productivity
-  - writing
-Company: Acme Corp
----
-# Test
-"#;
-    let entry = parse_test_entry(&dir, "test.md", content);
-    assert!(entry.properties.get("Tags").is_none());
-    assert_eq!(
-        entry.properties.get("Company").and_then(|v| v.as_str()),
-        Some("Acme Corp")
     );
 }
 
@@ -1137,7 +1101,7 @@ fn test_visible_not_in_relationships() {
     let dir = TempDir::new().unwrap();
     let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
     let entry = parse_test_entry(&dir, "journal.md", content);
-    assert!(entry.relationships.get("visible").is_none());
+    assert!(!entry.relationships.contains_key("visible"));
 }
 
 #[test]
@@ -1145,7 +1109,7 @@ fn test_visible_not_in_properties() {
     let dir = TempDir::new().unwrap();
     let content = "---\ntype: Type\nvisible: false\n---\n# Journal\n";
     let entry = parse_test_entry(&dir, "journal.md", content);
-    assert!(entry.properties.get("visible").is_none());
+    assert!(!entry.properties.contains_key("visible"));
 }
 
 // --- round-trip: canonical `type:` field and `Is A:` alias ---
@@ -1175,30 +1139,6 @@ fn test_roundtrip_is_a_snake_case_alias_still_works() {
 }
 
 // --- StringOrList normalization (uniform, no per-field special cases) ---
-
-#[test]
-fn test_single_element_array_owner_unwraps_to_scalar() {
-    let dir = TempDir::new().unwrap();
-    let content = "---\ntype: Responsibility\nOwner:\n  - Luca\n---\n# Test\n";
-    let entry = parse_test_entry(&dir, "test.md", content);
-    assert_eq!(
-        entry.properties.get("Owner").and_then(|v| v.as_str()),
-        Some("Luca")
-    );
-    assert_eq!(entry.is_a, Some("Responsibility".to_string()));
-}
-
-#[test]
-fn test_single_element_array_cadence_unwraps_to_scalar() {
-    let dir = TempDir::new().unwrap();
-    let content = "---\ntype: Procedure\nCadence:\n  - Weekly\n---\n# Test\n";
-    let entry = parse_test_entry(&dir, "test.md", content);
-    assert_eq!(
-        entry.properties.get("Cadence").and_then(|v| v.as_str()),
-        Some("Weekly")
-    );
-    assert_eq!(entry.is_a, Some("Procedure".to_string()));
-}
 
 #[test]
 fn test_single_element_array_status_unwraps_to_scalar() {
@@ -1570,40 +1510,6 @@ Content.
 /// Regression: unquoted colon in YAML list item causes gray_matter to mis-parse.
 /// `aliases:\n  - Bitcoin: Net Unrealized...` has an unquoted `:` in a list item.
 /// gray_matter may return a partial/mangled Hash instead of failing cleanly.
-#[test]
-fn test_unquoted_colon_in_list_item_breaks_parsing() {
-    let dir = TempDir::new().unwrap();
-    let content = "---\ntype: Note\n_organized: true\naliases:\n  - Bitcoin: Net Unrealized Profit/Loss\n  - Note\n---\n# Test\n";
-    let entry = parse_test_entry(&dir, "colon-alias.md", content);
-    assert_eq!(
-        entry.is_a,
-        Some("Note".to_string()),
-        "type must be parsed correctly even when gray_matter fails due to unquoted colon in list item"
-    );
-    assert!(
-        entry.organized,
-        "_organized must be true even when gray_matter fails due to unquoted colon in list item"
-    );
-}
-
-/// Regression: `# ` in a YAML list item is interpreted as a comment by gray_matter,
-/// truncating the frontmatter and losing subsequent fields.
-#[test]
-fn test_hash_in_list_item_treated_as_comment() {
-    let dir = TempDir::new().unwrap();
-    let content = "---\ntype: Note\n_organized: true\naliases:\n  - # Writing a Good CLAUDE.md\n  - Note\n---\n# Title\n";
-    let entry = parse_test_entry(&dir, "hash-alias.md", content);
-    assert_eq!(
-        entry.is_a,
-        Some("Note".to_string()),
-        "type must be parsed even when alias starts with # (YAML comment char)"
-    );
-    assert!(
-        entry.organized,
-        "_organized must be true even when alias starts with # (YAML comment char)"
-    );
-}
-
 /// Full reproduction: real-world Notion-imported note with unquoted colon in alias.
 #[test]
 fn test_real_world_notion_note_with_unquoted_colon() {

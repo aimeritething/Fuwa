@@ -1,128 +1,152 @@
 use super::yaml::{format_yaml_field, FrontmatterValue};
 
-/// Check if a line defines a specific key (handles quoted and unquoted keys)
-fn line_is_key(line: &str, key: &str) -> bool {
-    let trimmed = line.trim_start();
-
-    if trimmed.starts_with(key) && trimmed[key.len()..].starts_with(':') {
-        return true;
-    }
-
-    let dq = format!("\"{}\":", key);
-    if trimmed.starts_with(&dq) {
-        return true;
-    }
-
-    let sq = format!("'{}\':", key);
-    if trimmed.starts_with(&sq) {
-        return true;
-    }
-
-    false
-}
-
 /// Check if a line continues the previous key's value (indented list item,
 /// block scalar content, or blank line inside a block scalar).
-fn is_value_continuation(line: &str) -> bool {
-    line.is_empty() || line.starts_with("  ") || line.starts_with('\t')
+fn is_value_continuation(line: FrontmatterLine<'_>) -> bool {
+    line.0.is_empty() || line.0.starts_with("  ") || line.0.starts_with('\t')
 }
 
-fn normalize_system_key(key: &str) -> String {
-    key.trim().to_ascii_lowercase().replace(' ', "_")
+#[derive(Clone, Copy)]
+enum SystemKey {
+    Icon,
+    Order,
+    SidebarLabel,
+    Sort,
 }
 
-fn canonical_system_key(key: &str) -> Option<&'static str> {
-    match normalize_system_key(key).as_str() {
-        "_icon" | "icon" => Some("_icon"),
-        "_order" | "order" => Some("_order"),
-        "_sidebar_label" | "sidebar_label" | "sidebar label" => Some("_sidebar_label"),
-        "_sort" | "sort" => Some("_sort"),
+impl SystemKey {
+    fn canonical(self) -> &'static str {
+        match self {
+            Self::Icon => "_icon",
+            Self::Order => "_order",
+            Self::SidebarLabel => "_sidebar_label",
+            Self::Sort => "_sort",
+        }
+    }
+
+    fn legacy_aliases(self) -> &'static [&'static str] {
+        match self {
+            Self::Icon => &["icon"],
+            Self::Order => &["order"],
+            Self::SidebarLabel => &["sidebar_label", "sidebar label"],
+            Self::Sort => &["sort"],
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct DocumentText<'a>(&'a str);
+
+#[derive(Clone, Copy)]
+struct FrontmatterLine<'a>(&'a str);
+
+#[derive(Clone, Copy)]
+struct PropertyKey<'a>(&'a str);
+
+impl<'a> PropertyKey<'a> {
+    fn as_str(self) -> &'a str {
+        self.0
+    }
+}
+
+#[derive(Clone, Copy)]
+struct FieldUpdate<'a> {
+    key: PropertyKey<'a>,
+    value: Option<&'a FrontmatterValue>,
+}
+
+impl<'a> FieldUpdate<'a> {
+    fn matches_line(self, line: FrontmatterLine<'_>) -> bool {
+        let trimmed = line.0.trim_start();
+
+        if trimmed.starts_with(self.key.as_str())
+            && trimmed[self.key.as_str().len()..].starts_with(':')
+        {
+            return true;
+        }
+
+        let double_quoted = format!("\"{}\":", self.key.as_str());
+        if trimmed.starts_with(&double_quoted) {
+            return true;
+        }
+
+        let single_quoted = format!("'{}\':", self.key.as_str());
+        trimmed.starts_with(&single_quoted)
+    }
+
+    fn prepend_to(self, content: DocumentText<'_>) -> String {
+        let field_lines =
+            format_yaml_field(self.key.as_str(), self.value.expect("value must exist"));
+        format!("---\n{}\n---\n{}", field_lines.join("\n"), content.0)
+    }
+
+    fn apply_to_lines(self, lines: &[FrontmatterLine<'_>]) -> Vec<String> {
+        let mut new_lines: Vec<String> = Vec::new();
+        let mut found_key = false;
+        let mut i = 0;
+
+        while i < lines.len() {
+            if !self.matches_line(lines[i]) {
+                new_lines.push(lines[i].0.to_string());
+                i += 1;
+                continue;
+            }
+
+            found_key = true;
+            i += 1;
+            while i < lines.len() && is_value_continuation(lines[i]) {
+                i += 1;
+            }
+            if let Some(v) = self.value {
+                new_lines.extend(format_yaml_field(self.key.as_str(), v));
+            }
+        }
+
+        if let (false, Some(v)) = (found_key, self.value) {
+            new_lines.extend(format_yaml_field(self.key.as_str(), v));
+        }
+
+        new_lines
+    }
+
+    fn apply_to_content(self, content: DocumentText<'_>) -> Result<String, String> {
+        if !content.0.starts_with("---\n") {
+            return match self.value {
+                Some(_) => Ok(self.prepend_to(content)),
+                None => Ok(content.0.to_string()),
+            };
+        }
+
+        let after_open = &content.0[4..];
+        let (fm_content, rest) = if let Some(stripped) = after_open.strip_prefix("---") {
+            ("", stripped)
+        } else {
+            let fm_end = after_open
+                .find("\n---")
+                .map(|i| i + 4)
+                .ok_or_else(|| "Malformed frontmatter: no closing ---".to_string())?;
+            (&content.0[4..fm_end], &content.0[fm_end + 4..])
+        };
+        let lines: Vec<FrontmatterLine<'_>> = fm_content.lines().map(FrontmatterLine).collect();
+        let new_fm = self.apply_to_lines(&lines).join("\n");
+        Ok(format!("---\n{}\n---{}", new_fm, rest))
+    }
+}
+
+fn canonical_system_key(key: PropertyKey<'_>) -> Option<SystemKey> {
+    match key
+        .as_str()
+        .trim()
+        .to_ascii_lowercase()
+        .replace(' ', "_")
+        .as_str()
+    {
+        "_icon" | "icon" => Some(SystemKey::Icon),
+        "_order" | "order" => Some(SystemKey::Order),
+        "_sidebar_label" | "sidebar_label" | "sidebar label" => Some(SystemKey::SidebarLabel),
+        "_sort" | "sort" => Some(SystemKey::Sort),
         _ => None,
     }
-}
-
-fn legacy_system_key_aliases(canonical: &str) -> &'static [&'static str] {
-    match canonical {
-        "_icon" => &["icon"],
-        "_order" => &["order"],
-        "_sidebar_label" => &["sidebar_label", "sidebar label"],
-        "_sort" => &["sort"],
-        _ => &[],
-    }
-}
-
-/// Split content into frontmatter body and the rest after the closing `---`.
-/// Returns `(fm_content, rest)` where `fm_content` is between the opening and closing `---`.
-fn split_frontmatter(content: &str) -> Result<(&str, &str), String> {
-    let after_open = &content[4..];
-    // Handle empty frontmatter: closing --- immediately after opening ---\n
-    if let Some(stripped) = after_open.strip_prefix("---") {
-        return Ok(("", stripped));
-    }
-    let fm_end = after_open
-        .find("\n---")
-        .map(|i| i + 4)
-        .ok_or_else(|| "Malformed frontmatter: no closing ---".to_string())?;
-    Ok((&content[4..fm_end], &content[fm_end + 4..]))
-}
-
-/// Wrap content in a new frontmatter block containing a single field.
-fn prepend_new_frontmatter(content: &str, key: &str, value: &FrontmatterValue) -> String {
-    let field_lines = format_yaml_field(key, value);
-    format!("---\n{}\n---\n{}", field_lines.join("\n"), content)
-}
-
-/// Apply a field update to existing frontmatter lines.
-/// Replaces the matching key (and its list continuations) with the new value,
-/// or appends if the key is not found. If `value` is None, removes the key.
-fn apply_field_update(lines: &[&str], key: &str, value: Option<&FrontmatterValue>) -> Vec<String> {
-    let mut new_lines: Vec<String> = Vec::new();
-    let mut found_key = false;
-    let mut i = 0;
-
-    while i < lines.len() {
-        if !line_is_key(lines[i], key) {
-            new_lines.push(lines[i].to_string());
-            i += 1;
-            continue;
-        }
-
-        found_key = true;
-        i += 1;
-        // Skip continuation lines belonging to this key (lists, block scalars)
-        while i < lines.len() && is_value_continuation(lines[i]) {
-            i += 1;
-        }
-        // Insert replacement value (if any)
-        if let Some(v) = value {
-            new_lines.extend(format_yaml_field(key, v));
-        }
-    }
-
-    if let (false, Some(v)) = (found_key, value) {
-        new_lines.extend(format_yaml_field(key, v));
-    }
-
-    new_lines
-}
-
-fn update_frontmatter_content_raw(
-    content: &str,
-    key: &str,
-    value: Option<&FrontmatterValue>,
-) -> Result<String, String> {
-    if !content.starts_with("---\n") {
-        return match value {
-            Some(v) => Ok(prepend_new_frontmatter(content, key, &v)),
-            None => Ok(content.to_string()),
-        };
-    }
-
-    let (fm_content, rest) = split_frontmatter(content)?;
-    let lines: Vec<&str> = fm_content.lines().collect();
-    let new_lines = apply_field_update(&lines, key, value);
-    let new_fm = new_lines.join("\n");
-    Ok(format!("---\n{}\n---{}", new_fm, rest))
 }
 
 /// Internal function to update frontmatter content
@@ -131,294 +155,26 @@ pub fn update_frontmatter_content(
     key: &str,
     value: Option<FrontmatterValue>,
 ) -> Result<String, String> {
-    let Some(canonical) = canonical_system_key(key) else {
-        return update_frontmatter_content_raw(content, key, value.as_ref());
+    let update = FieldUpdate {
+        key: PropertyKey(key),
+        value: value.as_ref(),
+    };
+    let Some(system_key) = canonical_system_key(update.key) else {
+        return update.apply_to_content(DocumentText(content));
     };
 
     let mut updated = content.to_string();
-    for alias in legacy_system_key_aliases(canonical) {
-        updated = update_frontmatter_content_raw(&updated, alias, None)?;
-    }
-
-    update_frontmatter_content_raw(&updated, canonical, value.as_ref())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    struct UpdateExpectation<'a> {
-        content: &'a str,
-        key: &'a str,
-        value: Option<FrontmatterValue>,
-        expected_present: &'a [&'a str],
-        expected_absent: &'a [&'a str],
-    }
-
-    fn assert_updated_content(expectation: UpdateExpectation<'_>) {
-        let updated =
-            update_frontmatter_content(expectation.content, expectation.key, expectation.value)
-                .unwrap();
-        for expected in expectation.expected_present {
-            assert!(
-                updated.contains(expected),
-                "missing expected snippet: {expected}"
-            );
-        }
-        for unexpected in expectation.expected_absent {
-            assert!(
-                !updated.contains(unexpected),
-                "found unexpected snippet: {unexpected}"
-            );
-        }
-    }
-
-    #[test]
-    fn test_update_frontmatter_string() {
-        assert_updated_content(UpdateExpectation {
-            content: "---\nStatus: Draft\n---\n# Test\n",
-            key: "Status",
-            value: Some(FrontmatterValue::String("Active".to_string())),
-            expected_present: &["Status: Active"],
-            expected_absent: &["Status: Draft"],
-        });
-    }
-
-    #[test]
-    fn test_update_frontmatter_add_new_key() {
-        assert_updated_content(UpdateExpectation {
-            content: "---\nStatus: Draft\n---\n# Test\n",
-            key: "Owner",
-            value: Some(FrontmatterValue::String("Luca".to_string())),
-            expected_present: &["Owner: Luca", "Status: Draft"],
-            expected_absent: &[],
-        });
-    }
-
-    #[test]
-    fn test_update_frontmatter_quoted_key() {
-        assert_updated_content(UpdateExpectation {
-            content: "---\n\"Is A\": Note\n---\n# Test\n",
-            key: "Is A",
-            value: Some(FrontmatterValue::String("Project".to_string())),
-            expected_present: &["\"Is A\": Project"],
-            expected_absent: &["\"Is A\": Note"],
-        });
-    }
-
-    #[test]
-    fn test_update_frontmatter_list() {
-        let content = "---\nStatus: Draft\n---\n# Test\n";
-        let updated = update_frontmatter_content(
-            content,
-            "aliases",
-            Some(FrontmatterValue::List(vec![
-                "Alias1".to_string(),
-                "Alias2".to_string(),
-            ])),
-        )
-        .unwrap();
-        assert!(updated.contains("aliases:"));
-        assert!(updated.contains("  - \"Alias1\""));
-        assert!(updated.contains("  - \"Alias2\""));
-    }
-
-    #[test]
-    fn test_update_frontmatter_replace_list() {
-        let content = "---\naliases:\n  - Old1\n  - Old2\nStatus: Draft\n---\n# Test\n";
-        let updated = update_frontmatter_content(
-            content,
-            "aliases",
-            Some(FrontmatterValue::List(vec!["New1".to_string()])),
-        )
-        .unwrap();
-        assert!(updated.contains("  - \"New1\""));
-        assert!(!updated.contains("Old1"));
-        assert!(!updated.contains("Old2"));
-        assert!(updated.contains("Status: Draft"));
-    }
-
-    #[test]
-    fn test_delete_frontmatter_property() {
-        let content = "---\nStatus: Draft\nOwner: Luca\n---\n# Test\n";
-        let updated = update_frontmatter_content(content, "Owner", None).unwrap();
-        assert!(!updated.contains("Owner"));
-        assert!(updated.contains("Status: Draft"));
-    }
-
-    #[test]
-    fn test_delete_frontmatter_list_property() {
-        let content = "---\naliases:\n  - Alias1\n  - Alias2\nStatus: Draft\n---\n# Test\n";
-        let updated = update_frontmatter_content(content, "aliases", None).unwrap();
-        assert!(!updated.contains("aliases"));
-        assert!(!updated.contains("Alias1"));
-        assert!(updated.contains("Status: Draft"));
-    }
-
-    #[test]
-    fn test_update_frontmatter_no_existing() {
-        let updated = update_frontmatter_content(
-            "# Test\n\nSome content here.",
-            "Status",
-            Some(FrontmatterValue::String("Draft".to_string())),
-        )
-        .unwrap();
-        assert!(updated.starts_with("---\n"));
-        assert!(updated.contains("Status: Draft"));
-        assert!(updated.contains("# Test"));
-    }
-
-    #[test]
-    fn test_update_frontmatter_bool() {
-        let content = "---\nStatus: Draft\n---\n# Test\n";
-        let updated =
-            update_frontmatter_content(content, "Reviewed", Some(FrontmatterValue::Bool(true)))
-                .unwrap();
-        assert!(updated.contains("Reviewed: true"));
-    }
-
-    #[test]
-    fn test_update_frontmatter_number() {
-        let content = "---\nStatus: Draft\n---\n# Test\n";
-        let updated =
-            update_frontmatter_content(content, "Priority", Some(FrontmatterValue::Number(5.0)))
-                .unwrap();
-        assert!(updated.contains("Priority: 5"));
-    }
-
-    #[test]
-    fn test_update_frontmatter_number_float() {
-        let content = "---\nStatus: Draft\n---\n# Test\n";
-        let updated =
-            update_frontmatter_content(content, "Score", Some(FrontmatterValue::Number(9.5)))
-                .unwrap();
-        assert!(updated.contains("Score: 9.5"));
-    }
-
-    #[test]
-    fn test_update_frontmatter_null() {
-        let content = "---\nStatus: Draft\n---\n# Test\n";
-        let updated =
-            update_frontmatter_content(content, "ClearMe", Some(FrontmatterValue::Null)).unwrap();
-        assert!(updated.contains("ClearMe: null"));
-    }
-
-    #[test]
-    fn test_update_frontmatter_empty_list() {
-        let content = "---\nStatus: Draft\n---\n# Test\n";
-        let updated =
-            update_frontmatter_content(content, "tags", Some(FrontmatterValue::List(vec![])))
-                .unwrap();
-        assert!(updated.contains("tags: []"));
-    }
-
-    #[test]
-    fn test_update_frontmatter_malformed_no_closing_fence() {
-        let content = "---\nStatus: Draft\nNo closing fence here";
-        let result = update_frontmatter_content(
-            content,
-            "Status",
-            Some(FrontmatterValue::String("Active".to_string())),
-        );
-        assert!(result.is_err());
-        assert!(result.unwrap_err().contains("Malformed frontmatter"));
-    }
-
-    #[test]
-    fn test_delete_nonexistent_key_noop() {
-        let content = "---\nStatus: Draft\n---\n# Test\n";
-        let updated = update_frontmatter_content(content, "NonExistent", None).unwrap();
-        assert_eq!(updated, content);
-    }
-
-    #[test]
-    fn test_delete_from_no_frontmatter_noop() {
-        let content = "# Test\n\nSome content.";
-        let updated = update_frontmatter_content(content, "NonExistent", None).unwrap();
-        assert_eq!(updated, content);
-    }
-
-    #[test]
-    fn test_update_frontmatter_rewrites_legacy_icon_key() {
-        assert_updated_content(UpdateExpectation {
-            content: "---\nicon: rocket\n---\n# Test\n",
-            key: "icon",
-            value: Some(FrontmatterValue::String("star".to_string())),
-            expected_present: &["_icon: star"],
-            expected_absent: &["\nicon:", "rocket"],
-        });
-    }
-
-    #[test]
-    fn test_update_frontmatter_rewrites_sidebar_label_aliases() {
-        assert_updated_content(UpdateExpectation {
-            content: "---\nsidebar label: Projects\nsidebar_label: Legacy\n---\n# Test\n",
-            key: "_sidebar_label",
-            value: Some(FrontmatterValue::String("Programs".to_string())),
-            expected_present: &["_sidebar_label: Programs"],
-            expected_absent: &["sidebar label: Projects", "sidebar_label: Legacy"],
-        });
-    }
-
-    #[test]
-    fn test_delete_frontmatter_removes_sort_aliases() {
-        assert_updated_content(UpdateExpectation {
-            content: "---\nsort: modified:desc\n_sort: title:asc\n---\n# Test\n",
-            key: "_sort",
+    for alias in system_key.legacy_aliases() {
+        updated = FieldUpdate {
+            key: PropertyKey(alias),
             value: None,
-            expected_present: &["# Test"],
-            expected_absent: &["\nsort:", "\n_sort:"],
-        });
+        }
+        .apply_to_content(DocumentText(&updated))?;
     }
 
-    #[test]
-    fn test_line_is_key_unquoted() {
-        assert!(line_is_key("Status: Draft", "Status"));
-        assert!(!line_is_key("Status: Draft", "Owner"));
+    FieldUpdate {
+        key: PropertyKey(system_key.canonical()),
+        value: update.value,
     }
-
-    #[test]
-    fn test_line_is_key_double_quoted() {
-        assert!(line_is_key("\"Is A\": Note", "Is A"));
-        assert!(!line_is_key("\"Is A\": Note", "Status"));
-    }
-
-    #[test]
-    fn test_line_is_key_single_quoted() {
-        assert!(line_is_key("'Is A': Note", "Is A"));
-    }
-
-    #[test]
-    fn test_line_is_key_leading_whitespace() {
-        assert!(line_is_key("  Status: Draft", "Status"));
-    }
-
-    #[test]
-    fn test_line_is_key_partial_match() {
-        assert!(!line_is_key("StatusBar: value", "Status"));
-    }
-
-    #[test]
-    fn test_split_frontmatter_empty_block() {
-        let result = split_frontmatter("---\n---\n");
-        assert!(result.is_ok());
-        let (fm, rest) = result.unwrap();
-        assert_eq!(fm, "");
-        assert_eq!(rest, "\n");
-    }
-
-    #[test]
-    fn test_split_frontmatter_empty_block_no_trailing_newline() {
-        let result = split_frontmatter("---\n---");
-        assert!(result.is_ok());
-    }
-
-    #[test]
-    fn test_split_frontmatter_empty_block_with_body() {
-        let result = split_frontmatter("---\n---\n\n# Title\n");
-        assert!(result.is_ok());
-        let (fm, rest) = result.unwrap();
-        assert_eq!(fm, "");
-        assert!(rest.contains("# Title"));
-    }
+    .apply_to_content(DocumentText(&updated))
 }

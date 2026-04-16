@@ -327,6 +327,21 @@ fn update_different_commit(
     finalize_and_cache(vault, entries, current_hash)
 }
 
+fn cache_requires_full_rescan(cache: &VaultCache, vault_path: &Path) -> bool {
+    let current_vault_str = vault_path.to_string_lossy();
+    cache.version != CACHE_VERSION
+        || (!cache.vault_path.is_empty() && cache.vault_path != current_vault_str.as_ref())
+}
+
+fn scan_and_cache_full(
+    vault_path: &Path,
+    git_dates: &HashMap<String, GitDates>,
+    current_hash: String,
+) -> Result<Vec<VaultEntry>, String> {
+    let entries = scan_vault(vault_path, git_dates)?;
+    Ok(finalize_and_cache(vault_path, entries, current_hash))
+}
+
 /// Delete the cache file for a vault, forcing a full rescan on the next
 /// call to `scan_vault_cached`. Used by the `reload_vault` command so that
 /// explicit user-triggered reloads always read from the filesystem.
@@ -357,12 +372,8 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     let git_dates = get_all_file_dates(vault_path);
 
     if let Some(cache) = load_cache(vault_path) {
-        let current_vault_str = vault_path.to_string_lossy();
-        let cache_stale = cache.version != CACHE_VERSION
-            || (!cache.vault_path.is_empty() && cache.vault_path != current_vault_str.as_ref());
-        if cache_stale {
-            let entries = scan_vault(vault_path, &git_dates)?;
-            return Ok(finalize_and_cache(vault_path, entries, current_hash));
+        if cache_requires_full_rescan(&cache, vault_path) {
+            return scan_and_cache_full(vault_path, &git_dates, current_hash);
         }
         return if cache.commit_hash == current_hash {
             Ok(update_same_commit(vault_path, cache, &git_dates))
@@ -377,8 +388,7 @@ pub fn scan_vault_cached(vault_path: &Path) -> Result<Vec<VaultEntry>, String> {
     }
 
     // No cache — full scan and write cache
-    let entries = scan_vault(vault_path, &git_dates)?;
-    Ok(finalize_and_cache(vault_path, entries, current_hash))
+    scan_and_cache_full(vault_path, &git_dates, current_hash)
 }
 
 #[cfg(test)]
@@ -607,7 +617,7 @@ mod tests {
         assert!(
             entries[0]
                 .path
-                .starts_with(&vault.to_string_lossy().as_ref()),
+                .starts_with(vault.to_string_lossy().as_ref()),
             "Entry path should start with vault path"
         );
 
@@ -615,7 +625,7 @@ mod tests {
         let cache_file = cache_path(vault);
         let cache_data = fs::read_to_string(&cache_file).unwrap();
         let tampered = cache_data.replace(
-            &vault.to_string_lossy().as_ref(),
+            vault.to_string_lossy().as_ref(),
             "/Users/other-machine/OtherVault",
         );
         fs::write(&cache_file, tampered).unwrap();
@@ -626,7 +636,7 @@ mod tests {
         assert!(
             entries2[0]
                 .path
-                .starts_with(&vault.to_string_lossy().as_ref()),
+                .starts_with(vault.to_string_lossy().as_ref()),
             "After stale-cache invalidation, paths should use the current vault path, got: {}",
             entries2[0].path
         );

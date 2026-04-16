@@ -148,17 +148,17 @@ pub fn set_last_vault(vault_path: &str) -> Result<(), String> {
 mod tests {
     use super::*;
 
-    fn settings_snapshot(
-        settings: &Settings,
-    ) -> (
+    type SettingsSnapshot<'a> = (
         Option<u32>,
         Option<bool>,
         Option<bool>,
         Option<bool>,
-        Option<&str>,
-        Option<&str>,
-        Option<&str>,
-    ) {
+        Option<&'a str>,
+        Option<&'a str>,
+        Option<&'a str>,
+    );
+
+    fn settings_snapshot(settings: &Settings) -> SettingsSnapshot<'_> {
         (
             settings.auto_pull_interval_minutes,
             settings.telemetry_consent,
@@ -213,7 +213,6 @@ mod tests {
             anonymous_id: Some("abc-123-uuid".to_string()),
             release_channel: Some("alpha".to_string()),
             default_ai_agent: Some("codex".to_string()),
-            ..Default::default()
         };
         let json = serde_json::to_string(&settings).unwrap();
         let parsed: Settings = serde_json::from_str(&json).unwrap();

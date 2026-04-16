@@ -1,4 +1,6 @@
 mod ops;
+#[cfg(test)]
+mod ops_update_tests;
 mod yaml;
 
 use std::fs;
@@ -132,32 +134,36 @@ mod tests {
     }
 
     #[test]
-    fn test_update_frontmatter_block_scalar_add() {
-        let content = "---\ntype: Type\n---\n# Project\n";
-        let template = "## Objective\n\n## Timeline";
-        let updated = update_frontmatter_content(
-            content,
-            "template",
-            Some(FrontmatterValue::String(template.to_string())),
-        )
-        .unwrap();
-        assert!(updated.contains("template: |"));
-        assert!(updated.contains("  ## Objective"));
-        assert!(updated.contains("type: Type"));
-    }
+    fn test_update_frontmatter_block_scalar_writes_and_rewrites() {
+        let cases = [
+            (
+                "---\ntype: Type\n---\n# Project\n",
+                "## Objective\n\n## Timeline",
+                &["template: |", "  ## Objective", "type: Type"][..],
+                &[][..],
+            ),
+            (
+                "---\ntype: Type\ntemplate: |\n  ## Old\n  \n  ## Stuff\ncolor: green\n---\n# Project\n",
+                "## New\n\n## Content",
+                &["  ## New", "color: green"][..],
+                &["## Old"][..],
+            ),
+        ];
 
-    #[test]
-    fn test_update_frontmatter_block_scalar_replace() {
-        let content = "---\ntype: Type\ntemplate: |\n  ## Old\n  \n  ## Stuff\ncolor: green\n---\n# Project\n";
-        let updated = update_frontmatter_content(
-            content,
-            "template",
-            Some(FrontmatterValue::String("## New\n\n## Content".to_string())),
-        )
-        .unwrap();
-        assert!(updated.contains("  ## New"));
-        assert!(!updated.contains("## Old"));
-        assert!(updated.contains("color: green"));
+        for (content, template, expected_present, expected_absent) in cases {
+            let updated = update_frontmatter_content(
+                content,
+                "template",
+                Some(FrontmatterValue::String(template.to_string())),
+            )
+            .unwrap();
+            for expected in expected_present {
+                assert!(updated.contains(expected));
+            }
+            for unexpected in expected_absent {
+                assert!(!updated.contains(unexpected));
+            }
+        }
     }
 
     #[test]
