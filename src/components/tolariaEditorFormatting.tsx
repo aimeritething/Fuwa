@@ -244,9 +244,10 @@ function TolariaBlockTypeSelect() {
   >()
   const selectedBlocks = useEditorState({
     editor,
-    selector: ({ editor }) => (
-      editor.getSelection()?.blocks || [editor.getTextCursorPosition().block]
-    ),
+    selector: ({ editor }): TolariaSelectedBlock[] =>
+      (editor.getSelection()?.blocks || [
+        editor.getTextCursorPosition().block,
+      ]) as TolariaSelectedBlock[],
   })
   const firstSelectedBlock = selectedBlocks[0]
   const selectItems = useMemo(
