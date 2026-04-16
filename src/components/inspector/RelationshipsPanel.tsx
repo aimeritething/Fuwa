@@ -14,12 +14,14 @@ import {
 } from '../../utils/wikilink'
 import { isWikilink, resolveRefProps } from './shared'
 import { LinkButton } from './LinkButton'
-import { PROPERTY_PANEL_GRID_STYLE, PROPERTY_PANEL_ROW_STYLE } from '../propertyPanelLayout'
+import { PROPERTY_PANEL_GRID_STYLE } from '../propertyPanelLayout'
+import { humanizePropertyKey } from '../../utils/propertyLabels'
 
-const RELATIONSHIP_SECTION_ROW_CLASS_NAME = 'grid min-w-0 items-start gap-2 px-1.5'
-const RELATIONSHIP_SECTION_LABEL_CLASS_NAME = 'min-w-0 pt-1 text-[12px] text-muted-foreground'
+const RELATIONSHIP_SECTION_ROW_CLASS_NAME = 'flex min-w-0 flex-col gap-1 px-1.5'
+const RELATIONSHIP_SECTION_LABEL_CLASS_NAME = 'font-mono-overline min-w-0 text-muted-foreground'
 const RELATIONSHIP_SECTION_VALUE_CLASS_NAME = 'min-w-0'
-const SUGGESTED_RELATIONSHIPS = ['Belongs to', 'Related to', 'Has'] as const
+const RELATIONSHIP_ACTION_ROW_CLASS_NAME = 'min-w-0 px-1.5'
+const SUGGESTED_RELATIONSHIPS = ['belongs_to', 'related_to', 'has'] as const
 
 type RelationshipEntryGroup = {
   key: string
@@ -32,14 +34,40 @@ type RelationshipPanelEditHandlers = {
   onDeleteProperty?: (key: string) => void
 }
 
+interface RelationshipLookupContext {
+  entries: VaultEntry[]
+  vaultPath: string
+}
+
+interface CreateOptionArgs {
+  entries: VaultEntry[]
+  trimmedQuery: string
+  resultCount: number
+  hasCreator: boolean
+}
+
+interface SearchDropdownArgs {
+  focused: boolean
+  trimmed: string
+  resultCount: number
+  showCreate: boolean
+}
+
+interface TitleSelectionState {
+  showCreate: boolean
+  selectedIndex: number
+  createIndex: number
+  trimmed: string
+}
+
 function RelationshipSectionRow({ label, children, dataTestId }: {
   label: string
   children: ReactNode
   dataTestId?: string
 }) {
   return (
-    <div className={RELATIONSHIP_SECTION_ROW_CLASS_NAME} style={PROPERTY_PANEL_ROW_STYLE} data-testid={dataTestId}>
-      <span className={RELATIONSHIP_SECTION_LABEL_CLASS_NAME}>{label}</span>
+    <div className={RELATIONSHIP_SECTION_ROW_CLASS_NAME} data-testid={dataTestId}>
+      <span className={RELATIONSHIP_SECTION_LABEL_CLASS_NAME}>{humanizePropertyKey(label)}</span>
       <div className={RELATIONSHIP_SECTION_VALUE_CLASS_NAME}>{children}</div>
     </div>
   )
@@ -47,15 +75,14 @@ function RelationshipSectionRow({ label, children, dataTestId }: {
 
 function RelationshipActionRow({ children }: { children: ReactNode }) {
   return (
-    <div className={RELATIONSHIP_SECTION_ROW_CLASS_NAME} style={PROPERTY_PANEL_ROW_STYLE}>
-      <span aria-hidden="true" />
+    <div className={RELATIONSHIP_ACTION_ROW_CLASS_NAME}>
       <div className={RELATIONSHIP_SECTION_VALUE_CLASS_NAME}>{children}</div>
     </div>
   )
 }
 
 /** Check whether any entry resolves for the given title (exact match via wikilink resolution). */
-function hasExactTitleMatch(entries: VaultEntry[], title: string): boolean {
+function hasExactTitleMatch({ entries, title }: { entries: VaultEntry[]; title: string }): boolean {
   return resolveEntry(entries, title) !== undefined
 }
 
@@ -72,15 +99,15 @@ function inferVaultPath(entries: VaultEntry[]): string {
   return prefix.join('/')
 }
 
-function canonicalRefForEntry(entry: VaultEntry, vaultPath: string): string {
+function canonicalRefForEntry({ entry, vaultPath }: { entry: VaultEntry; vaultPath: string }): string {
   return formatWikilinkRef(canonicalWikilinkTargetForEntry(entry, vaultPath))
 }
 
-function canonicalRefForTitle(title: string, entries: VaultEntry[], vaultPath: string): string {
+function canonicalRefForTitle({ title, entries, vaultPath }: { title: string } & RelationshipLookupContext): string {
   return formatWikilinkRef(canonicalWikilinkTargetForTitle(title, entries, vaultPath))
 }
 
-function shouldShowSearchDropdown(focused: boolean, trimmed: string, resultCount: number, showCreate: boolean): boolean {
+function shouldShowSearchDropdown({ focused, trimmed, resultCount, showCreate }: SearchDropdownArgs): boolean {
   return focused && trimmed.length > 0 && (resultCount > 0 || showCreate)
 }
 
@@ -103,7 +130,7 @@ function confirmRelationshipSelection({
   onSelectEntry?: (entry: VaultEntry) => void
   onFallback?: () => void
 }): void {
-  if (shouldCreateRelationship(titleSelectionState(showCreate, selectedIndex, createIndex, trimmed))) {
+  if (shouldCreateRelationship(titleSelectionState({ showCreate, selectedIndex, createIndex, trimmed }))) {
     onCreate?.(trimmed)
     return
   }
@@ -114,31 +141,11 @@ function confirmRelationshipSelection({
   onFallback?.()
 }
 
-function titleSelectionState(
-  showCreate: boolean,
-  selectedIndex: number,
-  createIndex: number,
-  trimmed: string,
-) {
-  return {
-    showCreate,
-    selectedIndex,
-    createIndex,
-    trimmed,
-  }
+function titleSelectionState(state: TitleSelectionState): TitleSelectionState {
+  return state
 }
 
-function shouldCreateRelationship({
-  showCreate,
-  selectedIndex,
-  createIndex,
-  trimmed,
-}: {
-  showCreate: boolean
-  selectedIndex: number
-  createIndex: number
-  trimmed: string
-}): boolean {
+function shouldCreateRelationship({ showCreate, selectedIndex, createIndex, trimmed }: TitleSelectionState): boolean {
   return showCreate && selectedIndex === createIndex && trimmed.length > 0
 }
 
@@ -188,12 +195,14 @@ function useCreateAndOpen(
 
 /** Derives create-option state from search results and entries. */
 function useCreateOption(
-  entries: VaultEntry[],
-  trimmedQuery: string,
-  resultCount: number,
-  hasCreator: boolean,
+  {
+    entries,
+    trimmedQuery,
+    resultCount,
+    hasCreator,
+  }: CreateOptionArgs,
 ) {
-  const showCreate = hasCreator && trimmedQuery.length > 0 && !hasExactTitleMatch(entries, trimmedQuery)
+  const showCreate = hasCreator && trimmedQuery.length > 0 && !hasExactTitleMatch({ entries, title: trimmedQuery })
   return { showCreate, createIndex: resultCount, totalItems: resultCount + (showCreate ? 1 : 0) }
 }
 
@@ -227,7 +236,12 @@ function SearchDropdownWithCreate({ search, onSelect, query, entries, onCreateAn
   onCreateAndOpen?: (title: string) => void
 }) {
   const trimmed = query.trim()
-  const { showCreate, createIndex } = useCreateOption(entries, trimmed, search.results.length, !!onCreateAndOpen)
+  const { showCreate, createIndex } = useCreateOption({
+    entries,
+    trimmedQuery: trimmed,
+    resultCount: search.results.length,
+    hasCreator: !!onCreateAndOpen,
+  })
   const hasResults = search.results.length > 0
 
   if (!hasResults && !showCreate) return null
@@ -266,9 +280,15 @@ function useInlineAddNoteState(
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const search = useNoteSearch(entries, query, 8)
+  const lookupContext = useMemo(() => ({ entries, vaultPath }), [entries, vaultPath])
 
   const trimmed = query.trim()
-  const { showCreate, createIndex, totalItems } = useCreateOption(entries, trimmed, search.results.length, !!onCreateAndOpenNote)
+  const { showCreate, createIndex, totalItems } = useCreateOption({
+    entries,
+    trimmedQuery: trimmed,
+    resultCount: search.results.length,
+    hasCreator: !!onCreateAndOpenNote,
+  })
 
   const dismiss = useCallback(() => {
     setQuery('')
@@ -281,19 +301,19 @@ function useInlineAddNoteState(
   }, [onAdd, dismiss])
 
   const selectEntryAndClose = useCallback((entry: VaultEntry) => {
-    selectAndClose(canonicalRefForEntry(entry, vaultPath))
+    selectAndClose(canonicalRefForEntry({ entry, vaultPath }))
   }, [selectAndClose, vaultPath])
 
   const handleCreateAndOpen = useCreateAndOpen(
     onCreateAndOpenNote,
-    (title) => onAdd(canonicalRefForTitle(title, entries, vaultPath)),
+    (title) => onAdd(canonicalRefForTitle({ title, ...lookupContext })),
     dismiss,
   )
 
   const handleFallback = useCallback(() => {
     if (!trimmed) return
-    selectAndClose(canonicalRefForTitle(trimmed, entries, vaultPath))
-  }, [trimmed, selectAndClose, entries, vaultPath])
+    selectAndClose(canonicalRefForTitle({ title: trimmed, ...lookupContext }))
+  }, [trimmed, selectAndClose, lookupContext])
 
   const handleConfirm = useCallback(() => {
     confirmRelationshipSelection({
@@ -309,7 +329,12 @@ function useInlineAddNoteState(
   }, [showCreate, search.selectedIndex, search.selectedEntry, createIndex, trimmed, handleCreateAndOpen, selectEntryAndClose, handleFallback])
 
   const handleKeyDown = useSearchKeyboard(search, totalItems, handleConfirm, dismiss)
-  const showDropdown = shouldShowSearchDropdown(active, trimmed, search.results.length, showCreate)
+  const showDropdown = shouldShowSearchDropdown({
+    focused: active,
+    trimmed,
+    resultCount: search.results.length,
+    showCreate,
+  })
 
   return {
     active,
@@ -454,7 +479,12 @@ function NoteTargetInput({ entries, value, onChange, onSubmit, onCancel, onCreat
   const search = useNoteSearch(entries, value, 8)
 
   const trimmed = value.trim()
-  const { showCreate, createIndex, totalItems } = useCreateOption(entries, trimmed, search.results.length, !!onCreateAndOpenNote)
+  const { showCreate, createIndex, totalItems } = useCreateOption({
+    entries,
+    trimmedQuery: trimmed,
+    resultCount: search.results.length,
+    hasCreator: !!onCreateAndOpenNote,
+  })
 
   const selectEntry = useCallback((entry: VaultEntry) => {
     onChange(entry.title)
@@ -479,7 +509,12 @@ function NoteTargetInput({ entries, value, onChange, onSubmit, onCancel, onCreat
   }, [onCancel])
 
   const handleKeyDown = useSearchKeyboard(search, totalItems, handleConfirm, handleEscape)
-  const showDropdown = shouldShowSearchDropdown(focused, trimmed, search.results.length, showCreate)
+  const showDropdown = shouldShowSearchDropdown({
+    focused,
+    trimmed,
+    resultCount: search.results.length,
+    showCreate,
+  })
 
   return (
     <div className="relative">
@@ -599,13 +634,13 @@ function AddRelationshipForm({ entries, vaultPath, onAddProperty, onCreateAndOpe
     const key = relKey.trim()
     const rawTarget = (targetOverride ?? relTarget).trim()
     if (!key || !rawTarget) return
-    onAddProperty(key, canonicalRefForTitle(rawTarget, entries, vaultPath))
+    onAddProperty(key, canonicalRefForTitle({ title: rawTarget, entries, vaultPath }))
     resetForm()
   }, [relKey, relTarget, entries, vaultPath, onAddProperty, resetForm])
 
   const addPropertyForKey = useCallback((title: string) => {
     const key = relKey.trim()
-    if (key) onAddProperty(key, canonicalRefForTitle(title, entries, vaultPath))
+    if (key) onAddProperty(key, canonicalRefForTitle({ title, entries, vaultPath }))
   }, [relKey, entries, vaultPath, onAddProperty])
 
   const handleCreateAndSubmit = useCreateAndOpen(onCreateAndOpenNote, addPropertyForKey, resetForm)

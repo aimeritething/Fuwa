@@ -5,6 +5,7 @@ import {
   type SortOption, type SortDirection, type SortConfig, type RelationshipGroup,
   getSortComparator, extractSortableProperties,
 } from '../../utils/noteListHelpers'
+import { humanizePropertyKey } from '../../utils/propertyLabels'
 import { SortDropdown } from '../SortDropdown'
 
 export function RelationshipGroupSection({ group, isCollapsed, sortPrefs, onToggle, handleSortChange, renderItem }: {
@@ -22,7 +23,7 @@ export function RelationshipGroupSection({ group, isCollapsed, sortPrefs, onTogg
     <div>
       <div className="flex w-full items-center justify-between bg-muted" style={{ height: 32, padding: '0 16px' }}>
         <button className="flex flex-1 items-center gap-1.5 border-none bg-transparent cursor-pointer p-0" onClick={onToggle}>
-          <span className="font-mono-label text-muted-foreground">{group.label}</span>
+          <span className="font-mono-label text-muted-foreground">{humanizePropertyKey(group.label)}</span>
           <span className="font-mono-label text-muted-foreground" style={{ fontWeight: 400 }}>{group.entries.length}</span>
         </button>
         <span className="flex items-center gap-1.5">

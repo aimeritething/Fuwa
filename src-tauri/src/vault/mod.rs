@@ -43,6 +43,18 @@ use std::fs;
 use std::path::Path;
 use walkdir::WalkDir;
 
+fn preferred_relationship_refs(
+    relationships: &std::collections::HashMap<String, Vec<String>>,
+    canonical_key: &str,
+    legacy_key: &str,
+) -> Vec<String> {
+    relationships
+        .get(canonical_key)
+        .cloned()
+        .or_else(|| relationships.get(legacy_key).cloned())
+        .unwrap_or_default()
+}
+
 pub(crate) fn derive_markdown_title_from_content(content: &str, filename: &str) -> String {
     let matter = Matter::<YAML>::new();
     let parsed = matter.parse(content);
@@ -92,8 +104,8 @@ pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<Vault
         }
     }
 
-    let belongs_to = relationships.get("Belongs to").cloned().unwrap_or_default();
-    let related_to = relationships.get("Related to").cloned().unwrap_or_default();
+    let belongs_to = preferred_relationship_refs(&relationships, "belongs_to", "Belongs to");
+    let related_to = preferred_relationship_refs(&relationships, "related_to", "Related to");
 
     Ok(VaultEntry {
         path: path.to_string_lossy().to_string(),
@@ -438,6 +450,9 @@ pub fn scan_vault_folders(vault_path: &Path) -> Result<Vec<FolderNode>, String> 
     Ok(build_tree(vault_path, vault_path))
 }
 
+#[cfg(test)]
+#[path = "relationship_key_tests.rs"]
+mod relationship_key_tests;
 #[cfg(test)]
 #[path = "mod_tests.rs"]
 mod tests;

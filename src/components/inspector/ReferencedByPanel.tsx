@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { VaultEntry } from '../../types'
+import { humanizePropertyKey } from '../../utils/propertyLabels'
 import { getTypeColor } from '../../utils/typeColors'
 import { getTypeIcon } from '../NoteItem'
 import { LinkButton } from './LinkButton'
@@ -32,7 +33,7 @@ export function ReferencedByPanel({ items, typeEntryMap, onNavigate }: {
         {grouped.map(([viaKey, groupEntries]) => (
           <div key={viaKey}>
             <span className="mb-1 block text-muted-foreground" style={{ fontSize: 9, fontWeight: 400, letterSpacing: '0.02em', opacity: 0.7 }}>
-              ← {viaKey}
+              ← {humanizePropertyKey(viaKey)}
             </span>
             <div className="flex flex-col gap-0.5">
               {groupEntries.map((e) => {

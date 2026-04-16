@@ -88,7 +88,7 @@ describe('property panel shared grid layout', () => {
     expect(screen.getByText('Luca').parentElement).toHaveClass('px-0')
   })
 
-  it('keeps relationship groups on the shared grid', () => {
+  it('renders relationship groups as single-column stacks', () => {
     const relatedEntry: VaultEntry = {
       ...entry,
       path: '/vault/project-alpha.md',
@@ -109,7 +109,6 @@ describe('property panel shared grid layout', () => {
     const relationshipRow = screen.getByText('Belongs to').parentElement
 
     expect(relationshipRow).not.toBeNull()
-    expect(relationshipRow?.style.gridTemplateColumns).toBe('subgrid')
-    expect(relationshipRow?.style.gridColumn).toBe('1 / -1')
+    expect(relationshipRow).toHaveClass('flex-col')
   })
 })

@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel, InstancesPanel } from './InspectorPanels'
@@ -50,6 +51,18 @@ describe('DynamicRelationshipsPanel', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
+
+  const renderRelationshipsPanel = (
+    overrides: Partial<ComponentProps<typeof DynamicRelationshipsPanel>> = {},
+  ) => render(
+    <DynamicRelationshipsPanel
+      typeEntryMap={{}}
+      frontmatter={{}}
+      entries={entries}
+      onNavigate={onNavigate}
+      {...overrides}
+    />,
+  )
 
   it.each([
     {
@@ -138,43 +151,19 @@ describe('DynamicRelationshipsPanel', () => {
   })
 
   it('renders + Add relationship button when onAddProperty provided', () => {
-    render(
-      <DynamicRelationshipsPanel
-        typeEntryMap={{}}
-        frontmatter={{}}
-        entries={entries}
-        onNavigate={onNavigate}
-        onAddProperty={onAddProperty}
-      />
-    )
+    renderRelationshipsPanel({ onAddProperty })
     expect(screen.getByText('+ Add relationship')).toBeInTheDocument()
   })
 
   it('opens add relationship form when button clicked', () => {
-    render(
-      <DynamicRelationshipsPanel
-        typeEntryMap={{}}
-        frontmatter={{}}
-        entries={entries}
-        onNavigate={onNavigate}
-        onAddProperty={onAddProperty}
-      />
-    )
+    renderRelationshipsPanel({ onAddProperty })
     fireEvent.click(screen.getByText('+ Add relationship'))
     expect(screen.getByPlaceholderText('Relationship name')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('Note title')).toBeInTheDocument()
   })
 
   it('adds relationship via form', () => {
-    render(
-      <DynamicRelationshipsPanel
-        typeEntryMap={{}}
-        frontmatter={{}}
-        entries={entries}
-        onNavigate={onNavigate}
-        onAddProperty={onAddProperty}
-      />
-    )
+    renderRelationshipsPanel({ onAddProperty })
     fireEvent.click(screen.getByText('+ Add relationship'))
     fireEvent.change(screen.getByPlaceholderText('Relationship name'), { target: { value: 'Related to' } })
     fireEvent.change(screen.getByPlaceholderText('Note title'), { target: { value: 'AI' } })
@@ -183,15 +172,7 @@ describe('DynamicRelationshipsPanel', () => {
   })
 
   it('cancels add relationship form', () => {
-    render(
-      <DynamicRelationshipsPanel
-        typeEntryMap={{}}
-        frontmatter={{}}
-        entries={entries}
-        onNavigate={onNavigate}
-        onAddProperty={onAddProperty}
-      />
-    )
+    renderRelationshipsPanel({ onAddProperty })
     fireEvent.click(screen.getByText('+ Add relationship'))
     fireEvent.click(screen.getByText('Cancel'))
     expect(screen.getByText('+ Add relationship')).toBeInTheDocument()
@@ -199,15 +180,7 @@ describe('DynamicRelationshipsPanel', () => {
 
   describe('suggested relationship slots', () => {
     it('shows Belongs to/Related to/Has slots when no relationships exist', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{}}
-          entries={entries}
-          onNavigate={onNavigate}
-          onAddProperty={onAddProperty}
-        />
-      )
+      renderRelationshipsPanel({ onAddProperty })
       const slots = screen.getAllByTestId('suggested-relationship')
       expect(slots.length).toBe(3)
       expect(screen.getByText('Belongs to')).toBeInTheDocument()
@@ -215,30 +188,18 @@ describe('DynamicRelationshipsPanel', () => {
       expect(screen.getByText('Has')).toBeInTheDocument()
     })
 
-    it('hides slot when relationship already exists', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': '[[Project Alpha]]' }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onAddProperty={onAddProperty}
-        />
-      )
+    it('hides slot when canonical snake_case relationship already exists', () => {
+      renderRelationshipsPanel({
+        frontmatter: { belongs_to: '[[Project Alpha]]' },
+        onAddProperty,
+      })
       const slots = screen.getAllByTestId('suggested-relationship')
       expect(slots.length).toBe(2)
       expect(screen.queryAllByText('Belongs to').every(el => !el.closest('[data-testid="suggested-relationship"]'))).toBe(true)
     })
 
     it('does not show slots when onAddProperty not provided', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{}}
-          entries={entries}
-          onNavigate={onNavigate}
-        />
-      )
+      renderRelationshipsPanel()
       expect(screen.queryByTestId('suggested-relationship')).not.toBeInTheDocument()
     })
   })
@@ -310,73 +271,46 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('shows remove buttons on relation refs when editing is enabled', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+      })
       expect(screen.getByTestId('remove-relation-ref')).toBeInTheDocument()
     })
 
     it('does not show remove buttons when editing is disabled', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-        />
-      )
+      renderRelationshipsPanel({ frontmatter: { 'Belongs to': ['[[project/my-project]]'] } })
       expect(screen.queryByTestId('remove-relation-ref')).not.toBeInTheDocument()
     })
 
     it('calls onDeleteProperty when removing the last ref in a group', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+      })
       fireEvent.click(screen.getByTestId('remove-relation-ref'))
       expect(onDeleteProperty).toHaveBeenCalledWith('Belongs to')
     })
 
     it('calls onUpdateProperty with remaining refs when removing one of many', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Related to': ['[[project/my-project]]', '[[topic/ai]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Related to': ['[[project/my-project]]', '[[topic/ai]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+      })
       const removeButtons = screen.getAllByTestId('remove-relation-ref')
       fireEvent.click(removeButtons[0]) // Remove first ref
       expect(onUpdateProperty).toHaveBeenCalledWith('Related to', '[[topic/ai]]')
     })
 
     it('calls onUpdateProperty with string when two refs become one', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Has': ['[[project/my-project]]', '[[topic/ai]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { Has: ['[[project/my-project]]', '[[topic/ai]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+      })
       const removeButtons = screen.getAllByTestId('remove-relation-ref')
       fireEvent.click(removeButtons[0])
       // Should pass a single string, not an array of one
@@ -384,45 +318,30 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('shows inline add button for each relationship group when editing is enabled', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+      })
       expect(screen.getByTestId('add-relation-ref')).toBeInTheDocument()
     })
 
     it('opens inline add input when add button clicked', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+      })
       fireEvent.click(screen.getByTestId('add-relation-ref'))
       expect(screen.getByTestId('add-relation-ref-input')).toBeInTheDocument()
     })
 
     it('adds a note to an existing relationship via inline add', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+      })
       fireEvent.click(screen.getByTestId('add-relation-ref'))
       const input = screen.getByTestId('add-relation-ref-input')
       fireEvent.change(input, { target: { value: 'AI' } })
@@ -431,16 +350,11 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('does not add duplicate refs', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[topic/ai]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[topic/ai]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+      })
       fireEvent.click(screen.getByTestId('add-relation-ref'))
       const input = screen.getByTestId('add-relation-ref-input')
       fireEvent.change(input, { target: { value: 'AI' } })
@@ -449,16 +363,11 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('closes inline add on Escape', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+      })
       fireEvent.click(screen.getByTestId('add-relation-ref'))
       const input = screen.getByTestId('add-relation-ref-input')
       fireEvent.keyDown(input, { key: 'Escape' })
@@ -478,17 +387,12 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('shows "Create & open" option when typed title does not match any note', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-          onCreateAndOpenNote={onCreateAndOpenNote}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+        onCreateAndOpenNote,
+      })
       fireEvent.click(screen.getByTestId('add-relation-ref'))
       const input = screen.getByTestId('add-relation-ref-input')
       fireEvent.change(input, { target: { value: 'Brand New Note' } })
@@ -498,17 +402,12 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('does not show "Create & open" when typed title matches an existing note', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-          onCreateAndOpenNote={onCreateAndOpenNote}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+        onCreateAndOpenNote,
+      })
       fireEvent.click(screen.getByTestId('add-relation-ref'))
       const input = screen.getByTestId('add-relation-ref-input')
       fireEvent.change(input, { target: { value: 'AI' } })
@@ -516,17 +415,12 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('calls onCreateAndOpenNote and adds wikilink when "Create & open" clicked', async () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-          onCreateAndOpenNote={onCreateAndOpenNote}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+        onCreateAndOpenNote,
+      })
       fireEvent.click(screen.getByTestId('add-relation-ref'))
       const input = screen.getByTestId('add-relation-ref-input')
       fireEvent.change(input, { target: { value: 'Brand New Note' } })
@@ -539,17 +433,12 @@ describe('DynamicRelationshipsPanel', () => {
 
     it('does not add wikilink when note creation fails', async () => {
       onCreateAndOpenNote.mockResolvedValue(false)
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-          onCreateAndOpenNote={onCreateAndOpenNote}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+        onCreateAndOpenNote,
+      })
       fireEvent.click(screen.getByTestId('add-relation-ref'))
       const input = screen.getByTestId('add-relation-ref-input')
       fireEvent.change(input, { target: { value: 'Failing Note' } })
@@ -564,17 +453,12 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('shows both existing matches and "Create & open" for partial matches', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-          onCreateAndOpenNote={onCreateAndOpenNote}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+        onCreateAndOpenNote,
+      })
       fireEvent.click(screen.getByTestId('add-relation-ref'))
       const input = screen.getByTestId('add-relation-ref-input')
       // "My" partially matches "My Project" but is not an exact match
@@ -584,16 +468,11 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('does not show "Create & open" when onCreateAndOpenNote is not provided', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{ 'Belongs to': ['[[project/my-project]]'] }}
-          entries={entries}
-          onNavigate={onNavigate}
-          onUpdateProperty={onUpdateProperty}
-          onDeleteProperty={onDeleteProperty}
-        />
-      )
+      renderRelationshipsPanel({
+        frontmatter: { 'Belongs to': ['[[project/my-project]]'] },
+        onUpdateProperty,
+        onDeleteProperty,
+      })
       fireEvent.click(screen.getByTestId('add-relation-ref'))
       const input = screen.getByTestId('add-relation-ref-input')
       fireEvent.change(input, { target: { value: 'Brand New Note' } })
@@ -610,16 +489,7 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('shows "Create & open" option in target input when title does not exist', () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{}}
-          entries={entries}
-          onNavigate={onNavigate}
-          onAddProperty={onAddProperty}
-          onCreateAndOpenNote={onCreateAndOpenNote}
-        />
-      )
+      renderRelationshipsPanel({ onAddProperty, onCreateAndOpenNote })
       fireEvent.click(screen.getByText('+ Add relationship'))
       fireEvent.change(screen.getByPlaceholderText('Relationship name'), { target: { value: 'Mentions' } })
       const noteInput = screen.getByPlaceholderText('Note title')
@@ -629,16 +499,7 @@ describe('DynamicRelationshipsPanel', () => {
     })
 
     it('creates note and adds relationship via form', async () => {
-      render(
-        <DynamicRelationshipsPanel
-          typeEntryMap={{}}
-          frontmatter={{}}
-          entries={entries}
-          onNavigate={onNavigate}
-          onAddProperty={onAddProperty}
-          onCreateAndOpenNote={onCreateAndOpenNote}
-        />
-      )
+      renderRelationshipsPanel({ onAddProperty, onCreateAndOpenNote })
       fireEvent.click(screen.getByText('+ Add relationship'))
       fireEvent.change(screen.getByPlaceholderText('Relationship name'), { target: { value: 'Mentions' } })
       const noteInput = screen.getByPlaceholderText('Note title')

@@ -10,7 +10,7 @@ The vault is a folder of plain markdown files. The app never owns the data — i
 
 ### Convention over configuration
 
-Tolaria is opinionated. Standard field names (`type:`, `status:`, `url:`, `Workspace:`, `Belongs to:`, `start_date:`, `end_date:`) have well-defined meanings and trigger specific UI behavior — without any setup. This is not convention *instead of* configuration: users can override defaults via config files in their vault (e.g. `config/relations.md`, `config/semantic-properties.md`). But the defaults work out of the box, and most users never need to touch them.
+Tolaria is opinionated. Standard field names (`type:`, `status:`, `url:`, `Workspace:`, `belongs_to:`, `related_to:`, `has:`, `start_date:`, `end_date:`) have well-defined meanings and trigger specific UI behavior — without any setup. Relationship defaults are stored in snake_case on disk and humanized in the UI. This is not convention *instead of* configuration: users can override defaults via config files in their vault (e.g. `config/relations.md`, `config/semantic-properties.md`). But the defaults work out of the box, and most users never need to touch them.
 
 This principle directly serves AI-readability: the more structure comes from shared conventions rather than per-user custom configurations, the easier it is for an AI agent to understand and navigate the vault correctly — without needing bespoke instructions for every setup.
 

@@ -23,10 +23,11 @@ These frontmatter field names have special meaning in Tolaria's UI:
 | `start_date:` + `end_date:` | Duration/timespan | Date range badge |
 | `goal:` + `result:` | Progress | Progress indicator in editor header |
 | `Workspace:` | Vault context filter | Global workspace filter |
-| `Belongs to:` | Parent relationship | Relationship chip in Properties panel |
-| `Related to:` | Lateral relationship | Relationship chip in Properties panel |
+| `belongs_to:` | Parent relationship | Humanized to `Belongs to` in the UI |
+| `related_to:` | Lateral relationship | Humanized to `Related to` in the UI |
+| `has:` | Contained relationship | Humanized to `Has` in the UI |
 
-Relationship fields are detected dynamically — any frontmatter field containing `[[wikilink]]` values is treated as a relationship (see [ADR-0010](adr/0010-dynamic-wikilink-relationship-detection.md)).
+Relationship fields are detected dynamically — any frontmatter field containing `[[wikilink]]` values is treated as a relationship (see [ADR-0010](adr/0010-dynamic-wikilink-relationship-detection.md)). Tolaria's own default relationship vocabulary uses snake_case on disk, but labels are humanized at render time and existing user-authored keys are left untouched.
 
 ### System Properties (underscore convention)
 
@@ -491,7 +492,7 @@ The Inspector panel (`src/components/Inspector.tsx`) is composed of sub-panels:
    - **Info section** (bottom, separated by border): Read-only derived metadata — Modified, Created, Words, File Size. Uses muted styling with no interaction.
    - Keys in `SKIP_KEYS` (`type`, `aliases`, `notion_id`, `workspace`, `is_a`, `Is A`) are hidden from the editable section.
 
-2. **RelationshipsPanel**: Shows `belongs_to`, `related_to`, and all custom relationship fields as clickable wikilink chips.
+2. **RelationshipsPanel**: Shows `belongs_to`, `related_to`, `has`, and all custom relationship fields as clickable wikilink chips. Relationship labels are humanized for display, but stored keys remain unchanged.
 
 3. **BacklinksPanel**: Scans `allContent` for notes that reference the current note via `[[title]]` or `[[path]]`.
 
