@@ -100,8 +100,9 @@ describe('relationship display labels', () => {
       />,
     )
 
-    const relationshipRow = screen.getByText('Belongs to').parentElement
+    const relationshipRow = screen.getByTestId('relationship-section-label').parentElement
     expect(relationshipRow).toHaveClass('flex-col')
+    expect(relationshipRow).toHaveStyle({ gridColumn: '1 / -1' })
   })
 
   it('humanizes snake_case keys in the referenced-by panel', () => {

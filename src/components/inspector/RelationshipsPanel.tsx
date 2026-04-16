@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState, useRef, type ReactNode } from 'react'
 import type { VaultEntry } from '../../types'
-import { Plus, X } from '@phosphor-icons/react'
+import { ArrowRight, Plus, X } from '@phosphor-icons/react'
 import type { ParsedFrontmatter } from '../../utils/frontmatter'
 import { containsWikilinks } from '../DynamicPropertiesPanel'
 import type { FrontmatterValue } from '../Inspector'
@@ -14,11 +14,15 @@ import {
 } from '../../utils/wikilink'
 import { isWikilink, resolveRefProps } from './shared'
 import { LinkButton } from './LinkButton'
-import { PROPERTY_PANEL_GRID_STYLE } from '../propertyPanelLayout'
+import {
+  PROPERTY_PANEL_GRID_STYLE,
+  PROPERTY_PANEL_LABEL_CLASS_NAME,
+  PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME,
+} from '../propertyPanelLayout'
 import { humanizePropertyKey } from '../../utils/propertyLabels'
 
 const RELATIONSHIP_SECTION_ROW_CLASS_NAME = 'flex min-w-0 flex-col gap-1 px-1.5'
-const RELATIONSHIP_SECTION_LABEL_CLASS_NAME = 'font-mono-overline min-w-0 text-muted-foreground'
+const RELATIONSHIP_SECTION_LABEL_TEXT_CLASS_NAME = 'min-w-0 flex-1 truncate'
 const RELATIONSHIP_SECTION_VALUE_CLASS_NAME = 'min-w-0'
 const RELATIONSHIP_ACTION_ROW_CLASS_NAME = 'min-w-0 px-1.5'
 const SUGGESTED_RELATIONSHIPS = ['belongs_to', 'related_to', 'has'] as const
@@ -66,8 +70,16 @@ function RelationshipSectionRow({ label, children, dataTestId }: {
   dataTestId?: string
 }) {
   return (
-    <div className={RELATIONSHIP_SECTION_ROW_CLASS_NAME} data-testid={dataTestId}>
-      <span className={RELATIONSHIP_SECTION_LABEL_CLASS_NAME}>{humanizePropertyKey(label)}</span>
+    <div className={RELATIONSHIP_SECTION_ROW_CLASS_NAME} style={{ gridColumn: '1 / -1' }} data-testid={dataTestId}>
+      <span className={PROPERTY_PANEL_LABEL_CLASS_NAME} data-testid="relationship-section-label">
+        <span
+          className={PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME}
+          data-testid="relationship-section-icon-slot"
+        >
+          <ArrowRight className="size-3.5 shrink-0 text-muted-foreground/40" aria-hidden="true" />
+        </span>
+        <span className={RELATIONSHIP_SECTION_LABEL_TEXT_CLASS_NAME}>{humanizePropertyKey(label)}</span>
+      </span>
       <div className={RELATIONSHIP_SECTION_VALUE_CLASS_NAME}>{children}</div>
     </div>
   )
@@ -75,7 +87,7 @@ function RelationshipSectionRow({ label, children, dataTestId }: {
 
 function RelationshipActionRow({ children }: { children: ReactNode }) {
   return (
-    <div className={RELATIONSHIP_ACTION_ROW_CLASS_NAME}>
+    <div className={RELATIONSHIP_ACTION_ROW_CLASS_NAME} style={{ gridColumn: '1 / -1' }}>
       <div className={RELATIONSHIP_SECTION_VALUE_CLASS_NAME}>{children}</div>
     </div>
   )
