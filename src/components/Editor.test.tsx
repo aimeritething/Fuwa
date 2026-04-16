@@ -84,6 +84,11 @@ vi.mock('@blocknote/mantine', () => ({
 
 vi.mock('@blocknote/mantine/style.css', () => ({}))
 
+vi.mock('./tolariaEditorFormatting', () => ({
+  TolariaFormattingToolbar: ({ children }: PropsWithChildren) => <>{children}</>,
+  TolariaFormattingToolbarController: () => null,
+}))
+
 import { Editor } from './Editor'
 import { applyPendingRawExitContent } from './editorRawModeSync'
 import type { VaultEntry } from '../types'

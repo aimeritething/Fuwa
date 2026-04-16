@@ -53,6 +53,11 @@ async function getRawEditorContent(page: Page): Promise<string> {
   })
 }
 
+async function roundTripThroughAnotherNote(page: Page) {
+  await openNote(page, 'Note C')
+  await openNote(page, 'Note B')
+}
+
 async function selectWord(page: Page, blockIndex: number, word: string) {
   const block = page.locator('.bn-block-content').nth(blockIndex)
   await expect(block).toBeVisible({ timeout: 5_000 })
@@ -87,15 +92,84 @@ async function selectWord(page: Page, blockIndex: number, word: string) {
   await expect(page.locator('.bn-formatting-toolbar')).toBeVisible({ timeout: 5_000 })
 }
 
-test('toolbar only exposes markdown-safe formatting controls', async ({ page }) => {
+async function openBlockTypeMenu(page: Page) {
+  const blockTypeButton = page.getByRole('button', { name: 'Paragraph' })
+  await blockTypeButton.focus()
+  await page.keyboard.press('Enter')
+}
+
+async function assertSlashMenuBlockCommandPersists(page: Page, options: {
+  query: string
+  optionName: RegExp
+  insertedText: string
+  rawAssertion: (raw: string) => void
+  blockContentType: string
+}) {
+  await openNote(page, 'Note B')
+  await page.locator('.bn-block-content').nth(1).click()
+  await page.keyboard.type(options.query)
+  await expect(page.getByRole('option', { name: options.optionName })).toBeVisible()
+  await page.keyboard.press('Enter')
+  await page.keyboard.type(options.insertedText)
+  await page.waitForTimeout(700)
+
+  await roundTripThroughAnotherNote(page)
+  await openRawMode(page)
+
+  const raw = await getRawEditorContent(page)
+  options.rawAssertion(raw)
+
+  await openBlockNoteMode(page)
+  await expect(
+    page.locator(
+      `.bn-block-content[data-content-type="${options.blockContentType}"]`,
+    ).first(),
+  ).toContainText(options.insertedText)
+}
+
+const slashMenuPersistenceScenarios = [
+  {
+    name: 'slash menu block commands persist bullet lists',
+    query: '/bul',
+    optionName: /Bullet List/i,
+    insertedText: 'Persisted bullet',
+    rawAssertion: (raw: string) => {
+      expect(raw).toContain('- Persisted bullet')
+    },
+    blockContentType: 'bulletListItem',
+  },
+  {
+    name: 'slash menu block commands persist code blocks',
+    query: '/code',
+    optionName: /Code Block/i,
+    insertedText: 'const persistedAnswer = 42',
+    rawAssertion: (raw: string) => {
+      expect(raw).toMatch(/```[\w-]*\nconst persistedAnswer = 42/m)
+    },
+    blockContentType: 'codeBlock',
+  },
+] as const
+
+test('toolbar only exposes audited markdown-safe formatting controls', async ({ page }) => {
   await openNote(page, 'Note B')
   await selectWord(page, 1, 'referenced')
 
-  await expect(page.getByRole('button', { name: 'Paragraph' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Paragraph' })).toBeVisible()
   await expect(page.locator('.bn-formatting-toolbar [data-test="bold"]')).toBeVisible()
   await expect(page.locator('.bn-formatting-toolbar [data-test="italic"]')).toBeVisible()
+  await expect(page.locator('.bn-formatting-toolbar [data-test="code"]')).toBeVisible()
   await expect(page.locator('.bn-formatting-toolbar [data-test="strike"]')).toBeVisible()
   await expect(page.locator('.bn-formatting-toolbar [data-test="createLink"]')).toBeVisible()
+
+  await openBlockTypeMenu(page)
+  await expect(page.getByRole('menuitem', { name: 'Heading 1' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Heading 6' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Quote' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Bullet List' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Numbered List' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Checklist' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Code Block' })).toBeVisible()
+  await expect(page.getByRole('menuitem', { name: 'Toggle List' })).toHaveCount(0)
 
   await expect(page.locator('.bn-formatting-toolbar [data-test="underline"]')).toHaveCount(0)
   await expect(page.locator('.bn-formatting-toolbar [data-test="colors"]')).toHaveCount(0)
@@ -110,32 +184,34 @@ test('supported inline formatting persists after note switches when applied from
   await page.keyboard.press('Meta+b')
   await page.waitForTimeout(700)
 
-  await openNote(page, 'Note C')
-  await openNote(page, 'Note B')
+  await roundTripThroughAnotherNote(page)
   await openRawMode(page)
 
   const raw = await getRawEditorContent(page)
   expect(raw).toContain('This is Note B, **referenced** by Alpha Project.')
 })
 
-test('slash menu block commands persist bullet lists', async ({ page }) => {
+test('toolbar block-type commands persist numbered lists', async ({ page }) => {
   await openNote(page, 'Note B')
-  await page.locator('.bn-block-content').nth(1).click()
-  await page.keyboard.type('/bul')
-  await expect(page.getByRole('option', { name: /Bullet List/i })).toBeVisible()
-  await page.keyboard.press('Enter')
-  await page.keyboard.type('Persisted bullet')
+  await selectWord(page, 1, 'This')
+  await openBlockTypeMenu(page)
+  await page.getByRole('menuitem', { name: 'Numbered List' }).click()
   await page.waitForTimeout(700)
 
-  await openNote(page, 'Note C')
-  await openNote(page, 'Note B')
+  await roundTripThroughAnotherNote(page)
   await openRawMode(page)
 
   const raw = await getRawEditorContent(page)
-  expect(raw).toContain('- Persisted bullet')
+  expect(raw).toContain('1. This is Note B, referenced by Alpha Project.')
 
   await openBlockNoteMode(page)
-  await expect(page.locator('.bn-block-content[data-content-type="bulletListItem"]').first()).toContainText(
-    'Persisted bullet',
+  await expect(page.locator('.bn-block-content[data-content-type="numberedListItem"]').first()).toContainText(
+    'This is Note B, referenced by Alpha Project.',
   )
 })
+
+for (const scenario of slashMenuPersistenceScenarios) {
+  test(scenario.name, async ({ page }) => {
+    await assertSlashMenuBlockCommandPersists(page, scenario)
+  })
+}

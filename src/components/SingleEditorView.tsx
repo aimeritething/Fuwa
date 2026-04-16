@@ -5,7 +5,6 @@ import {
   SuggestionMenuController,
   BlockNoteViewRaw,
   ComponentsContext,
-  FormattingToolbarController,
 } from '@blocknote/react'
 import { components } from '@blocknote/mantine'
 import { MantineContext, MantineProvider } from '@mantine/core'
@@ -20,7 +19,10 @@ import type { VaultEntry } from '../types'
 import { _wikilinkEntriesRef } from './editorSchema'
 import { useBlockNoteSideMenuHoverGuard } from './blockNoteSideMenuHoverGuard'
 import { getTolariaSlashMenuItems } from './tolariaEditorFormattingConfig'
-import { TolariaFormattingToolbar } from './tolariaEditorFormatting'
+import {
+  TolariaFormattingToolbar,
+  TolariaFormattingToolbarController,
+} from './tolariaEditorFormatting'
 import { useEditorLinkActivation } from './useEditorLinkActivation'
 
 const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
@@ -116,6 +118,14 @@ function useSeedBlockNoteTableBridge(editor: ReturnType<typeof useCreateBlockNot
   }, [editor])
 }
 
+function shouldIgnoreContainerClick(target: HTMLElement) {
+  return Boolean(
+    target.closest(
+      '[contenteditable="true"], .bn-formatting-toolbar, [role="menu"], [role="dialog"]',
+    ),
+  )
+}
+
 /** Insert an image block after the current cursor position. */
 function useInsertImageCallback(editor: ReturnType<typeof useCreateBlockNote>) {
   const editorRef = useRef(editor)
@@ -146,7 +156,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!editable) return
     const target = e.target as HTMLElement
-    if (target.closest('[contenteditable="true"]')) return
+    if (shouldIgnoreContainerClick(target)) return
     const blocks = editor.document
     if (blocks.length > 0) {
       editor.setTextCursorPosition(blocks[blocks.length - 1].id, 'end')
@@ -214,13 +224,17 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
         formattingToolbar={false}
         slashMenu={false}
       >
-        <FormattingToolbarController
+        <TolariaFormattingToolbarController
           formattingToolbar={TolariaFormattingToolbar}
           floatingUIOptions={{
             elementProps: {
               onMouseDownCapture: (event) => {
                 const target = event.target as HTMLElement
-                if (target.closest('button[aria-haspopup], [role="menu"], [role="dialog"]')) {
+                if (
+                  target.closest(
+                    '[role="menu"], [role="dialog"], button[aria-haspopup]',
+                  )
+                ) {
                   return
                 }
                 event.preventDefault()
