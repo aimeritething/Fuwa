@@ -259,14 +259,16 @@ describe('resolveNewNote', () => {
     const { entry, content } = resolveNewNote({ title: 'My Project', type: 'Project', vaultPath: '/my/vault' })
     expect(entry.path).toBe('/my/vault/my-project.md')
     expect(entry.isA).toBe('Project')
-    expect(entry.status).toBe('Active')
+    expect(entry.status).toBeNull()
     expect(content).toContain('type: Project')
-    expect(content).toContain('status: Active')
+    expect(content).not.toContain('status:')
   })
 
   it('creates custom type note at vault root', () => {
-    const { entry } = resolveNewNote({ title: 'First Recipe', type: 'Recipe', vaultPath: '/my/vault' })
+    const { entry, content } = resolveNewNote({ title: 'First Recipe', type: 'Recipe', vaultPath: '/my/vault' })
     expect(entry.path).toBe('/my/vault/first-recipe.md')
+    expect(entry.status).toBeNull()
+    expect(content).not.toContain('status:')
   })
 
   it('omits status for Topic type', () => {
@@ -281,8 +283,10 @@ describe('resolveNewNote', () => {
   })
 
   it('uses provided vault path', () => {
-    const { entry } = resolveNewNote({ title: 'Test', type: 'Note', vaultPath: '/other/vault' })
+    const { entry, content } = resolveNewNote({ title: 'Test', type: 'Note', vaultPath: '/other/vault' })
     expect(entry.path).toBe('/other/vault/test.md')
+    expect(entry.status).toBeNull()
+    expect(content).not.toContain('status:')
   })
 
   it('produces a valid path for custom types with special characters', () => {

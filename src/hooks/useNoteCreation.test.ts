@@ -150,8 +150,9 @@ describe('resolveNewNote', () => {
     const { entry, content } = resolveNewNote({ title: 'My Project', type: 'Project', vaultPath: '/vault' })
     expect(entry.path).toBe('/vault/my-project.md')
     expect(entry.isA).toBe('Project')
-    expect(entry.status).toBe('Active')
+    expect(entry.status).toBeNull()
     expect(content).toContain('type: Project')
+    expect(content).not.toContain('status:')
   })
 
   it('omits status for Topic type', () => {
@@ -159,10 +160,10 @@ describe('resolveNewNote', () => {
     expect(entry.status).toBeNull()
   })
 
-  it('treats Journal as a regular type after removing the journaling flow', () => {
+  it('does not add a default status for other regular types', () => {
     const { entry, content } = resolveNewNote({ title: 'Reflection', type: 'Journal', vaultPath: '/vault' })
-    expect(entry.status).toBe('Active')
-    expect(content).toContain('status: Active')
+    expect(entry.status).toBeNull()
+    expect(content).not.toContain('status:')
   })
 })
 
@@ -215,6 +216,8 @@ describe('useNoteCreation hook', () => {
     const [createdEntry] = addEntry.mock.calls[0]
     expect(createdEntry.title).toBe('Test Note')
     expect(createdEntry.isA).toBe('Note')
+    expect(createdEntry.status).toBeNull()
+    expect(openTabWithContent.mock.calls[0][1]).toBe('---\ntitle: Test Note\ntype: Note\n---\n')
   })
 
   it('handleCreateNoteImmediate generates timestamp-based title', () => {
@@ -224,7 +227,8 @@ describe('useNoteCreation hook', () => {
     expect(addEntry).toHaveBeenCalledTimes(1)
     expect(addEntry.mock.calls[0][0].title).toBe('Untitled Note 1700000000')
     expect(addEntry.mock.calls[0][0].filename).toBe('untitled-note-1700000000.md')
-    expect(openTabWithContent.mock.calls[0][1]).toBe('---\ntype: Note\nstatus: Active\n---\n\n# \n\n')
+    expect(addEntry.mock.calls[0][0].status).toBeNull()
+    expect(openTabWithContent.mock.calls[0][1]).toBe('---\ntype: Note\n---\n\n# \n\n')
     vi.restoreAllMocks()
   })
 
@@ -294,6 +298,8 @@ describe('useNoteCreation hook', () => {
     const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
     act(() => { result.current.handleCreateNoteImmediate('Project') })
     expect(addEntry.mock.calls[0][0].isA).toBe('Project')
+    expect(addEntry.mock.calls[0][0].status).toBeNull()
+    expect(openTabWithContent.mock.calls[0][1]).toBe('---\ntype: Project\n---\n\n# \n\n## Objective\n\n\n\n## Key Results\n\n\n\n## Notes\n\n')
   })
 
   it('handleCreateNoteImmediate slugifies custom type names for filenames', () => {

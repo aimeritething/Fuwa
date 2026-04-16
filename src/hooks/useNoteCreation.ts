@@ -63,8 +63,6 @@ export function entryMatchesTarget({ entry, target }: EntryMatchParams): boolean
   return resolveEntry([entry], target) === entry
 }
 
-const NO_STATUS_TYPES = new Set(['Topic', 'Person'])
-
 /** Default templates for built-in types. Used when the type entry has no custom template. */
 export const DEFAULT_TEMPLATES: Record<string, string> = {
   Project: '## Objective\n\n\n\n## Key Results\n\n\n\n## Notes\n\n',
@@ -118,7 +116,7 @@ export interface NewNoteParams {
 
 export function resolveNewNote({ title, type, vaultPath, template }: NewNoteParams): { entry: VaultEntry; content: string } {
   const slug = slugify(title)
-  const status = NO_STATUS_TYPES.has(type) ? null : 'Active'
+  const status = null
   const entry = buildNewEntry({ path: `${vaultPath}/${slug}.md`, slug, title, type, status })
   return { entry, content: buildNoteContent({ title, type, status, template }) }
 }
@@ -234,7 +232,7 @@ function createNoteImmediate(deps: ImmediateCreateDeps, type?: string): void {
   const slug = generateUntitledFilename(deps.entries, noteType, deps.pendingSlugs)
   const title = slug_to_title(slug)
   const template = resolveTemplate({ entries: deps.entries, typeName: noteType })
-  const status = NO_STATUS_TYPES.has(noteType) ? null : 'Active'
+  const status = null
   const entry = buildNewEntry({ path: `${deps.vaultPath}/${slug}.md`, slug, title, type: noteType, status })
   const content = buildNoteContent({ title: null, type: noteType, status, template, initialEmptyHeading: true })
   deps.openTabWithContent(entry, content)
