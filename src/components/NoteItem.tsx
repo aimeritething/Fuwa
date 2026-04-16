@@ -1,4 +1,4 @@
-import { useMemo, type ComponentType, type SVGAttributes } from 'react'
+import type { ComponentType, CSSProperties, MouseEvent as ReactMouseEvent, MouseEventHandler, ReactNode, SVGAttributes } from 'react'
 import type { VaultEntry, NoteStatus } from '../types'
 import { cn } from '@/lib/utils'
 import {
@@ -60,29 +60,138 @@ function StateBadge({ archived }: { archived: boolean }) {
   return null
 }
 
-function noteItemClassName({
-  isBinary,
-  isSelected,
-  isMultiSelected,
-  isHighlighted,
-}: {
+type NoteItemVisualState = {
   isBinary: boolean
   isSelected: boolean
   isMultiSelected: boolean
   isHighlighted: boolean
-}) {
-  const isInteractive = !isBinary
-  const isSingleSelected = isInteractive && isSelected && !isMultiSelected
-  const isHoverable = isInteractive && !isSelected && !isMultiSelected
-  const isHighlightedOnly = isHoverable && isHighlighted
+}
 
-  return cn(
-    'relative border-b border-[var(--border)] transition-colors',
-    isBinary ? 'cursor-default opacity-50' : 'cursor-pointer',
-    isSingleSelected && 'border-l-[3px]',
-    isHoverable && 'hover:bg-muted',
-    isHighlightedOnly && 'bg-muted',
+type NoteItemRowState = 'binary' | 'multiSelected' | 'selected' | 'highlighted' | 'default'
+
+type NoteItemSurfaceProps = {
+  className: string
+  style: CSSProperties
+  onClick: MouseEventHandler<HTMLDivElement>
+  onContextMenu?: MouseEventHandler<HTMLDivElement>
+  onMouseEnter?: () => void
+  title?: string
+  testId?: string
+}
+
+const NOTE_ITEM_BASE_CLASS_NAME = 'relative border-b border-[var(--border)] transition-colors'
+const BINARY_NOTE_STYLE: CSSProperties = { padding: '14px 16px' }
+const NOTE_ITEM_ROW_CLASS_NAMES: Record<NoteItemRowState, string> = {
+  binary: 'cursor-default opacity-50',
+  multiSelected: 'cursor-pointer',
+  selected: 'cursor-pointer border-l-[3px]',
+  highlighted: 'cursor-pointer bg-muted hover:bg-muted',
+  default: 'cursor-pointer hover:bg-muted',
+}
+
+function resolveNoteItemRowState({ isBinary, isSelected, isMultiSelected, isHighlighted }: NoteItemVisualState): NoteItemRowState {
+  if (isBinary) return 'binary'
+  if (isMultiSelected) return 'multiSelected'
+  if (isSelected) return 'selected'
+  if (isHighlighted) return 'highlighted'
+  return 'default'
+}
+
+function noteItemClassName(state: NoteItemVisualState) {
+  return cn(NOTE_ITEM_BASE_CLASS_NAME, NOTE_ITEM_ROW_CLASS_NAMES[resolveNoteItemRowState(state)])
+}
+
+function NoteTypeIndicator({
+  TypeIcon,
+  typeColor,
+}: {
+  TypeIcon: ComponentType<SVGAttributes<SVGSVGElement>>
+  typeColor: string
+}) {
+  return <TypeIcon width={14} height={14} className="absolute right-3 top-2.5" style={{ color: typeColor }} data-testid="type-icon" />
+}
+
+function NoteSnippet({ snippet }: { snippet?: string | null }) {
+  if (!snippet) return null
+
+  return (
+    <div
+      className="text-[12px] leading-[1.5] text-muted-foreground"
+      data-testid="note-snippet"
+      style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+    >
+      {snippet}
+    </div>
   )
+}
+
+function NotePropertySection({
+  entry,
+  displayProps,
+  allEntries,
+  typeEntryMap,
+  onClickNote,
+}: {
+  entry: VaultEntry
+  displayProps: string[]
+  allEntries: VaultEntry[]
+  typeEntryMap: Record<string, VaultEntry>
+  onClickNote: NoteItemProps['onClickNote']
+}) {
+  if (displayProps.length === 0) return null
+
+  return (
+    <PropertyChips
+      entry={entry}
+      displayProps={displayProps}
+      allEntries={allEntries}
+      typeEntryMap={typeEntryMap}
+      onOpenNote={onClickNote}
+    />
+  )
+}
+
+function InteractiveNoteDetails({
+  entry,
+  noteStatus,
+  isSelected,
+  displayProps,
+  allEntries,
+  typeEntryMap,
+  onClickNote,
+}: {
+  entry: VaultEntry
+  noteStatus: NoteStatus
+  isSelected: boolean
+  displayProps: string[]
+  allEntries: VaultEntry[]
+  typeEntryMap: Record<string, VaultEntry>
+  onClickNote: NoteItemProps['onClickNote']
+}) {
+  return (
+    <>
+      <NoteTitleRow
+        entry={entry}
+        isBinary={false}
+        isSelected={isSelected}
+        noteStatus={noteStatus}
+      />
+      <NoteSnippet snippet={entry.snippet} />
+      <NotePropertySection
+        entry={entry}
+        displayProps={displayProps}
+        allEntries={allEntries}
+        typeEntryMap={typeEntryMap}
+        onClickNote={onClickNote}
+      />
+      <NoteDateRow entry={entry} />
+    </>
+  )
+}
+
+function resolveNoteTypeIcon(entry: VaultEntry, customIcon?: string | null): ComponentType<SVGAttributes<SVGSVGElement>> {
+  if (entry.fileKind && entry.fileKind !== 'markdown') return getFileKindIcon(entry.fileKind)
+  return getTypeIcon(entry.isA, customIcon)
 }
 
 function StandardNoteContent({
@@ -106,43 +215,31 @@ function StandardNoteContent({
   typeEntryMap: Record<string, VaultEntry>
   onClickNote: NoteItemProps['onClickNote']
 }) {
-  const isNonMarkdown = !!entry.fileKind && entry.fileKind !== 'markdown'
   const te = typeEntryMap[entry.isA ?? '']
-  const TypeIcon = useMemo(() => {
-    if (isNonMarkdown) return getFileKindIcon(entry.fileKind)
-    return getTypeIcon(entry.isA, te?.icon)
-  }, [entry.fileKind, entry.isA, isNonMarkdown, te?.icon])
+  const TypeIcon = resolveNoteTypeIcon(entry, te?.icon)
 
   return (
     <>
-      {/* eslint-disable-next-line react-hooks/static-components -- icon lookup from static map, no internal state */}
-      <TypeIcon width={14} height={14} className="absolute right-3 top-2.5" style={{ color: typeColor }} data-testid="type-icon" />
+      <NoteTypeIndicator TypeIcon={TypeIcon} typeColor={typeColor} />
       <div className="space-y-2" data-testid="note-content-stack">
-        <NoteTitleRow
-          entry={entry}
-          isBinary={isBinary}
-          isSelected={isSelected}
-          noteStatus={noteStatus}
-        />
-        {!isBinary && entry.snippet && (
-          <div
-            className="text-[12px] leading-[1.5] text-muted-foreground"
-            data-testid="note-snippet"
-            style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
-          >
-            {entry.snippet}
-          </div>
-        )}
-        {!isBinary && displayProps.length > 0 && (
-          <PropertyChips
+        {isBinary ? (
+          <NoteTitleRow
             entry={entry}
+            isBinary={true}
+            isSelected={isSelected}
+            noteStatus={noteStatus}
+          />
+        ) : (
+          <InteractiveNoteDetails
+            entry={entry}
+            noteStatus={noteStatus}
+            isSelected={isSelected}
             displayProps={displayProps}
             allEntries={allEntries}
             typeEntryMap={typeEntryMap}
-            onOpenNote={onClickNote}
+            onClickNote={onClickNote}
           />
         )}
-        {!isBinary && <NoteDateRow entry={entry} />}
       </div>
     </>
   )
@@ -183,8 +280,8 @@ function NoteDateRow({ entry }: { entry: VaultEntry }) {
   )
 }
 
-function noteItemStyle(isSelected: boolean, isMultiSelected: boolean, typeColor: string, typeLightColor: string): React.CSSProperties {
-  const base: React.CSSProperties = { padding: isSelected && !isMultiSelected ? '14px 16px 14px 13px' : '14px 16px' }
+function noteItemStyle(isSelected: boolean, isMultiSelected: boolean, typeColor: string, typeLightColor: string): CSSProperties {
+  const base: CSSProperties = { padding: isSelected && !isMultiSelected ? '14px 16px 14px 13px' : '14px 16px' }
   if (isMultiSelected) base.backgroundColor = 'color-mix(in srgb, var(--accent-blue) 10%, transparent)'
   else if (isSelected) { base.borderLeftColor = typeColor; base.backgroundColor = typeLightColor }
   return base
@@ -212,9 +309,9 @@ type NoteItemProps = {
   typeEntryMap: Record<string, VaultEntry>
   allEntries?: VaultEntry[]
   displayPropsOverride?: string[] | null
-  onClickNote: (entry: VaultEntry, e: React.MouseEvent) => void
+  onClickNote: (entry: VaultEntry, e: ReactMouseEvent) => void
   onPrefetch?: (path: string) => void
-  onContextMenu?: (entry: VaultEntry, e: React.MouseEvent) => void
+  onContextMenu?: (entry: VaultEntry, e: ReactMouseEvent) => void
 }
 
 function createNoteItemClickHandler(
@@ -223,56 +320,162 @@ function createNoteItemClickHandler(
   onClickNote: NoteItemProps['onClickNote'],
 ) {
   if (isBinary) {
-    return (event: React.MouseEvent) => {
+    return (event: ReactMouseEvent) => {
       event.preventDefault()
       event.stopPropagation()
     }
   }
-  return (event: React.MouseEvent) => onClickNote(entry, event)
+  return (event: ReactMouseEvent) => onClickNote(entry, event)
+}
+
+function resolveNoteItemSurfaceProps({
+  entry,
+  isBinary,
+  isSelected,
+  isMultiSelected,
+  isHighlighted,
+  onClickNote,
+  onPrefetch,
+  onContextMenu,
+  typeColor,
+  typeLightColor,
+}: NoteItemVisualState & {
+  entry: VaultEntry
+  onClickNote: NoteItemProps['onClickNote']
+  onPrefetch?: NoteItemProps['onPrefetch']
+  onContextMenu?: NoteItemProps['onContextMenu']
+  typeColor: string
+  typeLightColor: string
+}): NoteItemSurfaceProps {
+  return {
+    className: noteItemClassName({ isBinary, isSelected, isMultiSelected, isHighlighted }),
+    style: isBinary ? BINARY_NOTE_STYLE : noteItemStyle(isSelected, isMultiSelected, typeColor, typeLightColor),
+    onClick: createNoteItemClickHandler(entry, isBinary, onClickNote),
+    onContextMenu: onContextMenu ? (event) => onContextMenu(entry, event) : undefined,
+    onMouseEnter: !isBinary && onPrefetch ? () => onPrefetch(entry.path) : undefined,
+    testId: isMultiSelected ? 'multi-selected-item' : isBinary ? 'binary-file-item' : undefined,
+    title: isBinary ? 'Cannot open this file type' : undefined,
+  }
+}
+
+function NoteItemRow({
+  surfaceProps,
+  entryPath,
+  isHighlighted,
+  changeStatus,
+  children,
+}: {
+  surfaceProps: NoteItemSurfaceProps
+  entryPath: string
+  isHighlighted: boolean
+  changeStatus: NoteItemProps['changeStatus']
+  children: ReactNode
+}) {
+  return (
+    <div
+      className={surfaceProps.className}
+      style={surfaceProps.style}
+      onClick={surfaceProps.onClick}
+      onContextMenu={surfaceProps.onContextMenu}
+      onMouseEnter={surfaceProps.onMouseEnter}
+      data-testid={surfaceProps.testId}
+      data-highlighted={isHighlighted || undefined}
+      data-note-path={entryPath}
+      data-change-status={changeStatus}
+      title={surfaceProps.title}
+    >
+      {children}
+    </div>
+  )
+}
+
+function NoteItemContent({
+  entry,
+  isBinary,
+  isSelected,
+  noteStatus,
+  changeStatus,
+  typeColor,
+  displayProps,
+  allEntries,
+  typeEntryMap,
+  onClickNote,
+}: {
+  entry: VaultEntry
+  isBinary: boolean
+  isSelected: boolean
+  noteStatus: NoteStatus
+  changeStatus?: NoteItemProps['changeStatus']
+  typeColor: string
+  displayProps: string[]
+  allEntries: VaultEntry[]
+  typeEntryMap: Record<string, VaultEntry>
+  onClickNote: NoteItemProps['onClickNote']
+}) {
+  if (changeStatus) {
+    return (
+      <ChangeNoteContent
+        entry={entry}
+        changeStatus={changeStatus}
+        isSelected={isSelected}
+        isDeletedChange={changeStatus === 'deleted'}
+      />
+    )
+  }
+
+  return (
+    <StandardNoteContent
+      entry={entry}
+      isBinary={isBinary}
+      noteStatus={noteStatus}
+      isSelected={isSelected}
+      typeColor={typeColor}
+      displayProps={displayProps}
+      allEntries={allEntries}
+      typeEntryMap={typeEntryMap}
+      onClickNote={onClickNote}
+    />
+  )
 }
 
 export function NoteItem({ entry, isSelected, isMultiSelected = false, isHighlighted = false, noteStatus = 'clean', changeStatus, typeEntryMap, allEntries, displayPropsOverride, onClickNote, onPrefetch, onContextMenu }: NoteItemProps) {
   const isBinary = entry.fileKind === 'binary'
-  const isDeletedChange = changeStatus === 'deleted'
   const te = typeEntryMap[entry.isA ?? '']
   const displayProps = resolveDisplayProps(entry, typeEntryMap, displayPropsOverride)
   const typeColor = isBinary ? 'var(--muted-foreground)' : getTypeColor(entry.isA ?? 'Note', te?.color)
   const typeLightColor = getTypeLightColor(entry.isA ?? 'Note', te?.color)
-  const handleClick = createNoteItemClickHandler(entry, isBinary, onClickNote)
+  const surfaceProps = resolveNoteItemSurfaceProps({
+    entry,
+    isBinary,
+    isSelected,
+    isMultiSelected,
+    isHighlighted,
+    onClickNote,
+    onPrefetch,
+    onContextMenu,
+    typeColor,
+    typeLightColor,
+  })
 
   return (
-    <div
-      className={noteItemClassName({ isBinary, isSelected, isMultiSelected, isHighlighted })}
-      style={isBinary ? { padding: '14px 16px' } : noteItemStyle(isSelected, isMultiSelected, typeColor, typeLightColor)}
-      onClick={handleClick}
-      onContextMenu={onContextMenu ? (e) => onContextMenu(entry, e) : undefined}
-      onMouseEnter={!isBinary && onPrefetch ? () => onPrefetch(entry.path) : undefined}
-      data-testid={isMultiSelected ? 'multi-selected-item' : isBinary ? 'binary-file-item' : undefined}
-      data-highlighted={isHighlighted || undefined}
-      data-note-path={entry.path}
-      data-change-status={changeStatus}
-      title={isBinary ? 'Cannot open this file type' : undefined}
+    <NoteItemRow
+      surfaceProps={surfaceProps}
+      entryPath={entry.path}
+      isHighlighted={isHighlighted}
+      changeStatus={changeStatus}
     >
-      {changeStatus ? (
-        <ChangeNoteContent
-          entry={entry}
-          changeStatus={changeStatus}
-          isSelected={isSelected}
-          isDeletedChange={isDeletedChange}
-        />
-      ) : (
-        <StandardNoteContent
-          entry={entry}
-          isBinary={isBinary}
-          noteStatus={noteStatus}
-          isSelected={isSelected}
-          typeColor={typeColor}
-          displayProps={displayProps}
-          allEntries={allEntries ?? [entry]}
-          typeEntryMap={typeEntryMap}
-          onClickNote={onClickNote}
-        />
-      )}
-    </div>
+      <NoteItemContent
+        entry={entry}
+        isBinary={isBinary}
+        isSelected={isSelected}
+        noteStatus={noteStatus}
+        changeStatus={changeStatus}
+        typeColor={typeColor}
+        displayProps={displayProps}
+        allEntries={allEntries ?? [entry]}
+        typeEntryMap={typeEntryMap}
+        onClickNote={onClickNote}
+      />
+    </NoteItemRow>
   )
 }
