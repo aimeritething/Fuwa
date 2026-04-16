@@ -76,6 +76,37 @@ describe('property panel shared grid layout', () => {
     })
   })
 
+  it('keeps the add-property row on the shared grid', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={entry}
+        frontmatter={{}}
+        onAddProperty={vi.fn()}
+      />
+    )
+
+    const row = screen.getByTestId('add-property-row')
+    expect(row.style.gridTemplateColumns).toBe('subgrid')
+    expect(row.style.gridColumn).toBe('1 / -1')
+  })
+
+  it('uses the same fixed icon slot size for type, suggested, and add-property rows', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={entry}
+        frontmatter={{}}
+        onAddProperty={vi.fn()}
+        onUpdateProperty={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('type-row-icon-slot')).toHaveClass('size-5')
+    screen.getAllByTestId('suggested-property-icon-slot').forEach((slot) => {
+      expect(slot).toHaveClass('size-5')
+    })
+    expect(screen.getByTestId('add-property-icon-slot')).toHaveClass('size-5')
+  })
+
   it('renders plain text values flush with the shared value column', () => {
     render(
       <DynamicPropertiesPanel

@@ -8,7 +8,11 @@ import { cn } from '@/lib/utils'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { getTypeIcon } from './NoteItem'
 import { PROPERTY_CHIP_STYLE } from './propertyChipStyles'
-import { PROPERTY_PANEL_ROW_STYLE } from './propertyPanelLayout'
+import {
+  PROPERTY_PANEL_LABEL_CLASS_NAME,
+  PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME,
+  PROPERTY_PANEL_ROW_STYLE,
+} from './propertyPanelLayout'
 
 const TYPE_NONE = '__none__'
 const MIN_POPOVER_WIDTH = 220
@@ -94,9 +98,14 @@ function TypeSelectorValue({
 
 function TypeRowLabel() {
   return (
-    <span className="flex shrink-0 items-center gap-1 text-[12px] text-muted-foreground">
-      <StackSimple size={14} className="shrink-0" data-testid="type-row-icon" />
-      <span>Type</span>
+    <span className={PROPERTY_PANEL_LABEL_CLASS_NAME}>
+      <span
+        className={PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME}
+        data-testid="type-row-icon-slot"
+      >
+        <StackSimple size={14} className="shrink-0" data-testid="type-row-icon" />
+      </span>
+      <span className="min-w-0 truncate">Type</span>
     </span>
   )
 }
@@ -104,7 +113,10 @@ function TypeRowLabel() {
 function ReadOnlyType({ isA, customColorKey, onNavigate }: { isA?: string | null; customColorKey?: string | null; onNavigate?: (target: string) => void }) {
   if (!isA) return null
   return (
-    <div className="grid min-w-0 grid-cols-2 items-center gap-2 px-1.5" style={PROPERTY_PANEL_ROW_STYLE}>
+    <div
+      className="grid min-h-7 min-w-0 grid-cols-2 items-center gap-2 px-1.5"
+      style={PROPERTY_PANEL_ROW_STYLE}
+    >
       <TypeRowLabel />
       <div className="min-w-0">
         {onNavigate ? (
@@ -261,7 +273,11 @@ function EditableTypeSelector({ isA, customColorKey, availableTypes, typeColorKe
   }
 
   return (
-    <div className="grid min-w-0 grid-cols-2 items-center gap-2 px-1.5" style={PROPERTY_PANEL_ROW_STYLE} data-testid="type-selector">
+    <div
+      className="grid min-h-7 min-w-0 grid-cols-2 items-center gap-2 px-1.5"
+      style={PROPERTY_PANEL_ROW_STYLE}
+      data-testid="type-selector"
+    >
       <TypeRowLabel />
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverAnchor asChild>

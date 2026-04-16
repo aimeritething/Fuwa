@@ -1,4 +1,6 @@
+import { Plus } from '@phosphor-icons/react'
 import { useMemo, useCallback, useEffect, useState } from 'react'
+import { Button } from '@/components/ui/button'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from './Inspector'
 import type { ParsedFrontmatter } from '../utils/frontmatter'
@@ -9,7 +11,14 @@ import { TypeSelector } from './TypeSelector'
 import { AddPropertyForm } from './AddPropertyForm'
 import type { PropertyDisplayMode } from '../utils/propertyTypes'
 import { FOCUS_NOTE_ICON_PROPERTY_EVENT } from './noteIconPropertyEvents'
-import { PROPERTY_PANEL_GRID_STYLE, PROPERTY_PANEL_ROW_STYLE } from './propertyPanelLayout'
+import {
+  PROPERTY_PANEL_GRID_STYLE,
+  PROPERTY_PANEL_INTERACTIVE_ROW_CLASS_NAME,
+  PROPERTY_PANEL_LABEL_CLASS_NAME,
+  PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME,
+  PROPERTY_PANEL_PLACEHOLDER_VALUE_CLASS_NAME,
+  PROPERTY_PANEL_ROW_STYLE,
+} from './propertyPanelLayout'
 import { humanizePropertyKey } from '../utils/propertyLabels'
 import { canonicalSystemMetadataKey, hasSystemMetadataKey } from '../utils/systemMetadata'
 
@@ -21,8 +30,6 @@ export function containsWikilinks(value: FrontmatterValue): boolean {
 }
 
 const PROPERTY_ROW_CLASS_NAME = 'group/prop grid min-h-7 min-w-0 grid-cols-2 items-center gap-2 rounded px-1.5 outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary'
-const PROPERTY_LABEL_CLASS_NAME = 'flex max-w-full min-w-0 items-center gap-1 text-[12px] text-muted-foreground'
-const SUGGESTED_PROPERTY_SLOT_CLASS_NAME = 'grid min-h-7 min-w-0 grid-cols-2 items-center gap-2 rounded border-none bg-transparent px-1.5 text-left outline-none transition-colors hover:bg-muted focus:bg-muted focus:ring-1 focus:ring-primary cursor-pointer'
 
 function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultStatuses, vaultTags, onStartEdit, onSave, onSaveList, onUpdate, onDelete, onDisplayModeChange }: {
   propKey: string; value: FrontmatterValue; editingKey: string | null
@@ -45,7 +52,7 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
 
   return (
     <div className={PROPERTY_ROW_CLASS_NAME} style={PROPERTY_PANEL_ROW_STYLE} tabIndex={0} onKeyDown={handleKeyDown} data-testid="editable-property">
-      <span className={PROPERTY_LABEL_CLASS_NAME}>
+      <span className={PROPERTY_PANEL_LABEL_CLASS_NAME}>
         <DisplayModeSelector propKey={propKey} currentMode={displayMode} autoMode={autoMode} onSelect={onDisplayModeChange} />
         <span className="min-w-0 flex-1 truncate">{humanizePropertyKey(propKey)}</span>
         {onDelete && (
@@ -61,13 +68,27 @@ function PropertyRow({ propKey, value, editingKey, displayMode, autoMode, vaultS
 
 function AddPropertyButton({ onClick, disabled }: { onClick: () => void; disabled: boolean }) {
   return (
-    <button
-      className="mt-1 flex w-full cursor-pointer items-center gap-1 border-none bg-transparent px-1.5 text-[12px] text-muted-foreground opacity-50 transition-opacity hover:opacity-100 disabled:cursor-not-allowed"
-      onClick={onClick} disabled={disabled}
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={PROPERTY_PANEL_INTERACTIVE_ROW_CLASS_NAME}
+      style={PROPERTY_PANEL_ROW_STYLE}
+      onClick={onClick}
+      disabled={disabled}
+      data-testid="add-property-row"
     >
-      <span className="text-[12px] leading-none">+</span>
-      Add property
-    </button>
+      <span className={PROPERTY_PANEL_LABEL_CLASS_NAME}>
+        <span
+          className={PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME}
+          data-testid="add-property-icon-slot"
+        >
+          <Plus className="size-3.5" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 truncate">Add property</span>
+      </span>
+      <span aria-hidden="true" className={PROPERTY_PANEL_PLACEHOLDER_VALUE_CLASS_NAME} />
+    </Button>
   )
 }
 
@@ -97,20 +118,29 @@ function SuggestedPropertySlot({ label, displayMode, onAdd }: {
   const SuggestedIcon = DISPLAY_MODE_ICONS[displayMode]
 
   return (
-    <button
-      className={SUGGESTED_PROPERTY_SLOT_CLASS_NAME}
+    <Button
+      type="button"
+      variant="ghost"
+      size="sm"
+      className={PROPERTY_PANEL_INTERACTIVE_ROW_CLASS_NAME}
       style={PROPERTY_PANEL_ROW_STYLE}
-      tabIndex={0}
       onClick={onAdd}
-      onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAdd() } }}
       data-testid="suggested-property"
     >
-      <span className="flex min-w-0 max-w-full items-center gap-1 text-[12px] text-muted-foreground/50">
-        <SuggestedIcon className="size-3.5 shrink-0 text-muted-foreground/40" data-testid={`suggested-property-icon-${displayMode}`} />
+      <span className={PROPERTY_PANEL_LABEL_CLASS_NAME}>
+        <span
+          className={PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME}
+          data-testid="suggested-property-icon-slot"
+        >
+          <SuggestedIcon
+            className="size-3.5 shrink-0 text-muted-foreground/40"
+            data-testid={`suggested-property-icon-${displayMode}`}
+          />
+        </span>
         <span className="min-w-0 truncate">{label}</span>
       </span>
-      <span className="min-w-0 truncate text-[12px] text-muted-foreground/30">{'\u2014'}</span>
-    </button>
+      <span className={PROPERTY_PANEL_PLACEHOLDER_VALUE_CLASS_NAME}>{'\u2014'}</span>
+    </Button>
   )
 }
 
@@ -150,6 +180,46 @@ function useFocusNoteIconProperty({
   }, [onAddProperty, setEditingKey, setPendingSuggestedKey])
 }
 
+function useSuggestedPropertyActions({
+  onAddProperty,
+  setEditingKey,
+  setPendingSuggestedKey,
+}: {
+  onAddProperty?: (key: string, value: FrontmatterValue) => void
+  setEditingKey: (key: string | null) => void
+  setPendingSuggestedKey: (key: string | null) => void
+}) {
+  const handleSuggestedAdd = useCallback((key: string) => {
+    if (!onAddProperty) return
+    setPendingSuggestedKey(key)
+    setEditingKey(key)
+  }, [onAddProperty, setEditingKey, setPendingSuggestedKey])
+
+  const handlePendingSuggestedEdit = useCallback((key: string | null) => {
+    setEditingKey(key)
+    if (key === null) setPendingSuggestedKey(null)
+  }, [setEditingKey, setPendingSuggestedKey])
+
+  const handleSaveSuggestedValue = useCallback((key: string, newValue: string) => {
+    setEditingKey(null)
+    setPendingSuggestedKey(null)
+    if (!onAddProperty) {
+      return
+    }
+    const trimmed = newValue.trim()
+    if (!trimmed) {
+      return
+    }
+    onAddProperty(key === 'icon' ? canonicalSystemMetadataKey(key) : key, trimmed)
+  }, [onAddProperty, setEditingKey, setPendingSuggestedKey])
+
+  return {
+    handlePendingSuggestedEdit,
+    handleSaveSuggestedValue,
+    handleSuggestedAdd,
+  }
+}
+
 export function DynamicPropertiesPanel({
   entry, frontmatter, entries,
   onUpdateProperty, onDeleteProperty, onAddProperty, onNavigate,
@@ -175,30 +245,15 @@ export function DynamicPropertiesPanel({
     () => getMissingSuggestedProperties(Boolean(onAddProperty), existingKeys, pendingSuggestedKey),
     [existingKeys, onAddProperty, pendingSuggestedKey],
   )
-
-  const handleSuggestedAdd = useCallback((key: string) => {
-    if (!onAddProperty) return
-    setPendingSuggestedKey(key)
-    setEditingKey(key)
-  }, [onAddProperty, setEditingKey])
-
-  const handlePendingSuggestedEdit = useCallback((key: string | null) => {
-    setEditingKey(key)
-    if (key === null) setPendingSuggestedKey(null)
-  }, [setEditingKey])
-
-  const handleSaveSuggestedValue = useCallback((key: string, newValue: string) => {
-    setEditingKey(null)
-    setPendingSuggestedKey(null)
-    if (!onAddProperty) {
-      return
-    }
-    const trimmed = newValue.trim()
-    if (!trimmed) {
-      return
-    }
-    onAddProperty(key === 'icon' ? canonicalSystemMetadataKey(key) : key, trimmed)
-  }, [onAddProperty, setEditingKey])
+  const {
+    handlePendingSuggestedEdit,
+    handleSaveSuggestedValue,
+    handleSuggestedAdd,
+  } = useSuggestedPropertyActions({
+    onAddProperty,
+    setEditingKey,
+    setPendingSuggestedKey,
+  })
 
   useFocusNoteIconProperty({ onAddProperty, setEditingKey, setPendingSuggestedKey })
 
@@ -244,11 +299,20 @@ export function DynamicPropertiesPanel({
             onAdd={() => handleSuggestedAdd(key)}
           />
         ))}
+        {!showAddDialog && (
+          <AddPropertyButton
+            onClick={() => setShowAddDialog(true)}
+            disabled={!onAddProperty}
+          />
+        )}
       </div>
-      {showAddDialog
-        ? <AddPropertyForm onAdd={handleAdd} onCancel={() => setShowAddDialog(false)} vaultStatuses={vaultStatuses} />
-        : <AddPropertyButton onClick={() => setShowAddDialog(true)} disabled={!onAddProperty} />
-      }
+      {showAddDialog && (
+        <AddPropertyForm
+          onAdd={handleAdd}
+          onCancel={() => setShowAddDialog(false)}
+          vaultStatuses={vaultStatuses}
+        />
+      )}
     </div>
   )
 }

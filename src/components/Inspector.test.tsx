@@ -1,3 +1,4 @@
+import type { ComponentProps } from 'react'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { Inspector } from './Inspector'
@@ -88,6 +89,20 @@ const defaultProps = {
   onNavigate: () => {},
 }
 
+type InspectorProps = ComponentProps<typeof Inspector>
+
+function renderInspector(overrides: Partial<InspectorProps> = {}) {
+  return render(<Inspector {...defaultProps} {...overrides} />)
+}
+
+function renderSelectedInspector(overrides: Partial<InspectorProps> = {}) {
+  return renderInspector({
+    entry: mockEntry,
+    content: mockContent,
+    ...overrides,
+  })
+}
+
 describe('Inspector', () => {
   it('renders expanded state with "no note selected"', () => {
     render(<Inspector {...defaultProps} />)
@@ -133,7 +148,7 @@ describe('Inspector', () => {
 
   it('shows "Add property" button as disabled placeholder', () => {
     render(<Inspector {...defaultProps} entry={mockEntry} content={mockContent} />)
-    const btn = screen.getByText('Add property')
+    const btn = screen.getByRole('button', { name: 'Add property' })
     expect(btn).toBeDisabled()
   })
 
@@ -212,41 +227,22 @@ This is a test note with some words to count.
   })
 
   it('hides backlinks section when no notes reference the current note', () => {
-    render(
-      <Inspector
-        {...defaultProps}
-        entry={mockEntry}
-        content={mockContent}
-        entries={[mockEntry]}
-      />
-    )
+    renderSelectedInspector({ entries: [mockEntry] })
     expect(screen.queryByText('Backlinks')).not.toBeInTheDocument()
   })
 
   it('navigates when a backlink is clicked', () => {
     const onNavigate = vi.fn()
-    render(
-      <Inspector
-        {...defaultProps}
-        entry={mockEntry}
-        content={mockContent}
-        entries={[mockEntry, referrerEntry]}
-        onNavigate={onNavigate}
-      />
-    )
+    renderSelectedInspector({
+      entries: [mockEntry, referrerEntry],
+      onNavigate,
+    })
     fireEvent.click(screen.getByText('Referrer Note'))
     expect(onNavigate).toHaveBeenCalledWith('Referrer Note')
   })
 
   it('shows git history with commit hashes and messages', () => {
-    render(
-      <Inspector
-        {...defaultProps}
-        entry={mockEntry}
-        content={mockContent}
-        gitHistory={mockGitHistory}
-      />
-    )
+    renderSelectedInspector({ gitHistory: mockGitHistory })
     expect(screen.getByText('History')).toBeInTheDocument()
     expect(screen.getByText('a1b2c3d')).toBeInTheDocument()
     expect(screen.getByText('e4f5g6h')).toBeInTheDocument()
@@ -255,15 +251,10 @@ This is a test note with some words to count.
 
   it('renders commit entries as clickable buttons', () => {
     const onViewCommitDiff = vi.fn()
-    render(
-      <Inspector
-        {...defaultProps}
-        entry={mockEntry}
-        content={mockContent}
-        gitHistory={mockGitHistory}
-        onViewCommitDiff={onViewCommitDiff}
-      />
-    )
+    renderSelectedInspector({
+      gitHistory: mockGitHistory,
+      onViewCommitDiff,
+    })
     const hashBtn = screen.getByText('a1b2c3d')
     const button = hashBtn.closest('button')!
     expect(button.tagName).toBe('BUTTON')
@@ -272,25 +263,12 @@ This is a test note with some words to count.
   })
 
   it('hides history section when no commits', () => {
-    render(
-      <Inspector
-        {...defaultProps}
-        entry={mockEntry}
-        content={mockContent}
-        gitHistory={[]}
-      />
-    )
+    renderSelectedInspector({ gitHistory: [] })
     expect(screen.queryByText('History')).not.toBeInTheDocument()
   })
 
   it('shows separate Info section with read-only metadata', () => {
-    render(
-      <Inspector
-        {...defaultProps}
-        entry={mockEntry}
-        content={mockContent}
-      />
-    )
+    renderSelectedInspector()
     expect(screen.getByText('Info')).toBeInTheDocument()
     expect(screen.getByText('Modified')).toBeInTheDocument()
     expect(screen.getByText('Created')).toBeInTheDocument()
@@ -468,31 +446,23 @@ Status: Active
     })
 
     it('hides referenced-by section when no entries reference the current note', () => {
-      render(
-        <Inspector
-          {...defaultProps}
-          entry={targetEntry}
-          content={targetContent}
-          entries={[targetEntry]}
-
-        />
-      )
+      renderInspector({
+        entry: targetEntry,
+        content: targetContent,
+        entries: [targetEntry],
+      })
       expect(screen.queryByText('No references')).not.toBeInTheDocument()
       expect(screen.queryByText('Referenced by')).not.toBeInTheDocument()
     })
 
     it('navigates when clicking a referenced-by entry', () => {
       const onNavigate = vi.fn()
-      render(
-        <Inspector
-          {...defaultProps}
-          entry={targetEntry}
-          content={targetContent}
-          entries={[targetEntry, essayEntry]}
-
-          onNavigate={onNavigate}
-        />
-      )
+      renderInspector({
+        entry: targetEntry,
+        content: targetContent,
+        entries: [targetEntry, essayEntry],
+        onNavigate,
+      })
       fireEvent.click(screen.getByText('On Writing Well'))
       expect(onNavigate).toHaveBeenCalledWith('On Writing Well')
     })
