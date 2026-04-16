@@ -275,8 +275,8 @@ interface UseRenderItemParams {
   isChangesView: boolean
   onDiscardFile?: (relativePath: string) => Promise<void>
   resolvedGetNoteStatus: (path: string) => NoteStatus
-  getChangeStatus: (path: string) => string | undefined
-  handleClickNote: (entry: VaultEntry, event?: React.MouseEvent) => void
+  getChangeStatus: (path: string) => ModifiedFile['status'] | undefined
+  handleClickNote: (entry: VaultEntry, event: React.MouseEvent) => void
   noteContextMenu?: ((entry: VaultEntry, event: React.MouseEvent) => void) | undefined
   multiSelect: MultiSelectState
   noteListKeyboard: { highlightedPath: string | null }
