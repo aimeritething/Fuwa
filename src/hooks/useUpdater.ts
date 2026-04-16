@@ -9,12 +9,18 @@ import {
 import { openExternalUrl } from '../utils/url'
 
 const RELEASE_NOTES_URL = 'https://refactoringhq.github.io/tolaria/'
+const CALENDAR_VERSION_PATTERN = /^(\d{4})\.(\d{1,2})\.(\d{1,2})(?:-(alpha|stable)\.(\d+))?$/
+
+interface UpdateVersionInfo {
+  version: string
+  displayVersion: string
+}
 
 export type UpdateStatus =
   | { state: 'idle' }
-  | { state: 'available'; version: string; notes: string | undefined }
-  | { state: 'downloading'; version: string; progress: number }
-  | { state: 'ready'; version: string }
+  | ({ state: 'available'; notes: string | undefined } & UpdateVersionInfo)
+  | ({ state: 'downloading'; progress: number } & UpdateVersionInfo)
+  | ({ state: 'ready' } & UpdateVersionInfo)
   | { state: 'error' }
 
 export type UpdateCheckResult = 'up-to-date' | 'available' | 'error'
@@ -26,16 +32,41 @@ export interface UpdateActions {
   dismiss: () => void
 }
 
+function formatReleaseDisplayVersion(version: string): string {
+  const normalizedVersion = version.trim()
+  if (!normalizedVersion) return normalizedVersion
+
+  const baseVersion = normalizedVersion.split('+')[0]
+  const match = baseVersion.match(CALENDAR_VERSION_PATTERN)
+  if (!match) return baseVersion
+
+  const [, year, month, day, channel, sequence] = match
+  const calendarVersion = `${Number(year)}.${Number(month)}.${Number(day)}`
+
+  if (channel === 'alpha' && sequence) {
+    return `Alpha ${calendarVersion}.${Number(sequence)}`
+  }
+
+  return calendarVersion
+}
+
+function createVersionInfo(version: string): UpdateVersionInfo {
+  return {
+    version,
+    displayVersion: formatReleaseDisplayVersion(version),
+  }
+}
+
 function toAvailableStatus(update: AppUpdateMetadata): UpdateStatus {
   return {
     state: 'available',
-    version: update.version,
+    ...createVersionInfo(update.version),
     notes: update.body ?? undefined,
   }
 }
 
 function createDownloadProgressHandler(
-  version: string,
+  versionInfo: UpdateVersionInfo,
   setStatus: Dispatch<SetStateAction<UpdateStatus>>,
 ): (event: AppUpdateDownloadEvent) => void {
   let totalBytes = 0
@@ -50,11 +81,11 @@ function createDownloadProgressHandler(
     if (event.event === 'Progress') {
       downloadedBytes += event.data.chunkLength
       const progress = totalBytes > 0 ? Math.min(downloadedBytes / totalBytes, 1) : 0
-      setStatus({ state: 'downloading', version, progress })
+      setStatus({ state: 'downloading', ...versionInfo, progress })
       return
     }
 
-    setStatus({ state: 'ready', version })
+    setStatus({ state: 'ready', ...versionInfo })
   }
 }
 
@@ -94,17 +125,18 @@ export function useUpdater(
     const update = updateRef.current
     if (!update) return
 
-    setStatus({ state: 'downloading', version: update.version, progress: 0 })
+    const versionInfo = createVersionInfo(update.version)
+    setStatus({ state: 'downloading', ...versionInfo, progress: 0 })
 
     try {
       await downloadAndInstallAppUpdate(
         releaseChannel,
         update.version,
-        createDownloadProgressHandler(update.version, setStatus),
+        createDownloadProgressHandler(versionInfo, setStatus),
       )
 
       // If Finished wasn't emitted via callback, set ready after await resolves
-      setStatus((prev) => (prev.state === 'downloading' ? { state: 'ready', version: update.version } : prev))
+      setStatus((prev) => (prev.state === 'downloading' ? { state: 'ready', ...versionInfo } : prev))
     } catch {
       console.warn('[updater] Download failed')
       setStatus({ state: 'error' })

@@ -689,7 +689,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `trigger_menu_command` | Emit a native menu command ID for deterministic shortcut QA |
 | `update_current_window_min_size` | Update the active Tauri window's minimum size and optionally grow it to fit restored panes |
 
-`get_build_number` feeds the bottom status bar label. It preserves legacy `bNNN` date-build labels, renders local `0.1.0` / `0.0.0` builds as `dev`, and formats semver alpha prereleases as `alpha <version>` so signed alpha builds never fall back to `?`.
+`get_build_number` feeds the bottom status bar label. It preserves legacy `bNNN` date-build labels, renders local `0.1.0` / `0.0.0` builds as `dev`, formats calendar alpha builds as `Alpha YYYY.M.D.N`, strips any calendar `-stable.N` suffix back to `YYYY.M.D`, and keeps legacy semver releases readable instead of falling back to `?`.
 
 ## Mock Layer
 
@@ -766,14 +766,15 @@ Every push to `main` triggers `.github/workflows/release.yml`:
 
 ```
 push to main
-  → version job: read latest stable-vX.Y.Z tag
-  → compute next patch prerelease X.Y.(Z+1)-alpha.UTCSTAMP.RUN_NUMBER
+  → version job: compute calendar alpha version YYYY.M.D-alpha.N
+      → use today's UTC date unless the latest stable-vYYYY.M.D tag already uses today
+      → if stable already uses today, advance alpha to the next calendar day so semver still increases
   → build job:
-      → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin
-      → upload signed .app.tar.gz + .sig and .dmg artifacts
+      → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin --bundles app
+      → upload signed .app.tar.gz + .sig updater artifacts
   → release job:
       → generate alpha-latest.json
-      → publish GitHub prerelease alpha-v<version>
+      → publish GitHub prerelease alpha-v<version> named Tolaria Alpha YYYY.M.D.N
   → pages job:
       → build static HTML release history page
       → publish alpha/latest.json
@@ -785,14 +786,14 @@ push to main
 Stable promotions trigger `.github/workflows/release-stable.yml`:
 
 ```
-push stable-vX.Y.Z tag
-  → version job: use X.Y.Z from the tag
+push stable-vYYYY.M.D tag
+  → version job: validate YYYY.M.D from the tag
   → build job:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin
       → upload signed .app.tar.gz + .sig and .dmg artifacts
   → release job:
       → generate stable-latest.json
-      → publish GitHub release Tolaria X.Y.Z
+      → publish GitHub release Tolaria YYYY.M.D
   → pages job:
       → publish stable/latest.json
       → preserve alpha/latest.json
@@ -801,10 +802,11 @@ push stable-vX.Y.Z tag
 
 ### Versioning
 
-- Stable promotions use git tags in the form `stable-vX.Y.Z`.
-- Alpha builds are prereleases of the next stable patch version, for example stable `1.2.3` → alpha `1.2.4-alpha.202604122135.7`.
+- Stable promotions use git tags in the form `stable-vYYYY.M.D` and stamp the technical version `YYYY.M.D`.
+- Alpha builds stamp the technical version `YYYY.M.D-alpha.N` and display it as `Alpha YYYY.M.D.N`.
+- If the latest stable tag already uses today's date, alpha advances to the next calendar day before assigning `-alpha.N` so Alpha remains semver-newer than Stable across channel switches.
 - The workflows stamp the computed version into `tauri.conf.json` and `Cargo.toml` at build time.
-- This keeps semver monotonic when a user switches between Stable and Alpha.
+- This keeps display strings clean while preserving semver monotonicity when a user switches between Stable and Alpha.
 
 ### In-App Updates
 

@@ -48,8 +48,8 @@ type DownloadArgs = {
 
 function makeUpdate(overrides: Partial<AppUpdateMetadata> = {}): AppUpdateMetadata {
   return {
-    currentVersion: '1.0.0',
-    version: '1.2.0',
+    currentVersion: '2026.4.15',
+    version: '2026.4.16',
     body: 'Bug fixes and improvements',
     ...overrides,
   }
@@ -148,12 +148,13 @@ describe('useUpdater', () => {
   it('transitions to available when an alpha update is found', async () => {
     const { result } = await performManualCheck(
       'alpha',
-      makeUpdate({ version: '1.2.4-alpha.202604121830.10' }),
+      makeUpdate({ version: '2026.4.16-alpha.3' }),
     )
 
     expect(result.current.status).toEqual({
       state: 'available',
-      version: '1.2.4-alpha.202604121830.10',
+      version: '2026.4.16-alpha.3',
+      displayVersion: 'Alpha 2026.4.16.3',
       notes: 'Bug fixes and improvements',
     })
 
@@ -178,8 +179,23 @@ describe('useUpdater', () => {
     expect(outcome).toBe('available')
     expect(result.current.status).toEqual({
       state: 'available',
-      version: '1.2.0',
+      version: '2026.4.16',
+      displayVersion: '2026.4.16',
       notes: undefined,
+    })
+  })
+
+  it('strips stable prerelease suffixes from the display version', async () => {
+    const { result } = await performManualCheck(
+      'stable',
+      makeUpdate({ version: '2026.4.16-stable.1' }),
+    )
+
+    expect(result.current.status).toEqual({
+      state: 'available',
+      version: '2026.4.16-stable.1',
+      displayVersion: '2026.4.16',
+      notes: 'Bug fixes and improvements',
     })
   })
 
@@ -231,7 +247,7 @@ describe('useUpdater', () => {
       checkResult: makeUpdate(),
       downloadImpl: async (args) => {
         expect(args.releaseChannel).toBe('stable')
-        expect(args.expectedVersion).toBe('1.2.0')
+        expect(args.expectedVersion).toBe('2026.4.16')
         args.onEvent.onmessage({ event: 'Started', data: { contentLength: 1000 } })
         args.onEvent.onmessage({ event: 'Progress', data: { chunkLength: 500 } })
         args.onEvent.onmessage({ event: 'Progress', data: { chunkLength: 500 } })
@@ -249,7 +265,11 @@ describe('useUpdater', () => {
       await result.current.actions.startDownload()
     })
 
-    expect(result.current.status).toEqual({ state: 'ready', version: '1.2.0' })
+    expect(result.current.status).toEqual({
+      state: 'ready',
+      version: '2026.4.16',
+      displayVersion: '2026.4.16',
+    })
   })
 
   it('transitions to error when download fails', async () => {

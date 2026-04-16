@@ -16,13 +16,14 @@ concurrency:
 jobs:
   # ─────────────────────────────────────────────────────────────
   # Phase 1: Compute the alpha version string once
-  # Alpha builds are prereleases of the next stable patch version.
+  # Alpha builds use calendar semver and stay newer than the latest stable tag.
   # ─────────────────────────────────────────────────────────────
   version:
     name: Compute alpha version
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ver.outputs.version }}
+      display_version: ${{ steps.ver.outputs.display_version }}
       tag: ${{ steps.ver.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
@@ -32,22 +33,63 @@ jobs:
       - id: ver
         shell: bash
         run: |
-          LAST_STABLE_TAG=$(git tag --list 'stable-v*' --sort=-version:refname | head -n 1)
-          if [ -z "$LAST_STABLE_TAG" ]; then
-            BASE_VERSION="0.1.0"
-          else
-            BASE_VERSION="${LAST_STABLE_TAG#stable-v}"
-          fi
+          python3 <<'PY' > version.env
+          import re
+          import subprocess
+          from datetime import datetime, timedelta, timezone
 
-          IFS='.' read -r MAJOR MINOR PATCH <<EOF
-          $BASE_VERSION
-          EOF
-          NEXT_PATCH_VERSION="${MAJOR}.${MINOR}.$((PATCH + 1))"
+          def lines(command: list[str]) -> list[str]:
+              output = subprocess.check_output(command, text=True).strip()
+              return [line for line in output.splitlines() if line]
 
-          VERSION="${NEXT_PATCH_VERSION}-alpha.$(date -u +%Y%m%d%H%M).${GITHUB_RUN_NUMBER}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=alpha-v$VERSION" >> "$GITHUB_OUTPUT"
-          echo "### Alpha version: \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          existing_tags = [
+              tag for tag in lines(["git", "tag", "--points-at", "HEAD"])
+              if tag.startswith("alpha-v")
+          ]
+
+          if existing_tags:
+              tag = existing_tags[0]
+              version = tag.removeprefix("alpha-v")
+          else:
+              today = datetime.now(timezone.utc).date()
+              stable_date = None
+              stable_pattern = re.compile(r"^stable-v(\d{4})\.(\d{1,2})\.(\d{1,2})$")
+
+              for stable_tag in lines(["git", "tag", "--list", "stable-v*", "--sort=-version:refname"]):
+                  match = stable_pattern.fullmatch(stable_tag)
+                  if not match:
+                      continue
+
+                  year, month, day = map(int, match.groups())
+                  try:
+                      stable_date = datetime(year, month, day, tzinfo=timezone.utc).date()
+                  except ValueError:
+                      continue
+                  break
+
+              alpha_date = today if stable_date is None or today > stable_date else stable_date + timedelta(days=1)
+              calendar_version = f"{alpha_date.year}.{alpha_date.month}.{alpha_date.day}"
+              sequence = len(lines(["git", "tag", "--list", f"alpha-v{calendar_version}-alpha.*"])) + 1
+
+              version = f"{calendar_version}-alpha.{sequence}"
+              tag = f"alpha-v{version}"
+
+          display_match = re.fullmatch(r"(\d{4})\.(\d{1,2})\.(\d{1,2})-alpha\.(\d+)", version)
+          display_version = (
+              f"Alpha {int(display_match.group(1))}.{int(display_match.group(2))}.{int(display_match.group(3))}.{int(display_match.group(4))}"
+              if display_match
+              else version
+          )
+
+          print(f"version={version}")
+          print(f"display_version={display_version}")
+          print(f"tag={tag}")
+          PY
+
+          cat version.env >> "$GITHUB_OUTPUT"
+          VERSION=$(grep '^version=' version.env | cut -d= -f2-)
+          DISPLAY_VERSION=$(grep '^display_version=' version.env | cut -d= -f2-)
+          echo "### Alpha version: \`$DISPLAY_VERSION\` (\`$VERSION\`)" >> "$GITHUB_STEP_SUMMARY"
 
   # ─────────────────────────────────────────────────────────────
   # Phase 2: Build each architecture in parallel
@@ -225,7 +267,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: Tolaria ${{ needs.version.outputs.version }} (Alpha)
+          name: Tolaria ${{ needs.version.outputs.display_version }}
           body_path: release_notes.md
           draft: false
           prerelease: true
@@ -288,7 +330,7 @@ jobs:
           </head>
           <body>
             <h1>Tolaria Release History</h1>
-            <p class="subtitle">Alpha builds update on every push to main. Stable builds appear when a stable-vX.Y.Z tag is promoted.</p>
+            <p class="subtitle">Alpha builds update on every push to main. Stable builds appear when a stable-vYYYY.M.D tag is promoted.</p>
             <div id="releases"></div>
             <script>
               fetch('releases.json').then(r=>r.json()).then(releases=>{

@@ -21,64 +21,93 @@ function makeActions(overrides?: Partial<UpdateActions>): UpdateActions {
   }
 }
 
+function makeAvailableStatus(overrides?: Partial<Extract<UpdateStatus, { state: 'available' }>>): UpdateStatus {
+  return {
+    state: 'available',
+    version: '2026.4.16',
+    displayVersion: '2026.4.16',
+    notes: undefined,
+    ...overrides,
+  }
+}
+
+function makeDownloadingStatus(overrides?: Partial<Extract<UpdateStatus, { state: 'downloading' }>>): UpdateStatus {
+  return {
+    state: 'downloading',
+    version: '2026.4.16-alpha.3',
+    displayVersion: 'Alpha 2026.4.16.3',
+    progress: 0.65,
+    ...overrides,
+  }
+}
+
+function makeReadyStatus(overrides?: Partial<Extract<UpdateStatus, { state: 'ready' }>>): UpdateStatus {
+  return {
+    state: 'ready',
+    version: '2026.4.16',
+    displayVersion: '2026.4.16',
+    ...overrides,
+  }
+}
+
+function renderBanner(status: UpdateStatus, actions = makeActions()) {
+  const view = render(<UpdateBanner status={status} actions={actions} />)
+  return { ...view, actions }
+}
+
 describe('UpdateBanner', () => {
   it('renders nothing when idle', () => {
     const status: UpdateStatus = { state: 'idle' }
-    const { container } = render(<UpdateBanner status={status} actions={makeActions()} />)
+    const { container } = renderBanner(status)
     expect(container.innerHTML).toBe('')
   })
 
   it('renders nothing on error state', () => {
     const status: UpdateStatus = { state: 'error' }
-    const { container } = render(<UpdateBanner status={status} actions={makeActions()} />)
+    const { container } = renderBanner(status)
     expect(container.innerHTML).toBe('')
   })
 
   it('shows version and action buttons when update is available', () => {
-    const status: UpdateStatus = { state: 'available', version: '1.5.0', notes: 'Bug fixes' }
-    const actions = makeActions()
-    render(<UpdateBanner status={status} actions={actions} />)
+    renderBanner(makeAvailableStatus({
+      version: '2026.4.16-alpha.3',
+      displayVersion: 'Alpha 2026.4.16.3',
+      notes: 'Bug fixes',
+    }))
 
     expect(screen.getByTestId('update-banner')).toBeTruthy()
-    expect(screen.getByText(/Tolaria 1\.5\.0/)).toBeTruthy()
-    expect(screen.getByText('is available')).toBeTruthy()
+    expect(screen.getByText(/Tolaria Alpha 2026\.4\.16\.3/)).toBeTruthy()
+    expect(screen.getByText(/is available/)).toBeTruthy()
     expect(screen.getByTestId('update-now-btn')).toBeTruthy()
     expect(screen.getByTestId('update-release-notes')).toBeTruthy()
     expect(screen.getByTestId('update-dismiss')).toBeTruthy()
   })
 
   it('"Update Now" calls startDownload', () => {
-    const status: UpdateStatus = { state: 'available', version: '1.5.0', notes: undefined }
-    const actions = makeActions()
-    render(<UpdateBanner status={status} actions={actions} />)
+    const { actions } = renderBanner(makeAvailableStatus())
 
     fireEvent.click(screen.getByTestId('update-now-btn'))
     expect(actions.startDownload).toHaveBeenCalledOnce()
   })
 
   it('"Release Notes" link calls openReleaseNotes', () => {
-    const status: UpdateStatus = { state: 'available', version: '1.5.0', notes: undefined }
-    const actions = makeActions()
-    render(<UpdateBanner status={status} actions={actions} />)
+    const { actions } = renderBanner(makeAvailableStatus())
 
     fireEvent.click(screen.getByTestId('update-release-notes'))
     expect(actions.openReleaseNotes).toHaveBeenCalledOnce()
   })
 
   it('dismiss button calls dismiss action', () => {
-    const status: UpdateStatus = { state: 'available', version: '1.5.0', notes: undefined }
-    const actions = makeActions()
-    render(<UpdateBanner status={status} actions={actions} />)
+    const { actions } = renderBanner(makeAvailableStatus())
 
     fireEvent.click(screen.getByTestId('update-dismiss'))
     expect(actions.dismiss).toHaveBeenCalledOnce()
   })
 
   it('shows progress bar during download', () => {
-    const status: UpdateStatus = { state: 'downloading', version: '1.5.0', progress: 0.65 }
-    render(<UpdateBanner status={status} actions={makeActions()} />)
+    renderBanner(makeDownloadingStatus())
 
-    expect(screen.getByText(/Downloading Tolaria 1\.5\.0/)).toBeTruthy()
+    expect(screen.getByText(/Downloading Tolaria Alpha 2026\.4\.16\.3/)).toBeTruthy()
     expect(screen.getByText('65%')).toBeTruthy()
 
     const progressBar = screen.getByTestId('update-progress')
@@ -86,8 +115,11 @@ describe('UpdateBanner', () => {
   })
 
   it('shows 0% at start of download', () => {
-    const status: UpdateStatus = { state: 'downloading', version: '2.0.0', progress: 0 }
-    render(<UpdateBanner status={status} actions={makeActions()} />)
+    renderBanner(makeDownloadingStatus({
+      version: '2026.4.16',
+      displayVersion: '2026.4.16',
+      progress: 0,
+    }))
 
     expect(screen.getByText('0%')).toBeTruthy()
     const progressBar = screen.getByTestId('update-progress')
@@ -95,18 +127,16 @@ describe('UpdateBanner', () => {
   })
 
   it('shows restart button when update is ready', () => {
-    const status: UpdateStatus = { state: 'ready', version: '1.5.0' }
-    render(<UpdateBanner status={status} actions={makeActions()} />)
+    renderBanner(makeReadyStatus())
 
-    expect(screen.getByText(/Tolaria 1\.5\.0/)).toBeTruthy()
+    expect(screen.getByText(/Tolaria 2026\.4\.16/)).toBeTruthy()
     expect(screen.getByText(/restart to apply/)).toBeTruthy()
     expect(screen.getByTestId('update-restart-btn')).toBeTruthy()
   })
 
   it('restart button calls restartApp', async () => {
     const { restartApp } = await import('../hooks/useUpdater')
-    const status: UpdateStatus = { state: 'ready', version: '1.5.0' }
-    render(<UpdateBanner status={status} actions={makeActions()} />)
+    renderBanner(makeReadyStatus())
 
     fireEvent.click(screen.getByTestId('update-restart-btn'))
     expect(restartApp).toHaveBeenCalled()

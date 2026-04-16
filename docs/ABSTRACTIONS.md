@@ -621,12 +621,13 @@ Managed by `useSettings` hook and `SettingsPanel` component. `default_ai_agent` 
 
 ### Rust
 - **`src-tauri/src/app_updater.rs`** — Chooses the correct update endpoint (`alpha/latest.json` or `stable/latest.json`) and adapts Tauri updater results into frontend-friendly payloads.
+- **`src-tauri/src/commands/version.rs`** — Formats app build/version labels for the status bar, including calendar alpha labels and legacy release compatibility.
 
 ### Tauri Commands
 - **`check_for_app_update`** — Channel-aware update manifest lookup.
 - **`download_and_install_app_update`** — Channel-aware download/install with streamed progress events.
 
 ### CI/CD
-- **`.github/workflows/release.yml`** — Alpha prereleases from every push to `main`. Publishes `alpha/latest.json` and refreshes the legacy `latest.json` / `latest-canary.json` aliases to the alpha feed.
-- **`.github/workflows/release-stable.yml`** — Stable releases from `stable-v*` tags. Publishes `stable/latest.json`.
+- **`.github/workflows/release.yml`** — Alpha prereleases from every push to `main` using calendar-semver technical versions (`YYYY.M.D-alpha.N`) and clean `Alpha YYYY.M.D.N` release names. Publishes `alpha/latest.json` and refreshes the legacy `latest.json` / `latest-canary.json` aliases to the alpha feed.
+- **`.github/workflows/release-stable.yml`** — Stable releases from `stable-vYYYY.M.D` tags. Publishes `stable/latest.json`.
 - **Beta cohorts** are handled in PostHog targeting only. There is no beta updater feed.

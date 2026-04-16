@@ -22,15 +22,32 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.ver.outputs.version }}
+      display_version: ${{ steps.ver.outputs.display_version }}
       tag: ${{ steps.ver.outputs.tag }}
     steps:
       - id: ver
         shell: bash
         run: |
-          VERSION="${GITHUB_REF_NAME#stable-v}"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "tag=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
-          echo "### Stable version: \`$VERSION\`" >> "$GITHUB_STEP_SUMMARY"
+          python3 <<'PY' > version.env
+          import os
+          import re
+          from datetime import date
+
+          tag = os.environ["GITHUB_REF_NAME"]
+          version = tag.removeprefix("stable-v")
+          match = re.fullmatch(r"(\d{4})\.(\d{1,2})\.(\d{1,2})", version)
+          if not match:
+              raise SystemExit(f"Stable tags must use stable-vYYYY.M.D, got {tag}")
+
+          date(*map(int, match.groups()))
+          print(f"version={version}")
+          print(f"display_version={version}")
+          print(f"tag={tag}")
+          PY
+
+          cat version.env >> "$GITHUB_OUTPUT"
+          DISPLAY_VERSION=$(grep '^display_version=' version.env | cut -d= -f2-)
+          echo "### Stable version: \`$DISPLAY_VERSION\`" >> "$GITHUB_STEP_SUMMARY"
 
   # ─────────────────────────────────────────────────────────────
   # Phase 2: Build each architecture in parallel
@@ -211,7 +228,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ needs.version.outputs.tag }}
-          name: Tolaria ${{ needs.version.outputs.version }}
+          name: Tolaria ${{ needs.version.outputs.display_version }}
           body_path: release_notes.md
           draft: false
           prerelease: false
@@ -275,7 +292,7 @@ jobs:
           </head>
           <body>
             <h1>Tolaria Release History</h1>
-            <p class="subtitle">Alpha builds update on every push to main. Stable builds appear when a stable-vX.Y.Z tag is promoted.</p>
+            <p class="subtitle">Alpha builds update on every push to main. Stable builds appear when a stable-vYYYY.M.D tag is promoted.</p>
             <div id="releases"></div>
             <script>
               fetch('releases.json').then(r=>r.json()).then(releases=>{
