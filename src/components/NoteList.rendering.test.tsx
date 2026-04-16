@@ -26,6 +26,50 @@ function makeBookTypeEntries(
   ]
 }
 
+const noop = () => undefined
+
+function searchNoteList(query: string) {
+  const searchInput = screen.queryByPlaceholderText('Search notes...')
+  if (!searchInput) fireEvent.click(screen.getByTitle('Search notes'))
+  fireEvent.change(screen.getByPlaceholderText('Search notes...'), { target: { value: query } })
+}
+
+function renderBookNoteList({
+  displayProps = ['Priority'],
+  entryOverrides = {},
+  selection = allSelection,
+  allNotesNoteListProperties,
+  onUpdateAllNotesNoteListProperties = noop,
+  inboxNoteListProperties,
+  onUpdateInboxNoteListProperties = noop,
+}: {
+  displayProps?: string[]
+  entryOverrides?: Parameters<typeof makeEntry>[0]
+  selection?: Parameters<typeof renderNoteList>[0]['selection']
+  allNotesNoteListProperties?: string[] | null
+  onUpdateAllNotesNoteListProperties?: () => void
+  inboxNoteListProperties?: string[] | null
+  onUpdateInboxNoteListProperties?: () => void
+} = {}) {
+  return renderNoteList({
+    entries: makeBookTypeEntries(displayProps, entryOverrides),
+    selection,
+    allNotesNoteListProperties,
+    onUpdateAllNotesNoteListProperties,
+    inboxNoteListProperties,
+    onUpdateInboxNoteListProperties,
+  })
+}
+
+function expectOnlySearchMatch(title: string, matchingQuery: string, hiddenQuery: string) {
+  searchNoteList(matchingQuery)
+  expect(screen.getByText(title)).toBeInTheDocument()
+
+  searchNoteList(hiddenQuery)
+  expect(screen.queryByText(title)).not.toBeInTheDocument()
+  expect(screen.getByText('No matching notes')).toBeInTheDocument()
+}
+
 describe('NoteList rendering', () => {
   it('shows an empty state when there are no entries', () => {
     renderNoteList({ entries: [] })
@@ -93,10 +137,47 @@ describe('NoteList rendering', () => {
 
   it('filters by a case-insensitive search query', () => {
     renderNoteList()
-    fireEvent.click(screen.getByTitle('Search notes'))
-    fireEvent.change(screen.getByPlaceholderText('Search notes...'), { target: { value: 'facebook' } })
+    searchNoteList('facebook')
     expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
     expect(screen.queryByText('Build Laputa App')).not.toBeInTheDocument()
+  })
+
+  it('filters by snippet text when the title does not match', () => {
+    renderNoteList({
+      entries: [
+        makeEntry({ path: '/vault/a.md', filename: 'a.md', title: 'Alpha Note', snippet: 'Routine body copy.' }),
+        makeEntry({ path: '/vault/b.md', filename: 'b.md', title: 'Beta Note', snippet: 'Nebula-only snippet token.' }),
+      ],
+    })
+
+    searchNoteList('nebula-only')
+
+    expect(screen.getByText('Beta Note')).toBeInTheDocument()
+    expect(screen.queryByText('Alpha Note')).not.toBeInTheDocument()
+  })
+
+  it('filters by visible property values and ignores hidden properties', () => {
+    renderBookNoteList({
+      entryOverrides: {
+        title: 'Property Search Note',
+        properties: { Priority: 'Boarding Window', Owner: 'Hidden Owner Value' },
+      },
+      allNotesNoteListProperties: null,
+    })
+
+    expectOnlySearchMatch('Property Search Note', 'boarding window', 'hidden owner value')
+  })
+
+  it('uses the active all-notes columns when filtering by visible property values', () => {
+    renderBookNoteList({
+      entryOverrides: {
+        title: 'Override Search Note',
+        properties: { Priority: 'Hidden Priority', Owner: 'Visible Owner Value' },
+      },
+      allNotesNoteListProperties: ['Owner'],
+    })
+
+    expectOnlySearchMatch('Override Search Note', 'visible owner value', 'hidden priority')
   })
 
   it('sorts entries by last modified descending by default', () => {
@@ -124,11 +205,10 @@ describe('NoteList rendering', () => {
   })
 
   it('uses breadcrumbs-like button styling for note-list header actions', () => {
-    renderNoteList({
-      entries: makeBookTypeEntries(['Priority'], { properties: { Priority: 'High' } }),
+    renderBookNoteList({
+      entryOverrides: { properties: { Priority: 'High' } },
       selection: { kind: 'filter', filter: 'inbox' },
       inboxNoteListProperties: null,
-      onUpdateInboxNoteListProperties: () => undefined,
     })
 
     const buttons = [
@@ -184,11 +264,10 @@ describe('NoteList rendering', () => {
   })
 
   it('shows the inbox customize-columns action and falls back to type-defined chips', () => {
-    renderNoteList({
-      entries: makeBookTypeEntries(['Priority'], { properties: { Priority: 'High', Owner: 'Luca' } }),
+    renderBookNoteList({
+      entryOverrides: { properties: { Priority: 'High', Owner: 'Luca' } },
       selection: { kind: 'filter', filter: 'inbox' },
       inboxNoteListProperties: null,
-      onUpdateInboxNoteListProperties: () => undefined,
     })
 
     expect(screen.getByTitle('Customize Inbox columns')).toBeInTheDocument()
@@ -197,11 +276,9 @@ describe('NoteList rendering', () => {
   })
 
   it('shows the all-notes customize-columns action and falls back to type-defined chips', () => {
-    renderNoteList({
-      entries: makeBookTypeEntries(['Priority'], { properties: { Priority: 'High', Owner: 'Luca' } }),
-      selection: allSelection,
+    renderBookNoteList({
+      entryOverrides: { properties: { Priority: 'High', Owner: 'Luca' } },
       allNotesNoteListProperties: null,
-      onUpdateAllNotesNoteListProperties: () => undefined,
     })
 
     expect(screen.getByTitle('Customize All Notes columns')).toBeInTheDocument()

@@ -1,0 +1,185 @@
+import type { ComponentType, CSSProperties, SVGAttributes } from 'react'
+import type { VaultEntry } from '../../types'
+import { detectPropertyType } from '../../utils/propertyTypes'
+import { getMappedStatusStyle } from '../../utils/statusStyles'
+import { getTypeColor, getTypeLightColor } from '../../utils/typeColors'
+import { isUrlValue, normalizeUrl } from '../../utils/url'
+import { resolveEntry, wikilinkDisplay, wikilinkTarget } from '../../utils/wikilink'
+import { getTypeIcon } from './typeIcon'
+
+export interface PropertyChipValue {
+  label: string
+  noteIcon: string | null
+  typeIcon: ComponentType<SVGAttributes<SVGSVGElement>> | null
+  style?: CSSProperties
+  action?: { kind: 'note'; entry: VaultEntry } | { kind: 'url'; url: string }
+  tone: 'neutral' | 'relationship' | 'status' | 'url'
+}
+
+const URL_CHIP_STYLE: CSSProperties = {
+  backgroundColor: 'var(--accent-blue-light)',
+  color: 'var(--accent-blue)',
+}
+
+type ChipScalarValue = string | number | boolean | null
+
+function normalizeOpenableUrl(value: string): string | null {
+  if (!isUrlValue(value)) return null
+  const normalized = normalizeUrl(value)
+  try {
+    const url = new URL(normalized)
+    return url.protocol === 'http:' || url.protocol === 'https:' ? url.toString() : null
+  } catch {
+    return null
+  }
+}
+
+function formatChipLabel(value: unknown): string | null {
+  if (value === null || value === undefined || value === '') return null
+  const raw = String(value)
+  const openableUrl = normalizeOpenableUrl(raw)
+  if (openableUrl) return new URL(openableUrl).hostname
+  return raw.length > 40 ? `${raw.slice(0, 37)}…` : raw
+}
+
+function resolveTargetTypeEntry(targetEntry: VaultEntry, typeEntryMap: Record<string, VaultEntry>): VaultEntry | undefined {
+  return targetEntry.isA ? (typeEntryMap[targetEntry.isA] ?? typeEntryMap[targetEntry.isA.toLowerCase()]) : undefined
+}
+
+function findMatchingKey(values: Record<string, unknown>, propName: string): string | undefined {
+  return Object.keys(values).find((key) => key.toLowerCase() === propName.toLowerCase())
+}
+
+function resolveRelationshipChipStyle(targetEntry: VaultEntry, typeEntryMap: Record<string, VaultEntry>): CSSProperties | undefined {
+  const typeEntry = resolveTargetTypeEntry(targetEntry, typeEntryMap)
+  const color = getTypeColor(targetEntry.isA, typeEntry?.color)
+  const backgroundColor = getTypeLightColor(targetEntry.isA, typeEntry?.color)
+  if (color === 'var(--muted-foreground)' && backgroundColor === 'var(--muted)') return undefined
+  return { color, backgroundColor }
+}
+
+function resolveRelationshipChip(
+  ref: string,
+  allEntries: VaultEntry[],
+  typeEntryMap: Record<string, VaultEntry>,
+): PropertyChipValue | null {
+  const targetEntry = resolveEntry(allEntries, wikilinkTarget(ref))
+  const displayLabel = wikilinkDisplay(ref)
+  const label = ref.includes('|') ? displayLabel : (targetEntry?.title ?? displayLabel)
+  if (!label) return null
+  if (!targetEntry) {
+    return {
+      label,
+      noteIcon: null,
+      typeIcon: null,
+      tone: 'neutral',
+    }
+  }
+
+  const typeEntry = resolveTargetTypeEntry(targetEntry, typeEntryMap)
+  return {
+    label,
+    noteIcon: targetEntry.icon ?? null,
+    typeIcon: targetEntry.isA ? getTypeIcon(targetEntry.isA, typeEntry?.icon) : null,
+    style: resolveRelationshipChipStyle(targetEntry, typeEntryMap),
+    action: { kind: 'note', entry: targetEntry },
+    tone: 'relationship',
+  }
+}
+
+function resolveScalarChip(value: unknown): PropertyChipValue | null {
+  const label = formatChipLabel(value)
+  if (!label) return null
+
+  const openableUrl = typeof value === 'string' ? normalizeOpenableUrl(value) : null
+  if (openableUrl) {
+    return {
+      label,
+      noteIcon: null,
+      typeIcon: null,
+      style: URL_CHIP_STYLE,
+      action: { kind: 'url', url: openableUrl },
+      tone: 'url',
+    }
+  }
+
+  return {
+    label,
+    noteIcon: null,
+    typeIcon: null,
+    tone: 'neutral',
+  }
+}
+
+function resolveStatusChip(value: ChipScalarValue): PropertyChipValue | null {
+  const label = formatChipLabel(value)
+  if (!label) return null
+
+  const status = String(value)
+  const style = getMappedStatusStyle(status)
+  return {
+    label: `• ${label}`,
+    noteIcon: null,
+    typeIcon: null,
+    style: style ? { backgroundColor: style.bg, color: style.color } : undefined,
+    tone: 'status',
+  }
+}
+
+function resolvePropertyValueChip(propName: string, value: ChipScalarValue | undefined): PropertyChipValue | null {
+  if (value === undefined) return null
+  if (detectPropertyType(propName, value) !== 'status') return resolveScalarChip(value)
+  return resolveStatusChip(value)
+}
+
+function resolveRelationshipChipValues(
+  entry: VaultEntry,
+  propName: string,
+  allEntries: VaultEntry[],
+  typeEntryMap: Record<string, VaultEntry>,
+): PropertyChipValue[] | null {
+  const relationshipKey = findMatchingKey(entry.relationships, propName)
+  if (!relationshipKey) return null
+  return entry.relationships[relationshipKey]
+    .map((ref) => resolveRelationshipChip(ref, allEntries, typeEntryMap))
+    .filter((chip): chip is PropertyChipValue => chip !== null)
+}
+
+function resolveScalarChipValues(entry: VaultEntry, propName: string): PropertyChipValue[] {
+  const propertyKey = findMatchingKey(entry.properties, propName)
+  if (!propertyKey) return []
+
+  const rawValue = entry.properties[propertyKey]
+  const values = Array.isArray(rawValue) ? rawValue : [rawValue]
+  return values
+    .map((value) => resolvePropertyValueChip(propertyKey, value))
+    .filter((chip): chip is PropertyChipValue => chip !== null)
+}
+
+export function resolvePropertyChipValues(
+  entry: VaultEntry,
+  propName: string,
+  allEntries: VaultEntry[],
+  typeEntryMap: Record<string, VaultEntry>,
+): PropertyChipValue[] {
+  if (propName.toLowerCase() === 'status') {
+    const statusChip = resolvePropertyValueChip(propName, entry.status)
+    return statusChip ? [statusChip] : []
+  }
+
+  return resolveRelationshipChipValues(entry, propName, allEntries, typeEntryMap) ?? resolveScalarChipValues(entry, propName)
+}
+
+export function resolvePropertyChipLabels(
+  entry: VaultEntry,
+  displayProps: string[],
+  allEntries: VaultEntry[],
+  typeEntryMap: Record<string, VaultEntry>,
+): string[] {
+  const labels: string[] = []
+  for (const propName of displayProps) {
+    const values = resolvePropertyChipValues(entry, propName, allEntries, typeEntryMap)
+    for (const value of values) labels.push(value.label)
+  }
+  return labels
+}

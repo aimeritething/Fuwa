@@ -12,6 +12,7 @@ import { countByFilter, countAllByFilter } from '../../utils/noteListHelpers'
 import { NoteItem } from '../NoteItem'
 import type { MultiSelectState } from '../../hooks/useMultiSelect'
 import { resolveHeaderTitle, type DeletedNoteEntry } from './noteListUtils'
+import { filterEntriesByNoteListQuery, filterGroupsByNoteListQuery } from './noteListSearch'
 import {
   useChangeStatusResolver,
   useListPropertyPicker,
@@ -145,10 +146,15 @@ function useNoteListContent({
     onUpdateInboxNoteListProperties,
     onUpdateTypeSort,
   })
-  const { isEntityView, isArchivedView, searched, searchedGroups } = useNoteListData({
+  const {
+    isEntityView,
+    isArchivedView,
+    searched: sortedEntries,
+    searchedGroups: sortedGroups,
+  } = useNoteListData({
     entries,
     selection,
-    query,
+    query: '',
     listSort,
     listDirection,
     modifiedPathSet,
@@ -158,6 +164,16 @@ function useNoteListContent({
     inboxPeriod: effectiveInboxPeriod,
     views,
   })
+  const searched = useMemo(() => filterEntriesByNoteListQuery(sortedEntries, query, {
+    allEntries: entries,
+    typeEntryMap,
+    displayPropsOverride,
+  }), [displayPropsOverride, entries, query, sortedEntries, typeEntryMap])
+  const searchedGroups = useMemo(() => filterGroupsByNoteListQuery(sortedGroups, query, {
+    allEntries: entries,
+    typeEntryMap,
+    displayPropsOverride,
+  }), [displayPropsOverride, entries, query, sortedGroups, typeEntryMap])
   useVisibleNotesSync({ visibleNotesRef, isEntityView, searched, searchedGroups })
 
   return {
