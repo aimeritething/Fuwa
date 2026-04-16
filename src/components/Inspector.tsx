@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react'
+import { useMemo } from 'react'
 import type { VaultEntry, GitCommit } from '../types'
 import { cn } from '@/lib/utils'
 import { Separator } from './ui/separator'
@@ -14,6 +14,7 @@ import {
 } from './InspectorPanels'
 import { EmptyInspector, InitializePropertiesPrompt, InspectorHeader, InvalidFrontmatterNotice } from './inspector/InspectorChrome'
 import { useBacklinks, useReferencedBy } from './inspector/useInspectorData'
+import { useInspectorPropertyActions } from './inspector/useInspectorPropertyActions'
 
 export type FrontmatterValue = string | number | boolean | string[] | null
 
@@ -30,9 +31,134 @@ interface InspectorProps {
   onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
   onDeleteProperty?: (path: string, key: string) => Promise<void>
   onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
+  onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
   onInitializeProperties?: (path: string) => void
   onToggleRawEditor?: () => void
+}
+
+function buildTypeEntryMap(entries: VaultEntry[]): Record<string, VaultEntry> {
+  const map: Record<string, VaultEntry> = {}
+  for (const candidate of entries) {
+    if (candidate.isA === 'Type') map[candidate.title] = candidate
+  }
+  return map
+}
+
+function ValidFrontmatterPanels({
+  entry,
+  entries,
+  frontmatter,
+  typeEntryMap,
+  vaultPath,
+  referencedBy,
+  onNavigate,
+  onCreateAndOpenNote,
+  onUpdateProperty,
+  onDeleteProperty,
+  onAddProperty,
+  onCreateMissingType,
+}: {
+  entry: VaultEntry
+  entries: VaultEntry[]
+  frontmatter: ReturnType<typeof parseFrontmatter>
+  typeEntryMap: Record<string, VaultEntry>
+  vaultPath?: string
+  referencedBy: VaultEntry[]
+  onNavigate: (target: string) => void
+  onCreateAndOpenNote?: (title: string) => Promise<boolean>
+  onUpdateProperty?: (key: string, value: FrontmatterValue) => void
+  onDeleteProperty?: (key: string) => void
+  onAddProperty?: (key: string, value: FrontmatterValue) => void
+  onCreateMissingType?: (typeName: string) => Promise<void>
+}) {
+  return (
+    <>
+      <DynamicPropertiesPanel
+        entry={entry}
+        frontmatter={frontmatter}
+        entries={entries}
+        onUpdateProperty={onUpdateProperty}
+        onDeleteProperty={onDeleteProperty}
+        onAddProperty={onAddProperty}
+        onNavigate={onNavigate}
+        onCreateMissingType={onCreateMissingType}
+      />
+      <Separator data-testid="inspector-properties-relationships-separator" />
+      <DynamicRelationshipsPanel
+        frontmatter={frontmatter}
+        entries={entries}
+        typeEntryMap={typeEntryMap}
+        vaultPath={vaultPath}
+        onNavigate={onNavigate}
+        onAddProperty={onAddProperty}
+        onUpdateProperty={onUpdateProperty}
+        onDeleteProperty={onDeleteProperty}
+        onCreateAndOpenNote={onCreateAndOpenNote}
+      />
+      <InstancesPanel entry={entry} entries={entries} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+      <ReferencedByPanel items={referencedBy} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
+    </>
+  )
+}
+
+function PrimaryInspectorPanel({
+  entry,
+  frontmatterState,
+  frontmatter,
+  entries,
+  typeEntryMap,
+  vaultPath,
+  referencedBy,
+  onNavigate,
+  onToggleRawEditor,
+  onInitializeProperties,
+  onCreateAndOpenNote,
+  onUpdateProperty,
+  onDeleteProperty,
+  onAddProperty,
+  onCreateMissingType,
+}: {
+  entry: VaultEntry
+  frontmatterState: ReturnType<typeof detectFrontmatterState>
+  frontmatter: ReturnType<typeof parseFrontmatter>
+  entries: VaultEntry[]
+  typeEntryMap: Record<string, VaultEntry>
+  vaultPath?: string
+  referencedBy: VaultEntry[]
+  onNavigate: (target: string) => void
+  onToggleRawEditor?: () => void
+  onInitializeProperties?: (path: string) => void
+  onCreateAndOpenNote?: (title: string) => Promise<boolean>
+  onUpdateProperty?: (key: string, value: FrontmatterValue) => void
+  onDeleteProperty?: (key: string) => void
+  onAddProperty?: (key: string, value: FrontmatterValue) => void
+  onCreateMissingType?: (typeName: string) => Promise<void>
+}) {
+  if (frontmatterState === 'valid') {
+    return (
+      <ValidFrontmatterPanels
+        entry={entry}
+        entries={entries}
+        frontmatter={frontmatter}
+        typeEntryMap={typeEntryMap}
+        vaultPath={vaultPath}
+        referencedBy={referencedBy}
+        onNavigate={onNavigate}
+        onCreateAndOpenNote={onCreateAndOpenNote}
+        onUpdateProperty={onUpdateProperty}
+        onDeleteProperty={onDeleteProperty}
+        onAddProperty={onAddProperty}
+        onCreateMissingType={onCreateMissingType}
+      />
+    )
+  }
+
+  if (frontmatterState === 'invalid') {
+    return onToggleRawEditor ? <InvalidFrontmatterNotice onFix={onToggleRawEditor} /> : null
+  }
+
+  return onInitializeProperties ? <InitializePropertiesPrompt onClick={() => onInitializeProperties(entry.path)} /> : null
 }
 
 export function Inspector({
@@ -48,6 +174,7 @@ export function Inspector({
   onUpdateFrontmatter,
   onDeleteProperty,
   onAddProperty,
+  onCreateMissingType,
   onCreateAndOpenNote,
   onInitializeProperties,
   onToggleRawEditor,
@@ -56,25 +183,19 @@ export function Inspector({
   const backlinks = useBacklinks(entry, entries, referencedBy)
   const frontmatter = useMemo(() => parseFrontmatter(content), [content])
   const frontmatterState = useMemo(() => detectFrontmatterState(content), [content])
-  const typeEntryMap = useMemo(() => {
-    const map: Record<string, VaultEntry> = {}
-    for (const candidate of entries) {
-      if (candidate.isA === 'Type') map[candidate.title] = candidate
-    }
-    return map
-  }, [entries])
-
-  const handleUpdateProperty = useCallback((key: string, value: FrontmatterValue) => {
-    if (entry && onUpdateFrontmatter) onUpdateFrontmatter(entry.path, key, value)
-  }, [entry, onUpdateFrontmatter])
-
-  const handleDeleteProperty = useCallback((key: string) => {
-    if (entry && onDeleteProperty) onDeleteProperty(entry.path, key)
-  }, [entry, onDeleteProperty])
-
-  const handleAddProperty = useCallback((key: string, value: FrontmatterValue) => {
-    if (entry && onAddProperty) onAddProperty(entry.path, key, value)
-  }, [entry, onAddProperty])
+  const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
+  const {
+    handleUpdateProperty,
+    handleDeleteProperty,
+    handleAddProperty,
+    handleCreateMissingType,
+  } = useInspectorPropertyActions({
+    entry,
+    onUpdateFrontmatter,
+    onDeleteProperty,
+    onAddProperty,
+    onCreateMissingType,
+  })
 
   return (
     <aside className={cn('flex flex-1 flex-col overflow-hidden border-l border-border bg-background text-foreground transition-[width] duration-200', collapsed && '!w-10 !min-w-10')}>
@@ -83,37 +204,23 @@ export function Inspector({
         <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-3">
           {entry ? (
             <>
-              {frontmatterState === 'valid' ? (
-                <>
-                  <DynamicPropertiesPanel
-                    entry={entry}
-                    frontmatter={frontmatter}
-                    entries={entries}
-                    onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}
-                    onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
-                    onAddProperty={onAddProperty ? handleAddProperty : undefined}
-                    onNavigate={onNavigate}
-                  />
-                  <Separator data-testid="inspector-properties-relationships-separator" />
-                  <DynamicRelationshipsPanel
-                    frontmatter={frontmatter}
-                    entries={entries}
-                    typeEntryMap={typeEntryMap}
-                    vaultPath={vaultPath}
-                    onNavigate={onNavigate}
-                    onAddProperty={onAddProperty ? handleAddProperty : undefined}
-                    onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}
-                    onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
-                    onCreateAndOpenNote={onCreateAndOpenNote}
-                  />
-                  <InstancesPanel entry={entry} entries={entries} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
-                  <ReferencedByPanel items={referencedBy} typeEntryMap={typeEntryMap} onNavigate={onNavigate} />
-                </>
-              ) : frontmatterState === 'invalid' ? (
-                onToggleRawEditor && <InvalidFrontmatterNotice onFix={onToggleRawEditor} />
-              ) : (
-                onInitializeProperties && <InitializePropertiesPrompt onClick={() => onInitializeProperties(entry.path)} />
-              )}
+              <PrimaryInspectorPanel
+                entry={entry}
+                frontmatterState={frontmatterState}
+                frontmatter={frontmatter}
+                entries={entries}
+                typeEntryMap={typeEntryMap}
+                vaultPath={vaultPath}
+                referencedBy={referencedBy}
+                onNavigate={onNavigate}
+                onToggleRawEditor={onToggleRawEditor}
+                onInitializeProperties={onInitializeProperties}
+                onCreateAndOpenNote={onCreateAndOpenNote}
+                onUpdateProperty={onUpdateFrontmatter ? handleUpdateProperty : undefined}
+                onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
+                onAddProperty={onAddProperty ? handleAddProperty : undefined}
+                onCreateMissingType={onCreateMissingType ? handleCreateMissingType : undefined}
+              />
               {backlinks.length > 0 && <Separator />}
               <BacklinksPanel backlinks={backlinks} onNavigate={onNavigate} />
               <Separator />

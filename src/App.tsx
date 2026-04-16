@@ -29,6 +29,7 @@ import { useVaultLoader } from './hooks/useVaultLoader'
 import { useAiAgentPreferences } from './hooks/useAiAgentPreferences'
 import { useSettings } from './hooks/useSettings'
 import { useNoteActions } from './hooks/useNoteActions'
+import { slugify } from './hooks/useNoteCreation'
 import { useCommitFlow } from './hooks/useCommitFlow'
 import { useGitRemoteStatus } from './hooks/useGitRemoteStatus'
 import { useViewMode, type ViewMode } from './hooks/useViewMode'
@@ -718,7 +719,34 @@ function App() {
   const handleCreateType = useCallback((name: string) => {
     notes.handleCreateType(name)
     setToastMessage(`Type "${name}" created`)
-  }, [notes])
+  }, [notes, setToastMessage])
+
+  const handleCreateMissingType = useCallback(async (path: string, missingType: string, nextTypeName: string) => {
+    const trimmed = nextTypeName.trim()
+    if (!trimmed) return
+
+    const targetFilename = `${slugify(trimmed)}.md`
+    const exactType = vault.entries.find((entry) => entry.isA === 'Type' && entry.title === trimmed)
+    const slugMatch = vault.entries.find((entry) => entry.isA === 'Type' && slugify(entry.title) === slugify(trimmed))
+    const filenameCollision = vault.entries.find((entry) => entry.filename.toLowerCase() === targetFilename)
+    const resolvedTypeName = exactType?.title ?? slugMatch?.title ?? trimmed
+
+    if (filenameCollision && filenameCollision.isA !== 'Type') {
+      setToastMessage(`Cannot create type "${trimmed}" because ${targetFilename} already exists`)
+      throw new Error(`Type filename collision for ${targetFilename}`)
+    }
+
+    if (!exactType && !slugMatch) {
+      await notes.createTypeEntrySilent(trimmed)
+    }
+
+    await notes.handleUpdateFrontmatter(path, 'type', resolvedTypeName)
+    setToastMessage(
+      resolvedTypeName === missingType
+        ? `Type "${resolvedTypeName}" created`
+        : `Type set to "${resolvedTypeName}"`,
+    )
+  }, [notes, setToastMessage, vault.entries])
 
   const handleCreateOrUpdateView = useCallback(async (definition: import('./types').ViewDefinition) => {
     const editing = dialogs.editingView
@@ -1060,6 +1088,7 @@ function App() {
             onUpdateFrontmatter={notes.handleUpdateFrontmatter}
             onDeleteProperty={notes.handleDeleteProperty}
             onAddProperty={notes.handleAddProperty}
+            onCreateMissingType={handleCreateMissingType}
             onCreateAndOpenNote={notes.handleCreateNoteForRelationship}
             onInitializeProperties={handleInitializeProperties}
             showAIChat={dialogs.showAIChat}

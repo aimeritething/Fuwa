@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { CreateTypeDialog } from './CreateTypeDialog'
 
@@ -34,7 +34,16 @@ describe('CreateTypeDialog', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Recipe, Book, Habit...'), { target: { value: '  Recipe  ' } })
     fireEvent.click(screen.getByRole('button', { name: 'Create' }))
     expect(onCreate).toHaveBeenCalledWith('Recipe')
-    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('closes after create completes', async () => {
+    const onClose = vi.fn()
+    render(<CreateTypeDialog open={true} onClose={onClose} onCreate={() => Promise.resolve()} />)
+
+    fireEvent.change(screen.getByPlaceholderText('e.g. Recipe, Book, Habit...'), { target: { value: 'Recipe' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
   })
 
   it('calls onClose when Cancel is clicked', () => {
@@ -59,5 +68,11 @@ describe('CreateTypeDialog', () => {
     fireEvent.change(screen.getByPlaceholderText('e.g. Recipe, Book, Habit...'), { target: { value: '   ' } })
     fireEvent.submit(screen.getByPlaceholderText('e.g. Recipe, Book, Habit...').closest('form')!)
     expect(onCreate).not.toHaveBeenCalled()
+  })
+
+  it('prefills the name when initialName is provided', () => {
+    render(<CreateTypeDialog open={true} onClose={() => {}} onCreate={() => {}} initialName="Hotel" />)
+
+    expect(screen.getByDisplayValue('Hotel')).toBeInTheDocument()
   })
 })

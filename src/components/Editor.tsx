@@ -51,6 +51,7 @@ interface EditorProps {
   onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
   onDeleteProperty?: (path: string, key: string) => Promise<void>
   onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
+  onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
   onInitializeProperties?: (path: string) => void
   showAIChat?: boolean
@@ -229,7 +230,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     defaultAiAgent = DEFAULT_AI_AGENT, defaultAiAgentReady = true,
     onInspectorResize,
     inspectorEntry, inspectorContent, gitHistory,
-    onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateAndOpenNote, onInitializeProperties,
+    onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onInitializeProperties,
     showAIChat, onToggleAIChat,
     vaultPath, noteList, noteListFilter,
     onToggleFavorite, onToggleOrganized, onDeleteNote, onArchiveNote, onUnarchiveNote,
@@ -315,6 +316,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
           onUpdateFrontmatter={onUpdateFrontmatter}
           onDeleteProperty={onDeleteProperty}
           onAddProperty={onAddProperty}
+          onCreateMissingType={onCreateMissingType}
           onCreateAndOpenNote={onCreateAndOpenNote}
           onInitializeProperties={onInitializeProperties}
           onToggleRawEditor={handleToggleRawExclusive}

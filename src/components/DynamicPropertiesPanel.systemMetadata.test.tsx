@@ -1,8 +1,10 @@
+import type { ReactElement } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render as rtlRender, screen, waitFor } from '@testing-library/react'
 import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
 import { FOCUS_NOTE_ICON_PROPERTY_EVENT } from './noteIconPropertyEvents'
 import type { VaultEntry } from '../types'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 beforeAll(() => {
   global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -52,6 +54,10 @@ function hasSuggestedSlot(label: string): boolean {
   return screen
     .queryAllByTestId('suggested-property')
     .some((node) => node.textContent?.includes(label))
+}
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: TooltipProvider })
 }
 
 describe('DynamicPropertiesPanel system metadata', () => {

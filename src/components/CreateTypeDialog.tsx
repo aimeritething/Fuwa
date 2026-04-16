@@ -1,63 +1,77 @@
-import { useState, useRef, useEffect } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { useState } from 'react'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 
 interface CreateTypeDialogProps {
   open: boolean
   onClose: () => void
-  onCreate: (name: string) => void
+  onCreate: (name: string) => void | Promise<void>
+  initialName?: string
 }
 
-export function CreateTypeDialog({ open, onClose, onCreate }: CreateTypeDialogProps) {
-  const [name, setName] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
+interface CreateTypeDialogFormProps {
+  initialName: string
+  onClose: () => void
+  onCreate: (name: string) => void | Promise<void>
+}
 
-  useEffect(() => {
-    if (open) {
-      setName('') // eslint-disable-line react-hooks/set-state-in-effect -- reset on dialog open
-      setTimeout(() => inputRef.current?.focus(), 50)
-    }
-  }, [open])
+function CreateTypeDialogForm({ initialName, onClose, onCreate }: CreateTypeDialogFormProps) {
+  const [name, setName] = useState(initialName)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     const trimmed = name.trim()
     if (!trimmed) return
-    onCreate(trimmed)
+    await onCreate(trimmed)
     onClose()
   }
 
+  return (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground">
+          Type Name
+        </label>
+        <Input
+          autoFocus
+          placeholder="e.g. Recipe, Book, Habit..."
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          onFocus={(e) => e.currentTarget.select()}
+        />
+        <p className="text-xs text-muted-foreground">
+          Creates a type document. Its properties become defaults for new docs of this type.
+        </p>
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" onClick={onClose}>
+          Cancel
+        </Button>
+        <Button type="submit" disabled={!name.trim()}>
+          Create
+        </Button>
+      </DialogFooter>
+    </form>
+  )
+}
+
+export function CreateTypeDialog({ open, onClose, onCreate, initialName = '' }: CreateTypeDialogProps) {
   return (
     <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
       <DialogContent showCloseButton={false} className="sm:max-w-[380px]">
         <DialogHeader>
           <DialogTitle>Create New Type</DialogTitle>
+          <DialogDescription>
+            Create a type document so notes of this type can inherit templates and metadata.
+          </DialogDescription>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-1.5">
-            <label className="text-xs font-medium text-muted-foreground">
-              Type Name
-            </label>
-            <Input
-              ref={inputRef}
-              placeholder="e.g. Recipe, Book, Habit..."
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-            <p className="text-xs text-muted-foreground">
-              Creates a type document. Its properties become defaults for new docs of this type.
-            </p>
-          </div>
-          <DialogFooter>
-            <Button type="button" variant="outline" onClick={onClose}>
-              Cancel
-            </Button>
-            <Button type="submit" disabled={!name.trim()}>
-              Create
-            </Button>
-          </DialogFooter>
-        </form>
+        <CreateTypeDialogForm
+          key={initialName}
+          initialName={initialName}
+          onClose={onClose}
+          onCreate={onCreate}
+        />
       </DialogContent>
     </Dialog>
   )

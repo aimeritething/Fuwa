@@ -5,6 +5,7 @@ import { DynamicPropertiesPanel, containsWikilinks } from './DynamicPropertiesPa
 import type { VaultEntry } from '../types'
 import { bindVaultConfigStore, getVaultConfig, resetVaultConfigStore } from '../utils/vaultConfigStore'
 import { initDisplayModeOverrides } from '../utils/propertyTypes'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 // Radix Select needs ResizeObserver and pointer/scroll APIs in JSDOM
 beforeAll(() => {
@@ -57,12 +58,14 @@ const renderPanel = ({
   ...props
 }: RenderPanelOptions = {}) =>
   render(
-    <DynamicPropertiesPanel
-      entry={entry}
-      content={content}
-      frontmatter={frontmatter}
-      {...props}
-    />,
+    <TooltipProvider>
+      <DynamicPropertiesPanel
+        entry={entry}
+        content={content}
+        frontmatter={frontmatter}
+        {...props}
+      />
+    </TooltipProvider>,
   )
 
 describe('containsWikilinks', () => {
@@ -258,12 +261,14 @@ describe('DynamicPropertiesPanel', () => {
 
   it('handles navigating to type via click in read-only mode', () => {
     render(
-      <DynamicPropertiesPanel
-        entry={makeEntry({ isA: 'Project' })}
-        content=""
-        frontmatter={{}}
-        onNavigate={onNavigate}
-      />
+      <TooltipProvider>
+        <DynamicPropertiesPanel
+          entry={makeEntry({ isA: 'Project' })}
+          content=""
+          frontmatter={{}}
+          onNavigate={onNavigate}
+        />
+      </TooltipProvider>,
     )
     fireEvent.click(screen.getByText('Project'))
     expect(onNavigate).toHaveBeenCalledWith('project')
@@ -320,6 +325,41 @@ describe('DynamicPropertiesPanel', () => {
       })
       fireEvent.pointerDown(screen.getByRole('combobox'), { button: 0, pointerType: 'mouse' })
       expect(screen.getByRole('option', { name: 'CustomType' })).toBeInTheDocument()
+    })
+
+    it('shows a missing-type warning with keyboard-accessible help and creation flow', async () => {
+      const onCreateMissingType = vi.fn().mockResolvedValue(undefined)
+
+      renderPanel({
+        entry: makeEntry({ isA: 'Hotel' }),
+        entries: typeEntries,
+        onUpdateProperty,
+        onCreateMissingType,
+      })
+
+      const warningButton = screen.getByTestId('missing-type-warning')
+      expect(warningButton).toBeInTheDocument()
+
+      fireEvent.focus(warningButton)
+      await waitFor(() => {
+        expect(screen.getByRole('tooltip')).toHaveTextContent('There is no type file for this type')
+      })
+
+      fireEvent.click(warningButton)
+      expect(screen.getByDisplayValue('Hotel')).toBeInTheDocument()
+
+      fireEvent.click(screen.getByRole('button', { name: 'Create' }))
+      await waitFor(() => expect(onCreateMissingType).toHaveBeenCalledWith('Hotel'))
+    })
+
+    it('does not show a missing-type warning when the type already exists', () => {
+      renderPanel({
+        entry: makeEntry({ isA: 'Project' }),
+        entries: typeEntries,
+        onUpdateProperty,
+      })
+
+      expect(screen.queryByTestId('missing-type-warning')).not.toBeInTheDocument()
     })
 
     it('shows None placeholder when entry has no type', () => {

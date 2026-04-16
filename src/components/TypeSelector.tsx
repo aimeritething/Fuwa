@@ -1,12 +1,14 @@
-import { CaretUpDown, Check, StackSimple } from '@phosphor-icons/react'
-import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
+import { CaretUpDown, Check, StackSimple, WarningCircle } from '@phosphor-icons/react'
+import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import type { FrontmatterValue } from './Inspector'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverAnchor, PopoverContent } from '@/components/ui/popover'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { getTypeIcon } from './NoteItem'
+import { CreateTypeDialog } from './CreateTypeDialog'
 import { PROPERTY_CHIP_STYLE } from './propertyChipStyles'
 import {
   PROPERTY_PANEL_LABEL_CLASS_NAME,
@@ -17,6 +19,7 @@ import {
 const TYPE_NONE = '__none__'
 const MIN_POPOVER_WIDTH = 220
 const OPEN_COMBOBOX_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Enter', ' '])
+const MISSING_TYPE_TOOLTIP = 'There is no type file for this type'
 
 interface TypeSelectorItemProps {
   type: string
@@ -110,7 +113,87 @@ function TypeRowLabel() {
   )
 }
 
-function ReadOnlyType({ isA, customColorKey, onNavigate }: { isA?: string | null; customColorKey?: string | null; onNavigate?: (target: string) => void }) {
+function MissingTypeWarning({
+  missingTypeName,
+  onCreateMissingType,
+}: {
+  missingTypeName: string
+  onCreateMissingType?: (typeName: string) => void | Promise<void>
+}) {
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const canCreateMissingType = Boolean(onCreateMissingType)
+
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className={cn(
+              'h-auto shrink-0 gap-1 rounded-full border border-amber-300/70 px-2 py-1 text-[11px] font-medium text-amber-900 shadow-none hover:bg-amber-100',
+              !canCreateMissingType && 'cursor-default',
+            )}
+            data-testid="missing-type-warning"
+            aria-label={`Missing type ${missingTypeName}. ${MISSING_TYPE_TOOLTIP}`}
+            onClick={canCreateMissingType ? () => setDialogOpen(true) : undefined}
+          >
+            <WarningCircle size={14} aria-hidden="true" />
+            Missing type
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent>{MISSING_TYPE_TOOLTIP}</TooltipContent>
+      </Tooltip>
+      {canCreateMissingType && (
+        <CreateTypeDialog
+          open={dialogOpen}
+          onClose={() => setDialogOpen(false)}
+          onCreate={async (typeName) => {
+            await onCreateMissingType?.(typeName)
+          }}
+          initialName={missingTypeName}
+        />
+      )}
+    </>
+  )
+}
+
+function TypeRowValue({
+  children,
+  missingTypeName,
+  onCreateMissingType,
+}: {
+  children: ReactNode
+  missingTypeName?: string | null
+  onCreateMissingType?: (typeName: string) => void | Promise<void>
+}) {
+  return (
+    <div className="flex min-w-0 items-center justify-end gap-1">
+      <div className="min-w-0">{children}</div>
+      {missingTypeName && (
+        <MissingTypeWarning
+          missingTypeName={missingTypeName}
+          onCreateMissingType={onCreateMissingType}
+        />
+      )}
+    </div>
+  )
+}
+
+function ReadOnlyType({
+  isA,
+  customColorKey,
+  onNavigate,
+  missingTypeName,
+  onCreateMissingType,
+}: {
+  isA?: string | null
+  customColorKey?: string | null
+  onNavigate?: (target: string) => void
+  missingTypeName?: string | null
+  onCreateMissingType?: (typeName: string) => void | Promise<void>
+}) {
   if (!isA) return null
   return (
     <div
@@ -118,7 +201,7 @@ function ReadOnlyType({ isA, customColorKey, onNavigate }: { isA?: string | null
       style={PROPERTY_PANEL_ROW_STYLE}
     >
       <TypeRowLabel />
-      <div className="min-w-0">
+      <TypeRowValue missingTypeName={missingTypeName} onCreateMissingType={onCreateMissingType}>
         {onNavigate ? (
           <button
             className="min-w-0 max-w-full truncate border-none cursor-pointer ring-inset hover:ring-1 hover:ring-current"
@@ -134,7 +217,7 @@ function ReadOnlyType({ isA, customColorKey, onNavigate }: { isA?: string | null
         ) : (
           <span className="text-[12px] text-secondary-foreground">{isA}</span>
         )}
-      </div>
+      </TypeRowValue>
     </div>
   )
 }
@@ -147,15 +230,36 @@ interface TypeSelectorProps {
   typeIconKeys: Record<string, string | null>
   onUpdateProperty?: (key: string, value: FrontmatterValue) => void
   onNavigate?: (target: string) => void
+  missingTypeName?: string | null
+  onCreateMissingType?: (typeName: string) => void | Promise<void>
 }
 
 export function TypeSelector({ onUpdateProperty, ...props }: TypeSelectorProps) {
-  if (!onUpdateProperty) return <ReadOnlyType isA={props.isA} customColorKey={props.customColorKey} onNavigate={props.onNavigate} />
+  if (!onUpdateProperty) {
+    return (
+      <ReadOnlyType
+        isA={props.isA}
+        customColorKey={props.customColorKey}
+        onNavigate={props.onNavigate}
+        missingTypeName={props.missingTypeName}
+        onCreateMissingType={props.onCreateMissingType}
+      />
+    )
+  }
 
   return <EditableTypeSelector {...props} onUpdateProperty={onUpdateProperty} />
 }
 
-function EditableTypeSelector({ isA, customColorKey, availableTypes, typeColorKeys, typeIconKeys, onUpdateProperty }: Omit<TypeSelectorProps, 'onUpdateProperty'> & {
+function EditableTypeSelector({
+  isA,
+  customColorKey,
+  availableTypes,
+  typeColorKeys,
+  typeIconKeys,
+  missingTypeName,
+  onCreateMissingType,
+  onUpdateProperty,
+}: Omit<TypeSelectorProps, 'onUpdateProperty'> & {
   onUpdateProperty: (key: string, value: FrontmatterValue) => void
 }) {
   const currentValue = isA ?? TYPE_NONE
@@ -279,100 +383,102 @@ function EditableTypeSelector({ isA, customColorKey, availableTypes, typeColorKe
       data-testid="type-selector"
     >
       <TypeRowLabel />
-      <Popover open={open} onOpenChange={handleOpenChange}>
-        <PopoverAnchor asChild>
-          <div ref={rootRef} className="min-w-0">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              role="combobox"
-              aria-controls={listboxId}
-              aria-expanded={open}
-              aria-haspopup="listbox"
-              className={cn(
-                'h-auto max-w-full justify-between gap-1 border-none px-2 shadow-none ring-inset [&_svg]:text-current',
-                isA ? 'hover:ring-1 hover:ring-current' : 'bg-muted hover:bg-muted/80',
+      <TypeRowValue missingTypeName={missingTypeName} onCreateMissingType={onCreateMissingType}>
+        <Popover open={open} onOpenChange={handleOpenChange}>
+          <PopoverAnchor asChild>
+            <div ref={rootRef} className="min-w-0">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                role="combobox"
+                aria-controls={listboxId}
+                aria-expanded={open}
+                aria-haspopup="listbox"
+                className={cn(
+                  'h-auto max-w-full justify-between gap-1 border-none px-2 shadow-none ring-inset [&_svg]:text-current',
+                  isA ? 'hover:ring-1 hover:ring-current' : 'bg-muted hover:bg-muted/80',
+                )}
+                style={{
+                  ...PROPERTY_CHIP_STYLE,
+                  background: typeLightColor ?? undefined,
+                  color: typeColor ?? undefined,
+                }}
+                onPointerDown={handleTriggerPointerDown}
+                onKeyDown={handleTriggerKeyDown}
+              >
+                <span className="flex min-w-0 items-center gap-1 truncate">
+                  <TypeSelectorValue isA={isA} typeColorKeys={typeColorKeys} typeIconKeys={typeIconKeys} />
+                </span>
+                <CaretUpDown size={14} aria-hidden="true" />
+              </Button>
+            </div>
+          </PopoverAnchor>
+          <PopoverContent
+            align="start"
+            side="left"
+            sideOffset={4}
+            className="overflow-hidden p-1"
+            style={{ width: contentWidth }}
+            onOpenAutoFocus={(event) => event.preventDefault()}
+            onCloseAutoFocus={(event) => event.preventDefault()}
+          >
+            <div className="border-b border-border p-1">
+              <Input
+                ref={inputRef}
+                value={query}
+                placeholder="Search types..."
+                autoComplete="off"
+                aria-label="Search types"
+                className="h-8 text-sm"
+                data-testid="type-selector-search-input"
+                onChange={(event) => handleSearchChange(event.target.value)}
+                onKeyDown={handleSearchKeyDown}
+              />
+            </div>
+            <div ref={listRef} className="max-h-60 overflow-y-auto p-1">
+              {options.length === 0 ? (
+                <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                  No matching types
+                </div>
+              ) : (
+                <div id={listboxId} role="listbox">
+                  {options.map((type, index) => {
+                    const selected = type === currentValue
+                    const highlighted = index === highlightedIndex
+                    return (
+                      <Button
+                        key={type}
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        role="option"
+                        aria-selected={selected}
+                        data-index={index}
+                        className={cn(
+                          'h-auto w-full justify-between px-2 py-1.5 text-left font-normal',
+                          highlighted && 'bg-muted',
+                        )}
+                        onMouseEnter={() => setHighlightedIndex(index)}
+                        onClick={() => selectType(type)}
+                      >
+                        {type === TYPE_NONE ? (
+                          <span className="truncate text-muted-foreground">None</span>
+                        ) : (
+                          <span className="flex min-w-0 items-center gap-2 truncate">
+                            <TypeSelectorItem type={type} typeColorKeys={typeColorKeys} typeIconKeys={typeIconKeys} />
+                          </span>
+                        )}
+                        {selected ? <Check size={14} aria-hidden="true" /> : null}
+                      </Button>
+                    )
+                  })}
+                </div>
               )}
-              style={{
-                ...PROPERTY_CHIP_STYLE,
-                background: typeLightColor ?? undefined,
-                color: typeColor ?? undefined,
-              }}
-              onPointerDown={handleTriggerPointerDown}
-              onKeyDown={handleTriggerKeyDown}
-            >
-              <span className="flex min-w-0 items-center gap-1 truncate">
-                <TypeSelectorValue isA={isA} typeColorKeys={typeColorKeys} typeIconKeys={typeIconKeys} />
-              </span>
-              <CaretUpDown size={14} aria-hidden="true" />
-            </Button>
-          </div>
-        </PopoverAnchor>
-        <PopoverContent
-          align="start"
-          side="left"
-          sideOffset={4}
-          className="overflow-hidden p-1"
-          style={{ width: contentWidth }}
-          onOpenAutoFocus={(event) => event.preventDefault()}
-          onCloseAutoFocus={(event) => event.preventDefault()}
-        >
-          <div className="border-b border-border p-1">
-            <Input
-              ref={inputRef}
-              value={query}
-              placeholder="Search types..."
-              autoComplete="off"
-              aria-label="Search types"
-              className="h-8 text-sm"
-              data-testid="type-selector-search-input"
-              onChange={(event) => handleSearchChange(event.target.value)}
-              onKeyDown={handleSearchKeyDown}
-            />
-          </div>
-          <div ref={listRef} className="max-h-60 overflow-y-auto p-1">
-            {options.length === 0 ? (
-              <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                No matching types
-              </div>
-            ) : (
-              <div id={listboxId} role="listbox">
-                {options.map((type, index) => {
-                  const selected = type === currentValue
-                  const highlighted = index === highlightedIndex
-                  return (
-                    <Button
-                      key={type}
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      role="option"
-                      aria-selected={selected}
-                      data-index={index}
-                      className={cn(
-                        'h-auto w-full justify-between px-2 py-1.5 text-left font-normal',
-                        highlighted && 'bg-muted',
-                      )}
-                      onMouseEnter={() => setHighlightedIndex(index)}
-                      onClick={() => selectType(type)}
-                    >
-                      {type === TYPE_NONE ? (
-                        <span className="truncate text-muted-foreground">None</span>
-                      ) : (
-                        <span className="flex min-w-0 items-center gap-2 truncate">
-                          <TypeSelectorItem type={type} typeColorKeys={typeColorKeys} typeIconKeys={typeIconKeys} />
-                        </span>
-                      )}
-                      {selected ? <Check size={14} aria-hidden="true" /> : null}
-                    </Button>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        </PopoverContent>
-      </Popover>
+            </div>
+          </PopoverContent>
+        </Popover>
+      </TypeRowValue>
     </div>
   )
 }

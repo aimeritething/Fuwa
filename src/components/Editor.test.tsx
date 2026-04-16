@@ -1,5 +1,5 @@
-import { render, screen, fireEvent, act } from '@testing-library/react'
-import type { ComponentProps, PropsWithChildren } from 'react'
+import { render as rtlRender, screen, fireEvent, act } from '@testing-library/react'
+import type { ComponentProps, PropsWithChildren, ReactElement } from 'react'
 import { describe, it, expect, vi } from 'vitest'
 
 Object.defineProperty(window, 'matchMedia', {
@@ -93,8 +93,13 @@ import { Editor } from './Editor'
 import { applyPendingRawExitContent } from './editorRawModeSync'
 import type { VaultEntry } from '../types'
 import { bindVaultConfigStore, resetVaultConfigStore } from '../utils/vaultConfigStore'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 type EditorComponentProps = ComponentProps<typeof Editor>
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: TooltipProvider })
+}
 
 const mockEntry: VaultEntry = {
   path: '/vault/project/test.md',

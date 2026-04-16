@@ -1,8 +1,13 @@
-import type { ComponentProps } from 'react'
-import { render, screen, fireEvent } from '@testing-library/react'
+import type { ComponentProps, ReactElement } from 'react'
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { Inspector } from './Inspector'
 import type { VaultEntry, GitCommit } from '../types'
+import { TooltipProvider } from '@/components/ui/tooltip'
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: TooltipProvider })
+}
 
 const mockEntry: VaultEntry = {
   path: '/vault/project/test.md',

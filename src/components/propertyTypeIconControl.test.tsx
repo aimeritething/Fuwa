@@ -1,9 +1,11 @@
+import type { ReactElement } from 'react'
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, waitFor, within } from '@testing-library/react'
 import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
 import type { VaultEntry } from '../types'
 import { initDisplayModeOverrides } from '../utils/propertyTypes'
 import { bindVaultConfigStore, resetVaultConfigStore } from '../utils/vaultConfigStore'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 beforeAll(() => {
   global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -40,6 +42,10 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   outgoingLinks: [],
   ...overrides,
 })
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: TooltipProvider })
+}
 
 describe('property type icon control', () => {
   beforeEach(() => {

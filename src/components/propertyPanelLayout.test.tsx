@@ -1,8 +1,10 @@
+import type { ComponentProps } from 'react'
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
 import { DynamicRelationshipsPanel } from './InspectorPanels'
 import type { VaultEntry } from '../types'
+import { TooltipProvider } from '@/components/ui/tooltip'
 
 const entry: VaultEntry = {
   path: '/vault/note.md',
@@ -37,15 +39,21 @@ const entry: VaultEntry = {
   sidebarLabel: null,
 }
 
+function renderPropertiesPanel(props: ComponentProps<typeof DynamicPropertiesPanel>) {
+  return render(
+    <TooltipProvider>
+      <DynamicPropertiesPanel {...props} />
+    </TooltipProvider>,
+  )
+}
+
 describe('property panel shared grid layout', () => {
   it('uses a shared fit-content column grid with subgridded rows', () => {
-    render(
-      <DynamicPropertiesPanel
-        entry={entry}
-        frontmatter={{ VeryLongPropertyName: 'Value', Status: 'Active' }}
-        onUpdateProperty={vi.fn()}
-      />
-    )
+    renderPropertiesPanel({
+      entry,
+      frontmatter: { VeryLongPropertyName: 'Value', Status: 'Active' },
+      onUpdateProperty: vi.fn(),
+    })
 
     const typeRow = screen.getByTestId('type-selector')
     const layoutGrid = typeRow.parentElement
@@ -61,29 +69,17 @@ describe('property panel shared grid layout', () => {
     })
   })
 
-  it('keeps suggested property rows on the shared grid', () => {
-    render(
-      <DynamicPropertiesPanel
-        entry={entry}
-        frontmatter={{}}
-        onAddProperty={vi.fn()}
-      />
-    )
+  it('keeps suggested and add-property rows on the shared grid', () => {
+    renderPropertiesPanel({
+      entry,
+      frontmatter: {},
+      onAddProperty: vi.fn(),
+    })
 
     screen.getAllByTestId('suggested-property').forEach((row) => {
       expect(row.style.gridTemplateColumns).toBe('subgrid')
       expect(row.style.gridColumn).toBe('1 / -1')
     })
-  })
-
-  it('keeps the add-property row on the shared grid', () => {
-    render(
-      <DynamicPropertiesPanel
-        entry={entry}
-        frontmatter={{}}
-        onAddProperty={vi.fn()}
-      />
-    )
 
     const row = screen.getByTestId('add-property-row')
     expect(row.style.gridTemplateColumns).toBe('subgrid')
@@ -91,14 +87,12 @@ describe('property panel shared grid layout', () => {
   })
 
   it('uses the same fixed icon slot size for type, suggested, and add-property rows', () => {
-    render(
-      <DynamicPropertiesPanel
-        entry={entry}
-        frontmatter={{}}
-        onAddProperty={vi.fn()}
-        onUpdateProperty={vi.fn()}
-      />
-    )
+    renderPropertiesPanel({
+      entry,
+      frontmatter: {},
+      onAddProperty: vi.fn(),
+      onUpdateProperty: vi.fn(),
+    })
 
     expect(screen.getByTestId('type-row-icon-slot')).toHaveClass('size-5')
     screen.getAllByTestId('suggested-property-icon-slot').forEach((slot) => {
@@ -108,38 +102,32 @@ describe('property panel shared grid layout', () => {
   })
 
   it('renders suggested-property labels in lighter placeholder text', () => {
-    render(
-      <DynamicPropertiesPanel
-        entry={entry}
-        frontmatter={{}}
-        onAddProperty={vi.fn()}
-      />
-    )
+    renderPropertiesPanel({
+      entry,
+      frontmatter: {},
+      onAddProperty: vi.fn(),
+    })
 
     expect(screen.getByText('Status').parentElement).toHaveClass('text-muted-foreground/40')
     expect(screen.getByText('Date').parentElement).toHaveClass('text-muted-foreground/40')
   })
 
   it('renders the add-property row in lighter placeholder text', () => {
-    render(
-      <DynamicPropertiesPanel
-        entry={entry}
-        frontmatter={{}}
-        onAddProperty={vi.fn()}
-      />
-    )
+    renderPropertiesPanel({
+      entry,
+      frontmatter: {},
+      onAddProperty: vi.fn(),
+    })
 
     expect(screen.getByText('Add property').parentElement).toHaveClass('text-muted-foreground/40')
   })
 
   it('renders plain text values flush with the shared value column', () => {
-    render(
-      <DynamicPropertiesPanel
-        entry={entry}
-        frontmatter={{ Owner: 'Luca' }}
-        onUpdateProperty={vi.fn()}
-      />
-    )
+    renderPropertiesPanel({
+      entry,
+      frontmatter: { Owner: 'Luca' },
+      onUpdateProperty: vi.fn(),
+    })
 
     expect(screen.getByText('Luca').parentElement).toHaveClass('px-0')
   })

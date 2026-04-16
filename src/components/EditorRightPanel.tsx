@@ -24,6 +24,7 @@ interface EditorRightPanelProps {
   onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
   onDeleteProperty?: (path: string, key: string) => Promise<void>
   onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
+  onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
   onInitializeProperties?: (path: string) => void
   onToggleRawEditor?: () => void
@@ -39,7 +40,7 @@ export function EditorRightPanel({
   inspectorEntry, inspectorContent, entries, gitHistory, vaultPath,
   noteList, noteListFilter,
   onToggleInspector, onToggleAIChat, onNavigateWikilink, onViewCommitDiff,
-  onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateAndOpenNote, onInitializeProperties, onToggleRawEditor, onOpenNote,
+  onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onInitializeProperties, onToggleRawEditor, onOpenNote,
   onFileCreated, onFileModified, onVaultChanged,
 }: EditorRightPanelProps) {
   if (showAIChat) {
@@ -87,6 +88,7 @@ export function EditorRightPanel({
         onUpdateFrontmatter={onUpdateFrontmatter}
         onDeleteProperty={onDeleteProperty}
         onAddProperty={onAddProperty}
+        onCreateMissingType={onCreateMissingType}
         onCreateAndOpenNote={onCreateAndOpenNote}
         onInitializeProperties={onInitializeProperties}
         onToggleRawEditor={onToggleRawEditor}

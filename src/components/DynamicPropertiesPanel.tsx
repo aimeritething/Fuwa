@@ -111,6 +111,12 @@ function getSuggestedDisplayMode(key: string): PropertyDisplayMode {
   return SUGGESTED_PROPERTY_MODES[key] ?? 'text'
 }
 
+function resolveMissingTypeName(entryIsA: string | null | undefined, availableTypes: string[]): string | null {
+  const trimmed = entryIsA?.trim()
+  if (!trimmed) return null
+  return availableTypes.includes(trimmed) ? null : trimmed
+}
+
 function SuggestedPropertySlot({ label, displayMode, onAdd }: {
   label: string
   displayMode: PropertyDisplayMode
@@ -223,7 +229,7 @@ function useSuggestedPropertyActions({
 
 export function DynamicPropertiesPanel({
   entry, frontmatter, entries,
-  onUpdateProperty, onDeleteProperty, onAddProperty, onNavigate,
+  onUpdateProperty, onDeleteProperty, onAddProperty, onNavigate, onCreateMissingType,
 }: {
   entry: VaultEntry
   content?: string | null
@@ -233,6 +239,7 @@ export function DynamicPropertiesPanel({
   onDeleteProperty?: (key: string) => void
   onAddProperty?: (key: string, value: FrontmatterValue) => void
   onNavigate?: (target: string) => void
+  onCreateMissingType?: (typeName: string) => void | Promise<void>
 }) {
   const {
     editingKey, setEditingKey, showAddDialog, setShowAddDialog, displayOverrides,
@@ -240,6 +247,7 @@ export function DynamicPropertiesPanel({
     handleSaveValue, handleSaveList, handleAdd, handleDisplayModeChange,
   } = usePropertyPanelState({ entries, entryIsA: entry.isA, frontmatter, onUpdateProperty, onDeleteProperty, onAddProperty })
   const [pendingSuggestedKey, setPendingSuggestedKey] = useState<string | null>(null)
+  const missingTypeName = useMemo(() => resolveMissingTypeName(entry.isA, availableTypes), [entry.isA, availableTypes])
 
   const existingKeys = useMemo(() => getExistingPropertyKeys(propertyEntries, frontmatter), [propertyEntries, frontmatter])
   const missingSuggested = useMemo(
@@ -261,7 +269,17 @@ export function DynamicPropertiesPanel({
   return (
     <div className="flex flex-col gap-3">
       <div className="grid min-w-0 gap-x-2 gap-y-1.5" style={PROPERTY_PANEL_GRID_STYLE}>
-        <TypeSelector isA={entry.isA} customColorKey={customColorKey} availableTypes={availableTypes} typeColorKeys={typeColorKeys} typeIconKeys={typeIconKeys} onUpdateProperty={onUpdateProperty} onNavigate={onNavigate} />
+        <TypeSelector
+          isA={entry.isA}
+          customColorKey={customColorKey}
+          availableTypes={availableTypes}
+          typeColorKeys={typeColorKeys}
+          typeIconKeys={typeIconKeys}
+          onUpdateProperty={onUpdateProperty}
+          onNavigate={onNavigate}
+          missingTypeName={missingTypeName}
+          onCreateMissingType={onCreateMissingType}
+        />
         {propertyEntries.map(([key, value]) => (
           <PropertyRow
             key={key} propKey={key} value={value}
