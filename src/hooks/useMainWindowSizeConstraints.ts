@@ -2,6 +2,10 @@ import { useEffect } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 
 const MAIN_WINDOW_MIN_HEIGHT = 400
+const EDITOR_ONLY_MAIN_WINDOW_MIN_WIDTH = 480
+const MAIN_WINDOW_SIDEBAR_MIN_WIDTH = 180
+const MAIN_WINDOW_NOTE_LIST_MIN_WIDTH = 220
+const MAIN_WINDOW_INSPECTOR_MIN_WIDTH = 240
 
 export type MainWindowPaneVisibility = {
   sidebarVisible: boolean
@@ -14,11 +18,11 @@ export function getMainWindowMinWidth({
   noteListVisible,
   inspectorCollapsed,
 }: MainWindowPaneVisibility): number {
-  let minWidth = 800
+  let minWidth = EDITOR_ONLY_MAIN_WINDOW_MIN_WIDTH
 
-  if (sidebarVisible) minWidth += 180
-  if (noteListVisible) minWidth += 220
-  if (!inspectorCollapsed) minWidth += 240
+  if (sidebarVisible) minWidth += MAIN_WINDOW_SIDEBAR_MIN_WIDTH
+  if (noteListVisible) minWidth += MAIN_WINDOW_NOTE_LIST_MIN_WIDTH
+  if (!inspectorCollapsed) minWidth += MAIN_WINDOW_INSPECTOR_MIN_WIDTH
 
   return minWidth
 }

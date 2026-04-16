@@ -17,22 +17,22 @@ vi.mock('@tauri-apps/api/core', () => ({
 describe('getMainWindowMinWidth', () => {
   const minWidthCases = [
     {
-      name: 'keeps the current 1200px floor when all primary panes are visible',
+      name: 'keeps pane allowances when all primary panes are visible',
       visibility: {
         sidebarVisible: true,
         noteListVisible: true,
         inspectorCollapsed: true,
       },
-      expectedWidth: 1200,
+      expectedWidth: 880,
     },
     {
-      name: 'drops to the note-window width when only the editor is visible',
+      name: 'drops to the narrower editor-only floor when only the editor is visible',
       visibility: {
         sidebarVisible: false,
         noteListVisible: false,
         inspectorCollapsed: true,
       },
-      expectedWidth: 800,
+      expectedWidth: 480,
     },
     {
       name: 'accounts for the note list without the sidebar',
@@ -41,7 +41,7 @@ describe('getMainWindowMinWidth', () => {
         noteListVisible: true,
         inspectorCollapsed: true,
       },
-      expectedWidth: 1020,
+      expectedWidth: 700,
     },
     {
       name: 'adds inspector width when the properties panel is open',
@@ -50,7 +50,7 @@ describe('getMainWindowMinWidth', () => {
         noteListVisible: false,
         inspectorCollapsed: false,
       },
-      expectedWidth: 1040,
+      expectedWidth: 720,
     },
   ] as const
 
@@ -73,7 +73,7 @@ describe('useMainWindowSizeConstraints', () => {
         noteListVisible: false,
         inspectorCollapsed: true,
       },
-      expectedWidth: 800,
+      expectedWidth: 480,
     },
     {
       name: 'updates the requested minimum when more panes become visible',
@@ -82,7 +82,7 @@ describe('useMainWindowSizeConstraints', () => {
         noteListVisible: true,
         inspectorCollapsed: false,
       },
-      expectedWidth: 1440,
+      expectedWidth: 1120,
     },
   ] as const
 

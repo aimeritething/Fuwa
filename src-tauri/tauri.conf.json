@@ -16,7 +16,7 @@
         "title": "Tolaria",
         "width": 1400,
         "height": 900,
-        "minWidth": 800,
+        "minWidth": 480,
         "minHeight": 400,
         "resizable": true,
         "fullscreen": false,
