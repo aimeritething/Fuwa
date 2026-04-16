@@ -222,6 +222,26 @@ describe('PulseView', () => {
     expect(screen.queryByText('my project')).not.toBeInTheDocument()
   })
 
+  it('uses a full-width surface for hover, focus, and expanded commit rows', async () => {
+    mockInvokeFn.mockResolvedValue(mockCommits)
+
+    render(<PulseView vaultPath="/test/vault" />)
+
+    const commitRow = await screen.findByRole('button', { name: /Update project notes/i })
+    const hasExpandedBackground = (className: string) => /(^|\s)bg-accent\/40(\s|$)/.test(className)
+
+    expect(commitRow.className).toContain('-mx-4')
+    expect(commitRow.className).toContain('px-4')
+    expect(commitRow.className).toContain('rounded-none')
+    expect(commitRow.className).toContain('hover:bg-accent/40')
+    expect(commitRow.className).toContain('focus-visible:bg-accent/40')
+    expect(hasExpandedBackground(commitRow.className)).toBe(false)
+
+    fireEvent.click(commitRow)
+
+    expect(hasExpandedBackground(commitRow.className)).toBe(true)
+  })
+
   it('supports keyboard activation for commit rows and file rows', async () => {
     mockInvokeFn.mockResolvedValue(mockCommits)
     const onOpenNote = vi.fn()

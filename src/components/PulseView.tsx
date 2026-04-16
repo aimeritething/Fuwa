@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, memo, type KeyboardEvent } from 'react'
 import { invoke } from '@tauri-apps/api/core'
+import { cn } from '@/lib/utils'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import { useDragRegion } from '../hooks/useDragRegion'
 import type { PulseCommit, PulseFile } from '../types'
@@ -64,6 +65,9 @@ const STATUS_COLOR = {
   deleted: 'var(--destructive, #dc2626)',
 } as const
 
+const PULSE_ROW_FOCUS_CLASS_NAME = 'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/70 focus-visible:ring-inset'
+const PULSE_EDGE_TO_EDGE_ROW_CLASS_NAME = '-mx-4 rounded-none px-4'
+
 function SummaryBadges({ added, modified, deleted }: { added: number; modified: number; deleted: number }) {
   return (
     <div className="flex items-center" style={{ gap: 8 }}>
@@ -98,7 +102,10 @@ function FileItem({
   return (
     <button
       type="button"
-      className="flex w-full items-center rounded text-left transition-colors hover:bg-accent disabled:cursor-default disabled:hover:bg-transparent"
+      className={cn(
+        'flex w-full items-center rounded text-left transition-colors hover:bg-accent focus-visible:bg-accent disabled:cursor-default disabled:hover:bg-transparent',
+        PULSE_ROW_FOCUS_CLASS_NAME,
+      )}
       style={{ gap: 6, padding: '3px 8px' }}
       onClick={handleOpen}
       onKeyDown={(event) => handleActivationKey(event, handleOpen)}
@@ -129,7 +136,12 @@ function CommitCard({
   return (
     <div className="border-b border-border px-4 py-2">
       <div
-        className="flex cursor-pointer items-start justify-between rounded-md px-0 py-2 transition-colors hover:bg-accent/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        className={cn(
+          'flex cursor-pointer items-start justify-between py-2 transition-colors focus-visible:bg-accent/40',
+          PULSE_ROW_FOCUS_CLASS_NAME,
+          PULSE_EDGE_TO_EDGE_ROW_CLASS_NAME,
+          expanded ? 'bg-accent/40' : 'hover:bg-accent/40',
+        )}
         style={{ gap: 8 }}
         role="button"
         tabIndex={0}
@@ -208,7 +220,10 @@ function DayGroup({ label, commits, onOpenNote }: {
   return (
     <div>
       <div
-        className="flex cursor-pointer select-none items-center border-b border-border bg-muted/50 transition-colors hover:bg-muted"
+        className={cn(
+          'flex cursor-pointer select-none items-center border-b border-border bg-muted/50 transition-colors hover:bg-muted focus-visible:bg-muted',
+          PULSE_ROW_FOCUS_CLASS_NAME,
+        )}
         style={{ padding: '6px 16px', gap: 6 }}
         role="button"
         tabIndex={0}
