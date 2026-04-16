@@ -21,17 +21,22 @@ pub(crate) struct Frontmatter {
     pub archived: Option<bool>,
     #[serde(rename = "Status", alias = "status", default)]
     pub status: Option<StringOrList>,
-    #[serde(default)]
+    #[serde(rename = "_icon", alias = "icon", default)]
     pub icon: Option<StringOrList>,
     #[serde(default)]
     pub color: Option<StringOrList>,
-    #[serde(default)]
+    #[serde(rename = "_order", alias = "order", default)]
     pub order: Option<i64>,
-    #[serde(rename = "sidebar label", default)]
+    #[serde(
+        rename = "_sidebar_label",
+        alias = "sidebar label",
+        alias = "sidebar_label",
+        default
+    )]
     pub sidebar_label: Option<StringOrList>,
     #[serde(default)]
     pub template: Option<StringOrList>,
-    #[serde(default)]
+    #[serde(rename = "_sort", alias = "sort", default)]
     pub sort: Option<StringOrList>,
     #[serde(default)]
     pub view: Option<StringOrList>,
@@ -147,28 +152,28 @@ impl StringOrList {
 ///
 /// This sanitizer converts objects back to "key: value" strings and removes nulls,
 /// preventing serde deserialization of the entire Frontmatter struct from failing.
+fn sanitize_array_item(item: &serde_json::Value) -> Option<serde_json::Value> {
+    match item {
+        serde_json::Value::Null => None,
+        serde_json::Value::Object(map) if !map.is_empty() => {
+            let parts: Vec<String> = map
+                .iter()
+                .map(|(k, v)| match v {
+                    serde_json::Value::String(s) => format!("{}: {}", k, s),
+                    _ => format!("{}: {}", k, v),
+                })
+                .collect();
+            Some(serde_json::Value::String(parts.join(", ")))
+        }
+        other => Some(other.clone()),
+    }
+}
+
 fn sanitize_value(value: &serde_json::Value) -> serde_json::Value {
     match value {
         serde_json::Value::Array(arr) => {
-            let sanitized: Vec<serde_json::Value> = arr
-                .iter()
-                .filter_map(|item| match item {
-                    // Drop nulls (from `# comment` in list items)
-                    serde_json::Value::Null => None,
-                    // Convert mis-parsed objects back to "key: value" strings
-                    serde_json::Value::Object(map) if !map.is_empty() => {
-                        let parts: Vec<String> = map
-                            .iter()
-                            .map(|(k, v)| match v {
-                                serde_json::Value::String(s) => format!("{}: {}", k, s),
-                                _ => format!("{}: {}", k, v),
-                            })
-                            .collect();
-                        Some(serde_json::Value::String(parts.join(", ")))
-                    }
-                    other => Some(other.clone()),
-                })
-                .collect();
+            let sanitized: Vec<serde_json::Value> =
+                arr.iter().filter_map(sanitize_array_item).collect();
             serde_json::Value::Array(sanitized)
         }
         other => other.clone(),
@@ -186,11 +191,16 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
         "_archived",
         "Archived",
         "archived",
+        "_icon",
         "icon",
         "color",
+        "_order",
         "order",
+        "_sidebar_label",
+        "sidebar_label",
         "sidebar label",
         "template",
+        "_sort",
         "sort",
         "view",
         "visible",
@@ -216,7 +226,7 @@ fn parse_frontmatter(data: &HashMap<String, serde_json::Value>) -> Frontmatter {
 /// Note: owner and cadence are NOT skipped — they should appear in generic properties.
 const SKIP_KEYS: &[&str] = &[
     "title",
-    "is a",
+    "is_a",
     "type",
     "aliases",
     "_archived",
@@ -224,7 +234,7 @@ const SKIP_KEYS: &[&str] = &[
     "icon",
     "color",
     "order",
-    "sidebar label",
+    "sidebar_label",
     "template",
     "sort",
     "view",
@@ -236,6 +246,15 @@ const SKIP_KEYS: &[&str] = &[
     "_list_properties_display",
 ];
 
+fn normalize_frontmatter_key(key: &str) -> String {
+    key.trim().to_ascii_lowercase().replace(' ', "_")
+}
+
+fn should_skip_frontmatter_key(key: &str) -> bool {
+    let normalized = normalize_frontmatter_key(key);
+    normalized.starts_with('_') || SKIP_KEYS.contains(&normalized.as_str())
+}
+
 /// Extract all wikilink-containing fields from raw YAML frontmatter.
 pub(crate) fn extract_relationships(
     data: &HashMap<String, serde_json::Value>,
@@ -243,7 +262,7 @@ pub(crate) fn extract_relationships(
     let mut relationships = HashMap::new();
 
     for (key, value) in data {
-        if SKIP_KEYS.iter().any(|k| k.eq_ignore_ascii_case(key)) {
+        if should_skip_frontmatter_key(key) {
             continue;
         }
 
@@ -278,8 +297,7 @@ pub(crate) fn extract_properties(
     let mut properties = HashMap::new();
 
     for (key, value) in data {
-        let lower = key.to_ascii_lowercase();
-        if SKIP_KEYS.iter().any(|k| k.eq_ignore_ascii_case(&lower)) {
+        if should_skip_frontmatter_key(key) {
             continue;
         }
 
@@ -360,8 +378,12 @@ fn parse_scalar(s: &str) -> serde_json::Value {
 
 /// Return the key from a top-level `key:` or `"key":` YAML line.
 /// Returns `None` for indented, blank, or non-key lines.
+fn is_top_level_yaml_line(line: &str) -> bool {
+    !line.is_empty() && !line.starts_with(' ') && !line.starts_with('\t')
+}
+
 fn extract_yaml_key(line: &str) -> Option<&str> {
-    if line.is_empty() || line.starts_with(' ') || line.starts_with('\t') {
+    if !is_top_level_yaml_line(line) {
         return None;
     }
     let (k, _) = line.split_once(':')?;

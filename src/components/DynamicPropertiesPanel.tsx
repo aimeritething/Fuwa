@@ -11,6 +11,7 @@ import type { PropertyDisplayMode } from '../utils/propertyTypes'
 import { FOCUS_NOTE_ICON_PROPERTY_EVENT } from './noteIconPropertyEvents'
 import { PROPERTY_PANEL_GRID_STYLE, PROPERTY_PANEL_ROW_STYLE } from './propertyPanelLayout'
 import { humanizePropertyKey } from '../utils/propertyLabels'
+import { canonicalSystemMetadataKey, hasSystemMetadataKey } from '../utils/systemMetadata'
 
 // eslint-disable-next-line react-refresh/only-export-components -- utility co-located with component
 export function containsWikilinks(value: FrontmatterValue): boolean {
@@ -107,6 +108,7 @@ function SuggestedPropertySlot({ label, onAdd }: { label: string; onAdd: () => v
 function getExistingPropertyKeys(propertyEntries: [string, FrontmatterValue][], frontmatter: ParsedFrontmatter): Set<string> {
   const keys = new Set(propertyEntries.map(([key]) => key.toLowerCase()))
   for (const key of Object.keys(frontmatter)) keys.add(key.toLowerCase())
+  if (hasSystemMetadataKey(keys, '_icon')) keys.add('icon')
   return keys
 }
 
@@ -118,34 +120,25 @@ function getMissingSuggestedProperties(canAddProperty: boolean, existingKeys: Se
   )
 }
 
-function getIconPropertyKey(propertyEntries: [string, FrontmatterValue][]) {
-  return propertyEntries.find(([key]) => key.toLowerCase() === 'icon')?.[0]
-}
-
 function useFocusNoteIconProperty({
   onAddProperty,
-  propertyEntries,
   setEditingKey,
+  setPendingSuggestedKey,
 }: {
   onAddProperty?: (key: string, value: FrontmatterValue) => void
-  propertyEntries: [string, FrontmatterValue][]
   setEditingKey: (key: string | null) => void
+  setPendingSuggestedKey: (key: string | null) => void
 }) {
   useEffect(() => {
     const handleFocusNoteIcon = () => {
-      const existingIconKey = getIconPropertyKey(propertyEntries)
-
-      if (!existingIconKey) {
-        if (!onAddProperty) return
-        onAddProperty('icon', '')
-      }
-
-      setEditingKey(existingIconKey ?? 'icon')
+      if (!onAddProperty) return
+      setPendingSuggestedKey('icon')
+      setEditingKey('icon')
     }
 
     window.addEventListener(FOCUS_NOTE_ICON_PROPERTY_EVENT, handleFocusNoteIcon)
     return () => window.removeEventListener(FOCUS_NOTE_ICON_PROPERTY_EVENT, handleFocusNoteIcon)
-  }, [onAddProperty, propertyEntries, setEditingKey])
+  }, [onAddProperty, setEditingKey, setPendingSuggestedKey])
 }
 
 export function DynamicPropertiesPanel({
@@ -195,10 +188,10 @@ export function DynamicPropertiesPanel({
     if (!trimmed) {
       return
     }
-    onAddProperty(key, trimmed)
+    onAddProperty(key === 'icon' ? canonicalSystemMetadataKey(key) : key, trimmed)
   }, [onAddProperty, setEditingKey])
 
-  useFocusNoteIconProperty({ onAddProperty, propertyEntries, setEditingKey })
+  useFocusNoteIconProperty({ onAddProperty, setEditingKey, setPendingSuggestedKey })
 
   return (
     <div className="flex flex-col gap-3">

@@ -27,6 +27,30 @@ fn is_value_continuation(line: &str) -> bool {
     line.is_empty() || line.starts_with("  ") || line.starts_with('\t')
 }
 
+fn normalize_system_key(key: &str) -> String {
+    key.trim().to_ascii_lowercase().replace(' ', "_")
+}
+
+fn canonical_system_key(key: &str) -> Option<&'static str> {
+    match normalize_system_key(key).as_str() {
+        "_icon" | "icon" => Some("_icon"),
+        "_order" | "order" => Some("_order"),
+        "_sidebar_label" | "sidebar_label" | "sidebar label" => Some("_sidebar_label"),
+        "_sort" | "sort" => Some("_sort"),
+        _ => None,
+    }
+}
+
+fn legacy_system_key_aliases(canonical: &str) -> &'static [&'static str] {
+    match canonical {
+        "_icon" => &["icon"],
+        "_order" => &["order"],
+        "_sidebar_label" => &["sidebar_label", "sidebar label"],
+        "_sort" => &["sort"],
+        _ => &[],
+    }
+}
+
 /// Split content into frontmatter body and the rest after the closing `---`.
 /// Returns `(fm_content, rest)` where `fm_content` is between the opening and closing `---`.
 fn split_frontmatter(content: &str) -> Result<(&str, &str), String> {
@@ -82,11 +106,10 @@ fn apply_field_update(lines: &[&str], key: &str, value: Option<&FrontmatterValue
     new_lines
 }
 
-/// Internal function to update frontmatter content
-pub fn update_frontmatter_content(
+fn update_frontmatter_content_raw(
     content: &str,
     key: &str,
-    value: Option<FrontmatterValue>,
+    value: Option<&FrontmatterValue>,
 ) -> Result<String, String> {
     if !content.starts_with("---\n") {
         return match value {
@@ -97,52 +120,90 @@ pub fn update_frontmatter_content(
 
     let (fm_content, rest) = split_frontmatter(content)?;
     let lines: Vec<&str> = fm_content.lines().collect();
-    let new_lines = apply_field_update(&lines, key, value.as_ref());
+    let new_lines = apply_field_update(&lines, key, value);
     let new_fm = new_lines.join("\n");
     Ok(format!("---\n{}\n---{}", new_fm, rest))
+}
+
+/// Internal function to update frontmatter content
+pub fn update_frontmatter_content(
+    content: &str,
+    key: &str,
+    value: Option<FrontmatterValue>,
+) -> Result<String, String> {
+    let Some(canonical) = canonical_system_key(key) else {
+        return update_frontmatter_content_raw(content, key, value.as_ref());
+    };
+
+    let mut updated = content.to_string();
+    for alias in legacy_system_key_aliases(canonical) {
+        updated = update_frontmatter_content_raw(&updated, alias, None)?;
+    }
+
+    update_frontmatter_content_raw(&updated, canonical, value.as_ref())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    struct UpdateExpectation<'a> {
+        content: &'a str,
+        key: &'a str,
+        value: Option<FrontmatterValue>,
+        expected_present: &'a [&'a str],
+        expected_absent: &'a [&'a str],
+    }
+
+    fn assert_updated_content(expectation: UpdateExpectation<'_>) {
+        let updated =
+            update_frontmatter_content(expectation.content, expectation.key, expectation.value)
+                .unwrap();
+        for expected in expectation.expected_present {
+            assert!(
+                updated.contains(expected),
+                "missing expected snippet: {expected}"
+            );
+        }
+        for unexpected in expectation.expected_absent {
+            assert!(
+                !updated.contains(unexpected),
+                "found unexpected snippet: {unexpected}"
+            );
+        }
+    }
+
     #[test]
     fn test_update_frontmatter_string() {
-        let content = "---\nStatus: Draft\n---\n# Test\n";
-        let updated = update_frontmatter_content(
-            content,
-            "Status",
-            Some(FrontmatterValue::String("Active".to_string())),
-        )
-        .unwrap();
-        assert!(updated.contains("Status: Active"));
-        assert!(!updated.contains("Status: Draft"));
+        assert_updated_content(UpdateExpectation {
+            content: "---\nStatus: Draft\n---\n# Test\n",
+            key: "Status",
+            value: Some(FrontmatterValue::String("Active".to_string())),
+            expected_present: &["Status: Active"],
+            expected_absent: &["Status: Draft"],
+        });
     }
 
     #[test]
     fn test_update_frontmatter_add_new_key() {
-        let content = "---\nStatus: Draft\n---\n# Test\n";
-        let updated = update_frontmatter_content(
-            content,
-            "Owner",
-            Some(FrontmatterValue::String("Luca".to_string())),
-        )
-        .unwrap();
-        assert!(updated.contains("Owner: Luca"));
-        assert!(updated.contains("Status: Draft"));
+        assert_updated_content(UpdateExpectation {
+            content: "---\nStatus: Draft\n---\n# Test\n",
+            key: "Owner",
+            value: Some(FrontmatterValue::String("Luca".to_string())),
+            expected_present: &["Owner: Luca", "Status: Draft"],
+            expected_absent: &[],
+        });
     }
 
     #[test]
     fn test_update_frontmatter_quoted_key() {
-        let content = "---\n\"Is A\": Note\n---\n# Test\n";
-        let updated = update_frontmatter_content(
-            content,
-            "Is A",
-            Some(FrontmatterValue::String("Project".to_string())),
-        )
-        .unwrap();
-        assert!(updated.contains("\"Is A\": Project"));
-        assert!(!updated.contains("Note"));
+        assert_updated_content(UpdateExpectation {
+            content: "---\n\"Is A\": Note\n---\n# Test\n",
+            key: "Is A",
+            value: Some(FrontmatterValue::String("Project".to_string())),
+            expected_present: &["\"Is A\": Project"],
+            expected_absent: &["\"Is A\": Note"],
+        });
     }
 
     #[test]
@@ -196,9 +257,8 @@ mod tests {
 
     #[test]
     fn test_update_frontmatter_no_existing() {
-        let content = "# Test\n\nSome content here.";
         let updated = update_frontmatter_content(
-            content,
+            "# Test\n\nSome content here.",
             "Status",
             Some(FrontmatterValue::String("Draft".to_string())),
         )
@@ -276,6 +336,39 @@ mod tests {
         let content = "# Test\n\nSome content.";
         let updated = update_frontmatter_content(content, "NonExistent", None).unwrap();
         assert_eq!(updated, content);
+    }
+
+    #[test]
+    fn test_update_frontmatter_rewrites_legacy_icon_key() {
+        assert_updated_content(UpdateExpectation {
+            content: "---\nicon: rocket\n---\n# Test\n",
+            key: "icon",
+            value: Some(FrontmatterValue::String("star".to_string())),
+            expected_present: &["_icon: star"],
+            expected_absent: &["\nicon:", "rocket"],
+        });
+    }
+
+    #[test]
+    fn test_update_frontmatter_rewrites_sidebar_label_aliases() {
+        assert_updated_content(UpdateExpectation {
+            content: "---\nsidebar label: Projects\nsidebar_label: Legacy\n---\n# Test\n",
+            key: "_sidebar_label",
+            value: Some(FrontmatterValue::String("Programs".to_string())),
+            expected_present: &["_sidebar_label: Programs"],
+            expected_absent: &["sidebar label: Projects", "sidebar_label: Legacy"],
+        });
+    }
+
+    #[test]
+    fn test_delete_frontmatter_removes_sort_aliases() {
+        assert_updated_content(UpdateExpectation {
+            content: "---\nsort: modified:desc\n_sort: title:asc\n---\n# Test\n",
+            key: "_sort",
+            value: None,
+            expected_present: &["# Test"],
+            expected_absent: &["\nsort:", "\n_sort:"],
+        });
     }
 
     #[test]

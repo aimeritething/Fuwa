@@ -454,5 +454,8 @@ pub fn scan_vault_folders(vault_path: &Path) -> Result<Vec<FolderNode>, String> 
 #[path = "relationship_key_tests.rs"]
 mod relationship_key_tests;
 #[cfg(test)]
+#[path = "system_metadata_tests.rs"]
+mod system_metadata_tests;
+#[cfg(test)]
 #[path = "mod_tests.rs"]
 mod tests;

@@ -9,6 +9,7 @@ import {
   removeDisplayModeOverride,
 } from '../utils/propertyTypes'
 import { containsWikilinks } from '../components/DynamicPropertiesPanel'
+import { isSystemMetadataKey } from '../utils/systemMetadata'
 
 // Keys to skip showing in Properties (handled by dedicated UI or internal)
 // Compared case-insensitively via isVisibleProperty()
@@ -68,19 +69,40 @@ function collectAllVaultTags(entries: VaultEntry[] | undefined): Record<string, 
   for (const entry of entries) {
     if (!entry.properties) continue
     for (const [key, value] of Object.entries(entry.properties)) {
-      if (!Array.isArray(value)) continue
-      let set = tagsByKey.get(key)
-      if (!set) { set = new Set(); tagsByKey.set(key, set) }
-      for (const tag of value) set.add(String(tag))
+      addTagValues(tagsByKey, key, value)
     }
   }
-  const result: Record<string, string[]> = {}
-  for (const [key, set] of tagsByKey) result[key] = Array.from(set).sort((a, b) => a.localeCompare(b))
-  return result
+  return toSortedTagRecord(tagsByKey)
 }
 
 function isVisibleProperty([key, value]: [string, FrontmatterValue]): boolean {
-  return !SKIP_KEYS.has(key.toLowerCase()) && !containsWikilinks(value)
+  return !isHiddenPropertyKey(key) && !containsWikilinks(value)
+}
+
+function addTagValues(tagsByKey: Map<string, Set<string>>, key: string, value: unknown) {
+  if (!Array.isArray(value)) return
+
+  let set = tagsByKey.get(key)
+  if (!set) {
+    set = new Set()
+    tagsByKey.set(key, set)
+  }
+
+  for (const tag of value) {
+    set.add(String(tag))
+  }
+}
+
+function toSortedTagRecord(tagsByKey: Map<string, Set<string>>): Record<string, string[]> {
+  const result: Record<string, string[]> = {}
+  for (const [key, set] of tagsByKey) {
+    result[key] = Array.from(set).sort((a, b) => a.localeCompare(b))
+  }
+  return result
+}
+
+function isHiddenPropertyKey(key: string): boolean {
+  return SKIP_KEYS.has(key.toLowerCase()) || isSystemMetadataKey(key)
 }
 
 function parseAddedValue(rawValue: string, mode: PropertyDisplayMode): FrontmatterValue {
