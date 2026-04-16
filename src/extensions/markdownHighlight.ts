@@ -17,7 +17,6 @@ const markdownHighlightStyle = HighlightStyle.define([
   { tag: tags.link, color: '#0969da', textDecoration: 'underline' },
   { tag: tags.url, color: '#0969da' },
   { tag: tags.monospace, color: '#c9383e', backgroundColor: 'rgba(175,184,193,0.15)', borderRadius: '3px' },
-  { tag: tags.list, color: '#c9383e' },
   { tag: tags.quote, color: '#636c76', fontStyle: 'italic' },
   { tag: tags.separator, color: '#636c76' },
   { tag: tags.processingInstruction, color: '#c9383e', fontWeight: '600' },

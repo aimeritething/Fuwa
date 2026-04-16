@@ -29,6 +29,24 @@ function nodeNamesAt(view: EditorView, doc: string, needle: string) {
   return names
 }
 
+function findLines(parent: HTMLDivElement) {
+  return Array.from(parent.querySelectorAll<HTMLDivElement>('.cm-line'))
+}
+
+function expectMarkerOnlyHighlight(
+  line: HTMLDivElement | undefined,
+  expectedText: string,
+  expectedMarker: string,
+  expectedTrailingText: string,
+) {
+  expect(line).toBeDefined()
+  expect(line!.textContent).toBe(expectedText)
+  expect(Array.from(line!.querySelectorAll('span'), (span) => span.textContent)).toEqual([expectedMarker])
+  expect(line!.lastChild).not.toBeNull()
+  expect(line!.lastChild!.nodeType).toBe(Node.TEXT_NODE)
+  expect(line!.lastChild!.textContent).toBe(expectedTrailingText)
+}
+
 describe('markdownLanguage', () => {
   it('returns a valid extension', () => {
     const ext = markdownLanguage()
@@ -85,6 +103,28 @@ describe('markdownLanguage', () => {
     expect(nodeNamesAt(view, doc, '"Belongs to"')).toContain('Frontmatter')
     expect(nodeNamesAt(view, doc, '# Heading')).toContain('ATXHeading1')
     expect(nodeNamesAt(view, doc, '# Heading')).not.toContain('Frontmatter')
+
+    view.destroy()
+    parent.remove()
+  })
+
+  it('styles only list markers while leaving list item text as plain content', async () => {
+    const doc = [
+      '- item one',
+      '  - nested item',
+      '1. ordered item',
+    ].join('\n')
+    const { view, parent } = createView(doc)
+
+    forceParsing(view, view.state.doc.length)
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    const lines = findLines(parent)
+    expect(lines).toHaveLength(3)
+
+    expectMarkerOnlyHighlight(lines[0], '- item one', '-', ' item one')
+    expectMarkerOnlyHighlight(lines[1], '  - nested item', '-', ' nested item')
+    expectMarkerOnlyHighlight(lines[2], '1. ordered item', '1.', ' ordered item')
 
     view.destroy()
     parent.remove()
