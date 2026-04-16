@@ -25,6 +25,8 @@ import {
 } from './noteListHooks'
 import { useChangesContextMenu } from './NoteListChangesMenu'
 
+type EntitySelection = Extract<SidebarSelection, { kind: 'entity' }>
+
 function useViewFlags(selection: SidebarSelection) {
   const isSectionGroup = selection.kind === 'sectionGroup'
   const isFolderView = selection.kind === 'folder'
@@ -370,7 +372,7 @@ function buildNoteListLayoutModel(params: {
   content: ReturnType<typeof useNoteListContent>
   interaction: ReturnType<typeof useNoteListInteractionState> & {
     renderItem: (entry: VaultEntry) => React.ReactNode
-    entitySelection: SidebarSelection | null
+    entitySelection: EntitySelection | null
   }
 }) {
   return {
