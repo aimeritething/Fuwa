@@ -246,13 +246,18 @@ const SKIP_KEYS: &[&str] = &[
     "_list_properties_display",
 ];
 
-fn normalize_frontmatter_key(key: &str) -> String {
-    key.trim().to_ascii_lowercase().replace(' ', "_")
-}
+#[derive(Clone, Copy)]
+struct FrontmatterKey<'a>(&'a str);
 
-fn should_skip_frontmatter_key(key: &str) -> bool {
-    let normalized = normalize_frontmatter_key(key);
-    normalized.starts_with('_') || SKIP_KEYS.contains(&normalized.as_str())
+impl FrontmatterKey<'_> {
+    fn normalize(self) -> String {
+        self.0.trim().to_ascii_lowercase().replace(' ', "_")
+    }
+
+    fn should_skip(self) -> bool {
+        let normalized = self.normalize();
+        normalized.starts_with('_') || SKIP_KEYS.contains(&normalized.as_str())
+    }
 }
 
 /// Extract all wikilink-containing fields from raw YAML frontmatter.
@@ -262,15 +267,13 @@ pub(crate) fn extract_relationships(
     let mut relationships = HashMap::new();
 
     for (key, value) in data {
-        if should_skip_frontmatter_key(key) {
+        if FrontmatterKey(key).should_skip() {
             continue;
         }
 
         match value {
-            serde_json::Value::String(s) => {
-                if contains_wikilink(s) {
-                    relationships.insert(key.clone(), vec![s.clone()]);
-                }
+            serde_json::Value::String(s) if contains_wikilink(s) => {
+                relationships.insert(key.clone(), vec![s.clone()]);
             }
             serde_json::Value::Array(arr) => {
                 let wikilinks: Vec<String> = arr
@@ -297,15 +300,13 @@ pub(crate) fn extract_properties(
     let mut properties = HashMap::new();
 
     for (key, value) in data {
-        if should_skip_frontmatter_key(key) {
+        if FrontmatterKey(key).should_skip() {
             continue;
         }
 
         match value {
-            serde_json::Value::String(s) => {
-                if !contains_wikilink(s) {
-                    properties.insert(key.clone(), value.clone());
-                }
+            serde_json::Value::String(s) if !contains_wikilink(s) => {
+                properties.insert(key.clone(), value.clone());
             }
             serde_json::Value::Number(_) | serde_json::Value::Bool(_) => {
                 properties.insert(key.clone(), value.clone());
@@ -313,11 +314,9 @@ pub(crate) fn extract_properties(
             // Handle single-element arrays: unwrap to scalar.
             // This ensures YAML like "Owner: [Luca]" or "Owner:\n  - Luca" works correctly.
             serde_json::Value::Array(arr) => {
-                if arr.len() == 1 {
-                    if let Some(serde_json::Value::String(s)) = arr.first() {
-                        if !contains_wikilink(s) {
-                            properties.insert(key.clone(), serde_json::Value::String(s.clone()));
-                        }
+                if let [serde_json::Value::String(s)] = arr.as_slice() {
+                    if !contains_wikilink(s) {
+                        properties.insert(key.clone(), serde_json::Value::String(s.clone()));
                     }
                 }
             }
@@ -352,42 +351,117 @@ fn pod_to_json(pod: gray_matter::Pod) -> serde_json::Value {
     }
 }
 
-/// Strip matching outer quotes (single or double) from a YAML scalar.
-fn unquote(s: &str) -> &str {
-    s.strip_prefix('"')
-        .and_then(|rest| rest.strip_suffix('"'))
-        .or_else(|| {
-            s.strip_prefix('\'')
-                .and_then(|rest| rest.strip_suffix('\''))
-        })
-        .unwrap_or(s)
-}
+#[derive(Clone, Copy)]
+struct YamlScalar<'a>(&'a str);
 
-/// Parse a scalar YAML value into a JSON value.
-fn parse_scalar(s: &str) -> serde_json::Value {
-    let trimmed = unquote(s);
-    match trimmed.to_lowercase().as_str() {
-        "true" | "yes" => serde_json::Value::Bool(true),
-        "false" | "no" => serde_json::Value::Bool(false),
-        _ => trimmed
-            .parse::<i64>()
-            .map(|n| serde_json::json!(n))
-            .unwrap_or_else(|_| serde_json::Value::String(trimmed.to_string())),
+impl<'a> YamlScalar<'a> {
+    /// Strip matching outer quotes (single or double) from a YAML scalar.
+    fn unquote(self) -> &'a str {
+        self.0
+            .strip_prefix('"')
+            .and_then(|rest| rest.strip_suffix('"'))
+            .or_else(|| {
+                self.0
+                    .strip_prefix('\'')
+                    .and_then(|rest| rest.strip_suffix('\''))
+            })
+            .unwrap_or(self.0)
+    }
+
+    /// Parse a scalar YAML value into a JSON value.
+    fn parse(self) -> serde_json::Value {
+        let trimmed = self.unquote();
+        match trimmed.to_lowercase().as_str() {
+            "true" | "yes" => serde_json::Value::Bool(true),
+            "false" | "no" => serde_json::Value::Bool(false),
+            _ => trimmed
+                .parse::<i64>()
+                .map(|n| serde_json::json!(n))
+                .unwrap_or_else(|_| serde_json::Value::String(trimmed.to_string())),
+        }
     }
 }
 
-/// Return the key from a top-level `key:` or `"key":` YAML line.
-/// Returns `None` for indented, blank, or non-key lines.
-fn is_top_level_yaml_line(line: &str) -> bool {
-    !line.is_empty() && !line.starts_with(' ') && !line.starts_with('\t')
+#[derive(Clone, Copy)]
+struct YamlLine<'a>(&'a str);
+
+impl<'a> YamlLine<'a> {
+    fn is_top_level(self) -> bool {
+        if self.0.is_empty() {
+            return false;
+        }
+        if self.0.starts_with(' ') {
+            return false;
+        }
+        !self.0.starts_with('\t')
+    }
+
+    /// Return the key from a top-level `key:` or `"key":` YAML line.
+    /// Returns `None` for indented, blank, or non-key lines.
+    fn key(self) -> Option<&'a str> {
+        if !self.is_top_level() {
+            return None;
+        }
+        let (key, _) = self.0.split_once(':')?;
+        Some(key.trim().trim_matches('"'))
+    }
+
+    fn list_item(self) -> Option<&'a str> {
+        self.0.strip_prefix("  - ").map(str::trim)
+    }
+
+    fn value_part(self) -> Option<&'a str> {
+        self.0.split_once(':').map(|(_, value)| value.trim())
+    }
 }
 
-fn extract_yaml_key(line: &str) -> Option<&str> {
-    if !is_top_level_yaml_line(line) {
-        return None;
+#[derive(Clone, Copy)]
+struct RawFrontmatter<'a>(&'a str);
+
+impl<'a> RawFrontmatter<'a> {
+    fn extract_block(self) -> Option<&'a str> {
+        let rest = self.0.strip_prefix("---")?;
+        let rest = rest
+            .strip_prefix('\n')
+            .or_else(|| rest.strip_prefix("\r\n"))?;
+        let end = rest.find("\n---")?;
+        Some(&rest[..end])
     }
-    let (k, _) = line.split_once(':')?;
-    Some(k.trim().trim_matches('"'))
+
+    /// Fallback parser for when gray_matter fails to parse YAML (returns raw string).
+    /// Extracts simple `key: value` lines, handling booleans, numbers, quoted strings,
+    /// and YAML lists.
+    fn parse_fallback(self) -> HashMap<String, serde_json::Value> {
+        let mut map = HashMap::new();
+        let mut list_key: Option<String> = None;
+        let mut list_items: Vec<serde_json::Value> = Vec::new();
+
+        for line in self.0.lines() {
+            let yaml_line = YamlLine(line);
+
+            // Accumulate list items under the current key
+            if list_key.is_some() {
+                if let Some(item) = yaml_line.list_item() {
+                    list_items.push(YamlScalar(item).parse());
+                    continue;
+                }
+                flush_list(&mut map, &mut list_key, &mut list_items);
+            }
+
+            let Some(key) = yaml_line.key() else {
+                continue;
+            };
+            let value_part = yaml_line.value_part().unwrap_or("");
+            if value_part.is_empty() {
+                list_key = Some(key.to_string());
+            } else {
+                map.insert(key.to_string(), YamlScalar(value_part).parse());
+            }
+        }
+
+        flush_list(&mut map, &mut list_key, &mut list_items);
+        map
+    }
 }
 
 /// Flush a pending list accumulator into the map.
@@ -401,48 +475,6 @@ fn flush_list(
             map.insert(k, serde_json::Value::Array(std::mem::take(items)));
         }
     }
-}
-
-/// Fallback parser for when gray_matter fails to parse YAML (returns raw string).
-/// Extracts simple `key: value` lines, handling booleans, numbers, quoted strings,
-/// and YAML lists.
-fn fallback_parse_yaml_string(raw: &str) -> HashMap<String, serde_json::Value> {
-    let mut map = HashMap::new();
-    let mut list_key: Option<String> = None;
-    let mut list_items: Vec<serde_json::Value> = Vec::new();
-
-    for line in raw.lines() {
-        // Accumulate list items under the current key
-        if list_key.is_some() {
-            if let Some(item) = line.strip_prefix("  - ") {
-                list_items.push(parse_scalar(item.trim()));
-                continue;
-            }
-            flush_list(&mut map, &mut list_key, &mut list_items);
-        }
-
-        let Some(key) = extract_yaml_key(line) else {
-            continue;
-        };
-        let value_part = line.split_once(':').map(|(_, v)| v.trim()).unwrap_or("");
-        if value_part.is_empty() {
-            list_key = Some(key.to_string());
-        } else {
-            map.insert(key.to_string(), parse_scalar(value_part));
-        }
-    }
-    flush_list(&mut map, &mut list_key, &mut list_items);
-    map
-}
-
-/// Extract the raw YAML frontmatter string from between `---` delimiters.
-fn extract_raw_frontmatter(content: &str) -> Option<&str> {
-    let rest = content.strip_prefix("---")?;
-    let rest = rest
-        .strip_prefix('\n')
-        .or_else(|| rest.strip_prefix("\r\n"))?;
-    let end = rest.find("\n---")?;
-    Some(&rest[..end])
 }
 
 /// Extract frontmatter, relationships, and custom properties from parsed gray_matter data.
@@ -464,8 +496,8 @@ pub(crate) fn extract_fm_and_rels(
         _ => {
             // gray_matter returned Null, String, or None — YAML parse failed.
             // Fall back to line-by-line extraction from the raw frontmatter block.
-            match extract_raw_frontmatter(raw_content) {
-                Some(raw) => fallback_parse_yaml_string(raw),
+            match RawFrontmatter(raw_content).extract_block() {
+                Some(raw) => RawFrontmatter(raw).parse_fallback(),
                 None => return (Frontmatter::default(), HashMap::new(), HashMap::new()),
             }
         }

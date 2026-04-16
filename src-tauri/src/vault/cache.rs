@@ -274,7 +274,7 @@ fn prune_stale_entries(vault: &Path, entries: &mut Vec<VaultEntry>) -> bool {
 /// Sort entries by modified_at descending and write the cache.
 fn finalize_and_cache(vault: &Path, mut entries: Vec<VaultEntry>, hash: String) -> Vec<VaultEntry> {
     prune_stale_entries(vault, &mut entries);
-    entries.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+    entries.sort_by_key(|entry| std::cmp::Reverse(entry.modified_at));
     write_cache(
         vault,
         &VaultCache {

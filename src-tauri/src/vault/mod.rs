@@ -416,7 +416,7 @@ pub fn scan_vault(
     let mut entries = Vec::new();
     scan_all_files(vault_path, git_dates, &mut entries);
 
-    entries.sort_by(|a, b| b.modified_at.cmp(&a.modified_at));
+    entries.sort_by_key(|entry| std::cmp::Reverse(entry.modified_at));
     Ok(entries)
 }
 
@@ -453,7 +453,7 @@ pub fn scan_vault_folders(vault_path: &Path) -> Result<Vec<FolderNode>, String> 
                 children,
             });
         }
-        nodes.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
+        nodes.sort_by_key(|node| node.name.to_lowercase());
         nodes
     }
     Ok(build_tree(vault_path, vault_path))
