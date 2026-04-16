@@ -369,6 +369,15 @@ describe('StatusBar', () => {
     expect(onCommitPush).toHaveBeenCalledOnce()
   })
 
+  it('activates the Commit button with the keyboard', () => {
+    const onCommitPush = vi.fn()
+    render(<StatusBar noteCount={100} modifiedCount={5} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onCommitPush={onCommitPush} />)
+    const commitButton = screen.getByTestId('status-commit-push')
+    commitButton.focus()
+    fireEvent.keyDown(commitButton, { key: 'Enter' })
+    expect(onCommitPush).toHaveBeenCalledOnce()
+  })
+
   it('uses a local-only tooltip for the commit button when no remote is configured', () => {
     render(
       <StatusBar

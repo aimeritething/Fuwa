@@ -386,6 +386,12 @@ interface PulseCommit {
 - Converts `hasRemote: false` into a local-only commit path
 - Keeps the normal push path unchanged for vaults that do have a remote
 
+`useAutoGit` is the checkpoint-time companion to both hooks:
+- Consumes installation-local AutoGit settings (`autogit_enabled`, idle threshold, inactive threshold)
+- Tracks the last meaningful editor activity plus app focus/visibility transitions
+- Triggers `useCommitFlow.runAutomaticCheckpoint()` only when the vault is git-backed, pending changes exist, and no unsaved edits remain
+- Shares the same deterministic automatic commit message generator with the bottom-bar Commit button, so timer-driven checkpoints and manual quick commits produce the same `Updated N note(s)` / `Updated N file(s)` messages
+
 ### Frontend Integration
 
 - **Modified file badges**: Orange dots in sidebar
@@ -580,6 +586,9 @@ App-level settings persisted at `~/.config/com.tolaria.app/settings.json` (reads
 ```typescript
 interface Settings {
   auto_pull_interval_minutes: number | null
+  autogit_enabled: boolean | null
+  autogit_idle_threshold_seconds: number | null
+  autogit_inactive_threshold_seconds: number | null
   telemetry_consent: boolean | null
   crash_reporting_enabled: boolean | null
   analytics_enabled: boolean | null
@@ -589,7 +598,7 @@ interface Settings {
 }
 ```
 
-Managed by `useSettings` hook and `SettingsPanel` component. `default_ai_agent` is an installation-local preference that selects which supported CLI agent the AI panel, command palette AI mode, and status bar should target by default.
+Managed by `useSettings` hook and `SettingsPanel` component. `default_ai_agent` is an installation-local preference that selects which supported CLI agent the AI panel, command palette AI mode, and status bar should target by default. The AutoGit fields are also installation-local: `useAutoGit` consumes them to schedule automatic checkpoints, while `useCommitFlow` and the status bar quick action reuse the same checkpoint runner and deterministic automatic commit message generation.
 
 ## Telemetry
 

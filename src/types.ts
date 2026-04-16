@@ -80,6 +80,9 @@ export interface ModifiedFile {
 
 export interface Settings {
   auto_pull_interval_minutes: number | null
+  autogit_enabled?: boolean | null
+  autogit_idle_threshold_seconds?: number | null
+  autogit_inactive_threshold_seconds?: number | null
   telemetry_consent: boolean | null
   crash_reporting_enabled: boolean | null
   analytics_enabled: boolean | null

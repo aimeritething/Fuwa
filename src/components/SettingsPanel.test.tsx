@@ -5,6 +5,9 @@ import type { Settings } from '../types'
 
 const emptySettings: Settings = {
   auto_pull_interval_minutes: null,
+  autogit_enabled: null,
+  autogit_idle_threshold_seconds: null,
+  autogit_inactive_threshold_seconds: null,
   telemetry_consent: null,
   crash_reporting_enabled: null,
   analytics_enabled: null,
@@ -57,6 +60,9 @@ describe('SettingsPanel', () => {
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
       auto_pull_interval_minutes: 5,
+      autogit_enabled: false,
+      autogit_idle_threshold_seconds: 90,
+      autogit_inactive_threshold_seconds: 30,
       release_channel: null,
     }))
     expect(onClose).toHaveBeenCalled()
@@ -114,6 +120,49 @@ describe('SettingsPanel', () => {
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     expect(screen.getByRole('switch', { name: 'Auto-rename untitled notes from first H1' })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('defaults AutoGit to off with recommended thresholds', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+
+    expect(screen.getByRole('switch', { name: 'AutoGit' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByTestId('settings-autogit-idle-threshold')).toHaveValue(90)
+    expect(screen.getByTestId('settings-autogit-inactive-threshold')).toHaveValue(30)
+  })
+
+  it('saves AutoGit preferences when toggled and edited', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+
+    fireEvent.click(screen.getByRole('switch', { name: 'AutoGit' }))
+    fireEvent.change(screen.getByTestId('settings-autogit-idle-threshold'), { target: { value: '120' } })
+    fireEvent.change(screen.getByTestId('settings-autogit-inactive-threshold'), { target: { value: '45' } })
+    fireEvent.click(screen.getByTestId('settings-save'))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      autogit_enabled: true,
+      autogit_idle_threshold_seconds: 120,
+      autogit_inactive_threshold_seconds: 45,
+    }))
+  })
+
+  it('disables AutoGit controls when the current vault is not git-enabled', () => {
+    render(
+      <SettingsPanel
+        open={true}
+        settings={emptySettings}
+        isGitVault={false}
+        onSave={onSave}
+        onClose={onClose}
+      />
+    )
+
+    expect(screen.getByRole('switch', { name: 'AutoGit' })).toBeDisabled()
+    expect(screen.getByTestId('settings-autogit-idle-threshold')).toBeDisabled()
+    expect(screen.getByTestId('settings-autogit-inactive-threshold')).toBeDisabled()
   })
 
   it('saves the initial H1 auto-rename preference when toggled off', () => {

@@ -20,6 +20,7 @@ import { normalizeReleaseChannel, serializeReleaseChannel, type ReleaseChannel }
 import { trackEvent } from '../lib/telemetry'
 import { Button } from './ui/button'
 import { Checkbox, type CheckedState } from './ui/checkbox'
+import { Input } from './ui/input'
 import {
   Select,
   SelectContent,
@@ -34,6 +35,7 @@ interface SettingsPanelProps {
   settings: Settings
   aiAgentsStatus?: AiAgentsStatus
   onSave: (settings: Settings) => void
+  isGitVault?: boolean
   explicitOrganizationEnabled?: boolean
   onSaveExplicitOrganization?: (enabled: boolean) => void
   onClose: () => void
@@ -41,6 +43,9 @@ interface SettingsPanelProps {
 
 interface SettingsDraft {
   pullInterval: number
+  autoGitEnabled: boolean
+  autoGitIdleThresholdSeconds: number
+  autoGitInactiveThresholdSeconds: number
   defaultAiAgent: AiAgentId
   releaseChannel: ReleaseChannel
   initialH1AutoRename: boolean
@@ -52,6 +57,13 @@ interface SettingsDraft {
 interface SettingsBodyProps {
   pullInterval: number
   setPullInterval: (value: number) => void
+  isGitVault: boolean
+  autoGitEnabled: boolean
+  setAutoGitEnabled: (value: boolean) => void
+  autoGitIdleThresholdSeconds: number
+  setAutoGitIdleThresholdSeconds: (value: number) => void
+  autoGitInactiveThresholdSeconds: number
+  setAutoGitInactiveThresholdSeconds: (value: number) => void
   aiAgentsStatus: AiAgentsStatus
   defaultAiAgent: AiAgentId
   setDefaultAiAgent: (value: AiAgentId) => void
@@ -68,6 +80,8 @@ interface SettingsBodyProps {
 }
 
 const PULL_INTERVAL_OPTIONS = [1, 2, 5, 10, 15, 30] as const
+const DEFAULT_AUTOGIT_IDLE_THRESHOLD_SECONDS = 90
+const DEFAULT_AUTOGIT_INACTIVE_THRESHOLD_SECONDS = 30
 
 function isSaveShortcut(event: ReactKeyboardEvent): boolean {
   return event.key === 'Enter' && (event.metaKey || event.ctrlKey)
@@ -79,6 +93,15 @@ function createSettingsDraft(
 ): SettingsDraft {
   return {
     pullInterval: settings.auto_pull_interval_minutes ?? 5,
+    autoGitEnabled: settings.autogit_enabled ?? false,
+    autoGitIdleThresholdSeconds: sanitizePositiveInteger(
+      settings.autogit_idle_threshold_seconds,
+      DEFAULT_AUTOGIT_IDLE_THRESHOLD_SECONDS,
+    ),
+    autoGitInactiveThresholdSeconds: sanitizePositiveInteger(
+      settings.autogit_inactive_threshold_seconds,
+      DEFAULT_AUTOGIT_INACTIVE_THRESHOLD_SECONDS,
+    ),
     defaultAiAgent: resolveDefaultAiAgent(settings.default_ai_agent),
     releaseChannel: normalizeReleaseChannel(settings.release_channel),
     initialH1AutoRename: settings.initial_h1_auto_rename_enabled ?? true,
@@ -104,6 +127,9 @@ function resolveAnonymousId(settings: Settings, draft: SettingsDraft): string | 
 function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Settings {
   return {
     auto_pull_interval_minutes: draft.pullInterval,
+    autogit_enabled: draft.autoGitEnabled,
+    autogit_idle_threshold_seconds: draft.autoGitIdleThresholdSeconds,
+    autogit_inactive_threshold_seconds: draft.autoGitInactiveThresholdSeconds,
     telemetry_consent: resolveTelemetryConsent(settings, draft),
     crash_reporting_enabled: draft.crashReporting,
     analytics_enabled: draft.analytics,
@@ -123,11 +149,17 @@ function isChecked(checked: CheckedState): boolean {
   return checked === true
 }
 
+function sanitizePositiveInteger(value: number | null | undefined, fallback: number): number {
+  if (value === null || value === undefined || !Number.isFinite(value) || value < 1) return fallback
+  return Math.round(value)
+}
+
 export function SettingsPanel({
   open,
   settings,
   aiAgentsStatus = createMissingAiAgentsStatus(),
   onSave,
+  isGitVault = true,
   explicitOrganizationEnabled = true,
   onSaveExplicitOrganization,
   onClose,
@@ -139,6 +171,7 @@ export function SettingsPanel({
       settings={settings}
       aiAgentsStatus={aiAgentsStatus}
       onSave={onSave}
+      isGitVault={isGitVault}
       explicitOrganizationEnabled={explicitOrganizationEnabled}
       onSaveExplicitOrganization={onSaveExplicitOrganization}
       onClose={onClose}
@@ -146,8 +179,9 @@ export function SettingsPanel({
   )
 }
 
-type SettingsPanelInnerProps = Omit<SettingsPanelProps, 'open' | 'explicitOrganizationEnabled' | 'aiAgentsStatus'> & {
+type SettingsPanelInnerProps = Omit<SettingsPanelProps, 'open' | 'explicitOrganizationEnabled' | 'aiAgentsStatus' | 'isGitVault'> & {
   aiAgentsStatus: AiAgentsStatus
+  isGitVault: boolean
   explicitOrganizationEnabled: boolean
 }
 
@@ -155,6 +189,7 @@ function SettingsPanelInner({
   settings,
   aiAgentsStatus,
   onSave,
+  isGitVault,
   explicitOrganizationEnabled,
   onSaveExplicitOrganization,
   onClose,
@@ -224,6 +259,13 @@ function SettingsPanelInner({
         <SettingsBody
           pullInterval={draft.pullInterval}
           setPullInterval={(value) => updateDraft('pullInterval', value)}
+          isGitVault={isGitVault}
+          autoGitEnabled={draft.autoGitEnabled}
+          setAutoGitEnabled={(value) => updateDraft('autoGitEnabled', value)}
+          autoGitIdleThresholdSeconds={draft.autoGitIdleThresholdSeconds}
+          setAutoGitIdleThresholdSeconds={(value) => updateDraft('autoGitIdleThresholdSeconds', value)}
+          autoGitInactiveThresholdSeconds={draft.autoGitInactiveThresholdSeconds}
+          setAutoGitInactiveThresholdSeconds={(value) => updateDraft('autoGitInactiveThresholdSeconds', value)}
           aiAgentsStatus={aiAgentsStatus}
           defaultAiAgent={draft.defaultAiAgent}
           setDefaultAiAgent={(value) => updateDraft('defaultAiAgent', value)}
@@ -267,6 +309,13 @@ function SettingsHeader({ onClose }: { onClose: () => void }) {
 function SettingsBody({
   pullInterval,
   setPullInterval,
+  isGitVault,
+  autoGitEnabled,
+  setAutoGitEnabled,
+  autoGitIdleThresholdSeconds,
+  setAutoGitIdleThresholdSeconds,
+  autoGitInactiveThresholdSeconds,
+  setAutoGitInactiveThresholdSeconds,
   aiAgentsStatus,
   defaultAiAgent,
   setDefaultAiAgent,
@@ -283,6 +332,70 @@ function SettingsBody({
 }: SettingsBodyProps) {
   return (
     <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, overflow: 'auto' }}>
+      <SyncSettingsSection
+        pullInterval={pullInterval}
+        setPullInterval={setPullInterval}
+      />
+
+      <Divider />
+
+      <AutoGitSettingsSection
+        isGitVault={isGitVault}
+        autoGitEnabled={autoGitEnabled}
+        setAutoGitEnabled={setAutoGitEnabled}
+        autoGitIdleThresholdSeconds={autoGitIdleThresholdSeconds}
+        setAutoGitIdleThresholdSeconds={setAutoGitIdleThresholdSeconds}
+        autoGitInactiveThresholdSeconds={autoGitInactiveThresholdSeconds}
+        setAutoGitInactiveThresholdSeconds={setAutoGitInactiveThresholdSeconds}
+      />
+
+      <Divider />
+
+      <TitleSettingsSection
+        initialH1AutoRename={initialH1AutoRename}
+        setInitialH1AutoRename={setInitialH1AutoRename}
+      />
+
+      <Divider />
+
+      <AiAgentSettingsSection
+        aiAgentsStatus={aiAgentsStatus}
+        defaultAiAgent={defaultAiAgent}
+        setDefaultAiAgent={setDefaultAiAgent}
+      />
+
+      <Divider />
+
+      <ReleaseChannelSection
+        releaseChannel={releaseChannel}
+        setReleaseChannel={setReleaseChannel}
+      />
+
+      <Divider />
+
+      <OrganizationWorkflowSection
+        checked={explicitOrganization}
+        onChange={setExplicitOrganization}
+      />
+
+      <Divider />
+
+      <PrivacySettingsSection
+        crashReporting={crashReporting}
+        setCrashReporting={setCrashReporting}
+        analytics={analytics}
+        setAnalytics={setAnalytics}
+      />
+    </div>
+  )
+}
+
+function SyncSettingsSection({
+  pullInterval,
+  setPullInterval,
+}: Pick<SettingsBodyProps, 'pullInterval' | 'setPullInterval'>) {
+  return (
+    <>
       <SectionHeading
         title="Sync"
         description="Automatically pull vault changes from Git in the background."
@@ -299,9 +412,75 @@ function SettingsBody({
         testId="settings-pull-interval"
         autoFocus={true}
       />
+    </>
+  )
+}
 
-      <Divider />
+function autoGitSectionDescription(isGitVault: boolean): string {
+  return isGitVault
+    ? 'Automatically create conservative Git checkpoints after editing pauses or when the app is no longer active.'
+    : 'AutoGit is unavailable until the current vault is Git-enabled. Initialize Git for this vault first.'
+}
 
+function AutoGitSettingsSection({
+  isGitVault,
+  autoGitEnabled,
+  setAutoGitEnabled,
+  autoGitIdleThresholdSeconds,
+  setAutoGitIdleThresholdSeconds,
+  autoGitInactiveThresholdSeconds,
+  setAutoGitInactiveThresholdSeconds,
+}: Pick<
+  SettingsBodyProps,
+  | 'isGitVault'
+  | 'autoGitEnabled'
+  | 'setAutoGitEnabled'
+  | 'autoGitIdleThresholdSeconds'
+  | 'setAutoGitIdleThresholdSeconds'
+  | 'autoGitInactiveThresholdSeconds'
+  | 'setAutoGitInactiveThresholdSeconds'
+>) {
+  return (
+    <>
+      <SectionHeading
+        title="AutoGit"
+        description={autoGitSectionDescription(isGitVault)}
+      />
+
+      <SettingsSwitchRow
+        label="AutoGit"
+        description="When enabled, Tolaria will commit and push saved local changes automatically after an idle pause or after the app becomes inactive."
+        checked={autoGitEnabled}
+        onChange={setAutoGitEnabled}
+        disabled={!isGitVault}
+        testId="settings-autogit-enabled"
+      />
+
+      <LabeledNumberInput
+        label="Idle threshold (seconds)"
+        value={autoGitIdleThresholdSeconds}
+        onValueChange={setAutoGitIdleThresholdSeconds}
+        testId="settings-autogit-idle-threshold"
+        disabled={!isGitVault}
+      />
+
+      <LabeledNumberInput
+        label="Inactive-app grace period (seconds)"
+        value={autoGitInactiveThresholdSeconds}
+        onValueChange={setAutoGitInactiveThresholdSeconds}
+        testId="settings-autogit-inactive-threshold"
+        disabled={!isGitVault}
+      />
+    </>
+  )
+}
+
+function TitleSettingsSection({
+  initialH1AutoRename,
+  setInitialH1AutoRename,
+}: Pick<SettingsBodyProps, 'initialH1AutoRename' | 'setInitialH1AutoRename'>) {
+  return (
+    <>
       <SectionHeading
         title="Titles & Filenames"
         description="Choose whether Tolaria automatically syncs untitled note filenames from the first H1 title."
@@ -314,9 +493,30 @@ function SettingsBody({
         onChange={setInitialH1AutoRename}
         testId="settings-initial-h1-auto-rename"
       />
+    </>
+  )
+}
 
-      <Divider />
+function buildDefaultAiAgentOptions(aiAgentsStatus: AiAgentsStatus): Array<{ value: string; label: string }> {
+  return AI_AGENT_DEFINITIONS.map((definition) => {
+    const status = aiAgentsStatus[definition.id]
+    const suffix = status.status === 'installed'
+      ? ` (installed${status.version ? ` ${status.version}` : ''})`
+      : ' (missing)'
+    return {
+      value: definition.id,
+      label: `${definition.label}${suffix}`,
+    }
+  })
+}
 
+function AiAgentSettingsSection({
+  aiAgentsStatus,
+  defaultAiAgent,
+  setDefaultAiAgent,
+}: Pick<SettingsBodyProps, 'aiAgentsStatus' | 'defaultAiAgent' | 'setDefaultAiAgent'>) {
+  return (
+    <>
       <SectionHeading
         title="AI Agents"
         description="Choose which CLI AI agent Tolaria uses in the AI panel and command palette."
@@ -326,25 +526,23 @@ function SettingsBody({
         label="Default AI agent"
         value={defaultAiAgent}
         onValueChange={(value) => setDefaultAiAgent(value as AiAgentId)}
-        options={AI_AGENT_DEFINITIONS.map((definition) => {
-          const status = aiAgentsStatus[definition.id]
-          const suffix = status.status === 'installed'
-            ? ` (installed${status.version ? ` ${status.version}` : ''})`
-            : ' (missing)'
-          return {
-            value: definition.id,
-            label: `${definition.label}${suffix}`,
-          }
-        })}
+        options={buildDefaultAiAgentOptions(aiAgentsStatus)}
         testId="settings-default-ai-agent"
       />
 
       <div style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
         {renderDefaultAiAgentSummary(defaultAiAgent, aiAgentsStatus)}
       </div>
+    </>
+  )
+}
 
-      <Divider />
-
+function ReleaseChannelSection({
+  releaseChannel,
+  setReleaseChannel,
+}: Pick<SettingsBodyProps, 'releaseChannel' | 'setReleaseChannel'>) {
+  return (
+    <>
       <SectionHeading
         title="Release Channel"
         description="Controls which update feed Tolaria polls. Stable only receives manually promoted releases. Alpha follows every push to main."
@@ -360,16 +558,18 @@ function SettingsBody({
         ]}
         testId="settings-release-channel"
       />
+    </>
+  )
+}
 
-      <Divider />
-
-      <OrganizationWorkflowSection
-        checked={explicitOrganization}
-        onChange={setExplicitOrganization}
-      />
-
-      <Divider />
-
+function PrivacySettingsSection({
+  crashReporting,
+  setCrashReporting,
+  analytics,
+  setAnalytics,
+}: Pick<SettingsBodyProps, 'crashReporting' | 'setCrashReporting' | 'analytics' | 'setAnalytics'>) {
+  return (
+    <>
       <SectionHeading
         title="Privacy & Telemetry"
         description="Anonymous data helps us fix bugs and improve Tolaria. No vault content, note titles, or file paths are ever sent."
@@ -389,7 +589,7 @@ function SettingsBody({
         onChange={setAnalytics}
         testId="settings-analytics"
       />
-    </div>
+    </>
   )
 }
 
@@ -462,6 +662,37 @@ function LabeledSelect({
   )
 }
 
+function LabeledNumberInput({
+  label,
+  value,
+  onValueChange,
+  testId,
+  disabled = false,
+}: {
+  label: string
+  value: number
+  onValueChange: (value: number) => void
+  testId: string
+  disabled?: boolean
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <label style={{ fontSize: 12, fontWeight: 500, color: 'var(--foreground)' }} htmlFor={testId}>{label}</label>
+      <Input
+        id={testId}
+        type="number"
+        min={1}
+        step={1}
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onValueChange(sanitizePositiveInteger(Number(event.target.value), value))}
+        data-testid={testId}
+        className="w-full bg-transparent"
+      />
+    </div>
+  )
+}
+
 function OrganizationWorkflowSection({
   checked,
   onChange,
@@ -492,25 +723,27 @@ function SettingsSwitchRow({
   description,
   checked,
   onChange,
+  disabled = false,
   testId,
 }: {
   label: string
   description: string
   checked: boolean
   onChange: (value: boolean) => void
+  disabled?: boolean
   testId?: string
 }) {
   return (
     <label
       className="flex items-start justify-between gap-3"
-      style={{ cursor: 'pointer' }}
+      style={{ cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.6 : 1 }}
       data-testid={testId}
     >
       <div className="space-y-1">
         <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--foreground)' }}>{label}</div>
         <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{description}</div>
       </div>
-      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} disabled={disabled} />
     </label>
   )
 }

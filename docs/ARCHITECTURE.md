@@ -553,6 +553,8 @@ flowchart TD
 
 `useGitRemoteStatus` re-checks `git_remote_status` when the commit dialog opens and again right before submit. If `hasRemote` is false, Tolaria keeps the flow local-only: the status bar shows a neutral `No remote` chip, the dialog copy switches from "Commit & Push" to "Commit", and no `git_push` call is attempted.
 
+`useCommitFlow` also exposes `runAutomaticCheckpoint()`, a dialog-free commit path shared by AutoGit and the bottom-bar Commit button. `useAutoGit` watches the last editor activity plus app focus/visibility state, and when the vault is git-backed, all saves are flushed, and no unsaved edits remain, it triggers the same deterministic `Updated N note(s)` / `Updated N file(s)` commit message path after the configured idle or inactive thresholds. The bottom-bar quick action reuses that checkpoint flow after forcing a save first, so manual quick commits and scheduled AutoGit commits stay aligned on message generation and push behavior.
+
 #### Sync States
 
 | State | Indicator | Color | Trigger |
@@ -705,6 +707,8 @@ if (isTauri()) {
 
 The mock layer includes sample entries across all entity types, full markdown content with realistic frontmatter, mock git history, mock AI responses, and mock pulse commits.
 
+Browser smoke tests can also override `window.__mockHandlers` before the app boots. The AutoGit smoke bridge uses that path directly for seeded saves so the mocked git dirty-state stays synchronized even when the optional browser vault API is serving note content.
+
 ## State Management
 
 No Redux or global context. State lives in the root `App.tsx` and custom hooks:
@@ -722,9 +726,11 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useTheme` | Editor theme CSS vars | Editor typography theme |
 | `useCliAiAgent` | `messages`, `status`, tool actions | Selected AI agent conversation |
 | `useAutoSync` | Sync interval, pull/push state | Git auto-sync |
+| `useAutoGit` | Last activity timestamp, idle/inactive checkpoint triggers | Automatic commit/push checkpoints |
+| `useCommitFlow` | Commit dialog state, shared manual/automatic checkpoint runner | Git commit/push orchestration |
 | `useGitRemoteStatus` | `remoteStatus`, `refreshRemoteStatus()` | On-demand remote detection for commit UI |
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |
-| `useSettings` | App settings (telemetry, release channel, auto-sync interval) | Persistent settings |
+| `useSettings` | App settings (telemetry, release channel, auto-sync interval, AutoGit thresholds, default AI agent) | Persistent settings |
 | `useVaultConfig` | Per-vault UI preferences | Vault-specific config |
 | `appCommandDispatcher` | Canonical shortcut/menu command IDs | Shared execution path for renderer and native menu commands |
 

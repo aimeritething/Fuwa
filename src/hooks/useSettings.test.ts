@@ -5,6 +5,9 @@ import { useSettings } from './useSettings'
 
 const defaultSettings: Settings = {
   auto_pull_interval_minutes: null,
+  autogit_enabled: null,
+  autogit_idle_threshold_seconds: null,
+  autogit_inactive_threshold_seconds: null,
   telemetry_consent: null,
   crash_reporting_enabled: null,
   analytics_enabled: null,
@@ -15,6 +18,9 @@ const defaultSettings: Settings = {
 
 const savedSettings: Settings = {
   auto_pull_interval_minutes: 15,
+  autogit_enabled: true,
+  autogit_idle_threshold_seconds: 90,
+  autogit_inactive_threshold_seconds: 30,
   telemetry_consent: null,
   crash_reporting_enabled: null,
   analytics_enabled: null,
@@ -94,6 +100,9 @@ describe('useSettings', () => {
 
     const newSettings: Settings = {
       auto_pull_interval_minutes: null,
+      autogit_enabled: false,
+      autogit_idle_threshold_seconds: 120,
+      autogit_inactive_threshold_seconds: 45,
       telemetry_consent: null,
       crash_reporting_enabled: null,
       analytics_enabled: null,

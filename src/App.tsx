@@ -24,6 +24,7 @@ import { useMcpStatus } from './hooks/useMcpStatus'
 import { useAiAgentsOnboarding } from './hooks/useAiAgentsOnboarding'
 import { useAiAgentsStatus } from './hooks/useAiAgentsStatus'
 import { useVaultAiGuidanceStatus } from './hooks/useVaultAiGuidanceStatus'
+import { useAutoGit } from './hooks/useAutoGit'
 import { useVaultLoader } from './hooks/useVaultLoader'
 import { useAiAgentPreferences } from './hooks/useAiAgentPreferences'
 import { useSettings } from './hooks/useSettings'
@@ -616,6 +617,84 @@ function App() {
     vaultPath: resolvedPath,
   })
   const suggestedCommitMessage = useMemo(() => generateCommitMessage(vault.modifiedFiles), [vault.modifiedFiles])
+  const isGitVault = !vault.modifiedFilesError
+  const modifiedFilesSignature = useMemo(
+    () => vault.modifiedFiles.map((file) => `${file.relativePath}:${file.status}`).sort().join('|'),
+    [vault.modifiedFiles],
+  )
+  const autoGit = useAutoGit({
+    enabled: settings.autogit_enabled === true,
+    idleThresholdSeconds: settings.autogit_idle_threshold_seconds ?? 90,
+    inactiveThresholdSeconds: settings.autogit_inactive_threshold_seconds ?? 30,
+    isGitVault,
+    hasPendingChanges: vault.modifiedFiles.length > 0
+      || ((autoSync.remoteStatus?.hasRemote ?? false) && (autoSync.remoteStatus?.ahead ?? 0) > 0),
+    hasUnsavedChanges: vault.unsavedPaths.size > 0,
+    onCheckpoint: () => commitFlow.runAutomaticCheckpoint(),
+  })
+  const recordAutoGitActivity = autoGit.recordActivity
+  const runAutomaticCheckpoint = commitFlow.runAutomaticCheckpoint
+  const handleAppContentChange = appSave.handleContentChange
+  const handleAppSave = appSave.handleSave
+  const loadModifiedFiles = vault.loadModifiedFiles
+
+  useEffect(() => {
+    if (modifiedFilesSignature.length === 0) return
+    recordAutoGitActivity()
+  }, [modifiedFilesSignature, recordAutoGitActivity])
+
+  const handleQuickCommitPush = useCallback(() => {
+    void runAutomaticCheckpoint({ savePendingBeforeCommit: true })
+  }, [runAutomaticCheckpoint])
+
+  const handleTrackedContentChange = useCallback((path: string, content: string) => {
+    recordAutoGitActivity()
+    handleAppContentChange(path, content)
+  }, [handleAppContentChange, recordAutoGitActivity])
+
+  const handleTrackedSave = useCallback(async (...args: Parameters<typeof handleAppSave>) => {
+    const result = await handleAppSave(...args)
+    recordAutoGitActivity()
+    return result
+  }, [handleAppSave, recordAutoGitActivity])
+
+  const seedAutoGitSavedChange = useCallback(async () => {
+    if (isTauri()) {
+      throw new Error('seedAutoGitSavedChange is only available in browser smoke tests')
+    }
+
+    const activePath = notes.activeTabPath
+    const activeTab = activePath
+      ? notes.tabs.find((tab) => tab.entry.path === activePath)
+      : null
+
+    if (!activePath || !activeTab) {
+      throw new Error('No active note is available for the AutoGit test bridge')
+    }
+
+    const saveNoteContent = window.__mockHandlers?.save_note_content
+    if (typeof saveNoteContent === 'function') {
+      await Promise.resolve(saveNoteContent({ path: activePath, content: activeTab.content }))
+    } else {
+      await mockInvoke('save_note_content', { path: activePath, content: activeTab.content })
+    }
+
+    await loadModifiedFiles()
+    recordAutoGitActivity()
+  }, [loadModifiedFiles, notes.activeTabPath, notes.tabs, recordAutoGitActivity])
+
+  useEffect(() => {
+    window.__laputaTest = {
+      ...window.__laputaTest,
+      seedAutoGitSavedChange,
+    }
+
+    return () => {
+      if (window.__laputaTest?.seedAutoGitSavedChange === seedAutoGitSavedChange) {
+        delete window.__laputaTest.seedAutoGitSavedChange
+      }
+    }
+  }, [seedAutoGitSavedChange])
 
   const entryActions = useEntryActions({
     entries: vault.entries, updateEntry: vault.updateEntry,
@@ -993,8 +1072,8 @@ function App() {
             onDeleteNote={activeDeletedFile ? undefined : deleteActions.handleDeleteNote}
             onArchiveNote={activeDeletedFile ? undefined : entryActions.handleArchiveNote}
             onUnarchiveNote={activeDeletedFile ? undefined : entryActions.handleUnarchiveNote}
-            onContentChange={appSave.handleContentChange}
-            onSave={appSave.handleSave}
+            onContentChange={handleTrackedContentChange}
+            onSave={handleTrackedSave}
             onRenameFilename={activeDeletedFile ? undefined : appSave.handleFilenameRename}
             rawToggleRef={rawToggleRef}
             diffToggleRef={diffToggleRef}
@@ -1014,7 +1093,7 @@ function App() {
       </div>
       <UpdateBanner status={updateStatus} actions={updateActions} />
       <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={resolvedPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={cloneGettingStartedVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={commitFlow.openCommitDialog} isOffline={networkStatus.isOffline} isGitVault={!vault.modifiedFilesError} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} aiAgentsStatus={aiAgentsStatus} vaultAiGuidanceStatus={vaultAiGuidanceStatus} defaultAiAgent={aiAgentPreferences.defaultAiAgent} onSetDefaultAiAgent={aiAgentPreferences.setDefaultAiAgent} onRestoreVaultAiGuidance={() => { void restoreVaultAiGuidance() }} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={resolvedPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={cloneGettingStartedVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={handleQuickCommitPush} isOffline={networkStatus.isOffline} isGitVault={isGitVault} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} aiAgentsStatus={aiAgentsStatus} vaultAiGuidanceStatus={vaultAiGuidanceStatus} defaultAiAgent={aiAgentPreferences.defaultAiAgent} onSetDefaultAiAgent={aiAgentPreferences.setDefaultAiAgent} onRestoreVaultAiGuidance={() => { void restoreVaultAiGuidance() }} />
       <DeleteProgressNotice count={deleteActions.pendingDeleteCount} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
@@ -1048,7 +1127,7 @@ function App() {
         onCommit={conflictResolver.commitResolution}
         onClose={conflictFlow.handleCloseConflictResolver}
       />
-      <SettingsPanel open={dialogs.showSettings} settings={settings} aiAgentsStatus={aiAgentsStatus} onSave={saveSettings} explicitOrganizationEnabled={explicitOrganizationEnabled} onSaveExplicitOrganization={handleSaveExplicitOrganization} onClose={dialogs.closeSettings} />
+      <SettingsPanel open={dialogs.showSettings} settings={settings} aiAgentsStatus={aiAgentsStatus} isGitVault={isGitVault} onSave={saveSettings} explicitOrganizationEnabled={explicitOrganizationEnabled} onSaveExplicitOrganization={handleSaveExplicitOrganization} onClose={dialogs.closeSettings} />
       <FeedbackDialog open={showFeedback} onClose={closeFeedback} />
       <CloneVaultModal key={dialogs.showCloneVault ? 'clone-open' : 'clone-closed'} open={dialogs.showCloneVault} onClose={dialogs.closeCloneVault} onVaultCloned={vaultSwitcher.handleVaultCloned} />
       {deleteActions.confirmDelete && (

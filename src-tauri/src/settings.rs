@@ -8,6 +8,9 @@ const LEGACY_APP_CONFIG_DIR: &str = "com.laputa.app";
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct Settings {
     pub auto_pull_interval_minutes: Option<u32>,
+    pub autogit_enabled: Option<bool>,
+    pub autogit_idle_threshold_seconds: Option<u32>,
+    pub autogit_inactive_threshold_seconds: Option<u32>,
     pub telemetry_consent: Option<bool>,
     pub crash_reporting_enabled: Option<bool>,
     pub analytics_enabled: Option<bool>,
@@ -21,6 +24,10 @@ fn normalize_optional_string(value: Option<String>) -> Option<String> {
     value
         .map(|candidate| candidate.trim().to_string())
         .filter(|candidate| !candidate.is_empty())
+}
+
+fn normalize_optional_positive_u32(value: Option<u32>) -> Option<u32> {
+    value.filter(|candidate| *candidate > 0)
 }
 
 pub fn normalize_release_channel(value: Option<&str>) -> Option<String> {
@@ -48,6 +55,13 @@ pub fn normalize_default_ai_agent(value: Option<&str>) -> Option<String> {
 fn normalize_settings(settings: Settings) -> Settings {
     Settings {
         auto_pull_interval_minutes: settings.auto_pull_interval_minutes,
+        autogit_enabled: settings.autogit_enabled,
+        autogit_idle_threshold_seconds: normalize_optional_positive_u32(
+            settings.autogit_idle_threshold_seconds,
+        ),
+        autogit_inactive_threshold_seconds: normalize_optional_positive_u32(
+            settings.autogit_inactive_threshold_seconds,
+        ),
         telemetry_consent: settings.telemetry_consent,
         crash_reporting_enabled: settings.crash_reporting_enabled,
         analytics_enabled: settings.analytics_enabled,
@@ -153,6 +167,9 @@ mod tests {
     type SettingsSnapshot<'a> = (
         Option<u32>,
         Option<bool>,
+        Option<u32>,
+        Option<u32>,
+        Option<bool>,
         Option<bool>,
         Option<bool>,
         Option<&'a str>,
@@ -164,6 +181,9 @@ mod tests {
     fn settings_snapshot(settings: &Settings) -> SettingsSnapshot<'_> {
         (
             settings.auto_pull_interval_minutes,
+            settings.autogit_enabled,
+            settings.autogit_idle_threshold_seconds,
+            settings.autogit_inactive_threshold_seconds,
             settings.telemetry_consent,
             settings.crash_reporting_enabled,
             settings.analytics_enabled,
@@ -177,7 +197,7 @@ mod tests {
     fn assert_empty_settings(settings: &Settings) {
         assert_eq!(
             settings_snapshot(settings),
-            (None, None, None, None, None, None, None, None)
+            (None, None, None, None, None, None, None, None, None, None, None)
         );
     }
 
@@ -211,6 +231,9 @@ mod tests {
     fn test_settings_json_roundtrip() {
         let settings = Settings {
             auto_pull_interval_minutes: Some(10),
+            autogit_enabled: Some(true),
+            autogit_idle_threshold_seconds: Some(90),
+            autogit_inactive_threshold_seconds: Some(30),
             telemetry_consent: Some(true),
             crash_reporting_enabled: Some(true),
             analytics_enabled: Some(false),
@@ -236,12 +259,18 @@ mod tests {
     fn test_save_and_load_preserves_values() {
         let loaded = save_and_reload(Settings {
             auto_pull_interval_minutes: Some(10),
+            autogit_enabled: Some(true),
+            autogit_idle_threshold_seconds: Some(90),
+            autogit_inactive_threshold_seconds: Some(30),
             release_channel: Some("alpha".to_string()),
             initial_h1_auto_rename_enabled: Some(false),
             default_ai_agent: Some("codex".to_string()),
             ..Default::default()
         });
         assert_eq!(loaded.auto_pull_interval_minutes, Some(10));
+        assert_eq!(loaded.autogit_enabled, Some(true));
+        assert_eq!(loaded.autogit_idle_threshold_seconds, Some(90));
+        assert_eq!(loaded.autogit_inactive_threshold_seconds, Some(30));
         assert_eq!(loaded.release_channel.as_deref(), Some("alpha"));
         assert_eq!(loaded.initial_h1_auto_rename_enabled, Some(false));
         assert_eq!(loaded.default_ai_agent.as_deref(), Some("codex"));
@@ -267,6 +296,17 @@ mod tests {
             ..Default::default()
         });
         assert!(loaded.release_channel.is_none());
+    }
+
+    #[test]
+    fn test_non_positive_autogit_thresholds_are_filtered() {
+        let loaded = save_and_reload(Settings {
+            autogit_idle_threshold_seconds: Some(0),
+            autogit_inactive_threshold_seconds: Some(0),
+            ..Default::default()
+        });
+        assert!(loaded.autogit_idle_threshold_seconds.is_none());
+        assert!(loaded.autogit_inactive_threshold_seconds.is_none());
     }
 
     #[test]
@@ -339,6 +379,9 @@ mod tests {
         assert_eq!(
             settings_snapshot(&loaded),
             (
+                None,
+                None,
+                None,
                 None,
                 Some(true),
                 Some(true),

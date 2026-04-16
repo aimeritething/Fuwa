@@ -5,37 +5,54 @@ import type {
   AppCommandShortcutEventOptions,
 } from '../../src/hooks/appCommandCatalog'
 
-export async function triggerMenuCommand(page: Page, id: string): Promise<void> {
-  await page.evaluate(async (commandId) => {
-    const deadline = Date.now() + 5_000
+async function waitForDispatchBrowserMenuCommand(page: Page): Promise<void> {
+  await page.waitForFunction(
+    () => typeof window.__laputaTest?.dispatchBrowserMenuCommand === 'function',
+    undefined,
+    { timeout: 5_000 },
+  )
+}
 
-    while (Date.now() < deadline) {
-      const bridge = window.__laputaTest
-      const dispatchBrowserMenuCommand = bridge?.dispatchBrowserMenuCommand
-      const triggerMenuCommand = bridge?.triggerMenuCommand
+function shouldFallbackToDispatch(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('dispatchBrowserMenuCommand')
+}
 
-      if (typeof dispatchBrowserMenuCommand === 'function') {
-        if (typeof triggerMenuCommand === 'function') {
-          try {
-            await triggerMenuCommand(commandId)
-            return
-          } catch (error) {
-            const message = error instanceof Error ? error.message : String(error)
-            if (!message.includes('dispatchBrowserMenuCommand')) {
-              throw error
-            }
-          }
-        }
+async function tryTriggerMenuCommand(commandId: string): Promise<boolean> {
+  const triggerMenuCommand = window.__laputaTest?.triggerMenuCommand
+  if (typeof triggerMenuCommand !== 'function') {
+    return false
+  }
 
-        dispatchBrowserMenuCommand(commandId)
-        return
-      }
-
-      await new Promise((resolve) => window.setTimeout(resolve, 50))
+  try {
+    await triggerMenuCommand(commandId)
+    return true
+  } catch (error) {
+    if (!shouldFallbackToDispatch(error)) {
+      throw error
     }
+    return false
+  }
+}
 
+async function dispatchMenuCommandInPage(commandId: string): Promise<void> {
+  const dispatchBrowserMenuCommand = window.__laputaTest?.dispatchBrowserMenuCommand
+
+  if (typeof dispatchBrowserMenuCommand !== 'function') {
     throw new Error('Tolaria test bridge is missing dispatchBrowserMenuCommand')
-  }, id)
+  }
+
+  const didTrigger = await tryTriggerMenuCommand(commandId)
+  if (didTrigger) {
+    return
+  }
+
+  dispatchBrowserMenuCommand(commandId)
+}
+
+export async function triggerMenuCommand(page: Page, id: string): Promise<void> {
+  await waitForDispatchBrowserMenuCommand(page)
+  await page.evaluate(dispatchMenuCommandInPage, id)
 }
 
 export async function seedBlockNoteTable(
@@ -49,6 +66,16 @@ export async function seedBlockNoteTable(
     }
     return bridge(widths ?? undefined)
   }, columnWidths)
+}
+
+export async function seedAutoGitSavedChange(page: Page): Promise<void> {
+  await page.evaluate(async () => {
+    const bridge = window.__laputaTest?.seedAutoGitSavedChange
+    if (typeof bridge !== 'function') {
+      throw new Error('Tolaria test bridge is missing seedAutoGitSavedChange')
+    }
+    await bridge()
+  })
 }
 
 export async function dispatchShortcutEvent(

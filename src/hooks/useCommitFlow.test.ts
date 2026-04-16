@@ -36,6 +36,7 @@ describe('useCommitFlow', () => {
     mockInvokeFn.mockImplementation((command: string) => {
       if (command === 'git_commit') return Promise.resolve('[main abc1234] test commit')
       if (command === 'git_push') return Promise.resolve({ status: 'ok', message: 'Pushed to remote' })
+      if (command === 'get_modified_files') return Promise.resolve([{ path: '/vault/a.md', relativePath: 'a.md', status: 'modified' }])
       throw new Error(`Unexpected command: ${command}`)
     })
   })
@@ -81,6 +82,57 @@ describe('useCommitFlow', () => {
     expect(resolveRemoteStatus).toHaveBeenCalledTimes(2)
     expect(mockTrackEvent).toHaveBeenCalledWith('commit_made', undefined)
     expect(result.current.showCommitDialog).toBe(false)
+  })
+
+  it('runAutomaticCheckpoint saves pending first and uses the deterministic automatic message', async () => {
+    const { result } = renderCommitFlow()
+
+    await act(async () => {
+      await result.current.runAutomaticCheckpoint({ savePendingBeforeCommit: true })
+    })
+
+    expect(savePending).toHaveBeenCalledTimes(1)
+    expect(mockInvokeFn).toHaveBeenNthCalledWith(1, 'get_modified_files', { vaultPath: '/vault' })
+    expect(mockInvokeFn).toHaveBeenNthCalledWith(2, 'git_commit', { vaultPath: '/vault', message: 'Updated 1 note' })
+    expect(mockInvokeFn).toHaveBeenNthCalledWith(3, 'git_push', { vaultPath: '/vault' })
+    expect(setToastMessage).toHaveBeenCalledWith('Committed and pushed')
+  })
+
+  it('runAutomaticCheckpoint retries push-only when local commits are already ahead', async () => {
+    resolveRemoteStatus.mockResolvedValue({ branch: 'main', ahead: 2, behind: 0, hasRemote: true })
+    mockInvokeFn.mockImplementation((command: string) => {
+      if (command === 'get_modified_files') return Promise.resolve([])
+      if (command === 'git_push') return Promise.resolve({ status: 'ok', message: 'Pushed to remote' })
+      throw new Error(`Unexpected command: ${command}`)
+    })
+
+    const { result } = renderCommitFlow()
+
+    await act(async () => {
+      await result.current.runAutomaticCheckpoint()
+    })
+
+    expect(mockInvokeFn).toHaveBeenCalledTimes(2)
+    expect(mockInvokeFn).toHaveBeenNthCalledWith(1, 'get_modified_files', { vaultPath: '/vault' })
+    expect(mockInvokeFn).toHaveBeenNthCalledWith(2, 'git_push', { vaultPath: '/vault' })
+    expect(setToastMessage).toHaveBeenCalledWith('Pushed committed changes')
+    expect(mockTrackEvent).not.toHaveBeenCalled()
+  })
+
+  it('runAutomaticCheckpoint reports when there is nothing to commit or push', async () => {
+    mockInvokeFn.mockImplementation((command: string) => {
+      if (command === 'get_modified_files') return Promise.resolve([])
+      throw new Error(`Unexpected command: ${command}`)
+    })
+
+    const { result } = renderCommitFlow()
+
+    await act(async () => {
+      await result.current.runAutomaticCheckpoint()
+    })
+
+    expect(setToastMessage).toHaveBeenCalledWith('Nothing to commit or push')
+    expect(mockTrackEvent).not.toHaveBeenCalled()
   })
 
   it('handleCommitPush commits locally and skips push when no remote is configured', async () => {

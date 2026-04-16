@@ -82,7 +82,8 @@ function createHoverHandlers(interactive: boolean): HoverHandlers {
 
 function createEnterKeyHandler(onActivate?: () => void) {
   return (event: ReactKeyboardEvent<HTMLSpanElement>) => {
-    if (event.key === 'Enter') {
+    if (event.key === 'Enter' || event.key === ' ') {
+      event.preventDefault()
       onActivate?.()
     }
   }
@@ -508,7 +509,9 @@ export function CommitButton({
       <span style={SEP_STYLE}>|</span>
       <span
         role="button"
+        tabIndex={0}
         onClick={onClick}
+        onKeyDown={createEnterKeyHandler(onClick)}
         style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
         title={commitButtonTitle(remoteStatus)}
         onMouseEnter={(event) => { event.currentTarget.style.background = 'var(--hover)' }}
