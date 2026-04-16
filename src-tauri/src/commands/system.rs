@@ -5,9 +5,9 @@ use crate::vault_list;
 use crate::vault_list::VaultList;
 use serde::Deserialize;
 #[cfg(desktop)]
-use tauri::LogicalSize;
-#[cfg(desktop)]
 use tauri::ipc::Channel;
+#[cfg(desktop)]
+use tauri::LogicalSize;
 #[cfg(desktop)]
 use tauri::Window;
 
