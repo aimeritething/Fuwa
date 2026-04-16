@@ -12,6 +12,7 @@ import {
   InstancesPanel,
   NoteInfoPanel,
 } from './InspectorPanels'
+import type { ReferencedByItem } from './InspectorPanels'
 import { EmptyInspector, InitializePropertiesPrompt, InspectorHeader, InvalidFrontmatterNotice } from './inspector/InspectorChrome'
 import { useBacklinks, useReferencedBy } from './inspector/useInspectorData'
 import { useInspectorPropertyActions } from './inspector/useInspectorPropertyActions'
@@ -64,7 +65,7 @@ function ValidFrontmatterPanels({
   frontmatter: ReturnType<typeof parseFrontmatter>
   typeEntryMap: Record<string, VaultEntry>
   vaultPath?: string
-  referencedBy: VaultEntry[]
+  referencedBy: ReferencedByItem[]
   onNavigate: (target: string) => void
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
   onUpdateProperty?: (key: string, value: FrontmatterValue) => void
@@ -125,7 +126,7 @@ function PrimaryInspectorPanel({
   entries: VaultEntry[]
   typeEntryMap: Record<string, VaultEntry>
   vaultPath?: string
-  referencedBy: VaultEntry[]
+  referencedBy: ReferencedByItem[]
   onNavigate: (target: string) => void
   onToggleRawEditor?: () => void
   onInitializeProperties?: (path: string) => void

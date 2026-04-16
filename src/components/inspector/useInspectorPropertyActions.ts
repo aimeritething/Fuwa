@@ -23,8 +23,9 @@ function bindMissingTypeAction(
   entry: VaultEntry | null,
   action: ((path: string, missingType: string, nextTypeName: string) => Promise<void>) | undefined,
 ) {
-  if (!entry?.isA || !action) return undefined
-  return (nextTypeName: string) => action(entry.path, entry.isA, nextTypeName)
+  const missingType = entry?.isA
+  if (!entry || !missingType || !action) return undefined
+  return (nextTypeName: string) => action(entry.path, missingType, nextTypeName)
 }
 
 export function useInspectorPropertyActions({
