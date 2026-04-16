@@ -127,6 +127,26 @@ async function assertSlashMenuBlockCommandPersists(page: Page, options: {
   ).toContainText(options.insertedText)
 }
 
+async function assertKeyboardBoldPersists(page: Page, options: {
+  selectionText: string
+  rawIncludes: string
+  rawExcludes?: string
+}) {
+  await openNote(page, 'Note B')
+  await selectWord(page, 1, options.selectionText)
+  await page.keyboard.press('Meta+b')
+  await page.waitForTimeout(700)
+
+  await roundTripThroughAnotherNote(page)
+  await openRawMode(page)
+
+  const raw = await getRawEditorContent(page)
+  expect(raw).toContain(options.rawIncludes)
+  if (options.rawExcludes) {
+    expect(raw).not.toContain(options.rawExcludes)
+  }
+}
+
 const slashMenuPersistenceScenarios = [
   {
     name: 'slash menu block commands persist bullet lists',
@@ -179,16 +199,18 @@ test('toolbar only exposes audited markdown-safe formatting controls', async ({ 
 })
 
 test('supported inline formatting persists after note switches when applied from keyboard', async ({ page }) => {
-  await openNote(page, 'Note B')
-  await selectWord(page, 1, 'referenced')
-  await page.keyboard.press('Meta+b')
-  await page.waitForTimeout(700)
+  await assertKeyboardBoldPersists(page, {
+    selectionText: 'referenced',
+    rawIncludes: 'This is Note B, **referenced** by Alpha Project.',
+  })
+})
 
-  await roundTripThroughAnotherNote(page)
-  await openRawMode(page)
-
-  const raw = await getRawEditorContent(page)
-  expect(raw).toContain('This is Note B, **referenced** by Alpha Project.')
+test('bold formatting keeps trailing whitespace outside markdown markers', async ({ page }) => {
+  await assertKeyboardBoldPersists(page, {
+    selectionText: 'referenced ',
+    rawIncludes: 'This is Note B, **referenced** by Alpha Project.',
+    rawExcludes: '**referenced **',
+  })
 })
 
 test('toolbar block-type commands persist numbered lists', async ({ page }) => {

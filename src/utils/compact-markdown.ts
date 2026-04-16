@@ -4,6 +4,7 @@
  * - Tight lists (no blank lines between consecutive list items)
  * - Bullet list markers normalized to `-` (BlockNote outputs `*`)
  * - HTML entities like `&#x20;` decoded back to spaces
+ * - Leading/trailing inline whitespace moved outside bold markers
  * - Stray hard-break-only lines removed after a markdown hard break
  * - No runs of 3+ blank lines (collapsed to one blank line)
  * - No trailing blank lines
@@ -30,6 +31,7 @@ export function compactMarkdown(md: string): string {
 const LIST_RE = /^(\s*)([-*+]|\d+\.)\s/
 const HARD_BREAK_ONLY_RE = /^\\+$/
 const TRAILING_INLINE_CLOSERS_RE = /(?:[*_~`]+)$/
+const STRONG_RE = /\*\*([^*\n]*?)\*\*/g
 
 interface MarkdownDocument {
   lines: string[]
@@ -38,6 +40,10 @@ interface MarkdownDocument {
 interface LinePosition {
   doc: MarkdownDocument
   idx: number
+}
+
+interface MarkdownLineValue {
+  line: string
 }
 
 interface NormalizedLinePosition extends LinePosition {
@@ -53,7 +59,7 @@ function processMarkdownLine(
 ): { inCodeBlock: boolean; line: string | null } {
   const rawLine = doc.lines[idx]
 
-  if (isFenceDelimiter(rawLine)) {
+  if (isFenceDelimiter({ line: rawLine })) {
     return { inCodeBlock: !inCodeBlock, line: rawLine }
   }
 
@@ -61,7 +67,7 @@ function processMarkdownLine(
     return { inCodeBlock, line: rawLine }
   }
 
-  const line = normalizeMarkdownLine(rawLine)
+  const line = normalizeMarkdownLine({ line: rawLine })
   if (shouldSkipLine({ doc, idx, line })) {
     return { inCodeBlock, line: null }
   }
@@ -69,12 +75,14 @@ function processMarkdownLine(
   return { inCodeBlock, line }
 }
 
-function isFenceDelimiter(line: string): boolean {
+function isFenceDelimiter({ line }: MarkdownLineValue): boolean {
   return line.trimStart().startsWith('```')
 }
 
-function normalizeMarkdownLine(line: string): string {
-  return decodeHtmlEntities(normalizeBulletMarker(line))
+function normalizeMarkdownLine({ line }: MarkdownLineValue): string {
+  const normalizedBullets = normalizeBulletMarker({ line })
+  const decodedEntities = decodeHtmlEntities({ line: normalizedBullets })
+  return normalizeStrongWhitespace({ line: decodedEntities })
 }
 
 function shouldSkipLine({ doc, idx, line }: NormalizedLinePosition): boolean {
@@ -116,20 +124,20 @@ function findNextNonBlank({ doc, idx }: LinePosition): number | null {
 }
 
 function isRedundantHardBreakLine({ doc, idx, line }: NormalizedLinePosition): boolean {
-  if (!isHardBreakOnlyLine(line)) return false
+  if (!isHardBreakOnlyLine({ line })) return false
 
   const prev = findPrevNonBlank({ doc, idx })
   if (prev === null) return false
 
-  const prevLine = normalizeMarkdownLine(doc.lines[prev])
-  return isHardBreakOnlyLine(prevLine) || endsWithHardBreakMarker(prevLine)
+  const prevLine = normalizeMarkdownLine({ line: doc.lines[prev] })
+  return isHardBreakOnlyLine({ line: prevLine }) || endsWithHardBreakMarker({ line: prevLine })
 }
 
-function isHardBreakOnlyLine(line: string): boolean {
+function isHardBreakOnlyLine({ line }: MarkdownLineValue): boolean {
   return HARD_BREAK_ONLY_RE.test(line.trim())
 }
 
-function endsWithHardBreakMarker(line: string): boolean {
+function endsWithHardBreakMarker({ line }: MarkdownLineValue): boolean {
   const trimmed = line.trimEnd()
   if (trimmed.endsWith('\\\\')) return true
   return trimmed.replace(TRAILING_INLINE_CLOSERS_RE, '').endsWith('\\\\')
@@ -137,14 +145,34 @@ function endsWithHardBreakMarker(line: string): boolean {
 
 const BULLET_RE = /^(\s*)\*(\s)/
 /** Normalize `*` bullet markers to `-` (BlockNote default → standard convention) */
-function normalizeBulletMarker(line: string): string {
+function normalizeBulletMarker({ line }: MarkdownLineValue): string {
   return line.replace(BULLET_RE, '$1-$2')
 }
 
 /** Decode HTML entities that BlockNote inserts (&#x20; &#x26; etc.) */
-function decodeHtmlEntities(line: string): string {
+function decodeHtmlEntities({ line }: MarkdownLineValue): string {
   if (!line.includes('&#x')) return line
   return line.replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+}
+
+function normalizeStrongWhitespace({ line }: MarkdownLineValue): string {
+  return line.replace(STRONG_RE, (match, content: string) => {
+    const leadingWhitespace = content.match(/^\s+/)?.[0] ?? ''
+    const trailingWhitespace = content.match(/\s+$/)?.[0] ?? ''
+    if (!leadingWhitespace && !trailingWhitespace) {
+      return match
+    }
+
+    const strongContent = content.slice(
+      leadingWhitespace.length,
+      content.length - trailingWhitespace.length,
+    )
+    if (!strongContent) {
+      return match
+    }
+
+    return `${leadingWhitespace}**${strongContent}**${trailingWhitespace}`
+  })
 }
 
 function finalizeMarkdown(doc: MarkdownDocument): string {

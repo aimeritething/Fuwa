@@ -122,7 +122,17 @@ describe('compactMarkdown', () => {
 
   it('decodes &#x20; HTML entities from BlockNote bold+code output', () => {
     const input = '**Remove&#x20;**`NoteWindow`**&#x20;and render the full&#x20;**`App`**&#x20;component.**\n'
-    expect(compactMarkdown(input)).toBe('**Remove **`NoteWindow`** and render the full **`App`** component.**\n')
+    expect(compactMarkdown(input)).toBe('**Remove** `NoteWindow` **and render the full** `App` **component.**\n')
+  })
+
+  it('moves trailing whitespace outside bold markers', () => {
+    const input = '**Luca **\n'
+    expect(compactMarkdown(input)).toBe('**Luca** \n')
+  })
+
+  it('moves leading whitespace outside bold markers', () => {
+    const input = '** Luca**\n'
+    expect(compactMarkdown(input)).toBe(' **Luca**\n')
   })
 
   it('decodes multiple HTML entity types', () => {
