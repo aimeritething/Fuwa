@@ -1,0 +1,36 @@
+import type { ReactNode } from 'react'
+import { CaretDown, CaretRight } from '@phosphor-icons/react'
+import { SidebarCountPill } from '../SidebarParts'
+import { SIDEBAR_GROUP_HEADER_PADDING } from './sidebarStyles'
+
+interface SidebarGroupHeaderProps {
+  label: string
+  collapsed: boolean
+  onToggle: () => void
+  count?: number
+  children?: ReactNode
+}
+
+export function SidebarGroupHeader({
+  label,
+  collapsed,
+  onToggle,
+  count,
+  children,
+}: SidebarGroupHeaderProps) {
+  return (
+    <button
+      className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
+      style={{ padding: count != null ? SIDEBAR_GROUP_HEADER_PADDING.withCount : SIDEBAR_GROUP_HEADER_PADDING.regular }}
+      onClick={onToggle}
+    >
+      <div className="flex items-center gap-1">
+        {collapsed ? <CaretRight size={12} /> : <CaretDown size={12} />}
+        <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>{label}</span>
+      </div>
+      {children ?? (count != null && (
+        <SidebarCountPill count={count} className="text-muted-foreground" compact style={{ background: 'var(--muted)' }} />
+      ))}
+    </button>
+  )
+}

@@ -1,27 +1,28 @@
 import {
-  useMemo, useCallback, type Dispatch, type Ref, type RefObject, type SetStateAction,
+  type Dispatch, type Ref, type RefObject, type SetStateAction,
 } from 'react'
 import type { VaultEntry, SidebarSelection, ViewFile } from '../../types'
 import {
-  DndContext, closestCenter, PointerSensor, useSensor, useSensors, type DragEndEvent,
+  DndContext, closestCenter, useSensors, type DragEndEvent,
 } from '@dnd-kit/core'
 import {
   SortableContext, useSortable, verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
-import { arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { SlidersHorizontal } from 'lucide-react'
 import {
-  FileText, Archive, CaretLeft, Tray, CaretRight, CaretDown, Plus,
+  CaretLeft, Plus,
 } from '@phosphor-icons/react'
 import {
-  type SectionGroup, isSelectionActive, NavItem, SectionContent, VisibilityPopover,
+  type SectionGroup, isSelectionActive, SectionContent, VisibilityPopover,
 } from '../SidebarParts'
 import { TypeCustomizePopover } from '../TypeCustomizePopover'
 import { useDragRegion } from '../../hooks/useDragRegion'
-import { buildTypeEntryMap, getTypeColor, getTypeLightColor } from '../../utils/typeColors'
-import { NoteTitleIcon } from '../NoteTitleIcon'
+import { SidebarGroupHeader } from './SidebarGroupHeader'
 import { SidebarViewItem } from './SidebarViewItem'
+
+export { SidebarTopNav } from './SidebarTopNav'
+export { FavoritesSection } from './FavoritesSection'
 
 export interface SidebarSectionProps {
   entries: VaultEntry[]
@@ -32,94 +33,6 @@ export interface SidebarSectionProps {
   renameInitialValue: string
   onRenameSubmit: (value: string) => void
   onRenameCancel: () => void
-}
-
-function SidebarGroupHeader({
-  label,
-  collapsed,
-  onToggle,
-  count,
-  children,
-}: {
-  label: string
-  collapsed: boolean
-  onToggle: () => void
-  count?: number
-  children?: React.ReactNode
-}) {
-  return (
-    <button
-      className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
-      style={{ padding: '8px 14px 8px 16px' }}
-      onClick={onToggle}
-    >
-      <div className="flex items-center gap-1">
-        {collapsed ? <CaretRight size={12} /> : <CaretDown size={12} />}
-        <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>{label}</span>
-      </div>
-      {children ?? (count != null && (
-        <span
-          className="flex items-center justify-center text-muted-foreground"
-          style={{ height: 18, borderRadius: 9999, padding: '0 5px', fontSize: 10, background: 'var(--muted)' }}
-        >
-          {count}
-        </span>
-      ))}
-    </button>
-  )
-}
-
-export function SidebarTopNav({
-  selection,
-  onSelect,
-  showInbox,
-  inboxCount,
-  activeCount,
-  archivedCount,
-}: {
-  selection: SidebarSelection
-  onSelect: (selection: SidebarSelection) => void
-  showInbox: boolean
-  inboxCount: number
-  activeCount: number
-  archivedCount: number
-}) {
-  return (
-    <div className="border-b border-border" data-testid="sidebar-top-nav" style={{ padding: '4px 6px' }}>
-      {showInbox && (
-        <NavItem
-          icon={Tray}
-          label="Inbox"
-          count={inboxCount}
-          isActive={isSelectionActive(selection, { kind: 'filter', filter: 'inbox' })}
-          badgeClassName="text-muted-foreground"
-          badgeStyle={{ background: 'var(--muted)' }}
-          activeBadgeClassName="bg-primary text-primary-foreground"
-          onClick={() => onSelect({ kind: 'filter', filter: 'inbox' })}
-        />
-      )}
-      <NavItem
-        icon={FileText}
-        label="All Notes"
-        count={activeCount}
-        isActive={isSelectionActive(selection, { kind: 'filter', filter: 'all' })}
-        badgeClassName="text-muted-foreground"
-        badgeStyle={{ background: 'var(--muted)' }}
-        activeBadgeClassName="bg-primary text-primary-foreground"
-        onClick={() => onSelect({ kind: 'filter', filter: 'all' })}
-      />
-      <NavItem
-        icon={Archive}
-        label="Archive"
-        count={archivedCount}
-        isActive={isSelectionActive(selection, { kind: 'filter', filter: 'archived' })}
-        badgeClassName="text-muted-foreground"
-        badgeStyle={{ background: 'var(--muted)' }}
-        activeBadgeClassName="bg-primary text-primary-foreground"
-        onClick={() => onSelect({ kind: 'filter', filter: 'archived' })}
-      />
-    </div>
-  )
 }
 
 export function ViewsSection({
@@ -281,141 +194,6 @@ export function TypesSection({
             {visibleSections.map((group) => (
               <SortableSection key={group.type} group={group} sectionProps={sectionProps} />
             ))}
-          </SortableContext>
-        </DndContext>
-      )}
-    </div>
-  )
-}
-
-const FAVORITE_TYPE_ICON_MAP: Record<string, string> = {
-  Project: 'wrench',
-  project: 'wrench',
-  Experiment: 'flask',
-  experiment: 'flask',
-  Responsibility: 'target',
-  responsibility: 'target',
-  Procedure: 'arrows-clockwise',
-  procedure: 'arrows-clockwise',
-  Person: 'users',
-  person: 'users',
-  Event: 'calendar-blank',
-  event: 'calendar-blank',
-  Topic: 'tag',
-  topic: 'tag',
-  Type: 'stack-simple',
-  type: 'stack-simple',
-}
-
-function getFavoriteIcon(entry: VaultEntry, typeEntryMap: Record<string, VaultEntry>) {
-  const typeEntry = entry.isA ? typeEntryMap[entry.isA] : undefined
-  return entry.icon ?? typeEntry?.icon ?? FAVORITE_TYPE_ICON_MAP[entry.isA ?? ''] ?? 'file-text'
-}
-
-function SortableFavoriteItem({
-  entry,
-  isActive,
-  onSelect,
-  typeEntryMap,
-}: {
-  entry: VaultEntry
-  isActive: boolean
-  onSelect: () => void
-  typeEntryMap: Record<string, VaultEntry>
-}) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: entry.path })
-  const typeEntry = entry.isA ? typeEntryMap[entry.isA] : undefined
-  const icon = getFavoriteIcon(entry, typeEntryMap)
-  const typeColor = getTypeColor(entry.isA ?? null, typeEntry?.color)
-  const typeLightColor = getTypeLightColor(entry.isA ?? null, typeEntry?.color)
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 }}
-      {...attributes}
-      {...listeners}
-    >
-      <div
-        className={`group/section flex cursor-pointer select-none items-center justify-between rounded transition-colors ${isActive ? '' : 'hover:bg-accent'}`}
-        style={{ padding: '6px 8px 6px 16px', borderRadius: 4, gap: 4, ...(isActive ? { background: typeLightColor } : {}) }}
-        onClick={onSelect}
-      >
-        <div className="flex min-w-0 flex-1 items-center" style={{ gap: 4 }}>
-          <NoteTitleIcon icon={icon} size={16} color={typeColor} />
-          <span className="truncate text-[13px] font-medium" style={{ marginLeft: 4, color: isActive ? typeColor : undefined }}>
-            {entry.title}
-          </span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function sortFavorites(entries: VaultEntry[]) {
-  return entries
-    .filter((entry) => entry.favorite && !entry.archived)
-    .sort((a, b) => (a.favoriteIndex ?? Infinity) - (b.favoriteIndex ?? Infinity))
-}
-
-function reorderFavoriteIds(favoriteIds: string[], event: DragEndEvent) {
-  const { active, over } = event
-  if (!over || active.id === over.id) return null
-  const oldIndex = favoriteIds.indexOf(active.id as string)
-  const newIndex = favoriteIds.indexOf(over.id as string)
-  if (oldIndex === -1 || newIndex === -1) return null
-  return arrayMove(favoriteIds, oldIndex, newIndex)
-}
-
-export function FavoritesSection({
-  entries,
-  selection,
-  onSelect,
-  onSelectNote,
-  onReorder,
-  collapsed,
-  onToggle,
-}: {
-  entries: VaultEntry[]
-  selection: SidebarSelection
-  onSelect: (selection: SidebarSelection) => void
-  onSelectNote?: (entry: VaultEntry) => void
-  onReorder?: (orderedPaths: string[]) => void
-  collapsed: boolean
-  onToggle: () => void
-}) {
-  const favorites = useMemo(() => sortFavorites(entries), [entries])
-  const favoriteIds = useMemo(() => favorites.map((entry) => entry.path), [favorites])
-  const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
-
-  const handleDragEnd = useCallback((event: DragEndEvent) => {
-    const reordered = reorderFavoriteIds(favoriteIds, event)
-    if (reordered) onReorder?.(reordered)
-  }, [favoriteIds, onReorder])
-
-  if (favorites.length === 0) return null
-
-  return (
-    <div style={{ padding: '0 6px' }}>
-      <SidebarGroupHeader label="FAVORITES" collapsed={collapsed} onToggle={onToggle} count={favorites.length} />
-      {!collapsed && (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={favoriteIds} strategy={verticalListSortingStrategy}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 2, paddingBottom: 4 }}>
-              {favorites.map((entry) => (
-                <SortableFavoriteItem
-                  key={entry.path}
-                  entry={entry}
-                  isActive={isSelectionActive(selection, { kind: 'entity', entry })}
-                  typeEntryMap={typeEntryMap}
-                  onSelect={() => {
-                    onSelect({ kind: 'filter', filter: 'favorites' })
-                    onSelectNote?.(entry)
-                  }}
-                />
-              ))}
-            </div>
           </SortableContext>
         </DndContext>
       )}

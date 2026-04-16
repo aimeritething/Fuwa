@@ -3,6 +3,8 @@ import type { VaultEntry, ViewFile } from '../../types'
 import { evaluateView } from '../../utils/viewFilters'
 import { Funnel, PencilSimple, Trash } from '@phosphor-icons/react'
 import { NoteTitleIcon } from '../NoteTitleIcon'
+import { SidebarCountPill } from '../SidebarParts'
+import { SIDEBAR_ITEM_PADDING } from './sidebarStyles'
 
 interface SidebarViewItemProps {
   view: ViewFile
@@ -31,19 +33,18 @@ export function SidebarViewItem({
     <div className="group relative">
       <div
         className={`flex cursor-pointer select-none items-center gap-2 rounded transition-colors ${isActive ? 'bg-primary/10 text-primary' : 'text-foreground hover:bg-accent'}`}
-        style={{ padding: showCount ? '6px 8px 6px 16px' : '6px 16px', borderRadius: 4 }}
+        style={{ padding: showCount ? SIDEBAR_ITEM_PADDING.withCount : SIDEBAR_ITEM_PADDING.regular, borderRadius: 4 }}
         onClick={onSelect}
       >
         {icon}
         <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{view.definition.name}</span>
         {showCount && (
-          <span
-            data-testid="view-count-chip"
-            className="flex items-center justify-center text-muted-foreground transition-opacity group-hover:opacity-0 group-focus-within:opacity-0"
-            style={{ height: 20, borderRadius: 9999, padding: '0 6px', fontSize: 10, background: 'var(--muted)' }}
-          >
-            {count}
-          </span>
+          <SidebarCountPill
+            count={count}
+            className="text-muted-foreground transition-opacity group-hover:opacity-0 group-focus-within:opacity-0"
+            style={{ background: 'var(--muted)' }}
+            testId="view-count-chip"
+          />
         )}
       </div>
       <div className="pointer-events-none absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">

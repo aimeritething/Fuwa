@@ -3,6 +3,14 @@ import type { SidebarSelection } from '../types'
 import { cn } from '@/lib/utils'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { type IconProps } from '@phosphor-icons/react'
+import { SIDEBAR_ITEM_PADDING } from './sidebar/sidebarStyles'
+
+const SIDEBAR_COUNT_PILL_STYLE = {
+  borderRadius: 9999,
+  padding: '0 6px',
+  fontSize: 10,
+  fontVariantNumeric: 'tabular-nums',
+} as const
 
 export interface SectionGroup {
   label: string
@@ -26,6 +34,54 @@ export function isSelectionActive(current: SidebarSelection, check: SidebarSelec
 
 // --- NavItem ---
 
+function hasSidebarCount(count?: number): count is number {
+  return count !== undefined && count > 0
+}
+
+function getNavItemPadding(compact: boolean | undefined, hasCount: boolean) {
+  if (compact) return hasCount ? SIDEBAR_ITEM_PADDING.compactWithCount : SIDEBAR_ITEM_PADDING.compact
+  return hasCount ? SIDEBAR_ITEM_PADDING.withCount : SIDEBAR_ITEM_PADDING.regular
+}
+
+function SidebarNavIcon({
+  Icon,
+  emoji,
+  iconSize,
+  isActive,
+}: {
+  Icon: ComponentType<IconProps>
+  emoji?: string | null
+  iconSize: number
+  isActive?: boolean
+}) {
+  if (emoji) return <span style={{ fontSize: iconSize, lineHeight: 1, width: iconSize, textAlign: 'center' }}>{emoji}</span>
+  return <Icon size={iconSize} weight={isActive ? 'fill' : 'regular'} />
+}
+
+export function SidebarCountPill({
+  count,
+  className,
+  style,
+  compact,
+  testId = 'sidebar-count-chip',
+}: {
+  count: number
+  className?: string
+  style?: React.CSSProperties
+  compact?: boolean
+  testId?: string
+}) {
+  return (
+    <span
+      data-testid={testId}
+      className={cn("flex items-center justify-center", className)}
+      style={{ height: compact ? 18 : 20, ...SIDEBAR_COUNT_PILL_STYLE, ...style }}
+    >
+      {count}
+    </span>
+  )
+}
+
 export function NavItem({ icon: Icon, emoji, label, count, isActive, activeClassName = 'bg-primary/10 text-primary', badgeClassName, badgeStyle, activeBadgeClassName, activeBadgeStyle, onClick, disabled, disabledTooltip, compact }: {
   icon: ComponentType<IconProps>
   emoji?: string | null
@@ -44,12 +100,11 @@ export function NavItem({ icon: Icon, emoji, label, count, isActive, activeClass
 }) {
   const iconSize = compact ? 14 : 16
   const textClass = compact ? 'text-[12px]' : 'text-[13px]'
-  const padding = compact ? '4px 16px' : '6px 16px'
+  const showCount = hasSidebarCount(count)
+  const padding = getNavItemPadding(compact, showCount)
   const resolvedBadgeClass = isActive && activeBadgeClassName ? activeBadgeClassName : badgeClassName
   const resolvedBadgeStyle = isActive && activeBadgeClassName ? activeBadgeStyle : badgeStyle
-  const iconEl = emoji
-    ? <span style={{ fontSize: iconSize, lineHeight: 1, width: iconSize, textAlign: 'center' }}>{emoji}</span>
-    : <Icon size={iconSize} weight={isActive ? 'fill' : 'regular'} />
+  const iconEl = <SidebarNavIcon Icon={Icon} emoji={emoji} iconSize={iconSize} isActive={isActive} />
 
   if (disabled) {
     return (
@@ -67,10 +122,13 @@ export function NavItem({ icon: Icon, emoji, label, count, isActive, activeClass
     >
       {iconEl}
       <span className={cn("flex-1 font-medium", textClass)}>{label}</span>
-      {count !== undefined && count > 0 && (
-        <span className={cn("flex items-center justify-center", resolvedBadgeClass)} style={{ height: compact ? 18 : 20, borderRadius: 9999, padding: '0 6px', fontSize: 10, ...resolvedBadgeStyle }}>
-          {count}
-        </span>
+      {showCount && (
+        <SidebarCountPill
+          count={count}
+          className={resolvedBadgeClass}
+          style={resolvedBadgeStyle}
+          compact={compact}
+        />
       )}
     </div>
   )
@@ -178,12 +236,11 @@ function SectionHeader({ label, type, Icon, sectionColor, sectionLightColor, ite
         )}
       </div>
       {itemCount > 0 && (
-        <span
-          className={cn("flex items-center justify-center", !isActive && "text-muted-foreground")}
-          style={{ height: 20, borderRadius: 9999, padding: '0 6px', fontSize: 10, ...(isActive ? { background: sectionColor, color: 'white' } : { background: 'var(--muted)' }) }}
-        >
-          {itemCount}
-        </span>
+        <SidebarCountPill
+          count={itemCount}
+          className={!isActive ? 'text-muted-foreground' : undefined}
+          style={isActive ? { background: sectionColor, color: 'white' } : { background: 'var(--muted)' }}
+        />
       )}
     </div>
   )

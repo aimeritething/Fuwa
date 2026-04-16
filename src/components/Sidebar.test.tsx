@@ -971,6 +971,20 @@ describe('Sidebar', () => {
       expectFavoriteRowToMatchTypeRow()
     })
 
+    it('aligns the favorites header count pill with the shared sidebar count column', () => {
+      render(<Sidebar entries={[...mockEntries, favEntry]} selection={defaultSelection} onSelect={() => {}} />)
+
+      const favoritesHeader = screen.getByText('FAVORITES').closest('button') as HTMLElement
+      const countChip = within(favoritesHeader).getByTestId('sidebar-count-chip')
+
+      expect(favoritesHeader).toHaveStyle({ padding: '8px 8px 8px 16px' })
+      expect(countChip).toHaveStyle({
+        background: 'var(--muted)',
+        height: '18px',
+        padding: '0 6px',
+      })
+    })
+
     it('prefers a favorite note emoji icon over the type icon fallback', () => {
       const emojiFavorite = { ...favEntry, title: 'Emoji Favorite', icon: '🚀' }
 
@@ -1155,6 +1169,30 @@ describe('Sidebar', () => {
         padding: '0 6px',
       })
       expect(countChip.className).toContain('text-muted-foreground')
+    })
+
+    it('aligns top-nav count pills to the same trailing column as view rows', () => {
+      render(
+        <Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} inboxCount={12} views={mockViews} />
+      )
+
+      const topNavItem = screen.getByText('Inbox').closest('[class*="cursor-pointer"]') as HTMLElement
+      const topNavCount = within(topNavItem).getByTestId('sidebar-count-chip')
+      const viewItem = screen.getByText('Active Projects').closest('[class*="cursor-pointer"]') as HTMLElement
+      const viewCount = within(viewItem).getByTestId('view-count-chip')
+
+      expect(topNavItem).toHaveStyle({ padding: '6px 8px 6px 16px' })
+      expect(viewItem).toHaveStyle({ padding: '6px 8px 6px 16px' })
+      expect(topNavCount).toHaveStyle({
+        background: 'var(--muted)',
+        height: '20px',
+        padding: '0 6px',
+      })
+      expect(viewCount).toHaveStyle({
+        background: 'var(--muted)',
+        height: '20px',
+        padding: '0 6px',
+      })
     })
 
     it('renders phosphor view icons without leaking the raw icon name', () => {
