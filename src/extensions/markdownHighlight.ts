@@ -1,4 +1,5 @@
 import { markdown } from '@codemirror/lang-markdown'
+import { yamlFrontmatter } from '@codemirror/lang-yaml'
 import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { tags } from '@lezer/highlight'
 import type { Extension } from '@codemirror/state'
@@ -24,5 +25,8 @@ const markdownHighlightStyle = HighlightStyle.define([
 ])
 
 export function markdownLanguage(): Extension {
-  return [markdown(), syntaxHighlighting(markdownHighlightStyle)]
+  return [
+    yamlFrontmatter({ content: markdown() }),
+    syntaxHighlighting(markdownHighlightStyle),
+  ]
 }
