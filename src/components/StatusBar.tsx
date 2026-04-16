@@ -3,7 +3,7 @@ import type { VaultAiGuidanceStatus } from '../lib/vaultAiGuidance'
 import { useEffect, useState } from 'react'
 import type { ClaudeCodeStatus } from '../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../hooks/useMcpStatus'
-import type { GitRemoteStatus, LastCommitInfo, SyncStatus } from '../types'
+import type { GitRemoteStatus, SyncStatus } from '../types'
 import {
   StatusBarPrimarySection,
   StatusBarSecondarySection,
@@ -30,7 +30,6 @@ interface StatusBarProps {
   syncStatus?: SyncStatus
   lastSyncTime?: number | null
   conflictCount?: number
-  lastCommitInfo?: LastCommitInfo | null
   remoteStatus?: GitRemoteStatus | null
   onTriggerSync?: () => void
   onPullAndPush?: () => void
@@ -70,7 +69,6 @@ export function StatusBar({
   syncStatus = 'idle',
   lastSyncTime = null,
   conflictCount = 0,
-  lastCommitInfo,
   remoteStatus,
   onTriggerSync,
   onPullAndPush,
@@ -131,7 +129,6 @@ export function StatusBar({
         syncStatus={syncStatus}
         lastSyncTime={lastSyncTime}
         conflictCount={conflictCount}
-        lastCommitInfo={lastCommitInfo}
         remoteStatus={remoteStatus}
         onTriggerSync={onTriggerSync}
         onPullAndPush={onPullAndPush}

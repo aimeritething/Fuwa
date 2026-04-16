@@ -25,6 +25,17 @@ function isListActive(container: HTMLDivElement | null): boolean {
   return activeElement instanceof Node && container.contains(activeElement)
 }
 
+function isEditableElement(element: Element | null): boolean {
+  if (!element) return false
+  if (
+    element instanceof HTMLInputElement
+    || element instanceof HTMLTextAreaElement
+    || element instanceof HTMLSelectElement
+  ) return true
+  if (!(element instanceof HTMLElement)) return false
+  return element.isContentEditable || !!element.closest('[contenteditable="true"]')
+}
+
 function resolveCurrentIndex(
   items: VaultEntry[],
   highlightedPath: string | null,
@@ -85,7 +96,7 @@ export function useNoteListKeyboard({
     onPrefetch?.(nextItem)
   }, [items, onOpen, onPrefetch, selectedNotePath, syncHighlightedPath])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+  const processKeyDown = useCallback((e: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'preventDefault'>) => {
     if (!enabled || items.length === 0) return
     if (e.metaKey || e.ctrlKey || e.altKey) return
 
@@ -101,6 +112,10 @@ export function useNoteListKeyboard({
       if (highlightedItem) onOpen(highlightedItem)
     }
   }, [enabled, items, moveHighlight, onOpen])
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    processKeyDown(e)
+  }, [processKeyDown])
 
   const handleFocus = useCallback(() => {
     syncToCurrentSelection()
@@ -119,6 +134,19 @@ export function useNoteListKeyboard({
       if (isListActive(containerRef.current)) syncToCurrentSelection()
     })
   }, [syncToCurrentSelection])
+
+  useEffect(() => {
+    if (!enabled) return
+
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented) return
+      if (isEditableElement(document.activeElement)) return
+      processKeyDown(event)
+    }
+
+    window.addEventListener('keydown', handleWindowKeyDown)
+    return () => window.removeEventListener('keydown', handleWindowKeyDown)
+  }, [enabled, processKeyDown])
 
   const highlightedPath = items.some((entry) => entry.path === highlightedPathState)
     ? highlightedPathState

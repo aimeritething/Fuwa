@@ -173,4 +173,39 @@ describe('useNoteListKeyboard', () => {
     act(() => result.current.handleKeyDown(keyEvent('ArrowDown')))
     expect(result.current.highlightedPath).toBeNull()
   })
+
+  it('responds to global arrow keys when no editable element is focused', () => {
+    const open = vi.fn()
+    const { result } = renderHook(() =>
+      useNoteListKeyboard({ items, selectedNotePath: null, onOpen: open, enabled: true }),
+    )
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    })
+
+    expect(result.current.highlightedPath).toBe('/a.md')
+    expect(open).toHaveBeenCalledWith(items[0])
+  })
+
+  it('ignores global arrow keys while an editable element is focused', () => {
+    const open = vi.fn()
+    const editor = document.createElement('div')
+    editor.setAttribute('contenteditable', 'true')
+    document.body.appendChild(editor)
+    editor.focus()
+
+    const { result } = renderHook(() =>
+      useNoteListKeyboard({ items, selectedNotePath: null, onOpen: open, enabled: true }),
+    )
+
+    act(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }))
+    })
+
+    expect(result.current.highlightedPath).toBeNull()
+    expect(open).not.toHaveBeenCalled()
+
+    editor.remove()
+  })
 })

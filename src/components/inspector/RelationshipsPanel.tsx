@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState, useRef, type ReactNode } from 'react'
 import type { VaultEntry } from '../../types'
-import { ArrowRight, Plus, X } from '@phosphor-icons/react'
+import { Plus, X } from '@phosphor-icons/react'
 import type { ParsedFrontmatter } from '../../utils/frontmatter'
 import { containsWikilinks } from '../DynamicPropertiesPanel'
 import type { FrontmatterValue } from '../Inspector'
@@ -17,11 +17,11 @@ import { LinkButton } from './LinkButton'
 import {
   PROPERTY_PANEL_GRID_STYLE,
   PROPERTY_PANEL_LABEL_CLASS_NAME,
-  PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME,
 } from '../propertyPanelLayout'
 import { humanizePropertyKey } from '../../utils/propertyLabels'
 
 const RELATIONSHIP_SECTION_ROW_CLASS_NAME = 'flex min-w-0 flex-col gap-1 px-1.5'
+const RELATIONSHIPS_PANEL_GRID_CLASS_NAME = 'grid min-w-0 gap-x-2 gap-y-3'
 const RELATIONSHIP_SECTION_LABEL_TEXT_CLASS_NAME = 'min-w-0 flex-1 truncate'
 const RELATIONSHIP_SECTION_VALUE_CLASS_NAME = 'min-w-0'
 const RELATIONSHIP_ACTION_ROW_CLASS_NAME = 'min-w-0 px-1.5'
@@ -72,12 +72,6 @@ function RelationshipSectionRow({ label, children, dataTestId }: {
   return (
     <div className={RELATIONSHIP_SECTION_ROW_CLASS_NAME} style={{ gridColumn: '1 / -1' }} data-testid={dataTestId}>
       <span className={PROPERTY_PANEL_LABEL_CLASS_NAME} data-testid="relationship-section-label">
-        <span
-          className={PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME}
-          data-testid="relationship-section-icon-slot"
-        >
-          <ArrowRight className="size-3.5 shrink-0 text-muted-foreground/40" aria-hidden="true" />
-        </span>
         <span className={RELATIONSHIP_SECTION_LABEL_TEXT_CLASS_NAME}>{humanizePropertyKey(label)}</span>
       </span>
       <div className={RELATIONSHIP_SECTION_VALUE_CLASS_NAME}>{children}</div>
@@ -754,7 +748,7 @@ export function DynamicRelationshipsPanel({ frontmatter, entries, typeEntryMap, 
   })
 
   return (
-    <div className="grid min-w-0 gap-x-2 gap-y-1.5" style={PROPERTY_PANEL_GRID_STYLE}>
+    <div className={RELATIONSHIPS_PANEL_GRID_CLASS_NAME} style={PROPERTY_PANEL_GRID_STYLE} data-testid="relationships-panel-grid">
       {relationshipEntries.map(({ key, refs }) => (
         <RelationshipGroup
           key={key} label={key} refs={refs} entries={entries} typeEntryMap={typeEntryMap} vaultPath={resolvedVaultPath} onNavigate={onNavigate}

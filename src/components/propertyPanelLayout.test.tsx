@@ -107,6 +107,31 @@ describe('property panel shared grid layout', () => {
     expect(screen.getByTestId('add-property-icon-slot')).toHaveClass('size-5')
   })
 
+  it('renders suggested-property labels in lighter placeholder text', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={entry}
+        frontmatter={{}}
+        onAddProperty={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('Status').parentElement).toHaveClass('text-muted-foreground/40')
+    expect(screen.getByText('Date').parentElement).toHaveClass('text-muted-foreground/40')
+  })
+
+  it('renders the add-property row in lighter placeholder text', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={entry}
+        frontmatter={{}}
+        onAddProperty={vi.fn()}
+      />
+    )
+
+    expect(screen.getByText('Add property').parentElement).toHaveClass('text-muted-foreground/40')
+  })
+
   it('renders plain text values flush with the shared value column', () => {
     render(
       <DynamicPropertiesPanel

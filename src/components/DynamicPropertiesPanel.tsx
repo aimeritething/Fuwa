@@ -16,6 +16,7 @@ import {
   PROPERTY_PANEL_INTERACTIVE_ROW_CLASS_NAME,
   PROPERTY_PANEL_LABEL_CLASS_NAME,
   PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME,
+  PROPERTY_PANEL_PLACEHOLDER_LABEL_CLASS_NAME,
   PROPERTY_PANEL_PLACEHOLDER_VALUE_CLASS_NAME,
   PROPERTY_PANEL_ROW_STYLE,
 } from './propertyPanelLayout'
@@ -78,7 +79,7 @@ function AddPropertyButton({ onClick, disabled }: { onClick: () => void; disable
       disabled={disabled}
       data-testid="add-property-row"
     >
-      <span className={PROPERTY_PANEL_LABEL_CLASS_NAME}>
+      <span className={PROPERTY_PANEL_PLACEHOLDER_LABEL_CLASS_NAME}>
         <span
           className={PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME}
           data-testid="add-property-icon-slot"
@@ -127,7 +128,7 @@ function SuggestedPropertySlot({ label, displayMode, onAdd }: {
       onClick={onAdd}
       data-testid="suggested-property"
     >
-      <span className={PROPERTY_PANEL_LABEL_CLASS_NAME}>
+      <span className={PROPERTY_PANEL_PLACEHOLDER_LABEL_CLASS_NAME}>
         <span
           className={PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME}
           data-testid="suggested-property-icon-slot"

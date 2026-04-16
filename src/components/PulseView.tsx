@@ -272,7 +272,7 @@ function PulseHeader({
           </button>
         )}
         <Pulse size={16} className="text-primary" />
-        <span className="text-[14px] font-semibold text-foreground">Pulse</span>
+        <span className="text-[14px] font-semibold text-foreground">History</span>
       </div>
     </div>
   )
@@ -284,7 +284,7 @@ function EmptyState() {
       <Pulse size={32} style={{ marginBottom: 8, opacity: 0.5 }} />
       <p className="text-[13px]">No activity yet</p>
       <p className="text-[12px]" style={{ marginTop: 4 }}>
-        Commit changes to see your vault's pulse
+        Commit changes to see your vault's history
       </p>
     </div>
   )

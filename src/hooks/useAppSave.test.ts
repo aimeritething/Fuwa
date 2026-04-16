@@ -172,6 +172,30 @@ describe('useAppSave', () => {
     expect(typeof result.current.handleContentChange).toBe('function')
   })
 
+  it('bumps modifiedAt in live entry state after saving', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-04-16T14:45:00Z'))
+
+    const entry = makeEntry('/vault/note.md', 'Note', 'note.md')
+    const { result } = renderSave({
+      tabs: [{ entry, content: '# Note\n\nBefore' }],
+      activeTabPath: entry.path,
+      unsavedPaths: new Set([entry.path]),
+    })
+
+    await act(async () => {
+      result.current.handleContentChange(entry.path, '# Note\n\nAfter')
+      await result.current.handleSave()
+    })
+
+    expect(deps.updateEntry).toHaveBeenCalledWith(
+      entry.path,
+      expect.objectContaining({
+        modifiedAt: Math.floor(new Date('2026-04-16T14:45:00Z').getTime() / 1000),
+      }),
+    )
+  })
+
   it('debounces untitled H1 auto-rename until the user pauses typing', async () => {
     vi.useFakeTimers()
     vi.mocked(isTauri).mockReturnValue(true)

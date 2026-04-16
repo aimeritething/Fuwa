@@ -537,13 +537,13 @@ export function PulseBadge({ onClick, disabled }: { onClick?: () => void; disabl
           background: 'transparent',
           opacity: disabled ? 0.4 : 1,
         }}
-        title={disabled ? 'Pulse is only available for git-enabled vaults' : 'View pulse'}
+        title={disabled ? 'History is only available for git-enabled vaults' : 'View history'}
         onMouseEnter={disabled ? undefined : (event) => { event.currentTarget.style.background = 'var(--hover)' }}
         onMouseLeave={disabled ? undefined : (event) => { event.currentTarget.style.background = 'transparent' }}
         data-testid="status-pulse"
       >
         <Pulse size={13} />
-        Pulse
+        History
       </span>
     </>
   )

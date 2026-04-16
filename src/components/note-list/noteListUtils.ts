@@ -10,10 +10,11 @@ export interface DeletedNoteEntry extends VaultEntry {
   __changeBinary: boolean
 }
 
-const FILTER_TITLES: Partial<Record<'archived' | 'changes' | 'inbox', string>> = {
+const FILTER_TITLES: Partial<Record<'archived' | 'changes' | 'inbox' | 'pulse', string>> = {
   archived: 'Archive',
   changes: 'Changes',
   inbox: 'Inbox',
+  pulse: 'History',
 }
 
 function resolveSelectionFilterTitle(selection: SidebarSelection): string | null {

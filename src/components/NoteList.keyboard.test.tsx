@@ -54,4 +54,21 @@ describe('NoteList keyboard activation', () => {
     expect(onOpen).toHaveBeenNthCalledWith(1, mockEntries[1])
     expect(onOpen).toHaveBeenNthCalledWith(2, mockEntries[2])
   })
+
+  it('navigates from global arrow keys when the editor is not focused', async () => {
+    const onOpen = vi.fn()
+    render(
+      <>
+        <button type="button">Outside</button>
+        <NoteListKeyboardHarness onOpen={onOpen} />
+      </>,
+    )
+
+    screen.getByText('Outside').focus()
+    fireEvent.keyDown(window, { key: 'ArrowDown' })
+
+    await waitFor(() => {
+      expect(onOpen).toHaveBeenCalledWith(mockEntries[0])
+    })
+  })
 })

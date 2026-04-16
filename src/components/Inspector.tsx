@@ -94,6 +94,7 @@ export function Inspector({
                     onAddProperty={onAddProperty ? handleAddProperty : undefined}
                     onNavigate={onNavigate}
                   />
+                  <Separator data-testid="inspector-properties-relationships-separator" />
                   <DynamicRelationshipsPanel
                     frontmatter={frontmatter}
                     entries={entries}

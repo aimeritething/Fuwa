@@ -42,6 +42,15 @@
   background: var(--colors-selection);
 }
 
+/* Keep BlockNote toolbar/menu icons at a stable size.
+   Some default React Icons-based controls inherit `1em` sizing and can blow up
+   when upstream toolbar styling changes. */
+.editor__blocknote-container :is(.bn-toolbar, .bn-formatting-toolbar, .bn-menu-dropdown, .bn-grid-suggestion-menu) button svg {
+  width: 16px !important;
+  height: 16px !important;
+  flex-shrink: 0;
+}
+
 /* --- Paragraph spacing --- */
 .editor__blocknote-container .bn-block-content[data-content-type="paragraph"] {
   margin-bottom: var(--editor-paragraph-spacing);

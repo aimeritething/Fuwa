@@ -159,6 +159,11 @@ describe('Inspector', () => {
     expect(screen.getByText('Weekly')).toBeInTheDocument()
   })
 
+  it('shows a separator between properties and relationships', () => {
+    render(<Inspector {...defaultProps} entry={mockEntry} content={mockContent} />)
+    expect(screen.getByTestId('inspector-properties-relationships-separator')).toBeInTheDocument()
+  })
+
   it('shows relationships with clickable links', () => {
     render(<Inspector {...defaultProps} entry={mockEntry} content={mockContent} />)
     expect(screen.getByText('Belongs to')).toBeInTheDocument()

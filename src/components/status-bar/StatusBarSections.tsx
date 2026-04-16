@@ -4,12 +4,11 @@ import type { AiAgentId, AiAgentsStatus } from '../../lib/aiAgents'
 import type { VaultAiGuidanceStatus } from '../../lib/vaultAiGuidance'
 import type { ClaudeCodeStatus } from '../../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../../hooks/useMcpStatus'
-import type { GitRemoteStatus, LastCommitInfo, SyncStatus } from '../../types'
+import type { GitRemoteStatus, SyncStatus } from '../../types'
 import { AiAgentsBadge } from './AiAgentsBadge'
 import { Button } from '@/components/ui/button'
 import {
   ClaudeCodeBadge,
-  CommitBadge,
   CommitButton,
   ConflictBadge,
   ChangesBadge,
@@ -39,7 +38,6 @@ interface StatusBarPrimarySectionProps {
   syncStatus: SyncStatus
   lastSyncTime: number | null
   conflictCount: number
-  lastCommitInfo?: LastCommitInfo | null
   remoteStatus?: GitRemoteStatus | null
   onTriggerSync?: () => void
   onPullAndPush?: () => void
@@ -82,7 +80,6 @@ export function StatusBarPrimarySection({
   syncStatus,
   lastSyncTime,
   conflictCount,
-  lastCommitInfo,
   remoteStatus,
   onTriggerSync,
   onPullAndPush,
@@ -136,7 +133,6 @@ export function StatusBarPrimarySection({
         onPullAndPush={onPullAndPush}
         onOpenConflictResolver={onOpenConflictResolver}
       />
-      {lastCommitInfo && <CommitBadge info={lastCommitInfo} />}
       <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} />
       <PulseBadge onClick={onClickPulse} disabled={isGitVault === false} />
       {mcpStatus && <McpBadge status={mcpStatus} onInstall={onInstallMcp} />}

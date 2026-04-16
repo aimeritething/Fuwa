@@ -1,5 +1,6 @@
 import { fireEvent, screen } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { NoteList } from './NoteList'
 import { makeEntry, makeIndexedEntry, mockEntries, renderNoteList } from '../test-utils/noteListTestUtils'
 
 describe('NoteList status indicators', () => {
@@ -80,6 +81,28 @@ describe('NoteList virtualized datasets', () => {
 
     renderNoteList({ entries })
     expect(screen.getAllByText(/^Alpha$|^Zebra$/)[0].textContent).toBe('Alpha')
+  })
+
+  it('re-sorts when an entry modifiedAt changes', () => {
+    const entries = [
+      makeEntry({ path: '/a.md', title: 'Alpha', modifiedAt: 1000 }),
+      makeEntry({ path: '/b.md', title: 'Beta', modifiedAt: 3000 }),
+    ]
+
+    const { rerender, props } = renderNoteList({ entries })
+    expect(screen.getAllByText(/^Alpha$|^Beta$/)[0].textContent).toBe('Beta')
+
+    rerender(
+      <NoteList
+        {...props}
+        entries={[
+          { ...entries[0], modifiedAt: 4000 },
+          entries[1],
+        ]}
+      />,
+    )
+
+    expect(screen.getAllByText(/^Alpha$|^Beta$/)[0].textContent).toBe('Alpha')
   })
 
   it('filters section groups inside large mixed datasets', () => {

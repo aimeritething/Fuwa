@@ -259,13 +259,13 @@ describe('PulseView', () => {
     expect(onOpenNote).toHaveBeenCalledWith('project/my-project.md', 'abc123def456')
   })
 
-  it('renders Pulse header', async () => {
+  it('renders History header', async () => {
     mockInvokeFn.mockResolvedValue([])
 
     render(<PulseView vaultPath="/test/vault" />)
 
     await waitFor(() => {
-      expect(screen.getByText('Pulse')).toBeInTheDocument()
+      expect(screen.getByText('History')).toBeInTheDocument()
     })
   })
 

@@ -4,7 +4,6 @@ import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
-import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import {
   OPEN_NOTE_LIST_PROPERTIES_EVENT,
@@ -172,7 +171,7 @@ function ListPropertiesOptionsList({
   onToggle: (key: string) => void
 }) {
   return (
-    <ScrollArea className="max-h-60" data-testid="list-properties-scroll-area">
+    <div className="max-h-60 overflow-y-auto" data-testid="list-properties-scroll-area">
       {filteredItems.length === 0 ? (
         <div className="px-1 py-2 text-[12px] text-muted-foreground">
           No properties match this search.
@@ -193,7 +192,7 @@ function ListPropertiesOptionsList({
           </div>
         </DndContext>
       )}
-    </ScrollArea>
+    </div>
   )
 }
 
@@ -227,7 +226,7 @@ function ListPropertiesPopoverPanel({
   return (
     <PopoverContent
       align="end"
-      className="w-64 p-2"
+      className="w-64 overflow-hidden p-2"
       onOpenAutoFocus={(event) => event.preventDefault()}
       data-testid="list-properties-popover"
     >

@@ -235,7 +235,9 @@ describe('NoteList rendering', () => {
     })
 
     expect(screen.getByTestId('list-properties-popover')).toBeInTheDocument()
+    expect(screen.getByTestId('list-properties-popover')).toHaveClass('overflow-hidden')
     expect(screen.getByTestId('list-properties-scroll-area')).toBeInTheDocument()
+    expect(screen.getByTestId('list-properties-scroll-area')).toHaveClass('overflow-y-auto')
     expect(screen.getByRole('checkbox', { name: 'Priority' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Owner' })).toBeInTheDocument()
 

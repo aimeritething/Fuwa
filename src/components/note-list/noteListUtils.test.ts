@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { routeNoteClick, type ClickActions } from './noteListUtils'
-import type { VaultEntry } from '../../types'
+import { resolveHeaderTitle, routeNoteClick, type ClickActions } from './noteListUtils'
+import type { SidebarSelection, VaultEntry } from '../../types'
 
 function makeEntry(path = '/test.md'): VaultEntry {
   return {
@@ -31,6 +31,13 @@ function makeActions(): ClickActions {
 function makeMouseEvent(overrides: Partial<React.MouseEvent> = {}): React.MouseEvent {
   return { metaKey: false, ctrlKey: false, shiftKey: false, ...overrides } as React.MouseEvent
 }
+
+describe('resolveHeaderTitle', () => {
+  it('returns History for the pulse filter', () => {
+    const selection: SidebarSelection = { kind: 'filter', filter: 'pulse' }
+    expect(resolveHeaderTitle(selection, null)).toBe('History')
+  })
+})
 
 describe('routeNoteClick', () => {
   it('plain click replaces active tab', () => {

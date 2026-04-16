@@ -69,49 +69,6 @@ describe('StatusBar', () => {
     expect(onOpenFeedback).toHaveBeenCalledOnce()
   })
 
-  it('shows clickable commit hash that opens URL via openExternalUrl', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        lastCommitInfo={{ shortHash: 'a3f9b1c', commitUrl: 'https://github.com/owner/repo/commit/abc123' }}
-      />
-    )
-    const link = screen.getByTestId('status-commit-link')
-    expect(link).toBeInTheDocument()
-    expect(link.tagName).toBe('SPAN')
-    expect(screen.getByText('a3f9b1c')).toBeInTheDocument()
-
-    fireEvent.click(link)
-    expect(openExternalUrl).toHaveBeenCalledWith('https://github.com/owner/repo/commit/abc123')
-  })
-
-  it('shows non-clickable commit hash when no commitUrl', () => {
-    render(
-      <StatusBar
-        noteCount={100}
-        vaultPath="/Users/luca/Laputa"
-        vaults={vaults}
-        onSwitchVault={vi.fn()}
-        lastCommitInfo={{ shortHash: 'b4e2d8f', commitUrl: null }}
-      />
-    )
-    const span = screen.getByTestId('status-commit-hash')
-    expect(span).toBeInTheDocument()
-    expect(span.tagName).toBe('SPAN')
-    expect(screen.getByText('b4e2d8f')).toBeInTheDocument()
-  })
-
-  it('hides commit hash when lastCommitInfo is null', () => {
-    render(
-      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} lastCommitInfo={null} />
-    )
-    expect(screen.queryByTestId('status-commit-link')).not.toBeInTheDocument()
-    expect(screen.queryByTestId('status-commit-hash')).not.toBeInTheDocument()
-  })
-
   it('displays active vault name', () => {
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
     expect(screen.getByText('Main Vault')).toBeInTheDocument()
@@ -384,20 +341,20 @@ describe('StatusBar', () => {
     expect(screen.getByText(/1 behind/)).toBeInTheDocument()
   })
 
-  it('shows Pulse badge in status bar', () => {
+  it('shows History badge in status bar', () => {
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} isGitVault />)
     expect(screen.getByTestId('status-pulse')).toBeInTheDocument()
-    expect(screen.getByText('Pulse')).toBeInTheDocument()
+    expect(screen.getByText('History')).toBeInTheDocument()
   })
 
-  it('calls onClickPulse when clicking Pulse badge', () => {
+  it('calls onClickPulse when clicking History badge', () => {
     const onClickPulse = vi.fn()
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} isGitVault onClickPulse={onClickPulse} />)
     fireEvent.click(screen.getByTestId('status-pulse'))
     expect(onClickPulse).toHaveBeenCalledOnce()
   })
 
-  it('disables Pulse badge when isGitVault is false', () => {
+  it('disables History badge when isGitVault is false', () => {
     const onClickPulse = vi.fn()
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} isGitVault={false} onClickPulse={onClickPulse} />)
     fireEvent.click(screen.getByTestId('status-pulse'))

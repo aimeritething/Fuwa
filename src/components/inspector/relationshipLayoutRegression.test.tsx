@@ -58,7 +58,22 @@ describe('relationship layout regression', () => {
 
     const label = within(belongsToSlot!).getByTestId('relationship-section-label')
     expect(label).toHaveClass('text-[12px]')
-    expect(within(label).getByTestId('relationship-section-icon-slot')).toBeInTheDocument()
+    expect(within(label).queryByTestId('relationship-section-icon-slot')).not.toBeInTheDocument()
     expect(within(belongsToSlot!).getByTestId('add-relation-ref')).toBeInTheDocument()
+  })
+
+  it('removes relationship arrows and keeps the looser vertical spacing between rows', () => {
+    render(
+      <DynamicRelationshipsPanel
+        frontmatter={{}}
+        entries={[makeEntry({ path: '/vault/project-alpha.md', filename: 'project-alpha.md', title: 'Project Alpha', isA: 'Project' })]}
+        typeEntryMap={{}}
+        onNavigate={vi.fn()}
+        onAddProperty={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('relationships-panel-grid')).toHaveClass('gap-y-3')
+    expect(screen.queryByTestId('relationship-section-icon-slot')).not.toBeInTheDocument()
   })
 })

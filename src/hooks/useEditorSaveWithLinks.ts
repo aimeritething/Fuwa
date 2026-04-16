@@ -20,6 +20,7 @@ export function useEditorSaveWithLinks(config: {
       outgoingLinks: extractOutgoingLinks(content),
       snippet: extractSnippet(content),
       wordCount: countWords(content),
+      modifiedAt: Math.floor(Date.now() / 1000),
     })
   }, [updateEntry])
   const editor = useEditorSave({
