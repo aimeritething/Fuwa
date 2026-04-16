@@ -18,6 +18,20 @@ vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }))
 
+vi.mock('@tauri-apps/api/window', async () => {
+  const actual = await vi.importActual<typeof import('@tauri-apps/api/window')>('@tauri-apps/api/window')
+
+  return {
+    ...actual,
+    getCurrentWindow: () => ({
+      innerSize: vi.fn(async () => ({ toLogical: () => ({ width: 1400, height: 900 }) })),
+      scaleFactor: vi.fn(async () => 1),
+      setMinSize: vi.fn(async () => {}),
+      setSize: vi.fn(async () => {}),
+    }),
+  }
+})
+
 // Mock mock-tauri module
 const mockEntries = [
   {
@@ -271,6 +285,37 @@ describe('App', () => {
     await waitFor(() => {
       expect(document.querySelector('.app__sidebar')).toBeInTheDocument()
       expect(document.querySelector('.app__note-list')).toBeInTheDocument()
+    })
+  })
+
+  it('updates the main-window size constraints when the view mode changes', async () => {
+    const { invoke } = await import('@tauri-apps/api/core') as { invoke: ReturnType<typeof vi.fn> }
+
+    render(<App />)
+    await waitFor(() => {
+      expect(screen.getByText('All Notes')).toBeInTheDocument()
+    })
+
+    invoke.mockClear()
+
+    fireEvent.keyDown(window, { key: '1', metaKey: true })
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith('update_current_window_min_size', {
+        minWidth: 800,
+        minHeight: 400,
+        growToFit: true,
+      })
+    })
+
+    invoke.mockClear()
+
+    fireEvent.keyDown(window, { key: '3', metaKey: true })
+    await waitFor(() => {
+      expect(invoke).toHaveBeenCalledWith('update_current_window_min_size', {
+        minWidth: 1200,
+        minHeight: 400,
+        growToFit: true,
+      })
     })
   })
 })

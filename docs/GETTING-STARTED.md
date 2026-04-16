@@ -261,6 +261,7 @@ tolaria/
 | `src/hooks/useSettings.ts` | App settings (telemetry, release channel, auto-sync interval, default AI agent). |
 | `src/lib/releaseChannel.ts` | Normalizes persisted updater-channel values (`stable` default, optional `alpha`). |
 | `src/lib/appUpdater.ts` | Frontend wrapper for channel-aware updater commands. |
+| `src/hooks/useMainWindowSizeConstraints.ts` | Derives the main-window minimum width from the visible panes and asks Tauri to grow back to fit wider layouts. |
 | `src/hooks/useVaultConfig.ts` | Per-vault local UI preferences (zoom, view mode, colors, Inbox columns, explicit organization workflow). |
 | `src/components/SettingsPanel.tsx` | Settings UI for telemetry, release channel, sync interval, default AI agent, and the vault-level explicit organization toggle. |
 | `src/hooks/useUpdater.ts` | In-app updates using the selected alpha/stable feed. |

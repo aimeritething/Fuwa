@@ -30,7 +30,7 @@ import { useSettings } from './hooks/useSettings'
 import { useNoteActions } from './hooks/useNoteActions'
 import { useCommitFlow } from './hooks/useCommitFlow'
 import { useGitRemoteStatus } from './hooks/useGitRemoteStatus'
-import { useViewMode } from './hooks/useViewMode'
+import { useViewMode, type ViewMode } from './hooks/useViewMode'
 import { useEntryActions } from './hooks/useEntryActions'
 import { useAppCommands } from './hooks/useAppCommands'
 import { generateCommitMessage } from './utils/commitMessage'
@@ -47,6 +47,11 @@ import { useOnboarding } from './hooks/useOnboarding'
 import { useGettingStartedClone } from './hooks/useGettingStartedClone'
 import { useNetworkStatus } from './hooks/useNetworkStatus'
 import { useAppNavigation } from './hooks/useAppNavigation'
+import {
+  applyMainWindowSizeConstraints,
+  getMainWindowMinWidth,
+  useMainWindowSizeConstraints,
+} from './hooks/useMainWindowSizeConstraints'
 import { useAiActivity } from './hooks/useAiActivity'
 import { useBulkActions } from './hooks/useBulkActions'
 import { useDeleteActions } from './hooks/useDeleteActions'
@@ -693,6 +698,45 @@ function App() {
   const zoom = useZoom()
   const buildNumber = useBuildNumber()
 
+  const updateMainWindowConstraints = useCallback((
+    nextSidebarVisible: boolean,
+    nextNoteListVisible: boolean,
+    nextInspectorCollapsed: boolean = layout.inspectorCollapsed,
+  ) => {
+    if (noteWindowParams) return
+
+    const minWidth = getMainWindowMinWidth({
+      sidebarVisible: nextSidebarVisible,
+      noteListVisible: nextNoteListVisible,
+      inspectorCollapsed: nextInspectorCollapsed,
+    })
+
+    void applyMainWindowSizeConstraints(minWidth).catch(() => {})
+  }, [layout.inspectorCollapsed, noteWindowParams])
+
+  const handleSetViewMode = useCallback((mode: ViewMode) => {
+    setViewMode(mode)
+    updateMainWindowConstraints(mode === 'all', mode !== 'editor-only')
+  }, [setViewMode, updateMainWindowConstraints])
+
+  const handleToggleInspector = useCallback(() => {
+    const nextInspectorCollapsed = !layout.inspectorCollapsed
+    layout.setInspectorCollapsed(nextInspectorCollapsed)
+    updateMainWindowConstraints(sidebarVisible, noteListVisible, nextInspectorCollapsed)
+  }, [
+    layout,
+    noteListVisible,
+    sidebarVisible,
+    updateMainWindowConstraints,
+  ])
+
+  useMainWindowSizeConstraints({
+    enabled: !noteWindowParams,
+    sidebarVisible,
+    noteListVisible,
+    inspectorCollapsed: layout.inspectorCollapsed,
+  })
+
   const { status: updateStatus, actions: updateActions } = useUpdater(settings.release_channel)
 
   const handleCheckForUpdates = useCallback(async () => {
@@ -767,8 +811,8 @@ function App() {
     onCommitPush: commitFlow.openCommitDialog,
     onPull: autoSync.triggerSync,
     onResolveConflicts: conflictFlow.handleOpenConflictResolver,
-    onSetViewMode: setViewMode,
-    onToggleInspector: () => layout.setInspectorCollapsed(c => !c),
+    onSetViewMode: handleSetViewMode,
+    onToggleInspector: handleToggleInspector,
     onToggleDiff: () => diffToggleRef.current(),
     onToggleRawEditor: activeDeletedFile ? undefined : () => rawToggleRef.current(),
     onZoomIn: zoom.zoomIn, onZoomOut: zoom.zoomOut, onZoomReset: zoom.zoomReset,
@@ -904,7 +948,7 @@ function App() {
           <>
             <div className={`app__note-list${aiActivity.highlightElement === 'notelist' ? ' ai-highlight' : ''}`} style={{ width: layout.noteListWidth }}>
               {effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'pulse' ? (
-                <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
+                <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => handleSetViewMode('all')} />
               ) : (
                 <NoteList entries={vault.entries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} allNotesNoteListProperties={vaultConfig.allNotes?.noteListProperties ?? null} onUpdateAllNotesNoteListProperties={handleUpdateAllNotesNoteListProperties} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} multiSelectionCommandRef={multiSelectionCommandRef} />
               )}
@@ -925,7 +969,7 @@ function App() {
             getNoteStatus={vault.getNoteStatus}
             onCreateNote={notes.handleCreateNoteImmediate}
             inspectorCollapsed={layout.inspectorCollapsed}
-            onToggleInspector={() => layout.setInspectorCollapsed((c) => !c)}
+            onToggleInspector={handleToggleInspector}
             inspectorWidth={layout.inspectorWidth}
             defaultAiAgent={aiAgentPreferences.defaultAiAgent}
             defaultAiAgentReady={aiAgentPreferences.defaultAiAgentReady}

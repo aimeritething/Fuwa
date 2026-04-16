@@ -198,6 +198,7 @@ macro_rules! app_invoke_handler {
             commands::check_for_app_update,
             commands::update_menu_state,
             commands::trigger_menu_command,
+            commands::update_current_window_min_size,
             commands::save_settings,
             commands::download_and_install_app_update,
             commands::load_vault_list,

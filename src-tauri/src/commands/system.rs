@@ -5,7 +5,11 @@ use crate::vault_list;
 use crate::vault_list::VaultList;
 use serde::Deserialize;
 #[cfg(desktop)]
+use tauri::LogicalSize;
+#[cfg(desktop)]
 use tauri::ipc::Channel;
+#[cfg(desktop)]
+use tauri::Window;
 
 use super::parse_build_label;
 
@@ -91,6 +95,50 @@ pub fn trigger_menu_command(app_handle: tauri::AppHandle, id: String) -> Result<
 #[tauri::command]
 pub fn trigger_menu_command(_app_handle: tauri::AppHandle, _id: String) -> Result<(), String> {
     Err("Native menu commands are not available on mobile".into())
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+pub fn update_current_window_min_size(
+    window: Window,
+    min_width: f64,
+    min_height: f64,
+    grow_to_fit: bool,
+) -> Result<(), String> {
+    window
+        .set_min_size(Some(LogicalSize::new(min_width, min_height)))
+        .map_err(|e| e.to_string())?;
+
+    if !grow_to_fit {
+        return Ok(());
+    }
+
+    let scale_factor = window.scale_factor().map_err(|e| e.to_string())?;
+    let current_size = window
+        .inner_size()
+        .map_err(|e| e.to_string())?
+        .to_logical::<f64>(scale_factor);
+
+    let next_width = current_size.width.max(min_width);
+    let next_height = current_size.height.max(min_height);
+    if next_width == current_size.width && next_height == current_size.height {
+        return Ok(());
+    }
+
+    window
+        .set_size(LogicalSize::new(next_width, next_height))
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn update_current_window_min_size(
+    _window: tauri::Window,
+    _min_width: f64,
+    _min_height: f64,
+    _grow_to_fit: bool,
+) -> Result<(), String> {
+    Ok(())
 }
 
 // ── Settings & config commands ──────────────────────────────────────────────

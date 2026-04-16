@@ -183,6 +183,8 @@ flowchart TD
 
 Panels are separated by `ResizeHandle` components that support drag-to-resize.
 
+The main Tauri window derives its minimum width from the visible panes instead of a single fixed floor. `useMainWindowSizeConstraints` treats the editor-only shell as the 800px baseline, adds sidebar / note-list / expanded-inspector allowances on top, and calls the native `update_current_window_min_size` command whenever view mode or inspector visibility changes. That same native command also grows the current window back out when a wider pane combination is restored, while note windows skip this path and keep their dedicated 800×700 sizing.
+
 ## Multi-Window (Note Windows)
 
 Notes can be opened in separate Tauri windows for focused editing. Secondary windows show only the editor panel (no sidebar, no note list).
@@ -685,6 +687,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `copy_image_to_vault` | Copy image file to vault |
 | `update_menu_state` | Update native menu checkmarks and enabled/disabled state for selection-dependent actions |
 | `trigger_menu_command` | Emit a native menu command ID for deterministic shortcut QA |
+| `update_current_window_min_size` | Update the active Tauri window's minimum size and optionally grow it to fit restored panes |
 
 `get_build_number` feeds the bottom status bar label. It preserves legacy `bNNN` date-build labels, renders local `0.1.0` / `0.0.0` builds as `dev`, and formats semver alpha prereleases as `alpha <version>` so signed alpha builds never fall back to `?`.
 

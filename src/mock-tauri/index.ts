@@ -11,6 +11,10 @@ import { tryVaultApi } from './vault-api'
 export { addMockEntry, updateMockContent, trackMockChange }
 
 export function isTauri(): boolean {
+  if (typeof globalThis !== 'undefined' && typeof (globalThis as { isTauri?: unknown }).isTauri === 'boolean') {
+    return Boolean((globalThis as { isTauri?: unknown }).isTauri)
+  }
+
   return typeof window !== 'undefined' && ('__TAURI__' in window || '__TAURI_INTERNALS__' in window)
 }
 
