@@ -440,7 +440,7 @@ Once a vault is ready, `useAiAgentsOnboarding` can show a one-time `AiAgentsOnbo
 
 `useGettingStartedClone` reuses the same parent-folder semantics for the status-bar / command-palette clone action, and `Toast` is rendered through the AI-agents onboarding gate so the resolved destination path stays visible right after a successful clone.
 
-The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` holds the public starter repo URL, delegates the clone to the git backend, then normalizes Tolaria-managed config files (`AGENTS.md`, `CLAUDE.md`, `config.md`) so fresh starter vaults pick up the current default guidance even when the remote starter repo still carries a legacy copy or an older pre-`type:` `is_a`-era template. `AGENTS.md` stays the canonical vault guidance file; `CLAUDE.md` is a compatibility shim that imports it for Claude Code without duplicating the instructions.
+The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` holds the public starter repo URL (`refactoringhq/tolaria-getting-started`), delegates the clone to the git backend, then normalizes Tolaria-managed config files (`AGENTS.md`, `CLAUDE.md`, `config.md`) so fresh starter vaults pick up the current default guidance even when the remote starter repo still carries a legacy copy or an older pre-`type:` `is_a`-era template. `AGENTS.md` stays the canonical vault guidance file; `CLAUDE.md` is a compatibility shim that imports it for Claude Code without duplicating the instructions. The clone helper still accepts the legacy `LAPUTA_GETTING_STARTED_REPO_URL` environment override so older automation can continue to redirect the starter source during the transition.
 
 ### Remote Clone & Auth Model
 
