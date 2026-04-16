@@ -80,8 +80,8 @@ interface AppCommandsConfig {
   onOpenInNewWindow?: () => void
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
-  onCustomizeInboxColumns?: () => void
-  canCustomizeInboxColumns?: boolean
+  onCustomizeNoteListColumns?: () => void
+  canCustomizeNoteListColumns?: boolean
   onRestoreDeletedNote?: () => void
   canRestoreDeletedNote?: boolean
 }
@@ -222,8 +222,8 @@ function createCommandRegistryConfig(config: AppCommandsConfig): Parameters<type
     onOpenInNewWindow: config.onOpenInNewWindow,
     onToggleFavorite: config.onToggleFavorite,
     onToggleOrganized: config.onToggleOrganized,
-    onCustomizeInboxColumns: config.onCustomizeInboxColumns,
-    canCustomizeInboxColumns: config.canCustomizeInboxColumns,
+    onCustomizeNoteListColumns: config.onCustomizeNoteListColumns,
+    canCustomizeNoteListColumns: config.canCustomizeNoteListColumns,
     onRestoreDeletedNote: config.onRestoreDeletedNote,
     canRestoreDeletedNote: config.canRestoreDeletedNote,
   }

@@ -196,6 +196,52 @@ describe('NoteList rendering', () => {
     expect(screen.queryByText('Luca')).not.toBeInTheDocument()
   })
 
+  it('shows the all-notes customize-columns action and falls back to type-defined chips', () => {
+    renderNoteList({
+      entries: makeBookTypeEntries(['Priority'], { properties: { Priority: 'High', Owner: 'Luca' } }),
+      selection: allSelection,
+      allNotesNoteListProperties: null,
+      onUpdateAllNotesNoteListProperties: () => undefined,
+    })
+
+    expect(screen.getByTitle('Customize All Notes columns')).toBeInTheDocument()
+    expect(screen.getByText('High')).toBeInTheDocument()
+    expect(screen.queryByText('Luca')).not.toBeInTheDocument()
+  })
+
+  it('opens the all-notes column picker from the global event and saves new columns', () => {
+    const onUpdateAllNotesNoteListProperties = vi.fn()
+    const archivedOwnerEntry = makeEntry({
+      path: '/vault/book-archive.md',
+      filename: 'book-archive.md',
+      title: 'Archived Book',
+      isA: 'Book',
+      archived: true,
+      properties: { Owner: 'Luca' },
+    })
+
+    renderNoteList({
+      entries: [
+        ...makeBookTypeEntries(['Priority'], { properties: { Priority: 'High' } }),
+        archivedOwnerEntry,
+      ],
+      selection: allSelection,
+      allNotesNoteListProperties: null,
+      onUpdateAllNotesNoteListProperties,
+    })
+
+    act(() => {
+      openNoteListPropertiesPicker('all')
+    })
+
+    expect(screen.getByTestId('list-properties-popover')).toBeInTheDocument()
+    expect(screen.getByRole('checkbox', { name: 'Priority' })).toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'Owner' })).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Owner' }))
+    expect(onUpdateAllNotesNoteListProperties).toHaveBeenCalledWith(['Priority', 'Owner'])
+  })
+
   it('opens the inbox column picker from the global event and saves new columns', () => {
     const onUpdateInboxNoteListProperties = vi.fn()
 

@@ -1,4 +1,4 @@
-export type NoteListPropertiesScope = 'type' | 'inbox'
+export type NoteListPropertiesScope = 'type' | 'inbox' | 'all'
 
 export interface OpenListPropertiesEventDetail {
   scope: NoteListPropertiesScope

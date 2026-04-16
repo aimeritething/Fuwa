@@ -505,9 +505,23 @@ function App() {
     })
   }, [setInspectorCollapsed])
 
-  const handleCustomizeInboxColumns = useCallback(() => {
-    openNoteListPropertiesPicker('inbox')
-  }, [])
+  const handleCustomizeNoteListColumns = useCallback(() => {
+    if (effectiveSelection.kind !== 'filter') return
+    if (effectiveSelection.filter === 'all') {
+      openNoteListPropertiesPicker('all')
+      return
+    }
+    if (effectiveSelection.filter === 'inbox') {
+      openNoteListPropertiesPicker('inbox')
+    }
+  }, [effectiveSelection])
+
+  const handleUpdateAllNotesNoteListProperties = useCallback((value: string[] | null) => {
+    updateConfig('allNotes', {
+      ...(vaultConfig.allNotes ?? { noteListProperties: null }),
+      noteListProperties: value && value.length > 0 ? value : null,
+    })
+  }, [updateConfig, vaultConfig.allNotes])
 
   const handleUpdateInboxNoteListProperties = useCallback((value: string[] | null) => {
     updateConfig('inbox', {
@@ -796,8 +810,9 @@ function App() {
     onOpenInNewWindow: handleOpenInNewWindow,
     onToggleFavorite: entryActions.handleToggleFavorite,
     onToggleOrganized: explicitOrganizationEnabled ? entryActions.handleToggleOrganized : undefined,
-    onCustomizeInboxColumns: handleCustomizeInboxColumns,
-    canCustomizeInboxColumns: explicitOrganizationEnabled && effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'inbox',
+    onCustomizeNoteListColumns: handleCustomizeNoteListColumns,
+    canCustomizeNoteListColumns: effectiveSelection.kind === 'filter'
+      && (effectiveSelection.filter === 'all' || (explicitOrganizationEnabled && effectiveSelection.filter === 'inbox')),
     onRestoreDeletedNote: activeDeletedFile ? () => { void handleDiscardFile(activeDeletedFile.relativePath) } : undefined,
     canRestoreDeletedNote: !!activeDeletedFile,
   })
@@ -891,7 +906,7 @@ function App() {
               {effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => setViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} multiSelectionCommandRef={multiSelectionCommandRef} />
+                <NoteList entries={vault.entries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} allNotesNoteListProperties={vaultConfig.allNotes?.noteListProperties ?? null} onUpdateAllNotesNoteListProperties={handleUpdateAllNotesNoteListProperties} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} multiSelectionCommandRef={multiSelectionCommandRef} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />

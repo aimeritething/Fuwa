@@ -43,8 +43,8 @@ interface CommandRegistryConfig {
   onOpenInNewWindow?: () => void
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
-  onCustomizeInboxColumns?: () => void
-  canCustomizeInboxColumns?: boolean
+  onCustomizeNoteListColumns?: () => void
+  canCustomizeNoteListColumns?: boolean
   onRestoreDeletedNote?: () => void
   canRestoreDeletedNote?: boolean
   onQuickOpen: () => void
@@ -105,7 +105,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     onOpenInNewWindow, onToggleFavorite, onToggleOrganized,
-    onCustomizeInboxColumns, canCustomizeInboxColumns,
+    onCustomizeNoteListColumns, canCustomizeNoteListColumns,
     onRestoreDeletedNote, canRestoreDeletedNote,
     selection, noteListFilter, onSetNoteListFilter,
   } = config
@@ -119,6 +119,9 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   const isArchived = activeEntry?.archived ?? false
   const isFavorite = activeEntry?.favorite ?? false
   const isSectionGroup = selection?.kind === 'sectionGroup'
+  const noteListColumnsLabel = selection?.kind === 'filter' && selection.filter === 'all'
+    ? 'Customize All Notes columns'
+    : 'Customize Inbox columns'
 
   const vaultTypes = useMemo(() => extractVaultTypes(entries), [entries])
 
@@ -136,7 +139,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     ...buildViewCommands({
       hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
       onToggleDiff, onToggleRawEditor, onToggleAIChat, zoomLevel, onZoomIn, onZoomOut, onZoomReset,
-      onCustomizeInboxColumns, canCustomizeInboxColumns,
+      onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
     }),
     ...buildSettingsCommands({
       mcpStatus, vaultCount, isGettingStartedHidden,
@@ -173,7 +176,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     isSectionGroup, noteListFilter, onSetNoteListFilter,
     onOpenInNewWindow, onToggleFavorite, isFavorite,
-    onToggleOrganized, onCustomizeInboxColumns, canCustomizeInboxColumns,
+    onToggleOrganized, onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
     onRestoreDeletedNote, canRestoreDeletedNote, activeEntry,
   ])
 }

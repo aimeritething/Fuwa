@@ -13,15 +13,17 @@ interface ViewCommandsConfig {
   onZoomIn: () => void
   onZoomOut: () => void
   onZoomReset: () => void
-  onCustomizeInboxColumns?: () => void
-  canCustomizeInboxColumns?: boolean
+  onCustomizeNoteListColumns?: () => void
+  canCustomizeNoteListColumns?: boolean
+  noteListColumnsLabel: string
 }
 
 export function buildViewCommands(config: ViewCommandsConfig): CommandAction[] {
   const {
     hasActiveNote, activeNoteModified,
     onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat,
-    zoomLevel, onZoomIn, onZoomOut, onZoomReset, onCustomizeInboxColumns, canCustomizeInboxColumns,
+    zoomLevel, onZoomIn, onZoomOut, onZoomReset,
+    onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
   } = config
 
   return [
@@ -33,7 +35,7 @@ export function buildViewCommands(config: ViewCommandsConfig): CommandAction[] {
     { id: 'toggle-raw-editor', label: 'Toggle Raw Editor', group: 'View', keywords: ['raw', 'source', 'markdown', 'frontmatter', 'code', 'textarea'], enabled: hasActiveNote, execute: () => onToggleRawEditor?.() },
     { id: 'toggle-ai-panel', label: 'Toggle AI Panel', group: 'View', shortcut: '⇧⌘L', keywords: ['ai', 'agent', 'chat', 'assistant', 'contextual'], enabled: true, execute: () => onToggleAIChat?.() },
     { id: 'toggle-backlinks', label: 'Toggle Backlinks', group: 'View', keywords: ['backlinks', 'references', 'links', 'mentions', 'incoming'], enabled: hasActiveNote, execute: onToggleInspector },
-    { id: 'customize-inbox-columns', label: 'Customize Inbox columns', group: 'View', keywords: ['inbox', 'columns', 'chips', 'properties', 'note list'], enabled: !!(canCustomizeInboxColumns && onCustomizeInboxColumns), execute: () => onCustomizeInboxColumns?.() },
+    { id: 'customize-note-list-columns', label: noteListColumnsLabel, group: 'View', keywords: ['all notes', 'inbox', 'columns', 'chips', 'properties', 'note list'], enabled: !!(canCustomizeNoteListColumns && onCustomizeNoteListColumns), execute: () => onCustomizeNoteListColumns?.() },
     { id: 'zoom-in', label: `Zoom In (${zoomLevel}%)`, group: 'View', shortcut: '⌘=', keywords: ['zoom', 'bigger', 'larger', 'scale'], enabled: zoomLevel < 150, execute: onZoomIn },
     { id: 'zoom-out', label: `Zoom Out (${zoomLevel}%)`, group: 'View', shortcut: '⌘-', keywords: ['zoom', 'smaller', 'scale'], enabled: zoomLevel > 80, execute: onZoomOut },
     { id: 'zoom-reset', label: 'Reset Zoom', group: 'View', shortcut: '⌘0', keywords: ['zoom', 'actual', 'default', '100'], enabled: zoomLevel !== 100, execute: onZoomReset },

@@ -167,29 +167,43 @@ describe('useCommandRegistry', () => {
   })
 
   it('includes Customize Inbox columns when the Inbox action is available', () => {
-    const onCustomizeInboxColumns = vi.fn()
+    const onCustomizeNoteListColumns = vi.fn()
     const config = makeConfig({
       selection: { kind: 'filter', filter: 'inbox' },
-      onCustomizeInboxColumns,
-      canCustomizeInboxColumns: true,
+      onCustomizeNoteListColumns,
+      canCustomizeNoteListColumns: true,
     })
     const { result } = renderHook(() => useCommandRegistry(config))
-    const cmd = findCommand(result.current, 'customize-inbox-columns')
+    const cmd = findCommand(result.current, 'customize-note-list-columns')
     expect(cmd).toBeDefined()
     expect(cmd!.enabled).toBe(true)
+    expect(cmd!.label).toBe('Customize Inbox columns')
 
     cmd!.execute()
-    expect(onCustomizeInboxColumns).toHaveBeenCalled()
+    expect(onCustomizeNoteListColumns).toHaveBeenCalled()
   })
 
-  it('disables Customize Inbox columns outside the Inbox view', () => {
+  it('includes Customize All Notes columns in the all-notes view', () => {
     const config = makeConfig({
       selection: { kind: 'filter', filter: 'all' },
-      onCustomizeInboxColumns: vi.fn(),
-      canCustomizeInboxColumns: false,
+      onCustomizeNoteListColumns: vi.fn(),
+      canCustomizeNoteListColumns: true,
     })
     const { result } = renderHook(() => useCommandRegistry(config))
-    const cmd = findCommand(result.current, 'customize-inbox-columns')
+    const cmd = findCommand(result.current, 'customize-note-list-columns')
+    expect(cmd).toBeDefined()
+    expect(cmd!.enabled).toBe(true)
+    expect(cmd!.label).toBe('Customize All Notes columns')
+  })
+
+  it('disables note-list column customization outside supported views', () => {
+    const config = makeConfig({
+      selection: { kind: 'sectionGroup', type: 'Book' },
+      onCustomizeNoteListColumns: vi.fn(),
+      canCustomizeNoteListColumns: false,
+    })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'customize-note-list-columns')
     expect(cmd!.enabled).toBe(false)
   })
 

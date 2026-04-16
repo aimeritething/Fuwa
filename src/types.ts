@@ -133,6 +133,11 @@ export interface InboxConfig {
 }
 
 /** Vault-scoped UI configuration stored locally per vault path. */
+export interface AllNotesConfig {
+  noteListProperties: string[] | null
+}
+
+/** Vault-scoped UI configuration stored locally per vault path. */
 export interface VaultConfig {
   zoom: number | null
   view_mode: string | null
@@ -141,6 +146,7 @@ export interface VaultConfig {
   status_colors: Record<string, string> | null
   property_display_modes: Record<string, string> | null
   inbox?: InboxConfig | null
+  allNotes?: AllNotesConfig | null
 }
 
 export interface PulseFile {
