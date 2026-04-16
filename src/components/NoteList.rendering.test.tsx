@@ -1,4 +1,4 @@
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { openNoteListPropertiesPicker } from './note-list/noteListPropertiesEvents'
 import {
@@ -209,7 +209,7 @@ describe('NoteList rendering', () => {
     expect(screen.queryByText('Luca')).not.toBeInTheDocument()
   })
 
-  it('opens the all-notes column picker from the global event and saves new columns', () => {
+  it('opens the all-notes column picker as a searchable combobox and saves new columns', async () => {
     const onUpdateAllNotesNoteListProperties = vi.fn()
     const archivedOwnerEntry = makeEntry({
       path: '/vault/book-archive.md',
@@ -235,11 +235,22 @@ describe('NoteList rendering', () => {
     })
 
     expect(screen.getByTestId('list-properties-popover')).toBeInTheDocument()
+    expect(screen.getByTestId('list-properties-scroll-area')).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Priority' })).toBeChecked()
     expect(screen.getByRole('checkbox', { name: 'Owner' })).toBeInTheDocument()
 
+    const combobox = screen.getByRole('combobox', { name: 'Search note-list properties' })
+    await waitFor(() => expect(combobox).toHaveFocus())
+
+    fireEvent.change(combobox, { target: { value: 'Owner' } })
+    expect(screen.getByRole('checkbox', { name: 'Owner' })).toBeInTheDocument()
+    expect(screen.queryByRole('checkbox', { name: 'Priority' })).not.toBeInTheDocument()
+
     fireEvent.click(screen.getByRole('checkbox', { name: 'Owner' }))
     expect(onUpdateAllNotesNoteListProperties).toHaveBeenCalledWith(['Priority', 'Owner'])
+
+    fireEvent.keyDown(combobox, { key: 'Escape' })
+    await waitFor(() => expect(screen.queryByTestId('list-properties-popover')).not.toBeInTheDocument())
   })
 
   it('opens the inbox column picker from the global event and saves new columns', () => {
@@ -257,6 +268,7 @@ describe('NoteList rendering', () => {
     })
 
     expect(screen.getByTestId('list-properties-popover')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Search note-list properties' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'Priority' })).toBeChecked()
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Owner' }))
@@ -275,6 +287,7 @@ describe('NoteList rendering', () => {
     })
 
     expect(screen.getByTestId('list-properties-popover')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Search note-list properties' })).toBeInTheDocument()
     expect(screen.getByRole('checkbox', { name: 'status' })).toBeInTheDocument()
   })
 

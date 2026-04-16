@@ -1,8 +1,10 @@
-import { useState, useMemo, useCallback, useEffect } from 'react'
+import { useState, useMemo, useCallback, useEffect, useId, useRef, type KeyboardEvent, type RefObject } from 'react'
 import { SlidersHorizontal, DotsSixVertical } from '@phosphor-icons/react'
 import { Popover, PopoverTrigger, PopoverContent } from '@/components/ui/popover'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { cn } from '@/lib/utils'
 import {
   OPEN_NOTE_LIST_PROPERTIES_EVENT,
@@ -42,6 +44,16 @@ function getOrderedItems(currentDisplay: NoteListPropertyKey[], availablePropert
   const selected = getSelectedProperties(currentDisplay, availableProperties)
   const unselected = availableProperties.filter((property) => !selected.includes(property))
   return [...selected, ...unselected]
+}
+
+function normalizePropertyQuery(query: string) {
+  return query.trim().toLowerCase()
+}
+
+function filterOrderedItems(orderedItems: NoteListPropertyKey[], query: string) {
+  const normalized = normalizePropertyQuery(query)
+  if (normalized === '') return orderedItems
+  return orderedItems.filter((property) => property.toLowerCase().includes(normalized))
 }
 
 function toggleDisplayProperty(currentDisplay: NoteListPropertyKey[], selectedSet: Set<NoteListPropertyKey>, key: NoteListPropertyKey) {
@@ -109,23 +121,174 @@ function SortablePropertyItem({ id, checked, onToggle }: { id: NoteListPropertyK
   )
 }
 
-export function ListPropertiesPopover({
+function ListPropertiesSearchInput({
+  inputRef,
+  query,
+  open,
+  listboxId,
+  onQueryChange,
+  onKeyDown,
+}: {
+  inputRef: RefObject<HTMLInputElement | null>
+  query: string
+  open: boolean
+  listboxId: string
+  onQueryChange: (value: string) => void
+  onKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
+}) {
+  return (
+    <div className="mb-2">
+      <Input
+        ref={inputRef}
+        value={query}
+        onChange={(event) => onQueryChange(event.target.value)}
+        onKeyDown={onKeyDown}
+        placeholder="Search properties..."
+        role="combobox"
+        aria-autocomplete="list"
+        aria-controls={listboxId}
+        aria-expanded={open}
+        aria-label="Search note-list properties"
+        className="h-8 text-[13px]"
+        data-testid="list-properties-combobox-input"
+      />
+    </div>
+  )
+}
+
+function ListPropertiesOptionsList({
+  listboxId,
+  filteredItems,
+  selectedSet,
+  sensors,
+  onDragEnd,
+  onToggle,
+}: {
+  listboxId: string
+  filteredItems: NoteListPropertyKey[]
+  selectedSet: Set<NoteListPropertyKey>
+  sensors: ReturnType<typeof useSensors>
+  onDragEnd: (event: DragEndEvent) => void
+  onToggle: (key: string) => void
+}) {
+  return (
+    <ScrollArea className="max-h-60" data-testid="list-properties-scroll-area">
+      {filteredItems.length === 0 ? (
+        <div className="px-1 py-2 text-[12px] text-muted-foreground">
+          No properties match this search.
+        </div>
+      ) : (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+          <div id={listboxId} role="listbox" aria-multiselectable="true" className="pr-3">
+            <SortableContext items={filteredItems} strategy={verticalListSortingStrategy}>
+              {filteredItems.map((key) => (
+                <SortablePropertyItem
+                  key={key}
+                  id={key}
+                  checked={selectedSet.has(key)}
+                  onToggle={onToggle}
+                />
+              ))}
+            </SortableContext>
+          </div>
+        </DndContext>
+      )}
+    </ScrollArea>
+  )
+}
+
+function ListPropertiesPopoverPanel({
+  inputRef,
+  query,
+  open,
+  listboxId,
+  filteredItems,
+  selectedSet,
+  sensors,
+  onQueryChange,
+  onSearchKeyDown,
+  onPanelKeyDown,
+  onDragEnd,
+  onToggle,
+}: {
+  inputRef: RefObject<HTMLInputElement | null>
+  query: string
+  open: boolean
+  listboxId: string
+  filteredItems: NoteListPropertyKey[]
+  selectedSet: Set<NoteListPropertyKey>
+  sensors: ReturnType<typeof useSensors>
+  onQueryChange: (value: string) => void
+  onSearchKeyDown: (event: KeyboardEvent<HTMLInputElement>) => void
+  onPanelKeyDown: (event: KeyboardEvent<HTMLDivElement>) => void
+  onDragEnd: (event: DragEndEvent) => void
+  onToggle: (key: string) => void
+}) {
+  return (
+    <PopoverContent
+      align="end"
+      className="w-64 p-2"
+      onOpenAutoFocus={(event) => event.preventDefault()}
+      data-testid="list-properties-popover"
+    >
+      <div onKeyDownCapture={onPanelKeyDown}>
+        <div className="mb-2 px-1 text-[11px] font-medium text-muted-foreground">
+          Show in note list
+        </div>
+        <ListPropertiesSearchInput
+          inputRef={inputRef}
+          query={query}
+          open={open}
+          listboxId={listboxId}
+          onQueryChange={onQueryChange}
+          onKeyDown={onSearchKeyDown}
+        />
+        <ListPropertiesOptionsList
+          listboxId={listboxId}
+          filteredItems={filteredItems}
+          selectedSet={selectedSet}
+          sensors={sensors}
+          onDragEnd={onDragEnd}
+          onToggle={onToggle}
+        />
+      </div>
+    </PopoverContent>
+  )
+}
+
+function handleEscapeKey(event: KeyboardEvent<HTMLInputElement | HTMLDivElement>, closePopover: () => void) {
+  if (event.key !== 'Escape') return
+  event.preventDefault()
+  closePopover()
+}
+
+function useListPropertiesPopoverState({
   scope,
   availableProperties,
   currentDisplay,
   onSave,
-  triggerTitle,
-  triggerClassName,
-}: ListPropertiesPopoverProps) {
+}: Pick<ListPropertiesPopoverProps, 'scope' | 'availableProperties' | 'currentDisplay' | 'onSave'>) {
   const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const inputRef = useRef<HTMLInputElement>(null)
+  const listboxId = useId()
+  const closePopover = useCallback(() => {
+    setQuery('')
+    setOpen(false)
+  }, [])
 
   const orderedItems = useMemo(
     () => getOrderedItems(currentDisplay, availableProperties),
     [availableProperties, currentDisplay],
   )
-
-  const selectedSet = useMemo(() => new Set(currentDisplay), [currentDisplay])
-
+  const filteredItems = useMemo(
+    () => filterOrderedItems(orderedItems, query),
+    [orderedItems, query],
+  )
+  const selectedSet = useMemo(
+    () => new Set(getSelectedProperties(currentDisplay, availableProperties)),
+    [availableProperties, currentDisplay],
+  )
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   )
@@ -139,6 +302,11 @@ export function ListPropertiesPopover({
     return () => window.removeEventListener(OPEN_NOTE_LIST_PROPERTIES_EVENT, handler)
   }, [scope])
 
+  useEffect(() => {
+    if (!open) return
+    requestAnimationFrame(() => inputRef.current?.focus())
+  }, [open])
+
   const handleToggle = useCallback((key: string) => {
     const nextSelected = toggleDisplayProperty(currentDisplay, selectedSet, key)
     onSave(nextSelected)
@@ -151,10 +319,64 @@ export function ListPropertiesPopover({
     onSave(reordered)
   }, [availableProperties, currentDisplay, onSave])
 
+  const handleSearchKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+    handleEscapeKey(event, closePopover)
+  }, [closePopover])
+
+  const handlePanelKeyDown = useCallback((event: KeyboardEvent<HTMLDivElement>) => {
+    handleEscapeKey(event, closePopover)
+  }, [closePopover])
+
+  const handleOpenChange = useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen)
+    if (!nextOpen) setQuery('')
+  }, [])
+
+  return {
+    open,
+    query,
+    inputRef,
+    listboxId,
+    filteredItems,
+    selectedSet,
+    sensors,
+    setQuery,
+    handleSearchKeyDown,
+    handlePanelKeyDown,
+    handleDragEnd,
+    handleOpenChange,
+    handleToggle,
+  }
+}
+
+export function ListPropertiesPopover({
+  scope,
+  availableProperties,
+  currentDisplay,
+  onSave,
+  triggerTitle,
+  triggerClassName,
+}: ListPropertiesPopoverProps) {
+  const {
+    open,
+    query,
+    inputRef,
+    listboxId,
+    filteredItems,
+    selectedSet,
+    sensors,
+    setQuery,
+    handleSearchKeyDown,
+    handlePanelKeyDown,
+    handleDragEnd,
+    handleOpenChange,
+    handleToggle,
+  } = useListPropertiesPopoverState({ scope, availableProperties, currentDisplay, onSave })
+
   if (availableProperties.length === 0) return null
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>
         <Button
           type="button"
@@ -164,27 +386,24 @@ export function ListPropertiesPopover({
           title={triggerTitle}
           aria-label={triggerTitle}
           data-testid="list-properties-btn"
-        >
-          <SlidersHorizontal size={16} />
-        </Button>
+      >
+        <SlidersHorizontal size={16} />
+      </Button>
       </PopoverTrigger>
-      <PopoverContent align="end" className="w-56 p-2" data-testid="list-properties-popover">
-        <div className="mb-2 px-1 text-[11px] font-medium text-muted-foreground">
-          Show in note list
-        </div>
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={orderedItems} strategy={verticalListSortingStrategy}>
-            {orderedItems.map((key) => (
-              <SortablePropertyItem
-                key={key}
-                id={key}
-                checked={selectedSet.has(key)}
-                onToggle={handleToggle}
-              />
-            ))}
-          </SortableContext>
-        </DndContext>
-      </PopoverContent>
+      <ListPropertiesPopoverPanel
+        inputRef={inputRef}
+        query={query}
+        open={open}
+        listboxId={listboxId}
+        filteredItems={filteredItems}
+        selectedSet={selectedSet}
+        sensors={sensors}
+        onQueryChange={setQuery}
+        onSearchKeyDown={handleSearchKeyDown}
+        onPanelKeyDown={handlePanelKeyDown}
+        onDragEnd={handleDragEnd}
+        onToggle={handleToggle}
+      />
     </Popover>
   )
 }
