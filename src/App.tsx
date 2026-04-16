@@ -480,6 +480,7 @@ function App() {
     tabs: notes.tabs, activeTabPath: notes.activeTabPath,
     handleRenameNote: notes.handleRenameNote, handleRenameFilename: notes.handleRenameFilename,
     replaceEntry: vault.replaceEntry, resolvedPath,
+    initialH1AutoRenameEnabled: settings.initial_h1_auto_rename_enabled !== false,
   })
 
   const aiActivity = useAiActivity({

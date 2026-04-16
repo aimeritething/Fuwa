@@ -109,6 +109,26 @@ describe('SettingsPanel', () => {
     expect(screen.getByRole('switch', { name: 'Organize notes explicitly' })).toHaveAttribute('aria-checked', 'true')
   })
 
+  it('defaults the initial H1 auto-rename switch to on', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+    expect(screen.getByRole('switch', { name: 'Auto-rename untitled notes from first H1' })).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('saves the initial H1 auto-rename preference when toggled off', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Auto-rename untitled notes from first H1' }))
+    fireEvent.click(screen.getByTestId('settings-save'))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      initial_h1_auto_rename_enabled: false,
+    }))
+  })
+
   it('saves the organization workflow preference when toggled off', () => {
     const onSaveExplicitOrganization = vi.fn()
     render(

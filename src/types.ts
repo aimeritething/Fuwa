@@ -85,6 +85,7 @@ export interface Settings {
   analytics_enabled: boolean | null
   anonymous_id: string | null
   release_channel: string | null
+  initial_h1_auto_rename_enabled?: boolean | null
   default_ai_agent?: AiAgentId | null
 }
 

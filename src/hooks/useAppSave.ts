@@ -97,8 +97,17 @@ function isUntitledRenameCandidate(path: string): boolean {
   return stem.startsWith('untitled-') && /\d+$/.test(stem)
 }
 
-function shouldScheduleUntitledRename({ path, content }: { path: string; content: string }): boolean {
+function shouldScheduleUntitledRename({
+  path,
+  content,
+  initialH1AutoRenameEnabled,
+}: {
+  path: string
+  content: string
+  initialH1AutoRenameEnabled: boolean
+}): boolean {
   return isTauri()
+    && initialH1AutoRenameEnabled
     && isUntitledRenameCandidate(path)
     && extractH1TitleFromContent(content) !== null
 }
@@ -318,8 +327,10 @@ function useUntitledRenameExecutor({
 
 function useUntitledRenameScheduler({
   executeUntitledRename,
+  initialH1AutoRenameEnabled,
 }: {
   executeUntitledRename: (path: string) => Promise<boolean>
+  initialH1AutoRenameEnabled: boolean
 }) {
   const pendingUntitledRenameRef = useRef<PendingUntitledRename | null>(null)
 
@@ -334,7 +345,7 @@ function useUntitledRenameScheduler({
   }, [executeUntitledRename])
 
   const scheduleUntitledRename = useCallback((path: string, content: string) => {
-    if (!shouldScheduleUntitledRename({ path, content })) {
+    if (!shouldScheduleUntitledRename({ path, content, initialH1AutoRenameEnabled })) {
       cancelPendingUntitledRename(path)
       return
     }
@@ -346,7 +357,7 @@ function useUntitledRenameScheduler({
         void executeUntitledRename(pendingPath)
       },
     })
-  }, [cancelPendingUntitledRename, executeUntitledRename])
+  }, [cancelPendingUntitledRename, executeUntitledRename, initialH1AutoRenameEnabled])
 
   return {
     pendingUntitledRenameRef,
@@ -364,6 +375,7 @@ function useUntitledRenameCoordinator({
   handleSwitchTab,
   replaceEntry,
   loadModifiedFiles,
+  initialH1AutoRenameEnabled,
 }: {
   resolvedPath: string
   tabsRef: MutableRefObject<TabState[]>
@@ -372,6 +384,7 @@ function useUntitledRenameCoordinator({
   handleSwitchTab: AppSaveDeps['handleSwitchTab']
   replaceEntry: AppSaveDeps['replaceEntry']
   loadModifiedFiles: AppSaveDeps['loadModifiedFiles']
+  initialH1AutoRenameEnabled: boolean
 }) {
   const {
     renamedPathsRef,
@@ -396,7 +409,7 @@ function useUntitledRenameCoordinator({
     cancelPendingUntitledRename,
     flushPendingUntitledRename,
     scheduleUntitledRename,
-  } = useUntitledRenameScheduler({ executeUntitledRename })
+  } = useUntitledRenameScheduler({ executeUntitledRename, initialH1AutoRenameEnabled })
 
   return {
     pendingUntitledRenameRef,
@@ -424,6 +437,7 @@ interface AppSaveDeps {
   handleRenameFilename: (path: string, newFilenameStem: string, vaultPath: string, onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void) => Promise<void>
   replaceEntry: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void
   resolvedPath: string
+  initialH1AutoRenameEnabled: boolean
 }
 
 function useAppSaveStateRefs({
@@ -754,6 +768,7 @@ export function useAppSave({
   updateEntry, setTabs, handleSwitchTab, setToastMessage, loadModifiedFiles, reloadViews,
   clearUnsaved, unsavedPaths, tabs, activeTabPath, handleRenameNote,
   handleRenameFilename: handleRenameFilenameRaw, replaceEntry, resolvedPath,
+  initialH1AutoRenameEnabled,
 }: AppSaveDeps) {
   const contentChangeRef = useRef<(path: string, content: string) => void>(() => {})
   const { tabsRef, activeTabPathRef, unsavedPathsRef } = useAppSaveStateRefs({ tabs, activeTabPath, unsavedPaths })
@@ -768,6 +783,7 @@ export function useAppSave({
     handleSwitchTab,
     replaceEntry,
     loadModifiedFiles,
+    initialH1AutoRenameEnabled,
   })
   const { handleSaveRaw, handleContentChange, savePendingForPath, savePending } = useEditorPersistence({
     updateEntry,

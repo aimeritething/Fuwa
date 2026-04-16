@@ -46,6 +46,7 @@ describe('useAppSave', () => {
     handleRenameFilename: vi.fn().mockResolvedValue(undefined),
     replaceEntry: vi.fn(),
     resolvedPath: '/vault',
+    initialH1AutoRenameEnabled: true,
   }
 
   beforeEach(() => {
@@ -57,6 +58,7 @@ describe('useAppSave', () => {
     deps.activeTabPath = null
     deps.handleRenameNote.mockResolvedValue(undefined)
     deps.handleRenameFilename.mockResolvedValue(undefined)
+    deps.initialH1AutoRenameEnabled = true
   })
 
   afterEach(() => {
@@ -214,6 +216,35 @@ describe('useAppSave', () => {
       expect.objectContaining({ path: '/vault/fresh-title.md', filename: 'fresh-title.md' }),
       '# Fresh Title\n\nBody',
     )
+  })
+
+  it('does not auto-rename untitled notes when the H1 auto-rename preference is disabled', async () => {
+    vi.useFakeTimers()
+    vi.mocked(isTauri).mockReturnValue(true)
+    vi.mocked(invoke).mockImplementation(async (command: string) => {
+      if (command === 'save_note_content') return undefined
+      if (command === 'auto_rename_untitled') {
+        throw new Error('auto_rename_untitled should not run when disabled')
+      }
+      return undefined
+    })
+
+    const entry = makeEntry('/vault/untitled-note-123.md', 'Untitled Note 123', 'untitled-note-123.md')
+    const tabs = [{ entry, content: '# Fresh Title\n\nBody' }]
+    const { result } = renderSave({
+      tabs,
+      activeTabPath: entry.path,
+      unsavedPaths: new Set([entry.path]),
+      initialH1AutoRenameEnabled: false,
+    })
+
+    await act(async () => {
+      result.current.handleContentChange(entry.path, '# Fresh Title\n\nBody')
+      await vi.advanceTimersByTimeAsync(3_000)
+    })
+
+    expect(vi.mocked(invoke)).not.toHaveBeenCalledWith('auto_rename_untitled', expect.anything())
+    expect(deps.replaceEntry).not.toHaveBeenCalled()
   })
 
   it('switches the active tab to the renamed path after untitled H1 auto-rename', async () => {

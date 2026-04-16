@@ -13,6 +13,7 @@ pub struct Settings {
     pub analytics_enabled: Option<bool>,
     pub anonymous_id: Option<String>,
     pub release_channel: Option<String>,
+    pub initial_h1_auto_rename_enabled: Option<bool>,
     pub default_ai_agent: Option<String>,
 }
 
@@ -52,6 +53,7 @@ fn normalize_settings(settings: Settings) -> Settings {
         analytics_enabled: settings.analytics_enabled,
         anonymous_id: normalize_optional_string(settings.anonymous_id),
         release_channel: normalize_release_channel(settings.release_channel.as_deref()),
+        initial_h1_auto_rename_enabled: settings.initial_h1_auto_rename_enabled,
         default_ai_agent: normalize_default_ai_agent(settings.default_ai_agent.as_deref()),
     }
 }
@@ -155,6 +157,7 @@ mod tests {
         Option<bool>,
         Option<&'a str>,
         Option<&'a str>,
+        Option<bool>,
         Option<&'a str>,
     );
 
@@ -166,6 +169,7 @@ mod tests {
             settings.analytics_enabled,
             settings.anonymous_id.as_deref(),
             settings.release_channel.as_deref(),
+            settings.initial_h1_auto_rename_enabled,
             settings.default_ai_agent.as_deref(),
         )
     }
@@ -173,7 +177,7 @@ mod tests {
     fn assert_empty_settings(settings: &Settings) {
         assert_eq!(
             settings_snapshot(settings),
-            (None, None, None, None, None, None, None)
+            (None, None, None, None, None, None, None, None)
         );
     }
 
@@ -212,6 +216,7 @@ mod tests {
             analytics_enabled: Some(false),
             anonymous_id: Some("abc-123-uuid".to_string()),
             release_channel: Some("alpha".to_string()),
+            initial_h1_auto_rename_enabled: Some(false),
             default_ai_agent: Some("codex".to_string()),
         };
         let json = serde_json::to_string(&settings).unwrap();
@@ -232,11 +237,13 @@ mod tests {
         let loaded = save_and_reload(Settings {
             auto_pull_interval_minutes: Some(10),
             release_channel: Some("alpha".to_string()),
+            initial_h1_auto_rename_enabled: Some(false),
             default_ai_agent: Some("codex".to_string()),
             ..Default::default()
         });
         assert_eq!(loaded.auto_pull_interval_minutes, Some(10));
         assert_eq!(loaded.release_channel.as_deref(), Some("alpha"));
+        assert_eq!(loaded.initial_h1_auto_rename_enabled, Some(false));
         assert_eq!(loaded.default_ai_agent.as_deref(), Some("codex"));
     }
 
@@ -337,6 +344,7 @@ mod tests {
                 Some(true),
                 Some(false),
                 Some("test-uuid-v4"),
+                None,
                 None,
                 None,
             )

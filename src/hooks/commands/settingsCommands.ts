@@ -15,6 +15,53 @@ interface SettingsCommandsConfig {
   onRepairVault?: () => void
 }
 
+function buildPrimarySettingsCommands({
+  onOpenSettings,
+  onOpenFeedback,
+  onCheckForUpdates,
+}: Pick<SettingsCommandsConfig, 'onOpenSettings' | 'onOpenFeedback' | 'onCheckForUpdates'>): CommandAction[] {
+  return [
+    { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,', keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
+    {
+      id: 'open-h1-auto-rename-setting',
+      label: 'Open H1 Auto-Rename Setting',
+      group: 'Settings',
+      keywords: ['h1', 'title', 'filename', 'rename', 'auto', 'untitled', 'sync', 'preference'],
+      enabled: true,
+      execute: onOpenSettings,
+    },
+    { id: 'give-feedback', label: 'Give Feedback', group: 'Settings', keywords: ['feedback', 'issue', 'bug', 'github', 'report'], enabled: !!onOpenFeedback, execute: () => onOpenFeedback?.() },
+    { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: true, execute: () => onCheckForUpdates?.() },
+  ]
+}
+
+function buildVaultSettingsCommands({
+  vaultCount,
+  isGettingStartedHidden,
+  onOpenVault,
+  onRemoveActiveVault,
+  onRestoreGettingStarted,
+}: Pick<SettingsCommandsConfig, 'vaultCount' | 'isGettingStartedHidden' | 'onOpenVault' | 'onRemoveActiveVault' | 'onRestoreGettingStarted'>): CommandAction[] {
+  return [
+    { id: 'open-vault', label: 'Open Vault…', group: 'Settings', keywords: ['vault', 'folder', 'switch', 'open', 'workspace'], enabled: true, execute: () => onOpenVault?.() },
+    { id: 'remove-vault', label: 'Remove Vault from List', group: 'Settings', keywords: ['vault', 'remove', 'disconnect', 'hide'], enabled: (vaultCount ?? 0) > 1 && !!onRemoveActiveVault, execute: () => onRemoveActiveVault?.() },
+    { id: 'restore-getting-started', label: 'Restore Getting Started Vault', group: 'Settings', keywords: ['vault', 'restore', 'demo', 'getting started', 'reset'], enabled: !!isGettingStartedHidden && !!onRestoreGettingStarted, execute: () => onRestoreGettingStarted?.() },
+  ]
+}
+
+function buildMaintenanceCommands({
+  mcpStatus,
+  onInstallMcp,
+  onReloadVault,
+  onRepairVault,
+}: Pick<SettingsCommandsConfig, 'mcpStatus' | 'onInstallMcp' | 'onReloadVault' | 'onRepairVault'>): CommandAction[] {
+  return [
+    { id: 'install-mcp', label: mcpStatus === 'installed' ? 'Restore MCP Server' : 'Install MCP Server', group: 'Settings', keywords: ['mcp', 'claude', 'ai', 'tools', 'install', 'restore', 'fix', 'repair'], enabled: true, execute: () => onInstallMcp?.() },
+    { id: 'reload-vault', label: 'Reload Vault', group: 'Settings', keywords: ['reload', 'refresh', 'rescan', 'sync', 'filesystem', 'cache'], enabled: !!onReloadVault, execute: () => onReloadVault?.() },
+    { id: 'repair-vault', label: 'Repair Vault', group: 'Settings', keywords: ['repair', 'fix', 'restore', 'config', 'agents', 'themes', 'missing', 'reset', 'flatten', 'structure'], enabled: !!onRepairVault, execute: () => onRepairVault?.() },
+  ]
+}
+
 export function buildSettingsCommands(config: SettingsCommandsConfig): CommandAction[] {
   const {
     mcpStatus, vaultCount, isGettingStartedHidden,
@@ -23,14 +70,14 @@ export function buildSettingsCommands(config: SettingsCommandsConfig): CommandAc
   } = config
 
   return [
-    { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,', keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
-    { id: 'give-feedback', label: 'Give Feedback', group: 'Settings', keywords: ['feedback', 'issue', 'bug', 'github', 'report'], enabled: !!onOpenFeedback, execute: () => onOpenFeedback?.() },
-    { id: 'open-vault', label: 'Open Vault…', group: 'Settings', keywords: ['vault', 'folder', 'switch', 'open', 'workspace'], enabled: true, execute: () => onOpenVault?.() },
-    { id: 'remove-vault', label: 'Remove Vault from List', group: 'Settings', keywords: ['vault', 'remove', 'disconnect', 'hide'], enabled: (vaultCount ?? 0) > 1 && !!onRemoveActiveVault, execute: () => onRemoveActiveVault?.() },
-    { id: 'restore-getting-started', label: 'Restore Getting Started Vault', group: 'Settings', keywords: ['vault', 'restore', 'demo', 'getting started', 'reset'], enabled: !!isGettingStartedHidden && !!onRestoreGettingStarted, execute: () => onRestoreGettingStarted?.() },
-    { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: true, execute: () => onCheckForUpdates?.() },
-    { id: 'install-mcp', label: mcpStatus === 'installed' ? 'Restore MCP Server' : 'Install MCP Server', group: 'Settings', keywords: ['mcp', 'claude', 'ai', 'tools', 'install', 'restore', 'fix', 'repair'], enabled: true, execute: () => onInstallMcp?.() },
-    { id: 'reload-vault', label: 'Reload Vault', group: 'Settings', keywords: ['reload', 'refresh', 'rescan', 'sync', 'filesystem', 'cache'], enabled: !!onReloadVault, execute: () => onReloadVault?.() },
-    { id: 'repair-vault', label: 'Repair Vault', group: 'Settings', keywords: ['repair', 'fix', 'restore', 'config', 'agents', 'themes', 'missing', 'reset', 'flatten', 'structure'], enabled: !!onRepairVault, execute: () => onRepairVault?.() },
+    ...buildPrimarySettingsCommands({ onOpenSettings, onOpenFeedback, onCheckForUpdates }),
+    ...buildVaultSettingsCommands({
+      vaultCount,
+      isGettingStartedHidden,
+      onOpenVault,
+      onRemoveActiveVault,
+      onRestoreGettingStarted,
+    }),
+    ...buildMaintenanceCommands({ mcpStatus, onInstallMcp, onReloadVault, onRepairVault }),
   ]
 }

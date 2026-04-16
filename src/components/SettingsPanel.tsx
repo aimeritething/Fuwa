@@ -43,6 +43,7 @@ interface SettingsDraft {
   pullInterval: number
   defaultAiAgent: AiAgentId
   releaseChannel: ReleaseChannel
+  initialH1AutoRename: boolean
   crashReporting: boolean
   analytics: boolean
   explicitOrganization: boolean
@@ -56,6 +57,8 @@ interface SettingsBodyProps {
   setDefaultAiAgent: (value: AiAgentId) => void
   releaseChannel: ReleaseChannel
   setReleaseChannel: (value: ReleaseChannel) => void
+  initialH1AutoRename: boolean
+  setInitialH1AutoRename: (value: boolean) => void
   explicitOrganization: boolean
   setExplicitOrganization: (value: boolean) => void
   crashReporting: boolean
@@ -78,6 +81,7 @@ function createSettingsDraft(
     pullInterval: settings.auto_pull_interval_minutes ?? 5,
     defaultAiAgent: resolveDefaultAiAgent(settings.default_ai_agent),
     releaseChannel: normalizeReleaseChannel(settings.release_channel),
+    initialH1AutoRename: settings.initial_h1_auto_rename_enabled ?? true,
     crashReporting: settings.crash_reporting_enabled ?? false,
     analytics: settings.analytics_enabled ?? false,
     explicitOrganization: explicitOrganizationEnabled,
@@ -105,6 +109,7 @@ function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Setti
     analytics_enabled: draft.analytics,
     anonymous_id: resolveAnonymousId(settings, draft),
     release_channel: serializeReleaseChannel(draft.releaseChannel),
+    initial_h1_auto_rename_enabled: draft.initialH1AutoRename,
     default_ai_agent: draft.defaultAiAgent,
   }
 }
@@ -224,6 +229,8 @@ function SettingsPanelInner({
           setDefaultAiAgent={(value) => updateDraft('defaultAiAgent', value)}
           releaseChannel={draft.releaseChannel}
           setReleaseChannel={(value) => updateDraft('releaseChannel', value)}
+          initialH1AutoRename={draft.initialH1AutoRename}
+          setInitialH1AutoRename={(value) => updateDraft('initialH1AutoRename', value)}
           explicitOrganization={draft.explicitOrganization}
           setExplicitOrganization={(value) => updateDraft('explicitOrganization', value)}
           crashReporting={draft.crashReporting}
@@ -265,6 +272,8 @@ function SettingsBody({
   setDefaultAiAgent,
   releaseChannel,
   setReleaseChannel,
+  initialH1AutoRename,
+  setInitialH1AutoRename,
   explicitOrganization,
   setExplicitOrganization,
   crashReporting,
@@ -289,6 +298,21 @@ function SettingsBody({
         }))}
         testId="settings-pull-interval"
         autoFocus={true}
+      />
+
+      <Divider />
+
+      <SectionHeading
+        title="Titles & Filenames"
+        description="Choose whether Tolaria automatically syncs untitled note filenames from the first H1 title."
+      />
+
+      <SettingsSwitchRow
+        label="Auto-rename untitled notes from first H1"
+        description="When enabled, Tolaria renames untitled-note files as soon as the first H1 becomes a real title. Turn this off to keep the filename unchanged until you rename it manually from the breadcrumb bar."
+        checked={initialH1AutoRename}
+        onChange={setInitialH1AutoRename}
+        testId="settings-initial-h1-auto-rename"
       />
 
       <Divider />
@@ -452,20 +476,42 @@ function OrganizationWorkflowSection({
         description="Choose whether Tolaria shows the Inbox workflow and the organized toggle."
       />
 
-      <label
-        className="flex items-start justify-between gap-3"
-        style={{ cursor: 'pointer' }}
-        data-testid="settings-explicit-organization"
-      >
-        <div className="space-y-1">
-          <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--foreground)' }}>Organize notes explicitly</div>
-          <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
-            When enabled, an Inbox section shows unorganized notes, and a toggle lets you mark notes as organized.
-          </div>
-        </div>
-        <Switch checked={checked} onCheckedChange={onChange} aria-label="Organize notes explicitly" />
-      </label>
+      <SettingsSwitchRow
+        label="Organize notes explicitly"
+        description="When enabled, an Inbox section shows unorganized notes, and a toggle lets you mark notes as organized."
+        checked={checked}
+        onChange={onChange}
+        testId="settings-explicit-organization"
+      />
     </>
+  )
+}
+
+function SettingsSwitchRow({
+  label,
+  description,
+  checked,
+  onChange,
+  testId,
+}: {
+  label: string
+  description: string
+  checked: boolean
+  onChange: (value: boolean) => void
+  testId?: string
+}) {
+  return (
+    <label
+      className="flex items-start justify-between gap-3"
+      style={{ cursor: 'pointer' }}
+      data-testid={testId}
+    >
+      <div className="space-y-1">
+        <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--foreground)' }}>{label}</div>
+        <div style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{description}</div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onChange} aria-label={label} />
+    </label>
   )
 }
 
