@@ -117,6 +117,13 @@ describe('appCommandDispatcher', () => {
       ctrlKey: true,
       shiftKey: true,
     })
+    expect(getShortcutEventInit(APP_COMMAND_IDS.viewGoBack)).toMatchObject({
+      key: 'ArrowLeft',
+      code: 'ArrowLeft',
+      metaKey: true,
+      ctrlKey: false,
+      shiftKey: false,
+    })
     expect(getShortcutEventInit(APP_COMMAND_IDS.appCheckForUpdates)).toBeNull()
   })
 
@@ -141,6 +148,26 @@ describe('appCommandDispatcher', () => {
         shiftKey: true,
       }),
     ).toBe(APP_COMMAND_IDS.viewToggleProperties)
+    expect(
+      findShortcutCommandIdForEvent({
+        key: 'ArrowLeft',
+        code: 'ArrowLeft',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: true,
+        shiftKey: false,
+      }),
+    ).toBe(APP_COMMAND_IDS.viewGoBack)
+    expect(
+      findShortcutCommandIdForEvent({
+        key: 'ArrowRight',
+        code: 'ArrowRight',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: true,
+        shiftKey: false,
+      }),
+    ).toBe(APP_COMMAND_IDS.viewGoForward)
     expect(
       findShortcutCommandIdForEvent({
         key: 'l',

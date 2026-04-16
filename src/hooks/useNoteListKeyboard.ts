@@ -10,16 +10,80 @@ interface NoteListKeyboardOptions {
   enabled: boolean
 }
 
+function resolveHighlightedPath(items: VaultEntry[], selectedNotePath: string | null): string | null {
+  if (items.length === 0) return null
+  if (!selectedNotePath) return items[0].path
+
+  return items.some((entry) => entry.path === selectedNotePath)
+    ? selectedNotePath
+    : items[0].path
+}
+
+function isListActive(container: HTMLDivElement | null): boolean {
+  if (!container) return false
+  const activeElement = document.activeElement
+  return activeElement instanceof Node && container.contains(activeElement)
+}
+
+function resolveCurrentIndex(
+  items: VaultEntry[],
+  highlightedPath: string | null,
+  selectedNotePath: string | null,
+): number {
+  const activePath = highlightedPath ?? selectedNotePath
+  return activePath ? items.findIndex((entry) => entry.path === activePath) : -1
+}
+
+function moveHighlightIndex(
+  previousIndex: number,
+  direction: 1 | -1,
+  itemCount: number,
+): number {
+  if (itemCount === 0) return -1
+  if (previousIndex < 0) return direction === 1 ? 0 : itemCount - 1
+
+  const currentIndex = Math.min(previousIndex, itemCount - 1)
+  const nextIndex = currentIndex + direction
+  if (nextIndex < 0 || nextIndex >= itemCount) return previousIndex
+  return nextIndex
+}
+
 export function useNoteListKeyboard({
   items, selectedNotePath, onOpen, onPrefetch, enabled,
 }: NoteListKeyboardOptions) {
-  const [highlightedIndex, setHighlightedIndex] = useState(-1)
+  const [highlightedPathState, setHighlightedPath] = useState<string | null>(null)
   const virtuosoRef = useRef<VirtuosoHandle>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const highlightedPathRef = useRef<string | null>(null)
+  const itemsRef = useRef(items)
+  const selectedNotePathRef = useRef(selectedNotePath)
 
-  // Reset highlight when items change (filter/sort/selection changed)
   useEffect(() => {
-    setHighlightedIndex(-1) // eslint-disable-line react-hooks/set-state-in-effect -- reset on data change
-  }, [items])
+    itemsRef.current = items
+    selectedNotePathRef.current = selectedNotePath
+  }, [items, selectedNotePath])
+
+  const syncHighlightedPath = useCallback((nextPath: string | null) => {
+    highlightedPathRef.current = nextPath
+    setHighlightedPath(nextPath)
+  }, [])
+
+  const syncToCurrentSelection = useCallback(() => {
+    syncHighlightedPath(resolveHighlightedPath(itemsRef.current, selectedNotePathRef.current))
+  }, [syncHighlightedPath])
+
+  const moveHighlight = useCallback((direction: 1 | -1) => {
+    const currentIndex = resolveCurrentIndex(items, highlightedPathRef.current, selectedNotePath)
+    const nextIndex = moveHighlightIndex(currentIndex, direction, items.length)
+    const currentPath = highlightedPathRef.current ?? selectedNotePath
+    const nextItem = items[nextIndex]
+    if (!nextItem || nextItem.path === currentPath) return
+
+    syncHighlightedPath(nextItem.path)
+    virtuosoRef.current?.scrollIntoView({ index: nextIndex, behavior: 'auto' })
+    onOpen(nextItem)
+    onPrefetch?.(nextItem)
+  }, [items, onOpen, onPrefetch, selectedNotePath, syncHighlightedPath])
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!enabled || items.length === 0) return
@@ -27,37 +91,46 @@ export function useNoteListKeyboard({
 
     if (e.key === 'ArrowDown') {
       e.preventDefault()
-      setHighlightedIndex(prev => {
-        const next = Math.min((prev < 0 ? -1 : prev) + 1, items.length - 1)
-        virtuosoRef.current?.scrollToIndex({ index: next, behavior: 'auto' })
-        if (next >= 0 && next < items.length) onPrefetch?.(items[next])
-        return next
-      })
+      moveHighlight(1)
     } else if (e.key === 'ArrowUp') {
       e.preventDefault()
-      setHighlightedIndex(prev => {
-        const next = Math.max((prev < 0 ? items.length : prev) - 1, 0)
-        virtuosoRef.current?.scrollToIndex({ index: next, behavior: 'auto' })
-        if (next >= 0 && next < items.length) onPrefetch?.(items[next])
-        return next
-      })
-    } else if (e.key === 'Enter' && highlightedIndex >= 0 && highlightedIndex < items.length) {
+      moveHighlight(-1)
+    } else if (e.key === 'Enter' && highlightedPathRef.current) {
       e.preventDefault()
-      onOpen(items[highlightedIndex])
+      const highlightedItem = items.find((entry) => entry.path === highlightedPathRef.current)
+      if (highlightedItem) onOpen(highlightedItem)
     }
-  }, [enabled, items, highlightedIndex, onOpen, onPrefetch])
+  }, [enabled, items, moveHighlight, onOpen])
 
   const handleFocus = useCallback(() => {
-    if (highlightedIndex >= 0 || items.length === 0) return
-    const activeIdx = selectedNotePath
-      ? items.findIndex(n => n.path === selectedNotePath)
-      : -1
-    setHighlightedIndex(activeIdx >= 0 ? activeIdx : 0)
-  }, [highlightedIndex, items, selectedNotePath])
+    syncToCurrentSelection()
+  }, [syncToCurrentSelection])
 
-  const highlightedPath = (highlightedIndex >= 0 && highlightedIndex < items.length)
-    ? items[highlightedIndex].path
+  const handleBlur = useCallback(() => {
+    syncHighlightedPath(null)
+  }, [syncHighlightedPath])
+
+  const focusList = useCallback(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    container.focus()
+    requestAnimationFrame(() => {
+      if (isListActive(containerRef.current)) syncToCurrentSelection()
+    })
+  }, [syncToCurrentSelection])
+
+  const highlightedPath = items.some((entry) => entry.path === highlightedPathState)
+    ? highlightedPathState
     : null
 
-  return { highlightedPath, handleKeyDown, handleFocus, virtuosoRef }
+  return {
+    containerRef,
+    focusList,
+    highlightedPath,
+    handleBlur,
+    handleKeyDown,
+    handleFocus,
+    virtuosoRef,
+  }
 }

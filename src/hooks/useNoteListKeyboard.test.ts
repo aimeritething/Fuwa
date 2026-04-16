@@ -42,11 +42,13 @@ describe('useNoteListKeyboard', () => {
   })
 
   it('ArrowDown highlights first item from no selection', () => {
+    const open = vi.fn()
     const { result } = renderHook(() =>
-      useNoteListKeyboard({ items, selectedNotePath: null, onOpen, enabled: true }),
+      useNoteListKeyboard({ items, selectedNotePath: null, onOpen: open, enabled: true }),
     )
     act(() => result.current.handleKeyDown(keyEvent('ArrowDown')))
     expect(result.current.highlightedPath).toBe('/a.md')
+    expect(open).toHaveBeenCalledWith(items[0])
   })
 
   it('ArrowDown advances highlight', () => {
@@ -70,11 +72,26 @@ describe('useNoteListKeyboard', () => {
   })
 
   it('ArrowUp highlights last item from no selection', () => {
+    const open = vi.fn()
     const { result } = renderHook(() =>
-      useNoteListKeyboard({ items, selectedNotePath: null, onOpen, enabled: true }),
+      useNoteListKeyboard({ items, selectedNotePath: null, onOpen: open, enabled: true }),
     )
     act(() => result.current.handleKeyDown(keyEvent('ArrowUp')))
     expect(result.current.highlightedPath).toBe('/c.md')
+    expect(open).toHaveBeenCalledWith(items[2])
+  })
+
+  it('scrolls the highlighted item into view with nearest-style behavior', () => {
+    const open = vi.fn()
+    const { result } = renderHook(() =>
+      useNoteListKeyboard({ items, selectedNotePath: null, onOpen: open, enabled: true }),
+    )
+    const scrollIntoView = vi.fn()
+    result.current.virtuosoRef.current = { scrollIntoView } as never
+
+    act(() => result.current.handleKeyDown(keyEvent('ArrowDown')))
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ index: 0, behavior: 'auto' })
   })
 
   it('ArrowUp clamps at start of list', () => {

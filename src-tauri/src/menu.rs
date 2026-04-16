@@ -253,11 +253,11 @@ fn build_go_menu(app: &App) -> MenuResult {
     let inbox = MenuItemBuilder::new("Inbox").id(GO_INBOX).build(app)?;
     let go_back = MenuItemBuilder::new("Go Back")
         .id(VIEW_GO_BACK)
-        .accelerator("CmdOrCtrl+[")
+        .accelerator("CmdOrCtrl+Left")
         .build(app)?;
     let go_forward = MenuItemBuilder::new("Go Forward")
         .id(VIEW_GO_FORWARD)
-        .accelerator("CmdOrCtrl+]")
+        .accelerator("CmdOrCtrl+Right")
         .build(app)?;
 
     Ok(SubmenuBuilder::new(app, "Go")

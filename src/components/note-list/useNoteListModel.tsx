@@ -358,6 +358,70 @@ export interface NoteListProps {
   visibleNotesRef?: React.MutableRefObject<VaultEntry[]>
 }
 
+function buildNoteListLayoutModel(params: {
+  selection: SidebarSelection
+  views?: ViewFile[]
+  sidebarCollapsed?: boolean
+  modifiedFilesError?: string | null
+  noteListFilter: NoteListFilter
+  filterCounts: ReturnType<typeof useFilterCounts>
+  onNoteListFilterChange: (filter: NoteListFilter) => void
+  onOpenType: (entry: VaultEntry) => void
+  content: ReturnType<typeof useNoteListContent>
+  interaction: ReturnType<typeof useNoteListInteractionState> & {
+    renderItem: (entry: VaultEntry) => React.ReactNode
+    entitySelection: SidebarSelection | null
+  }
+}) {
+  return {
+    title: resolveHeaderTitle(params.selection, params.content.typeDocument, params.views),
+    typeDocument: params.content.typeDocument,
+    isEntityView: params.content.isEntityView,
+    listSort: params.content.listSort,
+    listDirection: params.content.listDirection,
+    customProperties: params.content.customProperties,
+    sidebarCollapsed: params.sidebarCollapsed,
+    searchVisible: params.content.searchVisible,
+    search: params.content.search,
+    propertyPicker: params.content.propertyPicker,
+    handleSortChange: params.content.handleSortChange,
+    handleCreateNote: params.interaction.handleCreateNote,
+    onOpenType: params.onOpenType,
+    toggleSearch: params.content.toggleSearch,
+    setSearch: params.content.setSearch,
+    handleListKeyDown: params.interaction.handleListKeyDown,
+    noteListContainerRef: params.interaction.noteListKeyboard.containerRef,
+    handleNoteListBlur: params.interaction.noteListKeyboard.handleBlur,
+    handleNoteListFocus: params.interaction.noteListKeyboard.handleFocus,
+    focusNoteList: params.interaction.noteListKeyboard.focusList,
+    noteListVirtuosoRef: params.interaction.noteListKeyboard.virtuosoRef,
+    entitySelection: params.interaction.entitySelection,
+    searchedGroups: params.content.searchedGroups,
+    collapsedGroups: params.interaction.collapsedGroups,
+    sortPrefs: params.content.sortPrefs,
+    toggleGroup: params.interaction.toggleGroup,
+    renderItem: params.interaction.renderItem,
+    typeEntryMap: params.content.typeEntryMap,
+    handleClickNote: params.interaction.handleClickNote,
+    isArchivedView: params.content.isArchivedView,
+    isChangesView: params.selection.kind === 'filter' && params.selection.filter === 'changes',
+    isInboxView: params.selection.kind === 'filter' && params.selection.filter === 'inbox',
+    modifiedFilesError: params.modifiedFilesError,
+    searched: params.content.searched,
+    query: params.content.query,
+    showFilterPills: params.selection.kind === 'sectionGroup' || params.selection.kind === 'folder',
+    noteListFilter: params.noteListFilter,
+    filterCounts: params.filterCounts,
+    onNoteListFilterChange: params.onNoteListFilterChange,
+    multiSelect: params.interaction.multiSelect,
+    handleBulkArchive: params.interaction.handleBulkArchive,
+    handleBulkDeletePermanently: params.interaction.handleBulkDeletePermanently,
+    handleBulkUnarchive: params.interaction.handleBulkUnarchive,
+    contextMenuNode: params.interaction.changesContextMenu.contextMenuNode,
+    dialogNode: params.interaction.changesContextMenu.dialogNode,
+  }
+}
+
 export function useNoteListModel({
   entries,
   selection,
@@ -387,29 +451,11 @@ export function useNoteListModel({
   views,
   visibleNotesRef,
 }: NoteListProps) {
+  const selectedNotePath = selectedNote?.path ?? null
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
-  const { isInboxView, isChangesView, showFilterPills } = useViewFlags(selection)
+  const { isInboxView } = useViewFlags(selection)
   const filterCounts = useFilterCounts(entries, selection)
-  const {
-    customProperties,
-    displayPropsOverride,
-    handleSortChange,
-    isArchivedView,
-    isEntityView,
-    listDirection,
-    listSort,
-    propertyPicker,
-    query,
-    search,
-    searchVisible,
-    searched,
-    searchedGroups,
-    setSearch,
-    sortPrefs,
-    toggleSearch,
-    typeDocument,
-    typeEntryMap,
-  } = useNoteListContent({
+  const content = useNoteListContent({
     entries,
     selection,
     noteListFilter,
@@ -427,27 +473,14 @@ export function useNoteListModel({
     views,
     visibleNotesRef,
   })
-  const {
-    changesContextMenu,
-    collapsedGroups,
-    getChangeStatus,
-    handleBulkArchive,
-    handleBulkDeletePermanently,
-    handleBulkUnarchive,
-    handleClickNote,
-    handleCreateNote,
-    handleListKeyDown,
-    multiSelect,
-    noteListKeyboard,
-    toggleGroup,
-  } = useNoteListInteractionState({
-    searched,
-    selectedNotePath: selectedNote?.path ?? null,
+  const interaction = useNoteListInteractionState({
+    searched: content.searched,
+    selectedNotePath,
     selection,
     noteListFilter,
-    isArchivedView,
-    isEntityView,
-    isChangesView,
+    isArchivedView: content.isArchivedView,
+    isEntityView: content.isEntityView,
+    isChangesView: selection.kind === 'filter' && selection.filter === 'changes',
     modifiedFiles,
     onReplaceActiveTab,
     onSelectNote,
@@ -461,60 +494,33 @@ export function useNoteListModel({
   })
   const renderItem = useRenderItem({
     entries,
-    selectedNotePath: selectedNote?.path ?? null,
-    typeEntryMap,
-    displayPropsOverride,
-    isChangesView,
+    selectedNotePath,
+    typeEntryMap: content.typeEntryMap,
+    displayPropsOverride: content.displayPropsOverride,
+    isChangesView: selection.kind === 'filter' && selection.filter === 'changes',
     onDiscardFile,
     resolvedGetNoteStatus,
-    getChangeStatus,
-    handleClickNote,
-    noteContextMenu: changesContextMenu.handleNoteContextMenu,
-    multiSelect,
-    noteListKeyboard,
+    getChangeStatus: interaction.getChangeStatus,
+    handleClickNote: interaction.handleClickNote,
+    noteContextMenu: interaction.changesContextMenu.handleNoteContextMenu,
+    multiSelect: interaction.multiSelect,
+    noteListKeyboard: interaction.noteListKeyboard,
   })
 
-  return {
-    title: resolveHeaderTitle(selection, typeDocument, views),
-    typeDocument,
-    isEntityView,
-    listSort,
-    listDirection,
-    customProperties,
+  return buildNoteListLayoutModel({
+    selection,
+    views,
     sidebarCollapsed,
-    searchVisible,
-    search,
-    propertyPicker,
-    handleSortChange,
-    handleCreateNote,
     onOpenType: onReplaceActiveTab,
-    toggleSearch,
-    setSearch,
-    handleListKeyDown,
-    noteListKeyboard,
-    entitySelection: isEntityView && selection.kind === 'entity' ? selection : null,
-    searchedGroups,
-    collapsedGroups,
-    sortPrefs,
-    toggleGroup,
-    renderItem,
-    typeEntryMap,
-    handleClickNote,
-    isArchivedView,
-    isChangesView,
-    isInboxView,
     modifiedFilesError,
-    searched,
-    query,
-    showFilterPills,
     noteListFilter,
     filterCounts,
     onNoteListFilterChange,
-    multiSelect,
-    handleBulkArchive,
-    handleBulkDeletePermanently,
-    handleBulkUnarchive,
-    contextMenuNode: changesContextMenu.contextMenuNode,
-    dialogNode: changesContextMenu.dialogNode,
-  }
+    content,
+    interaction: {
+      ...interaction,
+      renderItem,
+      entitySelection: content.isEntityView && selection.kind === 'entity' ? selection : null,
+    },
+  })
 }

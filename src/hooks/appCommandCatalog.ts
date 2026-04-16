@@ -225,12 +225,12 @@ export const APP_COMMAND_DEFINITIONS: Record<AppCommandId, AppCommandDefinition>
   [APP_COMMAND_IDS.viewGoBack]: {
     route: { kind: 'handler', handler: 'onGoBack' },
     menuOwned: true,
-    shortcut: { combo: 'command-or-ctrl', key: '[', display: '⌘[' },
+    shortcut: { combo: 'command-or-ctrl', key: 'ArrowLeft', code: 'ArrowLeft', display: '⌘←' },
   },
   [APP_COMMAND_IDS.viewGoForward]: {
     route: { kind: 'handler', handler: 'onGoForward' },
     menuOwned: true,
-    shortcut: { combo: 'command-or-ctrl', key: ']', display: '⌘]' },
+    shortcut: { combo: 'command-or-ctrl', key: 'ArrowRight', code: 'ArrowRight', display: '⌘→' },
   },
   [APP_COMMAND_IDS.goAllNotes]: {
     route: { kind: 'filter', value: 'all' },

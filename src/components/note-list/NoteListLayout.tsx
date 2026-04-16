@@ -31,6 +31,169 @@ function MultiSelectBar({
   )
 }
 
+function NoteListContent({
+  entitySelection,
+  searchedGroups,
+  query,
+  collapsedGroups,
+  sortPrefs,
+  toggleGroup,
+  handleSortChange,
+  renderItem,
+  typeEntryMap,
+  handleClickNote,
+  isArchivedView,
+  isChangesView,
+  isInboxView,
+  modifiedFilesError,
+  searched,
+  noteListVirtuosoRef,
+}: Pick<
+  NoteListLayoutProps,
+  | 'entitySelection'
+  | 'searchedGroups'
+  | 'query'
+  | 'collapsedGroups'
+  | 'sortPrefs'
+  | 'toggleGroup'
+  | 'handleSortChange'
+  | 'renderItem'
+  | 'typeEntryMap'
+  | 'handleClickNote'
+  | 'isArchivedView'
+  | 'isChangesView'
+  | 'isInboxView'
+  | 'modifiedFilesError'
+  | 'searched'
+  | 'noteListVirtuosoRef'
+>) {
+  return (
+    <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
+      {entitySelection ? (
+        <EntityView
+          entity={entitySelection.entry}
+          groups={searchedGroups}
+          query={query}
+          collapsedGroups={collapsedGroups}
+          sortPrefs={sortPrefs}
+          onToggleGroup={toggleGroup}
+          onSortChange={handleSortChange}
+          renderItem={renderItem}
+          typeEntryMap={typeEntryMap}
+          onClickNote={handleClickNote}
+        />
+      ) : (
+        <ListView
+          isArchivedView={isArchivedView}
+          isChangesView={isChangesView}
+          isInboxView={isInboxView}
+          changesError={modifiedFilesError}
+          searched={searched}
+          query={query}
+          renderItem={renderItem}
+          virtuosoRef={noteListVirtuosoRef}
+        />
+      )}
+    </div>
+  )
+}
+
+function NoteListBody({
+  handleListKeyDown,
+  noteListContainerRef,
+  handleNoteListBlur,
+  handleNoteListFocus,
+  focusNoteList,
+  noteListVirtuosoRef,
+  entitySelection,
+  searchedGroups,
+  query,
+  collapsedGroups,
+  sortPrefs,
+  toggleGroup,
+  handleSortChange,
+  renderItem,
+  typeEntryMap,
+  handleClickNote,
+  isArchivedView,
+  isChangesView,
+  isInboxView,
+  modifiedFilesError,
+  searched,
+  showFilterPills,
+  noteListFilter,
+  filterCounts,
+  onNoteListFilterChange,
+}: Pick<
+  NoteListLayoutProps,
+  | 'handleListKeyDown'
+  | 'noteListContainerRef'
+  | 'handleNoteListBlur'
+  | 'handleNoteListFocus'
+  | 'focusNoteList'
+  | 'noteListVirtuosoRef'
+  | 'entitySelection'
+  | 'searchedGroups'
+  | 'query'
+  | 'collapsedGroups'
+  | 'sortPrefs'
+  | 'toggleGroup'
+  | 'handleSortChange'
+  | 'renderItem'
+  | 'typeEntryMap'
+  | 'handleClickNote'
+  | 'isArchivedView'
+  | 'isChangesView'
+  | 'isInboxView'
+  | 'modifiedFilesError'
+  | 'searched'
+  | 'showFilterPills'
+  | 'noteListFilter'
+  | 'filterCounts'
+  | 'onNoteListFilterChange'
+>) {
+  return (
+    <div
+      ref={noteListContainerRef}
+      className="relative flex flex-1 flex-col overflow-hidden outline-none"
+      style={{ minHeight: 0 }}
+      tabIndex={0}
+      onBlur={handleNoteListBlur}
+      onKeyDown={handleListKeyDown}
+      onFocus={handleNoteListFocus}
+      onClickCapture={focusNoteList}
+      data-testid="note-list-container"
+    >
+      <NoteListContent
+        entitySelection={entitySelection}
+        searchedGroups={searchedGroups}
+        query={query}
+        collapsedGroups={collapsedGroups}
+        sortPrefs={sortPrefs}
+        toggleGroup={toggleGroup}
+        handleSortChange={handleSortChange}
+        renderItem={renderItem}
+        typeEntryMap={typeEntryMap}
+        handleClickNote={handleClickNote}
+        isArchivedView={isArchivedView}
+        isChangesView={isChangesView}
+        isInboxView={isInboxView}
+        modifiedFilesError={modifiedFilesError}
+        searched={searched}
+        noteListVirtuosoRef={noteListVirtuosoRef}
+      />
+      {showFilterPills && (
+        <FilterPills
+          active={noteListFilter}
+          counts={filterCounts}
+          onChange={onNoteListFilterChange}
+          position="bottom"
+        />
+      )}
+    </div>
+  )
+}
+
 export function NoteListLayout({
   title,
   typeDocument,
@@ -48,7 +211,11 @@ export function NoteListLayout({
   toggleSearch,
   setSearch,
   handleListKeyDown,
-  noteListKeyboard,
+  noteListContainerRef,
+  handleNoteListBlur,
+  handleNoteListFocus,
+  focusNoteList,
+  noteListVirtuosoRef,
   entitySelection,
   searchedGroups,
   collapsedGroups,
@@ -97,50 +264,33 @@ export function NoteListLayout({
         onToggleSearch={toggleSearch}
         onSearchChange={setSearch}
       />
-      <div
-        className="relative flex flex-1 flex-col overflow-hidden outline-none"
-        style={{ minHeight: 0 }}
-        tabIndex={0}
-        onKeyDown={handleListKeyDown}
-        onFocus={noteListKeyboard.handleFocus}
-        data-testid="note-list-container"
-      >
-        <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
-          {entitySelection ? (
-            <EntityView
-              entity={entitySelection.entry}
-              groups={searchedGroups}
-              query={query}
-              collapsedGroups={collapsedGroups}
-              sortPrefs={sortPrefs}
-              onToggleGroup={toggleGroup}
-              onSortChange={handleSortChange}
-              renderItem={renderItem}
-              typeEntryMap={typeEntryMap}
-              onClickNote={handleClickNote}
-            />
-          ) : (
-            <ListView
-              isArchivedView={isArchivedView}
-              isChangesView={isChangesView}
-              isInboxView={isInboxView}
-              changesError={modifiedFilesError}
-              searched={searched}
-              query={query}
-              renderItem={renderItem}
-              virtuosoRef={noteListKeyboard.virtuosoRef}
-            />
-          )}
-        </div>
-        {showFilterPills && (
-          <FilterPills
-            active={noteListFilter}
-            counts={filterCounts}
-            onChange={onNoteListFilterChange}
-            position="bottom"
-          />
-        )}
-      </div>
+      <NoteListBody
+        handleListKeyDown={handleListKeyDown}
+        noteListContainerRef={noteListContainerRef}
+        handleNoteListBlur={handleNoteListBlur}
+        handleNoteListFocus={handleNoteListFocus}
+        focusNoteList={focusNoteList}
+        noteListVirtuosoRef={noteListVirtuosoRef}
+        entitySelection={entitySelection}
+        searchedGroups={searchedGroups}
+        query={query}
+        collapsedGroups={collapsedGroups}
+        sortPrefs={sortPrefs}
+        toggleGroup={toggleGroup}
+        handleSortChange={handleSortChange}
+        renderItem={renderItem}
+        typeEntryMap={typeEntryMap}
+        handleClickNote={handleClickNote}
+        isArchivedView={isArchivedView}
+        isChangesView={isChangesView}
+        isInboxView={isInboxView}
+        modifiedFilesError={modifiedFilesError}
+        searched={searched}
+        showFilterPills={showFilterPills}
+        noteListFilter={noteListFilter}
+        filterCounts={filterCounts}
+        onNoteListFilterChange={onNoteListFilterChange}
+      />
       <MultiSelectBar
         multiSelect={multiSelect}
         isArchivedView={isArchivedView}
