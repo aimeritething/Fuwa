@@ -460,6 +460,112 @@ mod tests {
     }
 
     #[test]
+    fn read_registered_mcp_entry_prefers_primary_server_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_path = tmp.path().join("mcp.json");
+        let config = serde_json::json!({
+            "mcpServers": {
+                "tolaria": {
+                    "command": "node",
+                    "args": ["/primary/index.js"],
+                    "env": { "VAULT_PATH": "/primary" }
+                },
+                "laputa": {
+                    "command": "node",
+                    "args": ["/legacy/index.js"],
+                    "env": { "VAULT_PATH": "/legacy" }
+                }
+            }
+        });
+        std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
+
+        let entry = read_registered_mcp_entry(&config_path).unwrap();
+        assert_eq!(entry["env"]["VAULT_PATH"], "/primary");
+    }
+
+    #[test]
+    fn read_registered_mcp_entry_uses_legacy_server_name() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_path = tmp.path().join("mcp.json");
+        let config = serde_json::json!({
+            "mcpServers": {
+                "laputa": {
+                    "command": "node",
+                    "args": ["/legacy/index.js"],
+                    "env": { "VAULT_PATH": "/legacy" }
+                }
+            }
+        });
+        std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
+
+        let entry = read_registered_mcp_entry(&config_path).unwrap();
+        assert_eq!(entry["env"]["VAULT_PATH"], "/legacy");
+    }
+
+    #[test]
+    fn read_registered_mcp_entry_returns_none_for_invalid_or_missing_servers() {
+        let tmp = tempfile::tempdir().unwrap();
+        let invalid_path = tmp.path().join("invalid.json");
+        std::fs::write(&invalid_path, "{not json").unwrap();
+        assert!(read_registered_mcp_entry(&invalid_path).is_none());
+
+        let empty_path = tmp.path().join("empty.json");
+        let empty_config = serde_json::json!({ "other": {} });
+        std::fs::write(&empty_path, serde_json::to_string(&empty_config).unwrap()).unwrap();
+        assert!(read_registered_mcp_entry(&empty_path).is_none());
+
+        let missing_path = tmp.path().join("missing.json");
+        assert!(read_registered_mcp_entry(&missing_path).is_none());
+    }
+
+    #[test]
+    fn entry_index_js_exists_requires_existing_first_arg() {
+        let tmp = tempfile::tempdir().unwrap();
+        let index_js = tmp.path().join("index.js");
+        std::fs::write(&index_js, "console.log('ok');").unwrap();
+
+        let existing = serde_json::json!({
+            "args": [index_js.to_string_lossy()]
+        });
+        assert!(entry_index_js_exists(&existing));
+
+        let missing = serde_json::json!({
+            "args": [tmp.path().join("missing.js").to_string_lossy()]
+        });
+        assert!(!entry_index_js_exists(&missing));
+
+        let no_args = serde_json::json!({});
+        assert!(!entry_index_js_exists(&no_args));
+    }
+
+    #[test]
+    fn upsert_returns_error_for_non_object_config() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_path = tmp.path().join("mcp.json");
+        std::fs::write(&config_path, "[]").unwrap();
+
+        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let result = upsert_mcp_config(&config_path, &entry);
+        assert!(matches!(result, Err(ref error) if error.contains("Config is not a JSON object")));
+    }
+
+    #[test]
+    fn upsert_returns_error_for_non_object_mcp_servers() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_path = tmp.path().join("mcp.json");
+        let config = serde_json::json!({
+            "mcpServers": []
+        });
+        std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
+
+        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let result = upsert_mcp_config(&config_path, &entry);
+        assert!(
+            matches!(result, Err(ref error) if error.contains("mcpServers is not a JSON object"))
+        );
+    }
+
+    #[test]
     fn check_mcp_status_returns_valid_variant() {
         // On a dev machine with Claude CLI and MCP registered, this should be Installed.
         // On CI without Claude it might be NoClaudeCli. Either way it must not panic.
