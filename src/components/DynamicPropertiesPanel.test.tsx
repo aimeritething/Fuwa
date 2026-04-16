@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react'
 import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import { DynamicPropertiesPanel, containsWikilinks } from './DynamicPropertiesPanel'
 import type { VaultEntry } from '../types'
 import { bindVaultConfigStore, getVaultConfig, resetVaultConfigStore } from '../utils/vaultConfigStore'
@@ -123,6 +123,16 @@ describe('DynamicPropertiesPanel', () => {
     })
     expect(screen.getByText('Type')).toBeInTheDocument()
     expect(screen.getByText('Note')).toBeInTheDocument()
+  })
+
+  it('shows the shared type icon in the type row label', () => {
+    renderPanel({
+      content: '# Test\n\nSome words here',
+      frontmatter: { Status: 'Active' },
+      onUpdateProperty,
+    })
+
+    expect(screen.getByTestId('type-row-icon')).toBeInTheDocument()
   })
 
   it('renders status as colored pill', () => {
@@ -436,6 +446,15 @@ describe('DynamicPropertiesPanel', () => {
       expect(screen.getByText('Date')).toBeInTheDocument()
       expect(screen.getByText('URL')).toBeInTheDocument()
       expect(screen.getByText('Icon')).toBeInTheDocument()
+    })
+
+    it('shows a property-kind icon for each suggested slot', () => {
+      renderPanel({ onAddProperty })
+
+      expect(within(findSuggestedSlot('Status')).getByTestId('suggested-property-icon-status')).toBeInTheDocument()
+      expect(within(findSuggestedSlot('Date')).getByTestId('suggested-property-icon-date')).toBeInTheDocument()
+      expect(within(findSuggestedSlot('URL')).getByTestId('suggested-property-icon-url')).toBeInTheDocument()
+      expect(within(findSuggestedSlot('Icon')).getByTestId('suggested-property-icon-text')).toBeInTheDocument()
     })
 
     it('hides Status slot when Status property already exists', () => {

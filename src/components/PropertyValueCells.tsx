@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
+import { ArrowUpRight } from '@phosphor-icons/react'
 import type { FrontmatterValue } from './Inspector'
 import { EditableValue, TagPillList, UrlValue } from './EditableValue'
 import { isUrlValue } from '../utils/url'
@@ -33,6 +34,16 @@ function dateToISO(day: Date): string {
   const mm = String(day.getMonth() + 1).padStart(2, '0')
   const dd = String(day.getDate()).padStart(2, '0')
   return `${yyyy}-${mm}-${dd}`
+}
+
+const RELATIONSHIP_PROPERTY_KEYS = new Set(['belongs_to', 'related_to', 'has'])
+
+function normalizePropertyKey(propKey: string): string {
+  return propKey.trim().toLowerCase().replace(/[\s-]+/g, '_')
+}
+
+function showsRelationshipPropertyIcon(propKey: string): boolean {
+  return RELATIONSHIP_PROPERTY_KEYS.has(normalizePropertyKey(propKey))
 }
 
 function StatusValue({ propKey, value, isEditing, vaultStatuses, onSave, onStartEdit }: {
@@ -213,6 +224,7 @@ export function DisplayModeSelector({ propKey, currentMode, autoMode, onSelect }
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
   const CurrentIcon = DISPLAY_MODE_ICONS[currentMode]
+  const showRelationshipIcon = showsRelationshipPropertyIcon(propKey)
 
   const positionMenu = useCallback((node: HTMLDivElement | null) => {
     if (!node) return
@@ -246,7 +258,11 @@ export function DisplayModeSelector({ propKey, currentMode, autoMode, onSelect }
         aria-label={`Change ${propKey} type`}
         data-testid="display-mode-trigger"
       >
-        <CurrentIcon className="size-3.5" data-testid={`display-mode-icon-${currentMode}`} />
+        {showRelationshipIcon ? (
+          <ArrowUpRight className="size-3.5" data-testid="display-mode-icon-relationship" />
+        ) : (
+          <CurrentIcon className="size-3.5" data-testid={`display-mode-icon-${currentMode}`} />
+        )}
       </button>
       {open && createPortal(
         <>

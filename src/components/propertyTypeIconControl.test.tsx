@@ -1,5 +1,5 @@
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
 import type { VaultEntry } from '../types'
 import { initDisplayModeOverrides } from '../utils/propertyTypes'
@@ -100,5 +100,18 @@ describe('property type icon control', () => {
     fireEvent.keyDown(trigger, { key: 'Enter' })
 
     expect(screen.queryByDisplayValue('Weekly')).not.toBeInTheDocument()
+  })
+
+  it('shows the relationship icon for relationship-like property rows', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={makeEntry()}
+        frontmatter={{ belongs_to: 'Project Alpha' }}
+        onUpdateProperty={vi.fn()}
+      />
+    )
+
+    const row = screen.getByTestId('editable-property')
+    expect(within(row).getByTestId('display-mode-icon-relationship')).toBeInTheDocument()
   })
 })

@@ -1,4 +1,4 @@
-import { CaretUpDown, Check } from '@phosphor-icons/react'
+import { CaretUpDown, Check, StackSimple } from '@phosphor-icons/react'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import type { FrontmatterValue } from './Inspector'
 import { Button } from '@/components/ui/button'
@@ -92,11 +92,20 @@ function TypeSelectorValue({
   )
 }
 
+function TypeRowLabel() {
+  return (
+    <span className="flex shrink-0 items-center gap-1 text-[12px] text-muted-foreground">
+      <StackSimple size={14} className="shrink-0" data-testid="type-row-icon" />
+      <span>Type</span>
+    </span>
+  )
+}
+
 function ReadOnlyType({ isA, customColorKey, onNavigate }: { isA?: string | null; customColorKey?: string | null; onNavigate?: (target: string) => void }) {
   if (!isA) return null
   return (
     <div className="grid min-w-0 grid-cols-2 items-center gap-2 px-1.5" style={PROPERTY_PANEL_ROW_STYLE}>
-      <span className="text-[12px] shrink-0 text-muted-foreground">Type</span>
+      <TypeRowLabel />
       <div className="min-w-0">
         {onNavigate ? (
           <button
@@ -253,7 +262,7 @@ function EditableTypeSelector({ isA, customColorKey, availableTypes, typeColorKe
 
   return (
     <div className="grid min-w-0 grid-cols-2 items-center gap-2 px-1.5" style={PROPERTY_PANEL_ROW_STYLE} data-testid="type-selector">
-      <span className="text-[12px] shrink-0 text-muted-foreground">Type</span>
+      <TypeRowLabel />
       <Popover open={open} onOpenChange={handleOpenChange}>
         <PopoverAnchor asChild>
           <div ref={rootRef} className="min-w-0">

@@ -3,7 +3,7 @@ import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from './Inspector'
 import type { ParsedFrontmatter } from '../utils/frontmatter'
 import { usePropertyPanelState } from '../hooks/usePropertyPanelState'
-import { getEffectiveDisplayMode, detectPropertyType } from '../utils/propertyTypes'
+import { getEffectiveDisplayMode, detectPropertyType, DISPLAY_MODE_ICONS } from '../utils/propertyTypes'
 import { SmartPropertyValueCell, DisplayModeSelector } from './PropertyValueCells'
 import { TypeSelector } from './TypeSelector'
 import { AddPropertyForm } from './AddPropertyForm'
@@ -89,7 +89,13 @@ function getSuggestedDisplayMode(key: string): PropertyDisplayMode {
   return SUGGESTED_PROPERTY_MODES[key] ?? 'text'
 }
 
-function SuggestedPropertySlot({ label, onAdd }: { label: string; onAdd: () => void }) {
+function SuggestedPropertySlot({ label, displayMode, onAdd }: {
+  label: string
+  displayMode: PropertyDisplayMode
+  onAdd: () => void
+}) {
+  const SuggestedIcon = DISPLAY_MODE_ICONS[displayMode]
+
   return (
     <button
       className={SUGGESTED_PROPERTY_SLOT_CLASS_NAME}
@@ -99,7 +105,10 @@ function SuggestedPropertySlot({ label, onAdd }: { label: string; onAdd: () => v
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onAdd() } }}
       data-testid="suggested-property"
     >
-      <span className="min-w-0 max-w-full truncate text-[12px] text-muted-foreground/50">{label}</span>
+      <span className="flex min-w-0 max-w-full items-center gap-1 text-[12px] text-muted-foreground/50">
+        <SuggestedIcon className="size-3.5 shrink-0 text-muted-foreground/40" data-testid={`suggested-property-icon-${displayMode}`} />
+        <span className="min-w-0 truncate">{label}</span>
+      </span>
       <span className="min-w-0 truncate text-[12px] text-muted-foreground/30">{'\u2014'}</span>
     </button>
   )
@@ -228,7 +237,12 @@ export function DynamicPropertiesPanel({
           />
         )}
         {missingSuggested.map(({ key, label }) => (
-          <SuggestedPropertySlot key={key} label={label} onAdd={() => handleSuggestedAdd(key)} />
+          <SuggestedPropertySlot
+            key={key}
+            label={label}
+            displayMode={getSuggestedDisplayMode(key)}
+            onAdd={() => handleSuggestedAdd(key)}
+          />
         ))}
       </div>
       {showAddDialog
