@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, memo, type KeyboardEvent } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
+import { useDragRegion } from '../hooks/useDragRegion'
 import type { PulseCommit, PulseFile } from '../types'
 import { relativeDate } from '../utils/noteListHelpers'
 import {
@@ -234,8 +235,15 @@ function PulseHeader({
   sidebarCollapsed,
   onExpandSidebar,
 }: Pick<PulseViewProps, 'sidebarCollapsed' | 'onExpandSidebar'>) {
+  const { onMouseDown } = useDragRegion()
+
   return (
-    <div className="flex shrink-0 items-center justify-between border-b border-border" style={{ height: 52, padding: '0 16px' }}>
+    <div
+      className="flex shrink-0 items-center justify-between border-b border-border"
+      style={{ height: 52, padding: '0 16px', cursor: 'default' }}
+      onMouseDown={onMouseDown}
+      data-testid="pulse-header"
+    >
       <div className="flex items-center" style={{ gap: 8 }}>
         {sidebarCollapsed && onExpandSidebar && (
           <button

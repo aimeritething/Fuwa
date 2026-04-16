@@ -34,6 +34,7 @@ const mockCommits: PulseCommit[] = [
 ]
 
 const mockInvokeFn = vi.fn()
+const dragRegionMouseDown = vi.fn()
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: (...args: unknown[]) => mockInvokeFn(...args),
 }))
@@ -41,10 +42,14 @@ vi.mock('../mock-tauri', () => ({
   isTauri: () => false,
   mockInvoke: (...args: unknown[]) => mockInvokeFn(...args),
 }))
+vi.mock('../hooks/useDragRegion', () => ({
+  useDragRegion: () => ({ onMouseDown: dragRegionMouseDown }),
+}))
 
 describe('PulseView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    dragRegionMouseDown.mockClear()
   })
 
   it('shows loading state initially', () => {
@@ -242,5 +247,34 @@ describe('PulseView', () => {
     await waitFor(() => {
       expect(screen.getByText('Pulse')).toBeInTheDocument()
     })
+  })
+
+  it('wires the Pulse header into the shared drag-region handler', async () => {
+    mockInvokeFn.mockResolvedValue([])
+
+    render(<PulseView vaultPath="/test/vault" />)
+
+    const header = await screen.findByTestId('pulse-header')
+    fireEvent.mouseDown(header)
+
+    expect(dragRegionMouseDown).toHaveBeenCalledTimes(1)
+  })
+
+  it('keeps the expand-sidebar button clickable when the header is draggable', async () => {
+    mockInvokeFn.mockResolvedValue([])
+    const onExpandSidebar = vi.fn()
+
+    render(
+      <PulseView
+        vaultPath="/test/vault"
+        sidebarCollapsed
+        onExpandSidebar={onExpandSidebar}
+      />,
+    )
+
+    const button = await screen.findByRole('button', { name: 'Expand sidebar' })
+    fireEvent.click(button)
+
+    expect(onExpandSidebar).toHaveBeenCalledTimes(1)
   })
 })
