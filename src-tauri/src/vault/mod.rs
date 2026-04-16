@@ -62,11 +62,26 @@ pub(crate) fn derive_markdown_title_from_content(content: &str, filename: &str) 
     extract_title(frontmatter.title.as_deref(), content, filename)
 }
 
+fn resolve_entry_dates(
+    fs_modified: Option<u64>,
+    fs_created: Option<u64>,
+    git_dates: Option<(u64, u64)>,
+) -> (Option<u64>, Option<u64>) {
+    match git_dates {
+        Some((git_modified, git_created)) => {
+            let modified_at = Some(fs_modified.map_or(git_modified, |fs| fs.max(git_modified)));
+            (modified_at, Some(git_created))
+        }
+        None => (fs_modified, fs_created),
+    }
+}
+
 /// Parse a single markdown file into a VaultEntry.
 ///
-/// If `git_dates` is provided, those timestamps override filesystem metadata
-/// for `modified_at` and `created_at`. Pass `None` to use filesystem dates
-/// (appropriate for newly-saved files not yet committed, or non-git vaults).
+/// If `git_dates` is provided, `created_at` comes from git history while
+/// `modified_at` uses the newer of the latest git touch and the current
+/// filesystem modified time. Pass `None` to use filesystem dates only
+/// (appropriate for non-git vaults).
 pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<VaultEntry, String> {
     let content = fs::read_to_string(path)
         .map_err(|e| format!("Failed to read {}: {}", path.display(), e))?;
@@ -85,10 +100,7 @@ pub fn parse_md_file(path: &Path, git_dates: Option<(u64, u64)>) -> Result<Vault
     let word_count = count_body_words(&content);
     let outgoing_links = extract_outgoing_links(&parsed.content);
     let (fs_modified, fs_created, file_size) = read_file_metadata(path)?;
-    let (modified_at, created_at) = match git_dates {
-        Some((git_mod, git_create)) => (Some(git_mod), Some(git_create)),
-        None => (fs_modified, fs_created),
-    };
+    let (modified_at, created_at) = resolve_entry_dates(fs_modified, fs_created, git_dates);
     let is_a = resolve_is_a(frontmatter.is_a);
 
     // Add "Type" relationship: isA becomes a navigable link to the type document.
@@ -156,10 +168,7 @@ pub(crate) fn parse_non_md_file(
         .map(|f| f.to_string_lossy().to_string())
         .unwrap_or_default();
     let (fs_modified, fs_created, file_size) = read_file_metadata(path)?;
-    let (modified_at, created_at) = match git_dates {
-        Some((git_mod, git_create)) => (Some(git_mod), Some(git_create)),
-        None => (fs_modified, fs_created),
-    };
+    let (modified_at, created_at) = resolve_entry_dates(fs_modified, fs_created, git_dates);
     let file_kind = classify_file_kind(path).to_string();
     let title = extract_yml_name(path).unwrap_or_else(|| filename.clone());
 
@@ -453,6 +462,9 @@ pub fn scan_vault_folders(vault_path: &Path) -> Result<Vec<FolderNode>, String> 
 #[cfg(test)]
 #[path = "frontmatter_regression_tests.rs"]
 mod frontmatter_regression_tests;
+#[cfg(test)]
+#[path = "modified_dates_tests.rs"]
+mod modified_dates_tests;
 #[cfg(test)]
 #[path = "relationship_key_tests.rs"]
 mod relationship_key_tests;
