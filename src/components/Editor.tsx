@@ -20,6 +20,7 @@ import {
   resolveRawModeContent,
 } from './editorRawModeSync'
 import { useRawModeWithFlush } from './useRawModeWithFlush'
+import { useFilenameAutolinkGuard } from './useFilenameAutolinkGuard'
 import './Editor.css'
 import './EditorTheme.css'
 
@@ -167,6 +168,7 @@ function useEditorSetup({
     schema,
     uploadFile: (file: File) => uploadImageFile(file, vaultPathRef.current),
   })
+  useFilenameAutolinkGuard(editor)
   const activeTab = tabs.find((t) => t.entry.path === activeTabPath) ?? null
   const {
     rawMode,
