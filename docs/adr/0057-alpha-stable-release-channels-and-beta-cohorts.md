@@ -2,8 +2,9 @@
 type: ADR
 id: "0057"
 title: "Alpha/stable release channels with PostHog beta cohorts"
-status: active
+status: superseded
 date: 2026-04-12
+superseded_by: "0066"
 ---
 
 ## Context

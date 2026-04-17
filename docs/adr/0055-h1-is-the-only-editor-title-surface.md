@@ -2,9 +2,10 @@
 type: ADR
 id: "0055"
 title: "H1 is the only editor title surface"
-status: active
+status: superseded
 date: 2026-04-11
 supersedes: "0044"
+superseded_by: "0068"
 ---
 
 ## Context
