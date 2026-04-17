@@ -210,7 +210,7 @@ export function StatusBarSecondarySection({
           <Bell size={14} />
         </span>
       </ActionTooltip>
-      <ActionTooltip copy={SETTINGS_TOOLTIP} side="top">
+      <ActionTooltip copy={SETTINGS_TOOLTIP} side="top" align="end">
         <Button
           type="button"
           variant="ghost"

@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { ActionTooltip, type ActionTooltipCopy } from '@/components/ui/action-tooltip'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import {
-  MagnifyingGlass,
   GitBranch,
   Code,
   CursorText,
@@ -103,6 +102,7 @@ function IconActionButton({
   style,
   children,
   testId,
+  tooltipAlign,
 }: {
   copy: ActionTooltipCopy
   onClick?: () => void
@@ -110,9 +110,10 @@ function IconActionButton({
   style?: CSSProperties
   children: ReactNode
   testId?: string
+  tooltipAlign?: 'start' | 'center' | 'end'
 }) {
   return (
-    <ActionTooltip copy={copy} side="bottom">
+    <ActionTooltip copy={copy} side="bottom" align={tooltipAlign}>
       <Button
         type="button"
         variant="ghost"
@@ -131,7 +132,10 @@ function IconActionButton({
 }
 
 function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggleRaw?: () => void }) {
-  const copy: ActionTooltipCopy = { label: rawMode ? 'Return to the editor' : 'Open the raw editor' }
+  const copy: ActionTooltipCopy = {
+    label: rawMode ? 'Return to the editor' : 'Open the raw editor',
+    shortcut: '⌘\\',
+  }
   return (
     <IconActionButton
       copy={copy}
@@ -178,14 +182,6 @@ function OrganizedAction({
       className={cn(organized ? 'text-green-600' : 'hover:text-foreground')}
     >
       <CheckCircle size={16} weight={organized ? 'fill' : 'regular'} className={BREADCRUMB_ICON_CLASS} />
-    </IconActionButton>
-  )
-}
-
-function SearchAction() {
-  return (
-    <IconActionButton copy={{ label: 'Search within this note' }} className="hover:text-foreground">
-      <MagnifyingGlass size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -276,7 +272,7 @@ function InspectorAction({
 }: Pick<BreadcrumbBarProps, 'inspectorCollapsed' | 'onToggleInspector'>) {
   if (!inspectorCollapsed) return null
   return (
-    <IconActionButton copy={{ label: 'Open the properties panel', shortcut: '⌘⇧I' }} onClick={onToggleInspector} className="hover:text-foreground">
+    <IconActionButton copy={{ label: 'Open the properties panel', shortcut: '⌘⇧I' }} onClick={onToggleInspector} className="hover:text-foreground" tooltipAlign="end">
       <SlidersHorizontal size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
@@ -478,7 +474,6 @@ function BreadcrumbActions({
     <div className="breadcrumb-bar__actions ml-auto flex items-center" style={{ gap: 12 }}>
       <FavoriteAction favorite={entry.favorite} onToggleFavorite={onToggleFavorite} />
       <OrganizedAction organized={entry.organized} onToggleOrganized={onToggleOrganized} />
-      <SearchAction />
       <DiffAction
         showDiffToggle={showDiffToggle}
         diffMode={diffMode}

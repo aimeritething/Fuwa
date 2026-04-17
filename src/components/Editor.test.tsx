@@ -208,7 +208,8 @@ describe('Editor', () => {
       activeTabPath: mockEntry.path,
     })
 
-    expect(screen.getByRole('button', { name: 'Search within this note' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open the raw editor' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete this note' })).toBeInTheDocument()
   })
 
   it('hides the legacy title field for untitled draft notes', () => {

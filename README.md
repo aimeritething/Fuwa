@@ -90,4 +90,12 @@ Husky installs the git hooks from `.husky/` during `pnpm install`. The repo enfo
 
 ## License
 
-Private repository — not licensed for public use.
+Tolaria is licensed under the GNU Affero General Public License, version 3 or any later version (AGPL-3.0-or-later).
+
+See [LICENSE](LICENSE) for the full license text.
+
+## Trademarks
+
+The Tolaria name and logo are not licensed under the AGPL.
+
+See [trademarks.md](trademarks.md) for the trademark policy.

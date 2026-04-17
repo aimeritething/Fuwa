@@ -13,6 +13,7 @@ import {
   useEffect,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
+  type ReactNode,
 } from 'react'
 import { X } from '@phosphor-icons/react'
 import type { Settings } from '../types'
@@ -331,74 +332,73 @@ function SettingsBody({
   setAnalytics,
 }: SettingsBodyProps) {
   return (
-    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 20, overflow: 'auto' }}>
-      <SyncSettingsSection
-        pullInterval={pullInterval}
-        setPullInterval={setPullInterval}
-      />
+    <div style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 0, overflow: 'auto' }}>
+      <SettingsSection showDivider={false}>
+        <SyncAndUpdatesSection
+          pullInterval={pullInterval}
+          setPullInterval={setPullInterval}
+          releaseChannel={releaseChannel}
+          setReleaseChannel={setReleaseChannel}
+        />
+      </SettingsSection>
 
-      <Divider />
+      <SettingsSection>
+        <AutoGitSettingsSection
+          isGitVault={isGitVault}
+          autoGitEnabled={autoGitEnabled}
+          setAutoGitEnabled={setAutoGitEnabled}
+          autoGitIdleThresholdSeconds={autoGitIdleThresholdSeconds}
+          setAutoGitIdleThresholdSeconds={setAutoGitIdleThresholdSeconds}
+          autoGitInactiveThresholdSeconds={autoGitInactiveThresholdSeconds}
+          setAutoGitInactiveThresholdSeconds={setAutoGitInactiveThresholdSeconds}
+        />
+      </SettingsSection>
 
-      <AutoGitSettingsSection
-        isGitVault={isGitVault}
-        autoGitEnabled={autoGitEnabled}
-        setAutoGitEnabled={setAutoGitEnabled}
-        autoGitIdleThresholdSeconds={autoGitIdleThresholdSeconds}
-        setAutoGitIdleThresholdSeconds={setAutoGitIdleThresholdSeconds}
-        autoGitInactiveThresholdSeconds={autoGitInactiveThresholdSeconds}
-        setAutoGitInactiveThresholdSeconds={setAutoGitInactiveThresholdSeconds}
-      />
+      <SettingsSection>
+        <TitleSettingsSection
+          initialH1AutoRename={initialH1AutoRename}
+          setInitialH1AutoRename={setInitialH1AutoRename}
+        />
+      </SettingsSection>
 
-      <Divider />
+      <SettingsSection>
+        <AiAgentSettingsSection
+          aiAgentsStatus={aiAgentsStatus}
+          defaultAiAgent={defaultAiAgent}
+          setDefaultAiAgent={setDefaultAiAgent}
+        />
+      </SettingsSection>
 
-      <TitleSettingsSection
-        initialH1AutoRename={initialH1AutoRename}
-        setInitialH1AutoRename={setInitialH1AutoRename}
-      />
+      <SettingsSection>
+        <OrganizationWorkflowSection
+          checked={explicitOrganization}
+          onChange={setExplicitOrganization}
+        />
+      </SettingsSection>
 
-      <Divider />
-
-      <AiAgentSettingsSection
-        aiAgentsStatus={aiAgentsStatus}
-        defaultAiAgent={defaultAiAgent}
-        setDefaultAiAgent={setDefaultAiAgent}
-      />
-
-      <Divider />
-
-      <ReleaseChannelSection
-        releaseChannel={releaseChannel}
-        setReleaseChannel={setReleaseChannel}
-      />
-
-      <Divider />
-
-      <OrganizationWorkflowSection
-        checked={explicitOrganization}
-        onChange={setExplicitOrganization}
-      />
-
-      <Divider />
-
-      <PrivacySettingsSection
-        crashReporting={crashReporting}
-        setCrashReporting={setCrashReporting}
-        analytics={analytics}
-        setAnalytics={setAnalytics}
-      />
+      <SettingsSection>
+        <PrivacySettingsSection
+          crashReporting={crashReporting}
+          setCrashReporting={setCrashReporting}
+          analytics={analytics}
+          setAnalytics={setAnalytics}
+        />
+      </SettingsSection>
     </div>
   )
 }
 
-function SyncSettingsSection({
+function SyncAndUpdatesSection({
   pullInterval,
   setPullInterval,
-}: Pick<SettingsBodyProps, 'pullInterval' | 'setPullInterval'>) {
+  releaseChannel,
+  setReleaseChannel,
+}: Pick<SettingsBodyProps, 'pullInterval' | 'setPullInterval' | 'releaseChannel' | 'setReleaseChannel'>) {
   return (
     <>
       <SectionHeading
-        title="Sync"
-        description="Automatically pull vault changes from Git in the background."
+        title="Sync & Updates"
+        description="Configure background pulling and which update feed Tolaria follows. Stable only receives manually promoted releases, while Alpha follows every push to main."
       />
 
       <LabeledSelect
@@ -411,6 +411,17 @@ function SyncSettingsSection({
         }))}
         testId="settings-pull-interval"
         autoFocus={true}
+      />
+
+      <LabeledSelect
+        label="Release channel"
+        value={releaseChannel}
+        onValueChange={(value) => setReleaseChannel(value as ReleaseChannel)}
+        options={[
+          { value: 'stable', label: 'Stable' },
+          { value: 'alpha', label: 'Alpha' },
+        ]}
+        testId="settings-release-channel"
       />
     </>
   )
@@ -448,7 +459,7 @@ function AutoGitSettingsSection({
       />
 
       <SettingsSwitchRow
-        label="AutoGit"
+        label="Enable AutoGit"
         description="When enabled, Tolaria will commit and push saved local changes automatically after an idle pause or after the app becomes inactive."
         checked={autoGitEnabled}
         onChange={setAutoGitEnabled}
@@ -537,31 +548,6 @@ function AiAgentSettingsSection({
   )
 }
 
-function ReleaseChannelSection({
-  releaseChannel,
-  setReleaseChannel,
-}: Pick<SettingsBodyProps, 'releaseChannel' | 'setReleaseChannel'>) {
-  return (
-    <>
-      <SectionHeading
-        title="Release Channel"
-        description="Controls which update feed Tolaria polls. Stable only receives manually promoted releases. Alpha follows every push to main."
-      />
-
-      <LabeledSelect
-        label="Release channel"
-        value={releaseChannel}
-        onValueChange={(value) => setReleaseChannel(value as ReleaseChannel)}
-        options={[
-          { value: 'stable', label: 'Stable' },
-          { value: 'alpha', label: 'Alpha' },
-        ]}
-        testId="settings-release-channel"
-      />
-    </>
-  )
-}
-
 function PrivacySettingsSection({
   crashReporting,
   setCrashReporting,
@@ -593,6 +579,21 @@ function PrivacySettingsSection({
   )
 }
 
+function SettingsSection({
+  children,
+  showDivider = true,
+}: {
+  children: ReactNode
+  showDivider?: boolean
+}) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '18px 0' }}>
+      {showDivider ? <Divider /> : null}
+      {children}
+    </div>
+  )
+}
+
 function SectionHeading({
   title,
   description,
@@ -601,9 +602,19 @@ function SectionHeading({
   description: string
 }) {
   return (
-    <div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--foreground)', marginBottom: 4 }}>{title}</div>
-      <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+      <div
+        style={{
+          fontSize: 11,
+          fontWeight: 700,
+          letterSpacing: '0.08em',
+          textTransform: 'uppercase',
+          color: 'var(--muted-foreground)',
+        }}
+      >
+        {title}
+      </div>
+      <div style={{ fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.55, maxWidth: 420 }}>
         {description}
       </div>
     </div>
@@ -611,7 +622,7 @@ function SectionHeading({
 }
 
 function Divider() {
-  return <div style={{ height: 1, background: 'var(--border)' }} />
+  return <div style={{ height: 1, background: 'color-mix(in srgb, var(--border) 82%, transparent)' }} />
 }
 
 function renderDefaultAiAgentSummary(defaultAiAgent: AiAgentId, aiAgentsStatus: AiAgentsStatus): string {

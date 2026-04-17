@@ -48,7 +48,7 @@ describe('SettingsPanel', () => {
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     expect(screen.getByText('Settings')).toBeInTheDocument()
-    expect(screen.getByText('Sync')).toBeInTheDocument()
+    expect(screen.getByText('Sync & Updates')).toBeInTheDocument()
   })
 
   it('calls onSave with stable defaults on save', () => {
@@ -127,7 +127,7 @@ describe('SettingsPanel', () => {
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
 
-    expect(screen.getByRole('switch', { name: 'AutoGit' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('switch', { name: 'Enable AutoGit' })).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByTestId('settings-autogit-idle-threshold')).toHaveValue(90)
     expect(screen.getByTestId('settings-autogit-inactive-threshold')).toHaveValue(30)
   })
@@ -137,7 +137,7 @@ describe('SettingsPanel', () => {
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
 
-    fireEvent.click(screen.getByRole('switch', { name: 'AutoGit' }))
+    fireEvent.click(screen.getByRole('switch', { name: 'Enable AutoGit' }))
     fireEvent.change(screen.getByTestId('settings-autogit-idle-threshold'), { target: { value: '120' } })
     fireEvent.change(screen.getByTestId('settings-autogit-inactive-threshold'), { target: { value: '45' } })
     fireEvent.click(screen.getByTestId('settings-save'))
@@ -160,7 +160,7 @@ describe('SettingsPanel', () => {
       />
     )
 
-    expect(screen.getByRole('switch', { name: 'AutoGit' })).toBeDisabled()
+    expect(screen.getByRole('switch', { name: 'Enable AutoGit' })).toBeDisabled()
     expect(screen.getByTestId('settings-autogit-idle-threshold')).toBeDisabled()
     expect(screen.getByTestId('settings-autogit-inactive-threshold')).toBeDisabled()
   })

@@ -342,7 +342,7 @@ describe('DynamicPropertiesPanel', () => {
 
       fireEvent.focus(warningButton)
       await waitFor(() => {
-        expect(screen.getByRole('tooltip')).toHaveTextContent('There is no type file for this type')
+        expect(screen.getByRole('tooltip')).toHaveTextContent('Missing type')
       })
 
       fireEvent.click(warningButton)

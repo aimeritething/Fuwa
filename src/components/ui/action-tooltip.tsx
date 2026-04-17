@@ -12,6 +12,7 @@ interface ActionTooltipProps {
   children: ReactNode
   className?: string
   side?: ComponentProps<typeof TooltipContent>['side']
+  align?: ComponentProps<typeof TooltipContent>['align']
   sideOffset?: number
 }
 
@@ -20,12 +21,13 @@ export function ActionTooltip({
   children,
   className,
   side = 'top',
+  align = 'center',
   sideOffset = 6,
 }: ActionTooltipProps) {
   return (
     <Tooltip>
       <TooltipTrigger asChild>{children}</TooltipTrigger>
-      <TooltipContent side={side} sideOffset={sideOffset} className={cn('px-2.5 py-2', className)}>
+      <TooltipContent side={side} align={align} sideOffset={sideOffset} className={cn('px-2.5 py-2', className)}>
         <div className="flex min-w-0 items-center gap-3">
           <span className="min-w-0 flex-1 text-[11px] font-medium leading-tight">{copy.label}</span>
           {copy.shortcut && (

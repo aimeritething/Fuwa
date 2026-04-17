@@ -19,7 +19,7 @@ import {
 const TYPE_NONE = '__none__'
 const MIN_POPOVER_WIDTH = 220
 const OPEN_COMBOBOX_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Enter', ' '])
-const MISSING_TYPE_TOOLTIP = 'There is no type file for this type'
+const MISSING_TYPE_TOOLTIP = 'Missing type'
 
 interface TypeSelectorItemProps {
   type: string
@@ -130,17 +130,16 @@ function MissingTypeWarning({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="icon-xs"
             className={cn(
-              'h-auto shrink-0 gap-1 rounded-full border border-amber-300/70 px-2 py-1 text-[11px] font-medium text-amber-900 shadow-none hover:bg-amber-100',
+              'h-6 w-6 shrink-0 rounded-md border border-amber-300/80 bg-amber-50 p-0 text-amber-700 shadow-none hover:bg-amber-100 hover:text-amber-800',
               !canCreateMissingType && 'cursor-default',
             )}
             data-testid="missing-type-warning"
-            aria-label={`Missing type ${missingTypeName}. ${MISSING_TYPE_TOOLTIP}`}
+            aria-label={`Missing type ${missingTypeName}. Click to create this type.`}
             onClick={canCreateMissingType ? () => setDialogOpen(true) : undefined}
           >
-            <WarningCircle size={14} aria-hidden="true" />
-            Missing type
+            <WarningCircle size={14} weight="fill" aria-hidden="true" />
           </Button>
         </TooltipTrigger>
         <TooltipContent>{MISSING_TYPE_TOOLTIP}</TooltipContent>
@@ -169,7 +168,7 @@ function TypeRowValue({
   onCreateMissingType?: (typeName: string) => void | Promise<void>
 }) {
   return (
-    <div className="flex min-w-0 items-center justify-end gap-1">
+    <div className="flex min-w-0 items-center justify-start gap-1">
       <div className="min-w-0">{children}</div>
       {missingTypeName && (
         <MissingTypeWarning
