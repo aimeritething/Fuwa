@@ -213,12 +213,15 @@ pub(super) fn agents_content_can_be_refreshed(content: &str) -> bool {
         .iter()
         .all(|marker| content.contains(marker));
     let is_stale_title_stub = content.contains("Do not add `title:` frontmatter.");
+    let has_legacy_json_view_guidance = content.contains("## Views")
+        && (content.contains(".view.json") || content.contains("```json"));
 
     content.trim().is_empty()
         || content == PRE_TYPE_AGENTS_MD
         || content == LEGACY_AGENTS_MD
         || content == STALE_AGENTS_MD
         || is_stale_title_stub
+        || has_legacy_json_view_guidance
         || is_outdated_managed_template
 }
 
@@ -292,22 +295,45 @@ Useful type metadata includes `icon`, `color`, `order`, `sidebar label`, `templa
 
 ## Views
 
-Saved views live in `views/*.yml` and are written as YAML:
+Saved views live in `views/*.yml` and are written as YAML. Tolaria scans every `.yml` file in `views/`, and the filename is the stable view id, so use kebab-case filenames such as `active-projects.yml`.
+
+A view definition looks like this:
 
 ```yaml
 name: Active Projects
 icon: kanban
 color: blue
-sort: modified:desc
+sort: property:Priority:asc
 filters:
   all:
     - field: type
       op: equals
       value: Project
     - field: status
-      op: equals
-      value: Active
+      op: any_of
+      value:
+        - Active
+        - In Progress
+    - any:
+        - field: Owner
+          op: equals
+          value: Luca
+        - field: Workspace
+          op: contains
+          value: "[[tolaria]]"
 ```
+
+View rules that matter when creating or editing files:
+- `name` is required. `icon`, `color`, and `sort` are optional.
+- `sort` uses `option:direction`. Built-in options are `modified`, `created`, `title`, and `status`. Custom-property sorts use `property:<Property Name>`, for example `property:Priority:asc` or `property:Owner:desc`.
+- `filters` must be a tree whose root is exactly one `all:` group or one `any:` group.
+- Each filter condition uses `field`, `op`, and usually `value`.
+- `field` can target built-ins like `type`, `status`, `title`, `favorite`, and `body`, plus custom frontmatter keys and relationship labels such as `Owner`, `Belongs to`, or `Workspace`.
+- Supported operators are `equals`, `not_equals`, `contains`, `not_contains`, `any_of`, `none_of`, `is_empty`, `is_not_empty`, `before`, and `after`.
+- `any_of` and `none_of` expect `value` to be a YAML list.
+- `regex: true` is supported with `equals`, `not_equals`, `contains`, and `not_contains` when you need pattern matching.
+- Relationship filters can use wikilinks in `value`, for example `"[[tolaria]]"`.
+- Do not create JSON view files or `.view.json` filenames.
 
 ## Filenames
 
@@ -690,6 +716,21 @@ mod tests {
     }
 
     #[test]
+    fn test_agents_refresh_detection_accepts_legacy_json_view_guidance() {
+        let stale = r#"# AGENTS.md — Tolaria Vault
+
+## Views
+
+Saved filters live in `views/` as `.view.json` files:
+
+```json
+{"title":"Active Notes"}
+```
+"#;
+        assert!(agents_content_can_be_refreshed(stale));
+    }
+
+    #[test]
     fn test_agents_template_matches_current_tolaria_vault_conventions() {
         assert!(AGENTS_MD.contains("# AGENTS.md — Tolaria Vault"));
         assert!(AGENTS_MD.contains("type/"));
@@ -698,6 +739,10 @@ mod tests {
         assert!(AGENTS_MD.contains("Legacy `title:` frontmatter is still read as a fallback"));
         assert!(AGENTS_MD.contains("Store note type in the `type:` frontmatter field."));
         assert!(AGENTS_MD.contains("views/*.yml"));
+        assert!(AGENTS_MD.contains("option:direction"));
+        assert!(AGENTS_MD.contains("property:<Property Name>"));
+        assert!(AGENTS_MD.contains("all:` group or one `any:` group"));
+        assert!(AGENTS_MD.contains("Do not create JSON view files or `.view.json` filenames."));
         assert!(AGENTS_MD.contains("Belongs to:"));
         assert!(!AGENTS_MD.contains("Laputa"));
         assert!(!AGENTS_MD.contains("Is A"));
