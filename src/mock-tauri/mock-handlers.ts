@@ -103,11 +103,17 @@ let mockSettings: Settings = {
   default_ai_agent: 'claude_code',
 }
 
-let mockLastVaultPath: string | null = null
+const DEFAULT_MOCK_VAULT_PATH = '/Users/mock/demo-vault-v2'
+const DEFAULT_MOCK_VAULT = {
+  label: 'demo-vault-v2',
+  path: DEFAULT_MOCK_VAULT_PATH,
+}
+
+let mockLastVaultPath: string | null = DEFAULT_MOCK_VAULT_PATH
 
 let mockVaultList: { vaults: Array<{ label: string; path: string }>; active_vault: string | null } = {
-  vaults: [],
-  active_vault: null,
+  vaults: [DEFAULT_MOCK_VAULT],
+  active_vault: DEFAULT_MOCK_VAULT_PATH,
 }
 
 let mockVaultAiGuidanceStatus = {

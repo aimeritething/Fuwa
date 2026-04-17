@@ -6,16 +6,22 @@
 
 let vaultApiAvailable: boolean | null = null
 
-async function checkVaultApi(): Promise<boolean> {
-  if (vaultApiAvailable !== null) return vaultApiAvailable
+async function detectVaultApiAvailability(): Promise<boolean> {
   try {
     const res = await fetch('/api/vault/ping', { signal: AbortSignal.timeout(500) })
-    vaultApiAvailable = res.ok
+    return res.ok
   } catch {
-    vaultApiAvailable = false
+    return false
   }
+}
+
+async function checkVaultApi(): Promise<boolean> {
+  if (vaultApiAvailable === true) return true
+
+  const available = await detectVaultApiAvailability()
+  vaultApiAvailable = available
   console.info(`[mock-tauri] Vault API available: ${vaultApiAvailable}`)
-  return vaultApiAvailable
+  return available
 }
 
 interface VaultApiRequest {
@@ -65,25 +71,38 @@ const VAULT_API_COMMANDS: Record<string, (args: Record<string, unknown>) => Vaul
   },
 }
 
-export async function tryVaultApi<T>(cmd: string, args?: Record<string, unknown>): Promise<T | undefined> {
-  const available = await checkVaultApi()
-  if (!available) return undefined
-
+function buildVaultApiRequest(cmd: string, args?: Record<string, unknown>) {
+  if (!args) return null
   const requestBuilder = VAULT_API_COMMANDS[cmd]
-  if (!requestBuilder || !args) return undefined
+  return requestBuilder?.(args) ?? null
+}
 
-  const request = requestBuilder(args)
+function buildFetchOptions(request: VaultApiRequest): RequestInit {
+  if (!request.body) {
+    return { method: request.method || 'GET' }
+  }
+
+  return {
+    method: request.method || 'GET',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request.body),
+  }
+}
+
+async function fetchVaultApiResponse(request: VaultApiRequest) {
+  const res = await fetch(request.url, buildFetchOptions(request))
+  if (!res.ok) return undefined
+  return res.json()
+}
+
+export async function tryVaultApi<T>(cmd: string, args?: Record<string, unknown>): Promise<T | undefined> {
+  const request = buildVaultApiRequest(cmd, args)
   if (!request) return undefined
+  if (!await checkVaultApi()) return undefined
 
   try {
-    const fetchOpts: RequestInit = { method: request.method || 'GET' }
-    if (request.body) {
-      fetchOpts.headers = { 'Content-Type': 'application/json' }
-      fetchOpts.body = JSON.stringify(request.body)
-    }
-    const res = await fetch(request.url, fetchOpts)
-    if (!res.ok) return undefined
-    const data = await res.json()
+    const data = await fetchVaultApiResponse(request)
+    if (data === undefined) return undefined
     return (cmd === 'get_note_content' ? data.content : data) as T
   } catch (err) {
     console.warn(`[mock-tauri] Vault API call failed for ${cmd}, falling back to mock:`, err)

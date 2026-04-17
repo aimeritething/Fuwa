@@ -2,20 +2,40 @@ import { expect, type Page } from '@playwright/test'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
+import { installFixtureVaultDesktopBridgeInBrowser } from './fixtureVaultDesktopBridge'
 
 const FIXTURE_VAULT = path.resolve('tests/fixtures/test-vault')
 const FIXTURE_VAULT_READY_TIMEOUT = 30_000
 const FIXTURE_VAULT_REMOVE_RETRIES = 10
 const FIXTURE_VAULT_REMOVE_RETRY_DELAY_MS = 100
 const CLAUDE_CODE_ONBOARDING_DISMISSED_KEY = 'tolaria:claude-code-onboarding-dismissed'
+type FixtureCommandArgs = Record<string, unknown> | undefined
 
-function copyDirSync(src: string, dest: string): void {
+interface FixtureVaultPageArgs {
+  page: Page
+  vaultPath: string
+}
+
+interface FixturePageArgs {
+  page: Page
+}
+
+interface CopyDirArgs {
+  src: string
+  dest: string
+}
+
+interface RemoveFixtureVaultArgs {
+  tempVaultDir: string
+}
+
+function copyDirSync({ src, dest }: CopyDirArgs): void {
   fs.mkdirSync(dest, { recursive: true })
   for (const item of fs.readdirSync(src, { withFileTypes: true })) {
     const sourcePath = path.join(src, item.name)
     const destinationPath = path.join(dest, item.name)
     if (item.isDirectory()) {
-      copyDirSync(sourcePath, destinationPath)
+      copyDirSync({ src: sourcePath, dest: destinationPath })
       continue
     }
     fs.copyFileSync(sourcePath, destinationPath)
@@ -24,12 +44,11 @@ function copyDirSync(src: string, dest: string): void {
 
 export function createFixtureVaultCopy(): string {
   const tempVaultDir = fs.mkdtempSync(path.join(os.tmpdir(), 'laputa-test-vault-'))
-  copyDirSync(FIXTURE_VAULT, tempVaultDir)
+  copyDirSync({ src: FIXTURE_VAULT, dest: tempVaultDir })
   return tempVaultDir
 }
 
-export function removeFixtureVaultCopy(tempVaultDir: string | null | undefined): void {
-  if (!tempVaultDir) return
+function removeFixtureVaultDirectory({ tempVaultDir }: RemoveFixtureVaultArgs): void {
   fs.rmSync(tempVaultDir, {
     recursive: true,
     force: true,
@@ -38,15 +57,21 @@ export function removeFixtureVaultCopy(tempVaultDir: string | null | undefined):
   })
 }
 
-export async function openFixtureVault(
-  page: Page,
-  vaultPath: string,
-): Promise<void> {
+export function removeFixtureVaultCopy(tempVaultDir: string | null | undefined): void {
+  if (!tempVaultDir) return
+  removeFixtureVaultDirectory({ tempVaultDir })
+}
+
+async function installFixtureVaultInitScript({ page, vaultPath }: FixtureVaultPageArgs): Promise<void> {
   await page.addInitScript(({ dismissedKey, resolvedVaultPath }: { dismissedKey: string; resolvedVaultPath: string }) => {
     localStorage.clear()
     localStorage.setItem(dismissedKey, '1')
 
+    const jsonHeaders = { 'Content-Type': 'application/json' }
+    const FRONTMATTER_OPEN = '---\n'
+    const FRONTMATTER_CLOSE = '\n---\n'
     const nativeFetch = window.fetch.bind(window)
+
     window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
       const requestUrl = typeof input === 'string'
         ? input
@@ -64,84 +89,20 @@ export async function openFixtureVault(
       return nativeFetch(input, init)
     }
 
-    const applyFixtureVaultOverrides = (
-      handlers: Record<string, ((args?: unknown) => unknown)> | null | undefined,
-    ) => {
-      if (!handlers) return handlers
-      handlers.load_vault_list = () => ({
-        vaults: [{ label: 'Test Vault', path: resolvedVaultPath }],
-        active_vault: resolvedVaultPath,
-        hidden_defaults: [],
-      })
-      handlers.check_vault_exists = () => true
-      handlers.get_last_vault_path = () => resolvedVaultPath
-      handlers.get_default_vault_path = () => resolvedVaultPath
-      handlers.save_vault_list = () => null
-      return handlers
+    const readJson = async (url: string, init?: RequestInit) => {
+      const response = await nativeFetch(url, init)
+      if (!response.ok) {
+        let message = `HTTP ${response.status}`
+        try {
+          const body = await response.json() as { error?: string }
+          message = body.error ?? message
+        } catch {
+          // Preserve the HTTP status fallback when the body is not JSON.
+        }
+        throw new Error(message)
+      }
+      return response.json()
     }
-
-    let ref = applyFixtureVaultOverrides(
-      (window.__mockHandlers as Record<string, ((args?: unknown) => unknown)> | undefined),
-    ) ?? null
-
-    Object.defineProperty(window, '__mockHandlers', {
-      configurable: true,
-      set(value) {
-        ref = applyFixtureVaultOverrides(
-          value as Record<string, ((args?: unknown) => unknown)> | undefined,
-        ) ?? null
-      },
-      get() {
-        return applyFixtureVaultOverrides(ref) ?? ref
-      },
-    })
-  }, { dismissedKey: CLAUDE_CODE_ONBOARDING_DISMISSED_KEY, resolvedVaultPath: vaultPath })
-
-  await page.goto('/', { waitUntil: 'domcontentloaded' })
-  await page.waitForFunction(() => Boolean(window.__mockHandlers))
-  await page.evaluate((resolvedVaultPath: string) => {
-    const handlers = window.__mockHandlers
-    if (!handlers) {
-      throw new Error('Mock handlers unavailable for fixture vault override')
-    }
-
-    handlers.load_vault_list = () => ({
-      vaults: [{ label: 'Test Vault', path: resolvedVaultPath }],
-      active_vault: resolvedVaultPath,
-      hidden_defaults: [],
-    })
-    handlers.check_vault_exists = () => true
-    handlers.get_last_vault_path = () => resolvedVaultPath
-    handlers.get_default_vault_path = () => resolvedVaultPath
-    handlers.save_vault_list = () => null
-  }, vaultPath)
-  await page.reload({ waitUntil: 'domcontentloaded' })
-  await page.locator('[data-testid="note-list-container"]').waitFor({ timeout: FIXTURE_VAULT_READY_TIMEOUT })
-  await expect(page.getByText('Alpha Project', { exact: true }).first()).toBeVisible({
-    timeout: FIXTURE_VAULT_READY_TIMEOUT,
-  })
-}
-
-/**
- * Browser harness for desktop command-routing tests.
- *
- * This stubs the Tauri invoke bridge inside Playwright so tests can exercise
- * renderer shortcut dispatch and desktop menu-command dispatch without a native
- * shell. It is deterministic, but it is not a substitute for real native QA.
- */
-export async function openFixtureVaultDesktopHarness(
-  page: Page,
-  vaultPath: string,
-): Promise<void> {
-  await openFixtureVault(page, vaultPath)
-  await page.evaluate((resolvedVaultPath: string) => {
-    const jsonHeaders = { 'Content-Type': 'application/json' }
-    const nativeFetch = window.fetch.bind(window)
-
-    const FRONTMATTER_OPEN = '---\n'
-    const FRONTMATTER_CLOSE = '\n---\n'
-
-    const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
     const splitFrontmatter = (content: string) => {
       if (!content.startsWith(FRONTMATTER_OPEN)) {
@@ -206,16 +167,12 @@ export async function openFixtureVaultDesktopHarness(
         return `${FRONTMATTER_OPEN}${nextEntryLines.join('\n')}${FRONTMATTER_CLOSE}${body}`
       }
 
-      const entries = splitFrontmatterEntries(frontmatter).filter((entry) => entry.key !== '')
-      const keyPattern = new RegExp(`^${escapeRegExp(key)}$`)
-      let replaced = false
-      const nextEntries = entries.map((entry) => {
-        if (!keyPattern.test(entry.key)) return entry
-        replaced = true
-        return { key, lines: nextEntryLines }
-      })
+      const nextEntries = splitFrontmatterEntries(frontmatter)
+        .filter((entry) => entry.key !== '')
+        .map((entry) => (entry.key === key ? { key, lines: nextEntryLines } : entry))
 
-      if (!replaced) {
+      const hasEntry = nextEntries.some((entry) => entry.key === key)
+      if (!hasEntry) {
         nextEntries.push({ key, lines: nextEntryLines })
       }
 
@@ -226,9 +183,8 @@ export async function openFixtureVaultDesktopHarness(
       const { frontmatter, body } = splitFrontmatter(content)
       if (frontmatter === null) return content
 
-      const keyPattern = new RegExp(`^${escapeRegExp(key)}$`)
       const nextEntries = splitFrontmatterEntries(frontmatter)
-        .filter((entry) => entry.key !== '' && !keyPattern.test(entry.key))
+        .filter((entry) => entry.key !== '' && entry.key !== key)
 
       if (nextEntries.length === 0) {
         return body
@@ -237,30 +193,17 @@ export async function openFixtureVaultDesktopHarness(
       return `${FRONTMATTER_OPEN}${nextEntries.flatMap((entry) => entry.lines).join('\n')}${FRONTMATTER_CLOSE}${body}`
     }
 
-    const persistFrontmatterChange = async (path: string, transform: (content: string) => string) => {
-      const current = await readJson(`/api/vault/content?path=${encodeURIComponent(path)}`) as { content: string }
+    const persistFrontmatterChange = async (notePath: string, transform: (content: string) => string) => {
+      const current = await readJson(
+        `/api/vault/content?path=${encodeURIComponent(notePath)}`,
+      ) as { content: string }
       const updatedContent = transform(current.content)
       await readJson('/api/vault/save', {
         method: 'POST',
         headers: jsonHeaders,
-        body: JSON.stringify({ path, content: updatedContent }),
+        body: JSON.stringify({ path: notePath, content: updatedContent }),
       })
       return updatedContent
-    }
-
-    const readJson = async (url: string, init?: RequestInit) => {
-      const response = await nativeFetch(url, init)
-      if (!response.ok) {
-        let message = `HTTP ${response.status}`
-        try {
-          const body = await response.json() as { error?: string }
-          message = body.error ?? message
-        } catch {
-          // Keep the HTTP status fallback when the body is not JSON.
-        }
-        throw new Error(message)
-      }
-      return response.json()
     }
 
     const activeVaultList = {
@@ -283,16 +226,16 @@ export async function openFixtureVaultDesktopHarness(
         body: JSON.stringify(payload),
       })
 
-    const commandHandlers: Record<string, (commandArgs?: Record<string, unknown>) => Promise<unknown> | unknown> = {
-      trigger_menu_command: (commandArgs) => {
-        const commandId = String(commandArgs?.id ?? '')
-        const bridge = window.__laputaTest?.dispatchBrowserMenuCommand
-        if (!bridge) throw new Error('Tolaria test bridge is missing dispatchBrowserMenuCommand')
-        bridge(commandId)
-        return null
-      },
+    const readCommandValue = (commandArgs: FixtureCommandArgs, key: string, fallback?: unknown) =>
+      commandArgs?.[key] ?? fallback
+
+    const readCommandString = (commandArgs: FixtureCommandArgs, key: string, fallback = '') =>
+      String(readCommandValue(commandArgs, key, fallback))
+
+    const buildFixtureStateHandlers = () => ({
       load_vault_list: () => activeVaultList,
-      check_vault_exists: () => true,
+      check_vault_exists: (commandArgs?: FixtureCommandArgs) =>
+        readCommandString(commandArgs, 'path') === resolvedVaultPath,
       is_git_repo: () => true,
       get_last_vault_path: () => resolvedVaultPath,
       get_default_vault_path: () => resolvedVaultPath,
@@ -309,97 +252,164 @@ export async function openFixtureVaultDesktopHarness(
         anonymous_id: null,
         release_channel: null,
       }),
-      list_vault: (commandArgs) => readVaultList(commandArgs),
-      reload_vault: (commandArgs) => readVaultList(commandArgs, true),
+    })
+
+    const buildFixtureReadHandlers = () => ({
+      list_vault: (commandArgs?: FixtureCommandArgs) => readVaultList(commandArgs),
+      reload_vault: (commandArgs?: FixtureCommandArgs) => readVaultList(commandArgs, true),
       list_vault_folders: () => [],
       list_views: () => [],
       get_modified_files: () => [],
       detect_renames: () => [],
-      reload_vault_entry: (commandArgs) =>
-        readJson(`/api/vault/entry?path=${encodeURIComponent(String(commandArgs?.path ?? ''))}`),
-      get_note_content: async (commandArgs) => {
+      reload_vault_entry: (commandArgs?: FixtureCommandArgs) =>
+        readJson(`/api/vault/entry?path=${encodeURIComponent(readCommandString(commandArgs, 'path'))}`),
+      get_note_content: async (commandArgs?: FixtureCommandArgs) => {
         const data = await readJson(
-          `/api/vault/content?path=${encodeURIComponent(String(commandArgs?.path ?? ''))}`,
+          `/api/vault/content?path=${encodeURIComponent(readCommandString(commandArgs, 'path'))}`,
         ) as { content: string }
         return data.content
       },
-      get_all_content: (commandArgs) =>
+      get_all_content: (commandArgs?: FixtureCommandArgs) =>
         readJson(
-          `/api/vault/all-content?path=${encodeURIComponent(String(commandArgs?.path ?? resolvedVaultPath))}`,
+          `/api/vault/all-content?path=${encodeURIComponent(readCommandString(commandArgs, 'path', resolvedVaultPath))}`,
         ),
-      save_note_content: (commandArgs) =>
-        readJson('/api/vault/save', {
-          method: 'POST',
-          headers: jsonHeaders,
-          body: JSON.stringify({ path: commandArgs?.path, content: commandArgs?.content }),
-        }),
-      update_frontmatter: (commandArgs) =>
-        persistFrontmatterChange(
-          String(commandArgs?.path ?? ''),
-          (content) => replaceFrontmatterEntry(content, String(commandArgs?.key ?? ''), commandArgs?.value),
-        ),
-      delete_frontmatter_property: (commandArgs) =>
-        persistFrontmatterChange(
-          String(commandArgs?.path ?? ''),
-          (content) => removeFrontmatterEntry(content, String(commandArgs?.key ?? '')),
-        ),
-      rename_note: (commandArgs) =>
-        renameNoteRequest({
-          vault_path: commandArgs?.vaultPath ?? resolvedVaultPath,
-          old_path: commandArgs?.oldPath,
-          new_title: commandArgs?.newTitle,
-          old_title: commandArgs?.oldTitle ?? null,
-        }),
-      rename_note_filename: (commandArgs) =>
-        readJson('/api/vault/rename-filename', {
-          method: 'POST',
-          headers: jsonHeaders,
-          body: JSON.stringify({
-            vault_path: commandArgs?.vaultPath ?? resolvedVaultPath,
-            old_path: commandArgs?.oldPath,
-            new_filename_stem: commandArgs?.newFilenameStem,
-          }),
-        }),
-      search_vault: (commandArgs) => {
-        const resolvedPath = String(commandArgs?.path ?? commandArgs?.vaultPath ?? resolvedVaultPath)
-        const query = encodeURIComponent(String(commandArgs?.query ?? ''))
-        const mode = encodeURIComponent(String(commandArgs?.mode ?? 'all'))
+      search_vault: (commandArgs?: FixtureCommandArgs) => {
+        const resolvedPath = readCommandString(
+          commandArgs,
+          'path',
+          readCommandValue(commandArgs, 'vaultPath', resolvedVaultPath),
+        )
+        const query = encodeURIComponent(readCommandString(commandArgs, 'query'))
+        const mode = encodeURIComponent(readCommandString(commandArgs, 'mode', 'all'))
         return readJson(
           `/api/vault/search?vault_path=${encodeURIComponent(resolvedPath)}&query=${query}&mode=${mode}`,
         )
       },
-      auto_rename_untitled: async (commandArgs) => {
-        const notePath = String(commandArgs?.notePath ?? '')
+    })
+
+    const buildFixtureWriteHandlers = () => ({
+      save_note_content: (commandArgs?: FixtureCommandArgs) =>
+        readJson('/api/vault/save', {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({
+            path: readCommandValue(commandArgs, 'path'),
+            content: readCommandValue(commandArgs, 'content'),
+          }),
+        }),
+      update_frontmatter: (commandArgs?: FixtureCommandArgs) =>
+        persistFrontmatterChange(
+          readCommandString(commandArgs, 'path'),
+          (content) => replaceFrontmatterEntry(
+            content,
+            readCommandString(commandArgs, 'key'),
+            readCommandValue(commandArgs, 'value'),
+          ),
+        ),
+      delete_frontmatter_property: (commandArgs?: FixtureCommandArgs) =>
+        persistFrontmatterChange(
+          readCommandString(commandArgs, 'path'),
+          (content) => removeFrontmatterEntry(content, readCommandString(commandArgs, 'key')),
+        ),
+      rename_note: (commandArgs?: FixtureCommandArgs) =>
+        renameNoteRequest({
+          vault_path: readCommandValue(commandArgs, 'vaultPath', resolvedVaultPath),
+          old_path: readCommandValue(commandArgs, 'oldPath'),
+          new_title: readCommandValue(commandArgs, 'newTitle'),
+          old_title: readCommandValue(commandArgs, 'oldTitle', null),
+        }),
+      rename_note_filename: (commandArgs?: FixtureCommandArgs) =>
+        readJson('/api/vault/rename-filename', {
+          method: 'POST',
+          headers: jsonHeaders,
+          body: JSON.stringify({
+            vault_path: readCommandValue(commandArgs, 'vaultPath', resolvedVaultPath),
+            old_path: readCommandValue(commandArgs, 'oldPath'),
+            new_filename_stem: readCommandValue(commandArgs, 'newFilenameStem'),
+          }),
+        }),
+      auto_rename_untitled: async (commandArgs?: FixtureCommandArgs) => {
+        const notePath = readCommandString(commandArgs, 'notePath')
         const contentData = await readJson(
           `/api/vault/content?path=${encodeURIComponent(notePath)}`,
         ) as { content: string }
         const match = contentData.content.match(/^#\s+(.+)$/m)
         if (!match) return null
         return renameNoteRequest({
-          vault_path: commandArgs?.vaultPath ?? resolvedVaultPath,
+          vault_path: readCommandValue(commandArgs, 'vaultPath', resolvedVaultPath),
           old_path: notePath,
           new_title: match[1].trim(),
         })
       },
+    })
+
+    const applyFixtureVaultOverrides = (
+      handlers: Record<string, ((args?: unknown) => unknown)> | null | undefined,
+    ) => {
+      if (!handlers) return handlers
+      Object.assign(
+        handlers,
+        buildFixtureStateHandlers(),
+        buildFixtureReadHandlers(),
+        buildFixtureWriteHandlers(),
+      )
+      return handlers
     }
 
-    const invoke = async (command: string, args?: Record<string, unknown>) => {
-      const handler = commandHandlers[command] ?? window.__mockHandlers?.[command]
-      if (!handler) throw new Error(`Unhandled invoke: ${command}`)
-      return handler(args)
-    }
+    let ref = applyFixtureVaultOverrides(
+      (window.__mockHandlers as Record<string, ((args?: unknown) => unknown)> | undefined),
+    ) ?? null
 
-    Object.defineProperty(window, '__TAURI__', {
+    Object.defineProperty(window, '__mockHandlers', {
       configurable: true,
-      value: {},
+      set(value) {
+        ref = applyFixtureVaultOverrides(
+          value as Record<string, ((args?: unknown) => unknown)> | undefined,
+        ) ?? null
+      },
+      get() {
+        return applyFixtureVaultOverrides(ref) ?? ref
+      },
     })
-    Object.defineProperty(window, '__TAURI_INTERNALS__', {
-      configurable: true,
-      value: { invoke },
-    })
-  }, vaultPath)
+  }, { dismissedKey: CLAUDE_CODE_ONBOARDING_DISMISSED_KEY, resolvedVaultPath: vaultPath })
+}
+
+async function waitForFixtureVaultReady({ page }: FixturePageArgs): Promise<void> {
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await page.waitForFunction(() => Boolean(window.__mockHandlers?.list_vault))
+  await page.locator('[data-testid="note-list-container"]').waitFor({ timeout: FIXTURE_VAULT_READY_TIMEOUT })
+  await expect(page.getByText('Alpha Project', { exact: true }).first()).toBeVisible({
+    timeout: FIXTURE_VAULT_READY_TIMEOUT,
+  })
+}
+
+export async function openFixtureVault(
+  page: Page,
+  vaultPath: string,
+): Promise<void> {
+  await installFixtureVaultInitScript({ page, vaultPath })
+  await waitForFixtureVaultReady({ page })
+}
+
+async function installFixtureVaultDesktopBridge({ page }: FixturePageArgs): Promise<void> {
+  await page.evaluate(installFixtureVaultDesktopBridgeInBrowser)
 
   await page.waitForFunction(() => Boolean(window.__TAURI_INTERNALS__))
+}
+
+/**
+ * Browser harness for desktop command-routing tests.
+ *
+ * This stubs the Tauri invoke bridge inside Playwright so tests can exercise
+ * renderer shortcut dispatch and desktop menu-command dispatch without a native
+ * shell. It is deterministic, but it is not a substitute for real native QA.
+ */
+export async function openFixtureVaultDesktopHarness(
+  page: Page,
+  vaultPath: string,
+): Promise<void> {
+  await openFixtureVault(page, vaultPath)
+  await installFixtureVaultDesktopBridge({ page })
 }
 
 export const openFixtureVaultTauri = openFixtureVaultDesktopHarness

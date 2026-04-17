@@ -24,11 +24,18 @@ if (typeof window !== 'undefined') {
   window.__mockHandlers = mockHandlers
 }
 
+function resolveMockHandler(command: string) {
+  if (typeof window !== 'undefined' && window.__mockHandlers?.[command]) {
+    return window.__mockHandlers[command]
+  }
+  return mockHandlers[command]
+}
+
 export async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   const vaultResult = await tryVaultApi<T>(cmd, args)
   if (vaultResult !== undefined) return vaultResult
 
-  const handler = mockHandlers[cmd]
+  const handler = resolveMockHandler(cmd)
   if (handler) {
     await new Promise((r) => setTimeout(r, 100))
     return handler(args) as T
