@@ -59,9 +59,9 @@ function collectAccidentalFilenameLinkRanges(editor: ReturnType<typeof useCreate
       return
     }
 
-    const hasAccidentalFilenameLink = node.marks.some((mark) => (
+    const hasAccidentalFilenameLink = node.marks?.some((mark) => (
       isAccidentalFilenameLinkMark(mark, linkMarkType, node.text ?? '')
-    ))
+    )) ?? false
 
     if (hasAccidentalFilenameLink) {
       ranges.push({ from: pos, to: pos + node.nodeSize })
