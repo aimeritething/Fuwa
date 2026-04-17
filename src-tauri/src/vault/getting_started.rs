@@ -208,21 +208,53 @@ const OUTDATED_AGENTS_MARKERS: [&str; 3] = [
     "Tolaria still understands legacy aliases such as `Is A`.",
 ];
 
-pub(super) fn agents_content_can_be_refreshed(content: &str) -> bool {
-    let is_outdated_managed_template = OUTDATED_AGENTS_MARKERS
-        .iter()
-        .all(|marker| content.contains(marker));
-    let is_stale_title_stub = content.contains("Do not add `title:` frontmatter.");
-    let has_legacy_json_view_guidance = content.contains("## Views")
-        && (content.contains(".view.json") || content.contains("```json"));
+const STALE_TITLE_FRONTMATTER_MARKER: &str = "Do not add `title:` frontmatter.";
+const LEGACY_VIEWS_SECTION_MARKER: &str = "## Views";
+const LEGACY_VIEW_FILE_MARKERS: [&str; 2] = [".view.json", "```json"];
 
-    content.trim().is_empty()
-        || content == PRE_TYPE_AGENTS_MD
-        || content == LEGACY_AGENTS_MD
-        || content == STALE_AGENTS_MD
-        || is_stale_title_stub
-        || has_legacy_json_view_guidance
-        || is_outdated_managed_template
+struct AgentsContent<'a>(&'a str);
+
+impl<'a> AgentsContent<'a> {
+    fn new(content: &'a str) -> Self {
+        Self(content)
+    }
+
+    fn contains(&self, marker: &str) -> bool {
+        self.0.contains(marker)
+    }
+
+    fn contains_all(&self, markers: &[&str]) -> bool {
+        markers.iter().all(|marker| self.contains(marker))
+    }
+
+    fn is_known_legacy_template(&self) -> bool {
+        self.0.trim().is_empty()
+            || self.0 == PRE_TYPE_AGENTS_MD
+            || self.0 == LEGACY_AGENTS_MD
+            || self.0 == STALE_AGENTS_MD
+    }
+
+    fn has_stale_title_stub(&self) -> bool {
+        self.contains(STALE_TITLE_FRONTMATTER_MARKER)
+    }
+
+    fn has_legacy_json_view_guidance(&self) -> bool {
+        self.contains(LEGACY_VIEWS_SECTION_MARKER)
+            && LEGACY_VIEW_FILE_MARKERS
+                .iter()
+                .any(|marker| self.contains(marker))
+    }
+
+    fn can_be_refreshed(&self) -> bool {
+        self.is_known_legacy_template()
+            || self.has_stale_title_stub()
+            || self.has_legacy_json_view_guidance()
+            || self.contains_all(&OUTDATED_AGENTS_MARKERS)
+    }
+}
+
+pub(super) fn agents_content_can_be_refreshed(content: &str) -> bool {
+    AgentsContent::new(content).can_be_refreshed()
 }
 
 /// Default AGENTS.md content — vault instructions for AI agents.
@@ -232,6 +264,9 @@ pub(super) const AGENTS_MD: &str = r##"---
 type: Note
 _organized: true
 ---
+
+# AGENTS.md — Tolaria Vault
+
 This is a [Tolaria](https://github.com/refactoringhq/tolaria) vault, a folder of Markdown files with YAML frontmatter forming a personal knowledge graph.
 
 Keep edits compatible with this starter vault's current conventions. Prefer small, human-readable changes over heavy restructuring.
@@ -239,7 +274,7 @@ Keep edits compatible with this starter vault's current conventions. Prefer smal
 ## Core conventions
 
 - One Markdown note per file.
-- The first H1 in the body is the preferred display title. Do not add `title:` frontmatter.
+- The first H1 in the body is the preferred display title. Legacy `title:` frontmatter is still read as a fallback when a note has no H1, but do not add it to new notes.
 - Store note type in the `type:` frontmatter field.
 - In this starter vault, type definitions currently live at the vault root, for example `project.md`, `person.md`, `note.md`, and `config.md`. Keep new type files at the vault root unless the user explicitly asks to reorganize them.
 - Saved views live in `views/*.yml`.
@@ -284,6 +319,8 @@ Useful type metadata in this vault includes `icon`/`_icon`, `color`/`_color`, `o
 ## Relationships
 
 Any frontmatter property whose value contains `[[wikilinks]]` is treated as a relationship. In this starter vault, common relationship keys include `related_to` and `belongs_to`, but custom relationship names are valid too.
+
+Preserve older relationship labels such as `Belongs to:` when editing existing notes that already use them.
 
 Use quoted wikilinks for scalar frontmatter values and YAML lists for multi-value relationships.
 
@@ -431,18 +468,23 @@ Do not modify app configuration files — those are local to each installation.
 
 /// Clone the public starter vault into the requested path.
 pub fn create_getting_started_vault(target_path: &str) -> Result<String, String> {
-    create_getting_started_vault_from_repo(target_path, &getting_started_repo_url())
+    let vault_path = create_getting_started_vault_from_repo(
+        Path::new(target_path),
+        &getting_started_repo_url(),
+    )?;
+    Ok(vault_path.to_string_lossy().to_string())
 }
 
 fn create_getting_started_vault_from_repo(
-    target_path: &str,
+    target_path: &Path,
     repo_url: &str,
-) -> Result<String, String> {
-    if target_path.trim().is_empty() {
+) -> Result<PathBuf, String> {
+    let target_path_str = target_path.to_string_lossy();
+    if target_path_str.trim().is_empty() {
         return Err("Target path is required".to_string());
     }
 
-    crate::git::clone_repo(repo_url, target_path)?;
+    crate::git::clone_repo(repo_url, &target_path_str)?;
     let vault_path = canonical_vault_path(target_path)?;
     refresh_cloned_vault_config_files(&vault_path)?;
     Ok(vault_path)
@@ -454,16 +496,23 @@ fn getting_started_repo_url() -> String {
         .unwrap_or_else(|_| GETTING_STARTED_REPO_URL.to_string())
 }
 
-fn canonical_vault_path(target_path: &str) -> Result<String, String> {
-    let path = Path::new(target_path);
-    let canonical = path
-        .canonicalize()
-        .map_err(|e| format!("Failed to resolve vault path '{}': {}", target_path, e))?;
-    Ok(canonical.to_string_lossy().to_string())
+fn canonical_vault_path(target_path: &Path) -> Result<PathBuf, String> {
+    target_path.canonicalize().map_err(|e| {
+        format!(
+            "Failed to resolve vault path '{}': {}",
+            target_path.display(),
+            e
+        )
+    })
 }
 
-fn refresh_cloned_vault_config_files(vault_path: &str) -> Result<(), String> {
-    let agents_path = Path::new(vault_path).join("AGENTS.md");
+fn path_to_utf8<'a>(path: &'a Path, context: &str) -> Result<&'a str, String> {
+    path.to_str()
+        .ok_or_else(|| format!("{context} '{}' is not valid UTF-8", path.display()))
+}
+
+fn refresh_cloned_vault_config_files(vault_path: &Path) -> Result<(), String> {
+    let agents_path = vault_path.join("AGENTS.md");
     let refresh_agents = if !agents_path.exists() {
         true
     } else {
@@ -477,18 +526,21 @@ fn refresh_cloned_vault_config_files(vault_path: &str) -> Result<(), String> {
             .map_err(|e| format!("Failed to write {}: {e}", agents_path.display()))?;
     }
 
-    crate::vault::repair_config_files(vault_path)?;
+    crate::vault::repair_config_files(path_to_utf8(vault_path, "Vault path")?)?;
 
     if !vault_has_pending_changes(vault_path)? {
         return Ok(());
     }
 
     ensure_commit_identity(vault_path)?;
-    crate::git::git_commit(vault_path, "Initialize Tolaria config files")?;
+    crate::git::git_commit(
+        path_to_utf8(vault_path, "Vault path")?,
+        "Initialize Tolaria config files",
+    )?;
     Ok(())
 }
 
-fn vault_has_pending_changes(vault_path: &str) -> Result<bool, String> {
+fn vault_has_pending_changes(vault_path: &Path) -> Result<bool, String> {
     let output = Command::new("git")
         .args(["status", "--porcelain"])
         .current_dir(vault_path)
@@ -505,7 +557,7 @@ fn vault_has_pending_changes(vault_path: &str) -> Result<bool, String> {
     ))
 }
 
-fn ensure_commit_identity(vault_path: &str) -> Result<(), String> {
+fn ensure_commit_identity(vault_path: &Path) -> Result<(), String> {
     for (key, fallback) in [
         ("user.name", "Tolaria"),
         ("user.email", "vault@tolaria.app"),
@@ -593,8 +645,7 @@ mod tests {
         let dest = dir.path().join("Getting Started");
         init_source_repo(&source, Some(agents_content));
 
-        create_getting_started_vault_from_repo(dest.to_str().unwrap(), source.to_str().unwrap())
-            .unwrap();
+        create_getting_started_vault_from_repo(dest.as_path(), source.to_str().unwrap()).unwrap();
 
         let content = fs::read_to_string(dest.join("AGENTS.md")).unwrap();
         assert_eq!(content, AGENTS_MD);
@@ -623,13 +674,11 @@ mod tests {
         let dest = dir.path().join("Getting Started");
         init_source_repo(&source, None);
 
-        let result = create_getting_started_vault_from_repo(
-            dest.to_str().unwrap(),
-            source.to_str().unwrap(),
-        )
-        .unwrap();
+        let result =
+            create_getting_started_vault_from_repo(dest.as_path(), source.to_str().unwrap())
+                .unwrap();
 
-        assert_eq!(result, dest.canonicalize().unwrap().to_string_lossy());
+        assert_eq!(result, dest.canonicalize().unwrap());
         assert!(dest.join("welcome.md").exists());
         assert!(dest.join("views").join("active-projects.yml").exists());
         assert!(dest.join(".git").exists());
@@ -649,11 +698,8 @@ mod tests {
         fs::create_dir_all(&dest).unwrap();
         fs::write(dest.join("existing.md"), "# Existing\n").unwrap();
 
-        let err = create_getting_started_vault_from_repo(
-            dest.to_str().unwrap(),
-            source.to_str().unwrap(),
-        )
-        .unwrap_err();
+        let err = create_getting_started_vault_from_repo(dest.as_path(), source.to_str().unwrap())
+            .unwrap_err();
 
         assert!(err.contains("already exists and is not empty"));
     }
@@ -664,11 +710,9 @@ mod tests {
         let missing_repo = dir.path().join("missing");
         let dest = dir.path().join("Getting Started");
 
-        let err = create_getting_started_vault_from_repo(
-            dest.to_str().unwrap(),
-            missing_repo.to_str().unwrap(),
-        )
-        .unwrap_err();
+        let err =
+            create_getting_started_vault_from_repo(dest.as_path(), missing_repo.to_str().unwrap())
+                .unwrap_err();
 
         assert!(err.contains("git clone failed"));
         assert!(!dest.exists());
@@ -681,8 +725,7 @@ mod tests {
         let dest = dir.path().join("Getting Started");
         init_source_repo(&source, None);
 
-        create_getting_started_vault_from_repo(dest.to_str().unwrap(), source.to_str().unwrap())
-            .unwrap();
+        create_getting_started_vault_from_repo(dest.as_path(), source.to_str().unwrap()).unwrap();
 
         let output = StdCommand::new("git")
             .args(["status", "--porcelain"])
@@ -725,6 +768,8 @@ Saved filters live in `views/` as `.view.json` files:
     #[test]
     fn test_agents_template_matches_current_tolaria_vault_conventions() {
         assert!(AGENTS_MD.starts_with("---\ntype: Note\n_organized: true\n---\n"));
+        assert!(AGENTS_MD.contains("# AGENTS.md — Tolaria Vault"));
+        assert!(AGENTS_MD.contains("Legacy `title:` frontmatter is still read as a fallback"));
         assert!(AGENTS_MD.contains("Store note type in the `type:` frontmatter field."));
         assert!(AGENTS_MD.contains("type definitions currently live at the vault root"));
         assert!(AGENTS_MD.contains("attachments/"));
@@ -732,6 +777,7 @@ Saved filters live in `views/` as `.view.json` files:
         assert!(AGENTS_MD.contains("option:direction"));
         assert!(AGENTS_MD.contains("property:<Property Name>"));
         assert!(AGENTS_MD.contains("actual frontmatter keys used in this vault such as `related_to`, `belongs_to`, or `url`."));
+        assert!(AGENTS_MD.contains("Belongs to:"));
         assert!(AGENTS_MD.contains("Do not create JSON view files or `.view.json` filenames."));
         assert!(!AGENTS_MD.contains("Laputa"));
         assert!(!AGENTS_MD.contains("Is A"));
