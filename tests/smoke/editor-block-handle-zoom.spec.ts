@@ -66,6 +66,8 @@ async function expectZoomedHandleClickToWork(
 
   const menu = page.locator('.mantine-Menu-dropdown').filter({ has: page.locator('.mantine-Menu-item') }).first()
   await expect(menu).toBeVisible({ timeout: 5_000 })
+  await expect(menu.getByRole('menuitem', { name: 'Delete' })).toBeVisible()
+  await expect(menu.getByRole('menuitem', { name: 'Colors' })).toHaveCount(0)
   await page.keyboard.press('Escape')
   await expect(menu).toBeHidden({ timeout: 5_000 })
 }

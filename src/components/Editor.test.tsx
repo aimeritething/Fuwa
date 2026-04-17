@@ -70,6 +70,7 @@ vi.mock('@blocknote/react', () => ({
     </div>
   ),
   FormattingToolbarController: () => null,
+  SideMenuController: () => null,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
   SuggestionMenuController: (props: any) => {
     capturedGetItemsByTrigger[props.triggerCharacter] = props.getItems

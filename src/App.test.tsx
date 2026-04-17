@@ -1,4 +1,5 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Provide a localStorage mock that supports all methods (jsdom's may be incomplete)
@@ -125,6 +126,12 @@ vi.mock('@blocknote/core/extensions', () => ({
 
 vi.mock('@blocknote/react', () => ({
   createReactInlineContentSpec: () => ({ render: () => null }),
+  BlockNoteViewRaw: ({ children }: { children?: ReactNode }) => (
+    <div data-testid="blocknote-view">{children}</div>
+  ),
+  ComponentsContext: {
+    Provider: ({ children }: { children?: ReactNode }) => <>{children}</>,
+  },
   useCreateBlockNote: () => ({
     tryParseMarkdownToBlocks: async () => [],
     replaceBlocks: () => {},
@@ -132,6 +139,7 @@ vi.mock('@blocknote/react', () => ({
     insertInlineContent: () => {},
     onMount: (cb: () => void) => { cb(); return () => {} },
   }),
+  SideMenuController: () => null,
   SuggestionMenuController: () => null,
 }))
 

@@ -5,6 +5,7 @@ import {
   SuggestionMenuController,
   BlockNoteViewRaw,
   ComponentsContext,
+  SideMenuController,
 } from '@blocknote/react'
 import { components } from '@blocknote/mantine'
 import { MantineContext, MantineProvider } from '@mantine/core'
@@ -23,6 +24,7 @@ import {
   TolariaFormattingToolbar,
   TolariaFormattingToolbarController,
 } from './tolariaEditorFormatting'
+import { TolariaSideMenu } from './tolariaBlockNoteSideMenu'
 import { useEditorLinkActivation } from './useEditorLinkActivation'
 
 const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
@@ -223,7 +225,9 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
         editable={editable}
         formattingToolbar={false}
         slashMenu={false}
+        sideMenu={false}
       >
+        <SideMenuController sideMenu={TolariaSideMenu} />
         <TolariaFormattingToolbarController
           formattingToolbar={TolariaFormattingToolbar}
           floatingUIOptions={{
