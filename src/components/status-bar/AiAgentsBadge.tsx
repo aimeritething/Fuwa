@@ -1,4 +1,5 @@
-import { AlertTriangle, ChevronsUpDown, Terminal } from 'lucide-react'
+import { AlertTriangle, ChevronsUpDown } from 'lucide-react'
+import { Sparkle } from '@phosphor-icons/react'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { Button } from '@/components/ui/button'
 import {
@@ -72,11 +73,8 @@ function missingAgentDefinitions(statuses: AiAgentsStatus): AiAgentDefinition[] 
   return AI_AGENT_DEFINITIONS.filter((definition) => !isAiAgentInstalled(statuses, definition.id))
 }
 
-function triggerLabel(defaultAgent: AiAgentId, selectedAgentReady: boolean): string {
-  const definition = getAiAgentDefinition(defaultAgent)
-  return selectedAgentReady
-    ? `AI: ${definition.shortLabel}`
-    : `AI: ${definition.shortLabel} unavailable`
+function triggerLabel(defaultAgent: AiAgentId): string {
+  return getAiAgentDefinition(defaultAgent).shortLabel
 }
 
 function menuHeading(defaultAgent: AiAgentId, selectedAgentReady: boolean): string {
@@ -211,8 +209,8 @@ export function AiAgentsBadge({
               data-testid="status-ai-agents"
             >
               <span style={{ ...ICON_STYLE, color: showWarning ? 'var(--accent-orange)' : 'var(--muted-foreground)' }}>
-                <Terminal size={13} />
-                {triggerLabel(defaultAgent, selectedAgentReady)}
+                <Sparkle size={13} weight="fill" />
+                {triggerLabel(defaultAgent)}
                 {showWarning && <AlertTriangle size={10} style={{ marginLeft: 2 }} />}
                 {!showWarning && showSwitcherCue && <ChevronsUpDown size={10} style={{ marginLeft: 2 }} />}
               </span>

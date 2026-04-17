@@ -467,7 +467,7 @@ describe('StatusBar', () => {
       />,
     )
 
-    expect(screen.getByTestId('status-ai-agents')).toHaveTextContent('AI: Claude')
+    expect(screen.getByTestId('status-ai-agents')).toHaveTextContent('Claude')
   })
 
   it('opens the AI agent switcher from the keyboard and switches agents', () => {
