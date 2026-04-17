@@ -90,7 +90,11 @@ vi.mock('./tolariaEditorFormatting', () => ({
 }))
 
 import { Editor } from './Editor'
-import { applyPendingRawExitContent } from './editorRawModeSync'
+import {
+  applyPendingRawExitContent,
+  rememberPendingRawExitContent,
+  syncActiveTabIntoRawBuffer,
+} from './editorRawModeSync'
 import type { VaultEntry } from '../types'
 import { bindVaultConfigStore, resetVaultConfigStore } from '../utils/vaultConfigStore'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -413,6 +417,73 @@ describe('applyPendingRawExitContent', () => {
     const pending = { path: mockEntry.path, content: mockContent }
 
     expect(applyPendingRawExitContent(tabs, pending)).toBe(tabs)
+  })
+})
+
+describe('raw-mode sync content guards', () => {
+  it('does not emit a content change when entering raw mode normalizes markdown', () => {
+    const onContentChange = vi.fn()
+    const rawLatestContentRef = { current: null as string | null }
+
+    const result = syncActiveTabIntoRawBuffer({
+      editor: mockEditor as never,
+      activeTabPath: mockEntry.path,
+      activeTabContent: mockContent,
+      rawLatestContentRef,
+    })
+
+    expect(result).toBe('---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\n# Test Project\n\nThis is a test note with some words to count.\n')
+    expect(rawLatestContentRef.current).toBe(result)
+    expect(onContentChange).not.toHaveBeenCalled()
+  })
+
+  it('captures the latest serialized markdown when entering raw mode', () => {
+    const rawLatestContentRef = { current: null as string | null }
+
+    mockEditor.blocksToMarkdownLossy.mockReturnValueOnce('# Test Project\n\nUpdated body\n')
+
+    const result = syncActiveTabIntoRawBuffer({
+      editor: mockEditor as never,
+      activeTabPath: mockEntry.path,
+      activeTabContent: mockContent,
+      rawLatestContentRef,
+    })
+
+    expect(result).toBe('---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\n# Test Project\n\nUpdated body\n')
+    expect(rawLatestContentRef.current).toBe(result)
+  })
+
+  it('does not emit a content change when leaving raw mode without user edits', () => {
+    const onContentChange = vi.fn()
+    const normalizedContent = '---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\n# Test Project\n\nThis is a test note with some words to count.\n'
+
+    const result = rememberPendingRawExitContent({
+      activeTabPath: mockEntry.path,
+      activeTabContent: mockContent,
+      rawInitialContent: normalizedContent,
+      rawLatestContentRef: { current: normalizedContent },
+      onContentChange,
+    })
+
+    expect(result).toBeNull()
+    expect(onContentChange).not.toHaveBeenCalled()
+  })
+
+  it('emits a content change when leaving raw mode with edited markdown', () => {
+    const onContentChange = vi.fn()
+    const normalizedContent = '---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\n# Test Project\n\nThis is a test note with some words to count.\n'
+    const editedContent = `${normalizedContent}\nUpdated in raw mode\n`
+
+    const result = rememberPendingRawExitContent({
+      activeTabPath: mockEntry.path,
+      activeTabContent: mockContent,
+      rawInitialContent: normalizedContent,
+      rawLatestContentRef: { current: editedContent },
+      onContentChange,
+    })
+
+    expect(result).toEqual({ path: mockEntry.path, content: editedContent })
+    expect(onContentChange).toHaveBeenCalledWith(mockEntry.path, editedContent)
   })
 })
 

@@ -54,32 +54,60 @@ export function applyPendingRawExitContent(
   return changed ? nextTabs : tabs
 }
 
+function syncContentIfChanged({
+  currentContent,
+  nextContent,
+  path,
+  onContentChange,
+}: {
+  currentContent: string | null
+  nextContent: string
+  path: string
+  onContentChange?: (path: string, content: string) => void
+}) {
+  if (currentContent === nextContent) return
+  onContentChange?.(path, nextContent)
+}
+
 export function syncActiveTabIntoRawBuffer(options: {
   editor: ReturnType<typeof useCreateBlockNote>
   activeTabPath: string | null
   activeTabContent: string | null
   rawLatestContentRef: React.MutableRefObject<string | null>
-  onContentChange?: (path: string, content: string) => void
 }) {
-  const { editor, activeTabPath, activeTabContent, rawLatestContentRef, onContentChange } = options
+  const { editor, activeTabPath, activeTabContent, rawLatestContentRef } = options
   if (!activeTabPath || activeTabContent === null) return null
 
   const syncedContent = serializeEditorDocumentToMarkdown(editor, activeTabContent)
   rawLatestContentRef.current = syncedContent
-  onContentChange?.(activeTabPath, syncedContent)
   return syncedContent
 }
 
 export function rememberPendingRawExitContent(options: {
   activeTabPath: string | null
+  activeTabContent: string | null
+  rawInitialContent: string | null
   rawLatestContentRef: React.MutableRefObject<string | null>
   onContentChange?: (path: string, content: string) => void
 }) {
-  const { activeTabPath, rawLatestContentRef, onContentChange } = options
+  const {
+    activeTabPath,
+    activeTabContent,
+    rawInitialContent,
+    rawLatestContentRef,
+    onContentChange,
+  } = options
   const pendingRawExitContent = buildPendingRawExitContent(activeTabPath, rawLatestContentRef.current)
   if (!pendingRawExitContent) return null
+  if (pendingRawExitContent.content === rawInitialContent) return null
+  if (pendingRawExitContent.content === activeTabContent) return null
 
-  onContentChange?.(pendingRawExitContent.path, pendingRawExitContent.content)
+  syncContentIfChanged({
+    currentContent: activeTabContent,
+    nextContent: pendingRawExitContent.content,
+    path: pendingRawExitContent.path,
+    onContentChange,
+  })
   return pendingRawExitContent
 }
 
