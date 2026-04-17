@@ -25,7 +25,18 @@ import type {
   StyleSchema,
 } from '@blocknote/core'
 import { FormattingToolbarExtension } from '@blocknote/core/extensions'
-import { useCallback, useMemo, useState, type FC, type ReactElement } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Dispatch,
+  type FC,
+  type MutableRefObject,
+  type ReactElement,
+  type SetStateAction,
+} from 'react'
 import {
   Button as MantineButton,
   CheckIcon as MantineCheckIcon,
@@ -45,6 +56,78 @@ import {
 } from './tolariaEditorFormattingConfig'
 
 type TolariaBasicTextStyle = 'bold' | 'italic' | 'strike' | 'code'
+
+const FORMATTER_CLOSE_GRACE_MS = 160
+
+function isFocusStillWithinToolbar(
+  currentTarget: EventTarget & Element,
+  nextTarget: EventTarget | null,
+) {
+  return nextTarget instanceof Node && currentTarget.contains(nextTarget)
+}
+
+function clearToolbarCloseGrace(
+  timeoutRef: MutableRefObject<number | null>,
+  setCloseGraceActive: Dispatch<SetStateAction<boolean>>,
+) {
+  if (timeoutRef.current !== null) {
+    window.clearTimeout(timeoutRef.current)
+    timeoutRef.current = null
+  }
+  setCloseGraceActive(false)
+}
+
+function startToolbarCloseGrace(
+  timeoutRef: MutableRefObject<number | null>,
+  setCloseGraceActive: Dispatch<SetStateAction<boolean>>,
+) {
+  setCloseGraceActive(true)
+  if (timeoutRef.current !== null) {
+    window.clearTimeout(timeoutRef.current)
+  }
+  timeoutRef.current = window.setTimeout(() => {
+    timeoutRef.current = null
+    setCloseGraceActive(false)
+  }, FORMATTER_CLOSE_GRACE_MS)
+}
+
+function useFormattingToolbarCloseGrace({
+  show,
+  toolbarHasFocus,
+  toolbarHovered,
+}: {
+  show: boolean
+  toolbarHasFocus: boolean
+  toolbarHovered: boolean
+}) {
+  const [closeGraceActive, setCloseGraceActive] = useState(false)
+  const closeGraceTimeoutRef = useRef<number | null>(null)
+  const previousShowRef = useRef(show)
+
+  const clearCloseGrace = useCallback(() => {
+    clearToolbarCloseGrace(closeGraceTimeoutRef, setCloseGraceActive)
+  }, [])
+
+  useEffect(() => {
+    const toolbarInteractionActive = show || toolbarHasFocus || toolbarHovered
+
+    if (toolbarInteractionActive) {
+      clearCloseGrace()
+    } else if (previousShowRef.current) {
+      startToolbarCloseGrace(closeGraceTimeoutRef, setCloseGraceActive)
+    }
+
+    previousShowRef.current = show
+  }, [clearCloseGrace, show, toolbarHasFocus, toolbarHovered])
+
+  useEffect(() => () => {
+    if (closeGraceTimeoutRef.current !== null) {
+      window.clearTimeout(closeGraceTimeoutRef.current)
+    }
+  }, [])
+
+  return { closeGraceActive, clearCloseGrace }
+}
 
 const TOLARIA_BASIC_TEXT_STYLE_TOOLTIPS = {
   bold: {
@@ -360,7 +443,14 @@ export function TolariaFormattingToolbarController(props: {
     editor,
   })
   const [toolbarHasFocus, setToolbarHasFocus] = useState(false)
-  const isOpen = show || toolbarHasFocus
+  const [toolbarHovered, setToolbarHovered] = useState(false)
+  const { closeGraceActive, clearCloseGrace } = useFormattingToolbarCloseGrace({
+    show,
+    toolbarHasFocus,
+    toolbarHovered,
+  })
+
+  const isOpen = show || toolbarHasFocus || toolbarHovered || closeGraceActive
 
   const position = useEditorState({
     editor,
@@ -398,6 +488,8 @@ export function TolariaFormattingToolbarController(props: {
           formattingToolbar.store.setState(open)
           if (!open) {
             setToolbarHasFocus(false)
+            setToolbarHovered(false)
+            clearCloseGrace()
           }
           if (reason === 'escape-key') {
             editor.focus()
@@ -413,7 +505,14 @@ export function TolariaFormattingToolbarController(props: {
         ...props.floatingUIOptions?.elementProps,
       },
     }),
-    [editor, formattingToolbar.store, isOpen, placement, props.floatingUIOptions],
+    [
+      clearCloseGrace,
+      editor,
+      formattingToolbar.store,
+      isOpen,
+      placement,
+      props.floatingUIOptions,
+    ],
   )
 
   const Component = props.formattingToolbar || TolariaFormattingToolbar
@@ -422,12 +521,21 @@ export function TolariaFormattingToolbarController(props: {
     <PositionPopover position={position} {...floatingUIOptions}>
       {isOpen && (
         <div
+          onPointerEnter={() => {
+            setToolbarHovered(true)
+          }}
+          onPointerLeave={(event) => {
+            if (isFocusStillWithinToolbar(event.currentTarget, event.relatedTarget)) {
+              return
+            }
+
+            setToolbarHovered(false)
+          }}
           onFocusCapture={() => {
             setToolbarHasFocus(true)
           }}
           onBlurCapture={(event) => {
-            const nextTarget = event.relatedTarget
-            if (nextTarget instanceof Node && event.currentTarget.contains(nextTarget)) {
+            if (isFocusStillWithinToolbar(event.currentTarget, event.relatedTarget)) {
               return
             }
 
