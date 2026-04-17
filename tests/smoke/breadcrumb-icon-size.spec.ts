@@ -3,8 +3,8 @@ import { createFixtureVaultCopy, openFixtureVault, removeFixtureVaultCopy } from
 
 let tempVaultDir: string
 
-async function expectIconSize(pageTitle: string, page: Page) {
-  const icon = page.locator(`button[title="${pageTitle}"] svg`)
+async function expectIconSize(buttonName: string, page: Page) {
+  const icon = page.getByRole('button', { name: buttonName }).locator('svg')
   await expect(icon).toBeVisible({ timeout: 5_000 })
   const box = await icon.boundingBox()
   expect(box?.width).toBeGreaterThanOrEqual(15)
@@ -39,9 +39,9 @@ test.describe('Breadcrumb action icon size regression', () => {
 
     await expect(page.locator('.breadcrumb-bar')).toBeVisible({ timeout: 5_000 })
 
-    await expectIconSize('Search in file', page)
-    await expectIconSize('Raw editor', page)
-    await expectIconSize('Open AI Chat', page)
-    await expectIconSize('Archive', page)
+    await expectIconSize('Search within this note', page)
+    await expectIconSize('Open the raw editor', page)
+    await expectIconSize('Open the AI panel', page)
+    await expectIconSize('Archive this note', page)
   })
 })

@@ -14,7 +14,7 @@ test.describe('Inline wikilink editor regression', () => {
 
     await page.locator('.app__note-list .cursor-pointer').first().click()
     await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 3_000 })
-    await page.getByTitle('Open AI Chat').click()
+    await page.getByRole('button', { name: 'Open the AI panel' }).click()
     await expect(page.getByTestId('ai-panel')).toBeVisible({ timeout: 3_000 })
   })
 

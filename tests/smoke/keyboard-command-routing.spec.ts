@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
 import { APP_COMMAND_IDS } from '../../src/hooks/appCommandCatalog'
 import {
   dispatchShortcutEvent,
@@ -12,6 +12,23 @@ import {
 } from '../helpers/fixtureVault'
 
 let tempVaultDir: string
+
+async function openAlphaProjectInEditor(page: Page) {
+  await openFixtureVaultDesktopHarness(page, tempVaultDir)
+  await page.getByText('Alpha Project', { exact: true }).first().click()
+  await page.locator('.bn-editor').click()
+}
+
+async function expectPropertiesPanelToggle(page: Page, toggle: () => Promise<void>) {
+  const propertiesButton = page.getByRole('button', { name: 'Open the properties panel' })
+  await expect(propertiesButton).toBeVisible({ timeout: 5_000 })
+
+  await toggle()
+  await expect(propertiesButton).toHaveCount(0)
+
+  await toggle()
+  await expect(page.getByRole('button', { name: 'Open the properties panel' })).toBeVisible({ timeout: 5_000 })
+}
 
 test.describe('keyboard command routing', () => {
   test.beforeEach(() => {
@@ -34,47 +51,33 @@ test.describe('keyboard command routing', () => {
   })
 
   test('desktop menu-command bridge toggles the properties panel through the shared command path @smoke', async ({ page }) => {
-    await openFixtureVaultDesktopHarness(page, tempVaultDir)
-    await page.getByText('Alpha Project', { exact: true }).first().click()
-    await page.locator('.bn-editor').click()
-
-    await triggerMenuCommand(page, APP_COMMAND_IDS.viewToggleProperties)
-    await expect(page.getByTitle('Close Properties (⌘⇧I)')).toBeVisible({ timeout: 5_000 })
-
-    await triggerMenuCommand(page, APP_COMMAND_IDS.viewToggleProperties)
-    await expect(page.getByTitle('Properties (⌘⇧I)')).toBeVisible({ timeout: 5_000 })
+    await openAlphaProjectInEditor(page)
+    await expectPropertiesPanelToggle(page, async () => {
+      await triggerMenuCommand(page, APP_COMMAND_IDS.viewToggleProperties)
+    })
   })
 
   test('desktop keyboard shortcut toggles the properties panel through the renderer shortcut path @smoke', async ({ page }) => {
-    await openFixtureVaultDesktopHarness(page, tempVaultDir)
-    await page.getByText('Alpha Project', { exact: true }).first().click()
-    await page.locator('.bn-editor').click()
-
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+I' : 'Control+Shift+I')
-    await expect(page.getByTitle('Close Properties (⌘⇧I)')).toBeVisible({ timeout: 5_000 })
-
-    await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+I' : 'Control+Shift+I')
-    await expect(page.getByTitle('Properties (⌘⇧I)')).toBeVisible({ timeout: 5_000 })
+    await openAlphaProjectInEditor(page)
+    await expectPropertiesPanelToggle(page, async () => {
+      await page.keyboard.press(process.platform === 'darwin' ? 'Meta+Shift+I' : 'Control+Shift+I')
+    })
   })
 
   test('desktop menu-command bridge toggles organized state through the shared command path @smoke', async ({ page }) => {
-    await openFixtureVaultDesktopHarness(page, tempVaultDir)
-    await page.getByText('Alpha Project', { exact: true }).first().click()
-    await page.locator('.bn-editor').click()
+    await openAlphaProjectInEditor(page)
 
-    await expect(page.getByTitle('Mark as organized (remove from Inbox) (Cmd+E)')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('button', { name: 'Set note as organized' })).toBeVisible({ timeout: 5_000 })
 
     await triggerMenuCommand(page, APP_COMMAND_IDS.noteToggleOrganized)
-    await expect(page.getByTitle('Mark as unorganized (back to Inbox) (Cmd+E)')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('button', { name: 'Set note as not organized' })).toBeVisible({ timeout: 5_000 })
 
     await triggerMenuCommand(page, APP_COMMAND_IDS.noteToggleOrganized)
-    await expect(page.getByTitle('Mark as organized (remove from Inbox) (Cmd+E)')).toBeVisible({ timeout: 5_000 })
+    await expect(page.getByRole('button', { name: 'Set note as organized' })).toBeVisible({ timeout: 5_000 })
   })
 
   test('renderer shortcut bridge toggles the raw editor through the shared keyboard handler @smoke', async ({ page }) => {
-    await openFixtureVaultDesktopHarness(page, tempVaultDir)
-    await page.getByText('Alpha Project', { exact: true }).first().click()
-    await page.locator('.bn-editor').click()
+    await openAlphaProjectInEditor(page)
 
     await triggerShortcutCommand(page, APP_COMMAND_IDS.editToggleRawEditor)
     await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible({ timeout: 5_000 })
@@ -85,9 +88,7 @@ test.describe('keyboard command routing', () => {
   })
 
   test('desktop menu-command bridge toggles the AI panel, while the wrong modifier event does not @smoke', async ({ page }) => {
-    await openFixtureVaultDesktopHarness(page, tempVaultDir)
-    await page.getByText('Alpha Project', { exact: true }).first().click()
-    await page.locator('.bn-editor').click()
+    await openAlphaProjectInEditor(page)
 
     await dispatchShortcutEvent(page, {
       key: 'l',

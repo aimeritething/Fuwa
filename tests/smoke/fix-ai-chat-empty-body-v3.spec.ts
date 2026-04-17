@@ -16,8 +16,8 @@ test.describe('AI chat empty body fix — no regression', () => {
     const editor = page.locator('.bn-editor')
     await expect(editor).toBeVisible({ timeout: 3000 })
 
-    // Open AI Chat from the editor toolbar
-    await page.getByTitle('Open AI Chat').click()
+    // Open the AI panel from the editor toolbar
+    await page.getByRole('button', { name: 'Open the AI panel' }).click()
     await expect(page.getByTestId('ai-panel')).toBeVisible({ timeout: 3000 })
 
     // Send a message
