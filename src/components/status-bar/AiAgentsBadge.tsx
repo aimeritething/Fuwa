@@ -1,4 +1,5 @@
 import { AlertTriangle, ChevronsUpDown, Terminal } from 'lucide-react'
+import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { Button } from '@/components/ui/button'
 import {
   AI_AGENT_DEFINITIONS,
@@ -199,23 +200,25 @@ export function AiAgentsBadge({
     <>
       <span style={SEP_STYLE}>|</span>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild={true}>
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="h-6 px-2 text-[11px] font-medium"
-            title={badgeTooltip(statuses, defaultAgent, guidanceStatus)}
-            data-testid="status-ai-agents"
-          >
-            <span style={{ ...ICON_STYLE, color: showWarning ? 'var(--accent-orange)' : 'var(--muted-foreground)' }}>
-              <Terminal size={13} />
-              {triggerLabel(defaultAgent, selectedAgentReady)}
-              {showWarning && <AlertTriangle size={10} style={{ marginLeft: 2 }} />}
-              {!showWarning && showSwitcherCue && <ChevronsUpDown size={10} style={{ marginLeft: 2 }} />}
-            </span>
-          </Button>
-        </DropdownMenuTrigger>
+        <ActionTooltip copy={{ label: badgeTooltip(statuses, defaultAgent, guidanceStatus) }} side="top">
+          <DropdownMenuTrigger asChild={true}>
+            <Button
+              type="button"
+              variant="ghost"
+              size="xs"
+              className="h-6 px-2 text-[11px] font-medium"
+              aria-label="Open AI agent options"
+              data-testid="status-ai-agents"
+            >
+              <span style={{ ...ICON_STYLE, color: showWarning ? 'var(--accent-orange)' : 'var(--muted-foreground)' }}>
+                <Terminal size={13} />
+                {triggerLabel(defaultAgent, selectedAgentReady)}
+                {showWarning && <AlertTriangle size={10} style={{ marginLeft: 2 }} />}
+                {!showWarning && showSwitcherCue && <ChevronsUpDown size={10} style={{ marginLeft: 2 }} />}
+              </span>
+            </Button>
+          </DropdownMenuTrigger>
+        </ActionTooltip>
         <AgentMenuContent
           statuses={statuses}
           guidanceStatus={guidanceStatus}

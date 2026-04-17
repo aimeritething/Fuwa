@@ -1,5 +1,7 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render as rtlRender, screen } from '@testing-library/react'
+import type { ReactElement } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { AiAgentsBadge } from './AiAgentsBadge'
 
 vi.mock('../../utils/url', async () => {
@@ -10,6 +12,10 @@ vi.mock('../../utils/url', async () => {
 const installedStatuses = {
   claude_code: { status: 'installed' as const, version: '1.0.20' },
   codex: { status: 'installed' as const, version: '0.37.0' },
+}
+
+function render(ui: ReactElement) {
+  return rtlRender(ui, { wrapper: TooltipProvider })
 }
 
 describe('AiAgentsBadge', () => {

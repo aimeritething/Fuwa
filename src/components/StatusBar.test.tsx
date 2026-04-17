@@ -19,6 +19,19 @@ const installedAiAgentsStatus = {
   codex: { status: 'installed' as const, version: '0.37.0' },
 }
 
+async function expectTooltip(trigger: HTMLElement, ...parts: string[]) {
+  act(() => {
+    fireEvent.focus(trigger)
+  })
+  const tooltip = await screen.findByRole('tooltip')
+  for (const part of parts) {
+    expect(tooltip).toHaveTextContent(part)
+  }
+  act(() => {
+    fireEvent.blur(trigger)
+  })
+}
+
 describe('StatusBar', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -46,9 +59,9 @@ describe('StatusBar', () => {
     expect(onCheckForUpdates).toHaveBeenCalledOnce()
   })
 
-  it('build number has "Check for updates" title', () => {
+  it('build number shows the update tooltip on focus', async () => {
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} buildNumber="b281" onCheckForUpdates={vi.fn()} />)
-    expect(screen.getByTitle('Check for updates')).toBeInTheDocument()
+    await expectTooltip(screen.getByRole('button', { name: 'Check for updates' }), 'Check for updates')
   })
 
   it('does not display branch name', () => {
@@ -83,7 +96,7 @@ describe('StatusBar', () => {
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
 
     // Click the vault button to open menu
-    fireEvent.click(screen.getByTitle('Switch vault'))
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
 
     expect(screen.getByText('Work Vault')).toBeInTheDocument()
   })
@@ -92,7 +105,7 @@ describe('StatusBar', () => {
     const onSwitchVault = vi.fn()
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={onSwitchVault} />)
 
-    fireEvent.click(screen.getByTitle('Switch vault'))
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
     // Click "Work Vault"
     fireEvent.click(screen.getByText('Work Vault'))
 
@@ -102,7 +115,7 @@ describe('StatusBar', () => {
   it('closes vault menu when clicking outside', () => {
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
 
-    fireEvent.click(screen.getByTitle('Switch vault'))
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
     expect(screen.getByText('Work Vault')).toBeInTheDocument()
 
     // Click outside the menu
@@ -114,7 +127,7 @@ describe('StatusBar', () => {
   it('toggles vault menu open and closed', () => {
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
 
-    const vaultButton = screen.getByTitle('Switch vault')
+    const vaultButton = screen.getByRole('button', { name: 'Switch vault' })
     fireEvent.click(vaultButton)
     expect(screen.getByText('Work Vault')).toBeInTheDocument()
 
@@ -127,7 +140,7 @@ describe('StatusBar', () => {
     render(
       <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onOpenLocalFolder={vi.fn()} />
     )
-    fireEvent.click(screen.getByTitle('Switch vault'))
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
     expect(screen.getByText('Open local folder')).toBeInTheDocument()
   })
 
@@ -136,7 +149,7 @@ describe('StatusBar', () => {
     render(
       <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onOpenLocalFolder={onOpenLocalFolder} />
     )
-    fireEvent.click(screen.getByTitle('Switch vault'))
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
     fireEvent.click(screen.getByText('Open local folder'))
     expect(onOpenLocalFolder).toHaveBeenCalledOnce()
   })
@@ -152,7 +165,7 @@ describe('StatusBar', () => {
         onCloneVault={vi.fn()}
       />
     )
-    fireEvent.click(screen.getByTitle('Switch vault'))
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
     expect(screen.getByText('Open local folder')).toBeInTheDocument()
     expect(screen.getByText('Clone Git repo')).toBeInTheDocument()
   })
@@ -168,7 +181,7 @@ describe('StatusBar', () => {
       />
     )
 
-    fireEvent.click(screen.getByTitle('Switch vault'))
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
     expect(screen.getByText('Clone Getting Started Vault')).toBeInTheDocument()
   })
 
@@ -184,7 +197,7 @@ describe('StatusBar', () => {
       />
     )
 
-    fireEvent.click(screen.getByTitle('Switch vault'))
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
     fireEvent.click(screen.getByText('Clone Getting Started Vault'))
     expect(onCloneGettingStarted).toHaveBeenCalledOnce()
   })
@@ -210,7 +223,7 @@ describe('StatusBar', () => {
     render(
       <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onOpenLocalFolder={vi.fn()} />
     )
-    fireEvent.click(screen.getByTitle('Switch vault'))
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
     fireEvent.click(screen.getByText('Open local folder'))
     // Menu should close after clicking an action
     expect(screen.queryByText('Open local folder')).not.toBeInTheDocument()
@@ -225,27 +238,27 @@ describe('StatusBar', () => {
     expect(onClickPending).toHaveBeenCalledOnce()
   })
 
-  it('pending count has title for accessibility', () => {
+  it('pending changes tooltip is available on keyboard focus', async () => {
     render(
       <StatusBar noteCount={100} modifiedCount={3} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onClickPending={vi.fn()} />
     )
-    expect(screen.getByTitle('View pending changes')).toBeInTheDocument()
+    await expectTooltip(screen.getByRole('button', { name: 'View pending changes' }), 'View pending changes')
   })
 
-  it('shows MCP warning badge when status is not_installed', () => {
+  it('shows MCP warning badge when status is not_installed', async () => {
     render(
       <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="not_installed" />
     )
     expect(screen.getByTestId('status-mcp')).toBeInTheDocument()
-    expect(screen.getByTitle('MCP server not installed — click to install')).toBeInTheDocument()
+    await expectTooltip(screen.getByRole('button', { name: 'MCP server not installed — click to install' }), 'MCP server not installed — click to install')
   })
 
-  it('shows MCP warning badge when status is no_claude_cli', () => {
+  it('shows MCP warning badge when status is no_claude_cli', async () => {
     render(
       <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="no_claude_cli" />
     )
     expect(screen.getByTestId('status-mcp')).toBeInTheDocument()
-    expect(screen.getByTitle('Claude CLI not found — install it first')).toBeInTheDocument()
+    await expectTooltip(screen.getByRole('button', { name: 'Claude CLI not found — install it first' }), 'Claude CLI not found — install it first')
   })
 
   it('hides MCP badge when status is installed', () => {
@@ -378,7 +391,7 @@ describe('StatusBar', () => {
     expect(onCommitPush).toHaveBeenCalledOnce()
   })
 
-  it('uses a local-only tooltip for the commit button when no remote is configured', () => {
+  it('uses a local-only tooltip for the commit button when no remote is configured', async () => {
     render(
       <StatusBar
         noteCount={100}
@@ -390,7 +403,7 @@ describe('StatusBar', () => {
         remoteStatus={{ branch: 'main', ahead: 0, behind: 0, hasRemote: false }}
       />
     )
-    expect(screen.getByTestId('status-commit-push')).toHaveAttribute('title', 'Commit locally (no remote configured)')
+    await expectTooltip(screen.getByRole('button', { name: 'Commit changes locally' }), 'Commit changes locally')
   })
 
   it('shows Commit button even when no modified files', () => {
@@ -403,20 +416,20 @@ describe('StatusBar', () => {
     expect(screen.queryByTestId('status-commit-push')).not.toBeInTheDocument()
   })
 
-  it('shows Claude Code badge when installed', () => {
+  it('shows Claude Code badge when installed', async () => {
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} claudeCodeStatus="installed" claudeCodeVersion="1.0.20" />)
     const badge = screen.getByTestId('status-claude-code')
     expect(badge).toBeInTheDocument()
     expect(screen.getByText('Claude Code')).toBeInTheDocument()
-    expect(badge.getAttribute('title')).toBe('Claude Code 1.0.20')
+    await expectTooltip(screen.getByRole('button', { name: 'Claude Code 1.0.20' }), 'Claude Code 1.0.20')
   })
 
-  it('shows Claude Code missing badge with warning when missing', () => {
+  it('shows Claude Code missing badge with warning when missing', async () => {
     render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} claudeCodeStatus="missing" />)
     const badge = screen.getByTestId('status-claude-code')
     expect(badge).toBeInTheDocument()
     expect(screen.getByText('Claude Code missing')).toBeInTheDocument()
-    expect(badge.getAttribute('title')).toBe('Claude Code not found — click to install')
+    await expectTooltip(screen.getByRole('button', { name: 'Claude Code not found — click to install' }), 'Claude Code not found — click to install')
   })
 
   it('opens install URL when clicking missing Claude Code badge', () => {

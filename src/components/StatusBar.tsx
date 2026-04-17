@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type { ClaudeCodeStatus } from '../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../hooks/useMcpStatus'
 import type { GitRemoteStatus, SyncStatus } from '../types'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   StatusBarPrimarySection,
   StatusBarSecondarySection,
@@ -97,62 +98,64 @@ export function StatusBar({
   }, [])
 
   return (
-    <footer
-      style={{
-        height: 30,
-        flexShrink: 0,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        background: 'var(--sidebar)',
-        borderTop: '1px solid var(--border)',
-        padding: '0 8px',
-        fontSize: 11,
-        color: 'var(--muted-foreground)',
-        position: 'relative',
-        zIndex: 10,
-      }}
-    >
-      <StatusBarPrimarySection
-        modifiedCount={modifiedCount}
-        vaultPath={vaultPath}
-        vaults={vaults}
-        onSwitchVault={onSwitchVault}
-        onOpenLocalFolder={onOpenLocalFolder}
-        onCloneVault={onCloneVault}
-        onCloneGettingStarted={onCloneGettingStarted}
-        onClickPending={onClickPending}
-        onClickPulse={onClickPulse}
-        onCommitPush={onCommitPush}
-        isOffline={isOffline}
-        isGitVault={isGitVault}
-        syncStatus={syncStatus}
-        lastSyncTime={lastSyncTime}
-        conflictCount={conflictCount}
-        remoteStatus={remoteStatus}
-        onTriggerSync={onTriggerSync}
-        onPullAndPush={onPullAndPush}
-        onOpenConflictResolver={onOpenConflictResolver}
-        buildNumber={buildNumber}
-        onCheckForUpdates={onCheckForUpdates}
-        onRemoveVault={onRemoveVault}
-        mcpStatus={mcpStatus}
-        onInstallMcp={onInstallMcp}
-        aiAgentsStatus={aiAgentsStatus}
-        vaultAiGuidanceStatus={vaultAiGuidanceStatus}
-        defaultAiAgent={defaultAiAgent}
-        onSetDefaultAiAgent={onSetDefaultAiAgent}
-        onRestoreVaultAiGuidance={onRestoreVaultAiGuidance}
-        claudeCodeStatus={claudeCodeStatus}
-        claudeCodeVersion={claudeCodeVersion}
-      />
-      <StatusBarSecondarySection
-        noteCount={noteCount}
-        zoomLevel={zoomLevel}
-        onZoomReset={onZoomReset}
-        onOpenFeedback={onOpenFeedback}
-        onOpenSettings={onOpenSettings}
-      />
-    </footer>
+    <TooltipProvider>
+      <footer
+        style={{
+          height: 30,
+          flexShrink: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          background: 'var(--sidebar)',
+          borderTop: '1px solid var(--border)',
+          padding: '0 8px',
+          fontSize: 11,
+          color: 'var(--muted-foreground)',
+          position: 'relative',
+          zIndex: 10,
+        }}
+      >
+        <StatusBarPrimarySection
+          modifiedCount={modifiedCount}
+          vaultPath={vaultPath}
+          vaults={vaults}
+          onSwitchVault={onSwitchVault}
+          onOpenLocalFolder={onOpenLocalFolder}
+          onCloneVault={onCloneVault}
+          onCloneGettingStarted={onCloneGettingStarted}
+          onClickPending={onClickPending}
+          onClickPulse={onClickPulse}
+          onCommitPush={onCommitPush}
+          isOffline={isOffline}
+          isGitVault={isGitVault}
+          syncStatus={syncStatus}
+          lastSyncTime={lastSyncTime}
+          conflictCount={conflictCount}
+          remoteStatus={remoteStatus}
+          onTriggerSync={onTriggerSync}
+          onPullAndPush={onPullAndPush}
+          onOpenConflictResolver={onOpenConflictResolver}
+          buildNumber={buildNumber}
+          onCheckForUpdates={onCheckForUpdates}
+          onRemoveVault={onRemoveVault}
+          mcpStatus={mcpStatus}
+          onInstallMcp={onInstallMcp}
+          aiAgentsStatus={aiAgentsStatus}
+          vaultAiGuidanceStatus={vaultAiGuidanceStatus}
+          defaultAiAgent={defaultAiAgent}
+          onSetDefaultAiAgent={onSetDefaultAiAgent}
+          onRestoreVaultAiGuidance={onRestoreVaultAiGuidance}
+          claudeCodeStatus={claudeCodeStatus}
+          claudeCodeVersion={claudeCodeVersion}
+        />
+        <StatusBarSecondarySection
+          noteCount={noteCount}
+          zoomLevel={zoomLevel}
+          onZoomReset={onZoomReset}
+          onOpenFeedback={onOpenFeedback}
+          onOpenSettings={onOpenSettings}
+        />
+      </footer>
+    </TooltipProvider>
   )
 }

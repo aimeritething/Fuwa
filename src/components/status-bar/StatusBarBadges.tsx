@@ -1,9 +1,4 @@
-import { useRef, useState } from 'react'
-import type {
-  KeyboardEvent as ReactKeyboardEvent,
-  MouseEvent as ReactMouseEvent,
-  ReactNode,
-} from 'react'
+import { useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
 import {
   AlertTriangle,
   ArrowDown,
@@ -15,6 +10,9 @@ import {
   Terminal,
 } from 'lucide-react'
 import { GitDiff, Pulse } from '@phosphor-icons/react'
+import { ActionTooltip, type ActionTooltipCopy } from '@/components/ui/action-tooltip'
+import { Button } from '@/components/ui/button'
+import { cn } from '@/lib/utils'
 import type { ClaudeCodeStatus } from '../../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../../hooks/useMcpStatus'
 import type { GitRemoteStatus, LastCommitInfo, SyncStatus } from '../../types'
@@ -48,47 +46,6 @@ const MCP_TOOLTIPS: Partial<Record<McpStatus, string>> = {
 
 const CLAUDE_INSTALL_URL = 'https://docs.anthropic.com/en/docs/claude-code'
 
-type HoverHandlers = {
-  onMouseEnter?: (event: ReactMouseEvent<HTMLSpanElement>) => void
-  onMouseLeave?: (event: ReactMouseEvent<HTMLSpanElement>) => void
-}
-
-interface ClaudeCodeRenderState extends HoverHandlers {
-  role?: 'button'
-  tabIndex?: number
-  onKeyDown?: (event: ReactKeyboardEvent<HTMLSpanElement>) => void
-  color: string
-  cursor: string
-  warningIcon: ReactNode
-}
-
-function createHoverHandlers(interactive: boolean): HoverHandlers {
-  if (!interactive) {
-    return {
-      onMouseEnter: undefined,
-      onMouseLeave: undefined,
-    }
-  }
-
-  return {
-    onMouseEnter: (event) => {
-      event.currentTarget.style.background = 'var(--hover)'
-    },
-    onMouseLeave: (event) => {
-      event.currentTarget.style.background = 'transparent'
-    },
-  }
-}
-
-function createEnterKeyHandler(onActivate?: () => void) {
-  return (event: ReactKeyboardEvent<HTMLSpanElement>) => {
-    if (event.key === 'Enter' || event.key === ' ') {
-      event.preventDefault()
-      onActivate?.()
-    }
-  }
-}
-
 function formatElapsedSync(lastSyncTime: number | null): string {
   if (!lastSyncTime) return 'Not synced'
   const secs = Math.round((Date.now() - lastSyncTime) / 1000)
@@ -103,11 +60,12 @@ function syncIconColor(status: SyncStatus): string {
   return SYNC_COLORS[status] ?? 'var(--accent-green)'
 }
 
-function syncBadgeTitle(status: SyncStatus): string {
-  if (status === 'conflict') return 'Click to resolve conflicts'
-  if (status === 'syncing') return 'Syncing…'
-  if (status === 'pull_required') return 'Click to pull from remote and push'
-  return 'Click to sync now'
+function syncBadgeTooltipCopy(status: SyncStatus): ActionTooltipCopy {
+  if (status === 'conflict') return { label: 'Resolve merge conflicts' }
+  if (status === 'syncing') return { label: 'Sync in progress' }
+  if (status === 'pull_required') return { label: 'Pull from remote and push' }
+  if (status === 'error') return { label: 'Retry sync' }
+  return { label: 'Sync now' }
 }
 
 function syncStatusText(status: SyncStatus): string {
@@ -127,10 +85,12 @@ function isRemoteMissing(remoteStatus: GitRemoteStatus | null | undefined): bool
   return remoteStatus?.hasRemote === false
 }
 
-function commitButtonTitle(remoteStatus: GitRemoteStatus | null | undefined): string {
-  return isRemoteMissing(remoteStatus)
-    ? 'Commit locally (no remote configured)'
-    : 'Commit & Push'
+function commitButtonTooltipCopy(remoteStatus: GitRemoteStatus | null | undefined): ActionTooltipCopy {
+  return {
+    label: isRemoteMissing(remoteStatus)
+      ? 'Commit changes locally'
+      : 'Commit and push changes',
+  }
 }
 
 function getMcpBadgeConfig(status: McpStatus, onInstall?: () => void) {
@@ -154,30 +114,57 @@ function getClaudeCodeBadgeConfig(status: ClaudeCodeStatus, version?: string | n
   }
 }
 
-function createClaudeCodeRenderState(
-  config: NonNullable<ReturnType<typeof getClaudeCodeBadgeConfig>>,
-): ClaudeCodeRenderState {
-  if (!config.missing) {
-    return {
-      role: undefined,
-      tabIndex: undefined,
-      onKeyDown: undefined,
-      color: 'var(--muted-foreground)',
-      cursor: 'default',
-      warningIcon: null,
-      ...createHoverHandlers(false),
-    }
-  }
+function handleStatusBarActionKeyDown(
+  event: ReactKeyboardEvent<HTMLButtonElement>,
+  onClick?: () => void,
+) {
+  if (!onClick) return
+  if (event.key !== 'Enter' && event.key !== ' ') return
+  event.preventDefault()
+  onClick()
+}
 
-  return {
-    role: 'button',
-    tabIndex: 0,
-    onKeyDown: createEnterKeyHandler(config.onActivate),
-    color: 'var(--accent-orange)',
-    cursor: 'pointer',
-    warningIcon: <AlertTriangle size={10} style={{ marginLeft: 2 }} />,
-    ...createHoverHandlers(true),
-  }
+function StatusBarAction({
+  copy,
+  children,
+  onClick,
+  testId,
+  ariaLabel,
+  className,
+  style,
+  disabled = false,
+}: {
+  copy: ActionTooltipCopy
+  children: ReactNode
+  onClick?: () => void
+  testId?: string
+  ariaLabel?: string
+  className?: string
+  style?: CSSProperties
+  disabled?: boolean
+}) {
+  return (
+    <ActionTooltip copy={copy} side="top">
+      <Button
+        type="button"
+        variant="ghost"
+        size="xs"
+        className={cn(
+          'h-auto gap-1 rounded-sm px-1 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground',
+          disabled && 'cursor-not-allowed opacity-40 hover:bg-transparent hover:text-muted-foreground',
+          className,
+        )}
+        style={style}
+        onClick={disabled ? undefined : onClick}
+        onKeyDown={(event) => handleStatusBarActionKeyDown(event, disabled ? undefined : onClick)}
+        aria-label={ariaLabel ?? copy.label}
+        aria-disabled={disabled || undefined}
+        data-testid={testId}
+      >
+        {children}
+      </Button>
+    </ActionTooltip>
+  )
 }
 
 function RemoteStatusSummary({ remoteStatus }: { remoteStatus: GitRemoteStatus | null }) {
@@ -405,16 +392,12 @@ export function SyncBadge({
 
   return (
     <div ref={popupRef} style={{ position: 'relative' }}>
-      <span
-        role="button"
-        onClick={handleClick}
-        style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3 }}
-        title={syncBadgeTitle(status)}
-        data-testid="status-sync"
-      >
-        <SyncIcon size={13} style={{ color: syncIconColor(status) }} className={isSyncing ? 'animate-spin' : ''} />
-        {formatSyncLabel(status, lastSyncTime)}
-      </span>
+      <StatusBarAction copy={syncBadgeTooltipCopy(status)} onClick={handleClick} testId="status-sync">
+        <span style={ICON_STYLE}>
+          <SyncIcon size={13} style={{ color: syncIconColor(status) }} className={isSyncing ? 'animate-spin' : ''} />
+          {formatSyncLabel(status, lastSyncTime)}
+        </span>
+      </StatusBarAction>
       {showPopup && (
         <GitStatusPopup
           status={status}
@@ -433,25 +416,17 @@ export function ConflictBadge({ count, onClick }: { count: number; onClick?: () 
   return (
     <>
       <span style={SEP_STYLE}>|</span>
-      <span
-        role="button"
+      <StatusBarAction
+        copy={{ label: 'Resolve merge conflicts' }}
         onClick={onClick}
-        style={{
-          ...ICON_STYLE,
-          color: 'var(--destructive, #e03e3e)',
-          cursor: onClick ? 'pointer' : 'default',
-          padding: '2px 4px',
-          borderRadius: 3,
-          background: 'transparent',
-        }}
-        title="Resolve merge conflicts"
-        onMouseEnter={onClick ? (event) => { event.currentTarget.style.background = 'var(--hover)' } : undefined}
-        onMouseLeave={onClick ? (event) => { event.currentTarget.style.background = 'transparent' } : undefined}
-        data-testid="status-conflict-count"
+        testId="status-conflict-count"
+        className="text-[var(--destructive,#e03e3e)]"
       >
-        <AlertTriangle size={13} />
-        {count} conflict{count > 1 ? 's' : ''}
-      </span>
+        <span style={ICON_STYLE}>
+          <AlertTriangle size={13} />
+          {count} conflict{count > 1 ? 's' : ''}
+        </span>
+      </StatusBarAction>
     </>
   )
 }
@@ -462,35 +437,29 @@ export function ChangesBadge({ count, onClick }: { count: number; onClick?: () =
   return (
     <>
       <span style={SEP_STYLE}>|</span>
-      <span
-        role="button"
-        onClick={onClick}
-        style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
-        title="View pending changes"
-        onMouseEnter={(event) => { event.currentTarget.style.background = 'var(--hover)' }}
-        onMouseLeave={(event) => { event.currentTarget.style.background = 'transparent' }}
-        data-testid="status-modified-count"
-      >
-        <GitDiff size={13} style={{ color: 'var(--accent-orange)' }} />
-        <span
-          style={{
-            display: 'inline-flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            background: 'var(--accent-orange)',
-            color: '#fff',
-            borderRadius: 9,
-            padding: '0 5px',
-            fontSize: 10,
-            fontWeight: 600,
-            minWidth: 16,
-            lineHeight: '16px',
-          }}
-        >
-          {count}
+      <StatusBarAction copy={{ label: 'View pending changes' }} onClick={onClick} testId="status-modified-count">
+        <span style={ICON_STYLE}>
+          <GitDiff size={13} style={{ color: 'var(--accent-orange)' }} />
+          <span
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              background: 'var(--accent-orange)',
+              color: '#fff',
+              borderRadius: 9,
+              padding: '0 5px',
+              fontSize: 10,
+              fontWeight: 600,
+              minWidth: 16,
+              lineHeight: '16px',
+            }}
+          >
+            {count}
+          </span>
+          Changes
         </span>
-        Changes
-      </span>
+      </StatusBarAction>
     </>
   )
 }
@@ -507,20 +476,12 @@ export function CommitButton({
   return (
     <>
       <span style={SEP_STYLE}>|</span>
-      <span
-        role="button"
-        tabIndex={0}
-        onClick={onClick}
-        onKeyDown={createEnterKeyHandler(onClick)}
-        style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
-        title={commitButtonTitle(remoteStatus)}
-        onMouseEnter={(event) => { event.currentTarget.style.background = 'var(--hover)' }}
-        onMouseLeave={(event) => { event.currentTarget.style.background = 'transparent' }}
-        data-testid="status-commit-push"
-      >
-        <GitCommitHorizontal size={13} />
-        Commit
-      </span>
+      <StatusBarAction copy={commitButtonTooltipCopy(remoteStatus)} onClick={onClick} testId="status-commit-push">
+        <span style={ICON_STYLE}>
+          <GitCommitHorizontal size={13} />
+          Commit
+        </span>
+      </StatusBarAction>
     </>
   )
 }
@@ -529,25 +490,17 @@ export function PulseBadge({ onClick, disabled }: { onClick?: () => void; disabl
   return (
     <>
       <span style={SEP_STYLE}>|</span>
-      <span
-        role={disabled ? undefined : 'button'}
+      <StatusBarAction
+        copy={{ label: disabled ? 'History is only available for git-enabled vaults' : 'Open change history' }}
         onClick={disabled ? undefined : onClick}
-        style={{
-          ...ICON_STYLE,
-          cursor: disabled ? 'not-allowed' : 'pointer',
-          padding: '2px 4px',
-          borderRadius: 3,
-          background: 'transparent',
-          opacity: disabled ? 0.4 : 1,
-        }}
-        title={disabled ? 'History is only available for git-enabled vaults' : 'View history'}
-        onMouseEnter={disabled ? undefined : (event) => { event.currentTarget.style.background = 'var(--hover)' }}
-        onMouseLeave={disabled ? undefined : (event) => { event.currentTarget.style.background = 'transparent' }}
-        data-testid="status-pulse"
+        testId="status-pulse"
+        disabled={Boolean(disabled)}
       >
-        <Pulse size={13} />
-        History
-      </span>
+        <span style={ICON_STYLE}>
+          <Pulse size={13} />
+          History
+        </span>
+      </StatusBarAction>
     </>
   )
 }
@@ -559,26 +512,18 @@ export function McpBadge({ status, onInstall }: { status: McpStatus; onInstall?:
   return (
     <>
       <span style={SEP_STYLE}>|</span>
-      <span
-        role={config.clickable ? 'button' : undefined}
+      <StatusBarAction
+        copy={{ label: config.tooltip }}
         onClick={config.onClick}
-        style={{
-          ...ICON_STYLE,
-          color: 'var(--accent-orange)',
-          cursor: config.clickable ? 'pointer' : 'default',
-          padding: '2px 4px',
-          borderRadius: 3,
-          background: 'transparent',
-        }}
-        title={config.tooltip}
-        data-testid="status-mcp"
-        onMouseEnter={config.clickable ? (event) => { event.currentTarget.style.background = 'var(--hover)' } : undefined}
-        onMouseLeave={config.clickable ? (event) => { event.currentTarget.style.background = 'transparent' } : undefined}
+        testId="status-mcp"
+        className="text-[var(--accent-orange)]"
       >
-        <Cpu size={13} />
-        MCP
-        <AlertTriangle size={10} style={{ marginLeft: 2 }} />
-      </span>
+        <span style={ICON_STYLE}>
+          <Cpu size={13} />
+          MCP
+          <AlertTriangle size={10} style={{ marginLeft: 2 }} />
+        </span>
+      </StatusBarAction>
     </>
   )
 }
@@ -587,33 +532,21 @@ export function ClaudeCodeBadge({ status, version }: { status: ClaudeCodeStatus;
   const config = getClaudeCodeBadgeConfig(status, version)
   if (!config) return null
 
-  const renderState = createClaudeCodeRenderState(config)
-
   return (
     <>
       <span style={SEP_STYLE}>|</span>
-      <span
-        role={renderState.role}
-        tabIndex={renderState.tabIndex}
+      <StatusBarAction
+        copy={{ label: config.tooltip }}
         onClick={config.onActivate}
-        onKeyDown={renderState.onKeyDown}
-        style={{
-          ...ICON_STYLE,
-          color: renderState.color,
-          cursor: renderState.cursor,
-          padding: '2px 4px',
-          borderRadius: 3,
-          background: 'transparent',
-        }}
-        title={config.tooltip}
-        data-testid="status-claude-code"
-        onMouseEnter={renderState.onMouseEnter}
-        onMouseLeave={renderState.onMouseLeave}
+        testId="status-claude-code"
+        className={config.missing ? 'text-[var(--accent-orange)]' : undefined}
       >
-        <Terminal size={13} />
-        {config.label}
-        {renderState.warningIcon}
-      </span>
+        <span style={ICON_STYLE}>
+          <Terminal size={13} />
+          {config.label}
+          {config.missing && <AlertTriangle size={10} style={{ marginLeft: 2 }} />}
+        </span>
+      </StatusBarAction>
     </>
   )
 }

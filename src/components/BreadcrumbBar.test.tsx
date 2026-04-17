@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, act } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { BreadcrumbBar } from './BreadcrumbBar'
 import type { VaultEntry } from '../types'
@@ -49,6 +49,19 @@ const defaultProps = {
   onToggleDiff: vi.fn(),
 }
 
+async function expectTooltip(trigger: HTMLElement, ...parts: string[]) {
+  act(() => {
+    fireEvent.focus(trigger)
+  })
+  const tooltip = await screen.findByRole('tooltip')
+  for (const part of parts) {
+    expect(tooltip).toHaveTextContent(part)
+  }
+  act(() => {
+    fireEvent.blur(trigger)
+  })
+}
+
 describe('BreadcrumbBar — drag region', () => {
   it('has data-tauri-drag-region on the container', () => {
     const { container } = render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
@@ -67,13 +80,13 @@ describe('BreadcrumbBar — drag region', () => {
 describe('BreadcrumbBar — delete', () => {
   it('shows delete button', () => {
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onDelete={vi.fn()} />)
-    expect(screen.getByTitle('Delete (Cmd+Delete)')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Delete this note' })).toBeInTheDocument()
   })
 
   it('calls onDelete when delete button is clicked', () => {
     const onDelete = vi.fn()
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onDelete={onDelete} />)
-    fireEvent.click(screen.getByTitle('Delete (Cmd+Delete)'))
+    fireEvent.click(screen.getByRole('button', { name: 'Delete this note' }))
     expect(onDelete).toHaveBeenCalledOnce()
   })
 })
@@ -81,40 +94,40 @@ describe('BreadcrumbBar — delete', () => {
 describe('BreadcrumbBar — archive/unarchive', () => {
   it('shows archive button for non-archived note', () => {
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onArchive={vi.fn()} onUnarchive={vi.fn()} />)
-    expect(screen.getByTitle('Archive')).toBeInTheDocument()
-    expect(screen.queryByTitle('Unarchive')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Archive this note' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Restore this archived note' })).not.toBeInTheDocument()
   })
 
   it('shows unarchive button for archived note', () => {
     render(<BreadcrumbBar entry={archivedEntry} {...defaultProps} onArchive={vi.fn()} onUnarchive={vi.fn()} />)
-    expect(screen.getByTitle('Unarchive')).toBeInTheDocument()
-    expect(screen.queryByTitle('Archive')).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Restore this archived note' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Archive this note' })).not.toBeInTheDocument()
   })
 
   it('calls onArchive when archive button is clicked', () => {
     const onArchive = vi.fn()
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onArchive={onArchive} />)
-    fireEvent.click(screen.getByTitle('Archive'))
+    fireEvent.click(screen.getByRole('button', { name: 'Archive this note' }))
     expect(onArchive).toHaveBeenCalledOnce()
   })
 
   it('calls onUnarchive when unarchive button is clicked', () => {
     const onUnarchive = vi.fn()
     render(<BreadcrumbBar entry={archivedEntry} {...defaultProps} onUnarchive={onUnarchive} />)
-    fireEvent.click(screen.getByTitle('Unarchive'))
+    fireEvent.click(screen.getByRole('button', { name: 'Restore this archived note' }))
     expect(onUnarchive).toHaveBeenCalledOnce()
   })
 })
 
 describe('BreadcrumbBar — organized shortcut hint', () => {
-  it('shows Cmd+E on the organized toggle tooltip', () => {
+  it('shows Cmd+E on the organized toggle tooltip', async () => {
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onToggleOrganized={vi.fn()} />)
-    expect(screen.getByTitle('Mark as organized (remove from Inbox) (Cmd+E)')).toBeInTheDocument()
+    await expectTooltip(screen.getByRole('button', { name: 'Set note as organized' }), 'Set note as organized', '⌘E')
   })
 
   it('hides the organized toggle when the workflow is disabled', () => {
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
-    expect(screen.queryByTitle('Mark as organized (remove from Inbox) (Cmd+E)')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Set note as organized' })).not.toBeInTheDocument()
   })
 })
 
@@ -238,32 +251,32 @@ describe('BreadcrumbBar — raw editor toggle', () => {
   it('shows Raw editor button with tooltip "Raw editor" when rawMode is off', () => {
     const onToggleRaw = vi.fn()
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode={false} onToggleRaw={onToggleRaw} />)
-    expect(screen.getByTitle('Raw editor')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open the raw editor' })).toBeInTheDocument()
   })
 
   it('shows "Back to editor" tooltip when rawMode is on', () => {
     const onToggleRaw = vi.fn()
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode={true} onToggleRaw={onToggleRaw} />)
-    expect(screen.getByTitle('Back to editor')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Return to the editor' })).toBeInTheDocument()
   })
 
   it('calls onToggleRaw when raw button is clicked', () => {
     const onToggleRaw = vi.fn()
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode={false} onToggleRaw={onToggleRaw} />)
-    fireEvent.click(screen.getByTitle('Raw editor'))
+    fireEvent.click(screen.getByRole('button', { name: 'Open the raw editor' }))
     expect(onToggleRaw).toHaveBeenCalledOnce()
   })
 
   it('hides raw toggle when forceRawMode is true (non-markdown file)', () => {
     const onToggleRaw = vi.fn()
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode={true} onToggleRaw={onToggleRaw} forceRawMode={true} />)
-    expect(screen.queryByTitle('Raw editor')).not.toBeInTheDocument()
-    expect(screen.queryByTitle('Back to editor')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Open the raw editor' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Return to the editor' })).not.toBeInTheDocument()
   })
 
   it('shows raw toggle when forceRawMode is false (markdown file)', () => {
     const onToggleRaw = vi.fn()
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} rawMode={false} onToggleRaw={onToggleRaw} forceRawMode={false} />)
-    expect(screen.getByTitle('Raw editor')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Open the raw editor' })).toBeInTheDocument()
   })
 })

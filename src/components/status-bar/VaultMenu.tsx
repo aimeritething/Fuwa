@@ -1,6 +1,8 @@
 import { useMemo, useRef, useState } from 'react'
 import type { CSSProperties, ReactNode } from 'react'
 import { AlertTriangle, Check, FolderOpen, GitBranch, Rocket, X } from 'lucide-react'
+import { ActionTooltip } from '@/components/ui/action-tooltip'
+import { Button } from '@/components/ui/button'
 import type { VaultOption } from './types'
 import { useDismissibleLayer } from './useDismissibleLayer'
 
@@ -204,23 +206,22 @@ export function VaultMenu({
 
   return (
     <div ref={menuRef} style={{ position: 'relative' }}>
-      <span
-        role="button"
-        onClick={() => setOpen((value) => !value)}
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-          cursor: 'pointer',
-          padding: '2px 4px',
-          borderRadius: 3,
-          background: open ? 'var(--hover)' : 'transparent',
-        }}
-        title="Switch vault"
-      >
-        <FolderOpen size={13} />
-        {activeVault?.label ?? 'Vault'}
-      </span>
+      <ActionTooltip copy={{ label: 'Switch vault' }} side="top">
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className={open
+            ? 'h-auto gap-1 rounded-sm bg-[var(--hover)] px-1 py-0.5 text-[11px] font-medium text-foreground hover:bg-[var(--hover)]'
+            : 'h-auto gap-1 rounded-sm px-1 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground'}
+          onClick={() => setOpen((value) => !value)}
+          aria-label="Switch vault"
+          data-testid="status-vault-trigger"
+        >
+          <FolderOpen size={13} />
+          {activeVault?.label ?? 'Vault'}
+        </Button>
+      </ActionTooltip>
       {open && (
         <div
           style={{

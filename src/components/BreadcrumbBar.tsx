@@ -3,7 +3,8 @@ import type { VaultEntry } from '../types'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { ActionTooltip, type ActionTooltipCopy } from '@/components/ui/action-tooltip'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   MagnifyingGlass,
   GitBranch,
@@ -96,46 +97,44 @@ function handleFilenameInputKeyDown(
 }
 
 function IconActionButton({
-  title,
+  copy,
   onClick,
   className,
   style,
-  disabled,
-  tabIndex,
   children,
   testId,
 }: {
-  title: string
+  copy: ActionTooltipCopy
   onClick?: () => void
   className?: string
   style?: CSSProperties
-  disabled?: boolean
-  tabIndex?: number
   children: ReactNode
   testId?: string
 }) {
   return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-xs"
-      className={cn('text-muted-foreground [&_svg:not([class*=size-])]:size-4', className)}
-      style={style}
-      onClick={onClick}
-      disabled={disabled}
-      tabIndex={tabIndex}
-      title={title}
-      data-testid={testId}
-    >
-      {children}
-    </Button>
+    <ActionTooltip copy={copy} side="bottom">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        className={cn('text-muted-foreground [&_svg:not([class*=size-])]:size-4', className)}
+        style={style}
+        onClick={onClick}
+        aria-label={copy.label}
+        aria-disabled={onClick ? undefined : true}
+        data-testid={testId}
+      >
+        {children}
+      </Button>
+    </ActionTooltip>
   )
 }
 
 function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggleRaw?: () => void }) {
+  const copy: ActionTooltipCopy = { label: rawMode ? 'Return to the editor' : 'Open the raw editor' }
   return (
     <IconActionButton
-      title={rawMode ? 'Back to editor' : 'Raw editor'}
+      copy={copy}
       onClick={onToggleRaw}
       className={cn(rawMode ? 'text-foreground' : 'hover:text-foreground')}
     >
@@ -145,9 +144,13 @@ function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggle
 }
 
 function FavoriteAction({ favorite, onToggleFavorite }: { favorite: boolean; onToggleFavorite?: () => void }) {
+  const copy: ActionTooltipCopy = {
+    label: favorite ? 'Remove from favorites' : 'Add to favorites',
+    shortcut: '⌘D',
+  }
   return (
     <IconActionButton
-      title={favorite ? 'Remove from favorites' : 'Add to favorites'}
+      copy={copy}
       onClick={onToggleFavorite}
       className={cn(favorite ? 'text-yellow-500' : 'hover:text-foreground')}
     >
@@ -164,9 +167,13 @@ function OrganizedAction({
   onToggleOrganized?: () => void
 }) {
   if (!onToggleOrganized) return null
+  const copy: ActionTooltipCopy = {
+    label: organized ? 'Set note as not organized' : 'Set note as organized',
+    shortcut: '⌘E',
+  }
   return (
     <IconActionButton
-      title={organized ? 'Mark as unorganized (back to Inbox) (Cmd+E)' : 'Mark as organized (remove from Inbox) (Cmd+E)'}
+      copy={copy}
       onClick={onToggleOrganized}
       className={cn(organized ? 'text-green-600' : 'hover:text-foreground')}
     >
@@ -177,7 +184,7 @@ function OrganizedAction({
 
 function SearchAction() {
   return (
-    <IconActionButton title="Search in file" className="hover:text-foreground">
+    <IconActionButton copy={{ label: 'Search within this note' }} className="hover:text-foreground">
       <MagnifyingGlass size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
@@ -191,17 +198,19 @@ function DiffAction({
 }: Pick<BreadcrumbBarProps, 'showDiffToggle' | 'diffMode' | 'diffLoading' | 'onToggleDiff'>) {
   if (!showDiffToggle) {
     return (
-      <IconActionButton title="No changes" style={DISABLED_ICON_STYLE} tabIndex={-1}>
+      <IconActionButton copy={{ label: 'No diff is available yet' }} style={DISABLED_ICON_STYLE}>
         <GitBranch size={16} className={BREADCRUMB_ICON_CLASS} />
       </IconActionButton>
     )
   }
 
+  const copy: ActionTooltipCopy = diffLoading
+    ? { label: 'Loading the diff' }
+    : { label: diffMode ? 'Return to the editor' : 'Show the current diff' }
   return (
     <IconActionButton
-      title={diffLoading ? 'Loading diff...' : diffMode ? 'Back to editor' : 'Show diff'}
+      copy={copy}
       onClick={onToggleDiff}
-      disabled={diffLoading}
       className={cn(diffMode ? 'text-foreground' : 'hover:text-foreground')}
     >
       <GitBranch size={16} className={BREADCRUMB_ICON_CLASS} />
@@ -209,18 +218,22 @@ function DiffAction({
   )
 }
 
-function PlaceholderAction({ title, children }: { title: string; children: ReactNode }) {
+function PlaceholderAction({ copy, children }: { copy: ActionTooltipCopy; children: ReactNode }) {
   return (
-    <IconActionButton title={title} style={DISABLED_ICON_STYLE} tabIndex={-1}>
+    <IconActionButton copy={copy} style={DISABLED_ICON_STYLE}>
       {children}
     </IconActionButton>
   )
 }
 
 function AIChatAction({ showAIChat, onToggleAIChat }: Pick<BreadcrumbBarProps, 'showAIChat' | 'onToggleAIChat'>) {
+  const copy: ActionTooltipCopy = {
+    label: showAIChat ? 'Close the AI panel' : 'Open the AI panel',
+    shortcut: '⇧⌘L',
+  }
   return (
     <IconActionButton
-      title={showAIChat ? 'Close AI Chat' : 'Open AI Chat'}
+      copy={copy}
       onClick={onToggleAIChat}
       className={cn(showAIChat ? 'text-primary' : 'hover:text-foreground')}
     >
@@ -236,14 +249,14 @@ function ArchiveAction({
 }: Pick<VaultEntry, 'archived'> & Pick<BreadcrumbBarProps, 'onArchive' | 'onUnarchive'>) {
   if (archived) {
     return (
-      <IconActionButton title="Unarchive" onClick={onUnarchive} className="hover:text-foreground">
+      <IconActionButton copy={{ label: 'Restore this archived note' }} onClick={onUnarchive} className="hover:text-foreground">
         <ArrowUUpLeft size={16} className={BREADCRUMB_ICON_CLASS} />
       </IconActionButton>
     )
   }
 
   return (
-    <IconActionButton title="Archive" onClick={onArchive} className="hover:text-foreground">
+    <IconActionButton copy={{ label: 'Archive this note' }} onClick={onArchive} className="hover:text-foreground">
       <Archive size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
@@ -251,7 +264,7 @@ function ArchiveAction({
 
 function DeleteAction({ onDelete }: Pick<BreadcrumbBarProps, 'onDelete'>) {
   return (
-    <IconActionButton title="Delete (Cmd+Delete)" onClick={onDelete} className="hover:text-destructive">
+    <IconActionButton copy={{ label: 'Delete this note', shortcut: '⌘⌫' }} onClick={onDelete} className="hover:text-destructive">
       <Trash size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
@@ -263,7 +276,7 @@ function InspectorAction({
 }: Pick<BreadcrumbBarProps, 'inspectorCollapsed' | 'onToggleInspector'>) {
   if (!inspectorCollapsed) return null
   return (
-    <IconActionButton title="Properties (⌘⇧I)" onClick={onToggleInspector} className="hover:text-foreground">
+    <IconActionButton copy={{ label: 'Open the properties panel', shortcut: '⌘⇧I' }} onClick={onToggleInspector} className="hover:text-foreground">
       <SlidersHorizontal size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
@@ -351,26 +364,19 @@ function SyncFilenameButton({
 }) {
   if (!syncStem || !onRenameFilename) return null
   return (
-    <TooltipProvider delayDuration={100}>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            className="text-muted-foreground hover:text-foreground"
-            onClick={() => onRenameFilename(entryPath, syncStem)}
-            data-testid="breadcrumb-sync-button"
-            aria-label="Rename file to match title"
-          >
-            <ArrowsClockwise size={14} />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent>
-          Rename file to match title
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
+    <ActionTooltip copy={{ label: 'Rename the file to match the title' }} side="bottom">
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon-xs"
+        className="text-muted-foreground hover:text-foreground"
+        onClick={() => onRenameFilename(entryPath, syncStem)}
+        data-testid="breadcrumb-sync-button"
+        aria-label="Rename the file to match the title"
+      >
+        <ArrowsClockwise size={14} />
+      </Button>
+    </ActionTooltip>
   )
 }
 
@@ -480,14 +486,14 @@ function BreadcrumbActions({
         onToggleDiff={onToggleDiff}
       />
       {!forceRawMode && <RawToggleButton rawMode={rawMode} onToggleRaw={onToggleRaw} />}
-      <PlaceholderAction title="Coming soon">
+      <PlaceholderAction copy={{ label: 'Backlinks are coming soon' }}>
         <CursorText size={16} className={BREADCRUMB_ICON_CLASS} />
       </PlaceholderAction>
       <AIChatAction showAIChat={showAIChat} onToggleAIChat={onToggleAIChat} />
       <ArchiveAction archived={entry.archived} onArchive={onArchive} onUnarchive={onUnarchive} />
       <DeleteAction onDelete={onDelete} />
       <InspectorAction inspectorCollapsed={inspectorCollapsed} onToggleInspector={onToggleInspector} />
-      <PlaceholderAction title="Coming soon">
+      <PlaceholderAction copy={{ label: 'More note actions are coming soon' }}>
         <DotsThree size={16} className={BREADCRUMB_ICON_CLASS} />
       </PlaceholderAction>
     </div>
@@ -517,27 +523,29 @@ export const BreadcrumbBar = memo(function BreadcrumbBar({
   ...actionProps
 }: BreadcrumbBarProps) {
   return (
-    <div
-      ref={barRef}
-      data-tauri-drag-region
-      data-title-hidden=""
-      className="breadcrumb-bar flex shrink-0 items-center border-b border-transparent"
-      style={{
-        height: 52,
-        background: 'var(--background)',
-        padding: '6px 16px',
-        boxSizing: 'border-box',
-      }}
-    >
-      <div className="breadcrumb-bar__title min-w-0">
-        <BreadcrumbTitle entry={entry} onRenameFilename={onRenameFilename} />
-      </div>
+    <TooltipProvider>
       <div
-        aria-hidden="true"
+        ref={barRef}
         data-tauri-drag-region
-        className="breadcrumb-bar__drag-spacer min-w-0 flex-1"
-      />
-      <BreadcrumbActions entry={entry} {...actionProps} />
-    </div>
+        data-title-hidden=""
+        className="breadcrumb-bar flex shrink-0 items-center border-b border-transparent"
+        style={{
+          height: 52,
+          background: 'var(--background)',
+          padding: '6px 16px',
+          boxSizing: 'border-box',
+        }}
+      >
+        <div className="breadcrumb-bar__title min-w-0">
+          <BreadcrumbTitle entry={entry} onRenameFilename={onRenameFilename} />
+        </div>
+        <div
+          aria-hidden="true"
+          data-tauri-drag-region
+          className="breadcrumb-bar__drag-spacer min-w-0 flex-1"
+        />
+        <BreadcrumbActions entry={entry} {...actionProps} />
+      </div>
+    </TooltipProvider>
   )
 })

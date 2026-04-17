@@ -5,6 +5,7 @@ import type { VaultAiGuidanceStatus } from '../../lib/vaultAiGuidance'
 import type { ClaudeCodeStatus } from '../../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../../hooks/useMcpStatus'
 import type { GitRemoteStatus, SyncStatus } from '../../types'
+import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { AiAgentsBadge } from './AiAgentsBadge'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,6 +22,12 @@ import {
 import { DISABLED_STYLE, ICON_STYLE, SEP_STYLE } from './styles'
 import type { VaultOption } from './types'
 import { VaultMenu } from './VaultMenu'
+
+const UPDATE_TOOLTIP = { label: 'Check for updates' } as const
+const ZOOM_RESET_TOOLTIP = { label: 'Reset the zoom level', shortcut: '⌘0' } as const
+const FEEDBACK_TOOLTIP = { label: 'Share feedback' } as const
+const NOTIFICATIONS_TOOLTIP = { label: 'Notifications are coming soon' } as const
+const SETTINGS_TOOLTIP = { label: 'Open settings', shortcut: '⌘,' } as const
 
 interface StatusBarPrimarySectionProps {
   modifiedCount: number
@@ -109,18 +116,23 @@ export function StatusBarPrimarySection({
         onRemoveVault={onRemoveVault}
       />
       <span style={SEP_STYLE}>|</span>
-      <span
-        role="button"
-        onClick={onCheckForUpdates}
-        style={{ ...ICON_STYLE, cursor: onCheckForUpdates ? 'pointer' : 'default', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
-        title="Check for updates"
-        data-testid="status-build-number"
-        onMouseEnter={onCheckForUpdates ? (event) => { event.currentTarget.style.background = 'var(--hover)' } : undefined}
-        onMouseLeave={onCheckForUpdates ? (event) => { event.currentTarget.style.background = 'transparent' } : undefined}
-      >
-        <Package size={13} />
-        {buildNumber ?? 'b?'}
-      </span>
+      <ActionTooltip copy={UPDATE_TOOLTIP} side="top">
+        <Button
+          type="button"
+          variant="ghost"
+          size="xs"
+          className="h-auto gap-1 rounded-sm px-1 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground"
+          onClick={onCheckForUpdates}
+          aria-label={UPDATE_TOOLTIP.label}
+          aria-disabled={onCheckForUpdates ? undefined : true}
+          data-testid="status-build-number"
+        >
+          <span style={ICON_STYLE}>
+            <Package size={13} />
+            {buildNumber ?? 'b?'}
+          </span>
+        </Button>
+      </ActionTooltip>
       <OfflineBadge isOffline={isOffline} />
       <NoRemoteBadge remoteStatus={remoteStatus} />
       <ChangesBadge count={modifiedCount} onClick={onClickPending} />
@@ -163,45 +175,54 @@ export function StatusBarSecondarySection({
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0 }}>
       {zoomLevel === 100 ? null : (
-        <span
-          role="button"
-          onClick={onZoomReset}
-          style={{ ...ICON_STYLE, cursor: 'pointer', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
-          title="Reset zoom (⌘0)"
-          onMouseEnter={(event) => { event.currentTarget.style.background = 'var(--hover)' }}
-          onMouseLeave={(event) => { event.currentTarget.style.background = 'transparent' }}
-          data-testid="status-zoom"
-        >
-          {zoomLevel}%
-        </span>
+        <ActionTooltip copy={ZOOM_RESET_TOOLTIP} side="top">
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className="h-auto rounded-sm px-1 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground"
+            onClick={onZoomReset}
+            aria-label={ZOOM_RESET_TOOLTIP.label}
+            data-testid="status-zoom"
+          >
+            <span style={ICON_STYLE}>{zoomLevel}%</span>
+          </Button>
+        </ActionTooltip>
       )}
       {onOpenFeedback && (
+        <ActionTooltip copy={FEEDBACK_TOOLTIP} side="top">
+          <Button
+            type="button"
+            variant="ghost"
+            size="xs"
+            className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground"
+            onClick={onOpenFeedback}
+            aria-label={FEEDBACK_TOOLTIP.label}
+            data-testid="status-feedback"
+          >
+            <Megaphone size={14} />
+            Feedback
+          </Button>
+        </ActionTooltip>
+      )}
+      <ActionTooltip copy={NOTIFICATIONS_TOOLTIP} side="top">
+        <span style={DISABLED_STYLE} aria-label={NOTIFICATIONS_TOOLTIP.label}>
+          <Bell size={14} />
+        </span>
+      </ActionTooltip>
+      <ActionTooltip copy={SETTINGS_TOOLTIP} side="top">
         <Button
           type="button"
           variant="ghost"
-          size="xs"
-          className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground"
-          onClick={onOpenFeedback}
-          title="Share feedback"
-          data-testid="status-feedback"
+          size="icon-xs"
+          className="text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground"
+          onClick={onOpenSettings}
+          aria-label={SETTINGS_TOOLTIP.label}
+          data-testid="status-settings"
         >
-          <Megaphone size={14} />
-          Feedback
+          <Settings size={14} />
         </Button>
-      )}
-      <span style={DISABLED_STYLE} title="Coming soon">
-        <Bell size={14} />
-      </span>
-      <span
-        role="button"
-        onClick={onOpenSettings}
-        style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '2px 4px', borderRadius: 3, background: 'transparent' }}
-        title="Settings (⌘,)"
-        onMouseEnter={(event) => { event.currentTarget.style.background = 'var(--hover)' }}
-        onMouseLeave={(event) => { event.currentTarget.style.background = 'transparent' }}
-      >
-        <Settings size={14} />
-      </span>
+      </ActionTooltip>
     </div>
   )
 }

@@ -208,7 +208,7 @@ describe('Editor', () => {
       activeTabPath: mockEntry.path,
     })
 
-    expect(screen.getByTitle('Search in file')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Search within this note' })).toBeInTheDocument()
   })
 
   it('hides the legacy title field for untitled draft notes', () => {
@@ -248,7 +248,7 @@ describe('Editor', () => {
         onLoadDiff={async () => '+ added line'}
       />
     )
-    const diffBtn = screen.getByTitle('Show diff')
+    const diffBtn = screen.getByRole('button', { name: 'Show the current diff' })
     expect(diffBtn).toBeInTheDocument()
   })
 
