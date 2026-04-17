@@ -30,6 +30,11 @@ describe('WelcomeScreen', () => {
       expect(screen.getByTestId('welcome-create-vault')).toHaveTextContent('Get started with a template')
     })
 
+    it('focuses the first action for keyboard users', () => {
+      render(<WelcomeScreen {...defaultProps} />)
+      expect(screen.getByTestId('welcome-create-new')).toHaveFocus()
+    })
+
     it('shows default vault path in template option description', () => {
       render(<WelcomeScreen {...defaultProps} />)
       expect(screen.getByText(/~\/Documents\/Laputa/)).toBeInTheDocument()

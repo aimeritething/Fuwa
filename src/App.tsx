@@ -37,7 +37,7 @@ import { useEntryActions } from './hooks/useEntryActions'
 import { useAppCommands } from './hooks/useAppCommands'
 import { generateCommitMessage } from './utils/commitMessage'
 import { useDialogs } from './hooks/useDialogs'
-import { GETTING_STARTED_LABEL, useVaultSwitcher } from './hooks/useVaultSwitcher'
+import { useVaultSwitcher } from './hooks/useVaultSwitcher'
 import { useGitHistory } from './hooks/useGitHistory'
 import { useUpdater, restartApp } from './hooks/useUpdater'
 import { useAutoSync } from './hooks/useAutoSync'
@@ -61,6 +61,7 @@ import { useLayoutPanels } from './hooks/useLayoutPanels'
 import { useConflictFlow } from './hooks/useConflictFlow'
 import { useAppSave } from './hooks/useAppSave'
 import { useVaultBridge } from './hooks/useVaultBridge'
+import { getAppStorageItem } from './constants/appStorage'
 import type { CommitDiffRequest } from './hooks/useDiffMode'
 import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { ConfirmDeleteDialog } from './components/ConfirmDeleteDialog'
@@ -206,21 +207,39 @@ function App() {
     onSwitch: () => { handleSetSelection(DEFAULT_SELECTION); notes.closeAllTabs() },
     onToast: (msg) => setToastMessage(msg),
   })
-  const { handleVaultCloned } = vaultSwitcher
+  const { allVaults, handleVaultCloned, switchVault } = vaultSwitcher
 
-  const handleGettingStartedVaultReady = useCallback((vaultPath: string, label: string) => {
+  const rememberOnboardingVaultChoice = useCallback((vaultPath: string) => {
+    if (!vaultPath) return
+
+    if (allVaults.some((vault) => vault.path === vaultPath)) {
+      switchVault(vaultPath)
+      return
+    }
+
+    const label = vaultPath.split('/').filter(Boolean).pop() || 'Local Vault'
     handleVaultCloned(vaultPath, label)
+  }, [allVaults, handleVaultCloned, switchVault])
+
+  const handleGettingStartedVaultReady = useCallback((vaultPath: string) => {
+    rememberOnboardingVaultChoice(vaultPath)
     setToastMessage(`Getting Started vault cloned and opened at ${vaultPath}`)
-  }, [handleVaultCloned])
+  }, [rememberOnboardingVaultChoice])
   const cloneGettingStartedVault = useGettingStartedClone({
     onError: (message) => setToastMessage(message),
     onSuccess: handleGettingStartedVaultReady,
   })
   const onboarding = useOnboarding(vaultSwitcher.vaultPath, (vaultPath) => {
-    handleGettingStartedVaultReady(vaultPath, GETTING_STARTED_LABEL)
+    handleGettingStartedVaultReady(vaultPath)
   })
   const aiAgentsStatus = useAiAgentsStatus()
   const aiAgentsOnboarding = useAiAgentsOnboarding(onboarding.state.status === 'ready' && !noteWindowParams)
+
+  useEffect(() => {
+    if (onboarding.state.status !== 'ready') return
+    if (!onboarding.state.vaultPath || onboarding.state.vaultPath === vaultSwitcher.vaultPath) return
+    rememberOnboardingVaultChoice(onboarding.state.vaultPath)
+  }, [onboarding.state, rememberOnboardingVaultChoice, vaultSwitcher.vaultPath])
 
   // The active vault path can temporarily come from onboarding before the
   // persisted vault switcher catches up to the newly cloned starter vault.
@@ -998,14 +1017,47 @@ function App() {
     return { type: null, query: '' }
   }, [effectiveSelection])
 
-  // Show welcome/onboarding screen when vault doesn't exist (skip for note windows — vault path is known)
-  if (!noteWindowParams && (onboarding.state.status === 'welcome' || onboarding.state.status === 'vault-missing')) {
-    return <WelcomeView onboarding={onboarding} isOffline={networkStatus.isOffline} />
-  }
+  const shouldResumeFreshStartOnboarding = useMemo(() => {
+    if (onboarding.state.status !== 'ready' || !vaultSwitcher.loaded) return false
+
+    try {
+      if (getAppStorageItem('welcomeDismissed') === '1') return false
+    } catch {
+      return false
+    }
+
+    return vaultSwitcher.allVaults.length === 1
+      && vaultSwitcher.allVaults[0]?.path === vaultSwitcher.vaultPath
+      && onboarding.state.vaultPath === vaultSwitcher.vaultPath
+  }, [onboarding.state, vaultSwitcher.allVaults, vaultSwitcher.loaded, vaultSwitcher.vaultPath])
 
   // Show loading spinner while checking vault (skip for note windows)
   if (!noteWindowParams && onboarding.state.status === 'loading') {
     return <LoadingView />
+  }
+
+  // Show telemetry consent dialog on first launch (skip for note windows).
+  // After the user answers, the next render can continue into onboarding.
+  if (!noteWindowParams && settingsLoaded && settings.telemetry_consent === null) {
+    return (
+      <TelemetryConsentDialog
+        onAccept={() => {
+          const id = crypto.randomUUID()
+          saveSettings({ ...settings, telemetry_consent: true, crash_reporting_enabled: true, analytics_enabled: true, anonymous_id: id })
+        }}
+        onDecline={() => {
+          saveSettings({ ...settings, telemetry_consent: false, crash_reporting_enabled: false, analytics_enabled: false, anonymous_id: null })
+        }}
+      />
+    )
+  }
+
+  // Show welcome/onboarding screen when vault doesn't exist (skip for note windows — vault path is known)
+  if (!noteWindowParams && (onboarding.state.status === 'welcome' || onboarding.state.status === 'vault-missing' || shouldResumeFreshStartOnboarding)) {
+    const welcomeOnboarding = shouldResumeFreshStartOnboarding
+      ? { ...onboarding, state: { status: 'welcome' as const, defaultPath: vaultSwitcher.vaultPath } }
+      : onboarding
+    return <WelcomeView onboarding={welcomeOnboarding} isOffline={networkStatus.isOffline} />
   }
 
   if (!noteWindowParams && onboarding.state.status === 'ready' && aiAgentsOnboarding.showPrompt) {
@@ -1035,21 +1087,6 @@ function App() {
   // Show loading spinner while checking git status
   if (!noteWindowParams && gitRepoState === 'checking' && onboarding.state.status === 'ready') {
     return <LoadingView />
-  }
-
-  // Show telemetry consent dialog on first launch (skip for note windows)
-  if (!noteWindowParams && settingsLoaded && settings.telemetry_consent === null) {
-    return (
-      <TelemetryConsentDialog
-        onAccept={() => {
-          const id = crypto.randomUUID()
-          saveSettings({ ...settings, telemetry_consent: true, crash_reporting_enabled: true, analytics_enabled: true, anonymous_id: id })
-        }}
-        onDecline={() => {
-          saveSettings({ ...settings, telemetry_consent: false, crash_reporting_enabled: false, analytics_enabled: false, anonymous_id: null })
-        }}
-      />
-    )
   }
 
   return (

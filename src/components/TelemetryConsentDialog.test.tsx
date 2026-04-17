@@ -27,4 +27,9 @@ describe('TelemetryConsentDialog', () => {
     render(<TelemetryConsentDialog onAccept={vi.fn()} onDecline={vi.fn()} />)
     expect(screen.getByText(/no vault content, note titles/i)).toBeDefined()
   })
+
+  it('focuses the first action for keyboard users', () => {
+    render(<TelemetryConsentDialog onAccept={vi.fn()} onDecline={vi.fn()} />)
+    expect(screen.getByTestId('telemetry-decline')).toHaveFocus()
+  })
 })

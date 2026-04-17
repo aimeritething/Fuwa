@@ -72,6 +72,22 @@ async function expectStatus(
   })
 }
 
+async function expectCancelledPickerLeavesWelcome(
+  action: (onboarding: ReturnType<typeof useOnboarding>) => Promise<void>,
+) {
+  mockCommands()
+  vi.mocked(pickFolder).mockResolvedValue(null)
+
+  const { result } = await renderOnboarding()
+
+  await expectStatus(result, 'welcome')
+  await act(async () => {
+    await action(result.current)
+  })
+
+  expect(result.current.state.status).toBe('welcome')
+}
+
 describe('useOnboarding', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -94,9 +110,15 @@ describe('useOnboarding', () => {
     expect(result.current.state).toEqual({ status: 'welcome', defaultPath: DEFAULT_GETTING_STARTED_PATH })
   })
 
-  it('shows vault-missing when the welcome screen was previously dismissed', async () => {
+  it('shows vault-missing when a previously configured active vault is missing', async () => {
     localStorage.setItem(APP_STORAGE_KEYS.welcomeDismissed, '1')
-    mockCommands()
+    mockCommands({
+      load_vault_list: {
+        vaults: [{ label: 'Old Vault', path: '/vault/deleted' }],
+        active_vault: '/vault/deleted',
+        hidden_defaults: [],
+      },
+    })
 
     const { result } = await renderOnboarding('/vault/deleted')
 
@@ -153,17 +175,9 @@ describe('useOnboarding', () => {
   })
 
   it('does nothing when the template folder picker is cancelled', async () => {
-    mockCommands()
-    vi.mocked(pickFolder).mockResolvedValue(null)
-
-    const { result } = await renderOnboarding()
-
-    await expectStatus(result, 'welcome')
-    await act(async () => {
-      await result.current.handleCreateVault()
+    await expectCancelledPickerLeavesWelcome(async (onboarding) => {
+      await onboarding.handleCreateVault()
     })
-
-    expect(result.current.state.status).toBe('welcome')
     expect(mockInvokeFn).not.toHaveBeenCalledWith('create_getting_started_vault', expect.anything())
   })
 
@@ -233,17 +247,9 @@ describe('useOnboarding', () => {
   })
 
   it('does nothing when the empty-vault picker is cancelled', async () => {
-    mockCommands()
-    vi.mocked(pickFolder).mockResolvedValue(null)
-
-    const { result } = await renderOnboarding()
-
-    await expectStatus(result, 'welcome')
-    await act(async () => {
-      await result.current.handleCreateNewVault()
+    await expectCancelledPickerLeavesWelcome(async (onboarding) => {
+      await onboarding.handleCreateNewVault()
     })
-
-    expect(result.current.state.status).toBe('welcome')
   })
 
   it('opens an existing folder and transitions to ready', async () => {
@@ -262,17 +268,9 @@ describe('useOnboarding', () => {
   })
 
   it('does nothing when the open-folder picker is cancelled', async () => {
-    mockCommands()
-    vi.mocked(pickFolder).mockResolvedValue(null)
-
-    const { result } = await renderOnboarding()
-
-    await expectStatus(result, 'welcome')
-    await act(async () => {
-      await result.current.handleOpenFolder()
+    await expectCancelledPickerLeavesWelcome(async (onboarding) => {
+      await onboarding.handleOpenFolder()
     })
-
-    expect(result.current.state.status).toBe('welcome')
   })
 
   it('marks the welcome screen dismissed and keeps the initial vault path', async () => {

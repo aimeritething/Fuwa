@@ -160,6 +160,7 @@ interface OptionButtonProps {
   disabled: boolean
   loading?: boolean
   testId: string
+  autoFocus?: boolean
 }
 
 function OptionButton({
@@ -173,6 +174,7 @@ function OptionButton({
   disabled,
   loading,
   testId,
+  autoFocus = false,
 }: OptionButtonProps) {
   const [hover, setHover] = useState(false)
   return (
@@ -188,6 +190,7 @@ function OptionButton({
       onMouseEnter={() => setHover(true)}
       onMouseLeave={() => setHover(false)}
       data-testid={testId}
+      autoFocus={autoFocus}
     >
       <div style={{ ...OPTION_ICON_STYLE, background: iconBg }}>
         {loading ? <Loader2 size={18} className="animate-spin" style={{ color: 'var(--muted-foreground)' }} /> : icon}
@@ -278,6 +281,7 @@ export function WelcomeScreen({
             disabled={busy}
             loading={creatingAction === 'empty'}
             testId="welcome-create-new"
+            autoFocus
           />
 
           <OptionButton

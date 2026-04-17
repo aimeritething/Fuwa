@@ -76,8 +76,14 @@ const mockAllContent: Record<string, string> = {
   '/vault/topic/dev.md': '---\ntitle: Software Development\nis_a: Topic\n---\n\n# Software Development\n',
 }
 
+const mockVaultList = {
+  vaults: [{ label: 'Test Vault', path: '/vault' }],
+  active_vault: '/vault',
+  hidden_defaults: [],
+}
+
 const mockCommandResults: Record<string, unknown> = {
-  load_vault_list: { vaults: [], active_vault: null, hidden_defaults: [] },
+  load_vault_list: mockVaultList,
   list_vault: mockEntries,
   list_vault_folders: [],
   list_views: [],
@@ -94,9 +100,42 @@ const mockCommandResults: Record<string, unknown> = {
   get_vault_settings: { theme: null },
 }
 
+function resetMockCommandResults() {
+  Object.assign(mockCommandResults, {
+    load_vault_list: mockVaultList,
+    list_vault: mockEntries,
+    list_vault_folders: [],
+    list_views: [],
+    get_all_content: mockAllContent,
+    get_modified_files: [],
+    get_note_content: mockAllContent['/vault/project/test.md'] || '',
+    get_file_history: [],
+    get_settings: {
+      auto_pull_interval_minutes: null,
+      telemetry_consent: true,
+      crash_reporting_enabled: null,
+      analytics_enabled: null,
+      anonymous_id: null,
+      release_channel: null,
+    },
+    save_settings: null,
+    check_vault_exists: true,
+    get_default_vault_path: '/Users/mock/Documents/Getting Started',
+    list_themes: [],
+    get_vault_settings: { theme: null },
+  })
+}
+
+function resolveMockCommandResult(cmd: string, args?: unknown) {
+  const result = mockCommandResults[cmd]
+  return typeof result === 'function'
+    ? (result as (input?: unknown) => unknown)(args)
+    : result ?? null
+}
+
 vi.mock('./mock-tauri', () => ({
   isTauri: () => false,
-  mockInvoke: vi.fn(async (cmd: string) => mockCommandResults[cmd] ?? null),
+  mockInvoke: vi.fn(async (cmd: string, args?: unknown) => resolveMockCommandResult(cmd, args)),
   addMockEntry: vi.fn(),
   updateMockContent: vi.fn(),
 }))
@@ -156,6 +195,7 @@ const CLAUDE_CODE_ONBOARDING_DISMISSED_KEY = 'tolaria:claude-code-onboarding-dis
 describe('App', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetMockCommandResults()
     localStorage.clear()
     localStorage.setItem(CLAUDE_CODE_ONBOARDING_DISMISSED_KEY, '1')
   })
@@ -202,6 +242,32 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText('Nothing to save')).toBeInTheDocument()
     })
+  })
+
+  it('shows onboarding after telemetry consent when no active vault is configured', async () => {
+    mockCommandResults.get_settings = {
+      auto_pull_interval_minutes: null,
+      telemetry_consent: null,
+      crash_reporting_enabled: null,
+      analytics_enabled: null,
+      anonymous_id: null,
+      release_channel: null,
+    }
+    mockCommandResults.load_vault_list = { vaults: [], active_vault: null, hidden_defaults: [] }
+    mockCommandResults.check_vault_exists = (args?: { path?: string }) => args?.path === '/Users/mock/Documents/Getting Started'
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Help improve Tolaria')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId('telemetry-accept'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('welcome-screen')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Open existing vault')
   })
 
   it('renders sidebar with correct default selection (All Notes)', async () => {

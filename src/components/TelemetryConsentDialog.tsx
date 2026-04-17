@@ -46,6 +46,7 @@ export function TelemetryConsentDialog({ onAccept, onDecline }: TelemetryConsent
             style={{ flex: 1, fontSize: 13, padding: '10px 16px' }}
             onClick={onDecline}
             data-testid="telemetry-decline"
+            autoFocus
           >
             No thanks
           </button>
