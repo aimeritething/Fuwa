@@ -461,6 +461,33 @@ describe('useAppSave', () => {
     expect(getTabs()[0].content).toBe('# Fresh Title\n\nBody that keeps changing while rename is pending')
   })
 
+  it('does not run markdown title-sync renames for non-markdown text files', async () => {
+    vi.mocked(isTauri).mockReturnValue(true)
+
+    const viewPath = '/vault/views/active-projects.yml'
+    const viewContent = 'name: Active Projects\nicon: rocket\ncolor: blue\n'
+    const viewEntry = {
+      ...makeEntry(viewPath, 'Active Projects', 'active-projects.yml'),
+      fileKind: 'text' as const,
+    }
+
+    const { result } = renderSave({
+      tabs: [{ entry: viewEntry, content: viewContent }],
+      activeTabPath: viewPath,
+      unsavedPaths: new Set([viewPath]),
+    })
+
+    await act(async () => {
+      await result.current.handleSave()
+    })
+
+    expect(vi.mocked(invoke)).toHaveBeenCalledWith('save_note_content', {
+      path: viewPath,
+      content: viewContent,
+    })
+    expect(deps.handleRenameNote).not.toHaveBeenCalled()
+  })
+
   it('remaps a buffered auto-save to the renamed path when untitled rename lands mid-idle window', async () => {
     const initialContent = '# Fresh Title\n\nInitial body'
     const bufferedContent = '# Fresh Title\n\nBody typed right before rename'

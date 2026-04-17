@@ -214,6 +214,12 @@ describe('useCommandRegistry', () => {
     expect(findCommand(result.current, 'archive-note')?.shortcut).toBeUndefined()
   })
 
+  it('disables Toggle Raw Editor when the active file cannot switch to rich mode', () => {
+    const config = makeConfig({ onToggleRawEditor: undefined })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    expect(findCommand(result.current, 'toggle-raw-editor')?.enabled).toBe(false)
+  })
+
   it('omits Inbox navigation when the explicit workflow is disabled', () => {
     const config = makeConfig({ showInbox: false })
     const { result } = renderHook(() => useCommandRegistry(config))

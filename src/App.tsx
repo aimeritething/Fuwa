@@ -899,6 +899,17 @@ function App() {
     ) ?? null
   }, [notes.activeTabPath, vault.modifiedFiles])
 
+  const activeCommandEntry = useMemo(() => {
+    if (!notes.activeTabPath) return null
+    return notes.tabs.find((tab) => tab.entry.path === notes.activeTabPath)?.entry
+      ?? vault.entries.find((entry) => entry.path === notes.activeTabPath)
+      ?? null
+  }, [notes.activeTabPath, notes.tabs, vault.entries])
+
+  const canToggleRichEditor = !!activeCommandEntry
+    && activeCommandEntry.filename.toLowerCase().endsWith('.md')
+    && !activeDeletedFile
+
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
     entries: vault.entries,
@@ -922,7 +933,7 @@ function App() {
     onSetViewMode: handleSetViewMode,
     onToggleInspector: handleToggleInspector,
     onToggleDiff: () => diffToggleRef.current(),
-    onToggleRawEditor: activeDeletedFile ? undefined : () => rawToggleRef.current(),
+    onToggleRawEditor: canToggleRichEditor ? () => rawToggleRef.current() : undefined,
     onZoomIn: zoom.zoomIn, onZoomOut: zoom.zoomOut, onZoomReset: zoom.zoomReset,
     zoomLevel: zoom.zoomLevel,
     onSelect: handleSetSelection,

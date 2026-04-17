@@ -35,6 +35,7 @@ interface ReloadTabsAfterRenameRequest {
 
 /** Check if a note's filename doesn't match the slug of its current title. */
 export function needsRenameOnSave(title: string, filename: string): boolean {
+  if (!filename.toLowerCase().endsWith('.md')) return false
   return `${slugify(title)}.md` !== filename
 }
 
