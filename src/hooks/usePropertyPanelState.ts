@@ -9,7 +9,7 @@ import {
   removeDisplayModeOverride,
 } from '../utils/propertyTypes'
 import { containsWikilinks } from '../components/DynamicPropertiesPanel'
-import { isSystemMetadataKey } from '../utils/systemMetadata'
+import { canonicalSystemMetadataKey, isSystemMetadataKey } from '../utils/systemMetadata'
 
 // Keys to skip showing in Properties (handled by dedicated UI or internal)
 // Compared case-insensitively via isVisibleProperty()
@@ -79,6 +79,22 @@ function isVisibleProperty([key, value]: [string, FrontmatterValue]): boolean {
   return !isHiddenPropertyKey(key) && !containsWikilinks(value)
 }
 
+function buildVisiblePropertyEntries(frontmatter: ParsedFrontmatter): [string, FrontmatterValue][] {
+  const result: [string, FrontmatterValue][] = []
+  const seen = new Set<string>()
+
+  for (const [key, value] of Object.entries(frontmatter)) {
+    if (!isVisibleProperty([key, value])) continue
+
+    const canonicalKey = canonicalSystemMetadataKey(key)
+    if (seen.has(canonicalKey)) continue
+    seen.add(canonicalKey)
+    result.push([key, value])
+  }
+
+  return result
+}
+
 function addTagValues(tagsByKey: Map<string, Set<string>>, key: string, value: unknown) {
   if (!Array.isArray(value)) return
 
@@ -102,6 +118,8 @@ function toSortedTagRecord(tagsByKey: Map<string, Set<string>>): Record<string, 
 }
 
 function isHiddenPropertyKey(key: string): boolean {
+  const canonicalKey = canonicalSystemMetadataKey(key)
+  if (canonicalKey === '_icon') return false
   return SKIP_KEYS.has(key.toLowerCase()) || isSystemMetadataKey(key)
 }
 
@@ -137,7 +155,7 @@ export function usePropertyPanelState(deps: PropertyPanelDeps) {
   const { availableTypes, customColorKey, typeColorKeys, typeIconKeys } = useMemo(() => deriveTypeInfo(entries, entryIsA), [entries, entryIsA])
   const vaultStatuses = useMemo(() => collectVaultStatuses(entries), [entries])
   const vaultTagsByKey = useMemo(() => collectAllVaultTags(entries), [entries])
-  const propertyEntries = useMemo(() => Object.entries(frontmatter).filter(isVisibleProperty), [frontmatter])
+  const propertyEntries = useMemo(() => buildVisiblePropertyEntries(frontmatter), [frontmatter])
 
   const handleSaveValue = useCallback((key: string, newValue: string) => {
     setEditingKey(null)

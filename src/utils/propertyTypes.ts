@@ -3,6 +3,7 @@ import { getAppStorageItem } from '../constants/appStorage'
 import { isValidCssColor, isColorKeyName } from './colorUtils'
 import { updateVaultConfigField } from './vaultConfigStore'
 import { CalendarIcon, Type, ToggleLeft, Circle, Link, Tag, Palette } from 'lucide-react'
+import { canonicalSystemMetadataKey } from './systemMetadata'
 
 export type PropertyDisplayMode = 'text' | 'date' | 'boolean' | 'status' | 'url' | 'tags' | 'color'
 
@@ -20,7 +21,7 @@ const DATE_KEY_PATTERNS = ['date', 'deadline', 'due', 'start', 'end', 'scheduled
 const TAGS_KEY_PATTERNS = ['tags', 'keywords', 'categories', 'labels']
 
 function isIconKey(key: string): boolean {
-  return key.toLowerCase() === 'icon'
+  return canonicalSystemMetadataKey(key) === '_icon'
 }
 
 function keyMatchesPatterns(key: string, patterns: string[]): boolean {

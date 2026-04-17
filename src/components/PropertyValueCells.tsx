@@ -22,6 +22,7 @@ import { getTagStyle } from '../utils/tagStyles'
 import { ColorEditableValue } from './ColorInput'
 import { IconEditableValue } from './IconEditableValue'
 import { PROPERTY_CHIP_STYLE } from './propertyChipStyles'
+import { canonicalSystemMetadataKey } from '../utils/systemMetadata'
 
 function parseDateValue(value: string): Date | undefined {
   const iso = toISODate(value)
@@ -307,7 +308,7 @@ function toBooleanValue(value: FrontmatterValue): boolean {
 }
 
 function autoDetectFromValue(propKey: string, value: FrontmatterValue): PropertyDisplayMode {
-  if (propKey.toLowerCase() === 'icon') return 'text'
+  if (canonicalSystemMetadataKey(propKey) === '_icon') return 'text'
   if (typeof value === 'boolean') return 'boolean'
   if (typeof value === 'string' && isUrlValue(value)) return 'url'
   if (typeof value === 'string' && isValidCssColor(value) && value.startsWith('#')) return 'color'
@@ -405,7 +406,7 @@ function ScalarValueCell(props: SmartCellProps) {
     onSave,
   })
 
-  if (propKey.toLowerCase() === 'icon') {
+  if (canonicalSystemMetadataKey(propKey) === '_icon') {
     return <IconEditableValue {...editProps} />
   }
 

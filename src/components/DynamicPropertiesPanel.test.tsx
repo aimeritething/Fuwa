@@ -697,21 +697,20 @@ describe('DynamicPropertiesPanel', () => {
   })
 
   describe('system property filtering', () => {
-    it('hides archived, archived_at, and legacy icon metadata from the properties panel', () => {
+    it('hides archived metadata but keeps the note icon visible in the properties panel', () => {
       renderEditablePanel({ archived: false, archived_at: '', icon: '📝', cadence: 'Weekly' })
       expect(screen.queryByText('Archived')).not.toBeInTheDocument()
       expect(screen.queryByText('Archived at')).not.toBeInTheDocument()
-      expect(screen.queryByText('Icon')).not.toBeInTheDocument()
-      expect(screen.queryByText('📝')).not.toBeInTheDocument()
-      // Custom property still visible
+      expect(screen.getByText('Icon')).toBeInTheDocument()
+      expect(screen.getByText('📝')).toBeInTheDocument()
       expect(screen.getByText('Cadence')).toBeInTheDocument()
     })
 
-    it('hides legacy icon metadata even when cased differently', () => {
+    it('keeps the note icon visible even when cased differently', () => {
       renderEditablePanel({ Archived: false, Icon: '🎯', cadence: 'Daily' })
       expect(screen.queryByText('Archived')).not.toBeInTheDocument()
-      expect(screen.queryByText('Icon')).not.toBeInTheDocument()
-      expect(screen.queryByText('🎯')).not.toBeInTheDocument()
+      expect(screen.getByText('Icon')).toBeInTheDocument()
+      expect(screen.getByText('🎯')).toBeInTheDocument()
       expect(screen.getByText('Cadence')).toBeInTheDocument()
     })
 
