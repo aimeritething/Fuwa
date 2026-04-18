@@ -4,19 +4,25 @@ use std::path::{Path, PathBuf};
 
 use super::getting_started::{agents_content_can_be_refreshed, AGENTS_MD};
 
-/// Content for `config.md` — gives the Config type a sidebar icon and label.
-const CONFIG_TYPE_DEFINITION: &str = "\
+/// Content for `type.md` — describes the generic Type metamodel for the vault.
+const TYPE_TYPE_DEFINITION: &str = "\
 ---
 type: Type
-icon: gear-six
-color: gray
-order: 90
-sidebar label: Config
+order: 0
+visible: false
 ---
 
-# Config
+# Type
 
-Vault configuration files. These control how AI agents, tools, and other integrations interact with this vault.
+A Type defines shared metadata and defaults for a category of notes in this vault.
+
+## Common properties
+- **Icon**: Sidebar icon for this type
+- **Color**: Accent color for notes of this type
+- **Order**: Sidebar ordering
+- **Sidebar label**: Override the default plural label
+- **Template**: Default body for new notes of this type
+- **View**: Preferred note-list view for this type
 ";
 
 /// Content for `note.md` — restores the default Note type definition when missing.
@@ -30,7 +36,14 @@ type: Type
 A Note is a general-purpose document — research notes, meeting notes, strategy docs, or anything that doesn't fit a more specific type.
 ";
 
+const LEGACY_CLAUDE_MD_SHIM: &str = "@AGENTS.md
+
+This file is a Claude Code compatibility shim. Keep shared agent instructions in `AGENTS.md`.
+";
+
 const CLAUDE_MD_SHIM: &str = "@AGENTS.md
+
+# CLAUDE.md
 
 This file is a Claude Code compatibility shim. Keep shared agent instructions in `AGENTS.md`.
 ";
@@ -80,7 +93,9 @@ fn root_agents_can_be_replaced(path: &Path) -> bool {
 
 fn matches_claude_shim(content: &str) -> bool {
     let trimmed = content.trim();
-    trimmed == "@AGENTS.md" || trimmed == CLAUDE_MD_SHIM.trim()
+    trimmed == "@AGENTS.md"
+        || trimmed == LEGACY_CLAUDE_MD_SHIM.trim()
+        || trimmed == CLAUDE_MD_SHIM.trim()
 }
 
 fn claude_shim_can_be_replaced(path: &Path) -> bool {
@@ -251,7 +266,7 @@ fn ensure_root_type_definition(vault_path: &Path, file_name: &str, content: &str
 
 /// Ensure the default root type definitions exist for opened/repaired vaults.
 fn ensure_root_type_definitions(vault_path: &Path) {
-    ensure_root_type_definition(vault_path, "config.md", CONFIG_TYPE_DEFINITION);
+    ensure_root_type_definition(vault_path, "type.md", TYPE_TYPE_DEFINITION);
     ensure_root_type_definition(vault_path, "note.md", NOTE_TYPE_DEFINITION);
 }
 
@@ -296,7 +311,7 @@ pub fn repair_config_files(vault_path: impl AsRef<str>) -> Result<String, String
     let _ = cleanup_empty_config_dir(vault)?;
     sync_ai_guidance_files(vault)?;
 
-    write_if_missing(&vault.join("config.md"), CONFIG_TYPE_DEFINITION)?;
+    write_if_missing(&vault.join("type.md"), TYPE_TYPE_DEFINITION)?;
     write_if_missing(&vault.join("note.md"), NOTE_TYPE_DEFINITION)?;
 
     Ok("Config files repaired".to_string())
@@ -445,12 +460,13 @@ mod tests {
 
         seed_config_files(vault.to_str().unwrap());
 
-        assert!(vault.join("config.md").exists());
+        assert!(vault.join("type.md").exists());
         assert!(vault.join("note.md").exists());
-        let config_content = fs::read_to_string(vault.join("config.md")).unwrap();
+        let type_content = fs::read_to_string(vault.join("type.md")).unwrap();
         let note_content = fs::read_to_string(vault.join("note.md")).unwrap();
-        assert!(config_content.contains("type: Type"));
-        assert!(config_content.contains("icon: gear-six"));
+        assert!(type_content.contains("type: Type"));
+        assert!(type_content.contains("# Type"));
+        assert!(type_content.contains("visible: false"));
         assert!(note_content.contains("type: Type"));
         assert!(note_content.contains("# Note"));
         assert!(!vault.join("config").exists());
@@ -569,12 +585,15 @@ mod tests {
 
         assert!(vault.join("AGENTS.md").exists());
         assert!(vault.join("CLAUDE.md").exists());
-        assert!(vault.join("config.md").exists());
+        assert!(vault.join("type.md").exists());
         assert!(vault.join("note.md").exists());
         assert!(!vault.join("config").exists());
 
         let agents = read_root_agents(&vault);
         assert!(agents.contains("Tolaria Vault"));
+        let type_content = fs::read_to_string(vault.join("type.md")).unwrap();
+        assert!(type_content.contains("# Type"));
+        assert!(type_content.contains("visible: false"));
         let note_content = fs::read_to_string(vault.join("note.md")).unwrap();
         assert!(note_content.contains("type: Type"));
         assert!(note_content.contains("general-purpose document"));

@@ -314,12 +314,42 @@ pub fn repair_vault(vault_path: String) -> Result<String, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::Path;
 
     fn temp_note(body: &str) -> (tempfile::TempDir, std::path::PathBuf) {
         let dir = tempfile::TempDir::new().unwrap();
         let note = dir.path().join("note.md");
         std::fs::write(&note, body).unwrap();
         (dir, note)
+    }
+
+    fn assert_paths_exist(root: &Path, paths: &[&str]) {
+        for path in paths {
+            assert!(root.join(path).exists(), "{path} should exist");
+        }
+    }
+
+    fn assert_paths_absent(root: &Path, paths: &[&str]) {
+        for path in paths {
+            assert!(!root.join(path).exists(), "{path} should be absent");
+        }
+    }
+
+    fn assert_seeded_guidance_content(vault_path: &Path) {
+        let agents = std::fs::read_to_string(vault_path.join("AGENTS.md")).unwrap();
+        let claude = std::fs::read_to_string(vault_path.join("CLAUDE.md")).unwrap();
+
+        assert!(agents.contains("Legacy `title:` frontmatter is still read as a fallback"));
+        assert!(agents.contains("views/*.yml"));
+        assert!(claude.starts_with("@AGENTS.md"));
+        assert!(claude.contains("# CLAUDE.md"));
+    }
+
+    fn assert_seeded_type_scaffolding(vault_path: &Path) {
+        let type_definition = std::fs::read_to_string(vault_path.join("type.md")).unwrap();
+
+        assert!(type_definition.contains("visible: false"));
+        assert!(type_definition.contains("# Type"));
     }
 
     #[test]
@@ -450,27 +480,21 @@ mod tests {
 
         let result = repair_vault(vault_path.to_str().unwrap().to_string());
         assert!(result.is_ok());
-        assert!(vault_path.join("AGENTS.md").exists());
-        assert!(vault_path.join("config.md").exists());
-        assert!(vault_path.join(".gitignore").exists());
+        assert_paths_exist(vault_path, &["AGENTS.md", "CLAUDE.md", "type.md", "note.md", ".gitignore"]);
+        assert_paths_absent(vault_path, &["config.md"]);
     }
 
     #[test]
-    fn test_create_empty_vault_seeds_agents_and_config() {
+    fn test_create_empty_vault_seeds_agents_and_type_scaffolding() {
         let dir = tempfile::TempDir::new().unwrap();
         let vault_path = dir.path().join("fresh-vault");
 
         let result = create_empty_vault(vault_path.to_string_lossy().to_string());
         assert!(result.is_ok());
-        assert!(vault_path.join(".git").exists());
-        assert!(vault_path.join("AGENTS.md").exists());
-        assert!(vault_path.join("CLAUDE.md").exists());
-        assert!(vault_path.join("config.md").exists());
-        assert!(vault_path.join("note.md").exists());
-
-        let agents = std::fs::read_to_string(vault_path.join("AGENTS.md")).unwrap();
-        assert!(agents.contains("Legacy `title:` frontmatter is still read as a fallback"));
-        assert!(agents.contains("views/*.yml"));
+        assert_paths_exist(&vault_path, &[".git", "AGENTS.md", "CLAUDE.md", "type.md", "note.md"]);
+        assert_paths_absent(&vault_path, &["config.md"]);
+        assert_seeded_guidance_content(&vault_path);
+        assert_seeded_type_scaffolding(&vault_path);
     }
 
     #[test]
@@ -484,8 +508,7 @@ mod tests {
         let err = result.expect_err("expected non-empty folder to be rejected");
 
         assert_eq!(err, "Choose an empty folder to create a new vault");
-        assert!(vault_path.join("keep.txt").exists());
-        assert!(!vault_path.join(".git").exists());
-        assert!(!vault_path.join("AGENTS.md").exists());
+        assert_paths_exist(&vault_path, &["keep.txt"]);
+        assert_paths_absent(&vault_path, &[".git", "AGENTS.md"]);
     }
 }

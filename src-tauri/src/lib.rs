@@ -46,7 +46,7 @@ fn run_startup_tasks() {
     );
     // Migrate legacy config/agents.md → root AGENTS.md (one-time, idempotent)
     vault::migrate_agents_md(vp_str);
-    // Seed AGENTS.md and config.md at vault root if missing
+    // Seed AGENTS.md and starter type definitions at vault root if missing
     vault::seed_config_files(vp_str);
 
     // Register Tolaria MCP server in Claude Code and Cursor configs

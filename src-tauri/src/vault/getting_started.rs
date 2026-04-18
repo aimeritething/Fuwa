@@ -276,7 +276,7 @@ Keep edits compatible with this starter vault's current conventions. Prefer smal
 - One Markdown note per file.
 - The first H1 in the body is the preferred display title. Legacy `title:` frontmatter is still read as a fallback when a note has no H1, but do not add it to new notes.
 - Store note type in the `type:` frontmatter field.
-- In this starter vault, type definitions currently live at the vault root, for example `project.md`, `person.md`, `note.md`, and `config.md`. Keep new type files at the vault root unless the user explicitly asks to reorganize them.
+- In this starter vault, type definitions currently live at the vault root, for example `project.md`, `person.md`, `note.md`, and `type.md`. Keep new type files at the vault root unless the user explicitly asks to reorganize them.
 - Saved views live in `views/*.yml`.
 - Files in `attachments/` are assets, not notes. Reference them from notes, but do not treat them as notes or types.
 - Frontmatter properties that start with `_` are usually Tolaria-managed state. Leave them alone unless the user explicitly asks for them to change.
@@ -649,7 +649,8 @@ mod tests {
 
         let content = fs::read_to_string(dest.join("AGENTS.md")).unwrap();
         assert_eq!(content, AGENTS_MD);
-        assert!(dest.join("config.md").exists());
+        assert!(dest.join("type.md").exists());
+        assert!(dest.join("note.md").exists());
     }
 
     #[test]
@@ -686,7 +687,8 @@ mod tests {
             fs::read_to_string(dest.join("AGENTS.md")).unwrap(),
             AGENTS_MD
         );
-        assert!(dest.join("config.md").exists());
+        assert!(dest.join("type.md").exists());
+        assert!(dest.join("note.md").exists());
     }
 
     #[test]

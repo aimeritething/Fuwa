@@ -29,8 +29,20 @@ interface VaultSeed {
   noteTitle?: string
 }
 
+interface EntryOptions {
+  fileName?: string
+  isA?: string
+  snippet?: string
+}
+
 function untitledNoteRow(page: Page) {
   return page.getByText(/^Untitled Note(?: \d+)?$/i).first()
+}
+
+async function expectFreshVaultSeedEntries(page: Page) {
+  await expect(page.getByText('AGENTS.md — Tolaria Vault', { exact: true })).toBeVisible()
+  await expect(page.getByText('CLAUDE.md', { exact: true })).toBeVisible()
+  await expect(page.getByText('Config', { exact: true })).toHaveCount(0)
 }
 
 async function installEmptyVaultMocks(
@@ -44,13 +56,14 @@ async function installEmptyVaultMocks(
   await page.addInitScript((mockConfig) => {
     const gettingStartedPath = '/Users/mock/Documents/Getting Started'
 
-    function buildEntry(vaultPath: string, title: string): MockEntry {
-      const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+    function buildEntry(vaultPath: string, title: string, options: EntryOptions = {}): MockEntry {
+      const defaultStem = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
+      const filename = options.fileName ?? `${defaultStem}.md`
       return {
-        path: `${vaultPath}/${slug}.md`,
-        filename: `${slug}.md`,
+        path: `${vaultPath}/${filename}`,
+        filename,
         title,
-        isA: 'Note',
+        isA: options.isA ?? 'Note',
         aliases: [],
         belongsTo: [],
         relatedTo: [],
@@ -59,7 +72,7 @@ async function installEmptyVaultMocks(
         modifiedAt: 1700000000,
         createdAt: null,
         fileSize: 256,
-        snippet: `${title} snippet`,
+        snippet: options.snippet ?? `${title} snippet`,
         wordCount: 12,
         relationships: {},
         outgoingLinks: [],
@@ -67,6 +80,19 @@ async function installEmptyVaultMocks(
         template: null,
         sort: null,
       }
+    }
+
+    function buildFreshVaultSeedEntries(vaultPath: string): MockEntry[] {
+      return [
+        buildEntry(vaultPath, 'AGENTS.md — Tolaria Vault', { fileName: 'AGENTS.md' }),
+        buildEntry(vaultPath, 'CLAUDE.md', { fileName: 'CLAUDE.md' }),
+        buildEntry(vaultPath, 'Type', { fileName: 'type.md', isA: 'Type' }),
+        buildEntry(vaultPath, 'Note', { fileName: 'note.md', isA: 'Type' }),
+      ]
+    }
+
+    function syncEntryContent(entry: MockEntry) {
+      allContent[entry.path] = `# ${entry.title}\n\n${entry.snippet}`
     }
 
     let savedVaults = mockConfig.initialVaults.map(({ label, path }) => ({ label, path }))
@@ -125,7 +151,8 @@ async function installEmptyVaultMocks(
           if (args.targetPath !== mockConfig.createdVaultPath) {
             throw new Error(`Unexpected empty vault target: ${args.targetPath}`)
           }
-          entriesByVault[mockConfig.createdVaultPath] ??= []
+          entriesByVault[mockConfig.createdVaultPath] = buildFreshVaultSeedEntries(mockConfig.createdVaultPath)
+          entriesByVault[mockConfig.createdVaultPath].forEach(syncEntryContent)
           return mockConfig.createdVaultPath
         }
         ref.list_vault = (args: { path?: string }) => entriesByVault[args.path ?? activeVault ?? ''] ?? []
@@ -159,6 +186,7 @@ test('keyboard onboarding can create an empty vault and the first note', async (
   await page.keyboard.press('Enter')
 
   await expect(page.getByTestId('note-list-container')).toBeVisible({ timeout: 5_000 })
+  await expectFreshVaultSeedEntries(page)
   await sendShortcut(page, 'n', ['Control'])
   await expect(untitledNoteRow(page)).toBeVisible({ timeout: 5_000 })
 })
@@ -190,6 +218,7 @@ test('command palette and bottom bar expose empty-vault creation from the active
   await page.keyboard.press('Enter')
 
   await expect(trigger).toContainText('Client Vault')
+  await expectFreshVaultSeedEntries(page)
   await sendShortcut(page, 'n', ['Control'])
   await expect(untitledNoteRow(page)).toBeVisible({ timeout: 5_000 })
 })
