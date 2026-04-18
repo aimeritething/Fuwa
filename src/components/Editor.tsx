@@ -356,7 +356,7 @@ function EditorLayout({
   gitHistory: GitCommit[]
   noteList?: NoteListItem[]
   noteListFilter?: { type: string | null; query: string }
-  handleViewCommitDiff: (commitHash: string) => void
+  handleViewCommitDiff: (commitHash: string) => Promise<void>
   onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
   onDeleteProperty?: (path: string, key: string) => Promise<void>
   onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
