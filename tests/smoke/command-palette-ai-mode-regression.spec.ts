@@ -1,10 +1,12 @@
 import { test, expect, type Page } from '@playwright/test'
 import { openCommandPalette } from './helpers'
 import {
+  expectEditorSelectionRange,
   expectNoPageErrors,
   expectNormalizedEditorText,
   selectEditorTextRange,
   trackPageErrors,
+  writeClipboardText,
 } from './inlineWikilinkEditorHelpers'
 
 async function readCaretGapAfterChip(page: Page) {
@@ -70,6 +72,59 @@ test.describe('Command palette AI mode regression', () => {
     await page.keyboard.press('Backspace')
 
     await expect(aiInput).toBeVisible()
+    await expectNoPageErrors(pageErrors)
+  })
+
+  test('keeps pasted text, caret movement, and selection replacement stable in AI mode', async ({ page }) => {
+    const pageErrors = trackPageErrors(page)
+    const aiInputTarget = { dataTestId: 'command-palette-ai-input' }
+    await openCommandPalette(page)
+    await page.locator('input[placeholder="Type a command..."]').pressSequentially(' ')
+
+    const aiInput = page.getByTestId('command-palette-ai-input')
+    await expect(aiInput).toBeVisible()
+    await expect(aiInput).toBeFocused()
+
+    await writeClipboardText(page, { text: 'hello world' })
+    await page.keyboard.press('Meta+V')
+    await expectNormalizedEditorText(aiInput, 'hello world')
+    await expectEditorSelectionRange(page, {
+      expectedRange: { start: 12, end: 12 },
+      target: aiInputTarget,
+    })
+
+    for (let i = 0; i < 5; i += 1) {
+      await page.keyboard.press('ArrowLeft')
+    }
+    await expectEditorSelectionRange(page, {
+      expectedRange: { start: 7, end: 7 },
+      target: aiInputTarget,
+    })
+
+    await page.keyboard.press('Shift+ArrowRight')
+    await page.keyboard.press('Shift+ArrowRight')
+    await expectEditorSelectionRange(page, {
+      expectedRange: { start: 7, end: 9 },
+      target: aiInputTarget,
+    })
+
+    await page.keyboard.type('XY')
+    await expectNormalizedEditorText(aiInput, 'hello XYrld')
+    await expectEditorSelectionRange(page, {
+      expectedRange: { start: 9, end: 9 },
+      target: aiInputTarget,
+    })
+
+    for (let i = 0; i < 3; i += 1) {
+      await page.keyboard.press('ArrowRight')
+    }
+    await expectEditorSelectionRange(page, {
+      expectedRange: { start: 12, end: 12 },
+      target: aiInputTarget,
+    })
+
+    await page.keyboard.press('Backspace')
+    await expectNormalizedEditorText(aiInput, 'hello XYrl')
     await expectNoPageErrors(pageErrors)
   })
 })

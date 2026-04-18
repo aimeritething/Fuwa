@@ -5,6 +5,24 @@ interface SelectEditorTextRangeArgs {
   startOffset: number
 }
 
+interface ClipboardWriteArgs {
+  text: string
+}
+
+interface EditorSelectionRange {
+  start: number
+  end: number
+}
+
+interface EditorTarget {
+  dataTestId: string
+}
+
+interface ExpectEditorSelectionRangeArgs {
+  expectedRange: EditorSelectionRange
+  target: EditorTarget
+}
+
 export function trackPageErrors(page: Page): string[] {
   const pageErrors: string[] = []
   page.on('pageerror', (error) => pageErrors.push(error.message))
@@ -34,6 +52,28 @@ export async function expectNoPageErrors(pageErrors: string[]): Promise<void> {
     .toEqual([])
 }
 
+export async function writeClipboardText(
+  page: Page,
+  { text }: ClipboardWriteArgs,
+): Promise<void> {
+  await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.evaluate(async ({ text: nextText }) => {
+    await navigator.clipboard.writeText(nextText)
+  }, { text })
+}
+
+export async function expectEditorSelectionRange(
+  page: Page,
+  { expectedRange, target }: ExpectEditorSelectionRangeArgs,
+): Promise<void> {
+  await expect
+    .poll(
+      async () => page.evaluate(readEditorSelectionRangeInBrowser, target),
+      { timeout: 2_000 },
+    )
+    .toEqual(expectedRange)
+}
+
 function normalizeEditorText(value: string | null): string {
   return value?.replace(/\s+/g, ' ').trim() ?? ''
 }
@@ -54,4 +94,29 @@ function selectEditorTextRangeInBrowser({
   range.setEnd(lastText, lastText.textContent?.length ?? 0)
   selection.removeAllRanges()
   selection.addRange(range)
+}
+
+function readEditorSelectionRangeInBrowser({
+  dataTestId,
+}: EditorTarget): EditorSelectionRange | null {
+  const editor = document.querySelector(`[data-testid="${dataTestId}"]`) as HTMLDivElement | null
+  const selection = window.getSelection()
+  if (!editor || !selection || selection.rangeCount === 0) return null
+
+  const range = selection.getRangeAt(0)
+  if (!editor.contains(range.startContainer) || !editor.contains(range.endContainer)) return null
+
+  const startRange = document.createRange()
+  startRange.selectNodeContents(editor)
+  startRange.setEnd(range.startContainer, range.startOffset)
+
+  const endRange = document.createRange()
+  endRange.selectNodeContents(editor)
+  endRange.setEnd(range.endContainer, range.endOffset)
+  const normalizeSelectionText = (value: string) => value.replace(/\u200B/g, '')
+
+  return {
+    start: normalizeSelectionText(startRange.toString()).length,
+    end: normalizeSelectionText(endRange.toString()).length,
+  }
 }

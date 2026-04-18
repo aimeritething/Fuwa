@@ -75,6 +75,7 @@ function renderInlineEditorField({
   editorClassName,
   onInput,
   onKeyDown,
+  onPaste,
   onSelectionChange,
   segments,
   typeEntryMap,
@@ -87,6 +88,7 @@ function renderInlineEditorField({
   editorClassName?: string
   onInput: () => void
   onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void
+  onPaste: (event: React.ClipboardEvent<HTMLDivElement>) => void
   onSelectionChange: () => void
   segments: ReturnType<typeof buildInlineWikilinkSegments>
   typeEntryMap: Record<string, VaultEntry>
@@ -101,6 +103,7 @@ function renderInlineEditorField({
       editorClassName={editorClassName}
       onInput={onInput}
       onKeyDown={onKeyDown}
+      onPaste={onPaste}
       onSelectionChange={onSelectionChange}
       segments={segments}
       typeEntryMap={typeEntryMap}
@@ -209,6 +212,17 @@ export function InlineWikilinkInput({
     onChange(nextState.value)
     setSelectionRange(nextState.selection)
   }
+  const handlePaste = (event: React.ClipboardEvent<HTMLDivElement>) => {
+    if (disabled) return
+
+    const pastedText = normalizeInlineWikilinkValue(event.clipboardData.getData('text/plain'))
+    if (!pastedText) return
+
+    event.preventDefault()
+    const nextState = replaceInlineSelection(value, selectionRange, pastedText)
+    onChange(nextState.value)
+    setSelectionRange(nextState.selection)
+  }
   const submitValue = () =>
     submitInlineValue({ onSubmit, submitOnEmpty, value, references })
   const handleKeyDown = (event: React.KeyboardEvent<HTMLDivElement>) =>
@@ -232,6 +246,7 @@ export function InlineWikilinkInput({
     editorClassName,
     onInput: commitValueFromEditor,
     onKeyDown: handleKeyDown,
+    onPaste: handlePaste,
     onSelectionChange: syncSelectionRange,
     segments,
     typeEntryMap,
