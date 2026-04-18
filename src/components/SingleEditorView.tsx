@@ -179,6 +179,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
       title: entry.title,
       aliases: [...new Set([entry.filename.replace(/\.md$/, ''), ...entry.aliases])],
       group: entry.isA || 'Note',
+      entryType: entry.isA,
       entryTitle: entry.title,
       path: entry.path,
     }))),

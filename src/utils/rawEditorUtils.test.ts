@@ -99,6 +99,7 @@ describe('buildRawEditorBaseItems', () => {
         title: 'Project Alpha',
         aliases: ['project-alpha', 'Alpha'],
         group: 'Project',
+        entryType: 'Project',
         entryTitle: 'Project Alpha',
         path: 'projects/project-alpha.md',
       },

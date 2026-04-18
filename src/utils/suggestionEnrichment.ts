@@ -13,6 +13,7 @@ interface BaseSuggestionItem {
   title: string
   aliases: string[]
   group: string
+  entryType?: string | null
   entryTitle: string
   path: string
 }
@@ -48,15 +49,15 @@ export function enrichSuggestionItems(
   )
   const sliced = filtered.slice(0, MAX_RESULTS)
   const final = disambiguateTitles(deduplicateByPath(sliced))
-  return final.map(({ group, ...rest }) => {
-    const noteType = group !== 'Note' ? group : undefined
-    const te = typeEntryMap[group]
+  return final.map(({ entryType, ...rest }) => {
+    const noteType = entryType ?? undefined
+    const te = noteType ? typeEntryMap[noteType] : undefined
     return {
       ...rest,
       noteType,
-      typeColor: noteType ? getTypeColor(group, te?.color) : undefined,
-      typeLightColor: noteType ? getTypeLightColor(group, te?.color) : undefined,
-      TypeIcon: noteType ? getTypeIcon(group, te?.icon) : undefined,
+      typeColor: noteType ? getTypeColor(noteType, te?.color) : undefined,
+      typeLightColor: noteType ? getTypeLightColor(noteType, te?.color) : undefined,
+      TypeIcon: noteType ? getTypeIcon(noteType, te?.icon) : undefined,
     }
   })
 }

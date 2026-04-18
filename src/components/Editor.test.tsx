@@ -658,7 +658,7 @@ describe('wikilink autocomplete', () => {
     mockFilterSuggestionItems.mockImplementation((items: unknown[]) => items)
   })
 
-  it('shows correct noteType and color for typed entries, neutral for untyped', async () => {
+  it('shows Note chips and icons for explicit Note entries while keeping untyped entries neutral', async () => {
     const mixedEntries: VaultEntry[] = [
       { ...mockEntry, title: 'Test Project', filename: 'proj.md', path: '/vault/proj.md', isA: 'Project', aliases: [] },
       { ...mockEntry, title: 'Test Plain', filename: 'plain.md', path: '/vault/plain.md', isA: null, aliases: [] },
@@ -675,20 +675,24 @@ describe('wikilink autocomplete', () => {
       />
     )
     const items = await capturedGetItems!('Test')
-    // Typed entries should have noteType and color
+    // Typed entries should have noteType, color, and a left-side icon
     const project = items.find((i: { title: string }) => i.title === 'Test Project')
     expect(project).toBeDefined()
     expect(project!.noteType).toBe('Project')
     expect(project!.typeColor).toBeTruthy()
-    // Untyped entries (isA: null or 'Note') should have no noteType (grey/neutral)
+    expect(project!.TypeIcon).toBeTruthy()
+
+    const explicitNote = items.find((i: { title: string }) => i.title === 'Test Explicit')
+    expect(explicitNote).toBeDefined()
+    expect(explicitNote!.noteType).toBe('Note')
+    expect(explicitNote!.typeColor).toBeTruthy()
+    expect(explicitNote!.TypeIcon).toBeTruthy()
+
+    // Untyped entries should remain neutral
     const plainNote = items.find((i: { title: string }) => i.title === 'Test Plain')
     expect(plainNote).toBeDefined()
     expect(plainNote!.noteType).toBeUndefined()
     expect(plainNote!.typeColor).toBeUndefined()
-    const explicitNote = items.find((i: { title: string }) => i.title === 'Test Explicit')
-    expect(explicitNote).toBeDefined()
-    expect(explicitNote!.noteType).toBeUndefined()
-    expect(explicitNote!.typeColor).toBeUndefined()
     mockFilterSuggestionItems.mockImplementation((items: unknown[]) => items)
   })
 

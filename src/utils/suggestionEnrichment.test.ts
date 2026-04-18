@@ -76,8 +76,8 @@ describe('enrichSuggestionItems', () => {
     Project: makeEntry({ isA: 'Type', title: 'Project', color: 'blue', icon: 'wrench' }),
   }
 
-  function makeItem(title: string, group: string, path: string) {
-    return { title, aliases: [] as string[], group, entryTitle: title, path, onItemClick: vi.fn() }
+  function makeItem(title: string, group: string, path: string, entryType?: string | null) {
+    return { title, aliases: [] as string[], group, entryType, entryTitle: title, path, onItemClick: vi.fn() }
   }
 
   it('filters items by query', () => {
@@ -88,7 +88,7 @@ describe('enrichSuggestionItems', () => {
   })
 
   it('adds type metadata for non-Note groups', () => {
-    const items = [makeItem('My Project', 'Project', '/p.md')]
+    const items = [makeItem('My Project', 'Project', '/p.md', 'Project')]
     const result = enrichSuggestionItems(items, '', typeEntryMap)
     expect(result[0].noteType).toBe('Project')
     expect(result[0].typeColor).toBeDefined()
@@ -96,7 +96,15 @@ describe('enrichSuggestionItems', () => {
     expect(result[0].TypeIcon).toBeDefined()
   })
 
-  it('omits type metadata for Note group', () => {
+  it('preserves Note type metadata for explicit Note entries', () => {
+    const items = [makeItem('Explicit Note', 'Note', '/n.md', 'Note')]
+    const result = enrichSuggestionItems(items, '', {})
+    expect(result[0].noteType).toBe('Note')
+    expect(result[0].typeColor).toBeDefined()
+    expect(result[0].TypeIcon).toBeDefined()
+  })
+
+  it('keeps untyped Note-group entries neutral', () => {
     const items = [makeItem('Plain Note', 'Note', '/n.md')]
     const result = enrichSuggestionItems(items, '', {})
     expect(result[0].noteType).toBeUndefined()

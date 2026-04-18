@@ -8,6 +8,7 @@ export interface RawEditorBaseItem {
   title: string
   aliases: string[]
   group: string
+  entryType?: string | null
   entryTitle: string
   path: string
 }
@@ -59,6 +60,7 @@ export function buildRawEditorBaseItems(entries: VaultEntry[]): RawEditorBaseIte
     title: entry.title,
     aliases: [...new Set([entry.filename.replace(/\.md$/, ''), ...entry.aliases])],
     group: entry.isA || 'Note',
+    entryType: entry.isA,
     entryTitle: entry.title,
     path: entry.path,
   })))
