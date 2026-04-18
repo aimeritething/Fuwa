@@ -270,6 +270,42 @@ describe('App', () => {
     expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Open existing vault')
   })
 
+  it.each([
+    ['telemetry-accept', 'Allow anonymous reporting'],
+    ['telemetry-decline', 'No thanks'],
+  ])('ignores a remembered default vault after %s when onboarding was never completed', async (buttonTestId) => {
+    const rememberedDefaultVaultPath = '/Volumes/Jupiter/Workspace/laputa-app/demo-vault-v2'
+    localStorage.setItem('tolaria_welcome_dismissed', '1')
+    mockCommandResults.get_default_vault_path = rememberedDefaultVaultPath
+    mockCommandResults.get_settings = {
+      auto_pull_interval_minutes: null,
+      telemetry_consent: null,
+      crash_reporting_enabled: null,
+      analytics_enabled: null,
+      anonymous_id: null,
+      release_channel: null,
+    }
+    mockCommandResults.load_vault_list = {
+      vaults: [],
+      active_vault: rememberedDefaultVaultPath,
+      hidden_defaults: [],
+    }
+    mockCommandResults.check_vault_exists = (args?: { path?: string }) => args?.path === rememberedDefaultVaultPath
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Help improve Tolaria')).toBeInTheDocument()
+    })
+
+    fireEvent.click(screen.getByTestId(buttonTestId))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('welcome-screen')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Open existing vault')
+  })
+
   it('renders sidebar with correct default selection (All Notes)', async () => {
     render(<App />)
     await waitFor(() => {

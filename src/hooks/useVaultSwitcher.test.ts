@@ -148,6 +148,16 @@ describe('useVaultSwitcher', () => {
     expect(onSwitch).toHaveBeenCalled()
   })
 
+  it('does not persist the implicit default vault as an active selection', async () => {
+    const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+
+    await waitFor(() => { expect(result.current.loaded).toBe(true) })
+
+    expect(result.current.vaultPath).toBe(expectedDefaultVaultPath)
+    expect(result.current.selectedVaultPath).toBeNull()
+    expect(mockVaultListStore.active_vault).toBeNull()
+  })
+
   it('handles load error gracefully', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     mockInvokeFn.mockImplementation((cmd: string) => {
@@ -412,6 +422,20 @@ describe('useVaultSwitcher', () => {
       await waitFor(() => { expect(result.current.loaded).toBe(true) })
 
       expect(result.current.vaultPath).toBe(persistedPath)
+    })
+
+    it('treats a remembered default vault as unselected when it is the only vault', async () => {
+      mockVaultListStore = {
+        vaults: [],
+        active_vault: expectedDefaultVaultPath,
+        hidden_defaults: [],
+      }
+
+      const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+      await waitFor(() => { expect(result.current.loaded).toBe(true) })
+
+      expect(result.current.vaultPath).toBe(expectedDefaultVaultPath)
+      expect(result.current.selectedVaultPath).toBeNull()
     })
   })
 

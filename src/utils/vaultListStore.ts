@@ -28,7 +28,7 @@ export async function loadVaultList(): Promise<{ vaults: VaultOption[]; activeVa
   return { vaults: checked, activeVault: data?.active_vault ?? null, hiddenDefaults: data?.hidden_defaults ?? [] }
 }
 
-export function saveVaultList(vaults: VaultOption[], activeVault: string, hiddenDefaults: string[] = []): Promise<void> {
+export function saveVaultList(vaults: VaultOption[], activeVault: string | null, hiddenDefaults: string[] = []): Promise<void> {
   const list: PersistedVaultList = {
     vaults: vaults.map(v => ({ label: v.label, path: v.path })),
     active_vault: activeVault,
