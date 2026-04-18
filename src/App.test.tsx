@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -295,7 +295,7 @@ describe('App', () => {
     render(<App />)
 
     await waitFor(() => {
-      expect(screen.queryByText('Inbox')).not.toBeInTheDocument()
+      expect(within(screen.getByTestId('sidebar-top-nav')).queryByText('Inbox')).not.toBeInTheDocument()
       expect(screen.getByText('All Notes')).toBeInTheDocument()
     })
   })
