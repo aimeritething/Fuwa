@@ -1,4 +1,4 @@
-import { useCallback, useRef } from 'react'
+import { startTransition, useCallback, useRef } from 'react'
 import { useEditorSave } from './useEditorSave'
 import { extractOutgoingLinks, extractSnippet, countWords } from '../utils/wikilinks'
 import { contentToEntryPatch } from './frontmatterOps'
@@ -35,6 +35,7 @@ export function useEditorSaveWithLinks(config: {
   const { handleContentChange: rawOnChange } = editor
   const prevLinksKeyRef = useRef('')
   const prevFmKeyRef = useRef('')
+  const prevTitleKeyRef = useRef('')
   const handleContentChange = useCallback((path: string, content: string) => {
     rawOnChange(path, content)
     const links = extractOutgoingLinks(content)
@@ -45,18 +46,24 @@ export function useEditorSaveWithLinks(config: {
     }
     const frontmatterPatch = contentToEntryPatch(content)
     const filename = path.split('/').pop() ?? path
-    const fmPatch = {
-      ...frontmatterPatch,
-      ...deriveDisplayTitleState({
-        content,
-        filename,
-        frontmatterTitle: typeof frontmatterPatch.title === 'string' ? frontmatterPatch.title : null,
-      }),
-    }
+    const titlePatch = deriveDisplayTitleState({
+      content,
+      filename,
+      frontmatterTitle: typeof frontmatterPatch.title === 'string' ? frontmatterPatch.title : null,
+    })
+    const fmPatch = { ...frontmatterPatch }
+    delete fmPatch.title
     const fmKey = JSON.stringify(fmPatch)
     if (fmKey !== prevFmKeyRef.current) {
       prevFmKeyRef.current = fmKey
       if (Object.keys(fmPatch).length > 0) updateEntry(path, fmPatch)
+    }
+    const titleKey = JSON.stringify(titlePatch)
+    if (titleKey !== prevTitleKeyRef.current) {
+      prevTitleKeyRef.current = titleKey
+      startTransition(() => {
+        updateEntry(path, titlePatch)
+      })
     }
   }, [rawOnChange, updateEntry])
   return { ...editor, handleContentChange }

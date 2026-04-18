@@ -65,6 +65,13 @@ function quickOpenSelectedTitle(page: Page) {
   return page.getByTestId('quick-open-palette').locator('[class*="bg-accent"] span.truncate').first()
 }
 
+async function focusHeadingEnd(page: Page, title: string) {
+  const heading = page.getByRole('heading', { name: title, level: 1 })
+  await expect(heading).toBeVisible({ timeout: 5_000 })
+  await heading.click()
+  await page.keyboard.press('End')
+}
+
 test('creating an untitled draft hides the legacy title section in the editor', async ({ page }) => {
   await page.locator('button[title="Create new note"]').click()
 
@@ -138,4 +145,30 @@ test('@smoke edited H1 titles drive note list, search, and wikilink autocomplete
 
   const suggestionMenu = page.locator('.wikilink-menu')
   await expect(suggestionMenu).toContainText(updatedTitle, { timeout: 5_000 })
+})
+
+test('@smoke rapid H1 typing stays stable while editing an existing note', async ({ page }) => {
+  const noteList = page.locator('[data-testid="note-list-container"]')
+  const firstTitle = 'Alpha Project Fast Typing Check'
+  const finalTitle = 'Alpha Project Fast Typing Flow'
+
+  await openNote(page, 'Alpha Project')
+  await focusHeadingEnd(page, 'Alpha Project')
+  await page.keyboard.type(' Fast Typing Check')
+
+  await expect(page.getByRole('heading', { name: firstTitle, level: 1 })).toBeVisible({ timeout: 5_000 })
+
+  for (let i = 0; i < ' Check'.length; i += 1) {
+    await page.keyboard.press('Backspace')
+  }
+  await page.keyboard.type(' Flow')
+  await page.keyboard.press('Meta+s')
+
+  await expect(page.getByRole('heading', { name: finalTitle, level: 1 })).toBeVisible({ timeout: 5_000 })
+  await expect(noteList.getByText(finalTitle, { exact: true })).toBeVisible({ timeout: 5_000 })
+  await expect(noteList.getByText('Alpha Project', { exact: true })).toHaveCount(0)
+
+  await openNote(page, 'Spring 2026')
+  await openNote(page, finalTitle)
+  await expect(page.getByRole('heading', { name: finalTitle, level: 1 })).toBeVisible({ timeout: 5_000 })
 })

@@ -2,6 +2,18 @@ import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useEditorSaveWithLinks } from './useEditorSaveWithLinks'
 
+const { startTransitionMock } = vi.hoisted(() => ({
+  startTransitionMock: vi.fn((callback: () => void) => callback()),
+}))
+
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react')>()
+  return {
+    ...actual,
+    startTransition: startTransitionMock,
+  }
+})
+
 const mockHandleContentChange = vi.fn()
 const mockHandleSave = vi.fn()
 const mockSavePendingForPath = vi.fn()
@@ -25,6 +37,7 @@ describe('useEditorSaveWithLinks', () => {
     setTabs = vi.fn()
     setToastMessage = vi.fn()
     onAfterSave = vi.fn()
+    startTransitionMock.mockClear()
     mockHandleContentChange.mockClear()
     mockHandleSave.mockClear()
     mockSavePendingForPath.mockClear()
@@ -147,6 +160,8 @@ describe('useEditorSaveWithLinks', () => {
     expect(updateEntry).toHaveBeenCalledWith('/note.md', {
       isA: 'Project',
       status: 'Active',
+    })
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
       title: 'Note',
       hasH1: false,
     })
@@ -172,6 +187,8 @@ describe('useEditorSaveWithLinks', () => {
     })
     expect(updateEntry).toHaveBeenCalledWith('/note.md', {
       isA: 'Essay',
+    })
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
       title: 'Note',
       hasH1: false,
     })
@@ -181,6 +198,8 @@ describe('useEditorSaveWithLinks', () => {
     })
     expect(updateEntry).toHaveBeenCalledWith('/note.md', {
       isA: 'Note',
+    })
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
       title: 'Note',
       hasH1: false,
     })
@@ -197,6 +216,20 @@ describe('useEditorSaveWithLinks', () => {
     })
 
     expect(updateEntry).toHaveBeenCalledWith(path, expected)
+  })
+
+  it('defers H1 title sync updates in a transition so typing stays responsive', () => {
+    const { result } = renderHookWithLinks()
+
+    act(() => {
+      result.current.handleContentChange('/old-title.md', '# Renamed Note\n\nBody')
+    })
+
+    expect(startTransitionMock).toHaveBeenCalledTimes(1)
+    expect(updateEntry).toHaveBeenCalledWith('/old-title.md', {
+      title: 'Renamed Note',
+      hasH1: true,
+    })
   })
 
   it('spreads all properties from useEditorSave onto the return value', () => {
