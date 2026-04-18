@@ -262,6 +262,23 @@ describe('NoteList filter pills', () => {
     expect(screen.queryByText('Open Project 1')).not.toBeInTheDocument()
   })
 
+  it('shows only explicit Note entries for the Notes type filter', () => {
+    const noteEntries = [
+      makeEntry({ title: 'Note Type', isA: 'Type', path: '/types/note.md', filename: 'note.md' }),
+      makeEntry({ title: 'Explicit Note', isA: 'Note', path: '/explicit-note.md', filename: 'explicit-note.md' }),
+      makeEntry({ title: 'Untyped Note', isA: null, path: '/untyped-note.md', filename: 'untyped-note.md' }),
+      makeEntry({ title: 'Archived Explicit Note', isA: 'Note', archived: true, path: '/archived-note.md', filename: 'archived-note.md' }),
+    ]
+
+    renderNoteList({ entries: noteEntries, selection: { kind: 'sectionGroup', type: 'Note' } })
+
+    expect(screen.getByText('Explicit Note')).toBeInTheDocument()
+    expect(screen.queryByText('Untyped Note')).not.toBeInTheDocument()
+    expect(screen.queryByText('Archived Explicit Note')).not.toBeInTheDocument()
+    expect(screen.getByTestId('filter-pill-open')).toHaveTextContent('1')
+    expect(screen.getByTestId('filter-pill-archived')).toHaveTextContent('1')
+  })
+
   it('shows the archived empty state when a section has no archived notes', () => {
     renderNoteList({
       entries: projectEntries.filter((entry) => !entry.archived),

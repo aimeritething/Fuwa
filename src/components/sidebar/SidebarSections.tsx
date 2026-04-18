@@ -20,6 +20,7 @@ import { TypeCustomizePopover } from '../TypeCustomizePopover'
 import { useDragRegion } from '../../hooks/useDragRegion'
 import { SidebarGroupHeader } from './SidebarGroupHeader'
 import { SidebarViewItem } from './SidebarViewItem'
+import { countByFilter } from '../../utils/noteListHelpers'
 
 export { SidebarTopNav } from './SidebarTopNav'
 export { FavoritesSection } from './FavoritesSection'
@@ -94,9 +95,7 @@ function SortableSection({
   sectionProps: SidebarSectionProps
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.type })
-  const itemCount = sectionProps.entries.filter((entry) =>
-    !entry.archived && (group.type === 'Note' ? (entry.isA === 'Note' || !entry.isA) : entry.isA === group.type),
-  ).length
+  const itemCount = countByFilter(sectionProps.entries, group.type).open
   const isRenaming = sectionProps.renamingType === group.type
 
   return (

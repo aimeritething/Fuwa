@@ -31,13 +31,10 @@ const isMarkdown = (e: VaultEntry) => e.fileKind === 'markdown' || !e.fileKind
 const isActive = (e: VaultEntry) => !e.archived
 const isSupportedSectionType = (type: string) => !isLegacyJournalingType(type)
 
-function resolveEntrySectionType(entry: VaultEntry): string {
-  return entry.isA || 'Note'
-}
-
 function shouldCollectActiveType(entry: VaultEntry): boolean {
   if (!isActive(entry) || !isMarkdown(entry)) return false
-  return isSupportedSectionType(resolveEntrySectionType(entry))
+  if (!entry.isA) return false
+  return isSupportedSectionType(entry.isA)
 }
 
 function shouldIncludeTypeDefinition(name: string, entry: VaultEntry): boolean {
@@ -45,12 +42,12 @@ function shouldIncludeTypeDefinition(name: string, entry: VaultEntry): boolean {
   return isSupportedSectionType(name)
 }
 
-/** Collect unique isA values from active (non-archived) markdown entries. Untyped entries count as 'Note'. */
+/** Collect unique explicit isA values from active (non-archived) markdown entries. */
 export function collectActiveTypes(entries: VaultEntry[]): Set<string> {
   const types = new Set<string>()
   for (const e of entries) {
     if (!shouldCollectActiveType(e)) continue
-    types.add(resolveEntrySectionType(e))
+    types.add(e.isA!)
   }
   return types
 }

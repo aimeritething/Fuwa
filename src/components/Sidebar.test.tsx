@@ -780,6 +780,14 @@ describe('Sidebar', () => {
         icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
         outgoingLinks: [], properties: {},
       },
+      {
+        path: '/vault/binary-note.pdf', filename: 'binary-note.pdf', title: 'Binary Note',
+        isA: 'Note', aliases: [], belongsTo: [], relatedTo: [], status: null, owner: null,
+        cadence: null, archived: false, modifiedAt: 1700000000,
+        createdAt: null, fileSize: 150, snippet: '', wordCount: 0, relationships: {},
+        icon: null, color: null, order: null, sidebarLabel: null, template: null, sort: null,
+        outgoingLinks: [], properties: {}, fileKind: 'binary',
+      },
     ]
 
     it('shows Notes section when Note entries exist', () => {
@@ -787,13 +795,40 @@ describe('Sidebar', () => {
       expect(screen.getByText('Notes')).toBeInTheDocument()
     })
 
-    it('counts both explicit and untyped notes in Notes section chip', () => {
+    it('counts only explicit Note entries in the Notes section chip', () => {
       render(<Sidebar entries={noteEntries} selection={defaultSelection} onSelect={() => {}} />)
       const notesHeader = screen.getByText('Notes').closest('[class*="group/section"]')!
+      expect(notesHeader.textContent).toContain('1')
+    })
+
+    it('ignores non-markdown Note entries in the Notes section chip', () => {
+      render(<Sidebar entries={noteEntries} selection={defaultSelection} onSelect={() => {}} />)
+      const notesHeader = screen.getByText('Notes').closest('[class*="group/section"]')!
+      expect(notesHeader.textContent).toContain('1')
+      expect(notesHeader.textContent).not.toContain('2')
+    })
+
+    it('keeps the Notes section count aligned when an entry changes to or from Note', () => {
+      const { rerender } = render(<Sidebar entries={noteEntries} selection={defaultSelection} onSelect={() => {}} />)
+      let notesHeader = screen.getByText('Notes').closest('[class*="group/section"]')!
+      expect(notesHeader.textContent).toContain('1')
+
+      const withoutExplicitNote = noteEntries.map((entry) =>
+        entry.path === '/vault/explicit-note.md' ? { ...entry, isA: null } : entry,
+      )
+      rerender(<Sidebar entries={withoutExplicitNote} selection={defaultSelection} onSelect={() => {}} />)
+      notesHeader = screen.getByText('Notes').closest('[class*="group/section"]')!
+      expect(notesHeader.textContent).toBe('Notes')
+
+      const withNewExplicitNote = noteEntries.map((entry) =>
+        entry.path === '/vault/untyped-note.md' ? { ...entry, isA: 'Note' } : entry,
+      )
+      rerender(<Sidebar entries={withNewExplicitNote} selection={defaultSelection} onSelect={() => {}} />)
+      notesHeader = screen.getByText('Notes').closest('[class*="group/section"]')!
       expect(notesHeader.textContent).toContain('2')
     })
 
-    it('shows Notes section for untyped entries even without explicit Note entries', () => {
+    it('does not show Notes section for untyped entries without explicit Note entries', () => {
       const untypedOnly: VaultEntry[] = [
         {
           path: '/vault/plain.md', filename: 'plain.md', title: 'Plain Note',
@@ -805,7 +840,7 @@ describe('Sidebar', () => {
         },
       ]
       render(<Sidebar entries={untypedOnly} selection={defaultSelection} onSelect={() => {}} />)
-      expect(screen.getByText('Notes')).toBeInTheDocument()
+      expect(screen.queryByText('Notes')).not.toBeInTheDocument()
     })
   })
 
