@@ -627,6 +627,14 @@ describe('DynamicPropertiesPanel', () => {
     })
   })
 
+  describe('smart property display — number', () => {
+    it('renders numeric properties with the number display affordance', () => {
+      renderEditablePanel({ estimate: -3.25 })
+      expect(screen.getByTestId('number-display')).toBeInTheDocument()
+      expect(screen.getByText('-3.25')).toBeInTheDocument()
+    })
+  })
+
   describe('smart property display — status auto-detection', () => {
     it('renders status badge for property named Status', () => {
       renderEditablePanel({ Status: 'Active' })
@@ -741,6 +749,7 @@ describe('DynamicPropertiesPanel', () => {
       fireEvent.click(screen.getByTestId('display-mode-trigger'))
       expect(screen.getByTestId('display-mode-menu')).toBeInTheDocument()
       expect(screen.getByTestId('display-mode-option-text')).toBeInTheDocument()
+      expect(screen.getByTestId('display-mode-option-number')).toBeInTheDocument()
       expect(screen.getByTestId('display-mode-option-date')).toBeInTheDocument()
       expect(screen.getByTestId('display-mode-option-boolean')).toBeInTheDocument()
       expect(screen.getByTestId('display-mode-option-status')).toBeInTheDocument()
@@ -798,6 +807,13 @@ describe('DynamicPropertiesPanel', () => {
   })
 
   describe('type-aware add property form', () => {
+    it('shows number input when number type selected', () => {
+      openAddPropertyForm()
+      fireEvent.pointerDown(screen.getByTestId('add-property-type-trigger'), { button: 0, pointerType: 'mouse' })
+      fireEvent.click(screen.getByRole('option', { name: /Number/ }))
+      expect(screen.getByTestId('add-property-number-input')).toBeInTheDocument()
+    })
+
     it('shows boolean toggle when boolean type selected', () => {
       openAddPropertyForm()
       // Switch type to boolean
@@ -827,6 +843,16 @@ describe('DynamicPropertiesPanel', () => {
       // Submit
       fireEvent.click(screen.getByTestId('add-property-confirm'))
       expect(onAddProperty).toHaveBeenCalledWith('published', true)
+    })
+
+    it('stores trimmed decimal values as numbers when adding number properties', () => {
+      const { keyInput } = openAddPropertyForm()
+      fireEvent.change(keyInput, { target: { value: 'estimate' } })
+      fireEvent.pointerDown(screen.getByTestId('add-property-type-trigger'), { button: 0, pointerType: 'mouse' })
+      fireEvent.click(screen.getByRole('option', { name: /Number/ }))
+      fireEvent.change(screen.getByTestId('add-property-number-input'), { target: { value: ' -12.5 ' } })
+      fireEvent.click(screen.getByTestId('add-property-confirm'))
+      expect(onAddProperty).toHaveBeenCalledWith('estimate', -12.5)
     })
 
     it('shows date picker trigger when date type selected', { timeout: 15_000 }, () => {

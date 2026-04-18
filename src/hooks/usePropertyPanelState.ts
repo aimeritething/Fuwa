@@ -4,6 +4,7 @@ import type { FrontmatterValue } from '../components/Inspector'
 import type { ParsedFrontmatter } from '../utils/frontmatter'
 import {
   type PropertyDisplayMode,
+  getEffectiveDisplayMode,
   loadDisplayModeOverrides,
   saveDisplayModeOverride,
   removeDisplayModeOverride,
@@ -20,6 +21,14 @@ function coerceValue(raw: string): FrontmatterValue {
   if (raw.toLowerCase() === 'false') return false
   if (!isNaN(Number(raw)) && raw.trim() !== '') return Number(raw)
   return raw
+}
+
+function coerceNumberValue(raw: string): FrontmatterValue {
+  const trimmed = raw.trim()
+  if (trimmed === '') return ''
+
+  const parsed = Number(trimmed)
+  return Number.isFinite(parsed) ? parsed : raw
 }
 
 function parseNewValue(rawValue: string): FrontmatterValue {
@@ -125,6 +134,7 @@ function isHiddenPropertyKey(key: string): boolean {
 
 function parseAddedValue(rawValue: string, mode: PropertyDisplayMode): FrontmatterValue {
   if (mode === 'boolean') return rawValue.toLowerCase() === 'true'
+  if (mode === 'number') return coerceNumberValue(rawValue)
   if (mode === 'tags') {
     const items = rawValue.split(',').map(s => s.trim()).filter(s => s)
     return items
@@ -135,6 +145,37 @@ function parseAddedValue(rawValue: string, mode: PropertyDisplayMode): Frontmatt
 function persistModeOverride(key: string, mode: PropertyDisplayMode | null) {
   if (mode === null) removeDisplayModeOverride(key)
   else saveDisplayModeOverride(key, mode)
+}
+
+function saveScalarProperty({
+  key,
+  newValue,
+  frontmatter,
+  displayOverrides,
+  onUpdateProperty,
+  onDeleteProperty,
+}: {
+  key: string
+  newValue: string
+  frontmatter: ParsedFrontmatter
+  displayOverrides: Record<string, PropertyDisplayMode>
+  onUpdateProperty: (key: string, value: FrontmatterValue) => void
+  onDeleteProperty?: (key: string) => void
+}) {
+  const currentValue = frontmatter[key] ?? null
+  const displayMode = getEffectiveDisplayMode(key, currentValue, displayOverrides)
+  if (displayMode !== 'number') {
+    onUpdateProperty(key, coerceValue(newValue))
+    return
+  }
+
+  const trimmed = newValue.trim()
+  if (trimmed === '') {
+    onDeleteProperty?.(key)
+    return
+  }
+
+  onUpdateProperty(key, coerceNumberValue(newValue))
 }
 
 export interface PropertyPanelDeps {
@@ -159,8 +200,9 @@ export function usePropertyPanelState(deps: PropertyPanelDeps) {
 
   const handleSaveValue = useCallback((key: string, newValue: string) => {
     setEditingKey(null)
-    if (onUpdateProperty) onUpdateProperty(key, coerceValue(newValue))
-  }, [onUpdateProperty])
+    if (!onUpdateProperty) return
+    saveScalarProperty({ key, newValue, frontmatter, displayOverrides, onUpdateProperty, onDeleteProperty })
+  }, [displayOverrides, frontmatter, onDeleteProperty, onUpdateProperty])
 
   const handleSaveList = useCallback((key: string, newItems: string[]) => {
     if (!onUpdateProperty) return

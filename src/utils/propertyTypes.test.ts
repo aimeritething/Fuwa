@@ -29,6 +29,11 @@ describe('detectPropertyType', () => {
     expect(detectPropertyType('published', false)).toBe('boolean')
   })
 
+  it('detects number from value type', () => {
+    expect(detectPropertyType('estimate', 3)).toBe('number')
+    expect(detectPropertyType('ratio', -1.5)).toBe('number')
+  })
+
   it('detects status from key name', () => {
     expect(detectPropertyType('status', 'Active')).toBe('status')
     expect(detectPropertyType('Status', 'Draft')).toBe('status')

@@ -1,10 +1,11 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { ArrowUpRight } from '@phosphor-icons/react'
 import type { FrontmatterValue } from './Inspector'
 import { EditableValue, TagPillList, UrlValue } from './EditableValue'
 import { isUrlValue } from '../utils/url'
 import { Calendar } from '@/components/ui/calendar'
+import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { XIcon } from 'lucide-react'
 import { isValidCssColor } from '../utils/colorUtils'
@@ -151,6 +152,77 @@ function BooleanToggle({ value, onToggle }: { value: boolean; onToggle: () => vo
       />
       <span className="text-[12px] text-secondary-foreground">{value ? 'Yes' : 'No'}</span>
     </label>
+  )
+}
+
+function NumberValue({
+  value,
+  onSave,
+  onCancel,
+  isEditing,
+  onStartEdit,
+}: ScalarEditProps) {
+  const [editValue, setEditValue] = useState(value)
+
+  const restoreValue = useCallback(() => {
+    setEditValue(value)
+  }, [value])
+
+  const commitValue = useCallback(() => {
+    const trimmed = editValue.trim()
+    if (trimmed === '') {
+      onSave('')
+      return
+    }
+
+    const parsed = Number(trimmed)
+    if (Number.isFinite(parsed)) {
+      onSave(trimmed)
+      return
+    }
+
+    restoreValue()
+    onCancel()
+  }, [editValue, onCancel, onSave, restoreValue])
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      commitValue()
+      return
+    }
+
+    if (event.key === 'Escape') {
+      restoreValue()
+      onCancel()
+    }
+  }, [commitValue, onCancel, restoreValue])
+
+  if (isEditing) {
+    return (
+      <Input
+        className="h-7 w-full border-ring bg-muted px-2 py-1 text-left font-mono text-[12px] tabular-nums"
+        type="text"
+        inputMode="decimal"
+        value={editValue}
+        onChange={(event) => setEditValue(event.target.value)}
+        onKeyDown={handleKeyDown}
+        onBlur={commitValue}
+        autoFocus
+        data-testid="number-input"
+      />
+    )
+  }
+
+  return (
+    <button
+      type="button"
+      className="inline-flex h-6 w-full min-w-0 items-center justify-start overflow-hidden rounded-md border-none bg-muted/60 px-2 text-left font-mono text-[12px] tabular-nums text-foreground transition-colors hover:bg-muted"
+      onClick={onStartEdit}
+      title={value || 'Click to edit'}
+      data-testid="number-display"
+    >
+      <span className="min-w-0 truncate">{value || '\u2014'}</span>
+    </button>
   )
 }
 
@@ -352,48 +424,38 @@ function createScalarEditProps({
   }
 }
 
-function renderScalarDisplayMode({
-  propKey,
-  value,
-  isEditing,
-  resolvedMode,
-  vaultStatuses,
-  vaultTags,
-  onSave,
-  onSaveList,
-  onStartEdit,
-  onUpdate,
-  editProps,
-}: SmartCellProps & {
-  resolvedMode: PropertyDisplayMode
+type ScalarRendererProps = SmartCellProps & {
   editProps: ScalarEditProps
-}) {
-  switch (resolvedMode) {
-    case 'status':
-      return <StatusValue propKey={propKey} value={value ?? ''} isEditing={isEditing} vaultStatuses={vaultStatuses} onSave={onSave} onStartEdit={onStartEdit} />
-    case 'tags':
-      return <TagsValue propKey={propKey} value={value ? [String(value)] : []} isEditing={isEditing} vaultTags={vaultTags} onSave={onSaveList} onStartEdit={onStartEdit} />
-    case 'date':
-      return (
-        <DateValue
-          key={`${propKey}:${isEditing ? 'editing' : 'view'}`}
-          value={String(value ?? '')}
-          onSave={(v) => onSave(propKey, v)}
-          autoOpen={isEditing}
-          onCancel={() => onStartEdit(null)}
-        />
-      )
-    case 'boolean': {
-      const boolVal = toBooleanValue(value)
-      return <BooleanToggle value={boolVal} onToggle={() => onUpdate?.(propKey, !boolVal)} />
-    }
-    case 'url':
-      return <UrlValue {...editProps} />
-    case 'color':
-      return <ColorEditableValue {...editProps} />
-    default:
-      return <EditableValue {...editProps} />
-  }
+}
+
+const SCALAR_DISPLAY_RENDERERS: Partial<Record<PropertyDisplayMode, (props: ScalarRendererProps) => ReactNode>> = {
+  status: ({ propKey, value, isEditing, vaultStatuses, onSave, onStartEdit }) => (
+    <StatusValue propKey={propKey} value={value ?? ''} isEditing={isEditing} vaultStatuses={vaultStatuses} onSave={onSave} onStartEdit={onStartEdit} />
+  ),
+  tags: ({ propKey, value, isEditing, vaultTags, onSaveList, onStartEdit }) => (
+    <TagsValue propKey={propKey} value={value ? [String(value)] : []} isEditing={isEditing} vaultTags={vaultTags} onSave={onSaveList} onStartEdit={onStartEdit} />
+  ),
+  date: ({ propKey, value, isEditing, onSave, onStartEdit }) => (
+    <DateValue
+      key={`${propKey}:${isEditing ? 'editing' : 'view'}`}
+      value={String(value ?? '')}
+      onSave={(nextValue) => onSave(propKey, nextValue)}
+      autoOpen={isEditing}
+      onCancel={() => onStartEdit(null)}
+    />
+  ),
+  number: ({ editProps }) => <NumberValue {...editProps} />,
+  boolean: ({ propKey, value, onUpdate }) => {
+    const boolVal = toBooleanValue(value)
+    return <BooleanToggle value={boolVal} onToggle={() => onUpdate?.(propKey, !boolVal)} />
+  },
+  url: ({ editProps }) => <UrlValue {...editProps} />,
+  color: ({ editProps }) => <ColorEditableValue {...editProps} />,
+}
+
+function renderScalarDisplayMode(props: ScalarRendererProps & { resolvedMode: PropertyDisplayMode }) {
+  const renderer = SCALAR_DISPLAY_RENDERERS[props.resolvedMode]
+  return renderer ? renderer(props) : <EditableValue {...props.editProps} />
 }
 
 function ScalarValueCell(props: SmartCellProps) {

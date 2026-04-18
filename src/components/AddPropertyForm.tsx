@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
+import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { CalendarIcon, Check, X } from 'lucide-react'
@@ -26,6 +27,17 @@ function dateToISO(day: Date): string {
 }
 
 const ADD_INPUT_CLASS = "h-[26px] min-w-[60px] flex-1 rounded border border-border bg-muted px-1.5 text-[12px] text-foreground outline-none focus:border-primary"
+
+function isValidNumberValue(value: string): boolean {
+  const trimmed = value.trim()
+  if (trimmed === '') return false
+  return Number.isFinite(Number(trimmed))
+}
+
+function canSubmitProperty({ key, value, displayMode }: { key: string; value: string; displayMode: PropertyDisplayMode }): boolean {
+  if (!key.trim()) return false
+  return displayMode !== 'number' || isValidNumberValue(value)
+}
 
 function AddBooleanInput({ value, onChange }: { value: string; onChange: (v: string) => void }) {
   const boolVal = value.toLowerCase() === 'true'
@@ -91,21 +103,42 @@ function AddStatusInput({ value, onChange, vaultStatuses }: { value: string; onC
   )
 }
 
+function AddNumberInput({ value, onChange, onKeyDown }: {
+  value: string
+  onChange: (v: string) => void
+  onKeyDown: (e: React.KeyboardEvent) => void
+}) {
+  return (
+    <Input
+      className={`${ADD_INPUT_CLASS} font-mono tabular-nums`}
+      type="text"
+      inputMode="decimal"
+      placeholder="0"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={onKeyDown}
+      data-testid="add-property-number-input"
+    />
+  )
+}
+
 function AddPropertyValueInput({ displayMode, value, onChange, onKeyDown, vaultStatuses }: {
   displayMode: PropertyDisplayMode; value: string; onChange: (v: string) => void
   onKeyDown: (e: React.KeyboardEvent) => void; vaultStatuses: string[]
 }) {
   switch (displayMode) {
+    case 'number':
+      return <AddNumberInput value={value} onChange={onChange} onKeyDown={onKeyDown} />
     case 'boolean': return <AddBooleanInput value={value} onChange={onChange} />
     case 'date': return <AddDateInput value={value} onChange={onChange} />
     case 'status': return <AddStatusInput value={value} onChange={onChange} vaultStatuses={vaultStatuses} />
     case 'tags': return (
-      <input className={ADD_INPUT_CLASS} type="text" placeholder="tag1, tag2, ..." value={value}
+      <Input className={ADD_INPUT_CLASS} type="text" placeholder="tag1, tag2, ..." value={value}
         onChange={(e) => onChange(e.target.value)} onKeyDown={onKeyDown}
       />
     )
     default: return (
-      <input className={ADD_INPUT_CLASS} type="text" placeholder="Value" value={value}
+      <Input className={ADD_INPUT_CLASS} type="text" placeholder="Value" value={value}
         onChange={(e) => onChange(e.target.value)} onKeyDown={onKeyDown}
       />
     )
@@ -119,6 +152,7 @@ export function AddPropertyForm({ onAdd, onCancel, vaultStatuses }: {
   const [newKey, setNewKey] = useState('')
   const [newValue, setNewValue] = useState('')
   const [displayMode, setDisplayMode] = useState<PropertyDisplayMode>('text')
+  const canSubmit = canSubmitProperty({ key: newKey, value: newValue, displayMode })
 
   const handleModeChange = (mode: PropertyDisplayMode) => {
     setDisplayMode(mode)
@@ -127,13 +161,13 @@ export function AddPropertyForm({ onAdd, onCancel, vaultStatuses }: {
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && newKey.trim()) onAdd(newKey, newValue, displayMode)
+    if (e.key === 'Enter' && canSubmit) onAdd(newKey, newValue, displayMode)
     else if (e.key === 'Escape') onCancel()
   }
 
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1.5 rounded px-1.5 py-1" data-testid="add-property-form">
-      <input
+      <Input
         className="h-[26px] w-20 shrink-0 rounded border border-border bg-muted px-1.5 text-[12px] text-foreground outline-none focus:border-primary"
         type="text" placeholder="Property name" value={newKey}
         onChange={(e) => setNewKey(e.target.value)} onKeyDown={handleKeyDown} autoFocus
@@ -162,7 +196,7 @@ export function AddPropertyForm({ onAdd, onCancel, vaultStatuses }: {
       <AddPropertyValueInput displayMode={displayMode} value={newValue} onChange={setNewValue} onKeyDown={handleKeyDown} vaultStatuses={vaultStatuses} />
       <Button
         size="icon-xs" onClick={() => onAdd(newKey, newValue, displayMode)}
-        disabled={!newKey.trim()} title="Add property"
+        disabled={!canSubmit} title="Add property"
         data-testid="add-property-confirm"
       >
         <Check className="size-3.5" />
