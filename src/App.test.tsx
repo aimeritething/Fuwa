@@ -289,8 +289,14 @@ describe('App', () => {
       property_display_modes: null,
       inbox: { noteListProperties: null, explicitOrganization: false },
     })
-    localStorage.setItem('laputa:vault-config:/Users/mock/Documents/Getting Started', disabledWorkflowConfig)
-    localStorage.setItem('laputa:vault-config:/Volumes/Jupiter/Workspace/laputa-app/demo-vault-v2', disabledWorkflowConfig)
+    const vaultPaths = [
+      '/Users/mock/Documents/Getting Started',
+      '/Users/mock/demo-vault-v2',
+      '/Volumes/Jupiter/Workspace/laputa-app/demo-vault-v2',
+    ]
+    for (const path of vaultPaths) {
+      localStorage.setItem(`laputa:vault-config:${path}`, disabledWorkflowConfig)
+    }
 
     render(<App />)
 
