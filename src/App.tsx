@@ -105,13 +105,10 @@ declare global {
 
 const DEFAULT_SELECTION: SidebarSelection = INBOX_SELECTION
 
-function shouldPreferOnboardingVaultPath({
-  onboardingState,
-  vaults,
-}: {
-  onboardingState: { status: string; vaultPath?: string }
-  vaults: Array<{ path: string }>
-}): onboardingState is { status: 'ready'; vaultPath: string } {
+function shouldPreferOnboardingVaultPath(
+  onboardingState: { status: string; vaultPath?: string },
+  vaults: Array<{ path: string }>,
+): onboardingState is { status: 'ready'; vaultPath: string } {
   return onboardingState.status === 'ready'
     && typeof onboardingState.vaultPath === 'string'
     && onboardingState.vaultPath.length > 0
@@ -263,10 +260,7 @@ function App() {
   // before the persisted switcher catches up, but once the path is already in
   // the switcher list we should trust the explicit switcher state.
   const resolvedPath = noteWindowParams?.vaultPath ?? (
-    shouldPreferOnboardingVaultPath({
-      onboardingState: onboarding.state,
-      vaults: vaultSwitcher.allVaults,
-    })
+    shouldPreferOnboardingVaultPath(onboarding.state, vaultSwitcher.allVaults)
       ? onboarding.state.vaultPath
       : vaultSwitcher.vaultPath
   )
