@@ -1,5 +1,7 @@
 import {
   useMemo,
+  useRef,
+  useState,
   type ReactNode,
 } from 'react'
 import type { VaultEntry } from '../types'
@@ -14,6 +16,12 @@ import {
   extractInlineWikilinkReferences,
   findActiveWikilinkQuery,
 } from './inlineWikilinkText'
+import { serializeInlineNode } from './inlineWikilinkDom'
+import {
+  buildPendingPasteState,
+  type PendingPasteState,
+  shouldRecoverPendingPaste,
+} from './inlineWikilinkPasteRecovery'
 import {
   InlineWikilinkEditorField,
   InlineWikilinkPaletteLayout,
@@ -48,7 +56,6 @@ function collapseSelectionRange(nextSelectionIndex: number) {
     end: nextSelectionIndex,
   }
 }
-
 function submitInlineValue({
   onSubmit,
   submitOnEmpty,
@@ -64,51 +71,6 @@ function submitInlineValue({
   const normalizedValue = normalizeInlineWikilinkValue(value)
   if (!submitOnEmpty && !normalizedValue.trim()) return
   onSubmit(normalizedValue, references)
-}
-
-function renderInlineEditorField({
-  value,
-  placeholder,
-  disabled,
-  inputRef,
-  dataTestId,
-  editorClassName,
-  onInput,
-  onKeyDown,
-  onPaste,
-  onSelectionChange,
-  segments,
-  typeEntryMap,
-}: {
-  value: string
-  placeholder?: string
-  disabled: boolean
-  inputRef: React.Ref<HTMLDivElement>
-  dataTestId: string
-  editorClassName?: string
-  onInput: () => void
-  onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void
-  onPaste: (event: React.ClipboardEvent<HTMLDivElement>) => void
-  onSelectionChange: () => void
-  segments: ReturnType<typeof buildInlineWikilinkSegments>
-  typeEntryMap: Record<string, VaultEntry>
-}) {
-  return (
-    <InlineWikilinkEditorField
-      value={value}
-      placeholder={placeholder}
-      disabled={disabled}
-      inputRef={inputRef}
-      dataTestId={dataTestId}
-      editorClassName={editorClassName}
-      onInput={onInput}
-      onKeyDown={onKeyDown}
-      onPaste={onPaste}
-      onSelectionChange={onSelectionChange}
-      segments={segments}
-      typeEntryMap={typeEntryMap}
-    />
-  )
 }
 
 function renderInlineSuggestionList({
@@ -160,12 +122,14 @@ export function InlineWikilinkInput({
   paletteEmptyState,
   paletteFooter,
 }: InlineWikilinkInputProps) {
+  const [, forceRender] = useState(0)
   const segments = useMemo(
     () => buildInlineWikilinkSegments(value, entries),
     [entries, value],
   )
   const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
   const {
+    editorRef,
     selectionRange,
     selectionIndex,
     setSelectionRange,
@@ -178,6 +142,7 @@ export function InlineWikilinkInput({
     onChange,
     inputRef,
   })
+  const pendingPasteRef = useRef<PendingPasteState | null>(null)
   const activeQuery = useMemo(
     () => selectionRange.start === selectionRange.end
       ? findActiveWikilinkQuery(value, selectionIndex)
@@ -218,10 +183,29 @@ export function InlineWikilinkInput({
     const pastedText = normalizeInlineWikilinkValue(event.clipboardData.getData('text/plain'))
     if (!pastedText) return
 
-    event.preventDefault()
     const nextState = replaceInlineSelection(value, selectionRange, pastedText)
+    pendingPasteRef.current = buildPendingPasteState(value, selectionRange, pastedText)
+
+    event.preventDefault()
     onChange(nextState.value)
     setSelectionRange(nextState.selection)
+  }
+  const handleInput = () => {
+    const editor = editorRef.current
+    const pendingPaste = pendingPasteRef.current
+    if (editor && pendingPaste) {
+      const nextValue = normalizeInlineWikilinkValue(serializeInlineNode(editor))
+      pendingPasteRef.current = null
+
+      if (shouldRecoverPendingPaste(nextValue, pendingPaste)) {
+        onChange(pendingPaste.expectedValue)
+        forceRender((current) => current + 1)
+        setSelectionRange({ ...pendingPaste.expectedSelection })
+        return
+      }
+    }
+
+    commitValueFromEditor()
   }
   const submitValue = () =>
     submitInlineValue({ onSubmit, submitOnEmpty, value, references })
@@ -237,20 +221,22 @@ export function InlineWikilinkInput({
       canSubmit: onSubmit !== undefined,
       onSubmit: submitValue,
     })
-  const editor = renderInlineEditorField({
-    value,
-    placeholder,
-    disabled,
-    inputRef: setCombinedRef,
-    dataTestId,
-    editorClassName,
-    onInput: commitValueFromEditor,
-    onKeyDown: handleKeyDown,
-    onPaste: handlePaste,
-    onSelectionChange: syncSelectionRange,
-    segments,
-    typeEntryMap,
-  })
+  const editor = (
+    <InlineWikilinkEditorField
+      value={value}
+      placeholder={placeholder}
+      disabled={disabled}
+      inputRef={setCombinedRef}
+      dataTestId={dataTestId}
+      editorClassName={editorClassName}
+      onInput={handleInput}
+      onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
+      onSelectionChange={syncSelectionRange}
+      segments={segments}
+      typeEntryMap={typeEntryMap}
+    />
+  )
   const suggestionList = renderInlineSuggestionList({
     suggestions,
     selectedSuggestionIndex,

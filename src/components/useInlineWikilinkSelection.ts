@@ -69,6 +69,7 @@ export function useInlineWikilinkSelection({
   }, [selectionRange, value])
 
   return {
+    editorRef,
     selectionRange,
     selectionIndex: selectionRange.end,
     setSelectionRange,
