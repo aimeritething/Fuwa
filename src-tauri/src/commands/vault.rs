@@ -480,7 +480,10 @@ mod tests {
 
         let result = repair_vault(vault_path.to_str().unwrap().to_string());
         assert!(result.is_ok());
-        assert_paths_exist(vault_path, &["AGENTS.md", "CLAUDE.md", "type.md", "note.md", ".gitignore"]);
+        assert_paths_exist(
+            vault_path,
+            &["AGENTS.md", "CLAUDE.md", "type.md", "note.md", ".gitignore"],
+        );
         assert_paths_absent(vault_path, &["config.md"]);
     }
 
@@ -491,7 +494,10 @@ mod tests {
 
         let result = create_empty_vault(vault_path.to_string_lossy().to_string());
         assert!(result.is_ok());
-        assert_paths_exist(&vault_path, &[".git", "AGENTS.md", "CLAUDE.md", "type.md", "note.md"]);
+        assert_paths_exist(
+            &vault_path,
+            &[".git", "AGENTS.md", "CLAUDE.md", "type.md", "note.md"],
+        );
         assert_paths_absent(&vault_path, &["config.md"]);
         assert_seeded_guidance_content(&vault_path);
         assert_seeded_type_scaffolding(&vault_path);
