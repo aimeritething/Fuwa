@@ -54,6 +54,7 @@ import {
   filterTolariaFormattingToolbarItems,
   getTolariaBlockTypeSelectItems,
 } from './tolariaEditorFormattingConfig'
+import { useBlockNoteFormattingToolbarHoverGuard } from './blockNoteFormattingToolbarHoverGuard'
 
 type TolariaBasicTextStyle = 'bold' | 'italic' | 'strike' | 'code'
 
@@ -166,6 +167,13 @@ type TolariaSelectedBlock = ReturnType<
   BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>['getTextCursorPosition']
 >['block']
 
+const FORMATTING_TOOLBAR_FILE_BLOCK_TYPES = new Set([
+  'audio',
+  'file',
+  'image',
+  'video',
+])
+
 type TolariaBlockTypeSelectOption = ReturnType<
   typeof getTolariaBlockTypeSelectItems
 >[number] & {
@@ -261,6 +269,17 @@ function getTolariaBlockTypeSelectOptions(
       iconElement: getBlockTypeItemIconElement(item),
       isSelected: isSelectedBlockTypeItem(item, firstSelectedBlock),
     }))
+}
+
+function getFormattingToolbarBridgeBlockId(
+  editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
+) {
+  const selectedBlock =
+    editor.getSelection()?.blocks[0] ?? editor.getTextCursorPosition().block
+
+  return FORMATTING_TOOLBAR_FILE_BLOCK_TYPES.has(selectedBlock.type)
+    ? selectedBlock.id
+    : null
 }
 
 function updateSelectedBlocksToType(
@@ -451,6 +470,19 @@ export function TolariaFormattingToolbarController(props: {
   })
 
   const isOpen = show || toolbarHasFocus || toolbarHovered || closeGraceActive
+  const currentBridgeBlockId = useEditorState({
+    editor,
+    selector: ({ editor }) => getFormattingToolbarBridgeBlockId(editor),
+  })
+
+  useBlockNoteFormattingToolbarHoverGuard({
+    container:
+      editor.domElement?.closest('.editor__blocknote-container') ??
+      editor.domElement ??
+      null,
+    selectedFileBlockId: currentBridgeBlockId,
+    isOpen,
+  })
 
   const position = useEditorState({
     editor,

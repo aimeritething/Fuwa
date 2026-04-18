@@ -73,6 +73,24 @@ async function seedImageBlock(page: Page) {
   return image
 }
 
+async function moveMouseInSteps(
+  page: Page,
+  from: { x: number; y: number },
+  to: { x: number; y: number },
+  { steps, stepDelayMs }: { steps: number; stepDelayMs: number },
+) {
+  await page.mouse.move(from.x, from.y)
+
+  for (let step = 1; step <= steps; step += 1) {
+    const progress = step / steps
+    await page.mouse.move(
+      from.x + (to.x - from.x) * progress,
+      from.y + (to.y - from.y) * progress,
+    )
+    await page.waitForTimeout(stepDelayMs)
+  }
+}
+
 test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(90_000)
   tempVaultDir = createFixtureVaultCopy()
@@ -86,28 +104,34 @@ test.afterEach(async () => {
 test('image toolbar stays usable while the pointer crosses onto its controls', async ({ page }) => {
   const image = await seedImageBlock(page)
 
-  await image.click()
-
   const toolbar = page.locator('.bn-formatting-toolbar')
   const replaceButton = page.getByRole('button', { name: /Replace image/i })
 
-  await expect(toolbar).toBeVisible({ timeout: 5_000 })
-  await expect(replaceButton).toBeVisible()
-
   const imageBox = await image.boundingBox()
-  const replaceButtonBox = await replaceButton.boundingBox()
-
   expect(imageBox).not.toBeNull()
-  expect(replaceButtonBox).not.toBeNull()
 
   await page.mouse.move(
     imageBox!.x + imageBox!.width / 2,
     imageBox!.y + imageBox!.height / 2,
   )
-  await page.mouse.move(
-    replaceButtonBox!.x + replaceButtonBox!.width / 2,
-    replaceButtonBox!.y + replaceButtonBox!.height / 2,
-    { steps: 16 },
+
+  await expect(toolbar).toBeVisible({ timeout: 5_000 })
+  await expect(replaceButton).toBeVisible()
+
+  const replaceButtonBox = await replaceButton.boundingBox()
+  expect(replaceButtonBox).not.toBeNull()
+
+  await moveMouseInSteps(
+    page,
+    {
+      x: imageBox!.x + imageBox!.width / 2,
+      y: imageBox!.y + imageBox!.height / 2,
+    },
+    {
+      x: replaceButtonBox!.x + replaceButtonBox!.width / 2,
+      y: replaceButtonBox!.y + replaceButtonBox!.height / 2,
+    },
+    { steps: 12, stepDelayMs: 35 },
   )
 
   await expect(toolbar).toBeVisible()
