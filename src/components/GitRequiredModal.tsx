@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { GitBranch } from '@phosphor-icons/react'
+import { OnboardingShell } from './OnboardingShell'
 
 interface GitRequiredModalProps {
   onCreateRepo: () => Promise<void>
@@ -22,8 +23,12 @@ export function GitRequiredModal({ onCreateRepo, onChooseVault }: GitRequiredMod
   }
 
   return (
-    <div className="flex h-full w-full items-center justify-center" style={{ background: 'var(--sidebar)' }}>
-      <div className="flex max-w-sm flex-col items-center gap-5 rounded-xl border border-border bg-background p-8 shadow-lg">
+    <OnboardingShell
+      style={{ background: 'var(--sidebar)' }}
+      contentClassName="w-full max-w-sm"
+      testId="git-required-shell"
+    >
+      <div className="flex flex-col items-center gap-5 rounded-xl border border-border bg-background p-8 shadow-lg">
         <GitBranch size={36} className="text-muted-foreground" />
         <h2 className="m-0 text-lg font-semibold text-foreground">Git repository required</h2>
         <p className="m-0 text-center text-[13px] leading-relaxed text-muted-foreground">
@@ -52,6 +57,6 @@ export function GitRequiredModal({ onCreateRepo, onChooseVault }: GitRequiredMod
           </button>
         </div>
       </div>
-    </div>
+    </OnboardingShell>
   )
 }

@@ -62,6 +62,42 @@ test('accepting telemetry consent on a fresh start opens the vault choice wizard
   await expect(page.getByTestId('welcome-create-new')).toBeFocused()
 })
 
+test('telemetry consent still leaves the welcome wizard fully keyboard navigable @smoke', async ({ page }) => {
+  await mockFreshStart(page, {
+    activeVault: null,
+    checkExistingPath: '/Users/mock/Documents/Getting Started',
+  })
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+
+  await expect(page.getByTestId('telemetry-decline')).toBeFocused()
+  await page.keyboard.press('Tab')
+  await expect(page.getByTestId('telemetry-accept')).toBeFocused()
+  await page.keyboard.press('Enter')
+
+  await expect(page.getByTestId('welcome-screen')).toBeVisible()
+  await expect(page.getByTestId('welcome-create-new')).toBeFocused()
+
+  await page.keyboard.press('Tab')
+  await expect(page.getByTestId('welcome-open-folder')).toBeFocused()
+
+  let dialogHandled = false
+  page.once('dialog', async (dialog) => {
+    expect(dialog.message()).toContain('Open vault folder')
+    await dialog.dismiss()
+    dialogHandled = true
+  })
+  await page.keyboard.press('Enter')
+  await expect.poll(() => dialogHandled).toBe(true)
+
+  await expect(page.getByTestId('welcome-screen')).toBeVisible()
+
+  await page.keyboard.press('Tab')
+  await expect(page.getByTestId('welcome-create-vault')).toBeFocused()
+  await page.keyboard.press('Shift+Tab')
+  await expect(page.getByTestId('welcome-open-folder')).toBeFocused()
+})
+
 for (const action of ['accept', 'decline'] as const) {
   test(`${action} telemetry still resumes onboarding with only a remembered default vault @smoke`, async ({ page }) => {
     await mockFreshStart(page, {

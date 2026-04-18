@@ -2,6 +2,12 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { GitRequiredModal } from './GitRequiredModal'
 
+const dragRegionMouseDown = vi.fn()
+
+vi.mock('../hooks/useDragRegion', () => ({
+  useDragRegion: () => ({ onMouseDown: dragRegionMouseDown }),
+}))
+
 describe('GitRequiredModal', () => {
   it('renders title and explanation', () => {
     render(<GitRequiredModal onCreateRepo={vi.fn()} onChooseVault={vi.fn()} />)
@@ -47,5 +53,15 @@ describe('GitRequiredModal', () => {
     await waitFor(() => {
       expect(screen.getByText(/Permission denied/)).toBeInTheDocument()
     })
+  })
+
+  it('uses the surrounding surface as a drag region and excludes the card', () => {
+    render(<GitRequiredModal onCreateRepo={vi.fn()} onChooseVault={vi.fn()} />)
+
+    const shell = screen.getByTestId('git-required-shell')
+    fireEvent.mouseDown(shell)
+
+    expect(dragRegionMouseDown).toHaveBeenCalledOnce()
+    expect(shell.querySelector('[data-no-drag]')).not.toBeNull()
   })
 })

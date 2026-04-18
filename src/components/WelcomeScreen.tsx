@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { FolderOpen, Plus, AlertTriangle, Loader2, Rocket } from 'lucide-react'
-import { useDragRegion } from '../hooks/useDragRegion'
+import { OnboardingShell } from './OnboardingShell'
 
 interface WelcomeScreenProps {
   mode: 'welcome' | 'vault-missing'
@@ -26,17 +26,8 @@ interface WelcomeScreenPresentation {
   title: string
 }
 
-const CONTAINER_STYLE: React.CSSProperties = {
-  width: '100%',
-  height: '100%',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-  background: 'var(--sidebar)',
-}
-
 const CARD_STYLE: React.CSSProperties = {
-  width: 520,
+  width: 'min(520px, 100%)',
   background: 'var(--background)',
   borderRadius: 12,
   border: '1px solid var(--border)',
@@ -248,11 +239,14 @@ export function WelcomeScreen({
 }: WelcomeScreenProps) {
   const busy = creatingAction !== null
   const presentation = getWelcomeScreenPresentation(mode, defaultVaultPath, isOffline)
-  const { onMouseDown } = useDragRegion()
 
   return (
-    <div style={CONTAINER_STYLE} data-testid="welcome-screen" onMouseDown={onMouseDown}>
-      <div style={CARD_STYLE} data-no-drag>
+    <OnboardingShell
+      style={{ background: 'var(--sidebar)' }}
+      contentStyle={CARD_STYLE}
+      testId="welcome-screen"
+    >
+      <>
         <div
           style={{
             ...ICON_WRAP_STYLE,
@@ -333,7 +327,7 @@ export function WelcomeScreen({
             )}
           </div>
         )}
-      </div>
-    </div>
+      </>
+    </OnboardingShell>
   )
 }

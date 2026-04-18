@@ -1,4 +1,5 @@
 import { ShieldCheck } from '@phosphor-icons/react'
+import { OnboardingShell } from './OnboardingShell'
 
 interface TelemetryConsentDialogProps {
   onAccept: () => void
@@ -7,14 +8,21 @@ interface TelemetryConsentDialogProps {
 
 export function TelemetryConsentDialog({ onAccept, onDecline }: TelemetryConsentDialogProps) {
   return (
-    <div
-      className="fixed inset-0 flex items-center justify-center z-50"
+    <OnboardingShell
+      className="fixed inset-0 z-50"
+      contentClassName="w-full rounded-lg border border-border bg-background shadow-xl"
       style={{ background: 'rgba(0,0,0,0.4)' }}
+      contentStyle={{
+        width: 'min(440px, 100%)',
+        padding: 32,
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 20,
+        alignItems: 'center',
+      }}
+      testId="telemetry-consent-shell"
     >
-      <div
-        className="bg-background border border-border rounded-lg shadow-xl"
-        style={{ width: 440, padding: 32, display: 'flex', flexDirection: 'column', gap: 20, alignItems: 'center' }}
-      >
+      <>
         <ShieldCheck size={40} weight="duotone" style={{ color: 'var(--primary)' }} />
 
         <div style={{ textAlign: 'center' }}>
@@ -63,7 +71,7 @@ export function TelemetryConsentDialog({ onAccept, onDecline }: TelemetryConsent
         <p style={{ fontSize: 11, color: 'var(--muted-foreground)', margin: 0, textAlign: 'center' }}>
           You can change this anytime in Settings.
         </p>
-      </div>
-    </div>
+      </>
+    </OnboardingShell>
   )
 }
