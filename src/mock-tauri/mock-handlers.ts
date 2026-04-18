@@ -372,7 +372,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     // In mock mode, the demo-vault-v2 path always "exists"
     return args.path.includes('demo-vault-v2')
   },
-  create_empty_vault: (args: { target_path: string }) => args.target_path || '/Users/mock/Documents/My Vault',
+  create_empty_vault: (args: { targetPath?: string; target_path?: string }) => args.targetPath || args.target_path || '/Users/mock/Documents/My Vault',
   create_getting_started_vault: (args: { targetPath?: string | null }) => args.targetPath || '/Users/mock/Documents/Getting Started',
   register_mcp_tools: () => 'registered',
   check_mcp_status: () => 'installed',

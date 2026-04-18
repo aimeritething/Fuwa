@@ -239,7 +239,7 @@ describe('useOnboarding', () => {
 
     await expectStatus(result, 'welcome')
     await act(async () => {
-      await result.current.handleCreateNewVault()
+      await result.current.handleCreateEmptyVault()
     })
 
     expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/new/vault' })
@@ -248,7 +248,7 @@ describe('useOnboarding', () => {
 
   it('does nothing when the empty-vault picker is cancelled', async () => {
     await expectCancelledPickerLeavesWelcome(async (onboarding) => {
-      await onboarding.handleCreateNewVault()
+      await onboarding.handleCreateEmptyVault()
     })
   })
 

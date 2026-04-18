@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, Check, FolderOpen, GitBranch, Rocket, X } from 'lucide-react'
+import { AlertTriangle, Check, FolderOpen, GitBranch, Plus, Rocket, X } from 'lucide-react'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { Button } from '@/components/ui/button'
 import type { VaultOption } from './types'
@@ -11,6 +11,7 @@ interface VaultMenuProps {
   vaultPath: string
   onSwitchVault: (path: string) => void
   onOpenLocalFolder?: () => void
+  onCreateEmptyVault?: () => void
   onCloneVault?: () => void
   onCloneGettingStarted?: () => void
   onRemoveVault?: (path: string) => void
@@ -42,11 +43,23 @@ interface VaultAction {
 }
 
 function buildVaultActions({
+  onCreateEmptyVault,
   onCloneGettingStarted,
   onCloneVault,
   onOpenLocalFolder,
-}: Pick<VaultMenuProps, 'onCloneGettingStarted' | 'onCloneVault' | 'onOpenLocalFolder'>): VaultAction[] {
+}: Pick<VaultMenuProps, 'onCreateEmptyVault' | 'onCloneGettingStarted' | 'onCloneVault' | 'onOpenLocalFolder'>): VaultAction[] {
   const items: VaultAction[] = []
+
+  if (onCreateEmptyVault) {
+    items.push({
+      key: 'create-empty',
+      icon: <Plus size={12} />,
+      label: 'Create empty vault',
+      testId: 'vault-menu-create-empty',
+      accent: true,
+      onClick: onCreateEmptyVault,
+    })
+  }
 
   if (onOpenLocalFolder) {
     items.push({
@@ -158,6 +171,7 @@ export function VaultMenu({
   vaultPath,
   onSwitchVault,
   onOpenLocalFolder,
+  onCreateEmptyVault,
   onCloneVault,
   onCloneGettingStarted,
   onRemoveVault,
@@ -171,11 +185,12 @@ export function VaultMenu({
 
   const actions = useMemo<VaultAction[]>(() => {
     return buildVaultActions({
+      onCreateEmptyVault,
       onCloneGettingStarted,
       onCloneVault,
       onOpenLocalFolder,
     })
-  }, [onCloneGettingStarted, onCloneVault, onOpenLocalFolder])
+  }, [onCreateEmptyVault, onCloneGettingStarted, onCloneVault, onOpenLocalFolder])
 
   return (
     <div ref={menuRef} style={{ position: 'relative' }}>

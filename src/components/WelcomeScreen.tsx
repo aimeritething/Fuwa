@@ -9,7 +9,7 @@ interface WelcomeScreenProps {
   defaultVaultPath: string
   onCreateVault: () => void
   onRetryCreateVault: () => void
-  onCreateNewVault: () => void
+  onCreateEmptyVault: () => void
   onOpenFolder: () => void
   isOffline: boolean
   creatingAction: 'template' | 'empty' | null
@@ -230,7 +230,7 @@ export function WelcomeScreen({
   defaultVaultPath,
   onCreateVault,
   onRetryCreateVault,
-  onCreateNewVault,
+  onCreateEmptyVault,
   onOpenFolder,
   isOffline,
   creatingAction,
@@ -269,11 +269,11 @@ export function WelcomeScreen({
           <OptionButton
             icon={<Plus size={18} style={{ color: 'var(--accent-blue)' }} />}
             iconBg="var(--accent-blue-light, #EBF4FF)"
-            label="Create a new vault"
-            description="Start fresh in a folder you choose"
+            label="Create empty vault"
+            description="Start fresh in an empty folder with Tolaria defaults"
             loadingLabel="Creating vault…"
-            loadingDescription="Preparing an empty vault in the selected folder"
-            onClick={onCreateNewVault}
+            loadingDescription="Preparing Tolaria defaults in the selected folder"
+            onClick={onCreateEmptyVault}
             disabled={busy}
             loading={creatingAction === 'empty'}
             testId="welcome-create-new"

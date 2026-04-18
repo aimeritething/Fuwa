@@ -29,4 +29,21 @@ describe('buildSettingsCommands', () => {
       enabled: true,
     })
   })
+
+  it('adds a create-empty-vault command when the handler is available', () => {
+    const onOpenSettings = vi.fn()
+    const onCreateEmptyVault = vi.fn()
+
+    const commands = buildSettingsCommands({ onOpenSettings, onCreateEmptyVault })
+    const command = commands.find((item) => item.id === 'create-empty-vault')
+
+    expect(command).toMatchObject({
+      label: 'Create Empty Vault…',
+      enabled: true,
+      group: 'Settings',
+    })
+
+    command?.execute()
+    expect(onCreateEmptyVault).toHaveBeenCalledTimes(1)
+  })
 })

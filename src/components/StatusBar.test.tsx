@@ -154,6 +154,24 @@ describe('StatusBar', () => {
     expect(onOpenLocalFolder).toHaveBeenCalledOnce()
   })
 
+  it('shows "Create empty vault" option in vault menu', () => {
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onCreateEmptyVault={vi.fn()} />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
+    expect(screen.getByText('Create empty vault')).toBeInTheDocument()
+  })
+
+  it('calls onCreateEmptyVault when clicking "Create empty vault"', () => {
+    const onCreateEmptyVault = vi.fn()
+    render(
+      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onCreateEmptyVault={onCreateEmptyVault} />
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
+    fireEvent.click(screen.getByText('Create empty vault'))
+    expect(onCreateEmptyVault).toHaveBeenCalledOnce()
+  })
+
   it('shows add-vault options in vault menu', () => {
     render(
       <StatusBar
@@ -161,11 +179,13 @@ describe('StatusBar', () => {
         vaultPath="/Users/luca/Laputa"
         vaults={vaults}
         onSwitchVault={vi.fn()}
+        onCreateEmptyVault={vi.fn()}
         onOpenLocalFolder={vi.fn()}
         onCloneVault={vi.fn()}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
+    expect(screen.getByText('Create empty vault')).toBeInTheDocument()
     expect(screen.getByText('Open local folder')).toBeInTheDocument()
     expect(screen.getByText('Clone Git repo')).toBeInTheDocument()
   })

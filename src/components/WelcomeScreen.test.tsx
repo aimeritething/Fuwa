@@ -13,7 +13,7 @@ const defaultProps = {
   defaultVaultPath: '~/Documents/Laputa',
   onCreateVault: vi.fn(),
   onRetryCreateVault: vi.fn(),
-  onCreateNewVault: vi.fn(),
+  onCreateEmptyVault: vi.fn(),
   onOpenFolder: vi.fn(),
   isOffline: false,
   creatingAction: null as 'template' | 'empty' | null,
@@ -35,7 +35,7 @@ describe('WelcomeScreen', () => {
 
     it('shows all three option buttons', () => {
       render(<WelcomeScreen {...defaultProps} />)
-      expect(screen.getByTestId('welcome-create-new')).toHaveTextContent('Create a new vault')
+      expect(screen.getByTestId('welcome-create-new')).toHaveTextContent('Create empty vault')
       expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Open existing vault')
       expect(screen.getByTestId('welcome-create-vault')).toHaveTextContent('Get started with a template')
     })
@@ -56,11 +56,11 @@ describe('WelcomeScreen', () => {
       expect(screen.getByText(/Requires internet — clone later/)).toBeInTheDocument()
     })
 
-    it('calls onCreateNewVault when create new button is clicked', () => {
-      const onCreateNewVault = vi.fn()
-      render(<WelcomeScreen {...defaultProps} onCreateNewVault={onCreateNewVault} />)
+    it('calls onCreateEmptyVault when create empty button is clicked', () => {
+      const onCreateEmptyVault = vi.fn()
+      render(<WelcomeScreen {...defaultProps} onCreateEmptyVault={onCreateEmptyVault} />)
       fireEvent.click(screen.getByTestId('welcome-create-new'))
-      expect(onCreateNewVault).toHaveBeenCalledOnce()
+      expect(onCreateEmptyVault).toHaveBeenCalledOnce()
     })
 
     it('calls onCreateVault when template button is clicked', () => {

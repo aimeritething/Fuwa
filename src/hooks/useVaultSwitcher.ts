@@ -359,6 +359,21 @@ function formatGettingStartedRestoreError(err: unknown): string {
   return `Could not prepare Getting Started vault: ${message}`
 }
 
+function formatCreateEmptyVaultError(err: unknown): string {
+  const message =
+    typeof err === 'string'
+      ? err
+      : err instanceof Error
+        ? err.message
+        : `${err}`
+
+  if (message.includes('Choose an empty folder')) {
+    return message
+  }
+
+  return `Could not create empty vault: ${message}`
+}
+
 async function ensureGettingStartedVaultReady(path: string): Promise<void> {
   const exists = await tauriCall<boolean>('check_vault_exists', { path })
   if (!exists) {
@@ -505,6 +520,25 @@ function useOpenLocalFolderAction(
   }, [addAndSwitch, onToastRef])
 }
 
+function useCreateEmptyVaultAction(
+  addAndSwitch: (path: string, label: string) => void,
+  onToastRef: MutableRefObject<(msg: string) => void>,
+) {
+  return useCallback(async () => {
+    try {
+      const targetPath = await pickFolder('Choose where to create your vault')
+      if (!targetPath) return
+
+      const vaultPath = await tauriCall<string>('create_empty_vault', { targetPath })
+      const label = labelFromPath({ path: vaultPath })
+      addAndSwitch(vaultPath, label)
+      onToastRef.current(`Vault "${label}" created and opened`)
+    } catch (err) {
+      onToastRef.current(formatCreateEmptyVaultError(err))
+    }
+  }, [addAndSwitch, onToastRef])
+}
+
 function useRemoveVaultAction({
   defaultVaults,
   extraVaults,
@@ -589,6 +623,7 @@ function useVaultActions({
   }, [addVault, switchVault])
 
   return {
+    handleCreateEmptyVault: useCreateEmptyVaultAction(addAndSwitch, onToastRef),
     handleOpenLocalFolder: useOpenLocalFolderAction(addAndSwitch, onToastRef),
     handleVaultCloned: useVaultClonedAction(addAndSwitch, onToastRef),
     removeVault: useRemoveVaultAction({
@@ -656,7 +691,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
     hiddenDefaults,
     extraVaults,
   )
-  const { handleOpenLocalFolder, handleVaultCloned, removeVault, restoreGettingStarted, switchVault } = useVaultActions({
+  const { handleCreateEmptyVault, handleOpenLocalFolder, handleVaultCloned, removeVault, restoreGettingStarted, switchVault } = useVaultActions({
     ...persistedState,
     allVaults,
     defaultVaults,
@@ -668,6 +703,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
   return {
     allVaults,
     defaultPath,
+    handleCreateEmptyVault,
     handleOpenLocalFolder,
     handleVaultCloned,
     isGettingStartedHidden,

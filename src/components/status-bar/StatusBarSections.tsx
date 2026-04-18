@@ -35,6 +35,7 @@ interface StatusBarPrimarySectionProps {
   vaults: VaultOption[]
   onSwitchVault: (path: string) => void
   onOpenLocalFolder?: () => void
+  onCreateEmptyVault?: () => void
   onCloneVault?: () => void
   onCloneGettingStarted?: () => void
   onClickPending?: () => void
@@ -77,6 +78,7 @@ export function StatusBarPrimarySection({
   vaults,
   onSwitchVault,
   onOpenLocalFolder,
+  onCreateEmptyVault,
   onCloneVault,
   onCloneGettingStarted,
   onClickPending,
@@ -111,6 +113,7 @@ export function StatusBarPrimarySection({
         vaultPath={vaultPath}
         onSwitchVault={onSwitchVault}
         onOpenLocalFolder={onOpenLocalFolder}
+        onCreateEmptyVault={onCreateEmptyVault}
         onCloneVault={onCloneVault}
         onCloneGettingStarted={onCloneGettingStarted}
         onRemoveVault={onRemoveVault}

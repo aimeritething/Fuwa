@@ -21,6 +21,7 @@ interface StatusBarProps {
   onSwitchVault: (path: string) => void
   onOpenSettings?: () => void
   onOpenLocalFolder?: () => void
+  onCreateEmptyVault?: () => void
   onCloneVault?: () => void
   onCloneGettingStarted?: () => void
   onClickPending?: () => void
@@ -60,6 +61,7 @@ export function StatusBar({
   onSwitchVault,
   onOpenSettings,
   onOpenLocalFolder,
+  onCreateEmptyVault,
   onCloneVault,
   onCloneGettingStarted,
   onClickPending,
@@ -121,6 +123,7 @@ export function StatusBar({
           vaults={vaults}
           onSwitchVault={onSwitchVault}
           onOpenLocalFolder={onOpenLocalFolder}
+          onCreateEmptyVault={onCreateEmptyVault}
           onCloneVault={onCloneVault}
           onCloneGettingStarted={onCloneGettingStarted}
           onClickPending={onClickPending}

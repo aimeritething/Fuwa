@@ -131,7 +131,7 @@ export function useOnboarding(
     await createTemplateVault(lastTemplatePath)
   }, [createTemplateVault, lastTemplatePath])
 
-  const handleCreateNewVault = useCallback(async () => {
+  const handleCreateEmptyVault = useCallback(async () => {
     try {
       setError(null)
       const path = await pickFolder('Choose where to create your vault')
@@ -174,7 +174,7 @@ export function useOnboarding(
     canRetryTemplate: !!error && !!lastTemplatePath && creatingAction === null,
     handleCreateVault,
     retryCreateVault,
-    handleCreateNewVault,
+    handleCreateEmptyVault,
     handleOpenFolder,
     handleDismiss,
     userReadyVaultPath,

@@ -121,11 +121,34 @@ fn ensure_missing_folder(folder_path: &std::path::Path, folder_name: &str) -> Re
 }
 
 fn initialize_empty_vault(vault_dir: &std::path::Path, vault_path: &str) -> Result<(), String> {
+    ensure_directory_is_missing_or_empty(vault_dir)?;
     std::fs::create_dir_all(vault_dir)
         .map_err(|e| format!("Failed to create vault directory: {}", e))?;
 
     git::init_repo(vault_path)?;
     vault::seed_config_files(vault_path);
+    Ok(())
+}
+
+fn ensure_directory_is_missing_or_empty(vault_dir: &std::path::Path) -> Result<(), String> {
+    if !vault_dir.exists() {
+        return Ok(());
+    }
+
+    let metadata = std::fs::metadata(vault_dir)
+        .map_err(|e| format!("Failed to inspect target folder: {e}"))?;
+    if !metadata.is_dir() {
+        return Err("Choose a folder path for the new vault".to_string());
+    }
+
+    let has_entries = std::fs::read_dir(vault_dir)
+        .map_err(|e| format!("Failed to inspect target folder: {e}"))?
+        .next()
+        .is_some();
+    if has_entries {
+        return Err("Choose an empty folder to create a new vault".to_string());
+    }
+
     Ok(())
 }
 
@@ -441,10 +464,28 @@ mod tests {
         assert!(result.is_ok());
         assert!(vault_path.join(".git").exists());
         assert!(vault_path.join("AGENTS.md").exists());
+        assert!(vault_path.join("CLAUDE.md").exists());
         assert!(vault_path.join("config.md").exists());
+        assert!(vault_path.join("note.md").exists());
 
         let agents = std::fs::read_to_string(vault_path.join("AGENTS.md")).unwrap();
         assert!(agents.contains("Legacy `title:` frontmatter is still read as a fallback"));
         assert!(agents.contains("views/*.yml"));
+    }
+
+    #[test]
+    fn test_create_empty_vault_rejects_nonempty_target() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path().join("existing-folder");
+        std::fs::create_dir_all(&vault_path).unwrap();
+        std::fs::write(vault_path.join("keep.txt"), "keep").unwrap();
+
+        let result = create_empty_vault(vault_path.to_string_lossy().to_string());
+        let err = result.expect_err("expected non-empty folder to be rejected");
+
+        assert_eq!(err, "Choose an empty folder to create a new vault");
+        assert!(vault_path.join("keep.txt").exists());
+        assert!(!vault_path.join(".git").exists());
+        assert!(!vault_path.join("AGENTS.md").exists());
     }
 }

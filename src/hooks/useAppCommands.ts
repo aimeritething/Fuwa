@@ -51,6 +51,7 @@ interface AppCommandsConfig {
   canGoBack?: boolean
   canGoForward?: boolean
   onOpenVault?: () => void
+  onCreateEmptyVault?: () => void
   onCreateType?: () => void
   onToggleAIChat?: () => void
   onCheckForUpdates?: () => void
@@ -185,6 +186,7 @@ function createCommandRegistryConfig(config: AppCommandsConfig): Parameters<type
     onToggleRawEditor: config.onToggleRawEditor,
     onToggleAIChat: config.onToggleAIChat,
     onOpenVault: config.onOpenVault,
+    onCreateEmptyVault: config.onCreateEmptyVault,
     activeNoteModified: config.activeNoteModified,
     onZoomIn: config.onZoomIn,
     onZoomOut: config.onZoomOut,
