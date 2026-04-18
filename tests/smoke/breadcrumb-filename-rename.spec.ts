@@ -57,7 +57,7 @@ async function setRawEditorContent(page: Page, content: string) {
   }, content)
 }
 
-test('breadcrumb sync button and inline rename keep the file path aligned with H1 title changes', async ({ page }) => {
+test('@smoke Cmd+S preserves the existing filename until the explicit breadcrumb sync action', async ({ page }) => {
   const syncedPath = path.join(tempVaultDir, 'note', 'breadcrumb-sync-target.md')
   const manuallyRenamedPath = path.join(tempVaultDir, 'note', 'manual-breadcrumb-name.md')
   const originalPath = path.join(tempVaultDir, 'note', 'note-b.md')

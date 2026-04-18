@@ -488,6 +488,30 @@ describe('useAppSave', () => {
     expect(deps.handleRenameNote).not.toHaveBeenCalled()
   })
 
+  it('does not rename an existing markdown note when Cmd+S saves a desynced H1/title state', async () => {
+    vi.mocked(isTauri).mockReturnValue(true)
+
+    const notePath = '/vault/note-b.md'
+    const noteContent = '# Breadcrumb Sync Target\n\nBody'
+    const entry = makeEntry(notePath, 'Breadcrumb Sync Target', 'note-b.md')
+
+    const { result } = renderSave({
+      tabs: [{ entry, content: noteContent }],
+      activeTabPath: notePath,
+      unsavedPaths: new Set([notePath]),
+    })
+
+    await act(async () => {
+      await result.current.handleSave()
+    })
+
+    expect(vi.mocked(invoke)).toHaveBeenCalledWith('save_note_content', {
+      path: notePath,
+      content: noteContent,
+    })
+    expect(deps.handleRenameNote).not.toHaveBeenCalled()
+  })
+
   it('remaps a buffered auto-save to the renamed path when untitled rename lands mid-idle window', async () => {
     const initialContent = '# Fresh Title\n\nInitial body'
     const bufferedContent = '# Fresh Title\n\nBody typed right before rename'

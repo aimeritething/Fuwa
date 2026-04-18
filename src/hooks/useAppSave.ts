@@ -1,7 +1,6 @@
 import { startTransition, useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { useEditorSaveWithLinks } from './useEditorSaveWithLinks'
-import { needsRenameOnSave } from './useNoteRename'
 import { flushEditorContent } from '../utils/autoSave'
 import { extractH1TitleFromContent } from '../utils/noteTitle'
 import { isTauri } from '../mock-tauri'
@@ -75,20 +74,6 @@ function findUnsavedFallback({
   const activeTab = tabs.find(t => t.entry.path === activeTabPath)
   if (!activeTab || !unsavedPaths.has(activeTab.entry.path)) return undefined
   return { path: activeTab.entry.path, content: activeTab.content }
-}
-
-function activeTabNeedsRename({
-  tabs,
-  activeTabPath,
-}: {
-  tabs: TabState[]
-  activeTabPath: string | null
-}): { path: string; title: string } | null {
-  const activeTab = tabs.find(t => t.entry.path === activeTabPath)
-  if (!activeTab) return null
-  return needsRenameOnSave(activeTab.entry.title, activeTab.entry.filename)
-    ? { path: activeTab.entry.path, title: activeTab.entry.title }
-    : null
 }
 
 function isUntitledRenameCandidate(path: string): boolean {
@@ -546,16 +531,6 @@ function useRenameHandlers({
   replaceRenamedEntry: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void
   loadModifiedFiles: AppSaveDeps['loadModifiedFiles']
 }) {
-  const handleRenameTab = useCallback(async (path: string, newTitle: string) => {
-    const currentPath = await preparePathForManualRename({
-      path,
-      resolveCurrentPath,
-      savePendingForPath,
-      cancelPendingUntitledRename,
-    })
-    await handleRenameNote(currentPath, newTitle, resolvedPath, replaceRenamedEntry).then(loadModifiedFiles)
-  }, [resolveCurrentPath, savePendingForPath, cancelPendingUntitledRename, handleRenameNote, resolvedPath, replaceRenamedEntry, loadModifiedFiles])
-
   const handleFilenameRename = useCallback(async (path: string, newFilenameStem: string) => {
     const currentPath = await preparePathForManualRename({
       path,
@@ -578,12 +553,11 @@ function useRenameHandlers({
       .catch((err) => console.error('Title rename failed:', err))
   }, [resolveCurrentPath, savePendingForPath, cancelPendingUntitledRename, handleRenameNote, resolvedPath, replaceRenamedEntry, loadModifiedFiles])
 
-  return { handleRenameTab, handleFilenameRename, handleTitleSync }
+  return { handleFilenameRename, handleTitleSync }
 }
 
 function useHandleSaveAction({
   handleSaveRaw,
-  handleRenameTab,
   tabs,
   activeTabPath,
   unsavedPaths,
@@ -591,7 +565,6 @@ function useHandleSaveAction({
   resolveCurrentPath,
 }: {
   handleSaveRaw: (unsavedFallback?: { path: string; content: string }) => Promise<void>
-  handleRenameTab: (path: string, newTitle: string) => Promise<void>
   tabs: TabState[]
   activeTabPath: string | null
   unsavedPaths: Set<string>
@@ -605,10 +578,8 @@ function useHandleSaveAction({
       activeTabPath: resolvedActiveTabPath,
       unsavedPaths,
     }))
-    const flushedUntitledRename = await flushPendingUntitledRename(resolvedActiveTabPath ?? undefined)
-    const rename = activeTabNeedsRename({ tabs, activeTabPath: resolvedActiveTabPath })
-    if (!flushedUntitledRename && rename) await handleRenameTab(rename.path, rename.title)
-  }, [handleSaveRaw, handleRenameTab, tabs, activeTabPath, unsavedPaths, flushPendingUntitledRename, resolveCurrentPath])
+    await flushPendingUntitledRename(resolvedActiveTabPath ?? undefined)
+  }, [handleSaveRaw, tabs, activeTabPath, unsavedPaths, flushPendingUntitledRename, resolveCurrentPath])
 }
 
 function useEditorPersistence({
@@ -741,7 +712,7 @@ function useAppSaveHandlers({
     setToastMessage,
     flushPendingUntitledRename,
   })
-  const { handleRenameTab, handleFilenameRename, handleTitleSync } = useRenameHandlers({
+  const { handleFilenameRename, handleTitleSync } = useRenameHandlers({
     resolveCurrentPath,
     savePendingForPath,
     cancelPendingUntitledRename,
@@ -753,7 +724,6 @@ function useAppSaveHandlers({
   })
   const handleSave = useHandleSaveAction({
     handleSaveRaw,
-    handleRenameTab,
     tabs,
     activeTabPath,
     unsavedPaths,
