@@ -280,6 +280,11 @@ describe('App', () => {
   })
 
   it('defaults to All Notes when explicit organization is disabled in vault config', async () => {
+    mockCommandResults.load_vault_list = {
+      vaults: [{ label: 'Getting Started', path: '/Users/mock/Documents/Getting Started' }],
+      active_vault: '/Users/mock/Documents/Getting Started',
+      hidden_defaults: [],
+    }
     const disabledWorkflowConfig = JSON.stringify({
       zoom: null,
       view_mode: null,
