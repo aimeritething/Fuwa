@@ -56,6 +56,7 @@ test.describe('Wikilink insertion and navigation', () => {
     await editor.click()
     await page.keyboard.press('End')
     await page.keyboard.press('Enter')
+    await page.waitForTimeout(200)
     await page.keyboard.type('[[Ma')
     await page.waitForTimeout(800)
 
