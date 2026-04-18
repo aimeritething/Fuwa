@@ -35,23 +35,36 @@ export function extractEditorBody(rawFileContent: string): string {
   return rawBody.trimStart()
 }
 
-/** Extract H1 text from the editor's first block, or null if not an H1. */
-export function getH1TextFromBlocks(blocks: unknown[]): string | null {
+type HeadingTextInline = { type?: string; text?: string }
+
+function extractH1Content(blocks: unknown[]): HeadingTextInline[] | null {
   const first = blocks?.[0] as {
     type?: string
     props?: { level?: number }
-    content?: Array<{ type?: string; text?: string }>
+    content?: HeadingTextInline[]
   } | undefined
-  const content = first?.type === 'heading' && first.props?.level === 1 && Array.isArray(first.content)
-    ? first.content
-    : null
+
+  if (!first) return null
+  if (first.type !== 'heading') return null
+  if (first.props?.level !== 1) return null
+  if (!Array.isArray(first.content)) return null
+  return first.content
+}
+
+/** Extract H1 text from the editor's first block, or null if not an H1. */
+export function getH1TextFromBlocks(blocks: unknown[]): string | null {
+  const content = extractH1Content(blocks)
   if (!content) return null
 
-  const text = content
-    .filter(item => item.type === 'text')
-    .map(item => item.text || '')
-    .join('')
-  return text.trim() || null
+  let text = ''
+  for (const item of content) {
+    if (item.type === 'text') {
+      text += item.text || ''
+    }
+  }
+
+  const trimmed = text.trim()
+  return trimmed || null
 }
 
 /** Replace the title: line in YAML frontmatter with a new title value. */
@@ -274,9 +287,11 @@ function normalizeTabBody(content: string): string {
 }
 
 function renameBodiesOverlap(currentBody: string, nextBody: string): boolean {
-  return currentBody === nextBody
-    || currentBody.startsWith(nextBody)
-    || nextBody.startsWith(currentBody)
+  const current = currentBody.trimEnd()
+  const next = nextBody.trimEnd()
+  return current === next
+    || current.startsWith(next)
+    || next.startsWith(current)
 }
 
 function isUntitledRenameTransition(
@@ -377,21 +392,52 @@ function cachePreviousTabOnPathChange(options: {
   cacheEditorState(cache, prevPath, editor.document)
 }
 
-function rememberPendingTabArrival(
+function shouldWaitForActiveTab(
+  pathChanged: boolean,
   activeTabPath: string | null,
   activeTab: Tab | undefined,
-  pendingTabArrivalPathRef: MutableRefObject<string | null>,
 ) {
-  if (!activeTabPath) {
-    pendingTabArrivalPathRef.current = null
+  return pathChanged && !!activeTabPath && !activeTab
+}
+
+function syncActivePathTransition(options: {
+  prevPath: string | null
+  pathChanged: boolean
+  activeTabPath: string | null
+  activeTab: Tab | undefined
+  cache: Map<string, CachedTabState>
+  editor: ReturnType<typeof useCreateBlockNote>
+  editorMountedRef: MutableRefObject<boolean>
+  prevActivePathRef: MutableRefObject<string | null>
+}) {
+  const {
+    prevPath,
+    pathChanged,
+    activeTabPath,
+    activeTab,
+    cache,
+    editor,
+    editorMountedRef,
+    prevActivePathRef,
+  } = options
+
+  cachePreviousTabOnPathChange({ prevPath, pathChanged, editorMountedRef, cache, editor })
+  if (shouldWaitForActiveTab(pathChanged, activeTabPath, activeTab)) return true
+
+  if (!preserveUntitledRenameState({
+    prevPath,
+    activeTabPath,
+    activeTab,
+    cache,
+    editor,
+    editorMountedRef,
+  })) {
+    prevActivePathRef.current = activeTabPath
     return false
   }
-  if (activeTab) {
-    pendingTabArrivalPathRef.current = null
-    return true
-  }
-  pendingTabArrivalPathRef.current = activeTabPath
-  return false
+
+  prevActivePathRef.current = activeTabPath
+  return true
 }
 
 function handleStableActivePath(options: {
@@ -399,7 +445,6 @@ function handleStableActivePath(options: {
   rawModeJustEnded: boolean
   activeTabPath: string | null
   activeTab: Tab | undefined
-  pendingTabArrival: boolean
   cache: Map<string, CachedTabState>
   editor: ReturnType<typeof useCreateBlockNote>
   editorMountedRef: MutableRefObject<boolean>
@@ -410,7 +455,6 @@ function handleStableActivePath(options: {
     rawModeJustEnded,
     activeTabPath,
     activeTab,
-    pendingTabArrival,
     cache,
     editor,
     editorMountedRef,
@@ -423,7 +467,6 @@ function handleStableActivePath(options: {
     rawSwapPendingRef.current = true
     return false
   }
-  if (pendingTabArrival) return false
   if (rawSwapPendingRef.current) return true
 
   cacheStableActivePath({
@@ -638,7 +681,7 @@ function scheduleTabSwap(options: {
   pendingSwapRef.current = doSwap
 }
 
-function useTabSwapEffect(options: {
+function runTabSwapEffect(options: {
   tabs: Tab[]
   activeTabPath: string | null
   editor: ReturnType<typeof useCreateBlockNote>
@@ -647,7 +690,6 @@ function useTabSwapEffect(options: {
   prevActivePathRef: MutableRefObject<string | null>
   editorMountedRef: MutableRefObject<boolean>
   pendingSwapRef: MutableRefObject<(() => void) | null>
-  pendingTabArrivalPathRef: MutableRefObject<string | null>
   prevRawModeRef: MutableRefObject<boolean>
   rawSwapPendingRef: MutableRefObject<boolean>
   suppressChangeRef: MutableRefObject<boolean>
@@ -661,64 +703,96 @@ function useTabSwapEffect(options: {
     prevActivePathRef,
     editorMountedRef,
     pendingSwapRef,
-    pendingTabArrivalPathRef,
+    prevRawModeRef,
+    rawSwapPendingRef,
+    suppressChangeRef,
+  } = options
+
+  const cache = tabCacheRef.current
+  const prevPath = prevActivePathRef.current
+  const pathChanged = prevPath !== activeTabPath
+  const activeTab = findActiveTab(tabs, activeTabPath)
+  const rawModeJustEnded = consumeRawModeTransition(prevRawModeRef, rawMode)
+
+  if (rawMode) return
+  if (syncActivePathTransition({
+    prevPath,
+    pathChanged,
+    activeTabPath,
+    activeTab,
+    cache,
+    editor,
+    editorMountedRef,
+    prevActivePathRef,
+  })) {
+    return
+  }
+
+  if (handleStableActivePath({
+    pathChanged,
+    rawModeJustEnded,
+    activeTabPath,
+    activeTab,
+    cache,
+    editor,
+    editorMountedRef,
+    rawSwapPendingRef,
+  })) {
+    return
+  }
+
+  if (!activeTabPath || !activeTab) return
+
+  scheduleTabSwap({
+    editor,
+    cache,
+    targetPath: activeTabPath,
+    activeTab,
+    pendingSwapRef,
+    prevActivePathRef,
+    rawSwapPendingRef,
+    suppressChangeRef,
+  })
+}
+
+function useTabSwapEffect(options: {
+  tabs: Tab[]
+  activeTabPath: string | null
+  editor: ReturnType<typeof useCreateBlockNote>
+  rawMode?: boolean
+  tabCacheRef: MutableRefObject<Map<string, CachedTabState>>
+  prevActivePathRef: MutableRefObject<string | null>
+  editorMountedRef: MutableRefObject<boolean>
+  pendingSwapRef: MutableRefObject<(() => void) | null>
+  prevRawModeRef: MutableRefObject<boolean>
+  rawSwapPendingRef: MutableRefObject<boolean>
+  suppressChangeRef: MutableRefObject<boolean>
+}) {
+  const {
+    tabs,
+    activeTabPath,
+    editor,
+    rawMode,
+    tabCacheRef,
+    prevActivePathRef,
+    editorMountedRef,
+    pendingSwapRef,
     prevRawModeRef,
     rawSwapPendingRef,
     suppressChangeRef,
   } = options
 
   useEffect(() => {
-    const cache = tabCacheRef.current
-    const prevPath = prevActivePathRef.current
-    const pathChanged = prevPath !== activeTabPath
-    const activeTab = findActiveTab(tabs, activeTabPath)
-    const pendingTabArrival = activeTabPath !== null
-      && pendingTabArrivalPathRef.current === activeTabPath
-    const rawModeJustEnded = consumeRawModeTransition(prevRawModeRef, rawMode)
-
-    if (rawMode) return
-    cachePreviousTabOnPathChange({ prevPath, pathChanged, editorMountedRef, cache, editor })
-    prevActivePathRef.current = activeTabPath
-
-    if (preserveUntitledRenameState({
-      prevPath,
+    runTabSwapEffect({
+      tabs,
       activeTabPath,
-      activeTab,
-      cache,
       editor,
+      rawMode,
+      tabCacheRef,
       editorMountedRef,
-    })) {
-      return
-    }
-
-    if (handleStableActivePath({
-      pathChanged,
-      rawModeJustEnded,
-      activeTabPath,
-      activeTab,
-      pendingTabArrival,
-      cache,
-      editor,
-      editorMountedRef,
-      rawSwapPendingRef,
-    })) {
-      return
-    }
-
-    if (!rememberPendingTabArrival(activeTabPath, activeTab, pendingTabArrivalPathRef)) {
-      return
-    }
-    const targetPath = activeTabPath
-    const readyActiveTab = activeTab
-    if (!targetPath || !readyActiveTab) return
-
-    scheduleTabSwap({
-      editor,
-      cache,
-      targetPath,
-      activeTab: readyActiveTab,
-      pendingSwapRef,
       prevActivePathRef,
+      pendingSwapRef,
+      prevRawModeRef,
       rawSwapPendingRef,
       suppressChangeRef,
     })
@@ -727,7 +801,6 @@ function useTabSwapEffect(options: {
     editor,
     editorMountedRef,
     pendingSwapRef,
-    pendingTabArrivalPathRef,
     prevActivePathRef,
     prevRawModeRef,
     rawMode,
@@ -771,7 +844,6 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
   const prevActivePathRef = useRef<string | null>(null)
   const editorMountedRef = useRef(false)
   const pendingSwapRef = useRef<(() => void) | null>(null)
-  const pendingTabArrivalPathRef = useRef<string | null>(null)
   const prevRawModeRef = useRef(!!rawMode)
   const rawSwapPendingRef = useRef(false)
   const suppressChangeRef = useRef(false)
@@ -795,7 +867,6 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
     prevActivePathRef,
     editorMountedRef,
     pendingSwapRef,
-    pendingTabArrivalPathRef,
     prevRawModeRef,
     rawSwapPendingRef,
     suppressChangeRef,

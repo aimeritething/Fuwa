@@ -67,6 +67,7 @@ describe('useEditorTabSwap untitled rename continuity', () => {
     await act(() => new Promise(r => setTimeout(r, 0)))
 
     expect(editor.replaceBlocks).not.toHaveBeenCalled()
+    expect(editor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
 
     act(() => {
       result.current.handleEditorChange()
@@ -103,5 +104,47 @@ describe('useEditorTabSwap untitled rename continuity', () => {
     await act(() => new Promise(r => setTimeout(r, 0)))
 
     expect(editor.tryParseMarkdownToBlocks).toHaveBeenCalled()
+  })
+
+  it('keeps the live editor session when the renamed tab arrives one render after the path switch', async () => {
+    vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+
+    const editor = makeMockEditor('# Fresh Title\n\nBody typed live')
+    const onContentChange = vi.fn()
+    const untitledTab = makeTab('untitled-note-123.md', 'Untitled Note 123', 'Body')
+    const renamedTab = makeTab('fresh-title.md', 'Fresh Title', 'Body')
+
+    const { result, rerender } = renderHook(
+      ({ tabs, activeTabPath }) => useEditorTabSwap({
+        tabs,
+        activeTabPath,
+        editor: editor as never,
+        onContentChange,
+      }),
+      { initialProps: { tabs: [untitledTab], activeTabPath: untitledTab.entry.path } },
+    )
+
+    await act(() => new Promise(r => setTimeout(r, 0)))
+    editor.replaceBlocks.mockClear()
+    editor.tryParseMarkdownToBlocks.mockClear()
+
+    rerender({ tabs: [untitledTab], activeTabPath: renamedTab.entry.path })
+    await act(() => new Promise(r => setTimeout(r, 0)))
+
+    rerender({ tabs: [renamedTab], activeTabPath: renamedTab.entry.path })
+    await act(() => new Promise(r => setTimeout(r, 0)))
+
+    expect(editor.replaceBlocks).not.toHaveBeenCalled()
+    expect(editor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
+
+    act(() => {
+      result.current.handleEditorChange()
+    })
+
+    expect(onContentChange).toHaveBeenCalledWith(
+      'fresh-title.md',
+      expect.stringContaining('Body typed live'),
+    )
   })
 })
