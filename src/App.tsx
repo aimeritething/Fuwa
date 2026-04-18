@@ -354,12 +354,20 @@ function App() {
     onToast: (msg) => setToastMessage(msg),
     onOpenFile: (relativePath) => conflictFlow.openConflictFileRef.current(relativePath),
   })
+  const flushPendingRawContentRef = useRef<((path: string) => void) | null>(null)
 
   const notes = useNoteActions({
     addEntry: vault.addEntry,
     removeEntry: vault.removeEntry,
     entries: vault.entries,
-    flushBeforePathRename: (path) => appSave.flushBeforeAction(path),
+    flushBeforeNoteSwitch: async (path) => {
+      flushPendingRawContentRef.current?.(path)
+      await appSave.flushBeforeAction(path)
+    },
+    flushBeforePathRename: async (path) => {
+      flushPendingRawContentRef.current?.(path)
+      await appSave.flushBeforeAction(path)
+    },
     reloadVault: vault.reloadVault,
     setToastMessage,
     updateEntry: vault.updateEntry,
@@ -1160,6 +1168,7 @@ function App() {
             isConflicted={conflictFlow.isConflicted}
             onKeepMine={conflictFlow.handleKeepMine}
             onKeepTheirs={conflictFlow.handleKeepTheirs}
+            flushPendingRawContentRef={flushPendingRawContentRef}
           />
         </div>
       </div>

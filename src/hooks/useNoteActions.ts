@@ -14,6 +14,7 @@ export interface NoteActionsConfig {
   addEntry: (entry: VaultEntry) => void
   removeEntry: (path: string) => void
   entries: VaultEntry[]
+  flushBeforeNoteSwitch?: (path: string) => Promise<void>
   flushBeforePathRename?: (path: string) => Promise<void>
   reloadVault?: () => Promise<unknown>
   setToastMessage: (msg: string | null) => void
@@ -176,9 +177,89 @@ async function updateFrontmatterAndMaybeRename({
   config.onFrontmatterPersisted?.()
 }
 
+function buildTabManagementOptions(
+  flushBeforeNoteSwitch?: NoteActionsConfig['flushBeforeNoteSwitch'],
+) {
+  return flushBeforeNoteSwitch
+    ? { beforeNavigate: (fromPath: string) => flushBeforeNoteSwitch(fromPath) }
+    : undefined
+}
+
+function useFrontmatterActionHandlers({
+  config,
+  renameTabsRef,
+  setTabs,
+  activeTabPathRef,
+  handleSwitchTab,
+  setToastMessage,
+  updateTabContent,
+  runFrontmatterOp,
+}: {
+  config: NoteActionsConfig
+  renameTabsRef: TitleRenameDeps['tabsRef']
+  setTabs: React.Dispatch<React.SetStateAction<{ entry: VaultEntry; content: string }[]>>
+  activeTabPathRef: React.MutableRefObject<string | null>
+  handleSwitchTab: (path: string) => void
+  setToastMessage: (msg: string | null) => void
+  updateTabContent: (path: string, newContent: string) => void
+  runFrontmatterOp: (
+    op: 'update' | 'delete',
+    path: string,
+    key: string,
+    value?: FrontmatterValue,
+    options?: FrontmatterOpOptions,
+  ) => Promise<string | undefined>
+}) {
+  const handleUpdateFrontmatter = useCallback(async (
+    path: string,
+    key: string,
+    value: FrontmatterValue,
+    options?: FrontmatterOpOptions,
+  ) => {
+    await updateFrontmatterAndMaybeRename({
+      config,
+      deps: {
+        vaultPath: config.vaultPath,
+        tabsRef: renameTabsRef,
+        reloadVault: config.reloadVault,
+        replaceEntry: config.replaceEntry,
+        onPathRenamed: config.onPathRenamed,
+        setTabs,
+        activeTabPathRef,
+        handleSwitchTab,
+        setToastMessage,
+        updateTabContent,
+      },
+      path,
+      key,
+      value,
+      options,
+      runFrontmatterOp,
+    })
+  }, [activeTabPathRef, config, handleSwitchTab, renameTabsRef, runFrontmatterOp, setTabs, setToastMessage, updateTabContent])
+
+  const handleDeleteProperty = useCallback(async (path: string, key: string, options?: FrontmatterOpOptions) => {
+    const newContent = await runFrontmatterOp('delete', path, key, undefined, options)
+    if (!applyFrontmatterCallbacks({ config, path, newContent })) return
+    config.onFrontmatterPersisted?.()
+  }, [config, runFrontmatterOp])
+
+  const handleAddProperty = useCallback(async (path: string, key: string, value: FrontmatterValue) => {
+    const newContent = await runFrontmatterOp('update', path, key, value)
+    if (!applyFrontmatterCallbacks({ config, path, newContent })) return
+    config.onFrontmatterPersisted?.()
+  }, [config, runFrontmatterOp])
+
+  return {
+    handleUpdateFrontmatter,
+    handleDeleteProperty,
+    handleAddProperty,
+  }
+}
+
 export function useNoteActions(config: NoteActionsConfig) {
   const { entries, setToastMessage, updateEntry } = config
-  const tabMgmt = useTabManagement()
+  const tabMgmt = useTabManagement(buildTabManagementOptions(config.flushBeforeNoteSwitch))
   const { setTabs, handleSelectNote, openTabWithContent, activeTabPathRef, handleSwitchTab } = tabMgmt
 
   const updateTabContent = useCallback((path: string, newContent: string) => {
@@ -201,6 +282,16 @@ export function useNoteActions(config: NoteActionsConfig) {
       runFrontmatterAndApply(op, path, key, value, { updateTab: updateTabContent, updateEntry, toast: setToastMessage, getEntry: (p) => entries.find((e) => e.path === p) }, options),
     [updateTabContent, updateEntry, setToastMessage, entries],
   )
+  const frontmatterActions = useFrontmatterActionHandlers({
+    config,
+    renameTabsRef: rename.tabsRef,
+    setTabs,
+    activeTabPathRef,
+    handleSwitchTab,
+    setToastMessage,
+    updateTabContent,
+    runFrontmatterOp,
+  })
 
   return {
     ...tabMgmt,
@@ -210,38 +301,9 @@ export function useNoteActions(config: NoteActionsConfig) {
     handleCreateNoteForRelationship: creation.handleCreateNoteForRelationship,
     handleCreateType: creation.handleCreateType,
     createTypeEntrySilent: creation.createTypeEntrySilent,
-    handleUpdateFrontmatter: useCallback(async (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => {
-      await updateFrontmatterAndMaybeRename({
-        config,
-        deps: {
-          vaultPath: config.vaultPath,
-          tabsRef: rename.tabsRef,
-          reloadVault: config.reloadVault,
-          replaceEntry: config.replaceEntry,
-          onPathRenamed: config.onPathRenamed,
-          setTabs,
-          activeTabPathRef,
-          handleSwitchTab,
-          setToastMessage,
-          updateTabContent,
-        },
-        path,
-        key,
-        value,
-        options,
-        runFrontmatterOp,
-      })
-    }, [runFrontmatterOp, config, rename.tabsRef, setTabs, activeTabPathRef, handleSwitchTab, setToastMessage, updateTabContent]),
-    handleDeleteProperty: useCallback(async (path: string, key: string, options?: FrontmatterOpOptions) => {
-      const newContent = await runFrontmatterOp('delete', path, key, undefined, options)
-      if (!applyFrontmatterCallbacks({ config, path, newContent })) return
-      config.onFrontmatterPersisted?.()
-    }, [runFrontmatterOp, config]),
-    handleAddProperty: useCallback(async (path: string, key: string, value: FrontmatterValue) => {
-      const newContent = await runFrontmatterOp('update', path, key, value)
-      if (!applyFrontmatterCallbacks({ config, path, newContent })) return
-      config.onFrontmatterPersisted?.()
-    }, [runFrontmatterOp, config]),
+    handleUpdateFrontmatter: frontmatterActions.handleUpdateFrontmatter,
+    handleDeleteProperty: frontmatterActions.handleDeleteProperty,
+    handleAddProperty: frontmatterActions.handleAddProperty,
     handleRenameNote: rename.handleRenameNote,
     handleRenameFilename: rename.handleRenameFilename,
   }

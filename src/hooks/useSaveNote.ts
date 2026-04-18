@@ -1,6 +1,7 @@
 import { useCallback } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke, updateMockContent } from '../mock-tauri'
+import { cacheNoteContent } from './useTabManagement'
 
 export async function persistContent(path: string, content: string): Promise<void> {
   if (isTauri()) {
@@ -19,6 +20,7 @@ export async function persistContent(path: string, content: string): Promise<voi
 export function useSaveNote(updateContent: (path: string, content: string) => void) {
   const saveNote = useCallback(async (path: string, content: string) => {
     await persistContent(path, content)
+    cacheNoteContent(path, content)
     if (!isTauri()) {
       updateMockContent(path, content)
     }

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { VaultEntry } from '../types'
-import { useTabManagement, prefetchNoteContent, clearPrefetchCache } from './useTabManagement'
+import { useTabManagement, prefetchNoteContent, cacheNoteContent, clearPrefetchCache } from './useTabManagement'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 vi.mock('../mock-tauri', () => ({
@@ -47,15 +47,32 @@ async function replaceActiveNote(result: HookState, overrides: Partial<VaultEntr
   })
 }
 
+async function prefetchResolvedContent(path: string, content: string) {
+  const { mockInvoke } = await import('../mock-tauri')
+  vi.mocked(mockInvoke).mockResolvedValue(content)
+  prefetchNoteContent(path)
+  await vi.waitFor(() => expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1))
+  return mockInvoke
+}
+
 function expectSingleActiveTab(result: HookState, path: string) {
   expect(result.current.tabs).toHaveLength(1)
   expect(result.current.tabs[0].entry.path).toBe(path)
   expect(result.current.activeTabPath).toBe(path)
 }
 
+function createDeferred<T>() {
+  let resolve!: (value: T) => void
+  const promise = new Promise<T>((res) => {
+    resolve = res
+  })
+  return { promise, resolve }
+}
+
 describe('useTabManagement (single-note model)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    clearPrefetchCache()
   })
 
   it('starts with no note and null active path', () => {
@@ -204,11 +221,7 @@ describe('useTabManagement (single-note model)', () => {
 
   describe('content prefetch cache', () => {
     it('prefetch serves content to loadNoteContent (no extra IPC)', async () => {
-      const { mockInvoke } = await import('../mock-tauri')
-      vi.mocked(mockInvoke).mockResolvedValue('# Prefetched content')
-
-      prefetchNoteContent('/vault/note/pre.md')
-      await vi.waitFor(() => expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1))
+      const mockInvoke = await prefetchResolvedContent('/vault/note/pre.md', '# Prefetched content')
 
       const { result } = renderHook(() => useTabManagement())
       await selectNote(result, { path: '/vault/note/pre.md', title: 'Pre' })
@@ -218,11 +231,7 @@ describe('useTabManagement (single-note model)', () => {
     })
 
     it('clearPrefetchCache prevents stale content from being served', async () => {
-      const { mockInvoke } = await import('../mock-tauri')
-      vi.mocked(mockInvoke).mockResolvedValue('# Stale')
-
-      prefetchNoteContent('/vault/note/stale.md')
-      await vi.waitFor(() => expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1))
+      const mockInvoke = await prefetchResolvedContent('/vault/note/stale.md', '# Stale')
 
       clearPrefetchCache()
       vi.mocked(mockInvoke).mockResolvedValue('# Fresh')
@@ -243,6 +252,18 @@ describe('useTabManagement (single-note model)', () => {
       prefetchNoteContent('/vault/note/dup.md')
 
       await vi.waitFor(() => expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1))
+    })
+
+    it('serves refreshed cached content after a save replaces stale prefetched data', async () => {
+      const mockInvoke = await prefetchResolvedContent('/vault/note/saved.md', '# Stale prefetched content')
+
+      cacheNoteContent('/vault/note/saved.md', '# Persisted content')
+
+      const { result } = renderHook(() => useTabManagement())
+      await selectNote(result, { path: '/vault/note/saved.md', title: 'Saved' })
+
+      expect(result.current.tabs[0].content).toBe('# Persisted content')
+      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -276,6 +297,92 @@ describe('useTabManagement (single-note model)', () => {
       await vi.waitFor(() => expect(selectADone && selectBDone).toBe(true))
 
       expect(result.current.activeTabPath).toBe('/vault/b.md')
+    })
+
+    it('waits for beforeNavigate before switching away from the current note', async () => {
+      const beforeNavigate = vi.fn(() => createDeferred<void>().promise)
+      const deferred = createDeferred<void>()
+      beforeNavigate.mockReturnValueOnce(deferred.promise)
+
+      const { result } = renderHook(() => useTabManagement({ beforeNavigate }))
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+
+      let replaceDone = false
+      await act(async () => {
+        result.current.handleReplaceActiveTab(makeEntry({ path: '/vault/b.md', title: 'B' }))
+          .then(() => { replaceDone = true })
+        await Promise.resolve()
+      })
+
+      expect(beforeNavigate).toHaveBeenCalledWith('/vault/a.md', '/vault/b.md')
+      expect(result.current.activeTabPath).toBe('/vault/a.md')
+      expect(replaceDone).toBe(false)
+
+      await act(async () => {
+        deferred.resolve(undefined)
+        await Promise.resolve()
+      })
+
+      await vi.waitFor(() => expect(replaceDone).toBe(true))
+      expectSingleActiveTab(result, '/vault/b.md')
+    })
+
+    it('keeps only the latest target when note switches overlap during beforeNavigate', async () => {
+      const first = createDeferred<void>()
+      const second = createDeferred<void>()
+      const beforeNavigate = vi.fn()
+        .mockReturnValueOnce(first.promise)
+        .mockReturnValueOnce(second.promise)
+
+      const { result } = renderHook(() => useTabManagement({ beforeNavigate }))
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+
+      let switchToBDone = false
+      await act(async () => {
+        result.current.handleReplaceActiveTab(makeEntry({ path: '/vault/b.md', title: 'B' }))
+          .then(() => { switchToBDone = true })
+        await Promise.resolve()
+      })
+
+      let switchToCDone = false
+      await act(async () => {
+        result.current.handleReplaceActiveTab(makeEntry({ path: '/vault/c.md', title: 'C' }))
+          .then(() => { switchToCDone = true })
+        await Promise.resolve()
+      })
+
+      await act(async () => {
+        first.resolve(undefined)
+        await Promise.resolve()
+      })
+      expect(result.current.activeTabPath).toBe('/vault/a.md')
+
+      await act(async () => {
+        second.resolve(undefined)
+        await Promise.resolve()
+      })
+
+      await vi.waitFor(() => expect(switchToBDone && switchToCDone).toBe(true))
+      expect(result.current.activeTabPath).toBe('/vault/c.md')
+    })
+
+    it('keeps the current note active when beforeNavigate fails', async () => {
+      const beforeNavigate = vi.fn().mockRejectedValueOnce(new Error('save failed'))
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+      const { result } = renderHook(() => useTabManagement({ beforeNavigate }))
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+
+      await act(async () => {
+        await result.current.handleReplaceActiveTab(makeEntry({ path: '/vault/b.md', title: 'B' }))
+      })
+
+      expect(result.current.activeTabPath).toBe('/vault/a.md')
+      expect(warnSpy).toHaveBeenCalledWith(
+        'Failed to persist note before navigation:',
+        expect.any(Error),
+      )
+      warnSpy.mockRestore()
     })
   })
 })

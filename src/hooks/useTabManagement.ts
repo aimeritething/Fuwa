@@ -30,6 +30,10 @@ export function prefetchNoteContent(path: string): void {
   prefetchCache.set(path, promise)
 }
 
+export function cacheNoteContent(path: string, content: string): void {
+  prefetchCache.set(path, Promise.resolve(content))
+}
+
 /** Clear the prefetch cache. Call on vault reload to prevent stale content. */
 export function clearPrefetchCache(): void {
   prefetchCache.clear()
@@ -48,6 +52,10 @@ async function loadNoteContent(path: string): Promise<string> {
 }
 
 export type { Tab }
+
+interface TabManagementOptions {
+  beforeNavigate?: (fromPath: string, toPath: string) => Promise<void>
+}
 
 function syncActiveTabPath(
   activeTabPathRef: React.MutableRefObject<string | null>,
@@ -112,7 +120,7 @@ async function navigateToEntry(options: {
   }
 }
 
-export function useTabManagement() {
+export function useTabManagement(options: TabManagementOptions = {}) {
   // Single-note model: tabs has 0 or 1 elements.
   const [tabs, setTabs] = useState<Tab[]>([])
   const [activeTabPath, setActiveTabPath] = useState<string | null>(null)
@@ -123,18 +131,38 @@ export function useTabManagement() {
 
   // Sequence counter for rapid-switch safety: only the latest navigation wins.
   const navSeqRef = useRef(0)
+  const beforeNavigateSeqRef = useRef(0)
+  const beforeNavigate = options.beforeNavigate
+
+  const executeNavigationWithBoundary = useCallback(async (
+    targetPath: string,
+    navigate: () => void | Promise<void>,
+  ) => {
+    const seq = ++beforeNavigateSeqRef.current
+    const currentPath = activeTabPathRef.current
+    if (beforeNavigate && currentPath && currentPath !== targetPath) {
+      try {
+        await beforeNavigate(currentPath, targetPath)
+      } catch (err) {
+        console.warn('Failed to persist note before navigation:', err)
+        return
+      }
+      if (beforeNavigateSeqRef.current !== seq) return
+    }
+    await navigate()
+  }, [beforeNavigate])
 
   /** Open a note — replaces the current note (single-note model). */
   const handleSelectNote = useCallback(async (entry: VaultEntry) => {
-    await navigateToEntry({
+    await executeNavigationWithBoundary(entry.path, () => navigateToEntry({
       entry,
       navSeqRef,
       tabsRef,
       activeTabPathRef,
       setTabs,
       setActiveTabPath,
-    })
-  }, [])
+    }))
+  }, [executeNavigationWithBoundary])
 
   const handleSwitchTab = useCallback((path: string) => {
     syncActiveTabPath(activeTabPathRef, setActiveTabPath, path)
@@ -142,20 +170,22 @@ export function useTabManagement() {
 
   /** Open a tab with known content — no IPC round-trip. Used for newly created notes. */
   const openTabWithContent = useCallback((entry: VaultEntry, content: string) => {
-    setSingleTab(tabsRef, setTabs, { entry, content })
-    syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
-  }, [])
+    void executeNavigationWithBoundary(entry.path, () => {
+      setSingleTab(tabsRef, setTabs, { entry, content })
+      syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
+    })
+  }, [executeNavigationWithBoundary])
 
   const handleReplaceActiveTab = useCallback(async (entry: VaultEntry) => {
-    await navigateToEntry({
+    await executeNavigationWithBoundary(entry.path, () => navigateToEntry({
       entry,
       navSeqRef,
       tabsRef,
       activeTabPathRef,
       setTabs,
       setActiveTabPath,
-    })
-  }, [])
+    }))
+  }, [executeNavigationWithBoundary])
 
   const closeAllTabs = useCallback(() => {
     tabsRef.current = []
