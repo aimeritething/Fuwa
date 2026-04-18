@@ -1,84 +1,62 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, type Page } from '@playwright/test'
+
+const SOURCE_NOTE_TITLE = 'Grow Newsletter'
+const INSERTED_WIKILINK_QUERY = '[[Mana'
+const INSERTED_WIKILINK_TITLE = 'Manage Sponsorships'
+
+async function insertWikilink(page: Page) {
+  const editor = page.locator('.bn-editor')
+  await expect(editor).toBeVisible({ timeout: 5000 })
+
+  const firstParagraph = editor.locator('p').first()
+  await expect(
+    firstParagraph,
+  ).toContainText('Build a sustainable audience through high-quality weekly essays', { timeout: 5000 })
+  await firstParagraph.click()
+  await page.keyboard.press('End')
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(200)
+
+  await page.keyboard.type(INSERTED_WIKILINK_QUERY)
+
+  const suggestionMenu = page.locator('.wikilink-menu')
+  await expect(suggestionMenu).toBeVisible({ timeout: 5000 })
+  const matchingWikilinks = editor.locator('.wikilink').filter({ hasText: INSERTED_WIKILINK_TITLE })
+  const existingCount = await matchingWikilinks.count()
+  await suggestionMenu.getByText(INSERTED_WIKILINK_TITLE, { exact: true }).click()
+  await page.waitForTimeout(500)
+
+  await expect(matchingWikilinks).toHaveCount(existingCount + 1)
+  return matchingWikilinks.nth(existingCount)
+}
 
 test.describe('Wikilink insertion and navigation', () => {
   test.beforeEach(async ({ page }) => {
     await page.goto('/')
     await page.waitForTimeout(500)
 
-    // Select first note to open in editor
-    const noteItem = page.locator('.app__note-list .cursor-pointer').first()
+    const noteItem = page.locator('.app__note-list .cursor-pointer').filter({ hasText: SOURCE_NOTE_TITLE }).first()
     await noteItem.click()
     await page.waitForTimeout(1000)
   })
 
   test('[[ autocomplete inserts wikilink that is not broken', async ({ page }) => {
-    // Focus editor and move to a new line
-    const editor = page.locator('.bn-editor')
-    await expect(editor).toBeVisible({ timeout: 5000 })
-    await editor.click()
-    await page.keyboard.press('End')
-    await page.keyboard.press('Enter')
-    await page.waitForTimeout(200)
+    const wikilink = await insertWikilink(page)
 
-    // Type [[ then a query (>= 2 chars for MIN_QUERY_LENGTH)
-    await page.keyboard.type('[[Ma')
-    await page.waitForTimeout(800)
-
-    // The wikilink suggestion menu should appear
-    const suggestionMenu = page.locator('.wikilink-menu')
-    await expect(suggestionMenu).toBeVisible({ timeout: 5000 })
-
-    // Select the first suggestion
-    await page.keyboard.press('Enter')
-    await page.waitForTimeout(500)
-
-    // A wikilink should have been inserted
-    const wikilinks = page.locator('.wikilink')
-    const count = await wikilinks.count()
-    expect(count).toBeGreaterThanOrEqual(1)
-
-    // The wikilink should NOT be broken
-    const lastWikilink = wikilinks.last()
-    const isBroken = await lastWikilink.evaluate(
+    const isBroken = await wikilink.evaluate(
       el => el.classList.contains('wikilink--broken'),
     )
     expect(isBroken).toBe(false)
 
-    // The wikilink should have a data-target attribute
-    const target = await lastWikilink.getAttribute('data-target')
+    const target = await wikilink.getAttribute('data-target')
     expect(target).toBeTruthy()
   })
 
   test('@smoke Cmd+clicking an inserted wikilink navigates to the note', async ({ page }) => {
-    // Insert a wikilink via autocomplete
-    const editor = page.locator('.bn-editor')
-    await expect(editor).toBeVisible({ timeout: 5000 })
-    await editor.click()
-    await page.keyboard.press('End')
-    await page.keyboard.press('Enter')
-    await page.waitForTimeout(200)
-    await page.keyboard.type('[[Ma')
-    await page.waitForTimeout(800)
-
-    const suggestionMenu = page.locator('.wikilink-menu')
-    await expect(suggestionMenu).toBeVisible({ timeout: 5000 })
-    await page.keyboard.press('Enter')
-    await page.waitForTimeout(500)
-
-    // Get the wikilink that was just inserted
-    const wikilink = page.locator('.wikilink').last()
+    const wikilink = await insertWikilink(page)
     await expect(wikilink).toBeVisible()
-    const targetTitle = await wikilink.textContent()
 
-    // Cmd+click the wikilink to navigate
     await wikilink.click({ modifiers: ['Meta'] })
-    await page.waitForTimeout(1000)
-
-    const expected = targetTitle?.substring(0, 4) ?? ''
-    await expect.poll(async () => {
-      const heading = page.locator('.bn-editor h1').first()
-      if (await heading.count()) return (await heading.textContent()) ?? ''
-      return ''
-    }, { timeout: 5000 }).toContain(expected)
+    await expect(page.locator('.bn-editor h1').first()).toHaveText(INSERTED_WIKILINK_TITLE, { timeout: 5000 })
   })
 })
