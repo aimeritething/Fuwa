@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countAllByFilter, countByFilter, filterEntries } from './noteListHelpers'
+import { countAllByFilter, countAllNotesByFilter, countByFilter, filterEntries } from './noteListHelpers'
 import { allSelection, makeEntry, mockEntries } from '../test-utils/noteListTestUtils'
 
 describe('filterEntries', () => {
@@ -62,6 +62,17 @@ describe('filterEntries', () => {
     const result = filterEntries(entries, allSelection, 'archived')
     expect(result.map((entry) => entry.title)).toEqual(['Archived'])
   })
+
+  it('excludes attachments-folder markdown from the All Notes view', () => {
+    const entries = [
+      makeEntry({ path: '/vault/note/real-note.md', title: 'Real Note', isA: 'Note' }),
+      makeEntry({ path: '/vault/attachments/reference.md', title: 'Attachment Markdown', isA: 'Note' }),
+      makeEntry({ path: '/vault/attachments/nested/diagram.md', title: 'Nested Attachment Markdown', isA: 'Note' }),
+    ]
+
+    const result = filterEntries(entries, allSelection, 'open')
+    expect(result.map((entry) => entry.title)).toEqual(['Real Note'])
+  })
 })
 
 describe('countByFilter', () => {
@@ -100,5 +111,19 @@ describe('countAllByFilter', () => {
     ]
 
     expect(countAllByFilter(entries)).toEqual({ open: 1, archived: 0 })
+  })
+})
+
+describe('countAllNotesByFilter', () => {
+  it('excludes attachments-folder files from All Notes totals', () => {
+    const entries = [
+      makeEntry({ path: '/vault/note/real-note.md', isA: 'Note' }),
+      makeEntry({ path: '/vault/attachments/reference.md', isA: 'Note' }),
+      makeEntry({ path: '/vault/attachments/archive.md', isA: 'Note', archived: true }),
+      makeEntry({ path: '/vault/attachments/image.png', fileKind: 'binary' }),
+      makeEntry({ path: '/vault/archive/real-archive.md', isA: 'Note', archived: true }),
+    ]
+
+    expect(countAllNotesByFilter(entries)).toEqual({ open: 1, archived: 1 })
   })
 })

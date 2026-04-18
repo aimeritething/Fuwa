@@ -310,6 +310,7 @@ export function buildRelationshipGroups(
 
 const isActive = (e: VaultEntry) => !e.archived
 const isMarkdown = (e: VaultEntry) => e.fileKind === 'markdown' || !e.fileKind
+const ATTACHMENTS_FOLDER = 'attachments'
 
 function applySubFilter(entries: VaultEntry[], subFilter: NoteListFilter): VaultEntry[] {
   if (subFilter === 'archived') return entries.filter((e) => e.archived)
@@ -321,26 +322,46 @@ function isInFolder(entryPath: string, folderRelPath: string): boolean {
   return entryPath.includes(needle) || entryPath.startsWith(folderRelPath + '/')
 }
 
+export function isAllNotesEntry(entry: VaultEntry): boolean {
+  return isMarkdown(entry) && !isInFolder(entry.path, ATTACHMENTS_FOLDER)
+}
+
+function filterViewEntries(entries: VaultEntry[], filename: string, views?: ViewFile[]): VaultEntry[] {
+  const view = views?.find((candidate) => candidate.filename === filename)
+  if (!view) return []
+  return evaluateView(view.definition, entries.filter(isMarkdown))
+}
+
+function filterFolderEntries(entries: VaultEntry[], folderPath: string, subFilter?: NoteListFilter): VaultEntry[] {
+  // Folder view shows ALL files (text + binary), not just markdown
+  const folderEntries = entries.filter((entry) => isInFolder(entry.path, folderPath))
+  return subFilter ? applySubFilter(folderEntries, subFilter) : folderEntries.filter(isActive)
+}
+
+function filterSectionGroupEntries(entries: VaultEntry[], type: string, subFilter?: NoteListFilter): VaultEntry[] {
+  const typeEntries = entries.filter((entry) => isMarkdown(entry) && entry.isA === type)
+  return subFilter ? applySubFilter(typeEntries, subFilter) : typeEntries.filter(isActive)
+}
+
+function filterTopLevelEntries(
+  entries: VaultEntry[],
+  selection: Extract<SidebarSelection, { kind: 'filter' }>,
+  subFilter?: NoteListFilter,
+): VaultEntry[] {
+  const filterableEntries = selection.filter === 'all'
+    ? entries.filter(isAllNotesEntry)
+    : entries.filter(isMarkdown)
+  if (selection.filter === 'all' && subFilter) return applySubFilter(filterableEntries, subFilter)
+  return filterByFilterType(filterableEntries, selection.filter)
+}
+
 function filterByKind(entries: VaultEntry[], selection: SidebarSelection, subFilter?: NoteListFilter, views?: ViewFile[]): VaultEntry[] {
   if (selection.kind === 'entity') return []
-  if (selection.kind === 'view') {
-    const view = views?.find((v) => v.filename === selection.filename)
-    if (!view) return []
-    return evaluateView(view.definition, entries.filter(isMarkdown))
-  }
-  if (selection.kind === 'folder') {
-    // Folder view shows ALL files (text + binary), not just markdown
-    const folderEntries = entries.filter((e) => isInFolder(e.path, selection.path))
-    return subFilter ? applySubFilter(folderEntries, subFilter) : folderEntries.filter(isActive)
-  }
-  if (selection.kind === 'sectionGroup') {
-    const typeEntries = entries.filter((e) => isMarkdown(e) && e.isA === selection.type)
-    return subFilter ? applySubFilter(typeEntries, subFilter) : typeEntries.filter(isActive)
-  }
-  // Non-folder views: only markdown files
-  const mdEntries = entries.filter(isMarkdown)
-  if (selection.filter === 'all' && subFilter) return applySubFilter(mdEntries, subFilter)
-  return filterByFilterType(mdEntries, selection.filter)
+  if (selection.kind === 'view') return filterViewEntries(entries, selection.filename, views)
+  if (selection.kind === 'folder') return filterFolderEntries(entries, selection.path, subFilter)
+  if (selection.kind === 'sectionGroup') return filterSectionGroupEntries(entries, selection.type, subFilter)
+  if (selection.kind === 'filter') return filterTopLevelEntries(entries, selection, subFilter)
+  return []
 }
 
 function filterByFilterType(entries: VaultEntry[], filter: string): VaultEntry[] {
@@ -366,15 +387,23 @@ export function countByFilter(entries: VaultEntry[], type: string): Record<NoteL
   return { open, archived }
 }
 
-/** Count notes per sub-filter across all entries (no type filter). */
-export function countAllByFilter(entries: VaultEntry[]): Record<NoteListFilter, number> {
+function countEntriesByArchiveStatus(entries: VaultEntry[]): Record<NoteListFilter, number> {
   let open = 0, archived = 0
-  for (const e of entries) {
-    if (!isMarkdown(e)) continue
-    if (e.archived) archived++
+  for (const entry of entries) {
+    if (entry.archived) archived++
     else open++
   }
   return { open, archived }
+}
+
+/** Count notes per sub-filter across all entries (no type filter). */
+export function countAllByFilter(entries: VaultEntry[]): Record<NoteListFilter, number> {
+  return countEntriesByArchiveStatus(entries.filter(isMarkdown))
+}
+
+/** Count All Notes-eligible documents per sub-filter, excluding files under attachments/. */
+export function countAllNotesByFilter(entries: VaultEntry[]): Record<NoteListFilter, number> {
+  return countEntriesByArchiveStatus(entries.filter(isAllNotesEntry))
 }
 
 // --- Inbox ---

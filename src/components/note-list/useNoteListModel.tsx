@@ -8,7 +8,7 @@ import type {
   ViewFile,
 } from '../../types'
 import type { NoteListFilter } from '../../utils/noteListHelpers'
-import { countByFilter, countAllByFilter } from '../../utils/noteListHelpers'
+import { countByFilter, countAllByFilter, countAllNotesByFilter } from '../../utils/noteListHelpers'
 import { NoteItem } from '../NoteItem'
 import type { MultiSelectState } from '../../hooks/useMultiSelect'
 import { resolveHeaderTitle, type DeletedNoteEntry } from './noteListUtils'
@@ -76,7 +76,7 @@ function useFilterCounts(entries: VaultEntry[], selection: SidebarSelection) {
   return useMemo(() => {
     if (selection.kind === 'sectionGroup') return countByFilter(entries, selection.type)
     if (selection.kind === 'folder') return countAllByFilter(entries)
-    if (selection.kind === 'filter' && selection.filter === 'all') return countAllByFilter(entries)
+    if (selection.kind === 'filter' && selection.filter === 'all') return countAllNotesByFilter(entries)
     return { open: 0, archived: 0 }
   }, [entries, selection])
 }

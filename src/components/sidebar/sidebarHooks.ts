@@ -2,6 +2,7 @@ import { useState, useMemo, useEffect, useCallback, type RefObject } from 'react
 import type { VaultEntry } from '../../types'
 import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS, getAppStorageItem } from '../../constants/appStorage'
 import { buildTypeEntryMap } from '../../utils/typeColors'
+import { countAllNotesByFilter } from '../../utils/noteListHelpers'
 import { buildDynamicSections, sortSections } from '../../utils/sidebarSections'
 
 export type SidebarGroupKey = 'favorites' | 'views' | 'sections' | 'folders'
@@ -58,13 +59,8 @@ export function useSidebarCollapsed() {
 
 export function useEntryCounts(entries: VaultEntry[]) {
   return useMemo(() => {
-    let active = 0
-    let archived = 0
-    for (const entry of entries) {
-      if (entry.archived) archived++
-      else active++
-    }
-    return { activeCount: active, archivedCount: archived }
+    const counts = countAllNotesByFilter(entries)
+    return { activeCount: counts.open, archivedCount: counts.archived }
   }, [entries])
 }
 

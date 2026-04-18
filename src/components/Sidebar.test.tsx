@@ -874,6 +874,88 @@ describe('Sidebar', () => {
     expect(topNav.children[0].textContent).toContain('All Notes')
   })
 
+  it('excludes attachments-folder markdown from top-nav note totals', () => {
+    const entries: VaultEntry[] = [
+      {
+        path: '/vault/note/real-note.md',
+        filename: 'real-note.md',
+        title: 'Real Note',
+        isA: 'Note',
+        aliases: [], belongsTo: [], relatedTo: [],
+        status: null, owner: null, cadence: null,
+        archived: false,
+        modifiedAt: 1700000000, createdAt: null,
+        fileSize: 310, snippet: '', wordCount: 120,
+        relationships: {}, icon: null, color: null, order: null,
+        sidebarLabel: null, template: null, sort: null, view: null,
+        outgoingLinks: [], properties: {},
+      },
+      {
+        path: '/vault/attachments/reference.md',
+        filename: 'reference.md',
+        title: 'Attachment Markdown',
+        isA: 'Note',
+        aliases: [], belongsTo: [], relatedTo: [],
+        status: null, owner: null, cadence: null,
+        archived: false,
+        modifiedAt: 1700000000, createdAt: null,
+        fileSize: 220, snippet: '', wordCount: 50,
+        relationships: {}, icon: null, color: null, order: null,
+        sidebarLabel: null, template: null, sort: null, view: null,
+        outgoingLinks: [], properties: {},
+      },
+      {
+        path: '/vault/attachments/nested/archive.md',
+        filename: 'archive.md',
+        title: 'Attachment Archive',
+        isA: 'Note',
+        aliases: [], belongsTo: [], relatedTo: [],
+        status: null, owner: null, cadence: null,
+        archived: true,
+        modifiedAt: 1700000000, createdAt: null,
+        fileSize: 180, snippet: '', wordCount: 25,
+        relationships: {}, icon: null, color: null, order: null,
+        sidebarLabel: null, template: null, sort: null, view: null,
+        outgoingLinks: [], properties: {},
+      },
+      {
+        path: '/vault/archive/real-archive.md',
+        filename: 'real-archive.md',
+        title: 'Real Archive',
+        isA: 'Note',
+        aliases: [], belongsTo: [], relatedTo: [],
+        status: null, owner: null, cadence: null,
+        archived: true,
+        modifiedAt: 1700000000, createdAt: null,
+        fileSize: 280, snippet: '', wordCount: 90,
+        relationships: {}, icon: null, color: null, order: null,
+        sidebarLabel: null, template: null, sort: null, view: null,
+        outgoingLinks: [], properties: {},
+      },
+      {
+        path: '/vault/attachments/image.png',
+        filename: 'image.png',
+        title: 'image.png',
+        isA: null,
+        aliases: [], belongsTo: [], relatedTo: [],
+        status: null, owner: null, cadence: null,
+        archived: false,
+        modifiedAt: 1700000000, createdAt: null,
+        fileSize: 1024, snippet: '', wordCount: 0,
+        relationships: {}, icon: null, color: null, order: null,
+        sidebarLabel: null, template: null, sort: null, view: null,
+        fileKind: 'binary',
+        outgoingLinks: [], properties: {},
+      },
+    ]
+
+    render(<Sidebar entries={entries} selection={defaultSelection} onSelect={() => {}} />)
+
+    const topNav = screen.getByTestId('sidebar-top-nav')
+    expect(topNav.children[1].textContent).toContain('All Notes1')
+    expect(topNav.children[2].textContent).toContain('Archive1')
+  })
+
   it('does not show inline entries — no child items in type sections', () => {
     const entriesWithEmoji: VaultEntry[] = [
       {
