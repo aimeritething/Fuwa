@@ -578,7 +578,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `rename.rs` | `rename_note` — renames files, updates `title` frontmatter, and updates wikilinks across the vault |
 | `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
 | `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
-| `config_seed.rs` | Maintains vault AI guidance (`AGENTS.md` + `CLAUDE.md` shim), migrates legacy `config/agents.md`, repairs missing config files |
+| `config_seed.rs` | Maintains vault AI guidance (`AGENTS.md` + `CLAUDE.md` shim), migrates legacy `config/agents.md`, repairs missing root config/type files such as `config.md` and `note.md` |
 | `getting_started.rs` | Creates the Getting Started demo vault |
 
 ## Rust Backend Modules
@@ -615,7 +615,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `reload_vault` | Invalidate cache and full rescan from filesystem → `Vec<VaultEntry>` |
 | `reload_vault_entry` | Re-read a single file from disk → `VaultEntry` |
 | `check_vault_exists` | Check if vault path exists |
-| `create_empty_vault` | Create a git-backed vault, then seed root `AGENTS.md`, `CLAUDE.md`, and `config.md` defaults |
+| `create_empty_vault` | Create a git-backed vault, then seed root `AGENTS.md`, `CLAUDE.md`, `config.md`, and `note.md` defaults |
 | `create_getting_started_vault` | Clone the public Getting Started vault, refresh Tolaria-managed guidance/config defaults, and keep the cloned repo clean |
 | `get_vault_ai_guidance_status` | Report whether `AGENTS.md` and the `CLAUDE.md` shim are managed, missing, broken, or custom |
 | `restore_vault_ai_guidance` | Restore any missing/broken Tolaria-managed guidance files without overwriting custom ones |
@@ -659,7 +659,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 |---------|-------------|
 | `get_vault_settings` | Read `.laputa/settings.json` |
 | `save_vault_settings` | Write vault settings |
-| `repair_vault` | Flatten vault structure, migrate legacy frontmatter, restore config |
+| `repair_vault` | Flatten vault structure, migrate legacy frontmatter, restore root config/type defaults including `note.md` |
 
 ### AI & MCP
 

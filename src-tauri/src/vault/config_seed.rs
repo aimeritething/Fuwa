@@ -19,6 +19,17 @@ sidebar label: Config
 Vault configuration files. These control how AI agents, tools, and other integrations interact with this vault.
 ";
 
+/// Content for `note.md` — restores the default Note type definition when missing.
+const NOTE_TYPE_DEFINITION: &str = "\
+---
+type: Type
+---
+
+# Note
+
+A Note is a general-purpose document — research notes, meeting notes, strategy docs, or anything that doesn't fit a more specific type.
+";
+
 const CLAUDE_MD_SHIM: &str = "@AGENTS.md
 
 This file is a Claude Code compatibility shim. Keep shared agent instructions in `AGENTS.md`.
@@ -113,8 +124,8 @@ fn classify_guidance_file(
     AiGuidanceFileState::Custom
 }
 
-fn guidance_paths(vault_path: &str) -> (PathBuf, PathBuf) {
-    let vault = Path::new(vault_path);
+fn guidance_paths(vault_path: &Path) -> (PathBuf, PathBuf) {
+    let vault = vault_path;
     (vault.join("AGENTS.md"), vault.join("CLAUDE.md"))
 }
 
@@ -137,7 +148,7 @@ fn guidance_file_needs_restore(state: AiGuidanceFileState) -> bool {
     )
 }
 
-fn build_ai_guidance_status(vault_path: &str) -> VaultAiGuidanceStatus {
+fn build_ai_guidance_status(vault_path: &Path) -> VaultAiGuidanceStatus {
     let (agents_path, claude_path) = guidance_paths(vault_path);
     let agents_state = classify_agents_file(&agents_path);
     let claude_state = classify_claude_file(&claude_path);
@@ -150,12 +161,12 @@ fn build_ai_guidance_status(vault_path: &str) -> VaultAiGuidanceStatus {
     }
 }
 
-fn sync_claude_shim_file(vault_path: &str) -> Result<bool, String> {
+fn sync_claude_shim_file(vault_path: &Path) -> Result<bool, String> {
     let (_, claude_path) = guidance_paths(vault_path);
     sync_managed_file(&claude_path, CLAUDE_MD_SHIM, claude_shim_can_be_replaced)
 }
 
-fn sync_ai_guidance_files(vault_path: &str) -> Result<bool, String> {
+fn sync_ai_guidance_files(vault_path: &Path) -> Result<bool, String> {
     let wrote_agents = sync_default_agents_file(vault_path)?;
     let wrote_claude = sync_claude_shim_file(vault_path)?;
     Ok(wrote_agents || wrote_claude)
@@ -203,34 +214,45 @@ fn cleanup_empty_config_dir(vault: &Path) -> Result<bool, String> {
     Ok(true)
 }
 
-pub(super) fn sync_default_agents_file(vault_path: &str) -> Result<bool, String> {
+pub(super) fn sync_default_agents_file(vault_path: &Path) -> Result<bool, String> {
     let (agents_path, _) = guidance_paths(vault_path);
     sync_managed_file(&agents_path, AGENTS_MD, root_agents_can_be_replaced)
 }
 
-pub fn get_ai_guidance_status(vault_path: &str) -> Result<VaultAiGuidanceStatus, String> {
+pub fn get_ai_guidance_status(
+    vault_path: impl AsRef<str>,
+) -> Result<VaultAiGuidanceStatus, String> {
+    Ok(build_ai_guidance_status(Path::new(vault_path.as_ref())))
+}
+
+pub fn restore_ai_guidance_files(
+    vault_path: impl AsRef<str>,
+) -> Result<VaultAiGuidanceStatus, String> {
+    let vault_path = Path::new(vault_path.as_ref());
+    sync_ai_guidance_files(vault_path)?;
     Ok(build_ai_guidance_status(vault_path))
 }
 
-pub fn restore_ai_guidance_files(vault_path: &str) -> Result<VaultAiGuidanceStatus, String> {
-    sync_ai_guidance_files(vault_path)?;
-    get_ai_guidance_status(vault_path)
-}
-
 /// Seed `AGENTS.md` at vault root if missing or empty (idempotent, per-file).
-/// Also seeds `config.md` type definition for sidebar visibility.
-pub fn seed_config_files(vault_path: &str) {
+/// Also seeds Tolaria-managed root type definitions used by repair/bootstrap flows.
+pub fn seed_config_files(vault_path: impl AsRef<str>) {
+    let vault_path = Path::new(vault_path.as_ref());
     if sync_ai_guidance_files(vault_path).unwrap_or(false) {
         log::info!("Seeded vault AI guidance files at vault root");
     }
 
-    ensure_config_type_definition(vault_path);
+    ensure_root_type_definitions(vault_path);
 }
 
-/// Ensure `config.md` exists at vault root (gives Config type a sidebar icon/color).
-fn ensure_config_type_definition(vault_path: &str) {
-    let path = Path::new(vault_path).join("config.md");
-    let _ = write_if_missing(&path, CONFIG_TYPE_DEFINITION);
+fn ensure_root_type_definition(vault_path: &Path, file_name: &str, content: &str) {
+    let path = vault_path.join(file_name);
+    let _ = write_if_missing(&path, content);
+}
+
+/// Ensure the default root type definitions exist for opened/repaired vaults.
+fn ensure_root_type_definitions(vault_path: &Path) {
+    ensure_root_type_definition(vault_path, "config.md", CONFIG_TYPE_DEFINITION);
+    ensure_root_type_definition(vault_path, "note.md", NOTE_TYPE_DEFINITION);
 }
 
 /// Migrate legacy `config/agents.md` → root `AGENTS.md` for existing vaults.
@@ -241,8 +263,8 @@ fn ensure_config_type_definition(vault_path: &str) {
 /// - Cleans up empty `config/` directory after migration.
 ///
 /// Always idempotent and silent.
-pub fn migrate_agents_md(vault_path: &str) {
-    let vault = Path::new(vault_path);
+pub fn migrate_agents_md(vault_path: impl AsRef<str>) {
+    let vault = Path::new(vault_path.as_ref());
     let root_agents = vault.join("AGENTS.md");
     let config_agents = vault.join("config").join("agents.md");
 
@@ -259,22 +281,23 @@ pub fn migrate_agents_md(vault_path: &str) {
         log::info!("Removed empty config/ directory");
     }
 
-    let _ = sync_ai_guidance_files(vault_path);
+    let _ = sync_ai_guidance_files(vault);
 }
 
-/// Repair config files: ensure `AGENTS.md` at vault root and `config.md` type definition.
+/// Repair config files: ensure `AGENTS.md` at vault root and root type definitions.
 /// Migrates legacy `config/agents.md` to root if present.
 /// Called by the "Repair Vault" command. Returns a status message.
-pub fn repair_config_files(vault_path: &str) -> Result<String, String> {
-    let vault = Path::new(vault_path);
+pub fn repair_config_files(vault_path: impl AsRef<str>) -> Result<String, String> {
+    let vault = Path::new(vault_path.as_ref());
     let root_agents = vault.join("AGENTS.md");
     let config_agents = vault.join("config").join("agents.md");
 
     migrate_legacy_agents_file(&root_agents, &config_agents)?;
     let _ = cleanup_empty_config_dir(vault)?;
-    sync_ai_guidance_files(vault_path)?;
+    sync_ai_guidance_files(vault)?;
 
     write_if_missing(&vault.join("config.md"), CONFIG_TYPE_DEFINITION)?;
+    write_if_missing(&vault.join("note.md"), NOTE_TYPE_DEFINITION)?;
 
     Ok("Config files repaired".to_string())
 }
@@ -417,15 +440,19 @@ mod tests {
     }
 
     #[test]
-    fn test_seed_config_files_creates_type_definition() {
+    fn test_seed_config_files_creates_type_definitions() {
         let (_dir, vault) = create_vault();
 
         seed_config_files(vault.to_str().unwrap());
 
         assert!(vault.join("config.md").exists());
-        let content = fs::read_to_string(vault.join("config.md")).unwrap();
-        assert!(content.contains("type: Type"));
-        assert!(content.contains("icon: gear-six"));
+        assert!(vault.join("note.md").exists());
+        let config_content = fs::read_to_string(vault.join("config.md")).unwrap();
+        let note_content = fs::read_to_string(vault.join("note.md")).unwrap();
+        assert!(config_content.contains("type: Type"));
+        assert!(config_content.contains("icon: gear-six"));
+        assert!(note_content.contains("type: Type"));
+        assert!(note_content.contains("# Note"));
         assert!(!vault.join("config").exists());
     }
 
@@ -543,10 +570,14 @@ mod tests {
         assert!(vault.join("AGENTS.md").exists());
         assert!(vault.join("CLAUDE.md").exists());
         assert!(vault.join("config.md").exists());
+        assert!(vault.join("note.md").exists());
         assert!(!vault.join("config").exists());
 
         let agents = read_root_agents(&vault);
         assert!(agents.contains("Tolaria Vault"));
+        let note_content = fs::read_to_string(vault.join("note.md")).unwrap();
+        assert!(note_content.contains("type: Type"));
+        assert!(note_content.contains("general-purpose document"));
     }
 
     #[test]
