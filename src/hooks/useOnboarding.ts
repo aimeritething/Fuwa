@@ -64,6 +64,7 @@ export function useOnboarding(
   const [creatingAction, setCreatingAction] = useState<CreatingAction>(null)
   const [error, setError] = useState<string | null>(null)
   const [lastTemplatePath, setLastTemplatePath] = useState<string | null>(null)
+  const [userReadyVaultPath, setUserReadyVaultPath] = useState<string | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -110,6 +111,7 @@ export function useOnboarding(
       const vaultPath = await tauriCall<string>('create_getting_started_vault', { targetPath })
       markDismissed()
       setState({ status: 'ready', vaultPath })
+      setUserReadyVaultPath(vaultPath)
       onTemplateVaultReady?.(vaultPath)
     } catch (err) {
       setError(formatGettingStartedCloneError(err))
@@ -138,6 +140,7 @@ export function useOnboarding(
       const vaultPath = await tauriCall<string>('create_empty_vault', { targetPath: path })
       markDismissed()
       setState({ status: 'ready', vaultPath })
+      setUserReadyVaultPath(vaultPath)
     } catch (err) {
       setError(typeof err === 'string' ? err : `Failed to create vault: ${err}`)
     } finally {
@@ -152,6 +155,7 @@ export function useOnboarding(
       if (!path) return
       markDismissed()
       setState({ status: 'ready', vaultPath: path })
+      setUserReadyVaultPath(path)
     } catch (err) {
       setError(`Failed to open folder: ${err}`)
     }
@@ -173,5 +177,6 @@ export function useOnboarding(
     handleCreateNewVault,
     handleOpenFolder,
     handleDismiss,
+    userReadyVaultPath,
   }
 }

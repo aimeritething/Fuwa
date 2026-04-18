@@ -358,6 +358,30 @@ describe('App', () => {
     expect(appShell).toBeInTheDocument()
   })
 
+  it('switches vaults from the bottom bar after onboarding is ready', async () => {
+    mockCommandResults.load_vault_list = {
+      vaults: [
+        { label: 'Test Vault', path: '/work' },
+        { label: 'Work Vault', path: '/vault-2' },
+      ],
+      active_vault: '/work',
+      hidden_defaults: [],
+    }
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status-vault-trigger')).toHaveTextContent('Test Vault')
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
+    fireEvent.click(screen.getByTestId('vault-menu-item-Work Vault'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status-vault-trigger')).toHaveTextContent('Work Vault')
+    })
+  })
+
   it('Cmd+1 hides sidebar and note list (editor-only mode)', async () => {
     render(<App />)
     await waitFor(() => {

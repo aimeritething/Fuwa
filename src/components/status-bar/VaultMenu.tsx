@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import type { CSSProperties, ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { AlertTriangle, Check, FolderOpen, GitBranch, Rocket, X } from 'lucide-react'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { Button } from '@/components/ui/button'
@@ -88,67 +88,49 @@ function VaultMenuIcon({ isActive, unavailable }: { isActive: boolean; unavailab
   return <span style={{ width: 12 }} />
 }
 
-function vaultItemStyle(isActive: boolean, unavailable: boolean): CSSProperties {
-  return {
-    display: 'flex',
-    alignItems: 'center',
-    gap: 6,
-    padding: '4px 8px',
-    borderRadius: 4,
-    cursor: unavailable ? 'not-allowed' : 'pointer',
-    background: isActive ? 'var(--hover)' : 'transparent',
-    opacity: unavailable ? 0.45 : 1,
-    color: isActive ? 'var(--foreground)' : 'var(--muted-foreground)',
-    fontSize: 12,
-  }
-}
-
 function VaultMenuItem({ vault, isActive, canRemove, onSelect, onRemove }: VaultMenuItemProps) {
   const unavailable = vault.available === false
-  const canHover = !isActive && !unavailable
 
   return (
-    <div
-      role="button"
-      onClick={unavailable ? undefined : onSelect}
-      style={{ ...vaultItemStyle(isActive, unavailable), justifyContent: 'space-between' }}
-      title={unavailable ? `Vault not found: ${vault.path}` : vault.path}
-      onMouseEnter={canHover ? (event) => { event.currentTarget.style.background = 'var(--hover)' } : undefined}
-      onMouseLeave={canHover ? (event) => { event.currentTarget.style.background = 'transparent' } : undefined}
-      data-testid={`vault-menu-item-${vault.label}`}
-    >
-      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-        <VaultMenuIcon isActive={isActive} unavailable={unavailable} />
-        {vault.label}
-      </span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+      <Button
+        type="button"
+        variant="ghost"
+        size="xs"
+        disabled={unavailable}
+        onClick={onSelect}
+        aria-current={isActive ? 'true' : undefined}
+        title={unavailable ? `Vault not found: ${vault.path}` : vault.path}
+        data-testid={`vault-menu-item-${vault.label}`}
+        className="w-full justify-between rounded-sm px-2 py-1 text-xs font-normal"
+        style={{
+          height: 'auto',
+          color: isActive ? 'var(--foreground)' : 'var(--muted-foreground)',
+          background: isActive ? 'var(--hover)' : 'transparent',
+          opacity: unavailable ? 0.45 : 1,
+        }}
+      >
+        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+          <VaultMenuIcon isActive={isActive} unavailable={unavailable} />
+          {vault.label}
+        </span>
+      </Button>
       {canRemove && onRemove && (
-        <span
-          role="button"
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
           onClick={(event) => {
             event.stopPropagation()
             onRemove()
           }}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: 2,
-            borderRadius: 3,
-            cursor: 'pointer',
-            opacity: 0.5,
-          }}
           title="Remove from list"
           data-testid={`vault-menu-remove-${vault.label}`}
-          onMouseEnter={(event) => {
-            event.currentTarget.style.opacity = '1'
-            event.currentTarget.style.background = 'var(--hover)'
-          }}
-          onMouseLeave={(event) => {
-            event.currentTarget.style.opacity = '0.5'
-            event.currentTarget.style.background = 'transparent'
-          }}
+          className="rounded-sm"
+          style={{ opacity: 0.5 }}
         >
           <X size={10} />
-        </span>
+        </Button>
       )}
     </div>
   )
@@ -156,27 +138,18 @@ function VaultMenuItem({ vault, isActive, canRemove, onSelect, onRemove }: Vault
 
 function VaultMenuAction({ icon, label, testId, accent = false, onClick }: VaultMenuActionProps) {
   return (
-    <div
-      role="button"
+    <Button
+      type="button"
+      variant="ghost"
+      size="xs"
       onClick={onClick}
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 6,
-        padding: '4px 8px',
-        borderRadius: 4,
-        cursor: 'pointer',
-        background: 'transparent',
-        color: accent ? 'var(--accent-blue)' : 'var(--muted-foreground)',
-        fontSize: 12,
-      }}
-      onMouseEnter={(event) => { event.currentTarget.style.background = 'var(--hover)' }}
-      onMouseLeave={(event) => { event.currentTarget.style.background = 'transparent' }}
+      className="h-auto w-full justify-start rounded-sm px-2 py-1 text-xs font-normal"
+      style={{ color: accent ? 'var(--accent-blue)' : 'var(--muted-foreground)' }}
       data-testid={testId}
     >
       {icon}
       {label}
-    </div>
+    </Button>
   )
 }
 

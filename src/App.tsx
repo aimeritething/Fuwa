@@ -105,6 +105,19 @@ declare global {
 
 const DEFAULT_SELECTION: SidebarSelection = INBOX_SELECTION
 
+function shouldPreferOnboardingVaultPath({
+  onboardingState,
+  vaults,
+}: {
+  onboardingState: { status: string; vaultPath?: string }
+  vaults: Array<{ path: string }>
+}): onboardingState is { status: 'ready'; vaultPath: string } {
+  return onboardingState.status === 'ready'
+    && typeof onboardingState.vaultPath === 'string'
+    && onboardingState.vaultPath.length > 0
+    && !vaults.some((vault) => vault.path === onboardingState.vaultPath)
+}
+
 async function resolveNoteWindowEntry(
   noteWindowParams: NoteWindowParams,
   entries: VaultEntry[],
@@ -234,16 +247,29 @@ function App() {
   })
   const aiAgentsStatus = useAiAgentsStatus()
   const aiAgentsOnboarding = useAiAgentsOnboarding(onboarding.state.status === 'ready' && !noteWindowParams)
+  const lastHandledOnboardingUserVaultPathRef = useRef<string | null>(null)
 
   useEffect(() => {
-    if (onboarding.state.status !== 'ready') return
-    if (!onboarding.state.vaultPath || onboarding.state.vaultPath === vaultSwitcher.vaultPath) return
-    rememberOnboardingVaultChoice(onboarding.state.vaultPath)
-  }, [onboarding.state, rememberOnboardingVaultChoice, vaultSwitcher.vaultPath])
+    const onboardingVaultPath = onboarding.userReadyVaultPath
+    if (!onboardingVaultPath || lastHandledOnboardingUserVaultPathRef.current === onboardingVaultPath) return
 
-  // The active vault path can temporarily come from onboarding before the
-  // persisted vault switcher catches up to the newly cloned starter vault.
-  const resolvedPath = noteWindowParams?.vaultPath ?? (onboarding.state.status === 'ready' ? onboarding.state.vaultPath : vaultSwitcher.vaultPath)
+    lastHandledOnboardingUserVaultPathRef.current = onboardingVaultPath
+    if (onboardingVaultPath !== vaultSwitcher.vaultPath) {
+      rememberOnboardingVaultChoice(onboardingVaultPath)
+    }
+  }, [onboarding.userReadyVaultPath, rememberOnboardingVaultChoice, vaultSwitcher.vaultPath])
+
+  // Onboarding can briefly own the vault path for a newly created/opened vault
+  // before the persisted switcher catches up, but once the path is already in
+  // the switcher list we should trust the explicit switcher state.
+  const resolvedPath = noteWindowParams?.vaultPath ?? (
+    shouldPreferOnboardingVaultPath({
+      onboardingState: onboarding.state,
+      vaults: vaultSwitcher.allVaults,
+    })
+      ? onboarding.state.vaultPath
+      : vaultSwitcher.vaultPath
+  )
   // Git repo check: 'checking' | 'required' | 'ready'
   const [gitRepoState, setGitRepoState] = useState<'checking' | 'required' | 'ready'>('checking')
   useEffect(() => {
