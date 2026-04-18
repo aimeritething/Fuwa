@@ -17,6 +17,12 @@ pub struct ViewDefinition {
     pub color: Option<String>,
     #[serde(default)]
     pub sort: Option<String>,
+    #[serde(
+        default,
+        rename = "listPropertiesDisplay",
+        skip_serializing_if = "Vec::is_empty"
+    )]
+    pub list_properties_display: Vec<String>,
     pub filters: FilterGroup,
 }
 
@@ -195,6 +201,37 @@ pub fn migrate_views(vault_path: &Path) {
 }
 
 /// Scan all `.yml` files from `vault_path/views/` and return parsed views.
+fn is_view_definition_file(path: &Path) -> bool {
+    path.extension().and_then(|ext| ext.to_str()) == Some("yml")
+}
+
+fn read_view_file(path: &Path) -> Option<ViewFile> {
+    if !is_view_definition_file(path) {
+        return None;
+    }
+
+    let filename = path.file_name()?.to_string_lossy().to_string();
+    let content = match fs::read_to_string(path) {
+        Ok(content) => content,
+        Err(error) => {
+            log::warn!("Failed to read view file {}: {}", filename, error);
+            return None;
+        }
+    };
+    let definition = match serde_yaml::from_str::<ViewDefinition>(&content) {
+        Ok(definition) => definition,
+        Err(error) => {
+            log::warn!("Failed to parse view {}: {}", filename, error);
+            return None;
+        }
+    };
+
+    Some(ViewFile {
+        filename,
+        definition,
+    })
+}
+
 pub fn scan_views(vault_path: &Path) -> Vec<ViewFile> {
     migrate_views(vault_path);
     let views_dir = vault_path.join("views");
@@ -212,20 +249,8 @@ pub fn scan_views(vault_path: &Path) -> Vec<ViewFile> {
     };
 
     for entry in entries.flatten() {
-        let path = entry.path();
-        if path.extension().and_then(|e| e.to_str()) != Some("yml") {
-            continue;
-        }
-        let filename = entry.file_name().to_string_lossy().to_string();
-        match fs::read_to_string(&path) {
-            Ok(content) => match serde_yaml::from_str::<ViewDefinition>(&content) {
-                Ok(definition) => views.push(ViewFile {
-                    filename,
-                    definition,
-                }),
-                Err(e) => log::warn!("Failed to parse view {}: {}", filename, e),
-            },
-            Err(e) => log::warn!("Failed to read view file {}: {}", filename, e),
+        if let Some(view) = read_view_file(&entry.path()) {
+            views.push(view);
         }
     }
 
@@ -656,6 +681,22 @@ mod tests {
         entry
     }
 
+    fn make_project_view(name: &str) -> ViewDefinition {
+        ViewDefinition {
+            name: name.to_string(),
+            icon: None,
+            color: None,
+            sort: None,
+            list_properties_display: Vec::new(),
+            filters: FilterGroup::All(vec![FilterNode::Condition(FilterCondition {
+                field: "type".to_string(),
+                op: FilterOp::Equals,
+                value: Some(serde_yaml::Value::String("Project".to_string())),
+                regex: false,
+            })]),
+        }
+    }
+
     #[test]
     fn test_parse_simple_view() {
         let yaml = r#"
@@ -670,6 +711,7 @@ filters:
         let def: ViewDefinition = serde_yaml::from_str(yaml).unwrap();
         assert_eq!(def.name, "Active Projects");
         assert_eq!(def.icon.as_deref(), Some("rocket"));
+        assert!(def.list_properties_display.is_empty());
         match &def.filters {
             FilterGroup::All(nodes) => {
                 assert_eq!(nodes.len(), 1);
@@ -945,18 +987,10 @@ filters:
     fn test_save_and_read_view() {
         let dir = tempfile::TempDir::new().unwrap();
 
-        let def = ViewDefinition {
-            name: "Test View".to_string(),
-            icon: Some("star".to_string()),
-            color: None,
-            sort: Some("modified:desc".to_string()),
-            filters: FilterGroup::All(vec![FilterNode::Condition(FilterCondition {
-                field: "type".to_string(),
-                op: FilterOp::Equals,
-                value: Some(serde_yaml::Value::String("Project".to_string())),
-                regex: false,
-            })]),
-        };
+        let mut def = make_project_view("Test View");
+        def.icon = Some("star".to_string());
+        def.sort = Some("modified:desc".to_string());
+        def.list_properties_display = vec!["Priority".to_string(), "Owner".to_string()];
 
         save_view(dir.path(), "test.yml", &def).unwrap();
 
@@ -964,6 +998,10 @@ filters:
         assert_eq!(views.len(), 1);
         assert_eq!(views[0].definition.name, "Test View");
         assert_eq!(views[0].definition.icon.as_deref(), Some("star"));
+        assert_eq!(
+            views[0].definition.list_properties_display,
+            vec!["Priority".to_string(), "Owner".to_string()]
+        );
 
         delete_view(dir.path(), "test.yml").unwrap();
         let views = scan_views(dir.path());
@@ -974,18 +1012,8 @@ filters:
     fn test_save_and_read_view_with_emoji_icon() {
         let dir = tempfile::TempDir::new().unwrap();
 
-        let def = ViewDefinition {
-            name: "Monday".to_string(),
-            icon: Some("🗂️".to_string()),
-            color: None,
-            sort: None,
-            filters: FilterGroup::All(vec![FilterNode::Condition(FilterCondition {
-                field: "type".to_string(),
-                op: FilterOp::Equals,
-                value: Some(serde_yaml::Value::String("Project".to_string())),
-                regex: false,
-            })]),
-        };
+        let mut def = make_project_view("Monday");
+        def.icon = Some("🗂️".to_string());
 
         save_view(dir.path(), "monday.yml", &def).unwrap();
 

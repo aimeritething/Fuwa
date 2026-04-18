@@ -372,8 +372,6 @@ export function ListPropertiesPopover({
     handleToggle,
   } = useListPropertiesPopoverState({ scope, availableProperties, currentDisplay, onSave })
 
-  if (availableProperties.length === 0) return null
-
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger asChild>

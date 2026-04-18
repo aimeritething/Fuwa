@@ -201,6 +201,7 @@ export interface ViewDefinition {
   icon: string | null
   color: string | null
   sort: string | null
+  listPropertiesDisplay?: string[]
   filters: FilterGroup
 }
 

@@ -69,7 +69,7 @@ import { DeleteProgressNotice } from './components/DeleteProgressNotice'
 import { UpdateBanner } from './components/UpdateBanner'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
-import type { SidebarSelection, InboxPeriod, VaultEntry } from './types'
+import type { SidebarSelection, InboxPeriod, VaultEntry, ViewDefinition } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
@@ -561,6 +561,11 @@ function App() {
   }, [setInspectorCollapsed])
 
   const handleCustomizeNoteListColumns = useCallback(() => {
+    if (effectiveSelection.kind === 'view') {
+      openNoteListPropertiesPicker('view')
+      return
+    }
+
     if (effectiveSelection.kind !== 'filter') return
     if (effectiveSelection.filter === 'all') {
       openNoteListPropertiesPicker('all')
@@ -800,20 +805,34 @@ function App() {
     )
   }, [notes, setToastMessage, vault.entries])
 
-  const handleCreateOrUpdateView = useCallback(async (definition: import('./types').ViewDefinition) => {
+  const handleCreateOrUpdateView = useCallback(async (definition: ViewDefinition) => {
     const editing = dialogs.editingView
     const filename = editing
       ? editing.filename
       : definition.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.yml'
+    const nextDefinition = editing ? { ...editing.definition, ...definition } : definition
     const target = isTauri() ? invoke : mockInvoke
-    await target('save_view_cmd', { vaultPath: resolvedPath, filename, definition })
+    await target('save_view_cmd', { vaultPath: resolvedPath, filename, definition: nextDefinition })
     trackEvent(editing ? 'view_updated' : 'view_created')
     await vault.reloadViews()
     await vault.reloadVault()
     vault.reloadFolders()
-    setToastMessage(editing ? `View "${definition.name}" updated` : `View "${definition.name}" created`)
+    setToastMessage(editing ? `View "${nextDefinition.name}" updated` : `View "${nextDefinition.name}" created`)
     handleSetSelection({ kind: 'view', filename })
   }, [resolvedPath, vault, handleSetSelection, dialogs.editingView])
+
+  const handleUpdateViewDefinition = useCallback(async (filename: string, patch: Partial<ViewDefinition>) => {
+    const existing = vault.views.find((view) => view.filename === filename)
+    if (!existing) return
+
+    const target = isTauri() ? invoke : mockInvoke
+    await target('save_view_cmd', {
+      vaultPath: resolvedPath,
+      filename,
+      definition: { ...existing.definition, ...patch },
+    })
+    await vault.reloadViews()
+  }, [resolvedPath, vault])
 
   const handleEditView = useCallback((filename: string) => {
     const view = vault.views.find((v) => v.filename === filename)
@@ -962,6 +981,17 @@ function App() {
     && activeCommandEntry.filename.toLowerCase().endsWith('.md')
     && !activeDeletedFile
 
+  const noteListColumnsLabel = useMemo(() => {
+    if (effectiveSelection.kind === 'view') {
+      const selectedView = vault.views.find((view) => view.filename === effectiveSelection.filename)
+      return selectedView ? `Customize ${selectedView.definition.name} columns` : 'Customize View columns'
+    }
+
+    return effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'all'
+      ? 'Customize All Notes columns'
+      : 'Customize Inbox columns'
+  }, [effectiveSelection, vault.views])
+
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
     entries: vault.entries,
@@ -1026,8 +1056,12 @@ function App() {
     onToggleFavorite: entryActions.handleToggleFavorite,
     onToggleOrganized: explicitOrganizationEnabled ? entryActions.handleToggleOrganized : undefined,
     onCustomizeNoteListColumns: handleCustomizeNoteListColumns,
-    canCustomizeNoteListColumns: effectiveSelection.kind === 'filter'
-      && (effectiveSelection.filter === 'all' || (explicitOrganizationEnabled && effectiveSelection.filter === 'inbox')),
+    canCustomizeNoteListColumns: effectiveSelection.kind === 'view'
+      || (
+        effectiveSelection.kind === 'filter'
+        && (effectiveSelection.filter === 'all' || (explicitOrganizationEnabled && effectiveSelection.filter === 'inbox'))
+      ),
+    noteListColumnsLabel,
     onRestoreDeletedNote: activeDeletedFile ? () => { void handleDiscardFile(activeDeletedFile.relativePath) } : undefined,
     canRestoreDeletedNote: !!activeDeletedFile,
   })
@@ -1135,7 +1169,7 @@ function App() {
               {effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'pulse' ? (
                 <PulseView vaultPath={resolvedPath} onOpenNote={handlePulseOpenNote} sidebarCollapsed={!sidebarVisible} onExpandSidebar={() => handleSetViewMode('all')} />
               ) : (
-                <NoteList entries={vault.entries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} allNotesNoteListProperties={vaultConfig.allNotes?.noteListProperties ?? null} onUpdateAllNotesNoteListProperties={handleUpdateAllNotesNoteListProperties} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} multiSelectionCommandRef={multiSelectionCommandRef} />
+                <NoteList entries={vault.entries} selection={effectiveSelection} selectedNote={activeTab?.entry ?? null} noteListFilter={noteListFilter} onNoteListFilterChange={setNoteListFilter} inboxPeriod={inboxPeriod} modifiedFiles={vault.modifiedFiles} modifiedFilesError={vault.modifiedFilesError} getNoteStatus={vault.getNoteStatus} sidebarCollapsed={!sidebarVisible} onSelectNote={notes.handleSelectNote} onReplaceActiveTab={notes.handleReplaceActiveTab} onCreateNote={notes.handleCreateNoteImmediate} onBulkOrganize={explicitOrganizationEnabled ? bulkActions.handleBulkOrganize : undefined} onBulkArchive={bulkActions.handleBulkArchive} onBulkDeletePermanently={deleteActions.handleBulkDeletePermanently} onUpdateTypeSort={notes.handleUpdateFrontmatter} onUpdateViewDefinition={handleUpdateViewDefinition} updateEntry={vault.updateEntry} onOpenInNewWindow={handleOpenEntryInNewWindow} onDiscardFile={handleDiscardFile} onAutoTriggerDiff={() => diffToggleRef.current()} onOpenDeletedNote={handleOpenDeletedNote} allNotesNoteListProperties={vaultConfig.allNotes?.noteListProperties ?? null} onUpdateAllNotesNoteListProperties={handleUpdateAllNotesNoteListProperties} inboxNoteListProperties={vaultConfig.inbox?.noteListProperties ?? null} onUpdateInboxNoteListProperties={handleUpdateInboxNoteListProperties} views={vault.views} visibleNotesRef={visibleNotesRef} multiSelectionCommandRef={multiSelectionCommandRef} />
               )}
             </div>
             <ResizeHandle onResize={layout.handleNoteListResize} />

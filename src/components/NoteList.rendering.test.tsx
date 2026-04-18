@@ -1,13 +1,17 @@
-import { act, fireEvent, screen, waitFor } from '@testing-library/react'
+import { useState } from 'react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import { NoteList } from './NoteList'
 import { openNoteListPropertiesPicker } from './note-list/noteListPropertiesEvents'
 import {
   allSelection,
+  buildNoteListProps,
   makeEntry,
   makeTypeDefinition,
   mockEntries,
   renderNoteList,
 } from '../test-utils/noteListTestUtils'
+import type { ViewFile } from '../types'
 
 function makeBookTypeEntries(
   displayProps: string[] = [],
@@ -27,6 +31,58 @@ function makeBookTypeEntries(
 }
 
 const noop = () => undefined
+
+function makeViewDefinition(overrides: Partial<ViewFile> = {}): ViewFile {
+  return {
+    filename: 'active-books.yml',
+    definition: {
+      name: 'Active Books',
+      icon: null,
+      color: null,
+      sort: null,
+      filters: { all: [{ field: 'type', op: 'equals', value: 'Book' }] },
+      ...overrides.definition,
+    },
+    ...overrides,
+  }
+}
+
+function renderManagedViewNoteList({
+  entries,
+  view = makeViewDefinition(),
+}: {
+  entries: Parameters<typeof renderNoteList>[0]['entries']
+  view?: ViewFile
+}) {
+  const built = buildNoteListProps({
+    entries,
+    selection: { kind: 'view', filename: view.filename },
+    views: [view],
+  })
+
+  function ManagedViewNoteList() {
+    const [views, setViews] = useState([view])
+
+    return (
+      <NoteList
+        {...built.props}
+        views={views}
+        onUpdateViewDefinition={(filename, patch) => {
+          setViews((currentViews) => currentViews.map((currentView) => (
+            currentView.filename === filename
+              ? { ...currentView, definition: { ...currentView.definition, ...patch } }
+              : currentView
+          )))
+        }}
+      />
+    )
+  }
+
+  return {
+    ...render(<ManagedViewNoteList />),
+    ...built,
+  }
+}
 
 function searchNoteList(query: string) {
   const searchInput = screen.queryByPlaceholderText('Search notes...')
@@ -352,6 +408,44 @@ describe('NoteList rendering', () => {
 
     fireEvent.click(screen.getByRole('checkbox', { name: 'Owner' }))
     expect(onUpdateInboxNoteListProperties).toHaveBeenCalledWith(['Priority', 'Owner'])
+  })
+
+  it('opens the view column picker from the global event and applies the saved columns', () => {
+    renderManagedViewNoteList({
+      entries: makeBookTypeEntries(['Priority'], { properties: { Priority: 'High', Owner: 'Luca' } }),
+    })
+
+    expect(screen.getByText('High')).toBeInTheDocument()
+    expect(screen.queryByText('Luca')).not.toBeInTheDocument()
+
+    act(() => {
+      openNoteListPropertiesPicker('view')
+    })
+
+    expect(screen.getByTestId('list-properties-popover')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Owner' }))
+
+    expect(screen.getByText('Luca')).toBeInTheDocument()
+  })
+
+  it('shows an empty-state picker for views with no matching properties', () => {
+    renderManagedViewNoteList({
+      entries: makeBookTypeEntries(),
+      view: makeViewDefinition({
+        filename: 'empty-view.yml',
+        definition: {
+          name: 'Empty View',
+          filters: { all: [{ field: 'type', op: 'equals', value: 'Project' }] },
+        },
+      }),
+    })
+
+    act(() => {
+      openNoteListPropertiesPicker('view')
+    })
+
+    expect(screen.getByTestId('list-properties-popover')).toBeInTheDocument()
+    expect(screen.getByText('No properties match this search.')).toBeInTheDocument()
   })
 
   it('shows status in the type column picker when at least one note has it set', () => {

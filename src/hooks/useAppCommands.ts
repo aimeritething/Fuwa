@@ -82,6 +82,7 @@ interface AppCommandsConfig {
   onToggleOrganized?: (path: string) => void
   onCustomizeNoteListColumns?: () => void
   canCustomizeNoteListColumns?: boolean
+  noteListColumnsLabel?: string
   onRestoreDeletedNote?: () => void
   canRestoreDeletedNote?: boolean
 }
@@ -224,6 +225,7 @@ function createCommandRegistryConfig(config: AppCommandsConfig): Parameters<type
     onToggleOrganized: config.onToggleOrganized,
     onCustomizeNoteListColumns: config.onCustomizeNoteListColumns,
     canCustomizeNoteListColumns: config.canCustomizeNoteListColumns,
+    noteListColumnsLabel: config.noteListColumnsLabel,
     onRestoreDeletedNote: config.onRestoreDeletedNote,
     canRestoreDeletedNote: config.canRestoreDeletedNote,
   }

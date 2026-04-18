@@ -1,8 +1,11 @@
+import { useState } from 'react'
 import { beforeEach, describe, expect, it } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { NoteList } from './NoteList'
 import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS } from '../constants/appStorage'
 import { getSortComparator } from '../utils/noteListHelpers'
-import { makeEntry, mockEntries, renderNoteList } from '../test-utils/noteListTestUtils'
+import { buildNoteListProps, makeEntry, mockEntries, renderNoteList } from '../test-utils/noteListTestUtils'
+import type { ViewFile } from '../types'
 
 describe('getSortComparator', () => {
   it('sorts by modified date descending', () => {
@@ -120,6 +123,52 @@ describe('NoteList sort controls', () => {
     makeEntry({ path: '/b.md', title: 'Alpha', modifiedAt: 1000 }),
     makeEntry({ path: '/c.md', title: 'Middle', modifiedAt: 2000 }),
   ]
+
+  function makeView(overrides: Partial<ViewFile> = {}): ViewFile {
+    return {
+      filename: 'rated-books.yml',
+      definition: {
+        name: 'Rated Books',
+        icon: null,
+        color: null,
+        sort: null,
+        filters: { all: [{ field: 'type', op: 'equals', value: 'Book' }] },
+        ...overrides.definition,
+      },
+      ...overrides,
+    }
+  }
+
+  function renderManagedViewSort(entries: typeof zamEntries, view = makeView()) {
+    const built = buildNoteListProps({
+      entries,
+      selection: { kind: 'view', filename: view.filename },
+      views: [view],
+    })
+
+    function ManagedViewNoteList() {
+      const [views, setViews] = useState([view])
+
+      return (
+        <NoteList
+          {...built.props}
+          views={views}
+          onUpdateViewDefinition={(filename, patch) => {
+            setViews((currentViews) => currentViews.map((currentView) => (
+              currentView.filename === filename
+                ? { ...currentView, definition: { ...currentView.definition, ...patch } }
+                : currentView
+            )))
+          }}
+        />
+      )
+    }
+
+    return {
+      ...render(<ManagedViewNoteList />),
+      ...built,
+    }
+  }
 
   function openListSortMenu(entries = mockEntries) {
     renderNoteList({ entries })
@@ -293,5 +342,39 @@ describe('NoteList sort controls', () => {
 
     const titles = screen.getAllByText(/^[ABC]$/).map((element) => element.textContent)
     expect(titles).toEqual(['A', 'C', 'B'])
+  })
+
+  it('loads view sort properties from the current view results only', () => {
+    const entries = [
+      makeEntry({ path: '/book-a.md', title: 'Book A', isA: 'Book', properties: { Rating: 3 } }),
+      makeEntry({ path: '/book-b.md', title: 'Book B', isA: 'Book', properties: { Priority: 'High' } }),
+      makeEntry({ path: '/project-a.md', title: 'Project A', isA: 'Project', properties: { Owner: 'Luca' } }),
+    ]
+
+    renderManagedViewSort(entries)
+    fireEvent.click(screen.getByTestId('sort-button-__list__'))
+
+    expect(screen.getByTestId('sort-option-property:Priority')).toBeInTheDocument()
+    expect(screen.getByTestId('sort-option-property:Rating')).toBeInTheDocument()
+    expect(screen.queryByTestId('sort-option-property:Owner')).not.toBeInTheDocument()
+  })
+
+  it('supports keyboard selection for view sorting and persists the chosen property', () => {
+    const entries = [
+      makeEntry({ path: '/book-a.md', title: 'Book A', isA: 'Book', modifiedAt: 1000, properties: { Rating: 3 } }),
+      makeEntry({ path: '/book-b.md', title: 'Book B', isA: 'Book', modifiedAt: 3000, properties: { Rating: 1 } }),
+      makeEntry({ path: '/book-c.md', title: 'Book C', isA: 'Book', modifiedAt: 2000, properties: { Rating: 5 } }),
+    ]
+
+    renderManagedViewSort(entries)
+    fireEvent.click(screen.getByTestId('sort-button-__list__'))
+    fireEvent.keyDown(screen.getByTestId('sort-menu-__list__'), { key: 'End' })
+    expect(screen.getByTestId('sort-option-property:Rating')).toHaveFocus()
+
+    fireEvent.keyDown(screen.getByTestId('sort-option-property:Rating'), { key: 'Enter' })
+
+    const titles = screen.getAllByText(/^Book [ABC]$/).map((element) => element.textContent)
+    expect(titles).toEqual(['Book B', 'Book A', 'Book C'])
+    expect(screen.queryByTestId('sort-menu-__list__')).not.toBeInTheDocument()
   })
 })

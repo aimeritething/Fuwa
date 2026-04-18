@@ -5,6 +5,7 @@ import type {
   ModifiedFile,
   NoteStatus,
   InboxPeriod,
+  ViewDefinition,
   ViewFile,
 } from '../../types'
 import type { NoteListFilter } from '../../utils/noteListHelpers'
@@ -94,6 +95,7 @@ interface UseNoteListContentParams {
   onUpdateAllNotesNoteListProperties?: (value: string[] | null) => void
   inboxNoteListProperties?: string[] | null
   onUpdateInboxNoteListProperties?: (value: string[] | null) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
   onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
   views?: ViewFile[]
@@ -113,6 +115,7 @@ function useNoteListContent({
   onUpdateAllNotesNoteListProperties,
   inboxNoteListProperties,
   onUpdateInboxNoteListProperties,
+  onUpdateViewDefinition,
   onUpdateTypeSort,
   updateEntry,
   views,
@@ -129,7 +132,9 @@ function useNoteListContent({
     modifiedSuffixes,
     subFilter,
     inboxPeriod: effectiveInboxPeriod,
+    views,
     onUpdateTypeSort,
+    onUpdateViewDefinition,
     updateEntry,
   })
   const { search, setSearch, query, searchVisible, toggleSearch } = useNoteListSearch()
@@ -144,7 +149,9 @@ function useNoteListContent({
     onUpdateAllNotesNoteListProperties,
     inboxNoteListProperties,
     onUpdateInboxNoteListProperties,
+    onUpdateViewDefinition,
     onUpdateTypeSort,
+    views,
   })
   const {
     isEntityView,
@@ -372,6 +379,7 @@ export interface NoteListProps {
   onUpdateAllNotesNoteListProperties?: (value: string[] | null) => void
   inboxNoteListProperties?: string[] | null
   onUpdateInboxNoteListProperties?: (value: string[] | null) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
   views?: ViewFile[]
   visibleNotesRef?: React.MutableRefObject<VaultEntry[]>
 }
@@ -466,6 +474,7 @@ export function useNoteListModel({
   onUpdateAllNotesNoteListProperties,
   inboxNoteListProperties,
   onUpdateInboxNoteListProperties,
+  onUpdateViewDefinition,
   views,
   visibleNotesRef,
 }: NoteListProps) {
@@ -486,6 +495,7 @@ export function useNoteListModel({
     onUpdateAllNotesNoteListProperties,
     inboxNoteListProperties,
     onUpdateInboxNoteListProperties,
+    onUpdateViewDefinition,
     onUpdateTypeSort,
     updateEntry,
     views,

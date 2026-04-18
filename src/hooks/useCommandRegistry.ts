@@ -45,6 +45,7 @@ interface CommandRegistryConfig {
   onToggleOrganized?: (path: string) => void
   onCustomizeNoteListColumns?: () => void
   canCustomizeNoteListColumns?: boolean
+  noteListColumnsLabel?: string
   onRestoreDeletedNote?: () => void
   canRestoreDeletedNote?: boolean
   onQuickOpen: () => void
@@ -119,9 +120,11 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   const isArchived = activeEntry?.archived ?? false
   const isFavorite = activeEntry?.favorite ?? false
   const isSectionGroup = selection?.kind === 'sectionGroup'
-  const noteListColumnsLabel = selection?.kind === 'filter' && selection.filter === 'all'
-    ? 'Customize All Notes columns'
-    : 'Customize Inbox columns'
+  const noteListColumnsLabel = config.noteListColumnsLabel ?? (
+    selection?.kind === 'filter' && selection.filter === 'all'
+      ? 'Customize All Notes columns'
+      : 'Customize Inbox columns'
+  )
 
   const vaultTypes = useMemo(() => extractVaultTypes(entries), [entries])
 
