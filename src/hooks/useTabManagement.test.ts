@@ -265,6 +265,48 @@ describe('useTabManagement (single-note model)', () => {
       expect(result.current.tabs[0].content).toBe('# Persisted content')
       expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1)
     })
+
+    it('reuses cached content when reopening a recently loaded note', async () => {
+      const { mockInvoke } = await import('../mock-tauri')
+      vi.mocked(mockInvoke)
+        .mockResolvedValueOnce('# A content')
+        .mockResolvedValueOnce('# B content')
+
+      const { result } = renderHook(() => useTabManagement())
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+      await selectNote(result, { path: '/vault/b.md', title: 'B' })
+      await selectNote(result, { path: '/vault/a.md', title: 'A again' })
+
+      expect(result.current.tabs[0].entry.path).toBe('/vault/a.md')
+      expect(result.current.tabs[0].content).toBe('# A content')
+      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(2)
+    })
+
+    it('deduplicates a late prefetch after note opening already started', async () => {
+      const { mockInvoke } = await import('../mock-tauri')
+
+      let resolveContent!: (value: string) => void
+      vi.mocked(mockInvoke).mockImplementationOnce(
+        () => new Promise<string>((resolve) => { resolveContent = resolve }),
+      )
+
+      const { result } = renderHook(() => useTabManagement())
+
+      await act(async () => {
+        void result.current.handleSelectNote(makeEntry({ path: '/vault/note/rapid.md', title: 'Rapid' }))
+        prefetchNoteContent('/vault/note/rapid.md')
+        await Promise.resolve()
+      })
+
+      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        resolveContent('# Rapid content')
+        await Promise.resolve()
+      })
+
+      expect(result.current.tabs[0].content).toBe('# Rapid content')
+    })
   })
 
   describe('rapid switching safety', () => {

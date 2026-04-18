@@ -8,30 +8,57 @@ interface Tab {
   content: string
 }
 
+type NotePath = VaultEntry['path']
+
 // --- Content prefetch cache ---
-// Stores in-flight or resolved note content promises, keyed by path.
+// Stores in-flight or recently loaded note content promises, keyed by path.
 // Cleared on vault reload to prevent stale content after external edits.
-// Latency profile: eliminates 50-200ms IPC round-trip for hover/keyboard-prefetched notes.
+// Latency profile: deduplicates rapid note switches and keeps revisits instant.
 const prefetchCache = new Map<string, Promise<string>>()
+const NOTE_CONTENT_CACHE_LIMIT = 48
+
+interface NoteContentCacheEntry {
+  path: NotePath
+  promise: Promise<string>
+}
+
+function trimPrefetchCache(): void {
+  while (prefetchCache.size > NOTE_CONTENT_CACHE_LIMIT) {
+    const oldestPath = prefetchCache.keys().next().value
+    if (!oldestPath) return
+    prefetchCache.delete(oldestPath)
+  }
+}
+
+function rememberNoteContent({ path, promise }: NoteContentCacheEntry): Promise<string> {
+  if (prefetchCache.has(path)) prefetchCache.delete(path)
+  prefetchCache.set(path, promise)
+  trimPrefetchCache()
+  return promise
+}
+
+function requestNoteContent({ path }: Pick<NoteContentCacheEntry, 'path'>): Promise<string> {
+  const promise = (isTauri()
+    ? invoke<string>('get_note_content', { path })
+    : mockInvoke<string>('get_note_content', { path })
+  ).catch((err) => {
+    prefetchCache.delete(path)
+    throw err
+  })
+
+  return rememberNoteContent({ path, promise })
+}
 
 /** Prefetch a note's content into the in-memory cache.
  *  Safe to call multiple times — deduplicates concurrent requests for the same path.
  *  Cache is short-lived: cleared on vault reload via clearPrefetchCache(). */
 export function prefetchNoteContent(path: string): void {
   if (prefetchCache.has(path)) return
-  const promise = (isTauri()
-    ? invoke<string>('get_note_content', { path })
-    : mockInvoke<string>('get_note_content', { path })
-  ).catch((err) => {
-    // Remove failed prefetch so a retry can occur
-    prefetchCache.delete(path)
-    throw err
-  })
-  prefetchCache.set(path, promise)
+  requestNoteContent({ path })
 }
 
 export function cacheNoteContent(path: string, content: string): void {
-  prefetchCache.set(path, Promise.resolve(content))
+  rememberNoteContent({ path, promise: Promise.resolve(content) })
 }
 
 /** Clear the prefetch cache. Call on vault reload to prevent stale content. */
@@ -40,15 +67,7 @@ export function clearPrefetchCache(): void {
 }
 
 async function loadNoteContent(path: string): Promise<string> {
-  // Check prefetch cache first — eliminates IPC round-trip for prefetched notes
-  const cached = prefetchCache.get(path)
-  if (cached) {
-    prefetchCache.delete(path)
-    return cached
-  }
-  return isTauri()
-    ? invoke<string>('get_note_content', { path })
-    : mockInvoke<string>('get_note_content', { path })
+  return prefetchCache.get(path) ?? requestNoteContent({ path })
 }
 
 export type { Tab }
