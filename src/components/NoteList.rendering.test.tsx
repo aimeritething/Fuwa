@@ -303,7 +303,7 @@ describe('NoteList rendering', () => {
     expect(screen.getByText('Matteo Cellini')).toBeInTheDocument()
   })
 
-  it('keeps computed neighborhood groups visible when they are empty', () => {
+  it('shows no placeholder neighborhood groups when none exist', () => {
     const standalone = makeEntry({
       path: '/vault/solo.md',
       filename: 'solo.md',
@@ -316,10 +316,41 @@ describe('NoteList rendering', () => {
       selection: { kind: 'entity', entry: standalone },
     })
 
+    expect(screen.queryByRole('button', { name: /Children/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Events/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Referenced By/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Backlinks/i })).not.toBeInTheDocument()
+  })
+
+  it('keeps existing neighborhood groups visible at zero after search filters them out', () => {
+    const parent = makeEntry({
+      path: '/vault/parent.md',
+      filename: 'parent.md',
+      title: 'Parent',
+      isA: 'Project',
+    })
+    const child = makeEntry({
+      path: '/vault/child.md',
+      filename: 'child.md',
+      title: 'Child Note',
+      isA: 'Note',
+      belongsTo: ['[[parent]]'],
+    })
+
+    renderNoteList({
+      entries: [parent, child],
+      selection: { kind: 'entity', entry: parent },
+    })
+
+    expect(screen.getByRole('button', { name: /Children\s*1/i })).toBeInTheDocument()
+
+    searchNoteList('missing-neighborhood-match')
+
     expect(screen.getByRole('button', { name: /Children\s*0/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Events\s*0/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Referenced By\s*0/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Backlinks\s*0/i })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Events/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Referenced By/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Backlinks/i })).not.toBeInTheDocument()
+    expect(screen.queryByText('Child Note')).not.toBeInTheDocument()
   })
 
   it('shows the same note in multiple neighborhood groups when relationships overlap', () => {

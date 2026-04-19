@@ -129,7 +129,7 @@ describe('countAllNotesByFilter', () => {
 })
 
 describe('buildRelationshipGroups', () => {
-  it('keeps computed neighborhood groups visible when they are empty', () => {
+  it('omits computed neighborhood groups when they are absent', () => {
     const standalone = makeEntry({
       path: '/vault/solo.md',
       filename: 'solo.md',
@@ -139,12 +139,7 @@ describe('buildRelationshipGroups', () => {
 
     const groups = buildRelationshipGroups(standalone, [standalone])
 
-    expect(groups).toEqual([
-      { label: 'Children', entries: [] },
-      { label: 'Events', entries: [] },
-      { label: 'Referenced By', entries: [] },
-      { label: 'Backlinks', entries: [] },
-    ])
+    expect(groups).toEqual([])
   })
 
   it('allows the same note to appear in multiple relationship groups', () => {

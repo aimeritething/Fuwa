@@ -269,6 +269,7 @@ class GroupBuilder {
       deduped.set(entry.path, entry)
     }
 
+    if (deduped.size === 0) return
     this.groups.push({ label, entries: [...deduped.values()] })
   }
 
