@@ -202,10 +202,7 @@ describe('App', () => {
 
   it('renders the four-panel layout', async () => {
     render(<App />)
-    // Wait for vault to load
-    await waitFor(() => {
-      expect(screen.getByText('All Notes')).toBeInTheDocument()
-    })
+    expect(await screen.findByText('All Notes', {}, { timeout: 5000 })).toBeInTheDocument()
   })
 
   it('loads and displays vault entries in sidebar', async () => {

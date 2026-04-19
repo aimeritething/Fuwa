@@ -132,7 +132,7 @@ fn finish_remote_connection(vault: &Path, connection: &RemoteConnection) -> GitA
     {
         return connect_result(
             ConnectStatus::IncompatibleHistory,
-            &format!(
+            format!(
                 "This repository already has git branches, but not '{}'. Use an empty repository or one created from this vault.",
                 connection.branch
             ),
@@ -154,7 +154,7 @@ fn finish_remote_connection(vault: &Path, connection: &RemoteConnection) -> GitA
     if behind > 0 {
         return connect_result(
             ConnectStatus::IncompatibleHistory,
-            &format!(
+            format!(
                 "This repository already has commits on '{}' that are not in this vault. Tolaria will not connect it automatically.",
                 connection.branch
             ),
@@ -307,7 +307,7 @@ fn classify_connect_error(stderr: &str) -> GitAddRemoteResult {
 
     connect_result(
         ConnectStatus::Error,
-        &format!(
+        format!(
             "Could not connect that remote: {}",
             concise_git_detail(stderr)
         ),
