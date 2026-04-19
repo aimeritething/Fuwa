@@ -13,6 +13,7 @@ import { SlidersHorizontal } from 'lucide-react'
 import {
   CaretLeft, Plus,
 } from '@phosphor-icons/react'
+import { Button } from '@/components/ui/button'
 import {
   type SectionGroup, isSelectionActive, SectionContent, VisibilityPopover,
 } from '../SidebarParts'
@@ -161,21 +162,30 @@ export function TypesSection({
       <div ref={customizeRef} style={{ position: 'relative', padding: '0 6px' }}>
         <SidebarGroupHeader label="TYPES" collapsed={collapsed} onToggle={onToggle}>
           <div className="flex items-center gap-1.5">
-            <span
-              role="button"
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-xs"
               title="Customize sections"
               aria-label="Customize sections"
+              className="h-auto w-auto min-w-0 rounded-none p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
               onClick={(event) => { event.stopPropagation(); setShowCustomize((value) => !value) }}
             >
               <SlidersHorizontal size={12} className="text-muted-foreground hover:text-foreground" />
-            </span>
+            </Button>
             {onCreateNewType && (
-              <Plus
-                size={12}
-                className="text-muted-foreground hover:text-foreground"
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                className="h-auto w-auto min-w-0 rounded-none p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
                 data-testid="create-type-btn"
+                title="Create new type"
+                aria-label="Create new type"
                 onClick={(event) => { event.stopPropagation(); onCreateNewType() }}
-              />
+              >
+                <Plus size={12} className="text-muted-foreground hover:text-foreground" />
+              </Button>
             )}
           </div>
         </SidebarGroupHeader>

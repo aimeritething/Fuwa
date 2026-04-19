@@ -19,18 +19,21 @@ export function SidebarGroupHeader({
   children,
 }: SidebarGroupHeaderProps) {
   return (
-    <button
-      className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
+    <div
+      className="flex w-full items-center justify-between text-muted-foreground"
       style={{ padding: count != null ? SIDEBAR_GROUP_HEADER_PADDING.withCount : SIDEBAR_GROUP_HEADER_PADDING.regular }}
-      onClick={onToggle}
     >
-      <div className="flex items-center gap-1">
+      <button
+        type="button"
+        className="flex min-w-0 flex-1 cursor-pointer select-none items-center gap-1 border-none bg-transparent p-0 text-muted-foreground"
+        onClick={onToggle}
+      >
         {collapsed ? <CaretRight size={12} /> : <CaretDown size={12} />}
         <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>{label}</span>
-      </div>
+      </button>
       {children ?? (count != null && (
         <SidebarCountPill count={count} className="text-muted-foreground" compact style={{ background: 'var(--muted)' }} />
       ))}
-    </button>
+    </div>
   )
 }

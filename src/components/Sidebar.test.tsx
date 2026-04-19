@@ -620,6 +620,96 @@ describe('Sidebar', () => {
       expect(screen.getByLabelText('Toggle Topics')).toBeInTheDocument()
     })
 
+    it('preserves custom section colors in the customize popover', () => {
+      const entries: VaultEntry[] = [
+        ...mockEntries,
+        {
+          path: '/vault/project-type.md',
+          filename: 'project-type.md',
+          title: 'Project',
+          isA: 'Type',
+          aliases: [],
+          belongsTo: [],
+          relatedTo: [],
+          status: null,
+          owner: null,
+          cadence: null,
+          archived: false,
+          modifiedAt: 1700000000,
+          createdAt: null,
+          fileSize: 200,
+          snippet: '',
+          wordCount: 0,
+          relationships: {},
+          icon: null,
+          color: 'green',
+          order: null,
+          sidebarLabel: null,
+          template: null, sort: null,
+          outgoingLinks: [],
+          properties: {},
+        },
+        {
+          path: '/vault/recipe.md',
+          filename: 'recipe.md',
+          title: 'Recipe',
+          isA: 'Type',
+          aliases: [],
+          belongsTo: [],
+          relatedTo: [],
+          status: null,
+          owner: null,
+          cadence: null,
+          archived: false,
+          modifiedAt: 1700000000,
+          createdAt: null,
+          fileSize: 200,
+          snippet: '',
+          wordCount: 0,
+          relationships: {},
+          icon: null,
+          color: 'orange',
+          order: null,
+          sidebarLabel: null,
+          template: null, sort: null,
+          outgoingLinks: [],
+          properties: {},
+        },
+        {
+          path: '/vault/recipe/pasta.md',
+          filename: 'pasta.md',
+          title: 'Pasta Carbonara',
+          isA: 'Recipe',
+          aliases: [],
+          belongsTo: [],
+          relatedTo: [],
+          status: null,
+          owner: null,
+          cadence: null,
+          archived: false,
+          modifiedAt: 1700000000,
+          createdAt: null,
+          fileSize: 200,
+          snippet: '',
+          wordCount: 0,
+          relationships: {},
+          icon: null,
+          color: null,
+          order: null,
+          sidebarLabel: null,
+          template: null, sort: null,
+          outgoingLinks: [],
+          properties: {},
+        },
+      ]
+
+      render(<Sidebar entries={entries} selection={defaultSelection} onSelect={() => {}} />)
+      fireEvent.click(screen.getByTitle('Customize sections'))
+
+      expect(screen.getByLabelText('Toggle Projects').querySelector('svg')).toHaveStyle({ color: 'var(--accent-green)' })
+      expect(screen.getByLabelText('Toggle Recipes').querySelector('svg')).toHaveStyle({ color: 'var(--accent-orange)' })
+    })
+
     it('calls onToggleTypeVisibility when toggling a section in the popover', () => {
       const onToggleTypeVisibility = vi.fn()
       render(<Sidebar entries={mockEntries} selection={defaultSelection} onSelect={() => {}} onToggleTypeVisibility={onToggleTypeVisibility} />)
@@ -1091,7 +1181,7 @@ describe('Sidebar', () => {
     it('aligns the favorites header count pill with the shared sidebar count column', () => {
       render(<Sidebar entries={[...mockEntries, favEntry]} selection={defaultSelection} onSelect={() => {}} />)
 
-      const favoritesHeader = screen.getByText('FAVORITES').closest('button') as HTMLElement
+      const favoritesHeader = screen.getByText('FAVORITES').closest('div') as HTMLElement
       const countChip = within(favoritesHeader).getByTestId('sidebar-count-chip')
 
       expect(favoritesHeader).toHaveStyle({ padding: '8px 8px 8px 16px' })

@@ -19,6 +19,13 @@ export interface SectionGroup {
   customColor?: string | null
 }
 
+function resolveSectionColors(type: string, customColor?: string | null) {
+  return {
+    sectionColor: getTypeColor(type, customColor),
+    sectionLightColor: getTypeLightColor(type, customColor),
+  }
+}
+
 // eslint-disable-next-line react-refresh/only-export-components -- utility co-located with component
 export function isSelectionActive(current: SidebarSelection, check: SidebarSelection): boolean {
   if (current.kind !== check.kind) return false
@@ -41,6 +48,33 @@ function hasSidebarCount(count?: number): count is number {
 function getNavItemPadding(compact: boolean | undefined, hasCount: boolean) {
   if (compact) return hasCount ? SIDEBAR_ITEM_PADDING.compactWithCount : SIDEBAR_ITEM_PADDING.compact
   return hasCount ? SIDEBAR_ITEM_PADDING.withCount : SIDEBAR_ITEM_PADDING.regular
+}
+
+function getNavItemIconSize(compact?: boolean) {
+  return compact ? 14 : 16
+}
+
+function getNavItemTextClass(compact?: boolean) {
+  return compact ? 'text-[12px]' : 'text-[13px]'
+}
+
+function resolveBadgeClassName(
+  isActive: boolean | undefined,
+  activeBadgeClassName: string | undefined,
+  badgeClassName: string | undefined,
+) {
+  if (isActive && activeBadgeClassName) return activeBadgeClassName
+  return badgeClassName
+}
+
+function resolveBadgeStyle(
+  isActive: boolean | undefined,
+  activeBadgeClassName: string | undefined,
+  activeBadgeStyle: React.CSSProperties | undefined,
+  badgeStyle: React.CSSProperties | undefined,
+) {
+  if (isActive && activeBadgeClassName) return activeBadgeStyle
+  return badgeStyle
 }
 
 function SidebarNavIcon({
@@ -82,6 +116,102 @@ export function SidebarCountPill({
   )
 }
 
+function NavItemLabel({ label, compact }: { label: string; compact?: boolean }) {
+  return <span className={cn("flex-1 font-medium", getNavItemTextClass(compact))}>{label}</span>
+}
+
+function NavItemCount({
+  count,
+  className,
+  style,
+  compact,
+}: {
+  count?: number
+  className?: string
+  style?: React.CSSProperties
+  compact?: boolean
+}) {
+  if (!hasSidebarCount(count)) return null
+  return (
+    <SidebarCountPill
+      count={count}
+      className={className}
+      style={style}
+      compact={compact}
+    />
+  )
+}
+
+function DisabledNavItem({
+  Icon,
+  emoji,
+  label,
+  compact,
+  disabledTooltip,
+  padding,
+}: {
+  Icon: ComponentType<IconProps>
+  emoji?: string | null
+  label: string
+  compact?: boolean
+  disabledTooltip?: string
+  padding: ReturnType<typeof getNavItemPadding>
+}) {
+  return (
+    <div className="flex select-none items-center gap-2 rounded text-foreground" style={{ padding, borderRadius: 4, opacity: 0.4, cursor: 'not-allowed' }} title={disabledTooltip ?? "Coming soon"}>
+      <SidebarNavIcon Icon={Icon} emoji={emoji} iconSize={getNavItemIconSize(compact)} />
+      <NavItemLabel label={label} compact={compact} />
+    </div>
+  )
+}
+
+function ClickableNavItem({
+  Icon,
+  emoji,
+  label,
+  count,
+  isActive,
+  activeClassName,
+  badgeClassName,
+  badgeStyle,
+  activeBadgeClassName,
+  activeBadgeStyle,
+  onClick,
+  compact,
+  padding,
+}: {
+  Icon: ComponentType<IconProps>
+  emoji?: string | null
+  label: string
+  count?: number
+  isActive?: boolean
+  activeClassName: string
+  badgeClassName?: string
+  badgeStyle?: React.CSSProperties
+  activeBadgeClassName?: string
+  activeBadgeStyle?: React.CSSProperties
+  onClick?: () => void
+  compact?: boolean
+  padding: ReturnType<typeof getNavItemPadding>
+}) {
+  return (
+    <div
+      className={cn("flex cursor-pointer select-none items-center gap-2 rounded transition-colors", isActive ? activeClassName : "text-foreground hover:bg-accent")}
+      style={{ padding, borderRadius: 4 }}
+      onClick={onClick}
+    >
+      <SidebarNavIcon Icon={Icon} emoji={emoji} iconSize={getNavItemIconSize(compact)} isActive={isActive} />
+      <NavItemLabel label={label} compact={compact} />
+      <NavItemCount
+        count={count}
+        className={resolveBadgeClassName(isActive, activeBadgeClassName, badgeClassName)}
+        style={resolveBadgeStyle(isActive, activeBadgeClassName, activeBadgeStyle, badgeStyle)}
+        compact={compact}
+      />
+    </div>
+  )
+}
+
 export function NavItem({ icon: Icon, emoji, label, count, isActive, activeClassName = 'bg-primary/10 text-primary', badgeClassName, badgeStyle, activeBadgeClassName, activeBadgeStyle, onClick, disabled, disabledTooltip, compact }: {
   icon: ComponentType<IconProps>
   emoji?: string | null
@@ -98,39 +228,36 @@ export function NavItem({ icon: Icon, emoji, label, count, isActive, activeClass
   disabledTooltip?: string
   compact?: boolean
 }) {
-  const iconSize = compact ? 14 : 16
-  const textClass = compact ? 'text-[12px]' : 'text-[13px]'
-  const showCount = hasSidebarCount(count)
-  const padding = getNavItemPadding(compact, showCount)
-  const resolvedBadgeClass = isActive && activeBadgeClassName ? activeBadgeClassName : badgeClassName
-  const resolvedBadgeStyle = isActive && activeBadgeClassName ? activeBadgeStyle : badgeStyle
-  const iconEl = <SidebarNavIcon Icon={Icon} emoji={emoji} iconSize={iconSize} isActive={isActive} />
-
+  const padding = getNavItemPadding(compact, hasSidebarCount(count))
   if (disabled) {
     return (
-      <div className="flex select-none items-center gap-2 rounded text-foreground" style={{ padding, borderRadius: 4, opacity: 0.4, cursor: 'not-allowed' }} title={disabledTooltip ?? "Coming soon"}>
-        {iconEl}
-        <span className={cn("flex-1 font-medium", textClass)}>{label}</span>
-      </div>
+      <DisabledNavItem
+        Icon={Icon}
+        emoji={emoji}
+        label={label}
+        compact={compact}
+        disabledTooltip={disabledTooltip}
+        padding={padding}
+      />
     )
   }
+
   return (
-    <div
-      className={cn("flex cursor-pointer select-none items-center gap-2 rounded transition-colors", isActive ? activeClassName : "text-foreground hover:bg-accent")}
-      style={{ padding, borderRadius: 4 }}
+    <ClickableNavItem
+      Icon={Icon}
+      emoji={emoji}
+      label={label}
+      count={count}
+      isActive={isActive}
+      activeClassName={activeClassName}
+      badgeClassName={badgeClassName}
+      badgeStyle={badgeStyle}
+      activeBadgeClassName={activeBadgeClassName}
+      activeBadgeStyle={activeBadgeStyle}
       onClick={onClick}
-    >
-      {iconEl}
-      <span className={cn("flex-1 font-medium", textClass)}>{label}</span>
-      {showCount && (
-        <SidebarCountPill
-          count={count}
-          className={resolvedBadgeClass}
-          style={resolvedBadgeStyle}
-          compact={compact}
-        />
-      )}
-    </div>
+      compact={compact}
+      padding={padding}
+    />
   )
 }
 
@@ -155,8 +282,7 @@ export function SectionContent({
   isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel,
 }: SectionContentProps) {
   const { label, type, Icon, customColor } = group
-  const sectionColor = getTypeColor(type, customColor)
-  const sectionLightColor = getTypeLightColor(type, customColor)
+  const { sectionColor, sectionLightColor } = resolveSectionColors(type, customColor)
 
   return (
     <SectionHeader
@@ -206,6 +332,85 @@ function InlineRenameInput({ initialValue, onSubmit, onCancel }: {
   )
 }
 
+function getSectionHeaderBackground(isActive: boolean, sectionLightColor: string) {
+  if (!isActive) return undefined
+  return { background: sectionLightColor }
+}
+
+function getSectionHeaderIconWeight(isActive: boolean): IconProps['weight'] {
+  return isActive ? 'fill' : 'regular'
+}
+
+function getSectionHeaderTitleColor(isActive: boolean, sectionColor: string) {
+  if (!isActive) return undefined
+  return sectionColor
+}
+
+function getSectionSelectHandler(isRenaming: boolean | undefined, onSelect: () => void) {
+  if (isRenaming) return undefined
+  return onSelect
+}
+
+function getSectionContextMenuHandler(
+  isRenaming: boolean | undefined,
+  onContextMenu: (e: React.MouseEvent) => void,
+) {
+  if (isRenaming) return undefined
+  return onContextMenu
+}
+
+function SectionHeaderLabel({
+  type,
+  label,
+  isActive,
+  sectionColor,
+  isRenaming,
+  renameInitialValue,
+  onRenameSubmit,
+  onRenameCancel,
+}: {
+  type: string
+  label: string
+  isActive: boolean
+  sectionColor: string
+  isRenaming?: boolean
+  renameInitialValue?: string
+  onRenameSubmit?: (value: string) => void
+  onRenameCancel?: () => void
+}) {
+  if (isRenaming && onRenameSubmit && onRenameCancel) {
+    return (
+      <InlineRenameInput
+        key={`rename-${type}`}
+        initialValue={renameInitialValue ?? label}
+        onSubmit={onRenameSubmit}
+        onCancel={onRenameCancel}
+      />
+    )
+  }
+
+  return <span className="text-[13px] font-medium" style={{ marginLeft: 4, color: getSectionHeaderTitleColor(isActive, sectionColor) }}>{label}</span>
+}
+
+function SectionHeaderCountPill({
+  itemCount,
+  isActive,
+  sectionColor,
+}: {
+  itemCount: number
+  isActive: boolean
+  sectionColor: string
+}) {
+  if (itemCount <= 0) return null
+  return (
+    <SidebarCountPill
+      count={itemCount}
+      className={!isActive ? 'text-muted-foreground' : undefined}
+      style={isActive ? { background: sectionColor, color: 'white' } : { background: 'var(--muted)' }}
+    />
+  )
+}
+
 function SectionHeader({ label, type, Icon, sectionColor, sectionLightColor, itemCount, isActive, onSelect, onContextMenu, dragHandleProps, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
   label: string; type: string; Icon: ComponentType<IconProps>
   sectionColor: string; sectionLightColor: string; itemCount: number; isActive: boolean
@@ -217,32 +422,53 @@ function SectionHeader({ label, type, Icon, sectionColor, sectionLightColor, ite
   return (
     <div
       className={cn("group/section flex cursor-pointer select-none items-center justify-between rounded transition-colors", !isActive && "hover:bg-accent")}
-      style={{ padding: '6px 8px 6px 16px', borderRadius: 4, gap: 4, ...(isActive ? { background: sectionLightColor } : {}) }}
+      style={{ padding: '6px 8px 6px 16px', borderRadius: 4, gap: 4, ...getSectionHeaderBackground(isActive, sectionLightColor) }}
       {...dragHandleProps}
-      onClick={() => { if (!isRenaming) onSelect() }}
-      onContextMenu={isRenaming ? undefined : onContextMenu}
+      onClick={getSectionSelectHandler(isRenaming, onSelect)}
+      onContextMenu={getSectionContextMenuHandler(isRenaming, onContextMenu)}
     >
       <div className="flex min-w-0 flex-1 items-center" style={{ gap: 4 }}>
-        <Icon size={16} weight={isActive ? 'fill' : 'regular'} style={{ color: sectionColor, flexShrink: 0 }} />
-        {isRenaming && onRenameSubmit && onRenameCancel ? (
-          <InlineRenameInput
-            key={`rename-${type}`}
-            initialValue={renameInitialValue ?? label}
-            onSubmit={onRenameSubmit}
-            onCancel={onRenameCancel}
-          />
-        ) : (
-          <span className="text-[13px] font-medium" style={{ marginLeft: 4, color: isActive ? sectionColor : undefined }}>{label}</span>
-        )}
-      </div>
-      {itemCount > 0 && (
-        <SidebarCountPill
-          count={itemCount}
-          className={!isActive ? 'text-muted-foreground' : undefined}
-          style={isActive ? { background: sectionColor, color: 'white' } : { background: 'var(--muted)' }}
+        <Icon size={16} weight={getSectionHeaderIconWeight(isActive)} style={{ color: sectionColor, flexShrink: 0 }} />
+        <SectionHeaderLabel
+          type={type}
+          label={label}
+          isActive={isActive}
+          sectionColor={sectionColor}
+          isRenaming={isRenaming}
+          renameInitialValue={renameInitialValue}
+          onRenameSubmit={onRenameSubmit}
+          onRenameCancel={onRenameCancel}
         />
-      )}
+      </div>
+      <SectionHeaderCountPill itemCount={itemCount} isActive={isActive} sectionColor={sectionColor} />
     </div>
+  )
+}
+
+function VisibilityPopoverItem({
+  group,
+  isVisible,
+  onToggle,
+}: {
+  group: SectionGroup
+  isVisible: boolean
+  onToggle: (type: string) => void
+}) {
+  const { label, type, Icon, customColor } = group
+  const { sectionColor } = resolveSectionColors(type, customColor)
+
+  return (
+    <button
+      type="button"
+      className="flex w-full cursor-pointer items-center border-none bg-transparent transition-colors hover:bg-accent"
+      style={{ padding: '6px 12px', gap: 8 }}
+      onClick={() => onToggle(type)}
+      aria-label={`Toggle ${label}`}
+    >
+      <Icon size={14} style={{ color: sectionColor }} />
+      <span className="flex-1 text-left text-[13px] text-foreground">{label}</span>
+      <ToggleSwitch on={isVisible} />
+    </button>
   )
 }
 
@@ -259,12 +485,13 @@ export function VisibilityPopover({ sections, isSectionVisible, onToggle }: {
       style={{ position: 'absolute', top: '100%', left: 6, right: 6, zIndex: 50, borderRadius: 8, padding: '8px 0', boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}
     >
       <div className="text-[12px] font-semibold text-muted-foreground" style={{ padding: '0 12px 4px' }}>Show in sidebar</div>
-      {sections.map(({ label, type, Icon }) => (
-        <button key={type} className="flex w-full cursor-pointer items-center border-none bg-transparent transition-colors hover:bg-accent" style={{ padding: '6px 12px', gap: 8 }} onClick={() => onToggle(type)} aria-label={`Toggle ${label}`}>
-          <Icon size={14} style={{ color: getTypeColor(type) }} />
-          <span className="flex-1 text-left text-[13px] text-foreground">{label}</span>
-          <ToggleSwitch on={isSectionVisible(type)} />
-        </button>
+      {sections.map((group) => (
+        <VisibilityPopoverItem
+          key={group.type}
+          group={group}
+          isVisible={isSectionVisible(group.type)}
+          onToggle={onToggle}
+        />
       ))}
     </div>
   )
