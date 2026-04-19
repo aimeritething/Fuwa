@@ -858,7 +858,8 @@ function App() {
     setToastMessage,
   })
 
-  const gitHistory = useGitHistory(notes.activeTabPath, vault.loadGitHistory)
+  const shouldLoadGitHistory = !layout.inspectorCollapsed && !showAIChat
+  const gitHistory = useGitHistory(notes.activeTabPath, vault.loadGitHistory, shouldLoadGitHistory)
 
   const handleCreateType = useCallback((name: string) => {
     notes.handleCreateType(name)
