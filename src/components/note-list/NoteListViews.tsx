@@ -5,7 +5,19 @@ import { PinnedCard } from './PinnedCard'
 import { RelationshipGroupSection } from './RelationshipGroupSection'
 import { EmptyMessage } from './TrashWarningBanner'
 
-function resolveEmptyText(isChangesView: boolean, changesError: string | null | undefined, isArchivedView: boolean, isInboxView: boolean, query: string): string {
+function resolveEmptyText({
+  isChangesView,
+  changesError,
+  isArchivedView,
+  isInboxView,
+  query,
+}: {
+  isChangesView: boolean
+  changesError: string | null | undefined
+  isArchivedView: boolean
+  isInboxView: boolean
+  query: string
+}): string {
   if (isChangesView && changesError) return `Failed to load changes: ${changesError}`
   if (isChangesView) return 'No pending changes'
   if (isArchivedView) return 'No archived notes'
@@ -13,16 +25,15 @@ function resolveEmptyText(isChangesView: boolean, changesError: string | null | 
   return query ? 'No matching notes' : 'No notes found'
 }
 
-export function EntityView({ entity, groups, query, collapsedGroups, sortPrefs, onToggleGroup, onSortChange, renderItem, typeEntryMap, onClickNote }: {
+export function EntityView({ entity, groups, query, collapsedGroups, sortPrefs, onToggleGroup, onSortChange, renderItem }: {
   entity: VaultEntry; groups: RelationshipGroup[]; query: string
   collapsedGroups: Set<string>; sortPrefs: Record<string, SortConfig>
   onToggleGroup: (label: string) => void; onSortChange: (label: string, opt: SortOption, dir: SortDirection) => void
-  renderItem: (entry: VaultEntry) => React.ReactNode
-  typeEntryMap: Record<string, VaultEntry>; onClickNote: (entry: VaultEntry, e: React.MouseEvent) => void
+  renderItem: (entry: VaultEntry, options?: { forceSelected?: boolean }) => React.ReactNode
 }) {
   return (
     <div className="h-full overflow-y-auto">
-      <PinnedCard entry={entity} typeEntryMap={typeEntryMap} onClickNote={onClickNote} showDate />
+      <PinnedCard entry={entity} renderItem={renderItem} />
       {groups.length === 0
         ? <EmptyMessage text={query ? 'No matching items' : 'No related items'} />
         : groups.map((group) => (
@@ -39,7 +50,13 @@ export function ListView({ isArchivedView, isChangesView, isInboxView, changesEr
   renderItem: (entry: VaultEntry) => React.ReactNode
   virtuosoRef?: React.RefObject<VirtuosoHandle | null>
 }) {
-  const emptyText = resolveEmptyText(!!isChangesView, changesError ?? null, !!isArchivedView, !!isInboxView, query)
+  const emptyText = resolveEmptyText({
+    isChangesView: !!isChangesView,
+    changesError: changesError ?? null,
+    isArchivedView: !!isArchivedView,
+    isInboxView: !!isInboxView,
+    query,
+  })
 
   if (searched.length === 0) {
     return (

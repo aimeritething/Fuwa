@@ -44,25 +44,44 @@ export function filterGroupsByQuery(groups: RelationshipGroup[], query: string):
 
 export interface ClickActions {
   onReplace: (entry: VaultEntry) => void
-  onSelect: (entry: VaultEntry) => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void
   onOpenInNewWindow?: (entry: VaultEntry) => void
   multiSelect: { selectRange: (path: string) => void; clear: () => void; setAnchor: (path: string) => void }
 }
 
+function usesCommandModifier(event: Pick<React.MouseEvent, 'metaKey' | 'ctrlKey'>): boolean {
+  return event.metaKey || event.ctrlKey
+}
+
+function isOpenInNewWindowClick(event: Pick<React.MouseEvent, 'metaKey' | 'ctrlKey' | 'shiftKey'>): boolean {
+  return usesCommandModifier(event) && event.shiftKey
+}
+
+function isRangeSelectionClick(event: Pick<React.MouseEvent, 'shiftKey'>): boolean {
+  return event.shiftKey
+}
+
+function isNeighborhoodClick(
+  event: Pick<React.MouseEvent, 'metaKey' | 'ctrlKey'>,
+  actions: ClickActions,
+): boolean {
+  return usesCommandModifier(event) && Boolean(actions.onEnterNeighborhood)
+}
+
 export function routeNoteClick(entry: VaultEntry, e: React.MouseEvent, actions: ClickActions) {
-  if ((e.metaKey || e.ctrlKey) && e.shiftKey) {
+  if (isOpenInNewWindowClick(e)) {
     actions.onOpenInNewWindow?.(entry)
     return
   }
 
-  if (e.shiftKey) {
+  if (isRangeSelectionClick(e)) {
     actions.multiSelect.selectRange(entry.path)
     return
   }
 
   actions.multiSelect.clear()
-  if (e.metaKey || e.ctrlKey) {
-    actions.onSelect(entry)
+  if (isNeighborhoodClick(e, actions)) {
+    actions.onEnterNeighborhood?.(entry)
     return
   }
 

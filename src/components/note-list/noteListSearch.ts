@@ -66,5 +66,4 @@ export function filterGroupsByNoteListQuery(
       ...group,
       entries: filterEntriesByNoteListQuery(group.entries, normalizedQuery, context),
     }))
-    .filter((group) => group.entries.length > 0)
 }

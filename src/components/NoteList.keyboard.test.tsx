@@ -6,12 +6,16 @@ import {
   allSelection,
   mockEntries,
 } from '../test-utils/noteListTestUtils'
-import type { VaultEntry } from '../types'
+import type { SidebarSelection, VaultEntry } from '../types'
 
 function NoteListKeyboardHarness({
   onOpen,
+  onEnterNeighborhood = () => {},
+  selection = allSelection,
 }: {
   onOpen: (entry: VaultEntry) => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void
+  selection?: SidebarSelection
 }) {
   const [selectedNote, setSelectedNote] = useState<VaultEntry | null>(null)
 
@@ -23,12 +27,13 @@ function NoteListKeyboardHarness({
   return (
     <NoteList
       entries={mockEntries}
-      selection={allSelection}
+      selection={selection}
       selectedNote={selectedNote}
       noteListFilter="open"
       onNoteListFilterChange={() => {}}
       onSelectNote={handleOpen}
       onReplaceActiveTab={handleOpen}
+      onEnterNeighborhood={onEnterNeighborhood}
       onCreateNote={() => {}}
     />
   )
@@ -69,6 +74,28 @@ describe('NoteList keyboard activation', () => {
 
     await waitFor(() => {
       expect(onOpen).toHaveBeenCalledWith(mockEntries[0])
+    })
+  })
+
+  it('supports Cmd+Enter to pivot the highlighted note into Neighborhood mode', async () => {
+    const onOpen = vi.fn()
+    const onEnterNeighborhood = vi.fn()
+    render(
+      <NoteListKeyboardHarness
+        onOpen={onOpen}
+        onEnterNeighborhood={onEnterNeighborhood}
+        selection={{ kind: 'entity', entry: mockEntries[0] }}
+      />,
+    )
+
+    const container = screen.getByTestId('note-list-container')
+    fireEvent.keyDown(container, { key: 'ArrowDown' })
+    fireEvent.keyDown(container, { key: 'ArrowDown' })
+    fireEvent.keyDown(container, { key: 'Enter', metaKey: true })
+
+    await waitFor(() => {
+      expect(onOpen).toHaveBeenLastCalledWith(mockEntries[4])
+      expect(onEnterNeighborhood).toHaveBeenCalledWith(mockEntries[4])
     })
   })
 })

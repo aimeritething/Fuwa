@@ -254,30 +254,30 @@ function findBacklinks(entity: VaultEntry, allEntries: VaultEntry[]): VaultEntry
 
 class GroupBuilder {
   readonly groups: RelationshipGroup[] = []
-  private readonly seen: Set<string>
+  private readonly entityPath: string
   private readonly allEntries: VaultEntry[]
 
   constructor(entityPath: string, allEntries: VaultEntry[]) {
-    this.seen = new Set([entityPath])
+    this.entityPath = entityPath
     this.allEntries = allEntries
   }
 
   add(label: string, entries: VaultEntry[]) {
-    const unseen = entries.filter((e) => !this.seen.has(e.path))
-    if (unseen.length > 0) {
-      this.groups.push({ label, entries: unseen })
-      unseen.forEach((e) => this.seen.add(e.path))
+    const deduped = new Map<string, VaultEntry>()
+    for (const entry of entries) {
+      if (entry.path === this.entityPath || deduped.has(entry.path)) continue
+      deduped.set(entry.path, entry)
     }
+
+    this.groups.push({ label, entries: [...deduped.values()] })
   }
 
   addFromRefs(label: string, refs: string[]) {
-    if (refs.length > 0) {
-      this.add(label, resolveRefs(refs, this.allEntries).sort(sortByModified))
-    }
+    this.add(label, resolveRefs(refs, this.allEntries).sort(sortByModified))
   }
 
   filterAndAdd(label: string, predicate: (e: VaultEntry) => boolean) {
-    this.add(label, this.allEntries.filter((e) => !this.seen.has(e.path) && predicate(e)).sort(sortByModified))
+    this.add(label, this.allEntries.filter(predicate).sort(sortByModified))
   }
 }
 

@@ -261,9 +261,23 @@ type SidebarFilter = 'all' | 'archived' | 'changes' | 'pulse'
 type SidebarSelection =
   | { kind: 'filter'; filter: SidebarFilter }
   | { kind: 'sectionGroup'; type: string }    // e.g. type: 'Project'
-  | { kind: 'entity'; entry: VaultEntry }      // specific entity selected
-  | { kind: 'topic'; entry: VaultEntry }        // topic selected
+  | { kind: 'folder'; path: string }
+  | { kind: 'entity'; entry: VaultEntry }      // Neighborhood source note
+  | { kind: 'view'; filename: string }
 ```
+
+### Neighborhood Mode
+
+`SidebarSelection.kind === 'entity'` is Tolaria's Neighborhood mode for note-list browsing.
+
+- The selected `entry` is the neighborhood source note.
+- The source note stays pinned at the top of the note list as a standard active row, not a special card.
+- Outgoing relationship groups render first using the note's `relationships` map.
+- Inverse groups (`Children`, `Events`, `Referenced By`) and `Backlinks` render after the outgoing groups.
+- Empty groups stay visible with count `0`.
+- Notes may appear in multiple groups when multiple relationships are true; Neighborhood mode does not deduplicate them across sections.
+- Plain click / `Enter` open the focused note without replacing the current Neighborhood.
+- Cmd/Ctrl-click and Cmd/Ctrl-`Enter` open the note and pivot the note list into that note's Neighborhood.
 
 ## File System Integration
 

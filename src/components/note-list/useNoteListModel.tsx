@@ -154,6 +154,7 @@ function useNoteListContent({
     views,
   })
   const {
+    entityEntry,
     isEntityView,
     isArchivedView,
     searched: sortedEntries,
@@ -181,11 +182,12 @@ function useNoteListContent({
     typeEntryMap,
     displayPropsOverride,
   }), [displayPropsOverride, entries, query, sortedGroups, typeEntryMap])
-  useVisibleNotesSync({ visibleNotesRef, isEntityView, searched, searchedGroups })
+  useVisibleNotesSync({ visibleNotesRef, isEntityView, entityEntry, searched, searchedGroups })
 
   return {
     customProperties,
     displayPropsOverride,
+    entityEntry,
     handleSortChange,
     isArchivedView,
     isEntityView,
@@ -207,15 +209,16 @@ function useNoteListContent({
 
 interface UseNoteListInteractionStateParams {
   searched: VaultEntry[]
+  searchedGroups: Array<{ entries: VaultEntry[] }>
   selectedNotePath: string | null
   selection: SidebarSelection
   noteListFilter: NoteListFilter
   isArchivedView: boolean
   isChangesView: boolean
-  isEntityView: boolean
+  entityEntry: VaultEntry | null
   modifiedFiles?: ModifiedFile[]
   onReplaceActiveTab: (entry: VaultEntry) => void
-  onSelectNote: (entry: VaultEntry) => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void
   onOpenDeletedNote?: (entry: DeletedNoteEntry) => void
   onOpenInNewWindow?: (entry: VaultEntry) => void
   onAutoTriggerDiff?: () => void
@@ -227,15 +230,16 @@ interface UseNoteListInteractionStateParams {
 
 function useNoteListInteractionState({
   searched,
+  searchedGroups,
   selectedNotePath,
   selection,
   noteListFilter,
   isArchivedView,
   isChangesView,
-  isEntityView,
+  entityEntry,
   modifiedFiles,
   onReplaceActiveTab,
-  onSelectNote,
+  onEnterNeighborhood,
   onOpenDeletedNote,
   onOpenInNewWindow,
   onAutoTriggerDiff,
@@ -255,13 +259,14 @@ function useNoteListInteractionState({
     toggleGroup,
   } = useNoteListInteractions({
     searched,
+    searchedGroups,
     selectedNotePath,
     selection,
     noteListFilter,
-    isEntityView,
     isChangesView,
+    entityEntry,
     onReplaceActiveTab,
-    onSelectNote,
+    onEnterNeighborhood,
     onOpenDeletedNote,
     onOpenInNewWindow,
     onAutoTriggerDiff,
@@ -323,11 +328,11 @@ function useRenderItem({
 }: UseRenderItemParams) {
   const contextMenuHandler = isChangesView && onDiscardFile ? noteContextMenu : undefined
 
-  return useCallback((entry: VaultEntry) => (
+  return useCallback((entry: VaultEntry, options?: { forceSelected?: boolean }) => (
     <NoteItem
       key={entry.path}
       entry={entry}
-      isSelected={selectedNotePath === entry.path}
+      isSelected={options?.forceSelected || selectedNotePath === entry.path}
       isMultiSelected={multiSelect.selectedPaths.has(entry.path)}
       isHighlighted={entry.path === noteListKeyboard.highlightedPath}
       noteStatus={resolvedGetNoteStatus(entry.path)}
@@ -366,6 +371,7 @@ export interface NoteListProps {
   sidebarCollapsed?: boolean
   onSelectNote: (entry: VaultEntry) => void
   onReplaceActiveTab: (entry: VaultEntry) => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void
   onCreateNote: (type?: string) => void
   onBulkArchive?: (paths: string[]) => void
   onBulkDeletePermanently?: (paths: string[]) => void
@@ -395,7 +401,7 @@ function buildNoteListLayoutModel(params: {
   onOpenType: (entry: VaultEntry) => void
   content: ReturnType<typeof useNoteListContent>
   interaction: ReturnType<typeof useNoteListInteractionState> & {
-    renderItem: (entry: VaultEntry) => React.ReactNode
+    renderItem: (entry: VaultEntry, options?: { forceSelected?: boolean }) => React.ReactNode
     entitySelection: EntitySelection | null
   }
 }) {
@@ -459,8 +465,8 @@ export function useNoteListModel({
   modifiedFilesError,
   getNoteStatus,
   sidebarCollapsed,
-  onSelectNote,
   onReplaceActiveTab,
+  onEnterNeighborhood,
   onCreateNote,
   onBulkArchive,
   onBulkDeletePermanently,
@@ -503,15 +509,16 @@ export function useNoteListModel({
   })
   const interaction = useNoteListInteractionState({
     searched: content.searched,
+    searchedGroups: content.searchedGroups,
     selectedNotePath,
     selection,
     noteListFilter,
     isArchivedView: content.isArchivedView,
-    isEntityView: content.isEntityView,
     isChangesView: selection.kind === 'filter' && selection.filter === 'changes',
+    entityEntry: content.entityEntry,
     modifiedFiles,
     onReplaceActiveTab,
-    onSelectNote,
+    onEnterNeighborhood,
     onOpenDeletedNote,
     onOpenInNewWindow,
     onAutoTriggerDiff,
@@ -548,7 +555,9 @@ export function useNoteListModel({
     interaction: {
       ...interaction,
       renderItem,
-      entitySelection: content.isEntityView && selection.kind === 'entity' ? selection : null,
+      entitySelection: content.isEntityView && selection.kind === 'entity'
+        ? { ...selection, entry: content.entityEntry ?? selection.entry }
+        : null,
     },
   })
 }

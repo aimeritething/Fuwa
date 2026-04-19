@@ -109,6 +109,10 @@ interface NoteListDataParams {
 export function useNoteListData({ entries, selection, query, listSort, listDirection, modifiedPathSet, modifiedSuffixes, modifiedFiles, subFilter, inboxPeriod, views }: NoteListDataParams) {
   const isEntityView = selection.kind === 'entity'
   const isArchivedView = (selection.kind === 'filter' && selection.filter === 'archived') || subFilter === 'archived'
+  const entityEntry = useMemo(() => {
+    if (!isEntityView || selection.kind !== 'entity') return null
+    return entries.find((entry) => entry.path === selection.entry.path) ?? selection.entry
+  }, [entries, isEntityView, selection])
 
   const filteredEntries = useFilteredEntries({
     entries,
@@ -127,15 +131,12 @@ export function useNoteListData({ entries, selection, query, listSort, listDirec
   }, [filteredEntries, listSort, listDirection, query])
 
   const searchedGroups = useMemo(() => {
-    if (!isEntityView) return []
-    // Look up the fresh entry from the entries array to pick up relationship
-    // updates that happened after the selection was captured.
-    const freshEntry = entries.find((e) => e.path === selection.entry.path) ?? selection.entry
-    const groups = buildRelationshipGroups(freshEntry, entries)
+    if (!entityEntry) return []
+    const groups = buildRelationshipGroups(entityEntry, entries)
     return filterGroupsByQuery(groups, query)
-  }, [isEntityView, selection, entries, query])
+  }, [entityEntry, entries, query])
 
-  return { isEntityView, isArchivedView, searched, searchedGroups }
+  return { entityEntry, isEntityView, isArchivedView, searched, searchedGroups }
 }
 
 // --- useNoteListSearch ---
@@ -452,18 +453,27 @@ export function useChangeStatusResolver(isChangesView: boolean, modifiedFiles?: 
 interface VisibleNotesSyncParams {
   visibleNotesRef?: React.MutableRefObject<VaultEntry[]>
   isEntityView: boolean
+  entityEntry?: VaultEntry | null
   searched: VaultEntry[]
   searchedGroups: Array<{ entries: VaultEntry[] }>
 }
 
-export function useVisibleNotesSync({ visibleNotesRef, isEntityView, searched, searchedGroups }: VisibleNotesSyncParams) {
+function flattenNeighborhoodEntries(
+  entityEntry: VaultEntry | null | undefined,
+  searchedGroups: Array<{ entries: VaultEntry[] }>,
+): VaultEntry[] {
+  if (!entityEntry) return []
+  return [entityEntry, ...searchedGroups.flatMap((group) => group.entries)]
+}
+
+export function useVisibleNotesSync({ visibleNotesRef, isEntityView, entityEntry, searched, searchedGroups }: VisibleNotesSyncParams) {
   useEffect(() => {
     if (!visibleNotesRef) return
 
     visibleNotesRef.current = isEntityView
-      ? searchedGroups.flatMap((group) => group.entries).filter((entry) => !isDeletedNoteEntry(entry))
+      ? flattenNeighborhoodEntries(entityEntry, searchedGroups).filter((entry) => !isDeletedNoteEntry(entry))
       : searched.filter((entry) => !isDeletedNoteEntry(entry))
-  }, [visibleNotesRef, isEntityView, searched, searchedGroups])
+  }, [visibleNotesRef, entityEntry, isEntityView, searched, searchedGroups])
 }
 
 // --- useListPropertyPicker ---
@@ -822,13 +832,14 @@ export function useListPropertyPicker({
 
 interface UseNoteListInteractionsParams {
   searched: VaultEntry[]
+  searchedGroups: Array<{ entries: VaultEntry[] }>
   selectedNotePath: string | null
   selection: SidebarSelection
   noteListFilter: NoteListFilter
-  isEntityView: boolean
   isChangesView: boolean
+  entityEntry: VaultEntry | null
   onReplaceActiveTab: (entry: VaultEntry) => void
-  onSelectNote: (entry: VaultEntry) => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void
   onOpenDeletedNote?: (entry: DeletedNoteEntry) => void
   onOpenInNewWindow?: (entry: VaultEntry) => void
   onAutoTriggerDiff?: () => void
@@ -860,23 +871,38 @@ function openHighlightedChangesContextMenu(
   })
 }
 
-export function useNoteListInteractions({
+function resolveKeyboardEntries(
+  searched: VaultEntry[],
+  searchedGroups: Array<{ entries: VaultEntry[] }>,
+  entityEntry: VaultEntry | null,
+): VaultEntry[] {
+  return entityEntry
+    ? flattenNeighborhoodEntries(entityEntry, searchedGroups)
+    : searched
+}
+
+function useKeyboardInteractionState({
   searched,
+  searchedGroups,
+  entityEntry,
   selectedNotePath,
-  selection,
-  noteListFilter,
-  isEntityView,
-  isChangesView,
   onReplaceActiveTab,
-  onSelectNote,
+  onEnterNeighborhood,
   onOpenDeletedNote,
-  onOpenInNewWindow,
-  onAutoTriggerDiff,
-  onDiscardFile,
-  openContextMenuForEntry,
-  onCreateNote,
-}: UseNoteListInteractionsParams) {
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+}: Pick<
+  UseNoteListInteractionsParams,
+  | 'searched'
+  | 'searchedGroups'
+  | 'entityEntry'
+  | 'selectedNotePath'
+  | 'onReplaceActiveTab'
+  | 'onEnterNeighborhood'
+  | 'onOpenDeletedNote'
+>) {
+  const keyboardEntries = useMemo(
+    () => resolveKeyboardEntries(searched, searchedGroups, entityEntry),
+    [entityEntry, searched, searchedGroups],
+  )
 
   const handleKeyboardOpen = useCallback((entry: VaultEntry) => {
     if (isDeletedNoteEntry(entry)) {
@@ -890,24 +916,47 @@ export function useNoteListInteractions({
     if (!isDeletedNoteEntry(entry)) prefetchNoteContent(entry.path)
   }, [])
 
+  const handleNeighborhoodOpen = useCallback(async (entry: VaultEntry) => {
+    if (isDeletedNoteEntry(entry)) return
+    await onReplaceActiveTab(entry)
+    onEnterNeighborhood?.(entry)
+  }, [onEnterNeighborhood, onReplaceActiveTab])
+
   const noteListKeyboard = useNoteListKeyboard({
-    items: searched,
+    items: keyboardEntries,
     selectedNotePath,
     onOpen: handleKeyboardOpen,
+    onEnterNeighborhood: handleNeighborhoodOpen,
     onPrefetch: handleKeyboardPrefetch,
-    enabled: !isEntityView,
+    enabled: true,
   })
-  const multiSelect = useMultiSelect(searched, selectedNotePath)
+  const multiSelect = useMultiSelect(keyboardEntries, selectedNotePath)
 
-  useEffect(() => {
-    multiSelect.clear()
-  }, [noteListFilter, selection]) // eslint-disable-line react-hooks/exhaustive-deps -- clear only when selection/filter changes
+  return { handleNeighborhoodOpen, multiSelect, noteListKeyboard }
+}
 
-  const handleClickNote = useCallback((entry: VaultEntry, event: React.MouseEvent) => {
+function useNoteClickHandler({
+  isChangesView,
+  onReplaceActiveTab,
+  handleNeighborhoodOpen,
+  onOpenDeletedNote,
+  onOpenInNewWindow,
+  onAutoTriggerDiff,
+  multiSelect,
+}: {
+  isChangesView: boolean
+  onReplaceActiveTab: (entry: VaultEntry) => void
+  handleNeighborhoodOpen: (entry: VaultEntry) => Promise<void>
+  onOpenDeletedNote?: (entry: DeletedNoteEntry) => void
+  onOpenInNewWindow?: (entry: VaultEntry) => void
+  onAutoTriggerDiff?: () => void
+  multiSelect: MultiSelectState
+}) {
+  return useCallback((entry: VaultEntry, event: React.MouseEvent) => {
     if (isDeletedNoteEntry(entry)) {
       routeNoteClick(entry, event, {
         onReplace: () => onOpenDeletedNote?.(entry),
-        onSelect: () => onOpenDeletedNote?.(entry),
+        onEnterNeighborhood: () => onOpenDeletedNote?.(entry),
         multiSelect,
       })
       return
@@ -915,7 +964,7 @@ export function useNoteListInteractions({
 
     routeNoteClick(entry, event, {
       onReplace: onReplaceActiveTab,
-      onSelect: onSelectNote,
+      onEnterNeighborhood: handleNeighborhoodOpen,
       onOpenInNewWindow,
       multiSelect,
     })
@@ -930,15 +979,31 @@ export function useNoteListInteractions({
     onOpenDeletedNote,
     onOpenInNewWindow,
     onReplaceActiveTab,
-    onSelectNote,
+    handleNeighborhoodOpen,
   ])
+}
 
-  const handleListKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+function useListKeyDownHandler({
+  isChangesView,
+  onDiscardFile,
+  highlightedPath,
+  searched,
+  openContextMenuForEntry,
+  handleKeyDown,
+}: {
+  isChangesView: boolean
+  onDiscardFile?: (relativePath: string) => Promise<void>
+  highlightedPath: string | null
+  searched: VaultEntry[]
+  openContextMenuForEntry: (entry: VaultEntry, point: { x: number; y: number }) => void
+  handleKeyDown: (event: React.KeyboardEvent) => void
+}) {
+  return useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
     const entry = resolveChangesContextMenuEntry(
       event,
       isChangesView,
       onDiscardFile,
-      noteListKeyboard.highlightedPath,
+      highlightedPath,
       searched,
     )
     if (entry) {
@@ -948,8 +1013,60 @@ export function useNoteListInteractions({
       return
     }
 
-    noteListKeyboard.handleKeyDown(event)
-  }, [isChangesView, noteListKeyboard, onDiscardFile, openContextMenuForEntry, searched])
+    handleKeyDown(event)
+  }, [handleKeyDown, highlightedPath, isChangesView, onDiscardFile, openContextMenuForEntry, searched])
+}
+
+export function useNoteListInteractions({
+  searched,
+  searchedGroups,
+  selectedNotePath,
+  selection,
+  noteListFilter,
+  isChangesView,
+  entityEntry,
+  onReplaceActiveTab,
+  onEnterNeighborhood,
+  onOpenDeletedNote,
+  onOpenInNewWindow,
+  onAutoTriggerDiff,
+  onDiscardFile,
+  openContextMenuForEntry,
+  onCreateNote,
+}: UseNoteListInteractionsParams) {
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  const { handleNeighborhoodOpen, multiSelect, noteListKeyboard } = useKeyboardInteractionState({
+    searched,
+    searchedGroups,
+    entityEntry,
+    selectedNotePath,
+    onReplaceActiveTab,
+    onEnterNeighborhood,
+    onOpenDeletedNote,
+  })
+
+  useEffect(() => {
+    multiSelect.clear()
+  }, [noteListFilter, selection]) // eslint-disable-line react-hooks/exhaustive-deps -- clear only when selection/filter changes
+
+  const handleClickNote = useNoteClickHandler({
+    isChangesView,
+    onReplaceActiveTab,
+    handleNeighborhoodOpen,
+    onOpenDeletedNote,
+    onOpenInNewWindow,
+    onAutoTriggerDiff,
+    multiSelect,
+  })
+
+  const handleListKeyDown = useListKeyDownHandler({
+    isChangesView,
+    onDiscardFile,
+    highlightedPath: noteListKeyboard.highlightedPath,
+    searched,
+    openContextMenuForEntry,
+    handleKeyDown: noteListKeyboard.handleKeyDown,
+  })
 
   const handleCreateNote = useCallback(() => {
     onCreateNote(selection.kind === 'sectionGroup' ? selection.type : undefined)

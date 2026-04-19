@@ -132,6 +132,7 @@ export function createNoteListSpies() {
   return {
     onSelectNote: vi.fn(),
     onReplaceActiveTab: vi.fn(),
+    onEnterNeighborhood: vi.fn(),
     onCreateNote: vi.fn(),
     onNoteListFilterChange: vi.fn(),
   }
@@ -147,6 +148,7 @@ export function buildNoteListProps(overrides: Partial<NoteListProps> = {}) {
     onNoteListFilterChange: spies.onNoteListFilterChange,
     onSelectNote: spies.onSelectNote,
     onReplaceActiveTab: spies.onReplaceActiveTab,
+    onEnterNeighborhood: spies.onEnterNeighborhood,
     onCreateNote: spies.onCreateNote,
     ...overrides,
   }

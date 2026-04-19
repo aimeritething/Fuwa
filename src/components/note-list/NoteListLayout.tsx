@@ -40,8 +40,6 @@ function NoteListContent({
   toggleGroup,
   handleSortChange,
   renderItem,
-  typeEntryMap,
-  handleClickNote,
   isArchivedView,
   isChangesView,
   isInboxView,
@@ -58,8 +56,6 @@ function NoteListContent({
   | 'toggleGroup'
   | 'handleSortChange'
   | 'renderItem'
-  | 'typeEntryMap'
-  | 'handleClickNote'
   | 'isArchivedView'
   | 'isChangesView'
   | 'isInboxView'
@@ -79,8 +75,6 @@ function NoteListContent({
           onToggleGroup={toggleGroup}
           onSortChange={handleSortChange}
           renderItem={renderItem}
-          typeEntryMap={typeEntryMap}
-          onClickNote={handleClickNote}
         />
       ) : (
         <ListView
@@ -113,8 +107,6 @@ function NoteListBody({
   toggleGroup,
   handleSortChange,
   renderItem,
-  typeEntryMap,
-  handleClickNote,
   isArchivedView,
   isChangesView,
   isInboxView,
@@ -140,8 +132,6 @@ function NoteListBody({
   | 'toggleGroup'
   | 'handleSortChange'
   | 'renderItem'
-  | 'typeEntryMap'
-  | 'handleClickNote'
   | 'isArchivedView'
   | 'isChangesView'
   | 'isInboxView'
@@ -173,8 +163,6 @@ function NoteListBody({
         toggleGroup={toggleGroup}
         handleSortChange={handleSortChange}
         renderItem={renderItem}
-        typeEntryMap={typeEntryMap}
-        handleClickNote={handleClickNote}
         isArchivedView={isArchivedView}
         isChangesView={isChangesView}
         isInboxView={isInboxView}
@@ -222,8 +210,6 @@ export function NoteListLayout({
   sortPrefs,
   toggleGroup,
   renderItem,
-  typeEntryMap,
-  handleClickNote,
   isArchivedView,
   isChangesView,
   isInboxView,
@@ -279,8 +265,6 @@ export function NoteListLayout({
         toggleGroup={toggleGroup}
         handleSortChange={handleSortChange}
         renderItem={renderItem}
-        typeEntryMap={typeEntryMap}
-        handleClickNote={handleClickNote}
         isArchivedView={isArchivedView}
         isChangesView={isChangesView}
         isInboxView={isInboxView}

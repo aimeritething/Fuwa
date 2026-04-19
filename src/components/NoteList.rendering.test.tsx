@@ -303,6 +303,51 @@ describe('NoteList rendering', () => {
     expect(screen.getByText('Matteo Cellini')).toBeInTheDocument()
   })
 
+  it('keeps computed neighborhood groups visible when they are empty', () => {
+    const standalone = makeEntry({
+      path: '/vault/solo.md',
+      filename: 'solo.md',
+      title: 'Standalone',
+      isA: 'Note',
+    })
+
+    renderNoteList({
+      entries: [standalone],
+      selection: { kind: 'entity', entry: standalone },
+    })
+
+    expect(screen.getByRole('button', { name: /Children\s*0/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Events\s*0/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Referenced By\s*0/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Backlinks\s*0/i })).toBeInTheDocument()
+  })
+
+  it('shows the same note in multiple neighborhood groups when relationships overlap', () => {
+    const parent = makeEntry({
+      path: '/vault/parent.md',
+      filename: 'parent.md',
+      title: 'Parent',
+      isA: 'Project',
+      relationships: { 'Related to': ['[[shared-note]]'] },
+    })
+    const shared = makeEntry({
+      path: '/vault/shared-note.md',
+      filename: 'shared-note.md',
+      title: 'Shared Note',
+      isA: 'Note',
+      relatedTo: ['[[parent]]'],
+    })
+
+    renderNoteList({
+      entries: [parent, shared],
+      selection: { kind: 'entity', entry: parent },
+    })
+
+    expect(screen.getByText('Related to')).toBeInTheDocument()
+    expect(screen.getByText('Referenced By')).toBeInTheDocument()
+    expect(screen.getAllByText('Shared Note')).toHaveLength(2)
+  })
+
   it('collapses and expands entity groups', () => {
     renderNoteList({ selection: { kind: 'entity', entry: mockEntries[0] } })
     expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
@@ -314,7 +359,7 @@ describe('NoteList rendering', () => {
     expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
   })
 
-  it('shows the entity snippet in the prominent card', () => {
+  it('shows the pinned neighborhood note using the standard row content', () => {
     renderNoteList({ selection: { kind: 'entity', entry: mockEntries[0] } })
     expect(screen.getByText('Build a personal knowledge management app.')).toBeInTheDocument()
   })
@@ -525,7 +570,7 @@ describe('NoteList rendering', () => {
     expect(screen.queryByText('High')).not.toBeInTheDocument()
   })
 
-  it('Cmd+clicks relationship chips through the note list without triggering the row click', () => {
+  it('Cmd+clicks relationship chips through the note list without triggering the row click', async () => {
     const projectType = makeTypeDefinition('Project')
     const taskType = makeTypeDefinition('Task', ['Belongs to'])
     const projectEntry = makeEntry({
@@ -544,7 +589,7 @@ describe('NoteList rendering', () => {
       createdAt: 1700000001,
     })
 
-    const { onReplaceActiveTab, onSelectNote } = renderNoteList({
+    const { onReplaceActiveTab, onEnterNeighborhood } = renderNoteList({
       entries: [projectType, taskType, projectEntry, taskEntry],
       selection: { kind: 'sectionGroup', type: 'Task' },
     })
@@ -553,57 +598,65 @@ describe('NoteList rendering', () => {
 
     fireEvent.click(chip)
     expect(onReplaceActiveTab).not.toHaveBeenCalled()
-    expect(onSelectNote).not.toHaveBeenCalled()
+    expect(onEnterNeighborhood).not.toHaveBeenCalled()
 
     fireEvent.click(chip, { metaKey: true })
-    expect(onSelectNote).toHaveBeenCalledWith(projectEntry)
-    expect(onReplaceActiveTab).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(onReplaceActiveTab).toHaveBeenCalledWith(projectEntry)
+      expect(onEnterNeighborhood).toHaveBeenCalledWith(projectEntry)
+    })
   })
 })
 
 describe('NoteList click behavior', () => {
   it('opens the current tab on a regular click', () => {
-    const { onReplaceActiveTab, onSelectNote } = renderNoteList()
+    const { onReplaceActiveTab, onEnterNeighborhood } = renderNoteList()
     fireEvent.click(screen.getByText('Build Laputa App'))
     expect(onReplaceActiveTab).toHaveBeenCalledWith(mockEntries[0])
-    expect(onSelectNote).not.toHaveBeenCalled()
+    expect(onEnterNeighborhood).not.toHaveBeenCalled()
   })
 
-  it('opens a new tab on Cmd+Click', () => {
-    const { onReplaceActiveTab, onSelectNote } = renderNoteList()
+  it('enters Neighborhood on Cmd+Click', async () => {
+    const { onReplaceActiveTab, onEnterNeighborhood } = renderNoteList()
     fireEvent.click(screen.getByText('Build Laputa App'), { metaKey: true })
-    expect(onSelectNote).toHaveBeenCalledWith(mockEntries[0])
-    expect(onReplaceActiveTab).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(onReplaceActiveTab).toHaveBeenCalledWith(mockEntries[0])
+      expect(onEnterNeighborhood).toHaveBeenCalledWith(mockEntries[0])
+    })
   })
 
-  it('opens a new tab on Ctrl+Click', () => {
-    const { onReplaceActiveTab, onSelectNote } = renderNoteList()
+  it('enters Neighborhood on Ctrl+Click', async () => {
+    const { onReplaceActiveTab, onEnterNeighborhood } = renderNoteList()
     fireEvent.click(screen.getByText('Build Laputa App'), { ctrlKey: true })
-    expect(onSelectNote).toHaveBeenCalledWith(mockEntries[0])
-    expect(onReplaceActiveTab).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(onReplaceActiveTab).toHaveBeenCalledWith(mockEntries[0])
+      expect(onEnterNeighborhood).toHaveBeenCalledWith(mockEntries[0])
+    })
   })
 
-  it('supports Cmd+Click on the entity pinned card', () => {
-    const { onReplaceActiveTab, onSelectNote } = renderNoteList({ selection: { kind: 'entity', entry: mockEntries[0] } })
+  it('supports Cmd+Click on the entity pinned card', async () => {
+    const { onReplaceActiveTab, onEnterNeighborhood } = renderNoteList({ selection: { kind: 'entity', entry: mockEntries[0] } })
     const titles = screen.getAllByText('Build Laputa App')
     fireEvent.click(titles[titles.length - 1], { metaKey: true })
-    expect(onSelectNote).toHaveBeenCalledWith(mockEntries[0])
-    expect(onReplaceActiveTab).not.toHaveBeenCalled()
+    await waitFor(() => {
+      expect(onReplaceActiveTab).toHaveBeenCalledWith(mockEntries[0])
+      expect(onEnterNeighborhood).toHaveBeenCalledWith(mockEntries[0])
+    })
   })
 
   it('opens the current tab from the entity pinned card on regular click', () => {
-    const { onReplaceActiveTab, onSelectNote } = renderNoteList({ selection: { kind: 'entity', entry: mockEntries[0] } })
+    const { onReplaceActiveTab, onEnterNeighborhood } = renderNoteList({ selection: { kind: 'entity', entry: mockEntries[0] } })
     const titles = screen.getAllByText('Build Laputa App')
     fireEvent.click(titles[titles.length - 1])
     expect(onReplaceActiveTab).toHaveBeenCalledWith(mockEntries[0])
-    expect(onSelectNote).not.toHaveBeenCalled()
+    expect(onEnterNeighborhood).not.toHaveBeenCalled()
   })
 
   it('opens child notes from entity view in the current tab', () => {
-    const { onReplaceActiveTab, onSelectNote } = renderNoteList({ selection: { kind: 'entity', entry: mockEntries[0] } })
+    const { onReplaceActiveTab, onEnterNeighborhood } = renderNoteList({ selection: { kind: 'entity', entry: mockEntries[0] } })
     fireEvent.click(screen.getByText('Facebook Ads Strategy'))
     expect(onReplaceActiveTab).toHaveBeenCalledWith(mockEntries[1])
-    expect(onSelectNote).not.toHaveBeenCalled()
+    expect(onEnterNeighborhood).not.toHaveBeenCalled()
   })
 })
 

@@ -18,7 +18,7 @@ function makeEntry(path = '/test.md'): VaultEntry {
 function makeActions(): ClickActions {
   return {
     onReplace: vi.fn(),
-    onSelect: vi.fn(),
+    onEnterNeighborhood: vi.fn(),
     onOpenInNewWindow: vi.fn(),
     multiSelect: {
       selectRange: vi.fn(),
@@ -49,12 +49,13 @@ describe('routeNoteClick', () => {
     expect(actions.multiSelect.setAnchor).toHaveBeenCalledWith(entry.path)
   })
 
-  it('Cmd+click opens as new tab', () => {
+  it('Cmd+click enters Neighborhood mode', () => {
     const entry = makeEntry()
     const actions = makeActions()
     routeNoteClick(entry, makeMouseEvent({ metaKey: true }), actions)
-    expect(actions.onSelect).toHaveBeenCalledWith(entry)
+    expect(actions.onEnterNeighborhood).toHaveBeenCalledWith(entry)
     expect(actions.multiSelect.clear).toHaveBeenCalled()
+    expect(actions.onReplace).not.toHaveBeenCalled()
   })
 
   it('Shift+click selects range', () => {
@@ -70,7 +71,7 @@ describe('routeNoteClick', () => {
     routeNoteClick(entry, makeMouseEvent({ metaKey: true, shiftKey: true }), actions)
     expect(actions.onOpenInNewWindow).toHaveBeenCalledWith(entry)
     expect(actions.onReplace).not.toHaveBeenCalled()
-    expect(actions.onSelect).not.toHaveBeenCalled()
+    expect(actions.onEnterNeighborhood).not.toHaveBeenCalled()
   })
 
   it('Cmd+Shift+click is a no-op when handler is undefined', () => {
@@ -79,6 +80,6 @@ describe('routeNoteClick', () => {
     actions.onOpenInNewWindow = undefined
     routeNoteClick(entry, makeMouseEvent({ metaKey: true, shiftKey: true }), actions)
     expect(actions.onReplace).not.toHaveBeenCalled()
-    expect(actions.onSelect).not.toHaveBeenCalled()
+    expect(actions.onEnterNeighborhood).not.toHaveBeenCalled()
   })
 })

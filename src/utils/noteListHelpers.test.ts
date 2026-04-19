@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { countAllByFilter, countAllNotesByFilter, countByFilter, filterEntries } from './noteListHelpers'
+import { buildRelationshipGroups, countAllByFilter, countAllNotesByFilter, countByFilter, filterEntries } from './noteListHelpers'
 import { allSelection, makeEntry, mockEntries } from '../test-utils/noteListTestUtils'
 
 describe('filterEntries', () => {
@@ -125,5 +125,47 @@ describe('countAllNotesByFilter', () => {
     ]
 
     expect(countAllNotesByFilter(entries)).toEqual({ open: 1, archived: 1 })
+  })
+})
+
+describe('buildRelationshipGroups', () => {
+  it('keeps computed neighborhood groups visible when they are empty', () => {
+    const standalone = makeEntry({
+      path: '/vault/solo.md',
+      filename: 'solo.md',
+      title: 'Standalone',
+      isA: 'Note',
+    })
+
+    const groups = buildRelationshipGroups(standalone, [standalone])
+
+    expect(groups).toEqual([
+      { label: 'Children', entries: [] },
+      { label: 'Events', entries: [] },
+      { label: 'Referenced By', entries: [] },
+      { label: 'Backlinks', entries: [] },
+    ])
+  })
+
+  it('allows the same note to appear in multiple relationship groups', () => {
+    const parent = makeEntry({
+      path: '/vault/parent.md',
+      filename: 'parent.md',
+      title: 'Parent',
+      isA: 'Project',
+      relationships: { 'Related to': ['[[shared-note]]'] },
+    })
+    const shared = makeEntry({
+      path: '/vault/shared-note.md',
+      filename: 'shared-note.md',
+      title: 'Shared Note',
+      isA: 'Note',
+      relatedTo: ['[[parent]]'],
+    })
+
+    const groups = buildRelationshipGroups(parent, [parent, shared])
+
+    expect(groups.find((group) => group.label === 'Related to')?.entries).toEqual([shared])
+    expect(groups.find((group) => group.label === 'Referenced By')?.entries).toEqual([shared])
   })
 })

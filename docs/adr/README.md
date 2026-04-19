@@ -124,3 +124,4 @@ proposed → active → superseded
 | [0066](0066-calendar-semver-versioning-for-alpha-and-stable-releases.md) | Calendar-semver versioning for alpha and stable releases | active |
 | [0067](0067-autogit-idle-and-inactive-checkpoints.md) | AutoGit idle and inactive checkpoints | active |
 | [0068](0068-h1-only-title-surface-with-optional-untitled-auto-rename.md) | H1-only title surface with optional untitled auto-rename | active |
+| [0069](0069-neighborhood-mode-for-note-list-relationship-browsing.md) | Neighborhood mode for note-list relationship browsing | active |

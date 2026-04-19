@@ -292,8 +292,9 @@ No global state management (no Redux, no Context). `App.tsx` owns the state and 
 type SidebarSelection =
   | { kind: 'filter'; filter: SidebarFilter }
   | { kind: 'sectionGroup'; type: string }
+  | { kind: 'folder'; path: string }
   | { kind: 'entity'; entry: VaultEntry }
-  | { kind: 'topic'; entry: VaultEntry }
+  | { kind: 'view'; filename: string }
 ```
 
 ### Command Registry

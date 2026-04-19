@@ -1,4 +1,4 @@
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NoteList } from './NoteList'
 import { makeEntry, makeIndexedEntry, mockEntries, renderNoteList } from '../test-utils/noteListTestUtils'
@@ -156,14 +156,17 @@ describe('NoteList multi-select', () => {
     expect(onReplaceActiveTab).toHaveBeenCalledWith(mockEntries[2])
   })
 
-  it('clears multi-select and opens a new tab on Cmd+Click', () => {
-    const { onSelectNote } = renderNoteList()
+  it('clears multi-select and enters Neighborhood on Cmd+Click', async () => {
+    const { onEnterNeighborhood, onReplaceActiveTab } = renderNoteList()
     fireEvent.click(screen.getByText('Build Laputa App'))
     fireEvent.click(screen.getByText('Facebook Ads Strategy'), { shiftKey: true })
     fireEvent.click(screen.getByText('Matteo Cellini'), { metaKey: true })
 
     expect(screen.queryByTestId('multi-selected-item')).not.toBeInTheDocument()
-    expect(onSelectNote).toHaveBeenCalledWith(mockEntries[2])
+    await waitFor(() => {
+      expect(onReplaceActiveTab).toHaveBeenCalledWith(mockEntries[2])
+      expect(onEnterNeighborhood).toHaveBeenCalledWith(mockEntries[2])
+    })
   })
 
   it('shows the bulk action bar with the selected count', () => {

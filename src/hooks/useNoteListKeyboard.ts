@@ -6,6 +6,7 @@ interface NoteListKeyboardOptions {
   items: VaultEntry[]
   selectedNotePath: string | null
   onOpen: (entry: VaultEntry) => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void | Promise<void>
   onPrefetch?: (entry: VaultEntry) => void
   enabled: boolean
 }
@@ -36,6 +37,26 @@ function isEditableElement(element: Element | null): boolean {
   return element.isContentEditable || !!element.closest('[contenteditable="true"]')
 }
 
+function isInteractiveElement(element: Element | null): boolean {
+  if (!element) return false
+  if (isEditableElement(element)) return true
+  if (!(element instanceof HTMLElement)) return false
+  return element instanceof HTMLButtonElement
+    || element instanceof HTMLAnchorElement
+    || element.getAttribute('role') === 'button'
+}
+
+function isNestedInteractiveTarget(
+  target: EventTarget | null,
+  currentTarget: EventTarget | null,
+): boolean {
+  return target instanceof Element
+    && currentTarget instanceof Element
+    && target !== currentTarget
+    && currentTarget.contains(target)
+    && isInteractiveElement(target)
+}
+
 function resolveCurrentIndex(
   items: VaultEntry[],
   highlightedPath: string | null,
@@ -59,13 +80,20 @@ function moveHighlightIndex(
   return nextIndex
 }
 
-export function useNoteListKeyboard({
-  items, selectedNotePath, onOpen, onPrefetch, enabled,
-}: NoteListKeyboardOptions) {
-  const [highlightedPathState, setHighlightedPath] = useState<string | null>(null)
-  const virtuosoRef = useRef<VirtuosoHandle>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const highlightedPathRef = useRef<string | null>(null)
+function resolveHighlightedEntry(items: VaultEntry[], highlightedPath: string | null): VaultEntry | undefined {
+  if (!highlightedPath) return undefined
+  return items.find((entry) => entry.path === highlightedPath)
+}
+
+function usesCommandModifier(event: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey'>): boolean {
+  return event.metaKey || event.ctrlKey
+}
+
+function isNeighborhoodKey(event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey'>): boolean {
+  return event.key === 'Enter' && usesCommandModifier(event) && !event.altKey
+}
+
+function useKeyboardItemRefs(items: VaultEntry[], selectedNotePath: string | null) {
   const itemsRef = useRef(items)
   const selectedNotePathRef = useRef(selectedNotePath)
 
@@ -74,16 +102,49 @@ export function useNoteListKeyboard({
     selectedNotePathRef.current = selectedNotePath
   }, [items, selectedNotePath])
 
+  return { itemsRef, selectedNotePathRef }
+}
+
+function useHighlightedPath() {
+  const [highlightedPathState, setHighlightedPath] = useState<string | null>(null)
+  const highlightedPathRef = useRef<string | null>(null)
+
   const syncHighlightedPath = useCallback((nextPath: string | null) => {
     highlightedPathRef.current = nextPath
     setHighlightedPath(nextPath)
   }, [])
 
-  const syncToCurrentSelection = useCallback(() => {
-    syncHighlightedPath(resolveHighlightedPath(itemsRef.current, selectedNotePathRef.current))
-  }, [syncHighlightedPath])
+  return { highlightedPathRef, highlightedPathState, syncHighlightedPath }
+}
 
-  const moveHighlight = useCallback((direction: 1 | -1) => {
+function useSelectionSync(
+  itemsRef: React.RefObject<VaultEntry[]>,
+  selectedNotePathRef: React.RefObject<string | null>,
+  syncHighlightedPath: (nextPath: string | null) => void,
+) {
+  return useCallback(() => {
+    syncHighlightedPath(resolveHighlightedPath(itemsRef.current, selectedNotePathRef.current))
+  }, [itemsRef, selectedNotePathRef, syncHighlightedPath])
+}
+
+function useMoveHighlight({
+  items,
+  selectedNotePath,
+  highlightedPathRef,
+  syncHighlightedPath,
+  virtuosoRef,
+  onOpen,
+  onPrefetch,
+}: {
+  items: VaultEntry[]
+  selectedNotePath: string | null
+  highlightedPathRef: React.RefObject<string | null>
+  syncHighlightedPath: (nextPath: string | null) => void
+  virtuosoRef: React.RefObject<VirtuosoHandle | null>
+  onOpen: (entry: VaultEntry) => void
+  onPrefetch?: (entry: VaultEntry) => void
+}) {
+  return useCallback((direction: 1 | -1) => {
     const currentIndex = resolveCurrentIndex(items, highlightedPathRef.current, selectedNotePath)
     const nextIndex = moveHighlightIndex(currentIndex, direction, items.length)
     const currentPath = highlightedPathRef.current ?? selectedNotePath
@@ -94,29 +155,67 @@ export function useNoteListKeyboard({
     virtuosoRef.current?.scrollIntoView({ index: nextIndex, behavior: 'auto' })
     onOpen(nextItem)
     onPrefetch?.(nextItem)
-  }, [items, onOpen, onPrefetch, selectedNotePath, syncHighlightedPath])
+  }, [highlightedPathRef, items, onOpen, onPrefetch, selectedNotePath, syncHighlightedPath, virtuosoRef])
+}
 
-  const processKeyDown = useCallback((e: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'preventDefault'>) => {
+function useProcessKeyDown({
+  enabled,
+  items,
+  highlightedPathRef,
+  moveHighlight,
+  onOpen,
+  onEnterNeighborhood,
+}: {
+  enabled: boolean
+  items: VaultEntry[]
+  highlightedPathRef: React.RefObject<string | null>
+  moveHighlight: (direction: 1 | -1) => void
+  onOpen: (entry: VaultEntry) => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void | Promise<void>
+}) {
+  return useCallback((event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'preventDefault'>) => {
     if (!enabled || items.length === 0) return
-    if (e.metaKey || e.ctrlKey || e.altKey) return
 
-    if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      moveHighlight(1)
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      moveHighlight(-1)
-    } else if (e.key === 'Enter' && highlightedPathRef.current) {
-      e.preventDefault()
-      const highlightedItem = items.find((entry) => entry.path === highlightedPathRef.current)
-      if (highlightedItem) onOpen(highlightedItem)
+    if (isNeighborhoodKey(event)) {
+      const highlightedItem = resolveHighlightedEntry(items, highlightedPathRef.current)
+      if (!highlightedItem) return
+      event.preventDefault()
+      void onEnterNeighborhood?.(highlightedItem)
+      return
     }
-  }, [enabled, items, moveHighlight, onOpen])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    processKeyDown(e)
-  }, [processKeyDown])
+    if (usesCommandModifier(event) || event.altKey) return
 
+    if (event.key === 'ArrowDown') {
+      event.preventDefault()
+      moveHighlight(1)
+      return
+    }
+
+    if (event.key === 'ArrowUp') {
+      event.preventDefault()
+      moveHighlight(-1)
+      return
+    }
+
+    if (event.key !== 'Enter') return
+
+    const highlightedItem = resolveHighlightedEntry(items, highlightedPathRef.current)
+    if (!highlightedItem) return
+    event.preventDefault()
+    onOpen(highlightedItem)
+  }, [enabled, highlightedPathRef, items, moveHighlight, onEnterNeighborhood, onOpen])
+}
+
+function useFocusHandlers({
+  containerRef,
+  syncToCurrentSelection,
+  syncHighlightedPath,
+}: {
+  containerRef: React.RefObject<HTMLDivElement | null>
+  syncToCurrentSelection: () => void
+  syncHighlightedPath: (nextPath: string | null) => void
+}) {
   const handleFocus = useCallback(() => {
     syncToCurrentSelection()
   }, [syncToCurrentSelection])
@@ -133,20 +232,75 @@ export function useNoteListKeyboard({
     requestAnimationFrame(() => {
       if (isListActive(containerRef.current)) syncToCurrentSelection()
     })
-  }, [syncToCurrentSelection])
+  }, [containerRef, syncToCurrentSelection])
 
+  return { focusList, handleBlur, handleFocus }
+}
+
+function useGlobalKeyboardHandling({
+  enabled,
+  containerRef,
+  processKeyDown,
+}: {
+  enabled: boolean
+  containerRef: React.RefObject<HTMLDivElement | null>
+  processKeyDown: (event: KeyboardEvent) => void
+}) {
   useEffect(() => {
     if (!enabled) return
 
     const handleWindowKeyDown = (event: KeyboardEvent) => {
       if (event.defaultPrevented) return
-      if (isEditableElement(document.activeElement)) return
+      const activeElement = document.activeElement
+      if (isEditableElement(activeElement)) return
+      if (
+        activeElement !== containerRef.current
+        && containerRef.current?.contains(activeElement)
+        && isInteractiveElement(activeElement)
+      ) return
       processKeyDown(event)
     }
 
     window.addEventListener('keydown', handleWindowKeyDown)
     return () => window.removeEventListener('keydown', handleWindowKeyDown)
-  }, [enabled, processKeyDown])
+  }, [containerRef, enabled, processKeyDown])
+}
+
+export function useNoteListKeyboard({
+  items, selectedNotePath, onOpen, onEnterNeighborhood, onPrefetch, enabled,
+}: NoteListKeyboardOptions) {
+  const virtuosoRef = useRef<VirtuosoHandle>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const { itemsRef, selectedNotePathRef } = useKeyboardItemRefs(items, selectedNotePath)
+  const { highlightedPathRef, highlightedPathState, syncHighlightedPath } = useHighlightedPath()
+  const syncToCurrentSelection = useSelectionSync(itemsRef, selectedNotePathRef, syncHighlightedPath)
+  const moveHighlight = useMoveHighlight({
+    items,
+    selectedNotePath,
+    highlightedPathRef,
+    syncHighlightedPath,
+    virtuosoRef,
+    onOpen,
+    onPrefetch,
+  })
+  const processKeyDown = useProcessKeyDown({
+    enabled,
+    items,
+    highlightedPathRef,
+    moveHighlight,
+    onOpen,
+    onEnterNeighborhood,
+  })
+  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
+    if (isNestedInteractiveTarget(event.target, event.currentTarget)) return
+    processKeyDown(event)
+  }, [processKeyDown])
+  const { focusList, handleBlur, handleFocus } = useFocusHandlers({
+    containerRef,
+    syncToCurrentSelection,
+    syncHighlightedPath,
+  })
+  useGlobalKeyboardHandling({ enabled, containerRef, processKeyDown })
 
   const highlightedPath = items.some((entry) => entry.path === highlightedPathState)
     ? highlightedPathState
