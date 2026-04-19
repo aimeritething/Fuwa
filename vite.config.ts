@@ -2,6 +2,7 @@
 import type { IncomingMessage, ServerResponse } from 'http'
 import path from 'path'
 import fs from 'fs'
+import os from 'os'
 import { defineConfig, type Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -60,6 +61,33 @@ const DEDICATED_KEYS = new Set([
   'related_to', 'related to', 'status', 'title',
 ])
 
+function getFrontmatterValue(
+  frontmatter: Record<string, unknown>,
+  keys: string[],
+): unknown {
+  const normalizedKeys = new Set(keys.map((key) => key.toLowerCase()))
+  return Object.entries(frontmatter).find(([key]) => normalizedKeys.has(key.toLowerCase()))?.[1]
+}
+
+function parseYamlBool(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value
+  if (typeof value !== 'string') return null
+
+  switch (value.toLowerCase()) {
+    case 'true':
+    case 'yes':
+      return true
+    case 'false':
+    case 'no':
+      return false
+    default:
+      return null
+  }
+}
+
+const vitestCoverageDirectory = process.env.VITEST_COVERAGE_DIR
+  ?? path.join(os.tmpdir(), 'tolaria-vitest-coverage', String(process.pid))
+
 function parseMarkdownFile(filePath: string): VaultEntry | null {
   try {
     const raw = fs.readFileSync(filePath, 'utf-8')
@@ -75,27 +103,15 @@ function parseMarkdownFile(filePath: string): VaultEntry | null {
 
     // Helper to get a frontmatter string field (case-insensitive key)
     const getString = (...keys: string[]): string | null => {
-      for (const k of keys) {
-        for (const fk of Object.keys(fm)) {
-          if (fk.toLowerCase() === k.toLowerCase() && typeof fm[fk] === 'string') {
-            return fm[fk]
-          }
-        }
-      }
-      return null
+      const value = getFrontmatterValue(fm, keys)
+      return typeof value === 'string' ? value : null
     }
 
     // Helper to get a frontmatter array-of-strings field
     const getArray = (...keys: string[]): string[] => {
-      for (const k of keys) {
-        for (const fk of Object.keys(fm)) {
-          if (fk.toLowerCase() === k.toLowerCase()) {
-            const val = fm[fk]
-            if (Array.isArray(val)) return val.map(String)
-            if (typeof val === 'string') return [val]
-          }
-        }
-      }
+      const value = getFrontmatterValue(fm, keys)
+      if (Array.isArray(value)) return value.map(String)
+      if (typeof value === 'string') return [value]
       return []
     }
 
@@ -125,20 +141,7 @@ function parseMarkdownFile(filePath: string): VaultEntry | null {
     // Boolean field helper — handles both real booleans and YAML 1.1 string
     // variants ("Yes"/"yes"/"True"/"true") that js-yaml 4.x (YAML 1.2) leaves as strings.
     const getBool = (...keys: string[]): boolean | null => {
-      for (const k of keys) {
-        for (const fk of Object.keys(fm)) {
-          if (fk.toLowerCase() === k.toLowerCase()) {
-            const v = fm[fk]
-            if (typeof v === 'boolean') return v
-            if (typeof v === 'string') {
-              const lc = v.toLowerCase()
-              if (lc === 'true' || lc === 'yes') return true
-              if (lc === 'false' || lc === 'no') return false
-            }
-          }
-        }
-      }
-      return null
+      return parseYamlBool(getFrontmatterValue(fm, keys))
     }
 
     return {
@@ -416,16 +419,23 @@ async function handleVaultDelete(url: URL, req: IncomingMessage, res: ServerResp
 
 async function handleVaultApiRequest(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
   const url = new URL(req.url ?? '/', `http://${req.headers.host}`)
-  if (handleVaultPing(url, res)) return true
-  if (handleVaultList(url, res)) return true
-  if (handleVaultContent(url, res)) return true
-  if (handleVaultAllContent(url, res)) return true
-  if (handleVaultEntry(url, res)) return true
-  if (handleVaultSearch(url, res)) return true
-  if (await handleVaultSave(url, req, res)) return true
-  if (await handleVaultRename(url, req, res)) return true
-  if (await handleVaultRenameFilename(url, req, res)) return true
-  if (await handleVaultDelete(url, req, res)) return true
+  const handlers = [
+    () => Promise.resolve(handleVaultPing(url, res)),
+    () => Promise.resolve(handleVaultList(url, res)),
+    () => Promise.resolve(handleVaultContent(url, res)),
+    () => Promise.resolve(handleVaultAllContent(url, res)),
+    () => Promise.resolve(handleVaultEntry(url, res)),
+    () => Promise.resolve(handleVaultSearch(url, res)),
+    () => handleVaultSave(url, req, res),
+    () => handleVaultRename(url, req, res),
+    () => handleVaultRenameFilename(url, req, res),
+    () => handleVaultDelete(url, req, res),
+  ]
+
+  for (const handler of handlers) {
+    if (await handler()) return true
+  }
+
   return false
 }
 
@@ -517,6 +527,9 @@ export default defineConfig({
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
+      // Keep coverage temp files off the mounted workspace to avoid flaky
+      // read-after-write races when Vitest re-reads its own coverage shards.
+      reportsDirectory: vitestCoverageDirectory,
       include: ['src/**/*.{ts,tsx}'],
       exclude: [
         'src/**/*.{test,spec}.{ts,tsx}',
