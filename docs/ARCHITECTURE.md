@@ -798,10 +798,11 @@ push stable-vYYYY.M.D tag
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin
       → upload signed .app.tar.gz + .sig and .dmg artifacts
   → release job:
-      → generate stable-latest.json
+      → generate stable-latest.json with both updater tarball and current stable DMG URLs
       → publish GitHub release Tolaria YYYY.M.D
   → pages job:
       → publish stable/latest.json
+      → publish stable/download/ and download/ as permanent redirect URLs for the latest stable DMG
       → preserve alpha/latest.json
       → deploy to gh-pages
 ```

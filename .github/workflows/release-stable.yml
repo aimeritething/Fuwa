@@ -208,6 +208,7 @@ jobs:
 
           ARM_SIG=$(cat updater-aarch64/*.app.tar.gz.sig)
           ARM_TARBALL=$(ls updater-aarch64/*.app.tar.gz | xargs basename)
+          ARM_DMG=$(ls dmg-aarch64/*.dmg | xargs basename)
 
           cat > stable-latest.json << EOF
           {
@@ -217,7 +218,8 @@ jobs:
             "platforms": {
               "darwin-aarch64": {
                 "signature": "${ARM_SIG}",
-                "url": "https://github.com/${REPO}/releases/download/${TAG}/${ARM_TARBALL}"
+                "url": "https://github.com/${REPO}/releases/download/${TAG}/${ARM_TARBALL}",
+                "dmg_url": "https://github.com/${REPO}/releases/download/${TAG}/${ARM_DMG}"
               }
             }
           }
@@ -253,6 +255,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Build release history page
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -263,6 +270,9 @@ jobs:
 
           curl -fsSL "${PAGES_URL}/alpha/latest.json" -o _site/alpha/latest.json || echo '{}' > _site/alpha/latest.json
           gh release download --repo ${{ github.repository }} "${{ needs.version.outputs.tag }}" --pattern "stable-latest.json" --output _site/stable/latest.json || echo '{}' > _site/stable/latest.json
+          bun scripts/build-release-download-page.ts --latest-json _site/stable/latest.json --releases-json _site/releases.json --output-file _site/stable/download/index.html
+          mkdir -p _site/download
+          cp _site/stable/download/index.html _site/download/index.html
 
           cp _site/alpha/latest.json _site/latest.json
           cp _site/alpha/latest.json _site/latest-canary.json

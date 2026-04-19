@@ -291,6 +291,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
       - name: Build release history page
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -301,6 +306,9 @@ jobs:
 
           gh release download --repo ${{ github.repository }} "${{ needs.version.outputs.tag }}" --pattern "alpha-latest.json" --output _site/alpha/latest.json || echo '{}' > _site/alpha/latest.json
           curl -fsSL "${PAGES_URL}/stable/latest.json" -o _site/stable/latest.json || echo '{}' > _site/stable/latest.json
+          bun scripts/build-release-download-page.ts --latest-json _site/stable/latest.json --releases-json _site/releases.json --output-file _site/stable/download/index.html
+          mkdir -p _site/download
+          cp _site/stable/download/index.html _site/download/index.html
 
           cp _site/alpha/latest.json _site/latest.json
           cp _site/alpha/latest.json _site/latest-canary.json
