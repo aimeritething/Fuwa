@@ -1,6 +1,6 @@
 # AGENTS.md — Tolaria App
 
-> Quick links: [Project Spec](docs/PROJECT-SPEC.md) · [Architecture](docs/ARCHITECTURE.md) · [Abstractions](docs/ABSTRACTIONS.md) · [Wireframes](ui-design.pen)
+> Quick links: [Architecture](docs/ARCHITECTURE.md) · [Abstractions](docs/ABSTRACTIONS.md) · [Wireframes](ui-design.pen)
 
 ---
 
