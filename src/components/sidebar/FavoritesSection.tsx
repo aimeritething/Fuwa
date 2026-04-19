@@ -121,6 +121,15 @@ export function FavoritesSection({
     if (reordered) onReorder?.(reordered)
   }, [favoriteIds, onReorder])
 
+  const handleFavoriteSelect = useCallback((entry: VaultEntry) => {
+    if (onSelectNote) {
+      void onSelectNote(entry)
+      return
+    }
+
+    onSelect({ kind: 'filter', filter: 'favorites' })
+  }, [onSelect, onSelectNote])
+
   if (favorites.length === 0) return null
 
   return (
@@ -136,10 +145,7 @@ export function FavoritesSection({
                   entry={entry}
                   isActive={isSelectionActive(selection, { kind: 'entity', entry })}
                   typeEntryMap={typeEntryMap}
-                  onSelect={() => {
-                    onSelect({ kind: 'filter', filter: 'favorites' })
-                    onSelectNote?.(entry)
-                  }}
+                  onSelect={() => handleFavoriteSelect(entry)}
                 />
               ))}
             </div>

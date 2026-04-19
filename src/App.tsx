@@ -484,7 +484,11 @@ function App() {
     onFrontmatterPersisted: vault.loadModifiedFiles,
     onPathRenamed: (oldPath, newPath) => appSave.trackRenamedPath(oldPath, newPath),
   })
-  const { handleSelectNote, openTabWithContent } = notes
+  const {
+    handleSelectNote,
+    handleReplaceActiveTab,
+    openTabWithContent,
+  } = notes
   const pulseCommitDiffRequestIdRef = useRef(0)
   const [pulseCommitDiffRequest, setPulseCommitDiffRequest] = useState<CommitDiffRequest | null>(null)
 
@@ -581,6 +585,11 @@ function App() {
       void handleSelectNote(entry)
     }
   }, [entriesByPath, resolvedPath, queuePulseCommitDiff, handleSelectNote, openTabWithContent])
+
+  const handleOpenFavorite = useCallback(async (entry: VaultEntry) => {
+    await handleReplaceActiveTab(entry)
+    handleEnterNeighborhood(entry)
+  }, [handleEnterNeighborhood, handleReplaceActiveTab])
 
   const vaultBridge = useVaultBridge({
     entriesByPath, resolvedPath,
@@ -1237,7 +1246,7 @@ function App() {
         {sidebarVisible && (
           <>
             <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-              <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={notes.handleSelectNote} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} />
+              <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} />
             </div>
             <ResizeHandle onResize={layout.handleSidebarResize} />
           </>

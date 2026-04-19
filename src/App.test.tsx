@@ -197,6 +197,16 @@ function configureNeighborhoodVault() {
   mockCommandResults.get_note_content = ({ path }: { path: string }) => neighborhoodContent[path] ?? ''
 }
 
+function configureNeighborhoodFavoritesVault() {
+  mockCommandResults.list_vault = neighborhoodEntries.map((entry) =>
+    entry.path === '/vault/alpha.md'
+      ? { ...entry, favorite: true, favoriteIndex: 0 }
+      : entry,
+  )
+  mockCommandResults.get_all_content = neighborhoodContent
+  mockCommandResults.get_note_content = ({ path }: { path: string }) => neighborhoodContent[path] ?? ''
+}
+
 function getHeaderForNoteList(noteListContainer: HTMLElement) {
   return within(noteListContainer.parentElement as HTMLElement).getByRole('heading', { level: 3 })
 }
@@ -540,6 +550,23 @@ describe('App', () => {
     await waitFor(() => {
       expect(getHeader()).toHaveTextContent('Inbox')
     })
+  })
+
+  it('opens favorites directly into Neighborhood mode', async () => {
+    configureNeighborhoodFavoritesVault()
+
+    render(<App />)
+
+    const sidebar = await screen.findByText('FAVORITES')
+    fireEvent.click(within(sidebar.closest('div')?.parentElement as HTMLElement).getByText('Alpha'))
+
+    const noteListContainer = await screen.findByTestId('note-list-container')
+    await waitFor(() => {
+      expect(getHeaderForNoteList(noteListContainer)).toHaveTextContent('Alpha')
+    })
+
+    expect(screen.getByText('Related to')).toBeInTheDocument()
+    expect(screen.getByText('Beta')).toBeInTheDocument()
   })
 
   it('defaults to All Notes when explicit organization is disabled in vault config', async () => {
