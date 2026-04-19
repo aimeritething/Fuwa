@@ -3,6 +3,7 @@ import type { useCreateBlockNote } from '@blocknote/react'
 import type { VaultEntry } from '../types'
 import { splitFrontmatter, preProcessWikilinks, injectWikilinks, restoreWikilinksInBlocks } from '../utils/wikilinks'
 import { compactMarkdown } from '../utils/compact-markdown'
+import { failNoteOpenTrace, finishNoteOpenTrace } from '../utils/noteOpenPerformance'
 
 interface Tab {
   entry: VaultEntry
@@ -36,6 +37,7 @@ function signalEditorTabSwapped(path: string): void {
   window.dispatchEvent(new CustomEvent('laputa:editor-tab-swapped', {
     detail: { path },
   }))
+  finishNoteOpenTrace(path)
 }
 
 /** Strip the YAML frontmatter from raw file content, returning the body
@@ -643,6 +645,7 @@ function scheduleEmptyHeadingSwap(options: {
     .catch((err: unknown) => {
       suppressChangeRef.current = false
       console.error('Failed to render empty heading state:', err)
+      failNoteOpenTrace(targetPath, 'empty-heading-swap-failed')
     })
 
   return true
@@ -674,6 +677,7 @@ function scheduleParsedBlockSwap(options: {
     .catch((err: unknown) => {
       suppressChangeRef.current = false
       console.error('Failed to parse/swap editor content:', err)
+      failNoteOpenTrace(targetPath, 'parsed-swap-failed')
     })
 }
 

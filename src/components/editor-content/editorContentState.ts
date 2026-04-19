@@ -21,6 +21,21 @@ interface VisibilityState {
   showEditor: boolean
 }
 
+const entryLookupCache = new WeakMap<VaultEntry[], Map<string, VaultEntry>>()
+
+function getEntryLookup(entries: VaultEntry[]): Map<string, VaultEntry> {
+  const cached = entryLookupCache.get(entries)
+  if (cached) return cached
+
+  const lookup = new Map<string, VaultEntry>()
+  for (const entry of entries) {
+    lookup.set(entry.path, entry)
+  }
+
+  entryLookupCache.set(entries, lookup)
+  return lookup
+}
+
 export interface EditorContentState {
   freshEntry: VaultEntry | undefined
   isArchived: boolean
@@ -35,7 +50,7 @@ export interface EditorContentState {
 
 function findFreshEntry(activeTab: EditorContentTab | null, entries: VaultEntry[]): VaultEntry | undefined {
   if (!activeTab) return undefined
-  return entries.find((entry) => entry.path === activeTab.entry.path)
+  return getEntryLookup(entries).get(activeTab.entry.path)
 }
 
 function contentHasTopLevelH1(activeTab: EditorContentTab | null): boolean {

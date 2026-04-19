@@ -2,6 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { VaultEntry } from '../types'
+import {
+  beginNoteOpenTrace,
+  failNoteOpenTrace,
+  finishNoteOpenTrace,
+  markNoteOpenTrace,
+} from '../utils/noteOpenPerformance'
 
 interface Tab {
   entry: VaultEntry
@@ -144,6 +150,7 @@ function startEntryNavigation(options: {
   const cachedContent = getCachedNoteContent(entry.path)
   syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
   if (cachedContent !== null) {
+    markNoteOpenTrace(entry.path, 'cacheReady')
     setSingleTab(tabsRef, setTabs, { entry, content: cachedContent })
   }
 
@@ -191,6 +198,7 @@ function handleEntryLoadFailure(options: {
   console.warn('Failed to load note content:', error)
   if (navSeqRef.current !== seq) return
   setSingleTab(tabsRef, setTabs, { entry, content: '' })
+  failNoteOpenTrace(entry.path, 'load-failed')
 }
 
 async function navigateToEntry(options: {
@@ -210,9 +218,13 @@ async function navigateToEntry(options: {
     setActiveTabPath,
   } = options
 
-  if (entry.fileKind === 'binary') return
+  if (entry.fileKind === 'binary') {
+    failNoteOpenTrace(entry.path, 'binary-entry')
+    return
+  }
   if (isAlreadyViewingPath(tabsRef, activeTabPathRef, entry.path)) {
     syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
+    finishNoteOpenTrace(entry.path)
     return
   }
 
@@ -226,7 +238,9 @@ async function navigateToEntry(options: {
   })
 
   try {
+    markNoteOpenTrace(entry.path, 'contentLoadStart')
     const content = await loadNoteContent(entry.path)
+    markNoteOpenTrace(entry.path, 'contentLoadEnd')
     if (!shouldApplyLoadedEntry({
       seq,
       navSeqRef,
@@ -270,9 +284,12 @@ export function useTabManagement(options: TabManagementOptions = {}) {
     const currentPath = activeTabPathRef.current
     if (beforeNavigate && currentPath && currentPath !== targetPath) {
       try {
+        markNoteOpenTrace(targetPath, 'beforeNavigateStart')
         await beforeNavigate(currentPath, targetPath)
+        markNoteOpenTrace(targetPath, 'beforeNavigateEnd')
       } catch (err) {
         console.warn('Failed to persist note before navigation:', err)
+        failNoteOpenTrace(targetPath, 'before-navigate-failed')
         return
       }
       if (beforeNavigateSeqRef.current !== seq) return
@@ -282,6 +299,9 @@ export function useTabManagement(options: TabManagementOptions = {}) {
 
   /** Open a note — replaces the current note (single-note model). */
   const handleSelectNote = useCallback(async (entry: VaultEntry) => {
+    if (entry.path !== activeTabPathRef.current) {
+      beginNoteOpenTrace(entry.path, 'select-note')
+    }
     await executeNavigationWithBoundary(entry.path, () => navigateToEntry({
       entry,
       navSeqRef,
@@ -305,6 +325,9 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   }, [executeNavigationWithBoundary])
 
   const handleReplaceActiveTab = useCallback(async (entry: VaultEntry) => {
+    if (entry.path !== activeTabPathRef.current) {
+      beginNoteOpenTrace(entry.path, 'replace-active-tab')
+    }
     await executeNavigationWithBoundary(entry.path, () => navigateToEntry({
       entry,
       navSeqRef,

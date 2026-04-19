@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
 import type { VirtuosoHandle } from 'react-virtuoso'
 import type { VaultEntry } from '../types'
+import { logKeyboardNavigationTrace } from '../utils/noteOpenPerformance'
 
 interface NoteListKeyboardOptions {
   items: VaultEntry[]
@@ -11,11 +12,39 @@ interface NoteListKeyboardOptions {
   enabled: boolean
 }
 
+interface ItemIndex {
+  entryByPath: Map<string, VaultEntry>
+  indexByPath: Map<string, number>
+}
+
+const itemIndexCache = new WeakMap<VaultEntry[], ItemIndex>()
+
+function buildItemIndex(items: VaultEntry[]): ItemIndex {
+  const entryByPath = new Map<string, VaultEntry>()
+  const indexByPath = new Map<string, number>()
+
+  for (const [index, entry] of items.entries()) {
+    entryByPath.set(entry.path, entry)
+    indexByPath.set(entry.path, index)
+  }
+
+  return { entryByPath, indexByPath }
+}
+
+function getItemIndex(items: VaultEntry[]): ItemIndex {
+  const cached = itemIndexCache.get(items)
+  if (cached) return cached
+
+  const nextIndex = buildItemIndex(items)
+  itemIndexCache.set(items, nextIndex)
+  return nextIndex
+}
+
 function resolveHighlightedPath(items: VaultEntry[], selectedNotePath: string | null): string | null {
   if (items.length === 0) return null
   if (!selectedNotePath) return items[0].path
 
-  return items.some((entry) => entry.path === selectedNotePath)
+  return getItemIndex(items).entryByPath.has(selectedNotePath)
     ? selectedNotePath
     : items[0].path
 }
@@ -63,7 +92,8 @@ function resolveCurrentIndex(
   selectedNotePath: string | null,
 ): number {
   const activePath = highlightedPath ?? selectedNotePath
-  return activePath ? items.findIndex((entry) => entry.path === activePath) : -1
+  if (!activePath) return -1
+  return getItemIndex(items).indexByPath.get(activePath) ?? -1
 }
 
 function moveHighlightIndex(
@@ -82,7 +112,7 @@ function moveHighlightIndex(
 
 function resolveHighlightedEntry(items: VaultEntry[], highlightedPath: string | null): VaultEntry | undefined {
   if (!highlightedPath) return undefined
-  return items.find((entry) => entry.path === highlightedPath)
+  return getItemIndex(items).entryByPath.get(highlightedPath)
 }
 
 function usesCommandModifier(event: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey'>): boolean {
@@ -210,6 +240,7 @@ function useMoveHighlight({
   scheduleOpen: (entry: VaultEntry) => void
 }) {
   return useCallback((direction: 1 | -1) => {
+    const startedAt = performance.now()
     const currentIndex = resolveCurrentIndex(items, highlightedPathRef.current, selectedNotePath)
     const nextIndex = moveHighlightIndex(currentIndex, direction, items.length)
     const currentPath = highlightedPathRef.current ?? selectedNotePath
@@ -220,6 +251,7 @@ function useMoveHighlight({
     virtuosoRef.current?.scrollIntoView({ index: nextIndex, behavior: 'auto' })
     scheduleOpen(nextItem)
     onPrefetch?.(nextItem)
+    logKeyboardNavigationTrace(direction === 1 ? 'down' : 'up', items.length, performance.now() - startedAt)
   }, [highlightedPathRef, items, onPrefetch, scheduleOpen, selectedNotePath, syncHighlightedPath, virtuosoRef])
 }
 
@@ -440,7 +472,7 @@ export function useNoteListKeyboard({
     cancelOpen()
   }, [cancelOpen, selectedNotePath])
 
-  const highlightedPath = items.some((entry) => entry.path === highlightedPathState)
+  const highlightedPath = getItemIndex(items).entryByPath.has(highlightedPathState ?? '')
     ? highlightedPathState
     : null
 
