@@ -11,8 +11,9 @@ import type {
 import type { NoteListFilter } from '../../utils/noteListHelpers'
 import { countByFilter, countAllByFilter, countAllNotesByFilter } from '../../utils/noteListHelpers'
 import { NoteItem } from '../NoteItem'
+import { prefetchNoteContent } from '../../hooks/useTabManagement'
 import type { MultiSelectState } from '../../hooks/useMultiSelect'
-import { resolveHeaderTitle, type DeletedNoteEntry } from './noteListUtils'
+import { isDeletedNoteEntry, resolveHeaderTitle, type DeletedNoteEntry } from './noteListUtils'
 import { filterEntriesByNoteListQuery, filterGroupsByNoteListQuery } from './noteListSearch'
 import {
   useChangeStatusResolver,
@@ -341,6 +342,7 @@ function useRenderItem({
       allEntries={entries}
       displayPropsOverride={displayPropsOverride}
       onClickNote={handleClickNote}
+      onPrefetch={isDeletedNoteEntry(entry) ? undefined : prefetchNoteContent}
       onContextMenu={contextMenuHandler}
     />
   ), [

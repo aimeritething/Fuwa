@@ -1,12 +1,13 @@
 import { useState } from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NoteList } from './NoteList'
 import {
   allSelection,
   mockEntries,
 } from '../test-utils/noteListTestUtils'
 import type { SidebarSelection, VaultEntry } from '../types'
+import * as tabManagement from '../hooks/useTabManagement'
 
 function NoteListKeyboardHarness({
   onOpen,
@@ -40,6 +41,10 @@ function NoteListKeyboardHarness({
 }
 
 describe('NoteList keyboard activation', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
   it('focuses the list on click and continues arrow navigation from the clicked note', async () => {
     const onOpen = vi.fn()
     render(<NoteListKeyboardHarness onOpen={onOpen} />)
@@ -56,8 +61,10 @@ describe('NoteList keyboard activation', () => {
 
     fireEvent.keyDown(container, { key: 'ArrowDown' })
 
-    expect(onOpen).toHaveBeenNthCalledWith(1, mockEntries[1])
-    expect(onOpen).toHaveBeenNthCalledWith(2, mockEntries[2])
+    await waitFor(() => {
+      expect(onOpen).toHaveBeenNthCalledWith(1, mockEntries[1])
+      expect(onOpen).toHaveBeenNthCalledWith(2, mockEntries[2])
+    })
   })
 
   it('navigates from global arrow keys when the editor is not focused', async () => {
@@ -97,5 +104,17 @@ describe('NoteList keyboard activation', () => {
       expect(onOpen).toHaveBeenLastCalledWith(mockEntries[4])
       expect(onEnterNeighborhood).toHaveBeenCalledWith(mockEntries[4])
     })
+  })
+
+  it('prefetches note content on hover so click opens can use the warm path', () => {
+    const prefetchSpy = vi.spyOn(tabManagement, 'prefetchNoteContent').mockImplementation(() => {})
+    render(<NoteListKeyboardHarness onOpen={vi.fn()} />)
+
+    const noteRow = screen.getByText('Facebook Ads Strategy').closest('[data-note-path]')
+    expect(noteRow).not.toBeNull()
+
+    fireEvent.mouseEnter(noteRow!)
+
+    expect(prefetchSpy).toHaveBeenCalledWith(mockEntries[1].path)
   })
 })

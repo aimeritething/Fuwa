@@ -127,22 +127,87 @@ function useSelectionSync(
   }, [itemsRef, selectedNotePathRef, syncHighlightedPath])
 }
 
+interface ScheduledOpenState {
+  entry: VaultEntry | null
+  frameId: number | null
+}
+
+function cancelScheduledOpen(stateRef: React.RefObject<ScheduledOpenState>): void {
+  const frameId = stateRef.current.frameId
+  if (frameId !== null) cancelAnimationFrame(frameId)
+  stateRef.current.entry = null
+  stateRef.current.frameId = null
+}
+
+function flushScheduledOpen(
+  stateRef: React.RefObject<ScheduledOpenState>,
+  onOpen: (entry: VaultEntry) => void,
+  entry?: VaultEntry,
+): void {
+  if (entry) stateRef.current.entry = entry
+  const nextEntry = stateRef.current.entry
+  if (!nextEntry) return
+
+  if (stateRef.current.frameId !== null) cancelAnimationFrame(stateRef.current.frameId)
+  stateRef.current.entry = null
+  stateRef.current.frameId = null
+  onOpen(nextEntry)
+}
+
+function scheduleOpenForNextFrame(
+  stateRef: React.RefObject<ScheduledOpenState>,
+  onOpen: (entry: VaultEntry) => void,
+  entry: VaultEntry,
+): void {
+  stateRef.current.entry = entry
+  if (stateRef.current.frameId !== null) return
+
+  stateRef.current.frameId = requestAnimationFrame(() => {
+    flushScheduledOpen(stateRef, onOpen)
+  })
+}
+
+function useScheduledOpen(onOpen: (entry: VaultEntry) => void, enabled: boolean) {
+  const stateRef = useRef<ScheduledOpenState>({ entry: null, frameId: null })
+
+  const scheduleOpen = useCallback((entry: VaultEntry) => {
+    scheduleOpenForNextFrame(stateRef, onOpen, entry)
+  }, [onOpen])
+
+  const flushOpen = useCallback((entry?: VaultEntry) => {
+    flushScheduledOpen(stateRef, onOpen, entry)
+  }, [onOpen])
+
+  const cancelOpen = useCallback(() => {
+    cancelScheduledOpen(stateRef)
+  }, [])
+
+  useEffect(() => {
+    if (enabled) return
+    cancelOpen()
+  }, [cancelOpen, enabled])
+
+  useEffect(() => cancelOpen, [cancelOpen])
+
+  return { cancelOpen, flushOpen, scheduleOpen }
+}
+
 function useMoveHighlight({
   items,
   selectedNotePath,
   highlightedPathRef,
   syncHighlightedPath,
   virtuosoRef,
-  onOpen,
   onPrefetch,
+  scheduleOpen,
 }: {
   items: VaultEntry[]
   selectedNotePath: string | null
   highlightedPathRef: React.RefObject<string | null>
   syncHighlightedPath: (nextPath: string | null) => void
   virtuosoRef: React.RefObject<VirtuosoHandle | null>
-  onOpen: (entry: VaultEntry) => void
   onPrefetch?: (entry: VaultEntry) => void
+  scheduleOpen: (entry: VaultEntry) => void
 }) {
   return useCallback((direction: 1 | -1) => {
     const currentIndex = resolveCurrentIndex(items, highlightedPathRef.current, selectedNotePath)
@@ -153,9 +218,80 @@ function useMoveHighlight({
 
     syncHighlightedPath(nextItem.path)
     virtuosoRef.current?.scrollIntoView({ index: nextIndex, behavior: 'auto' })
-    onOpen(nextItem)
+    scheduleOpen(nextItem)
     onPrefetch?.(nextItem)
-  }, [highlightedPathRef, items, onOpen, onPrefetch, selectedNotePath, syncHighlightedPath, virtuosoRef])
+  }, [highlightedPathRef, items, onPrefetch, scheduleOpen, selectedNotePath, syncHighlightedPath, virtuosoRef])
+}
+
+function resolveEntryForActivation(
+  items: VaultEntry[],
+  highlightedPathRef: React.RefObject<string | null>,
+): VaultEntry | undefined {
+  return resolveHighlightedEntry(items, highlightedPathRef.current)
+}
+
+function handleNeighborhoodActivation(options: {
+  event: Pick<KeyboardEvent, 'preventDefault'>
+  items: VaultEntry[]
+  highlightedPathRef: React.RefObject<string | null>
+  cancelOpen: () => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void | Promise<void>
+}): boolean {
+  const {
+    event,
+    items,
+    highlightedPathRef,
+    cancelOpen,
+    onEnterNeighborhood,
+  } = options
+
+  const highlightedItem = resolveEntryForActivation(items, highlightedPathRef)
+  if (!highlightedItem) return false
+
+  event.preventDefault()
+  cancelOpen()
+  void onEnterNeighborhood?.(highlightedItem)
+  return true
+}
+
+function handleArrowNavigation(
+  event: Pick<KeyboardEvent, 'key' | 'preventDefault'>,
+  moveHighlight: (direction: 1 | -1) => void,
+): boolean {
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    moveHighlight(1)
+    return true
+  }
+
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    moveHighlight(-1)
+    return true
+  }
+
+  return false
+}
+
+function handleHighlightedOpen(options: {
+  event: Pick<KeyboardEvent, 'preventDefault'>
+  items: VaultEntry[]
+  highlightedPathRef: React.RefObject<string | null>
+  flushOpen: (entry?: VaultEntry) => void
+}): boolean {
+  const {
+    event,
+    items,
+    highlightedPathRef,
+    flushOpen,
+  } = options
+
+  const highlightedItem = resolveEntryForActivation(items, highlightedPathRef)
+  if (!highlightedItem) return false
+
+  event.preventDefault()
+  flushOpen(highlightedItem)
+  return true
 }
 
 function useProcessKeyDown({
@@ -163,48 +299,45 @@ function useProcessKeyDown({
   items,
   highlightedPathRef,
   moveHighlight,
-  onOpen,
+  flushOpen,
+  cancelOpen,
   onEnterNeighborhood,
 }: {
   enabled: boolean
   items: VaultEntry[]
   highlightedPathRef: React.RefObject<string | null>
   moveHighlight: (direction: 1 | -1) => void
-  onOpen: (entry: VaultEntry) => void
+  flushOpen: (entry?: VaultEntry) => void
+  cancelOpen: () => void
   onEnterNeighborhood?: (entry: VaultEntry) => void | Promise<void>
 }) {
   return useCallback((event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'preventDefault'>) => {
     if (!enabled || items.length === 0) return
 
     if (isNeighborhoodKey(event)) {
-      const highlightedItem = resolveHighlightedEntry(items, highlightedPathRef.current)
-      if (!highlightedItem) return
-      event.preventDefault()
-      void onEnterNeighborhood?.(highlightedItem)
+      handleNeighborhoodActivation({
+        event,
+        items,
+        highlightedPathRef,
+        cancelOpen,
+        onEnterNeighborhood,
+      })
       return
     }
 
     if (usesCommandModifier(event) || event.altKey) return
 
-    if (event.key === 'ArrowDown') {
-      event.preventDefault()
-      moveHighlight(1)
-      return
-    }
-
-    if (event.key === 'ArrowUp') {
-      event.preventDefault()
-      moveHighlight(-1)
-      return
-    }
+    if (handleArrowNavigation(event, moveHighlight)) return
 
     if (event.key !== 'Enter') return
 
-    const highlightedItem = resolveHighlightedEntry(items, highlightedPathRef.current)
-    if (!highlightedItem) return
-    event.preventDefault()
-    onOpen(highlightedItem)
-  }, [enabled, highlightedPathRef, items, moveHighlight, onEnterNeighborhood, onOpen])
+    handleHighlightedOpen({
+      event,
+      items,
+      highlightedPathRef,
+      flushOpen,
+    })
+  }, [cancelOpen, enabled, flushOpen, highlightedPathRef, items, moveHighlight, onEnterNeighborhood])
 }
 
 function useFocusHandlers({
@@ -274,21 +407,23 @@ export function useNoteListKeyboard({
   const { itemsRef, selectedNotePathRef } = useKeyboardItemRefs(items, selectedNotePath)
   const { highlightedPathRef, highlightedPathState, syncHighlightedPath } = useHighlightedPath()
   const syncToCurrentSelection = useSelectionSync(itemsRef, selectedNotePathRef, syncHighlightedPath)
+  const { cancelOpen, flushOpen, scheduleOpen } = useScheduledOpen(onOpen, enabled)
   const moveHighlight = useMoveHighlight({
     items,
     selectedNotePath,
     highlightedPathRef,
     syncHighlightedPath,
     virtuosoRef,
-    onOpen,
     onPrefetch,
+    scheduleOpen,
   })
   const processKeyDown = useProcessKeyDown({
     enabled,
     items,
     highlightedPathRef,
     moveHighlight,
-    onOpen,
+    flushOpen,
+    cancelOpen,
     onEnterNeighborhood,
   })
   const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
@@ -301,6 +436,9 @@ export function useNoteListKeyboard({
     syncHighlightedPath,
   })
   useGlobalKeyboardHandling({ enabled, containerRef, processKeyDown })
+  useEffect(() => {
+    cancelOpen()
+  }, [cancelOpen, selectedNotePath])
 
   const highlightedPath = items.some((entry) => entry.path === highlightedPathState)
     ? highlightedPathState
