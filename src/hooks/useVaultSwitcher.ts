@@ -137,6 +137,18 @@ function syncDefaultVaultExport(path: string) {
   DEFAULT_VAULTS[0] = { label: GETTING_STARTED_LABEL, path }
 }
 
+function isCanonicalGettingStartedPath(path: string, resolvedDefaultPath: string): boolean {
+  return path === resolvedDefaultPath
+}
+
+function isUnavailableGettingStartedVault(vault: VaultOption): boolean {
+  return vault.label === GETTING_STARTED_LABEL && vault.available === false
+}
+
+function shouldDropPersistedGettingStartedVault(vault: VaultOption, resolvedDefaultPath: string): boolean {
+  return isCanonicalGettingStartedPath(vault.path, resolvedDefaultPath) || isUnavailableGettingStartedVault(vault)
+}
+
 async function checkVaultAvailability(path: string): Promise<boolean> {
   if (!path) {
     return false
@@ -166,7 +178,79 @@ async function loadInitialVaultState() {
     console.warn('Failed to load vault list:', vaultListResult.reason)
   }
 
-  return { activeVault, defaultAvailable, hiddenDefaults, resolvedDefaultPath, vaults }
+  return sanitizeCanonicalGettingStartedState({
+    activeVault,
+    defaultAvailable,
+    hiddenDefaults,
+    resolvedDefaultPath,
+    vaults,
+  })
+}
+
+function sanitizeCanonicalGettingStartedState({
+  activeVault,
+  defaultAvailable,
+  hiddenDefaults,
+  resolvedDefaultPath,
+  vaults,
+}: {
+  activeVault: string | null
+  defaultAvailable: boolean
+  hiddenDefaults: string[]
+  resolvedDefaultPath: string
+  vaults: VaultOption[]
+}) {
+  if (!resolvedDefaultPath) {
+    return { activeVault, defaultAvailable, hiddenDefaults, resolvedDefaultPath, vaults }
+  }
+
+  const filteredVaults = vaults.filter(
+    (vault) => !shouldDropPersistedGettingStartedVault(vault, resolvedDefaultPath),
+  )
+  const removedStarterPaths = new Set(
+    vaults
+      .filter((vault) => shouldDropPersistedGettingStartedVault(vault, resolvedDefaultPath))
+      .map((vault) => vault.path),
+  )
+  const sanitizedActiveVault = resolveSanitizedGettingStartedSelection({
+    activeVault,
+    defaultAvailable,
+    filteredVaults,
+    removedStarterPaths,
+    resolvedDefaultPath,
+  })
+
+  return {
+    activeVault: sanitizedActiveVault,
+    defaultAvailable,
+    hiddenDefaults,
+    resolvedDefaultPath,
+    vaults: filteredVaults,
+  }
+}
+
+function resolveSanitizedGettingStartedSelection({
+  activeVault,
+  defaultAvailable,
+  filteredVaults,
+  removedStarterPaths,
+  resolvedDefaultPath,
+}: {
+  activeVault: string | null
+  defaultAvailable: boolean
+  filteredVaults: VaultOption[]
+  removedStarterPaths: Set<string>
+  resolvedDefaultPath: string
+}): string | null {
+  if (!activeVault || !removedStarterPaths.has(activeVault)) {
+    return activeVault
+  }
+
+  if (isCanonicalGettingStartedPath(activeVault, resolvedDefaultPath) && defaultAvailable) {
+    return activeVault
+  }
+
+  return filteredVaults[0]?.path ?? null
 }
 
 function buildDefaultVaults({

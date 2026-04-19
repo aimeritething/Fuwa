@@ -195,6 +195,55 @@ describe('useVaultSwitcher', () => {
     expect(result.current.isGettingStartedHidden).toBe(false)
   })
 
+  it('drops stale canonical Getting Started entries when the starter path is missing', async () => {
+    mockVaultListStore = {
+      vaults: [
+        { label: 'Getting Started', path: expectedDefaultVaultPath },
+        { label: 'Work', path: '/work/vault' },
+      ],
+      active_vault: '/work/vault',
+      hidden_defaults: [],
+    }
+    setMockInvokeBehavior({
+      checkVaultExists: ({ path }) => path === '/work/vault',
+    })
+
+    const { result } = await renderLoadedVaultSwitcher()
+
+    expect(result.current.allVaults).toEqual([{ label: 'Work', path: '/work/vault', available: true }])
+    expect(result.current.vaultPath).toBe('/work/vault')
+
+    await waitFor(() => {
+      expect(mockVaultListStore).toEqual({
+        vaults: [{ label: 'Work', path: '/work/vault' }],
+        active_vault: '/work/vault',
+        hidden_defaults: [],
+      })
+    })
+  })
+
+  it('clears a stale canonical Getting Started selection when the starter path is missing', async () => {
+    mockVaultListStore = {
+      vaults: [{ label: 'Getting Started', path: expectedDefaultVaultPath }],
+      active_vault: expectedDefaultVaultPath,
+      hidden_defaults: [],
+    }
+    setMockInvokeBehavior({ checkVaultExists: false })
+
+    const { result } = await renderLoadedVaultSwitcher()
+
+    expect(result.current.allVaults).toEqual([])
+    expect(result.current.selectedVaultPath).toBeNull()
+
+    await waitFor(() => {
+      expect(mockVaultListStore).toEqual({
+        vaults: [],
+        active_vault: null,
+        hidden_defaults: [],
+      })
+    })
+  })
+
   it('handles load error gracefully', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     mockInvokeFn.mockImplementation((cmd: string) => {
