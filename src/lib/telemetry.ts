@@ -1,8 +1,5 @@
 import * as Sentry from '@sentry/react'
-
-const SENTRY_DSN = import.meta.env.VITE_SENTRY_DSN ?? ''
-const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY ?? ''
-const POSTHOG_HOST = import.meta.env.VITE_POSTHOG_HOST ?? 'https://us.i.posthog.com'
+import { resolveFrontendTelemetryConfig } from './telemetryConfig'
 
 /** Pattern that matches absolute file paths (macOS / Linux / Windows). */
 const PATH_PATTERN = /(?:\/[\w.-]+){2,}|[A-Z]:\\[\w\\.-]+/g
@@ -11,24 +8,30 @@ function scrubPaths(input: string): string {
   return input.replace(PATH_PATTERN, '<redacted-path>')
 }
 
+function scrubSentryEvent(event: Sentry.ErrorEvent): Sentry.ErrorEvent {
+  if (event.message) event.message = scrubPaths(event.message)
+  for (const ex of event.exception?.values ?? []) {
+    if (ex.value) ex.value = scrubPaths(ex.value)
+  }
+  for (const breadcrumb of event.breadcrumbs ?? []) {
+    if (breadcrumb.message) breadcrumb.message = scrubPaths(breadcrumb.message)
+  }
+  return event
+}
+
 let sentryInitialized = false
 let posthogInstance: typeof import('posthog-js').default | null = null
 
 export function initSentry(anonymousId: string): void {
-  if (sentryInitialized || !SENTRY_DSN) return
+  if (sentryInitialized) return
+
+  const { sentryDsn } = resolveFrontendTelemetryConfig()
+  if (!sentryDsn) return
+
   Sentry.init({
-    dsn: SENTRY_DSN,
+    dsn: sentryDsn,
     sendDefaultPii: false,
-    beforeSend(event) {
-      if (event.message) event.message = scrubPaths(event.message)
-      for (const ex of event.exception?.values ?? []) {
-        if (ex.value) ex.value = scrubPaths(ex.value)
-      }
-      for (const bc of event.breadcrumbs ?? []) {
-        if (bc.message) bc.message = scrubPaths(bc.message)
-      }
-      return event
-    },
+    beforeSend: scrubSentryEvent,
   })
   Sentry.setUser({ id: anonymousId })
   sentryInitialized = true
@@ -41,10 +44,14 @@ export function teardownSentry(): void {
 }
 
 export async function initPostHog(anonymousId: string, releaseChannel?: string): Promise<void> {
-  if (posthogInstance || !POSTHOG_KEY) return
+  if (posthogInstance) return
+
+  const { posthogKey, posthogHost } = resolveFrontendTelemetryConfig()
+  if (!posthogKey || !posthogHost) return
+
   const posthog = (await import('posthog-js')).default
-  posthog.init(POSTHOG_KEY, {
-    api_host: POSTHOG_HOST,
+  posthog.init(posthogKey, {
+    api_host: posthogHost,
     autocapture: false,
     capture_pageview: false,
     persistence: 'memory',

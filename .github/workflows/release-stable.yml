@@ -127,6 +127,58 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
 
+      - name: Validate telemetry env
+        env:
+          VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+          VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
+          VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
+        run: |
+          python3 <<'PY'
+          import os
+          import sys
+          from urllib.parse import urlparse
+
+          def normalize(name: str) -> str:
+              value = os.getenv(name, "").strip()
+              if len(value) >= 2 and value[0] == value[-1] and value[0] in ("'", '"'):
+                  value = value[1:-1].strip()
+              return value
+
+          def is_http_url(value: str) -> bool:
+              parsed = urlparse(value)
+              return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
+
+          values = {
+              name: normalize(name)
+              for name in (
+                  "VITE_SENTRY_DSN",
+                  "SENTRY_DSN",
+                  "VITE_POSTHOG_KEY",
+                  "VITE_POSTHOG_HOST",
+              )
+          }
+          errors = []
+
+          for name in ("VITE_SENTRY_DSN", "SENTRY_DSN", "VITE_POSTHOG_HOST"):
+              value = values[name]
+              if not value:
+                  errors.append(f"{name} must be set for release builds")
+              elif not is_http_url(value):
+                  errors.append(f"{name} must be a valid http(s) URL")
+
+          if not values["VITE_POSTHOG_KEY"]:
+              errors.append("VITE_POSTHOG_KEY must be set for release builds")
+
+          if errors:
+              print("Telemetry env validation failed:", file=sys.stderr)
+              for error in errors:
+                  print(f"- {error}", file=sys.stderr)
+              raise SystemExit(1)
+
+          print("Telemetry env validation passed.")
+          PY
+
       - name: Build Tauri app (with signing + notarization)
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
