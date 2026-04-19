@@ -31,8 +31,17 @@ fn normalize_embedded_env(raw: Option<&str>) -> Option<String> {
     }
 }
 
+fn normalize_http_like_value(value: &str) -> String {
+    if value.contains("://") {
+        value.to_string()
+    } else {
+        format!("https://{value}")
+    }
+}
+
 fn parse_embedded_sentry_dsn(raw: Option<&str>) -> Option<sentry::types::Dsn> {
-    normalize_embedded_env(raw)?.parse().ok()
+    let normalized = normalize_embedded_env(raw)?;
+    normalize_http_like_value(&normalized).parse().ok()
 }
 
 /// Initialize Sentry if the user has opted in to crash reporting.
@@ -131,6 +140,12 @@ mod tests {
     fn test_parse_embedded_sentry_dsn_accepts_valid_trimmed_value() {
         let parsed =
             parse_embedded_sentry_dsn(Some("  \"https://public@example.ingest.sentry.io/1\"  "));
+        assert!(parsed.is_some());
+    }
+
+    #[test]
+    fn test_parse_embedded_sentry_dsn_accepts_scheme_less_value() {
+        let parsed = parse_embedded_sentry_dsn(Some("public@example.ingest.sentry.io/1"));
         assert!(parsed.is_some());
     }
 

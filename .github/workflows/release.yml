@@ -188,8 +188,13 @@ jobs:
                   value = value[1:-1].strip()
               return value
 
+          def normalize_http_like(value: str) -> str:
+              if "://" in value:
+                  return value
+              return f"https://{value}"
+
           def is_http_url(value: str) -> bool:
-              parsed = urlparse(value)
+              parsed = urlparse(normalize_http_like(value))
               return parsed.scheme in {"http", "https"} and bool(parsed.netloc)
 
           values = {

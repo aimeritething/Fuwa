@@ -41,13 +41,21 @@ function isHttpUrl(value: string): boolean {
   }
 }
 
+function normalizeHttpLikeValue(value: string): string {
+  if (!value) return ''
+  if (/^[a-z][a-z\d+\-.]*:\/\//i.test(value)) return value
+  return `https://${value}`
+}
+
 function normalizeSentryDsn(value: string): string {
-  return isHttpUrl(value) ? value : ''
+  const normalized = normalizeHttpLikeValue(value)
+  return isHttpUrl(normalized) ? normalized : ''
 }
 
 function normalizePostHogHost(value: string): string | null {
   if (!value) return DEFAULT_POSTHOG_HOST
-  return isHttpUrl(value) ? value : null
+  const normalized = normalizeHttpLikeValue(value)
+  return isHttpUrl(normalized) ? normalized : null
 }
 
 export function resolveFrontendTelemetryConfig(

@@ -41,6 +41,18 @@ describe('resolveFrontendTelemetryConfig', () => {
     }).posthogHost).toBe(defaultPostHogHost)
   })
 
+  it('adds https to scheme-less DSNs and PostHog hosts', () => {
+    expect(resolveFrontendTelemetryConfig({
+      VITE_SENTRY_DSN: 'public@example.ingest.sentry.io/123456',
+      VITE_POSTHOG_KEY: 'phc_test_key',
+      VITE_POSTHOG_HOST: 'eu.i.posthog.com',
+    })).toEqual({
+      sentryDsn: 'https://public@example.ingest.sentry.io/123456',
+      posthogKey: 'phc_test_key',
+      posthogHost: 'https://eu.i.posthog.com',
+    })
+  })
+
   it('drops invalid Sentry DSNs instead of passing them to the SDK', () => {
     expect(resolveFrontendTelemetryConfig({
       VITE_SENTRY_DSN: 'not a dsn',
