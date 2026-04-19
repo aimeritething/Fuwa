@@ -273,7 +273,7 @@ function getWelcomeScreenPresentation(
       subtitle: 'Wiki-linked knowledge management for deep thinkers.\nChoose how to get started.',
       templateDescription: isOffline
         ? `Requires internet — clone later. Suggested path: ${defaultVaultPath}`
-        : `Download the starter vault template — suggested path: ${defaultVaultPath}`,
+        : 'Download the Getting Started vault',
       title: 'Welcome to Tolaria',
     }
   }
@@ -285,7 +285,7 @@ function getWelcomeScreenPresentation(
     subtitle: 'The vault folder could not be found on disk.\nIt may have been moved or deleted.',
     templateDescription: isOffline
       ? `Requires internet — clone later. Suggested path: ${defaultVaultPath}`
-      : `Download the starter vault template — suggested path: ${defaultVaultPath}`,
+      : 'Download the Getting Started vault',
     title: 'Vault not found',
   }
 }

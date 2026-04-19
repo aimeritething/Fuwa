@@ -45,9 +45,10 @@ describe('WelcomeScreen', () => {
       expect(screen.getByTestId('welcome-create-new')).toHaveFocus()
     })
 
-    it('shows default vault path in template option description', () => {
+    it('shows the simplified template option description', () => {
       render(<WelcomeScreen {...defaultProps} />)
-      expect(screen.getByText(/~\/Documents\/Laputa/)).toBeInTheDocument()
+      expect(screen.getByText('Download the Getting Started vault')).toBeInTheDocument()
+      expect(screen.queryByText(/~\/Documents\/Laputa/)).not.toBeInTheDocument()
     })
 
     it('shows offline guidance and disables the template option when offline', () => {
