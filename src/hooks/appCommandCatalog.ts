@@ -151,7 +151,13 @@ export const APP_COMMAND_DEFINITIONS: Record<AppCommandId, AppCommandDefinition>
   [APP_COMMAND_IDS.fileQuickOpen]: {
     route: { kind: 'handler', handler: 'onQuickOpen' },
     menuOwned: true,
-    shortcut: { combo: 'command-or-ctrl', key: 'p', code: 'KeyP', display: '⌘P' },
+    shortcut: {
+      combo: 'command-or-ctrl',
+      key: 'p',
+      aliases: ['o'],
+      code: 'KeyP',
+      display: '⌘P / ⌘O',
+    },
   },
   [APP_COMMAND_IDS.fileSave]: {
     route: { kind: 'handler', handler: 'onSave' },

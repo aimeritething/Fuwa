@@ -181,7 +181,7 @@ describe('Editor', () => {
   it('shows empty state when no tabs are open', () => {
     renderEditor()
     expect(screen.getByText('Select a note to start editing')).toBeInTheDocument()
-    expect(screen.getByText(/Cmd\+P to search/)).toBeInTheDocument()
+    expect(screen.getByText(/Cmd\+P or Cmd\+O to search/)).toBeInTheDocument()
   })
 
   it('renders an invisible drag region in the empty state', () => {

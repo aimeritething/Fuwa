@@ -14,7 +14,7 @@ interface NavigationCommandsConfig {
 export function buildNavigationCommands(config: NavigationCommandsConfig): CommandAction[] {
   const { onQuickOpen, onSelect, showInbox = true, onGoBack, onGoForward, canGoBack, canGoForward } = config
   const commands: CommandAction[] = [
-    { id: 'search-notes', label: 'Search Notes', group: 'Navigation', shortcut: '⌘P', keywords: ['find', 'open', 'quick'], enabled: true, execute: onQuickOpen },
+    { id: 'search-notes', label: 'Search Notes', group: 'Navigation', shortcut: '⌘P / ⌘O', keywords: ['find', 'open', 'quick'], enabled: true, execute: onQuickOpen },
     { id: 'go-all', label: 'Go to All Notes', group: 'Navigation', keywords: ['filter'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'all' }) },
     { id: 'go-archived', label: 'Go to Archived', group: 'Navigation', keywords: [], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'archived' }) },
     { id: 'go-changes', label: 'Go to Changes', group: 'Navigation', keywords: ['git', 'modified', 'pending'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'changes' }) },

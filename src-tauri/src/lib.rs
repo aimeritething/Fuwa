@@ -96,6 +96,7 @@ fn setup_desktop_plugins(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
     Ok(())
 }
 
+const MACOS_WEBVIEW_RESERVED_COMMAND_KEYS: &[&str] = &["O"];
 const MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS: &[&str] = &["L"];
 
 #[cfg(all(desktop, target_os = "macos"))]
@@ -110,6 +111,9 @@ fn setup_macos_webview_shortcut_prevention(
     // WKWebView can swallow some browser-reserved chords before our shared
     // renderer shortcut handler sees them. Keep this list narrow and verify
     // every addition with native QA.
+    for key in MACOS_WEBVIEW_RESERVED_COMMAND_KEYS {
+        builder = builder.shortcut(KeyboardShortcut::with_modifiers(key, &[MetaKey]));
+    }
     for key in MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS {
         builder = builder.shortcut(KeyboardShortcut::with_modifiers(key, &[MetaKey, ShiftKey]));
     }

@@ -10,6 +10,7 @@ const APP_CHECK_FOR_UPDATES: &str = "app-check-for-updates";
 const FILE_NEW_NOTE: &str = "file-new-note";
 const FILE_NEW_TYPE: &str = "file-new-type";
 const FILE_QUICK_OPEN: &str = "file-quick-open";
+const FILE_QUICK_OPEN_ALIAS: &str = "file-quick-open-alias";
 const FILE_SAVE: &str = "file-save";
 
 const EDIT_FIND_IN_VAULT: &str = "edit-find-in-vault";
@@ -57,6 +58,7 @@ const CUSTOM_IDS: &[&str] = &[
     FILE_NEW_NOTE,
     FILE_NEW_TYPE,
     FILE_QUICK_OPEN,
+    FILE_QUICK_OPEN_ALIAS,
     FILE_SAVE,
     EDIT_FIND_IN_VAULT,
     EDIT_TOGGLE_RAW_EDITOR,
@@ -155,6 +157,10 @@ fn build_file_menu(app: &App) -> MenuResult {
         .id(FILE_QUICK_OPEN)
         .accelerator("CmdOrCtrl+P")
         .build(app)?;
+    let quick_open_alias = MenuItemBuilder::new("Quick Open (Cmd+O)")
+        .id(FILE_QUICK_OPEN_ALIAS)
+        .accelerator("CmdOrCtrl+O")
+        .build(app)?;
     let save = MenuItemBuilder::new("Save")
         .id(FILE_SAVE)
         .accelerator("CmdOrCtrl+S")
@@ -163,6 +169,7 @@ fn build_file_menu(app: &App) -> MenuResult {
         .item(&new_note)
         .item(&new_type)
         .item(&quick_open)
+        .item(&quick_open_alias)
         .separator()
         .item(&save)
         .build()?)
@@ -410,9 +417,13 @@ pub fn emit_custom_menu_event(app_handle: &AppHandle, id: &str) -> Result<(), St
     if !CUSTOM_IDS.contains(&id) {
         return Err(format!("Unknown custom menu event: {id}"));
     }
+    let emitted_id = match id {
+        FILE_QUICK_OPEN_ALIAS => FILE_QUICK_OPEN,
+        _ => id,
+    };
     app_handle
-        .emit("menu-event", id)
-        .map_err(|err| format!("Failed to emit menu-event {id}: {err}"))
+        .emit("menu-event", emitted_id)
+        .map_err(|err| format!("Failed to emit menu-event {emitted_id}: {err}"))
 }
 
 fn set_items_enabled(app_handle: &AppHandle, ids: &[&str], enabled: bool) {

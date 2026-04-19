@@ -64,6 +64,39 @@ test.describe('keyboard command routing', () => {
     })
   })
 
+  test('desktop shortcut bridge opens quick open through both Cmd+P and Cmd+O @smoke', async ({ page }) => {
+    await openFixtureVaultDesktopHarness(page, tempVaultDir)
+
+    await dispatchShortcutEvent(page, {
+      key: 'p',
+      code: 'KeyP',
+      ctrlKey: false,
+      metaKey: true,
+      shiftKey: false,
+      altKey: false,
+      bubbles: true,
+      cancelable: true,
+    })
+    await expect(page.getByTestId('quick-open-palette')).toBeVisible({ timeout: 5_000 })
+    await expect(page.locator('input[placeholder="Search notes..."]')).toBeFocused()
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('quick-open-palette')).not.toBeVisible({ timeout: 5_000 })
+
+    await dispatchShortcutEvent(page, {
+      key: 'o',
+      code: 'KeyO',
+      ctrlKey: false,
+      metaKey: true,
+      shiftKey: false,
+      altKey: false,
+      bubbles: true,
+      cancelable: true,
+    })
+    await expect(page.getByTestId('quick-open-palette')).toBeVisible({ timeout: 5_000 })
+    await expect(page.locator('input[placeholder="Search notes..."]')).toBeFocused()
+  })
+
   test('desktop menu-command bridge toggles organized state through the shared command path @smoke', async ({ page }) => {
     await openAlphaProjectInEditor(page)
 

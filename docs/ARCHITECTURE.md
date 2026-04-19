@@ -741,7 +741,7 @@ Data flows unidirectionally: `App` passes data and callbacks as props to child c
 | Shortcut | Action |
 |----------|--------|
 | Cmd+K | Open command palette |
-| Cmd+P | Open quick open palette |
+| Cmd+P / Cmd+O | Open quick open palette |
 | Cmd+N | Create new note |
 | Cmd+S | Save current note |
 | Cmd+[ / Cmd+] | Navigate back / forward (replaces tabs) |
@@ -756,7 +756,7 @@ Shortcut routing is explicit:
 
 - `appCommandCatalog.ts` is the shared shortcut manifest for command IDs, modifier rules, and deterministic QA metadata
 - `useAppKeyboard` is the primary execution path for real shortcut keypresses, including Tauri runs
-- macOS browser-reserved chords such as `Cmd+Shift+L` are unblocked at webview init via `tauri-plugin-prevent-default`, then continue through the same renderer-first command path
+- macOS browser-reserved chords such as `Cmd+O` and `Cmd+Shift+L` are unblocked at webview init via `tauri-plugin-prevent-default`, then continue through the same renderer-first command path
 - `menu.rs` and `useMenuEvents` emit the same command IDs for native menu clicks and accelerators
 - `appCommandDispatcher.ts` suppresses the paired native-menu/renderer echo from a single shortcut so the command runs once
 - Deterministic QA uses two explicit proof paths from the shared manifest:

@@ -227,7 +227,7 @@ describe('App', () => {
   it('shows keyboard shortcut hints', async () => {
     render(<App />)
     await waitFor(() => {
-      expect(screen.getByText(/Cmd\+P to search/)).toBeInTheDocument()
+      expect(screen.getByText(/Cmd\+P or Cmd\+O to search/)).toBeInTheDocument()
     })
   })
 

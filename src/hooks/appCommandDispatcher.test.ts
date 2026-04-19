@@ -77,6 +77,7 @@ describe('appCommandDispatcher', () => {
   })
 
   it('finds raw editor and AI shortcuts from the shared catalog', () => {
+    expect(findShortcutCommandId('command-or-ctrl', 'o', 'KeyO')).toBe(APP_COMMAND_IDS.fileQuickOpen)
     expect(findShortcutCommandId('command-or-ctrl', '\\')).toBe(APP_COMMAND_IDS.editToggleRawEditor)
     expect(findShortcutCommandId('command-shift', '¬', 'KeyL')).toBe(APP_COMMAND_IDS.viewToggleAiChat)
   })
@@ -128,6 +129,16 @@ describe('appCommandDispatcher', () => {
   })
 
   it('resolves event modifiers through the shared shortcut catalog', () => {
+    expect(
+      findShortcutCommandIdForEvent({
+        key: 'o',
+        code: 'KeyO',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: true,
+        shiftKey: false,
+      }),
+    ).toBe(APP_COMMAND_IDS.fileQuickOpen)
     expect(
       findShortcutCommandIdForEvent({
         key: '¬',

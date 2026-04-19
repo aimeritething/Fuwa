@@ -90,6 +90,13 @@ describe('useAppKeyboard', () => {
     expect(actions.onQuickOpen).toHaveBeenCalled()
   })
 
+  it('Cmd+O triggers quick open', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('o', { metaKey: true, code: 'KeyO' })
+    expect(actions.onQuickOpen).toHaveBeenCalled()
+  })
+
   it('Cmd+N triggers create note', () => {
     const actions = makeActions()
     renderHook(() => useAppKeyboard(actions))
