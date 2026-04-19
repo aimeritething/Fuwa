@@ -12,6 +12,7 @@ export interface MenuEventHandlers extends AppCommandHandlers {
   modifiedCount?: number
   conflictCount?: number
   hasRestorableDeletedNote?: boolean
+  hasNoRemote?: boolean
 }
 
 interface MenuStatePayload {
@@ -19,6 +20,7 @@ interface MenuStatePayload {
   hasModifiedFiles?: boolean
   hasConflicts?: boolean
   hasRestorableDeletedNote?: boolean
+  hasNoRemote?: boolean
 }
 
 function readCustomEventDetail(event: Event): string | null {
@@ -129,6 +131,7 @@ export function useMenuEvents(handlers: MenuEventHandlers) {
   const hasModifiedFiles = handlers.modifiedCount != null ? handlers.modifiedCount > 0 : undefined
   const hasConflicts = handlers.conflictCount != null ? handlers.conflictCount > 0 : undefined
   const hasRestorableDeletedNote = handlers.hasRestorableDeletedNote
+  const hasNoRemote = handlers.hasNoRemote
 
   useEffect(() => {
     ref.current = handlers
@@ -142,5 +145,6 @@ export function useMenuEvents(handlers: MenuEventHandlers) {
     hasModifiedFiles,
     hasConflicts,
     hasRestorableDeletedNote,
+    hasNoRemote,
   })
 }

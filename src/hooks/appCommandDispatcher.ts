@@ -52,6 +52,7 @@ export interface AppCommandHandlers {
   onOpenVault?: () => void
   onRemoveActiveVault?: () => void
   onRestoreGettingStarted?: () => void
+  onAddRemote?: () => void
   onCommitPush?: () => void
   onPull?: () => void
   onResolveConflicts?: () => void
@@ -87,6 +88,7 @@ type SimpleHandlerKey = keyof Pick<
   | 'onOpenVault'
   | 'onRemoveActiveVault'
   | 'onRestoreGettingStarted'
+  | 'onAddRemote'
   | 'onCommitPush'
   | 'onPull'
   | 'onResolveConflicts'
@@ -124,6 +126,7 @@ const SIMPLE_HANDLER_EXECUTORS: Record<SimpleHandlerKey, (handlers: AppCommandHa
   onOpenVault: (handlers) => handlers.onOpenVault?.(),
   onRemoveActiveVault: (handlers) => handlers.onRemoveActiveVault?.(),
   onRestoreGettingStarted: (handlers) => handlers.onRestoreGettingStarted?.(),
+  onAddRemote: (handlers) => handlers.onAddRemote?.(),
   onCommitPush: (handlers) => handlers.onCommitPush?.(),
   onPull: (handlers) => handlers.onPull?.(),
   onResolveConflicts: (handlers) => handlers.onResolveConflicts?.(),

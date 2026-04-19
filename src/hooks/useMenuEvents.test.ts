@@ -45,6 +45,7 @@ function makeHandlers(): MenuEventHandlers {
     onOpenVault: vi.fn(),
     onRemoveActiveVault: vi.fn(),
     onRestoreGettingStarted: vi.fn(),
+    onAddRemote: vi.fn(),
     onCommitPush: vi.fn(),
     onPull: vi.fn(),
     onResolveConflicts: vi.fn(),
@@ -57,6 +58,7 @@ function makeHandlers(): MenuEventHandlers {
     multiSelectionCommandRef: { current: null },
     activeTabPath: '/vault/test.md',
     hasRestorableDeletedNote: false,
+    hasNoRemote: false,
   }
 }
 
@@ -152,6 +154,12 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('view-command-palette', h)
     expect(h.onCommandPalette).toHaveBeenCalled()
+  })
+
+  it('vault-add-remote triggers the add-remote flow', () => {
+    const h = makeHandlers()
+    dispatchMenuEvent('vault-add-remote', h)
+    expect(h.onAddRemote).toHaveBeenCalled()
   })
 
   it('view-zoom-in triggers zoom in', () => {

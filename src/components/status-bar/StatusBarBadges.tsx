@@ -329,8 +329,32 @@ export function OfflineBadge({ isOffline }: { isOffline?: boolean }) {
   )
 }
 
-export function NoRemoteBadge({ remoteStatus }: { remoteStatus?: GitRemoteStatus | null }) {
+export function NoRemoteBadge({
+  remoteStatus,
+  onAddRemote,
+}: {
+  remoteStatus?: GitRemoteStatus | null
+  onAddRemote?: () => void
+}) {
   if (!isRemoteMissing(remoteStatus)) return null
+
+  if (onAddRemote) {
+    return (
+      <>
+        <span style={SEP_STYLE}>|</span>
+        <StatusBarAction
+          copy={{ label: 'Add a remote to this vault' }}
+          onClick={onAddRemote}
+          testId="status-no-remote"
+        >
+          <span style={ICON_STYLE}>
+            <GitBranch size={12} />
+            No remote
+          </span>
+        </StatusBarAction>
+      </>
+    )
+  }
 
   return (
     <>

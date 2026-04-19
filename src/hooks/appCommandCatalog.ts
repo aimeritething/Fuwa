@@ -36,6 +36,7 @@ export const APP_COMMAND_IDS = {
   vaultOpen: 'vault-open',
   vaultRemove: 'vault-remove',
   vaultRestoreGettingStarted: 'vault-restore-getting-started',
+  vaultAddRemote: 'vault-add-remote',
   vaultCommitPush: 'vault-commit-push',
   vaultPull: 'vault-pull',
   vaultResolveConflicts: 'vault-resolve-conflicts',
@@ -92,6 +93,7 @@ type SimpleHandlerKey =
   | 'onOpenVault'
   | 'onRemoveActiveVault'
   | 'onRestoreGettingStarted'
+  | 'onAddRemote'
   | 'onCommitPush'
   | 'onPull'
   | 'onResolveConflicts'
@@ -292,6 +294,10 @@ export const APP_COMMAND_DEFINITIONS: Record<AppCommandId, AppCommandDefinition>
   },
   [APP_COMMAND_IDS.vaultRestoreGettingStarted]: {
     route: { kind: 'handler', handler: 'onRestoreGettingStarted' },
+    menuOwned: true,
+  },
+  [APP_COMMAND_IDS.vaultAddRemote]: {
+    route: { kind: 'handler', handler: 'onAddRemote' },
     menuOwned: true,
   },
   [APP_COMMAND_IDS.vaultCommitPush]: {

@@ -486,6 +486,7 @@ fn create_getting_started_vault_from_repo(
 
     crate::git::clone_repo(repo_url, &target_path_str)?;
     let vault_path = canonical_vault_path(target_path)?;
+    crate::git::disconnect_all_remotes(path_to_utf8(&vault_path, "Vault path")?)?;
     refresh_cloned_vault_config_files(&vault_path)?;
     Ok(vault_path)
 }
@@ -735,6 +736,18 @@ mod tests {
             .output()
             .unwrap();
         assert!(String::from_utf8_lossy(&output.stdout).trim().is_empty());
+    }
+
+    #[test]
+    fn test_create_getting_started_vault_removes_the_starter_remote() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let source = dir.path().join("starter");
+        let dest = dir.path().join("Getting Started");
+        init_source_repo(&source, None);
+
+        create_getting_started_vault_from_repo(dest.as_path(), source.to_str().unwrap()).unwrap();
+
+        assert!(!crate::git::has_remote(dest.to_str().unwrap()).unwrap());
     }
 
     #[test]

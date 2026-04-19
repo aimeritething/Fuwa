@@ -4,9 +4,11 @@ import type { AiAgentId, AiAgentsStatus } from '../../lib/aiAgents'
 import type { VaultAiGuidanceStatus } from '../../lib/vaultAiGuidance'
 import type { ClaudeCodeStatus } from '../../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../../hooks/useMcpStatus'
+import { useStatusBarAddRemote } from '../../hooks/useStatusBarAddRemote'
 import type { GitRemoteStatus, SyncStatus } from '../../types'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { AiAgentsBadge } from './AiAgentsBadge'
+import { AddRemoteModal } from '../AddRemoteModal'
 import { Button } from '@/components/ui/button'
 import {
   ClaudeCodeBadge,
@@ -38,6 +40,7 @@ interface StatusBarPrimarySectionProps {
   onCreateEmptyVault?: () => void
   onCloneVault?: () => void
   onCloneGettingStarted?: () => void
+  onAddRemote?: () => void
   onClickPending?: () => void
   onClickPulse?: () => void
   onCommitPush?: () => void
@@ -81,6 +84,7 @@ export function StatusBarPrimarySection({
   onCreateEmptyVault,
   onCloneVault,
   onCloneGettingStarted,
+  onAddRemote,
   onClickPending,
   onClickPulse,
   onCommitPush,
@@ -106,6 +110,19 @@ export function StatusBarPrimarySection({
   claudeCodeStatus,
   claudeCodeVersion,
 }: StatusBarPrimarySectionProps) {
+  const {
+    openAddRemote,
+    closeAddRemote,
+    showAddRemote,
+    visibleRemoteStatus,
+    handleRemoteConnected,
+  } = useStatusBarAddRemote({
+    vaultPath,
+    isGitVault,
+    remoteStatus,
+    onAddRemote,
+  })
+
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 12, flex: 1, minWidth: 0 }}>
       <VaultMenu
@@ -137,13 +154,18 @@ export function StatusBarPrimarySection({
         </Button>
       </ActionTooltip>
       <OfflineBadge isOffline={isOffline} />
-      <NoRemoteBadge remoteStatus={remoteStatus} />
+      <NoRemoteBadge
+        remoteStatus={visibleRemoteStatus}
+        onAddRemote={() => {
+          void openAddRemote()
+        }}
+      />
       <ChangesBadge count={modifiedCount} onClick={onClickPending} />
-      <CommitButton onClick={onCommitPush} remoteStatus={remoteStatus} />
+      <CommitButton onClick={onCommitPush} remoteStatus={visibleRemoteStatus} />
       <SyncBadge
         status={syncStatus}
         lastSyncTime={lastSyncTime}
-        remoteStatus={remoteStatus}
+        remoteStatus={visibleRemoteStatus}
         onTriggerSync={onTriggerSync}
         onPullAndPush={onPullAndPush}
         onOpenConflictResolver={onOpenConflictResolver}
@@ -162,6 +184,12 @@ export function StatusBarPrimarySection({
           />
         )
         : claudeCodeStatus && <ClaudeCodeBadge status={claudeCodeStatus} version={claudeCodeVersion} />}
+      <AddRemoteModal
+        open={showAddRemote}
+        vaultPath={vaultPath}
+        onClose={closeAddRemote}
+        onRemoteConnected={handleRemoteConnected}
+      />
     </div>
   )
 }

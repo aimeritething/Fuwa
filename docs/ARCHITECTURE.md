@@ -444,6 +444,8 @@ Once a vault is ready, `useAiAgentsOnboarding` can show a one-time `AiAgentsOnbo
 
 The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` holds the public starter repo URL (`refactoringhq/tolaria-getting-started`), delegates the clone to the git backend, then normalizes Tolaria-managed root guidance and type scaffolding (`AGENTS.md`, `CLAUDE.md`, `type.md`, `note.md`) so fresh starter vaults pick up the current defaults even when the remote starter repo still carries a legacy copy or an older pre-`type:` `is_a`-era template. `AGENTS.md` stays the canonical vault guidance file; `CLAUDE.md` is a compatibility shim that imports it for Claude Code without duplicating the instructions. The clone helper still accepts the legacy `LAPUTA_GETTING_STARTED_REPO_URL` environment override so older automation can continue to redirect the starter source during the transition.
 
+After the clone completes, Tolaria removes every configured git remote from the new starter vault. Getting Started vaults therefore open as local-only by default, and users opt into a remote later with the explicit Add Remote flow.
+
 ### Remote Clone & Auth Model
 
 Tolaria no longer implements provider-specific OAuth or remote-repository APIs. All remote git work goes through the user's existing system git configuration.
@@ -553,6 +555,8 @@ flowchart TD
 
 `useGitRemoteStatus` re-checks `git_remote_status` when the commit dialog opens and again right before submit. If `hasRemote` is false, Tolaria keeps the flow local-only: the status bar shows a neutral `No remote` chip, the dialog copy switches from "Commit & Push" to "Commit", and no `git_push` call is attempted.
 
+The same local-only state enables the explicit Add Remote flow. `AddRemoteModal` is reachable from the `No remote` chip and the command palette. The backend `git_add_remote` command adds `origin`, fetches it, refuses incompatible histories, and only enables tracking after a safe push or fast-forward-compatible check succeeds.
+
 `useCommitFlow` also exposes `runAutomaticCheckpoint()`, a dialog-free commit path shared by AutoGit and the bottom-bar Commit button. `useAutoGit` watches the last editor activity plus app focus/visibility state, and when the vault is git-backed, all saves are flushed, and no unsaved edits remain, it triggers the same deterministic `Updated N note(s)` / `Updated N file(s)` commit message path after the configured idle or inactive thresholds. The bottom-bar quick action reuses that checkpoint flow after forcing a save first, so manual quick commits and scheduled AutoGit commits stay aligned on message generation and push behavior.
 
 #### Sync States
@@ -587,7 +591,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 |--------|---------|
 | `vault/` | Vault scanning, caching, parsing, rename, image, migration |
 | `frontmatter/` | YAML frontmatter read/write (`mod.rs`, `yaml.rs`, `ops.rs`) |
-| `git/` | Git operations (`commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`, `clone.rs`) |
+| `git/` | Git operations (`commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`, `clone.rs`, `connect.rs`) |
 | `search.rs` | Keyword search — walkdir-based vault file scan |
 | `ai_agents.rs` | Shared CLI-agent detection, stream normalization, and adapter dispatch |
 | `claude_cli.rs` | Claude Code subprocess spawning + NDJSON stream parsing |
@@ -635,6 +639,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `git_pull` | Pull from remote |
 | `git_push` | Push to remote |
 | `git_remote_status` | Get branch name + ahead/behind counts |
+| `git_add_remote` | Connect a local-only vault to a compatible remote and start tracking it |
 | `git_resolve_conflict` | Resolve a merge conflict |
 | `git_commit_conflict_resolution` | Commit conflict resolution |
 | `get_file_history` | Last N commits for a file |
@@ -705,7 +710,7 @@ if (isTauri()) {
 }
 ```
 
-The mock layer includes sample entries across all entity types, full markdown content with realistic frontmatter, mock git history, mock AI responses, and mock pulse commits.
+The mock layer includes sample entries across all entity types, full markdown content with realistic frontmatter, mock git history, mock AI responses, and mock pulse commits. It also tracks per-vault remote state so browser-mode Getting Started and empty-vault flows now behave like the desktop app: local-only until `git_add_remote` succeeds.
 
 Browser smoke tests can also override `window.__mockHandlers` before the app boots. The AutoGit smoke bridge uses that path directly for seeded saves so the mocked git dirty-state stays synchronized even when the optional browser vault API is serving note content.
 

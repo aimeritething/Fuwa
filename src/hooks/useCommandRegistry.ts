@@ -56,6 +56,8 @@ interface CommandRegistryConfig {
   onOpenFeedback?: () => void
   onOpenVault?: () => void
   onCreateEmptyVault?: () => void
+  onAddRemote?: () => void
+  canAddRemote?: boolean
   onCreateType?: () => void
   onDeleteNote: (path: string) => void
   onArchiveNote: (path: string) => void
@@ -139,7 +141,15 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
       onToggleOrganized, isOrganized: activeEntry?.organized ?? false,
       onRestoreDeletedNote, canRestoreDeletedNote,
     }),
-    ...buildGitCommands({ modifiedCount, onCommitPush, onPull, onResolveConflicts, onSelect }),
+    ...buildGitCommands({
+      modifiedCount,
+      canAddRemote: config.canAddRemote ?? false,
+      onAddRemote: config.onAddRemote,
+      onCommitPush,
+      onPull,
+      onResolveConflicts,
+      onSelect,
+    }),
     ...buildViewCommands({
       hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
       onToggleDiff, onToggleRawEditor, onToggleAIChat, zoomLevel, onZoomIn, onZoomOut, onZoomReset,
@@ -166,7 +176,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     hasActiveNote, activeTabPath, isArchived, modifiedCount, activeNoteModified,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onCreateType, onSave, onOpenSettings, onOpenFeedback,
     onDeleteNote, onArchiveNote, onUnarchiveNote,
-    onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault, onCreateEmptyVault,
+    onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault, onCreateEmptyVault, config.canAddRemote, config.onAddRemote,
     onCheckForUpdates,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect,

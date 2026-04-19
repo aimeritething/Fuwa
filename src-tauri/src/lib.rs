@@ -173,6 +173,7 @@ macro_rules! app_invoke_handler {
             commands::git_pull,
             commands::git_push,
             commands::git_remote_status,
+            commands::git_add_remote,
             commands::get_conflict_files,
             commands::get_conflict_mode,
             commands::git_resolve_conflict,

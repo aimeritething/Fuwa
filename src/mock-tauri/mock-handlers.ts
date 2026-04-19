@@ -3,7 +3,17 @@
  * Each handler simulates a Tauri backend command.
  */
 
-import type { VaultEntry, ModifiedFile, Settings, GitPullResult, GitPushResult, GitRemoteStatus, LastCommitInfo, PulseCommit } from '../types'
+import type {
+  VaultEntry,
+  ModifiedFile,
+  Settings,
+  GitAddRemoteResult,
+  GitPullResult,
+  GitPushResult,
+  GitRemoteStatus,
+  LastCommitInfo,
+  PulseCommit,
+} from '../types'
 import { MOCK_CONTENT } from './mock-content'
 import { MOCK_ENTRIES } from './mock-entries'
 
@@ -110,6 +120,9 @@ const DEFAULT_MOCK_VAULT = {
 }
 
 let mockLastVaultPath: string | null = DEFAULT_MOCK_VAULT_PATH
+const mockRemoteStateByVault: Record<string, boolean> = {
+  [DEFAULT_MOCK_VAULT_PATH]: true,
+}
 
 let mockVaultList: { vaults: Array<{ label: string; path: string }>; active_vault: string | null } = {
   vaults: [DEFAULT_MOCK_VAULT],
@@ -121,6 +134,23 @@ let mockVaultAiGuidanceStatus = {
   claude_state: 'managed',
   can_restore: false,
 } as const
+
+function normalizeMockVaultPath(path: string | null | undefined): string | null {
+  const trimmed = path?.trim()
+  return trimmed ? trimmed : null
+}
+
+function setMockRemoteState(path: string | null | undefined, hasRemote: boolean): void {
+  const normalizedPath = normalizeMockVaultPath(path)
+  if (!normalizedPath) return
+  mockRemoteStateByVault[normalizedPath] = hasRemote
+}
+
+function getMockRemoteState(path: string | null | undefined): boolean {
+  const normalizedPath = normalizeMockVaultPath(path)
+  if (!normalizedPath) return true
+  return mockRemoteStateByVault[normalizedPath] ?? true
+}
 
 function escapeRegex({ text }: { text: string }) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -273,7 +303,24 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   get_last_commit_info: (): LastCommitInfo => ({ shortHash: 'a1b2c3d', commitUrl: 'https://github.com/lucaong/laputa-vault/commit/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' }),
   git_pull: (): GitPullResult => ({ status: 'up_to_date', message: 'Already up to date', updatedFiles: [], conflictFiles: [] }),
   git_push: (): GitPushResult => ({ status: 'ok', message: 'Pushed to remote' }),
-  git_remote_status: (): GitRemoteStatus => ({ branch: 'main', ahead: 0, behind: 0, hasRemote: true }),
+  git_remote_status: (args?: { vaultPath?: string; vault_path?: string }): GitRemoteStatus => {
+    const vaultPath = args?.vaultPath ?? args?.vault_path ?? mockLastVaultPath ?? DEFAULT_MOCK_VAULT_PATH
+    return { branch: 'main', ahead: 0, behind: 0, hasRemote: getMockRemoteState(vaultPath) }
+  },
+  git_add_remote: (args?: {
+    request?: { vaultPath?: string; vault_path?: string; remoteUrl?: string }
+    vaultPath?: string
+    vault_path?: string
+    remoteUrl?: string
+  }): GitAddRemoteResult => {
+    const request = args?.request ?? args ?? {}
+    const vaultPath = request.vaultPath ?? request.vault_path ?? mockLastVaultPath ?? DEFAULT_MOCK_VAULT_PATH
+    setMockRemoteState(vaultPath, true)
+    return {
+      status: 'connected',
+      message: 'Remote connected. This vault now tracks origin/main.',
+    }
+  },
   get_vault_pulse: (args: { limit?: number }): PulseCommit[] => {
     const limit = args.limit ?? 30
     const ts = Math.floor(Date.now() / 1000)
@@ -339,7 +386,11 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   save_vault_list: (args: { list: typeof mockVaultList }) => { mockVaultList = { ...args.list }; return null },
   rename_note: handleRenameNote,
   rename_note_filename: handleRenameNoteFilename,
-  clone_repo: (args: { url: string; localPath?: string; local_path?: string }) => `Cloned to ${args.localPath ?? args.local_path ?? ''}`,
+  clone_repo: (args: { url: string; localPath?: string; local_path?: string }) => {
+    const localPath = args.localPath ?? args.local_path ?? ''
+    setMockRemoteState(localPath, true)
+    return `Cloned to ${localPath}`
+  },
   purge_trash: () => [],
   delete_note: (args: { path: string }) => args.path,
   batch_delete_notes: (args: { paths: string[] }) => args.paths,
@@ -372,8 +423,16 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     // In mock mode, the demo-vault-v2 path always "exists"
     return args.path.includes('demo-vault-v2')
   },
-  create_empty_vault: (args: { targetPath?: string; target_path?: string }) => args.targetPath || args.target_path || '/Users/mock/Documents/My Vault',
-  create_getting_started_vault: (args: { targetPath?: string | null }) => args.targetPath || '/Users/mock/Documents/Getting Started',
+  create_empty_vault: (args: { targetPath?: string; target_path?: string }) => {
+    const targetPath = args.targetPath || args.target_path || '/Users/mock/Documents/My Vault'
+    setMockRemoteState(targetPath, false)
+    return targetPath
+  },
+  create_getting_started_vault: (args: { targetPath?: string | null }) => {
+    const targetPath = args.targetPath || '/Users/mock/Documents/Getting Started'
+    setMockRemoteState(targetPath, false)
+    return targetPath
+  },
   register_mcp_tools: () => 'registered',
   check_mcp_status: () => 'installed',
   repair_vault: (): string => {

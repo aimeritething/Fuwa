@@ -359,6 +359,11 @@ interface GitRemoteStatus {
   hasRemote: boolean
 }
 
+interface GitAddRemoteResult {
+  status: 'connected' | 'already_configured' | 'incompatible_history' | 'auth_error' | 'network_error' | 'error'
+  message: string
+}
+
 interface PulseCommit {
   hash: string
   shortHash: string
@@ -381,6 +386,7 @@ interface PulseCommit {
 | `status.rs` | File diff | `git diff`, fallback to `--cached`, then synthetic for untracked |
 | `commit.rs` | Commit | `git add -A && git commit -m "..."` |
 | `remote.rs` | Pull / Push | `git pull --rebase` / `git push` |
+| `connect.rs` | Add remote | Adds `origin`, fetches it, validates history compatibility, and only starts tracking when the remote is safe |
 | `conflict.rs` | Conflict resolution | Detect conflicts, resolve with ours/theirs/manual |
 | `pulse.rs` | Activity feed | `git log` with `--name-status` for file changes |
 
@@ -399,6 +405,11 @@ interface PulseCommit {
 - Re-checks `git_remote_status` when the Commit dialog opens and right before submit
 - Converts `hasRemote: false` into a local-only commit path
 - Keeps the normal push path unchanged for vaults that do have a remote
+
+`AddRemoteModal` is the explicit recovery path for those local-only vaults:
+- Opens from the `No remote` status-bar chip and the command palette
+- Calls `git_add_remote` with the current vault path and the pasted repository URL
+- Shows auth, network, and incompatible-history failures inline without rewriting the local vault's history
 
 `useAutoGit` is the checkpoint-time companion to both hooks:
 - Consumes installation-local AutoGit settings (`autogit_enabled`, idle threshold, inactive threshold)
@@ -576,6 +587,7 @@ Tolaria tracks managed vault-level AI guidance separately from normal note conte
 `useOnboarding` hook detects first launch:
 - If vault path doesn't exist → show `WelcomeScreen`
 - User can create a new empty vault, open an existing folder, or clone the public Getting Started vault into a chosen parent folder; Tolaria derives the final `Getting Started` child path before cloning
+- After the starter repo clone completes, Tolaria removes every remote so the new vault opens local-only by default
 - Welcome state tracked in localStorage (`tolaria_welcome_dismissed`, with legacy fallback)
 
 `useGettingStartedClone` encapsulates the non-onboarding Getting Started action:
@@ -593,6 +605,7 @@ Tolaria tracks managed vault-level AI guidance separately from normal note conte
 Tolaria delegates remote auth to the user's system git setup:
 - `CloneVaultModal` captures a remote URL and local destination
 - `clone_repo` shells out to system git for clone operations
+- `git_add_remote` uses the same system git path and refuses remotes whose history is unrelated or ahead of the local vault
 - Existing `git_pull` / `git_push` commands keep surfacing raw git errors
 - No provider-specific token or username is stored in app settings
 

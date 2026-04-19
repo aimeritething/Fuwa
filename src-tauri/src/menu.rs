@@ -44,6 +44,7 @@ const NOTE_RESTORE_DELETED: &str = "note-restore-deleted";
 const VAULT_OPEN: &str = "vault-open";
 const VAULT_REMOVE: &str = "vault-remove";
 const VAULT_RESTORE_GETTING_STARTED: &str = "vault-restore-getting-started";
+const VAULT_ADD_REMOTE: &str = "vault-add-remote";
 const VAULT_COMMIT_PUSH: &str = "vault-commit-push";
 const VAULT_PULL: &str = "vault-pull";
 const VAULT_RESOLVE_CONFLICTS: &str = "vault-resolve-conflicts";
@@ -87,6 +88,7 @@ const CUSTOM_IDS: &[&str] = &[
     VAULT_OPEN,
     VAULT_REMOVE,
     VAULT_RESTORE_GETTING_STARTED,
+    VAULT_ADD_REMOTE,
     VAULT_COMMIT_PUSH,
     VAULT_PULL,
     VAULT_RESOLVE_CONFLICTS,
@@ -116,6 +118,9 @@ const GIT_COMMIT_DEPENDENT_IDS: &[&str] = &[VAULT_COMMIT_PUSH];
 
 /// IDs of menu items that depend on having merge conflicts.
 const GIT_CONFLICT_DEPENDENT_IDS: &[&str] = &[VAULT_RESOLVE_CONFLICTS];
+
+/// IDs of menu items that depend on the active vault having no remote configured.
+const GIT_NO_REMOTE_DEPENDENT_IDS: &[&str] = &[VAULT_ADD_REMOTE];
 
 type MenuResult = Result<Submenu<tauri::Wry>, Box<dyn std::error::Error>>;
 
@@ -334,6 +339,10 @@ fn build_vault_menu(app: &App) -> MenuResult {
     let restore_getting_started = MenuItemBuilder::new("Restore Getting Started")
         .id(VAULT_RESTORE_GETTING_STARTED)
         .build(app)?;
+    let add_remote = MenuItemBuilder::new("Add Remote…")
+        .id(VAULT_ADD_REMOTE)
+        .enabled(false)
+        .build(app)?;
     let commit_push = MenuItemBuilder::new("Commit & Push")
         .id(VAULT_COMMIT_PUSH)
         .build(app)?;
@@ -362,6 +371,7 @@ fn build_vault_menu(app: &App) -> MenuResult {
         .item(&remove_vault)
         .item(&restore_getting_started)
         .separator()
+        .item(&add_remote)
         .item(&commit_push)
         .item(&pull)
         .item(&resolve_conflicts)
@@ -452,6 +462,11 @@ pub fn set_git_conflict_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_items_enabled(app_handle, GIT_CONFLICT_DEPENDENT_IDS, enabled);
 }
 
+/// Enable or disable menu items that depend on the active vault having no remote.
+pub fn set_git_no_remote_items_enabled(app_handle: &AppHandle, enabled: bool) {
+    set_items_enabled(app_handle, GIT_NO_REMOTE_DEPENDENT_IDS, enabled);
+}
+
 /// Enable or disable menu items that depend on a deleted note preview being active.
 pub fn set_restore_deleted_item_enabled(app_handle: &AppHandle, enabled: bool) {
     set_items_enabled(app_handle, RESTORE_DELETED_DEPENDENT_IDS, enabled);
@@ -494,6 +509,7 @@ mod tests {
             VAULT_OPEN,
             VAULT_REMOVE,
             VAULT_RESTORE_GETTING_STARTED,
+            VAULT_ADD_REMOTE,
             VAULT_COMMIT_PUSH,
             VAULT_PULL,
             VAULT_RESOLVE_CONFLICTS,
@@ -528,6 +544,12 @@ mod tests {
             assert!(
                 CUSTOM_IDS.contains(id),
                 "git-conflict-dependent ID {id} not in CUSTOM_IDS"
+            );
+        }
+        for id in GIT_NO_REMOTE_DEPENDENT_IDS {
+            assert!(
+                CUSTOM_IDS.contains(id),
+                "git-no-remote-dependent ID {id} not in CUSTOM_IDS"
             );
         }
     }

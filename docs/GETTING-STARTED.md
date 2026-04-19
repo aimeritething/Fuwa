@@ -28,6 +28,10 @@ pnpm playwright:smoke  # Curated Playwright core smoke lane (~5 min)
 pnpm playwright:regression  # Full Playwright regression suite
 ```
 
+## Starter Vaults And Remotes
+
+`create_getting_started_vault` clones the public starter repo and then removes every git remote from the new local copy. That means Getting Started vaults open local-only by default. Users connect a compatible remote later through the bottom-bar `No remote` chip or the command palette, both of which feed the same `AddRemoteModal` and `git_add_remote` backend flow.
+
 ## Directory Structure
 
 ```
@@ -65,6 +69,7 @@ tolaria/
 │   │   ├── BreadcrumbBar.tsx     # Breadcrumb + word count + actions
 │   │   ├── WelcomeScreen.tsx     # Onboarding screen
 │   │   ├── CloneVaultModal.tsx   # Clone a vault from any git URL
+│   │   ├── AddRemoteModal.tsx    # Connect a local-only vault to a remote later
 │   │   ├── ConflictResolverModal.tsx # Git conflict resolution
 │   │   ├── CommitDialog.tsx      # Git commit modal
 │   │   ├── CreateNoteDialog.tsx  # New note modal
@@ -154,7 +159,7 @@ tolaria/
 │   │   ├── frontmatter/          # Frontmatter module
 │   │   │   ├── mod.rs, yaml.rs, ops.rs
 │   │   ├── git/                  # Git module
-│   │   │   ├── mod.rs, commit.rs, status.rs, history.rs, clone.rs
+│   │   │   ├── mod.rs, commit.rs, status.rs, history.rs, clone.rs, connect.rs
 │   │   │   ├── conflict.rs, remote.rs, pulse.rs
 │   │   ├── telemetry.rs          # Sentry init + path scrubber
 │   │   ├── search.rs             # Keyword search (walkdir-based)
@@ -211,6 +216,7 @@ tolaria/
 | `src/hooks/useNoteActions.ts` | Orchestrates note operations: composes `useNoteCreation`, `useNoteRename`, frontmatter CRUD, and wikilink navigation. |
 | `src/hooks/useVaultSwitcher.ts` | Multi-vault management, vault switching, and persisting cloned vaults in the switcher list. |
 | `src/hooks/useGettingStartedClone.ts` | Shared "Clone Getting Started Vault" action for the status bar and command palette. |
+| `src/components/AddRemoteModal.tsx` | Modal UI for connecting a local-only vault to a compatible remote. |
 | `src/mock-tauri.ts` | Mock data for browser testing. Shows the shape of all Tauri responses. |
 
 ### Backend
@@ -220,7 +226,7 @@ tolaria/
 | `src-tauri/src/vault/mod.rs` | Vault scanning, frontmatter parsing, entity type inference, relationship extraction. |
 | `src-tauri/src/vault/cache.rs` | Git-based incremental caching — how large vaults load fast. |
 | `src-tauri/src/frontmatter/ops.rs` | YAML manipulation — how properties are updated/deleted in files. |
-| `src-tauri/src/git/` | All git operations (clone, commit, pull, push, conflicts, pulse). |
+| `src-tauri/src/git/` | All git operations (clone, commit, pull, push, conflicts, pulse, add-remote). |
 | `src-tauri/src/search.rs` | Keyword search — scans vault files with walkdir. |
 | `src-tauri/src/ai_agents.rs` | Shared CLI-agent availability checks, Codex adapter, and stream normalization. |
 | `src-tauri/src/claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing. |

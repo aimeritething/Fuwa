@@ -7,6 +7,7 @@ import type { CommandAction } from './useCommandRegistry'
 import { useKeyboardNavigation } from './useKeyboardNavigation'
 import { useMenuEvents } from './useMenuEvents'
 import type { SidebarSelection, SidebarFilter, VaultEntry } from '../types'
+import { requestAddRemote } from '../utils/addRemoteEvents'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
 import type { NoteListMultiSelectionCommands } from '../components/note-list/multiSelectionCommands'
@@ -52,6 +53,8 @@ interface AppCommandsConfig {
   canGoForward?: boolean
   onOpenVault?: () => void
   onCreateEmptyVault?: () => void
+  onAddRemote?: () => void
+  canAddRemote?: boolean
   onCreateType?: () => void
   onToggleAIChat?: () => void
   onCheckForUpdates?: () => void
@@ -88,6 +91,90 @@ interface AppCommandsConfig {
   canRestoreDeletedNote?: boolean
 }
 
+type CommandRegistryConfig = Parameters<typeof useCommandRegistry>[0]
+type CommandRegistrySelectionState = Pick<
+  CommandRegistryConfig,
+  | 'activeNoteModified'
+  | 'onZoomIn'
+  | 'onZoomOut'
+  | 'onZoomReset'
+  | 'zoomLevel'
+  | 'onSelect'
+  | 'showInbox'
+  | 'onGoBack'
+  | 'onGoForward'
+  | 'canGoBack'
+  | 'canGoForward'
+  | 'selection'
+>
+type CommandRegistryCoreActions = Pick<
+  CommandRegistryConfig,
+  | 'activeTabPath'
+  | 'entries'
+  | 'modifiedCount'
+  | 'onQuickOpen'
+  | 'onCreateNote'
+  | 'onCreateNoteOfType'
+  | 'onSave'
+  | 'onOpenSettings'
+  | 'onOpenFeedback'
+  | 'onDeleteNote'
+  | 'onArchiveNote'
+  | 'onUnarchiveNote'
+  | 'onCommitPush'
+  | 'onPull'
+  | 'onResolveConflicts'
+  | 'onSetViewMode'
+  | 'onToggleInspector'
+  | 'onToggleDiff'
+  | 'onToggleRawEditor'
+  | 'onToggleAIChat'
+>
+type CommandRegistryVaultActions = Pick<
+  CommandRegistryConfig,
+  | 'onOpenVault'
+  | 'onCreateEmptyVault'
+  | 'onAddRemote'
+  | 'canAddRemote'
+  | 'onCheckForUpdates'
+  | 'onCreateType'
+  | 'onRemoveActiveVault'
+  | 'onRestoreGettingStarted'
+  | 'isGettingStartedHidden'
+  | 'vaultCount'
+  | 'onReloadVault'
+  | 'onRepairVault'
+  | 'onOpenInNewWindow'
+  | 'onRestoreDeletedNote'
+  | 'canRestoreDeletedNote'
+>
+type CommandRegistryAiActions = Pick<
+  CommandRegistryConfig,
+  | 'mcpStatus'
+  | 'onInstallMcp'
+  | 'aiAgentsStatus'
+  | 'vaultAiGuidanceStatus'
+  | 'onOpenAiAgents'
+  | 'onRestoreVaultAiGuidance'
+  | 'onSetDefaultAiAgent'
+  | 'selectedAiAgent'
+  | 'onCycleDefaultAiAgent'
+  | 'selectedAiAgentLabel'
+>
+type CommandRegistryNoteActions = Pick<
+  CommandRegistryConfig,
+  | 'onSetNoteIcon'
+  | 'onRemoveNoteIcon'
+  | 'activeNoteHasIcon'
+  | 'noteListFilter'
+  | 'onSetNoteListFilter'
+  | 'onToggleFavorite'
+  | 'onToggleOrganized'
+  | 'onCustomizeNoteListColumns'
+  | 'canCustomizeNoteListColumns'
+  | 'noteListColumnsLabel'
+>
+
 function createKeyboardActions(
   config: AppCommandsConfig,
 ): Omit<Parameters<typeof useAppKeyboard>[0], 'onArchiveNote'> {
@@ -122,6 +209,40 @@ function createMenuEventHandlers(
   viewChanges: () => void,
 ): Omit<Parameters<typeof useMenuEvents>[0], 'onArchiveNote'> {
   return {
+    ...createMenuEventActionHandlers(config, selectFilter),
+    ...createMenuEventVaultHandlers(config, viewChanges),
+    ...createMenuEventState(config),
+  }
+}
+
+function createMenuEventActionHandlers(
+  config: AppCommandsConfig,
+  selectFilter: (filter: SidebarFilter) => void,
+): Pick<
+  Omit<Parameters<typeof useMenuEvents>[0], 'onArchiveNote'>,
+  | 'onSetViewMode'
+  | 'onCreateNote'
+  | 'onCreateType'
+  | 'onQuickOpen'
+  | 'onSave'
+  | 'onOpenSettings'
+  | 'onToggleInspector'
+  | 'onCommandPalette'
+  | 'onZoomIn'
+  | 'onZoomOut'
+  | 'onZoomReset'
+  | 'onDeleteNote'
+  | 'onSearch'
+  | 'onToggleRawEditor'
+  | 'onToggleDiff'
+  | 'onToggleAIChat'
+  | 'onToggleOrganized'
+  | 'onGoBack'
+  | 'onGoForward'
+  | 'onCheckForUpdates'
+  | 'onSelectFilter'
+> {
+  return {
     onSetViewMode: config.onSetViewMode,
     onCreateNote: config.onCreateNote,
     onCreateType: config.onCreateType,
@@ -143,9 +264,33 @@ function createMenuEventHandlers(
     onGoForward: config.onGoForward,
     onCheckForUpdates: config.onCheckForUpdates,
     onSelectFilter: selectFilter,
+  }
+}
+
+function createMenuEventVaultHandlers(
+  config: AppCommandsConfig,
+  viewChanges: () => void,
+): Pick<
+  Omit<Parameters<typeof useMenuEvents>[0], 'onArchiveNote'>,
+  | 'onOpenVault'
+  | 'onRemoveActiveVault'
+  | 'onRestoreGettingStarted'
+  | 'onAddRemote'
+  | 'onCommitPush'
+  | 'onPull'
+  | 'onResolveConflicts'
+  | 'onViewChanges'
+  | 'onInstallMcp'
+  | 'onReloadVault'
+  | 'onRepairVault'
+  | 'onOpenInNewWindow'
+  | 'onRestoreDeletedNote'
+> {
+  return {
     onOpenVault: config.onOpenVault,
     onRemoveActiveVault: config.onRemoveActiveVault,
     onRestoreGettingStarted: config.onRestoreGettingStarted,
+    onAddRemote: config.onAddRemote ?? requestAddRemote,
     onCommitPush: config.onCommitPush,
     onPull: config.onPull,
     onResolveConflicts: config.onResolveConflicts,
@@ -155,15 +300,52 @@ function createMenuEventHandlers(
     onRepairVault: config.onRepairVault,
     onOpenInNewWindow: config.onOpenInNewWindow,
     onRestoreDeletedNote: config.onRestoreDeletedNote,
+  }
+}
+
+function createMenuEventState(
+  config: AppCommandsConfig,
+): Pick<
+  Omit<Parameters<typeof useMenuEvents>[0], 'onArchiveNote'>,
+  | 'activeTabPathRef'
+  | 'multiSelectionCommandRef'
+  | 'activeTabPath'
+  | 'modifiedCount'
+  | 'hasRestorableDeletedNote'
+  | 'hasNoRemote'
+> {
+  return {
     activeTabPathRef: config.activeTabPathRef,
     multiSelectionCommandRef: config.multiSelectionCommandRef,
     activeTabPath: config.activeTabPath,
     modifiedCount: config.modifiedCount,
     hasRestorableDeletedNote: config.canRestoreDeletedNote,
+    hasNoRemote: config.canAddRemote ?? true,
   }
 }
 
-function createCommandRegistryConfig(config: AppCommandsConfig): Parameters<typeof useCommandRegistry>[0] {
+function createCommandRegistrySelectionConfig(
+  config: AppCommandsConfig,
+): CommandRegistrySelectionState {
+  return {
+    activeNoteModified: config.activeNoteModified,
+    onZoomIn: config.onZoomIn,
+    onZoomOut: config.onZoomOut,
+    onZoomReset: config.onZoomReset,
+    zoomLevel: config.zoomLevel,
+    onSelect: config.onSelect,
+    showInbox: config.showInbox,
+    onGoBack: config.onGoBack,
+    onGoForward: config.onGoForward,
+    canGoBack: config.canGoBack,
+    canGoForward: config.canGoForward,
+    selection: config.selection,
+  }
+}
+
+function createCommandRegistryCoreConfig(
+  config: AppCommandsConfig,
+): CommandRegistryCoreActions {
   return {
     activeTabPath: config.activeTabPath,
     entries: config.entries,
@@ -185,25 +367,35 @@ function createCommandRegistryConfig(config: AppCommandsConfig): Parameters<type
     onToggleDiff: config.onToggleDiff,
     onToggleRawEditor: config.onToggleRawEditor,
     onToggleAIChat: config.onToggleAIChat,
+  }
+}
+
+function createCommandRegistryVaultConfig(
+  config: AppCommandsConfig,
+): CommandRegistryVaultActions {
+  return {
     onOpenVault: config.onOpenVault,
     onCreateEmptyVault: config.onCreateEmptyVault,
-    activeNoteModified: config.activeNoteModified,
-    onZoomIn: config.onZoomIn,
-    onZoomOut: config.onZoomOut,
-    onZoomReset: config.onZoomReset,
-    zoomLevel: config.zoomLevel,
-    onSelect: config.onSelect,
-    showInbox: config.showInbox,
-    onGoBack: config.onGoBack,
-    onGoForward: config.onGoForward,
-    canGoBack: config.canGoBack,
-    canGoForward: config.canGoForward,
+    onAddRemote: config.onAddRemote ?? requestAddRemote,
+    canAddRemote: config.canAddRemote ?? true,
     onCheckForUpdates: config.onCheckForUpdates,
     onCreateType: config.onCreateType,
     onRemoveActiveVault: config.onRemoveActiveVault,
     onRestoreGettingStarted: config.onRestoreGettingStarted,
     isGettingStartedHidden: config.isGettingStartedHidden,
     vaultCount: config.vaultCount,
+    onReloadVault: config.onReloadVault,
+    onRepairVault: config.onRepairVault,
+    onOpenInNewWindow: config.onOpenInNewWindow,
+    onRestoreDeletedNote: config.onRestoreDeletedNote,
+    canRestoreDeletedNote: config.canRestoreDeletedNote,
+  }
+}
+
+function createCommandRegistryAiConfig(
+  config: AppCommandsConfig,
+): CommandRegistryAiActions {
+  return {
     mcpStatus: config.mcpStatus,
     onInstallMcp: config.onInstallMcp,
     aiAgentsStatus: config.aiAgentsStatus,
@@ -214,22 +406,33 @@ function createCommandRegistryConfig(config: AppCommandsConfig): Parameters<type
     selectedAiAgent: config.selectedAiAgent,
     onCycleDefaultAiAgent: config.onCycleDefaultAiAgent,
     selectedAiAgentLabel: config.selectedAiAgentLabel,
-    onReloadVault: config.onReloadVault,
-    onRepairVault: config.onRepairVault,
+  }
+}
+
+function createCommandRegistryNoteConfig(
+  config: AppCommandsConfig,
+): CommandRegistryNoteActions {
+  return {
     onSetNoteIcon: config.onSetNoteIcon,
     onRemoveNoteIcon: config.onRemoveNoteIcon,
     activeNoteHasIcon: config.activeNoteHasIcon,
-    selection: config.selection,
     noteListFilter: config.noteListFilter,
     onSetNoteListFilter: config.onSetNoteListFilter,
-    onOpenInNewWindow: config.onOpenInNewWindow,
     onToggleFavorite: config.onToggleFavorite,
     onToggleOrganized: config.onToggleOrganized,
     onCustomizeNoteListColumns: config.onCustomizeNoteListColumns,
     canCustomizeNoteListColumns: config.canCustomizeNoteListColumns,
     noteListColumnsLabel: config.noteListColumnsLabel,
-    onRestoreDeletedNote: config.onRestoreDeletedNote,
-    canRestoreDeletedNote: config.canRestoreDeletedNote,
+  }
+}
+
+function createCommandRegistryConfig(config: AppCommandsConfig): CommandRegistryConfig {
+  return {
+    ...createCommandRegistryCoreConfig(config),
+    ...createCommandRegistrySelectionConfig(config),
+    ...createCommandRegistryVaultConfig(config),
+    ...createCommandRegistryAiConfig(config),
+    ...createCommandRegistryNoteConfig(config),
   }
 }
 

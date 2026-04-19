@@ -104,6 +104,11 @@ export interface GitPushResult {
   message: string
 }
 
+export interface GitAddRemoteResult {
+  status: 'connected' | 'already_configured' | 'incompatible_history' | 'auth_error' | 'network_error' | 'error'
+  message: string
+}
+
 export type SyncStatus = 'idle' | 'syncing' | 'error' | 'conflict' | 'pull_required'
 
 export interface GitRemoteStatus {

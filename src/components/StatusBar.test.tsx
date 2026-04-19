@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { act, render, screen, fireEvent } from '@testing-library/react'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { StatusBar } from './StatusBar'
+import { StatusBarPrimarySection } from './status-bar/StatusBarSections'
 import type { VaultOption } from './StatusBar'
 vi.mock('../utils/url', async () => {
   const actual = await vi.importActual('../utils/url')
@@ -381,6 +383,28 @@ describe('StatusBar', () => {
       />
     )
     expect(screen.getByTestId('status-no-remote')).toHaveTextContent('No remote')
+  })
+
+  it('opens the add-remote flow when clicking the no-remote chip', () => {
+    const onAddRemote = vi.fn()
+    render(
+      <TooltipProvider>
+        <StatusBarPrimarySection
+          modifiedCount={0}
+          vaultPath="/Users/luca/Laputa"
+          vaults={vaults}
+          onSwitchVault={vi.fn()}
+          onAddRemote={onAddRemote}
+          syncStatus="idle"
+          lastSyncTime={null}
+          conflictCount={0}
+          remoteStatus={{ branch: 'main', ahead: 0, behind: 0, hasRemote: false }}
+        />
+      </TooltipProvider>
+    )
+
+    fireEvent.click(screen.getByTestId('status-no-remote'))
+    expect(onAddRemote).toHaveBeenCalledOnce()
   })
 
   it('calls onPullAndPush when clicking Pull required badge', () => {
