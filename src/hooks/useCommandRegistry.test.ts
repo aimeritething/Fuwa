@@ -262,6 +262,36 @@ describe('useCommandRegistry', () => {
       shortcut: '⌘N',
     })
   })
+
+  it('keeps a single canonical New Type command when the Type definition exists', () => {
+    const onCreateType = vi.fn()
+    const onCreateNoteOfType = vi.fn()
+    const config = makeConfig({
+      onCreateType,
+      onCreateNoteOfType,
+      entries: [
+        { path: '/type-definition.md', title: 'Type', isA: 'Type' },
+        { path: '/recipe-definition.md', title: 'Recipe', isA: 'Type' },
+      ],
+    })
+    const { result } = renderHook(() => useCommandRegistry(config))
+
+    const newTypeCommands = result.current.filter(command => command.label === 'New Type')
+
+    expect(newTypeCommands).toHaveLength(1)
+    expect(newTypeCommands[0]).toMatchObject({
+      id: 'create-type',
+      group: 'Note',
+    })
+    expect(findCommand(result.current, 'list-type')).toMatchObject({
+      label: 'List Types',
+      group: 'Navigation',
+    })
+
+    newTypeCommands[0].execute()
+    expect(onCreateType).toHaveBeenCalledOnce()
+    expect(onCreateNoteOfType).not.toHaveBeenCalled()
+  })
 })
 
 describe('pluralizeType', () => {

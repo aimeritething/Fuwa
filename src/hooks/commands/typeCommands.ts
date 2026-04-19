@@ -27,7 +27,7 @@ export function buildTypeCommands(
     const plural = pluralizeType(canonicalType)
     const commands: CommandAction[] = []
 
-    if (canonicalType.toLowerCase() !== 'note') {
+    if (!['note', 'type'].includes(canonicalType.toLowerCase())) {
       commands.push({
         id: `new-${slug}`, label: `New ${canonicalType}`, group: 'Note' as const,
         keywords: ['new', 'create', canonicalType.toLowerCase()],

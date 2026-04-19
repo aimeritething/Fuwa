@@ -23,4 +23,23 @@ test.describe('Command palette new note command dedupe', () => {
     await expect(page.getByText('Create New Note', { exact: true })).toHaveCount(0)
     await expect(page.getByText('New note', { exact: true })).toHaveCount(0)
   })
+
+  test('searching new ty shows one canonical New Type command and opens the type dialog', async ({ page }) => {
+    await openCommandPalette(page)
+
+    const commandInput = page.locator('input[placeholder="Type a command..."]')
+    await commandInput.fill('new ty')
+
+    const newTypeRow = page
+      .locator('div.mx-1.flex.cursor-pointer')
+      .filter({ has: page.getByText('New Type', { exact: true }) })
+
+    await expect(newTypeRow).toHaveCount(1)
+
+    await page.keyboard.press('Enter')
+    await expect(page.getByText('Create New Type', { exact: true })).toBeVisible()
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByText('Create New Type', { exact: true })).not.toBeVisible()
+  })
 })
