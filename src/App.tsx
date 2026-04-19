@@ -87,6 +87,14 @@ import {
 import { extractDeletedContentFromDiff } from './components/note-list/noteListUtils'
 import { hasNoteIconValue } from './utils/noteIcon'
 import { filenameStemToTitle } from './utils/noteTitle'
+import {
+  focusNoteListContainer,
+  isEditableElement,
+  isEditorEscapeTarget,
+  popNeighborhoodHistory,
+  pushNeighborhoodHistory,
+  shouldProcessNeighborhoodEscape,
+} from './utils/neighborhoodHistory'
 import { OPEN_AI_CHAT_EVENT } from './utils/aiPromptBridge'
 import {
   INBOX_SELECTION,
@@ -185,13 +193,24 @@ function App() {
   const noteWindowParams = useMemo(() => isNoteWindow() ? getNoteWindowParams() : null, [])
   const [selection, setSelection] = useState<SidebarSelection>(DEFAULT_SELECTION)
   const [noteListFilter, setNoteListFilter] = useState<NoteListFilter>('open')
+  const selectionRef = useRef<SidebarSelection>(DEFAULT_SELECTION)
+  const neighborhoodHistoryRef = useRef<SidebarSelection[]>([])
   const inboxPeriod: InboxPeriod = 'all'
-  const handleSetSelection = useCallback((sel: SidebarSelection) => {
+  const handleSetSelection = useCallback((sel: SidebarSelection, options?: { preserveNeighborhoodHistory?: boolean }) => {
+    if (!options?.preserveNeighborhoodHistory && sel.kind !== 'entity') {
+      neighborhoodHistoryRef.current = []
+    }
     setSelection(sel)
     setNoteListFilter('open')
   }, [])
   const handleEnterNeighborhood = useCallback((entry: VaultEntry) => {
-    handleSetSelection({ kind: 'entity', entry })
+    const nextSelection: SidebarSelection = { kind: 'entity', entry }
+    neighborhoodHistoryRef.current = pushNeighborhoodHistory(
+      neighborhoodHistoryRef.current,
+      selectionRef.current,
+      nextSelection,
+    )
+    handleSetSelection(nextSelection, { preserveNeighborhoodHistory: true })
   }, [handleSetSelection])
   const layout = useLayoutPanels(noteWindowParams ? { initialInspectorCollapsed: true } : undefined)
   const { setInspectorCollapsed } = layout
@@ -299,11 +318,68 @@ function App() {
   const effectiveSelection = sanitizeSelectionForOrganization(selection, vaultConfig.inbox?.explicitOrganization)
 
   useEffect(() => {
+    selectionRef.current = effectiveSelection
+  }, [effectiveSelection])
+
+  useEffect(() => {
     if (effectiveSelection !== selection) {
+      if (effectiveSelection.kind !== 'entity') {
+        neighborhoodHistoryRef.current = []
+      }
       setSelection(effectiveSelection)
       setNoteListFilter('open')
     }
   }, [effectiveSelection, selection])
+
+  const handleNeighborhoodHistoryBack = useCallback(() => {
+    const { previousSelection, nextHistory } = popNeighborhoodHistory(neighborhoodHistoryRef.current)
+    if (!previousSelection) return false
+
+    neighborhoodHistoryRef.current = nextHistory
+    handleSetSelection(previousSelection, { preserveNeighborhoodHistory: true })
+    requestAnimationFrame(() => {
+      focusNoteListContainer(document)
+    })
+    return true
+  }, [handleSetSelection])
+
+  const shouldBlockNeighborhoodEscape = (
+    dialogs.showCreateTypeDialog
+    || dialogs.showQuickOpen
+    || dialogs.showCommandPalette
+    || dialogs.showAIChat
+    || dialogs.showSettings
+    || dialogs.showCloneVault
+    || dialogs.showSearch
+    || dialogs.showConflictResolver
+    || dialogs.showCreateViewDialog
+    || showFeedback
+  )
+
+  useEffect(() => {
+    const handleWindowKeyDown = (event: KeyboardEvent) => {
+      if (!shouldProcessNeighborhoodEscape(event, selectionRef.current, shouldBlockNeighborhoodEscape)) return
+
+      const activeElement = document.activeElement
+      if (isEditorEscapeTarget(activeElement)) {
+        event.preventDefault()
+        activeElement.blur()
+        requestAnimationFrame(() => {
+          focusNoteListContainer(document)
+        })
+        return
+      }
+
+      if (isEditableElement(activeElement)) return
+
+      if (handleNeighborhoodHistoryBack()) {
+        event.preventDefault()
+      }
+    }
+
+    window.addEventListener('keydown', handleWindowKeyDown)
+    return () => window.removeEventListener('keydown', handleWindowKeyDown)
+  }, [handleNeighborhoodHistoryBack, shouldBlockNeighborhoodEscape])
 
   const handleSaveExplicitOrganization = useCallback((enabled: boolean) => {
     updateConfig('inbox', {

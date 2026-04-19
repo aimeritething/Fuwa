@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
@@ -13,6 +13,19 @@ const localStorageMock = (() => {
   }
 })()
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true })
+Object.defineProperty(window, 'matchMedia', {
+  writable: true,
+  value: vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    dispatchEvent: vi.fn(),
+  })),
+})
 
 // Mock @tauri-apps/api/core before importing App
 vi.mock('@tauri-apps/api/core', () => ({
@@ -100,6 +113,108 @@ const mockCommandResults: Record<string, unknown> = {
   get_vault_settings: { theme: null },
 }
 
+function buildNeighborhoodEntry({
+  path,
+  title,
+  relatedRefs,
+  outgoingLinks,
+  modifiedAt,
+}: {
+  path: string
+  title: string
+  relatedRefs: string[]
+  outgoingLinks: string[]
+  modifiedAt: number
+}) {
+  return {
+    path,
+    filename: path.split('/').pop() ?? `${title.toLowerCase()}.md`,
+    title,
+    isA: 'Note',
+    aliases: [],
+    belongsTo: [],
+    relatedTo: relatedRefs,
+    status: null,
+    modifiedAt,
+    createdAt: null,
+    fileSize: 128,
+    archived: false,
+    snippet: '',
+    wordCount: 12,
+    relationships: relatedRefs.length > 0 ? { 'Related to': relatedRefs } : {},
+    icon: null,
+    color: null,
+    order: null,
+    sidebarLabel: null,
+    template: null,
+    sort: null,
+    view: null,
+    visible: true,
+    organized: false,
+    favorite: false,
+    favoriteIndex: null,
+    listPropertiesDisplay: [],
+    outgoingLinks,
+    properties: {},
+    hasH1: true,
+    fileKind: 'markdown',
+  }
+}
+
+const neighborhoodEntries = [
+  buildNeighborhoodEntry({
+    path: '/vault/alpha.md',
+    title: 'Alpha',
+    relatedRefs: ['[[Beta]]'],
+    outgoingLinks: ['Beta'],
+    modifiedAt: 1700000003,
+  }),
+  buildNeighborhoodEntry({
+    path: '/vault/beta.md',
+    title: 'Beta',
+    relatedRefs: ['[[Gamma]]'],
+    outgoingLinks: ['Gamma'],
+    modifiedAt: 1700000002,
+  }),
+  buildNeighborhoodEntry({
+    path: '/vault/gamma.md',
+    title: 'Gamma',
+    relatedRefs: [],
+    outgoingLinks: [],
+    modifiedAt: 1700000001,
+  }),
+]
+
+const neighborhoodContent: Record<string, string> = {
+  '/vault/alpha.md': '# Alpha\n\n[[Beta]]',
+  '/vault/beta.md': '# Beta\n\n[[Gamma]]',
+  '/vault/gamma.md': '# Gamma',
+}
+
+function configureNeighborhoodVault() {
+  mockCommandResults.list_vault = neighborhoodEntries
+  mockCommandResults.get_all_content = neighborhoodContent
+  mockCommandResults.get_note_content = ({ path }: { path: string }) => neighborhoodContent[path] ?? ''
+}
+
+function getHeaderForNoteList(noteListContainer: HTMLElement) {
+  return within(noteListContainer.parentElement as HTMLElement).getByRole('heading', { level: 3 })
+}
+
+async function enterNeighborhood(noteListContainer: HTMLElement, title: string) {
+  await act(async () => {
+    fireEvent.click(within(noteListContainer).getByText(title), { metaKey: true })
+    await Promise.resolve()
+  })
+}
+
+async function pressEscape() {
+  await act(async () => {
+    fireEvent.keyDown(window, { key: 'Escape' })
+    await Promise.resolve()
+  })
+}
+
 function resetMockCommandResults() {
   Object.assign(mockCommandResults, {
     load_vault_list: mockVaultList,
@@ -166,7 +281,12 @@ vi.mock('@blocknote/core/extensions', () => ({
 vi.mock('@blocknote/react', () => ({
   createReactInlineContentSpec: () => ({ render: () => null }),
   BlockNoteViewRaw: ({ children }: { children?: ReactNode }) => (
-    <div data-testid="blocknote-view">{children}</div>
+    <div data-testid="blocknote-view">
+      <div contentEditable suppressContentEditableWarning data-testid="mock-editor">
+        mock editor
+      </div>
+      {children}
+    </div>
   ),
   ComponentsContext: {
     Provider: ({ children }: { children?: ReactNode }) => <>{children}</>,
@@ -176,6 +296,8 @@ vi.mock('@blocknote/react', () => ({
     replaceBlocks: () => {},
     document: [],
     insertInlineContent: () => {},
+    setTextCursorPosition: () => {},
+    focus: () => {},
     onMount: (cb: () => void) => { cb(); return () => {} },
   }),
   SideMenuController: () => null,
@@ -183,10 +305,16 @@ vi.mock('@blocknote/react', () => ({
 }))
 
 vi.mock('@blocknote/mantine', () => ({
+  components: {},
   BlockNoteView: ({ children }: { children?: React.ReactNode }) => <div data-testid="blocknote-view">{children}</div>,
 }))
 
 vi.mock('@blocknote/mantine/style.css', () => ({}))
+
+vi.mock('./components/tolariaEditorFormatting', () => ({
+  TolariaFormattingToolbar: () => null,
+  TolariaFormattingToolbarController: () => null,
+}))
 
 import App from './App'
 
@@ -309,6 +437,54 @@ describe('App', () => {
       // "All Notes" should be rendered as the selected nav item
       expect(screen.getByText('All Notes')).toBeInTheDocument()
       expect(screen.getByText('Archive')).toBeInTheDocument()
+    })
+  })
+
+  it('pressing Escape in Neighborhood mode blurs the editor before unwinding note-list history', async () => {
+    configureNeighborhoodVault()
+
+    render(<App />)
+
+    const noteListContainer = await screen.findByTestId('note-list-container')
+    const getHeader = () => getHeaderForNoteList(noteListContainer)
+
+    await waitFor(() => {
+      expect(getHeader()).toHaveTextContent('Inbox')
+    })
+
+    await enterNeighborhood(noteListContainer, 'Alpha')
+
+    await waitFor(() => {
+      expect(getHeader()).toHaveTextContent('Alpha')
+    })
+
+    const editor = screen.getByTestId('mock-editor')
+    editor.focus()
+    expect(editor).toHaveFocus()
+
+    await pressEscape()
+
+    await waitFor(() => {
+      expect(noteListContainer).toHaveFocus()
+      expect(getHeader()).toHaveTextContent('Alpha')
+    })
+
+    await enterNeighborhood(noteListContainer, 'Beta')
+
+    await waitFor(() => {
+      expect(getHeader()).toHaveTextContent('Beta')
+    })
+
+    await pressEscape()
+
+    await waitFor(() => {
+      expect(getHeader()).toHaveTextContent('Alpha')
+    })
+
+    await pressEscape()
+
+    await waitFor(() => {
+      expect(getHeader()).toHaveTextContent('Inbox')
     })
   })
 
