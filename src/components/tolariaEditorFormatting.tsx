@@ -476,6 +476,7 @@ export function TolariaFormattingToolbarController(props: {
   })
 
   useBlockNoteFormattingToolbarHoverGuard({
+    editor,
     container:
       editor.domElement?.closest('.editor__blocknote-container') ??
       editor.domElement ??

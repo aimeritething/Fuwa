@@ -91,6 +91,12 @@ async function moveMouseInSteps(
   }
 }
 
+async function expectImageBlockSelected(image: ReturnType<Page['locator']>) {
+  await expect.poll(async () => (
+    image.evaluate((node) => Boolean(node.closest('.ProseMirror-selectednode')))
+  )).toBe(true)
+}
+
 test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(90_000)
   tempVaultDir = createFixtureVaultCopy()
@@ -117,15 +123,36 @@ test('image toolbar stays usable while the pointer crosses onto its controls', a
 
   await expect(toolbar).toBeVisible({ timeout: 5_000 })
   await expect(replaceButton).toBeVisible()
+  await expectImageBlockSelected(image)
 
   const replaceButtonBox = await replaceButton.boundingBox()
   expect(replaceButtonBox).not.toBeNull()
+  const toolbarBox = await toolbar.boundingBox()
+  expect(toolbarBox).not.toBeNull()
 
   await moveMouseInSteps(
     page,
     {
       x: imageBox!.x + imageBox!.width / 2,
       y: imageBox!.y + imageBox!.height / 2,
+    },
+    {
+      x: toolbarBox!.x + toolbarBox!.width / 2,
+      y: toolbarBox!.y + toolbarBox!.height + 10,
+    },
+    { steps: 12, stepDelayMs: 35 },
+  )
+
+  await page.waitForTimeout(180)
+  await expect(toolbar).toBeVisible()
+  await expect(replaceButton).toBeVisible()
+  await expectImageBlockSelected(image)
+
+  await moveMouseInSteps(
+    page,
+    {
+      x: toolbarBox!.x + toolbarBox!.width / 2,
+      y: toolbarBox!.y + toolbarBox!.height + 10,
     },
     {
       x: replaceButtonBox!.x + replaceButtonBox!.width / 2,
@@ -136,6 +163,7 @@ test('image toolbar stays usable while the pointer crosses onto its controls', a
 
   await expect(toolbar).toBeVisible()
   await expect(replaceButton).toBeVisible()
+  await expectImageBlockSelected(image)
 
   await replaceButton.click()
   await expect(page.locator('.bn-panel-popover')).toBeVisible()

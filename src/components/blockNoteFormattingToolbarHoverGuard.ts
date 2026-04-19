@@ -1,9 +1,21 @@
+import type {
+  BlockNoteEditor,
+  BlockSchema,
+  InlineContentSchema,
+  StyleSchema,
+} from '@blocknote/core'
 import { useEffect, useRef, type RefObject } from 'react'
 
 type RectLike = Pick<DOMRect, 'left' | 'right' | 'top' | 'bottom'>
 
 const HOVER_BRIDGE_PADDING_X = 8
 const HOVER_BRIDGE_PADDING_Y = 8
+const FORMATTING_TOOLBAR_FILE_BLOCK_TYPES = new Set([
+  'audio',
+  'file',
+  'image',
+  'video',
+])
 
 function isVisibleRect(rect: RectLike) {
   return rect.right > rect.left && rect.bottom > rect.top
@@ -90,6 +102,32 @@ export function shouldSuppressFormattingToolbarHoverUpdate({
   )
 }
 
+function getActiveFormattingToolbarFileBlockId(
+  editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
+) {
+  const selectedBlock =
+    editor.getSelection()?.blocks[0] ?? editor.getTextCursorPosition().block
+
+  return FORMATTING_TOOLBAR_FILE_BLOCK_TYPES.has(selectedBlock.type)
+    ? selectedBlock.id
+    : null
+}
+
+function restoreFormattingToolbarFileBlockSelection(
+  editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
+  selectedFileBlockIdRef: RefObject<string | null>,
+) {
+  const selectedFileBlockId = selectedFileBlockIdRef.current
+  if (!selectedFileBlockId) return
+  if (getActiveFormattingToolbarFileBlockId(editor) === selectedFileBlockId) return
+
+  try {
+    editor.setTextCursorPosition(selectedFileBlockId)
+  } catch {
+    // The image block may have been deleted or replaced while the toolbar stayed open.
+  }
+}
+
 function useLastSelectedFormattingToolbarFileBlockId(
   selectedFileBlockId: string | null,
   isOpen: boolean,
@@ -120,10 +158,12 @@ function getFormattingToolbarHoverGuardEnvironment(container: HTMLElement | null
 }
 
 function createFormattingToolbarHoverGuardHandler({
+  editor,
   container,
   doc,
   selectedFileBlockIdRef,
 }: {
+  editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>
   container: HTMLElement
   doc: Document
   selectedFileBlockIdRef: RefObject<string | null>
@@ -141,15 +181,18 @@ function createFormattingToolbarHoverGuardHandler({
       return
     }
 
+    restoreFormattingToolbarFileBlockSelection(editor, selectedFileBlockIdRef)
     event.stopPropagation()
   }
 }
 
 export function useBlockNoteFormattingToolbarHoverGuard({
+  editor,
   container,
   selectedFileBlockId,
   isOpen,
 }: {
+  editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>
   container: HTMLElement | null
   selectedFileBlockId: string | null
   isOpen: boolean
@@ -166,6 +209,7 @@ export function useBlockNoteFormattingToolbarHoverGuard({
     if (!environment) return
 
     const handleMouseMove = createFormattingToolbarHoverGuardHandler({
+      editor,
       container: environment.container,
       doc: environment.doc,
       selectedFileBlockIdRef: lastSelectedFileBlockIdRef,
@@ -175,5 +219,5 @@ export function useBlockNoteFormattingToolbarHoverGuard({
     return () => {
       environment.view.removeEventListener('mousemove', handleMouseMove, true)
     }
-  }, [container, isOpen, lastSelectedFileBlockIdRef])
+  }, [container, editor, isOpen, lastSelectedFileBlockIdRef])
 }
