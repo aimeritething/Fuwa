@@ -59,6 +59,7 @@ async function clearMissingActiveVault(missingPath: string): Promise<void> {
 export function useOnboarding(
   initialVaultPath: string,
   onTemplateVaultReady?: (vaultPath: string) => void,
+  initialVaultResolved = true,
 ) {
   const [state, setState] = useState<OnboardingState>({ status: 'loading' })
   const [creatingAction, setCreatingAction] = useState<CreatingAction>(null)
@@ -68,6 +69,11 @@ export function useOnboarding(
 
   useEffect(() => {
     let cancelled = false
+
+    if (!initialVaultResolved) {
+      setState({ status: 'loading' })
+      return () => { cancelled = true }
+    }
 
     async function check() {
       try {
@@ -101,7 +107,7 @@ export function useOnboarding(
 
     check()
     return () => { cancelled = true }
-  }, [initialVaultPath])
+  }, [initialVaultPath, initialVaultResolved])
 
   const createTemplateVault = useCallback(async (targetPath: string) => {
     setCreatingAction('template')

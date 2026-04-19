@@ -102,6 +102,32 @@ describe('useOnboarding', () => {
     expect(result.current.state).toEqual({ status: 'ready', vaultPath: '/vault/path' })
   })
 
+  it('stays loading until the initial vault path has been resolved', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.welcomeDismissed, '1')
+    mockCommands({
+      check_vault_exists: (args?: MockArgs) => (args as { path?: string } | undefined)?.path === '/vault/path',
+    })
+
+    const rendered = renderHook(
+      ({ initialVaultPath, initialVaultResolved }) => useOnboarding(initialVaultPath, undefined, initialVaultResolved),
+      { initialProps: { initialVaultPath: '', initialVaultResolved: false } },
+    )
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(rendered.result.current.state).toEqual({ status: 'loading' })
+
+    rendered.rerender({ initialVaultPath: '/vault/path', initialVaultResolved: true })
+
+    await waitFor(() => {
+      expect(rendered.result.current.state).toEqual({ status: 'ready', vaultPath: '/vault/path' })
+    })
+  })
+
   it('shows the welcome screen when the vault does not exist', async () => {
     mockCommands()
 

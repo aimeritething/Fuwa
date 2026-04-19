@@ -431,6 +431,60 @@ describe('App', () => {
     expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Open existing vault')
   })
 
+  it('keeps startup on a neutral loading state while the last vault is still resolving', async () => {
+    localStorage.setItem('tolaria_welcome_dismissed', '1')
+
+    let resolveVaultList: ((value: typeof mockVaultList) => void) | null = null
+
+    mockCommandResults.load_vault_list = () =>
+      new Promise<typeof mockVaultList>((resolve) => {
+        resolveVaultList = resolve
+      })
+    mockCommandResults.check_vault_exists = (args?: { path?: string }) => args?.path === '/work'
+
+    render(<App />)
+
+    await act(async () => {
+      await Promise.resolve()
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.queryByText('Vault not found')).not.toBeInTheDocument()
+
+    await act(async () => {
+      resolveVaultList?.({
+        vaults: [{ label: 'Work Vault', path: '/work' }],
+        active_vault: '/work',
+        hidden_defaults: [],
+      })
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status-vault-trigger')).toHaveTextContent('Work Vault')
+    })
+    expect(screen.queryByText('Vault not found')).not.toBeInTheDocument()
+  })
+
+  it('shows the missing-vault screen once the resolved active vault is confirmed missing', async () => {
+    localStorage.setItem('tolaria_welcome_dismissed', '1')
+    mockCommandResults.load_vault_list = {
+      vaults: [{ label: 'Old Vault', path: '/missing-vault' }],
+      active_vault: '/missing-vault',
+      hidden_defaults: [],
+    }
+    mockCommandResults.check_vault_exists = (args?: { path?: string }) => args?.path === '/Users/mock/Documents/Getting Started'
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Vault not found')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Choose a different folder')
+  })
+
   it('renders sidebar with correct default selection (All Notes)', async () => {
     render(<App />)
     await waitFor(() => {

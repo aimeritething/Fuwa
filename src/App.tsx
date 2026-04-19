@@ -264,7 +264,7 @@ function App() {
   })
   const onboarding = useOnboarding(vaultSwitcher.vaultPath, (vaultPath) => {
     handleGettingStartedVaultReady(vaultPath)
-  })
+  }, vaultSwitcher.loaded)
   const aiAgentsStatus = useAiAgentsStatus()
   const aiAgentsOnboarding = useAiAgentsOnboarding(onboarding.state.status === 'ready' && !noteWindowParams)
   const lastHandledOnboardingUserVaultPathRef = useRef<string | null>(null)
