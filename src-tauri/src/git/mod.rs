@@ -168,7 +168,7 @@ mod tests {
         let path = dir.path();
 
         Command::new("git")
-            .args(["init"])
+            .args(["init", "--initial-branch=main"])
             .current_dir(path)
             .output()
             .unwrap();
