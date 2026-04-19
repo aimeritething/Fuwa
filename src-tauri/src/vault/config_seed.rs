@@ -41,11 +41,21 @@ const LEGACY_CLAUDE_MD_SHIM: &str = "@AGENTS.md
 This file is a Claude Code compatibility shim. Keep shared agent instructions in `AGENTS.md`.
 ";
 
-const CLAUDE_MD_SHIM: &str = "@AGENTS.md
+const HEADING_CLAUDE_MD_SHIM: &str = "@AGENTS.md
 
 # CLAUDE.md
 
 This file is a Claude Code compatibility shim. Keep shared agent instructions in `AGENTS.md`.
+";
+
+const CLAUDE_MD_SHIM: &str = "---
+type: Note
+_organized: true
+---
+
+@AGENTS.md
+
+This file is only a Claude Code compatibility shim. Keep shared agent instructions in `AGENTS.md`.
 ";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -95,6 +105,7 @@ fn matches_claude_shim(content: &str) -> bool {
     let trimmed = content.trim();
     trimmed == "@AGENTS.md"
         || trimmed == LEGACY_CLAUDE_MD_SHIM.trim()
+        || trimmed == HEADING_CLAUDE_MD_SHIM.trim()
         || trimmed == CLAUDE_MD_SHIM.trim()
 }
 
@@ -515,6 +526,16 @@ mod tests {
         seed_config_files(vault.to_str().unwrap());
 
         assert!(read_root_claude(&vault).contains("Custom Claude instructions"));
+    }
+
+    #[test]
+    fn test_seed_config_files_refreshes_previous_managed_claude_shim() {
+        let (_dir, vault) = create_vault();
+        write_root_claude(&vault, HEADING_CLAUDE_MD_SHIM);
+
+        seed_config_files(vault.to_str().unwrap());
+
+        assert_eq!(read_root_claude(&vault), CLAUDE_MD_SHIM);
     }
 
     #[test]

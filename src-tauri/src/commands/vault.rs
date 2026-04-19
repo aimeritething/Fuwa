@@ -341,8 +341,10 @@ mod tests {
 
         assert!(agents.contains("Legacy `title:` frontmatter is still read as a fallback"));
         assert!(agents.contains("views/*.yml"));
-        assert!(claude.starts_with("@AGENTS.md"));
-        assert!(claude.contains("# CLAUDE.md"));
+        assert!(claude.starts_with("---\ntype: Note\n_organized: true\n---"));
+        assert!(claude.contains("@AGENTS.md"));
+        assert!(claude.contains("only a Claude Code compatibility shim"));
+        assert!(!claude.contains("# CLAUDE.md"));
     }
 
     fn assert_seeded_type_scaffolding(vault_path: &Path) {

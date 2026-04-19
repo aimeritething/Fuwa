@@ -193,7 +193,7 @@ tolaria/
 ├── playwright.smoke.config.ts    # Curated pre-push Playwright config
 ├── ui-design.pen                 # Master design file
 ├── AGENTS.md                     # Canonical shared instructions for coding agents
-├── CLAUDE.md                     # Claude Code compatibility shim importing AGENTS.md
+├── CLAUDE.md                     # Claude Code compatibility shim importing AGENTS.md as an organized Note
 └── docs/                         # This documentation
 ```
 
