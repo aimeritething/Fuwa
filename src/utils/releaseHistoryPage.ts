@@ -1,8 +1,3 @@
-import { createElement } from 'react'
-import Markdown from 'react-markdown'
-import { renderToStaticMarkup } from 'react-dom/server'
-import remarkGfm from 'remark-gfm'
-
 type ReleaseAssetPayload = {
   browser_download_url?: unknown
   name?: unknown
@@ -11,6 +6,7 @@ type ReleaseAssetPayload = {
 type GitHubReleasePayload = {
   assets?: ReleaseAssetPayload[]
   body?: unknown
+  body_html?: unknown
   draft?: unknown
   html_url?: unknown
   name?: unknown
@@ -376,7 +372,6 @@ const RELEASE_HISTORY_PAGE_SCRIPT = `
     })();
 `
 
-const MARKDOWN_REMARK_PLUGINS = [remarkGfm]
 const RELEASE_CHANNEL_LABELS: Record<ReleaseChannel, string> = {
   alpha: 'Alpha',
   stable: 'Stable',
@@ -446,8 +441,22 @@ function normalizeDownloads(assets: ReleaseAssetPayload[] | undefined): ReleaseD
   return downloads
 }
 
-function renderReleaseNotes(markdown: string): string {
-  return renderToStaticMarkup(createElement(Markdown, { remarkPlugins: MARKDOWN_REMARK_PLUGINS }, markdown))
+function buildFallbackReleaseNotesHtml(markdownFallback: string): string {
+  const paragraphs = markdownFallback
+    .split(/\n{2,}/)
+    .map(part => part.trim())
+    .filter(part => part.length > 0)
+    .map(part => `<p>${escapeHtml(part).replaceAll('\n', '<br>')}</p>`)
+
+  return paragraphs.join('')
+}
+
+function resolveReleaseNotesHtml(renderedHtml: unknown, markdownFallback: unknown): string {
+  const bodyHtml = normalizeText(renderedHtml)
+  if (bodyHtml !== null) return bodyHtml
+
+  const fallback = normalizeText(markdownFallback) ?? 'No release notes provided.'
+  return buildFallbackReleaseNotesHtml(fallback)
 }
 
 function normalizeReleaseEntry(release: GitHubReleasePayload): [ReleaseChannel, ReleaseEntry] | null {
@@ -455,13 +464,12 @@ function normalizeReleaseEntry(release: GitHubReleasePayload): [ReleaseChannel, 
 
   const title = normalizeText(release.name) ?? normalizeText(release.tag_name) ?? 'Untitled release'
   const tagName = normalizeText(release.tag_name) ?? 'Unknown tag'
-  const notes = normalizeText(release.body) ?? 'No release notes provided.'
   const channel: ReleaseChannel = release.prerelease === true ? 'alpha' : 'stable'
 
   return [channel, {
     downloads: normalizeDownloads(release.assets),
     githubUrl: normalizeUrl(release.html_url),
-    notesHtml: renderReleaseNotes(notes),
+    notesHtml: resolveReleaseNotesHtml(release.body_html, release.body),
     publishedLabel: formatPublishedLabel(release.published_at),
     tagName,
     title,

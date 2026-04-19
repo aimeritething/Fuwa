@@ -265,7 +265,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p _site/alpha _site/stable
-          gh api repos/${{ github.repository }}/releases --paginate > _site/releases.json
+          gh api -H "Accept: application/vnd.github.html+json" repos/${{ github.repository }}/releases --paginate > _site/releases.json
           PAGES_URL="https://refactoringhq.github.io/${GITHUB_REPOSITORY#*/}"
 
           curl -fsSL "${PAGES_URL}/alpha/latest.json" -o _site/alpha/latest.json || echo '{}' > _site/alpha/latest.json
