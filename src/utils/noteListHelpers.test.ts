@@ -164,6 +164,42 @@ describe('buildRelationshipGroups', () => {
     expect(groups.find((group) => group.label === 'Referenced By')?.entries).toEqual([shared])
   })
 
+  it('includes all inverse relationship groups for non-core relationship keys', () => {
+    const parent = makeEntry({
+      path: '/vault/parent.md',
+      filename: 'parent.md',
+      title: 'Parent',
+      isA: 'Project',
+    })
+    const topicNote = makeEntry({
+      path: '/vault/topic-note.md',
+      filename: 'topic-note.md',
+      title: 'Topic Note',
+      isA: 'Note',
+      relationships: { Topics: ['[[parent]]'] },
+    })
+    const mentorNote = makeEntry({
+      path: '/vault/mentor-note.md',
+      filename: 'mentor-note.md',
+      title: 'Mentor Note',
+      isA: 'Note',
+      relationships: { Mentors: ['[[parent]]'] },
+    })
+    const hostEvent = makeEntry({
+      path: '/vault/host-event.md',
+      filename: 'host-event.md',
+      title: 'Host Event',
+      isA: 'Event',
+      relationships: { Hosts: ['[[parent]]'] },
+    })
+
+    const groups = buildRelationshipGroups(parent, [parent, topicNote, mentorNote, hostEvent])
+
+    expect(groups.find((group) => group.label === '← Topics')?.entries).toEqual([topicNote])
+    expect(groups.find((group) => group.label === '← Mentors')?.entries).toEqual([mentorNote])
+    expect(groups.find((group) => group.label === '← Hosts')?.entries).toEqual([hostEvent])
+  })
+
   it('does not treat path-qualified refs for a different note as reverse matches', () => {
     const parent = makeEntry({
       path: '/vault/projects/alpha.md',

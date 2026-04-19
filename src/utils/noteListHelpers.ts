@@ -294,6 +294,81 @@ class GroupBuilder {
   }
 }
 
+function appendInverseRelationshipEntries(
+  inverseGroups: Map<string, VaultEntry[]>,
+  label: string,
+  entry: VaultEntry,
+) {
+  const existing = inverseGroups.get(label)
+  if (existing) {
+    existing.push(entry)
+    return
+  }
+
+  inverseGroups.set(label, [entry])
+}
+
+function resolveInverseRelationshipLabel(key: string, entry: VaultEntry): string {
+  if (key === 'Belongs to') return entry.isA === 'Event' ? 'Events' : 'Children'
+  if (key === 'Related to') return entry.isA === 'Event' ? 'Events' : 'Referenced By'
+  return `← ${key}`
+}
+
+function appendLegacyInverseRelationshipEntries(
+  inverseGroups: Map<string, VaultEntry[]>,
+  entity: VaultEntry,
+  entry: VaultEntry,
+) {
+  if (refsMatch(entry.belongsTo, entity)) {
+    appendInverseRelationshipEntries(inverseGroups, resolveInverseRelationshipLabel('Belongs to', entry), entry)
+  }
+
+  if (refsMatch(entry.relatedTo, entity)) {
+    appendInverseRelationshipEntries(inverseGroups, resolveInverseRelationshipLabel('Related to', entry), entry)
+  }
+}
+
+function appendDynamicInverseRelationshipEntries(
+  inverseGroups: Map<string, VaultEntry[]>,
+  entity: VaultEntry,
+  entry: VaultEntry,
+) {
+  for (const [key, refs] of Object.entries(entry.relationships ?? {})) {
+    if (key === 'Type' || !refsMatch(refs, entity)) continue
+    appendInverseRelationshipEntries(inverseGroups, resolveInverseRelationshipLabel(key, entry), entry)
+  }
+}
+
+function orderInverseRelationshipLabels(inverseGroups: Map<string, VaultEntry[]>): string[] {
+  const preferredOrder = ['Children', 'Events', 'Referenced By']
+  const customLabels = [...inverseGroups.keys()]
+    .filter((label) => !preferredOrder.includes(label))
+    .sort((a, b) => a.localeCompare(b))
+
+  return [...preferredOrder, ...customLabels]
+}
+
+function collectInverseRelationshipGroups(
+  entity: VaultEntry,
+  allEntries: VaultEntry[],
+): RelationshipGroup[] {
+  const inverseGroups = new Map<string, VaultEntry[]>()
+
+  for (const other of allEntries) {
+    if (other.path === entity.path) continue
+    appendLegacyInverseRelationshipEntries(inverseGroups, entity, other)
+    appendDynamicInverseRelationshipEntries(inverseGroups, entity, other)
+  }
+
+  return orderInverseRelationshipLabels(inverseGroups)
+    .map((label) => {
+      const entries = inverseGroups.get(label)
+      if (!entries) return null
+      return { label, entries: [...entries].sort(sortByModified) }
+    })
+    .filter((group): group is RelationshipGroup => group !== null)
+}
+
 export function buildRelationshipGroups(
   entity: VaultEntry,
   allEntries: VaultEntry[],
@@ -313,9 +388,7 @@ export function buildRelationshipGroups(
     .sort((a, b) => a.localeCompare(b))
     .forEach((key) => b.addFromRefs(key, rels[key] ?? []))
 
-  b.filterAndAdd('Children', (e) => e.isA !== 'Event' && refsMatch(e.belongsTo, entity))
-  b.filterAndAdd('Events', (e) => e.isA === 'Event' && (refsMatch(e.belongsTo, entity) || refsMatch(e.relatedTo, entity)))
-  b.filterAndAdd('Referenced By', (e) => e.isA !== 'Event' && refsMatch(e.relatedTo, entity))
+  collectInverseRelationshipGroups(entity, allEntries).forEach((group) => b.add(group.label, group.entries))
   b.add('Backlinks', findBacklinks(entity, allEntries).sort(sortByModified))
 
   return b.groups

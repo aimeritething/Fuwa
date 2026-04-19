@@ -379,6 +379,48 @@ describe('NoteList rendering', () => {
     expect(screen.getAllByText('Shared Note')).toHaveLength(2)
   })
 
+  it('shows all real inverse relationship groups for custom relationship keys', () => {
+    const parent = makeEntry({
+      path: '/vault/parent.md',
+      filename: 'parent.md',
+      title: 'Parent',
+      isA: 'Project',
+    })
+    const topicNote = makeEntry({
+      path: '/vault/topic-note.md',
+      filename: 'topic-note.md',
+      title: 'Topic Note',
+      isA: 'Note',
+      relationships: { Topics: ['[[parent]]'] },
+    })
+    const mentorNote = makeEntry({
+      path: '/vault/mentor-note.md',
+      filename: 'mentor-note.md',
+      title: 'Mentor Note',
+      isA: 'Note',
+      relationships: { Mentors: ['[[parent]]'] },
+    })
+    const hostEvent = makeEntry({
+      path: '/vault/host-event.md',
+      filename: 'host-event.md',
+      title: 'Host Event',
+      isA: 'Event',
+      relationships: { Hosts: ['[[parent]]'] },
+    })
+
+    renderNoteList({
+      entries: [parent, topicNote, mentorNote, hostEvent],
+      selection: { kind: 'entity', entry: parent },
+    })
+
+    expect(screen.getByText('← Topics')).toBeInTheDocument()
+    expect(screen.getByText('← Mentors')).toBeInTheDocument()
+    expect(screen.getByText('← Hosts')).toBeInTheDocument()
+    expect(screen.getByText('Topic Note')).toBeInTheDocument()
+    expect(screen.getByText('Mentor Note')).toBeInTheDocument()
+    expect(screen.getByText('Host Event')).toBeInTheDocument()
+  })
+
   it('collapses and expands entity groups', () => {
     renderNoteList({ selection: { kind: 'entity', entry: mockEntries[0] } })
     expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
