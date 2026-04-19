@@ -28,15 +28,15 @@ export function selectionsEqual(a: SidebarSelection, b: SidebarSelection): boole
 
   switch (a.kind) {
     case 'filter':
-      return isSameFilterSelection(a, b)
+      return isSameFilterSelection(a, b as Extract<SidebarSelection, { kind: 'filter' }>)
     case 'sectionGroup':
-      return isSameSectionSelection(a, b)
+      return isSameSectionSelection(a, b as Extract<SidebarSelection, { kind: 'sectionGroup' }>)
     case 'folder':
-      return isSameFolderSelection(a, b)
+      return isSameFolderSelection(a, b as Extract<SidebarSelection, { kind: 'folder' }>)
     case 'entity':
-      return isSameEntitySelection(a, b)
+      return isSameEntitySelection(a, b as Extract<SidebarSelection, { kind: 'entity' }>)
     case 'view':
-      return isSameViewSelection(a, b)
+      return isSameViewSelection(a, b as Extract<SidebarSelection, { kind: 'view' }>)
   }
 }
 
@@ -84,7 +84,7 @@ export function isEditableElement(element: Element | null): element is HTMLEleme
   return element.isContentEditable || !!element.closest('[contenteditable="true"]')
 }
 
-export function isEditorEscapeTarget(element: Element | null): boolean {
+export function isEditorEscapeTarget(element: Element | null): element is HTMLElement {
   return isEditableElement(element)
     && element.closest(EDITOR_SURFACE_SELECTOR) !== null
 }
