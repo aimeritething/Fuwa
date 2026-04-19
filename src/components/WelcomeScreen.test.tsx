@@ -47,7 +47,7 @@ describe('WelcomeScreen', () => {
 
     it('shows the simplified template option description', () => {
       render(<WelcomeScreen {...defaultProps} />)
-      expect(screen.getByText('Download the Getting Started vault')).toBeInTheDocument()
+      expect(screen.getByText('Download the getting started vault')).toBeInTheDocument()
       expect(screen.queryByText(/~\/Documents\/Laputa/)).not.toBeInTheDocument()
     })
 
