@@ -22,84 +22,90 @@ interface MockEntry {
   sort: null
 }
 
-async function installVaultSwitcherMocks(page: Page) {
-  await page.addInitScript(() => {
-    const workVaultPath = '/Users/mock/Work'
-    const personalVaultPath = '/Users/mock/Personal'
-    const gettingStartedPath = '/Users/mock/Documents/Getting Started'
+interface VaultSwitcherPaths {
+  gettingStartedPath: string
+  personalVaultPath: string
+  workVaultPath: string
+}
 
-    const entriesByVault = {
-      [gettingStartedPath]: [({
-        path: `${gettingStartedPath}/getting-started.md`,
-        filename: 'getting-started.md',
-        title: 'Getting Started Note',
-        isA: 'Note',
-        aliases: [],
-        belongsTo: [],
-        relatedTo: [],
-        status: null,
-        archived: false,
-        modifiedAt: 1700000000,
-        createdAt: null,
-        fileSize: 256,
-        snippet: 'Getting Started snippet',
-        wordCount: 12,
-        relationships: {},
-        outgoingLinks: [],
-        properties: {},
-        template: null,
-        sort: null,
-      })],
-      [workVaultPath]: [({
-        path: `${workVaultPath}/work-home.md`,
-        filename: 'work-home.md',
-        title: 'Work Home',
-        isA: 'Note',
-        aliases: [],
-        belongsTo: [],
-        relatedTo: [],
-        status: null,
-        archived: false,
-        modifiedAt: 1700000000,
-        createdAt: null,
-        fileSize: 256,
-        snippet: 'Work Home snippet',
-        wordCount: 12,
-        relationships: {},
-        outgoingLinks: [],
-        properties: {},
-        template: null,
-        sort: null,
-      })],
-      [personalVaultPath]: [({
-        path: `${personalVaultPath}/personal-home.md`,
-        filename: 'personal-home.md',
-        title: 'Personal Home',
-        isA: 'Note',
-        aliases: [],
-        belongsTo: [],
-        relatedTo: [],
-        status: null,
-        archived: false,
-        modifiedAt: 1700000000,
-        createdAt: null,
-        fileSize: 256,
-        snippet: 'Personal Home snippet',
-        wordCount: 12,
-        relationships: {},
-        outgoingLinks: [],
-        properties: {},
-        template: null,
-        sort: null,
-      })],
-    } satisfies Record<string, MockEntry[]>
+interface VaultSwitcherInitData {
+  allContent: Record<string, string>
+  defaultVaultExists: boolean
+  entriesByVault: Record<string, MockEntry[]>
+  paths: VaultSwitcherPaths
+}
 
-    const allContent = Object.fromEntries(
-      Object.values(entriesByVault)
-        .flat()
-        .map((entry) => [entry.path, `# ${entry.title}\n\n${entry.snippet}`]),
-    )
+interface InstallVaultSwitcherMocksOptions {
+  defaultVaultExists?: boolean
+}
 
+function createVaultSwitcherPaths(): VaultSwitcherPaths {
+  return {
+    gettingStartedPath: '/Users/mock/Documents/Getting Started',
+    personalVaultPath: '/Users/mock/Personal',
+    workVaultPath: '/Users/mock/Work',
+  }
+}
+
+function createMockEntry(vaultPath: string, filename: string, title: string, snippet: string): MockEntry {
+  return {
+    path: `${vaultPath}/${filename}`,
+    filename,
+    title,
+    isA: 'Note',
+    aliases: [],
+    belongsTo: [],
+    relatedTo: [],
+    status: null,
+    archived: false,
+    modifiedAt: 1700000000,
+    createdAt: null,
+    fileSize: 256,
+    snippet,
+    wordCount: 12,
+    relationships: {},
+    outgoingLinks: [],
+    properties: {},
+    template: null,
+    sort: null,
+  }
+}
+
+function buildEntriesByVault(paths: VaultSwitcherPaths): Record<string, MockEntry[]> {
+  return {
+    [paths.gettingStartedPath]: [createMockEntry(paths.gettingStartedPath, 'getting-started.md', 'Getting Started Note', 'Getting Started snippet')],
+    [paths.workVaultPath]: [createMockEntry(paths.workVaultPath, 'work-home.md', 'Work Home', 'Work Home snippet')],
+    [paths.personalVaultPath]: [createMockEntry(paths.personalVaultPath, 'personal-home.md', 'Personal Home', 'Personal Home snippet')],
+  }
+}
+
+function buildAllContent(entriesByVault: Record<string, MockEntry[]>): Record<string, string> {
+  return Object.fromEntries(
+    Object.values(entriesByVault)
+      .flat()
+      .map((entry) => [entry.path, `# ${entry.title}\n\n${entry.snippet}`]),
+  )
+}
+
+function buildVaultSwitcherInitData(defaultVaultExists: boolean): VaultSwitcherInitData {
+  const paths = createVaultSwitcherPaths()
+  const entriesByVault = buildEntriesByVault(paths)
+
+  return {
+    allContent: buildAllContent(entriesByVault),
+    defaultVaultExists,
+    entriesByVault,
+    paths,
+  }
+}
+
+async function installVaultSwitcherMocks(
+  page: Page,
+  options: InstallVaultSwitcherMocksOptions = {},
+) {
+  const initData = buildVaultSwitcherInitData(options.defaultVaultExists ?? true)
+
+  await page.addInitScript((data: VaultSwitcherInitData) => {
     localStorage.clear()
     localStorage.setItem('tolaria:claude-code-onboarding-dismissed', '1')
 
@@ -111,19 +117,31 @@ async function installVaultSwitcherMocks(page: Page) {
         ref = value as Record<string, unknown>
         ref.load_vault_list = () => ({
           vaults: [
-            { label: 'Work Vault', path: workVaultPath },
-            { label: 'Personal Vault', path: personalVaultPath },
+            { label: 'Work Vault', path: data.paths.workVaultPath },
+            { label: 'Personal Vault', path: data.paths.personalVaultPath },
           ],
-          active_vault: workVaultPath,
+          active_vault: data.paths.workVaultPath,
           hidden_defaults: [],
         })
-        ref.get_default_vault_path = () => gettingStartedPath
-        ref.check_vault_exists = (args: { path?: string }) => typeof args?.path === 'string' && args.path.length > 0
-        ref.list_vault = (args: { path?: string }) => entriesByVault[args?.path ?? ''] ?? []
+        ref.get_default_vault_path = () => data.paths.gettingStartedPath
+        ref.check_vault_exists = (args: { path?: string }) => {
+          if (!args?.path) {
+            return false
+          }
+
+          if (args.path === data.paths.gettingStartedPath) {
+            return data.defaultVaultExists
+          }
+
+          return data.defaultVaultExists
+            || args.path === data.paths.workVaultPath
+            || args.path === data.paths.personalVaultPath
+        }
+        ref.list_vault = (args: { path?: string }) => data.entriesByVault[args?.path ?? ''] ?? []
         ref.list_vault_folders = () => []
         ref.list_views = () => []
-        ref.get_all_content = () => allContent
-        ref.get_note_content = (args: { path?: string }) => allContent[args?.path ?? ''] ?? ''
+        ref.get_all_content = () => data.allContent
+        ref.get_note_content = (args: { path?: string }) => data.allContent[args?.path ?? ''] ?? ''
         ref.get_modified_files = () => []
         ref.get_file_history = () => []
       },
@@ -131,7 +149,7 @@ async function installVaultSwitcherMocks(page: Page) {
         return ref
       },
     })
-  })
+  }, initData)
 }
 
 test('bottom bar vault switching works with keyboard and mouse @smoke', async ({ page }) => {
@@ -164,4 +182,28 @@ test('bottom bar vault switching works with keyboard and mouse @smoke', async ({
   await expect(trigger).toContainText('Work Vault')
   await expect(noteList.getByText('Work Home', { exact: true })).toBeVisible()
   await expect(noteList.getByText('Personal Home', { exact: true })).toHaveCount(0)
+})
+
+test('missing Getting Started vault stays hidden while remove actions still work @smoke', async ({ page }) => {
+  await installVaultSwitcherMocks(page, { defaultVaultExists: false })
+
+  await page.goto('/', { waitUntil: 'domcontentloaded' })
+
+  const trigger = page.getByTestId('status-vault-trigger')
+  await expect(trigger).toContainText('Work Vault')
+
+  await trigger.click()
+  await expect(page.getByTestId('vault-menu-item-Getting Started')).toHaveCount(0)
+
+  const personalVaultItem = page.getByTestId('vault-menu-item-Personal Vault')
+  const removeButton = page.getByRole('button', { name: 'Remove Personal Vault from list' })
+
+  await expect(removeButton).toHaveCSS('opacity', '0')
+  await personalVaultItem.hover()
+  await expect(removeButton).toHaveCSS('opacity', '1')
+  await removeButton.click()
+
+  await trigger.click()
+  await expect(page.getByTestId('vault-menu-item-Personal Vault')).toHaveCount(0)
+  await expect(page.getByTestId('vault-menu-item-Getting Started')).toHaveCount(0)
 })

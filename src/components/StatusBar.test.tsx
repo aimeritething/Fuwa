@@ -222,6 +222,42 @@ describe('StatusBar', () => {
     expect(onCloneGettingStarted).toHaveBeenCalledOnce()
   })
 
+  it('exposes a hover-revealed remove action for non-active vaults', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        onRemoveVault={vi.fn()}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
+
+    expect(screen.getByTestId('vault-menu-item-Work Vault').className).toContain('hover:bg-[var(--hover)]')
+    expect(screen.getByTestId('vault-menu-remove-Work Vault').className).toContain('group-hover:opacity-100')
+    expect(screen.getByRole('button', { name: 'Remove Work Vault from list' })).toBeInTheDocument()
+  })
+
+  it('calls onRemoveVault when clicking the remove action in the vault menu', () => {
+    const onRemoveVault = vi.fn()
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        onRemoveVault={onRemoveVault}
+      />
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Remove Work Vault from list' }))
+
+    expect(onRemoveVault).toHaveBeenCalledWith('/Users/luca/Work')
+  })
+
   it('shows Changes badge with count when modifiedCount is > 0', () => {
     render(<StatusBar noteCount={100} modifiedCount={3} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} />)
     expect(screen.getByTestId('status-modified-count')).toBeInTheDocument()

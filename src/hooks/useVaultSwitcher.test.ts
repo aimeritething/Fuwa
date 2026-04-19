@@ -33,7 +33,7 @@ vi.mock('../utils/vault-dialog', () => ({
 }))
 
 type MockInvokeOverrides = {
-  checkVaultExists?: boolean
+  checkVaultExists?: boolean | ((args: { path?: string }) => boolean)
   createEmptyVault?: (args: { targetPath: string }) => Promise<unknown> | unknown
   createGettingStartedVault?: (args: { targetPath: string }) => Promise<unknown> | unknown
 }
@@ -50,7 +50,12 @@ describe('useVaultSwitcher', () => {
         return Promise.resolve(null)
       }
       if (cmd === 'get_default_vault_path') return Promise.resolve(mockDefaultVaultPath)
-      if (cmd === 'check_vault_exists') return Promise.resolve(overrides.checkVaultExists ?? true)
+      if (cmd === 'check_vault_exists') {
+        const checkVaultExists = overrides.checkVaultExists
+        return Promise.resolve(typeof checkVaultExists === 'function'
+          ? checkVaultExists(args as { path?: string })
+          : checkVaultExists ?? true)
+      }
       if (cmd === 'create_empty_vault' && overrides.createEmptyVault) {
         return Promise.resolve().then(() => overrides.createEmptyVault?.(args as { targetPath: string }))
       }
@@ -83,11 +88,11 @@ describe('useVaultSwitcher', () => {
     setMockInvokeBehavior()
   })
 
-  it('starts with default vaults', async () => {
-    const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
-    expect(result.current.allVaults).toEqual(DEFAULT_VAULTS)
-    expect(result.current.vaultPath).toBe(DEFAULT_VAULTS[0].path)
-    await waitFor(() => { expect(result.current.loaded).toBe(true) })
+  it('loads the default vault when the resolved path exists', async () => {
+    const { result } = await renderLoadedVaultSwitcher()
+
+    expect(result.current.allVaults).toEqual([{ label: 'Getting Started', path: expectedDefaultVaultPath }])
+    expect(result.current.vaultPath).toBe(expectedDefaultVaultPath)
   })
 
   it('loads persisted vaults on mount', async () => {
@@ -115,24 +120,15 @@ describe('useVaultSwitcher', () => {
       vaults: [{ label: 'External', path: '/Volumes/USB/vault' }],
       active_vault: null,
     }
-    mockInvokeFn.mockImplementation((cmd: string, args?: Record<string, unknown>) => {
-      if (cmd === 'load_vault_list') return Promise.resolve({ ...mockVaultListStore })
-      if (cmd === 'save_vault_list') {
-        mockVaultListStore = { ...(args as { list: PersistedVaultList }).list }
-        return Promise.resolve(null)
-      }
-      if (cmd === 'check_vault_exists') return Promise.resolve(false)
-      return Promise.resolve(null)
+    setMockInvokeBehavior({
+      checkVaultExists: ({ path }) => path === expectedDefaultVaultPath,
     })
 
-    const { result } = renderHook(() => useVaultSwitcher({ onSwitch, onToast }))
+    const { result } = await renderLoadedVaultSwitcher()
+    const externalVault = result.current.allVaults.find(vault => vault.label === 'External')
 
-    await waitFor(() => {
-      expect(result.current.loaded).toBe(true)
-    })
-
-    expect(result.current.allVaults[1].available).toBe(false)
-    expect(result.current.allVaults[1].label).toBe('External')
+    expect(externalVault?.available).toBe(false)
+    expect(externalVault?.label).toBe('External')
   })
 
   it('persists vault list when adding a vault via handleVaultCloned', async () => {
@@ -189,10 +185,22 @@ describe('useVaultSwitcher', () => {
     expect(mockVaultListStore.active_vault).toBeNull()
   })
 
+  it('keeps the implicit default vault out of the list when its path is missing', async () => {
+    setMockInvokeBehavior({ checkVaultExists: false })
+
+    const { result } = await renderLoadedVaultSwitcher()
+
+    expect(result.current.allVaults).toEqual([])
+    expect(result.current.vaultPath).toBe(expectedDefaultVaultPath)
+    expect(result.current.isGettingStartedHidden).toBe(false)
+  })
+
   it('handles load error gracefully', async () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
     mockInvokeFn.mockImplementation((cmd: string) => {
       if (cmd === 'load_vault_list') return Promise.reject(new Error('disk error'))
+      if (cmd === 'get_default_vault_path') return Promise.resolve(mockDefaultVaultPath)
+      if (cmd === 'check_vault_exists') return Promise.resolve(true)
       return Promise.resolve(null)
     })
 
@@ -203,7 +211,7 @@ describe('useVaultSwitcher', () => {
     // Should fall back to defaults
     expect(result.current.allVaults).toHaveLength(1)
     expect(result.current.allVaults[0].label).toBe('Getting Started')
-    expect(result.current.allVaults[0].path).toBe(result.current.vaultPath)
+    expect(result.current.allVaults[0].path).toBe(expectedDefaultVaultPath)
     warnSpy.mockRestore()
   })
 

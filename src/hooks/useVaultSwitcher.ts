@@ -27,11 +27,13 @@ interface UseVaultSwitcherOptions {
 }
 
 interface PersistedVaultState {
+  defaultAvailable: boolean
   defaultPath: string
   extraVaults: VaultOption[]
   hiddenDefaults: string[]
   loaded: boolean
   selectedVaultPath: string | null
+  setDefaultAvailable: Dispatch<SetStateAction<boolean>>
   setExtraVaults: Dispatch<SetStateAction<VaultOption[]>>
   setHiddenDefaults: Dispatch<SetStateAction<string[]>>
   setSelectedVaultPath: Dispatch<SetStateAction<string | null>>
@@ -46,11 +48,13 @@ interface VaultCollections {
 }
 
 interface PersistedVaultStore {
+  defaultAvailable: boolean
   defaultPath: string
   extraVaults: VaultOption[]
   hiddenDefaults: string[]
   loaded: boolean
   selectedVaultPath: string | null
+  setDefaultAvailable: Dispatch<SetStateAction<boolean>>
   setDefaultPath: Dispatch<SetStateAction<string>>
   setExtraVaults: Dispatch<SetStateAction<VaultOption[]>>
   setHiddenDefaults: Dispatch<SetStateAction<string[]>>
@@ -68,6 +72,7 @@ interface VaultActionOptions extends PersistedVaultState, VaultCollections {
 interface RestoreGettingStartedOptions {
   defaultPath: string
   onToastRef: MutableRefObject<(msg: string) => void>
+  setDefaultAvailable: Dispatch<SetStateAction<boolean>>
   setHiddenDefaults: Dispatch<SetStateAction<string[]>>
   switchVault: (path: string) => void
 }
@@ -132,16 +137,49 @@ function syncDefaultVaultExport(path: string) {
   DEFAULT_VAULTS[0] = { label: GETTING_STARTED_LABEL, path }
 }
 
+async function checkVaultAvailability(path: string): Promise<boolean> {
+  if (!path) {
+    return false
+  }
+
+  try {
+    return await tauriCall<boolean>('check_vault_exists', { path })
+  } catch {
+    return false
+  }
+}
+
 async function loadInitialVaultState() {
-  const [{ vaults, activeVault, hiddenDefaults }, resolvedDefaultPath] = await Promise.all([
+  const [vaultListResult, defaultPathResult] = await Promise.allSettled([
     loadVaultList(),
     resolveDefaultPath(),
   ])
+  const { vaults, activeVault, hiddenDefaults } = vaultListResult.status === 'fulfilled'
+    ? vaultListResult.value
+    : { vaults: [], activeVault: null, hiddenDefaults: [] }
+  const resolvedDefaultPath = defaultPathResult.status === 'fulfilled'
+    ? defaultPathResult.value
+    : ''
+  const defaultAvailable = await checkVaultAvailability(resolvedDefaultPath)
 
-  return { activeVault, hiddenDefaults, resolvedDefaultPath, vaults }
+  if (vaultListResult.status === 'rejected') {
+    console.warn('Failed to load vault list:', vaultListResult.reason)
+  }
+
+  return { activeVault, defaultAvailable, hiddenDefaults, resolvedDefaultPath, vaults }
 }
 
-function buildDefaultVaults({ defaultPath }: { defaultPath: string }): VaultOption[] {
+function buildDefaultVaults({
+  defaultAvailable,
+  defaultPath,
+}: {
+  defaultAvailable: boolean
+  defaultPath: string
+}): VaultOption[] {
+  if (!defaultAvailable || !defaultPath) {
+    return []
+  }
+
   return [{ label: GETTING_STARTED_LABEL, path: defaultPath }]
 }
 
@@ -166,12 +204,18 @@ function buildAllVaults({
 }
 
 function applyResolvedDefaultPath({
+  defaultAvailable,
   resolvedDefaultPath,
+  setDefaultAvailable,
   setDefaultPath,
 }: {
+  defaultAvailable: boolean
   resolvedDefaultPath: string
+  setDefaultAvailable: Dispatch<SetStateAction<boolean>>
   setDefaultPath: Dispatch<SetStateAction<string>>
 }) {
+  setDefaultAvailable(defaultAvailable)
+
   if (!resolvedDefaultPath) {
     return
   }
@@ -219,13 +263,14 @@ function applyInitialVaultTarget({
 }
 
 function useVaultCollections(
+  defaultAvailable: boolean,
   defaultPath: string,
   hiddenDefaults: string[],
   extraVaults: VaultOption[],
 ): VaultCollections {
   const defaultVaults = useMemo(
-    () => buildDefaultVaults({ defaultPath }),
-    [defaultPath],
+    () => buildDefaultVaults({ defaultAvailable, defaultPath }),
+    [defaultAvailable, defaultPath],
   )
   const visibleDefaults = useMemo(
     () => buildVisibleDefaultVaults({ defaultVaults, hiddenDefaults }),
@@ -248,6 +293,7 @@ function useLoadPersistedVaultState(
   onSwitchRef: MutableRefObject<() => void>,
 ) {
   const {
+    setDefaultAvailable,
     setDefaultPath,
     setExtraVaults,
     setHiddenDefaults,
@@ -260,12 +306,17 @@ function useLoadPersistedVaultState(
     let cancelled = false
 
     loadInitialVaultState()
-      .then(({ activeVault, hiddenDefaults: hidden, resolvedDefaultPath, vaults }) => {
+      .then(({ activeVault, defaultAvailable, hiddenDefaults: hidden, resolvedDefaultPath, vaults }) => {
         if (cancelled) return
 
         setExtraVaults(vaults)
         setHiddenDefaults(hidden)
-        applyResolvedDefaultPath({ resolvedDefaultPath, setDefaultPath })
+        applyResolvedDefaultPath({
+          defaultAvailable,
+          resolvedDefaultPath,
+          setDefaultAvailable,
+          setDefaultPath,
+        })
         applyInitialVaultTarget({
           activeVault: normalizeInitialSelectedVaultPath(activeVault, resolvedDefaultPath, vaults),
           resolvedDefaultPath,
@@ -274,7 +325,6 @@ function useLoadPersistedVaultState(
           onSwitchRef,
         })
       })
-      .catch(err => console.warn('Failed to load vault list:', err))
       .finally(() => {
         if (!cancelled) {
           setLoaded(true)
@@ -282,7 +332,7 @@ function useLoadPersistedVaultState(
       })
 
     return () => { cancelled = true }
-  }, [onSwitchRef, setDefaultPath, setExtraVaults, setHiddenDefaults, setLoaded, setSelectedVaultPath, setVaultPath])
+  }, [onSwitchRef, setDefaultAvailable, setDefaultPath, setExtraVaults, setHiddenDefaults, setLoaded, setSelectedVaultPath, setVaultPath])
 }
 
 function usePersistedVaultStorage(store: PersistedVaultStore) {
@@ -302,15 +352,18 @@ function usePersistedVaultState(onSwitchRef: MutableRefObject<() => void>): Pers
   const [selectedVaultPath, setSelectedVaultPath] = useState<string | null>(null)
   const [extraVaults, setExtraVaults] = useState<VaultOption[]>([])
   const [hiddenDefaults, setHiddenDefaults] = useState<string[]>([])
+  const [defaultAvailable, setDefaultAvailable] = useState(false)
   const [loaded, setLoaded] = useState(false)
   const [defaultPath, setDefaultPath] = useState(STATIC_DEFAULT_PATH)
 
   const store: PersistedVaultStore = {
+    defaultAvailable,
     defaultPath,
     extraVaults,
     hiddenDefaults,
     loaded,
     selectedVaultPath,
+    setDefaultAvailable,
     setDefaultPath,
     setExtraVaults,
     setHiddenDefaults,
@@ -324,11 +377,13 @@ function usePersistedVaultState(onSwitchRef: MutableRefObject<() => void>): Pers
   usePersistedVaultStorage(store)
 
   return {
+    defaultAvailable,
     defaultPath,
     extraVaults,
     hiddenDefaults,
     loaded,
     selectedVaultPath,
+    setDefaultAvailable,
     setExtraVaults,
     setHiddenDefaults,
     setSelectedVaultPath,
@@ -586,16 +641,17 @@ function useRemoveVaultAction({
 }
 
 function useRestoreGettingStartedAction(options: RestoreGettingStartedOptions) {
-  const { defaultPath, onToastRef, setHiddenDefaults, switchVault } = options
+  const { defaultPath, onToastRef, setDefaultAvailable, setHiddenDefaults, switchVault } = options
 
   return useCallback(() => {
     return restoreGettingStartedVault({
       defaultPath,
       onToastRef,
+      setDefaultAvailable,
       setHiddenDefaults,
       switchVault,
     })
-  }, [defaultPath, onToastRef, setHiddenDefaults, switchVault])
+  }, [defaultPath, onToastRef, setDefaultAvailable, setHiddenDefaults, switchVault])
 }
 
 function useVaultActions({
@@ -605,6 +661,7 @@ function useVaultActions({
   hiddenDefaults,
   onSwitchRef,
   onToastRef,
+  setDefaultAvailable,
   setExtraVaults,
   setHiddenDefaults,
   selectedVaultPath,
@@ -642,6 +699,7 @@ function useVaultActions({
     restoreGettingStarted: useRestoreGettingStartedAction({
       defaultPath,
       onToastRef,
+      setDefaultAvailable,
       setHiddenDefaults,
       switchVault,
     }),
@@ -652,6 +710,7 @@ function useVaultActions({
 async function restoreGettingStartedVault({
   defaultPath,
   onToastRef,
+  setDefaultAvailable,
   setHiddenDefaults,
   switchVault,
 }: RestoreGettingStartedOptions) {
@@ -662,6 +721,7 @@ async function restoreGettingStartedVault({
 
   try {
     await ensureGettingStartedVaultReady(defaultPath)
+    setDefaultAvailable(true)
     setHiddenDefaults(previousHidden => previousHidden.filter(path => path !== defaultPath))
     switchVault(defaultPath)
     onToastRef.current('Getting Started vault ready')
@@ -679,6 +739,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
 
   const persistedState = usePersistedVaultState(onSwitchRef)
   const {
+    defaultAvailable,
     defaultPath,
     extraVaults,
     hiddenDefaults,
@@ -687,6 +748,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
     vaultPath,
   } = persistedState
   const { allVaults, defaultVaults, isGettingStartedHidden } = useVaultCollections(
+    defaultAvailable,
     defaultPath,
     hiddenDefaults,
     extraVaults,
