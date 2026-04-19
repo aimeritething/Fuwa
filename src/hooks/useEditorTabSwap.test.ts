@@ -60,11 +60,7 @@ describe('extractEditorBody', () => {
 
 describe('getH1TextFromBlocks', () => {
   it('returns text from H1 heading block', () => {
-    const blocks = [{
-      type: 'heading',
-      props: { level: 1 },
-      content: [{ type: 'text', text: 'My Title', styles: {} }],
-    }]
+    const blocks = makeHeadingBlocks([{ type: 'text', text: 'My Title', styles: {} }])
     expect(getH1TextFromBlocks(blocks)).toBe('My Title')
   })
 
@@ -81,41 +77,25 @@ describe('getH1TextFromBlocks', () => {
   })
 
   it('returns null for H2 heading', () => {
-    const blocks = [{
-      type: 'heading',
-      props: { level: 2 },
-      content: [{ type: 'text', text: 'Subtitle' }],
-    }]
+    const blocks = makeHeadingBlocks([{ type: 'text', text: 'Subtitle' }], 2)
     expect(getH1TextFromBlocks(blocks)).toBeNull()
   })
 
   it('concatenates multiple text spans', () => {
-    const blocks = [{
-      type: 'heading',
-      props: { level: 1 },
-      content: [
-        { type: 'text', text: 'Hello ' },
-        { type: 'text', text: 'World' },
-      ],
-    }]
+    const blocks = makeHeadingBlocks([
+      { type: 'text', text: 'Hello ' },
+      { type: 'text', text: 'World' },
+    ])
     expect(getH1TextFromBlocks(blocks)).toBe('Hello World')
   })
 
   it('returns null for empty H1 content', () => {
-    const blocks = [{
-      type: 'heading',
-      props: { level: 1 },
-      content: [],
-    }]
+    const blocks = makeHeadingBlocks([])
     expect(getH1TextFromBlocks(blocks)).toBeNull()
   })
 
   it('returns null for whitespace-only H1', () => {
-    const blocks = [{
-      type: 'heading',
-      props: { level: 1 },
-      content: [{ type: 'text', text: '   ' }],
-    }]
+    const blocks = makeHeadingBlocks([{ type: 'text', text: '   ' }])
     expect(getH1TextFromBlocks(blocks)).toBeNull()
   })
 
@@ -125,14 +105,10 @@ describe('getH1TextFromBlocks', () => {
   })
 
   it('filters non-text inline content', () => {
-    const blocks = [{
-      type: 'heading',
-      props: { level: 1 },
-      content: [
-        { type: 'text', text: 'Title' },
-        { type: 'wikilink', props: { target: 'linked' } },
-      ],
-    }]
+    const blocks = makeHeadingBlocks([
+      { type: 'text', text: 'Title' },
+      { type: 'wikilink', props: { target: 'linked' } },
+    ])
     expect(getH1TextFromBlocks(blocks)).toBe('Title')
   })
 })
@@ -187,7 +163,7 @@ function makeBlankBodyTab(path: string, title = 'Untitled Note 1') {
 }
 
 function makeMockEditor(docRef: { current: unknown[] }) {
-  return {
+  const editor = {
     document: docRef.current,
     get prosemirrorView() { return {} },
     onMount: (cb: () => void) => { cb(); return () => {} },
@@ -199,39 +175,92 @@ function makeMockEditor(docRef: { current: unknown[] }) {
     _tiptapEditor: { commands: { setContent: vi.fn() } },
     _docRef: docRef,
   }
+  Object.defineProperty(editor, 'document', { get: () => docRef.current })
+  return editor
+}
+
+function makeHeadingBlocks(
+  content: Array<Record<string, unknown>>,
+  level = 1,
+) {
+  return [{
+    type: 'heading',
+    props: { level },
+    content,
+  }]
+}
+
+async function flushEditorTick() {
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, 0)))
+}
+
+function installEditorDomSpies(scrollTop = 0) {
+  const scrollEl = { scrollTop }
+  const frameSpy = vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => {
+    cb(0)
+    return 0
+  })
+  vi.spyOn(document, 'querySelector').mockReturnValue(scrollEl as unknown as Element)
+  return { scrollEl, frameSpy }
+}
+
+type SwapHarnessProps = {
+  tabs: ReturnType<typeof makeTab>[]
+  activeTabPath: string | null
+  rawMode?: boolean
+}
+
+async function createSwapHarness(options: {
+  initialProps: SwapHarnessProps
+  onContentChange?: (path: string, content: string) => void
+  setupEditor?: (editor: ReturnType<typeof makeMockEditor>) => void
+}) {
+  installEditorDomSpies()
+
+  const docRef = { current: blocksA as unknown[] }
+  const mockEditor = makeMockEditor(docRef)
+  options.setupEditor?.(mockEditor)
+
+  let currentProps = options.initialProps
+  const rendered = renderHook(
+    (props: SwapHarnessProps) => useEditorTabSwap({
+      ...props,
+      editor: mockEditor as never,
+      onContentChange: options.onContentChange,
+    }),
+    { initialProps: currentProps },
+  )
+
+  await flushEditorTick()
+
+  return {
+    ...rendered,
+    mockEditor,
+    async rerenderWith(nextProps: Partial<SwapHarnessProps>) {
+      currentProps = { ...currentProps, ...nextProps }
+      rendered.rerender(currentProps)
+      await flushEditorTick()
+    },
+  }
 }
 
 describe('useEditorTabSwap raw mode sync', () => {
   afterEach(() => { vi.restoreAllMocks() })
 
   it('swaps in the new note when the path updates before tabs catch up', async () => {
-    vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
-
-    const docRef = { current: blocksA as unknown[] }
-    const mockEditor = makeMockEditor(docRef)
-    Object.defineProperty(mockEditor, 'document', { get: () => docRef.current })
-
     const tabA = makeTab('a.md', 'Note A')
     const tabB = makeTab('b.md', 'March 2024')
 
-    const { rerender } = renderHook(
-      ({ tabs, activeTabPath, rawMode }) => useEditorTabSwap({
-        tabs, activeTabPath, editor: mockEditor as never, rawMode,
-      }),
-      { initialProps: { tabs: [tabA], activeTabPath: 'a.md', rawMode: false as boolean } },
-    )
-
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    const { mockEditor, rerenderWith } = await createSwapHarness({
+      initialProps: { tabs: [tabA], activeTabPath: 'a.md', rawMode: false },
+    })
     mockEditor.tryParseMarkdownToBlocks.mockClear()
     mockEditor.replaceBlocks.mockClear()
 
-    rerender({ tabs: [tabA], activeTabPath: 'b.md', rawMode: false })
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    await rerenderWith({ tabs: [tabA], activeTabPath: 'b.md' })
     expect(mockEditor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
 
-    rerender({ tabs: [tabB], activeTabPath: 'b.md', rawMode: false })
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    await rerenderWith({ tabs: [tabB] })
 
     expect(mockEditor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(
       expect.stringContaining('March 2024'),
@@ -240,31 +269,18 @@ describe('useEditorTabSwap raw mode sync', () => {
   })
 
   it('signals when the target tab content has been applied', async () => {
-    vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
-
     const swapListener = vi.fn()
     window.addEventListener('laputa:editor-tab-swapped', swapListener)
-
-    const docRef = { current: blocksA as unknown[] }
-    const mockEditor = makeMockEditor(docRef)
-    Object.defineProperty(mockEditor, 'document', { get: () => docRef.current })
 
     const tabA = makeTab('a.md', 'Note A')
     const tabB = makeTab('b.md', 'March 2024')
 
-    const { rerender } = renderHook(
-      ({ tabs, activeTabPath, rawMode }) => useEditorTabSwap({
-        tabs, activeTabPath, editor: mockEditor as never, rawMode,
-      }),
-      { initialProps: { tabs: [tabA], activeTabPath: 'a.md', rawMode: false as boolean } },
-    )
-
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    const { rerenderWith } = await createSwapHarness({
+      initialProps: { tabs: [tabA], activeTabPath: 'a.md', rawMode: false },
+    })
     swapListener.mockClear()
 
-    rerender({ tabs: [tabB], activeTabPath: 'b.md', rawMode: false })
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    await rerenderWith({ tabs: [tabB], activeTabPath: 'b.md' })
 
     expect(swapListener).toHaveBeenCalledTimes(1)
     const event = swapListener.mock.calls[0][0] as CustomEvent
@@ -274,59 +290,33 @@ describe('useEditorTabSwap raw mode sync', () => {
   })
 
   it('hard-resets the editor when the target note body is blank', async () => {
-    vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
-
-    const docRef = { current: blocksA as unknown[] }
-    const mockEditor = makeMockEditor(docRef)
-    Object.defineProperty(mockEditor, 'document', { get: () => docRef.current })
-
     const populatedTab = makeTab('a.md', 'Note A')
     const untitledTab = makeBlankBodyTab('untitled.md')
 
-    const { rerender } = renderHook(
-      ({ tabs, activeTabPath, rawMode }) => useEditorTabSwap({
-        tabs, activeTabPath, editor: mockEditor as never, rawMode,
-      }),
-      { initialProps: { tabs: [populatedTab], activeTabPath: 'a.md', rawMode: false as boolean } },
-    )
-
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    const { mockEditor, rerenderWith } = await createSwapHarness({
+      initialProps: { tabs: [populatedTab], activeTabPath: 'a.md', rawMode: false },
+    })
     mockEditor._tiptapEditor.commands.setContent.mockClear()
     mockEditor.replaceBlocks.mockClear()
 
-    rerender({ tabs: [untitledTab], activeTabPath: 'untitled.md', rawMode: false })
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    await rerenderWith({ tabs: [untitledTab], activeTabPath: 'untitled.md' })
 
     expect(mockEditor._tiptapEditor.commands.setContent).toHaveBeenCalledWith('<p></p>')
     expect(mockEditor.replaceBlocks).not.toHaveBeenCalled()
   })
 
   it('renders empty H1 untitled notes via TipTap HTML content', async () => {
-    vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
-
-    const docRef = { current: blocksA as unknown[] }
-    const mockEditor = makeMockEditor(docRef)
-    Object.defineProperty(mockEditor, 'document', { get: () => docRef.current })
-
     const populatedTab = makeTab('a.md', 'Note A')
     const untitledTab = makeUntitledTab('untitled.md')
 
-    const { rerender } = renderHook(
-      ({ tabs, activeTabPath, rawMode }) => useEditorTabSwap({
-        tabs, activeTabPath, editor: mockEditor as never, rawMode,
-      }),
-      { initialProps: { tabs: [populatedTab], activeTabPath: 'a.md', rawMode: false as boolean } },
-    )
-
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    const { mockEditor, rerenderWith } = await createSwapHarness({
+      initialProps: { tabs: [populatedTab], activeTabPath: 'a.md', rawMode: false },
+    })
     mockEditor.tryParseMarkdownToBlocks.mockClear()
     mockEditor.replaceBlocks.mockClear()
     mockEditor._tiptapEditor.commands.setContent.mockClear()
 
-    rerender({ tabs: [untitledTab], activeTabPath: 'untitled.md', rawMode: false })
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    await rerenderWith({ tabs: [untitledTab], activeTabPath: 'untitled.md' })
 
     expect(mockEditor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
     expect(mockEditor.replaceBlocks).not.toHaveBeenCalled()
@@ -334,33 +324,41 @@ describe('useEditorTabSwap raw mode sync', () => {
   })
 
   it('renders empty H1 typed notes with template content under the title', async () => {
-    vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
-    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
-
-    const docRef = { current: blocksA as unknown[] }
-    const mockEditor = makeMockEditor(docRef)
-    mockEditor.blocksToHTMLLossy.mockReturnValue('<h2>Objective</h2><p></p>')
-    Object.defineProperty(mockEditor, 'document', { get: () => docRef.current })
-
     const populatedTab = makeTab('a.md', 'Note A')
     const typedUntitledTab = makeUntitledTab('untitled.md', 'Untitled Project 1', '## Objective\n\n')
 
-    const { rerender } = renderHook(
-      ({ tabs, activeTabPath, rawMode }) => useEditorTabSwap({
-        tabs, activeTabPath, editor: mockEditor as never, rawMode,
-      }),
-      { initialProps: { tabs: [populatedTab], activeTabPath: 'a.md', rawMode: false as boolean } },
-    )
-
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    const { mockEditor, rerenderWith } = await createSwapHarness({
+      initialProps: { tabs: [populatedTab], activeTabPath: 'a.md', rawMode: false },
+      setupEditor: (editor) => {
+        editor.blocksToHTMLLossy.mockReturnValue('<h2>Objective</h2><p></p>')
+      },
+    })
     mockEditor.tryParseMarkdownToBlocks.mockClear()
     mockEditor._tiptapEditor.commands.setContent.mockClear()
 
-    rerender({ tabs: [typedUntitledTab], activeTabPath: 'untitled.md', rawMode: false })
-    await act(() => new Promise(r => setTimeout(r, 0)))
+    await rerenderWith({ tabs: [typedUntitledTab], activeTabPath: 'untitled.md' })
 
     expect(mockEditor.tryParseMarkdownToBlocks).toHaveBeenCalledWith('## Objective\n\n')
     expect(mockEditor._tiptapEditor.commands.setContent).toHaveBeenCalledWith('<h1></h1><h2>Objective</h2><p></p>')
+  })
+
+  it('reuses cached editor blocks when reopening a recently visited note', async () => {
+    const tabA = makeTab('a.md', 'Note A')
+    const tabB = makeTab('b.md', 'Note B')
+
+    const { mockEditor, rerenderWith } = await createSwapHarness({
+      initialProps: { tabs: [tabA], activeTabPath: 'a.md', rawMode: false },
+    })
+
+    await rerenderWith({ tabs: [tabB], activeTabPath: 'b.md' })
+
+    mockEditor.tryParseMarkdownToBlocks.mockClear()
+    mockEditor.replaceBlocks.mockClear()
+
+    await rerenderWith({ tabs: [tabA], activeTabPath: 'a.md' })
+
+    expect(mockEditor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
+    expect(mockEditor.replaceBlocks).toHaveBeenCalled()
   })
 
   it('ignores editor change events before the pending tab swap applies a new untitled note', async () => {

@@ -266,6 +266,20 @@ describe('useTabManagement (single-note model)', () => {
       expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1)
     })
 
+    it('activates a warmed note immediately while reusing the cached content', async () => {
+      cacheNoteContent('/vault/note/warm.md', '# Warm content')
+
+      const { result } = renderHook(() => useTabManagement())
+
+      act(() => {
+        void result.current.handleSelectNote(makeEntry({ path: '/vault/note/warm.md', title: 'Warm' }))
+      })
+
+      expect(result.current.activeTabPath).toBe('/vault/note/warm.md')
+      expect(result.current.tabs).toHaveLength(1)
+      expect(result.current.tabs[0].content).toBe('# Warm content')
+    })
+
     it('reuses cached content when reopening a recently loaded note', async () => {
       const { mockInvoke } = await import('../mock-tauri')
       vi.mocked(mockInvoke)

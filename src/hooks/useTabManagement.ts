@@ -14,13 +14,14 @@ type NotePath = VaultEntry['path']
 // Stores in-flight or recently loaded note content promises, keyed by path.
 // Cleared on vault reload to prevent stale content after external edits.
 // Latency profile: deduplicates rapid note switches and keeps revisits instant.
-const prefetchCache = new Map<string, Promise<string>>()
-const NOTE_CONTENT_CACHE_LIMIT = 48
-
 interface NoteContentCacheEntry {
   path: NotePath
   promise: Promise<string>
+  value: string | null
 }
+
+const prefetchCache = new Map<string, NoteContentCacheEntry>()
+const NOTE_CONTENT_CACHE_LIMIT = 48
 
 function trimPrefetchCache(): void {
   while (prefetchCache.size > NOTE_CONTENT_CACHE_LIMIT) {
@@ -30,23 +31,35 @@ function trimPrefetchCache(): void {
   }
 }
 
-function rememberNoteContent({ path, promise }: NoteContentCacheEntry): Promise<string> {
+function rememberNoteContent(entry: NoteContentCacheEntry): NoteContentCacheEntry {
+  const { path } = entry
   if (prefetchCache.has(path)) prefetchCache.delete(path)
-  prefetchCache.set(path, promise)
+  prefetchCache.set(path, entry)
   trimPrefetchCache()
-  return promise
+  return entry
 }
 
-function requestNoteContent({ path }: Pick<NoteContentCacheEntry, 'path'>): Promise<string> {
+function requestNoteContent({ path }: Pick<NoteContentCacheEntry, 'path'>): NoteContentCacheEntry {
+  const cacheEntry: NoteContentCacheEntry = {
+    path,
+    promise: Promise.resolve(''),
+    value: null,
+  }
   const promise = (isTauri()
     ? invoke<string>('get_note_content', { path })
     : mockInvoke<string>('get_note_content', { path })
-  ).catch((err) => {
-    prefetchCache.delete(path)
-    throw err
-  })
+  )
+    .then((content) => {
+      cacheEntry.value = content
+      return content
+    })
+    .catch((err) => {
+      prefetchCache.delete(path)
+      throw err
+    })
 
-  return rememberNoteContent({ path, promise })
+  cacheEntry.promise = promise
+  return rememberNoteContent(cacheEntry)
 }
 
 /** Prefetch a note's content into the in-memory cache.
@@ -58,7 +71,11 @@ export function prefetchNoteContent(path: string): void {
 }
 
 export function cacheNoteContent(path: string, content: string): void {
-  rememberNoteContent({ path, promise: Promise.resolve(content) })
+  rememberNoteContent({
+    path,
+    promise: Promise.resolve(content),
+    value: content,
+  })
 }
 
 /** Clear the prefetch cache. Call on vault reload to prevent stale content. */
@@ -66,8 +83,12 @@ export function clearPrefetchCache(): void {
   prefetchCache.clear()
 }
 
+function getCachedNoteContent(path: string): string | null {
+  return prefetchCache.get(path)?.value ?? null
+}
+
 async function loadNoteContent(path: string): Promise<string> {
-  return prefetchCache.get(path) ?? requestNoteContent({ path })
+  return prefetchCache.get(path)?.promise ?? requestNoteContent({ path }).promise
 }
 
 export type { Tab }
@@ -102,6 +123,76 @@ function isAlreadyViewingPath(
   return activeTabPathRef.current === path || tabsRef.current.some((tab) => tab.entry.path === path)
 }
 
+function startEntryNavigation(options: {
+  entry: VaultEntry
+  navSeqRef: React.MutableRefObject<number>
+  tabsRef: React.MutableRefObject<Tab[]>
+  activeTabPathRef: React.MutableRefObject<string | null>
+  setTabs: React.Dispatch<React.SetStateAction<Tab[]>>
+  setActiveTabPath: React.Dispatch<React.SetStateAction<string | null>>
+}) {
+  const {
+    entry,
+    navSeqRef,
+    tabsRef,
+    activeTabPathRef,
+    setTabs,
+    setActiveTabPath,
+  } = options
+
+  const seq = ++navSeqRef.current
+  const cachedContent = getCachedNoteContent(entry.path)
+  syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
+  if (cachedContent !== null) {
+    setSingleTab(tabsRef, setTabs, { entry, content: cachedContent })
+  }
+
+  return { seq, cachedContent }
+}
+
+function shouldApplyLoadedEntry(options: {
+  seq: number
+  navSeqRef: React.MutableRefObject<number>
+  cachedContent: string | null
+  content: string
+  activeTabPathRef: React.MutableRefObject<string | null>
+  path: string
+}) {
+  const {
+    seq,
+    navSeqRef,
+    cachedContent,
+    content,
+    activeTabPathRef,
+    path,
+  } = options
+
+  if (navSeqRef.current !== seq) return false
+  return cachedContent !== content || activeTabPathRef.current !== path
+}
+
+function handleEntryLoadFailure(options: {
+  entry: VaultEntry
+  seq: number
+  navSeqRef: React.MutableRefObject<number>
+  tabsRef: React.MutableRefObject<Tab[]>
+  setTabs: React.Dispatch<React.SetStateAction<Tab[]>>
+  error: unknown
+}) {
+  const {
+    entry,
+    seq,
+    navSeqRef,
+    tabsRef,
+    setTabs,
+    error,
+  } = options
+
+  console.warn('Failed to load note content:', error)
+  if (navSeqRef.current !== seq) return
+  setSingleTab(tabsRef, setTabs, { entry, content: '' })
+}
+
 async function navigateToEntry(options: {
   entry: VaultEntry
   navSeqRef: React.MutableRefObject<number>
@@ -125,17 +216,35 @@ async function navigateToEntry(options: {
     return
   }
 
-  const seq = ++navSeqRef.current
-  syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
+  const { seq, cachedContent } = startEntryNavigation({
+    entry,
+    navSeqRef,
+    tabsRef,
+    activeTabPathRef,
+    setTabs,
+    setActiveTabPath,
+  })
 
   try {
     const content = await loadNoteContent(entry.path)
-    if (navSeqRef.current !== seq) return
+    if (!shouldApplyLoadedEntry({
+      seq,
+      navSeqRef,
+      cachedContent,
+      content,
+      activeTabPathRef,
+      path: entry.path,
+    })) return
     setSingleTab(tabsRef, setTabs, { entry, content })
   } catch (err) {
-    console.warn('Failed to load note content:', err)
-    if (navSeqRef.current !== seq) return
-    setSingleTab(tabsRef, setTabs, { entry, content: '' })
+    handleEntryLoadFailure({
+      entry,
+      seq,
+      navSeqRef,
+      tabsRef,
+      setTabs,
+      error: err,
+    })
   }
 }
 
