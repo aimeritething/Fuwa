@@ -1,7 +1,11 @@
 ---
-Is A: Type
+type: Type
+icon: books
+color: indigo
+sidebar label: Topics
 ---
 
 # Topic
 
-A Topic is a subject area for categorization and linking. Topics group related notes, projects, and resources by theme.
+Topics collect related notes and make search/navigation scenarios easy to inspect.
+

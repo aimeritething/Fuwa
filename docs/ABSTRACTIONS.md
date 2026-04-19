@@ -564,7 +564,7 @@ No indexing step required — search runs directly against the filesystem.
 - Persists vault list to `~/.config/com.tolaria.app/vaults.json` (reads legacy `com.laputa.app` on upgrade)
 - Switching closes all tabs and resets sidebar
 - Supports adding, removing, hiding/restoring vaults
-- Default vault: Getting Started demo vault
+- Default vault: public Getting Started starter vault cloned on demand
 
 ### Vault Config
 

@@ -1,7 +1,11 @@
 ---
-Is A: Type
+type: Type
+icon: checklist
+color: violet
+sidebar label: Procedures
 ---
 
 # Procedure
 
-A Procedure is a recurring process tied to an Area or Responsibility. Procedures have a cadence and describe how to do something step by step.
+Procedures describe repeatable workflows that support a responsibility.
+

@@ -183,7 +183,7 @@ tolaria/
 ├── e2e/                          # Playwright E2E tests (~26 specs)
 ├── tests/smoke/                  # Playwright specs (full regression + @smoke subset)
 ├── design/                       # Per-task design files
-├── demo-vault-v2/                # Getting Started demo vault
+├── demo-vault-v2/                # Curated local QA fixture for native/dev flows
 ├── scripts/                      # Build/utility scripts
 │
 ├── package.json                  # Frontend dependencies + scripts
@@ -198,6 +198,12 @@ tolaria/
 ```
 
 ## Key Files to Know
+
+### Fixtures
+
+- `demo-vault-v2/` is the small checked-in QA fixture used for native/manual Tolaria flows. It is intentionally curated around a handful of search, relationship, project-navigation, and attachment scenarios.
+- `tests/fixtures/test-vault/` is the deterministic Playwright fixture copied into temp directories for isolated integration and smoke tests.
+- `python3 scripts/generate_demo_vault.py` generates the larger synthetic vault on demand at `generated-fixtures/demo-vault-large/` for scale/performance experiments. That output is gitignored and should not bloat the normal QA fixture.
 
 ### Start here
 

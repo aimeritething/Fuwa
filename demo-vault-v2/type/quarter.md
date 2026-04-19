@@ -1,7 +1,11 @@
 ---
-Is A: Type
+type: Type
+icon: clock-countdown
+color: emerald
+sidebar label: Quarters
 ---
 
 # Quarter
 
-A Quarter note captures the focus, OKRs, and reflections for a three-month period. It is the primary planning horizon for goals and projects.
+Quarter notes group the initiatives and outcomes for a planning window.
+

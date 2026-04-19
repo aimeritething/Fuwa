@@ -1,4 +1,0 @@
----
-type: Note
-status: Active
----

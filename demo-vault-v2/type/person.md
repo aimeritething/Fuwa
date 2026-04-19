@@ -1,7 +1,11 @@
 ---
-Is A: Type
+type: Type
+icon: user
+color: rose
+sidebar label: People
 ---
 
 # Person
 
-A Person is someone you interact with — colleagues, collaborators, mentors, friends. People can own projects, be linked to events, and appear in relationships.
+People notes represent collaborators, owners, or recurring contacts.
+

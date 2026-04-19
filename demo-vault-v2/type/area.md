@@ -1,7 +1,11 @@
 ---
-Is A: Type
+type: Type
+icon: folders
+color: amber
+sidebar label: Areas
 ---
 
 # Area
 
-An Area is an ongoing sphere of responsibility in your life or work — something you maintain indefinitely. Areas have standards to uphold, not completion dates.
+Areas are ongoing domains of responsibility with no fixed end date.
+

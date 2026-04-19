@@ -1,7 +1,11 @@
 ---
-Is A: Type
+type: Type
+icon: briefcase
+color: green
+sidebar label: Responsibilities
 ---
 
 # Responsibility
 
-A Responsibility is an ongoing area of ownership — something you are accountable for indefinitely. Responsibilities have procedures, projects, and measures attached.
+Responsibilities are long-lived ownership areas with linked procedures and measures.
+

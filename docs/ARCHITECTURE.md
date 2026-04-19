@@ -583,7 +583,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
 | `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
 | `config_seed.rs` | Maintains vault AI guidance (`AGENTS.md` + `CLAUDE.md` shim), migrates legacy `config/agents.md`, and repairs missing root type scaffolding such as `type.md` and `note.md` |
-| `getting_started.rs` | Creates the Getting Started demo vault |
+| `getting_started.rs` | Clones and normalizes the public Getting Started starter vault |
 
 ## Rust Backend Modules
 

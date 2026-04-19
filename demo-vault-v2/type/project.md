@@ -1,7 +1,11 @@
 ---
-Is A: Type
+type: Type
+icon: rocket
+color: blue
+sidebar label: Projects
 ---
 
 # Project
 
-A Project is a time-bounded effort with a clear goal, defined outcome, and eventual completion. Projects belong to Areas and advance Goals.
+Projects are time-bound efforts with an owner, a status, and a clear outcome.
+

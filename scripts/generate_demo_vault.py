@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
-"""Generate ~1,080 synthetic markdown files for the Laputa demo vault.
+"""Generate a large synthetic vault for scale and performance checks.
 
-Creates a realistic 2-year knowledge vault (Q1 2024 – Q4 2025) for a
+Creates a realistic 2-year knowledge vault (Q1 2024 - Q4 2025) for a
 fictional persona based on Luca Rossi, founder of Refactoring.
 
-Usage: python scripts/generate_demo_vault.py
+The curated `demo-vault-v2/` fixture is intentionally small and lives in git.
+This script generates the larger corpus on demand outside that checked-in QA
+fixture.
+
+Usage:
+  python3 scripts/generate_demo_vault.py
+  python3 scripts/generate_demo_vault.py --output /tmp/demo-vault-large
 """
 
+import argparse
 import random
 import shutil
 from datetime import date, timedelta
@@ -14,7 +21,8 @@ from pathlib import Path
 
 random.seed(42)
 
-VAULT = Path(__file__).resolve().parent.parent / "demo-vault-v2"
+DEFAULT_VAULT = Path(__file__).resolve().parent.parent / "generated-fixtures" / "demo-vault-large"
+VAULT = DEFAULT_VAULT
 SUBDIRS = [
     "area", "responsibility", "measure", "target", "goal", "year",
     "quarter", "month", "project", "experiment", "procedure", "task",
@@ -541,155 +549,182 @@ NOTES = [
 ]
 
 
-def generate_all():
-    random.seed(42)
-    # Setup dirs
+def reset_vault():
+    COUNTS.clear()
     if VAULT.exists():
         shutil.rmtree(VAULT)
     for sub in SUBDIRS:
         (VAULT / sub).mkdir(parents=True, exist_ok=True)
 
-    # ── YEARS ─────────────────────────────────────────────────────
+
+def generate_years():
     for year in ["2024", "2025"]:
-        qs = [q for q in QUARTER_SLUGS if q.startswith(year[2:])]
+        quarters = [q for q in QUARTER_SLUGS if q.startswith(year[2:])]
         write_md("year", year, {
-            "aliases": [year], "Is A": "Year",
+            "aliases": [year],
+            "Is A": "Year",
             "Created at": f"{year}-01-01",
-            "Has": [wl(q) for q in qs],
+            "Has": [wl(q) for q in quarters],
         }, f"# {year}\nAnother year of building Refactoring, shipping content, and growing the audience. Review written in December.")
 
-    # ── QUARTERS ──────────────────────────────────────────────────
+
+def generate_quarters():
     for q in QUARTER_SLUGS:
         projects_in_q = [p[0] for p in PROJECTS if p[2] == q]
         write_md("quarter", q, {
-            "aliases": [Q_LABEL[q]], "Is A": "Quarter",
+            "aliases": [Q_LABEL[q]],
+            "Is A": "Quarter",
             "Created at": Q_START[q],
             "Belongs to": wl(Q_YEAR[q]),
             "Has": [wl(p) for p in projects_in_q],
             "Status": "Done" if q < "25q4" else "Open",
         }, f"# {Q_LABEL[q]}\nQuarterly review for {Q_LABEL[q]}. See projects and targets below.")
 
-    # ── MONTHS ────────────────────────────────────────────────────
-    rating_cycle = ["😄","🤩","😄","😄","😐","🤩","😄","🤩","😄","😐","😄","😄"]
+
+def generate_months():
+    rating_cycle = ["😄", "🤩", "😄", "😄", "😐", "🤩", "😄", "🤩", "😄", "😐", "😄", "😄"]
+    month_tones = ["difficult", "solid", "great", "mixed"]
     month_idx = 0
+
     for q in QUARTER_SLUGS:
-        for ms in Q_MONTHS[q]:
-            y, m = ms.split("-")
-            mname = MONTH_NAMES[int(m)]
+        for month_slug in Q_MONTHS[q]:
+            year, month = month_slug.split("-")
+            month_name = MONTH_NAMES[int(month)]
             rating = rating_cycle[month_idx % len(rating_cycle)]
-            write_md("month", ms, {
-                "aliases": [f"{mname} {y}"], "Is A": "Month",
-                "Created at": f"{ms}-28",
+            tone = month_tones[month_idx % len(month_tones)]
+            write_md("month", month_slug, {
+                "aliases": [f"{month_name} {year}"],
+                "Is A": "Month",
+                "Created at": f"{month_slug}-28",
                 "Belongs to": wl(q),
                 "Rating": rating,
-            }, f"# {mname} {y}\nMonthly review. A {['difficult','solid','great','mixed'][month_idx % 4]} month overall.")
+            }, f"# {month_name} {year}\nMonthly review. A {tone} month overall.")
             month_idx += 1
 
-    # ── AREAS ─────────────────────────────────────────────────────
-    for slug, name, resp_slugs in AREAS:
+
+def generate_areas():
+    for slug, name, responsibility_slugs in AREAS:
         write_md("area", slug, {
-            "aliases": [name], "Is A": "Area",
-            "Has": [wl(r) for r in resp_slugs],
+            "aliases": [name],
+            "Is A": "Area",
+            "Has": [wl(resp) for resp in responsibility_slugs],
         }, f"# {name}\nOne of the core life/work areas.")
 
-    # ── RESPONSIBILITIES ──────────────────────────────────────────
-    for slug, name, area, measures, procs, body in RESPONSIBILITIES:
+
+def generate_responsibilities():
+    for slug, name, area, measures, procedures, body in RESPONSIBILITIES:
         write_md("responsibility", slug, {
-            "aliases": [name], "Is A": "Responsibility",
+            "aliases": [name],
+            "Is A": "Responsibility",
             "Belongs to": wl(area),
-            "Has Measures": [wl(m) for m in measures],
-            "Has Procedures": [wl(p) for p in procs],
+            "Has Measures": [wl(measure) for measure in measures],
+            "Has Procedures": [wl(proc) for proc in procedures],
             "Status": "Open",
         }, f"# {name}\n{body}")
 
-    # ── MEASURES ──────────────────────────────────────────────────
-    for slug, name, resp, unit in MEASURES:
+
+def generate_measures():
+    for slug, name, responsibility, unit in MEASURES:
         write_md("measure", slug, {
-            "aliases": [name], "Is A": "Measure",
-            "Belongs to": wl(resp),
+            "aliases": [name],
+            "Is A": "Measure",
+            "Belongs to": wl(responsibility),
             "Unit": unit,
         }, f"# {name}\nTracked monthly via spreadsheet. Unit: {unit}.")
 
-    # ── TARGETS ───────────────────────────────────────────────────
-    open_qs = {"25q3", "25q4"}
-    for q in QUARTER_SLUGS:
-        subs_start, subs_end = SUB_TRAJ[q]
-        rev = REV_TRAJ[q]
-        status_q = "Open" if q in open_qs else "Done"
-        # subscribers target
-        actual_s = random.randint(subs_end - 800, subs_end + 500)
-        t_status = "Done" if actual_s >= subs_end else "Behind"
-        write_md("target", f"target-subscribers-{q}", {
-            "aliases": [f"Subscribers {Q_LABEL[q]}"], "Is A": "Target",
-            "Belongs to": wl(q),
+
+def generate_targets():
+    open_quarters = {"25q3", "25q4"}
+
+    for quarter in QUARTER_SLUGS:
+        _, subscribers_goal = SUB_TRAJ[quarter]
+        revenue_goal = REV_TRAJ[quarter]
+        quarter_status = "Open" if quarter in open_quarters else "Done"
+
+        actual_subscribers = random.randint(subscribers_goal - 800, subscribers_goal + 500)
+        subscribers_status = "Done" if actual_subscribers >= subscribers_goal else "Behind"
+        write_md("target", f"target-subscribers-{quarter}", {
+            "aliases": [f"Subscribers {Q_LABEL[quarter]}"],
+            "Is A": "Target",
+            "Belongs to": wl(quarter),
             "Measure": wl("measure-subscribers"),
-            "Goal value": subs_end,
-            "Actual value": actual_s if q not in open_qs else None,
-            "Status": status_q if q in open_qs else t_status,
-        }, f"# Subscribers Target {Q_LABEL[q]}\nTarget: {subs_end:,} subscribers by end of quarter.")
-        # revenue target
-        rev_actual = random.randint(int(rev * 0.9), int(rev * 1.15))
-        write_md("target", f"target-revenue-{q}", {
-            "aliases": [f"Revenue {Q_LABEL[q]}"], "Is A": "Target",
-            "Belongs to": wl(q),
+            "Goal value": subscribers_goal,
+            "Actual value": actual_subscribers if quarter not in open_quarters else None,
+            "Status": quarter_status if quarter in open_quarters else subscribers_status,
+        }, f"# Subscribers Target {Q_LABEL[quarter]}\nTarget: {subscribers_goal:,} subscribers by end of quarter.")
+
+        actual_revenue = random.randint(int(revenue_goal * 0.9), int(revenue_goal * 1.15))
+        revenue_status = "Done" if actual_revenue >= revenue_goal else "Behind"
+        write_md("target", f"target-revenue-{quarter}", {
+            "aliases": [f"Revenue {Q_LABEL[quarter]}"],
+            "Is A": "Target",
+            "Belongs to": wl(quarter),
             "Measure": wl("measure-sponsorship-mrr"),
-            "Goal value": rev,
-            "Actual value": rev_actual if q not in open_qs else None,
-            "Status": status_q if q in open_qs else ("Done" if rev_actual >= rev else "Behind"),
-        }, f"# Revenue Target {Q_LABEL[q]}\nTarget: €{rev:,}/month MRR by end of quarter.")
-        # resting HR target
-        hr_goal = 54 - QUARTER_SLUGS.index(q) // 2
-        hr_actual = random.randint(hr_goal - 2, hr_goal + 3)
-        write_md("target", f"target-resting-hr-{q}", {
-            "aliases": [f"Resting HR {Q_LABEL[q]}"], "Is A": "Target",
-            "Belongs to": wl(q),
+            "Goal value": revenue_goal,
+            "Actual value": actual_revenue if quarter not in open_quarters else None,
+            "Status": quarter_status if quarter in open_quarters else revenue_status,
+        }, f"# Revenue Target {Q_LABEL[quarter]}\nTarget: €{revenue_goal:,}/month MRR by end of quarter.")
+
+        hr_goal = 54 - QUARTER_SLUGS.index(quarter) // 2
+        actual_hr = random.randint(hr_goal - 2, hr_goal + 3)
+        hr_status = "Done" if actual_hr <= hr_goal else "Behind"
+        write_md("target", f"target-resting-hr-{quarter}", {
+            "aliases": [f"Resting HR {Q_LABEL[quarter]}"],
+            "Is A": "Target",
+            "Belongs to": wl(quarter),
             "Measure": wl("measure-resting-hr"),
             "Goal value": hr_goal,
-            "Actual value": hr_actual if q not in open_qs else None,
-            "Status": status_q if q in open_qs else ("Done" if hr_actual <= hr_goal else "Behind"),
-        }, f"# Resting HR Target {Q_LABEL[q]}\nTarget: resting HR < {hr_goal} bpm.")
-        # books target
-        write_md("target", f"target-books-{q}", {
-            "aliases": [f"Books {Q_LABEL[q]}"], "Is A": "Target",
-            "Belongs to": wl(q),
+            "Actual value": actual_hr if quarter not in open_quarters else None,
+            "Status": quarter_status if quarter in open_quarters else hr_status,
+        }, f"# Resting HR Target {Q_LABEL[quarter]}\nTarget: resting HR < {hr_goal} bpm.")
+
+        actual_books = random.randint(4, 7) if quarter not in open_quarters else None
+        write_md("target", f"target-books-{quarter}", {
+            "aliases": [f"Books {Q_LABEL[quarter]}"],
+            "Is A": "Target",
+            "Belongs to": wl(quarter),
             "Measure": wl("measure-books-per-month"),
             "Goal value": 6,
-            "Actual value": random.randint(4, 7) if q not in open_qs else None,
-            "Status": status_q,
-        }, f"# Books Target {Q_LABEL[q]}\nTarget: 6 books in the quarter (2/month).")
+            "Actual value": actual_books,
+            "Status": quarter_status,
+        }, f"# Books Target {Q_LABEL[quarter]}\nTarget: 6 books in the quarter (2/month).")
 
-    # ── GOALS ─────────────────────────────────────────────────────
+
+def generate_goals():
     for slug, name, year, status, body in GOALS:
         write_md("goal", slug, {
-            "aliases": [name], "Is A": "Goal",
+            "aliases": [name],
+            "Is A": "Goal",
             "Belongs to": wl(year),
             "Status": status,
         }, f"# {name}\n{body}")
 
-    # ── PROJECTS ──────────────────────────────────────────────────
-    for slug, title, q, resp, status, body in PROJECTS:
+
+def generate_projects():
+    for slug, title, quarter, responsibility, status, body in PROJECTS:
         write_md("project", slug, {
-            "aliases": [title], "Is A": "Project",
-            "Belongs to": wl(q),
-            "Advances": wl(resp),
+            "aliases": [title],
+            "Is A": "Project",
+            "Belongs to": wl(quarter),
+            "Advances": wl(responsibility),
             "Status": status,
             "Owner": wl("person-luca-rossi"),
         }, f"# {title}\n{body}")
 
-    # ── EXPERIMENTS ───────────────────────────────────────────────
-    for slug, title, q, status, body in EXPERIMENTS:
+
+def generate_experiments():
+    for slug, title, quarter, status, body in EXPERIMENTS:
         write_md("experiment", slug, {
-            "aliases": [title], "Is A": "Experiment",
-            "Belongs to": wl(q),
+            "aliases": [title],
+            "Is A": "Experiment",
+            "Belongs to": wl(quarter),
             "Status": status,
             "Owner": wl("person-luca-rossi"),
         }, f"# {title}\n{body}")
 
-    # ── PROCEDURES ────────────────────────────────────────────────
-    all_procs = []
-    for _, _, _, _, procs, _ in RESPONSIBILITIES:
-        all_procs.extend(procs)
-    proc_map = {
+
+def build_procedure_map():
+    return {
         "procedure-weekly-newsletter": ("Weekly Newsletter", "responsibility-content-production", "Weekly", "Draft, edit, and publish the weekly Refactoring newsletter. Includes essay writing, curated links, and sponsor block."),
         "procedure-monthly-subscriber-metrics": ("Monthly Subscriber Metrics Review", "responsibility-grow-newsletter", "Monthly", "Review subscriber growth, churn, open rates, and click rates. Update the tracking spreadsheet."),
         "procedure-referral-program": ("Referral Program Management", "responsibility-grow-newsletter", "Weekly", "Check referral program performance. Reward top referrers. A/B test referral copy."),
@@ -726,16 +761,21 @@ def generate_all():
         "procedure-weekly-reading-session": ("Weekly Reading Session", "responsibility-learning", "Weekly", "Sunday morning: 2-3 hours of focused reading. No phone, coffee, and a good book."),
         "procedure-evergreen-note-writing": ("Evergreen Note Writing", "responsibility-learning", "Weekly", "Write 1-2 evergreen notes per week from recent reading, conversations, or observations."),
     }
-    for proc_slug, (proc_name, resp, cadence, body) in proc_map.items():
+
+
+def generate_procedures():
+    for proc_slug, (proc_name, responsibility, cadence, body) in build_procedure_map().items():
         write_md("procedure", proc_slug, {
-            "aliases": [proc_name], "Is A": "Procedure",
-            "Belongs to": wl(resp),
+            "aliases": [proc_name],
+            "Is A": "Procedure",
+            "Belongs to": wl(responsibility),
             "Cadence": cadence,
             "Owner": wl("person-luca-rossi"),
         }, f"# {proc_name}\n{body}")
 
-    # ── TASKS ─────────────────────────────────────────────────────
-    task_templates = [
+
+def build_task_templates():
+    return [
         ("Write Q{q} retrospective", "24q1", "Done"),
         ("Update website About page", "24q1", "Done"),
         ("Fix broken links in newsletter archive", "24q1", "Done"),
@@ -782,206 +822,300 @@ def generate_all():
         ("Update podcast listing on all platforms", "25q4", "Open"),
         ("Write Q4 retrospective", "25q4", "Open"),
     ]
-    for i, (title, q, status) in enumerate(task_templates):
-        write_md("task", f"task-{q}-{i+1:02d}", {
-            "aliases": [title.replace("{q}", q.upper())], "Is A": "Task",
-            "Belongs to": wl(q),
+
+
+def generate_tasks():
+    for index, (title, quarter, status) in enumerate(build_task_templates(), start=1):
+        rendered_title = title.replace("{q}", quarter.upper())
+        write_md("task", f"task-{quarter}-{index:02d}", {
+            "aliases": [rendered_title],
+            "Is A": "Task",
+            "Belongs to": wl(quarter),
             "Status": status,
             "Owner": wl("person-luca-rossi"),
-        }, f"# {title.replace('{q}', q.upper())}\n")
+        }, f"# {rendered_title}\n")
 
-    # ── PERSONS ───────────────────────────────────────────────────
+
+def generate_people():
     for slug, name, tier, tags, bio in PERSONS:
         write_md("person", slug, {
-            "aliases": [name], "Is A": "Person",
+            "aliases": [name],
+            "Is A": "Person",
             "Tier": tier,
             "Tags": tags,
         }, f"# {name}\n{bio}")
 
-    # ── TOPICS ────────────────────────────────────────────────────
-    for slug, name, desc in TOPICS:
-        write_md("topic", slug, {
-            "aliases": [name], "Is A": "Topic",
-        }, f"# {name}\n{desc}")
 
-    # ── EVENTS ────────────────────────────────────────────────────
+def generate_topics():
+    for slug, name, description in TOPICS:
+        write_md("topic", slug, {
+            "aliases": [name],
+            "Is A": "Topic",
+        }, f"# {name}\n{description}")
+
+
+def quarter_label_for_date(current_date: date) -> str:
+    if current_date.month < 4:
+        return "1"
+    if current_date.month < 7:
+        return "2"
+    if current_date.month < 10:
+        return "3"
+    return "4"
+
+
+def generate_events():
     current_date = date(2024, 1, 1)
     end_date = date(2025, 12, 31)
-    event_num = 0
+    event_count = 0
     sara_joined = date(2024, 4, 1)
 
-    while current_date <= end_date and event_num < 650:
-        dow = current_date.weekday()  # 0=Mon, 6=Sun
-        ds = current_date.isoformat()
-        # month slug
-        ms = current_date.strftime("%Y-%m")
+    while current_date <= end_date and event_count < 650:
+        weekday = current_date.weekday()
+        day_slug = current_date.isoformat()
+        month_slug = current_date.strftime("%Y-%m")
 
-        # Monday: team sync
-        if dow == 0:
+        if weekday == 0:
             team = [wl("person-matteo-cellini"), wl("person-paco-furiani")]
             if current_date >= sara_joined:
                 team.append(wl("person-sara-ricci"))
-            write_md("event", f"event-team-sync-{ds}", {
-                "aliases": [f"Team sync — {ds}"], "Is A": "Event",
-                "Date": ds, "Belongs to": wl(ms),
-                "Related to": team, "Tags": ["Work"],
-            }, f"# Team sync — {ds}\nWeekly Monday team alignment. Covered priorities, blockers, and sponsor updates.")
-            event_num += 1
+            write_md("event", f"event-team-sync-{day_slug}", {
+                "aliases": [f"Team sync — {day_slug}"],
+                "Is A": "Event",
+                "Date": day_slug,
+                "Belongs to": wl(month_slug),
+                "Related to": team,
+                "Tags": ["Work"],
+            }, f"# Team sync — {day_slug}\nWeekly Monday team alignment. Covered priorities, blockers, and sponsor updates.")
+            event_count += 1
 
-        # Tuesday: cycling intervals
-        if dow == 1:
-            write_md("event", f"event-cycling-{ds}", {
-                "aliases": [f"Cycling intervals — {ds}"], "Is A": "Event",
-                "Date": ds, "Belongs to": wl(ms),
-                "Related to": [wl("person-luca-rossi")], "Tags": ["Health", "Sport"],
-            }, f"# Cycling intervals — {ds}\n60-min interval session. 4x8min at threshold power.")
-            event_num += 1
-
-        # Wednesday: gym or 1:1
-        if dow == 2:
-            # Alternate gym and 1:1 with Matteo
-            if (current_date - date(2024, 1, 3)).days % 14 < 7:
-                write_md("event", f"event-gym-{ds}", {
-                    "aliases": [f"Gym — {ds}"], "Is A": "Event",
-                    "Date": ds, "Belongs to": wl(ms),
-                    "Tags": ["Health"],
-                }, f"# Gym — {ds}\nStrength training. Squat, deadlift, pull-ups. 75 minutes.")
-                event_num += 1
-            else:
-                write_md("event", f"event-1on1-matteo-{ds}", {
-                    "aliases": [f"1:1 Matteo — {ds}"], "Is A": "Event",
-                    "Date": ds, "Belongs to": wl(ms),
-                    "Related to": [wl("person-matteo-cellini")], "Tags": ["Work"],
-                }, f"# 1:1 Matteo — {ds}\nBi-weekly 1:1. Covered sponsor pipeline and Q{'1' if current_date.month < 4 else '2' if current_date.month < 7 else '3' if current_date.month < 10 else '4'} priorities.")
-                event_num += 1
-
-        # Thursday: cycling endurance
-        if dow == 3:
-            write_md("event", f"event-cycling-endurance-{ds}", {
-                "aliases": [f"Cycling endurance — {ds}"], "Is A": "Event",
-                "Date": ds, "Belongs to": wl(ms),
+        if weekday == 1:
+            write_md("event", f"event-cycling-{day_slug}", {
+                "aliases": [f"Cycling intervals — {day_slug}"],
+                "Is A": "Event",
+                "Date": day_slug,
+                "Belongs to": wl(month_slug),
+                "Related to": [wl("person-luca-rossi")],
                 "Tags": ["Health", "Sport"],
-            }, f"# Cycling endurance — {ds}\n90-min endurance ride at zone 2. Avg HR 135.")
-            event_num += 1
+            }, f"# Cycling intervals — {day_slug}\n60-min interval session. 4x8min at threshold power.")
+            event_count += 1
 
-        # Friday: sponsor call or gym (alternating)
-        if dow == 4:
+        if weekday == 2:
+            if (current_date - date(2024, 1, 3)).days % 14 < 7:
+                write_md("event", f"event-gym-{day_slug}", {
+                    "aliases": [f"Gym — {day_slug}"],
+                    "Is A": "Event",
+                    "Date": day_slug,
+                    "Belongs to": wl(month_slug),
+                    "Tags": ["Health"],
+                }, f"# Gym — {day_slug}\nStrength training. Squat, deadlift, pull-ups. 75 minutes.")
+            else:
+                quarter_label = quarter_label_for_date(current_date)
+                write_md("event", f"event-1on1-matteo-{day_slug}", {
+                    "aliases": [f"1:1 Matteo — {day_slug}"],
+                    "Is A": "Event",
+                    "Date": day_slug,
+                    "Belongs to": wl(month_slug),
+                    "Related to": [wl("person-matteo-cellini")],
+                    "Tags": ["Work"],
+                }, f"# 1:1 Matteo — {day_slug}\nBi-weekly 1:1. Covered sponsor pipeline and Q{quarter_label} priorities.")
+            event_count += 1
+
+        if weekday == 3:
+            write_md("event", f"event-cycling-endurance-{day_slug}", {
+                "aliases": [f"Cycling endurance — {day_slug}"],
+                "Is A": "Event",
+                "Date": day_slug,
+                "Belongs to": wl(month_slug),
+                "Tags": ["Health", "Sport"],
+            }, f"# Cycling endurance — {day_slug}\n90-min endurance ride at zone 2. Avg HR 135.")
+            event_count += 1
+
+        if weekday == 4:
             if (current_date - date(2024, 1, 5)).days % 14 < 7:
                 sponsor = random.choice(SPONSOR_PERSONS)
-                write_md("event", f"event-sponsor-call-{ds}", {
-                    "aliases": [f"Sponsor call — {ds}"], "Is A": "Event",
-                    "Date": ds, "Belongs to": wl(ms),
-                    "Related to": [wl(sponsor)], "Tags": ["Work"],
-                }, f"# Sponsor call — {ds}\nSponsor discovery/renewal call. Discussed placement and campaign goals.")
-                event_num += 1
+                write_md("event", f"event-sponsor-call-{day_slug}", {
+                    "aliases": [f"Sponsor call — {day_slug}"],
+                    "Is A": "Event",
+                    "Date": day_slug,
+                    "Belongs to": wl(month_slug),
+                    "Related to": [wl(sponsor)],
+                    "Tags": ["Work"],
+                }, f"# Sponsor call — {day_slug}\nSponsor discovery/renewal call. Discussed placement and campaign goals.")
             else:
-                write_md("event", f"event-gym-fri-{ds}", {
-                    "aliases": [f"Gym — {ds}"], "Is A": "Event",
-                    "Date": ds, "Belongs to": wl(ms),
+                write_md("event", f"event-gym-fri-{day_slug}", {
+                    "aliases": [f"Gym — {day_slug}"],
+                    "Is A": "Event",
+                    "Date": day_slug,
+                    "Belongs to": wl(month_slug),
                     "Tags": ["Health"],
-                }, f"# Gym — {ds}\nStrength session. Bench press, rows, overhead press. Core work.")
-                event_num += 1
+                }, f"# Gym — {day_slug}\nStrength session. Bench press, rows, overhead press. Core work.")
+            event_count += 1
 
-        # Saturday: long ride
-        if dow == 5:
-            with_alessand = random.random() < 0.4
-            rel = [wl("person-luca-rossi")]
-            note = "Solo long ride."
-            if with_alessand:
-                rel = [wl("person-luca-rossi"), wl("person-alessandro-ferrari")]
-                note = "Long ride with Alessandro."
-            write_md("event", f"event-long-ride-{ds}", {
-                "aliases": [f"Long ride — {ds}"], "Is A": "Event",
-                "Date": ds, "Belongs to": wl(ms),
-                "Related to": rel, "Tags": ["Health", "Sport"],
-            }, f"# Long ride — {ds}\n{note} {random.randint(80,130)}km, {random.randint(800,2000)}m elevation.")
-            event_num += 1
+        if weekday == 5:
+            relations = [wl("person-luca-rossi")]
+            ride_note = "Solo long ride."
+            if random.random() < 0.4:
+                relations = [wl("person-luca-rossi"), wl("person-alessandro-ferrari")]
+                ride_note = "Long ride with Alessandro."
+            write_md("event", f"event-long-ride-{day_slug}", {
+                "aliases": [f"Long ride — {day_slug}"],
+                "Is A": "Event",
+                "Date": day_slug,
+                "Belongs to": wl(month_slug),
+                "Related to": relations,
+                "Tags": ["Health", "Sport"],
+            }, f"# Long ride — {day_slug}\n{ride_note} {random.randint(80, 130)}km, {random.randint(800, 2000)}m elevation.")
+            event_count += 1
 
-        # Sunday: reading session (bi-weekly) or family call
-        if dow == 6:
+        if weekday == 6:
             if (current_date - date(2024, 1, 7)).days % 14 < 7:
-                write_md("event", f"event-reading-{ds}", {
-                    "aliases": [f"Reading session — {ds}"], "Is A": "Event",
-                    "Date": ds, "Belongs to": wl(ms),
+                write_md("event", f"event-reading-{day_slug}", {
+                    "aliases": [f"Reading session — {day_slug}"],
+                    "Is A": "Event",
+                    "Date": day_slug,
+                    "Belongs to": wl(month_slug),
                     "Tags": ["Learning"],
-                }, f"# Reading session — {ds}\nSunday morning reading block. 2 hours with coffee.")
-                event_num += 1
+                }, f"# Reading session — {day_slug}\nSunday morning reading block. 2 hours with coffee.")
             else:
-                write_md("event", f"event-family-call-{ds}", {
-                    "aliases": [f"Family call — {ds}"], "Is A": "Event",
-                    "Date": ds, "Belongs to": wl(ms),
+                write_md("event", f"event-family-call-{day_slug}", {
+                    "aliases": [f"Family call — {day_slug}"],
+                    "Is A": "Event",
+                    "Date": day_slug,
+                    "Belongs to": wl(month_slug),
                     "Related to": [wl("person-elena-rossi"), wl("person-roberto-rossi")],
                     "Tags": ["Personal", "Family"],
-                }, f"# Family call — {ds}\nSunday family call with Elena and parents.")
-                event_num += 1
+                }, f"# Family call — {day_slug}\nSunday family call with Elena and parents.")
+            event_count += 1
 
-        # Monthly: 1:1 Paco (first Thursday of month)
-        if dow == 3 and current_date.day <= 7:
-            write_md("event", f"event-1on1-paco-{ds}", {
-                "aliases": [f"1:1 Paco — {ds}"], "Is A": "Event",
-                "Date": ds, "Belongs to": wl(ms),
-                "Related to": [wl("person-paco-furiani")], "Tags": ["Work"],
-            }, f"# 1:1 Paco — {ds}\nMonthly 1:1. Operations review, tooling updates, and process improvements.")
-            event_num += 1
+        if weekday == 3 and current_date.day <= 7:
+            write_md("event", f"event-1on1-paco-{day_slug}", {
+                "aliases": [f"1:1 Paco — {day_slug}"],
+                "Is A": "Event",
+                "Date": day_slug,
+                "Belongs to": wl(month_slug),
+                "Related to": [wl("person-paco-furiani")],
+                "Tags": ["Work"],
+            }, f"# 1:1 Paco — {day_slug}\nMonthly 1:1. Operations review, tooling updates, and process improvements.")
+            event_count += 1
 
-        # Monthly: nonna visit (last Sunday of month)
-        if dow == 6 and current_date.day >= 24:
-            write_md("event", f"event-nonna-visit-{ds}", {
-                "aliases": [f"Visita dalla Nonna — {ds}"], "Is A": "Event",
-                "Date": ds, "Belongs to": wl(ms),
-                "Related to": [wl("person-nonna-lucia")], "Tags": ["Personal", "Family"],
-            }, f"# Visita dalla Nonna — {ds}\nVisita mensile alla nonna a Lecco. Pranzo con risotto.")
-            event_num += 1
+        if weekday == 6 and current_date.day >= 24:
+            write_md("event", f"event-nonna-visit-{day_slug}", {
+                "aliases": [f"Visita dalla Nonna — {day_slug}"],
+                "Is A": "Event",
+                "Date": day_slug,
+                "Belongs to": wl(month_slug),
+                "Related to": [wl("person-nonna-lucia")],
+                "Tags": ["Personal", "Family"],
+            }, f"# Visita dalla Nonna — {day_slug}\nVisita mensile alla nonna a Lecco. Pranzo con risotto.")
+            event_count += 1
 
-        # Podcast recording: bi-weekly Thursday (from Feb 2024)
-        if dow == 3 and current_date >= date(2024, 2, 1) and (current_date - date(2024, 2, 1)).days % 14 < 7:
+        if weekday == 3 and current_date >= date(2024, 2, 1) and (current_date - date(2024, 2, 1)).days % 14 < 7:
             guest = random.choice(PODCAST_GUESTS)
-            write_md("event", f"event-podcast-rec-{ds}", {
-                "aliases": [f"Podcast recording — {ds}"], "Is A": "Event",
-                "Date": ds, "Belongs to": wl(ms),
-                "Related to": [wl(guest)], "Tags": ["Work", "Podcast"],
-            }, f"# Podcast recording — {ds}\nRecorded episode with {next((p[1] for p in PERSONS if p[0] == guest), guest)}. Great conversation.")
-            event_num += 1
+            guest_name = next((person[1] for person in PERSONS if person[0] == guest), guest)
+            write_md("event", f"event-podcast-rec-{day_slug}", {
+                "aliases": [f"Podcast recording — {day_slug}"],
+                "Is A": "Event",
+                "Date": day_slug,
+                "Belongs to": wl(month_slug),
+                "Related to": [wl(guest)],
+                "Tags": ["Work", "Podcast"],
+            }, f"# Podcast recording — {day_slug}\nRecorded episode with {guest_name}. Great conversation.")
+            event_count += 1
 
-        # Weekly dinner (Friday evening)
-        if dow == 4 and random.random() < 0.5:
+        if weekday == 4 and random.random() < 0.5:
             friend = random.choice(FRIEND_SLUGS + ["person-giulia-marchetti"])
-            write_md("event", f"event-dinner-{ds}", {
-                "aliases": [f"Dinner — {ds}"], "Is A": "Event",
-                "Date": ds, "Belongs to": wl(ms),
-                "Related to": [wl(friend)], "Tags": ["Personal"],
-            }, f"# Dinner — {ds}\nEvening dinner with {next((p[1] for p in PERSONS if p[0] == friend), friend)}.")
-            event_num += 1
+            friend_name = next((person[1] for person in PERSONS if person[0] == friend), friend)
+            write_md("event", f"event-dinner-{day_slug}", {
+                "aliases": [f"Dinner — {day_slug}"],
+                "Is A": "Event",
+                "Date": day_slug,
+                "Belongs to": wl(month_slug),
+                "Related to": [wl(friend)],
+                "Tags": ["Personal"],
+            }, f"# Dinner — {day_slug}\nEvening dinner with {friend_name}.")
+            event_count += 1
 
         current_date += timedelta(days=1)
 
-    # ── EVERGREENS ────────────────────────────────────────────────
+
+def generate_evergreens():
     for slug, title, topics, body in EVERGREENS:
         write_md("evergreen", slug, {
-            "aliases": [title], "Is A": "Evergreen",
-            "Topics": [wl(t) for t in topics],
+            "aliases": [title],
+            "Is A": "Evergreen",
+            "Topics": [wl(topic) for topic in topics],
             "Status": "Published",
         }, f"# {title}\n{body}")
 
-    # ── NOTES ─────────────────────────────────────────────────────
+
+def generate_notes():
     for slug, title, author, topic, url, body in NOTES:
         write_md("note", slug, {
-            "aliases": [title], "Is A": "Note",
+            "aliases": [title],
+            "Is A": "Note",
             "Author": author,
             "Topics": [wl(topic)],
             "URL": url,
         }, f"# {title}\n*{author}*\n\n{body}")
 
-    # ── SUMMARY ───────────────────────────────────────────────────
+
+def print_summary():
     total = sum(COUNTS.values())
-    print(f"\n✅ Demo vault generated at: {VAULT}\n")
+    print(f"\n✅ Large fixture generated at: {VAULT}\n")
     print(f"{'Type':<25} {'Count':>6}")
     print("-" * 33)
-    for t, c in sorted(COUNTS.items()):
-        print(f"{t:<25} {c:>6}")
+    for note_type, count in sorted(COUNTS.items()):
+        print(f"{note_type:<25} {count:>6}")
     print("-" * 33)
     print(f"{'TOTAL':<25} {total:>6}")
 
 
+def generate_all(output_path: Path | None = None):
+    global VAULT
+
+    if output_path is not None:
+        VAULT = output_path
+
+    random.seed(42)
+    reset_vault()
+
+    steps = [
+        generate_years,
+        generate_quarters,
+        generate_months,
+        generate_areas,
+        generate_responsibilities,
+        generate_measures,
+        generate_targets,
+        generate_goals,
+        generate_projects,
+        generate_experiments,
+        generate_procedures,
+        generate_tasks,
+        generate_people,
+        generate_topics,
+        generate_events,
+        generate_evergreens,
+        generate_notes,
+    ]
+    for step in steps:
+        step()
+
+    print_summary()
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Generate the large synthetic Tolaria fixture.")
+    parser.add_argument(
+        "--output",
+        type=Path,
+        default=DEFAULT_VAULT,
+        help=f"Output directory for the generated vault (default: {DEFAULT_VAULT})",
+    )
+    return parser.parse_args()
+
+
 if __name__ == "__main__":
-    generate_all()
+    args = parse_args()
+    generate_all(args.output.resolve())

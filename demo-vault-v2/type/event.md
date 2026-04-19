@@ -1,7 +1,11 @@
 ---
-Is A: Type
+type: Type
+icon: calendar
+color: orange
+sidebar label: Events
 ---
 
 # Event
 
-An Event is a point-in-time occurrence — a meeting, a milestone, a trip, or anything that happened on a specific date. Events are linked to the entities they relate to.
+Events are time-bound occurrences tied to projects, people, or periods.
+

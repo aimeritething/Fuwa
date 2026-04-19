@@ -1,7 +1,11 @@
 ---
-Is A: Type
+type: Type
+icon: chart-line-up
+color: cyan
+sidebar label: Measures
 ---
 
 # Measure
 
-A Measure tracks a metric that matters — revenue, subscribers, conversion rate. Measures are linked to Goals or Areas and updated regularly.
+Measures track the numbers that matter for a responsibility or project.
+

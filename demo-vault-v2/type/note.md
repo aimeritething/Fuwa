@@ -1,7 +1,11 @@
 ---
-Is A: Type
+type: Type
+icon: note
+color: slate
+sidebar label: Notes
 ---
 
 # Note
 
-A Note is a general-purpose document — research notes, meeting notes, strategy docs, or anything that doesn't fit a more specific type.
+Notes capture references, ideas, or QA artifacts that do not need a more specific type.
+
