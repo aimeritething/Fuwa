@@ -15,7 +15,7 @@ interface NoteOpenTrace {
 const inFlightNoteOpens = new Map<string, NoteOpenTrace>()
 
 function isVitestRuntime(): boolean {
-  return typeof process !== 'undefined' && process.env.VITEST === 'true'
+  return '__vitest_worker__' in globalThis
 }
 
 function canMeasurePerformance(): boolean {
