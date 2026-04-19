@@ -442,7 +442,7 @@ Once a vault is ready, `useAiAgentsOnboarding` can show a one-time `AiAgentsOnbo
 
 `useGettingStartedClone` reuses the same parent-folder semantics for the status-bar / command-palette clone action, and `Toast` is rendered through the AI-agents onboarding gate so the resolved destination path stays visible right after a successful clone.
 
-The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` holds the public starter repo URL (`refactoringhq/tolaria-getting-started`), delegates the clone to the git backend, then normalizes Tolaria-managed config files (`AGENTS.md`, `CLAUDE.md`, `config.md`) so fresh starter vaults pick up the current default guidance even when the remote starter repo still carries a legacy copy or an older pre-`type:` `is_a`-era template. `AGENTS.md` stays the canonical vault guidance file; `CLAUDE.md` is a compatibility shim that imports it for Claude Code without duplicating the instructions. The clone helper still accepts the legacy `LAPUTA_GETTING_STARTED_REPO_URL` environment override so older automation can continue to redirect the starter source during the transition.
+The starter content no longer lives in the app repo. `src-tauri/src/vault/getting_started.rs` holds the public starter repo URL (`refactoringhq/tolaria-getting-started`), delegates the clone to the git backend, then normalizes Tolaria-managed root guidance and type scaffolding (`AGENTS.md`, `CLAUDE.md`, `type.md`, `note.md`) so fresh starter vaults pick up the current defaults even when the remote starter repo still carries a legacy copy or an older pre-`type:` `is_a`-era template. `AGENTS.md` stays the canonical vault guidance file; `CLAUDE.md` is a compatibility shim that imports it for Claude Code without duplicating the instructions. The clone helper still accepts the legacy `LAPUTA_GETTING_STARTED_REPO_URL` environment override so older automation can continue to redirect the starter source during the transition.
 
 ### Remote Clone & Auth Model
 
@@ -578,7 +578,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `rename.rs` | `rename_note` — renames files, updates `title` frontmatter, and updates wikilinks across the vault |
 | `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
 | `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
-| `config_seed.rs` | Maintains vault AI guidance (`AGENTS.md` + `CLAUDE.md` shim), migrates legacy `config/agents.md`, repairs missing root config/type files such as `config.md` and `note.md` |
+| `config_seed.rs` | Maintains vault AI guidance (`AGENTS.md` + `CLAUDE.md` shim), migrates legacy `config/agents.md`, and repairs missing root type scaffolding such as `type.md` and `note.md` |
 | `getting_started.rs` | Creates the Getting Started demo vault |
 
 ## Rust Backend Modules
@@ -615,7 +615,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `reload_vault` | Invalidate cache and full rescan from filesystem → `Vec<VaultEntry>` |
 | `reload_vault_entry` | Re-read a single file from disk → `VaultEntry` |
 | `check_vault_exists` | Check if vault path exists |
-| `create_empty_vault` | Create a git-backed vault, then seed root `AGENTS.md`, `CLAUDE.md`, `config.md`, and `note.md` defaults |
+| `create_empty_vault` | Create a git-backed vault, then seed root `AGENTS.md`, `CLAUDE.md`, `type.md`, and `note.md` defaults |
 | `create_getting_started_vault` | Clone the public Getting Started vault, refresh Tolaria-managed guidance/config defaults, and keep the cloned repo clean |
 | `get_vault_ai_guidance_status` | Report whether `AGENTS.md` and the `CLAUDE.md` shim are managed, missing, broken, or custom |
 | `restore_vault_ai_guidance` | Restore any missing/broken Tolaria-managed guidance files without overwriting custom ones |

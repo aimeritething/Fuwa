@@ -63,6 +63,28 @@ describe('WelcomeScreen', () => {
       expect(onCreateEmptyVault).toHaveBeenCalledOnce()
     })
 
+    it('calls onCreateEmptyVault when create empty button is activated with Enter', () => {
+      const onCreateEmptyVault = vi.fn()
+      render(<WelcomeScreen {...defaultProps} onCreateEmptyVault={onCreateEmptyVault} />)
+      const button = screen.getByTestId('welcome-create-new')
+
+      button.focus()
+      fireEvent.keyDown(button, { key: 'Enter' })
+
+      expect(onCreateEmptyVault).toHaveBeenCalledOnce()
+    })
+
+    it('calls onCreateEmptyVault when create empty button is activated with Space', () => {
+      const onCreateEmptyVault = vi.fn()
+      render(<WelcomeScreen {...defaultProps} onCreateEmptyVault={onCreateEmptyVault} />)
+      const button = screen.getByTestId('welcome-create-new')
+
+      button.focus()
+      fireEvent.keyDown(button, { key: ' ' })
+
+      expect(onCreateEmptyVault).toHaveBeenCalledOnce()
+    })
+
     it('calls onCreateVault when template button is clicked', () => {
       const onCreateVault = vi.fn()
       render(<WelcomeScreen {...defaultProps} onCreateVault={onCreateVault} />)
@@ -74,6 +96,16 @@ describe('WelcomeScreen', () => {
       const onOpenFolder = vi.fn()
       render(<WelcomeScreen {...defaultProps} onOpenFolder={onOpenFolder} />)
       fireEvent.click(screen.getByTestId('welcome-open-folder'))
+      expect(onOpenFolder).toHaveBeenCalledOnce()
+    })
+
+    it('cycles onboarding actions with Tab and activates the selected action with Enter', () => {
+      const onOpenFolder = vi.fn()
+      render(<WelcomeScreen {...defaultProps} onOpenFolder={onOpenFolder} />)
+
+      fireEvent.keyDown(window, { key: 'Tab' })
+      fireEvent.keyDown(window, { key: 'Enter' })
+
       expect(onOpenFolder).toHaveBeenCalledOnce()
     })
 

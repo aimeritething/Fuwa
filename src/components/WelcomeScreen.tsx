@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { FolderOpen, Plus, AlertTriangle, Loader2, Rocket } from 'lucide-react'
 import { OnboardingShell } from './OnboardingShell'
+import { Button } from '@/components/ui/button'
 
 interface WelcomeScreenProps {
   mode: 'welcome' | 'vault-missing'
@@ -24,6 +25,63 @@ interface WelcomeScreenPresentation {
   subtitle: string
   templateDescription: string
   title: string
+}
+
+type WelcomeActionButtonRef = React.RefObject<HTMLButtonElement | null>
+
+interface WelcomeAction {
+  disabled: boolean
+  run: () => void
+}
+
+function isWelcomeActivationKey(event: globalThis.KeyboardEvent): boolean {
+  return event.key === 'Enter' || event.key === ' '
+}
+
+function isWelcomeNavigationKey(event: globalThis.KeyboardEvent): boolean {
+  return event.key === 'Tab' || event.key === 'ArrowDown' || event.key === 'ArrowUp'
+}
+
+function nextWelcomeActionIndex(
+  currentIndex: number,
+  event: globalThis.KeyboardEvent,
+  actionCount: number,
+): number {
+  const direction = event.key === 'ArrowUp' || (event.key === 'Tab' && event.shiftKey) ? -1 : 1
+  return (currentIndex + direction + actionCount) % actionCount
+}
+
+function focusBelongsToWelcomeActions(
+  activeElement: Element | null,
+  actionButtonRefs: WelcomeActionButtonRef[],
+): boolean {
+  return activeElement === document.body
+    || actionButtonRefs.some(({ current }) => current === activeElement)
+}
+
+function getFocusedWelcomeActionIndex(
+  activeElement: Element | null,
+  actionButtonRefs: WelcomeActionButtonRef[],
+): number {
+  return Math.max(
+    0,
+    actionButtonRefs.findIndex(({ current }) => current === activeElement),
+  )
+}
+
+function focusWelcomeAction(
+  actionButtonRefs: WelcomeActionButtonRef[],
+  actionIndex: number,
+): void {
+  actionButtonRefs[actionIndex]?.current?.focus()
+}
+
+function triggerWelcomeAction(
+  actionIndex: number,
+  actions: WelcomeAction[],
+): void {
+  const action = actions[actionIndex]
+  if (!action?.disabled) action.run()
 }
 
 const CARD_STYLE: React.CSSProperties = {
@@ -153,6 +211,7 @@ interface OptionButtonProps {
   loading?: boolean
   testId: string
   autoFocus?: boolean
+  buttonRef?: React.RefObject<HTMLButtonElement | null>
 }
 
 function OptionButton({
@@ -167,11 +226,15 @@ function OptionButton({
   loading,
   testId,
   autoFocus = false,
+  buttonRef,
 }: OptionButtonProps) {
   const [hover, setHover] = useState(false)
+
   return (
-    <button
+    <Button
       type="button"
+      variant="outline"
+      size="lg"
       style={{
         ...OPTION_BTN_STYLE,
         background: hover ? 'var(--sidebar)' : 'var(--background)',
@@ -183,6 +246,8 @@ function OptionButton({
       onMouseLeave={() => setHover(false)}
       data-testid={testId}
       autoFocus={autoFocus}
+      className="h-auto justify-start shadow-none"
+      ref={buttonRef}
     >
       <div style={{ ...OPTION_ICON_STYLE, background: iconBg }}>
         {loading ? <Loader2 size={18} className="animate-spin" style={{ color: 'var(--muted-foreground)' }} /> : icon}
@@ -191,7 +256,7 @@ function OptionButton({
         <p style={OPTION_LABEL_STYLE}>{loading ? (loadingLabel ?? label) : label}</p>
         <p style={OPTION_DESC_STYLE}>{loading ? (loadingDescription ?? description) : description}</p>
       </div>
-    </button>
+    </Button>
   )
 }
 
@@ -225,6 +290,77 @@ function getWelcomeScreenPresentation(
   }
 }
 
+function useWelcomeActionButtons({
+  mode,
+  busy,
+  isOffline,
+  onCreateEmptyVault,
+  onOpenFolder,
+  onCreateVault,
+}: Pick<
+  WelcomeScreenProps,
+  'mode' | 'isOffline' | 'onCreateEmptyVault' | 'onOpenFolder' | 'onCreateVault'
+> & {
+  busy: boolean
+}) {
+  const primaryActionRef = useRef<HTMLButtonElement>(null)
+  const openFolderActionRef = useRef<HTMLButtonElement>(null)
+  const templateActionRef = useRef<HTMLButtonElement>(null)
+  const actionButtonRefs = useMemo(
+    () => [primaryActionRef, openFolderActionRef, templateActionRef],
+    [],
+  )
+  const actions = useMemo<WelcomeAction[]>(
+    () => ([
+      { disabled: false, run: onCreateEmptyVault },
+      { disabled: false, run: onOpenFolder },
+      { disabled: isOffline, run: onCreateVault },
+    ]),
+    [isOffline, onCreateEmptyVault, onCreateVault, onOpenFolder],
+  )
+
+  useEffect(() => {
+    if (busy) return
+
+    // WKWebView can ignore `autoFocus`; move focus explicitly so keyboard-only
+    // onboarding always starts on "Create empty vault".
+    focusWelcomeAction(actionButtonRefs, 0)
+  }, [actionButtonRefs, busy, mode])
+
+  useEffect(() => {
+    if (busy) return
+
+    const handleKeyDown = (event: globalThis.KeyboardEvent) => {
+      const activeElement = document.activeElement
+      if (!focusBelongsToWelcomeActions(activeElement, actionButtonRefs)) return
+
+      const actionIndex = getFocusedWelcomeActionIndex(activeElement, actionButtonRefs)
+      if (isWelcomeNavigationKey(event)) {
+        event.preventDefault()
+        focusWelcomeAction(
+          actionButtonRefs,
+          nextWelcomeActionIndex(actionIndex, event, actionButtonRefs.length),
+        )
+        return
+      }
+
+      if (!isWelcomeActivationKey(event)) return
+
+      event.preventDefault()
+      triggerWelcomeAction(actionIndex, actions)
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [actionButtonRefs, actions, busy])
+
+  return {
+    primaryActionRef,
+    openFolderActionRef,
+    templateActionRef,
+  }
+}
+
 export function WelcomeScreen({
   mode,
   defaultVaultPath,
@@ -239,6 +375,14 @@ export function WelcomeScreen({
 }: WelcomeScreenProps) {
   const busy = creatingAction !== null
   const presentation = getWelcomeScreenPresentation(mode, defaultVaultPath, isOffline)
+  const { primaryActionRef, openFolderActionRef, templateActionRef } = useWelcomeActionButtons({
+    mode,
+    busy,
+    isOffline,
+    onCreateEmptyVault,
+    onOpenFolder,
+    onCreateVault,
+  })
 
   return (
     <OnboardingShell
@@ -278,6 +422,7 @@ export function WelcomeScreen({
             loading={creatingAction === 'empty'}
             testId="welcome-create-new"
             autoFocus
+            buttonRef={primaryActionRef}
           />
 
           <OptionButton
@@ -288,6 +433,7 @@ export function WelcomeScreen({
             onClick={onOpenFolder}
             disabled={busy}
             testId="welcome-open-folder"
+            buttonRef={openFolderActionRef}
           />
 
           <OptionButton
@@ -301,6 +447,7 @@ export function WelcomeScreen({
             disabled={busy || isOffline}
             loading={creatingAction === 'template'}
             testId="welcome-create-vault"
+            buttonRef={templateActionRef}
           />
         </div>
 
@@ -316,14 +463,16 @@ export function WelcomeScreen({
               {error}
             </p>
             {canRetryTemplate && (
-              <button
+              <Button
                 type="button"
+                variant="outline"
                 style={RETRY_BUTTON_STYLE}
                 onClick={onRetryCreateVault}
                 data-testid="welcome-retry-template"
+                className="shadow-none"
               >
                 Retry download
-              </button>
+              </Button>
             )}
           </div>
         )}
