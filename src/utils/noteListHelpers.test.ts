@@ -163,4 +163,37 @@ describe('buildRelationshipGroups', () => {
     expect(groups.find((group) => group.label === 'Related to')?.entries).toEqual([shared])
     expect(groups.find((group) => group.label === 'Referenced By')?.entries).toEqual([shared])
   })
+
+  it('does not treat path-qualified refs for a different note as reverse matches', () => {
+    const parent = makeEntry({
+      path: '/vault/projects/alpha.md',
+      filename: 'alpha.md',
+      title: 'Alpha',
+      isA: 'Project',
+    })
+    const archiveAlpha = makeEntry({
+      path: '/vault/archive/alpha.md',
+      filename: 'alpha.md',
+      title: 'Alpha Archive',
+      isA: 'Project',
+    })
+    const unrelatedChild = makeEntry({
+      path: '/vault/notes/child.md',
+      filename: 'child.md',
+      title: 'Child Note',
+      isA: 'Note',
+      belongsTo: ['[[archive/alpha]]'],
+    })
+    const unrelatedEvent = makeEntry({
+      path: '/vault/events/event.md',
+      filename: 'event.md',
+      title: 'Review',
+      isA: 'Event',
+      relatedTo: ['[[archive/alpha]]'],
+    })
+
+    const groups = buildRelationshipGroups(parent, [parent, archiveAlpha, unrelatedChild, unrelatedEvent])
+
+    expect(groups).toEqual([])
+  })
 })

@@ -67,8 +67,20 @@ export function formatSearchSubtitle(entry: VaultEntry): string {
   return parts.join(' \u00b7 ')
 }
 
+function refMatchesEntry(ref: string, entry: VaultEntry): boolean {
+  const target = wikilinkTarget(ref).trim()
+  if (!target) return false
+
+  if (target.includes('/')) {
+    const normalizedTarget = target.replace(/^\/+/, '').replace(/\.md$/, '').toLowerCase()
+    return entry.path.toLowerCase().endsWith(`/${normalizedTarget}.md`)
+  }
+
+  return resolveEntry([entry], target) !== undefined
+}
+
 function refsMatch(refs: string[], entry: VaultEntry): boolean {
-  return refs.some((ref) => resolveEntry([entry], wikilinkTarget(ref)) !== undefined)
+  return refs.some((ref) => refMatchesEntry(ref, entry))
 }
 
 function resolveRefs(refs: string[], entries: VaultEntry[]): VaultEntry[] {
