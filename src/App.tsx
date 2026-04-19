@@ -71,6 +71,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
 import type { SidebarSelection, InboxPeriod, VaultEntry, ViewDefinition } from './types'
 import type { NoteListItem } from './utils/ai-context'
+import { initializeNoteProperties } from './utils/initializeNoteProperties'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { isNoteWindow, getNoteWindowParams, getNoteWindowPathCandidates, findNoteWindowEntry, type NoteWindowParams } from './utils/windowMode'
@@ -545,9 +546,7 @@ function App() {
   })
 
   const handleInitializeProperties = useCallback(async (path: string) => {
-    const filename = path.split('/').pop()?.replace(/\.md$/, '') ?? 'Untitled'
-    await notes.handleUpdateFrontmatter(path, 'type', 'Note', { silent: true })
-    await notes.handleUpdateFrontmatter(path, 'title', filename)
+    await initializeNoteProperties(notes.handleUpdateFrontmatter, path)
   }, [notes])
 
   const handleRemoveNoteIcon = useCallback(async (path: string) => {
