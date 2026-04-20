@@ -128,6 +128,128 @@ function shouldIgnoreContainerClick(target: HTMLElement) {
   )
 }
 
+function normalizeSuggestionQuery(query: string, triggerCharacter: string): string {
+  return query.startsWith(triggerCharacter)
+    ? query.slice(triggerCharacter.length)
+    : query
+}
+
+function isSelectionInsideElement(element: HTMLElement): boolean {
+  const selection = window.getSelection()
+  const anchorNode = selection?.anchorNode ?? null
+  const anchorElement = anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement ?? null
+  return Boolean(anchorElement && element.contains(anchorElement))
+}
+
+function queueTitleHeadingCursorRepair(
+  target: HTMLElement,
+  editor: ReturnType<typeof useCreateBlockNote>,
+): boolean {
+  const titleHeading = target.closest<HTMLElement>(
+    'h1, [data-content-type="heading"][data-level="1"], [data-content-type="heading"]:not([data-level])',
+  )
+  if (!titleHeading) return false
+
+  queueMicrotask(() => {
+    if (isSelectionInsideElement(titleHeading)) return
+
+    const firstBlock = editor.document[0]
+    if (firstBlock?.type !== 'heading') return
+
+    editor.setTextCursorPosition(firstBlock.id, 'end')
+    editor.focus()
+  })
+
+  return true
+}
+
+function useEditorContainerClickHandler(options: {
+  editable: boolean
+  editor: ReturnType<typeof useCreateBlockNote>
+}) {
+  const { editable, editor } = options
+
+  return useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!editable) return
+    const target = e.target as HTMLElement
+    if (queueTitleHeadingCursorRepair(target, editor)) return
+    if (shouldIgnoreContainerClick(target)) return
+    const blocks = editor.document
+    if (blocks.length > 0) {
+      editor.setTextCursorPosition(blocks[blocks.length - 1].id, 'end')
+    }
+    editor.focus()
+  }, [editor, editable])
+}
+
+function buildBaseSuggestionItems(entries: VaultEntry[]) {
+  return deduplicateByPath(entries.map(entry => ({
+    title: entry.title,
+    aliases: [...new Set([entry.filename.replace(/\.md$/, ''), ...entry.aliases])],
+    group: entry.isA || 'Note',
+    entryType: entry.isA,
+    entryTitle: entry.title,
+    path: entry.path,
+  })))
+}
+
+function useInsertWikilink(editor: ReturnType<typeof useCreateBlockNote>) {
+  return useCallback((target: string) => {
+    editor.insertInlineContent([
+      { type: 'wikilink' as const, props: { target } },
+      " ",
+    ], { updateSelection: true })
+    trackEvent('wikilink_inserted')
+  }, [editor])
+}
+
+function useSuggestionMenuItems(options: {
+  baseItems: ReturnType<typeof buildBaseSuggestionItems>
+  editor: ReturnType<typeof useCreateBlockNote>
+  insertWikilink: (target: string) => void
+  typeEntryMap: Record<string, VaultEntry>
+  vaultPath?: string
+}) {
+  const {
+    baseItems,
+    editor,
+    insertWikilink,
+    typeEntryMap,
+    vaultPath,
+  } = options
+
+  const buildItems = useCallback((query: string, triggerCharacter: '[[' | '@') => {
+    const normalizedQuery = normalizeSuggestionQuery(query, triggerCharacter)
+    const minLength = triggerCharacter === '[[' ? MIN_QUERY_LENGTH : PERSON_MENTION_MIN_QUERY
+    if (normalizedQuery.length < minLength) return null
+
+    const candidates = triggerCharacter === '[['
+      ? preFilterWikilinks(baseItems, normalizedQuery)
+      : filterPersonMentions(baseItems, normalizedQuery)
+
+    const items = attachClickHandlers(candidates, insertWikilink, vaultPath ?? '')
+    return enrichSuggestionItems(items, normalizedQuery, typeEntryMap)
+  }, [baseItems, insertWikilink, typeEntryMap, vaultPath])
+
+  const getWikilinkItems = useCallback(async (query: string): Promise<WikilinkSuggestionItem[]> => (
+    buildItems(query, '[[') ?? []
+  ), [buildItems])
+
+  const getPersonMentionItems = useCallback(async (query: string): Promise<WikilinkSuggestionItem[]> => (
+    buildItems(query, '@') ?? []
+  ), [buildItems])
+
+  const getSlashMenuItems = useCallback(async (query: string) => (
+    getTolariaSlashMenuItems(editor, query)
+  ), [editor])
+
+  return {
+    getWikilinkItems,
+    getPersonMentionItems,
+    getSlashMenuItems,
+  }
+}
+
 /** Insert an image block after the current cursor position. */
 function useInsertImageCallback(editor: ReturnType<typeof useCreateBlockNote>) {
   const editorRef = useRef(editor)
@@ -150,21 +272,11 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
 }) {
   const { cssVars } = useEditorTheme()
   const containerRef = useRef<HTMLDivElement>(null)
+  const handleContainerClick = useEditorContainerClickHandler({ editable, editor })
   const onImageUrl = useInsertImageCallback(editor)
   const { isDragOver } = useImageDrop({ containerRef, onImageUrl, vaultPath })
   useBlockNoteSideMenuHoverGuard(containerRef)
   useEditorLinkActivation(containerRef, onNavigateWikilink)
-
-  const handleContainerClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (!editable) return
-    const target = e.target as HTMLElement
-    if (shouldIgnoreContainerClick(target)) return
-    const blocks = editor.document
-    if (blocks.length > 0) {
-      editor.setTextCursorPosition(blocks[blocks.length - 1].id, 'end')
-    }
-    editor.focus()
-  }, [editor, editable])
 
   useEffect(() => {
     _wikilinkEntriesRef.current = entries
@@ -173,44 +285,19 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   useSeedBlockNoteTableBridge(editor)
 
   const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
-
-  const baseItems = useMemo(
-    () => deduplicateByPath(entries.map(entry => ({
-      title: entry.title,
-      aliases: [...new Set([entry.filename.replace(/\.md$/, ''), ...entry.aliases])],
-      group: entry.isA || 'Note',
-      entryType: entry.isA,
-      entryTitle: entry.title,
-      path: entry.path,
-    }))),
-    [entries]
-  )
-
-  const insertWikilink = useCallback((target: string) => {
-    editor.insertInlineContent([
-      { type: 'wikilink' as const, props: { target } },
-      " ",
-    ])
-    trackEvent('wikilink_inserted')
-  }, [editor])
-
-  const getWikilinkItems = useCallback(async (query: string): Promise<WikilinkSuggestionItem[]> => {
-    if (query.length < MIN_QUERY_LENGTH) return []
-    const candidates = preFilterWikilinks(baseItems, query)
-    const items = attachClickHandlers(candidates, insertWikilink, vaultPath ?? '')
-    return enrichSuggestionItems(items, query, typeEntryMap)
-  }, [baseItems, insertWikilink, typeEntryMap, vaultPath])
-
-  const getPersonMentionItems = useCallback(async (query: string): Promise<WikilinkSuggestionItem[]> => {
-    if (query.length < PERSON_MENTION_MIN_QUERY) return []
-    const candidates = filterPersonMentions(baseItems, query)
-    const items = attachClickHandlers(candidates, insertWikilink, vaultPath ?? '')
-    return enrichSuggestionItems(items, query, typeEntryMap)
-  }, [baseItems, insertWikilink, typeEntryMap, vaultPath])
-
-  const getSlashMenuItems = useCallback(async (query: string) => (
-    getTolariaSlashMenuItems(editor, query)
-  ), [editor])
+  const baseItems = useMemo(() => buildBaseSuggestionItems(entries), [entries])
+  const insertWikilink = useInsertWikilink(editor)
+  const {
+    getWikilinkItems,
+    getPersonMentionItems,
+    getSlashMenuItems,
+  } = useSuggestionMenuItems({
+    baseItems,
+    editor,
+    insertWikilink,
+    typeEntryMap,
+    vaultPath,
+  })
 
   return (
     <div ref={containerRef} className={`editor__blocknote-container${isDragOver ? ' editor__blocknote-container--drag-over' : ''}`} style={cssVars as React.CSSProperties} onClick={handleContainerClick}>

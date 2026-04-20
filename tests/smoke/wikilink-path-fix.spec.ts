@@ -32,6 +32,7 @@ async function insertWikilink(page: Page) {
 
 test.describe('Wikilink insertion and navigation', () => {
   test.beforeEach(async ({ page }) => {
+    await page.route('**/api/vault/ping', route => route.fulfill({ status: 503 }))
     await page.goto('/')
     await page.waitForTimeout(500)
 

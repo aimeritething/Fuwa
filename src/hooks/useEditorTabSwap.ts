@@ -13,6 +13,7 @@ interface Tab {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- BlockNote block arrays
 type EditorBlocks = any[]
 type CachedTabState = { blocks: EditorBlocks; scrollTop: number; sourceContent: string }
+type PendingLocalContent = { path: string; content: string }
 const TAB_STATE_CACHE_LIMIT = 24
 
 interface TabSwapState {
@@ -372,6 +373,8 @@ function useEditorChangeHandler(options: {
   onContentChangeRef: MutableRefObject<((path: string, content: string) => void) | undefined>
   prevActivePathRef: MutableRefObject<string | null>
   suppressChangeRef: MutableRefObject<boolean>
+  tabCacheRef: MutableRefObject<Map<string, CachedTabState>>
+  pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
 }) {
   const {
     editor,
@@ -379,6 +382,8 @@ function useEditorChangeHandler(options: {
     onContentChangeRef,
     prevActivePathRef,
     suppressChangeRef,
+    tabCacheRef,
+    pendingLocalContentRef,
   } = options
 
   return useCallback(() => {
@@ -393,8 +398,15 @@ function useEditorChangeHandler(options: {
     const restored = restoreWikilinksInBlocks(blocks)
     const bodyMarkdown = compactMarkdown(editor.blocksToMarkdownLossy(restored as typeof blocks))
     const [frontmatter] = splitFrontmatter(tab.content)
-    onContentChangeRef.current?.(path, `${frontmatter}${bodyMarkdown}`)
-  }, [editor, onContentChangeRef, prevActivePathRef, suppressChangeRef, tabsRef])
+    const nextContent = `${frontmatter}${bodyMarkdown}`
+    pendingLocalContentRef.current = { path, content: nextContent }
+    cacheEditorState(tabCacheRef.current, path, {
+      blocks,
+      scrollTop: readEditorScrollTop(),
+      sourceContent: nextContent,
+    })
+    onContentChangeRef.current?.(path, nextContent)
+  }, [editor, onContentChangeRef, pendingLocalContentRef, prevActivePathRef, suppressChangeRef, tabCacheRef, tabsRef])
 }
 
 function consumeRawModeTransition(
@@ -481,6 +493,113 @@ function syncActivePathTransition(options: {
   return true
 }
 
+function markRawModeReswapPending(options: {
+  activeTabPath: string | null
+  cache: Map<string, CachedTabState>
+  rawSwapPendingRef: MutableRefObject<boolean>
+}) {
+  const { activeTabPath, cache, rawSwapPendingRef } = options
+  if (!activeTabPath) return false
+  cache.delete(activeTabPath)
+  rawSwapPendingRef.current = true
+  return true
+}
+
+function currentEditorMatchesActiveTab(options: {
+  activeTabPath: string | null
+  activeTab: Tab | undefined
+  editor: ReturnType<typeof useCreateBlockNote>
+  editorMountedRef: MutableRefObject<boolean>
+}) {
+  const {
+    activeTabPath,
+    activeTab,
+    editor,
+    editorMountedRef,
+  } = options
+
+  return Boolean(
+    activeTabPath
+      && activeTab
+      && editorMountedRef.current
+      && typeof editor.blocksToMarkdownLossy === 'function'
+      && serializeEditorBody(editor) === normalizeTabBody({ content: activeTab.content }),
+  )
+}
+
+function cacheStableActiveTabAndClearPending(options: {
+  cache: Map<string, CachedTabState>
+  activeTabPath: string | null
+  activeTab: Tab | undefined
+  editor: ReturnType<typeof useCreateBlockNote>
+  editorMountedRef: MutableRefObject<boolean>
+  pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
+}) {
+  const {
+    cache,
+    activeTabPath,
+    activeTab,
+    editor,
+    editorMountedRef,
+    pendingLocalContentRef,
+  } = options
+
+  cacheStableActivePath({
+    cache,
+    activeTabPath,
+    activeTab,
+    editor,
+    editorMountedRef,
+  })
+  pendingLocalContentRef.current = null
+  return true
+}
+
+function shouldKeepPendingLocalContent(options: {
+  activeTabPath: string | null
+  activeTab: Tab | undefined
+  pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
+}) {
+  const {
+    activeTabPath,
+    activeTab,
+    pendingLocalContentRef,
+  } = options
+
+  const pendingLocalContent = pendingLocalContentRef.current
+  if (!activeTabPath || !activeTab || pendingLocalContent?.path !== activeTabPath) return false
+  return true
+}
+
+function consumePendingLocalContent(options: {
+  cache: Map<string, CachedTabState>
+  activeTabPath: string | null
+  activeTab: Tab | undefined
+  editor: ReturnType<typeof useCreateBlockNote>
+  editorMountedRef: MutableRefObject<boolean>
+  pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
+}) {
+  const {
+    cache,
+    activeTabPath,
+    activeTab,
+    editor,
+    editorMountedRef,
+    pendingLocalContentRef,
+  } = options
+
+  const pendingLocalContent = pendingLocalContentRef.current
+  if (!pendingLocalContent || pendingLocalContent.content !== activeTab?.content) return true
+  return cacheStableActiveTabAndClearPending({
+    cache,
+    activeTabPath,
+    activeTab,
+    editor,
+    editorMountedRef,
+    pendingLocalContentRef,
+  })
+}
+
 function handleStableActivePath(options: {
   pathChanged: boolean
   rawModeJustEnded: boolean
@@ -490,6 +609,7 @@ function handleStableActivePath(options: {
   editor: ReturnType<typeof useCreateBlockNote>
   editorMountedRef: MutableRefObject<boolean>
   rawSwapPendingRef: MutableRefObject<boolean>
+  pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
 }) {
   const {
     pathChanged,
@@ -500,13 +620,32 @@ function handleStableActivePath(options: {
     editor,
     editorMountedRef,
     rawSwapPendingRef,
+    pendingLocalContentRef,
   } = options
 
   if (pathChanged) return false
-  if (rawModeJustEnded && activeTabPath) {
-    cache.delete(activeTabPath)
-    rawSwapPendingRef.current = true
-    return false
+  if (rawModeJustEnded) {
+    return !markRawModeReswapPending({ activeTabPath, cache, rawSwapPendingRef })
+  }
+  if (currentEditorMatchesActiveTab({ activeTabPath, activeTab, editor, editorMountedRef })) {
+    return cacheStableActiveTabAndClearPending({
+      cache,
+      activeTabPath,
+      activeTab,
+      editor,
+      editorMountedRef,
+      pendingLocalContentRef,
+    })
+  }
+  if (shouldKeepPendingLocalContent({ activeTabPath, activeTab, pendingLocalContentRef })) {
+    return consumePendingLocalContent({
+      cache,
+      activeTabPath,
+      activeTab,
+      editor,
+      editorMountedRef,
+      pendingLocalContentRef,
+    })
   }
   if (shouldRefreshStableActivePath({ activeTabPath, activeTab, cache })) return false
   if (rawSwapPendingRef.current) return true
@@ -796,6 +935,7 @@ function shouldSkipScheduledTabSwap(options: {
   editorMountedRef: MutableRefObject<boolean>
   prevActivePathRef: MutableRefObject<string | null>
   rawSwapPendingRef: MutableRefObject<boolean>
+  pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
 }) {
   const {
     state,
@@ -804,7 +944,12 @@ function shouldSkipScheduledTabSwap(options: {
     editorMountedRef,
     prevActivePathRef,
     rawSwapPendingRef,
+    pendingLocalContentRef,
   } = options
+
+  if (state.pathChanged) {
+    pendingLocalContentRef.current = null
+  }
 
   if (syncActivePathTransition({
     prevPath: state.prevPath,
@@ -829,6 +974,7 @@ function shouldSkipScheduledTabSwap(options: {
     editor,
     editorMountedRef,
     rawSwapPendingRef,
+    pendingLocalContentRef,
   })
 }
 
@@ -844,6 +990,7 @@ function runTabSwapEffect(options: {
   prevRawModeRef: MutableRefObject<boolean>
   rawSwapPendingRef: MutableRefObject<boolean>
   suppressChangeRef: MutableRefObject<boolean>
+  pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
 }) {
   const {
     tabs,
@@ -857,6 +1004,7 @@ function runTabSwapEffect(options: {
     prevRawModeRef,
     rawSwapPendingRef,
     suppressChangeRef,
+    pendingLocalContentRef,
   } = options
 
   const rawModeJustEnded = consumeRawModeTransition(prevRawModeRef, rawMode)
@@ -876,6 +1024,7 @@ function runTabSwapEffect(options: {
     editorMountedRef,
     prevActivePathRef,
     rawSwapPendingRef,
+    pendingLocalContentRef,
   })) {
     return
   }
@@ -906,6 +1055,7 @@ function useTabSwapEffect(options: {
   prevRawModeRef: MutableRefObject<boolean>
   rawSwapPendingRef: MutableRefObject<boolean>
   suppressChangeRef: MutableRefObject<boolean>
+  pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
 }) {
   const {
     tabs,
@@ -919,6 +1069,7 @@ function useTabSwapEffect(options: {
     prevRawModeRef,
     rawSwapPendingRef,
     suppressChangeRef,
+    pendingLocalContentRef,
   } = options
 
   useEffect(() => {
@@ -934,6 +1085,7 @@ function useTabSwapEffect(options: {
       prevRawModeRef,
       rawSwapPendingRef,
       suppressChangeRef,
+      pendingLocalContentRef,
     })
   }, [
     activeTabPath,
@@ -947,6 +1099,7 @@ function useTabSwapEffect(options: {
     suppressChangeRef,
     tabCacheRef,
     tabs,
+    pendingLocalContentRef,
   ])
 }
 
@@ -963,6 +1116,7 @@ function useTabSwapEffect(options: {
  */
 export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange, rawMode }: UseEditorTabSwapOptions) {
   const tabCacheRef = useRef<Map<string, CachedTabState>>(new Map())
+  const pendingLocalContentRef = useRef<PendingLocalContent | null>(null)
   const prevActivePathRef = useRef<string | null>(null)
   const editorMountedRef = useRef(false)
   const pendingSwapRef = useRef<(() => void) | null>(null)
@@ -977,6 +1131,8 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
     onContentChangeRef,
     prevActivePathRef,
     suppressChangeRef,
+    tabCacheRef,
+    pendingLocalContentRef,
   })
 
   useEditorMountState(editor, editorMountedRef, pendingSwapRef)
@@ -992,6 +1148,7 @@ export function useEditorTabSwap({ tabs, activeTabPath, editor, onContentChange,
     prevRawModeRef,
     rawSwapPendingRef,
     suppressChangeRef,
+    pendingLocalContentRef,
   })
 
   return { handleEditorChange, editorMountedRef }

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useEditorFocus } from './useEditorFocus'
+import type { FocusableEditor } from './editorFocusUtils'
 
 function makeTiptapMock(hasHeading: boolean | Array<number | null> = true, headingNodeSize = 15) {
   const headingSizes = Array.isArray(hasHeading)
@@ -36,13 +37,20 @@ describe('useEditorFocus', () => {
     document.body.innerHTML = ''
   })
 
-  function setup(isMounted: boolean, tiptap?: ReturnType<typeof makeTiptapMock>) {
+  function setup(
+    isMounted: boolean,
+    tiptap?: ReturnType<typeof makeTiptapMock>,
+    editorOverrides: Record<string, unknown> = {},
+  ) {
     const editable = document.createElement('div')
     editable.setAttribute('contenteditable', 'true')
     editable.tabIndex = -1
     document.body.appendChild(editable)
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- minimal mock for test
-    const editor = { focus: vi.fn(() => editable.focus()), _tiptapEditor: tiptap } as any
+    const editor = {
+      focus: vi.fn(() => editable.focus()),
+      _tiptapEditor: tiptap,
+      ...editorOverrides,
+    } as FocusableEditor & Record<string, unknown>
     const mountedRef = { current: isMounted }
     renderHook(() => useEditorFocus(editor, mountedRef))
     return { editor, tiptap, editable }
@@ -183,6 +191,25 @@ describe('useEditorFocus', () => {
       window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
 
       expect(editor.focus).toHaveBeenCalled()
+      expect(tiptap.chain).not.toHaveBeenCalled()
+    })
+
+    it('places a text cursor inside an empty H1 instead of selecting through the next block', () => {
+      vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+      const tiptap = makeTiptapMock(true)
+      const setTextCursorPosition = vi.fn()
+      const { editor } = setup(true, tiptap, {
+        document: [
+          { id: 'title', type: 'heading', props: { level: 1 }, content: [] },
+          { id: 'body', type: 'paragraph', props: {}, content: [] },
+        ],
+        setTextCursorPosition,
+      })
+
+      window.dispatchEvent(new CustomEvent('laputa:focus-editor', { detail: { selectTitle: true } }))
+
+      expect(editor.focus).toHaveBeenCalled()
+      expect(setTextCursorPosition).toHaveBeenCalledWith('title', 'start')
       expect(tiptap.chain).not.toHaveBeenCalled()
     })
 

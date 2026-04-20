@@ -528,6 +528,37 @@ describe('click empty editor space', () => {
     container.removeChild(editableDiv)
   })
 
+  it('restores the cursor to the H1 when clicking the title block', async () => {
+    mockEditor.focus.mockClear()
+    mockEditor.setTextCursorPosition.mockClear()
+    mockEditor.document = [
+      { id: 'title', type: 'heading', content: [{ type: 'text', text: 'Alpha Project', styles: {} }], props: { level: 1 }, children: [] },
+      { id: 'body', type: 'paragraph', content: [], props: {}, children: [] },
+    ]
+
+    render(
+      <Editor {...defaultProps} tabs={[mockTab]} activeTabPath={mockEntry.path} />
+    )
+
+    const container = document.querySelector('.editor__blocknote-container')!
+    const editableDiv = document.createElement('div')
+    editableDiv.setAttribute('contenteditable', 'true')
+    const heading = document.createElement('h1')
+    heading.textContent = 'Alpha Project'
+    heading.setAttribute('data-content-type', 'heading')
+    heading.setAttribute('data-level', '1')
+    editableDiv.appendChild(heading)
+    container.appendChild(editableDiv)
+
+    fireEvent.click(heading)
+    await act(() => Promise.resolve())
+
+    expect(mockEditor.setTextCursorPosition).toHaveBeenCalledWith('title', 'end')
+    expect(mockEditor.focus).toHaveBeenCalled()
+
+    container.removeChild(editableDiv)
+  })
+
 })
 
 describe('archived note behavior', () => {
@@ -598,6 +629,12 @@ describe('wikilink autocomplete', () => {
     expect(mockFilterSuggestionItems).toHaveBeenCalled()
   })
 
+  it('normalizes BlockNote trigger-prefixed wikilink queries before filtering', async () => {
+    renderWithEntries()
+    const items = await capturedGetItems!('[[Al')
+    expect(items.length).toBeGreaterThan(0)
+  })
+
   it('limits results to MAX_RESULTS (20)', async () => {
     // Create many entries that will all match
     const manyEntries = Array.from({ length: 50 }, (_, i) => ({
@@ -633,7 +670,7 @@ describe('wikilink autocomplete', () => {
     expect(mockEditor.insertInlineContent).toHaveBeenCalledWith([
       { type: 'wikilink', props: { target: 'vault/project/test' } },
       ' ',
-    ])
+    ], { updateSelection: true })
   })
 
   it('deduplicates entries with the same path', async () => {
@@ -790,7 +827,7 @@ describe('person @mention autocomplete', () => {
     expect(mockEditor.insertInlineContent).toHaveBeenCalledWith([
       { type: 'wikilink', props: { target: 'vault/person/matteo-cellini' } },
       ' ',
-    ])
+    ], { updateSelection: true })
   })
 
   it('shows Person type badge on results', async () => {

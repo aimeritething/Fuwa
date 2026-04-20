@@ -24,16 +24,16 @@ interface WikilinkSuggestionMenuProps {
 export function WikilinkSuggestionMenu({ items, selectedIndex, onItemClick }: WikilinkSuggestionMenuProps) {
   return (
     <div className="wikilink-menu">
-      <NoteSearchList
-        items={items}
-        selectedIndex={selectedIndex ?? 0}
-        getItemKey={(item, i) => `${item.title}-${item.path ?? i}`}
-        onItemClick={(item) => {
-          item.onItemClick()
-          onItemClick?.(item)
-        }}
-        emptyMessage="No results"
-      />
+        <NoteSearchList
+          items={items}
+          selectedIndex={selectedIndex ?? 0}
+          getItemKey={(item, i) => `${item.title}-${item.path ?? i}`}
+          onItemClick={(item) => {
+            item.onItemClick()
+            onItemClick?.(item)
+          }}
+          emptyMessage="No results"
+        />
     </div>
   )
 }
