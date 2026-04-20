@@ -3,6 +3,7 @@ import { test, expect, type Page } from '@playwright/test'
 async function installOnboardingMocks(page: Page, offline: boolean) {
   await page.addInitScript((isOffline: boolean) => {
     localStorage.clear()
+    let createdVaultPath: string | null = null
 
     let ref: Record<string, unknown> | null = null
 
@@ -16,11 +17,12 @@ async function installOnboardingMocks(page: Page, offline: boolean) {
           hidden_defaults: [],
         })
         ref.get_default_vault_path = () => '/Users/mock/Documents/Getting Started'
-        ref.check_vault_exists = () => false
+        ref.check_vault_exists = (args: { path?: string }) => args.path === createdVaultPath
         ref.create_getting_started_vault = (args: { targetPath?: string | null }) => {
           if (args.targetPath !== '/Users/mock/Documents/Getting Started') {
             throw new Error(`Unexpected Getting Started target: ${args.targetPath}`)
           }
+          createdVaultPath = args.targetPath
           return args.targetPath
         }
       },
@@ -65,6 +67,6 @@ test('status bar keeps a Getting Started clone entry available after onboarding'
   await expect(page.getByTestId('claude-onboarding-screen')).toBeVisible()
   await page.getByTestId('claude-onboarding-continue').click()
   await expect(page.locator('[data-testid="note-list-container"]')).toBeVisible()
-  await page.getByTitle('Switch vault').click()
+  await page.getByTestId('status-vault-trigger').click()
   await expect(page.getByTestId('vault-menu-clone-getting-started')).toBeVisible()
 })

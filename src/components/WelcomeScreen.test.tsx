@@ -41,16 +41,18 @@ describe('WelcomeScreen', () => {
       expect(brandIcon).toHaveAttribute('src', tolariaIcon)
     })
 
-    it('shows all three option buttons', () => {
+    it('shows the onboarding actions in the guided-first order', () => {
       render(<WelcomeScreen {...defaultProps} />)
-      expect(screen.getByTestId('welcome-create-new')).toHaveTextContent('Create empty vault')
-      expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Open existing vault')
-      expect(screen.getByTestId('welcome-create-vault')).toHaveTextContent('Get started with a template')
+
+      const optionButtons = screen.getAllByRole('button')
+      expect(optionButtons[0]).toBe(screen.getByTestId('welcome-create-vault'))
+      expect(optionButtons[1]).toBe(screen.getByTestId('welcome-create-new'))
+      expect(optionButtons[2]).toBe(screen.getByTestId('welcome-open-folder'))
     })
 
     it('focuses the first action for keyboard users', () => {
       render(<WelcomeScreen {...defaultProps} />)
-      expect(screen.getByTestId('welcome-create-new')).toHaveFocus()
+      expect(screen.getByTestId('welcome-create-vault')).toHaveFocus()
     })
 
     it('shows the simplified template option description', () => {
@@ -109,13 +111,13 @@ describe('WelcomeScreen', () => {
     })
 
     it('cycles onboarding actions with Tab and activates the selected action with Enter', () => {
-      const onOpenFolder = vi.fn()
-      render(<WelcomeScreen {...defaultProps} onOpenFolder={onOpenFolder} />)
+      const onCreateEmptyVault = vi.fn()
+      render(<WelcomeScreen {...defaultProps} onCreateEmptyVault={onCreateEmptyVault} />)
 
       fireEvent.keyDown(window, { key: 'Tab' })
       fireEvent.keyDown(window, { key: 'Enter' })
 
-      expect(onOpenFolder).toHaveBeenCalledOnce()
+      expect(onCreateEmptyVault).toHaveBeenCalledOnce()
     })
 
     it('disables all buttons while creating', () => {

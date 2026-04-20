@@ -310,18 +310,18 @@ function useWelcomeActionButtons({
 > & {
   busy: boolean
 }) {
-  const primaryActionRef = useRef<HTMLButtonElement>(null)
-  const openFolderActionRef = useRef<HTMLButtonElement>(null)
   const templateActionRef = useRef<HTMLButtonElement>(null)
+  const createEmptyActionRef = useRef<HTMLButtonElement>(null)
+  const openFolderActionRef = useRef<HTMLButtonElement>(null)
   const actionButtonRefs = useMemo(
-    () => [primaryActionRef, openFolderActionRef, templateActionRef],
+    () => [templateActionRef, createEmptyActionRef, openFolderActionRef],
     [],
   )
   const actions = useMemo<WelcomeAction[]>(
     () => ([
+      { disabled: isOffline, run: onCreateVault },
       { disabled: false, run: onCreateEmptyVault },
       { disabled: false, run: onOpenFolder },
-      { disabled: isOffline, run: onCreateVault },
     ]),
     [isOffline, onCreateEmptyVault, onCreateVault, onOpenFolder],
   )
@@ -330,7 +330,7 @@ function useWelcomeActionButtons({
     if (busy) return
 
     // WKWebView can ignore `autoFocus`; move focus explicitly so keyboard-only
-    // onboarding always starts on "Create empty vault".
+    // onboarding always starts on the guided template flow.
     focusWelcomeAction(actionButtonRefs, 0)
   }, [actionButtonRefs, busy, mode])
 
@@ -362,9 +362,9 @@ function useWelcomeActionButtons({
   }, [actionButtonRefs, actions, busy])
 
   return {
-    primaryActionRef,
-    openFolderActionRef,
     templateActionRef,
+    createEmptyActionRef,
+    openFolderActionRef,
   }
 }
 
@@ -382,7 +382,7 @@ export function WelcomeScreen({
 }: WelcomeScreenProps) {
   const busy = creatingAction !== null
   const presentation = getWelcomeScreenPresentation(mode, defaultVaultPath, isOffline)
-  const { primaryActionRef, openFolderActionRef, templateActionRef } = useWelcomeActionButtons({
+  const { templateActionRef, createEmptyActionRef, openFolderActionRef } = useWelcomeActionButtons({
     mode,
     busy,
     isOffline,
@@ -418,6 +418,21 @@ export function WelcomeScreen({
 
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 10 }}>
           <OptionButton
+            icon={<Rocket size={18} style={{ color: 'var(--accent-purple)' }} />}
+            iconBg="var(--accent-purple-light, #F3E8FF)"
+            label="Get started with a template"
+            description={presentation.templateDescription}
+            loadingLabel="Downloading template…"
+            loadingDescription="Cloning the Getting Started vault template"
+            onClick={onCreateVault}
+            disabled={busy || isOffline}
+            loading={creatingAction === 'template'}
+            testId="welcome-create-vault"
+            autoFocus
+            buttonRef={templateActionRef}
+          />
+
+          <OptionButton
             icon={<Plus size={18} style={{ color: 'var(--accent-blue)' }} />}
             iconBg="var(--accent-blue-light, #EBF4FF)"
             label="Create empty vault"
@@ -428,8 +443,7 @@ export function WelcomeScreen({
             disabled={busy}
             loading={creatingAction === 'empty'}
             testId="welcome-create-new"
-            autoFocus
-            buttonRef={primaryActionRef}
+            buttonRef={createEmptyActionRef}
           />
 
           <OptionButton
@@ -441,20 +455,6 @@ export function WelcomeScreen({
             disabled={busy}
             testId="welcome-open-folder"
             buttonRef={openFolderActionRef}
-          />
-
-          <OptionButton
-            icon={<Rocket size={18} style={{ color: 'var(--accent-purple)' }} />}
-            iconBg="var(--accent-purple-light, #F3E8FF)"
-            label="Get started with a template"
-            description={presentation.templateDescription}
-            loadingLabel="Downloading template…"
-            loadingDescription="Cloning the Getting Started vault template"
-            onClick={onCreateVault}
-            disabled={busy || isOffline}
-            loading={creatingAction === 'template'}
-            testId="welcome-create-vault"
-            buttonRef={templateActionRef}
           />
         </div>
 
