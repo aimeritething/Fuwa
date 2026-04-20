@@ -480,8 +480,8 @@ function App() {
     closeAllTabs,
     openTabWithContent,
   } = notes
-  const handlePulledVaultUpdate = useCallback((updatedFiles: string[]) =>
-    refreshPulledVaultState({
+  const handlePulledVaultUpdate = useCallback(async (updatedFiles: string[]) => {
+    await refreshPulledVaultState({
       activeTabPath: notes.activeTabPath,
       closeAllTabs,
       hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
@@ -491,7 +491,8 @@ function App() {
       replaceActiveTab: handleReplaceActiveTab,
       updatedFiles,
       vaultPath: resolvedPath,
-    }), [
+    })
+  }, [
       closeAllTabs,
       handleReplaceActiveTab,
       notes.activeTabPath,

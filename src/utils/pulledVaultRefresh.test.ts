@@ -39,8 +39,8 @@ describe('refreshPulledVaultState', () => {
     expect(options.reloadVault).toHaveBeenCalledOnce()
     expect(options.reloadFolders).toHaveBeenCalledOnce()
     expect(options.reloadViews).toHaveBeenCalledOnce()
+    expect(options.closeAllTabs).toHaveBeenCalledOnce()
     expect(options.replaceActiveTab).toHaveBeenCalledWith(entries[0])
-    expect(options.closeAllTabs).not.toHaveBeenCalled()
   })
 
   it('reloads the active tab after any successful pull with updates', async () => {
@@ -49,8 +49,8 @@ describe('refreshPulledVaultState', () => {
     await refreshPulledVaultState(options)
 
     expect(options.reloadVault).toHaveBeenCalledOnce()
-    expect(options.replaceActiveTab).toHaveBeenCalledWith(expect.objectContaining({ path: '/vault/active.md' }))
     expect(options.closeAllTabs).not.toHaveBeenCalled()
+    expect(options.replaceActiveTab).toHaveBeenCalledWith(expect.objectContaining({ path: '/vault/active.md' }))
   })
 
   it('matches macOS /tmp and /private/tmp aliases when reloading the active tab entry', async () => {
@@ -63,6 +63,7 @@ describe('refreshPulledVaultState', () => {
 
     await refreshPulledVaultState(options)
 
+    expect(options.closeAllTabs).toHaveBeenCalledOnce()
     expect(options.replaceActiveTab).toHaveBeenCalledWith(activeEntry)
   })
 
