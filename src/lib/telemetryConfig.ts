@@ -1,4 +1,12 @@
 const DEFAULT_POSTHOG_HOST = 'https://us.i.posthog.com'
+const DISALLOWED_TELEMETRY_HOSTS = new Set([
+  'false',
+  'true',
+  'null',
+  'undefined',
+  'none',
+  'disabled',
+])
 
 type TelemetryEnv = {
   VITE_SENTRY_DSN?: string
@@ -35,10 +43,34 @@ export function sanitizeTelemetryEnvValue(value: string | undefined): string {
 function isHttpUrl(value: string): boolean {
   try {
     const url = new URL(value)
-    return url.protocol === 'http:' || url.protocol === 'https:'
+    return (url.protocol === 'http:' || url.protocol === 'https:')
+      && isAllowedTelemetryHostname(url.hostname)
   } catch {
     return false
   }
+}
+
+function normalizeHostname(hostname: string): string {
+  const normalized = hostname.trim().replace(/\.$/, '').toLowerCase()
+  if (normalized.startsWith('[') && normalized.endsWith(']')) {
+    return normalized.slice(1, -1)
+  }
+  return normalized
+}
+
+function isIpAddress(hostname: string): boolean {
+  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
+    return hostname.split('.').every((segment) => Number(segment) <= 255)
+  }
+
+  return hostname.includes(':') && /^[\da-f:]+$/i.test(hostname)
+}
+
+function isAllowedTelemetryHostname(hostname: string): boolean {
+  const normalized = normalizeHostname(hostname)
+  if (!normalized || DISALLOWED_TELEMETRY_HOSTS.has(normalized)) return false
+  if (normalized === 'localhost') return true
+  return normalized.includes('.') || isIpAddress(normalized)
 }
 
 function normalizeHttpLikeValue(value: string): string {
