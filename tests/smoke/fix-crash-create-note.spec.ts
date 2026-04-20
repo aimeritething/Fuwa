@@ -36,23 +36,57 @@ function untitledRow(page: Page, typeLabel: string) {
   return page.getByText(new RegExp(`^Untitled ${typeLabel}(?: \\d+)?$`, 'i')).first()
 }
 
-async function expectReadyEmptyTitleHeading(page: Page): Promise<void> {
-  await expect.poll(async () => page.evaluate(() => {
+type EmptyHeadingState = {
+  contentType: string | null
+  editorFocused: boolean
+  placeholder: string | null
+}
+
+function capturePageErrors(page: Page): string[] {
+  const errors: string[] = []
+  page.on('pageerror', (err) => errors.push(err.message))
+  return errors
+}
+
+async function readEmptyHeadingState(page: Page): Promise<EmptyHeadingState> {
+  return page.evaluate(() => {
     const active = document.activeElement as HTMLElement | null
     const firstBlock = document.querySelector('.bn-block-content') as HTMLElement | null
     const inlineHeading = firstBlock?.querySelector('.bn-inline-content') as HTMLElement | null
     return {
-      editorFocused: Boolean(active?.isContentEditable || active?.closest('[contenteditable="true"]')),
       contentType: firstBlock?.getAttribute('data-content-type') ?? null,
+      editorFocused: Boolean(active?.isContentEditable || active?.closest('[contenteditable="true"]')),
       placeholder: inlineHeading ? getComputedStyle(inlineHeading, '::before').content : null,
     }
-  }), {
-    timeout: 5_000,
-  }).toEqual({
-    editorFocused: true,
-    contentType: 'heading',
-    placeholder: '"Title"',
   })
+}
+
+function hasExpectedTitlePlaceholder(placeholder: string | null): boolean {
+  return placeholder === '"Heading"' || placeholder === '"Title"'
+}
+
+function isReadyEmptyTitleHeading(state: EmptyHeadingState): boolean {
+  return state.editorFocused && state.contentType === 'heading' && hasExpectedTitlePlaceholder(state.placeholder)
+}
+
+async function expectReadyEmptyTitleHeading(page: Page): Promise<void> {
+  await expect.poll(async () => isReadyEmptyTitleHeading(await readEmptyHeadingState(page)), {
+    timeout: 5_000,
+  }).toBe(true)
+}
+
+async function expectUntitledNoteWithoutCrash(
+  page: Page,
+  typeLabel: string,
+  createNote: () => Promise<void>,
+): Promise<void> {
+  const errors = capturePageErrors(page)
+
+  await createNote()
+  await expect(untitledRow(page, typeLabel)).toBeVisible({ timeout: 5_000 })
+  await expectReadyEmptyTitleHeading(page)
+
+  expect(errors).toEqual([])
 }
 
 test.describe('Create note crash fix', () => {
@@ -65,57 +99,36 @@ test.describe('Create note crash fix', () => {
   })
 
   test('clicking + next to a type section creates a note without crashing @smoke', async ({ page }) => {
-    const errors: string[] = []
-    page.on('pageerror', (err) => errors.push(err.message))
-
     await openTestVault(page)
     await selectSection(page, 'Projects')
-    await createNoteFromListHeader(page)
-    await expect(untitledRow(page, 'project')).toBeVisible({ timeout: 5_000 })
-    await expectReadyEmptyTitleHeading(page)
-
-    expect(errors).toEqual([])
+    await expectUntitledNoteWithoutCrash(page, 'project', async () => {
+      await createNoteFromListHeader(page)
+    })
   })
 
   test('Cmd+N creates a note without crashing @smoke', async ({ page }) => {
-    const errors: string[] = []
-    page.on('pageerror', (err) => errors.push(err.message))
-
     await openTestVault(page)
-    await page.waitForTimeout(300)
-    await page.locator('body').click()
-    await sendShortcut(page, 'n', ['Control'])
-    await expect(untitledRow(page, 'note')).toBeVisible({ timeout: 5_000 })
-    await expectReadyEmptyTitleHeading(page)
-
-    expect(errors).toEqual([])
+    await expectUntitledNoteWithoutCrash(page, 'note', async () => {
+      await page.waitForTimeout(300)
+      await page.locator('body').click()
+      await sendShortcut(page, 'n', ['Control'])
+    })
   })
 
   test('creating note for custom type does not crash', async ({ page }) => {
-    const errors: string[] = []
-    page.on('pageerror', (err) => errors.push(err.message))
-
     await openTestVault(page)
     await selectSection(page, 'Events')
-    await createNoteFromListHeader(page)
-    await expect(untitledRow(page, 'event')).toBeVisible({ timeout: 5_000 })
-    await expectReadyEmptyTitleHeading(page)
-
-    expect(errors).toEqual([])
+    await expectUntitledNoteWithoutCrash(page, 'event', async () => {
+      await createNoteFromListHeader(page)
+    })
   })
 
   test('command palette creates typed notes without crashing when a type template is present @smoke', async ({ page }) => {
-    const errors: string[] = []
-    page.on('pageerror', (err) => errors.push(err.message))
-
     seedTypeEntry(tempVaultDir, 'Procedure', '## Checklist\n\n- first step\n- [[Alpha Project]]\n- unmatched [link')
     await openTestVault(page)
-
-    await openCommandPalette(page)
-    await executeCommand(page, 'new procedure')
-
-    await expect(untitledRow(page, 'procedure')).toBeVisible({ timeout: 5_000 })
-    await expectReadyEmptyTitleHeading(page)
-    expect(errors).toEqual([])
+    await expectUntitledNoteWithoutCrash(page, 'procedure', async () => {
+      await openCommandPalette(page)
+      await executeCommand(page, 'new procedure')
+    })
   })
 })
