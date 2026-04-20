@@ -570,10 +570,10 @@ describe('App', () => {
   })
 
   it('defaults to All Notes when explicit organization is disabled in vault config', async () => {
-    localStorage.setItem('tolaria_welcome_dismissed', '1')
+    const workVaultPath = '/Users/mock/Documents/Work'
     mockCommandResults.load_vault_list = {
-      vaults: [{ label: 'Getting Started', path: '/Users/mock/Documents/Getting Started' }],
-      active_vault: '/Users/mock/Documents/Getting Started',
+      vaults: [{ label: 'Work Vault', path: workVaultPath }],
+      active_vault: workVaultPath,
       hidden_defaults: [],
     }
     const disabledWorkflowConfig = JSON.stringify({
@@ -585,14 +585,7 @@ describe('App', () => {
       property_display_modes: null,
       inbox: { noteListProperties: null, explicitOrganization: false },
     })
-    const vaultPaths = [
-      '/Users/mock/Documents/Getting Started',
-      '/Users/mock/demo-vault-v2',
-      '/Volumes/Jupiter/Workspace/laputa-app/demo-vault-v2',
-    ]
-    for (const path of vaultPaths) {
-      localStorage.setItem(`laputa:vault-config:${path}`, disabledWorkflowConfig)
-    }
+    localStorage.setItem(`laputa:vault-config:${workVaultPath}`, disabledWorkflowConfig)
 
     render(<App />)
 
