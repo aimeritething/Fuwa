@@ -11,8 +11,8 @@ interface HeadingRange {
 interface FocusableHeadingBlock {
   id: string
   type?: string
-  props?: { level?: number }
-  content?: Array<{ type?: string; text?: string }>
+  props?: { level?: number } & Record<string, unknown>
+  content?: unknown
 }
 
 interface TiptapChain {
@@ -56,11 +56,16 @@ function isTopLevelHeadingBlock(block: FocusableHeadingBlock): boolean {
 }
 
 function getHeadingBlockText(block: FocusableHeadingBlock | undefined): string {
-  return block?.content
-    ?.filter((item) => item.type === 'text')
+  if (!Array.isArray(block?.content)) return ''
+
+  return block.content
+    .filter((item): item is { type?: string; text?: string } => (
+      typeof item === 'object' && item !== null
+    ))
+    .filter((item) => item.type === 'text')
     .map((item) => item.text ?? '')
     .join('')
-    .trim() ?? ''
+    .trim()
 }
 
 function getFirstHeadingBlock(editor: FocusableEditor): FocusableHeadingBlock | undefined {
