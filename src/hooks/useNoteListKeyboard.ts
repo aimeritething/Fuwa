@@ -444,7 +444,7 @@ function useGlobalKeyboardHandling({
 }) {
   const shouldSkipGlobalKeyDown = useCallback((activeElement: Element | null) => {
     if (isEditableElement(activeElement)) return true
-    return (
+    return Boolean(
       activeElement !== containerRef.current
       && containerRef.current?.contains(activeElement)
       && isInteractiveElement(activeElement)
