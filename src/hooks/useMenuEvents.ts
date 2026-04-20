@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { isTauri } from '../mock-tauri'
 import {
   APP_COMMAND_EVENT_NAME,
@@ -6,6 +6,13 @@ import {
   isAppCommandId,
   type AppCommandHandlers,
 } from './appCommandDispatcher'
+import {
+  NOTE_LIST_SEARCH_AVAILABILITY_EVENT,
+  dispatchNoteListSearchToggle,
+  readNoteListSearchAvailability,
+} from '../utils/noteListSearchEvents'
+
+const NOTE_LIST_SEARCH_MENU_ID = 'edit-toggle-note-list-search'
 
 export interface MenuEventHandlers extends AppCommandHandlers {
   activeTabPath: string | null
@@ -21,6 +28,7 @@ interface MenuStatePayload {
   hasConflicts?: boolean
   hasRestorableDeletedNote?: boolean
   hasNoRemote?: boolean
+  noteListSearchEnabled?: boolean
 }
 
 function readCustomEventDetail(event: Event): string | null {
@@ -118,8 +126,28 @@ function useNativeMenuStateSync(state: MenuStatePayload) {
   }, [state])
 }
 
+function useNoteListSearchMenuState() {
+  const [enabled, setEnabled] = useState(false)
+
+  useEffect(() => {
+    const handleAvailabilityEvent = (event: Event) => {
+      const nextEnabled = readNoteListSearchAvailability(event)
+      if (nextEnabled !== null) setEnabled(nextEnabled)
+    }
+
+    window.addEventListener(NOTE_LIST_SEARCH_AVAILABILITY_EVENT, handleAvailabilityEvent)
+    return () => window.removeEventListener(NOTE_LIST_SEARCH_AVAILABILITY_EVENT, handleAvailabilityEvent)
+  }, [])
+
+  return enabled
+}
+
 /** Dispatch a Tauri menu event ID to the matching handler. Exported for testing. */
 export function dispatchMenuEvent(id: string, h: MenuEventHandlers): void {
+  if (id === NOTE_LIST_SEARCH_MENU_ID) {
+    dispatchNoteListSearchToggle()
+    return
+  }
   if (!isAppCommandId(id)) return
   executeAppCommand(id, h, 'native-menu')
 }
@@ -127,6 +155,7 @@ export function dispatchMenuEvent(id: string, h: MenuEventHandlers): void {
 /** Listen for native macOS menu events and dispatch them to the appropriate handlers. */
 export function useMenuEvents(handlers: MenuEventHandlers) {
   const ref = useRef(handlers)
+  const noteListSearchEnabled = useNoteListSearchMenuState()
   const hasActiveNote = handlers.activeTabPath !== null
   const hasModifiedFiles = handlers.modifiedCount != null ? handlers.modifiedCount > 0 : undefined
   const hasConflicts = handlers.conflictCount != null ? handlers.conflictCount > 0 : undefined
@@ -146,5 +175,6 @@ export function useMenuEvents(handlers: MenuEventHandlers) {
     hasConflicts,
     hasRestorableDeletedNote,
     hasNoRemote,
+    noteListSearchEnabled,
   })
 }

@@ -1,4 +1,5 @@
 import { MagnifyingGlass, Plus } from '@phosphor-icons/react'
+import { Loader2 } from 'lucide-react'
 import type { VaultEntry } from '../../types'
 import type { SortOption, SortDirection } from '../../utils/noteListHelpers'
 import { Button } from '@/components/ui/button'
@@ -9,7 +10,7 @@ import { ListPropertiesPopover, type ListPropertiesPopoverProps } from './ListPr
 
 const NOTE_LIST_ACTION_BUTTON_CLASSNAME = '!h-auto !w-auto !min-w-0 !rounded-none !p-0 !text-muted-foreground hover:!bg-transparent hover:!text-foreground focus-visible:!bg-transparent data-[state=open]:!bg-transparent data-[state=open]:!text-foreground [&_svg]:!size-4'
 
-export function NoteListHeader({ title, typeDocument, isEntityView, listSort, listDirection, customProperties, sidebarCollapsed, searchVisible, search, propertyPicker, onSortChange, onCreateNote, onOpenType, onToggleSearch, onSearchChange }: {
+export function NoteListHeader({ title, typeDocument, isEntityView, listSort, listDirection, customProperties, sidebarCollapsed, searchVisible, search, isSearching, searchInputRef, propertyPicker, onSortChange, onCreateNote, onOpenType, onToggleSearch, onSearchChange, onSearchKeyDown }: {
   title: string
   typeDocument: VaultEntry | null
   isEntityView: boolean
@@ -19,12 +20,15 @@ export function NoteListHeader({ title, typeDocument, isEntityView, listSort, li
   sidebarCollapsed?: boolean
   searchVisible: boolean
   search: string
+  isSearching: boolean
+  searchInputRef: React.RefObject<HTMLInputElement | null>
   propertyPicker?: ListPropertiesPopoverProps | null
   onSortChange: (groupLabel: string, option: SortOption, direction: SortDirection) => void
   onCreateNote: () => void
   onOpenType: (entry: VaultEntry) => void
   onToggleSearch: () => void
   onSearchChange: (value: string) => void
+  onSearchKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
 }) {
   const { onMouseDown: onDragMouseDown } = useDragRegion()
   return (
@@ -51,7 +55,24 @@ export function NoteListHeader({ title, typeDocument, isEntityView, listSort, li
       </div>
       {searchVisible && (
         <div className="border-b border-border px-3 py-2">
-          <Input placeholder="Search notes..." value={search} onChange={(e) => onSearchChange(e.target.value)} className="h-8 text-[13px]" autoFocus />
+          <div className="flex items-center gap-3">
+            <Input
+              ref={searchInputRef}
+              placeholder="Search notes..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              onKeyDown={onSearchKeyDown}
+              className="h-8 text-[13px]"
+            />
+            <div className="min-w-[92px] text-[12px] text-muted-foreground" aria-live="polite">
+              {isSearching && (
+                <span className="flex items-center gap-1" data-testid="note-list-search-loading">
+                  <Loader2 size={12} className="animate-spin" />
+                  Searching...
+                </span>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </>

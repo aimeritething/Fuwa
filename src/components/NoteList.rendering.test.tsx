@@ -84,10 +84,16 @@ function renderManagedViewNoteList({
   }
 }
 
-function searchNoteList(query: string) {
+async function searchNoteList(query: string) {
   const searchInput = screen.queryByPlaceholderText('Search notes...')
   if (!searchInput) fireEvent.click(screen.getByTitle('Search notes'))
   fireEvent.change(screen.getByPlaceholderText('Search notes...'), { target: { value: query } })
+  await waitFor(() => {
+    expect(screen.getByTestId('note-list-search-loading')).toBeInTheDocument()
+  })
+  await waitFor(() => {
+    expect(screen.queryByTestId('note-list-search-loading')).not.toBeInTheDocument()
+  })
 }
 
 function renderBookNoteList({
@@ -117,11 +123,11 @@ function renderBookNoteList({
   })
 }
 
-function expectOnlySearchMatch(title: string, matchingQuery: string, hiddenQuery: string) {
-  searchNoteList(matchingQuery)
+async function expectOnlySearchMatch(title: string, matchingQuery: string, hiddenQuery: string) {
+  await searchNoteList(matchingQuery)
   expect(screen.getByText(title)).toBeInTheDocument()
 
-  searchNoteList(hiddenQuery)
+  await searchNoteList(hiddenQuery)
   expect(screen.queryByText(title)).not.toBeInTheDocument()
   expect(screen.getByText('No matching notes')).toBeInTheDocument()
 }
@@ -191,14 +197,14 @@ describe('NoteList rendering', () => {
     expect(screen.getByPlaceholderText('Search notes...')).toBeInTheDocument()
   })
 
-  it('filters by a case-insensitive search query', () => {
+  it('filters by a case-insensitive search query', async () => {
     renderNoteList()
-    searchNoteList('facebook')
+    await searchNoteList('facebook')
     expect(screen.getByText('Facebook Ads Strategy')).toBeInTheDocument()
     expect(screen.queryByText('Build Laputa App')).not.toBeInTheDocument()
   })
 
-  it('filters by snippet text when the title does not match', () => {
+  it('filters by snippet text when the title does not match', async () => {
     renderNoteList({
       entries: [
         makeEntry({ path: '/vault/a.md', filename: 'a.md', title: 'Alpha Note', snippet: 'Routine body copy.' }),
@@ -206,13 +212,13 @@ describe('NoteList rendering', () => {
       ],
     })
 
-    searchNoteList('nebula-only')
+    await searchNoteList('nebula-only')
 
     expect(screen.getByText('Beta Note')).toBeInTheDocument()
     expect(screen.queryByText('Alpha Note')).not.toBeInTheDocument()
   })
 
-  it('filters by visible property values and ignores hidden properties', () => {
+  it('filters by visible property values and ignores hidden properties', async () => {
     renderBookNoteList({
       entryOverrides: {
         title: 'Property Search Note',
@@ -221,10 +227,10 @@ describe('NoteList rendering', () => {
       allNotesNoteListProperties: null,
     })
 
-    expectOnlySearchMatch('Property Search Note', 'boarding window', 'hidden owner value')
+    await expectOnlySearchMatch('Property Search Note', 'boarding window', 'hidden owner value')
   })
 
-  it('uses the active all-notes columns when filtering by visible property values', () => {
+  it('uses the active all-notes columns when filtering by visible property values', async () => {
     renderBookNoteList({
       entryOverrides: {
         title: 'Override Search Note',
@@ -233,7 +239,7 @@ describe('NoteList rendering', () => {
       allNotesNoteListProperties: ['Owner'],
     })
 
-    expectOnlySearchMatch('Override Search Note', 'visible owner value', 'hidden priority')
+    await expectOnlySearchMatch('Override Search Note', 'visible owner value', 'hidden priority')
   })
 
   it('sorts entries by last modified descending by default', () => {
@@ -322,7 +328,7 @@ describe('NoteList rendering', () => {
     expect(screen.queryByRole('button', { name: /Backlinks/i })).not.toBeInTheDocument()
   })
 
-  it('keeps existing neighborhood groups visible at zero after search filters them out', () => {
+  it('keeps existing neighborhood groups visible at zero after search filters them out', async () => {
     const parent = makeEntry({
       path: '/vault/parent.md',
       filename: 'parent.md',
@@ -344,7 +350,7 @@ describe('NoteList rendering', () => {
 
     expect(screen.getByRole('button', { name: /Children\s*1/i })).toBeInTheDocument()
 
-    searchNoteList('missing-neighborhood-match')
+    await searchNoteList('missing-neighborhood-match')
 
     expect(screen.getByRole('button', { name: /Children\s*0/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Events/i })).not.toBeInTheDocument()

@@ -1,4 +1,4 @@
-import { useMemo, useCallback } from 'react'
+import { useEffect, useMemo, useCallback } from 'react'
 import type {
   VaultEntry,
   SidebarSelection,
@@ -15,18 +15,19 @@ import { prefetchNoteContent } from '../../hooks/useTabManagement'
 import type { MultiSelectState } from '../../hooks/useMultiSelect'
 import { isDeletedNoteEntry, resolveHeaderTitle, type DeletedNoteEntry } from './noteListUtils'
 import { filterEntriesByNoteListQuery, filterGroupsByNoteListQuery } from './noteListSearch'
+import { useNoteListSearchState } from './useNoteListSearchState'
 import {
   useChangeStatusResolver,
   useListPropertyPicker,
   useModifiedFilesState,
   useNoteListData,
   useNoteListInteractions,
-  useNoteListSearch,
   useNoteListSort,
   useTypeEntryMap,
   useVisibleNotesSync,
 } from './noteListHooks'
 import { useChangesContextMenu } from './NoteListChangesMenu'
+import { addNoteListSearchToggleListener, dispatchNoteListSearchAvailability } from '../../utils/noteListSearchEvents'
 
 type EntitySelection = Extract<SidebarSelection, { kind: 'entity' }>
 
@@ -138,7 +139,16 @@ function useNoteListContent({
     onUpdateViewDefinition,
     updateEntry,
   })
-  const { search, setSearch, query, searchVisible, toggleSearch } = useNoteListSearch()
+  const {
+    closeSearch,
+    isSearching,
+    query,
+    search,
+    searchInputRef,
+    searchVisible,
+    setSearch,
+    toggleSearch,
+  } = useNoteListSearchState()
   const typeEntryMap = useTypeEntryMap(entries)
   const { displayPropsOverride, propertyPicker } = useListPropertyPicker({
     entries,
@@ -191,15 +201,18 @@ function useNoteListContent({
     entityEntry,
     handleSortChange,
     isArchivedView,
+    isSearching,
     isEntityView,
     listDirection,
     listSort,
     propertyPicker,
     query,
     search,
+    searchInputRef,
     searchVisible,
     searched,
     searchedGroups,
+    closeSearch,
     setSearch,
     sortPrefs,
     toggleSearch,
@@ -217,6 +230,8 @@ interface UseNoteListInteractionStateParams {
   isArchivedView: boolean
   isChangesView: boolean
   entityEntry: VaultEntry | null
+  searchVisible: boolean
+  toggleSearch: () => void
   modifiedFiles?: ModifiedFile[]
   onReplaceActiveTab: (entry: VaultEntry) => void
   onEnterNeighborhood?: (entry: VaultEntry) => void
@@ -238,6 +253,8 @@ function useNoteListInteractionState({
   isArchivedView,
   isChangesView,
   entityEntry,
+  searchVisible,
+  toggleSearch,
   modifiedFiles,
   onReplaceActiveTab,
   onEnterNeighborhood,
@@ -266,6 +283,8 @@ function useNoteListInteractionState({
     noteListFilter,
     isChangesView,
     entityEntry,
+    searchVisible,
+    toggleSearch,
     onReplaceActiveTab,
     onEnterNeighborhood,
     onOpenDeletedNote,
@@ -401,7 +420,9 @@ function buildNoteListLayoutModel(params: {
   filterCounts: ReturnType<typeof useFilterCounts>
   onNoteListFilterChange: (filter: NoteListFilter) => void
   onOpenType: (entry: VaultEntry) => void
-  content: ReturnType<typeof useNoteListContent>
+  content: ReturnType<typeof useNoteListContent> & {
+    handleSearchKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
+  }
   interaction: ReturnType<typeof useNoteListInteractionState> & {
     renderItem: (entry: VaultEntry, options?: { forceSelected?: boolean }) => React.ReactNode
     entitySelection: EntitySelection | null
@@ -417,13 +438,19 @@ function buildNoteListLayoutModel(params: {
     sidebarCollapsed: params.sidebarCollapsed,
     searchVisible: params.content.searchVisible,
     search: params.content.search,
+    isSearching: params.content.isSearching,
+    searchInputRef: params.content.searchInputRef,
     propertyPicker: params.content.propertyPicker,
     handleSortChange: params.content.handleSortChange,
     handleCreateNote: params.interaction.handleCreateNote,
     onOpenType: params.onOpenType,
     toggleSearch: params.content.toggleSearch,
     setSearch: params.content.setSearch,
+    handleSearchKeyDown: params.content.handleSearchKeyDown,
     handleListKeyDown: params.interaction.handleListKeyDown,
+    noteListPanelRef: params.interaction.noteListKeyboard.panelRef,
+    handleNoteListPanelBlurCapture: params.interaction.noteListKeyboard.handlePanelBlurCapture,
+    handleNoteListPanelFocusCapture: params.interaction.noteListKeyboard.handlePanelFocusCapture,
     noteListContainerRef: params.interaction.noteListKeyboard.containerRef,
     handleNoteListBlur: params.interaction.noteListKeyboard.handleBlur,
     handleNoteListFocus: params.interaction.noteListKeyboard.handleFocus,
@@ -518,6 +545,8 @@ export function useNoteListModel({
     isArchivedView: content.isArchivedView,
     isChangesView: selection.kind === 'filter' && selection.filter === 'changes',
     entityEntry: content.entityEntry,
+    searchVisible: content.searchVisible,
+    toggleSearch: content.toggleSearch,
     modifiedFiles,
     onReplaceActiveTab,
     onEnterNeighborhood,
@@ -543,6 +572,27 @@ export function useNoteListModel({
     multiSelect: interaction.multiSelect,
     noteListKeyboard: interaction.noteListKeyboard,
   })
+  const handleSearchKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Escape') return
+
+    event.preventDefault()
+    content.closeSearch()
+    requestAnimationFrame(() => {
+      interaction.noteListKeyboard.focusList()
+    })
+  }
+
+  useEffect(() => {
+    dispatchNoteListSearchAvailability(interaction.noteListKeyboard.isPanelActive)
+    return () => dispatchNoteListSearchAvailability(false)
+  }, [interaction.noteListKeyboard.isPanelActive])
+
+  useEffect(() => {
+    return addNoteListSearchToggleListener(() => {
+      if (!interaction.noteListKeyboard.isPanelActive) return
+      interaction.noteListKeyboard.toggleSearchShortcut()
+    })
+  }, [interaction.noteListKeyboard.isPanelActive, interaction.noteListKeyboard.toggleSearchShortcut])
 
   return buildNoteListLayoutModel({
     selection,
@@ -553,7 +603,10 @@ export function useNoteListModel({
     noteListFilter,
     filterCounts,
     onNoteListFilterChange,
-    content,
+    content: {
+      ...content,
+      handleSearchKeyDown,
+    },
     interaction: {
       ...interaction,
       renderItem,

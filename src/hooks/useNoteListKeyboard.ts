@@ -9,6 +9,8 @@ interface NoteListKeyboardOptions {
   onOpen: (entry: VaultEntry) => void
   onEnterNeighborhood?: (entry: VaultEntry) => void | Promise<void>
   onPrefetch?: (entry: VaultEntry) => void
+  searchVisible?: boolean
+  toggleSearch?: () => void
   enabled: boolean
 }
 
@@ -53,6 +55,12 @@ function isListActive(container: HTMLDivElement | null): boolean {
   if (!container) return false
   const activeElement = document.activeElement
   return activeElement instanceof Node && container.contains(activeElement)
+}
+
+function isPanelActive(panel: HTMLDivElement | null): boolean {
+  if (!panel) return false
+  const activeElement = document.activeElement
+  return activeElement instanceof Node && panel.contains(activeElement)
 }
 
 function isEditableElement(element: Element | null): boolean {
@@ -117,6 +125,13 @@ function resolveHighlightedEntry(items: VaultEntry[], highlightedPath: string | 
 
 function usesCommandModifier(event: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey'>): boolean {
   return event.metaKey || event.ctrlKey
+}
+
+function isToggleSearchShortcut(
+  event: Pick<KeyboardEvent, 'key' | 'code' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'>,
+): boolean {
+  if (!usesCommandModifier(event) || event.altKey || event.shiftKey) return false
+  return event.code === 'KeyF' || event.key.toLowerCase() === 'f'
 }
 
 function isNeighborhoodKey(event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey'>): boolean {
@@ -334,6 +349,7 @@ function useProcessKeyDown({
   flushOpen,
   cancelOpen,
   onEnterNeighborhood,
+  onToggleSearchShortcut,
 }: {
   enabled: boolean
   items: VaultEntry[]
@@ -342,34 +358,25 @@ function useProcessKeyDown({
   flushOpen: (entry?: VaultEntry) => void
   cancelOpen: () => void
   onEnterNeighborhood?: (entry: VaultEntry) => void | Promise<void>
+  onToggleSearchShortcut?: () => void
 }) {
-  return useCallback((event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'preventDefault'>) => {
-    if (!enabled || items.length === 0) return
+  return useCallback((event: Pick<KeyboardEvent, 'key' | 'code' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'preventDefault'>) => {
+    if (!enabled) return
 
-    if (isNeighborhoodKey(event)) {
-      handleNeighborhoodActivation({
-        event,
-        items,
-        highlightedPathRef,
-        cancelOpen,
-        onEnterNeighborhood,
-      })
-      return
-    }
-
-    if (usesCommandModifier(event) || event.altKey) return
-
-    if (handleArrowNavigation(event, moveHighlight)) return
-
-    if (event.key !== 'Enter') return
-
-    handleHighlightedOpen({
+    if (handleSearchShortcutEvent(event, onToggleSearchShortcut)) return
+    if (items.length === 0) return
+    if (handleNeighborhoodShortcutEvent({
       event,
       items,
       highlightedPathRef,
-      flushOpen,
-    })
-  }, [cancelOpen, enabled, flushOpen, highlightedPathRef, items, moveHighlight, onEnterNeighborhood])
+      cancelOpen,
+      onEnterNeighborhood,
+    })) return
+    if (shouldIgnoreListKeyboardEvent(event)) return
+    if (handleArrowNavigation(event, moveHighlight)) return
+
+    handleEnterShortcutEvent(event, items, highlightedPathRef, flushOpen)
+  }, [cancelOpen, enabled, flushOpen, highlightedPathRef, items, moveHighlight, onEnterNeighborhood, onToggleSearchShortcut])
 }
 
 function useFocusHandlers({
@@ -402,44 +409,194 @@ function useFocusHandlers({
   return { focusList, handleBlur, handleFocus }
 }
 
+function usePanelFocusState(panelRef: React.RefObject<HTMLDivElement | null>) {
+  const [isPanelActiveState, setIsPanelActiveState] = useState(false)
+
+  const syncPanelState = useCallback(() => {
+    setIsPanelActiveState(isPanelActive(panelRef.current))
+  }, [panelRef])
+
+  const handlePanelFocusCapture = useCallback(() => {
+    setIsPanelActiveState(true)
+  }, [])
+
+  const handlePanelBlurCapture = useCallback(() => {
+    requestAnimationFrame(syncPanelState)
+  }, [syncPanelState])
+
+  return {
+    handlePanelBlurCapture,
+    handlePanelFocusCapture,
+    isPanelActive: isPanelActiveState,
+  }
+}
+
 function useGlobalKeyboardHandling({
   enabled,
+  panelRef,
   containerRef,
   processKeyDown,
 }: {
   enabled: boolean
+  panelRef: React.RefObject<HTMLDivElement | null>
   containerRef: React.RefObject<HTMLDivElement | null>
   processKeyDown: (event: KeyboardEvent) => void
 }) {
+  const shouldSkipGlobalKeyDown = useCallback((activeElement: Element | null) => {
+    if (isEditableElement(activeElement)) return true
+    return (
+      activeElement !== containerRef.current
+      && containerRef.current?.contains(activeElement)
+      && isInteractiveElement(activeElement)
+    )
+  }, [containerRef])
+
   useEffect(() => {
     if (!enabled) return
-
-    const handleWindowKeyDown = (event: KeyboardEvent) => {
-      if (event.defaultPrevented) return
-      const activeElement = document.activeElement
-      if (isEditableElement(activeElement)) return
-      if (
-        activeElement !== containerRef.current
-        && containerRef.current?.contains(activeElement)
-        && isInteractiveElement(activeElement)
-      ) return
-      processKeyDown(event)
-    }
+    const handleWindowKeyDown = createGlobalKeyDownHandler(panelRef, shouldSkipGlobalKeyDown, processKeyDown)
 
     window.addEventListener('keydown', handleWindowKeyDown)
     return () => window.removeEventListener('keydown', handleWindowKeyDown)
-  }, [containerRef, enabled, processKeyDown])
+  }, [enabled, panelRef, processKeyDown, shouldSkipGlobalKeyDown])
+}
+
+function useSearchToggleShortcut({
+  toggleSearch,
+  searchVisible,
+  focusList,
+}: {
+  toggleSearch?: () => void
+  searchVisible: boolean
+  focusList: () => void
+}) {
+  return useCallback(() => {
+    if (!toggleSearch) return
+
+    toggleSearch()
+    if (!searchVisible) return
+
+    requestAnimationFrame(() => {
+      focusList()
+    })
+  }, [focusList, searchVisible, toggleSearch])
+}
+
+function useDirectKeyDownHandler(
+  processKeyDown: (event: React.KeyboardEvent) => void,
+) {
+  return useCallback((event: React.KeyboardEvent) => {
+    if (isNestedInteractiveTarget(event.target, event.currentTarget)) return
+    processKeyDown(event)
+  }, [processKeyDown])
+}
+
+function resolveStableHighlightedPath(items: VaultEntry[], highlightedPathState: string | null): string | null {
+  return getItemIndex(items).entryByPath.has(highlightedPathState ?? '')
+    ? highlightedPathState
+    : null
+}
+
+function handleSearchShortcutEvent(
+  event: Pick<KeyboardEvent, 'key' | 'code' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'preventDefault'>,
+  onToggleSearchShortcut?: () => void,
+): boolean {
+  if (!isToggleSearchShortcut(event) || !onToggleSearchShortcut) return false
+  event.preventDefault()
+  onToggleSearchShortcut()
+  return true
+}
+
+function handleNeighborhoodShortcutEvent(options: {
+  event: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'altKey' | 'preventDefault'>
+  items: VaultEntry[]
+  highlightedPathRef: React.RefObject<string | null>
+  cancelOpen: () => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void | Promise<void>
+}): boolean {
+  const {
+    event,
+    items,
+    highlightedPathRef,
+    cancelOpen,
+    onEnterNeighborhood,
+  } = options
+
+  if (!isNeighborhoodKey(event)) return false
+  handleNeighborhoodActivation({
+    event,
+    items,
+    highlightedPathRef,
+    cancelOpen,
+    onEnterNeighborhood,
+  })
+  return true
+}
+
+function shouldIgnoreListKeyboardEvent(
+  event: Pick<KeyboardEvent, 'metaKey' | 'ctrlKey' | 'altKey'>,
+): boolean {
+  return usesCommandModifier(event) || event.altKey
+}
+
+function handleEnterShortcutEvent(
+  event: Pick<KeyboardEvent, 'key' | 'preventDefault'>,
+  items: VaultEntry[],
+  highlightedPathRef: React.RefObject<string | null>,
+  flushOpen: (entry?: VaultEntry) => void,
+) {
+  if (event.key !== 'Enter') return
+  handleHighlightedOpen({
+    event,
+    items,
+    highlightedPathRef,
+    flushOpen,
+  })
+}
+
+function createGlobalKeyDownHandler(
+  panelRef: React.RefObject<HTMLDivElement | null>,
+  shouldSkipGlobalKeyDown: (activeElement: Element | null) => boolean,
+  processKeyDown: (event: KeyboardEvent) => void,
+) {
+  return (event: KeyboardEvent) => {
+    if (event.defaultPrevented) return
+    if (isToggleSearchShortcut(event) && isPanelActive(panelRef.current)) {
+      processKeyDown(event)
+      return
+    }
+    if (shouldSkipGlobalKeyDown(document.activeElement)) return
+    processKeyDown(event)
+  }
 }
 
 export function useNoteListKeyboard({
-  items, selectedNotePath, onOpen, onEnterNeighborhood, onPrefetch, enabled,
+  items,
+  selectedNotePath,
+  onOpen,
+  onEnterNeighborhood,
+  onPrefetch,
+  searchVisible = false,
+  toggleSearch,
+  enabled,
 }: NoteListKeyboardOptions) {
   const virtuosoRef = useRef<VirtuosoHandle>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const { itemsRef, selectedNotePathRef } = useKeyboardItemRefs(items, selectedNotePath)
   const { highlightedPathRef, highlightedPathState, syncHighlightedPath } = useHighlightedPath()
   const syncToCurrentSelection = useSelectionSync(itemsRef, selectedNotePathRef, syncHighlightedPath)
   const { cancelOpen, flushOpen, scheduleOpen } = useScheduledOpen(onOpen, enabled)
+  const { focusList, handleBlur, handleFocus } = useFocusHandlers({
+    containerRef,
+    syncToCurrentSelection,
+    syncHighlightedPath,
+  })
+  const { handlePanelBlurCapture, handlePanelFocusCapture, isPanelActive: isPanelActiveState } = usePanelFocusState(panelRef)
+  const handleToggleSearchShortcut = useSearchToggleShortcut({
+    focusList,
+    searchVisible,
+    toggleSearch,
+  })
   const moveHighlight = useMoveHighlight({
     items,
     selectedNotePath,
@@ -457,32 +614,28 @@ export function useNoteListKeyboard({
     flushOpen,
     cancelOpen,
     onEnterNeighborhood,
+    onToggleSearchShortcut: handleToggleSearchShortcut,
   })
-  const handleKeyDown = useCallback((event: React.KeyboardEvent) => {
-    if (isNestedInteractiveTarget(event.target, event.currentTarget)) return
-    processKeyDown(event)
-  }, [processKeyDown])
-  const { focusList, handleBlur, handleFocus } = useFocusHandlers({
-    containerRef,
-    syncToCurrentSelection,
-    syncHighlightedPath,
-  })
-  useGlobalKeyboardHandling({ enabled, containerRef, processKeyDown })
+  const handleKeyDown = useDirectKeyDownHandler(processKeyDown)
+  useGlobalKeyboardHandling({ enabled, panelRef, containerRef, processKeyDown })
   useEffect(() => {
     cancelOpen()
   }, [cancelOpen, selectedNotePath])
 
-  const highlightedPath = getItemIndex(items).entryByPath.has(highlightedPathState ?? '')
-    ? highlightedPathState
-    : null
+  const highlightedPath = resolveStableHighlightedPath(items, highlightedPathState)
 
   return {
     containerRef,
     focusList,
+    handlePanelBlurCapture,
+    handlePanelFocusCapture,
     highlightedPath,
     handleBlur,
     handleKeyDown,
     handleFocus,
+    isPanelActive: isPanelActiveState,
+    panelRef,
+    toggleSearchShortcut: handleToggleSearchShortcut,
     virtuosoRef,
   }
 }

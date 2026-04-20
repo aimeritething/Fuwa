@@ -31,11 +31,14 @@ async function searchAndOpenByKeyboard(
   expectedTitle: string,
   expectedFilenameStem: string,
 ) {
+  const noteList = page.getByTestId('note-list-container')
   const searchInput = page.getByPlaceholder('Search notes...')
   await searchInput.focus()
   await page.keyboard.press(SELECT_ALL_SHORTCUT)
   await page.keyboard.type(query)
-  await expect(page.getByTestId('note-list-container').getByText(expectedTitle, { exact: true })).toBeVisible()
+  await expect(page.getByTestId('note-list-search-loading')).toBeVisible()
+  await expect(page.getByTestId('note-list-search-loading')).toHaveCount(0)
+  await expect(noteList.getByText(expectedTitle, { exact: true })).toBeVisible()
   await page.keyboard.press('Tab')
   await page.keyboard.press('ArrowDown')
   await page.keyboard.press('Enter')

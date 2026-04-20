@@ -56,6 +56,7 @@ pub struct MenuStateUpdate {
     has_conflicts: Option<bool>,
     has_restorable_deleted_note: Option<bool>,
     has_no_remote: Option<bool>,
+    note_list_search_enabled: Option<bool>,
 }
 
 #[cfg(desktop)]
@@ -76,6 +77,9 @@ pub fn update_menu_state(
     }
     if let Some(v) = state.has_no_remote {
         menu::set_git_no_remote_items_enabled(&app_handle, v);
+    }
+    if let Some(v) = state.note_list_search_enabled {
+        menu::set_note_list_search_items_enabled(&app_handle, v);
     }
     Ok(())
 }

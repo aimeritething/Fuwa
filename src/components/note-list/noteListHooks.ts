@@ -264,22 +264,27 @@ function saveGroupSort(groupLabel: string, option: SortOption, direction: SortDi
   setSortPrefs((prev) => { const next = { ...prev, [groupLabel]: { option, direction } }; saveSortPreferences(next); return next })
 }
 
-function persistOrSaveGroupSort(
-  groupLabel: string,
-  option: SortOption,
-  direction: SortDirection,
-  setSortPrefs: React.Dispatch<React.SetStateAction<Record<string, SortConfig>>>,
-  typeDocument: VaultEntry | null,
-  selectedView: ViewFile | null,
-  persistence: SortPersistence | null,
-) {
-  const persistenceTarget = resolveSortPersistenceTarget(groupLabel, typeDocument, selectedView, persistence)
-  if (!persistenceTarget || !persistence) {
-    saveGroupSort(groupLabel, option, direction, setSortPrefs)
+function persistOrSaveGroupSort(params: {
+  groupLabel: string
+  option: SortOption
+  direction: SortDirection
+  setSortPrefs: React.Dispatch<React.SetStateAction<Record<string, SortConfig>>>
+  typeDocument: VaultEntry | null
+  selectedView: ViewFile | null
+  persistence: SortPersistence | null
+}) {
+  const persistenceTarget = resolveSortPersistenceTarget(
+    params.groupLabel,
+    params.typeDocument,
+    params.selectedView,
+    params.persistence,
+  )
+  if (!persistenceTarget || !params.persistence) {
+    saveGroupSort(params.groupLabel, params.option, params.direction, params.setSortPrefs)
     return
   }
 
-  persistListSort(persistenceTarget, { option, direction }, persistence)
+  persistListSort(persistenceTarget, { option: params.option, direction: params.direction }, params.persistence)
 }
 
 function deriveEffectiveSort(configOption: SortOption, customProperties: string[]): SortOption {
@@ -332,7 +337,7 @@ export function useNoteListSort({
   }, [typeDocument, sortPrefs, persistence])
 
   const handleSortChange = useCallback((groupLabel: string, option: SortOption, direction: SortDirection) => {
-    persistOrSaveGroupSort(
+    persistOrSaveGroupSort({
       groupLabel,
       option,
       direction,
@@ -340,7 +345,7 @@ export function useNoteListSort({
       typeDocument,
       selectedView,
       persistence,
-    )
+    })
   }, [typeDocument, selectedView, persistence])
 
   const filteredEntries = useFilteredEntries({
@@ -735,6 +740,59 @@ interface UseListPropertyPickerParams {
   views?: ViewFile[]
 }
 
+function resolvePropertyPicker(options: {
+  selectedView: ViewFile | null
+  viewAvailableProperties: string[]
+  viewDefaultDisplay: string[]
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  isAllNotesView: boolean
+  allNotesAvailableProperties: string[]
+  hasCustomAllNotesProperties: boolean
+  allNotesNoteListProperties?: string[] | null
+  allNotesDefaultDisplay: string[]
+  onUpdateAllNotesNoteListProperties?: (value: string[] | null) => void
+  isInboxView: boolean
+  inboxAvailableProperties: string[]
+  hasCustomInboxProperties: boolean
+  inboxNoteListProperties?: string[] | null
+  inboxDefaultDisplay: string[]
+  onUpdateInboxNoteListProperties?: (value: string[] | null) => void
+  isSectionGroup: boolean
+  typeDocument: VaultEntry | null
+  onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
+  typeAvailableProperties: string[]
+}) {
+  return buildViewPropertyPicker({
+    selectedView: options.selectedView,
+    availableProperties: options.viewAvailableProperties,
+    defaultDisplay: options.viewDefaultDisplay,
+    onUpdateViewDefinition: options.onUpdateViewDefinition,
+  }) ?? buildFilterPropertyPicker({
+    scope: 'all',
+    isActive: options.isAllNotesView,
+    availableProperties: options.allNotesAvailableProperties,
+    hasCustomProperties: options.hasCustomAllNotesProperties,
+    noteListProperties: options.allNotesNoteListProperties,
+    defaultDisplay: options.allNotesDefaultDisplay,
+    onSave: options.onUpdateAllNotesNoteListProperties,
+    triggerTitle: 'Customize All Notes columns',
+  }) ?? buildFilterPropertyPicker({
+    scope: 'inbox',
+    isActive: options.isInboxView,
+    availableProperties: options.inboxAvailableProperties,
+    hasCustomProperties: options.hasCustomInboxProperties,
+    noteListProperties: options.inboxNoteListProperties,
+    defaultDisplay: options.inboxDefaultDisplay,
+    onSave: options.onUpdateInboxNoteListProperties,
+    triggerTitle: 'Customize Inbox columns',
+  }) ?? buildTypePropertyPicker({
+    isSectionGroup: options.isSectionGroup,
+    typeDocument: options.typeDocument,
+    onUpdateTypeSort: options.onUpdateTypeSort,
+    typeAvailableProperties: options.typeAvailableProperties,
+  })
+}
+
 export function useListPropertyPicker({
   entries,
   selection,
@@ -773,30 +831,23 @@ export function useListPropertyPicker({
   })
 
   const propertyPicker = useMemo<NoteListPropertyPicker | null>(() => {
-    return buildViewPropertyPicker({
+    return resolvePropertyPicker({
       selectedView: viewState.selectedView,
-      availableProperties: viewState.availableProperties,
-      defaultDisplay: viewState.defaultDisplay,
+      viewAvailableProperties: viewState.availableProperties,
+      viewDefaultDisplay: viewState.defaultDisplay,
       onUpdateViewDefinition,
-    }) ?? buildFilterPropertyPicker({
-      scope: 'all',
-      isActive: isAllNotesView,
-      availableProperties: allNotesState.availableProperties,
-      hasCustomProperties: hasCustomAllNotesProperties,
-      noteListProperties: allNotesNoteListProperties,
-      defaultDisplay: allNotesState.defaultDisplay,
-      onSave: onUpdateAllNotesNoteListProperties,
-      triggerTitle: 'Customize All Notes columns',
-    }) ?? buildFilterPropertyPicker({
-      scope: 'inbox',
-      isActive: isInboxView,
-      availableProperties: inboxState.availableProperties,
-      hasCustomProperties: hasCustomInboxProperties,
-      noteListProperties: inboxNoteListProperties,
-      defaultDisplay: inboxState.defaultDisplay,
-      onSave: onUpdateInboxNoteListProperties,
-      triggerTitle: 'Customize Inbox columns',
-    }) ?? buildTypePropertyPicker({
+      isAllNotesView,
+      allNotesAvailableProperties: allNotesState.availableProperties,
+      hasCustomAllNotesProperties,
+      allNotesNoteListProperties,
+      allNotesDefaultDisplay: allNotesState.defaultDisplay,
+      onUpdateAllNotesNoteListProperties,
+      isInboxView,
+      inboxAvailableProperties: inboxState.availableProperties,
+      hasCustomInboxProperties,
+      inboxNoteListProperties,
+      inboxDefaultDisplay: inboxState.defaultDisplay,
+      onUpdateInboxNoteListProperties,
       isSectionGroup,
       typeDocument,
       onUpdateTypeSort,
@@ -838,6 +889,8 @@ interface UseNoteListInteractionsParams {
   noteListFilter: NoteListFilter
   isChangesView: boolean
   entityEntry: VaultEntry | null
+  searchVisible: boolean
+  toggleSearch: () => void
   onReplaceActiveTab: (entry: VaultEntry) => void
   onEnterNeighborhood?: (entry: VaultEntry) => void
   onOpenDeletedNote?: (entry: DeletedNoteEntry) => void
@@ -886,6 +939,8 @@ function useKeyboardInteractionState({
   searchedGroups,
   entityEntry,
   selectedNotePath,
+  searchVisible,
+  toggleSearch,
   onReplaceActiveTab,
   onEnterNeighborhood,
   onOpenDeletedNote,
@@ -895,6 +950,8 @@ function useKeyboardInteractionState({
   | 'searchedGroups'
   | 'entityEntry'
   | 'selectedNotePath'
+  | 'searchVisible'
+  | 'toggleSearch'
   | 'onReplaceActiveTab'
   | 'onEnterNeighborhood'
   | 'onOpenDeletedNote'
@@ -928,6 +985,8 @@ function useKeyboardInteractionState({
     onOpen: handleKeyboardOpen,
     onEnterNeighborhood: handleNeighborhoodOpen,
     onPrefetch: handleKeyboardPrefetch,
+    searchVisible,
+    toggleSearch,
     enabled: true,
   })
   const multiSelect = useMultiSelect(keyboardEntries, selectedNotePath)
@@ -1025,6 +1084,8 @@ export function useNoteListInteractions({
   noteListFilter,
   isChangesView,
   entityEntry,
+  searchVisible,
+  toggleSearch,
   onReplaceActiveTab,
   onEnterNeighborhood,
   onOpenDeletedNote,
@@ -1040,6 +1101,8 @@ export function useNoteListInteractions({
     searchedGroups,
     entityEntry,
     selectedNotePath,
+    searchVisible,
+    toggleSearch,
     onReplaceActiveTab,
     onEnterNeighborhood,
     onOpenDeletedNote,

@@ -192,12 +192,18 @@ export function NoteListLayout({
   sidebarCollapsed,
   searchVisible,
   search,
+  isSearching,
+  searchInputRef,
   propertyPicker,
   handleSortChange,
   handleCreateNote,
   onOpenType,
   toggleSearch,
   setSearch,
+  handleSearchKeyDown,
+  noteListPanelRef,
+  handleNoteListPanelBlurCapture,
+  handleNoteListPanelFocusCapture,
   handleListKeyDown,
   noteListContainerRef,
   handleNoteListBlur,
@@ -230,8 +236,11 @@ export function NoteListLayout({
 }: NoteListLayoutProps) {
   return (
     <div
+      ref={noteListPanelRef}
       className="flex flex-col select-none overflow-hidden border-r border-border bg-card text-foreground"
       style={{ height: '100%' }}
+      onBlurCapture={handleNoteListPanelBlurCapture}
+      onFocusCapture={handleNoteListPanelFocusCapture}
     >
       <NoteListHeader
         title={title}
@@ -243,12 +252,15 @@ export function NoteListLayout({
         sidebarCollapsed={sidebarCollapsed}
         searchVisible={searchVisible}
         search={search}
+        isSearching={isSearching}
+        searchInputRef={searchInputRef}
         propertyPicker={propertyPicker}
         onSortChange={handleSortChange}
         onCreateNote={handleCreateNote}
         onOpenType={onOpenType}
         onToggleSearch={toggleSearch}
         onSearchChange={setSearch}
+        onSearchKeyDown={handleSearchKeyDown}
       />
       <NoteListBody
         handleListKeyDown={handleListKeyDown}

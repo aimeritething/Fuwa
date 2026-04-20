@@ -14,6 +14,7 @@ const FILE_QUICK_OPEN_ALIAS: &str = "file-quick-open-alias";
 const FILE_SAVE: &str = "file-save";
 
 const EDIT_FIND_IN_VAULT: &str = "edit-find-in-vault";
+const EDIT_TOGGLE_NOTE_LIST_SEARCH: &str = "edit-toggle-note-list-search";
 const EDIT_TOGGLE_RAW_EDITOR: &str = "edit-toggle-raw-editor";
 const EDIT_TOGGLE_DIFF: &str = "edit-toggle-diff";
 
@@ -62,6 +63,7 @@ const CUSTOM_IDS: &[&str] = &[
     FILE_QUICK_OPEN_ALIAS,
     FILE_SAVE,
     EDIT_FIND_IN_VAULT,
+    EDIT_TOGGLE_NOTE_LIST_SEARCH,
     EDIT_TOGGLE_RAW_EDITOR,
     EDIT_TOGGLE_DIFF,
     VIEW_EDITOR_ONLY,
@@ -109,6 +111,9 @@ const NOTE_DEPENDENT_IDS: &[&str] = &[
     VIEW_TOGGLE_BACKLINKS,
     NOTE_OPEN_IN_NEW_WINDOW,
 ];
+
+/// IDs of menu items that depend on the note list being the active surface.
+const NOTE_LIST_SEARCH_DEPENDENT_IDS: &[&str] = &[EDIT_TOGGLE_NOTE_LIST_SEARCH];
 
 /// IDs of menu items that depend on a deleted-note preview being active.
 const RESTORE_DELETED_DEPENDENT_IDS: &[&str] = &[NOTE_RESTORE_DELETED];
@@ -185,6 +190,11 @@ fn build_edit_menu(app: &App) -> MenuResult {
         .id(EDIT_FIND_IN_VAULT)
         .accelerator("CmdOrCtrl+Shift+F")
         .build(app)?;
+    let toggle_note_list_search = MenuItemBuilder::new("Toggle Note List Search")
+        .id(EDIT_TOGGLE_NOTE_LIST_SEARCH)
+        .accelerator("CmdOrCtrl+F")
+        .enabled(false)
+        .build(app)?;
     let toggle_diff = MenuItemBuilder::new("Toggle Diff Mode")
         .id(EDIT_TOGGLE_DIFF)
         .build(app)?;
@@ -200,6 +210,7 @@ fn build_edit_menu(app: &App) -> MenuResult {
         .select_all()
         .separator()
         .item(&find_in_vault)
+        .item(&toggle_note_list_search)
         .item(&toggle_diff)
         .build()?)
 }
@@ -452,6 +463,11 @@ pub fn set_note_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_items_enabled(app_handle, NOTE_DEPENDENT_IDS, enabled);
 }
 
+/// Enable or disable menu items that depend on the note list being the active surface.
+pub fn set_note_list_search_items_enabled(app_handle: &AppHandle, enabled: bool) {
+    set_items_enabled(app_handle, NOTE_LIST_SEARCH_DEPENDENT_IDS, enabled);
+}
+
 /// Enable or disable menu items that depend on having uncommitted changes.
 pub fn set_git_commit_items_enabled(app_handle: &AppHandle, enabled: bool) {
     set_items_enabled(app_handle, GIT_COMMIT_DEPENDENT_IDS, enabled);
@@ -486,6 +502,7 @@ mod tests {
             FILE_QUICK_OPEN,
             FILE_SAVE,
             EDIT_FIND_IN_VAULT,
+            EDIT_TOGGLE_NOTE_LIST_SEARCH,
             EDIT_TOGGLE_RAW_EDITOR,
             EDIT_TOGGLE_DIFF,
             VIEW_EDITOR_ONLY,
@@ -528,6 +545,16 @@ mod tests {
             assert!(
                 CUSTOM_IDS.contains(id),
                 "note-dependent ID {id} not in CUSTOM_IDS"
+            );
+        }
+    }
+
+    #[test]
+    fn note_list_search_dependent_ids_are_subset_of_custom_ids() {
+        for id in NOTE_LIST_SEARCH_DEPENDENT_IDS {
+            assert!(
+                CUSTOM_IDS.contains(id),
+                "note-list-search-dependent ID {id} not in CUSTOM_IDS"
             );
         }
     }

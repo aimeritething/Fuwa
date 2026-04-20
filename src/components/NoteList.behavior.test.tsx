@@ -56,7 +56,7 @@ describe('NoteList virtualized datasets', () => {
     expect(screen.getByText('Note 499')).toBeInTheDocument()
   })
 
-  it('filters large datasets by search query', () => {
+  it('filters large datasets by search query', async () => {
     const entries = [
       makeIndexedEntry(0, { title: 'Alpha Strategy' }),
       ...Array.from({ length: 998 }, (_, index) => makeIndexedEntry(index + 1, { title: `Filler Note ${index + 1}` })),
@@ -67,9 +67,11 @@ describe('NoteList virtualized datasets', () => {
     fireEvent.click(screen.getByTitle('Search notes'))
     fireEvent.change(screen.getByPlaceholderText('Search notes...'), { target: { value: 'Strategy' } })
 
-    expect(screen.getByText('Alpha Strategy')).toBeInTheDocument()
-    expect(screen.getByText('Beta Strategy')).toBeInTheDocument()
-    expect(screen.queryByText('Filler Note 1')).not.toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByText('Alpha Strategy')).toBeInTheDocument()
+      expect(screen.getByText('Beta Strategy')).toBeInTheDocument()
+      expect(screen.queryByText('Filler Note 1')).not.toBeInTheDocument()
+    })
   })
 
   it('sorts large datasets correctly', () => {
