@@ -1,10 +1,16 @@
 import { useCallback } from 'react'
 import type { VaultEntry } from '../types'
+import { refreshPulledVaultState } from '../utils/pulledVaultRefresh'
 
 interface VaultBridgeDeps {
   entriesByPath: Map<string, VaultEntry>
   resolvedPath: string
-  reloadVault: () => Promise<unknown>
+  reloadVault: () => Promise<VaultEntry[]>
+  reloadFolders: () => Promise<unknown> | unknown
+  reloadViews: () => Promise<unknown> | unknown
+  closeAllTabs: () => void
+  replaceActiveTab: (entry: VaultEntry) => Promise<void>
+  hasUnsavedChanges: (path: string) => boolean
   onSelectNote: (entry: VaultEntry) => void
   activeTabPath: string | null
 }
@@ -13,12 +19,21 @@ function findEntry(entriesByPath: Map<string, VaultEntry>, resolvedPath: string,
   return entriesByPath.get(path) ?? entriesByPath.get(`${resolvedPath}/${path}`)
 }
 
-function findInFresh(entries: unknown, resolvedPath: string, path: string): VaultEntry | undefined {
-  return (entries as VaultEntry[]).find(e => e.path === path || e.path === `${resolvedPath}/${path}`)
+function findInFresh(entries: VaultEntry[], resolvedPath: string, path: string): VaultEntry | undefined {
+  return entries.find(e => e.path === path || e.path === `${resolvedPath}/${path}`)
 }
 
 export function useVaultBridge({
-  entriesByPath, resolvedPath, reloadVault, onSelectNote, activeTabPath,
+  entriesByPath,
+  resolvedPath,
+  reloadVault,
+  reloadFolders,
+  reloadViews,
+  closeAllTabs,
+  replaceActiveTab,
+  hasUnsavedChanges,
+  onSelectNote,
+  activeTabPath,
 }: VaultBridgeDeps) {
   const reloadAndOpen = useCallback((path: string) => {
     reloadVault().then(fresh => {
@@ -26,6 +41,29 @@ export function useVaultBridge({
       if (entry) onSelectNote(entry)
     })
   }, [reloadVault, onSelectNote, resolvedPath])
+
+  const refreshAgentChanges = useCallback((updatedFiles: string[]) => (
+    refreshPulledVaultState({
+      activeTabPath,
+      closeAllTabs,
+      hasUnsavedChanges,
+      reloadFolders,
+      reloadVault,
+      reloadViews,
+      replaceActiveTab,
+      updatedFiles,
+      vaultPath: resolvedPath,
+    })
+  ), [
+    activeTabPath,
+    closeAllTabs,
+    hasUnsavedChanges,
+    reloadFolders,
+    reloadVault,
+    reloadViews,
+    replaceActiveTab,
+    resolvedPath,
+  ])
 
   const openNoteByPath = useCallback((path: string) => {
     const entry = findEntry(entriesByPath, resolvedPath, path)
@@ -40,11 +78,12 @@ export function useVaultBridge({
   }, [entriesByPath, resolvedPath, onSelectNote])
 
   const handleAgentFileModified = useCallback((relativePath: string) => {
-    const fullPath = `${resolvedPath}/${relativePath}`
-    if (activeTabPath === relativePath || activeTabPath === fullPath) reloadVault()
-  }, [reloadVault, activeTabPath, resolvedPath])
+    void refreshAgentChanges([relativePath])
+  }, [refreshAgentChanges])
 
-  const handleAgentVaultChanged = useCallback(() => { reloadVault() }, [reloadVault])
+  const handleAgentVaultChanged = useCallback(() => {
+    void refreshAgentChanges([])
+  }, [refreshAgentChanges])
 
   return {
     openNoteByPath,

@@ -615,8 +615,14 @@ function App() {
   }, [handleEnterNeighborhood, handleReplaceActiveTab])
 
   const vaultBridge = useVaultBridge({
-    entriesByPath, resolvedPath,
+    entriesByPath,
+    resolvedPath,
     reloadVault: vault.reloadVault,
+    reloadFolders: vault.reloadFolders,
+    reloadViews: vault.reloadViews,
+    closeAllTabs,
+    replaceActiveTab: handleReplaceActiveTab,
+    hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
     onSelectNote: notes.handleSelectNote,
     activeTabPath: notes.activeTabPath,
   })
