@@ -77,6 +77,12 @@ describe('AiPanel', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('starts a new AI chat when the header action is clicked', () => {
+    render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)
+    fireEvent.click(screen.getByTitle('New AI chat'))
+    expect(mockClearConversation).toHaveBeenCalledOnce()
+  })
+
   it('renders empty state without context', () => {
     render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)
     expect(screen.getByText('Open a note, then ask the AI about it')).toBeTruthy()
@@ -150,6 +156,20 @@ describe('AiPanel', () => {
     await act(() => { vi.advanceTimersByTime(1) })
     const input = screen.getByTestId('agent-input')
     expect(document.activeElement).toBe(input)
+    vi.useRealTimers()
+  })
+
+  it('focuses the panel shell when reopening with existing messages', async () => {
+    vi.useFakeTimers()
+    mockMessages = [{
+      userMessage: 'Remember this',
+      actions: [],
+      response: 'Still here.',
+      id: 'msg-3',
+    }]
+    render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)
+    await act(() => { vi.advanceTimersByTime(1) })
+    expect(document.activeElement).toBe(screen.getByTestId('ai-panel'))
     vi.useRealTimers()
   })
 

@@ -12,7 +12,7 @@ interface AiPanelHeaderProps {
   agentReady: boolean
   legacyCopy: boolean
   onClose: () => void
-  onClear: () => void
+  onNewChat: () => void
 }
 
 interface AiPanelContextBarProps {
@@ -111,7 +111,7 @@ export function AiPanelHeader({
   agentReady,
   legacyCopy,
   onClose,
-  onClear,
+  onNewChat,
 }: AiPanelHeaderProps) {
   return (
     <div
@@ -132,8 +132,9 @@ export function AiPanelHeader({
       </div>
       <button
         className="shrink-0 border-none bg-transparent p-1 text-muted-foreground cursor-pointer hover:text-foreground transition-colors"
-        onClick={onClear}
-        title="New conversation"
+        onClick={onNewChat}
+        aria-label="New AI chat"
+        title="New AI chat"
       >
         <Plus size={16} />
       </button>

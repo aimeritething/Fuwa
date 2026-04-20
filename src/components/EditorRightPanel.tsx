@@ -1,8 +1,11 @@
+import { useEffect } from 'react'
 import { DEFAULT_AI_AGENT, type AiAgentId } from '../lib/aiAgents'
 import type { VaultEntry, GitCommit } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import { Inspector, type FrontmatterValue } from './Inspector'
-import { AiPanel } from './AiPanel'
+import { AiPanelView } from './AiPanel'
+import { useAiPanelController } from './useAiPanelController'
+import { NEW_AI_CHAT_EVENT } from '../utils/aiPromptBridge'
 
 interface EditorRightPanelProps {
   showAIChat?: boolean
@@ -43,26 +46,45 @@ export function EditorRightPanel({
   onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onInitializeProperties, onToggleRawEditor, onOpenNote,
   onFileCreated, onFileModified, onVaultChanged,
 }: EditorRightPanelProps) {
+  const aiPanelController = useAiPanelController({
+    vaultPath,
+    defaultAiAgent,
+    defaultAiAgentReady,
+    activeEntry: inspectorEntry,
+    activeNoteContent: inspectorContent,
+    entries,
+    noteList,
+    noteListFilter,
+    onOpenNote,
+    onFileCreated,
+    onFileModified,
+    onVaultChanged,
+  })
+  const { handleNewChat } = aiPanelController
+
+  useEffect(() => {
+    const handleRequestedNewChat = () => {
+      handleNewChat()
+    }
+
+    window.addEventListener(NEW_AI_CHAT_EVENT, handleRequestedNewChat)
+    return () => window.removeEventListener(NEW_AI_CHAT_EVENT, handleRequestedNewChat)
+  }, [handleNewChat])
+
   if (showAIChat) {
     return (
       <div
         className="shrink-0 flex flex-col min-h-0"
         style={{ width: inspectorWidth, minWidth: 240, height: '100%' }}
       >
-        <AiPanel
+        <AiPanelView
+          controller={aiPanelController}
           onClose={() => onToggleAIChat?.()}
           onOpenNote={onOpenNote}
           defaultAiAgent={defaultAiAgent}
           defaultAiAgentReady={defaultAiAgentReady}
-          onFileCreated={onFileCreated}
-          onFileModified={onFileModified}
-          onVaultChanged={onVaultChanged}
-          vaultPath={vaultPath}
           activeEntry={inspectorEntry}
-          activeNoteContent={inspectorContent}
           entries={entries}
-          noteList={noteList}
-          noteListFilter={noteListFilter}
         />
       </div>
     )

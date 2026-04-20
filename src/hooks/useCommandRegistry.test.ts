@@ -2,6 +2,7 @@ import { describe, it, expect, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useCommandRegistry, buildTypeCommands, extractVaultTypes, pluralizeType, groupSortKey } from './useCommandRegistry'
 import type { CommandAction } from './useCommandRegistry'
+import { NEW_AI_CHAT_EVENT, OPEN_AI_CHAT_EVENT } from '../utils/aiPromptBridge'
 
 function makeConfig(overrides: Record<string, unknown> = {}) {
   return {
@@ -218,6 +219,24 @@ describe('useCommandRegistry', () => {
     const config = makeConfig({ onToggleRawEditor: undefined })
     const { result } = renderHook(() => useCommandRegistry(config))
     expect(findCommand(result.current, 'toggle-raw-editor')?.enabled).toBe(false)
+  })
+
+  it('includes a New AI chat command that opens and resets the panel session', () => {
+    const config = makeConfig()
+    const dispatchSpy = vi.spyOn(window, 'dispatchEvent')
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'new-ai-chat')
+
+    expect(cmd).toBeDefined()
+    expect(cmd!.group).toBe('View')
+    expect(cmd!.label).toBe('New AI chat')
+    expect(cmd!.enabled).toBe(true)
+
+    cmd!.execute()
+
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: NEW_AI_CHAT_EVENT }))
+    expect(dispatchSpy).toHaveBeenCalledWith(expect.objectContaining({ type: OPEN_AI_CHAT_EVENT }))
+    dispatchSpy.mockRestore()
   })
 
   it('omits Inbox navigation when the explicit workflow is disabled', () => {

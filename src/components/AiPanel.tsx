@@ -8,7 +8,7 @@ import {
 import { DEFAULT_AI_AGENT, getAiAgentDefinition, type AiAgentId } from '../lib/aiAgents'
 import { type NoteListItem } from '../utils/ai-context'
 import type { VaultEntry } from '../types'
-import { useAiPanelController } from './useAiPanelController'
+import { useAiPanelController, type AiPanelController } from './useAiPanelController'
 import { useAiPanelPromptQueue } from './useAiPanelPromptQueue'
 import { useAiPanelFocus } from './useAiPanelFocus'
 
@@ -32,29 +32,31 @@ interface AiPanelProps {
   noteListFilter?: { type: string | null; query: string }
 }
 
-export function AiPanel({
+interface AiPanelViewProps {
+  controller: AiPanelController
+  onClose: () => void
+  onOpenNote?: (path: string) => void
+  defaultAiAgent?: AiAgentId
+  defaultAiAgentReady?: boolean
+  activeEntry?: VaultEntry | null
+  entries?: VaultEntry[]
+}
+
+export function AiPanelView({
+  controller,
   onClose,
   onOpenNote,
   defaultAiAgent: providedDefaultAiAgent,
   defaultAiAgentReady: providedDefaultAiAgentReady,
-  onFileCreated,
-  onFileModified,
-  onVaultChanged,
-  vaultPath,
   activeEntry,
-  activeNoteContent,
   entries,
-  openTabs,
-  noteList,
-  noteListFilter,
-}: AiPanelProps) {
+}: AiPanelViewProps) {
   const defaultAiAgent = providedDefaultAiAgent ?? DEFAULT_AI_AGENT
   const defaultAiAgentReady = providedDefaultAiAgentReady ?? true
   const useLegacyAiExperience = providedDefaultAiAgent === undefined && providedDefaultAiAgentReady === undefined
   const inputRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
   const agentLabel = getAiAgentDefinition(defaultAiAgent).label
-
   const {
     agent,
     input,
@@ -64,24 +66,17 @@ export function AiPanel({
     isActive,
     handleSend,
     handleNavigateWikilink,
-  } = useAiPanelController({
-    vaultPath,
-    defaultAiAgent,
-    defaultAiAgentReady,
-    activeEntry,
-    activeNoteContent,
-    entries,
-    openTabs,
-    noteList,
-    noteListFilter,
-    onOpenNote,
-    onFileCreated,
-    onFileModified,
-    onVaultChanged,
-  })
+    handleNewChat,
+  } = controller
 
   useAiPanelPromptQueue({ agent, input, isActive, setInput })
-  useAiPanelFocus({ inputRef, panelRef, isActive, onClose })
+  useAiPanelFocus({
+    inputRef,
+    panelRef,
+    hasMessages: agent.messages.length > 0,
+    isActive,
+    onClose,
+  })
 
   return (
     <aside
@@ -99,7 +94,13 @@ export function AiPanel({
       data-testid="ai-panel"
       data-ai-active={isActive || undefined}
     >
-      <AiPanelHeader agentLabel={agentLabel} agentReady={defaultAiAgentReady} legacyCopy={useLegacyAiExperience} onClose={onClose} onClear={agent.clearConversation} />
+      <AiPanelHeader
+        agentLabel={agentLabel}
+        agentReady={defaultAiAgentReady}
+        legacyCopy={useLegacyAiExperience}
+        onClose={onClose}
+        onNewChat={handleNewChat}
+      />
       {activeEntry && (
         <AiPanelContextBar activeEntry={activeEntry} linkedCount={linkedEntries.length} />
       )}
@@ -126,5 +127,50 @@ export function AiPanel({
         onSend={handleSend}
       />
     </aside>
+  )
+}
+
+export function AiPanel({
+  onClose,
+  onOpenNote,
+  defaultAiAgent: providedDefaultAiAgent,
+  defaultAiAgentReady: providedDefaultAiAgentReady,
+  onFileCreated,
+  onFileModified,
+  onVaultChanged,
+  vaultPath,
+  activeEntry,
+  activeNoteContent,
+  entries,
+  openTabs,
+  noteList,
+  noteListFilter,
+}: AiPanelProps) {
+  const controller = useAiPanelController({
+    vaultPath,
+    defaultAiAgent: providedDefaultAiAgent ?? DEFAULT_AI_AGENT,
+    defaultAiAgentReady: providedDefaultAiAgentReady ?? true,
+    activeEntry,
+    activeNoteContent,
+    entries,
+    openTabs,
+    noteList,
+    noteListFilter,
+    onOpenNote,
+    onFileCreated,
+    onFileModified,
+    onVaultChanged,
+  })
+
+  return (
+    <AiPanelView
+      controller={controller}
+      onClose={onClose}
+      onOpenNote={onOpenNote}
+      defaultAiAgent={providedDefaultAiAgent}
+      defaultAiAgentReady={providedDefaultAiAgentReady}
+      activeEntry={activeEntry}
+      entries={entries}
+    />
   )
 }

@@ -24,6 +24,18 @@ interface UseAiPanelControllerArgs {
   onVaultChanged?: () => void
 }
 
+export interface AiPanelController {
+  agent: ReturnType<typeof useCliAiAgent>
+  input: string
+  setInput: React.Dispatch<React.SetStateAction<string>>
+  linkedEntries: ReturnType<typeof useAiPanelContextSnapshot>['linkedEntries']
+  hasContext: boolean
+  isActive: boolean
+  handleSend: (text: string, references: NoteReference[]) => void
+  handleNavigateWikilink: (target: string) => void
+  handleNewChat: () => void
+}
+
 export function useAiPanelController({
   vaultPath,
   defaultAiAgent,
@@ -38,7 +50,7 @@ export function useAiPanelController({
   onFileCreated,
   onFileModified,
   onVaultChanged,
-}: UseAiPanelControllerArgs) {
+}: UseAiPanelControllerArgs): AiPanelController {
   const [input, setInput] = useState('')
   const { linkedEntries, contextPrompt } = useAiPanelContextSnapshot({
     activeEntry,
@@ -73,6 +85,11 @@ export function useAiPanelController({
     onOpenNote?.(target)
   }, [onOpenNote])
 
+  const handleNewChat = useCallback(() => {
+    agent.clearConversation()
+    setInput('')
+  }, [agent])
+
   return {
     agent,
     input,
@@ -82,5 +99,6 @@ export function useAiPanelController({
     isActive,
     handleSend,
     handleNavigateWikilink,
+    handleNewChat,
   }
 }

@@ -3,33 +3,53 @@ import { useCallback, useEffect } from 'react'
 interface UseAiPanelFocusArgs {
   inputRef: React.RefObject<HTMLDivElement | null>
   panelRef: React.RefObject<HTMLElement | null>
+  hasMessages: boolean
   isActive: boolean
   onClose: () => void
+}
+
+function focusPreferredElement(
+  panelRef: React.RefObject<HTMLElement | null>,
+  inputRef: React.RefObject<HTMLDivElement | null>,
+  shouldFocusPanel: boolean,
+) {
+  if (shouldFocusPanel) {
+    panelRef.current?.focus()
+    return
+  }
+
+  inputRef.current?.focus()
+}
+
+function shouldHandleEscape(
+  event: KeyboardEvent,
+  panelRef: React.RefObject<HTMLElement | null>,
+): boolean {
+  return event.key === 'Escape' && !!panelRef.current?.contains(document.activeElement)
 }
 
 export function useAiPanelFocus({
   inputRef,
   panelRef,
+  hasMessages,
   isActive,
   onClose,
 }: UseAiPanelFocusArgs) {
+  const shouldFocusPanel = hasMessages || isActive
+
   useEffect(() => {
-    const timer = setTimeout(() => inputRef.current?.focus(), 0)
+    const timer = setTimeout(() => {
+      focusPreferredElement(panelRef, inputRef, shouldFocusPanel)
+    }, 0)
     return () => clearTimeout(timer)
-  }, [inputRef])
+  }, [inputRef, panelRef, shouldFocusPanel])
 
   useEffect(() => {
-    if (isActive) {
-      panelRef.current?.focus()
-      return
-    }
-
-    inputRef.current?.focus()
-  }, [inputRef, isActive, panelRef])
+    focusPreferredElement(panelRef, inputRef, shouldFocusPanel)
+  }, [inputRef, panelRef, shouldFocusPanel])
 
   const handleEscape = useCallback((event: KeyboardEvent) => {
-    if (event.key !== 'Escape') return
-    if (!panelRef.current?.contains(document.activeElement)) return
+    if (!shouldHandleEscape(event, panelRef)) return
 
     event.preventDefault()
     onClose()

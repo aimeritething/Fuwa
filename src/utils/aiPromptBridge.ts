@@ -2,6 +2,7 @@ import type { NoteReference } from './ai-context'
 
 export const OPEN_AI_CHAT_EVENT = 'tolaria:open-ai-chat'
 export const AI_PROMPT_QUEUED_EVENT = 'tolaria:ai-prompt-queued'
+export const NEW_AI_CHAT_EVENT = 'tolaria:new-ai-chat'
 
 export interface QueuedAiPrompt {
   id: number
@@ -31,4 +32,9 @@ export function takeQueuedAiPrompt(): QueuedAiPrompt | null {
 
 export function requestOpenAiChat() {
   window.dispatchEvent(new Event(OPEN_AI_CHAT_EVENT))
+}
+
+export function requestNewAiChat() {
+  window.dispatchEvent(new Event(NEW_AI_CHAT_EVENT))
+  requestOpenAiChat()
 }

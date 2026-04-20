@@ -34,7 +34,7 @@ test.describe('Fresh-install regression: AI panel renders and works', () => {
 
     // Layer 1: Header with title and buttons
     await expect(panel.locator('text=AI Chat')).toBeVisible()
-    await expect(panel.locator('button[title="New conversation"]')).toBeVisible()
+    await expect(panel.locator('button[title="New AI chat"]')).toBeVisible()
     await expect(panel.locator('button[title="Close AI panel"]')).toBeVisible()
 
     // Layer 2: Message area (empty state with robot icon suggestion)
