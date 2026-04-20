@@ -570,6 +570,7 @@ describe('App', () => {
   })
 
   it('defaults to All Notes when explicit organization is disabled in vault config', async () => {
+    localStorage.setItem('tolaria_welcome_dismissed', '1')
     mockCommandResults.load_vault_list = {
       vaults: [{ label: 'Getting Started', path: '/Users/mock/Documents/Getting Started' }],
       active_vault: '/Users/mock/Documents/Getting Started',
