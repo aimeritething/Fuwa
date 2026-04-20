@@ -13,9 +13,45 @@ pub fn default_vault_path() -> Result<PathBuf, String> {
         .ok_or_else(|| "Could not determine Documents directory".to_string())
 }
 
+const GETTING_STARTED_REQUIRED_CONFIG_FILES: [&str; 2] = ["type.md", "note.md"];
+const GETTING_STARTED_TEMPLATE_MARKERS: [&str; 2] = ["welcome.md", "views/active-projects.yml"];
+
 /// Check whether a vault path exists on disk.
 pub fn vault_exists(path: &str) -> bool {
-    Path::new(path).is_dir()
+    let default_path = default_vault_path().ok();
+    vault_exists_with_default_path(Path::new(path), default_path.as_deref())
+}
+
+fn vault_exists_with_default_path(path: &Path, default_path: Option<&Path>) -> bool {
+    if !path.is_dir() {
+        return false;
+    }
+
+    if !is_canonical_getting_started_path(path, default_path) {
+        return true;
+    }
+
+    canonical_getting_started_vault_exists(path)
+}
+
+fn is_canonical_getting_started_path(path: &Path, default_path: Option<&Path>) -> bool {
+    default_path.is_some_and(|candidate| candidate == path)
+}
+
+fn canonical_getting_started_vault_exists(path: &Path) -> bool {
+    has_getting_started_config_files(path) && has_getting_started_template_marker(path)
+}
+
+fn has_getting_started_config_files(path: &Path) -> bool {
+    GETTING_STARTED_REQUIRED_CONFIG_FILES
+        .iter()
+        .all(|file| path.join(file).is_file())
+}
+
+fn has_getting_started_template_marker(path: &Path) -> bool {
+    GETTING_STARTED_TEMPLATE_MARKERS
+        .iter()
+        .any(|file| path.join(file).is_file())
 }
 
 /// Previous default AGENTS.md content seeded by Tolaria itself. Existing vaults
@@ -640,6 +676,13 @@ mod tests {
             .unwrap();
     }
 
+    fn write_tolaria_config_files(path: &Path) {
+        fs::create_dir_all(path).unwrap();
+        fs::write(path.join("AGENTS.md"), AGENTS_MD).unwrap();
+        fs::write(path.join("type.md"), "# Type\n").unwrap();
+        fs::write(path.join("note.md"), "# Note\n").unwrap();
+    }
+
     fn assert_getting_started_vault_replaces_template(agents_content: &str) {
         let dir = tempfile::TempDir::new().unwrap();
         let source = dir.path().join("starter");
@@ -670,6 +713,33 @@ mod tests {
     }
 
     #[test]
+    fn test_canonical_getting_started_path_rejects_plain_tolaria_folder() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let default_path = dir.path().join("Getting Started");
+
+        write_tolaria_config_files(&default_path);
+
+        assert!(!vault_exists_with_default_path(
+            default_path.as_path(),
+            Some(default_path.as_path())
+        ));
+    }
+
+    #[test]
+    fn test_non_canonical_vault_path_stays_permissive() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let default_path = dir.path().join("Getting Started");
+        let other_vault_path = dir.path().join("Existing Vault");
+
+        fs::create_dir_all(&other_vault_path).unwrap();
+
+        assert!(vault_exists_with_default_path(
+            other_vault_path.as_path(),
+            Some(default_path.as_path())
+        ));
+    }
+
+    #[test]
     fn test_create_getting_started_vault_clones_repo() {
         let dir = tempfile::TempDir::new().unwrap();
         let source = dir.path().join("starter");
@@ -690,6 +760,22 @@ mod tests {
         );
         assert!(dest.join("type.md").exists());
         assert!(dest.join("note.md").exists());
+    }
+
+    #[test]
+    fn test_canonical_getting_started_path_accepts_cloned_starter_vault() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let source = dir.path().join("starter");
+        let default_path = dir.path().join("Getting Started");
+        init_source_repo(&source, None);
+
+        create_getting_started_vault_from_repo(default_path.as_path(), source.to_str().unwrap())
+            .unwrap();
+
+        assert!(vault_exists_with_default_path(
+            default_path.as_path(),
+            Some(default_path.as_path())
+        ));
     }
 
     #[test]
