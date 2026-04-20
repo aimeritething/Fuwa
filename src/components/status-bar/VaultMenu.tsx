@@ -104,9 +104,16 @@ function VaultMenuIcon({ isActive, unavailable }: { isActive: boolean; unavailab
 function VaultMenuItem({ vault, isActive, canRemove, onSelect, onRemove }: VaultMenuItemProps) {
   const unavailable = vault.available === false
   const removeLabel = `Remove ${vault.label} from list`
+  const itemClassName = [
+    'w-full justify-start rounded-sm px-2 py-1 text-xs font-normal',
+    canRemove ? 'pr-7' : '',
+    isActive
+      ? 'text-foreground hover:bg-[var(--hover)] hover:text-foreground'
+      : 'text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground',
+  ].filter(Boolean).join(' ')
 
   return (
-    <div className="group flex items-center gap-1 rounded-sm">
+    <div className="group relative flex w-full items-center rounded-sm">
       <Button
         type="button"
         variant="ghost"
@@ -116,17 +123,14 @@ function VaultMenuItem({ vault, isActive, canRemove, onSelect, onRemove }: Vault
         aria-current={isActive ? 'true' : undefined}
         title={unavailable ? `Vault not found: ${vault.path}` : vault.path}
         data-testid={`vault-menu-item-${vault.label}`}
-        className={isActive
-          ? 'w-full justify-between rounded-sm px-2 py-1 text-xs font-normal text-foreground hover:bg-[var(--hover)] hover:text-foreground'
-          : 'w-full justify-between rounded-sm px-2 py-1 text-xs font-normal text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground'
-        }
+        className={itemClassName}
         style={{
           height: 'auto',
           background: isActive ? 'var(--hover)' : 'transparent',
           opacity: unavailable ? 0.45 : 1,
         }}
       >
-        <span className="flex items-center gap-1.5 truncate">
+        <span className="flex min-w-0 items-center gap-1.5">
           <VaultMenuIcon isActive={isActive} unavailable={unavailable} />
           <span className="truncate">{vault.label}</span>
         </span>
@@ -143,7 +147,7 @@ function VaultMenuItem({ vault, isActive, canRemove, onSelect, onRemove }: Vault
           title={removeLabel}
           aria-label={removeLabel}
           data-testid={`vault-menu-remove-${vault.label}`}
-          className="rounded-sm text-muted-foreground opacity-0 transition-opacity hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100"
+          className="absolute top-1/2 right-1 -translate-y-1/2 rounded-sm text-muted-foreground opacity-0 pointer-events-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:pointer-events-auto group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
         >
           <X size={10} />
         </Button>

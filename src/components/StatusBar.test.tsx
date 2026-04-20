@@ -224,7 +224,7 @@ describe('StatusBar', () => {
     expect(onCloneGettingStarted).toHaveBeenCalledOnce()
   })
 
-  it('exposes a hover-revealed remove action for non-active vaults', () => {
+  it('exposes an in-row, hover-revealed remove action for non-active vaults', () => {
     render(
       <StatusBar
         noteCount={100}
@@ -237,8 +237,16 @@ describe('StatusBar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
 
-    expect(screen.getByTestId('vault-menu-item-Work Vault').className).toContain('hover:bg-[var(--hover)]')
-    expect(screen.getByTestId('vault-menu-remove-Work Vault').className).toContain('group-hover:opacity-100')
+    const item = screen.getByTestId('vault-menu-item-Work Vault')
+    const removeAction = screen.getByTestId('vault-menu-remove-Work Vault')
+
+    expect(item.className).toContain('hover:bg-[var(--hover)]')
+    expect(item.className).toContain('pr-7')
+    expect(removeAction.className).toContain('absolute')
+    expect(removeAction.className).toContain('right-1')
+    expect(removeAction.className).toContain('group-hover:opacity-100')
+    expect(removeAction.className).toContain('group-focus-within:opacity-100')
+    expect(removeAction.className).toContain('pointer-events-none')
     expect(screen.getByRole('button', { name: 'Remove Work Vault from list' })).toBeInTheDocument()
   })
 
