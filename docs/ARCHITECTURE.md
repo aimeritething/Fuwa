@@ -531,7 +531,11 @@ flowchart TD
     AS["useAutoSync\n(configurable interval)"] --> PULL["invoke('git_pull')"]
     PULL --> PC{Result?}
     PC -->|Conflicts| CM["ConflictResolverModal\nor ConflictNoteBanner"]
-    PC -->|Fast-forward| RV["reload vault"]
+    PC -->|Fast-forward| RV["reload vault + folders/views"]
+    RV --> TAB{"clean active tab?"}
+    TAB -->|Yes| RT["replace active tab\nwith fresh disk content"]
+    TAB -->|No| DONE["idle"]
+    RT --> DONE
     PC -->|Up to date| DONE["idle"]
 
     MAN["Manual commit\n(CommitDialog)"] --> RS["useGitRemoteStatus\n(commit-time check)"]

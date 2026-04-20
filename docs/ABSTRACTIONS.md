@@ -395,6 +395,8 @@ interface PulseCommit {
 `useAutoSync` hook handles automatic git sync:
 - Configurable interval (from app settings: `auto_pull_interval_minutes`)
 - Pulls on interval, pushes after commits
+- Awaits the post-pull vault refresh so toasts land after note-list state is fresh
+- Reopens the clean active tab from disk after a successful pull update so the editor and note list stay aligned
 - Detects merge conflicts → opens `ConflictResolverModal`
 - Tracks remote status (branch, ahead/behind via `git_remote_status`)
 - Handles push rejection (divergence) → sets `pull_required` status

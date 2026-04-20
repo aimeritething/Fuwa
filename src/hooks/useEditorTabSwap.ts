@@ -508,6 +508,7 @@ function handleStableActivePath(options: {
     rawSwapPendingRef.current = true
     return false
   }
+  if (shouldRefreshStableActivePath({ activeTabPath, activeTab, cache })) return false
   if (rawSwapPendingRef.current) return true
 
   cacheStableActivePath({
@@ -518,6 +519,22 @@ function handleStableActivePath(options: {
     editorMountedRef,
   })
   return true
+}
+
+function shouldRefreshStableActivePath(options: {
+  activeTabPath: string | null
+  activeTab: Tab | undefined
+  cache: Map<string, CachedTabState>
+}): boolean {
+  const {
+    activeTabPath,
+    activeTab,
+    cache,
+  } = options
+
+  if (!activeTabPath || !activeTab) return false
+  const cachedState = cache.get(activeTabPath)
+  return !cachedState || cachedState.sourceContent !== activeTab.content
 }
 
 function cacheStableActivePath(options: {

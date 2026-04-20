@@ -361,6 +361,28 @@ describe('useEditorTabSwap raw mode sync', () => {
     expect(mockEditor.replaceBlocks).toHaveBeenCalled()
   })
 
+  it('re-parses when the active tab content changes without a path change', async () => {
+    const tabA = makeTab('a.md', 'Note A')
+    const refreshedTabA = {
+      ...tabA,
+      content: '---\ntitle: Note A\n---\n\n# Note A\n\nFresh after pull.',
+    }
+
+    const { mockEditor, rerenderWith } = await createSwapHarness({
+      initialProps: { tabs: [tabA], activeTabPath: 'a.md', rawMode: false },
+    })
+
+    mockEditor.tryParseMarkdownToBlocks.mockClear()
+    mockEditor.replaceBlocks.mockClear()
+
+    await rerenderWith({ tabs: [refreshedTabA], activeTabPath: 'a.md' })
+
+    expect(mockEditor.tryParseMarkdownToBlocks).toHaveBeenCalledWith(
+      expect.stringContaining('Fresh after pull.'),
+    )
+    expect(mockEditor.replaceBlocks).toHaveBeenCalled()
+  })
+
   it('ignores editor change events before the pending tab swap applies a new untitled note', async () => {
     vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })

@@ -152,15 +152,45 @@ describe('useTabManagement (single-note model)', () => {
       expectSingleActiveTab(result, '/vault/b.md')
     })
 
-    it('is a no-op when replacing with the same entry', async () => {
+    it('treats /tmp and /private/tmp aliases as the same active note', async () => {
+      const { mockInvoke } = await import('../mock-tauri')
+      vi.mocked(mockInvoke)
+        .mockResolvedValueOnce('# Stale before pull')
+        .mockResolvedValueOnce('# Fresh after pull')
+      const beforeNavigate = vi.fn().mockResolvedValue(undefined)
+
+      const { result } = renderHook(() => useTabManagement({ beforeNavigate }))
+      await selectNote(result, { path: '/private/tmp/vault/active.md', title: 'Active' })
+
+      await act(async () => {
+        await result.current.handleReplaceActiveTab(
+          makeEntry({ path: '/tmp/vault/active.md', title: 'Active' }),
+        )
+      })
+
+      expect(beforeNavigate).not.toHaveBeenCalled()
+      expect(result.current.activeTabPath).toBe('/tmp/vault/active.md')
+      expect(result.current.tabs).toHaveLength(1)
+      expect(result.current.tabs[0].content).toBe('# Fresh after pull')
+    })
+
+    it('reloads content when replacing with the same entry', async () => {
+      const { mockInvoke } = await import('../mock-tauri')
+      vi.mocked(mockInvoke)
+        .mockResolvedValueOnce('# Stale before pull')
+        .mockResolvedValueOnce('# Fresh after pull')
+
       const { result } = renderHook(() => useTabManagement())
-      const entry = { path: '/vault/a.md' }
+      const entry = { path: '/vault/a.md', title: 'A' }
       await selectNote(result, entry)
+
       await act(async () => {
         await result.current.handleReplaceActiveTab(makeEntry(entry))
       })
 
       expect(result.current.tabs).toHaveLength(1)
+      expect(result.current.tabs[0].content).toBe('# Fresh after pull')
+      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(2)
     })
 
     it('opens a note when no note is active', async () => {

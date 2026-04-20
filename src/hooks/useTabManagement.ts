@@ -93,7 +93,8 @@ function getCachedNoteContent(path: string): string | null {
   return prefetchCache.get(path)?.value ?? null
 }
 
-async function loadNoteContent(path: string): Promise<string> {
+async function loadNoteContent(path: string, forceFresh = false): Promise<string> {
+  if (forceFresh) return requestNoteContent({ path }).promise
   return prefetchCache.get(path)?.promise ?? requestNoteContent({ path }).promise
 }
 
@@ -112,6 +113,18 @@ function syncActiveTabPath(
   setActiveTabPath(path)
 }
 
+function normalizeComparablePath(path: string): string {
+  return path
+    .replaceAll('\\', '/')
+    .replace(/^\/private\/tmp(?=\/|$)/u, '/tmp')
+    .replace(/\/+$/u, '')
+}
+
+function pathsMatch(leftPath: string | null, rightPath: string | null): boolean {
+  if (!leftPath || !rightPath) return false
+  return normalizeComparablePath(leftPath) === normalizeComparablePath(rightPath)
+}
+
 function setSingleTab(
   tabsRef: React.MutableRefObject<Tab[]>,
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
@@ -126,7 +139,8 @@ function isAlreadyViewingPath(
   activeTabPathRef: React.MutableRefObject<string | null>,
   path: string,
 ) {
-  return activeTabPathRef.current === path || tabsRef.current.some((tab) => tab.entry.path === path)
+  return pathsMatch(activeTabPathRef.current, path)
+    || tabsRef.current.some((tab) => pathsMatch(tab.entry.path, path))
 }
 
 function startEntryNavigation(options: {
@@ -162,6 +176,7 @@ function shouldApplyLoadedEntry(options: {
   navSeqRef: React.MutableRefObject<number>
   cachedContent: string | null
   content: string
+  forceReload: boolean
   activeTabPathRef: React.MutableRefObject<string | null>
   path: string
 }) {
@@ -170,12 +185,14 @@ function shouldApplyLoadedEntry(options: {
     navSeqRef,
     cachedContent,
     content,
+    forceReload,
     activeTabPathRef,
     path,
   } = options
 
   if (navSeqRef.current !== seq) return false
-  return cachedContent !== content || activeTabPathRef.current !== path
+  if (forceReload) return true
+  return cachedContent !== content || !pathsMatch(activeTabPathRef.current, path)
 }
 
 function handleEntryLoadFailure(options: {
@@ -203,6 +220,7 @@ function handleEntryLoadFailure(options: {
 
 async function navigateToEntry(options: {
   entry: VaultEntry
+  forceReload?: boolean
   navSeqRef: React.MutableRefObject<number>
   tabsRef: React.MutableRefObject<Tab[]>
   activeTabPathRef: React.MutableRefObject<string | null>
@@ -211,6 +229,7 @@ async function navigateToEntry(options: {
 }) {
   const {
     entry,
+    forceReload = false,
     navSeqRef,
     tabsRef,
     activeTabPathRef,
@@ -222,7 +241,7 @@ async function navigateToEntry(options: {
     failNoteOpenTrace(entry.path, 'binary-entry')
     return
   }
-  if (isAlreadyViewingPath(tabsRef, activeTabPathRef, entry.path)) {
+  if (!forceReload && isAlreadyViewingPath(tabsRef, activeTabPathRef, entry.path)) {
     syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
     finishNoteOpenTrace(entry.path)
     return
@@ -239,13 +258,14 @@ async function navigateToEntry(options: {
 
   try {
     markNoteOpenTrace(entry.path, 'contentLoadStart')
-    const content = await loadNoteContent(entry.path)
+    const content = await loadNoteContent(entry.path, forceReload)
     markNoteOpenTrace(entry.path, 'contentLoadEnd')
     if (!shouldApplyLoadedEntry({
       seq,
       navSeqRef,
       cachedContent,
       content,
+      forceReload,
       activeTabPathRef,
       path: entry.path,
     })) return
@@ -282,7 +302,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   ) => {
     const seq = ++beforeNavigateSeqRef.current
     const currentPath = activeTabPathRef.current
-    if (beforeNavigate && currentPath && currentPath !== targetPath) {
+    if (beforeNavigate && currentPath && !pathsMatch(currentPath, targetPath)) {
       try {
         markNoteOpenTrace(targetPath, 'beforeNavigateStart')
         await beforeNavigate(currentPath, targetPath)
@@ -299,7 +319,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
 
   /** Open a note — replaces the current note (single-note model). */
   const handleSelectNote = useCallback(async (entry: VaultEntry) => {
-    if (entry.path !== activeTabPathRef.current) {
+    if (!pathsMatch(entry.path, activeTabPathRef.current)) {
       beginNoteOpenTrace(entry.path, 'select-note')
     }
     await executeNavigationWithBoundary(entry.path, () => navigateToEntry({
@@ -325,11 +345,12 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   }, [executeNavigationWithBoundary])
 
   const handleReplaceActiveTab = useCallback(async (entry: VaultEntry) => {
-    if (entry.path !== activeTabPathRef.current) {
+    if (!pathsMatch(entry.path, activeTabPathRef.current)) {
       beginNoteOpenTrace(entry.path, 'replace-active-tab')
     }
     await executeNavigationWithBoundary(entry.path, () => navigateToEntry({
       entry,
+      forceReload: true,
       navSeqRef,
       tabsRef,
       activeTabPathRef,

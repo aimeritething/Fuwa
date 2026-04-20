@@ -75,9 +75,44 @@ describe('useAutoSync', () => {
     const { result } = renderSync()
 
     await waitFor(() => {
-      expect(onVaultUpdated).toHaveBeenCalled()
+      expect(onVaultUpdated).toHaveBeenCalledWith(['note.md', 'project/plan.md'])
       expect(onToast).toHaveBeenCalledWith('Pulled 2 update(s) from remote')
       expect(result.current.syncStatus).toBe('idle')
+    })
+  })
+
+  it('waits for vault refresh before showing the updated toast', async () => {
+    let releaseVaultRefresh: (() => void) | null = null
+    const asyncVaultRefresh = vi.fn(() => new Promise<void>((resolve) => {
+      releaseVaultRefresh = resolve
+    }))
+
+    mockInvokeFn.mockImplementation((cmd: string) => {
+      if (cmd === 'get_last_commit_info') return Promise.resolve(MOCK_COMMIT_INFO)
+      return Promise.resolve(updated(['note.md']))
+    })
+
+    renderHook(() =>
+      useAutoSync({
+        vaultPath: '/Users/luca/Laputa',
+        intervalMinutes: 5,
+        onVaultUpdated: asyncVaultRefresh,
+        onConflict,
+        onToast,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(asyncVaultRefresh).toHaveBeenCalledWith(['note.md'])
+    })
+    expect(onToast).not.toHaveBeenCalledWith('Pulled 1 update(s) from remote')
+
+    await act(async () => {
+      releaseVaultRefresh?.()
+    })
+
+    await waitFor(() => {
+      expect(onToast).toHaveBeenCalledWith('Pulled 1 update(s) from remote')
     })
   })
 

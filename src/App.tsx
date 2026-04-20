@@ -74,6 +74,7 @@ import type { NoteListItem } from './utils/ai-context'
 import { initializeNoteProperties } from './utils/initializeNoteProperties'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
+import { refreshPulledVaultState } from './utils/pulledVaultRefresh'
 import { isNoteWindow, getNoteWindowParams, getNoteWindowPathCandidates, findNoteWindowEntry, type NoteWindowParams } from './utils/windowMode'
 import { GitRequiredModal } from './components/GitRequiredModal'
 import { RenameDetectedBanner, type DetectedRename } from './components/RenameDetectedBanner'
@@ -404,17 +405,6 @@ function App() {
     }
   }, [vault.entries.length, gitRepoState, resolvedPath])
   const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
-
-  const autoSync = useAutoSync({
-    vaultPath: resolvedPath,
-    intervalMinutes: settings.auto_pull_interval_minutes,
-    onVaultUpdated: vault.reloadVault,
-    onConflict: (files) => {
-      const names = files.map((f) => f.split('/').pop()).join(', ')
-      setToastMessage(`Conflict in ${names} — click to resolve`)
-    },
-    onToast: (msg) => setToastMessage(msg),
-  })
   const gitRemoteStatus = useGitRemoteStatus(resolvedPath)
 
   // Detect external file renames on window focus
@@ -487,8 +477,40 @@ function App() {
   const {
     handleSelectNote,
     handleReplaceActiveTab,
+    closeAllTabs,
     openTabWithContent,
   } = notes
+  const handlePulledVaultUpdate = useCallback((updatedFiles: string[]) =>
+    refreshPulledVaultState({
+      activeTabPath: notes.activeTabPath,
+      closeAllTabs,
+      hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
+      reloadFolders: vault.reloadFolders,
+      reloadVault: vault.reloadVault,
+      reloadViews: vault.reloadViews,
+      replaceActiveTab: handleReplaceActiveTab,
+      updatedFiles,
+      vaultPath: resolvedPath,
+    }), [
+      closeAllTabs,
+      handleReplaceActiveTab,
+      notes.activeTabPath,
+      resolvedPath,
+      vault.reloadFolders,
+      vault.reloadVault,
+      vault.reloadViews,
+      vault.unsavedPaths,
+    ])
+  const autoSync = useAutoSync({
+    vaultPath: resolvedPath,
+    intervalMinutes: settings.auto_pull_interval_minutes,
+    onVaultUpdated: handlePulledVaultUpdate,
+    onConflict: (files) => {
+      const names = files.map((f) => f.split('/').pop()).join(', ')
+      setToastMessage(`Conflict in ${names} — click to resolve`)
+    },
+    onToast: (msg) => setToastMessage(msg),
+  })
   const pulseCommitDiffRequestIdRef = useRef(0)
   const [pulseCommitDiffRequest, setPulseCommitDiffRequest] = useState<CommitDiffRequest | null>(null)
 
