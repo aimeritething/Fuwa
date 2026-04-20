@@ -273,7 +273,7 @@ type SidebarSelection =
 - The selected `entry` is the neighborhood source note.
 - The source note stays pinned at the top of the note list as a standard active row, not a special card.
 - Outgoing relationship groups render first using the note's `relationships` map.
-- Inverse groups (`Children`, `Events`, `Referenced By`) and `Backlinks` render after the outgoing groups.
+- Inverse groups (`Children`, `Events`, `Referenced by`) and `Backlinks` render after the outgoing groups.
 - Empty groups stay visible with count `0`.
 - Notes may appear in multiple groups when multiple relationships are true; Neighborhood mode does not deduplicate them across sections.
 - Plain click / `Enter` open the focused note without replacing the current Neighborhood.

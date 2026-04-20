@@ -1,5 +1,9 @@
 import type { VaultEntry, SidebarSelection, InboxPeriod, ViewFile } from '../types'
 import { APP_STORAGE_KEYS, LEGACY_APP_STORAGE_KEYS, getAppStorageItem } from '../constants/appStorage'
+import {
+  orderInverseRelationshipLabels as sortInverseRelationshipLabels,
+  resolveInverseRelationshipLabel,
+} from './inverseRelationshipLabels'
 import { evaluateView } from './viewFilters'
 import { wikilinkTarget, resolveEntry } from './wikilink'
 
@@ -308,12 +312,6 @@ function appendInverseRelationshipEntries(
   inverseGroups.set(label, [entry])
 }
 
-function resolveInverseRelationshipLabel(key: string, entry: VaultEntry): string {
-  if (key === 'Belongs to') return entry.isA === 'Event' ? 'Events' : 'Children'
-  if (key === 'Related to') return entry.isA === 'Event' ? 'Events' : 'Referenced By'
-  return `← ${key}`
-}
-
 function appendLegacyInverseRelationshipEntries(
   inverseGroups: Map<string, VaultEntry[]>,
   entity: VaultEntry,
@@ -340,12 +338,7 @@ function appendDynamicInverseRelationshipEntries(
 }
 
 function orderInverseRelationshipLabels(inverseGroups: Map<string, VaultEntry[]>): string[] {
-  const preferredOrder = ['Children', 'Events', 'Referenced By']
-  const customLabels = [...inverseGroups.keys()]
-    .filter((label) => !preferredOrder.includes(label))
-    .sort((a, b) => a.localeCompare(b))
-
-  return [...preferredOrder, ...customLabels]
+  return sortInverseRelationshipLabels(inverseGroups.keys())
 }
 
 function collectInverseRelationshipGroups(
@@ -381,7 +374,7 @@ export function buildRelationshipGroups(
   }
 
   // Direct relationships first — all keys from entity.relationships take
-  // priority so that reverse/computed groups (Children, Events, Referenced By)
+  // priority so that reverse/computed groups (Children, Events, Referenced by)
   // only show *additional* entries not already covered by a direct property.
   Object.keys(rels)
     .filter((k) => k.toLowerCase() !== 'type')

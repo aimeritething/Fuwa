@@ -451,8 +451,8 @@ Status: Active
 
         />
       )
-      expect(screen.getByText(/← Belongs to/i)).toBeInTheDocument()
-      expect(screen.getByText(/← Related to/i)).toBeInTheDocument()
+      expect(screen.getByText('Children')).toBeInTheDocument()
+      expect(screen.getByText('Referenced by')).toBeInTheDocument()
     })
 
     it('hides referenced-by section when no entries reference the current note', () => {
@@ -559,7 +559,7 @@ Status: Active
         />
       )
       // noteA shows in Referenced By (via Belongs to)
-      expect(screen.getByText(/← Belongs to/i)).toBeInTheDocument()
+      expect(screen.getByText('Children')).toBeInTheDocument()
       expect(screen.getByText('On Writing Well')).toBeInTheDocument()
       // But NOT in Backlinks (even though outgoingLinks matches) — section hidden
       expect(screen.queryByTestId('backlinks-toggle')).not.toBeInTheDocument()

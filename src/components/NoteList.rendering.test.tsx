@@ -181,7 +181,7 @@ describe('NoteList rendering', () => {
   it('shows referenced-by groups for topic entities', () => {
     renderNoteList({ selection: { kind: 'entity', entry: mockEntries[4] } })
     expect(screen.getByText('Build Laputa App')).toBeInTheDocument()
-    expect(screen.getByText('Referenced By')).toBeInTheDocument()
+    expect(screen.getByText('Referenced by')).toBeInTheDocument()
   })
 
   it('toggles the search input from the header action', () => {
@@ -318,7 +318,7 @@ describe('NoteList rendering', () => {
 
     expect(screen.queryByRole('button', { name: /Children/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Events/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Referenced By/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Referenced by/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Backlinks/i })).not.toBeInTheDocument()
   })
 
@@ -348,7 +348,7 @@ describe('NoteList rendering', () => {
 
     expect(screen.getByRole('button', { name: /Children\s*0/i })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Events/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /Referenced By/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Referenced by/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /Backlinks/i })).not.toBeInTheDocument()
     expect(screen.queryByText('Child Note')).not.toBeInTheDocument()
   })
@@ -375,7 +375,7 @@ describe('NoteList rendering', () => {
     })
 
     expect(screen.getByText('Related to')).toBeInTheDocument()
-    expect(screen.getByText('Referenced By')).toBeInTheDocument()
+    expect(screen.getByText('Referenced by')).toBeInTheDocument()
     expect(screen.getAllByText('Shared Note')).toHaveLength(2)
   })
 

@@ -112,7 +112,25 @@ describe('relationship display labels', () => {
 
     render(<ReferencedByPanel items={items} typeEntryMap={{}} onNavigate={onNavigate} />)
 
-    expect(screen.getByText(/← Belongs to/i)).toBeInTheDocument()
+    expect(screen.getByText('Children')).toBeInTheDocument()
+    expect(screen.queryByText(/← Belongs to/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/← belongs_to/i)).not.toBeInTheDocument()
+  })
+
+  it('dedupes canonical and legacy inverse keys into a single normalized inspector group', () => {
+    const entry = makeEntry({ path: '/vault/project-alpha.md', filename: 'project-alpha.md', title: 'Project Alpha', isA: 'Project' })
+    const items: ReferencedByItem[] = [
+      { entry, viaKey: 'belongs_to' },
+      { entry, viaKey: 'Belongs to' },
+      { entry: makeEntry({ path: '/vault/topic-alpha.md', filename: 'topic-alpha.md', title: 'Topic Alpha', isA: 'Note' }), viaKey: 'related_to' },
+    ]
+
+    render(<ReferencedByPanel items={items} typeEntryMap={{}} onNavigate={onNavigate} />)
+
+    expect(screen.getByText('Children')).toBeInTheDocument()
+    expect(screen.getByText('Referenced by')).toBeInTheDocument()
+    expect(screen.getAllByText('Project Alpha')).toHaveLength(1)
+    expect(screen.queryByText(/← Belongs to/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/← belongs_to/i)).not.toBeInTheDocument()
   })
 })

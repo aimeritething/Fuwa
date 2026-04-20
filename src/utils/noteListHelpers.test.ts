@@ -161,7 +161,43 @@ describe('buildRelationshipGroups', () => {
     const groups = buildRelationshipGroups(parent, [parent, shared])
 
     expect(groups.find((group) => group.label === 'Related to')?.entries).toEqual([shared])
-    expect(groups.find((group) => group.label === 'Referenced By')?.entries).toEqual([shared])
+    expect(groups.find((group) => group.label === 'Referenced by')?.entries).toEqual([shared])
+  })
+
+  it('normalizes canonical inverse relationship keys without duplicating raw inverse groups', () => {
+    const parent = makeEntry({
+      path: '/vault/parent.md',
+      filename: 'parent.md',
+      title: 'Parent',
+      isA: 'Project',
+    })
+    const child = makeEntry({
+      path: '/vault/child.md',
+      filename: 'child.md',
+      title: 'Child',
+      isA: 'Note',
+      belongsTo: ['[[parent]]'],
+      relationships: {
+        belongs_to: ['[[parent]]'],
+      },
+    })
+    const related = makeEntry({
+      path: '/vault/related.md',
+      filename: 'related.md',
+      title: 'Related',
+      isA: 'Note',
+      relatedTo: ['[[parent]]'],
+      relationships: {
+        related_to: ['[[parent]]'],
+      },
+    })
+
+    const groups = buildRelationshipGroups(parent, [parent, child, related])
+
+    expect(groups.find((group) => group.label === 'Children')?.entries).toEqual([child])
+    expect(groups.find((group) => group.label === 'Referenced by')?.entries).toEqual([related])
+    expect(groups.find((group) => group.label === '← belongs_to')).toBeUndefined()
+    expect(groups.find((group) => group.label === '← related_to')).toBeUndefined()
   })
 
   it('includes all inverse relationship groups for non-core relationship keys', () => {
