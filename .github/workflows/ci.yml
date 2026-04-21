@@ -3,6 +3,13 @@ name: CI
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
 
 env:
   # Bump this when Tauri/Rust target artifacts capture stale absolute paths.
@@ -78,9 +85,22 @@ jobs:
           cargo llvm-cov \
             --manifest-path src-tauri/Cargo.toml \
             --ignore-filename-regex 'lib\.rs|main\.rs|menu\.rs' \
+            --lcov \
+            --output-path coverage/rust.lcov \
             --fail-under-lines 85
         # cargo-llvm-cov exits non-zero if line coverage drops below 85%
         # lib.rs/main.rs/menu.rs are Tauri boilerplate -- not meaningfully unit-testable.
+
+      - name: Upload coverage to Codecov
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          fail_ci_if_error: true
+          disable_search: true
+          files: ./coverage/lcov.info,./coverage/rust.lcov
+          verbose: true
+        # OIDC avoids long-lived CODECOV_TOKEN secrets.
 
       # ── 3. Code Health (CodeScene — Hotspot + Average Code Health gates) ──
       # Enforces minimum floors on BOTH hotspot and average code health.

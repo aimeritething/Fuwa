@@ -10,6 +10,7 @@ Il workflow `ci.yml` esegue i seguenti check automatici:
 
 ### 2. Test Coverage
 - Frontend: vitest con coverage reporting
+- Upload automatico su Codecov dai report LCOV frontend + Rust
 - Threshold configurabile in `vitest.config.ts`
 
 ### 3. Code Health (CodeScene)
@@ -39,6 +40,11 @@ CODESCENE_PROJECT_ID=<your-project-id>
 
 Il PAT di CodeScene è lo stesso che usi localmente (~/.codescene/token).
 Il project ID lo trovi nella dashboard CodeScene.
+
+### Codecov Setup
+- Installa/attiva il repo in Codecov una volta sola tramite GitHub App / import del repository.
+- Nessun `CODECOV_TOKEN` richiesto in GitHub Actions: `ci.yml` usa OIDC (`id-token: write` + `use_oidc: true`).
+- Il workflow carica `coverage/lcov.info` (Vitest) e `coverage/rust.lcov` (cargo-llvm-cov).
 
 ### Telemetry Secrets For Release Builds
 Aggiungi anche questi secrets per i workflow `release.yml` e `release-stable.yml`:
@@ -97,8 +103,11 @@ codescene delta-analysis --base-revision origin/main
 
 ## Workflow Triggers
 
-- **Push**: su `main` e branch `experiment/*`
+- **Push**: su `main`
 - **Pull Request**: verso `main`
+- **Manuale**: `workflow_dispatch`
+
+Nota: l'upload a Codecov gira su push a `main` e sulle PR dello stesso repository. Le PR da fork saltano l'upload per evitare problemi di permessi OIDC.
 
 ## Status Checks
 
