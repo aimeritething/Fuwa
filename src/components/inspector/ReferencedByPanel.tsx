@@ -1,8 +1,12 @@
 import { useMemo } from 'react'
 import type { VaultEntry } from '../../types'
 import { orderInverseRelationshipLabels, resolveInverseRelationshipLabel } from '../../utils/inverseRelationshipLabels'
+import { humanizePropertyKey } from '../../utils/propertyLabels'
 import { getTypeColor } from '../../utils/typeColors'
 import { getTypeIcon } from '../NoteItem'
+import { PROPERTY_PANEL_LABEL_CLASS_NAME } from '../propertyPanelLayout'
+import { Separator } from '../ui/separator'
+import { ActionTooltip } from '../ui/action-tooltip'
 import { LinkButton } from './LinkButton'
 
 export interface ReferencedByItem {
@@ -16,57 +20,65 @@ export function ReferencedByPanel({ items, typeEntryMap, onNavigate }: {
   onNavigate: (target: string) => void
 }) {
   const grouped = useMemo(() => {
-    const map = new Map<string, Map<string, VaultEntry>>()
+    const map = new Map<string, { entriesByPath: Map<string, VaultEntry>; inverseKeys: Set<string> }>()
     for (const item of items) {
       const label = resolveInverseRelationshipLabel(item.viaKey, item.entry)
-      const entriesByPath = map.get(label) ?? new Map<string, VaultEntry>()
-      entriesByPath.set(item.entry.path, item.entry)
-      map.set(label, entriesByPath)
+      const group = map.get(label) ?? { entriesByPath: new Map<string, VaultEntry>(), inverseKeys: new Set<string>() }
+      group.entriesByPath.set(item.entry.path, item.entry)
+      group.inverseKeys.add(humanizePropertyKey(item.viaKey))
+      map.set(label, group)
     }
 
-    return orderInverseRelationshipLabels(map.keys()).map((label) => [
-      label,
-      [...(map.get(label)?.values() ?? [])],
-    ] as const)
+    return orderInverseRelationshipLabels(map.keys())
+      .map((label) => {
+        const group = map.get(label)
+        if (!group) return null
+
+        return {
+          entries: [...group.entriesByPath.values()],
+          inverseKeys: [...group.inverseKeys].sort((left, right) => left.localeCompare(right)),
+          label,
+        }
+      })
+      .filter((group): group is { entries: VaultEntry[]; inverseKeys: string[]; label: string } => group !== null && group.entries.length > 0)
   }, [items])
 
-  if (items.length === 0) return null
+  if (grouped.length === 0) return null
 
   return (
-    <div className="referenced-by-panel">
-      <div className="mb-2 flex flex-col gap-0.5">
-        <span className="text-[10px] font-medium uppercase tracking-[0.08em] text-muted-foreground/80">
-          Derived relationships
-        </span>
-        <span className="text-[10px] text-muted-foreground/80">
-          Read-only groups sourced from other notes.
-        </span>
-      </div>
-      <div className="flex flex-col gap-2.5">
-        {grouped.map(([label, groupEntries]) => (
-          <div key={label}>
-            <span className="mb-1 block text-muted-foreground" style={{ fontSize: 9, fontWeight: 400, letterSpacing: '0.02em', opacity: 0.7 }}>
-              {label}
-            </span>
-            <div className="flex flex-col gap-0.5">
-              {groupEntries.map((e) => {
-                const te = typeEntryMap[e.isA ?? '']
-                return (
-                  <LinkButton
-                    key={e.path}
-                    label={e.title}
-                    noteIcon={e.icon}
-                    typeColor={getTypeColor(e.isA, te?.color)}
-                    isArchived={e.archived}
-                    onClick={() => onNavigate(e.title)}
-                    title={e.archived ? 'Archived' : undefined}
-                    TypeIcon={getTypeIcon(e.isA, te?.icon)}
-                  />
-                )
-              })}
+    <div className="referenced-by-panel flex flex-col gap-3">
+      <Separator data-testid="derived-relationships-separator" />
+      <div className="flex flex-col gap-3">
+        {grouped.map(({ label, entries: groupEntries, inverseKeys }) => {
+          const tooltip = `Derived inverse relationship, inverse of ${inverseKeys.join(' and ')}.`
+
+          return (
+            <div key={label} className="flex min-w-0 flex-col gap-1 px-1.5">
+              <ActionTooltip copy={{ label: tooltip }} side="top" align="start">
+                <span className={PROPERTY_PANEL_LABEL_CLASS_NAME} tabIndex={0} data-testid="derived-relationship-label">
+                  {label}
+                </span>
+              </ActionTooltip>
+              <div className="min-w-0 flex flex-col gap-0.5">
+                {groupEntries.map((e) => {
+                  const te = typeEntryMap[e.isA ?? '']
+                  return (
+                    <LinkButton
+                      key={e.path}
+                      label={e.title}
+                      noteIcon={e.icon}
+                      typeColor={getTypeColor(e.isA, te?.color)}
+                      isArchived={e.archived}
+                      onClick={() => onNavigate(e.title)}
+                      title={e.archived ? 'Archived' : undefined}
+                      TypeIcon={getTypeIcon(e.isA, te?.icon)}
+                    />
+                  )
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

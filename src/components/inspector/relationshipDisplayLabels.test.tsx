@@ -1,8 +1,11 @@
-import { fireEvent, render, screen, within } from '@testing-library/react'
+import { fireEvent, render as rtlRender, screen, within } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
 import { DynamicRelationshipsPanel } from './RelationshipsPanel'
 import { ReferencedByPanel, type ReferencedByItem } from './ReferencedByPanel'
+import { TooltipProvider } from '../ui/tooltip'
 import type { VaultEntry } from '../../types'
+
+const render = (ui: Parameters<typeof rtlRender>[0]) => rtlRender(ui, { wrapper: TooltipProvider })
 
 const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   path: '/vault/note/test.md',
@@ -105,7 +108,7 @@ describe('relationship display labels', () => {
     expect(relationshipRow).toHaveStyle({ gridColumn: '1 / -1' })
   })
 
-  it('humanizes snake_case keys in the referenced-by panel', () => {
+  it('humanizes snake_case keys in the referenced-by panel', async () => {
     const items: ReferencedByItem[] = [
       { entry: makeEntry({ path: '/vault/project-alpha.md', filename: 'project-alpha.md', title: 'Project Alpha', isA: 'Project' }), viaKey: 'belongs_to' },
     ]
@@ -113,6 +116,8 @@ describe('relationship display labels', () => {
     render(<ReferencedByPanel items={items} typeEntryMap={{}} onNavigate={onNavigate} />)
 
     expect(screen.getByText('Children')).toBeInTheDocument()
+    fireEvent.focus(screen.getByText('Children'))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Derived inverse relationship, inverse of Belongs to.')
     expect(screen.queryByText(/← Belongs to/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/← belongs_to/i)).not.toBeInTheDocument()
   })
@@ -132,5 +137,17 @@ describe('relationship display labels', () => {
     expect(screen.getAllByText('Project Alpha')).toHaveLength(1)
     expect(screen.queryByText(/← Belongs to/i)).not.toBeInTheDocument()
     expect(screen.queryByText(/← belongs_to/i)).not.toBeInTheDocument()
+  })
+
+  it('does not show empty preferred inverse groups', () => {
+    const items: ReferencedByItem[] = [
+      { entry: makeEntry({ path: '/vault/project-alpha.md', filename: 'project-alpha.md', title: 'Project Alpha', isA: 'Project' }), viaKey: 'belongs_to' },
+    ]
+
+    render(<ReferencedByPanel items={items} typeEntryMap={{}} onNavigate={onNavigate} />)
+
+    expect(screen.getByText('Children')).toBeInTheDocument()
+    expect(screen.queryByText('Events')).not.toBeInTheDocument()
+    expect(screen.queryByText('Referenced by')).not.toBeInTheDocument()
   })
 })

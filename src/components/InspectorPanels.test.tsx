@@ -1,12 +1,15 @@
 import type { ComponentProps } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render as rtlRender, screen, fireEvent } from '@testing-library/react'
 import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel, InstancesPanel } from './InspectorPanels'
+import { TooltipProvider } from './ui/tooltip'
 import type { ReferencedByItem } from './InspectorPanels'
 import type { VaultEntry, GitCommit } from '../types'
 
 // jsdom doesn't implement scrollIntoView
 Element.prototype.scrollIntoView = vi.fn()
+
+const render = (ui: Parameters<typeof rtlRender>[0]) => rtlRender(ui, { wrapper: TooltipProvider })
 
 const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   path: '/vault/note/test.md',
@@ -548,11 +551,15 @@ describe('ReferencedByPanel', () => {
     ]
     render(<ReferencedByPanel typeEntryMap={{}} items={items} onNavigate={onNavigate} />)
 
+    expect(screen.getByTestId('derived-relationships-separator')).toBeInTheDocument()
     expect(screen.getByText('Write Essays')).toBeInTheDocument()
     expect(screen.getByText('On Writing Well')).toBeInTheDocument()
     expect(screen.getByText('SEO Experiment')).toBeInTheDocument()
     expect(screen.getByText('Children')).toBeInTheDocument()
     expect(screen.getByText('Referenced by')).toBeInTheDocument()
+    expect(screen.queryByText('Derived relationships')).not.toBeInTheDocument()
+    expect(screen.queryByText('Read-only groups sourced from other notes.')).not.toBeInTheDocument()
+    expect(screen.queryByText('Events')).not.toBeInTheDocument()
   })
 
   it('navigates when clicking a referenced-by entry', () => {
@@ -570,6 +577,17 @@ describe('ReferencedByPanel', () => {
     ]
     render(<ReferencedByPanel typeEntryMap={{}} items={items} onNavigate={onNavigate} />)
     expect(screen.getByTitle('Archived')).toBeInTheDocument()
+  })
+
+  it('adds an inverse-relationship tooltip to each derived relationship label', async () => {
+    const items: ReferencedByItem[] = [
+      { entry: makeEntry({ path: '/vault/a.md', title: 'Child Note' }), viaKey: 'Belongs to' },
+    ]
+
+    render(<ReferencedByPanel typeEntryMap={{}} items={items} onNavigate={onNavigate} />)
+
+    fireEvent.focus(screen.getByText('Children'))
+    expect(await screen.findByRole('tooltip')).toHaveTextContent('Derived inverse relationship, inverse of Belongs to.')
   })
 
 })

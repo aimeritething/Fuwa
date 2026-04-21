@@ -25,9 +25,11 @@ export function resolveInverseRelationshipLabel(
 }
 
 export function orderInverseRelationshipLabels(labels: Iterable<string>): string[] {
-  const customLabels = [...labels]
+  const presentLabels = [...labels]
+  const preferredLabels = PREFERRED_INVERSE_RELATIONSHIP_LABELS.filter((label) => presentLabels.includes(label))
+  const customLabels = presentLabels
     .filter((label) => !PREFERRED_INVERSE_RELATIONSHIP_LABELS.includes(label as typeof PREFERRED_INVERSE_RELATIONSHIP_LABELS[number]))
     .sort((left, right) => left.localeCompare(right))
 
-  return [...PREFERRED_INVERSE_RELATIONSHIP_LABELS, ...customLabels]
+  return [...preferredLabels, ...customLabels]
 }
