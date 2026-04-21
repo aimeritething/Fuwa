@@ -446,19 +446,18 @@ function App() {
     onOpenFile: (relativePath) => conflictFlow.openConflictFileRef.current(relativePath),
   })
   const flushPendingRawContentRef = useRef<((path: string) => void) | null>(null)
+  const flushEditorStateBeforeAction = async (path: string) => {
+    flushPendingRawContentRef.current?.(path)
+    await appSave.flushBeforeAction(path)
+  }
 
   const notes = useNoteActions({
     addEntry: vault.addEntry,
     removeEntry: vault.removeEntry,
     entries: vault.entries,
-    flushBeforeNoteSwitch: async (path) => {
-      flushPendingRawContentRef.current?.(path)
-      await appSave.flushBeforeAction(path)
-    },
-    flushBeforePathRename: async (path) => {
-      flushPendingRawContentRef.current?.(path)
-      await appSave.flushBeforeAction(path)
-    },
+    flushBeforeNoteSwitch: flushEditorStateBeforeAction,
+    flushBeforeFrontmatterChange: flushEditorStateBeforeAction,
+    flushBeforePathRename: flushEditorStateBeforeAction,
     reloadVault: vault.reloadVault,
     setToastMessage,
     updateEntry: vault.updateEntry,

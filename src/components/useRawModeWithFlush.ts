@@ -79,18 +79,21 @@ function useTrackRawBuffer({
   rawInitialContentRef,
   rawBufferPathRef,
   rawLatestContentRef,
+  rawSourceContentRef,
 }: {
   activeTabContent: string | null
   activeTabPath: string | null
   rawInitialContentRef: React.MutableRefObject<string | null>
   rawBufferPathRef: React.MutableRefObject<string | null>
   rawLatestContentRef: React.MutableRefObject<string | null>
+  rawSourceContentRef: React.MutableRefObject<string | null>
 }) {
   useLayoutEffect(() => {
     if (!activeTabPath) {
       rawLatestContentRef.current = null
       rawInitialContentRef.current = null
       rawBufferPathRef.current = null
+      rawSourceContentRef.current = null
       return
     }
 
@@ -101,21 +104,25 @@ function useTrackRawBuffer({
     rawLatestContentRef.current = activeTabContent
     rawInitialContentRef.current = activeTabContent
     rawBufferPathRef.current = activeTabContent === null ? null : activeTabPath
-  }, [activeTabContent, activeTabPath, rawBufferPathRef, rawInitialContentRef, rawLatestContentRef])
+    rawSourceContentRef.current = activeTabContent
+  }, [activeTabContent, activeTabPath, rawBufferPathRef, rawInitialContentRef, rawLatestContentRef, rawSourceContentRef])
 }
 
 function resetRawBufferState({
   rawInitialContentRef,
   rawBufferPathRef,
   rawLatestContentRef,
+  rawSourceContentRef,
 }: {
   rawInitialContentRef: React.MutableRefObject<string | null>
   rawBufferPathRef: React.MutableRefObject<string | null>
   rawLatestContentRef: React.MutableRefObject<string | null>
+  rawSourceContentRef: React.MutableRefObject<string | null>
 }) {
   rawInitialContentRef.current = null
   rawBufferPathRef.current = null
   rawLatestContentRef.current = null
+  rawSourceContentRef.current = null
 }
 
 function useHandleFlushPending({
@@ -124,6 +131,7 @@ function useHandleFlushPending({
   activeTabContent,
   rawInitialContentRef,
   rawLatestContentRef,
+  rawSourceContentRef,
   pendingRawRestoreRef,
   pendingRoundTripRawRestoreRef,
   setRawModeContentOverride,
@@ -133,11 +141,13 @@ function useHandleFlushPending({
   activeTabContent: string | null
   rawInitialContentRef: React.MutableRefObject<string | null>
   rawLatestContentRef: React.MutableRefObject<string | null>
+  rawSourceContentRef: React.MutableRefObject<string | null>
   pendingRawRestoreRef: React.MutableRefObject<CodeMirrorRestoreState | null>
   pendingRoundTripRawRestoreRef: React.MutableRefObject<PendingRoundTripRawRestore | null>
   setRawModeContentOverride: React.Dispatch<React.SetStateAction<PendingRawExitContent | null>>
 }) {
   return useCallback(async () => {
+    rawSourceContentRef.current = activeTabContent
     const syncedContent = syncActiveTabIntoRawBuffer({
       editor,
       activeTabPath,
@@ -164,6 +174,7 @@ function useHandleFlushPending({
     pendingRoundTripRawRestoreRef,
     rawInitialContentRef,
     rawLatestContentRef,
+    rawSourceContentRef,
     setRawModeContentOverride,
   ])
 }
@@ -175,6 +186,7 @@ function useHandleBeforeRawEnd({
   rawInitialContentRef,
   rawBufferPathRef,
   rawLatestContentRef,
+  rawSourceContentRef,
   pendingRawRestoreRef,
   pendingRichRestoreRef,
   pendingRoundTripRawRestoreRef,
@@ -187,6 +199,7 @@ function useHandleBeforeRawEnd({
   rawInitialContentRef: React.MutableRefObject<string | null>
   rawBufferPathRef: React.MutableRefObject<string | null>
   rawLatestContentRef: React.MutableRefObject<string | null>
+  rawSourceContentRef: React.MutableRefObject<string | null>
   pendingRawRestoreRef: React.MutableRefObject<CodeMirrorRestoreState | null>
   pendingRichRestoreRef: React.MutableRefObject<RawEditorPositionSnapshot | null>
   pendingRoundTripRawRestoreRef: React.MutableRefObject<PendingRoundTripRawRestore | null>
@@ -205,7 +218,7 @@ function useHandleBeforeRawEnd({
       onContentChange,
     }))
     setRawModeContentOverride(null)
-    resetRawBufferState({ rawInitialContentRef, rawBufferPathRef, rawLatestContentRef })
+    resetRawBufferState({ rawInitialContentRef, rawBufferPathRef, rawLatestContentRef, rawSourceContentRef })
   }, [
     activeTabContent,
     activeTabPath,
@@ -216,9 +229,35 @@ function useHandleBeforeRawEnd({
     rawInitialContentRef,
     rawBufferPathRef,
     rawLatestContentRef,
+    rawSourceContentRef,
     setPendingRawExitContent,
     setRawModeContentOverride,
   ])
+}
+
+function useSyncRawModeContentOverride({
+  activeTabContent,
+  activeTabPath,
+  rawSourceContentRef,
+  setRawModeContentOverride,
+}: {
+  activeTabContent: string | null
+  activeTabPath: string | null
+  rawSourceContentRef: React.MutableRefObject<string | null>
+  setRawModeContentOverride: React.Dispatch<React.SetStateAction<PendingRawExitContent | null>>
+}) {
+  const syncRawModeContentOverride = (current: PendingRawExitContent | null) => {
+    if (!current) return current
+    if (current.path !== activeTabPath || current.content === activeTabContent) return current
+    return { path: activeTabPath, content: activeTabContent }
+  }
+
+  useLayoutEffect(() => {
+    if (!activeTabPath || activeTabContent === null) return
+    if (rawSourceContentRef.current === null || activeTabContent === rawSourceContentRef.current) return
+
+    setRawModeContentOverride(syncRawModeContentOverride)
+  }, [activeTabContent, activeTabPath, rawSourceContentRef, setRawModeContentOverride])
 }
 
 export function useRawModeWithFlush(
@@ -230,6 +269,7 @@ export function useRawModeWithFlush(
   const rawLatestContentRef = useRef<string | null>(null)
   const rawInitialContentRef = useRef<string | null>(null)
   const rawBufferPathRef = useRef<string | null>(null)
+  const rawSourceContentRef = useRef<string | null>(null)
   const pendingRawRestoreRef = useRef<CodeMirrorRestoreState | null>(null)
   const pendingRichRestoreRef = useRef<RawEditorPositionSnapshot | null>(null)
   const pendingRoundTripRawRestoreRef = useRef<PendingRoundTripRawRestore | null>(null)
@@ -241,6 +281,13 @@ export function useRawModeWithFlush(
     rawInitialContentRef,
     rawBufferPathRef,
     rawLatestContentRef,
+    rawSourceContentRef,
+  })
+  useSyncRawModeContentOverride({
+    activeTabContent,
+    activeTabPath,
+    rawSourceContentRef,
+    setRawModeContentOverride,
   })
 
   const handleFlushPending = useHandleFlushPending({
@@ -249,6 +296,7 @@ export function useRawModeWithFlush(
     activeTabContent,
     rawInitialContentRef,
     rawLatestContentRef,
+    rawSourceContentRef,
     pendingRawRestoreRef,
     pendingRoundTripRawRestoreRef,
     setRawModeContentOverride,
@@ -260,6 +308,7 @@ export function useRawModeWithFlush(
     rawInitialContentRef,
     rawBufferPathRef,
     rawLatestContentRef,
+    rawSourceContentRef,
     pendingRawRestoreRef,
     pendingRichRestoreRef,
     pendingRoundTripRawRestoreRef,

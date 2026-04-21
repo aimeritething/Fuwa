@@ -55,4 +55,31 @@ describe('useNoteActions frontmatter persistence', () => {
 
     expect(onFrontmatterPersisted).toHaveBeenCalledTimes(1)
   })
+
+  it.each([
+    {
+      label: 'update',
+      run: async (result: ReturnType<typeof renderHook<typeof useNoteActions>>['result']) => {
+        await result.current.handleUpdateFrontmatter('/vault/note.md', 'status', 'Done')
+      },
+    },
+    {
+      label: 'delete',
+      run: async (result: ReturnType<typeof renderHook<typeof useNoteActions>>['result']) => {
+        await result.current.handleDeleteProperty('/vault/note.md', 'status')
+      },
+    },
+  ])('flushes pending raw content before a frontmatter $label', async ({ run }) => {
+    const flushBeforeFrontmatterChange = vi.fn().mockResolvedValue(undefined)
+    const { result } = renderHook(() => useNoteActions({
+      ...makeConfig(vi.fn()),
+      flushBeforeFrontmatterChange,
+    }))
+
+    await act(async () => {
+      await run(result)
+    })
+
+    expect(flushBeforeFrontmatterChange).toHaveBeenCalledWith('/vault/note.md')
+  })
 })

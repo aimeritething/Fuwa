@@ -398,6 +398,66 @@ describe('Editor', () => {
 
     resetVaultConfigStore()
   })
+
+  it('updates the open raw editor when tab content changes externally', async () => {
+    resetVaultConfigStore()
+    bindVaultConfigStore(
+      {
+        zoom: null,
+        view_mode: null,
+        editor_mode: null,
+        tag_colors: null,
+        status_colors: null,
+        property_display_modes: null,
+        inbox: null,
+      },
+      vi.fn(),
+    )
+
+    const rawToggleRef = { current: (() => {}) as () => void }
+    const initialContent = '---\nowner: [[Alice]]\nstatus: Active\n---\n\n# Test Project\n\nBody.\n'
+    const updatedContent = '---\nowner: [[Bob]]\nstatus: Active\n---\n\n# Test Project\n\nBody.\n'
+    const initialTab = { entry: mockEntry, content: initialContent }
+    const updatedTab = { entry: mockEntry, content: updatedContent }
+
+    const { rerender } = render(
+      <Editor
+        {...defaultProps}
+        tabs={[initialTab]}
+        activeTabPath={mockEntry.path}
+        entries={[mockEntry]}
+        rawToggleRef={rawToggleRef}
+      />,
+    )
+
+    await vi.waitFor(() => {
+      expect(typeof rawToggleRef.current).toBe('function')
+    })
+
+    await act(async () => {
+      await rawToggleRef.current()
+    })
+
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('raw-editor-codemirror').textContent).toContain('owner: [[Alice]]')
+    })
+
+    rerender(
+      <Editor
+        {...defaultProps}
+        tabs={[updatedTab]}
+        activeTabPath={mockEntry.path}
+        entries={[mockEntry]}
+        rawToggleRef={rawToggleRef}
+      />,
+    )
+
+    await vi.waitFor(() => {
+      expect(screen.getByTestId('raw-editor-codemirror').textContent).toContain('owner: [[Bob]]')
+    })
+
+    resetVaultConfigStore()
+  })
 })
 
 describe('applyPendingRawExitContent', () => {

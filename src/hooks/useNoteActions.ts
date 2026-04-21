@@ -15,6 +15,7 @@ export interface NoteActionsConfig {
   removeEntry: (path: string) => void
   entries: VaultEntry[]
   flushBeforeNoteSwitch?: (path: string) => Promise<void>
+  flushBeforeFrontmatterChange?: (path: string) => Promise<void>
   flushBeforePathRename?: (path: string) => Promise<void>
   reloadVault?: () => Promise<unknown>
   setToastMessage: (msg: string | null) => void
@@ -128,6 +129,20 @@ async function flushBeforeTitleRename(
   }
 }
 
+async function flushBeforeFrontmatterMutation(
+  path: string,
+  flushBeforeFrontmatterChange?: (path: string) => Promise<void>,
+): Promise<boolean> {
+  if (!flushBeforeFrontmatterChange) return true
+
+  try {
+    await flushBeforeFrontmatterChange(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
 async function maybeRenameAfterFrontmatterUpdate({
   path,
   key,
@@ -167,6 +182,9 @@ async function updateFrontmatterAndMaybeRename({
   runFrontmatterOp,
   value,
 }: UpdateFrontmatterAndMaybeRenameParams): Promise<void> {
+  const canFlush = await flushBeforeFrontmatterMutation(path, config.flushBeforeFrontmatterChange)
+  if (!canFlush) return
+
   const canRename = await flushBeforeTitleRename(path, key, value, config.flushBeforePathRename)
   if (!canRename) return
 
@@ -239,12 +257,18 @@ function useFrontmatterActionHandlers({
   }, [activeTabPathRef, config, handleSwitchTab, renameTabsRef, runFrontmatterOp, setTabs, setToastMessage, updateTabContent])
 
   const handleDeleteProperty = useCallback(async (path: string, key: string, options?: FrontmatterOpOptions) => {
+    const canFlush = await flushBeforeFrontmatterMutation(path, config.flushBeforeFrontmatterChange)
+    if (!canFlush) return
+
     const newContent = await runFrontmatterOp('delete', path, key, undefined, options)
     if (!applyFrontmatterCallbacks({ config, path, newContent })) return
     config.onFrontmatterPersisted?.()
   }, [config, runFrontmatterOp])
 
   const handleAddProperty = useCallback(async (path: string, key: string, value: FrontmatterValue) => {
+    const canFlush = await flushBeforeFrontmatterMutation(path, config.flushBeforeFrontmatterChange)
+    if (!canFlush) return
+
     const newContent = await runFrontmatterOp('update', path, key, value)
     if (!applyFrontmatterCallbacks({ config, path, newContent })) return
     config.onFrontmatterPersisted?.()
