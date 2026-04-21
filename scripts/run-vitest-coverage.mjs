@@ -1,12 +1,13 @@
 #!/usr/bin/env node
 
-import { mkdir, rename, rm } from 'node:fs/promises'
+import { cp, mkdir, rm } from 'node:fs/promises'
+import os from 'node:os'
 import { resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 
 const rootDir = process.cwd()
 const finalCoverageDir = resolve(rootDir, 'coverage')
-const coverageRunRoot = resolve(rootDir, '.tmp', 'vitest-coverage-runs')
+const coverageRunRoot = resolve(os.tmpdir(), 'tolaria-vitest-coverage-runs')
 const runId = `${Date.now()}-${process.pid}`
 const runCoverageDir = resolve(coverageRunRoot, runId)
 const runCoverageTempDir = resolve(runCoverageDir, '.tmp')
@@ -25,7 +26,10 @@ const commandArgs = packageManagerExec
 const exitCode = await new Promise((resolveExit, rejectExit) => {
   const child = spawn(command, commandArgs, {
     cwd: rootDir,
-    env: process.env,
+    env: {
+      ...process.env,
+      VITEST_COVERAGE_DIR: runCoverageDir,
+    },
     stdio: 'inherit',
   })
 
@@ -42,7 +46,11 @@ const exitCode = await new Promise((resolveExit, rejectExit) => {
 
 if (exitCode === 0) {
   await rm(finalCoverageDir, { recursive: true, force: true })
-  await rename(runCoverageDir, finalCoverageDir)
+  await cp(runCoverageDir, finalCoverageDir, {
+    force: true,
+    recursive: true,
+  })
+  await rm(runCoverageDir, { recursive: true, force: true })
   process.exit(0)
 }
 
