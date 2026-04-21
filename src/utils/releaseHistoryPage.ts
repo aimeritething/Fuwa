@@ -27,6 +27,7 @@ type ReleaseEntry = {
   githubUrl: string | null
   notesHtml: string
   publishedLabel: string
+  publishedTimestamp: number
   tagName: string
   title: string
 }
@@ -419,6 +420,15 @@ function formatPublishedLabel(value: unknown): string {
   })
 }
 
+function parsePublishedTimestamp(value: unknown): number {
+  const text = normalizeText(value)
+  if (text === null) return Number.NEGATIVE_INFINITY
+
+  const publishedAt = new Date(text)
+  const timestamp = publishedAt.getTime()
+  return Number.isNaN(timestamp) ? Number.NEGATIVE_INFINITY : timestamp
+}
+
 function isDownloadableAsset(name: string): boolean {
   return name.endsWith('.dmg') || name.endsWith('.app.tar.gz') || name.endsWith('.zip')
 }
@@ -471,6 +481,7 @@ function normalizeReleaseEntry(release: GitHubReleasePayload): [ReleaseChannel, 
     githubUrl: normalizeUrl(release.html_url),
     notesHtml: resolveReleaseNotesHtml(release.body_html, release.body),
     publishedLabel: formatPublishedLabel(release.published_at),
+    publishedTimestamp: parsePublishedTimestamp(release.published_at),
     tagName,
     title,
   }]
@@ -488,6 +499,10 @@ function collectReleaseSections(payload: unknown): ReleaseSections {
 
     const [channel, release] = normalizedRelease
     sections[channel].push(release)
+  }
+
+  for (const channel of ['stable', 'alpha'] as const) {
+    sections[channel].sort((left, right) => right.publishedTimestamp - left.publishedTimestamp)
   }
 
   return sections

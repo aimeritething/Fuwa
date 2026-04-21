@@ -60,6 +60,35 @@ describe('buildReleaseHistoryPage', () => {
     expect(html).toContain('<p>First paragraph<br>with a line break.</p><p>Second paragraph</p>')
   })
 
+  it('sorts releases within each channel by published date descending even when the payload order is wrong', () => {
+    const html = buildReleaseHistoryPage([
+      {
+        body: 'Older alpha release',
+        name: 'Tolaria Alpha 2026.4.20.9',
+        prerelease: true,
+        published_at: '2026-04-20T09:44:02Z',
+        tag_name: 'alpha-v2026.4.20-alpha.9',
+      },
+      {
+        body: 'Newest alpha release',
+        name: 'Tolaria Alpha 2026.4.20.12',
+        prerelease: true,
+        published_at: '2026-04-20T16:53:41Z',
+        tag_name: 'alpha-v2026.4.20-alpha.12',
+      },
+      {
+        body: 'Middle alpha release',
+        name: 'Tolaria Alpha 2026.4.20.10',
+        prerelease: true,
+        published_at: '2026-04-20T10:32:01Z',
+        tag_name: 'alpha-v2026.4.20-alpha.10',
+      },
+    ])
+
+    expect(html.indexOf('Tolaria Alpha 2026.4.20.12')).toBeLessThan(html.indexOf('Tolaria Alpha 2026.4.20.10'))
+    expect(html.indexOf('Tolaria Alpha 2026.4.20.10')).toBeLessThan(html.indexOf('Tolaria Alpha 2026.4.20.9'))
+  })
+
   it('filters draft releases and shows an empty state for channels without published builds', () => {
     const html = buildReleaseHistoryPage([
       {

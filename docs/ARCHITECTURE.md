@@ -782,6 +782,7 @@ Every push to `main` triggers `.github/workflows/release.yml`:
 ```
 push to main
   → version job: compute calendar alpha version YYYY.M.D-alpha.N
+    and a GitHub-sorted tag alpha-vYYYY.M.D-alpha.NNNN
       → use today's UTC date unless the latest stable-vYYYY.M.D tag already uses today
       → if stable already uses today, advance alpha to the next calendar day so semver still increases
   → build job:
@@ -789,7 +790,7 @@ push to main
       → upload signed .app.tar.gz + .sig updater artifacts
   → release job:
       → generate alpha-latest.json
-      → publish GitHub prerelease alpha-v<version> named Tolaria Alpha YYYY.M.D.N
+      → publish GitHub prerelease alpha-vYYYY.M.D-alpha.NNNN named Tolaria Alpha YYYY.M.D.N
   → pages job:
       → build static HTML release history page
       → publish alpha/latest.json
@@ -819,7 +820,7 @@ push stable-vYYYY.M.D tag
 ### Versioning
 
 - Stable promotions use git tags in the form `stable-vYYYY.M.D` and stamp the technical version `YYYY.M.D`.
-- Alpha builds stamp the technical version `YYYY.M.D-alpha.N` and display it as `Alpha YYYY.M.D.N`.
+- Alpha builds stamp the technical version `YYYY.M.D-alpha.N` and display it as `Alpha YYYY.M.D.N`. The GitHub release tag zero-pads the sequence as `alpha-vYYYY.M.D-alpha.NNNN` so GitHub release ordering remains chronological.
 - If the latest stable tag already uses today's date, alpha advances to the next calendar day before assigning `-alpha.N` so Alpha remains semver-newer than Stable across channel switches.
 - The workflows stamp the computed version into `tauri.conf.json` and `Cargo.toml` at build time.
 - This keeps display strings clean while preserving semver monotonicity when a user switches between Stable and Alpha.

@@ -42,6 +42,21 @@ jobs:
               output = subprocess.check_output(command, text=True).strip()
               return [line for line in output.splitlines() if line]
 
+          alpha_pattern = re.compile(r"^alpha-v(\d{4}\.\d{1,2}\.\d{1,2})-alpha\.(\d+)$")
+
+          def parse_alpha_tag(tag: str) -> tuple[str, int] | None:
+              match = alpha_pattern.fullmatch(tag)
+              if not match:
+                  return None
+              calendar_version, sequence = match.groups()
+              return calendar_version, int(sequence)
+
+          def alpha_version(calendar_version: str, sequence: int) -> str:
+              return f"{calendar_version}-alpha.{sequence}"
+
+          def alpha_tag(calendar_version: str, sequence: int) -> str:
+              return f"alpha-v{calendar_version}-alpha.{sequence:04d}"
+
           existing_tags = [
               tag for tag in lines(["git", "tag", "--points-at", "HEAD"])
               if tag.startswith("alpha-v")
@@ -49,7 +64,8 @@ jobs:
 
           if existing_tags:
               tag = existing_tags[0]
-              version = tag.removeprefix("alpha-v")
+              parsed = parse_alpha_tag(tag)
+              version = alpha_version(*parsed) if parsed is not None else tag.removeprefix("alpha-v")
           else:
               today = datetime.now(timezone.utc).date()
               stable_date = None
@@ -71,8 +87,8 @@ jobs:
               calendar_version = f"{alpha_date.year}.{alpha_date.month}.{alpha_date.day}"
               sequence = len(lines(["git", "tag", "--list", f"alpha-v{calendar_version}-alpha.*"])) + 1
 
-              version = f"{calendar_version}-alpha.{sequence}"
-              tag = f"alpha-v{version}"
+              version = alpha_version(calendar_version, sequence)
+              tag = alpha_tag(calendar_version, sequence)
 
           display_match = re.fullmatch(r"(\d{4})\.(\d{1,2})\.(\d{1,2})-alpha\.(\d+)", version)
           display_version = (
@@ -275,7 +291,27 @@ jobs:
 
       - name: Generate release notes
         run: |
-          PREV_TAG=$(git tag --list 'alpha-v*' --sort=-version:refname | head -n 1 || echo "")
+          PREV_TAG=$(python3 <<'PY'
+          import re
+          import subprocess
+
+          current_tag = '${{ needs.version.outputs.tag }}'
+          pattern = re.compile(r'^alpha-v(\d{4})\.(\d{1,2})\.(\d{1,2})-alpha\.(\d+)$')
+
+          output = subprocess.check_output(['git', 'tag', '--list', 'alpha-v*'], text=True).strip()
+          tags = [line for line in output.splitlines() if line and line != current_tag]
+
+          parsed_tags = []
+          for tag in tags:
+              match = pattern.fullmatch(tag)
+              if not match:
+                  continue
+              year, month, day, sequence = map(int, match.groups())
+              parsed_tags.append(((year, month, day, sequence), tag))
+
+          print(max(parsed_tags)[1] if parsed_tags else '')
+          PY
+          )
           if [ -z "$PREV_TAG" ]; then
             NOTES=$(git log --oneline --no-merges -20)
           else
