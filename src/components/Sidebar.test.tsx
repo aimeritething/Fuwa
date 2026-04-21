@@ -517,11 +517,17 @@ describe('Sidebar', () => {
   })
 
   describe('type visibility via visible property', () => {
-    const makeTypeEntry = (title: string, visible: boolean | null): VaultEntry => ({
-      path: `/vault/${title.toLowerCase()}.md`,
-      filename: `${title.toLowerCase()}.md`,
-      title,
-      isA: 'Type',
+    const makeSidebarEntry = (overrides: {
+      path: string
+      filename: string
+      title: string
+      isA: string
+      visible?: boolean | null
+    }): VaultEntry => ({
+      path: overrides.path,
+      filename: overrides.filename,
+      title: overrides.title,
+      isA: overrides.isA,
       aliases: [],
       belongsTo: [],
       relatedTo: [],
@@ -542,9 +548,17 @@ describe('Sidebar', () => {
       template: null,
       sort: null,
       view: null,
-      visible,
+      visible: overrides.visible ?? null,
       outgoingLinks: [],
       properties: {},
+    })
+
+    const makeTypeEntry = (title: string, visible: boolean | null): VaultEntry => makeSidebarEntry({
+      path: `/vault/${title.toLowerCase()}.md`,
+      filename: `${title.toLowerCase()}.md`,
+      title,
+      isA: 'Type',
+      visible,
     })
 
     it('hides a section when its Type entry has visible: false', () => {
@@ -618,6 +632,34 @@ describe('Sidebar', () => {
       expect(screen.getByLabelText('Toggle Projects')).toBeInTheDocument()
       expect(screen.getByLabelText('Toggle People')).toBeInTheDocument()
       expect(screen.getByLabelText('Toggle Topics')).toBeInTheDocument()
+    })
+
+    it('updates the sidebar type picker when Journal becomes a real type while the app stays open', () => {
+      const journalEntries: VaultEntry[] = [
+        ...mockEntries,
+        makeSidebarEntry({
+          path: '/vault/april-21.md',
+          filename: 'april-21.md',
+          title: 'April 21',
+          isA: 'journal',
+        }),
+      ]
+      const { rerender } = render(<Sidebar entries={journalEntries} selection={defaultSelection} onSelect={() => {}} />)
+
+      fireEvent.click(screen.getByTitle('Customize sections'))
+      expect(screen.queryByLabelText('Toggle Journals')).not.toBeInTheDocument()
+
+      rerender(
+        <Sidebar
+          entries={[...journalEntries, makeTypeEntry('Journal', null)]}
+          selection={defaultSelection}
+          onSelect={() => {}}
+        />,
+      )
+      expect(screen.getByLabelText('Toggle Journals')).toBeInTheDocument()
+
+      rerender(<Sidebar entries={journalEntries} selection={defaultSelection} onSelect={() => {}} />)
+      expect(screen.queryByLabelText('Toggle Journals')).not.toBeInTheDocument()
     })
 
     it('preserves custom section colors in the customize popover', () => {

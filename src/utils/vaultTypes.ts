@@ -45,9 +45,16 @@ function collectHiddenTypeKeys(entries: VaultEntry[]): Set<string> {
   return hiddenTypeKeys
 }
 
-function shouldIncludeCommandPaletteType(type: string, hiddenTypeKeys: Set<string>): boolean {
+function hasExplicitTypeDefinition(entries: VaultEntry[], type: string): boolean {
+  const typeKey = type.trim().toLowerCase()
+  return entries.some((entry) => entry.isA === 'Type' && !entry.archived && entry.title.trim().toLowerCase() === typeKey)
+}
+
+function shouldIncludeCommandPaletteType(type: string, hiddenTypeKeys: Set<string>, entries: VaultEntry[]): boolean {
   const typeKey = type.toLowerCase()
-  return !hiddenTypeKeys.has(typeKey) && !isLegacyJournalingType(type)
+  if (hiddenTypeKeys.has(typeKey)) return false
+  if (!isLegacyJournalingType(type)) return true
+  return hasExplicitTypeDefinition(entries, type)
 }
 
 export function extractVaultTypes(entries: VaultEntry[]): string[] {
@@ -60,5 +67,5 @@ export function extractVaultTypes(entries: VaultEntry[]): string[] {
   const hiddenTypeKeys = collectHiddenTypeKeys(entries)
   const sourceTypes = typeMap.size === 0 ? DEFAULT_TYPES : Array.from(typeMap.values()).sort()
 
-  return sourceTypes.filter((type) => shouldIncludeCommandPaletteType(type, hiddenTypeKeys))
+  return sourceTypes.filter((type) => shouldIncludeCommandPaletteType(type, hiddenTypeKeys, entries))
 }

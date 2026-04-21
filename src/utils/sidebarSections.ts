@@ -8,6 +8,7 @@ import type { SectionGroup } from '../components/SidebarParts'
 import { resolveIcon } from './iconRegistry'
 import { pluralizeType } from '../hooks/useCommandRegistry'
 import { isLegacyJournalingType } from './legacyTypes'
+import { canonicalizeTypeName } from './vaultTypes'
 import {
   Wrench, Flask, Target, ArrowsClockwise,
   Users, CalendarBlank, Tag, StackSimple,
@@ -29,17 +30,44 @@ const BUILT_IN_TYPE_MAP = new Map(BUILT_IN_SECTION_GROUPS.map((sg) => [sg.type, 
 
 const isMarkdown = (e: VaultEntry) => e.fileKind === 'markdown' || !e.fileKind
 const isActive = (e: VaultEntry) => !e.archived
-const isSupportedSectionType = (type: string) => !isLegacyJournalingType(type)
 
 function shouldCollectActiveType(entry: VaultEntry): boolean {
   if (!isActive(entry) || !isMarkdown(entry)) return false
-  if (!entry.isA) return false
-  return isSupportedSectionType(entry.isA)
+  return Boolean(entry.isA)
 }
 
 function shouldIncludeTypeDefinition(name: string, entry: VaultEntry): boolean {
-  if (name !== entry.title || !isActive(entry)) return false
-  return isSupportedSectionType(name)
+  return name === entry.title && isActive(entry)
+}
+
+function resolveTypeEntry(type: string, typeEntryMap: Record<string, VaultEntry>): VaultEntry | undefined {
+  return typeEntryMap[type] ?? typeEntryMap[type.toLowerCase()]
+}
+
+function hasExplicitTypeDefinition(type: string, typeEntryMap: Record<string, VaultEntry>): boolean {
+  const typeEntry = resolveTypeEntry(type, typeEntryMap)
+  return Boolean(typeEntry && typeEntry.title.trim().toLowerCase() === type.trim().toLowerCase() && isActive(typeEntry))
+}
+
+function shouldIncludeSectionType(type: string, typeEntryMap: Record<string, VaultEntry>): boolean {
+  if (!isLegacyJournalingType(type)) return true
+  return hasExplicitTypeDefinition(type, typeEntryMap)
+}
+
+function canonicalizeSectionType(type: string, typeEntryMap: Record<string, VaultEntry>): string | null {
+  const trimmedType = type.trim()
+  if (!trimmedType) return null
+  return resolveTypeEntry(trimmedType, typeEntryMap)?.title ?? canonicalizeTypeName(trimmedType)
+}
+
+function addSectionType(typeMap: Map<string, string>, rawType: string, typeEntryMap: Record<string, VaultEntry>): void {
+  const canonicalType = canonicalizeSectionType(rawType, typeEntryMap)
+  if (!canonicalType) return
+
+  const typeKey = canonicalType.toLowerCase()
+  if (!typeMap.has(typeKey)) {
+    typeMap.set(typeKey, canonicalType)
+  }
 }
 
 /** Collect unique explicit isA values from active (non-archived) markdown entries. */
@@ -71,12 +99,17 @@ export function buildSectionGroup(type: string, typeEntryMap: Record<string, Vau
 
 /** Build sections dynamically from vault entries and defined types — types with 0 notes still appear */
 export function buildDynamicSections(entries: VaultEntry[], typeEntryMap: Record<string, VaultEntry>): SectionGroup[] {
-  const activeTypes = collectActiveTypes(entries)
+  const activeTypes = new Map<string, string>()
+  for (const type of collectActiveTypes(entries)) {
+    addSectionType(activeTypes, type, typeEntryMap)
+  }
   for (const [name, entry] of Object.entries(typeEntryMap)) {
     if (!shouldIncludeTypeDefinition(name, entry)) continue
-    activeTypes.add(name)
+    addSectionType(activeTypes, name, typeEntryMap)
   }
-  return Array.from(activeTypes, (type) => buildSectionGroup(type, typeEntryMap))
+  return Array.from(activeTypes.values())
+    .filter((type) => shouldIncludeSectionType(type, typeEntryMap))
+    .map((type) => buildSectionGroup(type, typeEntryMap))
 }
 
 export function sortSections(groups: SectionGroup[], typeEntryMap: Record<string, VaultEntry>): SectionGroup[] {

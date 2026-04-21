@@ -376,14 +376,23 @@ describe('extractVaultTypes', () => {
     expect(extractVaultTypes(entries)).toEqual(['Note', 'Project'])
   })
 
-  it('omits the legacy Journal type from extracted command-palette types', () => {
+  it('omits the legacy Journal type when no Type document defines it', () => {
+    const entries = [
+      { path: '/2026-03-11.md', title: 'March 11', isA: 'Journal' },
+      { path: '/note.md', title: 'General Note', isA: 'Note' },
+    ] as never[]
+
+    expect(extractVaultTypes(entries)).toEqual(['Note'])
+  })
+
+  it('includes Journal when a real Type document defines it', () => {
     const entries = [
       { path: '/journal.md', title: 'Journal', isA: 'Type' },
       { path: '/2026-03-11.md', title: 'March 11', isA: 'Journal' },
       { path: '/note.md', title: 'General Note', isA: 'Note' },
     ] as never[]
 
-    expect(extractVaultTypes(entries)).toEqual(['Note'])
+    expect(extractVaultTypes(entries)).toEqual(['Journal', 'Note'])
   })
 
   it('omits hidden types from extracted command-palette types', () => {

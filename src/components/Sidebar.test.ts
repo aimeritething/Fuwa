@@ -113,6 +113,16 @@ describe('buildDynamicSections', () => {
     const entries: VaultEntry[] = [
       { ...baseEntry, title: 'Daily Log', isA: 'Journal' },
     ]
+
+    const sections = buildDynamicSections(entries, {})
+
+    expect(sections.map((section) => section.type)).not.toContain('Journal')
+  })
+
+  it('includes Journal when a real Journal type definition exists', () => {
+    const entries: VaultEntry[] = [
+      { ...baseEntry, title: 'Daily Log', isA: 'journal' },
+    ]
     const typeEntryMap: Record<string, VaultEntry> = {
       Journal: { ...baseEntry, title: 'Journal', isA: 'Type' },
       journal: { ...baseEntry, title: 'Journal', isA: 'Type' },
@@ -120,7 +130,7 @@ describe('buildDynamicSections', () => {
 
     const sections = buildDynamicSections(entries, typeEntryMap)
 
-    expect(sections.map((section) => section.type)).not.toContain('Journal')
+    expect(sections.filter((section) => section.type === 'Journal')).toHaveLength(1)
   })
 })
 
