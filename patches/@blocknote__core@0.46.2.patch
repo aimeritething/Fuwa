@@ -11,3 +11,50 @@ index b2761001278486a8b2ac1d10c82420b4994e96d9..fbf4f2f450ed1351d64adeb16263ceac
                  if (l === u)
                    return r.dispatch(r.state.tr.insertText(i)), r.dispatch(
                      r.state.tr.setMeta(B, {
+diff --git a/src/editor/managers/ExtensionManager/extensions.ts b/src/editor/managers/ExtensionManager/extensions.ts
+--- a/src/editor/managers/ExtensionManager/extensions.ts
++++ b/src/editor/managers/ExtensionManager/extensions.ts
+@@ -84,7 +84,8 @@ export function getDefaultTiptapExtensions(
+     }).configure({
+       defaultProtocol: DEFAULT_LINK_PROTOCOL,
+       // only call this once if we have multiple editors installed. Or fix https://github.com/ueberdosis/tiptap/issues/5450
+-      protocols: LINKIFY_INITIALIZED ? [] : VALID_LINK_PROTOCOLS,
++      // Tolaria pre-registers BlockNote's non-native protocols before linkify initializes.
++      protocols: [],
+     }),
+     ...(Object.values(editor.schema.styleSpecs).map((styleSpec) => {
+       return styleSpec.implementation.mark.configure({
+diff --git a/dist/blocknote.js b/dist/blocknote.js
+--- a/dist/blocknote.js
++++ b/dist/blocknote.js
+@@ -2037,7 +2037,9 @@ const de = () => {
+     ]
+   })
+ );
+-let fe = !1;
++const bnLinkifyProtocolFlag = "__tolariaBlockNoteLinkifyProtocolsRegistered";
++const bnGlobalObject = typeof globalThis > "u" ? void 0 : globalThis;
++let fe = Boolean(bnGlobalObject && bnGlobalObject[bnLinkifyProtocolFlag]);
+ function mn(o, e) {
+   const t = [
+     I.ClipboardTextSerializer,
+@@ -2063,8 +2065,9 @@ function mn(o, e) {
+       inclusive: !1
+     }).configure({
+       defaultProtocol: Ct,
+       // only call this once if we have multiple editors installed. Or fix https://github.com/ueberdosis/tiptap/issues/5450
+-      protocols: fe ? [] : Bt
++      // Tolaria pre-registers BlockNote's non-native protocols before linkify initializes.
++      protocols: []
+     }),
+     ...Object.values(o.schema.styleSpecs).map((n) => n.implementation.mark.configure({
+       editor: o
+@@ -2112,7 +2115,7 @@ function mn(o, e) {
+     ),
+     Do(o)
+   ];
+-  return fe = !0, t;
++  return fe = !0, bnGlobalObject && (bnGlobalObject[bnLinkifyProtocolFlag] = !0), t;
+ }
+ function kn(o, e) {
+   const t = [
