@@ -8,51 +8,107 @@ import { spawn } from 'node:child_process'
 const rootDir = process.cwd()
 const finalCoverageDir = resolve(rootDir, 'coverage')
 const coverageRunRoot = resolve(os.tmpdir(), 'tolaria-vitest-coverage-runs')
-const runId = `${Date.now()}-${process.pid}`
-const runCoverageDir = resolve(coverageRunRoot, runId)
-const runCoverageTempDir = resolve(runCoverageDir, '.tmp')
 const forwardedArgs = process.argv.slice(2)
-
-await mkdir(runCoverageDir, { recursive: true })
-// Vitest writes per-worker coverage shards under reportsDirectory/.tmp.
-await mkdir(runCoverageTempDir, { recursive: true })
+const maxAttempts = 2
 
 const packageManagerExec = process.env.npm_execpath
 const command = packageManagerExec ? process.execPath : 'pnpm'
-const commandArgs = packageManagerExec
-  ? [packageManagerExec, 'exec', 'vitest', 'run', '--coverage', `--coverage.reportsDirectory=${runCoverageDir}`, ...forwardedArgs]
-  : ['exec', 'vitest', 'run', '--coverage', `--coverage.reportsDirectory=${runCoverageDir}`, ...forwardedArgs]
+const baseCommandArgs = packageManagerExec
+  ? [packageManagerExec, 'exec', 'vitest', 'run', '--coverage']
+  : ['exec', 'vitest', 'run', '--coverage']
 
-const exitCode = await new Promise((resolveExit, rejectExit) => {
-  const child = spawn(command, commandArgs, {
-    cwd: rootDir,
-    env: {
-      ...process.env,
-      VITEST_COVERAGE_DIR: runCoverageDir,
-    },
-    stdio: 'inherit',
-  })
-
-  child.on('error', rejectExit)
-  child.on('exit', (code, signal) => {
-    if (signal) {
-      rejectExit(new Error(`Vitest coverage exited via signal: ${signal}`))
-      return
-    }
-
-    resolveExit(code ?? 1)
-  })
-})
-
-if (exitCode === 0) {
-  await rm(finalCoverageDir, { recursive: true, force: true })
-  await cp(runCoverageDir, finalCoverageDir, {
-    force: true,
-    recursive: true,
-  })
-  await rm(runCoverageDir, { recursive: true, force: true })
-  process.exit(0)
+function isKnownVitestInternalStateFlake(output) {
+  return output.includes('Vitest failed to access its internal state.')
+    && /Test Files\s+\d+\s+passed\s+\(\d+\)/.test(output)
+    && /Tests\s+\d+\s+passed\s+\(\d+\)/.test(output)
 }
 
-console.error(`Vitest coverage artifacts preserved at ${runCoverageDir}`)
-process.exit(exitCode)
+function appendCapturedOutput(output, chunk) {
+  const nextOutput = output + chunk
+  return nextOutput.length > 200_000 ? nextOutput.slice(-200_000) : nextOutput
+}
+
+async function runCoverageAttempt(attempt) {
+  const runId = `${Date.now()}-${process.pid}-${attempt}`
+  const runCoverageDir = resolve(coverageRunRoot, runId)
+  const runCoverageTempDir = resolve(runCoverageDir, '.tmp')
+
+  await mkdir(runCoverageDir, { recursive: true })
+  // Vitest writes per-worker coverage shards under reportsDirectory/.tmp.
+  await mkdir(runCoverageTempDir, { recursive: true })
+
+  const commandArgs = [
+    ...baseCommandArgs,
+    `--coverage.reportsDirectory=${runCoverageDir}`,
+    ...forwardedArgs,
+  ]
+  let output = ''
+
+  const exitCode = await new Promise((resolveExit, rejectExit) => {
+    const child = spawn(command, commandArgs, {
+      cwd: rootDir,
+      env: {
+        ...process.env,
+        VITEST_COVERAGE_DIR: runCoverageDir,
+      },
+      stdio: ['inherit', 'pipe', 'pipe'],
+    })
+
+    const handleOutput = (stream, target) => {
+      if (!stream) return
+      stream.setEncoding('utf8')
+      stream.on('data', (chunk) => {
+        target.write(chunk)
+        output = appendCapturedOutput(output, chunk)
+      })
+    }
+
+    handleOutput(child.stdout, process.stdout)
+    handleOutput(child.stderr, process.stderr)
+
+    child.on('error', rejectExit)
+    child.on('exit', (code, signal) => {
+      if (signal) {
+        rejectExit(new Error(`Vitest coverage exited via signal: ${signal}`))
+        return
+      }
+
+      resolveExit(code ?? 1)
+    })
+  })
+
+  return {
+    exitCode,
+    output,
+    runCoverageDir,
+  }
+}
+
+let finalRun = null
+
+for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+  const run = await runCoverageAttempt(attempt)
+  finalRun = run
+
+  if (run.exitCode === 0) {
+    await rm(finalCoverageDir, { recursive: true, force: true })
+    await cp(run.runCoverageDir, finalCoverageDir, {
+      force: true,
+      recursive: true,
+    })
+    await rm(run.runCoverageDir, { recursive: true, force: true })
+    process.exit(0)
+  }
+
+  // Retry once when Vitest itself flakes after a fully passing suite.
+  if (attempt < maxAttempts && isKnownVitestInternalStateFlake(run.output)) {
+    console.error(`Vitest hit a known internal-state teardown flake on attempt ${attempt}; retrying once...`)
+    await rm(run.runCoverageDir, { recursive: true, force: true })
+    continue
+  }
+
+  break
+}
+
+console.error(`Vitest coverage artifacts preserved at ${finalRun.runCoverageDir}`)
+process.exit(finalRun.exitCode)
