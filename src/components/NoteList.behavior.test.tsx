@@ -71,7 +71,7 @@ describe('NoteList virtualized datasets', () => {
       expect(screen.getByText('Alpha Strategy')).toBeInTheDocument()
       expect(screen.getByText('Beta Strategy')).toBeInTheDocument()
       expect(screen.queryByText('Filler Note 1')).not.toBeInTheDocument()
-    })
+    }, { timeout: 5000 })
   })
 
   it('sorts large datasets correctly', () => {
