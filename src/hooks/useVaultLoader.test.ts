@@ -26,39 +26,113 @@ const mockGitHistory: GitCommit[] = [
   { hash: 'abc1234567', shortHash: 'abc1234', message: 'initial commit', author: 'luca', date: 1700000000 },
 ]
 
-function defaultMockInvoke(cmd: string, args?: Record<string, unknown>) {
-  if (cmd === 'list_vault') return Promise.resolve(mockEntries)
-  if (cmd === 'get_all_content') return Promise.resolve(mockContent)
-  if (cmd === 'get_modified_files') return Promise.resolve(mockModifiedFiles)
-  if (cmd === 'get_file_history') return Promise.resolve(mockGitHistory)
-  if (cmd === 'get_file_diff') return Promise.resolve('--- a/note.md\n+++ b/note.md')
-  if (cmd === 'get_file_diff_at_commit') return Promise.resolve(`diff for ${(args as Record<string, string>)?.commitHash}`)
-  if (cmd === 'git_commit') return Promise.resolve('committed')
-  if (cmd === 'git_push') return Promise.resolve({ status: 'ok', message: 'Pushed to remote' })
-  return Promise.resolve(null)
+type MockCommandHandler = (args?: Record<string, unknown>) => unknown
+
+const defaultMockHandlers: Record<string, MockCommandHandler> = {
+  list_vault: () => mockEntries,
+  reload_vault: () => mockEntries,
+  get_all_content: () => mockContent,
+  get_modified_files: () => mockModifiedFiles,
+  get_file_history: () => mockGitHistory,
+  get_file_diff: () => '--- a/note.md\n+++ b/note.md',
+  get_file_diff_at_commit: (args) => `diff for ${(args as Record<string, string>)?.commitHash}`,
+  git_commit: () => 'committed',
+  git_push: () => ({ status: 'ok', message: 'Pushed to remote' }),
 }
 
-const mockInvokeFn = vi.fn(defaultMockInvoke)
+function defaultMockInvoke(cmd: string, args?: Record<string, unknown>) {
+  const handler = defaultMockHandlers[cmd]
+  return Promise.resolve(handler ? handler(args) : null)
+}
+
+let mockIsTauri = false
+const backendInvokeFn = vi.fn(defaultMockInvoke)
+
+function isVaultLoadCommand(cmd: string) {
+  return cmd === 'list_vault' || cmd === 'reload_vault'
+}
+
+function buildVaultLoaderMock(options: {
+  entries?: VaultEntry[]
+  modifiedFiles?: ModifiedFile[]
+  pushResult?: { status: string; message: string }
+  failHistory?: boolean
+} = {}) {
+  const {
+    entries = mockEntries,
+    modifiedFiles = mockModifiedFiles,
+    pushResult,
+    failHistory = false,
+  } = options
+
+  return ((cmd: string, args?: Record<string, unknown>) => {
+    if (isVaultLoadCommand(cmd)) return Promise.resolve(entries)
+    if (cmd === 'get_modified_files') return Promise.resolve(modifiedFiles)
+    if (cmd === 'list_vault_folders') return Promise.resolve([])
+    if (cmd === 'list_views') return Promise.resolve([])
+    if (cmd === 'get_file_history' && failHistory) return Promise.reject(new Error('fail'))
+    if (cmd === 'git_push' && pushResult) return Promise.resolve(pushResult)
+    return defaultMockInvoke(cmd, args)
+  }) as typeof defaultMockInvoke
+}
+
+function createDeferred<T>() {
+  let resolve!: (value: T | PromiseLike<T>) => void
+  let reject!: (reason?: unknown) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
+  })
+  return { promise, resolve, reject }
+}
 
 vi.mock('@tauri-apps/api/core', () => ({
   invoke: vi.fn(),
 }))
 
 vi.mock('../mock-tauri', () => ({
-  isTauri: () => false,
-  mockInvoke: (cmd: string, args?: Record<string, unknown>) => mockInvokeFn(cmd, args),
+  isTauri: () => mockIsTauri,
+  mockInvoke: (cmd: string, args?: Record<string, unknown>) => backendInvokeFn(cmd, args),
 }))
+
+async function waitForEntries(
+  result: ReturnType<typeof renderHook<ReturnType<typeof useVaultLoader>, undefined>>['result'],
+  length = 1,
+) {
+  await waitFor(() => {
+    expect(result.current.entries).toHaveLength(length)
+  })
+}
+
+async function waitForModifiedFiles(
+  result: ReturnType<typeof renderHook<ReturnType<typeof useVaultLoader>, undefined>>['result'],
+  length = 1,
+) {
+  await waitFor(() => {
+    expect(result.current.modifiedFiles).toHaveLength(length)
+  })
+}
 
 /** Render the vault loader hook and wait for initial data to load. */
 async function renderVaultLoader() {
   const hook = renderHook(() => useVaultLoader('/vault'))
-  await waitFor(() => { expect(hook.result.current.entries).toHaveLength(1) })
+  await waitForEntries(hook.result)
   return hook
+}
+
+async function enableTauriMode() {
+  mockIsTauri = true
+  const tauri = await import('@tauri-apps/api/core')
+  vi.mocked(tauri.invoke).mockImplementation((command: string, args?: Record<string, unknown>) =>
+    backendInvokeFn(command, args),
+  )
 }
 
 describe('useVaultLoader', () => {
   beforeEach(() => {
-    mockInvokeFn.mockImplementation(defaultMockInvoke)
+    mockIsTauri = false
+    backendInvokeFn.mockReset()
+    backendInvokeFn.mockImplementation(defaultMockInvoke)
   })
 
   it('loads entries on mount', async () => {
@@ -70,11 +144,86 @@ describe('useVaultLoader', () => {
   it('loads modified files on mount', async () => {
     const { result } = renderHook(() => useVaultLoader('/vault'))
 
-    await waitFor(() => {
-      expect(result.current.modifiedFiles).toHaveLength(1)
-    })
+    await waitForModifiedFiles(result)
 
     expect(result.current.modifiedFiles[0].status).toBe('modified')
+  })
+
+  it('loads initial vault entries from a fresh reload in Tauri mode', async () => {
+    await enableTauriMode()
+    backendInvokeFn.mockImplementation(((cmd: string) => {
+      if (cmd === 'list_vault') {
+        return Promise.resolve([
+          { ...mockEntries[0], path: '/vault/stale.md', filename: 'stale.md', title: 'Stale', isA: 'Type' },
+        ])
+      }
+      if (cmd === 'reload_vault') {
+        return Promise.resolve([
+          { ...mockEntries[0], path: '/vault/journal.md', filename: 'journal.md', title: 'Journal', isA: 'Type' },
+          { ...mockEntries[0], path: '/vault/2026-03-11.md', filename: '2026-03-11.md', title: 'March 11', isA: 'Journal' },
+        ])
+      }
+      if (cmd === 'get_modified_files') return Promise.resolve([])
+      if (cmd === 'list_vault_folders') return Promise.resolve([])
+      if (cmd === 'list_views') return Promise.resolve([])
+      return Promise.resolve(null)
+    }) as typeof defaultMockInvoke)
+
+    const { result } = renderHook(() => useVaultLoader('/vault'))
+
+    await waitFor(() => {
+      expect(result.current.entries.map((entry) => entry.title)).toEqual(['Journal', 'March 11'])
+    })
+    const issuedCommands = backendInvokeFn.mock.calls.map(([command]) => command)
+    expect(issuedCommands).toContain('reload_vault')
+    expect(issuedCommands).not.toContain('list_vault')
+  })
+
+  it('ignores stale reload_vault results after the vault path changes', async () => {
+    await enableTauriMode()
+    const firstLoad = createDeferred<VaultEntry[]>()
+    const secondLoad = createDeferred<VaultEntry[]>()
+
+    backendInvokeFn.mockImplementation(((cmd: string, args?: Record<string, unknown>) => {
+      const path = typeof args?.path === 'string' ? args.path : undefined
+
+      if (cmd === 'reload_vault') {
+        if (path === '/vault-a') return firstLoad.promise
+        if (path === '/vault-b') return secondLoad.promise
+      }
+      if (cmd === 'list_vault_folders') return Promise.resolve([])
+      if (cmd === 'list_views') return Promise.resolve([])
+      if (cmd === 'get_modified_files') return Promise.resolve([])
+      return Promise.resolve(null)
+    }) as typeof defaultMockInvoke)
+
+    const { result, rerender } = renderHook(
+      ({ path }) => useVaultLoader(path),
+      { initialProps: { path: '/vault-a' } },
+    )
+
+    rerender({ path: '/vault-b' })
+
+    await act(async () => {
+      firstLoad.resolve([
+        { ...mockEntries[0], path: '/vault-a/stale.md', filename: 'stale.md', title: 'Stale', isA: 'Type' },
+      ])
+      await firstLoad.promise
+    })
+
+    expect(result.current.entries).toEqual([])
+
+    await act(async () => {
+      secondLoad.resolve([
+        { ...mockEntries[0], path: '/vault-b/journal.md', filename: 'journal.md', title: 'Journal', isA: 'Type' },
+        { ...mockEntries[0], path: '/vault-b/2026-03-11.md', filename: '2026-03-11.md', title: 'March 11', isA: 'Journal' },
+      ])
+      await secondLoad.promise
+    })
+
+    await waitFor(() => {
+      expect(result.current.entries.map((entry) => entry.title)).toEqual(['Journal', 'March 11'])
+    })
   })
 
   describe('addEntry', () => {
@@ -174,54 +323,44 @@ describe('useVaultLoader', () => {
       expect(result.current.getNoteStatus('/vault/note/brand-new.md')).toBe('new')
     })
 
-    it('returns new for git-untracked files (saved but not committed)', async () => {
-      mockInvokeFn.mockImplementation(((cmd: string) => {
-        if (cmd === 'list_vault') return Promise.resolve(mockEntries)
-        if (cmd === 'get_all_content') return Promise.resolve(mockContent)
-        if (cmd === 'get_modified_files') return Promise.resolve([
-          { path: '/vault/note/brand-new.md', relativePath: 'note/brand-new.md', status: 'untracked' },
-        ])
-        return Promise.resolve(null)
-      }) as typeof defaultMockInvoke)
+    it.each([
+      {
+        name: 'returns new for git-untracked files (saved but not committed)',
+        path: '/vault/note/brand-new.md',
+        relativePath: 'note/brand-new.md',
+        status: 'untracked',
+      },
+      {
+        name: 'returns new for git-added files (staged but not committed)',
+        path: '/vault/note/staged.md',
+        relativePath: 'note/staged.md',
+        status: 'added',
+      },
+      {
+        name: 'treats untracked files as new (green dot, not orange)',
+        path: '/vault/note/hello.md',
+        relativePath: 'note/hello.md',
+        status: 'untracked',
+      },
+    ])('$name', async ({ path, relativePath, status }) => {
+      backendInvokeFn.mockImplementation(buildVaultLoaderMock({
+        modifiedFiles: [{ path, relativePath, status }],
+      }))
 
       const { result } = renderHook(() => useVaultLoader('/vault'))
 
-      await waitFor(() => {
-        expect(result.current.modifiedFiles).toHaveLength(1)
-      })
+      await waitForModifiedFiles(result)
 
-      expect(result.current.getNoteStatus('/vault/note/brand-new.md')).toBe('new')
-    })
-
-    it('returns new for git-added files (staged but not committed)', async () => {
-      mockInvokeFn.mockImplementation(((cmd: string) => {
-        if (cmd === 'list_vault') return Promise.resolve(mockEntries)
-        if (cmd === 'get_all_content') return Promise.resolve(mockContent)
-        if (cmd === 'get_modified_files') return Promise.resolve([
-          { path: '/vault/note/staged.md', relativePath: 'note/staged.md', status: 'added' },
-        ])
-        return Promise.resolve(null)
-      }) as typeof defaultMockInvoke)
-
-      const { result } = renderHook(() => useVaultLoader('/vault'))
-
-      await waitFor(() => {
-        expect(result.current.modifiedFiles).toHaveLength(1)
-      })
-
-      expect(result.current.getNoteStatus('/vault/note/staged.md')).toBe('new')
+      expect(result.current.getNoteStatus(path)).toBe('new')
     })
 
     it('new status takes priority over git modified', async () => {
       // If a path is both new and in modifiedFiles, it should show as new
-      mockInvokeFn.mockImplementation(((cmd: string) => {
-        if (cmd === 'list_vault') return Promise.resolve(mockEntries)
-        if (cmd === 'get_all_content') return Promise.resolve(mockContent)
-        if (cmd === 'get_modified_files') return Promise.resolve([
+      backendInvokeFn.mockImplementation(buildVaultLoaderMock({
+        modifiedFiles: [
           { path: '/vault/note/new.md', relativePath: 'note/new.md', status: 'modified' },
-        ])
-        return Promise.resolve(null)
-      }) as typeof defaultMockInvoke)
+        ],
+      }))
 
       const { result } = renderHook(() => useVaultLoader('/vault'))
 
@@ -284,33 +423,11 @@ describe('useVaultLoader', () => {
       expect(result.current.getNoteStatus('/vault/note/draft.md')).toBe('new')
     })
 
-    it('treats untracked files as new (green dot, not orange)', async () => {
-      mockInvokeFn.mockImplementation(((cmd: string) => {
-        if (cmd === 'list_vault') return Promise.resolve(mockEntries)
-        if (cmd === 'get_all_content') return Promise.resolve(mockContent)
-        if (cmd === 'get_modified_files') return Promise.resolve([
-          { path: '/vault/note/hello.md', relativePath: 'note/hello.md', status: 'untracked' },
-        ])
-        return Promise.resolve(null)
-      }) as typeof defaultMockInvoke)
-
-      const { result } = renderHook(() => useVaultLoader('/vault'))
-
-      await waitFor(() => {
-        expect(result.current.modifiedFiles).toHaveLength(1)
-      })
-
-      expect(result.current.getNoteStatus('/vault/note/hello.md')).toBe('new')
-    })
   })
 
   describe('loadGitHistory', () => {
     it('returns git commits for a file', async () => {
-      const { result } = renderHook(() => useVaultLoader('/vault'))
-
-      await waitFor(() => {
-        expect(result.current.entries).toHaveLength(1)
-      })
+      const { result } = await renderVaultLoader()
 
       let history: GitCommit[] = []
       await act(async () => {
@@ -322,13 +439,11 @@ describe('useVaultLoader', () => {
     })
 
     it('returns empty array on error', async () => {
-      mockInvokeFn.mockImplementation(((cmd: string) => {
-        if (cmd === 'get_file_history') return Promise.reject(new Error('fail'))
-        if (cmd === 'list_vault') return Promise.resolve([])
-        if (cmd === 'get_all_content') return Promise.resolve({})
-        if (cmd === 'get_modified_files') return Promise.resolve([])
-        return Promise.resolve(null)
-      }) as typeof defaultMockInvoke)
+      backendInvokeFn.mockImplementation(buildVaultLoaderMock({
+        entries: [],
+        modifiedFiles: [],
+        failHistory: true,
+      }))
 
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       const { result } = renderHook(() => useVaultLoader('/vault'))
@@ -345,11 +460,7 @@ describe('useVaultLoader', () => {
 
   describe('loadDiff', () => {
     it('returns diff string for a file', async () => {
-      const { result } = renderHook(() => useVaultLoader('/vault'))
-
-      await waitFor(() => {
-        expect(result.current.entries).toHaveLength(1)
-      })
+      const { result } = await renderVaultLoader()
 
       let diff = ''
       await act(async () => {
@@ -362,11 +473,7 @@ describe('useVaultLoader', () => {
 
   describe('loadDiffAtCommit', () => {
     it('returns diff for a specific commit', async () => {
-      const { result } = renderHook(() => useVaultLoader('/vault'))
-
-      await waitFor(() => {
-        expect(result.current.entries).toHaveLength(1)
-      })
+      const { result } = await renderVaultLoader()
 
       let diff = ''
       await act(async () => {
@@ -379,11 +486,7 @@ describe('useVaultLoader', () => {
 
   describe('commitAndPush', () => {
     it('commits and pushes in mock mode', async () => {
-      const { result } = renderHook(() => useVaultLoader('/vault'))
-
-      await waitFor(() => {
-        expect(result.current.entries).toHaveLength(1)
-      })
+      const { result } = await renderVaultLoader()
 
       let response: { status: string; message: string } = { status: '', message: '' }
       await act(async () => {
@@ -393,56 +496,42 @@ describe('useVaultLoader', () => {
       expect(response.status).toBe('ok')
     })
 
-    it('returns rejected status when push is rejected', async () => {
-      mockInvokeFn.mockImplementation(((cmd: string) => {
-        if (cmd === 'list_vault') return Promise.resolve(mockEntries)
-        if (cmd === 'get_all_content') return Promise.resolve(mockContent)
-        if (cmd === 'get_modified_files') return Promise.resolve([])
-        if (cmd === 'git_commit') return Promise.resolve('committed')
-        if (cmd === 'git_push') return Promise.resolve({ status: 'rejected', message: 'Push rejected: remote has new commits. Pull first, then push.' })
-        return Promise.resolve(null)
-      }) as typeof defaultMockInvoke)
+    it.each([
+      {
+        name: 'returns rejected status when push is rejected',
+        pushResult: { status: 'rejected', message: 'Push rejected: remote has new commits. Pull first, then push.' },
+        expectedStatus: 'rejected',
+        expectedMessage: 'Pull first',
+      },
+      {
+        name: 'returns network error status on network failure',
+        pushResult: { status: 'network_error', message: 'Push failed: network error. Check your connection and try again.' },
+        expectedStatus: 'network_error',
+        expectedMessage: 'network error',
+      },
+    ])('$name', async ({ pushResult, expectedStatus, expectedMessage }) => {
+      backendInvokeFn.mockImplementation(buildVaultLoaderMock({
+        modifiedFiles: [],
+        pushResult,
+      }))
 
-      const { result } = renderHook(() => useVaultLoader('/vault'))
-      await waitFor(() => { expect(result.current.entries).toHaveLength(1) })
-
-      let response: { status: string; message: string } = { status: '', message: '' }
-      await act(async () => {
-        response = await result.current.commitAndPush('test commit')
-      })
-
-      expect(response.status).toBe('rejected')
-      expect(response.message).toContain('Pull first')
-    })
-
-    it('returns network error status on network failure', async () => {
-      mockInvokeFn.mockImplementation(((cmd: string) => {
-        if (cmd === 'list_vault') return Promise.resolve(mockEntries)
-        if (cmd === 'get_all_content') return Promise.resolve(mockContent)
-        if (cmd === 'get_modified_files') return Promise.resolve([])
-        if (cmd === 'git_commit') return Promise.resolve('committed')
-        if (cmd === 'git_push') return Promise.resolve({ status: 'network_error', message: 'Push failed: network error. Check your connection and try again.' })
-        return Promise.resolve(null)
-      }) as typeof defaultMockInvoke)
-
-      const { result } = renderHook(() => useVaultLoader('/vault'))
-      await waitFor(() => { expect(result.current.entries).toHaveLength(1) })
+      const { result } = await renderVaultLoader()
 
       let response: { status: string; message: string } = { status: '', message: '' }
       await act(async () => {
         response = await result.current.commitAndPush('test commit')
       })
 
-      expect(response.status).toBe('network_error')
-      expect(response.message).toContain('network error')
+      expect(response.status).toBe(expectedStatus)
+      expect(response.message).toContain(expectedMessage)
     })
   })
 
   describe('reloadFolders', () => {
     it('refreshes folder tree from backend', async () => {
       const folders = [{ name: 'projects', path: 'projects', children: [] }]
-      mockInvokeFn.mockImplementation(((cmd: string) => {
-        if (cmd === 'list_vault') return Promise.resolve(mockEntries)
+      backendInvokeFn.mockImplementation(((cmd: string) => {
+        if (isVaultLoadCommand(cmd)) return Promise.resolve(mockEntries)
         if (cmd === 'get_modified_files') return Promise.resolve([])
         if (cmd === 'list_vault_folders') return Promise.resolve(folders)
         return Promise.resolve(null)
@@ -453,7 +542,7 @@ describe('useVaultLoader', () => {
       expect(result.current.folders).toEqual(folders)
 
       const updatedFolders = [...folders, { name: 'journal', path: 'journal', children: [] }]
-      mockInvokeFn.mockImplementation(((cmd: string) => {
+      backendInvokeFn.mockImplementation(((cmd: string) => {
         if (cmd === 'list_vault_folders') return Promise.resolve(updatedFolders)
         return defaultMockInvoke(cmd)
       }) as typeof defaultMockInvoke)
@@ -466,11 +555,7 @@ describe('useVaultLoader', () => {
 
   describe('loadModifiedFiles', () => {
     it('refreshes modified files list', async () => {
-      const { result } = renderHook(() => useVaultLoader('/vault'))
-
-      await waitFor(() => {
-        expect(result.current.modifiedFiles).toHaveLength(1)
-      })
+      const { result } = await renderVaultLoader()
 
       await act(async () => {
         await result.current.loadModifiedFiles()

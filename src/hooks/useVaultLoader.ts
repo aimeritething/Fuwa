@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { VaultEntry, FolderNode, GitCommit, ModifiedFile, NoteStatus, GitPushResult, ViewFile } from '../types'
@@ -8,11 +8,52 @@ function tauriCall<T>(command: string, tauriArgs: Record<string, unknown>, mockA
   return isTauri() ? invoke<T>(command, tauriArgs) : mockInvoke<T>(command, mockArgs ?? tauriArgs)
 }
 
+function loadVaultEntries(vaultPath: string): Promise<VaultEntry[]> {
+  const command = isTauri() ? 'reload_vault' : 'list_vault'
+  return tauriCall<VaultEntry[]>(command, { path: vaultPath })
+}
+
 async function loadVaultData(vaultPath: string) {
   if (!isTauri()) console.info('[mock] Using mock Tauri data for browser testing')
-  const entries = await tauriCall<VaultEntry[]>('list_vault', { path: vaultPath })
+  const entries = await loadVaultEntries(vaultPath)
   console.log(`Vault scan complete: ${entries.length} entries found`)
   return { entries }
+}
+
+function loadVaultFolders(vaultPath: string): Promise<FolderNode[]> {
+  return tauriCall<FolderNode[]>('list_vault_folders', { path: vaultPath })
+}
+
+function loadVaultViews(vaultPath: string): Promise<ViewFile[]> {
+  return tauriCall<ViewFile[]>('list_views', { vaultPath })
+}
+
+function resetVaultState(options: {
+  clearNewPaths: () => void
+  clearUnsaved: () => void
+  setEntries: (entries: VaultEntry[]) => void
+  setFolders: (folders: FolderNode[]) => void
+  setModifiedFiles: (files: ModifiedFile[]) => void
+  setModifiedFilesError: (message: string | null) => void
+  setViews: (views: ViewFile[]) => void
+}) {
+  options.setEntries([])
+  options.setFolders([])
+  options.setViews([])
+  options.setModifiedFiles([])
+  options.setModifiedFilesError(null)
+  options.clearNewPaths()
+  options.clearUnsaved()
+}
+
+function useCurrentVaultPathGuard(vaultPath: string) {
+  const currentPathRef = useRef(vaultPath)
+
+  useEffect(() => {
+    currentPathRef.current = vaultPath
+  }, [vaultPath])
+
+  return useCallback((path: string) => currentPathRef.current === path, [])
 }
 
 async function commitWithPush(vaultPath: string, message: string): Promise<GitPushResult> {
@@ -96,32 +137,54 @@ export function useVaultLoader(vaultPath: string) {
   const tracker = useNewNoteTracker()
   const pendingSave = usePendingSaveTracker()
   const unsaved = useUnsavedTracker()
+  const isCurrentVaultPath = useCurrentVaultPathGuard(vaultPath)
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale data then load new vault
-    setEntries([]); setFolders([]); setViews([]); setModifiedFiles([]); setModifiedFilesError(null); tracker.clear(); unsaved.clearAll()
-    loadVaultData(vaultPath)
-      .then(({ entries: e }) => { setEntries(e) })
+    const path = vaultPath
+    resetVaultState({
+      clearNewPaths: tracker.clear,
+      clearUnsaved: unsaved.clearAll,
+      setEntries,
+      setFolders,
+      setModifiedFiles,
+      setModifiedFilesError,
+      setViews,
+    })
+    loadVaultData(path)
+      .then(({ entries: e }) => {
+        if (!isCurrentVaultPath(path)) return
+        setEntries(e)
+      })
       .catch((err) => console.warn('Vault scan failed:', err))
-    tauriCall<FolderNode[]>('list_vault_folders', { path: vaultPath })
-      .then((f) => { setFolders(f ?? []) })
+    loadVaultFolders(path)
+      .then((f) => {
+        if (!isCurrentVaultPath(path)) return
+        setFolders(f ?? [])
+      })
       .catch(() => { /* folders are optional — ignore errors */ })
-    tauriCall<ViewFile[]>('list_views', { vaultPath })
-      .then((v) => { setViews(v ?? []) })
+    loadVaultViews(path)
+      .then((v) => {
+        if (!isCurrentVaultPath(path)) return
+        setViews(v ?? [])
+      })
       .catch(() => { /* views are optional — ignore errors */ })
-  }, [vaultPath]) // eslint-disable-line react-hooks/exhaustive-deps -- tracker.clear is stable
+  }, [vaultPath, tracker.clear, unsaved.clearAll, isCurrentVaultPath])
 
   const loadModifiedFiles = useCallback(async () => {
+    const path = vaultPath
     try {
       setModifiedFilesError(null)
-      setModifiedFiles(await tauriCall<ModifiedFile[]>('get_modified_files', { vaultPath }, {}))
+      const files = await tauriCall<ModifiedFile[]>('get_modified_files', { vaultPath: path }, {})
+      if (!isCurrentVaultPath(path)) return
+      setModifiedFiles(files)
     } catch (err) {
+      if (!isCurrentVaultPath(path)) return
       const message = typeof err === 'string' ? err : 'Failed to load changes'
       console.warn('Failed to load modified files:', err)
       setModifiedFilesError(message)
       setModifiedFiles([])
     }
-  }, [vaultPath])
+  }, [vaultPath, isCurrentVaultPath])
 
   useEffect(() => { loadModifiedFiles() }, [loadModifiedFiles]) // eslint-disable-line react-hooks/set-state-in-effect -- trigger initial load
 
@@ -176,27 +239,47 @@ export function useVaultLoader(vaultPath: string) {
     commitWithPush(vaultPath, message), [vaultPath])
 
   const reloadFolders = useCallback(
-    () => tauriCall<FolderNode[]>('list_vault_folders', { path: vaultPath })
-      .then((f) => { setFolders(f ?? []) })
-      .catch(() => { /* folders are optional — ignore errors */ }),
-    [vaultPath],
+    () => {
+      const path = vaultPath
+      return loadVaultFolders(path)
+        .then((f) => {
+          if (!isCurrentVaultPath(path)) return [] as FolderNode[]
+          const nextFolders = f ?? []
+          setFolders(nextFolders)
+          return nextFolders
+        })
+        .catch(() => [] as FolderNode[])
+    },
+    [vaultPath, isCurrentVaultPath],
   )
 
   const reloadVault = useCallback(
     () => {
+      const path = vaultPath
       clearPrefetchCache()
-      return tauriCall<VaultEntry[]>('reload_vault', { path: vaultPath })
-        .then((entries) => { setEntries(entries); loadModifiedFiles(); return entries })
+      return tauriCall<VaultEntry[]>('reload_vault', { path })
+        .then((entries) => {
+          if (!isCurrentVaultPath(path)) return [] as VaultEntry[]
+          setEntries(entries)
+          void loadModifiedFiles()
+          return entries
+        })
         .catch((err) => { console.warn('Vault reload failed:', err); return [] as VaultEntry[] })
     },
-    [vaultPath, loadModifiedFiles],
+    [vaultPath, loadModifiedFiles, isCurrentVaultPath],
   )
 
   const reloadViews = useCallback(async () => {
+    const path = vaultPath
     try {
-      setViews(await tauriCall<ViewFile[]>('list_views', { vaultPath }) ?? [])
+      const nextViews = await loadVaultViews(path)
+      if (!isCurrentVaultPath(path)) return []
+      const resolvedViews = nextViews ?? []
+      setViews(resolvedViews)
+      return resolvedViews
     } catch { /* views are optional */ }
-  }, [vaultPath])
+    return []
+  }, [vaultPath, isCurrentVaultPath])
 
   return {
     entries, folders, views, modifiedFiles, modifiedFilesError,
