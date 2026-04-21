@@ -28,6 +28,8 @@ mod complex_frontmatter;
 mod display_metadata;
 #[path = "mod_tests/folder_and_file_kind.rs"]
 mod folder_and_file_kind;
+#[path = "mod_tests/journal_type_visibility.rs"]
+mod journal_type_visibility;
 #[path = "mod_tests/real_vault_consistency.rs"]
 mod real_vault_consistency;
 #[path = "mod_tests/relationships.rs"]
