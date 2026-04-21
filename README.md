@@ -61,7 +61,7 @@ Open `http://localhost:5173` for the browser-based mock mode, or run the native 
 pnpm tauri dev
 ```
 
-## Documentation
+## Tech Docs
 
 - 📐 [ARCHITECTURE.md](docs/ARCHITECTURE.md) — System design, tech stack, data flow
 - 🧩 [ABSTRACTIONS.md](docs/ABSTRACTIONS.md) — Core abstractions and models
