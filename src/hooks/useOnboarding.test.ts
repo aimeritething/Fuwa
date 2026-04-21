@@ -155,6 +155,21 @@ describe('useOnboarding', () => {
     })
   })
 
+  it('shows welcome instead of vault-missing when no persisted active vault matches the missing path', async () => {
+    localStorage.setItem(APP_STORAGE_KEYS.welcomeDismissed, '1')
+    mockCommands({
+      load_vault_list: {
+        vaults: [],
+        active_vault: null,
+        hidden_defaults: [],
+      },
+    })
+
+    const { result } = await renderOnboarding('/vault/deleted')
+
+    expect(result.current.state).toEqual({ status: 'welcome', defaultPath: DEFAULT_GETTING_STARTED_PATH })
+  })
+
   it('clears the persisted active vault when the saved path no longer exists', async () => {
     localStorage.setItem(LEGACY_APP_STORAGE_KEYS.welcomeDismissed, '1')
     mockCommands({

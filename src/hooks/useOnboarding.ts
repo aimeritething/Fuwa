@@ -40,10 +40,10 @@ function markDismissed(): void {
   }
 }
 
-async function clearMissingActiveVault(missingPath: string): Promise<void> {
+async function clearMissingActiveVault(missingPath: string): Promise<boolean> {
   try {
     const list = await tauriCall<PersistedVaultList>('load_vault_list', {})
-    if (!list || list.active_vault !== missingPath) return
+    if (!list || list.active_vault !== missingPath) return false
     await tauriCall('save_vault_list', {
       list: {
         vaults: list.vaults ?? [],
@@ -51,8 +51,10 @@ async function clearMissingActiveVault(missingPath: string): Promise<void> {
         hidden_defaults: list.hidden_defaults ?? [],
       },
     })
+    return true
   } catch {
     // Best effort only — onboarding should still proceed
+    return false
   }
 }
 
@@ -84,17 +86,14 @@ export function useOnboarding(
 
         if (exists) {
           setState({ status: 'ready', vaultPath: initialVaultPath })
-        } else {
-          await clearMissingActiveVault(initialVaultPath)
-          if (cancelled) return
-        }
-
-        if (exists) {
           return
         }
 
-        if (wasDismissed()) {
-          // User previously dismissed — show vault-missing instead of welcome
+        const missingWasPersistedActiveVault = await clearMissingActiveVault(initialVaultPath)
+        if (cancelled) return
+
+        if (wasDismissed() && missingWasPersistedActiveVault) {
+          // Only show vault-missing when a previously selected vault path truly disappeared.
           setState({ status: 'vault-missing', vaultPath: initialVaultPath, defaultPath })
         } else {
           setState({ status: 'welcome', defaultPath })

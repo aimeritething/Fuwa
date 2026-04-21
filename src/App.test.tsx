@@ -495,6 +495,24 @@ describe('App', () => {
     expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Choose a different folder')
   })
 
+  it('shows welcome instead of vault-missing when the missing path was not a persisted active vault', async () => {
+    localStorage.setItem('tolaria_welcome_dismissed', '1')
+    mockCommandResults.load_vault_list = {
+      vaults: [],
+      active_vault: null,
+      hidden_defaults: [],
+    }
+    mockCommandResults.check_vault_exists = (args?: { path?: string }) => args?.path === '/Users/mock/Documents/Getting Started'
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Welcome to Tolaria')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Vault not found')).not.toBeInTheDocument()
+    expect(screen.getByTestId('welcome-open-folder')).toHaveTextContent('Open existing vault')
+  })
+
   it('renders sidebar with correct default selection (All Notes)', async () => {
     render(<App />)
     await waitFor(() => {
