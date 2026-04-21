@@ -246,17 +246,21 @@ function useSyncRawModeContentOverride({
   rawSourceContentRef: React.MutableRefObject<string | null>
   setRawModeContentOverride: React.Dispatch<React.SetStateAction<PendingRawExitContent | null>>
 }) {
-  const syncRawModeContentOverride = (current: PendingRawExitContent | null) => {
+  const syncRawModeContentOverride = (
+    current: PendingRawExitContent | null,
+    nextContent: string,
+  ) => {
     if (!current) return current
-    if (current.path !== activeTabPath || current.content === activeTabContent) return current
-    return { path: activeTabPath, content: activeTabContent }
+    if (current.path !== activeTabPath || current.content === nextContent) return current
+    return { path: activeTabPath, content: nextContent }
   }
 
   useLayoutEffect(() => {
     if (!activeTabPath || activeTabContent === null) return
     if (rawSourceContentRef.current === null || activeTabContent === rawSourceContentRef.current) return
+    const nextContent = activeTabContent
 
-    setRawModeContentOverride(syncRawModeContentOverride)
+    setRawModeContentOverride((current) => syncRawModeContentOverride(current, nextContent))
   }, [activeTabContent, activeTabPath, rawSourceContentRef, setRawModeContentOverride])
 }
 
