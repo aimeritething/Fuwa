@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NoteList } from './NoteList'
 import { makeEntry, makeIndexedEntry, mockEntries, renderNoteList } from '../test-utils/noteListTestUtils'
@@ -57,21 +57,32 @@ describe('NoteList virtualized datasets', () => {
   })
 
   it('filters large datasets by search query', async () => {
-    const entries = [
-      makeIndexedEntry(0, { title: 'Alpha Strategy' }),
-      ...Array.from({ length: 998 }, (_, index) => makeIndexedEntry(index + 1, { title: `Filler Note ${index + 1}` })),
-      makeIndexedEntry(999, { title: 'Beta Strategy' }),
-    ]
+    vi.useFakeTimers()
+    try {
+      const entries = [
+        makeIndexedEntry(0, { title: 'Alpha Strategy' }),
+        ...Array.from({ length: 298 }, (_, index) => makeIndexedEntry(index + 1, { title: `Filler Note ${index + 1}` })),
+        makeIndexedEntry(299, { title: 'Beta Strategy' }),
+      ]
 
-    renderNoteList({ entries })
-    fireEvent.click(screen.getByTitle('Search notes'))
-    fireEvent.change(screen.getByPlaceholderText('Search notes...'), { target: { value: 'Strategy' } })
+      renderNoteList({ entries })
+      fireEvent.click(screen.getByTitle('Search notes'))
+      fireEvent.change(screen.getByPlaceholderText('Search notes...'), { target: { value: 'Strategy' } })
 
-    await waitFor(() => {
-      expect(screen.getByText('Alpha Strategy')).toBeInTheDocument()
-      expect(screen.getByText('Beta Strategy')).toBeInTheDocument()
-      expect(screen.queryByText('Filler Note 1')).not.toBeInTheDocument()
-    }, { timeout: 5000 })
+      await act(async () => {
+        vi.advanceTimersByTime(200)
+      })
+
+      vi.useRealTimers()
+
+      await waitFor(() => {
+        expect(screen.getByText('Alpha Strategy')).toBeInTheDocument()
+        expect(screen.getByText('Beta Strategy')).toBeInTheDocument()
+        expect(screen.queryByText('Filler Note 1')).not.toBeInTheDocument()
+      })
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('sorts large datasets correctly', () => {

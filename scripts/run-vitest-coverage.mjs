@@ -9,9 +9,12 @@ const finalCoverageDir = resolve(rootDir, 'coverage')
 const coverageRunRoot = resolve(rootDir, '.tmp', 'vitest-coverage-runs')
 const runId = `${Date.now()}-${process.pid}`
 const runCoverageDir = resolve(coverageRunRoot, runId)
+const runCoverageTempDir = resolve(runCoverageDir, '.tmp')
 const forwardedArgs = process.argv.slice(2)
 
 await mkdir(runCoverageDir, { recursive: true })
+// Vitest writes per-worker coverage shards under reportsDirectory/.tmp.
+await mkdir(runCoverageTempDir, { recursive: true })
 
 const packageManagerExec = process.env.npm_execpath
 const command = packageManagerExec ? process.execPath : 'pnpm'
