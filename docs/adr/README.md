@@ -126,3 +126,4 @@ proposed → active → superseded
 | [0068](0068-h1-only-title-surface-with-optional-untitled-auto-rename.md) | H1-only title surface with optional untitled auto-rename | active |
 | [0069](0069-neighborhood-mode-for-note-list-relationship-browsing.md) | Neighborhood mode for note-list relationship browsing | active |
 | [0070](0070-starter-vaults-local-first-with-explicit-remote-connection.md) | Starter vaults are local-first with explicit remote connection | active |
+| [0071](0071-external-vault-refresh-and-clean-tab-reopen.md) | External vault updates reload derived state and reopen the clean active note | active |
