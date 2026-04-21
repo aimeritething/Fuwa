@@ -359,4 +359,137 @@ describe('useAutoSync', () => {
       expect(result.current.conflictFiles).toEqual(['conflict.md'])
     })
   })
+
+  it('pulls, pushes, and emits a success toast when recovery succeeds', async () => {
+    const onSyncUpdated = vi.fn()
+    let pullCount = 0
+
+    mockInvokeFn.mockImplementation((cmd: string) => {
+      if (cmd === 'get_conflict_files') return Promise.resolve([])
+      if (cmd === 'get_last_commit_info') return Promise.resolve(MOCK_COMMIT_INFO)
+      if (cmd === 'git_remote_status') return Promise.resolve(null)
+      if (cmd === 'git_pull') {
+        pullCount += 1
+        return Promise.resolve(pullCount === 1 ? upToDate() : updated(['note.md']))
+      }
+      if (cmd === 'git_push') return Promise.resolve({ status: 'ok', message: 'Pushed successfully' })
+      return Promise.resolve(upToDate())
+    })
+
+    const { result } = renderHook(() =>
+      useAutoSync({
+        vaultPath: '/Users/luca/Laputa',
+        intervalMinutes: 5,
+        onVaultUpdated,
+        onSyncUpdated,
+        onConflict,
+        onToast,
+      }),
+    )
+
+    await waitFor(() => {
+      expect(result.current.syncStatus).toBe('idle')
+    })
+
+    await act(async () => {
+      result.current.pullAndPush()
+    })
+
+    await waitFor(() => {
+      expect(onVaultUpdated).toHaveBeenCalledWith(['note.md'])
+      expect(onSyncUpdated).toHaveBeenCalled()
+      expect(onToast).toHaveBeenCalledWith('Pulled and pushed successfully')
+      expect(result.current.syncStatus).toBe('idle')
+    })
+  })
+
+  it('marks pull_required when the recovery push is still rejected', async () => {
+    let pullCount = 0
+
+    mockInvokeFn.mockImplementation((cmd: string) => {
+      if (cmd === 'get_conflict_files') return Promise.resolve([])
+      if (cmd === 'get_last_commit_info') return Promise.resolve(MOCK_COMMIT_INFO)
+      if (cmd === 'git_remote_status') return Promise.resolve(null)
+      if (cmd === 'git_pull') {
+        pullCount += 1
+        return Promise.resolve(pullCount === 1 ? upToDate() : upToDate())
+      }
+      if (cmd === 'git_push') {
+        return Promise.resolve({
+          status: 'rejected',
+          message: 'Push rejected: remote has new commits. Pull first, then push.',
+        })
+      }
+      return Promise.resolve(upToDate())
+    })
+
+    const { result } = renderSync()
+    await waitFor(() => {
+      expect(result.current.syncStatus).toBe('idle')
+    })
+
+    await act(async () => {
+      result.current.pullAndPush()
+    })
+
+    await waitFor(() => {
+      expect(result.current.syncStatus).toBe('pull_required')
+      expect(onToast).toHaveBeenCalledWith('Push still rejected after pull — try again')
+    })
+  })
+
+  it('surfaces pull conflicts and pull errors during recovery pushes', async () => {
+    let mode: 'conflict' | 'error' = 'conflict'
+
+    mockInvokeFn.mockImplementation((cmd: string) => {
+      if (cmd === 'get_conflict_files') return Promise.resolve([])
+      if (cmd === 'get_last_commit_info') return Promise.resolve(MOCK_COMMIT_INFO)
+      if (cmd === 'git_remote_status') return Promise.resolve(null)
+      if (cmd === 'git_pull') {
+        return Promise.resolve(
+          mode === 'conflict'
+            ? conflict(['note.md'])
+            : { status: 'error', message: 'fetch failed', updatedFiles: [], conflictFiles: [] },
+        )
+      }
+      if (cmd === 'git_push') return Promise.resolve({ status: 'ok', message: 'Pushed successfully' })
+      return Promise.resolve(upToDate())
+    })
+
+    const { result } = renderSync()
+    await waitFor(() => {
+      expect(result.current.syncStatus).toBe('idle')
+    })
+
+    await act(async () => {
+      result.current.pullAndPush()
+    })
+    await waitFor(() => {
+      expect(result.current.syncStatus).toBe('conflict')
+      expect(result.current.conflictFiles).toEqual(['note.md'])
+    })
+
+    mode = 'error'
+    await act(async () => {
+      result.current.pullAndPush()
+    })
+    await waitFor(() => {
+      expect(result.current.syncStatus).toBe('error')
+      expect(onToast).toHaveBeenCalledWith('Pull failed: fetch failed')
+    })
+  })
+
+  it('exposes a direct push-rejected handler for external workflows', async () => {
+    const { result } = renderSync()
+
+    await waitFor(() => {
+      expect(result.current.syncStatus).toBe('idle')
+    })
+
+    act(() => {
+      result.current.handlePushRejected()
+    })
+
+    expect(result.current.syncStatus).toBe('pull_required')
+  })
 })

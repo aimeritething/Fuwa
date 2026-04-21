@@ -1,6 +1,6 @@
 import type { ComponentProps } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render as rtlRender, screen, fireEvent } from '@testing-library/react'
+import { render as rtlRender, screen, fireEvent, act } from '@testing-library/react'
 import { DynamicRelationshipsPanel, BacklinksPanel, ReferencedByPanel, GitHistoryPanel, InstancesPanel } from './InspectorPanels'
 import { TooltipProvider } from './ui/tooltip'
 import type { ReferencedByItem } from './InspectorPanels'
@@ -343,11 +343,29 @@ describe('DynamicRelationshipsPanel', () => {
       expect(onUpdateProperty).toHaveBeenCalledWith('Belongs to', ['[[project/my-project]]', '[[topic/ai]]'])
     })
 
+    it('clicks a search result to add the relationship and close the inline editor', () => {
+      renderEditableRelationships()
+      openInlineAdd('AI')
+      fireEvent.click(screen.getByText('AI'))
+
+      expect(onUpdateProperty).toHaveBeenCalledWith('Belongs to', ['[[project/my-project]]', '[[topic/ai]]'])
+      expect(screen.queryByTestId('add-relation-ref-input')).not.toBeInTheDocument()
+    })
+
     it('does not add duplicate refs', () => {
       renderEditableRelationships({ frontmatter: { 'Belongs to': ['[[topic/ai]]'] } })
       const input = openInlineAdd('AI')
       fireEvent.keyDown(input, { key: 'Enter' })
       expect(onUpdateProperty).not.toHaveBeenCalled()
+    })
+
+    it('ignores empty inline-add Enter presses', () => {
+      renderEditableRelationships()
+      const input = openInlineAdd()
+      fireEvent.keyDown(input, { key: 'Enter' })
+
+      expect(onUpdateProperty).not.toHaveBeenCalled()
+      expect(screen.queryByTestId('add-relation-ref-input')).not.toBeInTheDocument()
     })
 
     it('closes inline add on Escape', () => {
@@ -453,6 +471,40 @@ describe('DynamicRelationshipsPanel', () => {
       fireEvent.focus(noteInput)
       fireEvent.change(noteInput, { target: { value: 'New Person' } })
       expect(screen.getByTestId('create-and-open-option')).toBeInTheDocument()
+    })
+
+    it('submits from the relationship-name input on Enter and cancels the form from the note input on Escape', () => {
+      renderRelationshipsPanel({ onAddProperty, onCreateAndOpenNote })
+      fireEvent.click(screen.getByText('+ Add relationship'))
+      fireEvent.change(screen.getByPlaceholderText('Relationship name'), { target: { value: 'Mentions' } })
+      fireEvent.change(screen.getByPlaceholderText('Note title'), { target: { value: 'AI' } })
+      fireEvent.keyDown(screen.getByPlaceholderText('Relationship name'), { key: 'Enter' })
+
+      expect(onAddProperty).toHaveBeenCalledWith('Mentions', '[[topic/ai]]')
+
+      fireEvent.click(screen.getByText('+ Add relationship'))
+      fireEvent.keyDown(screen.getByPlaceholderText('Note title'), { key: 'Escape' })
+      expect(screen.queryByPlaceholderText('Relationship name')).not.toBeInTheDocument()
+    })
+
+    it('hides the target dropdown after blur once the grace timeout expires', () => {
+      vi.useFakeTimers()
+      renderRelationshipsPanel({ onAddProperty, onCreateAndOpenNote })
+      fireEvent.click(screen.getByText('+ Add relationship'))
+      fireEvent.change(screen.getByPlaceholderText('Relationship name'), { target: { value: 'Mentions' } })
+
+      const noteInput = screen.getByPlaceholderText('Note title')
+      fireEvent.focus(noteInput)
+      fireEvent.change(noteInput, { target: { value: 'New Person' } })
+      expect(screen.getByTestId('create-and-open-option')).toBeInTheDocument()
+
+      act(() => {
+        fireEvent.blur(noteInput)
+        vi.advanceTimersByTime(150)
+      })
+
+      expect(screen.queryByTestId('create-and-open-option')).not.toBeInTheDocument()
+      vi.useRealTimers()
     })
 
     it('creates note and adds relationship via form', async () => {

@@ -76,6 +76,17 @@ function buildVaultLoaderMock(options: {
   }) as typeof defaultMockInvoke
 }
 
+function buildReloadVaultPathMock(loads: Record<string, Promise<VaultEntry[]>>) {
+  return ((cmd: string, args?: Record<string, unknown>) => {
+    const path = typeof args?.path === 'string' ? args.path : undefined
+    if (cmd === 'reload_vault' && path) return loads[path] ?? Promise.resolve([])
+    if (cmd === 'list_vault_folders') return Promise.resolve([])
+    if (cmd === 'list_views') return Promise.resolve([])
+    if (cmd === 'get_modified_files') return Promise.resolve([])
+    return Promise.resolve(null)
+  }) as typeof defaultMockInvoke
+}
+
 function createDeferred<T>() {
   let resolve!: (value: T | PromiseLike<T>) => void
   let reject!: (reason?: unknown) => void
@@ -184,18 +195,10 @@ describe('useVaultLoader', () => {
     const firstLoad = createDeferred<VaultEntry[]>()
     const secondLoad = createDeferred<VaultEntry[]>()
 
-    backendInvokeFn.mockImplementation(((cmd: string, args?: Record<string, unknown>) => {
-      const path = typeof args?.path === 'string' ? args.path : undefined
-
-      if (cmd === 'reload_vault') {
-        if (path === '/vault-a') return firstLoad.promise
-        if (path === '/vault-b') return secondLoad.promise
-      }
-      if (cmd === 'list_vault_folders') return Promise.resolve([])
-      if (cmd === 'list_views') return Promise.resolve([])
-      if (cmd === 'get_modified_files') return Promise.resolve([])
-      return Promise.resolve(null)
-    }) as typeof defaultMockInvoke)
+    backendInvokeFn.mockImplementation(buildReloadVaultPathMock({
+      '/vault-a': firstLoad.promise,
+      '/vault-b': secondLoad.promise,
+    }))
 
     const { result, rerender } = renderHook(
       ({ path }) => useVaultLoader(path),
@@ -423,6 +426,19 @@ describe('useVaultLoader', () => {
       expect(result.current.getNoteStatus('/vault/note/draft.md')).toBe('new')
     })
 
+    it('tracks and clears pendingSave states separately from unsaved/new markers', async () => {
+      const { result } = await renderVaultLoader()
+
+      act(() => {
+        result.current.addPendingSave('/vault/note/hello.md')
+      })
+      expect(result.current.getNoteStatus('/vault/note/hello.md')).toBe('pendingSave')
+
+      act(() => {
+        result.current.removePendingSave('/vault/note/hello.md')
+      })
+      expect(result.current.getNoteStatus('/vault/note/hello.md')).toBe('modified')
+    })
   })
 
   describe('loadGitHistory', () => {
@@ -496,6 +512,27 @@ describe('useVaultLoader', () => {
       expect(response.status).toBe('ok')
     })
 
+    it('commits and pushes through the Tauri invoke path', async () => {
+      await enableTauriMode()
+      const { result } = renderHook(() => useVaultLoader('/vault'))
+
+      await waitForEntries(result)
+
+      let response: { status: string; message: string } = { status: '', message: '' }
+      await act(async () => {
+        response = await result.current.commitAndPush('tauri commit')
+      })
+
+      expect(response.status).toBe('ok')
+      expect(backendInvokeFn).toHaveBeenCalledWith('git_commit', {
+        vaultPath: '/vault',
+        message: 'tauri commit',
+      })
+      expect(backendInvokeFn).toHaveBeenCalledWith('git_push', {
+        vaultPath: '/vault',
+      })
+    })
+
     it.each([
       {
         name: 'returns rejected status when push is rejected',
@@ -551,6 +588,27 @@ describe('useVaultLoader', () => {
 
       expect(result.current.folders).toEqual(updatedFolders)
     })
+
+    it('returns an empty folder list when the refresh fails', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      backendInvokeFn.mockImplementation(((cmd: string) => {
+        if (isVaultLoadCommand(cmd)) return Promise.resolve(mockEntries)
+        if (cmd === 'get_modified_files') return Promise.resolve([])
+        if (cmd === 'list_vault_folders') return Promise.reject(new Error('no folders'))
+        if (cmd === 'list_views') return Promise.resolve([])
+        return Promise.resolve(null)
+      }) as typeof defaultMockInvoke)
+
+      const { result } = renderHook(() => useVaultLoader('/vault'))
+
+      let folders: Array<{ name: string; path: string; children: [] }> = []
+      await act(async () => {
+        folders = await result.current.reloadFolders()
+      })
+
+      expect(folders).toEqual([])
+      warnSpy.mockRestore()
+    })
   })
 
   describe('loadModifiedFiles', () => {
@@ -562,6 +620,158 @@ describe('useVaultLoader', () => {
       })
 
       expect(result.current.modifiedFiles).toHaveLength(1)
+    })
+
+    it('captures backend errors when modified files cannot be loaded', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      backendInvokeFn.mockImplementation(((cmd: string) => {
+        if (isVaultLoadCommand(cmd)) return Promise.resolve(mockEntries)
+        if (cmd === 'get_modified_files') return Promise.reject('git unavailable')
+        if (cmd === 'list_vault_folders') return Promise.resolve([])
+        if (cmd === 'list_views') return Promise.resolve([])
+        return Promise.resolve(null)
+      }) as typeof defaultMockInvoke)
+
+      const { result } = renderHook(() => useVaultLoader('/vault'))
+
+      await waitFor(() => {
+        expect(result.current.modifiedFiles).toEqual([])
+        expect(result.current.modifiedFilesError).toBe('git unavailable')
+      })
+      expect(warnSpy).toHaveBeenCalledWith('Failed to load modified files:', 'git unavailable')
+
+      warnSpy.mockRestore()
+    })
+  })
+
+  describe('replaceEntry', () => {
+    it('replaces an entry path and metadata in place', async () => {
+      const { result } = await renderVaultLoader()
+
+      act(() => {
+        result.current.replaceEntry('/vault/note/hello.md', {
+          path: '/vault/note/renamed.md',
+          filename: 'renamed.md',
+          title: 'Renamed',
+        })
+      })
+
+      expect(result.current.entries[0]).toEqual(expect.objectContaining({
+        path: '/vault/note/renamed.md',
+        filename: 'renamed.md',
+        title: 'Renamed',
+      }))
+    })
+  })
+
+  describe('reloadVault', () => {
+    it('refreshes entries from reload_vault and reloads modified files', async () => {
+      const reloadedEntry = {
+        ...mockEntries[0],
+        path: '/vault/note/reloaded.md',
+        filename: 'reloaded.md',
+        title: 'Reloaded',
+      }
+
+      backendInvokeFn.mockImplementation(((cmd: string) => {
+        if (cmd === 'list_vault') return Promise.resolve(mockEntries)
+        if (cmd === 'reload_vault') return Promise.resolve([reloadedEntry])
+        if (cmd === 'get_modified_files') return Promise.resolve([])
+        if (cmd === 'list_vault_folders') return Promise.resolve([])
+        if (cmd === 'list_views') return Promise.resolve([])
+        return Promise.resolve(null)
+      }) as typeof defaultMockInvoke)
+
+      const { result } = await renderVaultLoader()
+
+      let entries: VaultEntry[] = []
+      await act(async () => {
+        entries = await result.current.reloadVault()
+      })
+
+      expect(entries.map((entry) => entry.title)).toEqual(['Reloaded'])
+      expect(result.current.entries.map((entry) => entry.title)).toEqual(['Reloaded'])
+      expect(result.current.modifiedFiles).toEqual([])
+    })
+
+    it('returns an empty list when reloading the vault fails', async () => {
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      backendInvokeFn.mockImplementation(((cmd: string) => {
+        if (cmd === 'reload_vault') return Promise.reject(new Error('reload failed'))
+        if (isVaultLoadCommand(cmd)) return Promise.resolve(mockEntries)
+        if (cmd === 'get_modified_files') return Promise.resolve([])
+        if (cmd === 'list_vault_folders') return Promise.resolve([])
+        if (cmd === 'list_views') return Promise.resolve([])
+        return Promise.resolve(null)
+      }) as typeof defaultMockInvoke)
+
+      const { result } = await renderVaultLoader()
+
+      let entries: VaultEntry[] = []
+      await act(async () => {
+        entries = await result.current.reloadVault()
+      })
+
+      expect(entries).toEqual([])
+      expect(result.current.entries).toEqual(mockEntries)
+      warnSpy.mockRestore()
+    })
+  })
+
+  describe('reloadViews', () => {
+    it('refreshes views and falls back to an empty array when they are unavailable', async () => {
+      const initialViews = [{
+        filename: 'work.view',
+        definition: {
+          name: 'Work',
+          icon: null,
+          color: null,
+          sort: null,
+          filters: { all: [] },
+        },
+      }]
+      const updatedViews = [{
+        filename: 'projects.view',
+        definition: {
+          name: 'Projects',
+          icon: null,
+          color: null,
+          sort: null,
+          filters: { all: [] },
+        },
+      }]
+
+      backendInvokeFn.mockImplementation(((cmd: string) => {
+        if (isVaultLoadCommand(cmd)) return Promise.resolve(mockEntries)
+        if (cmd === 'get_modified_files') return Promise.resolve([])
+        if (cmd === 'list_vault_folders') return Promise.resolve([])
+        if (cmd === 'list_views') return Promise.resolve(initialViews)
+        return Promise.resolve(null)
+      }) as typeof defaultMockInvoke)
+
+      const { result } = await renderVaultLoader()
+      expect(result.current.views).toEqual(initialViews)
+
+      backendInvokeFn.mockImplementation(((cmd: string) => {
+        if (cmd === 'list_views') return Promise.resolve(updatedViews)
+        return defaultMockInvoke(cmd)
+      }) as typeof defaultMockInvoke)
+
+      await act(async () => {
+        const views = await result.current.reloadViews()
+        expect(views).toEqual(updatedViews)
+      })
+      expect(result.current.views).toEqual(updatedViews)
+
+      backendInvokeFn.mockImplementation(((cmd: string) => {
+        if (cmd === 'list_views') return Promise.reject(new Error('views unavailable'))
+        return defaultMockInvoke(cmd)
+      }) as typeof defaultMockInvoke)
+
+      await act(async () => {
+        const views = await result.current.reloadViews()
+        expect(views).toEqual([])
+      })
     })
   })
 })
@@ -591,6 +801,10 @@ describe('resolveNoteStatus', () => {
 
   it('returns modified for deleted files so deleted previews keep diff affordances', () => {
     expect(resolveNoteStatus('/vault/x.md', new Set(), [mf('/vault/x.md', 'deleted')])).toBe('modified')
+  })
+
+  it('returns clean for unsupported git statuses', () => {
+    expect(resolveNoteStatus('/vault/x.md', new Set(), [mf('/vault/x.md', 'renamed')])).toBe('clean')
   })
 
   it('newPaths takes priority over git modified', () => {
