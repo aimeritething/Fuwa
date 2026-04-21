@@ -8,6 +8,10 @@ function tauriCall<T>(command: string, tauriArgs: Record<string, unknown>, mockA
   return isTauri() ? invoke<T>(command, tauriArgs) : mockInvoke<T>(command, mockArgs ?? tauriArgs)
 }
 
+function hasVaultPath(vaultPath: string): boolean {
+  return vaultPath.trim().length > 0
+}
+
 function loadVaultEntries(vaultPath: string): Promise<VaultEntry[]> {
   const command = isTauri() ? 'reload_vault' : 'list_vault'
   return tauriCall<VaultEntry[]>(command, { path: vaultPath })
@@ -150,6 +154,11 @@ export function useVaultLoader(vaultPath: string) {
       setModifiedFilesError,
       setViews,
     })
+
+    if (!hasVaultPath(path)) {
+      return
+    }
+
     loadVaultData(path)
       .then(({ entries: e }) => {
         if (!isCurrentVaultPath(path)) return
@@ -172,8 +181,14 @@ export function useVaultLoader(vaultPath: string) {
 
   const loadModifiedFiles = useCallback(async () => {
     const path = vaultPath
+    setModifiedFilesError(null)
+
+    if (!hasVaultPath(path)) {
+      setModifiedFiles([])
+      return
+    }
+
     try {
-      setModifiedFilesError(null)
       const files = await tauriCall<ModifiedFile[]>('get_modified_files', { vaultPath: path }, {})
       if (!isCurrentVaultPath(path)) return
       setModifiedFiles(files)

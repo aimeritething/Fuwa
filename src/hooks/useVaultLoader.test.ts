@@ -160,6 +160,23 @@ describe('useVaultLoader', () => {
     expect(result.current.modifiedFiles[0].status).toBe('modified')
   })
 
+  it('does nothing until a real vault path exists', async () => {
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const { result } = renderHook(() => useVaultLoader(''))
+
+    await waitFor(() => {
+      expect(result.current.entries).toEqual([])
+      expect(result.current.modifiedFiles).toEqual([])
+      expect(result.current.modifiedFilesError).toBeNull()
+    })
+
+    expect(backendInvokeFn).not.toHaveBeenCalled()
+    expect(warnSpy).not.toHaveBeenCalled()
+
+    warnSpy.mockRestore()
+  })
+
   it('loads initial vault entries from a fresh reload in Tauri mode', async () => {
     await enableTauriMode()
     backendInvokeFn.mockImplementation(((cmd: string) => {
