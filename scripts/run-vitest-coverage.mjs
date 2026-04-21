@@ -9,6 +9,9 @@ const rootDir = process.cwd()
 const finalCoverageDir = resolve(rootDir, 'coverage')
 const coverageRunRoot = resolve(os.tmpdir(), 'tolaria-vitest-coverage-runs')
 const forwardedArgs = process.argv.slice(2)
+const hasFileParallelismOverride = forwardedArgs.some((arg) =>
+  arg === '--fileParallelism' || arg === '--no-file-parallelism'
+)
 const maxAttempts = 2
 
 const packageManagerExec = process.env.npm_execpath
@@ -39,6 +42,10 @@ async function runCoverageAttempt(attempt) {
 
   const commandArgs = [
     ...baseCommandArgs,
+    // Vitest 4.0.18 occasionally crashes during coverage worker teardown
+    // after all files pass, so serialize file execution unless a caller
+    // explicitly opts into a different file-parallelism mode.
+    ...(hasFileParallelismOverride ? [] : ['--no-file-parallelism']),
     `--coverage.reportsDirectory=${runCoverageDir}`,
     ...forwardedArgs,
   ]
