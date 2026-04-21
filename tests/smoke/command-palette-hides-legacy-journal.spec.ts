@@ -10,7 +10,7 @@ import { openCommandPalette } from './helpers'
 
 let tempVaultDir: string
 
-function seedLegacyJournalVault(vaultPath: string): void {
+function seedExplicitJournalTypeVault(vaultPath: string): void {
   fs.writeFileSync(path.join(vaultPath, 'journal.md'), `---
 type: Type
 order: 12
@@ -30,25 +30,25 @@ type: Journal
 `)
 }
 
-test.describe('command palette hides the legacy Journal type', () => {
+test.describe('explicit Journal type stays visible across navigation surfaces', () => {
   test.beforeEach(() => {
     tempVaultDir = createFixtureVaultCopy()
-    seedLegacyJournalVault(tempVaultDir)
+    seedExplicitJournalTypeVault(tempVaultDir)
   })
 
   test.afterEach(() => {
     removeFixtureVaultCopy(tempVaultDir)
   })
 
-  test('legacy Journal does not appear in the sidebar or command palette', async ({ page }) => {
+  test('explicit Journal type appears in the sidebar and command palette', async ({ page }) => {
     await openFixtureVault(page, tempVaultDir)
 
-    await expect(page.locator('nav').getByText('Journals', { exact: true })).toHaveCount(0)
+    await expect(page.locator('nav').getByText('Journals', { exact: true })).toBeVisible()
 
     await openCommandPalette(page)
     await page.locator('input[placeholder="Type a command..."]').fill('journal')
 
-    await expect(page.getByText('No matching commands', { exact: true })).toBeVisible()
-    await expect(page.locator('div.mx-1.flex.cursor-pointer')).toHaveCount(0)
+    await expect(page.getByText('List Journals', { exact: true })).toBeVisible()
+    await expect(page.getByText('New Journal', { exact: true })).toBeVisible()
   })
 })
