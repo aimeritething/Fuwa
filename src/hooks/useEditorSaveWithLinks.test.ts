@@ -157,10 +157,10 @@ describe('useEditorSaveWithLinks', () => {
       result.current.handleContentChange('/note.md', '---\ntype: Project\nstatus: Active\n---\nBody')
     })
 
-    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', expect.objectContaining({
       isA: 'Project',
       status: 'Active',
-    })
+    }))
     expect(updateEntry).toHaveBeenCalledWith('/note.md', {
       title: 'Note',
       hasH1: false,
@@ -185,9 +185,9 @@ describe('useEditorSaveWithLinks', () => {
     act(() => {
       result.current.handleContentChange('/note.md', '---\ntype: Essay\n---\nBody')
     })
-    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', expect.objectContaining({
       isA: 'Essay',
-    })
+    }))
     expect(updateEntry).toHaveBeenCalledWith('/note.md', {
       title: 'Note',
       hasH1: false,
@@ -196,13 +196,64 @@ describe('useEditorSaveWithLinks', () => {
     act(() => {
       result.current.handleContentChange('/note.md', '---\ntype: Note\n---\nBody')
     })
-    expect(updateEntry).toHaveBeenCalledWith('/note.md', {
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', expect.objectContaining({
       isA: 'Note',
-    })
+    }))
     expect(updateEntry).toHaveBeenCalledWith('/note.md', {
       title: 'Note',
       hasH1: false,
     })
+  })
+
+  it('syncs custom relationships and properties from raw frontmatter immediately', () => {
+    const { result } = renderHookWithLinks()
+
+    act(() => {
+      result.current.handleContentChange('/note.md', '---\nOwner: [[person/alice]]\ncustom: value\n---\nBody')
+    })
+
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', expect.objectContaining({
+      properties: { Owner: '[[person/alice]]', custom: 'value' },
+      relationships: { Owner: ['[[person/alice]]'] },
+    }))
+  })
+
+  it('clears stale note-list and inspector metadata when raw frontmatter is removed', () => {
+    const { result } = renderHookWithLinks()
+
+    act(() => {
+      result.current.handleContentChange('/note.md', '---\nstatus: Active\nOwner: [[person/alice]]\ncustom: value\n---\nBody')
+    })
+
+    updateEntry.mockClear()
+
+    act(() => {
+      result.current.handleContentChange('/note.md', 'Body without frontmatter')
+    })
+
+    expect(updateEntry).toHaveBeenCalledWith('/note.md', expect.objectContaining({
+      belongsTo: [],
+      properties: {},
+      relationships: {},
+      relatedTo: [],
+      status: null,
+    }))
+  })
+
+  it('keeps the last derived entry state while the raw frontmatter is temporarily incomplete', () => {
+    const { result } = renderHookWithLinks()
+
+    act(() => {
+      result.current.handleContentChange('/note.md', '---\nstatus: Active\nOwner: [[person/alice]]\n---\nBody')
+    })
+
+    updateEntry.mockClear()
+
+    act(() => {
+      result.current.handleContentChange('/note.md', '---\nstatus: Active\nOwner: [[person/alice]]\nBody')
+    })
+
+    expect(updateEntry).not.toHaveBeenCalled()
   })
 
   it.each([

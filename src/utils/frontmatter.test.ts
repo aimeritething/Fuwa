@@ -70,6 +70,12 @@ describe('parseFrontmatter', () => {
       expect(fm['Archived']).toBe(false)
     })
   })
+
+  it('preserves single wikilinks as scalar strings instead of inline arrays', () => {
+    const fm = parseFrontmatter('---\nOwner: [[person/alice]]\nBelongs to: [[project/alpha]]\n---\nBody')
+    expect(fm['Owner']).toBe('[[person/alice]]')
+    expect(fm['Belongs to']).toBe('[[project/alpha]]')
+  })
 })
 
 describe('detectFrontmatterState', () => {
