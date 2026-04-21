@@ -245,6 +245,12 @@ describe('BreadcrumbBar — action buttons always right-aligned', () => {
     expect(actions).toBeInTheDocument()
     expect(actions).toHaveClass('ml-auto')
   })
+
+  it('does not render the unused backlinks or more-actions placeholders', () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
+    expect(screen.queryByRole('button', { name: 'Backlinks are coming soon' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'More note actions are coming soon' })).not.toBeInTheDocument()
+  })
 })
 
 describe('BreadcrumbBar — raw editor toggle', () => {

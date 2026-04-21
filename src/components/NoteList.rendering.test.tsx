@@ -295,6 +295,35 @@ describe('NoteList rendering', () => {
     }
   })
 
+  it('keeps the note-list search input full width and shows only an inline spinner while loading', () => {
+    vi.useFakeTimers()
+    try {
+      renderNoteList({
+        entries: [
+          makeEntry({ path: '/vault/a.md', filename: 'a.md', title: 'Alpha Strategy' }),
+          makeEntry({ path: '/vault/b.md', filename: 'b.md', title: 'Beta Note' }),
+        ],
+      })
+
+      fireEvent.click(screen.getByTitle('Search notes'))
+      fireEvent.change(screen.getByPlaceholderText('Search notes...'), { target: { value: 'strategy' } })
+
+      const searchInput = screen.getByPlaceholderText('Search notes...')
+      expect(searchInput).toHaveClass('pr-8')
+      expect(searchInput.parentElement).toHaveClass('relative', 'flex-1')
+      expect(screen.getByTestId('note-list-search-loading')).toBeInTheDocument()
+      expect(screen.queryByText('Searching...')).not.toBeInTheDocument()
+
+      act(() => {
+        vi.advanceTimersByTime(180)
+      })
+
+      expect(screen.queryByTestId('note-list-search-loading')).not.toBeInTheDocument()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('shows backlinks from outgoing links in entity view', () => {
     const entriesWithBacklink = mockEntries.map((entry) =>
       entry.path === mockEntries[2].path ? { ...entry, outgoingLinks: ['Build Laputa App'] } : entry,

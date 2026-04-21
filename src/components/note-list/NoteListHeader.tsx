@@ -55,23 +55,23 @@ export function NoteListHeader({ title, typeDocument, isEntityView, listSort, li
       </div>
       {searchVisible && (
         <div className="border-b border-border px-3 py-2">
-          <div className="flex items-center gap-3">
+          <div className="relative flex-1" aria-live="polite">
             <Input
               ref={searchInputRef}
               placeholder="Search notes..."
               value={search}
               onChange={(e) => onSearchChange(e.target.value)}
               onKeyDown={onSearchKeyDown}
-              className="h-8 text-[13px]"
+              className="h-8 pr-8 text-[13px]"
             />
-            <div className="min-w-[92px] text-[12px] text-muted-foreground" aria-live="polite">
-              {isSearching && (
-                <span className="flex items-center gap-1" data-testid="note-list-search-loading">
-                  <Loader2 size={12} className="animate-spin" />
-                  Searching...
-                </span>
-              )}
-            </div>
+            {isSearching && (
+              <span
+                className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground"
+                data-testid="note-list-search-loading"
+              >
+                <Loader2 size={12} className="animate-spin" />
+              </span>
+            )}
           </div>
         </div>
       )}

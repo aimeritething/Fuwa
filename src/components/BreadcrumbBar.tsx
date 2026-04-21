@@ -8,10 +8,8 @@ import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   GitBranch,
   Code,
-  CursorText,
   Sparkle,
   SlidersHorizontal,
-  DotsThree,
   Trash,
   Archive,
   ArrowUUpLeft,
@@ -210,14 +208,6 @@ function DiffAction({
       className={cn(diffMode ? 'text-foreground' : 'hover:text-foreground')}
     >
       <GitBranch size={16} className={BREADCRUMB_ICON_CLASS} />
-    </IconActionButton>
-  )
-}
-
-function PlaceholderAction({ copy, children }: { copy: ActionTooltipCopy; children: ReactNode }) {
-  return (
-    <IconActionButton copy={copy} style={DISABLED_ICON_STYLE}>
-      {children}
     </IconActionButton>
   )
 }
@@ -481,16 +471,10 @@ function BreadcrumbActions({
         onToggleDiff={onToggleDiff}
       />
       {!forceRawMode && <RawToggleButton rawMode={rawMode} onToggleRaw={onToggleRaw} />}
-      <PlaceholderAction copy={{ label: 'Backlinks are coming soon' }}>
-        <CursorText size={16} className={BREADCRUMB_ICON_CLASS} />
-      </PlaceholderAction>
       <AIChatAction showAIChat={showAIChat} onToggleAIChat={onToggleAIChat} />
       <ArchiveAction archived={entry.archived} onArchive={onArchive} onUnarchive={onUnarchive} />
       <DeleteAction onDelete={onDelete} />
       <InspectorAction inspectorCollapsed={inspectorCollapsed} onToggleInspector={onToggleInspector} />
-      <PlaceholderAction copy={{ label: 'More note actions are coming soon' }}>
-        <DotsThree size={16} className={BREADCRUMB_ICON_CLASS} />
-      </PlaceholderAction>
     </div>
   )
 }
