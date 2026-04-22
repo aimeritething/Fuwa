@@ -48,26 +48,34 @@ pub fn move_note_to_folder(
     old_path: String,
     folder_path: String,
 ) -> Result<RenameResult, String> {
-    with_existing_path_in_requested_vault(&vault_path, &old_path, |requested_root, validated_path| {
-        let trimmed_folder_path = folder_path.trim();
-        if trimmed_folder_path.is_empty() {
-            return Err("Folder path cannot be empty".to_string());
-        }
+    with_existing_path_in_requested_vault(
+        &vault_path,
+        &old_path,
+        |requested_root, validated_path| {
+            let trimmed_folder_path = folder_path.trim();
+            if trimmed_folder_path.is_empty() {
+                return Err("Folder path cannot be empty".to_string());
+            }
 
-        let folder_absolute_path = Path::new(requested_root).join(trimmed_folder_path);
-        with_validated_path(
-            folder_absolute_path.to_string_lossy().as_ref(),
-            Some(&vault_path),
-            ValidatedPathMode::Existing,
-            |validated_folder_path| {
-                let validated_folder = Path::new(validated_folder_path);
-                if !validated_folder.is_dir() {
-                    return Err(format!("Folder does not exist: {}", trimmed_folder_path));
-                }
-                vault::move_note_to_folder(requested_root, validated_path, validated_folder_path)
-            },
-        )
-    })
+            let folder_absolute_path = Path::new(requested_root).join(trimmed_folder_path);
+            with_validated_path(
+                folder_absolute_path.to_string_lossy().as_ref(),
+                Some(&vault_path),
+                ValidatedPathMode::Existing,
+                |validated_folder_path| {
+                    let validated_folder = Path::new(validated_folder_path);
+                    if !validated_folder.is_dir() {
+                        return Err(format!("Folder does not exist: {}", trimmed_folder_path));
+                    }
+                    vault::move_note_to_folder(
+                        requested_root,
+                        validated_path,
+                        validated_folder_path,
+                    )
+                },
+            )
+        },
+    )
 }
 
 #[tauri::command]

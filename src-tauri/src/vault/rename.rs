@@ -991,7 +991,11 @@ mod tests {
             "projects/weekly-review.md",
             "---\ntitle: Weekly Review\n---\n# Weekly Review\nBody\n",
         );
-        create_test_file(vault, "areas/linked.md", "Reference [[projects/weekly-review]]\n");
+        create_test_file(
+            vault,
+            "areas/linked.md",
+            "Reference [[projects/weekly-review]]\n",
+        );
 
         let result = move_note_to_folder(
             vault.to_str().unwrap(),
