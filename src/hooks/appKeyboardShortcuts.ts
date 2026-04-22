@@ -3,6 +3,7 @@ import {
   APP_COMMAND_IDS,
   executeAppCommand,
   findShortcutCommandIdForEvent,
+  recordSuppressedShortcutCommand,
   type AppCommandHandlers,
 } from './appCommandDispatcher'
 
@@ -33,6 +34,10 @@ export type KeyboardActions = Pick<
 >
 
 const TEXT_EDITING_KEYS = new Set(['Backspace', 'Delete'])
+const TEXT_EDITING_BLOCKED_COMMANDS = new Set([
+  APP_COMMAND_IDS.viewGoBack,
+  APP_COMMAND_IDS.viewGoForward,
+])
 
 function isTextInputFocused(): boolean {
   const active = document.activeElement
@@ -44,7 +49,15 @@ function isTextInputFocused(): boolean {
 export function handleAppKeyboardEvent(actions: KeyboardActions, event: KeyboardEvent) {
   const commandId = findShortcutCommandIdForEvent(event)
   if (commandId === null) return
-  if (TEXT_EDITING_KEYS.has(event.key) && isTextInputFocused()) return
+
+  const textInputFocused = isTextInputFocused()
+  if (textInputFocused) {
+    if (TEXT_EDITING_KEYS.has(event.key)) return
+    if (TEXT_EDITING_BLOCKED_COMMANDS.has(commandId)) {
+      recordSuppressedShortcutCommand(commandId, 'renderer-keyboard')
+      return
+    }
+  }
 
   event.preventDefault()
   if (commandId === APP_COMMAND_IDS.editFindInVault) {

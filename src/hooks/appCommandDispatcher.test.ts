@@ -7,6 +7,7 @@ import {
   findShortcutCommandIdForEvent,
   isAppCommandId,
   isNativeMenuCommandId,
+  recordSuppressedShortcutCommand,
   resetAppCommandDispatchStateForTests,
   type AppCommandHandlers,
 } from './appCommandDispatcher'
@@ -279,5 +280,14 @@ describe('appCommandDispatcher', () => {
     expect(executeAppCommand(APP_COMMAND_IDS.viewToggleAiChat, handlers, 'native-menu')).toBe(true)
     expect(executeAppCommand(APP_COMMAND_IDS.viewToggleAiChat, handlers, 'renderer-keyboard')).toBe(false)
     expect(handlers.onToggleAIChat).toHaveBeenCalledTimes(1)
+  })
+
+  it('suppresses a native-menu history echo after renderer keyboard yields to text editing', () => {
+    const handlers = makeHandlers()
+
+    recordSuppressedShortcutCommand(APP_COMMAND_IDS.viewGoBack)
+
+    expect(executeAppCommand(APP_COMMAND_IDS.viewGoBack, handlers, 'native-menu')).toBe(false)
+    expect(handlers.onGoBack).not.toHaveBeenCalled()
   })
 })

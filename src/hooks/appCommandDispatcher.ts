@@ -25,6 +25,8 @@ export type AppCommandDispatchSource =
   | 'native-menu'
   | 'app-event'
 
+type SuppressedShortcutSource = Extract<AppCommandDispatchSource, 'renderer-keyboard'>
+
 export interface AppCommandHandlers {
   onSetViewMode: (mode: ViewMode) => void
   onCreateNote: () => void
@@ -154,6 +156,14 @@ let lastCommandDispatch:
     }
   | null = null
 
+let lastSuppressedShortcutCommand:
+  | {
+      id: AppCommandId
+      source: SuppressedShortcutSource
+      timestamp: number
+    }
+  | null = null
+
 function now(): number {
   return globalThis.performance?.now?.() ?? Date.now()
 }
@@ -173,6 +183,16 @@ function shouldSuppressDuplicateCommand(
   if (!lastCommandDispatch || lastCommandDispatch.id !== id) return false
   if (!isShortcutEchoPair(source, lastCommandDispatch.source)) return false
   return currentTimestamp - lastCommandDispatch.timestamp <= SHORTCUT_ECHO_DEDUPE_WINDOW_MS
+}
+
+function shouldSuppressShortcutEchoAfterKeyboardYield(
+  id: AppCommandId,
+  source: AppCommandDispatchSource,
+  currentTimestamp: number,
+): boolean {
+  if (source !== 'native-menu') return false
+  if (!lastSuppressedShortcutCommand || lastSuppressedShortcutCommand.id !== id) return false
+  return currentTimestamp - lastSuppressedShortcutCommand.timestamp <= SHORTCUT_ECHO_DEDUPE_WINDOW_MS
 }
 
 function dispatchActiveTabCommand(
@@ -249,6 +269,9 @@ export function executeAppCommand(
   source: AppCommandDispatchSource,
 ): boolean {
   const timestamp = now()
+  if (shouldSuppressShortcutEchoAfterKeyboardYield(id, source, timestamp)) {
+    return false
+  }
   if (shouldSuppressDuplicateCommand(id, source, timestamp)) {
     return false
   }
@@ -260,6 +283,14 @@ export function executeAppCommand(
   return dispatched
 }
 
+export function recordSuppressedShortcutCommand(
+  id: AppCommandId,
+  source: SuppressedShortcutSource = 'renderer-keyboard',
+): void {
+  lastSuppressedShortcutCommand = { id, source, timestamp: now() }
+}
+
 export function resetAppCommandDispatchStateForTests(): void {
   lastCommandDispatch = null
+  lastSuppressedShortcutCommand = null
 }

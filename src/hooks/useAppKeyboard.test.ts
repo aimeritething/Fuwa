@@ -43,6 +43,8 @@ function makeActions() {
     onZoomIn: vi.fn(),
     onZoomOut: vi.fn(),
     onZoomReset: vi.fn(),
+    onGoBack: vi.fn(),
+    onGoForward: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
     multiSelectionCommandRef: { current: null },
   }
@@ -281,6 +283,38 @@ describe('useAppKeyboard', () => {
 
     expect(deleteSelected).toHaveBeenCalledTimes(1)
     expect(actions.onDeleteNote).not.toHaveBeenCalled()
+  })
+
+  it('Cmd+Left does not go back when contenteditable is focused', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    withFocusedContentEditable((editable) => {
+      fireKeyOnTarget(editable, 'ArrowLeft', { metaKey: true, code: 'ArrowLeft' })
+      expect(actions.onGoBack).not.toHaveBeenCalled()
+    })
+  })
+
+  it('Cmd+Right does not go forward when contenteditable is focused', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    withFocusedContentEditable((editable) => {
+      fireKeyOnTarget(editable, 'ArrowRight', { metaKey: true, code: 'ArrowRight' })
+      expect(actions.onGoForward).not.toHaveBeenCalled()
+    })
+  })
+
+  it('Cmd+Left still goes back when no text input is focused', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('ArrowLeft', { metaKey: true, code: 'ArrowLeft' })
+    expect(actions.onGoBack).toHaveBeenCalled()
+  })
+
+  it('Cmd+Right still goes forward when no text input is focused', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    fireKey('ArrowRight', { metaKey: true, code: 'ArrowRight' })
+    expect(actions.onGoForward).toHaveBeenCalled()
   })
 
   it('Cmd+K still works when text input is focused', () => {
