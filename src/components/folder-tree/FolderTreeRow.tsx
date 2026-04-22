@@ -1,9 +1,11 @@
-import { memo, useCallback, type MouseEvent as ReactMouseEvent } from 'react'
+import { memo, useCallback, type MouseEvent as ReactMouseEvent, type ReactNode } from 'react'
 import {
   CaretDown,
   CaretRight,
   Folder,
   FolderOpen,
+  PencilSimple,
+  Trash,
 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
@@ -56,6 +58,7 @@ function FolderItemRow({
   isExpanded,
   isSelected,
   node,
+  onDeleteFolder,
   onOpenMenu,
   onSelect,
   onStartRenameFolder,
@@ -65,6 +68,7 @@ function FolderItemRow({
   isExpanded: boolean
   isSelected: boolean
   node: FolderNode
+  onDeleteFolder?: (folderPath: string) => void
   onOpenMenu: FolderTreeRowProps['onOpenMenu']
   onSelect: () => void
   onStartRenameFolder?: (folderPath: string) => void
@@ -72,11 +76,12 @@ function FolderItemRow({
 }) {
   const hasChildren = node.children.length > 0
   const expandLabel = isExpanded ? `Collapse ${node.name}` : `Expand ${node.name}`
+  const hasActions = !!onStartRenameFolder || !!onDeleteFolder
 
   return (
     <div
       className={cn(
-        'group flex items-center gap-1 rounded-[5px] transition-colors',
+        'group relative flex items-center gap-1 rounded-[5px] transition-colors',
         isSelected
           ? 'bg-[var(--accent-blue-light,rgba(0,100,255,0.08))] text-primary'
           : 'text-foreground hover:bg-accent',
@@ -94,12 +99,44 @@ function FolderItemRow({
         onToggle={() => onToggle(node.path)}
       />
       <FolderSelectButton
+        hasActions={hasActions}
         isExpanded={isExpanded}
         isSelected={isSelected}
         node={node}
         onSelect={onSelect}
         onStartRenameFolder={onStartRenameFolder}
       />
+      {hasActions && (
+        <div className="pointer-events-none absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
+          {onStartRenameFolder && (
+            <FolderActionButton
+              ariaLabel={`Rename ${node.name}`}
+              testId={`rename-folder-btn:${node.path}`}
+              title="Rename folder"
+              onClick={() => {
+                onSelect()
+                onStartRenameFolder(node.path)
+              }}
+            >
+              <PencilSimple size={12} />
+            </FolderActionButton>
+          )}
+          {onDeleteFolder && (
+            <FolderActionButton
+              ariaLabel={`Delete ${node.name}`}
+              testId={`delete-folder-btn:${node.path}`}
+              title="Delete folder"
+              destructive
+              onClick={() => {
+                onSelect()
+                onDeleteFolder(node.path)
+              }}
+            >
+              <Trash size={12} />
+            </FolderActionButton>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -137,13 +174,52 @@ function FolderToggleButton({
   )
 }
 
+function FolderActionButton({
+  ariaLabel,
+  children,
+  destructive = false,
+  onClick,
+  testId,
+  title,
+}: {
+  ariaLabel: string
+  children: ReactNode
+  destructive?: boolean
+  onClick: () => void
+  testId: string
+  title: string
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-xs"
+      aria-label={ariaLabel}
+      title={title}
+      className={cn(
+        'h-5 w-5 rounded p-0 text-muted-foreground',
+        destructive ? 'hover:text-destructive' : 'hover:text-foreground',
+      )}
+      data-testid={testId}
+      onClick={(event) => {
+        event.stopPropagation()
+        onClick()
+      }}
+    >
+      {children}
+    </Button>
+  )
+}
+
 function FolderSelectButton({
+  hasActions,
   isExpanded,
   isSelected,
   node,
   onSelect,
   onStartRenameFolder,
 }: {
+  hasActions: boolean
   isExpanded: boolean
   isSelected: boolean
   node: FolderNode
@@ -156,6 +232,7 @@ function FolderSelectButton({
       variant="ghost"
       className={cn(
         'h-7 flex-1 justify-start gap-2 rounded-[5px] px-2 py-0 text-left text-[13px]',
+        hasActions && 'pr-12',
         isSelected ? 'font-medium text-primary hover:text-primary' : 'hover:text-foreground',
       )}
       title={node.path}
@@ -258,6 +335,7 @@ export const FolderTreeRow = memo(function FolderTreeRow({
           isExpanded={isExpanded}
           isSelected={isSelected}
           node={node}
+          onDeleteFolder={onDeleteFolder}
           onOpenMenu={onOpenMenu}
           onSelect={selectFolder}
           onStartRenameFolder={onStartRenameFolder}

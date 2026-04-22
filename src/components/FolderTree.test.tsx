@@ -91,6 +91,31 @@ describe('FolderTree', () => {
     expect(onStartRenameFolder).toHaveBeenCalledWith('areas')
   })
 
+  it('shows inline rename and delete actions for folders', () => {
+    const onDeleteFolder = vi.fn()
+    const onStartRenameFolder = vi.fn()
+    const onSelect = vi.fn()
+    render(
+      <FolderTree
+        folders={mockFolders}
+        selection={defaultSelection}
+        onSelect={onSelect}
+        onDeleteFolder={onDeleteFolder}
+        onRenameFolder={vi.fn().mockResolvedValue(true)}
+        onStartRenameFolder={onStartRenameFolder}
+        onCancelRenameFolder={vi.fn()}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('rename-folder-btn:projects'))
+    fireEvent.click(screen.getByTestId('delete-folder-btn:projects'))
+
+    expect(onSelect).toHaveBeenNthCalledWith(1, { kind: 'folder', path: 'projects' })
+    expect(onStartRenameFolder).toHaveBeenCalledWith('projects')
+    expect(onSelect).toHaveBeenNthCalledWith(2, { kind: 'folder', path: 'projects' })
+    expect(onDeleteFolder).toHaveBeenCalledWith('projects')
+  })
+
   it('shows the rename input when a folder is being renamed', () => {
     render(
       <FolderTree
