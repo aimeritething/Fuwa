@@ -30,22 +30,25 @@ interface FolderTreeRowProps {
 }
 
 function FolderRenameRow({
-  indentation,
+  contentInset,
+  depthIndent,
   node,
   onCancelRenameFolder,
   onRenameFolder,
 }: {
-  indentation: number
+  contentInset: number
+  depthIndent: number
   node: FolderNode
   onCancelRenameFolder: () => void
   onRenameFolder: (folderPath: string, nextName: string) => Promise<boolean> | boolean
 }) {
   return (
-    <div style={{ paddingLeft: indentation }}>
+    <div style={{ paddingLeft: depthIndent }}>
       <FolderNameInput
         ariaLabel="Folder name"
         initialValue={node.name}
         placeholder="Folder name"
+        leftInset={contentInset}
         selectTextOnFocus={true}
         testId="rename-folder-input"
         onCancel={onCancelRenameFolder}
@@ -56,7 +59,8 @@ function FolderRenameRow({
 }
 
 function FolderItemRow({
-  indentation,
+  contentInset,
+  depthIndent,
   isExpanded,
   isSelected,
   node,
@@ -66,7 +70,8 @@ function FolderItemRow({
   onStartRenameFolder,
   onToggle,
 }: {
-  indentation: number
+  contentInset: number
+  depthIndent: number
   isExpanded: boolean
   isSelected: boolean
   node: FolderNode
@@ -88,7 +93,7 @@ function FolderItemRow({
           ? 'bg-[var(--accent-blue-light,rgba(0,100,255,0.08))] text-primary'
           : 'text-foreground hover:bg-accent',
       )}
-      style={{ paddingLeft: indentation, paddingRight: 8, paddingTop: 6, paddingBottom: 6, borderRadius: 4 }}
+      style={{ paddingLeft: depthIndent, borderRadius: 4 }}
       onContextMenu={(event) => {
         onSelect()
         onOpenMenu(node, event)
@@ -101,7 +106,9 @@ function FolderItemRow({
         onToggle={() => onToggle(node.path)}
       />
       <FolderSelectButton
+        contentInset={contentInset}
         hasActions={hasActions}
+        hasChildren={hasChildren}
         isExpanded={isExpanded}
         isSelected={isSelected}
         node={node}
@@ -211,14 +218,18 @@ function FolderActionButton({
 }
 
 function FolderSelectButton({
+  contentInset,
   hasActions,
+  hasChildren,
   isExpanded,
   isSelected,
   node,
   onSelect,
   onStartRenameFolder,
 }: {
+  contentInset: number
   hasActions: boolean
+  hasChildren: boolean
   isExpanded: boolean
   isSelected: boolean
   node: FolderNode
@@ -230,10 +241,15 @@ function FolderSelectButton({
       type="button"
       variant="ghost"
       className={cn(
-        'h-auto flex-1 justify-start gap-2 rounded p-0 text-left text-[13px] font-medium hover:bg-transparent',
-        hasActions && 'pr-12',
+        'h-auto flex-1 justify-start gap-2 rounded text-left text-[13px] font-medium hover:bg-transparent',
         isSelected ? 'text-primary hover:text-primary' : 'text-foreground hover:text-foreground',
       )}
+      style={{
+        paddingTop: 6,
+        paddingBottom: 6,
+        paddingLeft: hasChildren ? 0 : contentInset,
+        paddingRight: hasActions ? 48 : 16,
+      }}
       title={node.path}
       onClick={onSelect}
       onDoubleClick={() => {
@@ -243,9 +259,9 @@ function FolderSelectButton({
       data-testid={`folder-row:${node.path}`}
     >
       {isSelected || isExpanded ? (
-        <FolderOpen size={16} weight="fill" className="size-4 shrink-0" />
+        <FolderOpen size={17} weight="fill" className="size-[17px] shrink-0" />
       ) : (
-        <Folder size={16} className="size-4 shrink-0" />
+        <Folder size={17} className="size-[17px] shrink-0" />
       )}
       <span className="truncate">{node.name}</span>
     </Button>
@@ -314,14 +330,16 @@ export const FolderTreeRow = memo(function FolderTreeRow({
   const isExpanded = expanded[node.path] ?? false
   const isRenaming = renamingFolderPath === node.path
   const isSelected = selection.kind === 'folder' && selection.path === node.path
-  const indentation = 16 + depth * 16
+  const depthIndent = depth * 16
+  const contentInset = 16
   const noteRetargeting = useNoteRetargetingContext()
   const selectFolder = useCallback(() => {
     onSelect({ kind: 'folder', path: node.path })
   }, [node.path, onSelect])
   const row = (
     <FolderItemRow
-      indentation={indentation}
+      contentInset={contentInset}
+      depthIndent={depthIndent}
       isExpanded={isExpanded}
       isSelected={isSelected}
       node={node}
@@ -337,7 +355,8 @@ export const FolderTreeRow = memo(function FolderTreeRow({
     <>
       {isRenaming && onRenameFolder && onCancelRenameFolder ? (
         <FolderRenameRow
-          indentation={indentation}
+          contentInset={contentInset}
+          depthIndent={depthIndent}
           node={node}
           onCancelRenameFolder={onCancelRenameFolder}
           onRenameFolder={onRenameFolder}
