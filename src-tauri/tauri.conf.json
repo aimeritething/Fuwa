@@ -27,12 +27,18 @@
       }
     ],
     "security": {
-      "csp": null,
+      "csp": {
+        "default-src": "'self' ipc: http://ipc.localhost",
+        "connect-src": "'self' ipc: http://ipc.localhost ws://localhost:9710 ws://127.0.0.1:9710 ws://localhost:9711 ws://127.0.0.1:9711 https:",
+        "img-src": "'self' asset: http://asset.localhost data: blob: https:",
+        "style-src": "'self' 'unsafe-inline'",
+        "font-src": "'self' data:",
+        "media-src": "'self' data: blob: https:",
+        "object-src": "'none'"
+      },
       "assetProtocol": {
         "enable": true,
-        "scope": [
-          "**"
-        ]
+        "scope": []
       }
     }
   },

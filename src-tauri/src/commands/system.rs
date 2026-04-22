@@ -26,10 +26,21 @@ pub async fn register_mcp_tools(vault_path: String) -> Result<String, String> {
 
 #[cfg(desktop)]
 #[tauri::command]
-pub async fn check_mcp_status() -> Result<crate::mcp::McpStatus, String> {
-    tokio::task::spawn_blocking(crate::mcp::check_mcp_status)
+pub async fn remove_mcp_tools() -> Result<String, String> {
+    tokio::task::spawn_blocking(crate::mcp::remove_mcp)
         .await
-        .map_err(|e| format!("MCP status check failed: {e}"))
+        .map_err(|e| format!("Removal task failed: {e}"))
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+pub async fn check_mcp_status(vault_path: String) -> Result<crate::mcp::McpStatus, String> {
+    let vault_path = super::expand_tilde(&vault_path).into_owned();
+    Ok(
+        tokio::task::spawn_blocking(move || crate::mcp::check_mcp_status(&vault_path))
+            .await
+            .map_err(|e| format!("MCP status check failed: {e}"))?,
+    )
 }
 
 // ── MCP commands (mobile stubs) ─────────────────────────────────────────────
@@ -42,7 +53,13 @@ pub async fn register_mcp_tools(_vault_path: String) -> Result<String, String> {
 
 #[cfg(mobile)]
 #[tauri::command]
-pub async fn check_mcp_status() -> Result<crate::mcp::McpStatus, String> {
+pub async fn remove_mcp_tools() -> Result<String, String> {
+    Err("MCP is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn check_mcp_status(_vault_path: String) -> Result<crate::mcp::McpStatus, String> {
     Ok(crate::mcp::McpStatus::NotInstalled)
 }
 

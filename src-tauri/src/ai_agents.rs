@@ -246,7 +246,6 @@ fn build_codex_args(request: &AiAgentStreamRequest) -> Result<Vec<String>, Strin
     Ok(vec![
         "exec".into(),
         "--json".into(),
-        "--dangerously-bypass-approvals-and-sandbox".into(),
         "-C".into(),
         request.vault_path.clone(),
         "-c".into(),
@@ -404,6 +403,20 @@ mod tests {
 
         assert!(prompt.starts_with("System instructions:\nBe concise"));
         assert!(prompt.contains("User request:\nRename the note"));
+    }
+
+    #[test]
+    fn build_codex_args_uses_safe_default_permissions() {
+        if let Ok(args) = build_codex_args(&AiAgentStreamRequest {
+            agent: AiAgentId::Codex,
+            message: "Rename the note".into(),
+            system_prompt: None,
+            vault_path: "/tmp/vault".into(),
+        }) {
+            assert!(!args.contains(&"--dangerously-bypass-approvals-and-sandbox".to_string()));
+            assert!(args.contains(&"--json".to_string()));
+            assert!(args.contains(&"-C".to_string()));
+        }
     }
 
     #[test]

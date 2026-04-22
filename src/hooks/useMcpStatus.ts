@@ -2,74 +2,94 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 
-export type McpStatus = 'checking' | 'installed' | 'not_installed' | 'no_claude_cli'
+export type McpStatus = 'checking' | 'installed' | 'not_installed'
 
 function tauriCall<T>(command: string, args?: Record<string, unknown>): Promise<T> {
   return isTauri() ? invoke<T>(command, args) : mockInvoke<T>(command, args)
 }
 
+function normalizeMcpStatus(value: string | null | undefined): McpStatus {
+  return value === 'installed' ? 'installed' : 'not_installed'
+}
+
+async function fetchMcpStatus(vaultPath: string): Promise<McpStatus> {
+  try {
+    const result = await tauriCall<string>('check_mcp_status', { vaultPath })
+    return normalizeMcpStatus(result)
+  } catch {
+    return 'not_installed'
+  }
+}
+
+function connectSuccessToast(result: string): string {
+  return result === 'registered'
+    ? 'Tolaria external AI tools connected successfully'
+    : 'Tolaria external AI tools setup refreshed successfully'
+}
+
+function disconnectSuccessToast(result: string): string {
+  return result === 'removed'
+    ? 'Tolaria external AI tools disconnected successfully'
+    : 'Tolaria external AI tools were already disconnected'
+}
+
 /**
- * Detects MCP server status on vault open and provides an install action.
- *
- * Combines the old `useMcpRegistration` functionality (auto-register on vault
- * switch) with new status detection for the status bar indicator.
+ * Detects whether the active vault is explicitly connected to external MCP
+ * clients and exposes connect / disconnect actions.
  */
 export function useMcpStatus(
   vaultPath: string,
   onToast: (msg: string) => void,
 ) {
   const [status, setStatus] = useState<McpStatus>('checking')
-  const statusRef = useRef<McpStatus>(status)
-  const registeredRef = useRef<string | null>(null)
   const onToastRef = useRef(onToast)
   useEffect(() => { onToastRef.current = onToast })
-  useEffect(() => { statusRef.current = status }, [status])
 
-  // Check MCP status on vault open / vault switch
+  const refreshMcpStatus = useCallback(async () => {
+    const nextStatus = await fetchMcpStatus(vaultPath)
+    setStatus(nextStatus)
+    return nextStatus
+  }, [vaultPath])
+
   useEffect(() => {
     let cancelled = false
     setStatus('checking') // eslint-disable-line react-hooks/set-state-in-effect -- reset to checking on vault switch
 
-    tauriCall<string>('check_mcp_status')
-      .then((result) => {
-        if (!cancelled) setStatus(result as McpStatus)
-      })
-      .catch(() => {
-        if (!cancelled) setStatus('not_installed')
-      })
+    fetchMcpStatus(vaultPath).then((nextStatus) => {
+      if (!cancelled) setStatus(nextStatus)
+    })
 
     return () => { cancelled = true }
   }, [vaultPath])
 
-  // Auto-register on vault switch (preserves old useMcpRegistration behavior)
-  useEffect(() => {
-    if (registeredRef.current === vaultPath) return
-    registeredRef.current = vaultPath
-
-    tauriCall<string>('register_mcp_tools', { vaultPath })
-      .then((result) => {
-        if (result === 'registered') {
-          onToastRef.current('Tolaria registered as MCP tool for Claude Code')
-        }
-        setStatus('installed')
-      })
-      .catch(() => {
-        // Non-critical — status check will show the right state
-      })
-  }, [vaultPath])
-
-  const install = useCallback(async () => {
-    const wasInstalled = statusRef.current === 'installed'
+  const connectMcp = useCallback(async () => {
     setStatus('checking')
     try {
-      await tauriCall<string>('register_mcp_tools', { vaultPath })
+      const result = await tauriCall<string>('register_mcp_tools', { vaultPath })
       setStatus('installed')
-      onToastRef.current(wasInstalled ? 'Tolaria MCP server restored successfully' : 'Tolaria MCP server installed successfully')
+      onToastRef.current(connectSuccessToast(result))
+      return true
     } catch (e) {
       setStatus('not_installed')
-      onToastRef.current(`MCP install failed: ${e}`)
+      onToastRef.current(`External AI tool setup failed: ${e}`)
+      return false
     }
   }, [vaultPath])
 
-  return { mcpStatus: status, installMcp: install }
+  const disconnectMcp = useCallback(async () => {
+    setStatus('checking')
+    try {
+      const result = await tauriCall<string>('remove_mcp_tools')
+      setStatus('not_installed')
+      onToastRef.current(disconnectSuccessToast(result))
+      return true
+    } catch (e) {
+      const nextStatus = await refreshMcpStatus()
+      setStatus(nextStatus)
+      onToastRef.current(`External AI tool disconnect failed: ${e}`)
+      return false
+    }
+  }, [refreshMcpStatus])
+
+  return { mcpStatus: status, refreshMcpStatus, connectMcp, disconnectMcp }
 }

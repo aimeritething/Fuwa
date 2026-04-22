@@ -111,7 +111,7 @@ tolaria/
 │   │   ├── useOnboarding.ts      # First-launch flow
 │   │   ├── useCodeMirror.ts      # CodeMirror raw editor
 │   │   ├── useMcpBridge.ts       # MCP WebSocket client
-│   │   ├── useMcpStatus.ts       # MCP registration status
+│   │   ├── useMcpStatus.ts       # Explicit external AI tool connection status + connect/disconnect actions
 │   │   ├── useUpdater.ts         # In-app updates
 │   │   └── ...
 │   │
@@ -165,7 +165,7 @@ tolaria/
 │   │   ├── search.rs             # Keyword search (walkdir-based)
 │   │   ├── ai_agents.rs          # Shared CLI-agent detection + stream adapters
 │   │   ├── claude_cli.rs         # Claude CLI subprocess management
-│   │   ├── mcp.rs                # MCP server lifecycle + registration
+│   │   ├── mcp.rs                # MCP server lifecycle + explicit config registration/removal
 │   │   ├── app_updater.rs        # Alpha/stable updater endpoint selection
 │   │   ├── settings.rs           # App settings persistence
 │   │   ├── vault_config.rs       # Per-vault UI config
@@ -234,7 +234,7 @@ tolaria/
 | `src-tauri/src/frontmatter/ops.rs` | YAML manipulation — how properties are updated/deleted in files. |
 | `src-tauri/src/git/` | All git operations (clone, commit, pull, push, conflicts, pulse, add-remote). |
 | `src-tauri/src/search.rs` | Keyword search — scans vault files with walkdir. |
-| `src-tauri/src/ai_agents.rs` | Shared CLI-agent availability checks, Codex adapter, and stream normalization. |
+| `src-tauri/src/ai_agents.rs` | Shared CLI-agent availability checks, safe-default Codex adapter, and stream normalization. |
 | `src-tauri/src/claude_cli.rs` | Claude CLI subprocess spawning + NDJSON stream parsing. |
 | `src-tauri/src/app_updater.rs` | Desktop updater bridge — selects alpha/stable manifests and streams install progress. |
 
@@ -389,4 +389,4 @@ BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 2. **Context building**: Edit `src/utils/ai-context.ts` for what data is sent to the agent
 3. **Tool action display**: Edit `src/components/AiActionCard.tsx`
 4. **Claude CLI arguments**: Edit `src-tauri/src/claude_cli.rs` (`run_agent_stream()`)
-5. **Shared agent adapters / Codex args**: Edit `src-tauri/src/ai_agents.rs`
+5. **Shared agent adapters / Codex args**: Edit `src-tauri/src/ai_agents.rs` (keep Codex on the normal approval/sandbox path unless you are intentionally designing an advanced mode)

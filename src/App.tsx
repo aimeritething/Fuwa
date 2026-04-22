@@ -19,6 +19,7 @@ import { WelcomeScreen } from './components/WelcomeScreen'
 import { AiAgentsOnboardingPrompt } from './components/AiAgentsOnboardingPrompt'
 import { TelemetryConsentDialog } from './components/TelemetryConsentDialog'
 import { FeedbackDialog } from './components/FeedbackDialog'
+import { McpSetupDialog } from './components/McpSetupDialog'
 import { useTelemetry } from './hooks/useTelemetry'
 import { useMcpStatus } from './hooks/useMcpStatus'
 import { useAiAgentsOnboarding } from './hooks/useAiAgentsOnboarding'
@@ -222,6 +223,8 @@ function App() {
   const dialogs = useDialogs()
   const { showAIChat, toggleAIChat } = dialogs
   const [showFeedback, setShowFeedback] = useState(false)
+  const [showMcpSetupDialog, setShowMcpSetupDialog] = useState(false)
+  const [mcpDialogAction, setMcpDialogAction] = useState<'connect' | 'disconnect' | null>(null)
   const openFeedback = useCallback(() => setShowFeedback(true), [])
   const closeFeedback = useCallback(() => setShowFeedback(false), [])
   const networkStatus = useNetworkStatus()
@@ -405,8 +408,37 @@ function App() {
       trackEvent('vault_opened', { has_git: gitRepoState === 'ready' ? 1 : 0, note_count: vault.entries.length })
     }
   }, [vault.entries.length, gitRepoState, resolvedPath])
-  const { mcpStatus, installMcp } = useMcpStatus(resolvedPath, setToastMessage)
+  const { mcpStatus, connectMcp, disconnectMcp } = useMcpStatus(resolvedPath, setToastMessage)
   const gitRemoteStatus = useGitRemoteStatus(resolvedPath)
+
+  const openMcpSetupDialog = useCallback(() => {
+    setShowMcpSetupDialog(true)
+  }, [])
+
+  const closeMcpSetupDialog = useCallback(() => {
+    if (mcpDialogAction !== null) return
+    setShowMcpSetupDialog(false)
+  }, [mcpDialogAction])
+
+  const handleConnectMcp = useCallback(async () => {
+    setMcpDialogAction('connect')
+    try {
+      const didConnect = await connectMcp()
+      if (didConnect) setShowMcpSetupDialog(false)
+    } finally {
+      setMcpDialogAction(null)
+    }
+  }, [connectMcp])
+
+  const handleDisconnectMcp = useCallback(async () => {
+    setMcpDialogAction('disconnect')
+    try {
+      const didDisconnect = await disconnectMcp()
+      if (didDisconnect) setShowMcpSetupDialog(false)
+    } finally {
+      setMcpDialogAction(null)
+    }
+  }, [disconnectMcp])
 
   // Detect external file renames on window focus
   const [detectedRenames, setDetectedRenames] = useState<DetectedRename[]>([])
@@ -1168,7 +1200,7 @@ function App() {
     isGettingStartedHidden: vaultSwitcher.isGettingStartedHidden,
     vaultCount: vaultSwitcher.allVaults.length,
     mcpStatus,
-    onInstallMcp: installMcp,
+    onInstallMcp: openMcpSetupDialog,
     onOpenAiAgents: dialogs.openSettings,
     aiAgentsStatus,
     vaultAiGuidanceStatus,
@@ -1258,7 +1290,12 @@ function App() {
     return <WelcomeView onboarding={welcomeOnboarding} isOffline={networkStatus.isOffline} />
   }
 
-  if (!noteWindowParams && onboarding.state.status === 'ready' && aiAgentsOnboarding.showPrompt) {
+  if (
+    !noteWindowParams
+    && onboarding.state.status === 'ready'
+    && aiAgentsOnboarding.showPrompt
+    && !showMcpSetupDialog
+  ) {
     return (
       <>
         <AiAgentsOnboardingView
@@ -1271,7 +1308,7 @@ function App() {
   }
 
   // Show git-required modal when vault has no git repo (skip for note windows)
-  if (!noteWindowParams && gitRepoState === 'required') {
+  if (!noteWindowParams && gitRepoState === 'required' && !showMcpSetupDialog) {
     return (
       <div className="app-shell">
         <GitRequiredModal
@@ -1369,7 +1406,7 @@ function App() {
       </div>
       <UpdateBanner status={updateStatus} actions={updateActions} />
       <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />
-      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={resolvedPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCreateEmptyVault={vaultSwitcher.handleCreateEmptyVault} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={cloneGettingStartedVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={handleCommitPush} isOffline={networkStatus.isOffline} isGitVault={isGitVault} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={installMcp} aiAgentsStatus={aiAgentsStatus} vaultAiGuidanceStatus={vaultAiGuidanceStatus} defaultAiAgent={aiAgentPreferences.defaultAiAgent} onSetDefaultAiAgent={aiAgentPreferences.setDefaultAiAgent} onRestoreVaultAiGuidance={() => { void restoreVaultAiGuidance() }} />
+      <StatusBar noteCount={vault.entries.length} modifiedCount={vault.modifiedFiles.length} vaultPath={resolvedPath} vaults={vaultSwitcher.allVaults} onSwitchVault={vaultSwitcher.switchVault} onOpenSettings={dialogs.openSettings} onOpenFeedback={openFeedback} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCreateEmptyVault={vaultSwitcher.handleCreateEmptyVault} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={cloneGettingStartedVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={handleCommitPush} isOffline={networkStatus.isOffline} isGitVault={isGitVault} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} remoteStatus={autoSync.remoteStatus} onTriggerSync={autoSync.triggerSync} onPullAndPush={autoSync.pullAndPush} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} onZoomReset={zoom.zoomReset} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} mcpStatus={mcpStatus} onInstallMcp={openMcpSetupDialog} aiAgentsStatus={aiAgentsStatus} vaultAiGuidanceStatus={vaultAiGuidanceStatus} defaultAiAgent={aiAgentPreferences.defaultAiAgent} onSetDefaultAiAgent={aiAgentPreferences.setDefaultAiAgent} onRestoreVaultAiGuidance={() => { void restoreVaultAiGuidance() }} />
       <DeleteProgressNotice count={deleteActions.pendingDeleteCount} />
       <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       <QuickOpenPalette open={dialogs.showQuickOpen} entries={vault.entries} onSelect={notes.handleSelectNote} onClose={dialogs.closeQuickOpen} />
@@ -1405,6 +1442,7 @@ function App() {
       />
       <SettingsPanel open={dialogs.showSettings} settings={settings} aiAgentsStatus={aiAgentsStatus} isGitVault={isGitVault} onSave={saveSettings} explicitOrganizationEnabled={explicitOrganizationEnabled} onSaveExplicitOrganization={handleSaveExplicitOrganization} onClose={dialogs.closeSettings} />
       <FeedbackDialog open={showFeedback} onClose={closeFeedback} />
+      <McpSetupDialog open={showMcpSetupDialog} status={mcpStatus} busyAction={mcpDialogAction} onClose={closeMcpSetupDialog} onConnect={handleConnectMcp} onDisconnect={handleDisconnectMcp} />
       <CloneVaultModal key={dialogs.showCloneVault ? 'clone-open' : 'clone-closed'} open={dialogs.showCloneVault} onClose={dialogs.closeCloneVault} onVaultCloned={vaultSwitcher.handleVaultCloned} />
       {deleteActions.confirmDelete && (
         <ConfirmDeleteDialog

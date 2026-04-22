@@ -22,8 +22,12 @@ pub fn reload_vault_entry(
 }
 
 #[tauri::command]
-pub async fn reload_vault(path: String) -> Result<Vec<crate::vault::VaultEntry>, String> {
+pub async fn reload_vault(
+    app_handle: tauri::AppHandle,
+    path: String,
+) -> Result<Vec<crate::vault::VaultEntry>, String> {
     let path = expand_tilde(&path).into_owned();
+    crate::sync_vault_asset_scope(&app_handle, Path::new(&path))?;
     tokio::task::spawn_blocking(move || {
         vault::invalidate_cache(Path::new(&path));
         vault::scan_vault_cached(Path::new(&path))

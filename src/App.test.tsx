@@ -328,6 +328,7 @@ vi.mock('./components/tolariaEditorFormatting', () => ({
 
 import App from './App'
 
+const AI_AGENTS_ONBOARDING_DISMISSED_KEY = 'tolaria:ai-agents-onboarding-dismissed'
 const CLAUDE_CODE_ONBOARDING_DISMISSED_KEY = 'tolaria:claude-code-onboarding-dismissed'
 
 describe('App', () => {
@@ -377,6 +378,36 @@ describe('App', () => {
     await waitFor(() => {
       expect(screen.getByText('Nothing to save')).toBeInTheDocument()
     })
+  })
+
+  it('shows the external AI setup dialog from the menu when AI onboarding is active', async () => {
+    localStorage.removeItem(AI_AGENTS_ONBOARDING_DISMISSED_KEY)
+    localStorage.removeItem(CLAUDE_CODE_ONBOARDING_DISMISSED_KEY)
+    mockCommandResults.get_ai_agents_status = {
+      claude_code: { installed: true, version: '2.1.90' },
+      codex: { installed: true, version: '0.122.0-alpha.1' },
+    }
+    mockCommandResults.check_mcp_status = 'installed'
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByText('AI agents ready')).toBeInTheDocument()
+    })
+
+    await waitFor(() => {
+      expect(typeof window.__laputaTest?.dispatchBrowserMenuCommand).toBe('function')
+    })
+
+    act(() => {
+      window.__laputaTest?.dispatchBrowserMenuCommand?.('vault-install-mcp')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Manage External AI Tools')).toBeInTheDocument()
+    })
+    expect(screen.getByTestId('mcp-setup-dialog')).toBeInTheDocument()
+    expect(screen.queryByText('AI agents ready')).not.toBeInTheDocument()
   })
 
   it('shows onboarding after telemetry consent when no active vault is configured', async () => {

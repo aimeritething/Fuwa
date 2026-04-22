@@ -211,7 +211,7 @@ Full agent mode — spawns the selected local CLI agent as a subprocess with too
 
 1. **Frontend** (`AiPanel` + `useCliAiAgent` + `aiAgents.ts`) — streaming UI with reasoning blocks, tool action cards, response display, onboarding, and default-agent selection
 2. **Backend** (`ai_agents.rs`) — normalizes agent availability and streaming, dispatching to per-agent adapters
-3. **Agent adapters** — Claude Code still uses `claude_cli.rs`; Codex runs through `codex exec --json`
+3. **Agent adapters** — Claude Code still uses `claude_cli.rs`; Codex runs through `codex exec --json` with the CLI's normal approval / sandbox defaults
 4. **MCP Integration** — Claude receives the generated MCP config file path, while Codex receives the same Tolaria MCP server via transient `-c mcp_servers.tolaria.*` config overrides
 
 #### Agent Event Flow
@@ -305,13 +305,13 @@ The MCP server (`mcp-server/`) exposes vault operations as tools for AI assistan
   - Port **9710**: Tool bridge — AI/Claude clients call vault tools here
   - Port **9711**: UI bridge — Frontend listens for UI action broadcasts from MCP tools
 
-### Auto-Registration
+### Explicit External Tool Setup
 
-On app startup, Tolaria automatically registers itself as an MCP server in:
+Tolaria can register itself as an MCP server in:
 - `~/.claude/mcp.json` (Claude Code)
 - `~/.cursor/mcp.json` (Cursor)
 
-Registration is non-destructive (additive, preserves other servers) and uses `upsert` semantics. The `useMcpStatus` hook tracks registration state (`checking | installed | not_installed | no_claude_cli`).
+That setup is user-initiated through the status bar / command palette flow, not a startup side effect. Registration is non-destructive (additive, preserves other servers), uses `upsert` semantics, and can be reversed by removing Tolaria's entry again. The `useMcpStatus` hook tracks whether the active vault is explicitly connected (`checking | installed | not_installed`).
 
 ### Architecture
 
@@ -330,7 +330,7 @@ flowchart TD
     end
 
     TAURI["Tauri (mcp.rs)"] -->|"spawn on startup"| MCP
-    TAURI -->|"auto-register"| CFG["~/.claude/mcp.json\n~/.cursor/mcp.json"]
+    UI["Status bar / Command Palette"] -->|"explicit setup or disconnect"| CFG["~/.claude/mcp.json\n~/.cursor/mcp.json"]
 ```
 
 ### WebSocket Bridge
@@ -357,10 +357,11 @@ flowchart LR
 | Function | Purpose |
 |----------|---------|
 | `spawn_ws_bridge(vault_path)` | Spawns `ws-bridge.js` as child process with VAULT_PATH env |
-| `register_mcp(vault_path)` | Writes Tolaria entry to Claude Code and Cursor MCP configs |
+| `register_mcp(vault_path)` | Writes Tolaria entry to Claude Code and Cursor MCP configs on explicit user request |
+| `remove_mcp()` | Removes Tolaria's MCP entry from Claude Code and Cursor configs |
 | `upsert_mcp_config(path, entry)` | Atomic config file update (create/merge, preserves others) |
 
-The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is killed on app exit via `RunEvent::Exit` handler.
+The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is killed on app exit via `RunEvent::Exit` handler. The same desktop layer now keeps the Tauri asset protocol scoped to the active vault instead of every filesystem path.
 
 ## Search
 
@@ -486,7 +487,7 @@ sequenceDiagram
     participant MCP as MCP Server
     participant U as User
 
-    T->>T: run_startup_tasks()<br/>(register MCP)
+    T->>T: run_startup_tasks()<br/>(migrate + seed only)
     T->>MCP: spawn_ws_bridge() — ports 9710 + 9711
     T->>A: App mounts
 
@@ -495,10 +496,10 @@ sequenceDiagram
         A-->>U: WelcomeScreen
     else Vault found
         A->>VL: useVaultLoader fires
-        VL->>T: invoke('list_vault') → scan_vault_cached()
+        VL->>T: invoke('reload_vault') → sync active vault asset scope + scan_vault_cached()
         T-->>VL: VaultEntry[]
         VL->>T: invoke('get_modified_files')
-        VL->>T: useMcpStatus — register if needed
+        A->>T: useMcpStatus — check explicit MCP setup state
         VL-->>A: entries ready
     end
 
@@ -599,7 +600,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `search.rs` | Keyword search — walkdir-based vault file scan |
 | `ai_agents.rs` | Shared CLI-agent detection, stream normalization, and adapter dispatch |
 | `claude_cli.rs` | Claude Code subprocess spawning + NDJSON stream parsing |
-| `mcp.rs` | MCP server spawning + config registration |
+| `mcp.rs` | MCP server spawning + explicit config registration/removal |
 | `commands/` | Tauri command handlers (split into submodules) |
 | `settings.rs` | App settings persistence |
 | `vault_config.rs` | Per-vault UI config |
@@ -623,7 +624,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `sync_note_title` | Legacy helper: rewrite `title` frontmatter from filename → `bool` (modified); not used by the normal note-open flow |
 | `batch_archive_notes` | Archive multiple notes |
 | `batch_delete_notes` | Permanently delete notes from disk |
-| `reload_vault` | Invalidate cache and full rescan from filesystem → `Vec<VaultEntry>` |
+| `reload_vault` | Sync the active vault asset scope, invalidate cache, and full rescan from filesystem → `Vec<VaultEntry>` |
 | `reload_vault_entry` | Re-read a single file from disk → `VaultEntry` |
 | `check_vault_exists` | Check if vault path exists |
 | `create_empty_vault` | Create a git-backed vault, then seed root `AGENTS.md`, `CLAUDE.md`, `type.md`, and `note.md` defaults |
@@ -682,8 +683,9 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `check_claude_cli` | Check if Claude CLI is available |
 | `get_ai_agents_status` | Check Claude Code + Codex availability |
 | `stream_ai_agent` | Stream the selected CLI agent through the normalized event layer |
-| `register_mcp_tools` | Register MCP in Claude/Cursor config |
-| `check_mcp_status` | Check MCP registration state |
+| `register_mcp_tools` | Register MCP in Claude/Cursor config for the active vault |
+| `remove_mcp_tools` | Remove Tolaria's MCP entry from Claude/Cursor config |
+| `check_mcp_status` | Check whether the active vault is explicitly registered in Claude/Cursor config |
 
 The desktop MCP WebSocket bridge is intentionally local-only. `mcp-server/ws-bridge.js` binds both bridge ports to loopback, rejects non-loopback clients, accepts browser/Tauri origins only on the UI bridge, and rejects browser-origin requests on the tool bridge so remote pages cannot drive vault tools directly.
 

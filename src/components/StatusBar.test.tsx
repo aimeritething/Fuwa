@@ -316,15 +316,7 @@ describe('StatusBar', () => {
       <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="not_installed" />
     )
     expect(screen.getByTestId('status-mcp')).toBeInTheDocument()
-    await expectTooltip(screen.getByRole('button', { name: 'MCP server not installed — click to install' }), 'MCP server not installed — click to install')
-  })
-
-  it('shows MCP warning badge when status is no_claude_cli', async () => {
-    render(
-      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="no_claude_cli" />
-    )
-    expect(screen.getByTestId('status-mcp')).toBeInTheDocument()
-    await expectTooltip(screen.getByRole('button', { name: 'Claude CLI not found — install it first' }), 'Claude CLI not found — install it first')
+    await expectTooltip(screen.getByRole('button', { name: 'External AI tools not connected — click to set up' }), 'External AI tools not connected — click to set up')
   })
 
   it('hides MCP badge when status is installed', () => {
@@ -355,15 +347,6 @@ describe('StatusBar', () => {
     )
     fireEvent.click(screen.getByTestId('status-mcp'))
     expect(onInstallMcp).toHaveBeenCalledOnce()
-  })
-
-  it('does not call onInstallMcp when clicking MCP badge with no_claude_cli status', () => {
-    const onInstallMcp = vi.fn()
-    render(
-      <StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} mcpStatus="no_claude_cli" onInstallMcp={onInstallMcp} />
-    )
-    fireEvent.click(screen.getByTestId('status-mcp'))
-    expect(onInstallMcp).not.toHaveBeenCalled()
   })
 
   it('shows Pull required label when syncStatus is pull_required', () => {

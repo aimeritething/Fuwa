@@ -66,7 +66,7 @@ proposed → active → superseded
 | [0008](0008-underscore-system-properties.md) | Underscore convention for system properties | active |
 | [0009](0009-keyword-only-search.md) | Keyword-only search (remove semantic indexing) | active |
 | [0010](0010-dynamic-wikilink-relationship-detection.md) | Dynamic wikilink relationship detection | active |
-| [0011](0011-mcp-server-for-ai-integration.md) | MCP server for AI tool integration | active |
+| [0011](0011-mcp-server-for-ai-integration.md) | MCP server for AI tool integration | superseded → [0074](0074-explicit-external-ai-tool-setup-and-least-privilege-desktop-scope.md) |
 | [0012](0012-claude-cli-for-ai-agent.md) | Claude CLI subprocess for AI agent | active |
 | [0013](0013-remove-theming-system.md) | Remove vault-based theming system | active |
 | [0014](0014-git-based-vault-cache.md) | Git-based incremental vault cache | active |
@@ -129,3 +129,4 @@ proposed → active → superseded
 | [0071](0071-external-vault-refresh-and-clean-tab-reopen.md) | External vault updates reload derived state and reopen the clean active note | active |
 | [0072](0072-confirmed-vault-paths-gate-startup-state.md) | Confirmed vault paths gate startup state | active |
 | [0073](0073-persistent-linkify-protocol-registry-across-editor-remounts.md) | Persistent linkify protocol registry across editor remounts | active |
+| [0074](0074-explicit-external-ai-tool-setup-and-least-privilege-desktop-scope.md) | Explicit external AI tool setup and least-privilege desktop scope | active |

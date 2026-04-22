@@ -462,15 +462,15 @@ describe('install-mcp command', () => {
     const cmd = findCommand(result.current, 'install-mcp')
     expect(cmd).toBeDefined()
     expect(cmd!.enabled).toBe(true)
-    expect(cmd!.label).toBe('Install MCP Server')
+    expect(cmd!.label).toBe('Set Up External AI Tools…')
   })
 
-  it('is enabled when mcpStatus is installed and handler provided (restore use case)', () => {
+  it('is enabled when mcpStatus is installed and handler provided (manage use case)', () => {
     const config = makeConfig({ mcpStatus: 'installed', onInstallMcp: vi.fn() })
     const { result } = renderHook(() => useCommandRegistry(config))
     const cmd = findCommand(result.current, 'install-mcp')
     expect(cmd!.enabled).toBe(true)
-    expect(cmd!.label).toBe('Restore MCP Server')
+    expect(cmd!.label).toBe('Manage External AI Tools…')
   })
 
   it('is enabled even when mcpStatus is checking', () => {
@@ -487,13 +487,14 @@ describe('install-mcp command', () => {
     expect(cmd!.enabled).toBe(true)
   })
 
-  it('has restore keyword for discoverability', () => {
+  it('has setup keywords for discoverability', () => {
     const config = makeConfig({ mcpStatus: 'installed', onInstallMcp: vi.fn() })
     const { result } = renderHook(() => useCommandRegistry(config))
     const cmd = findCommand(result.current, 'install-mcp')
-    expect(cmd!.keywords).toContain('restore')
+    expect(cmd!.keywords).toContain('setup')
+    expect(cmd!.keywords).toContain('external')
     expect(cmd!.keywords).toContain('mcp')
-    expect(cmd!.keywords).toContain('claude')
+    expect(cmd!.keywords).toContain('cursor')
   })
 
   it('executes onInstallMcp callback', () => {

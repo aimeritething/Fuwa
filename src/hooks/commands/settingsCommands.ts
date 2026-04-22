@@ -59,7 +59,14 @@ function buildMaintenanceCommands({
   onRepairVault,
 }: Pick<SettingsCommandsConfig, 'mcpStatus' | 'onInstallMcp' | 'onReloadVault' | 'onRepairVault'>): CommandAction[] {
   return [
-    { id: 'install-mcp', label: mcpStatus === 'installed' ? 'Restore MCP Server' : 'Install MCP Server', group: 'Settings', keywords: ['mcp', 'claude', 'ai', 'tools', 'install', 'restore', 'fix', 'repair'], enabled: true, execute: () => onInstallMcp?.() },
+    {
+      id: 'install-mcp',
+      label: mcpStatus === 'installed' ? 'Manage External AI Tools…' : 'Set Up External AI Tools…',
+      group: 'Settings',
+      keywords: ['mcp', 'ai', 'tools', 'external', 'setup', 'connect', 'disconnect', 'claude', 'codex', 'cursor', 'consent'],
+      enabled: true,
+      execute: () => onInstallMcp?.(),
+    },
     { id: 'reload-vault', label: 'Reload Vault', group: 'Settings', keywords: ['reload', 'refresh', 'rescan', 'sync', 'filesystem', 'cache'], enabled: !!onReloadVault, execute: () => onReloadVault?.() },
     { id: 'repair-vault', label: 'Repair Vault', group: 'Settings', keywords: ['repair', 'fix', 'restore', 'config', 'agents', 'themes', 'missing', 'reset', 'flatten', 'structure'], enabled: !!onRepairVault, execute: () => onRepairVault?.() },
   ]

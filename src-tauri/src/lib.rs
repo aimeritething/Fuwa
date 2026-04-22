@@ -14,12 +14,17 @@ pub mod vault;
 pub mod vault_list;
 
 #[cfg(desktop)]
+use std::path::Path;
+#[cfg(desktop)]
 use std::process::Child;
 #[cfg(desktop)]
 use std::sync::Mutex;
 
 #[cfg(desktop)]
 struct WsBridgeChild(Mutex<Option<Child>>);
+
+#[cfg(desktop)]
+struct ActiveAssetScopeRoot(Mutex<Option<std::path::PathBuf>>);
 
 #[cfg(desktop)]
 fn log_startup_result(label: &str, result: Result<usize, String>) {
@@ -48,12 +53,6 @@ fn run_startup_tasks() {
     vault::migrate_agents_md(vp_str);
     // Seed AGENTS.md and starter type definitions at vault root if missing
     vault::seed_config_files(vp_str);
-
-    // Register Tolaria MCP server in Claude Code and Cursor configs
-    match mcp::register_mcp(vp_str) {
-        Ok(status) => log::info!("MCP registration: {status}"),
-        Err(e) => log::warn!("MCP registration failed: {e}"),
-    }
 }
 
 #[cfg(desktop)]
@@ -148,6 +147,49 @@ fn setup_app(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+#[cfg(desktop)]
+pub(crate) fn sync_vault_asset_scope(
+    app_handle: &tauri::AppHandle,
+    vault_path: &Path,
+) -> Result<(), String> {
+    use tauri::Manager;
+
+    let canonical_vault_path = std::fs::canonicalize(vault_path).map_err(|e| {
+        format!(
+            "Failed to resolve asset scope for {}: {e}",
+            vault_path.display()
+        )
+    })?;
+    let scope = app_handle.asset_protocol_scope();
+    let state: tauri::State<'_, ActiveAssetScopeRoot> = app_handle.state();
+    let mut active_root = state
+        .0
+        .lock()
+        .map_err(|_| "Failed to lock active asset scope state".to_string())?;
+
+    if active_root.as_ref() == Some(&canonical_vault_path) {
+        return Ok(());
+    }
+
+    scope
+        .allow_directory(&canonical_vault_path, true)
+        .map_err(|e| {
+            format!(
+                "Failed to allow asset access for {}: {e}",
+                canonical_vault_path.display()
+            )
+        })?;
+
+    if let Some(previous_root) = active_root.as_ref() {
+        if previous_root != &canonical_vault_path {
+            let _ = scope.forbid_directory(previous_root, true);
+        }
+    }
+
+    *active_root = Some(canonical_vault_path);
+    Ok(())
+}
+
 macro_rules! app_invoke_handler {
     () => {
         tauri::generate_handler![
@@ -217,6 +259,7 @@ macro_rules! app_invoke_handler {
             commands::check_vault_exists,
             commands::get_default_vault_path,
             commands::register_mcp_tools,
+            commands::remove_mcp_tools,
             commands::check_mcp_status,
             commands::repair_vault,
             commands::reinit_telemetry,
@@ -250,7 +293,9 @@ pub fn run() {
     let builder = tauri::Builder::default();
 
     #[cfg(desktop)]
-    let builder = builder.manage(WsBridgeChild(Mutex::new(None)));
+    let builder = builder
+        .manage(WsBridgeChild(Mutex::new(None)))
+        .manage(ActiveAssetScopeRoot(Mutex::new(None)));
 
     with_invoke_handler(builder)
         .setup(setup_app)

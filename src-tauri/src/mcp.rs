@@ -11,10 +11,8 @@ const LEGACY_MCP_SERVER_NAME: &str = "laputa";
 pub enum McpStatus {
     /// MCP is registered in Claude config and server files exist.
     Installed,
-    /// MCP server files or config are missing but can be installed.
+    /// MCP server files or config are missing for the active vault.
     NotInstalled,
-    /// Claude CLI is not installed — must install that first.
-    NoClaudeCli,
 }
 
 /// Find the `node` binary path at runtime.
@@ -116,8 +114,14 @@ pub fn spawn_ws_bridge(vault_path: &str) -> Result<Child, String> {
     Ok(child)
 }
 
-fn claude_mcp_config_path() -> Option<PathBuf> {
-    dirs::home_dir().map(|home| home.join(".claude").join("mcp.json"))
+fn mcp_config_paths() -> Vec<PathBuf> {
+    [
+        dirs::home_dir().map(|home| home.join(".claude").join("mcp.json")),
+        dirs::home_dir().map(|home| home.join(".cursor").join("mcp.json")),
+    ]
+    .into_iter()
+    .flatten()
+    .collect()
 }
 
 fn read_registered_mcp_entry(config_path: &Path) -> Option<serde_json::Value> {
@@ -140,6 +144,21 @@ fn entry_index_js_exists(entry: &serde_json::Value) -> bool {
         .and_then(|args| args.first())
         .and_then(|value| value.as_str())
         .is_some_and(|index_js| Path::new(index_js).exists())
+}
+
+fn entry_targets_vault(entry: &serde_json::Value, vault_path: &Path) -> bool {
+    let Some(entry_vault_path) = entry["env"]["VAULT_PATH"].as_str() else {
+        return false;
+    };
+
+    let Ok(expected) = std::fs::canonicalize(vault_path) else {
+        return false;
+    };
+    let Ok(actual) = std::fs::canonicalize(entry_vault_path) else {
+        return false;
+    };
+
+    actual == expected
 }
 
 /// Build the MCP server entry JSON for a given vault path and index.js path.
@@ -172,15 +191,7 @@ pub fn register_mcp(vault_path: &str) -> Result<String, String> {
 
     let entry = build_mcp_entry(&index_js, vault_path);
 
-    let configs: Vec<PathBuf> = [
-        dirs::home_dir().map(|h| h.join(".claude").join("mcp.json")),
-        dirs::home_dir().map(|h| h.join(".cursor").join("mcp.json")),
-    ]
-    .into_iter()
-    .flatten()
-    .collect();
-
-    Ok(register_mcp_to_configs(&entry, &configs))
+    Ok(register_mcp_to_configs(&entry, &mcp_config_paths()))
 }
 
 /// Insert or update the Tolaria entry in an MCP config file.
@@ -222,29 +233,79 @@ fn upsert_mcp_config(config_path: &Path, entry: &serde_json::Value) -> Result<bo
     Ok(was_update)
 }
 
+fn remove_mcp_from_configs(config_paths: &[PathBuf]) -> String {
+    let mut removed_any = false;
+    for config_path in config_paths {
+        match remove_mcp_from_config(config_path) {
+            Ok(true) => removed_any = true,
+            Ok(false) => {}
+            Err(e) => log::warn!("Failed to update {}: {}", config_path.display(), e),
+        }
+    }
+
+    if removed_any {
+        "removed".to_string()
+    } else {
+        "already_absent".to_string()
+    }
+}
+
+fn remove_mcp_from_config(config_path: &Path) -> Result<bool, String> {
+    if !config_path.exists() {
+        return Ok(false);
+    }
+
+    let raw = std::fs::read_to_string(config_path)
+        .map_err(|e| format!("Cannot read {}: {e}", config_path.display()))?;
+    let mut config: serde_json::Value = serde_json::from_str(&raw)
+        .map_err(|e| format!("Invalid JSON in {}: {e}", config_path.display()))?;
+
+    let Some(config_object) = config.as_object_mut() else {
+        return Err("Config is not a JSON object".into());
+    };
+
+    let Some(servers_value) = config_object.get_mut("mcpServers") else {
+        return Ok(false);
+    };
+
+    let Some(servers) = servers_value.as_object_mut() else {
+        return Err("mcpServers is not a JSON object".into());
+    };
+
+    let removed_primary = servers.remove(MCP_SERVER_NAME).is_some();
+    let removed_legacy = servers.remove(LEGACY_MCP_SERVER_NAME).is_some();
+    if !removed_primary && !removed_legacy {
+        return Ok(false);
+    }
+
+    if servers.is_empty() {
+        config_object.remove("mcpServers");
+    }
+
+    let json = serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("Failed to serialize config: {e}"))?;
+    std::fs::write(config_path, json)
+        .map_err(|e| format!("Cannot write {}: {e}", config_path.display()))?;
+
+    Ok(true)
+}
+
+pub fn remove_mcp() -> String {
+    remove_mcp_from_configs(&mcp_config_paths())
+}
+
 /// Check whether the MCP server is properly installed and registered.
 ///
-/// Returns `Installed` when the Tolaria entry exists in `~/.claude/mcp.json`
-/// and the referenced index.js file is present. Returns `NoClaudeCli` when
-/// the Claude CLI binary cannot be found. Otherwise returns `NotInstalled`.
-pub fn check_mcp_status() -> McpStatus {
-    // Check Claude CLI first — no point installing MCP if Claude isn't available
-    if crate::claude_cli::find_claude_binary().is_err() {
-        return McpStatus::NoClaudeCli;
-    }
-
-    let Some(config_path) = claude_mcp_config_path() else {
-        return McpStatus::NotInstalled;
-    };
-    if !config_path.exists() {
-        return McpStatus::NotInstalled;
-    }
-
-    let Some(entry) = read_registered_mcp_entry(&config_path) else {
-        return McpStatus::NotInstalled;
-    };
-
-    if entry_index_js_exists(&entry) {
+/// Returns `Installed` when the Tolaria entry exists for the active vault in
+/// Claude Code or Cursor config and the referenced index.js file is present.
+/// Otherwise returns `NotInstalled`.
+pub fn check_mcp_status(vault_path: &str) -> McpStatus {
+    let active_vault_path = Path::new(vault_path);
+    if mcp_config_paths().into_iter().any(|config_path| {
+        read_registered_mcp_entry(&config_path).is_some_and(|entry| {
+            entry_index_js_exists(&entry) && entry_targets_vault(&entry, active_vault_path)
+        })
+    }) {
         McpStatus::Installed
     } else {
         McpStatus::NotInstalled
@@ -258,6 +319,12 @@ mod tests {
     fn read_config(config_path: &Path) -> serde_json::Value {
         let raw = std::fs::read_to_string(config_path).unwrap();
         serde_json::from_str(&raw).unwrap()
+    }
+
+    fn write_index_js(dir: &Path) -> PathBuf {
+        let index_js = dir.join("index.js");
+        std::fs::write(&index_js, "console.log('ok');").unwrap();
+        index_js
     }
 
     #[test]
@@ -566,18 +633,79 @@ mod tests {
     }
 
     #[test]
-    fn check_mcp_status_returns_valid_variant() {
-        // On a dev machine with Claude CLI and MCP registered, this should be Installed.
-        // On CI without Claude it might be NoClaudeCli. Either way it must not panic.
-        let status = check_mcp_status();
-        assert!(
-            matches!(
-                status,
-                McpStatus::Installed | McpStatus::NotInstalled | McpStatus::NoClaudeCli
-            ),
-            "unexpected status: {:?}",
-            status
-        );
+    fn remove_mcp_from_config_removes_primary_and_legacy_entries() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_path = tmp.path().join("mcp.json");
+        let config = serde_json::json!({
+            "mcpServers": {
+                "tolaria": { "command": "node", "args": ["/index.js"] },
+                "laputa": { "command": "node", "args": ["/legacy.js"] },
+                "other-server": { "command": "other", "args": [] }
+            }
+        });
+        std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
+
+        let removed = remove_mcp_from_config(&config_path).unwrap();
+        assert!(removed);
+
+        let updated = read_config(&config_path);
+        assert!(updated["mcpServers"][MCP_SERVER_NAME].is_null());
+        assert!(updated["mcpServers"][LEGACY_MCP_SERVER_NAME].is_null());
+        assert!(updated["mcpServers"]["other-server"].is_object());
+    }
+
+    #[test]
+    fn remove_mcp_from_config_returns_false_when_entry_missing() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_path = tmp.path().join("mcp.json");
+        let config = serde_json::json!({
+            "mcpServers": {
+                "other-server": { "command": "other", "args": [] }
+            }
+        });
+        std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
+
+        let removed = remove_mcp_from_config(&config_path).unwrap();
+        assert!(!removed);
+    }
+
+    #[test]
+    fn check_mcp_status_returns_installed_for_matching_vault() {
+        let tmp = tempfile::tempdir().unwrap();
+        let vault_path = tmp.path().join("vault");
+        std::fs::create_dir_all(&vault_path).unwrap();
+        let index_js = write_index_js(tmp.path());
+        let config_path = tmp.path().join("mcp.json");
+        let config = serde_json::json!({
+            "mcpServers": {
+                "tolaria": {
+                    "command": "node",
+                    "args": [index_js.to_string_lossy()],
+                    "env": { "VAULT_PATH": vault_path.to_string_lossy() }
+                }
+            }
+        });
+        std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
+
+        let entry = read_registered_mcp_entry(&config_path).unwrap();
+        assert!(entry_targets_vault(&entry, &vault_path));
+        assert!(entry_index_js_exists(&entry));
+    }
+
+    #[test]
+    fn entry_targets_vault_requires_matching_existing_directory() {
+        let tmp = tempfile::tempdir().unwrap();
+        let first_vault = tmp.path().join("vault-a");
+        let second_vault = tmp.path().join("vault-b");
+        std::fs::create_dir_all(&first_vault).unwrap();
+        std::fs::create_dir_all(&second_vault).unwrap();
+
+        let entry = serde_json::json!({
+            "env": { "VAULT_PATH": first_vault.to_string_lossy() }
+        });
+
+        assert!(entry_targets_vault(&entry, &first_vault));
+        assert!(!entry_targets_vault(&entry, &second_vault));
     }
 
     #[test]
@@ -586,7 +714,5 @@ mod tests {
         assert_eq!(json, r#""installed""#);
         let json = serde_json::to_string(&McpStatus::NotInstalled).unwrap();
         assert_eq!(json, r#""not_installed""#);
-        let json = serde_json::to_string(&McpStatus::NoClaudeCli).unwrap();
-        assert_eq!(json, r#""no_claude_cli""#);
     }
 }

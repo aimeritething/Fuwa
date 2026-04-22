@@ -367,7 +367,7 @@ fn build_vault_menu(app: &App) -> MenuResult {
     let view_changes = MenuItemBuilder::new("View Pending Changes")
         .id(VAULT_VIEW_CHANGES)
         .build(app)?;
-    let install_mcp = MenuItemBuilder::new("Restore MCP Server")
+    let install_mcp = MenuItemBuilder::new("Set Up External AI Tools…")
         .id(VAULT_INSTALL_MCP)
         .build(app)?;
     let reload = MenuItemBuilder::new("Reload Vault")

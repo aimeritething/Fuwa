@@ -40,8 +40,7 @@ const SYNC_COLORS: Record<string, string> = {
 }
 
 const MCP_TOOLTIPS: Partial<Record<McpStatus, string>> = {
-  not_installed: 'MCP server not installed — click to install',
-  no_claude_cli: 'Claude CLI not found — install it first',
+  not_installed: 'External AI tools not connected — click to set up',
 }
 
 const CLAUDE_INSTALL_URL = 'https://docs.anthropic.com/en/docs/claude-code'
