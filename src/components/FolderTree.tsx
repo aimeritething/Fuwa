@@ -1,162 +1,148 @@
-import { useState, useCallback, useRef, useEffect, memo } from 'react'
-import { Folder, FolderOpen, CaretDown, CaretRight, Plus } from '@phosphor-icons/react'
+import {
+  memo,
+  useCallback,
+} from 'react'
+import {
+  Plus,
+} from '@phosphor-icons/react'
+import { Button } from '@/components/ui/button'
 import type { FolderNode, SidebarSelection } from '../types'
-import { cn } from '@/lib/utils'
+import { FolderContextMenu } from './folder-tree/FolderContextMenu'
+import { FolderNameInput } from './folder-tree/FolderNameInput'
+import { FolderTreeRow } from './folder-tree/FolderTreeRow'
+import { useFolderContextMenu } from './folder-tree/useFolderContextMenu'
+import { useFolderTreeDisclosure } from './folder-tree/useFolderTreeDisclosure'
+import { SidebarGroupHeader } from './sidebar/SidebarGroupHeader'
 
 interface FolderTreeProps {
   folders: FolderNode[]
   selection: SidebarSelection
   onSelect: (selection: SidebarSelection) => void
-  onCreateFolder?: (name: string) => void
+  onCreateFolder?: (name: string) => Promise<boolean> | boolean
+  onRenameFolder?: (folderPath: string, nextName: string) => Promise<boolean> | boolean
+  onDeleteFolder?: (folderPath: string) => void
+  renamingFolderPath?: string | null
+  onStartRenameFolder?: (folderPath: string) => void
+  onCancelRenameFolder?: () => void
   collapsed?: boolean
   onToggle?: () => void
 }
 
-function FolderItem({
-  node, depth, selection, expanded, onToggle, onSelect,
-}: {
-  node: FolderNode
-  depth: number
-  selection: SidebarSelection
-  expanded: Record<string, boolean>
-  onToggle: (path: string) => void
-  onSelect: (selection: SidebarSelection) => void
-}) {
-  const isSelected = selection.kind === 'folder' && selection.path === node.path
-  const isExpanded = expanded[node.path] ?? false
-  const hasChildren = node.children.length > 0
+export const FolderTree = memo(function FolderTree({
+  folders,
+  selection,
+  onSelect,
+  onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  renamingFolderPath,
+  onStartRenameFolder,
+  onCancelRenameFolder,
+  collapsed: externalCollapsed,
+  onToggle,
+}: FolderTreeProps) {
+  const {
+    closeCreateForm,
+    expanded,
+    handleToggleSection,
+    isCreating,
+    openCreateForm,
+    sectionCollapsed,
+    toggleFolder,
+  } = useFolderTreeDisclosure({
+    collapsed: externalCollapsed,
+    onToggle,
+    renamingFolderPath,
+    selection,
+  })
+  const {
+    closeContextMenu,
+    contextMenu,
+    handleDeleteFromMenu,
+    handleOpenMenu,
+    handleRenameFromMenu,
+    menuRef,
+  } = useFolderContextMenu({
+    onDeleteFolder,
+    onStartRenameFolder,
+  })
 
-  const handleClick = () => {
-    onSelect({ kind: 'folder', path: node.path })
-    if (hasChildren) onToggle(node.path)
-  }
-
-  return (
-    <>
-      <button
-        className={cn(
-          'flex w-full items-center gap-2 rounded-[5px] border-none bg-transparent cursor-pointer text-left transition-colors',
-          isSelected
-            ? 'bg-[var(--accent-blue-light,rgba(0,100,255,0.08))] text-primary'
-            : 'text-foreground hover:bg-accent',
-        )}
-        style={{ padding: '5px 8px', paddingLeft: 8 + depth * 16, fontSize: 13 }}
-        onClick={handleClick}
-        title={node.path}
-      >
-        {isSelected || isExpanded ? (
-          <FolderOpen size={18} weight="fill" className="shrink-0" />
-        ) : (
-          <Folder size={18} className="shrink-0" />
-        )}
-        <span className={cn('truncate', isSelected && 'font-medium')}>{node.name}</span>
-      </button>
-      {isExpanded && hasChildren && (
-        <div className="relative" style={{ paddingLeft: 15 }}>
-          <div
-            className="absolute top-0 bottom-0 bg-border"
-            style={{ left: 15 + depth * 16, width: 1, opacity: 0.3 }}
-          />
-          {node.children.map((child) => (
-            <FolderItem
-              key={child.path}
-              node={child}
-              depth={depth + 1}
-              selection={selection}
-              expanded={expanded}
-              onToggle={onToggle}
-              onSelect={onSelect}
-            />
-          ))}
-        </div>
-      )}
-    </>
-  )
-}
-
-export const FolderTree = memo(function FolderTree({ folders, selection, onSelect, onCreateFolder, collapsed: externalCollapsed, onToggle }: FolderTreeProps) {
-  const [internalCollapsed, setInternalCollapsed] = useState(false)
-  const sectionCollapsed = externalCollapsed ?? internalCollapsed
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-  const [isCreating, setIsCreating] = useState(false)
-  const [newFolderName, setNewFolderName] = useState('')
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  const toggleFolder = useCallback((path: string) => {
-    setExpanded((prev) => ({ ...prev, [path]: !prev[path] }))
-  }, [])
-
-  useEffect(() => {
-    if (isCreating) inputRef.current?.focus()
-  }, [isCreating])
-
-  const handleCreateFolder = () => {
-    const name = newFolderName.trim()
-    if (name && onCreateFolder) {
-      onCreateFolder(name)
+  const handleCreateFolderSubmit = useCallback(async (value: string) => {
+    const nextName = value.trim()
+    if (!nextName || !onCreateFolder) {
+      closeCreateForm()
+      return true
     }
-    setIsCreating(false)
-    setNewFolderName('')
-  }
+
+    const created = await onCreateFolder(nextName)
+    if (created) closeCreateForm()
+    return created
+  }, [closeCreateForm, onCreateFolder])
 
   if (folders.length === 0 && !isCreating) return null
 
   return (
-    <div style={{ padding: '0 6px' }}>
-      {/* Header */}
-      <button
-        className="flex w-full cursor-pointer select-none items-center justify-between border-none bg-transparent text-muted-foreground"
-        style={{ padding: '8px 14px 8px 16px' }}
-        onClick={() => onToggle ? onToggle() : setInternalCollapsed((v) => !v)}
-      >
-        <div className="flex items-center gap-1">
-          {sectionCollapsed ? <CaretRight size={12} /> : <CaretDown size={12} />}
-          <span className="text-[10px] font-semibold" style={{ letterSpacing: 0.5 }}>FOLDERS</span>
-        </div>
+    <div className="border-b border-border" style={{ padding: '0 6px' }}>
+      <SidebarGroupHeader label="FOLDERS" collapsed={sectionCollapsed} onToggle={handleToggleSection}>
         {onCreateFolder && (
-          <Plus
-            size={12}
-            className="text-muted-foreground hover:text-foreground"
-            onClick={(e) => { e.stopPropagation(); setIsCreating(true); if (sectionCollapsed && onToggle) onToggle(); else if (sectionCollapsed) setInternalCollapsed(false) }}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="h-auto w-auto min-w-0 rounded-none p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
             data-testid="create-folder-btn"
-          />
+            title="Create folder"
+            aria-label="Create folder"
+            onClick={(event) => {
+              event.stopPropagation()
+              closeContextMenu()
+              openCreateForm()
+            }}
+          >
+            <Plus size={12} className="text-muted-foreground hover:text-foreground" />
+          </Button>
         )}
-      </button>
-
-      {/* Tree */}
+      </SidebarGroupHeader>
       {!sectionCollapsed && (
-        <div className="flex flex-col gap-0.5" style={{ padding: '2px 6px 8px 14px' }}>
+        <div className="flex flex-col gap-0.5 pb-2">
           {folders.map((node) => (
-            <FolderItem
+            <FolderTreeRow
               key={node.path}
-              node={node}
               depth={0}
-              selection={selection}
               expanded={expanded}
-              onToggle={toggleFolder}
+              node={node}
+              onDeleteFolder={onDeleteFolder}
+              onOpenMenu={handleOpenMenu}
+              onRenameFolder={onRenameFolder}
               onSelect={onSelect}
+              onStartRenameFolder={onStartRenameFolder}
+              onToggle={toggleFolder}
+              onCancelRenameFolder={onCancelRenameFolder}
+              renamingFolderPath={renamingFolderPath}
+              selection={selection}
             />
           ))}
           {isCreating && (
-            <div className="flex items-center gap-2" style={{ padding: '4px 8px' }}>
-              <Folder size={18} className="shrink-0 text-muted-foreground" />
-              <input
-                ref={inputRef}
-                className="flex-1 border border-border rounded bg-background px-1.5 py-0.5 text-[13px] text-foreground outline-none focus:border-primary"
-                value={newFolderName}
-                onChange={(e) => setNewFolderName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreateFolder()
-                  if (e.key === 'Escape') { setIsCreating(false); setNewFolderName('') }
-                }}
-                onBlur={handleCreateFolder}
+            <div style={{ paddingLeft: 8 }}>
+              <FolderNameInput
+                ariaLabel="New folder name"
+                initialValue=""
                 placeholder="Folder name"
-                data-testid="new-folder-input"
+                submitOnBlur={true}
+                testId="new-folder-input"
+                onCancel={closeCreateForm}
+                onSubmit={handleCreateFolderSubmit}
               />
             </div>
           )}
         </div>
       )}
+      <FolderContextMenu
+        menu={contextMenu}
+        menuRef={menuRef}
+        onDelete={handleDeleteFromMenu}
+        onRename={handleRenameFromMenu}
+      />
     </div>
   )
 })

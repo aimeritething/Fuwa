@@ -77,6 +77,8 @@ interface CommandRegistryConfig {
   onZoomReset: () => void
   zoomLevel: number
   onSelect: (sel: SidebarSelection) => void
+  onRenameFolder?: () => void
+  onDeleteFolder?: () => void
   showInbox?: boolean
   onGoBack?: () => void
   onGoForward?: () => void
@@ -99,7 +101,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault, onCreateEmptyVault,
     activeNoteModified,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
-    onSelect,
+    onSelect, onRenameFolder, onDeleteFolder,
     showInbox,
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates, onCreateType,
@@ -132,7 +134,18 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   const vaultTypes = useMemo(() => extractVaultTypes(entries), [entries])
 
   return useMemo(() => [
-    ...buildNavigationCommands({ onQuickOpen, onSelect, showInbox, onGoBack, onGoForward, canGoBack, canGoForward }),
+    ...buildNavigationCommands({
+      onQuickOpen,
+      onSelect,
+      selection,
+      onRenameFolder,
+      onDeleteFolder,
+      showInbox,
+      onGoBack,
+      onGoForward,
+      canGoBack,
+      canGoForward,
+    }),
     ...buildNoteCommands({
       hasActiveNote, activeTabPath, isArchived,
       onCreateNote, onCreateType, onSave,
@@ -179,7 +192,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, onToggleAIChat, onOpenVault, onCreateEmptyVault, config.canAddRemote, config.onAddRemote,
     onCheckForUpdates,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
-    onSelect,
+    onSelect, onRenameFolder, onDeleteFolder,
     showInbox,
     onGoBack, onGoForward, canGoBack, canGoForward,
     vaultTypes,
@@ -189,6 +202,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onReloadVault, onRepairVault,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon,
     isSectionGroup, noteListFilter, onSetNoteListFilter,
+    selection,
     onOpenInNewWindow, onToggleFavorite, isFavorite,
     onToggleOrganized, onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
     onRestoreDeletedNote, canRestoreDeletedNote, activeEntry,

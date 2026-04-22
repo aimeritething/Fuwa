@@ -2,6 +2,7 @@ mod cache;
 mod config_seed;
 mod entry;
 mod file;
+mod folders;
 mod frontmatter;
 mod getting_started;
 mod image;
@@ -19,6 +20,7 @@ pub use config_seed::{
 };
 pub use entry::{FolderNode, VaultEntry};
 pub use file::{get_note_content, save_note_content};
+pub use folders::{delete_folder, rename_folder, FolderRenameResult};
 pub use getting_started::{create_getting_started_vault, default_vault_path, vault_exists};
 pub use image::{copy_image_to_vault, save_image};
 pub use migration::migrate_is_a_to_type;

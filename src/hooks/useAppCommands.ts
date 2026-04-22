@@ -44,6 +44,8 @@ interface AppCommandsConfig {
   onZoomReset: () => void
   zoomLevel: number
   onSelect: (sel: SidebarSelection) => void
+  onRenameFolder?: () => void
+  onDeleteFolder?: () => void
   showInbox?: boolean
   onReplaceActiveTab: (entry: VaultEntry) => void
   onSelectNote: (entry: VaultEntry) => void
@@ -100,6 +102,8 @@ type CommandRegistrySelectionState = Pick<
   | 'onZoomReset'
   | 'zoomLevel'
   | 'onSelect'
+  | 'onRenameFolder'
+  | 'onDeleteFolder'
   | 'showInbox'
   | 'onGoBack'
   | 'onGoForward'
@@ -334,6 +338,8 @@ function createCommandRegistrySelectionConfig(
     onZoomReset: config.onZoomReset,
     zoomLevel: config.zoomLevel,
     onSelect: config.onSelect,
+    onRenameFolder: config.onRenameFolder,
+    onDeleteFolder: config.onDeleteFolder,
     showInbox: config.showInbox,
     onGoBack: config.onGoBack,
     onGoForward: config.onGoForward,

@@ -1,5 +1,6 @@
 mod ai;
 mod delete;
+mod folders;
 mod git;
 mod git_connect;
 mod system;
@@ -10,6 +11,7 @@ use std::borrow::Cow;
 
 pub use ai::*;
 pub use delete::*;
+pub use folders::*;
 pub use git::*;
 pub use git_connect::*;
 pub use system::*;

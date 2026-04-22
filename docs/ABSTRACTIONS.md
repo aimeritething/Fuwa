@@ -266,6 +266,13 @@ type SidebarSelection =
   | { kind: 'view'; filename: string }
 ```
 
+`SidebarSelection.kind === 'folder'` is a first-class navigation target, not just a visual highlight.
+
+- `FolderTree` keeps the folder interaction surface decomposed into `FolderTreeRow`, `FolderNameInput`, `FolderContextMenu`, and disclosure/context-menu hooks so nested row rendering, inline rename, and right-click actions stay isolated.
+- `useFolderActions()` composes `useFolderRename()` and `useFolderDelete()` to keep folder mutations selection-aware while the rest of `App.tsx` only wires the resulting callbacks into `Sidebar` and the command registry.
+- A successful folder rename reloads the folder tree plus vault entries, rewrites any affected folder-scoped tabs, and updates `SidebarSelection` to the new relative path when the renamed folder stays selected.
+- Folder deletion clears pending rename state, confirms destructive intent, drops affected folder-scoped tabs, reloads vault data, and resets folder selection if the deleted subtree owned the current selection.
+
 ### Neighborhood Mode
 
 `SidebarSelection.kind === 'entity'` is Tolaria's Neighborhood mode for note-list browsing.

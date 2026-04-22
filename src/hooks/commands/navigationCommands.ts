@@ -4,6 +4,9 @@ import type { SidebarSelection } from '../../types'
 interface NavigationCommandsConfig {
   onQuickOpen: () => void
   onSelect: (sel: SidebarSelection) => void
+  selection?: SidebarSelection
+  onRenameFolder?: () => void
+  onDeleteFolder?: () => void
   showInbox?: boolean
   onGoBack?: () => void
   onGoForward?: () => void
@@ -11,9 +14,42 @@ interface NavigationCommandsConfig {
   canGoForward?: boolean
 }
 
-export function buildNavigationCommands(config: NavigationCommandsConfig): CommandAction[] {
-  const { onQuickOpen, onSelect, showInbox = true, onGoBack, onGoForward, canGoBack, canGoForward } = config
-  const commands: CommandAction[] = [
+function buildFolderCommands(
+  folderSelected: boolean,
+  onRenameFolder?: () => void,
+  onDeleteFolder?: () => void,
+): CommandAction[] {
+  return [
+    {
+      id: 'rename-folder',
+      label: 'Rename Folder',
+      group: 'Navigation',
+      keywords: ['folder', 'directory', 'sidebar', 'rename'],
+      enabled: folderSelected && !!onRenameFolder,
+      execute: () => onRenameFolder?.(),
+    },
+    {
+      id: 'delete-folder',
+      label: 'Delete Folder',
+      group: 'Navigation',
+      keywords: ['folder', 'directory', 'sidebar', 'delete', 'remove'],
+      enabled: folderSelected && !!onDeleteFolder,
+      execute: () => onDeleteFolder?.(),
+    },
+  ]
+}
+
+function buildBaseCommands(config: NavigationCommandsConfig): CommandAction[] {
+  const {
+    onQuickOpen,
+    onSelect,
+    onGoBack,
+    onGoForward,
+    canGoBack,
+    canGoForward,
+  } = config
+
+  return [
     { id: 'search-notes', label: 'Search Notes', group: 'Navigation', shortcut: '⌘P / ⌘O', keywords: ['find', 'open', 'quick'], enabled: true, execute: onQuickOpen },
     { id: 'go-all', label: 'Go to All Notes', group: 'Navigation', keywords: ['filter'], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'all' }) },
     { id: 'go-archived', label: 'Go to Archived', group: 'Navigation', keywords: [], enabled: true, execute: () => onSelect({ kind: 'filter', filter: 'archived' }) },
@@ -22,15 +58,34 @@ export function buildNavigationCommands(config: NavigationCommandsConfig): Comma
     { id: 'go-back', label: 'Go Back', group: 'Navigation', shortcut: '⌘←', keywords: ['previous', 'history', 'back'], enabled: !!canGoBack, execute: () => onGoBack?.() },
     { id: 'go-forward', label: 'Go Forward', group: 'Navigation', shortcut: '⌘→', keywords: ['next', 'history', 'forward'], enabled: !!canGoForward, execute: () => onGoForward?.() },
   ]
-  if (showInbox) {
-    commands.splice(5, 0, {
-      id: 'go-inbox',
-      label: 'Go to Inbox',
-      group: 'Navigation',
-      keywords: ['inbox', 'unlinked', 'orphan', 'unorganized', 'triage'],
-      enabled: true,
-      execute: () => onSelect({ kind: 'filter', filter: 'inbox' }),
-    })
-  }
+}
+
+function insertInboxCommand(commands: CommandAction[], showInbox: boolean, onSelect: (sel: SidebarSelection) => void) {
+  if (!showInbox) return commands
+
+  commands.splice(5, 0, {
+    id: 'go-inbox',
+    label: 'Go to Inbox',
+    group: 'Navigation',
+    keywords: ['inbox', 'unlinked', 'orphan', 'unorganized', 'triage'],
+    enabled: true,
+    execute: () => onSelect({ kind: 'filter', filter: 'inbox' }),
+  })
   return commands
+}
+
+export function buildNavigationCommands(config: NavigationCommandsConfig): CommandAction[] {
+  const {
+    onSelect,
+    selection,
+    onRenameFolder,
+    onDeleteFolder,
+    showInbox = true,
+  } = config
+  const folderSelected = selection?.kind === 'folder'
+  const commands = [
+    ...buildBaseCommands(config),
+    ...buildFolderCommands(folderSelected, onRenameFolder, onDeleteFolder),
+  ]
+  return insertInboxCommand(commands, showInbox, onSelect)
 }

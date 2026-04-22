@@ -176,7 +176,7 @@ flowchart TD
 └──────────────────────────────────────────────────────────────┘
 ```
 
-- **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Changes, Pulse) and collapsible type-based section groups. Each type can have a custom icon, color, sort, and visibility set via its type document in `type/`.
+- **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Changes, Pulse), collapsible type-based section groups, and a dedicated folder tree. The folder tree supports inline folder creation and rename, exposes a right-click menu for rename/delete, and auto-expands ancestor folders when the current selection or rename target is nested. Each type can have a custom icon, color, sort, and visibility set via its type document in `type/`.
 - **Note List / Pulse View** (200-500px, resizable): When a section group, filter, or saved view is selected, shows filtered notes with snippets, modified dates, status indicators, and per-context note-list controls. When `selection.kind === 'entity'`, the same pane enters **Neighborhood** mode: the source note is pinned at the top as a normal active row, outgoing relationship groups render first, inverse/backlink groups follow, empty groups stay visible with `0`, and duplicates across groups are allowed when multiple relationships are true. Plain click / `Enter` open the focused note without replacing the current Neighborhood, while Cmd/Ctrl-click and Cmd/Ctrl-`Enter` pivot the pane into the clicked note's Neighborhood. Saved views reuse the same sort and visible-column controls as the built-in lists, and those changes persist back into the view `.yml` definition (`sort`, `listPropertiesDisplay`). When Pulse filter is active, shows `PulseView` — a chronological git activity feed grouped by day.
 - **Editor** (flex, fills remaining space): Single note open at a time (no tabs — see ADR-0003). Breadcrumb bar with word count, BlockNote rich text editor with wikilink support, markdown-safe formatting controls, and schema-backed fenced code block highlighting via `@blocknote/code-block`. Can toggle to diff view (modified files) or raw CodeMirror view. Decomposed into `Editor` (orchestrator), `EditorContent`, `EditorRightPanel`, `SingleEditorView`, with hooks `useDiffMode`, `useEditorFocus`, and `useEditorSave`, plus the `useRawMode`/`RawEditorView` pair for markdown source editing. Navigation history (Cmd+[/]) replaces tabs.
 - **Inspector / AI Agent** (200-500px or 40px collapsed): Toggles between Inspector (frontmatter, relationships, instances, backlinks, git history) and AI Agent panel (the selected CLI agent with tool execution). The Sparkle icon in the breadcrumb bar toggles between them. Per-note `icon` is a suggested Inspector property and the command palette's "Set Note Icon" action opens that field directly. When viewing a Type note, the Inspector shows an **Instances** section listing all notes of that type (sorted by modified_at desc, capped at 50).
@@ -617,6 +617,9 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `save_note_content` | Write note content to disk |
 | `delete_note` | Permanently delete note from disk (with confirm dialog) |
 | `rename_note` | Rename note + update `title` frontmatter + cross-vault wikilinks |
+| `create_vault_folder` | Create a folder relative to the active vault root |
+| `rename_vault_folder` | Rename a folder relative to the active vault root and return old/new relative paths |
+| `delete_vault_folder` | Permanently delete a folder subtree relative to the active vault root |
 | `sync_note_title` | Legacy helper: rewrite `title` frontmatter from filename → `bool` (modified); not used by the normal note-open flow |
 | `batch_archive_notes` | Archive multiple notes |
 | `batch_delete_notes` | Permanently delete notes from disk |
@@ -761,7 +764,7 @@ Data flows unidirectionally: `App` passes data and callbacks as props to child c
 | Cmd+[ / Cmd+] | Navigate back / forward |
 | `[[` in editor | Open wikilink suggestion menu |
 
-Selection-dependent note actions are wired through both the command palette and the native Note menu. For example, a deleted file opened from Changes view becomes a read-only diff preview, and that state enables the "Restore Deleted Note" menu/command while normal note mutation actions stay disabled.
+Selection-dependent actions are wired through the command palette and the native menus. For example, a deleted file opened from Changes view becomes a read-only diff preview, and that state enables the "Restore Deleted Note" menu/command while normal note mutation actions stay disabled. Folder selection follows the same pattern: when `selection.kind === 'folder'`, the command palette exposes "Rename Folder" and "Delete Folder", and the sidebar row can launch the same flows directly through inline rename or the folder context menu.
 
 Shortcut routing is explicit:
 

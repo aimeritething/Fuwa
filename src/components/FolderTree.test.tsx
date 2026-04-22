@@ -34,37 +34,91 @@ describe('FolderTree', () => {
     expect(screen.getByText('journal')).toBeInTheDocument()
   })
 
-  it('does not show children initially', () => {
+  it('expands children when clicking the folder chevron', () => {
     render(<FolderTree folders={mockFolders} selection={defaultSelection} onSelect={vi.fn()} />)
     expect(screen.queryByText('laputa')).not.toBeInTheDocument()
-  })
-
-  it('calls onSelect with folder kind when clicking a folder', () => {
-    const onSelect = vi.fn()
-    render(<FolderTree folders={mockFolders} selection={defaultSelection} onSelect={onSelect} />)
-    fireEvent.click(screen.getByText('projects'))
-    expect(onSelect).toHaveBeenCalledWith({ kind: 'folder', path: 'projects' })
-  })
-
-  it('expands children when clicking a folder with children', () => {
-    const onSelect = vi.fn()
-    render(<FolderTree folders={mockFolders} selection={defaultSelection} onSelect={onSelect} />)
-    fireEvent.click(screen.getByText('projects'))
+    fireEvent.click(screen.getByLabelText('Expand projects'))
     expect(screen.getByText('laputa')).toBeInTheDocument()
     expect(screen.getByText('portfolio')).toBeInTheDocument()
   })
 
-  it('collapses section when clicking FOLDERS header', () => {
+  it('calls onSelect with folder kind when clicking a folder row', () => {
+    const onSelect = vi.fn()
+    render(<FolderTree folders={mockFolders} selection={defaultSelection} onSelect={onSelect} />)
+    fireEvent.click(screen.getByTestId('folder-row:projects'))
+    expect(onSelect).toHaveBeenCalledWith({ kind: 'folder', path: 'projects' })
+  })
+
+  it('collapses section when clicking the FOLDERS header', () => {
     render(<FolderTree folders={mockFolders} selection={defaultSelection} onSelect={vi.fn()} />)
     expect(screen.getByText('projects')).toBeInTheDocument()
     fireEvent.click(screen.getByText('FOLDERS'))
     expect(screen.queryByText('projects')).not.toBeInTheDocument()
   })
 
-  it('highlights selected folder', () => {
-    const sel: SidebarSelection = { kind: 'folder', path: 'areas' }
-    render(<FolderTree folders={mockFolders} selection={sel} onSelect={vi.fn()} />)
-    const btn = screen.getByText('areas').closest('button')!
-    expect(btn.className).toContain('text-primary')
+  it('highlights the selected folder row', () => {
+    const selection: SidebarSelection = { kind: 'folder', path: 'areas' }
+    render(<FolderTree folders={mockFolders} selection={selection} onSelect={vi.fn()} />)
+    expect(screen.getByTestId('folder-row:areas').className).toContain('text-primary')
+  })
+
+  it('opens the create-folder input from the header action', () => {
+    render(
+      <FolderTree
+        folders={mockFolders}
+        selection={defaultSelection}
+        onSelect={vi.fn()}
+        onCreateFolder={vi.fn().mockResolvedValue(true)}
+      />,
+    )
+    fireEvent.click(screen.getByTestId('create-folder-btn'))
+    expect(screen.getByTestId('new-folder-input')).toBeInTheDocument()
+  })
+
+  it('starts rename on folder double-click', () => {
+    const onStartRenameFolder = vi.fn()
+    render(
+      <FolderTree
+        folders={mockFolders}
+        selection={defaultSelection}
+        onSelect={vi.fn()}
+        onRenameFolder={vi.fn().mockResolvedValue(true)}
+        onStartRenameFolder={onStartRenameFolder}
+        onCancelRenameFolder={vi.fn()}
+      />,
+    )
+    fireEvent.doubleClick(screen.getByTestId('folder-row:areas'))
+    expect(onStartRenameFolder).toHaveBeenCalledWith('areas')
+  })
+
+  it('shows the rename input when a folder is being renamed', () => {
+    render(
+      <FolderTree
+        folders={mockFolders}
+        selection={{ kind: 'folder', path: 'areas' }}
+        onSelect={vi.fn()}
+        onRenameFolder={vi.fn().mockResolvedValue(true)}
+        renamingFolderPath="areas"
+        onCancelRenameFolder={vi.fn()}
+      />,
+    )
+    expect(screen.getByTestId('rename-folder-input')).toBeInTheDocument()
+  })
+
+  it('opens a context menu with a delete action on right-click', () => {
+    const onDeleteFolder = vi.fn()
+    render(
+      <FolderTree
+        folders={mockFolders}
+        selection={defaultSelection}
+        onSelect={vi.fn()}
+        onDeleteFolder={onDeleteFolder}
+        onStartRenameFolder={vi.fn()}
+      />,
+    )
+    fireEvent.contextMenu(screen.getByText('projects'))
+    expect(screen.getByTestId('folder-context-menu')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('delete-folder-menu-item'))
+    expect(onDeleteFolder).toHaveBeenCalledWith('projects')
   })
 })

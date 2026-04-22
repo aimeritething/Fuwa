@@ -58,6 +58,7 @@ import {
 import { useAiActivity } from './hooks/useAiActivity'
 import { useBulkActions } from './hooks/useBulkActions'
 import { useDeleteActions } from './hooks/useDeleteActions'
+import { useFolderActions } from './hooks/useFolderActions'
 import { useLayoutPanels } from './hooks/useLayoutPanels'
 import { useConflictFlow } from './hooks/useConflictFlow'
 import { useAppSave } from './hooks/useAppSave'
@@ -714,10 +715,25 @@ function App() {
       }
       await vault.reloadFolders()
       setToastMessage(`Created folder "${name}"`)
+      return true
     } catch (e) {
       setToastMessage(`Failed to create folder: ${e}`)
+      return false
     }
   }, [resolvedPath, vault, setToastMessage])
+
+  const folderActions = useFolderActions({
+    vaultPath: resolvedPath,
+    selection: effectiveSelection,
+    setSelection: handleSetSelection,
+    setTabs: notes.setTabs,
+    activeTabPathRef: notes.activeTabPathRef,
+    handleSwitchTab: notes.handleSwitchTab,
+    closeAllTabs: notes.closeAllTabs,
+    reloadVault: vault.reloadVault,
+    reloadFolders: vault.reloadFolders,
+    setToastMessage,
+  })
 
   const handleRemoveNoteIconCommand = useCallback(() => {
     if (notes.activeTabPath) handleRemoveNoteIcon(notes.activeTabPath)
@@ -1135,6 +1151,8 @@ function App() {
     onZoomIn: zoom.zoomIn, onZoomOut: zoom.zoomOut, onZoomReset: zoom.zoomReset,
     zoomLevel: zoom.zoomLevel,
     onSelect: handleSetSelection,
+    onRenameFolder: folderActions.renameSelectedFolder,
+    onDeleteFolder: folderActions.deleteSelectedFolder,
     showInbox: explicitOrganizationEnabled,
     onReplaceActiveTab: notes.handleReplaceActiveTab,
     onSelectNote: notes.handleSelectNote,
@@ -1275,7 +1293,7 @@ function App() {
         {sidebarVisible && (
           <>
             <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-              <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} />
+              <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} />
             </div>
             <ResizeHandle onResize={layout.handleSidebarResize} />
           </>
@@ -1396,6 +1414,16 @@ function App() {
           confirmLabel={deleteActions.confirmDelete.confirmLabel}
           onConfirm={deleteActions.confirmDelete.onConfirm}
           onCancel={() => deleteActions.setConfirmDelete(null)}
+        />
+      )}
+      {folderActions.confirmDeleteFolder && (
+        <ConfirmDeleteDialog
+          open={true}
+          title={folderActions.confirmDeleteFolder.title}
+          message={folderActions.confirmDeleteFolder.message}
+          confirmLabel={folderActions.confirmDeleteFolder.confirmLabel}
+          onConfirm={folderActions.confirmDeleteSelectedFolder}
+          onCancel={folderActions.cancelDeleteFolder}
         />
       )}
     </div>

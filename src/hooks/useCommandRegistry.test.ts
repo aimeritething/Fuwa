@@ -245,6 +245,47 @@ describe('useCommandRegistry', () => {
     expect(findCommand(result.current, 'go-inbox')).toBeUndefined()
   })
 
+  it('enables folder commands when a folder is selected', () => {
+    const config = makeConfig({
+      selection: { kind: 'folder', path: 'projects' },
+      onRenameFolder: vi.fn(),
+      onDeleteFolder: vi.fn(),
+    })
+    const { result } = renderHook(() => useCommandRegistry(config))
+
+    expect(findCommand(result.current, 'rename-folder')?.enabled).toBe(true)
+    expect(findCommand(result.current, 'delete-folder')?.enabled).toBe(true)
+  })
+
+  it('disables folder commands outside folder selection', () => {
+    const config = makeConfig({
+      selection: { kind: 'filter', filter: 'all' },
+      onRenameFolder: vi.fn(),
+      onDeleteFolder: vi.fn(),
+    })
+    const { result } = renderHook(() => useCommandRegistry(config))
+
+    expect(findCommand(result.current, 'rename-folder')?.enabled).toBe(false)
+    expect(findCommand(result.current, 'delete-folder')?.enabled).toBe(false)
+  })
+
+  it('executes folder command callbacks', () => {
+    const onRenameFolder = vi.fn()
+    const onDeleteFolder = vi.fn()
+    const config = makeConfig({
+      selection: { kind: 'folder', path: 'projects' },
+      onRenameFolder,
+      onDeleteFolder,
+    })
+    const { result } = renderHook(() => useCommandRegistry(config))
+
+    findCommand(result.current, 'rename-folder')!.execute()
+    findCommand(result.current, 'delete-folder')!.execute()
+
+    expect(onRenameFolder).toHaveBeenCalledTimes(1)
+    expect(onDeleteFolder).toHaveBeenCalledTimes(1)
+  })
+
   it('omits the removed daily-note command', () => {
     const config = makeConfig()
     const { result } = renderHook(() => useCommandRegistry(config))

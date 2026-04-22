@@ -198,6 +198,8 @@ macro_rules! app_invoke_handler {
             commands::batch_delete_notes_async,
             commands::migrate_is_a_to_type,
             commands::create_vault_folder,
+            commands::rename_vault_folder,
+            commands::delete_vault_folder,
             commands::batch_archive_notes,
             commands::get_settings,
             commands::check_for_app_update,

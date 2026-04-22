@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, memo } from 'react'
+import { useCallback, memo } from 'react'
 import type { VaultEntry, FolderNode, SidebarSelection, ViewFile } from '../types'
 import {
   KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent,
@@ -6,10 +6,8 @@ import {
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable'
 import { FolderTree } from './FolderTree'
 import {
-  applyCustomization,
   computeReorder,
   useEntryCounts,
-  useOutsideClick,
   useSidebarCollapsed,
   useSidebarSections,
 } from './sidebar/sidebarHooks'
@@ -23,6 +21,7 @@ import {
   TypesSection,
   ViewsSection,
 } from './sidebar/SidebarSections'
+import { useSidebarTypeInteractions } from './sidebar/useSidebarTypeInteractions'
 
 interface SidebarProps {
   entries: VaultEntry[]
@@ -43,7 +42,12 @@ interface SidebarProps {
   onEditView?: (filename: string) => void
   onDeleteView?: (filename: string) => void
   folders?: FolderNode[]
-  onCreateFolder?: (name: string) => void
+  onCreateFolder?: (name: string) => Promise<boolean> | boolean
+  onRenameFolder?: (folderPath: string, nextName: string) => Promise<boolean> | boolean
+  onDeleteFolder?: (folderPath: string) => void
+  renamingFolderPath?: string | null
+  onStartRenameFolder?: (folderPath: string) => void
+  onCancelRenameFolder?: () => void
   showInbox?: boolean
   inboxCount?: number
   onCollapse?: () => void
@@ -66,39 +70,29 @@ export const Sidebar = memo(function Sidebar({
   onDeleteView,
   folders = [],
   onCreateFolder,
+  onRenameFolder,
+  onDeleteFolder,
+  renamingFolderPath,
+  onStartRenameFolder,
+  onCancelRenameFolder,
   showInbox = true,
   inboxCount = 0,
   onCollapse,
   onCreateNewType,
 }: SidebarProps) {
-  const [customizeTarget, setCustomizeTarget] = useState<string | null>(null)
-  const [contextMenuPos, setContextMenuPos] = useState<{ x: number; y: number } | null>(null)
-  const [contextMenuType, setContextMenuType] = useState<string | null>(null)
-  const [renamingType, setRenamingType] = useState<string | null>(null)
-  const [renameInitialValue, setRenameInitialValue] = useState('')
-  const [showCustomize, setShowCustomize] = useState(false)
-
-  const contextMenuRef = useRef<HTMLDivElement>(null)
-  const popoverRef = useRef<HTMLDivElement>(null)
-  const customizeRef = useRef<HTMLDivElement>(null)
-
   const { typeEntryMap, allSectionGroups, visibleSections, sectionIds } = useSidebarSections(entries)
   const { activeCount, archivedCount } = useEntryCounts(entries)
   const { collapsed: groupCollapsed, toggle: toggleGroup } = useSidebarCollapsed()
+  const typeInteractions = useSidebarTypeInteractions({
+    allSectionGroups,
+    typeEntryMap,
+    onCustomizeType,
+    onUpdateTypeTemplate,
+    onRenameSection,
+  })
 
   const isSectionVisible = useCallback((type: string) => typeEntryMap[type]?.visible !== false, [typeEntryMap])
   const toggleVisibility = useCallback((type: string) => onToggleTypeVisibility?.(type), [onToggleTypeVisibility])
-
-  const closeContextMenu = useCallback(() => {
-    setContextMenuPos(null)
-    setContextMenuType(null)
-  }, [])
-  const closeCustomize = useCallback(() => setShowCustomize(false), [])
-  const closeCustomizeTarget = useCallback(() => setCustomizeTarget(null), [])
-
-  useOutsideClick(customizeRef, showCustomize, closeCustomize)
-  useOutsideClick(contextMenuRef, !!contextMenuPos, closeContextMenu)
-  useOutsideClick(popoverRef, !!customizeTarget, closeCustomizeTarget)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -112,44 +106,15 @@ export const Sidebar = memo(function Sidebar({
     if (reordered) onReorderSections?.(reordered.map((typeName, order) => ({ typeName, order })))
   }, [sectionIds, onReorderSections])
 
-  const handleContextMenu = useCallback((event: React.MouseEvent, type: string) => {
-    event.preventDefault()
-    event.stopPropagation()
-    setContextMenuPos({ x: event.clientX, y: event.clientY })
-    setContextMenuType(type)
-  }, [])
-
-  const cancelRename = useCallback(() => setRenamingType(null), [])
-
-  const handleStartRename = useCallback((type: string) => {
-    closeContextMenu()
-    const group = allSectionGroups.find((sectionGroup) => sectionGroup.type === type)
-    setRenameInitialValue(group?.label ?? type)
-    setRenamingType(type)
-  }, [allSectionGroups, closeContextMenu])
-
-  const handleRenameSubmit = useCallback((value: string) => {
-    if (renamingType) onRenameSection?.(renamingType, value)
-    setRenamingType(null)
-  }, [renamingType, onRenameSection])
-
-  const handleCustomize = useCallback((prop: 'icon' | 'color', value: string) => {
-    applyCustomization(customizeTarget, typeEntryMap, onCustomizeType, prop, value)
-  }, [customizeTarget, typeEntryMap, onCustomizeType])
-
-  const handleChangeTemplate = useCallback((template: string) => {
-    if (customizeTarget) onUpdateTypeTemplate?.(customizeTarget, template)
-  }, [customizeTarget, onUpdateTypeTemplate])
-
   const sectionProps: SidebarSectionProps = {
     entries,
     selection,
     onSelect,
-    onContextMenu: handleContextMenu,
-    renamingType,
-    renameInitialValue,
-    onRenameSubmit: handleRenameSubmit,
-    onRenameCancel: cancelRename,
+    onContextMenu: typeInteractions.handleContextMenu,
+    renamingType: typeInteractions.renamingType,
+    renameInitialValue: typeInteractions.renameInitialValue,
+    onRenameSubmit: typeInteractions.handleRenameSubmit,
+    onRenameCancel: typeInteractions.cancelRename,
   }
 
   const hasFavorites = entries.some((entry) => entry.favorite && !entry.archived)
@@ -202,39 +167,41 @@ export const Sidebar = memo(function Sidebar({
           sectionProps={sectionProps}
           collapsed={groupCollapsed.sections}
           onToggle={() => toggleGroup('sections')}
-          showCustomize={showCustomize}
-          setShowCustomize={setShowCustomize}
+          showCustomize={typeInteractions.showCustomize}
+          setShowCustomize={typeInteractions.setShowCustomize}
           isSectionVisible={isSectionVisible}
           toggleVisibility={toggleVisibility}
           onCreateNewType={onCreateNewType}
-          customizeRef={customizeRef}
+          customizeRef={typeInteractions.customizeRef}
         />
         <FolderTree
           folders={folders}
           selection={selection}
           onSelect={onSelect}
           onCreateFolder={onCreateFolder}
+          onRenameFolder={onRenameFolder}
+          onDeleteFolder={onDeleteFolder}
+          renamingFolderPath={renamingFolderPath}
+          onStartRenameFolder={onStartRenameFolder}
+          onCancelRenameFolder={onCancelRenameFolder}
           collapsed={groupCollapsed.folders}
           onToggle={() => toggleGroup('folders')}
         />
       </nav>
       <ContextMenuOverlay
-        pos={contextMenuPos}
-        type={contextMenuType}
-        innerRef={contextMenuRef}
-        onOpenCustomize={(type) => {
-          closeContextMenu()
-          setCustomizeTarget(type)
-        }}
-        onStartRename={handleStartRename}
+        pos={typeInteractions.contextMenuPos}
+        type={typeInteractions.contextMenuType}
+        innerRef={typeInteractions.contextMenuRef}
+        onOpenCustomize={typeInteractions.openCustomizeTarget}
+        onStartRename={typeInteractions.handleStartRename}
       />
       <CustomizeOverlay
-        target={customizeTarget}
+        target={typeInteractions.customizeTarget}
         typeEntryMap={typeEntryMap}
-        innerRef={popoverRef}
-        onCustomize={handleCustomize}
-        onChangeTemplate={handleChangeTemplate}
-        onClose={closeCustomizeTarget}
+        innerRef={typeInteractions.popoverRef}
+        onCustomize={typeInteractions.handleCustomize}
+        onChangeTemplate={typeInteractions.handleChangeTemplate}
+        onClose={typeInteractions.closeCustomizeTarget}
       />
     </aside>
   )
