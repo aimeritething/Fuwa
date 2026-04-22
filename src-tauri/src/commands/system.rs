@@ -36,11 +36,9 @@ pub async fn remove_mcp_tools() -> Result<String, String> {
 #[tauri::command]
 pub async fn check_mcp_status(vault_path: String) -> Result<crate::mcp::McpStatus, String> {
     let vault_path = super::expand_tilde(&vault_path).into_owned();
-    Ok(
-        tokio::task::spawn_blocking(move || crate::mcp::check_mcp_status(&vault_path))
-            .await
-            .map_err(|e| format!("MCP status check failed: {e}"))?,
-    )
+    tokio::task::spawn_blocking(move || crate::mcp::check_mcp_status(&vault_path))
+        .await
+        .map_err(|e| format!("MCP status check failed: {e}"))
 }
 
 // ── MCP commands (mobile stubs) ─────────────────────────────────────────────
