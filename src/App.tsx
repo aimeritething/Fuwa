@@ -30,7 +30,7 @@ import { useVaultLoader } from './hooks/useVaultLoader'
 import { useAiAgentPreferences } from './hooks/useAiAgentPreferences'
 import { useSettings } from './hooks/useSettings'
 import { useNoteActions } from './hooks/useNoteActions'
-import { slugify } from './hooks/useNoteCreation'
+import { planNewTypeCreation } from './hooks/useNoteCreation'
 import { useCommitFlow } from './hooks/useCommitFlow'
 import { useGitRemoteStatus } from './hooks/useGitRemoteStatus'
 import { useViewMode, type ViewMode } from './hooks/useViewMode'
@@ -937,37 +937,40 @@ function App() {
   const shouldLoadGitHistory = !layout.inspectorCollapsed && !showAIChat
   const gitHistory = useGitHistory(notes.activeTabPath, vault.loadGitHistory, shouldLoadGitHistory)
 
-  const handleCreateType = useCallback((name: string) => {
-    notes.handleCreateType(name)
-    setToastMessage(`Type "${name}" created`)
+  const handleCreateType = useCallback(async (name: string) => {
+    const created = await notes.handleCreateType(name)
+    if (created) setToastMessage(`Type "${name}" created`)
+    return created
   }, [notes, setToastMessage])
 
   const handleCreateMissingType = useCallback(async (path: string, missingType: string, nextTypeName: string) => {
     const trimmed = nextTypeName.trim()
-    if (!trimmed) return
+    if (!trimmed) return false
 
-    const targetFilename = `${slugify(trimmed)}.md`
-    const exactType = vault.entries.find((entry) => entry.isA === 'Type' && entry.title === trimmed)
-    const slugMatch = vault.entries.find((entry) => entry.isA === 'Type' && slugify(entry.title) === slugify(trimmed))
-    const filenameCollision = vault.entries.find((entry) => entry.filename.toLowerCase() === targetFilename)
-    const resolvedTypeName = exactType?.title ?? slugMatch?.title ?? trimmed
-
-    if (filenameCollision && filenameCollision.isA !== 'Type') {
-      setToastMessage(`Cannot create type "${trimmed}" because ${targetFilename} already exists`)
-      throw new Error(`Type filename collision for ${targetFilename}`)
+    const plan = planNewTypeCreation({ entries: vault.entries, typeName: trimmed, vaultPath: resolvedPath })
+    if (plan.status === 'blocked') {
+      setToastMessage(plan.message)
+      return false
     }
 
-    if (!exactType && !slugMatch) {
-      await notes.createTypeEntrySilent(trimmed)
+    let resolvedTypeName = plan.status === 'existing' ? plan.entry.title : trimmed
+
+    if (plan.status === 'create') {
+      try {
+        resolvedTypeName = (await notes.createTypeEntrySilent(trimmed)).title
+      } catch {
+        return false
+      }
     }
 
     await notes.handleUpdateFrontmatter(path, 'type', resolvedTypeName)
     setToastMessage(
-      resolvedTypeName === missingType
+      plan.status === 'create' && resolvedTypeName === missingType
         ? `Type "${resolvedTypeName}" created`
         : `Type set to "${resolvedTypeName}"`,
     )
-  }, [notes, setToastMessage, vault.entries])
+    return true
+  }, [notes, resolvedPath, setToastMessage, vault.entries])
 
   const handleCreateOrUpdateView = useCallback(async (definition: ViewDefinition) => {
     const editing = dialogs.editingView

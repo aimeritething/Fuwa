@@ -20,7 +20,7 @@ pub use config_seed::{
     seed_config_files, AiGuidanceFileState, VaultAiGuidanceStatus,
 };
 pub use entry::{FolderNode, VaultEntry};
-pub use file::{get_note_content, save_note_content};
+pub use file::{create_note_content, get_note_content, save_note_content};
 pub use folders::{delete_folder, rename_folder, FolderRenameResult};
 pub use getting_started::{create_getting_started_vault, default_vault_path, vault_exists};
 pub use image::{copy_image_to_vault, save_image};
