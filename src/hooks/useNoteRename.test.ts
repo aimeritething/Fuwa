@@ -62,15 +62,23 @@ describe('buildRenamedEntry', () => {
 
 describe('renameToastMessage', () => {
   it('returns "Renamed" when no files updated', () => {
-    expect(renameToastMessage(0)).toBe('Renamed')
+    expect(renameToastMessage(0, 0)).toBe('Renamed')
   })
 
   it('returns singular when 1 file updated', () => {
-    expect(renameToastMessage(1)).toBe('Updated 1 note')
+    expect(renameToastMessage(1, 0)).toBe('Updated 1 note')
   })
 
   it('returns plural when multiple files updated', () => {
-    expect(renameToastMessage(3)).toBe('Updated 3 notes')
+    expect(renameToastMessage(3, 0)).toBe('Updated 3 notes')
+  })
+
+  it('surfaces failed linked-note rewrites even when some updates succeeded', () => {
+    expect(renameToastMessage(2, 1)).toBe('Updated 2 notes, but 1 linked note needs manual updates')
+  })
+
+  it('surfaces failed linked-note rewrites when none of them updated cleanly', () => {
+    expect(renameToastMessage(0, 2)).toBe('Renamed, but 2 linked notes need manual updates')
   })
 })
 
@@ -81,28 +89,64 @@ describe('useNoteRename hook', () => {
   const updateTabContent = vi.fn()
   const activeTabPathRef = { current: null as string | null }
 
+  type RenameNoteResult = {
+    new_path: string
+    updated_files: number
+    failed_updates: number
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(isTauri).mockReturnValue(false)
     activeTabPathRef.current = null
   })
 
-  it('handleRenameNote calls rename_note and updates toast', async () => {
-    const entry = makeEntry({ path: '/vault/old.md', title: 'Old' })
+  const stubRenameNote = (
+    renameResult: RenameNoteResult,
+    content = '# New\n',
+  ) => {
     vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
-      if (cmd === 'rename_note') return { new_path: '/vault/new.md', updated_files: 2 }
-      if (cmd === 'get_note_content') return '# New\n'
+      if (cmd === 'rename_note') return renameResult
+      if (cmd === 'get_note_content') return content
       return ''
     })
+  }
 
-    const { result } = renderHook(() => useNoteRename(
-      { entries: [entry], setToastMessage },
+  const renderUseNoteRename = (entries: VaultEntry[] = []) =>
+    renderHook(() => useNoteRename(
+      { entries, setToastMessage },
       { tabs: [], setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
     ))
 
-    const onEntryRenamed = vi.fn()
+  const runHandleRenameNote = async ({
+    entries = [],
+    renameResult = { new_path: '/vault/new.md', updated_files: 0, failed_updates: 0 },
+    activePath = null,
+    onEntryRenamed = vi.fn(),
+  }: {
+    entries?: VaultEntry[]
+    renameResult?: RenameNoteResult
+    activePath?: string | null
+    onEntryRenamed?: ReturnType<typeof vi.fn>
+  } = {}) => {
+    activeTabPathRef.current = activePath
+    stubRenameNote(renameResult)
+
+    const { result } = renderUseNoteRename(entries)
     await act(async () => {
       await result.current.handleRenameNote('/vault/old.md', 'New', '/vault', onEntryRenamed)
+    })
+
+    return { onEntryRenamed }
+  }
+
+  it('handleRenameNote calls rename_note and updates toast', async () => {
+    const entry = makeEntry({ path: '/vault/old.md', title: 'Old' })
+    const onEntryRenamed = vi.fn()
+    await runHandleRenameNote({
+      entries: [entry],
+      renameResult: { new_path: '/vault/new.md', updated_files: 2, failed_updates: 0 },
+      onEntryRenamed,
     })
 
     expect(mockInvoke).toHaveBeenCalledWith('rename_note', expect.objectContaining({
@@ -115,20 +159,7 @@ describe('useNoteRename hook', () => {
   })
 
   it('handleRenameNote passes null old_title when entry not found', async () => {
-    vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
-      if (cmd === 'rename_note') return { new_path: '/vault/new.md', updated_files: 0 }
-      if (cmd === 'get_note_content') return '# New\n'
-      return ''
-    })
-
-    const { result } = renderHook(() => useNoteRename(
-      { entries: [], setToastMessage },
-      { tabs: [], setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
-    ))
-
-    await act(async () => {
-      await result.current.handleRenameNote('/vault/old.md', 'New', '/vault', vi.fn())
-    })
+    await runHandleRenameNote()
 
     expect(mockInvoke).toHaveBeenCalledWith('rename_note', expect.objectContaining({ old_title: null }))
   })
@@ -149,20 +180,9 @@ describe('useNoteRename hook', () => {
   })
 
   it('switches active tab when renamed note is active', async () => {
-    activeTabPathRef.current = '/vault/old.md'
-    vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
-      if (cmd === 'rename_note') return { new_path: '/vault/new.md', updated_files: 0 }
-      if (cmd === 'get_note_content') return '# New\n'
-      return ''
-    })
-
-    const { result } = renderHook(() => useNoteRename(
-      { entries: [makeEntry({ path: '/vault/old.md' })], setToastMessage },
-      { tabs: [], setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
-    ))
-
-    await act(async () => {
-      await result.current.handleRenameNote('/vault/old.md', 'New', '/vault', vi.fn())
+    await runHandleRenameNote({
+      entries: [makeEntry({ path: '/vault/old.md' })],
+      activePath: '/vault/old.md',
     })
 
     expect(handleSwitchTab).toHaveBeenCalledWith('/vault/new.md')
@@ -171,7 +191,7 @@ describe('useNoteRename hook', () => {
   it('handleRenameFilename renames the file while preserving the existing title', async () => {
     const entry = makeEntry({ path: '/vault/old-name.md', filename: 'old-name.md', title: 'Project Kickoff' })
     vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
-      if (cmd === 'rename_note_filename') return { new_path: '/vault/manual-name.md', updated_files: 1 }
+      if (cmd === 'rename_note_filename') return { new_path: '/vault/manual-name.md', updated_files: 1, failed_updates: 0 }
       if (cmd === 'get_note_content') return '# Project Kickoff\n'
       return ''
     })
@@ -200,6 +220,18 @@ describe('useNoteRename hook', () => {
       '# Project Kickoff\n',
     )
     expect(setToastMessage).toHaveBeenCalledWith('Updated 1 note')
+  })
+
+  it('warns when rename succeeds but some backlink rewrites fail', async () => {
+    const entry = makeEntry({ path: '/vault/old.md', title: 'Old' })
+    await runHandleRenameNote({
+      entries: [entry],
+      renameResult: { new_path: '/vault/new.md', updated_files: 1, failed_updates: 2 },
+    })
+
+    expect(setToastMessage).toHaveBeenCalledWith(
+      'Updated 1 note, but 2 linked notes need manual updates',
+    )
   })
 
   it('handleRenameFilename surfaces backend conflict errors', async () => {

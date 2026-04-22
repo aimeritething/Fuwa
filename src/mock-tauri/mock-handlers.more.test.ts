@@ -68,6 +68,7 @@ describe('mockHandlers additional coverage', () => {
     })).toEqual({
       new_path: `${vaultPath}/weekly-notes.md`,
       updated_files: 1,
+      failed_updates: 0,
     })
 
     const content = mockHandlers.get_all_content() as Record<string, string>

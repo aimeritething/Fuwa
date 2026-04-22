@@ -219,7 +219,7 @@ function handleRenameNote(args: { vault_path: string; old_path: string; new_titl
   const newPathStem = relativePathStem({ path: newPath, vaultPath: args.vault_path })
 
   if (oldTitle === args.new_title && newPath === args.old_path) {
-    return { new_path: args.old_path, updated_files: 0 }
+    return { new_path: args.old_path, updated_files: 0, failed_updates: 0 }
   }
 
   const newContent = replaceMockTitleFrontmatter({ content: oldContent, newTitle: args.new_title })
@@ -229,7 +229,7 @@ function handleRenameNote(args: { vault_path: string; old_path: string; new_titl
   const updatedFiles = updateMockRenameReferences({ newPath, newPathStem, oldTargets })
 
   syncWindowContent()
-  return { new_path: newPath, updated_files: updatedFiles }
+  return { new_path: newPath, updated_files: updatedFiles, failed_updates: 0 }
 }
 
 function handleRenameNoteFilename(args: {
@@ -248,7 +248,7 @@ function handleRenameNoteFilename(args: {
     throw new Error('Invalid filename')
   }
   if (oldFilename === newFilename) {
-    return { new_path: args.old_path, updated_files: 0 }
+    return { new_path: args.old_path, updated_files: 0, failed_updates: 0 }
   }
 
   const parentDir = args.old_path.replace(/\/[^/]+$/, '')
@@ -266,7 +266,7 @@ function handleRenameNoteFilename(args: {
   const updatedFiles = updateMockRenameReferences({ newPath, newPathStem, oldTargets })
 
   syncWindowContent()
-  return { new_path: newPath, updated_files: updatedFiles }
+  return { new_path: newPath, updated_files: updatedFiles, failed_updates: 0 }
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock handler map accepts heterogeneous arg types

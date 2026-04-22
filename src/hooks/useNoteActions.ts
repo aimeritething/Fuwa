@@ -87,7 +87,7 @@ async function renameAfterTitleChange({ path, newTitle, deps }: RenameAfterTitle
     await reloadTabsAfterRename({ tabPaths: otherTabPaths, updateTabContent: deps.updateTabContent })
   }
   await reloadVaultAfterRename(deps.reloadVault)
-  deps.setToastMessage(renameToastMessage(result.updated_files))
+  deps.setToastMessage(renameToastMessage(result.updated_files, result.failed_updates ?? 0))
 }
 
 function shouldRenameOnTitleUpdate(key: string, value: FrontmatterValue): value is string {

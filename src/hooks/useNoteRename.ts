@@ -7,6 +7,7 @@ import { slugify } from './useNoteCreation'
 interface RenameResult {
   new_path: string
   updated_files: number
+  failed_updates?: number
 }
 
 export { slugify }
@@ -86,7 +87,14 @@ export async function loadNoteContent({ path }: LoadNoteContentRequest): Promise
     : mockInvoke<string>('get_note_content', { path })
 }
 
-export function renameToastMessage(updatedFiles: number): string {
+export function renameToastMessage(updatedFiles: number, failedUpdates = 0): string {
+  if (failedUpdates > 0) {
+    const noteLabel = `${failedUpdates} linked note${failedUpdates > 1 ? 's' : ''}`
+    if (updatedFiles === 0) {
+      return `Renamed, but ${noteLabel} need${failedUpdates === 1 ? 's' : ''} manual updates`
+    }
+    return `Updated ${updatedFiles} note${updatedFiles > 1 ? 's' : ''}, but ${noteLabel} need${failedUpdates === 1 ? 's' : ''} manual updates`
+  }
   if (updatedFiles === 0) return 'Renamed'
   return `Updated ${updatedFiles} note${updatedFiles > 1 ? 's' : ''}`
 }
@@ -166,7 +174,7 @@ export function useNoteRename(config: NoteRenameConfig, tabDeps: RenameTabDeps) 
     onEntryRenamed(oldPath, newEntry, newContent)
     await reloadTabsAfterRename({ tabPaths: otherTabPaths, updateTabContent })
     await reloadVaultAfterRename(reloadVault)
-    setToastMessage(renameToastMessage(result.updated_files))
+    setToastMessage(renameToastMessage(result.updated_files, result.failed_updates ?? 0))
   }, [entries, setTabs, activeTabPathRef, handleSwitchTab, updateTabContent, reloadVault, setToastMessage])
 
   const handleRenameNote = useCallback(async (

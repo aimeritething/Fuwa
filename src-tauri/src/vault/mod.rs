@@ -9,6 +9,7 @@ mod image;
 mod migration;
 mod parsing;
 mod rename;
+mod rename_transaction;
 mod title_sync;
 mod trash;
 mod views;
@@ -413,6 +414,14 @@ pub fn scan_vault(
             "Vault path is not a directory: {}",
             vault_path.display()
         ));
+    }
+
+    if let Err(err) = rename::recover_pending_rename_transactions(vault_path) {
+        log::warn!(
+            "Failed to recover pending rename transactions in {}: {}",
+            vault_path.display(),
+            err
+        );
     }
 
     let mut entries = Vec::new();

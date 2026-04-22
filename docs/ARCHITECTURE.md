@@ -382,6 +382,8 @@ The vault cache (`src-tauri/src/vault/cache.rs`) accelerates vault scanning usin
 
 `~/.laputa/cache/<vault-hash>.json` — stored outside the vault directory so it never pollutes the user's git repo. The vault path is hashed (via `DefaultHasher`) to produce a deterministic filename. Stores: vault path, git HEAD commit hash, all VaultEntry objects. Version: v5 (bumped on VaultEntry field changes to force full rescan). Writes are atomic (write to `.tmp` then rename). Legacy `.laputa-cache.json` files inside the vault are auto-migrated and deleted on first run.
 
+`<vault>/.tolaria-rename-txn/` — hidden, scan-ignored staging directory for crash-safe note renames. Tolaria stores temporary backup files plus one manifest per in-flight rename here. On the next vault scan, unfinished transactions are recovered before entries are listed so users do not see a missing note or a visible duplicate after a crash.
+
 ### Three Cache Strategies
 
 ```mermaid
@@ -584,7 +586,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `parsing.rs` | Text processing: snippet extraction, markdown stripping, ISO date parsing, `extract_title` (H1 → legacy frontmatter → filename), `slug_to_title` |
 | `title_sync.rs` | Legacy filename → `title` frontmatter sync helper; no longer used by the normal note-open flow |
 | `cache.rs` | Git-based incremental vault caching (`scan_vault_cached`), git helpers |
-| `rename.rs` | `rename_note` — renames files, updates `title` frontmatter, and updates wikilinks across the vault |
+| `rename.rs` | `rename_note` / `rename_note_filename` — stage crash-safe file renames, update `title` frontmatter, recover unfinished rename transactions, and report backlink rewrite failures |
 | `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
 | `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
 | `config_seed.rs` | Maintains vault AI guidance (`AGENTS.md` + `CLAUDE.md` shim), migrates legacy `config/agents.md`, and repairs missing root type scaffolding such as `type.md` and `note.md` |
@@ -617,7 +619,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `get_note_content` | Read note file content |
 | `save_note_content` | Write note content to disk |
 | `delete_note` | Permanently delete note from disk (with confirm dialog) |
-| `rename_note` | Rename note + update `title` frontmatter + cross-vault wikilinks |
+| `rename_note` | Crash-safe note rename + `title` frontmatter update + cross-vault wikilinks + failed backlink counts |
 | `create_vault_folder` | Create a folder relative to the active vault root |
 | `rename_vault_folder` | Rename a folder relative to the active vault root and return old/new relative paths |
 | `delete_vault_folder` | Permanently delete a folder subtree relative to the active vault root |

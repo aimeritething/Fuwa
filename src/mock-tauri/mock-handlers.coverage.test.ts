@@ -37,6 +37,7 @@ describe('mockHandlers coverage', () => {
     expect(result).toEqual({
       new_path: `${vaultPath}/new-title.md`,
       updated_files: 1,
+      failed_updates: 0,
     })
     expect(updatedContent[`${vaultPath}/new-title.md`]).toContain('title: New Title')
     expect(updatedContent[referencePath]).toBe('See [[new-title]] and [[new-title]].')
@@ -60,6 +61,7 @@ describe('mockHandlers coverage', () => {
     })).toEqual({
       new_path: notePath,
       updated_files: 0,
+      failed_updates: 0,
     })
   })
 
