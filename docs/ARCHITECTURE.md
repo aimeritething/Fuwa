@@ -682,6 +682,8 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `register_mcp_tools` | Register MCP in Claude/Cursor config |
 | `check_mcp_status` | Check MCP registration state |
 
+The desktop MCP WebSocket bridge is intentionally local-only. `mcp-server/ws-bridge.js` binds both bridge ports to loopback, rejects non-loopback clients, accepts browser/Tauri origins only on the UI bridge, and rejects browser-origin requests on the tool bridge so remote pages cannot drive vault tools directly.
+
 ### Settings & Config
 
 | Command | Description |

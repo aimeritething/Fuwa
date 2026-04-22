@@ -6,8 +6,10 @@ import os from 'node:os'
 import {
   findMarkdownFiles, getNote, searchNotes, vaultContext,
 } from './vault.js'
+import { evaluateBridgeRequest } from './ws-bridge.js'
 
 let tmpDir
+const ACTIVE_VAULT_ERROR = 'Note path must stay inside the active vault'
 
 before(async () => {
   tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), 'laputa-mcp-test-'))
@@ -79,6 +81,17 @@ describe('getNote', () => {
       { code: 'ENOENT' }
     )
   })
+
+  it('should reject absolute paths outside the vault', async () => {
+    await assertRejectsOutsideVault('laputa-mcp-outside-', outsideNote => outsideNote)
+  })
+
+  it('should reject traversal paths outside the vault', async () => {
+    await assertRejectsOutsideVault(
+      'laputa-mcp-traversal-',
+      outsideNote => path.relative(tmpDir, outsideNote),
+    )
+  })
 })
 
 describe('searchNotes', () => {
@@ -142,3 +155,53 @@ describe('vaultContext', () => {
     assert.equal(ctx.noteCount, 3)
   })
 })
+
+describe('evaluateBridgeRequest', () => {
+  it('accepts loopback UI requests from trusted origins', () => {
+    assert.deepEqual(
+      evaluateBridgeRequest({
+        bridgeType: 'ui',
+        origin: 'http://localhost:5202',
+        remoteAddress: '127.0.0.1',
+      }),
+      { ok: true, reason: null },
+    )
+  })
+
+  it('rejects browser origins on the tool bridge', () => {
+    assert.deepEqual(
+      evaluateBridgeRequest({
+        bridgeType: 'tool',
+        origin: 'https://evil.example',
+        remoteAddress: '127.0.0.1',
+      }),
+      { ok: false, reason: 'browser origins are not allowed on the tool bridge' },
+    )
+  })
+
+  it('rejects non-loopback clients even without an origin', () => {
+    assert.deepEqual(
+      evaluateBridgeRequest({
+        bridgeType: 'ui',
+        origin: undefined,
+        remoteAddress: '192.168.1.10',
+      }),
+      { ok: false, reason: 'non-local client' },
+    )
+  })
+})
+
+async function assertRejectsOutsideVault(prefix, resolveNotePath) {
+  const outsideDir = await fs.mkdtemp(path.join(os.tmpdir(), prefix))
+  const outsideNote = path.join(outsideDir, 'outside.md')
+
+  try {
+    await fs.writeFile(outsideNote, '# Outside\n')
+    await assert.rejects(
+      () => getNote(tmpDir, resolveNotePath(outsideNote)),
+      { message: ACTIVE_VAULT_ERROR },
+    )
+  } finally {
+    await fs.rm(outsideDir, { recursive: true, force: true })
+  }
+}

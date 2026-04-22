@@ -301,6 +301,8 @@ type SidebarSelection =
 
 A `vault_health_check` command detects stray files in non-protected subfolders and filename-title mismatches. On vault load, a migration banner offers to flatten stray files to the root via `flatten_vault`.
 
+Command-layer path access is fenced to the active vault before file operations reach the vault backend. `src-tauri/src/commands/vault/boundary.rs` canonicalizes the configured/requested vault root, rejects `..` escapes and absolute paths outside that root, and validates writable targets through the nearest existing ancestor so note reads, saves, deletes, view-file edits, and folder mutations cannot step outside the active vault.
+
 ### Vault Caching
 
 `vault::scan_vault_cached(path)` wraps scanning with git-based caching:

@@ -28,6 +28,12 @@ import {
 const VAULT_PATH = process.env.VAULT_PATH || process.env.HOME + '/Laputa'
 const WS_PORT = parseInt(process.env.WS_PORT || '9710', 10)
 const WS_UI_PORT = parseInt(process.env.WS_UI_PORT || '9711', 10)
+const LOOPBACK_HOST = 'localhost'
+const TRUSTED_UI_ORIGINS = new Set([
+  'tauri://localhost',
+  'http://tauri.localhost',
+  'https://tauri.localhost',
+])
 
 /** @type {WebSocketServer | null} */
 let uiBridge = null
@@ -71,6 +77,52 @@ async function handleMessage(data) {
   }
 }
 
+export function isLoopbackAddress(remoteAddress) {
+  return remoteAddress === '127.0.0.1'
+    || remoteAddress === '::1'
+    || remoteAddress === '::ffff:127.0.0.1'
+}
+
+export function isTrustedUiOrigin(origin) {
+  if (!origin) return true
+  if (TRUSTED_UI_ORIGINS.has(origin)) return true
+  return /^http:\/\/(?:localhost|127\.0\.0\.1):\d+$/u.test(origin)
+}
+
+export function evaluateBridgeRequest({ bridgeType, origin, remoteAddress }) {
+  if (!isLoopbackAddress(remoteAddress)) {
+    return { ok: false, reason: 'non-local client' }
+  }
+
+  if (bridgeType === 'tool' && origin) {
+    return { ok: false, reason: 'browser origins are not allowed on the tool bridge' }
+  }
+
+  if (bridgeType === 'ui' && !isTrustedUiOrigin(origin)) {
+    return { ok: false, reason: 'untrusted UI origin' }
+  }
+
+  return { ok: true, reason: null }
+}
+
+function verifyBridgeRequest(bridgeType) {
+  return (info, done) => {
+    const verdict = evaluateBridgeRequest({
+      bridgeType,
+      origin: info.origin,
+      remoteAddress: info.req.socket.remoteAddress,
+    })
+
+    if (!verdict.ok) {
+      console.error(`[ws-bridge] Rejected ${bridgeType} bridge client: ${verdict.reason}`)
+      done(false, 403, 'Forbidden')
+      return
+    }
+
+    done(true)
+  }
+}
+
 /**
  * Attempt to start the UI bridge WebSocket server.
  * Returns a Promise that resolves to the WebSocketServer or null if the port
@@ -89,8 +141,11 @@ export function startUiBridge(port = WS_UI_PORT) {
       resolve(null)
     })
 
-    httpServer.listen(port, () => {
-      const wss = new WebSocketServer({ server: httpServer })
+    httpServer.listen(port, LOOPBACK_HOST, () => {
+      const wss = new WebSocketServer({
+        server: httpServer,
+        verifyClient: verifyBridgeRequest('ui'),
+      })
       wss.on('connection', (ws) => {
         console.error(`[ws-bridge] UI client connected on port ${port}`)
         // Relay: when a client sends a message, broadcast to all OTHER clients.
@@ -109,7 +164,11 @@ export function startUiBridge(port = WS_UI_PORT) {
 }
 
 export function startBridge(port = WS_PORT) {
-  const wss = new WebSocketServer({ port })
+  const wss = new WebSocketServer({
+    port,
+    host: LOOPBACK_HOST,
+    verifyClient: verifyBridgeRequest('tool'),
+  })
 
   wss.on('connection', (ws) => {
     console.error(`[ws-bridge] Client connected (vault: ${VAULT_PATH})`)
@@ -126,7 +185,7 @@ export function startBridge(port = WS_PORT) {
     ws.on('close', () => console.error('[ws-bridge] Client disconnected'))
   })
 
-  console.error(`[ws-bridge] Listening on ws://localhost:${port}`)
+  console.error(`[ws-bridge] Listening on ws://${LOOPBACK_HOST}:${port}`)
   return wss
 }
 
