@@ -102,6 +102,7 @@ export type { Tab }
 
 interface TabManagementOptions {
   beforeNavigate?: (fromPath: string, toPath: string) => Promise<void>
+  onMissingNotePath?: (entry: VaultEntry, error: unknown) => void | Promise<void>
 }
 
 function syncActiveTabPath(
@@ -132,6 +133,14 @@ function setSingleTab(
 ) {
   tabsRef.current = [nextTab]
   setTabs([nextTab])
+}
+
+function clearTabs(
+  tabsRef: React.MutableRefObject<Tab[]>,
+  setTabs: React.Dispatch<React.SetStateAction<Tab[]>>,
+) {
+  tabsRef.current = []
+  setTabs([])
 }
 
 function isAlreadyViewingPath(
@@ -171,6 +180,15 @@ function startEntryNavigation(options: {
   return { seq, cachedContent }
 }
 
+function isMissingNotePathError(error: unknown): boolean {
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'string'
+      ? error
+      : String(error)
+  return /does not exist|not found|enoent/i.test(message)
+}
+
 function shouldApplyLoadedEntry(options: {
   seq: number
   navSeqRef: React.MutableRefObject<number>
@@ -200,20 +218,35 @@ function handleEntryLoadFailure(options: {
   seq: number
   navSeqRef: React.MutableRefObject<number>
   tabsRef: React.MutableRefObject<Tab[]>
+  activeTabPathRef: React.MutableRefObject<string | null>
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>
+  setActiveTabPath: React.Dispatch<React.SetStateAction<string | null>>
   error: unknown
+  onMissingNotePath?: (entry: VaultEntry, error: unknown) => void | Promise<void>
 }) {
   const {
     entry,
     seq,
     navSeqRef,
     tabsRef,
+    activeTabPathRef,
     setTabs,
+    setActiveTabPath,
     error,
+    onMissingNotePath,
   } = options
 
   console.warn('Failed to load note content:', error)
   if (navSeqRef.current !== seq) return
+  if (isMissingNotePathError(error)) {
+    clearTabs(tabsRef, setTabs)
+    syncActiveTabPath(activeTabPathRef, setActiveTabPath, null)
+    failNoteOpenTrace(entry.path, 'missing-path')
+    Promise.resolve(onMissingNotePath?.(entry, error)).catch((callbackError) => {
+      console.warn('Failed to handle missing note path:', callbackError)
+    })
+    return
+  }
   setSingleTab(tabsRef, setTabs, { entry, content: '' })
   failNoteOpenTrace(entry.path, 'load-failed')
 }
@@ -226,6 +259,7 @@ async function navigateToEntry(options: {
   activeTabPathRef: React.MutableRefObject<string | null>
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>
   setActiveTabPath: React.Dispatch<React.SetStateAction<string | null>>
+  onMissingNotePath?: (entry: VaultEntry, error: unknown) => void | Promise<void>
 }) {
   const {
     entry,
@@ -235,6 +269,7 @@ async function navigateToEntry(options: {
     activeTabPathRef,
     setTabs,
     setActiveTabPath,
+    onMissingNotePath,
   } = options
 
   if (entry.fileKind === 'binary') {
@@ -258,7 +293,10 @@ async function navigateToEntry(options: {
 
   try {
     markNoteOpenTrace(entry.path, 'contentLoadStart')
-    const content = await loadNoteContent(entry.path, forceReload)
+    // Cached content keeps note switches instant, but synced vaults can make
+    // the underlying path disappear between opens. Reopened notes still need a
+    // fresh disk read so missing-file recovery can run.
+    const content = await loadNoteContent(entry.path, forceReload || cachedContent !== null)
     markNoteOpenTrace(entry.path, 'contentLoadEnd')
     if (!shouldApplyLoadedEntry({
       seq,
@@ -276,8 +314,11 @@ async function navigateToEntry(options: {
       seq,
       navSeqRef,
       tabsRef,
+      activeTabPathRef,
       setTabs,
+      setActiveTabPath,
       error: err,
+      onMissingNotePath,
     })
   }
 }
@@ -295,6 +336,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   const navSeqRef = useRef(0)
   const beforeNavigateSeqRef = useRef(0)
   const beforeNavigate = options.beforeNavigate
+  const onMissingNotePath = options.onMissingNotePath
 
   const executeNavigationWithBoundary = useCallback(async (
     targetPath: string,
@@ -329,8 +371,9 @@ export function useTabManagement(options: TabManagementOptions = {}) {
       activeTabPathRef,
       setTabs,
       setActiveTabPath,
+      onMissingNotePath,
     }))
-  }, [executeNavigationWithBoundary])
+  }, [executeNavigationWithBoundary, onMissingNotePath])
 
   const handleSwitchTab = useCallback((path: string) => {
     syncActiveTabPath(activeTabPathRef, setActiveTabPath, path)
@@ -356,8 +399,9 @@ export function useTabManagement(options: TabManagementOptions = {}) {
       activeTabPathRef,
       setTabs,
       setActiveTabPath,
+      onMissingNotePath,
     }))
-  }, [executeNavigationWithBoundary])
+  }, [executeNavigationWithBoundary, onMissingNotePath])
 
   const closeAllTabs = useCallback(() => {
     tabsRef.current = []

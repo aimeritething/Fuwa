@@ -196,11 +196,24 @@ async function updateFrontmatterAndMaybeRename({
 }
 
 function buildTabManagementOptions(
-  flushBeforeNoteSwitch?: NoteActionsConfig['flushBeforeNoteSwitch'],
+  config: Pick<NoteActionsConfig, 'flushBeforeNoteSwitch' | 'reloadVault' | 'setToastMessage'>,
 ) {
-  return flushBeforeNoteSwitch
-    ? { beforeNavigate: (fromPath: string) => flushBeforeNoteSwitch(fromPath) }
-    : undefined
+  const options: {
+    beforeNavigate?: (fromPath: string, toPath: string) => Promise<void>
+    onMissingNotePath: (entry: VaultEntry) => void
+  } = {
+    onMissingNotePath: (entry) => {
+      const label = entry.title.trim() || entry.filename
+      config.setToastMessage(`"${label}" could not be opened because its file is missing or moved.`)
+      void config.reloadVault?.()
+    },
+  }
+
+  if (config.flushBeforeNoteSwitch) {
+    options.beforeNavigate = (fromPath: string) => config.flushBeforeNoteSwitch!(fromPath)
+  }
+
+  return options
 }
 
 function useFrontmatterActionHandlers({
@@ -283,7 +296,7 @@ function useFrontmatterActionHandlers({
 
 export function useNoteActions(config: NoteActionsConfig) {
   const { entries, setToastMessage, updateEntry } = config
-  const tabMgmt = useTabManagement(buildTabManagementOptions(config.flushBeforeNoteSwitch))
+  const tabMgmt = useTabManagement(buildTabManagementOptions(config))
   const { setTabs, handleSelectNote, openTabWithContent, activeTabPathRef, handleSwitchTab } = tabMgmt
 
   const updateTabContent = useCallback((path: string, newContent: string) => {

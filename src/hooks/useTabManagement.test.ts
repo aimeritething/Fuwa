@@ -142,6 +142,24 @@ describe('useTabManagement (single-note model)', () => {
       expect(result.current.tabs[0].content).toBe('')
       warnSpy.mockRestore()
     })
+
+    it('clears the active note when the file is missing on disk', async () => {
+      const { mockInvoke } = await import('../mock-tauri')
+      vi.mocked(mockInvoke).mockRejectedValueOnce(new Error('File does not exist: /vault/note/missing.md'))
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const onMissingNotePath = vi.fn()
+
+      const { result } = renderHook(() => useTabManagement({ onMissingNotePath }))
+      await selectNote(result, { path: '/vault/note/missing.md', title: 'Missing Note' })
+
+      expect(result.current.tabs).toEqual([])
+      expect(result.current.activeTabPath).toBeNull()
+      expect(onMissingNotePath).toHaveBeenCalledWith(
+        expect.objectContaining({ path: '/vault/note/missing.md', title: 'Missing Note' }),
+        expect.any(Error),
+      )
+      warnSpy.mockRestore()
+    })
   })
 
   describe('handleReplaceActiveTab', () => {
@@ -191,6 +209,31 @@ describe('useTabManagement (single-note model)', () => {
       expect(result.current.tabs).toHaveLength(1)
       expect(result.current.tabs[0].content).toBe('# Fresh after pull')
       expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(2)
+    })
+
+    it('clears the active note when a forced reload hits a missing file path', async () => {
+      const { mockInvoke } = await import('../mock-tauri')
+      vi.mocked(mockInvoke)
+        .mockResolvedValueOnce('# Existing content')
+        .mockRejectedValueOnce(new Error('File does not exist: /vault/a.md'))
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      const onMissingNotePath = vi.fn()
+
+      const { result } = renderHook(() => useTabManagement({ onMissingNotePath }))
+      const entry = makeEntry({ path: '/vault/a.md', title: 'A' })
+      await selectNote(result, entry)
+
+      await act(async () => {
+        await result.current.handleReplaceActiveTab(entry)
+      })
+
+      expect(result.current.tabs).toEqual([])
+      expect(result.current.activeTabPath).toBeNull()
+      expect(onMissingNotePath).toHaveBeenCalledWith(
+        expect.objectContaining({ path: '/vault/a.md', title: 'A' }),
+        expect.any(Error),
+      )
+      warnSpy.mockRestore()
     })
 
     it('opens a note when no note is active', async () => {
@@ -250,14 +293,15 @@ describe('useTabManagement (single-note model)', () => {
   })
 
   describe('content prefetch cache', () => {
-    it('prefetch serves content to loadNoteContent (no extra IPC)', async () => {
+    it('prefetch paints cached content immediately and still validates it from disk', async () => {
       const mockInvoke = await prefetchResolvedContent('/vault/note/pre.md', '# Prefetched content')
+      vi.mocked(mockInvoke).mockResolvedValue('# Prefetched content')
 
       const { result } = renderHook(() => useTabManagement())
       await selectNote(result, { path: '/vault/note/pre.md', title: 'Pre' })
 
       expect(result.current.tabs[0].content).toBe('# Prefetched content')
-      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(2)
     })
 
     it('clearPrefetchCache prevents stale content from being served', async () => {
@@ -286,6 +330,7 @@ describe('useTabManagement (single-note model)', () => {
 
     it('serves refreshed cached content after a save replaces stale prefetched data', async () => {
       const mockInvoke = await prefetchResolvedContent('/vault/note/saved.md', '# Stale prefetched content')
+      vi.mocked(mockInvoke).mockResolvedValue('# Persisted content')
 
       cacheNoteContent('/vault/note/saved.md', '# Persisted content')
 
@@ -293,10 +338,13 @@ describe('useTabManagement (single-note model)', () => {
       await selectNote(result, { path: '/vault/note/saved.md', title: 'Saved' })
 
       expect(result.current.tabs[0].content).toBe('# Persisted content')
-      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(2)
     })
 
     it('activates a warmed note immediately while reusing the cached content', async () => {
+      const { mockInvoke } = await import('../mock-tauri')
+      const deferred = createDeferred<string>()
+      vi.mocked(mockInvoke).mockImplementationOnce(() => deferred.promise)
       cacheNoteContent('/vault/note/warm.md', '# Warm content')
 
       const { result } = renderHook(() => useTabManagement())
@@ -308,6 +356,12 @@ describe('useTabManagement (single-note model)', () => {
       expect(result.current.activeTabPath).toBe('/vault/note/warm.md')
       expect(result.current.tabs).toHaveLength(1)
       expect(result.current.tabs[0].content).toBe('# Warm content')
+      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(1)
+
+      await act(async () => {
+        deferred.resolve('# Warm content')
+        await Promise.resolve()
+      })
     })
 
     it('reuses cached content when reopening a recently loaded note', async () => {
@@ -315,6 +369,7 @@ describe('useTabManagement (single-note model)', () => {
       vi.mocked(mockInvoke)
         .mockResolvedValueOnce('# A content')
         .mockResolvedValueOnce('# B content')
+        .mockResolvedValueOnce('# A content')
 
       const { result } = renderHook(() => useTabManagement())
       await selectNote(result, { path: '/vault/a.md', title: 'A' })
@@ -323,7 +378,29 @@ describe('useTabManagement (single-note model)', () => {
 
       expect(result.current.tabs[0].entry.path).toBe('/vault/a.md')
       expect(result.current.tabs[0].content).toBe('# A content')
-      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(2)
+      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(3)
+    })
+
+    it('falls back instead of reopening cached content when the note file disappeared', async () => {
+      const { mockInvoke } = await import('../mock-tauri')
+      vi.mocked(mockInvoke)
+        .mockResolvedValueOnce('# Other note')
+        .mockRejectedValueOnce(new Error('File does not exist: /vault/note/missing-cached.md'))
+      const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+      cacheNoteContent('/vault/note/missing-cached.md', '# Cached but stale')
+      const onMissingNotePath = vi.fn()
+
+      const { result } = renderHook(() => useTabManagement({ onMissingNotePath }))
+      await selectNote(result, { path: '/vault/other.md', title: 'Other' })
+      await selectNote(result, { path: '/vault/note/missing-cached.md', title: 'Missing cached' })
+
+      expect(result.current.tabs).toEqual([])
+      expect(result.current.activeTabPath).toBeNull()
+      expect(onMissingNotePath).toHaveBeenCalledWith(
+        expect.objectContaining({ path: '/vault/note/missing-cached.md', title: 'Missing cached' }),
+        expect.any(Error),
+      )
+      warnSpy.mockRestore()
     })
 
     it('deduplicates a late prefetch after note opening already started', async () => {
