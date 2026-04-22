@@ -68,6 +68,10 @@ pnpm tauri dev
 - 🚀 [GETTING-STARTED.md](docs/GETTING-STARTED.md) — How to navigate the codebase
 - 📚 [ADRs](docs/adr) — Architecture Decision Records
 
+## Security
+
+If you believe you have found a security issue, please report it privately as described in [SECURITY.md](./SECURITY.md).
+
 ## License
 
 Tolaria is licensed under AGPL-3.0-or-later. The Tolaria name and logo remain covered by the project’s trademark policy.
