@@ -45,12 +45,12 @@ export function FolderNameInput({
   }, [onSubmit, value])
 
   return (
-    <div className="flex items-center gap-2" style={{ padding: '4px 8px' }}>
-      <Folder size={18} className="shrink-0 text-muted-foreground" />
+    <div className="flex items-center gap-2 rounded" style={{ padding: '6px 8px', borderRadius: 4 }}>
+      <Folder size={16} className="size-4 shrink-0 text-muted-foreground" />
       <Input
         ref={inputRef}
         aria-label={ariaLabel}
-        className="h-7 flex-1 rounded-sm px-2 text-[13px]"
+        className="h-auto min-h-0 flex-1 rounded-sm px-2 py-[3px] text-[13px] font-medium"
         value={value}
         onChange={(event) => setValue(event.target.value)}
         onBlur={submitOnBlur ? () => { void handleSubmit() } : undefined}

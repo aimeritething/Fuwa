@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { FolderTree } from './FolderTree'
 import type { FolderNode, SidebarSelection } from '../types'
@@ -114,6 +114,18 @@ describe('FolderTree', () => {
     expect(onStartRenameFolder).toHaveBeenCalledWith('projects')
     expect(onSelect).toHaveBeenNthCalledWith(2, { kind: 'folder', path: 'projects' })
     expect(onDeleteFolder).toHaveBeenCalledWith('projects')
+  })
+
+  it('does not reserve a disclosure slot for leaf folders', () => {
+    render(<FolderTree folders={mockFolders} selection={defaultSelection} onSelect={vi.fn()} />)
+
+    const leafRowContainer = screen.getByTestId('folder-row:areas').parentElement
+    const parentRowContainer = screen.getByTestId('folder-row:projects').parentElement
+
+    expect(leafRowContainer).not.toBeNull()
+    expect(parentRowContainer).not.toBeNull()
+    expect(within(leafRowContainer as HTMLElement).queryAllByRole('button')).toHaveLength(1)
+    expect(within(parentRowContainer as HTMLElement).queryAllByRole('button')).toHaveLength(2)
   })
 
   it('shows the rename input when a folder is being renamed', () => {

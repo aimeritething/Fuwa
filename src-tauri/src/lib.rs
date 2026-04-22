@@ -202,6 +202,7 @@ macro_rules! app_invoke_handler {
             commands::delete_frontmatter_property,
             commands::rename_note,
             commands::rename_note_filename,
+            commands::move_note_to_folder,
             commands::auto_rename_untitled,
             commands::detect_renames,
             commands::update_wikilinks_for_renames,

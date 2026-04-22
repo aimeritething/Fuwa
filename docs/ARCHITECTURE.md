@@ -176,7 +176,7 @@ flowchart TD
 └──────────────────────────────────────────────────────────────┘
 ```
 
-- **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Changes, Pulse), collapsible type-based section groups, and a dedicated folder tree. The folder tree supports inline folder creation and rename, exposes a right-click menu for rename/delete, and auto-expands ancestor folders when the current selection or rename target is nested. Each type can have a custom icon, color, sort, and visibility set via its type document in `type/`.
+- **Sidebar** (150-400px, resizable): Top-level filters (All Notes, Changes, Pulse), collapsible type-based section groups, and a dedicated folder tree. The folder tree supports inline folder creation and rename, exposes a right-click menu for rename/delete, and auto-expands ancestor folders when the current selection or rename target is nested. Type sections and folder rows also act as note drop targets: dropping a note on a type updates its `type:` frontmatter, while dropping it on a folder runs the same crash-safe move path as the command palette flow. Each type can have a custom icon, color, sort, and visibility set via its type document in `type/`.
 - **Note List / Pulse View** (200-500px, resizable): When a section group, filter, or saved view is selected, shows filtered notes with snippets, modified dates, status indicators, and per-context note-list controls. When `selection.kind === 'entity'`, the same pane enters **Neighborhood** mode: the source note is pinned at the top as a normal active row, outgoing relationship groups render first, inverse/backlink groups follow, empty groups stay visible with `0`, and duplicates across groups are allowed when multiple relationships are true. Plain click / `Enter` open the focused note without replacing the current Neighborhood, while Cmd/Ctrl-click and Cmd/Ctrl-`Enter` pivot the pane into the clicked note's Neighborhood. Saved views reuse the same sort and visible-column controls as the built-in lists, and those changes persist back into the view `.yml` definition (`sort`, `listPropertiesDisplay`). When Pulse filter is active, shows `PulseView` — a chronological git activity feed grouped by day.
 - **Editor** (flex, fills remaining space): Single note open at a time (no tabs — see ADR-0003). Breadcrumb bar with word count, BlockNote rich text editor with wikilink support, markdown-safe formatting controls, and schema-backed fenced code block highlighting via `@blocknote/code-block`. Can toggle to diff view (modified files) or raw CodeMirror view. Decomposed into `Editor` (orchestrator), `EditorContent`, `EditorRightPanel`, `SingleEditorView`, with hooks `useDiffMode`, `useEditorFocus`, and `useEditorSave`, plus the `useRawMode`/`RawEditorView` pair for markdown source editing. Navigation history (Cmd+[/]) replaces tabs.
 - **Inspector / AI Agent** (200-500px or 40px collapsed): Toggles between Inspector (frontmatter, relationships, instances, backlinks, git history) and AI Agent panel (the selected CLI agent with tool execution). The Sparkle icon in the breadcrumb bar toggles between them. Per-note `icon` is a suggested Inspector property and the command palette's "Set Note Icon" action opens that field directly. When viewing a Type note, the Inspector shows an **Instances** section listing all notes of that type (sorted by modified_at desc, capped at 50).
@@ -586,7 +586,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `parsing.rs` | Text processing: snippet extraction, markdown stripping, ISO date parsing, `extract_title` (H1 → legacy frontmatter → filename), `slug_to_title` |
 | `title_sync.rs` | Legacy filename → `title` frontmatter sync helper; no longer used by the normal note-open flow |
 | `cache.rs` | Git-based incremental vault caching (`scan_vault_cached`), git helpers |
-| `rename.rs` | `rename_note` / `rename_note_filename` — stage crash-safe file renames, update `title` frontmatter, recover unfinished rename transactions, and report backlink rewrite failures |
+| `rename.rs` | `rename_note` / `rename_note_filename` / `move_note_to_folder` — stage crash-safe file moves, update `title` frontmatter when needed, recover unfinished rename transactions, and report backlink rewrite failures |
 | `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
 | `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
 | `config_seed.rs` | Maintains vault AI guidance (`AGENTS.md` + `CLAUDE.md` shim), migrates legacy `config/agents.md`, and repairs missing root type scaffolding such as `type.md` and `note.md` |
@@ -620,6 +620,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `save_note_content` | Write note content to disk |
 | `delete_note` | Permanently delete note from disk (with confirm dialog) |
 | `rename_note` | Crash-safe note rename + `title` frontmatter update + cross-vault wikilinks + failed backlink counts |
+| `move_note_to_folder` | Crash-safe folder move that preserves the filename, reloads the moved note, and rewrites path-based wikilinks |
 | `create_vault_folder` | Create a folder relative to the active vault root |
 | `rename_vault_folder` | Rename a folder relative to the active vault root and return old/new relative paths |
 | `delete_vault_folder` | Permanently delete a folder subtree relative to the active vault root |
@@ -737,7 +738,8 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useVaultLoader` | `entries`, `allContent`, `modifiedFiles` | Vault data |
 | `useNoteActions` | `tabs`, `activeTabPath` | Composes `useNoteCreation` + `useNoteRename` + `frontmatterOps` |
 | `useNoteCreation` | — | Note/type creation with optimistic persistence |
-| `useNoteRename` | — | Note renaming with wikilink update |
+| `useNoteRename` | — | Note renaming and folder moves with wikilink update |
+| `useNoteRetargeting` | — | Shared note retargeting logic for drag/drop and command-palette actions |
 | `frontmatterOps` | — (pure functions) | Frontmatter CRUD: key→VaultEntry mapping, mock/Tauri dispatch |
 | `useTabManagement` | Navigation history, note switching | Note navigation lifecycle |
 | `useVaultSwitcher` | `vaultPath`, `extraVaults` | Vault switching |
@@ -768,7 +770,7 @@ Data flows unidirectionally: `App` passes data and callbacks as props to child c
 | Cmd+[ / Cmd+] | Navigate back / forward |
 | `[[` in editor | Open wikilink suggestion menu |
 
-Selection-dependent actions are wired through the command palette and the native menus. For example, a deleted file opened from Changes view becomes a read-only diff preview, and that state enables the "Restore Deleted Note" menu/command while normal note mutation actions stay disabled. Folder selection follows the same pattern: when `selection.kind === 'folder'`, the command palette exposes "Rename Folder" and "Delete Folder", and the sidebar row can launch the same flows directly through inline rename or the folder context menu.
+Selection-dependent actions are wired through the command palette and the native menus. For example, a deleted file opened from Changes view becomes a read-only diff preview, and that state enables the "Restore Deleted Note" menu/command while normal note mutation actions stay disabled. Folder selection follows the same pattern: when `selection.kind === 'folder'`, the command palette exposes "Rename Folder" and "Delete Folder", and the sidebar row can launch the same flows directly through inline rename or the folder context menu. Active notes now follow the same shared-action model for retargeting: Cmd+K can open "Change Note Type…" and "Move Note to Folder…", and the sidebar drop targets call the same hook-backed implementations instead of maintaining separate mutation paths.
 
 Shortcut routing is explicit:
 

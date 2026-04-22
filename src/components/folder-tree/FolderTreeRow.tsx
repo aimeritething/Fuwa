@@ -10,6 +10,8 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { FolderNode, SidebarSelection } from '../../types'
+import { NoteDropTarget } from '../note-retargeting/NoteDropTarget'
+import { useNoteRetargetingContext } from '../note-retargeting/noteRetargetingContext'
 import { FolderNameInput } from './FolderNameInput'
 
 interface FolderTreeRowProps {
@@ -81,12 +83,12 @@ function FolderItemRow({
   return (
     <div
       className={cn(
-        'group relative flex items-center gap-1 rounded-[5px] transition-colors',
+        'group relative flex items-center gap-1 rounded transition-colors',
         isSelected
           ? 'bg-[var(--accent-blue-light,rgba(0,100,255,0.08))] text-primary'
           : 'text-foreground hover:bg-accent',
       )}
-      style={{ paddingLeft: indentation }}
+      style={{ paddingLeft: indentation, paddingRight: 8, paddingTop: 6, paddingBottom: 6, borderRadius: 4 }}
       onContextMenu={(event) => {
         onSelect()
         onOpenMenu(node, event)
@@ -152,24 +154,21 @@ function FolderToggleButton({
   isExpanded: boolean
   onToggle: () => void
 }) {
+  if (!hasChildren) return null
+
   return (
     <Button
       type="button"
       variant="ghost"
       size="icon-xs"
       className="h-6 w-4 shrink-0 p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
-      disabled={!hasChildren}
       onClick={(event) => {
         event.stopPropagation()
-        if (hasChildren) onToggle()
+        onToggle()
       }}
-      aria-label={hasChildren ? expandLabel : undefined}
+      aria-label={expandLabel}
     >
-      {hasChildren ? (
-        isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />
-      ) : (
-        <span className="block h-3 w-3" />
-      )}
+      {isExpanded ? <CaretDown size={12} /> : <CaretRight size={12} />}
     </Button>
   )
 }
@@ -231,9 +230,9 @@ function FolderSelectButton({
       type="button"
       variant="ghost"
       className={cn(
-        'h-7 flex-1 justify-start gap-2 rounded-[5px] px-2 py-0 text-left text-[13px]',
+        'h-auto flex-1 justify-start gap-2 rounded p-0 text-left text-[13px] font-medium hover:bg-transparent',
         hasActions && 'pr-12',
-        isSelected ? 'font-medium text-primary hover:text-primary' : 'hover:text-foreground',
+        isSelected ? 'text-primary hover:text-primary' : 'text-foreground hover:text-foreground',
       )}
       title={node.path}
       onClick={onSelect}
@@ -244,9 +243,9 @@ function FolderSelectButton({
       data-testid={`folder-row:${node.path}`}
     >
       {isSelected || isExpanded ? (
-        <FolderOpen size={18} weight="fill" className="shrink-0" />
+        <FolderOpen size={16} weight="fill" className="size-4 shrink-0" />
       ) : (
-        <Folder size={18} className="shrink-0" />
+        <Folder size={16} className="size-4 shrink-0" />
       )}
       <span className="truncate">{node.name}</span>
     </Button>
@@ -315,10 +314,24 @@ export const FolderTreeRow = memo(function FolderTreeRow({
   const isExpanded = expanded[node.path] ?? false
   const isRenaming = renamingFolderPath === node.path
   const isSelected = selection.kind === 'folder' && selection.path === node.path
-  const indentation = 8 + depth * 16
+  const indentation = 16 + depth * 16
+  const noteRetargeting = useNoteRetargetingContext()
   const selectFolder = useCallback(() => {
     onSelect({ kind: 'folder', path: node.path })
   }, [node.path, onSelect])
+  const row = (
+    <FolderItemRow
+      indentation={indentation}
+      isExpanded={isExpanded}
+      isSelected={isSelected}
+      node={node}
+      onDeleteFolder={onDeleteFolder}
+      onOpenMenu={onOpenMenu}
+      onSelect={selectFolder}
+      onStartRenameFolder={onStartRenameFolder}
+      onToggle={onToggle}
+    />
+  )
 
   return (
     <>
@@ -330,17 +343,14 @@ export const FolderTreeRow = memo(function FolderTreeRow({
           onRenameFolder={onRenameFolder}
         />
       ) : (
-        <FolderItemRow
-          indentation={indentation}
-          isExpanded={isExpanded}
-          isSelected={isSelected}
-          node={node}
-          onDeleteFolder={onDeleteFolder}
-          onOpenMenu={onOpenMenu}
-          onSelect={selectFolder}
-          onStartRenameFolder={onStartRenameFolder}
-          onToggle={onToggle}
-        />
+        noteRetargeting ? (
+          <NoteDropTarget
+            canAcceptNotePath={(notePath) => noteRetargeting.canDropNoteOnFolder(notePath, node.path)}
+            onDropNote={(notePath) => noteRetargeting.dropNoteOnFolder(notePath, node.path)}
+          >
+            {row}
+          </NoteDropTarget>
+        ) : row
       )}
       <FolderChildren
         depth={depth}
