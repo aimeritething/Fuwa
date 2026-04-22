@@ -110,7 +110,7 @@ export function EditorRightPanel({
         onUpdateFrontmatter={onUpdateFrontmatter}
         onDeleteProperty={onDeleteProperty}
         onAddProperty={onAddProperty}
-        onCreateMissingType={onCreateMissingType as ((path: string, missingType: string, nextTypeName: string) => Promise<void>) | undefined}
+        onCreateMissingType={onCreateMissingType}
         onCreateAndOpenNote={onCreateAndOpenNote}
         onInitializeProperties={onInitializeProperties}
         onToggleRawEditor={onToggleRawEditor}
