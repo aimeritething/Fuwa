@@ -121,6 +121,9 @@ function createMockEditor(blockType = 'image') {
     props: { textAlignment: 'center', level: 1 },
     content: [{ type: 'text', text: 'Selected block' }],
   }
+  const domElement = document.createElement('div')
+  domElement.appendChild(document.createElement('div'))
+  document.body.appendChild(domElement)
 
   return {
     isEditable: true,
@@ -133,7 +136,7 @@ function createMockEditor(blockType = 'image') {
       },
     },
     prosemirrorState: { selection: { from: 1, to: 5 } },
-    domElement: document.createElement('div'),
+    domElement,
     focus: vi.fn(),
     getActiveStyles: () => ({ bold: true }),
     getSelection: () => ({ blocks: [selectedBlock] }),
@@ -147,6 +150,7 @@ function createMockEditor(blockType = 'image') {
 describe('tolariaEditorFormatting behavior', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    document.body.innerHTML = ''
     positionPopoverState.lastProps = null
     showState.value = true
     useBlockNoteEditorMock.mockReturnValue(createMockEditor())
@@ -299,5 +303,20 @@ describe('tolariaEditorFormatting behavior', () => {
     fireEvent.blur(toolbarWrapper, { relatedTarget: document.body })
 
     expect(formattingToolbarStore.setState).toHaveBeenCalledWith(false)
+  })
+
+  it('does not open the floating toolbar when the editor anchor element is unavailable', () => {
+    const editor = createMockEditor()
+    editor.domElement = document.createElement('div')
+    useBlockNoteEditorMock.mockReturnValue(editor)
+
+    render(<TolariaFormattingToolbarController />)
+
+    expect(positionPopoverState.lastProps).toEqual(expect.objectContaining({
+      position: undefined,
+      useFloatingOptions: expect.objectContaining({
+        open: false,
+      }),
+    }))
   })
 })

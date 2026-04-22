@@ -282,6 +282,13 @@ function getFormattingToolbarBridgeBlockId(
     : null
 }
 
+function getFormattingToolbarAnchorElement(
+  editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
+) {
+  const anchor = editor.domElement?.firstElementChild
+  return anchor instanceof Element && anchor.isConnected ? anchor : null
+}
+
 function updateSelectedBlocksToType(
   editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
   selectedBlocks: TolariaSelectedBlock[],
@@ -470,6 +477,8 @@ export function TolariaFormattingToolbarController(props: {
   })
 
   const isOpen = show || toolbarHasFocus || toolbarHovered || closeGraceActive
+  const hasFloatingToolbarAnchor = getFormattingToolbarAnchorElement(editor) !== null
+  const shouldRenderFloatingToolbar = isOpen && hasFloatingToolbarAnchor
   const currentBridgeBlockId = useEditorState({
     editor,
     selector: ({ editor }) => getFormattingToolbarBridgeBlockId(editor),
@@ -488,7 +497,7 @@ export function TolariaFormattingToolbarController(props: {
   const position = useEditorState({
     editor,
     selector: ({ editor }) => (
-      isOpen
+      shouldRenderFloatingToolbar
         ? {
             from: editor.prosemirrorState.selection.from,
             to: editor.prosemirrorState.selection.to,
@@ -516,7 +525,7 @@ export function TolariaFormattingToolbarController(props: {
     () => ({
       ...props.floatingUIOptions,
       useFloatingOptions: {
-        open: isOpen,
+        open: shouldRenderFloatingToolbar,
         onOpenChange: (open, _event, reason) => {
           formattingToolbar.store.setState(open)
           if (!open) {
@@ -542,9 +551,9 @@ export function TolariaFormattingToolbarController(props: {
       clearCloseGrace,
       editor,
       formattingToolbar.store,
-      isOpen,
       placement,
       props.floatingUIOptions,
+      shouldRenderFloatingToolbar,
     ],
   )
 
@@ -552,7 +561,7 @@ export function TolariaFormattingToolbarController(props: {
 
   return (
     <PositionPopover position={position} {...floatingUIOptions}>
-      {isOpen && (
+      {shouldRenderFloatingToolbar && (
         <div
           onPointerEnter={() => {
             setToolbarHovered(true)

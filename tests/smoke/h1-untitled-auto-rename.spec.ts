@@ -3,12 +3,6 @@ import { test, expect, type Page } from '@playwright/test'
 import { createFixtureVaultCopy, openFixtureVaultTauri, removeFixtureVaultCopy } from '../helpers/fixtureVault'
 import { triggerMenuCommand } from './testBridge'
 
-const KNOWN_EDITOR_ERRORS = ['isConnected']
-
-function isKnownEditorError(message: string): boolean {
-  return KNOWN_EDITOR_ERRORS.some((known) => message.includes(known))
-}
-
 function markdownFiles(vaultPath: string): string[] {
   return fs.readdirSync(vaultPath).filter((name) => name.endsWith('.md')).sort()
 }
@@ -146,7 +140,7 @@ test.afterEach(async () => {
 test('@smoke new-note H1 auto-rename keeps the editor usable and leaves no untitled duplicates', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (err) => {
-    if (!isKnownEditorError(err.message)) errors.push(err.message)
+    errors.push(err.message)
   })
 
   const titles = [
@@ -198,7 +192,7 @@ test('@smoke new-note H1 auto-rename keeps the editor usable and leaves no untit
 test('@smoke new-note H1 auto-rename preserves body typing and cursor while rename lands', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', (err) => {
-    if (!isKnownEditorError(err.message)) errors.push(err.message)
+    errors.push(err.message)
   })
 
   await createUntitledNote(page)
