@@ -153,4 +153,39 @@ describe('streamAiAgent', () => {
     expect(callbacks.onDone).toHaveBeenCalledTimes(1)
     expect(unlistenMock).toHaveBeenCalledTimes(1)
   })
+
+  it('closes the stream when the backend returns before a done event is observed', async () => {
+    isTauriState.value = true
+    const unlistenMock = vi.fn()
+    let eventHandler: ((event: { payload: unknown }) => void) | undefined
+
+    listenMock.mockImplementation(async (_eventName: string, handler: typeof eventHandler) => {
+      eventHandler = handler
+      return unlistenMock
+    })
+    invokeMock.mockImplementation(async () => {
+      eventHandler?.({ payload: { kind: 'TextDelta', text: 'done' } })
+      return 'session-2'
+    })
+
+    const callbacks = {
+      onText: vi.fn(),
+      onThinking: vi.fn(),
+      onToolStart: vi.fn(),
+      onToolDone: vi.fn(),
+      onError: vi.fn(),
+      onDone: vi.fn(),
+    }
+
+    await streamAiAgent({
+      agent: 'claude_code',
+      message: 'Reply with done',
+      vaultPath: '/vault',
+      callbacks,
+    })
+
+    expect(callbacks.onText).toHaveBeenCalledWith('done')
+    expect(callbacks.onDone).toHaveBeenCalledTimes(1)
+    expect(unlistenMock).toHaveBeenCalledTimes(1)
+  })
 })

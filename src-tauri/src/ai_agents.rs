@@ -377,8 +377,8 @@ fn map_claude_event(event: crate::claude_cli::ClaudeStreamEvent) -> Option<AiAge
         crate::claude_cli::ClaudeStreamEvent::Error { message } => {
             Some(AiAgentStreamEvent::Error { message })
         }
-        crate::claude_cli::ClaudeStreamEvent::Done
-        | crate::claude_cli::ClaudeStreamEvent::Result { .. } => None,
+        crate::claude_cli::ClaudeStreamEvent::Done => Some(AiAgentStreamEvent::Done),
+        crate::claude_cli::ClaudeStreamEvent::Result { .. } => None,
     }
 }
 
@@ -459,5 +459,12 @@ mod tests {
             &events[0],
             AiAgentStreamEvent::TextDelta { text } if text == "All set"
         ));
+    }
+
+    #[test]
+    fn map_claude_done_event_preserves_completion_signal() {
+        let mapped = map_claude_event(crate::claude_cli::ClaudeStreamEvent::Done);
+
+        assert!(matches!(mapped, Some(AiAgentStreamEvent::Done)));
     }
 }

@@ -83,8 +83,20 @@ export async function streamAiAgent(
 
   const { invoke } = await import('@tauri-apps/api/core')
   const { listen } = await import('@tauri-apps/api/event')
+  let closed = false
+
+  const closeStream = (): void => {
+    if (closed) return
+    closed = true
+    callbacks.onDone()
+  }
 
   const unlisten = await listen<AiAgentStreamEvent>('ai-agent-stream', (event) => {
+    if (event.payload.kind === 'Done') {
+      closeStream()
+      return
+    }
+
     handleStreamEvent(event.payload, callbacks)
   })
 
@@ -97,9 +109,10 @@ export async function streamAiAgent(
         vault_path: vaultPath,
       },
     })
+    closeStream()
   } catch (err) {
     callbacks.onError(err instanceof Error ? err.message : String(err))
-    callbacks.onDone()
+    closeStream()
   } finally {
     unlisten()
   }
