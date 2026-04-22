@@ -1,5 +1,5 @@
 import type { DragEvent, ReactNode } from 'react'
-import { writeDraggedNotePath } from './noteDragData'
+import { clearDraggedNotePath, writeDraggedNotePath } from './noteDragData'
 
 interface DraggableNoteItemProps {
   notePath: string
@@ -11,12 +11,17 @@ export function DraggableNoteItem({ notePath, children }: DraggableNoteItemProps
     writeDraggedNotePath(event, notePath)
   }
 
+  const handleDragEnd = () => {
+    clearDraggedNotePath()
+  }
+
   return (
     <div
       draggable
       data-testid={`draggable-note:${notePath}`}
       className="cursor-grab active:cursor-grabbing"
       onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
     >
       {children}
     </div>

@@ -1,6 +1,6 @@
 import { useRef, useState, type DragEvent, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
-import { readDraggedNotePath } from './noteDragData'
+import { clearDraggedNotePath, readDraggedNotePath } from './noteDragData'
 
 type DropState = 'idle' | 'valid' | 'invalid'
 
@@ -67,6 +67,7 @@ export function NoteDropTarget({
 
     const isValid = canAcceptNotePath(notePath)
     resetDropState()
+    clearDraggedNotePath()
     if (!isValid) return
     void onDropNote(notePath)
   }
@@ -79,6 +80,7 @@ export function NoteDropTarget({
         dropState === 'valid' && validClassName,
         dropState === 'invalid' && invalidClassName,
       )}
+      data-drop-state={dropState === 'idle' ? undefined : dropState}
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}

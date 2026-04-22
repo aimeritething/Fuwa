@@ -180,7 +180,7 @@ export function useNoteRetargeting({
   moveNoteToFolder,
 }: NoteRetargetingInput) {
   const availableTypes = useMemo(
-    () => extractVaultTypes(entries).map((type) => type.canonicalType).sort((left, right) => left.localeCompare(right)),
+    () => extractVaultTypes(entries).sort((left, right) => left.localeCompare(right)),
     [entries],
   )
   const availableFolders = useMemo(() => flattenFolders(folders), [folders])

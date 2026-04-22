@@ -36,6 +36,7 @@ function matchesQuery(option: RetargetOption, query: string): boolean {
   if (!normalized) return true
   return option.label.toLowerCase().includes(normalized)
     || option.detail?.toLowerCase().includes(normalized)
+    || false
 }
 
 function initialHighlightIndex(options: RetargetOption[]): number {
