@@ -274,11 +274,10 @@ function App() {
   }, [rememberVaultChoice])
 
   const handleOnboardingVaultReady = useCallback((vaultPath: string, source: 'template' | 'empty' | 'existing') => {
-    rememberVaultChoice(vaultPath)
     if (source === 'template') {
       setToastMessage(`Getting Started vault cloned and opened at ${vaultPath}`)
     }
-  }, [rememberVaultChoice])
+  }, [])
   const cloneGettingStartedVault = useGettingStartedClone({
     onError: (message) => setToastMessage(message),
     onSuccess: handleGettingStartedVaultReady,

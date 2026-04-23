@@ -581,6 +581,7 @@ describe('App', () => {
         },
       })
     })
+    expect(saveVaultList).toHaveBeenCalledTimes(1)
 
     await waitFor(() => {
       expect(screen.getByTestId('status-vault-trigger')).toHaveTextContent('Work Vault')
@@ -630,6 +631,7 @@ describe('App', () => {
         },
       })
     })
+    expect(saveVaultList).toHaveBeenCalledTimes(1)
 
     await waitFor(() => {
       expect(screen.getByTestId('status-vault-trigger')).toHaveTextContent(expectedLabel)
