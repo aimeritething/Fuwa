@@ -250,9 +250,9 @@ function App() {
   })
   const {
     allVaults,
-    handleVaultCloned,
     registerVaultSelection,
     selectedVaultPath,
+    syncVaultSelection,
     switchVault,
   } = vaultSwitcher
 
@@ -265,8 +265,8 @@ function App() {
     }
 
     const label = vaultPath.split('/').filter(Boolean).pop() || 'Local Vault'
-    handleVaultCloned(vaultPath, label)
-  }, [allVaults, handleVaultCloned, switchVault])
+    syncVaultSelection(vaultPath, label)
+  }, [allVaults, switchVault, syncVaultSelection])
 
   const handleGettingStartedVaultReady = useCallback((vaultPath: string) => {
     rememberVaultChoice(vaultPath)
@@ -274,10 +274,11 @@ function App() {
   }, [rememberVaultChoice])
 
   const handleOnboardingVaultReady = useCallback((vaultPath: string, source: 'template' | 'empty' | 'existing') => {
+    rememberVaultChoice(vaultPath)
     if (source === 'template') {
       setToastMessage(`Getting Started vault cloned and opened at ${vaultPath}`)
     }
-  }, [])
+  }, [rememberVaultChoice])
   const cloneGettingStartedVault = useGettingStartedClone({
     onError: (message) => setToastMessage(message),
     onSuccess: handleGettingStartedVaultReady,

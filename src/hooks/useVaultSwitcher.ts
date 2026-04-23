@@ -861,6 +861,61 @@ function useRegisterVaultSelectionAction({
   ])
 }
 
+function useSyncVaultSelectionAction({
+  defaultAvailable,
+  defaultPath,
+  extraVaults,
+  hiddenDefaults,
+  onSwitchRef,
+  setDefaultAvailable,
+  setExtraVaults,
+  setHiddenDefaults,
+  setSelectedVaultPath,
+  setVaultPath,
+}: {
+  defaultAvailable: boolean
+  defaultPath: string
+  extraVaults: VaultOption[]
+  hiddenDefaults: string[]
+  onSwitchRef: MutableRefObject<() => void>
+  setDefaultAvailable: Dispatch<SetStateAction<boolean>>
+  setExtraVaults: Dispatch<SetStateAction<VaultOption[]>>
+  setHiddenDefaults: Dispatch<SetStateAction<string[]>>
+  setSelectedVaultPath: Dispatch<SetStateAction<string | null>>
+  setVaultPath: Dispatch<SetStateAction<string>>
+}) {
+  return useCallback((path: string, label: string) => {
+    const nextSelection = buildRegisteredVaultSelection({
+      defaultAvailable,
+      defaultPath,
+      extraVaults,
+      hiddenDefaults,
+      label,
+      path,
+    })
+    applyRegisteredVaultSelection({
+      ...nextSelection,
+      onSwitchRef,
+      setDefaultAvailable,
+      setExtraVaults,
+      setHiddenDefaults,
+      setSelectedVaultPath,
+      setVaultPath,
+    })
+  }, [
+    defaultAvailable,
+    defaultPath,
+    extraVaults,
+    hiddenDefaults,
+    onSwitchRef,
+    setDefaultAvailable,
+    setExtraVaults,
+    setHiddenDefaults,
+    setSelectedVaultPath,
+    setVaultPath,
+  ])
+}
+
 function useOpenLocalFolderAction(
   addAndSwitch: (path: string, label: string) => void,
   onToastRef: MutableRefObject<(msg: string) => void>,
@@ -1002,6 +1057,18 @@ function useVaultActions({
     setSelectedVaultPath,
     setVaultPath,
   })
+  const syncVaultSelection = useSyncVaultSelectionAction({
+    defaultAvailable,
+    defaultPath,
+    extraVaults,
+    hiddenDefaults,
+    onSwitchRef,
+    setDefaultAvailable,
+    setExtraVaults,
+    setHiddenDefaults,
+    setSelectedVaultPath,
+    setVaultPath,
+  })
   const addAndSwitch = useCallback((path: string, label: string) => {
     addVault(path, label)
     switchVault(path)
@@ -1032,6 +1099,7 @@ function useVaultActions({
       setHiddenDefaults,
       switchVault,
     }),
+    syncVaultSelection,
     switchVault,
   }
 }
@@ -1089,6 +1157,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
     registerVaultSelection,
     removeVault,
     restoreGettingStarted,
+    syncVaultSelection,
     switchVault,
   } = useVaultActions({
     ...persistedState,
@@ -1111,6 +1180,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
     removeVault,
     restoreGettingStarted,
     selectedVaultPath,
+    syncVaultSelection,
     switchVault,
     vaultPath,
   }
