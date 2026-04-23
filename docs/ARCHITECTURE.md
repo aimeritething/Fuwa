@@ -443,6 +443,8 @@ On first launch, `useOnboarding` checks if the default vault exists. If not, it 
 - **Open an existing folder** → system file picker
 - **Get started with a template** → pick a parent folder, then call `create_getting_started_vault()` with the derived `.../Getting Started` child path so the cloned vault opens into the populated repo root immediately
 
+When an opened folder is not yet a git repo, `init_git_repo` runs `git init`, ensures Tolaria's default `.gitignore`, stages the vault, and writes the initial `Initial vault setup` commit. That app-managed setup commit explicitly disables commit signing for the single command so inherited global or local `commit.gpgsign` preferences cannot strand onboarding when GPG is missing or misconfigured.
+
 Once a vault is ready, `useAiAgentsOnboarding` can show a one-time `AiAgentsOnboardingPrompt`. That prompt reads `useAiAgentsStatus` so first launch surfaces whether Claude Code and Codex are installed, offers per-agent install links when they are missing, and stores local dismissal so the prompt does not repeat on every launch.
 
 `useGettingStartedClone` reuses the same parent-folder semantics for the status-bar / command-palette clone action, and `Toast` is rendered through the AI-agents onboarding gate so the resolved destination path stays visible right after a successful clone.
@@ -648,6 +650,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 
 | Command | Description |
 |---------|-------------|
+| `init_git_repo` | Initialize a local repo, add default `.gitignore`, and create the unsigned setup commit |
 | `git_commit` | Stage all + commit |
 | `git_pull` | Pull from remote |
 | `git_push` | Push to remote |
