@@ -1,6 +1,8 @@
-import { render, screen, fireEvent, within } from '@testing-library/react'
+import { useState } from 'react'
+import { act, fireEvent, render, screen, within } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { FolderTree } from './FolderTree'
+import { FOLDER_ROW_SINGLE_CLICK_DELAY_MS } from './folder-tree/useFolderRowInteractions'
 import type { FolderNode, SidebarSelection } from '../types'
 
 const mockFolders: FolderNode[] = [
@@ -49,6 +51,32 @@ describe('FolderTree', () => {
     expect(onSelect).toHaveBeenCalledWith({ kind: 'folder', path: 'projects' })
   })
 
+  it('expands children when single-clicking a folder row with children', () => {
+    vi.useFakeTimers()
+    function FolderTreeHarness() {
+      const [selection, setSelection] = useState<SidebarSelection>(defaultSelection)
+      return <FolderTree folders={mockFolders} selection={selection} onSelect={setSelection} />
+    }
+
+    render(<FolderTreeHarness />)
+
+    fireEvent.click(screen.getByTestId('folder-row:projects'))
+    act(() => {
+      vi.advanceTimersByTime(FOLDER_ROW_SINGLE_CLICK_DELAY_MS)
+    })
+
+    expect(screen.getByText('laputa')).toBeInTheDocument()
+    expect(screen.getByText('portfolio')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('folder-row:projects'))
+    act(() => {
+      vi.advanceTimersByTime(FOLDER_ROW_SINGLE_CLICK_DELAY_MS)
+    })
+
+    expect(screen.queryByText('laputa')).not.toBeInTheDocument()
+    vi.useRealTimers()
+  })
+
   it('collapses section when clicking the FOLDERS header', () => {
     render(<FolderTree folders={mockFolders} selection={defaultSelection} onSelect={vi.fn()} />)
     expect(screen.getByText('projects')).toBeInTheDocument()
@@ -87,8 +115,8 @@ describe('FolderTree', () => {
         onCancelRenameFolder={vi.fn()}
       />,
     )
-    fireEvent.doubleClick(screen.getByTestId('folder-row:areas'))
-    expect(onStartRenameFolder).toHaveBeenCalledWith('areas')
+    fireEvent.doubleClick(screen.getByTestId('folder-row:projects'))
+    expect(onStartRenameFolder).toHaveBeenCalledWith('projects')
   })
 
   it('shows inline rename and delete actions for folders', () => {
@@ -140,6 +168,43 @@ describe('FolderTree', () => {
       />,
     )
     expect(screen.getByTestId('rename-folder-input')).toBeInTheDocument()
+  })
+
+  it('keeps folder toggling healthy after cancelling rename', () => {
+    vi.useFakeTimers()
+    const onCancelRenameFolder = vi.fn()
+    const { rerender } = render(
+      <FolderTree
+        folders={mockFolders}
+        selection={{ kind: 'folder', path: 'projects' }}
+        onSelect={vi.fn()}
+        onRenameFolder={vi.fn().mockResolvedValue(true)}
+        renamingFolderPath="projects"
+        onCancelRenameFolder={onCancelRenameFolder}
+      />,
+    )
+
+    fireEvent.keyDown(screen.getByTestId('rename-folder-input'), { key: 'Escape' })
+    expect(onCancelRenameFolder).toHaveBeenCalledTimes(1)
+
+    rerender(
+      <FolderTree
+        folders={mockFolders}
+        selection={{ kind: 'folder', path: 'projects' }}
+        onSelect={vi.fn()}
+        onRenameFolder={vi.fn().mockResolvedValue(true)}
+        onCancelRenameFolder={onCancelRenameFolder}
+      />,
+    )
+
+    const wasExpanded = screen.queryByText('laputa') !== null
+    fireEvent.click(screen.getByTestId('folder-row:projects'))
+    act(() => {
+      vi.advanceTimersByTime(FOLDER_ROW_SINGLE_CLICK_DELAY_MS)
+    })
+
+    expect(screen.queryByText('laputa') !== null).toBe(!wasExpanded)
+    vi.useRealTimers()
   })
 
   it('opens a context menu with a delete action on right-click', () => {
