@@ -237,12 +237,14 @@ function applyHtmlStateToEditor(
 async function resolveEmptyHeadingHtml(
   editor: ReturnType<typeof useCreateBlockNote>,
   content: string,
+  vaultPath?: string,
 ): Promise<string | null> {
   const remainder = extractBodyRemainderAfterEmptyH1({ content })
   if (remainder === null) return null
   if (!remainder.trim()) return '<h1></h1><p></p>'
 
-  const parsed = await parseMarkdownBlocks(editor, preProcessWikilinks(remainder))
+  const withImages = vaultPath ? resolveImageUrls(remainder, vaultPath) : remainder
+  const parsed = await parseMarkdownBlocks(editor, preProcessWikilinks(withImages))
   const withWikilinks = injectWikilinks(parsed)
   return `<h1></h1>${editor.blocksToHTMLLossy(withWikilinks as typeof parsed)}`
 }
@@ -752,11 +754,12 @@ function scheduleEmptyHeadingSwap(options: {
     content,
     prevActivePathRef,
     suppressChangeRef,
+    vaultPath,
   } = options
 
   if (extractBodyRemainderAfterEmptyH1({ content }) === null) return false
 
-  void resolveEmptyHeadingHtml(editor, content)
+  void resolveEmptyHeadingHtml(editor, content, vaultPath)
     .then((html) => {
       if (prevActivePathRef.current !== targetPath || !html) return
       applyHtmlStateToEditor(editor, html, suppressChangeRef)
@@ -778,6 +781,7 @@ function scheduleParsedBlockSwap(options: {
   content: string
   prevActivePathRef: MutableRefObject<string | null>
   suppressChangeRef: MutableRefObject<boolean>
+  vaultPath?: string
 }) {
   const {
     editor,
@@ -848,6 +852,7 @@ function scheduleTabSwap(options: {
       content: activeTab.content,
       prevActivePathRef,
       suppressChangeRef,
+      vaultPath,
     })) {
       return
     }
