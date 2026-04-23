@@ -230,7 +230,11 @@ fn read_cache_bytes(path: &Path) -> Result<Option<Vec<u8>>, String> {
     match fs::read(path) {
         Ok(bytes) => Ok(Some(bytes)),
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(None),
-        Err(error) => Err(format!("Failed to read cache {}: {}", path.display(), error)),
+        Err(error) => Err(format!(
+            "Failed to read cache {}: {}",
+            path.display(),
+            error
+        )),
     }
 }
 
@@ -319,10 +323,7 @@ fn remove_stale_cache_write_lock(lock_path: &Path) -> Result<bool, String> {
         return Ok(false);
     }
 
-    log::warn!(
-        "Removing stale cache write lock {}",
-        lock_path.display()
-    );
+    log::warn!("Removing stale cache write lock {}", lock_path.display());
     match fs::remove_file(lock_path) {
         Ok(()) => Ok(true),
         Err(error) if error.kind() == ErrorKind::NotFound => Ok(true),
