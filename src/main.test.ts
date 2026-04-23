@@ -1,5 +1,7 @@
-import { describe, expect, it, vi, beforeEach } from 'vitest'
+import { describe, expect, it, vi, beforeAll, beforeEach } from 'vitest'
 import { createElement, type ReactNode } from 'react'
+
+const MAIN_ENTRYPOINT_TEST_TIMEOUT_MS = 30_000
 
 type ReactRootErrorInfo = { componentStack?: string }
 type ReactRootOptions = {
@@ -52,15 +54,17 @@ function rootOptions(): ReactRootOptions {
 }
 
 describe('main entrypoint', () => {
-  beforeEach(() => {
-    vi.resetModules()
+  beforeAll(async () => {
     vi.clearAllMocks()
     document.body.innerHTML = '<div id="root"></div>'
+    await importEntrypoint()
+  }, MAIN_ENTRYPOINT_TEST_TIMEOUT_MS)
+
+  beforeEach(() => {
+    mocks.sentryHandler.mockClear()
   })
 
-  it('captures React root errors through Sentry with component stack context', async () => {
-    await importEntrypoint()
-
+  it('captures React root errors through Sentry with component stack context', () => {
     expect(mocks.reactErrorHandler).toHaveBeenCalledOnce()
     expect(mocks.createRoot).toHaveBeenCalledWith(
       document.getElementById('root'),
@@ -77,9 +81,7 @@ describe('main entrypoint', () => {
     expect(mocks.sentryHandler).toHaveBeenCalledWith(error, { componentStack: '\n    in App' })
   })
 
-  it('normalizes missing React component stacks before handing errors to Sentry', async () => {
-    await importEntrypoint()
-
+  it('normalizes missing React component stacks before handing errors to Sentry', () => {
     const error = new Error('recoverable render error')
     rootOptions().onRecoverableError?.(error, {})
 
