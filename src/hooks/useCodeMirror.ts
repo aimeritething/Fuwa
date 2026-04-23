@@ -78,7 +78,7 @@ function buildSaveKeymap(callbacks: { current: CodeMirrorCallbacks }) {
 function buildArrowLigaturesExtension() {
   let literalAsciiCursor: number | null = null
 
-  return EditorView.inputHandler.of((view, from, to, text) => {
+  return EditorView.inputHandler.of((view, from, _to, text) => {
     const beforeText = view.state.doc.sliceString(Math.max(0, from - 2), from)
     const resolution = resolveArrowLigatureInput({
       beforeText,

@@ -3,7 +3,7 @@ import { resolveArrowLigatureInput } from '../utils/arrowLigatures'
 
 const PREFIX_CONTEXT_LENGTH = 2
 
-function isInsertedCharacter(event: InputEvent) {
+function isInsertedCharacter(event: InputEvent): event is InputEvent & { data: string } {
   return event.inputType === 'insertText' && typeof event.data === 'string'
 }
 
