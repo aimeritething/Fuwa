@@ -18,7 +18,11 @@ type OnboardingState =
 type CreatingAction = 'template' | 'empty' | null
 type ReadyVaultSource = 'template' | 'empty' | 'existing'
 type OnVaultReady = (vaultPath: string, source: ReadyVaultSource) => void
-type RegisterVault = (vaultPath: string, label: string) => Promise<void>
+type RegisterVault = (
+  vaultPath: string,
+  label: string,
+  options?: { verifyAvailability?: boolean },
+) => Promise<void>
 type SetError = Dispatch<SetStateAction<string | null>>
 type SetCreatingAction = Dispatch<SetStateAction<CreatingAction>>
 
@@ -120,12 +124,19 @@ function formatOnboardingRegistrationError({
 async function registerVaultSelection(
   registerVault: RegisterVault | undefined,
   vaultPath: string,
+  options?: { verifyAvailability?: boolean },
 ): Promise<void> {
   if (!registerVault) {
     return
   }
 
-  await registerVault(vaultPath, labelFromPath(vaultPath))
+  const label = labelFromPath(vaultPath)
+  if (options) {
+    await registerVault(vaultPath, label, options)
+    return
+  }
+
+  await registerVault(vaultPath, label)
 }
 
 async function pickFolderWithOnboardingError({
@@ -158,7 +169,7 @@ function useTemplateVaultCreation(
     try {
       const vaultPath = await tauriCall<string>('create_getting_started_vault', { targetPath })
       try {
-        await registerVaultSelection(options.registerVault, vaultPath)
+        await registerVaultSelection(options.registerVault, vaultPath, { verifyAvailability: false })
       } catch (err) {
         options.setError(formatOnboardingRegistrationError({
           action: 'Could not register the Getting Started vault',
@@ -207,7 +218,7 @@ function useCreateEmptyVaultHandler(
       options.setCreatingAction('empty')
       const vaultPath = await tauriCall<string>('create_empty_vault', { targetPath: path })
       try {
-        await registerVaultSelection(options.registerVault, vaultPath)
+        await registerVaultSelection(options.registerVault, vaultPath, { verifyAvailability: false })
       } catch (err) {
         options.setError(formatOnboardingRegistrationError({
           action: 'Could not register the new vault',

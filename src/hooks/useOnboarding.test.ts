@@ -58,7 +58,11 @@ function mockCommands(overrides: Record<string, MockOverride> = {}) {
 
 async function renderOnboarding(
   initialVaultPath = MISSING_VAULT_PATH,
-  registerVault?: (vaultPath: string, label: string) => Promise<void>,
+  registerVault?: (
+    vaultPath: string,
+    label: string,
+    options?: { verifyAvailability?: boolean },
+  ) => Promise<void>,
   onTemplateVaultReady?: (vaultPath: string) => void,
 ) {
   const rendered = renderHook(() => useOnboarding(
@@ -229,7 +233,11 @@ describe('useOnboarding', () => {
     expect(mockInvokeFn).toHaveBeenCalledWith('create_getting_started_vault', {
       targetPath: DEFAULT_GETTING_STARTED_PATH,
     })
-    expect(registerVault).toHaveBeenCalledWith(DEFAULT_GETTING_STARTED_PATH, 'Getting Started')
+    expect(registerVault).toHaveBeenCalledWith(
+      DEFAULT_GETTING_STARTED_PATH,
+      'Getting Started',
+      { verifyAvailability: false },
+    )
     expect(onTemplateVaultReady).toHaveBeenCalledWith(DEFAULT_GETTING_STARTED_PATH)
     expect(localStorage.getItem(APP_STORAGE_KEYS.welcomeDismissed)).toBe('1')
   })

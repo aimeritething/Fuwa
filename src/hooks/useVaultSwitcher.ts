@@ -626,6 +626,26 @@ function buildRegisteredVaultSelection({
   }
 }
 
+async function persistRegisteredVaultSelection({
+  hiddenDefaults,
+  lastPersistedSnapshotRef,
+  selectedVaultPath,
+  vaults,
+}: {
+  hiddenDefaults: string[]
+  lastPersistedSnapshotRef: MutableRefObject<string | null>
+  selectedVaultPath: string
+  vaults: VaultOption[]
+}): Promise<void> {
+  const nextSnapshot = serializePersistedVaultSnapshot(
+    vaults,
+    selectedVaultPath,
+    hiddenDefaults,
+  )
+  await saveVaultList(vaults, selectedVaultPath, hiddenDefaults)
+  lastPersistedSnapshotRef.current = nextSnapshot
+}
+
 function applyRegisteredVaultSelection({
   nextDefaultAvailable,
   nextExtraVaults,
@@ -811,17 +831,12 @@ function useRegisterVaultSelectionAction({
       label,
       path,
     })
-    const nextSnapshot = serializePersistedVaultSnapshot(
-      nextSelection.nextExtraVaults,
-      nextSelection.nextSelectedVaultPath,
-      nextSelection.nextHiddenDefaults,
-    )
-    await saveVaultList(
-      nextSelection.nextExtraVaults,
-      nextSelection.nextSelectedVaultPath,
-      nextSelection.nextHiddenDefaults,
-    )
-    lastPersistedSnapshotRef.current = nextSnapshot
+    await persistRegisteredVaultSelection({
+      hiddenDefaults: nextSelection.nextHiddenDefaults,
+      lastPersistedSnapshotRef,
+      selectedVaultPath: nextSelection.nextSelectedVaultPath,
+      vaults: nextSelection.nextExtraVaults,
+    })
     applyRegisteredVaultSelection({
       ...nextSelection,
       onSwitchRef,
