@@ -41,12 +41,57 @@ export function formatFolderPickerActionError(
   return message ? `${action}: ${message}` : action
 }
 
+function normalizePickedFolderPath(selected: string | string[] | null): string | null {
+  const selectedPath = Array.isArray(selected)
+    ? (typeof selected[0] === 'string' ? selected[0] : null)
+    : selected
+
+  if (typeof selectedPath !== 'string') {
+    return null
+  }
+
+  if (!selectedPath.startsWith('file://')) {
+    return selectedPath
+  }
+
+  try {
+    const parsed = new URL(selectedPath)
+    if (parsed.protocol !== 'file:') {
+      return selectedPath
+    }
+
+    const decodedPath = decodeURIComponent(parsed.pathname)
+    if (parsed.hostname) {
+      return `//${parsed.hostname}${decodedPath}`
+    }
+
+    if (/^\/[A-Za-z]:/.test(decodedPath)) {
+      return decodedPath.slice(1)
+    }
+
+    return decodedPath
+  } catch {
+    return selectedPath
+  }
+}
+
+function readDevFolderPickerOverride(): string | null {
+  const env = (import.meta as ImportMeta & { env: Record<string, string | undefined> }).env
+  const override = env.DEV ? env.VITE_NATIVE_FOLDER_PICKER_PATH?.trim() : ''
+  return override ? normalizePickedFolderPath(override) : null
+}
+
 /**
  * Opens a native folder picker dialog (Tauri) or falls back to prompt (browser).
  * Returns the selected folder path, or null if the user cancelled.
  */
 export async function pickFolder(title?: string): Promise<string | null> {
   if (isTauri()) {
+    const override = readDevFolderPickerOverride()
+    if (override) {
+      return override
+    }
+
     if (isRestartRequiredAfterUpdate()) {
       throw new NativeFolderPickerBlockedError()
     }
@@ -57,8 +102,8 @@ export async function pickFolder(title?: string): Promise<string | null> {
       multiple: false,
       title: title ?? 'Select folder',
     })
-    return selected as string | null
+    return normalizePickedFolderPath(selected)
   }
   // Browser fallback: prompt for path
-  return prompt(title ?? 'Enter folder path:')
+  return normalizePickedFolderPath(prompt(title ?? 'Enter folder path:'))
 }
