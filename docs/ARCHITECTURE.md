@@ -592,6 +592,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `parsing.rs` | Text processing: snippet extraction, markdown stripping, ISO date parsing, `extract_title` (H1 → legacy frontmatter → filename), `slug_to_title` |
 | `title_sync.rs` | Legacy filename → `title` frontmatter sync helper; no longer used by the normal note-open flow |
 | `cache.rs` | Git-based incremental vault caching (`scan_vault_cached`), git helpers |
+| `filename_rules.rs` | Cross-platform validation for note filenames, folder names, and custom view filenames |
 | `rename.rs` | `rename_note` / `rename_note_filename` / `move_note_to_folder` — stage crash-safe file moves, update `title` frontmatter when needed, recover unfinished rename transactions, and report backlink rewrite failures |
 | `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
 | `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
@@ -782,6 +783,7 @@ Selection-dependent actions are wired through the command palette and the native
 Shortcut routing is explicit:
 
 - `appCommandCatalog.ts` is the shared shortcut manifest for command IDs, modifier rules, and deterministic QA metadata
+- `formatShortcutDisplay()` derives platform-accurate visible shortcut labels (`⌘` on macOS, `Ctrl` on Windows/Linux) from that same manifest so menus, tooltips, and command-palette copy stay aligned with real accelerators
 - `useAppKeyboard` is the primary execution path for real shortcut keypresses, including Tauri runs
 - macOS browser-reserved chords such as `Cmd+O` and `Cmd+Shift+L` are unblocked at webview init via `tauri-plugin-prevent-default`, then continue through the same renderer-first command path
 - `menu.rs`, `useMenuEvents`, and Linux's `LinuxMenuButton` emit the same command IDs for native menu clicks, accelerators, and custom titlebar menu actions
@@ -806,6 +808,9 @@ push to main
   → build job:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin --bundles app
       → upload signed .app.tar.gz + .sig updater artifacts
+  → build-windows job:
+      → pnpm install, stamp version, tauri build --target x86_64-pc-windows-msvc --bundles nsis
+      → upload NSIS installer, optional MSI artifacts, and signed Windows updater bundles
   → release job:
       → generate alpha-latest.json
       → publish GitHub prerelease alpha-vYYYY.M.D-alpha.NNNN named Tolaria Alpha YYYY.M.D.N
@@ -827,13 +832,16 @@ push stable-vYYYY.M.D tag
       → upload signed .app.tar.gz + .sig and .dmg artifacts
   → build-linux job:
       → pnpm install, stamp version, tauri build --target x86_64-unknown-linux-gnu --bundles deb,appimage
-      → upload .deb, .AppImage, and signed AppImage updater tarball artifacts
+      → upload .deb, .AppImage, and signed Linux updater bundles
+  → build-windows job:
+      → pnpm install, stamp version, tauri build --target x86_64-pc-windows-msvc --bundles nsis
+      → upload NSIS installer, optional MSI artifacts, and signed Windows updater bundles
   → release job:
-      → generate stable-latest.json with macOS and Linux updater URLs plus manual download URLs
+      → generate stable-latest.json with macOS, Linux, and Windows updater URLs plus platform-specific manual download URLs
       → publish GitHub release Tolaria YYYY.M.D
   → pages job:
       → publish stable/latest.json
-      → publish stable/download/ and download/ as permanent redirect URLs for the latest stable DMG
+      → publish stable/download/ and download/ as permanent redirect URLs for the latest stable platform installer
       → preserve alpha/latest.json
       → deploy to gh-pages
 ```

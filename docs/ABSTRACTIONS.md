@@ -240,6 +240,7 @@ Tolaria separates **display title** from the file identifier:
 - **Display title resolution** (`extract_title` in `vault/parsing.rs`): first `# H1` on the first non-empty body line, then legacy frontmatter `title:`, then slug-to-title from the filename stem.
 - **Opening a note is read-only**: selecting a note does not inject or auto-correct `title:` frontmatter.
 - **Explicit filename actions** (`rename_note`): breadcrumb rename/sync actions stage crash-safe note renames through a hidden `.tolaria-rename-txn/` transaction directory, recover unfinished renames on the next vault scan, update wikilinks across the vault, and surface any failed backlink rewrites instead of silently reporting partial success. The editor body remains the title editing surface.
+- **Portable filename validation** (`vault/filename_rules.rs`): note filenames, folder names, and custom view filenames all reject Windows-reserved device names, invalid characters, and trailing dot/space suffixes so a vault created on macOS/Linux still clones and syncs cleanly on Windows.
 - **Untitled drafts** start as `untitled-*.md` and are auto-renamed on save once the note gains an H1.
 
 ### Title Surface (UI)
@@ -692,5 +693,5 @@ Managed by `useSettings` hook and `SettingsPanel` component. `default_ai_agent` 
 
 ### CI/CD
 - **`.github/workflows/release.yml`** — Alpha prereleases from every push to `main` using calendar-semver technical versions (`YYYY.M.D-alpha.N`) and clean `Alpha YYYY.M.D.N` release names. GitHub alpha tags zero-pad the prerelease sequence (`alpha-vYYYY.M.D-alpha.NNNN`) so GitHub release ordering stays chronological while the shipped app version remains `YYYY.M.D-alpha.N`. Publishes `alpha/latest.json` and refreshes the legacy `latest.json` / `latest-canary.json` aliases to the alpha feed.
-- **`.github/workflows/release-stable.yml`** — Stable releases from `stable-vYYYY.M.D` tags. Publishes `stable/latest.json`, macOS Apple Silicon artifacts, and Linux x86_64 `.deb` / AppImage artifacts.
+- **`.github/workflows/release-stable.yml`** — Stable releases from `stable-vYYYY.M.D` tags. Publishes `stable/latest.json`, macOS Apple Silicon artifacts, Windows x64 installers/updater bundles, and Linux x86_64 `.deb` / AppImage artifacts.
 - **Beta cohorts** are handled in PostHog targeting only. There is no beta updater feed.

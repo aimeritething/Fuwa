@@ -25,12 +25,19 @@ import {
 import { DISABLED_STYLE, ICON_STYLE, SEP_STYLE } from './styles'
 import type { VaultOption } from './types'
 import { VaultMenu } from './VaultMenu'
+import { formatShortcutDisplay } from '../../hooks/appCommandCatalog'
 
 const UPDATE_TOOLTIP = { label: 'Check for updates' } as const
-const ZOOM_RESET_TOOLTIP = { label: 'Reset the zoom level', shortcut: '⌘0' } as const
+const ZOOM_RESET_TOOLTIP = {
+  label: 'Reset the zoom level',
+  shortcut: formatShortcutDisplay({ display: '⌘0' }),
+} as const
 const FEEDBACK_TOOLTIP = { label: 'Contribute to Tolaria' } as const
 const NOTIFICATIONS_TOOLTIP = { label: 'Notifications are coming soon' } as const
-const SETTINGS_TOOLTIP = { label: 'Open settings', shortcut: '⌘,' } as const
+const SETTINGS_TOOLTIP = {
+  label: 'Open settings',
+  shortcut: formatShortcutDisplay({ display: '⌘,' }),
+} as const
 
 interface StatusBarPrimarySectionProps {
   modifiedCount: number

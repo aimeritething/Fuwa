@@ -430,7 +430,14 @@ function parsePublishedTimestamp(value: unknown): number {
 }
 
 function isDownloadableAsset(name: string): boolean {
-  return name.endsWith('.dmg') || name.endsWith('.app.tar.gz') || name.endsWith('.zip')
+  return (
+    name.endsWith('.dmg')
+    || name.endsWith('.app.tar.gz')
+    || name.endsWith('-setup.exe')
+    || name.endsWith('.msi')
+    || name.endsWith('.AppImage')
+    || name.endsWith('.deb')
+  )
 }
 
 function normalizeDownloads(assets: ReleaseAssetPayload[] | undefined): ReleaseDownload[] {

@@ -134,3 +134,5 @@ proposed → active → superseded
 | [0076](0076-note-retargeting-separates-type-and-folder-moves.md) | Note retargeting separates type changes from folder moves | active |
 | [0077](0077-concurrent-safe-vault-cache-replacement.md) | Concurrent-safe vault cache replacement | active |
 | [0078](0078-scoped-unsigned-fallback-for-app-managed-git-commits.md) | Scoped unsigned fallback for app-managed git commits | active |
+| [0079](0079-linux-window-chrome-and-menu-reuse.md) | Linux window chrome and menu reuse | active |
+| [0080](0080-cross-platform-desktop-release-artifacts-and-portable-vault-names.md) | Cross-platform desktop release artifacts and portable vault names | active |

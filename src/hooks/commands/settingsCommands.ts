@@ -1,3 +1,4 @@
+import { APP_COMMAND_IDS, getAppCommandShortcutDisplay } from '../appCommandCatalog'
 import type { CommandAction } from './types'
 import { rememberFeedbackDialogOpener } from '../../lib/feedbackDialogOpener'
 
@@ -23,7 +24,7 @@ function buildPrimarySettingsCommands({
   onCheckForUpdates,
 }: Pick<SettingsCommandsConfig, 'onOpenSettings' | 'onOpenFeedback' | 'onCheckForUpdates'>): CommandAction[] {
   return [
-    { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: '⌘,', keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
+    { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.appSettings), keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
     {
       id: 'open-h1-auto-rename-setting',
       label: 'Open H1 Auto-Rename Setting',
