@@ -595,7 +595,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `cache.rs` | Git-based incremental vault caching (`scan_vault_cached`), git helpers |
 | `filename_rules.rs` | Cross-platform validation for note filenames, folder names, and custom view filenames |
 | `rename.rs` | `rename_note` / `rename_note_filename` / `move_note_to_folder` — stage crash-safe file moves, update `title` frontmatter when needed, recover unfinished rename transactions, and report backlink rewrite failures |
-| `image.rs` | `save_image` — saves base64-encoded attachments with sanitized filenames |
+| `image.rs` | `save_image` / `copy_image_to_vault` — save editor image attachments with sanitized filenames |
 | `migration.rs` | `flatten_vault`, `vault_health_check`, `migrate_is_a_to_type` |
 | `config_seed.rs` | Maintains vault AI guidance (`AGENTS.md` + `CLAUDE.md` shim), migrates legacy `config/agents.md`, and repairs missing root type scaffolding such as `type.md` and `note.md` |
 | `getting_started.rs` | Clones and normalizes the public Getting Started starter vault |
@@ -713,8 +713,8 @@ The desktop MCP WebSocket bridge is intentionally local-only. `mcp-server/ws-bri
 | `save_vault_config` | Save per-vault UI config |
 | `get_default_vault_path` | Get default vault path |
 | `get_build_number` | Get app build number |
-| `save_image` | Save base64 image to vault |
-| `copy_image_to_vault` | Copy image file to vault |
+| `save_image` | Save base64 image to `attachments/` and refresh the active vault asset scope |
+| `copy_image_to_vault` | Copy image file to `attachments/` and refresh the active vault asset scope |
 | `update_menu_state` | Update native menu checkmarks and enabled/disabled state for selection-dependent actions |
 | `trigger_menu_command` | Emit a native menu command ID for deterministic shortcut QA |
 | `update_current_window_min_size` | Update the active Tauri window's minimum size and optionally grow it to fit restored panes |
