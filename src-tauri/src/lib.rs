@@ -112,7 +112,9 @@ fn setup_linux_window_chrome(_app: &mut tauri::App) -> Result<(), Box<dyn std::e
     Ok(())
 }
 
+#[cfg(any(test, all(desktop, target_os = "macos")))]
 const MACOS_WEBVIEW_RESERVED_COMMAND_KEYS: &[&str] = &["O"];
+#[cfg(any(test, all(desktop, target_os = "macos")))]
 const MACOS_WEBVIEW_RESERVED_COMMAND_SHIFT_KEYS: &[&str] = &["L"];
 
 #[cfg(all(desktop, target_os = "macos"))]
