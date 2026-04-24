@@ -509,17 +509,17 @@ jobs:
           ARM_TARBALL=$(basename "$ARM_UPDATER_FILE")
           ARM_DMG=$(basename "$(find_required "dmg-aarch64/*.dmg")")
 
-          LINUX_SIG_FILE=$(find_required "linux-x86_64-bundles/*.AppImage.sig" "linux-x86_64-bundles/*.AppImage.tar.gz.sig")
+          LINUX_SIG_FILE=$(find_required "linux-x86_64-bundles/*/*.AppImage.sig" "linux-x86_64-bundles/*/*.AppImage.tar.gz.sig" "linux-x86_64-bundles/*.AppImage.sig" "linux-x86_64-bundles/*.AppImage.tar.gz.sig")
           LINUX_UPDATER_FILE="${LINUX_SIG_FILE%.sig}"
           LINUX_SIG=$(cat "$LINUX_SIG_FILE")
           LINUX_UPDATER=$(basename "$LINUX_UPDATER_FILE")
-          LINUX_DOWNLOAD=$(basename "$(find_required "linux-x86_64-bundles/*.AppImage" "linux-x86_64-bundles/*.deb" "linux-x86_64-bundles/*.AppImage.tar.gz")")
+          LINUX_DOWNLOAD=$(basename "$(find_required "linux-x86_64-bundles/*/*.AppImage" "linux-x86_64-bundles/*/*.deb" "linux-x86_64-bundles/*/*.AppImage.tar.gz" "linux-x86_64-bundles/*.AppImage" "linux-x86_64-bundles/*.deb" "linux-x86_64-bundles/*.AppImage.tar.gz")")
 
-          WINDOWS_SIG_FILE=$(find_required "windows-x86_64-bundles/*-setup.exe.sig" "windows-x86_64-bundles/*.msi.sig" "windows-x86_64-bundles/*.nsis.zip.sig" "windows-x86_64-bundles/*.msi.zip.sig")
+          WINDOWS_SIG_FILE=$(find_required "windows-x86_64-bundles/*/*-setup.exe.sig" "windows-x86_64-bundles/*/*.msi.sig" "windows-x86_64-bundles/*/*.nsis.zip.sig" "windows-x86_64-bundles/*/*.msi.zip.sig" "windows-x86_64-bundles/*-setup.exe.sig" "windows-x86_64-bundles/*.msi.sig" "windows-x86_64-bundles/*.nsis.zip.sig" "windows-x86_64-bundles/*.msi.zip.sig")
           WINDOWS_UPDATER_FILE="${WINDOWS_SIG_FILE%.sig}"
           WINDOWS_SIG=$(cat "$WINDOWS_SIG_FILE")
           WINDOWS_UPDATER=$(basename "$WINDOWS_UPDATER_FILE")
-          WINDOWS_DOWNLOAD=$(basename "$(find_required "windows-x86_64-bundles/*-setup.exe" "windows-x86_64-bundles/*.msi" "windows-x86_64-bundles/*.nsis.zip" "windows-x86_64-bundles/*.msi.zip")")
+          WINDOWS_DOWNLOAD=$(basename "$(find_required "windows-x86_64-bundles/*/*-setup.exe" "windows-x86_64-bundles/*/*.msi" "windows-x86_64-bundles/*/*.nsis.zip" "windows-x86_64-bundles/*/*.msi.zip" "windows-x86_64-bundles/*-setup.exe" "windows-x86_64-bundles/*.msi" "windows-x86_64-bundles/*.nsis.zip" "windows-x86_64-bundles/*.msi.zip")")
 
           cat > stable-latest.json << EOF
           {
@@ -563,12 +563,22 @@ jobs:
             linux-x86_64-bundles/*.AppImage
             linux-x86_64-bundles/*.AppImage.tar.gz
             linux-x86_64-bundles/*.AppImage.tar.gz.sig
+            linux-x86_64-bundles/*/*.deb
+            linux-x86_64-bundles/*/*.AppImage
+            linux-x86_64-bundles/*/*.AppImage.tar.gz
+            linux-x86_64-bundles/*/*.AppImage.tar.gz.sig
             windows-x86_64-bundles/*.exe
             windows-x86_64-bundles/*.exe.sig
             windows-x86_64-bundles/*.msi
             windows-x86_64-bundles/*.msi.sig
             windows-x86_64-bundles/*.zip
             windows-x86_64-bundles/*.zip.sig
+            windows-x86_64-bundles/*/*.exe
+            windows-x86_64-bundles/*/*.exe.sig
+            windows-x86_64-bundles/*/*.msi
+            windows-x86_64-bundles/*/*.msi.sig
+            windows-x86_64-bundles/*/*.zip
+            windows-x86_64-bundles/*/*.zip.sig
             stable-latest.json
 
   # ─────────────────────────────────────────────────────────────

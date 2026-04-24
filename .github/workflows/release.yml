@@ -494,11 +494,11 @@ jobs:
           ARM_SIG=$(cat "$ARM_SIG_FILE")
           ARM_UPDATER=$(basename "$ARM_UPDATER_FILE")
 
-          WINDOWS_SIG_FILE=$(find_required "windows-x86_64-bundles/*-setup.exe.sig" "windows-x86_64-bundles/*.msi.sig" "windows-x86_64-bundles/*.nsis.zip.sig" "windows-x86_64-bundles/*.msi.zip.sig")
+          WINDOWS_SIG_FILE=$(find_required "windows-x86_64-bundles/*/*-setup.exe.sig" "windows-x86_64-bundles/*/*.msi.sig" "windows-x86_64-bundles/*/*.nsis.zip.sig" "windows-x86_64-bundles/*/*.msi.zip.sig" "windows-x86_64-bundles/*-setup.exe.sig" "windows-x86_64-bundles/*.msi.sig" "windows-x86_64-bundles/*.nsis.zip.sig" "windows-x86_64-bundles/*.msi.zip.sig")
           WINDOWS_UPDATER_FILE="${WINDOWS_SIG_FILE%.sig}"
           WINDOWS_SIG=$(cat "$WINDOWS_SIG_FILE")
           WINDOWS_UPDATER=$(basename "$WINDOWS_UPDATER_FILE")
-          WINDOWS_DOWNLOAD=$(basename "$(find_required "windows-x86_64-bundles/*-setup.exe" "windows-x86_64-bundles/*.msi" "windows-x86_64-bundles/*.nsis.zip" "windows-x86_64-bundles/*.msi.zip")")
+          WINDOWS_DOWNLOAD=$(basename "$(find_required "windows-x86_64-bundles/*/*-setup.exe" "windows-x86_64-bundles/*/*.msi" "windows-x86_64-bundles/*/*.nsis.zip" "windows-x86_64-bundles/*/*.msi.zip" "windows-x86_64-bundles/*-setup.exe" "windows-x86_64-bundles/*.msi" "windows-x86_64-bundles/*.nsis.zip" "windows-x86_64-bundles/*.msi.zip")")
 
           cat > alpha-latest.json << EOF
           {
@@ -538,6 +538,12 @@ jobs:
             windows-x86_64-bundles/*.msi.sig
             windows-x86_64-bundles/*.zip
             windows-x86_64-bundles/*.zip.sig
+            windows-x86_64-bundles/*/*.exe
+            windows-x86_64-bundles/*/*.exe.sig
+            windows-x86_64-bundles/*/*.msi
+            windows-x86_64-bundles/*/*.msi.sig
+            windows-x86_64-bundles/*/*.zip
+            windows-x86_64-bundles/*/*.zip.sig
             alpha-latest.json
 
   # ─────────────────────────────────────────────────────────────
