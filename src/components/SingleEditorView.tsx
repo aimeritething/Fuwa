@@ -141,13 +141,22 @@ function isSelectionInsideElement(element: HTMLElement): boolean {
   return Boolean(anchorElement && element.contains(anchorElement))
 }
 
+const TITLE_HEADING_SELECTOR = 'h1, [data-content-type="heading"][data-level="1"], [data-content-type="heading"]:not([data-level])'
+const TITLE_HEADING_WRAPPER_SELECTOR = '.bn-block-outer, .bn-block'
+
+function findTitleHeadingElement(target: HTMLElement): HTMLElement | null {
+  const directHeading = target.closest<HTMLElement>(TITLE_HEADING_SELECTOR)
+  if (directHeading) return directHeading
+
+  const titleWrapper = target.closest<HTMLElement>(TITLE_HEADING_WRAPPER_SELECTOR)
+  return titleWrapper?.querySelector<HTMLElement>(TITLE_HEADING_SELECTOR) ?? null
+}
+
 function queueTitleHeadingCursorRepair(
   target: HTMLElement,
   editor: ReturnType<typeof useCreateBlockNote>,
 ): boolean {
-  const titleHeading = target.closest<HTMLElement>(
-    'h1, [data-content-type="heading"][data-level="1"], [data-content-type="heading"]:not([data-level])',
-  )
+  const titleHeading = findTitleHeadingElement(target)
   if (!titleHeading) return false
 
   queueMicrotask(() => {

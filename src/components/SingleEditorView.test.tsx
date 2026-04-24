@@ -334,4 +334,44 @@ describe('SingleEditorView', () => {
 
     expect(onChange).toHaveBeenCalledTimes(1)
   })
+
+  it('routes clicks on the empty title wrapper back into the H1 block', async () => {
+    const editor = createEditor()
+
+    render(
+      <SingleEditorView
+        editor={editor as never}
+        entries={[makeEntry()]}
+        onNavigateWikilink={vi.fn()}
+      />,
+    )
+
+    const container = screen.getByTestId('blocknote-view').closest('.editor__blocknote-container')
+    expect(container).toBeTruthy()
+
+    const titleBlockOuter = document.createElement('div')
+    titleBlockOuter.className = 'bn-block-outer'
+
+    const titleBlock = document.createElement('div')
+    titleBlock.className = 'bn-block'
+
+    const titleHeading = document.createElement('div')
+    titleHeading.setAttribute('data-content-type', 'heading')
+    titleHeading.setAttribute('data-level', '1')
+
+    const inlineHeading = document.createElement('div')
+    inlineHeading.className = 'bn-inline-content'
+    titleHeading.appendChild(inlineHeading)
+    titleBlock.appendChild(titleHeading)
+    titleBlockOuter.appendChild(titleBlock)
+    container?.appendChild(titleBlockOuter)
+
+    fireEvent.click(titleBlockOuter)
+    await act(async () => {
+      await Promise.resolve()
+    })
+
+    expect(editor.setTextCursorPosition).toHaveBeenCalledWith('heading-block', 'end')
+    expect(editor.focus).toHaveBeenCalled()
+  })
 })
