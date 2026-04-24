@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import type { VaultEntry } from '../types'
-import { useTabManagement, prefetchNoteContent, cacheNoteContent, clearPrefetchCache } from './useTabManagement'
+import {
+  useTabManagement,
+  prefetchNoteContent,
+  cacheNoteContent,
+  clearPrefetchCache,
+  NOTE_CONTENT_CACHE_MAX_BYTES,
+  NOTE_CONTENT_ENTRY_MAX_BYTES,
+} from './useTabManagement'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
 vi.mock('../mock-tauri', () => ({
@@ -67,6 +74,28 @@ function createDeferred<T>() {
     resolve = res
   })
   return { promise, resolve }
+}
+
+function makeAsciiContent(byteCount: number): string {
+  return 'x'.repeat(byteCount)
+}
+
+function seedCacheBeyondByteLimit() {
+  const cachedContent = makeAsciiContent(Math.floor(NOTE_CONTENT_ENTRY_MAX_BYTES * 0.9))
+  const cachedPaths = Array.from(
+    { length: Math.floor(NOTE_CONTENT_CACHE_MAX_BYTES / cachedContent.length) + 2 },
+    (_, index) => `/vault/note/cached-${index + 1}.md`,
+  )
+
+  for (const path of cachedPaths) {
+    cacheNoteContent(path, cachedContent)
+  }
+
+  return {
+    cachedContent,
+    oldestPath: cachedPaths[0],
+    newestPath: cachedPaths[cachedPaths.length - 1],
+  }
 }
 
 describe('useTabManagement (single-note model)', () => {
@@ -414,6 +443,75 @@ describe('useTabManagement (single-note model)', () => {
 
       await act(async () => {
         deferred.resolve('# Warm content')
+        await Promise.resolve()
+      })
+    })
+
+    it('does not retain oversized notes in the prefetch cache', async () => {
+      const largeContent = makeAsciiContent(NOTE_CONTENT_ENTRY_MAX_BYTES + 1)
+      const mockInvoke = await prefetchResolvedContent('/vault/note/oversized.md', largeContent)
+      const deferred = createDeferred<string>()
+      vi.mocked(mockInvoke).mockImplementationOnce(() => deferred.promise)
+
+      const { result } = renderHook(() => useTabManagement())
+
+      act(() => {
+        void result.current.handleSelectNote(makeEntry({ path: '/vault/note/oversized.md', title: 'Oversized' }))
+      })
+
+      expect(result.current.activeTabPath).toBe('/vault/note/oversized.md')
+      expect(result.current.tabs).toEqual([])
+      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(2)
+
+      await act(async () => {
+        deferred.resolve(largeContent)
+        await Promise.resolve()
+      })
+
+      expect(result.current.tabs[0].content).toBe(largeContent)
+    })
+
+    it('evicts the oldest cached notes when retained bytes exceed the cache budget', async () => {
+      const { mockInvoke } = await import('../mock-tauri')
+      const { cachedContent, oldestPath } = seedCacheBeyondByteLimit()
+      const deferred = createDeferred<string>()
+      vi.mocked(mockInvoke).mockImplementationOnce(() => deferred.promise)
+
+      const { result } = renderHook(() => useTabManagement())
+
+      act(() => {
+        void result.current.handleSelectNote(makeEntry({ path: oldestPath, title: 'Oldest cached note' }))
+      })
+
+      expect(result.current.activeTabPath).toBe(oldestPath)
+      expect(result.current.tabs).toEqual([])
+
+      await act(async () => {
+        deferred.resolve(cachedContent)
+        await Promise.resolve()
+      })
+
+      expect(result.current.tabs[0].content).toBe(cachedContent)
+    })
+
+    it('keeps the newest cached notes warm when trimming to the byte budget', async () => {
+      const { mockInvoke } = await import('../mock-tauri')
+      const { cachedContent, newestPath } = seedCacheBeyondByteLimit()
+      const deferred = createDeferred<string>()
+      vi.mocked(mockInvoke).mockImplementationOnce(() => deferred.promise)
+
+      const { result } = renderHook(() => useTabManagement())
+
+      act(() => {
+        void result.current.handleSelectNote(makeEntry({ path: newestPath, title: 'Newest cached note' }))
+      })
+
+      expect(result.current.activeTabPath).toBe(newestPath)
+      expect(result.current.tabs).toHaveLength(1)
+      expect(result.current.tabs[0].content).toBe(cachedContent)
+
+      await act(async () => {
+        deferred.resolve(cachedContent)
         await Promise.resolve()
       })
     })
