@@ -1464,6 +1464,7 @@ function App() {
               inspectorWidth={layout.inspectorWidth}
               defaultAiAgent={aiAgentPreferences.defaultAiAgent}
               defaultAiAgentReady={aiAgentPreferences.defaultAiAgentReady}
+              onUnsupportedAiPaste={setToastMessage}
               onInspectorResize={layout.handleInspectorResize}
               inspectorEntry={activeTab?.entry ?? null}
               inspectorContent={activeTab?.content ?? null}
