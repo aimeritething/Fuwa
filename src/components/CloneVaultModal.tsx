@@ -16,7 +16,7 @@ type CloneStatus = 'idle' | 'cloning' | 'error'
 type CloneAttemptResult =
   | { ok: true }
   | { ok: false; errorMessage: string }
-interface CloneRequest {
+type CloneRequest = Record<string, unknown> & {
   url: string
   localPath: string
 }
