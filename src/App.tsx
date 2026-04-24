@@ -74,7 +74,7 @@ import { DeleteProgressNotice } from './components/DeleteProgressNotice'
 import { UpdateBanner } from './components/UpdateBanner'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
-import type { Settings, SidebarSelection, InboxPeriod, VaultEntry, ViewDefinition } from './types'
+import type { SidebarSelection, InboxPeriod, VaultEntry, ViewDefinition } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { initializeNoteProperties } from './utils/initializeNoteProperties'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
@@ -1103,23 +1103,6 @@ function App() {
     }
   }, [refreshVaultAiGuidance, resolvedPath, vault, setToastMessage])
 
-  const handleSaveSettings = useCallback((nextSettings: Settings) => {
-    void (async () => {
-      const saved = await saveSettings(nextSettings)
-      if (!saved) return
-
-      const guidancePreferenceChanged = (
-        settings.default_resource_note_skill_enabled ?? false
-      ) !== (
-        nextSettings.default_resource_note_skill_enabled ?? false
-      )
-
-      if (guidancePreferenceChanged) {
-        await restoreVaultAiGuidance('Tolaria AI guidance updated')
-      }
-    })()
-  }, [restoreVaultAiGuidance, saveSettings, settings.default_resource_note_skill_enabled])
-
   const activeDeletedFile = useMemo(() => {
     const activeTabPath = notes.activeTabPath
     if (!activeTabPath) return null
@@ -1240,9 +1223,9 @@ function App() {
       ? getNextVisibleInboxEntry(visibleNotesRef.current, path)
       : null
 
-    await entryActions.handleToggleOrganized(path)
+    const organized = await entryActions.handleToggleOrganized(path)
 
-    if (nextVisibleInboxEntry) {
+    if (organized && nextVisibleInboxEntry) {
       void notes.handleSelectNote(nextVisibleInboxEntry)
     }
   }, [effectiveSelection, entryActions, notes, settings.auto_advance_inbox_after_organize, vault.entries])
@@ -1550,7 +1533,7 @@ function App() {
           onCommit={conflictResolver.commitResolution}
           onClose={conflictFlow.handleCloseConflictResolver}
         />
-        <SettingsPanel open={dialogs.showSettings} settings={settings} aiAgentsStatus={aiAgentsStatus} isGitVault={isGitVault} onSave={handleSaveSettings} explicitOrganizationEnabled={explicitOrganizationEnabled} onSaveExplicitOrganization={handleSaveExplicitOrganization} onClose={dialogs.closeSettings} />
+        <SettingsPanel open={dialogs.showSettings} settings={settings} aiAgentsStatus={aiAgentsStatus} isGitVault={isGitVault} onSave={saveSettings} explicitOrganizationEnabled={explicitOrganizationEnabled} onSaveExplicitOrganization={handleSaveExplicitOrganization} onClose={dialogs.closeSettings} />
         <FeedbackDialog open={showFeedback} onClose={closeFeedback} />
         <McpSetupDialog open={showMcpSetupDialog} status={mcpStatus} busyAction={mcpDialogAction} onClose={closeMcpSetupDialog} onConnect={handleConnectMcp} onDisconnect={handleDisconnectMcp} />
         <CloneVaultModal key={dialogs.showCloneVault ? 'clone-open' : 'clone-closed'} open={dialogs.showCloneVault} onClose={dialogs.closeCloneVault} onVaultCloned={vaultSwitcher.handleVaultCloned} />
