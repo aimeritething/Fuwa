@@ -37,9 +37,13 @@ vi.mock('./hooks/appCommandDispatcher', () => ({
   isAppCommandId: (id: string) => id === 'known-command',
   isNativeMenuCommandId: (id: string) => id === 'native-command',
 }))
-vi.mock('./hooks/appCommandCatalog', () => ({
-  getShortcutEventInit: mocks.getShortcutEventInit,
-}))
+vi.mock('./hooks/appCommandCatalog', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('./hooks/appCommandCatalog')>()
+  return {
+    ...actual,
+    getShortcutEventInit: mocks.getShortcutEventInit,
+  }
+})
 
 async function importEntrypoint() {
   await import('./main')

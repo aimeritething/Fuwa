@@ -8,6 +8,27 @@ How to navigate the codebase, run the app, and find what you need.
 - **Rust** 1.77.2+ (for the Tauri backend)
 - **git** CLI (required by the git integration features)
 
+### Linux system dependencies
+
+If you run the desktop app on Linux, install Tauri's WebKit2GTK 4.1 dependencies first:
+
+- Arch / Manjaro:
+  ```bash
+  sudo pacman -S --needed webkit2gtk-4.1 base-devel curl wget file openssl \
+    appmenu-gtk-module libappindicator-gtk3 librsvg
+  ```
+- Debian / Ubuntu (22.04+):
+  ```bash
+  sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file \
+    libxdo-dev libssl-dev libayatana-appindicator3-dev librsvg2-dev \
+    libsoup-3.0-dev patchelf
+  ```
+- Fedora 38+:
+  ```bash
+  sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file \
+    libappindicator-gtk3-devel librsvg2-devel
+  ```
+
 ## Quick Start
 
 ```bash
@@ -68,6 +89,8 @@ tolaria/
 │   │   ├── CommandPalette.tsx    # Cmd+K command launcher
 │   │   ├── BreadcrumbBar.tsx     # Breadcrumb + word count + actions
 │   │   ├── WelcomeScreen.tsx     # Onboarding screen
+│   │   ├── LinuxTitlebar.tsx     # Linux-only custom window chrome + controls
+│   │   ├── LinuxMenuButton.tsx   # Linux titlebar menu mirroring app commands
 │   │   ├── CloneVaultModal.tsx   # Clone a vault from any git URL
 │   │   ├── AddRemoteModal.tsx    # Connect a local-only vault to a remote later
 │   │   ├── ConflictResolverModal.tsx # Git conflict resolution
@@ -118,6 +141,7 @@ tolaria/
 │   ├── utils/                    # Pure utility functions (~48 files)
 │   │   ├── wikilinks.ts          # Wikilink preprocessing pipeline
 │   │   ├── frontmatter.ts        # TypeScript YAML parser
+│   │   ├── platform.ts           # Runtime platform + Linux chrome gating helpers
 │   │   ├── ai-agent.ts           # Agent stream utilities
 │   │   ├── ai-chat.ts            # Token estimation utilities
 │   │   ├── ai-context.ts         # Context snapshot builder
@@ -311,7 +335,7 @@ type SidebarSelection =
 
 ### Command Registry
 
-`useCommandRegistry` + `useAppCommands` build a centralized command registry. Commands are registered with labels, shortcuts, and handlers. The `CommandPalette` (Cmd+K) fuzzy-searches this registry. Shortcut combos live in `appCommandCatalog.ts`; real keypresses always flow through `useAppKeyboard`, native menu clicks emit the same command IDs through `useMenuEvents`, and `appCommandDispatcher.ts` suppresses the duplicate native/renderer echo from a single shortcut. On macOS, any browser-reserved chord that WKWebView swallows before that path must also be added to the narrow `tauri-plugin-prevent-default` registration in `src-tauri/src/lib.rs`. The same shortcut manifest also declares the deterministic QA mode for each shortcut-capable command.
+`useCommandRegistry` + `useAppCommands` build a centralized command registry. Commands are registered with labels, shortcuts, and handlers. The `CommandPalette` (Cmd+K) fuzzy-searches this registry. Shortcut combos live in `appCommandCatalog.ts`; real keypresses always flow through `useAppKeyboard`, native menu clicks emit the same command IDs through `useMenuEvents`, and `appCommandDispatcher.ts` suppresses the duplicate native/renderer echo from a single shortcut. On macOS, any browser-reserved chord that WKWebView swallows before that path must also be added to the narrow `tauri-plugin-prevent-default` registration in `src-tauri/src/lib.rs`. On Linux, `LinuxTitlebar.tsx` and `LinuxMenuButton.tsx` reuse the same command IDs through `trigger_menu_command` because the native GTK menu bar is intentionally not mounted. The same shortcut manifest also declares the deterministic QA mode for each shortcut-capable command.
 
 Commands whose availability depends on the current note or Git state must also flow through `update_menu_state` so the native menu stays in sync with the command palette. The deleted-note restore action in Changes view is the reference example: the row opens a deleted diff preview, the command palette exposes "Restore Deleted Note", and the Note menu enables the same action only while that preview is active.
 

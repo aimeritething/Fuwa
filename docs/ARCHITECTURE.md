@@ -185,6 +185,8 @@ Panels are separated by `ResizeHandle` components that support drag-to-resize.
 
 The main Tauri window derives its minimum width from the visible panes instead of a single fixed floor. `useMainWindowSizeConstraints` treats the editor-only shell as the 480px baseline, adds sidebar / note-list / expanded-inspector allowances on top, and calls the native `update_current_window_min_size` command whenever view mode or inspector visibility changes. That same native command also grows the current window back out when a wider pane combination is restored, while note windows skip this path and keep their dedicated 800×700 initial sizing.
 
+Linux uses custom React-rendered window chrome instead of the native Tauri menu bar. `setup_linux_window_chrome()` drops server-side decorations on the main window, `openNoteInNewWindow()` does the same for detached note windows, and `LinuxTitlebar`/`LinuxMenuButton` route both window controls and menu actions back through the same shared command pipeline that macOS uses for native menu clicks.
+
 ## Multi-Window (Note Windows)
 
 Notes can be opened in separate Tauri windows for focused editing. Secondary windows show only the editor panel (no sidebar, no note list).
@@ -200,7 +202,7 @@ Notes can be opened in separate Tauri windows for focused editing. Secondary win
 - `main.tsx` checks `isNoteWindow()` at boot to route between `App` (main window) and `NoteWindow` (secondary window)
 - `NoteWindow` (`src/NoteWindow.tsx`) is a minimal shell that loads vault entries, fetches note content, applies the theme, and renders a single `Editor` instance
 - Each window has its own auto-save via `useEditorSaveWithLinks` (same 500ms debounce, same Rust `save_note_content` command), and raw-editor typing also derives frontmatter-backed `VaultEntry` state in the renderer so Inspector and note-list surfaces react immediately without waiting for a full reload
-- Secondary windows are sized 800×700 with overlay title bar
+- Secondary windows are sized 800×700; macOS keeps the overlay title bar, while Linux mounts the shared React titlebar on undecorated windows
 - Capabilities config (`src-tauri/capabilities/default.json`) grants permissions to both `main` and `note-*` window labels
 
 ## AI System
@@ -611,7 +613,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `settings.rs` | App settings persistence |
 | `vault_config.rs` | Per-vault UI config |
 | `vault_list.rs` | Vault list persistence |
-| `menu.rs` | Native macOS menu bar |
+| `menu.rs` | Native desktop menu definitions and command IDs (not mounted on Linux) |
 
 ## Tauri IPC Commands
 
@@ -782,7 +784,7 @@ Shortcut routing is explicit:
 - `appCommandCatalog.ts` is the shared shortcut manifest for command IDs, modifier rules, and deterministic QA metadata
 - `useAppKeyboard` is the primary execution path for real shortcut keypresses, including Tauri runs
 - macOS browser-reserved chords such as `Cmd+O` and `Cmd+Shift+L` are unblocked at webview init via `tauri-plugin-prevent-default`, then continue through the same renderer-first command path
-- `menu.rs` and `useMenuEvents` emit the same command IDs for native menu clicks and accelerators
+- `menu.rs`, `useMenuEvents`, and Linux's `LinuxMenuButton` emit the same command IDs for native menu clicks, accelerators, and custom titlebar menu actions
 - `appCommandDispatcher.ts` suppresses the paired native-menu/renderer echo from a single shortcut so the command runs once
 - Deterministic QA uses two explicit proof paths from the shared manifest:
   - renderer shortcut-event proof through `window.__laputaTest.triggerShortcutCommand()`
@@ -804,6 +806,9 @@ push to main
   → build job:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin --bundles app
       → upload signed .app.tar.gz + .sig updater artifacts
+  → build-linux job:
+      → pnpm install, stamp version, tauri build --target x86_64-unknown-linux-gnu --bundles deb,appimage
+      → upload .deb, .AppImage, and signed updater tarball artifacts for manual download
   → release job:
       → generate alpha-latest.json
       → publish GitHub prerelease alpha-vYYYY.M.D-alpha.NNNN named Tolaria Alpha YYYY.M.D.N

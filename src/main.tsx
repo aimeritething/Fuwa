@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import './index.css'
 import App from './App.tsx'
+import { LinuxTitlebar } from './components/LinuxTitlebar'
 import {
   APP_COMMAND_EVENT_NAME,
   isAppCommandId,
@@ -14,6 +15,7 @@ import {
   type AppCommandShortcutEventInit,
   type AppCommandShortcutEventOptions,
 } from './hooks/appCommandCatalog'
+import { shouldUseLinuxWindowChrome } from './utils/platform'
 
 // Disable native WebKit context menu in Tauri (WKWebView intercepts right-click
 // at native level before React's synthetic events can call preventDefault).
@@ -21,6 +23,10 @@ import {
 // → our custom context menus (e.g. sidebar right-click) work correctly.
 if ('__TAURI__' in window || '__TAURI_INTERNALS__' in window) {
   document.addEventListener('contextmenu', (e) => e.preventDefault(), true)
+}
+
+if (shouldUseLinuxWindowChrome()) {
+  document.body.classList.add('linux-chrome')
 }
 
 function dispatchDeterministicShortcutEvent(init: AppCommandShortcutEventInit) {
@@ -89,6 +95,7 @@ createRoot(document.getElementById('root')!, {
 }).render(
   <StrictMode>
     <TooltipProvider>
+      <LinuxTitlebar />
       <App />
     </TooltipProvider>
   </StrictMode>,

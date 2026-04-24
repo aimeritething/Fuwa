@@ -204,7 +204,7 @@ export const APP_COMMAND_DEFINITIONS: Record<AppCommandId, AppCommandDefinition>
   [APP_COMMAND_IDS.viewToggleAiChat]: {
     route: { kind: 'handler', handler: 'onToggleAIChat' },
     menuOwned: true,
-    shortcut: { combo: 'command-shift', key: 'l', code: 'KeyL', display: '⌘⇧L' },
+    shortcut: { combo: 'command-or-ctrl-shift', key: 'l', code: 'KeyL', display: '⌘⇧L' },
   },
   [APP_COMMAND_IDS.viewToggleBacklinks]: {
     route: { kind: 'handler', handler: 'onToggleInspector' },
