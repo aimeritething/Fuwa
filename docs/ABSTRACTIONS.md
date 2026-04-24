@@ -692,5 +692,5 @@ Managed by `useSettings` hook and `SettingsPanel` component. `default_ai_agent` 
 
 ### CI/CD
 - **`.github/workflows/release.yml`** — Alpha prereleases from every push to `main` using calendar-semver technical versions (`YYYY.M.D-alpha.N`) and clean `Alpha YYYY.M.D.N` release names. GitHub alpha tags zero-pad the prerelease sequence (`alpha-vYYYY.M.D-alpha.NNNN`) so GitHub release ordering stays chronological while the shipped app version remains `YYYY.M.D-alpha.N`. Publishes `alpha/latest.json` and refreshes the legacy `latest.json` / `latest-canary.json` aliases to the alpha feed.
-- **`.github/workflows/release-stable.yml`** — Stable releases from `stable-vYYYY.M.D` tags. Publishes `stable/latest.json`.
+- **`.github/workflows/release-stable.yml`** — Stable releases from `stable-vYYYY.M.D` tags. Publishes `stable/latest.json`, macOS Apple Silicon artifacts, and Linux x86_64 `.deb` / AppImage artifacts.
 - **Beta cohorts** are handled in PostHog targeting only. There is no beta updater feed.

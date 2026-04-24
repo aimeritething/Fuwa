@@ -806,9 +806,6 @@ push to main
   → build job:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin --bundles app
       → upload signed .app.tar.gz + .sig updater artifacts
-  → build-linux job:
-      → pnpm install, stamp version, tauri build --target x86_64-unknown-linux-gnu --bundles deb,appimage
-      → upload .deb, .AppImage, and signed updater tarball artifacts for manual download
   → release job:
       → generate alpha-latest.json
       → publish GitHub prerelease alpha-vYYYY.M.D-alpha.NNNN named Tolaria Alpha YYYY.M.D.N
@@ -828,8 +825,11 @@ push stable-vYYYY.M.D tag
   → build job:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin
       → upload signed .app.tar.gz + .sig and .dmg artifacts
+  → build-linux job:
+      → pnpm install, stamp version, tauri build --target x86_64-unknown-linux-gnu --bundles deb,appimage
+      → upload .deb, .AppImage, and signed AppImage updater tarball artifacts
   → release job:
-      → generate stable-latest.json with both updater tarball and current stable DMG URLs
+      → generate stable-latest.json with macOS and Linux updater URLs plus manual download URLs
       → publish GitHub release Tolaria YYYY.M.D
   → pages job:
       → publish stable/latest.json
