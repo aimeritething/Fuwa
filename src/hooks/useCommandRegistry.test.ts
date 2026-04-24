@@ -328,12 +328,13 @@ describe('useCommandRegistry', () => {
     expect(findCommand(result.current, 'open-daily-note')).toBeUndefined()
   })
 
-  it('includes Give Feedback in the Settings group when available', () => {
+  it('includes Contribute in the Settings group when available', () => {
     const onOpenFeedback = vi.fn()
     const config = makeConfig({ onOpenFeedback })
     const { result } = renderHook(() => useCommandRegistry(config))
-    const cmd = findCommand(result.current, 'give-feedback')
+    const cmd = findCommand(result.current, 'open-contribute')
     expect(cmd).toBeDefined()
+    expect(cmd!.label).toBe('Contribute')
     expect(cmd!.group).toBe('Settings')
     expect(cmd!.enabled).toBe(true)
 

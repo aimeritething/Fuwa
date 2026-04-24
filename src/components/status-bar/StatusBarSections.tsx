@@ -6,6 +6,7 @@ import type { ClaudeCodeStatus } from '../../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../../hooks/useMcpStatus'
 import { useStatusBarAddRemote } from '../../hooks/useStatusBarAddRemote'
 import type { GitRemoteStatus, SyncStatus } from '../../types'
+import { rememberFeedbackDialogOpener } from '../../lib/feedbackDialogOpener'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { AiAgentsBadge } from './AiAgentsBadge'
 import { AddRemoteModal } from '../AddRemoteModal'
@@ -27,7 +28,7 @@ import { VaultMenu } from './VaultMenu'
 
 const UPDATE_TOOLTIP = { label: 'Check for updates' } as const
 const ZOOM_RESET_TOOLTIP = { label: 'Reset the zoom level', shortcut: '⌘0' } as const
-const FEEDBACK_TOOLTIP = { label: 'Share feedback' } as const
+const FEEDBACK_TOOLTIP = { label: 'Contribute to Tolaria' } as const
 const NOTIFICATIONS_TOOLTIP = { label: 'Notifications are coming soon' } as const
 const SETTINGS_TOOLTIP = { label: 'Open settings', shortcut: '⌘,' } as const
 
@@ -227,12 +228,15 @@ export function StatusBarSecondarySection({
             variant="ghost"
             size="xs"
             className="h-6 px-2 text-[11px] font-medium text-muted-foreground hover:text-foreground"
-            onClick={onOpenFeedback}
+            onClick={(event) => {
+              rememberFeedbackDialogOpener(event.currentTarget)
+              onOpenFeedback()
+            }}
             aria-label={FEEDBACK_TOOLTIP.label}
             data-testid="status-feedback"
           >
             <Megaphone size={14} />
-            Feedback
+            Contribute
           </Button>
         </ActionTooltip>
       )}
