@@ -9,6 +9,7 @@ import {
 } from '@blocknote/react'
 import { components } from '@blocknote/mantine'
 import { MantineContext, MantineProvider } from '@mantine/core'
+import { useDocumentThemeMode } from '../hooks/useDocumentThemeMode'
 import { useEditorTheme } from '../hooks/useTheme'
 import { useImageDrop } from '../hooks/useImageDrop'
 import { buildTypeEntryMap } from '../utils/typeColors'
@@ -331,6 +332,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   editable?: boolean
 }) {
   const { cssVars } = useEditorTheme()
+  const themeMode = useDocumentThemeMode()
   const containerRef = useRef<HTMLDivElement>(null)
   const handleContainerClick = useEditorContainerClickHandler({ editable, editor })
   const handleEditorChange = useCompositionAwareEditorChange({ containerRef, onChange })
@@ -369,7 +371,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
       )}
       <SharedContextBlockNoteView
         editor={editor}
-        theme="light"
+        theme={themeMode}
         onChange={handleEditorChange}
         editable={editable}
         formattingToolbar={false}

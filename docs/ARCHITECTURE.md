@@ -406,10 +406,11 @@ flowchart TD
 
 ## Styling
 
-The app uses a single light theme with no user-configurable theming (see [ADR-0013](adr/0013-remove-theming-system.md)).
+The app uses internal app-owned light and dark themes (see [ADR-0081](adr/0081-internal-light-dark-theme-runtime.md)). This is not the old vault-authored theming system from ADR-0013: users choose a mode, but themes are owned by the app.
 
-1. **Global CSS variables** (`src/index.css`): App-wide colors, borders, backgrounds. Bridged to Tailwind v4 via `@theme inline`.
-2. **Editor theme** (`src/theme.json`): BlockNote-specific typography. Flattened to CSS vars by `useEditorTheme`.
+1. **Global CSS variables** (`src/index.css`): Semantic app colors, borders, surfaces, and interaction states. Bridged to Tailwind v4 via `@theme inline`.
+2. **Editor theme** (`src/theme.json`): BlockNote-specific typography. Flattened to CSS vars by `useEditorTheme`; editor colors resolve through the same semantic app variables.
+3. **Theme runtime**: Applies `data-theme` and the shadcn-compatible `.dark` class before React consumers render, with a localStorage mirror to avoid startup flash when dark mode is selected.
 
 ## Vault Management
 
@@ -751,14 +752,14 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `frontmatterOps` | — (pure functions) | Frontmatter CRUD: key→VaultEntry mapping, mock/Tauri dispatch |
 | `useTabManagement` | Navigation history, note switching | Note navigation lifecycle |
 | `useVaultSwitcher` | `vaultPath`, `extraVaults` | Vault switching |
-| `useTheme` | Editor theme CSS vars | Editor typography theme |
+| `useTheme` | Editor theme CSS vars and theme-mode bridge | Editor typography and app theme runtime |
 | `useCliAiAgent` | `messages`, `status`, tool actions | Selected AI agent conversation |
 | `useAutoSync` | Sync interval, pull/push state | Git auto-sync |
 | `useAutoGit` | Last activity timestamp, idle/inactive checkpoint triggers | Automatic commit/push checkpoints |
 | `useCommitFlow` | Commit dialog state, shared manual/automatic checkpoint runner | Git commit/push orchestration |
 | `useGitRemoteStatus` | `remoteStatus`, `refreshRemoteStatus()` | On-demand remote detection for commit UI |
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |
-| `useSettings` | App settings (telemetry, release channel, auto-sync interval, AutoGit thresholds, default AI agent) | Persistent settings |
+| `useSettings` | App settings (telemetry, release channel, theme mode, auto-sync interval, AutoGit thresholds, default AI agent) | Persistent settings |
 | `useVaultConfig` | Per-vault UI preferences | Vault-specific config |
 | `appCommandDispatcher` | Canonical shortcut/menu command IDs | Shared execution path for renderer and native menu commands |
 

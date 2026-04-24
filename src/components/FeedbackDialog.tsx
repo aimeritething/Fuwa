@@ -133,10 +133,17 @@ function LinkFallbackBanner({ linkFallback }: { linkFallback: LinkFallback | nul
   if (!linkFallback) return null
 
   return (
-    <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950">
+    <div
+      className="rounded-lg border px-4 py-3 text-sm"
+      style={{
+        background: 'var(--feedback-warning-bg)',
+        borderColor: 'var(--feedback-warning-border)',
+        color: 'var(--feedback-warning-text)',
+      }}
+    >
       <p className="font-medium">Couldn’t open {linkFallback.label} automatically.</p>
-      <p className="mt-1 text-amber-900">Open this URL manually instead:</p>
-      <p className="mt-2 break-all rounded-md bg-white/80 px-3 py-2 font-mono text-xs">
+      <p className="mt-1">Open this URL manually instead:</p>
+      <p className="mt-2 break-all rounded-md bg-popover px-3 py-2 font-mono text-xs text-foreground">
         {linkFallback.url}
       </p>
     </div>
@@ -171,7 +178,7 @@ function BugReportActions({
         <p className="text-xs font-medium text-foreground">Diagnostics copied.</p>
       ) : null}
       {copyState === 'failed' ? (
-        <p className="text-xs font-medium text-amber-700">
+        <p className="text-xs font-medium text-[var(--feedback-warning-text)]">
           Clipboard access is unavailable right now. You can still open GitHub Issues directly.
         </p>
       ) : null}

@@ -26,6 +26,7 @@ vi.mock('@blocknote/react', () => ({
     slashMenu?: boolean
     sideMenu?: boolean
     onChange?: () => void
+    theme?: string
   }) => {
     const {
       children,
@@ -205,6 +206,8 @@ describe('SingleEditorView', () => {
     state.capturedBlockNoteOnChange = null
     state.imageDropState.isDragOver = false
     state.wikilinkEntriesRef.current = []
+    document.documentElement.removeAttribute('data-theme')
+    document.documentElement.classList.remove('dark')
     delete window.__laputaTest
   })
 
@@ -304,6 +307,22 @@ describe('SingleEditorView', () => {
 
     expect(onWikiItemClick).toHaveBeenCalledOnce()
     expect(onMentionItemClick).toHaveBeenCalledOnce()
+  })
+
+  it('passes the active document theme to BlockNote', () => {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    document.documentElement.classList.add('dark')
+
+    render(
+      <SingleEditorView
+        editor={createEditor() as never}
+        entries={[makeEntry()]}
+        onNavigateWikilink={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('blocknote-view')).toHaveAttribute('theme', 'dark')
+    expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-mantine-color-scheme', 'dark')
   })
 
   it('defers rich-editor change propagation until IME composition ends', async () => {

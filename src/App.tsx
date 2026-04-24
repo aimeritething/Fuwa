@@ -31,6 +31,7 @@ import { useAutoGit } from './hooks/useAutoGit'
 import { useVaultLoader } from './hooks/useVaultLoader'
 import { useAiAgentPreferences } from './hooks/useAiAgentPreferences'
 import { useSettings } from './hooks/useSettings'
+import { useThemeMode } from './hooks/useThemeMode'
 import { useNoteActions } from './hooks/useNoteActions'
 import { planNewTypeCreation } from './hooks/useNoteCreation'
 import { useCommitFlow } from './hooks/useCommitFlow'
@@ -367,6 +368,7 @@ function App() {
     })
   }, [updateConfig, vaultConfig.inbox?.noteListProperties])
   const { settings, loaded: settingsLoaded, saveSettings } = useSettings()
+  useThemeMode(settings.theme_mode, settingsLoaded)
   const aiAgentPreferences = useAiAgentPreferences({
     settings,
     saveSettings,
