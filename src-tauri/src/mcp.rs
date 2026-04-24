@@ -437,7 +437,10 @@ mod tests {
         let (_tmp, config_path) = temp_config_path("mcp.json");
         write_mcp_servers_config(
             &config_path,
-            vec![("other-server", serde_json::json!({ "command": "other", "args": [] }))],
+            vec![(
+                "other-server",
+                serde_json::json!({ "command": "other", "args": [] }),
+            )],
         );
 
         let entry = build_mcp_entry("/test/index.js", "/vault");
@@ -455,12 +458,12 @@ mod tests {
         write_config_json(
             &config_path,
             serde_json::json!({
-            "model": "sonnet",
-            "theme": "dark",
-            "mcpServers": {
-                "other-server": { "command": "other", "args": [] }
-            }
-        }),
+                "model": "sonnet",
+                "theme": "dark",
+                "mcpServers": {
+                    "other-server": { "command": "other", "args": [] }
+                }
+            }),
         );
 
         let entry = build_mcp_entry("/test/index.js", "/vault");
@@ -548,7 +551,11 @@ mod tests {
 
         register_mcp_to_configs(
             &entry,
-            &[claude_user_cfg.clone(), claude_cfg.clone(), cursor_cfg.clone()],
+            &[
+                claude_user_cfg.clone(),
+                claude_cfg.clone(),
+                cursor_cfg.clone(),
+            ],
         );
 
         assert!(claude_user_cfg.exists());
@@ -602,7 +609,10 @@ mod tests {
         write_mcp_servers_config(
             &config_path,
             vec![
-                (MCP_SERVER_NAME, managed_server("/primary/index.js", "/primary")),
+                (
+                    MCP_SERVER_NAME,
+                    managed_server("/primary/index.js", "/primary"),
+                ),
                 (
                     LEGACY_MCP_SERVER_NAME,
                     managed_server("/legacy/index.js", "/legacy"),
