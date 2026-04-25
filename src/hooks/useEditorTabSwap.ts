@@ -13,6 +13,7 @@ import {
   pathStem,
   slugifyPathStem,
 } from './editorTabContent'
+import { clearEditorDomSelection, EDITOR_CONTAINER_SELECTOR } from './editorDomSelection'
 export { extractEditorBody, getH1TextFromBlocks, replaceTitleInFrontmatter } from './editorTabContent'
 
 interface Tab {
@@ -53,7 +54,7 @@ function signalEditorTabSwapped(path: string): void {
 }
 
 function readEditorScrollTop(): number {
-  const scrollEl = document.querySelector('.editor__blocknote-container')
+  const scrollEl = document.querySelector(EDITOR_CONTAINER_SELECTOR)
   return scrollEl?.scrollTop ?? 0
 }
 
@@ -189,7 +190,7 @@ function applyBlocksToEditor(
   }
 
   requestAnimationFrame(() => {
-    const scrollEl = document.querySelector('.editor__blocknote-container')
+    const scrollEl = document.querySelector(EDITOR_CONTAINER_SELECTOR)
     if (scrollEl) scrollEl.scrollTop = scrollTop
   })
 }
@@ -209,7 +210,7 @@ function applyBlankStateToEditor(
 
   queueMicrotask(() => { suppressChangeRef.current = false })
   requestAnimationFrame(() => {
-    const scrollEl = document.querySelector('.editor__blocknote-container')
+    const scrollEl = document.querySelector(EDITOR_CONTAINER_SELECTOR)
     if (scrollEl) scrollEl.scrollTop = 0
   })
 }
@@ -230,7 +231,7 @@ function applyHtmlStateToEditor(
 
   queueMicrotask(() => { suppressChangeRef.current = false })
   requestAnimationFrame(() => {
-    const scrollEl = document.querySelector('.editor__blocknote-container')
+    const scrollEl = document.querySelector(EDITOR_CONTAINER_SELECTOR)
     if (scrollEl) scrollEl.scrollTop = 0
   })
 }
@@ -814,6 +815,7 @@ function scheduleTabSwap(options: {
   cache: Map<string, CachedTabState>
   targetPath: string
   activeTab: Tab
+  clearDomSelection: boolean
   pendingSwapRef: MutableRefObject<(() => void) | null>
   prevActivePathRef: MutableRefObject<string | null>
   rawSwapPendingRef: MutableRefObject<boolean>
@@ -825,6 +827,7 @@ function scheduleTabSwap(options: {
     cache,
     targetPath,
     activeTab,
+    clearDomSelection,
     pendingSwapRef,
     prevActivePathRef,
     rawSwapPendingRef,
@@ -837,6 +840,7 @@ function scheduleTabSwap(options: {
   const doSwap = () => {
     if (clearStaleSwap({ targetPath, prevActivePathRef, suppressChangeRef })) return
     rawSwapPendingRef.current = false
+    if (clearDomSelection) clearEditorDomSelection()
 
     if (isBlankBodyContent({ content: activeTab.content })) {
       applyBlankTabState({
@@ -1014,6 +1018,7 @@ function runTabSwapEffect(options: {
     cache: state.cache,
     targetPath: activeTabPath,
     activeTab: state.activeTab,
+    clearDomSelection: state.pathChanged,
     pendingSwapRef,
     prevActivePathRef,
     rawSwapPendingRef,

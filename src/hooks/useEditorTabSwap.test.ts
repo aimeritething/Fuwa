@@ -418,6 +418,42 @@ describe('useEditorTabSwap raw mode sync', () => {
     expect(mockEditor.replaceBlocks).toHaveBeenCalled()
   })
 
+  it('clears stale editor DOM selection before switching notes', async () => {
+    const tabA = makeTab('a.md', 'Note A')
+    const tabB = makeTab('b.md', 'Note B')
+
+    const { rerenderWith } = await createSwapHarness({
+      initialProps: { tabs: [tabA], activeTabPath: 'a.md', rawMode: false },
+    })
+
+    const container = document.createElement('div')
+    container.className = 'editor__blocknote-container'
+    const editable = document.createElement('div')
+    editable.contentEditable = 'true'
+    editable.textContent = 'Old note caret'
+    container.appendChild(editable)
+    document.body.appendChild(container)
+
+    try {
+      const range = document.createRange()
+      range.setStart(editable.firstChild!, 4)
+      range.collapse(true)
+      const selection = window.getSelection()!
+      selection.removeAllRanges()
+      selection.addRange(range)
+      editable.focus()
+
+      expect(selection.rangeCount).toBe(1)
+
+      await rerenderWith({ tabs: [tabB], activeTabPath: 'b.md' })
+
+      expect(window.getSelection()?.rangeCount).toBe(0)
+      expect(document.activeElement).not.toBe(editable)
+    } finally {
+      container.remove()
+    }
+  })
+
   it('re-parses when the active tab content changes without a path change', async () => {
     const tabA = makeTab('a.md', 'Note A')
     const refreshedTabA = {
