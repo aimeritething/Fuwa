@@ -39,8 +39,9 @@ function scheduleConfirmButtonFocus(root: ParentNode | null) {
 
 type ConfirmShortcutEvent = Pick<
   KeyboardEvent,
-  'key' | 'defaultPrevented' | 'repeat' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey' | 'isComposing'
+  'key' | 'defaultPrevented' | 'repeat' | 'metaKey' | 'ctrlKey' | 'altKey' | 'shiftKey'
 > & {
+  isComposing?: boolean
   nativeEvent?: Pick<KeyboardEvent, 'isComposing'>
 }
 
@@ -146,8 +147,9 @@ export const ConfirmDeleteDialog = memo(function ConfirmDeleteDialog({
         }}
         onOpenAutoFocus={(event) => {
           event.preventDefault()
-          focusPrimaryDeleteButton(event.currentTarget)
-          scheduleConfirmButtonFocus(event.currentTarget)
+          const dialogRoot = event.currentTarget as ParentNode | null
+          focusPrimaryDeleteButton(dialogRoot)
+          scheduleConfirmButtonFocus(dialogRoot)
         }}
       >
         <DialogHeader>
