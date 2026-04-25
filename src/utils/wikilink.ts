@@ -79,7 +79,8 @@ function buildResolutionKey(rawTarget: string): ResolutionKey {
 
 function findEntryByPathSuffix(entries: VaultEntry[], resolutionKey: ResolutionKey): VaultEntry | undefined {
   if (!resolutionKey.pathSuffix) return undefined
-  return entries.find(entry => entry.path.toLowerCase().endsWith(resolutionKey.pathSuffix))
+  const { pathSuffix } = resolutionKey
+  return entries.find(entry => entry.path.toLowerCase().endsWith(pathSuffix))
 }
 
 function findEntryByFilename(entries: VaultEntry[], { exactTarget, lastSegment }: ResolutionKey): VaultEntry | undefined {
