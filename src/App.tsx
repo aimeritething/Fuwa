@@ -89,6 +89,7 @@ import { openNoteListPropertiesPicker } from './components/note-list/noteListPro
 import type { NoteListMultiSelectionCommands } from './components/note-list/multiSelectionCommands'
 import { focusNoteIconPropertyEditor } from './components/noteIconPropertyEvents'
 import { trackEvent } from './lib/telemetry'
+import { normalizeReleaseChannel } from './lib/releaseChannel'
 import {
   buildVaultAiGuidanceRefreshKey,
 } from './lib/vaultAiGuidance'
@@ -1097,12 +1098,15 @@ function App() {
       return
     }
     const result = await updateActions.checkForUpdates()
-    if (result === 'up-to-date') {
-      setToastMessage("You're on the latest version")
-    } else if (result === 'error') {
-      setToastMessage('Could not check for updates')
+    if (result.kind === 'up-to-date') {
+      const checkedChannel = normalizeReleaseChannel(settings.release_channel)
+      setToastMessage(`No newer ${checkedChannel} update is available right now`)
+    } else if (result.kind === 'available') {
+      setToastMessage(`Tolaria ${result.displayVersion} is available`)
+    } else {
+      setToastMessage(result.message)
     }
-  }, [updateActions, updateStatus.state, setToastMessage])
+  }, [settings.release_channel, updateActions, updateStatus.state, setToastMessage])
 
   const handleRepairVault = useCallback(async () => {
     if (!resolvedPath) return

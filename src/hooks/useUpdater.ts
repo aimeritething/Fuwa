@@ -23,7 +23,10 @@ export type UpdateStatus =
   | ({ state: 'ready' } & UpdateVersionInfo)
   | { state: 'error' }
 
-export type UpdateCheckResult = 'up-to-date' | 'available' | 'error'
+export type UpdateCheckResult =
+  | { kind: 'up-to-date' }
+  | ({ kind: 'available' } & UpdateVersionInfo)
+  | { kind: 'error'; message: string }
 
 export interface UpdateActions {
   checkForUpdates: () => Promise<UpdateCheckResult>
@@ -55,6 +58,16 @@ function createVersionInfo(version: string): UpdateVersionInfo {
     version,
     displayVersion: formatReleaseDisplayVersion(version),
   }
+}
+
+function buildUpdateCheckErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    return `Could not check for updates: ${error.message}`
+  }
+  if (typeof error === 'string' && error.trim()) {
+    return `Could not check for updates: ${error}`
+  }
+  return 'Could not check for updates'
 }
 
 function toAvailableStatus(update: AppUpdateMetadata): UpdateStatus {
@@ -96,22 +109,23 @@ export function useUpdater(
   const updateRef = useRef<AppUpdateMetadata | null>(null)
 
   const checkForUpdates = useCallback(async (): Promise<UpdateCheckResult> => {
-    if (!isTauri()) return 'up-to-date'
+    if (!isTauri()) return { kind: 'up-to-date' }
 
     try {
       const update = await checkForAppUpdate(releaseChannel)
       if (!update) {
         updateRef.current = null
         setStatus({ state: 'idle' })
-        return 'up-to-date'
+        return { kind: 'up-to-date' }
       }
 
+      const versionInfo = createVersionInfo(update.version)
       updateRef.current = update
       setStatus(toAvailableStatus(update))
-      return 'available'
-    } catch {
+      return { kind: 'available', ...versionInfo }
+    } catch (error) {
       console.warn('[updater] Failed to check for updates')
-      return 'error'
+      return { kind: 'error', message: buildUpdateCheckErrorMessage(error) }
     }
   }, [releaseChannel])
 

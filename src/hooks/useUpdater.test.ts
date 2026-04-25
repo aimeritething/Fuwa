@@ -171,7 +171,7 @@ describe('useUpdater', () => {
   it('returns up-to-date when no update is available', async () => {
     const { result, outcome } = await performManualCheck('stable', null)
 
-    expect(outcome).toBe('up-to-date')
+    expect(outcome).toEqual({ kind: 'up-to-date' })
     expect(result.current.status).toEqual({ state: 'idle' })
   })
 
@@ -181,7 +181,11 @@ describe('useUpdater', () => {
       makeUpdate({ body: undefined }),
     )
 
-    expect(outcome).toBe('available')
+    expect(outcome).toEqual({
+      kind: 'available',
+      version: '2026.4.16',
+      displayVersion: '2026.4.16',
+    })
     expect(result.current.status).toEqual({
       state: 'available',
       version: '2026.4.16',
@@ -210,7 +214,10 @@ describe('useUpdater', () => {
       new Error('network error'),
     )
 
-    expect(outcome).toBe('error')
+    expect(outcome).toEqual({
+      kind: 'error',
+      message: 'Could not check for updates: network error',
+    })
     expect(console.warn).toHaveBeenCalledWith('[updater] Failed to check for updates')
     expect(result.current.status).toEqual({ state: 'idle' })
   })
