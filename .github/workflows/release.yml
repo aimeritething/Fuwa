@@ -378,13 +378,36 @@ jobs:
         run: |
           pnpm tauri build --target x86_64-unknown-linux-gnu --bundles deb,appimage
 
+      - name: Validate Linux bundles
+        run: |
+          shopt -s nullglob
+          installers=(
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+          )
+          signatures=(
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage.sig
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage.tar.gz.sig
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb.sig
+          )
+          if [ ${#installers[@]} -eq 0 ]; then
+            echo "::error::Linux build produced no AppImage or deb bundle."
+            exit 1
+          fi
+          if [ ${#signatures[@]} -eq 0 ]; then
+            echo "::error::Linux build produced no updater signature (.sig) artifact."
+            exit 1
+          fi
+
       - name: Upload Linux bundles
         uses: actions/upload-artifact@v4
         with:
           name: linux-x86_64-bundles
           path: |
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb.sig
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+            src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage.sig
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage.tar.gz
             src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage.tar.gz.sig
           if-no-files-found: error
@@ -593,7 +616,7 @@ jobs:
           ARM_SIG=$(cat "$ARM_SIG_FILE")
           ARM_UPDATER=$(basename "$ARM_UPDATER_FILE")
 
-          LINUX_SIG_FILE=$(find_required "linux-x86_64-bundles/*/*.AppImage.sig" "linux-x86_64-bundles/*/*.AppImage.tar.gz.sig" "linux-x86_64-bundles/*.AppImage.sig" "linux-x86_64-bundles/*.AppImage.tar.gz.sig")
+          LINUX_SIG_FILE=$(find_required "linux-x86_64-bundles/*/*.AppImage.sig" "linux-x86_64-bundles/*/*.AppImage.tar.gz.sig" "linux-x86_64-bundles/*/*.deb.sig" "linux-x86_64-bundles/*.AppImage.sig" "linux-x86_64-bundles/*.AppImage.tar.gz.sig" "linux-x86_64-bundles/*.deb.sig")
           LINUX_UPDATER_FILE="${LINUX_SIG_FILE%.sig}"
           LINUX_SIG=$(cat "$LINUX_SIG_FILE")
           LINUX_UPDATER=$(basename "$LINUX_UPDATER_FILE")
@@ -643,11 +666,15 @@ jobs:
             updater-aarch64/*.app.tar.gz
             updater-aarch64/*.app.tar.gz.sig
             linux-x86_64-bundles/*.deb
+            linux-x86_64-bundles/*.deb.sig
             linux-x86_64-bundles/*.AppImage
+            linux-x86_64-bundles/*.AppImage.sig
             linux-x86_64-bundles/*.AppImage.tar.gz
             linux-x86_64-bundles/*.AppImage.tar.gz.sig
             linux-x86_64-bundles/*/*.deb
+            linux-x86_64-bundles/*/*.deb.sig
             linux-x86_64-bundles/*/*.AppImage
+            linux-x86_64-bundles/*/*.AppImage.sig
             linux-x86_64-bundles/*/*.AppImage.tar.gz
             linux-x86_64-bundles/*/*.AppImage.tar.gz.sig
             windows-x86_64-bundles/*.exe
