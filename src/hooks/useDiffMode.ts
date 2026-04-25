@@ -92,7 +92,7 @@ function buildGuardedDiffStateSetters(
 function runPendingCommitDiffRequest(
   pendingCommitDiffRequest: CommitDiffRequest,
   onLoadDiff: ((path: string) => Promise<string>) | undefined,
-  onLoadDiffAtCommit: (path: string, commitHash: string) => Promise<string>,
+  onLoadDiffAtCommit: ((path: string, commitHash: string) => Promise<string>) | undefined,
   onPendingCommitDiffHandled: ((requestId: number) => void) | undefined,
   diffState: DiffStateSetters,
 ) {
