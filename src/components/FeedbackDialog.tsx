@@ -100,7 +100,7 @@ const CONTRIBUTION_BUTTON_CLASSES: Record<ContributionTone, string> = {
 
 const SPONSOR_SUPPORT_PATH: ContributionPath = {
   title: 'Sponsor / Support',
-  description: 'Luca here 👋 my full-time job is running Refactoring, a newsletter + podcast for 170K+ software engineers about how to run good engineering teams and ship good software with AI. In there I talk about my journey (also about Tolaria!), interview tech leaders (DHH, Martin Fowler, and more) and run a private paid community for 2000+ engineers with monthly live coaching, monthly AI club, and more.\n\nTolaria is FOSS and always will be. If you like it, the best way to support it is to subscribe to the newsletter.',
+  description: 'Luca here 👋 my full-time job is running Refactoring, a newsletter for 170K+ engineers about how to run good teams and ship software with AI. I write about workflows, interview tech leaders (e.g. DHH, Martin Fowler, and more) and run a private community of 2000+ engineers with monthly live coaching, AI club, and more.\n\nTolaria is FOSS and always will be. If you like it, the best way to support it is to subscribe to the newsletter.',
   ctaLabel: 'Check out Refactoring',
   label: 'Refactoring',
   url: REFACTORING_HOME_URL,
@@ -111,7 +111,7 @@ const SPONSOR_SUPPORT_PATH: ContributionPath = {
 const CONTRIBUTION_PATHS: ContributionPath[] = [
   {
     title: 'Feature requests',
-    description: 'Search on the product board first, upvote an existing idea if already there, and only create a new post when genuinely new!',
+    description: 'Search on the board first, upvote existing ideas, and create new posts when genuinely new!',
     ctaLabel: 'Open Product Board',
     label: 'Product Board',
     url: TOLARIA_PRODUCT_BOARD_URL,
@@ -120,7 +120,7 @@ const CONTRIBUTION_PATHS: ContributionPath[] = [
   },
   {
     title: 'Discussions',
-    description: 'Use GitHub Discussions for questions, broader conversations, idea sharing, and community context that is not a concrete bug report.',
+    description: 'Use Discussions for questions, conversations, show & tell, and community context.',
     ctaLabel: 'Open Discussions',
     label: 'GitHub Discussions',
     url: TOLARIA_GITHUB_DISCUSSIONS_URL,
@@ -129,7 +129,7 @@ const CONTRIBUTION_PATHS: ContributionPath[] = [
   },
   {
     title: 'Contribute code',
-    description: 'Small, focused pull requests are welcome. Check planned or in-progress work first so you are building in the right place.',
+    description: 'Small, focused PRs are welcome. Check the board first so you build the right things!',
     ctaLabel: 'Open Pull Requests',
     label: 'GitHub Pull Requests',
     url: TOLARIA_GITHUB_PULL_REQUESTS_URL,
@@ -386,7 +386,7 @@ function ContributionGrid({
       })}
       <ContributionCard
         title="Report a bug"
-        description="Explain how to reproduce, what you expected, and what actually happened. Check for duplicate bugs first. Attach the sanitized diagnostic bundle please!"
+        description="Explain how to reproduce, what you expected, vs what happened. Attach the diagnostics please!"
         ctaLabel="Open GitHub Issues"
         icon={Bug}
         tone="red"
@@ -434,7 +434,7 @@ export function FeedbackDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) handleClose() }}>
-      <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-[760px]" data-testid="feedback-dialog">
+      <DialogContent className="max-h-[92dvh] overflow-y-auto sm:max-w-[820px]" data-testid="feedback-dialog">
         <DialogHeader className="space-y-2">
           <DialogTitle className="flex items-center gap-2">
             <Megaphone size={18} weight="duotone" />
