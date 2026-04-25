@@ -8,6 +8,7 @@ import type { CommandAction, CommandGroup } from '../hooks/useCommandRegistry'
 import { groupSortKey } from '../hooks/useCommandRegistry'
 import { rememberFeedbackDialogOpener } from '../lib/feedbackDialogOpener'
 import { CommandPaletteAiMode } from './CommandPaletteAiMode'
+import { Input } from './ui/input'
 
 interface CommandPaletteProps {
   open: boolean
@@ -124,12 +125,16 @@ function CommandPaletteInput({
   onChange: (value: string) => void
 }) {
   return (
-    <input
+    <Input
       ref={inputRef}
-      className="border-b border-border bg-transparent px-4 py-3 text-[15px] text-foreground outline-none placeholder:text-muted-foreground"
+      className="h-auto rounded-none border-x-0 border-t-0 border-b border-border bg-transparent px-4 py-3 text-[15px] text-foreground shadow-none transition-none outline-none placeholder:text-muted-foreground focus-visible:border-border focus-visible:ring-0 md:text-[15px]"
       type="text"
       placeholder="Type a command..."
       value={query}
+      spellCheck={false}
+      autoCorrect="off"
+      autoCapitalize="off"
+      autoComplete="off"
       onChange={(event) => onChange(event.target.value)}
     />
   )

@@ -105,6 +105,16 @@ describe('CommandPalette', () => {
     expect(screen.getByPlaceholderText('Type a command...')).toBeInTheDocument()
   })
 
+  it('opts the command input out of spellcheck and text correction', () => {
+    render(<CommandPalette open={true} commands={commands} onClose={onClose} />)
+    const input = screen.getByPlaceholderText('Type a command...')
+
+    expect(input).toHaveAttribute('spellcheck', 'false')
+    expect(input).toHaveAttribute('autocorrect', 'off')
+    expect(input).toHaveAttribute('autocapitalize', 'off')
+    expect(input).toHaveAttribute('autocomplete', 'off')
+  })
+
   it('shows all enabled commands grouped by category', () => {
     render(<CommandPalette open={true} commands={commands} onClose={onClose} />)
     expect(screen.getByText('Search Notes')).toBeInTheDocument()
@@ -179,6 +189,35 @@ describe('CommandPalette', () => {
     // Second enabled command (New Note) should execute
     expect(commands[1].execute).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('keeps a short query keyboard-selectable after ArrowDown and Enter', () => {
+    const changeNoteType = makeCommand({
+      id: 'change-note-type',
+      label: 'Change Note Type…',
+      group: 'Note',
+    })
+
+    render(
+      <CommandPalette
+        open={true}
+        commands={[
+          changeNoteType,
+          makeCommand({ id: 'open-settings', label: 'Open Settings', group: 'Settings' }),
+        ]}
+        onClose={onClose}
+      />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('Type a command...'), { target: { value: 'ch' } })
+    fireEvent.keyDown(window, { key: 'ArrowDown' })
+
+    const selectedRow = screen.getByText('Change Note Type…').closest('[data-selected]')
+    expect(selectedRow).toHaveAttribute('data-selected', 'true')
+
+    fireEvent.keyDown(window, { key: 'Enter' })
+    expect(changeNoteType.execute).toHaveBeenCalledOnce()
+    expect(onClose).toHaveBeenCalledOnce()
   })
 
   it('does not go below the last item', () => {
