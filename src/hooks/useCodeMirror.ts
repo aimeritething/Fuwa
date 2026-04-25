@@ -16,8 +16,6 @@ const RAW_EDITOR_COLORS = {
   gutterBorder: 'var(--border-subtle)',
   gutterText: 'var(--text-muted)',
 }
-export const CODEMIRROR_CSP_NONCE = 'tolaria-codemirror-style'
-
 export interface CodeMirrorCallbacks {
   onDocChange: (doc: string) => void
   onCursorActivity: (view: EditorView) => void
@@ -145,7 +143,6 @@ export function useCodeMirror(
         buildArrowLigaturesExtension(),
         keymap.of([...defaultKeymap, ...historyKeymap]),
         buildSaveKeymap(callbacksRef),
-        EditorView.cspNonce.of(CODEMIRROR_CSP_NONCE),
         buildBaseTheme(),
         markdownLanguage(),
         frontmatterHighlightTheme(),
