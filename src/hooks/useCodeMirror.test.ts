@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
-import { useCodeMirror, type CodeMirrorCallbacks } from './useCodeMirror'
+import { CODEMIRROR_CSP_NONCE, useCodeMirror, type CodeMirrorCallbacks } from './useCodeMirror'
 
 const noop = () => {}
 const noopCallbacks: CodeMirrorCallbacks = {
@@ -29,6 +29,14 @@ describe('useCodeMirror', () => {
     )
     expect(result.current.current).not.toBeNull()
     expect(container.querySelector('.cm-editor')).toBeInTheDocument()
+  })
+
+  it('mounts CodeMirror generated styles with the configured CSP nonce', () => {
+    const ref = { current: container }
+    renderHook(() => useCodeMirror(ref, 'hello', noopCallbacks))
+
+    const style = document.head.querySelector(`style[nonce="${CODEMIRROR_CSP_NONCE}"]`)
+    expect(style?.textContent).toContain('.cm-scroller')
   })
 
   it('calls requestMeasure when laputa-zoom-change event fires', () => {
