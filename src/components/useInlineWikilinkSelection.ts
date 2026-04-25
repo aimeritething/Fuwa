@@ -19,20 +19,23 @@ interface UseInlineWikilinkSelectionArgs {
   isComposingRef?: React.RefObject<boolean>
 }
 
-function shouldSkipSelectionSync(
+function getSelectionSyncEditor(
   editor: HTMLDivElement | null,
   isComposingRef?: React.RefObject<boolean>,
 ) {
-  return !editor || isComposingRef?.current === true
+  if (!editor || isComposingRef?.current === true) return null
+  return editor
 }
 
-function canApplySelectionRange(
+function getActiveSelectionEditor(
   editor: HTMLDivElement | null,
   isComposingRef?: React.RefObject<boolean>,
 ) {
-  return editor !== null
-    && document.activeElement === editor
-    && isComposingRef?.current !== true
+  if (!editor) return null
+  if (document.activeElement !== editor) return null
+  if (isComposingRef?.current === true) return null
+
+  return editor
 }
 
 export function useInlineWikilinkSelection({
@@ -55,8 +58,8 @@ export function useInlineWikilinkSelection({
   }, [inputRef])
 
   const syncSelectionRange = useCallback(() => {
-    const editor = editorRef.current
-    if (shouldSkipSelectionSync(editor, isComposingRef)) return
+    const editor = getSelectionSyncEditor(editorRef.current, isComposingRef)
+    if (!editor) return
     setSelectionRange(readSelectionRange(editor))
   }, [isComposingRef])
 
@@ -81,8 +84,8 @@ export function useInlineWikilinkSelection({
   }, [onChange])
 
   useLayoutEffect(() => {
-    const editor = editorRef.current
-    if (!canApplySelectionRange(editor, isComposingRef)) return
+    const editor = getActiveSelectionEditor(editorRef.current, isComposingRef)
+    if (!editor) return
     applySelectionRange(editor, selectionRange)
   }, [isComposingRef, selectionRange, value])
 
