@@ -6,6 +6,7 @@ import { frontmatterHighlightPlugin, frontmatterHighlightTheme } from '../extens
 import { markdownLanguage } from '../extensions/markdownHighlight'
 import { resolveArrowLigatureInput } from '../utils/arrowLigatures'
 import { zoomCursorFix } from '../extensions/zoomCursorFix'
+import { nativeTextAssistanceDisabledAttributes } from '../lib/nativeTextAssistance'
 
 const FONT_FAMILY = '"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
 const RAW_EDITOR_COLORS = {
@@ -144,6 +145,7 @@ export function useCodeMirror(
         keymap.of([...defaultKeymap, ...historyKeymap]),
         buildSaveKeymap(callbacksRef),
         buildBaseTheme(),
+        EditorView.contentAttributes.of(nativeTextAssistanceDisabledAttributes),
         markdownLanguage(),
         frontmatterHighlightTheme(),
         frontmatterHighlightPlugin,

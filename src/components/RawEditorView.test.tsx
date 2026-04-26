@@ -43,6 +43,17 @@ describe('RawEditorView', () => {
     expect(content?.textContent).toContain('title: My Note')
   })
 
+  it('disables native text assistance on the editable CodeMirror surface', () => {
+    render(<RawEditorView {...defaultProps} />)
+    const container = screen.getByTestId('raw-editor-codemirror')
+    const content = container.querySelector('.cm-content')
+
+    expect(content).toHaveAttribute('spellcheck', 'false')
+    expect(content).toHaveAttribute('autocorrect', 'off')
+    expect(content).toHaveAttribute('autocomplete', 'off')
+    expect(content).toHaveAttribute('autocapitalize', 'off')
+  })
+
   it('calls onContentChange when editor content changes (debounced)', async () => {
     vi.useFakeTimers()
     const onContentChange = vi.fn()

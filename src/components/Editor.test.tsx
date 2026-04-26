@@ -70,6 +70,11 @@ vi.mock('@blocknote/react', () => ({
   },
   BlockNoteViewRaw: ({ children, editable }: PropsWithChildren<{ editable?: boolean }>) => (
     <div data-testid="blocknote-view" data-editable={editable !== false ? 'true' : 'false'}>
+      <div
+        contentEditable={editable !== false}
+        data-testid="blocknote-editable"
+        suppressContentEditableWarning
+      />
       {children}
     </div>
   ),
@@ -236,6 +241,19 @@ describe('Editor', () => {
     })
 
     expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
+  })
+
+  it('disables native text assistance on the rich editor editable surface', () => {
+    renderEditor({
+      tabs: [mockTab],
+      activeTabPath: mockEntry.path,
+    })
+
+    const editable = screen.getByTestId('blocknote-editable')
+    expect(editable).toHaveAttribute('spellcheck', 'false')
+    expect(editable).toHaveAttribute('autocorrect', 'off')
+    expect(editable).toHaveAttribute('autocomplete', 'off')
+    expect(editable).toHaveAttribute('autocapitalize', 'off')
   })
 
   it('renders breadcrumb bar with action buttons', () => {
