@@ -1,8 +1,9 @@
 import { useEffect, useEffectEvent, type RefObject } from 'react'
-import { readDraggedNotePath } from '../components/note-retargeting/noteDragData'
+import { clearDraggedNotePath, readDraggedNotePath } from '../components/note-retargeting/noteDragData'
 import { relativePathStem } from '../utils/wikilink'
 
 const MARKDOWN_NOTE_PATH = /\.md$/i
+const NOTE_DROP_EVENT_OPTIONS = { capture: true }
 
 interface UseNoteWikilinkDropOptions {
   containerRef: RefObject<HTMLElement | null>
@@ -19,6 +20,12 @@ function droppedNoteWikilinkTarget(dataTransfer: DataTransfer | null, vaultPath?
   return relativePathStem(notePath, vaultPath)
 }
 
+function claimNoteDropEvent(event: DragEvent): void {
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.dataTransfer) event.dataTransfer.dropEffect = 'link'
+}
+
 export function useNoteWikilinkDrop({
   containerRef,
   onInsertTarget,
@@ -27,28 +34,33 @@ export function useNoteWikilinkDrop({
   const handleDragOver = useEffectEvent((event: DragEvent) => {
     if (!droppedNoteWikilinkTarget(event.dataTransfer, vaultPath)) return
 
-    event.preventDefault()
-    if (event.dataTransfer) event.dataTransfer.dropEffect = 'link'
+    claimNoteDropEvent(event)
   })
 
   const handleDrop = useEffectEvent((event: DragEvent) => {
     const target = droppedNoteWikilinkTarget(event.dataTransfer, vaultPath)
     if (!target) return
 
-    event.preventDefault()
-    onInsertTarget(target)
+    claimNoteDropEvent(event)
+    try {
+      onInsertTarget(target)
+    } finally {
+      clearDraggedNotePath()
+    }
   })
 
   useEffect(() => {
     const container = containerRef.current
     if (!container) return
 
-    container.addEventListener('dragover', handleDragOver)
-    container.addEventListener('drop', handleDrop)
+    container.addEventListener('dragenter', handleDragOver, NOTE_DROP_EVENT_OPTIONS)
+    container.addEventListener('dragover', handleDragOver, NOTE_DROP_EVENT_OPTIONS)
+    container.addEventListener('drop', handleDrop, NOTE_DROP_EVENT_OPTIONS)
 
     return () => {
-      container.removeEventListener('dragover', handleDragOver)
-      container.removeEventListener('drop', handleDrop)
+      container.removeEventListener('dragenter', handleDragOver, NOTE_DROP_EVENT_OPTIONS)
+      container.removeEventListener('dragover', handleDragOver, NOTE_DROP_EVENT_OPTIONS)
+      container.removeEventListener('drop', handleDrop, NOTE_DROP_EVENT_OPTIONS)
     }
   }, [containerRef])
 }
