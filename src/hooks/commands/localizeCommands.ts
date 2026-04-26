@@ -12,7 +12,7 @@ const GROUP_LABEL_KEYS = {
   Settings: 'command.group.settings',
 } satisfies Record<CommandGroup, TranslationKey>
 
-const STATIC_LABEL_KEYS = {
+const STATIC_LABEL_KEYS: Partial<Record<string, TranslationKey>> = {
   'search-notes': 'command.navigation.searchNotes',
   'go-all': 'command.navigation.goAllNotes',
   'go-archived': 'command.navigation.goArchived',
@@ -59,7 +59,7 @@ const STATIC_LABEL_KEYS = {
   'repair-vault': 'command.settings.repairVault',
   'open-ai-agents': 'command.ai.openAgents',
   'restore-vault-ai-guidance': 'command.ai.restoreGuidance',
-} satisfies Record<string, TranslationKey>
+}
 
 function stripKnownPrefix(label: string, prefix: string): string {
   return label.startsWith(prefix) ? label.slice(prefix.length) : label
@@ -91,12 +91,12 @@ function localizeColumnsCommand(command: CommandAction, t: Translate): string {
   return t('noteList.properties.customizeColumns')
 }
 
-const VIEW_STATE_LABELERS = {
+const VIEW_STATE_LABELERS: Partial<Record<string, CommandLabeler>> = {
   'toggle-note-layout': (command, t) => t(command.label === 'Use Left-Aligned Note Layout' ? 'command.view.leftLayout' : 'command.view.centerLayout'),
   'zoom-in': (command, t) => t('command.view.zoomIn', { zoom: parenthesizedSuffix(command.label)?.replace('%', '') ?? '' }),
   'zoom-out': (command, t) => t('command.view.zoomOut', { zoom: parenthesizedSuffix(command.label)?.replace('%', '') ?? '' }),
   'customize-note-list-columns': localizeColumnsCommand,
-} satisfies Record<string, CommandLabeler>
+}
 
 function localizeViewStateCommand(command: CommandAction, t: Translate): string | null {
   return VIEW_STATE_LABELERS[command.id]?.(command, t) ?? null
