@@ -1,5 +1,6 @@
 import type React from 'react'
 import { cn } from '@/lib/utils'
+import { translate, type AppLocale } from '../../lib/i18n'
 import { DiffView } from '../DiffView'
 import { BreadcrumbBar } from '../BreadcrumbBar'
 import { ArchivedNoteBanner } from '../ArchivedNoteBanner'
@@ -45,16 +46,18 @@ function EditorLoadingSkeleton() {
   )
 }
 
-function DiffModeView({ diffContent, onToggleDiff }: { diffContent: string | null; onToggleDiff: () => void }) {
+function DiffModeView({ diffContent, locale = 'en', onToggleDiff }: { diffContent: string | null; locale?: AppLocale; onToggleDiff: () => void }) {
+  const label = translate(locale, 'editor.toolbar.rawReturn')
+
   return (
     <div className="flex-1 overflow-auto">
       <button
         className="flex items-center gap-1.5 px-4 py-2 text-xs text-primary bg-muted border-b border-border cursor-pointer hover:bg-accent transition-colors w-full border-t-0 border-l-0 border-r-0"
         onClick={onToggleDiff}
-        title="Back to editor"
+        title={label}
       >
         <span style={{ fontSize: 14, lineHeight: 1 }}>&larr;</span>
-        Back to editor
+        {label}
       </button>
       <DiffView diff={diffContent ?? ''} />
     </div>
@@ -70,11 +73,13 @@ function RawModeEditorSection({
   onSave,
   rawLatestContentRef,
   vaultPath,
+  locale,
 }: Pick<
   EditorContentModel,
   'activeTab' | 'entries' | 'onRawContentChange' | 'onSave' | 'rawLatestContentRef' | 'rawModeContent' | 'vaultPath'
 > & {
   rawMode: boolean
+  locale?: AppLocale
 }) {
   if (!rawMode || !activeTab) return null
 
@@ -88,6 +93,7 @@ function RawModeEditorSection({
       onSave={onSave ?? (() => {})}
       latestContentRef={rawLatestContentRef}
       vaultPath={vaultPath}
+      locale={locale}
     />
   )
 }
@@ -102,12 +108,14 @@ function ActiveTabBreadcrumb({
   wordCount,
   path,
   actions,
+  locale,
 }: {
   activeTab: NonNullable<EditorContentModel['activeTab']>
   barRef: React.RefObject<HTMLDivElement | null>
   wordCount: number
   path: string
   actions: BreadcrumbActions
+  locale?: AppLocale
 }) {
   return (
     <BreadcrumbBar
@@ -133,6 +141,7 @@ function ActiveTabBreadcrumb({
       onRenameFilename={actions.onRenameFilename}
       noteLayout={actions.noteLayout}
       onToggleNoteLayout={actions.onToggleNoteLayout}
+      locale={locale}
     />
   )
 }
@@ -147,22 +156,24 @@ function EditorChrome({
   diffMode,
   diffContent,
   onToggleDiff,
+  locale,
 }: Pick<
   EditorContentModel,
-  'isArchived' | 'onUnarchiveNote' | 'path' | 'isConflicted' | 'onKeepMine' | 'onKeepTheirs' | 'diffMode' | 'diffContent' | 'onToggleDiff'
+  'isArchived' | 'onUnarchiveNote' | 'path' | 'isConflicted' | 'onKeepMine' | 'onKeepTheirs' | 'diffMode' | 'diffContent' | 'onToggleDiff' | 'locale'
 >) {
   return (
     <>
       {isArchived && onUnarchiveNote && (
-        <ArchivedNoteBanner onUnarchive={() => onUnarchiveNote(path)} />
+        <ArchivedNoteBanner onUnarchive={() => onUnarchiveNote(path)} locale={locale} />
       )}
       {isConflicted && (
         <ConflictNoteBanner
           onKeepMine={() => onKeepMine?.(path)}
           onKeepTheirs={() => onKeepTheirs?.(path)}
+          locale={locale}
         />
       )}
-      {diffMode && <DiffModeView diffContent={diffContent} onToggleDiff={onToggleDiff} />}
+      {diffMode && <DiffModeView diffContent={diffContent} locale={locale} onToggleDiff={onToggleDiff} />}
     </>
   )
 }
@@ -234,6 +245,7 @@ export function EditorContentLayout(model: EditorContentModel) {
     rawLatestContentRef,
     rawModeContent,
     noteLayout,
+    locale,
   } = model
   const rootClassName = cn(
     'flex flex-1 flex-col min-w-0 min-h-0',
@@ -255,6 +267,7 @@ export function EditorContentLayout(model: EditorContentModel) {
         barRef={breadcrumbBarRef}
         wordCount={wordCount}
         path={path}
+        locale={locale}
         actions={{
           diffMode: model.diffMode,
           diffLoading: model.diffLoading,
@@ -287,6 +300,7 @@ export function EditorContentLayout(model: EditorContentModel) {
         diffMode={diffMode}
         diffContent={diffContent}
         onToggleDiff={onToggleDiff}
+        locale={locale}
       />
       <RawModeEditorSection
         activeTab={activeTab}
@@ -297,6 +311,7 @@ export function EditorContentLayout(model: EditorContentModel) {
         onSave={onSave}
         rawLatestContentRef={rawLatestContentRef}
         vaultPath={vaultPath}
+        locale={locale}
       />
       <EditorCanvas
         showEditor={showEditor}

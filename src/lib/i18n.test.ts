@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  EN_TRANSLATIONS,
+  ZH_HANS_TRANSLATIONS,
   localeDisplayName,
   normalizeUiLanguagePreference,
   resolveEffectiveLocale,
   serializeUiLanguagePreference,
-  translate,
 } from './i18n'
 
 describe('i18n', () => {
@@ -24,10 +25,8 @@ describe('i18n', () => {
     expect(serializeUiLanguagePreference('zh-Hans')).toBe('zh-Hans')
   })
 
-  it('falls back to English when a locale is partially translated', () => {
-    expect(translate('zh-Hans', 'settings.aiAgents.description')).toBe(
-      translate('en', 'settings.aiAgents.description'),
-    )
+  it('keeps Simplified Chinese aligned with the canonical English keys', () => {
+    expect(Object.keys(ZH_HANS_TRANSLATIONS).sort()).toEqual(Object.keys(EN_TRANSLATIONS).sort())
   })
 
   it('formats locale display names in the active language', () => {

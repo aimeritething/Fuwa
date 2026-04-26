@@ -5,6 +5,7 @@ import '@blocknote/mantine/style.css'
 import 'katex/dist/katex.min.css'
 import { uploadImageFile } from '../hooks/useImageDrop'
 import { DEFAULT_AI_AGENT, type AiAgentId } from '../lib/aiAgents'
+import { translate, type AppLocale } from '../lib/i18n'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import type { VaultEntry, GitCommit, NoteLayout, NoteStatus } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
@@ -96,6 +97,7 @@ interface EditorProps {
   onKeepTheirs?: (path: string) => void
   /** Registers a hook that flushes the raw editor buffer into app state before external actions. */
   flushPendingRawContentRef?: React.MutableRefObject<((path: string) => void) | null>
+  locale?: AppLocale
 }
 
 function useEditorModeExclusion({
@@ -129,7 +131,7 @@ function useEditorModeExclusion({
   return { handleToggleDiffExclusive, handleToggleRawExclusive }
 }
 
-function EditorEmptyState() {
+function EditorEmptyState({ locale = 'en' }: { locale?: AppLocale }) {
   const breadcrumbBarHeight = 52
   const { onMouseDown } = useDragRegion()
   const quickOpenShortcut = formatShortcutDisplay({ display: '⌘P / ⌘O' })
@@ -146,8 +148,8 @@ function EditorEmptyState() {
         style={{ height: breadcrumbBarHeight }}
       />
       <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-        <p className="m-0 text-[15px]">Select a note to start editing</p>
-        <span className="text-xs text-muted-foreground">{quickOpenShortcut} to search &middot; {newNoteShortcut} to create</span>
+        <p className="m-0 text-[15px]">{translate(locale, 'editor.empty.selectNote')}</p>
+        <span className="text-xs text-muted-foreground">{translate(locale, 'editor.empty.shortcuts', { quickOpen: quickOpenShortcut, newNote: newNoteShortcut })}</span>
       </div>
     </div>
   )
@@ -328,6 +330,7 @@ function EditorLayout({
   onFileModified,
   onVaultChanged,
   onUnsupportedAiPaste,
+  locale,
 }: {
   tabs: Tab[]
   activeTab: Tab | null
@@ -384,12 +387,13 @@ function EditorLayout({
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
   onUnsupportedAiPaste?: (message: string) => void
+  locale?: AppLocale
 }) {
   return (
     <div className="editor flex flex-col min-h-0 overflow-hidden bg-background text-foreground">
       <div className="flex flex-1 min-h-0">
         {tabs.length === 0
-          ? <EditorEmptyState />
+          ? <EditorEmptyState locale={locale} />
           : <EditorContent
               activeTab={activeTab}
               isLoadingNewTab={isLoadingNewTab}
@@ -425,6 +429,7 @@ function EditorLayout({
               isConflicted={isConflicted}
               onKeepMine={onKeepMine}
               onKeepTheirs={onKeepTheirs}
+              locale={locale}
             />
         }
         {(showAIChat || !inspectorCollapsed) && <ResizeHandle onResize={onInspectorResize} />}
@@ -457,6 +462,7 @@ function EditorLayout({
           onFileCreated={onFileCreated}
           onFileModified={onFileModified}
           onVaultChanged={onVaultChanged}
+          locale={locale}
         />
       </div>
     </div>
@@ -481,6 +487,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     onFileCreated, onFileModified, onVaultChanged,
     isConflicted, onKeepMine, onKeepTheirs,
     flushPendingRawContentRef,
+    locale,
   } = props
 
   const {
@@ -563,6 +570,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
       onFileCreated={onFileCreated}
       onFileModified={onFileModified}
       onVaultChanged={onVaultChanged}
+      locale={locale}
     />
   )
 })

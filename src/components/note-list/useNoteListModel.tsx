@@ -244,6 +244,7 @@ interface UseNoteListInteractionStateParams {
   onCreateNote: (type?: string) => void
   onBulkArchive?: (paths: string[]) => void
   onBulkDeletePermanently?: (paths: string[]) => void
+  locale: AppLocale
 }
 
 function useNoteListInteractionState({
@@ -267,8 +268,9 @@ function useNoteListInteractionState({
   onCreateNote,
   onBulkArchive,
   onBulkDeletePermanently,
+  locale,
 }: UseNoteListInteractionStateParams) {
-  const changesContextMenu = useChangesContextMenu({ isChangesView, onDiscardFile, modifiedFiles })
+  const changesContextMenu = useChangesContextMenu({ isChangesView, onDiscardFile, modifiedFiles, locale })
   const {
     collapsedGroups,
     handleClickNote,
@@ -581,6 +583,7 @@ export function useNoteListModel({
     onCreateNote,
     onBulkArchive,
     onBulkDeletePermanently,
+    locale,
   })
   const renderItem = useRenderItem({
     entries,

@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { DEFAULT_AI_AGENT, type AiAgentId } from '../lib/aiAgents'
+import type { AppLocale } from '../lib/i18n'
 import type { VaultEntry, GitCommit } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import { Inspector, type FrontmatterValue } from './Inspector'
@@ -36,6 +37,7 @@ interface EditorRightPanelProps {
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
+  locale?: AppLocale
 }
 
 export function EditorRightPanel({
@@ -47,6 +49,7 @@ export function EditorRightPanel({
   onToggleInspector, onToggleAIChat, onNavigateWikilink, onViewCommitDiff,
   onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onInitializeProperties, onToggleRawEditor, onOpenNote,
   onFileCreated, onFileModified, onVaultChanged,
+  locale,
 }: EditorRightPanelProps) {
   const aiPanelController = useAiPanelController({
     vaultPath,
@@ -117,6 +120,7 @@ export function EditorRightPanel({
         onCreateAndOpenNote={onCreateAndOpenNote}
         onInitializeProperties={onInitializeProperties}
         onToggleRawEditor={onToggleRawEditor}
+        locale={locale}
       />
     </div>
   )

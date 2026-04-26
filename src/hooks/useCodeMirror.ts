@@ -38,18 +38,20 @@ function buildBaseTheme() {
     '.cm-scroller': {
       fontFamily: FONT_FAMILY,
       lineHeight: '1.6',
-      padding: '16px 0',
+      padding: '0',
       overflow: 'auto',
     },
     '.cm-content': {
-      padding: '0 32px 0 16px',
+      padding: '16px 32px 16px 12px',
       caretColor: RAW_EDITOR_COLORS.foreground,
     },
     '.cm-gutters': {
       backgroundColor: RAW_EDITOR_COLORS.gutterBackground,
       color: RAW_EDITOR_COLORS.gutterText,
       borderRight: `1px solid ${RAW_EDITOR_COLORS.gutterBorder}`,
-      paddingLeft: '16px',
+      minHeight: '100%',
+      paddingTop: '16px',
+      paddingLeft: '6px',
     },
     '.cm-lineNumbers .cm-gutterElement': {
       paddingRight: '12px',

@@ -183,6 +183,7 @@ function NoteListBody({
           counts={filterCounts}
           onChange={onNoteListFilterChange}
           position="bottom"
+          locale={locale}
         />
       )}
     </div>

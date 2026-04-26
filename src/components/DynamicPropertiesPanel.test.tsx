@@ -205,6 +205,19 @@ describe('DynamicPropertiesPanel', () => {
     expect(screen.getByText('some-team')).toBeInTheDocument()
   })
 
+  it('localizes UI actions without translating stored property names', () => {
+    renderPanel({
+      frontmatter: { Status: 'Active', 'Belongs to': 'some-team' },
+      onAddProperty,
+      locale: 'zh-Hans',
+    })
+
+    expect(screen.getByText('Type')).toBeInTheDocument()
+    expect(screen.getByText('Status')).toBeInTheDocument()
+    expect(screen.getByText('Belongs to')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: '添加属性' })).toBeInTheDocument()
+  })
+
   it('hides custom field with wikilink value from Properties', () => {
     renderPanel({ frontmatter: { Mentor: '[[person/luca]]' } })
     // Mentor contains a wikilink → shown in Relationships, not Properties

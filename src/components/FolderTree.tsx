@@ -13,6 +13,7 @@ import { FolderTreeRow } from './folder-tree/FolderTreeRow'
 import { useFolderContextMenu } from './folder-tree/useFolderContextMenu'
 import { useFolderTreeDisclosure } from './folder-tree/useFolderTreeDisclosure'
 import { SidebarGroupHeader } from './sidebar/SidebarGroupHeader'
+import { translate, type AppLocale } from '../lib/i18n'
 
 interface FolderTreeProps {
   folders: FolderNode[]
@@ -25,6 +26,7 @@ interface FolderTreeProps {
   onStartRenameFolder?: (folderPath: string) => void
   onCancelRenameFolder?: () => void
   collapsed?: boolean
+  locale?: AppLocale
   onToggle?: () => void
 }
 
@@ -39,6 +41,7 @@ export const FolderTree = memo(function FolderTree({
   onStartRenameFolder,
   onCancelRenameFolder,
   collapsed: externalCollapsed,
+  locale = 'en',
   onToggle,
 }: FolderTreeProps) {
   const {
@@ -83,7 +86,7 @@ export const FolderTree = memo(function FolderTree({
 
   return (
     <div className="border-b border-border" style={{ padding: '0 6px' }}>
-      <SidebarGroupHeader label="FOLDERS" collapsed={sectionCollapsed} onToggle={handleToggleSection}>
+      <SidebarGroupHeader label={translate(locale, 'sidebar.group.folders')} collapsed={sectionCollapsed} onToggle={handleToggleSection}>
         {onCreateFolder && (
           <Button
             type="button"
@@ -91,8 +94,8 @@ export const FolderTree = memo(function FolderTree({
             size="icon-xs"
             className="h-auto w-auto min-w-0 rounded-none p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
             data-testid="create-folder-btn"
-            title="Create folder"
-            aria-label="Create folder"
+            title={translate(locale, 'sidebar.action.createFolder')}
+            aria-label={translate(locale, 'sidebar.action.createFolder')}
             onClick={(event) => {
               event.stopPropagation()
               closeContextMenu()
@@ -118,6 +121,7 @@ export const FolderTree = memo(function FolderTree({
               onStartRenameFolder={onStartRenameFolder}
               onToggle={toggleFolder}
               onCancelRenameFolder={onCancelRenameFolder}
+              locale={locale}
               renamingFolderPath={renamingFolderPath}
               selection={selection}
             />
@@ -125,9 +129,9 @@ export const FolderTree = memo(function FolderTree({
           {isCreating && (
             <div style={{ paddingLeft: 8 }}>
               <FolderNameInput
-                ariaLabel="New folder name"
+                ariaLabel={translate(locale, 'sidebar.folder.newName')}
                 initialValue=""
-                placeholder="Folder name"
+                placeholder={translate(locale, 'sidebar.folder.name')}
                 submitOnBlur={true}
                 testId="new-folder-input"
                 onCancel={closeCreateForm}
@@ -142,6 +146,7 @@ export const FolderTree = memo(function FolderTree({
         menuRef={menuRef}
         onDelete={handleDeleteFromMenu}
         onRename={handleRenameFromMenu}
+        locale={locale}
       />
     </div>
   )

@@ -24,6 +24,7 @@ import { useNoteRetargetingContext } from '../note-retargeting/noteRetargetingCo
 import { SidebarGroupHeader } from './SidebarGroupHeader'
 import { SidebarViewItem } from './SidebarViewItem'
 import { countByFilter } from '../../utils/noteListHelpers'
+import { translate, type AppLocale } from '../../lib/i18n'
 
 export { SidebarTopNav } from './SidebarTopNav'
 export { FavoritesSection } from './FavoritesSection'
@@ -37,6 +38,7 @@ export interface SidebarSectionProps {
   renameInitialValue: string
   onRenameSubmit: (value: string) => void
   onRenameCancel: () => void
+  locale?: AppLocale
 }
 
 export function ViewsSection({
@@ -49,6 +51,7 @@ export function ViewsSection({
   onEditView,
   onDeleteView,
   entries,
+  locale = 'en',
 }: {
   views: ViewFile[]
   selection: SidebarSelection
@@ -59,14 +62,17 @@ export function ViewsSection({
   onEditView?: (filename: string) => void
   onDeleteView?: (filename: string) => void
   entries: VaultEntry[]
+  locale?: AppLocale
 }) {
   return (
     <div className="border-b border-border" style={{ padding: '0 6px' }}>
-      <SidebarGroupHeader label="VIEWS" collapsed={collapsed} onToggle={onToggle}>
+      <SidebarGroupHeader label={translate(locale, 'sidebar.group.views')} collapsed={collapsed} onToggle={onToggle}>
         {onCreateView && (
           <Plus
             size={12}
             className="text-muted-foreground hover:text-foreground"
+            aria-label={translate(locale, 'sidebar.action.createView')}
+            title={translate(locale, 'sidebar.action.createView')}
             onClick={(event) => { event.stopPropagation(); onCreateView() }}
           />
         )}
@@ -82,6 +88,7 @@ export function ViewsSection({
               onEditView={onEditView}
               onDeleteView={onDeleteView}
               entries={entries}
+              locale={locale}
             />
           ))}
         </div>
@@ -113,6 +120,7 @@ function SortableSection({
       renameInitialValue={isRenaming ? sectionProps.renameInitialValue : undefined}
       onRenameSubmit={sectionProps.onRenameSubmit}
       onRenameCancel={sectionProps.onRenameCancel}
+      locale={sectionProps.locale}
     />
   )
 
@@ -154,6 +162,7 @@ export function TypesSection({
   toggleVisibility,
   onCreateNewType,
   customizeRef,
+  locale = 'en',
 }: {
   visibleSections: SectionGroup[]
   allSectionGroups: SectionGroup[]
@@ -169,18 +178,19 @@ export function TypesSection({
   toggleVisibility: (type: string) => void
   onCreateNewType?: () => void
   customizeRef: RefObject<HTMLDivElement | null>
+  locale?: AppLocale
 }) {
   return (
     <div className="border-b border-border">
       <div ref={customizeRef} style={{ position: 'relative', padding: '0 6px' }}>
-        <SidebarGroupHeader label="TYPES" collapsed={collapsed} onToggle={onToggle}>
+        <SidebarGroupHeader label={translate(locale, 'sidebar.group.types')} collapsed={collapsed} onToggle={onToggle}>
           <div className="flex items-center gap-1.5">
             <Button
               type="button"
               variant="ghost"
               size="icon-xs"
-              title="Customize sections"
-              aria-label="Customize sections"
+              title={translate(locale, 'sidebar.action.customizeSections')}
+              aria-label={translate(locale, 'sidebar.action.customizeSections')}
               className="h-auto w-auto min-w-0 rounded-none p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
               onClick={(event) => { event.stopPropagation(); setShowCustomize((value) => !value) }}
             >
@@ -193,8 +203,8 @@ export function TypesSection({
                 size="icon-xs"
                 className="h-auto w-auto min-w-0 rounded-none p-0 text-muted-foreground hover:bg-transparent hover:text-foreground"
                 data-testid="create-type-btn"
-                title="Create new type"
-                aria-label="Create new type"
+                title={translate(locale, 'sidebar.action.createType')}
+                aria-label={translate(locale, 'sidebar.action.createType')}
                 onClick={(event) => { event.stopPropagation(); onCreateNewType() }}
               >
                 <Plus size={12} className="text-muted-foreground hover:text-foreground" />
@@ -207,6 +217,7 @@ export function TypesSection({
             sections={allSectionGroups}
             isSectionVisible={isSectionVisible}
             onToggle={toggleVisibility}
+            locale={locale}
           />
         )}
       </div>
@@ -223,7 +234,7 @@ export function TypesSection({
   )
 }
 
-export function SidebarTitleBar({ onCollapse }: { onCollapse?: () => void }) {
+export function SidebarTitleBar({ locale = 'en', onCollapse }: { locale?: AppLocale; onCollapse?: () => void }) {
   const { onMouseDown } = useDragRegion()
 
   return (
@@ -237,8 +248,8 @@ export function SidebarTitleBar({ onCollapse }: { onCollapse?: () => void }) {
           className="flex shrink-0 cursor-pointer items-center justify-center rounded border-none bg-transparent p-0 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           style={{ width: 24, height: 24 }}
           onClick={onCollapse}
-          aria-label="Collapse sidebar"
-          title="Collapse sidebar"
+          aria-label={translate(locale, 'sidebar.action.collapse')}
+          title={translate(locale, 'sidebar.action.collapse')}
         >
           <CaretLeft size={14} weight="bold" />
         </button>
@@ -253,12 +264,14 @@ export function ContextMenuOverlay({
   innerRef,
   onOpenCustomize,
   onStartRename,
+  locale = 'en',
 }: {
   pos: { x: number; y: number } | null
   type: string | null
   innerRef: Ref<HTMLDivElement>
   onOpenCustomize: (type: string) => void
   onStartRename: (type: string) => void
+  locale?: AppLocale
 }) {
   if (!pos || !type) return null
 
@@ -271,10 +284,10 @@ export function ContextMenuOverlay({
       style={{ left: pos.x, top: pos.y, minWidth: 180 }}
     >
       <button className={buttonClass} onClick={() => onStartRename(type)}>
-        Rename section…
+        {translate(locale, 'sidebar.action.renameSection')}
       </button>
       <button className={buttonClass} onClick={() => onOpenCustomize(type)}>
-        Customize icon &amp; color…
+        {translate(locale, 'sidebar.action.customizeIconColor')}
       </button>
     </div>
   )

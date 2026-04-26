@@ -6,6 +6,7 @@ import { queueAiPrompt, requestOpenAiChat } from '../utils/aiPromptBridge'
 import type { NoteReference } from '../utils/ai-context'
 import type { CommandAction, CommandGroup } from '../hooks/useCommandRegistry'
 import { groupSortKey } from '../hooks/useCommandRegistry'
+import { localizeCommandGroup } from '../hooks/commands/localizeCommands'
 import { rememberFeedbackDialogOpener } from '../lib/feedbackDialogOpener'
 import { createTranslator, type AppLocale } from '../lib/i18n'
 import { formatDroppedPathList } from './inlineWikilinkDropText'
@@ -181,6 +182,7 @@ function CommandPaletteResults({
   selectedIndex,
   listRef,
   emptyText,
+  locale,
   onHover,
   onSelect,
 }: {
@@ -188,6 +190,7 @@ function CommandPaletteResults({
   selectedIndex: number
   listRef: React.RefObject<HTMLDivElement | null>
   emptyText: string
+  locale: AppLocale
   onHover: (index: number) => void
   onSelect: (command: CommandAction) => void
 }) {
@@ -221,7 +224,7 @@ function CommandPaletteResults({
         return (
           <div key={group}>
             <div className="px-4 pb-1 pt-2 text-[11px] font-medium text-muted-foreground">
-              {group}
+              {localizeCommandGroup(group, locale)}
             </div>
             {items.map((command, index) => {
               const globalIndex = startIndex + index
@@ -430,6 +433,7 @@ function OpenCommandPalette({
               selectedIndex={selectedIndex}
               listRef={listRef}
               emptyText={t('command.noMatches')}
+              locale={locale}
               onHover={setSelectedIndex}
               onSelect={handleSelectCommand}
             />

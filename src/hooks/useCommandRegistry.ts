@@ -13,6 +13,7 @@ import { buildSettingsCommands } from './commands/settingsCommands'
 import { buildAiAgentCommands } from './commands/aiAgentCommands'
 import { buildTypeCommands } from './commands/typeCommands'
 import { buildFilterCommands } from './commands/filterCommands'
+import { localizeCommandActions } from './commands/localizeCommands'
 import { extractVaultTypes } from '../utils/vaultTypes'
 
 // Re-export types and helpers for backward compatibility
@@ -147,82 +148,111 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
 
   const vaultTypes = useMemo(() => extractVaultTypes(entries), [entries])
 
-  return useMemo(() => [
-    ...buildNavigationCommands({
-      onQuickOpen,
-      onSelect,
-      selection,
-      onRenameFolder,
-      onDeleteFolder,
-      showInbox,
-      onGoBack,
-      onGoForward,
-      canGoBack,
-      canGoForward,
-    }),
-    ...buildNoteCommands({
-      hasActiveNote, activeTabPath, isArchived,
-      onCreateNote, onCreateType, onSave,
-      onDeleteNote, onArchiveNote, onUnarchiveNote,
-      onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
-      onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
-      onToggleOrganized, isOrganized: activeEntry?.organized ?? false,
-      onRestoreDeletedNote, canRestoreDeletedNote,
-    }),
-    ...buildGitCommands({
-      modifiedCount,
-      isGitVault,
-      canAddRemote: config.canAddRemote ?? false,
-      onAddRemote: config.onAddRemote,
-      onCommitPush,
-      onInitializeGit,
-      onPull,
-      onResolveConflicts,
-      onSelect,
-    }),
-    ...buildViewCommands({
-      hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
-      onToggleDiff, onToggleRawEditor, noteLayout, onToggleNoteLayout, onToggleAIChat, zoomLevel, onZoomIn, onZoomOut, onZoomReset,
-      onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
-    }),
-    ...buildSettingsCommands({
-      mcpStatus, vaultCount, isGettingStartedHidden,
-      onOpenSettings, onOpenFeedback, onOpenVault, onCreateEmptyVault, onRemoveActiveVault, onRestoreGettingStarted,
-      onCheckForUpdates, onInstallMcp, onReloadVault, onRepairVault,
-      locale, systemLocale, selectedUiLanguage, onSetUiLanguage,
-    }),
-    ...buildAiAgentCommands({
-      aiAgentsStatus,
-      vaultAiGuidanceStatus,
-      selectedAiAgent,
-      selectedAiAgentLabel,
-      onOpenAiAgents,
-      onRestoreVaultAiGuidance,
-      onSetDefaultAiAgent,
-      onCycleDefaultAiAgent,
-    }),
-    ...buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
-    ...buildFilterCommands({ isSectionGroup, noteListFilter, onSetNoteListFilter }),
-  ], [
-    hasActiveNote, activeTabPath, isArchived, modifiedCount, activeNoteModified,
-    onQuickOpen, onCreateNote, onCreateNoteOfType, onCreateType, onSave, onOpenSettings, onOpenFeedback,
-    onDeleteNote, onArchiveNote, onUnarchiveNote,
-    onCommitPush, onInitializeGit, isGitVault, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, noteLayout, onToggleNoteLayout, onToggleAIChat, onOpenVault, onCreateEmptyVault, config.canAddRemote, config.onAddRemote,
-    onCheckForUpdates,
-    onZoomIn, onZoomOut, onZoomReset, zoomLevel,
-    onSelect, onRenameFolder, onDeleteFolder,
-    showInbox,
-    onGoBack, onGoForward, canGoBack, canGoForward,
-    vaultTypes,
-    onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
-    mcpStatus, onInstallMcp, aiAgentsStatus, vaultAiGuidanceStatus,
-    onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
-    onReloadVault, onRepairVault, locale, systemLocale, selectedUiLanguage, onSetUiLanguage,
-    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
-    isSectionGroup, noteListFilter, onSetNoteListFilter,
+  const navigationCommands = useMemo(() => buildNavigationCommands({
+    onQuickOpen,
+    onSelect,
     selection,
-    onOpenInNewWindow, onToggleFavorite, isFavorite,
-    onToggleOrganized, onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
-    onRestoreDeletedNote, canRestoreDeletedNote, activeEntry,
+    onRenameFolder,
+    onDeleteFolder,
+    showInbox,
+    onGoBack,
+    onGoForward,
+    canGoBack,
+    canGoForward,
+  }), [
+    onQuickOpen, onSelect, selection, onRenameFolder, onDeleteFolder,
+    showInbox, onGoBack, onGoForward, canGoBack, canGoForward,
   ])
+
+  const noteCommands = useMemo(() => buildNoteCommands({
+    hasActiveNote, activeTabPath, isArchived,
+    onCreateNote, onCreateType, onSave,
+    onDeleteNote, onArchiveNote, onUnarchiveNote,
+    onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
+    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
+    onToggleOrganized, isOrganized: activeEntry?.organized ?? false,
+    onRestoreDeletedNote, canRestoreDeletedNote,
+  }), [
+    hasActiveNote, activeTabPath, isArchived,
+    onCreateNote, onCreateType, onSave, onDeleteNote, onArchiveNote, onUnarchiveNote,
+    onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
+    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
+    onToggleOrganized, activeEntry?.organized, onRestoreDeletedNote, canRestoreDeletedNote,
+  ])
+
+  const gitCommands = useMemo(() => buildGitCommands({
+    modifiedCount,
+    isGitVault,
+    canAddRemote: config.canAddRemote ?? false,
+    onAddRemote: config.onAddRemote,
+    onCommitPush,
+    onInitializeGit,
+    onPull,
+    onResolveConflicts,
+    onSelect,
+  }), [
+    modifiedCount, isGitVault, config.canAddRemote, config.onAddRemote,
+    onCommitPush, onInitializeGit, onPull, onResolveConflicts, onSelect,
+  ])
+
+  const viewCommands = useMemo(() => buildViewCommands({
+    hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
+    onToggleDiff, onToggleRawEditor, noteLayout, onToggleNoteLayout, onToggleAIChat, zoomLevel, onZoomIn, onZoomOut, onZoomReset,
+    onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
+  }), [
+    hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
+    onToggleDiff, onToggleRawEditor, noteLayout, onToggleNoteLayout, onToggleAIChat,
+    zoomLevel, onZoomIn, onZoomOut, onZoomReset,
+    onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
+  ])
+
+  const settingsCommands = useMemo(() => buildSettingsCommands({
+    mcpStatus, vaultCount, isGettingStartedHidden,
+    onOpenSettings, onOpenFeedback, onOpenVault, onCreateEmptyVault, onRemoveActiveVault, onRestoreGettingStarted,
+    onCheckForUpdates, onInstallMcp, onReloadVault, onRepairVault,
+    locale, systemLocale, selectedUiLanguage, onSetUiLanguage,
+  }), [
+    mcpStatus, vaultCount, isGettingStartedHidden, onOpenSettings, onOpenFeedback,
+    onOpenVault, onCreateEmptyVault, onRemoveActiveVault, onRestoreGettingStarted,
+    onCheckForUpdates, onInstallMcp, onReloadVault, onRepairVault,
+    locale, systemLocale, selectedUiLanguage, onSetUiLanguage,
+  ])
+
+  const aiCommands = useMemo(() => buildAiAgentCommands({
+    aiAgentsStatus,
+    vaultAiGuidanceStatus,
+    selectedAiAgent,
+    selectedAiAgentLabel,
+    onOpenAiAgents,
+    onRestoreVaultAiGuidance,
+    onSetDefaultAiAgent,
+    onCycleDefaultAiAgent,
+  }), [
+    aiAgentsStatus, vaultAiGuidanceStatus, selectedAiAgent, selectedAiAgentLabel,
+    onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, onCycleDefaultAiAgent,
+  ])
+
+  const typeCommands = useMemo(
+    () => buildTypeCommands(vaultTypes, onCreateNoteOfType, onSelect),
+    [vaultTypes, onCreateNoteOfType, onSelect],
+  )
+  const filterCommands = useMemo(
+    () => buildFilterCommands({ isSectionGroup, noteListFilter, onSetNoteListFilter }),
+    [isSectionGroup, noteListFilter, onSetNoteListFilter],
+  )
+  const commands = useMemo(() => [
+    ...navigationCommands,
+    ...noteCommands,
+    ...gitCommands,
+    ...viewCommands,
+    ...settingsCommands,
+    ...aiCommands,
+    ...typeCommands,
+    ...filterCommands,
+  ], [
+    navigationCommands, noteCommands, gitCommands, viewCommands,
+    settingsCommands, aiCommands, typeCommands, filterCommands,
+  ])
+
+  return useMemo(() => localizeCommandActions(commands, locale), [commands, locale])
 }

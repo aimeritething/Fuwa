@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { FolderNode } from '../../types'
 import { useFolderRowInteractions } from './useFolderRowInteractions'
+import { translate, type AppLocale } from '../../lib/i18n'
 
 interface FolderItemRowProps {
   contentInset: number
@@ -23,6 +24,7 @@ interface FolderItemRowProps {
   onSelect: () => void
   onStartRenameFolder?: (folderPath: string) => void
   onToggle: (path: string) => void
+  locale?: AppLocale
 }
 
 export function FolderItemRow({
@@ -36,9 +38,10 @@ export function FolderItemRow({
   onSelect,
   onStartRenameFolder,
   onToggle,
+  locale = 'en',
 }: FolderItemRowProps) {
   const hasChildren = node.children.length > 0
-  const expandLabel = isExpanded ? `Collapse ${node.name}` : `Expand ${node.name}`
+  const expandLabel = translate(locale, isExpanded ? 'sidebar.folder.collapse' : 'sidebar.folder.expand', { name: node.name })
   const hasActions = !!onStartRenameFolder || !!onDeleteFolder
   const { handleRenameDoubleClick, handleSelectClick } = useFolderRowInteractions({
     hasChildren,
@@ -81,9 +84,9 @@ export function FolderItemRow({
         <div className="pointer-events-none absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-0.5 opacity-0 transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100">
           {onStartRenameFolder && (
             <FolderActionButton
-              ariaLabel={`Rename ${node.name}`}
+              ariaLabel={translate(locale, 'sidebar.action.renameFolder')}
               testId={`rename-folder-btn:${node.path}`}
-              title="Rename folder"
+              title={translate(locale, 'sidebar.action.renameFolder')}
               onClick={() => {
                 onSelect()
                 onStartRenameFolder(node.path)
@@ -94,9 +97,9 @@ export function FolderItemRow({
           )}
           {onDeleteFolder && (
             <FolderActionButton
-              ariaLabel={`Delete ${node.name}`}
+              ariaLabel={translate(locale, 'sidebar.action.deleteFolder')}
               testId={`delete-folder-btn:${node.path}`}
-              title="Delete folder"
+              title={translate(locale, 'sidebar.action.deleteFolder')}
               destructive
               onClick={() => {
                 onSelect()

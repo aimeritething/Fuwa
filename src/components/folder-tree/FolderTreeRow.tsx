@@ -4,6 +4,7 @@ import { NoteDropTarget } from '../note-retargeting/NoteDropTarget'
 import { useNoteRetargetingContext } from '../note-retargeting/noteRetargetingContext'
 import { FolderNameInput } from './FolderNameInput'
 import { FolderItemRow } from './FolderItemRow'
+import { translate, type AppLocale } from '../../lib/i18n'
 
 interface FolderTreeRowProps {
   depth: number
@@ -16,6 +17,7 @@ interface FolderTreeRowProps {
   onStartRenameFolder?: (folderPath: string) => void
   onToggle: (path: string) => void
   onCancelRenameFolder?: () => void
+  locale?: AppLocale
   renamingFolderPath?: string | null
   selection: SidebarSelection
 }
@@ -24,21 +26,23 @@ function FolderRenameRow({
   contentInset,
   depthIndent,
   node,
+  locale,
   onCancelRenameFolder,
   onRenameFolder,
 }: {
   contentInset: number
   depthIndent: number
   node: FolderNode
+  locale: AppLocale
   onCancelRenameFolder: () => void
   onRenameFolder: (folderPath: string, nextName: string) => Promise<boolean> | boolean
 }) {
   return (
     <div style={{ paddingLeft: depthIndent }}>
       <FolderNameInput
-        ariaLabel="Folder name"
+        ariaLabel={translate(locale, 'sidebar.folder.name')}
         initialValue={node.name}
-        placeholder="Folder name"
+        placeholder={translate(locale, 'sidebar.folder.name')}
         leftInset={contentInset}
         selectTextOnFocus={true}
         testId="rename-folder-input"
@@ -60,6 +64,7 @@ function FolderChildren({
   onStartRenameFolder,
   onToggle,
   onCancelRenameFolder,
+  locale,
   renamingFolderPath,
   selection,
 }: FolderTreeRowProps) {
@@ -86,6 +91,7 @@ function FolderChildren({
           onStartRenameFolder={onStartRenameFolder}
           onToggle={onToggle}
           onCancelRenameFolder={onCancelRenameFolder}
+          locale={locale}
           renamingFolderPath={renamingFolderPath}
           selection={selection}
         />
@@ -105,6 +111,7 @@ export const FolderTreeRow = memo(function FolderTreeRow({
   onStartRenameFolder,
   onToggle,
   onCancelRenameFolder,
+  locale = 'en',
   renamingFolderPath,
   selection,
 }: FolderTreeRowProps) {
@@ -129,6 +136,7 @@ export const FolderTreeRow = memo(function FolderTreeRow({
       onSelect={selectFolder}
       onStartRenameFolder={onStartRenameFolder}
       onToggle={onToggle}
+      locale={locale}
     />
   )
 
@@ -139,6 +147,7 @@ export const FolderTreeRow = memo(function FolderTreeRow({
           contentInset={contentInset}
           depthIndent={depthIndent}
           node={node}
+          locale={locale}
           onCancelRenameFolder={onCancelRenameFolder}
           onRenameFolder={onRenameFolder}
         />
@@ -163,6 +172,7 @@ export const FolderTreeRow = memo(function FolderTreeRow({
         onStartRenameFolder={onStartRenameFolder}
         onToggle={onToggle}
         onCancelRenameFolder={onCancelRenameFolder}
+        locale={locale}
         renamingFolderPath={renamingFolderPath}
         selection={selection}
       />

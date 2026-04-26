@@ -17,6 +17,7 @@ import {
 } from '../utils/rawEditorUtils'
 import { useCodeMirror } from '../hooks/useCodeMirror'
 import type { VaultEntry } from '../types'
+import { translate, type AppLocale } from '../lib/i18n'
 
 export interface RawEditorViewProps {
   content: string
@@ -28,6 +29,7 @@ export interface RawEditorViewProps {
   /** Mutable ref updated on every keystroke with the latest doc string.
    *  Allows the parent to flush debounced content before unmount. */
   latestContentRef?: React.MutableRefObject<string | null>
+  locale?: AppLocale
 }
 
 const DEBOUNCE_MS = 500
@@ -344,7 +346,7 @@ function useRawEditorWikilinkInsertion({
   return { insertDroppedWikilink }
 }
 
-export function RawEditorView({ content, path, entries, onContentChange, onSave, latestContentRef, vaultPath }: RawEditorViewProps) {
+export function RawEditorView({ content, path, entries, onContentChange, onSave, latestContentRef, vaultPath, locale = 'en' }: RawEditorViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const pendingChanges = useRawEditorPendingChanges({ content, latestContentRef, onContentChange, onSave, path })
   const autocompleteController = useRawEditorAutocompleteController({ entries, vaultPath })
@@ -375,7 +377,7 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave,
         ref={containerRef}
         className="raw-editor-codemirror flex flex-1 min-h-0"
         data-testid="raw-editor-codemirror"
-        aria-label="Raw editor"
+        aria-label={translate(locale, 'editor.raw.label')}
       />
       <RawEditorAutocompleteDropdown
         autocomplete={autocompleteController.autocomplete}

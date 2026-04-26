@@ -1,6 +1,7 @@
 import type React from 'react'
 import { useRef } from 'react'
 import type { useCreateBlockNote } from '@blocknote/react'
+import type { AppLocale } from '../../lib/i18n'
 import type { NoteLayout, NoteStatus, VaultEntry } from '../../types'
 import { useEditorTheme } from '../../hooks/useTheme'
 import { deriveEditorContentState } from './editorContentState'
@@ -45,6 +46,7 @@ export interface EditorContentProps {
   isConflicted?: boolean
   onKeepMine?: (path: string) => void
   onKeepTheirs?: (path: string) => void
+  locale?: AppLocale
 }
 
 export function useEditorContentModel(props: EditorContentProps) {

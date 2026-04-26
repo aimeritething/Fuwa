@@ -50,8 +50,8 @@ function makeReadyStatus(overrides?: Partial<Extract<UpdateStatus, { state: 'rea
   }
 }
 
-function renderBanner(status: UpdateStatus, actions = makeActions()) {
-  const view = render(<UpdateBanner status={status} actions={actions} />)
+function renderBanner(status: UpdateStatus, actions = makeActions(), locale: 'en' | 'zh-Hans' = 'en') {
+  const view = render(<UpdateBanner status={status} actions={actions} locale={locale} />)
   return { ...view, actions }
 }
 
@@ -81,6 +81,19 @@ describe('UpdateBanner', () => {
     expect(screen.getByTestId('update-now-btn')).toBeTruthy()
     expect(screen.getByTestId('update-release-notes')).toBeTruthy()
     expect(screen.getByTestId('update-dismiss')).toBeTruthy()
+  })
+
+  it('localizes available update copy', () => {
+    renderBanner(makeAvailableStatus({
+      version: '2026.4.16-alpha.3',
+      displayVersion: 'Alpha 2026.4.16.3',
+    }), makeActions(), 'zh-Hans')
+
+    expect(screen.getByText(/Tolaria Alpha 2026\.4\.16\.3/)).toBeTruthy()
+    expect(screen.getByText(/可用/)).toBeTruthy()
+    expect(screen.getByTestId('update-release-notes')).toHaveTextContent('发行说明')
+    expect(screen.getByTestId('update-now-btn')).toHaveTextContent('立即更新')
+    expect(screen.getByTestId('update-dismiss')).toHaveAttribute('aria-label', '关闭')
   })
 
   it('"Update Now" calls startDownload', () => {

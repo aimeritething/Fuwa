@@ -5,6 +5,7 @@ import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { type IconProps } from '@phosphor-icons/react'
 import { SIDEBAR_ITEM_PADDING } from './sidebar/sidebarStyles'
 import { Button } from './ui/button'
+import { translate, type AppLocale } from '../lib/i18n'
 
 const SIDEBAR_COUNT_PILL_STYLE = {
   borderRadius: 9999,
@@ -275,12 +276,13 @@ export interface SectionContentProps {
   renameInitialValue?: string
   onRenameSubmit?: (value: string) => void
   onRenameCancel?: () => void
+  locale?: AppLocale
 }
 
 export function SectionContent({
   group, itemCount, selection, onSelect,
   onContextMenu, dragHandleProps,
-  isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel,
+  isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel, locale,
 }: SectionContentProps) {
   const { label, type, Icon, customColor } = group
   const { sectionColor, sectionLightColor } = resolveSectionColors(type, customColor)
@@ -299,14 +301,16 @@ export function SectionContent({
       renameInitialValue={renameInitialValue}
       onRenameSubmit={onRenameSubmit}
       onRenameCancel={onRenameCancel}
+      locale={locale}
     />
   )
 }
 
-function InlineRenameInput({ initialValue, onSubmit, onCancel }: {
+function InlineRenameInput({ initialValue, onSubmit, onCancel, locale }: {
   initialValue: string
   onSubmit: (value: string) => void
   onCancel: () => void
+  locale?: AppLocale
 }) {
   const [value, setValue] = useState(initialValue)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -326,7 +330,7 @@ function InlineRenameInput({ initialValue, onSubmit, onCancel }: {
       onKeyDown={handleKeyDown}
       onBlur={() => onSubmit(value.trim())}
       onClick={(e) => e.stopPropagation()}
-      aria-label="Section name"
+      aria-label={translate(locale ?? 'en', 'sidebar.section.name')}
       className="flex-1 rounded border border-primary bg-background text-[13px] font-medium text-foreground outline-none"
       style={{ padding: '1px 4px' }}
     />
@@ -382,6 +386,7 @@ function SectionHeaderLabel({
   renameInitialValue,
   onRenameSubmit,
   onRenameCancel,
+  locale,
 }: {
   type: string
   label: string
@@ -391,6 +396,7 @@ function SectionHeaderLabel({
   renameInitialValue?: string
   onRenameSubmit?: (value: string) => void
   onRenameCancel?: () => void
+  locale?: AppLocale
 }) {
   const inlineRenameHandlers = resolveInlineRenameHandlers({
     isRenaming,
@@ -405,6 +411,7 @@ function SectionHeaderLabel({
         initialValue={renameInitialValue ?? label}
         onSubmit={inlineRenameHandlers.onRenameSubmit}
         onCancel={inlineRenameHandlers.onRenameCancel}
+        locale={locale}
       />
     )
   }
@@ -431,13 +438,14 @@ function SectionHeaderCountPill({
   )
 }
 
-function SectionHeader({ label, type, Icon, sectionColor, sectionLightColor, itemCount, isActive, onSelect, onContextMenu, dragHandleProps, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel }: {
+function SectionHeader({ label, type, Icon, sectionColor, sectionLightColor, itemCount, isActive, onSelect, onContextMenu, dragHandleProps, isRenaming, renameInitialValue, onRenameSubmit, onRenameCancel, locale }: {
   label: string; type: string; Icon: ComponentType<IconProps>
   sectionColor: string; sectionLightColor: string; itemCount: number; isActive: boolean
   onSelect: () => void; onContextMenu: (e: React.MouseEvent) => void
   dragHandleProps?: Record<string, unknown>
   isRenaming?: boolean; renameInitialValue?: string
   onRenameSubmit?: (value: string) => void; onRenameCancel?: () => void
+  locale?: AppLocale
 }) {
   return (
     <div
@@ -458,6 +466,7 @@ function SectionHeader({ label, type, Icon, sectionColor, sectionLightColor, ite
           renameInitialValue={renameInitialValue}
           onRenameSubmit={onRenameSubmit}
           onRenameCancel={onRenameCancel}
+          locale={locale}
         />
       </div>
       <SectionHeaderCountPill itemCount={itemCount} isActive={isActive} sectionColor={sectionColor} />
@@ -469,10 +478,12 @@ function VisibilityPopoverItem({
   group,
   isVisible,
   onToggle,
+  locale = 'en',
 }: {
   group: SectionGroup
   isVisible: boolean
   onToggle: (type: string) => void
+  locale?: AppLocale
 }) {
   const { label, type, Icon, customColor } = group
   const { sectionColor } = resolveSectionColors(type, customColor)
@@ -485,7 +496,7 @@ function VisibilityPopoverItem({
       className="h-auto w-full justify-start rounded-none px-3 py-1.5"
       style={{ padding: '6px 12px', gap: 8 }}
       onClick={() => onToggle(type)}
-      aria-label={`Toggle ${label}`}
+      aria-label={translate(locale, 'sidebar.section.toggle', { label })}
     >
       <Icon size={14} style={{ color: sectionColor }} />
       <span className="flex-1 text-left text-[13px] text-foreground">{label}</span>
@@ -496,23 +507,25 @@ function VisibilityPopoverItem({
 
 // --- Visibility Popover ---
 
-export function VisibilityPopover({ sections, isSectionVisible, onToggle }: {
+export function VisibilityPopover({ sections, isSectionVisible, onToggle, locale = 'en' }: {
   sections: SectionGroup[]
   isSectionVisible: (type: string) => boolean
   onToggle: (type: string) => void
+  locale?: AppLocale
 }) {
   return (
     <div
       className="border border-border bg-popover text-popover-foreground"
       style={{ position: 'absolute', top: '100%', left: 6, right: 6, zIndex: 50, borderRadius: 8, padding: '8px 0', boxShadow: '0 4px 12px var(--shadow-dialog)' }}
     >
-      <div className="text-[12px] font-semibold text-muted-foreground" style={{ padding: '0 12px 4px' }}>Show in sidebar</div>
+      <div className="text-[12px] font-semibold text-muted-foreground" style={{ padding: '0 12px 4px' }}>{translate(locale, 'sidebar.section.showInSidebar')}</div>
       {sections.map((group) => (
         <VisibilityPopoverItem
           key={group.type}
           group={group}
           isVisible={isSectionVisible(group.type)}
           onToggle={onToggle}
+          locale={locale}
         />
       ))}
     </div>

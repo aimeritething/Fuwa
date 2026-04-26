@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 import { PencilSimple, Trash } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
+import { translate, type AppLocale } from '../../lib/i18n'
 
 export interface FolderContextMenuState {
   path: string
@@ -13,6 +14,7 @@ interface FolderContextMenuProps {
   menuRef: RefObject<HTMLDivElement | null>
   onDelete?: (folderPath: string) => void
   onRename: (folderPath: string) => void
+  locale?: AppLocale
 }
 
 export function FolderContextMenu({
@@ -20,6 +22,7 @@ export function FolderContextMenu({
   menuRef,
   onDelete,
   onRename,
+  locale = 'en',
 }: FolderContextMenuProps) {
   if (!menu) return null
 
@@ -37,7 +40,7 @@ export function FolderContextMenu({
         onClick={() => onRename(menu.path)}
       >
         <PencilSimple size={14} />
-        Rename folder…
+        {translate(locale, 'sidebar.action.renameFolderMenu')}
       </Button>
       <Button
         type="button"
@@ -47,7 +50,7 @@ export function FolderContextMenu({
         data-testid="delete-folder-menu-item"
       >
         <Trash size={14} />
-        Delete folder…
+        {translate(locale, 'sidebar.action.deleteFolderMenu')}
       </Button>
     </div>
   )

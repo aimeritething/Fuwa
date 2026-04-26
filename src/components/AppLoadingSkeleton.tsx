@@ -125,13 +125,7 @@ function SidebarGroupSkeleton({ rows, count }: { rows: string[]; count?: string 
 function SidebarSkeleton() {
   return (
     <aside className="flex h-full flex-col overflow-hidden border-r border-[var(--sidebar-border)] bg-sidebar text-sidebar-foreground">
-      <div className="flex h-[52px] shrink-0 items-center border-b border-border px-3">
-        <div className="flex gap-2">
-          <span className="h-3 w-3 rounded-full bg-[#ff5f57]" />
-          <span className="h-3 w-3 rounded-full bg-[#ffbd2e]" />
-          <span className="h-3 w-3 rounded-full bg-[#28c840]" />
-        </div>
-      </div>
+      <div className="h-[52px] shrink-0 border-b border-border" />
       <nav className="flex-1 overflow-hidden py-1">
         <div className="border-b border-border px-1.5 pb-1">
           <SidebarRow icon={Inbox} width="48%" active countWidth="30px" />

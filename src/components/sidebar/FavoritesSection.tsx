@@ -12,6 +12,7 @@ import { NoteTitleIcon } from '../NoteTitleIcon'
 import { isSelectionActive } from '../SidebarParts'
 import { SidebarGroupHeader } from './SidebarGroupHeader'
 import { SIDEBAR_ITEM_PADDING } from './sidebarStyles'
+import { translate, type AppLocale } from '../../lib/i18n'
 
 const FAVORITE_TYPE_ICON_MAP: Record<string, string> = {
   Project: 'wrench',
@@ -99,6 +100,7 @@ interface FavoritesSectionProps {
   onSelectNote?: (entry: VaultEntry) => void
   onReorder?: (orderedPaths: string[]) => void
   collapsed: boolean
+  locale?: AppLocale
   onToggle: () => void
 }
 
@@ -109,6 +111,7 @@ export function FavoritesSection({
   onSelectNote,
   onReorder,
   collapsed,
+  locale = 'en',
   onToggle,
 }: FavoritesSectionProps) {
   const favorites = useMemo(() => sortFavorites(entries), [entries])
@@ -134,7 +137,7 @@ export function FavoritesSection({
 
   return (
     <div style={{ padding: '0 6px' }}>
-      <SidebarGroupHeader label="FAVORITES" collapsed={collapsed} onToggle={onToggle} count={favorites.length} />
+      <SidebarGroupHeader label={translate(locale, 'sidebar.group.favorites')} collapsed={collapsed} onToggle={onToggle} count={favorites.length} />
       {!collapsed && (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={favoriteIds} strategy={verticalListSortingStrategy}>

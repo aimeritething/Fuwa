@@ -5,6 +5,7 @@ import { Funnel, PencilSimple, Trash } from '@phosphor-icons/react'
 import { NoteTitleIcon } from '../NoteTitleIcon'
 import { SidebarCountPill } from '../SidebarParts'
 import { SIDEBAR_ITEM_PADDING } from './sidebarStyles'
+import { translate, type AppLocale } from '../../lib/i18n'
 
 interface SidebarViewItemProps {
   view: ViewFile
@@ -13,6 +14,7 @@ interface SidebarViewItemProps {
   onEditView?: (filename: string) => void
   onDeleteView?: (filename: string) => void
   entries: VaultEntry[]
+  locale?: AppLocale
 }
 
 export function SidebarViewItem({
@@ -22,6 +24,7 @@ export function SidebarViewItem({
   onEditView,
   onDeleteView,
   entries,
+  locale = 'en',
 }: SidebarViewItemProps) {
   const count = useMemo(() => evaluateView(view.definition, entries).length, [view.definition, entries])
   const showCount = count > 0
@@ -52,7 +55,8 @@ export function SidebarViewItem({
           <button
             className="rounded p-0.5 text-muted-foreground hover:text-foreground"
             onClick={(event) => { event.stopPropagation(); onEditView(view.filename) }}
-            title="Edit view"
+            title={translate(locale, 'sidebar.action.editView')}
+            aria-label={translate(locale, 'sidebar.action.editView')}
           >
             <PencilSimple size={12} />
           </button>
@@ -61,7 +65,8 @@ export function SidebarViewItem({
           <button
             className="rounded p-0.5 text-muted-foreground hover:text-destructive"
             onClick={(event) => { event.stopPropagation(); onDeleteView(view.filename) }}
-            title="Delete view"
+            title={translate(locale, 'sidebar.action.deleteView')}
+            aria-label={translate(locale, 'sidebar.action.deleteView')}
           >
             <Trash size={12} />
           </button>

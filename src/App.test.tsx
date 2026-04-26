@@ -1015,6 +1015,32 @@ describe('App', () => {
     })
   })
 
+  it('clears the Git setup dialog when switching to a Git-enabled vault', async () => {
+    mockCommandResults.load_vault_list = {
+      vaults: [
+        { label: 'Missing Git', path: '/work' },
+        { label: 'Git Vault', path: '/vault-2' },
+      ],
+      active_vault: '/work',
+      hidden_defaults: [],
+    }
+    mockCommandResults.is_git_repo = ({ vaultPath }: { vaultPath?: string } = {}) => vaultPath === '/vault-2'
+
+    render(<App />)
+
+    expect(await screen.findByText('Enable Git for this vault?')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('status-vault-trigger'))
+    fireEvent.click(screen.getByTestId('vault-menu-item-Git Vault'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('status-vault-trigger')).toHaveTextContent('Git Vault')
+    })
+    await waitFor(() => {
+      expect(screen.queryByText('Enable Git for this vault?')).not.toBeInTheDocument()
+    })
+  })
+
   it('Cmd+1 hides sidebar and note list (editor-only mode)', async () => {
     render(<App />)
     await waitFor(() => {

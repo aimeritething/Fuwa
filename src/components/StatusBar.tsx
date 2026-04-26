@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import type { ClaudeCodeStatus } from '../hooks/useClaudeCodeStatus'
 import type { McpStatus } from '../hooks/useMcpStatus'
 import type { ThemeMode } from '../lib/themeMode'
+import type { AppLocale } from '../lib/i18n'
 import type { GitRemoteStatus, SyncStatus } from '../types'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import {
@@ -94,6 +95,7 @@ interface StatusBarProps {
   onRestoreVaultAiGuidance?: () => void
   claudeCodeStatus?: ClaudeCodeStatus
   claudeCodeVersion?: string | null
+  locale?: AppLocale
 }
 
 interface StatusBarFooterProps extends StatusBarProps {
@@ -101,13 +103,11 @@ interface StatusBarFooterProps extends StatusBarProps {
   stacked: boolean
 }
 
-function StatusBarFooter({
-  noteCount,
+function StatusBarPrimaryFromFooter({
   modifiedCount = 0,
   vaultPath,
   vaults,
   onSwitchVault,
-  onOpenSettings,
   onOpenLocalFolder,
   onCreateEmptyVault,
   onCloneVault,
@@ -125,11 +125,6 @@ function StatusBarFooter({
   onTriggerSync,
   onPullAndPush,
   onOpenConflictResolver,
-  zoomLevel = 100,
-  themeMode = 'light',
-  onZoomReset,
-  onToggleThemeMode,
-  onOpenFeedback,
   buildNumber,
   onCheckForUpdates,
   onRemoveVault,
@@ -142,9 +137,83 @@ function StatusBarFooter({
   onRestoreVaultAiGuidance,
   claudeCodeStatus,
   claudeCodeVersion,
+  locale = 'en',
   compact,
   stacked,
 }: StatusBarFooterProps) {
+  return (
+    <StatusBarPrimarySection
+      modifiedCount={modifiedCount}
+      vaultPath={vaultPath}
+      vaults={vaults}
+      onSwitchVault={onSwitchVault}
+      onOpenLocalFolder={onOpenLocalFolder}
+      onCreateEmptyVault={onCreateEmptyVault}
+      onCloneVault={onCloneVault}
+      onCloneGettingStarted={onCloneGettingStarted}
+      onClickPending={onClickPending}
+      onClickPulse={onClickPulse}
+      onCommitPush={onCommitPush}
+      onInitializeGit={onInitializeGit}
+      isOffline={isOffline}
+      isGitVault={isGitVault}
+      syncStatus={syncStatus}
+      lastSyncTime={lastSyncTime}
+      conflictCount={conflictCount}
+      remoteStatus={remoteStatus}
+      onTriggerSync={onTriggerSync}
+      onPullAndPush={onPullAndPush}
+      onOpenConflictResolver={onOpenConflictResolver}
+      buildNumber={buildNumber}
+      onCheckForUpdates={onCheckForUpdates}
+      onRemoveVault={onRemoveVault}
+      mcpStatus={mcpStatus}
+      onInstallMcp={onInstallMcp}
+      aiAgentsStatus={aiAgentsStatus}
+      vaultAiGuidanceStatus={vaultAiGuidanceStatus}
+      defaultAiAgent={defaultAiAgent}
+      onSetDefaultAiAgent={onSetDefaultAiAgent}
+      onRestoreVaultAiGuidance={onRestoreVaultAiGuidance}
+      claudeCodeStatus={claudeCodeStatus}
+      claudeCodeVersion={claudeCodeVersion}
+      locale={locale}
+      stacked={stacked}
+      compact={compact}
+    />
+  )
+}
+
+function StatusBarSecondaryFromFooter({
+  noteCount,
+  zoomLevel = 100,
+  themeMode = 'light',
+  onZoomReset,
+  onToggleThemeMode,
+  onOpenFeedback,
+  onOpenSettings,
+  locale = 'en',
+  compact,
+  stacked,
+}: StatusBarFooterProps) {
+  return (
+      <StatusBarSecondarySection
+        noteCount={noteCount}
+        zoomLevel={zoomLevel}
+        themeMode={themeMode}
+        onZoomReset={onZoomReset}
+        onToggleThemeMode={onToggleThemeMode}
+        onOpenFeedback={onOpenFeedback}
+        onOpenSettings={onOpenSettings}
+        locale={locale}
+        stacked={stacked}
+        compact={compact}
+      />
+  )
+}
+
+function StatusBarFooter(props: StatusBarFooterProps) {
+  const { compact, stacked } = props
+
   return (
     <footer
       data-testid="status-bar"
@@ -167,54 +236,8 @@ function StatusBarFooter({
         zIndex: 10,
       }}
     >
-      <StatusBarPrimarySection
-        modifiedCount={modifiedCount}
-        vaultPath={vaultPath}
-        vaults={vaults}
-        onSwitchVault={onSwitchVault}
-        onOpenLocalFolder={onOpenLocalFolder}
-        onCreateEmptyVault={onCreateEmptyVault}
-        onCloneVault={onCloneVault}
-        onCloneGettingStarted={onCloneGettingStarted}
-        onClickPending={onClickPending}
-        onClickPulse={onClickPulse}
-        onCommitPush={onCommitPush}
-        onInitializeGit={onInitializeGit}
-        isOffline={isOffline}
-        isGitVault={isGitVault}
-        syncStatus={syncStatus}
-        lastSyncTime={lastSyncTime}
-        conflictCount={conflictCount}
-        remoteStatus={remoteStatus}
-        onTriggerSync={onTriggerSync}
-        onPullAndPush={onPullAndPush}
-        onOpenConflictResolver={onOpenConflictResolver}
-        buildNumber={buildNumber}
-        onCheckForUpdates={onCheckForUpdates}
-        onRemoveVault={onRemoveVault}
-        mcpStatus={mcpStatus}
-        onInstallMcp={onInstallMcp}
-        aiAgentsStatus={aiAgentsStatus}
-        vaultAiGuidanceStatus={vaultAiGuidanceStatus}
-        defaultAiAgent={defaultAiAgent}
-        onSetDefaultAiAgent={onSetDefaultAiAgent}
-        onRestoreVaultAiGuidance={onRestoreVaultAiGuidance}
-        claudeCodeStatus={claudeCodeStatus}
-        claudeCodeVersion={claudeCodeVersion}
-        stacked={stacked}
-        compact={compact}
-      />
-      <StatusBarSecondarySection
-        noteCount={noteCount}
-        zoomLevel={zoomLevel}
-        themeMode={themeMode}
-        onZoomReset={onZoomReset}
-        onToggleThemeMode={onToggleThemeMode}
-        onOpenFeedback={onOpenFeedback}
-        onOpenSettings={onOpenSettings}
-        stacked={stacked}
-        compact={compact}
-      />
+      <StatusBarPrimaryFromFooter {...props} />
+      <StatusBarSecondaryFromFooter {...props} />
     </footer>
   )
 }
