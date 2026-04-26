@@ -63,7 +63,7 @@ pub struct AgentStreamRequest {
 // ---------------------------------------------------------------------------
 
 pub(crate) fn find_claude_binary() -> Result<PathBuf, String> {
-    if let Some(binary) = find_claude_binary_on_path()? {
+    if let Some(binary) = find_claude_binary_on_path() {
         return Ok(binary);
     }
 
@@ -78,13 +78,20 @@ pub(crate) fn find_claude_binary() -> Result<PathBuf, String> {
     Err("Claude CLI not found. Install it: https://docs.anthropic.com/en/docs/claude-code".into())
 }
 
-fn find_claude_binary_on_path() -> Result<Option<PathBuf>, String> {
-    let output = Command::new("which")
+fn find_claude_binary_on_path() -> Option<PathBuf> {
+    Command::new(claude_path_lookup_command())
         .arg("claude")
         .output()
-        .map_err(|e| format!("Failed to run `which claude`: {e}"))?;
+        .ok()
+        .and_then(|output| path_from_successful_output(&output))
+}
 
-    Ok(path_from_successful_output(&output))
+fn claude_path_lookup_command() -> &'static str {
+    if cfg!(windows) {
+        "where"
+    } else {
+        "which"
+    }
 }
 
 fn find_claude_binary_in_user_shell() -> Option<PathBuf> {
@@ -143,11 +150,24 @@ fn claude_binary_candidates() -> Vec<PathBuf> {
 fn claude_binary_candidates_for_home(home: &Path) -> Vec<PathBuf> {
     vec![
         home.join(".local/bin/claude"),
+        home.join(".local/bin/claude.exe"),
         home.join(".claude/local/claude"),
+        home.join(".claude/local/claude.exe"),
         home.join(".local/share/mise/shims/claude"),
+        home.join(".local/share/mise/shims/claude.exe"),
         home.join(".asdf/shims/claude"),
+        home.join(".asdf/shims/claude.exe"),
         home.join(".npm-global/bin/claude"),
+        home.join(".npm-global/bin/claude.cmd"),
+        home.join(".npm-global/bin/claude.exe"),
         home.join(".npm/bin/claude"),
+        home.join(".npm/bin/claude.cmd"),
+        home.join(".npm/bin/claude.exe"),
+        home.join("AppData/Roaming/npm/claude.cmd"),
+        home.join("AppData/Roaming/npm/claude.exe"),
+        home.join("AppData/Local/pnpm/claude.cmd"),
+        home.join("AppData/Local/pnpm/claude.exe"),
+        home.join("scoop/shims/claude.exe"),
         PathBuf::from("/opt/homebrew/bin/claude"),
         PathBuf::from("/usr/local/bin/claude"),
     ]
@@ -1097,6 +1117,45 @@ mod tests {
                 candidate.display()
             );
         }
+    }
+
+    #[test]
+    fn claude_binary_candidates_include_windows_exe_installs() {
+        let home = PathBuf::from(r"C:\Users\alex");
+        let candidates = claude_binary_candidates_for_home(&home);
+        let expected = [
+            home.join(".local/bin/claude.exe"),
+            home.join(".claude/local/claude.exe"),
+            home.join("AppData/Roaming/npm/claude.cmd"),
+        ];
+
+        for candidate in expected {
+            assert!(
+                candidates.contains(&candidate),
+                "missing {}",
+                candidate.display()
+            );
+        }
+    }
+
+    #[test]
+    fn claude_path_lookup_command_matches_current_platform() {
+        let expected = if cfg!(windows) { "where" } else { "which" };
+
+        assert_eq!(claude_path_lookup_command(), expected);
+    }
+
+    #[test]
+    fn find_existing_binary_finds_windows_exe_candidate() {
+        let dir = tempfile::tempdir().unwrap();
+        let claude = dir.path().join(".local/bin/claude.exe");
+        std::fs::create_dir_all(claude.parent().unwrap()).unwrap();
+        std::fs::write(&claude, "").unwrap();
+
+        assert_eq!(
+            find_existing_binary(claude_binary_candidates_for_home(dir.path())),
+            Some(claude)
+        );
     }
 
     #[test]
