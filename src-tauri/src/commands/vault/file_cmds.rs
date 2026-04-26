@@ -214,3 +214,91 @@ pub fn list_vault(path: PathBuf) -> Result<Vec<VaultEntry>, String> {
 pub fn list_vault_folders(path: PathBuf) -> Result<Vec<FolderNode>, String> {
     with_expanded_vault_root(path.as_path(), vault::scan_vault_folders)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    fn vault_root(dir: &TempDir) -> PathBuf {
+        dir.path().to_path_buf()
+    }
+
+    fn note_path(dir: &TempDir, name: &str) -> PathBuf {
+        dir.path().join(name)
+    }
+
+    #[test]
+    fn note_content_commands_roundtrip_with_requested_vault() {
+        let dir = TempDir::new().unwrap();
+        let root = vault_root(&dir);
+        let note = note_path(&dir, "notes/command-note.md");
+
+        create_note_content(
+            note.clone(),
+            "# Command Note\n".to_string(),
+            Some(root.clone()),
+        )
+        .unwrap();
+        assert_eq!(
+            get_note_content(note.clone(), Some(root.clone())).unwrap(),
+            "# Command Note\n"
+        );
+
+        save_note_content(
+            note.clone(),
+            "---\ntitle: Command Note\n---\n# Command Note\nBody\n".to_string(),
+            Some(root.clone()),
+        )
+        .unwrap();
+        assert!(!sync_note_title(note.clone(), Some(root.clone())).unwrap());
+
+        save_note_content(
+            note.clone(),
+            "# Updated Command Note\n".to_string(),
+            Some(root.clone()),
+        )
+        .unwrap();
+        assert!(sync_note_title(note.clone(), Some(root.clone())).unwrap());
+        assert!(get_note_content(note, Some(root))
+            .unwrap()
+            .contains("title: Command Note"));
+    }
+
+    #[test]
+    fn folder_and_listing_commands_use_expanded_vault_root() {
+        let dir = TempDir::new().unwrap();
+        let root = vault_root(&dir);
+        fs::write(dir.path().join("root.md"), "# Root\n").unwrap();
+
+        assert_eq!(
+            create_vault_folder(root.clone(), PathBuf::from("Projects")).unwrap(),
+            "Projects"
+        );
+        fs::write(dir.path().join("Projects/project.md"), "# Project\n").unwrap();
+
+        let entries = list_vault(root.clone()).unwrap();
+        assert!(entries.iter().any(|entry| entry.filename == "root.md"));
+        assert!(entries.iter().any(|entry| entry.filename == "project.md"));
+
+        let folders = list_vault_folders(root).unwrap();
+        assert!(folders.iter().any(|folder| folder.name == "Projects"));
+    }
+
+    #[test]
+    fn commands_reject_paths_outside_requested_vault() {
+        let vault = TempDir::new().unwrap();
+        let outside = TempDir::new().unwrap();
+        let outside_note = outside.path().join("outside.md");
+        fs::write(&outside_note, "# Outside\n").unwrap();
+
+        let error = get_note_content(outside_note, Some(vault.path().to_path_buf())).unwrap_err();
+        assert!(error.contains("Path must stay inside the active vault"));
+
+        let folder_error =
+            create_vault_folder(vault.path().to_path_buf(), PathBuf::from("../escape"))
+                .unwrap_err();
+        assert!(folder_error.contains("Path must stay inside the active vault"));
+    }
+}
