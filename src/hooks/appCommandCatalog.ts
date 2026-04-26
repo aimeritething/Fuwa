@@ -436,6 +436,7 @@ export function shortcutCombosForEvent({
   shiftKey,
 }: Pick<ShortcutEventLike, 'altKey' | 'ctrlKey' | 'metaKey' | 'shiftKey'>): readonly AppCommandShortcutCombo[] {
   if (altKey || (!metaKey && !ctrlKey)) return NO_SHORTCUT_COMBOS
+  if (isMac() && ctrlKey) return NO_SHORTCUT_COMBOS
   if (shiftKey) {
     return metaKey && !ctrlKey ? COMMAND_SHIFT_COMBOS : COMMAND_OR_CTRL_SHIFT_COMBOS
   }

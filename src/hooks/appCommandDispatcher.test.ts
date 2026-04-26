@@ -16,6 +16,15 @@ import {
   getShortcutEventInit,
 } from './appCommandCatalog'
 
+const originalUserAgent = navigator.userAgent
+
+function setUserAgent(userAgent: string) {
+  Object.defineProperty(window.navigator, 'userAgent', {
+    configurable: true,
+    value: userAgent,
+  })
+}
+
 function makeHandlers(): AppCommandHandlers {
   return {
     onSetViewMode: vi.fn(),
@@ -60,6 +69,7 @@ function makeHandlers(): AppCommandHandlers {
 
 describe('appCommandDispatcher', () => {
   afterEach(() => {
+    setUserAgent(originalUserAgent)
     resetAppCommandDispatchStateForTests()
   })
 
@@ -190,6 +200,61 @@ describe('appCommandDispatcher', () => {
         shiftKey: true,
       }),
     ).toBe(APP_COMMAND_IDS.viewToggleAiChat)
+  })
+
+  it('ignores macOS Control-only shortcuts so native text editing bindings pass through', () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
+
+    expect(
+      findShortcutCommandIdForEvent({
+        key: 'e',
+        code: 'KeyE',
+        altKey: false,
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+      }),
+    ).toBeNull()
+    expect(
+      findShortcutCommandIdForEvent({
+        key: 'n',
+        code: 'KeyN',
+        altKey: false,
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+      }),
+    ).toBeNull()
+    expect(
+      findShortcutCommandIdForEvent({
+        key: 'p',
+        code: 'KeyP',
+        altKey: false,
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+      }),
+    ).toBeNull()
+    expect(
+      findShortcutCommandIdForEvent({
+        key: 'd',
+        code: 'KeyD',
+        altKey: false,
+        ctrlKey: true,
+        metaKey: false,
+        shiftKey: false,
+      }),
+    ).toBeNull()
+    expect(
+      findShortcutCommandIdForEvent({
+        key: 'e',
+        code: 'KeyE',
+        altKey: false,
+        ctrlKey: false,
+        metaKey: true,
+        shiftKey: false,
+      }),
+    ).toBe(APP_COMMAND_IDS.noteToggleOrganized)
   })
 
   it('dispatches create note through the shared command path', () => {
