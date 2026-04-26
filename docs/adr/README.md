@@ -89,7 +89,7 @@ proposed → active → superseded
 | [0031](0031-full-app-for-note-windows.md) | Full App instance for secondary note windows | active |
 | [0032](0032-status-bar-for-git-actions.md) | Git actions (Changes, Pulse, Commit) in status bar, not sidebar | active |
 | [0033](0033-subfolder-scanning-and-folder-tree.md) | Subfolder scanning and folder tree navigation | active |
-| [0034](0034-git-repo-required-for-vault.md) | Git repo required — blocking modal enforces vault prerequisite | active |
+| [0034](0034-git-repo-required-for-vault.md) | Git repo required — blocking modal enforces vault prerequisite | superseded → [0085](0085-non-git-vault-support.md) |
 | [0035](0035-path-suffix-wikilink-resolution.md) | Path-suffix wikilink resolution for subfolder vaults | active |
 | [0036](0036-external-rename-detection-via-git-diff.md) | External rename detection via git diff on focus regain | active |
 | [0037](0037-codemirror-language-markdown-highlighting.md) | Language-based markdown syntax highlighting in raw editor | active |
@@ -139,3 +139,4 @@ proposed → active → superseded
 | [0081](0081-internal-light-dark-theme-runtime.md) | Internal light and dark theme runtime | active |
 | [0082](0082-markdown-durable-math-notes.md) | Markdown-durable math in notes | active |
 | [0083](0083-dual-architecture-macos-release-artifacts.md) | Dual-architecture macOS release artifacts | active |
+| [0085](0085-non-git-vault-support.md) | Non-git vaults open with explicit later Git initialization | active |

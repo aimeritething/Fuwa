@@ -66,6 +66,8 @@ interface CommandRegistryConfig {
   onCreateEmptyVault?: () => void
   onAddRemote?: () => void
   canAddRemote?: boolean
+  isGitVault?: boolean
+  onInitializeGit?: () => void
   onCreateType?: () => void
   onDeleteNote: (path: string) => void
   onArchiveNote: (path: string) => void
@@ -125,6 +127,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onCustomizeNoteListColumns, canCustomizeNoteListColumns,
     onRestoreDeletedNote, canRestoreDeletedNote,
     selection, noteListFilter, onSetNoteListFilter,
+    isGitVault, onInitializeGit,
   } = config
 
   const hasActiveNote = activeTabPath !== null
@@ -168,9 +171,11 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     }),
     ...buildGitCommands({
       modifiedCount,
+      isGitVault,
       canAddRemote: config.canAddRemote ?? false,
       onAddRemote: config.onAddRemote,
       onCommitPush,
+      onInitializeGit,
       onPull,
       onResolveConflicts,
       onSelect,
@@ -202,7 +207,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     hasActiveNote, activeTabPath, isArchived, modifiedCount, activeNoteModified,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onCreateType, onSave, onOpenSettings, onOpenFeedback,
     onDeleteNote, onArchiveNote, onUnarchiveNote,
-    onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, noteLayout, onToggleNoteLayout, onToggleAIChat, onOpenVault, onCreateEmptyVault, config.canAddRemote, config.onAddRemote,
+    onCommitPush, onInitializeGit, isGitVault, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, noteLayout, onToggleNoteLayout, onToggleAIChat, onOpenVault, onCreateEmptyVault, config.canAddRemote, config.onAddRemote,
     onCheckForUpdates,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
     onSelect, onRenameFolder, onDeleteFolder,

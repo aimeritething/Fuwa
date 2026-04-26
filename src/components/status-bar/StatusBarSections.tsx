@@ -18,6 +18,7 @@ import {
   ConflictBadge,
   ChangesBadge,
   McpBadge,
+  MissingGitBadge,
   NoRemoteBadge,
   OfflineBadge,
   PulseBadge,
@@ -54,6 +55,7 @@ interface StatusBarPrimarySectionProps {
   onClickPending?: () => void
   onClickPulse?: () => void
   onCommitPush?: () => void
+  onInitializeGit?: () => void
   isOffline?: boolean
   isGitVault?: boolean
   syncStatus: SyncStatus
@@ -169,6 +171,7 @@ function StatusBarPrimaryBadges({
   onAddRemote,
   onClickPending,
   onCommitPush,
+  onInitializeGit,
   syncStatus,
   lastSyncTime,
   onTriggerSync,
@@ -194,6 +197,7 @@ function StatusBarPrimaryBadges({
   onAddRemote: () => void
   onClickPending?: () => void
   onCommitPush?: () => void
+  onInitializeGit?: () => void
   syncStatus: SyncStatus
   lastSyncTime: number | null
   onTriggerSync?: () => void
@@ -217,20 +221,26 @@ function StatusBarPrimaryBadges({
   return (
     <>
       <OfflineBadge isOffline={isOffline} showSeparator={!compact} compact={compact} />
-      <NoRemoteBadge remoteStatus={visibleRemoteStatus} onAddRemote={onAddRemote} showSeparator={!compact} compact={compact} />
-      <ChangesBadge count={modifiedCount} onClick={onClickPending} showSeparator={!compact} compact={compact} />
-      <CommitButton onClick={onCommitPush} remoteStatus={visibleRemoteStatus} showSeparator={!compact} compact={compact} />
-      <SyncBadge
-        status={syncStatus}
-        lastSyncTime={lastSyncTime}
-        remoteStatus={visibleRemoteStatus}
-        onTriggerSync={onTriggerSync}
-        onPullAndPush={onPullAndPush}
-        onOpenConflictResolver={onOpenConflictResolver}
-        compact={compact}
-      />
-      <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} showSeparator={!compact} compact={compact} />
-      <PulseBadge onClick={onClickPulse} disabled={isGitVault === false} showSeparator={!compact} compact={compact} />
+      {isGitVault ? (
+        <>
+          <NoRemoteBadge remoteStatus={visibleRemoteStatus} onAddRemote={onAddRemote} showSeparator={!compact} compact={compact} />
+          <ChangesBadge count={modifiedCount} onClick={onClickPending} showSeparator={!compact} compact={compact} />
+          <CommitButton onClick={onCommitPush} remoteStatus={visibleRemoteStatus} showSeparator={!compact} compact={compact} />
+          <SyncBadge
+            status={syncStatus}
+            lastSyncTime={lastSyncTime}
+            remoteStatus={visibleRemoteStatus}
+            onTriggerSync={onTriggerSync}
+            onPullAndPush={onPullAndPush}
+            onOpenConflictResolver={onOpenConflictResolver}
+            compact={compact}
+          />
+          <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} showSeparator={!compact} compact={compact} />
+          <PulseBadge onClick={onClickPulse} showSeparator={!compact} compact={compact} />
+        </>
+      ) : (
+        <MissingGitBadge onClick={onInitializeGit} showSeparator={!compact} compact={compact} />
+      )}
       {mcpStatus && <McpBadge status={mcpStatus} onInstall={onInstallMcp} showSeparator={!compact} compact={compact} />}
       <StatusBarAiBadge
         aiAgentsStatus={aiAgentsStatus}
@@ -291,8 +301,9 @@ export function StatusBarPrimarySection({
   onClickPending,
   onClickPulse,
   onCommitPush,
+  onInitializeGit,
   isOffline = false,
-  isGitVault = false,
+  isGitVault = true,
   syncStatus,
   lastSyncTime,
   conflictCount,
@@ -363,6 +374,7 @@ export function StatusBarPrimarySection({
         }}
         onClickPending={onClickPending}
         onCommitPush={onCommitPush}
+        onInitializeGit={onInitializeGit}
         syncStatus={syncStatus}
         lastSyncTime={lastSyncTime}
         onTriggerSync={onTriggerSync}

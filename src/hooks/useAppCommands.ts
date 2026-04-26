@@ -60,6 +60,8 @@ interface AppCommandsConfig {
   onCreateEmptyVault?: () => void
   onAddRemote?: () => void
   canAddRemote?: boolean
+  isGitVault?: boolean
+  onInitializeGit?: () => void
   onCreateType?: () => void
   onToggleAIChat?: () => void
   onCheckForUpdates?: () => void
@@ -152,6 +154,8 @@ type CommandRegistryVaultActions = Pick<
   | 'onCreateEmptyVault'
   | 'onAddRemote'
   | 'canAddRemote'
+  | 'isGitVault'
+  | 'onInitializeGit'
   | 'onCheckForUpdates'
   | 'onCreateType'
   | 'locale'
@@ -405,6 +409,8 @@ function createCommandRegistryVaultConfig(
     onCreateEmptyVault: config.onCreateEmptyVault,
     onAddRemote: config.onAddRemote ?? requestAddRemote,
     canAddRemote: config.canAddRemote ?? true,
+    isGitVault: config.isGitVault,
+    onInitializeGit: config.onInitializeGit,
     onCheckForUpdates: config.onCheckForUpdates,
     onCreateType: config.onCreateType,
     locale: config.locale,

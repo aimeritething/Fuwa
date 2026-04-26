@@ -557,6 +557,35 @@ export function CommitButton({
   )
 }
 
+export function MissingGitBadge({
+  onClick,
+  showSeparator = true,
+  compact = false,
+}: {
+  onClick?: () => void
+  showSeparator?: boolean
+  compact?: boolean
+}) {
+  return (
+    <>
+      <StatusBarSeparator show={showSeparator} />
+      <StatusBarAction
+        copy={{ label: 'Git is disabled for this vault. Initialize Git to enable history, sync, commits, and change views.' }}
+        onClick={onClick}
+        testId="status-missing-git"
+        className="text-[var(--accent-orange)]"
+        compact={compact}
+      >
+        <span style={ICON_STYLE}>
+          <GitBranch size={13} />
+          {compact ? null : 'Git disabled'}
+          <AlertTriangle size={10} style={{ marginLeft: 2 }} />
+        </span>
+      </StatusBarAction>
+    </>
+  )
+}
+
 export function PulseBadge({
   onClick,
   disabled,

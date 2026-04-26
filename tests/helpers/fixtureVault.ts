@@ -14,10 +14,15 @@ type FixtureCommandArgs = Record<string, unknown> | undefined
 interface FixtureVaultPageArgs {
   page: Page
   vaultPath: string
+  isGitRepo: boolean
 }
 
 interface FixturePageArgs {
   page: Page
+}
+
+interface FixtureVaultOptions {
+  isGitRepo?: boolean
 }
 
 interface CopyDirArgs {
@@ -62,10 +67,11 @@ export function removeFixtureVaultCopy(tempVaultDir: string | null | undefined):
   removeFixtureVaultDirectory({ tempVaultDir })
 }
 
-async function installFixtureVaultInitScript({ page, vaultPath }: FixtureVaultPageArgs): Promise<void> {
-  await page.addInitScript(({ dismissedKey, resolvedVaultPath }: { dismissedKey: string; resolvedVaultPath: string }) => {
+async function installFixtureVaultInitScript({ page, vaultPath, isGitRepo }: FixtureVaultPageArgs): Promise<void> {
+  await page.addInitScript(({ dismissedKey, initialIsGitRepo, resolvedVaultPath }: { dismissedKey: string; initialIsGitRepo: boolean; resolvedVaultPath: string }) => {
     localStorage.clear()
     localStorage.setItem(dismissedKey, '1')
+    let gitRepoReady = initialIsGitRepo
 
     const jsonHeaders = { 'Content-Type': 'application/json' }
     const FRONTMATTER_OPEN = '---\n'
@@ -236,7 +242,11 @@ async function installFixtureVaultInitScript({ page, vaultPath }: FixtureVaultPa
       load_vault_list: () => activeVaultList,
       check_vault_exists: (commandArgs?: FixtureCommandArgs) =>
         readCommandString(commandArgs, 'path') === resolvedVaultPath,
-      is_git_repo: () => true,
+      is_git_repo: () => gitRepoReady,
+      init_git_repo: () => {
+        gitRepoReady = true
+        return null
+      },
       get_last_vault_path: () => resolvedVaultPath,
       get_default_vault_path: () => resolvedVaultPath,
       save_vault_list: () => null,
@@ -383,7 +393,7 @@ async function installFixtureVaultInitScript({ page, vaultPath }: FixtureVaultPa
         return applyFixtureVaultOverrides(ref) ?? ref
       },
     })
-  }, { dismissedKey: CLAUDE_CODE_ONBOARDING_DISMISSED_KEY, resolvedVaultPath: vaultPath })
+  }, { dismissedKey: CLAUDE_CODE_ONBOARDING_DISMISSED_KEY, initialIsGitRepo: isGitRepo, resolvedVaultPath: vaultPath })
 }
 
 async function waitForFixtureVaultReady({ page }: FixturePageArgs): Promise<void> {
@@ -398,8 +408,9 @@ async function waitForFixtureVaultReady({ page }: FixturePageArgs): Promise<void
 export async function openFixtureVault(
   page: Page,
   vaultPath: string,
+  options: FixtureVaultOptions = {},
 ): Promise<void> {
-  await installFixtureVaultInitScript({ page, vaultPath })
+  await installFixtureVaultInitScript({ page, vaultPath, isGitRepo: options.isGitRepo ?? true })
   await waitForFixtureVaultReady({ page })
 }
 
@@ -419,8 +430,9 @@ async function installFixtureVaultDesktopBridge({ page }: FixturePageArgs): Prom
 export async function openFixtureVaultDesktopHarness(
   page: Page,
   vaultPath: string,
+  options: FixtureVaultOptions = {},
 ): Promise<void> {
-  await openFixtureVault(page, vaultPath)
+  await openFixtureVault(page, vaultPath, options)
   await installFixtureVaultDesktopBridge({ page })
 }
 

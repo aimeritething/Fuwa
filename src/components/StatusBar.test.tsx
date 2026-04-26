@@ -557,11 +557,46 @@ describe('StatusBar', () => {
     expect(onClickPulse).toHaveBeenCalledOnce()
   })
 
-  it('disables History badge when isGitVault is false', () => {
-    const onClickPulse = vi.fn()
-    render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} isGitVault={false} onClickPulse={onClickPulse} />)
-    fireEvent.click(screen.getByTestId('status-pulse'))
-    expect(onClickPulse).not.toHaveBeenCalled()
+  it('replaces git controls with a missing-Git warning when isGitVault is false', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        modifiedCount={5}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        isGitVault={false}
+        onClickPulse={vi.fn()}
+        onCommitPush={vi.fn()}
+      />
+    )
+
+    expect(screen.getByTestId('status-missing-git')).toBeInTheDocument()
+    expect(screen.getByText('Git disabled')).toBeInTheDocument()
+    expect(screen.queryByTestId('status-pulse')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('status-commit-push')).not.toBeInTheDocument()
+  })
+
+  it('opens Git setup from the missing-Git warning with mouse and keyboard', () => {
+    const onInitializeGit = vi.fn()
+    render(
+      <StatusBar
+        noteCount={100}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        isGitVault={false}
+        onInitializeGit={onInitializeGit}
+      />
+    )
+    const warning = screen.getByTestId('status-missing-git')
+
+    fireEvent.click(warning)
+    expect(onInitializeGit).toHaveBeenCalledOnce()
+
+    warning.focus()
+    fireEvent.keyDown(warning, { key: 'Enter' })
+    expect(onInitializeGit).toHaveBeenCalledTimes(2)
   })
 
   it('shows Commit button in status bar', () => {

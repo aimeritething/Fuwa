@@ -98,6 +98,31 @@ describe('useCommandRegistry', () => {
     expect(cmd!.enabled).toBe(false)
   })
 
+  it('includes initialize-git command for non-git vaults', () => {
+    const onInitializeGit = vi.fn()
+    const config = makeConfig({ isGitVault: false, onInitializeGit })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'initialize-git')
+
+    expect(cmd).toBeDefined()
+    expect(cmd!.group).toBe('Git')
+    expect(cmd!.label).toBe('Initialize Git for Current Vault')
+    expect(cmd!.enabled).toBe(true)
+
+    cmd!.execute()
+    expect(onInitializeGit).toHaveBeenCalledOnce()
+  })
+
+  it('hides remote git commands for non-git vaults', () => {
+    const config = makeConfig({ isGitVault: false, modifiedCount: 5 })
+    const { result } = renderHook(() => useCommandRegistry(config))
+
+    expect(findCommand(result.current, 'commit-push')).toBeUndefined()
+    expect(findCommand(result.current, 'git-pull')).toBeUndefined()
+    expect(findCommand(result.current, 'add-remote')).toBeUndefined()
+    expect(findCommand(result.current, 'view-changes')).toBeUndefined()
+  })
+
   it('resolve-conflicts stays enabled across rerenders', () => {
     const config = makeConfig()
     const { result, rerender } = renderHook(
