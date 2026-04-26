@@ -165,6 +165,15 @@ describe('CommandPalette', () => {
     expect(screen.getByText('No matching commands')).toBeInTheDocument()
   })
 
+  it('localizes command palette chrome', () => {
+    render(<CommandPalette open={true} commands={commands} locale="zh-Hans" onClose={onClose} />)
+    const input = screen.getByPlaceholderText('输入命令...')
+    fireEvent.change(input, { target: { value: 'zzzzzzz' } })
+
+    expect(screen.getByText('没有匹配的命令')).toBeInTheDocument()
+    expect(screen.getByText('↑↓ 导航')).toBeInTheDocument()
+  })
+
   it('calls onClose when pressing Escape', () => {
     render(<CommandPalette open={true} commands={commands} onClose={onClose} />)
     fireEvent.keyDown(window, { key: 'Escape' })

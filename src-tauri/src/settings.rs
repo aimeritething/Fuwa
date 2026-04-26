@@ -18,6 +18,7 @@ pub struct Settings {
     pub anonymous_id: Option<String>,
     pub release_channel: Option<String>,
     pub theme_mode: Option<String>,
+    pub ui_language: Option<String>,
     pub initial_h1_auto_rename_enabled: Option<bool>,
     pub default_ai_agent: Option<String>,
 }
@@ -61,6 +62,34 @@ pub fn normalize_theme_mode(value: Option<&str>) -> Option<String> {
     }
 }
 
+fn canonical_language_code(value: &str) -> Option<String> {
+    let code = value.trim().replace('_', "-").to_ascii_lowercase();
+    if code.is_empty() {
+        None
+    } else {
+        Some(code)
+    }
+}
+
+fn is_english_language(code: &str) -> bool {
+    code == "en" || code.starts_with("en-")
+}
+
+fn is_simplified_chinese_language(code: &str) -> bool {
+    matches!(code, "zh" | "zh-cn" | "zh-hans" | "zh-sg")
+}
+
+pub fn normalize_ui_language(value: Option<&str>) -> Option<String> {
+    let language = canonical_language_code(value?)?;
+    if is_english_language(&language) {
+        return Some("en".to_string());
+    }
+    if is_simplified_chinese_language(&language) {
+        return Some("zh-Hans".to_string());
+    }
+    None
+}
+
 fn normalize_settings(settings: Settings) -> Settings {
     Settings {
         auto_pull_interval_minutes: settings.auto_pull_interval_minutes,
@@ -78,6 +107,7 @@ fn normalize_settings(settings: Settings) -> Settings {
         anonymous_id: normalize_optional_string(settings.anonymous_id),
         release_channel: normalize_release_channel(settings.release_channel.as_deref()),
         theme_mode: normalize_theme_mode(settings.theme_mode.as_deref()),
+        ui_language: normalize_ui_language(settings.ui_language.as_deref()),
         initial_h1_auto_rename_enabled: settings.initial_h1_auto_rename_enabled,
         default_ai_agent: normalize_default_ai_agent(settings.default_ai_agent.as_deref()),
     }
@@ -219,6 +249,7 @@ mod tests {
             anonymous_id: Some("abc-123-uuid".to_string()),
             release_channel: Some("alpha".to_string()),
             theme_mode: Some("dark".to_string()),
+            ui_language: Some("zh-Hans".to_string()),
             initial_h1_auto_rename_enabled: Some(false),
             default_ai_agent: Some("codex".to_string()),
         };
@@ -245,6 +276,7 @@ mod tests {
             auto_advance_inbox_after_organize: Some(true),
             release_channel: Some("alpha".to_string()),
             theme_mode: Some("dark".to_string()),
+            ui_language: Some("zh-Hans".to_string()),
             initial_h1_auto_rename_enabled: Some(false),
             default_ai_agent: Some("codex".to_string()),
             ..Default::default()
@@ -256,6 +288,7 @@ mod tests {
         assert_eq!(loaded.auto_advance_inbox_after_organize, Some(true));
         assert_eq!(loaded.release_channel.as_deref(), Some("alpha"));
         assert_eq!(loaded.theme_mode.as_deref(), Some("dark"));
+        assert_eq!(loaded.ui_language.as_deref(), Some("zh-Hans"));
         assert_eq!(loaded.initial_h1_auto_rename_enabled, Some(false));
         assert_eq!(loaded.default_ai_agent.as_deref(), Some("codex"));
     }
@@ -266,12 +299,14 @@ mod tests {
             anonymous_id: Some("  test-uuid  ".to_string()),
             release_channel: Some("  alpha  ".to_string()),
             theme_mode: Some("  dark  ".to_string()),
+            ui_language: Some("  zh-cn  ".to_string()),
             default_ai_agent: Some("  codex  ".to_string()),
             ..Default::default()
         });
         assert_eq!(loaded.anonymous_id.as_deref(), Some("test-uuid"));
         assert_eq!(loaded.release_channel.as_deref(), Some("alpha"));
         assert_eq!(loaded.theme_mode.as_deref(), Some("dark"));
+        assert_eq!(loaded.ui_language.as_deref(), Some("zh-Hans"));
         assert_eq!(loaded.default_ai_agent.as_deref(), Some("codex"));
     }
 
@@ -320,6 +355,24 @@ mod tests {
             ..Default::default()
         });
         assert!(loaded.theme_mode.is_none());
+    }
+
+    #[test]
+    fn test_invalid_ui_language_is_filtered() {
+        let loaded = save_and_reload(Settings {
+            ui_language: Some("fr-FR".to_string()),
+            ..Default::default()
+        });
+        assert!(loaded.ui_language.is_none());
+    }
+
+    #[test]
+    fn test_ui_language_aliases_are_canonicalized() {
+        assert_eq!(normalize_ui_language(Some("en-US")).as_deref(), Some("en"));
+        assert_eq!(
+            normalize_ui_language(Some("zh_CN")).as_deref(),
+            Some("zh-Hans")
+        );
     }
 
     #[test]

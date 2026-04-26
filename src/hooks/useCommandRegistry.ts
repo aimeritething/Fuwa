@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import type { AiAgentId, AiAgentsStatus } from '../lib/aiAgents'
+import type { AppLocale, UiLanguagePreference } from '../lib/i18n'
 import type { VaultAiGuidanceStatus } from '../lib/vaultAiGuidance'
 import type { NoteLayout, SidebarSelection, VaultEntry } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
@@ -40,6 +41,10 @@ interface CommandRegistryConfig {
   onRepairVault?: () => void
   onSetNoteIcon?: () => void
   onRemoveNoteIcon?: () => void
+  locale?: AppLocale
+  systemLocale?: AppLocale
+  selectedUiLanguage?: UiLanguagePreference
+  onSetUiLanguage?: (language: UiLanguagePreference) => void
   onChangeNoteType?: () => void
   onMoveNoteToFolder?: () => void
   canMoveNoteToFolder?: boolean
@@ -114,6 +119,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     mcpStatus, onInstallMcp, aiAgentsStatus, vaultAiGuidanceStatus,
     onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
     onReloadVault, onRepairVault,
+    locale, systemLocale, selectedUiLanguage, onSetUiLanguage,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
     onOpenInNewWindow, onToggleFavorite, onToggleOrganized,
     onCustomizeNoteListColumns, canCustomizeNoteListColumns,
@@ -178,6 +184,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
       mcpStatus, vaultCount, isGettingStartedHidden,
       onOpenSettings, onOpenFeedback, onOpenVault, onCreateEmptyVault, onRemoveActiveVault, onRestoreGettingStarted,
       onCheckForUpdates, onInstallMcp, onReloadVault, onRepairVault,
+      locale, systemLocale, selectedUiLanguage, onSetUiLanguage,
     }),
     ...buildAiAgentCommands({
       aiAgentsStatus,
@@ -205,7 +212,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
     mcpStatus, onInstallMcp, aiAgentsStatus, vaultAiGuidanceStatus,
     onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
-    onReloadVault, onRepairVault,
+    onReloadVault, onRepairVault, locale, systemLocale, selectedUiLanguage, onSetUiLanguage,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
     isSectionGroup, noteListFilter, onSetNoteListFilter,
     selection,

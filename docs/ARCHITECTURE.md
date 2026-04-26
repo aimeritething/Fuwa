@@ -32,6 +32,7 @@ Examples:
 - ✅ Vault: `_pinned_properties` in a Type note (every device should show the same pinned properties)
 - ✅ Vault: `_icon: shapes` in a Type note (icon is part of the type's identity)
 - ✅ App settings: `zoom: 1.3` (machine-specific preference)
+- ✅ App settings: `ui_language: "zh-Hans"` (installation-specific UI language)
 
 ### No hardcoded exceptions
 
@@ -99,6 +100,7 @@ flowchart LR
 | Frontmatter parsing | gray_matter | 0.2 |
 | AI (agent panel) | CLI agent adapters (Claude Code + Codex) | - |
 | Search | Keyword (walkdir-based file scan) | - |
+| Localization | App-owned dictionary (`src/lib/i18n.ts`) | English fallback + `zh-Hans` |
 | MCP | @modelcontextprotocol/sdk | 1.0 |
 | Tests | Vitest (unit), Playwright (E2E/smoke), cargo test (Rust) | - |
 | Package manager | pnpm | - |
@@ -413,6 +415,12 @@ The app uses internal app-owned light and dark themes (see [ADR-0081](adr/0081-i
 1. **Global CSS variables** (`src/index.css`): Semantic app colors, borders, surfaces, and interaction states. Bridged to Tailwind v4 via `@theme inline`.
 2. **Editor theme** (`src/theme.json`): BlockNote-specific typography. Flattened to CSS vars by `useEditorTheme`; editor colors resolve through the same semantic app variables.
 3. **Theme runtime**: Applies `data-theme` and the shadcn-compatible `.dark` class before React consumers render, with a localStorage mirror to avoid startup flash when dark mode is selected.
+
+## Localization
+
+Tolaria's app chrome uses an app-owned localization layer in `src/lib/i18n.ts` (see [ADR-0084](adr/0084-app-localization-foundation.md)). English is the canonical fallback, and Simplified Chinese (`zh-Hans`) is the first additional locale. The installation-local `ui_language` setting stores an explicit locale when the user chooses one; `null` means "follow the system language when Tolaria supports it, otherwise English." Missing translation keys fall back to English so partially translated locales do not render broken placeholders.
+
+`App.tsx` derives the effective locale from settings and browser/system language hints, then passes it down to localized surfaces. Settings exposes a keyboard-accessible shadcn `Select`, and the command palette includes actions to open language settings or switch directly to a supported language.
 
 ## Vault Management
 
@@ -763,7 +771,7 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useCommitFlow` | Commit dialog state, shared manual/automatic checkpoint runner | Git commit/push orchestration |
 | `useGitRemoteStatus` | `remoteStatus`, `refreshRemoteStatus()` | On-demand remote detection for commit UI |
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |
-| `useSettings` | App settings (telemetry, release channel, theme mode, auto-sync interval, AutoGit thresholds, default AI agent) | Persistent settings |
+| `useSettings` | App settings (telemetry, release channel, theme mode, UI language, auto-sync interval, AutoGit thresholds, default AI agent) | Persistent settings |
 | `useVaultConfig` | Per-vault UI preferences | Vault-specific config |
 | `appCommandDispatcher` | Canonical shortcut/menu command IDs | Shared execution path for renderer and native menu commands |
 

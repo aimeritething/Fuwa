@@ -1,5 +1,6 @@
 import { useCallback, useRef } from 'react'
 import type { AiAgentId, AiAgentsStatus } from '../lib/aiAgents'
+import type { AppLocale, UiLanguagePreference } from '../lib/i18n'
 import type { VaultAiGuidanceStatus } from '../lib/vaultAiGuidance'
 import { useAppKeyboard } from './useAppKeyboard'
 import { useCommandRegistry } from './useCommandRegistry'
@@ -66,6 +67,10 @@ interface AppCommandsConfig {
   onRestoreGettingStarted?: () => void
   isGettingStartedHidden?: boolean
   vaultCount?: number
+  locale?: AppLocale
+  systemLocale?: AppLocale
+  selectedUiLanguage?: UiLanguagePreference
+  onSetUiLanguage?: (language: UiLanguagePreference) => void
   mcpStatus?: string
   onInstallMcp?: () => void
   aiAgentsStatus?: AiAgentsStatus
@@ -149,6 +154,10 @@ type CommandRegistryVaultActions = Pick<
   | 'canAddRemote'
   | 'onCheckForUpdates'
   | 'onCreateType'
+  | 'locale'
+  | 'systemLocale'
+  | 'selectedUiLanguage'
+  | 'onSetUiLanguage'
   | 'onRemoveActiveVault'
   | 'onRestoreGettingStarted'
   | 'isGettingStartedHidden'
@@ -398,6 +407,10 @@ function createCommandRegistryVaultConfig(
     canAddRemote: config.canAddRemote ?? true,
     onCheckForUpdates: config.onCheckForUpdates,
     onCreateType: config.onCreateType,
+    locale: config.locale,
+    systemLocale: config.systemLocale,
+    selectedUiLanguage: config.selectedUiLanguage,
+    onSetUiLanguage: config.onSetUiLanguage,
     onRemoveActiveVault: config.onRemoveActiveVault,
     onRestoreGettingStarted: config.onRestoreGettingStarted,
     isGettingStartedHidden: config.isGettingStartedHidden,

@@ -16,6 +16,7 @@ const emptySettings: Settings = {
   anonymous_id: null,
   release_channel: null,
   theme_mode: null,
+  ui_language: null,
 }
 
 function installPointerCapturePolyfill() {
@@ -95,6 +96,51 @@ describe('SettingsPanel', () => {
     expect(screen.getByTestId('settings-theme-mode')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Light' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('defaults the language selector to system language', () => {
+    render(
+      <SettingsPanel
+        open={true}
+        settings={emptySettings}
+        locale="en"
+        systemLocale="zh-Hans"
+        onSave={onSave}
+        onClose={onClose}
+      />
+    )
+
+    expect(screen.getByTestId('settings-ui-language')).toHaveAttribute('data-value', 'system')
+    expect(screen.getByText('系统（简体中文）')).toBeInTheDocument()
+  })
+
+  it('keeps the language selector keyboard accessible', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+
+    const trigger = screen.getByTestId('settings-ui-language')
+    trigger.focus()
+    fireEvent.keyDown(trigger, { key: 'ArrowDown', code: 'ArrowDown' })
+
+    expect(screen.getByRole('option', { name: 'Simplified Chinese' })).toBeInTheDocument()
+  })
+
+  it('saves the selected UI language and updates visible settings text', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+
+    fireEvent.pointerDown(screen.getByTestId('settings-ui-language'), { button: 0, pointerType: 'mouse' })
+    fireEvent.click(screen.getByRole('option', { name: 'Simplified Chinese' }))
+
+    expect(screen.getByText('设置')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByTestId('settings-save'))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      ui_language: 'zh-Hans',
+    }))
   })
 
   it('uses the stored color mode mirror when settings have no saved mode', () => {

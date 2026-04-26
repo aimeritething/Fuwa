@@ -8,6 +8,7 @@ import type {
   ViewDefinition,
   ViewFile,
 } from '../../types'
+import type { AppLocale } from '../../lib/i18n'
 import type { NoteListFilter } from '../../utils/noteListHelpers'
 import { countByFilter, countAllByFilter, countAllNotesByFilter } from '../../utils/noteListHelpers'
 import { NoteItem } from '../NoteItem'
@@ -428,6 +429,7 @@ export interface NoteListProps {
   onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
   views?: ViewFile[]
   visibleNotesRef?: React.MutableRefObject<VaultEntry[]>
+  locale?: AppLocale
 }
 
 function buildNoteListLayoutModel(params: {
@@ -439,6 +441,7 @@ function buildNoteListLayoutModel(params: {
   filterCounts: ReturnType<typeof useFilterCounts>
   onNoteListFilterChange: (filter: NoteListFilter) => void
   onOpenType: (entry: VaultEntry) => void
+  locale: AppLocale
   content: ReturnType<typeof useNoteListContent> & {
     handleSearchKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
   }
@@ -448,7 +451,8 @@ function buildNoteListLayoutModel(params: {
   }
 }) {
   return {
-    title: resolveHeaderTitle(params.selection, params.content.typeDocument, params.views),
+    title: resolveHeaderTitle(params.selection, params.content.typeDocument, params.views, params.locale),
+    locale: params.locale,
     typeDocument: params.content.typeDocument,
     isEntityView: params.content.isEntityView,
     listSort: params.content.listSort,
@@ -531,6 +535,7 @@ export function useNoteListModel({
   onUpdateViewDefinition,
   views,
   visibleNotesRef,
+  locale = 'en',
 }: NoteListProps) {
   const selectedNotePath = selectedNote?.path ?? null
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
@@ -626,6 +631,7 @@ export function useNoteListModel({
     noteListFilter,
     filterCounts,
     onNoteListFilterChange,
+    locale,
     content: {
       ...content,
       handleSearchKeyDown,

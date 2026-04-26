@@ -15,6 +15,7 @@ const defaultSettings: Settings = {
   anonymous_id: null,
   release_channel: null,
   theme_mode: null,
+  ui_language: null,
   default_ai_agent: null,
 }
 
@@ -30,6 +31,7 @@ const savedSettings: Settings = {
   anonymous_id: null,
   release_channel: null,
   theme_mode: null,
+  ui_language: null,
   default_ai_agent: null,
 }
 
@@ -52,6 +54,16 @@ vi.mock('../mock-tauri', () => ({
   isTauri: () => false,
   mockInvoke: (cmd: string, args?: Record<string, unknown>) => mockInvokeFn(cmd, args),
 }))
+
+async function renderLoadedSettings(): Promise<Settings> {
+  const { result } = renderHook(() => useSettings())
+
+  await waitFor(() => {
+    expect(result.current.loaded).toBe(true)
+  })
+
+  return result.current.settings
+}
 
 describe('useSettings', () => {
   beforeEach(() => {
@@ -86,13 +98,18 @@ describe('useSettings', () => {
       release_channel: 'beta',
     }
 
-    const { result } = renderHook(() => useSettings())
+    const settings = await renderLoadedSettings()
+    expect(settings.release_channel).toBeNull()
+  })
 
-    await waitFor(() => {
-      expect(result.current.loaded).toBe(true)
-    })
+  it('normalizes unsupported language preferences on load', async () => {
+    mockSettingsStore = {
+      ...savedSettings,
+      ui_language: 'fr-FR' as Settings['ui_language'],
+    }
 
-    expect(result.current.settings.release_channel).toBeNull()
+    const settings = await renderLoadedSettings()
+    expect(settings.ui_language).toBeNull()
   })
 
   it('saves settings via backend', async () => {
@@ -114,6 +131,7 @@ describe('useSettings', () => {
       anonymous_id: null,
       release_channel: null,
       theme_mode: null,
+      ui_language: 'zh-Hans',
       default_ai_agent: null,
     }
 

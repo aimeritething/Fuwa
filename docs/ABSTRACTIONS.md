@@ -553,6 +553,17 @@ The app uses internal light and dark themes owned by Tolaria (see [ADR-0081](adr
 2. **Editor theme** (`src/theme.json`): BlockNote typography, flattened to CSS vars by `useEditorTheme`
 3. **Runtime theme bridge**: Applies `data-theme` and `.dark` for shadcn/ui, while CodeMirror and editor-specific consumers derive any non-CSS-variable values from the same semantic contract
 
+## Localization
+
+App UI strings are centralized in `src/lib/i18n.ts` (see [ADR-0084](adr/0084-app-localization-foundation.md)):
+
+- `AppLocale`: currently `'en' | 'zh-Hans'`
+- `UiLanguagePreference`: `'system' | AppLocale`; persisted settings serialize `system` as `null`
+- `resolveEffectiveLocale()`: maps an explicit preference or system/browser language list to the effective supported locale
+- `translate()` / `createTranslator()`: resolve keys with English fallback and simple `{name}` interpolation
+
+`App.tsx` owns the effective locale and passes it to localized app chrome through props. Settings and command-palette language commands call back into `saveSettings`, so UI language changes update the current session without touching vault content or reopening the vault.
+
 ## Inspector Abstraction
 
 The Inspector panel (`src/components/Inspector.tsx`) is composed of sub-panels:
@@ -663,11 +674,12 @@ interface Settings {
   anonymous_id: string | null
   release_channel: string | null // null = stable default, "alpha" = every-push prerelease feed
   theme_mode: 'light' | 'dark' | null
+  ui_language: 'en' | 'zh-Hans' | null
   default_ai_agent: 'claude_code' | 'codex' | null
 }
 ```
 
-Managed by `useSettings` hook and `SettingsPanel` component. `theme_mode` is installation-local because it controls device comfort rather than vault structure. `default_ai_agent` is an installation-local preference that selects which supported CLI agent the AI panel, command palette AI mode, and status bar should target by default. The AutoGit fields are also installation-local: `useAutoGit` consumes them to schedule automatic checkpoints, while `useCommitFlow` and the status bar quick action reuse the same checkpoint runner and deterministic automatic commit message generation.
+Managed by `useSettings` hook and `SettingsPanel` component. `theme_mode` is installation-local because it controls device comfort rather than vault structure. `ui_language` is also installation-local: `null` follows the supported system language with English fallback, while explicit values pin the UI language for this installation. `default_ai_agent` is an installation-local preference that selects which supported CLI agent the AI panel, command palette AI mode, and status bar should target by default. The AutoGit fields are also installation-local: `useAutoGit` consumes them to schedule automatic checkpoints, while `useCommitFlow` and the status bar quick action reuse the same checkpoint runner and deterministic automatic commit message generation.
 
 ## Telemetry
 

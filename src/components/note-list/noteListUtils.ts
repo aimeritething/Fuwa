@@ -1,5 +1,6 @@
-import type { VaultEntry, SidebarSelection, ModifiedFile, NoteStatus, ViewFile } from '../../types'
+import type { VaultEntry, SidebarSelection, SidebarFilter, ModifiedFile, NoteStatus, ViewFile } from '../../types'
 import type { RelationshipGroup } from '../../utils/noteListHelpers'
+import { translate, type AppLocale } from '../../lib/i18n'
 import { filenameStemToTitle } from '../../utils/noteTitle'
 
 export interface DeletedNoteEntry extends VaultEntry {
@@ -10,27 +11,34 @@ export interface DeletedNoteEntry extends VaultEntry {
   __changeBinary: boolean
 }
 
-const FILTER_TITLES: Partial<Record<'archived' | 'changes' | 'inbox' | 'pulse', string>> = {
-  archived: 'Archive',
-  changes: 'Changes',
-  inbox: 'Inbox',
-  pulse: 'History',
+const FILTER_TITLE_KEYS = {
+  archived: 'noteList.title.archive',
+  changes: 'noteList.title.changes',
+  inbox: 'noteList.title.inbox',
+  pulse: 'noteList.title.history',
+} as const
+
+type LocalizedFilter = keyof typeof FILTER_TITLE_KEYS
+
+function isLocalizedFilter(filter: SidebarFilter): filter is LocalizedFilter {
+  return filter in FILTER_TITLE_KEYS
 }
 
-function resolveSelectionFilterTitle(selection: SidebarSelection): string | null {
+function resolveSelectionFilterTitle(selection: SidebarSelection, locale: AppLocale): string | null {
   if (selection.kind !== 'filter') return null
-  return FILTER_TITLES[selection.filter as keyof typeof FILTER_TITLES] ?? null
+  if (!isLocalizedFilter(selection.filter)) return null
+  return translate(locale, FILTER_TITLE_KEYS[selection.filter])
 }
 
-export function resolveHeaderTitle(selection: SidebarSelection, typeDocument: VaultEntry | null, views?: ViewFile[]): string {
+export function resolveHeaderTitle(selection: SidebarSelection, typeDocument: VaultEntry | null, views?: ViewFile[], locale: AppLocale = 'en'): string {
   if (selection.kind === 'view') {
     const view = views?.find((v) => v.filename === selection.filename)
-    return view?.definition.name ?? 'View'
+    return view?.definition.name ?? translate(locale, 'noteList.title.view')
   }
   if (selection.kind === 'entity') return selection.entry.title
   if (typeDocument) return typeDocument.title
 
-  return resolveSelectionFilterTitle(selection) ?? 'Notes'
+  return resolveSelectionFilterTitle(selection, locale) ?? translate(locale, 'noteList.title.notes')
 }
 
 export function filterByQuery<T extends { title: string }>(items: T[], query: string): T[] {

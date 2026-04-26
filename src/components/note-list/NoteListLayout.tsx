@@ -46,6 +46,7 @@ function NoteListContent({
   modifiedFilesError,
   searched,
   noteListVirtuosoRef,
+  locale,
 }: Pick<
   NoteListLayoutProps,
   | 'entitySelection'
@@ -62,6 +63,7 @@ function NoteListContent({
   | 'modifiedFilesError'
   | 'searched'
   | 'noteListVirtuosoRef'
+  | 'locale'
 >) {
   return (
     <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
@@ -75,6 +77,7 @@ function NoteListContent({
           onToggleGroup={toggleGroup}
           onSortChange={handleSortChange}
           renderItem={renderItem}
+          locale={locale}
         />
       ) : (
         <ListView
@@ -86,6 +89,7 @@ function NoteListContent({
           query={query}
           renderItem={renderItem}
           virtuosoRef={noteListVirtuosoRef}
+          locale={locale}
         />
       )}
     </div>
@@ -112,6 +116,7 @@ function NoteListBody({
   isInboxView,
   modifiedFilesError,
   searched,
+  locale,
   showFilterPills,
   noteListFilter,
   filterCounts,
@@ -137,6 +142,7 @@ function NoteListBody({
   | 'isInboxView'
   | 'modifiedFilesError'
   | 'searched'
+  | 'locale'
   | 'showFilterPills'
   | 'noteListFilter'
   | 'filterCounts'
@@ -169,6 +175,7 @@ function NoteListBody({
         modifiedFilesError={modifiedFilesError}
         searched={searched}
         noteListVirtuosoRef={noteListVirtuosoRef}
+        locale={locale}
       />
       {showFilterPills && (
         <FilterPills
@@ -182,13 +189,14 @@ function NoteListBody({
   )
 }
 
-export function NoteListLayout({
+function NoteListLayoutHeader({
   title,
   typeDocument,
   isEntityView,
   listSort,
   listDirection,
   customProperties,
+  locale,
   sidebarCollapsed,
   searchVisible,
   search,
@@ -201,38 +209,93 @@ export function NoteListLayout({
   toggleSearch,
   setSearch,
   handleSearchKeyDown,
-  noteListPanelRef,
-  handleNoteListPanelBlurCapture,
-  handleNoteListPanelFocusCapture,
-  handleListKeyDown,
-  noteListContainerRef,
-  handleNoteListBlur,
-  handleNoteListFocus,
-  focusNoteList,
-  noteListVirtuosoRef,
-  entitySelection,
-  searchedGroups,
-  collapsedGroups,
-  sortPrefs,
-  toggleGroup,
-  renderItem,
-  isArchivedView,
-  isChangesView,
-  isInboxView,
-  modifiedFilesError,
-  searched,
-  query,
-  showFilterPills,
-  noteListFilter,
-  filterCounts,
-  onNoteListFilterChange,
+}: Pick<
+  NoteListLayoutProps,
+  | 'title'
+  | 'typeDocument'
+  | 'isEntityView'
+  | 'listSort'
+  | 'listDirection'
+  | 'customProperties'
+  | 'locale'
+  | 'sidebarCollapsed'
+  | 'searchVisible'
+  | 'search'
+  | 'isSearching'
+  | 'searchInputRef'
+  | 'propertyPicker'
+  | 'handleSortChange'
+  | 'handleCreateNote'
+  | 'onOpenType'
+  | 'toggleSearch'
+  | 'setSearch'
+  | 'handleSearchKeyDown'
+>) {
+  return (
+    <NoteListHeader
+      title={title}
+      typeDocument={typeDocument}
+      isEntityView={isEntityView}
+      listSort={listSort}
+      listDirection={listDirection}
+      customProperties={customProperties}
+      locale={locale}
+      sidebarCollapsed={sidebarCollapsed}
+      searchVisible={searchVisible}
+      search={search}
+      isSearching={isSearching}
+      searchInputRef={searchInputRef}
+      propertyPicker={propertyPicker}
+      onSortChange={handleSortChange}
+      onCreateNote={handleCreateNote}
+      onOpenType={onOpenType}
+      onToggleSearch={toggleSearch}
+      onSearchChange={setSearch}
+      onSearchKeyDown={handleSearchKeyDown}
+    />
+  )
+}
+
+function NoteListFooter({
   multiSelect,
+  isArchivedView,
   handleBulkOrganize,
   handleBulkArchive,
   handleBulkDeletePermanently,
   handleBulkUnarchive,
   contextMenuNode,
   dialogNode,
+}: Pick<
+  NoteListLayoutProps,
+  | 'multiSelect'
+  | 'isArchivedView'
+  | 'handleBulkOrganize'
+  | 'handleBulkArchive'
+  | 'handleBulkDeletePermanently'
+  | 'handleBulkUnarchive'
+  | 'contextMenuNode'
+  | 'dialogNode'
+>) {
+  return (
+    <>
+      <MultiSelectBar
+        multiSelect={multiSelect}
+        isArchivedView={isArchivedView}
+        handleBulkOrganize={handleBulkOrganize}
+        handleBulkArchive={handleBulkArchive}
+        handleBulkDeletePermanently={handleBulkDeletePermanently}
+        handleBulkUnarchive={handleBulkUnarchive}
+      />
+      {contextMenuNode}{dialogNode}
+    </>
+  )
+}
+
+export function NoteListLayout({
+  noteListPanelRef,
+  handleNoteListPanelBlurCapture,
+  handleNoteListPanelFocusCapture,
+  ...contentProps
 }: NoteListLayoutProps) {
   return (
     <div
@@ -242,61 +305,9 @@ export function NoteListLayout({
       onBlurCapture={handleNoteListPanelBlurCapture}
       onFocusCapture={handleNoteListPanelFocusCapture}
     >
-      <NoteListHeader
-        title={title}
-        typeDocument={typeDocument}
-        isEntityView={isEntityView}
-        listSort={listSort}
-        listDirection={listDirection}
-        customProperties={customProperties}
-        sidebarCollapsed={sidebarCollapsed}
-        searchVisible={searchVisible}
-        search={search}
-        isSearching={isSearching}
-        searchInputRef={searchInputRef}
-        propertyPicker={propertyPicker}
-        onSortChange={handleSortChange}
-        onCreateNote={handleCreateNote}
-        onOpenType={onOpenType}
-        onToggleSearch={toggleSearch}
-        onSearchChange={setSearch}
-        onSearchKeyDown={handleSearchKeyDown}
-      />
-      <NoteListBody
-        handleListKeyDown={handleListKeyDown}
-        noteListContainerRef={noteListContainerRef}
-        handleNoteListBlur={handleNoteListBlur}
-        handleNoteListFocus={handleNoteListFocus}
-        focusNoteList={focusNoteList}
-        noteListVirtuosoRef={noteListVirtuosoRef}
-        entitySelection={entitySelection}
-        searchedGroups={searchedGroups}
-        query={query}
-        collapsedGroups={collapsedGroups}
-        sortPrefs={sortPrefs}
-        toggleGroup={toggleGroup}
-        handleSortChange={handleSortChange}
-        renderItem={renderItem}
-        isArchivedView={isArchivedView}
-        isChangesView={isChangesView}
-        isInboxView={isInboxView}
-        modifiedFilesError={modifiedFilesError}
-        searched={searched}
-        showFilterPills={showFilterPills}
-        noteListFilter={noteListFilter}
-        filterCounts={filterCounts}
-        onNoteListFilterChange={onNoteListFilterChange}
-      />
-      <MultiSelectBar
-        multiSelect={multiSelect}
-        isArchivedView={isArchivedView}
-        handleBulkOrganize={handleBulkOrganize}
-        handleBulkArchive={handleBulkArchive}
-        handleBulkDeletePermanently={handleBulkDeletePermanently}
-        handleBulkUnarchive={handleBulkUnarchive}
-      />
-      {contextMenuNode}
-      {dialogNode}
+      <NoteListLayoutHeader {...contentProps} />
+      <NoteListBody {...contentProps} />
+      <NoteListFooter {...contentProps} />
     </div>
   )
 }

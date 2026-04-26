@@ -112,6 +112,7 @@ let mockSettings: Settings = {
   anonymous_id: null,
   release_channel: null,
   theme_mode: null,
+  ui_language: null,
   default_ai_agent: 'claude_code',
 }
 
@@ -418,6 +419,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
       anonymous_id: s.anonymous_id,
       release_channel: s.release_channel,
       theme_mode: s.theme_mode ?? null,
+      ui_language: s.ui_language ?? null,
       default_ai_agent: s.default_ai_agent ?? null,
     }
     return null

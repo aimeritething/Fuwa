@@ -37,6 +37,26 @@ describe('resolveHeaderTitle', () => {
     const selection: SidebarSelection = { kind: 'filter', filter: 'pulse' }
     expect(resolveHeaderTitle(selection, null)).toBe('History')
   })
+
+  it('localizes built-in note list titles', () => {
+    const selection: SidebarSelection = { kind: 'filter', filter: 'archived' }
+    expect(resolveHeaderTitle(selection, null, [], 'zh-Hans')).toBe('归档')
+  })
+
+  it('keeps user-authored view names unchanged', () => {
+    const selection: SidebarSelection = { kind: 'view', filename: 'custom.yml' }
+
+    expect(resolveHeaderTitle(selection, null, [{
+      filename: 'custom.yml',
+      definition: {
+        name: '客户',
+        icon: null,
+        color: null,
+        sort: null,
+        filters: { all: [] },
+      },
+    }], 'en')).toBe('客户')
+  })
 })
 
 describe('routeNoteClick', () => {

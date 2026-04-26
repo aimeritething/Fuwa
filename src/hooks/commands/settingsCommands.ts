@@ -1,6 +1,13 @@
 import { APP_COMMAND_IDS, getAppCommandShortcutDisplay } from '../appCommandCatalog'
 import type { CommandAction } from './types'
 import { rememberFeedbackDialogOpener } from '../../lib/feedbackDialogOpener'
+import {
+  SYSTEM_UI_LANGUAGE,
+  createTranslator,
+  localeDisplayName,
+  type AppLocale,
+  type UiLanguagePreference,
+} from '../../lib/i18n'
 
 interface SettingsCommandsConfig {
   mcpStatus?: string
@@ -16,18 +23,36 @@ interface SettingsCommandsConfig {
   onInstallMcp?: () => void
   onReloadVault?: () => void
   onRepairVault?: () => void
+  locale?: AppLocale
+  systemLocale?: AppLocale
+  selectedUiLanguage?: UiLanguagePreference
+  onSetUiLanguage?: (language: UiLanguagePreference) => void
+}
+
+function commandKeywords(raw: string): string[] {
+  return raw.split(/\s+/).filter(Boolean)
 }
 
 function buildPrimarySettingsCommands({
+  locale = 'en',
   onOpenSettings,
   onOpenFeedback,
   onCheckForUpdates,
-}: Pick<SettingsCommandsConfig, 'onOpenSettings' | 'onOpenFeedback' | 'onCheckForUpdates'>): CommandAction[] {
+}: Pick<SettingsCommandsConfig, 'locale' | 'onOpenSettings' | 'onOpenFeedback' | 'onCheckForUpdates'>): CommandAction[] {
+  const t = createTranslator(locale)
   return [
-    { id: 'open-settings', label: 'Open Settings', group: 'Settings', shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.appSettings), keywords: ['preferences', 'config'], enabled: true, execute: onOpenSettings },
+    {
+      id: 'open-settings',
+      label: t('command.openSettings'),
+      group: 'Settings',
+      shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.appSettings),
+      keywords: commandKeywords(t('command.openSettings.keywords')),
+      enabled: true,
+      execute: onOpenSettings,
+    },
     {
       id: 'open-h1-auto-rename-setting',
-      label: 'Open H1 Auto-Rename Setting',
+      label: t('command.openH1Setting'),
       group: 'Settings',
       keywords: ['h1', 'title', 'filename', 'rename', 'auto', 'untitled', 'sync', 'preference'],
       enabled: true,
@@ -35,7 +60,7 @@ function buildPrimarySettingsCommands({
     },
     {
       id: 'open-contribute',
-      label: 'Contribute',
+      label: t('command.contribute'),
       group: 'Settings',
       keywords: ['contribute', 'feedback', 'feature', 'canny', 'discussion', 'github', 'bug', 'report'],
       enabled: !!onOpenFeedback,
@@ -44,7 +69,53 @@ function buildPrimarySettingsCommands({
         onOpenFeedback?.()
       },
     },
-    { id: 'check-updates', label: 'Check for Updates', group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: true, execute: () => onCheckForUpdates?.() },
+    { id: 'check-updates', label: t('command.checkUpdates'), group: 'Settings', keywords: ['update', 'version', 'upgrade', 'release'], enabled: true, execute: () => onCheckForUpdates?.() },
+  ]
+}
+
+function buildLanguageCommands({
+  locale = 'en',
+  systemLocale = locale,
+  selectedUiLanguage = SYSTEM_UI_LANGUAGE,
+  onOpenSettings,
+  onSetUiLanguage,
+}: Pick<SettingsCommandsConfig, 'locale' | 'systemLocale' | 'selectedUiLanguage' | 'onOpenSettings' | 'onSetUiLanguage'>): CommandAction[] {
+  const t = createTranslator(locale)
+  const canSwitchLanguage = !!onSetUiLanguage
+
+  return [
+    {
+      id: 'open-language-settings',
+      label: t('command.openLanguageSettings'),
+      group: 'Settings',
+      keywords: commandKeywords(t('command.openLanguageSettings.keywords')),
+      enabled: true,
+      execute: onOpenSettings,
+    },
+    {
+      id: 'use-system-language',
+      label: `${t('command.useSystemLanguage')} (${localeDisplayName(systemLocale, locale)})`,
+      group: 'Settings',
+      keywords: ['language', 'locale', 'system', 'auto'],
+      enabled: canSwitchLanguage && selectedUiLanguage !== SYSTEM_UI_LANGUAGE,
+      execute: () => onSetUiLanguage?.(SYSTEM_UI_LANGUAGE),
+    },
+    {
+      id: 'switch-language-en',
+      label: t('command.switchToEnglish'),
+      group: 'Settings',
+      keywords: ['language', 'locale', 'english', 'en'],
+      enabled: canSwitchLanguage && selectedUiLanguage !== 'en',
+      execute: () => onSetUiLanguage?.('en'),
+    },
+    {
+      id: 'switch-language-zh-hans',
+      label: t('command.switchToChinese'),
+      group: 'Settings',
+      keywords: ['language', 'locale', 'chinese', 'simplified', 'zh', '中文'],
+      enabled: canSwitchLanguage && selectedUiLanguage !== 'zh-Hans',
+      execute: () => onSetUiLanguage?.('zh-Hans'),
+    },
   ]
 }
 
@@ -89,10 +160,18 @@ export function buildSettingsCommands(config: SettingsCommandsConfig): CommandAc
     mcpStatus, vaultCount, isGettingStartedHidden,
     onOpenSettings, onOpenFeedback, onOpenVault, onCreateEmptyVault, onRemoveActiveVault, onRestoreGettingStarted,
     onCheckForUpdates, onInstallMcp, onReloadVault, onRepairVault,
+    locale = 'en', systemLocale = locale, selectedUiLanguage = SYSTEM_UI_LANGUAGE, onSetUiLanguage,
   } = config
 
   return [
-    ...buildPrimarySettingsCommands({ onOpenSettings, onOpenFeedback, onCheckForUpdates }),
+    ...buildPrimarySettingsCommands({ locale, onOpenSettings, onOpenFeedback, onCheckForUpdates }),
+    ...buildLanguageCommands({
+      locale,
+      systemLocale,
+      selectedUiLanguage,
+      onOpenSettings,
+      onSetUiLanguage,
+    }),
     ...buildVaultSettingsCommands({
       vaultCount,
       isGettingStartedHidden,
