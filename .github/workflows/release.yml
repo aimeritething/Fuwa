@@ -121,6 +121,8 @@ jobs:
         include:
           - arch: aarch64
             target: aarch64-apple-darwin
+          - arch: x86_64
+            target: x86_64-apple-darwin
     steps:
       - uses: actions/checkout@v4
 
@@ -551,6 +553,37 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: Normalize macOS updater artifact names
+        run: |
+          normalize_updater() {
+            local arch="$1"
+            local artifact_dir="updater-${arch}"
+            local updater_file
+            updater_file=$(find "$artifact_dir" -maxdepth 1 -name "*.app.tar.gz" -print -quit)
+            if [ -z "$updater_file" ]; then
+              echo "::error::Missing macOS updater artifact in ${artifact_dir}" >&2
+              return 1
+            fi
+
+            local sig_file="${updater_file}.sig"
+            if [ ! -f "$sig_file" ]; then
+              echo "::error::Missing macOS updater signature for ${updater_file}" >&2
+              return 1
+            fi
+
+            local normalized_updater="${artifact_dir}/Tolaria_${arch}.app.tar.gz"
+            local normalized_sig="${normalized_updater}.sig"
+            if [ "$updater_file" != "$normalized_updater" ]; then
+              mv "$updater_file" "$normalized_updater"
+            fi
+            if [ "$sig_file" != "$normalized_sig" ]; then
+              mv "$sig_file" "$normalized_sig"
+            fi
+          }
+
+          normalize_updater aarch64
+          normalize_updater x86_64
+
       - name: Generate release notes
         run: |
           PREV_TAG=$(python3 <<'PY'
@@ -587,7 +620,7 @@ jobs:
             echo "---"
             echo "**Alpha build — updated on every push to \`main\`**"
             echo ""
-            echo "**Includes macOS (Apple Silicon), Linux x64, and Windows x64 bundles**"
+            echo "**Includes macOS (Apple Silicon and Intel), Linux x64, and Windows x64 bundles**"
             echo ""
             echo "*Built from \`$(git rev-parse --short HEAD)\` on $(date -u +%Y-%m-%d)*"
           } > release_notes.md
@@ -616,6 +649,11 @@ jobs:
           ARM_SIG=$(cat "$ARM_SIG_FILE")
           ARM_UPDATER=$(basename "$ARM_UPDATER_FILE")
 
+          INTEL_SIG_FILE=$(find_required "updater-x86_64/*.app.tar.gz.sig")
+          INTEL_UPDATER_FILE="${INTEL_SIG_FILE%.sig}"
+          INTEL_SIG=$(cat "$INTEL_SIG_FILE")
+          INTEL_UPDATER=$(basename "$INTEL_UPDATER_FILE")
+
           LINUX_SIG_FILE=$(find_required "linux-x86_64-bundles/*/*.AppImage.sig" "linux-x86_64-bundles/*/*.AppImage.tar.gz.sig" "linux-x86_64-bundles/*/*.deb.sig" "linux-x86_64-bundles/*.AppImage.sig" "linux-x86_64-bundles/*.AppImage.tar.gz.sig" "linux-x86_64-bundles/*.deb.sig")
           LINUX_UPDATER_FILE="${LINUX_SIG_FILE%.sig}"
           LINUX_SIG=$(cat "$LINUX_SIG_FILE")
@@ -638,6 +676,11 @@ jobs:
                 "signature": "${ARM_SIG}",
                 "url": "https://github.com/${REPO}/releases/download/${TAG}/${ARM_UPDATER}",
                 "download_url": "https://github.com/${REPO}/releases/download/${TAG}/${ARM_UPDATER}"
+              },
+              "darwin-x86_64": {
+                "signature": "${INTEL_SIG}",
+                "url": "https://github.com/${REPO}/releases/download/${TAG}/${INTEL_UPDATER}",
+                "download_url": "https://github.com/${REPO}/releases/download/${TAG}/${INTEL_UPDATER}"
               },
               "linux-x86_64": {
                 "signature": "${LINUX_SIG}",
@@ -665,6 +708,8 @@ jobs:
           files: |
             updater-aarch64/*.app.tar.gz
             updater-aarch64/*.app.tar.gz.sig
+            updater-x86_64/*.app.tar.gz
+            updater-x86_64/*.app.tar.gz.sig
             linux-x86_64-bundles/*.deb
             linux-x86_64-bundles/*.deb.sig
             linux-x86_64-bundles/*.AppImage

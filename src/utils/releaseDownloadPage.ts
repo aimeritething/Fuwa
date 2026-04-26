@@ -1,6 +1,10 @@
 const RELEASE_HISTORY_URL = 'https://refactoringhq.github.io/tolaria/'
 
-type StablePlatformKey = 'darwin-aarch64' | 'linux-x86_64' | 'windows-x86_64'
+type StablePlatformKey =
+  | 'darwin-aarch64'
+  | 'darwin-x86_64'
+  | 'linux-x86_64'
+  | 'windows-x86_64'
 
 type PlatformPayload = {
   dmg_url?: unknown
@@ -41,8 +45,12 @@ type DownloadPageContent = {
 
 const PLATFORM_METADATA: Record<StablePlatformKey, { buttonLabel: string; label: string }> = {
   'darwin-aarch64': {
-    buttonLabel: 'Download Tolaria for macOS',
-    label: 'macOS',
+    buttonLabel: 'Download Tolaria for macOS Apple Silicon',
+    label: 'macOS Apple Silicon',
+  },
+  'darwin-x86_64': {
+    buttonLabel: 'Download Tolaria for Intel Mac',
+    label: 'macOS Intel',
   },
   'linux-x86_64': {
     buttonLabel: 'Download Tolaria for Linux',
@@ -56,6 +64,7 @@ const PLATFORM_METADATA: Record<StablePlatformKey, { buttonLabel: string; label:
 
 const PLATFORM_ORDER: StablePlatformKey[] = [
   'darwin-aarch64',
+  'darwin-x86_64',
   'windows-x86_64',
   'linux-x86_64',
 ]
@@ -196,6 +205,7 @@ function extractPlatformDownloadUrl(
 
   switch (platform) {
     case 'darwin-aarch64':
+    case 'darwin-x86_64':
       return (
         normalizeUrl(payload.download_url)
         ?? normalizeUrl(payload.dmg_url)
@@ -231,16 +241,30 @@ function isPublicStableRelease(release: GitHubReleasePayload): boolean {
   return release.draft !== true && release.prerelease !== true
 }
 
+function classifyMacReleaseAsset(name: string): {
+  platform: StablePlatformKey
+  preference: number
+} | null {
+  const normalized = name.toLowerCase()
+  const isDmg = normalized.endsWith('.dmg')
+  const isUpdaterTarball = normalized.endsWith('.app.tar.gz')
+  if (!isDmg && !isUpdaterTarball) return null
+
+  const preference = isDmg ? 2 : 1
+  if (/(?:^|[-_.])(x64|x86_64|intel)(?:[-_.]|$)/.test(normalized)) {
+    return { platform: 'darwin-x86_64', preference }
+  }
+
+  return { platform: 'darwin-aarch64', preference }
+}
+
 function classifyReleaseAsset(name: string): {
   platform: StablePlatformKey
   preference: number
 } | null {
-  if (name.endsWith('.dmg')) {
-    return { platform: 'darwin-aarch64', preference: 2 }
-  }
-  if (name.endsWith('.app.tar.gz')) {
-    return { platform: 'darwin-aarch64', preference: 1 }
-  }
+  const macAsset = classifyMacReleaseAsset(name)
+  if (macAsset) return macAsset
+
   if (name.endsWith('-setup.exe')) {
     return { platform: 'windows-x86_64', preference: 2 }
   }
@@ -398,6 +422,9 @@ function buildRedirectMarkup(downloads: StableDownloadTargets): string {
     <script>
       const DOWNLOAD_TARGETS = ${serializedTargets};
       const PLATFORM_ORDER = ${JSON.stringify(PLATFORM_ORDER)};
+      const hasMultipleMacDownloads = Boolean(
+        DOWNLOAD_TARGETS['darwin-aarch64'] && DOWNLOAD_TARGETS['darwin-x86_64']
+      );
 
       function detectPlatform(userAgent) {
         if (/Windows/i.test(userAgent)) return 'windows-x86_64';
@@ -410,6 +437,7 @@ function buildRedirectMarkup(downloads: StableDownloadTargets): string {
       const resolvedTarget = (
         detectedPlatform && DOWNLOAD_TARGETS[detectedPlatform]
       ) || DOWNLOAD_TARGETS[PLATFORM_ORDER.find((platform) => DOWNLOAD_TARGETS[platform])] || null;
+      const requiresMacChoice = hasMultipleMacDownloads && /Mac OS X|Macintosh/i.test(navigator.userAgent);
 
       if (resolvedTarget) {
         const link = document.getElementById('download-link');
@@ -419,9 +447,13 @@ function buildRedirectMarkup(downloads: StableDownloadTargets): string {
           link.textContent = resolvedTarget.buttonLabel;
         }
         if (message) {
-          message.textContent = 'Redirecting to the latest stable Tolaria download for ' + resolvedTarget.label + '.';
+          message.textContent = requiresMacChoice
+            ? 'Choose the Apple Silicon or Intel Mac download below.'
+            : 'Redirecting to the latest stable Tolaria download for ' + resolvedTarget.label + '.';
         }
-        window.location.replace(resolvedTarget.url);
+        if (!requiresMacChoice) {
+          window.location.replace(resolvedTarget.url);
+        }
       }
     </script>`
 }

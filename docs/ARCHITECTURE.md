@@ -812,12 +812,13 @@ push to main
       → if stable already uses today, advance alpha to the next calendar day so semver still increases
   → build job:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin --bundles app
-      → upload signed .app.tar.gz + .sig updater artifacts
+      → pnpm install, stamp version, pnpm build, tauri build --target x86_64-apple-darwin --bundles app
+      → upload signed Apple Silicon and Intel .app.tar.gz + .sig updater artifacts
   → build-windows job:
       → pnpm install, stamp version, tauri build --target x86_64-pc-windows-msvc --bundles nsis
       → upload NSIS installer, optional MSI artifacts, and signed Windows updater bundles
   → release job:
-      → generate alpha-latest.json
+      → generate alpha-latest.json with darwin-aarch64, darwin-x86_64, Linux, and Windows updater URLs
       → publish GitHub prerelease alpha-vYYYY.M.D-alpha.NNNN named Tolaria Alpha YYYY.M.D.N
   → pages job:
       → build static HTML release history page
@@ -834,7 +835,8 @@ push stable-vYYYY.M.D tag
   → version job: validate YYYY.M.D from the tag
   → build job:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin
-      → upload signed .app.tar.gz + .sig and .dmg artifacts
+      → pnpm install, stamp version, pnpm build, tauri build --target x86_64-apple-darwin
+      → upload signed Apple Silicon and Intel .app.tar.gz + .sig and .dmg artifacts
   → build-linux job:
       → pnpm install, stamp version, tauri build --target x86_64-unknown-linux-gnu --bundles deb,appimage
       → upload .deb, .AppImage, and signed Linux updater bundles
@@ -842,7 +844,7 @@ push stable-vYYYY.M.D tag
       → pnpm install, stamp version, tauri build --target x86_64-pc-windows-msvc --bundles nsis
       → upload NSIS installer, optional MSI artifacts, and signed Windows updater bundles
   → release job:
-      → generate stable-latest.json with macOS, Linux, and Windows updater URLs plus platform-specific manual download URLs
+      → generate stable-latest.json with macOS Apple Silicon, macOS Intel, Linux, and Windows updater URLs plus platform-specific manual download URLs
       → publish GitHub release Tolaria YYYY.M.D
   → pages job:
       → publish stable/latest.json

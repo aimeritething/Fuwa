@@ -62,6 +62,8 @@ jobs:
         include:
           - arch: aarch64
             target: aarch64-apple-darwin
+          - arch: x86_64
+            target: x86_64-apple-darwin
     steps:
       - uses: actions/checkout@v4
 
@@ -497,6 +499,50 @@ jobs:
       - name: Download all artifacts
         uses: actions/download-artifact@v4
 
+      - name: Normalize macOS release artifact names
+        run: |
+          normalize_macos_artifacts() {
+            local arch="$1"
+            local updater_dir="updater-${arch}"
+            local updater_file
+            updater_file=$(find "$updater_dir" -maxdepth 1 -name "*.app.tar.gz" -print -quit)
+            if [ -z "$updater_file" ]; then
+              echo "::error::Missing macOS updater artifact in ${updater_dir}" >&2
+              return 1
+            fi
+
+            local sig_file="${updater_file}.sig"
+            if [ ! -f "$sig_file" ]; then
+              echo "::error::Missing macOS updater signature for ${updater_file}" >&2
+              return 1
+            fi
+
+            local normalized_updater="${updater_dir}/Tolaria_${arch}.app.tar.gz"
+            local normalized_sig="${normalized_updater}.sig"
+            if [ "$updater_file" != "$normalized_updater" ]; then
+              mv "$updater_file" "$normalized_updater"
+            fi
+            if [ "$sig_file" != "$normalized_sig" ]; then
+              mv "$sig_file" "$normalized_sig"
+            fi
+
+            local dmg_dir="dmg-${arch}"
+            local dmg_file
+            dmg_file=$(find "$dmg_dir" -maxdepth 1 -name "*.dmg" -print -quit)
+            if [ -z "$dmg_file" ]; then
+              echo "::error::Missing macOS DMG artifact in ${dmg_dir}" >&2
+              return 1
+            fi
+
+            local normalized_dmg="${dmg_dir}/Tolaria_${arch}.dmg"
+            if [ "$dmg_file" != "$normalized_dmg" ]; then
+              mv "$dmg_file" "$normalized_dmg"
+            fi
+          }
+
+          normalize_macos_artifacts aarch64
+          normalize_macos_artifacts x86_64
+
       - name: Generate release notes
         run: |
           PREV_TAG=$(git tag --list 'stable-v*' --sort=-version:refname | grep -vx "${{ needs.version.outputs.tag }}" | head -n 1 || echo "")
@@ -513,7 +559,7 @@ jobs:
             echo "---"
             echo "**Stable release — manually promoted from \`main\`**"
             echo ""
-            echo "**Includes macOS (Apple Silicon), Windows x64, and Linux x64 bundles**"
+            echo "**Includes macOS (Apple Silicon and Intel), Windows x64, and Linux x64 bundles**"
             echo ""
             echo "*Built from \`$(git rev-parse --short ${{ needs.version.outputs.tag }})\` on $(date -u +%Y-%m-%d)*"
           } > release_notes.md
@@ -545,6 +591,12 @@ jobs:
           ARM_TARBALL=$(basename "$ARM_UPDATER_FILE")
           ARM_DMG=$(basename "$(find_required "dmg-aarch64/*.dmg")")
 
+          INTEL_SIG_FILE=$(find_required "updater-x86_64/*.app.tar.gz.sig")
+          INTEL_UPDATER_FILE="${INTEL_SIG_FILE%.sig}"
+          INTEL_SIG=$(cat "$INTEL_SIG_FILE")
+          INTEL_TARBALL=$(basename "$INTEL_UPDATER_FILE")
+          INTEL_DMG=$(basename "$(find_required "dmg-x86_64/*.dmg")")
+
           LINUX_SIG_FILE=$(find_required "linux-x86_64-bundles/*/*.AppImage.sig" "linux-x86_64-bundles/*/*.AppImage.tar.gz.sig" "linux-x86_64-bundles/*/*.deb.sig" "linux-x86_64-bundles/*.AppImage.sig" "linux-x86_64-bundles/*.AppImage.tar.gz.sig" "linux-x86_64-bundles/*.deb.sig")
           LINUX_UPDATER_FILE="${LINUX_SIG_FILE%.sig}"
           LINUX_SIG=$(cat "$LINUX_SIG_FILE")
@@ -567,6 +619,11 @@ jobs:
                 "signature": "${ARM_SIG}",
                 "url": "https://github.com/${REPO}/releases/download/${TAG}/${ARM_TARBALL}",
                 "dmg_url": "https://github.com/${REPO}/releases/download/${TAG}/${ARM_DMG}"
+              },
+              "darwin-x86_64": {
+                "signature": "${INTEL_SIG}",
+                "url": "https://github.com/${REPO}/releases/download/${TAG}/${INTEL_TARBALL}",
+                "dmg_url": "https://github.com/${REPO}/releases/download/${TAG}/${INTEL_DMG}"
               },
               "linux-x86_64": {
                 "signature": "${LINUX_SIG}",
@@ -595,6 +652,9 @@ jobs:
             dmg-aarch64/*.dmg
             updater-aarch64/*.app.tar.gz
             updater-aarch64/*.app.tar.gz.sig
+            dmg-x86_64/*.dmg
+            updater-x86_64/*.app.tar.gz
+            updater-x86_64/*.app.tar.gz.sig
             linux-x86_64-bundles/*.deb
             linux-x86_64-bundles/*.deb.sig
             linux-x86_64-bundles/*.AppImage

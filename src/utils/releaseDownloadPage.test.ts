@@ -11,7 +11,10 @@ describe('extractStableDownloadTargets', () => {
       extractStableDownloadTargets({
         platforms: {
           'darwin-aarch64': {
-            download_url: 'https://example.com/Tolaria.dmg',
+            download_url: 'https://example.com/Tolaria-aarch64.dmg',
+          },
+          'darwin-x86_64': {
+            download_url: 'https://example.com/Tolaria-x64.dmg',
           },
           'linux-x86_64': {
             download_url: 'https://example.com/Tolaria.AppImage',
@@ -23,8 +26,12 @@ describe('extractStableDownloadTargets', () => {
       }),
     ).toMatchObject({
       'darwin-aarch64': {
-        label: 'macOS',
-        url: 'https://example.com/Tolaria.dmg',
+        label: 'macOS Apple Silicon',
+        url: 'https://example.com/Tolaria-aarch64.dmg',
+      },
+      'darwin-x86_64': {
+        label: 'macOS Intel',
+        url: 'https://example.com/Tolaria-x64.dmg',
       },
       'linux-x86_64': {
         label: 'Linux',
@@ -42,9 +49,14 @@ describe('buildStableDownloadRedirectPage', () => {
   it('builds a redirect page with platform-specific download links', () => {
     const html = buildStableDownloadRedirectPage({
       'darwin-aarch64': {
-        buttonLabel: 'Download Tolaria for macOS',
-        label: 'macOS',
-        url: 'https://example.com/Tolaria.dmg',
+        buttonLabel: 'Download Tolaria for macOS Apple Silicon',
+        label: 'macOS Apple Silicon',
+        url: 'https://example.com/Tolaria-aarch64.dmg',
+      },
+      'darwin-x86_64': {
+        buttonLabel: 'Download Tolaria for Intel Mac',
+        label: 'macOS Intel',
+        url: 'https://example.com/Tolaria-x64.dmg',
       },
       'windows-x86_64': {
         buttonLabel: 'Download Tolaria for Windows',
@@ -56,7 +68,10 @@ describe('buildStableDownloadRedirectPage', () => {
     expect(html).toContain('Tolaria Stable Download')
     expect(html).toContain('DOWNLOAD_TARGETS')
     expect(html).toContain('Download Tolaria for Windows')
-    expect(html).toContain('Download Tolaria for macOS')
+    expect(html).toContain('Download Tolaria for macOS Apple Silicon')
+    expect(html).toContain('Download Tolaria for Intel Mac')
+    expect(html).toContain('hasMultipleMacDownloads')
+    expect(html).toContain('Choose the Apple Silicon or Intel Mac download below.')
     expect(html).toContain('window.location.replace')
     expect(html).toContain('color-scheme: light dark')
     expect(html).toContain('@media (prefers-color-scheme: dark)')
@@ -78,7 +93,7 @@ describe('resolveStableDownloadTargets', () => {
     const latestPayload = {
       platforms: {
         'darwin-aarch64': {
-          download_url: 'https://example.com/Tolaria.dmg',
+          download_url: 'https://example.com/Tolaria-aarch64.dmg',
         },
       },
     }
@@ -86,6 +101,10 @@ describe('resolveStableDownloadTargets', () => {
       {
         prerelease: false,
         assets: [
+          {
+            name: 'Tolaria_x64.dmg',
+            browser_download_url: 'https://example.com/Tolaria-x64.dmg',
+          },
           {
             name: 'Tolaria-setup.exe',
             browser_download_url: 'https://example.com/Tolaria-setup.exe',
@@ -99,6 +118,9 @@ describe('resolveStableDownloadTargets', () => {
     ]
 
     expect(extractStableDownloadTargetsFromReleases(releasesPayload)).toMatchObject({
+      'darwin-x86_64': {
+        url: 'https://example.com/Tolaria-x64.dmg',
+      },
       'linux-x86_64': {
         url: 'https://example.com/Tolaria.AppImage',
       },
@@ -108,7 +130,10 @@ describe('resolveStableDownloadTargets', () => {
     })
     expect(resolveStableDownloadTargets(latestPayload, releasesPayload)).toMatchObject({
       'darwin-aarch64': {
-        url: 'https://example.com/Tolaria.dmg',
+        url: 'https://example.com/Tolaria-aarch64.dmg',
+      },
+      'darwin-x86_64': {
+        url: 'https://example.com/Tolaria-x64.dmg',
       },
       'linux-x86_64': {
         url: 'https://example.com/Tolaria.AppImage',
