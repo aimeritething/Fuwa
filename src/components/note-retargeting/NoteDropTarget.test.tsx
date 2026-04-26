@@ -70,6 +70,7 @@ describe('NoteDropTarget', () => {
 
     const dragStartData = createMockDataTransfer()
     fireEvent.dragStart(screen.getByTestId(`draggable-note:${NOTE_PATH}`), { dataTransfer: dragStartData })
+    expect(dragStartData.effectAllowed).toBe('linkMove')
 
     const target = screen.getByText('CircleCI Series').parentElement
     expect(target).not.toBeNull()

@@ -5,7 +5,7 @@ let activeDraggedNotePath: string | null = null
 
 export function writeDraggedNotePath(event: DragEvent<HTMLElement>, notePath: string): void {
   activeDraggedNotePath = notePath
-  event.dataTransfer.effectAllowed = 'move'
+  event.dataTransfer.effectAllowed = 'linkMove'
   event.dataTransfer.setData(NOTE_DRAG_MIME, notePath)
   event.dataTransfer.setData('text/plain', notePath)
 }
