@@ -1,9 +1,39 @@
+import { readFileSync } from 'node:fs'
 import {
   buildStableDownloadRedirectPage,
   extractStableDownloadTargets,
   extractStableDownloadTargetsFromReleases,
   resolveStableDownloadTargets,
 } from './releaseDownloadPage'
+
+describe('release workflow macOS artifact names', () => {
+  it('publishes versioned Silicon and Intel artifact names', () => {
+    const alphaWorkflow = readFileSync(`${process.cwd()}/.github/workflows/release.yml`, 'utf8')
+    const stableWorkflow = readFileSync(
+      `${process.cwd()}/.github/workflows/release-stable.yml`,
+      'utf8',
+    )
+
+    expect(alphaWorkflow).toContain(
+      'Tolaria_${{ needs.version.outputs.version }}_macOS_Silicon.app.tar.gz',
+    )
+    expect(alphaWorkflow).toContain(
+      'Tolaria_${{ needs.version.outputs.version }}_macOS_Intel.app.tar.gz',
+    )
+    expect(stableWorkflow).toContain(
+      'Tolaria_${{ needs.version.outputs.version }}_macOS_Silicon.app.tar.gz',
+    )
+    expect(stableWorkflow).toContain(
+      'Tolaria_${{ needs.version.outputs.version }}_macOS_Intel.app.tar.gz',
+    )
+    expect(stableWorkflow).toContain(
+      'Tolaria_${{ needs.version.outputs.version }}_macOS_Silicon.dmg',
+    )
+    expect(stableWorkflow).toContain(
+      'Tolaria_${{ needs.version.outputs.version }}_macOS_Intel.dmg',
+    )
+  })
+})
 
 describe('extractStableDownloadTargets', () => {
   it('returns stable downloads for each supported desktop platform when present', () => {

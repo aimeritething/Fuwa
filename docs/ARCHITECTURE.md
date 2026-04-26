@@ -823,7 +823,7 @@ push to main
   → build job:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin --bundles app
       → pnpm install, stamp version, pnpm build, tauri build --target x86_64-apple-darwin --bundles app
-      → upload signed Apple Silicon and Intel .app.tar.gz + .sig updater artifacts
+      → upload signed Apple Silicon and Intel .app.tar.gz + .sig updater artifacts named Tolaria_<version>_macOS_Silicon and Tolaria_<version>_macOS_Intel
   → build-windows job:
       → pnpm install, stamp version, tauri build --target x86_64-pc-windows-msvc --bundles nsis
       → upload NSIS installer, optional MSI artifacts, and signed Windows updater bundles
@@ -846,7 +846,7 @@ push stable-vYYYY.M.D tag
   → build job:
       → pnpm install, stamp version, pnpm build, tauri build --target aarch64-apple-darwin
       → pnpm install, stamp version, pnpm build, tauri build --target x86_64-apple-darwin
-      → upload signed Apple Silicon and Intel .app.tar.gz + .sig and .dmg artifacts
+      → upload signed Apple Silicon and Intel .app.tar.gz + .sig and .dmg artifacts named Tolaria_<version>_macOS_Silicon and Tolaria_<version>_macOS_Intel
   → build-linux job:
       → pnpm install, stamp version, tauri build --target x86_64-unknown-linux-gnu --bundles deb,appimage
       → upload .deb, .AppImage, and signed Linux updater bundles
