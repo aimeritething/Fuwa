@@ -40,24 +40,14 @@ pub(crate) fn restore_main_window_state(app: &mut App) {
     let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
         return;
     };
-    let Some(frame) = read_main_window_frame() else {
-        return;
-    };
-    let areas = current_screen_areas(&window);
-    let Some(restored_frame) = fit_frame_to_screens(frame, &areas) else {
-        return;
-    };
-
-    if let Err(err) = apply_window_frame(&window, restored_frame) {
-        log::warn!("Failed to restore main window state: {err}");
-        return;
-    }
-
-    cache_frame(app.handle(), restored_frame);
+    restore_main_window_frame(app.handle(), &window, "during setup");
 }
 
 pub(crate) fn handle_run_event(app_handle: &AppHandle, event: &RunEvent) {
     match event {
+        event if restores_window_frame_after_runtime_ready(event) => {
+            restore_main_window_state_from_handle(app_handle)
+        }
         RunEvent::WindowEvent {
             label,
             event:
@@ -72,6 +62,34 @@ pub(crate) fn handle_run_event(app_handle: &AppHandle, event: &RunEvent) {
         RunEvent::Exit => save_main_window_frame(app_handle),
         _ => {}
     }
+}
+
+fn restores_window_frame_after_runtime_ready(event: &RunEvent) -> bool {
+    matches!(event, RunEvent::Ready)
+}
+
+fn restore_main_window_state_from_handle(app_handle: &AppHandle) {
+    let Some(window) = app_handle.get_webview_window(MAIN_WINDOW_LABEL) else {
+        return;
+    };
+    restore_main_window_frame(app_handle, &window, "after runtime ready");
+}
+
+fn restore_main_window_frame(app_handle: &AppHandle, window: &WebviewWindow, phase: &str) {
+    let Some(frame) = read_main_window_frame() else {
+        return;
+    };
+    let areas = current_screen_areas(window);
+    let Some(restored_frame) = fit_frame_to_screens(frame, &areas) else {
+        return;
+    };
+
+    if let Err(err) = apply_window_frame(window, restored_frame) {
+        log::warn!("Failed to restore main window state {phase}: {err}");
+        return;
+    }
+
+    cache_frame(app_handle, restored_frame);
 }
 
 fn cache_current_normal_frame(app_handle: &AppHandle) {
@@ -386,5 +404,13 @@ mod tests {
     fn rejects_corrupted_tiny_saved_frames() {
         assert!(!is_valid_saved_frame(&frame(100, 100, 1, 900)));
         assert!(!is_valid_saved_frame(&frame(100, 100, 1400, 1)));
+    }
+
+    #[test]
+    fn restores_again_after_runtime_ready() {
+        assert!(restores_window_frame_after_runtime_ready(&RunEvent::Ready));
+        assert!(!restores_window_frame_after_runtime_ready(
+            &RunEvent::Resumed
+        ));
     }
 }
