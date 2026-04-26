@@ -7,8 +7,22 @@ import { normalizeReleaseChannel, serializeReleaseChannel } from '../lib/release
 import { normalizeThemeMode } from '../lib/themeMode'
 import type { Settings } from '../types'
 
-function tauriCall<T>(command: string, tauriArgs: Record<string, unknown>, mockArgs?: Record<string, unknown>): Promise<T> {
-  return isTauri() ? invoke<T>(command, tauriArgs) : mockInvoke<T>(command, mockArgs ?? tauriArgs)
+async function invokeNativeIfAvailable<T>(command: string, tauriArgs: Record<string, unknown>): Promise<T | undefined> {
+  try {
+    return await invoke<T>(command, tauriArgs)
+  } catch (err) {
+    if (isTauri()) throw err
+    return undefined
+  }
+}
+
+async function tauriCall<T>(command: string, tauriArgs: Record<string, unknown>, mockArgs?: Record<string, unknown>): Promise<T> {
+  if (isTauri()) return invoke<T>(command, tauriArgs)
+
+  const nativeResult = await invokeNativeIfAvailable<T>(command, tauriArgs)
+  if (nativeResult !== undefined) return nativeResult
+
+  return mockInvoke<T>(command, mockArgs ?? tauriArgs)
 }
 
 const EMPTY_SETTINGS: Settings = {
