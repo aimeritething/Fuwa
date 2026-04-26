@@ -3,8 +3,8 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Mutex;
 use tauri::{
-    App, AppHandle, Manager, PhysicalPosition, PhysicalSize, Position, RunEvent, Size,
-    WebviewWindow, WindowEvent,
+    App, AppHandle, LogicalPosition, LogicalSize, Manager, Position, RunEvent, Size, WebviewWindow,
+    WindowEvent,
 };
 
 const MAIN_WINDOW_LABEL: &str = "main";
@@ -34,6 +34,16 @@ struct ScreenArea {
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct PersistedWindowState {
     main: Option<WindowFrame>,
+    #[serde(default)]
+    coordinate_space: WindowFrameCoordinateSpace,
+}
+
+#[derive(Debug, Default, Clone, Copy, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+enum WindowFrameCoordinateSpace {
+    #[default]
+    Physical,
+    Logical,
 }
 
 pub(crate) fn restore_main_window_state(app: &mut App) {
@@ -76,7 +86,7 @@ fn restore_main_window_state_from_handle(app_handle: &AppHandle) {
 }
 
 fn restore_main_window_frame(app_handle: &AppHandle, window: &WebviewWindow, phase: &str) {
-    let Some(frame) = read_main_window_frame() else {
+    let Some(frame) = read_main_window_frame(window_scale_factor(window)) else {
         return;
     };
     let areas = current_screen_areas(window);
@@ -123,37 +133,49 @@ fn is_normal_window(window: &WebviewWindow) -> bool {
 }
 
 fn read_window_frame(window: &WebviewWindow) -> Option<WindowFrame> {
+    let scale_factor = window_scale_factor(window);
     let position = window.outer_position().ok()?;
-    let size = window.outer_size().ok()?;
-    Some(WindowFrame {
-        x: position.x,
-        y: position.y,
-        width: size.width,
-        height: size.height,
-    })
+    let size = window.inner_size().ok()?;
+    Some(WindowFrame::from_logical_geometry(
+        position.to_logical::<f64>(scale_factor),
+        size.to_logical::<f64>(scale_factor),
+    ))
 }
 
 fn apply_window_frame(window: &WebviewWindow, frame: WindowFrame) -> tauri::Result<()> {
-    window.set_size(Size::Physical(PhysicalSize::new(frame.width, frame.height)))?;
-    window.set_position(Position::Physical(PhysicalPosition::new(frame.x, frame.y)))
+    window.set_size(Size::Logical(LogicalSize::new(
+        frame.width as f64,
+        frame.height as f64,
+    )))?;
+    window.set_position(Position::Logical(LogicalPosition::new(
+        frame.x as f64,
+        frame.y as f64,
+    )))
 }
 
 fn current_screen_areas(window: &WebviewWindow) -> Vec<ScreenArea> {
+    let scale_factor = window_scale_factor(window);
     window
         .available_monitors()
         .unwrap_or_default()
         .into_iter()
         .map(|monitor| {
             let area = monitor.work_area();
+            let position = area.position.to_logical::<f64>(scale_factor);
+            let size = area.size.to_logical::<f64>(scale_factor);
             ScreenArea {
-                x: area.position.x,
-                y: area.position.y,
-                width: area.size.width,
-                height: area.size.height,
+                x: rounded_i32(position.x),
+                y: rounded_i32(position.y),
+                width: rounded_u32(size.width),
+                height: rounded_u32(size.height),
             }
         })
         .filter(ScreenArea::has_area)
         .collect()
+}
+
+fn window_scale_factor(window: &WebviewWindow) -> f64 {
+    window.scale_factor().unwrap_or(1.0).max(1.0)
 }
 
 fn fit_frame_to_screens(frame: WindowFrame, screens: &[ScreenArea]) -> Option<WindowFrame> {
@@ -240,10 +262,17 @@ fn window_state_path() -> Result<PathBuf, String> {
     crate::settings::preferred_app_config_path(WINDOW_STATE_FILE)
 }
 
-fn read_main_window_frame() -> Option<WindowFrame> {
+fn read_main_window_frame(scale_factor: f64) -> Option<WindowFrame> {
     let content = fs::read_to_string(window_state_path().ok()?).ok()?;
     let persisted: PersistedWindowState = serde_json::from_str(&content).ok()?;
-    persisted.main.filter(is_valid_saved_frame)
+    persisted
+        .main
+        .map(|frame| {
+            persisted
+                .coordinate_space
+                .to_logical_frame(frame, scale_factor)
+        })
+        .filter(is_valid_saved_frame)
 }
 
 fn write_main_window_frame(frame: WindowFrame) -> Result<(), String> {
@@ -253,7 +282,10 @@ fn write_main_window_frame(frame: WindowFrame) -> Result<(), String> {
             .map_err(|e| format!("Failed to create window state directory: {e}"))?;
     }
 
-    let persisted = PersistedWindowState { main: Some(frame) };
+    let persisted = PersistedWindowState {
+        main: Some(frame),
+        coordinate_space: WindowFrameCoordinateSpace::Logical,
+    };
     let json = serde_json::to_string_pretty(&persisted)
         .map_err(|e| format!("Failed to serialize window state: {e}"))?;
     fs::write(path, json).map_err(|e| format!("Failed to write window state: {e}"))
@@ -263,13 +295,49 @@ fn is_valid_saved_frame(frame: &WindowFrame) -> bool {
     frame.width >= MIN_WINDOW_WIDTH && frame.height >= MIN_WINDOW_HEIGHT
 }
 
+fn rounded_i32(value: f64) -> i32 {
+    value.round() as i32
+}
+
+fn rounded_u32(value: f64) -> u32 {
+    value.round().max(0.0) as u32
+}
+
 impl WindowFrame {
+    fn from_logical_geometry(position: LogicalPosition<f64>, size: LogicalSize<f64>) -> Self {
+        Self {
+            x: rounded_i32(position.x),
+            y: rounded_i32(position.y),
+            width: rounded_u32(size.width),
+            height: rounded_u32(size.height),
+        }
+    }
+
+    fn to_logical(self, scale_factor: f64) -> Self {
+        let scale_factor = scale_factor.max(1.0);
+        Self {
+            x: rounded_i32(self.x as f64 / scale_factor),
+            y: rounded_i32(self.y as f64 / scale_factor),
+            width: rounded_u32(self.width as f64 / scale_factor),
+            height: rounded_u32(self.height as f64 / scale_factor),
+        }
+    }
+
     fn right(self) -> i32 {
         self.x + self.width as i32
     }
 
     fn bottom(self) -> i32 {
         self.y + self.height as i32
+    }
+}
+
+impl WindowFrameCoordinateSpace {
+    fn to_logical_frame(self, frame: WindowFrame, scale_factor: f64) -> WindowFrame {
+        match self {
+            Self::Logical => frame,
+            Self::Physical => frame.to_logical(scale_factor),
+        }
     }
 }
 
@@ -312,6 +380,36 @@ mod tests {
             width,
             height,
         }
+    }
+
+    #[test]
+    fn records_logical_window_geometry_for_persistence() {
+        let saved = WindowFrame::from_logical_geometry(
+            LogicalPosition::new(80.0, 120.0),
+            LogicalSize::new(1100.0, 700.0),
+        );
+
+        assert_eq!(saved, frame(80, 120, 1100, 700));
+    }
+
+    #[test]
+    fn migrates_legacy_physical_frames_to_logical_points() {
+        let saved = frame(160, 240, 2200, 1400);
+
+        assert_eq!(
+            WindowFrameCoordinateSpace::Physical.to_logical_frame(saved, 2.0),
+            frame(80, 120, 1100, 700)
+        );
+    }
+
+    #[test]
+    fn keeps_explicit_logical_frames_unscaled() {
+        let saved = frame(80, 120, 1100, 700);
+
+        assert_eq!(
+            WindowFrameCoordinateSpace::Logical.to_logical_frame(saved, 2.0),
+            saved
+        );
     }
 
     #[test]
