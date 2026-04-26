@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -122,7 +122,11 @@ fn version_for_binary(binary: &PathBuf) -> Option<String> {
 }
 
 fn find_codex_binary() -> Result<PathBuf, String> {
-    if let Some(binary) = find_codex_binary_on_path()? {
+    if let Some(binary) = find_codex_binary_on_path() {
+        return Ok(binary);
+    }
+
+    if let Some(binary) = find_codex_binary_in_user_shell() {
         return Ok(binary);
     }
 
@@ -133,27 +137,76 @@ fn find_codex_binary() -> Result<PathBuf, String> {
     Err("Codex CLI not found. Install it: https://developers.openai.com/codex/cli".into())
 }
 
-fn find_codex_binary_on_path() -> Result<Option<PathBuf>, String> {
-    let output = Command::new("which")
+fn find_codex_binary_on_path() -> Option<PathBuf> {
+    Command::new("which")
         .arg("codex")
         .output()
-        .map_err(|error| format!("Failed to run `which codex`: {error}"))?;
+        .ok()
+        .and_then(|output| path_from_successful_output(&output))
+}
 
-    if output.status.success() {
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if !path.is_empty() {
-            return Ok(Some(PathBuf::from(path)));
+fn find_codex_binary_in_user_shell() -> Option<PathBuf> {
+    user_shell_candidates()
+        .into_iter()
+        .filter(|shell| shell.exists())
+        .find_map(|shell| command_path_from_shell(&shell, "codex"))
+}
+
+fn user_shell_candidates() -> Vec<PathBuf> {
+    let mut shells = Vec::new();
+    if let Some(shell) = std::env::var_os("SHELL") {
+        if !shell.is_empty() {
+            shells.push(PathBuf::from(shell));
         }
     }
+    shells.push(PathBuf::from("/bin/zsh"));
+    shells.push(PathBuf::from("/bin/bash"));
+    shells
+}
 
-    Ok(None)
+fn command_path_from_shell(shell: &Path, command: &str) -> Option<PathBuf> {
+    Command::new(shell)
+        .arg("-lc")
+        .arg(format!("command -v {command}"))
+        .output()
+        .ok()
+        .and_then(|output| path_from_successful_output(&output))
+}
+
+fn path_from_successful_output(output: &std::process::Output) -> Option<PathBuf> {
+    if output.status.success() {
+        first_existing_path(&String::from_utf8_lossy(&output.stdout))
+    } else {
+        None
+    }
+}
+
+fn first_existing_path(stdout: &str) -> Option<PathBuf> {
+    stdout.lines().find_map(|line| {
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            return None;
+        }
+        let candidate = PathBuf::from(trimmed);
+        candidate.exists().then_some(candidate)
+    })
 }
 
 fn codex_binary_candidates() -> Vec<PathBuf> {
-    let home = dirs::home_dir().unwrap_or_default();
+    dirs::home_dir()
+        .map(|home| codex_binary_candidates_for_home(&home))
+        .unwrap_or_default()
+}
+
+fn codex_binary_candidates_for_home(home: &Path) -> Vec<PathBuf> {
     vec![
         home.join(".local/bin/codex"),
+        home.join(".codex/bin/codex"),
+        home.join(".local/share/mise/shims/codex"),
+        home.join(".asdf/shims/codex"),
+        home.join(".npm-global/bin/codex"),
         home.join(".npm/bin/codex"),
+        home.join(".bun/bin/codex"),
         PathBuf::from("/usr/local/bin/codex"),
         PathBuf::from("/opt/homebrew/bin/codex"),
         PathBuf::from("/Applications/Codex.app/Contents/Resources/codex"),
@@ -417,6 +470,65 @@ mod tests {
             assert!(args.contains(&"--json".to_string()));
             assert!(args.contains(&"-C".to_string()));
         }
+    }
+
+    #[test]
+    fn codex_binary_candidates_include_supported_macos_installs() {
+        let home = PathBuf::from("/Users/alex");
+        let candidates = codex_binary_candidates_for_home(&home);
+        let expected = [
+            home.join(".local/bin/codex"),
+            home.join(".codex/bin/codex"),
+            home.join(".local/share/mise/shims/codex"),
+            home.join(".asdf/shims/codex"),
+            home.join(".npm-global/bin/codex"),
+            home.join(".bun/bin/codex"),
+            PathBuf::from("/Applications/Codex.app/Contents/Resources/codex"),
+        ];
+
+        for candidate in expected {
+            assert!(
+                candidates.contains(&candidate),
+                "missing {}",
+                candidate.display()
+            );
+        }
+    }
+
+    #[test]
+    fn first_existing_path_skips_empty_and_missing_lines() {
+        let dir = tempfile::tempdir().unwrap();
+        let missing = dir.path().join("missing-codex");
+        let codex = dir.path().join("codex");
+        std::fs::write(&codex, "#!/bin/sh\n").unwrap();
+
+        let stdout = format!("\n{}\n{}\n", missing.display(), codex.display());
+
+        assert_eq!(first_existing_path(&stdout), Some(codex));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn command_path_from_shell_finds_codex_from_login_shell() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let codex = dir.path().join("codex");
+        std::fs::write(&codex, "#!/bin/sh\n").unwrap();
+        std::fs::set_permissions(&codex, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let shell = dir.path().join("shell");
+        std::fs::write(
+            &shell,
+            format!(
+                "#!/bin/sh\nif [ \"$1\" = \"-lc\" ]; then echo '{}'; fi\n",
+                codex.display()
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&shell, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        assert_eq!(command_path_from_shell(&shell, "codex"), Some(codex));
     }
 
     #[test]
