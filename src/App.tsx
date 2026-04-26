@@ -16,6 +16,7 @@ import { StatusBar } from './components/StatusBar'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CloneVaultModal } from './components/CloneVaultModal'
 import { WelcomeScreen } from './components/WelcomeScreen'
+import { AppLoadingSkeleton } from './components/AppLoadingSkeleton'
 import { AiAgentsOnboardingPrompt } from './components/AiAgentsOnboardingPrompt'
 import { TelemetryConsentDialog } from './components/TelemetryConsentDialog'
 import { FeedbackDialog } from './components/FeedbackDialog'
@@ -1439,9 +1440,9 @@ function App() {
       && onboarding.state.vaultPath === vaultSwitcher.vaultPath
   }, [onboarding.state, selectedVaultPath, vaultSwitcher.allVaults, vaultSwitcher.loaded, vaultSwitcher.vaultPath])
 
-  // Show loading spinner while checking vault (skip for note windows)
+  // Show loading skeleton while checking vault (skip for note windows)
   if (!noteWindowParams && onboarding.state.status === 'loading') {
-    return <LoadingView />
+    return <AppLoadingSkeleton />
   }
 
   // Show telemetry consent dialog on first launch (skip for note windows).
@@ -1482,6 +1483,18 @@ function App() {
         />
         <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
       </>
+    )
+  }
+
+  // Show loading skeleton while checking git status or scanning vault notes.
+  if (!noteWindowParams && onboarding.state.status === 'ready' && (gitRepoState === 'checking' || vault.isLoading)) {
+    return (
+      <AppLoadingSkeleton
+        noteListWidth={layout.noteListWidth}
+        showNoteList={noteListVisible}
+        showSidebar={sidebarVisible}
+        sidebarWidth={layout.sidebarWidth}
+      />
     )
   }
 
@@ -1679,17 +1692,6 @@ function AiAgentsOnboardingView({
   return (
     <div className="app-shell">
       <AiAgentsOnboardingPrompt statuses={statuses} onContinue={onContinue} />
-    </div>
-  )
-}
-
-/** Loading spinner view - extracted from main App component */
-function LoadingView() {
-  return (
-    <div className="app-shell">
-      <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--sidebar)' }}>
-        <span style={{ color: 'var(--muted-foreground)', fontSize: 14 }}>Loading…</span>
-      </div>
     </div>
   )
 }

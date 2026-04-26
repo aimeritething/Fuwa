@@ -32,11 +32,24 @@ function loadVaultViews(vaultPath: string): Promise<ViewFile[]> {
   return tauriCall<ViewFile[]>('list_views', { vaultPath })
 }
 
+async function loadVaultChrome(vaultPath: string) {
+  const [folders, views] = await Promise.all([
+    loadVaultFolders(vaultPath).catch(() => [] as FolderNode[]),
+    loadVaultViews(vaultPath).catch(() => [] as ViewFile[]),
+  ])
+
+  return {
+    folders: folders ?? [],
+    views: views ?? [],
+  }
+}
+
 function resetVaultState(options: {
   clearNewPaths: () => void
   clearUnsaved: () => void
   setEntries: (entries: VaultEntry[]) => void
   setFolders: (folders: FolderNode[]) => void
+  setIsLoading: (isLoading: boolean) => void
   setModifiedFiles: (files: ModifiedFile[]) => void
   setModifiedFilesError: (message: string | null) => void
   setViews: (views: ViewFile[]) => void
@@ -46,8 +59,36 @@ function resetVaultState(options: {
   options.setViews([])
   options.setModifiedFiles([])
   options.setModifiedFilesError(null)
+  options.setIsLoading(false)
   options.clearNewPaths()
   options.clearUnsaved()
+}
+
+async function loadInitialVaultState(options: {
+  path: string
+  isCurrentVaultPath: (path: string) => boolean
+  setEntries: (entries: VaultEntry[]) => void
+  setFolders: (folders: FolderNode[]) => void
+  setIsLoading: (isLoading: boolean) => void
+  setViews: (views: ViewFile[]) => void
+}) {
+  const { path, isCurrentVaultPath, setEntries, setFolders, setIsLoading, setViews } = options
+  const chromeLoad = loadVaultChrome(path)
+
+  setIsLoading(true)
+  try {
+    const { entries } = await loadVaultData(path)
+    if (isCurrentVaultPath(path)) setEntries(entries)
+  } catch (err) {
+    console.warn('Vault scan failed:', err)
+  } finally {
+    if (isCurrentVaultPath(path)) setIsLoading(false)
+  }
+
+  const { folders, views } = await chromeLoad
+  if (!isCurrentVaultPath(path)) return
+  setFolders(folders)
+  setViews(views)
 }
 
 function useCurrentVaultPathGuard(vaultPath: string) {
@@ -135,6 +176,7 @@ export function resolveNoteStatus(
 export function useVaultLoader(vaultPath: string) {
   const [entries, setEntries] = useState<VaultEntry[]>([])
   const [folders, setFolders] = useState<FolderNode[]>([])
+  const [isLoading, setIsLoading] = useState(() => hasVaultPath(vaultPath))
   const [views, setViews] = useState<ViewFile[]>([])
   const [modifiedFiles, setModifiedFiles] = useState<ModifiedFile[]>([])
   const [modifiedFilesError, setModifiedFilesError] = useState<string | null>(null)
@@ -150,6 +192,7 @@ export function useVaultLoader(vaultPath: string) {
       clearUnsaved: unsaved.clearAll,
       setEntries,
       setFolders,
+      setIsLoading,
       setModifiedFiles,
       setModifiedFilesError,
       setViews,
@@ -159,24 +202,16 @@ export function useVaultLoader(vaultPath: string) {
       return
     }
 
-    loadVaultData(path)
-      .then(({ entries: e }) => {
-        if (!isCurrentVaultPath(path)) return
-        setEntries(e)
-      })
-      .catch((err) => console.warn('Vault scan failed:', err))
-    loadVaultFolders(path)
-      .then((f) => {
-        if (!isCurrentVaultPath(path)) return
-        setFolders(f ?? [])
-      })
-      .catch(() => { /* folders are optional — ignore errors */ })
-    loadVaultViews(path)
-      .then((v) => {
-        if (!isCurrentVaultPath(path)) return
-        setViews(v ?? [])
-      })
-      .catch(() => { /* views are optional — ignore errors */ })
+    let cancelled = false
+    void loadInitialVaultState({
+      path,
+      isCurrentVaultPath: (candidate) => !cancelled && isCurrentVaultPath(candidate),
+      setEntries,
+      setFolders,
+      setIsLoading,
+      setViews,
+    })
+    return () => { cancelled = true }
   }, [vaultPath, tracker.clear, unsaved.clearAll, isCurrentVaultPath])
 
   const loadModifiedFiles = useCallback(async () => {
@@ -297,7 +332,7 @@ export function useVaultLoader(vaultPath: string) {
   }, [vaultPath, isCurrentVaultPath])
 
   return {
-    entries, folders, views, modifiedFiles, modifiedFilesError,
+    entries, folders, isLoading, views, modifiedFiles, modifiedFilesError,
     addEntry, updateEntry, removeEntry, removeEntries, replaceEntry,
     loadModifiedFiles, loadGitHistory, loadDiff, loadDiffAtCommit,
     getNoteStatus, commitAndPush, reloadVault, reloadFolders, reloadViews,

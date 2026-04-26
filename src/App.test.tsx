@@ -466,6 +466,31 @@ describe('App', () => {
     })
   })
 
+  it('shows the app shell skeleton while the vault note scan is pending', async () => {
+    let resolveListVault: ((value: typeof mockEntries) => void) | null = null
+    const listVaultPromise = new Promise<typeof mockEntries>((resolve) => {
+      resolveListVault = resolve
+    })
+    mockCommandResults.list_vault = () => listVaultPromise
+
+    render(<App />)
+
+    await waitFor(() => {
+      expect(screen.getByTestId('vault-loading-skeleton')).toBeInTheDocument()
+    })
+    expect(screen.queryByText('Select a note to start editing')).not.toBeInTheDocument()
+
+    await act(async () => {
+      resolveListVault?.(mockEntries)
+      await Promise.resolve()
+    })
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('vault-loading-skeleton')).not.toBeInTheDocument()
+      expect(screen.getAllByText('Test Project').length).toBeGreaterThan(0)
+    })
+  })
+
   it('shows empty state in editor when no note is selected', async () => {
     render(<App />)
     await waitFor(() => {
@@ -673,7 +698,7 @@ describe('App', () => {
       await Promise.resolve()
     })
 
-    expect(screen.getByText('Loading…')).toBeInTheDocument()
+    expect(screen.getByTestId('vault-loading-skeleton')).toBeInTheDocument()
     expect(screen.queryByText('Vault not found')).not.toBeInTheDocument()
 
     await act(async () => {
