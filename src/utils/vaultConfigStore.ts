@@ -4,7 +4,7 @@ type SaveFn = (config: VaultConfig) => void
 type Listener = () => void
 
 const DEFAULT_CONFIG: VaultConfig = {
-  zoom: null, view_mode: null, editor_mode: null,
+  zoom: null, view_mode: null, editor_mode: null, note_layout: null,
   tag_colors: null, status_colors: null, property_display_modes: null,
   inbox: null,
 }

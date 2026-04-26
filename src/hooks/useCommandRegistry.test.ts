@@ -25,6 +25,8 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     onToggleInspector: vi.fn(),
     onToggleDiff: vi.fn(),
     onToggleRawEditor: vi.fn(),
+    noteLayout: 'centered',
+    onToggleNoteLayout: vi.fn(),
     onToggleAIChat: vi.fn(),
     onOpenVault: vi.fn(),
     activeNoteModified: false,
@@ -258,6 +260,29 @@ describe('useCommandRegistry', () => {
     const config = makeConfig({ onToggleRawEditor: undefined })
     const { result } = renderHook(() => useCommandRegistry(config))
     expect(findCommand(result.current, 'toggle-raw-editor')?.enabled).toBe(false)
+  })
+
+  it('exposes a command palette action for the note layout preference', () => {
+    const onToggleNoteLayout = vi.fn()
+    const config = makeConfig({ noteLayout: 'centered', onToggleNoteLayout })
+    const { result } = renderHook(() => useCommandRegistry(config))
+    const cmd = findCommand(result.current, 'toggle-note-layout')
+
+    expect(cmd).toBeDefined()
+    expect(cmd!.group).toBe('View')
+    expect(cmd!.label).toBe('Use Left-Aligned Note Layout')
+    expect(cmd!.keywords).toContain('wide')
+
+    cmd!.execute()
+
+    expect(onToggleNoteLayout).toHaveBeenCalledOnce()
+  })
+
+  it('updates note layout command copy when left alignment is active', () => {
+    const config = makeConfig({ noteLayout: 'left' })
+    const { result } = renderHook(() => useCommandRegistry(config))
+
+    expect(findCommand(result.current, 'toggle-note-layout')?.label).toBe('Use Centered Note Layout')
   })
 
   it('includes a New AI chat command that opens and resets the panel session', () => {

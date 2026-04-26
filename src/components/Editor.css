@@ -204,6 +204,22 @@
   width: 100%;
 }
 
+.editor-content-layout--left .editor-content-wrapper {
+  margin-left: clamp(16px, 6%, 96px);
+  margin-right: auto;
+}
+
+.raw-editor-codemirror {
+  max-width: var(--editor-max-width, 760px);
+  width: 100%;
+  margin: 0 auto;
+}
+
+.editor-content-layout--left .raw-editor-codemirror {
+  margin-left: clamp(16px, 6%, 96px);
+  margin-right: auto;
+}
+
 /* --- Note Icon Area --- */
 .note-icon-area {
   display: flex;
@@ -320,5 +336,13 @@
   }
   .editor__blocknote-container .bn-editor {
     padding: 12px 0;
+  }
+}
+
+@container editor (max-width: 900px) {
+  .editor-content-layout--left .editor-content-wrapper,
+  .editor-content-layout--left .raw-editor-codemirror {
+    margin-left: auto;
+    margin-right: auto;
   }
 }

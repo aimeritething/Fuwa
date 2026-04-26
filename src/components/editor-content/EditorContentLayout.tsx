@@ -1,4 +1,5 @@
 import type React from 'react'
+import { cn } from '@/lib/utils'
 import { DiffView } from '../DiffView'
 import { BreadcrumbBar } from '../BreadcrumbBar'
 import { ArchivedNoteBanner } from '../ArchivedNoteBanner'
@@ -28,6 +29,8 @@ type BreadcrumbActions = Pick<
   | 'onArchiveNote'
   | 'onUnarchiveNote'
   | 'onRenameFilename'
+  | 'noteLayout'
+  | 'onToggleNoteLayout'
 >
 
 function EditorLoadingSkeleton() {
@@ -128,6 +131,8 @@ function ActiveTabBreadcrumb({
       onArchive={bindPath(actions.onArchiveNote, path)}
       onUnarchive={bindPath(actions.onUnarchiveNote, path)}
       onRenameFilename={actions.onRenameFilename}
+      noteLayout={actions.noteLayout}
+      onToggleNoteLayout={actions.onToggleNoteLayout}
     />
   )
 }
@@ -228,18 +233,23 @@ export function EditorContentLayout(model: EditorContentModel) {
     isDeletedPreview,
     rawLatestContentRef,
     rawModeContent,
+    noteLayout,
   } = model
+  const rootClassName = cn(
+    'flex flex-1 flex-col min-w-0 min-h-0',
+    noteLayout === 'left' ? 'editor-content-layout--left' : 'editor-content-layout--centered',
+  )
 
   if (!activeTab) {
     return (
-      <div className="flex flex-1 flex-col min-w-0 min-h-0">
+      <div className={rootClassName}>
         {isLoadingNewTab && showEditor && <EditorLoadingSkeleton />}
       </div>
     )
   }
 
   return (
-    <div className="flex flex-1 flex-col min-w-0 min-h-0">
+    <div className={rootClassName}>
       <ActiveTabBreadcrumb
         activeTab={activeTab}
         barRef={breadcrumbBarRef}
@@ -263,6 +273,8 @@ export function EditorContentLayout(model: EditorContentModel) {
           onArchiveNote: model.onArchiveNote,
           onUnarchiveNote: model.onUnarchiveNote,
           onRenameFilename: model.onRenameFilename,
+          noteLayout: model.noteLayout,
+          onToggleNoteLayout: model.onToggleNoteLayout,
         }}
       />
       <EditorChrome

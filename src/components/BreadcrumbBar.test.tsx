@@ -306,3 +306,26 @@ describe('BreadcrumbBar — raw editor toggle', () => {
     expect(screen.getByRole('button', { name: 'Open the raw editor' })).toBeInTheDocument()
   })
 })
+
+describe('BreadcrumbBar — note layout toggle', () => {
+  it('shows the left-align layout action while centered', () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} noteLayout="centered" onToggleNoteLayout={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Switch to left-aligned note layout' })).toBeInTheDocument()
+  })
+
+  it('shows the centered layout action while left-aligned', () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} noteLayout="left" onToggleNoteLayout={vi.fn()} />)
+
+    expect(screen.getByRole('button', { name: 'Switch to centered note layout' })).toBeInTheDocument()
+  })
+
+  it('calls onToggleNoteLayout when the layout button is clicked', () => {
+    const onToggleNoteLayout = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} noteLayout="centered" onToggleNoteLayout={onToggleNoteLayout} />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Switch to left-aligned note layout' }))
+
+    expect(onToggleNoteLayout).toHaveBeenCalledOnce()
+  })
+})

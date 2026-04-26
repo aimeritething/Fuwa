@@ -150,10 +150,14 @@ export interface AllNotesConfig {
 }
 
 /** Vault-scoped UI configuration stored locally per vault path. */
+export type NoteLayout = 'centered' | 'left'
+
+/** Vault-scoped UI configuration stored locally per vault path. */
 export interface VaultConfig {
   zoom: number | null
   view_mode: string | null
   editor_mode: string | null
+  note_layout?: NoteLayout | null
   tag_colors: Record<string, string> | null
   status_colors: Record<string, string> | null
   property_display_modes: Record<string, string> | null

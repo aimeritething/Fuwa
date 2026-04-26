@@ -373,7 +373,7 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave,
       <RawEditorYamlErrorBanner error={pendingChanges.yamlError} />
       <div
         ref={containerRef}
-        className="flex flex-1 min-h-0"
+        className="raw-editor-codemirror flex flex-1 min-h-0"
         data-testid="raw-editor-codemirror"
         aria-label="Raw editor"
       />

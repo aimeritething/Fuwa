@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
-import type { VaultEntry } from '../types'
+import type { NoteLayout, VaultEntry } from '../types'
 import { cn } from '@/lib/utils'
 import { formatShortcutDisplay } from '../hooks/appCommandCatalog'
 import { Button } from '@/components/ui/button'
@@ -17,6 +17,8 @@ import {
   Star,
   CheckCircle,
   ArrowsClockwise,
+  TextAlignCenter,
+  TextAlignLeft,
 } from '@phosphor-icons/react'
 import { NoteTitleIcon } from './NoteTitleIcon'
 import { slugify } from '../hooks/useNoteCreation'
@@ -43,6 +45,8 @@ interface BreadcrumbBarProps {
   onArchive?: () => void
   onUnarchive?: () => void
   onRenameFilename?: (path: string, newFilenameStem: string) => void
+  noteLayout?: NoteLayout
+  onToggleNoteLayout?: () => void
   /** Ref for direct DOM manipulation — avoids re-render on scroll. */
   barRef?: React.Ref<HTMLDivElement>
 }
@@ -178,6 +182,29 @@ function RawToggleButton({ rawMode, onToggleRaw }: { rawMode?: boolean; onToggle
     >
       <Code size={16} className={BREADCRUMB_ICON_CLASS} />
     </ToggleIconAction>
+  )
+}
+
+function NoteLayoutAction({
+  noteLayout = 'centered',
+  onToggleNoteLayout,
+}: {
+  noteLayout?: NoteLayout
+  onToggleNoteLayout?: () => void
+}) {
+  if (!onToggleNoteLayout) return null
+
+  const isLeftAligned = noteLayout === 'left'
+  return (
+    <IconActionButton
+      copy={{ label: isLeftAligned ? 'Switch to centered note layout' : 'Switch to left-aligned note layout' }}
+      onClick={onToggleNoteLayout}
+      className={cn(isLeftAligned ? 'text-foreground' : 'hover:text-foreground')}
+    >
+      {isLeftAligned
+        ? <TextAlignLeft size={16} className={BREADCRUMB_ICON_CLASS} />
+        : <TextAlignCenter size={16} className={BREADCRUMB_ICON_CLASS} />}
+    </IconActionButton>
   )
 }
 
@@ -498,6 +525,8 @@ function BreadcrumbActions({
   rawMode,
   onToggleRaw,
   forceRawMode,
+  noteLayout,
+  onToggleNoteLayout,
   showAIChat,
   onToggleAIChat,
   inspectorCollapsed,
@@ -519,6 +548,7 @@ function BreadcrumbActions({
         onToggleDiff={onToggleDiff}
       />
       {!forceRawMode && <RawToggleButton rawMode={rawMode} onToggleRaw={onToggleRaw} />}
+      <NoteLayoutAction noteLayout={noteLayout} onToggleNoteLayout={onToggleNoteLayout} />
       <AIChatAction showAIChat={showAIChat} onToggleAIChat={onToggleAIChat} />
       <ArchiveAction archived={entry.archived} onArchive={onArchive} onUnarchive={onUnarchive} />
       <DeleteAction onDelete={onDelete} />
