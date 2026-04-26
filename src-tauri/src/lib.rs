@@ -12,6 +12,8 @@ pub mod settings;
 pub mod telemetry;
 pub mod vault;
 pub mod vault_list;
+#[cfg(desktop)]
+mod window_state;
 
 use std::ffi::OsStr;
 use std::process::Command;
@@ -154,6 +156,7 @@ fn setup_desktop_plugins(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
     #[cfg(not(target_os = "linux"))]
     menu::setup_menu(app)?;
     setup_linux_window_chrome(app)?;
+    window_state::restore_main_window_state(app);
     Ok(())
 }
 
@@ -365,6 +368,8 @@ fn with_invoke_handler(builder: tauri::Builder<tauri::Wry>) -> tauri::Builder<ta
 fn handle_run_event(app_handle: &tauri::AppHandle, event: &tauri::RunEvent) {
     use tauri::Manager;
 
+    window_state::handle_run_event(app_handle, event);
+
     if let tauri::RunEvent::Exit = event {
         let state: tauri::State<'_, WsBridgeChild> = app_handle.state();
         let mut guard = state.0.lock().unwrap();
@@ -383,7 +388,8 @@ pub fn run() {
     #[cfg(desktop)]
     let builder = builder
         .manage(WsBridgeChild(Mutex::new(None)))
-        .manage(ActiveAssetScopeRoots(Mutex::new(Vec::new())));
+        .manage(ActiveAssetScopeRoots(Mutex::new(Vec::new())))
+        .manage(window_state::MainWindowFrameState::default());
 
     with_invoke_handler(builder)
         .setup(setup_app)

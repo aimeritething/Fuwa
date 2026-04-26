@@ -117,7 +117,7 @@ fn app_config_dir() -> Result<PathBuf, String> {
     dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())
 }
 
-fn preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
+pub(crate) fn preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
     Ok(app_config_dir()?.join(APP_CONFIG_DIR).join(file_name))
 }
 
