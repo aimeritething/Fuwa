@@ -137,3 +137,4 @@ proposed → active → superseded
 | [0079](0079-linux-window-chrome-and-menu-reuse.md) | Linux window chrome and menu reuse | active |
 | [0080](0080-cross-platform-desktop-release-artifacts-and-portable-vault-names.md) | Cross-platform desktop release artifacts and portable vault names | active |
 | [0081](0081-internal-light-dark-theme-runtime.md) | Internal light and dark theme runtime | active |
+| [0082](0082-markdown-durable-math-notes.md) | Markdown-durable math in notes | active |

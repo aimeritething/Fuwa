@@ -3,6 +3,7 @@ import type { useCreateBlockNote } from '@blocknote/react'
 import type { VaultEntry } from '../types'
 import { splitFrontmatter, preProcessWikilinks, injectWikilinks, restoreWikilinksInBlocks } from '../utils/wikilinks'
 import { compactMarkdown } from '../utils/compact-markdown'
+import { injectMathInBlocks, preProcessMathMarkdown, serializeMathAwareBlocks } from '../utils/mathMarkdown'
 import { failNoteOpenTrace, finishNoteOpenTrace } from '../utils/noteOpenPerformance'
 import { resolveImageUrls, portableImageUrls } from '../utils/vaultImages'
 import {
@@ -148,7 +149,7 @@ async function resolveBlocksForTarget(
 
   const body = extractEditorBody(content)
   const withImages = vaultPath ? resolveImageUrls(body, vaultPath) : body
-  const preprocessed = preProcessWikilinks(withImages)
+  const preprocessed = preProcessMathMarkdown({ markdown: preProcessWikilinks(withImages) })
   const fastPathBlocks = buildFastPathBlocks({ preprocessed })
   if (fastPathBlocks) {
     const nextState = { blocks: fastPathBlocks, scrollTop: 0, sourceContent: content }
@@ -158,7 +159,8 @@ async function resolveBlocksForTarget(
 
   const parsed = normalizeParsedImageBlocks(await parseMarkdownBlocks(editor, preprocessed)) as EditorBlocks
   const withWikilinks = injectWikilinks(parsed)
-  const nextState = { blocks: withWikilinks, scrollTop: 0, sourceContent: content }
+  const withMath = injectMathInBlocks(withWikilinks)
+  const nextState = { blocks: withMath, scrollTop: 0, sourceContent: content }
   cacheEditorState(cache, targetPath, nextState)
   return nextState
 }
@@ -247,10 +249,11 @@ async function resolveEmptyHeadingHtml(
 
   const withImages = vaultPath ? resolveImageUrls(remainder, vaultPath) : remainder
   const parsed = normalizeParsedImageBlocks(
-    await parseMarkdownBlocks(editor, preProcessWikilinks(withImages)),
+    await parseMarkdownBlocks(editor, preProcessMathMarkdown({ markdown: preProcessWikilinks(withImages) })),
   ) as EditorBlocks
   const withWikilinks = injectWikilinks(parsed)
-  return `<h1></h1>${editor.blocksToHTMLLossy(withWikilinks as typeof parsed)}`
+  const withMath = injectMathInBlocks(withWikilinks)
+  return `<h1></h1>${editor.blocksToHTMLLossy(withMath as typeof parsed)}`
 }
 
 function findActiveTab(options: {
@@ -265,7 +268,7 @@ function findActiveTab(options: {
 
 function serializeEditorBody(editor: ReturnType<typeof useCreateBlockNote>): string {
   const restored = restoreWikilinksInBlocks(editor.document)
-  return compactMarkdown(editor.blocksToMarkdownLossy(restored as typeof editor.document))
+  return compactMarkdown(serializeMathAwareBlocks(editor, restored))
 }
 
 function normalizeTabBody(options: { content: string }): string {

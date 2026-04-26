@@ -354,6 +354,7 @@ vi.mock('@blocknote/core/extensions', () => ({
 }))
 
 vi.mock('@blocknote/react', () => ({
+  createReactBlockSpec: () => () => ({}),
   createReactInlineContentSpec: () => ({ render: () => null }),
   BlockNoteViewRaw: ({ children }: { children?: ReactNode }) => (
     <div data-testid="blocknote-view">

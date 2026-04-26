@@ -59,6 +59,7 @@ const capturedGetItemsByTrigger: Record<string, (query: string) => Promise<any[]
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
 let capturedGetItems: ((query: string) => Promise<any[]>) | null = null
 vi.mock('@blocknote/react', () => ({
+  createReactBlockSpec: () => () => ({}),
   createReactInlineContentSpec: () => ({ render: () => null }),
   useCreateBlockNote: () => mockEditor,
   FormattingToolbar: ({ children }: PropsWithChildren) => <>{children}</>,
@@ -582,6 +583,53 @@ describe('raw-mode sync content guards', () => {
       '---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\n# Test Project\n\n![shot](attachments/shot.png)\n',
     )
     expect(rawLatestContentRef.current).toBe(result)
+  })
+
+  it('serializes rich math nodes back to Markdown source when entering raw mode', () => {
+    const rawLatestContentRef = { current: null as string | null }
+    const originalDocument = mockEditor.document
+    const originalSerializer = mockEditor.blocksToMarkdownLossy.getMockImplementation()
+
+    try {
+      mockEditor.document = [
+        {
+          id: 'math-inline',
+          type: 'paragraph',
+          content: [
+            { type: 'text', text: 'Inline ', styles: {} },
+            { type: 'mathInline', props: { latex: 'E=mc^2' } },
+          ],
+          props: {},
+          children: [],
+        },
+        {
+          id: 'math-block',
+          type: 'mathBlock',
+          props: { latex: '\\int_0^1 x\\,dx' },
+          children: [],
+        },
+      ]
+      mockEditor.blocksToMarkdownLossy.mockImplementation((blocks: unknown[]) => (
+        (blocks as Array<{ content?: Array<{ text?: string }> }>)
+          .map((block) => block.content?.map((item) => item.text ?? '').join('') ?? '')
+          .join('\n\n')
+      ))
+
+      const result = syncActiveTabIntoRawBuffer({
+        editor: mockEditor as never,
+        activeTabPath: mockEntry.path,
+        activeTabContent: mockContent,
+        rawLatestContentRef,
+      })
+
+      expect(result).toBe(
+        '---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\nInline $E=mc^2$\n\n$$\n\\int_0^1 x\\,dx\n$$\n',
+      )
+      expect(rawLatestContentRef.current).toBe(result)
+    } finally {
+      mockEditor.document = originalDocument
+      mockEditor.blocksToMarkdownLossy.mockImplementation(originalSerializer)
+    }
   })
 
   it('does not emit a content change when leaving raw mode without user edits', () => {

@@ -240,6 +240,34 @@
   cursor: text;
 }
 
+.editor__blocknote-container .math {
+  color: var(--colors-text);
+  cursor: text;
+}
+
+.editor__blocknote-container .math--inline {
+  display: inline-flex;
+  max-width: 100%;
+  vertical-align: -0.15em;
+}
+
+.editor__blocknote-container .math-block-shell {
+  width: 100%;
+  overflow-x: auto;
+  padding: 6px 0;
+}
+
+.editor__blocknote-container .math--block {
+  display: block;
+  min-width: max-content;
+  text-align: center;
+}
+
+.editor__blocknote-container .math .katex-error {
+  color: var(--destructive) !important;
+  white-space: pre-wrap;
+}
+
 .editor__blocknote-container[data-follow-links] .bn-editor a,
 .editor__blocknote-container[data-follow-links] .wikilink {
   cursor: pointer;

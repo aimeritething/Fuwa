@@ -473,6 +473,15 @@ Defined in `src/components/editorSchema.tsx` and styled in `src/components/Edito
 - Tolaria keeps `defaultLanguage: "text"` so unlabeled code blocks do not silently become JavaScript while still supporting the packaged language aliases such as `ts` → `typescript`.
 - Inline-code chip styling remains scoped to `.bn-inline-content code`, so fenced `pre > code` nodes keep BlockNote's dark shell instead of inheriting the muted inline surface.
 
+### Markdown Math
+
+Defined in `src/utils/mathMarkdown.ts`, `src/components/editorSchema.tsx`, and styled in `src/components/EditorTheme.css`:
+
+- `$...$` becomes a `mathInline` schema node and line-owned `$$...$$` / multiline `$$` blocks become `mathBlock` nodes.
+- The rich editor renders both node types through KaTeX with `throwOnError: false`, so malformed formulas keep their source visible instead of breaking the note.
+- `serializeMathAwareBlocks()` converts math nodes back to Markdown delimiters before save, raw-mode entry, and editor-position snapshots.
+- Raw CodeMirror mode always shows the plain Markdown source, so imported technical notes stay editable outside Tolaria.
+
 ### Formatting Surface Policy
 
 Defined in `src/components/tolariaEditorFormatting.tsx` and `src/components/tolariaEditorFormattingConfig.ts`:
@@ -490,22 +499,23 @@ Defined in `src/components/tolariaEditorFormatting.tsx` and `src/components/tola
 flowchart LR
     A["📄 Raw markdown\n(from disk)"] --> B["splitFrontmatter()\n→ yaml + body"]
     B --> C["preProcessWikilinks(body)\n[[target]] → ‹token›"]
-    C --> D["tryParseMarkdownToBlocks()\n→ BlockNote block tree"]
-    D --> E["injectWikilinks(blocks)\n‹token› → WikiLink node"]
-    E --> F["editor.replaceBlocks()\n→ rendered editor"]
+    C --> D["preProcessMathMarkdown(body)\n$...$ / $$...$$ → tokens"]
+    D --> E["tryParseMarkdownToBlocks()\n→ BlockNote block tree"]
+    E --> F["injectWikilinks + injectMathInBlocks\n tokens → schema nodes"]
+    F --> G["editor.replaceBlocks()\n→ rendered editor"]
 
     style A fill:#f8f9fa,stroke:#6c757d,color:#000
-    style F fill:#d4edda,stroke:#28a745,color:#000
+    style G fill:#d4edda,stroke:#28a745,color:#000
 ```
 
-> Placeholder tokens use `\u2039` and `\u203A` to avoid colliding with markdown syntax.
+> Wikilink placeholder tokens use `\u2039` and `\u203A`; math placeholder tokens use ASCII sentinels with URI-encoded LaTeX payloads.
 
 ### BlockNote-to-Markdown Pipeline (Save)
 
 ```mermaid
 flowchart LR
     A["✏️ BlockNote blocks\n(editor state)"] --> B["blocksToMarkdownLossy()"]
-    B --> C["postProcessWikilinks()\nWikiLink node → [[target]]"]
+    B --> C["restoreWikilinks + serializeMathAwareBlocks()\nschema nodes → Markdown source"]
     C --> D["prepend frontmatter yaml"]
     D --> E["invoke('save_note_content')\n→ disk write"]
 

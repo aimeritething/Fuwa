@@ -1,9 +1,10 @@
 /* eslint-disable react-refresh/only-export-components -- module-level schema, not a component file */
 import { createCodeBlockSpec, BlockNoteSchema, defaultInlineContentSpecs } from '@blocknote/core'
 import { codeBlockOptions } from '@blocknote/code-block'
-import { createReactInlineContentSpec } from '@blocknote/react'
+import { createReactBlockSpec, createReactInlineContentSpec } from '@blocknote/react'
 import { resolveWikilinkColor as resolveColor } from '../utils/wikilinkColors'
 import { resolveEntry } from '../utils/wikilink'
+import { MATH_BLOCK_TYPE, MATH_INLINE_TYPE, renderMathToHtml } from '../utils/mathMarkdown'
 import type { VaultEntry } from '../types'
 import { NoteTitleIcon } from './NoteTitleIcon'
 
@@ -57,18 +58,67 @@ export const WikiLink = createReactInlineContentSpec(
   }
 )
 
+function MathRender({ latex, displayMode }: { latex: string; displayMode: boolean }) {
+  const source = displayMode ? `$$\n${latex}\n$$` : `$${latex}$`
+  return (
+    <span
+      aria-label={`Math: ${latex}`}
+      className={displayMode ? 'math math--block' : 'math math--inline'}
+      data-latex={latex}
+      role="img"
+      title={source}
+      dangerouslySetInnerHTML={{ __html: renderMathToHtml({ latex, displayMode }) }}
+    />
+  )
+}
+
+export const MathInline = createReactInlineContentSpec(
+  {
+    type: MATH_INLINE_TYPE,
+    propSchema: {
+      latex: { default: '' },
+    },
+    content: 'none',
+  },
+  {
+    render: (props) => (
+      <MathRender latex={props.inlineContent.props.latex} displayMode={false} />
+    ),
+  },
+)
+
+const MathBlock = createReactBlockSpec(
+  {
+    type: MATH_BLOCK_TYPE,
+    propSchema: {
+      latex: { default: '' },
+    },
+    content: 'none',
+  },
+  {
+    render: (props) => (
+      <div className="math-block-shell">
+        <MathRender latex={props.block.props.latex} displayMode />
+      </div>
+    ),
+  },
+)
+
 const codeBlock = createCodeBlockSpec({
   ...codeBlockOptions,
   defaultLanguage: 'text',
 })
+const mathBlock = MathBlock()
 
 export const schema = BlockNoteSchema.create({
   inlineContentSpecs: {
     ...defaultInlineContentSpecs,
     wikilink: WikiLink,
+    mathInline: MathInline,
   },
 }).extend({
   blockSpecs: {
     codeBlock,
+    mathBlock,
   },
 })
