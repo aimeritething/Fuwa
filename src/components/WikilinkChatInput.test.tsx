@@ -299,6 +299,32 @@ describe('WikilinkChatInput', () => {
     removeAllRanges.mockRestore()
   })
 
+  it('lets committed composed characters reach the native input pipeline once', () => {
+    const onDraftChange = vi.fn()
+    render(<Controlled onDraftChange={onDraftChange} />)
+    const editor = screen.getByTestId('agent-input')
+    editor.focus()
+
+    const portugueseText = 'á é í ç ã õ'
+    const accentedKey = createEvent.keyDown(editor, { key: 'á' })
+    fireEvent(editor, accentedKey)
+    expect(accentedKey.defaultPrevented).toBe(false)
+
+    editor.textContent = portugueseText
+    setSelection(editor, portugueseText.length)
+    fireEvent.input(editor)
+    expect(onDraftChange).toHaveBeenLastCalledWith(portugueseText)
+
+    const cjkKey = createEvent.keyDown(editor, { key: '你' })
+    fireEvent(editor, cjkKey)
+    expect(cjkKey.defaultPrevented).toBe(false)
+
+    editor.textContent = `${portugueseText}你`
+    setSelection(editor, portugueseText.length + 1)
+    fireEvent.input(editor)
+    expect(onDraftChange).toHaveBeenLastCalledWith(`${portugueseText}你`)
+  })
+
   it('deletes an inline chip with a single Backspace', () => {
     render(<Controlled />)
     updateEditorText('edit my [[alp')

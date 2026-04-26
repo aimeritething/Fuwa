@@ -201,11 +201,6 @@ export function InlineWikilinkInput({
     onSelectionIndexChange: (nextSelectionIndex) => setSelectionRange(collapseSelectionRange(nextSelectionIndex)),
     focusSelectionAt: (nextSelectionIndex) => focusSelectionRange(collapseSelectionRange(nextSelectionIndex)),
   })
-  const insertText = (text: string) => {
-    const nextState = replaceInlineSelection(value, selectionRange, text)
-    onChange(nextState.value)
-    setSelectionRange(nextState.selection)
-  }
   const insertTransferText = (text: string) => {
     const currentSelectionRange = editorRef.current
       ? readSelectionRange(editorRef.current)
@@ -363,7 +358,6 @@ export function InlineWikilinkInput({
       onCycleSuggestions: cycleSuggestions,
       onSelectSuggestion: () => selectSuggestion(selectedSuggestionIndex),
       onDeleteContent: deleteContent,
-      onInsertText: insertText,
       canSubmit: onSubmit !== undefined,
       onSubmit: submitValue,
     })
