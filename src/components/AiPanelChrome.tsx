@@ -35,11 +35,9 @@ interface AiPanelComposerProps {
   entries: VaultEntry[]
   agentLabel: string
   agentReady: boolean
-  hasContext: boolean
   input: string
   inputRef: React.RefObject<HTMLDivElement | null>
   isActive: boolean
-  legacyCopy: boolean
   onChange: (value: string) => void
   onSend: (text: string, references: NoteReference[]) => void
   onUnsupportedAiPaste?: (message: string) => void
@@ -48,18 +46,12 @@ interface AiPanelComposerProps {
 function getComposerPlaceholder(
   agentLabel: string,
   agentReady: boolean,
-  legacyCopy: boolean,
-  hasContext: boolean,
 ): string {
   if (!agentReady) {
     return `${agentLabel} is not installed. Open AI Agents in Settings.`
   }
 
-  if (legacyCopy) {
-    return hasContext ? 'Ask about this note...' : 'Ask the AI agent...'
-  }
-
-  return hasContext ? `Ask ${agentLabel} about this note...` : `Ask ${agentLabel}...`
+  return `Ask ${agentLabel}`
 }
 
 function AiPanelEmptyState({
@@ -209,18 +201,16 @@ export function AiPanelComposer({
   entries,
   agentLabel,
   agentReady,
-  hasContext,
   input,
   inputRef,
   isActive,
-  legacyCopy,
   onChange,
   onSend,
   onUnsupportedAiPaste,
 }: AiPanelComposerProps) {
   const composerDisabled = isActive || !agentReady
   const canSend = !composerDisabled && input.trim().length > 0
-  const placeholder = getComposerPlaceholder(agentLabel, agentReady, legacyCopy, hasContext)
+  const placeholder = getComposerPlaceholder(agentLabel, agentReady)
   const sendButtonStyle = {
     background: canSend ? 'var(--primary)' : 'var(--muted)',
     color: canSend ? 'var(--primary-foreground)' : 'var(--muted-foreground)',

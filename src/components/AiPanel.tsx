@@ -121,11 +121,9 @@ export function AiPanelView({
         entries={entries ?? []}
         agentLabel={agentLabel}
         agentReady={defaultAiAgentReady}
-        hasContext={hasContext}
         input={input}
         inputRef={inputRef}
         isActive={isActive}
-        legacyCopy={useLegacyAiExperience}
         onChange={setInput}
         onSend={handleSend}
         onUnsupportedAiPaste={onUnsupportedAiPaste}

@@ -136,19 +136,31 @@ describe('AiPanel', () => {
     expect((sendBtn as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('shows contextual placeholder when active entry exists', () => {
+  it('shows active agent placeholder when active entry exists', () => {
     const entry = makeEntry({ title: 'My Note' })
     render(
       <AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" activeEntry={entry} entries={[entry]} />
     )
     const input = screen.getByTestId('agent-input')
-    expect(input).toHaveAttribute('aria-placeholder', 'Ask about this note...')
+    expect(input).toHaveAttribute('aria-placeholder', 'Ask Claude Code')
   })
 
-  it('shows generic placeholder when no active entry', () => {
+  it('shows active agent placeholder when no active entry', () => {
     render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)
     const input = screen.getByTestId('agent-input')
-    expect(input).toHaveAttribute('aria-placeholder', 'Ask the AI agent...')
+    expect(input).toHaveAttribute('aria-placeholder', 'Ask Claude Code')
+  })
+
+  it('uses the selected AI agent in the placeholder', () => {
+    render(
+      <AiPanel
+        onClose={vi.fn()}
+        vaultPath="/tmp/vault"
+        defaultAiAgent="codex"
+        defaultAiAgentReady
+      />,
+    )
+    expect(screen.getByTestId('agent-input')).toHaveAttribute('aria-placeholder', 'Ask Codex')
   })
 
   it('auto-focuses input on mount', async () => {

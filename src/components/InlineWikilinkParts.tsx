@@ -1,4 +1,4 @@
-import { createElement } from 'react'
+import { Fragment, createElement } from 'react'
 import type { VaultEntry } from '../types'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { NoteTitleIcon } from './NoteTitleIcon'
@@ -158,11 +158,11 @@ export function InlineWikilinkEditorField({
   inputRef,
   dataTestId,
   editorClassName,
-  onBeforeInput,
   onCompositionEnd,
   onCompositionStart,
   onInput,
   onKeyDown,
+  onCut,
   onDrop,
   onPaste,
   onSelectionChange,
@@ -175,11 +175,11 @@ export function InlineWikilinkEditorField({
   inputRef: React.Ref<HTMLDivElement>
   dataTestId: string
   editorClassName?: string
-  onBeforeInput: (event: React.FormEvent<HTMLDivElement>) => void
   onCompositionEnd: () => void
   onCompositionStart: () => void
   onInput: () => void
   onKeyDown: (event: React.KeyboardEvent<HTMLDivElement>) => void
+  onCut: (event: React.ClipboardEvent<HTMLDivElement>) => void
   onDrop: (event: React.DragEvent<HTMLDivElement>) => void
   onPaste: (event: React.ClipboardEvent<HTMLDivElement>) => void
   onSelectionChange: () => void
@@ -212,11 +212,11 @@ export function InlineWikilinkEditorField({
           disabled && 'cursor-not-allowed opacity-60',
           editorClassName,
         )}
-        onBeforeInput={onBeforeInput}
         onCompositionEnd={onCompositionEnd}
         onCompositionStart={onCompositionStart}
         onInput={onInput}
         onKeyDown={onKeyDown}
+        onCut={onCut}
         onDrop={onDrop}
         onPaste={onPaste}
         onClick={onSelectionChange}
@@ -226,7 +226,7 @@ export function InlineWikilinkEditorField({
       >
         {segments.map((segment, index) => (
           segment.kind === 'text'
-            ? <span key={`text-${index}`}>{segment.text}</span>
+            ? <Fragment key={`text-${index}`}>{segment.text}</Fragment>
             : (
                 <InlineWikilinkChipView
                   key={`chip-${segment.chip.entry.path}-${segment.chip.target}`}
