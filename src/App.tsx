@@ -38,7 +38,6 @@ import { planNewTypeCreation } from './hooks/useNoteCreation'
 import { useCommitFlow } from './hooks/useCommitFlow'
 import { useGitRemoteStatus } from './hooks/useGitRemoteStatus'
 import { useViewMode, type ViewMode } from './hooks/useViewMode'
-import { useNoteLayout } from './hooks/useNoteLayout'
 import { useEntryActions } from './hooks/useEntryActions'
 import { useAppCommands } from './hooks/useAppCommands'
 import { triggerCommitEntryAction } from './utils/commitEntryAction'
@@ -65,6 +64,7 @@ import { useAiActivity } from './hooks/useAiActivity'
 import { useBulkActions } from './hooks/useBulkActions'
 import { useDeleteActions } from './hooks/useDeleteActions'
 import { useFolderActions } from './hooks/useFolderActions'
+import { useFileActions } from './hooks/useFileActions'
 import { useLayoutPanels } from './hooks/useLayoutPanels'
 import { useConflictFlow } from './hooks/useConflictFlow'
 import { useAppSave } from './hooks/useAppSave'
@@ -77,7 +77,7 @@ import { DeleteProgressNotice } from './components/DeleteProgressNotice'
 import { UpdateBanner } from './components/UpdateBanner'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
-import type { SidebarSelection, InboxPeriod, VaultEntry, ViewDefinition } from './types'
+import type { SidebarSelection, InboxPeriod, VaultEntry, ViewDefinition, NoteWidthMode } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { initializeNoteProperties } from './utils/initializeNoteProperties'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
@@ -113,6 +113,7 @@ import {
   shouldProcessNeighborhoodEscape,
 } from './utils/neighborhoodHistory'
 import { OPEN_AI_CHAT_EVENT } from './utils/aiPromptBridge'
+import { resolveNoteWidthMode, toggleNoteWidthMode } from './utils/noteWidth'
 import {
   INBOX_SELECTION,
   isExplicitOrganizationEnabled,
@@ -550,6 +551,7 @@ function App() {
     unsavedPaths: vault.unsavedPaths,
     markContentPending: (path, content) => appSave.contentChangeRef.current(path, content),
     onNewNotePersisted: vault.loadModifiedFiles,
+    onTypeStateChanged: async () => { await vault.reloadVault() },
     replaceEntry: vault.replaceEntry,
     onFrontmatterPersisted: vault.loadModifiedFiles,
     onPathRenamed: (oldPath, newPath) => appSave.trackRenamedPath(oldPath, newPath),
@@ -822,6 +824,11 @@ function App() {
     reloadVault: vault.reloadVault,
     reloadFolders: vault.reloadFolders,
     setToastMessage,
+  })
+  const fileActions = useFileActions({
+    selection: effectiveSelection,
+    setToastMessage,
+    vaultPath: resolvedPath,
   })
 
   const handleRemoveNoteIconCommand = useCallback(() => {
@@ -1107,7 +1114,6 @@ function App() {
   const diffToggleRef = useRef<() => void>(() => {})
 
   const { setViewMode, sidebarVisible, noteListVisible } = useViewMode(noteWindowParams ? 'editor-only' : undefined)
-  const { noteLayout, toggleNoteLayout } = useNoteLayout()
   const zoom = useZoom()
   const buildNumber = useBuildNumber()
 
@@ -1336,6 +1342,18 @@ function App() {
     () => activeDeletedFile ? () => { void handleDiscardFile(activeDeletedFile.relativePath) } : undefined,
     [activeDeletedFile, handleDiscardFile],
   )
+  const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null
+  const noteWidth = resolveNoteWidthMode(activeTab?.entry.noteWidth, settings.note_width_mode)
+  const handleSetDefaultNoteWidth = useCallback((width: NoteWidthMode) => {
+    void saveSettings({ ...settings, note_width_mode: width })
+  }, [saveSettings, settings])
+  const handleSetActiveNoteWidth = useCallback((width: NoteWidthMode) => {
+    if (!notes.activeTabPath) return
+    void notes.handleUpdateFrontmatter(notes.activeTabPath, '_width', width)
+  }, [notes])
+  const handleToggleNoteWidth = useCallback(() => {
+    handleSetActiveNoteWidth(toggleNoteWidthMode(noteWidth))
+  }, [handleSetActiveNoteWidth, noteWidth])
 
   const commands = useAppCommands({
     activeTabPath: notes.activeTabPath, activeTabPathRef: notes.activeTabPathRef,
@@ -1363,13 +1381,16 @@ function App() {
     onToggleInspector: handleToggleInspector,
     onToggleDiff: toggleDiffCommand,
     onToggleRawEditor: toggleRawEditorCommand,
-    noteLayout,
-    onToggleNoteLayout: toggleNoteLayout,
+    noteWidth,
+    onSetNoteWidth: !activeDeletedFile && notes.activeTabPath ? handleSetActiveNoteWidth : undefined,
+    onSetDefaultNoteWidth: handleSetDefaultNoteWidth,
     onZoomIn: zoom.zoomIn, onZoomOut: zoom.zoomOut, onZoomReset: zoom.zoomReset,
     zoomLevel: zoom.zoomLevel,
     onSelect: handleSetSelection,
     onRenameFolder: folderActions.renameSelectedFolder,
     onDeleteFolder: folderActions.deleteSelectedFolder,
+    onRevealSelectedFolder: fileActions.revealSelectedFolder,
+    onCopySelectedFolderPath: fileActions.copySelectedFolderPath,
     showInbox: explicitOrganizationEnabled,
     onReplaceActiveTab: notes.handleReplaceActiveTab,
     onSelectNote: notes.handleSelectNote,
@@ -1409,6 +1430,9 @@ function App() {
     noteListFilter,
     onSetNoteListFilter: setNoteListFilter,
     onOpenInNewWindow: handleOpenInNewWindow,
+    onRevealActiveFile: fileActions.revealFile,
+    onCopyActiveFilePath: fileActions.copyFilePath,
+    onOpenActiveFileExternal: fileActions.openExternalFile,
     onToggleFavorite: entryActions.handleToggleFavorite,
     onToggleOrganized: toggleOrganizedCommand,
     onCustomizeNoteListColumns: handleCustomizeNoteListColumns,
@@ -1417,8 +1441,6 @@ function App() {
     onRestoreDeletedNote: restoreDeletedNoteCommand,
     canRestoreDeletedNote: !!activeDeletedFile,
   })
-
-  const activeTab = notes.tabs.find((t) => t.entry.path === notes.activeTabPath) ?? null
 
   const inboxCount = useMemo(() => filterInboxEntries(vault.entries, inboxPeriod).length, [vault.entries, inboxPeriod])
 
@@ -1510,7 +1532,7 @@ function App() {
           {sidebarVisible && (
             <>
               <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-                <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} locale={appLocale} />
+                <Sidebar entries={vault.entries} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} locale={appLocale} />
               </div>
               <ResizeHandle onResize={layout.handleSidebarResize} />
             </>
@@ -1562,14 +1584,17 @@ function App() {
               noteListFilter={aiNoteListFilter}
               onToggleFavorite={activeDeletedFile ? undefined : entryActions.handleToggleFavorite}
               onToggleOrganized={activeDeletedFile || !explicitOrganizationEnabled ? undefined : toggleOrganizedCommand}
+              onRevealFile={fileActions.revealFile}
+              onCopyFilePath={fileActions.copyFilePath}
+              onOpenExternalFile={fileActions.openExternalFile}
               onDeleteNote={activeDeletedFile ? undefined : deleteActions.handleDeleteNote}
               onArchiveNote={activeDeletedFile ? undefined : entryActions.handleArchiveNote}
               onUnarchiveNote={activeDeletedFile ? undefined : entryActions.handleUnarchiveNote}
               onContentChange={handleTrackedContentChange}
               onSave={handleTrackedSave}
               onRenameFilename={activeDeletedFile ? undefined : appSave.handleFilenameRename}
-              noteLayout={noteLayout}
-              onToggleNoteLayout={toggleNoteLayout}
+              noteWidth={noteWidth}
+              onToggleNoteWidth={activeDeletedFile ? undefined : handleToggleNoteWidth}
               rawToggleRef={rawToggleRef}
               diffToggleRef={diffToggleRef}
               canGoBack={canGoBack}

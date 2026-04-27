@@ -7,7 +7,7 @@ import { useCommandRegistry } from './useCommandRegistry'
 import type { CommandAction } from './useCommandRegistry'
 import { useKeyboardNavigation } from './useKeyboardNavigation'
 import { useMenuEvents } from './useMenuEvents'
-import type { NoteLayout, SidebarSelection, SidebarFilter, VaultEntry } from '../types'
+import type { NoteWidthMode, SidebarSelection, SidebarFilter, VaultEntry } from '../types'
 import { requestAddRemote } from '../utils/addRemoteEvents'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
@@ -39,8 +39,9 @@ interface AppCommandsConfig {
   onToggleInspector: () => void
   onToggleDiff?: () => void
   onToggleRawEditor?: () => void
-  noteLayout?: NoteLayout
-  onToggleNoteLayout?: () => void
+  noteWidth?: NoteWidthMode
+  onSetNoteWidth?: (width: NoteWidthMode) => void
+  onSetDefaultNoteWidth?: (width: NoteWidthMode) => void
   activeNoteModified: boolean
   onZoomIn: () => void
   onZoomOut: () => void
@@ -96,6 +97,11 @@ interface AppCommandsConfig {
   noteListFilter?: NoteListFilter
   onSetNoteListFilter?: (filter: NoteListFilter) => void
   onOpenInNewWindow?: () => void
+  onRevealActiveFile?: (path: string) => void
+  onCopyActiveFilePath?: (path: string) => void
+  onOpenActiveFileExternal?: (path: string) => void
+  onRevealSelectedFolder?: () => void
+  onCopySelectedFolderPath?: () => void
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
   onCustomizeNoteListColumns?: () => void
@@ -116,6 +122,8 @@ type CommandRegistrySelectionState = Pick<
   | 'onSelect'
   | 'onRenameFolder'
   | 'onDeleteFolder'
+  | 'onRevealSelectedFolder'
+  | 'onCopySelectedFolderPath'
   | 'showInbox'
   | 'onGoBack'
   | 'onGoForward'
@@ -144,8 +152,9 @@ type CommandRegistryCoreActions = Pick<
   | 'onToggleInspector'
   | 'onToggleDiff'
   | 'onToggleRawEditor'
-  | 'noteLayout'
-  | 'onToggleNoteLayout'
+  | 'noteWidth'
+  | 'onSetNoteWidth'
+  | 'onSetDefaultNoteWidth'
   | 'onToggleAIChat'
 >
 type CommandRegistryVaultActions = Pick<
@@ -169,6 +178,9 @@ type CommandRegistryVaultActions = Pick<
   | 'onReloadVault'
   | 'onRepairVault'
   | 'onOpenInNewWindow'
+  | 'onRevealActiveFile'
+  | 'onCopyActiveFilePath'
+  | 'onOpenActiveFileExternal'
   | 'onRestoreDeletedNote'
   | 'canRestoreDeletedNote'
 >
@@ -363,6 +375,8 @@ function createCommandRegistrySelectionConfig(
     onSelect: config.onSelect,
     onRenameFolder: config.onRenameFolder,
     onDeleteFolder: config.onDeleteFolder,
+    onRevealSelectedFolder: config.onRevealSelectedFolder,
+    onCopySelectedFolderPath: config.onCopySelectedFolderPath,
     showInbox: config.showInbox,
     onGoBack: config.onGoBack,
     onGoForward: config.onGoForward,
@@ -395,8 +409,9 @@ function createCommandRegistryCoreConfig(
     onToggleInspector: config.onToggleInspector,
     onToggleDiff: config.onToggleDiff,
     onToggleRawEditor: config.onToggleRawEditor,
-    noteLayout: config.noteLayout,
-    onToggleNoteLayout: config.onToggleNoteLayout,
+    noteWidth: config.noteWidth,
+    onSetNoteWidth: config.onSetNoteWidth,
+    onSetDefaultNoteWidth: config.onSetDefaultNoteWidth,
     onToggleAIChat: config.onToggleAIChat,
   }
 }
@@ -424,6 +439,9 @@ function createCommandRegistryVaultConfig(
     onReloadVault: config.onReloadVault,
     onRepairVault: config.onRepairVault,
     onOpenInNewWindow: config.onOpenInNewWindow,
+    onRevealActiveFile: config.onRevealActiveFile,
+    onCopyActiveFilePath: config.onCopyActiveFilePath,
+    onOpenActiveFileExternal: config.onOpenActiveFileExternal,
     onRestoreDeletedNote: config.onRestoreDeletedNote,
     canRestoreDeletedNote: config.canRestoreDeletedNote,
   }

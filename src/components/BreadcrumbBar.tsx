@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from 'react'
-import type { NoteLayout, VaultEntry } from '../types'
+import type { NoteWidthMode, VaultEntry } from '../types'
 import { cn } from '@/lib/utils'
 import { translate, type AppLocale } from '../lib/i18n'
 import { formatShortcutDisplay } from '../hooks/appCommandCatalog'
@@ -15,6 +15,8 @@ import {
   Trash,
   Archive,
   ArrowUUpLeft,
+  ClipboardText,
+  FolderOpen,
   Star,
   CheckCircle,
   ArrowsClockwise,
@@ -42,12 +44,14 @@ interface BreadcrumbBarProps {
   onToggleInspector?: () => void
   onToggleFavorite?: () => void
   onToggleOrganized?: () => void
+  onRevealFile?: (path: string) => void
+  onCopyFilePath?: (path: string) => void
   onDelete?: () => void
   onArchive?: () => void
   onUnarchive?: () => void
   onRenameFilename?: (path: string, newFilenameStem: string) => void
-  noteLayout?: NoteLayout
-  onToggleNoteLayout?: () => void
+  noteWidth?: NoteWidthMode
+  onToggleNoteWidth?: () => void
   /** Ref for direct DOM manipulation — avoids re-render on scroll. */
   barRef?: React.Ref<HTMLDivElement>
   locale?: AppLocale
@@ -253,25 +257,25 @@ function RawToggleButton({ rawMode, locale = 'en', onToggleRaw }: { rawMode?: bo
   return <ConfiguredToggleAction active={!!rawMode} config={TOGGLE_ACTION_CONFIGS.raw} locale={locale} onClick={onToggleRaw} />
 }
 
-function NoteLayoutAction({
-  noteLayout = 'centered',
+function NoteWidthAction({
+  noteWidth = 'normal',
   locale = 'en',
-  onToggleNoteLayout,
+  onToggleNoteWidth,
 }: {
-  noteLayout?: NoteLayout
+  noteWidth?: NoteWidthMode
   locale?: AppLocale
-  onToggleNoteLayout?: () => void
+  onToggleNoteWidth?: () => void
 }) {
-  if (!onToggleNoteLayout) return null
+  if (!onToggleNoteWidth) return null
 
-  const isLeftAligned = noteLayout === 'left'
+  const isWide = noteWidth === 'wide'
   return (
     <IconActionButton
-      copy={{ label: translate(locale, isLeftAligned ? 'editor.toolbar.centerLayout' : 'editor.toolbar.leftLayout') }}
-      onClick={onToggleNoteLayout}
-      className={cn(isLeftAligned ? 'text-foreground' : 'hover:text-foreground')}
+      copy={{ label: translate(locale, isWide ? 'editor.toolbar.normalWidth' : 'editor.toolbar.wideWidth') }}
+      onClick={onToggleNoteWidth}
+      className={cn(isWide ? 'text-foreground' : 'hover:text-foreground')}
     >
-      {isLeftAligned
+      {isWide
         ? <TextAlignLeft size={16} className={BREADCRUMB_ICON_CLASS} />
         : <TextAlignCenter size={16} className={BREADCRUMB_ICON_CLASS} />}
     </IconActionButton>
@@ -372,6 +376,38 @@ function DeleteAction({ locale = 'en', onDelete }: Pick<BreadcrumbBarProps, 'loc
     >
       <Trash size={16} className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
+  )
+}
+
+function FilePathActions({
+  entry,
+  locale = 'en',
+  onRevealFile,
+  onCopyFilePath,
+}: Pick<BreadcrumbBarProps, 'entry' | 'locale' | 'onRevealFile' | 'onCopyFilePath'>) {
+  return (
+    <>
+      {onRevealFile && (
+        <IconActionButton
+          copy={{ label: translate(locale, 'editor.toolbar.revealFile') }}
+          onClick={() => onRevealFile(entry.path)}
+          className="hover:text-foreground"
+          testId="breadcrumb-reveal-file"
+        >
+          <FolderOpen size={16} className={BREADCRUMB_ICON_CLASS} />
+        </IconActionButton>
+      )}
+      {onCopyFilePath && (
+        <IconActionButton
+          copy={{ label: translate(locale, 'editor.toolbar.copyFilePath') }}
+          onClick={() => onCopyFilePath(entry.path)}
+          className="hover:text-foreground"
+          testId="breadcrumb-copy-file-path"
+        >
+          <ClipboardText size={16} className={BREADCRUMB_ICON_CLASS} />
+        </IconActionButton>
+      )}
+    </>
   )
 }
 
@@ -588,14 +624,16 @@ function BreadcrumbActions({
   rawMode,
   onToggleRaw,
   forceRawMode,
-  noteLayout,
-  onToggleNoteLayout,
+  noteWidth,
+  onToggleNoteWidth,
   showAIChat,
   onToggleAIChat,
   inspectorCollapsed,
   onToggleInspector,
   onToggleFavorite,
   onToggleOrganized,
+  onRevealFile,
+  onCopyFilePath,
   onDelete,
   onArchive,
   onUnarchive,
@@ -613,8 +651,9 @@ function BreadcrumbActions({
         locale={locale}
       />
       {!forceRawMode && <RawToggleButton rawMode={rawMode} locale={locale} onToggleRaw={onToggleRaw} />}
-      <NoteLayoutAction noteLayout={noteLayout} locale={locale} onToggleNoteLayout={onToggleNoteLayout} />
+      <NoteWidthAction noteWidth={noteWidth} locale={locale} onToggleNoteWidth={onToggleNoteWidth} />
       <AIChatAction showAIChat={showAIChat} locale={locale} onToggleAIChat={onToggleAIChat} />
+      <FilePathActions entry={entry} locale={locale} onRevealFile={onRevealFile} onCopyFilePath={onCopyFilePath} />
       <ArchiveAction archived={entry.archived} locale={locale} onArchive={onArchive} onUnarchive={onUnarchive} />
       <DeleteAction locale={locale} onDelete={onDelete} />
       <InspectorAction inspectorCollapsed={inspectorCollapsed} locale={locale} onToggleInspector={onToggleInspector} />

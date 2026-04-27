@@ -2,7 +2,7 @@ import { useMemo } from 'react'
 import type { AiAgentId, AiAgentsStatus } from '../lib/aiAgents'
 import type { AppLocale, UiLanguagePreference } from '../lib/i18n'
 import type { VaultAiGuidanceStatus } from '../lib/vaultAiGuidance'
-import type { NoteLayout, SidebarSelection, VaultEntry } from '../types'
+import type { NoteWidthMode, SidebarSelection, VaultEntry } from '../types'
 import type { NoteListFilter } from '../utils/noteListHelpers'
 import type { ViewMode } from './useViewMode'
 import { buildNavigationCommands } from './commands/navigationCommands'
@@ -50,6 +50,9 @@ interface CommandRegistryConfig {
   onMoveNoteToFolder?: () => void
   canMoveNoteToFolder?: boolean
   onOpenInNewWindow?: () => void
+  onRevealActiveFile?: (path: string) => void
+  onCopyActiveFilePath?: (path: string) => void
+  onOpenActiveFileExternal?: (path: string) => void
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
   onCustomizeNoteListColumns?: () => void
@@ -80,8 +83,9 @@ interface CommandRegistryConfig {
   onToggleInspector: () => void
   onToggleDiff?: () => void
   onToggleRawEditor?: () => void
-  noteLayout?: NoteLayout
-  onToggleNoteLayout?: () => void
+  noteWidth?: NoteWidthMode
+  onSetNoteWidth?: (width: NoteWidthMode) => void
+  onSetDefaultNoteWidth?: (width: NoteWidthMode) => void
   onToggleAIChat?: () => void
   activeNoteModified: boolean
   onCheckForUpdates?: () => void
@@ -92,6 +96,8 @@ interface CommandRegistryConfig {
   onSelect: (sel: SidebarSelection) => void
   onRenameFolder?: () => void
   onDeleteFolder?: () => void
+  onRevealSelectedFolder?: () => void
+  onCopySelectedFolderPath?: () => void
   showInbox?: boolean
   onGoBack?: () => void
   onGoForward?: () => void
@@ -111,10 +117,10 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     activeTabPath, entries, modifiedCount,
     onQuickOpen, onCreateNote, onCreateNoteOfType, onSave, onOpenSettings, onOpenFeedback,
     onDeleteNote, onArchiveNote, onUnarchiveNote,
-    onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, noteLayout, onToggleNoteLayout, onToggleAIChat, onOpenVault, onCreateEmptyVault,
+    onCommitPush, onPull, onResolveConflicts, onSetViewMode, onToggleInspector, onToggleDiff, onToggleRawEditor, noteWidth, onSetNoteWidth, onSetDefaultNoteWidth, onToggleAIChat, onOpenVault, onCreateEmptyVault,
     activeNoteModified,
     onZoomIn, onZoomOut, onZoomReset, zoomLevel,
-    onSelect, onRenameFolder, onDeleteFolder,
+    onSelect, onRenameFolder, onDeleteFolder, onRevealSelectedFolder, onCopySelectedFolderPath,
     showInbox,
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates, onCreateType,
@@ -124,7 +130,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onReloadVault, onRepairVault,
     locale, systemLocale, selectedUiLanguage, onSetUiLanguage,
     onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
-    onOpenInNewWindow, onToggleFavorite, onToggleOrganized,
+    onOpenInNewWindow, onRevealActiveFile, onCopyActiveFilePath, onOpenActiveFileExternal, onToggleFavorite, onToggleOrganized,
     onCustomizeNoteListColumns, canCustomizeNoteListColumns,
     onRestoreDeletedNote, canRestoreDeletedNote,
     selection, noteListFilter, onSetNoteListFilter,
@@ -154,6 +160,8 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     selection,
     onRenameFolder,
     onDeleteFolder,
+    onRevealSelectedFolder,
+    onCopySelectedFolderPath,
     showInbox,
     onGoBack,
     onGoForward,
@@ -161,22 +169,27 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     canGoForward,
   }), [
     onQuickOpen, onSelect, selection, onRenameFolder, onDeleteFolder,
-    showInbox, onGoBack, onGoForward, canGoBack, canGoForward,
+    onRevealSelectedFolder, onCopySelectedFolderPath, showInbox,
+    onGoBack, onGoForward, canGoBack, canGoForward,
   ])
 
   const noteCommands = useMemo(() => buildNoteCommands({
-    hasActiveNote, activeTabPath, isArchived,
+    hasActiveNote, activeTabPath, activeFileKind: activeEntry?.fileKind ?? 'markdown', isArchived,
     onCreateNote, onCreateType, onSave,
     onDeleteNote, onArchiveNote, onUnarchiveNote,
     onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
-    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
+    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow,
+    onRevealActiveFile, onCopyActiveFilePath, onOpenActiveFileExternal,
+    onToggleFavorite, isFavorite,
     onToggleOrganized, isOrganized: activeEntry?.organized ?? false,
     onRestoreDeletedNote, canRestoreDeletedNote,
   }), [
-    hasActiveNote, activeTabPath, isArchived,
+    hasActiveNote, activeTabPath, activeEntry?.fileKind, isArchived,
     onCreateNote, onCreateType, onSave, onDeleteNote, onArchiveNote, onUnarchiveNote,
     onChangeNoteType, onMoveNoteToFolder, canMoveNoteToFolder,
-    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow, onToggleFavorite, isFavorite,
+    onSetNoteIcon, onRemoveNoteIcon, activeNoteHasIcon, onOpenInNewWindow,
+    onRevealActiveFile, onCopyActiveFilePath, onOpenActiveFileExternal,
+    onToggleFavorite, isFavorite,
     onToggleOrganized, activeEntry?.organized, onRestoreDeletedNote, canRestoreDeletedNote,
   ])
 
@@ -197,11 +210,11 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
 
   const viewCommands = useMemo(() => buildViewCommands({
     hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
-    onToggleDiff, onToggleRawEditor, noteLayout, onToggleNoteLayout, onToggleAIChat, zoomLevel, onZoomIn, onZoomOut, onZoomReset,
+    onToggleDiff, onToggleRawEditor, noteWidth, onSetNoteWidth, onSetDefaultNoteWidth, onToggleAIChat, zoomLevel, onZoomIn, onZoomOut, onZoomReset,
     onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
   }), [
     hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
-    onToggleDiff, onToggleRawEditor, noteLayout, onToggleNoteLayout, onToggleAIChat,
+    onToggleDiff, onToggleRawEditor, noteWidth, onSetNoteWidth, onSetDefaultNoteWidth, onToggleAIChat,
     zoomLevel, onZoomIn, onZoomOut, onZoomReset,
     onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
   ])

@@ -7,7 +7,7 @@ import { uploadImageFile } from '../hooks/useImageDrop'
 import { DEFAULT_AI_AGENT, type AiAgentId } from '../lib/aiAgents'
 import { translate, type AppLocale } from '../lib/i18n'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
-import type { VaultEntry, GitCommit, NoteLayout, NoteStatus } from '../types'
+import type { VaultEntry, GitCommit, NoteStatus, NoteWidthMode } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { FrontmatterValue } from './Inspector'
 import { ResizeHandle } from './ResizeHandle'
@@ -17,6 +17,7 @@ import { useDragRegion } from '../hooks/useDragRegion'
 import { formatShortcutDisplay } from '../hooks/appCommandCatalog'
 import { EditorRightPanel } from './EditorRightPanel'
 import { EditorContent } from './EditorContent'
+import { FilePreview } from './FilePreview'
 import { schema } from './editorSchema'
 import {
   applyPendingRawExitContent,
@@ -68,6 +69,9 @@ interface EditorProps {
   noteListFilter?: { type: string | null; query: string }
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
+  onRevealFile?: (path: string) => void
+  onCopyFilePath?: (path: string) => void
+  onOpenExternalFile?: (path: string) => void
   onDeleteNote?: (path: string) => void
   onArchiveNote?: (path: string) => void
   onUnarchiveNote?: (path: string) => void
@@ -75,8 +79,8 @@ interface EditorProps {
   onSave?: () => void
   /** Called when the user explicitly renames the filename from the breadcrumb. */
   onRenameFilename?: (path: string, newFilenameStem: string) => void
-  noteLayout?: NoteLayout
-  onToggleNoteLayout?: () => void
+  noteWidth?: NoteWidthMode
+  onToggleNoteWidth?: () => void
   canGoBack?: boolean
   canGoForward?: boolean
   onGoBack?: () => void
@@ -298,6 +302,9 @@ function EditorLayout({
   handleEditorChange,
   onToggleFavorite,
   onToggleOrganized,
+  onRevealFile,
+  onCopyFilePath,
+  onOpenExternalFile,
   onDeleteNote,
   onArchiveNote,
   onUnarchiveNote,
@@ -305,8 +312,8 @@ function EditorLayout({
   rawModeContent,
   rawLatestContentRef,
   onRenameFilename,
-  noteLayout,
-  onToggleNoteLayout,
+  noteWidth,
+  onToggleNoteWidth,
   isConflicted,
   onKeepMine,
   onKeepTheirs,
@@ -355,6 +362,9 @@ function EditorLayout({
   handleEditorChange: () => void
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
+  onRevealFile?: (path: string) => void
+  onCopyFilePath?: (path: string) => void
+  onOpenExternalFile?: (path: string) => void
   onDeleteNote?: (path: string) => void
   onArchiveNote?: (path: string) => void
   onUnarchiveNote?: (path: string) => void
@@ -362,8 +372,8 @@ function EditorLayout({
   rawModeContent: string | null
   rawLatestContentRef: React.MutableRefObject<string | null>
   onRenameFilename?: (path: string, newFilenameStem: string) => void
-  noteLayout?: NoteLayout
-  onToggleNoteLayout?: () => void
+  noteWidth?: NoteWidthMode
+  onToggleNoteWidth?: () => void
   isConflicted?: boolean
   onKeepMine?: (path: string) => void
   onKeepTheirs?: (path: string) => void
@@ -389,12 +399,23 @@ function EditorLayout({
   onUnsupportedAiPaste?: (message: string) => void
   locale?: AppLocale
 }) {
+  const activeBinaryTab = activeTab?.entry.fileKind === 'binary' ? activeTab : null
+
   return (
     <div className="editor flex flex-col min-h-0 overflow-hidden bg-background text-foreground">
       <div className="flex flex-1 min-h-0">
         {tabs.length === 0
           ? <EditorEmptyState locale={locale} />
-          : <EditorContent
+          : activeBinaryTab
+            ? (
+                <FilePreview
+                  entry={activeBinaryTab.entry}
+                  onCopyFilePath={onCopyFilePath}
+                  onOpenExternalFile={onOpenExternalFile}
+                  onRevealFile={onRevealFile}
+                />
+              )
+            : <EditorContent
               activeTab={activeTab}
               isLoadingNewTab={isLoadingNewTab}
               entries={entries}
@@ -417,6 +438,8 @@ function EditorLayout({
               onEditorChange={handleEditorChange}
               onToggleFavorite={onToggleFavorite}
               onToggleOrganized={onToggleOrganized}
+              onRevealFile={onRevealFile}
+              onCopyFilePath={onCopyFilePath}
               onDeleteNote={onDeleteNote}
               onArchiveNote={onArchiveNote}
               onUnarchiveNote={onUnarchiveNote}
@@ -424,8 +447,8 @@ function EditorLayout({
               rawModeContent={rawModeContent}
               rawLatestContentRef={rawLatestContentRef}
               onRenameFilename={onRenameFilename}
-              noteLayout={noteLayout}
-              onToggleNoteLayout={onToggleNoteLayout}
+              noteWidth={noteWidth}
+              onToggleNoteWidth={onToggleNoteWidth}
               isConflicted={isConflicted}
               onKeepMine={onKeepMine}
               onKeepTheirs={onKeepTheirs}
@@ -481,9 +504,10 @@ export const Editor = memo(function Editor(props: EditorProps) {
     onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onInitializeProperties,
     showAIChat, onToggleAIChat,
     vaultPath, noteList, noteListFilter,
-    onToggleFavorite, onToggleOrganized, onDeleteNote, onArchiveNote, onUnarchiveNote,
+    onToggleFavorite, onToggleOrganized, onRevealFile, onCopyFilePath, onOpenExternalFile,
+    onDeleteNote, onArchiveNote, onUnarchiveNote,
     onContentChange, onSave, onRenameFilename,
-    noteLayout, onToggleNoteLayout,
+    noteWidth, onToggleNoteWidth,
     onFileCreated, onFileModified, onVaultChanged,
     isConflicted, onKeepMine, onKeepTheirs,
     flushPendingRawContentRef,
@@ -538,6 +562,9 @@ export const Editor = memo(function Editor(props: EditorProps) {
       handleEditorChange={handleEditorChange}
       onToggleFavorite={onToggleFavorite}
       onToggleOrganized={onToggleOrganized}
+      onRevealFile={onRevealFile}
+      onCopyFilePath={onCopyFilePath}
+      onOpenExternalFile={onOpenExternalFile}
       onDeleteNote={onDeleteNote}
       onArchiveNote={onArchiveNote}
       onUnarchiveNote={onUnarchiveNote}
@@ -545,8 +572,8 @@ export const Editor = memo(function Editor(props: EditorProps) {
       rawModeContent={rawModeContent}
       rawLatestContentRef={rawLatestContentRef}
       onRenameFilename={onRenameFilename}
-      noteLayout={noteLayout}
-      onToggleNoteLayout={onToggleNoteLayout}
+      noteWidth={noteWidth}
+      onToggleNoteWidth={onToggleNoteWidth}
       isConflicted={isConflicted}
       onKeepMine={onKeepMine}
       onKeepTheirs={onKeepTheirs}

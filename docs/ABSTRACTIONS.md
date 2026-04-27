@@ -47,6 +47,7 @@ _icon: shapes             # icon assigned to a type
 _color: blue              # color assigned to a type
 _order: 10                # sort order in the sidebar
 _sidebar_label: Projects  # override label in sidebar
+_width: wide              # per-note reading width: normal or wide
 ```
 
 **This convention is universal** — apply it to all future system-level frontmatter fields. When a new feature needs to store configuration in a note's frontmatter (especially in Type notes), use `_field_name` to keep it hidden from normal user-facing surfaces while still stored on-disk as plain text.
@@ -92,6 +93,7 @@ classDiagram
         +Boolean archived
         +Boolean trashed ⚠ legacy
         +Number? trashedAt ⚠ legacy
+        +String? noteWidth
         +Record~string,string~ properties
     }
 
@@ -142,9 +144,25 @@ interface VaultEntry {
   archived: boolean         // Archived flag
   trashed: boolean          // Kept for backward compatibility (Trash system removed — delete is permanent)
   trashedAt: number | null  // Kept for backward compatibility (Trash system removed)
+  noteWidth?: 'normal' | 'wide' | null  // Per-note `_width` reading preference
   properties: Record<string, string>  // Scalar frontmatter fields (custom properties)
+  fileKind?: 'markdown' | 'text' | 'binary'  // Controls editor/raw/preview behavior
 }
 ```
+
+Per-note reading width uses the system property `_width: normal | wide`. It is hidden from the Properties panel by the underscore convention, parsed into `VaultEntry.noteWidth`, and updated through the breadcrumb width toggle or the command palette. When absent or invalid, the renderer falls back to the app-level `settings.note_width_mode` default and then to `normal`.
+
+### File kinds and binary previews
+
+`VaultEntry.fileKind` comes from the Rust vault scanner and intentionally stays coarse-grained:
+
+| `fileKind` | Source files | UI behavior |
+|---|---|---|
+| `markdown` or absent | `.md`, `.markdown` | Full Tolaria note model: frontmatter, BlockNote, raw editor, relationships, title sync |
+| `text` | UTF-8 editable formats such as `.yml`, `.json`, `.ts`, `.py`, `.sh` | Opens through the raw editor without Markdown note semantics |
+| `binary` | Images, PDFs, archives, other non-text files | Stays a normal vault file; previewable images open in `FilePreview`, unsupported or broken binaries show an explicit fallback |
+
+Image previewability is inferred in the renderer from the filename extension (`src/utils/filePreview.ts`) rather than stored as a new persisted kind. This keeps the filesystem as source of truth and avoids converting assets into proprietary objects.
 
 ### Entity Types (isA / type)
 
@@ -253,6 +271,7 @@ Tolaria separates **display title** from the file identifier:
 - **Explicit filename actions** (`rename_note`): breadcrumb rename/sync actions stage crash-safe note renames through a hidden `.tolaria-rename-txn/` transaction directory, recover unfinished renames on the next vault scan, update wikilinks across the vault, and surface any failed backlink rewrites instead of silently reporting partial success. The editor body remains the title editing surface.
 - **Unicode-aware note stems** (`src/utils/noteSlug.ts`, `vault/rename.rs`): frontend and backend slugging preserve Unicode letters/digits in note filenames, untitled-rename detection, and fallback wikilink targets while still collapsing symbol-only titles to `untitled`.
 - **Portable filename validation** (`vault/filename_rules.rs`): note filenames, folder names, and custom view filenames all reject Windows-reserved device names, invalid characters, and trailing dot/space suffixes so a vault created on macOS/Linux still clones and syncs cleanly on Windows.
+- **Recoverable save failures** (`useEditorSave`, `vault/file.rs`): invalid platform path syntax is reported as a clear retryable save error, while the editor keeps the unsaved buffer intact for another attempt.
 - **Untitled drafts** start as `untitled-*.md` and are auto-renamed on save once the note gains an H1.
 
 ### Title Surface (UI)
@@ -281,7 +300,7 @@ type SidebarSelection =
 
 `SidebarSelection.kind === 'folder'` is a first-class navigation target, not just a visual highlight.
 
-- `FolderTree` keeps the folder interaction surface decomposed into `FolderTreeRow`, `FolderNameInput`, `FolderContextMenu`, and disclosure/context-menu hooks so nested row rendering, inline rename, and right-click actions stay isolated.
+- `FolderTree` keeps the folder interaction surface decomposed into `FolderTreeRow`, `FolderNameInput`, `FolderContextMenu`, and disclosure/context-menu hooks so nested row rendering, inline rename, and right-click actions stay isolated. Non-mutating reveal/copy-path menu items stay callback-driven from `App` so filesystem convenience actions do not leak into folder mutation hooks.
 - `useFolderActions()` composes `useFolderRename()` and `useFolderDelete()` to keep folder mutations selection-aware while the rest of `App.tsx` only wires the resulting callbacks into `Sidebar` and the command registry.
 - `useNoteRetargeting()` is the shared retargeting abstraction for note drops and command-palette actions. It owns the "can drop here?" checks, updates `type:` via frontmatter when a note lands on a type section, and delegates folder moves through the same crash-safe rename pipeline used by the backend rename commands.
 - A successful folder rename reloads the folder tree plus vault entries, rewrites any affected folder-scoped tabs, and updates `SidebarSelection` to the new relative path when the renamed folder stays selected.
@@ -325,6 +344,8 @@ The folder tree hides only the dedicated `type/` directory, since note types alr
 A `vault_health_check` command detects stray files in non-protected subfolders and filename-title mismatches. On vault load, a migration banner offers to flatten stray files to the root via `flatten_vault`.
 
 Command-layer path access is fenced to the active vault before file operations reach the vault backend. `src-tauri/src/commands/vault/boundary.rs` canonicalizes the configured/requested vault root, rejects `..` escapes and absolute paths outside that root, and validates writable targets through the nearest existing ancestor so note reads, saves, deletes, view-file edits, folder mutations, and image attachment writes cannot step outside the active vault. Image attachment commands refresh the runtime asset scope after saving so files created under a previously missing `attachments/` directory can render immediately.
+
+UI-only file actions operate on paths that are already selected or indexed in React state. Reveal-in-Finder and external-open calls route through the Tauri opener plugin, while copy-path uses the browser clipboard API; none of those actions mutate vault contents or bypass the backend write boundary.
 
 ### Vault Caching
 
@@ -631,7 +652,7 @@ No indexing step required — search runs directly against the filesystem.
 
 Per-vault settings stored locally and scoped by vault path:
 - Managed by `useVaultConfig` hook and `vaultConfigStore`
-- Settings: zoom, view mode, editor mode, note layout, tag colors, status colors, property display modes, Inbox/All Notes note-list column overrides, explicit organization workflow toggle
+- Settings: zoom, view mode, editor mode, tag colors, status colors, property display modes, Inbox/All Notes note-list column overrides, explicit organization workflow toggle
 - One-time migration from localStorage (`configMigration.ts`)
 
 ### AI Guidance Files
@@ -688,6 +709,7 @@ interface Settings {
   release_channel: string | null // null = stable default, "alpha" = every-push prerelease feed
   theme_mode: 'light' | 'dark' | null
   ui_language: 'en' | 'zh-Hans' | null
+  note_width_mode: 'normal' | 'wide' | null
   default_ai_agent: 'claude_code' | 'codex' | null
 }
 ```

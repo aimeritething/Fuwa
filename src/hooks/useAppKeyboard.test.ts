@@ -7,7 +7,7 @@ function fireKey(
   key: string,
   mods: { altKey?: boolean; metaKey?: boolean; ctrlKey?: boolean; shiftKey?: boolean; code?: string } = {},
 ) {
-  fireKeyOnTarget(window, key, mods)
+  return fireKeyOnTarget(window, key, mods)
 }
 
 function fireKeyOnTarget(
@@ -26,6 +26,7 @@ function fireKeyOnTarget(
     cancelable: true,
   })
   target.dispatchEvent(event)
+  return event
 }
 
 function makeActions() {
@@ -50,8 +51,18 @@ function makeActions() {
   }
 }
 
+const originalUserAgent = navigator.userAgent
+
+function setUserAgent(userAgent: string) {
+  Object.defineProperty(window.navigator, 'userAgent', {
+    configurable: true,
+    value: userAgent,
+  })
+}
+
 describe('useAppKeyboard', () => {
   afterEach(() => {
+    setUserAgent(originalUserAgent)
     delete (window as typeof window & { __TAURI__?: unknown }).__TAURI__
     resetAppCommandDispatchStateForTests()
     vi.restoreAllMocks()
@@ -179,6 +190,56 @@ describe('useAppKeyboard', () => {
 
     expect(organizeSelected).toHaveBeenCalledTimes(1)
     expect(actions.onToggleOrganized).not.toHaveBeenCalled()
+  })
+
+  it('lets macOS Ctrl text-editing bindings pass through focused text inputs', () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
+    const actions = makeActions()
+    actions.onToggleFavorite = vi.fn()
+    renderHook(() => useAppKeyboard(actions))
+
+    withFocusedInput(() => {
+      const organize = fireKey('e', { ctrlKey: true, code: 'KeyE' })
+      const nextLine = fireKey('n', { ctrlKey: true, code: 'KeyN' })
+      const previousLine = fireKey('p', { ctrlKey: true, code: 'KeyP' })
+      const deleteForward = fireKey('d', { ctrlKey: true, code: 'KeyD' })
+
+      expect(organize.defaultPrevented).toBe(false)
+      expect(nextLine.defaultPrevented).toBe(false)
+      expect(previousLine.defaultPrevented).toBe(false)
+      expect(deleteForward.defaultPrevented).toBe(false)
+      expect(actions.onToggleOrganized).not.toHaveBeenCalled()
+      expect(actions.onCreateNote).not.toHaveBeenCalled()
+      expect(actions.onQuickOpen).not.toHaveBeenCalled()
+      expect(actions.onToggleFavorite).not.toHaveBeenCalled()
+    })
+  })
+
+  it('lets macOS Ctrl text-editing bindings pass through focused rich editors', () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
+    const actions = makeActions()
+    actions.onToggleFavorite = vi.fn()
+    renderHook(() => useAppKeyboard(actions))
+
+    withFocusedContentEditable((editable) => {
+      expect(fireKeyOnTarget(editable, 'e', { ctrlKey: true, code: 'KeyE' }).defaultPrevented).toBe(false)
+      expect(fireKeyOnTarget(editable, 'd', { ctrlKey: true, code: 'KeyD' }).defaultPrevented).toBe(false)
+      expect(actions.onToggleOrganized).not.toHaveBeenCalled()
+      expect(actions.onToggleFavorite).not.toHaveBeenCalled()
+    })
+  })
+
+  it('still runs Command shortcuts on macOS outside focused text inputs', () => {
+    setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)')
+    const actions = makeActions()
+    actions.onToggleFavorite = vi.fn()
+    renderHook(() => useAppKeyboard(actions))
+
+    fireKey('e', { metaKey: true, code: 'KeyE' })
+    fireKey('d', { metaKey: true, code: 'KeyD' })
+
+    expect(actions.onToggleOrganized).toHaveBeenCalledWith('/vault/test.md')
+    expect(actions.onToggleFavorite).toHaveBeenCalledWith('/vault/test.md')
   })
 
   it('Cmd+E still works when editor focus stops propagation', () => {

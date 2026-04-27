@@ -26,12 +26,14 @@ type BreadcrumbActions = Pick<
   | 'showDiffToggle'
   | 'onToggleFavorite'
   | 'onToggleOrganized'
+  | 'onRevealFile'
+  | 'onCopyFilePath'
   | 'onDeleteNote'
   | 'onArchiveNote'
   | 'onUnarchiveNote'
   | 'onRenameFilename'
-  | 'noteLayout'
-  | 'onToggleNoteLayout'
+  | 'noteWidth'
+  | 'onToggleNoteWidth'
 >
 
 function EditorLoadingSkeleton() {
@@ -84,17 +86,21 @@ function RawModeEditorSection({
   if (!rawMode || !activeTab) return null
 
   return (
-    <RawEditorView
-      key={activeTab.entry.path}
-      content={rawModeContent ?? activeTab.content}
-      path={activeTab.entry.path}
-      entries={entries}
-      onContentChange={onRawContentChange ?? (() => {})}
-      onSave={onSave ?? (() => {})}
-      latestContentRef={rawLatestContentRef}
-      vaultPath={vaultPath}
-      locale={locale}
-    />
+    <div className="editor-scroll-area">
+      <div className="editor-content-wrapper editor-content-wrapper--raw">
+        <RawEditorView
+          key={activeTab.entry.path}
+          content={rawModeContent ?? activeTab.content}
+          path={activeTab.entry.path}
+          entries={entries}
+          onContentChange={onRawContentChange ?? (() => {})}
+          onSave={onSave ?? (() => {})}
+          latestContentRef={rawLatestContentRef}
+          vaultPath={vaultPath}
+          locale={locale}
+        />
+      </div>
+    </div>
   )
 }
 
@@ -135,12 +141,14 @@ function ActiveTabBreadcrumb({
       onToggleInspector={actions.onToggleInspector}
       onToggleFavorite={bindPath(actions.onToggleFavorite, path)}
       onToggleOrganized={bindPath(actions.onToggleOrganized, path)}
+      onRevealFile={actions.onRevealFile}
+      onCopyFilePath={actions.onCopyFilePath}
       onDelete={bindPath(actions.onDeleteNote, path)}
       onArchive={bindPath(actions.onArchiveNote, path)}
       onUnarchive={bindPath(actions.onUnarchiveNote, path)}
       onRenameFilename={actions.onRenameFilename}
-      noteLayout={actions.noteLayout}
-      onToggleNoteLayout={actions.onToggleNoteLayout}
+      noteWidth={actions.noteWidth}
+      onToggleNoteWidth={actions.onToggleNoteWidth}
       locale={locale}
     />
   )
@@ -244,12 +252,12 @@ export function EditorContentLayout(model: EditorContentModel) {
     isDeletedPreview,
     rawLatestContentRef,
     rawModeContent,
-    noteLayout,
+    noteWidth,
     locale,
   } = model
   const rootClassName = cn(
     'flex flex-1 flex-col min-w-0 min-h-0',
-    noteLayout === 'left' ? 'editor-content-layout--left' : 'editor-content-layout--centered',
+    noteWidth === 'wide' ? 'editor-content-width--wide' : 'editor-content-width--normal',
   )
 
   if (!activeTab) {
@@ -282,12 +290,14 @@ export function EditorContentLayout(model: EditorContentModel) {
           showDiffToggle: model.showDiffToggle,
           onToggleFavorite: model.onToggleFavorite,
           onToggleOrganized: model.onToggleOrganized,
+          onRevealFile: model.onRevealFile,
+          onCopyFilePath: model.onCopyFilePath,
           onDeleteNote: model.onDeleteNote,
           onArchiveNote: model.onArchiveNote,
           onUnarchiveNote: model.onUnarchiveNote,
           onRenameFilename: model.onRenameFilename,
-          noteLayout: model.noteLayout,
-          onToggleNoteLayout: model.onToggleNoteLayout,
+          noteWidth: model.noteWidth,
+          onToggleNoteWidth: model.onToggleNoteWidth,
         }}
       />
       <EditorChrome
