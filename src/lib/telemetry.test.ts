@@ -1,5 +1,29 @@
-import { describe, it, expect } from 'vitest'
-import { _scrubPathsForTest as scrubPaths, trackEvent, isFeatureEnabled, setReleaseChannel } from './telemetry'
+import { afterEach, describe, it, expect, vi } from 'vitest'
+
+const sentryMocks = vi.hoisted(() => ({
+  close: vi.fn(),
+  init: vi.fn(),
+  setUser: vi.fn(),
+}))
+
+vi.mock('@sentry/react', () => sentryMocks)
+
+import {
+  _scrubPathsForTest as scrubPaths,
+  initSentry,
+  isFeatureEnabled,
+  setReleaseChannel,
+  teardownSentry,
+  trackEvent,
+} from './telemetry'
+
+afterEach(() => {
+  teardownSentry()
+  vi.unstubAllEnvs()
+  sentryMocks.close.mockClear()
+  sentryMocks.init.mockClear()
+  sentryMocks.setUser.mockClear()
+})
 
 describe('telemetry scrubPaths', () => {
   it('redacts macOS absolute paths', () => {
@@ -41,6 +65,21 @@ describe('trackEvent', () => {
 
   it('accepts event name with string and number properties', () => {
     expect(() => trackEvent('note_created', { has_type: 1, creation_path: 'cmd_n' })).not.toThrow()
+  })
+})
+
+describe('initSentry', () => {
+  it('passes the configured build release to Sentry', () => {
+    vi.stubEnv('VITE_SENTRY_DSN', 'https://public@example.ingest.sentry.io/123456')
+    vi.stubEnv('VITE_SENTRY_RELEASE', '2026.4.23')
+
+    initSentry('anonymous-user')
+
+    expect(sentryMocks.init).toHaveBeenCalledWith(expect.objectContaining({
+      dsn: 'https://public@example.ingest.sentry.io/123456',
+      release: '2026.4.23',
+    }))
+    expect(sentryMocks.setUser).toHaveBeenCalledWith({ id: 'anonymous-user' })
   })
 })
 

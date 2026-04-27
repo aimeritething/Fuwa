@@ -7,6 +7,10 @@ import {
 } from './releaseDownloadPage'
 
 describe('release workflow macOS artifact names', () => {
+  function countOccurrences(input: string, value: string): number {
+    return input.split(value).length - 1
+  }
+
   it('publishes versioned Silicon and Intel artifact names', () => {
     const alphaWorkflow = readFileSync(`${process.cwd()}/.github/workflows/release.yml`, 'utf8')
     const stableWorkflow = readFileSync(
@@ -32,6 +36,18 @@ describe('release workflow macOS artifact names', () => {
     expect(stableWorkflow).toContain(
       'Tolaria_${{ needs.version.outputs.version }}_macOS_Intel.dmg',
     )
+  })
+
+  it('passes the computed build version to Sentry release env for packaged apps', () => {
+    const alphaWorkflow = readFileSync(`${process.cwd()}/.github/workflows/release.yml`, 'utf8')
+    const stableWorkflow = readFileSync(
+      `${process.cwd()}/.github/workflows/release-stable.yml`,
+      'utf8',
+    )
+    const releaseEnv = 'VITE_SENTRY_RELEASE: ${{ needs.version.outputs.version }}'
+
+    expect(countOccurrences(alphaWorkflow, releaseEnv)).toBe(3)
+    expect(countOccurrences(stableWorkflow, releaseEnv)).toBe(3)
   })
 })
 

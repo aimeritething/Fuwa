@@ -25,11 +25,12 @@ let posthogInstance: typeof import('posthog-js').default | null = null
 export function initSentry(anonymousId: string): void {
   if (sentryInitialized) return
 
-  const { sentryDsn } = resolveFrontendTelemetryConfig()
+  const { sentryDsn, sentryRelease } = resolveFrontendTelemetryConfig()
   if (!sentryDsn) return
 
   Sentry.init({
     dsn: sentryDsn,
+    release: sentryRelease || undefined,
     sendDefaultPii: false,
     beforeSend: scrubSentryEvent,
   })

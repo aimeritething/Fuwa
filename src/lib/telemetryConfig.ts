@@ -1,5 +1,5 @@
 const DEFAULT_POSTHOG_HOST = 'https://us.i.posthog.com'
-const DISALLOWED_TELEMETRY_HOSTS = new Set([
+const DISALLOWED_TELEMETRY_VALUES = new Set([
   'false',
   'true',
   'null',
@@ -10,12 +10,14 @@ const DISALLOWED_TELEMETRY_HOSTS = new Set([
 
 type TelemetryEnv = {
   VITE_SENTRY_DSN?: string
+  VITE_SENTRY_RELEASE?: string
   VITE_POSTHOG_KEY?: string
   VITE_POSTHOG_HOST?: string
 }
 
 export type FrontendTelemetryConfig = {
   sentryDsn: string
+  sentryRelease: string
   posthogKey: string
   posthogHost: string | null
 }
@@ -68,7 +70,7 @@ function isIpAddress(hostname: string): boolean {
 
 function isAllowedTelemetryHostname(hostname: string): boolean {
   const normalized = normalizeHostname(hostname)
-  if (!normalized || DISALLOWED_TELEMETRY_HOSTS.has(normalized)) return false
+  if (!normalized || DISALLOWED_TELEMETRY_VALUES.has(normalized)) return false
   if (normalized === 'localhost') return true
   return normalized.includes('.') || isIpAddress(normalized)
 }
@@ -84,6 +86,11 @@ function normalizeSentryDsn(value: string): string {
   return isHttpUrl(normalized) ? normalized : ''
 }
 
+function normalizeSentryRelease(value: string): string {
+  if (!value) return ''
+  return DISALLOWED_TELEMETRY_VALUES.has(value.toLowerCase()) ? '' : value
+}
+
 function normalizePostHogHost(value: string): string | null {
   if (!value) return DEFAULT_POSTHOG_HOST
   const normalized = normalizeHttpLikeValue(value)
@@ -96,12 +103,15 @@ export function resolveFrontendTelemetryConfig(
   const sentryDsn = normalizeSentryDsn(
     sanitizeTelemetryEnvValue(env.VITE_SENTRY_DSN),
   )
+  const sentryRelease = normalizeSentryRelease(
+    sanitizeTelemetryEnvValue(env.VITE_SENTRY_RELEASE),
+  )
   const posthogKey = sanitizeTelemetryEnvValue(env.VITE_POSTHOG_KEY)
   const posthogHost = normalizePostHogHost(
     sanitizeTelemetryEnvValue(env.VITE_POSTHOG_HOST),
   )
 
-  return { sentryDsn, posthogKey, posthogHost }
+  return { sentryDsn, sentryRelease, posthogKey, posthogHost }
 }
 
 export { DEFAULT_POSTHOG_HOST as _defaultPostHogHostForTest }
