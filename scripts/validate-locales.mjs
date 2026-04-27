@@ -10,8 +10,14 @@ function readCatalog(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'))
 }
 
+function isFlatObject(value) {
+  if (!value) return false
+  if (typeof value !== 'object') return false
+  return !Array.isArray(value)
+}
+
 function assertFlatStringCatalog(locale, catalog) {
-  if (!catalog || typeof catalog !== 'object' || Array.isArray(catalog)) {
+  if (!isFlatObject(catalog)) {
     throw new Error(`${locale}: expected a flat object of translation keys`)
   }
 
@@ -20,6 +26,48 @@ function assertFlatStringCatalog(locale, catalog) {
       throw new Error(`${locale}: key "${key}" must map to a string`)
     }
   }
+}
+
+function missingKeys(sourceKeys, localeKeys) {
+  const localeKeySet = new Set(localeKeys)
+  return sourceKeys.filter((key) => !localeKeySet.has(key))
+}
+
+function extraKeys(sourceKeys, localeKeys) {
+  const sourceKeySet = new Set(sourceKeys)
+  return localeKeys.filter((key) => !sourceKeySet.has(key))
+}
+
+function placeholders(value) {
+  return Array.from(value.matchAll(/\{(\w+)\}/g), (match) => match[1]).sort()
+}
+
+function sameValues(left, right) {
+  if (left.length !== right.length) return false
+  return left.every((value, index) => value === right[index])
+}
+
+function formatValues(values) {
+  return values.length === 0 ? 'none' : values.join(', ')
+}
+
+function placeholderIssues(locale, sourceCatalog, catalog) {
+  const issues = []
+
+  for (const [key, sourceValue] of Object.entries(sourceCatalog)) {
+    if (!(key in catalog)) continue
+
+    const sourcePlaceholders = placeholders(sourceValue)
+    const localePlaceholders = placeholders(catalog[key])
+    if (sameValues(sourcePlaceholders, localePlaceholders)) continue
+
+    issues.push(
+      `${locale}: key "${key}" placeholders differ ` +
+        `(expected ${formatValues(sourcePlaceholders)}, found ${formatValues(localePlaceholders)})`,
+    )
+  }
+
+  return issues
 }
 
 const sourceCatalog = readCatalog(sourcePath)
@@ -39,8 +87,8 @@ for (const file of localeFiles) {
   if (locale === 'en') continue
 
   const keys = Object.keys(catalog).sort()
-  const missing = sourceKeys.filter((key) => !keys.includes(key))
-  const extra = keys.filter((key) => !sourceKeys.includes(key))
+  const missing = missingKeys(sourceKeys, keys)
+  const extra = extraKeys(sourceKeys, keys)
 
   if (missing.length > 0) {
     issues.push(`${locale}: missing ${missing.length} key(s)`)
@@ -48,6 +96,8 @@ for (const file of localeFiles) {
   if (extra.length > 0) {
     issues.push(`${locale}: extra ${extra.length} key(s)`)
   }
+
+  issues.push(...placeholderIssues(locale, sourceCatalog, catalog))
 }
 
 if (issues.length > 0) {
