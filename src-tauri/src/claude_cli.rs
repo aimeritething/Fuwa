@@ -269,7 +269,11 @@ fn build_agent_args(req: &AgentStreamRequest) -> Result<Vec<String>, String> {
         "--include-partial-messages".into(),
         "--mcp-config".into(),
         mcp_config,
-        "--dangerously-skip-permissions".into(),
+        "--strict-mcp-config".into(),
+        "--permission-mode".into(),
+        "acceptEdits".into(),
+        "--tools".into(),
+        "Read,Edit,MultiEdit,Write,Glob,Grep,LS".into(),
         "--no-session-persistence".into(),
     ];
 
@@ -1066,11 +1070,16 @@ mod tests {
             assert!(args.contains(&"-p".to_string()));
             assert!(args.contains(&"create note".to_string()));
             assert!(args.contains(&"--mcp-config".to_string()));
-            assert!(args.contains(&"--dangerously-skip-permissions".to_string()));
+            assert!(args.contains(&"--strict-mcp-config".to_string()));
+            assert!(args.contains(&"--permission-mode".to_string()));
+            assert!(args.contains(&"acceptEdits".to_string()));
+            assert!(args.contains(&"--tools".to_string()));
+            assert!(args.contains(&"Read,Edit,MultiEdit,Write,Glob,Grep,LS".to_string()));
+            assert!(!args.contains(&"--dangerously-skip-permissions".to_string()));
+            assert!(!args.contains(&"bypassPermissions".to_string()));
+            assert!(!args.contains(&"Bash".to_string()));
             assert!(args.contains(&"--no-session-persistence".to_string()));
             assert!(!args.contains(&"--append-system-prompt".to_string()));
-            // Native tools must NOT be disabled
-            assert!(!args.contains(&"--tools".to_string()));
         }
     }
 

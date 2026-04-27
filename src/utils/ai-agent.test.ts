@@ -13,7 +13,9 @@ describe('buildAgentSystemPrompt', () => {
   it('returns preamble when no vault context', () => {
     const prompt = buildAgentSystemPrompt()
     expect(prompt).toContain('working inside Tolaria')
-    expect(prompt).toContain('full shell access')
+    expect(prompt).toContain('active vault')
+    expect(prompt).toContain('Avoid shell commands')
+    expect(prompt).not.toContain('full shell access')
     expect(prompt).not.toContain('Vault context')
   })
 

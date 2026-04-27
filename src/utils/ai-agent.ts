@@ -1,8 +1,8 @@
 /**
- * AI Agent utilities — Claude CLI agent mode with full shell access + MCP vault tools.
+ * AI Agent utilities — Claude CLI agent mode with scoped file tools + MCP vault tools.
  *
- * The agent has full native tool access (bash, read, write, edit) plus
- * Tolaria-specific MCP tools (search_notes, get_vault_context, get_note, open_note).
+ * App-managed sessions can edit files in the active vault and use Tolaria-specific
+ * MCP tools (search_notes, get_vault_context, get_note, open_note).
  * The frontend receives streaming events for text, tool calls, and completion.
  */
 
@@ -13,8 +13,9 @@ import { isTauri } from '../mock-tauri'
 const AGENT_SYSTEM_PREAMBLE = `You are working inside Tolaria, a personal knowledge management app.
 
 Notes are markdown files with YAML frontmatter. Standard fields: title, type (aliased is_a), date, tags.
-You have full shell access. Use bash for file operations, search, bulk edits.
+You can edit markdown files in the active vault. Prefer file edit tools for note changes.
 Use the provided MCP tools for: full-text search (search_notes), vault orientation (get_vault_context), parsed note reading (get_note), and opening notes in the UI (open_note).
+Avoid shell commands; app-managed sessions are intentionally scoped to vault file edits and Tolaria MCP tools.
 
 When you create or edit a note, call open_note(path) so the user sees it in Tolaria.
 When you mention or reference a note by name, always use [[Note Title]] wikilink syntax so the user can click to open it.
@@ -62,8 +63,53 @@ function mockAgentResponse(message: string): string {
   return `[mock-no-history] You said: "${message}" — This note is related to [[Build Laputa App]] and [[Matteo Cellini]].`
 }
 
+function emitMockAgentResponse(message: string, callbacks: AgentStreamCallbacks): void {
+  setTimeout(() => {
+    callbacks.onText(mockAgentResponse(message))
+    callbacks.onDone()
+  }, 300)
+}
+
+function createStreamCloser(callbacks: AgentStreamCallbacks): () => void {
+  let closed = false
+  return () => {
+    if (closed) return
+    closed = true
+    callbacks.onDone()
+  }
+}
+
+function handleClaudeStreamEvent(
+  data: ClaudeAgentStreamEvent,
+  callbacks: AgentStreamCallbacks,
+  closeStream: () => void,
+): void {
+  switch (data.kind) {
+    case 'TextDelta':
+      callbacks.onText(data.text)
+      return
+    case 'ThinkingDelta':
+      callbacks.onThinking(data.text)
+      return
+    case 'ToolStart':
+      callbacks.onToolStart(data.tool_name, data.tool_id, data.input)
+      return
+    case 'ToolDone':
+      callbacks.onToolDone(data.tool_id, data.output)
+      return
+    case 'Error':
+      callbacks.onError(data.message)
+      return
+    case 'Done':
+      closeStream()
+      return
+    default:
+      return
+  }
+}
+
 /**
- * Stream an agent task through the Claude CLI subprocess with full tool access.
+ * Stream an agent task through the Claude CLI subprocess with scoped tool access.
  * The CLI handles the tool-use loop; we receive events for UI updates.
  */
 export async function streamClaudeAgent(
@@ -73,38 +119,16 @@ export async function streamClaudeAgent(
   callbacks: AgentStreamCallbacks,
 ): Promise<void> {
   if (!isTauri()) {
-    setTimeout(() => {
-      callbacks.onText(mockAgentResponse(message))
-      callbacks.onDone()
-    }, 300)
+    emitMockAgentResponse(message, callbacks)
     return
   }
 
   const { invoke } = await import('@tauri-apps/api/core')
   const { listen } = await import('@tauri-apps/api/event')
+  const closeStream = createStreamCloser(callbacks)
 
   const unlisten = await listen<ClaudeAgentStreamEvent>('claude-agent-stream', (event) => {
-    const data = event.payload
-    switch (data.kind) {
-      case 'TextDelta':
-        callbacks.onText(data.text)
-        break
-      case 'ThinkingDelta':
-        callbacks.onThinking(data.text)
-        break
-      case 'ToolStart':
-        callbacks.onToolStart(data.tool_name, data.tool_id, data.input)
-        break
-      case 'ToolDone':
-        callbacks.onToolDone(data.tool_id, data.output)
-        break
-      case 'Error':
-        callbacks.onError(data.message)
-        break
-      case 'Done':
-        callbacks.onDone()
-        break
-    }
+    handleClaudeStreamEvent(event.payload, callbacks, closeStream)
   })
 
   try {
@@ -115,9 +139,10 @@ export async function streamClaudeAgent(
         vault_path: vaultPath,
       },
     })
+    closeStream()
   } catch (err) {
     callbacks.onError(err instanceof Error ? err.message : String(err))
-    callbacks.onDone()
+    closeStream()
   } finally {
     unlisten()
   }
