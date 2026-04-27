@@ -17,6 +17,8 @@ interface EditorFindCommandConfig {
   searchEnabled: boolean
 }
 
+const noop = () => {}
+
 function canSearchCurrentNote(config: EditorFindCommandsConfig): boolean {
   const activeFileKind = config.activeFileKind ?? 'markdown'
   return config.hasActiveNote && activeFileKind !== 'binary'
@@ -30,7 +32,7 @@ function createEditorFindCommand(config: EditorFindCommandConfig): CommandAction
     shortcut: config.shortcut,
     keywords: config.keywords,
     enabled: config.searchEnabled && !!config.execute,
-    execute: config.execute,
+    execute: config.execute ?? noop,
   }
 }
 
