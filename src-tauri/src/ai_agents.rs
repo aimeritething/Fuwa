@@ -297,6 +297,10 @@ fn build_codex_args(request: &AiAgentStreamRequest) -> Result<Vec<String>, Strin
         .to_string();
 
     Ok(vec![
+        "--sandbox".into(),
+        "workspace-write".into(),
+        "--ask-for-approval".into(),
+        "never".into(),
         "exec".into(),
         "--json".into(),
         "-C".into(),
@@ -390,6 +394,10 @@ fn format_codex_error(stderr_output: String, status: String) -> String {
         return "Codex CLI is not authenticated. Run `codex login` or launch `codex` in your terminal.".into();
     }
 
+    if is_codex_write_permission_error(&lower) {
+        return "Codex could not write to the active vault. Tolaria starts Codex with a workspace-write sandbox, so verify the selected vault folder is writable and retry; writes outside the active vault remain blocked.".into();
+    }
+
     if stderr_output.trim().is_empty() {
         format!("codex exited with status {status}")
     } else {
@@ -401,6 +409,17 @@ fn is_codex_auth_error(lower: &str) -> bool {
     ["auth", "login", "sign in"]
         .iter()
         .any(|pattern| lower.contains(pattern))
+}
+
+fn is_codex_write_permission_error(lower: &str) -> bool {
+    [
+        "read-only sandbox",
+        "writing is blocked",
+        "rejected by user approval",
+        "rejected by the environment",
+    ]
+    .iter()
+    .any(|pattern| lower.contains(pattern))
 }
 
 fn map_claude_event(event: crate::claude_cli::ClaudeStreamEvent) -> Option<AiAgentStreamEvent> {
@@ -466,7 +485,13 @@ mod tests {
             system_prompt: None,
             vault_path: "/tmp/vault".into(),
         }) {
+            assert_eq!(args[0], "--sandbox");
+            assert_eq!(args[1], "workspace-write");
+            assert_eq!(args[2], "--ask-for-approval");
+            assert_eq!(args[3], "never");
+            assert_eq!(args[4], "exec");
             assert!(!args.contains(&"--dangerously-bypass-approvals-and-sandbox".to_string()));
+            assert!(!args.contains(&"danger-full-access".to_string()));
             assert!(args.contains(&"--json".to_string()));
             assert!(args.contains(&"-C".to_string()));
         }
@@ -584,6 +609,18 @@ mod tests {
             &events[0],
             AiAgentStreamEvent::TextDelta { text } if text == "All set"
         ));
+    }
+
+    #[test]
+    fn format_codex_error_explains_vault_write_permission_failures() {
+        let message = format_codex_error(
+            "The patch was rejected by the environment: writing is blocked by read-only sandbox; rejected by user approval settings".into(),
+            "exit status: 1".into(),
+        );
+
+        assert!(message.contains("active vault"));
+        assert!(message.contains("writable"));
+        assert!(message.contains("outside"));
     }
 
     #[test]
