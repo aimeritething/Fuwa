@@ -17,6 +17,10 @@ describe('McpSetupDialog', () => {
 
     expect(screen.getByText('Set Up External AI Tools')).toBeInTheDocument()
     expect(screen.getByText(/will not touch third-party config files until you confirm here/i)).toBeInTheDocument()
+    expect(screen.getByText(/requires Node.js 18\+ on PATH/i)).toBeInTheDocument()
+    expect(screen.getByText(/type: stdio/i)).toBeInTheDocument()
+    expect(screen.getByText(/VAULT_PATH/i)).toBeInTheDocument()
+    expect(screen.getByText(/WS_UI_PORT/i)).toBeInTheDocument()
     expect(screen.getAllByText('~/.claude.json')).toHaveLength(2)
     expect(screen.getByText('~/.claude/mcp.json')).toBeInTheDocument()
     expect(screen.getAllByText('~/.config/mcp/mcp.json')).toHaveLength(2)

@@ -419,3 +419,9 @@ BASE_URL="http://localhost:5173" npx playwright test tests/smoke/<slug>.spec.ts
 3. **Tool action display**: Edit `src/components/AiActionCard.tsx`
 4. **Claude CLI arguments**: Edit `src-tauri/src/claude_cli.rs` (`run_agent_stream()`; keep app-managed launches on strict Tolaria MCP config, `acceptEdits`, and the scoped file/search tool list)
 5. **Shared agent adapters / Codex args**: Edit `src-tauri/src/ai_agents.rs` (keep Codex sandboxed with active-vault `workspace-write`; do not use the dangerous bypass unless an ADR explicitly designs a new mode)
+
+### Work with external MCP setup
+
+1. **Backend registration/status**: Edit `src-tauri/src/mcp.rs`; registration must verify Node.js first, resolve the packaged `mcp-server/` for macOS, Windows, Linux, and AppImage installs, and write an explicit stdio entry with `VAULT_PATH` plus `WS_UI_PORT=9711`
+2. **Setup dialog copy/actions**: Edit `src/components/McpSetupDialog.tsx`; users should see the Node.js prerequisite and the manual config shape before Tolaria writes third-party config files
+3. **Status hook/toasts**: Edit `src/hooks/useMcpStatus.ts` when setup, reconnect, disconnect, or failure messaging changes

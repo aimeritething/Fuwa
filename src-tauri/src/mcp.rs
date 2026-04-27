@@ -21,17 +21,64 @@ pub(crate) fn find_node() -> Result<PathBuf, String> {
         .output()
         .map_err(|e| format!("Failed to locate node on PATH: {e}"))?;
     if output.status.success() {
-        let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        if !path.is_empty() {
-            return Ok(PathBuf::from(path));
+        if let Some(path) = first_node_lookup_path(&output.stdout) {
+            verify_node_version(&path)?;
+            return Ok(path);
         }
     }
 
     if let Some(path) = fallback_node_path() {
+        verify_node_version(&path)?;
         return Ok(path);
     }
 
     Err("node not found in PATH or common install locations".into())
+}
+
+fn first_node_lookup_path(stdout: &[u8]) -> Option<PathBuf> {
+    String::from_utf8_lossy(stdout)
+        .lines()
+        .map(str::trim)
+        .find(|line| !line.is_empty())
+        .map(PathBuf::from)
+}
+
+fn verify_node_version(node: &Path) -> Result<(), String> {
+    let output = crate::hidden_command(node)
+        .arg("--version")
+        .output()
+        .map_err(|e| format!("Failed to run {} --version: {e}", node.display()))?;
+    if !output.status.success() {
+        return Err(format!(
+            "{} --version failed; install Node.js 18+ and make it available on PATH",
+            node.display()
+        ));
+    }
+
+    let raw_version = String::from_utf8_lossy(&output.stdout);
+    let Some(major) = node_major_version(&raw_version) else {
+        return Err(format!(
+            "Cannot parse Node.js version from '{}'",
+            raw_version.trim()
+        ));
+    };
+    if major < 18 {
+        return Err(format!(
+            "Node.js 18+ is required for Tolaria MCP tools; found {}",
+            raw_version.trim()
+        ));
+    }
+
+    Ok(())
+}
+
+fn node_major_version(version: &str) -> Option<u32> {
+    version
+        .trim()
+        .trim_start_matches('v')
+        .split('.')
+        .next()
+        .and_then(|major| major.parse().ok())
 }
 
 fn node_lookup_command() -> Command {
@@ -50,8 +97,30 @@ fn fallback_node_path() -> Option<PathBuf> {
         PathBuf::from("/usr/local/bin/node"),
     ];
 
+    #[cfg(windows)]
+    {
+        if let Some(program_files) = std::env::var_os("ProgramFiles") {
+            candidates.push(PathBuf::from(program_files).join("nodejs").join("node.exe"));
+        }
+        if let Some(program_files_x86) = std::env::var_os("ProgramFiles(x86)") {
+            candidates.push(
+                PathBuf::from(program_files_x86)
+                    .join("nodejs")
+                    .join("node.exe"),
+            );
+        }
+        if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
+            candidates.push(
+                PathBuf::from(local_app_data)
+                    .join("Programs")
+                    .join("nodejs")
+                    .join("node.exe"),
+            );
+        }
+    }
+
     if let Some(home) = dirs::home_dir() {
-        candidates.push(home.join(".volta").join("bin").join("node"));
+        candidates.push(home.join(".volta").join("bin").join(node_binary_name()));
 
         let nvm_dir = home.join(".nvm").join("versions").join("node");
         if let Ok(entries) = std::fs::read_dir(nvm_dir) {
@@ -71,6 +140,14 @@ fn fallback_node_path() -> Option<PathBuf> {
     candidates.into_iter().find(|path| path.is_file())
 }
 
+fn node_binary_name() -> &'static str {
+    if cfg!(windows) {
+        "node.exe"
+    } else {
+        "node"
+    }
+}
+
 /// Resolve the path to `mcp-server/`.
 ///
 /// In dev mode, uses `CARGO_MANIFEST_DIR` (set at compile time).
@@ -79,27 +156,62 @@ pub(crate) fn mcp_server_dir() -> Result<PathBuf, String> {
     let dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("mcp-server");
-    if dev_path.join("ws-bridge.js").exists() {
-        return Ok(std::fs::canonicalize(&dev_path).unwrap_or(dev_path));
-    }
-
     let exe = std::env::current_exe().map_err(|e| format!("Cannot find executable: {e}"))?;
-    // On macOS the exe lives at Contents/MacOS/<binary>.
-    // Resources are placed at Contents/Resources/ by Tauri.
-    let release_path = exe
-        .parent()
-        .and_then(|p| p.parent())
-        .map(|p| p.join("Resources").join("mcp-server"))
-        .ok_or_else(|| "Cannot resolve mcp-server directory".to_string())?;
-    if release_path.join("ws-bridge.js").exists() {
-        return Ok(release_path);
+    let appdir = std::env::var_os("APPDIR").map(PathBuf::from);
+    let candidates = mcp_server_dir_candidates(&dev_path, &exe, appdir.as_deref());
+    if let Some(path) = candidates
+        .iter()
+        .find(|path| mcp_server_dir_has_files(path))
+    {
+        return Ok(std::fs::canonicalize(path).unwrap_or_else(|_| path.clone()));
     }
 
+    let searched = candidates
+        .iter()
+        .map(|path| path.display().to_string())
+        .collect::<Vec<_>>()
+        .join(", ");
     Err(format!(
-        "mcp-server not found at {} or {}",
-        dev_path.display(),
-        release_path.display()
+        "mcp-server not found. Searched these paths: {searched}"
     ))
+}
+
+fn mcp_server_dir_candidates(
+    dev_path: &Path,
+    exe_path: &Path,
+    appdir: Option<&Path>,
+) -> Vec<PathBuf> {
+    let mut candidates = vec![dev_path.to_path_buf()];
+
+    if let Some(exe_dir) = exe_path.parent() {
+        candidates.push(exe_dir.join("mcp-server"));
+        if let Some(bundle_root) = exe_dir.parent() {
+            candidates.push(bundle_root.join("Resources").join("mcp-server"));
+            candidates.push(bundle_root.join("lib").join("tolaria").join("mcp-server"));
+        }
+    }
+
+    if let Some(appdir) = appdir {
+        candidates.push(
+            appdir
+                .join("usr")
+                .join("lib")
+                .join("tolaria")
+                .join("mcp-server"),
+        );
+    }
+
+    candidates.push(
+        PathBuf::from("/usr")
+            .join("lib")
+            .join("tolaria")
+            .join("mcp-server"),
+    );
+    candidates
+}
+
+fn mcp_server_dir_has_files(path: &Path) -> bool {
+    path.join("index.js").is_file() && path.join("ws-bridge.js").is_file()
 }
 
 /// Spawn the WebSocket bridge as a child process.
@@ -160,6 +272,14 @@ fn entry_index_js_exists(entry: &serde_json::Value) -> bool {
         .is_some_and(|index_js| Path::new(index_js).exists())
 }
 
+fn entry_uses_stdio(entry: &serde_json::Value) -> bool {
+    entry["type"].as_str() == Some("stdio")
+}
+
+fn entry_has_ui_port(entry: &serde_json::Value) -> bool {
+    entry["env"]["WS_UI_PORT"].as_str() == Some("9711")
+}
+
 fn entry_targets_vault(entry: &serde_json::Value, vault_path: &Path) -> bool {
     let Some(entry_vault_path) = entry["env"]["VAULT_PATH"].as_str() else {
         return false;
@@ -176,11 +296,15 @@ fn entry_targets_vault(entry: &serde_json::Value, vault_path: &Path) -> bool {
 }
 
 /// Build the MCP server entry JSON for a given vault path and index.js path.
-fn build_mcp_entry(index_js: &str, vault_path: &str) -> serde_json::Value {
+fn build_mcp_entry(node_command: &str, index_js: &str, vault_path: &str) -> serde_json::Value {
     serde_json::json!({
-        "command": "node",
+        "type": "stdio",
+        "command": node_command,
         "args": [index_js],
-        "env": { "VAULT_PATH": vault_path }
+        "env": {
+            "VAULT_PATH": vault_path,
+            "WS_UI_PORT": "9711"
+        }
     })
 }
 
@@ -200,10 +324,14 @@ fn register_mcp_to_configs(entry: &serde_json::Value, config_paths: &[PathBuf]) 
 
 /// Register Tolaria as an MCP server in external AI tool config files.
 pub fn register_mcp(vault_path: &str) -> Result<String, String> {
+    let node = find_node().map_err(|e| {
+        format!("Node.js 18+ is required on PATH before Tolaria can register MCP tools: {e}")
+    })?;
     let server_dir = mcp_server_dir()?;
     let index_js = server_dir.join("index.js").to_string_lossy().into_owned();
+    let node_command = node.to_string_lossy().into_owned();
 
-    let entry = build_mcp_entry(&index_js, vault_path);
+    let entry = build_mcp_entry(&node_command, &index_js, vault_path);
 
     Ok(register_mcp_to_configs(&entry, &mcp_config_paths()))
 }
@@ -317,7 +445,10 @@ pub fn check_mcp_status(vault_path: &str) -> McpStatus {
     let active_vault_path = Path::new(vault_path);
     if mcp_config_paths().into_iter().any(|config_path| {
         read_registered_mcp_entry(&config_path).is_some_and(|entry| {
-            entry_index_js_exists(&entry) && entry_targets_vault(&entry, active_vault_path)
+            entry_uses_stdio(&entry)
+                && entry_index_js_exists(&entry)
+                && entry_has_ui_port(&entry)
+                && entry_targets_vault(&entry, active_vault_path)
         })
     }) {
         McpStatus::Installed
@@ -347,10 +478,15 @@ mod tests {
 
     fn managed_server(index_js: &str, vault_path: &str) -> serde_json::Value {
         serde_json::json!({
+            "type": "stdio",
             "command": "node",
             "args": [index_js],
-            "env": { "VAULT_PATH": vault_path }
+            "env": { "VAULT_PATH": vault_path, "WS_UI_PORT": "9711" }
         })
+    }
+
+    fn test_mcp_entry(index_js: &str, vault_path: &str) -> serde_json::Value {
+        build_mcp_entry("node", index_js, vault_path)
     }
 
     fn write_mcp_servers_config(config_path: &Path, servers: Vec<(&str, serde_json::Value)>) {
@@ -369,17 +505,56 @@ mod tests {
 
     #[test]
     fn build_mcp_entry_produces_correct_json() {
-        let entry = build_mcp_entry("/path/to/index.js", "/my/vault");
-        assert_eq!(entry["command"], "node");
+        let entry = build_mcp_entry("/usr/local/bin/node", "/path/to/index.js", "/my/vault");
+        assert_eq!(entry["type"], "stdio");
+        assert_eq!(entry["command"], "/usr/local/bin/node");
         assert_eq!(entry["args"][0], "/path/to/index.js");
         assert_eq!(entry["env"]["VAULT_PATH"], "/my/vault");
+        assert_eq!(entry["env"]["WS_UI_PORT"], "9711");
+    }
+
+    #[test]
+    fn first_node_lookup_path_uses_first_non_empty_line() {
+        let stdout = b"\nC:\\Program Files\\nodejs\\node.exe\r\nC:\\Other\\node.exe\r\n";
+        assert_eq!(
+            first_node_lookup_path(stdout).unwrap(),
+            PathBuf::from("C:\\Program Files\\nodejs\\node.exe")
+        );
+    }
+
+    #[test]
+    fn node_major_version_accepts_current_node_output() {
+        assert_eq!(node_major_version("v24.13.1\n"), Some(24));
+        assert_eq!(node_major_version("18.19.0"), Some(18));
+        assert_eq!(node_major_version("not-node"), None);
+    }
+
+    #[test]
+    fn mcp_server_dir_candidates_prefer_exe_dir_before_macos_resources() {
+        let dev_path = Path::new("/repo/mcp-server");
+        let exe_path = Path::new("/Users/tester/AppData/Local/Tolaria/tolaria.exe");
+        let candidates = mcp_server_dir_candidates(dev_path, exe_path, None);
+
+        let windows_dir = PathBuf::from("/Users/tester/AppData/Local/Tolaria/mcp-server");
+        let macos_dir = PathBuf::from("/Users/tester/AppData/Local/Resources/mcp-server");
+        let windows_pos = candidates
+            .iter()
+            .position(|path| path == &windows_dir)
+            .unwrap();
+        let macos_pos = candidates
+            .iter()
+            .position(|path| path == &macos_dir)
+            .unwrap();
+
+        assert_eq!(candidates[0], dev_path);
+        assert!(windows_pos < macos_pos);
     }
 
     #[test]
     fn upsert_creates_new_config() {
         let tmp = tempfile::tempdir().unwrap();
         let config_path = tmp.path().join("mcp.json");
-        let entry = build_mcp_entry("/test/index.js", "/test/vault");
+        let entry = test_mcp_entry("/test/index.js", "/test/vault");
 
         let was_update = upsert_mcp_config(&config_path, &entry).unwrap();
         assert!(!was_update);
@@ -400,10 +575,10 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let config_path = tmp.path().join("mcp.json");
 
-        let entry1 = build_mcp_entry("/test/index.js", "/vault/v1");
+        let entry1 = test_mcp_entry("/test/index.js", "/vault/v1");
         upsert_mcp_config(&config_path, &entry1).unwrap();
 
-        let entry2 = build_mcp_entry("/test/index.js", "/vault/v2");
+        let entry2 = test_mcp_entry("/test/index.js", "/vault/v2");
         let was_update = upsert_mcp_config(&config_path, &entry2).unwrap();
         assert!(was_update);
 
@@ -430,7 +605,7 @@ mod tests {
         });
         std::fs::write(&config_path, serde_json::to_string(&existing).unwrap()).unwrap();
 
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
         let was_update = upsert_mcp_config(&config_path, &entry).unwrap();
         assert!(was_update);
 
@@ -453,7 +628,7 @@ mod tests {
             )],
         );
 
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
         upsert_mcp_config(&config_path, &entry).unwrap();
 
         let raw = std::fs::read_to_string(&config_path).unwrap();
@@ -476,7 +651,7 @@ mod tests {
             }),
         );
 
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
         upsert_mcp_config(&config_path, &entry).unwrap();
 
         let config = read_config(&config_path);
@@ -490,7 +665,7 @@ mod tests {
     fn upsert_creates_parent_dirs() {
         let tmp = tempfile::tempdir().unwrap();
         let config_path = tmp.path().join("nested").join("dir").join("mcp.json");
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
 
         upsert_mcp_config(&config_path, &entry).unwrap();
         assert!(config_path.exists());
@@ -500,7 +675,7 @@ mod tests {
     fn register_mcp_to_configs_returns_registered_for_new() {
         let tmp = tempfile::tempdir().unwrap();
         let config = tmp.path().join("claude").join("mcp.json");
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
 
         let status = register_mcp_to_configs(&entry, &[config]);
         assert_eq!(status, "registered");
@@ -510,7 +685,7 @@ mod tests {
     fn register_mcp_to_configs_returns_updated_for_existing() {
         let tmp = tempfile::tempdir().unwrap();
         let config = tmp.path().join("mcp.json");
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
 
         // First call
         register_mcp_to_configs(&entry, std::slice::from_ref(&config));
@@ -558,7 +733,7 @@ mod tests {
         let claude_cfg = tmp.path().join("claude").join("mcp.json");
         let cursor_cfg = tmp.path().join("cursor").join("mcp.json");
         let generic_cfg = tmp.path().join(".config").join("mcp").join("mcp.json");
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
 
         register_mcp_to_configs(
             &entry,
@@ -603,14 +778,14 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let config_path = tmp.path().join("mcp.json");
         std::fs::write(&config_path, "not valid json{{{{").unwrap();
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
         let result = upsert_mcp_config(&config_path, &entry);
         assert!(result.is_err());
     }
 
     #[test]
     fn register_mcp_to_configs_handles_empty_list() {
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
         // Empty config list — function should return "registered" (no existing)
         let status = register_mcp_to_configs(&entry, &[]);
         // With empty config list, there were no updates, so status should be "registered"
@@ -695,7 +870,7 @@ mod tests {
         let config_path = tmp.path().join("mcp.json");
         std::fs::write(&config_path, "[]").unwrap();
 
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
         let result = upsert_mcp_config(&config_path, &entry);
         assert!(matches!(result, Err(ref error) if error.contains("Config is not a JSON object")));
     }
@@ -709,7 +884,7 @@ mod tests {
         });
         std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
 
-        let entry = build_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js", "/vault");
         let result = upsert_mcp_config(&config_path, &entry);
         assert!(
             matches!(result, Err(ref error) if error.contains("mcpServers is not a JSON object"))

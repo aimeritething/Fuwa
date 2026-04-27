@@ -67,6 +67,9 @@ export function McpSetupDialog({
 
         <div className="space-y-3 text-sm leading-6 text-muted-foreground">
           <p>
+            This setup requires Node.js 18+ on PATH and an MCP-compatible desktop tool. Tolaria checks Node.js before writing config so the tool is not left pointing at a broken command.
+          </p>
+          <p>
             Confirming this action will write or update Tolaria&apos;s single <code className="rounded bg-muted px-1 py-0.5 text-xs">tolaria</code> MCP entry in:
           </p>
           <div className="rounded-md border border-border bg-muted/30 px-3 py-3 font-mono text-xs text-foreground">
@@ -74,6 +77,13 @@ export function McpSetupDialog({
             <div>~/.claude/mcp.json</div>
             <div>~/.cursor/mcp.json</div>
             <div>~/.config/mcp/mcp.json</div>
+          </div>
+          <div className="rounded-md border border-border bg-background px-3 py-3 font-mono text-xs leading-5 text-foreground">
+            <div>type: stdio</div>
+            <div>command: node</div>
+            <div>args: &lt;Tolaria resources&gt;/mcp-server/index.js</div>
+            <div>VAULT_PATH: active vault</div>
+            <div>WS_UI_PORT: 9711</div>
           </div>
           <p>
             Claude Code CLI reads <code className="rounded bg-muted px-1 py-0.5 text-xs">~/.claude.json</code>, Cursor reads <code className="rounded bg-muted px-1 py-0.5 text-xs">~/.cursor/mcp.json</code>, and the generic <code className="rounded bg-muted px-1 py-0.5 text-xs">~/.config/mcp/mcp.json</code> path is picked up by other MCP-compatible tools. Cancel leaves all files untouched, reconnect is idempotent, and disconnect removes Tolaria&apos;s entry again.

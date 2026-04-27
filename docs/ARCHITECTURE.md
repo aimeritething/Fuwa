@@ -321,7 +321,7 @@ Tolaria can register itself as an MCP server in:
 - `~/.cursor/mcp.json` (Cursor)
 - `~/.config/mcp/mcp.json` (generic MCP-compatible clients)
 
-That setup is user-initiated through the status bar / command palette flow, not a startup side effect. Registration is non-destructive (additive, preserves other servers), uses `upsert` semantics, and can be reversed by removing Tolaria's entry again. The `useMcpStatus` hook tracks whether the active vault is explicitly connected (`checking | installed | not_installed`).
+That setup is user-initiated through the status bar / command palette flow, not a startup side effect. Registration is non-destructive (additive, preserves other servers), uses `upsert` semantics, and can be reversed by removing Tolaria's entry again. Tolaria verifies Node.js is available before writing config, writes an explicit `type: "stdio"` entry, pins `VAULT_PATH` to the active vault, and sets `WS_UI_PORT=9711` so UI actions route back to the desktop app. Packaged builds resolve `mcp-server/` from the installed resource directory next to the executable before falling back to macOS `Resources`, Linux bundle paths, and AppImage paths. The `useMcpStatus` hook tracks whether the active vault is explicitly connected (`checking | installed | not_installed`).
 
 ### Architecture
 
@@ -367,7 +367,7 @@ flowchart LR
 | Function | Purpose |
 |----------|---------|
 | `spawn_ws_bridge(vault_path)` | Spawns `ws-bridge.js` as child process with VAULT_PATH env |
-| `register_mcp(vault_path)` | Writes Tolaria entry to Claude Code, Cursor, and generic MCP configs on explicit user request |
+| `register_mcp(vault_path)` | Verifies Node.js, resolves the packaged `mcp-server/`, and writes Tolaria's explicit stdio entry to Claude Code, Cursor, and generic MCP configs on user request |
 | `remove_mcp()` | Removes Tolaria's MCP entry from Claude Code, Cursor, and generic MCP configs |
 | `upsert_mcp_config(path, entry)` | Atomic config file update (create/merge, preserves others) |
 
