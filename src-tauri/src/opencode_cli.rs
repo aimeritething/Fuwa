@@ -30,7 +30,7 @@ fn run_agent_stream_with_binary<F>(
 where
     F: FnMut(AiAgentStreamEvent),
 {
-    let mut command = crate::opencode_config::build_command(&binary, &request)?;
+    let mut command = crate::opencode_config::build_command(binary, &request)?;
     let mut child = command
         .spawn()
         .map_err(|error| format!("Failed to spawn opencode: {error}"))?;

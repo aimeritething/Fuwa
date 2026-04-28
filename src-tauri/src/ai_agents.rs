@@ -12,17 +12,12 @@ pub enum AiAgentId {
     Pi,
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum AiAgentPermissionMode {
+    #[default]
     Safe,
     PowerUser,
-}
-
-impl Default for AiAgentPermissionMode {
-    fn default() -> Self {
-        Self::Safe
-    }
 }
 
 #[derive(Debug, Clone, Serialize)]

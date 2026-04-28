@@ -34,7 +34,7 @@ where
         .prefix("tolaria-pi-agent-")
         .tempdir()
         .map_err(|error| format!("Failed to create Pi config directory: {error}"))?;
-    let mut command = crate::pi_config::build_command(&binary, &request, agent_dir.path())?;
+    let mut command = crate::pi_config::build_command(binary, &request, agent_dir.path())?;
     let mut child = command
         .spawn()
         .map_err(|error| format!("Failed to spawn pi: {error}"))?;

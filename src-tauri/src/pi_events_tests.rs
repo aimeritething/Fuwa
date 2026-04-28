@@ -4,13 +4,9 @@ use super::*;
 fn parse_line_reports_read_errors_and_skips_blank_or_invalid_lines() {
     let mut events = Vec::new();
 
-    let read_error = parse_line(
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            "broken pipe",
-        )),
-        &mut |event| events.push(event),
-    );
+    let read_error = parse_line(Err(std::io::Error::other("broken pipe")), &mut |event| {
+        events.push(event)
+    });
     let blank = parse_line(Ok("   ".into()), &mut |event| events.push(event));
     let invalid = parse_line(Ok("not json".into()), &mut |event| events.push(event));
 
