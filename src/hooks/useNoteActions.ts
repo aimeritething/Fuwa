@@ -1,7 +1,11 @@
-import { useCallback } from 'react'
+import { useCallback, useEffect } from 'react'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
 import { useTabManagement } from './useTabManagement'
+import {
+  GITIGNORED_VISIBILITY_APPLIED_EVENT,
+  type GitignoredVisibilityAppliedEvent,
+} from '../lib/gitignoredVisibilityEvents'
 import { resolveEntry } from '../utils/wikilink'
 import { useNoteCreation } from './useNoteCreation'
 import {
@@ -215,6 +219,33 @@ function buildTabManagementOptions(
   return options
 }
 
+function useGitignoredVisibilityTabCleanup({
+  activeTabPathRef,
+  closeAllTabs,
+  setToastMessage,
+}: {
+  activeTabPathRef: React.MutableRefObject<string | null>
+  closeAllTabs: () => void
+  setToastMessage: (msg: string | null) => void
+}) {
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const handleVisibilityApplied = (event: Event) => {
+      const { hide, visiblePaths } = (event as GitignoredVisibilityAppliedEvent).detail
+      const activePath = activeTabPathRef.current
+      if (!hide || !activePath || visiblePaths.includes(activePath)) return
+      closeAllTabs()
+      setToastMessage('Closed hidden Gitignored file')
+    }
+
+    window.addEventListener(GITIGNORED_VISIBILITY_APPLIED_EVENT, handleVisibilityApplied)
+    return () => {
+      window.removeEventListener(GITIGNORED_VISIBILITY_APPLIED_EVENT, handleVisibilityApplied)
+    }
+  }, [activeTabPathRef, closeAllTabs, setToastMessage])
+}
+
 function useFrontmatterActionHandlers({
   config,
   renameTabsRef,
@@ -297,6 +328,11 @@ export function useNoteActions(config: NoteActionsConfig) {
   const { entries, setToastMessage, updateEntry } = config
   const tabMgmt = useTabManagement(buildTabManagementOptions(config))
   const { setTabs, handleSelectNote, openTabWithContent, activeTabPathRef, handleSwitchTab } = tabMgmt
+  useGitignoredVisibilityTabCleanup({
+    activeTabPathRef,
+    closeAllTabs: tabMgmt.closeAllTabs,
+    setToastMessage,
+  })
 
   const updateTabContent = useCallback((path: string, newContent: string) => {
     setTabs((prev) => prev.map((t) => t.entry.path === path ? { ...t, content: newContent } : t))
