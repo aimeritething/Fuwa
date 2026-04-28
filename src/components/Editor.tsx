@@ -4,7 +4,7 @@ import { useCreateBlockNote } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
 import 'katex/dist/katex.min.css'
 import { uploadImageFile } from '../hooks/useImageDrop'
-import { DEFAULT_AI_AGENT, type AiAgentId } from '../lib/aiAgents'
+import { DEFAULT_AI_AGENT, type AiAgentId, type AiAgentReadiness } from '../lib/aiAgents'
 import { translate, type AppLocale } from '../lib/i18n'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import type { VaultEntry, GitCommit, NoteLayout, NoteStatus } from '../types'
@@ -53,6 +53,7 @@ interface EditorProps {
   onToggleInspector: () => void
   inspectorWidth: number
   defaultAiAgent?: AiAgentId
+  defaultAiAgentReadiness?: AiAgentReadiness
   defaultAiAgentReady?: boolean
   onInspectorResize: (delta: number) => void
   inspectorEntry: VaultEntry | null
@@ -362,6 +363,7 @@ function EditorLayout({
   onInspectorResize,
   inspectorWidth,
   defaultAiAgent,
+  defaultAiAgentReadiness,
   defaultAiAgentReady,
   inspectorEntry,
   inspectorContent,
@@ -423,6 +425,7 @@ function EditorLayout({
   onInspectorResize: (delta: number) => void
   inspectorWidth: number
   defaultAiAgent: AiAgentId
+  defaultAiAgentReadiness?: AiAgentReadiness
   defaultAiAgentReady: boolean
   inspectorEntry: VaultEntry | null
   inspectorContent: string | null
@@ -505,6 +508,7 @@ function EditorLayout({
           inspectorCollapsed={inspectorCollapsed}
           inspectorWidth={inspectorWidth}
           defaultAiAgent={defaultAiAgent}
+          defaultAiAgentReadiness={defaultAiAgentReadiness}
           defaultAiAgentReady={defaultAiAgentReady}
           onUnsupportedAiPaste={onUnsupportedAiPaste}
           inspectorEntry={inspectorEntry}
@@ -541,7 +545,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     tabs, activeTabPath, entries, onNavigateWikilink,
     getNoteStatus,
     inspectorCollapsed, onToggleInspector, inspectorWidth,
-    defaultAiAgent = DEFAULT_AI_AGENT, defaultAiAgentReady = true,
+    defaultAiAgent = DEFAULT_AI_AGENT, defaultAiAgentReadiness, defaultAiAgentReady = true,
     onUnsupportedAiPaste,
     onInspectorResize,
     inspectorEntry, inspectorContent, gitHistory,
@@ -632,6 +636,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
       onInspectorResize={onInspectorResize}
       inspectorWidth={inspectorWidth}
       defaultAiAgent={defaultAiAgent}
+      defaultAiAgentReadiness={defaultAiAgentReadiness}
       defaultAiAgentReady={defaultAiAgentReady}
       onUnsupportedAiPaste={onUnsupportedAiPaste}
       inspectorEntry={inspectorEntry}

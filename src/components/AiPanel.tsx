@@ -5,7 +5,12 @@ import {
   AiPanelHeader,
   AiPanelMessageHistory,
 } from './AiPanelChrome'
-import { DEFAULT_AI_AGENT, getAiAgentDefinition, type AiAgentId } from '../lib/aiAgents'
+import {
+  DEFAULT_AI_AGENT,
+  getAiAgentDefinition,
+  type AiAgentId,
+  type AiAgentReadiness,
+} from '../lib/aiAgents'
 import { type NoteListItem } from '../utils/ai-context'
 import type { VaultEntry } from '../types'
 import { useAiPanelController, type AiPanelController } from './useAiPanelController'
@@ -19,6 +24,7 @@ interface AiPanelProps {
   onOpenNote?: (path: string) => void
   onUnsupportedAiPaste?: (message: string) => void
   defaultAiAgent?: AiAgentId
+  defaultAiAgentReadiness?: AiAgentReadiness
   defaultAiAgentReady?: boolean
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
@@ -39,9 +45,14 @@ interface AiPanelViewProps {
   onOpenNote?: (path: string) => void
   onUnsupportedAiPaste?: (message: string) => void
   defaultAiAgent?: AiAgentId
+  defaultAiAgentReadiness?: AiAgentReadiness
   defaultAiAgentReady?: boolean
   activeEntry?: VaultEntry | null
   entries?: VaultEntry[]
+}
+
+function readinessFromReadyFlag(ready: boolean | undefined): AiAgentReadiness {
+  return (ready ?? true) ? 'ready' : 'missing'
 }
 
 export function AiPanelView({
@@ -50,12 +61,14 @@ export function AiPanelView({
   onOpenNote,
   onUnsupportedAiPaste,
   defaultAiAgent: providedDefaultAiAgent,
+  defaultAiAgentReadiness: providedDefaultAiAgentReadiness,
   defaultAiAgentReady: providedDefaultAiAgentReady,
   activeEntry,
   entries,
 }: AiPanelViewProps) {
   const defaultAiAgent = providedDefaultAiAgent ?? DEFAULT_AI_AGENT
-  const defaultAiAgentReady = providedDefaultAiAgentReady ?? true
+  const defaultAiAgentReadiness = providedDefaultAiAgentReadiness
+    ?? readinessFromReadyFlag(providedDefaultAiAgentReady)
   const inputRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLElement>(null)
   const agentLabel = getAiAgentDefinition(defaultAiAgent).label
@@ -98,7 +111,7 @@ export function AiPanelView({
     >
       <AiPanelHeader
         agentLabel={agentLabel}
-        agentReady={defaultAiAgentReady}
+        agentReadiness={defaultAiAgentReadiness}
         onClose={onClose}
         onNewChat={handleNewChat}
       />
@@ -107,7 +120,7 @@ export function AiPanelView({
       )}
       <AiPanelMessageHistory
         agentLabel={agentLabel}
-        agentReady={defaultAiAgentReady}
+        agentReadiness={defaultAiAgentReadiness}
         messages={agent.messages}
         isActive={isActive}
         onOpenNote={onOpenNote}
@@ -117,7 +130,7 @@ export function AiPanelView({
       <AiPanelComposer
         entries={entries ?? []}
         agentLabel={agentLabel}
-        agentReady={defaultAiAgentReady}
+        agentReadiness={defaultAiAgentReadiness}
         input={input}
         inputRef={inputRef}
         isActive={isActive}
@@ -134,6 +147,7 @@ export function AiPanel({
   onOpenNote,
   onUnsupportedAiPaste,
   defaultAiAgent: providedDefaultAiAgent,
+  defaultAiAgentReadiness: providedDefaultAiAgentReadiness,
   defaultAiAgentReady: providedDefaultAiAgentReady,
   onFileCreated,
   onFileModified,
@@ -146,10 +160,13 @@ export function AiPanel({
   noteList,
   noteListFilter,
 }: AiPanelProps) {
+  const defaultAiAgentReadiness = providedDefaultAiAgentReadiness
+    ?? readinessFromReadyFlag(providedDefaultAiAgentReady)
   const controller = useAiPanelController({
     vaultPath,
     defaultAiAgent: providedDefaultAiAgent ?? DEFAULT_AI_AGENT,
     defaultAiAgentReady: providedDefaultAiAgentReady ?? true,
+    defaultAiAgentReadiness,
     activeEntry,
     activeNoteContent,
     entries,
@@ -169,6 +186,7 @@ export function AiPanel({
       onOpenNote={onOpenNote}
       onUnsupportedAiPaste={onUnsupportedAiPaste}
       defaultAiAgent={providedDefaultAiAgent}
+      defaultAiAgentReadiness={defaultAiAgentReadiness}
       defaultAiAgentReady={providedDefaultAiAgentReady}
       activeEntry={activeEntry}
       entries={entries}

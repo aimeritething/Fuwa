@@ -164,6 +164,21 @@ describe('AiPanel', () => {
     expect(screen.getByTestId('agent-input')).toHaveAttribute('aria-placeholder', 'Ask Codex')
   })
 
+  it('disables sending while the selected AI agent is still loading', () => {
+    render(
+      <AiPanel
+        onClose={vi.fn()}
+        vaultPath="/tmp/vault"
+        defaultAiAgent="codex"
+        defaultAiAgentReadiness="checking"
+      />,
+    )
+
+    expect(screen.getByText('Checking availability')).toBeTruthy()
+    expect(screen.getByTestId('agent-input')).toHaveAttribute('aria-placeholder', 'Checking AI agent availability...')
+    expect(screen.getByTestId('agent-send')).toBeDisabled()
+  })
+
   it('auto-focuses input on mount', async () => {
     vi.useFakeTimers()
     render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)

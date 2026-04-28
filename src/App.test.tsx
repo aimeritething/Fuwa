@@ -4,7 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DEFAULT_VAULTS } from './hooks/useVaultSwitcher'
 import { formatShortcutDisplay } from './hooks/appCommandCatalog'
 import { invoke } from '@tauri-apps/api/core'
-import type { ViewDefinition, ViewFile } from './types'
+import type { Settings, ViewDefinition, ViewFile } from './types'
 
 // Provide a localStorage mock that supports all methods (jsdom's may be incomplete)
 const localStorageMock = (() => {
@@ -317,10 +317,19 @@ vi.mock('./mock-tauri', () => ({
 }))
 
 // Mock ai-chat utilities
-vi.mock('./utils/ai-chat', () => ({
-  buildSystemPrompt: vi.fn(() => ({ prompt: '', totalTokens: 0, truncated: false })),
-  checkClaudeCli: vi.fn(async () => ({ installed: false })),
-  streamClaudeChat: vi.fn(async () => 'mock-session'),
+vi.mock('./utils/ai-chat', async () => {
+  const actual = await vi.importActual<typeof import('./utils/ai-chat')>('./utils/ai-chat')
+
+  return {
+    ...actual,
+    buildSystemPrompt: vi.fn(() => ({ prompt: '', totalTokens: 0, truncated: false })),
+    checkClaudeCli: vi.fn(async () => ({ installed: false })),
+    streamClaudeChat: vi.fn(async () => 'mock-session'),
+  }
+})
+
+vi.mock('./utils/streamAiAgent', () => ({
+  streamAiAgent: vi.fn(async () => {}),
 }))
 
 vi.mock('./hooks/useUpdater', async () => {
@@ -423,6 +432,7 @@ vi.mock('./components/tolariaEditorFormatting', () => ({
 import App from './App'
 import { useUpdater } from './hooks/useUpdater'
 import { isTauri } from './mock-tauri'
+import { streamAiAgent } from './utils/streamAiAgent'
 
 const AI_AGENTS_ONBOARDING_DISMISSED_KEY = 'tolaria:ai-agents-onboarding-dismissed'
 const CLAUDE_CODE_ONBOARDING_DISMISSED_KEY = 'tolaria:claude-code-onboarding-dismissed'
@@ -647,6 +657,98 @@ describe('App', () => {
     })
     expect(screen.getByTestId('mcp-setup-dialog')).toBeInTheDocument()
     expect(screen.queryByText('AI agents ready')).not.toBeInTheDocument()
+  })
+
+  it('routes right-panel AI chat messages to the selected default agent', async () => {
+    mockCommandResults.get_settings = {
+      auto_pull_interval_minutes: null,
+      auto_advance_inbox_after_organize: null,
+      telemetry_consent: true,
+      crash_reporting_enabled: null,
+      analytics_enabled: null,
+      anonymous_id: null,
+      release_channel: null,
+      default_ai_agent: 'codex',
+    }
+    mockCommandResults.get_ai_agents_status = {
+      claude_code: { installed: true, version: '2.1.90' },
+      codex: { installed: true, version: '0.122.0-alpha.1' },
+      opencode: { installed: false, version: null },
+      pi: { installed: false, version: null },
+    }
+
+    render(<App />)
+
+    await screen.findByText('All Notes')
+    fireEvent.keyDown(window, { key: 'l', code: 'KeyL', metaKey: true, shiftKey: true })
+
+    const input = await screen.findByTestId('agent-input')
+    await waitFor(() => {
+      expect(input).toHaveAttribute('aria-placeholder', 'Ask Codex')
+    })
+
+    input.textContent = 'Summarize the active vault'
+    fireEvent.input(input)
+    fireEvent.click(screen.getByTestId('agent-send'))
+
+    await waitFor(() => {
+      expect(streamAiAgent).toHaveBeenCalledWith(expect.objectContaining({
+        agent: 'codex',
+      }))
+    })
+  })
+
+  it('waits for saved AI agent settings before sending right-panel messages', async () => {
+    let resolveSettings: ((settings: Settings) => void) | null = null
+    mockCommandResults.get_settings = () => new Promise((resolve) => {
+      resolveSettings = resolve
+    })
+    mockCommandResults.get_ai_agents_status = {
+      claude_code: { installed: true, version: '2.1.90' },
+      codex: { installed: true, version: '0.122.0-alpha.1' },
+      opencode: { installed: false, version: null },
+      pi: { installed: false, version: null },
+    }
+
+    render(<App />)
+
+    await screen.findByText('All Notes')
+    fireEvent.keyDown(window, { key: 'l', code: 'KeyL', metaKey: true, shiftKey: true })
+
+    const input = await screen.findByTestId('agent-input')
+    input.textContent = 'Summarize the active vault'
+    fireEvent.input(input)
+    fireEvent.click(screen.getByTestId('agent-send'))
+
+    await act(async () => {
+      await Promise.resolve()
+    })
+    expect(streamAiAgent).not.toHaveBeenCalled()
+
+    await act(async () => {
+      resolveSettings?.({
+        auto_pull_interval_minutes: null,
+        auto_advance_inbox_after_organize: null,
+        telemetry_consent: true,
+        crash_reporting_enabled: null,
+        analytics_enabled: null,
+        anonymous_id: null,
+        release_channel: null,
+        default_ai_agent: 'codex',
+      })
+    })
+
+    await waitFor(() => {
+      expect(input).toHaveAttribute('aria-placeholder', 'Ask Codex')
+    })
+
+    fireEvent.click(screen.getByTestId('agent-send'))
+
+    await waitFor(() => {
+      expect(streamAiAgent).toHaveBeenCalledWith(expect.objectContaining({
+        agent: 'codex',
+      }))
+    })
   })
 
   it('shows onboarding after telemetry consent when no active vault is configured', async () => {

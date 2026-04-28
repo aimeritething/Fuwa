@@ -439,6 +439,7 @@ function App() {
   }, [saveSettings, settings])
   const aiAgentPreferences = useAiAgentPreferences({
     settings,
+    settingsLoaded,
     saveSettings,
     aiAgentsStatus,
     onToast: setToastMessage,
@@ -1585,6 +1586,7 @@ function App() {
               onToggleInspector={handleToggleInspector}
               inspectorWidth={layout.inspectorWidth}
               defaultAiAgent={aiAgentPreferences.defaultAiAgent}
+              defaultAiAgentReadiness={aiAgentPreferences.defaultAiAgentReadiness}
               defaultAiAgentReady={aiAgentPreferences.defaultAiAgentReady}
               onUnsupportedAiPaste={setToastMessage}
               onInspectorResize={layout.handleInspectorResize}
