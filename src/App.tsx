@@ -72,6 +72,7 @@ import { useConflictFlow } from './hooks/useConflictFlow'
 import { useAppSave } from './hooks/useAppSave'
 import { useNoteRetargetingUi } from './hooks/useNoteRetargetingUi'
 import { useVaultBridge } from './hooks/useVaultBridge'
+import { createViewFilename } from './utils/viewFilename'
 import type { CommitDiffRequest } from './hooks/useDiffMode'
 import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { ConfirmDeleteDialog } from './components/ConfirmDeleteDialog'
@@ -1057,17 +1058,24 @@ function App() {
     const editing = dialogs.editingView
     const filename = editing
       ? editing.filename
-      : definition.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '.yml'
+      : createViewFilename(definition.name, vault.views.map((view) => view.filename))
     const nextDefinition = editing ? { ...editing.definition, ...definition } : definition
     const target = isTauri() ? invoke : mockInvoke
-    await target('save_view_cmd', { vaultPath: resolvedPath, filename, definition: nextDefinition })
-    trackEvent(editing ? 'view_updated' : 'view_created')
-    await vault.reloadViews()
-    await vault.reloadVault()
-    vault.reloadFolders()
-    setToastMessage(editing ? `View "${nextDefinition.name}" updated` : `View "${nextDefinition.name}" created`)
-    handleSetSelection({ kind: 'view', filename })
-  }, [resolvedPath, vault, handleSetSelection, dialogs.editingView])
+    try {
+      await target('save_view_cmd', { vaultPath: resolvedPath, filename, definition: nextDefinition })
+      trackEvent(editing ? 'view_updated' : 'view_created')
+      await vault.reloadViews()
+      await vault.reloadVault()
+      vault.reloadFolders()
+      setToastMessage(editing ? `View "${nextDefinition.name}" updated` : `View "${nextDefinition.name}" created`)
+      handleSetSelection({ kind: 'view', filename })
+      return true
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      setToastMessage(`Could not save view: ${message}`)
+      return false
+    }
+  }, [resolvedPath, vault, handleSetSelection, dialogs.editingView, setToastMessage])
 
   const handleUpdateViewDefinition = useCallback(async (filename: string, patch: Partial<ViewDefinition>) => {
     const existing = vault.views.find((view) => view.filename === filename)

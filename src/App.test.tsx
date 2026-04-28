@@ -4,6 +4,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DEFAULT_VAULTS } from './hooks/useVaultSwitcher'
 import { formatShortcutDisplay } from './hooks/appCommandCatalog'
 import { invoke } from '@tauri-apps/api/core'
+import type { ViewDefinition, ViewFile } from './types'
 
 // Provide a localStorage mock that supports all methods (jsdom's may be incomplete)
 const localStorageMock = (() => {
@@ -455,6 +456,35 @@ describe('App', () => {
   it('renders the four-panel layout', async () => {
     render(<App />)
     expect(await screen.findByText('All Notes', {}, { timeout: 5000 })).toBeInTheDocument()
+  })
+
+  it('creates custom views with a portable fallback filename for symbol-only names', async () => {
+    const savedViews: ViewFile[] = []
+    const saveView = vi.fn(({ filename, definition }: { filename: string; definition: ViewDefinition }) => {
+      if (filename === '.yml') throw new Error('Invalid view filename')
+      savedViews.push({ filename, definition })
+      return null
+    })
+    mockCommandResults.save_view_cmd = saveView
+    mockCommandResults.list_views = () => savedViews
+    mockCommandResults.reload_vault = mockEntries
+
+    render(<App />)
+
+    await screen.findByText('All Notes')
+    fireEvent.click(screen.getByRole('button', { name: 'Create view' }))
+    const dialog = await screen.findByRole('dialog')
+    fireEvent.change(within(dialog).getByPlaceholderText(/Active Projects|Reading List/i), {
+      target: { value: '🚀' },
+    })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Create' }))
+
+    await waitFor(() => {
+      expect(saveView).toHaveBeenCalledWith(expect.objectContaining({
+        filename: 'view.yml',
+        definition: expect.objectContaining({ name: '🚀' }),
+      }))
+    })
   })
 
   it('loads and displays vault entries in sidebar', async () => {
