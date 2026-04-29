@@ -25,23 +25,43 @@ async function executePaletteCommand(page: Page, label: string) {
 }
 
 async function expectWideModeHasUnboundedWidth(page: Page) {
-  const metrics = await page.locator('.editor-content-width--wide .editor-content-wrapper').evaluate((wrapper) => {
-    const style = window.getComputedStyle(wrapper)
+  const metrics = await page.locator('.editor-content-width--wide').evaluate((root) => {
+    const wrapper = root.querySelector<HTMLElement>('.editor-content-wrapper')
+    const editor = root.querySelector<HTMLElement>('.bn-editor')
+    if (!wrapper || !editor) throw new Error('Wide editor layout was not rendered')
+
+    const wrapperStyle = window.getComputedStyle(wrapper)
+    const editorStyle = window.getComputedStyle(editor)
+    const wrapperRect = wrapper.getBoundingClientRect()
+    const editorRect = editor.getBoundingClientRect()
+    const wrapperPaddingLeft = Number.parseFloat(wrapperStyle.paddingLeft)
+    const wrapperPaddingRight = Number.parseFloat(wrapperStyle.paddingRight)
 
     return {
-      maxWidth: style.maxWidth,
-      paddingLeft: Number.parseFloat(style.paddingLeft),
-      paddingRight: Number.parseFloat(style.paddingRight),
+      wrapperMaxWidth: wrapperStyle.maxWidth,
+      wrapperPaddingLeft,
+      wrapperPaddingRight,
+      editorMaxWidth: editorStyle.maxWidth,
+      editorPaddingLeft: Number.parseFloat(editorStyle.paddingLeft),
+      editorPaddingRight: Number.parseFloat(editorStyle.paddingRight),
+      editorWidth: editorRect.width,
+      wrapperContentWidth: wrapperRect.width - wrapperPaddingLeft - wrapperPaddingRight,
     }
   })
 
-  expect(metrics.maxWidth).toBe('none')
-  expect(metrics.paddingLeft).toBeGreaterThanOrEqual(16)
-  expect(metrics.paddingRight).toBeGreaterThanOrEqual(16)
+  expect(metrics.wrapperMaxWidth).toBe('none')
+  expect(metrics.wrapperPaddingLeft).toBeGreaterThanOrEqual(16)
+  expect(metrics.wrapperPaddingRight).toBeGreaterThanOrEqual(16)
+  expect(metrics.editorMaxWidth).toBe('none')
+  expect(metrics.editorPaddingLeft).toBe(0)
+  expect(metrics.editorPaddingRight).toBe(0)
+  expect(metrics.editorWidth).toBeGreaterThan(900)
+  expect(Math.abs(metrics.editorWidth - metrics.wrapperContentWidth)).toBeLessThan(2)
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(60_000)
+  await page.setViewportSize({ width: 1920, height: 1080 })
   tempVaultDir = createFixtureVaultCopy()
   fs.writeFileSync(plainNotePath(tempVaultDir), '# Plain Width Note\n\nNo frontmatter here.\n')
   await openFixtureVault(page, tempVaultDir)
