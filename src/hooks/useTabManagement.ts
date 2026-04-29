@@ -224,6 +224,7 @@ export type { Tab }
 
 interface TabManagementOptions {
   beforeNavigate?: (fromPath: string, toPath: string) => Promise<void>
+  hasUnsavedChanges?: (path: string) => boolean
   onMissingNotePath?: (entry: VaultEntry, error: unknown) => void | Promise<void>
   onUnreadableNoteContent?: (entry: VaultEntry, error: unknown) => void | Promise<void>
 }
@@ -236,6 +237,7 @@ interface NavigateToEntryOptions {
   activeTabPathRef: React.MutableRefObject<string | null>
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>
   setActiveTabPath: React.Dispatch<React.SetStateAction<string | null>>
+  hasUnsavedChanges?: (path: string) => boolean
   onMissingNotePath?: (entry: VaultEntry, error: unknown) => void | Promise<void>
   onUnreadableNoteContent?: (entry: VaultEntry, error: unknown) => void | Promise<void>
 }
@@ -363,6 +365,7 @@ function isUnreadableNoteContentError(error: unknown): boolean {
 function shouldApplyLoadedEntry(options: {
   seq: number
   navSeqRef: React.MutableRefObject<number>
+  content: string
   forceReload: boolean
   activeTabPathRef: React.MutableRefObject<string | null>
   tabsRef: React.MutableRefObject<Tab[]>
@@ -371,6 +374,7 @@ function shouldApplyLoadedEntry(options: {
   const {
     seq,
     navSeqRef,
+    content,
     forceReload,
     activeTabPathRef,
     tabsRef,
@@ -380,7 +384,8 @@ function shouldApplyLoadedEntry(options: {
   if (navSeqRef.current !== seq) return false
   if (forceReload) return true
   if (!pathsMatch(activeTabPathRef.current, path)) return true
-  return !tabsRef.current.some((tab) => pathsMatch(tab.entry.path, path))
+  const openTab = tabsRef.current.find((tab) => pathsMatch(tab.entry.path, path))
+  return !openTab || openTab.content !== content
 }
 
 type EntryLoadFailureKind =
@@ -529,8 +534,10 @@ function reopenAlreadyViewingEntry({
   tabsRef,
   activeTabPathRef,
   setActiveTabPath,
-}: Pick<NavigateToEntryOptions, 'entry' | 'tabsRef' | 'activeTabPathRef' | 'setActiveTabPath'>): boolean {
+  hasUnsavedChanges,
+}: Pick<NavigateToEntryOptions, 'entry' | 'tabsRef' | 'activeTabPathRef' | 'setActiveTabPath' | 'hasUnsavedChanges'>): boolean {
   if (!isAlreadyViewingPath(tabsRef, activeTabPathRef, entry.path)) return false
+  if (!hasUnsavedChanges?.(entry.path)) return false
   syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
   finishNoteOpenTrace(entry.path)
   return true
@@ -567,6 +574,7 @@ async function loadTextEntry(options: Required<Pick<NavigateToEntryOptions, 'for
     if (!shouldApplyLoadedEntry({
       seq,
       navSeqRef,
+      content,
       forceReload,
       activeTabPathRef,
       tabsRef,
@@ -615,6 +623,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   const navSeqRef = useRef(0)
   const beforeNavigateSeqRef = useRef(0)
   const beforeNavigate = options.beforeNavigate
+  const hasUnsavedChanges = options.hasUnsavedChanges
   const onMissingNotePath = options.onMissingNotePath
   const onUnreadableNoteContent = options.onUnreadableNoteContent
 
@@ -641,7 +650,9 @@ export function useTabManagement(options: TabManagementOptions = {}) {
 
   /** Open a note — replaces the current note (single-note model). */
   const handleSelectNote = useCallback(async (entry: VaultEntry) => {
-    if (!pathsMatch(entry.path, activeTabPathRef.current)) {
+    const alreadyViewingDirtyEntry = pathsMatch(entry.path, activeTabPathRef.current)
+      && !!hasUnsavedChanges?.(entry.path)
+    if (!alreadyViewingDirtyEntry) {
       beginNoteOpenTrace(entry.path, 'select-note')
     }
     await executeNavigationWithBoundary(entry.path, () => navigateToEntry({
@@ -651,10 +662,11 @@ export function useTabManagement(options: TabManagementOptions = {}) {
       activeTabPathRef,
       setTabs,
       setActiveTabPath,
+      hasUnsavedChanges,
       onMissingNotePath,
       onUnreadableNoteContent,
     }))
-  }, [executeNavigationWithBoundary, onMissingNotePath, onUnreadableNoteContent])
+  }, [executeNavigationWithBoundary, hasUnsavedChanges, onMissingNotePath, onUnreadableNoteContent])
 
   const handleSwitchTab = useCallback((path: string) => {
     syncActiveTabPath(activeTabPathRef, setActiveTabPath, path)

@@ -161,15 +161,24 @@ describe('useTabManagement (single-note model)', () => {
       expectSingleActiveTab(result, '/vault/b.md')
     })
 
-    it('is a no-op when selecting the already-open note', async () => {
-      const { result } = renderHook(() => useTabManagement())
+    it('keeps a dirty already-open note in place when selecting it again', async () => {
       const entry = { path: '/vault/a.md' }
-      await selectNote(result, entry)
-      await act(async () => {
-        await result.current.handleSelectNote(makeEntry(entry))
+      const { result: dirtyResult } = renderHook(() => useTabManagement({
+        hasUnsavedChanges: (path) => path === '/vault/a.md',
+      }))
+      await selectNote(dirtyResult, entry)
+      act(() => {
+        dirtyResult.current.setTabs(prev => prev.map(tab =>
+          tab.entry.path === entry.path ? { ...tab, content: '# Local draft' } : tab
+        ))
       })
 
-      expect(result.current.tabs).toHaveLength(1)
+      await act(async () => {
+        await dirtyResult.current.handleSelectNote(makeEntry(entry))
+      })
+
+      expect(dirtyResult.current.tabs).toHaveLength(1)
+      expect(dirtyResult.current.tabs[0].content).toBe('# Local draft')
     })
 
     it('handles load content failure gracefully', async () => {
@@ -603,6 +612,24 @@ describe('useTabManagement (single-note model)', () => {
       expect(result.current.tabs[0].entry.path).toBe('/vault/a.md')
       expect(result.current.tabs[0].content).toBe('# A content')
       expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(3)
+    })
+
+    it('refreshes an already-open clean note when cached content is stale on disk', async () => {
+      mockNoteContent({ '/vault/a.md': '# Original content' })
+
+      const { result } = renderHook(() => useTabManagement())
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+
+      mockNoteContent({ '/vault/a.md': '# External edit' })
+      await selectNote(result, { path: '/vault/a.md', title: 'A' })
+
+      expect(result.current.tabs[0].entry.path).toBe('/vault/a.md')
+      expect(result.current.tabs[0].content).toBe('# External edit')
+      expect(vi.mocked(mockInvoke)).toHaveBeenCalledTimes(3)
+      expect(vi.mocked(mockInvoke)).toHaveBeenNthCalledWith(2, 'validate_note_content', {
+        path: '/vault/a.md',
+        content: '# Original content',
+      })
     })
 
     it('falls back instead of reopening cached content when the note file disappeared', async () => {
