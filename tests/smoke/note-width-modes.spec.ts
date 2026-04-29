@@ -24,6 +24,22 @@ async function executePaletteCommand(page: Page, label: string) {
   await executeCommand(page, label)
 }
 
+async function expectWideModeHasUnboundedWidth(page: Page) {
+  const metrics = await page.locator('.editor-content-width--wide .editor-content-wrapper').evaluate((wrapper) => {
+    const style = window.getComputedStyle(wrapper)
+
+    return {
+      maxWidth: style.maxWidth,
+      paddingLeft: Number.parseFloat(style.paddingLeft),
+      paddingRight: Number.parseFloat(style.paddingRight),
+    }
+  })
+
+  expect(metrics.maxWidth).toBe('none')
+  expect(metrics.paddingLeft).toBeGreaterThanOrEqual(16)
+  expect(metrics.paddingRight).toBeGreaterThanOrEqual(16)
+}
+
 test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(60_000)
   tempVaultDir = createFixtureVaultCopy()
@@ -41,6 +57,7 @@ test('note width modes persist only when frontmatter already exists', async ({ p
   await expect(page.locator('.editor-content-width--normal')).toBeVisible({ timeout: 5_000 })
   await page.getByRole('button', { name: 'Switch to wide note width' }).click()
   await expect(page.locator('.editor-content-width--wide')).toBeVisible({ timeout: 5_000 })
+  await expectWideModeHasUnboundedWidth(page)
   await expect.poll(() => fs.readFileSync(alphaProjectPath(tempVaultDir), 'utf8')).toMatch(/_width:\s+"?wide"?/)
 
   await executePaletteCommand(page, 'Use Normal Note Width')
