@@ -392,7 +392,7 @@ flowchart LR
 | `remove_mcp()` | Removes Tolaria's MCP entry from Claude Code, Gemini CLI, Cursor, and generic MCP configs |
 | `upsert_mcp_config(path, entry)` | Atomic config file update (create/merge, preserves others) |
 
-The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is replaced on vault switches, stopped when no active vault is selected, and killed plus waited on app exit via the `RunEvent::Exit` handler. The same desktop layer now keeps the Tauri asset protocol scoped to the active vault instead of every filesystem path.
+The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is replaced on vault switches, stopped when no active vault is selected, and killed plus waited on app exit via the `RunEvent::Exit` handler. The same desktop layer keeps Tauri asset protocol access limited to vault roots loaded during the current app session; command calls remain active-vault scoped for reads, writes, and external opens.
 
 ## Search
 
@@ -542,7 +542,7 @@ sequenceDiagram
         A-->>U: WelcomeScreen
     else Vault found
         A->>VL: useVaultLoader fires
-        VL->>T: invoke('reload_vault') → sync active vault asset scope + scan_vault_cached()
+        VL->>T: invoke('reload_vault') → allow requested vault roots in asset scope + scan_vault_cached()
         T-->>VL: VaultEntry[]
         VL->>T: invoke('get_modified_files')
         A->>T: useMcpStatus — check explicit MCP setup state
@@ -677,7 +677,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `sync_note_title` | Legacy helper: rewrite `title` frontmatter from filename → `bool` (modified); not used by the normal note-open flow |
 | `batch_archive_notes` | Archive multiple notes |
 | `batch_delete_notes` | Permanently delete notes from disk |
-| `reload_vault` | Sync the active vault asset scope, invalidate cache, full rescan from filesystem, then apply Gitignored-content visibility → `Vec<VaultEntry>` |
+| `reload_vault` | Allow the requested vault roots in the runtime asset scope, invalidate cache, full rescan from filesystem, then apply Gitignored-content visibility → `Vec<VaultEntry>` |
 | `reload_vault_entry` | Re-read a single file from disk → `VaultEntry` |
 | `open_vault_file_external` | Validate an existing file against the active vault boundary, then open it with the system default app |
 | `start_vault_watcher` / `stop_vault_watcher` | Start or stop native active-vault filesystem change events |
@@ -758,8 +758,8 @@ The desktop MCP WebSocket bridge is intentionally local-only. `mcp-server/ws-bri
 | `save_vault_config` | Save per-vault UI config |
 | `get_default_vault_path` | Get default vault path |
 | `get_build_number` | Get app build number |
-| `save_image` | Save base64 image to `attachments/` and refresh the active vault asset scope |
-| `copy_image_to_vault` | Copy image file to `attachments/` and refresh the active vault asset scope |
+| `save_image` | Save base64 image to `attachments/` and ensure the vault root is in the runtime asset scope |
+| `copy_image_to_vault` | Copy image file to `attachments/` and ensure the vault root is in the runtime asset scope |
 | `update_menu_state` | Update native menu checkmarks and enabled/disabled state for selection-dependent actions |
 | `trigger_menu_command` | Emit a native menu command ID for deterministic shortcut QA |
 | `update_current_window_min_size` | Update the active Tauri window's minimum size and optionally grow it to fit restored panes |
