@@ -149,9 +149,15 @@ fn run_agent_stream_with_binary<F>(
 where
     F: FnMut(AiAgentStreamEvent),
 {
-    let args = build_codex_args(&request)?;
+    let last_message_dir = tempfile::Builder::new()
+        .prefix("tolaria-codex-last-message-")
+        .tempdir()
+        .map_err(|error| format!("Failed to create Codex output directory: {error}"))?;
+    let last_message_path = last_message_dir.path().join("last-message.txt");
+    let args = build_codex_args(&request, Some(&last_message_path))?;
     let prompt = build_codex_prompt(&request);
     let command = build_codex_command(binary, args, prompt, &request.vault_path);
+    let emit = with_codex_last_message_fallback(emit, last_message_path);
 
     crate::cli_agent_runtime::run_ai_agent_json_stream(
         command,
@@ -161,6 +167,33 @@ where
         dispatch_codex_event,
         format_codex_error,
     )
+}
+
+fn with_codex_last_message_fallback<F>(
+    mut emit: F,
+    last_message_path: PathBuf,
+) -> impl FnMut(AiAgentStreamEvent)
+where
+    F: FnMut(AiAgentStreamEvent),
+{
+    let mut text_emitted = false;
+
+    move |event| {
+        match &event {
+            AiAgentStreamEvent::TextDelta { text } if !text.trim().is_empty() => {
+                text_emitted = true;
+            }
+            AiAgentStreamEvent::Done if !text_emitted => {
+                if let Some(text) = read_codex_last_message(&last_message_path) {
+                    text_emitted = true;
+                    emit(AiAgentStreamEvent::TextDelta { text });
+                }
+            }
+            _ => {}
+        }
+
+        emit(event);
+    }
 }
 
 fn build_codex_command(
@@ -179,10 +212,13 @@ fn build_codex_command(
     command
 }
 
-fn build_codex_args(request: &AgentStreamRequest) -> Result<Vec<String>, String> {
+fn build_codex_args(
+    request: &AgentStreamRequest,
+    last_message_path: Option<&Path>,
+) -> Result<Vec<String>, String> {
     let mcp_server_path = crate::cli_agent_runtime::mcp_server_path_string()?;
 
-    Ok(vec![
+    let mut args = vec![
         "--sandbox".into(),
         codex_sandbox(request.permission_mode).into(),
         "--ask-for-approval".into(),
@@ -200,7 +236,14 @@ fn build_codex_args(request: &AgentStreamRequest) -> Result<Vec<String>, String>
             r#"mcp_servers.tolaria.env={{VAULT_PATH="{}"}}"#,
             request.vault_path
         ),
-    ])
+    ];
+
+    if let Some(path) = last_message_path {
+        args.push("--output-last-message".into());
+        args.push(path.to_string_lossy().into_owned());
+    }
+
+    Ok(args)
 }
 
 fn codex_sandbox(permission_mode: crate::ai_agents::AiAgentPermissionMode) -> &'static str {
@@ -270,6 +313,7 @@ where
                 });
             }
         }
+        "mcp_tool_call" => emit_codex_mcp_tool_event(item, item_id, completed, emit),
         "agent_message" if completed => {
             if let Some(text) = item["text"].as_str() {
                 emit(AiAgentStreamEvent::TextDelta {
@@ -279,6 +323,56 @@ where
         }
         _ => {}
     }
+}
+
+fn emit_codex_mcp_tool_event<F>(
+    item: &serde_json::Value,
+    item_id: &str,
+    completed: bool,
+    emit: &mut F,
+) where
+    F: FnMut(AiAgentStreamEvent),
+{
+    if completed {
+        emit(AiAgentStreamEvent::ToolDone {
+            tool_id: item_id.to_string(),
+            output: codex_tool_output(item),
+        });
+        return;
+    }
+
+    let tool_name = item["tool"].as_str().unwrap_or("MCP tool");
+    let input = json_field_to_string(&item["arguments"]);
+    emit(AiAgentStreamEvent::ToolStart {
+        tool_name: tool_name.to_string(),
+        tool_id: item_id.to_string(),
+        input,
+    });
+}
+
+fn codex_tool_output(item: &serde_json::Value) -> Option<String> {
+    item["error"]["message"]
+        .as_str()
+        .map(|message| format!("Error: {message}"))
+        .or_else(|| json_field_to_string(&item["result"]))
+}
+
+fn json_field_to_string(value: &serde_json::Value) -> Option<String> {
+    if value.is_null() {
+        None
+    } else {
+        value
+            .as_str()
+            .map(str::to_string)
+            .or_else(|| Some(value.to_string()))
+    }
+}
+
+fn read_codex_last_message(path: &Path) -> Option<String> {
+    std::fs::read_to_string(path)
+        .ok()
+        .map(|text| text.trim().to_string())
+        .filter(|text| !text.is_empty())
 }
 
 fn format_codex_error(stderr_output: String, status: String) -> String {
@@ -398,12 +492,15 @@ mod tests {
 
     #[test]
     fn build_codex_args_uses_safe_default_permissions() {
-        if let Ok(args) = build_codex_args(&AgentStreamRequest {
-            message: "Rename the note".into(),
-            system_prompt: None,
-            vault_path: "/tmp/vault".into(),
-            permission_mode: AiAgentPermissionMode::Safe,
-        }) {
+        if let Ok(args) = build_codex_args(
+            &AgentStreamRequest {
+                message: "Rename the note".into(),
+                system_prompt: None,
+                vault_path: "/tmp/vault".into(),
+                permission_mode: AiAgentPermissionMode::Safe,
+            },
+            None,
+        ) {
             assert_eq!(args[4], "exec");
             assert_codex_permission_contract(&args, AiAgentPermissionMode::Safe);
             assert!(args.contains(&"--json".to_string()));
@@ -413,13 +510,35 @@ mod tests {
 
     #[test]
     fn codex_power_user_keeps_workspace_write_without_dangerous_bypass() {
-        if let Ok(args) = build_codex_args(&AgentStreamRequest {
-            message: "Rename the note".into(),
-            system_prompt: None,
-            vault_path: "/tmp/vault".into(),
-            permission_mode: AiAgentPermissionMode::PowerUser,
-        }) {
+        if let Ok(args) = build_codex_args(
+            &AgentStreamRequest {
+                message: "Rename the note".into(),
+                system_prompt: None,
+                vault_path: "/tmp/vault".into(),
+                permission_mode: AiAgentPermissionMode::PowerUser,
+            },
+            None,
+        ) {
             assert_codex_permission_contract(&args, AiAgentPermissionMode::PowerUser);
+        }
+    }
+
+    #[test]
+    fn build_codex_args_can_request_last_message_output_file() {
+        if let Ok(args) = build_codex_args(
+            &AgentStreamRequest {
+                message: "Rename the note".into(),
+                system_prompt: None,
+                vault_path: "/tmp/vault".into(),
+                permission_mode: AiAgentPermissionMode::Safe,
+            },
+            Some(Path::new("/tmp/tolaria-codex-last-message.txt")),
+        ) {
+            assert!(args.windows(2).any(|window| window
+                == [
+                    "--output-last-message",
+                    "/tmp/tolaria-codex-last-message.txt",
+                ]));
         }
     }
 
@@ -453,6 +572,55 @@ printf '%s\n' '{"type":"item.completed","item":{"id":"msg_1","type":"agent_messa
 
         assert_eq!(thread_id, "thread_1");
         assert_codex_text_flow(&events, "thread_1", "Done");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_codex_agent_stream_uses_last_message_file_when_stream_has_no_text() {
+        let (thread_id, events) = run_codex_script(
+            r#"last_message=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--output-last-message" ]; then
+    shift
+    last_message="$1"
+  fi
+  shift
+done
+printf '%s\n' '{"type":"thread.started","thread_id":"thread_1"}'
+printf '%s' 'Recovered final answer' > "$last_message"
+"#,
+        );
+
+        assert_eq!(thread_id, "thread_1");
+        assert_codex_text_flow(&events, "thread_1", "Recovered final answer");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_codex_agent_stream_does_not_duplicate_last_message_file_after_text_event() {
+        let (thread_id, events) = run_codex_script(
+            r#"last_message=""
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = "--output-last-message" ]; then
+    shift
+    last_message="$1"
+  fi
+  shift
+done
+printf '%s\n' '{"type":"thread.started","thread_id":"thread_1"}'
+printf '%s\n' '{"type":"item.completed","item":{"id":"msg_1","type":"agent_message","text":"Streamed answer"}}'
+printf '%s' 'Recovered final answer' > "$last_message"
+"#,
+        );
+
+        let text_events = events
+            .iter()
+            .filter(|event| matches!(event, AiAgentStreamEvent::TextDelta { .. }))
+            .count();
+
+        assert_eq!(thread_id, "thread_1");
+        assert_eq!(text_events, 1);
+        assert_codex_text_flow(&events, "thread_1", "Streamed answer");
     }
 
     #[cfg(unix)]
@@ -606,6 +774,51 @@ exit 2
             &events[1],
             AiAgentStreamEvent::ToolDone { tool_id, output }
                 if tool_id == "item_1" && output.as_deref() == Some("/private/tmp\n")
+        ));
+    }
+
+    #[test]
+    fn dispatch_codex_mcp_tool_call_maps_to_tool_events() {
+        let mut events = Vec::new();
+        let started = serde_json::json!({
+            "type": "item.started",
+            "item": {
+                "id": "item_1",
+                "type": "mcp_tool_call",
+                "server": "tolaria",
+                "tool": "search_notes",
+                "arguments": { "query": "meeting", "limit": 5 },
+                "status": "in_progress"
+            }
+        });
+        let completed = serde_json::json!({
+            "type": "item.completed",
+            "item": {
+                "id": "item_1",
+                "type": "mcp_tool_call",
+                "server": "tolaria",
+                "tool": "search_notes",
+                "arguments": { "query": "meeting", "limit": 5 },
+                "result": [{ "title": "Meeting notes" }],
+                "status": "completed"
+            }
+        });
+
+        dispatch_codex_event(&started, &mut |event| events.push(event));
+        dispatch_codex_event(&completed, &mut |event| events.push(event));
+
+        assert!(matches!(
+            &events[0],
+            AiAgentStreamEvent::ToolStart { tool_name, tool_id, input }
+                if tool_name == "search_notes"
+                    && tool_id == "item_1"
+                    && input.as_deref().is_some_and(|value| value.contains("meeting"))
+        ));
+        assert!(matches!(
+            &events[1],
+            AiAgentStreamEvent::ToolDone { tool_id, output }
+                if tool_id == "item_1"
+                    && output.as_deref().is_some_and(|value| value.contains("Meeting notes"))
         ));
     }
 
