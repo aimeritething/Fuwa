@@ -44,6 +44,7 @@ function makeActions() {
     onZoomIn: vi.fn(),
     onZoomOut: vi.fn(),
     onZoomReset: vi.fn(),
+    onPastePlainText: vi.fn(),
     onGoBack: vi.fn(),
     onGoForward: vi.fn(),
     activeTabPathRef: { current: '/vault/test.md' } as React.MutableRefObject<string | null>,
@@ -289,6 +290,17 @@ describe('useAppKeyboard', () => {
     fireKey('f', { metaKey: true, shiftKey: true })
     expect(actions.onQuickOpen).not.toHaveBeenCalled()
     expect(actions.onCreateNote).not.toHaveBeenCalled()
+  })
+
+  it('Cmd+Shift+V triggers plain-text paste in focused text editors', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    withFocusedContentEditable((editable) => {
+      const event = fireKeyOnTarget(editable, 'v', { metaKey: true, shiftKey: true, code: 'KeyV' })
+
+      expect(event.defaultPrevented).toBe(true)
+      expect(actions.onPastePlainText).toHaveBeenCalledOnce()
+    })
   })
 
   function withFocusedInput(fn: () => void) {

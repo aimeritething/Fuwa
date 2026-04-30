@@ -44,6 +44,7 @@ const MENU_SECTIONS: ReadonlyArray<MenuSection> = [
       { kind: 'command', label: 'Find in Note', commandId: APP_COMMAND_IDS.editFindInNote },
       { kind: 'command', label: 'Replace in Note', commandId: APP_COMMAND_IDS.editReplaceInNote },
       { kind: 'command', label: 'Find in Vault', commandId: APP_COMMAND_IDS.editFindInVault },
+      { kind: 'command', label: 'Paste without Formatting', commandId: APP_COMMAND_IDS.editPastePlainText },
       { kind: 'command', label: 'Toggle Note List Search', commandId: 'edit-toggle-note-list-search' },
       { kind: 'command', label: 'Toggle Diff Mode', commandId: APP_COMMAND_IDS.editToggleDiff },
     ],

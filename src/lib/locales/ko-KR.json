@@ -37,6 +37,7 @@
   "command.note.newType": "새 유형",
   "command.note.newTypedNote": "새 {type}",
   "command.note.saveNote": "메모 저장",
+  "command.note.pastePlainText": "서식 없이 붙여넣기",
   "command.note.findInNote": "노트에서 찾기",
   "command.note.replaceInNote": "노트에서 바꾸기",
   "command.note.deleteNote": "메모 삭제",

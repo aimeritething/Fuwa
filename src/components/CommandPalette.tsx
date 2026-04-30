@@ -399,6 +399,7 @@ function OpenCommandPalette({
 
   return (
     <div
+      data-command-palette="true"
       className="fixed inset-0 z-[1000] flex justify-center bg-[var(--shadow-dialog)] pt-[15vh]"
       onClick={onClose}
     >

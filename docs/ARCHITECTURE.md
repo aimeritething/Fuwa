@@ -754,6 +754,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `check_mcp_status` | Check whether the active vault is explicitly registered in Claude/Gemini/Cursor/generic config |
 | `get_mcp_config_snippet` | Return the exact manual MCP JSON snippet for the active vault |
 | `copy_text_to_clipboard` | Copy setup snippets through the native desktop clipboard command path |
+| `read_text_from_clipboard` | Read current desktop clipboard text for command-driven plain-text paste |
 | `sync_mcp_bridge_vault` | Sync the desktop WebSocket bridge process to the selected vault, or stop it when no vault is selected |
 
 The desktop MCP WebSocket bridge is intentionally local-only. `mcp-server/ws-bridge.js` binds both bridge ports to loopback, rejects non-loopback clients, accepts browser/Tauri origins only on the UI bridge, and rejects browser-origin requests on the tool bridge so remote pages cannot drive vault tools directly.
@@ -834,6 +835,7 @@ Data flows unidirectionally: `App` passes data and callbacks as props to child c
 | Cmd+S | Save current note |
 | Cmd+F | Find in current note when the editor is focused; otherwise note-list search can claim it |
 | Cmd+Shift+F | Find in vault |
+| Cmd+Shift+V | Paste without Formatting into the active supported editing surface |
 | Cmd+[ / Cmd+] | Navigate back / forward (replaces tabs) |
 | Cmd+Z / Cmd+Shift+Z | Undo / Redo |
 | Cmd+1–9 | Switch to tab N |
@@ -848,6 +850,7 @@ Shortcut routing is explicit:
 - `formatShortcutDisplay()` derives platform-accurate visible shortcut labels (`⌘` on macOS, `Ctrl` on Windows/Linux) from that same manifest so menus, tooltips, and command-palette copy stay aligned with real accelerators
 - `useAppKeyboard` is the primary execution path for real shortcut keypresses, including Tauri runs
 - macOS browser-reserved chords such as `Cmd+O`, `Cmd+F`, and `Cmd+Shift+L` are unblocked at webview init via `tauri-plugin-prevent-default`, then continue through the same renderer-first command path
+- `Cmd+Shift+V` uses the same command path for "Paste without Formatting"; `plainTextPaste.ts` reads text through the native clipboard command in Tauri and inserts it through the active rich/raw editor target or the focused browser text control
 - `Cmd+F` is surface-aware: editor focus opens current-note find/replace in raw CodeMirror, note-list focus preserves note-list search, and native menu enablement follows focus availability events so only one `Cmd+F` menu item is active
 - `menu.rs`, `useMenuEvents`, and Linux's `LinuxMenuButton` emit the same command IDs for native menu clicks, accelerators, and custom titlebar menu actions
 - `appCommandDispatcher.ts` suppresses the paired native-menu/renderer echo from a single shortcut so the command runs once

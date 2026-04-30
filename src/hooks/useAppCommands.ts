@@ -27,6 +27,7 @@ interface AppCommandsConfig {
   onSearch: () => void
   onFindInNote?: () => void
   onReplaceInNote?: () => void
+  onPastePlainText: () => void
   onCreateNote: () => void
   onCreateNoteOfType: (type: string) => void
   onSave: () => void
@@ -152,6 +153,7 @@ type CommandRegistryCoreActions = Pick<
   | 'onSave'
   | 'onFindInNote'
   | 'onReplaceInNote'
+  | 'onPastePlainText'
   | 'onOpenSettings'
   | 'onOpenFeedback'
   | 'onDeleteNote'
@@ -242,6 +244,7 @@ function createKeyboardActions(
     onSearch: config.onSearch,
     onFindInNote: config.onFindInNote,
     onReplaceInNote: config.onReplaceInNote,
+    onPastePlainText: config.onPastePlainText,
     onCreateNote: config.onCreateNote,
     onSave: config.onSave,
     onOpenSettings: config.onOpenSettings,
@@ -294,6 +297,7 @@ function createMenuEventActionHandlers(
   | 'onDeleteNote'
   | 'onFindInNote'
   | 'onReplaceInNote'
+  | 'onPastePlainText'
   | 'onSearch'
   | 'onToggleRawEditor'
   | 'onToggleDiff'
@@ -319,6 +323,7 @@ function createMenuEventActionHandlers(
     onDeleteNote: config.onDeleteNote,
     onFindInNote: config.onFindInNote,
     onReplaceInNote: config.onReplaceInNote,
+    onPastePlainText: config.onPastePlainText,
     onSearch: config.onSearch,
     onToggleRawEditor: config.onToggleRawEditor,
     onToggleDiff: config.onToggleDiff,
@@ -441,6 +446,7 @@ function createCommandRegistryCoreConfig(
     canMoveSelectedViewDown: config.canMoveSelectedViewDown,
     onFindInNote: config.onFindInNote,
     onReplaceInNote: config.onReplaceInNote,
+    onPastePlainText: config.onPastePlainText,
     noteWidth: config.noteWidth,
     defaultNoteWidth: config.defaultNoteWidth,
     onSetNoteWidth: config.onSetNoteWidth,

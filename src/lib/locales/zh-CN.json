@@ -37,6 +37,7 @@
   "command.note.newType": "新建类型",
   "command.note.newTypedNote": "新建{type}",
   "command.note.saveNote": "保存笔记",
+  "command.note.pastePlainText": "粘贴时不保留格式",
   "command.note.findInNote": "在笔记中查找",
   "command.note.replaceInNote": "在笔记中替换",
   "command.note.deleteNote": "删除笔记",

@@ -147,9 +147,21 @@ fn clipboard_command() -> Command {
     crate::hidden_command("pbcopy")
 }
 
+#[cfg(target_os = "macos")]
+fn clipboard_read_command() -> Command {
+    crate::hidden_command("pbpaste")
+}
+
 #[cfg(target_os = "windows")]
 fn clipboard_command() -> Command {
     crate::hidden_command("clip.exe")
+}
+
+#[cfg(target_os = "windows")]
+fn clipboard_read_command() -> Command {
+    let mut command = crate::hidden_command("powershell.exe");
+    command.args(["-NoProfile", "-Command", "Get-Clipboard -Raw"]);
+    command
 }
 
 #[cfg(all(desktop, not(any(target_os = "macos", target_os = "windows"))))]
@@ -158,6 +170,16 @@ fn clipboard_command() -> Command {
     command.args([
         "-c",
         "if command -v wl-copy >/dev/null 2>&1; then wl-copy; elif command -v xclip >/dev/null 2>&1; then xclip -selection clipboard; elif command -v xsel >/dev/null 2>&1; then xsel --clipboard --input; else exit 127; fi",
+    ]);
+    command
+}
+
+#[cfg(all(desktop, not(any(target_os = "macos", target_os = "windows"))))]
+fn clipboard_read_command() -> Command {
+    let mut command = crate::hidden_command("sh");
+    command.args([
+        "-c",
+        "if command -v wl-paste >/dev/null 2>&1; then wl-paste; elif command -v xclip >/dev/null 2>&1; then xclip -selection clipboard -out; elif command -v xsel >/dev/null 2>&1; then xsel --clipboard --output; else exit 127; fi",
     ]);
     command
 }
@@ -201,9 +223,30 @@ fn write_native_clipboard(mut command: Command, text: &str) -> Result<(), String
 }
 
 #[cfg(desktop)]
+fn read_native_clipboard(mut command: Command) -> Result<String, String> {
+    let output = command
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .map_err(|e| format!("Failed to read native clipboard text: {e}"))?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(clipboard_failure_message(&output.stderr))
+    }
+}
+
+#[cfg(desktop)]
 #[tauri::command]
 pub fn copy_text_to_clipboard(text: String) -> Result<(), String> {
     write_native_clipboard(clipboard_command(), &text)
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+pub fn read_text_from_clipboard() -> Result<String, String> {
+    read_native_clipboard(clipboard_read_command())
 }
 
 #[cfg(desktop)]
@@ -251,6 +294,12 @@ pub async fn get_mcp_config_snippet(_vault_path: String) -> Result<String, Strin
 #[cfg(mobile)]
 #[tauri::command]
 pub fn copy_text_to_clipboard(_text: String) -> Result<(), String> {
+    Err("Clipboard is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn read_text_from_clipboard() -> Result<String, String> {
     Err("Clipboard is not available on mobile".into())
 }
 

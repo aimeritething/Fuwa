@@ -579,6 +579,7 @@ macro_rules! app_invoke_handler {
             commands::check_mcp_status,
             commands::get_mcp_config_snippet,
             commands::copy_text_to_clipboard,
+            commands::read_text_from_clipboard,
             commands::sync_mcp_bridge_vault,
             commands::repair_vault,
             commands::reinit_telemetry,

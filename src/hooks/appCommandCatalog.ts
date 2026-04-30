@@ -12,6 +12,7 @@ export const APP_COMMAND_IDS = {
   editFindInNote: 'edit-find-in-note',
   editReplaceInNote: 'edit-replace-in-note',
   editFindInVault: 'edit-find-in-vault',
+  editPastePlainText: 'edit-paste-plain-text',
   editToggleRawEditor: 'edit-toggle-raw-editor',
   editToggleDiff: 'edit-toggle-diff',
   viewEditorOnly: 'view-editor-only',
@@ -84,6 +85,7 @@ type SimpleHandlerKey =
   | 'onSave'
   | 'onFindInNote'
   | 'onReplaceInNote'
+  | 'onPastePlainText'
   | 'onSearch'
   | 'onToggleRawEditor'
   | 'onToggleDiff'
@@ -185,6 +187,11 @@ export const APP_COMMAND_DEFINITIONS: Record<AppCommandId, AppCommandDefinition>
     route: { kind: 'handler', handler: 'onSearch' },
     menuOwned: true,
     shortcut: { combo: 'command-or-ctrl-shift', key: 'f', code: 'KeyF', display: '⌘⇧F' },
+  },
+  [APP_COMMAND_IDS.editPastePlainText]: {
+    route: { kind: 'handler', handler: 'onPastePlainText' },
+    menuOwned: true,
+    shortcut: { combo: 'command-or-ctrl-shift', key: 'v', code: 'KeyV', display: '⌘⇧V' },
   },
   [APP_COMMAND_IDS.editToggleRawEditor]: {
     route: { kind: 'handler', handler: 'onToggleRawEditor' },
@@ -360,6 +367,7 @@ const MANUAL_NATIVE_ACCELERATOR_QA_COMMAND_SET = new Set<AppCommandId>([
   APP_COMMAND_IDS.fileSave,
   APP_COMMAND_IDS.editFindInNote,
   APP_COMMAND_IDS.editFindInVault,
+  APP_COMMAND_IDS.editPastePlainText,
   APP_COMMAND_IDS.viewToggleAiChat,
   APP_COMMAND_IDS.viewCommandPalette,
   APP_COMMAND_IDS.noteToggleOrganized,

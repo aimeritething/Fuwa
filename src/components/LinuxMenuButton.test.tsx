@@ -32,6 +32,11 @@ describe('LinuxMenuButton', () => {
   it('dispatches shared menu commands from the Linux menu', async () => {
     render(<LinuxMenuButton />)
 
+    await openSubmenu('Edit')
+    expect(screen.getByText('Ctrl+Shift+V')).toBeInTheDocument()
+    fireEvent.click(await screen.findByText('Paste without Formatting'))
+    expect(invoke).toHaveBeenCalledWith('trigger_menu_command', { id: 'edit-paste-plain-text' })
+
     await openSubmenu('Note')
     expect(screen.getByText('Ctrl+Shift+L')).toBeInTheDocument()
     fireEvent.click(await screen.findByText('Toggle AI Panel'))

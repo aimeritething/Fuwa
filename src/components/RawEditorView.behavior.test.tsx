@@ -76,6 +76,7 @@ vi.mock('./NoteSearchList', () => ({
 }))
 
 import { RawEditorView } from './RawEditorView'
+import { insertPlainTextFromClipboardText } from '../utils/plainTextPaste'
 
 function entry(title: string, path = `/vault/note/${title}.md`) {
   return {
@@ -112,6 +113,10 @@ function createMockView(docText = '[[Target') {
     state: {
       doc: { toString: () => docText },
       selection: { main: { head: docText.length } },
+      replaceSelection: vi.fn((text: string) => ({
+        changes: { from: 2, to: 5, insert: text },
+        selection: { anchor: 2 + text.length },
+      })),
     },
     dispatch: vi.fn(),
     focus: vi.fn(),
@@ -311,6 +316,32 @@ describe('RawEditorView behavior coverage', () => {
     expect(screen.getByTestId('raw-editor-wikilink-dropdown')).toBeInTheDocument()
     callbacks = useCodeMirrorMock.mock.calls.at(-1)![2] as typeof callbacks
     expect(callbacks.onEscape()).toBe(true)
+  })
+
+  it('handles registered plain-text paste requests with CodeMirror selection replacement', () => {
+    const mockView = createMockView('Alpha Beta')
+    viewRefState.current = mockView
+
+    render(
+      <RawEditorView
+        content="Alpha Beta"
+        path="/vault/a.md"
+        entries={[entry('Alpha')]}
+        onContentChange={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    )
+
+    fireEvent.focus(screen.getByTestId('raw-editor-codemirror'))
+
+    expect(insertPlainTextFromClipboardText('Plain\nText')).toBe(true)
+    expect(mockView.state.replaceSelection).toHaveBeenCalledWith('Plain\nText')
+    expect(mockView.dispatch).toHaveBeenCalledWith({
+      changes: { from: 2, to: 5, insert: 'Plain\nText' },
+      selection: { anchor: 12 },
+      userEvent: 'input.paste',
+    })
+    expect(mockView.focus).toHaveBeenCalledOnce()
   })
 
 })

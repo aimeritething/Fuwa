@@ -16,6 +16,7 @@ const FILE_SAVE: &str = "file-save";
 const EDIT_FIND_IN_NOTE: &str = "edit-find-in-note";
 const EDIT_REPLACE_IN_NOTE: &str = "edit-replace-in-note";
 const EDIT_FIND_IN_VAULT: &str = "edit-find-in-vault";
+const EDIT_PASTE_PLAIN_TEXT: &str = "edit-paste-plain-text";
 const EDIT_TOGGLE_NOTE_LIST_SEARCH: &str = "edit-toggle-note-list-search";
 const EDIT_TOGGLE_RAW_EDITOR: &str = "edit-toggle-raw-editor";
 const EDIT_TOGGLE_DIFF: &str = "edit-toggle-diff";
@@ -67,6 +68,7 @@ const CUSTOM_IDS: &[&str] = &[
     EDIT_FIND_IN_NOTE,
     EDIT_REPLACE_IN_NOTE,
     EDIT_FIND_IN_VAULT,
+    EDIT_PASTE_PLAIN_TEXT,
     EDIT_TOGGLE_NOTE_LIST_SEARCH,
     EDIT_TOGGLE_RAW_EDITOR,
     EDIT_TOGGLE_DIFF,
@@ -227,6 +229,10 @@ fn build_edit_menu(app: &App) -> MenuResult {
     let toggle_diff = MenuItemBuilder::new("Toggle Diff Mode")
         .id(EDIT_TOGGLE_DIFF)
         .build(app)?;
+    let paste_plain_text = MenuItemBuilder::new("Paste without Formatting")
+        .id(EDIT_PASTE_PLAIN_TEXT)
+        .accelerator("CmdOrCtrl+Shift+V")
+        .build(app)?;
 
     Ok(SubmenuBuilder::new(app, "Edit")
         .undo()
@@ -235,6 +241,7 @@ fn build_edit_menu(app: &App) -> MenuResult {
         .cut()
         .copy()
         .paste()
+        .item(&paste_plain_text)
         .separator()
         .select_all()
         .separator()
@@ -540,6 +547,7 @@ mod tests {
             EDIT_FIND_IN_NOTE,
             EDIT_REPLACE_IN_NOTE,
             EDIT_FIND_IN_VAULT,
+            EDIT_PASTE_PLAIN_TEXT,
             EDIT_TOGGLE_NOTE_LIST_SEARCH,
             EDIT_TOGGLE_RAW_EDITOR,
             EDIT_TOGGLE_DIFF,
@@ -571,6 +579,7 @@ mod tests {
             VAULT_VIEW_CHANGES,
             VAULT_INSTALL_MCP,
             VAULT_RELOAD,
+            VAULT_REPAIR,
         ];
         for id in &expected {
             assert!(CUSTOM_IDS.contains(id), "missing custom ID: {id}");

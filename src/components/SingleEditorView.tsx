@@ -42,6 +42,11 @@ import { TolariaSideMenu } from './tolariaBlockNoteSideMenu'
 import { useEditorLinkActivation } from './useEditorLinkActivation'
 import { findNearestTextCursorBlock } from './blockNoteCursorTarget'
 import { ImageLightbox } from './ImageLightbox'
+import {
+  activatePlainTextPasteTarget,
+  registerPlainTextPasteTarget,
+  type PlainTextPasteTarget,
+} from '../utils/plainTextPaste'
 
 const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
 | --- | --- | --- |
@@ -575,6 +580,50 @@ function useInsertImageCallback(editor: ReturnType<typeof useCreateBlockNote>) {
   }, [])
 }
 
+function useRichEditorPlainTextPasteTarget(options: {
+  containerRef: React.RefObject<HTMLDivElement | null>
+  editable: boolean
+  editor: ReturnType<typeof useCreateBlockNote>
+  runEditorAction: (action: SuggestionAction) => void
+}) {
+  const { containerRef, editable, editor, runEditorAction } = options
+  const targetRef = useRef<PlainTextPasteTarget | null>(null)
+
+  useEffect(() => {
+    const target: PlainTextPasteTarget = {
+      surface: 'rich_editor',
+      contains: (element) => Boolean(element && containerRef.current?.contains(element)),
+      isConnected: () => containerRef.current?.isConnected === true,
+      insert: (text) => {
+        if (!editable) return false
+
+        let inserted = false
+        runEditorAction(() => {
+          editor.focus()
+          editor.insertInlineContent(text, { updateSelection: true })
+          inserted = true
+        })
+        return inserted
+      },
+    }
+    targetRef.current = target
+    const unregister = registerPlainTextPasteTarget(target)
+
+    return () => {
+      unregister()
+      if (targetRef.current === target) {
+        targetRef.current = null
+      }
+    }
+  }, [containerRef, editable, editor, runEditorAction])
+
+  return useCallback(() => {
+    if (targetRef.current) {
+      activatePlainTextPasteTarget(targetRef.current)
+    }
+  }, [])
+}
+
 /** Single BlockNote editor view — content is swapped via replaceBlocks */
 export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange, vaultPath, editable = true, locale = 'en' }: {
   editor: ReturnType<typeof useCreateBlockNote>
@@ -617,6 +666,12 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
       editor,
     })
   }, [editor])
+  const activatePlainTextPaste = useRichEditorPlainTextPasteTarget({
+    containerRef,
+    editable,
+    editor,
+    runEditorAction,
+  })
   const insertWikilink = useInsertWikilink(editor, runEditorAction)
   const {
     getWikilinkItems,
@@ -632,7 +687,15 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
   })
 
   return (
-    <div ref={containerRef} className={`editor__blocknote-container${isDragOver ? ' editor__blocknote-container--drag-over' : ''}`} style={cssVars as React.CSSProperties} onClick={handleContainerClick} onCopyCapture={handleCodeBlockCopy}>
+    <div
+      ref={containerRef}
+      className={`editor__blocknote-container${isDragOver ? ' editor__blocknote-container--drag-over' : ''}`}
+      style={cssVars as React.CSSProperties}
+      onClick={handleContainerClick}
+      onCopyCapture={handleCodeBlockCopy}
+      onFocusCapture={activatePlainTextPaste}
+      onMouseDownCapture={activatePlainTextPaste}
+    >
       {isDragOver && (
         <div className="editor__drop-overlay">
           <div className="editor__drop-overlay-label">Drop image here</div>

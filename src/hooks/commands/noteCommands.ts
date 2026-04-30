@@ -13,6 +13,7 @@ interface NoteCommandsConfig {
   onSave: () => void
   onFindInNote?: () => void
   onReplaceInNote?: () => void
+  onPastePlainText: () => void
   onDeleteNote: (path: string) => void
   onArchiveNote: (path: string) => void
   onUnarchiveNote: (path: string) => void
@@ -86,6 +87,14 @@ function buildCoreNoteCommands(config: NoteCommandsConfig): CommandAction[] {
       keywords: ['write'],
       enabled: config.hasActiveNote,
       execute: config.onSave,
+    }),
+    createNoteCommand({
+      id: 'paste-plain-text',
+      label: 'Paste without formatting',
+      shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.editPastePlainText),
+      keywords: ['paste', 'plain', 'formatting', 'clipboard', 'match style'],
+      enabled: true,
+      execute: config.onPastePlainText,
     }),
     ...buildEditorFindCommands(config),
   ]

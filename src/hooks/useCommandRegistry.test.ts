@@ -14,6 +14,7 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
     onCreateNote: vi.fn(),
     onCreateNoteOfType: vi.fn(),
     onSave: vi.fn(),
+    onPastePlainText: vi.fn(),
     onOpenSettings: vi.fn(),
     onDeleteNote: vi.fn(),
     onArchiveNote: vi.fn(),
@@ -586,6 +587,22 @@ describe('useCommandRegistry', () => {
       id: 'create-note',
       shortcut: formatShortcutDisplay({ display: '⌘N' }),
     })
+  })
+
+  it('exposes paste without formatting in the command palette', () => {
+    const onPastePlainText = vi.fn()
+    const { result } = renderHook(() => useCommandRegistry(makeConfig({ onPastePlainText })))
+    const command = findCommand(result.current, 'paste-plain-text')
+
+    expect(command).toMatchObject({
+      label: 'Paste without formatting',
+      group: 'Note',
+      shortcut: formatShortcutDisplay({ display: '⌘⇧V' }),
+      enabled: true,
+    })
+
+    command!.execute()
+    expect(onPastePlainText).toHaveBeenCalledOnce()
   })
 
   it('keeps a single canonical New Type command when the Type definition exists', () => {

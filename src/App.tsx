@@ -125,6 +125,7 @@ import {
   isExplicitOrganizationEnabled,
   sanitizeSelectionForOrganization,
 } from './utils/organizationWorkflow'
+import { requestPlainTextPaste } from './utils/plainTextPaste'
 import './App.css'
 
 // Type declarations for mock content storage and test overrides
@@ -1403,6 +1404,11 @@ function App() {
   const replaceInNoteCommand = useCallback(() => {
     findInNoteRef.current?.({ replace: true })
   }, [])
+  const pastePlainTextCommand = useCallback(() => {
+    void requestPlainTextPaste().catch((error) => {
+      console.warn('[paste] Failed to paste plain text:', error)
+    })
+  }, [])
   const removeActiveVaultCommand = useCallback(() => {
     vaultSwitcher.removeVault(vaultSwitcher.vaultPath)
   }, [vaultSwitcher])
@@ -1492,6 +1498,7 @@ function App() {
     onSearch: dialogs.openSearch,
     onFindInNote: findInNoteCommand,
     onReplaceInNote: activeDeletedFile ? undefined : replaceInNoteCommand,
+    onPastePlainText: pastePlainTextCommand,
     onCreateNote: notes.handleCreateNoteImmediate,
     onCreateNoteOfType: notes.handleCreateNoteImmediate,
     onSave: appSave.handleSave,

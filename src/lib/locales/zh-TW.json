@@ -37,6 +37,7 @@
   "command.note.newType": "新建型別",
   "command.note.newTypedNote": "新建{type}",
   "command.note.saveNote": "儲存筆記",
+  "command.note.pastePlainText": "貼上內容（不保留格式）",
   "command.note.findInNote": "在筆記中查詢",
   "command.note.replaceInNote": "在筆記中替換",
   "command.note.deleteNote": "刪除筆記",

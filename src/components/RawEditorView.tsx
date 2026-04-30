@@ -17,6 +17,11 @@ import { useCodeMirror } from '../hooks/useCodeMirror'
 import type { VaultEntry } from '../types'
 import { translate, type AppLocale } from '../lib/i18n'
 import { RawEditorFindBar, type RawEditorFindRequest } from './RawEditorFindBar'
+import {
+  activatePlainTextPasteTarget,
+  registerPlainTextPasteTarget,
+  type PlainTextPasteTarget,
+} from '../utils/plainTextPaste'
 
 export interface RawEditorViewProps {
   content: string
@@ -334,6 +339,53 @@ function useRawEditorWikilinkInsertion({
   useEffect(() => { insertWikilinkRef.current = insertAutocompleteWikilink }, [insertAutocompleteWikilink, insertWikilinkRef])
 }
 
+function useRawEditorPlainTextPasteTarget({
+  containerRef,
+  setAutocomplete,
+  viewRef,
+}: {
+  containerRef: React.RefObject<HTMLDivElement | null>
+  setAutocomplete: RawEditorSetAutocomplete
+  viewRef: React.MutableRefObject<EditorView | null>
+}) {
+  const targetRef = useRef<PlainTextPasteTarget | null>(null)
+
+  useEffect(() => {
+    const target: PlainTextPasteTarget = {
+      surface: 'raw_editor',
+      contains: (element) => Boolean(element && containerRef.current?.contains(element)),
+      isConnected: () => containerRef.current?.isConnected === true,
+      insert: (text) => {
+        const view = viewRef.current
+        if (!view) return false
+
+        view.dispatch({
+          ...view.state.replaceSelection(text),
+          userEvent: 'input.paste',
+        })
+        setAutocomplete(null)
+        view.focus()
+        return true
+      },
+    }
+    targetRef.current = target
+    const unregister = registerPlainTextPasteTarget(target)
+
+    return () => {
+      unregister()
+      if (targetRef.current === target) {
+        targetRef.current = null
+      }
+    }
+  }, [containerRef, setAutocomplete, viewRef])
+
+  return useCallback(() => {
+    if (targetRef.current) {
+      activatePlainTextPasteTarget(targetRef.current)
+    }
+  }, [])
+}
+
 export function RawEditorView({ content, path, entries, onContentChange, onSave, latestContentRef, vaultPath, locale = 'en', findRequest }: RawEditorViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [rawDoc, setRawDoc] = useState(content)
@@ -366,6 +418,11 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave,
     onSave: pendingChanges.handleSave,
     onEscape: handleEscape,
   })
+  const activatePlainTextPaste = useRawEditorPlainTextPasteTarget({
+    containerRef,
+    setAutocomplete,
+    viewRef,
+  })
 
   useRawEditorWikilinkInsertion({
     debounceRef: pendingChanges.debounceRef,
@@ -391,7 +448,14 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave,
   const dropdownPosition = getRawEditorDropdownPosition(autocomplete, DROPDOWN_MAX_HEIGHT, window)
 
   return (
-    <div className="flex flex-1 flex-col min-h-0 relative" style={{ background: 'var(--background)' }} onKeyDown={handleAutocompleteKey} role="presentation">
+    <div
+      className="flex flex-1 flex-col min-h-0 relative"
+      style={{ background: 'var(--background)' }}
+      onFocusCapture={activatePlainTextPaste}
+      onKeyDown={handleAutocompleteKey}
+      onMouseDownCapture={activatePlainTextPaste}
+      role="presentation"
+    >
       <RawEditorYamlErrorBanner error={pendingChanges.yamlError} />
       <RawEditorFindBar
         doc={rawDoc}

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ReactNode } from 'react'
 import type { VaultEntry } from '../types'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
+import { insertPlainTextFromClipboardText } from '../utils/plainTextPaste'
 
 const state = vi.hoisted(() => ({
   capturedLinkToolbarProps: null as null | Record<string, unknown>,
@@ -601,6 +602,18 @@ describe('SingleEditorView', () => {
     fireEvent.copy(code, { clipboardData })
 
     expect(clipboardData.setData).not.toHaveBeenCalled()
+  })
+
+  it('handles registered plain-text paste requests through BlockNote insertion', () => {
+    const { container, editor } = renderEditorHarness()
+
+    fireEvent.focus(container)
+
+    expect(insertPlainTextFromClipboardText('Plain\nText')).toBe(true)
+    expect(editor.focus).toHaveBeenCalled()
+    expect(editor.insertInlineContent).toHaveBeenCalledWith('Plain\nText', {
+      updateSelection: true,
+    })
   })
 
   it('routes clicks on the empty title wrapper back into the H1 block', async () => {

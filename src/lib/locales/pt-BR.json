@@ -37,6 +37,7 @@
   "command.note.newType": "Novo tipo",
   "command.note.newTypedNote": "Novo {type}",
   "command.note.saveNote": "Salvar nota",
+  "command.note.pastePlainText": "Colar sem formatação",
   "command.note.findInNote": "Localizar na nota",
   "command.note.replaceInNote": "Substituir na nota",
   "command.note.deleteNote": "Excluir nota",

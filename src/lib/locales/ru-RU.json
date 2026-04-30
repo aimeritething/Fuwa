@@ -37,6 +37,7 @@
   "command.note.newType": "Новый тип",
   "command.note.newTypedNote": "Новый {type}",
   "command.note.saveNote": "Сохранить заметку",
+  "command.note.pastePlainText": "Вставить без форматирования",
   "command.note.findInNote": "Найти в заметке",
   "command.note.replaceInNote": "Заменить в заметке",
   "command.note.deleteNote": "Удалить заметку",

@@ -38,6 +38,7 @@ function makeHandlers(): MenuEventHandlers {
     onToggleRawEditor: vi.fn(),
     onToggleDiff: vi.fn(),
     onToggleAIChat: vi.fn(),
+    onPastePlainText: vi.fn(),
     onGoBack: vi.fn(),
     onGoForward: vi.fn(),
     onCheckForUpdates: vi.fn(),
@@ -308,6 +309,12 @@ describe('dispatchMenuEvent', () => {
     const h = makeHandlers()
     dispatchMenuEvent('edit-toggle-diff', h)
     expect(h.onToggleDiff).toHaveBeenCalled()
+  })
+
+  it('edit-paste-plain-text triggers plain-text paste', () => {
+    const h = makeHandlers()
+    dispatchMenuEvent('edit-paste-plain-text', h)
+    expect(h.onPastePlainText).toHaveBeenCalled()
   })
 
   it('view-toggle-ai-chat triggers toggle AI chat', () => {

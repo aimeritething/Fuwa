@@ -31,6 +31,7 @@ function makeHandlers(): MenuEventHandlers {
     onDeleteNote: vi.fn(),
     onFindInNote: vi.fn(),
     onOpenSettings: vi.fn(),
+    onPastePlainText: vi.fn(),
     onQuickOpen: vi.fn(),
     onReplaceInNote: vi.fn(),
     onSave: vi.fn(),
