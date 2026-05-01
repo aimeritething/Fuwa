@@ -462,7 +462,7 @@ interface PulseCommit {
 - Configurable interval (from app settings: `auto_pull_interval_minutes`)
 - Pulls on interval, pushes after commits
 - Awaits the post-pull vault refresh so toasts land after note-list state is fresh
-- Reopens the clean active tab from disk after a successful pull update so the editor and note list stay aligned
+- Reopens the clean active tab from disk only when the pull changed that active note, so unrelated updates do not remount the editor
 - Detects merge conflicts → opens `ConflictResolverModal`
 - Tracks remote status (branch, ahead/behind via `git_remote_status`)
 - Handles push rejection (divergence) → sets `pull_required` status
@@ -471,7 +471,7 @@ interface PulseCommit {
 
 ### External Vault Refresh
 
-External vault mutations are any disk writes Tolaria did not just perform through its own save path: Git pulls, AI-agent writes, filesystem watcher events, and edits from another app. These changes must route through `refreshPulledVaultState()` rather than calling `reloadVault()` in isolation. The shared refresh abstraction reloads entries, folders, and saved views together, preserves unsaved active-editor content, reopens a clean active note from disk, and closes the active tab if the file disappeared. `useVaultWatcher` supplies changed filesystem paths to this abstraction after debouncing and after filtering recent app-owned saves.
+External vault mutations are any disk writes Tolaria did not just perform through its own save path: Git pulls, AI-agent writes, filesystem watcher events, and edits from another app. These changes must route through `refreshPulledVaultState()` rather than calling `reloadVault()` in isolation. The shared refresh abstraction reloads entries, folders, and saved views together, preserves unsaved active-editor content, reopens a clean active note only when the changed-path list includes that note, and closes the active tab if the file disappeared. Unknown or unrelated watcher updates refresh vault-derived state without remounting the active editor. `useVaultWatcher` supplies changed filesystem paths to this abstraction after debouncing and after filtering recent app-owned saves.
 
 `useGitRemoteStatus` is the commit-time companion to `useAutoSync`:
 - Re-checks `git_remote_status` when the Commit dialog opens and right before submit
