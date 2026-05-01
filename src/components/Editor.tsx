@@ -189,6 +189,7 @@ function useEditorSetup({
   rawToggleRef, diffToggleRef,
 }: EditorSetupParams) {
   const vaultPathRef = useRef(vaultPath)
+  const flushPendingEditorChangeRef = useRef<(() => boolean) | null>(null)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
 
   const editor = useCreateBlockNote({
@@ -212,6 +213,7 @@ function useEditorSetup({
     activeTab?.content ?? null,
     onContentChange,
     vaultPath,
+    flushPendingEditorChangeRef,
   )
   const tabsForEditorSwap = applyPendingRawExitContent(tabs, pendingRawExitContent)
   const rawModeContent = resolveRawModeContent({ activeTab, rawModeContentOverride })
@@ -227,6 +229,14 @@ function useEditorSetup({
   const { handleEditorChange, flushPendingEditorChange, editorMountedRef } = useEditorTabSwap({
     tabs: tabsForEditorSwap, activeTabPath, editor, onContentChange, rawMode, vaultPath,
   })
+  useEffect(() => {
+    flushPendingEditorChangeRef.current = flushPendingEditorChange
+    return () => {
+      if (flushPendingEditorChangeRef.current === flushPendingEditorChange) {
+        flushPendingEditorChangeRef.current = null
+      }
+    }
+  }, [flushPendingEditorChange])
   useEditorFocus(editor, editorMountedRef)
 
   const { diffMode, diffContent, diffLoading, handleToggleDiff, handleViewCommitDiff } = useDiffMode({
