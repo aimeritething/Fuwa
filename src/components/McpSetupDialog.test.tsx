@@ -65,6 +65,33 @@ describe('McpSetupDialog', () => {
     expect(screen.getByTestId('mcp-setup-disconnect')).toHaveTextContent('Disconnect')
   })
 
+  it('keeps overflowing setup content inside a scrollable modal body', () => {
+    render(
+      <McpSetupDialog
+        open={true}
+        status="not_installed"
+        busyAction={null}
+        manualConfigSnippet={MANUAL_CONFIG}
+        onClose={vi.fn()}
+        onConnect={vi.fn()}
+        onDisconnect={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('mcp-setup-dialog')).toHaveClass(
+      'flex',
+      'max-h-[calc(100dvh-2rem)]',
+      'overflow-hidden',
+    )
+    expect(screen.getByTestId('mcp-setup-scroll-body')).toHaveClass(
+      'min-h-0',
+      'flex-1',
+      'overflow-y-auto',
+      'overscroll-contain',
+    )
+    expect(screen.getByTestId('mcp-setup-actions')).toHaveClass('shrink-0')
+  })
+
   it('routes actions through the dialog buttons', () => {
     const onClose = vi.fn()
     const onConnect = vi.fn()

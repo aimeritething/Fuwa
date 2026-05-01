@@ -121,7 +121,10 @@ function McpSetupActions({
   const t = createTranslator(locale)
 
   return (
-    <DialogFooter className="flex-row items-center justify-end gap-2 sm:justify-end">
+    <DialogFooter
+      className="shrink-0 flex-row flex-wrap items-center justify-end gap-2 sm:justify-end"
+      data-testid="mcp-setup-actions"
+    >
       <Button type="button" variant="outline" onClick={onClose} disabled={buttonsDisabled}>
         {t('common.cancel')}
       </Button>
@@ -175,8 +178,12 @@ export function McpSetupDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) onClose() }}>
-      <DialogContent showCloseButton={false} className="sm:max-w-[520px]" data-testid="mcp-setup-dialog">
-        <DialogHeader>
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[calc(100dvh-2rem)] flex-col overflow-hidden sm:max-w-[520px]"
+        data-testid="mcp-setup-dialog"
+      >
+        <DialogHeader className="shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <ShieldCheck size={18} />
             {copy.title}
@@ -184,7 +191,10 @@ export function McpSetupDialog({
           <DialogDescription>{copy.description}</DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3 text-sm leading-6 text-muted-foreground">
+        <div
+          className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-1 text-sm leading-6 text-muted-foreground"
+          data-testid="mcp-setup-scroll-body"
+        >
           <p>
             {t('mcp.setup.nodeRequirement')}
           </p>
