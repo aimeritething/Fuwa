@@ -203,6 +203,7 @@ fn build_codex_command(
     vault_path: &str,
 ) -> std::process::Command {
     let mut command = crate::hidden_command(binary);
+    crate::cli_agent_runtime::configure_agent_command_environment(&mut command, binary);
     command
         .args(args)
         .arg(prompt)
@@ -559,6 +560,28 @@ mod tests {
             ]
         );
         assert_eq!(command.get_current_dir(), Some(Path::new("/tmp/vault")));
+    }
+
+    #[test]
+    fn build_codex_command_extends_path_with_resolved_homebrew_bin() {
+        let binary = PathBuf::from("/opt/homebrew/bin/codex");
+        let command = build_codex_command(
+            &binary,
+            vec!["exec".to_string(), "--json".to_string()],
+            "Summarize".into(),
+            "/tmp/vault",
+        );
+        let path_value = command
+            .get_envs()
+            .find(|(key, _)| *key == OsStr::new("PATH"))
+            .and_then(|(_, value)| value)
+            .expect("PATH should be set");
+        let paths = std::env::split_paths(path_value).collect::<Vec<_>>();
+
+        assert!(
+            paths.contains(&PathBuf::from("/opt/homebrew/bin")),
+            "PATH should include the resolved Codex binary directory, got {paths:?}"
+        );
     }
 
     #[cfg(unix)]
