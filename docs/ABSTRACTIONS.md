@@ -166,9 +166,9 @@ Asset previewability is inferred in the renderer from the filename extension (`s
 
 ### Note Content Freshness
 
-The renderer may cache recently opened or preloaded markdown content, but cached content is only a performance hint. Before showing cached markdown or editor-ready blocks, `useTabManagement` validates the cached string with the `validate_note_content` Tauri command. That command re-enters the same vault path boundary checks as `get_note_content` and compares the cached text against the current on-disk file bytes. A mismatch, missing file, or unreadable file falls back to the normal fresh-read path and existing missing/unreadable recovery.
+The renderer may cache recently opened or preloaded markdown content, but cached content is only a performance hint. `useTabManagement` can reuse cached text immediately when it carries the same `modifiedAt` and `fileSize` identity as the current `VaultEntry`; otherwise it validates the cached string with the `validate_note_content` Tauri command. That command re-enters the same vault path boundary checks as `get_note_content` and compares the cached text against the current on-disk file bytes. A mismatch, missing file, or unreadable file falls back to the normal fresh-read path and existing missing/unreadable recovery.
 
-Prepared BlockNote blocks in `useEditorTabSwap` are keyed by path plus source content. They can be built ahead of time from prefetched markdown, but they are reused only when the validated raw content for that path is identical to the source content that produced the blocks.
+`useEditorTabSwap` may reuse BlockNote blocks that were already opened successfully or warmed from prefetched raw content, keyed by vault, path, and exact source content. Background warming is limited to likely next large Markdown notes and defers while the editor is unmounted, raw mode is active, or recent typing/navigation is still inside the foreground idle window. Every async editor swap carries a generation and source-content token so stale conversion results cannot overwrite newer file content or dirty editor state.
 
 ### Entity Types (isA / type)
 

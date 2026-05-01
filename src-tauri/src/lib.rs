@@ -581,6 +581,7 @@ macro_rules! app_invoke_handler {
             commands::copy_text_to_clipboard,
             commands::read_text_from_clipboard,
             commands::sync_mcp_bridge_vault,
+            commands::get_process_memory_snapshot,
             commands::repair_vault,
             commands::reinit_telemetry,
             commands::list_views,

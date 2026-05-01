@@ -153,6 +153,7 @@ import {
 import type { VaultEntry } from '../types'
 import { bindVaultConfigStore, resetVaultConfigStore } from '../utils/vaultConfigStore'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { clearParsedNoteBlockCache } from '../hooks/editorParsedBlockCache'
 
 type EditorComponentProps = ComponentProps<typeof Editor>
 
@@ -235,6 +236,7 @@ describe('Editor', () => {
   beforeEach(() => {
     blockNoteCreation.options = []
     blockNoteViewState.onChange = null
+    clearParsedNoteBlockCache()
   })
 
   it('shows empty state when no tabs are open', () => {

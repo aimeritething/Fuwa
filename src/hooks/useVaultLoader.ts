@@ -191,6 +191,7 @@ function useInitialVaultLoad({
 }) {
   useEffect(() => {
     const path = vaultPath
+    clearPrefetchCache()
     resetVaultState({
       clearNewPaths: tracker.clear,
       clearUnsaved: unsaved.clearAll,

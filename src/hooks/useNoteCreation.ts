@@ -470,7 +470,7 @@ async function createNoteImmediate(deps: ImmediateCreateDeps, type?: string): Pr
   const didPersist = await persistImmediateEntry(deps, entry, content)
   if (!didPersist) return false
 
-  cacheNoteContent(entry.path, content)
+  cacheNoteContent(entry.path, content, entry)
   deps.openTabWithContent(entry, content)
   addEntryWithMock(entry, content, deps.addEntry)
   signalFocusEditor({ path: entry.path, selectTitle: true })

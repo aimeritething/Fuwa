@@ -17,6 +17,7 @@ import { useDragRegion } from '../hooks/useDragRegion'
 import { formatShortcutDisplay } from '../hooks/appCommandCatalog'
 import { EditorRightPanel } from './EditorRightPanel'
 import { EditorContent } from './EditorContent'
+import { EditorMemoryProbe } from './EditorMemoryProbe'
 import { FilePreview } from './FilePreview'
 import { schema } from './editorSchema'
 import type { RawEditorFindRequest } from './RawEditorFindBar'
@@ -513,6 +514,7 @@ function EditorLayout({
           locale={locale}
         />
       </div>
+      <EditorMemoryProbe entries={entries} vaultPath={vaultPath} locale={locale} />
     </div>
   )
 }
@@ -538,7 +540,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
     isConflicted, onKeepMine, onKeepTheirs,
     flushPendingEditorContentRef, flushPendingRawContentRef, findInNoteRef, locale,
   } = props
-
   const {
     editor, activeTab, rawLatestContentRef, rawModeContent,
     rawMode, diffMode, diffContent, diffLoading,
@@ -560,7 +561,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
     handleToggleRawExclusive,
     rawMode,
   })
-
   useRegisterEditorContentFlushes({
     activeTab,
     flushPendingEditorChange,
@@ -570,7 +570,6 @@ export const Editor = memo(function Editor(props: EditorProps) {
     onContentChange,
     flushPendingRawContentRef,
   })
-
   return (
     <EditorLayout
       tabs={tabs}
