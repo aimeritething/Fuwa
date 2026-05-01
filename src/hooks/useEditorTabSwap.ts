@@ -27,11 +27,14 @@ import {
   extractEditorBody,
   getH1TextFromBlocks,
   isUntitledPath,
-  normalizeParsedImageBlocks,
   pathStem,
   slugifyPathStem,
 } from './editorTabContent'
 import { clearEditorDomSelection, EDITOR_CONTAINER_SELECTOR } from './editorDomSelection'
+import {
+  parseMarkdownBlocksWithFallback,
+  type MarkdownParseResult,
+} from './editorMarkdownParseFallback'
 export { extractEditorBody, getH1TextFromBlocks, replaceTitleInFrontmatter } from './editorTabContent'
 export { RICH_EDITOR_CHANGE_DEBOUNCE_MS } from './editorChangeDebounce'
 
@@ -192,6 +195,12 @@ function injectEditorMarkdownBlocks(blocks: EditorBlocks): EditorBlocks {
   return injectMermaidInBlocks(withMath) as EditorBlocks
 }
 
+function repairParsedMarkdownBlocks(parsed: MarkdownParseResult): EditorBlocks {
+  const parseSafeBlocks = repairMalformedEditorBlocks(parsed.blocks) as EditorBlocks
+  if (parsed.usedSourceFallback) return parseSafeBlocks
+  return repairMalformedEditorBlocks(injectEditorMarkdownBlocks(parseSafeBlocks)) as EditorBlocks
+}
+
 async function resolveBlocksForTarget(
   options: {
     editor: ReturnType<typeof useCreateBlockNote>
@@ -218,10 +227,14 @@ async function resolveBlocksForTarget(
     return nextState
   }
 
-  const parsed = normalizeParsedImageBlocks(await parseMarkdownBlocks(editor, preprocessed)) as EditorBlocks
-  const parseSafeBlocks = repairMalformedEditorBlocks(parsed) as EditorBlocks
+  const parsed = await parseMarkdownBlocksWithFallback({
+    parseMarkdownBlocks: markdown => parseMarkdownBlocks(editor, markdown),
+    preprocessed,
+    sourceMarkdown: body,
+    context: targetPath,
+  })
   const nextState = {
-    blocks: repairMalformedEditorBlocks(injectEditorMarkdownBlocks(parseSafeBlocks)) as EditorBlocks,
+    blocks: repairParsedMarkdownBlocks(parsed),
     scrollTop: 0,
     sourceContent: content,
   }
@@ -245,24 +258,23 @@ async function prepareCachedNoteContent(options: {
   await resolveBlocksForTarget({ editor, cache, targetPath: path, content: cached.content, vaultPath })
 }
 
-function repairInjectedBlocks(blocks: EditorBlocks): EditorBlocks {
-  const parseSafeBlocks = repairMalformedEditorBlocks(blocks) as EditorBlocks
-  return repairMalformedEditorBlocks(injectEditorMarkdownBlocks(parseSafeBlocks)) as EditorBlocks
-}
-
 async function resolveEmptyHeadingBlocks(
   editor: ReturnType<typeof useCreateBlockNote>,
   content: string,
   vaultPath?: string,
+  targetPath = 'empty heading note',
 ): Promise<EditorBlocks | null> {
   const remainder = extractBodyRemainderAfterEmptyH1({ content })
   if (remainder === null) return null
   if (!remainder.trim()) return [emptyHeadingBlock(), ...blankParagraphBlocks()] as EditorBlocks
 
-  const parsed = normalizeParsedImageBlocks(
-    await parseMarkdownBlocks(editor, preProcessEditorMarkdown(remainder, vaultPath)),
-  ) as EditorBlocks
-  return [emptyHeadingBlock(), ...repairInjectedBlocks(parsed)] as EditorBlocks
+  const parsed = await parseMarkdownBlocksWithFallback({
+    parseMarkdownBlocks: markdown => parseMarkdownBlocks(editor, markdown),
+    preprocessed: preProcessEditorMarkdown(remainder, vaultPath),
+    sourceMarkdown: remainder,
+    context: targetPath,
+  })
+  return [emptyHeadingBlock(), ...repairParsedMarkdownBlocks(parsed)] as EditorBlocks
 }
 
 function findActiveTab(options: {
@@ -780,7 +792,7 @@ function scheduleEmptyHeadingSwap(options: {
 
   if (extractBodyRemainderAfterEmptyH1({ content }) === null) return false
 
-  void resolveEmptyHeadingBlocks(editor, content, vaultPath)
+  void resolveEmptyHeadingBlocks(editor, content, vaultPath, targetPath)
     .then((blocks) => {
       if (prevActivePathRef.current !== targetPath || !blocks) return
       applyBlocksToEditor({ editor, blocks, scrollTop: 0, suppressChangeRef, editorContentPathRef, targetPath })

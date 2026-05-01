@@ -992,6 +992,60 @@ describe('useEditorTabSwap raw mode sync', () => {
     expect(mockEditor.replaceBlocks).toHaveBeenCalled()
   })
 
+  it('keeps formula Markdown visible when raw mode exits into a parser failure', async () => {
+    vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
+    const parseError = new Error('BlockNote parser failed on math')
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+
+    const formulaTab = {
+      ...makeTab('a.md', 'Formula'),
+      content: [
+        '---',
+        'title: Formula',
+        '---',
+        '',
+        '# Formula',
+        '',
+        'Pasted math:',
+        '',
+        '$$',
+        '\\begin{aligned}',
+        'x &= y + 1',
+        '\\end{aligned}',
+        '$$',
+      ].join('\n'),
+    }
+
+    const { mockEditor, rerenderWith } = await createSwapHarness({
+      initialProps: { tabs: [makeTab('a.md', 'Formula')], activeTabPath: 'a.md', rawMode: false },
+      setupEditor: (editor) => {
+        editor.tryParseMarkdownToBlocks.mockImplementation((markdown: string) => {
+          if (markdown.includes('@@TOLARIA_MATH_BLOCK:')) throw parseError
+          return blocksA
+        })
+      },
+    })
+
+    await rerenderWith({ rawMode: true })
+    mockEditor.replaceBlocks.mockClear()
+
+    await rerenderWith({ tabs: [formulaTab], rawMode: false })
+
+    const appliedBlocks = mockEditor.replaceBlocks.mock.calls[0]?.[1] as Array<{ content?: Array<{ text?: string }> }>
+    const renderedText = appliedBlocks
+      .flatMap(block => block.content?.map(part => part.text ?? '') ?? [])
+      .join('\n')
+
+    expect(renderedText).toContain('# Formula')
+    expect(renderedText).toContain('Pasted math:')
+    expect(renderedText).toContain('\\begin{aligned}')
+    expect(warnSpy).toHaveBeenCalledWith(
+      '[editor] Rendering a.md as plain Markdown because BlockNote could not parse it:',
+      parseError,
+    )
+  })
+
   it('does not skip swap when rawMode is on (editor hidden)', async () => {
     vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
