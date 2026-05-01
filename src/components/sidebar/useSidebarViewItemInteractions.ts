@@ -3,7 +3,7 @@ import {
   type SetStateAction,
 } from 'react'
 import type { ViewDefinition, ViewFile } from '../../types'
-import { useOutsideClick } from './sidebarHooks'
+import { getElementMenuPosition, useOutsideClick, useSidebarContextMenu } from './sidebarHooks'
 import type { MenuPosition, ViewDefinitionPatchHandler } from './SidebarViewActions'
 
 interface SidebarViewItemInteractionInput {
@@ -15,14 +15,6 @@ interface SidebarViewItemInteractionInput {
 }
 
 type RowKeyboardAction = 'select' | 'rename' | 'menu'
-
-function getKeyboardMenuPosition(row: HTMLDivElement | null): MenuPosition {
-  const bounds = row?.getBoundingClientRect()
-  return {
-    x: bounds ? bounds.left + 16 : 20,
-    y: bounds ? bounds.top + bounds.height : 100,
-  }
-}
 
 function getRowKeyboardAction(event: KeyboardEvent<HTMLDivElement>): RowKeyboardAction | null {
   if (event.key === 'Enter' || event.key === ' ') return 'select'
@@ -43,30 +35,34 @@ function commitViewRename(
 }
 
 function useViewInteractionState() {
-  const [contextMenuPos, setContextMenuPos] = useState<MenuPosition | null>(null)
   const [customizePos, setCustomizePos] = useState<MenuPosition | null>(null)
   const [isRenaming, setIsRenaming] = useState(false)
-  const contextMenuRef = useRef<HTMLDivElement>(null)
   const customizeRef = useRef<HTMLDivElement>(null)
   const rowRef = useRef<HTMLDivElement>(null)
-  const closeContextMenu = useCallback(() => setContextMenuPos(null), [])
+  const {
+    closeContextMenu,
+    contextMenu,
+    contextMenuRef,
+    openContextMenuAt,
+    openContextMenuFromPointer,
+  } = useSidebarContextMenu<string>()
   const closeCustomize = useCallback(() => setCustomizePos(null), [])
 
-  useOutsideClick(contextMenuRef, !!contextMenuPos, closeContextMenu)
   useOutsideClick(customizeRef, !!customizePos, closeCustomize)
 
   return {
     closeContextMenu,
     closeCustomize,
-    contextMenuPos,
+    contextMenuPos: contextMenu?.pos ?? null,
     contextMenuRef,
     customizePos,
     customizeRef,
     isRenaming,
     rowRef,
-    setContextMenuPos,
     setCustomizePos,
     setIsRenaming,
+    openContextMenuAt,
+    openContextMenuFromPointer,
   }
 }
 
@@ -104,30 +100,30 @@ function useViewMenuActions({
   onUpdateViewDefinition,
   closeContextMenu,
   contextMenuPos,
+  openContextMenuAt,
+  openContextMenuFromPointer,
   rowRef,
-  setContextMenuPos,
   setCustomizePos,
 }: SidebarViewItemInteractionInput & {
   closeContextMenu: () => void
   contextMenuPos: MenuPosition | null
+  openContextMenuAt: (target: string, pos: MenuPosition) => void
+  openContextMenuFromPointer: (target: string, event: MouseEvent) => void
   rowRef: RefObject<HTMLDivElement | null>
-  setContextMenuPos: Dispatch<SetStateAction<MenuPosition | null>>
   setCustomizePos: Dispatch<SetStateAction<MenuPosition | null>>
 }) {
   const hasMenuActions = !!(onEditView || onDeleteView || onUpdateViewDefinition)
 
   const handleContextMenu = useCallback((event: MouseEvent) => {
     if (!hasMenuActions) return
-    event.preventDefault()
-    event.stopPropagation()
     setCustomizePos(null)
-    setContextMenuPos({ x: event.clientX, y: event.clientY })
-  }, [hasMenuActions, setContextMenuPos, setCustomizePos])
+    openContextMenuFromPointer(view.filename, event)
+  }, [hasMenuActions, openContextMenuFromPointer, setCustomizePos, view.filename])
 
   const openKeyboardContextMenu = useCallback(() => {
     setCustomizePos(null)
-    setContextMenuPos(getKeyboardMenuPosition(rowRef.current))
-  }, [rowRef, setContextMenuPos, setCustomizePos])
+    openContextMenuAt(view.filename, getElementMenuPosition(rowRef.current))
+  }, [openContextMenuAt, rowRef, setCustomizePos, view.filename])
 
   const handleEdit = useCallback(() => {
     closeContextMenu()
@@ -205,8 +201,9 @@ export function useSidebarViewItemInteractions({
     onUpdateViewDefinition,
     closeContextMenu: state.closeContextMenu,
     contextMenuPos: state.contextMenuPos,
+    openContextMenuAt: state.openContextMenuAt,
+    openContextMenuFromPointer: state.openContextMenuFromPointer,
     rowRef: state.rowRef,
-    setContextMenuPos: state.setContextMenuPos,
     setCustomizePos: state.setCustomizePos,
   })
   const handleRowKeyDown = useViewRowKeyboardActions({

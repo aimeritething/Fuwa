@@ -80,6 +80,12 @@ describe('Sidebar Type row actions', () => {
     expect(screen.getByText('Delete type')).toBeInTheDocument()
   })
 
+  it('dismisses the type context menu on Escape', () => {
+    openProjectsContextMenu()
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByText('Rename type…')).not.toBeInTheDocument()
+  })
+
   it('calls onDeleteType from the context menu', () => {
     const onDeleteType = vi.fn()
     renderSidebar({ onDeleteType })

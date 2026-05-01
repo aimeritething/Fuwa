@@ -1,10 +1,12 @@
-import { type ComponentType, useState, useEffect, useRef } from 'react'
+import { type ComponentType } from 'react'
 import type { SidebarSelection } from '../types'
 import { cn } from '@/lib/utils'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { type IconProps } from '@phosphor-icons/react'
 import { SIDEBAR_ITEM_PADDING } from './sidebar/sidebarStyles'
+import { useSidebarInlineRenameInput } from './sidebar/sidebarHooks'
 import { Button } from './ui/button'
+import { Input } from './ui/input'
 import { translate, type AppLocale } from '../lib/i18n'
 
 const SIDEBAR_COUNT_PILL_STYLE = {
@@ -336,27 +338,28 @@ function InlineRenameInput({ initialValue, onSubmit, onCancel, locale }: {
   onCancel: () => void
   locale?: AppLocale
 }) {
-  const [value, setValue] = useState(initialValue)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => { inputRef.current?.focus(); inputRef.current?.select() }, [])
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); onSubmit(value.trim()) }
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onCancel() }
-  }
+  const {
+    handleKeyDown,
+    inputRef,
+    setValue,
+    submitValue,
+    value,
+  } = useSidebarInlineRenameInput({
+    initialValue,
+    onCancel,
+    onSubmit: (nextValue) => onSubmit(nextValue.trim()),
+  })
 
   return (
-    <input
+    <Input
       ref={inputRef}
       value={value}
       onChange={(e) => setValue(e.target.value)}
       onKeyDown={handleKeyDown}
-      onBlur={() => onSubmit(value.trim())}
+      onBlur={() => { void submitValue() }}
       onClick={(e) => e.stopPropagation()}
       aria-label={translate(locale ?? 'en', 'sidebar.section.name')}
-      className="flex-1 rounded border border-primary bg-background text-[13px] font-medium text-foreground outline-none"
-      style={{ padding: '1px 4px' }}
+      className="h-auto min-h-0 flex-1 rounded border-primary bg-background px-1 py-px text-[13px] font-medium text-foreground"
     />
   )
 }

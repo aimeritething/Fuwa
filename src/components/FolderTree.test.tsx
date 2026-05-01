@@ -287,6 +287,21 @@ describe('FolderTree', () => {
     expect(onDeleteFolder).toHaveBeenCalledWith('projects')
   })
 
+  it('dismisses the folder context menu on Escape', () => {
+    render(
+      <FolderTree
+        folders={mockFolders}
+        selection={defaultSelection}
+        onSelect={vi.fn()}
+        onDeleteFolder={vi.fn()}
+        onStartRenameFolder={vi.fn()}
+      />,
+    )
+    fireEvent.contextMenu(screen.getByText('projects'))
+    fireEvent.keyDown(document, { key: 'Escape' })
+    expect(screen.queryByTestId('folder-context-menu')).not.toBeInTheDocument()
+  })
+
   it('opens folder file actions from the context menu', () => {
     const onRevealFolder = vi.fn()
     const onCopyFolderPath = vi.fn()

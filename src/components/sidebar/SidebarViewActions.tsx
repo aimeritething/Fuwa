@@ -1,5 +1,5 @@
 import {
-  useEffect, useRef, useState, type KeyboardEvent, type ReactNode, type RefObject,
+  type ReactNode, type RefObject,
 } from 'react'
 import {
   Palette, PencilSimple, Trash,
@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import type { ViewDefinition, ViewFile } from '../../types'
 import { translate, type AppLocale } from '../../lib/i18n'
 import { TypeCustomizePopover } from '../TypeCustomizePopover'
+import { useSidebarInlineRenameInput } from './sidebarHooks'
 
 export interface MenuPosition {
   x: number
@@ -28,23 +29,13 @@ export function ViewRenameInput({
   onCancel: () => void
   onSubmit: (value: string) => void
 }) {
-  const [value, setValue] = useState(initialValue)
-  const inputRef = useRef<HTMLInputElement>(null)
-
-  useEffect(() => { inputRef.current?.focus(); inputRef.current?.select() }, [])
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      event.preventDefault()
-      event.stopPropagation()
-      onSubmit(value)
-    }
-    if (event.key === 'Escape') {
-      event.preventDefault()
-      event.stopPropagation()
-      onCancel()
-    }
-  }
+  const {
+    handleKeyDown,
+    inputRef,
+    setValue,
+    submitValue,
+    value,
+  } = useSidebarInlineRenameInput({ initialValue, onCancel, onSubmit })
 
   return (
     <Input
@@ -52,7 +43,7 @@ export function ViewRenameInput({
       aria-label={translate(locale, 'sidebar.view.name')}
       className="h-6 min-w-0 flex-1 rounded border-primary bg-background px-1.5 py-0 text-[13px] font-medium"
       value={value}
-      onBlur={() => onSubmit(value)}
+      onBlur={() => { void submitValue() }}
       onChange={(event) => setValue(event.target.value)}
       onClick={(event) => event.stopPropagation()}
       onDoubleClick={(event) => event.stopPropagation()}

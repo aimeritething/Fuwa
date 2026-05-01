@@ -1290,6 +1290,16 @@ describe('Sidebar', () => {
       expect(screen.getByText('Delete view')).toBeInTheDocument()
     })
 
+    it('opens and dismisses the View context menu from the keyboard', () => {
+      renderViewActions()
+      const row = screen.getByText('Active Projects').closest('[class*="cursor-pointer"]')!
+      fireEvent.keyDown(row, { key: 'F10', shiftKey: true })
+      expect(screen.getByText('Edit view')).toBeInTheDocument()
+
+      fireEvent.keyDown(document, { key: 'Escape' })
+      expect(screen.queryByText('Edit view')).not.toBeInTheDocument()
+    })
+
     it('calls onEditView from the context menu', () => {
       const onEditView = vi.fn()
       renderViewActions({ onEditView })
