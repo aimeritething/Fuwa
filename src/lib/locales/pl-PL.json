@@ -368,6 +368,7 @@
   "editor.toolbar.delete": "Usuń tę notatkę",
   "editor.toolbar.revealFile": "Pokaż w Finderze",
   "editor.toolbar.copyFilePath": "Kopiuj ścieżkę pliku",
+  "editor.toolbar.moreActions": "Więcej działań notatki",
   "editor.toolbar.openProperties": "Otwórz panel właściwości",
   "editor.imageLightbox.title": "Podgląd obrazu",
   "editor.filename.rename": "Zmień nazwę pliku",

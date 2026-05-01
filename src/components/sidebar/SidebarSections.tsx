@@ -24,6 +24,7 @@ import { useDragRegion } from '../../hooks/useDragRegion'
 import { SidebarGroupHeader } from './SidebarGroupHeader'
 import { SidebarViewItem } from './SidebarViewItem'
 import { computeReorder } from './sidebarHooks'
+import { SIDEBAR_SECTION_CONTENT_PADDING_BOTTOM } from './sidebarStyles'
 import { countByFilter } from '../../utils/noteListHelpers'
 import { translate, type AppLocale } from '../../lib/i18n'
 
@@ -112,7 +113,7 @@ export function ViewsSection({
         )}
       </SidebarGroupHeader>
       {!collapsed && (
-        <div style={{ paddingBottom: 4 }}>
+        <div style={{ paddingBottom: SIDEBAR_SECTION_CONTENT_PADDING_BOTTOM }}>
           {onReorderViews ? (
             <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleViewDragEnd}>
               <SortableContext items={viewIds} strategy={verticalListSortingStrategy}>
@@ -303,13 +304,15 @@ export function TypesSection({
         )}
       </div>
       {!collapsed && (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-          <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
-            {visibleSections.map((group) => (
-              <SortableSection key={group.type} group={group} sectionProps={sectionProps} />
-            ))}
-          </SortableContext>
-        </DndContext>
+        <div style={{ paddingBottom: SIDEBAR_SECTION_CONTENT_PADDING_BOTTOM }}>
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={sectionIds} strategy={verticalListSortingStrategy}>
+              {visibleSections.map((group) => (
+                <SortableSection key={group.type} group={group} sectionProps={sectionProps} />
+              ))}
+            </SortableContext>
+          </DndContext>
+        </div>
       )}
     </div>
   )

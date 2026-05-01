@@ -368,6 +368,7 @@
   "editor.toolbar.delete": "Eliminar esta nota",
   "editor.toolbar.revealFile": "Mostrar en el Finder",
   "editor.toolbar.copyFilePath": "Copiar la ruta del archivo",
+  "editor.toolbar.moreActions": "Más acciones de nota",
   "editor.toolbar.openProperties": "Abrir el panel de propiedades",
   "editor.imageLightbox.title": "Vista previa de la imagen",
   "editor.filename.rename": "Cambiar el nombre del archivo",

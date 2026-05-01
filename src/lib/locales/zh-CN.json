@@ -368,6 +368,7 @@
   "editor.toolbar.delete": "删除这条笔记",
   "editor.toolbar.revealFile": "在访达中显示",
   "editor.toolbar.copyFilePath": "复制文件路径",
+  "editor.toolbar.moreActions": "更多笔记操作",
   "editor.toolbar.openProperties": "打开属性面板",
   "editor.imageLightbox.title": "图像预览",
   "editor.filename.rename": "重命名文件名",

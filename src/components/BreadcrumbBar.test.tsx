@@ -1,4 +1,4 @@
-import { render, screen, fireEvent, act } from '@testing-library/react'
+import { render, screen, fireEvent, act, within } from '@testing-library/react'
 import { describe, it, expect, vi } from 'vitest'
 import { BreadcrumbBar } from './BreadcrumbBar'
 import { formatShortcutDisplay } from '../hooks/appCommandCatalog'
@@ -284,12 +284,68 @@ describe('BreadcrumbBar — action buttons always right-aligned', () => {
     const actions = container.querySelector('.breadcrumb-bar__actions')
     expect(actions).toBeInTheDocument()
     expect(actions).toHaveClass('ml-auto')
+    expect(actions).toHaveStyle({ gap: '8px' })
+  })
+
+  it('keeps grouped action buttons evenly spaced', () => {
+    render(
+      <BreadcrumbBar
+        entry={baseEntry}
+        {...defaultProps}
+        noteWidth="normal"
+        onToggleNoteWidth={vi.fn()}
+        onRevealFile={vi.fn()}
+        onCopyFilePath={vi.fn()}
+      />,
+    )
+
+    const fileActionsGroup = screen.getByTestId('breadcrumb-reveal-file').closest('.breadcrumb-bar__overflowable-action')
+    expect(fileActionsGroup).toHaveClass('gap-2')
+    const widthActionGroup = screen.getByRole('button', { name: 'Switch to wide note width' }).closest('.breadcrumb-bar__overflowable-action')
+    expect(widthActionGroup).toHaveClass('gap-2')
+  })
+
+  it('lets the title use the free space before the fixed drag gap', () => {
+    const { container } = render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
+
+    expect(container.querySelector('.breadcrumb-bar__title')).toHaveClass('flex-1')
+    expect(container.querySelector('.breadcrumb-bar__drag-spacer')).toHaveClass('w-6', 'shrink-0')
+    expect(container.querySelector('.breadcrumb-bar__drag-spacer')).not.toHaveClass('flex-1')
   })
 
   it('does not render the unused backlinks or more-actions placeholders', () => {
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
     expect(screen.queryByRole('button', { name: 'Backlinks are coming soon' })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'More note actions are coming soon' })).not.toBeInTheDocument()
+  })
+
+  it('exposes lower-priority actions through the overflow menu', async () => {
+    render(
+      <BreadcrumbBar
+        entry={baseEntry}
+        {...defaultProps}
+        showDiffToggle
+        noteWidth="normal"
+        onToggleNoteWidth={vi.fn()}
+        onRevealFile={vi.fn()}
+        onCopyFilePath={vi.fn()}
+        onArchive={vi.fn()}
+        onDelete={vi.fn()}
+      />,
+    )
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: 'More note actions' }), {
+      button: 0,
+      ctrlKey: false,
+    })
+
+    const menu = await screen.findByRole('menu')
+    expect(within(menu).getByRole('menuitem', { name: 'Show the current diff' })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: 'Switch to wide note width' })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: 'Reveal in Finder' })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: 'Copy file path' })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: 'Archive this note' })).toBeInTheDocument()
+    expect(within(menu).getByRole('menuitem', { name: 'Delete this note' })).toBeInTheDocument()
   })
 })
 

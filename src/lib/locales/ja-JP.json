@@ -368,6 +368,7 @@
   "editor.toolbar.delete": "このノートを削除",
   "editor.toolbar.revealFile": "Finderで表示",
   "editor.toolbar.copyFilePath": "ファイルパスをコピー",
+  "editor.toolbar.moreActions": "その他のノート操作",
   "editor.toolbar.openProperties": "プロパティパネルを開く",
   "editor.imageLightbox.title": "画像プレビュー",
   "editor.filename.rename": "ファイル名を変更",

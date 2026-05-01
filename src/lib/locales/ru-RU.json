@@ -368,6 +368,7 @@
   "editor.toolbar.delete": "Удалить эту заметку",
   "editor.toolbar.revealFile": "Показать в Finder",
   "editor.toolbar.copyFilePath": "Копировать путь к файлу",
+  "editor.toolbar.moreActions": "Другие действия с заметкой",
   "editor.toolbar.openProperties": "Открыть панель свойств",
   "editor.imageLightbox.title": "Предварительный просмотр изображения",
   "editor.filename.rename": "Переименовать файл",
