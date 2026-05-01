@@ -635,7 +635,7 @@ index 30637742d517bcf136ca562a09a1544d7b03a20d..f86cd930aa3834c3e26af2a979a39d49
          }),
        );
 
-@@ -874,14 +889,15 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
+@@ -874,20 +889,21 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
       * used as the row drag handle, and the one used as the column drag handle.
       */
      dragEnd() {
@@ -656,3 +656,10 @@ index 30637742d517bcf136ca562a09a1544d7b03a20d..f86cd930aa3834c3e26af2a979a39d49
 +      view.emitUpdate();
 
        editor.transact((tr) => tr.setMeta(tableHandlesPluginKey, null));
+
+       if (editor.headless) {
+         return;
+       }
+
+       unsetHiddenDragImage(editor.prosemirrorView.root);
+     },
