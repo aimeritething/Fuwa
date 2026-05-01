@@ -389,15 +389,40 @@
   cursor: pointer;
 }
 
-/* Code blocks intentionally keep BlockNote's dark shell and syntax-highlighted content. */
+/* Code blocks follow Tolaria's theme instead of BlockNote's fixed dark shell. */
+.editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] {
+  background-color: var(--editor-code-block-background) !important;
+  border: 1px solid var(--editor-code-block-border);
+  color: var(--editor-code-block-text) !important;
+}
+
+.editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] > pre {
+  color: inherit;
+}
+
+.editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] > div > select {
+  color: var(--editor-code-block-language) !important;
+}
+
+.editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] > div > select > option {
+  background: var(--popover);
+  color: var(--foreground);
+}
+
 .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] pre code {
   background-color: transparent;
+  color: inherit;
   padding: 0;
   border-radius: 0;
 }
 
 .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] pre code .shiki {
   background-color: transparent !important;
+}
+
+:root:not(.dark) .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] pre code .shiki,
+[data-theme="light"] .editor__blocknote-container .bn-block-content[data-content-type="codeBlock"] pre code .shiki {
+  color: var(--editor-code-block-text) !important;
 }
 
 /* --- Blockquote --- */
