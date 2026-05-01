@@ -214,7 +214,7 @@ fn has_tolaria_vault_marker(path: &std::path::Path) -> bool {
 pub fn init_git_repo(vault_path: VaultPathArg) -> Result<(), String> {
     let vault_path = expand_tilde(&vault_path);
     validate_git_init_target(&vault_path)?;
-    crate::git::init_repo(&vault_path)
+    crate::git::init_repo(std::path::Path::new(vault_path.as_ref()))
 }
 
 #[cfg(desktop)]

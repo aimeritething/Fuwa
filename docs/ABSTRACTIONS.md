@@ -741,6 +741,7 @@ Tolaria tracks managed vault-level AI guidance separately from normal note conte
 Tolaria delegates remote auth to the user's system git setup:
 - `CloneVaultModal` captures a remote URL and local destination
 - `clone_git_repo` and `create_getting_started_vault` both run system git clone work in blocking Tokio tasks so clone UIs stay responsive
+- On Linux AppImage launches, every system-git command removes AppImage loader overrides such as `LD_LIBRARY_PATH`, `LD_PRELOAD`, and `GIT_EXEC_PATH` before spawning `git`, so helpers like `git-remote-https` bind against the host git/library stack instead of Tolaria's bundled WebKit/AppImage libraries
 - `git_add_remote` uses the same system git path and refuses remotes whose history is unrelated or ahead of the local vault
 - Existing `git_pull` / `git_push` commands keep surfacing raw git errors, and clone commands fail fast when git wants interactive terminal input
 - No provider-specific token or username is stored in app settings
