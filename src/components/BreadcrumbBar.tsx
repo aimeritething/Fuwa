@@ -17,7 +17,7 @@ import {
   GitBranch,
   Code,
   Sparkle,
-  SlidersHorizontal,
+  SidebarSimple,
   Trash,
   Archive,
   ArrowUUpLeft,
@@ -30,7 +30,6 @@ import {
   ArrowsOutLineHorizontal,
   DotsThree,
 } from '@phosphor-icons/react'
-import { NoteTitleIcon } from './NoteTitleIcon'
 import { slugify } from '../hooks/useNoteCreation'
 import { useDragRegion } from '../hooks/useDragRegion'
 
@@ -436,7 +435,7 @@ function InspectorAction({
       className="hover:text-foreground"
       tooltipAlign="end"
     >
-      <SlidersHorizontal size={16} className={BREADCRUMB_ICON_CLASS} />
+      <SidebarSimple size={16} weight="regular" className={BREADCRUMB_ICON_CLASS} style={{ transform: 'scaleX(-1)' }} />
     </IconActionButton>
   )
 }
@@ -636,12 +635,10 @@ function FilenameInput({
 }
 
 function FilenameTrigger({
-  entry,
   filenameStem,
   locale = 'en',
   onStartEditing,
 }: {
-  entry: VaultEntry
   filenameStem: string
   locale?: AppLocale
   onStartEditing: () => void
@@ -663,7 +660,6 @@ function FilenameTrigger({
       data-testid="breadcrumb-filename-trigger"
       aria-label={translate(locale, 'editor.filename.trigger', { filename: filenameStem })}
     >
-      <NoteTitleIcon icon={entry.icon} size={15} testId="breadcrumb-note-icon" />
       <span className="breadcrumb-bar__filename-text truncate">{filenameStem}</span>
     </Button>
   )
@@ -715,7 +711,7 @@ function FilenameDisplay({
 }) {
   return (
     <div className="flex min-w-0 items-center gap-1">
-      <FilenameTrigger entry={entry} filenameStem={filenameStem} locale={locale} onStartEditing={onStartEditing} />
+      <FilenameTrigger filenameStem={filenameStem} locale={locale} onStartEditing={onStartEditing} />
       <SyncFilenameButton entryPath={entry.path} syncStem={syncStem} locale={locale} onRenameFilename={onRenameFilename} />
     </div>
   )

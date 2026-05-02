@@ -179,16 +179,18 @@ describe('BreadcrumbBar — title in breadcrumb (always rendered, CSS-toggled)',
     expect(screen.getByText('test')).toBeInTheDocument()
   })
 
-  it('renders emoji note icons in the breadcrumb title', () => {
+  it('does not render emoji note icons in the breadcrumb filename', () => {
     const entryWithEmoji = { ...baseEntry, icon: '🚀' }
     render(<BreadcrumbBar entry={entryWithEmoji} {...defaultProps} />)
-    expect(screen.getByTestId('breadcrumb-note-icon')).toHaveTextContent('🚀')
+    expect(screen.getByTestId('breadcrumb-filename-trigger')).toHaveTextContent('test')
+    expect(screen.queryByText('🚀')).not.toBeInTheDocument()
   })
 
-  it('renders Phosphor note icons in the breadcrumb title', () => {
+  it('does not render Phosphor note icons in the breadcrumb filename', () => {
     const entryWithPhosphor = { ...baseEntry, icon: 'cooking-pot' }
     render(<BreadcrumbBar entry={entryWithPhosphor} {...defaultProps} />)
-    expect(screen.getByTestId('breadcrumb-note-icon').tagName.toLowerCase()).toBe('svg')
+    expect(screen.getByTestId('breadcrumb-filename-trigger')).toHaveTextContent('test')
+    expect(screen.queryByTestId('breadcrumb-note-icon')).not.toBeInTheDocument()
   })
 
   it('falls back to "Note" when isA is null', () => {
