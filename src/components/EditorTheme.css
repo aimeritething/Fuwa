@@ -32,9 +32,17 @@
    so they fit within a single text line for headings and paragraphs. */
 .editor__blocknote-container .bn-side-menu {
   --group-wrap: nowrap !important;
+  align-items: center !important;
   flex-direction: row !important;
   flex-wrap: nowrap !important;
   gap: 0 !important;
+}
+
+.editor__blocknote-container .bn-side-menu button,
+.editor__blocknote-container .tolaria-block-drag-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .editor__blocknote-container .bn-side-menu [draggable="true"] * {
