@@ -490,6 +490,8 @@ On first launch, `useOnboarding` checks if the default vault exists. If not, it 
 - **Open an existing folder** → system file picker; plain Markdown folders without `.git` open immediately in supported non-git mode
 - **Get started with a template** → pick a parent folder, then call `create_getting_started_vault()` with the derived `.../Getting Started` child path so the cloned vault opens into the populated repo root immediately
 
+If the selected vault disappears after startup, `useVaultLoader` re-checks `check_vault_exists` when reloads or vault-derived surfaces fail. A confirmed missing path clears cached entries, folders, views, modified-file state, and prefetched note content, then `App` reuses the `vault-missing` `WelcomeScreen` state so note and view actions cannot keep targeting the stale active vault.
+
 When an opened folder is not yet a git repo, Tolaria shows a dismissible Git setup dialog and a persistent `Git disabled` status-bar warning. Markdown scanning, note browsing, note editing, and search continue normally. Git-dependent surfaces (history, changes, commit, sync, conflict resolution, remotes, AutoGit, and auto-sync) stay unavailable until the user explicitly initializes Git from the dialog, the status-bar warning, or the `Initialize Git for Current Vault` command-palette action.
 
 When the user enables Git later, `init_git_repo` runs `git init`, ensures Tolaria's default `.gitignore`, stages the vault, and writes the initial `Initial vault setup` commit. Before app-managed setup and remote-connection commits, Tolaria ensures the vault has local `user.name` / `user.email` values, falling back to `Tolaria <vault@tolaria.md>` when the vault has no local Git identity yet. That app-managed setup commit explicitly disables commit signing for the single command so inherited global or local `commit.gpgsign` preferences cannot strand onboarding when GPG is missing or misconfigured. Later `git_commit` calls honor the user's signing configuration first, then retry the same app-managed commit once with `commit.gpgsign=false` only when Git reports a signing-helper failure, so working GPG/SSH signing setups continue to sign while broken GPG setups do not create repeated opaque commit failures.
@@ -556,6 +558,11 @@ sequenceDiagram
         VL->>T: invoke('reload_vault') → allow requested vault roots in asset scope + scan_vault_cached()
         T-->>VL: VaultEntry[]
         VL->>T: invoke('get_modified_files')
+        alt Runtime vault path disappears
+            VL->>T: invoke('check_vault_exists')
+            VL-->>A: unavailable vault path + cleared stale state
+            A-->>U: WelcomeScreen (vault missing)
+        end
         A->>T: useMcpStatus — check explicit MCP setup state
         A->>T: sync_mcp_bridge_vault(selected path)
         VL-->>A: entries ready
