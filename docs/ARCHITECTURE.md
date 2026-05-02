@@ -88,7 +88,7 @@ flowchart LR
 3. **No orphan state updates**: Never call `updateEntry()` before the corresponding `handleUpdateFrontmatter()` or `handleDeleteProperty()` has resolved. The three functions in `useEntryActions` (`handleCustomizeType`, `handleRenameSection`, `handleToggleTypeVisibility`) follow this rule — disk write first, then state update.
 4. **Recovery via reload**: If state ever diverges from disk (crash, external edit, race condition), `Reload Vault` (Cmd+K → "Reload Vault") invalidates the cache and does a full filesystem rescan via the `reload_vault` Tauri command, replacing all React state. The `reload_vault_entry` command can re-read a single file.
 5. **Cache is disposable**: The `reload_vault` command deletes the cache file before rescanning, guaranteeing fresh data. The cache never contains data that doesn't exist on the filesystem.
-6. **Visibility filters are command-boundary concerns**: Gitignored-content visibility is applied after scanning/caching, before entries, folders, or search results reach React. The cache remains complete so toggling the setting can show ignored content again without rebuilding a different cache shape.
+6. **Visibility filters are command-boundary concerns**: Gitignored-content visibility is applied after scanning/caching, before entries, folders, or search results reach React. The cache remains complete so toggling the setting can show ignored content again without rebuilding a different cache shape. Large folder filtering runs on the blocking Tokio pool and drains `git check-ignore` output while feeding stdin so broad ignore matches cannot freeze the native UI thread.
 
 #### External Change Detection
 
@@ -644,7 +644,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `parsing.rs` | Text processing: snippet extraction, markdown stripping, ISO date parsing, `extract_title` (H1 → legacy frontmatter → filename), `slug_to_title` |
 | `title_sync.rs` | Legacy filename → `title` frontmatter sync helper; no longer used by the normal note-open flow |
 | `cache.rs` | Git-based incremental vault caching (`scan_vault_cached`), git helpers |
-| `ignored.rs` | Gitignored-content visibility filtering via batched `git check-ignore` |
+| `ignored.rs` | Gitignored-content visibility filtering via batched, pipe-safe `git check-ignore` |
 | `filename_rules.rs` | Cross-platform validation for note filenames, folder names, and custom view filenames |
 | `rename.rs` | `rename_note` / `rename_note_filename` / `move_note_to_folder` — stage crash-safe file moves, update `title` frontmatter when needed, recover unfinished rename transactions, and report backlink rewrite failures |
 | `image.rs` | `save_image` / `copy_image_to_vault` — save editor image attachments with sanitized filenames |
@@ -684,6 +684,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `rename_note` | Crash-safe note rename + `title` frontmatter update + cross-vault wikilinks + failed backlink counts |
 | `move_note_to_folder` | Crash-safe folder move that preserves the filename, reloads the moved note, and rewrites path-based wikilinks |
 | `create_vault_folder` | Create a folder relative to the active vault root |
+| `list_vault_folders` | Build the folder tree on the blocking Tokio pool, then apply Gitignored-content visibility → `Vec<FolderNode>` |
 | `rename_vault_folder` | Rename a folder relative to the active vault root and return old/new relative paths |
 | `delete_vault_folder` | Permanently delete a folder subtree relative to the active vault root |
 | `sync_note_title` | Legacy helper: rewrite `title` frontmatter from filename → `bool` (modified); not used by the normal note-open flow |
