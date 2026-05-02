@@ -220,7 +220,11 @@ describe('useNoteActions hook', () => {
       await flushAsyncWork()
     })
     await act(async () => {
-      vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS * 2)
+      vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS)
+      await flushAsyncWork()
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS)
       await flushAsyncWork()
     })
 
@@ -471,7 +475,11 @@ describe('useNoteActions hook', () => {
         await flushAsyncWork()
       })
       await act(async () => {
-        vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS * 2)
+        vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS)
+        await flushAsyncWork()
+      })
+      await act(async () => {
+        vi.advanceTimersByTime(RAPID_CREATE_NOTE_SETTLE_MS)
         await flushAsyncWork()
       })
 
