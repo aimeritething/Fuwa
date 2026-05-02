@@ -822,7 +822,7 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |
 | `useSettings` | App settings (telemetry, release channel, theme mode, UI language, auto-sync interval, AutoGit thresholds, default AI agent, Gitignored-content visibility, All Notes file visibility) | Persistent settings |
 | `useVaultConfig` | Per-vault UI preferences, AI permission mode | Vault-specific config |
-| `appCommandDispatcher` | Canonical shortcut/menu command IDs | Shared execution path for renderer and native menu commands |
+| `appCommandDispatcher` | Manifest-backed shortcut/menu command IDs | Shared execution path for renderer and native menu commands |
 
 Data flows unidirectionally: `App` passes data and callbacks as props to child components. No child-to-child communication — everything goes through `App`.
 
@@ -847,13 +847,14 @@ Selection-dependent actions are wired through the command palette and the native
 
 Shortcut routing is explicit:
 
-- `appCommandCatalog.ts` is the shared shortcut manifest for command IDs, modifier rules, and deterministic QA metadata
+- `src/shared/appCommandManifest.json` is the shared command/menu metadata source for command IDs, menu labels, accelerators, native-menu enablement groups, and deterministic QA flags
+- `appCommandCatalog.ts` derives renderer command IDs, shortcut lookup maps, Linux menu sections, and QA metadata from that manifest
 - `formatShortcutDisplay()` derives platform-accurate visible shortcut labels (`⌘` on macOS, `Ctrl` on Windows/Linux) from that same manifest so menus, tooltips, and command-palette copy stay aligned with real accelerators
 - `useAppKeyboard` is the primary execution path for real shortcut keypresses, including Tauri runs
 - macOS browser-reserved chords such as `Cmd+O`, `Cmd+F`, and `Cmd+Shift+L` are unblocked at webview init via `tauri-plugin-prevent-default`, then continue through the same renderer-first command path
 - `Cmd+Shift+V` uses the same command path for "Paste without Formatting"; `plainTextPaste.ts` reads text through the native clipboard command in Tauri and inserts it through the active rich/raw editor target or the focused browser text control
 - `Cmd+F` is surface-aware: editor focus opens current-note find/replace in raw CodeMirror, note-list focus preserves note-list search, and native menu enablement follows focus availability events so only one `Cmd+F` menu item is active
-- `menu.rs`, `useMenuEvents`, and Linux's `LinuxMenuButton` emit the same command IDs for native menu clicks, accelerators, and custom titlebar menu actions
+- `menu.rs`, `useMenuEvents`, and Linux's `LinuxMenuButton` emit the same manifest-derived command IDs for native menu clicks, accelerators, and custom titlebar menu actions
 - `appCommandDispatcher.ts` suppresses the paired native-menu/renderer echo from a single shortcut so the command runs once
 - Deterministic QA uses two explicit proof paths from the shared manifest:
   - renderer shortcut-event proof through `window.__laputaTest.triggerShortcutCommand()`
