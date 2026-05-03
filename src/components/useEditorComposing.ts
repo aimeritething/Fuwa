@@ -93,17 +93,27 @@ export function useEditorComposing<
       finishComposing()
     }
 
+    const handleCompositionCancel: EventListener = (event) => {
+      if (event instanceof CompositionEvent) {
+        handleCompositionEnd(event)
+        return
+      }
+
+      if (!composingRef.current) return
+      finishComposing()
+    }
+
     document.addEventListener('compositionstart', handleCompositionStart, true)
     document.addEventListener('compositionupdate', handleCompositionUpdate, true)
     document.addEventListener('compositionend', handleCompositionEnd, true)
-    document.addEventListener('compositioncancel', handleCompositionEnd, true)
+    document.addEventListener('compositioncancel', handleCompositionCancel, true)
 
     return () => {
       clearSettleTimeout()
       document.removeEventListener('compositionstart', handleCompositionStart, true)
       document.removeEventListener('compositionupdate', handleCompositionUpdate, true)
       document.removeEventListener('compositionend', handleCompositionEnd, true)
-      document.removeEventListener('compositioncancel', handleCompositionEnd, true)
+      document.removeEventListener('compositioncancel', handleCompositionCancel, true)
     }
   }, [editorElement])
 
