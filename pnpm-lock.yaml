@@ -125,6 +125,9 @@ importers:
       '@tauri-apps/plugin-updater':
         specifier: ^2.10.0
         version: 2.10.0
+      '@tldraw/assets':
+        specifier: 4.5.10
+        version: 4.5.10
       class-variance-authority:
         specifier: ^0.7.1
         version: 0.7.1
@@ -2498,6 +2501,9 @@ packages:
 
   '@tiptap/starter-kit@3.22.5':
     resolution: {integrity: sha512-LZ/LYbwH6rnDi5DnRyagkuNsYAVyhM+yJvvz+ZuYA0JkPiTXJV86J5PWSKew8M0gVfMHcNVtKjfQCvViFCeIgw==}
+
+  '@tldraw/assets@4.5.10':
+    resolution: {integrity: sha512-nJZ+dZgLcmeEtv4aZv/kEkeY4IU2qrFC8Ayftxql1B+2hXc9ZsjNMKOHyB/W2BsVWdUplZm2qjujKeGNs1VWrw==}
 
   '@tldraw/editor@4.5.10':
     resolution: {integrity: sha512-kM11sDK1ADXATE/wthBDY3ZOriT5Nzpieq1EoPz/HwSMVFuLq5NVmaOPKF+Pt/n43T1S5eLOfMOc7i3zojNc3g==}
@@ -7756,6 +7762,10 @@ snapshots:
       '@tiptap/extension-underline': 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))
       '@tiptap/extensions': 3.22.5(@tiptap/core@3.22.5(@tiptap/pm@3.22.5))(@tiptap/pm@3.22.5)
       '@tiptap/pm': 3.22.5
+
+  '@tldraw/assets@4.5.10':
+    dependencies:
+      '@tldraw/utils': 4.5.10
 
   '@tldraw/editor@4.5.10(@floating-ui/dom@1.7.5)(@types/react-dom@19.2.3(@types/react@19.2.14))(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
