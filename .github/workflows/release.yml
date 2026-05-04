@@ -69,10 +69,18 @@ jobs:
           else:
               today = datetime.now(timezone.utc).date()
               stable_date = None
-              stable_pattern = re.compile(r"^stable-v(\d{4})\.(\d{1,2})\.(\d{1,2})$")
+              stable_patterns = (
+                  re.compile(r"^v(\d{4})-(\d{2})-(\d{2})$"),
+                  re.compile(r"^stable-v(\d{4})\.(\d{1,2})\.(\d{1,2})$"),
+              )
 
-              for stable_tag in lines(["git", "tag", "--list", "stable-v*", "--sort=-version:refname"]):
-                  match = stable_pattern.fullmatch(stable_tag)
+              stable_tags = lines([
+                  "git", "for-each-ref", "--sort=-creatordate", "--format=%(refname:short)",
+                  "refs/tags/v20*", "refs/tags/stable-v*",
+              ])
+
+              for stable_tag in stable_tags:
+                  match = next((pattern.fullmatch(stable_tag) for pattern in stable_patterns if pattern.fullmatch(stable_tag)), None)
                   if not match:
                       continue
 
