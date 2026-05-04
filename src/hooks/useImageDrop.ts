@@ -5,8 +5,34 @@ import { useTauriDragDropEvent, type TauriDragDropEvent } from './useTauriDragDr
 
 const IMAGE_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
 const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'tiff']
+const IMAGE_EXTENSION_BY_MIME_TYPE: Record<string, string> = {
+  'image/bmp': 'bmp',
+  'image/gif': 'gif',
+  'image/jpeg': 'jpeg',
+  'image/png': 'png',
+  'image/svg+xml': 'svg',
+  'image/tiff': 'tiff',
+  'image/webp': 'webp',
+}
 
 type ImageUrlHandler = (url: string) => void
+type ClipboardFileItem = {
+  getAsFile: () => File | null
+  kind: string
+  type: string
+}
+type ClipboardFileItems = {
+  length: number
+  [index: number]: ClipboardFileItem | undefined
+}
+type ClipboardFiles = {
+  length: number
+  [index: number]: File | undefined
+}
+type ClipboardImageData = {
+  files?: ClipboardFiles
+  items?: ClipboardFileItems
+} | null | undefined
 
 function hasImageFiles(dt: DataTransfer): boolean {
   for (let i = 0; i < dt.items.length; i++) {
@@ -20,6 +46,57 @@ function isImagePath(path: string): boolean {
   return IMAGE_EXTENSIONS.includes(ext)
 }
 
+function fileExtension(filename: string): string | null {
+  const extension = filename.split('.').pop()?.toLowerCase()
+  return extension && extension !== filename.toLowerCase() && IMAGE_EXTENSIONS.includes(extension)
+    ? extension
+    : null
+}
+
+function imageExtensionForFile(file: File): string | null {
+  const filenameExtension = fileExtension(file.name)
+  if (filenameExtension) return filenameExtension
+
+  return IMAGE_EXTENSION_BY_MIME_TYPE[file.type.toLowerCase()] ?? null
+}
+
+function imageAttachmentFilename(file: File): string {
+  const filename = file.name.trim()
+  const extension = imageExtensionForFile(file)
+  if (!filename) return extension ? `clipboard-image.${extension}` : 'clipboard-image'
+  if (fileExtension(filename)) return filename
+  return extension ? `${filename}.${extension}` : filename
+}
+
+function uniqueImageFiles(files: File[]): File[] {
+  return files.filter((file, index) => (
+    file.type.startsWith('image/') && files.indexOf(file) === index
+  ))
+}
+
+function imageFileFromClipboardItem(item: ClipboardFileItem): File | null {
+  if (item.kind !== 'file' || !item.type.startsWith('image/')) return null
+
+  return item.getAsFile()
+}
+
+function clipboardItemImageFiles(items?: ClipboardFileItems): File[] {
+  return Array
+    .from({ length: items?.length ?? 0 }, (_, index) => items?.[index])
+    .flatMap(item => item ? [imageFileFromClipboardItem(item)].filter((file): file is File => file !== null) : [])
+}
+
+function clipboardFileListImageFiles(files?: ClipboardFiles): File[] {
+  return uniqueImageFiles(Array.from({ length: files?.length ?? 0 }, (_, index) => files?.[index]).filter((file): file is File => Boolean(file)))
+}
+
+export function clipboardImageFiles(clipboardData: ClipboardImageData): File[] {
+  const itemFiles = uniqueImageFiles(clipboardItemImageFiles(clipboardData?.items))
+  return itemFiles.length > 0
+    ? itemFiles
+    : clipboardFileListImageFiles(clipboardData?.files)
+}
+
 /** Upload an image file — saves to vault/attachments in Tauri, returns data URL in browser */
 export async function uploadImageFile(file: File, vaultPath?: string): Promise<string> {
   if (isTauri() && vaultPath) {
@@ -30,7 +107,7 @@ export async function uploadImageFile(file: File, vaultPath?: string): Promise<s
     const base64 = btoa(binary)
     const savedPath = await invoke<string>('save_image', {
       vaultPath,
-      filename: file.name,
+      filename: imageAttachmentFilename(file),
       data: base64,
     })
     return convertFileSrc(savedPath)
