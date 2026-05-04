@@ -12,7 +12,13 @@ import {
 } from 'tldraw'
 import 'tldraw/tldraw.css'
 
-const tldrawAssetUrls = getAssetUrlsByImport()
+const EMPTY_TLDRAW_TRANSLATION_URL = 'data:application/json;base64,e30K'
+
+function resolveTldrawAssetUrl(assetUrl: string | undefined): string {
+  return assetUrl ?? EMPTY_TLDRAW_TRANSLATION_URL
+}
+
+const tldrawAssetUrls = getAssetUrlsByImport(resolveTldrawAssetUrl)
 
 interface TldrawWhiteboardProps {
   boardId: string
