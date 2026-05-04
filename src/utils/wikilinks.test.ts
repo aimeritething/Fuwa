@@ -181,6 +181,13 @@ describe('splitFrontmatter', () => {
     expect(body).toBe('Content')
   })
 
+  it('preserves CRLF frontmatter delimiters and trailing line ending', () => {
+    const content = '---\r\ntitle: Hello\r\n---\r\n# Hello\r\n'
+    const [fm, body] = splitFrontmatter(content)
+    expect(fm).toBe('---\r\ntitle: Hello\r\n---\r\n')
+    expect(body).toBe('# Hello\r\n')
+  })
+
   it('ignores dashes inside frontmatter values', () => {
     const content = '---\ntitle: "A --- B"\ntype: Note\n---\n\nBody text'
     const [fm, body] = splitFrontmatter(content)
