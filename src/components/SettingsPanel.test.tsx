@@ -160,6 +160,8 @@ describe('SettingsPanel', () => {
       autogit_inactive_threshold_seconds: 30,
       release_channel: null,
       theme_mode: 'light',
+      note_width_mode: 'normal',
+      sidebar_type_pluralization_enabled: true,
       hide_gitignored_files: true,
       all_notes_show_pdfs: false,
       all_notes_show_images: false,
@@ -271,6 +273,53 @@ describe('SettingsPanel', () => {
 
     expect(screen.getByTestId('settings-ui-language')).toHaveAttribute('data-value', 'system')
     expect(screen.getByText('系统（简体中文）')).toBeInTheDocument()
+  })
+
+  it('defaults note width to normal and sidebar type pluralization to enabled', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+
+    expect(screen.getByTestId('settings-default-note-width')).toHaveAttribute('data-value', 'normal')
+    expect(
+      within(screen.getByTestId('settings-sidebar-type-pluralization')).getByRole('switch')
+    ).toHaveAttribute('aria-checked', 'true')
+  })
+
+  it('preserves saved default note width and sidebar type pluralization preferences', () => {
+    render(
+      <SettingsPanel
+        open={true}
+        settings={{
+          ...emptySettings,
+          note_width_mode: 'wide',
+          sidebar_type_pluralization_enabled: false,
+        }}
+        onSave={onSave}
+        onClose={onClose}
+      />
+    )
+
+    expect(screen.getByTestId('settings-default-note-width')).toHaveAttribute('data-value', 'wide')
+    expect(
+      within(screen.getByTestId('settings-sidebar-type-pluralization')).getByRole('switch')
+    ).toHaveAttribute('aria-checked', 'false')
+  })
+
+  it('saves default note width and sidebar type pluralization preferences', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+
+    fireEvent.pointerDown(screen.getByTestId('settings-default-note-width'), { button: 0, pointerType: 'mouse' })
+    fireEvent.click(screen.getByRole('option', { name: 'Wide' }))
+    fireEvent.click(within(screen.getByTestId('settings-sidebar-type-pluralization')).getByRole('switch'))
+    fireEvent.click(screen.getByTestId('settings-save'))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      note_width_mode: 'wide',
+      sidebar_type_pluralization_enabled: false,
+    }))
   })
 
   it('keeps the language selector keyboard accessible', () => {
@@ -578,6 +627,29 @@ describe('SettingsPanel', () => {
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
     expect(screen.getByText(/to open settings/)).toBeInTheDocument()
+  })
+
+  it('keeps Tab focus inside the settings panel', () => {
+    render(
+      <>
+        <button type="button" data-testid="background-action">Background</button>
+        <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+      </>
+    )
+
+    const backgroundAction = screen.getByTestId('background-action')
+    const closeButton = screen.getByTitle('Close settings')
+    const saveButton = screen.getByTestId('settings-save')
+
+    backgroundAction.focus()
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(closeButton).toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'Tab', shiftKey: true })
+    expect(saveButton).toHaveFocus()
+
+    fireEvent.keyDown(document, { key: 'Tab' })
+    expect(closeButton).toHaveFocus()
   })
 
   it('copies the MCP config from the AI Agents section', () => {

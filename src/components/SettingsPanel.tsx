@@ -46,7 +46,11 @@ import {
 import { normalizeReleaseChannel, serializeReleaseChannel, type ReleaseChannel } from '../lib/releaseChannel'
 import { shouldHideGitignoredFiles } from '../lib/gitignoredVisibility'
 import { trackEvent } from '../lib/telemetry'
-import { trackAllNotesVisibilityChanged } from '../lib/productAnalytics'
+import {
+  trackAllNotesVisibilityChanged,
+  trackDefaultNoteWidthChanged,
+  trackSidebarTypePluralizationChanged,
+} from '../lib/productAnalytics'
 import { AiProviderSettings } from './AiProviderSettings'
 import { PrivacySettingsSection } from './PrivacySettingsSection'
 import {
@@ -59,13 +63,16 @@ import {
   SettingsSwitchRow,
 } from './SettingsControls'
 import { SettingsFooter } from './SettingsFooter'
+import { VaultContentSettingsSection } from './VaultContentSettingsSection'
 import {
   resolveAllNotesFileVisibility,
   settingsWithAllNotesFileVisibility,
   type AllNotesFileVisibility,
 } from '../utils/allNotesFileVisibility'
+import { DEFAULT_NOTE_WIDTH_MODE, normalizeNoteWidthMode } from '../utils/noteWidth'
 import { Button } from './ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
+import type { NoteWidthMode } from '../types'
 
 interface SettingsPanelProps {
   open: boolean
@@ -93,6 +100,8 @@ interface SettingsDraft {
   releaseChannel: ReleaseChannel
   themeMode: ThemeMode
   uiLanguage: UiLanguagePreference
+  defaultNoteWidth: NoteWidthMode
+  sidebarTypePluralizationEnabled: boolean
   initialH1AutoRename: boolean
   hideGitignoredFiles: boolean
   allNotesFileVisibility: AllNotesFileVisibility
@@ -128,6 +137,10 @@ interface SettingsBodyProps {
   setThemeMode: (value: ThemeMode) => void
   uiLanguage: UiLanguagePreference
   setUiLanguage: (value: UiLanguagePreference) => void
+  defaultNoteWidth: NoteWidthMode
+  setDefaultNoteWidth: (value: NoteWidthMode) => void
+  sidebarTypePluralizationEnabled: boolean
+  setSidebarTypePluralizationEnabled: (value: boolean) => void
   locale: AppLocale
   systemLocale: AppLocale
   initialH1AutoRename: boolean
@@ -158,8 +171,64 @@ const SETTINGS_SECTION_IDS = {
 } as const
 type Translate = ReturnType<typeof createTranslator>
 
+const SETTINGS_FOCUSABLE_SELECTOR = [
+  'a[href]',
+  'button:not([disabled])',
+  'input:not([disabled])',
+  'select:not([disabled])',
+  'textarea:not([disabled])',
+  '[tabindex]:not([tabindex="-1"])',
+].join(',')
+
 function isSaveShortcut(event: ReactKeyboardEvent): boolean {
   return event.key === 'Enter' && (event.metaKey || event.ctrlKey)
+}
+
+function getSettingsFocusableElements(panel: HTMLElement): HTMLElement[] {
+  return Array.from(panel.querySelectorAll<HTMLElement>(SETTINGS_FOCUSABLE_SELECTOR))
+    .filter((element) => (
+      element.tabIndex >= 0 &&
+      element.getAttribute('aria-disabled') !== 'true' &&
+      !element.closest('[hidden], [aria-hidden="true"]')
+    ))
+}
+
+function focusSettingsBoundary(focusableElements: HTMLElement[], shiftKey: boolean): void {
+  const targetIndex = shiftKey ? focusableElements.length - 1 : 0
+  focusableElements[targetIndex]?.focus()
+}
+
+function isSettingsPanelElement(panel: HTMLElement, activeElement: Element | null): activeElement is HTMLElement {
+  return activeElement instanceof HTMLElement && panel.contains(activeElement)
+}
+
+function isSettingsFocusBoundary(activeElement: HTMLElement, focusableElements: HTMLElement[], shiftKey: boolean): boolean {
+  const boundaryIndex = shiftKey ? 0 : focusableElements.length - 1
+  return activeElement === focusableElements[boundaryIndex]
+}
+
+function trapSettingsPanelFocus(event: KeyboardEvent, panel: HTMLElement | null): void {
+  if (event.key !== 'Tab' || !panel) return
+
+  const focusableElements = getSettingsFocusableElements(panel)
+  if (focusableElements.length === 0) {
+    event.preventDefault()
+    panel.focus()
+    return
+  }
+
+  const activeElement = document.activeElement
+
+  if (!isSettingsPanelElement(panel, activeElement)) {
+    event.preventDefault()
+    focusSettingsBoundary(focusableElements, event.shiftKey)
+    return
+  }
+
+  if (isSettingsFocusBoundary(activeElement, focusableElements, event.shiftKey)) {
+    event.preventDefault()
+    focusSettingsBoundary(focusableElements, event.shiftKey)
+  }
 }
 
 function createSettingsDraft(
@@ -184,6 +253,8 @@ function createSettingsDraft(
     releaseChannel: normalizeReleaseChannel(settings.release_channel),
     themeMode: resolveSettingsDraftThemeMode(settings.theme_mode),
     uiLanguage: settings.ui_language ?? SYSTEM_UI_LANGUAGE,
+    defaultNoteWidth: normalizeNoteWidthMode(settings.note_width_mode) ?? DEFAULT_NOTE_WIDTH_MODE,
+    sidebarTypePluralizationEnabled: settings.sidebar_type_pluralization_enabled ?? true,
     initialH1AutoRename: settings.initial_h1_auto_rename_enabled ?? true,
     hideGitignoredFiles: shouldHideGitignoredFiles(settings),
     allNotesFileVisibility: resolveAllNotesFileVisibility(settings),
@@ -226,6 +297,8 @@ function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Setti
     release_channel: serializeReleaseChannel(draft.releaseChannel),
     theme_mode: draft.themeMode,
     ui_language: serializeUiLanguagePreference(draft.uiLanguage),
+    note_width_mode: draft.defaultNoteWidth,
+    sidebar_type_pluralization_enabled: draft.sidebarTypePluralizationEnabled,
     initial_h1_auto_rename_enabled: draft.initialH1AutoRename,
     default_ai_agent: draft.defaultAiAgent,
     default_ai_target: draft.defaultAiTarget,
@@ -238,6 +311,18 @@ function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Setti
 function trackTelemetryConsentChange(previousAnalytics: boolean, nextAnalytics: boolean): void {
   if (!previousAnalytics && nextAnalytics) trackEvent('telemetry_opted_in')
   if (previousAnalytics && !nextAnalytics) trackEvent('telemetry_opted_out')
+}
+
+function trackSettingsPreferenceChanges(settings: Settings, draft: SettingsDraft): void {
+  const previousNoteWidth = normalizeNoteWidthMode(settings.note_width_mode) ?? DEFAULT_NOTE_WIDTH_MODE
+  if (previousNoteWidth !== draft.defaultNoteWidth) {
+    trackDefaultNoteWidthChanged(draft.defaultNoteWidth)
+  }
+
+  const previousPluralization = settings.sidebar_type_pluralization_enabled ?? true
+  if (previousPluralization !== draft.sidebarTypePluralizationEnabled) {
+    trackSidebarTypePluralizationChanged(draft.sidebarTypePluralizationEnabled)
+  }
 }
 
 function sanitizePositiveInteger(value: number | null | undefined, fallback: number): number {
@@ -257,6 +342,17 @@ function useSettingsPanelAutofocus(panelRef: RefObject<HTMLDivElement | null>): 
       focusTarget?.focus()
     }, 50)
     return () => clearTimeout(timer)
+  }, [panelRef])
+}
+
+function useSettingsPanelFocusTrap(panelRef: RefObject<HTMLDivElement | null>): void {
+  useEffect(() => {
+    const handleDocumentKeyDown = (event: KeyboardEvent) => {
+      trapSettingsPanelFocus(event, panelRef.current)
+    }
+
+    document.addEventListener('keydown', handleDocumentKeyDown, true)
+    return () => document.removeEventListener('keydown', handleDocumentKeyDown, true)
   }, [panelRef])
 }
 
@@ -320,6 +416,7 @@ function SettingsPanelInner({
   }, [explicitOrganizationEnabled, settings])
 
   useSettingsPanelAutofocus(panelRef)
+  useSettingsPanelFocusTrap(panelRef)
 
   const updateDraft = useCallback(
     <Key extends keyof SettingsDraft>(key: Key, value: SettingsDraft[Key]) => {
@@ -347,6 +444,7 @@ function SettingsPanelInner({
 
   const handleSave = useCallback(() => {
     trackTelemetryConsentChange(settings.analytics_enabled === true, draft.analytics)
+    trackSettingsPreferenceChanges(settings, draft)
     onSave(buildSettingsFromDraft(settings, draft))
     onSaveExplicitOrganization?.(draft.explicitOrganization)
     onClose()
@@ -482,6 +580,10 @@ function SettingsBodyFromDraft({
       setThemeMode={setThemeMode}
       uiLanguage={draft.uiLanguage}
       setUiLanguage={(value) => updateDraft('uiLanguage', value)}
+      defaultNoteWidth={draft.defaultNoteWidth}
+      setDefaultNoteWidth={(value) => updateDraft('defaultNoteWidth', value)}
+      sidebarTypePluralizationEnabled={draft.sidebarTypePluralizationEnabled}
+      setSidebarTypePluralizationEnabled={(value) => updateDraft('sidebarTypePluralizationEnabled', value)}
       initialH1AutoRename={draft.initialH1AutoRename}
       setInitialH1AutoRename={(value) => updateDraft('initialH1AutoRename', value)}
       hideGitignoredFiles={draft.hideGitignoredFiles}
@@ -610,6 +712,10 @@ function SettingsSyncAndAppearanceSections({
 
 function SettingsContentSections({
   t,
+  defaultNoteWidth,
+  setDefaultNoteWidth,
+  sidebarTypePluralizationEnabled,
+  setSidebarTypePluralizationEnabled,
   initialH1AutoRename,
   setInitialH1AutoRename,
   hideGitignoredFiles,
@@ -621,6 +727,10 @@ function SettingsContentSections({
     <SettingsSection id={SETTINGS_SECTION_IDS.content}>
       <VaultContentSettingsSection
         t={t}
+        defaultNoteWidth={defaultNoteWidth}
+        setDefaultNoteWidth={setDefaultNoteWidth}
+        sidebarTypePluralizationEnabled={sidebarTypePluralizationEnabled}
+        setSidebarTypePluralizationEnabled={setSidebarTypePluralizationEnabled}
         initialH1AutoRename={initialH1AutoRename}
         setInitialH1AutoRename={setInitialH1AutoRename}
         hideGitignoredFiles={hideGitignoredFiles}
@@ -917,79 +1027,6 @@ function LanguageSettingsSection({
         testId="settings-ui-language"
       />
     </SettingsRow>
-  )
-}
-
-function VaultContentSettingsSection({
-  t,
-  initialH1AutoRename,
-  setInitialH1AutoRename,
-  hideGitignoredFiles,
-  setHideGitignoredFiles,
-  allNotesFileVisibility,
-  setAllNotesFileVisibility,
-}: Pick<
-  SettingsBodyProps,
-  | 't'
-  | 'initialH1AutoRename'
-  | 'setInitialH1AutoRename'
-  | 'hideGitignoredFiles'
-  | 'setHideGitignoredFiles'
-  | 'allNotesFileVisibility'
-  | 'setAllNotesFileVisibility'
->) {
-  const updateAllNotesFileVisibility = (patch: Partial<AllNotesFileVisibility>) => {
-    setAllNotesFileVisibility({ ...allNotesFileVisibility, ...patch })
-  }
-
-  return (
-    <>
-      <SectionHeading
-        title={t('settings.vaultContent.title')}
-      />
-
-      <SettingsGroup>
-        <SettingsSwitchRow
-          label={t('settings.titles.autoRename')}
-          description={t('settings.titles.autoRenameDescription')}
-          checked={initialH1AutoRename}
-          onChange={setInitialH1AutoRename}
-          testId="settings-initial-h1-auto-rename"
-        />
-
-        <SettingsSwitchRow
-          label={t('settings.vaultContent.hideGitignored')}
-          description={t('settings.vaultContent.hideGitignoredDescription')}
-          checked={hideGitignoredFiles}
-          onChange={setHideGitignoredFiles}
-          testId="settings-hide-gitignored-files"
-        />
-
-        <SettingsSwitchRow
-          label={t('settings.allNotesVisibility.pdfs')}
-          description={t('settings.allNotesVisibility.pdfsDescription')}
-          checked={allNotesFileVisibility.pdfs}
-          onChange={(checked) => updateAllNotesFileVisibility({ pdfs: checked })}
-          testId="settings-all-notes-show-pdfs"
-        />
-
-        <SettingsSwitchRow
-          label={t('settings.allNotesVisibility.images')}
-          description={t('settings.allNotesVisibility.imagesDescription')}
-          checked={allNotesFileVisibility.images}
-          onChange={(checked) => updateAllNotesFileVisibility({ images: checked })}
-          testId="settings-all-notes-show-images"
-        />
-
-        <SettingsSwitchRow
-          label={t('settings.allNotesVisibility.unsupported')}
-          description={t('settings.allNotesVisibility.unsupportedDescription')}
-          checked={allNotesFileVisibility.unsupported}
-          onChange={(checked) => updateAllNotesFileVisibility({ unsupported: checked })}
-          testId="settings-all-notes-show-unsupported"
-        />
-      </SettingsGroup>
-    </>
   )
 }
 

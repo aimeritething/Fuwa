@@ -3,6 +3,7 @@ import type { AiAgentPermissionMode } from './aiAgentPermissionMode'
 import { trackEvent } from './telemetry'
 import type { AllNotesFileVisibility } from '../utils/allNotesFileVisibility'
 import type { FilePreviewKind } from '../utils/filePreview'
+import type { NoteWidthMode } from '../types'
 
 type TrackedPreviewKind = FilePreviewKind | 'unsupported'
 type FilePreviewAction = 'copy_path' | 'open_external' | 'reveal'
@@ -50,6 +51,16 @@ export function trackAllNotesVisibilityChanged(
       enabled: numericFlag(next[category]),
     })
   }
+}
+
+export function trackDefaultNoteWidthChanged(mode: NoteWidthMode): void {
+  trackEvent('note_width_default_changed', { mode })
+}
+
+export function trackSidebarTypePluralizationChanged(enabled: boolean): void {
+  trackEvent('sidebar_type_pluralization_changed', {
+    enabled: numericFlag(enabled),
+  })
 }
 
 export function trackInlineImageLightboxOpened(): void {
