@@ -1,5 +1,3 @@
-import { renderReadableReleaseNotesMarkdown } from './releaseReadableNotes'
-
 type ReleaseAssetPayload = {
   browser_download_url?: unknown
   name?: unknown
@@ -30,13 +28,12 @@ type ReleaseEntry = {
   notesHtml: string
   publishedLabel: string
   publishedTimestamp: number
-  readableNotesHtml: string | null
+  readableNotesUrl: string | null
   tagName: string
   title: string
 }
 
 type ReleaseSections = Record<ReleaseChannel, ReleaseEntry[]>
-type ReadableReleaseNotesByTag = Record<string, string>
 
 const RELEASE_HISTORY_PAGE_STYLES = `
     :root {
@@ -379,7 +376,6 @@ const RELEASE_HISTORY_PAGE_SCRIPT = `
     (() => {
       const tabs = Array.from(document.querySelectorAll('[data-release-tab]'));
       const panels = Array.from(document.querySelectorAll('[data-release-panel]'));
-      if (!tabs.length || !panels.length) return;
 
       const activateTab = (nextTab) => {
         const nextChannel = nextTab.getAttribute('data-release-tab');
@@ -427,6 +423,86 @@ const RELEASE_HISTORY_PAGE_SCRIPT = `
         tab.addEventListener('keydown', (event) => handleTabKeydown(event, tab, index));
       });
 
+      const escapeHtml = (value) => value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;');
+
+      const renderInlineMarkdown = (value) => escapeHtml(value)
+        .replace(/\\*\\*([^*]+)\\*\\*/g, '<strong>$1</strong>')
+        .replace(/\`([^\`]+)\`/g, '<code>$1</code>');
+
+      const renderMarkdownLine = (rawLine) => {
+        const line = rawLine.trim();
+        if (!line) return { kind: 'blank' };
+
+        const heading = line.match(/^(#{1,3})\\s+(.+)$/);
+        if (heading) {
+          const level = heading[1].length;
+          return {
+            html: '<h' + level + '>' + renderInlineMarkdown(heading[2]) + '</h' + level + '>',
+            kind: 'heading',
+          };
+        }
+
+        const bullet = line.match(/^[-*]\\s+(.+)$/);
+        if (bullet) return { html: '<li>' + renderInlineMarkdown(bullet[1]) + '</li>', kind: 'bullet' };
+
+        return { html: '<p>' + renderInlineMarkdown(line) + '</p>', kind: 'paragraph' };
+      };
+
+      const closeList = (html, listOpen) => {
+        if (listOpen) html.push('</ul>');
+        return false;
+      };
+
+      const appendBulletLine = (html, line, listOpen) => {
+        if (!listOpen) html.push('<ul>');
+        html.push(line.html);
+        return true;
+      };
+
+      const appendBlockLine = (html, line, listOpen) => {
+        if (listOpen) html.push('</ul>');
+        html.push(line.html);
+        return false;
+      };
+
+      const appendRenderedLine = (html, line, listOpen) => {
+        if (line.kind === 'blank') return closeList(html, listOpen);
+        if (line.kind === 'bullet') return appendBulletLine(html, line, listOpen);
+        return appendBlockLine(html, line, listOpen);
+      };
+
+      const renderReadableMarkdown = (markdown) => {
+        const html = [];
+        let listOpen = false;
+        markdown.split('\\n').forEach((rawLine) => {
+          listOpen = appendRenderedLine(html, renderMarkdownLine(rawLine), listOpen);
+        });
+        if (listOpen) html.push('</ul>');
+        return html.join('');
+      };
+
+      const loadReadableNotes = async (container) => {
+        const notesUrl = container.getAttribute('data-readable-notes-url');
+        if (!notesUrl) return;
+
+        try {
+          const response = await fetch(notesUrl, { cache: 'no-cache' });
+          if (!response.ok) return;
+
+          const html = renderReadableMarkdown(await response.text()).trim();
+          if (html.length > 0) container.innerHTML = html;
+        } catch {
+          // Keep the generated commit list when a readable note cannot be loaded.
+        }
+      };
+
+      Array.from(document.querySelectorAll('[data-readable-notes-url]')).forEach((container) => {
+        void loadReadableNotes(container);
+      });
     })();
 `
 
@@ -533,6 +609,11 @@ function resolveReleaseNotesHtml(renderedHtml: unknown, markdownFallback: unknow
   return buildFallbackReleaseNotesHtml(fallback)
 }
 
+function readableNotesUrlForRelease(channel: ReleaseChannel, tagName: string): string | null {
+  if (channel !== 'stable' || tagName === 'Unknown tag') return null
+  return `release-notes/${encodeURIComponent(tagName)}.md`
+}
+
 function normalizeReleaseEntry(release: GitHubReleasePayload): [ReleaseChannel, ReleaseEntry] | null {
   if (release.draft === true) return null
 
@@ -546,35 +627,21 @@ function normalizeReleaseEntry(release: GitHubReleasePayload): [ReleaseChannel, 
     notesHtml: resolveReleaseNotesHtml(release.body_html, release.body),
     publishedLabel: formatPublishedLabel(release.published_at),
     publishedTimestamp: parsePublishedTimestamp(release.published_at),
-    readableNotesHtml: null,
+    readableNotesUrl: readableNotesUrlForRelease(channel, tagName),
     tagName,
     title,
   }]
 }
 
-function applyReadableReleaseNotes(release: ReleaseEntry, readableReleaseNotesByTag: ReadableReleaseNotesByTag): ReleaseEntry {
-  const readableNotesMarkdown = normalizeText(readableReleaseNotesByTag[release.tagName])
-  if (readableNotesMarkdown === null) return release
-
-  return {
-    ...release,
-    readableNotesHtml: renderReadableReleaseNotesMarkdown({ markdown: readableNotesMarkdown }),
-  }
-}
-
 function appendReleaseSection(
   sections: ReleaseSections,
   normalizedRelease: [ReleaseChannel, ReleaseEntry],
-  readableReleaseNotesByTag: ReadableReleaseNotesByTag,
 ): void {
   const [channel, release] = normalizedRelease
-  const releaseEntry = channel === 'stable'
-    ? applyReadableReleaseNotes(release, readableReleaseNotesByTag)
-    : release
-  sections[channel].push(releaseEntry)
+  sections[channel].push(release)
 }
 
-function collectReleaseSections(payload: unknown, readableReleaseNotesByTag: ReadableReleaseNotesByTag): ReleaseSections {
+function collectReleaseSections(payload: unknown): ReleaseSections {
   const sections: ReleaseSections = { alpha: [], stable: [] }
   if (!Array.isArray(payload)) return sections
 
@@ -584,7 +651,7 @@ function collectReleaseSections(payload: unknown, readableReleaseNotesByTag: Rea
     const normalizedRelease = normalizeReleaseEntry(item as GitHubReleasePayload)
     if (normalizedRelease === null) continue
 
-    appendReleaseSection(sections, normalizedRelease, readableReleaseNotesByTag)
+    appendReleaseSection(sections, normalizedRelease)
   }
 
   for (const channel of ['stable', 'alpha'] as const) {
@@ -625,6 +692,9 @@ function buildReleaseMarkup(channel: ReleaseChannel, release: ReleaseEntry): str
         }).join('')}
       </div>`
     : ''
+  const readableNotesAttributes = release.readableNotesUrl === null
+    ? ''
+    : ` data-readable-notes-url="${escapeHtml(release.readableNotesUrl)}"`
 
   return `
       <article class="release-card release-card--${channel}">
@@ -635,7 +705,7 @@ function buildReleaseMarkup(channel: ReleaseChannel, release: ReleaseEntry): str
           </div>
           ${githubMarkup}
         </div>
-        <div class="release-notes">${release.readableNotesHtml ?? release.notesHtml}</div>${downloadsMarkup}
+        <div class="release-notes"${readableNotesAttributes}>${release.notesHtml}</div>${downloadsMarkup}
       </article>`
 }
 
@@ -657,11 +727,8 @@ function buildPanelMarkup(channel: ReleaseChannel, releases: ReleaseEntry[], sel
     </section>`
 }
 
-export function buildReleaseHistoryPage(
-  releasesPayload: unknown,
-  readableReleaseNotesByTag: ReadableReleaseNotesByTag = {},
-): string {
-  const sections = collectReleaseSections(releasesPayload, readableReleaseNotesByTag)
+export function buildReleaseHistoryPage(releasesPayload: unknown): string {
+  const sections = collectReleaseSections(releasesPayload)
 
   return `<!DOCTYPE html>
 <html lang="en">

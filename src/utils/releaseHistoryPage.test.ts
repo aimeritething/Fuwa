@@ -50,7 +50,7 @@ describe('buildReleaseHistoryPage', () => {
     expect(html).not.toContain('class="release-channel"')
   })
 
-  it('renders optional readable notes for stable releases instead of the commit list', () => {
+  it('loads readable notes for stable releases at runtime and keeps commits as the fallback', () => {
     const html = buildReleaseHistoryPage([
       {
         body: "## What's Changed\n\n- ee71a00 feat: add paste without formatting command",
@@ -66,15 +66,16 @@ describe('buildReleaseHistoryPage', () => {
         published_at: '2026-05-02T16:15:00Z',
         tag_name: 'stable-v2026.5.2',
       },
-    ], {
-      'stable-v2026.5.2': '## New Features\n\n- 📋 **Paste Without Formatting** — Paste copied text as plain content.',
-    })
+    ])
 
-    expect(html).toContain('📋 <strong>Paste Without Formatting</strong>')
+    expect(html).toContain('data-readable-notes-url="release-notes/stable-v2026.5.2.md"')
+    expect(html).toContain("fetch(notesUrl, { cache: 'no-cache' })")
+    expect(html).toContain('ee71a00')
+    expect(html).toContain('feat: add paste without formatting command')
     expect(html).not.toContain('data-release-detail-tab')
-    expect(html).not.toContain('Readable')
-    expect(html).not.toContain('Commits')
-    expect(html).not.toContain('ee71a00 feat: add paste without formatting command')
+    expect(html).not.toContain('>Readable<')
+    expect(html).not.toContain('>Commits<')
+    expect(html).not.toContain('📋 <strong>Paste Without Formatting</strong>')
   })
 
   it('falls back to escaped paragraph markup when rendered html is unavailable', () => {

@@ -727,14 +727,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          mkdir -p _site/alpha _site/stable
+          mkdir -p _site/alpha _site/stable _site/release-notes
+          if [ -d release-notes ]; then cp release-notes/*.md _site/release-notes/ 2>/dev/null || true; fi
           gh api -H "Accept: application/vnd.github.html+json" repos/${{ github.repository }}/releases --paginate > _site/releases.json
           PAGES_URL="https://refactoringhq.github.io/${GITHUB_REPOSITORY#*/}"
 
           curl -fsSL "${PAGES_URL}/alpha/latest.json" -o _site/alpha/latest.json || echo '{}' > _site/alpha/latest.json
           gh release download --repo ${{ github.repository }} "${{ needs.version.outputs.tag }}" --pattern "stable-latest.json" --output _site/stable/latest.json || echo '{}' > _site/stable/latest.json
           bun scripts/build-release-download-page.ts --latest-json _site/stable/latest.json --releases-json _site/releases.json --output-file _site/stable/download/index.html
-          bun scripts/build-release-history-page.ts --releases-json _site/releases.json --release-notes-dir release-notes --output-file _site/index.html
+          bun scripts/build-release-history-page.ts --releases-json _site/releases.json --output-file _site/index.html
           mkdir -p _site/download
           cp _site/stable/download/index.html _site/download/index.html
 
