@@ -1,3 +1,5 @@
+import { renderReadableReleaseNotesMarkdown } from './releaseReadableNotes'
+
 type ReleaseAssetPayload = {
   browser_download_url?: unknown
   name?: unknown
@@ -28,11 +30,13 @@ type ReleaseEntry = {
   notesHtml: string
   publishedLabel: string
   publishedTimestamp: number
+  readableNotesHtml: string | null
   tagName: string
   title: string
 }
 
 type ReleaseSections = Record<ReleaseChannel, ReleaseEntry[]>
+type ReadableReleaseNotesByTag = Record<string, string>
 
 const RELEASE_HISTORY_PAGE_STYLES = `
     :root {
@@ -117,11 +121,6 @@ const RELEASE_HISTORY_PAGE_STYLES = `
       line-height: 1.6;
     }
 
-    .keyboard-hint {
-      margin-top: 8px;
-      font-size: 0.9375rem;
-    }
-
     .channel-tabs {
       margin-bottom: 24px;
     }
@@ -197,12 +196,12 @@ const RELEASE_HISTORY_PAGE_STYLES = `
       flex-wrap: wrap;
       justify-content: space-between;
       gap: 12px;
-      margin-bottom: 14px;
+      margin-bottom: 26px;
     }
 
     .release-header h2 {
       margin: 0;
-      font-size: 1.25rem;
+      font-size: 1.9rem;
       line-height: 1.25;
     }
 
@@ -212,7 +211,7 @@ const RELEASE_HISTORY_PAGE_STYLES = `
       font-size: 0.9375rem;
     }
 
-    .release-channel {
+    .release-github-link {
       align-self: start;
       background: var(--release-surface-tab-hover);
       border-radius: 999px;
@@ -221,12 +220,18 @@ const RELEASE_HISTORY_PAGE_STYLES = `
       font-weight: 700;
       letter-spacing: 0.02em;
       padding: 6px 10px;
+      text-decoration: none;
       text-transform: uppercase;
     }
 
-    .release-card--alpha .release-channel {
-      background: var(--release-alpha-bg);
-      color: var(--release-alpha-text);
+    .release-github-link:hover,
+    .release-github-link:focus-visible {
+      filter: brightness(0.96);
+    }
+
+    .release-github-link:focus-visible {
+      outline: 2px solid var(--release-accent);
+      outline-offset: 2px;
     }
 
     .release-notes {
@@ -248,6 +253,18 @@ const RELEASE_HISTORY_PAGE_STYLES = `
     .release-notes h3 {
       line-height: 1.25;
       margin: 1.2em 0 0.4em;
+    }
+
+    .release-notes h1 {
+      font-size: 1.35rem;
+    }
+
+    .release-notes h2 {
+      font-size: 1.25rem;
+    }
+
+    .release-notes h3 {
+      font-size: 1.1rem;
     }
 
     .release-notes p,
@@ -409,6 +426,7 @@ const RELEASE_HISTORY_PAGE_SCRIPT = `
         tab.addEventListener('click', () => activateTab(tab));
         tab.addEventListener('keydown', (event) => handleTabKeydown(event, tab, index));
       });
+
     })();
 `
 
@@ -528,12 +546,35 @@ function normalizeReleaseEntry(release: GitHubReleasePayload): [ReleaseChannel, 
     notesHtml: resolveReleaseNotesHtml(release.body_html, release.body),
     publishedLabel: formatPublishedLabel(release.published_at),
     publishedTimestamp: parsePublishedTimestamp(release.published_at),
+    readableNotesHtml: null,
     tagName,
     title,
   }]
 }
 
-function collectReleaseSections(payload: unknown): ReleaseSections {
+function applyReadableReleaseNotes(release: ReleaseEntry, readableReleaseNotesByTag: ReadableReleaseNotesByTag): ReleaseEntry {
+  const readableNotesMarkdown = normalizeText(readableReleaseNotesByTag[release.tagName])
+  if (readableNotesMarkdown === null) return release
+
+  return {
+    ...release,
+    readableNotesHtml: renderReadableReleaseNotesMarkdown({ markdown: readableNotesMarkdown }),
+  }
+}
+
+function appendReleaseSection(
+  sections: ReleaseSections,
+  normalizedRelease: [ReleaseChannel, ReleaseEntry],
+  readableReleaseNotesByTag: ReadableReleaseNotesByTag,
+): void {
+  const [channel, release] = normalizedRelease
+  const releaseEntry = channel === 'stable'
+    ? applyReadableReleaseNotes(release, readableReleaseNotesByTag)
+    : release
+  sections[channel].push(releaseEntry)
+}
+
+function collectReleaseSections(payload: unknown, readableReleaseNotesByTag: ReadableReleaseNotesByTag): ReleaseSections {
   const sections: ReleaseSections = { alpha: [], stable: [] }
   if (!Array.isArray(payload)) return sections
 
@@ -543,8 +584,7 @@ function collectReleaseSections(payload: unknown): ReleaseSections {
     const normalizedRelease = normalizeReleaseEntry(item as GitHubReleasePayload)
     if (normalizedRelease === null) continue
 
-    const [channel, release] = normalizedRelease
-    sections[channel].push(release)
+    appendReleaseSection(sections, normalizedRelease, readableReleaseNotesByTag)
   }
 
   for (const channel of ['stable', 'alpha'] as const) {
@@ -573,17 +613,15 @@ function buildTabMarkup(channel: ReleaseChannel, count: number, selected: boolea
 
 function buildReleaseMarkup(channel: ReleaseChannel, release: ReleaseEntry): string {
   const downloads = [...release.downloads]
-  if (release.githubUrl !== null) {
-    downloads.push({ label: 'View on GitHub', url: release.githubUrl })
-  }
 
-  const channelLabel = RELEASE_CHANNEL_LABELS[channel]
+  const githubMarkup = release.githubUrl === null
+    ? ''
+    : `<a class="release-github-link" href="${escapeHtml(release.githubUrl)}" target="_blank" rel="noreferrer">View on GitHub</a>`
   const downloadsMarkup = downloads.length > 0
     ? `
       <div class="release-downloads">
         ${downloads.map(download => {
-          const isSecondary = download.label === 'View on GitHub'
-          return `<a href="${escapeHtml(download.url)}" ${isSecondary ? 'data-secondary="true" ' : ''}target="_blank" rel="noreferrer">${escapeHtml(download.label)}</a>`
+          return `<a href="${escapeHtml(download.url)}" target="_blank" rel="noreferrer">${escapeHtml(download.label)}</a>`
         }).join('')}
       </div>`
     : ''
@@ -595,9 +633,9 @@ function buildReleaseMarkup(channel: ReleaseChannel, release: ReleaseEntry): str
             <h2>${escapeHtml(release.title)}</h2>
             <p class="release-meta">${escapeHtml(release.publishedLabel)} · ${escapeHtml(release.tagName)}</p>
           </div>
-          <span class="release-channel">${channelLabel}</span>
+          ${githubMarkup}
         </div>
-        <div class="release-notes">${release.notesHtml}</div>${downloadsMarkup}
+        <div class="release-notes">${release.readableNotesHtml ?? release.notesHtml}</div>${downloadsMarkup}
       </article>`
 }
 
@@ -619,8 +657,11 @@ function buildPanelMarkup(channel: ReleaseChannel, releases: ReleaseEntry[], sel
     </section>`
 }
 
-export function buildReleaseHistoryPage(releasesPayload: unknown): string {
-  const sections = collectReleaseSections(releasesPayload)
+export function buildReleaseHistoryPage(
+  releasesPayload: unknown,
+  readableReleaseNotesByTag: ReadableReleaseNotesByTag = {},
+): string {
+  const sections = collectReleaseSections(releasesPayload, readableReleaseNotesByTag)
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -636,7 +677,6 @@ export function buildReleaseHistoryPage(releasesPayload: unknown): string {
     <header>
       <h1>Tolaria Release History</h1>
       <p class="subtitle">Stable builds appear when a stable-vYYYY.M.D tag is promoted. Alpha builds update on every push to main.</p>
-      <p class="keyboard-hint">Use Tab to reach the channel picker, then use the arrow keys to switch between Stable and Alpha.</p>
     </header>
     <div class="channel-tabs">
       <div class="channel-tablist" role="tablist" aria-label="Release channels">
