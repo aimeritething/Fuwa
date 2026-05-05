@@ -34,21 +34,24 @@ describe('preProcessWikilinks', () => {
     expect(preProcessWikilinks(input)).toBe(input)
   })
 
-  it('preserves wikilinks and inline formatting inside markdown tables', () => {
+  it('replaces wikilinks inside markdown tables without introducing extra cell delimiters', () => {
     const input = [
       '| Topic | Reference |',
       '| --- | --- |',
-      '| [[Project Alpha]] | **bold** and [[Project Beta]] |',
+      '| [[Project Alpha]] | **bold** and [[project/beta|Project Beta]] |',
       '',
       'Outside [[Project Gamma]]',
     ].join('\n')
 
     const result = preProcessWikilinks(input)
+    const row = result.split('\n')[2]
 
-    expect(result).toContain('| [[Project Alpha]] | **bold** and [[Project Beta]] |')
+    expect(row.match(/\|/g)).toHaveLength(3)
+    expect(row).toContain('WIKILINK:ENC:Project%20Alpha')
+    expect(row).toContain('WIKILINK:ENC:project%2Fbeta%7CProject%20Beta')
     expect(result).toContain('WIKILINK:Project Gamma')
-    expect(result).not.toContain('WIKILINK:Project Alpha')
-    expect(result).not.toContain('WIKILINK:Project Beta')
+    expect(result).not.toContain('[[Project Alpha]]')
+    expect(result).not.toContain('[[project/beta|Project Beta]]')
   })
 
   it('handles empty string', () => {
@@ -149,6 +152,32 @@ describe('injectWikilinks', () => {
     const result = injectWikilinks(blocks) as TestBlock[]
     expect(result[0].content![0].text).toBe('text ')
     expect(result[0].content![1].type).toBe('wikilink')
+  })
+
+  it('converts encoded placeholder text inside table cells into wikilink nodes', () => {
+    const blocks = [{
+      type: 'table',
+      content: {
+        type: 'tableContent',
+        rows: [{
+          cells: [{
+            type: 'tableCell',
+            content: [
+              { type: 'text', text: `${WL_START}ENC:project%2Fbeta%7CProject%20Beta${WL_END}` },
+            ],
+          }],
+        }],
+      },
+      children: [],
+    }]
+
+    const result = injectWikilinks(blocks) as TestBlock[]
+    const tableContent = result[0].content as unknown as { rows: Array<{ cells: Array<{ content: TestBlock[] }> }> }
+    expect(tableContent.rows[0].cells[0].content).toEqual([{
+      type: 'wikilink',
+      props: { target: 'project/beta|Project Beta' },
+      content: undefined,
+    }])
   })
 })
 
@@ -377,6 +406,28 @@ describe('restoreWikilinksInBlocks', () => {
     const result = restoreWikilinksInBlocks(blocks) as TestBlock[]
     expect(result[0].content![0]).toEqual({ type: 'text', text: 'plain text' })
     expect(result[0].content![1]).toEqual({ type: 'link', text: 'a link', href: 'http://example.com' })
+  })
+
+  it('converts wikilink nodes inside table cells back to markdown text', () => {
+    const blocks = [{
+      type: 'table',
+      content: {
+        type: 'tableContent',
+        rows: [{
+          cells: [{
+            type: 'tableCell',
+            content: [
+              { type: 'wikilink', props: { target: 'Project Alpha' }, content: undefined },
+            ],
+          }],
+        }],
+      },
+      children: [],
+    }]
+
+    const result = restoreWikilinksInBlocks(blocks) as TestBlock[]
+    const tableContent = result[0].content as unknown as { rows: Array<{ cells: Array<{ content: TestBlock[] }> }> }
+    expect(tableContent.rows[0].cells[0].content).toEqual([{ type: 'text', text: '[[Project Alpha]]' }])
   })
 
   it('handles blocks without content', () => {

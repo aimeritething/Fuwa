@@ -7,6 +7,10 @@ import { seedBlockNoteTable, triggerMenuCommand } from './testBridge'
 let tempVaultDir: string
 const TABLE_RELOAD_NOTE_PATH = '/project/table-reload-regression.md'
 const TABLE_RELOAD_NOTE_TITLE = 'Table Reload Regression'
+const TABLE_WIKILINK_NOTE_PATH = '/table-wikilink-regression.md'
+const TABLE_WIKILINK_NOTE_TITLE = 'Table Wikilink Regression'
+const TABLE_WIKILINK_TARGET = 'application-design-and-build'
+const TABLE_WIKILINK_TARGET_TITLE = 'Application Design and Build'
 
 function writeTableReloadNote(vaultDir: string): void {
   fs.writeFileSync(
@@ -22,6 +26,37 @@ status: draft
 | --- | --- | --- |
 | A | B | C |
 | D | E | F |
+`,
+  )
+}
+
+function writeTableWikilinkNotes(vaultDir: string): void {
+  fs.writeFileSync(
+    path.join(vaultDir, `${TABLE_WIKILINK_TARGET}.md`),
+    `---
+title: ${TABLE_WIKILINK_TARGET_TITLE}
+type: Note
+---
+# ${TABLE_WIKILINK_TARGET_TITLE}
+
+Target note for table wikilink navigation.
+`,
+  )
+
+  fs.writeFileSync(
+    path.join(vaultDir, TABLE_WIKILINK_NOTE_PATH.slice(1)),
+    `---
+title: ${TABLE_WIKILINK_NOTE_TITLE}
+type: Note
+---
+# ${TABLE_WIKILINK_NOTE_TITLE}
+
+| Domain | Weight |
+| --- | --- |
+| [[${TABLE_WIKILINK_TARGET}]] | 99% |
+
+## Domain Links
+- [[${TABLE_WIKILINK_TARGET}]]
 `,
   )
 }
@@ -290,6 +325,31 @@ test.describe('table hover crash regression', () => {
     const editor = page.getByRole('textbox').last()
     await expect(editor).toContainText('stable after table row and column adds')
     await expect(page.locator('table')).toHaveCount(1)
+    expect(errors).toEqual([])
+  })
+
+  test('@smoke wikilinks inside table cells render and navigate', async ({ page }) => {
+    const errors = trackUnexpectedErrors(page)
+
+    writeTableWikilinkNotes(tempVaultDir)
+    await openFixtureVaultTauri(page, tempVaultDir)
+    const tableNote = page
+      .getByTestId('note-list-container')
+      .locator('[data-note-path]')
+      .filter({ hasText: TABLE_WIKILINK_NOTE_TITLE })
+      .first()
+    await expect(tableNote).toBeVisible({ timeout: 5_000 })
+    await tableNote.click()
+
+    const tableWikilink = page
+      .locator('table .wikilink')
+      .filter({ hasText: TABLE_WIKILINK_TARGET_TITLE })
+      .first()
+    await expect(tableWikilink).toBeVisible({ timeout: 5_000 })
+    await expect(tableWikilink).toHaveAttribute('data-target', TABLE_WIKILINK_TARGET)
+
+    await tableWikilink.click({ modifiers: ['Meta'] })
+    await expect(page.locator('.bn-editor h1').first()).toHaveText(TABLE_WIKILINK_TARGET_TITLE, { timeout: 5_000 })
     expect(errors).toEqual([])
   })
 })
