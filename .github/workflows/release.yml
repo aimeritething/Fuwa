@@ -8,6 +8,9 @@ on:
 env:
   # Bump this when Tauri/Rust target artifacts capture stale absolute paths.
   RUST_TARGET_CACHE_VERSION: v2026-04-14-tolaria
+  # The production Vite bundle can exceed Node's default ~2GB heap on
+  # macOS arm64 runners while Tauri runs beforeBuildCommand.
+  NODE_OPTIONS: --max-old-space-size=4096
 
 concurrency:
   group: release-alpha-${{ github.ref }}
