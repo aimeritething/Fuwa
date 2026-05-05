@@ -1,8 +1,30 @@
 import { test, expect, type Page } from '@playwright/test'
+import fs from 'fs'
+import path from 'path'
 import { createFixtureVaultCopy, openFixtureVaultTauri, removeFixtureVaultCopy } from '../helpers/fixtureVault'
 import { seedBlockNoteTable, triggerMenuCommand } from './testBridge'
 
 let tempVaultDir: string
+const TABLE_RELOAD_NOTE_PATH = '/project/table-reload-regression.md'
+const TABLE_RELOAD_NOTE_TITLE = 'Table Reload Regression'
+
+function writeTableReloadNote(vaultDir: string): void {
+  fs.writeFileSync(
+    path.join(vaultDir, TABLE_RELOAD_NOTE_PATH.slice(1)),
+    `---
+title: ${TABLE_RELOAD_NOTE_TITLE}
+isA: Project
+status: draft
+---
+# ${TABLE_RELOAD_NOTE_TITLE}
+
+| Head 1 | Head 2 | Head 3 |
+| --- | --- | --- |
+| A | B | C |
+| D | E | F |
+`,
+  )
+}
 
 function trackUnexpectedErrors(page: Page): string[] {
   const errors: string[] = []
@@ -156,6 +178,51 @@ test.describe('table hover crash regression', () => {
 
     const editor = page.getByRole('textbox').last()
     await expect(editor).toContainText('stable after table hover')
+    await expect(page.locator('table')).toHaveCount(1)
+    expect(errors).toEqual([])
+  })
+
+  test('hovered table handles survive a frontmatter reload before later table interaction', async ({ page }) => {
+    const errors = trackUnexpectedErrors(page)
+
+    writeTableReloadNote(tempVaultDir)
+    await openFixtureVaultTauri(page, tempVaultDir)
+    const tableReloadNote = page
+      .getByTestId('note-list-container')
+      .locator('[data-note-path]')
+      .filter({ hasText: TABLE_RELOAD_NOTE_TITLE })
+      .first()
+    await expect(tableReloadNote).toBeVisible({ timeout: 5_000 })
+    const tableReloadNotePath = await tableReloadNote.getAttribute('data-note-path')
+    if (!tableReloadNotePath) {
+      throw new Error('Table reload fixture is missing data-note-path')
+    }
+    await tableReloadNote.click()
+
+    await expect(page.locator('table tr')).toHaveCount(3, { timeout: 5_000 })
+    await tableCell(page, 1, 0).hover()
+    await visibleTableHandle(page, 'row')
+
+    await page.evaluate(async (notePath) => {
+      const updateFrontmatter = window.__mockHandlers?.update_frontmatter
+      if (typeof updateFrontmatter !== 'function') {
+        throw new Error('Fixture vault is missing update_frontmatter')
+      }
+      await updateFrontmatter({ path: notePath, key: 'status', value: 'reviewed' })
+    }, tableReloadNotePath)
+    await triggerMenuCommand(page, 'vault-reload')
+
+    await expect(page.locator('table')).toHaveCount(1)
+    await moveAcrossElement(page, 'div.tableWrapper')
+    await page.locator('table th').first().hover()
+    await page.locator('table td').last().hover()
+
+    const trailingParagraph = page.locator('.bn-editor [data-content-type="paragraph"]').last()
+    await trailingParagraph.click()
+    await page.keyboard.type('stable after table reload')
+
+    const editor = page.getByRole('textbox').last()
+    await expect(editor).toContainText('stable after table reload')
     await expect(page.locator('table')).toHaveCount(1)
     expect(errors).toEqual([])
   })
