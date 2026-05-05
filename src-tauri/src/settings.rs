@@ -123,7 +123,7 @@ pub fn normalize_default_ai_agent(value: Option<&str>) -> Option<String> {
 
 pub fn normalize_theme_mode(value: Option<&str>) -> Option<String> {
     match value.map(|candidate| candidate.trim().to_ascii_lowercase()) {
-        Some(mode) if mode == "light" || mode == "dark" => Some(mode),
+        Some(mode) if mode == "light" || mode == "dark" || mode == "system" => Some(mode),
         _ => None,
     }
 }
@@ -492,9 +492,18 @@ mod tests {
     }
 
     #[test]
-    fn test_invalid_theme_mode_is_filtered() {
+    fn test_system_theme_mode_is_preserved() {
         let loaded = save_and_reload(Settings {
             theme_mode: Some("system".to_string()),
+            ..Default::default()
+        });
+        assert_eq!(loaded.theme_mode.as_deref(), Some("system"));
+    }
+
+    #[test]
+    fn test_invalid_theme_mode_is_filtered() {
+        let loaded = save_and_reload(Settings {
+            theme_mode: Some("sepia".to_string()),
             ..Default::default()
         });
         assert!(loaded.theme_mode.is_none());

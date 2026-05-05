@@ -4,6 +4,7 @@ import { trackEvent } from './telemetry'
 import type { AllNotesFileVisibility } from '../utils/allNotesFileVisibility'
 import type { FilePreviewKind } from '../utils/filePreview'
 import type { NoteWidthMode } from '../types'
+import type { ThemeMode } from './themeMode'
 
 type TrackedPreviewKind = FilePreviewKind | 'unsupported'
 type FilePreviewAction = 'copy_path' | 'open_external' | 'reveal'
@@ -61,6 +62,10 @@ export function trackSidebarTypePluralizationChanged(enabled: boolean): void {
   trackEvent('sidebar_type_pluralization_changed', {
     enabled: numericFlag(enabled),
   })
+}
+
+export function trackThemeModeChanged(mode: ThemeMode): void {
+  trackEvent('theme_mode_changed', { mode })
 }
 
 export function trackInlineImageLightboxOpened(): void {

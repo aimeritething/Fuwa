@@ -93,6 +93,7 @@ files:
     command.settings.repairVault: cee560b1fd5ad9d1ff1c19a0a2afe77a
     command.settings.useLightMode: a76d5b1c076983bc113d247f0520c166
     command.settings.useDarkMode: ba7873c42ae00542ba71db9be3b6761f
+    command.settings.useSystemTheme: 6d8c69d916d3df8ceed8dfc154196d07
     command.settings.toggleGitignoredFilesVisibility: 0a2d3ea4e8ff8b00a801183caeb97a03
     command.ai.openAgents: 612abe804edd0f5ae228a534f77f3d23
     command.ai.restoreGuidance: 23331fecc692d11d85cf24838ed273f2
@@ -114,6 +115,7 @@ files:
     settings.theme.label: d721757161f7f70c5b0949fdb6ec2c30
     settings.theme.light: 9914a0ce04a7b7b6a8e39bec55064b82
     settings.theme.dark: a18366b217ebf811ad1886e4f4f865b2
+    settings.theme.system: a45da96d0bf6575970f2d27af22be28a
     settings.language.title: 4994a8ffeba4ac3140beb89e8d41f174
     settings.language.description: e2bb9b523067fdc32a494b1d6fd97906
     settings.language.label: 244c7b77926f077b863c33ff1244e1ec

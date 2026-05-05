@@ -24,7 +24,7 @@ import {
   type RefObject,
 } from 'react'
 import { Moon, Sun, X } from '@phosphor-icons/react'
-import { Bot, Copy, Folder, GitBranch, ListChecks, Palette, RefreshCw, ShieldCheck } from 'lucide-react'
+import { Bot, Copy, Folder, GitBranch, ListChecks, Monitor, Palette, RefreshCw, ShieldCheck } from 'lucide-react'
 import type { Settings } from '../types'
 import {
   APP_LOCALES,
@@ -37,7 +37,7 @@ import {
   type UiLanguagePreference,
 } from '../lib/i18n'
 import {
-  applyThemeModeToDocument,
+  applyThemeSelectionToDocument,
   DEFAULT_THEME_MODE,
   readStoredThemeMode,
   type ThemeMode,
@@ -331,7 +331,8 @@ function sanitizePositiveInteger(value: number | null | undefined, fallback: num
 }
 
 function applyThemeModeSelection(value: ThemeMode): void {
-  if (typeof document !== 'undefined') applyThemeModeToDocument(document, value)
+  const matchMedia = typeof window !== 'undefined' ? window.matchMedia?.bind(window) : undefined
+  if (typeof document !== 'undefined') applyThemeSelectionToDocument(document, value, matchMedia)
   if (typeof window !== 'undefined') writeStoredThemeMode(window.localStorage, value)
 }
 
@@ -878,6 +879,9 @@ function ThemeModeControl({
       </ThemeModeButton>
       <ThemeModeButton label={t('settings.theme.dark')} selected={value === 'dark'} value="dark" onSelect={onChange}>
         <Moon size={14} />
+      </ThemeModeButton>
+      <ThemeModeButton label={t('settings.theme.system')} selected={value === 'system'} value="system" onSelect={onChange}>
+        <Monitor size={14} />
       </ThemeModeButton>
     </div>
   )

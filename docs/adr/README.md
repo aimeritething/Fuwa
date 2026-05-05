@@ -165,3 +165,4 @@ proposed → active → superseded
 | [0109](0109-debounced-worker-derived-editor-indexes.md) | Debounced worker-derived editor indexes | active |
 | [0110](0110-in-app-media-and-pdf-file-previews.md) | In-app media and PDF previews for binary vault files | active |
 | [0111](0111-path-aware-external-vault-refresh-with-focused-editor-preservation.md) | Path-aware external vault refresh with focused-editor preservation | active |
+| [0112](0112-system-theme-mode.md) | System theme mode | active |

@@ -57,15 +57,50 @@ function createStorageMock(): Storage {
   }
 }
 
+function installMatchMedia(matches = false) {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: vi.fn((query: string) => ({
+      matches,
+      media: query,
+      onchange: null,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      dispatchEvent: vi.fn(() => true),
+    })),
+  })
+}
+
 describe('SettingsPanel', () => {
   const onSave = vi.fn()
   const onClose = vi.fn()
   const localStorageMock = createStorageMock()
 
+  function renderOpenSettings(settings: Settings = emptySettings) {
+    return render(
+      <SettingsPanel open={true} settings={settings} onSave={onSave} onClose={onClose} />
+    )
+  }
+
+  function saveSettingsPanel() {
+    fireEvent.click(screen.getByTestId('settings-save'))
+  }
+
+  function expectSettingsSaved(partial: Partial<Settings>) {
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining(partial))
+  }
+
+  function selectThemeMode(label: string) {
+    fireEvent.click(screen.getByRole('radio', { name: label }))
+  }
+
   beforeEach(() => {
     vi.clearAllMocks()
     trackEventMock.mockClear()
     Object.defineProperty(window, 'localStorage', { value: localStorageMock, configurable: true })
+    installMatchMedia(false)
     window.localStorage.clear()
     document.documentElement.removeAttribute('data-theme')
     document.documentElement.classList.remove('dark')
@@ -257,6 +292,7 @@ describe('SettingsPanel', () => {
     expect(screen.getByTestId('settings-theme-mode')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: 'Light' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('radio', { name: 'Dark' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('radio', { name: 'System' })).toHaveAttribute('aria-checked', 'false')
   })
 
   it('defaults the language selector to system language', () => {
@@ -362,31 +398,42 @@ describe('SettingsPanel', () => {
   })
 
   it('saves the selected dark color mode', () => {
-    render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
-    )
+    renderOpenSettings()
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Dark' }))
-    fireEvent.click(screen.getByTestId('settings-save'))
+    selectThemeMode('Dark')
+    saveSettingsPanel()
 
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    expectSettingsSaved({
       theme_mode: 'dark',
-    }))
+    })
   })
 
   it('applies the selected dark color mode immediately while settings stays open', () => {
-    render(
-      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
-    )
+    renderOpenSettings()
 
-    fireEvent.click(screen.getByRole('radio', { name: 'Dark' }))
+    selectThemeMode('Dark')
 
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
     expect(document.documentElement).toHaveClass('dark')
     expect(window.localStorage.getItem(THEME_MODE_STORAGE_KEY)).toBe('dark')
-    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+    expectSettingsSaved({
       theme_mode: 'dark',
-    }))
+    })
+  })
+
+  it('saves system color mode while applying the current OS appearance immediately', () => {
+    installMatchMedia(true)
+    renderOpenSettings()
+
+    selectThemeMode('System')
+    saveSettingsPanel()
+
+    expect(document.documentElement).toHaveAttribute('data-theme', 'dark')
+    expect(document.documentElement).toHaveClass('dark')
+    expect(window.localStorage.getItem(THEME_MODE_STORAGE_KEY)).toBe('system')
+    expectSettingsSaved({
+      theme_mode: 'system',
+    })
   })
 
   it('preserves a saved dark color mode until changed', () => {
