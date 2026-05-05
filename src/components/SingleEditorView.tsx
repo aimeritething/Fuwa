@@ -286,6 +286,7 @@ function isSelectionInsideElement(element: HTMLElement): boolean {
 const TITLE_HEADING_SELECTOR = 'h1, [data-content-type="heading"][data-level="1"], [data-content-type="heading"]:not([data-level])'
 const TITLE_HEADING_WRAPPER_SELECTOR = '.bn-block-outer, .bn-block'
 const CODE_BLOCK_SELECTOR = '[data-content-type="codeBlock"]'
+const CLIPBOARD_INLINE_FORMAT_SELECTOR = 'a, b, code, em, i, s, span, strong, u'
 const CODE_BLOCK_COPY_RESET_MS = 1200
 
 function nodeElement(node: Node | null): HTMLElement | null {
@@ -341,6 +342,36 @@ function selectedCodeBlockText(options: {
   if (!range) return null
 
   return options.selection?.toString() || range.cloneContents().textContent || ''
+}
+
+function selectedEditorRange(selection: Selection | null, container: HTMLElement): Range | null {
+  if (!hasSingleActiveRange(selection)) return null
+
+  const range = selection.getRangeAt(0)
+  return rangeBelongsToElement(range, container) ? range : null
+}
+
+function selectedEditorPlainText(selection: Selection, range: Range): string | null {
+  const text = selection.toString() || range.cloneContents().textContent || ''
+  if (text.length === 0) return null
+
+  return text.replace(/\r?\n$/, '')
+}
+
+function selectedEditorHtml(range: Range): string {
+  const wrapper = document.createElement('div')
+  const selectedContent = range.cloneContents()
+  const commonElement = nodeElement(range.commonAncestorContainer)
+
+  if (commonElement?.matches(CLIPBOARD_INLINE_FORMAT_SELECTOR)) {
+    const inlineWrapper = commonElement.cloneNode(false)
+    inlineWrapper.appendChild(selectedContent)
+    wrapper.appendChild(inlineWrapper)
+    return wrapper.innerHTML
+  }
+
+  wrapper.appendChild(selectedContent)
+  return wrapper.innerHTML
 }
 
 function codeBlockText(codeBlock: HTMLElement): string {
@@ -889,15 +920,40 @@ function useCompositionAwareEditorChange(options: {
   }, [])
 }
 
-function handleCodeBlockCopy(event: React.ClipboardEvent<HTMLDivElement>) {
+function handleCodeBlockCopy(event: React.ClipboardEvent<HTMLDivElement>): boolean {
   const codeText = selectedCodeBlockText({
     selection: window.getSelection(),
     container: event.currentTarget,
   })
-  if (codeText === null) return
+  if (codeText === null) return false
 
   event.clipboardData.setData('text/plain', codeText)
   event.preventDefault()
+  return true
+}
+
+function handleSelectedEditorCopy(event: React.ClipboardEvent<HTMLDivElement>) {
+  const selection = window.getSelection()
+  const range = selectedEditorRange(selection, event.currentTarget)
+  if (!selection || !range) return
+
+  const plainText = selectedEditorPlainText(selection, range)
+  if (plainText === null) return
+
+  event.clipboardData.setData('text/plain', plainText)
+
+  const html = selectedEditorHtml(range)
+  if (html.length > 0) {
+    event.clipboardData.setData('text/html', html)
+  }
+
+  event.preventDefault()
+}
+
+function handleEditorCopy(event: React.ClipboardEvent<HTMLDivElement>) {
+  if (handleCodeBlockCopy(event)) return
+
+  handleSelectedEditorCopy(event)
 }
 
 function nonEmptyString(value: unknown): string | null {
@@ -1210,7 +1266,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
       className={`editor__blocknote-container${isDragOver ? ' editor__blocknote-container--drag-over' : ''}`}
       style={cssVars as React.CSSProperties}
       onClick={handleContainerClick}
-      onCopyCapture={handleCodeBlockCopy}
+      onCopyCapture={handleEditorCopy}
       onFocusCapture={handleFocusCapture}
       onMouseLeave={clearCopyTarget}
       onMouseDownCapture={handleMouseDownCapture}

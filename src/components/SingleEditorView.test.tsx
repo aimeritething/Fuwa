@@ -308,6 +308,13 @@ function createCodeBlockFixture(text: string) {
   return { codeBlock, code }
 }
 
+function createParagraphFixture(text: string) {
+  const paragraph = document.createElement('p')
+  const textNode = document.createTextNode(text)
+  paragraph.appendChild(textNode)
+  return { paragraph, textNode }
+}
+
 function selectNodeContents(node: Node) {
   const range = document.createRange()
   range.selectNodeContents(node)
@@ -652,7 +659,7 @@ describe('SingleEditorView', () => {
     expect(editor.focus).not.toHaveBeenCalled()
   })
 
-  it('does not override full-note copy selections that merely include a code block', async () => {
+  it('keeps full-note copy selections from collapsing to code-block text only', async () => {
     const { container } = renderEditorHarness()
     const paragraph = document.createElement('p')
     paragraph.textContent = 'Before'
@@ -672,7 +679,57 @@ describe('SingleEditorView', () => {
     const clipboardData = { setData: vi.fn() }
     fireEvent.copy(code, { clipboardData })
 
-    expect(clipboardData.setData).not.toHaveBeenCalled()
+    expect(clipboardData.setData).toHaveBeenCalledWith('text/plain', 'Beforeconst value = 1')
+    expect(clipboardData.setData).not.toHaveBeenCalledWith('text/plain', 'const value = 1')
+  })
+
+  it('copies ordinary selected editor text without appending a newline', async () => {
+    const { container } = renderEditorHarness()
+    const { paragraph, textNode } = createParagraphFixture('Only copied words')
+    await act(async () => {
+      container.appendChild(paragraph)
+      await Promise.resolve()
+    })
+    selectNodeContents(textNode)
+
+    const clipboardData = { setData: vi.fn() }
+    fireEvent.copy(paragraph, { clipboardData })
+
+    expect(clipboardData.setData).toHaveBeenCalledWith('text/plain', 'Only copied words')
+  })
+
+  it('removes one synthetic terminal newline while preserving internal newlines', async () => {
+    const { container } = renderEditorHarness()
+    const { paragraph, textNode } = createParagraphFixture('First line\nSecond line\n')
+    await act(async () => {
+      container.appendChild(paragraph)
+      await Promise.resolve()
+    })
+    selectNodeContents(textNode)
+
+    const clipboardData = { setData: vi.fn() }
+    fireEvent.copy(paragraph, { clipboardData })
+
+    expect(clipboardData.setData).toHaveBeenCalledWith('text/plain', 'First line\nSecond line')
+  })
+
+  it('keeps selected rich text available as HTML when normalizing plain copy text', async () => {
+    const { container } = renderEditorHarness()
+    const paragraph = document.createElement('p')
+    const strong = document.createElement('strong')
+    strong.textContent = 'Bold copy'
+    paragraph.appendChild(strong)
+    await act(async () => {
+      container.appendChild(paragraph)
+      await Promise.resolve()
+    })
+    selectNodeContents(strong)
+
+    const clipboardData = { setData: vi.fn() }
+    fireEvent.copy(strong, { clipboardData })
+
+    expect(clipboardData.setData).toHaveBeenCalledWith('text/plain', 'Bold copy')
+    expect(clipboardData.setData).toHaveBeenCalledWith('text/html', '<strong>Bold copy</strong>')
   })
 
   it('handles registered plain-text paste requests through BlockNote insertion', () => {
