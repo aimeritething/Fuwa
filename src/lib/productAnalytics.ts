@@ -72,6 +72,10 @@ export function trackInlineImageLightboxOpened(): void {
   trackEvent('inline_image_lightbox_opened')
 }
 
+export function trackDatePropertyDirectEntrySaved(): void {
+  trackEvent('date_property_direct_entry_saved', { source: 'properties_panel' })
+}
+
 export function trackAiAgentMessageBlocked(agent: AiAgentId, reason: AgentBlockedReason): void {
   trackEvent('ai_agent_message_blocked', { agent, reason })
 }
