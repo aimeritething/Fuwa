@@ -31,6 +31,7 @@ import {
 import { useRegisterEditorContentFlushes } from './editorContentFlushRegistration'
 import { useRawModeWithFlush } from './useRawModeWithFlush'
 import { createArrowLigaturesExtension } from './arrowLigaturesExtension'
+import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardExtension'
 import { createMathInputExtension } from './mathInputExtension'
 import { useFilenameAutolinkGuard } from './useFilenameAutolinkGuard'
 import './Editor.css'
@@ -238,7 +239,11 @@ function useEditorSetup({
       return defaultPasteHandler()
     },
     _tiptapOptions: { injectNonce: RUNTIME_STYLE_NONCE },
-    extensions: [createArrowLigaturesExtension(), createMathInputExtension()],
+    extensions: [
+      createImeCompositionKeyGuardExtension(),
+      createArrowLigaturesExtension(),
+      createMathInputExtension(),
+    ],
   })
   useFilenameAutolinkGuard(editor)
   const activeTab = tabs.find((t) => t.entry.path === activeTabPath) ?? null
