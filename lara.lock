@@ -424,8 +424,10 @@ files:
     editor.toolbar.addFavorite: 910885435dbc44a22b68cb45c79e4a7e
     editor.toolbar.markUnorganized: 83fb1b23a3609fab493737fe7af0a198
     editor.toolbar.markOrganized: 9d170c916afae3d7a82456838728ffa5
+    editor.toolbar.openNeighborhood: 80f659c99954ab7681266b5a1e5da6df
     editor.toolbar.noDiff: b2c4189f90648aaeb5cd2e81f9bd8d94
     editor.toolbar.loadingDiff: 430386d6aae3570fd399a133e41c7372
+    editor.toolbar.gitDiff: 51b46b6eac27ba484479246b875f76f5
     editor.toolbar.showDiff: 08d579de8d3abdcdfce0953a797362c6
     editor.toolbar.openAi: d2e93006570a66709c8ce0dc27082ef1
     editor.toolbar.closeAi: cd46973ef73076d612dff9903ce54498

@@ -1772,6 +1772,7 @@ function App() {
               noteListFilter={aiNoteListFilter}
               onToggleFavorite={activeDeletedFile ? undefined : entryActions.handleToggleFavorite}
               onToggleOrganized={activeDeletedFile || !explicitOrganizationEnabled ? undefined : toggleOrganizedCommand}
+              onEnterNeighborhood={activeDeletedFile ? undefined : handleEnterNeighborhood}
               onRevealFile={fileActions.revealFile}
               onCopyFilePath={fileActions.copyFilePath}
               onOpenExternalFile={fileActions.openExternalFile}

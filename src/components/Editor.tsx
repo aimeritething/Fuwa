@@ -79,6 +79,7 @@ interface EditorProps {
   noteListFilter?: { type: string | null; query: string }
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
   onOpenExternalFile?: (path: string) => void
@@ -376,6 +377,7 @@ function EditorLayout({
   handleEditorChange,
   onToggleFavorite,
   onToggleOrganized,
+  onEnterNeighborhood,
   onRevealFile,
   onCopyFilePath,
   onOpenExternalFile,
@@ -443,6 +445,7 @@ function EditorLayout({
   handleEditorChange: () => void
   onToggleFavorite?: (path: string) => void
   onToggleOrganized?: (path: string) => void
+  onEnterNeighborhood?: (entry: VaultEntry) => void
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
   onOpenExternalFile?: (path: string) => void
@@ -527,6 +530,7 @@ function EditorLayout({
               onEditorChange={handleEditorChange}
               onToggleFavorite={onToggleFavorite}
               onToggleOrganized={onToggleOrganized}
+              onEnterNeighborhood={onEnterNeighborhood}
               onRevealFile={onRevealFile}
               onCopyFilePath={onCopyFilePath}
               onDeleteNote={onDeleteNote}
