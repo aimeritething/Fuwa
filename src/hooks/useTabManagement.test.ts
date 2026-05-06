@@ -155,6 +155,28 @@ describe('useTabManagement (single-note model)', () => {
       expect(result.current.tabs[0].content).toBe('# Pending content')
     })
 
+    it('does not reopen a stale note load after all tabs are closed', async () => {
+      const content = createDeferred<string>()
+      vi.mocked(mockInvoke).mockImplementationOnce(() => content.promise)
+
+      const { result } = renderHook(() => useTabManagement())
+      void act(() => {
+        void result.current.handleSelectNote(makeEntry({ path: '/old-vault/note/pending.md', title: 'Pending' }))
+      })
+
+      act(() => {
+        result.current.closeAllTabs()
+      })
+
+      await act(async () => {
+        content.resolve('# Stale content')
+        await content.promise
+      })
+
+      expect(result.current.tabs).toEqual([])
+      expect(result.current.activeTabPath).toBeNull()
+    })
+
     it('replaces the current note when selecting a different one', async () => {
       const { result } = renderHook(() => useTabManagement())
       await selectNote(result, { path: '/vault/a.md', title: 'A' })

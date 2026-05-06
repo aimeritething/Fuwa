@@ -6,6 +6,7 @@ import { extractH1TitleFromContent } from '../utils/noteTitle'
 import { isTauri } from '../mock-tauri'
 import type { VaultEntry } from '../types'
 import { createTranslator, type AppLocale } from '../lib/i18n'
+import { canWritePathToVault } from '../utils/vaultPathContainment'
 
 interface TabState {
   entry: VaultEntry
@@ -437,6 +438,23 @@ interface AppSaveDeps {
   locale?: AppLocale
 }
 
+interface EditorPersistenceOptions {
+  updateEntry: AppSaveDeps['updateEntry']
+  setTabs: AppSaveDeps['setTabs']
+  setToastMessage: AppSaveDeps['setToastMessage']
+  loadModifiedFiles: AppSaveDeps['loadModifiedFiles']
+  trackUnsaved?: AppSaveDeps['trackUnsaved']
+  clearUnsaved: AppSaveDeps['clearUnsaved']
+  onInternalVaultWrite?: AppSaveDeps['onInternalVaultWrite']
+  reloadViews: AppSaveDeps['reloadViews']
+  scheduleUntitledRename: (path: string, content: string) => void
+  resolveCurrentPath: (path: string) => string
+  resolvePathBeforeSave: (path: string) => Promise<string>
+  canPersist: boolean
+  persistenceScope: string
+  locale: AppLocale
+}
+
 function useAppSaveStateRefs({
   tabs,
   activeTabPath,
@@ -619,22 +637,9 @@ function useEditorPersistence({
   resolveCurrentPath,
   resolvePathBeforeSave,
   canPersist,
+  persistenceScope,
   locale,
-}: {
-  updateEntry: AppSaveDeps['updateEntry']
-  setTabs: AppSaveDeps['setTabs']
-  setToastMessage: AppSaveDeps['setToastMessage']
-  loadModifiedFiles: AppSaveDeps['loadModifiedFiles']
-  trackUnsaved?: AppSaveDeps['trackUnsaved']
-  clearUnsaved: AppSaveDeps['clearUnsaved']
-  onInternalVaultWrite?: AppSaveDeps['onInternalVaultWrite']
-  reloadViews: AppSaveDeps['reloadViews']
-  scheduleUntitledRename: (path: string, content: string) => void
-  resolveCurrentPath: (path: string) => string
-  resolvePathBeforeSave: (path: string) => Promise<string>
-  canPersist: boolean
-  locale: AppLocale
-}) {
+}: EditorPersistenceOptions) {
   const onAfterSave = useCallback(() => {
     loadModifiedFiles()
   }, [loadModifiedFiles])
@@ -660,18 +665,23 @@ function useEditorPersistence({
     resolvePath: resolveCurrentPath,
     resolvePathBeforeSave,
     canPersist,
+    persistenceScope,
     locale,
   })
 
   const handleContentChange = useCallback((path: string, content: string) => {
     const currentPath = resolveCurrentPath(path)
+    if (!canWritePathToVault(currentPath, persistenceScope)) return
     trackUnsaved?.(currentPath)
     handleContentChangeRaw(currentPath, content)
-  }, [handleContentChangeRaw, resolveCurrentPath, trackUnsaved])
+  }, [handleContentChangeRaw, persistenceScope, resolveCurrentPath, trackUnsaved])
 
-  const savePendingForPath = useCallback((path: string) => (
-    savePendingForPathRaw(resolveCurrentPath(path))
-  ), [savePendingForPathRaw, resolveCurrentPath])
+  const savePendingForPath = useCallback((path: string) => {
+    const currentPath = resolveCurrentPath(path)
+    return canWritePathToVault(currentPath, persistenceScope)
+      ? savePendingForPathRaw(currentPath)
+      : Promise.resolve(false)
+  }, [savePendingForPathRaw, persistenceScope, resolveCurrentPath])
 
   return { handleSaveRaw, handleContentChange, savePendingForPath, savePending }
 }
@@ -798,6 +808,7 @@ export function useAppSave({
     updateEntry, setTabs, setToastMessage, loadModifiedFiles, trackUnsaved,
     clearUnsaved, onInternalVaultWrite, reloadViews, scheduleUntitledRename,
     resolveCurrentPath, resolvePathBeforeSave, canPersist,
+    persistenceScope: resolvedPath,
     locale,
   })
   const replaceRenamedEntry = useReplaceRenamedEntry({ registerRenamedPath, replaceEntry })

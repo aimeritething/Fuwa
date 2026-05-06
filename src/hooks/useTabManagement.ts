@@ -545,6 +545,8 @@ export function useTabManagement(options: TabManagementOptions = {}) {
   }, [executeNavigationWithBoundary, onMissingActiveVault, onMissingNotePath, onUnreadableNoteContent])
 
   const closeAllTabs = useCallback(() => {
+    navSeqRef.current += 1
+    beforeNavigateSeqRef.current += 1
     tabsRef.current = []
     setTabs([])
     requestedActiveTabPathRef.current = null
