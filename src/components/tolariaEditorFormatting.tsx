@@ -4,6 +4,7 @@ import {
   PositionPopover,
   useBlockNoteEditor,
   useComponentsContext,
+  useDictionary,
   useEditorState,
   useExtension,
   useExtensionState,
@@ -47,6 +48,7 @@ import {
   Bold,
   ChevronDown,
   Code2,
+  ExternalLink,
   Italic,
   Strikethrough,
   type LucideIcon,
@@ -56,6 +58,7 @@ import {
   getTolariaBlockTypeSelectItems,
 } from './tolariaEditorFormattingConfig'
 import { useBlockNoteFormattingToolbarHoverGuard } from './blockNoteFormattingToolbarHoverGuard'
+import { openEditorAttachmentOrUrl } from './editorAttachmentActions'
 
 type TolariaBasicTextStyle = 'bold' | 'italic' | 'strike' | 'code'
 
@@ -188,6 +191,11 @@ const TOLARIA_BASIC_TEXT_STYLE_ICONS = {
 type TolariaSelectedBlock = ReturnType<
   BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>['getTextCursorPosition']
 >['block']
+
+type TolariaSelectedFileBlock = {
+  type: string
+  url: string
+}
 
 const FORMATTING_TOOLBAR_FILE_BLOCK_TYPES = new Set([
   'audio',
@@ -331,6 +339,33 @@ function getFormattingToolbarBridgeBlockId(
     : null
 }
 
+function getSelectedFileBlockState(
+  editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
+): TolariaSelectedFileBlock | null {
+  const selectedBlocks = getSelectedBlocksSafely(editor)
+  if (selectedBlocks.length !== 1) return null
+
+  const block = selectedBlocks[0]
+  if (!FORMATTING_TOOLBAR_FILE_BLOCK_TYPES.has(block.type)) return null
+
+  const url = (block.props as Record<string, unknown>).url
+  return typeof url === 'string' && url.trim().length > 0
+    ? { type: block.type, url }
+    : null
+}
+
+function fileDownloadTooltip(dict: unknown, blockType: string): string {
+  const tooltip = (dict as {
+    formatting_toolbar?: {
+      file_download?: {
+        tooltip?: Record<string, string>
+      }
+    }
+  }).formatting_toolbar?.file_download?.tooltip
+
+  return tooltip?.[blockType] ?? tooltip?.file ?? 'Download file'
+}
+
 function getFormattingToolbarAnchorElement(
   editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
 ) {
@@ -459,7 +494,46 @@ function TolariaBlockTypeSelect() {
   )
 }
 
-function replaceToolbarControls(items: ReactElement[]) {
+function TolariaFileDownloadButton({ vaultPath }: { vaultPath?: string }) {
+  const Components = useComponentsContext()!
+  const dict = useDictionary()
+  const editor = useBlockNoteEditor<
+    BlockSchema,
+    InlineContentSchema,
+    StyleSchema
+  >()
+  const selectedFileBlock = useEditorState({
+    editor,
+    selector: ({ editor }) => getSelectedFileBlockState(editor),
+  })
+  const handleOpen = useCallback(() => {
+    if (!selectedFileBlock) return
+
+    editor.focus()
+    openEditorAttachmentOrUrl({
+      url: selectedFileBlock.url,
+      vaultPath,
+      source: 'file',
+    })
+  }, [editor, selectedFileBlock, vaultPath])
+
+  if (!selectedFileBlock || !editor.isEditable) return null
+
+  const label = fileDownloadTooltip(dict, selectedFileBlock.type)
+  return (
+    <Components.FormattingToolbar.Button
+      className="bn-button"
+      data-test="fileDownload"
+      onClick={handleOpen}
+      isSelected={false}
+      label={label}
+      mainTooltip={label}
+      icon={<ExternalLink />}
+    />
+  )
+}
+
+function replaceToolbarControls(items: ReactElement[], vaultPath?: string) {
   return items.flatMap((item) => {
     switch (String(item.key)) {
       case 'blockTypeSelect':
@@ -470,6 +544,8 @@ function replaceToolbarControls(items: ReactElement[]) {
         return [<TolariaBasicTextStyleButton basicTextStyle="italic" key={item.key} />]
       case 'strikeStyleButton':
         return [<TolariaBasicTextStyleButton basicTextStyle="strike" key={item.key} />]
+      case 'fileDownloadButton':
+        return [<TolariaFileDownloadButton key={item.key} vaultPath={vaultPath} />]
       default:
         return [item]
     }
@@ -489,18 +565,19 @@ function insertInlineCodeButton(items: ReactElement[]) {
   ]
 }
 
-function getTolariaFormattingToolbarItems() {
+function getTolariaFormattingToolbarItems(vaultPath?: string) {
   return insertInlineCodeButton(
     replaceToolbarControls(
       filterTolariaFormattingToolbarItems(
         getFormattingToolbarItems(),
       ),
+      vaultPath,
     ),
   )
 }
 
-export function TolariaFormattingToolbar() {
-  return <FormattingToolbar>{getTolariaFormattingToolbarItems()}</FormattingToolbar>
+export function TolariaFormattingToolbar({ vaultPath }: { vaultPath?: string } = {}) {
+  return <FormattingToolbar>{getTolariaFormattingToolbarItems(vaultPath)}</FormattingToolbar>
 }
 
 export function TolariaFormattingToolbarController(props: {

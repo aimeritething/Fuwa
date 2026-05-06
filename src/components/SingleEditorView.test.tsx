@@ -139,7 +139,11 @@ vi.mock('../hooks/useImageDrop', () => ({
 }))
 
 vi.mock('../utils/url', () => ({
+  normalizeExternalUrl: vi.fn((url: string) => (
+    url.startsWith('http://') || url.startsWith('https://') ? url : null
+  )),
   openExternalUrl: vi.fn().mockResolvedValue(undefined),
+  openLocalFile: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('../utils/typeColors', () => ({
@@ -191,15 +195,16 @@ vi.mock('./tolariaBlockNoteSideMenu', () => ({
 }))
 
 vi.mock('./useEditorLinkActivation', () => ({
-  useEditorLinkActivation: (containerRef: unknown, onNavigateWikilink: unknown) => (
-    state.linkActivationMock(containerRef, onNavigateWikilink)
+  useEditorLinkActivation: (containerRef: unknown, onNavigateWikilink: unknown, vaultPath: unknown) => (
+    state.linkActivationMock(containerRef, onNavigateWikilink, vaultPath)
   ),
 }))
 
-import { openExternalUrl } from '../utils/url'
+import { openExternalUrl, openLocalFile } from '../utils/url'
 import { SingleEditorView } from './SingleEditorView'
 
 const mockOpenExternalUrl = vi.mocked(openExternalUrl)
+const mockOpenLocalFile = vi.mocked(openLocalFile)
 
 function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
   return {
@@ -275,6 +280,7 @@ function createEditor() {
       },
     },
     focus: vi.fn(),
+    getBlock: vi.fn(() => null),
     getTextCursorPosition: vi.fn(() => ({ block: cursorBlock })),
     insertBlocks: vi.fn(),
     insertInlineContent: vi.fn(),
@@ -282,12 +288,13 @@ function createEditor() {
   }
 }
 
-function renderEditorHarness(editor = createEditor()) {
+function renderEditorHarness(editor = createEditor(), options: { vaultPath?: string } = {}) {
   render(
     <SingleEditorView
       editor={editor as never}
       entries={[makeEntry()]}
       onNavigateWikilink={vi.fn()}
+      vaultPath={options.vaultPath}
     />,
     { wrapper: TooltipProvider },
   )
@@ -373,6 +380,39 @@ function clipboardDataFor(formats: Record<string, string>) {
   }
 }
 
+type LinkToolbarHarnessProps = {
+  url: string
+  text: string
+  range: { from: number; to: number }
+  setToolbarOpen?: (open: boolean) => void
+  setToolbarPositionFrozen?: (open: boolean) => void
+}
+
+function renderLinkToolbarOpenButton(options: {
+  url: string
+  text?: string
+  vaultPath?: string
+}) {
+  render(
+    <SingleEditorView
+      editor={createEditor() as never}
+      entries={[makeEntry()]}
+      onNavigateWikilink={vi.fn()}
+      vaultPath={options.vaultPath}
+    />,
+  )
+
+  const LinkToolbarComponent = state.capturedLinkToolbarProps?.linkToolbar as React.ComponentType<LinkToolbarHarnessProps>
+
+  render(
+    <LinkToolbarComponent
+      url={options.url}
+      text={options.text ?? 'Example'}
+      range={{ from: 1, to: 8 }}
+    />,
+  )
+}
+
 describe('SingleEditorView', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -387,6 +427,7 @@ describe('SingleEditorView', () => {
     state.wikilinkEntriesRef.current = []
     state.wikilinkCandidates = []
     mockOpenExternalUrl.mockClear()
+    mockOpenLocalFile.mockClear()
     document.documentElement.removeAttribute('data-theme')
     document.documentElement.classList.remove('dark')
     delete window.__laputaTest
@@ -972,32 +1013,51 @@ describe('SingleEditorView', () => {
   })
 
   it('routes the custom link-toolbar open action through openExternalUrl', () => {
-    render(
-      <SingleEditorView
-        editor={createEditor() as never}
-        entries={[makeEntry()]}
-        onNavigateWikilink={vi.fn()}
-      />,
-    )
-
-    const LinkToolbarComponent = state.capturedLinkToolbarProps?.linkToolbar as React.ComponentType<{
-      url: string
-      text: string
-      range: { from: number; to: number }
-      setToolbarOpen?: (open: boolean) => void
-      setToolbarPositionFrozen?: (open: boolean) => void
-    }>
-
-    render(
-      <LinkToolbarComponent
-        url="https://example.com/docs"
-        text="Example"
-        range={{ from: 1, to: 8 }}
-      />,
-    )
+    renderLinkToolbarOpenButton({ url: 'https://example.com/docs' })
 
     fireEvent.click(screen.getByRole('button', { name: 'Open in a new tab' }))
 
     expect(mockOpenExternalUrl).toHaveBeenCalledWith('https://example.com/docs')
+  })
+
+  it('routes link-toolbar attachment actions through the active vault path', () => {
+    renderLinkToolbarOpenButton({
+      url: 'attachments/report.pdf',
+      text: 'report.pdf',
+      vaultPath: '/vault',
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open in a new tab' }))
+
+    expect(mockOpenLocalFile).toHaveBeenCalledWith('/vault/attachments/report.pdf', '/vault')
+    expect(mockOpenExternalUrl).not.toHaveBeenCalled()
+  })
+
+  it('opens BlockNote file block names through the active vault path', () => {
+    const editor = createEditor()
+    editor.getBlock.mockReturnValue({
+      type: 'file',
+      props: { url: 'asset://localhost/%2Fvault%2Fattachments%2Freport.pdf' },
+    })
+    const { container } = renderEditorHarness(editor, { vaultPath: '/vault' })
+
+    const blockContainer = document.createElement('div')
+    blockContainer.setAttribute('data-node-type', 'blockContainer')
+    blockContainer.dataset.id = 'pdf-block'
+    const fileBlock = document.createElement('div')
+    fileBlock.setAttribute('data-file-block', '')
+    const fileName = document.createElement('span')
+    fileName.className = 'bn-file-name-with-icon'
+    fileName.textContent = 'report.pdf'
+    fileBlock.appendChild(fileName)
+    blockContainer.appendChild(fileBlock)
+    container.appendChild(blockContainer)
+
+    fireEvent.click(fileName)
+
+    expect(editor.getBlock).toHaveBeenCalledWith('pdf-block')
+    expect(mockOpenLocalFile).toHaveBeenCalledWith('/vault/attachments/report.pdf', '/vault')
+    expect(editor.setTextCursorPosition).not.toHaveBeenCalled()
+    expect(editor.focus).not.toHaveBeenCalled()
   })
 })

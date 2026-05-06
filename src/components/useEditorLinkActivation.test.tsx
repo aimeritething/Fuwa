@@ -4,22 +4,33 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('../utils/url', async () => {
   const actual = await vi.importActual('../utils/url') as typeof import('../utils/url')
-  return { ...actual, openExternalUrl: vi.fn().mockResolvedValue(undefined) }
+  return {
+    ...actual,
+    openExternalUrl: vi.fn().mockResolvedValue(undefined),
+    openLocalFile: vi.fn().mockResolvedValue(undefined),
+  }
 })
 
-import { openExternalUrl } from '../utils/url'
+import { openExternalUrl, openLocalFile } from '../utils/url'
 import { useEditorLinkActivation } from './useEditorLinkActivation'
 
 const mockOpenExternalUrl = vi.mocked(openExternalUrl)
+const mockOpenLocalFile = vi.mocked(openLocalFile)
 
-function Harness({ onNavigateWikilink }: { onNavigateWikilink: (target: string) => void }) {
+function Harness({
+  onNavigateWikilink,
+  vaultPath,
+}: {
+  onNavigateWikilink: (target: string) => void
+  vaultPath?: string
+}) {
   const containerRef = useRef<HTMLDivElement>(null)
-  useEditorLinkActivation(containerRef, onNavigateWikilink)
+  useEditorLinkActivation(containerRef, onNavigateWikilink, vaultPath)
   return <div ref={containerRef} data-testid="editor-link-container" />
 }
 
-function renderHarness(onNavigateWikilink = vi.fn()) {
-  render(<Harness onNavigateWikilink={onNavigateWikilink} />)
+function renderHarness(onNavigateWikilink = vi.fn(), vaultPath?: string) {
+  render(<Harness onNavigateWikilink={onNavigateWikilink} vaultPath={vaultPath} />)
   return {
     container: screen.getByTestId('editor-link-container') as HTMLDivElement,
     onNavigateWikilink,
@@ -63,6 +74,7 @@ function dispatchMouseEvent(target: HTMLElement, type: string, options: MouseEve
 describe('useEditorLinkActivation', () => {
   beforeEach(() => {
     mockOpenExternalUrl.mockClear()
+    mockOpenLocalFile.mockClear()
   })
 
   it('navigates wikilinks only on Cmd+click after the native click stack settles', async () => {
@@ -128,6 +140,17 @@ describe('useEditorLinkActivation', () => {
 
     expect(plainClick.defaultPrevented).toBe(true)
     expect(modifiedClick.defaultPrevented).toBe(true)
+    expect(mockOpenExternalUrl).not.toHaveBeenCalled()
+  })
+
+  it('opens relative attachment links through the active vault path', () => {
+    const { container } = renderHarness(vi.fn(), '/vault')
+    const link = appendUrl(container, 'attachments/report.pdf')
+
+    const modifiedClick = dispatchMouseEvent(link, 'click', { metaKey: true })
+
+    expect(modifiedClick.defaultPrevented).toBe(true)
+    expect(mockOpenLocalFile).toHaveBeenCalledWith('/vault/attachments/report.pdf', '/vault')
     expect(mockOpenExternalUrl).not.toHaveBeenCalled()
   })
 

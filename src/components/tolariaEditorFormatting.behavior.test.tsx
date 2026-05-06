@@ -33,6 +33,7 @@ vi.mock('@blocknote/react', () => ({
     <div key="boldStyleButton" />,
     <div key="italicStyleButton" />,
     <div key="strikeStyleButton" />,
+    <div key="fileDownloadButton" />,
     <div key="createLinkButton" />,
   ],
   PositionPopover: (props: Record<string, unknown> & { children?: ReactNode }) => {
@@ -59,6 +60,16 @@ vi.mock('@blocknote/react', () => ({
           {children}
         </button>
       ),
+    },
+  }),
+  useDictionary: () => ({
+    formatting_toolbar: {
+      file_download: {
+        tooltip: {
+          file: 'Download file',
+          image: 'Download image',
+        },
+      },
     },
   }),
   useEditorState: ({ editor, selector }: { editor: unknown; selector: (context: { editor: unknown }) => unknown }) => selector({ editor }),
@@ -93,6 +104,7 @@ vi.mock('lucide-react', () => ({
   Bold: MockIcon,
   ChevronDown: MockIcon,
   Code2: MockIcon,
+  ExternalLink: MockIcon,
   Italic: MockIcon,
   Strikethrough: MockIcon,
 }))
@@ -109,16 +121,25 @@ vi.mock('./blockNoteFormattingToolbarHoverGuard', () => ({
   useBlockNoteFormattingToolbarHoverGuard: hoverGuardMock,
 }))
 
+vi.mock('../utils/url', () => ({
+  normalizeExternalUrl: vi.fn((url: string) => url),
+  openExternalUrl: vi.fn().mockResolvedValue(undefined),
+  openLocalFile: vi.fn().mockResolvedValue(undefined),
+}))
+
+import { openLocalFile } from '../utils/url'
 import {
   TolariaFormattingToolbar,
   TolariaFormattingToolbarController,
 } from './tolariaEditorFormatting'
 
-function createMockEditor(blockType = 'image') {
+const mockOpenLocalFile = vi.mocked(openLocalFile)
+
+function createMockEditor(blockType = 'image', props: Record<string, unknown> = {}) {
   const selectedBlock = {
     id: 'file-block',
     type: blockType,
-    props: { textAlignment: 'center', level: 1 },
+    props: { textAlignment: 'center', level: 1, ...props },
     content: [{ type: 'text', text: 'Selected block' }],
   }
   const domElement = document.createElement('div')
@@ -174,6 +195,20 @@ describe('tolariaEditorFormatting behavior', () => {
       expect.objectContaining({ id: 'file-block' }),
       { type: 'heading', props: { level: 1 } },
     )
+  })
+
+  it('opens selected file blocks through the active vault path', () => {
+    const editor = createMockEditor('file', {
+      url: 'asset://localhost/%2Fvault%2Fattachments%2Freport.pdf',
+    })
+    useBlockNoteEditorMock.mockReturnValue(editor)
+
+    render(<TolariaFormattingToolbar vaultPath="/vault" />)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Download file' }))
+
+    expect(editor.focus).toHaveBeenCalled()
+    expect(mockOpenLocalFile).toHaveBeenCalledWith('/vault/attachments/report.pdf', '/vault')
   })
 
   it('controls the floating toolbar placement, hover guard, and escape-key close behavior', () => {

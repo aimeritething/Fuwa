@@ -29,12 +29,15 @@ import { buildTypeEntryMap } from '../utils/typeColors'
 import { preFilterWikilinks, deduplicateByPath, MIN_QUERY_LENGTH } from '../utils/wikilinkSuggestions'
 import { filterPersonMentions, PERSON_MENTION_MIN_QUERY } from '../utils/personMentionSuggestions'
 import { attachClickHandlers, enrichSuggestionItems } from '../utils/suggestionEnrichment'
-import { openExternalUrl } from '../utils/url'
 import { observeNativeTextAssistanceDisabled } from '../lib/nativeTextAssistance'
 import { getRuntimeStyleNonce } from '../lib/runtimeStyleNonce'
 import { WikilinkSuggestionMenu, type WikilinkSuggestionItem } from './WikilinkSuggestionMenu'
 import type { VaultEntry } from '../types'
 import { _wikilinkEntriesRef } from './editorSchema'
+import {
+  handleEditorFileBlockClick,
+  openEditorAttachmentOrUrl,
+} from './editorAttachmentActions'
 import { useBlockNoteSideMenuHoverGuard } from './blockNoteSideMenuHoverGuard'
 import { getTolariaSlashMenuItems } from './tolariaEditorFormattingConfig'
 import {
@@ -174,14 +177,15 @@ function handleToolbarMouseDownCapture(
   event.preventDefault()
 }
 
-function TolariaOpenLinkButton({ url }: Pick<LinkToolbarProps, 'url'>) {
+function TolariaOpenLinkButton({
+  url,
+  vaultPath,
+}: Pick<LinkToolbarProps, 'url'> & { vaultPath?: string }) {
   const Components = useComponentsContext()!
   const dict = useDictionary()
   const handleOpen = useCallback(() => {
-    void openExternalUrl(url).catch((error) => {
-      console.warn('[link] Failed to open URL from toolbar:', error)
-    })
-  }, [url])
+    openEditorAttachmentOrUrl({ url, vaultPath, source: 'link' })
+  }, [url, vaultPath])
 
   return (
     <Components.LinkToolbar.Button
@@ -195,7 +199,7 @@ function TolariaOpenLinkButton({ url }: Pick<LinkToolbarProps, 'url'>) {
   )
 }
 
-function TolariaLinkToolbar(props: LinkToolbarProps) {
+function TolariaLinkToolbar({ vaultPath, ...props }: LinkToolbarProps & { vaultPath?: string }) {
   return (
     <LinkToolbar {...props}>
       <EditLinkButton
@@ -205,7 +209,7 @@ function TolariaLinkToolbar(props: LinkToolbarProps) {
         setToolbarOpen={props.setToolbarOpen}
         setToolbarPositionFrozen={props.setToolbarPositionFrozen}
       />
-      <TolariaOpenLinkButton url={props.url} />
+      <TolariaOpenLinkButton url={props.url} vaultPath={vaultPath} />
       <DeleteLinkButton
         range={props.range}
         setToolbarOpen={props.setToolbarOpen}
@@ -898,8 +902,9 @@ function useEditorContainerClickHandler(options: {
   editable: boolean
   editor: ReturnType<typeof useCreateBlockNote>
   suppressNextContainerClickRef: React.MutableRefObject<boolean>
+  vaultPath?: string
 }) {
-  const { editable, editor, suppressNextContainerClickRef } = options
+  const { editable, editor, suppressNextContainerClickRef, vaultPath } = options
 
   return useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!editable) return
@@ -907,6 +912,8 @@ function useEditorContainerClickHandler(options: {
       suppressNextContainerClickRef.current = false
       return
     }
+
+    if (handleEditorFileBlockClick({ event: e, editor, vaultPath })) return
 
     const target = e.target as HTMLElement
     if (queueTitleHeadingCursorRepair(target, editor)) return
@@ -923,7 +930,7 @@ function useEditorContainerClickHandler(options: {
       }
     }
     editor.focus()
-  }, [editor, editable, suppressNextContainerClickRef])
+  }, [editor, editable, suppressNextContainerClickRef, vaultPath])
 }
 
 function useCompositionAwareEditorChange(options: {
@@ -1128,6 +1135,7 @@ function useSuggestionMenuItems(options: {
 
 type EditorInteractionControllersProps = ReturnType<typeof useSuggestionMenuItems> & {
   runEditorAction: (action: SuggestionAction) => void
+  vaultPath?: string
 }
 
 function EditorInteractionControllers({
@@ -1135,12 +1143,15 @@ function EditorInteractionControllers({
   getSlashMenuItems,
   getWikilinkItems,
   runEditorAction,
+  vaultPath,
 }: EditorInteractionControllersProps) {
   return (
     <>
       <SideMenuController sideMenu={TolariaSideMenu} />
       <TolariaFormattingToolbarController
-        formattingToolbar={TolariaFormattingToolbar}
+        formattingToolbar={(props) => (
+          <TolariaFormattingToolbar {...props} vaultPath={vaultPath} />
+        )}
         floatingUIOptions={{
           elementProps: {
             onMouseDownCapture: handleToolbarMouseDownCapture,
@@ -1148,7 +1159,9 @@ function EditorInteractionControllers({
         }}
       />
       <LinkToolbarController
-        linkToolbar={TolariaLinkToolbar}
+        linkToolbar={(props) => (
+          <TolariaLinkToolbar {...props} vaultPath={vaultPath} />
+        )}
         floatingUIOptions={{
           elementProps: {
             onMouseDownCapture: handleToolbarMouseDownCapture,
@@ -1248,6 +1261,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
     editable,
     editor,
     suppressNextContainerClickRef,
+    vaultPath,
   })
   const handleWhitespaceMouseSelection = useEditorWhitespaceMouseSelection({
     containerRef,
@@ -1266,7 +1280,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
     handleMouseMove: handleCodeBlockCopyMouseMove,
   } = useCodeBlockCopyTarget(containerRef)
   useBlockNoteSideMenuHoverGuard(containerRef)
-  useEditorLinkActivation(containerRef, onNavigateWikilink)
+  useEditorLinkActivation(containerRef, onNavigateWikilink, vaultPath)
 
   useEffect(() => {
     _wikilinkEntriesRef.current = entries
@@ -1349,6 +1363,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
         <EditorInteractionControllers
           {...suggestionMenuItems}
           runEditorAction={runEditorAction}
+          vaultPath={vaultPath}
         />
       </SharedContextBlockNoteView>
       {copyTarget && <CodeBlockCopyButton copyTarget={copyTarget} locale={locale} />}

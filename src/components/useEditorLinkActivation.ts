@@ -1,5 +1,5 @@
 import { useEffect, type RefObject } from 'react'
-import { normalizeExternalUrl, openExternalUrl } from '../utils/url'
+import { openEditorAttachmentOrUrl } from './editorAttachmentActions'
 
 const CODE_CONTEXT_SELECTOR = '[data-content-type="codeBlock"], pre, code'
 
@@ -55,21 +55,19 @@ function activateWikilink(
   scheduleAfterNativeClick(() => onNavigateWikilink(target))
 }
 
-function activateExternalUrl(event: MouseEvent, href: string) {
+function activateUrl(event: MouseEvent, href: string, vaultPath?: string) {
   consumeEditorLinkEvent(event)
 
   if (!hasFollowModifier(event)) return
 
-  const urlTarget = normalizeExternalUrl(href)
-  if (!urlTarget) return
-
-  openExternalUrl(urlTarget).catch((err) => console.warn('[link] Failed to open URL:', err))
+  openEditorAttachmentOrUrl({ url: href, vaultPath, source: 'link' })
 }
 
 function handleEditorLinkClick(
   event: MouseEvent,
   container: HTMLElement,
   onNavigateWikilink: (target: string) => void,
+  vaultPath?: string,
 ) {
   if (!(event.target instanceof HTMLElement) || isInsideCodeContext(event.target)) return
 
@@ -80,7 +78,7 @@ function handleEditorLinkClick(
   }
 
   const href = resolveAnchorHref(event.target)
-  if (href) activateExternalUrl(event, href)
+  if (href) activateUrl(event, href, vaultPath)
 }
 
 function handleEditorLinkMouseDown(event: MouseEvent) {
@@ -92,6 +90,7 @@ function handleEditorLinkMouseDown(event: MouseEvent) {
 export function useEditorLinkActivation(
   containerRef: RefObject<HTMLDivElement | null>,
   onNavigateWikilink: (target: string) => void,
+  vaultPath?: string,
 ) {
   useEffect(() => {
     const container = containerRef.current
@@ -105,7 +104,7 @@ export function useEditorLinkActivation(
       if (document.visibilityState !== 'visible') resetModifierState()
     }
     const handleClick = (event: MouseEvent) => {
-      handleEditorLinkClick(event, container, onNavigateWikilink)
+      handleEditorLinkClick(event, container, onNavigateWikilink, vaultPath)
     }
 
     container.addEventListener('mousedown', handleEditorLinkMouseDown, true)
@@ -124,5 +123,5 @@ export function useEditorLinkActivation(
       document.removeEventListener('visibilitychange', handleVisibilityChange)
       resetModifierState()
     }
-  }, [containerRef, onNavigateWikilink])
+  }, [containerRef, onNavigateWikilink, vaultPath])
 }
