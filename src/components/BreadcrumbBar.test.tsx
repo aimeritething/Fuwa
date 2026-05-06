@@ -562,6 +562,15 @@ describe('BreadcrumbBar — table of contents toggle', () => {
     expect(screen.getByRole('button', { name: 'Close table of contents' })).toBeInTheDocument()
   })
 
+  it('shows the table of contents shortcut in the button tooltip', async () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onToggleTableOfContents={vi.fn()} />)
+    await expectTooltip(
+      screen.getByRole('button', { name: 'Open table of contents' }),
+      'Open table of contents',
+      formatShortcutDisplay({ display: '⌘⇧T' }),
+    )
+  })
+
   it('offers the table of contents action from the overflow menu', async () => {
     const onToggleTableOfContents = vi.fn()
     const restoreMeasurement = mockCollapsedBreadcrumbOverflow()

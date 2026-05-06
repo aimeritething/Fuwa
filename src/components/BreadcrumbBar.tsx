@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import type { NoteWidthMode, VaultEntry } from '../types'
 import { cn } from '@/lib/utils'
 import { translate, type AppLocale } from '../lib/i18n'
-import { formatShortcutDisplay } from '../hooks/appCommandCatalog'
+import { APP_COMMAND_IDS, formatShortcutDisplay, getAppCommandShortcutDisplay } from '../hooks/appCommandCatalog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { ActionTooltip, type ActionTooltipCopy } from '@/components/ui/action-tooltip'
@@ -353,7 +353,10 @@ function TableOfContentsAction({
 
   return (
     <IconActionButton
-      copy={{ label: translate(locale, showTableOfContents ? 'editor.toolbar.closeTableOfContents' : 'editor.toolbar.openTableOfContents') }}
+      copy={{
+        label: translate(locale, showTableOfContents ? 'editor.toolbar.closeTableOfContents' : 'editor.toolbar.openTableOfContents'),
+        shortcut: getAppCommandShortcutDisplay(APP_COMMAND_IDS.viewToggleTableOfContents),
+      }}
       onClick={onToggleTableOfContents}
       className={cn(showTableOfContents ? 'text-foreground' : 'hover:text-foreground')}
     >

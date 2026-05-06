@@ -1237,6 +1237,7 @@ function App() {
 
   // Raw-toggle ref: Editor registers its handleToggleRaw here so the command palette can call it
   const rawToggleRef = useRef<() => void>(() => {})
+  const tableOfContentsToggleRef = useRef<() => void>(() => {})
   // Diff-toggle ref: Editor registers its handleToggleDiff here so the command palette can call it
   const diffToggleRef = useRef<() => void>(() => {})
   const findInNoteRef = useRef<((options?: { replace?: boolean }) => void) | null>(null)
@@ -1441,6 +1442,9 @@ function App() {
     () => canToggleRichEditor ? () => rawToggleRef.current() : undefined,
     [canToggleRichEditor],
   )
+  const toggleTableOfContentsCommand = useCallback(() => {
+    if (notes.activeTabPath) tableOfContentsToggleRef.current()
+  }, [notes.activeTabPath])
   const findInNoteCommand = useCallback(() => {
     findInNoteRef.current?.({ replace: false })
   }, [])
@@ -1558,6 +1562,7 @@ function App() {
     onToggleInspector: handleToggleInspector,
     onToggleDiff: toggleDiffCommand,
     onToggleRawEditor: toggleRawEditorCommand,
+    onToggleTableOfContents: toggleTableOfContentsCommand,
     noteWidth: activeNoteWidth,
     defaultNoteWidth,
     onSetNoteWidth: handleSetActiveNoteWidth,
@@ -1785,6 +1790,7 @@ function App() {
               noteWidth={activeNoteWidth}
               onToggleNoteWidth={handleToggleNoteWidth}
               rawToggleRef={rawToggleRef}
+              tableOfContentsToggleRef={tableOfContentsToggleRef}
               findInNoteRef={findInNoteRef}
               diffToggleRef={diffToggleRef}
               canGoBack={canGoBack}

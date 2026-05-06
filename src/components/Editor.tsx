@@ -103,6 +103,8 @@ interface EditorProps {
   findInNoteRef?: React.MutableRefObject<((options?: { replace?: boolean }) => void) | null>
   /** Mutable ref that Editor registers its diff-mode toggle into, for command palette access. */
   diffToggleRef?: React.MutableRefObject<() => void>
+  /** Mutable ref that Editor registers its table-of-contents toggle into, for app shortcuts and menus. */
+  tableOfContentsToggleRef?: React.MutableRefObject<() => void>
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
@@ -601,6 +603,12 @@ export const Editor = memo(function Editor(props: EditorProps) {
     flushPendingRawContentRef: props.flushPendingRawContentRef,
   })
   const rightPanel = useRightPanelExclusion(props)
+  const { tableOfContentsToggleRef } = props
+  useEffect(() => {
+    if (tableOfContentsToggleRef) {
+      tableOfContentsToggleRef.current = rightPanel.handleToggleTableOfContents
+    }
+  }, [tableOfContentsToggleRef, rightPanel.handleToggleTableOfContents])
 
   return (
     <EditorLayout
