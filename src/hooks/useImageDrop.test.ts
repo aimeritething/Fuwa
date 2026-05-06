@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach, beforeAll } from 'vitest'
 import { renderHook, act, waitFor } from '@testing-library/react'
-import { clipboardImageFiles, uploadImageFile, useImageDrop } from './useImageDrop'
+import { uploadImageFile, useImageDrop } from './useImageDrop'
 import { createRef } from 'react'
 
 let tauriMode = false
@@ -21,9 +21,9 @@ let nativeDropUnlisten = () => {
   capturedDragDropHandler = undefined
 }
 
-vi.mock('@tauri-apps/api/window', () => ({
-  getCurrentWindow: () => ({
-    onDragDropEvent: vi.fn((cb: DragDropCallback) => {
+vi.mock('@tauri-apps/api/webview', () => ({
+  getCurrentWebview: () => ({
+    listen: vi.fn((_eventName: string, cb: DragDropCallback) => {
       capturedDragDropHandler = cb
       return Promise.resolve(nativeDropUnlisten)
     }),
@@ -104,45 +104,6 @@ describe('uploadImageFile', () => {
     expect(url).toBe('asset://localhost/vault/attachments/123-test.png')
 
     tauriMode = false
-  })
-
-  it('uses a MIME-derived filename for unnamed Tauri clipboard images', async () => {
-    tauriMode = true
-
-    const { invoke, convertFileSrc } = await import('@tauri-apps/api/core')
-    vi.mocked(invoke).mockResolvedValue('/vault/attachments/123-clipboard-image.webp')
-    vi.mocked(convertFileSrc).mockReturnValue('asset://localhost/vault/attachments/123-clipboard-image.webp')
-
-    const file = new File([new Uint8Array([0x52, 0x49])], '', { type: 'image/webp' })
-
-    const url = await uploadImageFile(file, '/vault')
-    expect(invoke).toHaveBeenCalledWith('save_image', {
-      vaultPath: '/vault',
-      filename: 'clipboard-image.webp',
-      data: expect.any(String),
-    })
-    expect(url).toBe('asset://localhost/vault/attachments/123-clipboard-image.webp')
-
-    tauriMode = false
-  })
-})
-
-describe('clipboardImageFiles', () => {
-  it('extracts image files when clipboard data also exposes a text data URL', () => {
-    const file = new File(['webp-data'], 'paste.webp', { type: 'image/webp' })
-    const items = [{
-      getAsFile: () => file,
-      kind: 'file',
-      type: 'image/webp',
-    }]
-    const clipboardData = {
-      files: Object.assign([file], { item: (index: number) => [file][index] }),
-      getData: (format: string) => format === 'text/plain' ? 'data:image/webp;base64,AAAA' : '',
-      items: Object.assign(items, { length: items.length }),
-      types: ['text/plain', 'Files'],
-    }
-
-    expect(clipboardImageFiles(clipboardData)).toEqual([file])
   })
 })
 

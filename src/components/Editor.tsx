@@ -3,7 +3,7 @@ import { useEditorTabSwap } from '../hooks/useEditorTabSwap'
 import { useCreateBlockNote } from '@blocknote/react'
 import '@blocknote/mantine/style.css'
 import 'katex/dist/katex.min.css'
-import { clipboardImageFiles, uploadImageFile } from '../hooks/useImageDrop'
+import { uploadImageFile } from '../hooks/useImageDrop'
 import { DEFAULT_AI_AGENT, type AiAgentId, type AiAgentReadiness } from '../lib/aiAgents'
 import type { AiTarget } from '../lib/aiTargets'
 import { translate, type AppLocale } from '../lib/i18n'
@@ -188,40 +188,6 @@ interface EditorSetupParams {
   diffToggleRef?: React.MutableRefObject<() => void>
 }
 
-function queueClipboardImagePasteUploads(
-  editor: ReturnType<typeof useCreateBlockNote>,
-  files: File[],
-  vaultPath?: string,
-) {
-  const referenceBlock = editor.getTextCursorPosition().block
-
-  for (const file of files) {
-    const insertedBlock = editor.insertBlocks([
-      { type: 'image' as const, props: { name: file.name } },
-    ], referenceBlock, 'after')[0]
-
-    void uploadImageFile(file, vaultPath)
-      .then((url) => {
-        editor.updateBlock(insertedBlock.id, { props: { name: file.name, url } })
-      })
-      .catch((error) => {
-        console.warn('[editor] Failed to paste clipboard image:', error)
-      })
-  }
-}
-
-function handleClipboardImagePaste(
-  event: ClipboardEvent,
-  editor: ReturnType<typeof useCreateBlockNote>,
-  vaultPath?: string,
-): boolean {
-  const files = clipboardImageFiles(event.clipboardData)
-  if (files.length === 0) return false
-
-  queueClipboardImagePasteUploads(editor, files, vaultPath)
-  return true
-}
-
 function useEditorSetup({
   tabs, activeTabPath, vaultPath, onContentChange,
   onLoadDiff, onLoadDiffAtCommit, pendingCommitDiffRequest, onPendingCommitDiffHandled, getNoteStatus,
@@ -234,11 +200,6 @@ function useEditorSetup({
   const editor = useCreateBlockNote({
     schema,
     uploadFile: (file: File) => uploadImageFile(file, vaultPathRef.current),
-    pasteHandler: ({ event, editor, defaultPasteHandler }) => {
-      if (handleClipboardImagePaste(event, editor, vaultPathRef.current)) return true
-
-      return defaultPasteHandler()
-    },
     _tiptapOptions: { injectNonce: RUNTIME_STYLE_NONCE },
     extensions: [
       createImeCompositionKeyGuardExtension(),
