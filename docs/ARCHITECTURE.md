@@ -929,7 +929,7 @@ push stable-vYYYY.M.D tag
       → publish GitHub release Tolaria YYYY.M.D
   → pages job:
       → publish stable/latest.json
-      → publish stable/download/ and download/ as permanent redirect URLs for the latest stable platform installer
+      → publish stable/download/ and download/ as permanent download pages that keep the browser page visible while the platform installer starts
       → preserve alpha/latest.json
       → deploy to gh-pages
 ```
