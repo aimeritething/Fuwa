@@ -31,18 +31,24 @@ export function getTypeIcon(isA: string | null, customIcon?: string | null): Com
   return (isA && TYPE_ICON_MAP[isA]) || FileText
 }
 
-const NOTE_STATUS_DOT: Record<string, { color: string; testId: string; title: string }> = {
+type VisibleNoteStatus = Exclude<NoteStatus, 'clean'>
+
+const NOTE_STATUS_DOT: Record<VisibleNoteStatus, { color: string; testId: string; title: string }> = {
   pendingSave: { color: 'var(--accent-green)', testId: 'pending-save-indicator', title: 'Saving to disk…' },
+  unsaved: { color: 'var(--accent-green)', testId: 'unsaved-indicator', title: 'Saving to disk…' },
   new: { color: 'var(--accent-green)', testId: 'new-indicator', title: 'New (uncommitted)' },
   modified: { color: 'var(--accent-orange)', testId: 'modified-indicator', title: 'Modified (uncommitted)' },
 }
 
-function StatusDot({ noteStatus }: { noteStatus: NoteStatus }) {
+function hasStatusDot(noteStatus: NoteStatus): noteStatus is VisibleNoteStatus {
+  return noteStatus !== 'clean'
+}
+
+function StatusDot({ noteStatus }: { noteStatus: VisibleNoteStatus }) {
   const dot = NOTE_STATUS_DOT[noteStatus]
-  if (!dot) return null
   return (
     <span
-      className={`mr-1.5 inline-block align-middle${noteStatus === 'pendingSave' ? ' tab-status-pulse' : ''}`}
+      className="mr-1.5 inline-block align-middle"
       style={{ width: 6, height: 6, borderRadius: '50%', background: dot.color, verticalAlign: 'middle' }}
       data-testid={dot.testId}
       title={dot.title}
@@ -278,7 +284,7 @@ function NoteTitleRow({
 }) {
   return (
     <div className={cn('truncate pr-5 text-[13px]', isBinary ? 'text-muted-foreground' : 'text-foreground', isSelected && !isBinary ? 'font-semibold' : 'font-medium')}>
-      {noteStatus !== 'clean' && !isBinary && <StatusDot noteStatus={noteStatus} />}
+      {hasStatusDot(noteStatus) && !isBinary && <StatusDot noteStatus={noteStatus} />}
       <NoteTitleIcon icon={entry.icon} size={15} className="mr-1" testId="note-title-icon" />
       {entry.title}
       {!isBinary && <StateBadge archived={entry.archived} />}
