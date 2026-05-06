@@ -618,6 +618,11 @@ type WhitespaceDragState = WhitespaceSelectionStart & {
   startX: number
   startY: number
 }
+type WhitespaceMouseDownEvent = EditorClientPoint & {
+  button: number
+  target: EventTarget | null
+  preventDefault: () => void
+}
 
 const EDGE_SELECTION_INSET_PX = 1
 const DRAG_SELECTION_THRESHOLD_PX = 3
@@ -724,13 +729,14 @@ function suppressNextContainerClick(suppressNextContainerClickRef: React.Mutable
 function whitespaceSelectionStartFromEvent(options: {
   editable: boolean
   editor: ReturnType<typeof useCreateBlockNote>
-  event: React.MouseEvent<HTMLDivElement>
+  event: WhitespaceMouseDownEvent
+  selectionRoot: HTMLElement
 }): WhitespaceSelectionStart | null {
-  const { editable, editor, event } = options
+  const { editable, editor, event, selectionRoot } = options
   if (!editable || event.button !== 0) return null
 
   const target = eventTargetElement(event.target)
-  if (!target || !event.currentTarget.contains(target)) return null
+  if (!target || !selectionRoot.contains(target)) return null
   if (shouldIgnoreContainerClick(target)) return null
 
   const tiptapEditor = getTiptapSelectionBridge(editor)
@@ -799,20 +805,60 @@ function installWhitespaceSelectionDrag(options: {
   return cleanupDrag
 }
 
+function closestEditorScrollArea(container: HTMLElement): HTMLElement | null {
+  const scrollArea = container.closest('.editor-scroll-area')
+  return scrollArea instanceof HTMLElement ? scrollArea : null
+}
+
+function eventTargetIsOutsideContainer(event: MouseEvent, container: HTMLElement): boolean {
+  const target = eventTargetElement(event.target)
+  return !target || !container.contains(target)
+}
+
+function installScrollAreaWhitespaceSelection(options: {
+  beginWhitespaceSelection: (event: WhitespaceMouseDownEvent, selectionRoot: HTMLElement) => void
+  container: HTMLElement
+}): (() => void) | undefined {
+  const { beginWhitespaceSelection, container } = options
+  const scrollArea = closestEditorScrollArea(container)
+  if (!scrollArea || scrollArea === container) return undefined
+  const selectionRoot = scrollArea
+
+  function handleScrollAreaMouseDown(event: MouseEvent) {
+    if (eventTargetIsOutsideContainer(event, container)) {
+      beginWhitespaceSelection(event, selectionRoot)
+    }
+  }
+
+  selectionRoot.addEventListener('mousedown', handleScrollAreaMouseDown, true)
+  return () => {
+    selectionRoot.removeEventListener('mousedown', handleScrollAreaMouseDown, true)
+  }
+}
+
 function useEditorWhitespaceMouseSelection(options: {
+  containerRef: React.RefObject<HTMLDivElement | null>
   editable: boolean
   editor: ReturnType<typeof useCreateBlockNote>
   suppressNextContainerClickRef: React.MutableRefObject<boolean>
 }) {
-  const { editable, editor, suppressNextContainerClickRef } = options
+  const { containerRef, editable, editor, suppressNextContainerClickRef } = options
   const cleanupDragRef = useRef<(() => void) | null>(null)
 
   useEffect(() => () => {
     cleanupDragRef.current?.()
   }, [])
 
-  return useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    const selectionStart = whitespaceSelectionStartFromEvent({ editable, editor, event })
+  const beginWhitespaceSelection = useCallback((
+    event: WhitespaceMouseDownEvent,
+    selectionRoot: HTMLElement,
+  ) => {
+    const selectionStart = whitespaceSelectionStartFromEvent({
+      editable,
+      editor,
+      event,
+      selectionRoot,
+    })
     if (!selectionStart) return
 
     cleanupDragRef.current?.()
@@ -835,6 +881,17 @@ function useEditorWhitespaceMouseSelection(options: {
       suppressNextContainerClickRef,
     })
   }, [editable, editor, suppressNextContainerClickRef])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    return installScrollAreaWhitespaceSelection({ beginWhitespaceSelection, container })
+  }, [beginWhitespaceSelection, containerRef])
+
+  return useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    beginWhitespaceSelection(event, event.currentTarget)
+  }, [beginWhitespaceSelection])
 }
 
 function useEditorContainerClickHandler(options: {
@@ -1193,6 +1250,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
     suppressNextContainerClickRef,
   })
   const handleWhitespaceMouseSelection = useEditorWhitespaceMouseSelection({
+    containerRef,
     editable,
     editor,
     suppressNextContainerClickRef,

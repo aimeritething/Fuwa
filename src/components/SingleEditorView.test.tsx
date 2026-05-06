@@ -297,6 +297,26 @@ function renderEditorHarness(editor = createEditor()) {
   return { container: container!, editor }
 }
 
+function renderEditorHarnessInScrollArea(editor = createEditor()) {
+  render(
+    <div className="editor-scroll-area" data-testid="editor-scroll-area">
+      <div className="editor-content-wrapper">
+        <SingleEditorView
+          editor={editor as never}
+          entries={[makeEntry()]}
+          onNavigateWikilink={vi.fn()}
+        />
+      </div>
+    </div>,
+    { wrapper: TooltipProvider },
+  )
+
+  const scrollArea = screen.getByTestId('editor-scroll-area')
+  const container = screen.getByTestId('blocknote-view').closest('.editor__blocknote-container')
+  expect(container).toBeTruthy()
+  return { container: container!, editor, scrollArea }
+}
+
 function createCodeBlockFixture(text: string) {
   const codeBlock = document.createElement('div')
   codeBlock.setAttribute('data-content-type', 'codeBlock')
@@ -888,6 +908,32 @@ describe('SingleEditorView', () => {
     fireEvent.click(container)
 
     expect(editor.setTextCursorPosition).not.toHaveBeenCalled()
+  })
+
+  it('extends mouse selections from the surrounding editor scroll whitespace', () => {
+    const { editor, scrollArea } = renderEditorHarnessInScrollArea()
+    editor._tiptapEditor.view.posAtCoords
+      .mockReturnValueOnce({ pos: 5 })
+      .mockReturnValueOnce({ pos: 22 })
+      .mockReturnValueOnce({ pos: 22 })
+
+    fireEvent.mouseDown(scrollArea, { button: 0, clientX: 24, clientY: 96 })
+    fireEvent.mouseMove(window, { buttons: 1, clientX: 920, clientY: 190 })
+    fireEvent.mouseUp(window, { clientX: 920, clientY: 190 })
+
+    expect(editor.focus).toHaveBeenCalled()
+    expect(editor._tiptapEditor.view.posAtCoords).toHaveBeenNthCalledWith(1, {
+      left: 121,
+      top: 96,
+    })
+    expect(editor._tiptapEditor.view.posAtCoords).toHaveBeenNthCalledWith(2, {
+      left: 719,
+      top: 190,
+    })
+    expect(editor._tiptapEditor.commands.setTextSelection).toHaveBeenLastCalledWith({
+      from: 5,
+      to: 22,
+    })
   })
 
   it('extends mouse selections to the document end when dragging below the editor content', () => {
