@@ -502,6 +502,8 @@
   "status.zoom.reset": "Zoomstufe zurücksetzen",
   "status.feedback.contribute": "Zu Tolaria beitragen",
   "status.feedback.label": "Beitragen",
+  "status.docs.open": "Tolaria-Dokumente öffnen",
+  "status.docs.label": "Dokumente",
   "status.theme.light": "In den hellen Modus wechseln",
   "status.theme.dark": "In den Dunkelmodus wechseln",
   "status.settings.open": "Einstellungen öffnen",

@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useCliAiAgent } from './useCliAiAgent'
 import { streamAiAgent } from '../utils/streamAiAgent'
 import { buildAgentSystemPrompt } from '../utils/ai-agent'
+import { getAgentDocsPath } from '../lib/agentDocsPath'
 
 vi.mock('../utils/streamAiAgent', () => ({
   streamAiAgent: vi.fn(),
@@ -12,8 +13,13 @@ vi.mock('../utils/ai-agent', () => ({
   buildAgentSystemPrompt: vi.fn(() => 'default-system-prompt'),
 }))
 
+vi.mock('../lib/agentDocsPath', () => ({
+  getAgentDocsPath: vi.fn(),
+}))
+
 const mockStreamAiAgent = vi.mocked(streamAiAgent)
 const mockBuildAgentSystemPrompt = vi.mocked(buildAgentSystemPrompt)
+const mockGetAgentDocsPath = vi.mocked(getAgentDocsPath)
 const VAULT = '/Users/luca/Laputa'
 
 function renderAgent(
@@ -33,6 +39,7 @@ function renderAgent(
 describe('useCliAiAgent', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockGetAgentDocsPath.mockResolvedValue('/app/agent-docs')
     mockStreamAiAgent.mockImplementation(async ({ callbacks }) => {
       callbacks.onText('reply')
       callbacks.onDone()
@@ -52,6 +59,7 @@ describe('useCliAiAgent', () => {
     expect(result.current.sendMessage).not.toBe(firstSendMessage)
     expect(mockBuildAgentSystemPrompt).toHaveBeenCalledWith({
       agent: 'codex',
+      agentDocsPath: '/app/agent-docs',
       permissionMode: 'safe',
       vaultContext: 'You are viewing note with body: Hello world',
     })

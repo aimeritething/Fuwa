@@ -502,6 +502,8 @@
   "status.zoom.reset": "Restablecer el nivel de zoom",
   "status.feedback.contribute": "Contribuir a Tolaria",
   "status.feedback.label": "Contribuir",
+  "status.docs.open": "Abrir los documentos de Tolaria",
+  "status.docs.label": "Documentos",
   "status.theme.light": "Cambiar al modo claro",
   "status.theme.dark": "Cambiar al modo oscuro",
   "status.settings.open": "Abrir ajustes",

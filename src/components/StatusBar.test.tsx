@@ -123,6 +123,16 @@ describe('StatusBar', () => {
     expect(onOpenFeedback).toHaveBeenCalledOnce()
   })
 
+  it('shows and opens Docs from the bottom bar', () => {
+    const onOpenDocs = vi.fn()
+    render(<StatusBar noteCount={100} vaultPath="/Users/luca/Laputa" vaults={vaults} onSwitchVault={vi.fn()} onOpenDocs={onOpenDocs} />)
+    expect(screen.getByTestId('status-docs')).toHaveTextContent('Docs')
+
+    fireEvent.click(screen.getByTestId('status-docs'))
+
+    expect(onOpenDocs).toHaveBeenCalledOnce()
+  })
+
   it('shows a theme toggle instead of the notifications placeholder', () => {
     render(
       <StatusBar

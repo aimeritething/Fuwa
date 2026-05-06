@@ -11,6 +11,9 @@ use super::expand_tilde;
 type StreamEmitter<Event> = Box<dyn Fn(Event) + Send>;
 
 #[cfg(desktop)]
+const AGENT_DOCS_RESOURCE_DIR: &str = "agent-docs";
+
+#[cfg(desktop)]
 async fn run_desktop_stream<Event, Request, Runner>(
     app_handle: tauri::AppHandle,
     event_name: &'static str,
@@ -61,6 +64,35 @@ pub fn check_claude_cli() -> ClaudeCliStatus {
 #[tauri::command]
 pub fn get_ai_agents_status() -> AiAgentsStatus {
     crate::ai_agents::get_ai_agents_status()
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+pub fn get_agent_docs_path(app_handle: tauri::AppHandle) -> Result<String, String> {
+    use std::path::PathBuf;
+    use tauri::path::BaseDirectory;
+    use tauri::Manager;
+
+    let mut candidates = Vec::new();
+
+    if let Ok(resource_path) = app_handle
+        .path()
+        .resolve(AGENT_DOCS_RESOURCE_DIR, BaseDirectory::Resource)
+    {
+        candidates.push(resource_path);
+    }
+
+    candidates.push(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("resources")
+            .join(AGENT_DOCS_RESOURCE_DIR),
+    );
+
+    candidates
+        .into_iter()
+        .find(|path| path.join("index.md").is_file())
+        .map(|path| path.to_string_lossy().into_owned())
+        .ok_or_else(|| "Tolaria agent docs are not bundled in this build.".to_string())
 }
 
 #[tauri::command]
@@ -167,6 +199,12 @@ pub fn get_ai_agents_status() -> AiAgentsStatus {
             version: None,
         },
     }
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn get_agent_docs_path() -> Result<String, String> {
+    Err("Bundled agent docs are only available in the desktop app.".into())
 }
 
 #[cfg(mobile)]

@@ -13,6 +13,7 @@ import type { AiAgentPermissionMode } from '../lib/aiAgentPermissionMode'
 
 interface AgentSystemPromptOptions {
   vaultContext?: string
+  agentDocsPath?: string
   permissionMode?: AiAgentPermissionMode
   agent?: AiAgentId
 }
@@ -38,9 +39,21 @@ function permissionModeInstructions(
   return `Vault Safe mode is active. Do not use shell, terminal, Bash, Python/Node script execution, git, or command-line tools. If the user asks whether shell commands are available, say they are not available in Vault Safe. Use file/search/edit tools and Tolaria MCP tools instead.`
 }
 
-const AGENT_SYSTEM_PREAMBLE = `You are working inside Tolaria, a personal knowledge management app.
+function agentDocsInstructions(agentDocsPath?: string): string {
+  if (!agentDocsPath) {
+    return `Read the vault's AGENTS.md when one exists before making vault-specific assumptions.`
+  }
 
-Notes are markdown files with YAML frontmatter. Standard fields: title, type (aliased is_a), date, tags.
+  return `Read the vault's AGENTS.md when one exists before making vault-specific assumptions.
+For Tolaria product behavior, workflows, and user questions about how Tolaria works, search the bundled local docs at:
+${agentDocsPath}
+
+Start with ${agentDocsPath}/index.md, then use ripgrep over that folder for specific concepts. Prefer bundled docs over guesses for Tolaria behavior.`
+}
+
+const AGENT_SYSTEM_PREAMBLE = `You are working inside Tolaria, a local-first Markdown knowledge base.
+
+Notes are Markdown files with YAML frontmatter. Organization is primarily expressed through H1 titles, types, properties, wikilinks, and relationships, not folder structure.
 You can edit markdown files in the active vault. Prefer file edit tools for note changes.
 Use the provided MCP tools for: full-text search (search_notes), vault orientation (get_vault_context), parsed note reading (get_note), and opening notes in the UI (open_note).
 
@@ -49,8 +62,12 @@ When you mention or reference a note by name, always use [[Note Title]] wikilink
 Be concise and helpful. When you've completed a task, briefly summarize what you did.`
 
 export function buildAgentSystemPrompt(options?: string | AgentSystemPromptOptions): string {
-  const { vaultContext, permissionMode, agent } = normalizePromptOptions(options)
-  const prompt = `${AGENT_SYSTEM_PREAMBLE}\n\n${permissionModeInstructions(permissionMode, agent)}`
+  const { vaultContext, agentDocsPath, permissionMode, agent } = normalizePromptOptions(options)
+  const prompt = [
+    AGENT_SYSTEM_PREAMBLE,
+    agentDocsInstructions(agentDocsPath),
+    permissionModeInstructions(permissionMode, agent),
+  ].join('\n\n')
 
   if (!vaultContext) return prompt
   return `${prompt}\n\nVault context:\n${vaultContext}`

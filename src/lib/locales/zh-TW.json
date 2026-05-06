@@ -502,6 +502,8 @@
   "status.zoom.reset": "重置縮放級別",
   "status.feedback.contribute": "為 Tolaria 貢獻反饋",
   "status.feedback.label": "貢獻",
+  "status.docs.open": "開啟 Tolaria 文件",
+  "status.docs.label": "文件",
   "status.theme.light": "切換到淺色模式",
   "status.theme.dark": "切換到深色模式",
   "status.settings.open": "開啟設定",

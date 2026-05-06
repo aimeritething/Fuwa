@@ -33,6 +33,7 @@ export interface AgentExecutionContext {
   target?: AiTarget
   ready: boolean
   vaultPath: string
+  agentDocsPath?: string
   permissionMode: AiAgentPermissionMode
   systemPromptOverride?: string
 }
@@ -114,6 +115,7 @@ export function buildFormattedMessage(
 ): { formattedMessage: string; systemPrompt: string } {
   const systemPrompt = buildAgentSystemPrompt({
     agent: context.agent,
+    agentDocsPath: context.agentDocsPath,
     permissionMode: context.permissionMode,
     vaultContext: context.systemPromptOverride,
   })

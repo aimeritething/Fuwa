@@ -86,6 +86,7 @@ interface StatusBarProps {
   onZoomReset?: () => void
   onToggleThemeMode?: () => void
   onOpenFeedback?: () => void
+  onOpenDocs?: () => void
   buildNumber?: string
   onCheckForUpdates?: () => void
   onRemoveVault?: (path: string) => void
@@ -204,6 +205,7 @@ function StatusBarSecondaryFromFooter({
   onZoomReset,
   onToggleThemeMode,
   onOpenFeedback,
+  onOpenDocs,
   onOpenSettings,
   locale = 'en',
   compact,
@@ -217,6 +219,7 @@ function StatusBarSecondaryFromFooter({
         onZoomReset={onZoomReset}
         onToggleThemeMode={onToggleThemeMode}
         onOpenFeedback={onOpenFeedback}
+        onOpenDocs={onOpenDocs}
         onOpenSettings={onOpenSettings}
         locale={locale}
         stacked={stacked}

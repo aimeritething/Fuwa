@@ -7,7 +7,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "agent-docs": "node scripts/build-agent-docs.mjs",
     "bundle-mcp": "node scripts/bundle-mcp-server.mjs",
+    "docs:dev": "vitepress dev site --host 127.0.0.1",
+    "docs:build": "pnpm agent-docs && vitepress build site",
+    "docs:preview": "vitepress preview site --host 127.0.0.1",
     "lint": "eslint .",
     "l10n:translate": "lara-cli translate",
     "l10n:translate:force": "lara-cli translate --force",
@@ -103,6 +107,7 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.0",
     "vite": "^7.3.2",
+    "vitepress": "^1.6.4",
     "vitest": "^4.0.18",
     "ws": "^8.19.0"
   },

@@ -9,6 +9,7 @@ describe('buildAgentSystemPrompt', () => {
     const prompt = buildAgentSystemPrompt()
     expect(prompt).toContain('working inside Tolaria')
     expect(prompt).toContain('active vault')
+    expect(prompt).toContain("vault's AGENTS.md")
     expect(prompt).toContain('Vault Safe mode is active')
     expect(prompt).toContain('not available in Vault Safe')
     expect(prompt).not.toContain('full shell access')
@@ -20,6 +21,14 @@ describe('buildAgentSystemPrompt', () => {
     expect(prompt).toContain('working inside Tolaria')
     expect(prompt).toContain('Vault context:')
     expect(prompt).toContain('Recent notes: foo, bar')
+  })
+
+  it('points agents to bundled Tolaria docs when available', () => {
+    const prompt = buildAgentSystemPrompt({ agentDocsPath: '/app/agent-docs' })
+
+    expect(prompt).toContain('/app/agent-docs/index.md')
+    expect(prompt).toContain('ripgrep')
+    expect(prompt).toContain('Prefer bundled docs over guesses')
   })
 
   it('allows shell commands in power user mode where supported', () => {

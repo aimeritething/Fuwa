@@ -594,7 +594,8 @@ mod tests {
         seed_config_files(vault.to_str().unwrap());
 
         let content = read_root_agents(&vault);
-        assert!(content.contains("Legacy `title:` frontmatter is still read as a fallback"));
+        assert!(content.contains("Use the first H1 as the note title."));
+        assert!(content.contains("Tolaria reads notes recursively from all folders"));
         assert!(content.contains("views/*.yml"));
         assert!(content.contains("Belongs to:"));
     }

@@ -502,6 +502,8 @@
   "status.zoom.reset": "Đặt lại mức thu phóng",
   "status.feedback.contribute": "Đóng góp cho Tolaria",
   "status.feedback.label": "Đóng góp",
+  "status.docs.open": "Mở tài liệu Tolaria",
+  "status.docs.label": "Tài liệu",
   "status.theme.light": "Chuyển sang giao diện sáng",
   "status.theme.dark": "Chuyển sang giao diện tối",
   "status.settings.open": "Mở cài đặt",

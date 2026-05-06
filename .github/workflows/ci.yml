@@ -50,6 +50,9 @@ jobs:
       - name: Vite build check
         run: pnpm build
 
+      - name: Docs build check
+        run: pnpm docs:build
+
       # ── 1. Coverage-backed tests ──────────────────────────────────────────
       # The coverage command runs the canonical frontend test suite.
       - name: Bundle MCP server resources (required by Tauri build)

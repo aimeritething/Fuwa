@@ -7,7 +7,7 @@
     "frontendDist": "../dist",
     "devUrl": "http://localhost:5202",
     "beforeDevCommand": "pnpm dev",
-    "beforeBuildCommand": "pnpm build && pnpm bundle-mcp"
+    "beforeBuildCommand": "pnpm build && pnpm bundle-mcp && pnpm agent-docs"
   },
   "app": {
     "withGlobalTauri": true,
@@ -59,7 +59,8 @@
       }
     },
     "resources": {
-      "resources/mcp-server/**/*": "mcp-server/"
+      "resources/mcp-server/**/*": "mcp-server/",
+      "resources/agent-docs/**/*": "agent-docs/"
     },
     "icon": [
       "icons/32x32.png",

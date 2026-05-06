@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type Dispatch, type MutableRefObject, type
 import type { AiAgentId } from '../lib/aiAgents'
 import type { AiAgentPermissionMode } from '../lib/aiAgentPermissionMode'
 import type { AiTarget } from '../lib/aiTargets'
+import { getAgentDocsPath } from '../lib/agentDocsPath'
 import type { NoteReference } from '../utils/ai-context'
 import {
   type AgentStatus,
@@ -76,10 +77,13 @@ export function useCliAiAgent(
   const { messages, status } = runtime
 
   async function sendMessage(text: string, references?: NoteReference[]): Promise<void> {
+    const agentDocsPath = await getAgentDocsPath()
+
     await sendAgentMessage({
       runtime,
       context: {
         agent,
+        agentDocsPath,
         target,
         ready: agentReady,
         vaultPath,

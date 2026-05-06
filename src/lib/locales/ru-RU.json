@@ -502,6 +502,8 @@
   "status.zoom.reset": "Сбросить уровень масштабирования",
   "status.feedback.contribute": "Внести свой вклад в Tolaria",
   "status.feedback.label": "Внести свой вклад",
+  "status.docs.open": "Открыть документы Tolaria",
+  "status.docs.label": "Документация",
   "status.theme.light": "Переключиться в светлый режим",
   "status.theme.dark": "Переключиться в темный режим",
   "status.settings.open": "Открыть настройки",

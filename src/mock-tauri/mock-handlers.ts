@@ -383,6 +383,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     pi: { installed: false, version: null },
     gemini: { installed: false, version: null },
   }),
+  get_agent_docs_path: () => '/mock/Tolaria/resources/agent-docs',
   get_vault_ai_guidance_status: () => ({ ...mockVaultAiGuidanceStatus }),
   restore_vault_ai_guidance: () => {
     mockVaultAiGuidanceStatus = {

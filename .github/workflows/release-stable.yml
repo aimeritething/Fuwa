@@ -725,10 +725,10 @@ jobs:
             stable-latest.json
 
   # ─────────────────────────────────────────────────────────────
-  # Phase 4: Update GitHub Pages
+  # Phase 4: Update GitHub Pages with docs, release history, and download assets
   # ─────────────────────────────────────────────────────────────
   pages:
-    name: Update release history page
+    name: Update docs and release pages
     needs: [version, release]
     runs-on: ubuntu-latest
     permissions:
@@ -739,16 +739,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Build release history page
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build docs and release pages
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          VITEPRESS_BASE="/${GITHUB_REPOSITORY#*/}/" pnpm docs:build
           mkdir -p _site/alpha _site/stable _site/release-notes
+          cp -R site/.vitepress/dist/. _site/
           if [ -d release-notes ]; then cp release-notes/*.md _site/release-notes/ 2>/dev/null || true; fi
           gh api -H "Accept: application/vnd.github.html+json" repos/${{ github.repository }}/releases --paginate > _site/releases.json
           PAGES_URL="https://refactoringhq.github.io/${GITHUB_REPOSITORY#*/}"
@@ -756,7 +772,7 @@ jobs:
           curl -fsSL "${PAGES_URL}/alpha/latest.json" -o _site/alpha/latest.json || echo '{}' > _site/alpha/latest.json
           gh release download --repo ${{ github.repository }} "${{ needs.version.outputs.tag }}" --pattern "stable-latest.json" --output _site/stable/latest.json || echo '{}' > _site/stable/latest.json
           bun scripts/build-release-download-page.ts --latest-json _site/stable/latest.json --releases-json _site/releases.json --output-file _site/stable/download/index.html
-          bun scripts/build-release-history-page.ts --releases-json _site/releases.json --output-file _site/index.html
+          bun scripts/build-release-history-page.ts --releases-json _site/releases.json --output-file _site/releases/index.html
           mkdir -p _site/download
           cp _site/stable/download/index.html _site/download/index.html
 

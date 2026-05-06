@@ -246,13 +246,15 @@ Notes can be opened in separate Tauri windows for focused editing. Secondary win
 
 Full agent mode — spawns the selected local CLI agent as a subprocess with tool access and MCP vault integration.
 
-1. **Frontend** (`AiPanel` + `useCliAiAgent` + `aiAgentSession.ts` + `aiAgents.ts` + `aiTargets.ts`) — one normalized session lifecycle for message state, reasoning blocks, tool action cards, response display, onboarding, default-target selection, and the per-vault Safe / Power User permission mode shown in the panel header for coding agents
+1. **Frontend** (`AiPanel` + `useCliAiAgent` + `aiAgentSession.ts` + `aiAgents.ts` + `aiTargets.ts`) — one normalized session lifecycle for message state, reasoning blocks, tool action cards, response display, onboarding, default-target selection, bundled-docs prompt injection, and the per-vault Safe / Power User permission mode shown in the panel header for coding agents
 2. **Backend orchestration** (`ai_agents.rs`) — normalizes agent availability, streaming, and the request permission mode before dispatching to per-agent adapters
 3. **Shared runtime scaffold** (`cli_agent_runtime.rs`) — owns the common request shape, prompt wrapping, JSON-line subprocess lifecycle, normalized error/done handling, version probing, and Tolaria MCP server path resolution used by app-managed CLI agents
 4. **Agent adapters** — Shared prompts are mode-aware on every turn, including turns with note context snapshots: Vault Safe tells agents not to use or advertise shell, while Power User tells shell-capable agents to keep local commands scoped to the active vault. Claude Code still uses `claude_cli.rs` with `acceptEdits`, strict Tolaria MCP config, and a scoped tool list: Safe enables file/search/edit tools only, while Power User adds Bash to the available tools and pre-approves Bash with `--allowedTools` without using dangerous bypass flags. Codex runtime specifics live in `codex_cli.rs`; Safe runs `codex --sandbox read-only --ask-for-approval untrusted exec --json`, while Power User runs `codex --sandbox workspace-write --ask-for-approval never exec --json` so shell execution stays enabled across repeated turns. OpenCode runs through `opencode run --format json` with transient permissions: Safe denies bash and external directories, while Power User allows bash but still denies external directories. Pi runs through `pi --mode json --no-session` with `npm:pi-mcp-adapter`; both modes currently share the same transient MCP config and the prompt does not promise shell for Pi Power User. Gemini runs through `gemini --output-format stream-json --prompt` so assistant message chunks, tool calls, and final errors are mapped from the CLI event stream instead of relying on a buffered `response` field. Gemini Safe uses `auto_edit` plus `tools.exclude=["run_shell_command"]`; Power User intentionally uses `yolo` against a trusted transient Tolaria MCP entry. Codex, OpenCode, Pi, and Gemini all launch from the active vault cwd with closed stdin and transient MCP config. All app-launched paths use hidden Windows launches and avoid dangerous permission-bypass flags.
 5. **MCP Integration** — Claude receives the generated MCP config file path, Codex receives the same Tolaria MCP server via transient `-c mcp_servers.tolaria.*` config overrides using Tolaria's resolved Node path plus `VAULT_PATH` and `WS_UI_PORT`, OpenCode receives it through `OPENCODE_CONFIG_CONTENT`, Pi receives it through a temporary `PI_CODING_AGENT_DIR/mcp.json` consumed by `pi-mcp-adapter`, and Gemini receives it through a temporary settings file pointed at by `GEMINI_CLI_SYSTEM_SETTINGS_PATH`
 
 CLI-agent availability intentionally does not depend only on the desktop app's inherited `PATH`. The detectors check the current process path, the user's login shell, and supported local/toolchain install locations such as native `~/.local/bin`, local `~/.claude/local`, Mise/asdf shims, nvm-managed Node installs, npm-global, Homebrew, Windows `%APPDATA%\npm`/pnpm/Scoop shims, Windows `.exe` launchers, and the macOS Codex app resource path so first-run onboarding works on fresh macOS and Windows installs. App-managed CLI spawns also expand the active vault path before using it as the subprocess working directory, then extend the child process `PATH` with the resolved binary directory plus those common toolchain directories, which lets GUI-launched macOS sessions run Homebrew/npm shims and their `node`-backed MCP subprocesses even when Finder/Dock did not inherit a terminal shell path.
+
+CLI-agent system prompts also include a local Tolaria docs orientation when the bundled docs resource is present. `scripts/build-agent-docs.mjs` generates `src-tauri/resources/agent-docs/` from the public VitePress Markdown sources, including `index.md`, `AGENTS.md`, per-section bundles, `all.md`, `search-index.json`, and generated per-page files. Tauri bundles that folder as `agent-docs/`; `get_agent_docs_path` resolves the installed resource path, with a repository fallback for development, and `getAgentDocsPath()` caches it before each agent run. Agents are instructed to read the active vault's `AGENTS.md` for local conventions and search the bundled docs for Tolaria product behavior.
 
 #### Agent Event Flow
 
@@ -768,6 +770,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `stream_claude_chat` | Claude CLI chat mode (streaming) |
 | `check_claude_cli` | Check if Claude CLI is available |
 | `get_ai_agents_status` | Check Claude Code + Codex + OpenCode + Pi + Gemini availability |
+| `get_agent_docs_path` | Resolve the bundled local Tolaria docs folder used in AI-agent system prompts |
 | `stream_ai_agent` | Stream Claude Code, Codex, OpenCode, Pi, or Gemini through the normalized agent event layer |
 | `register_mcp_tools` | Register MCP in Claude/Gemini/Cursor/generic config for the active vault |
 | `remove_mcp_tools` | Remove Tolaria's MCP entry from Claude/Gemini/Cursor/generic config |
@@ -903,7 +906,8 @@ push to main
       → generate alpha-latest.json with darwin-aarch64, darwin-x86_64, Linux, and Windows updater URLs
       → publish GitHub prerelease alpha-vYYYY.M.D-alpha.NNNN named Tolaria Alpha YYYY.M.D.N
   → pages job:
-      → build static HTML release history page
+      → build VitePress public docs into the GitHub Pages root
+      → build static HTML release history page at /releases/
       → publish alpha/latest.json
       → refresh latest.json + latest-canary.json as compatibility aliases to alpha
       → preserve stable/latest.json
@@ -929,6 +933,8 @@ push stable-vYYYY.M.D tag
       → generate stable-latest.json with macOS Apple Silicon, macOS Intel, Linux, and Windows updater URLs plus platform-specific manual download URLs
       → publish GitHub release Tolaria YYYY.M.D
   → pages job:
+      → build VitePress public docs into the GitHub Pages root
+      → build static HTML release history page at /releases/
       → publish stable/latest.json
       → publish stable/download/ and download/ as permanent download pages that keep the browser page visible while the platform installer starts
       → preserve alpha/latest.json

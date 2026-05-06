@@ -502,6 +502,8 @@
   "status.zoom.reset": "Resetuj poziom powiększenia",
   "status.feedback.contribute": "Współtwórz Tolaria",
   "status.feedback.label": "Współtwórz",
+  "status.docs.open": "Otwórz dokumentację Tolaria",
+  "status.docs.label": "Dokumentacja",
   "status.theme.light": "Przełącz na tryb jasny",
   "status.theme.dark": "Przełącz na tryb ciemny",
   "status.settings.open": "Otwórz ustawienia",

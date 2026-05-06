@@ -302,16 +302,18 @@ _organized: true
 
 # AGENTS.md — Tolaria Vault
 
-This is a [Tolaria](https://github.com/refactoringhq/tolaria) vault, a folder of Markdown files with YAML frontmatter forming a personal knowledge graph.
+This is a [Tolaria](https://github.com/refactoringhq/tolaria) vault.
 
-Keep edits compatible with this starter vault's current conventions. Prefer small, human-readable changes over heavy restructuring.
+Keep this file focused on vault-specific conventions. For general Tolaria behavior, use the bundled Tolaria agent docs path provided by the app session context.
 
 ## Core conventions
 
-- One Markdown note per file.
-- The first H1 in the body is the preferred display title. Legacy `title:` frontmatter is still read as a fallback when a note has no H1, but do not add it to new notes.
+- Notes are Markdown files.
+- Use the first H1 as the note title. Tolaria uses this title in the note list, wikilinks, search, and other display surfaces.
 - Store note type in the `type:` frontmatter field.
-- In this starter vault, type definitions currently live at the vault root, for example `project.md`, `person.md`, `note.md`, and `type.md`. Keep new type files at the vault root unless the user explicitly asks to reorganize them.
+- Use wikilinks in body text and frontmatter fields to connect notes.
+- Prefer types and relationships for organization. Folder structure is optional and should not be treated as the primary source of meaning.
+- Tolaria reads notes recursively from all folders and stores new notes in the vault root by default.
 - Saved views live in `views/*.yml`.
 - Files in `attachments/` are assets, not notes. Reference them from notes, but do not treat them as notes or types.
 - Frontmatter properties that start with `_` are usually Tolaria-managed state. Leave them alone unless the user explicitly asks for them to change.
@@ -333,7 +335,7 @@ Body content in Markdown.
 
 ## Types
 
-In this starter vault, types are regular notes stored at the vault root and use `type: Type`.
+Types are regular notes with `type: Type`. They define how notes of that type appear and which properties or relationships should be suggested for new notes.
 
 ```yaml
 ---
@@ -349,11 +351,13 @@ _sort: "property:onboarding:asc"
 # Project
 ```
 
-Useful type metadata in this vault includes `icon`/`_icon`, `color`/`_color`, `order`/`_order`, `sidebar label`, `_list_properties_display`, `_sort`, `template`, `view`, and `visible`. When editing an existing file, preserve the key style already used there instead of mass-normalizing underscored keys.
+Empty properties and relationships in a type document become placeholders on new notes of that type. Values attached to properties in the type document become defaults for type instances.
+
+Useful type metadata includes `icon`/`_icon`, `color`/`_color`, `order`/`_order`, `sidebar label`, `_list_properties_display`, `_sort`, `template`, `view`, and `visible`. When editing an existing file, preserve the key style already used there instead of mass-normalizing underscored keys.
 
 ## Relationships
 
-Any frontmatter property whose value contains `[[wikilinks]]` is treated as a relationship. In this starter vault, common relationship keys include `related_to` and `belongs_to`, but custom relationship names are valid too.
+Any frontmatter property whose value contains `[[wikilinks]]` is treated as a relationship. Common relationship keys include `related_to`, `belongs_to`, and `has`, but custom relationship names are valid too.
 
 Preserve older relationship labels such as `Belongs to:` when editing existing notes that already use them.
 
@@ -405,14 +409,15 @@ Use kebab-case: `my-note-title.md`. One note per file.
 ## What agents should do
 
 - Create and edit notes using the frontmatter and H1 conventions above.
-- Create and edit type documents at the vault root.
+- Create and edit type documents when the user asks for note categories or defaults.
 - Add or modify relationships without breaking existing wikilinks.
 - Create and edit saved views in `views/`.
 - Update `AGENTS.md` only when the user asks for vault-level guidance changes.
+- Search the bundled Tolaria docs when the user asks how Tolaria works or when you need product behavior beyond these base conventions.
 
 ## What agents should avoid
 
-- Do not move existing type files out of the vault root unless the user explicitly asks.
+- Do not infer note type or meaning from folders.
 - Do not treat files in `attachments/` as notes, types, or view definitions.
 - Do not silently overwrite an existing custom `AGENTS.md`.
 - Do not rewrite installation-specific app configuration unless the user explicitly asks.
@@ -837,9 +842,10 @@ Saved filters live in `views/` as `.view.json` files:
     fn test_agents_template_matches_current_tolaria_vault_conventions() {
         assert!(AGENTS_MD.starts_with("---\ntype: Note\n_organized: true\n---\n"));
         assert!(AGENTS_MD.contains("# AGENTS.md — Tolaria Vault"));
-        assert!(AGENTS_MD.contains("Legacy `title:` frontmatter is still read as a fallback"));
+        assert!(AGENTS_MD.contains("Use the first H1 as the note title."));
         assert!(AGENTS_MD.contains("Store note type in the `type:` frontmatter field."));
-        assert!(AGENTS_MD.contains("type definitions currently live at the vault root"));
+        assert!(AGENTS_MD.contains("Tolaria reads notes recursively from all folders"));
+        assert!(AGENTS_MD.contains("Search the bundled Tolaria docs"));
         assert!(AGENTS_MD.contains("attachments/"));
         assert!(AGENTS_MD.contains("views/*.yml"));
         assert!(AGENTS_MD.contains("option:direction"));
@@ -850,5 +856,6 @@ Saved filters live in `views/` as `.view.json` files:
         assert!(!AGENTS_MD.contains("Laputa"));
         assert!(!AGENTS_MD.contains("Is A"));
         assert!(!AGENTS_MD.contains("is_a"));
+        assert!(!AGENTS_MD.contains("type definitions currently live"));
     }
 }

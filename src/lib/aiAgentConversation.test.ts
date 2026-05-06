@@ -122,6 +122,7 @@ describe('aiAgentConversation', () => {
 
     expect(buildAgentSystemPromptMock).toHaveBeenCalledWith({
       agent: 'codex',
+      agentDocsPath: undefined,
       permissionMode: 'safe',
       vaultContext: undefined,
     })
@@ -143,6 +144,7 @@ describe('aiAgentConversation', () => {
     const result = buildFormattedMessage(
       {
         agent: 'codex',
+        agentDocsPath: '/docs',
         ready: true,
         vaultPath: '/vault',
         permissionMode: 'power_user',
@@ -154,6 +156,7 @@ describe('aiAgentConversation', () => {
 
     expect(buildAgentSystemPromptMock).toHaveBeenCalledWith({
       agent: 'codex',
+      agentDocsPath: '/docs',
       permissionMode: 'power_user',
       vaultContext: 'CONTEXT',
     })

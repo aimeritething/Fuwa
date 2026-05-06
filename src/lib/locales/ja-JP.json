@@ -502,6 +502,8 @@
   "status.zoom.reset": "ズームレベルをリセット",
   "status.feedback.contribute": "Tolaria に貢献する",
   "status.feedback.label": "貢献する",
+  "status.docs.open": "Tolariaドキュメントを開く",
+  "status.docs.label": "ドキュメント",
   "status.theme.light": "ライトモードに切り替える",
   "status.theme.dark": "ダークモードに切り替える",
   "status.settings.open": "設定を開く",

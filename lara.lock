@@ -504,6 +504,8 @@ files:
     status.zoom.reset: dbf36ab275e5fbd256590e65aa1ca9a3
     status.feedback.contribute: 96ab5025e38aef43fdb73c9830795264
     status.feedback.label: 9887a4451812854f0f1b6f669a874307
+    status.docs.open: 2066997d2262d4a9b79de68f255dc4a9
+    status.docs.label: a3907cd461d8739aa3266047bc4b8c0c
     status.theme.light: 4abf27a209985375949aaa426c7c7f3d
     status.theme.dark: 541be2a55a52b518b8e510c476c7cc95
     status.settings.open: bae08226d065231df6f01b08cd681c9b

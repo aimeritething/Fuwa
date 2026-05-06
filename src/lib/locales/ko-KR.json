@@ -502,6 +502,8 @@
   "status.zoom.reset": "확대/축소 수준 재설정",
   "status.feedback.contribute": "Tolaria에 기여하기",
   "status.feedback.label": "기여하기",
+  "status.docs.open": "Tolaria 문서 열기",
+  "status.docs.label": "문서",
   "status.theme.light": "라이트 모드로 전환",
   "status.theme.dark": "다크 모드로 전환",
   "status.settings.open": "설정 열기",
