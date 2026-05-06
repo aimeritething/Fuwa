@@ -147,6 +147,7 @@ describe('noteListHelpers extra coverage', () => {
     const serialized = serializeSortConfig({ option: 'property:Priority', direction: 'desc' })
     expect(serialized).toBe('property:Priority:desc')
     expect(parseSortConfig(serialized)).toEqual({ option: 'property:Priority', direction: 'desc' })
+    expect(parseSortConfig('date:desc')).toEqual({ option: 'property:date', direction: 'desc' })
     expect(parseSortConfig('broken')).toBeNull()
     expect(parseSortConfig('title:sideways')).toBeNull()
 

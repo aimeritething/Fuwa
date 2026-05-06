@@ -217,6 +217,32 @@ describe('noteListHooks extra', () => {
     expect(result.current.sortPrefs.__list__).toEqual({ option: 'title', direction: 'asc' })
   })
 
+  it('uses shorthand type sort fields as custom properties', () => {
+    const typeDocument = makeEntry({
+      path: '/vault/types/memory.md',
+      filename: 'memory.md',
+      title: 'Memory',
+      isA: 'Type',
+      sort: 'date:desc',
+    })
+    const memoryEntry = makeEntry({
+      isA: 'Memory',
+      properties: { date: '2026-05-06' },
+    })
+
+    const { result } = renderHook(() =>
+      useNoteListSort({
+        entries: [typeDocument, memoryEntry],
+        selection: { kind: 'sectionGroup', type: 'Memory', label: 'Memory' },
+        modifiedPathSet: new Set<string>(),
+        modifiedSuffixes: [],
+      }),
+    )
+
+    expect(result.current.listSort).toBe('property:date')
+    expect(result.current.listDirection).toBe('desc')
+  })
+
   it('prefers selected view sort config and persists list sort changes back to the view definition', () => {
     const onUpdateViewDefinition = vi.fn()
     const view: ViewFile = {

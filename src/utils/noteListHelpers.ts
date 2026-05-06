@@ -117,6 +117,7 @@ export interface SortConfig {
 }
 
 export const DEFAULT_SORT_OPTIONS: SortOption[] = ['modified', 'created', 'title', 'status']
+const BUILT_IN_SORT_OPTIONS = new Set<string>(DEFAULT_SORT_OPTIONS)
 
 export function getDefaultDirection(option: SortOption): SortDirection {
   if (option === 'modified' || option === 'created') return 'desc'
@@ -217,7 +218,12 @@ export function parseSortConfig(raw: string | null | undefined): SortConfig | nu
   if (lastColon <= 0) return null
   const dir = raw.slice(lastColon + 1)
   if (dir !== 'asc' && dir !== 'desc') return null
-  const option = raw.slice(0, lastColon) as SortOption
+  const optionName = raw.slice(0, lastColon)
+  const option = (
+    optionName.startsWith('property:') || BUILT_IN_SORT_OPTIONS.has(optionName)
+      ? optionName
+      : `property:${optionName}`
+  ) as SortOption
   return { option, direction: dir }
 }
 
