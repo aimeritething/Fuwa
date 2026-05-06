@@ -352,8 +352,8 @@ function DateValue({ value, onSave, locale = 'en', autoOpen = false, onCancel }:
     <Popover
       open={open}
       onOpenChange={(nextOpen) => {
+        if (nextOpen) resetDraft()
         setOpen(nextOpen)
-        resetDraft()
         if (!nextOpen) onCancel?.()
       }}
     >
@@ -370,10 +370,10 @@ function DateValue({ value, onSave, locale = 'en', autoOpen = false, onCancel }:
           <span className={`min-w-0 truncate${!formatted ? ' text-muted-foreground' : ''}`}>{formatted || pickDateLabel}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="end" side="left" data-testid="date-picker-popover">
+      <PopoverContent className="w-auto overflow-hidden p-0" align="end" side="bottom" data-testid="date-picker-popover">
         <div className="border-b p-2">
           <Input
-            className="h-8 w-[8.75rem] bg-background px-2 py-1 font-mono text-[12px] tabular-nums"
+            className="h-8 w-full min-w-[8.75rem] border-ring bg-background px-2 py-1 text-left font-mono text-[13px] tabular-nums"
             type="text"
             inputMode="numeric"
             pattern="[0-9]{4}-[0-9]{2}-[0-9]{2}"
@@ -387,24 +387,26 @@ function DateValue({ value, onSave, locale = 'en', autoOpen = false, onCancel }:
             data-testid="date-picker-input"
           />
         </div>
-        <Calendar
-          mode="single"
-          selected={selectedDate}
-          onSelect={handleSelect}
-          defaultMonth={selectedDate}
-          captionLayout="dropdown"
-          navLayout="after"
-          startMonth={datePickerStartMonth(selectedDate)}
-          endMonth={datePickerEndMonth(selectedDate)}
-          data-testid="date-picker-calendar"
-        />
+        <div className="pb-8">
+          <Calendar
+            mode="single"
+            selected={selectedDate}
+            onSelect={handleSelect}
+            defaultMonth={selectedDate}
+            captionLayout="dropdown"
+            navLayout="after"
+            startMonth={datePickerStartMonth(selectedDate)}
+            endMonth={datePickerEndMonth(selectedDate)}
+            data-testid="date-picker-calendar"
+          />
+        </div>
         {selectedDate && (
-          <div className="border-t px-3 py-2">
+          <div className="relative bg-popover border-t px-3 py-2">
             <Button
               type="button"
               variant="ghost"
               size="xs"
-              className="h-7 px-2 text-xs text-muted-foreground hover:text-foreground"
+              className="h-7 px-2 text-xs text-muted-foreground hover:bg-transparent hover:text-foreground"
               onClick={handleClear}
               data-testid="date-picker-clear"
             >
