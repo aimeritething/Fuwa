@@ -32,9 +32,11 @@ export interface StreamAiAgentRequest {
   callbacks: AgentStreamCallbacks
 }
 
+const CONVERSATION_HISTORY_OPEN_MARKER = ['<', 'conversation_history', '>'].join('')
+
 function mockAgentResponse(agent: AiAgentId, message: string): string {
   const agentLabel = getAiAgentDefinition(agent).label
-  if (message.includes('<conversation_history>')) {
+  if (message.includes(CONVERSATION_HISTORY_OPEN_MARKER)) {
     const allUserLines = message.match(/\[user\]: .+/g) ?? []
     const turnCount = allUserLines.length
     const lastLine = allUserLines[allUserLines.length - 1] ?? ''

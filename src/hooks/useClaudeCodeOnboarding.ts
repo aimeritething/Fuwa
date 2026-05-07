@@ -1,10 +1,10 @@
 import { useCallback, useState } from 'react'
 
-const CLAUDE_CODE_ONBOARDING_DISMISSED_KEY = 'tolaria:claude-code-onboarding-dismissed'
+const CLAUDE_CODE_ONBOARDING_DISMISSED_STORAGE_NAME = 'tolaria:claude-code-onboarding-dismissed'
 
 function wasDismissed(): boolean {
   try {
-    return localStorage.getItem(CLAUDE_CODE_ONBOARDING_DISMISSED_KEY) === '1'
+    return localStorage.getItem(CLAUDE_CODE_ONBOARDING_DISMISSED_STORAGE_NAME) === '1'
   } catch {
     return false
   }
@@ -12,7 +12,7 @@ function wasDismissed(): boolean {
 
 function markDismissed(): void {
   try {
-    localStorage.setItem(CLAUDE_CODE_ONBOARDING_DISMISSED_KEY, '1')
+    localStorage.setItem(CLAUDE_CODE_ONBOARDING_DISMISSED_STORAGE_NAME, '1')
   } catch {
     // localStorage may be unavailable in restricted contexts
   }

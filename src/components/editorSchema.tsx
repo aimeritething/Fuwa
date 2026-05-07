@@ -79,7 +79,7 @@ function MathRender({ latex, displayMode }: { latex: string; displayMode: boolea
       aria-label={`Math: ${latex}`}
       className={displayMode ? 'math math--block' : 'math math--inline'}
       data-latex={latex}
-      html={renderMathToHtml({ latex, displayMode })}
+      markup={renderMathToHtml({ latex, displayMode })}
       role="img"
       title={source}
     />

@@ -1,28 +1,38 @@
 import { isTauri } from '../mock-tauri'
 
-const URL_PATTERN = /^https?:\/\//i
-const BARE_DOMAIN_PATTERN = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z]{2,})+([/?#]|$)/i
-const UNSAFE_URL_WHITESPACE_PATTERN = /\s/
-
-export function normalizeExternalUrl(value: string): string | null {
-  const trimmed = value.trim()
-  if (!trimmed || UNSAFE_URL_WHITESPACE_PATTERN.test(trimmed)) return null
-
-  const candidate = URL_PATTERN.test(trimmed)
-    ? trimmed
-    : BARE_DOMAIN_PATTERN.test(trimmed)
-      ? `https://${trimmed}`
-      : null
-
-  if (!candidate) return null
-
+function parseHttpUrl(candidate: string): URL | null {
   try {
-    const parsed = new URL(candidate)
-    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') return null
-    return candidate
+    const parsedUrl = new URL(candidate)
+    return parsedUrl.protocol === 'http:' || parsedUrl.protocol === 'https:' ? parsedUrl : null
   } catch {
     return null
   }
+}
+
+function hasBareDomainHost(parsedUrl: URL): boolean {
+  const dotIndex = parsedUrl.hostname.lastIndexOf('.')
+  return dotIndex > 0 && dotIndex <= parsedUrl.hostname.length - 3
+}
+
+function startsWithHttpProtocol(url: string): boolean {
+  const lowerUrl = url.toLowerCase()
+  return lowerUrl.startsWith('http://') || lowerUrl.startsWith('https://')
+}
+
+export function normalizeExternalUrl(value: string): string | null {
+  const trimmed = value.trim()
+  if (!trimmed) return null
+
+  for (const char of trimmed) {
+    if (char.trim() === '') return null
+  }
+
+  if (parseHttpUrl(trimmed)) return trimmed
+
+  const bareDomainCandidate = `https://${trimmed}`
+  const parsedBareDomain = parseHttpUrl(bareDomainCandidate)
+  if (!parsedBareDomain || !hasBareDomainHost(parsedBareDomain)) return null
+  return bareDomainCandidate
 }
 
 export function isUrlValue(value: string): boolean {
@@ -32,7 +42,7 @@ export function isUrlValue(value: string): boolean {
 export function normalizeUrl(url: string): string {
   const normalized = normalizeExternalUrl(url)
   if (normalized) return normalized
-  if (URL_PATTERN.test(url)) return url
+  if (startsWithHttpProtocol(url)) return url
   return `https://${url}`
 }
 

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   FRONTEND_READY_EVENT_NAME,
-  STARTUP_RELOAD_ATTEMPT_KEY,
+  STARTUP_RELOAD_ATTEMPT_STORAGE_NAME,
   markFrontendReady,
   reloadFrontendOnceIfStartupFailed,
 } from './frontendReady'
@@ -15,12 +15,12 @@ describe('frontend readiness recovery', () => {
   it('marks the frontend ready and clears a pending startup reload', () => {
     const onReady = vi.fn()
     window.addEventListener(FRONTEND_READY_EVENT_NAME, onReady, { once: true })
-    sessionStorage.setItem(STARTUP_RELOAD_ATTEMPT_KEY, '1')
+    sessionStorage.setItem(STARTUP_RELOAD_ATTEMPT_STORAGE_NAME, '1')
 
     markFrontendReady()
 
     expect(window.__tolariaFrontendReady).toBe(true)
-    expect(sessionStorage.getItem(STARTUP_RELOAD_ATTEMPT_KEY)).toBeNull()
+    expect(sessionStorage.getItem(STARTUP_RELOAD_ATTEMPT_STORAGE_NAME)).toBeNull()
     expect(onReady).toHaveBeenCalledOnce()
   })
 
@@ -33,7 +33,7 @@ describe('frontend readiness recovery', () => {
     expect(firstAttempt).toBe(true)
     expect(secondAttempt).toBe(false)
     expect(reload).toHaveBeenCalledOnce()
-    expect(sessionStorage.getItem(STARTUP_RELOAD_ATTEMPT_KEY)).toBe('1')
+    expect(sessionStorage.getItem(STARTUP_RELOAD_ATTEMPT_STORAGE_NAME)).toBe('1')
   })
 
   it('does not reload after the frontend has reported readiness', () => {

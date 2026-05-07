@@ -1,17 +1,18 @@
 type UnknownRecord = Record<string, unknown>
+type LanguageDetector = (source: string) => boolean
 
 const PLAIN_TEXT_LANGUAGES = new Set(['', 'none', 'plain', 'plaintext', 'text', 'txt'])
-const LANGUAGE_PATTERNS: Array<[string, RegExp]> = [
-  ['html', /^\s*<[/!A-Za-z][\s\S]*>\s*$/u],
-  ['python', /^\s*(?:def|class)\s+\w+.*:\s*$/mu],
-  ['python', /^\s*(?:from\s+\w+(?:\.\w+)*\s+import|import\s+\w+)/mu],
-  ['shellscript', /^\s*(?:#!.*\b(?:bash|sh|zsh)\b|(?:pnpm|npm|yarn|git|cd|echo|export)\b)/mu],
-  ['typescript', /\b(?:interface|type|enum|implements|readonly|namespace|declare)\b/u],
-  ['typescript', /\b(?:const|let|var|function)\s+\w+\s*(?:<[^>]+>)?\([^)]*:\s*[^)]*\)/u],
-  ['typescript', /:\s*(?:string|number|boolean|unknown|never|void|null|undefined|Record<|[A-Z]\w*(?:\[\])?)\b/u],
-  ['javascript', /\b(?:import|export|const|let|var|function|return)\b|=>/u],
-  ['sql', /^\s*(?:SELECT|WITH|INSERT|UPDATE|DELETE)\b[\s\S]*\bFROM\b/iu],
-  ['yaml', /^\s*[\w-]+\s*:\s*[\s\S]*$/u],
+const LANGUAGE_DETECTORS: Array<[string, LanguageDetector]> = [
+  ['html', (source) => /^\s*<[/!A-Za-z][\s\S]*>\s*$/u.test(source)],
+  ['python', (source) => /^\s*(?:def|class)\s+\w+.*:\s*$/mu.test(source)],
+  ['python', hasPythonImport],
+  ['shellscript', (source) => /^\s*(?:#!.*\b(?:bash|sh|zsh)\b|(?:pnpm|npm|yarn|git|cd|echo|export)\b)/mu.test(source)],
+  ['typescript', (source) => /\b(?:interface|type|enum|implements|readonly|namespace|declare)\b/u.test(source)],
+  ['typescript', hasTypedCallableSignature],
+  ['typescript', (source) => /:\s*(?:string|number|boolean|unknown|never|void|null|undefined|Record<|[A-Z]\w*(?:\[\])?)\b/u.test(source)],
+  ['javascript', (source) => /\b(?:import|export|const|let|var|function|return)\b|=>/u.test(source)],
+  ['sql', (source) => /^\s*(?:SELECT|WITH|INSERT|UPDATE|DELETE)\b[\s\S]*\bFROM\b/iu.test(source)],
+  ['yaml', (source) => /^\s*[\w-]+\s*:\s*[\s\S]*$/u.test(source)],
 ]
 
 function isRecord(value: unknown): value is UnknownRecord {
@@ -50,11 +51,32 @@ function isJson(source: string): boolean {
   }
 }
 
+function hasPythonImport(source: string): boolean {
+  return source.split(/\r?\n/).some((line) => {
+    const trimmed = line.trimStart()
+    return trimmed.startsWith('import ') || (trimmed.startsWith('from ') && trimmed.includes(' import '))
+  })
+}
+
+function hasTypedCallableSignature(source: string): boolean {
+  return source.split(/\r?\n/).some((line) => {
+    const trimmed = line.trim()
+    const startsWithCallableKeyword = ['const ', 'let ', 'var ', 'function ']
+      .some((keyword) => trimmed.startsWith(keyword))
+    if (!startsWithCallableKeyword) return false
+
+    const paramsStart = trimmed.indexOf('(')
+    const paramsEnd = trimmed.indexOf(')', paramsStart + 1)
+    if (paramsStart < 0 || paramsEnd < paramsStart) return false
+    return trimmed.slice(paramsStart + 1, paramsEnd).includes(':')
+  })
+}
+
 export function inferCodeBlockLanguage(source: string): string | null {
   const trimmed = source.trim()
   if (!trimmed) return null
   if (isJson(trimmed)) return 'json'
-  return LANGUAGE_PATTERNS.find(([, pattern]) => pattern.test(trimmed))?.[0] ?? null
+  return LANGUAGE_DETECTORS.find(([, detects]) => detects(trimmed))?.[0] ?? null
 }
 
 function inferChildren(children: unknown): unknown {

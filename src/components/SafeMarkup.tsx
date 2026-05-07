@@ -3,7 +3,7 @@ import { useLayoutEffect, useRef, type HTMLAttributes } from 'react'
 import { RUNTIME_STYLE_NONCE } from '@/lib/runtimeStyleNonce'
 
 interface SafeHtmlSpanProps extends HTMLAttributes<HTMLSpanElement> {
-  html: string
+  markup: string
 }
 
 interface SafeSvgDivProps extends HTMLAttributes<HTMLDivElement> {
@@ -17,8 +17,8 @@ const MERMAID_SVG_SANITIZE_CONFIG = {
   HTML_INTEGRATION_POINTS: { foreignobject: true },
 }
 
-function importSanitizedHtmlNodes(html: string): Node[] {
-  const sanitized = DOMPurify.sanitize(html, {
+function importSanitizedMarkupNodes(markup: string): Node[] {
+  const sanitized = DOMPurify.sanitize(markup, {
     USE_PROFILES: { html: true, mathMl: true },
   })
   const parsed = new DOMParser().parseFromString(sanitized, 'text/html')
@@ -38,12 +38,12 @@ function importSanitizedSvgNode(svg: string): Node | null {
   return svgNode
 }
 
-export function SafeHtmlSpan({ html, ...props }: SafeHtmlSpanProps) {
+export function SafeHtmlSpan({ markup, ...props }: SafeHtmlSpanProps) {
   const ref = useRef<HTMLSpanElement>(null)
 
   useLayoutEffect(() => {
-    ref.current?.replaceChildren(...importSanitizedHtmlNodes(html))
-  }, [html])
+    ref.current?.replaceChildren(...importSanitizedMarkupNodes(markup))
+  }, [markup])
 
   return <span {...props} ref={ref} />
 }

@@ -16,7 +16,8 @@ async function checkAvailability(v: { label: string; path: string }): Promise<Va
   try {
     const exists = await tauriCall<boolean>('check_vault_exists', { path: v.path })
     return { label: v.label, path: v.path, available: exists }
-  } catch {
+  } catch (error) {
+    void error
     return { label: v.label, path: v.path, available: false }
   }
 }

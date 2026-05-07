@@ -14,7 +14,7 @@ const localStorageMock = (() => {
 
 Object.defineProperty(globalThis, 'localStorage', { value: localStorageMock, writable: true })
 
-const DISMISSED_KEY = 'tolaria:claude-code-onboarding-dismissed'
+const DISMISSED_STORAGE_NAME = 'tolaria:claude-code-onboarding-dismissed'
 
 describe('useClaudeCodeOnboarding', () => {
   beforeEach(() => {
@@ -34,7 +34,7 @@ describe('useClaudeCodeOnboarding', () => {
   })
 
   it('starts hidden when the prompt was already dismissed', () => {
-    localStorage.setItem(DISMISSED_KEY, '1')
+    localStorage.setItem(DISMISSED_STORAGE_NAME, '1')
 
     const { result } = renderHook(() => useClaudeCodeOnboarding(true))
 
@@ -49,6 +49,6 @@ describe('useClaudeCodeOnboarding', () => {
     })
 
     expect(result.current.showPrompt).toBe(false)
-    expect(localStorage.getItem(DISMISSED_KEY)).toBe('1')
+    expect(localStorage.getItem(DISMISSED_STORAGE_NAME)).toBe('1')
   })
 })

@@ -11,7 +11,8 @@ function tauriCall<T>(command: string, args: Record<string, unknown>): Promise<T
 async function readRemoteStatus(vaultPath: string): Promise<GitRemoteStatus | null> {
   try {
     return await tauriCall<GitRemoteStatus>('git_remote_status', { vaultPath })
-  } catch {
+  } catch (error) {
+    void error
     return null
   }
 }

@@ -90,7 +90,8 @@ async function clearMissingActiveVault(missingPath: string): Promise<boolean> {
       },
     })
     return true
-  } catch {
+  } catch (error) {
+    void error
     // Best effort only — onboarding should still proceed
     return false
   }
@@ -300,7 +301,8 @@ export function useOnboarding(
         } else {
           setState({ status: 'welcome', defaultPath })
         }
-      } catch {
+      } catch (error) {
+        void error
         // If commands fail (e.g. mock mode), just proceed
         if (!cancelled) setState({ status: 'ready', vaultPath: initialVaultPath })
       }

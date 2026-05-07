@@ -1,9 +1,22 @@
-/** Regex patterns for common CSS color formats. */
+import { isCssFunctionalColor } from './cssFunctionalColor'
+
 const HEX3_RE = /^#[0-9a-f]{3}$/i
 const HEX6_RE = /^#[0-9a-f]{6}$/i
 const HEX8_RE = /^#[0-9a-f]{8}$/i
-const RGB_RE = /^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+))?\s*\)$/
-const HSL_RE = /^hsla?\(\s*\d{1,3}\s*,\s*\d{1,3}%\s*,\s*\d{1,3}%\s*(,\s*(0|1|0?\.\d+))?\s*\)$/
+const COLOR_KEY_NAMES = new Set([
+  'background', 'border', 'color', 'fill', 'foreground', 'muted', 'primary',
+  'secondary', 'stroke', 'tint',
+])
+const COLOR_KEY_SUFFIXES = ['-color', '_color']
+const COLOR_KEY_PREFIXES = ['accent']
+const COLOR_KEY_SUBSTRINGS = ['colour']
+const COLOR_VALUE_TESTS: Array<(value: string) => boolean> = [
+  (value) => HEX3_RE.test(value),
+  (value) => HEX6_RE.test(value),
+  (value) => HEX8_RE.test(value),
+  isCssFunctionalColor,
+  (value) => NAMED_COLORS.has(value.toLowerCase()),
+]
 
 /** CSS named colors (lowercase). */
 const NAMED_COLORS = new Set([
@@ -36,8 +49,7 @@ export function isValidCssColor(value: string): boolean {
   if (!value || typeof value !== 'string') return false
   const trimmed = value.trim()
   if (!trimmed) return false
-  return HEX3_RE.test(trimmed) || HEX6_RE.test(trimmed) || HEX8_RE.test(trimmed)
-    || RGB_RE.test(trimmed) || HSL_RE.test(trimmed) || NAMED_COLORS.has(trimmed.toLowerCase())
+  return COLOR_VALUE_TESTS.some((testColorValue) => testColorValue(trimmed))
 }
 
 /** Expand #rgb to #rrggbb. */
@@ -83,9 +95,8 @@ function canvasColorToHex(color: string): string | null {
 /** Check if a property key name suggests a color value. */
 export function isColorKeyName(key: string): boolean {
   const lower = key.toLowerCase()
-  return lower === 'color' || lower.endsWith('-color') || lower.endsWith('_color')
-    || lower.includes('colour') || lower.startsWith('accent')
-    || lower === 'background' || lower === 'foreground' || lower === 'border'
-    || lower === 'primary' || lower === 'secondary' || lower === 'muted'
-    || lower === 'fill' || lower === 'stroke' || lower === 'tint'
+  return COLOR_KEY_NAMES.has(lower)
+    || COLOR_KEY_SUFFIXES.some((suffix) => lower.endsWith(suffix))
+    || COLOR_KEY_PREFIXES.some((prefix) => lower.startsWith(prefix))
+    || COLOR_KEY_SUBSTRINGS.some((part) => lower.includes(part))
 }

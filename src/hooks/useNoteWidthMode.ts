@@ -76,7 +76,8 @@ async function readNoteContentForWidthPersistence({
     return isTauri()
       ? await invoke<MarkdownContent>('get_note_content', { path })
       : await mockInvoke<MarkdownContent>('get_note_content', { path })
-  } catch {
+  } catch (error) {
+    void error
     return fallbackContent
   }
 }

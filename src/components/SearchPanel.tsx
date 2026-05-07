@@ -1,10 +1,11 @@
-import { useRef, useEffect, useCallback, useLayoutEffect } from 'react'
+import { createElement, useRef, useEffect, useCallback, useLayoutEffect } from 'react'
 import { useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import type { SearchResult, VaultEntry } from '../types'
 import { useUnifiedSearch } from '../hooks/useUnifiedSearch'
 import { getTypeColor, buildTypeEntryMap } from '../utils/typeColors'
 import { formatSearchSubtitle } from '../utils/noteListHelpers'
+import { scrollSelectedHTMLChildIntoView } from '../utils/domScroll'
 import { getTypeIcon } from './NoteItem'
 import { NoteTitleIcon } from './NoteTitleIcon'
 
@@ -14,6 +15,32 @@ interface SearchPanelProps {
   entries: VaultEntry[]
   onSelectNote: (entry: VaultEntry) => void
   onClose: () => void
+}
+
+type SearchKeyboardAction = 'close' | 'next' | 'previous' | 'select'
+
+function resolveSearchKeyboardAction(key: string): SearchKeyboardAction | null {
+  switch (key) {
+    case 'Escape':
+      return 'close'
+    case 'ArrowDown':
+      return 'next'
+    case 'ArrowUp':
+      return 'previous'
+    case 'Enter':
+      return 'select'
+    default:
+      return null
+  }
+}
+
+function nextSearchSelectionIndex(
+  action: Extract<SearchKeyboardAction, 'next' | 'previous'>,
+  currentIndex: number,
+  resultCount: number,
+): number {
+  if (action === 'next') return Math.min(currentIndex + 1, resultCount - 1)
+  return Math.max(currentIndex - 1, 0)
 }
 
 export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }: SearchPanelProps) {
@@ -27,9 +54,7 @@ export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }:
   const selectedIndexRef = useRef(selectedIndex)
 
   useEffect(() => {
-    if (!listRef.current) return
-    const selected = listRef.current.children[selectedIndex] as HTMLElement | undefined
-    selected?.scrollIntoView({ block: 'nearest' })
+    scrollSelectedHTMLChildIntoView(listRef.current, selectedIndex)
   }, [selectedIndex])
 
   const handleSelect = useCallback((result: SearchResult) => {
@@ -50,20 +75,22 @@ export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }:
   }, [open])
 
   const handleKeyDown = useCallback((e: { key: string; preventDefault: () => void }) => {
-    if (e.key === 'Escape') {
-      e.preventDefault()
+    const action = resolveSearchKeyboardAction(e.key)
+    if (!action) return
+
+    e.preventDefault()
+    if (action === 'close') {
       onClose()
-    } else if (e.key === 'ArrowDown') {
-      e.preventDefault()
-      setSelectedIndex(i => Math.min(i + 1, resultsRef.current.length - 1))
-    } else if (e.key === 'ArrowUp') {
-      e.preventDefault()
-      setSelectedIndex(i => Math.max(i - 1, 0))
-    } else if (e.key === 'Enter') {
-      e.preventDefault()
+      return
+    }
+
+    if (action === 'select') {
       const result = resultsRef.current[selectedIndexRef.current]
       if (result) handleSelect(result)
+      return
     }
+
+    setSelectedIndex(i => nextSearchSelectionIndex(action, i, resultsRef.current.length))
   }, [handleSelect, onClose, setSelectedIndex])
 
   useEffect(() => {
@@ -170,6 +197,59 @@ interface SearchContentProps {
   onHover: (index: number) => void
 }
 
+interface SearchResultRowProps {
+  result: SearchResult
+  entry: VaultEntry | undefined
+  selected: boolean
+  index: number
+  typeEntryMap: Record<string, VaultEntry>
+  onSelect: (result: SearchResult) => void
+  onHover: (index: number) => void
+}
+
+function SearchResultRow({
+  result, entry, selected, index, typeEntryMap, onSelect, onHover,
+}: SearchResultRowProps) {
+  const isA = entry?.isA ?? result.noteType
+  const noteType = isA || null
+  const te = typeEntryMap[isA ?? '']
+  const typeColor = noteType ? getTypeColor(isA, te?.color) : undefined
+  const TypeIcon = getTypeIcon(isA ?? null, te?.icon)
+  const subtitle = entry ? formatSearchSubtitle(entry) : null
+
+  return (
+    <div
+      className={cn(
+        "cursor-pointer px-4 py-2.5 transition-colors",
+        selected ? "bg-accent" : "hover:bg-secondary",
+      )}
+      onClick={() => onSelect(result)}
+      onMouseEnter={() => onHover(index)}
+    >
+      <div className="flex items-center gap-2">
+        {createElement(TypeIcon, {
+          width: 14,
+          height: 14,
+          className: 'shrink-0',
+          style: { color: typeColor ?? 'var(--muted-foreground)' },
+        })}
+        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+          <NoteTitleIcon icon={entry?.icon} size={14} className="mr-1" />
+          {entry?.title ?? result.title}
+        </span>
+        {noteType && (
+          <span className="shrink-0 text-[11px] text-muted-foreground/70">{noteType}</span>
+        )}
+      </div>
+      {subtitle && (
+        <p className="mt-0.5 pl-[22px] text-[11px] text-muted-foreground">
+          {subtitle}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function SearchContent({
   query, results, selectedIndex, loading, elapsedMs, entryLookup, typeEntryMap, listRef, onSelect, onHover,
 }: SearchContentProps) {
@@ -204,42 +284,18 @@ function SearchContent({
             </span>
           </div>
           <div ref={listRef}>
-            {results.map((result, i) => {
-              const entry = entryLookup.get(result.path)
-              const isA = entry?.isA ?? result.noteType
-              const noteType = isA || null
-              const te = typeEntryMap[isA ?? '']
-              const typeColor = noteType ? getTypeColor(isA, te?.color) : undefined
-              const TypeIcon = getTypeIcon(isA ?? null, te?.icon)
-              const subtitle = entry ? formatSearchSubtitle(entry) : null
-              return (
-                <div
-                  key={result.path}
-                  className={cn(
-                    "cursor-pointer px-4 py-2.5 transition-colors",
-                    i === selectedIndex ? "bg-accent" : "hover:bg-secondary",
-                  )}
-                  onClick={() => onSelect(result)}
-                  onMouseEnter={() => onHover(i)}
-                >
-                  <div className="flex items-center gap-2">
-                    <TypeIcon width={14} height={14} className="shrink-0" style={{ color: typeColor ?? 'var(--muted-foreground)' }} />
-                    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
-                      <NoteTitleIcon icon={entry?.icon} size={14} className="mr-1" />
-                      {entry?.title ?? result.title}
-                    </span>
-                    {noteType && (
-                      <span className="shrink-0 text-[11px] text-muted-foreground/70">{noteType}</span>
-                    )}
-                  </div>
-                  {subtitle && (
-                    <p className="mt-0.5 pl-[22px] text-[11px] text-muted-foreground">
-                      {subtitle}
-                    </p>
-                  )}
-                </div>
-              )
-            })}
+            {results.map((result, i) => (
+              <SearchResultRow
+                key={result.path}
+                result={result}
+                entry={entryLookup.get(result.path)}
+                selected={i === selectedIndex}
+                index={i}
+                typeEntryMap={typeEntryMap}
+                onSelect={onSelect}
+                onHover={onHover}
+              />
+            ))}
           </div>
         </>
       )}

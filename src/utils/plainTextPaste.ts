@@ -17,7 +17,7 @@ export interface PlainTextPasteTarget {
 
 let activePasteTarget: PlainTextPasteTarget | null = null
 
-function activeElement(): HTMLElement | null {
+function activeHTMLElement(): HTMLElement | null {
   const active = document.activeElement
   return active instanceof HTMLElement ? active : null
 }
@@ -103,7 +103,7 @@ function insertIntoFocusedEditable(text: string, element: HTMLElement | null): P
   return insertIntoContentEditable(element, text) ? 'focused_contenteditable' : null
 }
 
-function isEditableElementForPlainTextPaste(element: HTMLElement | null): boolean {
+function isEditableHTMLElementForPlainTextPaste(element: HTMLElement | null): boolean {
   if (!element || isCommandPaletteElement(element)) return false
   return (element instanceof HTMLInputElement && isPlainTextInput(element))
     || element instanceof HTMLTextAreaElement
@@ -140,7 +140,7 @@ function insertIntoFocusedSurface(text: string, element: HTMLElement | null): bo
 function shouldUseLastPasteTarget(element: HTMLElement | null): boolean {
   if (!element) return true
   if (isCommandPaletteElement(element)) return true
-  return !isEditableElementForPlainTextPaste(element)
+  return !isEditableHTMLElementForPlainTextPaste(element)
 }
 
 function insertIntoLastTarget(
@@ -169,7 +169,7 @@ export function activatePlainTextPasteTarget(target: PlainTextPasteTarget): void
 export function insertPlainTextFromClipboardText(text: string): boolean {
   if (text.length === 0) return false
 
-  const currentElement = activeElement()
+  const currentElement = activeHTMLElement()
   const target = currentPasteTarget()
 
   return insertIntoContainedTarget(target, currentElement, text)

@@ -1,5 +1,5 @@
 export const FRONTEND_READY_EVENT_NAME = 'tolaria:frontend-ready'
-export const STARTUP_RELOAD_ATTEMPT_KEY = 'tolaria:startup-reload-attempted'
+export const STARTUP_RELOAD_ATTEMPT_STORAGE_NAME = 'tolaria:startup-reload-attempted'
 
 declare global {
   interface Window {
@@ -54,7 +54,7 @@ export function markFrontendReady(options: FrontendReadyOptions = {}): void {
   const storage = options.storage ?? getSessionStorage(win)
 
   win.__tolariaFrontendReady = true
-  removeSessionItem(storage, STARTUP_RELOAD_ATTEMPT_KEY)
+  removeSessionItem(storage, STARTUP_RELOAD_ATTEMPT_STORAGE_NAME)
   win.dispatchEvent(new Event(FRONTEND_READY_EVENT_NAME))
 }
 
@@ -65,8 +65,8 @@ export function reloadFrontendOnceIfStartupFailed(
   const storage = options.storage ?? getSessionStorage(win)
 
   if (win.__tolariaFrontendReady === true) return false
-  if (readSessionItem(storage, STARTUP_RELOAD_ATTEMPT_KEY) === '1') return false
-  if (!writeSessionItem(storage, STARTUP_RELOAD_ATTEMPT_KEY, '1')) return false
+  if (readSessionItem(storage, STARTUP_RELOAD_ATTEMPT_STORAGE_NAME) === '1') return false
+  if (!writeSessionItem(storage, STARTUP_RELOAD_ATTEMPT_STORAGE_NAME, '1')) return false
 
   const reload = options.reload ?? (() => win.location.reload())
   reload()

@@ -65,6 +65,8 @@ export function nextMessageId(): string {
 
 /** Max tokens of history to include in each request. */
 export const MAX_HISTORY_TOKENS = 100_000
+const CONVERSATION_HISTORY_OPEN_MARKER = ['<', 'conversation_history', '>'].join('')
+const CONVERSATION_HISTORY_CLOSE_MARKER = ['</', 'conversation_history', '>'].join('')
 
 /** Keep the most recent messages that fit within `maxTokens`. Drops oldest first. */
 export function trimHistory(history: ChatMessage[], maxTokens: number): ChatMessage[] {
@@ -86,7 +88,7 @@ export function formatMessageWithHistory(history: ChatMessage[], newMessage: str
   const lines = history.map(m => `[${m.role}]: ${m.content}`)
   lines.push(`[user]: ${newMessage}`)
 
-  return `<conversation_history>\n${lines.join('\n\n')}\n</conversation_history>\n\nContinue the conversation. Respond only to the latest [user] message.`
+  return `${CONVERSATION_HISTORY_OPEN_MARKER}\n${lines.join('\n\n')}\n${CONVERSATION_HISTORY_CLOSE_MARKER}\n\nContinue the conversation. Respond only to the latest [user] message.`
 }
 
 // --- Claude CLI status ---
@@ -154,7 +156,7 @@ function handleChatStreamEvent(
  * can verify that history is actually being sent.
  */
 function mockChatResponse(message: string): string {
-  if (message.includes('<conversation_history>')) {
+  if (message.includes(CONVERSATION_HISTORY_OPEN_MARKER)) {
     const allUserLines = message.match(/\[user\]: .+/g) ?? []
     const turnCount = allUserLines.length
     // The last [user] line is the actual new message

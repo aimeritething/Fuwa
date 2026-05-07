@@ -717,9 +717,7 @@ function switchVaultPath({
 
 async function ensureVaultCanBeRegistered(path: string): Promise<void> {
   const exists = await checkVaultAvailability(path)
-  if (!exists) {
-    throw new Error('Selected folder is not available')
-  }
+  if (!exists) throw new Error('Selected folder is not available')
 }
 
 function listRemainingVaults({

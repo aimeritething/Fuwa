@@ -4,7 +4,6 @@ const FILE_LIKE_EXTENSION_PATTERN =
 const EXPLICIT_PROTOCOL_PATTERN = /^[a-z][a-z0-9+.-]*:\/\//i
 const MAYBE_PROTOCOL_PATTERN = /^[a-z][a-z0-9+.-]*:/i
 const LOCAL_PATH_PREFIX_PATTERN = /^(?:\.{1,2}\/|~\/|\/)/
-const IPV4_HOST_PATTERN = /^\d{1,3}(\.\d{1,3}){3}$/
 const WINDOWS_PATH_SEPARATOR = '\\'
 const WWW_PREFIX = 'www.'
 
@@ -86,6 +85,15 @@ function hostnameHasTld(hostname: string) {
   return hostname.includes('.')
 }
 
+function isIpv4Host(hostname: string) {
+  const parts = hostname.split('.')
+  return parts.length === 4 && parts.every((part) => {
+    if (part.length === 0 || part.length > 3) return false
+    if ([...part].some((char) => char < '0' || char > '9')) return false
+    return Number(part) <= 255
+  })
+}
+
 function normalizeInput(value: LinkValue) {
   return stripUrlDecorators(withRaw(value.raw.trim()))
 }
@@ -123,7 +131,7 @@ export function shouldAutoLinkTolariaHref(url: LinkValue) {
   }
 
   const hostname = hostnameFromUrlLikeValue(url)
-  if (IPV4_HOST_PATTERN.test(hostname)) {
+  if (isIpv4Host(hostname)) {
     return false
   }
 

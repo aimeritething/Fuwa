@@ -1,6 +1,7 @@
 import type { FrontmatterValue } from '../components/Inspector'
 import { getAppStorageItem } from '../constants/appStorage'
 import { isValidCssColor, isColorKeyName } from './colorUtils'
+import { dateFromParts, parseDashDateParts, parseSlashDateParts, type DateParts } from './dateStringParts'
 import { updateVaultConfigField } from './vaultConfigStore'
 import { CalendarIcon, Type, ToggleLeft, Circle, Link, Tag, Palette, Hash } from 'lucide-react'
 import { canonicalSystemMetadataKey } from './systemMetadata'
@@ -10,9 +11,6 @@ type PropertyKey = string
 type PropertyValueText = string
 type PropertyKeyPatterns = readonly PropertyKey[]
 type DisplayModeOverrides = Record<PropertyKey, PropertyDisplayMode>
-
-const ISO_DATE_RE = /^(\d{4})-(\d{2})-(\d{2})(T\d{2}:\d{2}(:\d{2})?)?/
-const COMMON_DATE_RE = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/
 
 const STATUS_VALUES = new Set<PropertyValueText>([
   'active', 'done', 'paused', 'archived', 'dropped',
@@ -34,7 +32,7 @@ function keyMatchesPatterns(key: PropertyKey, patterns: PropertyKeyPatterns): bo
 }
 
 function isDateString(value: PropertyValueText): boolean {
-  return ISO_DATE_RE.test(value) || COMMON_DATE_RE.test(value)
+  return parseISODateParts(value) !== null || parseCommonDateParts(value) !== null
 }
 
 function isStatusKey(key: PropertyKey): boolean {
@@ -117,41 +115,12 @@ export function getEffectiveDisplayMode(
   return overrides[key] ?? detectPropertyType(key, value)
 }
 
-interface DateParts {
-  year: number
-  month: number
-  day: number
-}
-
-function validDateParts(parts: DateParts): DateParts | null {
-  const date = dateFromParts(parts)
-  return date.getFullYear() === parts.year && date.getMonth() === parts.month - 1 && date.getDate() === parts.day
-    ? parts
-    : null
-}
-
 function parseISODateParts(value: PropertyValueText): DateParts | null {
-  const match = value.match(ISO_DATE_RE)
-  if (!match) return null
-  return validDateParts({
-    year: Number(match[1]),
-    month: Number(match[2]),
-    day: Number(match[3]),
-  })
+  return parseDashDateParts(value)
 }
 
 function parseCommonDateParts(value: PropertyValueText): DateParts | null {
-  const match = value.match(COMMON_DATE_RE)
-  if (!match) return null
-  return validDateParts({
-    year: Number(match[3]),
-    month: Number(match[1]),
-    day: Number(match[2]),
-  })
-}
-
-function dateFromParts(parts: DateParts): Date {
-  return new Date(parts.year, parts.month - 1, parts.day)
+  return parseSlashDateParts(value)
 }
 
 function formatISODateParts(parts: DateParts): string {

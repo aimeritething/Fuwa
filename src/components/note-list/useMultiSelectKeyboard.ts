@@ -10,8 +10,12 @@ interface UseMultiSelectKeyboardOptions {
 }
 
 function isInputFocused(): boolean {
-  const el = document.activeElement
-  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement || !!(el as HTMLElement)?.isContentEditable
+  const activeElement = document.activeElement
+  if (!(activeElement instanceof HTMLElement)) return false
+
+  return activeElement.tagName === 'INPUT'
+    || activeElement.tagName === 'TEXTAREA'
+    || activeElement.isContentEditable
 }
 
 function usesCommandModifier(event: KeyboardEvent): boolean {

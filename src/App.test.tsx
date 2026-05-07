@@ -447,8 +447,8 @@ import { useUpdater } from './hooks/useUpdater'
 import { isTauri } from './mock-tauri'
 import { streamAiAgent } from './utils/streamAiAgent'
 
-const AI_AGENTS_ONBOARDING_DISMISSED_KEY = 'tolaria:ai-agents-onboarding-dismissed'
-const CLAUDE_CODE_ONBOARDING_DISMISSED_KEY = 'tolaria:claude-code-onboarding-dismissed'
+const AI_AGENTS_ONBOARDING_DISMISSED_STORAGE_NAME = 'tolaria:ai-agents-onboarding-dismissed'
+const CLAUDE_CODE_ONBOARDING_DISMISSED_STORAGE_NAME = 'tolaria:claude-code-onboarding-dismissed'
 const SLOW_APP_READY_TIMEOUT_MS = 10_000
 
 function createMockUpdaterResult(
@@ -474,7 +474,7 @@ describe('App', () => {
     vi.mocked(useUpdater).mockReturnValue(createMockUpdaterResult())
     localStorage.clear()
     window.history.replaceState({}, '', '/')
-    localStorage.setItem(CLAUDE_CODE_ONBOARDING_DISMISSED_KEY, '1')
+    localStorage.setItem(CLAUDE_CODE_ONBOARDING_DISMISSED_STORAGE_NAME, '1')
   })
 
   it('renders the four-panel layout', async () => {
@@ -692,8 +692,8 @@ describe('App', () => {
   })
 
   it('shows the external AI setup dialog from the menu when AI onboarding is active', async () => {
-    localStorage.removeItem(AI_AGENTS_ONBOARDING_DISMISSED_KEY)
-    localStorage.removeItem(CLAUDE_CODE_ONBOARDING_DISMISSED_KEY)
+    localStorage.removeItem(AI_AGENTS_ONBOARDING_DISMISSED_STORAGE_NAME)
+    localStorage.removeItem(CLAUDE_CODE_ONBOARDING_DISMISSED_STORAGE_NAME)
     mockCommandResults.get_ai_agents_status = {
       claude_code: { installed: true, version: '2.1.90' },
       codex: { installed: true, version: '0.122.0-alpha.1' },
