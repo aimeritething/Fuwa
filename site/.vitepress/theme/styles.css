@@ -43,6 +43,16 @@
 }
 
 .dark {
+  --tolaria-bg: #1f1e1b;
+  --tolaria-surface: #23221f;
+  --tolaria-surface-muted: #191814;
+  --tolaria-text: #e6e1d8;
+  --tolaria-text-secondary: #b8b1a6;
+  --tolaria-text-muted: #7f776d;
+  --tolaria-border: #34322d;
+  --tolaria-blue: #78a4ff;
+  --tolaria-blue-hover: #9bbeff;
+  --tolaria-blue-soft: rgba(120, 164, 255, 0.16);
   --vp-c-bg: #1f1e1b;
   --vp-c-bg-alt: #191814;
   --vp-c-bg-elv: #23221f;
@@ -168,7 +178,7 @@ html.tolaria-landing-page #app {
 
 .tolaria-landing-shell .DocSearch-Button {
   border: 1px solid var(--tolaria-border);
-  background: #fff;
+  background: var(--tolaria-surface);
 }
 
 .vp-doc h1,

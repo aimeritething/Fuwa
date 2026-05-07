@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { withBase } from "vitepress";
-import { ref } from "vue";
 
 type FeatureIcon = "archive" | "pen" | "git" | "sparkle";
 type DocsIcon = "rocket" | "network" | "workflow" | "refresh";
@@ -30,16 +29,6 @@ type DocsLink = {
 
 const asset = (path: string) => withBase(`/landing/${path}`);
 const route = (path: string) => withBase(path);
-const screenshotSplit = ref(50);
-
-const updateScreenshotSplit = (value: number) => {
-  const nextValue = Number.isFinite(value) ? value : 50;
-  screenshotSplit.value = Math.min(92, Math.max(8, nextValue));
-};
-
-const handleScreenshotSplitInput = (event: Event) => {
-  updateScreenshotSplit(Number((event.target as HTMLInputElement).value));
-};
 
 const featureSections: FeatureSection[] = [
   {
@@ -219,42 +208,18 @@ const testimonials = [
         class="screenshot-field"
         :style="{ backgroundImage: `url(${asset('les-saintes.jpg')})` }"
       >
-        <div
-          class="screenshot-compare"
-          :style="{ '--split': `${screenshotSplit}%` }"
-        >
+        <div class="screenshot-frame">
           <img
-            class="screenshot-compare-image"
+            class="screenshot-image light"
+            :src="asset('tolaria-screenshot.png')"
+            alt="Tolaria app in light mode"
+            draggable="false"
+          />
+          <img
+            class="screenshot-image dark"
             :src="asset('tolaria-screenshot-dark.png')"
             alt="Tolaria app in dark mode"
             draggable="false"
-          />
-          <div class="screenshot-compare-light" aria-hidden="true">
-            <img
-              class="screenshot-compare-image"
-              :src="asset('tolaria-screenshot.png')"
-              alt=""
-              draggable="false"
-            />
-          </div>
-          <span class="screenshot-mode-label light">Light</span>
-          <span class="screenshot-mode-label dark">Dark</span>
-          <div class="screenshot-compare-divider" aria-hidden="true">
-            <span class="screenshot-compare-handle">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="m10 8-4 4 4 4" />
-                <path d="m14 8 4 4-4 4" />
-              </svg>
-            </span>
-          </div>
-          <input
-            class="screenshot-compare-range"
-            type="range"
-            min="8"
-            max="92"
-            :value="screenshotSplit"
-            aria-label="Compare light and dark Tolaria screenshot"
-            @input="handleScreenshotSplitInput"
           />
         </div>
       </div>
@@ -449,18 +414,19 @@ const testimonials = [
 
 <style scoped>
 .tolaria-landing {
-  --landing-bg: #faf9f5;
-  --landing-surface: #ffffff;
+  --landing-bg: var(--tolaria-bg);
+  --landing-surface: var(--tolaria-surface);
   --landing-dark: #1a1a18;
-  --landing-text: #1a1a18;
-  --landing-muted: #6b6b60;
-  --landing-tertiary: #9b9b90;
-  --landing-border: #e5e5e0;
-  --landing-subtle: #eeeeea;
+  --landing-text: var(--tolaria-text);
+  --landing-muted: var(--tolaria-text-secondary);
+  --landing-tertiary: var(--tolaria-text-muted);
+  --landing-border: var(--tolaria-border);
+  --landing-subtle: var(--tolaria-surface-muted);
   --landing-blue: #155dff;
   --landing-blue-hover: #4a5ad6;
-  --landing-blue-soft: rgba(20, 91, 255, 0.05);
-  --landing-blue-border: rgba(21, 93, 255, 0.2);
+  --landing-accent: var(--landing-blue);
+  --landing-blue-soft: var(--tolaria-blue-soft);
+  --landing-blue-border: color-mix(in srgb, var(--landing-accent) 20%, transparent);
   --landing-page-width: 1280px;
   color: var(--landing-text);
   background: var(--landing-bg);
@@ -572,110 +538,25 @@ const testimonials = [
   background-size: cover;
 }
 
-.screenshot-compare {
-  --split: 50%;
+.screenshot-frame {
   position: relative;
   width: min(100%, 1160px);
   margin: 0 auto;
   overflow: hidden;
   border-radius: 8px;
   box-shadow: 0 12px 48px -4px rgba(0, 0, 0, 0.3);
-  isolation: isolate;
   user-select: none;
 }
 
-.screenshot-compare-image {
+.screenshot-image {
   display: block;
   width: 100%;
   height: auto;
   pointer-events: none;
 }
 
-.screenshot-compare-light {
-  position: absolute;
-  inset: 0;
-  clip-path: inset(0 calc(100% - var(--split)) 0 0);
-  pointer-events: none;
-}
-
-.screenshot-compare-divider {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: var(--split);
-  width: 2px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 0 0 1px rgba(26, 26, 24, 0.18);
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.screenshot-compare-handle {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 44px;
-  height: 44px;
-  border: 1px solid rgba(26, 26, 24, 0.16);
-  border-radius: 999px;
-  color: var(--landing-text);
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.2);
-  transform: translate(-50%, -50%);
-}
-
-.screenshot-compare-handle svg {
-  width: 24px;
-  height: 24px;
-  fill: none;
-  stroke: currentColor;
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 2;
-}
-
-.screenshot-mode-label {
-  position: absolute;
-  top: 16px;
-  z-index: 1;
-  padding: 7px 10px;
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  border-radius: 999px;
-  color: #fff;
-  background: rgba(26, 26, 24, 0.5);
-  font-size: 12px;
-  font-weight: 700;
-  line-height: 1;
-  backdrop-filter: blur(12px);
-  pointer-events: none;
-}
-
-.screenshot-mode-label.light {
-  left: 16px;
-}
-
-.screenshot-mode-label.dark {
-  right: 16px;
-}
-
-.screenshot-compare-range {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  width: 100%;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  cursor: ew-resize;
-  appearance: none;
-}
-
-.screenshot-compare:focus-within .screenshot-compare-handle {
-  outline: 3px solid rgba(21, 93, 255, 0.42);
-  outline-offset: 3px;
+.screenshot-image.dark {
+  display: none;
 }
 
 .feature-section {
@@ -702,8 +583,8 @@ const testimonials = [
   gap: 6px;
   padding: 5px 10px;
   border-radius: 6px;
-  color: #1a4fcc;
-  background: #e8eeff;
+  color: var(--landing-accent);
+  background: var(--landing-blue-soft);
   font-size: 12px;
   font-weight: 650;
   line-height: 1.2;
@@ -768,7 +649,7 @@ const testimonials = [
 
 .feature-card-title p {
   margin: 0;
-  color: var(--landing-blue);
+  color: var(--landing-accent);
   font-size: 13px;
   font-weight: 650;
   line-height: 1.3;
@@ -838,8 +719,8 @@ const testimonials = [
   height: 38px;
   margin-bottom: 24px;
   border-radius: 8px;
-  color: var(--landing-blue);
-  background: #e8eeff;
+  color: var(--landing-accent);
+  background: var(--landing-blue-soft);
 }
 
 .docs-icon svg {
@@ -920,7 +801,7 @@ const testimonials = [
 
 .author-heading p {
   margin: 4px 0 0;
-  color: var(--landing-blue);
+  color: var(--landing-accent);
   font-size: 16px;
   font-weight: 650;
 }
@@ -1217,5 +1098,21 @@ const testimonials = [
   .final-cta p {
     font-size: 20px;
   }
+}
+</style>
+
+<style>
+.dark .tolaria-landing {
+  --landing-accent: #9bbeff;
+  --landing-blue-soft: rgba(120, 164, 255, 0.24);
+  --landing-blue-border: rgba(120, 164, 255, 0.38);
+}
+
+.dark .tolaria-landing .screenshot-image.light {
+  display: none;
+}
+
+.dark .tolaria-landing .screenshot-image.dark {
+  display: block;
 }
 </style>
