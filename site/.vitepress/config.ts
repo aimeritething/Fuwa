@@ -7,6 +7,7 @@ export default defineConfig({
   description:
     "Tolaria is a local-first Markdown knowledge base with native relationships, Git history, and AI workflows.",
   base,
+  ignoreDeadLinks: [/^\/download\/?(?:index)?$/],
   cleanUrls: true,
   head: [
     ["link", { rel: "icon", type: "image/png", href: `${base}landing/favicon.png` }],
