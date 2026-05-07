@@ -6,7 +6,7 @@ Tolaria publishes desktop builds for macOS, Windows, and Linux. macOS is the pri
 
 Use the latest stable release unless you are intentionally testing pre-release builds:
 
-- <a href="/download/" target="_self">Download the latest stable build</a>
+- <a href="https://tolaria.md/download/" target="_self">Download the latest stable build</a>
 - [Browse all GitHub releases](https://github.com/refactoringhq/tolaria/releases)
 - [Read the release notes](/releases/)
 

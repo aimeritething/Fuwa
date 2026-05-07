@@ -182,7 +182,7 @@ const testimonials = [
       <div class="hero-actions">
         <a
           class="landing-button primary"
-          :href="route('/download/')"
+          href="https://tolaria.md/download/"
           target="_self"
         >
           <svg viewBox="0 0 24 24" aria-hidden="true">
