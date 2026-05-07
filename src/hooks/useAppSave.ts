@@ -452,7 +452,7 @@ interface EditorPersistenceOptions {
   resolveCurrentPath: (path: string) => string
   resolvePathBeforeSave: (path: string) => Promise<string>
   canPersist: boolean
-  persistenceScope: string
+  persistenceScope: string | readonly string[]
   locale: AppLocale
 }
 

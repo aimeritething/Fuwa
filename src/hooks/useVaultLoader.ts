@@ -60,7 +60,7 @@ async function loadInitialVaultChromeState(options: InitialVaultChromeOptions): 
 
 async function loadInitialVaultEntriesState(options: Pick<
   InitialVaultLoadStateOptions,
-  'handleVaultAvailable' | 'handleVaultUnavailable' | 'isCurrentVaultPath' | 'path' | 'setEntries'
+  'defaultWorkspacePath' | 'handleVaultAvailable' | 'handleVaultUnavailable' | 'isCurrentVaultPath' | 'path' | 'setEntries' | 'vaults'
 >): Promise<boolean> {
   const { handleVaultAvailable, handleVaultUnavailable, isCurrentVaultPath, path, setEntries } = options
 

@@ -98,7 +98,7 @@ export function useEditorSaveWithLinks(config: {
   resolvePath?: (path: string) => string
   resolvePathBeforeSave?: (path: string) => Promise<string>
   canPersist?: boolean
-  persistenceScope?: string
+  persistenceScope?: string | readonly string[]
   disabledSaveMessage?: string
   locale?: AppLocale
 }) {

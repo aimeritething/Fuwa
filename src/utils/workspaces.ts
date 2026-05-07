@@ -65,7 +65,7 @@ export function workspaceLabelForEntry(entry: Pick<VaultEntry, 'workspace'>): st
 }
 
 export function workspaceDisplayPrefix(entry: Pick<VaultEntry, 'workspace'>): string | null {
-  const workspace = workspaceForEntry(entry)
+  const workspace = entry.workspace ?? null
   return workspace ? `${workspace.label} / ` : null
 }
 

@@ -551,6 +551,7 @@ function usePersistedVaultState(onSwitchRef: MutableRefObject<() => void>): Pers
   return {
     defaultAvailable,
     defaultPath,
+    defaultWorkspacePath,
     extraVaults,
     hiddenDefaults,
     lastPersistedSnapshotRef,

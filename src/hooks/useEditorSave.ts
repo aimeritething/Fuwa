@@ -243,7 +243,7 @@ function usePendingContentScopeReset({
 }: {
   cancelAutoSave: () => void
   pendingContentRef: MutableRefObject<PendingContent | null>
-  persistenceScope?: string
+  persistenceScope?: string | readonly string[]
 }) {
   const previousScopeRef = useRef(persistenceScope)
 

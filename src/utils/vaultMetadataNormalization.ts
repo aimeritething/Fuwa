@@ -118,6 +118,27 @@ function normalizeFileKind(value: unknown): VaultEntry['fileKind'] {
   return undefined
 }
 
+function normalizeWorkspaceIdentity(value: unknown): WorkspaceIdentity | undefined {
+  const source = recordFrom(value)
+  const id = stringFrom(source.id).trim()
+  const label = stringFrom(source.label).trim()
+  const alias = stringFrom(source.alias).trim()
+  const path = stringFrom(source.path).trim()
+  if (!id || !label || !alias || !path) return undefined
+  return {
+    id,
+    label,
+    alias,
+    path,
+    shortLabel: stringFrom(source.shortLabel).trim() || label.slice(0, 2).toUpperCase(),
+    color: nullableStringFrom(source.color),
+    icon: nullableStringFrom(source.icon),
+    mounted: booleanFrom(source.mounted, true),
+    available: booleanFrom(source.available, true),
+    defaultForNewNotes: booleanFrom(source.defaultForNewNotes),
+  }
+}
+
 function normalizeFilterGroup(value: unknown): FilterGroup {
   const source = recordFrom(value)
   if (Array.isArray(source.all)) return { all: source.all as FilterNode[] }
@@ -146,7 +167,7 @@ function normalizeVaultEntryRecord({ rawEntry, vaultPath, index, workspace }: En
     path,
     filename,
     title,
-    workspace: workspace ?? (isRecord(source.workspace) ? source.workspace as WorkspaceIdentity : undefined),
+    workspace: workspace ?? normalizeWorkspaceIdentity(source.workspace),
     isA: nullableStringFrom(source.isA),
     aliases: stringArrayFrom(source.aliases),
     belongsTo: stringArrayFrom(source.belongsTo),
