@@ -20,67 +20,17 @@ where
         request.system_prompt.as_deref(),
     );
 
-    let mut command = crate::hidden_command(&binary);
-    crate::cli_agent_runtime::configure_agent_command_environment(&mut command, &binary);
-    command
-        .arg("chat")
-        .arg("--no-interactive")
-        .arg("--trust-all-tools")
-        .current_dir(&request.vault_path)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
+    let mut child = spawn_kiro_process(&binary, &request.vault_path)?;
+    let prompt_handle = write_prompt_async(child.stdin.take().ok_or("No stdin handle")?, prompt);
 
-    let mut child = command
-        .spawn()
-        .map_err(|e| format!("Failed to spawn kiro-cli: {e}"))?;
-
-    // Write prompt from a separate thread to avoid deadlock when prompt > pipe buffer (64KB)
-    let stdin = child.stdin.take().ok_or("No stdin handle")?;
-    let prompt_handle = std::thread::spawn(move || {
-        use std::io::Write;
-        let mut stdin = stdin;
-        let _ = stdin.write_all(prompt.as_bytes());
-    });
-
-    let session_id = format!("kiro-{}-{}", std::process::id(), std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0));
+    let session_id = generate_session_id();
     emit(AiAgentStreamEvent::Init {
         session_id: session_id.clone(),
     });
 
-    let stdout = child.stdout.take().ok_or("No stdout handle")?;
-    let reader = std::io::BufReader::new(stdout);
+    stream_stdout(&mut child, &mut emit);
 
-    for line in reader.lines() {
-        let line = match line {
-            Ok(l) => l,
-            Err(e) => {
-                emit(AiAgentStreamEvent::Error {
-                    message: format!("Read error: {e}"),
-                });
-                break;
-            }
-        };
-
-        if !line.is_empty() {
-            let clean = strip_ansi_codes(&line);
-            emit(AiAgentStreamEvent::TextDelta {
-                text: format!("{clean}\n"),
-            });
-        } else {
-            emit(AiAgentStreamEvent::TextDelta {
-                text: "\n".to_string(),
-            });
-        }
-    }
-
-    let stderr_output = child
-        .stderr
-        .take()
-        .and_then(|stderr| std::io::read_to_string(stderr).ok())
-        .unwrap_or_default();
-
+    let stderr_output = collect_stderr(&mut child);
     let _ = prompt_handle.join();
     let status = child.wait().map_err(|e| format!("Wait failed: {e}"))?;
     if !status.success() {
@@ -91,6 +41,73 @@ where
 
     emit(AiAgentStreamEvent::Done);
     Ok(session_id)
+}
+
+fn spawn_kiro_process(binary: &Path, vault_path: &str) -> Result<std::process::Child, String> {
+    let mut command = crate::hidden_command(binary);
+    crate::cli_agent_runtime::configure_agent_command_environment(&mut command, binary);
+    command
+        .arg("chat")
+        .arg("--no-interactive")
+        .arg("--trust-all-tools")
+        .current_dir(vault_path)
+        .stdin(Stdio::piped())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+    command.spawn().map_err(|e| format!("Failed to spawn kiro-cli: {e}"))
+}
+
+fn write_prompt_async(stdin: std::process::ChildStdin, prompt: String) -> std::thread::JoinHandle<()> {
+    std::thread::spawn(move || {
+        use std::io::Write;
+        let mut stdin = stdin;
+        let _ = stdin.write_all(prompt.as_bytes());
+    })
+}
+
+fn generate_session_id() -> String {
+    let ts = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis())
+        .unwrap_or(0);
+    format!("kiro-{}-{}", std::process::id(), ts)
+}
+
+fn stream_stdout<F>(child: &mut std::process::Child, emit: &mut F)
+where
+    F: FnMut(AiAgentStreamEvent),
+{
+    let Some(stdout) = child.stdout.take() else { return };
+    let reader = std::io::BufReader::new(stdout);
+
+    for line in reader.lines() {
+        match line {
+            Ok(l) if !l.is_empty() => {
+                emit(AiAgentStreamEvent::TextDelta {
+                    text: format!("{}\n", strip_ansi_codes(&l)),
+                });
+            }
+            Ok(_) => {
+                emit(AiAgentStreamEvent::TextDelta {
+                    text: "\n".to_string(),
+                });
+            }
+            Err(e) => {
+                emit(AiAgentStreamEvent::Error {
+                    message: format!("Read error: {e}"),
+                });
+                break;
+            }
+        }
+    }
+}
+
+fn collect_stderr(child: &mut std::process::Child) -> String {
+    child
+        .stderr
+        .take()
+        .and_then(|stderr| std::io::read_to_string(stderr).ok())
+        .unwrap_or_default()
 }
 
 fn ensure_mcp_config(vault_path: &str) -> Result<(), String> {
