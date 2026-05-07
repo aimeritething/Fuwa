@@ -4,6 +4,11 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - ".husky/**"
+      - ".github/workflows/deploy-docs.yml"
+      - ".github/workflows/release.yml"
+      - "site/**"
 
 env:
   # Bump this when Tauri/Rust target artifacts capture stale absolute paths.

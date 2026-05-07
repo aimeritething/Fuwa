@@ -95,12 +95,43 @@ echo "================================================"
 # ── Detect what changed ─────────────────────────────────────────────────
 PUSH_TARGET=$(git rev-parse @{push} 2>/dev/null || echo "")
 RUST_CHANGED=true
+APP_CHANGED=true
+SITE_CHANGED=false
 
 if [ -n "$PUSH_TARGET" ]; then
   CHANGED=$(git diff --name-only "$PUSH_TARGET"..HEAD)
+  APP_CHANGED=false
   if ! echo "$CHANGED" | grep -qE '^(src-tauri/|Cargo)'; then
     RUST_CHANGED=false
   fi
+  for FILE in $CHANGED; do
+    case "$FILE" in
+      site/*)
+        SITE_CHANGED=true
+        ;;
+      .github/workflows/*|.husky/*|docs/*|*.md)
+        ;;
+      *)
+        APP_CHANGED=true
+        ;;
+    esac
+  done
+fi
+
+if [ "$APP_CHANGED" = false ]; then
+  if [ "$SITE_CHANGED" = true ]; then
+    echo ""
+    echo "📚 Docs-only push detected; running docs build..."
+    pnpm docs:build
+    echo "  ✅ Docs build OK"
+  else
+    echo ""
+    echo "⏭️  App checks skipped (docs/workflow/hooks only)"
+  fi
+  ELAPSED=$(($(date +%s) - START_TIME))
+  echo ""
+  echo "✅ Pre-push passed in ${ELAPSED}s"
+  exit 0
 fi
 
 # ── 0. TypeScript + Vite build ──────────────────────────────────────────

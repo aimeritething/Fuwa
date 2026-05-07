@@ -1,15 +1,91 @@
 <script setup lang="ts">
 import DefaultTheme from "vitepress/theme";
-import { onBeforeUnmount, onMounted, watchEffect } from "vue";
+import { onBeforeUnmount, onMounted, ref, watchEffect } from "vue";
 import { useData } from "vitepress";
 
 const { frontmatter } = useData();
-const githubStars = "9,946";
+const fallbackGithubStars = "9,946";
+const githubStars = ref(fallbackGithubStars);
+const githubStarsCacheKey = "tolaria:github-stars";
+const githubStarsCacheTtlMs = 60 * 60 * 1000;
+const githubRepoApiUrl = "https://api.github.com/repos/refactoringhq/tolaria";
+
+type GithubStarsCache = {
+  stars: number;
+  savedAt: number;
+};
+
+const formatGithubStars = (stars: number) =>
+  new Intl.NumberFormat("en-US").format(stars);
 
 const scrollClass = "tolaria-scrolled";
 const landingPageClass = "tolaria-landing-page";
 const updateScrollClass = () => {
   document.documentElement.classList.toggle(scrollClass, window.scrollY > 8);
+};
+
+const readCachedGithubStars = (): GithubStarsCache | null => {
+  try {
+    const rawCache = window.localStorage.getItem(githubStarsCacheKey);
+    if (!rawCache) {
+      return null;
+    }
+
+    const parsedCache = JSON.parse(rawCache) as Partial<GithubStarsCache>;
+    if (
+      typeof parsedCache.stars !== "number" ||
+      typeof parsedCache.savedAt !== "number" ||
+      !Number.isFinite(parsedCache.stars) ||
+      !Number.isFinite(parsedCache.savedAt)
+    ) {
+      return null;
+    }
+
+    return {
+      stars: parsedCache.stars,
+      savedAt: parsedCache.savedAt,
+    };
+  } catch {
+    return null;
+  }
+};
+
+const updateGithubStars = async () => {
+  const cachedStars = readCachedGithubStars();
+  if (cachedStars) {
+    githubStars.value = formatGithubStars(cachedStars.stars);
+    if (Date.now() - cachedStars.savedAt < githubStarsCacheTtlMs) {
+      return;
+    }
+  }
+
+  try {
+    const response = await fetch(githubRepoApiUrl, {
+      headers: { Accept: "application/vnd.github+json" },
+    });
+    if (!response.ok) {
+      return;
+    }
+
+    const repo = (await response.json()) as { stargazers_count?: unknown };
+    if (
+      typeof repo.stargazers_count !== "number" ||
+      !Number.isFinite(repo.stargazers_count)
+    ) {
+      return;
+    }
+
+    window.localStorage.setItem(
+      githubStarsCacheKey,
+      JSON.stringify({
+        stars: repo.stargazers_count,
+        savedAt: Date.now(),
+      } satisfies GithubStarsCache),
+    );
+    githubStars.value = formatGithubStars(repo.stargazers_count);
+  } catch {
+    // Keep the cached or bundled fallback count.
+  }
 };
 
 watchEffect(() => {
@@ -25,6 +101,7 @@ watchEffect(() => {
 
 onMounted(() => {
   updateScrollClass();
+  void updateGithubStars();
   window.addEventListener("scroll", updateScrollClass, { passive: true });
 });
 
