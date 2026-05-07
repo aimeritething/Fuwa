@@ -8,6 +8,7 @@ pub enum AiAgentId {
     Opencode,
     Pi,
     Gemini,
+    Kiro,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
@@ -31,6 +32,7 @@ pub struct AiAgentsStatus {
     pub opencode: AiAgentAvailability,
     pub pi: AiAgentAvailability,
     pub gemini: AiAgentAvailability,
+    pub kiro: AiAgentAvailability,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -84,6 +86,7 @@ pub fn get_ai_agents_status() -> AiAgentsStatus {
         opencode: crate::opencode_cli::check_cli(),
         pi: crate::pi_cli::check_cli(),
         gemini: crate::gemini_cli::check_cli(),
+        kiro: crate::kiro_cli::check_cli(),
     }
 }
 
@@ -141,6 +144,15 @@ where
                 permission_mode,
             };
             crate::gemini_cli::run_agent_stream(mapped, emit)
+        }
+        AiAgentId::Kiro => {
+            let mapped = crate::cli_agent_runtime::AgentStreamRequest {
+                message: request.message,
+                system_prompt: request.system_prompt,
+                vault_path: request.vault_path,
+                permission_mode,
+            };
+            crate::kiro_cli::run_agent_stream(mapped, emit)
         }
     }
 }

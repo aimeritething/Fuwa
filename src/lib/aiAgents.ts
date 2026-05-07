@@ -1,4 +1,4 @@
-export type AiAgentId = 'claude_code' | 'codex' | 'opencode' | 'pi' | 'gemini'
+export type AiAgentId = 'claude_code' | 'codex' | 'opencode' | 'pi' | 'gemini' | 'kiro'
 
 export type AiAgentStatus = 'checking' | 'installed' | 'missing'
 export type AiAgentReadiness = 'checking' | 'ready' | 'missing'
@@ -50,6 +50,12 @@ export const AI_AGENT_DEFINITIONS: readonly AiAgentDefinition[] = [
     shortLabel: 'Gemini',
     installUrl: 'https://google-gemini.github.io/gemini-cli/',
   },
+  {
+    id: 'kiro',
+    label: 'Kiro',
+    shortLabel: 'Kiro',
+    installUrl: 'https://kiro.dev/docs/cli',
+  },
 ] as const
 
 export function createAiAgentAvailability(status: AiAgentStatus = 'checking', version: string | null = null): AiAgentAvailability {
@@ -63,6 +69,7 @@ export function createCheckingAiAgentsStatus(): AiAgentsStatus {
     opencode: createAiAgentAvailability(),
     pi: createAiAgentAvailability(),
     gemini: createAiAgentAvailability(),
+    kiro: createAiAgentAvailability(),
   }
 }
 
@@ -73,6 +80,7 @@ export function createMissingAiAgentsStatus(): AiAgentsStatus {
     opencode: createAiAgentAvailability('missing'),
     pi: createAiAgentAvailability('missing'),
     gemini: createAiAgentAvailability('missing'),
+    kiro: createAiAgentAvailability('missing'),
   }
 }
 
@@ -104,6 +112,7 @@ export function normalizeAiAgentsStatus(payload: Partial<Record<AiAgentId, { ins
     opencode: normalizeAvailability(payload?.opencode),
     pi: normalizeAvailability(payload?.pi),
     gemini: normalizeAvailability(payload?.gemini),
+    kiro: normalizeAvailability(payload?.kiro),
   }
 }
 

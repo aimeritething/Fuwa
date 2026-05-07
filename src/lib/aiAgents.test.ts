@@ -42,6 +42,7 @@ describe('aiAgents helpers', () => {
     expect(getNextAiAgentId('codex')).toBe('opencode')
     expect(getNextAiAgentId('opencode')).toBe('pi')
     expect(getNextAiAgentId('pi')).toBe('gemini')
-    expect(getNextAiAgentId('gemini')).toBe('claude_code')
+    expect(getNextAiAgentId('gemini')).toBe('kiro')
+    expect(getNextAiAgentId('kiro')).toBe('claude_code')
   })
 })
