@@ -245,6 +245,35 @@ describe('useImageDrop — Tauri native drag-drop', () => {
     expect(result.current.isDragOver).toBe(false)
   })
 
+  it('copies native image drops into the vault and emits attachment asset URLs', async () => {
+    const onImageUrl = vi.fn()
+    const { invoke, convertFileSrc } = await import('@tauri-apps/api/core')
+    vi.mocked(invoke).mockClear()
+    vi.mocked(convertFileSrc).mockClear()
+    vi.mocked(invoke).mockResolvedValue('/vault/attachments/123-photo.png')
+    vi.mocked(convertFileSrc).mockReturnValue('asset://localhost/vault/attachments/123-photo.png')
+    renderImageDropTauri({ onImageUrl, vaultPath: '/vault' })
+
+    await waitForNativeDropListeners()
+
+    act(() => {
+      emitNativeDropEvent({
+        type: 'drop',
+        paths: ['/tmp/photo.png', '/tmp/readme.txt'],
+        position: { x: 100, y: 100 },
+      })
+    })
+
+    await waitFor(() => {
+      expect(onImageUrl).toHaveBeenCalledWith('asset://localhost/vault/attachments/123-photo.png')
+    })
+    expect(invoke).toHaveBeenCalledWith('copy_image_to_vault', {
+      vaultPath: '/vault',
+      sourcePath: '/tmp/photo.png',
+    })
+    expect(invoke).toHaveBeenCalledTimes(1)
+  })
+
   it('resets isDragOver on Tauri leave event', async () => {
     const { result } = renderImageDropTauri()
 

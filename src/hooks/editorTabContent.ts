@@ -1,5 +1,6 @@
 import { splitFrontmatter } from '../utils/wikilinks'
 import { slugifyNoteStem } from '../utils/noteSlug'
+import { isTauriAssetUrl } from '../utils/vaultAttachments'
 
 type MarkdownContent = string
 type FilePath = string
@@ -16,7 +17,6 @@ type ParsedBlock = {
   children?: unknown[]
 }
 
-const LOCAL_FILE_URL_PREFIXES = ['asset://localhost/', 'http://asset.localhost/']
 const BROKEN_IMAGE_FALLBACK_MAX_WIDTH = 32
 
 export function extractEditorBody(rawFileContent: MarkdownContent): MarkdownContent {
@@ -78,8 +78,7 @@ function isParsedBlock(value: unknown): value is ParsedBlock {
 
 function hasLocalFileUrl(block: ParsedBlock): boolean {
   const url = block.props?.url
-  return typeof url === 'string'
-    && LOCAL_FILE_URL_PREFIXES.some(prefix => url.startsWith(prefix))
+  return typeof url === 'string' && isTauriAssetUrl({ url })
 }
 
 function hasSyntheticPreviewWidth(block: ParsedBlock): boolean {

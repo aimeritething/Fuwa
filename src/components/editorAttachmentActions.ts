@@ -3,7 +3,7 @@ import { normalizeExternalUrl, openExternalUrl, openLocalFile } from '../utils/u
 import {
   isVaultAttachmentUrl,
   resolveVaultAttachmentPath,
-} from '../utils/vaultAttachmentUrls'
+} from '../utils/vaultAttachments'
 
 const FILE_BLOCK_ACTION_SELECTOR = '[data-file-block] .bn-file-name-with-icon'
 const FILE_BLOCK_CONTAINER_SELECTOR = '[data-node-type="blockContainer"][data-id]'
