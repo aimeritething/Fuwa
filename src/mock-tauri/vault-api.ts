@@ -26,8 +26,8 @@ async function checkVaultApi(): Promise<boolean> {
 }
 
 interface VaultApiGetRequest {
+  body: Record<string, unknown>
   kind: 'all-content' | 'content' | 'entry' | 'list' | 'search'
-  params: URLSearchParams
 }
 
 interface VaultApiPostRequest {
@@ -56,15 +56,13 @@ function buildListRequest(args: Record<string, unknown>, reload: boolean): Vault
   if (!path) return null
 
   lastVaultPath = path
-  const params = new URLSearchParams({ path })
-  if (reload) params.set('reload', '1')
-  return { kind: 'list', params }
+  return { kind: 'list', body: { path, reload } }
 }
 
 function buildPathQueryRequest(cmd: PathQueryCommand, args: Record<string, unknown>): VaultApiRequest | null {
   const path = argText(args, 'path')
   if (!path) return null
-  return { kind: pathQueryKind(cmd), params: new URLSearchParams({ path }) }
+  return { kind: pathQueryKind(cmd), body: { path } }
 }
 
 function buildRequiredPostRequest(
@@ -88,7 +86,7 @@ function buildSearchRequest(args: Record<string, unknown>): VaultApiRequest | nu
   if (!query || !lastVaultPath) return null
 
   const mode = argText(args, 'mode') ?? 'all'
-  return { kind: 'search', params: new URLSearchParams({ mode, query, vault_path: lastVaultPath }) }
+  return { kind: 'search', body: { mode, query, vault_path: lastVaultPath } }
 }
 
 function isPathQueryCommand(cmd: string): cmd is PathQueryCommand {
@@ -138,7 +136,7 @@ function buildVaultApiRequest(cmd: string, args?: Record<string, unknown>): Vaul
   return buildPostRequest(cmd, args)
 }
 
-function buildFetchOptions(request: VaultApiPostRequest): RequestInit {
+function buildFetchOptions(request: { body: Record<string, unknown> }): RequestInit {
   return {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -152,31 +150,31 @@ async function fetchVaultApiResponse(request: VaultApiRequest) {
   return res.json()
 }
 
-function queryString(params: URLSearchParams): string {
-  return params.toString()
-}
-
 function isGetRequest(request: VaultApiRequest): request is VaultApiGetRequest {
-  return 'params' in request
+  return request.kind === 'all-content'
+    || request.kind === 'content'
+    || request.kind === 'entry'
+    || request.kind === 'list'
+    || request.kind === 'search'
 }
 
 function fetchVaultApiGetRequest(request: VaultApiGetRequest): Promise<Response> {
   if (request.kind === 'all-content') {
-    return fetch(`/api/vault/all-content?${queryString(request.params)}`, { method: 'GET' })
+    return fetch('/api/vault/all-content', buildFetchOptions(request))
   }
   if (request.kind === 'content') {
-    return fetch(`/api/vault/content?${queryString(request.params)}`, { method: 'GET' })
+    return fetch('/api/vault/content', buildFetchOptions(request))
   }
   if (request.kind === 'entry') {
-    return fetch(`/api/vault/entry?${queryString(request.params)}`, { method: 'GET' })
+    return fetch('/api/vault/entry', buildFetchOptions(request))
   }
   if (request.kind === 'list') {
-    return fetch(`/api/vault/list?${queryString(request.params)}`, { method: 'GET' })
+    return fetch('/api/vault/list', buildFetchOptions(request))
   }
   if (request.kind === 'search') {
-    return fetch(`/api/vault/search?${queryString(request.params)}`, { method: 'GET' })
+    return fetch('/api/vault/search', buildFetchOptions(request))
   }
-  return fetch(`/api/vault/list?${queryString(request.params)}`, { method: 'GET' })
+  return fetch('/api/vault/list', buildFetchOptions(request))
 }
 
 function fetchVaultApiPostRequest(request: VaultApiPostRequest): Promise<Response> {

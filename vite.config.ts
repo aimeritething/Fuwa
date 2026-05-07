@@ -99,12 +99,6 @@ interface SearchRequestInput {
   vaultPath: string
 }
 
-interface SearchResponseInput {
-  mode: string
-  query: string
-  results: VaultSearchResult[]
-}
-
 interface VaultCommandPayload {
   args?: Record<string, unknown>
   cmd?: string
@@ -132,8 +126,10 @@ interface CommandResponseInput {
   statusCode?: number
 }
 
-interface ExistingQueryPathInput {
-  key: string
+interface VaultReadCommandInput {
+  cmd: string
+  pathname: string
+  req: IncomingMessage
   res: ServerResponse
   url: URL
 }
@@ -410,15 +406,6 @@ function sendJson(res: ServerResponse, payload: unknown, statusCode = 200): void
   res.end(JSON.stringify(payload))
 }
 
-function readExistingQueryPath({ key, res, url }: ExistingQueryPathInput): string | null {
-  const filePath = url.searchParams.get(key)
-  if (!filePath || !pathExists(filePath)) {
-    sendJson(res, { error: 'Invalid or missing path' }, 400)
-    return null
-  }
-  return filePath
-}
-
 function commandString({ args, key }: CommandStringInput): string | null {
   const value = Reflect.get(args, key)
   return typeof value === 'string' && value.length > 0 ? value : null
@@ -561,6 +548,40 @@ function vaultCommandContext(payload: VaultCommandPayload): VaultCommandContext 
   return { cmd: payload.cmd, args: payload.args }
 }
 
+const VAULT_ENDPOINT_ARG_KEYS = ['path', 'vault_path', 'query', 'mode', 'reload'] as const
+
+function readVaultQueryArgs(url: URL): Record<string, unknown> {
+  const args: Record<string, unknown> = {}
+  for (const key of VAULT_ENDPOINT_ARG_KEYS) {
+    const value = url.searchParams.get(key)
+    if (value !== null) Reflect.set(args, key, value)
+  }
+  return args
+}
+
+async function readVaultEndpointArgs(url: URL, req: IncomingMessage): Promise<Record<string, unknown>> {
+  if (req.method === 'POST') return readJsonBody<Record<string, unknown>>(req)
+  return readVaultQueryArgs(url)
+}
+
+async function handleVaultReadCommand(
+  { cmd, pathname, req, res, url }: VaultReadCommandInput,
+): Promise<boolean> {
+  if (url.pathname !== pathname) return false
+  if (req.method !== 'GET' && req.method !== 'POST') {
+    sendJson(res, { error: 'Unsupported method' }, 405)
+    return true
+  }
+
+  try {
+    const response = runVaultCommand({ args: await readVaultEndpointArgs(url, req), cmd })
+    sendJson(res, response.payload, response.statusCode)
+  } catch (err: unknown) {
+    sendCaughtError(res, err, 'Vault read failed')
+  }
+  return true
+}
+
 function updateTitleWikilinks({ excludePath, oldTitle, vaultPath }: TitleWikilinkUpdateInput): number {
   const newPathStem = path.relative(vaultPath, excludePath).replace(/\.md$/i, '')
   const oldTargets = collectLegacyWikilinkTargets({ oldPath: excludePath, oldTitle, vaultPath })
@@ -609,63 +630,24 @@ function handleVaultPing(url: URL, res: ServerResponse): boolean {
   return true
 }
 
-function handleVaultList(url: URL, res: ServerResponse): boolean {
-  if (url.pathname !== '/api/vault/list') return false
-  const dirPath = readExistingQueryPath({ key: 'path', res, url })
-  if (!dirPath) return true
-  const entries = findMarkdownFiles(dirPath).map(parseMarkdownFile).filter(Boolean)
-  sendJson(res, entries)
-  return true
+async function handleVaultList(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  return handleVaultReadCommand({ cmd: 'list_vault', pathname: '/api/vault/list', req, res, url })
 }
 
-function handleVaultContent(url: URL, res: ServerResponse): boolean {
-  if (url.pathname !== '/api/vault/content') return false
-  const filePath = readExistingQueryPath({ key: 'path', res, url })
-  if (!filePath) return true
-  sendJson(res, { content: readUtf8File(filePath) })
-  return true
+async function handleVaultContent(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  return handleVaultReadCommand({ cmd: 'get_note_content', pathname: '/api/vault/content', req, res, url })
 }
 
-function handleVaultAllContent(url: URL, res: ServerResponse): boolean {
-  if (url.pathname !== '/api/vault/all-content') return false
-  const dirPath = readExistingQueryPath({ key: 'path', res, url })
-  if (!dirPath) return true
-  const contentMap: Record<string, string> = {}
-  for (const filePath of findMarkdownFiles(dirPath)) {
-    try {
-      contentMap[filePath] = readUtf8File(filePath)
-    } catch {
-      // Skip unreadable files.
-    }
-  }
-  sendJson(res, contentMap)
-  return true
+async function handleVaultAllContent(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  return handleVaultReadCommand({ cmd: 'get_all_content', pathname: '/api/vault/all-content', req, res, url })
 }
 
-function handleVaultEntry(url: URL, res: ServerResponse): boolean {
-  if (url.pathname !== '/api/vault/entry') return false
-  const filePath = readExistingQueryPath({ key: 'path', res, url })
-  if (!filePath) return true
-  sendJson(res, parseMarkdownFile(filePath))
-  return true
+async function handleVaultEntry(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  return handleVaultReadCommand({ cmd: 'reload_vault_entry', pathname: '/api/vault/entry', req, res, url })
 }
 
-function handleVaultSearch(url: URL, res: ServerResponse): boolean {
-  if (url.pathname !== '/api/vault/search') return false
-  const vaultPath = url.searchParams.get('vault_path')
-  const query = (url.searchParams.get('query') ?? '').toLowerCase()
-  const mode = url.searchParams.get('mode') ?? 'all'
-  if (!vaultPath || !query) {
-    sendVaultSearchResponse(res, { results: [], query, mode })
-    return true
-  }
-
-  sendVaultSearchResponse(res, {
-    results: collectVaultSearchResults({ vaultPath, query }),
-    query,
-    mode,
-  })
-  return true
+async function handleVaultSearch(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
+  return handleVaultReadCommand({ cmd: 'search_vault', pathname: '/api/vault/search', req, res, url })
 }
 
 function collectVaultSearchResults({ vaultPath, query }: SearchRequestInput): VaultSearchResult[] {
@@ -685,10 +667,6 @@ function entryMatchesSearch({ entry, rawContent, query }: SearchEntryInput): boo
 
 function searchResultFromEntry(entry: VaultEntry): VaultSearchResult {
   return { title: entry.title, path: entry.path, snippet: entry.snippet, score: 1.0, note_type: entry.isA }
-}
-
-function sendVaultSearchResponse(res: ServerResponse, { results, query, mode }: SearchResponseInput): void {
-  sendJson(res, { results, elapsed_ms: results.length > 0 ? 1 : 0, query, mode })
 }
 
 async function handleVaultSave(url: URL, req: IncomingMessage, res: ServerResponse): Promise<boolean> {
@@ -842,11 +820,11 @@ async function handleVaultApiRequest(req: IncomingMessage, res: ServerResponse):
   const handlers = [
     () => Promise.resolve(handleVaultPing(url, res)),
     () => handleVaultCommand(url, req, res),
-    () => Promise.resolve(handleVaultList(url, res)),
-    () => Promise.resolve(handleVaultContent(url, res)),
-    () => Promise.resolve(handleVaultAllContent(url, res)),
-    () => Promise.resolve(handleVaultEntry(url, res)),
-    () => Promise.resolve(handleVaultSearch(url, res)),
+    () => handleVaultList(url, req, res),
+    () => handleVaultContent(url, req, res),
+    () => handleVaultAllContent(url, req, res),
+    () => handleVaultEntry(url, req, res),
+    () => handleVaultSearch(url, req, res),
     () => handleVaultSave(url, req, res),
     () => handleVaultRename(url, req, res),
     () => handleVaultRenameFilename(url, req, res),

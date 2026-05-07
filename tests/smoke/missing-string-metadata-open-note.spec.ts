@@ -59,6 +59,17 @@ function appendMalformedReloadEntry(entries: Array<Record<string, unknown>>) {
   })
 }
 
+function readRouteJsonBody(route: { request: () => { postDataJSON: () => unknown } }): Record<string, unknown> {
+  try {
+    const body = route.request().postDataJSON()
+    return body && typeof body === 'object' && !Array.isArray(body)
+      ? body as Record<string, unknown>
+      : {}
+  } catch {
+    return {}
+  }
+}
+
 async function reloadVaultFromCommandPalette(page: Page): Promise<void> {
   await openCommandPalette(page)
   await executeCommand(page, 'Reload Vault')
@@ -91,11 +102,11 @@ test.beforeEach(async ({ page }, testInfo) => {
     const response = await route.fetch()
     const entries = await response.json() as Array<Record<string, unknown>>
     const scrubbedEntries = removeAlphaProjectStringMetadata(entries)
+    const body = readRouteJsonBody(route)
+    const isReload = requestUrl.searchParams.get('reload') === '1' || body.reload === true
     await route.fulfill({
       response,
-      json: requestUrl.searchParams.get('reload') === '1'
-        ? appendMalformedReloadEntry(scrubbedEntries)
-        : scrubbedEntries,
+      json: isReload ? appendMalformedReloadEntry(scrubbedEntries) : scrubbedEntries,
     })
   })
   await openFixtureVaultDesktopHarness(page, tempVaultDir, {

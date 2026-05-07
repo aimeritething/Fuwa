@@ -13,6 +13,10 @@ function requestUrl(input: RequestInfo | URL) {
   return input instanceof Request ? input.url : String(input)
 }
 
+function requestBody(init?: RequestInit) {
+  return JSON.parse(String(init?.body)) as Record<string, unknown>
+}
+
 describe('tryVaultApi', () => {
   afterEach(() => {
     vi.resetModules()
@@ -22,12 +26,13 @@ describe('tryVaultApi', () => {
 
   it('retries vault API discovery after an unavailable response', async () => {
     let vaultApiOnline = false
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = requestUrl(input)
       if (url === '/api/vault/ping') {
         return jsonResponse({ ok: vaultApiOnline }, vaultApiOnline ? 200 : 503)
       }
-      if (url === '/api/vault/list?path=%2Ffixture') {
+      if (url === '/api/vault/list') {
+        expect(requestBody(init)).toEqual({ path: '/fixture', reload: false })
         return jsonResponse([{ title: 'Alpha Project' }])
       }
       throw new Error(`Unexpected fetch: ${url}`)
@@ -45,12 +50,13 @@ describe('tryVaultApi', () => {
   })
 
   it('unwraps note content responses from the vault API', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = requestUrl(input)
       if (url === '/api/vault/ping') {
         return jsonResponse({ ok: true })
       }
-      if (url === '/api/vault/content?path=%2Ffixture%2Falpha.md') {
+      if (url === '/api/vault/content') {
+        expect(requestBody(init)).toEqual({ path: '/fixture/alpha.md' })
         return jsonResponse({ content: '# Alpha Project' })
       }
       throw new Error(`Unexpected fetch: ${url}`)
@@ -64,12 +70,13 @@ describe('tryVaultApi', () => {
   })
 
   it('validates cached note content through the vault API', async () => {
-    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = requestUrl(input)
       if (url === '/api/vault/ping') {
         return jsonResponse({ ok: true })
       }
-      if (url === '/api/vault/content?path=%2Ffixture%2Falpha.md') {
+      if (url === '/api/vault/content') {
+        expect(requestBody(init)).toEqual({ path: '/fixture/alpha.md' })
         return jsonResponse({ content: '# Alpha Project' })
       }
       throw new Error(`Unexpected fetch: ${url}`)
