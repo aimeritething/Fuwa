@@ -540,6 +540,7 @@ mod tests {
         let list = VaultList {
             vaults: Vec::new(),
             active_vault: Some("/tmp/Selected Vault".to_string()),
+            default_workspace_path: None,
             hidden_defaults: Vec::new(),
         };
 
@@ -555,6 +556,7 @@ mod tests {
         let list = VaultList {
             vaults: Vec::new(),
             active_vault: Some("  ".to_string()),
+            default_workspace_path: None,
             hidden_defaults: Vec::new(),
         };
 

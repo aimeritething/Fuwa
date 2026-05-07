@@ -1,4 +1,4 @@
-import type { FilterGroup, FilterNode, VaultEntry, ViewDefinition, ViewFile } from '../types'
+import type { FilterGroup, FilterNode, VaultEntry, ViewDefinition, ViewFile, WorkspaceIdentity } from '../types'
 
 type UnknownRecord = Record<string, unknown>
 
@@ -6,6 +6,7 @@ interface EntryNormalizationArgs {
   rawEntry: unknown
   vaultPath: string
   index: number
+  workspace?: WorkspaceIdentity
 }
 
 interface EntryPathArgs {
@@ -129,7 +130,7 @@ function fallbackViewName(filename: string, index: number): string {
   return stem && stem !== `view-${index + 1}` ? stem : `View ${index + 1}`
 }
 
-function normalizeVaultEntryRecord({ rawEntry, vaultPath, index }: EntryNormalizationArgs): VaultEntry {
+function normalizeVaultEntryRecord({ rawEntry, vaultPath, index, workspace }: EntryNormalizationArgs): VaultEntry {
   const source = recordFrom(rawEntry)
   const filename = fallbackEntryFilename(source, index)
   const path = resolveEntryPath({
@@ -145,6 +146,7 @@ function normalizeVaultEntryRecord({ rawEntry, vaultPath, index }: EntryNormaliz
     path,
     filename,
     title,
+    workspace: workspace ?? (isRecord(source.workspace) ? source.workspace as WorkspaceIdentity : undefined),
     isA: nullableStringFrom(source.isA),
     aliases: stringArrayFrom(source.aliases),
     belongsTo: stringArrayFrom(source.belongsTo),
@@ -212,15 +214,15 @@ function normalizeViewFile({ rawView, index }: ViewNormalizationArgs): ViewFile 
   }
 }
 
-export function normalizeVaultEntries(rawEntries: unknown, vaultPath: string): VaultEntry[] {
+export function normalizeVaultEntries(rawEntries: unknown, vaultPath: string, workspace?: WorkspaceIdentity): VaultEntry[] {
   if (!Array.isArray(rawEntries)) return []
   return rawEntries
     .filter(hasUsablePath)
-    .map((rawEntry, index) => normalizeVaultEntry(rawEntry, vaultPath, index))
+    .map((rawEntry, index) => normalizeVaultEntry(rawEntry, vaultPath, index, workspace))
 }
 
-export function normalizeVaultEntry(rawEntry: unknown, vaultPath = '', index = 0): VaultEntry {
-  return normalizeVaultEntryRecord({ rawEntry, vaultPath, index })
+export function normalizeVaultEntry(rawEntry: unknown, vaultPath = '', index = 0, workspace?: WorkspaceIdentity): VaultEntry {
+  return normalizeVaultEntryRecord({ rawEntry, vaultPath, index, workspace })
 }
 
 export function normalizeViewFiles(rawViews: unknown): ViewFile[] {

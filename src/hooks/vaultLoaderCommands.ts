@@ -1,7 +1,9 @@
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { FolderNode, GitPushResult, VaultEntry, ViewFile } from '../types'
+import type { VaultOption } from '../components/status-bar/types'
 import { normalizeVaultEntries, normalizeViewFiles } from '../utils/vaultMetadataNormalization'
+import { workspaceIdentityFromVault } from '../utils/workspaces'
 
 interface TauriCallOptions {
   command: string
@@ -11,6 +13,11 @@ interface TauriCallOptions {
 
 interface VaultPathOptions {
   vaultPath: string
+}
+
+interface MountedVaultEntriesOptions extends VaultPathOptions {
+  defaultWorkspacePath?: string | null
+  vaults?: VaultOption[]
 }
 
 interface CommitWithPushOptions extends VaultPathOptions {
@@ -52,12 +59,43 @@ function loadVaultEntriesWithCommand({ vaultPath, command }: VaultPathOptions & 
     .then((entries) => normalizeVaultEntries(entries, vaultPath))
 }
 
+function loadWorkspaceEntries(vault: VaultOption, defaultWorkspacePath?: string | null): Promise<VaultEntry[]> {
+  const workspace = workspaceIdentityFromVault(vault, { defaultWorkspacePath })
+  return tauriCall<unknown>({ command: isTauri() ? 'reload_vault' : 'list_vault', tauriArgs: { path: vault.path } })
+    .then((entries) => normalizeVaultEntries(entries, vault.path, workspace))
+}
+
+function uniqueMountedVaults({ vaultPath, vaults = [] }: MountedVaultEntriesOptions): VaultOption[] {
+  const byPath = new Map<string, VaultOption>()
+  for (const vault of vaults) {
+    if (vault.available === false || vault.mounted === false || !vault.path.trim()) continue
+    byPath.set(vault.path, vault)
+  }
+  if (vaultPath.trim() && !byPath.has(vaultPath)) {
+    byPath.set(vaultPath, { label: vaultPath.split('/').filter(Boolean).pop() || 'Workspace', path: vaultPath, mounted: true, available: true })
+  }
+  return [...byPath.values()]
+}
+
+function loadMountedVaultEntries(options: MountedVaultEntriesOptions): Promise<VaultEntry[]> {
+  const mountedVaults = uniqueMountedVaults(options)
+  if (mountedVaults.length <= 1) {
+    const onlyVault = mountedVaults[0]
+    return onlyVault
+      ? loadWorkspaceEntries(onlyVault, options.defaultWorkspacePath)
+      : loadVaultEntries({ vaultPath: options.vaultPath })
+  }
+  return Promise.all(mountedVaults.map((vault) => loadWorkspaceEntries(vault, options.defaultWorkspacePath)))
+    .then((groups) => groups.flat())
+}
+
 function loadVaultEntries({ vaultPath }: VaultPathOptions): Promise<VaultEntry[]> {
   const command = isTauri() ? 'reload_vault' : 'list_vault'
   return loadVaultEntriesWithCommand({ vaultPath, command })
 }
 
-export function reloadVaultEntries({ vaultPath }: VaultPathOptions): Promise<VaultEntry[]> {
+export function reloadVaultEntries({ vaultPath, vaults, defaultWorkspacePath }: MountedVaultEntriesOptions): Promise<VaultEntry[]> {
+  if (vaults?.length) return loadMountedVaultEntries({ vaultPath, vaults, defaultWorkspacePath })
   return loadVaultEntriesWithCommand({ vaultPath, command: 'reload_vault' })
 }
 
@@ -70,9 +108,11 @@ export function loadVaultViews({ vaultPath }: VaultPathOptions): Promise<ViewFil
     .then(normalizeViewFiles)
 }
 
-export async function loadVaultData({ vaultPath }: VaultPathOptions): Promise<LoadedVaultData> {
+export async function loadVaultData({ vaultPath, vaults, defaultWorkspacePath }: MountedVaultEntriesOptions): Promise<LoadedVaultData> {
   if (!isTauri()) console.info('[mock] Using mock Tauri data for browser testing')
-  const entries = await loadVaultEntries({ vaultPath })
+  const entries = vaults?.length
+    ? await loadMountedVaultEntries({ vaultPath, vaults, defaultWorkspacePath })
+    : await loadVaultEntries({ vaultPath })
   console.log(`Vault scan complete: ${entries.length} entries found`)
   return { entries }
 }

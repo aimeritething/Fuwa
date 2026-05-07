@@ -14,6 +14,7 @@ import {
 } from './useNoteRename'
 import { runFrontmatterAndApply, type FrontmatterOpOptions } from './frontmatterOps'
 import { findByNotePath, notePathFilename, notePathsMatch } from '../utils/notePathIdentity'
+import type { VaultOption } from '../components/status-bar/types'
 
 export interface NoteActionsConfig {
   addEntry: (entry: VaultEntry) => void
@@ -25,6 +26,8 @@ export interface NoteActionsConfig {
   setToastMessage: (msg: string | null) => void
   updateEntry: (path: string, patch: Partial<VaultEntry>) => void
   vaultPath: string
+  defaultWorkspacePath?: string | null
+  vaults?: readonly VaultOption[]
   addPendingSave?: (path: string) => void
   removePendingSave?: (path: string) => void
   trackUnsaved?: (path: string) => void
@@ -128,12 +131,13 @@ async function notifyFrontmatterPersisted(config: NoteActionsConfig, key: string
 
 interface NavigateWikilinkParams {
   entries: VaultEntry[]
+  sourceEntry?: VaultEntry
   target: string
   selectNote: (entry: VaultEntry) => void
 }
 
-function navigateWikilink({ entries, target, selectNote }: NavigateWikilinkParams): void {
-  const found = resolveEntry(entries, target)
+function navigateWikilink({ entries, sourceEntry, target, selectNote }: NavigateWikilinkParams): void {
+  const found = resolveEntry(entries, target, sourceEntry)
   if (found) selectNote(found)
   else console.warn(`Navigation target not found: ${target}`)
 }
@@ -366,8 +370,13 @@ export function useNoteActions(config: NoteActionsConfig) {
   )
 
   const handleNavigateWikilink = useCallback(
-    (target: string) => navigateWikilink({ entries, target, selectNote: handleSelectNote }),
-    [entries, handleSelectNote],
+    (target: string) => navigateWikilink({
+      entries,
+      sourceEntry: tabMgmt.tabs.find((tab) => notePathsMatch(tab.entry.path, tabMgmt.activeTabPath))?.entry,
+      target,
+      selectNote: handleSelectNote,
+    }),
+    [entries, handleSelectNote, tabMgmt.activeTabPath, tabMgmt.tabs],
   )
 
   const runFrontmatterOp = useCallback(

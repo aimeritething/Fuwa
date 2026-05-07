@@ -172,6 +172,44 @@ describe('resolveNewNote', () => {
     expect(content).not.toContain('status:')
   })
 
+  it('creates notes in the configured default workspace and keeps its identity', () => {
+    const { entry } = resolveNewNote({
+      title: 'Team Brief',
+      type: 'Note',
+      vaultPath: '/personal',
+      defaultWorkspacePath: '/team',
+      vaults: [
+        { label: 'Personal', path: '/personal', alias: 'personal', available: true, mounted: true },
+        { label: 'Team Notes', path: '/team', alias: 'team', color: 'green', available: true, mounted: true },
+      ],
+    })
+
+    expect(entry.path).toBe('/team/team-brief.md')
+    expect(entry.workspace).toMatchObject({
+      label: 'Team Notes',
+      alias: 'team',
+      path: '/team',
+      color: 'green',
+      defaultForNewNotes: true,
+    })
+  })
+
+  it('falls back to the active workspace when the default workspace is unavailable', () => {
+    const { entry } = resolveNewNote({
+      title: 'Local Brief',
+      type: 'Note',
+      vaultPath: '/personal',
+      defaultWorkspacePath: '/team',
+      vaults: [
+        { label: 'Personal', path: '/personal', alias: 'personal', available: true, mounted: true },
+        { label: 'Team Notes', path: '/team', alias: 'team', available: false, mounted: true },
+      ],
+    })
+
+    expect(entry.path).toBe('/personal/local-brief.md')
+    expect(entry.workspace?.alias).toBe('personal')
+  })
+
   it('applies valued properties and relationships from the type entry to newly created instances', () => {
     const typeEntry = makeEntry({
       title: 'Book',
@@ -223,6 +261,20 @@ describe('resolveNewType', () => {
     const { entry } = resolveNewType({ typeName: '停智慧', vaultPath: '/vault' })
     expect(entry.path).toBe('/vault/停智慧.md')
     expect(entry.filename).toBe('停智慧.md')
+  })
+
+  it('creates type files in the configured default workspace', () => {
+    const { entry } = resolveNewType({
+      typeName: 'Decision',
+      vaultPath: '/personal',
+      defaultWorkspacePath: '/team',
+      vaults: [
+        { label: 'Team Notes', path: '/team', alias: 'team', available: true, mounted: true },
+      ],
+    })
+
+    expect(entry.path).toBe('/team/decision.md')
+    expect(entry.workspace?.alias).toBe('team')
   })
 })
 

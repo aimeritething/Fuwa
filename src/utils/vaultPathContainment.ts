@@ -11,7 +11,10 @@ function compareVaultContainmentPath(path: string, vaultPath: string): [string, 
     : [normalizedPath, normalizedVaultPath]
 }
 
-export function canWritePathToVault(path: string, vaultPath: string): boolean {
+export function canWritePathToVault(path: string, vaultPath: string | readonly string[]): boolean {
+  if (Array.isArray(vaultPath)) {
+    return vaultPath.some((candidate) => canWritePathToVault(path, candidate))
+  }
   const trimmedVaultPath = vaultPath.trim()
   if (!trimmedVaultPath) return true
   const [targetPath, rootPath] = compareVaultContainmentPath(path, trimmedVaultPath)

@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
 import type { VaultEntry } from '../types'
+import { workspacePathForEntry } from '../utils/workspaces'
 import { markNoteOpenTrace } from '../utils/noteOpenPerformance'
 import { errorMessage, isActiveVaultUnavailableError } from '../utils/vaultErrors'
 import { getNoteWindowParams, isNoteWindow } from '../utils/windowMode'
@@ -18,6 +19,7 @@ export interface NoteContentCacheEntry {
   value: string | null
   byteSize: number
   identity: NoteContentIdentity | null
+  vaultPath?: string
   requestState?: NoteContentRequestState
   startRequest?: () => void
   cancelRequest?: () => void
@@ -149,22 +151,23 @@ function retainResolvedNoteContent(entry: NoteContentCacheEntry, content: string
   emitNoteContentResolved({ entry: sourceEntry, path: entry.path, content })
 }
 
-function getNoteContentCommandPayload(path: string): { path: string; vaultPath?: string } {
+function getNoteContentCommandPayload(path: string, vaultPath?: string): { path: string; vaultPath?: string } {
+  if (vaultPath) return { path, vaultPath }
   if (!isNoteWindow()) return { path }
 
   const noteWindowParams = getNoteWindowParams()
   return noteWindowParams ? { path, vaultPath: noteWindowParams.vaultPath } : { path }
 }
 
-function runGetNoteContentCommand(path: string): Promise<string> {
-  const commandPayload = getNoteContentCommandPayload(path)
+function runGetNoteContentCommand(path: string, vaultPath?: string): Promise<string> {
+  const commandPayload = getNoteContentCommandPayload(path, vaultPath)
   return isTauri()
     ? invoke<string>('get_note_content', commandPayload)
     : mockInvoke<string>('get_note_content', commandPayload)
 }
 
-function getValidateNoteContentCommandPayload(path: string, content: string): { path: string; content: string; vaultPath?: string } {
-  return { ...getNoteContentCommandPayload(path), content }
+function getValidateNoteContentCommandPayload(path: string, content: string, vaultPath?: string): { path: string; content: string; vaultPath?: string } {
+  return { ...getNoteContentCommandPayload(path, vaultPath), content }
 }
 
 function shouldReuseExistingRequest(existing: NoteContentCacheEntry, identity: NoteContentIdentity | null): boolean {
@@ -181,6 +184,7 @@ function markRequestSettled(entry: NoteContentCacheEntry, state: Extract<NoteCon
 function createNoteContentRequest(target: string | VaultEntry): NoteContentCacheEntry {
   const path = targetPath(target)
   const sourceEntry = targetEntry(target)
+  const vaultPath = sourceEntry ? workspacePathForEntry(sourceEntry) : undefined
   const identity = targetIdentity(target)
   const cacheEntry: NoteContentCacheEntry = {
     path,
@@ -188,6 +192,7 @@ function createNoteContentRequest(target: string | VaultEntry): NoteContentCache
     value: null,
     byteSize: 0,
     identity,
+    vaultPath,
     requestState: 'queued',
   }
   let started = false
@@ -199,7 +204,7 @@ function createNoteContentRequest(target: string | VaultEntry): NoteContentCache
       if (started || settled) return
       started = true
       cacheEntry.requestState = 'running'
-      runGetNoteContentCommand(path)
+      runGetNoteContentCommand(path, vaultPath)
         .then((content) => {
           settled = true
           markRequestSettled(cacheEntry, 'settled')
@@ -294,6 +299,7 @@ export function cacheNoteContent(path: string, content: string, entry?: VaultEnt
     value: content,
     byteSize,
     identity: entry ? noteContentIdentity(entry) : null,
+    vaultPath: entry ? workspacePathForEntry(entry) : undefined,
   })
   emitNoteContentResolved({ entry: entry ?? null, path, content })
 }
@@ -313,7 +319,7 @@ export function getCachedNoteContentEntry(path: string): NoteContentCacheEntry |
 
 async function validateCachedNoteContent(entry: NoteContentCacheEntry): Promise<boolean> {
   if (entry.value === null) return false
-  const payload = getValidateNoteContentCommandPayload(entry.path, entry.value)
+  const payload = getValidateNoteContentCommandPayload(entry.path, entry.value, entry.vaultPath)
   return isTauri()
     ? invoke<boolean>('validate_note_content', payload)
     : mockInvoke<boolean>('validate_note_content', payload)

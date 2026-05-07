@@ -99,7 +99,7 @@ describe('useVaultSwitcher', () => {
   it('loads the default vault when the resolved path exists', async () => {
     const { result } = await renderLoadedVaultSwitcher()
 
-    expect(result.current.allVaults).toEqual([{ label: 'Getting Started', path: expectedDefaultVaultPath }])
+    expect(result.current.allVaults).toEqual([{ label: 'Getting Started', path: expectedDefaultVaultPath, managedDefault: true }])
     expect(result.current.vaultPath).toBe(expectedDefaultVaultPath)
   })
 
@@ -169,8 +169,16 @@ describe('useVaultSwitcher', () => {
     expect(result.current.vaultPath).toBe('/selected/vault')
     expect(result.current.selectedVaultPath).toBe('/selected/vault')
     expect(mockVaultListStore).toEqual({
-      vaults: [{ label: 'Selected Vault', path: '/selected/vault' }],
+      vaults: [{
+        label: 'Selected Vault',
+        path: '/selected/vault',
+        alias: null,
+        color: null,
+        icon: null,
+        mounted: true,
+      }],
       active_vault: '/selected/vault',
+      default_workspace_path: '/selected/vault',
       hidden_defaults: [],
     })
   })
@@ -188,10 +196,11 @@ describe('useVaultSwitcher', () => {
 
     expect(result.current.vaultPath).toBe(expectedDefaultVaultPath)
     expect(result.current.selectedVaultPath).toBe(expectedDefaultVaultPath)
-    expect(result.current.allVaults).toEqual([{ label: 'Getting Started', path: expectedDefaultVaultPath }])
+    expect(result.current.allVaults).toEqual([{ label: 'Getting Started', path: expectedDefaultVaultPath, managedDefault: true }])
     expect(mockVaultListStore).toEqual({
       vaults: [],
       active_vault: expectedDefaultVaultPath,
+      default_workspace_path: expectedDefaultVaultPath,
       hidden_defaults: [],
     })
   })
@@ -295,13 +304,29 @@ describe('useVaultSwitcher', () => {
 
     const { result } = await renderLoadedVaultSwitcher()
 
-    expect(result.current.allVaults).toEqual([{ label: 'Work', path: '/work/vault', available: true }])
+    expect(result.current.allVaults).toEqual([{
+      label: 'Work',
+      path: '/work/vault',
+      alias: undefined,
+      color: null,
+      icon: null,
+      mounted: true,
+      available: true,
+    }])
     expect(result.current.vaultPath).toBe('/work/vault')
 
     await waitFor(() => {
       expect(mockVaultListStore).toEqual({
-        vaults: [{ label: 'Work', path: '/work/vault' }],
+        vaults: [{
+          label: 'Work',
+          path: '/work/vault',
+          alias: null,
+          color: null,
+          icon: null,
+          mounted: true,
+        }],
         active_vault: '/work/vault',
+        default_workspace_path: '/work/vault',
         hidden_defaults: [],
       })
     })
@@ -324,6 +349,7 @@ describe('useVaultSwitcher', () => {
       expect(mockVaultListStore).toEqual({
         vaults: [],
         active_vault: null,
+        default_workspace_path: null,
         hidden_defaults: [],
       })
     })

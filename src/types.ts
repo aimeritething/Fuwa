@@ -8,6 +8,7 @@ export interface VaultEntry {
   path: string
   filename: string
   title: string
+  workspace?: WorkspaceIdentity
   isA: string | null
   aliases: string[]
   belongsTo: string[]
@@ -58,6 +59,19 @@ export interface VaultEntry {
   /** File kind: "markdown", "text", or "binary". Determines editor behavior.
    *  Defaults to "markdown" when absent (for backwards compatibility). */
   fileKind?: 'markdown' | 'text' | 'binary'
+}
+
+export interface WorkspaceIdentity {
+  id: string
+  label: string
+  alias: string
+  path: string
+  shortLabel: string
+  color: string | null
+  icon: string | null
+  mounted: boolean
+  available: boolean
+  defaultForNewNotes: boolean
 }
 
 export type NoteStatus = 'new' | 'modified' | 'clean' | 'pendingSave' | 'unsaved'

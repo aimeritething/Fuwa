@@ -433,6 +433,7 @@ interface AppSaveDeps {
   handleRenameFilename: (path: string, newFilenameStem: string, vaultPath: string, onEntryRenamed: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void) => Promise<void>
   replaceEntry: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void
   resolvedPath: string
+  writableVaultPaths?: readonly string[]
   initialH1AutoRenameEnabled: boolean
   onInternalVaultWrite?: (path: string) => void
   locale?: AppLocale
@@ -791,7 +792,7 @@ export function useAppSave({
   updateEntry, setTabs, handleSwitchTab, setToastMessage, loadModifiedFiles,
   reloadViews, trackUnsaved, clearUnsaved, unsavedPaths, tabs, activeTabPath,
   handleRenameNote, handleRenameFilename: handleRenameFilenameRaw, replaceEntry,
-  resolvedPath, initialH1AutoRenameEnabled, onInternalVaultWrite,
+  resolvedPath, writableVaultPaths, initialH1AutoRenameEnabled, onInternalVaultWrite,
   locale = 'en',
 }: AppSaveDeps) {
   const contentChangeRef = useRef<(path: string, content: string) => void>(() => {})
@@ -808,7 +809,7 @@ export function useAppSave({
     updateEntry, setTabs, setToastMessage, loadModifiedFiles, trackUnsaved,
     clearUnsaved, onInternalVaultWrite, reloadViews, scheduleUntitledRename,
     resolveCurrentPath, resolvePathBeforeSave, canPersist,
-    persistenceScope: resolvedPath,
+    persistenceScope: writableVaultPaths && writableVaultPaths.length > 0 ? writableVaultPaths : resolvedPath,
     locale,
   })
   const replaceRenamedEntry = useReplaceRenamedEntry({ registerRenamedPath, replaceEntry })

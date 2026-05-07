@@ -8,6 +8,7 @@ import { formatSearchSubtitle } from '../utils/noteListHelpers'
 import { scrollSelectedHTMLChildIntoView } from '../utils/domScroll'
 import { getTypeIcon } from './NoteItem'
 import { NoteTitleIcon } from './NoteTitleIcon'
+import { workspaceDisplayPrefix } from '../utils/workspaces'
 
 interface SearchPanelProps {
   open: boolean
@@ -43,10 +44,27 @@ function nextSearchSelectionIndex(
   return Math.max(currentIndex - 1, 0)
 }
 
+function workspaceTitlePrefix(entry: VaultEntry | undefined, showWorkspace: boolean): string | null {
+  if (!entry || !showWorkspace) return null
+  return workspaceDisplayPrefix(entry)
+}
+
+function searchVaultPathsForEntries(entries: VaultEntry[], fallbackVaultPath: string): string | string[] {
+  const paths = entries
+    .map((entry) => entry.workspace?.path)
+    .filter((path): path is string => !!path)
+  return paths.length > 0 ? [...new Set(paths)] : fallbackVaultPath
+}
+
+function shouldShowWorkspace(entries: VaultEntry[]): boolean {
+  return new Set(entries.map((entry) => entry.workspace?.alias).filter(Boolean)).size > 1
+}
+
 export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }: SearchPanelProps) {
+  const searchVaultPaths = useMemo(() => searchVaultPathsForEntries(entries, vaultPath), [entries, vaultPath])
   const {
     query, setQuery, results, selectedIndex, setSelectedIndex, loading, elapsedMs,
-  } = useUnifiedSearch(vaultPath, open)
+  } = useUnifiedSearch(searchVaultPaths, open)
 
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
@@ -106,6 +124,7 @@ export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }:
     for (const e of entries) map.set(e.path, e)
     return map
   }, [entries])
+  const showWorkspace = useMemo(() => shouldShowWorkspace(entries), [entries])
 
   if (!open) return null
 
@@ -133,6 +152,7 @@ export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }:
           elapsedMs={elapsedMs}
           entryLookup={entryLookup}
           typeEntryMap={typeEntryMap}
+          showWorkspace={showWorkspace}
           listRef={listRef}
           onSelect={handleSelect}
           onHover={setSelectedIndex}
@@ -192,6 +212,7 @@ interface SearchContentProps {
   elapsedMs: number | null
   entryLookup: Map<string, VaultEntry>
   typeEntryMap: Record<string, VaultEntry>
+  showWorkspace: boolean
   listRef: React.RefObject<HTMLDivElement | null>
   onSelect: (result: SearchResult) => void
   onHover: (index: number) => void
@@ -203,12 +224,13 @@ interface SearchResultRowProps {
   selected: boolean
   index: number
   typeEntryMap: Record<string, VaultEntry>
+  showWorkspace: boolean
   onSelect: (result: SearchResult) => void
   onHover: (index: number) => void
 }
 
 function SearchResultRow({
-  result, entry, selected, index, typeEntryMap, onSelect, onHover,
+  result, entry, selected, index, typeEntryMap, showWorkspace, onSelect, onHover,
 }: SearchResultRowProps) {
   const isA = entry?.isA ?? result.noteType
   const noteType = isA || null
@@ -216,6 +238,7 @@ function SearchResultRow({
   const typeColor = noteType ? getTypeColor(isA, te?.color) : undefined
   const TypeIcon = getTypeIcon(isA ?? null, te?.icon)
   const subtitle = entry ? formatSearchSubtitle(entry) : null
+  const titlePrefix = workspaceTitlePrefix(entry, showWorkspace)
 
   return (
     <div
@@ -233,56 +256,76 @@ function SearchResultRow({
           className: 'shrink-0',
           style: { color: typeColor ?? 'var(--muted-foreground)' },
         })}
-        <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
-          <NoteTitleIcon icon={entry?.icon} size={14} className="mr-1" />
-          {entry?.title ?? result.title}
-        </span>
-        {noteType && (
-          <span className="shrink-0 text-[11px] text-muted-foreground/70">{noteType}</span>
-        )}
+        <SearchResultTitle icon={entry?.icon} prefix={titlePrefix} title={entry?.title ?? result.title} />
+        <SearchResultTypeLabel noteType={noteType} />
       </div>
-      {subtitle && (
-        <p className="mt-0.5 pl-[22px] text-[11px] text-muted-foreground">
-          {subtitle}
-        </p>
-      )}
+      <SearchResultSubtitle subtitle={subtitle} />
+    </div>
+  )
+}
+
+function SearchResultTitle({ icon, prefix, title }: { icon?: string | null; prefix: string | null; title: string }) {
+  return (
+    <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
+      <NoteTitleIcon icon={icon} size={14} className="mr-1" />
+      {prefix}
+      {title}
+    </span>
+  )
+}
+
+function SearchResultTypeLabel({ noteType }: { noteType: string | null }) {
+  return noteType ? <span className="shrink-0 text-[11px] text-muted-foreground/70">{noteType}</span> : null
+}
+
+function SearchResultSubtitle({ subtitle }: { subtitle: string | null }) {
+  return subtitle ? <p className="mt-0.5 pl-[22px] text-[11px] text-muted-foreground">{subtitle}</p> : null
+}
+
+function SearchIdleMessage() {
+  return (
+    <div className="px-4 py-8 text-center">
+      <p className="text-[13px] text-muted-foreground">Search across all note contents</p>
+      <p className="mt-1 text-[11px] text-muted-foreground/60">Enter to open · Esc to close</p>
+    </div>
+  )
+}
+
+function SearchLoadingMessage() {
+  return <div className="px-4 py-8 text-center text-[13px] text-muted-foreground">Searching...</div>
+}
+
+function SearchNoResultsMessage() {
+  return (
+    <div className="px-4 py-8 text-center">
+      <p className="text-[13px] text-muted-foreground">No results found</p>
+    </div>
+  )
+}
+
+function SearchResultsHeader({ count, elapsedMs }: { count: number; elapsedMs: number | null }) {
+  return (
+    <div className="border-b border-border/50 px-4 py-1.5">
+      <span className="text-[11px] text-muted-foreground">
+        {count} result{count !== 1 ? 's' : ''}{elapsedMs !== null ? ` · ${elapsedMs}ms` : ''}
+      </span>
     </div>
   )
 }
 
 function SearchContent({
-  query, results, selectedIndex, loading, elapsedMs, entryLookup, typeEntryMap, listRef, onSelect, onHover,
+  query, results, selectedIndex, loading, elapsedMs, entryLookup, typeEntryMap, showWorkspace, listRef, onSelect, onHover,
 }: SearchContentProps) {
+  const hasQuery = query.trim().length > 0
+  const hasResults = results.length > 0
   return (
     <div className="flex-1 overflow-y-auto">
-      {!query.trim() && (
-        <div className="px-4 py-8 text-center">
-          <p className="text-[13px] text-muted-foreground">Search across all note contents</p>
-          <p className="mt-1 text-[11px] text-muted-foreground/60">
-            Enter to open · Esc to close
-          </p>
-        </div>
-      )}
-
-      {query.trim() && results.length === 0 && loading && (
-        <div className="px-4 py-8 text-center text-[13px] text-muted-foreground">
-          Searching...
-        </div>
-      )}
-
-      {query.trim() && results.length === 0 && !loading && (
-        <div className="px-4 py-8 text-center">
-          <p className="text-[13px] text-muted-foreground">No results found</p>
-        </div>
-      )}
-
-      {results.length > 0 && (
+      {!hasQuery && <SearchIdleMessage />}
+      {hasQuery && !hasResults && loading && <SearchLoadingMessage />}
+      {hasQuery && !hasResults && !loading && <SearchNoResultsMessage />}
+      {hasResults && (
         <>
-          <div className="border-b border-border/50 px-4 py-1.5">
-            <span className="text-[11px] text-muted-foreground">
-              {results.length} result{results.length !== 1 ? 's' : ''}{elapsedMs !== null ? ` · ${elapsedMs}ms` : ''}
-            </span>
-          </div>
+          <SearchResultsHeader count={results.length} elapsedMs={elapsedMs} />
           <div ref={listRef}>
             {results.map((result, i) => (
               <SearchResultRow
@@ -292,6 +335,7 @@ function SearchContent({
                 selected={i === selectedIndex}
                 index={i}
                 typeEntryMap={typeEntryMap}
+                showWorkspace={showWorkspace}
                 onSelect={onSelect}
                 onHover={onHover}
               />

@@ -5,16 +5,26 @@ use std::path::PathBuf;
 const APP_CONFIG_DIR: &str = "com.tolaria.app";
 const LEGACY_APP_CONFIG_DIR: &str = "com.laputa.app";
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct VaultEntry {
     pub label: String,
     pub path: String,
+    #[serde(default)]
+    pub alias: Option<String>,
+    #[serde(default)]
+    pub color: Option<String>,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub mounted: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct VaultList {
     pub vaults: Vec<VaultEntry>,
     pub active_vault: Option<String>,
+    #[serde(default)]
+    pub default_workspace_path: Option<String>,
     #[serde(default)]
     pub hidden_defaults: Vec<String>,
 }
@@ -99,13 +109,16 @@ mod tests {
                 VaultEntry {
                     label: "My Vault".to_string(),
                     path: "/Users/luca/Laputa".to_string(),
+                    ..Default::default()
                 },
                 VaultEntry {
                     label: "Work".to_string(),
                     path: "/Users/luca/Work".to_string(),
+                    ..Default::default()
                 },
             ],
             active_vault: Some("/Users/luca/Laputa".to_string()),
+            default_workspace_path: None,
             hidden_defaults: vec![],
         };
         let loaded = save_and_reload(&list);
@@ -142,8 +155,10 @@ mod tests {
             vaults: vec![VaultEntry {
                 label: "Test".to_string(),
                 path: "/tmp/test".to_string(),
+                ..Default::default()
             }],
             active_vault: None,
+            default_workspace_path: None,
             hidden_defaults: vec![],
         };
         save_at(&path, &list).unwrap();
@@ -186,6 +201,7 @@ mod tests {
         let list = VaultList {
             vaults: vec![],
             active_vault: None,
+            default_workspace_path: None,
             hidden_defaults: vec!["/Users/luca/Documents/Getting Started".to_string()],
         };
         let loaded = save_and_reload(&list);
@@ -194,6 +210,31 @@ mod tests {
             loaded.hidden_defaults[0],
             "/Users/luca/Documents/Getting Started"
         );
+    }
+
+    #[test]
+    fn workspace_metadata_roundtrip() {
+        let list = VaultList {
+            vaults: vec![VaultEntry {
+                label: "Team Notes".to_string(),
+                path: "/tmp/team".to_string(),
+                alias: Some("team".to_string()),
+                color: Some("green".to_string()),
+                icon: Some("briefcase".to_string()),
+                mounted: Some(false),
+            }],
+            active_vault: Some("/tmp/personal".to_string()),
+            default_workspace_path: Some("/tmp/team".to_string()),
+            hidden_defaults: vec![],
+        };
+
+        let loaded = save_and_reload(&list);
+
+        assert_eq!(loaded.default_workspace_path.as_deref(), Some("/tmp/team"));
+        assert_eq!(loaded.vaults[0].alias.as_deref(), Some("team"));
+        assert_eq!(loaded.vaults[0].color.as_deref(), Some("green"));
+        assert_eq!(loaded.vaults[0].icon.as_deref(), Some("briefcase"));
+        assert_eq!(loaded.vaults[0].mounted, Some(false));
     }
 
     #[test]

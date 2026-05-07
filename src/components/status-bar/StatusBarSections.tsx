@@ -44,6 +44,7 @@ interface StatusBarPrimarySectionProps {
   modifiedCount: number
   vaultPath: string
   vaults: VaultOption[]
+  defaultWorkspacePath?: string | null
   onSwitchVault: (path: string) => void
   onOpenLocalFolder?: () => void
   onCreateEmptyVault?: () => void
@@ -67,6 +68,8 @@ interface StatusBarPrimarySectionProps {
   buildNumber?: string
   onCheckForUpdates?: () => void
   onRemoveVault?: (path: string) => void
+  onSetDefaultWorkspace?: (path: string) => void
+  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   mcpStatus?: McpStatus
   onInstallMcp?: () => void
   aiAgentsStatus?: AiAgentsStatus
@@ -400,7 +403,7 @@ function PrimarySeparator({ compact }: { compact: boolean }) {
 export function StatusBarPrimarySection({
   modifiedCount,
   vaultPath,
-  vaults,
+  vaults, defaultWorkspacePath,
   onSwitchVault,
   onOpenLocalFolder,
   onCreateEmptyVault,
@@ -411,9 +414,7 @@ export function StatusBarPrimarySection({
   onClickPulse,
   onCommitPush,
   onInitializeGit,
-  isOffline = false,
-  isVaultReloading = false,
-  isGitVault = true,
+  isOffline = false, isVaultReloading = false, isGitVault = true,
   syncStatus,
   lastSyncTime,
   conflictCount,
@@ -423,7 +424,7 @@ export function StatusBarPrimarySection({
   onOpenConflictResolver,
   buildNumber,
   onCheckForUpdates,
-  onRemoveVault,
+  onRemoveVault, onSetDefaultWorkspace, onUpdateWorkspaceIdentity,
   mcpStatus,
   onInstallMcp,
   aiAgentsStatus,
@@ -454,18 +455,19 @@ export function StatusBarPrimarySection({
   })
 
   return (
-    <div
-      style={primarySectionStyle(stacked, compact)}
-    >
+    <div style={primarySectionStyle(stacked, compact)}>
       <VaultMenu
         vaults={vaults}
         vaultPath={vaultPath}
+        defaultWorkspacePath={defaultWorkspacePath}
         onSwitchVault={onSwitchVault}
         onOpenLocalFolder={onOpenLocalFolder}
         onCreateEmptyVault={onCreateEmptyVault}
         onCloneVault={onCloneVault}
         onCloneGettingStarted={onCloneGettingStarted}
         onRemoveVault={onRemoveVault}
+        onSetDefaultWorkspace={onSetDefaultWorkspace}
+        onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
         compact={compact}
         locale={locale}
       />

@@ -137,8 +137,10 @@ mod tests {
             vaults: vec![VaultListEntry {
                 label: "Test".to_string(),
                 path: vault_root.to_string_lossy().into_owned(),
+                ..Default::default()
             }],
             active_vault: None,
+            default_workspace_path: None,
             hidden_defaults: vec![],
         };
 
@@ -165,13 +167,16 @@ mod tests {
                 VaultListEntry {
                     label: "Parent".to_string(),
                     path: parent_root.to_string_lossy().into_owned(),
+                    ..Default::default()
                 },
                 VaultListEntry {
                     label: "Nested".to_string(),
                     path: nested_root.to_string_lossy().into_owned(),
+                    ..Default::default()
                 },
             ],
             active_vault: None,
+            default_workspace_path: None,
             hidden_defaults: vec![],
         };
 
@@ -205,8 +210,10 @@ mod tests {
             vaults: vec![VaultListEntry {
                 label: "Listed".to_string(),
                 path: "/listed".to_string(),
+                ..Default::default()
             }],
             active_vault: Some("/active".to_string()),
+            default_workspace_path: None,
             hidden_defaults: vec![],
         };
 

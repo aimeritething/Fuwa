@@ -28,6 +28,7 @@ When deciding where to persist a piece of data, ask: **"Would the user want this
 | Vault-authored `.gitignore` patterns | Whether this installation hides Gitignored files |
 | Per-vault All Notes note-list column overrides | All Notes PDF/image/unsupported file visibility |
 | Type `_sidebar_label` overrides | Whether this installation auto-pluralizes type labels |
+| N/A | Registered workspace labels, aliases, mount state, and default new-note destination |
 | Any user-visible customization of how content is organized or displayed | Any machine-specific or credential-type setting |
 
 **Rule:** If the information is about *how the content is structured or presented* and the user would expect it to be consistent wherever they open their vault, store it in the vault (frontmatter of the relevant note, using the `_field` underscore convention for system properties). If it's about *this specific installation of the app*, store it in `~/.config/com.tolaria.app/settings.json` or localStorage.
@@ -101,6 +102,12 @@ The main window starts a native watcher for the active vault through `start_vaul
 Vault opening is allowed to render the main app shell while the full entry scan is still in flight. `useVaultLoader` keeps `isLoading` true until entries are ready, but folders and saved views load independently so the sidebar can become useful before the note index completes. The status bar uses the vault activity badge during this initial indexing state, while command-palette and editor-shell interactions remain mounted instead of being hidden behind the full app skeleton. The full skeleton is reserved for app-level capability checks such as the initial Git-state probe.
 
 Large-vault reproduction and keyboard QA steps live in [LARGE-VAULT-LOADING-QA.md](./LARGE-VAULT-LOADING-QA.md).
+
+#### Mounted Workspaces
+
+The registered vault list can act as a mounted-workspace set. `useVaultSwitcher` persists each workspace's installation-local identity (`label`, stable `alias`, color, mount flag) and the default destination for newly created notes in `~/.config/com.tolaria.app/vaults.json`. `useVaultLoader` scans every available mounted workspace and annotates each `VaultEntry` with provenance before React consumes the combined graph. Switching the active vault still selects which Git controls, folder tree, views, watcher, and sync operations are in focus; it no longer restricts note-list, search, or wikilink navigation to only that vault's notes.
+
+Cross-workspace note reads and writes keep the disk-first invariant. When an absolute note path is saved or read without an explicit `vaultPath`, the Tauri boundary resolves the deepest registered vault root that contains the path and validates against that root before touching disk. This lets an editor tab opened from a mounted workspace save back to its source repository while preserving the same path-escape protections as active-vault operations.
 
 #### Note Opening Fast Path
 

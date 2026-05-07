@@ -125,6 +125,39 @@ fn load_configured_active_vault_root() -> Result<Option<VaultRootPaths>, String>
         .transpose()
 }
 
+fn load_registered_vault_roots() -> Result<Vec<VaultRootPaths>, String> {
+    let list = vault_list::load_vault_list()?;
+    let mut roots = list
+        .vaults
+        .iter()
+        .map(|entry| build_vault_root_paths(&entry.path))
+        .collect::<Result<Vec<_>, _>>()?;
+    if let Some(active_vault) = list.active_vault.as_deref() {
+        if !active_vault.trim().is_empty() {
+            roots.push(build_vault_root_paths(active_vault)?);
+        }
+    }
+    Ok(roots)
+}
+
+fn find_registered_root_for_absolute_path(raw_path: &str) -> Result<Option<VaultRootPaths>, String> {
+    let requested = PathBuf::from(expand_tilde(raw_path).into_owned());
+    if !requested.is_absolute() {
+        return Ok(None);
+    }
+
+    let canonical = canonicalize_candidate_for_write(&requested)?;
+    let roots = match load_registered_vault_roots() {
+        Ok(roots) => roots,
+        Err(_) => return Ok(None),
+    };
+    let root = roots
+        .into_iter()
+        .filter(|root| canonical.starts_with(&root.canonical))
+        .max_by_key(|root| root.canonical.components().count());
+    Ok(root)
+}
+
 fn build_vault_root_paths(raw_vault_path: &str) -> Result<VaultRootPaths, String> {
     let requested = PathBuf::from(expand_tilde(raw_vault_path).into_owned());
     let canonical = requested
@@ -232,6 +265,20 @@ pub(crate) fn with_validated_path<T>(
     mode: ValidatedPathMode,
     action: impl FnOnce(&str) -> Result<T, String>,
 ) -> Result<T, String> {
+    if vault_path.is_none() {
+        if let Some(root) = find_registered_root_for_absolute_path(path)? {
+            let boundary = VaultBoundary {
+                requested_root: root.requested,
+                canonical_root: root.canonical,
+            };
+            let validated_path = match mode {
+                ValidatedPathMode::Existing => boundary.validate_existing_path(path)?,
+                ValidatedPathMode::Writable => boundary.validate_writable_path(path)?,
+            };
+            return action(&validated_path);
+        }
+    }
+
     with_boundary(vault_path, |boundary| {
         let validated_path = match mode {
             ValidatedPathMode::Existing => boundary.validate_existing_path(path)?,

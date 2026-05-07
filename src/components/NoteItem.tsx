@@ -13,6 +13,7 @@ import { filePreviewKind, type FilePreviewKind } from '../utils/filePreview'
 import { NoteTitleIcon } from './NoteTitleIcon'
 import { PropertyChips } from './note-item/PropertyChips'
 import { ChangeNoteContent } from './note-item/ChangeNoteContent'
+import { workspaceForEntry } from '../utils/workspaces'
 
 const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>> = {
   Project: Wrench,
@@ -65,6 +66,23 @@ function StateBadge({ archived }: { archived: boolean }) {
     )
   }
   return null
+}
+
+function WorkspaceBadge({ entry, allEntries }: { entry: VaultEntry; allEntries: VaultEntry[] }) {
+  const workspace = workspaceForEntry(entry)
+  const hasMultipleWorkspaces = new Set(allEntries.map((candidate) => candidate.workspace?.alias).filter(Boolean)).size > 1
+  if (!workspace || !hasMultipleWorkspaces) return null
+
+  return (
+    <span
+      className="ml-1.5 inline-flex h-[16px] min-w-[18px] items-center justify-center rounded-sm px-1 align-middle text-[9px] font-semibold text-white"
+      style={{ background: workspace.color ? `var(--accent-${workspace.color})` : 'var(--muted-foreground)' }}
+      title={`${workspace.label} (${workspace.alias})`}
+      aria-label={`Workspace ${workspace.label}`}
+    >
+      {workspace.shortLabel}
+    </span>
+  )
 }
 
 type NoteItemVisualState = {
@@ -190,6 +208,7 @@ function InteractiveNoteDetails({
     <>
       <NoteTitleRow
         entry={entry}
+        allEntries={allEntries}
         isBinary={false}
         isSelected={isSelected}
         noteStatus={noteStatus}
@@ -251,6 +270,7 @@ function StandardNoteContent({
         {isBinary ? (
           <NoteTitleRow
             entry={entry}
+            allEntries={allEntries}
             isBinary={isUnavailableBinary}
             isSelected={isSelected}
             noteStatus={noteStatus}
@@ -273,11 +293,13 @@ function StandardNoteContent({
 
 function NoteTitleRow({
   entry,
+  allEntries,
   isBinary,
   isSelected,
   noteStatus,
 }: {
   entry: VaultEntry
+  allEntries: VaultEntry[]
   isBinary: boolean
   isSelected: boolean
   noteStatus: NoteStatus
@@ -287,6 +309,7 @@ function NoteTitleRow({
       {hasStatusDot(noteStatus) && !isBinary && <StatusDot noteStatus={noteStatus} />}
       <NoteTitleIcon icon={entry.icon} size={15} className="mr-1" testId="note-title-icon" />
       {entry.title}
+      <WorkspaceBadge entry={entry} allEntries={allEntries} />
       {!isBinary && <StateBadge archived={entry.archived} />}
     </div>
   )

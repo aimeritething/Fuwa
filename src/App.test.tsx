@@ -957,8 +957,16 @@ describe('App', () => {
     await waitFor(() => {
       expect(saveVaultList).toHaveBeenCalledWith({
         list: {
-          vaults: [{ label: 'Work Vault', path: selectedVaultPath }],
+          vaults: [{
+            label: 'Work Vault',
+            path: selectedVaultPath,
+            alias: null,
+            color: null,
+            icon: null,
+            mounted: true,
+          }],
           active_vault: selectedVaultPath,
+          default_workspace_path: selectedVaultPath,
           hidden_defaults: [],
         },
       })
@@ -1009,6 +1017,7 @@ describe('App', () => {
         list: {
           vaults: [],
           active_vault: expectedDefaultVaultPath,
+          default_workspace_path: expectedDefaultVaultPath,
           hidden_defaults: [],
         },
       })

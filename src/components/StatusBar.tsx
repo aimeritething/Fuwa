@@ -61,6 +61,7 @@ interface StatusBarProps {
   modifiedCount?: number
   vaultPath: string
   vaults: VaultOption[]
+  defaultWorkspacePath?: string | null
   onSwitchVault: (path: string) => void
   onOpenSettings?: () => void
   onOpenLocalFolder?: () => void
@@ -90,6 +91,8 @@ interface StatusBarProps {
   buildNumber?: string
   onCheckForUpdates?: () => void
   onRemoveVault?: (path: string) => void
+  onSetDefaultWorkspace?: (path: string) => void
+  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   mcpStatus?: McpStatus
   onInstallMcp?: () => void
   aiAgentsStatus?: AiAgentsStatus
@@ -114,6 +117,7 @@ function StatusBarPrimaryFromFooter({
   modifiedCount = 0,
   vaultPath,
   vaults,
+  defaultWorkspacePath,
   onSwitchVault,
   onOpenLocalFolder,
   onCreateEmptyVault,
@@ -136,6 +140,8 @@ function StatusBarPrimaryFromFooter({
   buildNumber,
   onCheckForUpdates,
   onRemoveVault,
+  onSetDefaultWorkspace,
+  onUpdateWorkspaceIdentity,
   mcpStatus,
   onInstallMcp,
   aiAgentsStatus,
@@ -157,6 +163,7 @@ function StatusBarPrimaryFromFooter({
       modifiedCount={modifiedCount}
       vaultPath={vaultPath}
       vaults={vaults}
+      defaultWorkspacePath={defaultWorkspacePath}
       onSwitchVault={onSwitchVault}
       onOpenLocalFolder={onOpenLocalFolder}
       onCreateEmptyVault={onCreateEmptyVault}
@@ -179,6 +186,8 @@ function StatusBarPrimaryFromFooter({
       buildNumber={buildNumber}
       onCheckForUpdates={onCheckForUpdates}
       onRemoveVault={onRemoveVault}
+      onSetDefaultWorkspace={onSetDefaultWorkspace}
+      onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
       mcpStatus={mcpStatus}
       onInstallMcp={onInstallMcp}
       aiAgentsStatus={aiAgentsStatus}

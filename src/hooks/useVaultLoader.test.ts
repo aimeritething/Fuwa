@@ -49,6 +49,7 @@ function defaultMockInvoke(cmd: string, args?: Record<string, unknown>) {
 
 let mockIsTauri = false
 const backendInvokeFn = vi.fn(defaultMockInvoke)
+const EMPTY_ARRAY_COMMANDS = new Set(['get_modified_files', 'list_vault_folders', 'list_views'])
 
 function isVaultLoadCommand(cmd: string) {
   return cmd === 'list_vault' || cmd === 'reload_vault'
@@ -141,6 +142,23 @@ async function enableTauriMode() {
   )
 }
 
+function buildMountedWorkspaceLoadMock() {
+  return ((cmd: string, args?: Record<string, unknown>) => {
+    if (isVaultLoadCommand(cmd)) {
+      const path = args?.path
+      return Promise.resolve([{
+        ...mockEntries[0],
+        path: `${path}/note/hello.md`,
+        title: path === '/team' ? 'Team Hello' : 'Personal Hello',
+      }])
+    }
+    if (EMPTY_ARRAY_COMMANDS.has(cmd)) {
+      return Promise.resolve([])
+    }
+    return Promise.resolve(null)
+  }) as typeof defaultMockInvoke
+}
+
 describe('useVaultLoader', () => {
   beforeEach(() => {
     mockIsTauri = false
@@ -152,6 +170,21 @@ describe('useVaultLoader', () => {
     const { result } = await renderVaultLoader()
 
     expect(result.current.entries[0].title).toBe('Hello')
+  })
+
+  it('loads entries from every mounted workspace and annotates provenance', async () => {
+    backendInvokeFn.mockImplementation(buildMountedWorkspaceLoadMock())
+
+    const vaults = [
+      { label: 'Personal', path: '/personal', alias: 'personal', available: true, mounted: true },
+      { label: 'Team', path: '/team', alias: 'team', available: true, mounted: true },
+    ]
+    const { result } = renderHook(() => useVaultLoader('/personal', vaults, '/personal'))
+
+    await waitForEntries(result, 2)
+
+    expect(result.current.entries.map((entry) => entry.workspace?.alias).sort()).toEqual(['personal', 'team'])
+    expect(result.current.entries.find((entry) => entry.workspace?.alias === 'team')?.workspace?.defaultForNewNotes).toBe(false)
   })
 
   it('normalizes missing entry and view string metadata from vault load', async () => {

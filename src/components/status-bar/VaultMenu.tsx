@@ -1,11 +1,16 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, Check, FolderOpen, GitBranch, Plus, Rocket, X } from 'lucide-react'
+import { AlertTriangle, Check, FolderOpen, GitBranch, Plus, Rocket, Settings2, X } from 'lucide-react'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { Button } from '@/components/ui/button'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { translate, type AppLocale, type TranslationKey } from '../../lib/i18n'
+import { trackEvent } from '../../lib/telemetry'
 import type { VaultOption } from './types'
 import { useDismissibleLayer } from './useDismissibleLayer'
+import { WORKSPACE_COLORS, workspaceIdentityFromVault } from '../../utils/workspaces'
 
 interface VaultMenuProps {
   vaults: VaultOption[]
@@ -16,6 +21,9 @@ interface VaultMenuProps {
   onCloneVault?: () => void
   onCloneGettingStarted?: () => void
   onRemoveVault?: (path: string) => void
+  defaultWorkspacePath?: string | null
+  onSetDefaultWorkspace?: (path: string) => void
+  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   compact?: boolean
   locale?: AppLocale
 }
@@ -35,6 +43,23 @@ interface VaultMenuActionProps {
   testId: string
   accent?: boolean
   onClick: () => void
+}
+
+interface WorkspaceManagerProps {
+  defaultWorkspacePath?: string | null
+  locale: AppLocale
+  onOpenChange: (open: boolean) => void
+  onSetDefaultWorkspace?: (path: string) => void
+  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
+  open: boolean
+  vaults: VaultOption[]
+}
+
+interface WorkspaceRowProps extends Pick<
+  WorkspaceManagerProps,
+  'defaultWorkspacePath' | 'locale' | 'onSetDefaultWorkspace' | 'onUpdateWorkspaceIdentity'
+> {
+  vault: VaultOption
 }
 
 interface VaultAction {
@@ -59,12 +84,26 @@ function getVaultTriggerClassName(open: boolean, compact: boolean) {
 }
 
 function buildVaultActions({
+  onManageWorkspaces,
   onCreateEmptyVault,
   onCloneGettingStarted,
   onCloneVault,
   onOpenLocalFolder,
-}: Pick<VaultMenuProps, 'onCreateEmptyVault' | 'onCloneGettingStarted' | 'onCloneVault' | 'onOpenLocalFolder'>): VaultAction[] {
+}: Pick<VaultMenuProps, 'onCreateEmptyVault' | 'onCloneGettingStarted' | 'onCloneVault' | 'onOpenLocalFolder'> & {
+  onManageWorkspaces?: () => void
+}): VaultAction[] {
   const items: VaultAction[] = []
+
+  if (onManageWorkspaces) {
+    items.push({
+      key: 'manage-workspaces',
+      icon: <Settings2 size={12} />,
+      labelKey: 'status.vault.manageWorkspaces',
+      testId: 'vault-menu-manage-workspaces',
+      accent: true,
+      onClick: onManageWorkspaces,
+    })
+  }
 
   if (onCreateEmptyVault) {
     items.push({
@@ -189,19 +228,225 @@ function VaultMenuAction({ icon, labelKey, testId, accent = false, onClick, loca
   )
 }
 
-export function VaultMenu({
+function WorkspaceColorButton({
+  color,
+  selected,
+  onSelect,
+}: {
+  color: string
+  selected: boolean
+  onSelect: () => void
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-xs"
+      className="h-5 w-5 rounded-sm p-0"
+      style={{
+        background: selected ? `var(--accent-${color})` : 'transparent',
+        border: `1px solid var(--accent-${color})`,
+      }}
+      aria-label={color}
+      onClick={onSelect}
+    />
+  )
+}
+
+function workspaceBadgeClassName(): string {
+  return 'inline-flex h-5 min-w-6 items-center justify-center rounded-sm px-1 text-[10px] font-semibold text-white'
+}
+
+function WorkspaceBadge({ workspace }: { workspace: ReturnType<typeof workspaceIdentityFromVault> }) {
+  return (
+    <span
+      className={workspaceBadgeClassName()}
+      style={{ background: workspace.color ? `var(--accent-${workspace.color})` : 'var(--muted-foreground)' }}
+    >
+      {workspace.shortLabel}
+    </span>
+  )
+}
+
+function WorkspaceHeader({
+  locale,
+  onSetDefaultWorkspace,
+  vault,
+  workspace,
+}: Pick<WorkspaceRowProps, 'locale' | 'onSetDefaultWorkspace' | 'vault'> & {
+  workspace: ReturnType<typeof workspaceIdentityFromVault>
+}) {
+  const handleSetDefaultWorkspace = () => {
+    onSetDefaultWorkspace?.(vault.path)
+    trackEvent('workspace_default_changed', { workspace_alias: workspace.alias })
+  }
+
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <div className="flex min-w-0 items-center gap-2">
+        <WorkspaceBadge workspace={workspace} />
+        <div className="min-w-0">
+          <div className="truncate text-sm font-medium text-foreground">{workspace.label}</div>
+          <div className="truncate text-[11px] text-muted-foreground">{workspace.path}</div>
+        </div>
+      </div>
+      <Button
+        type="button"
+        variant={workspace.defaultForNewNotes ? 'secondary' : 'ghost'}
+        size="xs"
+        onClick={handleSetDefaultWorkspace}
+        disabled={!onSetDefaultWorkspace || workspace.defaultForNewNotes}
+        data-testid={`workspace-default-${workspace.alias}`}
+      >
+        {workspace.defaultForNewNotes
+          ? translate(locale, 'workspace.manager.default')
+          : translate(locale, 'workspace.manager.makeDefault')}
+      </Button>
+    </div>
+  )
+}
+
+function WorkspaceMountedControl({
+  canEdit,
+  locale,
+  onUpdateWorkspaceIdentity,
+  vault,
+  workspace,
+}: Pick<WorkspaceRowProps, 'locale' | 'onUpdateWorkspaceIdentity' | 'vault'> & {
+  canEdit: boolean
+  workspace: ReturnType<typeof workspaceIdentityFromVault>
+}) {
+  const handleMountedChange = (mounted: boolean) => {
+    onUpdateWorkspaceIdentity?.(vault.path, { mounted })
+    trackEvent('workspace_mount_changed', { workspace_alias: workspace.alias, mounted: mounted ? 1 : 0 })
+  }
+
+  return (
+    <label className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <span>{translate(locale, 'workspace.manager.mounted')}</span>
+      <Switch
+        checked={workspace.mounted}
+        onCheckedChange={(mounted) => canEdit && handleMountedChange(mounted)}
+        disabled={!canEdit}
+        aria-label={translate(locale, 'workspace.manager.mounted')}
+      />
+    </label>
+  )
+}
+
+function WorkspaceIdentityInputs({
+  canEdit,
+  locale,
+  onUpdateWorkspaceIdentity,
+  vault,
+  workspace,
+}: Pick<WorkspaceRowProps, 'locale' | 'onUpdateWorkspaceIdentity' | 'vault'> & {
+  canEdit: boolean
+  workspace: ReturnType<typeof workspaceIdentityFromVault>
+}) {
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_minmax(120px,0.5fr)] gap-2">
+      <Input
+        value={vault.label}
+        onChange={(event) => canEdit && onUpdateWorkspaceIdentity?.(vault.path, { label: event.target.value })}
+        aria-label={translate(locale, 'workspace.manager.label')}
+        disabled={!canEdit}
+      />
+      <Input
+        value={vault.alias ?? workspace.alias}
+        onChange={(event) => canEdit && onUpdateWorkspaceIdentity?.(vault.path, { alias: event.target.value })}
+        aria-label={translate(locale, 'workspace.manager.alias')}
+        disabled={!canEdit}
+      />
+    </div>
+  )
+}
+
+function WorkspaceColorPicker({
+  canEdit,
+  onUpdateWorkspaceIdentity,
+  vault,
+}: Pick<WorkspaceRowProps, 'onUpdateWorkspaceIdentity' | 'vault'> & {
+  canEdit: boolean
+}) {
+  return (
+    <div className="flex items-center gap-1">
+      {WORKSPACE_COLORS.map((color) => (
+        <WorkspaceColorButton
+          key={color}
+          color={color}
+          selected={(vault.color ?? null) === color}
+          onSelect={() => canEdit && onUpdateWorkspaceIdentity?.(vault.path, { color })}
+        />
+      ))}
+    </div>
+  )
+}
+
+function WorkspaceRow({
+  defaultWorkspacePath,
+  locale,
+  onSetDefaultWorkspace,
+  onUpdateWorkspaceIdentity,
+  vault,
+}: WorkspaceRowProps) {
+  const workspace = workspaceIdentityFromVault(vault, { defaultWorkspacePath })
+  const canEdit = !!onUpdateWorkspaceIdentity && vault.path !== '' && !vault.managedDefault
+
+  return (
+    <div
+      className="grid gap-2 rounded-md border border-border p-3"
+      data-testid={`workspace-row-${workspace.alias}`}
+    >
+      <WorkspaceHeader locale={locale} onSetDefaultWorkspace={onSetDefaultWorkspace} vault={vault} workspace={workspace} />
+      <WorkspaceMountedControl canEdit={canEdit} locale={locale} onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity} vault={vault} workspace={workspace} />
+      <WorkspaceIdentityInputs canEdit={canEdit} locale={locale} onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity} vault={vault} workspace={workspace} />
+      <WorkspaceColorPicker canEdit={canEdit} onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity} vault={vault} />
+    </div>
+  )
+}
+
+function WorkspaceManager({
+  defaultWorkspacePath,
+  locale,
+  onOpenChange,
+  onSetDefaultWorkspace,
+  onUpdateWorkspaceIdentity,
+  open,
   vaults,
-  vaultPath,
-  onSwitchVault,
-  onOpenLocalFolder,
-  onCreateEmptyVault,
-  onCloneVault,
-  onCloneGettingStarted,
-  onRemoveVault,
-  compact = false,
-  locale = 'en',
-}: VaultMenuProps) {
+}: WorkspaceManagerProps) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-h-[82vh] overflow-y-auto sm:max-w-[720px]" data-testid="workspace-manager-dialog">
+        <DialogHeader>
+          <DialogTitle>{translate(locale, 'workspace.manager.title')}</DialogTitle>
+          <DialogDescription>{translate(locale, 'workspace.manager.description')}</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          {vaults.map((vault) => (
+            <WorkspaceRow
+              key={vault.path}
+              defaultWorkspacePath={defaultWorkspacePath}
+              locale={locale}
+              onSetDefaultWorkspace={onSetDefaultWorkspace}
+              onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
+              vault={vault}
+            />
+          ))}
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export function VaultMenu(props: VaultMenuProps) {
+  const {
+    vaults, vaultPath, onSwitchVault, onOpenLocalFolder, onCreateEmptyVault,
+    onCloneVault, onCloneGettingStarted, onRemoveVault, defaultWorkspacePath,
+    onSetDefaultWorkspace, onUpdateWorkspaceIdentity, compact = false, locale = 'en',
+  } = props
   const [open, setOpen] = useState(false)
+  const [manageOpen, setManageOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const activeVault = vaults.find((vault) => vault.path === vaultPath)
   const canRemove = !!onRemoveVault && vaults.length > 1
@@ -213,15 +458,28 @@ export function VaultMenu({
 
   const actions = useMemo<VaultAction[]>(() => {
     return buildVaultActions({
+      onManageWorkspaces: () => {
+        setManageOpen(true)
+        trackEvent('workspace_manager_opened', { workspace_count: vaults.length })
+      },
       onCreateEmptyVault,
       onCloneGettingStarted,
       onCloneVault,
       onOpenLocalFolder,
     })
-  }, [onCreateEmptyVault, onCloneGettingStarted, onCloneVault, onOpenLocalFolder])
+  }, [onCreateEmptyVault, onCloneGettingStarted, onCloneVault, onOpenLocalFolder, vaults.length])
 
   return (
     <div ref={menuRef} style={{ position: 'relative' }}>
+      <WorkspaceManager
+        defaultWorkspacePath={defaultWorkspacePath}
+        locale={locale}
+        onOpenChange={setManageOpen}
+        onSetDefaultWorkspace={onSetDefaultWorkspace}
+        onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
+        open={manageOpen}
+        vaults={vaults}
+      />
       <ActionTooltip copy={{ label: translate(locale, 'status.vault.switch') }} side="top">
         <Button
           type="button"

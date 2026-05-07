@@ -517,10 +517,18 @@ files:
     status.vault.openLocal: a367344e0429a12a5cc9a6cecbbfcde5
     status.vault.cloneGit: a7d0aef7c6237a36e54fd5a26e9c23fe
     status.vault.cloneGettingStarted: 9953a11a477b441976a626a9acf5d7df
+    status.vault.manageWorkspaces: d79ee0855873f0437b3e2552553203cd
     status.vault.notFound: 3119b7fa94c96209bca571b7c7ed0b7e
     status.vault.reloading: 893da50ef3a9e01d8a99ff5d3ceb55e9
     status.vault.reloadingTooltip: 4a884bd7d113797ad16f905f70742da8
     status.vault.remove: 7f3b4f76df23626170940dbc55c70728
+    workspace.manager.title: 81cc2afb2d8a8fa388c0fa1f5e58cc1e
+    workspace.manager.description: 3957142a01fc42b5bcc00ffd1eef6fc9
+    workspace.manager.default: 7a1920d61156abc05a60135aefe8bc67
+    workspace.manager.makeDefault: 581e972562013d920e9b4d364265829e
+    workspace.manager.label: 91068740cd2c5f552ad5cff1470f88f5
+    workspace.manager.alias: e89ff14f985995ab3af3bd8af66d019c
+    workspace.manager.mounted: 38ca22b706f01504d11883bc1984d45b
     status.remote.noneConfigured: 18a4edd4e8d862ccb343937f45585fb1
     status.remote.inSync: a56f571b4df55d88fb06e61e343b3c91
     status.remote.aheadTitle: 1516f4b92671b83c17441b4cddf25a7a

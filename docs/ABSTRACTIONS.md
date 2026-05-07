@@ -94,6 +94,7 @@ classDiagram
         +Number wordCount
         +String? snippet
         +Boolean archived
+        +WorkspaceIdentity? workspace
         +Boolean trashed ⚠ legacy
         +Number? trashedAt ⚠ legacy
         +Record~string,string~ properties
@@ -144,6 +145,7 @@ interface VaultEntry {
   fileSize: number
   wordCount: number | null  // Body word count (excludes frontmatter)
   snippet: string | null    // First 200 chars of body
+  workspace?: WorkspaceIdentity // Mounted-workspace provenance for cross-vault graph entries
   archived: boolean         // Archived flag
   trashed: boolean          // Kept for backward compatibility (Trash system removed — delete is permanent)
   trashedAt: number | null  // Kept for backward compatibility (Trash system removed)
@@ -151,6 +153,27 @@ interface VaultEntry {
   fileKind?: 'markdown' | 'text' | 'binary'  // Controls editor/raw/preview behavior
 }
 ```
+
+### WorkspaceIdentity
+
+Mounted workspace provenance is renderer-owned metadata attached to `VaultEntry.workspace` when entries are loaded through the registered workspace set. It is not parsed from note frontmatter and is not written into vault files.
+
+```typescript
+interface WorkspaceIdentity {
+  id: string
+  label: string
+  alias: string          // Stable prefix used in cross-workspace wikilinks
+  path: string           // Absolute workspace root
+  shortLabel: string     // Compact note-list badge text
+  color: string | null
+  icon: string | null
+  mounted: boolean
+  available: boolean
+  defaultForNewNotes: boolean
+}
+```
+
+The status-bar workspace manager edits installation-local identity and mount state. The alias is the durable user-facing namespace for cross-workspace links such as `[[team/projects/alpha]]`; labels and colors are display affordances only. The default workspace controls where new notes and Type files are created, while active-vault switching still controls Git, folder tree, saved views, and watcher focus.
 
 ### File kinds and binary previews
 
@@ -638,7 +661,7 @@ Two navigation mechanisms:
 1. **Click handler**: DOM event listener on `.editor__blocknote-container` catches clicks on `.wikilink` elements → `onNavigateWikilink(target)`.
 2. **Suggestion menu**: Typing `[[` triggers `SuggestionMenuController` with filtered vault entries.
 
-Wikilink resolution (`resolveEntry` in `src/utils/wikilink.ts`) uses multi-pass matching with global priority: filename stem (strongest) → alias → exact title → humanized title (kebab-case → words). No path-based matching — flat vault uses title/filename only. Legacy path-style targets like `[[person/alice]]` are supported by extracting the last segment.
+Wikilink resolution (`resolveEntry` in `src/utils/wikilink.ts`) uses multi-pass matching with global priority: path suffix for path-style targets, filename stem, alias, exact title, then humanized title (kebab-case -> words). In a mounted-workspace graph, unprefixed links prefer the source note's workspace, while links prefixed by a known workspace alias resolve inside that workspace (`[[team/projects/alpha]]`). Cross-workspace canonical link insertion prefixes the target alias only when source and target workspaces differ; same-workspace links stay vault-relative.
 
 ### Raw Editor Mode
 
@@ -733,7 +756,10 @@ No indexing step required — search runs directly against the filesystem.
 - Persists vault list to `~/.config/com.tolaria.app/vaults.json` (reads legacy `com.laputa.app` on upgrade)
 - Switching closes all tabs and resets sidebar
 - Supports adding, removing, hiding/restoring vaults
+- Persists workspace aliases, colors, mount state, and the default new-note destination for the unified graph
 - Default vault: public Getting Started starter vault cloned on demand
+
+Mounted workspaces are loaded together by `useVaultLoader` for note-list, quick-open, keyword search, and wikilink navigation. Workspace switching remains a focus operation for per-vault capabilities (Git status, folders, saved views, AutoGit, watchers, and repair commands), not a graph isolation boundary.
 
 ### Vault Config
 
