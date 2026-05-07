@@ -140,7 +140,9 @@ fn load_registered_vault_roots() -> Result<Vec<VaultRootPaths>, String> {
     Ok(roots)
 }
 
-fn find_registered_root_for_absolute_path(raw_path: &str) -> Result<Option<VaultRootPaths>, String> {
+fn find_registered_root_for_absolute_path(
+    raw_path: &str,
+) -> Result<Option<VaultRootPaths>, String> {
     let requested = PathBuf::from(expand_tilde(raw_path).into_owned());
     if !requested.is_absolute() {
         return Ok(None);
