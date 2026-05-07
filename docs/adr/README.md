@@ -166,3 +166,4 @@ proposed → active → superseded
 | [0110](0110-in-app-media-and-pdf-file-previews.md) | In-app media and PDF previews for binary vault files | active |
 | [0111](0111-path-aware-external-vault-refresh-with-focused-editor-preservation.md) | Path-aware external vault refresh with focused-editor preservation | active |
 | [0112](0112-system-theme-mode.md) | System theme mode | active |
+| [0113](0113-shared-renderer-attachment-path-normalization.md) | Shared renderer attachment path normalization | active |
