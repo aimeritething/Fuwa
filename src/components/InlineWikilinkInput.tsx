@@ -84,6 +84,14 @@ function isSelectAllShortcut(event: React.KeyboardEvent<HTMLDivElement>) {
   return event.key.toLowerCase() === 'a' && (event.metaKey || event.ctrlKey)
 }
 
+function isCommandBackspaceShortcut(event: React.KeyboardEvent<HTMLDivElement>) {
+  return event.key === 'Backspace'
+    && event.metaKey
+    && !event.ctrlKey
+    && !event.altKey
+    && !event.shiftKey
+}
+
 function isLineBreakShortcut(
   event: React.KeyboardEvent<HTMLDivElement>,
   isComposing: boolean,
@@ -107,6 +115,20 @@ function hasUnsupportedClipboardPayload(clipboardData: DataTransfer) {
 
 function containsUnsupportedInlineContent(editor: HTMLDivElement) {
   return editor.querySelector('img, picture, video, audio, canvas, figure, iframe, object') !== null
+}
+
+function deleteToLineStart(
+  value: string,
+  selection: InlineSelectionRange,
+): { value: string; selection: InlineSelectionRange } | null {
+  const start = Math.max(0, Math.min(selection.start, selection.end, value.length))
+  const end = Math.max(start, Math.min(Math.max(selection.start, selection.end), value.length))
+  if (start !== end) return replaceInlineSelection(value, { start, end }, '')
+
+  const lineStart = start === 0 ? 0 : value.lastIndexOf('\n', start - 1) + 1
+  if (lineStart === start) return null
+
+  return replaceInlineSelection(value, { start: lineStart, end: start }, '')
 }
 
 function submitInlineValue({
@@ -271,6 +293,25 @@ export function InlineWikilinkInput({
     if (!nextState) return
     onChange(nextState.value)
     setSelectionRange(nextState.selection)
+  }
+  const deleteContentToLineStart = (event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!isCommandBackspaceShortcut(event)) return false
+    if (isComposingRef.current || event.nativeEvent.isComposing || event.keyCode === 229) return false
+
+    const editor = editorRef.current
+    const currentSelectionRange = editor ? readSelectionRange(editor) : selectionRange
+    const nextState = deleteToLineStart(value, currentSelectionRange)
+
+    event.preventDefault()
+    event.stopPropagation()
+
+    if (!nextState) return true
+
+    onChange(nextState.value)
+    setSelectionRange(nextState.selection)
+    pendingFocusAfterRemountRef.current = nextState.selection
+    forceRender((current) => current + 1)
+    return true
   }
   const selectAllContent = () => {
     const nextSelection = fullSelectionRange(value)
@@ -465,6 +506,10 @@ export function InlineWikilinkInput({
     if (isSelectAllShortcut(event)) {
       event.preventDefault()
       selectAllContent()
+      return
+    }
+
+    if (!disabled && deleteContentToLineStart(event)) {
       return
     }
 

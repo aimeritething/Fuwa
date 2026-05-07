@@ -64,7 +64,10 @@ export function handleAppKeyboardEvent(actions: KeyboardActions, event: Keyboard
 
   const textInputFocused = isTextInputFocused()
   if (textInputFocused) {
-    if (TEXT_EDITING_KEYS.has(event.key)) return
+    if (TEXT_EDITING_KEYS.has(event.key)) {
+      recordSuppressedShortcutCommand(commandId, 'renderer-keyboard')
+      return
+    }
     if (TEXT_EDITING_BLOCKED_COMMANDS.has(commandId)) {
       recordSuppressedShortcutCommand(commandId, 'renderer-keyboard')
       return

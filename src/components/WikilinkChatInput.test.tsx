@@ -458,7 +458,23 @@ describe('WikilinkChatInput', () => {
     expect(screen.queryByTestId('inline-wikilink-chip')).toBeNull()
   })
 
-  it('lets native modified delete shortcuts reach the browser editor pipeline', () => {
+  it('handles Command+Backspace as a stable delete-to-line-start edit', () => {
+    const onDraftChange = vi.fn()
+    render(<Controlled onDraftChange={onDraftChange} />)
+    updateEditorText('first line\nsecond line')
+    onDraftChange.mockClear()
+
+    const editor = screen.getByTestId('agent-input')
+    setSelection(editor, 'first line\nsecond'.length)
+    const commandBackspace = createEvent.keyDown(editor, { key: 'Backspace', metaKey: true })
+    fireEvent(editor, commandBackspace)
+
+    expect(commandBackspace.defaultPrevented).toBe(true)
+    expect(onDraftChange).toHaveBeenCalledWith('first line\n line')
+    expect(screen.getByTestId('agent-input')).toHaveFocus()
+  })
+
+  it('lets non-Command modified delete shortcuts reach the browser editor pipeline', () => {
     const onDraftChange = vi.fn()
     render(<Controlled onDraftChange={onDraftChange} />)
     updateEditorText('delete the previous words')
@@ -467,13 +483,10 @@ describe('WikilinkChatInput', () => {
     const editor = screen.getByTestId('agent-input')
     const optionBackspace = createEvent.keyDown(editor, { key: 'Backspace', altKey: true })
     fireEvent(editor, optionBackspace)
-    const commandBackspace = createEvent.keyDown(editor, { key: 'Backspace', metaKey: true })
-    fireEvent(editor, commandBackspace)
     const controlDelete = createEvent.keyDown(editor, { key: 'Delete', ctrlKey: true })
     fireEvent(editor, controlDelete)
 
     expect(optionBackspace.defaultPrevented).toBe(false)
-    expect(commandBackspace.defaultPrevented).toBe(false)
     expect(controlDelete.defaultPrevented).toBe(false)
     expect(onDraftChange).not.toHaveBeenCalled()
   })

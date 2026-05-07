@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useAppKeyboard } from './useAppKeyboard'
-import { resetAppCommandDispatchStateForTests } from './appCommandDispatcher'
+import {
+  APP_COMMAND_IDS,
+  executeAppCommand,
+  resetAppCommandDispatchStateForTests,
+} from './appCommandDispatcher'
 
 function fireKey(
   key: string,
@@ -332,6 +336,16 @@ describe('useAppKeyboard', () => {
     renderHook(() => useAppKeyboard(actions))
     withFocusedContentEditable((editable) => {
       fireKeyOnTarget(editable, 'Backspace', { metaKey: true })
+      expect(actions.onDeleteNote).not.toHaveBeenCalled()
+    })
+  })
+
+  it('Cmd+Backspace in a focused contenteditable suppresses the native Delete Note echo', () => {
+    const actions = makeActions()
+    renderHook(() => useAppKeyboard(actions))
+    withFocusedContentEditable((editable) => {
+      fireKeyOnTarget(editable, 'Backspace', { metaKey: true })
+      executeAppCommand(APP_COMMAND_IDS.noteDelete, actions, 'native-menu')
       expect(actions.onDeleteNote).not.toHaveBeenCalled()
     })
   })
