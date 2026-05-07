@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useMemo, useRef, useContext, useState } from 'react'
+import { Component, useEffect, useCallback, useMemo, useRef, useContext, useState, type ReactNode } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { trackEvent } from '../lib/telemetry'
 import {
@@ -55,6 +55,10 @@ import {
   registerPlainTextPasteTarget,
   type PlainTextPasteTarget,
 } from '../utils/plainTextPaste'
+import {
+  isRecoverableBlockNoteRenderError,
+  markRecoveredBlockNoteRenderError,
+} from './blockNoteRenderRecovery'
 
 const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
 | --- | --- | --- |
@@ -79,6 +83,7 @@ const TOOLBAR_MOUSE_DOWN_ALLOW_SELECTOR = [
   'textarea',
   '[contenteditable="true"]',
 ].join(', ')
+const MAX_BLOCKNOTE_RENDER_RECOVERY_RETRIES = 1
 
 type TestTableBlock = {
   type?: string
@@ -86,6 +91,55 @@ type TestTableBlock = {
 }
 type SuggestionAction = () => void
 type SuggestionItemWithClick = { onItemClick?: SuggestionAction }
+type BlockNoteRenderRecoveryState = {
+  error: unknown
+  recoveryKey: number
+  retries: number
+}
+
+class BlockNoteRenderRecoveryBoundary extends Component<
+  { children: (recoveryKey: number) => ReactNode },
+  BlockNoteRenderRecoveryState
+> {
+  state: BlockNoteRenderRecoveryState = {
+    error: null,
+    recoveryKey: 0,
+    retries: 0,
+  }
+
+  static getDerivedStateFromError(error: unknown): Partial<BlockNoteRenderRecoveryState> {
+    return { error }
+  }
+
+  componentDidCatch(error: unknown) {
+    if (!isRecoverableBlockNoteRenderError(error)) return
+    if (this.state.retries >= MAX_BLOCKNOTE_RENDER_RECOVERY_RETRIES) return
+
+    const attempt = this.state.retries + 1
+    markRecoveredBlockNoteRenderError(error)
+    trackEvent('editor_render_recovered', { reason: 'block_missing_id', attempt })
+    this.setState(({ recoveryKey, retries }) => ({
+      error: null,
+      recoveryKey: recoveryKey + 1,
+      retries: retries + 1,
+    }))
+  }
+
+  render() {
+    if (this.state.error) {
+      if (
+        !isRecoverableBlockNoteRenderError(this.state.error)
+        || this.state.retries >= MAX_BLOCKNOTE_RENDER_RECOVERY_RETRIES
+      ) {
+        throw this.state.error
+      }
+
+      return null
+    }
+
+    return this.props.children(this.state.recoveryKey)
+  }
+}
 
 function isEditorReadyForSuggestionAction(
   editor: ReturnType<typeof useCreateBlockNote>,
@@ -1350,22 +1404,27 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
           <div className="editor__drop-overlay-label">Drop image here</div>
         </div>
       )}
-      <SharedContextBlockNoteView
-        editor={editor}
-        theme={themeMode}
-        onChange={handleEditorChange}
-        editable={editable}
-        formattingToolbar={false}
-        linkToolbar={false}
-        slashMenu={false}
-        sideMenu={false}
-      >
-        <EditorInteractionControllers
-          {...suggestionMenuItems}
-          runEditorAction={runEditorAction}
-          vaultPath={vaultPath}
-        />
-      </SharedContextBlockNoteView>
+      <BlockNoteRenderRecoveryBoundary>
+        {(recoveryKey) => (
+          <SharedContextBlockNoteView
+            key={recoveryKey}
+            editor={editor}
+            theme={themeMode}
+            onChange={handleEditorChange}
+            editable={editable}
+            formattingToolbar={false}
+            linkToolbar={false}
+            slashMenu={false}
+            sideMenu={false}
+          >
+            <EditorInteractionControllers
+              {...suggestionMenuItems}
+              runEditorAction={runEditorAction}
+              vaultPath={vaultPath}
+            />
+          </SharedContextBlockNoteView>
+        )}
+      </BlockNoteRenderRecoveryBoundary>
       {copyTarget && <CodeBlockCopyButton copyTarget={copyTarget} locale={locale} />}
       <ImageLightbox image={lightbox.image} locale={locale} onClose={lightbox.close} />
     </div>

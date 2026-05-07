@@ -17,6 +17,7 @@ import {
   type AppCommandShortcutEventInit,
   type AppCommandShortcutEventOptions,
 } from './hooks/appCommandCatalog'
+import { isRecoveredBlockNoteRenderError } from './components/blockNoteRenderRecovery'
 import { shouldUseLinuxWindowChrome } from './utils/platform'
 import { reloadFrontendOnceIfStartupFailed } from './utils/frontendReady'
 
@@ -114,14 +115,25 @@ function captureReactRootError(
   error: unknown,
   errorInfo: { componentStack?: string },
 ): void {
-  sentryReactErrorHandler(error, { componentStack: errorInfo.componentStack ?? '' })
+  const componentStack = errorInfo.componentStack ?? ''
+  sentryReactErrorHandler(error, { componentStack })
   reloadFrontendOnceIfStartupFailed()
 }
 
+function captureRecoverableReactRootError(
+  error: unknown,
+  errorInfo: { componentStack?: string },
+): void {
+  const componentStack = errorInfo.componentStack ?? ''
+  if (isRecoveredBlockNoteRenderError(error, componentStack)) return
+
+  captureReactRootError(error, { componentStack })
+}
+
 createRoot(document.getElementById('root')!, {
-  onCaughtError: captureReactRootError,
+  onCaughtError: captureRecoverableReactRootError,
   onUncaughtError: captureReactRootError,
-  onRecoverableError: captureReactRootError,
+  onRecoverableError: captureRecoverableReactRootError,
 }).render(
   <StrictMode>
     <TooltipProvider>

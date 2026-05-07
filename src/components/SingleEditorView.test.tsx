@@ -13,6 +13,7 @@ const state = vi.hoisted(() => ({
   capturedImageDropArgs: null as null | Record<string, unknown>,
   capturedBlockNoteOnChange: null as null | (() => void),
   capturedMantineGetStyleNonce: null as null | (() => string),
+  blockNoteViewError: null as Error | null,
   hoverGuardMock: vi.fn(),
   imageDropState: { isDragOver: false },
   linkActivationMock: vi.fn(),
@@ -36,6 +37,12 @@ vi.mock('@blocknote/react', () => ({
     onChange?: () => void
     theme?: string
   }) => {
+    if (state.blockNoteViewError) {
+      const error = state.blockNoteViewError
+      state.blockNoteViewError = null
+      throw error
+    }
+
     const {
       children,
       editable,
@@ -422,6 +429,7 @@ describe('SingleEditorView', () => {
     state.capturedImageDropArgs = null
     state.capturedBlockNoteOnChange = null
     state.capturedMantineGetStyleNonce = null
+    state.blockNoteViewError = null
     state.imageDropState.isDragOver = false
     state.personMentionCandidates = []
     state.wikilinkEntriesRef.current = []
@@ -431,6 +439,29 @@ describe('SingleEditorView', () => {
     document.documentElement.removeAttribute('data-theme')
     document.documentElement.classList.remove('dark')
     delete window.__laputaTest
+  })
+
+  it('remounts the editor view when a stale BlockNote node view has no block id', async () => {
+    state.blockNoteViewError = new Error("Block doesn't have id")
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    try {
+      render(
+        <SingleEditorView
+          editor={createEditor() as never}
+          entries={[makeEntry()]}
+          onNavigateWikilink={vi.fn()}
+        />,
+        { wrapper: TooltipProvider, onRecoverableError: () => {} },
+      )
+
+      await waitFor(() => {
+        expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
+      })
+      expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'true')
+    } finally {
+      consoleError.mockRestore()
+    }
   })
 
   it('registers the seeded BlockNote test bridge, applies column widths, and cleans it up on unmount', async () => {
