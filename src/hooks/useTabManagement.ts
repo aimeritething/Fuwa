@@ -22,6 +22,7 @@ import {
 } from './noteContentCache'
 import { clearParsedNoteBlockCache } from './editorParsedBlockCache'
 import { notePathsMatch } from '../utils/notePathIdentity'
+import { normalizeVaultEntry } from '../utils/vaultMetadataNormalization'
 
 interface Tab {
   entry: VaultEntry
@@ -61,6 +62,7 @@ interface TabManagementOptions {
 
 interface NavigateToEntryOptions {
   entry: VaultEntry
+  sourceEntry?: VaultEntry
   forceReload?: boolean
   navSeqRef: React.MutableRefObject<number>
   tabsRef: React.MutableRefObject<Tab[]>
@@ -107,6 +109,16 @@ function clearTabs(
 ) {
   tabsRef.current = []
   setTabs([])
+}
+
+function normalizeOpenEntry(entry: VaultEntry): VaultEntry | null {
+  const path = typeof entry.path === 'string' ? entry.path.trim() : ''
+  if (!path) return null
+  return normalizeVaultEntry({ ...entry, path })
+}
+
+function callbackEntryForLoadFailure(entry: VaultEntry, sourceEntry?: VaultEntry): VaultEntry {
+  return sourceEntry ? { ...sourceEntry, path: entry.path } : entry
 }
 
 function isAlreadyViewingPath(
@@ -240,6 +252,7 @@ function runEntryFailureCallback(options: {
 function handleRecoverableEntryLoadFailure(options: {
   kind: RecoverableEntryLoadFailureKind
   entry: VaultEntry
+  callbackEntry: VaultEntry
   tabsRef: React.MutableRefObject<Tab[]>
   activeTabPathRef: React.MutableRefObject<string | null>
   setTabs: React.Dispatch<React.SetStateAction<Tab[]>>
@@ -252,6 +265,7 @@ function handleRecoverableEntryLoadFailure(options: {
   const {
     kind,
     entry,
+    callbackEntry,
     tabsRef,
     activeTabPathRef,
     setTabs,
@@ -277,7 +291,7 @@ function handleRecoverableEntryLoadFailure(options: {
   if (kind === 'missing-active-vault') {
     runEntryFailureCallback({
       callback: onMissingActiveVault,
-      entry,
+      entry: callbackEntry,
       error,
       warning: 'Failed to handle missing active vault:',
     })
@@ -287,7 +301,7 @@ function handleRecoverableEntryLoadFailure(options: {
   if (kind === 'missing-path') {
     runEntryFailureCallback({
       callback: onMissingNotePath,
-      entry,
+      entry: callbackEntry,
       error,
       warning: 'Failed to handle missing note path:',
     })
@@ -297,7 +311,7 @@ function handleRecoverableEntryLoadFailure(options: {
   if (kind === 'unreadable-content') {
     runEntryFailureCallback({
       callback: onUnreadableNoteContent,
-      entry,
+      entry: callbackEntry,
       error,
       warning: 'Failed to handle unreadable note content:',
     })
@@ -306,6 +320,7 @@ function handleRecoverableEntryLoadFailure(options: {
 
 function handleEntryLoadFailure(options: {
   entry: VaultEntry
+  callbackEntry: VaultEntry
   seq: number
   navSeqRef: React.MutableRefObject<number>
   tabsRef: React.MutableRefObject<Tab[]>
@@ -319,6 +334,7 @@ function handleEntryLoadFailure(options: {
 }) {
   const {
     entry,
+    callbackEntry,
     seq,
     navSeqRef,
     tabsRef,
@@ -339,6 +355,7 @@ function handleEntryLoadFailure(options: {
     handleRecoverableEntryLoadFailure({
       kind: failureKind,
       entry,
+      callbackEntry,
       tabsRef,
       activeTabPathRef,
       setTabs,
@@ -372,6 +389,7 @@ function reopenAlreadyViewingEntry({
 async function loadTextEntry(options: Required<Pick<NavigateToEntryOptions, 'forceReload'>> & NavigateToEntryOptions) {
   const {
     entry,
+    sourceEntry,
     forceReload,
     navSeqRef,
     tabsRef,
@@ -411,6 +429,7 @@ async function loadTextEntry(options: Required<Pick<NavigateToEntryOptions, 'for
   } catch (err) {
     handleEntryLoadFailure({
       entry,
+      callbackEntry: callbackEntryForLoadFailure(entry, sourceEntry),
       seq,
       navSeqRef,
       tabsRef,
@@ -481,14 +500,17 @@ export function useTabManagement(options: TabManagementOptions = {}) {
 
   /** Open a note — replaces the current note (single-note model). */
   const handleSelectNote = useCallback(async (entry: VaultEntry) => {
-    requestedActiveTabPathRef.current = entry.path
-    const alreadyViewingDirtyEntry = notePathsMatch(entry.path, activeTabPathRef.current)
-      && !!hasUnsavedChanges?.(entry.path)
+    const openEntry = normalizeOpenEntry(entry)
+    if (!openEntry) return
+    requestedActiveTabPathRef.current = openEntry.path
+    const alreadyViewingDirtyEntry = notePathsMatch(openEntry.path, activeTabPathRef.current)
+      && !!hasUnsavedChanges?.(openEntry.path)
     if (!alreadyViewingDirtyEntry) {
-      beginNoteOpenTrace(entry.path, 'select-note')
+      beginNoteOpenTrace(openEntry.path, 'select-note')
     }
-    const navigated = await executeNavigationWithBoundary(entry.path, () => navigateToEntry({
-      entry,
+    const navigated = await executeNavigationWithBoundary(openEntry.path, () => navigateToEntry({
+      entry: openEntry,
+      sourceEntry: entry,
       navSeqRef,
       tabsRef,
       activeTabPathRef,
@@ -500,7 +522,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
       onUnreadableNoteContent,
     }))
     if (!navigated) {
-      resetRequestedPathIfStillPending(requestedActiveTabPathRef, activeTabPathRef, entry.path)
+      resetRequestedPathIfStillPending(requestedActiveTabPathRef, activeTabPathRef, openEntry.path)
     }
   }, [executeNavigationWithBoundary, hasUnsavedChanges, onMissingActiveVault, onMissingNotePath, onUnreadableNoteContent])
 
@@ -511,24 +533,29 @@ export function useTabManagement(options: TabManagementOptions = {}) {
 
   /** Open a tab with known content — no IPC round-trip. Used for newly created notes. */
   const openTabWithContent = useCallback((entry: VaultEntry, content: string) => {
-    requestedActiveTabPathRef.current = entry.path
-    void executeNavigationWithBoundary(entry.path, () => {
-      cacheNoteContent(entry.path, content, entry)
-      setSingleTab(tabsRef, setTabs, { entry, content })
-      syncActiveTabPath(activeTabPathRef, setActiveTabPath, entry.path)
+    const openEntry = normalizeOpenEntry(entry)
+    if (!openEntry) return
+    requestedActiveTabPathRef.current = openEntry.path
+    void executeNavigationWithBoundary(openEntry.path, () => {
+      cacheNoteContent(openEntry.path, content, openEntry)
+      setSingleTab(tabsRef, setTabs, { entry: openEntry, content })
+      syncActiveTabPath(activeTabPathRef, setActiveTabPath, openEntry.path)
     }).then((navigated) => {
-      if (!navigated) resetRequestedPathIfStillPending(requestedActiveTabPathRef, activeTabPathRef, entry.path)
+      if (!navigated) resetRequestedPathIfStillPending(requestedActiveTabPathRef, activeTabPathRef, openEntry.path)
     })
   }, [executeNavigationWithBoundary])
 
   const handleReplaceActiveTab = useCallback(async (entry: VaultEntry) => {
-    requestedActiveTabPathRef.current = entry.path
-    const replacingDifferentEntry = !notePathsMatch(entry.path, activeTabPathRef.current)
+    const openEntry = normalizeOpenEntry(entry)
+    if (!openEntry) return
+    requestedActiveTabPathRef.current = openEntry.path
+    const replacingDifferentEntry = !notePathsMatch(openEntry.path, activeTabPathRef.current)
     if (replacingDifferentEntry) {
-      beginNoteOpenTrace(entry.path, 'replace-active-tab')
+      beginNoteOpenTrace(openEntry.path, 'replace-active-tab')
     }
-    const navigated = await executeNavigationWithBoundary(entry.path, () => navigateToEntry({
-      entry,
+    const navigated = await executeNavigationWithBoundary(openEntry.path, () => navigateToEntry({
+      entry: openEntry,
+      sourceEntry: entry,
       forceReload: !replacingDifferentEntry,
       navSeqRef,
       tabsRef,
@@ -540,7 +567,7 @@ export function useTabManagement(options: TabManagementOptions = {}) {
       onUnreadableNoteContent,
     }))
     if (!navigated) {
-      resetRequestedPathIfStillPending(requestedActiveTabPathRef, activeTabPathRef, entry.path)
+      resetRequestedPathIfStillPending(requestedActiveTabPathRef, activeTabPathRef, openEntry.path)
     }
   }, [executeNavigationWithBoundary, onMissingActiveVault, onMissingNotePath, onUnreadableNoteContent])
 

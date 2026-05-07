@@ -119,7 +119,7 @@ test('@smoke note open tolerates missing string metadata from the vault scan', a
   expect(errors).toHaveLength(0)
 })
 
-test('note open after vault reload tolerates missing suggestion metadata', async ({ page }) => {
+test('@smoke note open after vault reload tolerates missing suggestion metadata', async ({ page }) => {
   const errors = collectMissingMetadataCrashes(page)
   const noteList = page.getByTestId('note-list-container')
 

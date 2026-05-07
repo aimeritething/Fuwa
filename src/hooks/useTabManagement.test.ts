@@ -133,6 +133,41 @@ describe('useTabManagement (single-note model)', () => {
       expectSingleActiveTab(result, '/vault/note/a.md')
     })
 
+    it('normalizes partially hydrated note metadata before opening after reload churn', async () => {
+      const partialEntry = {
+        path: '/vault/note/apple-mail.md',
+        title: undefined,
+        filename: undefined,
+        aliases: undefined,
+        outgoingLinks: undefined,
+      } as unknown as VaultEntry
+
+      const { result } = renderHook(() => useTabManagement())
+      await act(async () => {
+        await result.current.handleSelectNote(partialEntry)
+      })
+
+      expectSingleActiveTab(result, '/vault/note/apple-mail.md')
+      expect(result.current.tabs[0].entry).toEqual(expect.objectContaining({
+        filename: 'apple-mail.md',
+        title: 'apple-mail',
+        aliases: [],
+        outgoingLinks: [],
+      }))
+    })
+
+    it('ignores note-open requests without a usable path', async () => {
+      const { result } = renderHook(() => useTabManagement())
+
+      await act(async () => {
+        await result.current.handleSelectNote(makeEntry({ path: ' ' }))
+      })
+
+      expect(result.current.tabs).toEqual([])
+      expect(result.current.activeTabPath).toBeNull()
+      expect(vi.mocked(mockInvoke)).not.toHaveBeenCalled()
+    })
+
     it('switches the active path immediately while the next note is still loading', async () => {
       let resolveContent: (value: string) => void
       vi.mocked(mockInvoke).mockImplementationOnce(
