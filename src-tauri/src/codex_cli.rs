@@ -469,6 +469,22 @@ mod tests {
     use crate::ai_agents::AiAgentPermissionMode;
     use std::ffi::OsStr;
 
+    #[cfg(target_os = "linux")]
+    fn current_test_binary() -> PathBuf {
+        std::fs::read_link("/proc/self/exe").unwrap()
+    }
+
+    #[cfg(target_os = "macos")]
+    fn current_test_binary() -> PathBuf {
+        let pid = std::process::id().to_string();
+        let output = std::process::Command::new("/bin/ps")
+            .args(["-p", pid.as_str(), "-o", "comm="])
+            .output()
+            .unwrap();
+        let path = String::from_utf8(output.stdout).unwrap();
+        PathBuf::from(path.trim())
+    }
+
     #[cfg(unix)]
     fn executable_script(dir: &Path, name: &str, body: &str) -> PathBuf {
         use std::os::unix::fs::PermissionsExt;
@@ -798,7 +814,7 @@ exit 2
         use std::io::Read;
         use std::time::{Duration, Instant};
 
-        let mut child = std::process::Command::new(std::env::current_exe().unwrap())
+        let mut child = std::process::Command::new(current_test_binary())
             .arg("codex_stdin_probe_parent_child")
             .arg("--ignored")
             .arg("--nocapture")

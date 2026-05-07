@@ -41,7 +41,8 @@ function renderWithPrioritySort(entries: VaultEntry[]) {
 }
 
 function expectVisibleNoteOrder(expectedTitles: string[]) {
-  const items = screen.getAllByText(new RegExp(expectedTitles.join('|')))
+  const expectedTitleSet = new Set(expectedTitles)
+  const items = screen.getAllByText((content) => expectedTitleSet.has(content))
   expect(items.map((item) => item.textContent)).toEqual(expectedTitles)
 }
 
@@ -75,10 +76,7 @@ describe('useNoteListSort (via NoteList)', () => {
       makeEntry({ path: '/c.md', title: 'Charlie', modifiedAt: 2000 }),
     ]
     renderNoteList({ entries, selection: { kind: 'filter', filter: 'all' } })
-    const items = screen.getAllByText(/Alpha|Beta|Charlie/)
-    expect(items[0].textContent).toBe('Beta')
-    expect(items[1].textContent).toBe('Charlie')
-    expect(items[2].textContent).toBe('Alpha')
+    expectVisibleNoteOrder(['Beta', 'Charlie', 'Alpha'])
   })
 
   it('reads sort from type document for sectionGroup selection', () => {
@@ -90,10 +88,7 @@ describe('useNoteListSort (via NoteList)', () => {
       makeEntry({ path: '/b.md', title: 'Beta', modifiedAt: 2000 }),
     ]
     renderNoteList({ entries, selection: { kind: 'sectionGroup', type: 'Note', label: 'Notes' } })
-    const items = screen.getAllByText(/Alpha|Beta|Charlie/)
-    expect(items[0].textContent).toBe('Alpha')
-    expect(items[1].textContent).toBe('Beta')
-    expect(items[2].textContent).toBe('Charlie')
+    expectVisibleNoteOrder(['Alpha', 'Beta', 'Charlie'])
   })
 
   it('shows type title as header for sectionGroup selection', () => {

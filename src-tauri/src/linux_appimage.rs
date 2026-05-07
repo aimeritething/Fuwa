@@ -310,6 +310,32 @@ fn colrv1_fontconfig_file_path() -> Option<std::path::PathBuf> {
 }
 
 #[cfg(all(desktop, target_os = "linux"))]
+fn launched_appimage_path() -> Result<std::path::PathBuf, String> {
+    if let Some(appimage) = std::env::var_os("APPIMAGE").filter(|value| !value.is_empty()) {
+        return Ok(std::path::PathBuf::from(appimage));
+    }
+
+    std::fs::read_link("/proc/self/exe")
+        .map_err(|e| format!("failed to resolve /proc/self/exe ({e})"))
+}
+
+#[cfg(all(desktop, target_os = "linux"))]
+fn launched_process_args() -> Vec<std::ffi::OsString> {
+    use std::os::unix::ffi::OsStringExt;
+
+    let Ok(cmdline) = std::fs::read("/proc/self/cmdline") else {
+        return Vec::new();
+    };
+
+    cmdline
+        .split(|byte| *byte == 0)
+        .filter(|arg| !arg.is_empty())
+        .skip(1)
+        .map(|arg| std::ffi::OsString::from_vec(arg.to_vec()))
+        .collect()
+}
+
+#[cfg(all(desktop, target_os = "linux"))]
 fn apply_wayland_client_preload() {
     use std::os::unix::process::CommandExt;
 
@@ -320,18 +346,16 @@ fn apply_wayland_client_preload() {
         return;
     };
 
-    let exe = match std::env::current_exe() {
+    let exe = match launched_appimage_path() {
         Ok(exe) => exe,
         Err(e) => {
-            eprintln!(
-                "Tolaria AppImage Wayland preload skipped: failed to resolve executable ({e})"
-            );
+            eprintln!("Tolaria AppImage Wayland preload skipped: {e}");
             return;
         }
     };
 
     let error = std::process::Command::new(exe)
-        .args(std::env::args_os().skip(1))
+        .args(launched_process_args())
         .env("LD_PRELOAD", preload_path)
         .env("TOLARIA_APPIMAGE_WAYLAND_PRELOAD_ATTEMPTED", "1")
         .exec();

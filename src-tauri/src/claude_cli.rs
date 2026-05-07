@@ -641,6 +641,22 @@ mod tests {
     use std::ffi::OsString;
     use std::process::Command;
 
+    #[cfg(target_os = "linux")]
+    fn current_test_binary() -> PathBuf {
+        std::fs::read_link("/proc/self/exe").unwrap()
+    }
+
+    #[cfg(target_os = "macos")]
+    fn current_test_binary() -> PathBuf {
+        let pid = std::process::id().to_string();
+        let output = Command::new("/bin/ps")
+            .args(["-p", pid.as_str(), "-o", "comm="])
+            .output()
+            .unwrap();
+        let path = String::from_utf8(output.stdout).unwrap();
+        PathBuf::from(path.trim())
+    }
+
     macro_rules! chat_request {
         ($message:expr, None, None $(,)?) => {
             ChatStreamRequest {
@@ -1185,7 +1201,7 @@ mod tests {
         use std::io::Read;
         use std::time::{Duration, Instant};
 
-        let mut child = Command::new(std::env::current_exe().unwrap())
+        let mut child = Command::new(current_test_binary())
             .arg("stdin_probe_parent_child")
             .arg("--ignored")
             .arg("--nocapture")
@@ -1231,7 +1247,7 @@ mod tests {
             return;
         }
 
-        let fake_bin = std::env::current_exe().unwrap();
+        let fake_bin = current_test_binary();
         let args = vec![
             "stdin_probe_mock_claude_child".to_string(),
             "--ignored".to_string(),

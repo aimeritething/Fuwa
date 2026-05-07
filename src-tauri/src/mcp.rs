@@ -224,14 +224,13 @@ fn node_binary_name() -> &'static str {
 /// Resolve the path to `mcp-server/`.
 ///
 /// In dev mode, uses `CARGO_MANIFEST_DIR` (set at compile time).
-/// In release mode, navigates from the current executable.
+/// In release mode, uses platform resource roots exposed by the launcher.
 pub(crate) fn mcp_server_dir() -> Result<PathBuf, String> {
     let dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("..")
         .join("mcp-server");
-    let exe = std::env::current_exe().map_err(|e| format!("Cannot find executable: {e}"))?;
-    let appdir = std::env::var_os("APPDIR").map(PathBuf::from);
-    let candidates = mcp_server_dir_candidates(&dev_path, &exe, appdir.as_deref());
+    let resource_roots = runtime_resource_roots();
+    let candidates = mcp_server_dir_candidates(&dev_path, &resource_roots);
     if let Some(path) = candidates
         .iter()
         .find(|path| mcp_server_dir_has_files(path))
@@ -249,34 +248,40 @@ pub(crate) fn mcp_server_dir() -> Result<PathBuf, String> {
     ))
 }
 
-fn mcp_server_dir_candidates(
-    dev_path: &Path,
-    exe_path: &Path,
-    appdir: Option<&Path>,
-) -> Vec<PathBuf> {
+fn mcp_server_dir_candidates(dev_path: &Path, resource_roots: &[PathBuf]) -> Vec<PathBuf> {
     let mut candidates = vec![dev_path.to_path_buf()];
 
-    if let Some(exe_dir) = exe_path.parent() {
-        candidates.push(exe_dir.join("mcp-server"));
-        if let Some(bundle_root) = exe_dir.parent() {
-            candidates.push(bundle_root.join("Resources").join("mcp-server"));
-            candidates.extend(linux_package_mcp_server_dirs(bundle_root));
-        }
-    }
-
-    if let Some(appdir) = appdir {
-        candidates.push(
-            appdir
-                .join("usr")
-                .join("lib")
-                .join("tolaria")
-                .join("mcp-server"),
-        );
+    for root in resource_roots {
+        candidates.push(root.join("mcp-server"));
+        candidates.push(root.join("resources").join("mcp-server"));
+        candidates.extend(linux_package_mcp_server_dirs(root));
     }
 
     candidates.extend(linux_package_mcp_server_dirs(Path::new("/usr/local")));
     candidates.extend(linux_package_mcp_server_dirs(Path::new("/usr")));
     candidates
+}
+
+fn runtime_resource_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    if let Some(resource_path) = non_empty_env_path("RESOURCEPATH") {
+        roots.push(resource_path);
+    }
+
+    if let Some(appdir) = non_empty_env_path("APPDIR") {
+        roots.push(appdir.join("usr"));
+        roots.push(appdir.join("usr").join("lib").join("tolaria"));
+        roots.push(appdir.join("usr").join("lib").join("Tolaria"));
+    }
+
+    roots
+}
+
+fn non_empty_env_path(key: &str) -> Option<PathBuf> {
+    std::env::var_os(key)
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
 }
 
 fn linux_package_mcp_server_dirs(root: &Path) -> Vec<PathBuf> {
@@ -739,32 +744,36 @@ mod tests {
     }
 
     #[test]
-    fn mcp_server_dir_candidates_prefer_exe_dir_before_macos_resources() {
+    fn mcp_server_dir_candidates_prefer_resource_root_before_linux_packages() {
         let dev_path = Path::new("/repo/mcp-server");
-        let exe_path = Path::new("/Users/tester/AppData/Local/Tolaria/tolaria.exe");
-        let candidates = mcp_server_dir_candidates(dev_path, exe_path, None);
+        let resource_roots = vec![PathBuf::from(
+            "/Applications/Tolaria.app/Contents/Resources",
+        )];
+        let candidates = mcp_server_dir_candidates(dev_path, &resource_roots);
 
-        let windows_dir = PathBuf::from("/Users/tester/AppData/Local/Tolaria/mcp-server");
-        let macos_dir = PathBuf::from("/Users/tester/AppData/Local/Resources/mcp-server");
-        let windows_pos = candidates
+        let resource_dir = PathBuf::from("/Applications/Tolaria.app/Contents/Resources/mcp-server");
+        let linux_pos = candidates
             .iter()
-            .position(|path| path == &windows_dir)
-            .unwrap();
-        let macos_pos = candidates
-            .iter()
-            .position(|path| path == &macos_dir)
+            .position(|path| path == &PathBuf::from("/usr/local/Tolaria/mcp-server"))
             .unwrap();
 
         assert_eq!(candidates[0], dev_path);
-        assert!(windows_pos < macos_pos);
+        assert_eq!(candidates[1], resource_dir);
+        assert!(1 < linux_pos);
     }
 
     #[test]
     fn mcp_server_dir_candidates_include_linux_package_resource_roots() {
         let dev_path = Path::new("/repo/mcp-server");
-        let exe_path = Path::new("/usr/local/tolaria/tolaria");
-        let candidates = mcp_server_dir_candidates(dev_path, exe_path, None);
+        let resource_roots = vec![PathBuf::from("/opt/tolaria")];
+        let candidates = mcp_server_dir_candidates(dev_path, &resource_roots);
         let expected = [
+            PathBuf::from("/opt/tolaria/Tolaria/mcp-server"),
+            PathBuf::from("/opt/tolaria/Tolaria/resources/mcp-server"),
+            PathBuf::from("/opt/tolaria/lib/Tolaria/mcp-server"),
+            PathBuf::from("/opt/tolaria/lib/Tolaria/resources/mcp-server"),
+            PathBuf::from("/opt/tolaria/lib/tolaria/mcp-server"),
+            PathBuf::from("/opt/tolaria/lib/tolaria/resources/mcp-server"),
             PathBuf::from("/usr/local/Tolaria/mcp-server"),
             PathBuf::from("/usr/local/Tolaria/resources/mcp-server"),
             PathBuf::from("/usr/local/lib/Tolaria/mcp-server"),
@@ -783,8 +792,7 @@ mod tests {
     #[test]
     fn mcp_server_dir_candidates_include_deb_capitalized_lib_root() {
         let dev_path = Path::new("/repo/mcp-server");
-        let exe_path = Path::new("/usr/bin/tolaria");
-        let candidates = mcp_server_dir_candidates(dev_path, exe_path, None);
+        let candidates = mcp_server_dir_candidates(dev_path, &[]);
 
         assert!(candidates.contains(&PathBuf::from("/usr/lib/Tolaria/mcp-server")));
     }
@@ -792,9 +800,8 @@ mod tests {
     #[test]
     fn mcp_server_dir_candidates_include_linux_appimage_resource_root() {
         let dev_path = Path::new("/repo/mcp-server");
-        let exe_path = Path::new("/tmp/.mount_tolaria/usr/bin/tolaria");
-        let appdir = Path::new("/tmp/.mount_tolaria");
-        let candidates = mcp_server_dir_candidates(dev_path, exe_path, Some(appdir));
+        let resource_roots = vec![PathBuf::from("/tmp/.mount_tolaria/usr")];
+        let candidates = mcp_server_dir_candidates(dev_path, &resource_roots);
 
         assert!(candidates.contains(&PathBuf::from(
             "/tmp/.mount_tolaria/usr/lib/tolaria/resources/mcp-server"
