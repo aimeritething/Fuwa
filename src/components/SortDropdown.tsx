@@ -36,11 +36,11 @@ function buildSortItems(locale: AppLocale, customProperties?: string[]): SortIte
 }
 
 function resolveFocusedIndex(groupLabel: string, current: SortOption, sortItems: SortItem[]) {
-  const activeElement = document.activeElement
-  if (activeElement instanceof HTMLElement) {
-    const activeIndexText = activeElement.dataset.sortItemIndex
+  const activeHTMLElement = document.activeElement
+  if (activeHTMLElement instanceof HTMLElement) {
+    const activeIndexText = activeHTMLElement.dataset.sortItemIndex
     const activeIndex = activeIndexText === undefined ? -1 : Number(activeIndexText)
-    if (activeElement.dataset.sortGroupLabel === groupLabel && activeIndex >= 0) return activeIndex
+    if (activeHTMLElement.dataset.sortGroupLabel === groupLabel && activeIndex >= 0) return activeIndex
   }
 
   const currentIndex = sortItems.findIndex((item) => item.value === current)

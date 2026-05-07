@@ -71,16 +71,15 @@ const CONVERSATION_HISTORY_CLOSE_MARKER = ['</', 'conversation_history', '>'].jo
 /** Keep the most recent messages that fit within `maxTokens`. Drops oldest first. */
 export function trimHistory(history: ChatMessage[], maxTokens: number): ChatMessage[] {
   let tokenCount = 0
-  const result: ChatMessage[] = []
-  for (let i = history.length - 1; i >= 0; i--) {
-    const message = history.at(i)
-    if (!message) continue
+  const newestFirst = [...history].reverse()
+  const keptNewestFirst: ChatMessage[] = []
+  for (const message of newestFirst) {
     const tokens = estimateTokens(message.content)
     if (tokenCount + tokens > maxTokens) break
-    result.unshift(message)
+    keptNewestFirst.push(message)
     tokenCount += tokens
   }
-  return result
+  return keptNewestFirst.reverse()
 }
 
 /** Format conversation history + new message into a single prompt for the CLI. */
@@ -158,11 +157,11 @@ function handleChatStreamEvent(
  * can verify that history is actually being sent.
  */
 function mockChatResponse(message: string): string {
-  if (message.includes(CONVERSATION_HISTORY_OPEN_MARKER)) {
+  if (message.indexOf(CONVERSATION_HISTORY_OPEN_MARKER) >= 0) {
     const allUserLines = message.match(/\[user\]: .+/g) ?? []
     const turnCount = allUserLines.length
     // The last [user] line is the actual new message
-    const lastLine = allUserLines[allUserLines.length - 1] ?? ''
+    const lastLine = allUserLines.at(-1) ?? ''
     const lastUserMsg = lastLine.replace('[user]: ', '')
     return `[mock-with-history turns=${turnCount}] You asked: "${lastUserMsg}"`
   }

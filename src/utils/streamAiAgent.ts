@@ -36,10 +36,10 @@ const CONVERSATION_HISTORY_OPEN_MARKER = ['<', 'conversation_history', '>'].join
 
 function mockAgentResponse(agent: AiAgentId, message: string): string {
   const agentLabel = getAiAgentDefinition(agent).label
-  if (message.includes(CONVERSATION_HISTORY_OPEN_MARKER)) {
+  if (message.indexOf(CONVERSATION_HISTORY_OPEN_MARKER) >= 0) {
     const allUserLines = message.match(/\[user\]: .+/g) ?? []
     const turnCount = allUserLines.length
-    const lastLine = allUserLines[allUserLines.length - 1] ?? ''
+    const lastLine = allUserLines.at(-1) ?? ''
     const lastUserMsg = lastLine.replace('[user]: ', '')
     return `[mock-${agentLabel.toLowerCase()} turns=${turnCount}] You asked: "${lastUserMsg}" — This note is related to [[Build Laputa App]] and [[Matteo Cellini]].`
   }

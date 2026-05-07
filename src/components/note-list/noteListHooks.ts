@@ -400,13 +400,13 @@ export function useNoteListSort({
 
 // --- useMultiSelectKeyboard ---
 
-function isInputFocused(): boolean {
-  const activeElement = document.activeElement
-  if (!(activeElement instanceof HTMLElement)) return false
+function isInputHtmlElementFocused(): boolean {
+  const activeHTMLElement = document.activeElement
+  if (!(activeHTMLElement instanceof HTMLElement)) return false
 
-  return activeElement.tagName === 'INPUT'
-    || activeElement.tagName === 'TEXTAREA'
-    || activeElement.isContentEditable
+  return activeHTMLElement.tagName === 'INPUT'
+    || activeHTMLElement.tagName === 'TEXTAREA'
+    || activeHTMLElement.isContentEditable
 }
 
 function handleEscapeKey(e: KeyboardEvent, multiSelect: MultiSelectState) {
@@ -416,7 +416,7 @@ function handleEscapeKey(e: KeyboardEvent, multiSelect: MultiSelectState) {
 }
 
 function handleSelectAllKey(e: KeyboardEvent, multiSelect: MultiSelectState, isEntityView: boolean) {
-  if (e.key !== 'a' || !(e.metaKey || e.ctrlKey) || isEntityView || isInputFocused()) return
+  if (e.key !== 'a' || !(e.metaKey || e.ctrlKey) || isEntityView || isInputHtmlElementFocused()) return
   e.preventDefault()
   multiSelect.selectAll()
 }
