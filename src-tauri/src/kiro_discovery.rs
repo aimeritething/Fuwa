@@ -2,92 +2,16 @@ use crate::ai_agents::AiAgentAvailability;
 use std::path::{Path, PathBuf};
 
 pub(crate) fn check_cli() -> AiAgentAvailability {
-    match find_binary() {
-        Ok(binary) => AiAgentAvailability {
-            installed: true,
-            version: crate::cli_agent_runtime::version_for_binary(&binary),
-        },
-        Err(_) => AiAgentAvailability {
-            installed: false,
-            version: None,
-        },
-    }
+    crate::cli_agent_runtime::check_cli_availability(find_binary)
 }
 
 pub(crate) fn find_binary() -> Result<PathBuf, String> {
-    if let Some(binary) = find_binary_on_path() {
-        return Ok(binary);
-    }
-    if let Some(binary) = find_binary_in_user_shell() {
-        return Ok(binary);
-    }
-    if let Some(binary) = crate::cli_agent_runtime::find_executable_binary_candidate(
+    crate::cli_agent_runtime::find_cli_binary(
+        "kiro-cli",
         kiro_binary_candidates(),
         "Kiro CLI",
-    )? {
-        return Ok(binary);
-    }
-
-    Err("Kiro CLI not found. Install it: https://kiro.dev/docs/cli".into())
-}
-
-fn find_binary_on_path() -> Option<PathBuf> {
-    crate::hidden_command(path_lookup_command())
-        .arg("kiro-cli")
-        .output()
-        .ok()
-        .and_then(|output| path_from_successful_output(&output))
-}
-
-fn path_lookup_command() -> &'static str {
-    if cfg!(windows) { "where" } else { "which" }
-}
-
-fn find_binary_in_user_shell() -> Option<PathBuf> {
-    user_shell_candidates()
-        .into_iter()
-        .filter(|shell| shell.exists())
-        .find_map(|shell| command_path_from_shell(&shell, "kiro-cli"))
-}
-
-fn user_shell_candidates() -> Vec<PathBuf> {
-    let mut shells = Vec::new();
-    if let Some(shell) = std::env::var_os("SHELL") {
-        if !shell.is_empty() {
-            shells.push(PathBuf::from(shell));
-        }
-    }
-    shells.push(PathBuf::from("/bin/zsh"));
-    shells.push(PathBuf::from("/bin/bash"));
-    shells
-}
-
-fn command_path_from_shell(shell: &Path, command: &str) -> Option<PathBuf> {
-    crate::hidden_command(shell)
-        .arg("-lc")
-        .arg(format!("command -v {command}"))
-        .output()
-        .ok()
-        .and_then(|output| path_from_successful_output(&output))
-}
-
-fn path_from_successful_output(output: &std::process::Output) -> Option<PathBuf> {
-    if output.status.success() {
-        first_existing_path(&String::from_utf8_lossy(&output.stdout))
-    } else {
-        None
-    }
-}
-
-fn first_existing_path(stdout: &str) -> Option<PathBuf> {
-    stdout.lines().find_map(|line| {
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            return None;
-        }
-        let candidate = PathBuf::from(trimmed);
-        candidate.exists().then_some(candidate)
-    })
+        "https://kiro.dev/docs/cli",
+    )
 }
 
 fn kiro_binary_candidates() -> Vec<PathBuf> {
@@ -127,16 +51,5 @@ mod tests {
         for candidate in expected {
             assert!(candidates.contains(&candidate), "missing {}", candidate.display());
         }
-    }
-
-    #[test]
-    fn first_existing_path_skips_empty_and_missing_lines() {
-        let dir = tempfile::tempdir().unwrap();
-        let missing = dir.path().join("missing-kiro");
-        let kiro = dir.path().join("kiro-cli");
-        std::fs::write(&kiro, "#!/bin/sh\n").unwrap();
-
-        let stdout = format!("\n{}\n{}\n", missing.display(), kiro.display());
-        assert_eq!(first_existing_path(&stdout), Some(kiro));
     }
 }
