@@ -1,5 +1,6 @@
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { pathToFileURL } from 'node:url'
 
 const repoRoot = path.resolve(import.meta.dirname, '..')
 const siteRoot = path.join(repoRoot, 'site')
@@ -23,7 +24,11 @@ function firstHeading(markdown, fallback) {
   return match?.[1]?.trim() || fallback
 }
 
-function sectionForFile(relativePath) {
+export function normalizeDocPath(relativePath) {
+  return relativePath.replaceAll(path.win32.sep, '/')
+}
+
+export function sectionForFile(relativePath) {
   const [firstPart] = relativePath.split('/')
   if (firstPart === 'index.md') return 'home'
   return firstPart.replace(/\.md$/, '')
@@ -40,7 +45,7 @@ async function listMarkdownFiles(dir, base = dir) {
     if (entry.isDirectory()) {
       files.push(...await listMarkdownFiles(fullPath, base))
     } else if (entry.isFile() && entry.name.endsWith('.md')) {
-      files.push(path.relative(base, fullPath))
+      files.push(normalizeDocPath(path.relative(base, fullPath)))
     }
   }
 
@@ -178,7 +183,11 @@ async function main() {
   console.log(`Generated ${docs.length} agent docs in ${path.relative(repoRoot, outputRoot)}`)
 }
 
-main().catch((error) => {
-  console.error(error)
-  process.exit(1)
-})
+const entrypointUrl = process.argv[1] ? pathToFileURL(process.argv[1]).href : ''
+
+if (import.meta.url === entrypointUrl) {
+  main().catch((error) => {
+    console.error(error)
+    process.exit(1)
+  })
+}

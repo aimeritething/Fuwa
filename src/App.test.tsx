@@ -1249,6 +1249,8 @@ describe('App', () => {
 
     render(<App />)
 
+    expect(await screen.findByTestId('status-missing-git')).toBeInTheDocument()
+    fireEvent.click(screen.getByTestId('status-missing-git'))
     expect(await screen.findByText('Enable Git for this vault?')).toBeInTheDocument()
 
     fireEvent.click(screen.getByTestId('status-vault-trigger'))
