@@ -1,9 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import { describe, expect, it, vi } from 'vitest'
+import type { Editor } from 'tldraw'
 import { TldrawWhiteboard } from './TldrawWhiteboard'
 
 interface MockTldrawProps {
   assetUrls: MockAssetUrls
+  onMount: (editor: Editor) => () => void
 }
 
 interface MockAssetUrls {
@@ -73,6 +75,40 @@ function renderedTldrawAssetUrls(): MockAssetUrls {
   return props.assetUrls
 }
 
+function renderedTldrawProps(): MockTldrawProps {
+  const props = tldrawMock.Tldraw.mock.calls[0]?.[0] as MockTldrawProps
+  expect(props).toBeDefined()
+  return props
+}
+
+function mockEditor(): Editor {
+  const container = document.createElement('div')
+  const canvas = document.createElement('div')
+  canvas.className = 'tl-canvas'
+  container.append(canvas)
+
+  return {
+    dispatch: vi.fn(),
+    getContainer: vi.fn(() => container),
+    textMeasure: {
+      measureElementTextNodeSpans: vi.fn(() => {
+        throw new TypeError("Cannot read properties of undefined (reading 'top')")
+      }),
+    },
+    updateViewportScreenBounds: vi.fn(),
+  } as unknown as Editor
+}
+
+function measuredTextElement(): HTMLElement {
+  const element = document.createElement('div')
+  element.textContent = 'Label'
+  vi.spyOn(element, 'getBoundingClientRect').mockReturnValue(DOMRect.fromRect({
+    height: 24,
+    width: 88,
+  }))
+  return element
+}
+
 function expectNoCdnUrls(urls: Record<string, string>) {
   Object.values(urls).forEach((url) => {
     expect(url).not.toContain('cdn.tldraw.com')
@@ -104,5 +140,32 @@ describe('TldrawWhiteboard', () => {
     expect(screen.getByTestId('mock-tldraw')).toHaveAttribute('data-draw-font-url')
     expect(assetImportMock.getAssetUrlsByImport).toHaveBeenCalledWith(expect.any(Function))
     expectBundledTldrawAssetUrls(renderedTldrawAssetUrls())
+  })
+
+  it('installs the text measurement guard when the canvas mounts', () => {
+    render(
+      <TldrawWhiteboard
+        boardId="board-1"
+        height="520"
+        snapshot=""
+        width=""
+        onSizeChange={vi.fn()}
+        onSnapshotChange={vi.fn()}
+      />
+    )
+
+    const editor = mockEditor()
+    const cleanup = renderedTldrawProps().onMount(editor)
+
+    expect(editor.textMeasure.measureElementTextNodeSpans(measuredTextElement())).toEqual({
+      didTruncate: false,
+      spans: [{
+        box: { h: 24, w: 88, x: 0, y: 0 },
+        text: 'Label',
+      }],
+    })
+
+    cleanup()
+    expect(() => editor.textMeasure.measureElementTextNodeSpans(measuredTextElement())).toThrow('top')
   })
 })

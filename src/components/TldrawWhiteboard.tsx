@@ -11,6 +11,7 @@ import {
   type TLStoreSnapshot,
 } from 'tldraw'
 import 'tldraw/tldraw.css'
+import { installTldrawTextMeasurementGuard } from './tldrawTextMeasurementGuard'
 
 const EMPTY_TLDRAW_TRANSLATION_URL = 'data:application/json;base64,e30K'
 
@@ -176,6 +177,16 @@ function installZoomAwareViewport(editor: Editor): () => void {
   }
 }
 
+function installWhiteboardRuntimeGuards(editor: Editor): () => void {
+  const cleanupTextMeasurementGuard = installTldrawTextMeasurementGuard(editor)
+  const cleanupZoomAwareViewport = installZoomAwareViewport(editor)
+
+  return () => {
+    cleanupZoomAwareViewport()
+    cleanupTextMeasurementGuard()
+  }
+}
+
 export function TldrawWhiteboard({
   boardId,
   height,
@@ -284,7 +295,7 @@ export function TldrawWhiteboard({
     >
       <Tldraw
         assetUrls={tldrawAssetUrls}
-        onMount={installZoomAwareViewport}
+        onMount={installWhiteboardRuntimeGuards}
         store={store}
       />
       <div
