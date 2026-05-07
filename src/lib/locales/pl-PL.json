@@ -438,6 +438,7 @@
   "editor.toolbar.copyFilePath": "Kopiuj ścieżkę pliku",
   "editor.toolbar.moreActions": "Więcej działań notatki",
   "editor.toolbar.openProperties": "Otwórz panel właściwości",
+  "editor.slash.math": "Matematyka",
   "tableOfContents.title": "Spis treści",
   "tableOfContents.close": "Zamknij spis treści",
   "tableOfContents.empty": "Brak nagłówków w tej notatce",

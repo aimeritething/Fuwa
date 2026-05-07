@@ -438,6 +438,7 @@
   "editor.toolbar.copyFilePath": "复制文件路径",
   "editor.toolbar.moreActions": "更多笔记操作",
   "editor.toolbar.openProperties": "打开属性面板",
+  "editor.slash.math": "数学",
   "tableOfContents.title": "目录",
   "tableOfContents.close": "关闭目录",
   "tableOfContents.empty": "本笔记中没有标题",

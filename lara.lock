@@ -440,6 +440,7 @@ files:
     editor.toolbar.copyFilePath: 64c6cec5ca57efbb8c9c93ae5fbccd27
     editor.toolbar.moreActions: 89e19353176b94068dec4c768c25e70b
     editor.toolbar.openProperties: 948b90b60b8ce827f179e8c5b85b112e
+    editor.slash.math: a49950aa047c2292e989e368a97a3aae
     tableOfContents.title: f61d6c3e3733db355168b7e1aee6780b
     tableOfContents.close: d3292972a10edd1a06a627f3552f760a
     tableOfContents.empty: e4f02ad69cbbce1ec65d14215e3d5871

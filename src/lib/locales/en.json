@@ -438,6 +438,7 @@
   "editor.toolbar.copyFilePath": "Copy file path",
   "editor.toolbar.moreActions": "More note actions",
   "editor.toolbar.openProperties": "Open the properties panel",
+  "editor.slash.math": "Math",
   "tableOfContents.title": "Table of Contents",
   "tableOfContents.close": "Close table of contents",
   "tableOfContents.empty": "No headings in this note",

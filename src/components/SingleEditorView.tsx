@@ -1131,6 +1131,7 @@ function useSuggestionMenuItems(options: {
   baseItems: ReturnType<typeof buildBaseSuggestionItems>
   editor: ReturnType<typeof useCreateBlockNote>
   insertWikilink: (target: string) => void
+  locale: AppLocale
   runEditorAction: (action: SuggestionAction) => void
   typeEntryMap: Record<string, VaultEntry>
   vaultPath?: string
@@ -1139,10 +1140,12 @@ function useSuggestionMenuItems(options: {
     baseItems,
     editor,
     insertWikilink,
+    locale,
     runEditorAction,
     typeEntryMap,
     vaultPath,
   } = options
+  const t = useMemo(() => createTranslator(locale), [locale])
 
   const buildItems = useCallback((query: string, triggerCharacter: '[[' | '@') => {
     const normalizedQuery = normalizeSuggestionQuery(query, triggerCharacter)
@@ -1171,14 +1174,16 @@ function useSuggestionMenuItems(options: {
   const getSlashMenuItems = useCallback(async (query: string) => {
     try {
       return guardSuggestionMenuItems(
-        await Promise.resolve(getTolariaSlashMenuItems(editor, query)),
+        await Promise.resolve(getTolariaSlashMenuItems(editor, query, {
+          mathTitle: t('editor.slash.math'),
+        })),
         runEditorAction,
       )
     } catch (error) {
       console.warn('[editor] Ignored stale slash menu query:', error)
       return []
     }
-  }, [editor, runEditorAction])
+  }, [editor, runEditorAction, t])
 
   return {
     getWikilinkItems,
@@ -1381,6 +1386,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
     baseItems,
     editor,
     insertWikilink,
+    locale,
     runEditorAction,
     typeEntryMap,
     vaultPath,

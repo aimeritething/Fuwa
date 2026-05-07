@@ -438,6 +438,7 @@
   "editor.toolbar.copyFilePath": "Dateipfad kopieren",
   "editor.toolbar.moreActions": "Weitere Notizaktionen",
   "editor.toolbar.openProperties": "Eigenschaften-Panel öffnen",
+  "editor.slash.math": "Mathematik",
   "tableOfContents.title": "Inhaltsverzeichnis",
   "tableOfContents.close": "Inhaltsverzeichnis schließen",
   "tableOfContents.empty": "Keine Überschriften in dieser Notiz",

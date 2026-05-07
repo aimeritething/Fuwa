@@ -438,6 +438,7 @@
   "editor.toolbar.copyFilePath": "ファイルパスをコピー",
   "editor.toolbar.moreActions": "その他のノート操作",
   "editor.toolbar.openProperties": "プロパティパネルを開く",
+  "editor.slash.math": "数学",
   "tableOfContents.title": "目次",
   "tableOfContents.close": "目次を閉じる",
   "tableOfContents.empty": "このノートには見出しがありません",

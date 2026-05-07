@@ -1,13 +1,22 @@
 import { Children, isValidElement, type ReactElement } from 'react'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { getFormattingToolbarItems } from '@blocknote/react'
+
+vi.mock('../lib/telemetry', () => ({
+  trackEvent: vi.fn(),
+}))
+
 import {
   addItemsToMediaGroup,
+  createMathSlashMenuItem,
   filterTolariaFormattingToolbarItems,
   filterTolariaSlashMenuItems,
   getTolariaBlockTypeSelectItems,
+  MATH_SLASH_COMMAND_LATEX,
   MERMAID_SLASH_COMMAND_DIAGRAM,
 } from './tolariaEditorFormattingConfig'
+import { trackEvent } from '../lib/telemetry'
+import { MATH_BLOCK_TYPE } from '../utils/mathMarkdown'
 import { mermaidFenceSource } from '../utils/mermaidMarkdown'
 
 describe('tolariaEditorFormatting', () => {
@@ -126,6 +135,12 @@ describe('tolariaEditorFormatting', () => {
         onItemClick: () => {},
       },
       {
+        key: 'math',
+        title: 'Math',
+        aliases: ['equation', 'latex', 'formula', 'sqrt'],
+        onItemClick: () => {},
+      },
+      {
         key: 'whiteboard',
         title: 'Whiteboard',
         aliases: ['tldraw', 'drawing', 'canvas', 'sketch'],
@@ -139,12 +154,16 @@ describe('tolariaEditorFormatting', () => {
       aliases: ['diagram', 'flowchart', 'graph', 'chart'],
     }))
     expect(items[1]).toEqual(expect.objectContaining({
+      key: 'math',
+      title: 'Math',
+      aliases: ['equation', 'latex', 'formula', 'sqrt'],
+    }))
+    expect(items[2]).toEqual(expect.objectContaining({
       key: 'whiteboard',
       title: 'Whiteboard',
       aliases: ['tldraw', 'drawing', 'canvas', 'sketch'],
     }))
-    expect(isValidElement(items[0]?.icon)).toBe(true)
-    expect(isValidElement(items[1]?.icon)).toBe(true)
+    expect(items.map((item) => isValidElement(item.icon))).toEqual([true, true, true])
   })
 
   it('uses a valid placeholder diagram for new Mermaid blocks', () => {
@@ -180,6 +199,12 @@ describe('tolariaEditorFormatting', () => {
         onItemClick: () => {},
       },
       {
+        key: 'math',
+        title: 'Math',
+        group: 'Media',
+        onItemClick: () => {},
+      },
+      {
         key: 'whiteboard',
         title: 'Whiteboard',
         group: 'Media',
@@ -191,8 +216,34 @@ describe('tolariaEditorFormatting', () => {
       'image',
       'file',
       'mermaid',
+      'math',
       'whiteboard',
       'emoji',
     ])
+  })
+
+  it('creates a math slash command with a default display equation', () => {
+    const block = { id: 'active-block' }
+    const editor = {
+      getTextCursorPosition: () => ({ block }),
+      updateBlock: () => {},
+    }
+    const updateBlock = vi.spyOn(editor, 'updateBlock')
+
+    const mathItem = createMathSlashMenuItem(editor as never)
+
+    expect(mathItem).toEqual(expect.objectContaining({
+      key: 'math',
+      title: 'Math',
+      aliases: ['equation', 'latex', 'formula', 'sqrt'],
+    }))
+
+    mathItem?.onItemClick()
+
+    expect(updateBlock).toHaveBeenCalledWith(block, {
+      type: MATH_BLOCK_TYPE,
+      props: { latex: MATH_SLASH_COMMAND_LATEX },
+    })
+    expect(trackEvent).toHaveBeenCalledWith('editor_math_slash_command_used')
   })
 })

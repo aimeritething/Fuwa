@@ -438,6 +438,7 @@
   "editor.toolbar.copyFilePath": "複製檔案路徑",
   "editor.toolbar.moreActions": "更多筆記操作",
   "editor.toolbar.openProperties": "開啟屬性面板",
+  "editor.slash.math": "數學",
   "tableOfContents.title": "目錄",
   "tableOfContents.close": "關閉目錄",
   "tableOfContents.empty": "此筆記中沒有標題",

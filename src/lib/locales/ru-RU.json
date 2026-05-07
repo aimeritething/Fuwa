@@ -438,6 +438,7 @@
   "editor.toolbar.copyFilePath": "Копировать путь к файлу",
   "editor.toolbar.moreActions": "Другие действия с заметкой",
   "editor.toolbar.openProperties": "Открыть панель свойств",
+  "editor.slash.math": "Математика",
   "tableOfContents.title": "Содержание",
   "tableOfContents.close": "Закрыть оглавление",
   "tableOfContents.empty": "В этой заметке нет заголовков",

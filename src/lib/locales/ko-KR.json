@@ -438,6 +438,7 @@
   "editor.toolbar.copyFilePath": "파일 경로 복사",
   "editor.toolbar.moreActions": "추가 노트 작업",
   "editor.toolbar.openProperties": "속성 패널 열기",
+  "editor.slash.math": "수학",
   "tableOfContents.title": "목차",
   "tableOfContents.close": "목차 닫기",
   "tableOfContents.empty": "이 노트에는 제목이 없습니다",

@@ -438,6 +438,7 @@
   "editor.toolbar.copyFilePath": "Copia il percorso del file",
   "editor.toolbar.moreActions": "Altre azioni della nota",
   "editor.toolbar.openProperties": "Apri il pannello delle proprietà",
+  "editor.slash.math": "Matematica",
   "tableOfContents.title": "Indice",
   "tableOfContents.close": "Chiudi l'indice",
   "tableOfContents.empty": "Nessun titolo in questa nota",

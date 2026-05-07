@@ -13,6 +13,7 @@ import {
   ListChecks,
   ListNumbers,
   Minus,
+  Pi,
   Paragraph,
   Quotes,
   ScribbleLoop,
@@ -28,6 +29,8 @@ import {
   Video,
   type Icon as PhosphorIcon,
 } from '@phosphor-icons/react'
+import { trackEvent } from '../lib/telemetry'
+import { MATH_BLOCK_TYPE } from '../utils/mathMarkdown'
 import { MERMAID_BLOCK_TYPE, mermaidFenceSource } from '../utils/mermaidMarkdown'
 import { TLDRAW_BLOCK_TYPE, TLDRAW_DEFAULT_HEIGHT } from '../utils/tldrawMarkdown'
 
@@ -44,16 +47,21 @@ type SlashInsertEditor = {
 }
 type BlockSlashMenuItemConfig = {
   aliases: string[]
+  eventName?: string
   key: string
   props: Record<string, unknown>
   title: string
   type: string
+}
+type TolariaSlashMenuLabels = {
+  mathTitle: string
 }
 
 export const MERMAID_SLASH_COMMAND_DIAGRAM = [
   'flowchart TD',
   '    edit["Switch to the raw editor to edit"]',
 ].join('\n')
+export const MATH_SLASH_COMMAND_LATEX = '\\sqrt{a^2 + b^2}'
 
 const UNSUPPORTED_FORMATTING_TOOLBAR_KEYS = new Set([
   'underlineStyleButton',
@@ -100,6 +108,7 @@ const TOLARIA_SLASH_MENU_ICONS: Partial<Record<string, PhosphorIcon>> = {
   heading_2: TextHTwo,
   heading_3: TextHThree,
   image: ImageSquare,
+  math: Pi,
   mermaid: FlowArrow,
   numbered_list: ListNumbers,
   paragraph: Paragraph,
@@ -153,6 +162,22 @@ function createMermaidSlashMenuItem(
   })
 }
 
+export function createMathSlashMenuItem(
+  editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
+  labels: TolariaSlashMenuLabels = { mathTitle: 'Math' },
+): TolariaSlashMenuItem {
+  return createBlockSlashMenuItem(editor, {
+    key: 'math',
+    title: labels.mathTitle,
+    aliases: ['equation', 'latex', 'formula', 'sqrt'],
+    eventName: 'editor_math_slash_command_used',
+    type: MATH_BLOCK_TYPE,
+    props: {
+      latex: MATH_SLASH_COMMAND_LATEX,
+    },
+  })
+}
+
 function createBlockSlashMenuItem(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
   config: BlockSlashMenuItemConfig,
@@ -170,6 +195,7 @@ function createBlockSlashMenuItem(
         type: config.type,
         props: config.props,
       })
+      if (config.eventName) trackEvent(config.eventName)
     },
   } as TolariaSlashMenuItem
 }
@@ -240,11 +266,13 @@ export function filterTolariaSlashMenuItems<T extends TolariaSlashMenuItem>(
 export function getTolariaSlashMenuItems(
   editor: Parameters<typeof getDefaultReactSlashMenuItems>[0],
   query: string,
+  labels?: TolariaSlashMenuLabels,
 ) {
   const items = addItemsToMediaGroup(
     getDefaultReactSlashMenuItems(editor) as TolariaSlashMenuItem[],
     [
       createMermaidSlashMenuItem(editor),
+      createMathSlashMenuItem(editor, labels),
       createWhiteboardSlashMenuItem(editor),
     ],
   )
