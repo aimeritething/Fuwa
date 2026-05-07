@@ -172,7 +172,7 @@ function localizeTypeCommand(command: CommandAction, t: Translate): string | nul
 }
 
 export function localizeCommandGroup(group: CommandGroup, locale: AppLocale = 'en'): string {
-  return createTranslator(locale)(GROUP_LABEL_KEYS[group])
+  return createTranslator(locale)(Reflect.get(GROUP_LABEL_KEYS, group) as keyof ReturnType<typeof createTranslator> extends never ? never : Parameters<ReturnType<typeof createTranslator>>[0])
 }
 
 export function localizeCommandActions(commands: CommandAction[], locale: AppLocale = 'en'): CommandAction[] {

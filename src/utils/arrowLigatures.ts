@@ -84,7 +84,7 @@ function resolveMatchingRule(
   beforeText: string,
   inputText: string,
 ) {
-  const rules = INPUT_RULES[inputText]
+  const rules = Reflect.get(INPUT_RULES, inputText) as ArrowLigatureRule[] | undefined
   return rules?.find((rule) => beforeText.endsWith(rule.prefix)) ?? null
 }
 

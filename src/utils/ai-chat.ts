@@ -73,9 +73,11 @@ export function trimHistory(history: ChatMessage[], maxTokens: number): ChatMess
   let tokenCount = 0
   const result: ChatMessage[] = []
   for (let i = history.length - 1; i >= 0; i--) {
-    const tokens = estimateTokens(history[i].content)
+    const message = history.at(i)
+    if (!message) continue
+    const tokens = estimateTokens(message.content)
     if (tokenCount + tokens > maxTokens) break
-    result.unshift(history[i])
+    result.unshift(message)
     tokenCount += tokens
   }
   return result

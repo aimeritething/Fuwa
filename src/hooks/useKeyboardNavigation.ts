@@ -28,12 +28,20 @@ function navigateNote(
   // Clamp to list bounds — don't wrap around
   if (nextIndex < 0 || nextIndex >= notes.length) return
 
-  const nextNote = notes[nextIndex]
+  const nextNote = notes.at(nextIndex)
+  if (!nextNote) return
   if (currentPath) {
     onReplace.current!(nextNote)
   } else {
     onSelect.current!(nextNote)
   }
+}
+
+function noteNavigationDirection(event: KeyboardEvent): 1 | -1 | null {
+  if (!event.altKey || event.shiftKey) return null
+  if (event.key === 'ArrowDown') return 1
+  if (event.key === 'ArrowUp') return -1
+  return null
 }
 
 function useLatestRef<T>(value: T): React.RefObject<T> {
@@ -55,11 +63,10 @@ export function useKeyboardNavigation({
       const mod = e.metaKey || e.ctrlKey
       if (!mod) return
       // Cmd+Alt+ArrowUp/Down: navigate notes in the current list
-      if (e.altKey && !e.shiftKey && (e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
-        e.preventDefault()
-        const direction: 1 | -1 = e.key === 'ArrowDown' ? 1 : -1
-        navigateNote(visibleNotesRef, activeTabPathRef, onReplaceRef, onSelectNoteRef, direction)
-      }
+      const direction = noteNavigationDirection(e)
+      if (direction === null) return
+      e.preventDefault()
+      navigateNote(visibleNotesRef, activeTabPathRef, onReplaceRef, onSelectNoteRef, direction)
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)

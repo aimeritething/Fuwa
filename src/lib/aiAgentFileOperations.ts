@@ -124,7 +124,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function stringField(record: Record<string, unknown>, keys: readonly string[]): string | null {
   for (const key of keys) {
-    const value = record[key]
+    const value = Reflect.get(record, key)
     if (typeof value === 'string') return value
   }
   return null

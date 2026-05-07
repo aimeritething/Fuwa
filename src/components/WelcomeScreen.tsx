@@ -74,15 +74,15 @@ function focusWelcomeAction(
   actionButtonRefs: WelcomeActionButtonRef[],
   actionIndex: number,
 ): void {
-  actionButtonRefs[actionIndex]?.current?.focus()
+  actionButtonRefs.at(actionIndex)?.current?.focus()
 }
 
 function triggerWelcomeAction(
   actionIndex: number,
   actions: WelcomeAction[],
 ): void {
-  const action = actions[actionIndex]
-  if (!action?.disabled) action.run()
+  const action = actions.at(actionIndex)
+  if (action && !action.disabled) action.run()
 }
 
 const CARD_STYLE: React.CSSProperties = {

@@ -140,7 +140,8 @@ function resolveRelationshipChipValues(
 ): PropertyChipValue[] | null {
   const relationshipKey = findMatchingKey(entry.relationships, propName)
   if (!relationshipKey) return null
-  return entry.relationships[relationshipKey]
+  const refs = Reflect.get(entry.relationships, relationshipKey) as string[]
+  return refs
     .map((ref) => resolveRelationshipChip(ref, allEntries, typeEntryMap))
     .filter((chip): chip is PropertyChipValue => chip !== null)
 }
@@ -149,7 +150,7 @@ function resolveScalarChipValues(entry: VaultEntry, propName: string): PropertyC
   const propertyKey = findMatchingKey(entry.properties, propName)
   if (!propertyKey) return []
 
-  const rawValue = entry.properties[propertyKey]
+  const rawValue = Reflect.get(entry.properties, propertyKey) as unknown
   const values = Array.isArray(rawValue) ? rawValue : [rawValue]
   return values
     .map((value) => resolvePropertyValueChip(propertyKey, value))

@@ -69,9 +69,21 @@ function shouldOpenCombobox(event: KeyboardEvent<HTMLButtonElement>) {
   return OPEN_COMBOBOX_KEYS.has(event.key)
 }
 
+function typeMetadataValue({
+  type,
+  metadata,
+}: {
+  type: string | null | undefined
+  metadata: Record<string, string | null>
+}): string | null {
+  if (!type) return null
+  const value = Reflect.get(metadata, type)
+  return typeof value === 'string' ? value : null
+}
+
 function TypeSelectorItem({ type, typeColorKeys, typeIconKeys }: TypeSelectorItemProps) {
-  const Icon = getTypeIcon(type, typeIconKeys[type])
-  const color = getTypeColor(type, typeColorKeys[type])
+  const Icon = getTypeIcon(type, typeMetadataValue({ type, metadata: typeIconKeys }))
+  const color = getTypeColor(type, typeMetadataValue({ type, metadata: typeColorKeys }))
   return (
     <>
       {/* eslint-disable-next-line react-hooks/static-components -- icon from static map lookup */}
@@ -272,8 +284,9 @@ function EditableTypeSelector({
   onUpdateProperty: (key: string, value: FrontmatterValue) => void
 }) {
   const currentValue = isA ?? TYPE_NONE
-  const typeColor = isA ? getTypeColor(isA, typeColorKeys[isA] ?? customColorKey) : undefined
-  const typeLightColor = isA ? getTypeLightColor(isA, typeColorKeys[isA] ?? customColorKey) : undefined
+  const currentTypeColorKey = typeMetadataValue({ type: isA, metadata: typeColorKeys }) ?? customColorKey
+  const typeColor = isA ? getTypeColor(isA, currentTypeColorKey) : undefined
+  const typeLightColor = isA ? getTypeLightColor(isA, currentTypeColorKey) : undefined
   const [open, setOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
@@ -372,9 +385,9 @@ function EditableTypeSelector({
         moveHighlight('previous')
         return
       case 'Enter':
-        if (highlightedIndex < 0 || options[highlightedIndex] === undefined) return
+        if (highlightedIndex < 0 || options.at(highlightedIndex) === undefined) return
         event.preventDefault()
-        selectType(options[highlightedIndex])
+        selectType(options.at(highlightedIndex) ?? TYPE_NONE)
         return
       case 'Escape':
         event.preventDefault()

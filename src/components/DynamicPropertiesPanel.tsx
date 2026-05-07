@@ -110,7 +110,7 @@ const SUGGESTED_PROPERTY_MODES: Record<string, PropertyDisplayMode> = {
 }
 
 function getSuggestedDisplayMode(key: string): PropertyDisplayMode {
-  return SUGGESTED_PROPERTY_MODES[key] ?? 'text'
+  return (Reflect.get(SUGGESTED_PROPERTY_MODES, key) as PropertyDisplayMode | undefined) ?? 'text'
 }
 
 function resolveMissingTypeName(entryIsA: string | null | undefined, availableTypes: string[]): string | null {
@@ -124,7 +124,7 @@ function SuggestedPropertySlot({ label, displayMode, onAdd }: {
   displayMode: PropertyDisplayMode
   onAdd: () => void
 }) {
-  const SuggestedIcon = DISPLAY_MODE_ICONS[displayMode]
+  const SuggestedIcon = Reflect.get(DISPLAY_MODE_ICONS, displayMode) as typeof Plus
 
   return (
     <Button
@@ -200,7 +200,7 @@ function TypeDerivedPropertySlot({
     )
   }
 
-  const PlaceholderIcon = DISPLAY_MODE_ICONS[displayMode]
+  const PlaceholderIcon = Reflect.get(DISPLAY_MODE_ICONS, displayMode) as typeof Plus
 
   return (
     <Button
@@ -346,7 +346,7 @@ function PropertyEntryRows({
             displayMode={getEffectiveDisplayMode(key, value, displayOverrides)}
             autoMode={detectPropertyType(key, value)}
             vaultStatuses={vaultStatuses}
-            vaultTags={vaultTagsByKey[key] ?? []}
+            vaultTags={(Reflect.get(vaultTagsByKey, key) as string[] | undefined) ?? []}
             onStartEdit={onStartEdit}
             onSave={onSave}
             onSaveList={onSaveList}
@@ -359,7 +359,7 @@ function PropertyEntryRows({
             key={key} propKey={key} value={value}
             editingKey={editingKey} displayMode={getEffectiveDisplayMode(key, value, displayOverrides)} autoMode={detectPropertyType(key, value)}
             vaultStatuses={vaultStatuses}
-            vaultTags={vaultTagsByKey[key] ?? []}
+            vaultTags={(Reflect.get(vaultTagsByKey, key) as string[] | undefined) ?? []}
             onStartEdit={onStartEdit} onSave={onSave}
             onSaveList={onSaveList} onUpdate={onUpdate}
             onDelete={onDelete}
@@ -406,7 +406,7 @@ function PendingSuggestedPropertyRow({
       displayMode={getSuggestedDisplayMode(pendingSuggestedKey)}
       autoMode={getSuggestedDisplayMode(pendingSuggestedKey)}
       vaultStatuses={vaultStatuses}
-      vaultTags={vaultTagsByKey[pendingSuggestedKey] ?? []}
+      vaultTags={(Reflect.get(vaultTagsByKey, pendingSuggestedKey) as string[] | undefined) ?? []}
       onStartEdit={onStartEdit}
       onSave={onSave}
       onSaveList={onSaveList}

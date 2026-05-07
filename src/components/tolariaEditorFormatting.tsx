@@ -230,10 +230,14 @@ function editorSupportsTextStyle(
   style: TolariaBasicTextStyle,
   editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
 ) {
+  const styleSchema = Reflect.get(editor.schema.styleSchema, style) as {
+    type?: string
+    propSchema?: unknown
+  } | undefined
   return (
     style in editor.schema.styleSchema &&
-    editor.schema.styleSchema[style].type === style &&
-    editor.schema.styleSchema[style].propSchema === 'boolean'
+    styleSchema?.type === style &&
+    styleSchema.propSchema === 'boolean'
   )
 }
 
@@ -300,7 +304,7 @@ function isSelectedBlockTypeItem(
 
   return Object.entries(item.props || {}).every(
     ([propName, propValue]) =>
-      propValue === firstSelectedBlock.props[propName],
+      propValue === Reflect.get(firstSelectedBlock.props, propName),
   )
 }
 
@@ -331,7 +335,7 @@ function getTolariaBlockTypeSelectOptions(
 function getFormattingToolbarBridgeBlockId(
   editor: BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>,
 ) {
-  const selectedBlock = getSelectedBlocksSafely(editor)[0]
+  const selectedBlock = getSelectedBlocksSafely(editor).at(0)
   if (!selectedBlock) return null
 
   return FORMATTING_TOOLBAR_FILE_BLOCK_TYPES.has(selectedBlock.type)
@@ -345,7 +349,8 @@ function getSelectedFileBlockState(
   const selectedBlocks = getSelectedBlocksSafely(editor)
   if (selectedBlocks.length !== 1) return null
 
-  const block = selectedBlocks[0]
+  const block = selectedBlocks.at(0)
+  if (!block) return null
   if (!FORMATTING_TOOLBAR_FILE_BLOCK_TYPES.has(block.type)) return null
 
   const url = (block.props as Record<string, unknown>).url
@@ -363,7 +368,7 @@ function fileDownloadTooltip(dict: unknown, blockType: string): string {
     }
   }).formatting_toolbar?.file_download?.tooltip
 
-  return tooltip?.[blockType] ?? tooltip?.file ?? 'Download file'
+  return (tooltip ? Reflect.get(tooltip, blockType) as string | undefined : undefined) ?? tooltip?.file ?? 'Download file'
 }
 
 function getFormattingToolbarAnchorElement(
@@ -412,8 +417,12 @@ function TolariaBasicTextStyleButton({
 
   if (buttonState === undefined) return null
 
-  const Icon = TOLARIA_BASIC_TEXT_STYLE_ICONS[basicTextStyle]
-  const copy = TOLARIA_BASIC_TEXT_STYLE_TOOLTIPS[basicTextStyle]
+  const Icon = Reflect.get(TOLARIA_BASIC_TEXT_STYLE_ICONS, basicTextStyle) as LucideIcon
+  const copy = Reflect.get(TOLARIA_BASIC_TEXT_STYLE_TOOLTIPS, basicTextStyle) as {
+    label: string
+    mainTooltip: string
+    secondaryTooltip: string
+  }
 
   return (
     <Components.FormattingToolbar.Button

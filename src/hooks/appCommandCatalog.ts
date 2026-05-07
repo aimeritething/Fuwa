@@ -240,7 +240,7 @@ function toMenuItem(item: AppCommandMenuManifestItem): AppCommandMenuItem {
     }
   }
 
-  const command = APP_COMMAND_MANIFEST_COMMANDS[item.command]
+  const command = Reflect.get(APP_COMMAND_MANIFEST_COMMANDS, item.command) as AppCommandManifestDefinition
   return {
     kind: 'command',
     commandId: command.id,
@@ -266,7 +266,7 @@ export const APP_COMMAND_MENU_STATE_GROUPS = Object.fromEntries(
   Object.entries(APP_COMMAND_MANIFEST_STATE_GROUPS).map(([name, references]) => [
     name,
     references.map(reference => 'command' in reference
-      ? APP_COMMAND_MANIFEST_COMMANDS[reference.command].id
+      ? (Reflect.get(APP_COMMAND_MANIFEST_COMMANDS, reference.command) as AppCommandManifestDefinition).id
       : reference.id),
   ]),
 ) as Record<AppCommandMenuStateGroupName, string[]>
@@ -308,12 +308,14 @@ function normalizeShortcutKey(key: string): string {
 for (const [id, definition] of Object.entries(APP_COMMAND_DEFINITIONS) as Array<[AppCommandId, AppCommandDefinition]>) {
   const shortcut = definition.shortcut
   if (!shortcut) continue
-  shortcutKeyMaps[shortcut.combo].set(normalizeShortcutKey(shortcut.key), id)
+  const shortcutKeyMap = Reflect.get(shortcutKeyMaps, shortcut.combo) as Map<string, AppCommandId>
+  shortcutKeyMap.set(normalizeShortcutKey(shortcut.key), id)
   for (const alias of shortcut.aliases ?? []) {
-    shortcutKeyMaps[shortcut.combo].set(normalizeShortcutKey(alias), id)
+    shortcutKeyMap.set(normalizeShortcutKey(alias), id)
   }
   if (shortcut.code) {
-    shortcutCodeMaps[shortcut.combo].set(shortcut.code, id)
+    const shortcutCodeMap = Reflect.get(shortcutCodeMaps, shortcut.combo) as Map<string, AppCommandId>
+    shortcutCodeMap.set(shortcut.code, id)
   }
 }
 
@@ -328,7 +330,7 @@ export function isNativeMenuCommandId(value: string): value is AppCommandId {
 export function getDeterministicShortcutQaDefinition(
   id: AppCommandId,
 ): AppCommandDeterministicQaDefinition | null {
-  const definition = APP_COMMAND_DEFINITIONS[id]
+  const definition = Reflect.get(APP_COMMAND_DEFINITIONS, id) as AppCommandDefinition
   if (!definition.shortcut) return null
 
   return {
@@ -345,7 +347,7 @@ export function getShortcutEventInit(
   id: AppCommandId,
   options: AppCommandShortcutEventOptions = {},
 ): AppCommandShortcutEventInit | null {
-  const shortcut = APP_COMMAND_DEFINITIONS[id].shortcut
+  const shortcut = (Reflect.get(APP_COMMAND_DEFINITIONS, id) as AppCommandDefinition).shortcut
   if (!shortcut) return null
 
   const useControl = options.preferControl ?? false
@@ -382,10 +384,10 @@ export function findShortcutCommandId(
   code?: string,
 ): AppCommandId | null {
   if (code) {
-    const codeMatch = shortcutCodeMaps[combo].get(code)
+    const codeMatch = (Reflect.get(shortcutCodeMaps, combo) as Map<string, AppCommandId>).get(code)
     if (codeMatch) return codeMatch
   }
-  return shortcutKeyMaps[combo].get(normalizeShortcutKey(key)) ?? null
+  return (Reflect.get(shortcutKeyMaps, combo) as Map<string, AppCommandId>).get(normalizeShortcutKey(key)) ?? null
 }
 
 export function findShortcutCommandIdForEvent(event: ShortcutEventLike): AppCommandId | null {
@@ -412,6 +414,6 @@ export function formatShortcutDisplay(
 }
 
 export function getAppCommandShortcutDisplay(id: AppCommandId): string | undefined {
-  const shortcut = APP_COMMAND_DEFINITIONS[id].shortcut
+  const shortcut = (Reflect.get(APP_COMMAND_DEFINITIONS, id) as AppCommandDefinition).shortcut
   return shortcut ? formatShortcutDisplay(shortcut) : undefined
 }

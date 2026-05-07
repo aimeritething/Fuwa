@@ -6,28 +6,43 @@ import { FilterFieldOptionsList } from './filter-builder/FilterFieldOptionsList'
 
 const CONTENT_FIELDS = new Set(['body'])
 
+type FilterFieldName = string
+type FilterFieldQuery = string
+type ListboxId = string
+
 interface FilterFieldComboboxProps {
-  value: string
-  fields: string[]
-  onChange: (value: string) => void
+  value: FilterFieldName
+  fields: FilterFieldName[]
+  onChange: (value: FilterFieldName) => void
 }
 
 interface FieldGroup {
   key: 'property' | 'content'
-  label: string
-  options: string[]
+  label: 'Properties' | 'Content'
+  options: FilterFieldName[]
 }
 
-function normalizeFieldQuery(query: string): string {
+interface BuildFieldGroupsInput {
+  currentValue: FilterFieldName
+  fields: FilterFieldName[]
+  query: FilterFieldQuery
+}
+
+interface HighlightIndexInput {
+  currentValue: FilterFieldName
+  options: FilterFieldName[]
+}
+
+function normalizeFieldQuery(query: FilterFieldQuery): FilterFieldQuery {
   return query.trim().toLowerCase()
 }
 
-function buildFieldGroups(fields: string[], currentValue: string, query: string): FieldGroup[] {
+function buildFieldGroups({ fields, currentValue, query }: BuildFieldGroupsInput): FieldGroup[] {
   const allFields = currentValue !== '' && !fields.includes(currentValue)
     ? [currentValue, ...fields]
     : fields
   const normalized = normalizeFieldQuery(query)
-  const matches = (field: string) => normalized === '' || field.toLowerCase().includes(normalized)
+  const matches = (field: FilterFieldName) => normalized === '' || field.toLowerCase().includes(normalized)
   const propertyOptions = allFields.filter((field) => !CONTENT_FIELDS.has(field) && matches(field))
   const contentOptions = allFields.filter((field) => CONTENT_FIELDS.has(field) && matches(field))
   const groups: FieldGroup[] = []
@@ -38,11 +53,11 @@ function buildFieldGroups(fields: string[], currentValue: string, query: string)
   return groups
 }
 
-function flattenGroups(groups: FieldGroup[]): string[] {
+function flattenGroups(groups: FieldGroup[]): FilterFieldName[] {
   return groups.flatMap((group) => group.options)
 }
 
-function initialHighlightIndex(options: string[], currentValue: string): number {
+function initialHighlightIndex({ options, currentValue }: HighlightIndexInput): number {
   if (options.length === 0) return -1
   const currentIndex = options.indexOf(currentValue)
   return currentIndex >= 0 ? currentIndex : 0
@@ -64,7 +79,7 @@ function moveHighlightedOption({
 }: {
   event: KeyboardEvent<HTMLInputElement>
   open: boolean
-  options: string[]
+  options: FilterFieldName[]
   direction: 'next' | 'previous'
   openCombobox: () => void
   setHighlightedIndex: (updater: number | ((current: number) => number)) => void
@@ -87,13 +102,14 @@ function selectHighlightedOption({
 }: {
   event: KeyboardEvent<HTMLInputElement>
   open: boolean
-  options: string[]
+  options: FilterFieldName[]
   highlightedIndex: number
-  selectOption: (value: string) => void
+  selectOption: (value: FilterFieldName) => void
 }) {
-  if (!open || highlightedIndex < 0 || options[highlightedIndex] === undefined) return
+  const highlightedOption = options.at(highlightedIndex)
+  if (!open || highlightedIndex < 0 || highlightedOption === undefined) return
   event.preventDefault()
-  selectOption(options[highlightedIndex])
+  selectOption(highlightedOption)
 }
 
 function closeOpenCombobox({
@@ -122,11 +138,11 @@ function handleFilterFieldKeyDown({
 }: {
   event: KeyboardEvent<HTMLInputElement>
   open: boolean
-  options: string[]
+  options: FilterFieldName[]
   highlightedIndex: number
   openCombobox: () => void
   setHighlightedIndex: (updater: number | ((current: number) => number)) => void
-  selectOption: (value: string) => void
+  selectOption: (value: FilterFieldName) => void
   closeCombobox: () => void
 }) {
   switch (event.key) {
@@ -160,9 +176,9 @@ function FilterFieldInput({
 }: {
   inputRef: RefObject<HTMLInputElement | null>
   open: boolean
-  query: string
-  value: string
-  listboxId: string
+  query: FilterFieldQuery
+  value: FilterFieldName
+  listboxId: ListboxId
   highlightedIndex: number
   onFocus: () => void
   onChange: (event: ChangeEvent<HTMLInputElement>) => void
@@ -205,12 +221,12 @@ function FilterFieldPopoverPanel({
 }: {
   open: boolean
   contentWidth: number
-  listboxId: string
+  listboxId: ListboxId
   fieldGroups: FieldGroup[]
-  options: string[]
+  options: FilterFieldName[]
   highlightedIndex: number
   onHighlight: (index: number) => void
-  onSelect: (value: string) => void
+  onSelect: (value: FilterFieldName) => void
 }) {
   if (!open) return null
 
@@ -254,13 +270,19 @@ export function FilterFieldCombobox({ value, fields, onChange }: FilterFieldComb
   const inputRef = useRef<HTMLInputElement>(null)
   const listboxId = useId()
   const effectiveQuery = hasTyped ? query : ''
-  const fieldGroups = useMemo(() => buildFieldGroups(fields, value, effectiveQuery), [fields, value, effectiveQuery])
+  const fieldGroups = useMemo(
+    () => buildFieldGroups({ fields, currentValue: value, query: effectiveQuery }),
+    [fields, value, effectiveQuery],
+  )
   const options = useMemo(() => flattenGroups(fieldGroups), [fieldGroups])
 
   const resetToCurrentValue = () => {
     setQuery(value)
     setHasTyped(false)
-    setHighlightedIndex(initialHighlightIndex(flattenGroups(buildFieldGroups(fields, value, '')), value))
+    setHighlightedIndex(initialHighlightIndex({
+      options: flattenGroups(buildFieldGroups({ fields, currentValue: value, query: '' })),
+      currentValue: value,
+    }))
   }
 
   const openCombobox = () => {
@@ -274,7 +296,7 @@ export function FilterFieldCombobox({ value, fields, onChange }: FilterFieldComb
     resetToCurrentValue()
   }
 
-  const selectOption = (nextValue: string) => {
+  const selectOption = (nextValue: FilterFieldName) => {
     onChange(nextValue)
     setQuery(nextValue)
     setHasTyped(false)
@@ -302,7 +324,7 @@ export function FilterFieldCombobox({ value, fields, onChange }: FilterFieldComb
 
   const handleInputChange = (event: ChangeEvent<HTMLInputElement>) => {
     const nextQuery = event.target.value
-    const nextGroups = buildFieldGroups(fields, value, nextQuery)
+    const nextGroups = buildFieldGroups({ fields, currentValue: value, query: nextQuery })
     const nextOptions = flattenGroups(nextGroups)
     setOpen(true)
     setQuery(nextQuery)

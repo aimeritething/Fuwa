@@ -66,14 +66,18 @@ interface FrontmatterPatchInput {
   value?: FrontmatterValue
 }
 
+function singleEntryRecord<T>({ key, value }: { key: FrontmatterKey; value: T }): Record<FrontmatterKey, T> {
+  return Object.fromEntries([[key, value]])
+}
+
 function applyRecordPatch<T>(
   existing: Record<string, T>,
   patch: Record<string, T | null>,
 ): Record<string, T> {
   const merged = { ...existing }
   for (const [key, value] of Object.entries(patch)) {
-    if (value === null) delete merged[key]
-    else merged[key] = value
+    if (value === null) Reflect.deleteProperty(merged, key)
+    else Reflect.set(merged, key, value)
   }
   return merged
 }
@@ -122,9 +126,14 @@ function knownFrontmatterUpdates(value: FrontmatterValue | undefined): Record<Fr
 }
 
 function deleteEntryPatch({ key, lookupKey, systemMetadataKey }: FrontmatterPatchInput): EntryPatchResult {
-  const relationshipPatch = systemMetadataKey ? null : { [key]: null }
-  const propertiesPatch = !systemMetadataKey && !(lookupKey in ENTRY_DELETE_MAP) ? { [key]: null } : null
-  return { patch: ENTRY_DELETE_MAP[lookupKey] ?? {}, relationshipPatch, propertiesPatch }
+  const relationshipPatch = systemMetadataKey ? null : singleEntryRecord({ key, value: null })
+  const hasKnownDelete = Object.hasOwn(ENTRY_DELETE_MAP, lookupKey)
+  const propertiesPatch = !systemMetadataKey && !hasKnownDelete ? singleEntryRecord({ key, value: null }) : null
+  return {
+    patch: (Reflect.get(ENTRY_DELETE_MAP, lookupKey) as Partial<VaultEntry> | undefined) ?? {},
+    relationshipPatch,
+    propertiesPatch,
+  }
 }
 
 function relationshipUpdatePatch(
@@ -133,7 +142,7 @@ function relationshipUpdatePatch(
   value: FrontmatterValue | undefined,
 ): RelationshipPatch | null {
   const wikilinks = value != null ? extractWikilinks(value) : []
-  return !systemMetadataKey && wikilinks.length > 0 ? { [key]: wikilinks } : null
+  return !systemMetadataKey && wikilinks.length > 0 ? singleEntryRecord({ key, value: wikilinks }) : null
 }
 
 function propertiesUpdatePatch({
@@ -143,14 +152,14 @@ function propertiesUpdatePatch({
   value,
 }: FrontmatterPatchInput): PropertiesPatch | null {
   const knownUpdates = knownFrontmatterUpdates(value)
-  if (systemMetadataKey || lookupKey in knownUpdates || value == null) return null
-  return { [key]: scalarPropertyValue(value) }
+  if (systemMetadataKey || Object.hasOwn(knownUpdates, lookupKey) || value == null) return null
+  return singleEntryRecord({ key, value: scalarPropertyValue(value) })
 }
 
 function updateEntryPatch(input: FrontmatterPatchInput): EntryPatchResult {
   const updates = knownFrontmatterUpdates(input.value)
   return {
-    patch: updates[input.lookupKey] ?? {},
+    patch: (Reflect.get(updates, input.lookupKey) as Partial<VaultEntry> | undefined) ?? {},
     relationshipPatch: relationshipUpdatePatch(input.key, input.systemMetadataKey, input.value),
     propertiesPatch: propertiesUpdatePatch(input),
   }
@@ -192,7 +201,9 @@ async function loadMockContent(path: VaultPath): Promise<MarkdownContent> {
   try {
     return await mockInvoke<MarkdownContent>('get_note_content', { path })
   } catch {
-    return typeof window === 'undefined' ? '' : window.__mockContent?.[path] ?? ''
+    return typeof window === 'undefined'
+      ? ''
+      : (window.__mockContent ? Reflect.get(window.__mockContent, path) as string | undefined : undefined) ?? ''
   }
 }
 

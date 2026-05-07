@@ -13,9 +13,9 @@ export function buildTypeEntryMap(entries: VaultEntry[]): Record<string, VaultEn
   const map: Record<string, VaultEntry> = {}
   for (const e of entries) {
     if (e.isA === 'Type') {
-      map[e.title] = e
+      Reflect.set(map, e.title, e)
       const lower = e.title.toLowerCase()
-      if (lower !== e.title) map[lower] = e
+      if (lower !== e.title) Reflect.set(map, lower, e)
     }
   }
   return map
@@ -65,6 +65,10 @@ const COLOR_KEY_TO_CSS: Record<string, string> = Object.fromEntries(
 const COLOR_KEY_TO_CSS_LIGHT: Record<string, string> = Object.fromEntries(
   ACCENT_COLORS.map((c) => [c.key, c.cssLight]),
 )
+const COLOR_KEY_TO_CSS_LOOKUP = new Map(Object.entries(COLOR_KEY_TO_CSS))
+const COLOR_KEY_TO_CSS_LIGHT_LOOKUP = new Map(Object.entries(COLOR_KEY_TO_CSS_LIGHT))
+const TYPE_COLOR_LOOKUP = new Map(Object.entries(TYPE_COLOR_MAP))
+const TYPE_LIGHT_COLOR_LOOKUP = new Map(Object.entries(TYPE_LIGHT_COLOR_MAP))
 
 const CSS_COLOR_LIGHT_MIX = 14
 
@@ -73,7 +77,7 @@ function resolveCustomColor(customColorKey?: string | null): string | null {
   if (!color) return null
 
   const paletteKey = color.toLowerCase()
-  return COLOR_KEY_TO_CSS[paletteKey] ?? (isValidCssColor(color) ? color : null)
+  return COLOR_KEY_TO_CSS_LOOKUP.get(paletteKey) ?? (isValidCssColor(color) ? color : null)
 }
 
 function resolveCustomLightColor(customColorKey?: string | null): string | null {
@@ -81,7 +85,7 @@ function resolveCustomLightColor(customColorKey?: string | null): string | null 
   if (!color) return null
 
   const paletteKey = color.toLowerCase()
-  return COLOR_KEY_TO_CSS_LIGHT[paletteKey]
+  return COLOR_KEY_TO_CSS_LIGHT_LOOKUP.get(paletteKey)
     ?? (isValidCssColor(color) ? `color-mix(in srgb, ${color} ${CSS_COLOR_LIGHT_MIX}%, transparent)` : null)
 }
 
@@ -89,12 +93,12 @@ function resolveCustomLightColor(customColorKey?: string | null): string | null 
 export function getTypeColor(isA: string | null, customColorKey?: string | null): string {
   const customColor = resolveCustomColor(customColorKey)
   if (customColor) return customColor
-  return (isA && TYPE_COLOR_MAP[isA]) ?? DEFAULT_COLOR
+  return (isA && TYPE_COLOR_LOOKUP.get(isA)) ?? DEFAULT_COLOR
 }
 
 /** Returns the CSS variable for the light/background variant of a given note type's color */
 export function getTypeLightColor(isA: string | null, customColorKey?: string | null): string {
   const customLightColor = resolveCustomLightColor(customColorKey)
   if (customLightColor) return customLightColor
-  return (isA && TYPE_LIGHT_COLOR_MAP[isA]) ?? DEFAULT_LIGHT_COLOR
+  return (isA && TYPE_LIGHT_COLOR_LOOKUP.get(isA)) ?? DEFAULT_LIGHT_COLOR
 }

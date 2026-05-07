@@ -59,7 +59,7 @@ function markTriggerAsHandled(
   trigger: AutoGitTrigger,
   activityAt: number,
 ): void {
-  target[trigger] = activityAt
+  Reflect.set(target, trigger, activityAt)
 }
 
 function shouldTriggerCheckpoint({
@@ -117,7 +117,7 @@ export function useAutoGit({
     if (!shouldTriggerCheckpoint({
       eligibility,
       trigger,
-      lastTriggeredAt: lastTriggeredRef.current[trigger],
+      lastTriggeredAt: Reflect.get(lastTriggeredRef.current, trigger) as number | null,
       lastActivityAt,
       idleThresholdSeconds,
       inactiveThresholdSeconds,

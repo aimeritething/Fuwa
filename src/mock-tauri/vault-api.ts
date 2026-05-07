@@ -73,7 +73,7 @@ const POST_REQUEST_BUILDERS: Record<string, PostRequestBuilder> = {
 }
 
 function argText(args: Record<string, unknown>, key: string): string | null {
-  const value = args[key]
+  const value = Reflect.get(args, key)
   return value ? String(value) : null
 }
 
@@ -112,8 +112,8 @@ function buildVaultApiRequest(cmd: string, args?: Record<string, unknown>): Vaul
   if (cmd === 'list_vault') return buildListRequest(args, false)
   if (cmd === 'reload_vault') return buildListRequest(args, true)
   if (cmd === 'search_vault') return buildSearchRequest(args)
-  if (cmd in PATH_QUERY_ENDPOINTS) return buildPathQueryRequest(args, PATH_QUERY_ENDPOINTS[cmd as PathQueryCommand])
-  return POST_REQUEST_BUILDERS[cmd]?.(args) ?? null
+  if (cmd in PATH_QUERY_ENDPOINTS) return buildPathQueryRequest(args, Reflect.get(PATH_QUERY_ENDPOINTS, cmd) as string)
+  return (Reflect.get(POST_REQUEST_BUILDERS, cmd) as ((args: Record<string, unknown>) => VaultApiRequest | null) | undefined)?.(args) ?? null
 }
 
 function buildFetchOptions(request: VaultApiRequest): RequestInit {

@@ -426,7 +426,7 @@ export function DisplayModeSelector({ propKey, currentMode, autoMode, onSelect }
 }) {
   const [open, setOpen] = useState(false)
   const triggerRef = useRef<HTMLButtonElement>(null)
-  const CurrentIcon = DISPLAY_MODE_ICONS[currentMode]
+  const CurrentIcon = Reflect.get(DISPLAY_MODE_ICONS, currentMode) as typeof DISPLAY_MODE_ICONS.text
   const showRelationshipIcon = showsRelationshipPropertyIcon(propKey)
 
   const positionMenu = useCallback((node: HTMLDivElement | null) => {

@@ -10,6 +10,8 @@ import { tryVaultApi } from './vault-api'
 
 export { addMockEntry, updateMockContent, trackMockChange }
 
+type MockHandler = (args: Record<string, unknown> | undefined) => unknown
+
 export function isTauri(): boolean {
   if (typeof globalThis !== 'undefined' && typeof (globalThis as { isTauri?: unknown }).isTauri === 'boolean') {
     return Boolean((globalThis as { isTauri?: unknown }).isTauri)
@@ -25,10 +27,10 @@ if (typeof window !== 'undefined') {
 }
 
 function resolveMockHandler(command: string) {
-  if (typeof window !== 'undefined' && window.__mockHandlers?.[command]) {
-    return window.__mockHandlers[command]
-  }
-  return mockHandlers[command]
+  const windowHandler = typeof window === 'undefined' || !window.__mockHandlers
+    ? undefined
+    : Reflect.get(window.__mockHandlers, command) as MockHandler | undefined
+  return windowHandler ?? Reflect.get(mockHandlers, command) as MockHandler | undefined
 }
 
 export async function mockInvoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {

@@ -56,7 +56,7 @@ function replacementForSuggestion(
   value: string,
   selectionIndex: number,
 ) {
-  const suggestion = suggestions[index]
+  const suggestion = suggestions.at(index)
   if (!suggestion) return null
   return replaceActiveWikilinkQuery(value, selectionIndex, suggestion.target)
 }

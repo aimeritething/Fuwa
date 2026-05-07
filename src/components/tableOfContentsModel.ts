@@ -84,16 +84,16 @@ function tocLevelForBlock(block: TocBlock): TocLevel | null {
 
 function nearestParent(stack: TocItem[], level: TocLevel): TocItem {
   for (let index = stack.length - 1; index >= 0; index -= 1) {
-    const item = stack[index]
+    const item = stack.at(index)
     if (item && item.level < level) return item
   }
-  return stack[0]
+  return stack.at(0)!
 }
 
 function appendTocHeading(stack: TocItem[], item: TocItem) {
   const parent = nearestParent(stack, item.level)
   parent.children.push(item)
-  stack[item.level] = item
+  Reflect.set(stack, item.level, item)
   stack.length = item.level + 1
 }
 
@@ -175,8 +175,8 @@ function parseMarkdownHeadings({ markdown }: { markdown: string }): MarkdownHead
     .map((line) => line.match(/^(#{1,3})\s+(.+?)\s*#*\s*$/))
     .filter((match): match is RegExpMatchArray => match !== null)
     .map((match) => ({
-      level: match[1].length as TocLevel,
-      title: stripInlineMarkdown({ text: match[2] }),
+      level: match.at(1)!.length as TocLevel,
+      title: stripInlineMarkdown({ text: match.at(2)! }),
     }))
     .filter((heading) => heading.title.length > 0)
 }
@@ -202,7 +202,8 @@ function blockIdsForMatchingHeadings({ blocks, entryTitle, headings }: HeadingBl
   if (visibleBlocks.headings.length !== visibleMarkdown.headings.length) return visibleMarkdown
 
   const blockIds = visibleBlocks.headings.map((blockHeading, index) => {
-    const heading = visibleMarkdown.headings[index]
+    const heading = visibleMarkdown.headings.at(index)
+    if (!heading) return undefined
     if (blockHeading.level !== heading.level) return undefined
     if (!sameHeadingTitle({ entryTitle: blockHeading.title, title: heading.title })) return undefined
     return blockHeading.blockId
@@ -212,7 +213,7 @@ function blockIdsForMatchingHeadings({ blocks, entryTitle, headings }: HeadingBl
   return {
     headings: visibleMarkdown.headings.map((heading, index) => ({
       ...heading,
-      blockId: blockIds[index],
+      blockId: blockIds.at(index),
     })),
     titleBlockId: visibleBlocks.titleBlockId,
   }
@@ -225,7 +226,7 @@ function tocItemMatchesHeading(item: TocItem, heading: MarkdownHeading | undefin
 }
 
 function indexedHeadingForTocItem(item: TocItem, headings: MarkdownHeading[]): MarkdownHeading | undefined {
-  return item.matchIndex === undefined ? undefined : headings[item.matchIndex]
+  return item.matchIndex === undefined ? undefined : headings.at(item.matchIndex)
 }
 
 function matchingHeadingForTocItem(item: TocItem, headings: MarkdownHeading[]): MarkdownHeading | undefined {

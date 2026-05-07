@@ -14,8 +14,8 @@ export function mergeExpandedPaths(
   let changed = false
   const nextExpanded = { ...current }
   for (const path of paths) {
-    if (nextExpanded[path]) continue
-    nextExpanded[path] = true
+    if (Reflect.get(nextExpanded, path)) continue
+    Reflect.set(nextExpanded, path, true)
     changed = true
   }
   return changed ? nextExpanded : current

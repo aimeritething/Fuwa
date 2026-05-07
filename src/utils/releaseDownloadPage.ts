@@ -62,6 +62,9 @@ const PLATFORM_METADATA: Record<StablePlatformKey, { buttonLabel: string; label:
     label: 'Windows',
   },
 }
+const PLATFORM_METADATA_BY_KEY = new Map<StablePlatformKey, { buttonLabel: string; label: string }>(
+  Object.entries(PLATFORM_METADATA) as Array<[StablePlatformKey, { buttonLabel: string; label: string }]>,
+)
 
 const PLATFORM_ORDER: StablePlatformKey[] = [
   'darwin-aarch64',
@@ -192,8 +195,11 @@ function buildStableDownloadTarget(
   platform: StablePlatformKey,
   url: string,
 ): StableDownloadTarget {
+  const metadata = PLATFORM_METADATA_BY_KEY.get(platform)
+  if (!metadata) throw new Error(`Unsupported stable platform: ${platform}`)
+
   return {
-    ...PLATFORM_METADATA[platform],
+    ...metadata,
     url,
   }
 }
@@ -231,8 +237,9 @@ export function extractStableDownloadTargets(payload: unknown): StableDownloadTa
 
   const downloads: StableDownloadTargets = {}
   for (const platform of PLATFORM_ORDER) {
-    const url = extractPlatformDownloadUrl(platform, platforms[platform])
-    if (url) downloads[platform] = buildStableDownloadTarget(platform, url)
+    const platformPayload = Reflect.get(platforms, platform) as PlatformPayload | undefined
+    const url = extractPlatformDownloadUrl(platform, platformPayload)
+    if (url) Reflect.set(downloads, platform, buildStableDownloadTarget(platform, url))
   }
 
   return downloads
@@ -297,11 +304,11 @@ function updateDownloadPreference(
   state: ReleaseAssetSelectionState,
   selection: ReleaseAssetSelection,
 ) {
-  const currentPreference = state.preferences[selection.platform] ?? Number.NEGATIVE_INFINITY
+  const currentPreference = (Reflect.get(state.preferences, selection.platform) as number | undefined) ?? Number.NEGATIVE_INFINITY
   if (selection.preference < currentPreference) return
 
-  state.preferences[selection.platform] = selection.preference
-  state.downloads[selection.platform] = buildStableDownloadTarget(selection.platform, selection.url)
+  Reflect.set(state.preferences, selection.platform, selection.preference)
+  Reflect.set(state.downloads, selection.platform, buildStableDownloadTarget(selection.platform, selection.url))
 }
 
 function selectReleaseAsset(asset: ReleaseAssetPayload): ReleaseAssetSelection | null {
@@ -390,14 +397,17 @@ function buildStableDownloadPageContent(
 
 function buildDownloadsMarkup(downloads: StableDownloadTargets): string {
   const targets = PLATFORM_ORDER
-    .map((platform) => downloads[platform])
+    .map((platform) => Reflect.get(downloads, platform) as StableDownloadTarget | undefined)
     .filter((target): target is StableDownloadTarget => Boolean(target))
 
   if (targets.length === 0) {
     return `<div class="button-list"><a id="download-link" href="${RELEASE_HISTORY_URL}" data-secondary="true">View release history</a></div>`
   }
 
-  const primaryTarget = targets[0]
+  const primaryTarget = targets.at(0)
+  if (!primaryTarget) {
+    return `<div class="button-list"><a id="download-link" href="${RELEASE_HISTORY_URL}" data-secondary="true">View release history</a></div>`
+  }
   const secondaryLinks = targets
     .map((target) => (
       `<a href="${escapeHtml(target.url)}" target="${DOWNLOAD_FRAME_NAME}" rel="noreferrer" data-secondary="true">${escapeHtml(target.label)}</a>`

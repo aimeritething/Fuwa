@@ -91,7 +91,7 @@ function normalizeRelationships(value: unknown): Record<string, string[]> {
   const result: Record<string, string[]> = {}
   for (const [key, rawRefs] of Object.entries(source)) {
     const refs = stringArrayFrom(rawRefs)
-    if (refs.length > 0) result[key] = refs
+    if (refs.length > 0) Reflect.set(result, key, refs)
   }
   return result
 }
@@ -106,7 +106,7 @@ function normalizeProperties(value: unknown): VaultEntry['properties'] {
       || typeof rawValue === 'boolean'
       || (typeof rawValue === 'number' && Number.isFinite(rawValue))
     ) {
-      result[key] = rawValue
+      Reflect.set(result, key, rawValue)
     }
   }
   return result

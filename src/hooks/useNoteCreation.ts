@@ -81,7 +81,7 @@ export interface TemplateLookupParams {
 
 export function resolveTemplate({ entries, typeName }: TemplateLookupParams): string | null {
   const typeEntry = entries.find((entry) => entry.isA === 'Type' && entry.title === typeName)
-  return typeEntry?.template ?? DEFAULT_TEMPLATES[typeName] ?? null
+  return typeEntry?.template ?? (Reflect.get(DEFAULT_TEMPLATES, typeName) as string | undefined) ?? null
 }
 
 export interface NoteContentParams {

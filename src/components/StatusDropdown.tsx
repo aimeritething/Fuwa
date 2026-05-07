@@ -186,7 +186,7 @@ function getStatusValueToSave({
   query,
 }: StatusSelectionOptions) {
   const trimmed = query.trim()
-  if (highlightIndex >= 0 && highlightIndex < allFiltered.length) return allFiltered[highlightIndex]
+  if (highlightIndex >= 0 && highlightIndex < allFiltered.length) return allFiltered.at(highlightIndex)
   if (showCreateOption && highlightIndex === allFiltered.length) return trimmed
   return trimmed || null
 }
@@ -199,7 +199,7 @@ function useStatusKeyboard(opts: KeyboardNavOptions) {
     const list = listRef.current
     if (!list) return
     const items = list.querySelectorAll('[data-testid^="status-option-"], [data-testid="status-create-option"]')
-    items[index]?.scrollIntoView({ block: 'nearest' })
+    items.item(index)?.scrollIntoView({ block: 'nearest' })
   }, [listRef])
 
   const moveHighlight = useCallback((nextIndex: number) => {

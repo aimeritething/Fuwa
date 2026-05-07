@@ -24,6 +24,7 @@ const DEFAULT_ACTION_CARD_BACKGROUND = 'var(--accent-blue-bg)'
 const TOOL_BACKGROUND_MAP: Record<string, string> = {
   open_note: 'var(--accent-blue-light)',
 }
+const TOOL_BACKGROUND_BY_NAME = new Map(Object.entries(TOOL_BACKGROUND_MAP))
 
 type IconRenderer = (size: number) => ReactNode
 
@@ -44,6 +45,7 @@ const TOOL_ICON_MAP: Record<string, IconRenderer> = {
   create_note: (s) => <PencilSimple size={s} />,
   delete_note: (s) => <Trash size={s} />,
 }
+const TOOL_ICON_BY_NAME = new Map(Object.entries(TOOL_ICON_MAP))
 
 const DEFAULT_ICON: IconRenderer = (s) => <PencilSimple size={s} />
 
@@ -201,7 +203,7 @@ function ActionCardDetails({
 export function AiActionCard({
   tool, label, path, status, input, output, expanded, onToggle, onOpenNote,
 }: AiActionCardProps) {
-  const renderIcon = TOOL_ICON_MAP[tool] ?? DEFAULT_ICON
+  const renderIcon = TOOL_ICON_BY_NAME.get(tool) ?? DEFAULT_ICON
   const hasDetails = hasActionDetails(input, output)
   const directOpenPath = resolveDirectOpenPath({ path, onOpenNote, hasDetails })
 
@@ -230,7 +232,7 @@ export function AiActionCard({
       className="rounded"
       style={{
         fontSize: 12,
-        background: TOOL_BACKGROUND_MAP[tool] ?? DEFAULT_ACTION_CARD_BACKGROUND,
+        background: TOOL_BACKGROUND_BY_NAME.get(tool) ?? DEFAULT_ACTION_CARD_BACKGROUND,
       }}
     >
       <ActionCardHeader

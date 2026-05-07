@@ -150,6 +150,7 @@ export function extractSortableProperties(entries: VaultEntry[]): string[] {
 const STATUS_ORDER: Record<string, number> = {
   Active: 0, Paused: 1, Done: 2, Finished: 3,
 }
+const STATUS_ORDER_LOOKUP = new Map(Object.entries(STATUS_ORDER))
 
 const ISO_DATE_RE = /^\d{4}-\d{2}-\d{2}/
 
@@ -178,8 +179,8 @@ function comparePropertyValues(a: unknown, b: unknown): number {
 
 function makePropertyComparator(key: string, flip: number): (a: VaultEntry, b: VaultEntry) => number {
   return (a, b) => {
-    const va = a.properties?.[key] ?? null
-    const vb = b.properties?.[key] ?? null
+    const va = (a.properties ? Reflect.get(a.properties, key) : null) ?? null
+    const vb = (b.properties ? Reflect.get(b.properties, key) : null) ?? null
     if (va == null && vb == null) return 0
     if (va == null) return 1
     if (vb == null) return -1
@@ -191,8 +192,8 @@ function makeBuiltinComparator(option: string, flip: number): (a: VaultEntry, b:
   if (option === 'title') return (a, b) => flip * a.title.localeCompare(b.title)
   if (option === 'created') return (a, b) => flip * ((a.createdAt ?? a.modifiedAt ?? 0) - (b.createdAt ?? b.modifiedAt ?? 0))
   if (option === 'status') return (a, b) => {
-    const sa = STATUS_ORDER[a.status ?? ''] ?? 999
-    const sb = STATUS_ORDER[b.status ?? ''] ?? 999
+    const sa = STATUS_ORDER_LOOKUP.get(a.status ?? '') ?? 999
+    const sb = STATUS_ORDER_LOOKUP.get(b.status ?? '') ?? 999
     if (sa !== sb) return flip * (sa - sb)
     return (getDisplayDate(b) ?? 0) - (getDisplayDate(a) ?? 0)
   }
@@ -238,9 +239,9 @@ export function loadSortPreferences(): Record<string, SortConfig> {
       if (typeof value === 'string') {
         // Migrate old format: bare SortOption string → SortConfig
         const opt = value as SortOption
-        result[key] = { option: opt, direction: getDefaultDirection(opt) }
+        Reflect.set(result, key, { option: opt, direction: getDefaultDirection(opt) })
       } else {
-        result[key] = value as SortConfig
+        Reflect.set(result, key, value as SortConfig)
       }
     }
     return result
@@ -418,7 +419,7 @@ export function buildRelationshipGroups(
   Object.keys(rels)
     .filter((k) => k.toLowerCase() !== 'type')
     .sort((a, b) => a.localeCompare(b))
-    .forEach((key) => b.addFromRefs(key, rels[key] ?? []))
+    .forEach((key) => b.addFromRefs(key, (Reflect.get(rels, key) as string[] | undefined) ?? []))
 
   collectInverseRelationshipGroups(entity, allEntries).forEach((group) => b.add(group.label, group.entries))
   b.add('Backlinks', findBacklinks(entity, allEntries).sort(sortByModified))
@@ -575,11 +576,13 @@ export function isInboxEntry(entry: VaultEntry): boolean {
 const INBOX_PERIOD_DAYS: Record<InboxPeriod, number> = {
   week: 7, month: 30, quarter: 90, all: Infinity,
 }
+const INBOX_PERIOD_DAYS_LOOKUP = new Map(Object.entries(INBOX_PERIOD_DAYS) as Array<[InboxPeriod, number]>)
 
 /** Filter entries for the Inbox view: not organized, within the given time period, sorted by createdAt desc. */
 export function filterInboxEntries(entries: VaultEntry[], period: InboxPeriod): VaultEntry[] {
   const now = Math.floor(Date.now() / 1000)
-  const cutoff = period === 'all' ? 0 : now - INBOX_PERIOD_DAYS[period] * 86400
+  const periodDays = INBOX_PERIOD_DAYS_LOOKUP.get(period) ?? Infinity
+  const cutoff = period === 'all' ? 0 : now - periodDays * 86400
 
   return entries
     .filter((e) => isInboxEntry(e) && (e.createdAt ?? 0) >= cutoff)

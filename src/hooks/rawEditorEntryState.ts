@@ -30,7 +30,7 @@ function createRawEditorEntryState(): Partial<VaultEntry> {
 function mergeRelationships(target: Record<string, string[]>, source: Record<string, string[] | null> | null): void {
   if (!source) return
   for (const [key, value] of Object.entries(source)) {
-    if (Array.isArray(value) && value.length > 0) target[key] = value
+    if (Array.isArray(value) && value.length > 0) Reflect.set(target, key, value)
   }
 }
 
@@ -40,7 +40,7 @@ function mergeProperties(
 ): void {
   if (!source) return
   for (const [key, value] of Object.entries(source)) {
-    if (value !== null) target[key] = value
+    if (value !== null) Reflect.set(target, key, value)
   }
 }
 

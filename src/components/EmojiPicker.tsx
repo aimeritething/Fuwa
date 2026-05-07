@@ -1,9 +1,76 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { EMOJI_GROUPS, EMOJIS_BY_GROUP, GROUP_SHORT_LABELS, searchEmojis } from '../utils/emoji'
+import { Input } from '@/components/ui/input'
+import { EMOJI_GROUPS, EMOJIS_BY_GROUP, GROUP_SHORT_LABELS, searchEmojis, type EmojiEntry } from '../utils/emoji'
 
 interface EmojiPickerProps {
   onSelect: (emoji: string) => void
   onClose: () => void
+}
+
+function EmojiOptionButton({ entry, onSelect }: { entry: EmojiEntry; onSelect: (emoji: string) => void }) {
+  return (
+    <button
+      type="button"
+      key={entry.emoji}
+      className="flex h-8 w-8 items-center justify-center rounded text-xl transition-colors hover:bg-accent"
+      onClick={() => onSelect(entry.emoji)}
+      title={entry.name}
+      data-testid="emoji-option"
+    >
+      {entry.emoji}
+    </button>
+  )
+}
+
+function EmojiSearchResults({
+  entries,
+  onSelect,
+}: {
+  entries: EmojiEntry[]
+  onSelect: (emoji: string) => void
+}) {
+  if (entries.length === 0) {
+    return (
+      <div className="py-8 text-center text-sm text-muted-foreground">
+        No emojis found
+      </div>
+    )
+  }
+
+  return (
+    <div className="grid grid-cols-8 gap-0.5">
+      {entries.map(entry => <EmojiOptionButton key={entry.emoji} entry={entry} onSelect={onSelect} />)}
+    </div>
+  )
+}
+
+function EmojiGroupSection({
+  group,
+  onSelect,
+}: {
+  group: string
+  onSelect: (emoji: string) => void
+}) {
+  const emojis = EMOJIS_BY_GROUP.get(group)
+  if (!emojis?.length) return null
+  const label = (Reflect.get(GROUP_SHORT_LABELS, group) as string | undefined) ?? group
+
+  return (
+    <div>
+      <div className="sticky top-0 z-10 bg-popover px-1 pb-1 pt-2 text-[11px] font-medium text-muted-foreground">
+        {label}
+      </div>
+      <div className="grid grid-cols-8 gap-0.5">
+        {emojis.map(entry => <EmojiOptionButton key={entry.emoji} entry={entry} onSelect={onSelect} />)}
+      </div>
+    </div>
+  )
+}
+
+function EmojiGroupedResults({ onSelect }: { onSelect: (emoji: string) => void }) {
+  return EMOJI_GROUPS.map(group => (
+    <EmojiGroupSection key={group} group={group} onSelect={onSelect} />
+  ))
 }
 
 export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
@@ -55,10 +122,10 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
       data-testid="emoji-picker"
     >
       <div className="border-b border-border px-3 py-2">
-        <input
+        <Input
           ref={inputRef}
           type="text"
-          className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
+          className="h-8 border-0 bg-transparent px-0 text-sm text-foreground shadow-none outline-none placeholder:text-muted-foreground focus-visible:ring-0"
           placeholder="Search emoji by name..."
           value={search}
           onChange={e => setSearch(e.target.value)}
@@ -67,52 +134,9 @@ export function EmojiPicker({ onSelect, onClose }: EmojiPickerProps) {
       </div>
       <div ref={scrollRef} className="max-h-[300px] overflow-y-auto p-2" data-testid="emoji-picker-grid">
         {isSearching ? (
-          searchResults.length > 0 ? (
-            <div className="grid grid-cols-8 gap-0.5">
-              {searchResults.map(entry => (
-                <button
-                  type="button"
-                  key={entry.emoji}
-                  className="flex h-8 w-8 items-center justify-center rounded text-xl transition-colors hover:bg-accent"
-                  onClick={() => handleSelect(entry.emoji)}
-                  title={entry.name}
-                  data-testid="emoji-option"
-                >
-                  {entry.emoji}
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="py-8 text-center text-sm text-muted-foreground">
-              No emojis found
-            </div>
-          )
+          <EmojiSearchResults entries={searchResults} onSelect={handleSelect} />
         ) : (
-          EMOJI_GROUPS.map(group => {
-            const emojis = EMOJIS_BY_GROUP.get(group)
-            if (!emojis?.length) return null
-            return (
-              <div key={group}>
-                <div className="sticky top-0 z-10 bg-popover px-1 pb-1 pt-2 text-[11px] font-medium text-muted-foreground">
-                  {GROUP_SHORT_LABELS[group]}
-                </div>
-                <div className="grid grid-cols-8 gap-0.5">
-                  {emojis.map(entry => (
-                    <button
-                      type="button"
-                      key={entry.emoji}
-                      className="flex h-8 w-8 items-center justify-center rounded text-xl transition-colors hover:bg-accent"
-                      onClick={() => handleSelect(entry.emoji)}
-                      title={entry.name}
-                      data-testid="emoji-option"
-                    >
-                      {entry.emoji}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )
-          })
+          <EmojiGroupedResults onSelect={handleSelect} />
         )}
       </div>
     </div>

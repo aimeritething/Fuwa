@@ -99,7 +99,7 @@ function isArrayItemLine(line: YamlLine): boolean {
 
 function skipArrayItemLines(lines: YamlLine[], start: number): number {
   let next = start
-  while (next < lines.length && isArrayItemLine(lines[next])) next++
+  while (next < lines.length && isArrayItemLine(lines.at(next) ?? '')) next++
   return next
 }
 
@@ -123,19 +123,20 @@ function processKeyInLines(lines: YamlLine[], key: FrontmatterKey, replacement: 
   const newLines: YamlLine[] = []
   let i = 0
   while (i < lines.length) {
-    if (lineMatchesKey(lines[i], key)) {
+    const line = lines.at(i) ?? ''
+    if (lineMatchesKey(line, key)) {
       i = skipArrayItemLines(lines, i + 1)
       appendReplacement(newLines, replacement)
       continue
     }
-    newLines.push(lines[i])
+    newLines.push(line)
     i++
   }
   return newLines
 }
 
 export function updateMockFrontmatter(path: VaultPath, key: FrontmatterKey, value: FrontmatterValue): MarkdownContent {
-  const content = window.__mockContent?.[path] || ''
+  const content = (window.__mockContent ? Reflect.get(window.__mockContent, path) as string | undefined : undefined) || ''
   const writeKey = canonicalWriteKey(key)
   const yamlKey = formatYamlKey(writeKey)
   const yamlValue = formatYamlValue(value)
@@ -159,7 +160,7 @@ export function updateMockFrontmatter(path: VaultPath, key: FrontmatterKey, valu
 }
 
 export function deleteMockFrontmatterProperty(path: VaultPath, key: FrontmatterKey): MarkdownContent {
-  const content = window.__mockContent?.[path] || ''
+  const content = (window.__mockContent ? Reflect.get(window.__mockContent, path) as string | undefined : undefined) || ''
   const parsed = parseFrontmatter(content)
   if (!parsed) return content
 

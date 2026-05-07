@@ -1,4 +1,17 @@
-import { useState, useRef, useCallback, useMemo, useEffect, type ComponentType, type SVGAttributes } from 'react'
+import {
+  useState,
+  useRef,
+  useCallback,
+  useMemo,
+  useEffect,
+  type ChangeEvent,
+  type ComponentType,
+  type Dispatch,
+  type KeyboardEvent,
+  type SetStateAction,
+  type SVGAttributes,
+} from 'react'
+import { Input } from '@/components/ui/input'
 import type { VaultEntry } from '../types'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { scrollSelectedHTMLChildIntoView } from '../utils/domScroll'
@@ -32,6 +45,17 @@ interface MatchedEntry {
   TypeIcon?: ComponentType<SVGAttributes<SVGSVGElement>>
 }
 
+interface OpenAutocompleteKeyContext {
+  action: AutocompleteKeyAction
+  matches: MatchedEntry[]
+  onEscape: (() => void) | undefined
+  onSelect: (noteTitle: string) => void
+  selectedIndex: number
+  setOpen: Dispatch<SetStateAction<boolean>>
+  setSelectedIndex: Dispatch<SetStateAction<number>>
+  value: string
+}
+
 function entryMatchesQuery(entry: VaultEntry, lowerQuery: string): boolean {
   return entry.title.toLowerCase().includes(lowerQuery)
     || entry.aliases.some(alias => alias.toLowerCase().includes(lowerQuery))
@@ -39,7 +63,7 @@ function entryMatchesQuery(entry: VaultEntry, lowerQuery: string): boolean {
 
 function buildMatchedEntry(entry: VaultEntry, typeEntryMap: Record<string, VaultEntry>): MatchedEntry {
   const isA = entry.isA
-  const typeEntry = typeEntryMap[isA ?? '']
+  const typeEntry = Reflect.get(typeEntryMap, isA ?? '') as VaultEntry | undefined
   const noteType = isA || undefined
   return {
     title: entry.title,
@@ -100,6 +124,67 @@ function preventAutocompleteMouseDown(event: React.MouseEvent): void {
   event.preventDefault()
 }
 
+function handleOpenAutocompleteKey({
+  action,
+  matches,
+  onEscape,
+  onSelect,
+  selectedIndex,
+  setOpen,
+  setSelectedIndex,
+  value,
+}: OpenAutocompleteKeyContext): void {
+  if (action === 'next') {
+    setSelectedIndex(i => nextAutocompleteSelectionIndex(i, matches.length))
+    return
+  }
+  if (action === 'previous') {
+    setSelectedIndex(i => previousAutocompleteSelectionIndex(i, matches.length))
+    return
+  }
+  if (action === 'close') {
+    setOpen(false)
+    onEscape?.()
+    return
+  }
+
+  const match = matches.at(selectedIndex)
+  onSelect(match?.title ?? value)
+}
+
+function handleAutocompleteKeyDown({
+  event,
+  matches,
+  onEscape,
+  onSelect,
+  open,
+  selectedIndex,
+  setOpen,
+  setSelectedIndex,
+  value,
+}: {
+  event: KeyboardEvent<HTMLInputElement>
+  matches: MatchedEntry[]
+  onEscape: (() => void) | undefined
+  onSelect: (noteTitle: string) => void
+  open: boolean
+  selectedIndex: number
+  setOpen: Dispatch<SetStateAction<boolean>>
+  setSelectedIndex: Dispatch<SetStateAction<number>>
+  value: string
+}): void {
+  if (!open || matches.length === 0) {
+    handleClosedAutocompleteKey(event.key, value, onSelect, onEscape)
+    return
+  }
+
+  const action = resolveOpenAutocompleteKeyAction(event.key)
+  if (!action) return
+
+  event.preventDefault()
+  handleOpenAutocompleteKey({ action, matches, onEscape, onSelect, selectedIndex, setOpen, setSelectedIndex, value })
+}
+
 interface NoteAutocompleteMenuItemProps {
   item: MatchedEntry
   selected: boolean
@@ -130,6 +215,36 @@ function NoteAutocompleteMenuItem({
           {item.noteType}
         </span>
       )}
+    </div>
+  )
+}
+
+function NoteAutocompleteMenu({
+  matches,
+  menuRef,
+  selectedIndex,
+  onHover,
+  onSelect,
+}: {
+  matches: MatchedEntry[]
+  menuRef: React.RefObject<HTMLDivElement | null>
+  selectedIndex: number
+  onHover: (index: number) => void
+  onSelect: (title: string) => void
+}) {
+  if (matches.length === 0) return null
+
+  return (
+    <div className="wikilink-menu" ref={menuRef} style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 2, minWidth: 'auto' }}>
+      {matches.map((item, index) => (
+        <NoteAutocompleteMenuItem
+          key={item.title}
+          item={item}
+          selected={index === selectedIndex}
+          onSelect={onSelect}
+          onHover={() => onHover(index)}
+        />
+      ))}
     </div>
   )
 }
@@ -169,47 +284,32 @@ export function NoteAutocomplete({ entries, typeEntryMap, value, onChange, onSel
     setSelectedIndex(-1)
   }, [onSelect])
 
-  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = useCallback((e: ChangeEvent<HTMLInputElement>) => {
     onChange(e.target.value)
     setOpen(true)
     setSelectedIndex(-1)
   }, [onChange])
 
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (!open || matches.length === 0) {
-      handleClosedAutocompleteKey(e.key, value, onSelect, onEscape)
-      return
-    }
-
-    const action = resolveOpenAutocompleteKeyAction(e.key)
-    if (!action) return
-
-    e.preventDefault()
-    if (action === 'next') {
-      setSelectedIndex(i => nextAutocompleteSelectionIndex(i, matches.length))
-      return
-    }
-    if (action === 'previous') {
-      setSelectedIndex(i => previousAutocompleteSelectionIndex(i, matches.length))
-      return
-    }
-    if (action === 'close') {
-      setOpen(false)
-      onEscape?.()
-      return
-    }
-
-    const match = matches[selectedIndex]
-    if (match) handleSelect(match.title)
-    else onSelect(value)
-  }, [open, matches, selectedIndex, value, handleSelect, onSelect, onEscape])
+  const handleKeyDown = useCallback((event: KeyboardEvent<HTMLInputElement>) => {
+    handleAutocompleteKeyDown({
+      event,
+      matches,
+      onEscape,
+      onSelect: handleSelect,
+      open,
+      selectedIndex,
+      setOpen,
+      setSelectedIndex,
+      value,
+    })
+  }, [handleSelect, matches, onEscape, open, selectedIndex, value])
 
   return (
     <div style={{ position: 'relative' }}>
-      <input
+      <Input
         ref={inputRef}
         autoFocus={autoFocus}
-        className="flex-1 border border-border bg-transparent px-2 py-0.5 text-xs text-foreground"
+        className="h-7 flex-1 rounded border border-border bg-transparent px-2 py-0.5 text-xs text-foreground shadow-none focus-visible:ring-1"
         style={{ borderRadius: 4, outline: 'none', minWidth: 0, width: '100%', boxSizing: 'border-box' }}
         placeholder={placeholder}
         value={value}
@@ -219,17 +319,13 @@ export function NoteAutocomplete({ entries, typeEntryMap, value, onChange, onSel
         data-testid={testId}
       />
       {open && matches.length > 0 && (
-        <div className="wikilink-menu" ref={menuRef} style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: 2, minWidth: 'auto' }}>
-          {matches.map((item, index) => (
-            <NoteAutocompleteMenuItem
-              key={item.title}
-              item={item}
-              selected={index === selectedIndex}
-              onSelect={handleSelect}
-              onHover={() => setSelectedIndex(index)}
-            />
-          ))}
-        </div>
+        <NoteAutocompleteMenu
+          matches={matches}
+          menuRef={menuRef}
+          selectedIndex={selectedIndex}
+          onHover={setSelectedIndex}
+          onSelect={handleSelect}
+        />
       )}
     </div>
   )

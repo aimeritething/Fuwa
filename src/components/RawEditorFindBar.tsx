@@ -216,7 +216,7 @@ function useRawEditorFindController({
   const options = useMemo<EditorFindOptions>(() => ({ caseSensitive, regex }), [caseSensitive, regex])
   const result = useMemo(() => findEditorMatches(doc, query, options), [doc, options, query])
   const clampedActiveIndex = clampEditorFindIndex(activeIndex, result.matches.length)
-  const activeMatch = result.matches[clampedActiveIndex]
+  const activeMatch = result.matches.at(clampedActiveIndex)
   const status = matchStatusText(locale, result.error, clampedActiveIndex, result.matches.length)
   const hasMatches = result.matches.length > 0 && !result.error
 

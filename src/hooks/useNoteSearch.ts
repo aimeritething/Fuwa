@@ -61,7 +61,7 @@ export function useNoteSearch(entries: VaultEntry[], query: string, maxResults =
     setSelectedIndex(0) // eslint-disable-line react-hooks/set-state-in-effect -- reset on query change
   }, [query])
 
-  const selectedEntry = results[selectedIndex]?.entry ?? null
+  const selectedEntry = results.at(selectedIndex)?.entry ?? null
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent | KeyboardEvent) => {

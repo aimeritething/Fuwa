@@ -65,7 +65,7 @@ function resolveCurrentWidth({
 }: CurrentWidthRequest): NoteWidthMode {
   const path = activeTab?.entry.path
   if (!path) return defaultNoteWidth
-  return resolveNoteWidthMode(transientNoteWidths[path] ?? activeTab.entry.noteWidth, defaultNoteWidth)
+  return resolveNoteWidthMode((Reflect.get(transientNoteWidths, path) as NoteWidthMode | undefined) ?? activeTab.entry.noteWidth, defaultNoteWidth)
 }
 
 async function readNoteContentForWidthPersistence({
@@ -133,9 +133,12 @@ export function useNoteWidthMode({
   }, [activeTab, defaultNoteWidth, transientNoteWidths])
 
   const rememberTransientWidth = useCallback((path: VaultPath, mode: NoteWidthMode) => {
-    setTransientNoteWidths((previous) => (
-      previous[path] === mode ? previous : { ...previous, [path]: mode }
-    ))
+    setTransientNoteWidths((previous) => {
+      if (Reflect.get(previous, path) === mode) return previous
+      const next = { ...previous }
+      Reflect.set(next, path, mode)
+      return next
+    })
   }, [])
 
   const setNoteWidth = useCallback((mode: NoteWidthMode) => persistOrRememberNoteWidth({

@@ -56,12 +56,12 @@ function deriveTypeInfo(entries: VaultEntry[] | undefined, entryIsA: string | nu
   const typeColorKeys: Record<string, string | null> = {}
   const typeIconKeys: Record<string, string | null> = {}
   for (const e of typeEntries) {
-    typeColorKeys[e.title] = e.color ?? null
-    typeIconKeys[e.title] = e.icon ?? null
+    Reflect.set(typeColorKeys, e.title, e.color ?? null)
+    Reflect.set(typeIconKeys, e.title, e.icon ?? null)
   }
   return {
     availableTypes: typeEntries.map(e => e.title).sort((a, b) => a.localeCompare(b)),
-    customColorKey: entryIsA ? (typeColorKeys[entryIsA] ?? null) : null,
+    customColorKey: entryIsA ? ((Reflect.get(typeColorKeys, entryIsA) as string | null | undefined) ?? null) : null,
     typeColorKeys,
     typeIconKeys,
   }
@@ -164,7 +164,7 @@ function addTagValues(tagsByKey: Map<string, Set<string>>, key: string, value: u
 function toSortedTagRecord(tagsByKey: Map<string, Set<string>>): Record<string, string[]> {
   const result: Record<string, string[]> = {}
   for (const [key, set] of tagsByKey) {
-    result[key] = Array.from(set).sort((a, b) => a.localeCompare(b))
+    Reflect.set(result, key, Array.from(set).sort((a, b) => a.localeCompare(b)))
   }
   return result
 }
@@ -205,7 +205,7 @@ function saveScalarProperty({
   onUpdateProperty: (key: string, value: FrontmatterValue) => void
   onDeleteProperty?: (key: string) => void
 }) {
-  const currentValue = frontmatter[key] ?? null
+  const currentValue = (Reflect.get(frontmatter, key) as FrontmatterValue | undefined) ?? null
   const displayMode = getEffectiveDisplayMode(key, currentValue, displayOverrides)
   if (displayMode !== 'number') {
     onUpdateProperty(key, coerceValue(newValue))

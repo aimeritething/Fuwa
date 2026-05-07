@@ -3,6 +3,21 @@ import themeConfig from '../theme.json'
 
 type ThemeValue = string | number | Record<string, unknown> | unknown[]
 
+function isThemeBranch(value: ThemeValue): value is Record<string, ThemeValue> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+function isUnitlessThemeNumber(key: string, cssKey: string): boolean {
+  return /weight|lineHeight|opacity/i.test(key)
+    || cssKey.includes('line-height')
+    || cssKey.includes('font-weight')
+}
+
+function themeCssValue(key: string, cssKey: string, value: string | number): string {
+  if (typeof value !== 'number') return String(value)
+  return isUnitlessThemeNumber(key, cssKey) ? String(value) : `${value}px`
+}
+
 /** Convert a nested theme config object into a flat map of CSS custom properties */
 function flattenTheme(
   obj: Record<string, ThemeValue>,
@@ -16,19 +31,13 @@ function flattenTheme(
     if (value === null || value === undefined) continue
     if (Array.isArray(value)) continue // skip arrays (e.g. nestedBulletSymbols)
 
-    if (typeof value === 'object') {
-      Object.assign(result, flattenTheme(value as Record<string, ThemeValue>, `${cssKey}-`))
-    } else if (typeof value === 'number') {
-      // Numbers that look like px values get 'px' suffix; ratios/weights don't
-      // These are unitless values; everything else gets 'px'
-      const isUnitless = /weight|lineHeight|opacity/i.test(key) ||
-        cssKey.includes('line-height') ||
-        cssKey.includes('font-weight')
-      const needsPx = !isUnitless
-      result[cssKey] = needsPx ? `${value}px` : String(value)
-    } else {
-      result[cssKey] = String(value)
+    if (isThemeBranch(value)) {
+      Object.assign(result, flattenTheme(value, `${cssKey}-`))
+      continue
     }
+
+    if (typeof value !== 'string' && typeof value !== 'number') continue
+    Reflect.set(result, cssKey, themeCssValue(key, cssKey, value))
   }
 
   return result

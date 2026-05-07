@@ -137,7 +137,7 @@ function getTagValueToToggle({
   selectedTags,
 }: TagSelectionOptions) {
   const trimmed = query.trim()
-  if (highlightIndex >= 0 && highlightIndex < filtered.length) return filtered[highlightIndex]
+  if (highlightIndex >= 0 && highlightIndex < filtered.length) return filtered.at(highlightIndex)
   if (showCreateOption && highlightIndex === filtered.length && trimmed) return trimmed
   if (trimmed && !selectedTags.has(trimmed)) return trimmed
   return null
@@ -156,7 +156,7 @@ function useTagKeyboard(opts: {
     const list = listRef.current
     if (!list) return
     const items = list.querySelectorAll('[data-testid^="tag-option-"], [data-testid="tag-create-option"]')
-    items[index]?.scrollIntoView({ block: 'nearest' })
+    items.item(index)?.scrollIntoView({ block: 'nearest' })
   }, [listRef])
 
   const moveHighlight = useCallback((nextIndex: number) => {

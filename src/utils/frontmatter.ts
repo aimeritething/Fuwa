@@ -133,9 +133,9 @@ function assignFrontmatterValue(
 ) {
   const collisionKey = frontmatterCollisionKey(key)
   const previousKey = collisionKeys.get(collisionKey)
-  if (previousKey && previousKey !== key) delete result[previousKey]
+  if (previousKey && previousKey !== key) Reflect.deleteProperty(result, previousKey)
   collisionKeys.set(collisionKey, key)
-  result[key] = value
+  Reflect.set(result, key, value)
 }
 
 function parseFrontmatterValue(value: FrontmatterText): FrontmatterValue | undefined {

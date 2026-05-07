@@ -52,7 +52,7 @@ function buildSetNoteWidthCommand(
 ): CommandAction {
   return {
     id: `set-note-width-${mode}`,
-    label: NOTE_WIDTH_COMMAND_LABELS[mode],
+    label: Reflect.get(NOTE_WIDTH_COMMAND_LABELS, mode) as string,
     group: 'View',
     keywords: ['layout', 'note', 'column', 'width', mode, 'reading'],
     enabled: hasActiveNote && Boolean(onSetNoteWidth) && activeMode !== mode,
@@ -67,7 +67,7 @@ function buildSetDefaultNoteWidthCommand(
 ): CommandAction {
   return {
     id: `set-default-note-width-${mode}`,
-    label: DEFAULT_NOTE_WIDTH_COMMAND_LABELS[mode],
+    label: Reflect.get(DEFAULT_NOTE_WIDTH_COMMAND_LABELS, mode) as string,
     group: 'View',
     keywords: ['layout', 'note', 'column', 'width', mode, 'default', 'reading'],
     enabled: Boolean(onSetDefaultNoteWidth) && defaultMode !== mode,

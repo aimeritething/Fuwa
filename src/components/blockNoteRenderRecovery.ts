@@ -8,7 +8,7 @@ type MarkedRecoveredBlockNoteRenderError = Error & {
 
 function hasRecoveredRenderErrorMark(error: unknown): boolean {
   if (!(error instanceof Error)) return false
-  return (error as MarkedRecoveredBlockNoteRenderError)[RECOVERED_BLOCKNOTE_RENDER_ERROR_MARK] === true
+  return Reflect.get(error as MarkedRecoveredBlockNoteRenderError, RECOVERED_BLOCKNOTE_RENDER_ERROR_MARK) === true
 }
 
 export function isRecoverableBlockNoteRenderError(error: unknown): boolean {
@@ -18,7 +18,7 @@ export function isRecoverableBlockNoteRenderError(error: unknown): boolean {
 export function markRecoveredBlockNoteRenderError(error: unknown): void {
   if (!isRecoverableBlockNoteRenderError(error)) return
   const markedError = error as MarkedRecoveredBlockNoteRenderError
-  markedError[RECOVERED_BLOCKNOTE_RENDER_ERROR_MARK] = true
+  Reflect.set(markedError, RECOVERED_BLOCKNOTE_RENDER_ERROR_MARK, true)
 }
 
 export function isRecoveredBlockNoteRenderError(

@@ -98,7 +98,7 @@ function getLineStartOffset({ text, lineIndex }: { text: string; lineIndex: numb
 
   let currentLine = 0
   for (let index = 0; index < text.length; index++) {
-    if (text[index] !== '\n') continue
+    if (text.charAt(index) !== '\n') continue
     currentLine += 1
     if (currentLine === lineIndex) {
       return index + 1
@@ -211,8 +211,12 @@ function getSelectionIndexes(editor: BlockNotePositionEditor): [number, number] 
   const selectedBlocks = selection?.blocks ?? []
   if (selectedBlocks.length === 0) return null
 
-  const startIndex = editor.document.findIndex(block => block.id === selectedBlocks[0].id)
-  const endIndex = editor.document.findIndex(block => block.id === selectedBlocks[selectedBlocks.length - 1].id)
+  const startBlock = selectedBlocks.at(0)
+  const endBlock = selectedBlocks.at(-1)
+  if (!startBlock || !endBlock) return null
+
+  const startIndex = editor.document.findIndex(block => block.id === startBlock.id)
+  const endIndex = editor.document.findIndex(block => block.id === endBlock.id)
   if (startIndex === -1 || endIndex === -1) return null
 
   return [startIndex, endIndex]
@@ -241,13 +245,17 @@ function buildBlockNoteRestoreState(
   const headIndex = findNearestBlockIndex({ ranges, targetLine: headLine })
   const startIndex = Math.min(anchorIndex, headIndex)
   const endIndex = Math.max(anchorIndex, headIndex)
+  const startBlock = editor.document.at(startIndex)
+  const endBlock = editor.document.at(endIndex)
+  if (!startBlock || !endBlock) return null
+
   const startBlockId = findNearestTextCursorBlockById(
     editor.document,
-    editor.document[startIndex].id,
+    startBlock.id,
   )?.id
   const endBlockId = findNearestTextCursorBlockById(
     editor.document,
-    editor.document[endIndex].id,
+    endBlock.id,
   )?.id
   if (!startBlockId || !endBlockId) return null
 
@@ -290,8 +298,9 @@ export function buildCodeMirrorRestoreState(
   const ranges = buildBlockLineRanges({ body, editor })
   if (ranges.length === 0) return null
 
-  const anchorRange = ranges[clamp(snapshot.anchorBlockIndex, 0, ranges.length - 1)]
-  const headRange = ranges[clamp(snapshot.headBlockIndex, 0, ranges.length - 1)]
+  const anchorRange = ranges.at(clamp(snapshot.anchorBlockIndex, 0, ranges.length - 1))
+  const headRange = ranges.at(clamp(snapshot.headBlockIndex, 0, ranges.length - 1))
+  if (!anchorRange || !headRange) return null
   const anchorBodyOffset = getLineStartOffset({ text: body, lineIndex: anchorRange.startLine })
   const headBodyOffset = getLineEndOffset({ text: body, lineIndex: headRange.endLine })
 

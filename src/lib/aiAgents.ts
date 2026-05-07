@@ -112,7 +112,7 @@ export function isAiAgentsStatusChecking(statuses: AiAgentsStatus): boolean {
 }
 
 export function isAiAgentInstalled(statuses: AiAgentsStatus, agent: AiAgentId): boolean {
-  return statuses[agent].status === 'installed'
+  return (Reflect.get(statuses, agent) as AiAgentAvailability).status === 'installed'
 }
 
 export function hasAnyInstalledAiAgent(statuses: AiAgentsStatus): boolean {

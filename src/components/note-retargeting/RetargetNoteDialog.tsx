@@ -101,7 +101,8 @@ export function RetargetNoteDialog({
     }
     if (event.key === 'Enter' && effectiveHighlightedIndex >= 0) {
       event.preventDefault()
-      void submitSelection(filteredOptions[effectiveHighlightedIndex].id)
+      const highlightedOption = filteredOptions.at(effectiveHighlightedIndex)
+      if (highlightedOption) void submitSelection(highlightedOption.id)
     }
   }
 

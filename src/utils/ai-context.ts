@@ -103,12 +103,12 @@ function isPresentValue(value: unknown): boolean {
 }
 
 function assignIfPresent(target: Record<string, unknown>, key: string, value: unknown): void {
-  if (isPresentValue(value)) target[key] = value
+  if (isPresentValue(value)) Reflect.set(target, key, value)
 }
 
 function assignIfNonEmpty(target: Record<string, unknown>, key: string, values: unknown[]): void {
   if (values.length > 0) {
-    target[key] = values
+    Reflect.set(target, key, values)
   }
 }
 

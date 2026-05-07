@@ -84,7 +84,7 @@ function IconEditableInput({
     if (event.key === 'Enter') {
       event.preventDefault()
       if (shouldSelectIconSuggestion(editValue, filteredIcons.length)) {
-        selectIcon(filteredIcons[highlightedIndex]?.name ?? editValue)
+        selectIcon(filteredIcons.at(highlightedIndex)?.name ?? editValue)
         return
       }
       commitTypedValue()
@@ -113,7 +113,7 @@ function IconEditableInput({
         aria-autocomplete="list"
         aria-controls={listboxId}
         aria-expanded
-        aria-activedescendant={filteredIcons[highlightedIndex] ? `${listboxId}-option-${highlightedIndex}` : undefined}
+        aria-activedescendant={filteredIcons.at(highlightedIndex) ? `${listboxId}-option-${highlightedIndex}` : undefined}
         placeholder="Emoji, icon name, or URL"
         className="h-8 text-[12px]"
         data-testid="icon-editable-input"

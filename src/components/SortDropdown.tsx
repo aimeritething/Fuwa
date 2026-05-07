@@ -15,6 +15,7 @@ const SORT_LABEL_KEYS = {
   title: 'noteList.sort.title',
   status: 'noteList.sort.status',
 } satisfies Record<string, TranslationKey>
+const SORT_LABEL_KEYS_BY_OPTION = new Map<string, TranslationKey>(Object.entries(SORT_LABEL_KEYS))
 
 type SortMenuAction =
   | { type: 'close' }
@@ -22,7 +23,7 @@ type SortMenuAction =
 
 function getLocalizedSortOptionLabel(option: SortOption, locale: AppLocale): string {
   if (option.startsWith('property:')) return option.slice('property:'.length)
-  return translate(locale, SORT_LABEL_KEYS[option as keyof typeof SORT_LABEL_KEYS])
+  return translate(locale, SORT_LABEL_KEYS_BY_OPTION.get(option) ?? 'noteList.sort.modified')
 }
 
 function buildSortItems(locale: AppLocale, customProperties?: string[]): SortItem[] {
@@ -47,7 +48,7 @@ function resolveFocusedIndex(groupLabel: string, current: SortOption, sortItems:
 }
 
 function focusSortItem(sortButtonRefs: React.MutableRefObject<Array<HTMLButtonElement | null>>, index: number) {
-  sortButtonRefs.current[index]?.focus()
+  sortButtonRefs.current.at(index)?.focus()
 }
 
 function resolveSortMenuAction(key: string, focusIndex: number, itemCount: number): SortMenuAction | null {
@@ -243,7 +244,7 @@ function SortDropdownMenu({
           current={current}
           direction={direction}
           buttonRef={(node) => {
-            sortButtonRefs.current[index] = node
+            Reflect.set(sortButtonRefs.current, index, node)
           }}
           showSeparator={hasCustom && index === builtInOptionCount}
           locale={locale}

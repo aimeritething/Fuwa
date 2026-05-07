@@ -28,7 +28,9 @@ function defaultPanelWidths(): PanelWidths {
 }
 
 function clampPanelWidth(key: PanelWidthKey, value: number): number {
-  return Math.max(COLUMN_MIN_WIDTHS[key], Math.min(COLUMN_MAX_WIDTHS[key], value))
+  const minWidth = Reflect.get(COLUMN_MIN_WIDTHS, key) as number
+  const maxWidth = Reflect.get(COLUMN_MAX_WIDTHS, key) as number
+  return Math.max(minWidth, Math.min(maxWidth, value))
 }
 
 function isPanelWidthRecord(value: unknown): value is Partial<Record<PanelWidthKey, unknown>> {
@@ -36,10 +38,10 @@ function isPanelWidthRecord(value: unknown): value is Partial<Record<PanelWidthK
 }
 
 function readPanelWidth(source: Partial<Record<PanelWidthKey, unknown>>, key: PanelWidthKey): number {
-  const value = source[key]
+  const value = Reflect.get(source, key)
   return typeof value === 'number' && Number.isFinite(value)
     ? clampPanelWidth(key, value)
-    : DEFAULT_PANEL_WIDTHS[key]
+    : Reflect.get(DEFAULT_PANEL_WIDTHS, key) as number
 }
 
 function normalizePanelWidths(value: unknown): PanelWidths {
@@ -80,10 +82,12 @@ export function useLayoutPanels(options?: { initialInspectorCollapsed?: boolean 
   }, [panelWidths])
 
   const resizePanel = useCallback((key: PanelWidthKey, delta: number) => {
-    setPanelWidths((widths) => ({
-      ...widths,
-      [key]: clampPanelWidth(key, widths[key] + delta),
-    }))
+    setPanelWidths((widths) => {
+      const nextWidths = { ...widths }
+      const currentWidth = Reflect.get(widths, key) as number
+      Reflect.set(nextWidths, key, clampPanelWidth(key, currentWidth + delta))
+      return nextWidths
+    })
   }, [])
 
   const handleSidebarResize = useCallback((delta: number) => resizePanel('sidebar', delta), [resizePanel])

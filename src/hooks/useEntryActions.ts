@@ -282,8 +282,10 @@ function useOrganizedAction({
 function useReorderFavoritesAction({ updateEntry, handleUpdateFrontmatter, onFrontmatterPersisted }: ReorderFavoritesDeps) {
   return useCallback(async (orderedPaths: string[]) => {
     for (let i = 0; i < orderedPaths.length; i++) {
-      updateEntry(orderedPaths[i], { favoriteIndex: i })
-      await handleUpdateFrontmatter(orderedPaths[i], '_favorite_index', i, { silent: true })
+      const orderedPath = orderedPaths.at(i)
+      if (!orderedPath) continue
+      updateEntry(orderedPath, { favoriteIndex: i })
+      await handleUpdateFrontmatter(orderedPath, '_favorite_index', i, { silent: true })
     }
     onFrontmatterPersisted?.()
   }, [updateEntry, handleUpdateFrontmatter, onFrontmatterPersisted])

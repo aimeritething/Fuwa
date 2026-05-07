@@ -45,6 +45,8 @@ export const SUGGESTED_STATUSES = [
 const COLOR_KEY_TO_STYLE: Record<string, StatusStyle> = Object.fromEntries(
   ACCENT_COLORS.map(c => [c.key, { bg: c.cssLight, color: c.css }]),
 )
+const COLOR_KEY_STYLE_LOOKUP = new Map(Object.entries(COLOR_KEY_TO_STYLE))
+const STATUS_STYLE_LOOKUP = new Map(Object.entries(STATUS_STYLES))
 
 let colorOverrides: Record<string, string> = loadColorOverrides()
 
@@ -69,25 +71,25 @@ export function getStatusColorOverrides(): Record<string, string> {
 
 export function setStatusColor(status: string, colorKey: string | null): void {
   if (colorKey === null) {
-    delete colorOverrides[status]
+    Reflect.deleteProperty(colorOverrides, status)
   } else {
-    colorOverrides[status] = colorKey
+    Reflect.set(colorOverrides, status, colorKey)
   }
   const snapshot = { ...colorOverrides }
   updateVaultConfigField('status_colors', Object.keys(snapshot).length > 0 ? snapshot : null)
 }
 
 export function getStatusColorKey(status: string): string | null {
-  return colorOverrides[status] ?? null
+  return (Reflect.get(colorOverrides, status) as string | undefined) ?? null
 }
 
 export function getMappedStatusStyle(status: string): StatusStyle | null {
-  const overrideKey = colorOverrides[status]
+  const overrideKey = Reflect.get(colorOverrides, status) as string | undefined
   if (overrideKey) {
-    const style = COLOR_KEY_TO_STYLE[overrideKey]
+    const style = COLOR_KEY_STYLE_LOOKUP.get(overrideKey)
     if (style) return style
   }
-  return STATUS_STYLES[status] ?? null
+  return STATUS_STYLE_LOOKUP.get(status) ?? null
 }
 
 export function getStatusStyle(status: string): StatusStyle {

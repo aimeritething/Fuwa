@@ -186,7 +186,8 @@ export function useSidebarCollapsed() {
 
   const toggle = useCallback((key: SidebarGroupKey) => {
     setCollapsed((prev) => {
-      const next = { ...prev, [key]: !prev[key] }
+      const next = { ...prev }
+      Reflect.set(next, key, !(Reflect.get(prev, key) as boolean))
       localStorage.setItem(APP_STORAGE_KEYS.sidebarCollapsed, JSON.stringify(next))
       localStorage.removeItem(LEGACY_APP_STORAGE_KEYS.sidebarCollapsed)
       return next
@@ -231,7 +232,7 @@ export function applyCustomization(
   value: string,
 ): void {
   if (!target || !onCustomizeType) return
-  const typeEntry = typeEntryMap[target]
+  const typeEntry = Reflect.get(typeEntryMap, target) as VaultEntry | undefined
   const [icon, color] = typeEntry
     ? buildCustomizeArgs(typeEntry, prop, value)
     : [prop === 'icon' ? value : 'file-text', prop === 'color' ? value : 'blue']

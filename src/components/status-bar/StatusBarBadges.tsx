@@ -21,28 +21,22 @@ import { openExternalUrl } from '../../utils/url'
 import { useDismissibleLayer } from './useDismissibleLayer'
 import { ICON_STYLE, SEP_STYLE } from './styles'
 
-const SYNC_ICON_MAP: Record<string, typeof RefreshCw> = {
-  syncing: Loader2,
-  conflict: AlertTriangle,
-  pull_required: ArrowDown,
-}
+const SYNC_LABEL_KEYS = new Map<SyncStatus, TranslationKey>([
+  ['syncing', 'status.sync.syncing'],
+  ['conflict', 'status.sync.conflict'],
+  ['error', 'status.sync.failed'],
+  ['pull_required', 'status.sync.pullRequired'],
+])
 
-const SYNC_LABEL_KEYS: Partial<Record<SyncStatus, TranslationKey>> = {
-  syncing: 'status.sync.syncing',
-  conflict: 'status.sync.conflict',
-  error: 'status.sync.failed',
-  pull_required: 'status.sync.pullRequired',
-}
+const SYNC_COLORS = new Map<SyncStatus, string>([
+  ['conflict', 'var(--accent-orange)'],
+  ['error', 'var(--muted-foreground)'],
+  ['pull_required', 'var(--accent-orange)'],
+])
 
-const SYNC_COLORS: Record<string, string> = {
-  conflict: 'var(--accent-orange)',
-  error: 'var(--muted-foreground)',
-  pull_required: 'var(--accent-orange)',
-}
-
-const MCP_TOOLTIP_KEYS: Partial<Record<McpStatus, TranslationKey>> = {
-  not_installed: 'status.mcp.notConnected',
-}
+const MCP_TOOLTIP_KEYS = new Map<McpStatus, TranslationKey>([
+  ['not_installed', 'status.mcp.notConnected'],
+])
 
 const CLAUDE_INSTALL_URL = 'https://docs.anthropic.com/en/docs/claude-code'
 
@@ -55,12 +49,25 @@ function formatElapsedSync(locale: AppLocale, lastSyncTime: number | null): stri
 }
 
 function formatSyncLabel(locale: AppLocale, status: SyncStatus, lastSyncTime: number | null): string {
-  const labelKey = SYNC_LABEL_KEYS[status]
+  const labelKey = SYNC_LABEL_KEYS.get(status)
   return labelKey ? translate(locale, labelKey) : formatElapsedSync(locale, lastSyncTime)
 }
 
 function syncIconColor(status: SyncStatus): string {
-  return SYNC_COLORS[status] ?? 'var(--accent-green)'
+  return SYNC_COLORS.get(status) ?? 'var(--accent-green)'
+}
+
+function SyncStatusIcon({ status, color, spinning }: { status: SyncStatus; color: string; spinning: boolean }) {
+  const iconProps = {
+    className: spinning ? 'animate-spin' : '',
+    size: 13,
+    style: { color },
+  }
+
+  if (status === 'syncing') return <Loader2 {...iconProps} />
+  if (status === 'conflict') return <AlertTriangle {...iconProps} />
+  if (status === 'pull_required') return <ArrowDown {...iconProps} />
+  return <RefreshCw {...iconProps} />
 }
 
 function syncBadgeTooltipCopy(locale: AppLocale, status: SyncStatus): ActionTooltipCopy {
@@ -101,7 +108,7 @@ function getMcpBadgeConfig(locale: AppLocale, status: McpStatus, onInstall?: () 
   const clickable = status === 'not_installed' && Boolean(onInstall)
   return {
     clickable,
-    tooltip: translate(locale, MCP_TOOLTIP_KEYS[status] ?? 'status.mcp.unknown'),
+    tooltip: translate(locale, MCP_TOOLTIP_KEYS.get(status) ?? 'status.mcp.unknown'),
     onClick: clickable ? onInstall : undefined,
   }
 }
@@ -655,7 +662,6 @@ export function SyncBadge({
 }) {
   const [showPopup, setShowPopup] = useState(false)
   const popupRef = useRef<HTMLDivElement>(null)
-  const SyncIcon = SYNC_ICON_MAP[status] ?? RefreshCw
   const isSyncing = status === 'syncing'
 
   useDismissibleLayer(showPopup, popupRef, () => setShowPopup(false))
@@ -678,7 +684,7 @@ export function SyncBadge({
     <div ref={popupRef} style={{ position: 'relative' }}>
       <StatusBarAction copy={syncBadgeTooltipCopy(locale, status)} onClick={handleClick} testId="status-sync" compact={compact}>
         <span style={ICON_STYLE}>
-          <SyncIcon size={13} style={{ color: syncIconColor(status) }} className={isSyncing ? 'animate-spin' : ''} />
+          <SyncStatusIcon status={status} color={syncIconColor(status)} spinning={isSyncing} />
           {compact ? null : formatSyncLabel(locale, status, lastSyncTime)}
         </span>
       </StatusBarAction>

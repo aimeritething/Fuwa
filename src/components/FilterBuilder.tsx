@@ -191,7 +191,7 @@ function FilterGroupView({ group, fields, depth, onChange, onRemove }: {
 
   const updateChild = (index: number, node: FilterNode) => {
     const next = [...children]
-    next[index] = node
+    next.splice(index, 1, node)
     onChange(setGroupChildren(mode, next))
   }
 

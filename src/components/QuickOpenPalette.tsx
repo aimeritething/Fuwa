@@ -37,7 +37,7 @@ export function QuickOpenPalette({ open, entries, isLoading = false, onSelect, o
         onClose()
       } else if (e.key === 'Enter') {
         e.preventDefault()
-        const selected = results[selectedIndex]
+        const selected = results.at(selectedIndex)
         if (selected) {
           onSelect(selected.entry)
           onClose()

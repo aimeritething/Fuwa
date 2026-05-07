@@ -120,7 +120,7 @@ function readMathToken({ text, prefix }: TokenReadRequest): string | null {
 
 function isEscaped({ text, index }: TextPosition): boolean {
   let slashCount = 0
-  for (let i = index - 1; i >= 0 && text[i] === '\\'; i--) {
+  for (let i = index - 1; i >= 0 && text.charAt(i) === '\\'; i--) {
     slashCount++
   }
   return slashCount % 2 === 1
@@ -132,7 +132,7 @@ function isCodeFence({ text: line }: { text: string }): boolean {
 }
 
 function isSingleDollar({ text, index }: TextPosition): boolean {
-  return text[index] === '$' && text[index - 1] !== '$' && text[index + 1] !== '$'
+  return text.charAt(index) === '$' && text.charAt(index - 1) !== '$' && text.charAt(index + 1) !== '$'
 }
 
 function isInlineMathEnd(position: TextPosition): boolean {
@@ -168,7 +168,7 @@ function isCompletedInlineMathEnd({ text, index }: TextPosition): boolean {
 
 function findCompletedInlineMathStart({ text, index: end }: TextPosition): number {
   for (let i = end - 1; i >= 0; i--) {
-    if (isInlineMathEnd({ text, index: i }) && text[i - 1] !== '$') {
+    if (isInlineMathEnd({ text, index: i }) && text.charAt(i - 1) !== '$') {
       return i
     }
   }
@@ -192,7 +192,7 @@ function replaceInlineMath({ line }: MarkdownLine): string {
   let inCodeSpan = false
 
   while (index < line.length) {
-    const char = line[index]
+    const char = line.charAt(index)
     if (char === '`') {
       inCodeSpan = !inCodeSpan
       result += char
@@ -215,21 +215,24 @@ function replaceInlineMath({ line }: MarkdownLine): string {
 
 function readSingleLineDisplayMath({ line }: MarkdownLine): InlineMathMatch | null {
   const match = line.trim().match(/^\$\$(.+)\$\$$/)
-  const latex = match?.[1]?.trim()
+  const latex = match?.at(1)?.trim()
   return latex ? { latex, end: 0 } : null
 }
 
 function readMultilineDisplayMath({ lines, start }: MarkdownLines): InlineMathMatch | null {
-  if (lines[start].trim() !== '$$') return null
+  const startLine = lines.at(start)
+  if (startLine?.trim() !== '$$') return null
   const end = lines.findIndex((line, index) => index > start && line.trim() === '$$')
   return end === -1 ? null : { latex: lines.slice(start + 1, end).join('\n'), end }
 }
 
 function readDisplayMath({ lines, start }: MarkdownLines): InlineMathMatch | null {
-  const trimmed = lines[start].trim()
+  const line = lines.at(start)
+  if (line === undefined) return null
+  const trimmed = line.trim()
   const displayMath = trimmed === '$$'
     ? readMultilineDisplayMath({ lines, start })
-    : readSingleLineDisplayMath({ line: lines[start] })
+    : readSingleLineDisplayMath({ line })
   return displayMath && displayMath.end === 0
     ? { ...displayMath, end: start }
     : displayMath
@@ -241,7 +244,8 @@ export function preProcessMathMarkdown({ markdown }: MarkdownSource): string {
   let inFence = false
 
   for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
+    const line = lines.at(i)
+    if (line === undefined) continue
     if (isCodeFence({ text: line })) {
       inFence = !inFence
       result.push(line)

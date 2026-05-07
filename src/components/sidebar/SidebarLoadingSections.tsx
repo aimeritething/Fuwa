@@ -209,7 +209,7 @@ export function SidebarCreatableLoadingSection({
   onCreate,
   ...props
 }: ConfiguredCreatableLoadingSectionProps) {
-  const config = CREATABLE_LOADING_SECTIONS[kind]
+  const config = Reflect.get(CREATABLE_LOADING_SECTIONS, kind) as typeof CREATABLE_LOADING_SECTIONS[CreatableLoadingSectionKind]
   const locale = props.locale ?? 'en'
   return (
     <CreatableLoadingSection

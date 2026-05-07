@@ -107,12 +107,13 @@ function readFenceOpening(line: string, codec: DurableBlockCodec): FenceOpening 
   const match = /^( {0,3})(`{3,}|~{3,})[ \t]*(.*)$/.exec(line)
   if (!match) return null
 
-  const metadata = codec.readFenceMetadata(match[3])
+  const metadata = codec.readFenceMetadata(match.at(3) ?? '')
   if (metadata === null) return null
 
-  const fence = match[2]
+  const fence = match.at(2)
+  if (!fence) return null
   return {
-    character: fence[0] as FenceCharacter,
+    character: fence.charAt(0) as FenceCharacter,
     length: fence.length,
     metadata,
   }
@@ -130,13 +131,15 @@ function isClosingFence({ line, opening }: MarkdownLine & { opening: FenceOpenin
   const match = /^( {0,3})(`{3,}|~{3,})[ \t]*$/.exec(line)
   if (!match) return false
 
-  const fence = match[2]
-  return fence[0] === opening.character && fence.length >= opening.length
+  const fence = match.at(2)
+  if (!fence) return false
+  return fence.charAt(0) === opening.character && fence.length >= opening.length
 }
 
 function findClosingFence({ lines, start, opening }: FenceSearch): number {
   for (let index = start + 1; index < lines.length; index++) {
-    if (isClosingFence({ line: lineText({ line: lines[index] }), opening })) return index
+    const line = lines.at(index)
+    if (line !== undefined && isClosingFence({ line: lineText({ line }), opening })) return index
   }
 
   return -1
@@ -153,15 +156,17 @@ export function preProcessDurableMarkdownBlocks({
   const result: string[] = []
 
   for (let index = 0; index < lines.length; index++) {
-    const matched = readMatchedFenceOpening(lineText({ line: lines[index] }), codecs)
+    const line = lines.at(index)
+    if (line === undefined) continue
+    const matched = readMatchedFenceOpening(lineText({ line }), codecs)
     if (!matched) {
-      result.push(lines[index])
+      result.push(line)
       continue
     }
 
     const closingIndex = findClosingFence({ lines, start: index, opening: matched.opening })
     if (closingIndex === -1) {
-      result.push(lines[index])
+      result.push(line)
       continue
     }
 
@@ -171,7 +176,7 @@ export function preProcessDurableMarkdownBlocks({
       end: closingIndex,
       metadata: matched.opening.metadata,
     })
-    result.push(`${durableToken(matched.codec, payload)}${lineEnding({ line: lines[closingIndex] })}`)
+    result.push(`${durableToken(matched.codec, payload)}${lineEnding({ line: lines.at(closingIndex) ?? '' })}`)
     index = closingIndex
   }
 

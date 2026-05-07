@@ -109,8 +109,8 @@ function inferVaultPath(entries: VaultEntry[]): string {
   const prefix: string[] = []
   const maxDepth = Math.min(...segments.map((parts) => parts.length))
   for (let i = 0; i < maxDepth; i += 1) {
-    const segment = segments[0][i]
-    if (segments.every((parts) => parts[i] === segment)) prefix.push(segment)
+    const segment = segments.at(0)?.at(i)
+    if (segment !== undefined && segments.every((parts) => parts.at(i) === segment)) prefix.push(segment)
     else break
   }
   return prefix.join('/')
@@ -341,7 +341,7 @@ function useInlineAddNoteState(
       selectedIndex: search.selectedIndex,
       createIndex,
       trimmed,
-      selectedEntry: search.selectedEntry,
+      selectedEntry: search.selectedEntry ?? undefined,
       onCreate: handleCreateAndOpen,
       onSelectEntry: selectEntryAndClose,
       onFallback: handleFallback,
@@ -572,7 +572,7 @@ function NoteTargetInput({ entries, value, locale, onChange, onSubmit, onCancel,
       selectedIndex: search.selectedIndex,
       createIndex,
       trimmed,
-      selectedEntry: search.selectedEntry,
+      selectedEntry: search.selectedEntry ?? undefined,
       onCreate: onSubmitWithCreate,
       onSelectEntry: selectEntry,
       onFallback: onSubmit,

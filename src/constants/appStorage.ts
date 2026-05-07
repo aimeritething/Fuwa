@@ -48,11 +48,13 @@ export function copyLegacyAppStorageKeys(): void {
     if (localStorage.getItem(APP_STORAGE_KEYS.legacyMigrationFlag) === '1') return
 
     for (const key of MIGRATABLE_STORAGE_KEYS) {
-      if (localStorage.getItem(APP_STORAGE_KEYS[key]) !== null) continue
+      const storageKey = Reflect.get(APP_STORAGE_KEYS, key) as string
+      const legacyStorageKey = Reflect.get(LEGACY_APP_STORAGE_KEYS, key) as string
+      if (localStorage.getItem(storageKey) !== null) continue
 
-      const legacyValue = localStorage.getItem(LEGACY_APP_STORAGE_KEYS[key])
+      const legacyValue = localStorage.getItem(legacyStorageKey)
       if (legacyValue !== null) {
-        localStorage.setItem(APP_STORAGE_KEYS[key], legacyValue)
+        localStorage.setItem(storageKey, legacyValue)
       }
     }
 
@@ -64,7 +66,9 @@ export function copyLegacyAppStorageKeys(): void {
 
 export function getAppStorageItem(key: MigratableStorageKey): string | null {
   try {
-    return localStorage.getItem(APP_STORAGE_KEYS[key]) ?? localStorage.getItem(LEGACY_APP_STORAGE_KEYS[key])
+    const storageKey = Reflect.get(APP_STORAGE_KEYS, key) as string
+    const legacyStorageKey = Reflect.get(LEGACY_APP_STORAGE_KEYS, key) as string
+    return localStorage.getItem(storageKey) ?? localStorage.getItem(legacyStorageKey)
   } catch {
     return null
   }

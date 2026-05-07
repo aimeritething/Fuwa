@@ -28,7 +28,7 @@ const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>>
 // eslint-disable-next-line react-refresh/only-export-components -- utility co-located with component
 export function getTypeIcon(isA: string | null, customIcon?: string | null): ComponentType<SVGAttributes<SVGSVGElement>> {
   if (customIcon) return resolveIcon(customIcon)
-  return (isA && TYPE_ICON_MAP[isA]) || FileText
+  return (isA && (Reflect.get(TYPE_ICON_MAP, isA) as ComponentType<SVGAttributes<SVGSVGElement>> | undefined)) || FileText
 }
 
 type VisibleNoteStatus = Exclude<NoteStatus, 'clean'>
@@ -45,7 +45,7 @@ function hasStatusDot(noteStatus: NoteStatus): noteStatus is VisibleNoteStatus {
 }
 
 function StatusDot({ noteStatus }: { noteStatus: VisibleNoteStatus }) {
-  const dot = NOTE_STATUS_DOT[noteStatus]
+  const dot = Reflect.get(NOTE_STATUS_DOT, noteStatus) as { color: string; testId: string; title: string }
   return (
     <span
       className="mr-1.5 inline-block align-middle"

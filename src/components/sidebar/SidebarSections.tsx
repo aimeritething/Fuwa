@@ -495,13 +495,14 @@ export function CustomizeOverlay({
   locale?: AppLocale
 }) {
   if (!target) return null
+  const typeEntry = Reflect.get(typeEntryMap, target) as VaultEntry | undefined
 
   return (
     <div ref={innerRef} className="fixed z-50" style={{ left: 20, top: 100 }}>
       <TypeCustomizePopover
-        currentIcon={typeEntryMap[target]?.icon ?? null}
-        currentColor={typeEntryMap[target]?.color ?? null}
-        currentTemplate={typeEntryMap[target]?.template ?? null}
+        currentIcon={typeEntry?.icon ?? null}
+        currentColor={typeEntry?.color ?? null}
+        currentTemplate={typeEntry?.template ?? null}
         onChangeIcon={(icon) => onCustomize('icon', icon)}
         onChangeColor={(color) => onCustomize('color', color)}
         onChangeTemplate={onChangeTemplate}

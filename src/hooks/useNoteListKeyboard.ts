@@ -259,7 +259,7 @@ function useMoveHighlight({
     const currentIndex = resolveCurrentIndex(items, highlightedPathRef.current, selectedNotePath)
     const nextIndex = moveHighlightIndex(currentIndex, direction, items.length)
     const currentPath = highlightedPathRef.current ?? selectedNotePath
-    const nextItem = items[nextIndex]
+    const nextItem = items.at(nextIndex)
     if (!nextItem || nextItem.path === currentPath) return
 
     syncHighlightedPath(nextItem.path)

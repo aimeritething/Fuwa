@@ -66,7 +66,7 @@ function badgeTooltip(
   if (!isAiAgentInstalled(statuses, defaultAgent)) {
     return translate(locale, 'status.ai.selectedMissing', { agent: definition.label })
   }
-  const version = statuses[defaultAgent].version
+  const version = (Reflect.get(statuses, defaultAgent) as AiAgentsStatus[AiAgentId]).version
   const base = translate(locale, 'status.ai.defaultAgent', { agent: definition.label, version: version ? ` ${version}` : '' })
   if (!guidanceSummary) return base
   if (vaultAiGuidanceNeedsRestore(guidanceStatus!)) {

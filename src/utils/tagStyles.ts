@@ -19,13 +19,14 @@ function hashTagColor(tag: string): TagStyle {
     hash = ((hash << 5) - hash + tag.charCodeAt(i)) | 0
   }
   const idx = ((hash % ACCENT_COLORS.length) + ACCENT_COLORS.length) % ACCENT_COLORS.length
-  const accent = ACCENT_COLORS[idx]
+  const accent = ACCENT_COLORS.at(idx) ?? ACCENT_COLORS[0]
   return { bg: accent.cssLight, color: accent.css }
 }
 
 const COLOR_KEY_TO_STYLE: Record<string, TagStyle> = Object.fromEntries(
   ACCENT_COLORS.map(c => [c.key, { bg: c.cssLight, color: c.css }]),
 )
+const COLOR_KEY_STYLE_LOOKUP = new Map(Object.entries(COLOR_KEY_TO_STYLE))
 
 let colorOverrides: Record<string, string> = loadColorOverrides()
 
@@ -46,22 +47,22 @@ function loadColorOverrides(): Record<string, string> {
 
 export function setTagColor(tag: string, colorKey: string | null): void {
   if (colorKey === null) {
-    delete colorOverrides[tag]
+    Reflect.deleteProperty(colorOverrides, tag)
   } else {
-    colorOverrides[tag] = colorKey
+    Reflect.set(colorOverrides, tag, colorKey)
   }
   const snapshot = { ...colorOverrides }
   updateVaultConfigField('tag_colors', Object.keys(snapshot).length > 0 ? snapshot : null)
 }
 
 export function getTagColorKey(tag: string): string | null {
-  return colorOverrides[tag] ?? null
+  return (Reflect.get(colorOverrides, tag) as string | undefined) ?? null
 }
 
 export function getTagStyle(tag: string): TagStyle {
-  const overrideKey = colorOverrides[tag]
+  const overrideKey = Reflect.get(colorOverrides, tag) as string | undefined
   if (overrideKey) {
-    const style = COLOR_KEY_TO_STYLE[overrideKey]
+    const style = COLOR_KEY_STYLE_LOOKUP.get(overrideKey)
     if (style) return style
   }
   return hashTagColor(tag)

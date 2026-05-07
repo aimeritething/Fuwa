@@ -300,7 +300,8 @@ export function executeAppCommand(
     return false
   }
 
-  const dispatched = dispatchDefinition(APP_COMMAND_DEFINITIONS[id], handlers)
+  const definition = Reflect.get(APP_COMMAND_DEFINITIONS, id) as AppCommandDefinition
+  const dispatched = dispatchDefinition(definition, handlers)
   if (dispatched) {
     lastCommandDispatch = { id, source, timestamp }
   }

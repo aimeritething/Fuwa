@@ -513,6 +513,9 @@ const RELEASE_CHANNEL_LABELS: Record<ReleaseChannel, string> = {
   alpha: 'Alpha',
   stable: 'Stable',
 }
+const RELEASE_CHANNEL_LABELS_BY_CHANNEL = new Map<ReleaseChannel, string>(
+  Object.entries(RELEASE_CHANNEL_LABELS) as Array<[ReleaseChannel, string]>,
+)
 
 function escapeMarkupText(value: string): string {
   return value
@@ -526,7 +529,7 @@ function releasePayloadValue<K extends keyof GitHubReleasePayload>(
   release: GitHubReleasePayload,
   field: K,
 ): GitHubReleasePayload[K] {
-  return release[field]
+  return Reflect.get(release, field) as GitHubReleasePayload[K]
 }
 
 function normalizeText(value: unknown): string | null {
@@ -658,7 +661,8 @@ function appendReleaseSection(
   normalizedRelease: [ReleaseChannel, ReleaseEntry],
 ): void {
   const [channel, release] = normalizedRelease
-  sections[channel].push(release)
+  const section = Reflect.get(sections, channel) as ReleaseEntry[]
+  section.push(release)
 }
 
 function collectReleaseSections(payload: unknown): ReleaseSections {
@@ -675,14 +679,15 @@ function collectReleaseSections(payload: unknown): ReleaseSections {
   }
 
   for (const channel of ['stable', 'alpha'] as const) {
-    sections[channel].sort((left, right) => right.publishedTimestamp - left.publishedTimestamp)
+    const section = Reflect.get(sections, channel) as ReleaseEntry[]
+    section.sort((left, right) => right.publishedTimestamp - left.publishedTimestamp)
   }
 
   return sections
 }
 
 function buildTabMarkup(channel: ReleaseChannel, count: number, selected: boolean): string {
-  const label = RELEASE_CHANNEL_LABELS[channel]
+  const label = RELEASE_CHANNEL_LABELS_BY_CHANNEL.get(channel) ?? channel
   return `
       <button
         id="tab-${channel}"

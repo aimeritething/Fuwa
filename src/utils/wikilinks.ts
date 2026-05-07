@@ -26,7 +26,7 @@ export function preProcessWikilinks(md: MarkdownSource): MarkdownSource {
   const lines = md.split('\n')
   const tableLines = findMarkdownTableLines(lines)
   return lines.map((line, index) => (
-    replaceWikilinksWithPlaceholders(line, { encodePayload: tableLines[index] })
+    replaceWikilinksWithPlaceholders(line, { encodePayload: tableLines.at(index) ?? false })
   )).join('\n')
 }
 
@@ -103,12 +103,15 @@ function decodePlaceholderPayload(payload: PlaceholderPayload): WikilinkTarget {
 function findMarkdownTableLines(lines: MarkdownLines): TableLineMap {
   const tableLines = lines.map(() => false)
   for (let index = 0; index < lines.length - 1; index++) {
-    if (!isPotentialTableRow(lines[index]) || !isMarkdownTableSeparator(lines[index + 1])) {
+    const line = lines.at(index)
+    const nextLine = lines.at(index + 1)
+    if (line === undefined || nextLine === undefined) continue
+    if (!isPotentialTableRow(line) || !isMarkdownTableSeparator(nextLine)) {
       continue
     }
 
-    tableLines[index] = true
-    tableLines[index + 1] = true
+    tableLines.splice(index, 1, true)
+    tableLines.splice(index + 1, 1, true)
     index = markTableBodyLines(lines, tableLines, index + 2) - 1
   }
   return tableLines
@@ -120,8 +123,10 @@ function markTableBodyLines(
   start: LineIndex,
 ): LineIndex {
   let index = start
-  while (index < lines.length && isPotentialTableRow(lines[index])) {
-    tableLines[index] = true
+  while (index < lines.length) {
+    const line = lines.at(index)
+    if (line === undefined || !isPotentialTableRow(line)) break
+    tableLines.splice(index, 1, true)
     index++
   }
   return index
@@ -364,8 +369,9 @@ function isOrderedListMarker(line: MarkdownLine, dotPos: TextOffset): boolean {
 function removeH1Line(body: MarkdownSource): MarkdownSource {
   const lines = body.split('\n')
   for (let i = 0; i < lines.length; i++) {
-    if (lines[i].trim().startsWith('# ')) return lines.slice(i + 1).join('\n')
-    if (lines[i].trim() !== '') return body
+    const line = lines.at(i) ?? ''
+    if (line.trim().startsWith('# ')) return lines.slice(i + 1).join('\n')
+    if (line.trim() !== '') return body
   }
   return body
 }
@@ -379,14 +385,14 @@ function stripMarkdownChars(s: MarkdownSource): MarkdownSource {
       const parsed = readUntilSequence(s, i + 2, ']]')
       result += wikilinkDisplayText(parsed.text)
       i = parsed.nextIndex
-    } else if (s[i] === '[') {
+    } else if (s.charAt(i) === '[') {
       const parsed = readUntilChar(s, i + 1, ']')
       result += parsed.text
       i = skipMarkdownLinkDestination(s, parsed.nextIndex)
-    } else if (FORMAT_MARKERS.has(s[i])) {
+    } else if (FORMAT_MARKERS.has(s.charAt(i))) {
       i++
     } else {
-      result += s[i]
+      result += s.charAt(i)
       i++
     }
   }
@@ -414,7 +420,7 @@ function readUntilChar(
 }
 
 function skipMarkdownLinkDestination(value: MarkdownSource, start: TextOffset): TextOffset {
-  if (value[start] !== '(') return start
+  if (value.charAt(start) !== '(') return start
 
   const end = value.indexOf(')', start + 1)
   return end === -1 ? value.length : end + 1

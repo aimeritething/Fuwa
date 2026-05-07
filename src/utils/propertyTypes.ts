@@ -97,13 +97,13 @@ function persistDisplayModeOverrides(overrides: DisplayModeOverrides): void {
 
 export function saveDisplayModeOverride(propertyName: PropertyKey, mode: PropertyDisplayMode): void {
   const overrides = loadDisplayModeOverrides()
-  overrides[propertyName] = mode
+  Reflect.set(overrides, propertyName, mode)
   persistDisplayModeOverrides(overrides)
 }
 
 export function removeDisplayModeOverride(propertyName: PropertyKey): void {
   const overrides = loadDisplayModeOverrides()
-  delete overrides[propertyName]
+  Reflect.deleteProperty(overrides, propertyName)
   persistDisplayModeOverrides(overrides)
 }
 
@@ -112,7 +112,7 @@ export function getEffectiveDisplayMode(
   value: FrontmatterValue,
   overrides: DisplayModeOverrides,
 ): PropertyDisplayMode {
-  return overrides[key] ?? detectPropertyType(key, value)
+  return (Reflect.get(overrides, key) as PropertyDisplayMode | undefined) ?? detectPropertyType(key, value)
 }
 
 function parseISODateParts(value: PropertyValueText): DateParts | null {

@@ -57,7 +57,7 @@ interface ProcessMarkdownLineArgs extends LinePosition {
 function processMarkdownLine(
   { doc, idx, inCodeBlock }: ProcessMarkdownLineArgs,
 ): { inCodeBlock: boolean; line: string | null } {
-  const rawLine = doc.lines[idx]
+  const rawLine = doc.lines.at(idx) ?? ''
 
   if (isFenceDelimiter({ line: rawLine })) {
     return { inCodeBlock: !inCodeBlock, line: rawLine }
@@ -99,27 +99,27 @@ function isBlankBetweenListItems({ doc, idx }: LinePosition): boolean {
   const prev = findPrevNonBlank({ doc, idx })
   const next = findNextNonBlank({ doc, idx })
   if (prev === null || next === null) return false
-  return LIST_RE.test(doc.lines[prev]) && LIST_RE.test(doc.lines[next])
+  return LIST_RE.test(doc.lines.at(prev) ?? '') && LIST_RE.test(doc.lines.at(next) ?? '')
 }
 
 /** True if this blank line is part of a run of 2+ consecutive blank lines
  *  (i.e. would create 3+ newlines in a row — collapse to just one blank line) */
 function isExcessiveBlankLine({ doc, idx }: LinePosition): boolean {
   // Keep the first blank line in a run, skip subsequent ones
-  if (idx > 0 && doc.lines[idx - 1].trim() === '') return true
+  if (idx > 0 && (doc.lines.at(idx - 1) ?? '').trim() === '') return true
   return false
 }
 
 function findPrevNonBlank({ doc, idx }: LinePosition): number | null {
   for (let i = idx - 1; i >= 0; i--) {
-    if (doc.lines[i].trim() !== '') return i
+    if ((doc.lines.at(i) ?? '').trim() !== '') return i
   }
   return null
 }
 
 function findNextNonBlank({ doc, idx }: LinePosition): number | null {
   for (let i = idx + 1; i < doc.lines.length; i++) {
-    if (doc.lines[i].trim() !== '') return i
+    if ((doc.lines.at(i) ?? '').trim() !== '') return i
   }
   return null
 }
@@ -130,7 +130,7 @@ function isRedundantHardBreakLine({ doc, idx, line }: NormalizedLinePosition): b
   const prev = findPrevNonBlank({ doc, idx })
   if (prev === null) return false
 
-  const prevLine = normalizeMarkdownLine({ line: doc.lines[prev] })
+  const prevLine = normalizeMarkdownLine({ line: doc.lines.at(prev) ?? '' })
   return isHardBreakOnlyLine({ line: prevLine }) || endsWithHardBreakMarker({ line: prevLine })
 }
 

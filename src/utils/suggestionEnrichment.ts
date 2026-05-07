@@ -51,7 +51,7 @@ export function enrichSuggestionItems(
   const final = disambiguateTitles(deduplicateByPath(sliced))
   return final.map(({ entryType, ...rest }) => {
     const noteType = entryType ?? undefined
-    const te = noteType ? typeEntryMap[noteType] : undefined
+    const te = noteType ? Reflect.get(typeEntryMap, noteType) as VaultEntry | undefined : undefined
     return {
       ...rest,
       noteType,

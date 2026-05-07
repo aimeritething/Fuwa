@@ -79,7 +79,7 @@ function useLikelyNextPreload(entries: VaultEntry[], selectedNotePath: string | 
     let candidateIndex = 0
     const startTimer = window.setTimeout(() => {
       const preloadNext = () => {
-        const entry = candidates[candidateIndex]
+        const entry = candidates.at(candidateIndex)
         if (!entry) return
         candidateIndex += 1
         prefetchNoteContent(entry)

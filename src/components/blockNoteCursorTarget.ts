@@ -14,7 +14,7 @@ export function findNearestTextCursorBlock(
   if (blocks.length === 0) return null
 
   const clampedTargetIndex = Math.min(Math.max(targetIndex, 0), blocks.length - 1)
-  const targetBlock = blocks[clampedTargetIndex]
+  const targetBlock = blocks.at(clampedTargetIndex)
   if (blockSupportsTextCursor(targetBlock)) {
     return targetBlock
   }

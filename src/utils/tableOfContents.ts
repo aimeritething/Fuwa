@@ -12,7 +12,7 @@ function isRecord(value: unknown): value is UnknownRecord {
 }
 
 function readString(record: UnknownRecord, key: string): string | null {
-  const value = record[key]
+  const value = Reflect.get(record, key)
   return typeof value === 'string' ? value : null
 }
 

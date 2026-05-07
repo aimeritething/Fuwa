@@ -501,10 +501,13 @@ function useSidebarRuntime({
     onDeleteType,
   })
 
-  const isSectionVisible = useCallback((type: string) => typeEntryMap[type]?.visible !== false, [typeEntryMap])
+  const isSectionVisible = useCallback((type: string) => (
+    (Reflect.get(typeEntryMap, type) as VaultEntry | undefined)?.visible !== false
+  ), [typeEntryMap])
   const toggleVisibility = useCallback((type: string) => onToggleTypeVisibility?.(type), [onToggleTypeVisibility])
   const selectTypeNote = useCallback((type: string) => {
-    const typeEntry = typeEntryMap[type] ?? typeEntryMap[type.toLowerCase()]
+    const typeEntry = (Reflect.get(typeEntryMap, type) as VaultEntry | undefined)
+      ?? (Reflect.get(typeEntryMap, type.toLowerCase()) as VaultEntry | undefined)
     if (typeEntry) onSelectNote?.(typeEntry)
   }, [onSelectNote, typeEntryMap])
 

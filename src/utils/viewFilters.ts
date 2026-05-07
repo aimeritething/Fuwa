@@ -2,6 +2,21 @@ import type { VaultEntry, ViewDefinition, FilterGroup, FilterNode, FilterConditi
 import { toDateFilterTimestamp } from './filterDates'
 import { compileSafeUserRegex } from './safeRegex'
 
+type ResolvedField = { scalar?: string | number | boolean | null; array?: string[] }
+type BuiltInFieldReader = (entry: VaultEntry) => ResolvedField
+type TextOp = FilterCondition['op']
+
+const BUILT_IN_FIELD_READERS = new Map<string, BuiltInFieldReader>([
+  ['type', (entry) => ({ scalar: entry.isA })],
+  ['isa', (entry) => ({ scalar: entry.isA })],
+  ['status', (entry) => ({ scalar: entry.status })],
+  ['title', (entry) => ({ scalar: entry.title })],
+  ['filename', (entry) => ({ scalar: entry.filename })],
+  ['archived', (entry) => ({ scalar: entry.archived })],
+  ['favorite', (entry) => ({ scalar: entry.favorite })],
+  ['body', (entry) => ({ scalar: entry.snippet })],
+])
+
 /** Evaluate a view's filters against a list of entries, returning only matches. */
 export function evaluateView(definition: ViewDefinition, entries: VaultEntry[]): VaultEntry[] {
   return entries.filter((e) => !e.archived && evaluateGroup(definition.filters, e))
@@ -22,25 +37,26 @@ function evaluateNode(node: FilterNode, entry: VaultEntry): boolean {
   return evaluateCondition(node as FilterCondition, entry)
 }
 
-function resolveField(entry: VaultEntry, field: string): { scalar?: string | number | boolean | null; array?: string[] } {
+function findCaseInsensitiveKey(record: Record<string, unknown>, lower: string): string | undefined {
+  return Object.keys(record).find((k) => k.toLowerCase() === lower)
+}
+
+function resolveRelationshipField(entry: VaultEntry, lower: string): ResolvedField | null {
+  const relKey = findCaseInsensitiveKey(entry.relationships, lower)
+  return relKey ? { array: Reflect.get(entry.relationships, relKey) as string[] } : null
+}
+
+function resolvePropertyField(entry: VaultEntry, lower: string): ResolvedField | null {
+  const propKey = findCaseInsensitiveKey(entry.properties, lower)
+  return propKey ? { scalar: Reflect.get(entry.properties, propKey) as ResolvedField['scalar'] } : null
+}
+
+function resolveField(entry: VaultEntry, field: string): ResolvedField {
   const lower = field.toLowerCase()
-  if (lower === 'type' || lower === 'isa') return { scalar: entry.isA }
-  if (lower === 'status') return { scalar: entry.status }
-  if (lower === 'title') return { scalar: entry.title }
-  if (lower === 'filename') return { scalar: entry.filename }
-  if (lower === 'archived') return { scalar: entry.archived }
-  if (lower === 'favorite') return { scalar: entry.favorite }
-  if (lower === 'body') return { scalar: entry.snippet }
-
-  // Check relationships first (returns string[])
-  const relKey = Object.keys(entry.relationships).find((k) => k.toLowerCase() === lower)
-  if (relKey) return { array: entry.relationships[relKey] }
-
-  // Then properties (returns scalar)
-  const propKey = Object.keys(entry.properties).find((k) => k.toLowerCase() === lower)
-  if (propKey) return { scalar: entry.properties[propKey] }
-
-  return { scalar: null }
+  return BUILT_IN_FIELD_READERS.get(lower)?.(entry)
+    ?? resolveRelationshipField(entry, lower)
+    ?? resolvePropertyField(entry, lower)
+    ?? { scalar: null }
 }
 
 function wikilinkStem(raw: string): string {
@@ -149,19 +165,35 @@ function evaluateRegexScalarCondition(op: FilterCondition['op'], fieldRaw: strin
   return false
 }
 
-function evaluateTextCondition(cond: FilterCondition, fieldRaw: string, condVal: string, regex: RegExp | null): boolean {
-  const { op, value } = cond
-  if (regex) return evaluateRegexScalarCondition(op, fieldRaw, regex)
+function conditionList(value: unknown): string[] | null {
+  return Array.isArray(value) ? value.map(toString) : null
+}
 
-  const fieldStr = fieldRaw.toLowerCase()
-  const condStr = condVal.toLowerCase()
+function evaluateTextComparison(op: TextOp, fieldStr: string, condStr: string): boolean | null {
   if (op === 'equals') return fieldStr === condStr
   if (op === 'not_equals') return fieldStr !== condStr
   if (op === 'contains') return fieldStr.includes(condStr)
   if (op === 'not_contains') return !fieldStr.includes(condStr)
-  if (op === 'any_of' && Array.isArray(value)) return (value as string[]).some((v) => toString(v).toLowerCase() === fieldStr)
-  if (op === 'none_of' && Array.isArray(value)) return !(value as string[]).some((v) => toString(v).toLowerCase() === fieldStr)
-  return false
+  return null
+}
+
+function evaluateTextSetCondition(op: TextOp, fieldStr: string, values: string[] | null): boolean | null {
+  if (!values) return null
+  const matched = values.some((v) => v.toLowerCase() === fieldStr)
+  if (op === 'any_of') return matched
+  if (op === 'none_of') return !matched
+  return null
+}
+
+function evaluateTextCondition(cond: FilterCondition, fieldRaw: string, condVal: string, regex: RegExp | null): boolean {
+  const { op } = cond
+  if (regex) return evaluateRegexScalarCondition(op, fieldRaw, regex)
+
+  const fieldStr = fieldRaw.toLowerCase()
+  const condStr = condVal.toLowerCase()
+  return evaluateTextComparison(op, fieldStr, condStr)
+    ?? evaluateTextSetCondition(op, fieldStr, conditionList(cond.value))
+    ?? false
 }
 
 function fieldTimestamp(value: string | number | boolean | null | undefined): number | null {

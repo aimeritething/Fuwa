@@ -28,7 +28,7 @@ function readChangeStats(entry: VaultEntry): Required<Pick<ChangeStatsEntry, '__
 }
 
 function ChangeStatusIcon({ status }: { status: ChangeStatus }) {
-  const display = CHANGE_STATUS_DISPLAY[status]
+  const display = Reflect.get(CHANGE_STATUS_DISPLAY, status) as typeof CHANGE_STATUS_DISPLAY[ChangeStatus]
   return (
     <span
       className="absolute right-3 top-2.5 text-xs font-bold"

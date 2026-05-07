@@ -344,7 +344,7 @@ function OpenCommandPalette({
 
       if (event.key === 'Enter') {
         event.preventDefault()
-        const command = flatList[selectedIndex]
+        const command = flatList.at(selectedIndex)
         if (!command) return
         rememberCommandOpener(command, inputRef.current)
         onClose()

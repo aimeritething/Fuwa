@@ -41,7 +41,8 @@ function shouldIncludeTypeDefinition(name: string, entry: VaultEntry): boolean {
 }
 
 function resolveTypeEntry(type: string, typeEntryMap: Record<string, VaultEntry>): VaultEntry | undefined {
-  return typeEntryMap[type] ?? typeEntryMap[type.toLowerCase()]
+  return (Reflect.get(typeEntryMap, type) as VaultEntry | undefined)
+    ?? (Reflect.get(typeEntryMap, type.toLowerCase()) as VaultEntry | undefined)
 }
 
 function hasExplicitTypeDefinition(type: string, typeEntryMap: Record<string, VaultEntry>): boolean {
@@ -98,7 +99,7 @@ export function buildSectionGroup(
   pluralizeTypeLabel = true,
 ): SectionGroup {
   const builtIn = BUILT_IN_TYPE_MAP.get(type)
-  const typeEntry = typeEntryMap[type]
+  const typeEntry = Reflect.get(typeEntryMap, type) as VaultEntry | undefined
   const customColor = typeEntry?.color ?? null
   const label = resolveLabel(type, typeEntry, builtIn, pluralizeTypeLabel)
   const icon = resolveIcon(typeEntry?.icon ?? null)

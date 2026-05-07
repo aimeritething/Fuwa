@@ -151,14 +151,14 @@ export function TagPillList({
 
   const handleStartEdit = (index: number) => {
     setEditingIndex(index)
-    setEditValue(items[index])
+    setEditValue(items.at(index) ?? '')
   }
 
   const handleSaveEdit = () => {
     if (editingIndex !== null) {
       const newItems = [...items]
       if (editValue.trim()) {
-        newItems[editingIndex] = editValue.trim()
+        newItems.splice(editingIndex, 1, editValue.trim())
       } else {
         newItems.splice(editingIndex, 1)
       }

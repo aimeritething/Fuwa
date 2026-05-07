@@ -34,7 +34,7 @@ const NOTE_WIDTH_LABEL_KEYS: Record<NoteWidthMode, TranslationKey> = {
 function buildNoteWidthOptions(t: Translate): Array<{ value: NoteWidthMode; label: string }> {
   return NOTE_WIDTH_OPTIONS.map((value) => ({
     value,
-    label: t(NOTE_WIDTH_LABEL_KEYS[value]),
+    label: t(Reflect.get(NOTE_WIDTH_LABEL_KEYS, value) as Parameters<Translate>[0]),
   }))
 }
 

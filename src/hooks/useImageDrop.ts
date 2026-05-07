@@ -24,7 +24,8 @@ type DroppedImagesRequest = {
 
 function hasImageFiles(dt: DataTransfer): boolean {
   for (let i = 0; i < dt.items.length; i++) {
-    if (dt.items[i].kind === 'file' && IMAGE_MIME_TYPES.includes(dt.items[i].type)) return true
+    const item = Reflect.get(dt.items, i) as DataTransferItem | undefined
+    if (item?.kind === 'file' && IMAGE_MIME_TYPES.includes(item.type)) return true
   }
   return false
 }
@@ -40,7 +41,7 @@ export async function uploadImageFile(file: File, vaultPath?: string): Promise<s
     const buf = await file.arrayBuffer()
     const bytes = new Uint8Array(buf)
     let binary = ''
-    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i])
+    for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes.at(i) ?? 0)
     const base64 = btoa(binary)
     const savedPath = await invoke<string>('save_image', {
       vaultPath,

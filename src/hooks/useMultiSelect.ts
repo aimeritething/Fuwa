@@ -42,7 +42,10 @@ export function useMultiSelect(visibleEntries: VaultEntry[], activePath: string 
     const end = Math.max(fromIdx, toIdx)
     setSelectedPaths((prev) => {
       const next = new Set(prev)
-      for (let i = start; i <= end; i++) next.add(paths[i])
+      for (let i = start; i <= end; i++) {
+        const path = paths.at(i)
+        if (path) next.add(path)
+      }
       return next
     })
     lastClickedRef.current = toPath

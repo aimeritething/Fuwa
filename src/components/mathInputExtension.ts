@@ -70,7 +70,7 @@ function replaceCompletedInlineMath(
   trailingText?: string,
 ): EditorViewLike['state']['tr'] | null {
   const replacement = readInlineMathReplacement(view)
-  const mathNodeType = view.state.schema.nodes[MATH_INLINE_TYPE]
+  const mathNodeType = Reflect.get(view.state.schema.nodes, MATH_INLINE_TYPE) as EditorViewLike['state']['schema']['nodes'][string] | undefined
   if (!replacement || !mathNodeType) return null
 
   const mathNode = mathNodeType.createChecked({ latex: replacement.latex })

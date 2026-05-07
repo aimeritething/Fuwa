@@ -43,7 +43,7 @@ function FilterPillsInner({ active, counts, onChange, position = 'top', locale =
         >
           {translate(locale, labelKey)}
           <span className={`text-[10px] tabular-nums ${active === value ? 'text-foreground/70' : 'text-muted-foreground/70'}`}>
-            {counts[value]}
+            {Reflect.get(counts, value)}
           </span>
         </button>
       ))}

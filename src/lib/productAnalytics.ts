@@ -46,10 +46,12 @@ export function trackAllNotesVisibilityChanged(
   next: AllNotesFileVisibility,
 ): void {
   for (const category of ALL_NOTES_VISIBILITY_CATEGORIES) {
-    if (previous[category] === next[category]) continue
+    const previousValue = Reflect.get(previous, category) as boolean
+    const nextValue = Reflect.get(next, category) as boolean
+    if (previousValue === nextValue) continue
     trackEvent('all_notes_visibility_changed', {
       category,
-      enabled: numericFlag(next[category]),
+      enabled: numericFlag(nextValue),
     })
   }
 }
