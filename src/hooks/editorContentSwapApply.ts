@@ -25,9 +25,9 @@ interface ApplyBlankStateToEditorOptions extends Omit<AppliedEditorContentCommit
   editor: ReturnType<typeof useCreateBlockNote>
 }
 
-interface ApplyHtmlStateToEditorOptions extends Omit<AppliedEditorContentCommit, 'scrollTop'> {
+interface ApplyMarkupStateToEditorOptions extends Omit<AppliedEditorContentCommit, 'scrollTop'> {
   editor: ReturnType<typeof useCreateBlockNote>
-  html: string
+  markup: string
 }
 
 export function applyBlocksToEditor(options: ApplyBlocksToEditorOptions): boolean {
@@ -49,8 +49,8 @@ export function applyBlocksToEditor(options: ApplyBlocksToEditorOptions): boolea
   } catch (err) {
     console.error('applyBlocks failed, trying fallback:', err)
     try {
-      const html = editor.blocksToHTMLLossy(safeBlocks)
-      editor._tiptapEditor.commands.setContent(html)
+      const markup = editor.blocksToHTMLLossy(safeBlocks)
+      editor._tiptapEditor.commands.setContent(markup)
     } catch (err2) {
       console.error('Fallback also failed:', err2)
       suppressChangeRef.current = false
@@ -66,16 +66,16 @@ export function applyBlankStateToEditor(options: ApplyBlankStateToEditorOptions)
   return applyBlocksToEditor({ ...options, blocks: blankParagraphBlocks(), scrollTop: 0 })
 }
 
-export function applyHtmlStateToEditor(options: ApplyHtmlStateToEditorOptions) {
+export function applyHtmlStateToEditor(options: ApplyMarkupStateToEditorOptions) {
   const {
     editor,
-    html,
+    markup,
     suppressChangeRef,
   } = options
   suppressChangeRef.current = true
   try {
     resetTextSelectionBeforeContentSwap(editor)
-    editor._tiptapEditor.commands.setContent(html)
+    editor._tiptapEditor.commands.setContent(markup)
   } catch (err) {
     console.error('applyHtmlStateToEditor failed:', err)
     suppressChangeRef.current = false

@@ -1,4 +1,5 @@
 const DEFAULT_POSTHOG_HOST = 'https://us.i.posthog.com'
+const IPV6_ADDRESS_CHARS = new Set('0123456789abcdefABCDEF:')
 const DISALLOWED_TELEMETRY_VALUES = new Set([
   'false',
   'true',
@@ -15,6 +16,18 @@ type TelemetryEnv = {
   VITE_POSTHOG_HOST?: string
 }
 
+interface HostnameInput {
+  hostname: string
+}
+
+interface HostSegmentInput {
+  segment: string
+}
+
+interface TelemetryValueInput {
+  value: string
+}
+
 export type FrontendTelemetryConfig = {
   sentryDsn: string
   sentryBuildVersion: string
@@ -23,7 +36,7 @@ export type FrontendTelemetryConfig = {
   posthogHost: string | null
 }
 
-function unwrapMatchingQuotes(value: string): string {
+function unwrapMatchingQuotes({ value }: TelemetryValueInput): string {
   if (value.length < 2) return value
 
   const first = value[0]
@@ -40,20 +53,20 @@ export function sanitizeTelemetryEnvValue(value: string | undefined): string {
   const trimmed = value.trim()
   if (!trimmed) return ''
 
-  return unwrapMatchingQuotes(trimmed)
+  return unwrapMatchingQuotes({ value: trimmed })
 }
 
-function isHttpUrl(value: string): boolean {
+function isHttpUrl({ value }: TelemetryValueInput): boolean {
   try {
     const url = new URL(value)
     return (url.protocol === 'http:' || url.protocol === 'https:')
-      && isAllowedTelemetryHostname(url.hostname)
+      && isAllowedTelemetryHostname({ hostname: url.hostname })
   } catch {
     return false
   }
 }
 
-function normalizeHostname(hostname: string): string {
+function normalizeHostname({ hostname }: HostnameInput): string {
   const normalized = hostname.trim().replace(/\.$/, '').toLowerCase()
   if (normalized.startsWith('[') && normalized.endsWith(']')) {
     return normalized.slice(1, -1)
@@ -61,33 +74,47 @@ function normalizeHostname(hostname: string): string {
   return normalized
 }
 
-function isIpAddress(hostname: string): boolean {
-  if (/^(?:\d{1,3}\.){3}\d{1,3}$/.test(hostname)) {
-    return hostname.split('.').every((segment) => Number(segment) <= 255)
-  }
-
-  return hostname.includes(':') && /^[\da-f:]+$/i.test(hostname)
+function isIpAddress({ hostname }: HostnameInput): boolean {
+  return isIpv4Address({ hostname }) || isIpv6LikeAddress({ hostname })
 }
 
-function isAllowedTelemetryHostname(hostname: string): boolean {
-  const normalized = normalizeHostname(hostname)
+function isIpv4Address({ hostname }: HostnameInput): boolean {
+  const segments = hostname.split('.')
+  return segments.length === 4 && segments.every((segment) => isIpv4Segment({ segment }))
+}
+
+function isIpv4Segment({ segment }: HostSegmentInput): boolean {
+  const value = Number(segment)
+  return segment.length > 0
+    && Array.from(segment).every((char) => char >= '0' && char <= '9')
+    && Number.isInteger(value)
+    && value >= 0
+    && value <= 255
+}
+
+function isIpv6LikeAddress({ hostname }: HostnameInput): boolean {
+  return hostname.includes(':') && Array.from(hostname).every((char) => IPV6_ADDRESS_CHARS.has(char))
+}
+
+function isAllowedTelemetryHostname({ hostname }: HostnameInput): boolean {
+  const normalized = normalizeHostname({ hostname })
   if (!normalized || DISALLOWED_TELEMETRY_VALUES.has(normalized)) return false
   if (normalized === 'localhost') return true
-  return normalized.includes('.') || isIpAddress(normalized)
+  return normalized.includes('.') || isIpAddress({ hostname: normalized })
 }
 
-function normalizeHttpLikeValue(value: string): string {
+function normalizeHttpLikeValue({ value }: TelemetryValueInput): string {
   if (!value) return ''
   if (/^[a-z][a-z\d+\-.]*:\/\//i.test(value)) return value
   return `https://${value}`
 }
 
-function normalizeSentryDsn(value: string): string {
-  const normalized = normalizeHttpLikeValue(value)
-  return isHttpUrl(normalized) ? normalized : ''
+function normalizeSentryDsn({ value }: TelemetryValueInput): string {
+  const normalized = normalizeHttpLikeValue({ value })
+  return isHttpUrl({ value: normalized }) ? normalized : ''
 }
 
-function normalizeSentryRelease(value: string): string {
+function normalizeSentryRelease({ value }: TelemetryValueInput): string {
   const match = /^(\d{4})\.(\d{1,2})\.(\d{1,2})$/.exec(value)
   if (!match) return ''
 
@@ -102,27 +129,27 @@ function normalizeSentryRelease(value: string): string {
   return validDate ? value : ''
 }
 
-function normalizePostHogHost(value: string): string | null {
+function normalizePostHogHost({ value }: TelemetryValueInput): string | null {
   if (!value) return DEFAULT_POSTHOG_HOST
-  const normalized = normalizeHttpLikeValue(value)
-  return isHttpUrl(normalized) ? normalized : null
+  const normalized = normalizeHttpLikeValue({ value })
+  return isHttpUrl({ value: normalized }) ? normalized : null
 }
 
 export function resolveFrontendTelemetryConfig(
   env: TelemetryEnv = import.meta.env as TelemetryEnv,
 ): FrontendTelemetryConfig {
-  const sentryDsn = normalizeSentryDsn(
-    sanitizeTelemetryEnvValue(env.VITE_SENTRY_DSN),
-  )
+  const sentryDsn = normalizeSentryDsn({
+    value: sanitizeTelemetryEnvValue(env.VITE_SENTRY_DSN),
+  })
   const sanitizedSentryVersion = sanitizeTelemetryEnvValue(env.VITE_SENTRY_RELEASE)
   const sentryBuildVersion = DISALLOWED_TELEMETRY_VALUES.has(sanitizedSentryVersion.toLowerCase())
     ? ''
     : sanitizedSentryVersion
-  const sentryRelease = normalizeSentryRelease(sentryBuildVersion)
+  const sentryRelease = normalizeSentryRelease({ value: sentryBuildVersion })
   const posthogKey = sanitizeTelemetryEnvValue(env.VITE_POSTHOG_KEY)
-  const posthogHost = normalizePostHogHost(
-    sanitizeTelemetryEnvValue(env.VITE_POSTHOG_HOST),
-  )
+  const posthogHost = normalizePostHogHost({
+    value: sanitizeTelemetryEnvValue(env.VITE_POSTHOG_HOST),
+  })
 
   return { sentryDsn, sentryBuildVersion, sentryRelease, posthogKey, posthogHost }
 }

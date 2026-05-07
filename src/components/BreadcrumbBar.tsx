@@ -502,7 +502,9 @@ function measureNaturalTitleWidth(title: HTMLDivElement): number {
   const titleContent = title.querySelector('.breadcrumb-bar__title-content')
   if (!(titleContent instanceof HTMLElement)) return readElementWidth(title)
 
-  const clone = titleContent.cloneNode(true) as HTMLElement
+  const clone = titleContent.cloneNode(true)
+  if (!(clone instanceof HTMLElement)) return readElementWidth(title)
+
   prepareTitleMeasurementClone(clone)
   removeCloneTruncation(clone)
   title.appendChild(clone)
@@ -536,8 +538,8 @@ function useBreadcrumbOverflow(
   useLayoutEffect(() => {
     const title = titleRef.current
     const actions = actionsRef.current
-    const bar = title?.closest('.breadcrumb-bar') as HTMLDivElement | null
-    if (!title || !actions || !bar) return undefined
+    const bar = title?.closest('.breadcrumb-bar')
+    if (!title || !actions || !(bar instanceof HTMLDivElement)) return undefined
 
     let frame = 0
     const measure = () => {

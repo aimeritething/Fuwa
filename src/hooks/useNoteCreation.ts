@@ -161,11 +161,23 @@ function hasOuterWhitespace(value: string): boolean {
 }
 
 function isYamlWikilink(value: string): boolean {
-  return /^\[\[.*\]\]$/.test(value)
+  return value.startsWith('[[') && value.endsWith(']]')
 }
 
 function isAmbiguousYamlScalar(value: string): boolean {
-  return /^(?:true|false|null|[-+]?\d+(?:\.\d+)?)$/i.test(value)
+  const lowerValue = value.toLowerCase()
+  return lowerValue === 'true'
+    || lowerValue === 'false'
+    || lowerValue === 'null'
+    || isDecimalYamlScalar({ value })
+}
+
+function isDecimalYamlScalar({ value }: { value: string }): boolean {
+  const unsignedValue = value.startsWith('-') || value.startsWith('+') ? value.slice(1) : value
+  const decimalParts = unsignedValue.split('.')
+  return decimalParts.length <= 2 && decimalParts.every((part) => (
+    part.length > 0 && Array.from(part).every((char) => char >= '0' && char <= '9')
+  ))
 }
 
 function shouldQuoteYamlString(value: string): boolean {

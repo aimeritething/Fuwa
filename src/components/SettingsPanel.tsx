@@ -198,11 +198,11 @@ function focusSettingsBoundary(focusableElements: HTMLElement[], shiftKey: boole
   focusableElements.at(targetIndex)?.focus()
 }
 
-function isSettingsPanelElement(panel: HTMLElement, activeElement: Element | null): activeElement is HTMLElement {
-  return activeElement instanceof HTMLElement && panel.contains(activeElement)
+function isSettingsPanelElement(panel: HTMLElement, activeElement: Element | null): activeElement is Element {
+  return activeElement instanceof Element && panel.contains(activeElement)
 }
 
-function isSettingsFocusBoundary(activeElement: HTMLElement, focusableElements: HTMLElement[], shiftKey: boolean): boolean {
+function isSettingsFocusBoundary(activeElement: Element, focusableElements: HTMLElement[], shiftKey: boolean): boolean {
   const boundaryIndex = shiftKey ? 0 : focusableElements.length - 1
   return activeElement === focusableElements.at(boundaryIndex)
 }

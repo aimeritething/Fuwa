@@ -94,8 +94,9 @@ function trySelectFirstHeading(editor: FocusableEditor): boolean {
 }
 
 function hasEditableFocus(): boolean {
-  const active = document.activeElement as HTMLElement | null
-  return Boolean(active?.isContentEditable || active?.closest('[contenteditable="true"]'))
+  const activeElement = document.activeElement
+  return activeElement instanceof Element
+    && (Reflect.get(activeElement, 'isContentEditable') === true || activeElement.closest('[contenteditable="true"]') !== null)
 }
 
 function canFocusWindow(): boolean {

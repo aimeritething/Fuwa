@@ -10,8 +10,9 @@ const EMPTY_OPENER: FeedbackDialogOpener = {
 
 let pendingOpener: FeedbackDialogOpener = EMPTY_OPENER
 
-function isCommandPaletteInput(element: Element | null): element is HTMLInputElement {
-  return element instanceof HTMLInputElement
+function isCommandPaletteInput(element: Element | null): boolean {
+  return element instanceof Element
+    && element.tagName === 'INPUT'
     && element.getAttribute('placeholder') === 'Type a command...'
 }
 

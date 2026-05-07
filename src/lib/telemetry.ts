@@ -1,11 +1,9 @@
 import * as Sentry from '@sentry/react'
 import { resolveFrontendTelemetryConfig } from './telemetryConfig'
-
-/** Pattern that matches absolute file paths (macOS / Linux / Windows). */
-const PATH_PATTERN = /(?:\/[\w.-]+){2,}|[A-Z]:\\[\w\\.-]+/g
+import { redactPathText } from './sensitiveTextRedaction'
 
 function scrubPaths(input: string): string {
-  return input.replace(PATH_PATTERN, '<redacted-path>')
+  return redactPathText({ text: input })
 }
 
 function scrubSentryEvent(event: Sentry.ErrorEvent): Sentry.ErrorEvent {

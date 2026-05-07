@@ -199,9 +199,10 @@ function CalendarDropdown({
   "aria-label": ariaLabel,
 }: DropdownProps) {
   const handleValueChange = (newValue: string) => {
-    onChange?.({
+    const changeEvent = {
       target: { value: newValue },
-    } as React.ChangeEvent<HTMLSelectElement>)
+    } as Parameters<NonNullable<DropdownProps['onChange']>>[0]
+    onChange?.(changeEvent)
   }
 
   return (

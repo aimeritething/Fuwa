@@ -1,4 +1,5 @@
 import { isTauri } from '../mock-tauri'
+import { TOKEN_REDACTION, isSensitiveDiagnosticKey, sanitizeDiagnosticText } from './sensitiveTextRedaction'
 
 type DiagnosticLevel = 'error' | 'warn'
 
@@ -13,9 +14,6 @@ interface DiagnosticBundleContext {
 }
 
 const MAX_DIAGNOSTICS = 8
-const PATH_PATTERN = /(?:\/[\w.-]+){2,}|[A-Z]:\\(?:[\w .-]+\\)+[\w .-]+/g
-const TOKEN_PATTERN = /\b(?:gh[oprsu]_[A-Za-z0-9_]+|github_pat_[A-Za-z0-9_]+|sk-[A-Za-z0-9_-]+|xox[baprs]-[A-Za-z0-9-]+)\b/g
-const SENSITIVE_KEY_PATTERN = /(token|secret|password|authorization|cookie|session)/i
 
 let recentDiagnostics: DiagnosticEntry[] = []
 let stopCapture: (() => void) | null = null
@@ -26,13 +24,7 @@ function truncate(input: string, maxLength = 240): string {
 }
 
 function sanitizeText(input: string): string {
-  return truncate(
-    input
-      .replace(PATH_PATTERN, '<redacted-path>')
-      .replace(TOKEN_PATTERN, '<redacted-token>')
-      .replace(/\s+/g, ' ')
-      .trim(),
-  )
+  return truncate(sanitizeDiagnosticText({ text: input }))
 }
 
 function safeSerialize(value: unknown): string {
@@ -55,7 +47,7 @@ function safeSerialize(value: unknown): string {
   try {
     return JSON.stringify(value, (key, nestedValue) => {
       if (typeof nestedValue === 'string') {
-        return SENSITIVE_KEY_PATTERN.test(key) ? '<redacted-token>' : truncate(nestedValue, 120)
+        return isSensitiveDiagnosticKey({ text: key }) ? TOKEN_REDACTION : truncate(nestedValue, 120)
       }
       return nestedValue
     })

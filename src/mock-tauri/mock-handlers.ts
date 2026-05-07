@@ -205,10 +205,40 @@ function replaceRenamedWikilinks({ content, oldTargets, newPathStem }: {
 }) {
   if (oldTargets.length === 0) return content
   const targets = new Set(oldTargets)
-  return content.replace(/\[\[([^\]|]+)(\|[^\]]*)?\]\]/g, (match: string, target: string, pipe: string | undefined) => {
-    if (!targets.has(target)) return match
-    return pipe ? `[[${newPathStem}${pipe}]]` : `[[${newPathStem}]]`
-  })
+  let rewritten = ''
+  let cursor = 0
+
+  while (cursor < content.length) {
+    const start = content.indexOf('[[', cursor)
+    if (start === -1) break
+
+    const end = content.indexOf(']]', start + 2)
+    if (end === -1) break
+
+    rewritten += content.slice(cursor, start)
+    rewritten += renamedWikilinkToken({
+      newPathStem,
+      targets,
+      token: content.slice(start, end + 2),
+    })
+    cursor = end + 2
+  }
+
+  return rewritten + content.slice(cursor)
+}
+
+function renamedWikilinkToken({ newPathStem, targets, token }: {
+  newPathStem: string
+  targets: Set<string>
+  token: string
+}) {
+  const body = token.slice(2, -2)
+  const pipeIndex = body.indexOf('|')
+  const target = pipeIndex === -1 ? body : body.slice(0, pipeIndex)
+  if (!targets.has(target)) return token
+
+  const pipe = pipeIndex === -1 ? '' : body.slice(pipeIndex)
+  return `[[${newPathStem}${pipe}]]`
 }
 
 function updateMockRenameReferences({ newPath, newPathStem, oldTargets }: {

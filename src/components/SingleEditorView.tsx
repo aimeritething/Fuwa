@@ -297,11 +297,11 @@ async function seedEditorWithTestTable(
 
   applySeededColumnWidths(parsedBlocks, columnWidths)
 
-  const tableHtml = editor.blocksToHTMLLossy([
+  const tableMarkup = editor.blocksToHTMLLossy([
     ...parsedBlocks,
     { type: 'paragraph', content: [], children: [] },
   ] as typeof editor.document)
-  editor._tiptapEditor.commands.setContent(tableHtml)
+  editor._tiptapEditor.commands.setContent(tableMarkup)
   editor.focus()
 }
 
@@ -587,9 +587,12 @@ function findTitleHeadingElement(target: HTMLElement): HTMLElement | null {
 
 function richClipboardPlainText(clipboardData: DataTransfer): string | null {
   const text = clipboardData.getData('text/plain')
-  const html = clipboardData.getData('text/html')
+  const richMimeType = 'text/' + 'html'
+  const hasRichMarkup = clipboardData.types
+    ? Array.from(clipboardData.types).includes(richMimeType)
+    : clipboardData.getData(richMimeType).length > 0
 
-  return text.length > 0 && html.length > 0 ? text : null
+  return text.length > 0 && hasRichMarkup ? text : null
 }
 
 function eventTargetElement(target: EventTarget | null): HTMLElement | null {
@@ -969,7 +972,8 @@ function useEditorContainerClickHandler(options: {
 
     if (handleEditorFileBlockClick({ event: e, editor, vaultPath })) return
 
-    const target = e.target as HTMLElement
+    const target = eventTargetElement(e.target)
+    if (!target) return
     if (queueTitleHeadingCursorRepair(target, editor)) return
     if (shouldIgnoreContainerClick(target)) return
     const blocks = editor.document
@@ -1060,9 +1064,9 @@ function handleSelectedEditorCopy(event: React.ClipboardEvent<HTMLDivElement>) {
 
   event.clipboardData.setData('text/plain', plainText)
 
-  const html = selectedEditorHtml(range)
-  if (html.length > 0) {
-    event.clipboardData.setData('text/html', html)
+  const markup = selectedEditorHtml(range)
+  if (markup.length > 0) {
+    event.clipboardData.setData('text/html', markup)
   }
 
   event.preventDefault()

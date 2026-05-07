@@ -77,9 +77,8 @@ function isEditableElement(element: Element | null): boolean {
 function isInteractiveElement(element: Element | null): boolean {
   if (!element) return false
   if (isEditableElement(element)) return true
-  if (!(element instanceof HTMLElement)) return false
-  return element instanceof HTMLButtonElement
-    || element instanceof HTMLAnchorElement
+  return element.tagName === 'BUTTON'
+    || element.tagName === 'A'
     || element.getAttribute('role') === 'button'
 }
 

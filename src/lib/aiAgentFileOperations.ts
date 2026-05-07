@@ -162,5 +162,67 @@ function bashCommandFromInput(source: ToolInputSource): string | null {
 }
 
 function markdownRedirectTarget(command: string | null): string | null {
-  return command?.match(/(?:>|>>|tee\s+(?:-a\s+)?)\s*["']?([^\s"'|;]+\.md)["']?/)?.[1] ?? null
+  if (!command) return null
+
+  for (let index = 0; index < command.length; index += 1) {
+    const char = command.at(index)
+    if (char === '>') {
+      const target = redirectTargetAfterOperator(command, command.at(index + 1) === '>' ? index + 2 : index + 1)
+      if (target) return target
+    }
+    if (command.startsWith('tee', index)) {
+      const target = redirectTargetAfterTee(command, index + 3)
+      if (target) return target
+    }
+  }
+
+  return null
+}
+
+function redirectTargetAfterTee(command: string, startIndex: number): string | null {
+  if (!isWhitespace(command.at(startIndex))) return null
+  let index = skipWhitespace(command, startIndex)
+  if (command.startsWith('-a', index) && isWhitespace(command.at(index + 2))) {
+    index = skipWhitespace(command, index + 2)
+  }
+  return redirectTargetAfterOperator(command, index)
+}
+
+function redirectTargetAfterOperator(command: string, startIndex: number): string | null {
+  const start = skipWhitespace(command, startIndex)
+  const quote = command.at(start)
+  const quoted = quote === '"' || quote === "'"
+  const targetStart = quoted ? start + 1 : start
+  const targetEnd = readRedirectTargetEnd(command, targetStart, quoted ? quote : null)
+  const target = command.slice(targetStart, targetEnd)
+  return target.endsWith('.md') ? target : null
+}
+
+function readRedirectTargetEnd(command: string, startIndex: number, quote: string | null): number {
+  let index = startIndex
+  while (index < command.length) {
+    const char = command.at(index)
+    if (quote ? char === quote : isRedirectTargetTerminator(char)) break
+    index += 1
+  }
+  return index
+}
+
+function skipWhitespace(value: string, startIndex: number): number {
+  let index = startIndex
+  while (isWhitespace(value.at(index))) index += 1
+  return index
+}
+
+function isWhitespace(value: string | undefined): boolean {
+  return value === ' ' || value === '\t' || value === '\n' || value === '\r'
+}
+
+function isRedirectTargetTerminator(value: string | undefined): boolean {
+  return value === undefined
+    || isWhitespace(value)
+    || value === '"'
+    || value === "'"
+    || value === '|'
+    || value === ';'
 }
