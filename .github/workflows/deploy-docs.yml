@@ -61,9 +61,9 @@ jobs:
           pnpm docs:build
 
           DIST="site/.vitepress/dist"
-          mkdir -p "$DIST/alpha" "$DIST/stable" "$DIST/download" "$DIST/stable/download"
+          mkdir -p "$DIST/alpha" "$DIST/stable" "$DIST/download" "$DIST/releases" "$DIST/stable/download"
 
-          gh api -H "Accept: application/vnd.github+json" repos/${{ github.repository }}/releases --paginate > "$DIST/releases.json"
+          gh api -H "Accept: application/vnd.github.html+json" repos/${{ github.repository }}/releases --paginate > "$DIST/releases.json"
 
           STABLE_TAG="$(gh release list --repo ${{ github.repository }} --limit 100 --json tagName,isDraft,isPrerelease --jq '[.[] | select(.isDraft == false and .isPrerelease == false)][0].tagName // ""')"
           if [ -n "$STABLE_TAG" ]; then
@@ -80,6 +80,7 @@ jobs:
           fi
 
           bun scripts/build-release-download-page.ts --latest-json "$DIST/stable/latest.json" --releases-json "$DIST/releases.json" --output-file "$DIST/download/index.html"
+          bun scripts/build-release-history-page.ts --releases-json "$DIST/releases.json" --output-file "$DIST/releases/index.html"
           cp "$DIST/download/index.html" "$DIST/stable/download/index.html"
           cp "$DIST/alpha/latest.json" "$DIST/latest.json"
           cp "$DIST/alpha/latest.json" "$DIST/latest-canary.json"

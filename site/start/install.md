@@ -8,7 +8,7 @@ Use the latest stable release unless you are intentionally testing pre-release b
 
 - <a href="https://tolaria.md/download/" target="_self">Download the latest stable build</a>
 - [Browse all GitHub releases](https://github.com/refactoringhq/tolaria/releases)
-- [Read the release notes](/releases/)
+- <a href="https://tolaria.md/releases/" target="_self">Read the release notes</a>
 
 ## Homebrew
 
