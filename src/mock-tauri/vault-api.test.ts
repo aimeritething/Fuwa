@@ -27,7 +27,7 @@ describe('tryVaultApi', () => {
       if (url === '/api/vault/ping') {
         return jsonResponse({ ok: vaultApiOnline }, vaultApiOnline ? 200 : 503)
       }
-      if (url === 'http://localhost:3000/api/vault/list?path=%2Ffixture') {
+      if (url === '/api/vault/list?path=%2Ffixture') {
         return jsonResponse([{ title: 'Alpha Project' }])
       }
       throw new Error(`Unexpected fetch: ${url}`)
@@ -50,7 +50,7 @@ describe('tryVaultApi', () => {
       if (url === '/api/vault/ping') {
         return jsonResponse({ ok: true })
       }
-      if (url === 'http://localhost:3000/api/vault/content?path=%2Ffixture%2Falpha.md') {
+      if (url === '/api/vault/content?path=%2Ffixture%2Falpha.md') {
         return jsonResponse({ content: '# Alpha Project' })
       }
       throw new Error(`Unexpected fetch: ${url}`)
@@ -69,7 +69,7 @@ describe('tryVaultApi', () => {
       if (url === '/api/vault/ping') {
         return jsonResponse({ ok: true })
       }
-      if (url === 'http://localhost:3000/api/vault/content?path=%2Ffixture%2Falpha.md') {
+      if (url === '/api/vault/content?path=%2Ffixture%2Falpha.md') {
         return jsonResponse({ content: '# Alpha Project' })
       }
       throw new Error(`Unexpected fetch: ${url}`)

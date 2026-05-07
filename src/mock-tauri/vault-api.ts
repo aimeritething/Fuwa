@@ -40,38 +40,6 @@ type PathQueryCommand =
   | 'validate_note_content'
   | 'get_all_content'
 
-type PostRequestBuilder = (args: Record<string, unknown>) => VaultApiRequest | null
-
-const PATH_QUERY_ENDPOINTS: Record<PathQueryCommand, string> = {
-  reload_vault_entry: '/api/vault/entry',
-  get_note_content: '/api/vault/content',
-  validate_note_content: '/api/vault/content',
-  get_all_content: '/api/vault/all-content',
-}
-
-const POST_REQUEST_BUILDERS: Record<string, PostRequestBuilder> = {
-  save_note_content: (args) => buildRequiredPathPostRequest(args, '/api/vault/save', {
-    path: args.path,
-    content: args.content,
-  }),
-  rename_note: (args) => buildRequiredPostRequest(args.old_path, '/api/vault/rename', {
-    vault_path: args.vault_path,
-    old_path: args.old_path,
-    new_title: args.new_title,
-  }),
-  rename_note_filename: (args) => buildRequiredPostRequest(args.old_path, '/api/vault/rename-filename', {
-    vault_path: args.vault_path,
-    old_path: args.old_path,
-    new_filename_stem: args.new_filename_stem,
-  }),
-  move_note_to_folder: (args) => buildRequiredPostRequest(args.old_path && args.folder_path, '/api/vault/move-to-folder', {
-    vault_path: args.vault_path,
-    old_path: args.old_path,
-    folder_path: args.folder_path,
-  }),
-  delete_note: (args) => buildRequiredPathPostRequest(args, '/api/vault/delete', { path: args.path }),
-}
-
 function argText(args: Record<string, unknown>, key: string): string | null {
   const value = Reflect.get(args, key)
   return value ? String(value) : null
@@ -107,13 +75,59 @@ function buildSearchRequest(args: Record<string, unknown>): VaultApiRequest | nu
   return { url: `/api/vault/search?vault_path=${encodeURIComponent(lastVaultPath)}&query=${encodeURIComponent(query)}&mode=${encodeURIComponent(mode)}` }
 }
 
+function isPathQueryCommand(cmd: string): cmd is PathQueryCommand {
+  return cmd === 'reload_vault_entry'
+    || cmd === 'get_note_content'
+    || cmd === 'validate_note_content'
+    || cmd === 'get_all_content'
+}
+
+function pathQueryEndpoint(command: PathQueryCommand): string {
+  if (command === 'reload_vault_entry') return '/api/vault/entry'
+  if (command === 'get_note_content') return '/api/vault/content'
+  if (command === 'validate_note_content') return '/api/vault/content'
+  return '/api/vault/all-content'
+}
+
+function buildPostRequest(cmd: string, args: Record<string, unknown>): VaultApiRequest | null {
+  if (cmd === 'save_note_content') {
+    return buildRequiredPathPostRequest(args, '/api/vault/save', {
+      path: args.path,
+      content: args.content,
+    })
+  }
+  if (cmd === 'rename_note') {
+    return buildRequiredPostRequest(args.old_path, '/api/vault/rename', {
+      vault_path: args.vault_path,
+      old_path: args.old_path,
+      new_title: args.new_title,
+    })
+  }
+  if (cmd === 'rename_note_filename') {
+    return buildRequiredPostRequest(args.old_path, '/api/vault/rename-filename', {
+      vault_path: args.vault_path,
+      old_path: args.old_path,
+      new_filename_stem: args.new_filename_stem,
+    })
+  }
+  if (cmd === 'move_note_to_folder') {
+    return buildRequiredPostRequest(args.old_path && args.folder_path, '/api/vault/move-to-folder', {
+      vault_path: args.vault_path,
+      old_path: args.old_path,
+      folder_path: args.folder_path,
+    })
+  }
+  if (cmd === 'delete_note') return buildRequiredPathPostRequest(args, '/api/vault/delete', { path: args.path })
+  return null
+}
+
 function buildVaultApiRequest(cmd: string, args?: Record<string, unknown>): VaultApiRequest | null {
   if (!args) return null
   if (cmd === 'list_vault') return buildListRequest(args, false)
   if (cmd === 'reload_vault') return buildListRequest(args, true)
   if (cmd === 'search_vault') return buildSearchRequest(args)
-  if (cmd in PATH_QUERY_ENDPOINTS) return buildPathQueryRequest(args, Reflect.get(PATH_QUERY_ENDPOINTS, cmd) as string)
-  return (Reflect.get(POST_REQUEST_BUILDERS, cmd) as ((args: Record<string, unknown>) => VaultApiRequest | null) | undefined)?.(args) ?? null
+  if (isPathQueryCommand(cmd)) return buildPathQueryRequest(args, pathQueryEndpoint(cmd))
+  return buildPostRequest(cmd, args)
 }
 
 function buildFetchOptions(request: VaultApiRequest): RequestInit {
@@ -128,10 +142,16 @@ function buildFetchOptions(request: VaultApiRequest): RequestInit {
   }
 }
 
-async function fetchVaultApiResponse(request: VaultApiRequest) {
+function safeVaultApiPath(request: VaultApiRequest): string | null {
   const url = new URL(request.url, window.location.origin)
-  if (url.origin !== window.location.origin || !url.pathname.startsWith('/api/vault/')) return undefined
-  const res = await fetch(new Request(url, buildFetchOptions(request)))
+  if (url.origin !== window.location.origin || !url.pathname.startsWith('/api/vault/')) return null
+  return `${url.pathname}${url.search}`
+}
+
+async function fetchVaultApiResponse(request: VaultApiRequest) {
+  const path = safeVaultApiPath(request)
+  if (!path) return undefined
+  const res = await fetch(path, buildFetchOptions(request))
   if (!res.ok) return undefined
   return res.json()
 }
