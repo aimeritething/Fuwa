@@ -12,6 +12,10 @@ function normalizeQuery(query: string): string {
   return query.trim().toLowerCase()
 }
 
+function searchableString(value: unknown): string {
+  return typeof value === 'string' ? value : ''
+}
+
 function resolveDisplayProps(
   entry: VaultEntry,
   typeEntryMap: Record<string, VaultEntry>,
@@ -23,8 +27,8 @@ function resolveDisplayProps(
 
 function resolveSearchableText(entry: VaultEntry, context: NoteListSearchContext): string[] {
   return [
-    entry.title,
-    entry.snippet ?? '',
+    searchableString(entry.title),
+    searchableString(entry.snippet),
     ...resolvePropertyChipLabels(
       entry,
       resolveDisplayProps(entry, context.typeEntryMap, context.displayPropsOverride),

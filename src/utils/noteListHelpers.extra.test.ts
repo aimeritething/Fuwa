@@ -141,6 +141,12 @@ describe('noteListHelpers extra coverage', () => {
     expect([...entries].sort(getSortComparator('property:Score', 'asc')).map((entry) => entry.title)).toEqual(['Alpha', 'Gamma', 'Beta'])
     expect([...entries].sort(getSortComparator('property:Start', 'asc')).map((entry) => entry.title)).toEqual(['Alpha', 'Gamma', 'Beta'])
     expect([...entries].sort(getSortComparator('property:Enabled', 'asc')).map((entry) => entry.title)).toEqual(['Alpha', 'Gamma', 'Beta'])
+
+    const entriesWithMissingTitle = [
+      makeEntry({ title: 'Beta' }),
+      makeEntry({ title: null as unknown as string }),
+    ]
+    expect([...entriesWithMissingTitle].sort(getSortComparator('title', 'asc')).map((entry) => entry.title)).toEqual([null, 'Beta'])
   })
 
   it('serializes, parses, loads, and saves sort preferences with migration support', () => {

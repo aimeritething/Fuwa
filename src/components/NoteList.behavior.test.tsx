@@ -78,13 +78,19 @@ describe('NoteList virtualized datasets', () => {
     expect(screen.getByText('Note 499')).toBeInTheDocument()
   })
 
-  it('filters large datasets by search query', { timeout: 15000 }, async () => {
+  it('filters large datasets by search query when a candidate has no title', { timeout: 15000 }, async () => {
     vi.useFakeTimers()
     try {
       const entries = [
         makeIndexedEntry(0, { title: 'Alpha Strategy' }),
-        ...Array.from({ length: 298 }, (_, index) => makeIndexedEntry(index + 1, { title: `Filler Note ${index + 1}` })),
-        makeIndexedEntry(299, { title: 'Beta Strategy' }),
+        makeIndexedEntry(1, {
+          filename: 'missing-title.md',
+          path: '/vault/note/missing-title.md',
+          snippet: 'A partially migrated note with missing title metadata.',
+          title: null as unknown as string,
+        }),
+        ...Array.from({ length: 298 }, (_, index) => makeIndexedEntry(index + 2, { title: `Filler Note ${index + 1}` })),
+        makeIndexedEntry(300, { title: 'Beta Strategy' }),
       ]
 
       renderNoteList({ entries })

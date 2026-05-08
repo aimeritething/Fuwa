@@ -41,8 +41,12 @@ export function resolveHeaderTitle(selection: SidebarSelection, typeDocument: Va
   return resolveSelectionFilterTitle(selection, locale) ?? translate(locale, 'noteList.title.notes')
 }
 
-export function filterByQuery<T extends { title: string }>(items: T[], query: string): T[] {
-  return query ? items.filter((e) => e.title.toLowerCase().includes(query)) : items
+function searchableTitle(entry: { title?: unknown }): string {
+  return typeof entry.title === 'string' ? entry.title : ''
+}
+
+export function filterByQuery<T extends { title?: unknown }>(items: T[], query: string): T[] {
+  return query ? items.filter((e) => searchableTitle(e).toLowerCase().includes(query)) : items
 }
 
 export function filterGroupsByQuery(groups: RelationshipGroup[], query: string): RelationshipGroup[] {

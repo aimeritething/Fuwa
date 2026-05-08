@@ -189,7 +189,7 @@ function makePropertyComparator(key: string, flip: number): (a: VaultEntry, b: V
 }
 
 function makeBuiltinComparator(option: string, flip: number): (a: VaultEntry, b: VaultEntry) => number {
-  if (option === 'title') return (a, b) => flip * a.title.localeCompare(b.title)
+  if (option === 'title') return (a, b) => flip * stringField(a.title).localeCompare(stringField(b.title))
   if (option === 'created') return (a, b) => flip * ((a.createdAt ?? a.modifiedAt ?? 0) - (b.createdAt ?? b.modifiedAt ?? 0))
   if (option === 'status') return (a, b) => {
     const sa = STATUS_ORDER_LOOKUP.get(a.status ?? '') ?? 999

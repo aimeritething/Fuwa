@@ -20,8 +20,8 @@ async function showInboxPropertyColumn(
 
 async function showNoteListSearch(page: import('@playwright/test').Page) {
   const toggle = page.getByTitle('Search notes')
-  await toggle.focus()
-  await page.keyboard.press('Enter')
+  await expect(toggle).toBeVisible()
+  await toggle.click()
   await expect(page.getByPlaceholder('Search notes...')).toBeVisible()
 }
 
