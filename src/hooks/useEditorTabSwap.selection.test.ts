@@ -101,12 +101,16 @@ describe('useEditorTabSwap selection refresh', () => {
     await flushEditorTick()
 
     const { editable, selection } = appendFocusedEditorSelection()
+    const selectionChanges = vi.fn()
+    document.addEventListener('selectionchange', selectionChanges)
     expect(selection.rangeCount).toBe(1)
 
     rendered.rerender({ tabs: [refreshedTabA] })
     await flushEditorTick()
 
     expect(window.getSelection()?.rangeCount).toBe(0)
+    expect(selectionChanges).toHaveBeenCalled()
     expect(document.activeElement).not.toBe(editable)
+    document.removeEventListener('selectionchange', selectionChanges)
   })
 })

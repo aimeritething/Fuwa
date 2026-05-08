@@ -8,7 +8,17 @@ import {
 } from '../helpers/fixtureVault'
 import { triggerMenuCommand } from './testBridge'
 
+const IMAGE_DATA_URL =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAO+yK9sAAAAASUVORK5CYII='
+const MEDIA_BLOCKQUOTE_NOTE_TITLE = 'Media Reload Blockquote'
+const MEDIA_BLOCKQUOTE_TEXT = 'Quote before media reload'
+
 let tempVaultDir: string
+
+type TextBlockTarget = { text: string }
+type NoteTitleTarget = { title: string }
+type NotePathTarget = { notePath: string }
+type MediaBlockquoteFile = { filePath: string }
 
 function isEditorTypingCrash(message: string): boolean {
   return (
@@ -45,6 +55,17 @@ async function placeCaretAtEndOfBlock(page: Page, blockIndex: number): Promise<v
   const block = page.locator('.bn-block-content').nth(blockIndex)
   await expect(block).toBeVisible({ timeout: 5_000 })
 
+  await placeCaretAtEndOfBlockElement(block)
+}
+
+async function placeCaretAtEndOfBlockContaining(page: Page, target: TextBlockTarget): Promise<void> {
+  const block = page.locator('.bn-block-content').filter({ hasText: target.text }).first()
+  await expect(block).toBeVisible({ timeout: 5_000 })
+
+  await placeCaretAtEndOfBlockElement(block)
+}
+
+async function placeCaretAtEndOfBlockElement(block: ReturnType<Page['locator']>): Promise<void> {
   const placed = await block.evaluate((element) => {
     const editable = element.closest('[contenteditable="true"]')
     if (editable instanceof HTMLElement) editable.focus()
@@ -100,6 +121,24 @@ ${marker}
 `, 'utf8')
 }
 
+function writeMediaBlockquoteNote({ filePath }: MediaBlockquoteFile): void {
+  fs.writeFileSync(filePath, `---
+Is A: Note
+Status: Active
+---
+
+# ${MEDIA_BLOCKQUOTE_NOTE_TITLE}
+
+Intro paragraph before the media flow.
+
+> ${MEDIA_BLOCKQUOTE_TEXT}
+
+![Reload image](${IMAGE_DATA_URL})
+
+Paragraph after media reload.
+`, 'utf8')
+}
+
 function checklistCheckbox(page: Page, index: number) {
   return page.locator('.bn-block-content[data-content-type="checkListItem"] input[type="checkbox"]').nth(index)
 }
@@ -128,6 +167,40 @@ async function reloadVault(page: Page): Promise<void> {
   await expect(page.getByText(/Vault reloaded \(\d+ entries\)/).last()).toBeVisible({
     timeout: 5_000,
   })
+}
+
+async function notePathForTitle(page: Page, target: NoteTitleTarget): Promise<string> {
+  const note = page
+    .getByTestId('note-list-container')
+    .locator('[data-note-path]')
+    .filter({ hasText: target.title })
+    .first()
+  await expect(note).toBeVisible({ timeout: 5_000 })
+  const notePath = await note.getAttribute('data-note-path')
+  if (!notePath) throw new Error(`Missing data-note-path for ${target.title}`)
+  return notePath
+}
+
+async function touchDragHandleForBlock(page: Page, target: TextBlockTarget): Promise<void> {
+  const block = page.locator('.bn-block-content').filter({ hasText: target.text }).first()
+  await expect(block).toBeVisible({ timeout: 5_000 })
+  await block.hover()
+
+  const dragHandle = page.getByRole('button', { name: 'Open block menu' }).first()
+  await expect(dragHandle).toBeVisible({ timeout: 5_000 })
+  await dragHandle.hover()
+}
+
+async function runMediaFrontmatterCycle(page: Page, target: NotePathTarget): Promise<void> {
+  await page.evaluate(async ({ imageData, path }) => {
+    const saveImage = window.__mockHandlers?.save_image
+    const updateFrontmatter = window.__mockHandlers?.update_frontmatter
+    if (typeof saveImage !== 'function') throw new Error('Fixture vault is missing save_image')
+    if (typeof updateFrontmatter !== 'function') throw new Error('Fixture vault is missing update_frontmatter')
+
+    await saveImage({ filename: 'reload-crash.png', data: imageData })
+    await updateFrontmatter({ path, key: 'Status', value: 'Reviewed' })
+  }, { imageData: IMAGE_DATA_URL, path: target.notePath })
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -215,6 +288,31 @@ test('checklist toggles after a rich-editor reload ignore stale checkbox events'
   await liveCheckbox.click()
   await expect(liveCheckbox).toBeChecked()
   await expectNoteFileToContain(noteBPath, '- [x] Toggle me')
+  await page.waitForTimeout(500)
+  expect(crashes).toEqual([])
+})
+
+test('clicking back into a blockquote after media and frontmatter reload stays usable', async ({ page }) => {
+  const crashes = trackEditorTypingCrashes(page)
+  const notePath = path.join(tempVaultDir, 'note', 'media-reload-blockquote.md')
+  const afterReloadMarker = `block quote click after media reload ${Date.now()}`
+
+  writeMediaBlockquoteNote({ filePath: notePath })
+  await reloadVault(page)
+  await openNote(page, MEDIA_BLOCKQUOTE_NOTE_TITLE)
+  await expect(page.locator('.bn-editor img.bn-visual-media')).toBeVisible({ timeout: 5_000 })
+  await touchDragHandleForBlock(page, { text: MEDIA_BLOCKQUOTE_TEXT })
+
+  const openedNotePath = await notePathForTitle(page, { title: MEDIA_BLOCKQUOTE_NOTE_TITLE })
+  await runMediaFrontmatterCycle(page, { notePath: openedNotePath })
+  await reloadVault(page)
+  await expect(page.locator('.bn-editor')).toContainText(MEDIA_BLOCKQUOTE_TEXT)
+
+  await touchDragHandleForBlock(page, { text: MEDIA_BLOCKQUOTE_TEXT })
+  await placeCaretAtEndOfBlockContaining(page, { text: MEDIA_BLOCKQUOTE_TEXT })
+  await page.keyboard.type(` ${afterReloadMarker}`, { delay: 10 })
+
+  await expectNoteFileToContain(notePath, afterReloadMarker)
   await page.waitForTimeout(500)
   expect(crashes).toEqual([])
 })
