@@ -67,8 +67,13 @@ const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
 `
 const CONTAINER_CLICK_IGNORE_SELECTOR = [
   '[contenteditable="true"]',
+  'button',
+  'input',
+  'select',
+  'textarea',
   '.bn-formatting-toolbar',
   '.bn-link-toolbar',
+  '.bn-panel',
   '.bn-side-menu',
   '.bn-suggestion-menu',
   '.bn-grid-suggestion-menu',
