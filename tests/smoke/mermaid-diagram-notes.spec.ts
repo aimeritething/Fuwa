@@ -202,10 +202,18 @@ function mermaidNode(page: Page, diagramIndex: number, text: string): Locator {
   return mermaidSvg(page, diagramIndex).locator('.node').filter({ hasText: text }).first()
 }
 
-async function computedCss(locator: Locator, property: 'color' | 'fill' | 'stroke'): Promise<string> {
+async function computedCss(locator: Locator, property: 'background-color' | 'color' | 'fill' | 'stroke'): Promise<string> {
   return locator.evaluate((element, styleProperty) => (
     getComputedStyle(element).getPropertyValue(styleProperty)
   ), property)
+}
+
+async function switchToResolvedTheme(page: Page, mode: 'dark' | 'light'): Promise<void> {
+  const root = page.locator('html')
+  if (await root.getAttribute('data-theme') !== mode) {
+    await page.getByTestId('status-theme-mode').click()
+  }
+  await expect(root).toHaveAttribute('data-theme', mode)
 }
 
 function mermaidNodeLabel(node: Locator): Locator {
@@ -273,6 +281,23 @@ test('Mermaid diagrams render when opening saved notes directly', async ({ page 
     styleNonce: RUNTIME_STYLE_NONCE,
     text: expect.stringContaining('Linked to a planned shift?'),
   })
+})
+
+test('fullscreen Mermaid diagrams keep the active Tolaria surface in dark mode', async ({ page }) => {
+  await openNote(page, 'Mermaid Reported')
+  await expectRenderedDiagramCount(page, 1)
+  await switchToResolvedTheme(page, 'dark')
+
+  const inlineViewport = page.getByTestId('mermaid-diagram-viewport').first()
+  await expect.poll(() => computedCss(inlineViewport, 'background-color')).not.toBe('rgb(255, 255, 255)')
+  const inlineBackground = await computedCss(inlineViewport, 'background-color')
+
+  await page.getByTestId('mermaid-diagram').first().hover()
+  await page.getByRole('button', { name: 'Open Mermaid diagram' }).first().click()
+
+  const dialogViewport = page.getByTestId('mermaid-diagram-dialog-viewport')
+  await expect(dialogViewport).toBeVisible()
+  await expect.poll(() => computedCss(dialogViewport, 'background-color')).toBe(inlineBackground)
 })
 
 test('Mermaid diagrams stay mounted after property edits refresh frontmatter', async ({ page }) => {

@@ -361,7 +361,8 @@
   height: 100%;
   overflow: auto;
   padding: 24px;
-  background: #fff;
+  color: var(--colors-text);
+  background: var(--surface-editor);
 }
 
 .mermaid-diagram__dialog-viewport:focus-visible {
