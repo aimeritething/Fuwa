@@ -61,7 +61,7 @@ function appendUrl(container: HTMLElement, href: string) {
   return link
 }
 
-function dispatchMouseEvent(target: HTMLElement, type: string, options: MouseEventInit = {}) {
+function dispatchMouseEvent(target: Node, type: string, options: MouseEventInit = {}) {
   const event = new MouseEvent(type, {
     bubbles: true,
     cancelable: true,
@@ -129,6 +129,42 @@ describe('useEditorLinkActivation', () => {
     const modifiedClick = dispatchMouseEvent(link, 'click', { metaKey: true })
     expect(mockOpenExternalUrl).toHaveBeenCalledWith('https://example.com')
     expect(modifiedClick.defaultPrevented).toBe(true)
+  })
+
+  it('opens modified URL mousedown before editor internals see stale link nodes', () => {
+    const { container } = renderHarness()
+    const link = appendUrl(container, 'https://example.com')
+    const targetMouseDown = vi.fn()
+    link.addEventListener('mousedown', targetMouseDown)
+
+    const plainMouseDown = dispatchMouseEvent(link, 'mousedown')
+    expect(plainMouseDown.defaultPrevented).toBe(false)
+    expect(targetMouseDown).toHaveBeenCalledOnce()
+    targetMouseDown.mockClear()
+
+    const modifiedMouseDown = dispatchMouseEvent(link, 'mousedown', { metaKey: true })
+
+    expect(modifiedMouseDown.defaultPrevented).toBe(true)
+    expect(targetMouseDown).not.toHaveBeenCalled()
+    const click = dispatchMouseEvent(link, 'click', { metaKey: true })
+
+    expect(click.defaultPrevented).toBe(true)
+    expect(mockOpenExternalUrl).toHaveBeenCalledOnce()
+    expect(mockOpenExternalUrl).toHaveBeenCalledWith('https://example.com')
+  })
+
+  it('handles URL events that originate on link text nodes', () => {
+    const { container } = renderHarness()
+    const link = appendUrl(container, 'https://example.com')
+    const textNode = link.firstChild
+    expect(textNode).toBeInstanceOf(Text)
+
+    dispatchMouseEvent(textNode!, 'mousedown', { metaKey: true })
+    const click = dispatchMouseEvent(textNode!, 'click', { metaKey: true })
+
+    expect(click.defaultPrevented).toBe(true)
+    expect(mockOpenExternalUrl).toHaveBeenCalledOnce()
+    expect(mockOpenExternalUrl).toHaveBeenCalledWith('https://example.com')
   })
 
   it('blocks malformed URL anchors instead of opening or falling through', () => {

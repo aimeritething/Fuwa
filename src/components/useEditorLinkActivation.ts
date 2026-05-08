@@ -11,6 +11,12 @@ function isInsideCodeContext(target: HTMLElement) {
   return !!target.closest(CODE_CONTEXT_SELECTOR)
 }
 
+function elementFromEventTarget(target: EventTarget | null) {
+  if (target instanceof HTMLElement) return target
+  if (target instanceof Text) return target.parentElement
+  return null
+}
+
 function resolveWikilinkTarget(target: HTMLElement) {
   return target.closest<HTMLElement>('.wikilink[data-target]')?.dataset.target ?? null
 }
@@ -69,22 +75,41 @@ function handleEditorLinkClick(
   onNavigateWikilink: (target: string) => void,
   vaultPath?: string,
 ) {
-  if (!(event.target instanceof HTMLElement) || isInsideCodeContext(event.target)) return
+  const target = elementFromEventTarget(event.target)
+  if (!target || isInsideCodeContext(target)) return
 
-  const wikilinkTarget = resolveWikilinkTarget(event.target)
+  const wikilinkTarget = resolveWikilinkTarget(target)
   if (wikilinkTarget) {
     activateWikilink(event, container, wikilinkTarget, onNavigateWikilink)
     return
   }
 
-  const href = resolveAnchorHref(event.target)
+  const href = resolveAnchorHref(target)
   if (href) activateUrl(event, href, vaultPath)
 }
 
-function handleEditorLinkMouseDown(event: MouseEvent) {
-  if (!(event.target instanceof HTMLElement) || isInsideCodeContext(event.target)) return
+function handleEditorLinkMouseDown(event: MouseEvent, vaultPath?: string): string | null {
+  const target = elementFromEventTarget(event.target)
+  if (!target || isInsideCodeContext(target)) return null
 
-  if (resolveWikilinkTarget(event.target)) consumeEditorLinkEvent(event)
+  if (resolveWikilinkTarget(target)) {
+    consumeEditorLinkEvent(event)
+    return null
+  }
+
+  const href = resolveAnchorHref(target)
+  if (hasFollowModifier(event) && href) {
+    activateUrl(event, href, vaultPath)
+    return href
+  }
+
+  return null
+}
+
+function followedAnchorHrefFromEvent(event: MouseEvent, fallback: HTMLElement) {
+  if (!hasFollowModifier(event)) return null
+
+  return resolveAnchorHref(elementFromEventTarget(event.target) ?? fallback)
 }
 
 export function useEditorLinkActivation(
@@ -103,11 +128,30 @@ export function useEditorLinkActivation(
     const handleVisibilityChange = () => {
       if (document.visibilityState !== 'visible') resetModifierState()
     }
+    let handledMouseDownUrl: string | null = null
+    const rememberHandledMouseDownUrl = (href: string) => {
+      handledMouseDownUrl = href
+      window.setTimeout(() => {
+        if (handledMouseDownUrl === href) handledMouseDownUrl = null
+      }, 0)
+    }
+    const handleMouseDown = (event: MouseEvent) => {
+      const href = handleEditorLinkMouseDown(event, vaultPath)
+      if (href) rememberHandledMouseDownUrl(href)
+    }
     const handleClick = (event: MouseEvent) => {
+      const followedHref = followedAnchorHrefFromEvent(event, container)
+      if (handledMouseDownUrl && followedHref === handledMouseDownUrl) {
+        handledMouseDownUrl = null
+        consumeEditorLinkEvent(event)
+        return
+      }
+
+      handledMouseDownUrl = null
       handleEditorLinkClick(event, container, onNavigateWikilink, vaultPath)
     }
 
-    container.addEventListener('mousedown', handleEditorLinkMouseDown, true)
+    container.addEventListener('mousedown', handleMouseDown, true)
     container.addEventListener('click', handleClick, true)
     window.addEventListener('keydown', handleModifierChange)
     window.addEventListener('keyup', handleModifierChange)
@@ -115,7 +159,7 @@ export function useEditorLinkActivation(
     document.addEventListener('visibilitychange', handleVisibilityChange)
 
     return () => {
-      container.removeEventListener('mousedown', handleEditorLinkMouseDown, true)
+      container.removeEventListener('mousedown', handleMouseDown, true)
       container.removeEventListener('click', handleClick, true)
       window.removeEventListener('keydown', handleModifierChange)
       window.removeEventListener('keyup', handleModifierChange)
