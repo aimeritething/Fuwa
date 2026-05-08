@@ -2,7 +2,17 @@ import { invoke } from '@tauri-apps/api/core'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useCallback } from 'react'
 
-const NO_DRAG_SELECTOR = 'button, input, select, a, [data-no-drag]'
+const NO_DRAG_SELECTOR = [
+  'button',
+  'input',
+  'select',
+  'a',
+  '[role="menu"]',
+  '[role="menuitem"]',
+  '[role="menuitemcheckbox"]',
+  '[role="menuitemradio"]',
+  '[data-no-drag]',
+].join(', ')
 
 function isDragDisabledTarget(target: EventTarget | null): boolean {
   return target instanceof Element && target.closest(NO_DRAG_SELECTOR) !== null

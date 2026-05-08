@@ -23,6 +23,9 @@ function DragRegionHarness() {
       <div data-testid="no-drag-card" data-no-drag>
         <button type="button">Action</button>
       </div>
+      <div role="menu" aria-label="Note actions">
+        <div role="menuitem">Delete this note</div>
+      </div>
     </div>
   )
 }
@@ -63,6 +66,15 @@ describe('useDragRegion', () => {
     render(<DragRegionHarness />)
 
     fireEvent.mouseDown(screen.getByRole('button', { name: 'Action' }), { button: 0 })
+
+    expect(startDragging).not.toHaveBeenCalled()
+    expect(invoke).not.toHaveBeenCalled()
+  })
+
+  it('does not start dragging from menu items rendered inside drag surfaces', () => {
+    render(<DragRegionHarness />)
+
+    fireEvent.mouseDown(screen.getByRole('menuitem', { name: 'Delete this note' }), { button: 0 })
 
     expect(startDragging).not.toHaveBeenCalled()
     expect(invoke).not.toHaveBeenCalled()
