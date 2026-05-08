@@ -6,6 +6,14 @@ import { executeCommand, openCommandPalette } from './helpers'
 
 let tempVaultDir: string
 
+type TauriHarnessWindow = Window & typeof globalThis & {
+  isTauri?: boolean
+  __TAURI__?: unknown
+  __TAURI_INTERNALS__?: {
+    invoke?: () => Promise<never>
+  }
+}
+
 const WHITEBOARD_NOTE = [
   '# Whiteboard Embed',
   '',
@@ -18,11 +26,15 @@ const WHITEBOARD_NOTE = [
   'Context after the board.',
   '',
 ].join('\n')
+const TAURI_CONTEXT_MENU_TEST = 'embedded tldraw context menu opens from a native right-click path'
 
 test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(90_000)
   tempVaultDir = createFixtureVaultCopy()
   fs.writeFileSync(path.join(tempVaultDir, 'note', 'whiteboard-embed.md'), WHITEBOARD_NOTE)
+  if (testInfo.title === TAURI_CONTEXT_MENU_TEST) {
+    await installTauriContextMenuHarness(page)
+  }
   await openFixtureVault(page, tempVaultDir)
 })
 
@@ -33,6 +45,20 @@ test.afterEach(async () => {
 async function openNote(page: Page, title: string): Promise<void> {
   await page.locator('[data-testid="note-list-container"]').getByText(title, { exact: true }).click()
   await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
+}
+
+async function installTauriContextMenuHarness(page: Page): Promise<void> {
+  await page.addInitScript(() => {
+    const harnessWindow = window as TauriHarnessWindow
+    harnessWindow.isTauri = false
+    harnessWindow.__TAURI__ = harnessWindow.__TAURI__ ?? {}
+    harnessWindow.__TAURI_INTERNALS__ = {
+      ...harnessWindow.__TAURI_INTERNALS__,
+      invoke: async () => {
+        throw new Error('No native bridge in context menu harness')
+      },
+    }
+  })
 }
 
 async function toggleRawMode(page: Page, visibleSelector: '.bn-editor' | '.cm-content'): Promise<void> {
@@ -178,6 +204,30 @@ test('embedded tldraw dialogs appear and release focus when closed', async ({ pa
   await page.getByTestId('tools.select').click()
   await expect(page.getByTestId('tools.select')).toHaveAttribute('aria-pressed', 'true')
   await expectNoEditorNodeSelection(page)
+})
+
+test(TAURI_CONTEXT_MENU_TEST, async ({ page }) => {
+  await openNote(page, 'Whiteboard Embed')
+
+  const whiteboard = page.locator('.tldraw-whiteboard')
+  await expect(whiteboard).toBeVisible({ timeout: 20_000 })
+  const boardBox = await whiteboard.boundingBox()
+  expect(boardBox).not.toBeNull()
+
+  const canvas = page.getByTestId('canvas')
+  await canvas.click({ position: { x: 160, y: 160 } })
+  await canvas.click({ button: 'right', position: { x: 160, y: 160 } })
+
+  const contextMenu = page.getByTestId('context-menu')
+  await expect(contextMenu).toBeVisible({ timeout: 5_000 })
+  const menuBox = await contextMenu.boundingBox()
+  expect(menuBox).not.toBeNull()
+  expect(menuBox!.x).toBeGreaterThanOrEqual(boardBox!.x - 1)
+  expect(menuBox!.x + menuBox!.width).toBeLessThanOrEqual(boardBox!.x + boardBox!.width + 1)
+  await expectNoEditorNodeSelection(page)
+
+  await page.keyboard.press('Escape')
+  await expect(contextMenu).toHaveCount(0)
 })
 
 test('embedded tldraw drawing uses the clicked coordinates while zoomed', async ({ page }) => {

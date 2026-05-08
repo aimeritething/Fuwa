@@ -22,6 +22,7 @@ import { shouldUseLinuxWindowChrome } from './utils/platform'
 import { reloadFrontendOnceIfStartupFailed } from './utils/frontendReady'
 
 const EDITOR_DROP_SELECTOR = '.editor__blocknote-container'
+const TLDRAW_CONTEXT_MENU_SELECTOR = '.tldraw-whiteboard'
 
 function dataTransferHasFiles(dataTransfer: DataTransfer | null): boolean {
   if (!dataTransfer) return false
@@ -42,6 +43,16 @@ function preventFileDropNavigation(event: DragEvent): void {
   event.preventDefault()
 }
 
+function isTldrawContextMenuTarget(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest(TLDRAW_CONTEXT_MENU_SELECTOR) !== null
+}
+
+function preventNativeContextMenu(event: MouseEvent): void {
+  if (isTldrawContextMenuTarget(event.target)) return
+
+  event.preventDefault()
+}
+
 document.addEventListener('dragover', preventFileDropNavigation, true)
 document.addEventListener('drop', preventFileDropNavigation, true)
 
@@ -50,7 +61,7 @@ document.addEventListener('drop', preventFileDropNavigation, true)
 // Capture phase fires first → prevents native menu; React bubble phase still fires
 // → our custom context menus (e.g. sidebar right-click) work correctly.
 if ('__TAURI__' in window || '__TAURI_INTERNALS__' in window) {
-  document.addEventListener('contextmenu', (e) => e.preventDefault(), true)
+  document.addEventListener('contextmenu', preventNativeContextMenu, true)
 }
 
 if (shouldUseLinuxWindowChrome()) {
