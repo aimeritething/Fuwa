@@ -187,6 +187,19 @@ Status: Evergreened
     expect(btn).toBeDisabled()
   })
 
+  it('guards delete property callbacks against stale active notes', () => {
+    const onDeleteProperty = vi.fn().mockResolvedValue(undefined)
+    renderSelectedInspector({ onDeleteProperty })
+
+    fireEvent.click(screen.getAllByTitle('Delete property')[0])
+
+    expect(onDeleteProperty).toHaveBeenCalledWith(
+      mockEntry.path,
+      'Status',
+      { requireActivePath: mockEntry.path },
+    )
+  })
+
   it('shows cadence when present', () => {
     // Cadence is now read from frontmatter in content (already in mockContent)
     render(<Inspector {...defaultProps} entry={mockEntry} content={mockContent} />)

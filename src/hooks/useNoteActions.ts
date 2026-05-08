@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from 'react'
+import { useCallback, useEffect, type MutableRefObject } from 'react'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
 import { useTabManagement } from './useTabManagement'
@@ -163,6 +163,16 @@ async function flushBeforeNoteMutation(
   }
 }
 
+function activePathGuardAllowsMutation(
+  path: string,
+  activeTabPathRef: MutableRefObject<string | null>,
+  options?: FrontmatterOpOptions,
+): boolean {
+  const requiredPath = options?.requireActivePath
+  if (!requiredPath) return true
+  return notePathsMatch(path, requiredPath) && notePathsMatch(activeTabPathRef.current, requiredPath)
+}
+
 async function maybeRenameAfterFrontmatterUpdate({
   path,
   key,
@@ -183,15 +193,17 @@ interface UpdateFrontmatterAndMaybeRenameParams {
   key: string
   options?: FrontmatterOpOptions
   path: string
-  runFrontmatterOp: (
-    op: 'update' | 'delete',
-    path: string,
-    key: string,
-    value?: FrontmatterValue,
-    options?: FrontmatterOpOptions,
-  ) => Promise<string | undefined>
+  runFrontmatterOp: RunFrontmatterOp
   value: FrontmatterValue
 }
+
+type RunFrontmatterOp = (
+  op: 'update' | 'delete',
+  path: string,
+  key: string,
+  value?: FrontmatterValue,
+  options?: FrontmatterOpOptions,
+) => Promise<string | undefined>
 
 async function updateFrontmatterAndMaybeRename({
   config,
@@ -202,8 +214,10 @@ async function updateFrontmatterAndMaybeRename({
   runFrontmatterOp,
   value,
 }: UpdateFrontmatterAndMaybeRenameParams): Promise<void> {
+  if (!activePathGuardAllowsMutation(path, deps.activeTabPathRef, options)) return
   const canFlush = await flushBeforeNoteMutation(path, config.flushBeforeNoteMutation)
   if (!canFlush) return
+  if (!activePathGuardAllowsMutation(path, deps.activeTabPathRef, options)) return
 
   const newContent = await runFrontmatterOp('update', path, key, value, options)
   if (!applyFrontmatterCallbacks({ config, path, newContent })) return
@@ -288,13 +302,7 @@ function useFrontmatterActionHandlers({
   handleSwitchTab: (path: string) => void
   setToastMessage: (msg: string | null) => void
   updateTabContent: (path: string, newContent: string) => void
-  runFrontmatterOp: (
-    op: 'update' | 'delete',
-    path: string,
-    key: string,
-    value?: FrontmatterValue,
-    options?: FrontmatterOpOptions,
-  ) => Promise<string | undefined>
+  runFrontmatterOp: RunFrontmatterOp
 }) {
   const handleUpdateFrontmatter = useCallback(async (
     path: string,
@@ -325,28 +333,64 @@ function useFrontmatterActionHandlers({
   }, [activeTabPathRef, config, handleSwitchTab, renameTabsRef, runFrontmatterOp, setTabs, setToastMessage, updateTabContent])
 
   const handleDeleteProperty = useCallback(async (path: string, key: string, options?: FrontmatterOpOptions) => {
+    if (!activePathGuardAllowsMutation(path, activeTabPathRef, options)) return
     const canFlush = await flushBeforeNoteMutation(path, config.flushBeforeNoteMutation)
     if (!canFlush) return
+    if (!activePathGuardAllowsMutation(path, activeTabPathRef, options)) return
 
     const newContent = await runFrontmatterOp('delete', path, key, undefined, options)
     if (!applyFrontmatterCallbacks({ config, path, newContent })) return
     await notifyFrontmatterPersisted(config, key)
-  }, [config, runFrontmatterOp])
+  }, [activeTabPathRef, config, runFrontmatterOp])
 
-  const handleAddProperty = useCallback(async (path: string, key: string, value: FrontmatterValue) => {
+  const handleAddProperty = useCallback(async (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => {
+    if (!activePathGuardAllowsMutation(path, activeTabPathRef, options)) return
     const canFlush = await flushBeforeNoteMutation(path, config.flushBeforeNoteMutation)
     if (!canFlush) return
+    if (!activePathGuardAllowsMutation(path, activeTabPathRef, options)) return
 
-    const newContent = await runFrontmatterOp('update', path, key, value)
+    const newContent = await runFrontmatterOp('update', path, key, value, options)
     if (!applyFrontmatterCallbacks({ config, path, newContent })) return
     await notifyFrontmatterPersisted(config, key)
-  }, [config, runFrontmatterOp])
+  }, [activeTabPathRef, config, runFrontmatterOp])
 
   return {
     handleUpdateFrontmatter,
     handleDeleteProperty,
     handleAddProperty,
   }
+}
+
+function useFrontmatterRunner({
+  activeTabPathRef,
+  entries,
+  setToastMessage,
+  updateEntry,
+  updateTabContent,
+}: {
+  activeTabPathRef: MutableRefObject<string | null>
+  entries: VaultEntry[]
+  setToastMessage: NoteActionsConfig['setToastMessage']
+  updateEntry: NoteActionsConfig['updateEntry']
+  updateTabContent: (path: string, newContent: string) => void
+}): RunFrontmatterOp {
+  return useCallback(
+    (op, path, key, value, options) => runFrontmatterAndApply({
+      op,
+      path,
+      key,
+      value,
+      callbacks: {
+        updateTab: updateTabContent,
+        updateEntry,
+        toast: setToastMessage,
+        getEntry: (p) => findByNotePath(entries, p),
+        shouldApply: (p) => activePathGuardAllowsMutation(p, activeTabPathRef, options),
+      },
+      options,
+    }),
+    [activeTabPathRef, entries, setToastMessage, updateEntry, updateTabContent],
+  )
 }
 
 export function useNoteActions(config: NoteActionsConfig) {
@@ -379,18 +423,7 @@ export function useNoteActions(config: NoteActionsConfig) {
     [entries, handleSelectNote, tabMgmt.activeTabPath, tabMgmt.tabs],
   )
 
-  const runFrontmatterOp = useCallback(
-    (op: 'update' | 'delete', path: string, key: string, value?: FrontmatterValue, options?: FrontmatterOpOptions) =>
-      runFrontmatterAndApply({
-        op,
-        path,
-        key,
-        value,
-        callbacks: { updateTab: updateTabContent, updateEntry, toast: setToastMessage, getEntry: (p) => findByNotePath(entries, p) },
-        options,
-      }),
-    [updateTabContent, updateEntry, setToastMessage, entries],
-  )
+  const runFrontmatterOp = useFrontmatterRunner({ activeTabPathRef, entries, setToastMessage, updateEntry, updateTabContent })
   const frontmatterActions = useFrontmatterActionHandlers({
     config,
     renameTabsRef: rename.tabsRef,

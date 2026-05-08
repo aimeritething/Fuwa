@@ -21,6 +21,13 @@ async function openRawMode(page: Page) {
   await expect(page.locator('.cm-content')).toBeVisible({ timeout: 5_000 })
 }
 
+async function openPropertiesPanel(page: Page) {
+  const openPanelButton = page.getByRole('button', { name: 'Open the properties panel' })
+  if (await openPanelButton.count()) {
+    await openPanelButton.click()
+  }
+}
+
 async function getRawEditorContent(page: Page): Promise<string> {
   return page.evaluate(() => {
     const el = document.querySelector('.cm-content')
@@ -80,4 +87,27 @@ test('@smoke switching notes persists unsaved raw edits without waiting for the 
     () => fs.readFileSync(noteBPath, 'utf8'),
     { timeout: 450, intervals: [50, 100, 100, 100, 100] },
   ).toContain(appendedText)
+})
+
+test('@smoke deleting a property after switching notes keeps the current note editable', async ({ page }) => {
+  const alphaPath = path.join(tempVaultDir, 'project', 'alpha-project.md')
+
+  await openNote(page, 'Note B')
+  await openPropertiesPanel(page)
+  await expect(page.getByTestId('editable-property').filter({ hasText: 'Status' })).toBeVisible()
+
+  await openNote(page, 'Alpha Project')
+  await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText('alpha-project', { timeout: 5_000 })
+
+  const ownerRow = page.getByTestId('editable-property').filter({ hasText: 'Owner' })
+  await expect(ownerRow).toBeVisible()
+  await ownerRow.hover()
+  await ownerRow.getByTitle('Delete property').click({ force: true })
+
+  await expect(ownerRow).toHaveCount(0)
+  await expect(page.getByTestId('breadcrumb-filename-trigger')).toContainText('alpha-project')
+  await expect.poll(
+    () => fs.readFileSync(alphaPath, 'utf8'),
+    { timeout: 1_000, intervals: [50, 100, 200, 300, 350] },
+  ).not.toContain('Owner:')
 })

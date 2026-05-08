@@ -6,6 +6,7 @@ import type { AppLocale } from '../lib/i18n'
 import type { VaultEntry, GitCommit } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import { Inspector, type FrontmatterValue } from './Inspector'
+import type { FrontmatterOpOptions } from '../hooks/frontmatterOps'
 import { AiPanelView } from './AiPanel'
 import { useAiPanelController } from './useAiPanelController'
 import { NEW_AI_CHAT_EVENT } from '../utils/aiPromptBridge'
@@ -34,9 +35,9 @@ interface EditorRightPanelProps {
   onToggleTableOfContents?: () => void
   onNavigateWikilink: (target: string) => void
   onViewCommitDiff: (commitHash: string) => Promise<void>
-  onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
-  onDeleteProperty?: (path: string, key: string) => Promise<void>
-  onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
+  onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
+  onDeleteProperty?: (path: string, key: string, options?: FrontmatterOpOptions) => Promise<void>
+  onAddProperty?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
   onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<boolean | void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
   onInitializeProperties?: (path: string) => void

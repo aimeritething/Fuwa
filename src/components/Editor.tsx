@@ -11,6 +11,7 @@ import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import type { VaultEntry, GitCommit, NoteWidthMode, NoteStatus } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { FrontmatterValue } from './Inspector'
+import type { FrontmatterOpOptions } from '../hooks/frontmatterOps'
 import { ResizeHandle } from './ResizeHandle'
 import { useDiffMode, type CommitDiffRequest } from '../hooks/useDiffMode'
 import { useEditorFocus } from '../hooks/useEditorFocus'
@@ -66,9 +67,9 @@ interface EditorProps {
   inspectorEntry: VaultEntry | null
   inspectorContent: string | null
   gitHistory: GitCommit[]
-  onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
-  onDeleteProperty?: (path: string, key: string) => Promise<void>
-  onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
+  onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
+  onDeleteProperty?: (path: string, key: string, options?: FrontmatterOpOptions) => Promise<void>
+  onAddProperty?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
   onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<boolean | void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
   onInitializeProperties?: (path: string) => void
@@ -437,9 +438,9 @@ function EditorLayout({
   noteList?: NoteListItem[]
   noteListFilter?: { type: string | null; query: string }
   handleViewCommitDiff: (commitHash: string) => Promise<void>
-  onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
-  onDeleteProperty?: (path: string, key: string) => Promise<void>
-  onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
+  onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
+  onDeleteProperty?: (path: string, key: string, options?: FrontmatterOpOptions) => Promise<void>
+  onAddProperty?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
   onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<boolean | void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
   onInitializeProperties?: (path: string) => void

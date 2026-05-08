@@ -259,6 +259,8 @@ async function executeFrontmatterOp(
 export interface FrontmatterOpOptions {
   /** Suppress toast feedback (caller manages its own toast). */
   silent?: boolean
+  /** Require this note to still be active before applying UI-side mutation state. */
+  requireActivePath?: VaultPath
 }
 
 export interface FrontmatterApplyCallbacks {
@@ -266,6 +268,7 @@ export interface FrontmatterApplyCallbacks {
   updateEntry: (path: VaultPath, patch: Partial<VaultEntry>) => void
   toast: (message: ToastMessage) => void
   getEntry?: (path: VaultPath) => VaultEntry | undefined
+  shouldApply?: (path: VaultPath) => boolean
 }
 
 export interface FrontmatterRunRequest {
@@ -350,6 +353,7 @@ export async function runFrontmatterAndApply(request: FrontmatterRunRequest): Pr
   const { op, path, key, value, callbacks, options } = request
   try {
     const newContent = await executeFrontmatterOp(op, path, key, value)
+    if (callbacks.shouldApply && !callbacks.shouldApply(path)) return undefined
     callbacks.updateTab(path, newContent)
     applyEntryPatch(path, callbacks, frontmatterToEntryPatch(op, key, value))
     notifyFrontmatterSuccess(op, callbacks, options)

@@ -4,6 +4,7 @@ import { cn } from '@/lib/utils'
 import { Separator } from './ui/separator'
 import { parseFrontmatter, detectFrontmatterState, detectFrontmatterWarnings } from '../utils/frontmatter'
 import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
+import type { FrontmatterOpOptions } from '../hooks/frontmatterOps'
 import {
   DynamicRelationshipsPanel,
   BacklinksPanel,
@@ -30,9 +31,9 @@ interface InspectorProps {
   vaultPath?: string
   onNavigate: (target: string) => void
   onViewCommitDiff?: (commitHash: string) => void
-  onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
-  onDeleteProperty?: (path: string, key: string) => Promise<void>
-  onAddProperty?: (path: string, key: string, value: FrontmatterValue) => Promise<void>
+  onUpdateFrontmatter?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
+  onDeleteProperty?: (path: string, key: string, options?: FrontmatterOpOptions) => Promise<void>
+  onAddProperty?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
   onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<boolean | void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
   onInitializeProperties?: (path: string) => void

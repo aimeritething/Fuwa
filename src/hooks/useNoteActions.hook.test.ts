@@ -226,6 +226,22 @@ describe('useNoteActions hook', () => {
     expect(setToastMessage).toHaveBeenCalledWith('Property deleted')
   })
 
+  it('ignores guarded inspector property deletes after the active note changes', async () => {
+    const noteA = makeEntry({ path: '/vault/note-a.md', filename: 'note-a.md', title: 'Note A' })
+    const noteB = makeEntry({ path: '/vault/note-b.md', filename: 'note-b.md', title: 'Note B' })
+    const { result } = renderHook(() => useNoteActions(makeConfig([noteA, noteB])))
+
+    act(() => {
+      result.current.handleSwitchTab(noteB.path)
+    })
+    await act(async () => {
+      await result.current.handleDeleteProperty(noteA.path, 'status', { requireActivePath: noteA.path })
+    })
+
+    expect(updateEntry).not.toHaveBeenCalled()
+    expect(setToastMessage).not.toHaveBeenCalled()
+  })
+
   it('handleCreateNoteImmediate creates note with timestamp-based title', async () => {
     const createdEntry = await createImmediateEntry()
     expect(createdEntry.title).toBe('Untitled Note 1700000000')
