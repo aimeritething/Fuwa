@@ -577,6 +577,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      pages: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -813,10 +814,14 @@ jobs:
           cp -R site/.vitepress/dist/. _site/
           if [ -d release-notes ]; then cp release-notes/*.md _site/release-notes/ 2>/dev/null || true; fi
           gh api -H "Accept: application/vnd.github.html+json" repos/${{ github.repository }}/releases --paginate > _site/releases.json
-          PAGES_URL="https://refactoringhq.github.io/${GITHUB_REPOSITORY#*/}"
+          STABLE_TAG=$(gh release list --repo ${{ github.repository }} --exclude-drafts --exclude-pre-releases --limit 1 --json tagName --jq '.[0].tagName // ""')
 
           gh release download --repo ${{ github.repository }} "${{ needs.version.outputs.tag }}" --pattern "alpha-latest.json" --output _site/alpha/latest.json || echo '{}' > _site/alpha/latest.json
-          curl -fsSL "${PAGES_URL}/stable/latest.json" -o _site/stable/latest.json || echo '{}' > _site/stable/latest.json
+          if [ -n "$STABLE_TAG" ]; then
+            gh release download --repo ${{ github.repository }} "$STABLE_TAG" --pattern "stable-latest.json" --output _site/stable/latest.json || echo '{}' > _site/stable/latest.json
+          else
+            echo '{}' > _site/stable/latest.json
+          fi
           bun scripts/build-release-download-page.ts --latest-json _site/stable/latest.json --releases-json _site/releases.json --output-file _site/stable/download/index.html
           bun scripts/build-release-history-page.ts --releases-json _site/releases.json --output-file _site/releases/index.html
           mkdir -p _site/download
@@ -831,3 +836,35 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./_site
           commit_message: "Update release history for ${{ needs.version.outputs.tag }}"
+
+      - name: Request and verify GitHub Pages rebuild
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          BUILD_URL=$(gh api --method POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "repos/${{ github.repository }}/pages/builds" \
+            --jq '.url')
+          BUILD_ID="${BUILD_URL##*/}"
+          if [ -z "$BUILD_ID" ]; then
+            echo "::error::GitHub Pages rebuild request did not return a build id."
+            exit 1
+          fi
+
+          for attempt in {1..30}; do
+            STATUS=$(gh api "repos/${{ github.repository }}/pages/builds/${BUILD_ID}" --jq '.status')
+            echo "GitHub Pages build ${BUILD_ID} status: ${STATUS} (attempt ${attempt}/30)"
+            case "$STATUS" in
+              built)
+                exit 0
+                ;;
+              errored)
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+
+          echo "::error::GitHub Pages build ${BUILD_ID} did not finish within 5 minutes."
+          exit 1
