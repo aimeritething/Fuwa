@@ -17,6 +17,7 @@ const UNTITLED_RENAME_DEBOUNCE_MS = 2500
 
 interface PendingUntitledRename {
   path: string
+  title: string
   timer: ReturnType<typeof setTimeout>
 }
 
@@ -84,7 +85,7 @@ function isUntitledRenameCandidate(path: string): boolean {
   return stem.startsWith('untitled-') && /\d+$/.test(stem)
 }
 
-function shouldScheduleUntitledRename({
+function schedulableUntitledRenameTitle({
   path,
   content,
   initialH1AutoRenameEnabled,
@@ -92,11 +93,9 @@ function shouldScheduleUntitledRename({
   path: string
   content: string
   initialH1AutoRenameEnabled: boolean
-}): boolean {
-  return isTauri()
-    && initialH1AutoRenameEnabled
-    && isUntitledRenameCandidate(path)
-    && extractH1TitleFromContent(content) !== null
+}): string | null {
+  if (!isTauri() || !initialH1AutoRenameEnabled || !isUntitledRenameCandidate(path)) return null
+  return extractH1TitleFromContent(content)
 }
 
 function matchingPendingRename({
@@ -130,19 +129,23 @@ function takePendingRename({
 function schedulePendingRename({
   pendingRenameRef,
   path,
+  title,
   onFire,
 }: {
   pendingRenameRef: MutableRefObject<PendingUntitledRename | null>
   path: string
+  title: string
   onFire: (path: string) => void
 },
 ): void {
+  const currentPending = pendingRenameRef.current
+  if (currentPending?.path === path && currentPending.title === title) return
   takePendingRename({ pendingRenameRef })
   const timer = setTimeout(() => {
     const pending = takePendingRename({ pendingRenameRef, path })
     if (pending) onFire(pending.path)
   }, UNTITLED_RENAME_DEBOUNCE_MS)
-  pendingRenameRef.current = { path, timer }
+  pendingRenameRef.current = { path, title, timer }
 }
 
 function pendingRenameOutsideActiveTab({
@@ -337,7 +340,8 @@ function useUntitledRenameScheduler({
   }, [executeUntitledRename])
 
   const scheduleUntitledRename = useCallback((path: string, content: string) => {
-    if (!shouldScheduleUntitledRename({ path, content, initialH1AutoRenameEnabled })) {
+    const title = schedulableUntitledRenameTitle({ path, content, initialH1AutoRenameEnabled })
+    if (!title) {
       cancelPendingUntitledRename(path)
       return
     }
@@ -345,16 +349,23 @@ function useUntitledRenameScheduler({
     schedulePendingRename({
       pendingRenameRef: pendingUntitledRenameRef,
       path,
+      title,
       onFire: (pendingPath) => {
         void executeUntitledRename(pendingPath)
       },
     })
   }, [cancelPendingUntitledRename, executeUntitledRename, initialH1AutoRenameEnabled])
 
+  const refreshPendingUntitledRename = useCallback((path: string, content: string) => {
+    if (!matchingPendingRename({ pending: pendingUntitledRenameRef.current, path })) return
+    scheduleUntitledRename(path, content)
+  }, [scheduleUntitledRename])
+
   return {
     pendingUntitledRenameRef,
     cancelPendingUntitledRename,
     flushPendingUntitledRename,
+    refreshPendingUntitledRename,
     scheduleUntitledRename,
   }
 }
@@ -403,6 +414,7 @@ function useUntitledRenameCoordinator({
     pendingUntitledRenameRef,
     cancelPendingUntitledRename,
     flushPendingUntitledRename,
+    refreshPendingUntitledRename,
     scheduleUntitledRename,
   } = useUntitledRenameScheduler({ executeUntitledRename, initialH1AutoRenameEnabled })
 
@@ -413,6 +425,7 @@ function useUntitledRenameCoordinator({
     resolveCurrentPath,
     resolvePathBeforeSave,
     flushPendingUntitledRename,
+    refreshPendingUntitledRename,
     scheduleUntitledRename,
   }
 }
@@ -448,6 +461,7 @@ interface EditorPersistenceOptions {
   clearUnsaved: AppSaveDeps['clearUnsaved']
   onInternalVaultWrite?: AppSaveDeps['onInternalVaultWrite']
   reloadViews: AppSaveDeps['reloadViews']
+  refreshPendingUntitledRename: (path: string, content: string) => void
   scheduleUntitledRename: (path: string, content: string) => void
   resolveCurrentPath: (path: string) => string
   resolvePathBeforeSave: (path: string) => Promise<string>
@@ -634,6 +648,7 @@ function useEditorPersistence({
   clearUnsaved,
   onInternalVaultWrite,
   reloadViews,
+  refreshPendingUntitledRename,
   scheduleUntitledRename,
   resolveCurrentPath,
   resolvePathBeforeSave,
@@ -673,9 +688,10 @@ function useEditorPersistence({
   const handleContentChange = useCallback((path: string, content: string) => {
     const currentPath = resolveCurrentPath(path)
     if (!canWritePathToVault(currentPath, persistenceScope)) return
+    refreshPendingUntitledRename(currentPath, content)
     trackUnsaved?.(currentPath)
     handleContentChangeRaw(currentPath, content)
-  }, [handleContentChangeRaw, persistenceScope, resolveCurrentPath, trackUnsaved])
+  }, [handleContentChangeRaw, persistenceScope, refreshPendingUntitledRename, resolveCurrentPath, trackUnsaved])
 
   const savePendingForPath = useCallback((path: string) => {
     const currentPath = resolveCurrentPath(path)
@@ -800,14 +816,15 @@ export function useAppSave({
   const { tabsRef, activeTabPathRef, unsavedPathsRef } = useAppSaveStateRefs({ tabs, activeTabPath, unsavedPaths })
   const {
     pendingUntitledRenameRef, cancelPendingUntitledRename, registerRenamedPath,
-    resolveCurrentPath, resolvePathBeforeSave, flushPendingUntitledRename, scheduleUntitledRename,
+    resolveCurrentPath, resolvePathBeforeSave, flushPendingUntitledRename,
+    refreshPendingUntitledRename, scheduleUntitledRename,
   } = useUntitledRenameCoordinator({
     resolvedPath, tabsRef, activeTabPathRef, setTabs, handleSwitchTab,
     replaceEntry, loadModifiedFiles, onInternalVaultWrite, initialH1AutoRenameEnabled,
   })
   const { handleSaveRaw, handleContentChange, savePendingForPath, savePending } = useEditorPersistence({
     updateEntry, setTabs, setToastMessage, loadModifiedFiles, trackUnsaved,
-    clearUnsaved, onInternalVaultWrite, reloadViews, scheduleUntitledRename,
+    clearUnsaved, onInternalVaultWrite, reloadViews, refreshPendingUntitledRename, scheduleUntitledRename,
     resolveCurrentPath, resolvePathBeforeSave, canPersist,
     persistenceScope: writableVaultPaths && writableVaultPaths.length > 0 ? writableVaultPaths : resolvedPath,
     locale,

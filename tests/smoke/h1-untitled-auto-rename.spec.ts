@@ -125,6 +125,12 @@ async function activeSelectionBlockType(page: Page): Promise<string | null> {
   })
 }
 
+async function expectTitleHeadingText(page: Page, title: string): Promise<void> {
+  await expect(page.locator('.bn-editor [data-content-type="heading"]').first()).toContainText(title, {
+    timeout: 5_000,
+  })
+}
+
 let tempVaultDir: string
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -187,6 +193,39 @@ test('@smoke new-note H1 auto-rename keeps the editor usable and leaves no untit
   expect(files.filter((name) => name.startsWith('untitled-note-'))).toEqual([])
   expect(files.filter((name) => /^rapid-rename-\d+\.md$/.test(name))).toHaveLength(4)
   expect(errors).toEqual([])
+})
+
+test('@smoke new-note short title typing stays in the H1 until Enter', async ({ page }) => {
+  const titleStart = 'Obsi'
+  const title = 'Obsidian'
+  const bodyText = 'Body starts only after intentional Enter.'
+
+  await createUntitledNote(page)
+  await page.keyboard.type(titleStart, { delay: 80 })
+  await expectTitleHeadingText(page, titleStart)
+  await expectEditorFocused(page)
+  await expect.poll(() => activeSelectionBlockType(page), { timeout: 5_000 }).toBe('heading')
+
+  await page.waitForTimeout(1_000)
+  await expectTitleHeadingText(page, titleStart)
+  await expect.poll(() => activeSelectionBlockType(page), { timeout: 5_000 }).toBe('heading')
+
+  await page.keyboard.type('dian', { delay: 80 })
+  await expectTitleHeadingText(page, title)
+  await page.keyboard.press('Enter')
+  await page.keyboard.type(bodyText, { delay: 35 })
+
+  await expectActiveFilename(page, slugifyTitle(title))
+  await expectFileContentContains({
+    vaultPath: tempVaultDir,
+    filename: `${slugifyTitle(title)}.md`,
+    text: `# ${title}`,
+  })
+  await expectFileContentContains({
+    vaultPath: tempVaultDir,
+    filename: `${slugifyTitle(title)}.md`,
+    text: bodyText,
+  })
 })
 
 test('@smoke new-note typing stays focused through initial save settlement', async ({ page }) => {

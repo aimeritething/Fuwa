@@ -416,6 +416,42 @@ describe('useAppSave', () => {
     )
   })
 
+  it('refreshes a pending untitled auto-rename when the H1 title changes before the timer fires', async () => {
+    const partialTitleContent = '# Obsi\n'
+    const revisedTitleContent = '# Obsidian\n\nBody starts after the title is complete'
+    const { result, oldPath } = setupUntitledRenameHarness({
+      initialContent: partialTitleContent,
+      diskContent: revisedTitleContent,
+    })
+
+    await act(async () => {
+      result.current.handleContentChange(oldPath, partialTitleContent)
+      await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS)
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_300)
+      result.current.handleContentChange(oldPath, revisedTitleContent)
+      await vi.advanceTimersByTimeAsync(200)
+    })
+
+    expect(vi.mocked(invoke).mock.calls.filter(([command]) => command === 'auto_rename_untitled')).toHaveLength(0)
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS)
+    })
+    expect(vi.mocked(invoke)).toHaveBeenCalledWith('save_note_content', {
+      path: oldPath,
+      content: revisedTitleContent,
+    })
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2_000)
+    })
+
+    expect(vi.mocked(invoke).mock.calls.filter(([command]) => command === 'auto_rename_untitled')).toHaveLength(1)
+  })
+
   it('does not auto-rename untitled notes when the H1 auto-rename preference is disabled', async () => {
     vi.useFakeTimers()
     vi.mocked(isTauri).mockReturnValue(true)
