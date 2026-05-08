@@ -1,20 +1,11 @@
 import { codeBlockOptions } from '@blocknote/code-block'
 import type { CodeBlockOptions } from '@blocknote/core'
+import { supportsModernRegexFeatures } from '../utils/regexCapabilities'
 
 const LIGHT_CODE_THEME = 'github-light'
 const DARK_CODE_THEME = 'github-dark'
 
 type TolariaCodeHighlighter = Awaited<ReturnType<NonNullable<typeof codeBlockOptions.createHighlighter>>>
-
-function supportsShikiPrecompiledRegexFlags() {
-  try {
-    new RegExp('', 'd')
-    new RegExp('[[]]', 'v')
-    return true
-  } catch {
-    return false
-  }
-}
 
 function currentCodeBlockTheme() {
   if (typeof document === 'undefined') return LIGHT_CODE_THEME
@@ -44,7 +35,7 @@ export function createTolariaCodeBlockOptions(): Partial<CodeBlockOptions> {
     defaultLanguage: 'text',
   }
 
-  if (supportsShikiPrecompiledRegexFlags()) return options
+  if (supportsModernRegexFeatures()) return options
 
   delete options.createHighlighter
   return options

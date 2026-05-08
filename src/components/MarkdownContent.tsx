@@ -3,9 +3,10 @@ import Markdown, { defaultUrlTransform } from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { preprocessWikilinks, WIKILINK_SCHEME } from '../utils/chatWikilinks'
+import { supportsModernRegexFeatures } from '../utils/regexCapabilities'
 
 const REMARK_PLUGINS = [remarkGfm]
-const REHYPE_PLUGINS = [rehypeHighlight]
+const REHYPE_PLUGINS = supportsModernRegexFeatures() ? [rehypeHighlight] : []
 
 function wikilinkUrlTransform(url: string): string {
   if (url.startsWith(WIKILINK_SCHEME)) return url

@@ -17,10 +17,10 @@ function restoreRegExpConstructor() {
   }
 }
 
-function installLegacyWebKitRegExp() {
+function installMockRegExp(shouldReject: (pattern: string | RegExp | undefined, flags: string | undefined) => boolean) {
   const LegacyWebKitRegExp = function (pattern?: string | RegExp, flags?: string) {
-    if (flags?.includes('d') || flags?.includes('v')) {
-      throw new SyntaxError('Invalid flags supplied to RegExp constructor')
+    if (shouldReject(pattern, flags)) {
+      throw new SyntaxError('Invalid regular expression: invalid group specifier name')
     }
 
     return new NativeRegExp(pattern, flags)
@@ -30,6 +30,14 @@ function installLegacyWebKitRegExp() {
   LegacyWebKitRegExp.prototype = NativeRegExp.prototype
 
   setRegExpConstructor(LegacyWebKitRegExp)
+}
+
+function installLegacyWebKitRegExp() {
+  installMockRegExp((_pattern, flags) => Boolean(flags?.includes('d') || flags?.includes('v')))
+}
+
+function installLookbehindMissingRegExp() {
+  installMockRegExp((pattern) => typeof pattern === 'string' && pattern.includes('(?<'))
 }
 
 afterEach(() => {
@@ -64,6 +72,15 @@ describe('editor schema code block highlighting', () => {
 
   it('omits the Shiki highlighter when WebKit lacks precompiled regex flags', async () => {
     installLegacyWebKitRegExp()
+    vi.resetModules()
+
+    const { createTolariaCodeBlockOptions } = await import('./codeBlockOptions')
+
+    expect(createTolariaCodeBlockOptions()).not.toHaveProperty('createHighlighter')
+  })
+
+  it('omits the Shiki highlighter when WebKit lacks regex lookbehind syntax', async () => {
+    installLookbehindMissingRegExp()
     vi.resetModules()
 
     const { createTolariaCodeBlockOptions } = await import('./codeBlockOptions')
