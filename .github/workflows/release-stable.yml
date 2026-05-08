@@ -771,7 +771,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VITEPRESS_BASE="/${GITHUB_REPOSITORY#*/}/" pnpm docs:build
+          VITEPRESS_BASE="/" pnpm docs:build
           mkdir -p _site/alpha _site/stable _site/release-notes
           cp -R site/.vitepress/dist/. _site/
           if [ -d release-notes ]; then cp release-notes/*.md _site/release-notes/ 2>/dev/null || true; fi
