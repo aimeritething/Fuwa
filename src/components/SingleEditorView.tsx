@@ -70,6 +70,8 @@ const CONTAINER_CLICK_IGNORE_SELECTOR = [
   '.bn-formatting-toolbar',
   '.bn-link-toolbar',
   '.bn-side-menu',
+  '.bn-suggestion-menu',
+  '.bn-grid-suggestion-menu',
   '.bn-form-popover',
   '[data-editor-code-copy]',
   '[role="menu"]',
