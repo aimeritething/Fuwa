@@ -44,7 +44,12 @@ function blockFromContainer(options: {
   const getBlock = options.editor.getBlock
   if (!blockId || typeof getBlock !== 'function') return null
 
-  return getBlock(blockId) ?? null
+  try {
+    return getBlock(blockId) ?? null
+  } catch (error) {
+    console.warn('[file] Ignored stale file block click:', error)
+    return null
+  }
 }
 
 function fileBlockUrl(block: FileBlockCandidate | null): string | null {
@@ -105,12 +110,14 @@ export function openEditorAttachmentOrUrl(options: EditorUrlOpenRequest) {
 export function handleEditorFileBlockClick(options: FileBlockClickRequest): boolean {
   const target = options.event.target
   if (!(target instanceof HTMLElement)) return false
-
-  const url = fileBlockUrlFromTarget({ target, editor: options.editor })
-  if (!url) return false
+  if (!target.closest(FILE_BLOCK_ACTION_SELECTOR)) return false
 
   options.event.preventDefault()
   options.event.stopPropagation()
+
+  const url = fileBlockUrlFromTarget({ target, editor: options.editor })
+  if (!url) return true
+
   openEditorAttachmentOrUrl({ url, vaultPath: options.vaultPath, source: 'file' })
   return true
 }
