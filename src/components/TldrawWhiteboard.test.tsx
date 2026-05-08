@@ -1,11 +1,18 @@
-import { render, screen } from '@testing-library/react'
-import { describe, expect, it, vi } from 'vitest'
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { Editor } from 'tldraw'
 import { TldrawWhiteboard } from './TldrawWhiteboard'
 
 interface MockTldrawProps {
   assetUrls: MockAssetUrls
   onMount: (editor: Editor) => () => void
+  user?: MockTldrawUser
+}
+
+interface MockTldrawUser {
+  userPreferences: {
+    get: () => { colorScheme?: string }
+  }
 }
 
 interface MockAssetUrls {
@@ -64,8 +71,18 @@ vi.mock('tldraw', async () => {
     createTLStore: vi.fn(() => ({
       listen: vi.fn(() => vi.fn()),
     })),
+    defaultUserPreferences: {
+      colorScheme: 'light',
+      locale: 'en',
+    },
     getSnapshot: vi.fn(() => ({ document: {} })),
     loadSnapshot: vi.fn(),
+    useTldrawUser: vi.fn(({ userPreferences }: { userPreferences: { colorScheme: string } }) => ({
+      setUserPreferences: vi.fn(),
+      userPreferences: {
+        get: () => userPreferences,
+      },
+    })),
   }
 })
 
@@ -76,7 +93,7 @@ function renderedTldrawAssetUrls(): MockAssetUrls {
 }
 
 function renderedTldrawProps(): MockTldrawProps {
-  const props = tldrawMock.Tldraw.mock.calls[0]?.[0] as MockTldrawProps
+  const props = tldrawMock.Tldraw.mock.lastCall?.[0] as MockTldrawProps
   expect(props).toBeDefined()
   return props
 }
@@ -125,6 +142,13 @@ function expectBundledTldrawAssetUrls(assetUrls: MockAssetUrls) {
 }
 
 describe('TldrawWhiteboard', () => {
+  afterEach(() => {
+    cleanup()
+    document.documentElement.removeAttribute('data-theme')
+    document.documentElement.classList.remove('dark')
+    vi.clearAllMocks()
+  })
+
   it('uses bundled tldraw assets instead of CDN URLs', () => {
     render(
       <TldrawWhiteboard
@@ -140,6 +164,50 @@ describe('TldrawWhiteboard', () => {
     expect(screen.getByTestId('mock-tldraw')).toHaveAttribute('data-draw-font-url')
     expect(assetImportMock.getAssetUrlsByImport).toHaveBeenCalledWith(expect.any(Function))
     expectBundledTldrawAssetUrls(renderedTldrawAssetUrls())
+  })
+
+  it('passes Tolaria dark mode to tldraw', () => {
+    document.documentElement.setAttribute('data-theme', 'dark')
+    document.documentElement.classList.add('dark')
+
+    render(
+      <TldrawWhiteboard
+        boardId="board-1"
+        height="520"
+        snapshot=""
+        width=""
+        onSizeChange={vi.fn()}
+        onSnapshotChange={vi.fn()}
+      />
+    )
+
+    expect(renderedTldrawProps().user?.userPreferences.get().colorScheme).toBe('dark')
+  })
+
+  it('updates the tldraw color scheme when Tolaria theme changes', async () => {
+    document.documentElement.setAttribute('data-theme', 'light')
+
+    render(
+      <TldrawWhiteboard
+        boardId="board-1"
+        height="520"
+        snapshot=""
+        width=""
+        onSizeChange={vi.fn()}
+        onSnapshotChange={vi.fn()}
+      />
+    )
+
+    expect(renderedTldrawProps().user?.userPreferences.get().colorScheme).toBe('light')
+
+    act(() => {
+      document.documentElement.setAttribute('data-theme', 'dark')
+      document.documentElement.classList.add('dark')
+    })
+
+    await waitFor(() => {
+      expect(renderedTldrawProps().user?.userPreferences.get().colorScheme).toBe('dark')
+    })
   })
 
   it('installs the text measurement guard when the canvas mounts', () => {

@@ -140,6 +140,26 @@ test('tldraw whiteboard fences render as embedded canvases and remain Markdown-d
   expect(rawAfterRichMode).not.toContain('@@TOLARIA_TLDRAW')
 })
 
+test('embedded tldraw whiteboards follow Tolaria theme changes', async ({ page }) => {
+  await openNote(page, 'Whiteboard Embed')
+
+  const tldrawContainer = page.locator('.tldraw-whiteboard .tl-container').first()
+  await expect(tldrawContainer).toBeVisible({ timeout: 20_000 })
+
+  const initialMode = await tldrawContainer.evaluate((element) =>
+    element.classList.contains('tl-theme__dark') ? 'dark' : 'light'
+  )
+
+  await page.getByTestId('status-theme-mode').click()
+  const toggledMode = initialMode === 'dark' ? 'light' : 'dark'
+  await expect(tldrawContainer).toHaveClass(new RegExp(`tl-theme__${toggledMode}`))
+  await expect(tldrawContainer).toHaveAttribute('data-color-mode', toggledMode)
+
+  await page.getByTestId('status-theme-mode').click()
+  await expect(tldrawContainer).toHaveClass(new RegExp(`tl-theme__${initialMode}`))
+  await expect(tldrawContainer).toHaveAttribute('data-color-mode', initialMode)
+})
+
 test('embedded tldraw interactions stay inside the whiteboard', async ({ page }) => {
   await openNote(page, 'Whiteboard Embed')
 

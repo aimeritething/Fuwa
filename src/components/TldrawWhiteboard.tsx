@@ -9,20 +9,26 @@ import {
   TldrawUiMenuContextProvider,
   Tldraw,
   createTLStore,
+  defaultUserPreferences,
   getSnapshot,
   loadSnapshot,
   react as reactToTldrawSignal,
   useDialogs,
+  useTldrawUser,
   useTranslation,
   type Editor,
   type TLEventInfo,
   type TLUiDialog,
   type TLStoreSnapshot,
+  type TLUserPreferences,
 } from 'tldraw'
 import 'tldraw/tldraw.css'
+import { useDocumentThemeMode } from '../hooks/useDocumentThemeMode'
+import type { ResolvedThemeMode } from '../lib/themeMode'
 import { installTldrawTextMeasurementGuard } from './tldrawTextMeasurementGuard'
 
 const EMPTY_TLDRAW_TRANSLATION_URL = 'data:application/json;base64,e30K'
+const TOLARIA_TLDRAW_USER_ID = 'tolaria-whiteboard'
 
 function resolveTldrawAssetUrl(assetUrl: string | undefined): string {
   return assetUrl ?? EMPTY_TLDRAW_TRANSLATION_URL
@@ -87,6 +93,18 @@ function cssSize({ height, width }: PixelSize): CSSProperties {
     '--tldraw-whiteboard-height': `${Math.max(MIN_HEIGHT, height)}px`,
     '--tldraw-whiteboard-width': width === null ? '100%' : `${Math.max(MIN_WIDTH, width)}px`,
   } as CSSProperties
+}
+
+function tldrawUserPreferences(themeMode: ResolvedThemeMode): TLUserPreferences {
+  return {
+    ...defaultUserPreferences,
+    id: TOLARIA_TLDRAW_USER_ID,
+    colorScheme: themeMode,
+  }
+}
+
+function ignoreTldrawUserPreferencesUpdate(preferences: TLUserPreferences) {
+  void preferences
 }
 
 function parseSnapshot(source: string): TLStoreSnapshot | null {
@@ -387,6 +405,12 @@ export function TldrawWhiteboard({
   const persistedSize = useMemo(() => normalizeSize({ height, width }), [height, width])
   const [resizingSize, setResizingSize] = useState<PixelSize | null>(null)
   const visibleSize = resizingSize ?? persistedSize
+  const themeMode = useDocumentThemeMode()
+  const userPreferences = useMemo(() => tldrawUserPreferences(themeMode), [themeMode])
+  const tldrawUser = useTldrawUser({
+    setUserPreferences: ignoreTldrawUserPreferencesUpdate,
+    userPreferences,
+  })
 
   useEffect(() => {
     onSnapshotChangeRef.current = onSnapshotChange
@@ -483,6 +507,7 @@ export function TldrawWhiteboard({
         components={tldrawUiComponents}
         onMount={installWhiteboardRuntimeGuards}
         store={store}
+        user={tldrawUser}
       />
       <div
         aria-label="Resize whiteboard width"
