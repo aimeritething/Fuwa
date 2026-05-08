@@ -11,6 +11,7 @@ const DISPLAY_LATEX = '\\int_0^1 x^2 \\, dx = \\frac{1}{3}'
 const MALFORMED_LATEX = '\\frac{'
 const TABLE_INLINE_LATEX = '\\frac{a}{b}+c'
 const TABLE_DISPLAY_STYLE_LATEX = '\\sum_{i=1}^{n} i'
+const FINANCIAL_DOLLAR_PROSE = 'FY2025 revenue grew 178.5% YoY to $24.59M, and gross margins improved dramatically from 63.0% to 82.6%. The company has a solid cash position ($884M) and a strategic focus.'
 
 test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(90_000)
@@ -151,4 +152,22 @@ Malformed math $${MALFORMED_LATEX}$ stays visible.
   expect(reopenedRaw).toContain(`$${TABLE_INLINE_LATEX}$`)
   expect(reopenedRaw).toContain(`$$${TABLE_DISPLAY_STYLE_LATEX}$$`)
   expect(reopenedRaw).not.toContain('@@TOLARIA_MATH')
+})
+
+test('imported financial Markdown does not leak math placeholder tokens', async ({ page }) => {
+  await openNote(page, 'Note B')
+  await toggleRawMode(page, '.cm-content')
+
+  await setRawEditorContent(page, `${FINANCIAL_DOLLAR_PROSE}\n`)
+  await expect.poll(readNoteBFile).toContain(FINANCIAL_DOLLAR_PROSE)
+
+  await toggleRawMode(page, '.bn-editor')
+  await expect(page.locator('.bn-editor')).toContainText('$24.59M')
+  await expect(page.locator('.bn-editor')).toContainText('($884M)')
+  await expect(page.locator('.bn-editor')).not.toContainText('TOLARIA_MATH_INLINE')
+
+  await toggleRawMode(page, '.cm-content')
+  const rawAfterRichMode = await getRawEditorContent(page)
+  expect(rawAfterRichMode).toContain(FINANCIAL_DOLLAR_PROSE)
+  expect(rawAfterRichMode).not.toContain('@@TOLARIA_MATH')
 })

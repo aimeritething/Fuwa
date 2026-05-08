@@ -8,6 +8,8 @@ const BLOCK_TOKEN_PREFIX = '@@TOLARIA_MATH_BLOCK:'
 const TOKEN_SUFFIX = '@@'
 const INLINE_TOKEN_RE = /@@TOLARIA_MATH_INLINE:([^@]+)@@/g
 const CODE_FENCE_PREFIXES = ['```', '~~~']
+const FINANCIAL_AMOUNT_PREFIX_RE = /^\d[\d,]*(?:\.\d+)?(?:[KMBT]|%)(?=[,\s.)])/i
+const PROSE_AFTER_AMOUNT_RE = /(?:,\s|\.\s|\s[a-z]{2,}\b)/i
 
 interface InlineItem {
   type: string
@@ -149,7 +151,14 @@ function findInlineMathEnd({ text, index: start }: TextPosition): number {
 }
 
 function isValidInlineLatex({ latex }: LatexPayload): boolean {
-  return Boolean(latex.trim()) && !/^\s|\s$/.test(latex)
+  return Boolean(latex.trim())
+    && !/^\s|\s$/.test(latex)
+    && !looksLikeFinancialProse({ latex })
+}
+
+function looksLikeFinancialProse({ latex }: LatexPayload): boolean {
+  const trimmed = latex.trim()
+  return FINANCIAL_AMOUNT_PREFIX_RE.test(trimmed) && PROSE_AFTER_AMOUNT_RE.test(trimmed)
 }
 
 function readInlineMath({ text, index }: TextPosition): InlineMathMatch | null {

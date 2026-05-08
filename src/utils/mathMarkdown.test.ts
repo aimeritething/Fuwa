@@ -9,6 +9,12 @@ import {
 } from './mathMarkdown'
 
 describe('math markdown round-trip', () => {
+  it('does not treat financial prose between dollar amounts as inline math', () => {
+    const markdown = 'FY2025 revenue grew 178.5% YoY to $24.59M, and gross margins improved dramatically from 63.0% to 82.6%. The company has a solid cash position ($884M) and a strategic focus.'
+
+    expect(preProcessMathMarkdown({ markdown })).toBe(markdown)
+  })
+
   it('injects inline math placeholders into BlockNote inline content', () => {
     const preprocessed = preProcessMathMarkdown({ markdown: 'Energy is $E=mc^2$ in prose.' })
     const blocks = [{
