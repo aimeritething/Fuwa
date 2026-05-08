@@ -88,6 +88,18 @@ ${marker}
 `, 'utf8')
 }
 
+function writePlainNoteB(filePath: string, marker: string): void {
+  fs.writeFileSync(filePath, `---
+Is A: Note
+Status: Active
+---
+
+# Note B
+
+${marker}
+`, 'utf8')
+}
+
 function checklistCheckbox(page: Page, index: number) {
   return page.locator('.bn-block-content[data-content-type="checkListItem"] input[type="checkbox"]').nth(index)
 }
@@ -154,6 +166,28 @@ test('@smoke typing after a rich-editor reload and note switch stays usable', as
   await page.keyboard.type(` -> ${afterReloadMarker}`, { delay: 10 })
 
   await expectNoteFileToContain(noteBPath, afterReloadMarker)
+  await page.waitForTimeout(500)
+  expect(crashes).toEqual([])
+})
+
+test('typing after current-note filesystem refresh stays usable', async ({ page }) => {
+  const crashes = trackEditorTypingCrashes(page)
+  const noteBPath = path.join(tempVaultDir, 'note', 'note-b.md')
+  const reloadMarker = `filesystem refresh ${Date.now()}`
+  const afterRefreshMarker = `typing after filesystem refresh ${Date.now()}`
+
+  await openNote(page, 'Note B')
+  await placeCaretAtEndOfBlock(page, 1)
+
+  writePlainNoteB(noteBPath, reloadMarker)
+  await reloadVault(page)
+  await page.getByTestId('note-list-container').getByText('Note B', { exact: true }).click()
+  await expect(page.locator('.bn-editor')).toContainText(reloadMarker)
+
+  await placeCaretAtEndOfBlock(page, 1)
+  await page.keyboard.type(` -> ${afterRefreshMarker}`, { delay: 10 })
+
+  await expectNoteFileToContain(noteBPath, afterRefreshMarker)
   await page.waitForTimeout(500)
   expect(crashes).toEqual([])
 })

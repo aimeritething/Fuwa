@@ -498,6 +498,18 @@ function shouldRefreshStableActivePath(options: {
   return !cachedState || cachedState.sourceContent !== activeTab.content
 }
 
+function shouldClearDomSelectionForScheduledSwap(options: {
+  activeTabPath: string | null
+  state: TabSwapState
+}): boolean {
+  const { activeTabPath, state } = options
+  if (state.pathChanged) return true
+  if (!activeTabPath || !state.activeTab) return false
+
+  const cachedState = state.cache.get(activeTabPath)
+  return !!cachedState && cachedState.sourceContent !== state.activeTab.content
+}
+
 function cacheStableActivePath(options: {
   cache: Map<string, CachedTabState>
   activeTabPath: string | null
@@ -914,7 +926,7 @@ function runTabSwapEffect(options: RunTabSwapEffectOptions) {
     cache: state.cache,
     targetPath: activeTabPath,
     activeTab: state.activeTab,
-    clearDomSelection: state.pathChanged,
+    clearDomSelection: shouldClearDomSelectionForScheduledSwap({ activeTabPath, state }),
     pendingSwapRef,
     swapSeqRef,
     tabsRef,
