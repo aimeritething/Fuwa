@@ -59,6 +59,10 @@ import {
   isRecoverableBlockNoteRenderError,
   markRecoveredBlockNoteRenderError,
 } from './blockNoteRenderRecovery'
+import {
+  queueTitleHeadingCursorRepair,
+  useEditorPasteHandler,
+} from './titleHeadingInteractions'
 
 const TEST_TABLE_MARKDOWN = `| Head 1 | Head 2 | Head 3 |
 | --- | --- | --- |
@@ -341,15 +345,6 @@ function normalizeSuggestionQuery(query: string, triggerCharacter: string): stri
     : query
 }
 
-function isSelectionInsideElement(element: HTMLElement): boolean {
-  const selection = window.getSelection()
-  const anchorNode = selection?.anchorNode ?? null
-  const anchorElement = anchorNode instanceof Element ? anchorNode : anchorNode?.parentElement ?? null
-  return Boolean(anchorElement && element.contains(anchorElement))
-}
-
-const TITLE_HEADING_SELECTOR = 'h1, [data-content-type="heading"][data-level="1"], [data-content-type="heading"]:not([data-level])'
-const TITLE_HEADING_WRAPPER_SELECTOR = '.bn-block-outer, .bn-block'
 const CODE_BLOCK_SELECTOR = '[data-content-type="codeBlock"]'
 const CLIPBOARD_INLINE_FORMAT_SELECTOR = 'a, b, code, em, i, s, span, strong, u'
 const CODE_BLOCK_COPY_RESET_MS = 1200
@@ -584,78 +579,9 @@ function CodeBlockCopyButton({ copyTarget, locale }: { copyTarget: CodeBlockCopy
   )
 }
 
-function findTitleHeadingElement(target: HTMLElement): HTMLElement | null {
-  const directHeading = target.closest<HTMLElement>(TITLE_HEADING_SELECTOR)
-  if (directHeading) return directHeading
-
-  const titleWrapper = target.closest<HTMLElement>(TITLE_HEADING_WRAPPER_SELECTOR)
-  return titleWrapper?.querySelector<HTMLElement>(TITLE_HEADING_SELECTOR) ?? null
-}
-
-function richClipboardPlainText(clipboardData: DataTransfer): string | null {
-  const text = clipboardData.getData('text/plain')
-  const richMimeType = 'text/' + 'html'
-  const hasRichMarkup = clipboardData.types
-    ? Array.from(clipboardData.types).includes(richMimeType)
-    : clipboardData.getData(richMimeType).length > 0
-
-  return text.length > 0 && hasRichMarkup ? text : null
-}
-
 function eventTargetElement(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Node)) return null
   return nodeElement(target)
-}
-
-function useTitleHeadingRichPasteHandler(options: {
-  editable: boolean
-  editor: ReturnType<typeof useCreateBlockNote>
-  runEditorAction: (action: SuggestionAction) => void
-}) {
-  const { editable, editor, runEditorAction } = options
-
-  return useCallback((event: React.ClipboardEvent<HTMLDivElement>) => {
-    if (!editable) return
-
-    const target = eventTargetElement(event.target)
-    if (!target) return
-
-    const titleHeading = findTitleHeadingElement(target)
-    if (!titleHeading || !event.currentTarget.contains(titleHeading)) return
-
-    const text = richClipboardPlainText(event.clipboardData)
-    if (!text) return
-
-    event.preventDefault()
-    runEditorAction(() => {
-      editor.focus()
-      editor.insertInlineContent(text, { updateSelection: true })
-    })
-  }, [editable, editor, runEditorAction])
-}
-
-function queueTitleHeadingCursorRepair(
-  target: HTMLElement,
-  editor: ReturnType<typeof useCreateBlockNote>,
-): boolean {
-  const titleHeading = findTitleHeadingElement(target)
-  if (!titleHeading) return false
-
-  queueMicrotask(() => {
-    if (isSelectionInsideElement(titleHeading)) return
-
-    const firstBlock = editor.document[0]
-    if (firstBlock?.type !== 'heading') return
-
-    try {
-      editor.setTextCursorPosition(firstBlock.id, 'end')
-    } catch {
-      return
-    }
-    editor.focus()
-  })
-
-  return true
 }
 
 type EditorClientPoint = Pick<MouseEvent, 'clientX' | 'clientY'>
@@ -1379,7 +1305,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
     editor,
     runEditorAction,
   })
-  const handleTitleHeadingRichPaste = useTitleHeadingRichPasteHandler({
+  const handlePasteCapture = useEditorPasteHandler({
     editable,
     editor,
     runEditorAction,
@@ -1414,7 +1340,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
       onMouseLeave={clearCopyTarget}
       onMouseDownCapture={handleMouseDownCapture}
       onMouseMove={handleCodeBlockCopyMouseMove}
-      onPasteCapture={handleTitleHeadingRichPaste}
+      onPasteCapture={handlePasteCapture}
     >
       {isDragOver && (
         <div className="editor__drop-overlay">

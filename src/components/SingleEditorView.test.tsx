@@ -381,6 +381,19 @@ function createTitleHeadingFixture(container: Element) {
   return inlineHeading
 }
 
+function createListItemFixture(container: Element, contentType: 'bulletListItem' | 'checkListItem', text = '') {
+  const listItem = document.createElement('div')
+  listItem.setAttribute('data-content-type', contentType)
+
+  const inlineContent = document.createElement('div')
+  inlineContent.className = 'bn-inline-content'
+  inlineContent.textContent = text
+  listItem.appendChild(inlineContent)
+  container.appendChild(listItem)
+
+  return inlineContent
+}
+
 function clipboardDataFor(formats: Record<string, string>) {
   return {
     getData: vi.fn((format: string) => formats[format] ?? ''),
@@ -859,6 +872,34 @@ describe('SingleEditorView', () => {
     const clipboardData = clipboardDataFor({ 'text/plain': 'Plain Title' })
 
     const didBubble = fireEvent.paste(inlineHeading, { clipboardData })
+
+    expect(didBubble).toBe(true)
+    expect(editor.insertInlineContent).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['bulletListItem', 'Pasted bullet text'],
+    ['checkListItem', 'Pasted checklist text'],
+  ] as const)('routes plain paste in an empty %s through BlockNote insertion', (contentType, text) => {
+    const { container, editor } = renderEditorHarness()
+    const listItem = createListItemFixture(container, contentType)
+    const clipboardData = clipboardDataFor({ 'text/plain': text })
+
+    const didBubble = fireEvent.paste(listItem, { clipboardData })
+
+    expect(didBubble).toBe(false)
+    expect(editor.focus).toHaveBeenCalled()
+    expect(editor.insertInlineContent).toHaveBeenCalledWith(text, {
+      updateSelection: true,
+    })
+  })
+
+  it('leaves non-empty list item paste on BlockNote native handling', () => {
+    const { container, editor } = renderEditorHarness()
+    const listItem = createListItemFixture(container, 'bulletListItem', 'Existing text')
+    const clipboardData = clipboardDataFor({ 'text/plain': 'Plain Title' })
+
+    const didBubble = fireEvent.paste(listItem, { clipboardData })
 
     expect(didBubble).toBe(true)
     expect(editor.insertInlineContent).not.toHaveBeenCalled()
