@@ -15,12 +15,10 @@ import { PulseView } from './components/PulseView'
 import { StatusBar } from './components/StatusBar'
 import { SettingsPanel } from './components/SettingsPanel'
 import { CloneVaultModal } from './components/CloneVaultModal'
-import { WelcomeScreen } from './components/WelcomeScreen'
-import { AiAgentsOnboardingPrompt } from './components/AiAgentsOnboardingPrompt'
-import { TelemetryConsentDialog } from './components/TelemetryConsentDialog'
 import { FeedbackDialog } from './components/FeedbackDialog'
 import { McpSetupDialog } from './components/McpSetupDialog'
 import { NoteRetargetingDialogs } from './components/note-retargeting/NoteRetargetingDialogs'
+import { StartupScreen } from './components/StartupScreen'
 import { useTelemetry } from './hooks/useTelemetry'
 import { useMcpStatus } from './hooks/useMcpStatus'
 import { useAiAgentsOnboarding } from './hooks/useAiAgentsOnboarding'
@@ -73,6 +71,12 @@ import { useAppSave } from './hooks/useAppSave'
 import { useNoteRetargetingUi } from './hooks/useNoteRetargetingUi'
 import { useVaultBridge } from './hooks/useVaultBridge'
 import { useSavedViewOrdering } from './hooks/useSavedViewOrdering'
+import {
+  useNeighborhoodEntry,
+  useNeighborhoodEscape,
+  useNeighborhoodHistoryBack,
+  useSelectionSanitizer,
+} from './hooks/useNeighborhoodSelection'
 import { createViewFilename } from './utils/viewFilename'
 import { nextViewOrder } from './utils/viewOrdering'
 import type { CommitDiffRequest } from './hooks/useDiffMode'
@@ -115,14 +119,6 @@ import { extractDeletedContentFromDiff } from './components/note-list/noteListUt
 import { isActiveVaultUnavailableError } from './utils/vaultErrors'
 import { hasNoteIconValue } from './utils/noteIcon'
 import { filenameStemToTitle } from './utils/noteTitle'
-import {
-  focusNoteListContainer,
-  isEditableElement,
-  isEditorEscapeTarget,
-  popNeighborhoodHistory,
-  pushNeighborhoodHistory,
-  shouldProcessNeighborhoodEscape,
-} from './utils/neighborhoodHistory'
 import { OPEN_AI_CHAT_EVENT } from './utils/aiPromptBridge'
 import {
   INBOX_SELECTION,
@@ -244,18 +240,15 @@ function App() {
     if (!options?.preserveNeighborhoodHistory && sel.kind !== 'entity') {
       neighborhoodHistoryRef.current = []
     }
+    selectionRef.current = sel
     setSelection(sel)
     setNoteListFilter('open')
   }, [])
-  const handleEnterNeighborhood = useCallback((entry: VaultEntry) => {
-    const nextSelection: SidebarSelection = { kind: 'entity', entry }
-    neighborhoodHistoryRef.current = pushNeighborhoodHistory(
-      neighborhoodHistoryRef.current,
-      selectionRef.current,
-      nextSelection,
-    )
-    handleSetSelection(nextSelection, { preserveNeighborhoodHistory: true })
-  }, [handleSetSelection])
+  const handleEnterNeighborhood = useNeighborhoodEntry({
+    neighborhoodHistoryRef,
+    selectionRef,
+    setSelection: handleSetSelection,
+  })
   const layout = useLayoutPanels(noteWindowParams ? { initialInspectorCollapsed: true } : undefined)
   const { setInspectorCollapsed } = layout
   const visibleNotesRef = useRef<VaultEntry[]>([])
@@ -419,31 +412,19 @@ function App() {
   const explicitOrganizationEnabled = isExplicitOrganizationEnabled(vaultConfig.inbox?.explicitOrganization)
   const effectiveSelection = sanitizeSelectionForOrganization(selection, vaultConfig.inbox?.explicitOrganization)
 
-  useEffect(() => {
-    selectionRef.current = effectiveSelection
-  }, [effectiveSelection])
+  useSelectionSanitizer({
+    effectiveSelection,
+    neighborhoodHistoryRef,
+    selection,
+    selectionRef,
+    setNoteListFilter,
+    setSelection,
+  })
 
-  useEffect(() => {
-    if (effectiveSelection !== selection) {
-      if (effectiveSelection.kind !== 'entity') {
-        neighborhoodHistoryRef.current = []
-      }
-      setSelection(effectiveSelection)
-      setNoteListFilter('open')
-    }
-  }, [effectiveSelection, selection])
-
-  const handleNeighborhoodHistoryBack = useCallback(() => {
-    const { previousSelection, nextHistory } = popNeighborhoodHistory(neighborhoodHistoryRef.current)
-    if (!previousSelection) return false
-
-    neighborhoodHistoryRef.current = nextHistory
-    handleSetSelection(previousSelection, { preserveNeighborhoodHistory: true })
-    requestAnimationFrame(() => {
-      focusNoteListContainer(document)
-    })
-    return true
-  }, [handleSetSelection])
+  const handleNeighborhoodHistoryBack = useNeighborhoodHistoryBack({
+    neighborhoodHistoryRef,
+    setSelection: handleSetSelection,
+  })
 
   const handleSaveExplicitOrganization = useCallback((enabled: boolean) => {
     updateConfig('inbox', {
@@ -1409,30 +1390,11 @@ function App() {
     || showFeedback
   )
 
-  useEffect(() => {
-    const handleWindowKeyDown = (event: KeyboardEvent) => {
-      if (!shouldProcessNeighborhoodEscape(event, selectionRef.current, shouldBlockNeighborhoodEscape)) return
-
-      const activeElement = document.activeElement
-      if (isEditorEscapeTarget(activeElement)) {
-        event.preventDefault()
-        activeElement.blur()
-        requestAnimationFrame(() => {
-          focusNoteListContainer(document)
-        })
-        return
-      }
-
-      if (isEditableElement(activeElement)) return
-
-      if (handleNeighborhoodHistoryBack()) {
-        event.preventDefault()
-      }
-    }
-
-    window.addEventListener('keydown', handleWindowKeyDown)
-    return () => window.removeEventListener('keydown', handleWindowKeyDown)
-  }, [handleNeighborhoodHistoryBack, shouldBlockNeighborhoodEscape])
+  useNeighborhoodEscape({
+    onBack: handleNeighborhoodHistoryBack,
+    selectionRef,
+    shouldBlockNeighborhoodEscape,
+  })
 
   const noteListColumnsLabel = useMemo(() => {
     if (effectiveSelection.kind === 'view') {
@@ -1684,53 +1646,33 @@ function App() {
 
   const isStartupLoading = !noteWindowParams && onboarding.state.status === 'loading'
 
-  // Show telemetry consent dialog on first launch (skip for note windows).
-  // After the user answers, the next render can continue into onboarding.
-  if (!noteWindowParams && !isStartupLoading && settingsLoaded && settings.telemetry_consent === null) {
+  const shouldShowStartupScreen = !noteWindowParams && (
+    (!isStartupLoading && settingsLoaded && settings.telemetry_consent === null)
+    || Boolean(runtimeMissingVaultPath)
+    || onboarding.state.status === 'welcome'
+    || onboarding.state.status === 'vault-missing'
+    || shouldResumeFreshStartOnboarding
+    || (onboarding.state.status === 'ready' && aiAgentsOnboarding.showPrompt && !showMcpSetupDialog)
+  )
+  if (shouldShowStartupScreen) {
     return (
-      <TelemetryConsentDialog
-        onAccept={() => {
-          const id = crypto.randomUUID()
-          saveSettings({ ...settings, telemetry_consent: true, crash_reporting_enabled: true, analytics_enabled: true, anonymous_id: id })
-        }}
-        onDecline={() => {
-          saveSettings({ ...settings, telemetry_consent: false, crash_reporting_enabled: false, analytics_enabled: false, anonymous_id: null })
-        }}
+      <StartupScreen
+        aiAgentsOnboarding={aiAgentsOnboarding}
+        aiAgentsStatus={aiAgentsStatus}
+        isOffline={networkStatus.isOffline}
+        isStartupLoading={isStartupLoading}
+        noteWindowParams={noteWindowParams}
+        onboarding={onboarding}
+        runtimeMissingVaultPath={runtimeMissingVaultPath}
+        saveSettings={saveSettings}
+        settings={settings}
+        settingsLoaded={settingsLoaded}
+        shouldResumeFreshStartOnboarding={shouldResumeFreshStartOnboarding}
+        showMcpSetupDialog={showMcpSetupDialog}
+        setToastMessage={setToastMessage}
+        toastMessage={toastMessage}
+        vaultSwitcher={vaultSwitcher}
       />
-    )
-  }
-
-  // Show welcome/onboarding screen when vault doesn't exist (skip for note windows — vault path is known)
-  if (!noteWindowParams && (runtimeMissingVaultPath || onboarding.state.status === 'welcome' || onboarding.state.status === 'vault-missing' || shouldResumeFreshStartOnboarding)) {
-    const welcomeOnboarding = runtimeMissingVaultPath
-      ? {
-          ...onboarding,
-          state: {
-            status: 'vault-missing' as const,
-            vaultPath: runtimeMissingVaultPath,
-            defaultPath: vaultSwitcher.defaultPath || runtimeMissingVaultPath,
-          },
-        }
-      : shouldResumeFreshStartOnboarding
-      ? { ...onboarding, state: { status: 'welcome' as const, defaultPath: vaultSwitcher.vaultPath } }
-      : onboarding
-    return <WelcomeView onboarding={welcomeOnboarding} isOffline={networkStatus.isOffline} />
-  }
-
-  if (
-    !noteWindowParams
-    && onboarding.state.status === 'ready'
-    && aiAgentsOnboarding.showPrompt
-    && !showMcpSetupDialog
-  ) {
-    return (
-      <>
-        <AiAgentsOnboardingView
-          statuses={aiAgentsStatus}
-          onContinue={aiAgentsOnboarding.dismissPrompt}
-        />
-        <Toast message={toastMessage} onDismiss={() => setToastMessage(null)} />
-      </>
     )
   }
 
@@ -1901,44 +1843,6 @@ function App() {
             onCancel={folderActions.cancelDeleteFolder}
           />
         )}
-    </div>
-  )
-}
-
-type OnboardingState = ReturnType<typeof useOnboarding>
-
-/** Welcome screen view - extracted from main App component */
-function WelcomeView({ onboarding, isOffline }: { onboarding: OnboardingState; isOffline: boolean }) {
-  const state = onboarding.state as { status: 'welcome' | 'vault-missing'; defaultPath: string; vaultPath?: string }
-  return (
-    <div className="app-shell">
-      <WelcomeScreen
-        mode={state.status === 'welcome' ? 'welcome' : 'vault-missing'}
-        missingPath={state.status === 'vault-missing' ? state.vaultPath : undefined}
-        defaultVaultPath={state.defaultPath}
-        onCreateVault={onboarding.handleCreateVault}
-        onRetryCreateVault={onboarding.retryCreateVault}
-        onCreateEmptyVault={onboarding.handleCreateEmptyVault}
-        onOpenFolder={onboarding.handleOpenFolder}
-        isOffline={isOffline}
-        creatingAction={onboarding.creatingAction}
-        error={onboarding.error}
-        canRetryTemplate={onboarding.canRetryTemplate}
-      />
-    </div>
-  )
-}
-
-function AiAgentsOnboardingView({
-  statuses,
-  onContinue,
-}: {
-  statuses: ReturnType<typeof useAiAgentsStatus>
-  onContinue: () => void
-}) {
-  return (
-    <div className="app-shell">
-      <AiAgentsOnboardingPrompt statuses={statuses} onContinue={onContinue} />
     </div>
   )
 }

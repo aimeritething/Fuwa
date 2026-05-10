@@ -6,6 +6,7 @@ import {
   isEditableElement,
   popNeighborhoodHistory,
   pushNeighborhoodHistory,
+  resolveNeighborhoodSelection,
   selectionsEqual,
   shouldProcessNeighborhoodEscape,
 } from './neighborhoodHistory'
@@ -60,6 +61,21 @@ describe('neighborhoodHistory', () => {
   it('pushes the current selection when Neighborhood pivots to a different context', () => {
     expect(pushNeighborhoodHistory([], inboxSelection, alphaSelection)).toEqual([inboxSelection])
     expect(pushNeighborhoodHistory([inboxSelection], alphaSelection, alphaSelection)).toEqual([inboxSelection])
+  })
+
+  it('resolves Neighborhood entry as enter, switch, or exit actions', () => {
+    expect(resolveNeighborhoodSelection(inboxSelection, alphaSelection.entry)).toEqual({
+      action: 'enter',
+      selection: alphaSelection,
+    })
+    expect(resolveNeighborhoodSelection(alphaSelection, betaSelection.entry)).toEqual({
+      action: 'switch',
+      selection: betaSelection,
+    })
+    expect(resolveNeighborhoodSelection(alphaSelection, buildEntry('/vault/alpha.md', 'Alpha copy'))).toEqual({
+      action: 'exit',
+      selection: { kind: 'filter', filter: 'all' },
+    })
   })
 
   it('pops one level of note-list history at a time', () => {
