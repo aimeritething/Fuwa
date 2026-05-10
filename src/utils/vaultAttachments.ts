@@ -189,6 +189,10 @@ export function isTauriAssetUrl({ url }: UrlRequest): boolean {
   return assetUrlPrefix({ url }) !== null
 }
 
+export function filesystemPathFromAssetUrl({ url }: UrlRequest): AbsolutePath | null {
+  return resolveAssetPath({ url })
+}
+
 export function isCurrentVaultAssetUrl({
   url,
   vaultPath,
