@@ -619,6 +619,42 @@ describe('App', () => {
     })
   })
 
+  it('persists a Cmd+N note before opening it in the editor', async () => {
+    const dateNow = vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
+    let resolveSave!: () => void
+    const saveNoteContent = vi.fn(() => new Promise<void>((resolve) => {
+      resolveSave = resolve
+    }))
+    mockCommandResults.save_note_content = saveNoteContent
+
+    try {
+      render(<App />)
+      await screen.findByText('All Notes')
+
+      fireEvent.keyDown(window, { key: 'n', code: 'KeyN', metaKey: true })
+
+      await waitFor(() => {
+        expect(saveNoteContent).toHaveBeenCalledWith({
+          path: '/vault/untitled-note-1700000000.md',
+          content: '---\ntype: Note\n---\n\n# \n\n',
+        })
+      })
+      expect(window.__laputaTest?.activeTabPath).not.toBe('/vault/untitled-note-1700000000.md')
+
+      await act(async () => {
+        resolveSave()
+        await Promise.resolve()
+      })
+
+      await waitFor(() => {
+        expect(window.__laputaTest?.activeTabPath).toBe('/vault/untitled-note-1700000000.md')
+      })
+      expect(screen.getAllByText('Untitled Note 1700000000').length).toBeGreaterThan(0)
+    } finally {
+      dateNow.mockRestore()
+    }
+  })
+
   it('shows visible feedback when a manual update check finds an update', async () => {
     vi.mocked(useUpdater).mockReturnValue(createMockUpdaterResult(async () => ({
       kind: 'available',
