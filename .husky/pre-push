@@ -28,6 +28,23 @@
 # ─────────────────────────────────────────────────────────────────────────
 set -e
 
+ensure_cargo_tooling() {
+  if command -v cargo >/dev/null 2>&1; then
+    return 0
+  fi
+
+  if [ -s "$HOME/.cargo/env" ]; then
+    # shellcheck disable=SC1091
+    . "$HOME/.cargo/env"
+  fi
+
+  if ! command -v cargo >/dev/null 2>&1; then
+    echo "❌ cargo must be available before pushing"
+    echo "   Install Rust via https://rustup.rs or ensure ~/.cargo/bin is in PATH."
+    exit 1
+  fi
+}
+
 ensure_node_tooling() {
   if command -v node >/dev/null 2>&1 && command -v pnpm >/dev/null 2>&1; then
     return 0
@@ -85,6 +102,7 @@ else
 fi
 require_main_push
 ensure_node_tooling
+ensure_cargo_tooling
 
 START_TIME=$(date +%s)
 

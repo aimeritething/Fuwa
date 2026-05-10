@@ -51,6 +51,15 @@ pub struct ChatStreamRequest {
     pub session_id: Option<String>,
 }
 
+const CLAUDE_SAFE_AGENT_TOOLS: &str = "Read,Edit,MultiEdit,Write,Glob,Grep,LS";
+const CLAUDE_POWER_USER_AGENT_TOOLS: &str = "Read,Edit,MultiEdit,Write,Glob,Grep,LS,Bash";
+const CLAUDE_CHAT_DISALLOWED_TOOLS_COMPAT: &str =
+    "Bash,Glob,Grep,Read,Edit,Write,NotebookEdit,WebFetch,WebSearch,TodoWrite,Task,MultiEdit,LS";
+const CLAUDE_SAFE_DISALLOWED_TOOLS_COMPAT: &str =
+    "Bash,NotebookEdit,WebFetch,WebSearch,TodoWrite,Task";
+const CLAUDE_POWER_USER_DISALLOWED_TOOLS_COMPAT: &str =
+    "NotebookEdit,WebFetch,WebSearch,TodoWrite,Task";
+
 // ---------------------------------------------------------------------------
 // Finding the `claude` binary
 // ---------------------------------------------------------------------------
@@ -218,11 +227,36 @@ where
 {
     let bin = find_claude_binary()?;
     let args = build_chat_args(&req);
-    run_claude_subprocess(&bin, &args, None, &mut emit)
+    let fallback_args = [build_chat_args_compat(&req)];
+    run_claude_subprocess(
+        ClaudeSubprocessRequest {
+            bin: &bin,
+            args: &args,
+            fallback_args: &fallback_args,
+            cwd: None,
+        },
+        &mut emit,
+    )
 }
 
 /// Build CLI arguments for a chat stream request.
 fn build_chat_args(req: &ChatStreamRequest) -> Vec<String> {
+    build_chat_args_with_tool_policy(req, "--tools", String::new())
+}
+
+fn build_chat_args_compat(req: &ChatStreamRequest) -> Vec<String> {
+    build_chat_args_with_tool_policy(
+        req,
+        "--disallowedTools",
+        CLAUDE_CHAT_DISALLOWED_TOOLS_COMPAT.into(),
+    )
+}
+
+fn build_chat_args_with_tool_policy(
+    req: &ChatStreamRequest,
+    tool_flag: &str,
+    tool_value: String,
+) -> Vec<String> {
     let mut args: Vec<String> = vec![
         "-p".into(),
         req.message.clone(),
@@ -230,8 +264,8 @@ fn build_chat_args(req: &ChatStreamRequest) -> Vec<String> {
         "stream-json".into(),
         "--verbose".into(),
         "--include-partial-messages".into(),
-        "--tools".into(),
-        String::new(), // empty string → disable all built-in tools
+        tool_flag.into(),
+        tool_value,
     ];
 
     if let Some(ref sp) = req.system_prompt {
@@ -256,12 +290,44 @@ where
 {
     let bin = find_claude_binary()?;
     let args = build_agent_args(&req)?;
-    run_claude_subprocess(&bin, &args, Some(&req.vault_path), &mut emit)
+    let fallback_args = vec![
+        build_agent_args_without_session_persistence(&req)?,
+        build_agent_args_compat(&req)?,
+    ];
+    run_claude_subprocess(
+        ClaudeSubprocessRequest {
+            bin: &bin,
+            args: &args,
+            fallback_args: &fallback_args,
+            cwd: Some(&req.vault_path),
+        },
+        &mut emit,
+    )
 }
 
 /// Build CLI arguments for an agent stream request.
 /// Native tools (bash, read, write, edit) are enabled by default — no `--tools ""`.
 fn build_agent_args(req: &AgentStreamRequest) -> Result<Vec<String>, String> {
+    build_agent_args_with_tool_policy(req, ClaudeAgentToolPolicy::strict(req.permission_mode))
+}
+
+fn build_agent_args_without_session_persistence(
+    req: &AgentStreamRequest,
+) -> Result<Vec<String>, String> {
+    build_agent_args_with_tool_policy(
+        req,
+        ClaudeAgentToolPolicy::strict_without_session_persistence(req.permission_mode),
+    )
+}
+
+fn build_agent_args_compat(req: &AgentStreamRequest) -> Result<Vec<String>, String> {
+    build_agent_args_with_tool_policy(req, ClaudeAgentToolPolicy::compat(req.permission_mode))
+}
+
+fn build_agent_args_with_tool_policy(
+    req: &AgentStreamRequest,
+    policy: ClaudeAgentToolPolicy,
+) -> Result<Vec<String>, String> {
     let mcp_config = build_mcp_config(&req.vault_path)?;
 
     let mut args: Vec<String> = vec![
@@ -276,14 +342,22 @@ fn build_agent_args(req: &AgentStreamRequest) -> Result<Vec<String>, String> {
         "--strict-mcp-config".into(),
         "--permission-mode".into(),
         "acceptEdits".into(),
-        "--tools".into(),
-        agent_tools(req.permission_mode).into(),
-        "--no-session-persistence".into(),
+        policy.tool_flag.into(),
+        policy.tool_value.into(),
     ];
 
-    if let Some(allowed_tools) = preapproved_agent_tools(req.permission_mode) {
+    if policy.include_session_persistence_flag {
+        args.push("--no-session-persistence".into());
+    }
+
+    if let Some(allowed_tools) = policy.preapproved_tools {
         args.push("--allowedTools".into());
         args.push(allowed_tools.into());
+    }
+
+    if let Some(disallowed_tools) = policy.disallowed_tools {
+        args.push("--disallowedTools".into());
+        args.push(disallowed_tools.into());
     }
 
     if let Some(ref sp) = req.system_prompt {
@@ -296,10 +370,47 @@ fn build_agent_args(req: &AgentStreamRequest) -> Result<Vec<String>, String> {
     Ok(args)
 }
 
+struct ClaudeAgentToolPolicy {
+    tool_flag: &'static str,
+    tool_value: &'static str,
+    include_session_persistence_flag: bool,
+    preapproved_tools: Option<&'static str>,
+    disallowed_tools: Option<&'static str>,
+}
+
+impl ClaudeAgentToolPolicy {
+    fn strict(permission_mode: AiAgentPermissionMode) -> Self {
+        Self {
+            tool_flag: "--tools",
+            tool_value: agent_tools(permission_mode),
+            include_session_persistence_flag: true,
+            preapproved_tools: preapproved_agent_tools(permission_mode),
+            disallowed_tools: None,
+        }
+    }
+
+    fn strict_without_session_persistence(permission_mode: AiAgentPermissionMode) -> Self {
+        Self {
+            include_session_persistence_flag: false,
+            ..Self::strict(permission_mode)
+        }
+    }
+
+    fn compat(permission_mode: AiAgentPermissionMode) -> Self {
+        Self {
+            tool_flag: "--allowedTools",
+            tool_value: agent_tools(permission_mode),
+            include_session_persistence_flag: false,
+            preapproved_tools: None,
+            disallowed_tools: Some(disallowed_agent_tools_compat(permission_mode)),
+        }
+    }
+}
+
 fn agent_tools(permission_mode: AiAgentPermissionMode) -> &'static str {
     match permission_mode {
-        AiAgentPermissionMode::Safe => "Read,Edit,MultiEdit,Write,Glob,Grep,LS",
-        AiAgentPermissionMode::PowerUser => "Read,Edit,MultiEdit,Write,Glob,Grep,LS,Bash",
+        AiAgentPermissionMode::Safe => CLAUDE_SAFE_AGENT_TOOLS,
+        AiAgentPermissionMode::PowerUser => CLAUDE_POWER_USER_AGENT_TOOLS,
     }
 }
 
@@ -307,6 +418,13 @@ fn preapproved_agent_tools(permission_mode: AiAgentPermissionMode) -> Option<&'s
     match permission_mode {
         AiAgentPermissionMode::Safe => None,
         AiAgentPermissionMode::PowerUser => Some("Bash"),
+    }
+}
+
+fn disallowed_agent_tools_compat(permission_mode: AiAgentPermissionMode) -> &'static str {
+    match permission_mode {
+        AiAgentPermissionMode::Safe => CLAUDE_SAFE_DISALLOWED_TOOLS_COMPAT,
+        AiAgentPermissionMode::PowerUser => CLAUDE_POWER_USER_DISALLOWED_TOOLS_COMPAT,
     }
 }
 
@@ -340,45 +458,62 @@ struct StreamState {
     emitted_text: bool,
 }
 
+struct ClaudeSubprocessRequest<'a> {
+    bin: &'a PathBuf,
+    args: &'a [String],
+    fallback_args: &'a [Vec<String>],
+    cwd: Option<&'a str>,
+}
+
 /// Core subprocess runner shared by chat and agent modes.
 /// When `cwd` is `Some`, the subprocess starts with that working directory.
 fn run_claude_subprocess<F>(
-    bin: &PathBuf,
-    args: &[String],
-    cwd: Option<&str>,
+    request: ClaudeSubprocessRequest<'_>,
     emit: &mut F,
 ) -> Result<String, String>
 where
     F: FnMut(ClaudeStreamEvent),
 {
-    let mut state = StreamState {
-        session_id: String::new(),
-        tool_inputs: HashMap::new(),
-        current_tool_id: None,
-        emitted_text: false,
-    };
+    let attempts = std::iter::once(request.args)
+        .chain(request.fallback_args.iter().map(Vec::as_slice))
+        .enumerate();
 
-    let cmd = build_claude_command(bin, args, cwd);
-    let run = crate::cli_agent_runtime::run_json_line_process(
-        cmd,
-        "claude",
-        emit,
-        |message| ClaudeStreamEvent::Error { message },
-        |json, emit, session_id| {
-            dispatch_event(json, &mut state, emit);
-            *session_id = state.session_id.clone();
-        },
-    )?;
+    for (index, attempt_args) in attempts {
+        let mut state = StreamState {
+            session_id: String::new(),
+            tool_inputs: HashMap::new(),
+            current_tool_id: None,
+            emitted_text: false,
+        };
 
-    if !run.status.success() && state.session_id.is_empty() {
-        emit(ClaudeStreamEvent::Error {
-            message: format_failed_claude_exit(&run.stderr_output, run.status),
-        });
+        let cmd = build_claude_command(request.bin, attempt_args, request.cwd);
+        let run = crate::cli_agent_runtime::run_json_line_process(
+            cmd,
+            "claude",
+            emit,
+            |message| ClaudeStreamEvent::Error { message },
+            |json, emit, session_id| {
+                dispatch_event(json, &mut state, emit);
+                *session_id = state.session_id.clone();
+            },
+        )?;
+
+        if !run.status.success() && state.session_id.is_empty() {
+            let has_fallback = index < request.fallback_args.len();
+            if has_fallback && is_unsupported_claude_flag_error(&run.stderr_output) {
+                continue;
+            }
+
+            emit(ClaudeStreamEvent::Error {
+                message: format_failed_claude_exit(&run.stderr_output, run.status),
+            });
+        }
+
+        emit(ClaudeStreamEvent::Done);
+        return Ok(state.session_id);
     }
 
-    emit(ClaudeStreamEvent::Done);
-
-    Ok(state.session_id)
+    Ok(String::new())
 }
 
 fn build_claude_command(
@@ -416,6 +551,24 @@ fn is_claude_auth_error(stderr_output: &str) -> bool {
     ["not logged in", "authentication", "auth"]
         .iter()
         .any(|pattern| lower.contains(pattern))
+}
+
+fn is_unsupported_claude_flag_error(stderr_output: &str) -> bool {
+    let lower = stderr_output.to_ascii_lowercase();
+    let mentions_compat_flag = ["--tools", "--no-session-persistence"]
+        .iter()
+        .any(|flag| lower.contains(flag));
+    let looks_unsupported = [
+        "unknown option",
+        "unknown argument",
+        "unrecognized option",
+        "unexpected argument",
+        "unknown command-line option",
+    ]
+    .iter()
+    .any(|pattern| lower.contains(pattern));
+
+    mentions_compat_flag && looks_unsupported
 }
 
 /// Parse a single JSON line from the stream and emit the appropriate event.
@@ -806,6 +959,60 @@ mod tests {
     }
 
     #[test]
+    fn chat_args_compat_disallows_builtin_tools_when_tools_flag_is_unavailable() {
+        let args = build_chat_args_compat(&chat_request!("hello", None, None));
+
+        assert_args_contain!(args, ["--disallowedTools"]);
+        assert_args_lack!(args, ["--tools"]);
+        assert!(arg_value_after(&args, "--disallowedTools")
+            .is_some_and(|tools| tools.contains("NotebookEdit")));
+    }
+
+    #[test]
+    fn agent_args_compat_uses_allowed_and_disallowed_tools_without_removed_flags() {
+        let args = build_agent_args_compat(&agent_request!(
+            "Rename the note",
+            None,
+            AiAgentPermissionMode::Safe,
+        ))
+        .unwrap();
+
+        assert_eq!(
+            arg_value_after(&args, "--allowedTools"),
+            Some("Read,Edit,MultiEdit,Write,Glob,Grep,LS")
+        );
+        assert_args_contain!(args, ["--disallowedTools"]);
+        assert_args_lack!(args, ["--tools"]);
+        assert_args_lack!(args, ["--no-session-persistence"]);
+    }
+
+    #[test]
+    fn agent_args_without_session_persistence_keeps_tools_allowlist() {
+        let args = build_agent_args_without_session_persistence(&agent_request!(
+            "Rename the note",
+            None,
+            AiAgentPermissionMode::Safe,
+        ))
+        .unwrap();
+
+        assert_args_contain!(args, ["--tools", "Read,Edit,MultiEdit,Write,Glob,Grep,LS"]);
+        assert_args_lack!(args, ["--no-session-persistence"]);
+    }
+
+    #[test]
+    fn unsupported_claude_flag_errors_are_detected() {
+        assert!(is_unsupported_claude_flag_error(
+            "error: unknown option '--tools'"
+        ));
+        assert!(is_unsupported_claude_flag_error(
+            "Unknown argument: --no-session-persistence"
+        ));
+        assert!(!is_unsupported_claude_flag_error(
+            "Claude CLI is not authenticated"
+        ));
+    }
+
+    #[test]
     fn build_mcp_config_is_valid_json() {
         if let Ok(config_str) = build_mcp_config("/tmp/test-vault") {
             let parsed: serde_json::Value = serde_json::from_str(&config_str).unwrap();
@@ -1176,7 +1383,15 @@ mod tests {
         std::fs::write(&path, script).unwrap();
         std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
         let mut events = vec![];
-        let result = run_claude_subprocess(&path, args, None, &mut |e| events.push(e));
+        let result = run_claude_subprocess(
+            ClaudeSubprocessRequest {
+                bin: &path,
+                args,
+                fallback_args: &[],
+                cwd: None,
+            },
+            &mut |e| events.push(e),
+        );
         (result, events)
     }
 
@@ -1194,6 +1409,54 @@ mod tests {
         assert!(matches!(&events[1], ClaudeStreamEvent::TextDelta { text } if text == "Hi"));
         assert!(matches!(&events[2], ClaudeStreamEvent::Result { .. }));
         assert!(matches!(&events[3], ClaudeStreamEvent::Done));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn run_subprocess_retries_with_fallback_args_for_removed_flags() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("mock-claude");
+        std::fs::write(
+            &path,
+            concat!(
+                "#!/bin/sh\n",
+                "for arg in \"$@\"; do\n",
+                "  if [ \"$arg\" = \"--tools\" ]; then\n",
+                "    echo \"error: unknown option '--tools'\" >&2\n",
+                "    exit 1\n",
+                "  fi\n",
+                "done\n",
+                "echo '{\"type\":\"system\",\"subtype\":\"init\",\"session_id\":\"fallback\"}'\n",
+                "echo '{\"type\":\"result\",\"result\":\"Done\",\"session_id\":\"fallback\"}'\n",
+            ),
+        )
+        .unwrap();
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o755)).unwrap();
+
+        let args = vec!["--tools".to_string(), "Read".to_string()];
+        let fallback_args = vec![vec!["--allowedTools".to_string(), "Read".to_string()]];
+        let mut events = vec![];
+        let result = run_claude_subprocess(
+            ClaudeSubprocessRequest {
+                bin: &path,
+                args: &args,
+                fallback_args: &fallback_args,
+                cwd: None,
+            },
+            &mut |event| events.push(event),
+        );
+
+        assert_eq!(result.unwrap(), "fallback");
+        assert!(matches!(
+            events.first(),
+            Some(ClaudeStreamEvent::Init { session_id }) if session_id == "fallback"
+        ));
+        assert!(!events
+            .iter()
+            .any(|event| matches!(event, ClaudeStreamEvent::Error { .. })));
+        assert!(matches!(events.last(), Some(ClaudeStreamEvent::Done)));
     }
 
     #[test]
@@ -1255,7 +1518,15 @@ mod tests {
         ];
         std::env::set_var("TOLARIA_STDIN_PROBE_MOCK_CLAUDE_CHILD", "1");
         let mut events = vec![];
-        let result = run_claude_subprocess(&fake_bin, &args, None, &mut |event| events.push(event));
+        let result = run_claude_subprocess(
+            ClaudeSubprocessRequest {
+                bin: &fake_bin,
+                args: &args,
+                fallback_args: &[],
+                cwd: None,
+            },
+            &mut |event| events.push(event),
+        );
         std::env::remove_var("TOLARIA_STDIN_PROBE_MOCK_CLAUDE_CHILD");
 
         assert_eq!(result.unwrap(), "stdin-ok");
@@ -1542,7 +1813,15 @@ mod tests {
     fn run_subprocess_spawn_failure() {
         let fake_bin = PathBuf::from("/nonexistent/binary/path");
         let mut events = vec![];
-        let result = run_claude_subprocess(&fake_bin, &[], None, &mut |e| events.push(e));
+        let result = run_claude_subprocess(
+            ClaudeSubprocessRequest {
+                bin: &fake_bin,
+                args: &[],
+                fallback_args: &[],
+                cwd: None,
+            },
+            &mut |e| events.push(e),
+        );
         assert!(result.is_err());
         assert!(result.unwrap_err().contains("Failed to start claude"));
     }

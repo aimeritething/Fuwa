@@ -20,6 +20,7 @@ pub(crate) fn build_command(
         .arg("--prompt")
         .arg(build_prompt(request))
         .env("GEMINI_CLI_SYSTEM_SETTINGS_PATH", settings_path)
+        .env("GEMINI_CLI_TRUST_WORKSPACE", "true")
         .env("NO_COLOR", "1")
         .current_dir(&request.vault_path)
         .stdin(Stdio::null())
@@ -125,6 +126,11 @@ mod tests {
         assert_eq!(command.get_current_dir(), Some(Path::new("/tmp/vault")));
         assert!(settings_path.is_some());
         assert!(settings_dir.path().join("settings.json").exists());
+        let trust_workspace = command
+            .get_envs()
+            .find(|(key, _)| *key == OsStr::new("GEMINI_CLI_TRUST_WORKSPACE"))
+            .and_then(|(_, value)| value);
+        assert_eq!(trust_workspace, Some(OsStr::new("true")));
     }
 
     #[test]
