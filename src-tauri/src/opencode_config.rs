@@ -7,8 +7,12 @@ pub(crate) fn build_command(
     binary: &Path,
     request: &AgentStreamRequest,
 ) -> Result<std::process::Command, String> {
-    let mut command = crate::hidden_command(binary);
+    let target = crate::cli_agent_runtime::command_target_avoiding_windows_cmd_shim(binary)?;
+    let mut command = crate::hidden_command(&target.program);
     crate::cli_agent_runtime::configure_agent_command_environment(&mut command, binary);
+    if let Some(first_arg) = target.first_arg {
+        command.arg(first_arg);
+    }
     command
         .args(build_args())
         .arg(build_prompt(request))
@@ -87,11 +91,23 @@ mod tests {
     #[test]
     fn args_use_documented_safe_run_mode() {
         let args = build_args();
+        let forbidden_args = (
+            args.contains(&"--dangerously-skip-permissions".to_string()),
+            args.contains(&"--dir".to_string()),
+            args.contains(&"--thinking".to_string()),
+        );
 
-        assert_eq!(args, vec!["run", "--format", "json"]);
-        assert!(!args.contains(&"--dangerously-skip-permissions".to_string()));
-        assert!(!args.contains(&"--dir".to_string()));
-        assert!(!args.contains(&"--thinking".to_string()));
+        assert_eq!(
+            (args, forbidden_args),
+            (
+                vec![
+                    "run".to_string(),
+                    "--format".to_string(),
+                    "json".to_string()
+                ],
+                (false, false, false),
+            )
+        );
     }
 
     #[test]
@@ -103,13 +119,67 @@ mod tests {
             .find(|(key, _)| *key == OsStr::new("OPENCODE_CONFIG_CONTENT"))
             .and_then(|(_, value)| value);
 
-        assert_eq!(command.get_program(), OsStr::new("opencode"));
-        assert_eq!(actual_args[0], OsStr::new("run"));
-        assert_eq!(actual_args[1], OsStr::new("--format"));
-        assert_eq!(actual_args[2], OsStr::new("json"));
-        assert_eq!(actual_args.last(), Some(&OsStr::new("Rename the note")));
-        assert_eq!(command.get_current_dir(), Some(Path::new("/tmp/vault")));
-        assert!(config_value.is_some());
+        assert_eq!(
+            (
+                command.get_program(),
+                actual_args[0],
+                actual_args[1],
+                actual_args[2],
+                actual_args.last().copied(),
+                command.get_current_dir(),
+                config_value.is_some(),
+            ),
+            (
+                OsStr::new("opencode"),
+                OsStr::new("run"),
+                OsStr::new("--format"),
+                OsStr::new("json"),
+                Some(OsStr::new("Rename the note")),
+                Some(Path::new("/tmp/vault")),
+                true,
+            )
+        );
+    }
+
+    #[test]
+    fn command_avoids_windows_cmd_shim_for_run_args() {
+        let dir = tempfile::tempdir().unwrap();
+        let shim = dir.path().join("opencode.cmd");
+        let script = dir
+            .path()
+            .join("node_modules")
+            .join("opencode")
+            .join("bin")
+            .join("opencode.js");
+        std::fs::create_dir_all(script.parent().unwrap()).unwrap();
+        std::fs::write(&script, "console.log('opencode')\n").unwrap();
+        std::fs::write(
+            &shim,
+            r#"@ECHO off
+"%_prog%" "%~dp0\node_modules\opencode\bin\opencode.js" %*
+"#,
+        )
+        .unwrap();
+
+        let command = build_command(&shim, &request()).unwrap();
+        let actual_args = command.get_args().collect::<Vec<_>>();
+
+        assert_ne!(
+            command.get_program(),
+            shim.as_os_str(),
+            "OpenCode npm .cmd shims cannot be spawned directly on Windows"
+        );
+        assert_eq!(
+            (
+                actual_args.first().copied(),
+                actual_args.iter().any(|arg| *arg == OsStr::new("run")),
+                actual_args.iter().any(|arg| *arg == OsStr::new("json")),
+                actual_args
+                    .iter()
+                    .any(|arg| *arg == OsStr::new("Rename the note")),
+            ),
+            (Some(script.as_os_str()), true, true, true)
+        );
     }
 
     #[test]
@@ -118,19 +188,28 @@ mod tests {
             build_config("/tmp/vault", crate::ai_agents::AiAgentPermissionMode::Safe)
         {
             let json: serde_json::Value = serde_json::from_str(&config).unwrap();
-            assert_eq!(json["permission"]["edit"], "allow");
-            assert_eq!(json["permission"]["external_directory"], "deny");
-            assert_eq!(json["permission"]["bash"], "deny");
-            assert_eq!(json["mcp"]["tolaria"]["type"], "local");
-            assert_eq!(json["mcp"]["tolaria"]["command"][0], "node");
             assert_eq!(
-                json["mcp"]["tolaria"]["environment"]["VAULT_PATH"],
-                "/tmp/vault"
+                (
+                    json["permission"]["edit"].as_str(),
+                    json["permission"]["external_directory"].as_str(),
+                    json["permission"]["bash"].as_str(),
+                    json["mcp"]["tolaria"]["type"].as_str(),
+                    json["mcp"]["tolaria"]["command"][0].as_str(),
+                    json["mcp"]["tolaria"]["environment"]["VAULT_PATH"].as_str(),
+                    json["mcp"]["tolaria"]["command"][1]
+                        .as_str()
+                        .is_some_and(|path| path.ends_with("index.js")),
+                ),
+                (
+                    Some("allow"),
+                    Some("deny"),
+                    Some("deny"),
+                    Some("local"),
+                    Some("node"),
+                    Some("/tmp/vault"),
+                    true,
+                )
             );
-            assert!(json["mcp"]["tolaria"]["command"][1]
-                .as_str()
-                .unwrap()
-                .ends_with("index.js"));
         }
     }
 
