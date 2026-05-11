@@ -54,21 +54,51 @@ interface EditorRightPanelProps {
   dateDisplayFormat?: DateDisplayFormat
 }
 
-export function EditorRightPanel({
-  showAIChat, showTableOfContents, inspectorCollapsed, inspectorWidth,
-  editor,
-  defaultAiAgent = DEFAULT_AI_AGENT, defaultAiTarget, defaultAiAgentReadiness, defaultAiAgentReady = true,
-  onUnsupportedAiPaste,
-  inspectorEntry, inspectorContent, entries, gitHistory, vaultPath,
-  vaultPaths,
-  noteList, noteListFilter,
-  onToggleInspector, onToggleAIChat, onToggleTableOfContents, onNavigateWikilink, onViewCommitDiff,
-  onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onChangeWorkspace, onInitializeProperties, onToggleRawEditor, onOpenNote,
-  onFileCreated, onFileModified, onVaultChanged,
-  workspaces,
+type AiPanelSectionProps = Pick<
+  EditorRightPanelProps,
+  | 'defaultAiAgent'
+  | 'defaultAiAgentReadiness'
+  | 'defaultAiAgentReady'
+  | 'defaultAiTarget'
+  | 'entries'
+  | 'inspectorEntry'
+  | 'inspectorWidth'
+  | 'locale'
+  | 'noteList'
+  | 'noteListFilter'
+  | 'onFileCreated'
+  | 'onFileModified'
+  | 'onOpenNote'
+  | 'onToggleAIChat'
+  | 'onUnsupportedAiPaste'
+  | 'onVaultChanged'
+  | 'vaultPath'
+  | 'vaultPaths'
+> & {
+  activeNoteContent: string | null
+}
+
+function AiPanelSection({
+  activeNoteContent,
+  defaultAiAgent = DEFAULT_AI_AGENT,
+  defaultAiAgentReadiness,
+  defaultAiAgentReady = true,
+  defaultAiTarget,
+  entries,
+  inspectorEntry,
+  inspectorWidth,
   locale,
-  dateDisplayFormat,
-}: EditorRightPanelProps) {
+  noteList,
+  noteListFilter,
+  onFileCreated,
+  onFileModified,
+  onOpenNote,
+  onToggleAIChat,
+  onUnsupportedAiPaste,
+  onVaultChanged,
+  vaultPath,
+  vaultPaths,
+}: AiPanelSectionProps) {
   const aiPanelController = useAiPanelController({
     vaultPath,
     vaultPaths,
@@ -77,7 +107,7 @@ export function EditorRightPanel({
     defaultAiAgentReady,
     defaultAiAgentReadiness,
     activeEntry: inspectorEntry,
-    activeNoteContent: inspectorContent,
+    activeNoteContent,
     entries,
     noteList,
     noteListFilter,
@@ -98,6 +128,43 @@ export function EditorRightPanel({
     return () => window.removeEventListener(NEW_AI_CHAT_EVENT, handleRequestedNewChat)
   }, [handleNewChat])
 
+  return (
+    <div
+      className="shrink-0 flex flex-col min-h-0"
+      style={{ width: inspectorWidth, minWidth: 240, height: '100%' }}
+    >
+      <AiPanelView
+        controller={aiPanelController}
+        onClose={() => onToggleAIChat?.()}
+        onOpenNote={onOpenNote}
+        onUnsupportedAiPaste={onUnsupportedAiPaste}
+        defaultAiAgent={defaultAiAgent}
+        defaultAiTarget={defaultAiTarget}
+        defaultAiAgentReadiness={defaultAiAgentReadiness}
+        defaultAiAgentReady={defaultAiAgentReady}
+        locale={locale}
+        activeEntry={inspectorEntry}
+        entries={entries}
+      />
+    </div>
+  )
+}
+
+export function EditorRightPanel({
+  showAIChat, showTableOfContents, inspectorCollapsed, inspectorWidth,
+  editor,
+  defaultAiAgent = DEFAULT_AI_AGENT, defaultAiTarget, defaultAiAgentReadiness, defaultAiAgentReady = true,
+  onUnsupportedAiPaste,
+  inspectorEntry, inspectorContent, entries, gitHistory, vaultPath,
+  vaultPaths,
+  noteList, noteListFilter,
+  onToggleInspector, onToggleAIChat, onToggleTableOfContents, onNavigateWikilink, onViewCommitDiff,
+  onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onChangeWorkspace, onInitializeProperties, onToggleRawEditor, onOpenNote,
+  onFileCreated, onFileModified, onVaultChanged,
+  workspaces,
+  locale,
+  dateDisplayFormat,
+}: EditorRightPanelProps) {
   if (!inspectorCollapsed) {
     return (
       <div
@@ -149,26 +216,27 @@ export function EditorRightPanel({
   }
 
   if (showAIChat) {
-    return (
-      <div
-        className="shrink-0 flex flex-col min-h-0"
-        style={{ width: inspectorWidth, minWidth: 240, height: '100%' }}
-      >
-        <AiPanelView
-          controller={aiPanelController}
-          onClose={() => onToggleAIChat?.()}
-          onOpenNote={onOpenNote}
-          onUnsupportedAiPaste={onUnsupportedAiPaste}
-          defaultAiAgent={defaultAiAgent}
-          defaultAiTarget={defaultAiTarget}
-          defaultAiAgentReadiness={defaultAiAgentReadiness}
-          defaultAiAgentReady={defaultAiAgentReady}
-          locale={locale}
-          activeEntry={inspectorEntry}
-          entries={entries}
-        />
-      </div>
-    )
+    return <AiPanelSection
+      activeNoteContent={inspectorContent}
+      defaultAiAgent={defaultAiAgent}
+      defaultAiAgentReadiness={defaultAiAgentReadiness}
+      defaultAiAgentReady={defaultAiAgentReady}
+      defaultAiTarget={defaultAiTarget}
+      entries={entries}
+      inspectorEntry={inspectorEntry}
+      inspectorWidth={inspectorWidth}
+      locale={locale}
+      noteList={noteList}
+      noteListFilter={noteListFilter}
+      onFileCreated={onFileCreated}
+      onFileModified={onFileModified}
+      onOpenNote={onOpenNote}
+      onToggleAIChat={onToggleAIChat}
+      onUnsupportedAiPaste={onUnsupportedAiPaste}
+      onVaultChanged={onVaultChanged}
+      vaultPath={vaultPath}
+      vaultPaths={vaultPaths}
+    />
   }
 
   return null

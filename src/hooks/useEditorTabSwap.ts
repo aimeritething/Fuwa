@@ -567,13 +567,38 @@ function preserveUntitledRenameState(options: {
     editorMountedRef,
     editorContentPathRef,
   })
-  requestAnimationFrame(() => signalEditorTabSwapped(activeTabPath))
+  requestNextFrame(() => signalEditorTabSwapped(activeTabPath))
   return true
 }
 
 function signalTabSwap(options: { path: string }) {
   const { path } = options
-  requestAnimationFrame(() => signalEditorTabSwapped(path))
+  requestNextFrame(() => signalEditorTabSwapped(path))
+}
+
+function requestNextFrame(callback: FrameRequestCallback): void {
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(callback)
+    return
+  }
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(callback)
+    return
+  }
+
+  setTimeout(() => callback(Date.now()), 0)
+}
+
+function schedulePostPaint(callback: () => void): void {
+  if (typeof window === 'undefined' || typeof window.requestAnimationFrame !== 'function') {
+    setTimeout(callback, 0)
+    return
+  }
+
+  window.requestAnimationFrame(() => {
+    window.setTimeout(callback, 0)
+  })
 }
 
 function clearStaleSwap(options: {
@@ -787,7 +812,7 @@ function scheduleTabSwap(options: {
   }
 
   if (editor.prosemirrorView) {
-    queueMicrotask(doSwap)
+    schedulePostPaint(doSwap)
     return
   }
   pendingSwapRef.current = doSwap

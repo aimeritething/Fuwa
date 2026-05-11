@@ -300,12 +300,6 @@ function flushQueuedFrames(frameCallbacks: FrameRequestCallback[]) {
   })
 }
 
-function flushQueuedMicrotasks(queued: VoidFunction[]) {
-  act(() => {
-    queued.splice(0).forEach((callback) => callback())
-  })
-}
-
 type SwapHarnessProps = {
   tabs: ReturnType<typeof makeTab>[]
   activeTabPath: string | null
@@ -775,14 +769,7 @@ describe('useEditorTabSwap raw mode sync', () => {
 
     await act(() => new Promise(r => setTimeout(r, 0)))
 
-    const queued: Array<() => void> = []
-    vi.spyOn(globalThis, 'queueMicrotask').mockImplementation((cb: VoidFunction) => {
-      queued.push(cb)
-    })
-
     rerender({ tabs: [untitledTab], activeTabPath: 'untitled.md' })
-
-    expect(queued).toHaveLength(1)
 
     act(() => {
       result.current.handleEditorChange()
@@ -790,10 +777,7 @@ describe('useEditorTabSwap raw mode sync', () => {
 
     expect(onContentChange).not.toHaveBeenCalled()
 
-    await act(async () => {
-      queued.shift()?.()
-      await Promise.resolve()
-    })
+    await flushEditorTick()
   })
 
   it('ignores delayed programmatic change events until a swapped note frame commits', async () => {
@@ -838,19 +822,8 @@ describe('useEditorTabSwap raw mode sync', () => {
     })
     docRef.current = staleAlphaBlocks
 
-    const queued: VoidFunction[] = []
-    vi.spyOn(globalThis, 'queueMicrotask').mockImplementation((cb: VoidFunction) => {
-      queued.push(cb)
-    })
-
     rerender({ tabs: [tabB], activeTabPath: 'b.md' })
-    act(() => {
-      queued.shift()?.()
-    })
-    await act(async () => {
-      await Promise.resolve()
-    })
-    flushQueuedMicrotasks(queued)
+    await flushEditorTick()
 
     act(() => {
       result.current.handleEditorChange()

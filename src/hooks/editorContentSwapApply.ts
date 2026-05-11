@@ -93,10 +93,24 @@ function commitAppliedEditorContent(options: AppliedEditorContentCommit) {
     targetPath,
   } = options
 
-  requestAnimationFrame(() => {
+  requestNextFrame(() => {
     editorContentPathRef.current = targetPath
     suppressChangeRef.current = false
     const scrollEl = document.querySelector(EDITOR_CONTAINER_SELECTOR)
     if (scrollEl) scrollEl.scrollTop = scrollTop
   })
+}
+
+function requestNextFrame(callback: FrameRequestCallback): void {
+  if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+    window.requestAnimationFrame(callback)
+    return
+  }
+
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(callback)
+    return
+  }
+
+  setTimeout(() => callback(Date.now()), 0)
 }

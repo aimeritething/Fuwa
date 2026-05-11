@@ -5,6 +5,7 @@ import { subscribeNoteContentResolved } from './noteContentCache'
 export const PARSED_BLOCK_PRELOAD_MIN_BYTES = 32 * 1024
 export const PARSED_BLOCK_PRELOAD_DELAY_MS = 1800
 export const PARSED_BLOCK_PRELOAD_FOREGROUND_IDLE_MS = 1500
+export const PARSED_BLOCK_PRELOAD_ENABLED = false
 
 type PrepareParsedBlocks = (event: NoteContentResolvedEvent) => Promise<void>
 
@@ -17,6 +18,7 @@ interface ParsedBlockPreloadOptions {
 }
 
 function canPreloadParsedBlocks(event: NoteContentResolvedEvent, activeTabPath: string | null): boolean {
+  if (!PARSED_BLOCK_PRELOAD_ENABLED) return false
   const { entry } = event
   if (!entry || entry.path === activeTabPath) return false
   if ((entry.fileKind ?? 'markdown') !== 'markdown') return false

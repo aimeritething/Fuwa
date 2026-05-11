@@ -162,10 +162,10 @@ export function loadVaultViews({ vaultPath }: VaultPathOptions): Promise<ViewFil
     .then(normalizeViewFiles)
 }
 
-export async function loadVaultData({ vaultPath, vaults, defaultWorkspacePath }: MountedVaultEntriesOptions): Promise<LoadedVaultData> {
+export async function loadVaultData({ vaultPath, vaults, defaultWorkspacePath, forceReload }: MountedVaultEntriesOptions): Promise<LoadedVaultData> {
   if (!isTauri()) console.info('[mock] Using mock Tauri data for browser testing')
   const entries = vaults?.length
-    ? await loadMountedVaultEntries({ vaultPath, vaults, defaultWorkspacePath })
+    ? await loadMountedVaultEntries({ vaultPath, vaults, defaultWorkspacePath, forceReload })
     : await loadVaultEntries({ vaultPath })
   console.log(`Vault scan complete: ${entries.length} entries found`)
   return { entries }

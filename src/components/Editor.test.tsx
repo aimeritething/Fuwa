@@ -220,6 +220,20 @@ function renderEditor(overrides: Partial<EditorComponentProps> = {}) {
   return render(<Editor {...defaultProps} {...overrides} />)
 }
 
+async function flushEditorSwapWork() {
+  for (let i = 0; i < 4; i += 1) {
+    await act(async () => {
+      if (typeof window.requestAnimationFrame === 'function') {
+        await new Promise<void>((resolve) => {
+          window.requestAnimationFrame(() => resolve())
+        })
+      }
+      await new Promise(resolve => setTimeout(resolve, 0))
+      await Promise.resolve()
+    })
+  }
+}
+
 describe('Editor', () => {
   beforeEach(() => {
     blockNoteCreation.options = []
@@ -407,7 +421,7 @@ describe('Editor', () => {
         expect(blockNoteViewState.onChange).toEqual(expect.any(Function))
         expect(flushPendingEditorContentRef.current).toEqual(expect.any(Function))
       })
-      await act(async () => { await new Promise(resolve => setTimeout(resolve, 0)) })
+      await flushEditorSwapWork()
 
       mockEditor.blocksToMarkdownLossy.mockReturnValueOnce('# Test Project\n\nEdited rich body.\n')
 
@@ -556,8 +570,8 @@ describe('Editor', () => {
 
   // Regression: editor content did not appear on first load because BlockNote's
   // replaceBlocks/insertBlocks internally calls flushSync, which fails silently
-  // when invoked from within React's useEffect. Fix: defer via queueMicrotask.
-  it('applies parsed content blocks via deferred microtask (regression: flushSync-in-lifecycle)', async () => {
+  // when invoked from within React's useEffect. Fix: defer outside the effect.
+  it('applies parsed content blocks after deferred swap work (regression: flushSync-in-lifecycle)', async () => {
     const testBlocks = [
       { id: 'b1', type: 'paragraph', content: [{ type: 'text', text: 'Hello world' }], props: {}, children: [] },
     ]

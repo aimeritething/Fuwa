@@ -72,6 +72,7 @@ async function loadInitialVaultEntriesState(options: Pick<
       vaultPath: path,
       vaults: initialVaultsForPath(path, options.vaults),
       defaultWorkspacePath: options.defaultWorkspacePath,
+      forceReload: true,
     })
     if (isCurrentVaultPath(path)) {
       handleVaultAvailable(path)
