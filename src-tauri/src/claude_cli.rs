@@ -486,7 +486,7 @@ where
             emitted_text: false,
         };
 
-        let cmd = build_claude_command(request.bin, attempt_args, request.cwd);
+        let cmd = build_claude_command(request.bin, attempt_args, request.cwd)?;
         let run = crate::cli_agent_runtime::run_json_line_process(
             cmd,
             "claude",
@@ -517,12 +517,16 @@ where
 }
 
 fn build_claude_command(
-    bin: &PathBuf,
+    bin: &Path,
     args: &[String],
     cwd: Option<&str>,
-) -> std::process::Command {
-    let mut cmd = crate::hidden_command(bin);
+) -> Result<std::process::Command, String> {
+    let target = crate::cli_agent_runtime::command_target_avoiding_windows_cmd_shim(bin)?;
+    let mut cmd = crate::hidden_command(&target.program);
     crate::cli_agent_runtime::configure_agent_command_environment(&mut cmd, bin);
+    if let Some(first_arg) = target.first_arg {
+        cmd.arg(first_arg);
+    }
     cmd.args(args)
         .env_remove("CLAUDECODE") // prevent "nested session" guard
         .stdin(Stdio::null())
@@ -531,7 +535,7 @@ fn build_claude_command(
     if let Some(dir) = cwd {
         cmd.current_dir(dir);
     }
-    cmd
+    Ok(cmd)
 }
 
 fn format_failed_claude_exit(stderr_output: &str, status: ExitStatus) -> String {
@@ -1344,7 +1348,7 @@ mod tests {
     fn build_claude_command_keeps_streaming_process_contract() {
         let bin = PathBuf::from("claude");
         let args = vec!["-p".to_string(), "hello".to_string()];
-        let command = build_claude_command(&bin, &args, Some("/tmp/vault"));
+        let command = build_claude_command(&bin, &args, Some("/tmp/vault")).unwrap();
         let actual_args: Vec<OsString> = command.get_args().map(OsStr::to_os_string).collect();
         let claude_code_env = command
             .get_envs()
@@ -1365,6 +1369,46 @@ mod tests {
                 Some(None),
             ),
         );
+    }
+
+    #[test]
+    fn build_claude_command_avoids_windows_cmd_shim_for_prompt_args() {
+        let dir = tempfile::tempdir().unwrap();
+        let shim = dir.path().join("claude.cmd");
+        let script = dir
+            .path()
+            .join("node_modules")
+            .join("@anthropic-ai")
+            .join("claude-code")
+            .join("cli.js");
+        std::fs::create_dir_all(script.parent().unwrap()).unwrap();
+        std::fs::write(&script, "console.log('claude')\n").unwrap();
+        std::fs::write(
+            &shim,
+            r#"@ECHO off
+"%_prog%" "%~dp0\node_modules\@anthropic-ai\claude-code\cli.js" %*
+"#,
+        )
+        .unwrap();
+
+        let args = vec![
+            "-p".to_string(),
+            "Rename the note after reading the active vault".to_string(),
+        ];
+        let command = build_claude_command(&shim, &args, Some("/tmp/vault")).unwrap();
+        let actual_args = command.get_args().collect::<Vec<_>>();
+
+        assert_ne!(
+            command.get_program(),
+            shim.as_os_str(),
+            "Claude npm .cmd shims cannot safely receive prompt args directly"
+        );
+        assert_eq!(actual_args.first().copied(), Some(script.as_os_str()));
+        assert!(actual_args.iter().any(|arg| *arg == OsStr::new("-p")));
+        assert!(actual_args
+            .iter()
+            .any(|arg| *arg == OsStr::new("Rename the note after reading the active vault")));
+        assert_eq!(command.get_current_dir(), Some(Path::new("/tmp/vault")));
     }
 
     #[cfg(unix)]
