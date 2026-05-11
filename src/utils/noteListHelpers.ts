@@ -481,6 +481,20 @@ function isDirectRootEntry(entryPath: string, rootPath?: string): boolean {
   return relativePath.length > 0 && !relativePath.includes('/')
 }
 
+function pathRelativeToRoot(entryPath: string, rootPath?: string): string | null {
+  const normalizedRootPath = rootPath ? normalizeFolderPath(rootPath) : ''
+  if (!normalizedRootPath) return normalizeFolderPath(entryPath)
+
+  const normalizedEntryPath = normalizeFolderPath(entryPath)
+  if (!normalizedEntryPath.startsWith(`${normalizedRootPath}/`)) return null
+  return normalizedEntryPath.slice(normalizedRootPath.length + 1)
+}
+
+function isEntryInSelectedFolder(entryPath: string, folderRelPath: string, rootPath?: string): boolean {
+  const relativeEntryPath = pathRelativeToRoot(entryPath, rootPath)
+  return relativeEntryPath ? isInFolder(relativeEntryPath, folderRelPath) : false
+}
+
 function filterRootEntries(entries: VaultEntry[], rootPath: string | undefined, subFilter?: NoteListFilter): VaultEntry[] {
   const rootEntries = entries.filter((entry) => isDirectRootEntry(entry.path, rootPath))
   return subFilter ? applySubFilter(rootEntries, subFilter) : rootEntries.filter(isActive)
@@ -489,7 +503,7 @@ function filterRootEntries(entries: VaultEntry[], rootPath: string | undefined, 
 function filterFolderEntries(entries: VaultEntry[], selection: Extract<SidebarSelection, { kind: 'folder' }>, subFilter?: NoteListFilter): VaultEntry[] {
   if (!selection.path) return filterRootEntries(entries, selection.rootPath, subFilter)
   // Folder view shows ALL files (text + binary), not just markdown
-  const folderEntries = entries.filter((entry) => isInFolder(entry.path, selection.path))
+  const folderEntries = entries.filter((entry) => isEntryInSelectedFolder(entry.path, selection.path, selection.rootPath))
   return subFilter ? applySubFilter(folderEntries, subFilter) : folderEntries.filter(isActive)
 }
 

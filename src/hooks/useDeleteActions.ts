@@ -15,9 +15,15 @@ interface UseDeleteActionsInput {
   onDeselectNote: (path: string) => void
   removeEntry: (path: string) => void
   removeEntries?: (paths: string[]) => void
+  resolveVaultPathForPath?: (path: string) => string | null | undefined
   refreshModifiedFiles: () => Promise<unknown> | void
   reloadVault: () => Promise<unknown> | void
   setToastMessage: (msg: string | null) => void
+}
+
+interface DeleteCommandBatch {
+  paths: string[]
+  vaultPath?: string
 }
 
 function describeNotes(count: number): string {
@@ -43,15 +49,49 @@ function buildPartialDeleteMessage(deletedCount: number, requestedCount: number)
   return `Deleted ${deletedCount} of ${requestedCount} notes. The note list was reloaded to recover failed items.`
 }
 
-async function runDeleteCommand(paths: string[]): Promise<string[]> {
-  if (isTauri()) return invoke<string[]>('batch_delete_notes_async', { paths })
-  return mockInvoke<string[]>('batch_delete_notes', { paths })
+function deleteCommandArgs({ paths, vaultPath }: DeleteCommandBatch): { paths: string[]; vaultPath?: string } {
+  return vaultPath ? { paths, vaultPath } : { paths }
+}
+
+function groupDeletePathsByVault(
+  paths: string[],
+  resolveVaultPathForPath?: (path: string) => string | null | undefined,
+): DeleteCommandBatch[] {
+  if (!resolveVaultPathForPath) return [{ paths }]
+
+  const batches = new Map<string, DeleteCommandBatch>()
+  for (const path of paths) {
+    const vaultPath = resolveVaultPathForPath(path)?.trim() || undefined
+    const key = vaultPath ?? ''
+    const batch = batches.get(key)
+    if (batch) {
+      batch.paths.push(path)
+      continue
+    }
+    batches.set(key, { paths: [path], vaultPath })
+  }
+
+  return [...batches.values()]
+}
+
+async function runDeleteCommand(
+  paths: string[],
+  resolveVaultPathForPath?: (path: string) => string | null | undefined,
+): Promise<string[]> {
+  const batches = groupDeletePathsByVault(paths, resolveVaultPathForPath)
+  const deletedGroups = await Promise.all(batches.map((batch) => (
+    isTauri()
+      ? invoke<string[]>('batch_delete_notes_async', deleteCommandArgs(batch))
+      : mockInvoke<string[]>('batch_delete_notes', deleteCommandArgs(batch))
+  )))
+  return deletedGroups.flat()
 }
 
 function useDeleteRunner({
   onDeselectNote,
   removeEntry,
   removeEntries,
+  resolveVaultPathForPath,
   refreshModifiedFiles,
   reloadVault,
   setToastMessage,
@@ -84,7 +124,7 @@ function useDeleteRunner({
     optimisticallyRemoveEntries(paths)
 
     try {
-      const deletedPaths = await runDeleteCommand(paths)
+      const deletedPaths = await runDeleteCommand(paths, resolveVaultPathForPath)
       const deletedCount = deletedPaths.length
 
       if (deletedCount > 0) {
@@ -107,7 +147,7 @@ function useDeleteRunner({
     } finally {
       setPendingDeleteCount((count) => Math.max(0, count - paths.length))
     }
-  }, [optimisticallyRemoveEntries, reconcileDeleteFailure, refreshModifiedFiles, setToastMessage])
+  }, [optimisticallyRemoveEntries, reconcileDeleteFailure, refreshModifiedFiles, resolveVaultPathForPath, setToastMessage])
 
   const deleteNoteFromDisk = useCallback(async (path: string) => {
     const deletedCount = await deleteNotesFromDisk([path])
@@ -125,6 +165,7 @@ export function useDeleteActions({
   onDeselectNote,
   removeEntry,
   removeEntries,
+  resolveVaultPathForPath,
   refreshModifiedFiles,
   reloadVault,
   setToastMessage,
@@ -138,6 +179,7 @@ export function useDeleteActions({
     onDeselectNote,
     removeEntry,
     removeEntries,
+    resolveVaultPathForPath,
     refreshModifiedFiles,
     reloadVault,
     setToastMessage,

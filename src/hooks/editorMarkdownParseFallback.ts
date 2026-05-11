@@ -20,6 +20,20 @@ function buildMarkdownSourceBlocks(markdown: string): EditorBlocks {
   return markdown.split('\n').map(buildSourceLineBlock)
 }
 
+function parsedBlocksOrSourceFallback(blocks: EditorBlocks, sourceMarkdown: string): MarkdownParseResult {
+  const normalizedBlocks = normalizeParsedImageBlocks(blocks)
+  if (normalizedBlocks.length > 0 || sourceMarkdown.trim().length === 0) {
+    return {
+      blocks: normalizedBlocks,
+      usedSourceFallback: false,
+    }
+  }
+  return {
+    blocks: buildMarkdownSourceBlocks(sourceMarkdown),
+    usedSourceFallback: true,
+  }
+}
+
 export async function parseMarkdownBlocksWithFallback(options: {
   parseMarkdownBlocks: ParseMarkdownBlocks
   preprocessed: string
@@ -29,10 +43,7 @@ export async function parseMarkdownBlocksWithFallback(options: {
   const { parseMarkdownBlocks, preprocessed, sourceMarkdown, context } = options
 
   try {
-    return {
-      blocks: normalizeParsedImageBlocks(await parseMarkdownBlocks(preprocessed)),
-      usedSourceFallback: false,
-    }
+    return parsedBlocksOrSourceFallback(await parseMarkdownBlocks(preprocessed), sourceMarkdown)
   } catch (error) {
     console.warn(`[editor] Rendering ${context} as plain Markdown because BlockNote could not parse it:`, error)
     return {

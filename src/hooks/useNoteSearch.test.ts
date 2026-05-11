@@ -86,6 +86,40 @@ describe('useNoteSearch', () => {
     expect(result.current.results[0].noteIcon).toBe('🚀')
   })
 
+  it('keeps workspace identity separate from the title when multiple workspaces are searchable', () => {
+    const personalWorkspace = {
+      id: 'personal',
+      label: 'Personal',
+      alias: 'personal',
+      path: '/personal',
+      shortLabel: 'PE',
+      color: 'blue',
+      icon: null,
+      mounted: true,
+      available: true,
+      defaultForNewNotes: true,
+    }
+    const teamWorkspace = {
+      id: 'team',
+      label: 'Team',
+      alias: 'team',
+      path: '/team',
+      shortLabel: 'TE',
+      color: 'green',
+      icon: null,
+      mounted: true,
+      available: true,
+      defaultForNewNotes: false,
+    }
+    const { result } = renderHook(() => useNoteSearch([
+      makeEntry({ path: '/personal/a.md', title: 'Alpha', workspace: personalWorkspace }),
+      makeEntry({ path: '/team/b.md', title: 'Beta', workspace: teamWorkspace }),
+    ], ''))
+
+    expect(result.current.results[0].title).toBe('Alpha')
+    expect(result.current.results[0].workspace).toBe(personalWorkspace)
+  })
+
   it('starts with selectedIndex 0', () => {
     const { result } = renderHook(() => useNoteSearch(entries, ''))
     expect(result.current.selectedIndex).toBe(0)

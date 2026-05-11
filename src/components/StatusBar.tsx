@@ -60,10 +60,13 @@ interface StatusBarProps {
   noteCount: number
   modifiedCount?: number
   vaultPath: string
-  vaults: VaultOption[]
   defaultWorkspacePath?: string | null
+  vaults: VaultOption[]
+  multiWorkspaceEnabled?: boolean
   onSwitchVault: (path: string) => void
+  onSetDefaultWorkspace?: (path: string) => void
   onOpenSettings?: () => void
+  onOpenVaultSettings?: () => void
   onOpenLocalFolder?: () => void
   onCreateEmptyVault?: () => void
   onCloneVault?: () => void
@@ -91,7 +94,6 @@ interface StatusBarProps {
   buildNumber?: string
   onCheckForUpdates?: () => void
   onRemoveVault?: (path: string) => void
-  onSetDefaultWorkspace?: (path: string) => void
   onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   mcpStatus?: McpStatus
   onInstallMcp?: () => void
@@ -116,9 +118,12 @@ interface StatusBarFooterProps extends StatusBarProps {
 function StatusBarPrimaryFromFooter({
   modifiedCount = 0,
   vaultPath,
-  vaults,
   defaultWorkspacePath,
+  vaults,
+  multiWorkspaceEnabled,
   onSwitchVault,
+  onSetDefaultWorkspace,
+  onOpenVaultSettings,
   onOpenLocalFolder,
   onCreateEmptyVault,
   onCloneVault,
@@ -140,7 +145,6 @@ function StatusBarPrimaryFromFooter({
   buildNumber,
   onCheckForUpdates,
   onRemoveVault,
-  onSetDefaultWorkspace,
   onUpdateWorkspaceIdentity,
   mcpStatus,
   onInstallMcp,
@@ -162,9 +166,12 @@ function StatusBarPrimaryFromFooter({
     <StatusBarPrimarySection
       modifiedCount={modifiedCount}
       vaultPath={vaultPath}
-      vaults={vaults}
       defaultWorkspacePath={defaultWorkspacePath}
+      vaults={vaults}
+      multiWorkspaceEnabled={multiWorkspaceEnabled}
       onSwitchVault={onSwitchVault}
+      onSetDefaultWorkspace={onSetDefaultWorkspace}
+      onOpenVaultSettings={onOpenVaultSettings}
       onOpenLocalFolder={onOpenLocalFolder}
       onCreateEmptyVault={onCreateEmptyVault}
       onCloneVault={onCloneVault}
@@ -186,7 +193,6 @@ function StatusBarPrimaryFromFooter({
       buildNumber={buildNumber}
       onCheckForUpdates={onCheckForUpdates}
       onRemoveVault={onRemoveVault}
-      onSetDefaultWorkspace={onSetDefaultWorkspace}
       onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
       mcpStatus={mcpStatus}
       onInstallMcp={onInstallMcp}

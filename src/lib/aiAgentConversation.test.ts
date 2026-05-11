@@ -124,6 +124,7 @@ describe('aiAgentConversation', () => {
       agent: 'codex',
       agentDocsPath: undefined,
       permissionMode: 'safe',
+      vaultPaths: undefined,
       vaultContext: undefined,
     })
     expect(trimHistoryMock).toHaveBeenCalledWith([
@@ -158,6 +159,7 @@ describe('aiAgentConversation', () => {
       agent: 'codex',
       agentDocsPath: '/docs',
       permissionMode: 'power_user',
+      vaultPaths: undefined,
       vaultContext: 'CONTEXT',
     })
     expect(result.systemPrompt).toBe('SYSTEM')

@@ -252,9 +252,13 @@ function NoteListLayoutHeader({
   title,
   typeDocument,
   isEntityView,
+  isChangesView,
   listSort,
   listDirection,
   customProperties,
+  gitRepositories,
+  selectedGitRepositoryPath,
+  onGitRepositoryChange,
   locale,
   sidebarCollapsed,
   searchVisible,
@@ -273,9 +277,13 @@ function NoteListLayoutHeader({
   | 'title'
   | 'typeDocument'
   | 'isEntityView'
+  | 'isChangesView'
   | 'listSort'
   | 'listDirection'
   | 'customProperties'
+  | 'gitRepositories'
+  | 'selectedGitRepositoryPath'
+  | 'onGitRepositoryChange'
   | 'locale'
   | 'sidebarCollapsed'
   | 'searchVisible'
@@ -295,9 +303,13 @@ function NoteListLayoutHeader({
       title={title}
       typeDocument={typeDocument}
       isEntityView={isEntityView}
+      isChangesView={isChangesView}
       listSort={listSort}
       listDirection={listDirection}
       customProperties={customProperties}
+      gitRepositories={gitRepositories}
+      selectedGitRepositoryPath={selectedGitRepositoryPath}
+      onGitRepositoryChange={onGitRepositoryChange}
       locale={locale}
       sidebarCollapsed={sidebarCollapsed}
       searchVisible={searchVisible}

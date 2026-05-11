@@ -154,10 +154,11 @@ function serializePersistedVaultSnapshot(
     activeVault,
     defaultWorkspacePath,
     hiddenDefaults,
-    vaults: vaults.map(({ label, path, alias, color, icon, mounted }) => ({
+    vaults: vaults.map(({ label, path, alias, shortLabel, color, icon, mounted }) => ({
       label,
       path,
       alias: alias ?? null,
+      shortLabel: shortLabel ?? null,
       color: color ?? null,
       icon: icon ?? null,
       mounted: mounted !== false,
@@ -184,12 +185,6 @@ function syncDefaultVaultExport(path: string) {
 function selectedBridgeVaultPath(selectedVaultPath: string | null): string | null {
   const path = selectedVaultPath?.trim()
   return path ? path : null
-}
-
-async function syncMcpBridgeVault(selectedVaultPath: string | null): Promise<void> {
-  await tauriCall<string>('sync_mcp_bridge_vault', {
-    vaultPath: selectedBridgeVaultPath(selectedVaultPath),
-  })
 }
 
 function isCanonicalGettingStartedPath(path: string, resolvedDefaultPath: string): boolean {
@@ -353,7 +348,13 @@ function buildAllVaults({
   visibleDefaults: VaultOption[]
   extraVaults: VaultOption[]
 }): VaultOption[] {
-  return [...visibleDefaults, ...extraVaults]
+  const vaultsByPath = new Map<string, VaultOption>()
+  for (const vault of visibleDefaults) vaultsByPath.set(vault.path, vault)
+  for (const vault of extraVaults) {
+    const existingVault = vaultsByPath.get(vault.path)
+    vaultsByPath.set(vault.path, existingVault ? { ...existingVault, ...vault, path: vault.path } : vault)
+  }
+  return [...vaultsByPath.values()]
 }
 
 function applyResolvedDefaultPath({
@@ -571,7 +572,9 @@ function useMcpBridgeVaultSync(loaded: boolean, selectedVaultPath: string | null
   useEffect(() => {
     if (!loaded) return
 
-    syncMcpBridgeVault(selectedVaultPath).catch(err => {
+    tauriCall<string>('sync_mcp_bridge_vault', {
+      vaultPath: selectedBridgeVaultPath(selectedVaultPath),
+    }).catch(err => {
       console.warn('Failed to sync MCP bridge vault:', err)
     })
   }, [loaded, selectedVaultPath])
@@ -1236,14 +1239,13 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
     selectedVaultPath,
     vaultPath,
   } = persistedState
-  useMcpBridgeVaultSync(loaded, selectedVaultPath)
-
   const { allVaults, defaultVaults, isGettingStartedHidden } = useVaultCollections(
     defaultAvailable,
     defaultPath,
     hiddenDefaults,
     extraVaults,
   )
+  useMcpBridgeVaultSync(loaded, selectedVaultPath)
   const {
     handleCreateEmptyVault,
     handleOpenLocalFolder,

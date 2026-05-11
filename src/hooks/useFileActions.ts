@@ -44,8 +44,8 @@ export function useFileActions({
     })
   }, [setToastMessage, vaultPath])
 
-  const resolveFolderPath = useCallback((folderPath: string) => (
-    folderAbsolutePath({ vaultPath, folderPath })
+  const resolveFolderPath = useCallback((folderPath: string, rootPath?: string) => (
+    folderAbsolutePath({ vaultPath: rootPath ?? vaultPath, folderPath })
   ), [vaultPath])
 
   const folderActions = useMemo<FolderFileActions>(() => ({
@@ -62,13 +62,18 @@ export function useFileActions({
 
   const revealSelectedFolder = useCallback(() => {
     if (selection.kind !== 'folder') return
-    folderActions.revealFolder(selection.path)
-  }, [folderActions, selection])
+    revealFile(resolveFolderPath(selection.path, selection.rootPath))
+  }, [resolveFolderPath, revealFile, selection])
 
   const copySelectedFolderPath = useCallback(() => {
     if (selection.kind !== 'folder') return
-    folderActions.copyFolderPath(selection.path)
-  }, [folderActions, selection])
+    const absolutePath = resolveFolderPath(selection.path, selection.rootPath)
+    void copyLocalPath(absolutePath)
+      .then(() => setToastMessage('Folder path copied'))
+      .catch((error) => {
+        setToastMessage(fileActionErrorMessage('copy folder path', error))
+      })
+  }, [resolveFolderPath, selection, setToastMessage])
 
   return useMemo(() => ({
     copyFilePath,

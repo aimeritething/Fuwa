@@ -170,6 +170,7 @@ vi.mock('../utils/personMentionSuggestions', () => ({
 vi.mock('../utils/suggestionEnrichment', () => ({
   attachClickHandlers: <T,>(items: T[]) => items,
   enrichSuggestionItems: <T,>(items: T[]) => items,
+  hasMultipleSuggestionWorkspaces: () => false,
 }))
 
 vi.mock('./WikilinkSuggestionMenu', () => ({
@@ -665,6 +666,31 @@ describe('SingleEditorView', () => {
       })
     }).not.toThrow()
     expect(staleItemClick).not.toHaveBeenCalled()
+  })
+
+  it('runs suggestion item clicks when BlockNote keeps the editor DOM outside the React container', () => {
+    const editor = createEditor()
+    editor.domElement = document.createElement('div')
+    document.body.appendChild(editor.domElement)
+    const itemClick = vi.fn()
+
+    try {
+      render(
+        <SingleEditorView
+          editor={editor as never}
+          entries={[makeEntry()]}
+          onNavigateWikilink={vi.fn()}
+        />,
+      )
+
+      ;(state.capturedSuggestionProps['[['].onItemClick as (item: { onItemClick: () => void }) => void)({
+        onItemClick: itemClick,
+      })
+
+      expect(itemClick).toHaveBeenCalledOnce()
+    } finally {
+      editor.domElement.remove()
+    }
   })
 
   it('guards stale click handlers stored on wikilink suggestion items', async () => {

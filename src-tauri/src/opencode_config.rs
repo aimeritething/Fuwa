@@ -18,7 +18,11 @@ pub(crate) fn build_command(
         .arg(build_prompt(request))
         .env(
             "OPENCODE_CONFIG_CONTENT",
-            build_config(&request.vault_path, request.permission_mode)?,
+            build_config(
+                &request.vault_path,
+                &request.vault_paths,
+                request.permission_mode,
+            )?,
         )
         .current_dir(&request.vault_path)
         .stdin(Stdio::null())
@@ -37,9 +41,11 @@ fn build_prompt(request: &AgentStreamRequest) -> String {
 
 fn build_config(
     vault_path: &str,
+    vault_paths: &[String],
     permission_mode: AiAgentPermissionMode,
 ) -> Result<String, String> {
     let mcp_server_path = crate::cli_agent_runtime::mcp_server_path_string()?;
+    let vault_paths = crate::cli_agent_runtime::active_vault_paths_json(vault_path, vault_paths);
 
     serde_json::to_string(&serde_json::json!({
         "$schema": "https://opencode.ai/config.json",
@@ -48,7 +54,10 @@ fn build_config(
             "tolaria": {
                 "type": "local",
                 "command": ["node", mcp_server_path],
-                "environment": { "VAULT_PATH": vault_path },
+                "environment": {
+                    "VAULT_PATH": vault_path,
+                    "VAULT_PATHS": vault_paths
+                },
                 "enabled": true
             }
         }
@@ -84,6 +93,7 @@ mod tests {
             message: "Rename the note".into(),
             system_prompt: None,
             vault_path: "/tmp/vault".into(),
+            vault_paths: Vec::new(),
             permission_mode: crate::ai_agents::AiAgentPermissionMode::Safe,
         }
     }
@@ -184,9 +194,11 @@ mod tests {
 
     #[test]
     fn config_includes_permissions_and_tolaria_mcp_server() {
-        if let Ok(config) =
-            build_config("/tmp/vault", crate::ai_agents::AiAgentPermissionMode::Safe)
-        {
+        if let Ok(config) = build_config(
+            "/tmp/vault",
+            &[],
+            crate::ai_agents::AiAgentPermissionMode::Safe,
+        ) {
             let json: serde_json::Value = serde_json::from_str(&config).unwrap();
             assert_eq!(
                 (
@@ -210,6 +222,14 @@ mod tests {
                     true,
                 )
             );
+            assert_eq!(
+                json["mcp"]["tolaria"]["environment"]["VAULT_PATHS"],
+                r#"["/tmp/vault"]"#
+            );
+            assert!(json["mcp"]["tolaria"]["command"][1]
+                .as_str()
+                .unwrap()
+                .ends_with("index.js"));
         }
     }
 
@@ -217,6 +237,7 @@ mod tests {
     fn power_user_config_allows_bash_but_keeps_external_directories_denied() {
         if let Ok(config) = build_config(
             "/tmp/vault",
+            &[],
             crate::ai_agents::AiAgentPermissionMode::PowerUser,
         ) {
             let json: serde_json::Value = serde_json::from_str(&config).unwrap();

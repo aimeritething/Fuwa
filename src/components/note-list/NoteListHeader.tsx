@@ -10,31 +10,11 @@ import { trackEvent } from '../../lib/telemetry'
 import { useDragRegion } from '../../hooks/useDragRegion'
 import { SortDropdown } from '../SortDropdown'
 import { ListPropertiesPopover, type ListPropertiesPopoverProps } from './ListPropertiesPopover'
+import { GitRepositorySelect } from '../GitRepositorySelect'
+import type { GitRepositoryOption } from '../../utils/gitRepositories'
 
 const NOTE_LIST_ACTION_BUTTON_CLASSNAME = '!h-auto !w-auto !min-w-0 !rounded-none !p-0 !text-muted-foreground hover:!bg-transparent hover:!text-foreground focus-visible:!bg-transparent data-[state=open]:!bg-transparent data-[state=open]:!text-foreground [&_svg]:!size-4'
 const NOTE_LIST_EXPAND_BUTTON_CLASSNAME = '!h-6 !w-6 !min-w-0 !rounded !p-0 !text-muted-foreground hover:!bg-accent hover:!text-foreground focus-visible:!bg-accent [&_svg]:!size-4'
-
-interface NoteListHeaderProps {
-  title: string
-  typeDocument: VaultEntry | null
-  isEntityView: boolean
-  listSort: SortOption
-  listDirection: SortDirection
-  customProperties: string[]
-  sidebarCollapsed?: boolean
-  searchVisible: boolean
-  search: string
-  isSearching: boolean
-  searchInputRef: React.RefObject<HTMLInputElement | null>
-  propertyPicker?: ListPropertiesPopoverProps | null
-  locale?: AppLocale
-  onSortChange: (groupLabel: string, option: SortOption, direction: SortDirection) => void
-  onCreateNote: () => void
-  onOpenType: (entry: VaultEntry) => void
-  onToggleSearch: () => void
-  onSearchChange: (value: string) => void
-  onSearchKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
-}
 
 function localizePropertiesTriggerTitle(triggerTitle: string, locale: AppLocale): string {
   if (triggerTitle === 'Customize columns') return translate(locale, 'noteList.properties.customizeColumns')
@@ -45,6 +25,32 @@ function localizePropertiesTriggerTitle(triggerTitle: string, locale: AppLocale)
   return viewMatch
     ? translate(locale, 'noteList.properties.customizeViewColumns', { name: viewMatch[1] })
     : triggerTitle
+}
+
+interface NoteListHeaderProps {
+  title: string
+  typeDocument: VaultEntry | null
+  isEntityView: boolean
+  isChangesView?: boolean
+  listSort: SortOption
+  listDirection: SortDirection
+  customProperties: string[]
+  sidebarCollapsed?: boolean
+  searchVisible: boolean
+  search: string
+  isSearching: boolean
+  searchInputRef: React.RefObject<HTMLInputElement | null>
+  propertyPicker?: ListPropertiesPopoverProps | null
+  gitRepositories?: GitRepositoryOption[]
+  selectedGitRepositoryPath?: string
+  locale?: AppLocale
+  onSortChange: (groupLabel: string, option: SortOption, direction: SortDirection) => void
+  onCreateNote: () => void
+  onOpenType: (entry: VaultEntry) => void
+  onToggleSearch: () => void
+  onSearchChange: (value: string) => void
+  onSearchKeyDown: (event: React.KeyboardEvent<HTMLInputElement>) => void
+  onGitRepositoryChange?: (path: string) => void
 }
 
 function dispatchExpandSidebarFromHeader() {
@@ -78,11 +84,13 @@ function HeaderTitle({
   typeDocument,
   onOpenType,
 }: Pick<NoteListHeaderProps, 'title' | 'typeDocument' | 'onOpenType'>) {
+  const handleClick = typeDocument ? () => onOpenType(typeDocument) : undefined
+
   return (
     <h3
       className="m-0 min-w-0 flex-1 truncate text-[14px] font-semibold"
       style={typeDocument ? { cursor: 'pointer' } : undefined}
-      onClick={typeDocument ? () => onOpenType(typeDocument) : undefined}
+      onClick={handleClick}
       data-testid={typeDocument ? 'type-header-link' : undefined}
     >
       {title}
@@ -107,6 +115,35 @@ function HeaderLeading({
   )
 }
 
+function RepositorySelectorRow({
+  isChangesView,
+  gitRepositories = [],
+  selectedGitRepositoryPath = '',
+  locale = 'en',
+  onGitRepositoryChange,
+}: Pick<
+  NoteListHeaderProps,
+  | 'isChangesView'
+  | 'gitRepositories'
+  | 'selectedGitRepositoryPath'
+  | 'locale'
+  | 'onGitRepositoryChange'
+>) {
+  if (!isChangesView || !onGitRepositoryChange || gitRepositories.length <= 1) return null
+
+  return (
+    <div className="flex h-11 shrink-0 items-center border-b border-border px-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <GitRepositorySelect
+        label={translate(locale, 'git.repository.select')}
+        repositories={gitRepositories}
+        selectedPath={selectedGitRepositoryPath}
+        onChange={onGitRepositoryChange}
+        testId="changes-repository-select"
+      />
+    </div>
+  )
+}
+
 function HeaderActions({
   isEntityView,
   listSort,
@@ -115,8 +152,8 @@ function HeaderActions({
   propertyPicker,
   locale,
   onSortChange,
-  onToggleSearch,
   onCreateNote,
+  onToggleSearch,
 }: Pick<
   NoteListHeaderProps,
   | 'isEntityView'
@@ -126,8 +163,8 @@ function HeaderActions({
   | 'propertyPicker'
   | 'locale'
   | 'onSortChange'
-  | 'onToggleSearch'
   | 'onCreateNote'
+  | 'onToggleSearch'
 > & {
   locale: AppLocale
 }) {
@@ -153,6 +190,7 @@ function HeaderActions({
 }
 
 function SearchRow({
+  searchVisible,
   search,
   isSearching,
   searchInputRef,
@@ -161,6 +199,7 @@ function SearchRow({
   onSearchKeyDown,
 }: Pick<
   NoteListHeaderProps,
+  | 'searchVisible'
   | 'search'
   | 'isSearching'
   | 'searchInputRef'
@@ -170,6 +209,8 @@ function SearchRow({
 > & {
   locale: AppLocale
 }) {
+  if (!searchVisible) return null
+
   return (
     <div className="border-b border-border px-3 py-2">
       <div className="relative flex-1" aria-live="polite">
@@ -198,6 +239,7 @@ export function NoteListHeader({
   title,
   typeDocument,
   isEntityView,
+  isChangesView = false,
   listSort,
   listDirection,
   customProperties,
@@ -207,6 +249,8 @@ export function NoteListHeader({
   isSearching,
   searchInputRef,
   propertyPicker,
+  gitRepositories = [],
+  selectedGitRepositoryPath = '',
   locale = 'en',
   onSortChange,
   onCreateNote,
@@ -214,6 +258,7 @@ export function NoteListHeader({
   onToggleSearch,
   onSearchChange,
   onSearchKeyDown,
+  onGitRepositoryChange,
 }: NoteListHeaderProps) {
   const { onMouseDown: onDragMouseDown } = useDragRegion()
 
@@ -235,20 +280,26 @@ export function NoteListHeader({
           propertyPicker={propertyPicker}
           locale={locale}
           onSortChange={onSortChange}
-          onToggleSearch={onToggleSearch}
           onCreateNote={onCreateNote}
+          onToggleSearch={onToggleSearch}
         />
       </div>
-      {searchVisible && (
-        <SearchRow
-          search={search}
-          isSearching={isSearching}
-          searchInputRef={searchInputRef}
-          locale={locale}
-          onSearchChange={onSearchChange}
-          onSearchKeyDown={onSearchKeyDown}
-        />
-      )}
+      <RepositorySelectorRow
+        isChangesView={isChangesView}
+        gitRepositories={gitRepositories}
+        selectedGitRepositoryPath={selectedGitRepositoryPath}
+        locale={locale}
+        onGitRepositoryChange={onGitRepositoryChange}
+      />
+      <SearchRow
+        searchVisible={searchVisible}
+        search={search}
+        isSearching={isSearching}
+        searchInputRef={searchInputRef}
+        locale={locale}
+        onSearchChange={onSearchChange}
+        onSearchKeyDown={onSearchKeyDown}
+      />
     </>
   )
 }

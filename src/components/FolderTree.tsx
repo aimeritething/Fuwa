@@ -12,6 +12,7 @@ import type { FolderNode, SidebarSelection } from '../types'
 import { FolderContextMenu } from './folder-tree/FolderContextMenu'
 import { FolderNameInput } from './folder-tree/FolderNameInput'
 import { FolderTreeRow } from './folder-tree/FolderTreeRow'
+import { folderNodeKey } from './folder-tree/folderTreeUtils'
 import { useFolderContextMenu } from './folder-tree/useFolderContextMenu'
 import { useFolderTreeDisclosure } from './folder-tree/useFolderTreeDisclosure'
 import { SidebarGroupHeader } from './sidebar/SidebarGroupHeader'
@@ -67,15 +68,27 @@ function buildRootNode(folders: FolderNode[], vaultRootPath: string | undefined,
   return {
     name: vaultRootLabel(vaultRootPath, locale),
     path: '',
+    rootPath: vaultRootPath,
     children: folders,
   }
 }
 
 function useDisplayedFolders(folders: FolderNode[], expanded: Record<string, boolean>, vaultRootPath: string | undefined, locale: AppLocale) {
   return useMemo(() => {
+    if (folders.some((folder) => folder.rootPath)) {
+      const expandedRoots = Object.fromEntries(
+        folders
+          .filter((folder) => folder.path === '' && folder.rootPath)
+          .map((folder) => [folderNodeKey(folder), true]),
+      )
+      return {
+        displayedExpanded: { ...expandedRoots, ...expanded },
+        displayedFolders: folders,
+      }
+    }
     const rootNode = buildRootNode(folders, vaultRootPath, locale)
     return {
-      displayedExpanded: rootNode ? { '': true, ...expanded } : expanded,
+      displayedExpanded: rootNode ? { [folderNodeKey(rootNode)]: true, ...expanded } : expanded,
       displayedFolders: rootNode ? [rootNode] : folders,
     }
   }, [expanded, folders, locale, vaultRootPath])
@@ -211,7 +224,7 @@ function FolderTreeBody({
     <div className="flex flex-col gap-0.5 pb-2">
       {displayedFolders.map((node) => (
         <FolderTreeRow
-          key={node.path}
+          key={folderNodeKey(node)}
           depth={0}
           expanded={displayedExpanded}
           node={node}

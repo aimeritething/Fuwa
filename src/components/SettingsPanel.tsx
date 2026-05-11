@@ -21,10 +21,9 @@ import {
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
-  type RefObject,
 } from 'react'
 import { Moon, Sun, X } from '@phosphor-icons/react'
-import { Bot, Copy, Folder, GitBranch, ListChecks, Monitor, Palette, RefreshCw, ShieldCheck } from 'lucide-react'
+import { Copy, Monitor } from 'lucide-react'
 import type { Settings } from '../types'
 import {
   APP_LOCALES,
@@ -48,6 +47,7 @@ import { shouldHideGitignoredFiles } from '../lib/gitignoredVisibility'
 import { trackAllNotesVisibilityChanged } from '../lib/productAnalytics'
 import { AiProviderSettings } from './AiProviderSettings'
 import { PrivacySettingsSection } from './PrivacySettingsSection'
+import { SettingsBodyNav } from './SettingsBodyNav'
 import {
   NumberInputControl,
   SectionHeading,
@@ -59,6 +59,7 @@ import {
 } from './SettingsControls'
 import { SettingsFooter } from './SettingsFooter'
 import { VaultContentSettingsSection } from './VaultContentSettingsSection'
+import { WorkspaceSettingsSection } from './WorkspaceSettingsSection'
 import {
   resolveAllNotesFileVisibility,
   settingsWithAllNotesFileVisibility,
@@ -73,19 +74,28 @@ import {
 import { Button } from './ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import type { NoteWidthMode } from '../types'
+import type { VaultOption } from './status-bar/types'
+import { SETTINGS_SECTION_IDS } from './settingsSectionIds'
 import {
   trackSettingsPreferenceChanges,
   trackTelemetryConsentChange,
 } from './settingsPreferenceTracking'
+import { useSettingsPanelAutofocus, useSettingsPanelFocusTrap } from './useSettingsPanelFocus'
 
 interface SettingsPanelProps {
   open: boolean
   settings: Settings
   aiAgentsStatus?: AiAgentsStatus
+  initialSectionId?: string | null
   locale?: AppLocale
   systemLocale?: AppLocale
   onSave: (settings: Settings) => void
   onCopyMcpConfig?: () => void
+  vaults?: VaultOption[]
+  defaultWorkspacePath?: string | null
+  onRemoveVault?: (path: string) => void
+  onSetDefaultWorkspace?: (path: string) => void
+  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   isGitVault?: boolean
   explicitOrganizationEnabled?: boolean
   onSaveExplicitOrganization?: (enabled: boolean) => void
@@ -110,6 +120,7 @@ interface SettingsDraft {
   initialH1AutoRename: boolean
   hideGitignoredFiles: boolean
   allNotesFileVisibility: AllNotesFileVisibility
+  multiWorkspaceEnabled: boolean
   crashReporting: boolean
   analytics: boolean
   explicitOrganization: boolean
@@ -156,6 +167,13 @@ interface SettingsBodyProps {
   setHideGitignoredFiles: (value: boolean) => void
   allNotesFileVisibility: AllNotesFileVisibility
   setAllNotesFileVisibility: (value: AllNotesFileVisibility) => void
+  multiWorkspaceEnabled: boolean
+  setMultiWorkspaceEnabled: (value: boolean) => void
+  vaults: VaultOption[]
+  defaultWorkspacePath?: string | null
+  onRemoveVault?: (path: string) => void
+  onSetDefaultWorkspace?: (path: string) => void
+  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   explicitOrganization: boolean
   setExplicitOrganization: (value: boolean) => void
   crashReporting: boolean
@@ -167,75 +185,10 @@ interface SettingsBodyProps {
 const PULL_INTERVAL_OPTIONS = [1, 2, 5, 10, 15, 30] as const
 const DEFAULT_AUTOGIT_IDLE_THRESHOLD_SECONDS = 90
 const DEFAULT_AUTOGIT_INACTIVE_THRESHOLD_SECONDS = 30
-const SETTINGS_SECTION_IDS = {
-  sync: 'settings-section-sync',
-  autogit: 'settings-section-autogit',
-  appearance: 'settings-section-appearance',
-  content: 'settings-section-content',
-  ai: 'settings-section-ai',
-  workflow: 'settings-section-workflow',
-  privacy: 'settings-section-privacy',
-} as const
 type Translate = ReturnType<typeof createTranslator>
-
-const SETTINGS_FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'button:not([disabled])',
-  'input:not([disabled])',
-  'select:not([disabled])',
-  'textarea:not([disabled])',
-  '[tabindex]:not([tabindex="-1"])',
-].join(',')
 
 function isSaveShortcut(event: ReactKeyboardEvent): boolean {
   return event.key === 'Enter' && (event.metaKey || event.ctrlKey)
-}
-
-function getSettingsFocusableElements(panel: HTMLElement): HTMLElement[] {
-  return Array.from(panel.querySelectorAll<HTMLElement>(SETTINGS_FOCUSABLE_SELECTOR))
-    .filter((element) => (
-      element.tabIndex >= 0 &&
-      element.getAttribute('aria-disabled') !== 'true' &&
-      !element.closest('[hidden], [aria-hidden="true"]')
-    ))
-}
-
-function focusSettingsBoundary(focusableElements: HTMLElement[], shiftKey: boolean): void {
-  const targetIndex = shiftKey ? focusableElements.length - 1 : 0
-  focusableElements.at(targetIndex)?.focus()
-}
-
-function isSettingsPanelElement(panel: HTMLElement, activeElement: Element | null): activeElement is Element {
-  return activeElement instanceof Element && panel.contains(activeElement)
-}
-
-function isSettingsFocusBoundary(activeElement: Element, focusableElements: HTMLElement[], shiftKey: boolean): boolean {
-  const boundaryIndex = shiftKey ? 0 : focusableElements.length - 1
-  return activeElement === focusableElements.at(boundaryIndex)
-}
-
-function trapSettingsPanelFocus(event: KeyboardEvent, panel: HTMLElement | null): void {
-  if (event.key !== 'Tab' || !panel) return
-
-  const focusableElements = getSettingsFocusableElements(panel)
-  if (focusableElements.length === 0) {
-    event.preventDefault()
-    panel.focus()
-    return
-  }
-
-  const activeElement = document.activeElement
-
-  if (!isSettingsPanelElement(panel, activeElement)) {
-    event.preventDefault()
-    focusSettingsBoundary(focusableElements, event.shiftKey)
-    return
-  }
-
-  if (isSettingsFocusBoundary(activeElement, focusableElements, event.shiftKey)) {
-    event.preventDefault()
-    focusSettingsBoundary(focusableElements, event.shiftKey)
-  }
 }
 
 function createSettingsDraft(
@@ -266,6 +219,7 @@ function createSettingsDraft(
     initialH1AutoRename: settings.initial_h1_auto_rename_enabled ?? true,
     hideGitignoredFiles: shouldHideGitignoredFiles(settings),
     allNotesFileVisibility: resolveAllNotesFileVisibility(settings),
+    multiWorkspaceEnabled: settings.multi_workspace_enabled === true,
     crashReporting: settings.crash_reporting_enabled ?? false,
     analytics: settings.analytics_enabled ?? false,
     explicitOrganization: explicitOrganizationEnabled,
@@ -313,6 +267,7 @@ function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Setti
     default_ai_target: draft.defaultAiTarget,
     ai_model_providers: draft.aiModelProviders.length > 0 ? draft.aiModelProviders : null,
     hide_gitignored_files: draft.hideGitignoredFiles,
+    multi_workspace_enabled: draft.multiWorkspaceEnabled,
   }
   return settingsWithAllNotesFileVisibility(nextSettings, draft.allNotesFileVisibility)
 }
@@ -328,35 +283,20 @@ function applyThemeModeSelection(value: ThemeMode): void {
   if (typeof window !== 'undefined') writeStoredThemeMode(window.localStorage, value)
 }
 
-function useSettingsPanelAutofocus(panelRef: RefObject<HTMLDivElement | null>): void {
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const focusTarget = panelRef.current?.querySelector<HTMLElement>('[data-settings-autofocus="true"]')
-      focusTarget?.focus()
-    }, 50)
-    return () => clearTimeout(timer)
-  }, [panelRef])
-}
-
-function useSettingsPanelFocusTrap(panelRef: RefObject<HTMLDivElement | null>): void {
-  useEffect(() => {
-    const handleDocumentKeyDown = (event: KeyboardEvent) => {
-      trapSettingsPanelFocus(event, panelRef.current)
-    }
-
-    document.addEventListener('keydown', handleDocumentKeyDown, true)
-    return () => document.removeEventListener('keydown', handleDocumentKeyDown, true)
-  }, [panelRef])
-}
-
 export function SettingsPanel({
   open,
   settings,
   aiAgentsStatus = createMissingAiAgentsStatus(),
+  initialSectionId = null,
   locale = 'en',
   systemLocale = locale,
   onSave,
   onCopyMcpConfig,
+  vaults = [],
+  defaultWorkspacePath = null,
+  onRemoveVault,
+  onSetDefaultWorkspace,
+  onUpdateWorkspaceIdentity,
   isGitVault = true,
   explicitOrganizationEnabled = true,
   onSaveExplicitOrganization,
@@ -368,10 +308,16 @@ export function SettingsPanel({
     <SettingsPanelInner
       settings={settings}
       aiAgentsStatus={aiAgentsStatus}
+      initialSectionId={initialSectionId}
       locale={locale}
       systemLocale={systemLocale}
       onSave={onSave}
       onCopyMcpConfig={onCopyMcpConfig}
+      vaults={vaults}
+      defaultWorkspacePath={defaultWorkspacePath}
+      onRemoveVault={onRemoveVault}
+      onSetDefaultWorkspace={onSetDefaultWorkspace}
+      onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
       isGitVault={isGitVault}
       explicitOrganizationEnabled={explicitOrganizationEnabled}
       onSaveExplicitOrganization={onSaveExplicitOrganization}
@@ -382,6 +328,7 @@ export function SettingsPanel({
 
 type SettingsPanelInnerProps = Omit<SettingsPanelProps, 'open' | 'explicitOrganizationEnabled' | 'aiAgentsStatus' | 'isGitVault'> & {
   aiAgentsStatus: AiAgentsStatus
+  initialSectionId: string | null
   locale: AppLocale
   systemLocale: AppLocale
   isGitVault: boolean
@@ -391,9 +338,15 @@ type SettingsPanelInnerProps = Omit<SettingsPanelProps, 'open' | 'explicitOrgani
 function SettingsPanelInner({
   settings,
   aiAgentsStatus,
+  initialSectionId,
   systemLocale,
   onSave,
   onCopyMcpConfig,
+  vaults,
+  defaultWorkspacePath,
+  onRemoveVault,
+  onSetDefaultWorkspace,
+  onUpdateWorkspaceIdentity,
   isGitVault,
   explicitOrganizationEnabled,
   onSaveExplicitOrganization,
@@ -410,6 +363,14 @@ function SettingsPanelInner({
 
   useSettingsPanelAutofocus(panelRef)
   useSettingsPanelFocusTrap(panelRef)
+
+  useEffect(() => {
+    if (!initialSectionId) return
+    const timer = window.setTimeout(() => {
+      document.getElementById(initialSectionId)?.scrollIntoView({ block: 'start' })
+    }, 50)
+    return () => window.clearTimeout(timer)
+  }, [initialSectionId])
 
   const updateDraft = useCallback(
     <Key extends keyof SettingsDraft>(key: Key, value: SettingsDraft[Key]) => {
@@ -486,6 +447,11 @@ function SettingsPanelInner({
           isGitVault={isGitVault}
           aiAgentsStatus={aiAgentsStatus}
           onCopyMcpConfig={onCopyMcpConfig}
+          vaults={vaults ?? []}
+          defaultWorkspacePath={defaultWorkspacePath}
+          onRemoveVault={onRemoveVault}
+          onSetDefaultWorkspace={onSetDefaultWorkspace}
+          onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
           setThemeMode={handleThemeModeChange}
           setHideGitignoredFiles={handleGitignoredVisibilityChange}
           setAllNotesFileVisibility={handleAllNotesFileVisibilityChange}
@@ -525,6 +491,11 @@ interface SettingsBodyFromDraftProps {
   isGitVault: boolean
   aiAgentsStatus: AiAgentsStatus
   onCopyMcpConfig?: () => void
+  vaults: VaultOption[]
+  defaultWorkspacePath?: string | null
+  onRemoveVault?: (path: string) => void
+  onSetDefaultWorkspace?: (path: string) => void
+  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   setThemeMode: (value: ThemeMode) => void
   setHideGitignoredFiles: (value: boolean) => void
   setAllNotesFileVisibility: (value: AllNotesFileVisibility) => void
@@ -539,6 +510,11 @@ function SettingsBodyFromDraft({
   isGitVault,
   aiAgentsStatus,
   onCopyMcpConfig,
+  vaults,
+  defaultWorkspacePath,
+  onRemoveVault,
+  onSetDefaultWorkspace,
+  onUpdateWorkspaceIdentity,
   setThemeMode,
   setHideGitignoredFiles,
   setAllNotesFileVisibility,
@@ -585,6 +561,13 @@ function SettingsBodyFromDraft({
       setHideGitignoredFiles={setHideGitignoredFiles}
       allNotesFileVisibility={draft.allNotesFileVisibility}
       setAllNotesFileVisibility={setAllNotesFileVisibility}
+      multiWorkspaceEnabled={draft.multiWorkspaceEnabled}
+      setMultiWorkspaceEnabled={(value) => updateDraft('multiWorkspaceEnabled', value)}
+      vaults={vaults}
+      defaultWorkspacePath={defaultWorkspacePath}
+      onRemoveVault={onRemoveVault}
+      onSetDefaultWorkspace={onSetDefaultWorkspace}
+      onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
       explicitOrganization={draft.explicitOrganization}
       setExplicitOrganization={(value) => updateDraft('explicitOrganization', value)}
       crashReporting={draft.crashReporting}
@@ -608,38 +591,6 @@ function SettingsBody(props: SettingsBodyProps) {
   )
 }
 
-function SettingsBodyNav({ t }: { t: Translate }) {
-  const items = [
-    { id: SETTINGS_SECTION_IDS.sync, label: t('settings.sync.title'), Icon: RefreshCw },
-    { id: SETTINGS_SECTION_IDS.autogit, label: t('settings.autogit.title'), Icon: GitBranch },
-    { id: SETTINGS_SECTION_IDS.appearance, label: t('settings.appearance.title'), Icon: Palette },
-    { id: SETTINGS_SECTION_IDS.content, label: t('settings.vaultContent.title'), Icon: Folder },
-    { id: SETTINGS_SECTION_IDS.ai, label: t('settings.aiAgents.title'), Icon: Bot },
-    { id: SETTINGS_SECTION_IDS.workflow, label: t('settings.workflow.title'), Icon: ListChecks },
-    { id: SETTINGS_SECTION_IDS.privacy, label: t('settings.privacy.title'), Icon: ShieldCheck },
-  ]
-
-  return (
-    <div className="hidden w-48 shrink-0 border-r border-border px-3 py-4 md:block">
-      <div className="sticky top-0 space-y-1.5">
-        {items.map((item) => (
-          <Button
-            key={item.id}
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-10 w-full justify-start gap-2.5 px-2.5 text-sm font-medium text-muted-foreground hover:text-foreground"
-            onClick={() => document.getElementById(item.id)?.scrollIntoView({ block: 'start', behavior: 'smooth' })}
-          >
-            <item.Icon size={16} className="shrink-0" />
-            <span className="truncate">{item.label}</span>
-          </Button>
-        ))}
-      </div>
-    </div>
-  )
-}
-
 function SettingsSyncAndAppearanceSections({
   t,
   locale,
@@ -655,6 +606,13 @@ function SettingsSyncAndAppearanceSections({
   setAutoGitInactiveThresholdSeconds,
   releaseChannel,
   setReleaseChannel,
+  multiWorkspaceEnabled,
+  setMultiWorkspaceEnabled,
+  vaults,
+  defaultWorkspacePath,
+  onRemoveVault,
+  onSetDefaultWorkspace,
+  onUpdateWorkspaceIdentity,
   themeMode,
   setThemeMode,
   uiLanguage,
@@ -669,6 +627,19 @@ function SettingsSyncAndAppearanceSections({
           setPullInterval={setPullInterval}
           releaseChannel={releaseChannel}
           setReleaseChannel={setReleaseChannel}
+        />
+      </SettingsSection>
+      <SettingsSection id={SETTINGS_SECTION_IDS.workspaces}>
+        <SectionHeading title={t('settings.workspaces.title')} />
+        <WorkspaceSettingsSection
+          defaultWorkspacePath={defaultWorkspacePath}
+          enabled={multiWorkspaceEnabled}
+          locale={locale}
+          onEnabledChange={setMultiWorkspaceEnabled}
+          onRemoveVault={onRemoveVault}
+          onSetDefaultWorkspace={onSetDefaultWorkspace}
+          onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
+          vaults={vaults}
         />
       </SettingsSection>
       <SettingsSection id={SETTINGS_SECTION_IDS.autogit}>

@@ -15,6 +15,7 @@ import { NoteTitleIcon } from './NoteTitleIcon'
 import { PropertyChips } from './note-item/PropertyChips'
 import { ChangeNoteContent } from './note-item/ChangeNoteContent'
 import { workspaceForEntry } from '../utils/workspaces'
+import { WorkspaceInitialsBadge } from './WorkspaceInitialsBadge'
 
 const TYPE_ICON_MAP: Record<string, ComponentType<SVGAttributes<SVGSVGElement>>> = {
   Project: Wrench,
@@ -73,17 +74,7 @@ function WorkspaceBadge({ entry, allEntries }: { entry: VaultEntry; allEntries: 
   const workspace = workspaceForEntry(entry)
   const hasMultipleWorkspaces = new Set(allEntries.map((candidate) => candidate.workspace?.alias).filter(Boolean)).size > 1
   if (!workspace || !hasMultipleWorkspaces) return null
-
-  return (
-    <span
-      className="ml-1.5 inline-flex h-[16px] min-w-[18px] items-center justify-center rounded-sm px-1 align-middle text-[9px] font-semibold text-white"
-      style={{ background: workspace.color ? `var(--accent-${workspace.color})` : 'var(--muted-foreground)' }}
-      title={`${workspace.label} (${workspace.alias})`}
-      aria-label={`Workspace ${workspace.label}`}
-    >
-      {workspace.shortLabel}
-    </span>
-  )
+  return <WorkspaceInitialsBadge workspace={workspace} className="-mr-1.5" testId="workspace-badge" />
 }
 
 type NoteItemVisualState = {
@@ -214,7 +205,6 @@ function InteractiveNoteDetails({
     <>
       <NoteTitleRow
         entry={entry}
-        allEntries={allEntries}
         isBinary={false}
         isSelected={isSelected}
         noteStatus={noteStatus}
@@ -228,7 +218,7 @@ function InteractiveNoteDetails({
         dateDisplayFormat={dateDisplayFormat}
         onClickNote={onClickNote}
       />
-      <NoteDateRow entry={entry} dateDisplayFormat={dateDisplayFormat} />
+      <NoteDateRow entry={entry} allEntries={allEntries} dateDisplayFormat={dateDisplayFormat} />
     </>
   )
 }
@@ -279,7 +269,6 @@ function StandardNoteContent({
         {isBinary ? (
           <NoteTitleRow
             entry={entry}
-            allEntries={allEntries}
             isBinary={isUnavailableBinary}
             isSelected={isSelected}
             noteStatus={noteStatus}
@@ -303,23 +292,23 @@ function StandardNoteContent({
 
 function NoteTitleRow({
   entry,
-  allEntries,
   isBinary,
   isSelected,
   noteStatus,
 }: {
   entry: VaultEntry
-  allEntries: VaultEntry[]
   isBinary: boolean
   isSelected: boolean
   noteStatus: NoteStatus
 }) {
   return (
-    <div className={cn('truncate pr-5 text-[13px]', isBinary ? 'text-muted-foreground' : 'text-foreground', isSelected && !isBinary ? 'font-semibold' : 'font-medium')}>
+    <div
+      className={cn('truncate pr-5 text-[13px]', isBinary ? 'text-muted-foreground' : 'text-foreground', isSelected && !isBinary ? 'font-semibold' : 'font-medium')}
+      data-testid="note-title-row"
+    >
       {hasStatusDot(noteStatus) && !isBinary && <StatusDot noteStatus={noteStatus} />}
       <NoteTitleIcon icon={entry.icon} size={15} className="mr-1" testId="note-title-icon" />
       {entry.title}
-      <WorkspaceBadge entry={entry} allEntries={allEntries} />
       {!isBinary && <StateBadge archived={entry.archived} />}
     </div>
   )
@@ -327,9 +316,11 @@ function NoteTitleRow({
 
 function NoteDateRow({
   entry,
+  allEntries,
   dateDisplayFormat,
 }: {
   entry: VaultEntry
+  allEntries: VaultEntry[]
   dateDisplayFormat: DateDisplayFormat
 }) {
   const modifiedLabel = formatTimestampForDateDisplay(getDisplayDate(entry), dateDisplayFormat)
@@ -340,7 +331,10 @@ function NoteDateRow({
   return (
     <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 text-[10px] text-muted-foreground" data-testid="note-date-row">
       <span>{modifiedLabel}</span>
-      {createdLabel && <span className="justify-self-end text-right">{createdLabel}</span>}
+      <span className="flex min-w-0 items-center justify-end gap-1.5 text-right">
+        {createdLabel && <span>{createdLabel}</span>}
+        <WorkspaceBadge entry={entry} allEntries={allEntries} />
+      </span>
     </div>
   )
 }

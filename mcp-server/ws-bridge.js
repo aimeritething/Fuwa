@@ -24,7 +24,8 @@ import { WebSocketServer } from 'ws'
 import {
   getNote, searchNotes, vaultContext,
 } from './vault.js'
-import { requireVaultPath } from './vault-path.js'
+import { requireVaultPaths } from './vault-path.js'
+import path from 'node:path'
 
 const WS_PORT = parseInt(process.env.WS_PORT || '9710', 10)
 const WS_UI_PORT = parseInt(process.env.WS_UI_PORT || '9711', 10)
@@ -37,12 +38,72 @@ const TRUSTED_UI_ORIGINS = new Set([
 
 /** @type {WebSocketServer | null} */
 let uiBridge = null
-let vaultPath = null
+let vaultPaths = null
 const UNKNOWN_TOOL = Symbol('unknown tool')
 
-function activeVaultPath() {
-  vaultPath ??= requireVaultPath()
-  return vaultPath
+function activeVaultPaths() {
+  vaultPaths ??= requireVaultPaths()
+  return vaultPaths
+}
+
+function primaryVaultPath() {
+  return activeVaultPaths()[0]
+}
+
+function requestedVaultPath(args = {}) {
+  const requested = typeof args.vaultPath === 'string' ? args.vaultPath.trim() : ''
+  if (!requested) return null
+  if (!activeVaultPaths().includes(requested)) {
+    throw new Error(`Vault is not active in Tolaria: ${requested}`)
+  }
+  return requested
+}
+
+function uiPath(args = {}) {
+  const notePath = typeof args.path === 'string' ? args.path : ''
+  if (path.isAbsolute(notePath)) return notePath
+  const roots = activeVaultPaths()
+  const vaultPath = requestedVaultPath(args) ?? (roots.length === 1 ? primaryVaultPath() : '')
+  return vaultPath ? path.join(vaultPath, notePath) : notePath
+}
+
+async function getNoteFromActiveVaults(notePath, vaultPath = null) {
+  const candidates = vaultPath ? [vaultPath] : activeVaultPaths()
+  const matches = []
+  const errors = []
+
+  for (const candidate of candidates) {
+    try {
+      matches.push({ ...(await getNote(candidate, notePath)), vaultPath: candidate })
+    } catch (error) {
+      errors.push(error)
+    }
+  }
+
+  if (matches.length === 1) return matches[0]
+  if (matches.length > 1) {
+    throw new Error(`Note path is ambiguous across active vaults. Pass vaultPath for ${notePath}.`)
+  }
+  throw errors[0] ?? new Error(`Note not found: ${notePath}`)
+}
+
+async function searchActiveVaults(query, limit = 10) {
+  const requestedLimit = Number.isFinite(limit) && limit > 0 ? limit : 10
+  const results = []
+
+  for (const vaultPath of activeVaultPaths()) {
+    const vaultResults = await searchNotes(vaultPath, query, requestedLimit)
+    results.push(...vaultResults.map((result) => ({ ...result, vaultPath })))
+    if (results.length >= requestedLimit) break
+  }
+
+  return results.slice(0, requestedLimit)
+}
+
+async function activeVaultContext() {
+  const roots = activeVaultPaths()
+  if (roots.length === 1) return vaultContext(roots[0])
+  return { vaults: await Promise.all(roots.map(vaultContext)) }
 }
 
 function broadcastUiAction(action, payload) {
@@ -55,19 +116,21 @@ function broadcastUiAction(action, payload) {
 
 
 async function readNoteTool(args) {
-  const note = await getNote(activeVaultPath(), args.path)
+  const note = await getNoteFromActiveVaults(args.path, requestedVaultPath(args))
   return { content: note.content, frontmatter: note.frontmatter }
 }
 
 function uiOpenNoteTool(args) {
-  broadcastUiAction('vault_changed', { path: args.path })
-  broadcastUiAction('open_note', { path: args.path })
+  const targetPath = uiPath(args)
+  broadcastUiAction('vault_changed', { path: targetPath })
+  broadcastUiAction('open_note', { path: targetPath })
   return { ok: true }
 }
 
 function uiOpenTabTool(args) {
-  broadcastUiAction('vault_changed', { path: args.path })
-  broadcastUiAction('open_tab', { path: args.path })
+  const targetPath = uiPath(args)
+  broadcastUiAction('vault_changed', { path: targetPath })
+  broadcastUiAction('open_tab', { path: targetPath })
   return { ok: true }
 }
 
@@ -82,15 +145,15 @@ function uiSetFilterTool(args) {
 }
 
 function refreshVaultTool(args) {
-  broadcastUiAction('vault_changed', { path: args?.path })
+  broadcastUiAction('vault_changed', { path: uiPath(args) })
   return { ok: true }
 }
 
 const TOOL_EXECUTORS = [
   ['open_note', readNoteTool],
   ['read_note', readNoteTool],
-  ['search_notes', (args) => searchNotes(activeVaultPath(), args.query, args.limit)],
-  ['vault_context', () => vaultContext(activeVaultPath())],
+  ['search_notes', (args) => searchActiveVaults(args.query, args.limit)],
+  ['vault_context', () => activeVaultContext()],
   ['ui_open_note', uiOpenNoteTool],
   ['ui_open_tab', uiOpenTabTool],
   ['ui_highlight', highlightTool],
@@ -206,7 +269,7 @@ export function startUiBridge(port = WS_UI_PORT) {
 }
 
 export function startBridge(port = WS_PORT) {
-  const currentVaultPath = activeVaultPath()
+  const currentVaultPaths = activeVaultPaths()
   const wss = new WebSocketServer({
     port,
     host: LOOPBACK_HOST,
@@ -214,7 +277,7 @@ export function startBridge(port = WS_PORT) {
   })
 
   wss.on('connection', (ws) => {
-    console.error(`[ws-bridge] Client connected (vault: ${currentVaultPath})`)
+    console.error(`[ws-bridge] Client connected (vaults: ${currentVaultPaths.join(', ')})`)
 
     ws.on('message', async (raw) => {
       try {
@@ -236,7 +299,7 @@ export function startBridge(port = WS_PORT) {
 const isMain = process.argv[1]?.endsWith('ws-bridge.js')
 if (isMain) {
   try {
-    activeVaultPath()
+    activeVaultPaths()
     startUiBridge().then(() => startBridge())
   } catch (err) {
     console.error(`[ws-bridge] ${err.message}`)

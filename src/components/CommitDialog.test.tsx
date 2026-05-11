@@ -114,4 +114,24 @@ describe('CommitDialog', () => {
     expect(screen.getByText(`${submitShortcut} to commit locally`)).toBeInTheDocument()
     expect(getActionButton('Commit')).toBeDisabled()
   })
+
+  it('shows a repository selector when multiple repositories are available', () => {
+    render(
+      <CommitDialog
+        open={true}
+        modifiedCount={2}
+        repositories={[
+          { path: '/default', label: 'Default', defaultForNewNotes: true },
+          { path: '/work', label: 'Work', defaultForNewNotes: false },
+        ]}
+        selectedRepositoryPath="/work"
+        onRepositoryChange={vi.fn()}
+        onCommit={onCommit}
+        onClose={onClose}
+      />,
+    )
+
+    expect(screen.getByTestId('commit-repository-select')).toBeInTheDocument()
+    expect(screen.getByText('Work')).toBeInTheDocument()
+  })
 })

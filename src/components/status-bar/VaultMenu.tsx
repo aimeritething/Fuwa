@@ -1,28 +1,29 @@
 import { useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, Check, FolderOpen, GitBranch, Plus, Rocket, Settings2, X } from 'lucide-react'
+import { AlertTriangle, Check, FolderOpen, GitBranch, Plus, Rocket, X } from 'lucide-react'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Switch } from '@/components/ui/switch'
+import { Checkbox } from '@/components/ui/checkbox'
+import { ConfirmDeleteDialog } from '../ConfirmDeleteDialog'
 import { translate, type AppLocale, type TranslationKey } from '../../lib/i18n'
 import { trackEvent } from '../../lib/telemetry'
 import type { VaultOption } from './types'
 import { useDismissibleLayer } from './useDismissibleLayer'
-import { WORKSPACE_COLORS, workspaceIdentityFromVault } from '../../utils/workspaces'
+import { workspaceAliasFromOption, workspaceIdentityFromVault } from '../../utils/workspaces'
 
 interface VaultMenuProps {
   vaults: VaultOption[]
   vaultPath: string
+  defaultWorkspacePath?: string | null
   onSwitchVault: (path: string) => void
+  onSetDefaultWorkspace?: (path: string) => void
+  onOpenVaultSettings?: () => void
   onOpenLocalFolder?: () => void
   onCreateEmptyVault?: () => void
   onCloneVault?: () => void
   onCloneGettingStarted?: () => void
   onRemoveVault?: (path: string) => void
-  defaultWorkspacePath?: string | null
-  onSetDefaultWorkspace?: (path: string) => void
+  multiWorkspaceEnabled?: boolean
   onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   compact?: boolean
   locale?: AppLocale
@@ -32,9 +33,12 @@ interface VaultMenuItemProps {
   vault: VaultOption
   isActive: boolean
   canRemove: boolean
+  disableMountToggle: boolean
   locale: AppLocale
+  multiWorkspaceEnabled: boolean
   onSelect: () => void
-  onRemove?: () => void
+  onMountedChange?: (path: string, mounted: boolean) => void
+  onRequestRemove?: () => void
 }
 
 interface VaultMenuActionProps {
@@ -43,23 +47,6 @@ interface VaultMenuActionProps {
   testId: string
   accent?: boolean
   onClick: () => void
-}
-
-interface WorkspaceManagerProps {
-  defaultWorkspacePath?: string | null
-  locale: AppLocale
-  onOpenChange: (open: boolean) => void
-  onSetDefaultWorkspace?: (path: string) => void
-  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
-  open: boolean
-  vaults: VaultOption[]
-}
-
-interface WorkspaceRowProps extends Pick<
-  WorkspaceManagerProps,
-  'defaultWorkspacePath' | 'locale' | 'onSetDefaultWorkspace' | 'onUpdateWorkspaceIdentity'
-> {
-  vault: VaultOption
 }
 
 interface VaultAction {
@@ -84,26 +71,13 @@ function getVaultTriggerClassName(open: boolean, compact: boolean) {
 }
 
 function buildVaultActions({
-  onManageWorkspaces,
+  multiWorkspaceEnabled,
   onCreateEmptyVault,
   onCloneGettingStarted,
   onCloneVault,
   onOpenLocalFolder,
-}: Pick<VaultMenuProps, 'onCreateEmptyVault' | 'onCloneGettingStarted' | 'onCloneVault' | 'onOpenLocalFolder'> & {
-  onManageWorkspaces?: () => void
-}): VaultAction[] {
+}: Pick<VaultMenuProps, 'multiWorkspaceEnabled' | 'onCreateEmptyVault' | 'onCloneGettingStarted' | 'onCloneVault' | 'onOpenLocalFolder'>): VaultAction[] {
   const items: VaultAction[] = []
-
-  if (onManageWorkspaces) {
-    items.push({
-      key: 'manage-workspaces',
-      icon: <Settings2 size={12} />,
-      labelKey: 'status.vault.manageWorkspaces',
-      testId: 'vault-menu-manage-workspaces',
-      accent: true,
-      onClick: onManageWorkspaces,
-    })
-  }
 
   if (onCreateEmptyVault) {
     items.push({
@@ -111,7 +85,7 @@ function buildVaultActions({
       icon: <Plus size={12} />,
       labelKey: 'status.vault.createEmpty',
       testId: 'vault-menu-create-empty',
-      accent: true,
+      accent: !multiWorkspaceEnabled,
       onClick: onCreateEmptyVault,
     })
   }
@@ -156,69 +130,234 @@ function VaultMenuIcon({ isActive, unavailable }: { isActive: boolean; unavailab
   return <span style={{ width: 12 }} />
 }
 
-function VaultMenuItem({ vault, isActive, canRemove, locale, onSelect, onRemove }: VaultMenuItemProps) {
-  const unavailable = vault.available === false
-  const removeLabel = translate(locale, 'status.vault.remove', { label: vault.label })
-  const itemClassName = [
-    'w-full justify-start rounded-sm px-2 py-1 text-xs font-normal',
-    canRemove ? 'pr-7' : '',
+function workspaceMountLabel(locale: AppLocale, vault: VaultOption): string {
+  return translate(locale, 'status.vault.includeWorkspace', { label: vault.label })
+}
+
+function WorkspaceMountCheckbox({
+  checked,
+  disabled,
+  locale,
+  onMountedChange,
+  vault,
+}: {
+  checked: boolean
+  disabled: boolean
+  locale: AppLocale
+  onMountedChange?: (path: string, mounted: boolean) => void
+  vault: VaultOption
+}) {
+  return (
+    <Checkbox
+      checked={checked}
+      disabled={disabled || !onMountedChange}
+      aria-label={workspaceMountLabel(locale, vault)}
+      className="ml-1"
+      onCheckedChange={(checked) => {
+        if (typeof checked !== 'boolean') return
+        onMountedChange?.(vault.path, checked)
+        trackEvent('workspace_mount_changed', {
+          workspace_alias: workspaceAliasFromOption(vault),
+          mounted: checked ? 1 : 0,
+        })
+      }}
+    />
+  )
+}
+
+function vaultMenuItemClassName(isActive: boolean, multiWorkspaceEnabled: boolean): string {
+  return [
+    'min-w-0 max-w-[190px] flex-none justify-start rounded-sm px-2 font-normal',
+    multiWorkspaceEnabled ? 'py-1.5 text-[12px]' : 'py-1 text-xs',
     isActive
       ? 'text-foreground hover:bg-[var(--hover)] hover:text-foreground'
       : 'text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground',
   ].filter(Boolean).join(' ')
+}
+
+function vaultMenuItemStyle(unavailable: boolean) {
+  return {
+    height: 'auto',
+    background: 'transparent',
+    opacity: unavailable ? 0.45 : 1,
+  }
+}
+
+function VaultMenuItemButton({
+  vault,
+  isActive,
+  locale,
+  multiWorkspaceEnabled,
+  onSelect,
+}: Pick<VaultMenuItemProps, 'vault' | 'isActive' | 'locale' | 'multiWorkspaceEnabled' | 'onSelect'>) {
+  const unavailable = vault.available === false
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="xs"
+      disabled={unavailable}
+      onClick={onSelect}
+      aria-current={isActive ? 'true' : undefined}
+      title={unavailable ? translate(locale, 'status.vault.notFound', { path: vault.path }) : vault.path}
+      data-testid={`vault-menu-item-label-${vault.label}`}
+      className={vaultMenuItemClassName(isActive, multiWorkspaceEnabled)}
+      style={vaultMenuItemStyle(unavailable)}
+    >
+      <span className="flex min-w-0 items-center gap-1.5">
+        {!multiWorkspaceEnabled && <VaultMenuIcon isActive={isActive} unavailable={unavailable} />}
+        <span className="truncate">{vault.label}</span>
+      </span>
+    </Button>
+  )
+}
+
+function DefaultVaultLabel({ isDefault, locale }: { isDefault: boolean; locale: AppLocale }) {
+  if (!isDefault) return null
 
   return (
-    <div className="group relative flex w-full items-center rounded-sm">
-      <Button
-        type="button"
-        variant="ghost"
-        size="xs"
-        disabled={unavailable}
-        onClick={onSelect}
-        aria-current={isActive ? 'true' : undefined}
-        title={unavailable ? translate(locale, 'status.vault.notFound', { path: vault.path }) : vault.path}
-        data-testid={`vault-menu-item-${vault.label}`}
-        className={itemClassName}
-        style={{
-          height: 'auto',
-          background: isActive ? 'var(--hover)' : 'transparent',
-          opacity: unavailable ? 0.45 : 1,
-        }}
-      >
-        <span className="flex min-w-0 items-center gap-1.5">
-          <VaultMenuIcon isActive={isActive} unavailable={unavailable} />
-          <span className="truncate">{vault.label}</span>
+    <span className="text-[10px] font-medium text-muted-foreground" data-testid="vault-menu-default-label">
+      {translate(locale, 'workspace.manager.default')}
+    </span>
+  )
+}
+
+function WorkspaceInitialsBadge({ vault }: { vault: VaultOption }) {
+  const workspace = workspaceIdentityFromVault(vault)
+  const accentColor = workspace.color ? `var(--accent-${workspace.color})` : 'var(--muted-foreground)'
+
+  return (
+    <span
+      className="inline-flex h-[16px] min-w-[18px] items-center justify-center rounded-sm border bg-transparent px-1 text-[9px] font-semibold opacity-75"
+      style={{ borderColor: accentColor, color: accentColor }}
+      title={`${workspace.label} (${workspace.alias})`}
+      aria-label={`Vault ${workspace.label}`}
+      data-testid={`vault-menu-workspace-badge-${vault.label}`}
+    >
+      {workspace.shortLabel}
+    </span>
+  )
+}
+
+function VaultMenuRemoveButton({
+  locale,
+  onRequestRemove,
+  vault,
+}: Pick<VaultMenuItemProps, 'locale' | 'onRequestRemove' | 'vault'>) {
+  if (!onRequestRemove) return null
+
+  const removeLabel = translate(locale, 'status.vault.remove', { label: vault.label })
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-xs"
+      onClick={(event) => {
+        event.stopPropagation()
+        onRequestRemove()
+      }}
+      title={removeLabel}
+      aria-label={removeLabel}
+      data-testid={`vault-menu-remove-${vault.label}`}
+      className="ml-0.5 h-6 w-6 shrink-0 rounded-sm text-muted-foreground opacity-0 pointer-events-none transition-opacity hover:bg-[var(--hover)] hover:text-foreground focus-visible:opacity-100 focus-visible:pointer-events-auto group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+    >
+      <X size={10} />
+    </Button>
+  )
+}
+
+function VaultMenuItem({
+  vault,
+  isActive,
+  canRemove,
+  disableMountToggle,
+  locale,
+  multiWorkspaceEnabled,
+  onSelect,
+  onMountedChange,
+  onRequestRemove,
+}: VaultMenuItemProps) {
+  const unavailable = vault.available === false
+
+  return (
+    <div
+      className="group relative flex w-full items-center rounded-sm hover:bg-[var(--hover)]"
+      data-testid={`vault-menu-item-${vault.label}`}
+      onClick={(event) => {
+        if (event.target === event.currentTarget) onSelect()
+      }}
+    >
+      {multiWorkspaceEnabled && (
+        <WorkspaceMountCheckbox
+          checked={isActive || vault.mounted !== false}
+          disabled={unavailable || disableMountToggle}
+          locale={locale}
+          onMountedChange={onMountedChange}
+          vault={vault}
+        />
+      )}
+      <VaultMenuItemButton
+        vault={vault}
+        isActive={isActive}
+        locale={locale}
+        multiWorkspaceEnabled={multiWorkspaceEnabled}
+        onSelect={onSelect}
+      />
+      {canRemove && <VaultMenuRemoveButton locale={locale} onRequestRemove={onRequestRemove} vault={vault} />}
+      {multiWorkspaceEnabled && (
+        <span className="ml-auto flex shrink-0 items-center gap-1.5 pl-2 pr-1">
+          <DefaultVaultLabel isDefault={isActive} locale={locale} />
+          <WorkspaceInitialsBadge vault={vault} />
         </span>
-      </Button>
-      {canRemove && onRemove && (
+      )}
+    </div>
+  )
+}
+
+function VaultMenuHeader({
+  locale,
+  onOpenVaultSettings,
+}: {
+  locale: AppLocale
+  onOpenVaultSettings?: () => void
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 px-2 py-1.5">
+      <span className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+        {translate(locale, 'status.vault.availableHeader')}
+      </span>
+      {onOpenVaultSettings && (
         <Button
           type="button"
           variant="ghost"
-          size="icon-xs"
-          onClick={(event) => {
-            event.stopPropagation()
-            onRemove()
-          }}
-          title={removeLabel}
-          aria-label={removeLabel}
-          data-testid={`vault-menu-remove-${vault.label}`}
-          className="absolute top-1/2 right-1 -translate-y-1/2 rounded-sm text-muted-foreground opacity-0 pointer-events-none transition-opacity hover:text-foreground focus-visible:opacity-100 focus-visible:pointer-events-auto group-hover:opacity-100 group-hover:pointer-events-auto group-focus-within:opacity-100 group-focus-within:pointer-events-auto"
+          size="xs"
+          className="h-auto rounded-sm px-1 py-0.5 text-[11px] font-medium text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground"
+          onClick={onOpenVaultSettings}
+          data-testid="vault-menu-manage-vaults"
         >
-          <X size={10} />
+          {translate(locale, 'status.vault.manageWorkspaces')}
         </Button>
       )}
     </div>
   )
 }
 
-function VaultMenuAction({ icon, labelKey, testId, accent = false, onClick, locale = 'en' }: VaultMenuActionProps & { locale?: AppLocale }) {
+function VaultMenuAction({
+  icon,
+  labelKey,
+  testId,
+  accent = false,
+  multiWorkspaceEnabled,
+  onClick,
+  locale = 'en',
+}: VaultMenuActionProps & { locale?: AppLocale; multiWorkspaceEnabled: boolean }) {
   return (
     <Button
       type="button"
       variant="ghost"
       size="xs"
       onClick={onClick}
-      className="h-auto w-full justify-start rounded-sm px-2 py-1 text-xs font-normal"
+      className={`h-auto w-full justify-start rounded-sm px-2 py-1 font-normal ${multiWorkspaceEnabled ? 'text-[12px]' : 'text-xs'}`}
       style={{ color: accent ? 'var(--accent-blue)' : 'var(--muted-foreground)' }}
       data-testid={testId}
     >
@@ -228,258 +367,45 @@ function VaultMenuAction({ icon, labelKey, testId, accent = false, onClick, loca
   )
 }
 
-function WorkspaceColorButton({
-  color,
-  selected,
-  onSelect,
-}: {
-  color: string
-  selected: boolean
-  onSelect: () => void
-}) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      size="icon-xs"
-      className="h-5 w-5 rounded-sm p-0"
-      style={{
-        background: selected ? `var(--accent-${color})` : 'transparent',
-        border: `1px solid var(--accent-${color})`,
-      }}
-      aria-label={color}
-      onClick={onSelect}
-    />
-  )
-}
-
-function workspaceBadgeClassName(): string {
-  return 'inline-flex h-5 min-w-6 items-center justify-center rounded-sm px-1 text-[10px] font-semibold text-white'
-}
-
-function WorkspaceBadge({ workspace }: { workspace: ReturnType<typeof workspaceIdentityFromVault> }) {
-  return (
-    <span
-      className={workspaceBadgeClassName()}
-      style={{ background: workspace.color ? `var(--accent-${workspace.color})` : 'var(--muted-foreground)' }}
-    >
-      {workspace.shortLabel}
-    </span>
-  )
-}
-
-function WorkspaceHeader({
-  locale,
-  onSetDefaultWorkspace,
-  vault,
-  workspace,
-}: Pick<WorkspaceRowProps, 'locale' | 'onSetDefaultWorkspace' | 'vault'> & {
-  workspace: ReturnType<typeof workspaceIdentityFromVault>
-}) {
-  const handleSetDefaultWorkspace = () => {
-    onSetDefaultWorkspace?.(vault.path)
-    trackEvent('workspace_default_changed', { workspace_alias: workspace.alias })
-  }
-
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <div className="flex min-w-0 items-center gap-2">
-        <WorkspaceBadge workspace={workspace} />
-        <div className="min-w-0">
-          <div className="truncate text-sm font-medium text-foreground">{workspace.label}</div>
-          <div className="truncate text-[11px] text-muted-foreground">{workspace.path}</div>
-        </div>
-      </div>
-      <Button
-        type="button"
-        variant={workspace.defaultForNewNotes ? 'secondary' : 'ghost'}
-        size="xs"
-        onClick={handleSetDefaultWorkspace}
-        disabled={!onSetDefaultWorkspace || workspace.defaultForNewNotes}
-        data-testid={`workspace-default-${workspace.alias}`}
-      >
-        {workspace.defaultForNewNotes
-          ? translate(locale, 'workspace.manager.default')
-          : translate(locale, 'workspace.manager.makeDefault')}
-      </Button>
-    </div>
-  )
-}
-
-function WorkspaceMountedControl({
-  canEdit,
-  locale,
-  onUpdateWorkspaceIdentity,
-  vault,
-  workspace,
-}: Pick<WorkspaceRowProps, 'locale' | 'onUpdateWorkspaceIdentity' | 'vault'> & {
-  canEdit: boolean
-  workspace: ReturnType<typeof workspaceIdentityFromVault>
-}) {
-  const handleMountedChange = (mounted: boolean) => {
-    onUpdateWorkspaceIdentity?.(vault.path, { mounted })
-    trackEvent('workspace_mount_changed', { workspace_alias: workspace.alias, mounted: mounted ? 1 : 0 })
-  }
-
-  return (
-    <label className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-      <span>{translate(locale, 'workspace.manager.mounted')}</span>
-      <Switch
-        checked={workspace.mounted}
-        onCheckedChange={(mounted) => canEdit && handleMountedChange(mounted)}
-        disabled={!canEdit}
-        aria-label={translate(locale, 'workspace.manager.mounted')}
-      />
-    </label>
-  )
-}
-
-function WorkspaceIdentityInputs({
-  canEdit,
-  locale,
-  onUpdateWorkspaceIdentity,
-  vault,
-  workspace,
-}: Pick<WorkspaceRowProps, 'locale' | 'onUpdateWorkspaceIdentity' | 'vault'> & {
-  canEdit: boolean
-  workspace: ReturnType<typeof workspaceIdentityFromVault>
-}) {
-  return (
-    <div className="grid grid-cols-[minmax(0,1fr)_minmax(120px,0.5fr)] gap-2">
-      <Input
-        value={vault.label}
-        onChange={(event) => canEdit && onUpdateWorkspaceIdentity?.(vault.path, { label: event.target.value })}
-        aria-label={translate(locale, 'workspace.manager.label')}
-        disabled={!canEdit}
-      />
-      <Input
-        value={vault.alias ?? workspace.alias}
-        onChange={(event) => canEdit && onUpdateWorkspaceIdentity?.(vault.path, { alias: event.target.value })}
-        aria-label={translate(locale, 'workspace.manager.alias')}
-        disabled={!canEdit}
-      />
-    </div>
-  )
-}
-
-function WorkspaceColorPicker({
-  canEdit,
-  onUpdateWorkspaceIdentity,
-  vault,
-}: Pick<WorkspaceRowProps, 'onUpdateWorkspaceIdentity' | 'vault'> & {
-  canEdit: boolean
-}) {
-  return (
-    <div className="flex items-center gap-1">
-      {WORKSPACE_COLORS.map((color) => (
-        <WorkspaceColorButton
-          key={color}
-          color={color}
-          selected={(vault.color ?? null) === color}
-          onSelect={() => canEdit && onUpdateWorkspaceIdentity?.(vault.path, { color })}
-        />
-      ))}
-    </div>
-  )
-}
-
-function WorkspaceRow({
-  defaultWorkspacePath,
-  locale,
-  onSetDefaultWorkspace,
-  onUpdateWorkspaceIdentity,
-  vault,
-}: WorkspaceRowProps) {
-  const workspace = workspaceIdentityFromVault(vault, { defaultWorkspacePath })
-  const canEdit = !!onUpdateWorkspaceIdentity && vault.path !== '' && !vault.managedDefault
-
-  return (
-    <div
-      className="grid gap-2 rounded-md border border-border p-3"
-      data-testid={`workspace-row-${workspace.alias}`}
-    >
-      <WorkspaceHeader locale={locale} onSetDefaultWorkspace={onSetDefaultWorkspace} vault={vault} workspace={workspace} />
-      <WorkspaceMountedControl canEdit={canEdit} locale={locale} onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity} vault={vault} workspace={workspace} />
-      <WorkspaceIdentityInputs canEdit={canEdit} locale={locale} onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity} vault={vault} workspace={workspace} />
-      <WorkspaceColorPicker canEdit={canEdit} onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity} vault={vault} />
-    </div>
-  )
-}
-
-function WorkspaceManager({
-  defaultWorkspacePath,
-  locale,
-  onOpenChange,
-  onSetDefaultWorkspace,
-  onUpdateWorkspaceIdentity,
-  open,
-  vaults,
-}: WorkspaceManagerProps) {
-  return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[82vh] overflow-y-auto sm:max-w-[720px]" data-testid="workspace-manager-dialog">
-        <DialogHeader>
-          <DialogTitle>{translate(locale, 'workspace.manager.title')}</DialogTitle>
-          <DialogDescription>{translate(locale, 'workspace.manager.description')}</DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3">
-          {vaults.map((vault) => (
-            <WorkspaceRow
-              key={vault.path}
-              defaultWorkspacePath={defaultWorkspacePath}
-              locale={locale}
-              onSetDefaultWorkspace={onSetDefaultWorkspace}
-              onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
-              vault={vault}
-            />
-          ))}
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-}
-
 export function VaultMenu(props: VaultMenuProps) {
   const {
     vaults, vaultPath, onSwitchVault, onOpenLocalFolder, onCreateEmptyVault,
-    onCloneVault, onCloneGettingStarted, onRemoveVault, defaultWorkspacePath,
-    onSetDefaultWorkspace, onUpdateWorkspaceIdentity, compact = false, locale = 'en',
+    defaultWorkspacePath, onSetDefaultWorkspace, onOpenVaultSettings,
+    onCloneVault, onCloneGettingStarted, onRemoveVault, multiWorkspaceEnabled = false,
+    onUpdateWorkspaceIdentity, compact = false, locale = 'en',
   } = props
   const [open, setOpen] = useState(false)
-  const [manageOpen, setManageOpen] = useState(false)
+  const [vaultPendingRemoval, setVaultPendingRemoval] = useState<VaultOption | null>(null)
   const menuRef = useRef<HTMLDivElement>(null)
-  const activeVault = vaults.find((vault) => vault.path === vaultPath)
+  const defaultPath = multiWorkspaceEnabled ? (defaultWorkspacePath ?? vaultPath) : vaultPath
+  const activeVault = vaults.find((vault) => vault.path === defaultPath)
   const canRemove = !!onRemoveVault && vaults.length > 1
   const triggerClassName = getVaultTriggerClassName(open, compact)
   const triggerSize = compact ? 'icon-xs' : 'xs'
   const activeVaultLabel = activeVault?.label ?? translate(locale, 'status.vault.default')
+  const menuMinWidth = multiWorkspaceEnabled ? 320 : 200
+  const includedVaults = useMemo(
+    () => vaults.filter((vault) => (
+      vault.available !== false
+      && (vault.path === defaultPath || vault.mounted !== false)
+    )),
+    [defaultPath, vaults],
+  )
 
   useDismissibleLayer(open, menuRef, () => setOpen(false))
 
   const actions = useMemo<VaultAction[]>(() => {
     return buildVaultActions({
-      onManageWorkspaces: () => {
-        setManageOpen(true)
-        trackEvent('workspace_manager_opened', { workspace_count: vaults.length })
-      },
+      multiWorkspaceEnabled,
       onCreateEmptyVault,
       onCloneGettingStarted,
       onCloneVault,
       onOpenLocalFolder,
     })
-  }, [onCreateEmptyVault, onCloneGettingStarted, onCloneVault, onOpenLocalFolder, vaults.length])
+  }, [multiWorkspaceEnabled, onCreateEmptyVault, onCloneGettingStarted, onCloneVault, onOpenLocalFolder])
 
   return (
     <div ref={menuRef} style={{ position: 'relative' }}>
-      <WorkspaceManager
-        defaultWorkspacePath={defaultWorkspacePath}
-        locale={locale}
-        onOpenChange={setManageOpen}
-        onSetDefaultWorkspace={onSetDefaultWorkspace}
-        onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
-        open={manageOpen}
-        vaults={vaults}
-      />
       <ActionTooltip copy={{ label: translate(locale, 'status.vault.switch') }} side="top">
         <Button
           type="button"
@@ -505,26 +431,47 @@ export function VaultMenu(props: VaultMenuProps) {
             border: '1px solid var(--border)',
             borderRadius: 6,
             padding: 4,
-            minWidth: 200,
+            minWidth: menuMinWidth,
             boxShadow: '0 4px 12px var(--shadow-dialog)',
             zIndex: 1000,
           }}
+          data-testid="vault-menu-popover"
         >
+          {multiWorkspaceEnabled && (
+            <>
+              <VaultMenuHeader
+                locale={locale}
+                onOpenVaultSettings={onOpenVaultSettings ? () => {
+                  onOpenVaultSettings()
+                  setOpen(false)
+                } : undefined}
+              />
+              <div style={{ height: 1, background: 'var(--border)', margin: '2px 0 4px' }} />
+            </>
+          )}
           {vaults.map((vault) => (
             <VaultMenuItem
               key={vault.path}
               vault={vault}
-              isActive={vault.path === vaultPath}
-              canRemove={canRemove}
+              isActive={vault.path === defaultPath}
+              canRemove={canRemove && vault.path !== defaultPath}
+              disableMountToggle={vault.path === defaultPath && (includedVaults.length <= 1 || !onSetDefaultWorkspace)}
               locale={locale}
+              multiWorkspaceEnabled={multiWorkspaceEnabled}
               onSelect={() => {
-                onSwitchVault(vault.path)
+                if (multiWorkspaceEnabled && onSetDefaultWorkspace) onSetDefaultWorkspace(vault.path)
+                else onSwitchVault(vault.path)
                 setOpen(false)
               }}
-              onRemove={onRemoveVault ? () => {
-                onRemoveVault(vault.path)
-                setOpen(false)
-              } : undefined}
+              onMountedChange={(path, mounted) => {
+                if (!mounted && path === defaultPath) {
+                  const nextDefaultPath = includedVaults.find((includedVault) => includedVault.path !== path)?.path
+                  if (!nextDefaultPath) return
+                  onSetDefaultWorkspace?.(nextDefaultPath)
+                }
+                onUpdateWorkspaceIdentity?.(path, { mounted })
+              }}
+              onRequestRemove={onRemoveVault ? () => setVaultPendingRemoval(vault) : undefined}
             />
           ))}
           {actions.length > 0 && <div style={{ height: 1, background: 'var(--border)', margin: '4px 0' }} />}
@@ -535,6 +482,7 @@ export function VaultMenu(props: VaultMenuProps) {
               labelKey={action.labelKey}
               testId={action.testId}
               accent={action.accent}
+              multiWorkspaceEnabled={multiWorkspaceEnabled}
               locale={locale}
               onClick={() => {
                 action.onClick()
@@ -544,6 +492,20 @@ export function VaultMenu(props: VaultMenuProps) {
           ))}
         </div>
       )}
+      <ConfirmDeleteDialog
+        open={!!vaultPendingRemoval}
+        title={translate(locale, 'status.vault.removeConfirmTitle')}
+        message={translate(locale, 'status.vault.removeConfirmMessage', { label: vaultPendingRemoval?.label ?? '' })}
+        confirmLabel={translate(locale, 'status.vault.removeConfirmAction')}
+        onCancel={() => setVaultPendingRemoval(null)}
+        onConfirm={() => {
+          if (vaultPendingRemoval) {
+            onRemoveVault?.(vaultPendingRemoval.path)
+          }
+          setVaultPendingRemoval(null)
+          setOpen(false)
+        }}
+      />
     </div>
   )
 }

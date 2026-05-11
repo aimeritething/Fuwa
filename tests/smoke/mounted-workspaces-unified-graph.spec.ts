@@ -136,6 +136,7 @@ async function installMountedWorkspaceMocks(page: Page): Promise<void> {
           hidden_defaults: [],
         })
         ref.save_vault_list = () => null
+        ref.get_settings = () => ({ multi_workspace_enabled: true })
         ref.get_default_vault_path = () => data.gettingStartedPath
         ref.check_vault_exists = (args?: Record<string, unknown>) =>
           args?.path === data.primaryVaultPath || args?.path === data.researchVaultPath
@@ -193,6 +194,8 @@ test('mounted workspaces share the graph across note list, quick open, and searc
 
   await page.goto('/', { waitUntil: 'domcontentloaded' })
 
+  await page.getByText('All Notes', { exact: true }).click()
+
   const noteList = page.getByTestId('note-list-container')
   await expect(noteList.getByText('Primary Signal').first()).toBeVisible()
   await expect(noteList.getByText('Research Beacon').first()).toBeVisible()
@@ -201,13 +204,17 @@ test('mounted workspaces share the graph across note list, quick open, and searc
 
   await openQuickOpen(page)
   await page.locator(QUICK_OPEN_INPUT).fill('Beacon')
-  await expect(page.getByTestId('quick-open-palette').getByText('Research Lab / Research Beacon')).toBeVisible()
+  const quickOpen = page.getByTestId('quick-open-palette')
+  await expect(quickOpen.getByText('Research Beacon')).toBeVisible()
+  await expect(quickOpen.getByTestId('note-search-workspace-badge').filter({ hasText: 'RL' })).toBeVisible()
   await page.keyboard.press('Escape')
 
   await openGlobalSearch(page)
   await page.locator(GLOBAL_SEARCH_INPUT).fill(SEARCH_NEEDLE)
-  await expect(page.getByText('Field Notes / Primary Signal')).toBeVisible({ timeout: 5_000 })
-  await expect(page.getByText('Research Lab / Research Beacon')).toBeVisible()
+  await expect(page.getByText('Primary Signal')).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByText('Research Beacon')).toBeVisible()
+  await expect(page.getByTestId('search-result-workspace-badge').filter({ hasText: 'FN' })).toBeVisible()
+  await expect(page.getByTestId('search-result-workspace-badge').filter({ hasText: 'RL' })).toBeVisible()
 
   const searchCalls = await page.evaluate(() => (window as MockWindow).__mountedWorkspaceSearchCalls ?? [])
   expect(new Set(searchCalls)).toEqual(new Set([PRIMARY_VAULT_PATH, RESEARCH_VAULT_PATH]))

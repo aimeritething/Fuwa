@@ -10,6 +10,8 @@ pub struct AgentStreamRequest {
     pub message: String,
     pub system_prompt: Option<String>,
     pub vault_path: String,
+    #[serde(default)]
+    pub vault_paths: Vec<String>,
     pub permission_mode: AiAgentPermissionMode,
 }
 
@@ -63,6 +65,28 @@ pub(crate) fn mcp_server_path_string() -> Result<String, String> {
         .to_str()
         .ok_or("Invalid MCP server path")?
         .to_string())
+}
+
+pub(crate) fn active_vault_paths(primary_vault_path: &str, vault_paths: &[String]) -> Vec<String> {
+    let mut paths = Vec::new();
+    push_unique_vault_path(&mut paths, primary_vault_path);
+    for path in vault_paths {
+        push_unique_vault_path(&mut paths, path);
+    }
+    paths
+}
+
+pub(crate) fn active_vault_paths_json(primary_vault_path: &str, vault_paths: &[String]) -> String {
+    serde_json::to_string(&active_vault_paths(primary_vault_path, vault_paths))
+        .unwrap_or_else(|_| format!("[{}]", serde_json::json!(primary_vault_path)))
+}
+
+fn push_unique_vault_path(paths: &mut Vec<String>, path: &str) {
+    let trimmed = path.trim();
+    if trimmed.is_empty() || paths.iter().any(|existing| existing == trimmed) {
+        return;
+    }
+    paths.push(trimmed.to_string());
 }
 
 pub(crate) fn version_for_binary(binary: &Path) -> Option<String> {

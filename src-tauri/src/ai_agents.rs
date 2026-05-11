@@ -68,6 +68,8 @@ pub struct AiAgentStreamRequest {
     pub message: String,
     pub system_prompt: Option<String>,
     pub vault_path: String,
+    #[serde(default)]
+    pub vault_paths: Vec<String>,
     pub permission_mode: Option<AiAgentPermissionMode>,
 }
 
@@ -98,6 +100,7 @@ where
                 message: request.message,
                 system_prompt: request.system_prompt,
                 vault_path: request.vault_path,
+                vault_paths: request.vault_paths,
                 permission_mode,
             };
             crate::claude_cli::run_agent_stream(mapped, |event| {
@@ -111,6 +114,7 @@ where
                 message: request.message,
                 system_prompt: request.system_prompt,
                 vault_path: request.vault_path,
+                vault_paths: request.vault_paths,
                 permission_mode,
             };
             crate::codex_cli::run_agent_stream(mapped, emit)
@@ -120,6 +124,7 @@ where
                 message: request.message,
                 system_prompt: request.system_prompt,
                 vault_path: request.vault_path,
+                vault_paths: request.vault_paths,
                 permission_mode,
             };
             crate::opencode_cli::run_agent_stream(mapped, emit)
@@ -129,6 +134,7 @@ where
                 message: request.message,
                 system_prompt: request.system_prompt,
                 vault_path: request.vault_path,
+                vault_paths: request.vault_paths,
                 permission_mode,
             };
             crate::pi_cli::run_agent_stream(mapped, emit)
@@ -138,6 +144,7 @@ where
                 message: request.message,
                 system_prompt: request.system_prompt,
                 vault_path: request.vault_path,
+                vault_paths: request.vault_paths,
                 permission_mode,
             };
             crate::gemini_cli::run_agent_stream(mapped, emit)
@@ -199,6 +206,7 @@ mod tests {
             message: "Summarize this vault".into(),
             system_prompt: None,
             vault_path: "/tmp/vault".into(),
+            vault_paths: Vec::new(),
             permission_mode,
         }
     }

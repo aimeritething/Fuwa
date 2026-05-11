@@ -85,6 +85,7 @@ async function streamWithSelectedTarget(
     message: formattedMessage,
     systemPrompt,
     vaultPath: context.vaultPath,
+    vaultPaths: context.vaultPaths,
     permissionMode: context.permissionMode,
     callbacks,
   })

@@ -7,6 +7,7 @@ export interface PersistedVaultList {
     label: string
     path: string
     alias?: string | null
+    shortLabel?: string | null
     color?: string | null
     icon?: string | null
     mounted?: boolean | null
@@ -21,6 +22,7 @@ function persistedVaultOption(v: PersistedVaultList['vaults'][number]): VaultOpt
     label: v.label,
     path: v.path,
     alias: v.alias ?? undefined,
+    ...(v.shortLabel ? { shortLabel: v.shortLabel } : {}),
     color: v.color ?? null,
     icon: v.icon ?? null,
     mounted: v.mounted !== false,
@@ -69,6 +71,7 @@ export function saveVaultList(
       label: v.label,
       path: v.path,
       alias: v.alias ?? null,
+      ...(v.shortLabel ? { shortLabel: v.shortLabel } : {}),
       color: v.color ?? null,
       icon: v.icon ?? null,
       mounted: v.mounted !== false,

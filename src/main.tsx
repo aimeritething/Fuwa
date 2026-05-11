@@ -122,11 +122,52 @@ window.__laputaTest = {
 
 const sentryReactErrorHandler = Sentry.reactErrorHandler()
 
+function isResizeObserverLoopError(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error)
+  return message.includes('ResizeObserver loop completed with undelivered notifications')
+    || message.includes('ResizeObserver loop limit exceeded')
+}
+
+function showFatalRenderError(
+  error: unknown,
+  errorInfo: { componentStack?: string },
+): void {
+  const existing = document.getElementById('tolaria-fatal-render-error')
+  const overlay = existing ?? document.createElement('pre')
+  overlay.id = 'tolaria-fatal-render-error'
+  overlay.style.cssText = [
+    'position:fixed',
+    'inset:24px',
+    'z-index:2147483647',
+    'overflow:auto',
+    'margin:0',
+    'padding:16px',
+    'border-radius:8px',
+    'background:#1f1f1f',
+    'color:#fff',
+    'font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace',
+    'white-space:pre-wrap',
+  ].join(';')
+
+  const message = error instanceof Error ? error.stack ?? error.message : String(error)
+  overlay.textContent = [
+    'Tolaria render error',
+    '',
+    message,
+    '',
+    errorInfo.componentStack ?? '',
+  ].join('\n')
+  document.body.appendChild(overlay)
+}
+
 function captureReactRootError(
   error: unknown,
   errorInfo: { componentStack?: string },
 ): void {
+  if (isResizeObserverLoopError(error)) return
+
   const componentStack = errorInfo.componentStack ?? ''
+  showFatalRenderError(error, { componentStack })
   sentryReactErrorHandler(error, { componentStack })
   reloadFrontendOnceIfStartupFailed()
 }
@@ -136,6 +177,7 @@ function captureRecoverableReactRootError(
   errorInfo: { componentStack?: string },
 ): void {
   const componentStack = errorInfo.componentStack ?? ''
+  if (isResizeObserverLoopError(error)) return
   if (isRecoveredBlockNoteRenderError(error, componentStack)) return
 
   captureReactRootError(error, { componentStack })

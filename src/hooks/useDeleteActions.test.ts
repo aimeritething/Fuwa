@@ -14,6 +14,7 @@ describe('useDeleteActions', () => {
   let onDeselectNote: ReturnType<typeof vi.fn>
   let removeEntry: ReturnType<typeof vi.fn>
   let removeEntries: ReturnType<typeof vi.fn>
+  let resolveVaultPathForPath: ReturnType<typeof vi.fn>
   let refreshModifiedFiles: ReturnType<typeof vi.fn>
   let reloadVault: ReturnType<typeof vi.fn>
   let setToastMessage: ReturnType<typeof vi.fn>
@@ -22,18 +23,20 @@ describe('useDeleteActions', () => {
     onDeselectNote = vi.fn()
     removeEntry = vi.fn()
     removeEntries = vi.fn()
+    resolveVaultPathForPath = vi.fn()
     refreshModifiedFiles = vi.fn().mockResolvedValue(undefined)
     reloadVault = vi.fn().mockResolvedValue(undefined)
     setToastMessage = vi.fn()
     mockInvokeFn.mockReset()
   })
 
-  function renderDeleteActions() {
+  function renderDeleteActions(options: { resolveVaultPathForPath?: (path: string) => string | null | undefined } = {}) {
     return renderHook(() =>
       useDeleteActions({
         onDeselectNote,
         removeEntry,
         removeEntries,
+        resolveVaultPathForPath: options.resolveVaultPathForPath,
         refreshModifiedFiles,
         reloadVault,
         setToastMessage,
@@ -111,6 +114,21 @@ describe('useDeleteActions', () => {
       expect(setToastMessage).toHaveBeenLastCalledWith('Note permanently deleted')
     })
 
+    it('passes the owning vault path when deleting a note outside the default vault', async () => {
+      mockInvokeFn.mockResolvedValue(['/team/a.md'])
+      resolveVaultPathForPath.mockReturnValue('/team')
+      const { result } = renderDeleteActions({ resolveVaultPathForPath })
+
+      await act(async () => {
+        await result.current.deleteNoteFromDisk('/team/a.md')
+      })
+
+      expect(mockInvokeFn).toHaveBeenCalledWith('batch_delete_notes', {
+        paths: ['/team/a.md'],
+        vaultPath: '/team',
+      })
+    })
+
     it('reloads the vault and returns false on failure', async () => {
       mockInvokeFn.mockRejectedValue(new Error('disk full'))
       const { result } = renderDeleteActions()
@@ -158,6 +176,27 @@ describe('useDeleteActions', () => {
     it('onConfirm deletes all paths in one backend call and shows toast', async () => {
       await confirmDeleteAndExpectBatchCall(['/vault/a.md', '/vault/b.md'])
       expect(removeEntries).toHaveBeenCalledWith(['/vault/a.md', '/vault/b.md'])
+      expect(setToastMessage).toHaveBeenCalledWith('2 notes permanently deleted')
+    })
+
+    it('splits bulk deletes by owning vault path', async () => {
+      mockInvokeFn.mockImplementation(async (_command, args: { paths: string[] }) => args.paths)
+      resolveVaultPathForPath.mockImplementation((path: string) => path.startsWith('/team') ? '/team' : '/personal')
+      const { result } = renderDeleteActions({ resolveVaultPathForPath })
+
+      act(() => {
+        result.current.handleBulkDeletePermanently(['/personal/a.md', '/team/b.md'])
+      })
+      await confirmCurrentDelete(result)
+
+      expect(mockInvokeFn).toHaveBeenCalledWith('batch_delete_notes', {
+        paths: ['/personal/a.md'],
+        vaultPath: '/personal',
+      })
+      expect(mockInvokeFn).toHaveBeenCalledWith('batch_delete_notes', {
+        paths: ['/team/b.md'],
+        vaultPath: '/team',
+      })
       expect(setToastMessage).toHaveBeenCalledWith('2 notes permanently deleted')
     })
 

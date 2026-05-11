@@ -180,7 +180,7 @@ fn agent_args_with_tool_policy(
         "--verbose".into(),
         "--include-partial-messages".into(),
         "--mcp-config".into(),
-        mcp_config(&req.vault_path)?,
+        mcp_config(&req.vault_path, &req.vault_paths)?,
         "--strict-mcp-config".into(),
         "--permission-mode".into(),
         "acceptEdits".into(),
@@ -221,14 +221,18 @@ fn stdin_prompt(message: &str, system_prompt: Option<&str>) -> String {
     crate::cli_agent_runtime::build_prompt(message, system_prompt)
 }
 
-fn mcp_config(vault_path: &str) -> Result<String, String> {
+fn mcp_config(vault_path: &str, vault_paths: &[String]) -> Result<String, String> {
     let mcp_server_path = crate::cli_agent_runtime::mcp_server_path_string()?;
+    let vault_paths = crate::cli_agent_runtime::active_vault_paths_json(vault_path, vault_paths);
     let config = serde_json::json!({
         "mcpServers": {
             "tolaria": {
                 "command": "node",
                 "args": [mcp_server_path],
-                "env": { "VAULT_PATH": vault_path }
+                "env": {
+                    "VAULT_PATH": vault_path,
+                    "VAULT_PATHS": vault_paths
+                }
             }
         }
     });
@@ -378,6 +382,7 @@ mod tests {
             message: message.into(),
             system_prompt: system_prompt.map(str::to_string),
             vault_path: "/tmp/vault".into(),
+            vault_paths: Vec::new(),
             permission_mode,
         }
     }
@@ -594,12 +599,17 @@ mod tests {
 
     #[test]
     fn mcp_config_is_valid_json() {
-        if let Ok(config_str) = mcp_config("/tmp/test-vault") {
+        let extra_vaults = vec!["/tmp/secondary-vault".to_string()];
+        if let Ok(config_str) = mcp_config("/tmp/test-vault", &extra_vaults) {
             let parsed: serde_json::Value = serde_json::from_str(&config_str).unwrap();
             assert!(parsed["mcpServers"]["tolaria"]["command"].is_string());
             assert_eq!(
                 parsed["mcpServers"]["tolaria"]["env"]["VAULT_PATH"],
                 "/tmp/test-vault"
+            );
+            assert_eq!(
+                parsed["mcpServers"]["tolaria"]["env"]["VAULT_PATHS"],
+                "[\"/tmp/test-vault\",\"/tmp/secondary-vault\"]"
             );
         }
     }

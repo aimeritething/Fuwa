@@ -12,11 +12,12 @@ import {
   type SVGAttributes,
 } from 'react'
 import { Input } from '@/components/ui/input'
-import type { VaultEntry } from '../types'
+import type { VaultEntry, WorkspaceIdentity } from '../types'
 import { getTypeColor, getTypeLightColor } from '../utils/typeColors'
 import { scrollSelectedHTMLChildIntoView } from '../utils/domScroll'
 import { getTypeIcon } from './NoteItem'
 import { NoteTitleIcon } from './NoteTitleIcon'
+import { WorkspaceInitialsBadge } from './WorkspaceInitialsBadge'
 import './WikilinkSuggestionMenu.css'
 
 const MIN_QUERY_LENGTH = 2
@@ -43,6 +44,7 @@ interface MatchedEntry {
   typeColor?: string
   typeLightColor?: string
   TypeIcon?: ComponentType<SVGAttributes<SVGSVGElement>>
+  workspace?: WorkspaceIdentity | null
 }
 
 interface OpenAutocompleteKeyContext {
@@ -61,7 +63,11 @@ function entryMatchesQuery(entry: VaultEntry, lowerQuery: string): boolean {
     || entry.aliases.some(alias => alias.toLowerCase().includes(lowerQuery))
 }
 
-function buildMatchedEntry(entry: VaultEntry, typeEntryMap: Record<string, VaultEntry>): MatchedEntry {
+function shouldShowWorkspaceBadge(entries: VaultEntry[]): boolean {
+  return new Set(entries.map((entry) => entry.workspace?.alias).filter(Boolean)).size > 1
+}
+
+function buildMatchedEntry(entry: VaultEntry, typeEntryMap: Record<string, VaultEntry>, showWorkspace: boolean): MatchedEntry {
   const isA = entry.isA
   const typeEntry = Reflect.get(typeEntryMap, isA ?? '') as VaultEntry | undefined
   const noteType = isA || undefined
@@ -72,16 +78,18 @@ function buildMatchedEntry(entry: VaultEntry, typeEntryMap: Record<string, Vault
     typeColor: noteType ? getTypeColor(isA, typeEntry?.color) : undefined,
     typeLightColor: noteType ? getTypeLightColor(isA, typeEntry?.color) : undefined,
     TypeIcon: noteType ? getTypeIcon(isA, typeEntry?.icon) : undefined,
+    workspace: showWorkspace ? entry.workspace ?? null : null,
   }
 }
 
 function matchEntries(entries: VaultEntry[], typeEntryMap: Record<string, VaultEntry>, query: string): MatchedEntry[] {
   if (query.length < MIN_QUERY_LENGTH) return []
   const lowerQuery = query.toLowerCase()
+  const showWorkspace = shouldShowWorkspaceBadge(entries)
   return entries
     .filter(entry => entryMatchesQuery(entry, lowerQuery))
     .slice(0, MAX_RESULTS)
-    .map(entry => buildMatchedEntry(entry, typeEntryMap))
+    .map(entry => buildMatchedEntry(entry, typeEntryMap, showWorkspace))
 }
 
 function resolveOpenAutocompleteKeyAction(key: string): AutocompleteKeyAction | null {
@@ -205,7 +213,7 @@ function NoteAutocompleteMenuItem({
       onClick={() => onSelect(item.title)}
       onMouseEnter={onHover}
     >
-      <span className="wikilink-menu__title" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+      <span className="wikilink-menu__title" style={{ display: 'flex', alignItems: 'center', gap: 6, flex: 1, minWidth: 0 }}>
         {item.TypeIcon && <item.TypeIcon width={14} height={14} style={{ color: item.typeColor, flexShrink: 0 }} />}
         <NoteTitleIcon icon={item.noteIcon} size={14} />
         {item.title}
@@ -215,6 +223,7 @@ function NoteAutocompleteMenuItem({
           {item.noteType}
         </span>
       )}
+      <WorkspaceInitialsBadge workspace={item.workspace} testId="note-autocomplete-workspace-badge" />
     </div>
   )
 }

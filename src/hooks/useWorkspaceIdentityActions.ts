@@ -1,13 +1,34 @@
 import { useCallback, type Dispatch, type SetStateAction } from 'react'
 import type { VaultOption } from '../components/status-bar/types'
+import { labelFromWorkspacePath } from '../utils/workspaces'
 
 function updateVaultOptionInList(
   path: string,
   patch: Partial<VaultOption>,
 ): (vaults: VaultOption[]) => VaultOption[] {
-  return (vaults) => vaults.map((vault) => (
-    vault.path === path ? { ...vault, ...patch, path: vault.path } : vault
-  ))
+  const safePatch = { ...patch }
+  delete safePatch.path
+
+  return (vaults) => {
+    let updated = false
+    const nextVaults = vaults.map((vault) => {
+      if (vault.path !== path) return vault
+      updated = true
+      return { ...vault, ...safePatch, path: vault.path }
+    })
+
+    if (updated) return nextVaults
+
+    return [
+      ...nextVaults,
+      {
+        label: labelFromWorkspacePath(path),
+        path,
+        available: true,
+        ...safePatch,
+      },
+    ]
+  }
 }
 
 export function useWorkspaceIdentityActions({

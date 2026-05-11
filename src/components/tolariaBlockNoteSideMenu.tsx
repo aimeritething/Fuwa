@@ -327,11 +327,13 @@ function createSideMenuAlignmentController(editor: TolariaBlockNoteEditor, block
 }
 
 function useSideMenuTextAlignment(editor: TolariaBlockNoteEditor, block: SideMenuBlock | undefined) {
-  useLayoutEffect(() => {
-    if (!block) return
+  const blockId = block?.id
 
-    return createSideMenuAlignmentController(editor, block.id)
-  }, [block?.id, editor])
+  useLayoutEffect(() => {
+    if (!blockId) return
+
+    return createSideMenuAlignmentController(editor, blockId)
+  }, [blockId, editor])
 }
 
 function styleDragPreview(preview: HTMLElement, rect: DOMRect) {

@@ -225,12 +225,10 @@ fn node_binary_name() -> &'static str {
 
 /// Resolve the path to `mcp-server/`.
 ///
-/// In dev mode, uses `CARGO_MANIFEST_DIR` (set at compile time).
-/// In release mode, uses platform resource roots exposed by the launcher.
+/// In dev mode, prefers `CARGO_MANIFEST_DIR` and falls back to runtime checkout ancestors.
+/// In release mode, uses launcher roots plus bundle paths derived from the executable.
 pub(crate) fn mcp_server_dir() -> Result<PathBuf, String> {
-    let dev_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("mcp-server");
+    let dev_path = build_time_dev_mcp_server_dir();
     let resource_roots = paths::runtime_resource_roots();
     let candidates = mcp_server_dir_candidates(&dev_path, &resource_roots);
     if let Some(path) = candidates
@@ -250,18 +248,116 @@ pub(crate) fn mcp_server_dir() -> Result<PathBuf, String> {
     ))
 }
 
+fn build_time_dev_mcp_server_dir() -> PathBuf {
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("mcp-server")
+}
+
 fn mcp_server_dir_candidates(dev_path: &Path, resource_roots: &[PathBuf]) -> Vec<PathBuf> {
-    let mut candidates = vec![dev_path.to_path_buf()];
+    let current_dir = std::env::current_dir().ok();
+    let current_exe = std::env::current_exe().ok();
+
+    mcp_server_dir_candidates_for(
+        dev_path,
+        resource_roots,
+        current_dir.as_deref(),
+        current_exe.as_deref(),
+    )
+}
+
+fn mcp_server_dir_candidates_for(
+    dev_path: &Path,
+    resource_roots: &[PathBuf],
+    current_dir: Option<&Path>,
+    current_exe: Option<&Path>,
+) -> Vec<PathBuf> {
+    let mut candidates = Vec::new();
+    push_unique_path(&mut candidates, dev_path.to_path_buf());
 
     for root in resource_roots {
-        candidates.push(root.join("mcp-server"));
-        candidates.push(root.join("resources").join("mcp-server"));
-        candidates.extend(linux_package_mcp_server_dirs(root));
+        push_resource_root_candidates(&mut candidates, root);
     }
 
-    candidates.extend(linux_package_mcp_server_dirs(Path::new("/usr/local")));
-    candidates.extend(linux_package_mcp_server_dirs(Path::new("/usr")));
+    if let Some(current_exe) = current_exe {
+        for root in executable_resource_roots(current_exe) {
+            push_resource_root_candidates(&mut candidates, &root);
+        }
+    }
+
+    for root in runtime_development_roots(current_dir, current_exe) {
+        push_development_root_candidates(&mut candidates, &root);
+    }
+
+    push_linux_package_candidates(&mut candidates, Path::new("/usr/local"));
+    push_linux_package_candidates(&mut candidates, Path::new("/usr"));
     candidates
+}
+
+fn push_resource_root_candidates(candidates: &mut Vec<PathBuf>, root: &Path) {
+    push_unique_path(candidates, root.join("mcp-server"));
+    push_unique_path(candidates, root.join("resources").join("mcp-server"));
+    push_linux_package_candidates(candidates, root);
+}
+
+fn push_development_root_candidates(candidates: &mut Vec<PathBuf>, root: &Path) {
+    push_unique_path(candidates, root.join("mcp-server"));
+    push_unique_path(candidates, root.join("resources").join("mcp-server"));
+}
+
+fn runtime_development_roots(
+    current_dir: Option<&Path>,
+    current_exe: Option<&Path>,
+) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    if let Some(current_dir) = current_dir {
+        push_ancestor_paths(&mut roots, current_dir);
+    }
+    if let Some(exe_dir) = current_exe.and_then(Path::parent) {
+        push_ancestor_paths(&mut roots, exe_dir);
+    }
+
+    roots
+}
+
+fn executable_resource_roots(current_exe: &Path) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+    let Some(exe_dir) = current_exe.parent() else {
+        return roots;
+    };
+
+    if exe_dir.file_name().and_then(|name| name.to_str()) == Some("MacOS") {
+        if let Some(contents_dir) = exe_dir.parent() {
+            push_unique_path(&mut roots, contents_dir.join("Resources"));
+        }
+    }
+
+    push_unique_path(&mut roots, exe_dir.to_path_buf());
+    if let Some(parent) = exe_dir.parent() {
+        push_unique_path(&mut roots, parent.join("Resources"));
+        push_unique_path(&mut roots, parent.to_path_buf());
+    }
+
+    roots
+}
+
+fn push_ancestor_paths(paths: &mut Vec<PathBuf>, start: &Path) {
+    for ancestor in start.ancestors().filter(|path| path.parent().is_some()) {
+        push_unique_path(paths, ancestor.to_path_buf());
+    }
+}
+
+fn push_linux_package_candidates(candidates: &mut Vec<PathBuf>, root: &Path) {
+    for path in linux_package_mcp_server_dirs(root) {
+        push_unique_path(candidates, path);
+    }
+}
+
+fn push_unique_path(paths: &mut Vec<PathBuf>, path: PathBuf) {
+    if !path.as_os_str().is_empty() && !paths.iter().any(|existing| existing == &path) {
+        paths.push(path);
+    }
 }
 
 fn linux_package_mcp_server_dirs(root: &Path) -> Vec<PathBuf> {
@@ -287,14 +383,24 @@ fn mcp_server_dir_has_files(path: &Path) -> bool {
 
 /// Spawn the WebSocket bridge as a child process.
 pub fn spawn_ws_bridge(vault_path: impl AsRef<Path>) -> Result<Child, String> {
+    spawn_ws_bridge_with_paths(vault_path, &[])
+}
+
+/// Spawn the WebSocket bridge with every active vault exposed to MCP tools.
+pub fn spawn_ws_bridge_with_paths(
+    vault_path: impl AsRef<Path>,
+    vault_paths: &[PathBuf],
+) -> Result<Child, String> {
     let node = find_node()?;
     let server_dir = mcp_server_dir()?;
     let script = server_dir.join("ws-bridge.js");
     let vault_path = vault_path.as_ref();
+    let active_vault_paths = active_vault_paths_json(vault_path, vault_paths);
 
     let child = crate::hidden_command(node)
         .arg(&script)
         .env("VAULT_PATH", vault_path)
+        .env("VAULT_PATHS", active_vault_paths)
         .env("WS_PORT", "9710")
         .env("WS_UI_PORT", "9711")
         .stdin(std::process::Stdio::null())
@@ -309,6 +415,23 @@ pub fn spawn_ws_bridge(vault_path: impl AsRef<Path>) -> Result<Child, String> {
         vault_path.display()
     );
     Ok(child)
+}
+
+fn active_vault_paths_json(vault_path: &Path, vault_paths: &[PathBuf]) -> String {
+    let mut paths = Vec::new();
+    push_unique_bridge_vault_path(&mut paths, vault_path);
+    for path in vault_paths {
+        push_unique_bridge_vault_path(&mut paths, path);
+    }
+    serde_json::to_string(&paths).unwrap_or_else(|_| "[]".to_string())
+}
+
+fn push_unique_bridge_vault_path(paths: &mut Vec<String>, path: &Path) {
+    let value = path.to_string_lossy().trim().to_string();
+    if value.is_empty() || paths.iter().any(|existing| existing == &value) {
+        return;
+    }
+    paths.push(value);
 }
 
 fn mcp_config_paths() -> Vec<PathBuf> {
@@ -785,6 +908,35 @@ mod tests {
 
         assert!(candidates.contains(&PathBuf::from(
             "/tmp/.mount_tolaria/usr/lib/tolaria/resources/mcp-server"
+        )));
+    }
+
+    #[test]
+    fn mcp_server_dir_candidates_include_runtime_dev_roots_when_build_path_is_stale() {
+        let stale_dev_path = Path::new("/Users/runner/work/tolaria/tolaria/mcp-server");
+        let current_dir = Path::new("/Users/luca/Workspace/tolaria");
+        let current_exe = Path::new("/Users/luca/Workspace/tolaria/src-tauri/target/debug/tolaria");
+        let candidates = mcp_server_dir_candidates_for(
+            stale_dev_path,
+            &[],
+            Some(current_dir),
+            Some(current_exe),
+        );
+
+        assert!(candidates.contains(&PathBuf::from("/Users/luca/Workspace/tolaria/mcp-server")));
+        assert!(candidates.contains(&PathBuf::from(
+            "/Users/luca/Workspace/tolaria/src-tauri/resources/mcp-server"
+        )));
+    }
+
+    #[test]
+    fn mcp_server_dir_candidates_include_macos_bundle_resources() {
+        let dev_path = Path::new("/repo/mcp-server");
+        let current_exe = Path::new("/Applications/Tolaria.app/Contents/MacOS/Tolaria");
+        let candidates = mcp_server_dir_candidates_for(dev_path, &[], None, Some(current_exe));
+
+        assert!(candidates.contains(&PathBuf::from(
+            "/Applications/Tolaria.app/Contents/Resources/mcp-server"
         )));
     }
 

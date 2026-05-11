@@ -1,8 +1,10 @@
-import { useRef, useEffect, type ComponentType, type SVGAttributes } from 'react'
+import { useRef, useEffect, type ComponentType, type MouseEvent, type PointerEvent, type SVGAttributes } from 'react'
 import { cn } from '@/lib/utils'
 import { Badge } from '@/components/ui/badge'
 import { scrollSelectedHTMLChildIntoView } from '../utils/domScroll'
 import { NoteTitleIcon } from './NoteTitleIcon'
+import { WorkspaceInitialsBadge } from './WorkspaceInitialsBadge'
+import type { WorkspaceIdentity } from '../types'
 
 export interface NoteSearchResultItem {
   title: string
@@ -11,6 +13,7 @@ export interface NoteSearchResultItem {
   typeColor?: string
   typeLightColor?: string
   TypeIcon?: ComponentType<SVGAttributes<SVGSVGElement>>
+  workspace?: WorkspaceIdentity | null
 }
 
 interface NoteSearchListProps<T extends NoteSearchResultItem> {
@@ -19,6 +22,7 @@ interface NoteSearchListProps<T extends NoteSearchResultItem> {
   getItemKey: (item: T, index: number) => string
   onItemClick: (item: T, index: number) => void
   onItemHover?: (index: number) => void
+  activateOnMouseDown?: boolean
   emptyMessage?: string
   className?: string
 }
@@ -29,6 +33,7 @@ interface NoteSearchListItemProps<T extends NoteSearchResultItem> {
   selected: boolean
   onItemClick: (item: T, index: number) => void
   onItemHover?: (index: number) => void
+  activateOnMouseDown?: boolean
 }
 
 function NoteSearchListItem<T extends NoteSearchResultItem>({
@@ -37,14 +42,43 @@ function NoteSearchListItem<T extends NoteSearchResultItem>({
   selected,
   onItemClick,
   onItemHover,
+  activateOnMouseDown,
 }: NoteSearchListItemProps<T>) {
+  const pressActivatedRef = useRef(false)
+
+  const activateFromPress = (event: MouseEvent<HTMLDivElement> | PointerEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    if (!activateOnMouseDown) return
+
+    event.stopPropagation()
+    if (pressActivatedRef.current) return
+
+    pressActivatedRef.current = true
+    window.setTimeout(() => {
+      pressActivatedRef.current = false
+    }, 0)
+    onItemClick(item, index)
+  }
+
+  const handleClick = (event: MouseEvent<HTMLDivElement>) => {
+    if (activateOnMouseDown) {
+      event.preventDefault()
+      event.stopPropagation()
+      return
+    }
+
+    onItemClick(item, index)
+  }
+
   return (
     <div
       className={cn(
         'flex cursor-pointer items-center justify-between gap-2 px-3 py-1.5 transition-colors',
         selected ? 'bg-accent' : 'hover:bg-secondary',
       )}
-      onClick={() => onItemClick(item, index)}
+      onPointerDownCapture={activateFromPress}
+      onMouseDownCapture={activateFromPress}
+      onClick={handleClick}
       onMouseEnter={() => onItemHover?.(index)}
     >
       <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm text-foreground">
@@ -59,14 +93,19 @@ function NoteSearchListItem<T extends NoteSearchResultItem>({
         <NoteTitleIcon icon={item.noteIcon} size={14} testId="note-search-item-icon" />
         <span className="truncate">{item.title}</span>
       </span>
-      {item.noteType && (
-        <Badge
-          variant="secondary"
-          className="shrink-0 text-[11px]"
-          style={item.typeColor ? { color: item.typeColor, backgroundColor: item.typeLightColor } : undefined}
-        >
-          {item.noteType}
-        </Badge>
+      {(item.noteType || item.workspace) && (
+        <span className="ml-2 flex shrink-0 items-center gap-1.5">
+          {item.noteType && (
+            <Badge
+              variant="secondary"
+              className="shrink-0 text-[11px]"
+              style={item.typeColor ? { color: item.typeColor, backgroundColor: item.typeLightColor } : undefined}
+            >
+              {item.noteType}
+            </Badge>
+          )}
+          <WorkspaceInitialsBadge workspace={item.workspace} testId="note-search-workspace-badge" />
+        </span>
       )}
     </div>
   )
@@ -78,6 +117,7 @@ export function NoteSearchList<T extends NoteSearchResultItem>({
   getItemKey,
   onItemClick,
   onItemHover,
+  activateOnMouseDown,
   emptyMessage = 'No results',
   className,
 }: NoteSearchListProps<T>) {
@@ -107,6 +147,7 @@ export function NoteSearchList<T extends NoteSearchResultItem>({
           selected={i === selectedIndex}
           onItemClick={onItemClick}
           onItemHover={onItemHover}
+          activateOnMouseDown={activateOnMouseDown}
         />
       ))}
     </div>

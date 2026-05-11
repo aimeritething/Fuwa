@@ -26,8 +26,42 @@
     <title>Tolaria</title>
   </head>
   <body>
+    <pre id="tolaria-boot-diagnostics" style="position:fixed;left:24px;top:24px;z-index:2147483647;max-width:min(760px,calc(100vw - 48px));max-height:calc(100vh - 48px);overflow:auto;margin:0;padding:12px 14px;border-radius:8px;background:#111;color:#fff;font:12px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre-wrap">Tolaria boot: HTML parsed</pre>
     <script>
       (function () {
+        var diagnostics = document.getElementById('tolaria-boot-diagnostics');
+        function appendDiagnostic(message) {
+          if (!diagnostics) return;
+          if (!diagnostics.isConnected) document.body.appendChild(diagnostics);
+          diagnostics.hidden = false;
+          diagnostics.textContent += '\n' + message;
+        }
+        function isResizeObserverLoopMessage(message) {
+          return typeof message === 'string'
+            && (
+              message.indexOf('ResizeObserver loop completed with undelivered notifications') !== -1
+              || message.indexOf('ResizeObserver loop limit exceeded') !== -1
+            );
+        }
+        window.addEventListener('error', function (event) {
+          if (isResizeObserverLoopMessage(event.message)) {
+            event.preventDefault();
+            return;
+          }
+          appendDiagnostic('error: ' + event.message + ' @ ' + event.filename + ':' + event.lineno + ':' + event.colno);
+        });
+        window.addEventListener('unhandledrejection', function (event) {
+          var reason = event.reason && (event.reason.stack || event.reason.message || String(event.reason));
+          if (isResizeObserverLoopMessage(reason)) {
+            event.preventDefault();
+            return;
+          }
+          appendDiagnostic('unhandled rejection: ' + reason);
+        });
+        window.addEventListener('tolaria:frontend-ready', function () {
+          if (diagnostics) diagnostics.hidden = true;
+        }, { once: true });
+
         var key = 'tolaria-theme';
         var legacyKey = 'laputa-theme';
         var systemDarkQuery = '(prefers-color-scheme: dark)';

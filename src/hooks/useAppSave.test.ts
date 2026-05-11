@@ -32,6 +32,21 @@ function makeEntry(path: string, title = 'Test', filename = 'test.md'): VaultEnt
   return { path, title, filename, content: '', outgoingLinks: [], snippet: '', wordCount: 0, isA: 'Note', status: null, createdAt: null, modifiedAt: null, icon: null, tags: [] } as unknown as VaultEntry
 }
 
+function makeWorkspace(path: string, alias = 'workspace'): NonNullable<VaultEntry['workspace']> {
+  return {
+    id: alias,
+    label: alias,
+    alias,
+    path,
+    shortLabel: alias.slice(0, 2).toUpperCase(),
+    color: null,
+    icon: null,
+    mounted: true,
+    available: true,
+    defaultForNewNotes: false,
+  }
+}
+
 describe('useAppSave', () => {
   const deps = {
     updateEntry: vi.fn(),
@@ -406,8 +421,10 @@ describe('useAppSave', () => {
     })
 
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('auto_rename_untitled', {
-      vaultPath: '/vault',
-      notePath: entry.path,
+      args: {
+        vaultPath: '/vault',
+        notePath: entry.path,
+      },
     })
     expect(deps.replaceEntry).toHaveBeenCalledWith(
       entry.path,
@@ -613,6 +630,41 @@ describe('useAppSave', () => {
       oldPath,
       expect.objectContaining({ path: newPath, filename: 'manual-name.md' }),
       '# Fresh Title\n\nBody',
+    )
+  })
+
+  it('passes the active tab workspace path to manual filename renames', async () => {
+    vi.mocked(isTauri).mockReturnValue(true)
+
+    const oldPath = '/team/fresh-title.md'
+    const newPath = '/team/manual-name.md'
+    const entry = {
+      ...makeEntry(oldPath, 'Fresh Title', 'fresh-title.md'),
+      workspace: makeWorkspace('/team', 'team'),
+    }
+
+    deps.handleRenameFilename.mockImplementation(async (path, newFilenameStem, vaultPath, onEntryRenamed) => {
+      expect(path).toBe(oldPath)
+      expect(newFilenameStem).toBe('manual-name')
+      expect(vaultPath).toBe('/team')
+      onEntryRenamed(path, { path: newPath, filename: 'manual-name.md', title: 'Fresh Title' }, '# Fresh Title\n')
+    })
+
+    const { result } = renderSave({
+      resolvedPath: '/personal',
+      tabs: [{ entry, content: '# Fresh Title\n' }],
+      activeTabPath: oldPath,
+    })
+
+    await act(async () => {
+      await result.current.handleFilenameRename(oldPath, 'manual-name')
+    })
+
+    expect(deps.handleRenameFilename).toHaveBeenCalledWith(
+      oldPath,
+      'manual-name',
+      '/team',
+      expect.any(Function),
     )
   })
 

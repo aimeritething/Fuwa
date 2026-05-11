@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url'
 import {
   findMarkdownFiles, getNote, searchNotes, vaultContext,
 } from './vault.js'
-import { requireVaultPath } from './vault-path.js'
+import { requireVaultPath, requireVaultPaths } from './vault-path.js'
 import { evaluateBridgeRequest } from './ws-bridge.js'
 
 let tmpDir
@@ -240,6 +240,16 @@ describe('requireVaultPath', () => {
     assert.throws(
       () => requireVaultPath({}),
       /VAULT_PATH is required/,
+    )
+  })
+
+  it('returns all configured active vault paths with the primary vault first', () => {
+    assert.deepEqual(
+      requireVaultPaths({
+        VAULT_PATH: '/tmp/Default Vault',
+        VAULT_PATHS: JSON.stringify(['/tmp/Default Vault', '/tmp/Second Vault']),
+      }),
+      ['/tmp/Default Vault', '/tmp/Second Vault'],
     )
   })
 })

@@ -17,7 +17,8 @@ interface FolderItemRowProps {
   onOpenMenu: (node: FolderNode, event: ReactMouseEvent<HTMLDivElement>) => void
   onSelect: () => void
   onStartRenameFolder?: (folderPath: string) => void
-  onToggle: (path: string) => void
+  onToggle: () => void
+  canOpenMenu?: boolean
 }
 
 export function FolderItemRow({
@@ -30,13 +31,14 @@ export function FolderItemRow({
   onSelect,
   onStartRenameFolder,
   onToggle,
+  canOpenMenu = true,
 }: FolderItemRowProps) {
   const hasChildren = node.children.length > 0
   const { handleRenameDoubleClick, handleSelectClick } = useFolderRowInteractions({
     hasChildren,
     onRenameFolder: onStartRenameFolder ? () => onStartRenameFolder(node.path) : undefined,
     onSelect,
-    onToggle: () => onToggle(node.path),
+    onToggle,
   })
 
   return (
@@ -49,6 +51,10 @@ export function FolderItemRow({
       )}
       style={{ paddingLeft: depthIndent, borderRadius: 4 }}
       onContextMenu={(event) => {
+        if (!canOpenMenu) {
+          event.preventDefault()
+          return
+        }
         onSelect()
         onOpenMenu(node, event)
       }}

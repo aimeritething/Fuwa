@@ -265,7 +265,7 @@ fn build_codex_args(
         "-c".into(),
         codex_config_string_list("mcp_servers.tolaria.args", &[mcp_server_path.as_str()]),
         "-c".into(),
-        codex_mcp_env_config(&request.vault_path),
+        codex_mcp_env_config(&request.vault_path, &request.vault_paths),
     ];
 
     if let Some(path) = last_message_path {
@@ -289,10 +289,12 @@ fn codex_config_string_list(key: &str, values: &[&str]) -> String {
     format!("{key}=[{values}]")
 }
 
-fn codex_mcp_env_config(vault_path: &str) -> String {
+fn codex_mcp_env_config(vault_path: &str, vault_paths: &[String]) -> String {
+    let vault_paths = crate::cli_agent_runtime::active_vault_paths_json(vault_path, vault_paths);
     format!(
-        r#"mcp_servers.tolaria.env={{VAULT_PATH="{}",WS_UI_PORT="9711"}}"#,
-        toml_escape(vault_path)
+        r#"mcp_servers.tolaria.env={{VAULT_PATH="{}",VAULT_PATHS="{}",WS_UI_PORT="9711"}}"#,
+        toml_escape(vault_path),
+        toml_escape(&vault_paths)
     )
 }
 
@@ -503,6 +505,7 @@ mod tests {
             message: "Summarize".into(),
             system_prompt: None,
             vault_path: vault_path.to_string_lossy().into_owned(),
+            vault_paths: Vec::new(),
             permission_mode,
         }
     }
@@ -553,6 +556,7 @@ mod tests {
             message: "Rename the note".into(),
             system_prompt: Some("Be concise".into()),
             vault_path: "/tmp/vault".into(),
+            vault_paths: Vec::new(),
             permission_mode: AiAgentPermissionMode::Safe,
         });
 
@@ -567,6 +571,7 @@ mod tests {
                 message: "Rename the note".into(),
                 system_prompt: None,
                 vault_path: "/tmp/vault".into(),
+                vault_paths: Vec::new(),
                 permission_mode: AiAgentPermissionMode::Safe,
             },
             None,
@@ -585,6 +590,7 @@ mod tests {
                 message: "Rename the note".into(),
                 system_prompt: None,
                 vault_path: "/tmp/vault".into(),
+                vault_paths: Vec::new(),
                 permission_mode: AiAgentPermissionMode::PowerUser,
             },
             None,
@@ -600,6 +606,7 @@ mod tests {
                 message: "Rename the note".into(),
                 system_prompt: None,
                 vault_path: "/tmp/vault".into(),
+                vault_paths: Vec::new(),
                 permission_mode: AiAgentPermissionMode::Safe,
             },
             Some(Path::new("/tmp/tolaria-codex-last-message.txt")),
@@ -619,6 +626,7 @@ mod tests {
                 message: "Read [[Test note]]".into(),
                 system_prompt: None,
                 vault_path: "/tmp/vault".into(),
+                vault_paths: Vec::new(),
                 permission_mode: AiAgentPermissionMode::Safe,
             },
             None,

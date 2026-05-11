@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
 import type { SidebarSelection } from '../../types'
-import { ancestorTreePaths, expandedTreePaths, mergeExpandedPaths } from './folderTreeUtils'
+import { ancestorTreePaths, expandedTreePaths, folderNodeKey, mergeExpandedPaths, scopedFolderKeys } from './folderTreeUtils'
 
 interface UseFolderTreeDisclosureInput {
   collapsed?: boolean
@@ -13,7 +13,10 @@ function useExpandedFolders(selection: SidebarSelection, renamingFolderPath?: st
   const [manualExpanded, setManualExpanded] = useState<Record<string, boolean>>({})
   const requiredExpandedPaths = useMemo(() => {
     const nextPaths: string[] = []
-    if (selection.kind === 'folder') nextPaths.push(...ancestorTreePaths(selection.path))
+    if (selection.kind === 'folder') {
+      if (selection.path && selection.rootPath) nextPaths.push(folderNodeKey({ path: '', rootPath: selection.rootPath }))
+      nextPaths.push(...scopedFolderKeys(ancestorTreePaths(selection.path), selection.rootPath))
+    }
     if (renamingFolderPath) nextPaths.push(...expandedTreePaths(renamingFolderPath))
     return [...new Set(nextPaths)]
   }, [renamingFolderPath, selection])
@@ -23,11 +26,11 @@ function useExpandedFolders(selection: SidebarSelection, renamingFolderPath?: st
     [manualExpanded, requiredExpandedPaths],
   )
 
-  const toggleFolder = useCallback((path: string) => {
+  const toggleFolder = useCallback((key: string) => {
     setManualExpanded((current) => {
-      const defaultExpanded = path === ''
+      const defaultExpanded = key.endsWith('::') || key === ''
       const next = { ...current }
-      Reflect.set(next, path, !((Reflect.get(current, path) as boolean | undefined) ?? defaultExpanded))
+      Reflect.set(next, key, !((Reflect.get(current, key) as boolean | undefined) ?? defaultExpanded))
       return next
     })
   }, [])

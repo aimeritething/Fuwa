@@ -145,11 +145,6 @@ vi.mock('./tolariaEditorFormatting', () => ({
 }))
 
 import { Editor } from './Editor'
-import {
-  applyPendingRawExitContent,
-  rememberPendingRawExitContent,
-  syncActiveTabIntoRawBuffer,
-} from './editorRawModeSync'
 import type { VaultEntry } from '../types'
 import { bindVaultConfigStore, resetVaultConfigStore } from '../utils/vaultConfigStore'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -205,13 +200,6 @@ This is a test note with some words to count.
 `
 
 const mockTab = { entry: mockEntry, content: mockContent }
-const otherEntry: VaultEntry = {
-  ...mockEntry,
-  path: '/vault/other.md',
-  filename: 'other.md',
-  title: 'Other Note',
-}
-const otherTab = { entry: otherEntry, content: '# Other\n' }
 
 const defaultProps = {
   tabs: [] as { entry: VaultEntry; content: string }[],
@@ -806,162 +794,6 @@ describe('Editor', () => {
   })
 })
 
-describe('applyPendingRawExitContent', () => {
-  it('overrides only the matching tab when raw content is newer than tab state', () => {
-    const pending = {
-      path: mockEntry.path,
-      content: '---\ntype: Note\nstatus: Active\n---\n| Head 1 | Head 2 | Head 3 |\n| --- | --- | --- |\n| A | B | C |\n',
-    }
-
-    const result = applyPendingRawExitContent([mockTab, otherTab], pending)
-
-    expect(result[0]).toEqual({ ...mockTab, content: pending.content })
-    expect(result[1]).toBe(otherTab)
-  })
-
-  it('returns the original tabs array when the pending raw content is already synced', () => {
-    const tabs = [mockTab, otherTab]
-    const pending = { path: mockEntry.path, content: mockContent }
-
-    expect(applyPendingRawExitContent(tabs, pending)).toBe(tabs)
-  })
-})
-
-describe('raw-mode sync content guards', () => {
-  it('does not emit a content change when entering raw mode normalizes markdown', () => {
-    const onContentChange = vi.fn()
-    const rawLatestContentRef = { current: null as string | null }
-
-    const result = syncActiveTabIntoRawBuffer({
-      editor: mockEditor as never,
-      activeTabPath: mockEntry.path,
-      activeTabContent: mockContent,
-      rawLatestContentRef,
-    })
-
-    expect(result).toBe('---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\n# Test Project\n\nThis is a test note with some words to count.\n')
-    expect(rawLatestContentRef.current).toBe(result)
-    expect(onContentChange).not.toHaveBeenCalled()
-  })
-
-  it('captures the latest serialized markdown when entering raw mode', () => {
-    const rawLatestContentRef = { current: null as string | null }
-
-    mockEditor.blocksToMarkdownLossy.mockReturnValueOnce('# Test Project\n\nUpdated body\n')
-
-    const result = syncActiveTabIntoRawBuffer({
-      editor: mockEditor as never,
-      activeTabPath: mockEntry.path,
-      activeTabContent: mockContent,
-      rawLatestContentRef,
-    })
-
-    expect(result).toBe('---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\n# Test Project\n\nUpdated body\n')
-    expect(rawLatestContentRef.current).toBe(result)
-  })
-
-  it('keeps raw-mode serialization portable for vault attachment images', () => {
-    const rawLatestContentRef = { current: null as string | null }
-
-    mockEditor.blocksToMarkdownLossy.mockReturnValueOnce(
-      '# Test Project\n\n![shot](asset://localhost/%2Fvault%2Fattachments%2Fshot.png)\n',
-    )
-
-    const result = syncActiveTabIntoRawBuffer({
-      editor: mockEditor as never,
-      activeTabPath: mockEntry.path,
-      activeTabContent: mockContent,
-      rawLatestContentRef,
-      vaultPath: '/vault',
-    })
-
-    expect(result).toBe(
-      '---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\n# Test Project\n\n![shot](attachments/shot.png)\n',
-    )
-    expect(rawLatestContentRef.current).toBe(result)
-  })
-
-  it('serializes rich math nodes back to Markdown source when entering raw mode', () => {
-    const rawLatestContentRef = { current: null as string | null }
-    const originalDocument = mockEditor.document
-    const originalSerializer = mockEditor.blocksToMarkdownLossy.getMockImplementation()
-
-    try {
-      mockEditor.document = [
-        {
-          id: 'math-inline',
-          type: 'paragraph',
-          content: [
-            { type: 'text', text: 'Inline ', styles: {} },
-            { type: 'mathInline', props: { latex: 'E=mc^2' } },
-          ],
-          props: {},
-          children: [],
-        },
-        {
-          id: 'math-block',
-          type: 'mathBlock',
-          props: { latex: '\\int_0^1 x\\,dx' },
-          children: [],
-        },
-      ]
-      mockEditor.blocksToMarkdownLossy.mockImplementation((blocks: unknown[]) => (
-        (blocks as Array<{ content?: Array<{ text?: string }> }>)
-          .map((block) => block.content?.map((item) => item.text ?? '').join('') ?? '')
-          .join('\n\n')
-      ))
-
-      const result = syncActiveTabIntoRawBuffer({
-        editor: mockEditor as never,
-        activeTabPath: mockEntry.path,
-        activeTabContent: mockContent,
-        rawLatestContentRef,
-      })
-
-      expect(result).toBe(
-        '---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\nInline $E=mc^2$\n\n$$\n\\int_0^1 x\\,dx\n$$\n',
-      )
-      expect(rawLatestContentRef.current).toBe(result)
-    } finally {
-      mockEditor.document = originalDocument
-      mockEditor.blocksToMarkdownLossy.mockImplementation(originalSerializer)
-    }
-  })
-
-  it('does not emit a content change when leaving raw mode without user edits', () => {
-    const onContentChange = vi.fn()
-    const normalizedContent = '---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\n# Test Project\n\nThis is a test note with some words to count.\n'
-
-    const result = rememberPendingRawExitContent({
-      activeTabPath: mockEntry.path,
-      activeTabContent: mockContent,
-      rawInitialContent: normalizedContent,
-      rawLatestContentRef: { current: normalizedContent },
-      onContentChange,
-    })
-
-    expect(result).toBeNull()
-    expect(onContentChange).not.toHaveBeenCalled()
-  })
-
-  it('emits a content change when leaving raw mode with edited markdown', () => {
-    const onContentChange = vi.fn()
-    const normalizedContent = '---\ntitle: Test Project\nis_a: Project\nStatus: Active\n---\n# Test Project\n\nThis is a test note with some words to count.\n'
-    const editedContent = `${normalizedContent}\nUpdated in raw mode\n`
-
-    const result = rememberPendingRawExitContent({
-      activeTabPath: mockEntry.path,
-      activeTabContent: mockContent,
-      rawInitialContent: normalizedContent,
-      rawLatestContentRef: { current: editedContent },
-      onContentChange,
-    })
-
-    expect(result).toEqual({ path: mockEntry.path, content: editedContent })
-    expect(onContentChange).toHaveBeenCalledWith(mockEntry.path, editedContent)
-  })
-})
-
 describe('click empty editor space', () => {
   it('focuses editor at end of last block when clicking empty space below content', () => {
     mockEditor.focus.mockClear()
@@ -1145,6 +977,69 @@ describe('wikilink autocomplete', () => {
       { type: 'wikilink', props: { target: 'vault/project/test' } },
       ' ',
     ], { updateSelection: true })
+  })
+
+  it('prefixes inserted wikilinks when the selected note is in another workspace', async () => {
+    const personalWorkspace = {
+      id: 'personal',
+      label: 'Personal',
+      alias: 'personal',
+      path: '/personal',
+      shortLabel: 'PE',
+      color: null,
+      icon: null,
+      mounted: true,
+      available: true,
+      defaultForNewNotes: true,
+    }
+    const teamWorkspace = {
+      id: 'team',
+      label: 'Team',
+      alias: 'team',
+      path: '/team',
+      shortLabel: 'TE',
+      color: null,
+      icon: null,
+      mounted: true,
+      available: true,
+      defaultForNewNotes: false,
+    }
+    const source = {
+      ...mockEntry,
+      path: '/personal/source.md',
+      filename: 'source.md',
+      title: 'Source',
+      workspace: personalWorkspace,
+    }
+    const target = {
+      ...mockEntry,
+      path: '/team/projects/alpha.md',
+      filename: 'alpha.md',
+      title: 'Alpha',
+      workspace: teamWorkspace,
+    }
+    capturedGetItems = null
+    mockFilterSuggestionItems.mockImplementation((items: unknown[]) => items)
+    render(
+      <Editor
+        {...defaultProps}
+        tabs={[{ entry: source, content: '# Source\n' }]}
+        activeTabPath={source.path}
+        entries={[source, target]}
+        vaultPath="/personal"
+      />,
+    )
+
+    mockEditor.insertInlineContent.mockClear()
+    const items = await capturedGetItems!('Alpha')
+    expect(items[0].workspace).toBe(teamWorkspace)
+    items[0].onItemClick()
+
+    expect(mockEditor.insertInlineContent).toHaveBeenCalledWith([
+      { type: 'wikilink', props: { target: 'team/projects/alpha' } },
+      ' ',
+    ], { updateSelection: true })
+    mockFilterSuggestionItems.mockImplementation((items: unknown[]) => items)
   })
 
   it('deduplicates entries with the same path', async () => {

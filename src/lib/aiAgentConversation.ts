@@ -33,6 +33,7 @@ export interface AgentExecutionContext {
   target?: AiTarget
   ready: boolean
   vaultPath: string
+  vaultPaths?: string[]
   agentDocsPath?: string
   permissionMode: AiAgentPermissionMode
   systemPromptOverride?: string
@@ -117,6 +118,7 @@ export function buildFormattedMessage(
     agent: context.agent,
     agentDocsPath: context.agentDocsPath,
     permissionMode: context.permissionMode,
+    vaultPaths: context.vaultPaths,
     vaultContext: context.systemPromptOverride,
   })
   const chatHistory = toChatHistory(messages.filter((message) => !message.isStreaming))

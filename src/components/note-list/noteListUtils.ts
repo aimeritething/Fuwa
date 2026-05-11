@@ -106,10 +106,17 @@ export function createNoteStatusResolver(
   modifiedFiles: ModifiedFile[] | undefined,
   modifiedPathSet: Set<string>,
 ): (path: string) => NoteStatus {
-  if (getNoteStatus) return getNoteStatus
   if (modifiedFiles && modifiedFiles.length > 0) {
-    return (path: string) => modifiedPathSet.has(path) ? 'modified' : 'clean'
+    return (path: string) => {
+      const explicitStatus = getNoteStatus?.(path)
+      if (explicitStatus && explicitStatus !== 'clean') return explicitStatus
+
+      const modifiedFile = modifiedFiles.find((file) => file.path === path)
+      if (modifiedFile?.status === 'added' || modifiedFile?.status === 'untracked') return 'new'
+      return modifiedPathSet.has(path) ? 'modified' : 'clean'
+    }
   }
+  if (getNoteStatus) return getNoteStatus
   return () => 'clean'
 }
 

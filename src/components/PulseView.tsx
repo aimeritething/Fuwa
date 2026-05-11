@@ -6,6 +6,8 @@ import { useDragRegion } from '../hooks/useDragRegion'
 import type { PulseCommit, PulseFile } from '../types'
 import { relativeDate } from '../utils/noteListHelpers'
 import { getLocaleDateLocale, translate, type AppLocale } from '../lib/i18n'
+import { GitRepositorySelect } from './GitRepositorySelect'
+import type { GitRepositoryOption } from '../utils/gitRepositories'
 import {
   Plus, Minus, PencilSimple, GitCommit, ArrowSquareOut,
   FileText, CaretDown, CaretRight, Pulse,
@@ -20,6 +22,9 @@ interface PulseViewProps {
   onOpenNote?: (relativePath: string, commitHash?: string) => void
   sidebarCollapsed?: boolean
   onExpandSidebar?: () => void
+  repositories?: GitRepositoryOption[]
+  selectedRepositoryPath?: string
+  onRepositoryChange?: (path: string) => void
   locale?: AppLocale
 }
 
@@ -293,6 +298,27 @@ function PulseHeader({
   )
 }
 
+function PulseRepositoryRow({
+  repositories = [],
+  selectedRepositoryPath = '',
+  onRepositoryChange,
+  locale = 'en',
+}: Pick<PulseViewProps, 'repositories' | 'selectedRepositoryPath' | 'onRepositoryChange' | 'locale'>) {
+  if (!onRepositoryChange || !selectedRepositoryPath || repositories.length <= 1) return null
+
+  return (
+    <div className="flex h-11 shrink-0 items-center border-b border-border px-4" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
+      <GitRepositorySelect
+        label={translate(locale, 'git.repository.select')}
+        repositories={repositories}
+        selectedPath={selectedRepositoryPath}
+        onChange={onRepositoryChange}
+        testId="pulse-repository-select"
+      />
+    </div>
+  )
+}
+
 function EmptyState({ locale = 'en' }: { locale?: AppLocale }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center text-muted-foreground" style={{ padding: 32 }}>
@@ -379,7 +405,16 @@ function PulseFeed({
 
 const PAGE_SIZE = 20
 
-export const PulseView = memo(function PulseView({ vaultPath, onOpenNote, sidebarCollapsed, onExpandSidebar, locale = 'en' }: PulseViewProps) {
+export const PulseView = memo(function PulseView({
+  vaultPath,
+  onOpenNote,
+  sidebarCollapsed,
+  onExpandSidebar,
+  repositories,
+  selectedRepositoryPath,
+  onRepositoryChange,
+  locale = 'en',
+}: PulseViewProps) {
   const [commits, setCommits] = useState<PulseCommit[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -442,7 +477,17 @@ export const PulseView = memo(function PulseView({ vaultPath, onOpenNote, sideba
 
   return (
     <div className="flex h-full flex-col overflow-hidden border-r border-[var(--sidebar-border)] bg-background">
-      <PulseHeader sidebarCollapsed={sidebarCollapsed} locale={locale} onExpandSidebar={onExpandSidebar} />
+      <PulseHeader
+        sidebarCollapsed={sidebarCollapsed}
+        locale={locale}
+        onExpandSidebar={onExpandSidebar}
+      />
+      <PulseRepositoryRow
+        repositories={repositories}
+        selectedRepositoryPath={selectedRepositoryPath}
+        locale={locale}
+        onRepositoryChange={onRepositoryChange}
+      />
 
       <div className="flex-1 overflow-y-auto">
         <PulseFeed

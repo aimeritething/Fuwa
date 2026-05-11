@@ -27,7 +27,7 @@ function renderAgent(
   permissionMode: 'safe' | 'power_user' = 'safe',
 ) {
   return renderHook(
-    ({ context }) => useCliAiAgent(VAULT, context, undefined, {
+    ({ context }) => useCliAiAgent(VAULT, [VAULT, '/Users/luca/Brian'], context, undefined, {
       agent: 'codex',
       agentReady: true,
       permissionMode,
@@ -61,6 +61,7 @@ describe('useCliAiAgent', () => {
       agent: 'codex',
       agentDocsPath: '/app/agent-docs',
       permissionMode: 'safe',
+      vaultPaths: [VAULT, '/Users/luca/Brian'],
       vaultContext: 'You are viewing note with body: Hello world',
     })
     expect(mockStreamAiAgent).toHaveBeenCalledWith(expect.objectContaining({
@@ -77,6 +78,19 @@ describe('useCliAiAgent', () => {
 
     expect(mockStreamAiAgent).toHaveBeenCalledWith(expect.objectContaining({
       permissionMode: 'power_user',
+    }))
+  })
+
+  it('forwards active vault roots to the stream request', async () => {
+    const { result } = renderAgent()
+
+    await act(async () => {
+      await result.current.sendMessage('Search all active vaults')
+    })
+
+    expect(mockStreamAiAgent).toHaveBeenCalledWith(expect.objectContaining({
+      vaultPath: VAULT,
+      vaultPaths: [VAULT, '/Users/luca/Brian'],
     }))
   })
 
@@ -127,7 +141,7 @@ describe('useCliAiAgent', () => {
   })
 
   it('adds a local response instead of streaming when the selected agent is unavailable', async () => {
-    const { result } = renderHook(() => useCliAiAgent(VAULT, undefined, undefined, {
+    const { result } = renderHook(() => useCliAiAgent(VAULT, undefined, undefined, undefined, {
       agent: 'codex',
       agentReady: false,
       permissionMode: 'safe',

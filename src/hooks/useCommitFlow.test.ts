@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, act } from '@testing-library/react'
+import { renderHook, act, waitFor } from '@testing-library/react'
 import { useCommitFlow } from './useCommitFlow'
 
 const mockInvokeFn = vi.fn()
@@ -41,7 +41,7 @@ describe('useCommitFlow', () => {
     })
   })
 
-  function renderCommitFlow() {
+  function renderCommitFlow(overrides: Partial<Parameters<typeof useCommitFlow>[0]> = {}) {
     return renderHook(() => useCommitFlow({
       savePending,
       loadModifiedFiles,
@@ -49,6 +49,7 @@ describe('useCommitFlow', () => {
       setToastMessage,
       onPushRejected,
       vaultPath: '/vault',
+      ...overrides,
     }))
   }
 
@@ -96,6 +97,44 @@ describe('useCommitFlow', () => {
     expect(mockInvokeFn).toHaveBeenNthCalledWith(2, 'git_commit', { vaultPath: '/vault', message: 'Updated 1 note' })
     expect(mockInvokeFn).toHaveBeenNthCalledWith(3, 'git_push', { vaultPath: '/vault' })
     expect(setToastMessage).toHaveBeenCalledWith('Committed and pushed')
+  })
+
+  it('runAutomaticCheckpoint commits and pushes all active repositories', async () => {
+    const resolveRemoteStatusForVaultPath = vi.fn().mockResolvedValue({
+      branch: 'main',
+      ahead: 0,
+      behind: 0,
+      hasRemote: true,
+    })
+    mockInvokeFn.mockImplementation((command: string, args: { vaultPath?: string }) => {
+      if (command === 'get_modified_files') {
+        return Promise.resolve([{
+          path: `${args.vaultPath}/note.md`,
+          relativePath: 'note.md',
+          status: 'modified',
+        }])
+      }
+      if (command === 'git_commit') return Promise.resolve('[main abc1234] test commit')
+      if (command === 'git_push') return Promise.resolve({ status: 'ok', message: 'Pushed to remote' })
+      throw new Error(`Unexpected command: ${command}`)
+    })
+
+    const { result } = renderCommitFlow({
+      automaticVaultPaths: ['/vault', '/work'],
+      resolveRemoteStatusForVaultPath,
+    })
+
+    await act(async () => {
+      await result.current.runAutomaticCheckpoint()
+    })
+
+    expect(mockInvokeFn).toHaveBeenCalledWith('git_commit', { vaultPath: '/vault', message: 'Updated 1 note' })
+    expect(mockInvokeFn).toHaveBeenCalledWith('git_push', { vaultPath: '/vault' })
+    expect(mockInvokeFn).toHaveBeenCalledWith('git_commit', { vaultPath: '/work', message: 'Updated 1 note' })
+    expect(mockInvokeFn).toHaveBeenCalledWith('git_push', { vaultPath: '/work' })
+    expect(resolveRemoteStatusForVaultPath).toHaveBeenCalledWith('/work')
+    expect(loadModifiedFiles).toHaveBeenCalled()
+    expect(setToastMessage).toHaveBeenCalledWith('AutoGit checkpointed 2 repositories')
   })
 
   it('runAutomaticCheckpoint retries push-only when local commits are already ahead', async () => {
@@ -151,6 +190,57 @@ describe('useCommitFlow', () => {
     expect(mockInvokeFn).toHaveBeenCalledWith('git_commit', { vaultPath: '/vault', message: 'test message' })
     expect(setToastMessage).toHaveBeenCalledWith('Committed locally (no remote configured)')
     expect(onPushRejected).not.toHaveBeenCalled()
+  })
+
+  it('handleCommitPush uses the selected manual repository', async () => {
+    const resolveRemoteStatusForVaultPath = vi.fn().mockResolvedValue({
+      branch: 'main',
+      ahead: 0,
+      behind: 0,
+      hasRemote: true,
+    })
+    const { result } = renderCommitFlow({
+      manualVaultPath: '/work',
+      resolveRemoteStatusForVaultPath,
+    })
+
+    await act(async () => {
+      await result.current.handleCommitPush('test message')
+    })
+
+    expect(mockInvokeFn).toHaveBeenCalledWith('git_commit', { vaultPath: '/work', message: 'test message' })
+    expect(mockInvokeFn).toHaveBeenCalledWith('git_push', { vaultPath: '/work' })
+    expect(resolveRemoteStatusForVaultPath).toHaveBeenCalledWith('/work')
+  })
+
+  it('refreshes dialog mode when the selected manual repository changes', async () => {
+    const resolveRemoteStatusForVaultPath = vi.fn((vaultPath: string) => Promise.resolve({
+      branch: 'main',
+      ahead: 0,
+      behind: 0,
+      hasRemote: vaultPath !== '/local',
+    }))
+    const { result, rerender } = renderHook(
+      ({ manualVaultPath }) => useCommitFlow({
+        savePending,
+        loadModifiedFiles,
+        resolveRemoteStatus,
+        resolveRemoteStatusForVaultPath,
+        setToastMessage,
+        onPushRejected,
+        vaultPath: '/vault',
+        manualVaultPath,
+      }),
+      { initialProps: { manualVaultPath: '/work' } },
+    )
+
+    await act(async () => {
+      await result.current.openCommitDialog()
+    })
+    expect(result.current.commitMode).toBe('push')
+
+    rerender({ manualVaultPath: '/local' })
+    await waitFor(() => expect(result.current.commitMode).toBe('local'))
   })
 
   it('handleCommitPush calls onPushRejected when push is rejected', async () => {

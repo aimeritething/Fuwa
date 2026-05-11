@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { attachClickHandlers, enrichSuggestionItems } from './suggestionEnrichment'
+import { attachClickHandlers, enrichSuggestionItems, hasMultipleSuggestionWorkspaces } from './suggestionEnrichment'
 import type { VaultEntry } from '../types'
 
 vi.mock('@blocknote/core/extensions', () => ({
@@ -69,6 +69,30 @@ describe('attachClickHandlers', () => {
     result[0].onItemClick()
     expect(insertWikilink).toHaveBeenCalledWith('roadmap')
   })
+
+  it('prefixes targets from another workspace with that workspace alias', () => {
+    const insertWikilink = vi.fn()
+    const source = makeEntry({
+      path: '/personal/source.md',
+      filename: 'source.md',
+      title: 'Source',
+      workspace: { id: 'personal', label: 'Personal', alias: 'personal', path: '/personal', shortLabel: 'PE', color: null, icon: null, mounted: true, available: true, defaultForNewNotes: true },
+    })
+    const target = makeEntry({
+      path: '/team/projects/alpha.md',
+      filename: 'alpha.md',
+      title: 'Alpha',
+      workspace: { id: 'team', label: 'Team', alias: 'team', path: '/team', shortLabel: 'TE', color: null, icon: null, mounted: true, available: true, defaultForNewNotes: false },
+    })
+    const candidates = [
+      { title: 'Alpha', aliases: [], group: 'Note', entryTitle: 'Alpha', path: target.path, entry: target },
+    ]
+
+    const result = attachClickHandlers(candidates, insertWikilink, '/personal', source)
+
+    result[0].onItemClick()
+    expect(insertWikilink).toHaveBeenCalledWith('team/projects/alpha')
+  })
 })
 
 describe('enrichSuggestionItems', () => {
@@ -78,6 +102,32 @@ describe('enrichSuggestionItems', () => {
 
   function makeItem(title: string, group: string, path: string, entryType?: string | null) {
     return { title, aliases: [] as string[], group, entryType, entryTitle: title, path, onItemClick: vi.fn() }
+  }
+
+  const personalWorkspace = {
+    id: 'personal',
+    label: 'Personal',
+    alias: 'personal',
+    path: '/personal',
+    shortLabel: 'PE',
+    color: 'blue',
+    icon: null,
+    mounted: true,
+    available: true,
+    defaultForNewNotes: true,
+  }
+
+  const teamWorkspace = {
+    id: 'team',
+    label: 'Team',
+    alias: 'team',
+    path: '/team',
+    shortLabel: 'TE',
+    color: 'green',
+    icon: null,
+    mounted: true,
+    available: true,
+    defaultForNewNotes: false,
   }
 
   it('filters items by query', () => {
@@ -134,5 +184,19 @@ describe('enrichSuggestionItems', () => {
     ]
     const result = enrichSuggestionItems(items, 'Refactoring', {})
     expect(result[0].title).toBe('Refactoring')
+  })
+
+  it('keeps workspace metadata visible when the filtered results contain one workspace', () => {
+    const items = [
+      { ...makeItem('Alpha', 'Note', '/team/alpha.md'), entry: makeEntry({ path: '/team/alpha.md', workspace: teamWorkspace }) },
+      { ...makeItem('Beta', 'Note', '/personal/beta.md'), entry: makeEntry({ path: '/personal/beta.md', workspace: personalWorkspace }) },
+    ]
+
+    const result = enrichSuggestionItems(items, 'Alpha', {}, {
+      showWorkspace: hasMultipleSuggestionWorkspaces(items),
+    })
+
+    expect(result).toHaveLength(1)
+    expect(result[0].workspace).toBe(teamWorkspace)
   })
 })

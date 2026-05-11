@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, type RefObject } from 'react'
+import { useCallback, useEffect, useMemo, useRef, type RefObject } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { isTauri } from '../mock-tauri'
@@ -16,7 +16,8 @@ interface VaultChangedPayload {
 }
 
 interface UseVaultWatcherOptions {
-  vaultPath: WatchPath
+  vaultPath?: WatchPath
+  vaultPaths?: WatchPath[]
   onVaultChanged: (paths: WatchPath[]) => Promise<void> | void
   debounceMs?: number
   filterChangedPaths?: (paths: WatchPath[]) => WatchPath[]
@@ -56,6 +57,55 @@ function isSamePathOrChild({ path, parent }: PathContainmentOptions): boolean {
   return normalizedPath === normalizedParent || normalizedPath.startsWith(`${normalizedParent}/`)
 }
 
+function uniqueWatchRoots(paths: WatchPath[]): WatchPath[] {
+  return [...new Set(paths.map(normalizeWatchPath).filter(Boolean))]
+}
+
+function watchRootsFromOptions(vaultPath?: WatchPath, vaultPaths?: WatchPath[]): WatchPath[] {
+  if (vaultPaths && vaultPaths.length > 0) return uniqueWatchRoots(vaultPaths)
+  return uniqueWatchRoots(vaultPath ? [vaultPath] : [])
+}
+
+function watchRootsKeyFor(watchRoots: readonly WatchPath[]): string {
+  return watchRoots.join('\u0000')
+}
+
+function useWatchRootsRef(watchRoots: WatchPath[]) {
+  const watchRootsRef = useRef(watchRoots)
+  const watchRootsKey = watchRootsKeyFor(watchRoots)
+
+  useEffect(() => {
+    watchRootsRef.current = watchRoots
+  }, [watchRoots, watchRootsKey])
+
+  return { watchRootsRef, watchRootsKey }
+}
+
+function rootForPath(path: WatchPath, roots: readonly WatchPath[]): WatchPath | null {
+  const normalizedPath = normalizeWatchPath(path)
+  return roots.find((root) => isSamePathOrChild({ path: normalizedPath, parent: root })) ?? null
+}
+
+function resolvePathForKnownRoots({
+  path,
+  fallbackRoot,
+  roots,
+}: {
+  path: WatchPath
+  fallbackRoot: WatchPath
+  roots: readonly WatchPath[]
+}): WatchPath | null {
+  const normalizedPath = normalizeWatchPath(path)
+  if (isAbsoluteWatchPath(normalizedPath)) return normalizedPath
+  const root = fallbackRoot || roots[0]
+  return root ? resolveChangedPath({ path: normalizedPath, vaultPath: root }) : null
+}
+
+function eventRootForPayload(vaultPath: WatchPath, roots: readonly WatchPath[]): WatchPath | null {
+  const eventRoot = normalizeWatchPath(vaultPath)
+  return roots.find((root) => root === eventRoot) ?? null
+}
+
 function pruneRecentWrites(writes: Map<string, number>, now: number) {
   for (const [path, timestamp] of writes) {
     if (now - timestamp > INTERNAL_WRITE_SUPPRESSION_MS) writes.delete(path)
@@ -81,35 +131,47 @@ function useVaultPathRef(vaultPath: WatchPath) {
 }
 
 export function useRecentVaultWrites({
-  vaultPath,
+  vaultPath = '',
+  vaultPaths,
   now = Date.now,
 }: {
-  vaultPath: WatchPath
+  vaultPath?: WatchPath
+  vaultPaths?: WatchPath[]
   now?: TimestampProvider
 }) {
   const recentWritesRef = useRef<Map<string, number>>(new Map())
+  const watchRoots = useMemo(() => watchRootsFromOptions(vaultPath, vaultPaths), [vaultPath, vaultPaths])
+  const { watchRootsRef, watchRootsKey } = useWatchRootsRef(watchRoots)
   const vaultPathRef = useVaultPathRef(vaultPath)
 
   useEffect(() => {
     recentWritesRef.current.clear()
-  }, [vaultPath])
+  }, [watchRootsKey])
 
   const markInternalWrite = useCallback((path: WatchPath) => {
-    const root = vaultPathRef.current
-    if (!root) return
-    const resolvedPath = resolveChangedPath({ path, vaultPath: root })
-    if (isSamePathOrChild({ path: resolvedPath, parent: root })) {
+    const resolvedPath = resolvePathForKnownRoots({
+      path,
+      fallbackRoot: vaultPathRef.current,
+      roots: watchRootsRef.current,
+    })
+    if (resolvedPath && rootForPath(resolvedPath, watchRootsRef.current)) {
       recentWritesRef.current.set(resolvedPath, now())
     }
-  }, [now, vaultPathRef])
+  }, [now, vaultPathRef, watchRootsRef])
 
   const filterExternalPaths = useCallback((paths: WatchPath[]) => {
-    const root = vaultPathRef.current
-    if (!root || paths.length === 0) return paths
+    if (watchRootsRef.current.length === 0 || paths.length === 0) return paths
     const currentTime = now()
     pruneRecentWrites(recentWritesRef.current, currentTime)
-    return paths.filter((path) => !recentWritesRef.current.has(resolveChangedPath({ path, vaultPath: root })))
-  }, [now, vaultPathRef])
+    return paths.filter((path) => {
+      const resolvedPath = resolvePathForKnownRoots({
+        path,
+        fallbackRoot: vaultPathRef.current,
+        roots: watchRootsRef.current,
+      })
+      return !resolvedPath || !recentWritesRef.current.has(resolvedPath)
+    })
+  }, [now, vaultPathRef, watchRootsRef])
 
   return { markInternalWrite, filterExternalPaths }
 }
@@ -188,16 +250,15 @@ function filteredRefreshPaths({
 
 function handleWatcherEvent({
   event,
-  root,
+  roots,
   enqueueChangedPaths,
 }: {
   event: { payload: VaultChangedPayload }
-  root: WatchPath
-  enqueueChangedPaths: (paths: WatchPath[]) => void
+  roots: readonly WatchPath[]
+  enqueueChangedPaths: (root: WatchPath, paths: WatchPath[]) => void
 }) {
-  if (normalizeWatchPath(event.payload.vaultPath) === root) {
-    enqueueChangedPaths(event.payload.paths ?? [])
-  }
+  const root = eventRootForPayload(event.payload.vaultPath, roots)
+  if (root) enqueueChangedPaths(root, event.payload.paths ?? [])
 }
 
 function cleanupNativeWatcherListener(unlisten: UnlistenFn): void {
@@ -207,12 +268,10 @@ function cleanupNativeWatcherListener(unlisten: UnlistenFn): void {
 }
 
 function usePendingVaultRefresh({
-  vaultPathRef,
   onVaultChanged,
   filterChangedPaths,
   debounceMs,
 }: {
-  vaultPathRef: RefObject<WatchPath>
   onVaultChanged: UseVaultWatcherOptions['onVaultChanged']
   filterChangedPaths: UseVaultWatcherOptions['filterChangedPaths']
   debounceMs: number
@@ -243,8 +302,7 @@ function usePendingVaultRefresh({
     })
   }, [clearPendingRefresh, filterChangedPathsRef, onVaultChangedRef])
 
-  const enqueueChangedPaths = useCallback((paths: WatchPath[]) => {
-    const root = vaultPathRef.current
+  const enqueueChangedPaths = useCallback((root: WatchPath, paths: WatchPath[]) => {
     if (!root) return
     addQueuedChangedPaths({
       root,
@@ -255,29 +313,30 @@ function usePendingVaultRefresh({
     if (!hasRefreshWork({ queuedPathsRef, fullRefreshPendingRef })) return
     if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current)
     debounceTimerRef.current = setTimeout(flushQueuedRefresh, debounceMs)
-  }, [debounceMs, flushQueuedRefresh, vaultPathRef])
+  }, [debounceMs, flushQueuedRefresh])
 
   return { clearPendingRefresh, enqueueChangedPaths }
 }
 
 function useNativeVaultWatcher({
-  vaultPath,
+  watchRoots,
+  watchRootsKey,
   enqueueChangedPaths,
   clearPendingRefresh,
 }: {
-  vaultPath: WatchPath
-  enqueueChangedPaths: (paths: WatchPath[]) => void
+  watchRoots: WatchPath[]
+  watchRootsKey: string
+  enqueueChangedPaths: (root: WatchPath, paths: WatchPath[]) => void
   clearPendingRefresh: () => void
 }) {
   useEffect(() => {
-    const root = normalizeWatchPath(vaultPath)
-    if (!root || !isTauri()) return
+    if (watchRoots.length === 0 || !isTauri()) return
 
     let cancelled = false
     let unlisten: UnlistenFn | null = null
 
     void listen<VaultChangedPayload>(VAULT_CHANGED_EVENT, (event) => {
-      handleWatcherEvent({ event, root, enqueueChangedPaths })
+      handleWatcherEvent({ event, roots: watchRoots, enqueueChangedPaths })
     }).then((nextUnlisten) => {
       if (cancelled) {
         cleanupNativeWatcherListener(nextUnlisten)
@@ -288,9 +347,11 @@ function useNativeVaultWatcher({
       console.warn('Failed to subscribe to vault watcher events:', err)
     })
 
-    void invoke('start_vault_watcher', { path: vaultPath }).catch((err) => {
-      console.warn('Failed to start vault watcher:', err)
-    })
+    for (const root of watchRoots) {
+      void invoke('start_vault_watcher', { path: root }).catch((err) => {
+        console.warn('Failed to start vault watcher:', err)
+      })
+    }
 
     return () => {
       cancelled = true
@@ -298,25 +359,27 @@ function useNativeVaultWatcher({
       if (unlisten) cleanupNativeWatcherListener(unlisten)
       void invoke('stop_vault_watcher').catch(() => {})
     }
-  }, [vaultPath, enqueueChangedPaths, clearPendingRefresh])
+  }, [watchRoots, watchRootsKey, enqueueChangedPaths, clearPendingRefresh])
 }
 
 export function useVaultWatcher({
-  vaultPath,
+  vaultPath = '',
+  vaultPaths,
   onVaultChanged,
   debounceMs = VAULT_WATCHER_DEBOUNCE_MS,
   filterChangedPaths,
 }: UseVaultWatcherOptions) {
-  const vaultPathRef = useVaultPathRef(vaultPath)
+  const watchRoots = useMemo(() => watchRootsFromOptions(vaultPath, vaultPaths), [vaultPath, vaultPaths])
+  const watchRootsKey = watchRootsKeyFor(watchRoots)
   const pendingRefresh = usePendingVaultRefresh({
-    vaultPathRef,
     onVaultChanged,
     filterChangedPaths,
     debounceMs,
   })
 
   useNativeVaultWatcher({
-    vaultPath,
+    watchRoots,
+    watchRootsKey,
     enqueueChangedPaths: pendingRefresh.enqueueChangedPaths,
     clearPendingRefresh: pendingRefresh.clearPendingRefresh,
   })

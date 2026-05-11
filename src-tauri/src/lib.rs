@@ -77,13 +77,38 @@ fn log_startup_result(label: &str, result: Result<usize, String>) {
 }
 
 #[cfg(desktop)]
-fn selected_mcp_bridge_vault_path(vault_list: &vault_list::VaultList) -> Option<PathBuf> {
-    vault_list
+fn selected_mcp_bridge_vault_paths(vault_list: &vault_list::VaultList) -> Vec<PathBuf> {
+    let mut paths = Vec::new();
+    if let Some(active_vault) = vault_list
         .active_vault
         .as_deref()
         .map(str::trim)
         .filter(|path| !path.is_empty())
-        .map(PathBuf::from)
+    {
+        push_unique_mcp_bridge_vault_path(&mut paths, active_vault);
+    }
+
+    for vault in &vault_list.vaults {
+        if vault.mounted == Some(false) {
+            continue;
+        }
+        push_unique_mcp_bridge_vault_path(&mut paths, &vault.path);
+    }
+
+    paths
+}
+
+#[cfg(desktop)]
+fn push_unique_mcp_bridge_vault_path(paths: &mut Vec<PathBuf>, path: &str) {
+    let trimmed = path.trim();
+    if trimmed.is_empty() {
+        return;
+    }
+    let path = PathBuf::from(trimmed);
+    if paths.iter().any(|existing| existing == &path) {
+        return;
+    }
+    paths.push(path);
 }
 
 #[cfg(desktop)]
@@ -118,6 +143,7 @@ fn stop_ws_bridge_child(active_child: &mut Option<Child>) {
 pub(crate) fn sync_ws_bridge_for_vault(
     app_handle: &tauri::AppHandle,
     vault_path: Option<&Path>,
+    active_vault_paths: &[PathBuf],
 ) -> Result<&'static str, String> {
     use tauri::Manager;
 
@@ -142,7 +168,12 @@ pub(crate) fn sync_ws_bridge_for_vault(
 
     stop_ws_bridge_child(&mut active_child);
 
-    let child = mcp::spawn_ws_bridge(&resolved_vault_path)?;
+    let resolved_active_vault_paths = active_vault_paths
+        .iter()
+        .filter_map(|path| validate_mcp_bridge_vault_path(path).ok())
+        .collect::<Vec<_>>();
+    let child =
+        mcp::spawn_ws_bridge_with_paths(&resolved_vault_path, &resolved_active_vault_paths)?;
 
     *active_child = Some(child);
     Ok("started")
@@ -197,20 +228,20 @@ fn spawn_startup_tasks() {
 
 #[cfg(desktop)]
 fn sync_ws_bridge_for_selected_vault(app_handle: &tauri::AppHandle) {
-    let vault_path = match vault_list::load_vault_list() {
-        Ok(vault_list) => selected_mcp_bridge_vault_path(&vault_list),
+    let vault_paths = match vault_list::load_vault_list() {
+        Ok(vault_list) => selected_mcp_bridge_vault_paths(&vault_list),
         Err(e) => {
             log::warn!("Failed to load active vault for ws-bridge startup: {}", e);
-            None
+            Vec::new()
         }
     };
 
-    let Some(vault_path) = vault_path else {
+    let Some(vault_path) = vault_paths.first() else {
         log::info!("ws-bridge not started: no active vault selected");
         return;
     };
 
-    if let Err(e) = sync_ws_bridge_for_vault(app_handle, Some(&vault_path)) {
+    if let Err(e) = sync_ws_bridge_for_vault(app_handle, Some(vault_path), &vault_paths) {
         log::warn!("Failed to start ws-bridge: {}", e);
     }
 }
@@ -247,8 +278,24 @@ fn setup_desktop_plugins(app: &mut tauri::App) -> Result<(), Box<dyn std::error:
     menu::setup_menu(app)?;
     setup_linux_window_chrome(app)?;
     window_state::restore_main_window_state(app);
+    show_debug_main_window(app);
     Ok(())
 }
+
+#[cfg(debug_assertions)]
+fn show_debug_main_window(app: &mut tauri::App) {
+    use tauri::Manager;
+
+    if let Some(window) = app.get_webview_window("main") {
+        let _ = window.unminimize();
+        let _ = window.show();
+        let _ = window.center();
+        let _ = window.set_focus();
+    }
+}
+
+#[cfg(not(debug_assertions))]
+fn show_debug_main_window(_app: &mut tauri::App) {}
 
 #[cfg(all(desktop, target_os = "linux"))]
 fn setup_linux_window_chrome(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
@@ -387,6 +434,7 @@ macro_rules! app_invoke_handler {
             commands::rename_note,
             commands::rename_note_filename,
             commands::move_note_to_folder,
+            commands::move_note_to_workspace,
             commands::auto_rename_untitled,
             commands::detect_renames,
             commands::update_wikilinks_for_renames,
@@ -518,11 +566,11 @@ mod tests {
 
     #[cfg(desktop)]
     use super::{
-        missing_asset_scope_roots, selected_mcp_bridge_vault_path,
+        missing_asset_scope_roots, selected_mcp_bridge_vault_paths,
         spawn_startup_tasks_for_vault_with, validate_mcp_bridge_vault_path,
     };
     #[cfg(desktop)]
-    use crate::vault_list::VaultList;
+    use crate::vault_list::{VaultEntry, VaultList};
     #[cfg(desktop)]
     use std::path::PathBuf;
 
@@ -537,23 +585,45 @@ mod tests {
 
     #[cfg(desktop)]
     #[test]
-    fn selected_mcp_bridge_vault_path_uses_persisted_active_vault() {
+    fn selected_mcp_bridge_vault_paths_puts_persisted_active_vault_first() {
         let list = VaultList {
-            vaults: Vec::new(),
+            vaults: vec![
+                VaultEntry {
+                    label: "Secondary".to_string(),
+                    path: "/tmp/Secondary Vault".to_string(),
+                    mounted: Some(true),
+                    ..VaultEntry::default()
+                },
+                VaultEntry {
+                    label: "Hidden".to_string(),
+                    path: "/tmp/Hidden Vault".to_string(),
+                    mounted: Some(false),
+                    ..VaultEntry::default()
+                },
+                VaultEntry {
+                    label: "Selected".to_string(),
+                    path: "/tmp/Selected Vault".to_string(),
+                    mounted: Some(true),
+                    ..VaultEntry::default()
+                },
+            ],
             active_vault: Some("/tmp/Selected Vault".to_string()),
             default_workspace_path: None,
             hidden_defaults: Vec::new(),
         };
 
         assert_eq!(
-            selected_mcp_bridge_vault_path(&list),
-            Some(std::path::PathBuf::from("/tmp/Selected Vault"))
+            selected_mcp_bridge_vault_paths(&list),
+            vec![
+                PathBuf::from("/tmp/Selected Vault"),
+                PathBuf::from("/tmp/Secondary Vault"),
+            ]
         );
     }
 
     #[cfg(desktop)]
     #[test]
-    fn selected_mcp_bridge_vault_path_ignores_blank_active_vault() {
+    fn selected_mcp_bridge_vault_paths_ignores_blank_active_vault() {
         let list = VaultList {
             vaults: Vec::new(),
             active_vault: Some("  ".to_string()),
@@ -561,7 +631,7 @@ mod tests {
             hidden_defaults: Vec::new(),
         };
 
-        assert_eq!(selected_mcp_bridge_vault_path(&list), None);
+        assert!(selected_mcp_bridge_vault_paths(&list).is_empty());
     }
 
     #[cfg(desktop)]

@@ -28,6 +28,19 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   ...overrides,
 })
 
+const makeWorkspace = (path: string, alias = 'workspace'): NonNullable<VaultEntry['workspace']> => ({
+  id: alias,
+  label: alias,
+  alias,
+  path,
+  shortLabel: alias.slice(0, 2).toUpperCase(),
+  color: null,
+  icon: null,
+  mounted: true,
+  available: true,
+  defaultForNewNotes: false,
+})
+
 describe('needsRenameOnSave', () => {
   it('returns true when filename does not match title slug', () => {
     expect(needsRenameOnSave('My New Note', 'untitled-note.md')).toBe(true)
@@ -166,6 +179,61 @@ describe('useNoteRename hook', () => {
     }))
     expect(setToastMessage).toHaveBeenCalledWith('Updated 2 notes')
     expect(onEntryRenamed).toHaveBeenCalled()
+  })
+
+  it.each([
+    {
+      name: 'title rename',
+      command: 'rename_note',
+      oldPath: '/team/old.md',
+      filename: 'old.md',
+      title: 'Old',
+      newPath: '/team/new.md',
+      run: async (hook: ReturnType<typeof renderUseNoteRename>['result']['current']) =>
+        hook.handleRenameNote('/team/old.md', 'New', '/personal', vi.fn()),
+      expected: { old_path: '/team/old.md', old_title: 'Old' },
+    },
+    {
+      name: 'filename rename',
+      command: 'rename_note_filename',
+      oldPath: '/team/old-name.md',
+      filename: 'old-name.md',
+      title: 'Project Kickoff',
+      newPath: '/team/manual-name.md',
+      run: async (hook: ReturnType<typeof renderUseNoteRename>['result']['current']) =>
+        hook.handleRenameFilename('/team/old-name.md', 'manual-name', '/personal', vi.fn()),
+      expected: { old_path: '/team/old-name.md', new_filename_stem: 'manual-name' },
+    },
+  ])('uses the note workspace root for $name even when the app-level vault path differs', async ({
+    command,
+    oldPath,
+    filename,
+    title,
+    newPath,
+    run,
+    expected,
+  }) => {
+    const entry = makeEntry({
+      path: oldPath,
+      filename,
+      title,
+      workspace: makeWorkspace('/team', 'team'),
+    })
+    vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
+      if (cmd === command) return { new_path: newPath, updated_files: 0, failed_updates: 0 }
+      if (cmd === 'get_note_content') return '# New\n'
+      return ''
+    })
+    const { result } = renderUseNoteRename([entry])
+
+    await act(async () => {
+      await run(result.current)
+    })
+
+    expect(mockInvoke).toHaveBeenCalledWith(command, expect.objectContaining({
+      vault_path: '/team',
+      ...expected,
+    }))
   })
 
   it('handleRenameNote passes null old_title when entry not found', async () => {
@@ -372,5 +440,60 @@ describe('useNoteRename hook', () => {
       folder_path: 'projects/active',
     }))
     expect(setToastMessage).toHaveBeenCalledWith('Moved to "active"')
+  })
+
+  it('handleMoveNoteToWorkspace moves the note to a different workspace', async () => {
+    const sourceWorkspace = makeWorkspace('/personal', 'personal')
+    const destinationWorkspace = makeWorkspace('/team', 'team')
+    destinationWorkspace.label = 'Team'
+    const entry = makeEntry({
+      path: '/personal/notes/project-kickoff.md',
+      filename: 'project-kickoff.md',
+      title: 'Project Kickoff',
+      workspace: sourceWorkspace,
+    })
+    vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
+      if (cmd === 'move_note_to_workspace') {
+        return {
+          new_path: '/team/notes/project-kickoff.md',
+          updated_files: 1,
+          failed_updates: 0,
+        }
+      }
+      if (cmd === 'get_note_content') return '# Project Kickoff\n'
+      return ''
+    })
+
+    const { result } = renderHook(() => useNoteRename(
+      { entries: [entry], setToastMessage },
+      { tabs: [], setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
+    ))
+
+    const onEntryRenamed = vi.fn()
+    await act(async () => {
+      await result.current.handleMoveNoteToWorkspace(
+        '/personal/notes/project-kickoff.md',
+        destinationWorkspace,
+        '/personal',
+        onEntryRenamed,
+      )
+    })
+
+    expect(mockInvoke).toHaveBeenCalledWith('move_note_to_workspace', expect.objectContaining({
+      source_vault_path: '/personal',
+      destination_vault_path: '/team',
+      old_path: '/personal/notes/project-kickoff.md',
+      replacement_target: 'team/notes/project-kickoff',
+    }))
+    expect(onEntryRenamed).toHaveBeenCalledWith(
+      '/personal/notes/project-kickoff.md',
+      expect.objectContaining({
+        path: '/team/notes/project-kickoff.md',
+        filename: 'project-kickoff.md',
+        workspace: destinationWorkspace,
+      }),
+      '# Project Kickoff\n',
+    )
+    expect(setToastMessage).toHaveBeenCalledWith('Moved to "Team" and updated 1 note')
   })
 })

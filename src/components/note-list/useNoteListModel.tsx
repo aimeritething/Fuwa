@@ -13,6 +13,7 @@ import type { DateDisplayFormat } from '../../utils/dateDisplay'
 import type { NoteListFilter } from '../../utils/noteListHelpers'
 import { countByFilter, countAllByFilter, countAllNotesByFilter } from '../../utils/noteListHelpers'
 import type { AllNotesFileVisibility } from '../../utils/allNotesFileVisibility'
+import type { GitRepositoryOption } from '../../utils/gitRepositories'
 import { NoteItem } from '../NoteItem'
 import { prefetchNoteContent } from '../../hooks/useTabManagement'
 import type { MultiSelectState } from '../../hooks/useMultiSelect'
@@ -480,6 +481,9 @@ export interface NoteListProps {
   onInboxPeriodChange?: (period: InboxPeriod) => void
   modifiedFiles?: ModifiedFile[]
   modifiedFilesError?: string | null
+  gitRepositories?: GitRepositoryOption[]
+  selectedGitRepositoryPath?: string
+  onGitRepositoryChange?: (path: string) => void
   getNoteStatus?: (path: string) => NoteStatus
   sidebarCollapsed?: boolean
   onSelectNote: (entry: VaultEntry) => void
@@ -512,6 +516,9 @@ function buildNoteListLayoutModel(params: {
   sidebarCollapsed?: boolean
   loading: boolean
   modifiedFilesError?: string | null
+  gitRepositories?: GitRepositoryOption[]
+  selectedGitRepositoryPath?: string
+  onGitRepositoryChange?: (path: string) => void
   noteListFilter: NoteListFilter
   filterCounts: ReturnType<typeof useFilterCounts>
   onNoteListFilterChange: (filter: NoteListFilter) => void
@@ -565,6 +572,9 @@ function buildNoteListLayoutModel(params: {
     handleClickNote: params.interaction.handleClickNote,
     isArchivedView: params.content.isArchivedView,
     isChangesView: params.selection.kind === 'filter' && params.selection.filter === 'changes',
+    gitRepositories: params.gitRepositories ?? [],
+    selectedGitRepositoryPath: params.selectedGitRepositoryPath ?? '',
+    onGitRepositoryChange: params.onGitRepositoryChange,
     isInboxView: params.selection.kind === 'filter' && params.selection.filter === 'inbox',
     modifiedFilesError: params.modifiedFilesError,
     searched: params.content.searched,
@@ -592,6 +602,9 @@ export function useNoteListModel({
   inboxPeriod = 'all',
   modifiedFiles,
   modifiedFilesError,
+  gitRepositories,
+  selectedGitRepositoryPath,
+  onGitRepositoryChange,
   getNoteStatus,
   sidebarCollapsed,
   onReplaceActiveTab,
@@ -713,6 +726,9 @@ export function useNoteListModel({
     loading,
     onOpenType: onReplaceActiveTab,
     modifiedFilesError,
+    gitRepositories,
+    selectedGitRepositoryPath,
+    onGitRepositoryChange,
     noteListFilter,
     filterCounts,
     onNoteListFilterChange,

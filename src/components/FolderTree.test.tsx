@@ -68,6 +68,45 @@ describe('FolderTree', () => {
     expect(screen.getByText('Laputa')).toBeInTheDocument()
   })
 
+  it('renders one scoped root per mounted workspace and selects folders inside that root', () => {
+    const onSelect = vi.fn()
+    const folders: FolderNode[] = [
+      {
+        name: 'Personal',
+        path: '',
+        rootPath: '/Users/luca/Personal',
+        children: [{ name: 'projects', path: 'projects', rootPath: '/Users/luca/Personal', children: [] }],
+      },
+      {
+        name: 'Team',
+        path: '',
+        rootPath: '/Users/luca/Team',
+        children: [{ name: 'projects', path: 'projects', rootPath: '/Users/luca/Team', children: [] }],
+      },
+    ]
+
+    render(
+      <FolderTree
+        folders={folders}
+        selection={defaultSelection}
+        onSelect={onSelect}
+        vaultRootPath="/Users/luca/Personal"
+      />,
+    )
+
+    expect(screen.getByText('Personal')).toBeInTheDocument()
+    expect(screen.getByText('Team')).toBeInTheDocument()
+    expect(screen.getAllByTestId('folder-row:projects')).toHaveLength(2)
+
+    fireEvent.click(screen.getAllByTestId('folder-row:projects')[1])
+
+    expect(onSelect).toHaveBeenCalledWith({
+      kind: 'folder',
+      path: 'projects',
+      rootPath: '/Users/luca/Team',
+    })
+  })
+
   it('lets the vault root collapse and expand from the row', () => {
     vi.useFakeTimers()
     render(
@@ -126,6 +165,22 @@ describe('FolderTree', () => {
 
     fireEvent.click(screen.getByTestId('folder-row:'))
     expect(onSelect).toHaveBeenCalledWith({ kind: 'folder', path: '', rootPath: vaultRootPath })
+  })
+
+  it('selects child folders with the vault root path attached when the tree has a root', () => {
+    const onSelect = vi.fn()
+    render(
+      <FolderTree
+        folders={mockFolders}
+        selection={defaultSelection}
+        onSelect={onSelect}
+        vaultRootPath={vaultRootPath}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('folder-row:areas'))
+
+    expect(onSelect).toHaveBeenCalledWith({ kind: 'folder', path: 'areas', rootPath: vaultRootPath })
   })
 
   it('expands children when single-clicking a folder row with children', () => {

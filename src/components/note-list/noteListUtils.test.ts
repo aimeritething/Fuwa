@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
-import { resolveHeaderTitle, routeNoteClick, type ClickActions } from './noteListUtils'
+import { createNoteStatusResolver, resolveHeaderTitle, routeNoteClick, type ClickActions } from './noteListUtils'
+import type { ModifiedFile } from '../../types'
 import type { SidebarSelection, VaultEntry } from '../../types'
 
 function makeEntry(path = '/test.md'): VaultEntry {
@@ -101,5 +102,38 @@ describe('routeNoteClick', () => {
     routeNoteClick(entry, makeMouseEvent({ metaKey: true, shiftKey: true }), actions)
     expect(actions.onReplace).not.toHaveBeenCalled()
     expect(actions.onEnterNeighborhood).not.toHaveBeenCalled()
+  })
+})
+
+describe('createNoteStatusResolver', () => {
+  it('keeps transient note status ahead of repository status', () => {
+    const modifiedFiles: ModifiedFile[] = [{
+      path: '/vault/note.md',
+      relativePath: 'note.md',
+      status: 'modified',
+    }]
+    const resolver = createNoteStatusResolver(
+      () => 'unsaved',
+      modifiedFiles,
+      new Set(modifiedFiles.map((file) => file.path)),
+    )
+
+    expect(resolver('/vault/note.md')).toBe('unsaved')
+  })
+
+  it('uses modified files when active-vault status says the note is clean', () => {
+    const modifiedFiles: ModifiedFile[] = [{
+      path: '/other-vault/note.md',
+      relativePath: 'note.md',
+      status: 'untracked',
+      vaultPath: '/other-vault',
+    }]
+    const resolver = createNoteStatusResolver(
+      () => 'clean',
+      modifiedFiles,
+      new Set(modifiedFiles.map((file) => file.path)),
+    )
+
+    expect(resolver('/other-vault/note.md')).toBe('new')
   })
 })

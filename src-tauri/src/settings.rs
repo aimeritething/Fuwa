@@ -89,6 +89,7 @@ pub struct Settings {
     pub all_notes_show_pdfs: Option<bool>,
     pub all_notes_show_images: Option<bool>,
     pub all_notes_show_unsupported: Option<bool>,
+    pub multi_workspace_enabled: Option<bool>,
 }
 
 fn normalize_optional_string(value: Option<String>) -> Option<String> {
@@ -201,6 +202,7 @@ fn normalize_settings(settings: Settings) -> Settings {
         all_notes_show_pdfs: settings.all_notes_show_pdfs,
         all_notes_show_images: settings.all_notes_show_images,
         all_notes_show_unsupported: settings.all_notes_show_unsupported,
+        multi_workspace_enabled: settings.multi_workspace_enabled,
     }
 }
 
@@ -349,6 +351,7 @@ mod tests {
             default_ai_target: Some("agent:codex".to_string()),
             ai_model_providers: None,
             hide_gitignored_files: Some(false),
+            multi_workspace_enabled: Some(true),
             all_notes_show_pdfs: Some(true),
             all_notes_show_images: Some(true),
             all_notes_show_unsupported: Some(false),
@@ -383,6 +386,7 @@ mod tests {
             initial_h1_auto_rename_enabled: Some(false),
             default_ai_agent: Some("codex".to_string()),
             hide_gitignored_files: Some(false),
+            multi_workspace_enabled: Some(true),
             all_notes_show_pdfs: Some(true),
             all_notes_show_images: Some(false),
             all_notes_show_unsupported: Some(true),
@@ -402,6 +406,7 @@ mod tests {
         assert_eq!(loaded.initial_h1_auto_rename_enabled, Some(false));
         assert_eq!(loaded.default_ai_agent.as_deref(), Some("codex"));
         assert_eq!(loaded.hide_gitignored_files, Some(false));
+        assert_eq!(loaded.multi_workspace_enabled, Some(true));
         assert_eq!(loaded.all_notes_show_pdfs, Some(true));
         assert_eq!(loaded.all_notes_show_images, Some(false));
         assert_eq!(loaded.all_notes_show_unsupported, Some(true));

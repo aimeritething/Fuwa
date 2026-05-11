@@ -143,6 +143,7 @@ function RawModeEditorSection({
         content={rawModeContent ?? activeTab.content}
         path={activeTab.entry.path}
         entries={entries}
+        sourceEntry={activeTab.entry}
         findRequest={findRequest}
         onContentChange={onRawContentChange ?? (() => {})}
         onSave={onSave ?? (() => {})}
@@ -352,6 +353,7 @@ function EditorCanvas({
   showEditor,
   cssVars,
   editor,
+  activeTab,
   entries,
   onNavigateWikilink,
   onEditorChange,
@@ -363,6 +365,7 @@ function EditorCanvas({
   | 'showEditor'
   | 'cssVars'
   | 'editor'
+  | 'activeTab'
   | 'entries'
   | 'onNavigateWikilink'
   | 'onEditorChange'
@@ -383,6 +386,7 @@ function EditorCanvas({
           entries={entries}
           onNavigateWikilink={onNavigateWikilink}
           onChange={onEditorChange}
+          sourceEntry={activeTab?.entry ?? null}
           vaultPath={vaultPath}
           editable={!isDeletedPreview}
           locale={locale}
@@ -510,6 +514,7 @@ export function EditorContentLayout(model: EditorContentModel) {
           <EditorCanvas
             showEditor={showEditor}
             cssVars={cssVars}
+            activeTab={activeTab}
             vaultPath={vaultPath}
             editor={editor}
             entries={entries}

@@ -1,5 +1,6 @@
 import type { ComponentType, SVGAttributes } from 'react'
 import { NoteSearchList } from './NoteSearchList'
+import type { WorkspaceIdentity } from '../types'
 import './WikilinkSuggestionMenu.css'
 
 export interface WikilinkSuggestionItem {
@@ -12,6 +13,7 @@ export interface WikilinkSuggestionItem {
   aliases?: string[]
   entryTitle?: string
   path?: string
+  workspace?: WorkspaceIdentity | null
 }
 
 interface WikilinkSuggestionMenuProps {
@@ -21,6 +23,23 @@ interface WikilinkSuggestionMenuProps {
   onItemClick?: (item: WikilinkSuggestionItem) => void
 }
 
+function runSuggestionItemClickOnce(
+  item: WikilinkSuggestionItem,
+  onItemClick?: (item: WikilinkSuggestionItem) => void,
+): void {
+  let itemActionRan = false
+  const runItemAction = () => {
+    itemActionRan = true
+    item.onItemClick()
+  }
+
+  if (onItemClick) {
+    onItemClick({ ...item, onItemClick: runItemAction })
+  }
+
+  if (!itemActionRan) runItemAction()
+}
+
 export function WikilinkSuggestionMenu({ items, selectedIndex, onItemClick }: WikilinkSuggestionMenuProps) {
   return (
     <div className="wikilink-menu">
@@ -28,10 +47,8 @@ export function WikilinkSuggestionMenu({ items, selectedIndex, onItemClick }: Wi
           items={items}
           selectedIndex={selectedIndex ?? 0}
           getItemKey={(item, i) => `${item.title}-${item.path ?? i}`}
-          onItemClick={(item) => {
-            item.onItemClick()
-            onItemClick?.(item)
-          }}
+          onItemClick={(item) => runSuggestionItemClickOnce(item, onItemClick)}
+          activateOnMouseDown
           emptyMessage="No results"
         />
     </div>

@@ -59,6 +59,11 @@ export const ACCENT_COLORS: { key: string; label: string; css: string; cssLight:
   { key: 'gray', label: 'Gray', css: 'var(--accent-gray)', cssLight: 'var(--accent-gray-light)' },
 ]
 
+export const ACCENT_COLOR_PICKER_KEYS = ['red', 'orange', 'yellow', 'green', 'blue', 'purple', 'pink', 'gray'] as const
+export const ACCENT_COLOR_PICKER_COLORS = ACCENT_COLOR_PICKER_KEYS
+  .map((key) => ACCENT_COLORS.find((color) => color.key === key) ?? null)
+  .filter((color): color is typeof ACCENT_COLORS[number] => color !== null)
+
 const COLOR_KEY_TO_CSS: Record<string, string> = Object.fromEntries(
   ACCENT_COLORS.map((c) => [c.key, c.css]),
 )

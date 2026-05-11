@@ -67,6 +67,7 @@ function useCliAiAgentRuntime(fileCallbacks: AgentFileCallbacks | undefined): Us
 
 export function useCliAiAgent(
   vaultPath: string,
+  vaultPaths: string[] | undefined,
   contextPrompt: string | undefined,
   fileCallbacks: AgentFileCallbacks | undefined,
   options: UseCliAiAgentOptions,
@@ -87,6 +88,7 @@ export function useCliAiAgent(
         target,
         ready: agentReady,
         vaultPath,
+        vaultPaths,
         permissionMode,
         systemPromptOverride: contextPrompt,
       },

@@ -103,6 +103,34 @@ describe('useVaultSwitcher', () => {
     expect(result.current.vaultPath).toBe(expectedDefaultVaultPath)
   })
 
+  it('persists workspace identity changes for the implicit default vault', async () => {
+    const { result } = await renderLoadedVaultSwitcher()
+
+    act(() => {
+      result.current.updateWorkspaceIdentity(expectedDefaultVaultPath, { mounted: false, shortLabel: 'GS' })
+    })
+
+    await waitFor(() => {
+      expect(result.current.allVaults).toEqual([
+        expect.objectContaining({
+          path: expectedDefaultVaultPath,
+          managedDefault: true,
+          mounted: false,
+          shortLabel: 'GS',
+        }),
+      ])
+    })
+    await waitFor(() => {
+      expect(mockVaultListStore.vaults).toEqual([
+        expect.objectContaining({
+          path: expectedDefaultVaultPath,
+          mounted: false,
+          shortLabel: 'GS',
+        }),
+      ])
+    })
+  })
+
   it('loads persisted vaults on mount', async () => {
     mockVaultListStore = {
       vaults: [{ label: 'My Vault', path: '/Users/luca/Laputa' }],

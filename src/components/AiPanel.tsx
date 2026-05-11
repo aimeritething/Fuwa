@@ -34,6 +34,7 @@ interface AiPanelProps {
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
   vaultPath: string
+  vaultPaths?: string[]
   activeEntry?: VaultEntry | null
   /** Direct content of the active note from the editor tab. */
   activeNoteContent?: string | null
@@ -174,6 +175,7 @@ export function AiPanel({
   onFileModified,
   onVaultChanged,
   vaultPath,
+  vaultPaths,
   activeEntry,
   activeNoteContent,
   entries,
@@ -185,6 +187,7 @@ export function AiPanel({
     ?? readinessFromReadyFlag(providedDefaultAiAgentReady)
   const controller = useAiPanelController({
     vaultPath,
+    vaultPaths,
     defaultAiAgent: providedDefaultAiAgent ?? DEFAULT_AI_AGENT,
     defaultAiTarget,
     defaultAiAgentReady: providedDefaultAiAgentReady ?? true,

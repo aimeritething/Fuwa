@@ -122,6 +122,7 @@ describe('AiPanel', () => {
     expect(mockUseCliAiAgent).toHaveBeenCalledWith(
       '/tmp/vault',
       undefined,
+      undefined,
       expect.any(Object),
       expect.objectContaining({ permissionMode: 'power_user' }),
     )

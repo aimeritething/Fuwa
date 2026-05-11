@@ -118,6 +118,11 @@ define_desktop_stream_command!(
 #[cfg(desktop)]
 fn normalize_agent_request(mut request: AiAgentStreamRequest) -> AiAgentStreamRequest {
     request.vault_path = expand_tilde(&request.vault_path).into_owned();
+    request.vault_paths = request
+        .vault_paths
+        .into_iter()
+        .map(|path| expand_tilde(&path).into_owned())
+        .collect();
     request
 }
 
@@ -273,6 +278,7 @@ mod tests {
             message: "hi".into(),
             system_prompt: None,
             vault_path: "~/Vaults/content".into(),
+            vault_paths: vec!["~/Vaults/secondary".into()],
             permission_mode: None,
         };
 
@@ -282,6 +288,11 @@ mod tests {
             normalized.vault_path,
             format!("{}/Vaults/content", home.display()),
             "vault_path must be tilde-expanded so spawned agents can chdir into it",
+        );
+        assert_eq!(
+            normalized.vault_paths,
+            vec![format!("{}/Vaults/secondary", home.display())],
+            "vault_paths must be tilde-expanded so spawned agents can access every active vault",
         );
     }
 
@@ -295,6 +306,7 @@ mod tests {
             message: "hi".into(),
             system_prompt: None,
             vault_path: "/Users/example/vault".into(),
+            vault_paths: Vec::new(),
             permission_mode: None,
         };
 

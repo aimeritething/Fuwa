@@ -28,6 +28,7 @@ export interface StreamAiAgentRequest {
   message: string
   systemPrompt?: string
   vaultPath: string
+  vaultPaths?: string[]
   permissionMode?: AiAgentPermissionMode
   callbacks: AgentStreamCallbacks
 }
@@ -77,6 +78,7 @@ export async function streamAiAgent(
     message,
     systemPrompt,
     vaultPath,
+    vaultPaths,
     permissionMode,
     callbacks,
   } = request
@@ -115,6 +117,7 @@ export async function streamAiAgent(
         message,
         system_prompt: systemPrompt || null,
         vault_path: vaultPath,
+        vault_paths: vaultPaths && vaultPaths.length > 0 ? vaultPaths : null,
         permission_mode: normalizeAiAgentPermissionMode(permissionMode),
       },
     })

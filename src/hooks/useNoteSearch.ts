@@ -4,7 +4,6 @@ import { fuzzyMatch, bestSearchRank } from '../utils/fuzzyMatch'
 import { getTypeColor, getTypeLightColor, buildTypeEntryMap } from '../utils/typeColors'
 import { getTypeIcon } from '../components/NoteItem'
 import type { NoteSearchResultItem } from '../components/NoteSearchList'
-import { workspaceDisplayPrefix } from '../utils/workspaces'
 
 const DEFAULT_MAX_RESULTS = 20
 
@@ -17,12 +16,13 @@ function toResult(e: VaultEntry, typeEntryMap: Record<string, VaultEntry>, showW
   const te = typeEntryMap[e.isA ?? '']
   return {
     entry: e,
-    title: `${showWorkspace ? workspaceDisplayPrefix(e) ?? '' : ''}${e.title}`,
+    title: e.title,
     noteIcon: e.icon,
     noteType,
     typeColor: noteType ? getTypeColor(e.isA, te?.color) : undefined,
     typeLightColor: noteType ? getTypeLightColor(e.isA, te?.color) : undefined,
     TypeIcon: noteType ? getTypeIcon(e.isA, te?.icon) : undefined,
+    workspace: showWorkspace ? e.workspace ?? null : null,
   }
 }
 

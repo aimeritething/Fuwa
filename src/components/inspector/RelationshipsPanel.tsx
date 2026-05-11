@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState, useRef, type ReactNode } from 'react'
+import { useMemo, useCallback, useState, useRef, type KeyboardEvent, type ReactNode } from 'react'
 import type { VaultEntry } from '../../types'
 import { Plus, X } from '@phosphor-icons/react'
 import type { ParsedFrontmatter } from '../../utils/frontmatter'
@@ -22,6 +22,8 @@ import {
 import { humanizePropertyKey } from '../../utils/propertyLabels'
 import { translate, type AppLocale } from '../../lib/i18n'
 import { canonicalFrontmatterKey } from '../../utils/systemMetadata'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 const RELATIONSHIP_SECTION_ROW_CLASS_NAME = 'flex min-w-0 flex-col gap-1 px-1.5'
 const RELATIONSHIPS_PANEL_GRID_CLASS_NAME = 'grid min-w-0 gap-x-2 gap-y-3'
@@ -44,6 +46,7 @@ type RelationshipPanelEditHandlers = {
 
 interface RelationshipLookupContext {
   entries: VaultEntry[]
+  sourceEntry?: VaultEntry
   vaultPath: string
 }
 
@@ -116,12 +119,12 @@ function inferVaultPath(entries: VaultEntry[]): string {
   return prefix.join('/')
 }
 
-function canonicalRefForEntry({ entry, vaultPath }: { entry: VaultEntry; vaultPath: string }): string {
-  return formatWikilinkRef(canonicalWikilinkTargetForEntry(entry, vaultPath))
+function canonicalRefForEntry({ entry, sourceEntry, vaultPath }: { entry: VaultEntry } & RelationshipLookupContext): string {
+  return formatWikilinkRef(canonicalWikilinkTargetForEntry(entry, vaultPath, sourceEntry))
 }
 
-function canonicalRefForTitle({ title, entries, vaultPath }: { title: string } & RelationshipLookupContext): string {
-  return formatWikilinkRef(canonicalWikilinkTargetForTitle(title, entries, vaultPath))
+function canonicalRefForTitle({ title, entries, sourceEntry, vaultPath }: { title: string } & RelationshipLookupContext): string {
+  return formatWikilinkRef(canonicalWikilinkTargetForTitle(title, entries, vaultPath, sourceEntry))
 }
 
 function shouldShowSearchDropdown({ focused, trimmed, resultCount, showCreate }: SearchDropdownArgs): boolean {
@@ -293,6 +296,7 @@ function SearchDropdownWithCreate({ search, onSelect, query, entries, locale, on
 function useInlineAddNoteState(
   entries: VaultEntry[],
   vaultPath: string,
+  sourceEntry: VaultEntry | undefined,
   onAdd: (ref: string) => void,
   onCreateAndOpenNote?: (title: string) => Promise<boolean>,
 ) {
@@ -300,7 +304,7 @@ function useInlineAddNoteState(
   const [query, setQuery] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
   const search = useNoteSearch(entries, query, 8)
-  const lookupContext = useMemo(() => ({ entries, vaultPath }), [entries, vaultPath])
+  const lookupContext = useMemo(() => ({ entries, sourceEntry, vaultPath }), [entries, sourceEntry, vaultPath])
 
   const trimmed = query.trim()
   const { showCreate, createIndex, totalItems } = useCreateOption({
@@ -321,8 +325,8 @@ function useInlineAddNoteState(
   }, [onAdd, dismiss])
 
   const selectEntryAndClose = useCallback((entry: VaultEntry) => {
-    selectAndClose(canonicalRefForEntry({ entry, vaultPath }))
-  }, [selectAndClose, vaultPath])
+    selectAndClose(canonicalRefForEntry({ entry, entries, sourceEntry, vaultPath }))
+  }, [entries, selectAndClose, sourceEntry, vaultPath])
 
   const handleCreateAndOpen = useCreateAndOpen(
     onCreateAndOpenNote,
@@ -372,8 +376,9 @@ function useInlineAddNoteState(
   }
 }
 
-function InlineAddNote({ entries, vaultPath, locale, onAdd, onCreateAndOpenNote }: {
+function InlineAddNote({ entries, sourceEntry, vaultPath, locale, onAdd, onCreateAndOpenNote }: {
   entries: VaultEntry[]
+  sourceEntry?: VaultEntry
   vaultPath: string
   onAdd: (ref: string) => void
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
@@ -391,7 +396,7 @@ function InlineAddNote({ entries, vaultPath, locale, onAdd, onCreateAndOpenNote 
     showDropdown,
     selectEntryAndClose,
     handleCreateAndOpen,
-  } = useInlineAddNoteState(entries, vaultPath, onAdd, onCreateAndOpenNote)
+  } = useInlineAddNoteState(entries, vaultPath, sourceEntry, onAdd, onCreateAndOpenNote)
 
   if (!active) {
     return (
@@ -441,8 +446,9 @@ function InlineAddNote({ entries, vaultPath, locale, onAdd, onCreateAndOpenNote 
   )
 }
 
-function RelationshipGroup({ label, refs, entries, typeEntryMap, vaultPath, locale, onNavigate, onRemoveRef, onAddRef, onCreateAndOpenNote }: {
+function RelationshipGroup({ label, refs, entries, sourceEntry, typeEntryMap, vaultPath, locale, onNavigate, onRemoveRef, onAddRef, onCreateAndOpenNote }: {
   label: string; refs: string[]; entries: VaultEntry[]; typeEntryMap: Record<string, VaultEntry>; vaultPath: string
+  sourceEntry?: VaultEntry
   onNavigate: (target: string) => void
   onRemoveRef?: (ref: string) => void
   onAddRef?: (ref: string) => void
@@ -468,6 +474,7 @@ function RelationshipGroup({ label, refs, entries, typeEntryMap, vaultPath, loca
       {onAddRef && (
         <InlineAddNote
           entries={entries}
+          sourceEntry={sourceEntry}
           vaultPath={vaultPath}
           onAdd={onAddRef}
           onCreateAndOpenNote={onCreateAndOpenNote}
@@ -540,10 +547,11 @@ function buildTypeDerivedRelationshipEntries({
   return result
 }
 
-function NoteTargetInput({ entries, value, locale, onChange, onSubmit, onCancel, onCreateAndOpenNote, onSubmitWithCreate }: {
+function NoteTargetInput({ entries, value, locale, onChange, onSelectEntry, onSubmit, onCancel, onCreateAndOpenNote, onSubmitWithCreate }: {
   entries: VaultEntry[]
   value: string
   onChange: (v: string) => void
+  onSelectEntry?: (entry: VaultEntry) => void
   onSubmit?: () => void
   onCancel?: () => void
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
@@ -562,9 +570,10 @@ function NoteTargetInput({ entries, value, locale, onChange, onSubmit, onCancel,
   })
 
   const selectEntry = useCallback((entry: VaultEntry) => {
-    onChange(entry.title)
+    onSelectEntry?.(entry)
+    if (!onSelectEntry) onChange(entry.title)
     setFocused(false)
-  }, [onChange])
+  }, [onChange, onSelectEntry])
 
   const handleConfirm = useCallback(() => {
     confirmRelationshipSelection({
@@ -701,69 +710,157 @@ function useRelationshipPanelState({
   }
 }
 
-function AddRelationshipForm({ entries, vaultPath, locale, onAddProperty, onCreateAndOpenNote }: {
+interface AddRelationshipFormProps {
   entries: VaultEntry[]
+  sourceEntry?: VaultEntry
   vaultPath: string
   onAddProperty: (key: string, value: FrontmatterValue) => void
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
   locale: AppLocale
+}
+
+function AddRelationshipButton({ locale, onClick }: { locale: AppLocale; onClick: () => void }) {
+  return (
+    <Button type="button" variant="outline" className="mt-2 h-auto w-full justify-center px-3 py-1.5 text-xs text-muted-foreground" onClick={onClick}>
+      {translate(locale, 'inspector.relationship.addRelationship')}
+    </Button>
+  )
+}
+
+function RelationshipKeyInput({
+  inputRef,
+  locale,
+  value,
+  onChange,
+  onSubmit,
+  onCancel,
+}: {
+  inputRef: React.RefObject<HTMLInputElement | null>
+  locale: AppLocale
+  value: string
+  onChange: (value: string) => void
+  onSubmit: () => void
+  onCancel: () => void
 }) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') onSubmit()
+    if (event.key === 'Escape') onCancel()
+  }
+
+  return (
+    <Input
+      ref={inputRef}
+      autoFocus
+      placeholder={translate(locale, 'inspector.relationship.name')}
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      onKeyDown={handleKeyDown}
+      className="h-7 text-xs"
+    />
+  )
+}
+
+function AddRelationshipActions({
+  canSubmit,
+  locale,
+  onCancel,
+  onSubmit,
+}: {
+  canSubmit: boolean
+  locale: AppLocale
+  onCancel: () => void
+  onSubmit: () => void
+}) {
+  return (
+    <div className="flex gap-1.5">
+      <Button type="button" variant="outline" size="sm" className="h-7 flex-1 text-xs" onClick={onSubmit} disabled={!canSubmit} data-testid="submit-add-relationship">
+        {translate(locale, 'inspector.relationship.add')}
+      </Button>
+      <Button type="button" variant="outline" size="sm" className="h-7 px-2 text-xs text-muted-foreground" onClick={onCancel}>
+        {translate(locale, 'common.cancel')}
+      </Button>
+    </div>
+  )
+}
+
+function AddRelationshipForm({ entries, sourceEntry, vaultPath, locale, onAddProperty, onCreateAndOpenNote }: AddRelationshipFormProps) {
   const [relKey, setRelKey] = useState('')
   const [relTarget, setRelTarget] = useState('')
+  const [selectedTargetEntry, setSelectedTargetEntry] = useState<VaultEntry | null>(null)
   const [showForm, setShowForm] = useState(false)
   const keyInputRef = useRef<HTMLInputElement>(null)
 
   const resetForm = useCallback(() => {
-    setShowForm(false); setRelKey(''); setRelTarget('')
+    setShowForm(false)
+    setRelKey('')
+    setRelTarget('')
+    setSelectedTargetEntry(null)
+  }, [])
+
+  const openForm = useCallback(() => {
+    setShowForm(true)
+    setTimeout(() => keyInputRef.current?.focus(), 0)
+  }, [])
+
+  const handleTargetChange = useCallback((value: string) => {
+    setRelTarget(value)
+    setSelectedTargetEntry(null)
+  }, [])
+
+  const handleTargetEntrySelected = useCallback((entry: VaultEntry) => {
+    setSelectedTargetEntry(entry)
+    setRelTarget(entry.title)
   }, [])
 
   const submitForm = useCallback((targetOverride?: string) => {
     const key = relKey.trim()
     const rawTarget = (targetOverride ?? relTarget).trim()
     if (!key || !rawTarget) return
-    onAddProperty(key, canonicalRefForTitle({ title: rawTarget, entries, vaultPath }))
+    const ref = !targetOverride && selectedTargetEntry
+      ? canonicalRefForEntry({ entry: selectedTargetEntry, entries, sourceEntry, vaultPath })
+      : canonicalRefForTitle({ title: rawTarget, entries, sourceEntry, vaultPath })
+    onAddProperty(key, ref)
     resetForm()
-  }, [relKey, relTarget, entries, vaultPath, onAddProperty, resetForm])
+  }, [relKey, relTarget, selectedTargetEntry, entries, sourceEntry, vaultPath, onAddProperty, resetForm])
 
   const addPropertyForKey = useCallback((title: string) => {
     const key = relKey.trim()
-    if (key) onAddProperty(key, canonicalRefForTitle({ title, entries, vaultPath }))
-  }, [relKey, entries, vaultPath, onAddProperty])
+    if (key) onAddProperty(key, canonicalRefForTitle({ title, entries, sourceEntry, vaultPath }))
+  }, [relKey, entries, sourceEntry, vaultPath, onAddProperty])
 
   const handleCreateAndSubmit = useCreateAndOpen(onCreateAndOpenNote, addPropertyForKey, resetForm)
 
   if (!showForm) {
-    return (
-      <button className="mt-2 w-full border border-border bg-transparent text-center text-muted-foreground" style={{ borderRadius: 6, padding: '6px 12px', fontSize: 12, cursor: 'pointer' }} onClick={() => { setShowForm(true); setTimeout(() => keyInputRef.current?.focus(), 0) }}>{translate(locale, 'inspector.relationship.addRelationship')}</button>
-    )
+    return <AddRelationshipButton locale={locale} onClick={openForm} />
   }
 
   return (
     <div className="mt-2 flex flex-col gap-1.5">
-      <input
-        ref={keyInputRef}
-        autoFocus
-        className="w-full border border-border bg-transparent px-2 py-1 text-xs text-foreground"
-        style={{ borderRadius: 4, outline: 'none' }}
-        placeholder={translate(locale, 'inspector.relationship.name')}
+      <RelationshipKeyInput
+        inputRef={keyInputRef}
+        locale={locale}
         value={relKey}
-        onChange={e => setRelKey(e.target.value)}
-        onKeyDown={e => { if (e.key === 'Enter') submitForm(); else if (e.key === 'Escape') resetForm() }}
+        onChange={setRelKey}
+        onSubmit={() => submitForm()}
+        onCancel={resetForm}
       />
       <NoteTargetInput
         entries={entries}
         value={relTarget}
-        onChange={setRelTarget}
+        onChange={handleTargetChange}
+        onSelectEntry={handleTargetEntrySelected}
         onSubmit={submitForm}
         onCancel={resetForm}
         onCreateAndOpenNote={onCreateAndOpenNote}
         onSubmitWithCreate={handleCreateAndSubmit}
         locale={locale}
       />
-      <div className="flex gap-1.5">
-        <button className="flex-1 border border-border bg-transparent text-xs text-foreground" style={{ borderRadius: 4, padding: '4px 0' }} onClick={() => submitForm()} disabled={!relKey.trim() || !relTarget.trim()} data-testid="submit-add-relationship">{translate(locale, 'inspector.relationship.add')}</button>
-        <button className="border border-border bg-transparent text-xs text-muted-foreground" style={{ borderRadius: 4, padding: '4px 8px' }} onClick={resetForm}>{translate(locale, 'common.cancel')}</button>
-      </div>
+      <AddRelationshipActions
+        canSubmit={!!relKey.trim() && !!relTarget.trim()}
+        locale={locale}
+        onSubmit={() => submitForm()}
+        onCancel={resetForm}
+      />
     </div>
   )
 }
@@ -786,9 +883,10 @@ function DisabledLinkButton({ locale }: { locale: AppLocale }) {
   )
 }
 
-function SuggestedRelationshipSlot({ label, entries, vaultPath, locale, onAdd, onCreateAndOpenNote, dataTestId = 'suggested-relationship' }: {
+function SuggestedRelationshipSlot({ label, entries, sourceEntry, vaultPath, locale, onAdd, onCreateAndOpenNote, dataTestId = 'suggested-relationship' }: {
   label: string
   entries: VaultEntry[]
+  sourceEntry?: VaultEntry
   vaultPath: string
   onAdd: (ref: string) => void
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
@@ -799,6 +897,7 @@ function SuggestedRelationshipSlot({ label, entries, vaultPath, locale, onAdd, o
     <RelationshipSectionRow label={label} dataTestId={dataTestId} locale={locale} placeholder>
       <InlineAddNote
         entries={entries}
+        sourceEntry={sourceEntry}
         vaultPath={vaultPath}
         onAdd={onAdd}
         onCreateAndOpenNote={onCreateAndOpenNote}
@@ -840,6 +939,7 @@ export function DynamicRelationshipsPanel({ entry, frontmatter, entries, typeEnt
       {relationshipEntries.map(({ key, refs }) => (
         <RelationshipGroup
           key={key} label={key} refs={refs} entries={entries} typeEntryMap={typeEntryMap} vaultPath={resolvedVaultPath} onNavigate={onNavigate}
+          sourceEntry={entry}
           onRemoveRef={canEdit ? (ref) => handleRemoveRef(key, ref) : undefined}
           onAddRef={canEdit ? (ref) => handleAddRef(key, ref) : undefined}
           onCreateAndOpenNote={canEdit ? onCreateAndOpenNote : undefined}
@@ -851,6 +951,7 @@ export function DynamicRelationshipsPanel({ entry, frontmatter, entries, typeEnt
           key={`type-derived:${key}`}
           label={key}
           entries={entries}
+          sourceEntry={entry}
           vaultPath={resolvedVaultPath}
           onAdd={(ref) => onAddProperty(key, ref)}
           onCreateAndOpenNote={onCreateAndOpenNote}
@@ -863,6 +964,7 @@ export function DynamicRelationshipsPanel({ entry, frontmatter, entries, typeEnt
           key={label}
           label={label}
           entries={entries}
+          sourceEntry={entry}
           vaultPath={resolvedVaultPath}
           onAdd={(ref) => onAddProperty!(label, ref)}
           onCreateAndOpenNote={onCreateAndOpenNote}
@@ -871,7 +973,7 @@ export function DynamicRelationshipsPanel({ entry, frontmatter, entries, typeEnt
       ))}
       <RelationshipActionRow>
         {onAddProperty
-          ? <AddRelationshipForm entries={entries} vaultPath={resolvedVaultPath} onAddProperty={onAddProperty} onCreateAndOpenNote={onCreateAndOpenNote} locale={locale} />
+          ? <AddRelationshipForm entries={entries} sourceEntry={entry} vaultPath={resolvedVaultPath} onAddProperty={onAddProperty} onCreateAndOpenNote={onCreateAndOpenNote} locale={locale} />
           : <DisabledLinkButton locale={locale} />
         }
       </RelationshipActionRow>

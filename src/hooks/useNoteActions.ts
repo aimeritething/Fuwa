@@ -1,4 +1,4 @@
-import { useCallback, useEffect, type MutableRefObject } from 'react'
+import { useCallback, useEffect, useRef, type MutableRefObject } from 'react'
 import type { VaultEntry } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
 import { useTabManagement } from './useTabManagement'
@@ -42,7 +42,7 @@ export interface NoteActionsConfig {
   /** Called after frontmatter is written to disk — used for live-reloading theme CSS vars. */
   onFrontmatterContentChanged?: (path: string, content: string) => void
   /** Called after a frontmatter mutation is fully persisted, including follow-up renames. */
-  onFrontmatterPersisted?: () => void
+  onFrontmatterPersisted?: () => void | Promise<void>
   /** Called after type files or type assignments change, so derived type surfaces can reload. */
   onTypeStateChanged?: () => void | Promise<void>
 }
@@ -59,6 +59,31 @@ function entryDisplayLabel(entry: VaultEntry): string {
   return safeString(entry.title).trim()
     || safeString(entry.filename).trim()
     || 'Note'
+}
+
+type RenamedPathMap = Map<string, string>
+
+function resolveLatestNotePath(renamedPaths: RenamedPathMap, path: string): string {
+  let current = path
+  const visited = new Set<string>()
+
+  while (!visited.has(current)) {
+    visited.add(current)
+    const next = renamedPaths.get(current)
+    if (!next || next === current) return current
+    current = next
+  }
+
+  return current
+}
+
+function trackRenamedNotePath(renamedPaths: RenamedPathMap, oldPath: string, newPath: string): void {
+  if (notePathsMatch(oldPath, newPath)) return
+  const latestPath = resolveLatestNotePath(renamedPaths, newPath)
+  for (const [trackedOldPath, trackedNewPath] of renamedPaths) {
+    if (trackedNewPath === oldPath) renamedPaths.set(trackedOldPath, latestPath)
+  }
+  renamedPaths.set(oldPath, latestPath)
 }
 
 interface TitleRenameDeps {
@@ -123,7 +148,7 @@ function isTypeFieldKey(key: string): boolean {
 }
 
 async function notifyFrontmatterPersisted(config: NoteActionsConfig, key: string): Promise<void> {
-  config.onFrontmatterPersisted?.()
+  await config.onFrontmatterPersisted?.()
   if (isTypeFieldKey(key)) {
     await config.onTypeStateChanged?.()
   }
@@ -287,6 +312,8 @@ function useGitignoredVisibilityTabCleanup({
 
 function useFrontmatterActionHandlers({
   config,
+  onPathRenamed,
+  resolvePath,
   renameTabsRef,
   setTabs,
   activeTabPathRef,
@@ -296,6 +323,8 @@ function useFrontmatterActionHandlers({
   runFrontmatterOp,
 }: {
   config: NoteActionsConfig
+  onPathRenamed?: (oldPath: string, newPath: string) => void
+  resolvePath: (path: string) => string
   renameTabsRef: TitleRenameDeps['tabsRef']
   setTabs: React.Dispatch<React.SetStateAction<{ entry: VaultEntry; content: string }[]>>
   activeTabPathRef: React.MutableRefObject<string | null>
@@ -310,6 +339,7 @@ function useFrontmatterActionHandlers({
     value: FrontmatterValue,
     options?: FrontmatterOpOptions,
   ) => {
+    const currentPath = resolvePath(path)
     await updateFrontmatterAndMaybeRename({
       config,
       deps: {
@@ -317,42 +347,44 @@ function useFrontmatterActionHandlers({
         tabsRef: renameTabsRef,
         reloadVault: config.reloadVault,
         replaceEntry: config.replaceEntry,
-        onPathRenamed: config.onPathRenamed,
+        onPathRenamed,
         setTabs,
         activeTabPathRef,
         handleSwitchTab,
         setToastMessage,
         updateTabContent,
       },
-      path,
+      path: currentPath,
       key,
       value,
       options,
       runFrontmatterOp,
     })
-  }, [activeTabPathRef, config, handleSwitchTab, renameTabsRef, runFrontmatterOp, setTabs, setToastMessage, updateTabContent])
+  }, [activeTabPathRef, config, handleSwitchTab, onPathRenamed, renameTabsRef, resolvePath, runFrontmatterOp, setTabs, setToastMessage, updateTabContent])
 
   const handleDeleteProperty = useCallback(async (path: string, key: string, options?: FrontmatterOpOptions) => {
-    if (!activePathGuardAllowsMutation(path, activeTabPathRef, options)) return
-    const canFlush = await flushBeforeNoteMutation(path, config.flushBeforeNoteMutation)
+    const currentPath = resolvePath(path)
+    if (!activePathGuardAllowsMutation(currentPath, activeTabPathRef, options)) return
+    const canFlush = await flushBeforeNoteMutation(currentPath, config.flushBeforeNoteMutation)
     if (!canFlush) return
-    if (!activePathGuardAllowsMutation(path, activeTabPathRef, options)) return
+    if (!activePathGuardAllowsMutation(currentPath, activeTabPathRef, options)) return
 
-    const newContent = await runFrontmatterOp('delete', path, key, undefined, options)
-    if (!applyFrontmatterCallbacks({ config, path, newContent })) return
+    const newContent = await runFrontmatterOp('delete', currentPath, key, undefined, options)
+    if (!applyFrontmatterCallbacks({ config, path: currentPath, newContent })) return
     await notifyFrontmatterPersisted(config, key)
-  }, [activeTabPathRef, config, runFrontmatterOp])
+  }, [activeTabPathRef, config, resolvePath, runFrontmatterOp])
 
   const handleAddProperty = useCallback(async (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => {
-    if (!activePathGuardAllowsMutation(path, activeTabPathRef, options)) return
-    const canFlush = await flushBeforeNoteMutation(path, config.flushBeforeNoteMutation)
+    const currentPath = resolvePath(path)
+    if (!activePathGuardAllowsMutation(currentPath, activeTabPathRef, options)) return
+    const canFlush = await flushBeforeNoteMutation(currentPath, config.flushBeforeNoteMutation)
     if (!canFlush) return
-    if (!activePathGuardAllowsMutation(path, activeTabPathRef, options)) return
+    if (!activePathGuardAllowsMutation(currentPath, activeTabPathRef, options)) return
 
-    const newContent = await runFrontmatterOp('update', path, key, value, options)
-    if (!applyFrontmatterCallbacks({ config, path, newContent })) return
+    const newContent = await runFrontmatterOp('update', currentPath, key, value, options)
+    if (!applyFrontmatterCallbacks({ config, path: currentPath, newContent })) return
     await notifyFrontmatterPersisted(config, key)
-  }, [activeTabPathRef, config, runFrontmatterOp])
+  }, [activeTabPathRef, config, resolvePath, runFrontmatterOp])
 
   return {
     handleUpdateFrontmatter,
@@ -393,8 +425,20 @@ function useFrontmatterRunner({
   )
 }
 
+function useRenamedNotePathResolver(onPathRenamed?: (oldPath: string, newPath: string) => void) {
+  const renamedPathsRef = useRef<RenamedPathMap>(new Map())
+  const handlePathRenamed = useCallback((oldPath: string, newPath: string) => {
+    trackRenamedNotePath(renamedPathsRef.current, oldPath, newPath)
+    onPathRenamed?.(oldPath, newPath)
+  }, [onPathRenamed])
+  const resolveActionPath = useCallback((path: string) => resolveLatestNotePath(renamedPathsRef.current, path), [])
+
+  return { handlePathRenamed, resolveActionPath }
+}
+
 export function useNoteActions(config: NoteActionsConfig) {
   const { entries, setToastMessage, updateEntry } = config
+  const { handlePathRenamed, resolveActionPath } = useRenamedNotePathResolver(config.onPathRenamed)
   const tabMgmt = useTabManagement(buildTabManagementOptions(config))
   const { setTabs, handleSelectNote, openTabWithContent, activeTabPathRef, handleSwitchTab } = tabMgmt
   useGitignoredVisibilityTabCleanup({
@@ -409,7 +453,7 @@ export function useNoteActions(config: NoteActionsConfig) {
 
   const creation = useNoteCreation(config, { openTabWithContent })
   const rename = useNoteRename(
-    { entries, setToastMessage, reloadVault: config.reloadVault },
+    { entries, setToastMessage, reloadVault: config.reloadVault, onPathRenamed: handlePathRenamed },
     { tabs: tabMgmt.tabs, setTabs, activeTabPathRef, handleSwitchTab, updateTabContent },
   )
 
@@ -426,6 +470,8 @@ export function useNoteActions(config: NoteActionsConfig) {
   const runFrontmatterOp = useFrontmatterRunner({ activeTabPathRef, entries, setToastMessage, updateEntry, updateTabContent })
   const frontmatterActions = useFrontmatterActionHandlers({
     config,
+    onPathRenamed: handlePathRenamed,
+    resolvePath: resolveActionPath,
     renameTabsRef: rename.tabsRef,
     setTabs,
     activeTabPathRef,
@@ -449,5 +495,6 @@ export function useNoteActions(config: NoteActionsConfig) {
     handleRenameNote: rename.handleRenameNote,
     handleRenameFilename: rename.handleRenameFilename,
     handleMoveNoteToFolder: rename.handleMoveNoteToFolder,
+    handleMoveNoteToWorkspace: rename.handleMoveNoteToWorkspace,
   }
 }

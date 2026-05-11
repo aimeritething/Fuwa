@@ -59,7 +59,7 @@ mod desktop {
     }
 
     pub struct VaultWatcherState {
-        active: Mutex<Option<ActiveVaultWatcher>>,
+        active: Mutex<Vec<ActiveVaultWatcher>>,
     }
 
     impl Default for VaultWatcherState {
@@ -71,7 +71,7 @@ mod desktop {
     impl VaultWatcherState {
         pub fn new() -> Self {
             Self {
-                active: Mutex::new(None),
+                active: Mutex::new(Vec::new()),
             }
         }
     }
@@ -129,10 +129,7 @@ mod desktop {
             .active
             .lock()
             .map_err(|_| "Failed to lock vault watcher state".to_string())?;
-        if active
-            .as_ref()
-            .is_some_and(|watcher| watcher.path == vault_path)
-        {
+        if active.iter().any(|watcher| watcher.path == vault_path) {
             return Ok(());
         }
 
@@ -147,7 +144,7 @@ mod desktop {
             .watch(&vault_path, RecursiveMode::Recursive)
             .map_err(|err| format!("Failed to watch {}: {err}", vault_path.display()))?;
 
-        *active = Some(ActiveVaultWatcher {
+        active.push(ActiveVaultWatcher {
             path: vault_path,
             _watcher: watcher,
         });
@@ -159,7 +156,7 @@ mod desktop {
             .active
             .lock()
             .map_err(|_| "Failed to lock vault watcher state".to_string())?;
-        *active = None;
+        active.clear();
         Ok(())
     }
 

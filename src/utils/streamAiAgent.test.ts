@@ -117,6 +117,7 @@ describe('streamAiAgent', () => {
         message: 'Explain this',
         system_prompt: 'SYSTEM',
         vault_path: '/vault',
+        vault_paths: null,
         permission_mode: 'power_user',
       },
     })

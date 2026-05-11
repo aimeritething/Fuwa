@@ -254,6 +254,7 @@ pub fn read_text_from_clipboard() -> Result<String, String> {
 pub async fn sync_mcp_bridge_vault(
     app: tauri::AppHandle,
     vault_path: Option<String>,
+    vault_paths: Option<Vec<String>>,
 ) -> Result<String, String> {
     let expanded_vault_path = vault_path
         .as_deref()
@@ -261,8 +262,15 @@ pub async fn sync_mcp_bridge_vault(
         .filter(|path| !path.is_empty())
         .map(|path| super::expand_tilde(path).into_owned());
     let vault_path = expanded_vault_path.as_deref().map(std::path::Path::new);
+    let expanded_vault_paths = vault_paths
+        .unwrap_or_default()
+        .into_iter()
+        .map(|path| super::expand_tilde(path.trim()).into_owned())
+        .filter(|path| !path.is_empty())
+        .map(std::path::PathBuf::from)
+        .collect::<Vec<_>>();
 
-    crate::sync_ws_bridge_for_vault(&app, vault_path).map(str::to_string)
+    crate::sync_ws_bridge_for_vault(&app, vault_path, &expanded_vault_paths).map(str::to_string)
 }
 
 // ── MCP commands (mobile stubs) ─────────────────────────────────────────────
@@ -305,7 +313,10 @@ pub fn read_text_from_clipboard() -> Result<String, String> {
 
 #[cfg(mobile)]
 #[tauri::command]
-pub async fn sync_mcp_bridge_vault(_vault_path: Option<String>) -> Result<String, String> {
+pub async fn sync_mcp_bridge_vault(
+    _vault_path: Option<String>,
+    _vault_paths: Option<Vec<String>>,
+) -> Result<String, String> {
     Err("MCP is not available on mobile".into())
 }
 

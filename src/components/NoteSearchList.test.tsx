@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, createEvent } from '@testing-library/react'
 import { NoteSearchList } from './NoteSearchList'
 import type { NoteSearchResultItem } from './NoteSearchList'
 
@@ -15,6 +15,19 @@ const items: TestItem[] = [
   { id: '2', title: 'Beta Notes' },
   { id: '3', title: 'Gamma Experiment', noteType: 'Experiment' },
 ]
+
+const teamWorkspace = {
+  id: 'team',
+  label: 'Team',
+  alias: 'team',
+  path: '/team',
+  shortLabel: 'TE',
+  color: 'green',
+  icon: null,
+  mounted: true,
+  available: true,
+  defaultForNewNotes: false,
+}
 
 describe('NoteSearchList', () => {
   const onItemClick = vi.fn()
@@ -79,6 +92,25 @@ describe('NoteSearchList', () => {
     expect(badge.style.backgroundColor).toBe('var(--accent-blue-light)')
   })
 
+  it('shows workspace initials at the far right when workspace metadata is present', () => {
+    render(
+      <NoteSearchList
+        items={[{ ...items[0], workspace: teamWorkspace }]}
+        selectedIndex={0}
+        getItemKey={(item) => item.id}
+        onItemClick={onItemClick}
+      />,
+    )
+
+    const typeBadge = screen.getByText('Project')
+    const workspaceBadge = screen.getByTestId('note-search-workspace-badge')
+    const row = workspaceBadge.closest('div')!
+    expect(workspaceBadge).toHaveTextContent('TE')
+    expect(typeBadge.compareDocumentPosition(workspaceBadge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(row).toContainElement(workspaceBadge)
+    expect(workspaceBadge.getAttribute('style')).toContain('border-color: var(--accent-green)')
+  })
+
   it('shows empty message when no items', () => {
     render(
       <NoteSearchList
@@ -115,6 +147,41 @@ describe('NoteSearchList', () => {
     )
     fireEvent.click(screen.getByText('Beta Notes'))
     expect(onItemClick).toHaveBeenCalledWith(items[1], 1)
+  })
+
+  it('can activate an item on mouse down for transient popovers', () => {
+    render(
+      <NoteSearchList
+        items={items}
+        selectedIndex={0}
+        getItemKey={(item) => item.id}
+        onItemClick={onItemClick}
+        activateOnMouseDown
+      />,
+    )
+
+    fireEvent.mouseDown(screen.getByText('Beta Notes'))
+    fireEvent.click(screen.getByText('Beta Notes'))
+
+    expect(onItemClick).toHaveBeenCalledTimes(1)
+    expect(onItemClick).toHaveBeenCalledWith(items[1], 1)
+  })
+
+  it('keeps focus on the current editor/input while clicking an item', () => {
+    render(
+      <NoteSearchList
+        items={items}
+        selectedIndex={0}
+        getItemKey={(item) => item.id}
+        onItemClick={onItemClick}
+      />,
+    )
+    const mouseDown = createEvent.mouseDown(screen.getByText('Beta Notes'))
+    const preventDefault = vi.spyOn(mouseDown, 'preventDefault')
+
+    fireEvent(screen.getByText('Beta Notes'), mouseDown)
+
+    expect(preventDefault).toHaveBeenCalledOnce()
   })
 
   it('calls onItemHover when mouse enters an item', () => {

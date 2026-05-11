@@ -2,6 +2,7 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fs;
+use std::io::Write;
 use std::path::Path;
 use tempfile::NamedTempFile;
 use walkdir::WalkDir;
@@ -42,6 +43,15 @@ pub struct MoveNoteToFolderRequest<'a> {
     pub vault_path: &'a str,
     pub old_path: &'a str,
     pub destination_folder_path: &'a str,
+}
+
+#[derive(Clone, Copy)]
+pub struct MoveNoteToWorkspaceRequest<'a> {
+    pub source_vault_path: &'a str,
+    pub destination_vault_path: &'a str,
+    pub old_path: &'a str,
+    pub destination_path: &'a str,
+    pub replacement_target: Option<&'a str>,
 }
 
 #[derive(Clone, Copy)]
@@ -235,6 +245,33 @@ fn finalize_rename(vault: &Path, old_targets: &[&str], new_file: &Path) -> Renam
         updated_files: summary.updated_files,
         failed_updates: summary.failed_updates,
     }
+}
+
+fn create_new_note_file(path: &Path, content: &str) -> Result<(), String> {
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create {}: {}", parent.display(), e))?;
+    }
+
+    let mut file = fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(path)
+        .map_err(|e| {
+            if e.kind() == std::io::ErrorKind::AlreadyExists {
+                "A note with that name already exists".to_string()
+            } else {
+                format!("Failed to create {}: {}", path.display(), e)
+            }
+        })?;
+    file.write_all(content.as_bytes())
+        .map_err(|e| format!("Failed to write {}: {}", path.display(), e))?;
+    file.sync_all()
+        .map_err(|e| format!("Failed to sync {}: {}", path.display(), e))
+}
+
+fn remove_created_file(path: &Path) {
+    let _ = fs::remove_file(path);
 }
 
 fn normalize_filename_stem(new_filename_stem: &str) -> Result<String, String> {
@@ -442,6 +479,69 @@ pub fn move_note_to_folder(request: MoveNoteToFolderRequest<'_>) -> Result<Renam
     let old_path_stem = to_path_stem(old_file, vault);
     let old_targets = collect_legacy_wikilink_targets(&old_title, &old_path_stem);
     Ok(finalize_rename(vault, &old_targets, committed.new_file()))
+}
+
+/// Move a note into another workspace while preserving its vault-relative path.
+pub fn move_note_to_workspace(
+    request: MoveNoteToWorkspaceRequest<'_>,
+) -> Result<RenameResult, String> {
+    let source_vault = Path::new(request.source_vault_path);
+    let destination_vault = Path::new(request.destination_vault_path);
+    let old_file = Path::new(request.old_path);
+    let new_file = Path::new(request.destination_path);
+
+    recover_pending_rename_transactions(source_vault)?;
+    recover_pending_rename_transactions(destination_vault)?;
+    ensure_existing_note(old_file)?;
+
+    if new_file == old_file {
+        return Ok(unchanged_result(old_file));
+    }
+    if new_file.exists() {
+        return Err("A note with that name already exists".to_string());
+    }
+
+    let content = fs::read_to_string(old_file)
+        .map_err(|e| format!("Failed to read {}: {}", request.old_path, e))?;
+    let old_filename = old_file
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let fm_title = extract_fm_title_value(&content);
+    let old_title = super::extract_title(fm_title.as_deref(), &content, &old_filename);
+
+    create_new_note_file(new_file, &content)?;
+    if let Err(error) = fs::remove_file(old_file) {
+        remove_created_file(new_file);
+        return Err(format!(
+            "Failed to remove {}: {}",
+            old_file.display(),
+            error
+        ));
+    }
+
+    let old_path_stem = to_path_stem(old_file, source_vault);
+    let old_targets = collect_legacy_wikilink_targets(&old_title, &old_path_stem);
+    let fallback_target = to_path_stem(new_file, destination_vault);
+    let replacement_target = request.replacement_target.unwrap_or(&fallback_target);
+    let source_summary =
+        update_wikilinks_in_vault(source_vault, &old_targets, replacement_target, new_file);
+    let destination_summary = if source_vault == destination_vault {
+        WikilinkUpdateSummary::default()
+    } else {
+        update_wikilinks_in_vault(
+            destination_vault,
+            &old_targets,
+            replacement_target,
+            new_file,
+        )
+    };
+
+    Ok(RenameResult {
+        new_path: new_file.to_string_lossy().to_string(),
+        updated_files: source_summary.updated_files + destination_summary.updated_files,
+        failed_updates: source_summary.failed_updates + destination_summary.failed_updates,
+    })
 }
 
 /// Check if a filename matches the untitled pattern (e.g. "untitled-note-1234567890.md").
@@ -1200,6 +1300,42 @@ mod tests {
     #[test]
     fn test_move_note_to_folder_rejects_existing_destination() {
         assert_move_note_to_folder_error("A note with that name already exists");
+    }
+
+    #[test]
+    fn test_move_note_to_workspace_preserves_relative_path_and_updates_source_links() {
+        let source = TempDir::new().unwrap();
+        let destination = TempDir::new().unwrap();
+        create_test_file(
+            source.path(),
+            "Projects/project-kickoff.md",
+            "---\ntitle: Project Kickoff\ntype: Note\n---\n\nBody.\n",
+        );
+        create_test_file(
+            source.path(),
+            "source-ref.md",
+            "# Ref\n\nSee [[Projects/project-kickoff]] and [[Project Kickoff]].\n",
+        );
+
+        let old_path = source.path().join("Projects/project-kickoff.md");
+        let destination_path = destination.path().join("Projects/project-kickoff.md");
+        let result = move_note_to_workspace(MoveNoteToWorkspaceRequest {
+            source_vault_path: source.path().to_str().unwrap(),
+            destination_vault_path: destination.path().to_str().unwrap(),
+            old_path: old_path.to_str().unwrap(),
+            destination_path: destination_path.to_str().unwrap(),
+            replacement_target: Some("team/Projects/project-kickoff"),
+        })
+        .unwrap();
+
+        assert_eq!(result.new_path, destination_path.to_string_lossy());
+
+        assert!(!old_path.exists());
+
+        assert!(destination_path.exists());
+
+        let source_reference = fs::read_to_string(source.path().join("source-ref.md")).unwrap();
+        assert!(source_reference.contains("[[team/Projects/project-kickoff]]"));
     }
 
     #[test]

@@ -4,6 +4,7 @@ import { SettingsPanel } from './SettingsPanel'
 import type { Settings } from '../types'
 import { THEME_MODE_STORAGE_KEY } from '../lib/themeMode'
 import type { AiAgentsStatus } from '../lib/aiAgents'
+import type { VaultOption } from './StatusBar'
 
 const { trackEventMock } = vi.hoisted(() => ({
   trackEventMock: vi.fn(),
@@ -33,6 +34,11 @@ const emptySettings: Settings = {
   all_notes_show_images: null,
   all_notes_show_unsupported: null,
 }
+
+const workspaceVaults: VaultOption[] = [
+  { label: 'Personal Notes', path: '/personal', alias: 'personal', color: 'purple', available: true, mounted: true },
+  { label: 'Team Vault', path: '/team', alias: 'team', available: true, mounted: false },
+]
 
 function installPointerCapturePolyfill() {
   if (!HTMLElement.prototype.hasPointerCapture) {
@@ -203,8 +209,93 @@ describe('SettingsPanel', () => {
       all_notes_show_pdfs: false,
       all_notes_show_images: false,
       all_notes_show_unsupported: false,
+      multi_workspace_enabled: false,
     }))
     expect(onClose).toHaveBeenCalled()
+  })
+
+  it('keeps vault identity management hidden until multiple vaults are enabled', () => {
+    const onUpdateWorkspaceIdentity = vi.fn()
+    render(
+      <SettingsPanel
+        open={true}
+        settings={emptySettings}
+        vaults={workspaceVaults}
+        defaultWorkspacePath="/personal"
+        onSave={onSave}
+        onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
+        onClose={onClose}
+      />,
+    )
+
+    expect(screen.getAllByText('Vaults').length).toBeGreaterThan(0)
+    expect(screen.queryByTestId('settings-workspace-row-personal')).not.toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Use multiple vaults at the same time' }))
+
+    expect(screen.getByTestId('settings-workspace-row-personal')).toBeInTheDocument()
+    expect(screen.getByLabelText('Vault name for Personal Notes')).toBeInTheDocument()
+    const labelInput = screen.getByLabelText('Vault label for Personal Notes') as HTMLInputElement
+    expect(labelInput).toHaveValue('PN')
+    const slugInput = screen.getByLabelText('Vault slug for Personal Notes') as HTMLInputElement
+    expect(slugInput).toBeInTheDocument()
+    expect(slugInput.readOnly).toBe(true)
+    expect(screen.getAllByLabelText('The display name shown in menus, settings, and vault selectors.').length).toBeGreaterThan(0)
+    expect(screen.getAllByLabelText('The short initials shown on notes, search results, breadcrumbs, and vault badges.').length).toBeGreaterThan(0)
+    expect(screen.getAllByLabelText('The stable prefix used in cross-vault links and relationships. It is read-only for now to avoid breaking existing references.').length).toBeGreaterThan(0)
+    expect(screen.getByRole('button', { name: 'Make Default' })).toHaveAttribute('data-variant', 'secondary')
+    expect(within(screen.getByTestId('settings-workspace-row-personal')).getByRole('button', { name: 'Purple' }).getAttribute('style')).toContain('2px solid var(--foreground)')
+
+    const nameInput = screen.getByLabelText('Vault name for Personal Notes')
+    fireEvent.change(nameInput, {
+      target: { value: 'Personal Main' },
+    })
+    expect(nameInput).toHaveValue('Personal Main')
+    expect(onUpdateWorkspaceIdentity).not.toHaveBeenCalled()
+    fireEvent.blur(nameInput)
+    expect(onUpdateWorkspaceIdentity).toHaveBeenCalledWith('/personal', { label: 'Personal Main' })
+
+    onUpdateWorkspaceIdentity.mockClear()
+    fireEvent.change(labelInput, {
+      target: { value: 'pm' },
+    })
+    expect(labelInput).toHaveValue('PM')
+    expect(onUpdateWorkspaceIdentity).not.toHaveBeenCalled()
+    fireEvent.blur(labelInput)
+    expect(onUpdateWorkspaceIdentity).toHaveBeenCalledWith('/personal', { shortLabel: 'PM' })
+
+    fireEvent.change(slugInput, {
+      target: { value: 'personal-main' },
+    })
+    expect(onUpdateWorkspaceIdentity).not.toHaveBeenCalledWith('/personal', { alias: 'personal-main' })
+
+    saveSettingsPanel()
+
+    expectSettingsSaved({ multi_workspace_enabled: true })
+  })
+
+  it('confirms before removing a non-default vault from settings', () => {
+    const onRemoveVault = vi.fn()
+    render(
+      <SettingsPanel
+        open={true}
+        settings={{ ...emptySettings, multi_workspace_enabled: true }}
+        vaults={workspaceVaults}
+        defaultWorkspacePath="/personal"
+        onSave={onSave}
+        onRemoveVault={onRemoveVault}
+        onUpdateWorkspaceIdentity={vi.fn()}
+        onClose={onClose}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Remove vault Personal Notes' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove vault Team Vault' }))
+
+    expect(screen.getByTestId('confirm-delete-dialog')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Remove vault' }))
+
+    expect(onRemoveVault).toHaveBeenCalledWith('/team')
   })
 
   it('saves Gitignored content visibility immediately for keyboard close', () => {

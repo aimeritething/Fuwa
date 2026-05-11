@@ -190,6 +190,7 @@ mod tests {
             message: "Summarize".into(),
             system_prompt: None,
             vault_path,
+            vault_paths: Vec::new(),
             permission_mode: AiAgentPermissionMode::Safe,
         }
     }

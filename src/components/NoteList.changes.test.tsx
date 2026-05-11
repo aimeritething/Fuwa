@@ -40,6 +40,22 @@ describe('NoteList changes view', () => {
     expect(screen.getByText('Changes')).toBeInTheDocument()
   })
 
+  it('shows a repository selector in changes view when multiple repositories are available', () => {
+    renderNoteList({
+      selection: changesSelection,
+      modifiedFiles,
+      gitRepositories: [
+        { path: '/default', label: 'Default', defaultForNewNotes: true },
+        { path: '/work', label: 'Work', defaultForNewNotes: false },
+      ],
+      selectedGitRepositoryPath: '/work',
+      onGitRepositoryChange: vi.fn(),
+    })
+
+    expect(screen.getByTestId('changes-repository-select')).toBeInTheDocument()
+    expect(screen.getByText('Work')).toBeInTheDocument()
+  })
+
   it('shows an empty state when no modified files exist', () => {
     renderNoteList({ selection: changesSelection, modifiedFiles: [] })
     expect(screen.getByText('No pending changes')).toBeInTheDocument()

@@ -136,6 +136,19 @@ describe('main entrypoint', () => {
     expect(mocks.sentryHandler).toHaveBeenCalledWith(error, { componentStack: '' })
   })
 
+  it('ignores ResizeObserver loop notifications instead of showing the fatal overlay', async () => {
+    await importEntrypoint()
+
+    const error = new Error('ResizeObserver loop completed with undelivered notifications.')
+    window.__tolariaFrontendReady = true
+
+    rootOptions().onRecoverableError?.(error, {})
+    rootOptions().onCaughtError?.(error, { componentStack: '\n    in App' })
+
+    expect(mocks.sentryHandler).not.toHaveBeenCalled()
+    expect(document.getElementById('tolaria-fatal-render-error')).toBeNull()
+  })
+
   it('suppresses recovered BlockNote missing-id render errors from Sentry', async () => {
     await importEntrypoint()
 

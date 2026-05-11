@@ -7,6 +7,15 @@ export function ancestorTreePaths(path: string): string[] {
   return expandedTreePaths(path).slice(0, -1)
 }
 
+export function folderNodeKey(node: { path: string; rootPath?: string | null }): string {
+  return node.rootPath ? `${node.rootPath}::${node.path}` : node.path
+}
+
+export function scopedFolderKeys(paths: string[], rootPath?: string | null): string[] {
+  if (!rootPath) return paths
+  return paths.map((path) => folderNodeKey({ path, rootPath }))
+}
+
 export function mergeExpandedPaths(
   current: Record<string, boolean>,
   paths: string[],

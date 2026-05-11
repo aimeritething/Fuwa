@@ -8,7 +8,12 @@ pub(crate) fn build_command(
     request: &AgentStreamRequest,
     agent_dir: &Path,
 ) -> Result<std::process::Command, String> {
-    write_mcp_config(agent_dir, &request.vault_path, request.permission_mode)?;
+    write_mcp_config(
+        agent_dir,
+        &request.vault_path,
+        &request.vault_paths,
+        request.permission_mode,
+    )?;
 
     let mut command = crate::hidden_command(binary);
     crate::cli_agent_runtime::configure_agent_command_environment(&mut command, binary);
@@ -40,20 +45,23 @@ fn build_prompt(request: &AgentStreamRequest) -> String {
 fn write_mcp_config(
     agent_dir: &Path,
     vault_path: &str,
+    vault_paths: &[String],
     permission_mode: AiAgentPermissionMode,
 ) -> Result<(), String> {
     std::fs::create_dir_all(agent_dir)
         .map_err(|error| format!("Failed to create Pi agent directory: {error}"))?;
-    let config = build_mcp_config(vault_path, permission_mode)?;
+    let config = build_mcp_config(vault_path, vault_paths, permission_mode)?;
     std::fs::write(agent_dir.join("mcp.json"), config)
         .map_err(|error| format!("Failed to write Pi MCP config: {error}"))
 }
 
 fn build_mcp_config(
     vault_path: &str,
+    vault_paths: &[String],
     _permission_mode: AiAgentPermissionMode,
 ) -> Result<String, String> {
     let mcp_server_path = crate::cli_agent_runtime::mcp_server_path_string()?;
+    let vault_paths = crate::cli_agent_runtime::active_vault_paths_json(vault_path, vault_paths);
 
     serde_json::to_string(&serde_json::json!({
         "settings": {
@@ -66,6 +74,7 @@ fn build_mcp_config(
                 "args": [mcp_server_path],
                 "env": {
                     "VAULT_PATH": vault_path,
+                    "VAULT_PATHS": vault_paths,
                     "WS_UI_PORT": "9711"
                 },
                 "lifecycle": "lazy",
@@ -87,6 +96,7 @@ mod tests {
             message: "Rename the note".into(),
             system_prompt: None,
             vault_path: "/tmp/vault".into(),
+            vault_paths: Vec::new(),
             permission_mode: crate::ai_agents::AiAgentPermissionMode::Safe,
         }
     }
@@ -124,9 +134,11 @@ mod tests {
 
     #[test]
     fn mcp_config_includes_tolaria_server_for_active_vault() {
-        if let Ok(config) =
-            build_mcp_config("/tmp/vault", crate::ai_agents::AiAgentPermissionMode::Safe)
-        {
+        if let Ok(config) = build_mcp_config(
+            "/tmp/vault",
+            &[],
+            crate::ai_agents::AiAgentPermissionMode::Safe,
+        ) {
             let json: serde_json::Value = serde_json::from_str(&config).unwrap();
             assert_eq!(json["settings"]["toolPrefix"], "none");
             assert_eq!(json["mcpServers"]["tolaria"]["command"], "node");
@@ -135,6 +147,10 @@ mod tests {
             assert_eq!(
                 json["mcpServers"]["tolaria"]["env"]["VAULT_PATH"],
                 "/tmp/vault"
+            );
+            assert_eq!(
+                json["mcpServers"]["tolaria"]["env"]["VAULT_PATHS"],
+                r#"["/tmp/vault"]"#
             );
             assert_eq!(json["mcpServers"]["tolaria"]["env"]["WS_UI_PORT"], "9711");
             assert!(json["mcpServers"]["tolaria"]["args"][0]
@@ -146,10 +162,15 @@ mod tests {
 
     #[test]
     fn power_user_mode_uses_the_same_pi_mcp_config_as_safe_mode() {
-        let safe =
-            build_mcp_config("/tmp/vault", crate::ai_agents::AiAgentPermissionMode::Safe).unwrap();
+        let safe = build_mcp_config(
+            "/tmp/vault",
+            &[],
+            crate::ai_agents::AiAgentPermissionMode::Safe,
+        )
+        .unwrap();
         let power = build_mcp_config(
             "/tmp/vault",
+            &[],
             crate::ai_agents::AiAgentPermissionMode::PowerUser,
         )
         .unwrap();

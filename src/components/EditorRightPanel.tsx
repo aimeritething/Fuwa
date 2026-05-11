@@ -3,7 +3,7 @@ import type { useCreateBlockNote } from '@blocknote/react'
 import { DEFAULT_AI_AGENT, type AiAgentId, type AiAgentReadiness } from '../lib/aiAgents'
 import type { AiTarget } from '../lib/aiTargets'
 import type { AppLocale } from '../lib/i18n'
-import type { VaultEntry, GitCommit } from '../types'
+import type { VaultEntry, GitCommit, WorkspaceIdentity } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { DateDisplayFormat } from '../utils/dateDisplay'
 import { Inspector, type FrontmatterValue } from './Inspector'
@@ -29,6 +29,7 @@ interface EditorRightPanelProps {
   entries: VaultEntry[]
   gitHistory: GitCommit[]
   vaultPath: string
+  vaultPaths?: string[]
   noteList?: NoteListItem[]
   noteListFilter?: { type: string | null; query: string }
   onToggleInspector: () => void
@@ -41,12 +42,14 @@ interface EditorRightPanelProps {
   onAddProperty?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
   onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<boolean | void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
+  onChangeWorkspace?: (entry: VaultEntry, workspace: WorkspaceIdentity) => Promise<void> | void
   onInitializeProperties?: (path: string) => void
   onToggleRawEditor?: () => void
   onOpenNote?: (path: string) => void
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
+  workspaces?: WorkspaceIdentity[]
   locale?: AppLocale
   dateDisplayFormat?: DateDisplayFormat
 }
@@ -57,15 +60,18 @@ export function EditorRightPanel({
   defaultAiAgent = DEFAULT_AI_AGENT, defaultAiTarget, defaultAiAgentReadiness, defaultAiAgentReady = true,
   onUnsupportedAiPaste,
   inspectorEntry, inspectorContent, entries, gitHistory, vaultPath,
+  vaultPaths,
   noteList, noteListFilter,
   onToggleInspector, onToggleAIChat, onToggleTableOfContents, onNavigateWikilink, onViewCommitDiff,
-  onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onInitializeProperties, onToggleRawEditor, onOpenNote,
+  onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onChangeWorkspace, onInitializeProperties, onToggleRawEditor, onOpenNote,
   onFileCreated, onFileModified, onVaultChanged,
+  workspaces,
   locale,
   dateDisplayFormat,
 }: EditorRightPanelProps) {
   const aiPanelController = useAiPanelController({
     vaultPath,
+    vaultPaths,
     defaultAiAgent,
     defaultAiTarget,
     defaultAiAgentReady,
@@ -113,8 +119,10 @@ export function EditorRightPanel({
           onAddProperty={onAddProperty}
           onCreateMissingType={onCreateMissingType}
           onCreateAndOpenNote={onCreateAndOpenNote}
+          onChangeWorkspace={onChangeWorkspace}
           onInitializeProperties={onInitializeProperties}
           onToggleRawEditor={onToggleRawEditor}
+          workspaces={workspaces}
           locale={locale}
           dateDisplayFormat={dateDisplayFormat}
         />

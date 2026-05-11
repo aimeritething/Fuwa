@@ -29,7 +29,7 @@ import { isTauri } from '../mock-tauri'
 import { buildTypeEntryMap } from '../utils/typeColors'
 import { preFilterWikilinks, deduplicateByPath, MIN_QUERY_LENGTH } from '../utils/wikilinkSuggestions'
 import { filterPersonMentions, PERSON_MENTION_MIN_QUERY } from '../utils/personMentionSuggestions'
-import { attachClickHandlers, enrichSuggestionItems } from '../utils/suggestionEnrichment'
+import { attachClickHandlers, enrichSuggestionItems, hasMultipleSuggestionWorkspaces } from '../utils/suggestionEnrichment'
 import { observeNativeTextAssistanceDisabled } from '../lib/nativeTextAssistance'
 import { getRuntimeStyleNonce } from '../lib/runtimeStyleNonce'
 import { WikilinkSuggestionMenu, type WikilinkSuggestionItem } from './WikilinkSuggestionMenu'
@@ -181,7 +181,7 @@ function isEditorReadyForSuggestionAction(
   const editorElement = editor.domElement
   if (!(editorElement instanceof HTMLElement)) return true
 
-  return editorElement.isConnected && container.contains(editorElement)
+  return editorElement.isConnected
 }
 
 function runSuggestionActionSafely({
@@ -1062,6 +1062,7 @@ function buildBaseSuggestionItems(entries: VaultEntry[]) {
       title,
       aliases: [...new Set([filenameStem, ...safeStringArray(entry.aliases)])],
       group: entryType ?? 'Note',
+      entry,
       entryType,
       entryTitle: title,
       path,
@@ -1090,6 +1091,7 @@ function useSuggestionMenuItems(options: {
   insertWikilink: (target: string) => void
   locale: AppLocale
   runEditorAction: (action: SuggestionAction) => void
+  sourceEntry?: VaultEntry
   typeEntryMap: Record<string, VaultEntry>
   vaultPath?: string
 }) {
@@ -1099,6 +1101,7 @@ function useSuggestionMenuItems(options: {
     insertWikilink,
     locale,
     runEditorAction,
+    sourceEntry,
     typeEntryMap,
     vaultPath,
   } = options
@@ -1113,12 +1116,14 @@ function useSuggestionMenuItems(options: {
       ? preFilterWikilinks(baseItems, normalizedQuery)
       : filterPersonMentions(baseItems, normalizedQuery)
 
-    const items = attachClickHandlers(candidates, insertWikilink, vaultPath ?? '')
+    const items = attachClickHandlers(candidates, insertWikilink, vaultPath ?? '', sourceEntry)
     return guardSuggestionMenuItems(
-      enrichSuggestionItems(items, normalizedQuery, typeEntryMap),
+      enrichSuggestionItems(items, normalizedQuery, typeEntryMap, {
+        showWorkspace: hasMultipleSuggestionWorkspaces(baseItems),
+      }),
       runEditorAction,
     )
-  }, [baseItems, insertWikilink, runEditorAction, typeEntryMap, vaultPath])
+  }, [baseItems, insertWikilink, runEditorAction, sourceEntry, typeEntryMap, vaultPath])
 
   const getWikilinkItems = useCallback(async (query: string): Promise<WikilinkSuggestionItem[]> => (
     buildItems(query, '[[') ?? []
@@ -1260,11 +1265,12 @@ function useRichEditorPlainTextPasteTarget(options: {
 }
 
 /** Single BlockNote editor view — content is swapped via replaceBlocks */
-export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange, vaultPath, editable = true, locale = 'en' }: {
+export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange, sourceEntry, vaultPath, editable = true, locale = 'en' }: {
   editor: ReturnType<typeof useCreateBlockNote>
   entries: VaultEntry[]
   onNavigateWikilink: (target: string) => void
   onChange?: () => void
+  sourceEntry?: VaultEntry | null
   vaultPath?: string
   editable?: boolean
   locale?: AppLocale
@@ -1345,6 +1351,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
     insertWikilink,
     locale,
     runEditorAction,
+    sourceEntry: sourceEntry ?? undefined,
     typeEntryMap,
     vaultPath,
   })

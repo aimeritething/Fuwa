@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import type { VaultEntry } from '../types'
-import { buildRawEditorBaseItems, detectYamlError, extractWikilinkQuery, getRawEditorDropdownPosition, replaceActiveWikilinkQuery } from './rawEditorUtils'
+import { buildRawEditorAutocompleteState, buildRawEditorBaseItems, detectYamlError, extractWikilinkQuery, getRawEditorDropdownPosition, replaceActiveWikilinkQuery } from './rawEditorUtils'
 
 describe('extractWikilinkQuery', () => {
   it('returns null when no [[ trigger', () => {
@@ -83,14 +83,15 @@ describe('detectYamlError', () => {
 
 describe('buildRawEditorBaseItems', () => {
   it('includes filename aliases and deduplicates entries by path', () => {
+    const entry = {
+      title: 'Project Alpha',
+      aliases: ['Alpha'],
+      filename: 'project-alpha.md',
+      isA: 'Project',
+      path: 'projects/project-alpha.md',
+    } as VaultEntry
     expect(buildRawEditorBaseItems([
-      {
-        title: 'Project Alpha',
-        aliases: ['Alpha'],
-        filename: 'project-alpha.md',
-        isA: 'Project',
-        path: 'projects/project-alpha.md',
-      },
+      entry,
       {
         title: 'Project Alpha',
         aliases: ['Ignored'],
@@ -103,11 +104,76 @@ describe('buildRawEditorBaseItems', () => {
         title: 'Project Alpha',
         aliases: ['project-alpha', 'Alpha'],
         group: 'Project',
+        entry,
         entryType: 'Project',
         entryTitle: 'Project Alpha',
         path: 'projects/project-alpha.md',
       },
     ])
+  })
+})
+
+describe('buildRawEditorAutocompleteState', () => {
+  it('uses workspace metadata for display and prefixes inserted cross-workspace links', () => {
+    const personalWorkspace = {
+      id: 'personal',
+      label: 'Personal',
+      alias: 'personal',
+      path: '/personal',
+      shortLabel: 'PE',
+      color: 'blue',
+      icon: null,
+      mounted: true,
+      available: true,
+      defaultForNewNotes: true,
+    }
+    const teamWorkspace = {
+      id: 'team',
+      label: 'Team',
+      alias: 'team',
+      path: '/team',
+      shortLabel: 'TE',
+      color: 'green',
+      icon: null,
+      mounted: true,
+      available: true,
+      defaultForNewNotes: false,
+    }
+    const source = {
+      path: '/personal/source.md',
+      filename: 'source.md',
+      title: 'Source',
+      aliases: [],
+      isA: null,
+      workspace: personalWorkspace,
+    } as VaultEntry
+    const target = {
+      path: '/team/projects/alpha.md',
+      filename: 'alpha.md',
+      title: 'Alpha',
+      aliases: [],
+      isA: null,
+      workspace: teamWorkspace,
+    } as VaultEntry
+    const insertTarget = vi.fn()
+    const view = {
+      state: { selection: { main: { head: 0 } } },
+      coordsAtPos: () => ({ bottom: 20, left: 30 }),
+    } as never
+
+    const result = buildRawEditorAutocompleteState({
+      view,
+      baseItems: buildRawEditorBaseItems([source, target]),
+      query: 'Alpha',
+      typeEntryMap: {},
+      onInsertTarget: insertTarget,
+      sourceEntry: source,
+      vaultPath: '/personal',
+    })
+
+    expect(result?.items[0].workspace).toBe(teamWorkspace)
+    result?.items[0].onItemClick()
+    expect(insertTarget).toHaveBeenCalledWith('team/projects/alpha')
   })
 })
 

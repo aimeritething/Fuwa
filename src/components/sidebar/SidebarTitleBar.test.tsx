@@ -1,10 +1,11 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import type { ComponentProps } from 'react'
 import { describe, expect, it, vi } from 'vitest'
+import { TooltipProvider } from '@/components/ui/tooltip'
 import { SidebarTitleBar } from './SidebarSections'
 
 function renderTitleBar(overrides: Partial<ComponentProps<typeof SidebarTitleBar>> = {}) {
-  return render(<SidebarTitleBar {...overrides} />)
+  return render(<SidebarTitleBar {...overrides} />, { wrapper: TooltipProvider })
 }
 
 describe('SidebarTitleBar', () => {

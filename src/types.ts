@@ -93,6 +93,7 @@ export interface LastCommitInfo {
 export interface ModifiedFile {
   path: string
   relativePath: string
+  vaultPath?: string
   status: 'modified' | 'added' | 'deleted' | 'untracked' | 'renamed'
   addedLines?: number | null
   deletedLines?: number | null
@@ -123,6 +124,7 @@ export interface Settings {
   all_notes_show_pdfs?: boolean | null
   all_notes_show_images?: boolean | null
   all_notes_show_unsupported?: boolean | null
+  multi_workspace_enabled?: boolean | null
 }
 
 export interface GitPullResult {
@@ -261,5 +263,6 @@ export interface ViewFile {
 export interface FolderNode {
   name: string
   path: string
+  rootPath?: string
   children: FolderNode[]
 }

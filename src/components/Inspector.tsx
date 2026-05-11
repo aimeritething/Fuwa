@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import type { VaultEntry, GitCommit } from '../types'
+import type { VaultEntry, GitCommit, WorkspaceIdentity } from '../types'
 import { cn } from '@/lib/utils'
 import { Separator } from './ui/separator'
 import { parseFrontmatter, detectFrontmatterState, detectFrontmatterWarnings } from '../utils/frontmatter'
@@ -37,8 +37,10 @@ interface InspectorProps {
   onAddProperty?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
   onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<boolean | void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
+  onChangeWorkspace?: (entry: VaultEntry, workspace: WorkspaceIdentity) => Promise<void> | void
   onInitializeProperties?: (path: string) => void
   onToggleRawEditor?: () => void
+  workspaces?: WorkspaceIdentity[]
   locale?: AppLocale
   dateDisplayFormat?: DateDisplayFormat
 }
@@ -68,6 +70,8 @@ function ValidFrontmatterPanels({
   onDeleteProperty,
   onAddProperty,
   onCreateMissingType,
+  onChangeWorkspace,
+  workspaces,
   locale,
   dateDisplayFormat,
 }: {
@@ -83,6 +87,8 @@ function ValidFrontmatterPanels({
   onDeleteProperty?: (key: string) => void
   onAddProperty?: (key: string, value: FrontmatterValue) => void
   onCreateMissingType?: (typeName: string) => Promise<boolean | void>
+  onChangeWorkspace?: (entry: VaultEntry, workspace: WorkspaceIdentity) => Promise<void> | void
+  workspaces?: WorkspaceIdentity[]
   locale: AppLocale
   dateDisplayFormat?: DateDisplayFormat
 }) {
@@ -97,6 +103,8 @@ function ValidFrontmatterPanels({
         onAddProperty={onAddProperty}
         onNavigate={onNavigate}
         onCreateMissingType={onCreateMissingType}
+        onChangeWorkspace={onChangeWorkspace ? (workspace) => onChangeWorkspace(entry, workspace) : undefined}
+        workspaces={workspaces}
         locale={locale}
         dateDisplayFormat={dateDisplayFormat}
       />
@@ -136,6 +144,8 @@ function PrimaryInspectorPanel({
   onDeleteProperty,
   onAddProperty,
   onCreateMissingType,
+  onChangeWorkspace,
+  workspaces,
   locale,
   dateDisplayFormat,
 }: {
@@ -154,6 +164,8 @@ function PrimaryInspectorPanel({
   onDeleteProperty?: (key: string) => void
   onAddProperty?: (key: string, value: FrontmatterValue) => void
   onCreateMissingType?: (typeName: string) => Promise<boolean | void>
+  onChangeWorkspace?: (entry: VaultEntry, workspace: WorkspaceIdentity) => Promise<void> | void
+  workspaces?: WorkspaceIdentity[]
   locale: AppLocale
   dateDisplayFormat?: DateDisplayFormat
 }) {
@@ -172,6 +184,8 @@ function PrimaryInspectorPanel({
         onDeleteProperty={onDeleteProperty}
         onAddProperty={onAddProperty}
         onCreateMissingType={onCreateMissingType}
+        onChangeWorkspace={onChangeWorkspace}
+        workspaces={workspaces}
         locale={locale}
         dateDisplayFormat={dateDisplayFormat}
       />
@@ -197,9 +211,11 @@ function InspectorBody({
   onDeleteProperty,
   onAddProperty,
   onCreateMissingType,
+  onChangeWorkspace,
   onCreateAndOpenNote,
   onInitializeProperties,
   onToggleRawEditor,
+  workspaces,
   locale = 'en',
   dateDisplayFormat,
 }: Omit<InspectorProps, 'collapsed' | 'onToggle'>) {
@@ -244,6 +260,8 @@ function InspectorBody({
           onDeleteProperty={onDeleteProperty ? handleDeleteProperty : undefined}
           onAddProperty={onAddProperty ? handleAddProperty : undefined}
           onCreateMissingType={onCreateMissingType ? handleCreateMissingType : undefined}
+          onChangeWorkspace={onChangeWorkspace}
+          workspaces={workspaces}
           locale={locale}
           dateDisplayFormat={dateDisplayFormat}
         />

@@ -36,7 +36,9 @@ impl VaultBoundary {
 
         let root = match (configured_root, requested_root) {
             (Some(configured), Some(requested)) => {
-                if configured.canonical != requested.canonical {
+                if configured.canonical != requested.canonical
+                    && !is_registered_vault_root(&requested)?
+                {
                     return Err(ACTIVE_VAULT_MISMATCH_ERROR.to_string());
                 }
                 requested
@@ -138,6 +140,28 @@ fn load_registered_vault_roots() -> Result<Vec<VaultRootPaths>, String> {
         }
     }
     Ok(roots)
+}
+
+fn is_registered_vault_root(requested: &VaultRootPaths) -> Result<bool, String> {
+    let list = vault_list::load_vault_list()?;
+    let registered_paths = list
+        .vaults
+        .iter()
+        .map(|entry| entry.path.as_str())
+        .chain(list.active_vault.as_deref());
+
+    for path in registered_paths {
+        if path.trim().is_empty() {
+            continue;
+        }
+        let Ok(root) = build_vault_root_paths(path) else {
+            continue;
+        };
+        if root.canonical == requested.canonical {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 
 fn find_registered_root_for_absolute_path(
@@ -316,11 +340,31 @@ pub(crate) fn with_existing_path_in_requested_vault<T>(
     path: &str,
     action: impl FnOnce(&str, &str) -> Result<T, String>,
 ) -> Result<T, String> {
-    with_boundary(Some(vault_path), |boundary| {
-        let requested_root = boundary.requested_root_str();
-        let validated_path = boundary.validate_existing_path(path)?;
-        action(&requested_root, &validated_path)
-    })
+    let requested_validation = with_boundary(Some(vault_path), |boundary| {
+        Ok((
+            boundary.requested_root_str(),
+            boundary.validate_existing_path(path)?,
+        ))
+    });
+
+    let validated = match requested_validation {
+        Ok(validated) => validated,
+        Err(error) if error == ACTIVE_VAULT_PATH_ERROR || error == ACTIVE_VAULT_MISMATCH_ERROR => {
+            let Some(root) = find_registered_root_for_absolute_path(path)? else {
+                return Err(error);
+            };
+            let boundary = VaultBoundary {
+                requested_root: root.requested,
+                canonical_root: root.canonical,
+            };
+            (
+                boundary.requested_root_str(),
+                boundary.validate_existing_path(path)?,
+            )
+        }
+        Err(error) => return Err(error),
+    };
+    action(&validated.0, &validated.1)
 }
 
 pub(crate) fn with_view_file<T>(

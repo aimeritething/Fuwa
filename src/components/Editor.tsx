@@ -8,7 +8,7 @@ import { DEFAULT_AI_AGENT, type AiAgentId, type AiAgentReadiness } from '../lib/
 import type { AiTarget } from '../lib/aiTargets'
 import { translate, type AppLocale } from '../lib/i18n'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
-import type { VaultEntry, GitCommit, NoteWidthMode, NoteStatus } from '../types'
+import type { VaultEntry, GitCommit, NoteWidthMode, NoteStatus, WorkspaceIdentity } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { DateDisplayFormat } from '../utils/dateDisplay'
 import type { FrontmatterValue } from './Inspector'
@@ -73,10 +73,12 @@ interface EditorProps {
   onAddProperty?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
   onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<boolean | void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
+  onChangeWorkspace?: (entry: VaultEntry, workspace: WorkspaceIdentity) => Promise<void> | void
   onInitializeProperties?: (path: string) => void
   showAIChat?: boolean
   onToggleAIChat?: () => void
   vaultPath?: string
+  vaultPaths?: string[]
   noteList?: NoteListItem[]
   noteListFilter?: { type: string | null; query: string }
   onToggleFavorite?: (path: string) => void
@@ -110,6 +112,7 @@ interface EditorProps {
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
+  workspaces?: WorkspaceIdentity[]
   /** Whether the active note has a merge conflict. */
   isConflicted?: boolean
   /** Resolve conflict by keeping the local version. */
@@ -351,6 +354,7 @@ function EditorLayout({
   onArchiveNote,
   onUnarchiveNote,
   vaultPath,
+  vaultPaths,
   rawModeContent,
   findRequest,
   rawLatestContentRef,
@@ -377,10 +381,12 @@ function EditorLayout({
   onAddProperty,
   onCreateMissingType,
   onCreateAndOpenNote,
+  onChangeWorkspace,
   onInitializeProperties,
   onFileCreated,
   onFileModified,
   onVaultChanged,
+  workspaces,
   onUnsupportedAiPaste,
   locale,
   dateDisplayFormat,
@@ -420,6 +426,7 @@ function EditorLayout({
   onArchiveNote?: (path: string) => void
   onUnarchiveNote?: (path: string) => void
   vaultPath?: string
+  vaultPaths?: string[]
   rawModeContent: string | null
   findRequest?: RawEditorFindRequest | null
   rawLatestContentRef: React.MutableRefObject<string | null>
@@ -446,10 +453,12 @@ function EditorLayout({
   onAddProperty?: (path: string, key: string, value: FrontmatterValue, options?: FrontmatterOpOptions) => Promise<void>
   onCreateMissingType?: (path: string, missingType: string, nextTypeName: string) => Promise<boolean | void>
   onCreateAndOpenNote?: (title: string) => Promise<boolean>
+  onChangeWorkspace?: (entry: VaultEntry, workspace: WorkspaceIdentity) => Promise<void> | void
   onInitializeProperties?: (path: string) => void
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
+  workspaces?: WorkspaceIdentity[]
   onUnsupportedAiPaste?: (message: string) => void
   locale?: AppLocale
   dateDisplayFormat?: DateDisplayFormat
@@ -534,6 +543,7 @@ function EditorLayout({
           entries={entries}
           gitHistory={gitHistory}
           vaultPath={vaultPath ?? ''}
+          vaultPaths={vaultPaths}
           noteList={noteList}
           noteListFilter={noteListFilter}
           onToggleInspector={onToggleInspector}
@@ -546,12 +556,14 @@ function EditorLayout({
           onAddProperty={onAddProperty}
           onCreateMissingType={onCreateMissingType}
           onCreateAndOpenNote={onCreateAndOpenNote}
+          onChangeWorkspace={onChangeWorkspace}
           onInitializeProperties={onInitializeProperties}
           onToggleRawEditor={handleToggleRawExclusive}
           onOpenNote={onNavigateWikilink}
           onFileCreated={onFileCreated}
           onFileModified={onFileModified}
           onVaultChanged={onVaultChanged}
+          workspaces={workspaces}
           locale={locale}
           dateDisplayFormat={dateDisplayFormat}
         />

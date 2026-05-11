@@ -155,6 +155,22 @@ describe('filterEntries', () => {
     expect(result.map((entry) => entry.title)).toEqual(['Root Note', 'config.json'])
   })
 
+  it('keeps same-named folders isolated by selected workspace root', () => {
+    const entries = [
+      makeEntry({ path: '/Users/luca/Personal/projects/personal.md', title: 'Personal Project' }),
+      makeEntry({ path: '/Users/luca/Team/projects/team.md', title: 'Team Project' }),
+      makeEntry({ path: '/Users/luca/Team/archive/team.md', title: 'Team Archive' }),
+    ]
+
+    const result = filterEntries(entries, {
+      kind: 'folder',
+      path: 'projects',
+      rootPath: '/Users/luca/Team',
+    })
+
+    expect(result.map((entry) => entry.title)).toEqual(['Team Project'])
+  })
+
   it('keeps folder browsing independent from All Notes file visibility', () => {
     const entries = [
       makeEntry({ path: '/vault/assets/spec.PDF', filename: 'spec.PDF', title: 'Spec', fileKind: 'binary' }),

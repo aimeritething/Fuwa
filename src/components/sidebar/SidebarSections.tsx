@@ -18,7 +18,6 @@ import {
 import { APP_COMMAND_IDS, getAppCommandShortcutDisplay } from '../../hooks/appCommandCatalog'
 import { Button } from '@/components/ui/button'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
-import { TooltipProvider } from '@/components/ui/tooltip'
 import {
   type SectionGroup, isSelectionActive, SectionContent, VisibilityPopover,
 } from '../SidebarParts'
@@ -389,41 +388,39 @@ export function SidebarTitleBar({
   const forwardLabel = translate(locale, 'command.navigation.goForward')
 
   return (
-    <TooltipProvider>
-      <div
-        className="shrink-0 flex items-center border-b border-border"
-        style={{ height: 52, padding: '0 8px', paddingLeft: 90, cursor: 'default', justifyContent: 'flex-start' }}
-        onMouseDown={onMouseDown}
-      >
-        <div className="flex items-center gap-5" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
-          {onCollapse && (
-            <SidebarTitleBarAction label={collapseLabel} shortcut={SIDEBAR_COLLAPSE_SHORTCUT} onClick={onCollapse}>
-              <SidebarSimple size={16} weight="regular" />
-            </SidebarTitleBarAction>
-          )}
-          {onGoBack && (
-            <SidebarTitleBarAction
-              label={backLabel}
-              shortcut={HISTORY_BACK_SHORTCUT}
-              onClick={onGoBack}
-              disabled={!canGoBack}
-            >
-              <ArrowLeft size={16} weight="regular" />
-            </SidebarTitleBarAction>
-          )}
-          {onGoForward && (
-            <SidebarTitleBarAction
-              label={forwardLabel}
-              shortcut={HISTORY_FORWARD_SHORTCUT}
-              onClick={onGoForward}
-              disabled={!canGoForward}
-            >
-              <ArrowRight size={16} weight="regular" />
-            </SidebarTitleBarAction>
-          )}
-        </div>
+    <div
+      className="shrink-0 flex items-center border-b border-border"
+      style={{ height: 52, padding: '0 8px', paddingLeft: 90, cursor: 'default', justifyContent: 'flex-start' }}
+      onMouseDown={onMouseDown}
+    >
+      <div className="flex items-center gap-5" style={{ WebkitAppRegion: 'no-drag' } as CSSProperties}>
+        {onCollapse && (
+          <SidebarTitleBarAction label={collapseLabel} shortcut={SIDEBAR_COLLAPSE_SHORTCUT} onClick={onCollapse}>
+            <SidebarSimple size={16} weight="regular" />
+          </SidebarTitleBarAction>
+        )}
+        {onGoBack && (
+          <SidebarTitleBarAction
+            label={backLabel}
+            shortcut={HISTORY_BACK_SHORTCUT}
+            onClick={onGoBack}
+            disabled={!canGoBack}
+          >
+            <ArrowLeft size={16} weight="regular" />
+          </SidebarTitleBarAction>
+        )}
+        {onGoForward && (
+          <SidebarTitleBarAction
+            label={forwardLabel}
+            shortcut={HISTORY_FORWARD_SHORTCUT}
+            onClick={onGoForward}
+            disabled={!canGoForward}
+          >
+            <ArrowRight size={16} weight="regular" />
+          </SidebarTitleBarAction>
+        )}
       </div>
-    </TooltipProvider>
+    </div>
   )
 }
 

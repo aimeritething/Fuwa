@@ -16,6 +16,7 @@ export interface SettingsPreferenceDraft {
   analytics: boolean
   dateDisplayFormat: DateDisplayFormat
   defaultNoteWidth: NoteWidthMode
+  multiWorkspaceEnabled: boolean
   sidebarTypePluralizationEnabled: boolean
 }
 
@@ -38,5 +39,10 @@ export function trackSettingsPreferenceChanges(settings: Settings, draft: Settin
   const previousPluralization = settings.sidebar_type_pluralization_enabled ?? true
   if (previousPluralization !== draft.sidebarTypePluralizationEnabled) {
     trackSidebarTypePluralizationChanged(draft.sidebarTypePluralizationEnabled)
+  }
+
+  const previousMultiWorkspaceEnabled = settings.multi_workspace_enabled === true
+  if (previousMultiWorkspaceEnabled !== draft.multiWorkspaceEnabled) {
+    trackEvent('multi_workspace_mode_changed', { enabled: draft.multiWorkspaceEnabled ? 1 : 0 })
   }
 }

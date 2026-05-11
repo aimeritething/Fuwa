@@ -1533,6 +1533,7 @@ mod tests {
             message: "test".into(),
             system_prompt: Some("sys".into()),
             vault_path: "/tmp/nonexistent".into(),
+            vault_paths: Vec::new(),
             permission_mode: AiAgentPermissionMode::Safe,
         };
         let mut events = vec![];

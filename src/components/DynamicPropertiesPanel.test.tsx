@@ -332,6 +332,44 @@ describe('DynamicPropertiesPanel', () => {
       makeEntry({ path: '/vault/topic.md', title: 'Topic', isA: 'Type' }),
     ]
 
+    it('renders workspace selector before type selector when multiple workspaces are available', () => {
+      const personalWorkspace = {
+        id: 'personal',
+        label: 'Personal',
+        alias: 'personal',
+        path: '/personal',
+        shortLabel: 'PE',
+        color: 'green',
+        icon: null,
+        mounted: true,
+        available: true,
+        defaultForNewNotes: true,
+      }
+      const teamWorkspace = {
+        id: 'team',
+        label: 'Team',
+        alias: 'team',
+        path: '/team',
+        shortLabel: 'TE',
+        color: 'purple',
+        icon: null,
+        mounted: true,
+        available: true,
+        defaultForNewNotes: false,
+      }
+
+      renderPanel({
+        entry: makeEntry({ workspace: personalWorkspace }),
+        workspaces: [personalWorkspace, teamWorkspace],
+        onUpdateProperty,
+        onChangeWorkspace: vi.fn(),
+      })
+
+      const workspaceSelector = screen.getByTestId('workspace-selector')
+      const typeSelector = screen.getByTestId('type-selector')
+      expect(workspaceSelector.compareDocumentPosition(typeSelector) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    })
+
     it('renders as dropdown when editable', () => {
       renderPanel({ entries: typeEntries, onUpdateProperty })
       expect(screen.getByTestId('type-selector')).toBeInTheDocument()

@@ -269,6 +269,25 @@ describe('PulseView', () => {
     })
   })
 
+  it('shows a repository selector in the History header when multiple repositories are available', async () => {
+    mockInvokeFn.mockResolvedValue([])
+
+    render(
+      <PulseView
+        vaultPath="/work"
+        repositories={[
+          { path: '/default', label: 'Default', defaultForNewNotes: true },
+          { path: '/work', label: 'Work', defaultForNewNotes: false },
+        ]}
+        selectedRepositoryPath="/work"
+        onRepositoryChange={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByTestId('pulse-repository-select')).toBeInTheDocument()
+    expect(screen.getByText('Work')).toBeInTheDocument()
+  })
+
   it('wires the Pulse header into the shared drag-region handler', async () => {
     mockInvokeFn.mockResolvedValue([])
 

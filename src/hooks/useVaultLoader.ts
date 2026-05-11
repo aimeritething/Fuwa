@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import type { VaultEntry, FolderNode, GitCommit, ModifiedFile, NoteStatus, GitPushResult, ViewFile } from '../types'
 import type { VaultOption } from '../components/status-bar/types'
 import {
@@ -13,14 +13,17 @@ import {
   hasVaultPath,
   loadVaultChrome,
   loadVaultData,
+  loadMountedVaultFolders,
   loadVaultFolders,
   loadVaultViews,
+  loadWorkspaceEntries,
   reloadVaultEntries,
   tauriCall,
 } from './vaultLoaderCommands'
 import { normalizeVaultEntry } from '../utils/vaultMetadataNormalization'
 import { useUnavailableVaultState } from './useUnavailableVaultState'
 import { resetVaultState } from './vaultStateReset'
+import { workspaceIdentityFromVault } from '../utils/workspaces'
 
 interface InitialVaultLoadStateOptions {
   defaultWorkspacePath?: string | null
@@ -28,7 +31,7 @@ interface InitialVaultLoadStateOptions {
   path: string
   handleVaultUnavailable: (path: string) => void
   isCurrentVaultPath: (path: string) => boolean
-  setEntries: (entries: VaultEntry[]) => void
+  setEntries: Dispatch<SetStateAction<VaultEntry[]>>
   setFolders: (folders: FolderNode[]) => void
   setIsLoading: (isLoading: boolean) => void
   setViews: (views: ViewFile[]) => void
@@ -65,10 +68,20 @@ async function loadInitialVaultEntriesState(options: Pick<
   const { handleVaultAvailable, handleVaultUnavailable, isCurrentVaultPath, path, setEntries } = options
 
   try {
-    const { entries } = await loadVaultData({ vaultPath: path, vaults: options.vaults, defaultWorkspacePath: options.defaultWorkspacePath })
+    const { entries } = await loadVaultData({
+      vaultPath: path,
+      vaults: initialVaultsForPath(path, options.vaults),
+      defaultWorkspacePath: options.defaultWorkspacePath,
+    })
     if (isCurrentVaultPath(path)) {
       handleVaultAvailable(path)
-      setEntries(entries)
+      setEntries((currentEntries) => replaceLoadedWorkspaceEntries({
+        defaultWorkspacePath: options.defaultWorkspacePath,
+        entries: currentEntries,
+        fallbackVaultPath: path,
+        loadedEntries: entries,
+        vaults: options.vaults,
+      }))
     }
   } catch (err) {
     const unavailable = await handleUnavailableVaultPath({ handleVaultUnavailable, isCurrentVaultPath, path })
@@ -241,13 +254,14 @@ interface InitialVaultLoadOptions {
   defaultWorkspacePath?: string | null
   handleVaultAvailable: (path: string) => void
   handleVaultUnavailable: (path: string) => void
+  isWorkspacePathLoaded: (path: string) => boolean
   vaultPath: string
   vaults?: VaultOption[]
   tracker: ReturnType<typeof useNewNoteTracker>
   unsaved: ReturnType<typeof useUnsavedTracker>
   isCurrentVaultPath: (path: string) => boolean
   resetReloading: () => void
-  setEntries: (entries: VaultEntry[]) => void
+  setEntries: Dispatch<SetStateAction<VaultEntry[]>>
   setFolders: (folders: FolderNode[]) => void
   setIsLoading: (isLoading: boolean) => void
   setModifiedFiles: (files: ModifiedFile[]) => void
@@ -259,6 +273,7 @@ function useInitialVaultLoad(options: InitialVaultLoadOptions) {
   const {
     handleVaultAvailable,
     handleVaultUnavailable,
+    isWorkspacePathLoaded,
     vaultPath,
     tracker,
     unsaved,
@@ -273,32 +288,52 @@ function useInitialVaultLoad(options: InitialVaultLoadOptions) {
     vaults,
     defaultWorkspacePath,
   } = options
+  const loadOptionsRef = useRef({ vaults, defaultWorkspacePath })
+
+  useEffect(() => {
+    loadOptionsRef.current = { vaults, defaultWorkspacePath }
+  }, [defaultWorkspacePath, vaults])
 
   useEffect(() => {
     const path = vaultPath
+    const loadOptions = loadOptionsRef.current
+    const reuseLoadedWorkspaceEntries = !!loadOptions.vaults?.length && isWorkspacePathLoaded(path)
     clearPrefetchCache()
+    setViews([])
     resetVaultState({
       clearNewPaths: tracker.clear,
       clearUnsaved: unsaved.clearAll,
-      setEntries,
+      setEntries: reuseLoadedWorkspaceEntries ? () => {} : setEntries,
       setFolders,
       setIsLoading,
       setModifiedFiles,
       setModifiedFilesError,
-      setViews,
+      setViews: reuseLoadedWorkspaceEntries ? () => {} : setViews,
     })
     resetReloading()
 
     if (!hasVaultPath({ vaultPath: path })) return
 
     let cancelled = false
+    if (reuseLoadedWorkspaceEntries) {
+      void loadInitialVaultChromeState({
+        handleVaultUnavailable,
+        isCurrentVaultPath: (candidate) => !cancelled && isCurrentVaultPath(candidate),
+        path,
+        setFolders,
+        setViews,
+        shouldApplyChrome: () => !cancelled && isCurrentVaultPath(path),
+      })
+      return () => { cancelled = true }
+    }
+
     void loadInitialVaultState({
       handleVaultAvailable,
       path,
       handleVaultUnavailable,
       isCurrentVaultPath: (candidate) => !cancelled && isCurrentVaultPath(candidate),
-      vaults,
-      defaultWorkspacePath,
+      vaults: loadOptions.vaults,
+      defaultWorkspacePath: loadOptions.defaultWorkspacePath,
       setEntries,
       setFolders,
       setIsLoading,
@@ -319,8 +354,7 @@ function useInitialVaultLoad(options: InitialVaultLoadOptions) {
     setModifiedFiles,
     setModifiedFilesError,
     setViews,
-    vaults,
-    defaultWorkspacePath,
+    isWorkspacePathLoaded,
   ])
 }
 
@@ -446,6 +480,7 @@ function useGitLoaders(vaultPath: string) {
 
 interface VaultReloadOptions {
   defaultWorkspacePath?: string | null
+  folderVaults?: VaultOption[]
   handleVaultAvailable: (path: string) => void
   handleVaultUnavailable: (path: string) => void
   vaultPath: string
@@ -486,18 +521,21 @@ async function reloadVaultCollection<T>(options: CollectionReloadOptions<T>): Pr
 }
 
 function useFolderReload({
+  folderVaults,
   handleVaultUnavailable,
   isCurrentVaultPath,
   setFolders,
   vaultPath,
-}: Pick<VaultReloadOptions, 'handleVaultUnavailable' | 'isCurrentVaultPath' | 'setFolders' | 'vaultPath'>) {
+}: Pick<VaultReloadOptions, 'defaultWorkspacePath' | 'folderVaults' | 'handleVaultUnavailable' | 'isCurrentVaultPath' | 'setFolders' | 'vaultPath'>) {
   return useCallback(() => reloadVaultCollection({
     handleVaultUnavailable,
     isCurrentVaultPath,
-    loadCollection: loadVaultFolders,
+    loadCollection: folderVaults?.length
+      ? (options) => loadMountedVaultFolders({ ...options, vaults: folderVaults })
+      : loadVaultFolders,
     path: vaultPath,
     setCollection: setFolders,
-  }), [handleVaultUnavailable, vaultPath, isCurrentVaultPath, setFolders])
+  }), [folderVaults, handleVaultUnavailable, vaultPath, isCurrentVaultPath, setFolders])
 }
 
 function useEntryReload({
@@ -644,9 +682,162 @@ function useVaultUnavailable(vaultPath: string, state: ReturnType<typeof useVaul
   })
 }
 
-export function useVaultLoader(vaultPath: string, vaults?: VaultOption[], defaultWorkspacePath?: string | null) {
+function uniqueWorkspacePathsFromVaults(vaultPath: string, vaults?: VaultOption[]): string[] {
+  const paths = vaults?.length
+    ? vaults.map((vault) => vault.path)
+    : [vaultPath]
+  return [...new Set(paths.filter((path) => path.trim().length > 0))]
+}
+
+function workspacePathSetKey(paths: readonly string[]): string {
+  return paths.join('\n')
+}
+
+function entryWorkspacePath(entry: VaultEntry, fallbackVaultPath: string): string {
+  return entry.workspace?.path ?? fallbackVaultPath
+}
+
+function initialVaultsForPath(path: string, vaults?: VaultOption[]): VaultOption[] | undefined {
+  if (!vaults?.length) return undefined
+  const matchingVaults = vaults.filter((vault) => vault.path === path)
+  return matchingVaults.length > 0 ? matchingVaults : undefined
+}
+
+function workspacePathsFromEntries(entries: VaultEntry[], fallbackVaultPath: string): string[] {
+  const paths = new Set<string>()
+  for (const entry of entries) {
+    const path = entryWorkspacePath(entry, fallbackVaultPath)
+    if (path.trim()) paths.add(path)
+  }
+  return [...paths]
+}
+
+function loadedWorkspacePathsFromEntries(entries: VaultEntry[], fallbackVaultPath: string): string[] {
+  const paths = workspacePathsFromEntries(entries, fallbackVaultPath)
+  if (paths.length > 0) return paths
+  return fallbackVaultPath.trim() ? [fallbackVaultPath] : []
+}
+
+function retagEntriesForWorkspaceMetadata({
+  defaultWorkspacePath,
+  entries,
+  fallbackVaultPath,
+  vaults,
+}: {
+  defaultWorkspacePath?: string | null
+  entries: VaultEntry[]
+  fallbackVaultPath: string
+  vaults?: VaultOption[]
+}): VaultEntry[] {
+  if (!vaults?.length) return entries
+
+  const identitiesByPath = new Map(vaults.map((vault) => [
+    vault.path,
+    workspaceIdentityFromVault(vault, { defaultWorkspacePath }),
+  ]))
+  let changed = false
+  const nextEntries = entries.map((entry) => {
+    const identity = identitiesByPath.get(entryWorkspacePath(entry, fallbackVaultPath))
+    if (!identity) return entry
+    const current = entry.workspace
+    if (
+      current
+      && current.label === identity.label
+      && current.alias === identity.alias
+      && current.shortLabel === identity.shortLabel
+      && current.color === identity.color
+      && current.icon === identity.icon
+      && current.mounted === identity.mounted
+      && current.available === identity.available
+      && current.defaultForNewNotes === identity.defaultForNewNotes
+    ) {
+      return entry
+    }
+    changed = true
+    return { ...entry, workspace: identity }
+  })
+
+  return changed ? nextEntries : entries
+}
+
+function pruneEntriesOutsideWorkspaceSet({
+  desiredPaths,
+  entries,
+  fallbackVaultPath,
+}: {
+  desiredPaths: readonly string[]
+  entries: VaultEntry[]
+  fallbackVaultPath: string
+}): VaultEntry[] {
+  const desiredPathSet = new Set(desiredPaths)
+  const nextEntries = entries.filter((entry) => desiredPathSet.has(entryWorkspacePath(entry, fallbackVaultPath)))
+  return nextEntries.length === entries.length ? entries : nextEntries
+}
+
+function replaceWorkspaceEntries({
+  defaultWorkspacePath,
+  entries,
+  fallbackVaultPath,
+  loadedEntries,
+  loadedWorkspacePath,
+  vaults,
+}: {
+  defaultWorkspacePath?: string | null
+  entries: VaultEntry[]
+  fallbackVaultPath: string
+  loadedEntries: VaultEntry[]
+  loadedWorkspacePath: string
+  vaults?: VaultOption[]
+}): VaultEntry[] {
+  return retagEntriesForWorkspaceMetadata({
+    defaultWorkspacePath,
+    entries: [
+      ...entries.filter((entry) => entryWorkspacePath(entry, fallbackVaultPath) !== loadedWorkspacePath),
+      ...loadedEntries,
+    ],
+    fallbackVaultPath,
+    vaults,
+  })
+}
+
+function replaceLoadedWorkspaceEntries({
+  defaultWorkspacePath,
+  entries,
+  fallbackVaultPath,
+  loadedEntries,
+  vaults,
+}: {
+  defaultWorkspacePath?: string | null
+  entries: VaultEntry[]
+  fallbackVaultPath: string
+  loadedEntries: VaultEntry[]
+  vaults?: VaultOption[]
+}): VaultEntry[] {
+  const loadedPathSet = new Set(loadedWorkspacePathsFromEntries(loadedEntries, fallbackVaultPath))
+  return retagEntriesForWorkspaceMetadata({
+    defaultWorkspacePath,
+    entries: [
+      ...entries.filter((entry) => !loadedPathSet.has(entryWorkspacePath(entry, fallbackVaultPath))),
+      ...loadedEntries,
+    ],
+    fallbackVaultPath,
+    vaults,
+  })
+}
+
+export function useVaultLoader(vaultPath: string, vaults?: VaultOption[], defaultWorkspacePath?: string | null, folderVaults?: VaultOption[]) {
   const state = useVaultState(vaultPath)
   const { entries, folders, isCurrentVaultPath, isLoading, modified, pendingSave, setEntries, setFolders, setIsLoading, setViews, tracker, unsaved, views } = state
+  const loadedWorkspacePathsRef = useRef<Set<string>>(new Set())
+  const loadingWorkspacePathsRef = useRef<Set<string>>(new Set())
+  const initialLoadedVaultPathRef = useRef<string | null>(null)
+  const folderVaultsRef = useRef(folderVaults)
+  useEffect(() => {
+    folderVaultsRef.current = folderVaults
+  }, [folderVaults])
+  const setInitialFolders = useCallback((nextFolders: FolderNode[]) => {
+    if ((folderVaultsRef.current?.length ?? 0) === 0) setFolders(nextFolders)
+  }, [setFolders])
   const {
     modifiedFiles,
     modifiedFilesError,
@@ -661,6 +852,7 @@ export function useVaultLoader(vaultPath: string, vaults?: VaultOption[], defaul
     handleVaultAvailable: unavailableVault.markVaultAvailable,
     handleVaultUnavailable: unavailableVault.markVaultUnavailable,
     defaultWorkspacePath,
+    folderVaults,
     vaultPath,
     vaults,
     isCurrentVaultPath,
@@ -670,6 +862,105 @@ export function useVaultLoader(vaultPath: string, vaults?: VaultOption[], defaul
     setViews,
   })
   useGitignoredVisibilityReloads(vaultReloads)
+  const reloadFoldersForCurrentVault = vaultReloads.reloadFolders
+  const reloadViewsForCurrentVault = vaultReloads.reloadViews
+  useEffect(() => {
+    if (!hasVaultPath({ vaultPath })) return
+    void Promise.all([
+      reloadFoldersForCurrentVault(),
+      reloadViewsForCurrentVault(),
+    ])
+  }, [vaultPath, reloadFoldersForCurrentVault, reloadViewsForCurrentVault])
+
+  const desiredWorkspacePaths = useMemo(
+    () => uniqueWorkspacePathsFromVaults(vaultPath, vaults),
+    [vaultPath, vaults],
+  )
+  const desiredWorkspaceKey = useMemo(
+    () => workspacePathSetKey(desiredWorkspacePaths),
+    [desiredWorkspacePaths],
+  )
+  const isWorkspacePathLoaded = useCallback((path: string) => (
+    path.trim().length > 0 && loadedWorkspacePathsRef.current.has(path)
+  ), [])
+
+  useEffect(() => {
+    const desiredPathSet = new Set(desiredWorkspacePaths)
+    loadedWorkspacePathsRef.current = new Set(
+      [...loadedWorkspacePathsRef.current].filter((path) => desiredPathSet.has(path)),
+    )
+    loadingWorkspacePathsRef.current = new Set(
+      [...loadingWorkspacePathsRef.current].filter((path) => desiredPathSet.has(path)),
+    )
+  }, [desiredWorkspaceKey, desiredWorkspacePaths])
+
+  useEffect(() => {
+    if (isLoading || !hasVaultPath({ vaultPath }) || initialLoadedVaultPathRef.current === vaultPath) return
+    initialLoadedVaultPathRef.current = vaultPath
+    loadedWorkspacePathsRef.current = new Set([
+      ...loadedWorkspacePathsRef.current,
+      ...loadedWorkspacePathsFromEntries(entries, vaultPath),
+    ])
+  }, [entries, isLoading, vaultPath])
+
+  useEffect(() => {
+    if (!hasVaultPath({ vaultPath })) return
+
+    setEntries((currentEntries) => retagEntriesForWorkspaceMetadata({
+      defaultWorkspacePath,
+      entries: pruneEntriesOutsideWorkspaceSet({
+        desiredPaths: desiredWorkspacePaths,
+        entries: currentEntries,
+        fallbackVaultPath: vaultPath,
+      }),
+      fallbackVaultPath: vaultPath,
+      vaults,
+    }))
+
+    if (!vaults?.length || isLoading) return
+
+    const loadedPaths = loadedWorkspacePathsRef.current
+    const loadingPaths = loadingWorkspacePathsRef.current
+    const missingVaults = vaults.filter((vault) => (
+      desiredWorkspacePaths.includes(vault.path)
+      && !loadedPaths.has(vault.path)
+      && !loadingPaths.has(vault.path)
+    ))
+    if (missingVaults.length === 0) return
+
+    for (const vault of missingVaults) loadingPaths.add(vault.path)
+
+    for (const vault of missingVaults) {
+      void loadWorkspaceEntries(vault, defaultWorkspacePath)
+        .then((loadedEntries) => {
+          if (!isCurrentVaultPath(vaultPath)) return
+          loadedPaths.add(vault.path)
+          setEntries((currentEntries) => replaceWorkspaceEntries({
+            defaultWorkspacePath,
+            entries: currentEntries,
+            fallbackVaultPath: vaultPath,
+            loadedEntries,
+            loadedWorkspacePath: vault.path,
+            vaults,
+          }))
+        })
+        .catch((error: unknown) => {
+          console.warn(`Failed to load workspace entries for ${vault.path}:`, error)
+        })
+        .finally(() => {
+          loadingPaths.delete(vault.path)
+        })
+    }
+  }, [
+    defaultWorkspacePath,
+    desiredWorkspaceKey,
+    desiredWorkspacePaths,
+    isCurrentVaultPath,
+    isLoading,
+    setEntries,
+    vaultPath,
+    vaults,
+  ])
 
   useInitialVaultLoad({
     handleVaultAvailable: unavailableVault.markVaultAvailable,
@@ -677,12 +968,13 @@ export function useVaultLoader(vaultPath: string, vaults?: VaultOption[], defaul
     vaultPath,
     vaults,
     defaultWorkspacePath,
+    isWorkspacePathLoaded,
     tracker,
     unsaved,
     isCurrentVaultPath,
     resetReloading: vaultReloads.resetReloading,
     setEntries,
-    setFolders,
+    setFolders: setInitialFolders,
     setIsLoading,
     setModifiedFiles,
     setModifiedFilesError,

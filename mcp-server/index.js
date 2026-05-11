@@ -20,9 +20,11 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import WebSocket from 'ws'
 import { searchNotes, getNote, vaultContext } from './vault.js'
-import { requireVaultPath } from './vault-path.js'
+import { requireVaultPaths } from './vault-path.js'
+import path from 'node:path'
 
-const VAULT_PATH = requireVaultPath()
+const VAULT_PATHS = requireVaultPaths()
+const PRIMARY_VAULT_PATH = VAULT_PATHS[0]
 const WS_UI_PORT = parseInt(process.env.WS_UI_PORT || '9711', 10)
 const WS_UI_URL = `ws://localhost:${WS_UI_PORT}`
 
@@ -113,8 +115,13 @@ const TOOLS = [
   },
   {
     name: 'get_vault_context',
-    description: 'Get vault orientation: entity types, total note count, top-level folders, and 20 most recently modified notes.',
-    inputSchema: { type: 'object', properties: {} },
+    description: 'Get vault orientation for the active Tolaria vaults: entity types, note count, folders, and recent notes.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        vaultPath: { type: 'string', description: 'Optional target vault root. Omit to inspect all active vaults.' },
+      },
+    },
   },
   {
     name: 'get_note',
@@ -123,6 +130,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         path: { type: 'string', description: 'Relative path to the note (e.g. "project/my-project.md")' },
+        vaultPath: { type: 'string', description: 'Optional target vault root when multiple vaults are active.' },
       },
       required: ['path'],
     },
@@ -134,6 +142,7 @@ const TOOLS = [
       type: 'object',
       properties: {
         path: { type: 'string', description: 'Relative path to the note' },
+        vaultPath: { type: 'string', description: 'Optional target vault root when opening a note outside the default vault.' },
       },
       required: ['path'],
     },
@@ -157,35 +166,107 @@ const TOOLS = [
       type: 'object',
       properties: {
         path: { type: 'string', description: 'Optional specific note path that changed' },
+        vaultPath: { type: 'string', description: 'Optional target vault root when refreshing a note outside the default vault.' },
       },
     },
   },
 ]
 
+function requestedVaultPath(args = {}) {
+  const requested = typeof args.vaultPath === 'string' ? args.vaultPath.trim() : ''
+  if (!requested) return null
+  if (!VAULT_PATHS.includes(requested)) {
+    throw new Error(`Vault is not active in Tolaria: ${requested}`)
+  }
+  return requested
+}
+
+function vaultLabel(vaultPath) {
+  return path.basename(vaultPath) || vaultPath
+}
+
+function withVaultMetadata(note, vaultPath) {
+  return {
+    ...note,
+    vaultPath,
+    vaultLabel: vaultLabel(vaultPath),
+  }
+}
+
+async function getNoteFromActiveVaults(notePath, vaultPath = null) {
+  const candidates = vaultPath ? [vaultPath] : VAULT_PATHS
+  const matches = []
+  const errors = []
+
+  for (const candidate of candidates) {
+    try {
+      matches.push(withVaultMetadata(await getNote(candidate, notePath), candidate))
+    } catch (error) {
+      errors.push(error)
+    }
+  }
+
+  if (matches.length === 1) return matches[0]
+  if (matches.length > 1) {
+    throw new Error(`Note path is ambiguous across active vaults. Pass vaultPath for ${notePath}.`)
+  }
+  throw errors[0] ?? new Error(`Note not found: ${notePath}`)
+}
+
+async function searchActiveVaults(query, limit = 10) {
+  const requestedLimit = Number.isFinite(limit) && limit > 0 ? limit : 10
+  const results = []
+
+  for (const vaultPath of VAULT_PATHS) {
+    const vaultResults = await searchNotes(vaultPath, query, requestedLimit)
+    results.push(...vaultResults.map((result) => withVaultMetadata(result, vaultPath)))
+    if (results.length >= requestedLimit) break
+  }
+
+  return results.slice(0, requestedLimit)
+}
+
+async function activeVaultContext(targetVaultPath = null) {
+  if (targetVaultPath) return vaultContext(targetVaultPath)
+  if (VAULT_PATHS.length === 1) return vaultContext(PRIMARY_VAULT_PATH)
+
+  return {
+    vaults: await Promise.all(VAULT_PATHS.map(vaultContext)),
+  }
+}
+
+function uiPath(args = {}) {
+  const notePath = typeof args.path === 'string' ? args.path : ''
+  if (path.isAbsolute(notePath)) return notePath
+  const vaultPath = requestedVaultPath(args) ?? (VAULT_PATHS.length === 1 ? PRIMARY_VAULT_PATH : '')
+  return vaultPath ? path.join(vaultPath, notePath) : notePath
+}
+
 async function handleSearchNotes(args) {
-  const results = await searchNotes(VAULT_PATH, args.query, args.limit)
+  const results = await searchActiveVaults(args.query, args.limit)
   const text = results.length === 0
     ? 'No matching notes found.'
-    : results.map(r => `**${r.title}** (${r.path})\n${r.snippet}`).join('\n\n')
+    : results.map(r => `**${r.title}** (${r.vaultLabel} / ${r.path})\n${r.snippet}`).join('\n\n')
   return { content: [{ type: 'text', text }] }
 }
 
-async function handleVaultContext() {
-  const ctx = await vaultContext(VAULT_PATH)
+async function handleVaultContext(args = {}) {
+  const ctx = await activeVaultContext(requestedVaultPath(args))
   return { content: [{ type: 'text', text: JSON.stringify(ctx, null, 2) }] }
 }
 
 async function handleGetNote(args) {
-  const note = await getNote(VAULT_PATH, args.path)
+  const note = await getNoteFromActiveVaults(args.path, requestedVaultPath(args))
   return { content: [{ type: 'text', text: JSON.stringify(note, null, 2) }] }
 }
 
 function handleOpenNote(args) {
   // Refresh vault first so the new/modified note appears in the note list,
   // then signal the UI to open it in a tab.
-  broadcastUiAction('vault_changed', { path: args.path })
-  broadcastUiAction('open_tab', { path: args.path })
-  return { content: [{ type: 'text', text: `Opening ${args.path} in Tolaria` }] }
+  const targetPath = uiPath(args)
+  broadcastUiAction('vault_changed', { path: targetPath })
+  broadcastUiAction('open_tab', { path: targetPath })
+  return { content: [{ type: 'text', text: `Opening ${targetPath} in Tolaria` }] }
 }
 
 function handleHighlightEditor(args) {
@@ -194,7 +275,7 @@ function handleHighlightEditor(args) {
 }
 
 function handleRefreshVault(args) {
-  broadcastUiAction('vault_changed', { path: args?.path })
+  broadcastUiAction('vault_changed', { path: uiPath(args) })
   return { content: [{ type: 'text', text: 'Vault refresh triggered' }] }
 }
 
@@ -203,7 +284,7 @@ function callToolHandler(name, args) {
     case 'search_notes':
       return handleSearchNotes(args)
     case 'get_vault_context':
-      return handleVaultContext()
+      return handleVaultContext(args)
     case 'get_note':
       return handleGetNote(args)
     case 'open_note':
@@ -277,7 +358,7 @@ async function main() {
 
   connectUiBridge()
   await server.connect(transport)
-  console.error(`Tolaria MCP server running (vault: ${VAULT_PATH})`)
+  console.error(`Tolaria MCP server running (vaults: ${VAULT_PATHS.join(', ')})`)
 }
 
 main().catch((error) => {

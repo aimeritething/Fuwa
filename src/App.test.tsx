@@ -1,5 +1,5 @@
-import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
-import type { ReactNode } from 'react'
+import { act, render as testingLibraryRender, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import type { ReactElement, ReactNode } from 'react'
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { DEFAULT_VAULTS } from './hooks/useVaultSwitcher'
 import { formatShortcutDisplay } from './hooks/appCommandCatalog'
@@ -443,6 +443,7 @@ vi.mock('./components/tolariaEditorFormatting', () => ({
 }))
 
 import App from './App'
+import { TooltipProvider } from './components/ui/tooltip'
 import { useUpdater } from './hooks/useUpdater'
 import { isTauri } from './mock-tauri'
 import { streamAiAgent } from './utils/streamAiAgent'
@@ -450,6 +451,13 @@ import { streamAiAgent } from './utils/streamAiAgent'
 const AI_AGENTS_ONBOARDING_DISMISSED_STORAGE_NAME = 'tolaria:ai-agents-onboarding-dismissed'
 const CLAUDE_CODE_ONBOARDING_DISMISSED_STORAGE_NAME = 'tolaria:claude-code-onboarding-dismissed'
 const SLOW_APP_READY_TIMEOUT_MS = 10_000
+
+function render(ui: ReactElement, options?: Parameters<typeof testingLibraryRender>[1]) {
+  return testingLibraryRender(ui, {
+    wrapper: ({ children }) => <TooltipProvider>{children}</TooltipProvider>,
+    ...options,
+  })
+}
 
 function createMockUpdaterResult(
   checkForUpdates: () => Promise<{ kind: 'up-to-date' } | { kind: 'available'; version: string; displayVersion: string } | { kind: 'error'; message: string }> = async () => ({ kind: 'up-to-date' }),

@@ -12,6 +12,9 @@ pub struct VaultEntry {
     #[serde(default)]
     pub alias: Option<String>,
     #[serde(default)]
+    #[serde(rename = "shortLabel")]
+    pub short_label: Option<String>,
+    #[serde(default)]
     pub color: Option<String>,
     #[serde(default)]
     pub icon: Option<String>,
@@ -219,6 +222,7 @@ mod tests {
                 label: "Team Notes".to_string(),
                 path: "/tmp/team".to_string(),
                 alias: Some("team".to_string()),
+                short_label: Some("TN".to_string()),
                 color: Some("green".to_string()),
                 icon: Some("briefcase".to_string()),
                 mounted: Some(false),
@@ -232,6 +236,7 @@ mod tests {
 
         assert_eq!(loaded.default_workspace_path.as_deref(), Some("/tmp/team"));
         assert_eq!(loaded.vaults[0].alias.as_deref(), Some("team"));
+        assert_eq!(loaded.vaults[0].short_label.as_deref(), Some("TN"));
         assert_eq!(loaded.vaults[0].color.as_deref(), Some("green"));
         assert_eq!(loaded.vaults[0].icon.as_deref(), Some("briefcase"));
         assert_eq!(loaded.vaults[0].mounted, Some(false));

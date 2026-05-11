@@ -5,7 +5,7 @@ import { deduplicateByPath, disambiguateTitles } from './wikilinkSuggestions'
 import { bestSearchRank } from './fuzzyMatch'
 import { filterSuggestionItems } from '@blocknote/core/extensions'
 import type { WikilinkSuggestionItem } from '../components/WikilinkSuggestionMenu'
-import { relativePathStem } from './wikilink'
+import { canonicalWikilinkTargetForEntry, relativePathStem } from './wikilink'
 
 const MAX_RESULTS = 20
 
@@ -16,10 +16,20 @@ interface BaseSuggestionItem {
   entryType?: string | null
   entryTitle: string
   path: string
+  entry?: VaultEntry
+}
+
+interface EnrichSuggestionOptions {
+  showWorkspace?: boolean
+}
+
+export function hasMultipleSuggestionWorkspaces(items: { entry?: VaultEntry }[]): boolean {
+  return new Set(items.map((item) => item.entry?.workspace?.alias).filter(Boolean)).size > 1
 }
 
 /** Build the canonical wikilink target: vault-relative path stem without a default alias. */
-function buildTarget(item: BaseSuggestionItem, vaultPath: string): string {
+function buildTarget(item: BaseSuggestionItem, vaultPath: string, sourceEntry?: VaultEntry): string {
+  if (item.entry) return canonicalWikilinkTargetForEntry(item.entry, vaultPath, sourceEntry)
   return relativePathStem(item.path, vaultPath)
 }
 
@@ -30,10 +40,11 @@ export function attachClickHandlers(
   candidates: BaseSuggestionItem[],
   insertWikilink: (target: string) => void,
   vaultPath: string,
+  sourceEntry?: VaultEntry,
 ) {
   return candidates.map(item => ({
     ...item,
-    onItemClick: () => insertWikilink(buildTarget(item, vaultPath)),
+    onItemClick: () => insertWikilink(buildTarget(item, vaultPath, sourceEntry)),
   }))
 }
 
@@ -42,6 +53,7 @@ export function enrichSuggestionItems(
   items: (BaseSuggestionItem & { onItemClick: () => void })[],
   query: string,
   typeEntryMap: Record<string, VaultEntry>,
+  options: EnrichSuggestionOptions = {},
 ): WikilinkSuggestionItem[] {
   const filtered = filterSuggestionItems(items, query)
   filtered.sort((a, b) =>
@@ -49,7 +61,8 @@ export function enrichSuggestionItems(
   )
   const sliced = filtered.slice(0, MAX_RESULTS)
   const final = disambiguateTitles(deduplicateByPath(sliced))
-  return final.map(({ entryType, ...rest }) => {
+  const showWorkspace = options.showWorkspace ?? hasMultipleSuggestionWorkspaces(final)
+  return final.map(({ entry, entryType, ...rest }) => {
     const noteType = entryType ?? undefined
     const te = noteType ? Reflect.get(typeEntryMap, noteType) as VaultEntry | undefined : undefined
     return {
@@ -58,6 +71,7 @@ export function enrichSuggestionItems(
       typeColor: noteType ? getTypeColor(noteType, te?.color) : undefined,
       typeLightColor: noteType ? getTypeLightColor(noteType, te?.color) : undefined,
       TypeIcon: noteType ? getTypeIcon(noteType, te?.icon) : undefined,
+      workspace: showWorkspace ? entry?.workspace ?? null : null,
     }
   })
 }

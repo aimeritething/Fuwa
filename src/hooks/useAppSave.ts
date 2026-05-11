@@ -7,6 +7,7 @@ import { isTauri } from '../mock-tauri'
 import type { VaultEntry } from '../types'
 import { createTranslator, type AppLocale } from '../lib/i18n'
 import { canWritePathToVault } from '../utils/vaultPathContainment'
+import { vaultPathForEntry } from '../utils/workspaces'
 
 interface TabState {
   entry: VaultEntry
@@ -41,6 +42,11 @@ function resolveLatestPath(renamedPaths: RenamedPathMap, path: string): string {
 function trackRenamedPath(renamedPaths: RenamedPathMap, oldPath: string, newPath: string): void {
   if (oldPath === newPath) return
   renamedPaths.set(oldPath, newPath)
+}
+
+function vaultPathForTabPath(tabs: TabState[], path: string, fallbackVaultPath: string): string {
+  const tab = tabs.find((candidate) => candidate.entry.path === path)
+  return tab ? vaultPathForEntry(tab.entry, fallbackVaultPath) : fallbackVaultPath
 }
 
 async function waitForSettledPath({
@@ -278,9 +284,9 @@ function useUntitledRenameExecutor({
 
     const renamePromise = (async () => {
       try {
+        const renameVaultPath = vaultPathForTabPath(tabsRef.current, path, resolvedPath)
         const result = await invoke<{ new_path: string; updated_files: number } | null>('auto_rename_untitled', {
-          vaultPath: resolvedPath,
-          notePath: path,
+          args: { vaultPath: renameVaultPath, notePath: path },
         })
         if (!result) return path
         onInternalVaultWrite?.(path)
@@ -574,6 +580,7 @@ function useRenameHandlers({
   handleRenameNote,
   handleRenameFilename,
   resolvedPath,
+  tabsRef,
   replaceRenamedEntry,
   loadModifiedFiles,
 }: {
@@ -583,6 +590,7 @@ function useRenameHandlers({
   handleRenameNote: AppSaveDeps['handleRenameNote']
   handleRenameFilename: AppSaveDeps['handleRenameFilename']
   resolvedPath: string
+  tabsRef: MutableRefObject<TabState[]>
   replaceRenamedEntry: (oldPath: string, newEntry: Partial<VaultEntry> & { path: string }, newContent: string) => void
   loadModifiedFiles: AppSaveDeps['loadModifiedFiles']
 }) {
@@ -593,8 +601,9 @@ function useRenameHandlers({
       savePendingForPath,
       cancelPendingUntitledRename,
     })
-    await handleRenameFilename(currentPath, newFilenameStem, resolvedPath, replaceRenamedEntry).then(loadModifiedFiles)
-  }, [resolveCurrentPath, savePendingForPath, cancelPendingUntitledRename, handleRenameFilename, resolvedPath, replaceRenamedEntry, loadModifiedFiles])
+    const renameVaultPath = vaultPathForTabPath(tabsRef.current, currentPath, resolvedPath)
+    await handleRenameFilename(currentPath, newFilenameStem, renameVaultPath, replaceRenamedEntry).then(loadModifiedFiles)
+  }, [resolveCurrentPath, savePendingForPath, cancelPendingUntitledRename, tabsRef, resolvedPath, handleRenameFilename, replaceRenamedEntry, loadModifiedFiles])
 
   const handleTitleSync = useCallback((path: string, newTitle: string) => {
     void preparePathForManualRename({
@@ -603,10 +612,13 @@ function useRenameHandlers({
       savePendingForPath,
       cancelPendingUntitledRename,
     })
-      .then((currentPath) => handleRenameNote(currentPath, newTitle, resolvedPath, replaceRenamedEntry))
+      .then((currentPath) => {
+        const renameVaultPath = vaultPathForTabPath(tabsRef.current, currentPath, resolvedPath)
+        return handleRenameNote(currentPath, newTitle, renameVaultPath, replaceRenamedEntry)
+      })
       .then(loadModifiedFiles)
       .catch((err) => console.error('Title rename failed:', err))
-  }, [resolveCurrentPath, savePendingForPath, cancelPendingUntitledRename, handleRenameNote, resolvedPath, replaceRenamedEntry, loadModifiedFiles])
+  }, [resolveCurrentPath, savePendingForPath, cancelPendingUntitledRename, tabsRef, resolvedPath, handleRenameNote, replaceRenamedEntry, loadModifiedFiles])
 
   return { handleFilenameRename, handleTitleSync }
 }
@@ -789,6 +801,7 @@ function useAppSaveHandlers({
     handleRenameNote,
     handleRenameFilename,
     resolvedPath,
+    tabsRef,
     replaceRenamedEntry,
     loadModifiedFiles,
   })

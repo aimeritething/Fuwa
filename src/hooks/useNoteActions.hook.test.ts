@@ -55,6 +55,22 @@ const makeEntry = (overrides: Partial<VaultEntry> = {}): VaultEntry => ({
   ...overrides,
 })
 
+const makeWorkspace = (
+  path: string,
+  alias: string,
+): NonNullable<VaultEntry['workspace']> => ({
+  id: alias,
+  label: alias,
+  alias,
+  path,
+  shortLabel: alias.slice(0, 2).toUpperCase(),
+  color: null,
+  icon: null,
+  mounted: true,
+  available: true,
+  defaultForNewNotes: false,
+})
+
 describe('useNoteActions hook', () => {
   const addEntry = vi.fn()
   const removeEntry = vi.fn()
@@ -631,6 +647,103 @@ describe('useNoteActions hook', () => {
       expect(mockInvoke).toHaveBeenCalledWith('rename_note', expect.objectContaining({
         old_title: null,
       }))
+    })
+
+    it('exposes the workspace move handler from composed note actions', async () => {
+      const sourceWorkspace = makeWorkspace('/test/vault', 'personal')
+      const destinationWorkspace = makeWorkspace('/team/vault', 'team')
+      const entry = makeEntry({
+        path: '/test/vault/project.md',
+        filename: 'project.md',
+        title: 'Project',
+        workspace: sourceWorkspace,
+      })
+      const replaceEntry = vi.fn()
+      const config = makeConfig([entry])
+
+      vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
+        if (cmd === 'move_note_to_workspace') {
+          return { new_path: '/team/vault/project.md', updated_files: 0, failed_updates: 0 }
+        }
+        if (cmd === 'get_note_content') return '# Project\n'
+        return ''
+      })
+
+      const { result } = renderHook(() => useNoteActions(config))
+
+      await act(async () => {
+        await result.current.handleMoveNoteToWorkspace(
+          '/test/vault/project.md',
+          destinationWorkspace,
+          '/test/vault',
+          replaceEntry,
+        )
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('move_note_to_workspace', expect.objectContaining({
+        source_vault_path: '/test/vault',
+        destination_vault_path: '/team/vault',
+        old_path: '/test/vault/project.md',
+      }))
+      expect(replaceEntry).toHaveBeenCalledWith(
+        '/test/vault/project.md',
+        expect.objectContaining({ path: '/team/vault/project.md', workspace: destinationWorkspace }),
+        '# Project\n',
+      )
+    })
+
+    it('routes stale frontmatter saves to a note moved between workspaces', async () => {
+      const sourcePath = '/test/vault/project.md'
+      const destinationPath = '/team/vault/project.md'
+      const sourceWorkspace = makeWorkspace('/test/vault', 'personal')
+      const destinationWorkspace = makeWorkspace('/team/vault', 'team')
+      const entry = makeEntry({
+        path: sourcePath,
+        filename: 'project.md',
+        title: 'Project',
+        workspace: sourceWorkspace,
+      })
+      const replaceEntry = vi.fn()
+      const onPathRenamed = vi.fn()
+      const config = makeConfig([entry])
+      config.onPathRenamed = onPathRenamed
+
+      vi.mocked(mockInvoke).mockImplementation(async (cmd: string) => {
+        if (cmd === 'move_note_to_workspace') {
+          return { new_path: destinationPath, updated_files: 0, failed_updates: 0 }
+        }
+        if (cmd === 'get_note_content') return '# Project\n'
+        if (cmd === 'save_note_content') return undefined
+        return ''
+      })
+
+      const { result } = renderHook(() => useNoteActions(config))
+
+      await act(async () => {
+        await result.current.handleMoveNoteToWorkspace(
+          sourcePath,
+          destinationWorkspace,
+          sourceWorkspace.path,
+          replaceEntry,
+        )
+        await result.current.handleUpdateFrontmatter(sourcePath, 'status', 'Done')
+      })
+
+      const savePaths = vi.mocked(mockInvoke).mock.calls
+        .filter(([cmd]) => cmd === 'save_note_content')
+        .map(([, args]) => args)
+        .filter((args): args is { path: string } => (
+          typeof args === 'object'
+          && args !== null
+          && 'path' in args
+          && typeof args.path === 'string'
+        ))
+        .map((args) => args.path)
+
+      expect(onPathRenamed).toHaveBeenCalledWith(sourcePath, destinationPath)
+      expect(savePaths).toContain(destinationPath)
+      expect(savePaths).not.toContain(sourcePath)
+      expect(updateEntry).toHaveBeenCalledWith(destinationPath, expect.objectContaining({ status: 'Done' }))
     })
 
     it('handleUpdateFrontmatter triggers rename when title key is changed', async () => {

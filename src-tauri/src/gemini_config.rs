@@ -8,7 +8,12 @@ pub(crate) fn build_command(
     request: &AgentStreamRequest,
     settings_dir: &Path,
 ) -> Result<std::process::Command, String> {
-    let settings_path = write_settings(settings_dir, &request.vault_path, request.permission_mode)?;
+    let settings_path = write_settings(
+        settings_dir,
+        &request.vault_path,
+        &request.vault_paths,
+        request.permission_mode,
+    )?;
     let target = crate::cli_agent_runtime::command_target_avoiding_windows_cmd_shim(binary)?;
     let mut command = crate::hidden_command(&target.program);
     crate::cli_agent_runtime::configure_agent_command_environment(&mut command, binary);
@@ -52,12 +57,13 @@ fn build_prompt(request: &AgentStreamRequest) -> String {
 fn write_settings(
     settings_dir: &Path,
     vault_path: &str,
+    vault_paths: &[String],
     permission_mode: AiAgentPermissionMode,
 ) -> Result<PathBuf, String> {
     std::fs::create_dir_all(settings_dir)
         .map_err(|error| format!("Failed to create Gemini settings directory: {error}"))?;
     let settings_path = settings_dir.join("settings.json");
-    let settings = build_settings(vault_path, permission_mode)?;
+    let settings = build_settings(vault_path, vault_paths, permission_mode)?;
     std::fs::write(&settings_path, settings)
         .map_err(|error| format!("Failed to write Gemini settings: {error}"))?;
     Ok(settings_path)
@@ -65,9 +71,11 @@ fn write_settings(
 
 fn build_settings(
     vault_path: &str,
+    vault_paths: &[String],
     permission_mode: AiAgentPermissionMode,
 ) -> Result<String, String> {
     let mcp_server_path = crate::cli_agent_runtime::mcp_server_path_string()?;
+    let vault_paths = crate::cli_agent_runtime::active_vault_paths_json(vault_path, vault_paths);
     let mut settings = serde_json::json!({
         "mcpServers": {
             "tolaria": {
@@ -75,6 +83,7 @@ fn build_settings(
                 "args": [mcp_server_path],
                 "env": {
                     "VAULT_PATH": vault_path,
+                    "VAULT_PATHS": vault_paths,
                     "WS_UI_PORT": "9711"
                 },
                 "description": "Tolaria active vault MCP server",
@@ -103,6 +112,7 @@ mod tests {
             message: "Rename the note".into(),
             system_prompt: None,
             vault_path: "/tmp/vault".into(),
+            vault_paths: Vec::new(),
             permission_mode: AiAgentPermissionMode::Safe,
         }
     }
@@ -194,7 +204,7 @@ mod tests {
 
     #[test]
     fn safe_settings_include_tolaria_mcp_and_exclude_shell() {
-        let settings = build_settings("/tmp/vault", AiAgentPermissionMode::Safe).unwrap();
+        let settings = build_settings("/tmp/vault", &[], AiAgentPermissionMode::Safe).unwrap();
         let json: serde_json::Value = serde_json::from_str(&settings).unwrap();
 
         assert_eq!(json["mcpServers"]["tolaria"]["command"], "node");
@@ -213,7 +223,7 @@ mod tests {
 
     #[test]
     fn power_user_settings_trust_tolaria_and_allow_shell_discovery() {
-        let settings = build_settings("/tmp/vault", AiAgentPermissionMode::PowerUser).unwrap();
+        let settings = build_settings("/tmp/vault", &[], AiAgentPermissionMode::PowerUser).unwrap();
         let json: serde_json::Value = serde_json::from_str(&settings).unwrap();
 
         assert_eq!(json["mcpServers"]["tolaria"]["trust"], true);

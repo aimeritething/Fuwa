@@ -938,6 +938,10 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
+    // The full jsdom suite is heavy enough that unconstrained worker fan-out can
+    // starve UI tests on local dev machines. Keep the default hook path stable,
+    // while still allowing CI or one-off runs to opt into a different cap.
+    maxWorkers: process.env.VITEST_MAX_WORKERS ?? 4,
     testTimeout: 10_000,
     coverage: {
       provider: 'v8',

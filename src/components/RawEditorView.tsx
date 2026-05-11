@@ -27,6 +27,7 @@ export interface RawEditorViewProps {
   content: string
   path: string
   entries: VaultEntry[]
+  sourceEntry?: VaultEntry
   onContentChange: (path: string, content: string) => void
   vaultPath?: string
   onSave: () => void
@@ -200,12 +201,14 @@ function getRawEditorAutocompleteDirection(key: string): RawEditorAutocompleteDi
 function buildNextRawEditorAutocomplete({
   baseItems,
   insertWikilinkRef,
+  sourceEntry,
   typeEntryMap,
   vaultPath,
   view,
 }: {
   baseItems: ReturnType<typeof buildRawEditorBaseItems>
   insertWikilinkRef: React.MutableRefObject<(target: string) => void>
+  sourceEntry?: VaultEntry
   typeEntryMap: RawEditorTypeEntryMap
   vaultPath?: string
   view: EditorView
@@ -221,6 +224,7 @@ function buildNextRawEditorAutocomplete({
     query,
     typeEntryMap,
     onInsertTarget: (target: string) => insertWikilinkRef.current(target),
+    sourceEntry,
     vaultPath: vaultPath ?? '',
   })
 }
@@ -258,8 +262,9 @@ function useRawEditorAutocompleteKeyboard(
 
 function useRawEditorAutocompleteController({
   entries,
+  sourceEntry,
   vaultPath,
-}: Pick<RawEditorViewProps, 'entries' | 'vaultPath'>) {
+}: Pick<RawEditorViewProps, 'entries' | 'sourceEntry' | 'vaultPath'>) {
   const [autocomplete, setAutocomplete] = useState<RawEditorAutocompleteState | null>(null)
   const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
   const baseItems = useMemo(() => buildRawEditorBaseItems(entries), [entries])
@@ -269,11 +274,12 @@ function useRawEditorAutocompleteController({
     setAutocomplete(buildNextRawEditorAutocomplete({
       baseItems,
       insertWikilinkRef,
+      sourceEntry,
       typeEntryMap,
       vaultPath,
       view,
     }))
-  }, [baseItems, typeEntryMap, vaultPath])
+  }, [baseItems, sourceEntry, typeEntryMap, vaultPath])
 
   const handleItemHover = useCallback((index: number) => {
     setAutocomplete(prev => prev ? { ...prev, selectedIndex: index } : null)
@@ -386,7 +392,7 @@ function useRawEditorPlainTextPasteTarget({
   }, [])
 }
 
-export function RawEditorView({ content, path, entries, onContentChange, onSave, latestContentRef, vaultPath, locale = 'en', findRequest }: RawEditorViewProps) {
+export function RawEditorView({ content, path, entries, sourceEntry, onContentChange, onSave, latestContentRef, vaultPath, locale = 'en', findRequest }: RawEditorViewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [rawDoc, setRawDoc] = useState(content)
   const [findOpen, setFindOpen] = useState(false)
@@ -400,7 +406,7 @@ export function RawEditorView({ content, path, entries, onContentChange, onSave,
     handleItemHover,
     insertWikilinkRef,
     setAutocomplete,
-  } = useRawEditorAutocompleteController({ entries, vaultPath })
+  } = useRawEditorAutocompleteController({ entries, sourceEntry, vaultPath })
   const handleDocChange = useCallback((doc: string) => {
     setRawDoc(doc)
     pendingChanges.handleDocChange(doc)

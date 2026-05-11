@@ -16,6 +16,7 @@ interface AgentSystemPromptOptions {
   agentDocsPath?: string
   permissionMode?: AiAgentPermissionMode
   agent?: AiAgentId
+  vaultPaths?: string[]
 }
 
 function normalizePromptOptions(
@@ -51,10 +52,23 @@ ${agentDocsPath}
 Start with ${agentDocsPath}/index.md, then use ripgrep over that folder for specific concepts. Prefer bundled docs over guesses for Tolaria behavior.`
 }
 
+function vaultScopeInstructions(vaultPaths?: string[]): string {
+  const roots = (vaultPaths ?? []).map((path) => path.trim()).filter(Boolean)
+  if (roots.length <= 1) {
+    return `You can edit markdown files in the active vault. Keep file operations scoped to that vault unless the user explicitly gives another path.`
+  }
+
+  return [
+    `Multiple Tolaria vaults are active. You can read and edit markdown files in these vault roots:`,
+    roots.map((path) => `- ${path}`).join('\n'),
+    `When using Tolaria MCP tools, pass the target vault path when a relative note path could be ambiguous.`,
+  ].join('\n')
+}
+
 const AGENT_SYSTEM_PREAMBLE = `You are working inside Tolaria, a local-first Markdown knowledge base.
 
 Notes are Markdown files with YAML frontmatter. Organization is primarily expressed through H1 titles, types, properties, wikilinks, and relationships, not folder structure.
-You can edit markdown files in the active vault. Prefer file edit tools for note changes.
+Prefer file edit tools for note changes.
 Use the provided MCP tools for: full-text search (search_notes), vault orientation (get_vault_context), parsed note reading (get_note), and opening notes in the UI (open_note).
 
 When you create or edit a note, call open_note(path) so the user sees it in Tolaria.
@@ -62,9 +76,10 @@ When you mention or reference a note by name, always use [[Note Title]] wikilink
 Be concise and helpful. When you've completed a task, briefly summarize what you did.`
 
 export function buildAgentSystemPrompt(options?: string | AgentSystemPromptOptions): string {
-  const { vaultContext, agentDocsPath, permissionMode, agent } = normalizePromptOptions(options)
+  const { vaultContext, agentDocsPath, permissionMode, agent, vaultPaths } = normalizePromptOptions(options)
   const prompt = [
     AGENT_SYSTEM_PREAMBLE,
+    vaultScopeInstructions(vaultPaths),
     agentDocsInstructions(agentDocsPath),
     permissionModeInstructions(permissionMode, agent),
   ].join('\n\n')

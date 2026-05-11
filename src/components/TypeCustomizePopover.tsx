@@ -1,12 +1,12 @@
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
 import { MagnifyingGlass } from '@phosphor-icons/react'
 import { ICON_OPTIONS, type IconEntry } from '../utils/iconRegistry'
-import { ACCENT_COLORS } from '../utils/typeColors'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { translate, type AppLocale } from '../lib/i18n'
+import { AccentColorPicker } from './AccentColorPicker'
 
 function filterIcons(icons: IconEntry[], query: string): IconEntry[] {
   if (!query) return icons
@@ -51,17 +51,6 @@ interface TemplateSectionProps {
 
 const ICON_PICKER_ICON_SIZE = 18
 const ICON_PICKER_ICON_CLASS_NAME = 'size-[18px]'
-const COLOR_PICKER_ACCENT_COLORS = [
-  'red',
-  'orange',
-  'yellow',
-  'green',
-  'blue',
-  'purple',
-  'pink',
-  'gray',
-].map((key) => ACCENT_COLORS.find((color) => color.key === key) ?? null)
-  .filter((color): color is typeof ACCENT_COLORS[number] => color !== null)
 
 /** Debounce a callback by `delay` ms. Returns a stable ref-based wrapper. */
 function useDebouncedCallback(fn: (v: string) => void, delay: number): (v: string) => void {
@@ -81,29 +70,12 @@ function ColorSection({ selectedColor, locale, onSelectColor }: ColorSectionProp
   return (
     <>
       <div className="font-mono-overline mb-2 text-muted-foreground">{translate(locale, 'customize.color')}</div>
-      <div className="flex gap-2 mb-3 flex-wrap">
-        {COLOR_PICKER_ACCENT_COLORS.map((color) => (
-          <Button
-            key={color.key}
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            className={cn(
-              'h-6 w-6 rounded-full p-0 transition-transform',
-              selectedColor === color.key ? 'scale-110' : 'hover:scale-105',
-            )}
-            style={{
-              width: 24,
-              height: 24,
-              backgroundColor: color.css,
-              border: selectedColor === color.key ? '2px solid var(--foreground)' : '2px solid transparent',
-            }}
-            onClick={() => onSelectColor(color.key)}
-            title={color.label}
-            aria-label={color.label}
-          />
-        ))}
-      </div>
+      <AccentColorPicker
+        className="mb-3 gap-2"
+        selectedColor={selectedColor}
+        onSelectColor={onSelectColor}
+        size={24}
+      />
     </>
   )
 }

@@ -8,7 +8,7 @@ import { DEFAULT_DATE_DISPLAY_FORMAT, type DateDisplayFormat } from '../utils/da
 import { scrollSelectedHTMLChildIntoView } from '../utils/domScroll'
 import { getTypeIcon } from './NoteItem'
 import { NoteTitleIcon } from './NoteTitleIcon'
-import { workspaceDisplayPrefix } from '../utils/workspaces'
+import { WorkspaceInitialsBadge } from './WorkspaceInitialsBadge'
 
 interface SearchPanelProps {
   open: boolean
@@ -43,11 +43,6 @@ function nextSearchSelectionIndex(
 ): number {
   if (action === 'next') return Math.min(currentIndex + 1, resultCount - 1)
   return Math.max(currentIndex - 1, 0)
-}
-
-function workspaceTitlePrefix(entry: VaultEntry | undefined, showWorkspace: boolean): string | null {
-  if (!entry || !showWorkspace) return null
-  return workspaceDisplayPrefix(entry)
 }
 
 function searchVaultPathsForEntries(entries: VaultEntry[], fallbackVaultPath: string): string | string[] {
@@ -316,8 +311,8 @@ interface SearchResultPresentation {
   noteType: string | null
   subtitle: string | null
   title: string
-  titlePrefix: string | null
   typeColor?: string
+  workspace: VaultEntry['workspace'] | null
 }
 
 function resolveSearchResultPresentation({
@@ -337,8 +332,8 @@ function resolveSearchResultPresentation({
     noteType,
     subtitle: entry ? formatSearchSubtitle(entry, dateDisplayFormat) : null,
     title: entry?.title ?? result.title,
-    titlePrefix: workspaceTitlePrefix(entry, showWorkspace),
     typeColor: noteType ? getTypeColor(isA, typeEntry?.color) : undefined,
+    workspace: showWorkspace ? entry?.workspace ?? null : null,
   }
 }
 
@@ -369,19 +364,19 @@ function SearchResultRow({
           className: 'shrink-0',
           style: { color: presentation.typeColor ?? 'var(--muted-foreground)' },
         })}
-        <SearchResultTitle icon={presentation.icon} prefix={presentation.titlePrefix} title={presentation.title} />
+        <SearchResultTitle icon={presentation.icon} title={presentation.title} />
         <SearchResultTypeLabel noteType={presentation.noteType} />
+        <WorkspaceInitialsBadge workspace={presentation.workspace} testId="search-result-workspace-badge" />
       </div>
       <SearchResultSubtitle subtitle={presentation.subtitle} />
     </div>
   )
 }
 
-function SearchResultTitle({ icon, prefix, title }: { icon?: string | null; prefix: string | null; title: string }) {
+function SearchResultTitle({ icon, title }: { icon?: string | null; title: string }) {
   return (
     <span className="min-w-0 flex-1 truncate text-[13px] font-medium text-foreground">
       <NoteTitleIcon icon={icon} size={14} className="mr-1" />
-      {prefix}
       {title}
     </span>
   )

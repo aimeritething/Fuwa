@@ -1,13 +1,14 @@
 import { Plus } from '@phosphor-icons/react'
 import { useMemo, useCallback, useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import type { VaultEntry } from '../types'
+import type { VaultEntry, WorkspaceIdentity } from '../types'
 import type { FrontmatterValue } from './Inspector'
 import type { ParsedFrontmatter } from '../utils/frontmatter'
 import { usePropertyPanelState } from '../hooks/usePropertyPanelState'
 import { getEffectiveDisplayMode, detectPropertyType, DISPLAY_MODE_ICONS } from '../utils/propertyTypes'
 import { SmartPropertyValueCell, DisplayModeSelector } from './PropertyValueCells'
 import { TypeSelector } from './TypeSelector'
+import { WorkspaceSelector } from './WorkspaceSelector'
 import { AddPropertyForm } from './AddPropertyForm'
 import type { PropertyDisplayMode } from '../utils/propertyTypes'
 import { FOCUS_NOTE_ICON_PROPERTY_EVENT } from './noteIconPropertyEvents'
@@ -453,19 +454,72 @@ function SuggestedPropertyRows({
 
 type PropertyPanelState = ReturnType<typeof usePropertyPanelState>
 
+function MetadataSelectors({
+  availableTypes,
+  customColorKey,
+  entry,
+  locale,
+  missingTypeName,
+  onChangeWorkspace,
+  onCreateMissingType,
+  onNavigate,
+  onUpdateProperty,
+  typeColorKeys,
+  typeIconKeys,
+  workspaces,
+}: {
+  availableTypes: string[]
+  customColorKey?: string | null
+  entry: VaultEntry
+  locale: AppLocale
+  missingTypeName?: string | null
+  onChangeWorkspace?: (workspace: WorkspaceIdentity) => void | Promise<void>
+  onCreateMissingType?: (typeName: string) => boolean | void | Promise<boolean | void>
+  onNavigate?: (target: string) => void
+  onUpdateProperty?: (key: string, value: FrontmatterValue) => void
+  typeColorKeys: Record<string, string | null>
+  typeIconKeys: Record<string, string | null>
+  workspaces?: WorkspaceIdentity[]
+}) {
+  return (
+    <>
+      <WorkspaceSelector
+        currentWorkspace={entry.workspace}
+        workspaces={workspaces ?? []}
+        onChangeWorkspace={onChangeWorkspace}
+        locale={locale}
+      />
+      <TypeSelector
+        isA={entry.isA}
+        customColorKey={customColorKey}
+        availableTypes={availableTypes}
+        typeColorKeys={typeColorKeys}
+        typeIconKeys={typeIconKeys}
+        onUpdateProperty={onUpdateProperty}
+        onNavigate={onNavigate}
+        missingTypeName={missingTypeName}
+        onCreateMissingType={onCreateMissingType}
+        locale={locale}
+      />
+    </>
+  )
+}
+
 function DynamicPropertiesPanelContent({
   entry,
-  propertyState,
+  propertyState: PropertyPanelState
   pendingSuggestedKey,
   missingSuggested,
   missingTypeName,
   dateDisplayFormat,
   locale,
+  workspaces,
   onUpdateProperty,
   onDeleteProperty,
   onAddProperty,
   onNavigate,
   onCreateMissingType,
+  onChangeWorkspace,
   onStartPendingSuggestedEdit,
   onSaveSuggestedValue,
   onAddSuggestedProperty,
@@ -477,11 +531,13 @@ function DynamicPropertiesPanelContent({
   missingTypeName: string | null
   dateDisplayFormat: DateDisplayFormat
   locale: AppLocale
+  workspaces?: WorkspaceIdentity[]
   onUpdateProperty?: (key: string, value: FrontmatterValue) => void
   onDeleteProperty?: (key: string) => void
   onAddProperty?: (key: string, value: FrontmatterValue) => void
   onNavigate?: (target: string) => void
   onCreateMissingType?: (typeName: string) => boolean | void | Promise<boolean | void>
+  onChangeWorkspace?: (workspace: WorkspaceIdentity) => void | Promise<void>
   onStartPendingSuggestedEdit: (key: string | null) => void
   onSaveSuggestedValue: (key: string, newValue: string) => void
   onAddSuggestedProperty: (key: string) => void
@@ -495,17 +551,19 @@ function DynamicPropertiesPanelContent({
   return (
     <div className="flex flex-col gap-3">
       <div className="grid min-w-0 gap-x-2 gap-y-1.5" style={PROPERTY_PANEL_GRID_STYLE}>
-        <TypeSelector
-          isA={entry.isA}
-          customColorKey={customColorKey}
+        <MetadataSelectors
           availableTypes={availableTypes}
+          customColorKey={customColorKey}
+          entry={entry}
+          locale={locale}
+          missingTypeName={missingTypeName}
+          onChangeWorkspace={onChangeWorkspace}
+          onCreateMissingType={onCreateMissingType}
+          onNavigate={onNavigate}
+          onUpdateProperty={onUpdateProperty}
           typeColorKeys={typeColorKeys}
           typeIconKeys={typeIconKeys}
-          onUpdateProperty={onUpdateProperty}
-          onNavigate={onNavigate}
-          missingTypeName={missingTypeName}
-          onCreateMissingType={onCreateMissingType}
-          locale={locale}
+          workspaces={workspaces}
         />
         <PropertyEntryRows
           source="frontmatter"
@@ -572,24 +630,29 @@ function DynamicPropertiesPanelContent({
   )
 }
 
-export function DynamicPropertiesPanel({
-  entry, frontmatter, entries,
-  onUpdateProperty, onDeleteProperty, onAddProperty, onNavigate, onCreateMissingType,
-  locale = 'en',
-  dateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
-}: {
+interface DynamicPropertiesPanelProps {
   entry: VaultEntry
   content?: string | null
   frontmatter: ParsedFrontmatter
   entries?: VaultEntry[]
+  workspaces?: WorkspaceIdentity[]
   onUpdateProperty?: (key: string, value: FrontmatterValue) => void
   onDeleteProperty?: (key: string) => void
   onAddProperty?: (key: string, value: FrontmatterValue) => void
   onNavigate?: (target: string) => void
   onCreateMissingType?: (typeName: string) => boolean | void | Promise<boolean | void>
+  onChangeWorkspace?: (workspace: WorkspaceIdentity) => void | Promise<void>
   locale?: AppLocale
   dateDisplayFormat?: DateDisplayFormat
-}) {
+}
+
+export function DynamicPropertiesPanel({
+  entry, frontmatter, entries,
+  onUpdateProperty, onDeleteProperty, onAddProperty, onNavigate, onCreateMissingType,
+  onChangeWorkspace, workspaces,
+  locale = 'en',
+  dateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
+}: DynamicPropertiesPanelProps) {
   const propertyState = usePropertyPanelState({ entries, entryIsA: entry.isA, frontmatter, onUpdateProperty, onDeleteProperty, onAddProperty })
   const [pendingSuggestedKey, setPendingSuggestedKey] = useState<string | null>(null)
   const missingTypeName = useMemo(() => resolveMissingTypeName(entry.isA, propertyState.availableTypes), [entry.isA, propertyState.availableTypes])
@@ -623,11 +686,13 @@ export function DynamicPropertiesPanel({
       missingTypeName={missingTypeName}
       dateDisplayFormat={dateDisplayFormat}
       locale={locale}
+      workspaces={workspaces}
       onUpdateProperty={onUpdateProperty}
       onDeleteProperty={onDeleteProperty}
       onAddProperty={onAddProperty}
       onNavigate={onNavigate}
       onCreateMissingType={onCreateMissingType}
+      onChangeWorkspace={onChangeWorkspace}
       onStartPendingSuggestedEdit={handlePendingSuggestedEdit}
       onSaveSuggestedValue={handleSaveSuggestedValue}
       onAddSuggestedProperty={handleSuggestedAdd}

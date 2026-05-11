@@ -93,6 +93,11 @@ function targetEntry(target: string | VaultEntry): VaultEntry | null {
   return typeof target === 'string' ? null : target
 }
 
+function targetVaultPath(target: string | VaultEntry): string | undefined {
+  const entry = targetEntry(target)
+  return entry ? workspacePathForEntry(entry) : undefined
+}
+
 function targetIdentity(target: string | VaultEntry): NoteContentIdentity | null {
   const entry = targetEntry(target)
   return entry ? noteContentIdentity(entry) : null
@@ -170,7 +175,12 @@ function getValidateNoteContentCommandPayload(path: string, content: string, vau
   return { ...getNoteContentCommandPayload(path, vaultPath), content }
 }
 
-function shouldReuseExistingRequest(existing: NoteContentCacheEntry, identity: NoteContentIdentity | null): boolean {
+function shouldReuseExistingRequest(
+  existing: NoteContentCacheEntry,
+  identity: NoteContentIdentity | null,
+  vaultPath?: string,
+): boolean {
+  if (existing.vaultPath !== vaultPath) return false
   if (!isCompleteIdentity(identity) || !isCompleteIdentity(existing.identity)) return true
   return sameIdentity(existing.identity, identity)
 }
@@ -184,7 +194,7 @@ function markRequestSettled(entry: NoteContentCacheEntry, state: Extract<NoteCon
 function createNoteContentRequest(target: string | VaultEntry): NoteContentCacheEntry {
   const path = targetPath(target)
   const sourceEntry = targetEntry(target)
-  const vaultPath = sourceEntry ? workspacePathForEntry(sourceEntry) : undefined
+  const vaultPath = targetVaultPath(target)
   const identity = targetIdentity(target)
   const cacheEntry: NoteContentCacheEntry = {
     path,
@@ -277,8 +287,9 @@ function requestNoteContent(target: string | VaultEntry, mode: NoteContentReques
 export function prefetchNoteContent(target: string | VaultEntry): void {
   const path = targetPath(target)
   const identity = targetIdentity(target)
+  const vaultPath = targetVaultPath(target)
   const existing = prefetchCache.get(path)
-  if (existing && shouldReuseExistingRequest(existing, identity)) return
+  if (existing && shouldReuseExistingRequest(existing, identity, vaultPath)) return
 
   void requestNoteContent(target, 'prefetch').promise.catch((error) => {
     if (isCanceledNoteContentRequest(error) || isNoActiveVaultSelectedError(error) || isUnreadableNoteContentError(error)) return
@@ -325,13 +336,18 @@ async function validateCachedNoteContent(entry: NoteContentCacheEntry): Promise<
     : mockInvoke<boolean>('validate_note_content', payload)
 }
 
+function matchesCachedContentVault(entry: VaultEntry, cachedEntry: NoteContentCacheEntry): boolean {
+  return cachedEntry.vaultPath === targetVaultPath(entry)
+}
+
 function canTrustCachedContentIdentity(entry: VaultEntry, cachedEntry: NoteContentCacheEntry): boolean {
-  return sameIdentity(noteContentIdentity(entry), cachedEntry.identity)
+  return matchesCachedContentVault(entry, cachedEntry)
+    && sameIdentity(noteContentIdentity(entry), cachedEntry.identity)
 }
 
 function canUseExistingContentRequest(target: VaultEntry, existing: NoteContentCacheEntry | undefined, forceFresh: boolean): existing is NoteContentCacheEntry {
   if (forceFresh || !existing) return false
-  return shouldReuseExistingRequest(existing, noteContentIdentity(target))
+  return shouldReuseExistingRequest(existing, noteContentIdentity(target), targetVaultPath(target))
 }
 
 async function loadNoteContent(target: VaultEntry, forceFresh = false): Promise<string> {
@@ -345,6 +361,10 @@ async function loadNoteContent(target: VaultEntry, forceFresh = false): Promise<
 
 async function loadCachedContentIfFresh(entry: VaultEntry, cachedEntry: NoteContentCacheEntry): Promise<string | null> {
   if (cachedEntry.value === null) return null
+  if (!matchesCachedContentVault(entry, cachedEntry)) {
+    prefetchCache.delete(entry.path)
+    return null
+  }
   if (canTrustCachedContentIdentity(entry, cachedEntry)) {
     rememberNoteContent(cachedEntry)
     return cachedEntry.value

@@ -287,6 +287,57 @@ describe('SearchPanel', () => {
     })
   })
 
+  it('shows workspace initials at the far right instead of prefixing result titles', async () => {
+    const personalWorkspace = {
+      id: 'personal',
+      label: 'Personal',
+      alias: 'personal',
+      path: '/personal',
+      shortLabel: 'PE',
+      color: 'blue',
+      icon: null,
+      mounted: true,
+      available: true,
+      defaultForNewNotes: true,
+    }
+    const teamWorkspace = {
+      id: 'team',
+      label: 'Team',
+      alias: 'team',
+      path: '/team',
+      shortLabel: 'TE',
+      color: 'green',
+      icon: null,
+      mounted: true,
+      available: true,
+      defaultForNewNotes: false,
+    }
+    const workspaceEntries = [
+      { ...MOCK_ENTRIES[0], path: '/team/essay/ai-apis.md', workspace: teamWorkspace },
+      { ...MOCK_ENTRIES[1], path: '/personal/event/retreat.md', workspace: personalWorkspace },
+    ]
+    mockInvokeFn.mockResolvedValue({
+      results: [
+        { title: 'How to Design AI-first APIs', path: '/team/essay/ai-apis.md', snippet: 'Content', score: 0.9, note_type: null },
+      ],
+      elapsed_ms: 20,
+    })
+
+    render(
+      <SearchPanel open={true} vaultPath="/personal" entries={workspaceEntries} onSelectNote={vi.fn()} onClose={vi.fn()} />,
+    )
+
+    fireEvent.change(screen.getByPlaceholderText('Search in all notes...'), { target: { value: 'api' } })
+
+    await waitFor(() => {
+      expect(screen.getByText('How to Design AI-first APIs')).toBeInTheDocument()
+    })
+    expect(screen.queryByText(/Team \//)).not.toBeInTheDocument()
+    const workspaceBadge = screen.getByTestId('search-result-workspace-badge')
+    expect(workspaceBadge).toHaveTextContent('TE')
+    expect(screen.getByText('Essay').compareDocumentPosition(workspaceBadge) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('shows metadata subtitle with word count and links', async () => {
     mockInvokeFn.mockResolvedValue({
       results: [
