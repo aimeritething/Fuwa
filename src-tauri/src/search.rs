@@ -129,12 +129,13 @@ pub fn search_vault(
     })
 }
 
-fn is_markdown_search_candidate(path: &Path) -> bool {
+fn is_markdown_search_candidate(vault_dir: &Path, path: &Path) -> bool {
     if !path.extension().is_some_and(|ext| ext == "md") {
         return false;
     }
 
-    !path
+    let vault_relative_path = path.strip_prefix(vault_dir).unwrap_or(path);
+    !vault_relative_path
         .components()
         .any(|component| component.as_os_str().to_string_lossy().starts_with('.'))
 }
@@ -144,7 +145,7 @@ fn collect_markdown_paths(vault_dir: &Path, hide_gitignored_files: bool) -> Vec<
         .into_iter()
         .filter_map(|entry| entry.ok())
         .map(|entry| entry.into_path())
-        .filter(|path| is_markdown_search_candidate(path))
+        .filter(|path| is_markdown_search_candidate(vault_dir, path))
         .collect::<Vec<_>>();
 
     crate::vault::filter_gitignored_paths(vault_dir, paths, hide_gitignored_files)

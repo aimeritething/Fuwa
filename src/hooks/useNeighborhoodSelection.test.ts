@@ -53,6 +53,24 @@ const inboxSelection: SidebarSelection = { kind: 'filter', filter: 'inbox' }
 const alphaSelection: SidebarSelection = { kind: 'entity', entry: buildEntry('/vault/alpha.md', 'Alpha') }
 const betaSelection: SidebarSelection = { kind: 'entity', entry: buildEntry('/vault/beta.md', 'Beta') }
 
+function renderNeighborhoodEntry(
+  currentSelection: SidebarSelection,
+  history: SidebarSelection[],
+) {
+  const selectionRef = ref(currentSelection)
+  const historyRef = ref<SidebarSelection[]>(history)
+  const setSelection = vi.fn((selection: SidebarSelection) => {
+    selectionRef.current = selection
+  })
+  const hook = renderHook(() => useNeighborhoodEntry({
+    neighborhoodHistoryRef: historyRef,
+    selectionRef,
+    setSelection,
+  }))
+
+  return { historyRef, hook, setSelection }
+}
+
 describe('useNeighborhoodEntry', () => {
   beforeEach(() => {
     vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
@@ -67,36 +85,29 @@ describe('useNeighborhoodEntry', () => {
     document.body.innerHTML = ''
   })
 
-  it('toggles the repeated active neighborhood action back to all notes', () => {
-    const selectionRef = ref(alphaSelection)
-    const historyRef = ref<SidebarSelection[]>([inboxSelection])
-    const setSelection = vi.fn((selection: SidebarSelection) => {
-      selectionRef.current = selection
-    })
-    const { result } = renderHook(() => useNeighborhoodEntry({
-      neighborhoodHistoryRef: historyRef,
-      selectionRef,
-      setSelection,
-    }))
+  it('toggles the repeated active neighborhood action back to the previous list', () => {
+    const { historyRef, hook, setSelection } = renderNeighborhoodEntry(alphaSelection, [inboxSelection])
 
-    act(() => result.current(alphaSelection.entry))
+    act(() => hook.result.current(alphaSelection.entry))
 
-    expect(setSelection).toHaveBeenCalledWith({ kind: 'filter', filter: 'all' })
-    expect(historyRef.current).toEqual([inboxSelection])
+    expect(setSelection).toHaveBeenCalledWith(inboxSelection, { preserveNeighborhoodHistory: true })
+    expect(historyRef.current).toEqual([])
     expect(document.activeElement).toBe(document.querySelector('[data-testid="note-list-container"]'))
   })
 
-  it('switches between neighborhoods without collapsing to all notes', () => {
-    const selectionRef = ref(alphaSelection)
-    const historyRef = ref<SidebarSelection[]>([inboxSelection])
-    const setSelection = vi.fn()
-    const { result } = renderHook(() => useNeighborhoodEntry({
-      neighborhoodHistoryRef: historyRef,
-      selectionRef,
-      setSelection,
-    }))
+  it('uses the same stacked history as Escape when toggling the active neighborhood off', () => {
+    const { historyRef, hook, setSelection } = renderNeighborhoodEntry(betaSelection, [inboxSelection, alphaSelection])
 
-    act(() => result.current(betaSelection.entry))
+    act(() => hook.result.current(betaSelection.entry))
+
+    expect(setSelection).toHaveBeenCalledWith(alphaSelection, { preserveNeighborhoodHistory: true })
+    expect(historyRef.current).toEqual([inboxSelection])
+  })
+
+  it('switches between neighborhoods without collapsing to all notes', () => {
+    const { historyRef, hook, setSelection } = renderNeighborhoodEntry(alphaSelection, [inboxSelection])
+
+    act(() => hook.result.current(betaSelection.entry))
 
     expect(setSelection).toHaveBeenCalledWith(betaSelection, { preserveNeighborhoodHistory: true })
     expect(historyRef.current).toEqual([inboxSelection, alphaSelection])

@@ -63,7 +63,9 @@ export function useNeighborhoodEntry({
     trackEvent('neighborhood_mode_toggled', { action: nextSelection.action })
 
     if (nextSelection.action === 'exit') {
-      setSelection(nextSelection.selection)
+      const { previousSelection, nextHistory } = popNeighborhoodHistory(neighborhoodHistoryRef.current)
+      neighborhoodHistoryRef.current = nextHistory
+      setSelection(previousSelection ?? nextSelection.selection, previousSelection ? { preserveNeighborhoodHistory: true } : undefined)
       focusNoteListOnNextFrame()
       return
     }
