@@ -1,7 +1,7 @@
 use crate::ai_agents::{AiAgentPermissionMode, AiAgentStreamEvent};
 use serde::Deserialize;
 use std::ffi::OsString;
-use std::io::BufRead;
+use std::io::{BufRead, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, ExitStatus};
 
@@ -22,6 +22,27 @@ pub(crate) struct JsonLineRun {
 pub(crate) struct AgentCommandTarget {
     pub program: PathBuf,
     pub first_arg: Option<PathBuf>,
+}
+
+pub(crate) struct JsonLineProcess<'a> {
+    command: Command,
+    process_name: &'static str,
+    stdin_input: Option<&'a str>,
+}
+
+impl<'a> JsonLineProcess<'a> {
+    pub(crate) fn new(command: Command, process_name: &'static str) -> Self {
+        Self {
+            command,
+            process_name,
+            stdin_input: None,
+        }
+    }
+
+    pub(crate) fn with_stdin(mut self, stdin_input: Option<&'a str>) -> Self {
+        self.stdin_input = stdin_input;
+        self
+    }
 }
 
 pub(crate) fn build_prompt(message: &str, system_prompt: Option<&str>) -> String {
@@ -266,8 +287,26 @@ where
 }
 
 pub(crate) fn run_json_line_process<Event, F, H>(
-    mut command: Command,
+    command: Command,
     process_name: &'static str,
+    emit: &mut F,
+    error_event: impl Fn(String) -> Event,
+    handle_json: H,
+) -> Result<JsonLineRun, String>
+where
+    F: FnMut(Event),
+    H: FnMut(&serde_json::Value, &mut F, &mut String),
+{
+    run_json_line_process_with_stdin(
+        JsonLineProcess::new(command, process_name),
+        emit,
+        error_event,
+        handle_json,
+    )
+}
+
+pub(crate) fn run_json_line_process_with_stdin<Event, F, H>(
+    mut process: JsonLineProcess<'_>,
     emit: &mut F,
     error_event: impl Fn(String) -> Event,
     mut handle_json: H,
@@ -276,9 +315,16 @@ where
     F: FnMut(Event),
     H: FnMut(&serde_json::Value, &mut F, &mut String),
 {
-    let mut child = command
+    if process.stdin_input.is_some() {
+        process.command.stdin(std::process::Stdio::piped());
+    }
+
+    let mut child = process
+        .command
         .spawn()
-        .map_err(|error| format_spawn_error(process_name, &error))?;
+        .map_err(|error| format_spawn_error(process.process_name, &error))?;
+    let stdin_write_error =
+        write_stdin_input(&mut child, process.process_name, process.stdin_input);
     let stdout = child.stdout.take().ok_or("No stdout handle")?;
     let reader = std::io::BufReader::new(stdout);
     let mut session_id = String::new();
@@ -302,12 +348,43 @@ where
     let status = child
         .wait()
         .map_err(|error| format!("Wait failed: {error}"))?;
+    let stderr_output = with_stdin_write_error(stderr_output, stdin_write_error);
 
     Ok(JsonLineRun {
         session_id,
         stderr_output,
         status,
     })
+}
+
+fn write_stdin_input(
+    child: &mut std::process::Child,
+    process_name: &str,
+    stdin_input: Option<&str>,
+) -> Option<String> {
+    let input = stdin_input?;
+    let Some(mut stdin) = child.stdin.take() else {
+        return Some(format!(
+            "Failed to write {process_name} stdin: no stdin handle"
+        ));
+    };
+
+    stdin
+        .write_all(input.as_bytes())
+        .err()
+        .map(|error| format!("Failed to write {process_name} stdin: {error}"))
+}
+
+fn with_stdin_write_error(mut stderr_output: String, stdin_write_error: Option<String>) -> String {
+    let Some(error) = stdin_write_error else {
+        return stderr_output;
+    };
+
+    if !stderr_output.is_empty() {
+        stderr_output.push('\n');
+    }
+    stderr_output.push_str(&error);
+    stderr_output
 }
 
 fn format_spawn_error(process_name: &str, error: &std::io::Error) -> String {

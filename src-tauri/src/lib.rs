@@ -2,6 +2,7 @@ pub mod ai_agents;
 pub mod ai_models;
 pub mod app_updater;
 pub mod claude_cli;
+mod claude_invocation;
 mod cli_agent_runtime;
 pub mod codex_cli;
 mod commands;
