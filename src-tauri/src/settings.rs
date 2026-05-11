@@ -9,6 +9,7 @@ const LEGACY_APP_CONFIG_DIR: &str = "com.laputa.app";
 const SUPPORTED_DEFAULT_AI_AGENTS: &[&str] = &["claude_code", "codex", "opencode", "pi", "gemini"];
 pub const DEFAULT_HIDE_GITIGNORED_FILES: bool = true;
 const SUPPORTED_NOTE_WIDTH_MODES: &[&str] = &["normal", "wide"];
+const SUPPORTED_DATE_DISPLAY_FORMATS: &[&str] = &["us", "european", "friendly", "iso"];
 const SUPPORTED_UI_LANGUAGE_ALIASES: &[(&str, &str)] = &[
     ("en", "en"),
     ("en-us", "en"),
@@ -77,6 +78,7 @@ pub struct Settings {
     pub release_channel: Option<String>,
     pub theme_mode: Option<String>,
     pub ui_language: Option<String>,
+    pub date_display_format: Option<String>,
     pub note_width_mode: Option<String>,
     pub sidebar_type_pluralization_enabled: Option<bool>,
     pub initial_h1_auto_rename_enabled: Option<bool>,
@@ -135,6 +137,13 @@ pub fn normalize_note_width_mode(value: Option<&str>) -> Option<String> {
     }
 }
 
+pub fn normalize_date_display_format(value: Option<&str>) -> Option<String> {
+    match value.map(|candidate| candidate.trim().to_ascii_lowercase()) {
+        Some(format) if SUPPORTED_DATE_DISPLAY_FORMATS.contains(&format.as_str()) => Some(format),
+        _ => None,
+    }
+}
+
 pub fn should_hide_gitignored_files(settings: &Settings) -> bool {
     settings
         .hide_gitignored_files
@@ -181,6 +190,7 @@ fn normalize_settings(settings: Settings) -> Settings {
         release_channel: normalize_release_channel(settings.release_channel.as_deref()),
         theme_mode: normalize_theme_mode(settings.theme_mode.as_deref()),
         ui_language: normalize_ui_language(settings.ui_language.as_deref()),
+        date_display_format: normalize_date_display_format(settings.date_display_format.as_deref()),
         note_width_mode: normalize_note_width_mode(settings.note_width_mode.as_deref()),
         sidebar_type_pluralization_enabled: settings.sidebar_type_pluralization_enabled,
         initial_h1_auto_rename_enabled: settings.initial_h1_auto_rename_enabled,
@@ -331,6 +341,7 @@ mod tests {
             release_channel: Some("alpha".to_string()),
             theme_mode: Some("dark".to_string()),
             ui_language: Some("zh-Hans".to_string()),
+            date_display_format: Some("iso".to_string()),
             note_width_mode: Some("wide".to_string()),
             sidebar_type_pluralization_enabled: Some(false),
             initial_h1_auto_rename_enabled: Some(false),
@@ -366,6 +377,7 @@ mod tests {
             release_channel: Some("alpha".to_string()),
             theme_mode: Some("dark".to_string()),
             ui_language: Some("zh-Hans".to_string()),
+            date_display_format: Some("european".to_string()),
             note_width_mode: Some("wide".to_string()),
             sidebar_type_pluralization_enabled: Some(false),
             initial_h1_auto_rename_enabled: Some(false),
@@ -384,6 +396,7 @@ mod tests {
         assert_eq!(loaded.release_channel.as_deref(), Some("alpha"));
         assert_eq!(loaded.theme_mode.as_deref(), Some("dark"));
         assert_eq!(loaded.ui_language.as_deref(), Some("zh-CN"));
+        assert_eq!(loaded.date_display_format.as_deref(), Some("european"));
         assert_eq!(loaded.note_width_mode.as_deref(), Some("wide"));
         assert_eq!(loaded.sidebar_type_pluralization_enabled, Some(false));
         assert_eq!(loaded.initial_h1_auto_rename_enabled, Some(false));
@@ -414,6 +427,7 @@ mod tests {
             release_channel: Some("  alpha  ".to_string()),
             theme_mode: Some("  dark  ".to_string()),
             ui_language: Some("  zh-cn  ".to_string()),
+            date_display_format: Some("  ISO  ".to_string()),
             note_width_mode: Some("  WIDE  ".to_string()),
             default_ai_agent: Some("  codex  ".to_string()),
             ..Default::default()
@@ -422,6 +436,7 @@ mod tests {
         assert_eq!(loaded.release_channel.as_deref(), Some("alpha"));
         assert_eq!(loaded.theme_mode.as_deref(), Some("dark"));
         assert_eq!(loaded.ui_language.as_deref(), Some("zh-CN"));
+        assert_eq!(loaded.date_display_format.as_deref(), Some("iso"));
         assert_eq!(loaded.note_width_mode.as_deref(), Some("wide"));
         assert_eq!(loaded.default_ai_agent.as_deref(), Some("codex"));
     }
@@ -516,6 +531,15 @@ mod tests {
             ..Default::default()
         });
         assert!(loaded.note_width_mode.is_none());
+    }
+
+    #[test]
+    fn test_invalid_date_display_format_is_filtered() {
+        let loaded = save_and_reload(Settings {
+            date_display_format: Some("relative".to_string()),
+            ..Default::default()
+        });
+        assert!(loaded.date_display_format.is_none());
     }
 
     #[test]

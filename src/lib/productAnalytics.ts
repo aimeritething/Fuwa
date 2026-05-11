@@ -2,6 +2,7 @@ import type { AiAgentId } from './aiAgents'
 import type { AiAgentPermissionMode } from './aiAgentPermissionMode'
 import { trackEvent } from './telemetry'
 import type { AllNotesFileVisibility } from '../utils/allNotesFileVisibility'
+import type { DateDisplayFormat } from '../utils/dateDisplay'
 import type { FilePreviewKind } from '../utils/filePreview'
 import type { NoteWidthMode } from '../types'
 import type { ThemeMode } from './themeMode'
@@ -58,6 +59,10 @@ export function trackAllNotesVisibilityChanged(
 
 export function trackDefaultNoteWidthChanged(mode: NoteWidthMode): void {
   trackEvent('note_width_default_changed', { mode })
+}
+
+export function trackDateDisplayFormatChanged(format: DateDisplayFormat): void {
+  trackEvent('date_display_format_changed', { format })
 }
 
 export function trackSidebarTypePluralizationChanged(enabled: boolean): void {

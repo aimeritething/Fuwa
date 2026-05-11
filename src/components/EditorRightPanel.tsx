@@ -5,6 +5,7 @@ import type { AiTarget } from '../lib/aiTargets'
 import type { AppLocale } from '../lib/i18n'
 import type { VaultEntry, GitCommit } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
+import type { DateDisplayFormat } from '../utils/dateDisplay'
 import { Inspector, type FrontmatterValue } from './Inspector'
 import type { FrontmatterOpOptions } from '../hooks/frontmatterOps'
 import { AiPanelView } from './AiPanel'
@@ -47,6 +48,7 @@ interface EditorRightPanelProps {
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
   locale?: AppLocale
+  dateDisplayFormat?: DateDisplayFormat
 }
 
 export function EditorRightPanel({
@@ -60,6 +62,7 @@ export function EditorRightPanel({
   onUpdateFrontmatter, onDeleteProperty, onAddProperty, onCreateMissingType, onCreateAndOpenNote, onInitializeProperties, onToggleRawEditor, onOpenNote,
   onFileCreated, onFileModified, onVaultChanged,
   locale,
+  dateDisplayFormat,
 }: EditorRightPanelProps) {
   const aiPanelController = useAiPanelController({
     vaultPath,
@@ -113,6 +116,7 @@ export function EditorRightPanel({
           onInitializeProperties={onInitializeProperties}
           onToggleRawEditor={onToggleRawEditor}
           locale={locale}
+          dateDisplayFormat={dateDisplayFormat}
         />
       </div>
     )
@@ -128,6 +132,7 @@ export function EditorRightPanel({
           editor={editor}
           entry={inspectorEntry}
           locale={locale}
+          dateDisplayFormat={dateDisplayFormat}
           onClose={() => onToggleTableOfContents?.()}
           sourceContent={inspectorContent}
         />

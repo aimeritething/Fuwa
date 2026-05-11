@@ -1,6 +1,7 @@
 import type { ComponentType, CSSProperties, SVGAttributes } from 'react'
 import type { VaultEntry } from '../../types'
-import { detectPropertyType } from '../../utils/propertyTypes'
+import { DEFAULT_DATE_DISPLAY_FORMAT, type DateDisplayFormat } from '../../utils/dateDisplay'
+import { detectPropertyType, formatDateValue } from '../../utils/propertyTypes'
 import { getMappedStatusStyle } from '../../utils/statusStyles'
 import { getTypeColor, getTypeLightColor } from '../../utils/typeColors'
 import { isUrlValue, normalizeUrl } from '../../utils/url'
@@ -14,6 +15,12 @@ export interface PropertyChipValue {
   style?: CSSProperties
   action?: { kind: 'note'; entry: VaultEntry } | { kind: 'url'; url: string }
   tone: 'neutral' | 'relationship' | 'status' | 'url'
+}
+
+export interface PropertyChipResolveContext {
+  allEntries: VaultEntry[]
+  typeEntryMap: Record<string, VaultEntry>
+  dateDisplayFormat?: DateDisplayFormat
 }
 
 const URL_CHIP_STYLE: CSSProperties = {
@@ -34,12 +41,16 @@ function normalizeOpenableUrl(value: string): string | null {
   }
 }
 
+function truncateChipLabel(raw: string): string {
+  return raw.length > 40 ? `${raw.slice(0, 37)}…` : raw
+}
+
 function formatChipLabel(value: unknown): string | null {
   if (value === null || value === undefined || value === '') return null
   const raw = String(value)
   const openableUrl = normalizeOpenableUrl(raw)
   if (openableUrl) return new URL(openableUrl).hostname
-  return raw.length > 40 ? `${raw.slice(0, 37)}…` : raw
+  return truncateChipLabel(raw)
 }
 
 function resolveTargetTypeEntry(targetEntry: VaultEntry, typeEntryMap: Record<string, VaultEntry>): VaultEntry | undefined {
@@ -111,6 +122,18 @@ function resolveScalarChip(value: unknown): PropertyChipValue | null {
   }
 }
 
+function resolveDateChip(value: ChipScalarValue, dateDisplayFormat: DateDisplayFormat): PropertyChipValue | null {
+  const label = truncateChipLabel(formatDateValue(String(value), dateDisplayFormat))
+  if (!label) return null
+
+  return {
+    label,
+    noteIcon: null,
+    typeIcon: null,
+    tone: 'neutral',
+  }
+}
+
 function resolveStatusChip(value: ChipScalarValue): PropertyChipValue | null {
   const label = formatChipLabel(value)
   if (!label) return null
@@ -126,10 +149,16 @@ function resolveStatusChip(value: ChipScalarValue): PropertyChipValue | null {
   }
 }
 
-function resolvePropertyValueChip(propName: string, value: ChipScalarValue | undefined): PropertyChipValue | null {
+function resolvePropertyValueChip(
+  propName: string,
+  value: ChipScalarValue | undefined,
+  dateDisplayFormat: DateDisplayFormat,
+): PropertyChipValue | null {
   if (value === undefined) return null
-  if (detectPropertyType(propName, value) !== 'status') return resolveScalarChip(value)
-  return resolveStatusChip(value)
+  const displayMode = detectPropertyType(propName, value)
+  if (displayMode === 'status') return resolveStatusChip(value)
+  if (displayMode === 'date') return resolveDateChip(value, dateDisplayFormat)
+  return resolveScalarChip(value)
 }
 
 function resolveRelationshipChipValues(
@@ -146,40 +175,44 @@ function resolveRelationshipChipValues(
     .filter((chip): chip is PropertyChipValue => chip !== null)
 }
 
-function resolveScalarChipValues(entry: VaultEntry, propName: string): PropertyChipValue[] {
+function resolveScalarChipValues(
+  entry: VaultEntry,
+  propName: string,
+  dateDisplayFormat: DateDisplayFormat,
+): PropertyChipValue[] {
   const propertyKey = findMatchingKey(entry.properties, propName)
   if (!propertyKey) return []
 
   const rawValue = Reflect.get(entry.properties, propertyKey) as unknown
   const values = Array.isArray(rawValue) ? rawValue : [rawValue]
   return values
-    .map((value) => resolvePropertyValueChip(propertyKey, value))
+    .map((value) => resolvePropertyValueChip(propertyKey, value, dateDisplayFormat))
     .filter((chip): chip is PropertyChipValue => chip !== null)
 }
 
 export function resolvePropertyChipValues(
   entry: VaultEntry,
   propName: string,
-  allEntries: VaultEntry[],
-  typeEntryMap: Record<string, VaultEntry>,
+  context: PropertyChipResolveContext,
 ): PropertyChipValue[] {
+  const dateDisplayFormat = context.dateDisplayFormat ?? DEFAULT_DATE_DISPLAY_FORMAT
   if (propName.toLowerCase() === 'status') {
-    const statusChip = resolvePropertyValueChip(propName, entry.status)
+    const statusChip = resolvePropertyValueChip(propName, entry.status, dateDisplayFormat)
     return statusChip ? [statusChip] : []
   }
 
-  return resolveRelationshipChipValues(entry, propName, allEntries, typeEntryMap) ?? resolveScalarChipValues(entry, propName)
+  return resolveRelationshipChipValues(entry, propName, context.allEntries, context.typeEntryMap)
+    ?? resolveScalarChipValues(entry, propName, dateDisplayFormat)
 }
 
 export function resolvePropertyChipLabels(
   entry: VaultEntry,
   displayProps: string[],
-  allEntries: VaultEntry[],
-  typeEntryMap: Record<string, VaultEntry>,
+  context: PropertyChipResolveContext,
 ): string[] {
   const labels: string[] = []
   for (const propName of displayProps) {
-    const values = resolvePropertyChipValues(entry, propName, allEntries, typeEntryMap)
+    const values = resolvePropertyChipValues(entry, propName, context)
     for (const value of values) labels.push(value.label)
   }
   return labels

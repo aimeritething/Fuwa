@@ -40,6 +40,7 @@ Examples:
 - ✅ App settings: `zoom: 1.3` (machine-specific preference)
 - ✅ App settings: `ui_language: "zh-CN"` (installation-specific UI language)
 - ✅ App settings: `note_width_mode: "wide"` (installation-specific default for notes without an override)
+- ✅ App settings: `date_display_format: "friendly"` (installation-specific date rendering preference)
 - ✅ App settings: `sidebar_type_pluralization_enabled: false` (installation-specific sidebar label preference)
 - ✅ App settings: `all_notes_show_images: true` (installation-specific All Notes file-category visibility)
 
@@ -473,6 +474,8 @@ Tolaria's app chrome uses an app-owned localization runtime in `src/lib/i18n.ts`
 
 `App.tsx` derives the effective locale from settings and browser/system language hints, then passes it down to localized surfaces. Settings exposes a keyboard-accessible shadcn `Select`, and the command palette includes actions to open language settings or switch directly to a supported language.
 
+`App.tsx` also resolves the installation-local date display format from `settings.date_display_format`. Note rows, note-list property chips, inspector property cells, note info, table-of-contents metadata, and search result subtitles render dates through the same `src/utils/dateDisplay.ts` formatter so the visible style stays consistent. Date picker text entry remains ISO (`YYYY-MM-DD`) to preserve predictable manual input and frontmatter storage.
+
 ## Vault Management
 
 ### Vault List
@@ -849,7 +852,7 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useCommitFlow` | Commit dialog state, shared manual/automatic checkpoint runner | Git commit/push orchestration |
 | `useGitRemoteStatus` | `remoteStatus`, `refreshRemoteStatus()` | On-demand remote detection for commit UI |
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |
-| `useSettings` | App settings (telemetry, release channel, theme mode, UI language, auto-sync interval, AutoGit thresholds, default AI agent, Gitignored-content visibility, All Notes file visibility) | Persistent settings |
+| `useSettings` | App settings (telemetry, release channel, theme mode, UI language, date display format, auto-sync interval, AutoGit thresholds, default AI agent, Gitignored-content visibility, All Notes file visibility) | Persistent settings |
 | `useVaultConfig` | Per-vault UI preferences, AI permission mode | Vault-specific config |
 | `appCommandDispatcher` | Manifest-backed shortcut/menu command IDs | Shared execution path for renderer and native menu commands |
 

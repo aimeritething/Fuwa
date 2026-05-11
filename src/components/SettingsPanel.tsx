@@ -45,12 +45,7 @@ import {
 } from '../lib/themeMode'
 import { normalizeReleaseChannel, serializeReleaseChannel, type ReleaseChannel } from '../lib/releaseChannel'
 import { shouldHideGitignoredFiles } from '../lib/gitignoredVisibility'
-import { trackEvent } from '../lib/telemetry'
-import {
-  trackAllNotesVisibilityChanged,
-  trackDefaultNoteWidthChanged,
-  trackSidebarTypePluralizationChanged,
-} from '../lib/productAnalytics'
+import { trackAllNotesVisibilityChanged } from '../lib/productAnalytics'
 import { AiProviderSettings } from './AiProviderSettings'
 import { PrivacySettingsSection } from './PrivacySettingsSection'
 import {
@@ -70,9 +65,18 @@ import {
   type AllNotesFileVisibility,
 } from '../utils/allNotesFileVisibility'
 import { DEFAULT_NOTE_WIDTH_MODE, normalizeNoteWidthMode } from '../utils/noteWidth'
+import {
+  DEFAULT_DATE_DISPLAY_FORMAT,
+  normalizeDateDisplayFormat,
+  type DateDisplayFormat,
+} from '../utils/dateDisplay'
 import { Button } from './ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs'
 import type { NoteWidthMode } from '../types'
+import {
+  trackSettingsPreferenceChanges,
+  trackTelemetryConsentChange,
+} from './settingsPreferenceTracking'
 
 interface SettingsPanelProps {
   open: boolean
@@ -100,6 +104,7 @@ interface SettingsDraft {
   releaseChannel: ReleaseChannel
   themeMode: ThemeMode
   uiLanguage: UiLanguagePreference
+  dateDisplayFormat: DateDisplayFormat
   defaultNoteWidth: NoteWidthMode
   sidebarTypePluralizationEnabled: boolean
   initialH1AutoRename: boolean
@@ -137,6 +142,8 @@ interface SettingsBodyProps {
   setThemeMode: (value: ThemeMode) => void
   uiLanguage: UiLanguagePreference
   setUiLanguage: (value: UiLanguagePreference) => void
+  dateDisplayFormat: DateDisplayFormat
+  setDateDisplayFormat: (value: DateDisplayFormat) => void
   defaultNoteWidth: NoteWidthMode
   setDefaultNoteWidth: (value: NoteWidthMode) => void
   sidebarTypePluralizationEnabled: boolean
@@ -253,6 +260,7 @@ function createSettingsDraft(
     releaseChannel: normalizeReleaseChannel(settings.release_channel),
     themeMode: resolveSettingsDraftThemeMode(settings.theme_mode),
     uiLanguage: settings.ui_language ?? SYSTEM_UI_LANGUAGE,
+    dateDisplayFormat: normalizeDateDisplayFormat(settings.date_display_format) ?? DEFAULT_DATE_DISPLAY_FORMAT,
     defaultNoteWidth: normalizeNoteWidthMode(settings.note_width_mode) ?? DEFAULT_NOTE_WIDTH_MODE,
     sidebarTypePluralizationEnabled: settings.sidebar_type_pluralization_enabled ?? true,
     initialH1AutoRename: settings.initial_h1_auto_rename_enabled ?? true,
@@ -297,6 +305,7 @@ function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Setti
     release_channel: serializeReleaseChannel(draft.releaseChannel),
     theme_mode: draft.themeMode,
     ui_language: serializeUiLanguagePreference(draft.uiLanguage),
+    date_display_format: draft.dateDisplayFormat,
     note_width_mode: draft.defaultNoteWidth,
     sidebar_type_pluralization_enabled: draft.sidebarTypePluralizationEnabled,
     initial_h1_auto_rename_enabled: draft.initialH1AutoRename,
@@ -306,23 +315,6 @@ function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Setti
     hide_gitignored_files: draft.hideGitignoredFiles,
   }
   return settingsWithAllNotesFileVisibility(nextSettings, draft.allNotesFileVisibility)
-}
-
-function trackTelemetryConsentChange(previousAnalytics: boolean, nextAnalytics: boolean): void {
-  if (!previousAnalytics && nextAnalytics) trackEvent('telemetry_opted_in')
-  if (previousAnalytics && !nextAnalytics) trackEvent('telemetry_opted_out')
-}
-
-function trackSettingsPreferenceChanges(settings: Settings, draft: SettingsDraft): void {
-  const previousNoteWidth = normalizeNoteWidthMode(settings.note_width_mode) ?? DEFAULT_NOTE_WIDTH_MODE
-  if (previousNoteWidth !== draft.defaultNoteWidth) {
-    trackDefaultNoteWidthChanged(draft.defaultNoteWidth)
-  }
-
-  const previousPluralization = settings.sidebar_type_pluralization_enabled ?? true
-  if (previousPluralization !== draft.sidebarTypePluralizationEnabled) {
-    trackSidebarTypePluralizationChanged(draft.sidebarTypePluralizationEnabled)
-  }
 }
 
 function sanitizePositiveInteger(value: number | null | undefined, fallback: number): number {
@@ -581,6 +573,8 @@ function SettingsBodyFromDraft({
       setThemeMode={setThemeMode}
       uiLanguage={draft.uiLanguage}
       setUiLanguage={(value) => updateDraft('uiLanguage', value)}
+      dateDisplayFormat={draft.dateDisplayFormat}
+      setDateDisplayFormat={(value) => updateDraft('dateDisplayFormat', value)}
       defaultNoteWidth={draft.defaultNoteWidth}
       setDefaultNoteWidth={(value) => updateDraft('defaultNoteWidth', value)}
       sidebarTypePluralizationEnabled={draft.sidebarTypePluralizationEnabled}
@@ -713,6 +707,8 @@ function SettingsSyncAndAppearanceSections({
 
 function SettingsContentSections({
   t,
+  dateDisplayFormat,
+  setDateDisplayFormat,
   defaultNoteWidth,
   setDefaultNoteWidth,
   sidebarTypePluralizationEnabled,
@@ -728,6 +724,8 @@ function SettingsContentSections({
     <SettingsSection id={SETTINGS_SECTION_IDS.content}>
       <VaultContentSettingsSection
         t={t}
+        dateDisplayFormat={dateDisplayFormat}
+        setDateDisplayFormat={setDateDisplayFormat}
         defaultNoteWidth={defaultNoteWidth}
         setDefaultNoteWidth={setDefaultNoteWidth}
         sidebarTypePluralizationEnabled={sidebarTypePluralizationEnabled}

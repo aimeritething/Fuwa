@@ -136,6 +136,12 @@ files:
     settings.titles.autoRenameDescription: cc28c28d8817736e658082a2261d9a6e
     settings.vaultContent.title: 78b883ce9acb9c25e611158a518d9185
     settings.vaultContent.description: a53487bf1c7898a1459dc1510e216f7d
+    settings.dateDisplay.default: 915e8ca934abe6625e17695ee7ae266a
+    settings.dateDisplay.defaultDescription: 502ed7ff7b9c0fe5971e8cb0576e91f6
+    settings.dateDisplay.us: abe1c573145c4419ba8bb158cf0068d6
+    settings.dateDisplay.european: 0b4f509278b2919973c5d1ae906c162b
+    settings.dateDisplay.friendly: 81e56440280f6dfaef0eb503ca301578
+    settings.dateDisplay.iso: 89b4ef461b67eb141eadd0fc6caa8d8d
     settings.noteWidth.default: 66be0f882801fd19468181f31f58dc20
     settings.noteWidth.defaultDescription: 2b5fb6d7dfa2b1da1e47bcac30f58e8d
     settings.noteWidth.normal: 960b44c579bc2f6818d2daaf9e4c16f0

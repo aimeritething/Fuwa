@@ -323,7 +323,7 @@ tolaria/
 
 | File | Why it matters |
 |------|---------------|
-| `src/hooks/useSettings.ts` | App settings (telemetry, release channel, theme mode, UI language, auto-sync interval, default note width, sidebar type pluralization, default AI agent). |
+| `src/hooks/useSettings.ts` | App settings (telemetry, release channel, theme mode, UI language, date display format, auto-sync interval, default note width, sidebar type pluralization, default AI agent). |
 | `src/lib/releaseChannel.ts` | Normalizes persisted updater-channel values (`stable` default, optional `alpha`). |
 | `src/lib/appUpdater.ts` | Frontend wrapper for channel-aware updater commands. |
 | `src/hooks/useMainWindowSizeConstraints.ts` | Derives the main-window minimum width from the visible panes and asks Tauri to grow back to fit wider layouts. |

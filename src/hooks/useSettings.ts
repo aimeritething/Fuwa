@@ -11,6 +11,7 @@ import {
 import { serializeUiLanguagePreference } from '../lib/i18n'
 import { trackThemeModeChanged } from '../lib/productAnalytics'
 import { normalizeReleaseChannel, serializeReleaseChannel } from '../lib/releaseChannel'
+import { normalizeDateDisplayFormat } from '../utils/dateDisplay'
 import { DEFAULT_THEME_MODE, normalizeThemeMode, type ThemeMode } from '../lib/themeMode'
 import type { Settings } from '../types'
 import { normalizeNoteWidthMode } from '../utils/noteWidth'
@@ -46,6 +47,7 @@ const EMPTY_SETTINGS: Settings = {
   release_channel: null,
   theme_mode: null,
   ui_language: null,
+  date_display_format: null,
   note_width_mode: null,
   sidebar_type_pluralization_enabled: null,
   default_ai_agent: null,
@@ -67,6 +69,7 @@ function normalizeSettings(settings: Settings): Settings {
     ),
     theme_mode: normalizeThemeMode(settings.theme_mode),
     ui_language: serializeUiLanguagePreference(settings.ui_language),
+    date_display_format: normalizeDateDisplayFormat(settings.date_display_format),
     note_width_mode: normalizeNoteWidthMode(settings.note_width_mode),
     sidebar_type_pluralization_enabled: settings.sidebar_type_pluralization_enabled ?? null,
     default_ai_agent: normalizeStoredAiAgent(settings.default_ai_agent),

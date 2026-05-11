@@ -1,12 +1,16 @@
 import type { VaultEntry } from '../../types'
 import { Info } from '@phosphor-icons/react'
 import { countWords } from '../../utils/wikilinks'
-import { getLocaleDateLocale, translate, type AppLocale } from '../../lib/i18n'
+import { translate, type AppLocale } from '../../lib/i18n'
+import {
+  DEFAULT_DATE_DISPLAY_FORMAT,
+  formatTimestampForDateDisplay,
+  type DateDisplayFormat,
+} from '../../utils/dateDisplay'
 
-function formatDate(timestamp: number | null, locale: AppLocale): string {
+function formatDate(timestamp: number | null, dateDisplayFormat: DateDisplayFormat): string {
   if (!timestamp) return '\u2014'
-  const d = new Date(timestamp * 1000)
-  return d.toLocaleDateString(getLocaleDateLocale(locale), { year: 'numeric', month: 'short', day: 'numeric' })
+  return formatTimestampForDateDisplay(timestamp, dateDisplayFormat)
 }
 
 function formatFileSize(bytes: number): string {
@@ -26,7 +30,17 @@ function InfoRow({ label, value }: { label: string; value: string }) {
   )
 }
 
-export function NoteInfoPanel({ entry, content, locale = 'en' }: { entry: VaultEntry; content: string | null; locale?: AppLocale }) {
+export function NoteInfoPanel({
+  entry,
+  content,
+  locale = 'en',
+  dateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
+}: {
+  entry: VaultEntry
+  content: string | null
+  locale?: AppLocale
+  dateDisplayFormat?: DateDisplayFormat
+}) {
   const wordCount = countWords(content ?? '')
   return (
     <div>
@@ -35,8 +49,8 @@ export function NoteInfoPanel({ entry, content, locale = 'en' }: { entry: VaultE
         {translate(locale, 'inspector.info.title')}
       </h4>
       <div className="flex flex-col gap-1.5">
-        <InfoRow label={translate(locale, 'inspector.info.modified')} value={formatDate(entry.modifiedAt, locale)} />
-        <InfoRow label={translate(locale, 'inspector.info.created')} value={formatDate(entry.createdAt, locale)} />
+        <InfoRow label={translate(locale, 'inspector.info.modified')} value={formatDate(entry.modifiedAt, dateDisplayFormat)} />
+        <InfoRow label={translate(locale, 'inspector.info.created')} value={formatDate(entry.createdAt, dateDisplayFormat)} />
         <InfoRow label={translate(locale, 'inspector.info.words')} value={String(wordCount)} />
         <InfoRow label={translate(locale, 'inspector.info.size')} value={formatFileSize(entry.fileSize)} />
       </div>

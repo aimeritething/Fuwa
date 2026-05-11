@@ -26,6 +26,7 @@ const emptySettings: Settings = {
   release_channel: null,
   theme_mode: null,
   ui_language: null,
+  date_display_format: null,
   default_ai_agent: null,
   hide_gitignored_files: null,
   all_notes_show_pdfs: null,
@@ -195,6 +196,7 @@ describe('SettingsPanel', () => {
       autogit_inactive_threshold_seconds: 30,
       release_channel: null,
       theme_mode: 'light',
+      date_display_format: 'friendly',
       note_width_mode: 'normal',
       sidebar_type_pluralization_enabled: true,
       hide_gitignored_files: true,
@@ -311,23 +313,25 @@ describe('SettingsPanel', () => {
     expect(screen.getByText('系统（简体中文）')).toBeInTheDocument()
   })
 
-  it('defaults note width to normal and sidebar type pluralization to enabled', () => {
+  it('defaults date display to friendly, note width to normal, and sidebar type pluralization to enabled', () => {
     render(
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
 
+    expect(screen.getByTestId('settings-date-display-format')).toHaveAttribute('data-value', 'friendly')
     expect(screen.getByTestId('settings-default-note-width')).toHaveAttribute('data-value', 'normal')
     expect(
       within(screen.getByTestId('settings-sidebar-type-pluralization')).getByRole('switch')
     ).toHaveAttribute('aria-checked', 'true')
   })
 
-  it('preserves saved default note width and sidebar type pluralization preferences', () => {
+  it('preserves saved date display, default note width, and sidebar type pluralization preferences', () => {
     render(
       <SettingsPanel
         open={true}
         settings={{
           ...emptySettings,
+          date_display_format: 'iso',
           note_width_mode: 'wide',
           sidebar_type_pluralization_enabled: false,
         }}
@@ -336,26 +340,31 @@ describe('SettingsPanel', () => {
       />
     )
 
+    expect(screen.getByTestId('settings-date-display-format')).toHaveAttribute('data-value', 'iso')
     expect(screen.getByTestId('settings-default-note-width')).toHaveAttribute('data-value', 'wide')
     expect(
       within(screen.getByTestId('settings-sidebar-type-pluralization')).getByRole('switch')
     ).toHaveAttribute('aria-checked', 'false')
   })
 
-  it('saves default note width and sidebar type pluralization preferences', () => {
+  it('saves date display, default note width, and sidebar type pluralization preferences', () => {
     render(
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
 
+    fireEvent.pointerDown(screen.getByTestId('settings-date-display-format'), { button: 0, pointerType: 'mouse' })
+    fireEvent.click(screen.getByRole('option', { name: 'ISO (2026-05-11)' }))
     fireEvent.pointerDown(screen.getByTestId('settings-default-note-width'), { button: 0, pointerType: 'mouse' })
     fireEvent.click(screen.getByRole('option', { name: 'Wide' }))
     fireEvent.click(within(screen.getByTestId('settings-sidebar-type-pluralization')).getByRole('switch'))
     fireEvent.click(screen.getByTestId('settings-save'))
 
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      date_display_format: 'iso',
       note_width_mode: 'wide',
       sidebar_type_pluralization_enabled: false,
     }))
+    expect(trackEventMock).toHaveBeenCalledWith('date_display_format_changed', { format: 'iso' })
   })
 
   it('keeps the language selector keyboard accessible', () => {

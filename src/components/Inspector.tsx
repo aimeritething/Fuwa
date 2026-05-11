@@ -18,6 +18,7 @@ import { EmptyInspector, InitializePropertiesPrompt, InspectorHeader, InvalidFro
 import { useBacklinks, useReferencedBy } from './inspector/useInspectorData'
 import { useInspectorPropertyActions } from './inspector/useInspectorPropertyActions'
 import type { AppLocale } from '../lib/i18n'
+import type { DateDisplayFormat } from '../utils/dateDisplay'
 
 export type FrontmatterValue = string | number | boolean | string[] | null
 
@@ -39,6 +40,7 @@ interface InspectorProps {
   onInitializeProperties?: (path: string) => void
   onToggleRawEditor?: () => void
   locale?: AppLocale
+  dateDisplayFormat?: DateDisplayFormat
 }
 
 function buildTypeEntryMap(entries: VaultEntry[]): Record<string, VaultEntry> {
@@ -67,6 +69,7 @@ function ValidFrontmatterPanels({
   onAddProperty,
   onCreateMissingType,
   locale,
+  dateDisplayFormat,
 }: {
   entry: VaultEntry
   entries: VaultEntry[]
@@ -81,6 +84,7 @@ function ValidFrontmatterPanels({
   onAddProperty?: (key: string, value: FrontmatterValue) => void
   onCreateMissingType?: (typeName: string) => Promise<boolean | void>
   locale: AppLocale
+  dateDisplayFormat?: DateDisplayFormat
 }) {
   return (
     <>
@@ -94,6 +98,7 @@ function ValidFrontmatterPanels({
         onNavigate={onNavigate}
         onCreateMissingType={onCreateMissingType}
         locale={locale}
+        dateDisplayFormat={dateDisplayFormat}
       />
       <Separator data-testid="inspector-properties-relationships-separator" />
       <DynamicRelationshipsPanel
@@ -132,6 +137,7 @@ function PrimaryInspectorPanel({
   onAddProperty,
   onCreateMissingType,
   locale,
+  dateDisplayFormat,
 }: {
   entry: VaultEntry
   frontmatterState: ReturnType<typeof detectFrontmatterState>
@@ -149,6 +155,7 @@ function PrimaryInspectorPanel({
   onAddProperty?: (key: string, value: FrontmatterValue) => void
   onCreateMissingType?: (typeName: string) => Promise<boolean | void>
   locale: AppLocale
+  dateDisplayFormat?: DateDisplayFormat
 }) {
   if (frontmatterState === 'valid') {
     return (
@@ -166,6 +173,7 @@ function PrimaryInspectorPanel({
         onAddProperty={onAddProperty}
         onCreateMissingType={onCreateMissingType}
         locale={locale}
+        dateDisplayFormat={dateDisplayFormat}
       />
     )
   }
@@ -193,6 +201,7 @@ function InspectorBody({
   onInitializeProperties,
   onToggleRawEditor,
   locale = 'en',
+  dateDisplayFormat,
 }: Omit<InspectorProps, 'collapsed' | 'onToggle'>) {
   const referencedBy = useReferencedBy(entry, entries)
   const backlinks = useBacklinks(entry, entries, referencedBy)
@@ -236,12 +245,13 @@ function InspectorBody({
           onAddProperty={onAddProperty ? handleAddProperty : undefined}
           onCreateMissingType={onCreateMissingType ? handleCreateMissingType : undefined}
           locale={locale}
+          dateDisplayFormat={dateDisplayFormat}
         />
       )}
       {backlinks.length > 0 && <Separator />}
       <BacklinksPanel backlinks={backlinks} onNavigate={onNavigate} />
       <Separator />
-      <NoteInfoPanel entry={entry} content={content} locale={locale} />
+      <NoteInfoPanel entry={entry} content={content} locale={locale} dateDisplayFormat={dateDisplayFormat} />
       {gitHistory.length > 0 && <Separator />}
       <GitHistoryPanel commits={gitHistory} onViewCommitDiff={onViewCommitDiff} />
     </>

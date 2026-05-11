@@ -25,6 +25,7 @@ const defaultSettings: Settings = {
   release_channel: null,
   theme_mode: null,
   ui_language: null,
+  date_display_format: null,
   note_width_mode: null,
   sidebar_type_pluralization_enabled: null,
   default_ai_agent: null,
@@ -49,6 +50,7 @@ const savedSettings: Settings = {
   release_channel: null,
   theme_mode: null,
   ui_language: null,
+  date_display_format: null,
   note_width_mode: null,
   sidebar_type_pluralization_enabled: null,
   default_ai_agent: null,
@@ -110,6 +112,7 @@ function changedSettings(): Settings {
     release_channel: null,
     theme_mode: null,
     ui_language: 'zh-CN',
+    date_display_format: 'iso',
     note_width_mode: 'wide',
     sidebar_type_pluralization_enabled: false,
     default_ai_agent: null,
@@ -188,6 +191,16 @@ describe('useSettings', () => {
 
     const settings = await renderLoadedSettings()
     expect(settings.note_width_mode).toBeNull()
+  })
+
+  it('normalizes unsupported date display formats on load', async () => {
+    mockSettingsStore = {
+      ...savedSettings,
+      date_display_format: 'long' as Settings['date_display_format'],
+    }
+
+    const settings = await renderLoadedSettings()
+    expect(settings.date_display_format).toBeNull()
   })
 
   it('saves settings via backend', async () => {

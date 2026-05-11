@@ -9,6 +9,7 @@ import type {
   ViewFile,
 } from '../../types'
 import type { AppLocale } from '../../lib/i18n'
+import type { DateDisplayFormat } from '../../utils/dateDisplay'
 import type { NoteListFilter } from '../../utils/noteListHelpers'
 import { countByFilter, countAllByFilter, countAllNotesByFilter } from '../../utils/noteListHelpers'
 import type { AllNotesFileVisibility } from '../../utils/allNotesFileVisibility'
@@ -164,6 +165,7 @@ interface UseNoteListContentParams {
   views?: ViewFile[]
   visibleNotesRef?: React.MutableRefObject<VaultEntry[]>
   allNotesFileVisibility?: AllNotesFileVisibility
+  dateDisplayFormat?: DateDisplayFormat
 }
 
 function useNoteListContent({
@@ -186,6 +188,7 @@ function useNoteListContent({
   views,
   visibleNotesRef,
   allNotesFileVisibility,
+  dateDisplayFormat,
 }: UseNoteListContentParams) {
   const subFilter = (selection.kind === 'sectionGroup' || selection.kind === 'folder')
     ? noteListFilter
@@ -248,16 +251,14 @@ function useNoteListContent({
     views,
     allNotesFileVisibility,
   })
-  const searched = useMemo(() => filterEntriesByNoteListQuery(sortedEntries, query, {
+  const searchContext = useMemo(() => ({
     allEntries: entries,
     typeEntryMap,
     displayPropsOverride,
-  }), [displayPropsOverride, entries, query, sortedEntries, typeEntryMap])
-  const searchedGroups = useMemo(() => filterGroupsByNoteListQuery(sortedGroups, query, {
-    allEntries: entries,
-    typeEntryMap,
-    displayPropsOverride,
-  }), [displayPropsOverride, entries, query, sortedGroups, typeEntryMap])
+    dateDisplayFormat,
+  }), [dateDisplayFormat, displayPropsOverride, entries, typeEntryMap])
+  const searched = useMemo(() => filterEntriesByNoteListQuery(sortedEntries, query, searchContext), [query, searchContext, sortedEntries])
+  const searchedGroups = useMemo(() => filterGroupsByNoteListQuery(sortedGroups, query, searchContext), [query, searchContext, sortedGroups])
   useVisibleNotesSync({ visibleNotesRef, isEntityView, entityEntry, searched, searchedGroups })
   useLikelyNextPreload(searched, selectedNotePath)
 
@@ -390,6 +391,7 @@ interface UseRenderItemParams {
   selectedNotePath: string | null
   typeEntryMap: Record<string, VaultEntry>
   displayPropsOverride?: string[] | null
+  dateDisplayFormat?: DateDisplayFormat
   isChangesView: boolean
   onDiscardFile?: (relativePath: string) => Promise<void>
   resolvedGetNoteStatus: (path: string) => NoteStatus
@@ -405,6 +407,7 @@ function useRenderItem({
   selectedNotePath,
   typeEntryMap,
   displayPropsOverride,
+  dateDisplayFormat,
   isChangesView,
   onDiscardFile,
   resolvedGetNoteStatus,
@@ -429,6 +432,7 @@ function useRenderItem({
         typeEntryMap={typeEntryMap}
         allEntries={entries}
         displayPropsOverride={displayPropsOverride}
+        dateDisplayFormat={dateDisplayFormat}
         onClickNote={handleClickNote}
         onContextMenu={contextMenuHandler}
       />
@@ -444,6 +448,7 @@ function useRenderItem({
         typeEntryMap={typeEntryMap}
         allEntries={entries}
         displayPropsOverride={displayPropsOverride}
+        dateDisplayFormat={dateDisplayFormat}
         onClickNote={handleClickNote}
         onPrefetch={prefetchNoteContent}
         onContextMenu={contextMenuHandler}
@@ -451,6 +456,7 @@ function useRenderItem({
     )
   ), [
     contextMenuHandler,
+    dateDisplayFormat,
     displayPropsOverride,
     entries,
     getChangeStatus,
@@ -497,6 +503,7 @@ export interface NoteListProps {
   visibleNotesRef?: React.MutableRefObject<VaultEntry[]>
   allNotesFileVisibility?: AllNotesFileVisibility
   locale?: AppLocale
+  dateDisplayFormat?: DateDisplayFormat
 }
 
 function buildNoteListLayoutModel(params: {
@@ -607,6 +614,7 @@ export function useNoteListModel({
   visibleNotesRef,
   allNotesFileVisibility,
   locale = 'en',
+  dateDisplayFormat,
 }: NoteListProps) {
   const selectedNotePath = selectedNote?.path ?? null
   const { modifiedPathSet, modifiedSuffixes, resolvedGetNoteStatus } = useModifiedFilesState(modifiedFiles, getNoteStatus)
@@ -632,6 +640,7 @@ export function useNoteListModel({
     views,
     visibleNotesRef,
     allNotesFileVisibility,
+    dateDisplayFormat,
   })
   const interaction = useNoteListInteractionState({
     searched: content.searched,
@@ -661,6 +670,7 @@ export function useNoteListModel({
     selectedNotePath,
     typeEntryMap: content.typeEntryMap,
     displayPropsOverride: content.displayPropsOverride,
+    dateDisplayFormat,
     isChangesView: selection.kind === 'filter' && selection.filter === 'changes',
     onDiscardFile,
     resolvedGetNoteStatus,

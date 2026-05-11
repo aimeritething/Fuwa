@@ -1,6 +1,7 @@
 import type { TranslationKey, TranslationValues } from '../lib/i18n'
 import type { NoteWidthMode } from '../types'
 import type { AllNotesFileVisibility } from '../utils/allNotesFileVisibility'
+import { DATE_DISPLAY_FORMATS, type DateDisplayFormat } from '../utils/dateDisplay'
 import {
   SectionHeading,
   SelectControl,
@@ -13,6 +14,8 @@ type Translate = (key: TranslationKey, values?: TranslationValues) => string
 
 interface VaultContentSettingsSectionProps {
   t: Translate
+  dateDisplayFormat: DateDisplayFormat
+  setDateDisplayFormat: (value: DateDisplayFormat) => void
   defaultNoteWidth: NoteWidthMode
   setDefaultNoteWidth: (value: NoteWidthMode) => void
   sidebarTypePluralizationEnabled: boolean
@@ -30,6 +33,12 @@ const NOTE_WIDTH_LABEL_KEYS: Record<NoteWidthMode, TranslationKey> = {
   normal: 'settings.noteWidth.normal',
   wide: 'settings.noteWidth.wide',
 }
+const DATE_DISPLAY_LABEL_KEYS: Record<DateDisplayFormat, TranslationKey> = {
+  us: 'settings.dateDisplay.us',
+  european: 'settings.dateDisplay.european',
+  friendly: 'settings.dateDisplay.friendly',
+  iso: 'settings.dateDisplay.iso',
+}
 
 function buildNoteWidthOptions(t: Translate): Array<{ value: NoteWidthMode; label: string }> {
   return NOTE_WIDTH_OPTIONS.map((value) => ({
@@ -38,8 +47,17 @@ function buildNoteWidthOptions(t: Translate): Array<{ value: NoteWidthMode; labe
   }))
 }
 
+function buildDateDisplayOptions(t: Translate): Array<{ value: DateDisplayFormat; label: string }> {
+  return DATE_DISPLAY_FORMATS.map((value) => ({
+    value,
+    label: t(Reflect.get(DATE_DISPLAY_LABEL_KEYS, value) as Parameters<Translate>[0]),
+  }))
+}
+
 export function VaultContentSettingsSection({
   t,
+  dateDisplayFormat,
+  setDateDisplayFormat,
   defaultNoteWidth,
   setDefaultNoteWidth,
   sidebarTypePluralizationEnabled,
@@ -62,6 +80,19 @@ export function VaultContentSettingsSection({
       />
 
       <SettingsGroup>
+        <SettingsRow
+          label={t('settings.dateDisplay.default')}
+          description={t('settings.dateDisplay.defaultDescription')}
+        >
+          <SelectControl
+            ariaLabel={t('settings.dateDisplay.default')}
+            value={dateDisplayFormat}
+            onValueChange={(value) => setDateDisplayFormat(value as DateDisplayFormat)}
+            options={buildDateDisplayOptions(t)}
+            testId="settings-date-display-format"
+          />
+        </SettingsRow>
+
         <SettingsRow
           label={t('settings.noteWidth.default')}
           description={t('settings.noteWidth.defaultDescription')}

@@ -655,6 +655,19 @@ describe('NoteList rendering', () => {
     expect(chip).toHaveStyle({ backgroundColor: 'var(--accent-yellow-light)', color: 'var(--accent-yellow)' })
   })
 
+  it('formats date properties in note-list chips with the selected display format', async () => {
+    renderNoteList({
+      entries: makeBookTypeEntries(['Due'], { properties: { Due: '2026-05-11' } }),
+      selection: { kind: 'sectionGroup', type: 'Book' },
+      dateDisplayFormat: 'european',
+    })
+
+    expect(screen.getByTestId('property-chip-due-0')).toHaveTextContent('11/5/2026')
+
+    await searchNoteList('11/5/2026')
+    expect(screen.getByText('Book Note')).toBeInTheDocument()
+  })
+
   it('keeps unknown status values on neutral note-list chip styling', () => {
     renderNoteList({
       entries: makeBookTypeEntries(['status'], { status: 'Needs Review' }),

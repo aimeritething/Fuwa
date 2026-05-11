@@ -1,4 +1,5 @@
 import type { VaultEntry } from '../../types'
+import type { DateDisplayFormat } from '../../utils/dateDisplay'
 import type { RelationshipGroup } from '../../utils/noteListHelpers'
 import { resolvePropertyChipLabels } from '../note-item/propertyChipValues'
 
@@ -6,6 +7,7 @@ interface NoteListSearchContext {
   allEntries: VaultEntry[]
   typeEntryMap: Record<string, VaultEntry>
   displayPropsOverride?: string[] | null
+  dateDisplayFormat?: DateDisplayFormat
 }
 
 function normalizeQuery(query: string): string {
@@ -32,8 +34,11 @@ function resolveSearchableText(entry: VaultEntry, context: NoteListSearchContext
     ...resolvePropertyChipLabels(
       entry,
       resolveDisplayProps(entry, context.typeEntryMap, context.displayPropsOverride),
-      context.allEntries,
-      context.typeEntryMap,
+      {
+        allEntries: context.allEntries,
+        typeEntryMap: context.typeEntryMap,
+        dateDisplayFormat: context.dateDisplayFormat,
+      },
     ),
   ]
 }

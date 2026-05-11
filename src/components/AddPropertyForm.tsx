@@ -10,6 +10,7 @@ import {
   formatDateValue,
   toISODate,
 } from '../utils/propertyTypes'
+import { DEFAULT_DATE_DISPLAY_FORMAT, type DateDisplayFormat } from '../utils/dateDisplay'
 import { StatusPill, StatusDropdown } from './StatusDropdown'
 import { DISPLAY_MODE_OPTIONS, DISPLAY_MODE_ICONS } from '../utils/propertyTypes'
 import { translate, type AppLocale } from '../lib/i18n'
@@ -53,9 +54,19 @@ function AddBooleanInput({ value, locale, onChange }: { value: string; locale: A
   )
 }
 
-function AddDateInput({ value, locale, onChange }: { value: string; locale: AppLocale; onChange: (v: string) => void }) {
+function AddDateInput({
+  value,
+  locale,
+  dateDisplayFormat,
+  onChange,
+}: {
+  value: string
+  locale: AppLocale
+  dateDisplayFormat: DateDisplayFormat
+  onChange: (v: string) => void
+}) {
   const selectedDate = value ? parseDateValue(value) : undefined
-  const formatted = value ? formatDateValue(value) : ''
+  const formatted = value ? formatDateValue(value, dateDisplayFormat) : ''
   return (
     <Popover>
       <PopoverTrigger asChild>
@@ -123,16 +134,17 @@ function AddNumberInput({ value, onChange, onKeyDown }: {
   )
 }
 
-function AddPropertyValueInput({ displayMode, value, onChange, onKeyDown, vaultStatuses, locale }: {
+function AddPropertyValueInput({ displayMode, value, onChange, onKeyDown, vaultStatuses, locale, dateDisplayFormat }: {
   displayMode: PropertyDisplayMode; value: string; onChange: (v: string) => void
   onKeyDown: (e: React.KeyboardEvent) => void; vaultStatuses: string[]
   locale: AppLocale
+  dateDisplayFormat: DateDisplayFormat
 }) {
   switch (displayMode) {
     case 'number':
       return <AddNumberInput value={value} onChange={onChange} onKeyDown={onKeyDown} />
     case 'boolean': return <AddBooleanInput value={value} locale={locale} onChange={onChange} />
-    case 'date': return <AddDateInput value={value} locale={locale} onChange={onChange} />
+    case 'date': return <AddDateInput value={value} locale={locale} dateDisplayFormat={dateDisplayFormat} onChange={onChange} />
     case 'status': return <AddStatusInput value={value} onChange={onChange} vaultStatuses={vaultStatuses} />
     case 'tags': return (
       <Input className={ADD_INPUT_CLASS} type="text" placeholder="tag1, tag2, ..." value={value}
@@ -147,10 +159,11 @@ function AddPropertyValueInput({ displayMode, value, onChange, onKeyDown, vaultS
   }
 }
 
-export function AddPropertyForm({ onAdd, onCancel, vaultStatuses, locale = 'en' }: {
+export function AddPropertyForm({ onAdd, onCancel, vaultStatuses, locale = 'en', dateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT }: {
   onAdd: (key: string, value: string, displayMode: PropertyDisplayMode) => void; onCancel: () => void
   vaultStatuses: string[]
   locale?: AppLocale
+  dateDisplayFormat?: DateDisplayFormat
 }) {
   const [newKey, setNewKey] = useState('')
   const [newValue, setNewValue] = useState('')
@@ -196,7 +209,7 @@ export function AddPropertyForm({ onAdd, onCancel, vaultStatuses, locale = 'en' 
           })}
         </SelectContent>
       </Select>
-      <AddPropertyValueInput displayMode={displayMode} value={newValue} onChange={setNewValue} onKeyDown={handleKeyDown} vaultStatuses={vaultStatuses} locale={locale} />
+      <AddPropertyValueInput displayMode={displayMode} value={newValue} onChange={setNewValue} onKeyDown={handleKeyDown} vaultStatuses={vaultStatuses} locale={locale} dateDisplayFormat={dateDisplayFormat} />
       <Button
         size="icon-xs" onClick={() => onAdd(newKey, newValue, displayMode)}
         disabled={!canSubmit} title={translate(locale, 'inspector.properties.addProperty')}

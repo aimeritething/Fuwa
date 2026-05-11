@@ -9,6 +9,11 @@ import {
   isOptionalAllNotesFileVisible,
   type AllNotesFileVisibility,
 } from './allNotesFileVisibility'
+import {
+  DEFAULT_DATE_DISPLAY_FORMAT,
+  formatTimestampForDateDisplay,
+  type DateDisplayFormat,
+} from './dateDisplay'
 import { evaluateView } from './viewFilters'
 import { wikilinkTarget, resolveEntry } from './wikilink'
 
@@ -45,10 +50,13 @@ export function getDisplayDate(entry: VaultEntry): number | null {
   return entry.modifiedAt ?? entry.createdAt
 }
 
-export function formatSubtitle(entry: VaultEntry): string {
+export function formatSubtitle(
+  entry: VaultEntry,
+  dateDisplayFormat: DateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
+): string {
   const parts: string[] = []
   const date = getDisplayDate(entry)
-  if (date) parts.push(relativeDate(date))
+  if (date) parts.push(formatTimestampForDateDisplay(date, dateDisplayFormat))
   if (entry.wordCount > 0) {
     parts.push(`${entry.wordCount.toLocaleString('en-US')} words`)
   } else {
@@ -64,12 +72,15 @@ function wasCreatedBeforeLastModification(entry: VaultEntry): boolean {
   return !!(entry.createdAt && entry.modifiedAt && entry.createdAt !== entry.modifiedAt)
 }
 
-export function formatSearchSubtitle(entry: VaultEntry): string {
+export function formatSearchSubtitle(
+  entry: VaultEntry,
+  dateDisplayFormat: DateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
+): string {
   const parts: string[] = []
   const modified = entry.modifiedAt ?? entry.createdAt
-  if (modified) parts.push(relativeDate(modified))
+  if (modified) parts.push(formatTimestampForDateDisplay(modified, dateDisplayFormat))
   if (wasCreatedBeforeLastModification(entry)) {
-    parts.push(`Created ${relativeDate(entry.createdAt!)}`)
+    parts.push(`Created ${formatTimestampForDateDisplay(entry.createdAt!, dateDisplayFormat)}`)
   }
   if (entry.wordCount > 0) {
     parts.push(`${entry.wordCount.toLocaleString('en-US')} words`)

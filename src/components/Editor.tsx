@@ -10,6 +10,7 @@ import { translate, type AppLocale } from '../lib/i18n'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import type { VaultEntry, GitCommit, NoteWidthMode, NoteStatus } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
+import type { DateDisplayFormat } from '../utils/dateDisplay'
 import type { FrontmatterValue } from './Inspector'
 import type { FrontmatterOpOptions } from '../hooks/frontmatterOps'
 import { ResizeHandle } from './ResizeHandle'
@@ -120,6 +121,7 @@ interface EditorProps {
   /** Registers a hook that flushes the raw editor buffer into app state before external actions. */
   flushPendingRawContentRef?: React.MutableRefObject<((path: string) => void) | null>
   locale?: AppLocale
+  dateDisplayFormat?: DateDisplayFormat
 }
 
 function useEditorModeExclusion({
@@ -381,6 +383,7 @@ function EditorLayout({
   onVaultChanged,
   onUnsupportedAiPaste,
   locale,
+  dateDisplayFormat,
 }: {
   tabs: Tab[]
   activeTabPath: string | null
@@ -449,6 +452,7 @@ function EditorLayout({
   onVaultChanged?: () => void
   onUnsupportedAiPaste?: (message: string) => void
   locale?: AppLocale
+  dateDisplayFormat?: DateDisplayFormat
 }) {
   const activeBinaryTab = activeTab?.entry.fileKind === 'binary' ? activeTab : null
   const showEmptyState = tabs.length === 0 && activeTabPath === null && !isVaultLoading
@@ -549,6 +553,7 @@ function EditorLayout({
           onFileModified={onFileModified}
           onVaultChanged={onVaultChanged}
           locale={locale}
+          dateDisplayFormat={dateDisplayFormat}
         />
       </div>
       <EditorMemoryProbe entries={entries} vaultPath={vaultPath} locale={locale} />

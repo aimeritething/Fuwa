@@ -237,8 +237,8 @@ describe('NoteItem', () => {
 
     const dateRow = screen.getByTestId('note-date-row')
     expect(dateRow.className).toContain('grid')
-    expect(dateRow).toHaveTextContent('2d ago')
-    expect(dateRow).toHaveTextContent('Created 5d ago')
+    expect(dateRow).toHaveTextContent('April 8, 2025')
+    expect(dateRow).toHaveTextContent('Created April 5, 2025')
   })
 
   it('leaves the right side empty when no creation date exists', () => {
@@ -252,7 +252,7 @@ describe('NoteItem', () => {
 
     render(<NoteItem entry={entry} isSelected={false} typeEntryMap={{}} onClickNote={vi.fn()} />)
 
-    expect(screen.getByTestId('note-date-row')).toHaveTextContent('1h ago')
+    expect(screen.getByTestId('note-date-row')).toHaveTextContent('April 10, 2025')
     expect(screen.queryByText(/Created /)).not.toBeInTheDocument()
   })
 

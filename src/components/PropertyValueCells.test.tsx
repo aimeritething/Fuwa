@@ -270,6 +270,7 @@ describe('PropertyValueCells', () => {
         value="2026-04-20"
         displayMode="date"
         isEditing={true}
+        dateDisplayFormat="european"
         vaultStatuses={[]}
         vaultTags={[]}
         onStartEdit={onStartEdit}
@@ -278,6 +279,8 @@ describe('PropertyValueCells', () => {
       />,
     )
 
+    expect(screen.getByTestId('date-display')).toHaveTextContent('20/4/2026')
+    expect(screen.getByTestId('date-picker-input')).toHaveValue('2026-04-20')
     fireEvent.click(screen.getByTestId('date-picker-calendar'))
     expect(onSave).toHaveBeenCalledWith('Due', '2026-04-22')
 

@@ -1,10 +1,10 @@
-import { createElement, useRef, useEffect, useCallback, useLayoutEffect } from 'react'
-import { useMemo } from 'react'
+import { createElement, forwardRef, useRef, useEffect, useCallback, useLayoutEffect, useMemo } from 'react'
 import { cn } from '@/lib/utils'
 import type { SearchResult, VaultEntry } from '../types'
 import { useUnifiedSearch } from '../hooks/useUnifiedSearch'
 import { getTypeColor, buildTypeEntryMap } from '../utils/typeColors'
 import { formatSearchSubtitle } from '../utils/noteListHelpers'
+import { DEFAULT_DATE_DISPLAY_FORMAT, type DateDisplayFormat } from '../utils/dateDisplay'
 import { scrollSelectedHTMLChildIntoView } from '../utils/domScroll'
 import { getTypeIcon } from './NoteItem'
 import { NoteTitleIcon } from './NoteTitleIcon'
@@ -16,6 +16,7 @@ interface SearchPanelProps {
   entries: VaultEntry[]
   onSelectNote: (entry: VaultEntry) => void
   onClose: () => void
+  dateDisplayFormat?: DateDisplayFormat
 }
 
 type SearchKeyboardAction = 'close' | 'next' | 'previous' | 'select'
@@ -60,38 +61,45 @@ function shouldShowWorkspace(entries: VaultEntry[]): boolean {
   return new Set(entries.map((entry) => entry.workspace?.alias).filter(Boolean)).size > 1
 }
 
-export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }: SearchPanelProps) {
-  const searchVaultPaths = useMemo(() => searchVaultPathsForEntries(entries, vaultPath), [entries, vaultPath])
-  const {
-    query, setQuery, results, selectedIndex, setSelectedIndex, loading, elapsedMs,
-  } = useUnifiedSearch(searchVaultPaths, open)
-
-  const inputRef = useRef<HTMLInputElement>(null)
-  const listRef = useRef<HTMLDivElement>(null)
+function useSearchSelectionRefs(results: SearchResult[], selectedIndex: number) {
   const resultsRef = useRef(results)
   const selectedIndexRef = useRef(selectedIndex)
-
-  useEffect(() => {
-    scrollSelectedHTMLChildIntoView(listRef.current, selectedIndex)
-  }, [selectedIndex])
-
-  const handleSelect = useCallback((result: SearchResult) => {
-    const entry = entries.find(e => e.path === result.path)
-    if (entry) {
-      onSelectNote(entry)
-      onClose()
-    }
-  }, [entries, onSelectNote, onClose])
 
   useLayoutEffect(() => {
     resultsRef.current = results
     selectedIndexRef.current = selectedIndex
   }, [results, selectedIndex])
 
-  useEffect(() => {
-    if (open) setTimeout(() => inputRef.current?.focus(), 50)
-  }, [open])
+  return { resultsRef, selectedIndexRef }
+}
 
+function useSearchEntryData(entries: VaultEntry[]) {
+  const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
+  const entryLookup = useMemo(() => {
+    const map = new Map<string, VaultEntry>()
+    for (const e of entries) map.set(e.path, e)
+    return map
+  }, [entries])
+  const showWorkspace = useMemo(() => shouldShowWorkspace(entries), [entries])
+
+  return { entryLookup, showWorkspace, typeEntryMap }
+}
+
+function useSearchKeyboard({
+  open,
+  onClose,
+  handleSelect,
+  resultsRef,
+  selectedIndexRef,
+  setSelectedIndex,
+}: {
+  open: boolean
+  onClose: () => void
+  handleSelect: (result: SearchResult) => void
+  resultsRef: React.MutableRefObject<SearchResult[]>
+  selectedIndexRef: React.MutableRefObject<number>
+  setSelectedIndex: React.Dispatch<React.SetStateAction<number>>
+}) {
   const handleKeyDown = useCallback((e: { key: string; preventDefault: () => void }) => {
     const action = resolveSearchKeyboardAction(e.key)
     if (!action) return
@@ -109,7 +117,7 @@ export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }:
     }
 
     setSelectedIndex(i => nextSearchSelectionIndex(action, i, resultsRef.current.length))
-  }, [handleSelect, onClose, setSelectedIndex])
+  }, [handleSelect, onClose, resultsRef, selectedIndexRef, setSelectedIndex])
 
   useEffect(() => {
     if (!open) return
@@ -118,13 +126,85 @@ export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }:
     return () => window.removeEventListener('keydown', handleKey)
   }, [open, handleKeyDown])
 
-  const typeEntryMap = useMemo(() => buildTypeEntryMap(entries), [entries])
-  const entryLookup = useMemo(() => {
-    const map = new Map<string, VaultEntry>()
-    for (const e of entries) map.set(e.path, e)
-    return map
-  }, [entries])
-  const showWorkspace = useMemo(() => shouldShowWorkspace(entries), [entries])
+  return handleKeyDown
+}
+
+function useSearchPanelController({ open, vaultPath, entries, onSelectNote, onClose }: SearchPanelProps) {
+  const searchVaultPaths = useMemo(() => searchVaultPathsForEntries(entries, vaultPath), [entries, vaultPath])
+  const {
+    query, setQuery, results, selectedIndex, setSelectedIndex, loading, elapsedMs,
+  } = useUnifiedSearch(searchVaultPaths, open)
+
+  const inputRef = useRef<HTMLInputElement>(null)
+  const listRef = useRef<HTMLDivElement>(null)
+  const { resultsRef, selectedIndexRef } = useSearchSelectionRefs(results, selectedIndex)
+
+  useEffect(() => {
+    scrollSelectedHTMLChildIntoView(listRef.current, selectedIndex)
+  }, [selectedIndex])
+
+  const handleSelect = useCallback((result: SearchResult) => {
+    const entry = entries.find(e => e.path === result.path)
+    if (entry) {
+      onSelectNote(entry)
+      onClose()
+    }
+  }, [entries, onSelectNote, onClose])
+
+  useEffect(() => {
+    if (open) setTimeout(() => inputRef.current?.focus(), 50)
+  }, [open])
+
+  const handleKeyDown = useSearchKeyboard({
+    open,
+    onClose,
+    handleSelect,
+    resultsRef,
+    selectedIndexRef,
+    setSelectedIndex,
+  })
+  const entryData = useSearchEntryData(entries)
+
+  return {
+    elapsedMs,
+    handleKeyDown,
+    handleSelect,
+    inputRef,
+    listRef,
+    loading,
+    query,
+    results,
+    selectedIndex,
+    setQuery,
+    setSelectedIndex,
+    ...entryData,
+  }
+}
+
+export function SearchPanel({
+  open,
+  vaultPath,
+  entries,
+  onSelectNote,
+  onClose,
+  dateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
+}: SearchPanelProps) {
+  const {
+    elapsedMs,
+    entryLookup,
+    handleKeyDown,
+    handleSelect,
+    inputRef,
+    listRef,
+    loading,
+    query,
+    results,
+    selectedIndex,
+    setQuery,
+    setSelectedIndex,
+    showWorkspace,
+    typeEntryMap,
+  } = useSearchPanelController({ open, vaultPath, entries, onSelectNote, onClose })
 
   if (!open) return null
 
@@ -153,6 +233,7 @@ export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }:
           entryLookup={entryLookup}
           typeEntryMap={typeEntryMap}
           showWorkspace={showWorkspace}
+          dateDisplayFormat={dateDisplayFormat}
           listRef={listRef}
           onSelect={handleSelect}
           onHover={setSelectedIndex}
@@ -161,8 +242,6 @@ export function SearchPanel({ open, vaultPath, entries, onSelectNote, onClose }:
     </div>
   )
 }
-
-import { forwardRef } from 'react'
 
 interface SearchInputProps {
   query: string
@@ -213,6 +292,7 @@ interface SearchContentProps {
   entryLookup: Map<string, VaultEntry>
   typeEntryMap: Record<string, VaultEntry>
   showWorkspace: boolean
+  dateDisplayFormat: DateDisplayFormat
   listRef: React.RefObject<HTMLDivElement | null>
   onSelect: (result: SearchResult) => void
   onHover: (index: number) => void
@@ -225,20 +305,53 @@ interface SearchResultRowProps {
   index: number
   typeEntryMap: Record<string, VaultEntry>
   showWorkspace: boolean
+  dateDisplayFormat: DateDisplayFormat
   onSelect: (result: SearchResult) => void
   onHover: (index: number) => void
 }
 
-function SearchResultRow({
-  result, entry, selected, index, typeEntryMap, showWorkspace, onSelect, onHover,
-}: SearchResultRowProps) {
+interface SearchResultPresentation {
+  TypeIcon: ReturnType<typeof getTypeIcon>
+  icon?: string | null
+  noteType: string | null
+  subtitle: string | null
+  title: string
+  titlePrefix: string | null
+  typeColor?: string
+}
+
+function resolveSearchResultPresentation({
+  result,
+  entry,
+  typeEntryMap,
+  showWorkspace,
+  dateDisplayFormat,
+}: Pick<SearchResultRowProps, 'result' | 'entry' | 'typeEntryMap' | 'showWorkspace' | 'dateDisplayFormat'>): SearchResultPresentation {
   const isA = entry?.isA ?? result.noteType
   const noteType = isA || null
-  const te = typeEntryMap[isA ?? '']
-  const typeColor = noteType ? getTypeColor(isA, te?.color) : undefined
-  const TypeIcon = getTypeIcon(isA ?? null, te?.icon)
-  const subtitle = entry ? formatSearchSubtitle(entry) : null
-  const titlePrefix = workspaceTitlePrefix(entry, showWorkspace)
+  const typeEntry = typeEntryMap[isA ?? '']
+
+  return {
+    TypeIcon: getTypeIcon(isA ?? null, typeEntry?.icon),
+    icon: entry?.icon,
+    noteType,
+    subtitle: entry ? formatSearchSubtitle(entry, dateDisplayFormat) : null,
+    title: entry?.title ?? result.title,
+    titlePrefix: workspaceTitlePrefix(entry, showWorkspace),
+    typeColor: noteType ? getTypeColor(isA, typeEntry?.color) : undefined,
+  }
+}
+
+function SearchResultRow({
+  result, entry, selected, index, typeEntryMap, showWorkspace, dateDisplayFormat, onSelect, onHover,
+}: SearchResultRowProps) {
+  const presentation = resolveSearchResultPresentation({
+    result,
+    entry,
+    typeEntryMap,
+    showWorkspace,
+    dateDisplayFormat,
+  })
 
   return (
     <div
@@ -250,16 +363,16 @@ function SearchResultRow({
       onMouseEnter={() => onHover(index)}
     >
       <div className="flex items-center gap-2">
-        {createElement(TypeIcon, {
+        {createElement(presentation.TypeIcon, {
           width: 14,
           height: 14,
           className: 'shrink-0',
-          style: { color: typeColor ?? 'var(--muted-foreground)' },
+          style: { color: presentation.typeColor ?? 'var(--muted-foreground)' },
         })}
-        <SearchResultTitle icon={entry?.icon} prefix={titlePrefix} title={entry?.title ?? result.title} />
-        <SearchResultTypeLabel noteType={noteType} />
+        <SearchResultTitle icon={presentation.icon} prefix={presentation.titlePrefix} title={presentation.title} />
+        <SearchResultTypeLabel noteType={presentation.noteType} />
       </div>
-      <SearchResultSubtitle subtitle={subtitle} />
+      <SearchResultSubtitle subtitle={presentation.subtitle} />
     </div>
   )
 }
@@ -314,7 +427,7 @@ function SearchResultsHeader({ count, elapsedMs }: { count: number; elapsedMs: n
 }
 
 function SearchContent({
-  query, results, selectedIndex, loading, elapsedMs, entryLookup, typeEntryMap, showWorkspace, listRef, onSelect, onHover,
+  query, results, selectedIndex, loading, elapsedMs, entryLookup, typeEntryMap, showWorkspace, dateDisplayFormat, listRef, onSelect, onHover,
 }: SearchContentProps) {
   const hasQuery = query.trim().length > 0
   const hasResults = results.length > 0
@@ -336,6 +449,7 @@ function SearchContent({
                 index={i}
                 typeEntryMap={typeEntryMap}
                 showWorkspace={showWorkspace}
+                dateDisplayFormat={dateDisplayFormat}
                 onSelect={onSelect}
                 onHover={onHover}
               />

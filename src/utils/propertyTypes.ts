@@ -2,6 +2,7 @@ import type { FrontmatterValue } from '../components/Inspector'
 import { getAppStorageItem } from '../constants/appStorage'
 import { isValidCssColor, isColorKeyName } from './colorUtils'
 import { dateFromParts, parseDashDateParts, parseSlashDateParts, type DateParts } from './dateStringParts'
+import { DEFAULT_DATE_DISPLAY_FORMAT, formatDateValueForDisplay, type DateDisplayFormat } from './dateDisplay'
 import { updateVaultConfigField } from './vaultConfigStore'
 import { CalendarIcon, Type, ToggleLeft, Circle, Link, Tag, Palette, Hash } from 'lucide-react'
 import { canonicalSystemMetadataKey } from './systemMetadata'
@@ -135,10 +136,12 @@ function resolveDateFromValue(value: PropertyValueText): Date | null {
   return parts ? dateFromParts(parts) : null
 }
 
-export function formatDateValue(value: PropertyValueText): PropertyValueText {
-  const date = resolveDateFromValue(value)
-  return date
-    ? date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+export function formatDateValue(
+  value: PropertyValueText,
+  dateDisplayFormat: DateDisplayFormat = DEFAULT_DATE_DISPLAY_FORMAT,
+): PropertyValueText {
+  return resolveDateFromValue(value)
+    ? formatDateValueForDisplay(value, dateDisplayFormat)
     : value
 }
 
