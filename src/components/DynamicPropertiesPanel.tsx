@@ -507,7 +507,7 @@ function MetadataSelectors({
 
 function DynamicPropertiesPanelContent({
   entry,
-  propertyState: PropertyPanelState
+  propertyState,
   pendingSuggestedKey,
   missingSuggested,
   missingTypeName,

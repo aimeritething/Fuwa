@@ -19,7 +19,6 @@ import { FeedbackDialog } from './components/FeedbackDialog'
 import { McpSetupDialog } from './components/McpSetupDialog'
 import { NoteRetargetingDialogs } from './components/note-retargeting/NoteRetargetingDialogs'
 import { StartupScreen } from './components/StartupScreen'
-import { useTelemetry } from './hooks/useTelemetry'
 import { useMcpStatus } from './hooks/useMcpStatus'
 import { useAiAgentsOnboarding } from './hooks/useAiAgentsOnboarding'
 import { useAiAgentsStatus } from './hooks/useAiAgentsStatus'
@@ -27,12 +26,8 @@ import { useVaultAiGuidanceStatus } from './hooks/useVaultAiGuidanceStatus'
 import { useAutoGit } from './hooks/useAutoGit'
 import { useVaultLoader } from './hooks/useVaultLoader'
 import { useRecentVaultWrites, useVaultWatcher } from './hooks/useVaultWatcher'
-import { useAiAgentPreferences } from './hooks/useAiAgentPreferences'
 import { useSettings } from './hooks/useSettings'
 import { useNoteWidthMode } from './hooks/useNoteWidthMode'
-import { useDocumentThemeMode } from './hooks/useDocumentThemeMode'
-import { useThemeMode } from './hooks/useThemeMode'
-import type { ThemeMode } from './lib/themeMode'
 import { useNoteActions } from './hooks/useNoteActions'
 import { planNewTypeCreation } from './hooks/useNoteCreation'
 import { useCommitFlow } from './hooks/useCommitFlow'
@@ -91,7 +86,6 @@ import type { SidebarSelection, InboxPeriod, VaultEntry, ViewDefinition, GitComm
 import type { NoteListItem } from './utils/ai-context'
 import { initializeNoteProperties } from './utils/initializeNoteProperties'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
-import { resolveAllNotesFileVisibility } from './utils/allNotesFileVisibility'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { isWindows } from './utils/platform'
 import { refreshPulledVaultState } from './utils/pulledVaultRefresh'
@@ -105,12 +99,7 @@ import { trackEvent } from './lib/telemetry'
 import { TOLARIA_DOCS_URL } from './constants/feedback'
 import { openExternalUrl } from './utils/url'
 import {
-  SYSTEM_UI_LANGUAGE,
-  getBrowserLanguagePreferences,
-  resolveEffectiveLocale,
-  serializeUiLanguagePreference,
   translate,
-  type UiLanguagePreference,
 } from './lib/i18n'
 import { normalizeReleaseChannel } from './lib/releaseChannel'
 import {
@@ -119,7 +108,6 @@ import {
 import { extractDeletedContentFromDiff } from './components/note-list/noteListUtils'
 import { isActiveVaultUnavailableError } from './utils/vaultErrors'
 import { hasNoteIconValue } from './utils/noteIcon'
-import { DEFAULT_DATE_DISPLAY_FORMAT, normalizeDateDisplayFormat } from './utils/dateDisplay'
 import { filenameStemToTitle } from './utils/noteTitle'
 import { OPEN_AI_CHAT_EVENT } from './utils/aiPromptBridge'
 import {
@@ -130,15 +118,12 @@ import {
 import { requestPlainTextPaste } from './utils/plainTextPaste'
 import { SETTINGS_SECTION_IDS } from './components/settingsSectionIds'
 import {
-  filterEntriesToVisibleWorkspaces,
-  graphWorkspaceVaultsForLoading,
   vaultPathForEntry,
-  visibleWorkspacePaths,
-  workspacesMountedInGraph,
-  workspaceIdentityFromVault,
-  writableWorkspacePaths,
 } from './utils/workspaces'
 import { activeGitRepositories } from './utils/gitRepositories'
+import { useVisibleWorkspaceEntries, useWorkspaceGraphState } from './hooks/useWorkspaceGraphState'
+import { useGitSetupState } from './hooks/useGitSetupState'
+import { useAppPreferences } from './hooks/useAppPreferences'
 import './App.css'
 
 const ACTIVE_EDITOR_SURFACE_SELECTOR = '.editor__blocknote-container, .raw-editor-codemirror'
@@ -166,16 +151,6 @@ function getNextVisibleInboxEntry(entries: VaultEntry[], currentPath: string): V
   return entries[currentIndex + 1] ?? null
 }
 
-function hideWorkspaceMetadata(entries: VaultEntry[]): VaultEntry[] {
-  let changed = false
-  const nextEntries = entries.map((entry) => {
-    if (!entry.workspace) return entry
-    changed = true
-    return { ...entry, workspace: undefined }
-  })
-  return changed ? nextEntries : entries
-}
-
 function shouldPreferOnboardingVaultPath(
   onboardingState: { status: string; vaultPath?: string },
   vaults: Array<{ path: string }>,
@@ -184,39 +159,6 @@ function shouldPreferOnboardingVaultPath(
     && typeof onboardingState.vaultPath === 'string'
     && onboardingState.vaultPath.length > 0
     && !vaults.some((vault) => vault.path === onboardingState.vaultPath)
-}
-
-function workspaceLoadVaultsKey(options: {
-  activeVaultPath: string
-  enabled: boolean
-  vaults: Array<{
-    alias?: string | null
-    available?: boolean
-    color?: string | null
-    icon?: string | null
-    label?: string
-    managedDefault?: boolean
-    mounted?: boolean
-    path: string
-    shortLabel?: string | null
-  }>
-}): string {
-  const { activeVaultPath, enabled, vaults } = options
-  if (!enabled) return `disabled:${activeVaultPath}`
-  return JSON.stringify({
-    activeVaultPath,
-    vaults: vaults.map((vault) => ({
-      alias: vault.alias ?? null,
-      available: vault.available !== false,
-      color: vault.color ?? null,
-      icon: vault.icon ?? null,
-      label: vault.label ?? '',
-      managedDefault: vault.managedDefault === true,
-      mounted: vault.mounted !== false,
-      path: vault.path,
-      shortLabel: vault.shortLabel ?? null,
-    })),
-  })
 }
 
 async function resolveNoteWindowEntry(noteWindowParams: NoteWindowParams): Promise<VaultEntry | undefined> {
@@ -258,37 +200,6 @@ function canCustomizeColumnsForSelection(
   if (selection.kind !== 'filter') return false
   if (selection.filter === 'all') return true
   return explicitOrganizationEnabled && selection.filter === 'inbox'
-}
-
-function shouldShowTelemetryConsentDialog(options: {
-  isStartupLoading: boolean
-  noteWindowParams: NoteWindowParams | null
-  settingsLoaded: boolean
-  telemetryConsent: boolean | null | undefined
-}): boolean {
-  if (options.noteWindowParams || options.isStartupLoading || !options.settingsLoaded) return false
-  return options.telemetryConsent === null
-}
-
-function shouldShowWelcomeOnboarding(options: {
-  noteWindowParams: NoteWindowParams | null
-  onboardingStatus: string
-  runtimeMissingVaultPath: string | null
-  shouldResumeFreshStartOnboarding: boolean
-}): boolean {
-  if (options.noteWindowParams) return false
-  if (options.runtimeMissingVaultPath || options.shouldResumeFreshStartOnboarding) return true
-  return options.onboardingStatus === 'welcome' || options.onboardingStatus === 'vault-missing'
-}
-
-function shouldShowAiAgentsOnboarding(options: {
-  noteWindowParams: NoteWindowParams | null
-  onboardingStatus: string
-  showMcpSetupDialog: boolean
-  showPrompt: boolean
-}): boolean {
-  if (options.noteWindowParams || options.showMcpSetupDialog) return false
-  return options.onboardingStatus === 'ready' && options.showPrompt
 }
 
 function createPulseDeletedNoteEntry(fullPath: string, relativePath: string): DeletedNoteEntry {
@@ -444,128 +355,33 @@ function App() {
   )
   const { settings, loaded: settingsLoaded, saveSettings } = useSettings()
   const [settingsInitialSectionId, setSettingsInitialSectionId] = useState<string | null>(null)
-  const multiWorkspaceEnabled = settings.multi_workspace_enabled === true
-  const workspaceGraphLoadingEnabled = !noteWindowParams
-  const graphDefaultWorkspacePath = !noteWindowParams && multiWorkspaceEnabled
-    ? (defaultWorkspacePath ?? resolvedPath)
-    : resolvedPath
-  const graphVaultsCacheRef = useRef<{ key: string; value: typeof allVaults | undefined } | null>(null)
-  const graphVaultsKey = useMemo(
-    () => workspaceLoadVaultsKey({
-      activeVaultPath: graphDefaultWorkspacePath,
-      enabled: workspaceGraphLoadingEnabled,
-      vaults: allVaults,
-    }),
-    [allVaults, graphDefaultWorkspacePath, workspaceGraphLoadingEnabled],
-  )
-  const graphVaults = useMemo(() => {
-    const key = noteWindowParams ? `note-window:${resolvedPath}` : graphVaultsKey
-    if (graphVaultsCacheRef.current?.key === key) return graphVaultsCacheRef.current.value
-    const value = noteWindowParams
-      ? undefined
-      : graphWorkspaceVaultsForLoading({
-        defaultVaultPath: graphDefaultWorkspacePath,
-        enabled: workspaceGraphLoadingEnabled,
-        vaults: allVaults,
-      })
-    graphVaultsCacheRef.current = { key, value }
-    return value
-  }, [allVaults, graphDefaultWorkspacePath, graphVaultsKey, noteWindowParams, resolvedPath, workspaceGraphLoadingEnabled])
-  const visibleWorkspacePathList = useMemo(
-    () => {
-      if (noteWindowParams) return undefined
-      if (!multiWorkspaceEnabled) {
-        return graphDefaultWorkspacePath.trim() ? [graphDefaultWorkspacePath] : undefined
-      }
-      return visibleWorkspacePaths({
-        defaultVaultPath: graphDefaultWorkspacePath,
-        enabled: true,
-        vaults: allVaults,
-      })
-    },
-    [allVaults, graphDefaultWorkspacePath, multiWorkspaceEnabled, noteWindowParams],
-  )
-  const writableVaultPaths = useMemo(
-    () => visibleWorkspacePathList ?? writableWorkspacePaths({
-      defaultVaultPath: graphDefaultWorkspacePath,
-      graphVaults: undefined,
-    }),
-    [graphDefaultWorkspacePath, visibleWorkspacePathList],
-  )
-  const inspectorWorkspaces = useMemo(() => {
-    if (!multiWorkspaceEnabled || noteWindowParams) return []
-    const writablePathSet = new Set(writableVaultPaths)
-    return (graphVaults ?? [])
-      .filter((vault) => writablePathSet.has(vault.path))
-      .map((vault) => workspaceIdentityFromVault(vault, { defaultWorkspacePath }))
-  }, [defaultWorkspacePath, graphVaults, multiWorkspaceEnabled, noteWindowParams, writableVaultPaths])
-  const folderVaults = useMemo(
-    () => noteWindowParams || !multiWorkspaceEnabled
-      ? undefined
-      : workspacesMountedInGraph({
-        defaultVaultPath: graphDefaultWorkspacePath,
-        vaults: allVaults,
-    }),
-    [allVaults, graphDefaultWorkspacePath, multiWorkspaceEnabled, noteWindowParams],
-  )
-  useEffect(() => {
-    if (noteWindowParams || !vaultSwitcher.loaded) return
-
-    const bridgeVaultPath = writableVaultPaths[0] ?? null
-    void appTauriCall<string>('sync_mcp_bridge_vault', {
-      vaultPath: bridgeVaultPath,
-      vaultPaths: writableVaultPaths,
-    }).catch((err) => {
-      console.warn('Failed to sync MCP bridge vault scope:', err)
-    })
-  }, [noteWindowParams, vaultSwitcher.loaded, writableVaultPaths])
-  // Git repo check: 'checking' | 'missing' | 'ready'
-  const [gitRepoState, setGitRepoState] = useState<'checking' | 'missing' | 'ready'>('checking')
-  const [showGitSetupDialog, setShowGitSetupDialog] = useState(false)
-  const dismissedGitSetupPathRef = useRef<string | null>(null)
-  useEffect(() => {
-    if (!resolvedPath) return
-    setGitRepoState('checking')
-    const check = isTauri()
-      ? invoke<boolean>('is_git_repo', { vaultPath: resolvedPath })
-      : mockInvoke<boolean>('is_git_repo', { vaultPath: resolvedPath })
-    check
-      .then(isGit => setGitRepoState(isGit ? 'ready' : 'missing'))
-      .catch(() => setGitRepoState('ready')) // fail open
-  }, [resolvedPath])
-
-  useEffect(() => {
-    if (noteWindowParams || gitRepoState !== 'missing' || !resolvedPath) return
-    if (dismissedGitSetupPathRef.current === resolvedPath) return
-    setShowGitSetupDialog(true)
-  }, [gitRepoState, noteWindowParams, resolvedPath])
-
-  useEffect(() => {
-    if (gitRepoState === 'missing') return
-    setShowGitSetupDialog(false)
-  }, [gitRepoState])
-
-  const openGitSetupDialog = useCallback(() => {
-    if (gitRepoState !== 'missing') return
-    setShowGitSetupDialog(true)
-  }, [gitRepoState])
-
-  const dismissGitSetupDialog = useCallback(() => {
-    dismissedGitSetupPathRef.current = resolvedPath
-    setShowGitSetupDialog(false)
-  }, [resolvedPath])
-
-  const handleInitGitRepo = useCallback(async () => {
-    if (isTauri()) {
-      await invoke('init_git_repo', { vaultPath: resolvedPath })
-    } else {
-      await mockInvoke('init_git_repo', { vaultPath: resolvedPath })
-    }
-    setGitRepoState('ready')
-    dismissedGitSetupPathRef.current = null
-    setShowGitSetupDialog(false)
-    setToastMessage('Git initialized for this vault')
-  }, [resolvedPath, setToastMessage])
+  const {
+    folderVaults,
+    graphDefaultWorkspacePath,
+    graphVaults,
+    inspectorWorkspaces,
+    multiWorkspaceEnabled,
+    visibleWorkspacePathList,
+    writableVaultPaths,
+  } = useWorkspaceGraphState({
+    allVaults,
+    defaultWorkspacePath,
+    resolvedPath,
+    settings,
+    vaultSwitcherLoaded: vaultSwitcher.loaded,
+    windowMode: Boolean(noteWindowParams),
+  })
+  const {
+    dismissGitSetupDialog,
+    gitRepoState,
+    handleInitGitRepo,
+    openGitSetupDialog,
+    shouldShowGitSetupDialog,
+  } = useGitSetupState({
+    onToast: setToastMessage,
+    resolvedPath,
+    windowMode: Boolean(noteWindowParams),
+  })
 
   const vault = useVaultLoader(
     noteWindowParams ? '' : resolvedPath,
@@ -591,13 +407,11 @@ function App() {
     if (visibleWorkspacePathList && visibleWorkspacePathList.length > 0) return visibleWorkspacePathList
     return resolvedPath.trim() ? [resolvedPath] : []
   }, [noteWindowParams, resolvedPath, visibleWorkspacePathList])
-  const visibleEntries = useMemo(
-    () => {
-      const entries = filterEntriesToVisibleWorkspaces(vault.entries, visibleWorkspacePathList)
-      return multiWorkspaceEnabled ? entries : hideWorkspaceMetadata(entries)
-    },
-    [multiWorkspaceEnabled, vault.entries, visibleWorkspacePathList],
-  )
+  const visibleEntries = useVisibleWorkspaceEntries({
+    entries: vault.entries,
+    multiWorkspaceEnabled,
+    visibleWorkspacePathList,
+  })
   const runtimeMissingVaultPath = !noteWindowParams ? vault.unavailableVaultPath : null
   const {
     markInternalWrite: markRecentVaultWrite,
@@ -637,47 +451,24 @@ function App() {
       explicitOrganization: enabled,
     })
   }, [updateConfig, vaultConfig.inbox?.noteListProperties])
-  const systemLocale = useMemo(
-    () => resolveEffectiveLocale(SYSTEM_UI_LANGUAGE, getBrowserLanguagePreferences()),
-    [],
-  )
-  const appLocale = useMemo(
-    () => resolveEffectiveLocale(settings.ui_language, [systemLocale]),
-    [settings.ui_language, systemLocale],
-  )
-  const dateDisplayFormat = useMemo(
-    () => normalizeDateDisplayFormat(settings.date_display_format) ?? DEFAULT_DATE_DISPLAY_FORMAT,
-    [settings.date_display_format],
-  )
-  const allNotesFileVisibility = useMemo(
-    () => resolveAllNotesFileVisibility(settings),
-    [settings],
-  )
-  const selectedUiLanguage = settings.ui_language ?? SYSTEM_UI_LANGUAGE
-  useEffect(() => {
-    document.documentElement.lang = appLocale
-  }, [appLocale])
-  useThemeMode(settings.theme_mode, settingsLoaded)
-  const documentThemeMode = useDocumentThemeMode()
-  const handleToggleThemeMode = useCallback(() => {
-    const theme_mode = documentThemeMode === 'dark' ? 'light' : 'dark'
-    void saveSettings({ ...settings, theme_mode })
-  }, [documentThemeMode, saveSettings, settings])
-  const handleSetThemeMode = useCallback((theme_mode: ThemeMode) => {
-    if (!settingsLoaded) return
-    void saveSettings({ ...settings, theme_mode })
-  }, [saveSettings, settings, settingsLoaded])
-  const handleSetUiLanguage = useCallback((uiLanguage: UiLanguagePreference) => {
-    void saveSettings({ ...settings, ui_language: serializeUiLanguagePreference(uiLanguage) })
-  }, [saveSettings, settings])
-  const aiAgentPreferences = useAiAgentPreferences({
-    settings,
-    settingsLoaded,
-    saveSettings,
+  const {
+    aiAgentPreferences,
+    allNotesFileVisibility,
+    appLocale,
+    dateDisplayFormat,
+    documentThemeMode,
+    handleSetThemeMode,
+    handleSetUiLanguage,
+    handleToggleThemeMode,
+    selectedUiLanguage,
+    systemLocale,
+  } = useAppPreferences({
     aiAgentsStatus,
     onToast: setToastMessage,
+    saveSettings,
+    settings,
+    settingsLoaded,
   })
-  useTelemetry(settings, settingsLoaded)
 
   const vaultOpenedRef = useRef('')
   useEffect(() => {
@@ -1364,7 +1155,6 @@ function App() {
   })
   const suggestedCommitMessage = useMemo(() => generateCommitMessage(commitModifiedFiles), [commitModifiedFiles])
   const isGitVault = gitRepoState !== 'missing'
-  const shouldShowGitSetupDialog = !noteWindowParams && gitRepoState === 'missing' && showGitSetupDialog
   const modifiedFilesSignature = useMemo(
     () => allGitModifiedFiles.map((file) => `${file.vaultPath ?? ''}:${file.relativePath}:${file.status}`).sort().join('|'),
     [allGitModifiedFiles],
@@ -2034,25 +1824,6 @@ function App() {
   }, [onboarding.state, selectedVaultPath, vaultSwitcher.allVaults, vaultSwitcher.loaded, vaultSwitcher.vaultPath])
 
   const isStartupLoading = !noteWindowParams && onboarding.state.status === 'loading'
-  const showTelemetryConsentDialog = shouldShowTelemetryConsentDialog({
-    isStartupLoading,
-    noteWindowParams,
-    settingsLoaded,
-    telemetryConsent: settings.telemetry_consent,
-  })
-  const showWelcomeOnboarding = shouldShowWelcomeOnboarding({
-    noteWindowParams,
-    onboardingStatus: onboarding.state.status,
-    runtimeMissingVaultPath,
-    shouldResumeFreshStartOnboarding,
-  })
-  const showAiAgentsOnboarding = shouldShowAiAgentsOnboarding({
-    noteWindowParams,
-    onboardingStatus: onboarding.state.status,
-    showMcpSetupDialog,
-    showPrompt: aiAgentsOnboarding.showPrompt,
-  })
-
   const shouldShowStartupScreen = !noteWindowParams && (
     (!isStartupLoading && settingsLoaded && settings.telemetry_consent === null)
     || Boolean(runtimeMissingVaultPath)
