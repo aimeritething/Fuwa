@@ -245,8 +245,19 @@ async function installFixtureVaultInitScript({ page, vaultPath, isGitRepo }: Fix
         body: JSON.stringify(payload),
       })
 
-    const readCommandValue = (commandArgs: FixtureCommandArgs, key: string, fallback?: unknown) =>
-      commandArgs?.[key] ?? fallback
+    const readNestedCommandArgs = (commandArgs: FixtureCommandArgs) => {
+      const nestedArgs = commandArgs?.args
+      return nestedArgs && typeof nestedArgs === 'object'
+        ? nestedArgs as Record<string, unknown>
+        : null
+    }
+
+    const readCommandValue = (commandArgs: FixtureCommandArgs, key: string, fallback?: unknown) => {
+      const directValue = commandArgs?.[key]
+      if (directValue !== undefined) return directValue
+      const nestedValue = readNestedCommandArgs(commandArgs)?.[key]
+      return nestedValue ?? fallback
+    }
 
     const readCommandString = (commandArgs: FixtureCommandArgs, key: string, fallback = '') =>
       String(readCommandValue(commandArgs, key, fallback))

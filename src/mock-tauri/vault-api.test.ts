@@ -94,4 +94,33 @@ describe('tryVaultApi', () => {
       content: '# Stale',
     })).resolves.toBe(false)
   })
+
+  it('accepts nested Tauri command args when routing browser vault API writes', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = requestUrl(input)
+      if (url === '/api/vault/ping') {
+        return jsonResponse({ ok: true })
+      }
+      if (url === '/api/vault/rename') {
+        expect(requestBody(init)).toEqual({
+          old_path: '/fixture/untitled-note-123.md',
+          new_title: 'Fresh Title',
+          vault_path: '/fixture',
+        })
+        return jsonResponse({ new_path: '/fixture/fresh-title.md', updated_files: 0 })
+      }
+      throw new Error(`Unexpected fetch: ${url}`)
+    })
+    globalThis.fetch = fetchMock as typeof fetch
+
+    const { tryVaultApi } = await import('./vault-api')
+
+    await expect(tryVaultApi('rename_note', {
+      args: {
+        old_path: '/fixture/untitled-note-123.md',
+        new_title: 'Fresh Title',
+        vault_path: '/fixture',
+      },
+    })).resolves.toEqual({ new_path: '/fixture/fresh-title.md', updated_files: 0 })
+  })
 })

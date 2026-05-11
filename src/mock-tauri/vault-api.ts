@@ -51,8 +51,15 @@ function argText(args: Record<string, unknown>, key: string): string | null {
   return value ? String(value) : null
 }
 
+function commandArgs(args: Record<string, unknown>): Record<string, unknown> {
+  const nestedArgs = Reflect.get(args, 'args')
+  if (!nestedArgs || typeof nestedArgs !== 'object') return args
+  return nestedArgs as Record<string, unknown>
+}
+
 function buildListRequest(args: Record<string, unknown>, reload: boolean): VaultApiRequest | null {
-  const path = argText(args, 'path')
+  const payload = commandArgs(args)
+  const path = argText(payload, 'path')
   if (!path) return null
 
   lastVaultPath = path
@@ -60,7 +67,8 @@ function buildListRequest(args: Record<string, unknown>, reload: boolean): Vault
 }
 
 function buildPathQueryRequest(cmd: PathQueryCommand, args: Record<string, unknown>): VaultApiRequest | null {
-  const path = argText(args, 'path')
+  const payload = commandArgs(args)
+  const path = argText(payload, 'path')
   if (!path) return null
   return { kind: pathQueryKind(cmd), body: { path } }
 }
@@ -82,10 +90,11 @@ function buildRequiredPathPostRequest(
 }
 
 function buildSearchRequest(args: Record<string, unknown>): VaultApiRequest | null {
-  const query = argText(args, 'query')
+  const payload = commandArgs(args)
+  const query = argText(payload, 'query')
   if (!query || !lastVaultPath) return null
 
-  const mode = argText(args, 'mode') ?? 'all'
+  const mode = argText(payload, 'mode') ?? 'all'
   return { kind: 'search', body: { mode, query, vault_path: lastVaultPath } }
 }
 
@@ -103,27 +112,28 @@ function pathQueryKind(command: PathQueryCommand): VaultApiGetRequest['kind'] {
 }
 
 function buildPostRequest(cmd: string, args: Record<string, unknown>): VaultApiRequest | null {
+  const payload = commandArgs(args)
   if (cmd === 'save_note_content') {
-    return buildRequiredPathPostRequest('save', args, {
-      content: args.content,
-      path: args.path,
+    return buildRequiredPathPostRequest('save', payload, {
+      content: payload.content,
+      path: payload.path,
     })
   }
   if (cmd === 'rename_note') {
-    return buildRequiredPostRequest('rename', args.old_path, {
-      new_title: args.new_title,
-      old_path: args.old_path,
-      vault_path: args.vault_path,
+    return buildRequiredPostRequest('rename', payload.old_path, {
+      new_title: payload.new_title,
+      old_path: payload.old_path,
+      vault_path: payload.vault_path,
     })
   }
   if (cmd === 'rename_note_filename') {
-    return buildRequiredPostRequest('rename-filename', args.old_path, {
-      new_filename_stem: args.new_filename_stem,
-      old_path: args.old_path,
-      vault_path: args.vault_path,
+    return buildRequiredPostRequest('rename-filename', payload.old_path, {
+      new_filename_stem: payload.new_filename_stem,
+      old_path: payload.old_path,
+      vault_path: payload.vault_path,
     })
   }
-  if (cmd === 'delete_note') return buildRequiredPathPostRequest('delete', args, { path: args.path })
+  if (cmd === 'delete_note') return buildRequiredPathPostRequest('delete', payload, { path: payload.path })
   return null
 }
 
