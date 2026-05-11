@@ -4,8 +4,10 @@ import { spawn } from 'node:child_process'
 import {
   mkdtemp, mkdir, open, rm,
 } from 'node:fs/promises'
-import path from 'node:path'
 import os from 'node:os'
+import path from 'node:path'
+import process from 'node:process'
+import { clearTimeout, setTimeout } from 'node:timers'
 import { fileURLToPath } from 'node:url'
 import {
   findMarkdownFiles, getNote, searchNotes, vaultContext,
@@ -44,6 +46,17 @@ is_a: Note
 Today I worked on the MCP server implementation.
 `)
 
+  await writeTextFile(path.join(tmpDir, 'note', 'hashtag-tags.md'), `---
+title: Hashtag Tags
+type: Note
+tags: [#abc, def, ghi]
+---
+
+# Hashtag Tags
+
+This note has AI-generated hashtag-style YAML tags.
+`)
+
   await writeTextFile(path.join(tmpDir, 'project', 'second-project.md'), `---
 title: Second Project
 type: Project
@@ -65,10 +78,11 @@ after(async () => {
 describe('findMarkdownFiles', () => {
   it('should find all .md files recursively', async () => {
     const files = await findMarkdownFiles(tmpDir)
-    assert.equal(files.length, 3)
+    assert.equal(files.length, 4)
     assert.ok(files.some(f => f.endsWith('test-project.md')))
     assert.ok(files.some(f => f.endsWith('daily-log.md')))
     assert.ok(files.some(f => f.endsWith('second-project.md')))
+    assert.ok(files.some(f => f.endsWith('hashtag-tags.md')))
   })
 })
 
@@ -79,6 +93,15 @@ describe('getNote', () => {
     assert.equal(note.frontmatter.title, 'Test Project')
     assert.equal(note.frontmatter.is_a, 'Project')
     assert.ok(note.content.includes('test project for the MCP server'))
+  })
+
+  it('should tolerate hashtag-style tags in malformed YAML frontmatter', async () => {
+    const note = await getNote(tmpDir, 'note/hashtag-tags.md')
+    assert.equal(note.path, 'note/hashtag-tags.md')
+    assert.equal(note.frontmatter.title, 'Hashtag Tags')
+    assert.equal(note.frontmatter.type, 'Note')
+    assert.deepEqual(note.frontmatter.tags, ['#abc', 'def', 'ghi'])
+    assert.ok(note.content.includes('has AI-generated hashtag-style YAML tags'))
   })
 
   it('should throw for missing notes', async () => {
@@ -137,6 +160,14 @@ describe('vaultContext', () => {
     assert.ok(ctx.types.includes('Note'))
   })
 
+  it('should include notes with hashtag-style tags in malformed YAML frontmatter', async () => {
+    const ctx = await vaultContext(tmpDir)
+    const note = ctx.recentNotes.find(entry => entry.path === 'note/hashtag-tags.md')
+    assert.ok(note)
+    assert.equal(note.title, 'Hashtag Tags')
+    assert.equal(note.type, 'Note')
+  })
+
   it('should cap recent notes at 20', async () => {
     const ctx = await vaultContext(tmpDir)
     assert.ok(ctx.recentNotes.length <= 20)
@@ -158,7 +189,7 @@ describe('vaultContext', () => {
 
   it('should report correct note count', async () => {
     const ctx = await vaultContext(tmpDir)
-    assert.equal(ctx.noteCount, 3)
+    assert.equal(ctx.noteCount, 4)
   })
 })
 

@@ -52,7 +52,7 @@ export async function getNote(vaultPath, notePath) {
     relativePath,
   } = await resolveVaultNotePath(vaultPath, notePath)
   const raw = await readUtf8File(noteRealPath)
-  const parsed = matter(raw)
+  const parsed = parseMarkdownNote(raw)
   return {
     path: relativePath,
     frontmatter: parsed.data,
@@ -109,7 +109,7 @@ export async function vaultContext(vaultPath) {
   }
 
   notesWithMtime.sort((a, b) => b.mtime - a.mtime)
-  const recentNotes = notesWithMtime.slice(0, 20).map(({ mtime: _mtime, ...rest }) => rest)
+  const recentNotes = notesWithMtime.slice(0, 20).map(contextNoteWithoutMtime)
 
   return {
     types: [...typesSet].sort(),
@@ -160,9 +160,17 @@ function matchesSearchQuery(title, content, query) {
   return title.toLowerCase().includes(query) || content.toLowerCase().includes(query)
 }
 
+function contextNoteWithoutMtime(note) {
+  return {
+    path: note.path,
+    title: note.title,
+    type: note.type,
+  }
+}
+
 async function readVaultContextNote(vaultPath, filePath) {
   const raw = await readUtf8File(filePath)
-  const parsed = matter(raw)
+  const parsed = parseMarkdownNote(raw)
   const rel = path.relative(vaultPath, filePath)
   const topFolder = extractTopFolder(rel)
   const stat = await statFile(filePath)
@@ -178,6 +186,129 @@ async function readVaultContextNote(vaultPath, filePath) {
       mtime: stat.mtimeMs,
     },
   }
+}
+
+function parseMarkdownNote(raw) {
+  try {
+    const parsed = matter(raw)
+    const fallback = parseFrontmatterFallback(raw)
+    return shouldUseFallbackFrontmatter(parsed, fallback) ? fallback : parsed
+  } catch {
+    return parseFrontmatterFallback(raw)
+  }
+}
+
+function shouldUseFallbackFrontmatter(parsed, fallback) {
+  return Object.keys(parsed.data).length === 0 && Object.keys(fallback.data).length > 0
+}
+
+function parseFrontmatterFallback(raw) {
+  const split = splitFrontmatter(raw)
+  if (!split) return { data: {}, content: raw }
+
+  return {
+    data: parseFrontmatterBlock(split.frontmatter),
+    content: split.content,
+  }
+}
+
+function splitFrontmatter(raw) {
+  const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---[ \t]*(?:\r?\n|$)([\s\S]*)$/)
+  if (!match) return null
+  return { frontmatter: match[1], content: match[2] }
+}
+
+function parseFrontmatterBlock(frontmatter) {
+  const data = {}
+  let listKey = null
+
+  for (const line of frontmatter.split(/\r?\n/)) {
+    const item = parseYamlListItem(line)
+    if (listKey && item !== null) {
+      data[listKey].push(parseYamlScalar(item))
+      continue
+    }
+
+    listKey = null
+    const field = parseTopLevelYamlField(line)
+    if (!field) continue
+
+    data[field.key] = field.value ? parseYamlValue(field.value) : []
+    listKey = field.value ? null : field.key
+  }
+
+  return data
+}
+
+function parseTopLevelYamlField(line) {
+  if (!line || line.trimStart() !== line || line.trimStart().startsWith('#')) return null
+
+  const separatorIndex = line.indexOf(':')
+  if (separatorIndex <= 0) return null
+
+  return {
+    key: stripMatchingQuotes(line.slice(0, separatorIndex).trim()),
+    value: line.slice(separatorIndex + 1).trim(),
+  }
+}
+
+function parseYamlValue(value) {
+  if (value.startsWith('[') && value.endsWith(']')) {
+    return splitInlineYamlArray(value).map(parseYamlScalar)
+  }
+  return parseYamlScalar(value)
+}
+
+function splitInlineYamlArray(value) {
+  const inner = value.slice(1, -1)
+  const items = []
+  let current = ''
+  let quote = null
+
+  for (const char of inner) {
+    if (quote) {
+      current += char
+      if (char === quote) quote = null
+      continue
+    }
+    if (char === '"' || char === "'") {
+      quote = char
+      current += char
+      continue
+    }
+    if (char === ',') {
+      items.push(current.trim())
+      current = ''
+      continue
+    }
+    current += char
+  }
+
+  if (current.trim()) items.push(current.trim())
+  return items
+}
+
+function parseYamlListItem(line) {
+  const match = line.match(/^\s+-\s*(.*)$/)
+  return match ? match[1].trim() : null
+}
+
+function parseYamlScalar(value) {
+  const unquoted = stripMatchingQuotes(value.trim())
+  if (unquoted !== value.trim()) return unquoted
+
+  if (/^(true|yes)$/i.test(unquoted)) return true
+  if (/^(false|no)$/i.test(unquoted)) return false
+  if (/^(null|~)$/i.test(unquoted)) return null
+  if (/^-?\d+(\.\d+)?$/.test(unquoted)) return Number(unquoted)
+
+  return unquoted
+}
+
+function stripMatchingQuotes(value) {
+  const first = value[0]
+  const last = value[value.length - 1]
+  return (first === '"' || first === "'") && first === last ? value.slice(1, -1) : value
 }
 
 function extractTopFolder(relativePath) {
