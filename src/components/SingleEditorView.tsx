@@ -20,6 +20,7 @@ import { MantineContext, MantineProvider } from '@mantine/core'
 import { Copy } from '@phosphor-icons/react'
 import { ExternalLink } from 'lucide-react'
 import { useDocumentThemeMode } from '../hooks/useDocumentThemeMode'
+import { repairMalformedEditorBlocks } from '../hooks/editorBlockRepair'
 import { useEditorTheme } from '../hooks/useTheme'
 import { useImageDrop } from '../hooks/useImageDrop'
 import { useImageLightbox } from '../hooks/useImageLightbox'
@@ -108,10 +109,10 @@ type BlockNoteRenderRecoveryState = {
   retries: number
 }
 
-class BlockNoteRenderRecoveryBoundary extends Component<
-  { children: (recoveryKey: number) => ReactNode },
-  BlockNoteRenderRecoveryState
-> {
+class BlockNoteRenderRecoveryBoundary extends Component<{
+  children: (recoveryKey: number) => ReactNode
+  onRecover?: (attempt: number) => void
+}, BlockNoteRenderRecoveryState> {
   state: BlockNoteRenderRecoveryState = {
     error: null,
     recoveryKey: 0,
@@ -129,6 +130,7 @@ class BlockNoteRenderRecoveryBoundary extends Component<
     const attempt = this.state.retries + 1
     markRecoveredBlockNoteRenderError(error)
     trackEvent('editor_render_recovered', { reason: 'block_missing_id', attempt })
+    this.props.onRecover?.(attempt)
     this.setState(({ recoveryKey, retries }) => ({
       error: null,
       recoveryKey: recoveryKey + 1,
@@ -149,6 +151,24 @@ class BlockNoteRenderRecoveryBoundary extends Component<
     }
 
     return this.props.children(this.state.recoveryKey)
+  }
+}
+
+function repairEditorDocumentForRenderRecovery(editor: ReturnType<typeof useCreateBlockNote>) {
+  const current = editor.document
+  const safeBlocks = repairMalformedEditorBlocks(current)
+  if (safeBlocks === current) return
+
+  try {
+    editor.replaceBlocks(current, safeBlocks)
+  } catch (error) {
+    console.warn('[editor] Failed to repair BlockNote document before render recovery:', error)
+    try {
+      const markup = editor.blocksToHTMLLossy(safeBlocks)
+      editor._tiptapEditor.commands.setContent(markup)
+    } catch (fallbackError) {
+      console.warn('[editor] Failed to apply repaired BlockNote document fallback:', fallbackError)
+    }
   }
 }
 
@@ -1347,7 +1367,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
           <div className="editor__drop-overlay-label">Drop image here</div>
         </div>
       )}
-      <BlockNoteRenderRecoveryBoundary>
+      <BlockNoteRenderRecoveryBoundary onRecover={() => repairEditorDocumentForRenderRecovery(editor)}>
         {(recoveryKey) => (
           <SharedContextBlockNoteView
             key={recoveryKey}

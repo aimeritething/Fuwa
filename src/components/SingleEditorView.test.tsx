@@ -39,7 +39,6 @@ vi.mock('@blocknote/react', () => ({
   }) => {
     if (state.blockNoteViewError) {
       const error = state.blockNoteViewError
-      state.blockNoteViewError = null
       throw error
     }
 
@@ -291,6 +290,9 @@ function createEditor() {
     getTextCursorPosition: vi.fn(() => ({ block: cursorBlock })),
     insertBlocks: vi.fn(),
     insertInlineContent: vi.fn(),
+    replaceBlocks: vi.fn(() => {
+      state.blockNoteViewError = null
+    }),
     setTextCursorPosition: vi.fn(),
   }
 }
@@ -454,14 +456,28 @@ describe('SingleEditorView', () => {
     delete window.__laputaTest
   })
 
-  it('remounts the editor view when a stale BlockNote node view has no block id', async () => {
+  it('repairs the live editor document before remounting after a stale missing-id block error', async () => {
     state.blockNoteViewError = new Error("Block doesn't have id")
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const editor = createEditor()
+    editor.document = [
+      {
+        type: 'paragraph',
+        content: [{ type: 'text', text: 'Recovered body', styles: {} }],
+        children: [
+          {
+            type: 'paragraph',
+            content: [{ type: 'text', text: 'Recovered child', styles: {} }],
+            children: [],
+          },
+        ],
+      },
+    ]
 
     try {
       render(
         <SingleEditorView
-          editor={createEditor() as never}
+          editor={editor as never}
           entries={[makeEntry()]}
           onNavigateWikilink={vi.fn()}
         />,
@@ -472,6 +488,17 @@ describe('SingleEditorView', () => {
         expect(screen.getByTestId('blocknote-view')).toBeInTheDocument()
       })
       expect(screen.getByTestId('blocknote-view')).toHaveAttribute('data-editable', 'true')
+      expect(editor.replaceBlocks).toHaveBeenCalledTimes(1)
+      expect(editor.replaceBlocks.mock.calls[0][1]).toEqual([
+        expect.objectContaining({
+          id: expect.any(String),
+          children: [
+            expect.objectContaining({
+              id: expect.any(String),
+            }),
+          ],
+        }),
+      ])
     } finally {
       consoleError.mockRestore()
     }
