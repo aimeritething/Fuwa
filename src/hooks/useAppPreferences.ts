@@ -47,7 +47,7 @@ export function useAppPreferences({
     () => resolveAllNotesFileVisibility(settings),
     [settings],
   )
-  const selectedUiLanguage = settings.ui_language ?? SYSTEM_UI_LANGUAGE
+  const selectedUiLanguage: UiLanguagePreference = settings.ui_language ?? SYSTEM_UI_LANGUAGE
 
   useEffect(() => {
     document.documentElement.lang = appLocale
