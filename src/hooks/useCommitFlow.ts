@@ -512,13 +512,16 @@ function useCommitModeRefresh({
 }
 
 function useOpenCommitDialog({
+  dialogOpeningRef,
   commitModeVaultPathRef,
   loadModifiedFiles,
   manualVaultPath,
   resolveRemoteStatusForVaultPath,
   savePending,
   setCommitMode,
+  setDialogOpening,
   setShowCommitDialog,
+  setToastMessage,
   vaultPath,
 }: Pick<
   CommitFlowConfig,
@@ -526,28 +529,46 @@ function useOpenCommitDialog({
   | 'manualVaultPath'
   | 'resolveRemoteStatusForVaultPath'
   | 'savePending'
+  | 'setToastMessage'
   | 'vaultPath'
 > & {
+  dialogOpeningRef: MutableRefObject<boolean>
   commitModeVaultPathRef: MutableRefObject<string | null>
   setCommitMode: (mode: CommitMode) => void
+  setDialogOpening: (opening: boolean) => void
   setShowCommitDialog: (open: boolean) => void
 }) {
   return useCallback(async () => {
-    await savePending()
-    await loadModifiedFiles()
-    const targetVaultPath = manualVaultPath || vaultPath
-    const remoteStatus = await resolveRemoteStatusForVaultPath(targetVaultPath)
-    commitModeVaultPathRef.current = targetVaultPath
-    setCommitMode(commitModeFromRemoteStatus(remoteStatus))
-    setShowCommitDialog(true)
+    if (dialogOpeningRef.current) return
+    dialogOpeningRef.current = true
+    setDialogOpening(true)
+
+    try {
+      await savePending()
+      await loadModifiedFiles()
+      const targetVaultPath = manualVaultPath || vaultPath
+      const remoteStatus = await resolveRemoteStatusForVaultPath(targetVaultPath)
+      commitModeVaultPathRef.current = targetVaultPath
+      setCommitMode(commitModeFromRemoteStatus(remoteStatus))
+      setShowCommitDialog(true)
+    } catch (err) {
+      console.error('Commit dialog failed:', err)
+      setToastMessage(`Commit dialog failed: ${formatCommitError(err)}`)
+    } finally {
+      dialogOpeningRef.current = false
+      setDialogOpening(false)
+    }
   }, [
     commitModeVaultPathRef,
+    dialogOpeningRef,
     loadModifiedFiles,
     manualVaultPath,
     resolveRemoteStatusForVaultPath,
     savePending,
     setCommitMode,
+    setDialogOpening,
     setShowCommitDialog,
+    setToastMessage,
     vaultPath,
   ])
 }
@@ -566,17 +587,22 @@ export function useCommitFlow({
 }: CommitFlowConfig) {
   const [showCommitDialog, setShowCommitDialog] = useState(false)
   const [commitMode, setCommitMode] = useState<CommitMode>('push')
+  const [isOpeningCommitDialog, setOpeningCommitDialog] = useState(false)
   const checkpointInFlightRef = useRef(false)
+  const dialogOpeningRef = useRef(false)
   const commitModeVaultPathRef = useRef<string | null>(null)
 
   const openCommitDialog = useOpenCommitDialog({
+    dialogOpeningRef,
     commitModeVaultPathRef,
     loadModifiedFiles,
     manualVaultPath,
     resolveRemoteStatusForVaultPath,
     savePending,
     setCommitMode,
+    setDialogOpening: setOpeningCommitDialog,
     setShowCommitDialog,
+    setToastMessage,
     vaultPath,
   })
 
@@ -614,5 +640,13 @@ export function useCommitFlow({
 
   const closeCommitDialog = useCallback(() => setShowCommitDialog(false), [])
 
-  return { showCommitDialog, commitMode, openCommitDialog, handleCommitPush, closeCommitDialog, runAutomaticCheckpoint }
+  return {
+    showCommitDialog,
+    commitMode,
+    isOpeningCommitDialog,
+    openCommitDialog,
+    handleCommitPush,
+    closeCommitDialog,
+    runAutomaticCheckpoint,
+  }
 }

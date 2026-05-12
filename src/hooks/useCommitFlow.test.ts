@@ -18,6 +18,16 @@ vi.mock('../lib/telemetry', () => ({
   trackEvent: (event: string, properties?: Record<string, unknown>) => mockTrackEvent(event, properties),
 }))
 
+function createDeferred<T>() {
+  let resolveDeferred: (value: T | PromiseLike<T>) => void = () => {}
+  let rejectDeferred: (reason?: unknown) => void = () => {}
+  const promise = new Promise<T>((resolve, reject) => {
+    resolveDeferred = resolve
+    rejectDeferred = reject
+  })
+  return { promise, reject: rejectDeferred, resolve: resolveDeferred }
+}
+
 describe('useCommitFlow', () => {
   let savePending: vi.Mock
   let loadModifiedFiles: vi.Mock
@@ -68,6 +78,46 @@ describe('useCommitFlow', () => {
     expect(resolveRemoteStatusForVaultPath).toHaveBeenCalledWith('/vault')
     expect(result.current.showCommitDialog).toBe(true)
     expect(result.current.commitMode).toBe('local')
+    expect(result.current.isOpeningCommitDialog).toBe(false)
+  })
+
+  it('shows opening state and ignores duplicate dialog opens while preparing', async () => {
+    const pendingSave = createDeferred<void>()
+    savePending.mockReturnValueOnce(pendingSave.promise)
+    const { result } = renderCommitFlow()
+    let openPromise = Promise.resolve()
+
+    act(() => {
+      openPromise = result.current.openCommitDialog()
+      void result.current.openCommitDialog()
+    })
+
+    expect(result.current.isOpeningCommitDialog).toBe(true)
+    expect(savePending).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      pendingSave.resolve(undefined)
+      await openPromise
+    })
+
+    expect(loadModifiedFiles).toHaveBeenCalledTimes(1)
+    expect(result.current.showCommitDialog).toBe(true)
+    expect(result.current.isOpeningCommitDialog).toBe(false)
+  })
+
+  it('clears opening state and reports recovery when dialog preparation fails', async () => {
+    loadModifiedFiles.mockRejectedValueOnce(new Error('status unavailable'))
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const { result } = renderCommitFlow()
+
+    await act(async () => {
+      await result.current.openCommitDialog()
+    })
+
+    expect(result.current.showCommitDialog).toBe(false)
+    expect(result.current.isOpeningCommitDialog).toBe(false)
+    expect(setToastMessage).toHaveBeenCalledWith('Commit dialog failed: status unavailable')
+    consoleSpy.mockRestore()
   })
 
   it('handleCommitPush commits and pushes when a remote is configured', async () => {

@@ -144,6 +144,7 @@ function StatusBarAction({
   className,
   style,
   disabled = false,
+  busy = false,
   compact = false,
 }: {
   copy: ActionTooltipCopy
@@ -154,6 +155,7 @@ function StatusBarAction({
   className?: string
   style?: CSSProperties
   disabled?: boolean
+  busy?: boolean
   compact?: boolean
 }) {
   return (
@@ -172,6 +174,7 @@ function StatusBarAction({
         onClick={disabled ? undefined : onClick}
         onKeyDown={(event) => handleStatusBarActionKeyDown(event, disabled ? undefined : onClick)}
         aria-label={ariaLabel ?? copy.label}
+        aria-busy={busy || undefined}
         aria-disabled={disabled || undefined}
         data-testid={testId}
       >
@@ -766,24 +769,27 @@ export function ChangesBadge({
 export function CommitButton({
   onClick,
   remoteStatus,
+  pending = false,
   showSeparator = true,
   compact = false,
   locale = 'en',
 }: {
   onClick?: () => void
   remoteStatus?: GitRemoteStatus | null
+  pending?: boolean
   showSeparator?: boolean
   compact?: boolean
   locale?: AppLocale
 }) {
   if (!onClick) return null
+  const copy = commitButtonTooltipCopy(locale, remoteStatus)
 
   return (
     <>
       <StatusBarSeparator show={showSeparator} />
-      <StatusBarAction copy={commitButtonTooltipCopy(locale, remoteStatus)} onClick={onClick} testId="status-commit-push" compact={compact}>
+      <StatusBarAction copy={copy} onClick={onClick} testId="status-commit-push" disabled={pending} busy={pending} compact={compact}>
         <span style={ICON_STYLE}>
-          <GitCommitHorizontal size={13} />
+          {pending ? <Loader2 size={13} className="animate-spin" /> : <GitCommitHorizontal size={13} />}
           {compact ? null : translate(locale, 'status.commit.label')}
         </span>
       </StatusBarAction>

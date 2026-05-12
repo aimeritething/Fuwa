@@ -57,6 +57,7 @@ interface StatusBarPrimarySectionProps {
   onClickPending?: () => void
   onClickPulse?: () => void
   onCommitPush?: () => void
+  commitActionPending?: boolean
   onInitializeGit?: () => void
   isOffline?: boolean
   isVaultReloading?: boolean
@@ -195,6 +196,7 @@ function StatusBarPrimaryBadges({
   onAddRemote,
   onClickPending,
   onCommitPush,
+  commitActionPending,
   onInitializeGit,
   syncStatus,
   lastSyncTime,
@@ -226,6 +228,7 @@ function StatusBarPrimaryBadges({
   onAddRemote: () => void
   onClickPending?: () => void
   onCommitPush?: () => void
+  commitActionPending?: boolean
   onInitializeGit?: () => void
   syncStatus: SyncStatus
   lastSyncTime: number | null
@@ -260,7 +263,7 @@ function StatusBarPrimaryBadges({
         <>
           <NoRemoteBadge remoteStatus={visibleRemoteStatus} onAddRemote={onAddRemote} showSeparator={!compact} compact={compact} locale={locale} />
           <ChangesBadge count={modifiedCount} onClick={onClickPending} showSeparator={!compact} compact={compact} locale={locale} />
-          <CommitButton onClick={onCommitPush} remoteStatus={visibleRemoteStatus} showSeparator={!compact} compact={compact} locale={locale} />
+          <CommitButton onClick={onCommitPush} remoteStatus={visibleRemoteStatus} pending={commitActionPending} showSeparator={!compact} compact={compact} locale={locale} />
           <SyncBadge
             status={syncStatus}
             lastSyncTime={lastSyncTime}
@@ -415,9 +418,8 @@ export function StatusBarPrimarySection({
   onCloneVault,
   onCloneGettingStarted,
   onAddRemote,
-  onClickPending,
-  onClickPulse,
-  onCommitPush,
+  onClickPending, onClickPulse,
+  onCommitPush, commitActionPending = false,
   onInitializeGit,
   isOffline = false, isVaultReloading = false, isGitVault = true,
   syncStatus,
@@ -488,6 +490,7 @@ export function StatusBarPrimarySection({
         }}
         onClickPending={onClickPending}
         onCommitPush={onCommitPush}
+        commitActionPending={commitActionPending}
         onInitializeGit={onInitializeGit}
         syncStatus={syncStatus}
         lastSyncTime={lastSyncTime}

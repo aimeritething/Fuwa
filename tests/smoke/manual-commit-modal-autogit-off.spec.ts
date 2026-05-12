@@ -6,6 +6,7 @@ type MockHandler = (args?: Record<string, unknown>) => unknown
 
 function installCommitFlowMocks() {
   type BrowserWindow = Window & typeof globalThis & {
+    __delayNextModifiedFiles?: boolean
     __gitCommitMessages?: string[]
     __gitPushCalls?: number
     __mockHandlers?: Record<string, MockHandler>
@@ -34,7 +35,14 @@ function installCommitFlowMocks() {
   }
 
   const patchGitHandlers = (handlers: Record<string, MockHandler>) => {
-    handlers.get_modified_files = () => createModifiedFiles()
+    handlers.get_modified_files = async () => {
+      const files = createModifiedFiles()
+      if (browserWindow.__delayNextModifiedFiles) {
+        browserWindow.__delayNextModifiedFiles = false
+        await new Promise((resolve) => setTimeout(resolve, 800))
+      }
+      return files
+    }
     handlers.git_commit = (args?: Record<string, unknown>) => {
       const message = typeof args?.message === 'string' ? args.message : ''
       browserWindow.__gitCommitMessages?.push(message)
@@ -122,6 +130,15 @@ async function triggerCommitButton(page: Page) {
   await page.keyboard.press('Enter')
 }
 
+async function delayNextModifiedFilesRequest(page: Page) {
+  await page.evaluate(() => {
+    const browserWindow = window as Window & {
+      __delayNextModifiedFiles?: boolean
+    }
+    browserWindow.__delayNextModifiedFiles = true
+  })
+}
+
 async function expectCommitMessage(page: Page, index: number, expectedMessage: string) {
   await expect.poll(async () =>
     page.evaluate(
@@ -145,7 +162,14 @@ test('@smoke commit entry opens the manual modal when AutoGit is off and switche
   await openFirstNote(page)
   await setAutoGitEnabled(page, false)
   await seedAutoGitSavedChange(page)
+  await delayNextModifiedFilesRequest(page)
   await triggerCommitButton(page)
+  const commitButton = page.getByTestId('status-commit-push')
+
+  await expect(commitButton).toHaveAttribute('aria-busy', 'true')
+  await expect(commitButton).toHaveAttribute('aria-disabled', 'true')
+  await expect(commitButton.locator('svg.animate-spin')).toBeVisible()
+  await page.keyboard.press('Enter')
 
   await expect(page.getByRole('heading', { name: 'Commit & Push' })).toBeVisible()
   const messageInput = page.locator('textarea[placeholder="Commit message..."]')

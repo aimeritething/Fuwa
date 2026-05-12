@@ -814,6 +814,31 @@ describe('StatusBar', () => {
     expect(onCommitPush).toHaveBeenCalledOnce()
   })
 
+  it('shows Commit progress feedback and blocks duplicate activation while pending', () => {
+    const onCommitPush = vi.fn()
+    render(
+      <StatusBar
+        noteCount={100}
+        modifiedCount={5}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        onCommitPush={onCommitPush}
+        commitActionPending
+      />
+    )
+    const commitButton = screen.getByTestId('status-commit-push')
+
+    expect(commitButton).toHaveAttribute('aria-busy', 'true')
+    expect(commitButton).toHaveAttribute('aria-disabled', 'true')
+    expect(commitButton.querySelector('.animate-spin')).not.toBeNull()
+
+    fireEvent.click(commitButton)
+    fireEvent.keyDown(commitButton, { key: 'Enter' })
+    fireEvent.keyDown(commitButton, { key: ' ' })
+    expect(onCommitPush).not.toHaveBeenCalled()
+  })
+
   it('uses a local-only tooltip for the commit button when no remote is configured', async () => {
     render(
       <StatusBar
