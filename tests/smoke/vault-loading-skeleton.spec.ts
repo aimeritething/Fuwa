@@ -142,6 +142,7 @@ async function expectLoadedVaultSearch(page: Page): Promise<void> {
 test('slow vault open keeps the app shell usable while notes load @smoke', async ({ page }) => {
   await installSlowVaultMock(page)
   await page.goto('/', { waitUntil: 'domcontentloaded' })
+  await expect(page.locator('#tolaria-boot-diagnostics')).toHaveCount(0)
   await expectResponsiveShellWhileVaultLoads(page)
   await resolveVaultScan(page)
   await expectLoadedVaultSearch(page)
