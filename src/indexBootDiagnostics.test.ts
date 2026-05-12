@@ -4,13 +4,13 @@ import { describe, expect, it } from 'vitest'
 function firstInlineScriptFromIndex(): string {
   const indexHtml = readFileSync(`${process.cwd()}/index.html`, 'utf8')
   const match = indexHtml.match(/<script>\s*([\s\S]*?)\s*<\/script>/)
-  if (!match) throw new Error('index.html boot diagnostics script was not found')
+  if (!match) throw new Error('index.html startup script was not found')
   return match[1]
 }
 
-describe('index boot diagnostics', () => {
+describe('index startup script', () => {
   it('does not show the boot overlay for ResizeObserver loop notifications', () => {
-    document.body.innerHTML = '<pre id="tolaria-boot-diagnostics">Tolaria boot: HTML parsed</pre>'
+    document.body.innerHTML = ''
     new Function(firstInlineScriptFromIndex())()
 
     const event = new ErrorEvent('error', {
@@ -20,11 +20,11 @@ describe('index boot diagnostics', () => {
     window.dispatchEvent(event)
 
     expect(event.defaultPrevented).toBe(true)
-    expect(document.getElementById('tolaria-boot-diagnostics')?.textContent).toBe('Tolaria boot: HTML parsed')
+    expect(document.body.children).toHaveLength(0)
   })
 
-  it('still shows the boot overlay for real startup errors', () => {
-    document.body.innerHTML = '<pre id="tolaria-boot-diagnostics">Tolaria boot: HTML parsed</pre>'
+  it('does not create a visible boot overlay for real startup errors', () => {
+    document.body.innerHTML = ''
     new Function(firstInlineScriptFromIndex())()
 
     window.dispatchEvent(new ErrorEvent('error', {
@@ -34,8 +34,6 @@ describe('index boot diagnostics', () => {
       colno: 2,
     }))
 
-    expect(document.getElementById('tolaria-boot-diagnostics')?.textContent).toContain(
-      'error: startup failed @ app.js:1:2',
-    )
+    expect(document.body.children).toHaveLength(0)
   })
 })

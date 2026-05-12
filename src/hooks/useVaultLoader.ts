@@ -931,7 +931,7 @@ function loadMissingWorkspaceEntries({
   vaultPath: string
   vaults?: VaultOption[]
 }) {
-  void loadWorkspaceEntries(vault, defaultWorkspacePath)
+  void loadWorkspaceEntries(vault, defaultWorkspacePath, { reloadIfEmpty: true })
     .then((loadedEntries) => {
       if (!isCurrentVaultPath(vaultPath)) return
       loadedPaths.add(vault.path)

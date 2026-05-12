@@ -24,6 +24,11 @@ interface MountedVaultEntriesOptions extends VaultPathOptions {
 
 type MountedVaultFoldersOptions = MountedVaultEntriesOptions
 
+interface WorkspaceEntryLoadOptions {
+  forceReload?: boolean
+  reloadIfEmpty?: boolean
+}
+
 interface CommitWithPushOptions extends VaultPathOptions {
   message: string
 }
@@ -63,24 +68,53 @@ function loadVaultEntriesWithCommand({ vaultPath, command }: VaultPathOptions & 
     .then((entries) => normalizeVaultEntries(entries, vaultPath))
 }
 
+function shouldSkipMountedVault(vault: VaultOption): boolean {
+  return vault.available === false || vault.mounted === false || !vault.path.trim()
+}
+
+function shouldReloadEmptyWorkspaceResult(entries: VaultEntry[], options: WorkspaceEntryLoadOptions): boolean {
+  return entries.length === 0 && options.reloadIfEmpty === true && !options.forceReload && isTauri()
+}
+
+function shouldIncludeFallbackVault(
+  byPath: Map<string, VaultOption>,
+  vaultPath: string,
+  includeFallbackVault: boolean,
+): boolean {
+  if (!includeFallbackVault) return false
+  if (!vaultPath.trim()) return false
+  return !byPath.has(vaultPath)
+}
+
+function loadWorkspaceEntriesWithCommand(
+  vault: VaultOption,
+  command: 'list_vault' | 'reload_vault',
+  defaultWorkspacePath?: string | null,
+): Promise<VaultEntry[]> {
+  const workspace = workspaceIdentityFromVault(vault, { defaultWorkspacePath })
+  return tauriCall<unknown>({ command, tauriArgs: { path: vault.path } })
+    .then((entries) => normalizeVaultEntries(entries, vault.path, workspace))
+}
+
 export function loadWorkspaceEntries(
   vault: VaultOption,
   defaultWorkspacePath?: string | null,
-  options: { forceReload?: boolean } = {},
+  options: WorkspaceEntryLoadOptions = {},
 ): Promise<VaultEntry[]> {
-  const workspace = workspaceIdentityFromVault(vault, { defaultWorkspacePath })
   const command = options.forceReload && isTauri() ? 'reload_vault' : 'list_vault'
-  return tauriCall<unknown>({ command, tauriArgs: { path: vault.path } })
-    .then((entries) => normalizeVaultEntries(entries, vault.path, workspace))
+  return loadWorkspaceEntriesWithCommand(vault, command, defaultWorkspacePath)
+    .then((entries) => shouldReloadEmptyWorkspaceResult(entries, options)
+      ? loadWorkspaceEntriesWithCommand(vault, 'reload_vault', defaultWorkspacePath)
+      : entries)
 }
 
 function uniqueMountedVaults({ vaultPath, vaults = [], includeFallbackVault = true }: MountedVaultEntriesOptions): VaultOption[] {
   const byPath = new Map<string, VaultOption>()
   for (const vault of vaults) {
-    if (vault.available === false || vault.mounted === false || !vault.path.trim()) continue
+    if (shouldSkipMountedVault(vault)) continue
     byPath.set(vault.path, vault)
   }
-  if (includeFallbackVault && vaultPath.trim() && !byPath.has(vaultPath)) {
+  if (shouldIncludeFallbackVault(byPath, vaultPath, includeFallbackVault)) {
     byPath.set(vaultPath, { label: vaultPath.split('/').filter(Boolean).pop() || 'Workspace', path: vaultPath, mounted: true, available: true })
   }
   return [...byPath.values()]
