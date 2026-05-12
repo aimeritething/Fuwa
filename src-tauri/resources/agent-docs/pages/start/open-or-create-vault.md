@@ -22,6 +22,12 @@ Good starting points:
 
 Choose a new empty folder if you want Tolaria conventions from the start. New notes and optional type definitions are created as Markdown files.
 
+## Use More Than One Vault
+
+You do not have to merge everything into one folder. Register each local folder as its own vault, then turn on `Use multiple vaults at the same time` in `Settings` -> `Vaults`.
+
+Once enabled, the bottom-left vault menu lets you include vaults in the unified graph. Search, quick open, wikilinks, and note lists can span the included vaults, while Git sync and commits remain tied to each vault's own repository.
+
 ## Git Is Recommended, Not Required
 
 Tolaria works well with a plain folder of Markdown files. You can open, edit, organize, and search notes without making the vault a Git repository.

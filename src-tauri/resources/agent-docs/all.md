@@ -78,9 +78,15 @@ To connect a vault to your own remote, use the bottom status bar remote chip or 
 
 Tolaria also repairs starter-vault guidance files when needed. `AGENTS.md` is the canonical guidance file, `CLAUDE.md` is kept as a compatibility shim, and `GEMINI.md` is only created when you explicitly restore Gemini guidance.
 
+## Use It Alongside Your Own Vaults
+
+You can keep the Getting Started vault open while working in your own notes. Enable `Settings` -> `Vaults` -> `Use multiple vaults at the same time`, then use the bottom-left vault menu to include both the sample vault and your real vault in the unified graph.
+
+This lets search, quick open, note lists, backlinks, and wikilink navigation span both vaults. Git actions still stay scoped to each vault's own repository, and new notes go to the default vault you choose in `Manage vaults`.
+
 ## When To Move On
 
-After you understand the sample, open your own vault. Tolaria does not require a special folder structure: a folder of Markdown files is enough to start.
+After you understand the sample, open your own vault. Tolaria does not require a special folder structure: a folder of Markdown files is enough to start. You can remove the sample from Tolaria's vault list later without deleting its files from disk.
 
 ---
 
@@ -97,9 +103,9 @@ Tolaria publishes desktop builds for macOS, Windows, and Linux. macOS is the pri
 
 Use the latest stable release unless you are intentionally testing pre-release builds:
 
-- [Download the latest stable build](https://refactoringhq.github.io/tolaria/download/)
+- <a href="https://tolaria.md/download/" target="_self">Download the latest stable build</a>
 - [Browse all GitHub releases](https://github.com/refactoringhq/tolaria/releases)
-- [Read the release notes](/releases/)
+- <a href="https://tolaria.md/releases/" target="_self">Read the release notes</a>
 
 ## Homebrew
 
@@ -151,6 +157,12 @@ Good starting points:
 ## Create A New Vault
 
 Choose a new empty folder if you want Tolaria conventions from the start. New notes and optional type definitions are created as Markdown files.
+
+## Use More Than One Vault
+
+You do not have to merge everything into one folder. Register each local folder as its own vault, then turn on `Use multiple vaults at the same time` in `Settings` -> `Vaults`.
+
+Once enabled, the bottom-left vault menu lets you include vaults in the unified graph. Search, quick open, wikilinks, and note lists can span the included vaults, while Git sync and commits remain tied to each vault's own repository.
 
 ## Git Is Recommended, Not Required
 
@@ -542,6 +554,16 @@ Tolaria should never become the only way to read your data.
 A plain folder of Markdown files can open as a vault. Git-backed vaults unlock history, changes, commits, pull, push, conflict handling, and remote setup.
 
 If a folder is not a Git repository, Tolaria can initialize Git when you explicitly ask it to. It avoids initializing broad personal folders such as Desktop, Documents, or Downloads unless they are clearly dedicated vault folders.
+
+## Multiple Vaults At The Same Time
+
+Tolaria can load multiple registered vaults into one unified graph. Enable this from `Settings` -> `Vaults` -> `Use multiple vaults at the same time`.
+
+After the option is enabled, open the bottom-left vault menu to include or exclude vaults from the graph. Included vaults appear together in note lists, search, quick open, backlinks, and wikilink navigation. Each note keeps a compact vault badge when Tolaria needs to disambiguate where it lives.
+
+The selected vault still matters. Git status, commits, sync, folder navigation, saved views, and vault repair actions stay scoped to the current repository. Use `Manage vaults` from the vault menu or the Vaults settings section to rename vaults, choose colors, and set the default destination for new notes.
+
+Cross-vault wikilinks use the target vault's stable alias when needed, for example `[[team/projects/alpha]]`. Links inside the same vault stay normal vault-relative links.
 
 ## App State Versus Vault State
 
@@ -1461,55 +1483,3 @@ Resolve interrupted merges or corrupted repository state before retrying.
 ## Reload
 
 Run `Reload Vault` from the command palette. This clears derived cache and rescans the filesystem.
-
----
-
-# Download
-
-Source: download/index.md
-URL: /download/
-
-# Download
-
-Download Tolaria from the latest stable release.
-
-## Latest Stable
-
-[Open the installer download page](https://refactoringhq.github.io/tolaria/download/)
-
-The download page reads the latest stable release metadata and points you to the current macOS, Windows, or Linux artifact.
-
-## Other Builds
-
-- [Browse all GitHub releases](https://github.com/refactoringhq/tolaria/releases)
-- [Read release history](/releases/)
-- [Learn release channels](/reference/release-channels)
-
-## Verify The Version
-
-After launching the app, check the version shown in Tolaria's status bar or release surface.
-
----
-
-# Releases
-
-Source: releases/index.md
-URL: /releases/
-
-# Releases
-
-Tolaria releases are published on GitHub.
-
-- [Latest release](https://github.com/refactoringhq/tolaria/releases/latest)
-- [All releases](https://github.com/refactoringhq/tolaria/releases)
-- [Download page](/download/)
-
-## Release Channels
-
-Stable builds are intended for normal use. Pre-release builds may contain newer features and rougher edges.
-
-Tolaria also has an Alpha channel for builds generated from pushes to `main`. See [Release Channels](/reference/release-channels) before switching from Stable.
-
-## Before Updating
-
-Commit or push important vault changes before updating the app. Your notes are local files, but having a clean Git state makes recovery easier.

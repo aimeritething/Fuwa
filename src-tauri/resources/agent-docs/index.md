@@ -63,14 +63,6 @@ Start here, then use `rg` over this folder for specific Tolaria concepts and wor
 - [Sync Conflicts](pages/troubleshooting/sync-conflicts.md)
 - [Vault Not Loading](pages/troubleshooting/vault-not-loading.md)
 
-## Download
-
-- [Download](pages/download/index.md)
-
-## Releases
-
-- [Releases](pages/releases/index.md)
-
 ## Generated Files
 
 - `all.md`: all public docs concatenated for fast full-context reads.

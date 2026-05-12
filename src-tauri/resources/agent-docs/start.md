@@ -69,9 +69,15 @@ To connect a vault to your own remote, use the bottom status bar remote chip or 
 
 Tolaria also repairs starter-vault guidance files when needed. `AGENTS.md` is the canonical guidance file, `CLAUDE.md` is kept as a compatibility shim, and `GEMINI.md` is only created when you explicitly restore Gemini guidance.
 
+## Use It Alongside Your Own Vaults
+
+You can keep the Getting Started vault open while working in your own notes. Enable `Settings` -> `Vaults` -> `Use multiple vaults at the same time`, then use the bottom-left vault menu to include both the sample vault and your real vault in the unified graph.
+
+This lets search, quick open, note lists, backlinks, and wikilink navigation span both vaults. Git actions still stay scoped to each vault's own repository, and new notes go to the default vault you choose in `Manage vaults`.
+
 ## When To Move On
 
-After you understand the sample, open your own vault. Tolaria does not require a special folder structure: a folder of Markdown files is enough to start.
+After you understand the sample, open your own vault. Tolaria does not require a special folder structure: a folder of Markdown files is enough to start. You can remove the sample from Tolaria's vault list later without deleting its files from disk.
 
 ---
 
@@ -88,9 +94,9 @@ Tolaria publishes desktop builds for macOS, Windows, and Linux. macOS is the pri
 
 Use the latest stable release unless you are intentionally testing pre-release builds:
 
-- [Download the latest stable build](https://refactoringhq.github.io/tolaria/download/)
+- <a href="https://tolaria.md/download/" target="_self">Download the latest stable build</a>
 - [Browse all GitHub releases](https://github.com/refactoringhq/tolaria/releases)
-- [Read the release notes](/releases/)
+- <a href="https://tolaria.md/releases/" target="_self">Read the release notes</a>
 
 ## Homebrew
 
@@ -142,6 +148,12 @@ Good starting points:
 ## Create A New Vault
 
 Choose a new empty folder if you want Tolaria conventions from the start. New notes and optional type definitions are created as Markdown files.
+
+## Use More Than One Vault
+
+You do not have to merge everything into one folder. Register each local folder as its own vault, then turn on `Use multiple vaults at the same time` in `Settings` -> `Vaults`.
+
+Once enabled, the bottom-left vault menu lets you include vaults in the unified graph. Search, quick open, wikilinks, and note lists can span the included vaults, while Git sync and commits remain tied to each vault's own repository.
 
 ## Git Is Recommended, Not Required
 

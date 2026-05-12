@@ -71,6 +71,14 @@ pnpm playwright:regression  # Full Playwright regression suite
 
 Linux AppImage builds still use the user's system `git`. Before Tolaria spawns that `git` process, it removes AppImage loader overrides such as `LD_LIBRARY_PATH`, `LD_PRELOAD`, and `GIT_EXEC_PATH` so HTTPS clone helpers use the host git libraries instead of bundled AppImage libraries.
 
+## Multiple Vaults At The Same Time
+
+The `settings.multi_workspace_enabled` flag turns the registered vault list into a unified graph. When enabled, `useVaultLoader` loads every available mounted vault, annotates entries with workspace provenance, and lets note lists, quick open, keyword search, backlinks, and wikilink navigation span those vaults.
+
+The selected/default vault remains the write and repository focus. New notes and Type documents use `defaultWorkspacePath` when it points at an available mounted vault, while Git status, commits, sync, folder tree, saved views, repair, and watcher behavior stay scoped to explicit repository roots.
+
+The bottom-left `VaultMenu` exposes quick include/exclude controls and a `Manage vaults` entry. The Vaults settings section owns the full identity controls: display name, short label, read-only alias, accent color, removal, and default destination for new notes.
+
 ## Directory Structure
 
 ```

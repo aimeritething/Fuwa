@@ -26,6 +26,7 @@
     "headings": [
       "What It Demonstrates",
       "Local-Only By Default",
+      "Use It Alongside Your Own Vaults",
       "When To Move On"
     ]
   },
@@ -49,6 +50,7 @@
     "headings": [
       "Open An Existing Folder",
       "Create A New Vault",
+      "Use More Than One Vault",
       "Git Is Recommended, Not Required"
     ]
   },
@@ -168,6 +170,7 @@
       "Core Rules",
       "Why Local Files Matter",
       "Git Is A Capability",
+      "Multiple Vaults At The Same Time",
       "App State Versus Vault State"
     ]
   },
@@ -458,27 +461,6 @@
       "Check The Folder",
       "Check Git",
       "Reload"
-    ]
-  },
-  {
-    "title": "Download",
-    "path": "pages/download/index.md",
-    "url": "/download/",
-    "section": "download",
-    "headings": [
-      "Latest Stable",
-      "Other Builds",
-      "Verify The Version"
-    ]
-  },
-  {
-    "title": "Releases",
-    "path": "pages/releases/index.md",
-    "url": "/releases/",
-    "section": "releases",
-    "headings": [
-      "Release Channels",
-      "Before Updating"
     ]
   }
 ]
