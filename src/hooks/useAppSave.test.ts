@@ -633,6 +633,54 @@ describe('useAppSave', () => {
     )
   })
 
+  it('routes macOS alias-path editor saves to the renamed path', async () => {
+    vi.useFakeTimers()
+    vi.mocked(isTauri).mockReturnValue(true)
+
+    const oldPath = '/tmp/vault/fresh-title.md'
+    const aliasOldPath = '/private/tmp/vault/fresh-title.md'
+    const newPath = '/tmp/vault/manual-name.md'
+    const entry = makeEntry(oldPath, 'Fresh Title', 'fresh-title.md')
+
+    vi.mocked(invoke).mockImplementation(async (command: string) => {
+      if (command === 'save_note_content') return undefined
+      return undefined
+    })
+
+    deps.handleRenameFilename.mockImplementation(async (path, newFilenameStem, vaultPath, onEntryRenamed) => {
+      expect(path).toBe(oldPath)
+      expect(newFilenameStem).toBe('manual-name')
+      expect(vaultPath).toBe('/tmp/vault')
+      onEntryRenamed(path, { path: newPath, filename: 'manual-name.md', title: 'Fresh Title' }, '# Fresh Title\n\nBody')
+    })
+
+    const { result } = renderSave({
+      resolvedPath: '/tmp/vault',
+      tabs: [{ entry, content: '# Fresh Title\n\nBody' }],
+      activeTabPath: oldPath,
+      unsavedPaths: new Set([oldPath]),
+    })
+
+    await act(async () => {
+      await result.current.handleFilenameRename(oldPath, 'manual-name')
+    })
+
+    await act(async () => {
+      result.current.handleContentChange(aliasOldPath, '# Fresh Title\n\nBody\n\nAlias edit')
+      await vi.advanceTimersByTimeAsync(AUTO_SAVE_DEBOUNCE_MS)
+    })
+
+    const saveCalls = vi.mocked(invoke).mock.calls.filter(([command]) => command === 'save_note_content')
+    expect(saveCalls.at(-1)).toEqual([
+      'save_note_content',
+      { path: newPath, content: '# Fresh Title\n\nBody\n\nAlias edit' },
+    ])
+    expect(saveCalls).not.toContainEqual([
+      'save_note_content',
+      { path: aliasOldPath, content: '# Fresh Title\n\nBody\n\nAlias edit' },
+    ])
+  })
+
   it('passes the active tab workspace path to manual filename renames', async () => {
     vi.mocked(isTauri).mockReturnValue(true)
 

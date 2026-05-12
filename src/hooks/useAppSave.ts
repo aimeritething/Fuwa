@@ -8,6 +8,7 @@ import type { VaultEntry } from '../types'
 import { createTranslator, type AppLocale } from '../lib/i18n'
 import { canWritePathToVault } from '../utils/vaultPathContainment'
 import { vaultPathForEntry } from '../utils/workspaces'
+import { notePathsMatch } from '../utils/notePathIdentity'
 
 interface TabState {
   entry: VaultEntry
@@ -25,13 +26,20 @@ interface PendingUntitledRename {
 type RenamedPathMap = Map<string, string>
 type InFlightRenameMap = Map<string, Promise<string>>
 
+function findRenamedPath(renamedPaths: RenamedPathMap, path: string): string | undefined {
+  for (const [oldPath, newPath] of renamedPaths) {
+    if (notePathsMatch(oldPath, path)) return newPath
+  }
+  return undefined
+}
+
 function resolveLatestPath(renamedPaths: RenamedPathMap, path: string): string {
   let current = path
   const visited = new Set<string>()
 
   while (!visited.has(current)) {
     visited.add(current)
-    const next = renamedPaths.get(current)
+    const next = findRenamedPath(renamedPaths, current)
     if (!next || next === current) break
     current = next
   }
@@ -40,8 +48,18 @@ function resolveLatestPath(renamedPaths: RenamedPathMap, path: string): string {
 }
 
 function trackRenamedPath(renamedPaths: RenamedPathMap, oldPath: string, newPath: string): void {
-  if (oldPath === newPath) return
-  renamedPaths.set(oldPath, newPath)
+  if (notePathsMatch(oldPath, newPath)) return
+  const latestPath = resolveLatestPath(renamedPaths, newPath)
+  for (const [trackedOldPath, trackedNewPath] of renamedPaths) {
+    if (notePathsMatch(trackedNewPath, oldPath)) renamedPaths.set(trackedOldPath, latestPath)
+  }
+  for (const trackedOldPath of renamedPaths.keys()) {
+    if (notePathsMatch(trackedOldPath, oldPath)) {
+      renamedPaths.set(trackedOldPath, latestPath)
+      return
+    }
+  }
+  renamedPaths.set(oldPath, latestPath)
 }
 
 function vaultPathForTabPath(tabs: TabState[], path: string, fallbackVaultPath: string): string {
