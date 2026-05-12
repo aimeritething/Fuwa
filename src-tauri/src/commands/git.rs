@@ -28,9 +28,20 @@ pub fn get_file_history(
 
 #[cfg(desktop)]
 #[tauri::command]
-pub fn get_modified_files(vault_path: VaultPathArg) -> Result<Vec<ModifiedFile>, String> {
-    let vault_path = expand_tilde(&vault_path);
-    crate::git::get_modified_files(&vault_path)
+pub async fn get_modified_files(
+    vault_path: VaultPathArg,
+    include_stats: Option<bool>,
+) -> Result<Vec<ModifiedFile>, String> {
+    let vault_path = expand_tilde(&vault_path).into_owned();
+    tokio::task::spawn_blocking(move || {
+        if include_stats.unwrap_or(false) {
+            crate::git::get_modified_files_with_stats(&vault_path)
+        } else {
+            crate::git::get_modified_files(&vault_path)
+        }
+    })
+    .await
+    .map_err(|e| format!("Task panicked: {e}"))?
 }
 
 #[cfg(desktop)]
@@ -237,7 +248,10 @@ pub fn get_file_history(
 
 #[cfg(mobile)]
 #[tauri::command]
-pub fn get_modified_files(_vault_path: VaultPathArg) -> Result<Vec<ModifiedFile>, String> {
+pub fn get_modified_files(
+    _vault_path: VaultPathArg,
+    _include_stats: Option<bool>,
+) -> Result<Vec<ModifiedFile>, String> {
     Ok(vec![])
 }
 
@@ -379,15 +393,15 @@ mod tests {
         (dir, vault)
     }
 
-    #[test]
-    fn desktop_git_commands_route_to_git_backend() {
+    #[tokio::test]
+    async fn desktop_git_commands_route_to_git_backend() {
         let (dir, vault) = create_initialized_vault();
         let note = note_path(&dir, "note.md");
 
         assert!(is_git_repo(vault.clone()));
 
         fs::write(dir.path().join("note.md"), "# Updated\n").unwrap();
-        let modified = get_modified_files(vault.clone()).unwrap();
+        let modified = get_modified_files(vault.clone(), None).await.unwrap();
         assert!(modified.iter().any(|file| file.relative_path == "note.md"));
 
         let diff = get_file_diff(vault.clone(), note.clone()).unwrap();

@@ -138,7 +138,12 @@ fn resolve_diff_stats(
     relative_path: &Path,
     status: FileChangeStatus,
     diff_stats: &HashMap<String, DiffStats>,
+    include_stats: bool,
 ) -> DiffStats {
+    if !include_stats {
+        return DiffStats::default();
+    }
+
     if status == FileChangeStatus::Untracked {
         return count_worktree_lines(vault, relative_path);
     }
@@ -211,8 +216,18 @@ fn restore_tracked_file(vault: &Path, relative_path: &Path) -> Result<(), String
 }
 
 /// Get list of modified/added/deleted files in the vault (uncommitted changes).
-pub fn get_modified_files(vault_path: &str) -> Result<Vec<ModifiedFile>, String> {
-    let vault = Path::new(vault_path);
+pub fn get_modified_files(vault_path: impl AsRef<Path>) -> Result<Vec<ModifiedFile>, String> {
+    get_modified_files_impl(vault_path.as_ref(), false)
+}
+
+/// Get list of modified/added/deleted files with line-level diff statistics.
+pub fn get_modified_files_with_stats(
+    vault_path: impl AsRef<Path>,
+) -> Result<Vec<ModifiedFile>, String> {
+    get_modified_files_impl(vault_path.as_ref(), true)
+}
+
+fn get_modified_files_impl(vault: &Path, include_stats: bool) -> Result<Vec<ModifiedFile>, String> {
     let output = git_command()
         .args(["status", "--porcelain", "--untracked-files=all"])
         .current_dir(vault)
@@ -224,7 +239,11 @@ pub fn get_modified_files(vault_path: &str) -> Result<Vec<ModifiedFile>, String>
         return Err(format!("git status failed: {}", stderr.trim()));
     }
 
-    let diff_stats = load_diff_stats(vault)?;
+    let diff_stats = if include_stats {
+        load_diff_stats(vault)?
+    } else {
+        HashMap::new()
+    };
     let stdout = String::from_utf8_lossy(&output.stdout);
     let files = stdout
         .lines()
@@ -243,7 +262,13 @@ pub fn get_modified_files(vault_path: &str) -> Result<Vec<ModifiedFile>, String>
 
             let status = FileChangeStatus::from_code(status_code);
             let full_path = vault.join(&relative_path).to_string_lossy().to_string();
-            let stats = resolve_diff_stats(vault, Path::new(&relative_path), status, &diff_stats);
+            let stats = resolve_diff_stats(
+                vault,
+                Path::new(&relative_path),
+                status,
+                &diff_stats,
+                include_stats,
+            );
 
             Some(ModifiedFile {
                 path: full_path,
@@ -309,7 +334,7 @@ mod tests {
     }
 
     #[test]
-    fn test_get_modified_files() {
+    fn test_get_modified_files_with_stats() {
         let dir = setup_git_repo();
         let vault = dir.path();
 
@@ -331,7 +356,7 @@ mod tests {
         // Add an untracked file
         fs::write(vault.join("new.md"), "# New\n").unwrap();
 
-        let modified = get_modified_files(vault.to_str().unwrap()).unwrap();
+        let modified = get_modified_files_with_stats(vault.to_str().unwrap()).unwrap();
 
         assert!(modified.len() >= 2);
         let statuses: Vec<&str> = modified.iter().map(|f| f.status.as_str()).collect();
@@ -351,6 +376,34 @@ mod tests {
             .unwrap();
         assert_eq!(untracked_entry.added_lines, Some(1));
         assert_eq!(untracked_entry.deleted_lines, None);
+    }
+
+    #[test]
+    fn test_get_modified_files_omits_stats_by_default() {
+        let dir = setup_git_repo();
+        let vault = dir.path();
+
+        fs::write(vault.join("note.md"), "# Note\n").unwrap();
+        git_command()
+            .args(["add", "note.md"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        git_command()
+            .args(["commit", "-m", "Add note"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        fs::write(vault.join("note.md"), "# Note\n\nUpdated.").unwrap();
+        fs::write(vault.join("new.md"), "# New\n").unwrap();
+
+        let modified = get_modified_files(vault.to_str().unwrap()).unwrap();
+
+        assert!(modified.len() >= 2);
+        assert!(modified.iter().all(|file| file.added_lines.is_none()
+            && file.deleted_lines.is_none()
+            && !file.binary));
     }
 
     #[test]
@@ -375,7 +428,7 @@ mod tests {
         fs::create_dir_all(vault.join("note")).unwrap();
         fs::write(vault.join("note/brand-new.md"), "# Brand New\n").unwrap();
 
-        let modified = get_modified_files(vault.to_str().unwrap()).unwrap();
+        let modified = get_modified_files_with_stats(vault.to_str().unwrap()).unwrap();
 
         assert_eq!(modified.len(), 1);
         assert_eq!(modified[0].status, "untracked");
@@ -399,7 +452,7 @@ mod tests {
         write_and_commit_markdown(vault, vp, relative_path, "# 初始\n");
         fs::write(vault.join(relative_path), "# 初始\n\n更新\n").unwrap();
 
-        let modified = get_modified_files(vp).unwrap();
+        let modified = get_modified_files_with_stats(vp).unwrap();
         let file = modified
             .iter()
             .find(|file| file.relative_path == relative_path)

@@ -91,7 +91,7 @@ describe('useGitRepositories', () => {
       repositories,
     }))
 
-    await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('get_modified_files', { vaultPath: '/default' }))
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('get_modified_files', { vaultPath: '/default', includeStats: false }))
 
     await act(async () => {
       await result.current.refreshRemoteStatusForRepository('/work')
@@ -99,5 +99,23 @@ describe('useGitRepositories', () => {
 
     expect(mockInvoke).toHaveBeenCalledWith('git_remote_status', { vaultPath: '/work' })
     expect(result.current.remoteStatusForRepository('/work')).toEqual(remoteStatus(false))
+  })
+
+  it('requests line stats only when explicitly requested', async () => {
+    const repositories = [{ path: '/default', label: 'Default', defaultForNewNotes: true }]
+    vi.mocked(mockInvoke).mockResolvedValue([])
+
+    const { result } = renderHook(() => useGitRepositories({
+      defaultVaultPath: '/default',
+      repositories,
+    }))
+
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('get_modified_files', { vaultPath: '/default', includeStats: false }))
+
+    await act(async () => {
+      await result.current.loadModifiedFilesForRepository('/default', { includeStats: true })
+    })
+
+    expect(mockInvoke).toHaveBeenCalledWith('get_modified_files', { vaultPath: '/default', includeStats: true })
   })
 })

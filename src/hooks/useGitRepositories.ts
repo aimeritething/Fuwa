@@ -45,6 +45,10 @@ interface RepositoryFilesArgs {
   vaultPath: string
 }
 
+export interface LoadModifiedFilesOptions {
+  includeStats?: boolean
+}
+
 const EMPTY_MODIFIED_FILES: RepositoryModifiedFiles = {
   error: null,
   files: [],
@@ -101,13 +105,17 @@ function useRepositoryModifiedFiles(repositories: GitRepositoryOption[]) {
   const [byRepository, setByRepository] = useState<ReadonlyMap<string, RepositoryModifiedFiles>>(() => new Map())
   const loadIdsRef = useRef<RepositoryLoadIds>(new Map())
 
-  const loadModifiedFilesForRepository = useCallback(async (vaultPath: string) => {
+  const loadModifiedFilesForRepository = useCallback(async (
+    vaultPath: string,
+    options: LoadModifiedFilesOptions = {},
+  ) => {
     if (!vaultPath.trim()) return [] as ModifiedFile[]
     const loadId = nextRepositoryLoadId({ loadIds: loadIdsRef.current, path: vaultPath })
+    const includeStats = options.includeStats === true
 
     try {
       const files = withRepositoryPath({
-        files: await tauriCall<ModifiedFile[]>('get_modified_files', { vaultPath }),
+        files: await tauriCall<ModifiedFile[]>('get_modified_files', { vaultPath, includeStats }),
         vaultPath,
       })
       if (isLatestRepositoryLoad({ loadIds: loadIdsRef.current, path: vaultPath, id: loadId })) {
@@ -123,8 +131,8 @@ function useRepositoryModifiedFiles(repositories: GitRepositoryOption[]) {
     }
   }, [])
 
-  const loadAllModifiedFiles = useCallback(async () => {
-    await Promise.all(repositories.map((repository) => loadModifiedFilesForRepository(repository.path)))
+  const loadAllModifiedFiles = useCallback(async (options: LoadModifiedFilesOptions = {}) => {
+    await Promise.all(repositories.map((repository) => loadModifiedFilesForRepository(repository.path, options)))
   }, [loadModifiedFilesForRepository, repositories])
 
   useEffect(() => {

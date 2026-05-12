@@ -439,7 +439,7 @@ function useModifiedFilesLoader(vaultPath: string, isCurrentVaultPath: (path: st
     try {
       const files = await tauriCall<ModifiedFile[]>({
         command: 'get_modified_files',
-        tauriArgs: { vaultPath: path },
+        tauriArgs: { vaultPath: path, includeStats: false },
         mockArgs: {},
       })
       if (isCurrentVaultPath(path)) setModifiedFiles(files)

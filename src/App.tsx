@@ -79,7 +79,7 @@ import { DeleteProgressNotice } from './components/DeleteProgressNotice'
 import { UpdateBanner } from './components/UpdateBanner'
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from './mock-tauri'
-import type { SidebarSelection, InboxPeriod, VaultEntry, ViewDefinition, WorkspaceIdentity } from './types'
+import type { SidebarSelection, InboxPeriod, ModifiedFile, VaultEntry, ViewDefinition, WorkspaceIdentity } from './types'
 import type { NoteListItem } from './utils/ai-context'
 import { initializeNoteProperties } from './utils/initializeNoteProperties'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
@@ -145,6 +145,24 @@ declare global {
 }
 
 const DEFAULT_SELECTION: SidebarSelection = INBOX_SELECTION
+
+function modifiedFileKey(file: ModifiedFile): string {
+  return `${file.vaultPath ?? ''}\0${file.relativePath}\0${file.status}`
+}
+
+function activeVaultModifiedFiles(files: ModifiedFile[], vaultPath: string): ModifiedFile[] {
+  return files.map((file) => ({ ...file, vaultPath: file.vaultPath ?? vaultPath }))
+}
+
+function mergeModifiedFiles(...groups: ModifiedFile[][]): ModifiedFile[] {
+  const byKey = new Map<string, ModifiedFile>()
+  for (const group of groups) {
+    for (const file of group) {
+      byKey.set(modifiedFileKey(file), file)
+    }
+  }
+  return [...byKey.values()]
+}
 
 function shouldPreferOnboardingVaultPath(
   onboardingState: { status: string; vaultPath?: string },
@@ -352,6 +370,7 @@ function App() {
   const { config: vaultConfig, updateConfig } = useVaultConfig(resolvedPath)
   const explicitOrganizationEnabled = isExplicitOrganizationEnabled(vaultConfig.inbox?.explicitOrganization)
   const effectiveSelection = sanitizeSelectionForOrganization(selection, vaultConfig.inbox?.explicitOrganization)
+  const isChangesSelection = effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'changes'
 
   useSelectionSanitizer({
     effectiveSelection,
@@ -418,9 +437,9 @@ function App() {
   const refreshGitModifiedFiles = useCallback(async () => {
     await Promise.all([
       loadDefaultVaultModifiedFiles(),
-      loadAllGitModifiedFiles(),
+      loadAllGitModifiedFiles({ includeStats: isChangesSelection }),
     ])
-  }, [loadAllGitModifiedFiles, loadDefaultVaultModifiedFiles])
+  }, [isChangesSelection, loadAllGitModifiedFiles, loadDefaultVaultModifiedFiles])
   const loadVaultModifiedFiles = refreshGitModifiedFiles
 
   useEffect(() => {
@@ -852,11 +871,17 @@ function App() {
     openNoteInNewWindow(entry.path, vaultPathForEntry(entry, resolvedPath), entry.title)
   }, [resolvedPath])
 
-  const allGitModifiedFiles = gitSurfaces.allModifiedFiles
+  const allGitModifiedFiles = useMemo(
+    () => mergeModifiedFiles(
+      gitSurfaces.allModifiedFiles,
+      activeVaultModifiedFiles(vault.modifiedFiles, resolvedPath),
+    ),
+    [gitSurfaces.allModifiedFiles, resolvedPath, vault.modifiedFiles],
+  )
   const selectedChangesModifiedFiles = gitSurfaces.changesModifiedFiles
   const commitModifiedFiles = gitSurfaces.commitModifiedFiles
   const changesRepositoryPath = gitSurfaces.changesRepositoryPath
-  const gitModifiedCount = gitSurfaces.totalModifiedCount
+  const gitModifiedCount = allGitModifiedFiles.length
 
   const {
     activeDeletedFile,
@@ -926,6 +951,11 @@ function App() {
   const loadModifiedFiles = refreshGitModifiedFiles
 
   useEffect(() => {
+    if (!isChangesSelection) return
+    void loadModifiedFilesForRepository(changesRepositoryPath, { includeStats: true })
+  }, [changesRepositoryPath, isChangesSelection, loadModifiedFilesForRepository])
+
+  useEffect(() => {
     if (modifiedFilesSignature.length === 0) return
     recordAutoGitActivity()
   }, [modifiedFilesSignature, recordAutoGitActivity])
@@ -953,12 +983,15 @@ function App() {
       ? notes.tabs.find((tab) => tab.entry.path === notes.activeTabPath)
       : null
     if (activeTab) {
-      await loadModifiedFilesForRepository(vaultPathForEntry(activeTab.entry, resolvedPath))
+      await loadModifiedFilesForRepository(vaultPathForEntry(activeTab.entry, resolvedPath), {
+        includeStats: isChangesSelection,
+      })
     }
     recordAutoGitActivity()
     return result
   }, [
     handleAppSave,
+    isChangesSelection,
     loadModifiedFilesForRepository,
     notes.activeTabPath,
     notes.tabs,
@@ -1575,8 +1608,7 @@ function App() {
     )
   }
 
-  const isChangesSelection = effectiveSelection.kind === 'filter' && effectiveSelection.filter === 'changes'
-  const noteListModifiedFiles = isChangesSelection ? selectedChangesModifiedFiles : allGitModifiedFiles
+  const noteListModifiedFiles = isChangesSelection ? selectedChangesModifiedFiles : undefined
   const noteListModifiedFilesError = isChangesSelection ? gitSurfaces.changesModifiedFilesError : null
 
   return (

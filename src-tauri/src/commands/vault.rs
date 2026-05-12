@@ -166,9 +166,21 @@ mod tests {
         assert_eq!(err, ACTIVE_VAULT_PATH_ERROR);
     }
 
-    #[test]
-    fn test_save_note_content_rejects_traversal_outside_active_vault() {
-        assert_note_write_rejects_escape(save_note_content);
+    #[tokio::test]
+    async fn test_save_note_content_rejects_traversal_outside_active_vault() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let vault_path = dir.path();
+        let escape_path = vault_path.join("../outside.md");
+
+        let err = save_note_content(
+            escape_path,
+            "# Outside\n".to_string(),
+            vault_path_arg(vault_path),
+        )
+        .await
+        .expect_err("expected traversal write to be rejected");
+
+        assert_eq!(err, ACTIVE_VAULT_PATH_ERROR);
     }
 
     #[test]

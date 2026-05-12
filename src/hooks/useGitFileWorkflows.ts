@@ -20,7 +20,7 @@ interface GitFileWorkflowParams {
   effectiveSelection: SidebarSelection
   entriesByPath: Map<string, VaultEntry>
   historyRepositoryPath: string
-  loadModifiedFilesForRepository: (vaultPath: string) => Promise<unknown>
+  loadModifiedFilesForRepository: (vaultPath: string, options?: { includeStats?: boolean }) => Promise<unknown>
   onCloseAllTabs: () => void
   onOpenTabWithContent: (entry: DeletedNoteEntry, content: string) => void
   onReplaceActiveTab: (entry: VaultEntry) => Promise<unknown> | unknown
@@ -271,7 +271,7 @@ function useDiscardFileAction({
     const targetFile = selectedChangesModifiedFiles.find((file) => file.relativePath === relativePath)
     try {
       await appTauriCall('git_discard_file', { vaultPath: changesRepositoryPath, relativePath })
-      await loadModifiedFilesForRepository(changesRepositoryPath)
+      await loadModifiedFilesForRepository(changesRepositoryPath, { includeStats: true })
       await syncActiveTabAfterDiscard({
         activePathBefore: activeTabPath,
         onCloseAllTabs,

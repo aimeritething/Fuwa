@@ -28,7 +28,9 @@ pub use remote::{
     git_pull, git_push, git_remote_status, has_remote, GitPullResult, GitPushResult,
     GitRemoteStatus,
 };
-pub use status::{discard_file_changes, get_modified_files, ModifiedFile};
+pub use status::{
+    discard_file_changes, get_modified_files, get_modified_files_with_stats, ModifiedFile,
+};
 
 use serde::Serialize;
 
