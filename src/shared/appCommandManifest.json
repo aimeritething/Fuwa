@@ -456,6 +456,7 @@
           "label": "Toggle Properties Panel",
           "accelerator": null
         },
+        { "kind": "command", "command": "viewToggleAiChat", "label": "Toggle AI Panel" },
         { "kind": "separator" },
         { "kind": "command", "command": "viewZoomIn", "label": "Zoom In" },
         { "kind": "command", "command": "viewZoomOut", "label": "Zoom Out" },
@@ -488,7 +489,6 @@
         { "kind": "separator" },
         { "kind": "command", "command": "editToggleRawEditor", "label": "Toggle Raw Editor" },
         { "kind": "command", "command": "viewToggleTableOfContents", "label": "Toggle Table of Contents" },
-        { "kind": "command", "command": "viewToggleAiChat", "label": "Toggle AI Panel" },
         { "kind": "command", "command": "viewToggleBacklinks", "label": "Toggle Backlinks" }
       ]
     },

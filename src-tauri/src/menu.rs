@@ -581,6 +581,20 @@ mod tests {
     }
 
     #[test]
+    fn view_menu_exposes_ai_panel_toggle() {
+        let view_menu = manifest_section("View").expect("view menu exists");
+        let item = view_menu
+            .items
+            .iter()
+            .find(|item| item.command_id(manifest()) == Some("view-toggle-ai-chat"))
+            .expect("View menu exposes the AI panel toggle");
+
+        assert_eq!(item.menu_item_id(manifest()), Some("view-toggle-ai-chat"));
+        assert_eq!(item.label("macos"), Some("Toggle AI Panel"));
+        assert_eq!(item.accelerator(manifest()), Some("CmdOrCtrl+Shift+L"));
+    }
+
+    #[test]
     fn no_duplicate_custom_ids() {
         let mut seen = HashSet::new();
         for id in manifest_menu_items().filter_map(|item| item.menu_item_id(manifest())) {

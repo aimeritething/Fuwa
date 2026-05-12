@@ -39,7 +39,7 @@ describe('LinuxMenuButton', () => {
     fireEvent.click(await screen.findByText('Paste without Formatting'))
     expect(invoke).toHaveBeenCalledWith('trigger_menu_command', { id: 'edit-paste-plain-text' })
 
-    await openSubmenu('Note')
+    await openSubmenu('View')
     expect(screen.getByText('Ctrl+Shift+L')).toBeInTheDocument()
     fireEvent.click(await screen.findByText('Toggle AI Panel'))
     expect(invoke).toHaveBeenCalledWith('trigger_menu_command', { id: 'view-toggle-ai-chat' })
