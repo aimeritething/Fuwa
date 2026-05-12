@@ -22,8 +22,8 @@ interface AutomaticCheckpointOptions {
 interface CommitFlowConfig {
   savePending: () => Promise<void | boolean>
   loadModifiedFiles: () => Promise<void>
-  resolveRemoteStatus: () => Promise<GitRemoteStatus | null>
-  resolveRemoteStatusForVaultPath?: (vaultPath: string) => Promise<GitRemoteStatus | null>
+  loadModifiedFilesForVaultPath: (vaultPath: string) => Promise<ModifiedFile[]>
+  resolveRemoteStatusForVaultPath: (vaultPath: string) => Promise<GitRemoteStatus | null>
   setToastMessage: (msg: string | null) => void
   onPushRejected?: () => void
   automaticVaultPaths?: string[]
@@ -69,12 +69,23 @@ interface RepositoryCheckpointResult {
 type AutomaticCheckpointRunConfig = Pick<
   CommitFlowConfig,
   | 'loadModifiedFiles'
+  | 'loadModifiedFilesForVaultPath'
   | 'onPushRejected'
-  | 'resolveRemoteStatus'
   | 'resolveRemoteStatusForVaultPath'
   | 'setToastMessage'
   | 'vaultPath'
 >
+
+type FinalizeCheckpointConfig = Pick<
+  CommitFlowConfig,
+  'loadModifiedFiles' | 'resolveRemoteStatusForVaultPath' | 'setToastMessage' | 'onPushRejected'
+>
+
+interface FinalizeCheckpointArgs extends FinalizeCheckpointConfig {
+  result: CommitResult
+  toastMessage: string
+  vaultPaths: string[]
+}
 
 function commitModeFromRemoteStatus(remoteStatus: GitRemoteStatus | null): CommitMode {
   return remoteStatus?.hasRemote === false ? 'local' : 'push'
@@ -95,22 +106,6 @@ async function pushCommittedChanges({ vaultPath }: VaultPathArgs): Promise<GitPu
   }
 
   return invoke<GitPushResult>('git_push', { vaultPath })
-}
-
-async function readModifiedFiles({ vaultPath }: VaultPathArgs): Promise<ModifiedFile[]> {
-  if (!isTauri()) {
-    return mockInvoke<ModifiedFile[]>('get_modified_files', { vaultPath })
-  }
-
-  return invoke<ModifiedFile[]>('get_modified_files', { vaultPath })
-}
-
-async function readRemoteStatus({ vaultPath }: VaultPathArgs): Promise<GitRemoteStatus> {
-  if (!isTauri()) {
-    return mockInvoke<GitRemoteStatus>('git_remote_status', { vaultPath })
-  }
-
-  return invoke<GitRemoteStatus>('git_remote_status', { vaultPath })
 }
 
 async function executeCommitAction({
@@ -215,31 +210,12 @@ function checkpointVaultPaths({
   return paths.length > 0 ? paths : [vaultPath]
 }
 
-async function resolveRemoteStatusForPath(
-  vaultPath: string,
-  config: Pick<CommitFlowConfig, 'resolveRemoteStatus' | 'resolveRemoteStatusForVaultPath' | 'vaultPath'>,
-): Promise<GitRemoteStatus | null> {
-  if (vaultPath === config.vaultPath) {
-    return config.resolveRemoteStatus()
-  }
-
-  if (config.resolveRemoteStatusForVaultPath) {
-    return config.resolveRemoteStatusForVaultPath(vaultPath)
-  }
-
-  try {
-    return await readRemoteStatus({ vaultPath })
-  } catch {
-    return null
-  }
-}
-
 async function checkpointRepository(
   vaultPath: string,
-  config: Pick<CommitFlowConfig, 'resolveRemoteStatus' | 'resolveRemoteStatusForVaultPath' | 'vaultPath'>,
+  config: Pick<CommitFlowConfig, 'loadModifiedFilesForVaultPath' | 'resolveRemoteStatusForVaultPath'>,
 ): Promise<RepositoryCheckpointResult> {
-  const remoteStatus = await resolveRemoteStatusForPath(vaultPath, config)
-  const modifiedFiles = await readModifiedFiles({ vaultPath })
+  const remoteStatus = await config.resolveRemoteStatusForVaultPath(vaultPath)
+  const modifiedFiles = await config.loadModifiedFilesForVaultPath(vaultPath)
   const message = generateAutomaticCommitMessage(modifiedFiles)
   const command = createAutomaticCheckpointCommand({ remoteStatus, vaultPath, message })
 
@@ -273,37 +249,40 @@ function multiRepositoryCheckpointToast(results: RepositoryCheckpointResult[]): 
 
 async function runCheckpointRefresh({
   loadModifiedFiles,
-  resolveRemoteStatus,
-}: Pick<CommitFlowConfig, 'loadModifiedFiles' | 'resolveRemoteStatus'>): Promise<void> {
+  resolveRemoteStatusForVaultPath,
+  vaultPaths,
+}: Pick<CommitFlowConfig, 'loadModifiedFiles' | 'resolveRemoteStatusForVaultPath'> & {
+  vaultPaths: string[]
+}): Promise<void> {
   await loadModifiedFiles()
-  await resolveRemoteStatus()
+  await Promise.all([...new Set(vaultPaths)].map((vaultPath) => resolveRemoteStatusForVaultPath(vaultPath)))
 }
 
-async function finalizeCheckpoint({
-  result,
-  toastMessage,
-  loadModifiedFiles,
-  resolveRemoteStatus,
-  setToastMessage,
-  onPushRejected,
-}: Pick<CommitFlowConfig, 'loadModifiedFiles' | 'resolveRemoteStatus' | 'setToastMessage' | 'onPushRejected'> & {
-  result: CommitResult
-  toastMessage: string
-}): Promise<void> {
+async function finalizeCheckpoint(args: FinalizeCheckpointArgs): Promise<void> {
+  const {
+    result,
+    toastMessage,
+    loadModifiedFiles,
+    resolveRemoteStatusForVaultPath,
+    setToastMessage,
+    onPushRejected,
+    vaultPaths,
+  } = args
+
   setToastMessage(toastMessage)
   if (isPushRejected(result)) {
     onPushRejected?.()
   }
 
-  await runCheckpointRefresh({ loadModifiedFiles, resolveRemoteStatus })
+  await runCheckpointRefresh({ loadModifiedFiles, resolveRemoteStatusForVaultPath, vaultPaths })
 }
 
 async function runSingleRepositoryCheckpoint(
   targetVaultPath: string,
   config: AutomaticCheckpointRunConfig,
 ): Promise<boolean> {
-  const remoteStatus = await resolveRemoteStatusForPath(targetVaultPath, config)
-  const modifiedFiles = await readModifiedFiles({ vaultPath: targetVaultPath })
+  const remoteStatus = await config.resolveRemoteStatusForVaultPath(targetVaultPath)
+  const modifiedFiles = await config.loadModifiedFilesForVaultPath(targetVaultPath)
   const message = generateAutomaticCommitMessage(modifiedFiles)
   const command = createAutomaticCheckpointCommand({
     remoteStatus,
@@ -321,9 +300,10 @@ async function runSingleRepositoryCheckpoint(
     result,
     toastMessage: checkpointToastMessage(result, action),
     loadModifiedFiles: config.loadModifiedFiles,
-    resolveRemoteStatus: config.resolveRemoteStatus,
+    resolveRemoteStatusForVaultPath: config.resolveRemoteStatusForVaultPath,
     setToastMessage: config.setToastMessage,
     onPushRejected: config.onPushRejected,
+    vaultPaths: [targetVaultPath],
   })
   return true
 }
@@ -361,7 +341,8 @@ async function runMultipleRepositoryCheckpoint(
   config.setToastMessage(multiRepositoryCheckpointToast(results))
   await runCheckpointRefresh({
     loadModifiedFiles: config.loadModifiedFiles,
-    resolveRemoteStatus: config.resolveRemoteStatus,
+    resolveRemoteStatusForVaultPath: config.resolveRemoteStatusForVaultPath,
+    vaultPaths: targetVaultPaths,
   })
   return results.some((result) => result.status === 'executed')
 }
@@ -370,7 +351,7 @@ function useAutomaticCheckpointAction({
   checkpointInFlightRef,
   savePending,
   loadModifiedFiles,
-  resolveRemoteStatus,
+  loadModifiedFilesForVaultPath,
   resolveRemoteStatusForVaultPath,
   setToastMessage,
   onPushRejected,
@@ -393,8 +374,8 @@ function useAutomaticCheckpointAction({
       const targetVaultPaths = checkpointVaultPaths({ automaticVaultPaths, vaultPath })
       const runConfig = {
         loadModifiedFiles,
+        loadModifiedFilesForVaultPath,
         onPushRejected,
-        resolveRemoteStatus,
         resolveRemoteStatusForVaultPath,
         setToastMessage,
         vaultPath,
@@ -413,8 +394,8 @@ function useAutomaticCheckpointAction({
     automaticVaultPaths,
     checkpointInFlightRef,
     loadModifiedFiles,
+    loadModifiedFilesForVaultPath,
     onPushRejected,
-    resolveRemoteStatus,
     resolveRemoteStatusForVaultPath,
     savePending,
     setToastMessage,
@@ -426,7 +407,6 @@ function useManualCommitPushAction({
   checkpointInFlightRef,
   savePending,
   loadModifiedFiles,
-  resolveRemoteStatus,
   resolveRemoteStatusForVaultPath,
   setToastMessage,
   onPushRejected,
@@ -445,11 +425,7 @@ function useManualCommitPushAction({
     try {
       await savePending()
       const targetVaultPath = manualVaultPath || vaultPath
-      const remoteStatus = await resolveRemoteStatusForPath(targetVaultPath, {
-        resolveRemoteStatus,
-        resolveRemoteStatusForVaultPath,
-        vaultPath,
-      })
+      const remoteStatus = await resolveRemoteStatusForVaultPath(targetVaultPath)
       const result = await executeCommitAction({
         vaultPath: targetVaultPath,
         message,
@@ -461,9 +437,10 @@ function useManualCommitPushAction({
         result,
         toastMessage: commitToastMessage(result),
         loadModifiedFiles,
-        resolveRemoteStatus,
+        resolveRemoteStatusForVaultPath,
         setToastMessage,
         onPushRejected,
+        vaultPaths: [targetVaultPath],
       })
     } catch (err) {
       console.error('Commit failed:', err)
@@ -476,7 +453,6 @@ function useManualCommitPushAction({
     loadModifiedFiles,
     manualVaultPath,
     onPushRejected,
-    resolveRemoteStatus,
     resolveRemoteStatusForVaultPath,
     savePending,
     setShowCommitDialog,
@@ -488,14 +464,13 @@ function useManualCommitPushAction({
 function useCommitModeRefresh({
   commitModeVaultPathRef,
   manualVaultPath,
-  resolveRemoteStatus,
   resolveRemoteStatusForVaultPath,
   setCommitMode,
   showCommitDialog,
   vaultPath,
 }: Pick<
   CommitFlowConfig,
-  'manualVaultPath' | 'resolveRemoteStatus' | 'resolveRemoteStatusForVaultPath' | 'vaultPath'
+  'manualVaultPath' | 'resolveRemoteStatusForVaultPath' | 'vaultPath'
 > & {
   commitModeVaultPathRef: MutableRefObject<string | null>
   setCommitMode: (mode: CommitMode) => void
@@ -508,11 +483,7 @@ function useCommitModeRefresh({
     const targetVaultPath = manualVaultPath || vaultPath
     if (commitModeVaultPathRef.current === targetVaultPath) return
 
-    void resolveRemoteStatusForPath(targetVaultPath, {
-      resolveRemoteStatus,
-      resolveRemoteStatusForVaultPath,
-      vaultPath,
-    }).then((remoteStatus) => {
+    void resolveRemoteStatusForVaultPath(targetVaultPath).then((remoteStatus) => {
       if (cancelled) return
       commitModeVaultPathRef.current = targetVaultPath
       setCommitMode(commitModeFromRemoteStatus(remoteStatus))
@@ -524,7 +495,6 @@ function useCommitModeRefresh({
   }, [
     commitModeVaultPathRef,
     manualVaultPath,
-    resolveRemoteStatus,
     resolveRemoteStatusForVaultPath,
     setCommitMode,
     showCommitDialog,
@@ -536,7 +506,6 @@ function useOpenCommitDialog({
   commitModeVaultPathRef,
   loadModifiedFiles,
   manualVaultPath,
-  resolveRemoteStatus,
   resolveRemoteStatusForVaultPath,
   savePending,
   setCommitMode,
@@ -546,7 +515,6 @@ function useOpenCommitDialog({
   CommitFlowConfig,
   | 'loadModifiedFiles'
   | 'manualVaultPath'
-  | 'resolveRemoteStatus'
   | 'resolveRemoteStatusForVaultPath'
   | 'savePending'
   | 'vaultPath'
@@ -559,11 +527,7 @@ function useOpenCommitDialog({
     await savePending()
     await loadModifiedFiles()
     const targetVaultPath = manualVaultPath || vaultPath
-    const remoteStatus = await resolveRemoteStatusForPath(targetVaultPath, {
-      resolveRemoteStatus,
-      resolveRemoteStatusForVaultPath,
-      vaultPath,
-    })
+    const remoteStatus = await resolveRemoteStatusForVaultPath(targetVaultPath)
     commitModeVaultPathRef.current = targetVaultPath
     setCommitMode(commitModeFromRemoteStatus(remoteStatus))
     setShowCommitDialog(true)
@@ -571,7 +535,6 @@ function useOpenCommitDialog({
     commitModeVaultPathRef,
     loadModifiedFiles,
     manualVaultPath,
-    resolveRemoteStatus,
     resolveRemoteStatusForVaultPath,
     savePending,
     setCommitMode,
@@ -584,7 +547,7 @@ function useOpenCommitDialog({
 export function useCommitFlow({
   savePending,
   loadModifiedFiles,
-  resolveRemoteStatus,
+  loadModifiedFilesForVaultPath,
   resolveRemoteStatusForVaultPath,
   setToastMessage,
   onPushRejected,
@@ -601,7 +564,6 @@ export function useCommitFlow({
     commitModeVaultPathRef,
     loadModifiedFiles,
     manualVaultPath,
-    resolveRemoteStatus,
     resolveRemoteStatusForVaultPath,
     savePending,
     setCommitMode,
@@ -613,7 +575,7 @@ export function useCommitFlow({
     checkpointInFlightRef,
     savePending,
     loadModifiedFiles,
-    resolveRemoteStatus,
+    loadModifiedFilesForVaultPath,
     resolveRemoteStatusForVaultPath,
     setToastMessage,
     onPushRejected,
@@ -625,7 +587,6 @@ export function useCommitFlow({
     checkpointInFlightRef,
     savePending,
     loadModifiedFiles,
-    resolveRemoteStatus,
     resolveRemoteStatusForVaultPath,
     setToastMessage,
     onPushRejected,
@@ -636,7 +597,6 @@ export function useCommitFlow({
   useCommitModeRefresh({
     commitModeVaultPathRef,
     manualVaultPath,
-    resolveRemoteStatus,
     resolveRemoteStatusForVaultPath,
     setCommitMode,
     showCommitDialog,

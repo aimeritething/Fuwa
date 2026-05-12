@@ -517,10 +517,11 @@ interface PulseCommit {
 
 External vault mutations are any disk writes Tolaria did not just perform through its own save path: Git pulls, AI-agent writes, filesystem watcher events, and edits from another app. These changes must route through `refreshPulledVaultState()` rather than calling `reloadVault()` in isolation. The shared refresh abstraction reloads entries, folders, and saved views together, preserves unsaved active-editor content, reopens a clean active note only when the changed-path list includes that note, and closes the active tab if the file disappeared. Unknown or unrelated watcher updates refresh vault-derived state without remounting the active editor. `useVaultWatcher` supplies changed filesystem paths to this abstraction after debouncing and after filtering recent app-owned saves. Overlapping entry reloads and modified-file polls are coalesced with a single trailing rerun so watcher and sync bursts do not stack native vault scans or Git status processes.
 
-`useGitRemoteStatus` is the commit-time companion to `useAutoSync`:
-- Re-checks `git_remote_status` when the Commit dialog opens and right before submit
+`useGitRepositories` is the commit-time companion to `useAutoSync`:
+- Owns repository picker validation plus `get_modified_files` and `git_remote_status` loading for active Git repositories
+- Re-checks the selected repository when the Commit dialog opens and right before submit
 - Converts `hasRemote: false` into a local-only commit path
-- Keeps the normal push path unchanged for vaults that do have a remote
+- Keeps the normal push path unchanged for repositories that do have a remote
 
 `AddRemoteModal` is the explicit recovery path for those local-only vaults:
 - Opens from the `No remote` status-bar chip and the command palette

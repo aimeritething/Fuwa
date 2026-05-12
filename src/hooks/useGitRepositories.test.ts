@@ -1,7 +1,7 @@
 import { act, renderHook, waitFor } from '@testing-library/react'
 import { describe, expect, it, vi, beforeEach } from 'vitest'
 import { mockInvoke } from '../mock-tauri'
-import type { ModifiedFile } from '../types'
+import type { GitRemoteStatus, ModifiedFile } from '../types'
 import { useGitRepositories } from './useGitRepositories'
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke: vi.fn() }))
@@ -23,6 +23,15 @@ function modifiedFile(relativePath: string): ModifiedFile {
     path: `/default/${relativePath}`,
     relativePath,
     status: 'modified',
+  }
+}
+
+function remoteStatus(hasRemote: boolean): GitRemoteStatus {
+  return {
+    branch: 'main',
+    ahead: 0,
+    behind: 0,
+    hasRemote,
   }
 }
 
@@ -62,5 +71,33 @@ describe('useGitRepositories', () => {
       await firstLoad.promise
     })
     expect(result.current.changesModifiedFiles.map((file) => file.relativePath)).toEqual(['new.md'])
+  })
+
+  it('refreshes remote status through the repository state owner', async () => {
+    const repositories = [
+      { path: '/default', label: 'Default', defaultForNewNotes: true },
+      { path: '/work', label: 'Work', defaultForNewNotes: false },
+    ]
+    vi.mocked(mockInvoke).mockImplementation((command, args) => {
+      if (command === 'get_modified_files') return Promise.resolve([])
+      if (command === 'git_remote_status') {
+        return Promise.resolve(remoteStatus(args.vaultPath === '/default'))
+      }
+      throw new Error(`Unexpected command: ${command}`)
+    })
+
+    const { result } = renderHook(() => useGitRepositories({
+      defaultVaultPath: '/default',
+      repositories,
+    }))
+
+    await waitFor(() => expect(mockInvoke).toHaveBeenCalledWith('get_modified_files', { vaultPath: '/default' }))
+
+    await act(async () => {
+      await result.current.refreshRemoteStatusForRepository('/work')
+    })
+
+    expect(mockInvoke).toHaveBeenCalledWith('git_remote_status', { vaultPath: '/work' })
+    expect(result.current.remoteStatusForRepository('/work')).toEqual(remoteStatus(false))
   })
 })
