@@ -61,6 +61,39 @@ describe('useVaultLoader empty cache recovery', () => {
     mockIsTauri = true
   })
 
+  it('keeps mounted workspace entries visible while a newly active empty workspace loads', async () => {
+    const laputa = { label: 'Laputa', path: '/laputa', alias: 'laputa', available: true, mounted: true }
+    const refactoring = { label: 'Refactoring', path: '/refactoring', alias: 'refactoring', available: true, mounted: true }
+    const commandResults = new Map<string, unknown>([
+      ['reload_vault:/laputa', [makeEntry('/laputa/note/hello.md', 'Laputa Hello')]],
+      ['reload_vault:/refactoring', []],
+      ['list_vault:/refactoring', []],
+      ['get_modified_files:', []],
+      ['list_vault_folders:', []],
+      ['list_views:', []],
+    ])
+
+    backendInvokeFn.mockImplementation((command: string, args?: Record<string, unknown>) => {
+      return Promise.resolve(commandResults.get(commandKey(command, args)) ?? null)
+    })
+
+    const { result, rerender } = renderHook(
+      ({ activePath, vaults }) => useVaultLoader(activePath, vaults, activePath, vaults),
+      { initialProps: { activePath: '/laputa', vaults: [laputa] } },
+    )
+
+    await waitFor(() => {
+      expect(result.current.entries.map((entry) => entry.title)).toEqual(['Laputa Hello'])
+    })
+
+    rerender({ activePath: '/refactoring', vaults: [laputa, refactoring] })
+
+    expect(result.current.entries.map((entry) => entry.title)).toContain('Laputa Hello')
+    await waitFor(() => {
+      expect(result.current.entries.map((entry) => entry.title)).toContain('Laputa Hello')
+    })
+  })
+
   it('reloads a background workspace when its cached startup listing is empty in Tauri mode', async () => {
     const brian = { label: 'Brian', path: '/brian', alias: 'brian', available: true, mounted: true }
     const laputa = { label: 'Laputa', path: '/laputa', alias: 'laputa', available: true, mounted: true }
