@@ -27,7 +27,7 @@ function isSameEntitySelection(a: Extract<SidebarSelection, { kind: 'entity' }>,
 }
 
 function isSameViewSelection(a: Extract<SidebarSelection, { kind: 'view' }>, b: Extract<SidebarSelection, { kind: 'view' }>) {
-  return a.filename === b.filename
+  return a.filename === b.filename && (a.rootPath ?? '') === (b.rootPath ?? '')
 }
 
 export function selectionsEqual(a: SidebarSelection, b: SidebarSelection): boolean {

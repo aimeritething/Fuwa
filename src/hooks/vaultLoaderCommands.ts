@@ -23,6 +23,7 @@ interface MountedVaultEntriesOptions extends VaultPathOptions {
 }
 
 type MountedVaultFoldersOptions = MountedVaultEntriesOptions
+type MountedVaultViewsOptions = MountedVaultEntriesOptions
 
 interface WorkspaceEntryLoadOptions {
   forceReload?: boolean
@@ -142,6 +143,19 @@ function attachFolderRootPath(folders: FolderNode[], rootPath: string): FolderNo
   }))
 }
 
+function attachViewRootPath(
+  views: ViewFile[],
+  vault: VaultOption,
+  defaultWorkspacePath?: string | null,
+): ViewFile[] {
+  const workspace = workspaceIdentityFromVault(vault, { defaultWorkspacePath })
+  return views.map((view) => ({
+    ...view,
+    rootPath: vault.path,
+    workspace,
+  }))
+}
+
 function loadVaultEntries({ vaultPath }: VaultPathOptions): Promise<VaultEntry[]> {
   const command = isTauri() ? 'reload_vault' : 'list_vault'
   return loadVaultEntriesWithCommand({ vaultPath, command })
@@ -196,6 +210,20 @@ export function loadVaultViews({ vaultPath }: VaultPathOptions): Promise<ViewFil
     .then(normalizeViewFiles)
 }
 
+export async function loadMountedVaultViews(options: MountedVaultViewsOptions): Promise<ViewFile[]> {
+  const mountedVaults = uniqueMountedVaults({ ...options, includeFallbackVault: false })
+  if (mountedVaults.length === 0) return []
+  if (mountedVaults.length === 1 && mountedVaults[0].path === options.vaultPath) {
+    return loadVaultViews({ vaultPath: options.vaultPath })
+  }
+
+  const viewGroups = await Promise.all(mountedVaults.map(async (vault) => {
+    const views = await loadVaultViews({ vaultPath: vault.path }).catch(() => [] as ViewFile[])
+    return attachViewRootPath(views ?? [], vault, options.defaultWorkspacePath)
+  }))
+  return viewGroups.flat()
+}
+
 export async function loadVaultData({ vaultPath, vaults, defaultWorkspacePath, forceReload }: MountedVaultEntriesOptions): Promise<LoadedVaultData> {
   if (!isTauri()) console.info('[mock] Using mock Tauri data for browser testing')
   const entries = vaults?.length
@@ -205,10 +233,16 @@ export async function loadVaultData({ vaultPath, vaults, defaultWorkspacePath, f
   return { entries }
 }
 
-export async function loadVaultChrome({ vaultPath }: VaultPathOptions): Promise<LoadedVaultChrome> {
+export async function loadVaultChrome({
+  defaultWorkspacePath,
+  vaultPath,
+  vaults,
+}: MountedVaultEntriesOptions): Promise<LoadedVaultChrome> {
   const [folders, views] = await Promise.all([
     loadVaultFolders({ vaultPath }).catch(() => [] as FolderNode[]),
-    loadVaultViews({ vaultPath }).catch(() => [] as ViewFile[]),
+    vaults?.length
+      ? loadMountedVaultViews({ defaultWorkspacePath, vaultPath, vaults }).catch(() => [] as ViewFile[])
+      : loadVaultViews({ vaultPath }).catch(() => [] as ViewFile[]),
   ])
 
   return {

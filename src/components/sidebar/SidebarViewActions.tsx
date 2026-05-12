@@ -16,7 +16,16 @@ export interface MenuPosition {
   y: number
 }
 
-export type ViewDefinitionPatchHandler = (filename: string, patch: Partial<ViewDefinition>) => void
+export type ViewDefinitionPatchHandler = (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
+
+function updateViewDefinition(
+  view: ViewFile,
+  patch: Partial<ViewDefinition>,
+  onUpdateViewDefinition: ViewDefinitionPatchHandler,
+) {
+  if (view.rootPath) onUpdateViewDefinition(view.filename, patch, view.rootPath)
+  else onUpdateViewDefinition(view.filename, patch)
+}
 
 export function ViewRenameInput({
   initialValue,
@@ -146,8 +155,8 @@ export function ViewCustomizePanel({
         currentIcon={view.definition.icon}
         currentColor={view.definition.color}
         currentTemplate={null}
-        onChangeIcon={(icon) => onUpdateViewDefinition(view.filename, { icon })}
-        onChangeColor={(color) => onUpdateViewDefinition(view.filename, { color })}
+        onChangeIcon={(icon) => updateViewDefinition(view, { icon }, onUpdateViewDefinition)}
+        onChangeColor={(color) => updateViewDefinition(view, { color }, onUpdateViewDefinition)}
         onChangeTemplate={() => {}}
         onClose={onClose}
         showTemplate={false}

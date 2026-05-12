@@ -160,7 +160,7 @@ interface UseNoteListContentParams {
   onUpdateAllNotesNoteListProperties?: (value: string[] | null) => void
   inboxNoteListProperties?: string[] | null
   onUpdateInboxNoteListProperties?: (value: string[] | null) => void
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
   onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
   views?: ViewFile[]
@@ -496,7 +496,7 @@ export interface NoteListProps {
   onUpdateAllNotesNoteListProperties?: (value: string[] | null) => void
   inboxNoteListProperties?: string[] | null
   onUpdateInboxNoteListProperties?: (value: string[] | null) => void
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
   views?: ViewFile[]
   visibleNotesRef?: React.MutableRefObject<VaultEntry[]>
   allNotesFileVisibility?: AllNotesFileVisibility

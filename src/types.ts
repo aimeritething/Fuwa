@@ -227,7 +227,7 @@ export type SidebarSelection =
   | { kind: 'sectionGroup'; type: string }
   | { kind: 'folder'; path: string; rootPath?: string }
   | { kind: 'entity'; entry: VaultEntry }
-  | { kind: 'view'; filename: string }
+  | { kind: 'view'; filename: string; rootPath?: string }
 
 // --- Custom Views ---
 
@@ -257,6 +257,8 @@ export interface ViewDefinition {
 export interface ViewFile {
   filename: string
   definition: ViewDefinition
+  rootPath?: string
+  workspace?: WorkspaceIdentity
 }
 
 /** A node in the vault's folder tree (directories only, no files). */

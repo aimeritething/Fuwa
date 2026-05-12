@@ -28,6 +28,7 @@ import { SidebarViewItem } from './SidebarViewItem'
 import { computeReorder } from './sidebarHooks'
 import { SIDEBAR_SECTION_CONTENT_PADDING_BOTTOM } from './sidebarStyles'
 import { countByFilter } from '../../utils/noteListHelpers'
+import { viewIdentityKey, viewSelectionForView } from '../../utils/viewIdentity'
 import { translate, type AppLocale } from '../../lib/i18n'
 
 export { SidebarTopNav } from './SidebarTopNav'
@@ -75,15 +76,15 @@ export function ViewsSection({
   collapsed: boolean
   onToggle: () => void
   onCreateView?: () => void
-  onEditView?: (filename: string) => void
-  onDeleteView?: (filename: string) => void
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onEditView?: (filename: string, rootPath?: string) => void
+  onDeleteView?: (filename: string, rootPath?: string) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
   onReorderViews?: (orderedFilenames: string[]) => void
   sensors: ReturnType<typeof useSensors>
   entries: VaultEntry[]
   locale?: AppLocale
 }) {
-  const viewIds = views.map((view) => view.filename)
+  const viewIds = views.map(viewIdentityKey)
   const handleViewDragEnd = (event: DragEndEvent) => {
     const { active, over } = event
     if (!over || active.id === over.id) return
@@ -92,10 +93,10 @@ export function ViewsSection({
   }
   const renderViewItem = (view: ViewFile) => (
     <SidebarViewItem
-      key={view.filename}
+      key={viewIdentityKey(view)}
       view={view}
-      isActive={isSelectionActive(selection, { kind: 'view', filename: view.filename })}
-      onSelect={() => onSelect({ kind: 'view', filename: view.filename })}
+      isActive={isSelectionActive(selection, viewSelectionForView(view))}
+      onSelect={() => onSelect(viewSelectionForView(view))}
       onEditView={onEditView}
       onDeleteView={onDeleteView}
       onUpdateViewDefinition={onUpdateViewDefinition}
@@ -128,7 +129,7 @@ export function ViewsSection({
               <SortableContext items={viewIds} strategy={verticalListSortingStrategy}>
                 {views.map((view) => (
                   <SortableViewItem
-                    key={view.filename}
+                    key={viewIdentityKey(view)}
                     view={view}
                     selection={selection}
                     onSelect={onSelect}
@@ -161,13 +162,14 @@ function SortableViewItem({
   view: ViewFile
   selection: SidebarSelection
   onSelect: (selection: SidebarSelection) => void
-  onEditView?: (filename: string) => void
-  onDeleteView?: (filename: string) => void
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onEditView?: (filename: string, rootPath?: string) => void
+  onDeleteView?: (filename: string, rootPath?: string) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
   entries: VaultEntry[]
   locale?: AppLocale
 }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: view.filename })
+  const viewId = viewIdentityKey(view)
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: viewId })
 
   return (
     <div
@@ -181,8 +183,8 @@ function SortableViewItem({
     >
       <SidebarViewItem
         view={view}
-        isActive={isSelectionActive(selection, { kind: 'view', filename: view.filename })}
-        onSelect={() => onSelect({ kind: 'view', filename: view.filename })}
+        isActive={isSelectionActive(selection, viewSelectionForView(view))}
+        onSelect={() => onSelect(viewSelectionForView(view))}
         onEditView={onEditView}
         onDeleteView={onDeleteView}
         onUpdateViewDefinition={onUpdateViewDefinition}

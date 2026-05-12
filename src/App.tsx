@@ -73,6 +73,7 @@ import {
 } from './hooks/useNeighborhoodSelection'
 import { createViewFilename } from './utils/viewFilename'
 import { nextViewOrder } from './utils/viewOrdering'
+import { viewMatchesSelection, viewVaultPath } from './utils/viewIdentity'
 import { ConflictResolverModal } from './components/ConflictResolverModal'
 import { ConfirmDeleteDialog } from './components/ConfirmDeleteDialog'
 import { DeleteProgressNotice } from './components/DeleteProgressNotice'
@@ -182,6 +183,40 @@ function canCustomizeColumnsForSelection(
   if (selection.kind !== 'filter') return false
   if (selection.filter === 'all') return true
   return explicitOrganizationEnabled && selection.filter === 'inbox'
+}
+
+function viewsForVault(views: ViewFile[], vaultPath: string): ViewFile[] {
+  return views.filter((view) => !view.rootPath || view.rootPath === vaultPath)
+}
+
+function viewSelection(filename: string, rootPath?: string): SidebarSelection {
+  return rootPath
+    ? { kind: 'view', filename, rootPath }
+    : { kind: 'view', filename }
+}
+
+function savedViewFilename(
+  definition: ViewDefinition,
+  editingView: { filename: string } | null,
+  existingViews: ViewFile[],
+): string {
+  return editingView
+    ? editingView.filename
+    : createViewFilename(definition.name, existingViews.map((view) => view.filename))
+}
+
+function savedViewDefinition(
+  definition: ViewDefinition,
+  editingView: { definition: ViewDefinition } | null,
+  existingViews: ViewFile[],
+): ViewDefinition {
+  return editingView
+    ? { ...editingView.definition, ...definition }
+    : { ...definition, order: nextViewOrder(existingViews) }
+}
+
+function shouldPreserveViewRootPath(views: ViewFile[], editingRootPath?: string): boolean {
+  return Boolean(editingRootPath) || views.some((view) => view.rootPath)
 }
 
 /** Wraps useEditorSave to also keep outgoingLinks in sync on save and on content change. */
@@ -1110,21 +1145,22 @@ function App() {
 
   const handleCreateOrUpdateView = useCallback(async (definition: ViewDefinition) => {
     const editing = dialogs.editingView
-    const filename = editing
-      ? editing.filename
-      : createViewFilename(definition.name, vault.views.map((view) => view.filename))
-    const nextDefinition = editing
-      ? { ...editing.definition, ...definition }
-      : { ...definition, order: nextViewOrder(vault.views) }
+    const activeVaultViews = viewsForVault(vault.views, resolvedPath)
+    const targetVaultPath = editing?.rootPath ?? resolvedPath
+    const filename = savedViewFilename(definition, editing, activeVaultViews)
+    const nextDefinition = savedViewDefinition(definition, editing, activeVaultViews)
     const target = isTauri() ? invoke : mockInvoke
     try {
-      await target('save_view_cmd', { vaultPath: resolvedPath, filename, definition: nextDefinition })
+      await target('save_view_cmd', { vaultPath: targetVaultPath, filename, definition: nextDefinition })
       trackEvent(editing ? 'view_updated' : 'view_created')
       await vault.reloadViews()
       await vault.reloadVault()
       vault.reloadFolders()
       setToastMessage(editing ? `View "${nextDefinition.name}" updated` : `View "${nextDefinition.name}" created`)
-      handleSetSelection({ kind: 'view', filename })
+      handleSetSelection(viewSelection(
+        filename,
+        shouldPreserveViewRootPath(vault.views, editing?.rootPath) ? targetVaultPath : undefined,
+      ))
       return true
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -1133,21 +1169,22 @@ function App() {
     }
   }, [resolvedPath, vault, handleSetSelection, dialogs.editingView, setToastMessage])
 
-  const handleUpdateViewDefinition = useCallback(async (filename: string, patch: Partial<ViewDefinition>) => {
-    const existing = vault.views.find((view) => view.filename === filename)
+  const handleUpdateViewDefinition = useCallback(async (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => {
+    const existing = vault.views.find((view) => viewMatchesSelection(view, viewSelection(filename, rootPath)))
     if (!existing) return
 
+    const targetVaultPath = viewVaultPath(existing, resolvedPath)
     const target = isTauri() ? invoke : mockInvoke
     await target('save_view_cmd', {
-      vaultPath: resolvedPath,
+      vaultPath: targetVaultPath,
       filename,
       definition: { ...existing.definition, ...patch },
     })
     await vault.reloadViews()
   }, [resolvedPath, vault])
 
-  const handleSidebarUpdateViewDefinition = useCallback((filename: string, patch: Partial<ViewDefinition>) => {
-    void handleUpdateViewDefinition(filename, patch)
+  const handleSidebarUpdateViewDefinition = useCallback((filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => {
+    void handleUpdateViewDefinition(filename, patch, rootPath)
       .then(() => {
         trackEvent('view_updated', { source: 'sidebar_view_actions' })
         if (typeof patch.name === 'string') setToastMessage(`View "${patch.name}" renamed`)
@@ -1158,18 +1195,22 @@ function App() {
       })
   }, [handleUpdateViewDefinition, setToastMessage])
 
-  const handleEditView = useCallback((filename: string) => {
-    const view = vault.views.find((v) => v.filename === filename)
-    if (view) dialogs.openEditView(filename, view.definition)
+  const handleEditView = useCallback((filename: string, rootPath?: string) => {
+    const view = vault.views.find((candidate) => viewMatchesSelection(candidate, viewSelection(filename, rootPath)))
+    if (view) dialogs.openEditView(filename, view.definition, view.rootPath)
   }, [vault.views, dialogs])
 
-  const handleDeleteView = useCallback(async (filename: string) => {
+  const handleDeleteView = useCallback(async (filename: string, rootPath?: string) => {
+    const existing = vault.views.find((view) => viewMatchesSelection(view, viewSelection(filename, rootPath)))
+    if (!existing) return
+
+    const targetVaultPath = viewVaultPath(existing, resolvedPath)
     const target = isTauri() ? invoke : mockInvoke
     try {
-      await target('delete_view_cmd', { vaultPath: resolvedPath, filename })
+      await target('delete_view_cmd', { vaultPath: targetVaultPath, filename })
     } catch (err) {
       if (isActiveVaultUnavailableError(err)) {
-        vault.markVaultUnavailable(resolvedPath)
+        vault.markVaultUnavailable(targetVaultPath)
         return
       }
       throw err
@@ -1177,7 +1218,7 @@ function App() {
     await vault.reloadViews()
     await vault.reloadVault()
     vault.reloadFolders()
-    if (selection.kind === 'view' && selection.filename === filename) {
+    if (selection.kind === 'view' && viewMatchesSelection(existing, selection)) {
       handleSetSelection({ kind: 'filter', filter: 'all' })
     }
     setToastMessage('View deleted')
@@ -1353,7 +1394,7 @@ function App() {
 
   const noteListColumnsLabel = useMemo(() => {
     if (effectiveSelection.kind === 'view') {
-      const selectedView = vault.views.find((view) => view.filename === effectiveSelection.filename)
+      const selectedView = vault.views.find((view) => viewMatchesSelection(view, effectiveSelection))
       return selectedView ? `Customize ${selectedView.definition.name} columns` : 'Customize View columns'
     }
 
@@ -1370,6 +1411,9 @@ function App() {
     onToast: setToastMessage,
     locale: appLocale,
   })
+  const canReorderSavedViews = useMemo(() => (
+    vault.views.every((view) => !view.rootPath)
+  ), [vault.views])
   const toggleDiffCommand = useCallback(() => diffToggleRef.current(), [])
   const toggleRawEditorCommand = useMemo(
     () => canToggleRichEditor ? () => rawToggleRef.current() : undefined,
@@ -1618,7 +1662,7 @@ function App() {
           {sidebarVisible && (
             <>
               <div className="app__sidebar" style={{ width: layout.sidebarWidth }}>
-                <Sidebar entries={visibleEntries} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onDeleteType={handleDeleteType} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} onUpdateViewDefinition={handleSidebarUpdateViewDefinition} onReorderViews={viewOrdering.onReorderViews} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} allNotesFileVisibility={allNotesFileVisibility} pluralizeTypeLabels={settings.sidebar_type_pluralization_enabled ?? true} onCollapse={handleCollapseSidebar} onGoBack={handleGoBack} onGoForward={handleGoForward} canGoBack={canGoBack} canGoForward={canGoForward} locale={appLocale} loading={isVaultContentLoading} vaultRootPath={resolvedPath} />
+                <Sidebar entries={visibleEntries} folders={vault.folders} views={vault.views} selection={effectiveSelection} onSelect={handleSetSelection} onSelectNote={notes.handleSelectNote} onSelectFavorite={handleOpenFavorite} onReorderFavorites={entryActions.handleReorderFavorites} onCreateType={notes.handleCreateNoteImmediate} onCreateNewType={dialogs.openCreateType} onCustomizeType={entryActions.handleCustomizeType} onUpdateTypeTemplate={entryActions.handleUpdateTypeTemplate} onReorderSections={entryActions.handleReorderSections} onRenameSection={entryActions.handleRenameSection} onDeleteType={handleDeleteType} onToggleTypeVisibility={entryActions.handleToggleTypeVisibility} onCreateFolder={handleCreateFolder} onRenameFolder={folderActions.renameFolder} onDeleteFolder={folderActions.requestDeleteFolder} folderFileActions={fileActions.folderActions} renamingFolderPath={folderActions.renamingFolderPath} onStartRenameFolder={folderActions.startFolderRename} onCancelRenameFolder={folderActions.cancelFolderRename} onCreateView={dialogs.openCreateView} onEditView={handleEditView} onDeleteView={handleDeleteView} onUpdateViewDefinition={handleSidebarUpdateViewDefinition} onReorderViews={canReorderSavedViews ? viewOrdering.onReorderViews : undefined} showInbox={explicitOrganizationEnabled} inboxCount={inboxCount} allNotesFileVisibility={allNotesFileVisibility} pluralizeTypeLabels={settings.sidebar_type_pluralization_enabled ?? true} onCollapse={handleCollapseSidebar} onGoBack={handleGoBack} onGoForward={handleGoForward} canGoBack={canGoBack} canGoForward={canGoForward} locale={appLocale} loading={isVaultContentLoading} vaultRootPath={resolvedPath} />
               </div>
               <ResizeHandle onResize={layout.handleSidebarResize} />
             </>

@@ -50,9 +50,9 @@ interface SidebarProps {
   onReorderFavorites?: (orderedPaths: string[]) => void
   views?: ViewFile[]
   onCreateView?: () => void
-  onEditView?: (filename: string) => void
-  onDeleteView?: (filename: string) => void
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onEditView?: (filename: string, rootPath?: string) => void
+  onDeleteView?: (filename: string, rootPath?: string) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
   onReorderViews?: (orderedFilenames: string[]) => void
   folders?: FolderNode[]
   onCreateFolder?: (name: string) => Promise<boolean> | boolean

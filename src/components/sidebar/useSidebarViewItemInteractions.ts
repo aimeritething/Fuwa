@@ -2,17 +2,19 @@ import {
   useCallback, useRef, useState, type Dispatch, type KeyboardEvent, type MouseEvent, type RefObject,
   type SetStateAction,
 } from 'react'
-import type { ViewDefinition, ViewFile } from '../../types'
+import type { ViewFile } from '../../types'
 import { getElementMenuPosition, useOutsideClick, useSidebarContextMenu } from './sidebarHooks'
 import type { MenuPosition, ViewDefinitionPatchHandler } from './SidebarViewActions'
 
 interface SidebarViewItemInteractionInput {
   view: ViewFile
   onSelect: () => void
-  onEditView?: (filename: string) => void
-  onDeleteView?: (filename: string) => void
+  onEditView?: (filename: string, rootPath?: string) => void
+  onDeleteView?: (filename: string, rootPath?: string) => void
   onUpdateViewDefinition?: ViewDefinitionPatchHandler
 }
+
+type ViewFilenameAction = (filename: string, rootPath?: string) => void
 
 type RowKeyboardAction = 'select' | 'rename' | 'menu'
 
@@ -23,14 +25,21 @@ function getRowKeyboardAction(event: KeyboardEvent<HTMLDivElement>): RowKeyboard
   return null
 }
 
+function runViewFilenameAction(view: ViewFile, action?: ViewFilenameAction) {
+  if (!action) return
+  if (view.rootPath) action(view.filename, view.rootPath)
+  else action(view.filename)
+}
+
 function commitViewRename(
   view: ViewFile,
   nextName: string,
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void,
+  onUpdateViewDefinition?: ViewDefinitionPatchHandler,
 ) {
   const trimmed = nextName.trim()
   if (trimmed && trimmed !== view.definition.name) {
-    onUpdateViewDefinition?.(view.filename, { name: trimmed })
+    if (view.rootPath) onUpdateViewDefinition?.(view.filename, { name: trimmed }, view.rootPath)
+    else onUpdateViewDefinition?.(view.filename, { name: trimmed })
   }
 }
 
@@ -127,13 +136,13 @@ function useViewMenuActions({
 
   const handleEdit = useCallback(() => {
     closeContextMenu()
-    onEditView?.(view.filename)
-  }, [closeContextMenu, onEditView, view.filename])
+    runViewFilenameAction(view, onEditView)
+  }, [closeContextMenu, onEditView, view])
 
   const handleDelete = useCallback(() => {
     closeContextMenu()
-    onDeleteView?.(view.filename)
-  }, [closeContextMenu, onDeleteView, view.filename])
+    runViewFilenameAction(view, onDeleteView)
+  }, [closeContextMenu, onDeleteView, view])
 
   const handleCustomize = useCallback(() => {
     setCustomizePos(contextMenuPos ?? { x: 20, y: 100 })

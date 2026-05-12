@@ -19,6 +19,7 @@ import { useNoteListKeyboard } from '../../hooks/useNoteListKeyboard'
 import { prefetchNoteContent } from '../../hooks/useTabManagement'
 import type { NoteListPropertiesScope } from './noteListPropertiesEvents'
 import type { AllNotesFileVisibility } from '../../utils/allNotesFileVisibility'
+import { viewMatchesSelection } from '../../utils/viewIdentity'
 
 // --- useTypeEntryMap ---
 
@@ -183,7 +184,7 @@ const DEFAULT_LIST_CONFIG: SortConfig = { option: 'modified', direction: 'desc' 
 
 function findSelectedViewFile(selection: SidebarSelection, views?: ViewFile[]): ViewFile | null {
   if (selection.kind !== 'view') return null
-  return views?.find((candidate) => candidate.filename === selection.filename) ?? null
+  return views?.find((candidate) => viewMatchesSelection(candidate, selection)) ?? null
 }
 
 function findSelectedTypeDocument(entries: VaultEntry[], selection: SidebarSelection): VaultEntry | null {
@@ -212,7 +213,7 @@ function resolveListSortConfig(
 interface SortPersistence {
   onUpdateTypeSort?: (path: string, key: string, value: string) => void
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
 }
 
 function createSortPersistence(
@@ -235,13 +236,16 @@ function persistSortToView(
   filename: string,
   config: SortConfig,
   onUpdateViewDefinition: NonNullable<SortPersistence['onUpdateViewDefinition']>,
+  rootPath?: string,
 ) {
-  onUpdateViewDefinition(filename, { sort: serializeSortConfig(config) })
+  const patch = { sort: serializeSortConfig(config) }
+  if (rootPath) onUpdateViewDefinition(filename, patch, rootPath)
+  else onUpdateViewDefinition(filename, patch)
 }
 
 type SortPersistenceTarget =
   | { kind: 'type'; path: string }
-  | { kind: 'view'; filename: string }
+  | { kind: 'view'; filename: string; rootPath?: string }
 
 function canPersistTypeSort(
   persistence: SortPersistence,
@@ -260,7 +264,7 @@ function resolveSortPersistenceTarget(
     return { kind: 'type', path: typeDocument.path }
   }
   if (selectedView && persistence.onUpdateViewDefinition) {
-    return { kind: 'view', filename: selectedView.filename }
+    return { kind: 'view', filename: selectedView.filename, rootPath: selectedView.rootPath }
   }
   return null
 }
@@ -272,7 +276,7 @@ function persistListSort(target: SortPersistenceTarget, config: SortConfig, pers
   }
 
   if (persistence.onUpdateViewDefinition) {
-    persistSortToView(target.filename, config, persistence.onUpdateViewDefinition)
+    persistSortToView(target.filename, config, persistence.onUpdateViewDefinition, target.rootPath)
   }
 }
 
@@ -332,7 +336,7 @@ export interface UseNoteListSortParams {
   inboxPeriod?: InboxPeriod
   views?: ViewFile[]
   onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
 }
 
@@ -712,7 +716,7 @@ interface BuildViewPropertyPickerParams {
   selectedView: ViewFile | null
   availableProperties: string[]
   defaultDisplay: string[]
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
 }
 
 function buildViewPropertyPicker({
@@ -731,7 +735,11 @@ function buildViewPropertyPicker({
     scope: 'view',
     availableProperties,
     currentDisplay,
-    onSave: (value: string[] | null) => onUpdateViewDefinition(selectedView.filename, { listPropertiesDisplay: value ?? [] }),
+    onSave: (value: string[] | null) => {
+      const patch = { listPropertiesDisplay: value ?? [] }
+      if (selectedView.rootPath) onUpdateViewDefinition(selectedView.filename, patch, selectedView.rootPath)
+      else onUpdateViewDefinition(selectedView.filename, patch)
+    },
     triggerTitle: `Customize ${selectedView.definition.name} columns`,
   }
 }
@@ -773,7 +781,7 @@ interface UseListPropertyPickerParams {
   onUpdateAllNotesNoteListProperties?: (value: string[] | null) => void
   inboxNoteListProperties?: string[] | null
   onUpdateInboxNoteListProperties?: (value: string[] | null) => void
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
   onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
   views?: ViewFile[]
 }
@@ -782,7 +790,7 @@ function resolvePropertyPicker(options: {
   selectedView: ViewFile | null
   viewAvailableProperties: string[]
   viewDefaultDisplay: string[]
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
   isAllNotesView: boolean
   allNotesAvailableProperties: string[]
   hasCustomAllNotesProperties: boolean

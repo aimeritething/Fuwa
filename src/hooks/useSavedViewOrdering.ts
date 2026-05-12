@@ -12,6 +12,7 @@ import {
   type ViewMoveHandler,
   type ViewReorderHandler,
 } from '../utils/viewOrdering'
+import { viewMatchesSelection } from '../utils/viewIdentity'
 
 interface SavedViewOrderingConfig {
   views: ViewFile[]
@@ -36,7 +37,12 @@ interface SavedViewOrdering {
 
 function selectedSavedView(views: ViewFile[], selection: SidebarSelection): ViewFile | null {
   if (selection.kind !== 'view') return null
-  return views.find((view) => view.filename === selection.filename) ?? null
+  return views.find((view) => viewMatchesSelection(view, selection)) ?? null
+}
+
+function movableSavedView(view: ViewFile | null): ViewFile | null {
+  if (!view || view.rootPath) return null
+  return view
 }
 
 function viewMoveCommand(
@@ -86,15 +92,16 @@ export function useSavedViewOrdering({
     () => selectedSavedView(views, selection),
     [selection, views],
   )
-  const selectedViewFilename = selectedView?.filename ?? null
+  const movableSelectedView = movableSavedView(selectedView)
+  const selectedViewFilename = movableSelectedView?.filename ?? null
 
   return {
     onReorderViews,
     onMoveView,
     selectedViewName: selectedView?.definition.name,
     selectedViewFilename,
-    onMoveSelectedViewUp: viewMoveCommand(selectedView, 'up', onMoveView),
-    onMoveSelectedViewDown: viewMoveCommand(selectedView, 'down', onMoveView),
+    onMoveSelectedViewUp: viewMoveCommand(movableSelectedView, 'up', onMoveView),
+    onMoveSelectedViewDown: viewMoveCommand(movableSelectedView, 'down', onMoveView),
     canMoveSelectedViewUp: selectedViewFilename ? canMoveView(views, selectedViewFilename, 'up') : false,
     canMoveSelectedViewDown: selectedViewFilename ? canMoveView(views, selectedViewFilename, 'down') : false,
   }

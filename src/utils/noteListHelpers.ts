@@ -15,6 +15,7 @@ import {
   type DateDisplayFormat,
 } from './dateDisplay'
 import { evaluateView } from './viewFilters'
+import { viewMatchesSelection } from './viewIdentity'
 import { wikilinkTarget, resolveEntry } from './wikilink'
 
 export type NoteListFilter = 'open' | 'archived'
@@ -466,10 +467,19 @@ export function isAllNotesEntry(
   return isOptionalAllNotesFileVisible(entry, allNotesFileVisibility)
 }
 
-function filterViewEntries(entries: VaultEntry[], filename: string, views?: ViewFile[]): VaultEntry[] {
-  const view = views?.find((candidate) => candidate.filename === filename)
+function entriesScopedToView(entries: VaultEntry[], view: ViewFile): VaultEntry[] {
+  if (!view.rootPath) return entries
+  return entries.filter((entry) => entry.workspace?.path === view.rootPath)
+}
+
+export function filterEntriesForViewFile(entries: VaultEntry[], view: ViewFile): VaultEntry[] {
+  return evaluateView(view.definition, entriesScopedToView(entries, view).filter(isMarkdown))
+}
+
+function filterViewEntries(entries: VaultEntry[], selection: Extract<SidebarSelection, { kind: 'view' }>, views?: ViewFile[]): VaultEntry[] {
+  const view = views?.find((candidate) => viewMatchesSelection(candidate, selection))
   if (!view) return []
-  return evaluateView(view.definition, entries.filter(isMarkdown))
+  return filterEntriesForViewFile(entries, view)
 }
 
 function isDirectRootEntry(entryPath: string, rootPath?: string): boolean {
@@ -530,7 +540,7 @@ function filterByKind(
   options: FilterEntriesOptions,
 ): VaultEntry[] {
   if (selection.kind === 'entity') return []
-  if (selection.kind === 'view') return filterViewEntries(entries, selection.filename, options.views)
+  if (selection.kind === 'view') return filterViewEntries(entries, selection, options.views)
   if (selection.kind === 'folder') return filterFolderEntries(entries, selection, options.subFilter)
   if (selection.kind === 'sectionGroup') return filterSectionGroupEntries(entries, selection.type, options.subFilter)
   if (selection.kind === 'filter') return filterTopLevelEntries(entries, selection, options)

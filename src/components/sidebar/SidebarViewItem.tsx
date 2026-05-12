@@ -1,12 +1,12 @@
 import { useMemo, type HTMLAttributes } from 'react'
 import type { VaultEntry, ViewDefinition, ViewFile } from '../../types'
-import { evaluateView } from '../../utils/viewFilters'
 import { Funnel } from '@phosphor-icons/react'
 import { NoteTitleIcon } from '../NoteTitleIcon'
 import { SidebarCountPill } from '../SidebarParts'
 import { SIDEBAR_ITEM_PADDING } from './sidebarStyles'
 import type { AppLocale } from '../../lib/i18n'
 import { ACCENT_COLORS } from '../../utils/typeColors'
+import { filterEntriesForViewFile } from '../../utils/noteListHelpers'
 import { ViewContextMenu, ViewCustomizePanel, ViewRenameInput } from './SidebarViewActions'
 import { useSidebarViewItemInteractions } from './useSidebarViewItemInteractions'
 
@@ -19,9 +19,9 @@ interface SidebarViewItemProps {
   view: ViewFile
   isActive: boolean
   onSelect: () => void
-  onEditView?: (filename: string) => void
-  onDeleteView?: (filename: string) => void
-  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>) => void
+  onEditView?: (filename: string, rootPath?: string) => void
+  onDeleteView?: (filename: string, rootPath?: string) => void
+  onUpdateViewDefinition?: (filename: string, patch: Partial<ViewDefinition>, rootPath?: string) => void
   dragHandleProps?: HTMLAttributes<HTMLDivElement>
   entries: VaultEntry[]
   locale?: AppLocale
@@ -90,7 +90,7 @@ export function SidebarViewItem({
   entries,
   locale = 'en',
 }: SidebarViewItemProps) {
-  const count = useMemo(() => evaluateView(view.definition, entries).length, [view.definition, entries])
+  const count = useMemo(() => filterEntriesForViewFile(entries, view).length, [entries, view])
   const showCount = count > 0
   const accent = resolveViewAccent(view.definition.color)
   const interactions = useSidebarViewItemInteractions({
