@@ -20,6 +20,7 @@ import {
 import { isRecoveredBlockNoteRenderError } from './components/blockNoteRenderRecovery'
 import { shouldUseLinuxWindowChrome } from './utils/platform'
 import { reloadFrontendOnceIfStartupFailed } from './utils/frontendReady'
+import { installCodeBlockEnhancements } from './utils/codeBlockEnhancements'
 
 const EDITOR_DROP_SELECTOR = '.editor__blocknote-container'
 const TLDRAW_CONTEXT_MENU_SELECTOR = '.tldraw-whiteboard'
@@ -69,6 +70,7 @@ if (shouldUseLinuxWindowChrome()) {
 }
 
 applyStoredThemeMode(document, window.localStorage)
+installCodeBlockEnhancements(document)
 
 function dispatchDeterministicShortcutEvent(init: AppCommandShortcutEventInit) {
   const target =
