@@ -362,6 +362,25 @@ describe('CommandPalette', () => {
     expect(screen.queryByText('Search Notes')).not.toBeInTheDocument()
   })
 
+  it('keeps leading-space input in command search when AI mode is disabled', () => {
+    render(
+      <CommandPalette
+        open={true}
+        commands={commands}
+        aiModeEnabled={false}
+        onClose={onClose}
+      />,
+    )
+
+    const input = screen.getByPlaceholderText('Type a command...')
+    fireEvent.change(input, { target: { value: ' search' } })
+
+    expect(screen.queryByTestId('command-palette-ai-input')).not.toBeInTheDocument()
+    expect(input).toHaveValue(' search')
+    expect(queueAiPrompt).not.toHaveBeenCalled()
+    expect(requestOpenAiChat).not.toHaveBeenCalled()
+  })
+
   it('inserts Tauri native folder drops into the command query input', async () => {
     nativeDropState.tauriMode = true
     render(<CommandPalette open={true} commands={commands} onClose={onClose} />)

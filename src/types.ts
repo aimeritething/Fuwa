@@ -117,6 +117,7 @@ export interface Settings {
   note_width_mode?: NoteWidthMode | null
   sidebar_type_pluralization_enabled?: boolean | null
   initial_h1_auto_rename_enabled?: boolean | null
+  ai_features_enabled?: boolean | null
   default_ai_agent?: AiAgentId | null
   default_ai_target?: string | null
   ai_model_providers?: AiModelProvider[] | null

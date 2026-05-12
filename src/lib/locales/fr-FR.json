@@ -173,6 +173,8 @@
   "settings.allNotesVisibility.unsupportedDescription": "Afficher dans Toutes les notes les autres fichiers non Markdown sans aperçu dans l'application. Lors de la navigation dans les dossiers, ils apparaissent toujours dans leurs dossiers respectifs.",
   "settings.aiAgents.title": "Agents d'IA",
   "settings.aiAgents.description": "Choisir la cible d'IA par défaut de Tolaria. Les agents de développement peuvent effectuer des modifications à l'aide d'outils ; les modèles API et les modèles locaux s'exécutent en mode chat, sans outils d'écriture dans le coffre-fort.",
+  "settings.aiFeatures.enable": "Activer les fonctionnalités d'IA de Tolaria",
+  "settings.aiFeatures.enableDescription": "Afficher les commandes du panneau IA, le mode palette de commandes IA et les invites d'état IA. Désactivez cette option pour masquer les surfaces de l'IA jusqu'à ce que vous les réactiviez ici.",
   "settings.aiAgents.default": "Agent d'IA par défaut",
   "settings.aiAgents.defaultTarget": "Cible d'IA par défaut",
   "settings.aiAgents.agentGroup": "Agent de codage",

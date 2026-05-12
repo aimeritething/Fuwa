@@ -854,7 +854,9 @@ function BreadcrumbActions({
       <OverflowToolbarAction>
         <NoteWidthAction noteWidth={noteWidth} locale={locale} onToggleNoteWidth={onToggleNoteWidth} />
       </OverflowToolbarAction>
-      <AIChatAction showAIChat={showAIChat} locale={locale} onToggleAIChat={onToggleAIChat} />
+      {onToggleAIChat ? (
+        <AIChatAction showAIChat={showAIChat} locale={locale} onToggleAIChat={onToggleAIChat} />
+      ) : null}
       <OverflowToolbarAction>
         <TableOfContentsAction
           showTableOfContents={showTableOfContents}

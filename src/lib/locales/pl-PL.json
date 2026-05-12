@@ -173,6 +173,8 @@
   "settings.allNotesVisibility.unsupportedDescription": "Pokaż w sekcji Wszystkie notatki inne pliki inne niż Markdown, które nie mają podglądu w aplikacji. Podczas przeglądania folderów nadal są one wyświetlane w swoich folderach.",
   "settings.aiAgents.title": "Agenci AI",
   "settings.aiAgents.description": "Wybierz domyślny cel AI dla Tolarii. Agenci programistyczni mogą edytować za pomocą narzędzi; modele API i modele lokalne działają w trybie czatu bez narzędzi do zapisu w skarbcu.",
+  "settings.aiFeatures.enable": "Włącz funkcje Tolaria AI",
+  "settings.aiFeatures.enableDescription": "Pokaż elementy sterujące panelu AI, tryb palety poleceń AI i komunikaty o stanie AI. Wyłącz tę opcję, aby ukryć powierzchnie AI, dopóki nie włączysz ich ponownie tutaj.",
   "settings.aiAgents.default": "Domyślny agent AI",
   "settings.aiAgents.defaultTarget": "Domyślny cel AI",
   "settings.aiAgents.agentGroup": "Agent programistyczny",

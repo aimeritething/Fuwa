@@ -57,6 +57,12 @@ export function trackAllNotesVisibilityChanged(
   }
 }
 
+export function trackAiFeaturesEnabledChanged(enabled: boolean): void {
+  trackEvent('ai_features_visibility_changed', {
+    enabled: numericFlag(enabled),
+  })
+}
+
 export function trackDefaultNoteWidthChanged(mode: NoteWidthMode): void {
   trackEvent('note_width_default_changed', { mode })
 }

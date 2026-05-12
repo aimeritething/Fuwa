@@ -173,6 +173,8 @@
   "settings.allNotesVisibility.unsupportedDescription": "Hiển thị các tệp không phải Markdown khác không có chế độ xem trước trong ứng dụng trong mục Tất cả ghi chú. Khi duyệt thư mục, các tệp này vẫn hiển thị trong thư mục tương ứng.",
   "settings.aiAgents.title": "Tác nhân AI",
   "settings.aiAgents.description": "Chọn mục tiêu AI mặc định của Tolaria. Đại lý lập trình có thể chỉnh sửa thông qua các công cụ; các mô hình API và mô hình cục bộ chạy ở chế độ trò chuyện mà không cần công cụ ghi vào vault.",
+  "settings.aiFeatures.enable": "Bật các tính năng AI của Tolaria",
+  "settings.aiFeatures.enableDescription": "Hiển thị các điều khiển trên bảng điều khiển AI, chế độ bảng lệnh AI và lời nhắc trạng thái AI. Tắt tùy chọn này để ẩn các bề mặt AI cho đến khi bạn bật lại tại đây.",
   "settings.aiAgents.default": "Tác nhân AI mặc định",
   "settings.aiAgents.defaultTarget": "Mục tiêu AI mặc định",
   "settings.aiAgents.agentGroup": "Coding agent",

@@ -44,6 +44,7 @@ import {
 } from '../lib/themeMode'
 import { normalizeReleaseChannel, serializeReleaseChannel, type ReleaseChannel } from '../lib/releaseChannel'
 import { shouldHideGitignoredFiles } from '../lib/gitignoredVisibility'
+import { areAiFeaturesEnabled } from '../lib/aiFeatures'
 import { trackAllNotesVisibilityChanged } from '../lib/productAnalytics'
 import { AiProviderSettings } from './AiProviderSettings'
 import { PrivacySettingsSection } from './PrivacySettingsSection'
@@ -108,6 +109,7 @@ interface SettingsDraft {
   autoGitIdleThresholdSeconds: number
   autoGitInactiveThresholdSeconds: number
   autoAdvanceInboxAfterOrganize: boolean
+  aiFeaturesEnabled: boolean
   defaultAiAgent: AiAgentId
   defaultAiTarget: string
   aiModelProviders: AiModelProvider[]
@@ -139,6 +141,8 @@ interface SettingsBodyProps {
   setAutoGitInactiveThresholdSeconds: (value: number) => void
   autoAdvanceInboxAfterOrganize: boolean
   setAutoAdvanceInboxAfterOrganize: (value: boolean) => void
+  aiFeaturesEnabled: boolean
+  setAiFeaturesEnabled: (value: boolean) => void
   aiAgentsStatus: AiAgentsStatus
   defaultAiAgent: AiAgentId
   setDefaultAiAgent: (value: AiAgentId) => void
@@ -207,6 +211,7 @@ function createSettingsDraft(
       DEFAULT_AUTOGIT_INACTIVE_THRESHOLD_SECONDS,
     ),
     autoAdvanceInboxAfterOrganize: settings.auto_advance_inbox_after_organize ?? false,
+    aiFeaturesEnabled: areAiFeaturesEnabled(settings),
     defaultAiAgent: resolveDefaultAiAgent(settings.default_ai_agent),
     defaultAiTarget: resolveAiTarget(settings).id,
     aiModelProviders: normalizeAiModelProviders(settings.ai_model_providers),
@@ -263,6 +268,7 @@ function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Setti
     note_width_mode: draft.defaultNoteWidth,
     sidebar_type_pluralization_enabled: draft.sidebarTypePluralizationEnabled,
     initial_h1_auto_rename_enabled: draft.initialH1AutoRename,
+    ai_features_enabled: draft.aiFeaturesEnabled,
     default_ai_agent: draft.defaultAiAgent,
     default_ai_target: draft.defaultAiTarget,
     ai_model_providers: draft.aiModelProviders.length > 0 ? draft.aiModelProviders : null,
@@ -535,6 +541,8 @@ function SettingsBodyFromDraft({
       setAutoGitInactiveThresholdSeconds={(value) => updateDraft('autoGitInactiveThresholdSeconds', value)}
       autoAdvanceInboxAfterOrganize={draft.autoAdvanceInboxAfterOrganize}
       setAutoAdvanceInboxAfterOrganize={(value) => updateDraft('autoAdvanceInboxAfterOrganize', value)}
+      aiFeaturesEnabled={draft.aiFeaturesEnabled}
+      setAiFeaturesEnabled={(value) => updateDraft('aiFeaturesEnabled', value)}
       aiAgentsStatus={aiAgentsStatus}
       defaultAiAgent={draft.defaultAiAgent}
       setDefaultAiAgent={(value) => updateDraft('defaultAiAgent', value)}
@@ -716,6 +724,8 @@ function SettingsAgentWorkflowSections({
   t,
   autoAdvanceInboxAfterOrganize,
   setAutoAdvanceInboxAfterOrganize,
+  aiFeaturesEnabled,
+  setAiFeaturesEnabled,
   aiAgentsStatus,
   defaultAiAgent,
   setDefaultAiAgent,
@@ -736,6 +746,8 @@ function SettingsAgentWorkflowSections({
       <SettingsSection id={SETTINGS_SECTION_IDS.ai}>
         <AiAgentSettingsSection
           t={t}
+          aiFeaturesEnabled={aiFeaturesEnabled}
+          setAiFeaturesEnabled={setAiFeaturesEnabled}
           aiAgentsStatus={aiAgentsStatus}
           defaultAiAgent={defaultAiAgent}
           setDefaultAiAgent={setDefaultAiAgent}
@@ -1027,6 +1039,8 @@ function buildDefaultAiTargetOptions(
 
 function AiAgentSettingsSection({
   t,
+  aiFeaturesEnabled,
+  setAiFeaturesEnabled,
   aiAgentsStatus,
   defaultAiAgent,
   setDefaultAiAgent,
@@ -1038,6 +1052,8 @@ function AiAgentSettingsSection({
 }: Pick<
   SettingsBodyProps,
   | 't'
+  | 'aiFeaturesEnabled'
+  | 'setAiFeaturesEnabled'
   | 'aiAgentsStatus'
   | 'defaultAiAgent'
   | 'setDefaultAiAgent'
@@ -1060,34 +1076,48 @@ function AiAgentSettingsSection({
       />
 
       <SettingsGroup>
-        <SettingsRow
-          label={t('settings.aiAgents.defaultTarget')}
-          description={renderDefaultAiTargetSummary(selectedTarget, aiAgentsStatus, t)}
-          controlWidth="wide"
-        >
-          <SelectControl
-            ariaLabel={t('settings.aiAgents.defaultTarget')}
-            value={defaultAiTarget}
-            onValueChange={(value) => {
-              setDefaultAiTarget(value)
-              if (value.startsWith('agent:')) {
-                const agent = value.replace('agent:', '') as AiAgentId
-                setDefaultAiAgent(agent)
-              }
-            }}
-            options={buildDefaultAiTargetOptions(aiAgentsStatus, aiModelProviders, t)}
-            testId="settings-default-ai-agent"
-          />
-        </SettingsRow>
+        <SettingsSwitchRow
+          label={t('settings.aiFeatures.enable')}
+          description={t('settings.aiFeatures.enableDescription')}
+          checked={aiFeaturesEnabled}
+          onChange={setAiFeaturesEnabled}
+          testId="settings-ai-features-enabled"
+        />
       </SettingsGroup>
 
-      <AiTargetManagementTabs
-        t={t}
-        aiAgentsStatus={aiAgentsStatus}
-        aiModelProviders={aiModelProviders}
-        setAiModelProviders={setAiModelProviders}
-        onCopyMcpConfig={onCopyMcpConfig}
-      />
+      {aiFeaturesEnabled ? (
+        <>
+          <SettingsGroup>
+            <SettingsRow
+              label={t('settings.aiAgents.defaultTarget')}
+              description={renderDefaultAiTargetSummary(selectedTarget, aiAgentsStatus, t)}
+              controlWidth="wide"
+            >
+              <SelectControl
+                ariaLabel={t('settings.aiAgents.defaultTarget')}
+                value={defaultAiTarget}
+                onValueChange={(value) => {
+                  setDefaultAiTarget(value)
+                  if (value.startsWith('agent:')) {
+                    const agent = value.replace('agent:', '') as AiAgentId
+                    setDefaultAiAgent(agent)
+                  }
+                }}
+                options={buildDefaultAiTargetOptions(aiAgentsStatus, aiModelProviders, t)}
+                testId="settings-default-ai-agent"
+              />
+            </SettingsRow>
+          </SettingsGroup>
+
+          <AiTargetManagementTabs
+            t={t}
+            aiAgentsStatus={aiAgentsStatus}
+            aiModelProviders={aiModelProviders}
+            setAiModelProviders={setAiModelProviders}
+            onCopyMcpConfig={onCopyMcpConfig}
+          />
+        </>
+      ) : null}
     </>
   )
 }

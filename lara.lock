@@ -175,6 +175,8 @@ files:
     settings.allNotesVisibility.unsupportedDescription: a3b8aa66900c742f001cd4533b3df44a
     settings.aiAgents.title: 27f08387b26e1ceeb1b60bd9c97e7a47
     settings.aiAgents.description: 042a8037f1a4f90c76ce31a49fdff59c
+    settings.aiFeatures.enable: af47a6b2bd32a7b7309bac7bef34f026
+    settings.aiFeatures.enableDescription: 7d3916f7f9e1bf8b8797f50f4533b9da
     settings.aiAgents.default: 6af573559fd05d8c35bc57b41cc78e24
     settings.aiAgents.defaultTarget: 5acfc74fd97a6dd2d67d15c66de5eed5
     settings.aiAgents.agentGroup: 965530cbbec45b1754ed3ece120399f7

@@ -173,6 +173,8 @@
   "settings.allNotesVisibility.unsupportedDescription": "Andere Nicht-Markdown-Dateien ohne In-App-Vorschau in „Alle Notizen“ anzeigen. Beim Durchsuchen von Ordnern werden sie weiterhin in ihren jeweiligen Ordnern angezeigt.",
   "settings.aiAgents.title": "KI-Agents",
   "settings.aiAgents.description": "Wählen Sie das Standard-KI-Ziel für Tolaria aus. Coding-Agents können mithilfe von Tools bearbeiten; API-Modelle und lokale Modelle werden im Chat-Modus ohne Vault-Write-Tools ausgeführt.",
+  "settings.aiFeatures.enable": "Tolaria-KI-Funktionen aktivieren",
+  "settings.aiFeatures.enableDescription": "AI-Panel-Steuerelemente, AI-Befehlspalettenmodus und AI-Statusmeldungen anzeigen. Deaktiviere diese Option, um KI-Oberflächen auszublenden, bis du sie hier wieder aktivierst.",
   "settings.aiAgents.default": "Standard-KI-Agent",
   "settings.aiAgents.defaultTarget": "Standard-AI-Ziel",
   "settings.aiAgents.agentGroup": "Coding-Agent",

@@ -173,6 +173,8 @@
   "settings.allNotesVisibility.unsupportedDescription": "在「所有筆記」中顯示其他無法在應用程式內預覽的非 Markdown 檔案。在瀏覽資料夾時，這些檔案仍會顯示在各自的資料夾中。",
   "settings.aiAgents.title": "AI 代理",
   "settings.aiAgents.description": "選擇 Tolaria 的預設 AI 目標。程式開發代理可以透過工具進行編輯；API 和本機模型在聊天模式下執行，無需使用 Vault 寫入工具。",
+  "settings.aiFeatures.enable": "啟用 Tolaria AI 功能",
+  "settings.aiFeatures.enableDescription": "顯示 AI 面板控制項、AI 指令調色盤模式和 AI 狀態提示。關閉此功能即可隱藏 AI 介面，直到您在此處重新啟用為止。",
   "settings.aiAgents.default": "預設 AI 代理",
   "settings.aiAgents.defaultTarget": "預設 AI 目標",
   "settings.aiAgents.agentGroup": "程式開發代理程式",

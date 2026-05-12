@@ -31,6 +31,7 @@ interface CommandRegistryConfig {
   activeNoteHasIcon?: boolean
   mcpStatus?: string
   onInstallMcp?: () => void
+  aiFeaturesEnabled?: boolean
   aiAgentsStatus?: AiAgentsStatus
   vaultAiGuidanceStatus?: VaultAiGuidanceStatus
   onOpenAiAgents?: () => void
@@ -139,7 +140,8 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onGoBack, onGoForward, canGoBack, canGoForward,
     onCheckForUpdates, onCreateType,
     onRemoveActiveVault, onRestoreGettingStarted, isGettingStartedHidden, vaultCount,
-    mcpStatus, onInstallMcp, aiAgentsStatus, vaultAiGuidanceStatus,
+    mcpStatus, onInstallMcp, aiFeaturesEnabled,
+    aiAgentsStatus, vaultAiGuidanceStatus,
     onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, selectedAiAgent, onCycleDefaultAiAgent, selectedAiAgentLabel,
     onReloadVault, onRepairVault,
     locale, systemLocale, selectedUiLanguage, onSetUiLanguage, onSetThemeMode,
@@ -224,11 +226,13 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   ])
 
   const viewCommands = useMemo(() => buildViewCommands({
+    aiFeaturesEnabled,
     hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
     onToggleDiff, onToggleRawEditor, noteWidth, defaultNoteWidth, onSetNoteWidth, onSetDefaultNoteWidth, onToggleAIChat, onToggleTableOfContents, zoomLevel, onZoomIn, onZoomOut, onZoomReset,
     onCustomizeNoteListColumns, canCustomizeNoteListColumns, noteListColumnsLabel,
     selectedViewName, onMoveSelectedViewUp, onMoveSelectedViewDown, canMoveSelectedViewUp, canMoveSelectedViewDown,
   }), [
+    aiFeaturesEnabled,
     hasActiveNote, activeNoteModified, onSetViewMode, onToggleInspector,
     onToggleDiff, onToggleRawEditor, noteWidth, defaultNoteWidth, onSetNoteWidth, onSetDefaultNoteWidth, onToggleAIChat, onToggleTableOfContents,
     zoomLevel, onZoomIn, onZoomOut, onZoomReset,
@@ -249,6 +253,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
   ])
 
   const aiCommands = useMemo(() => buildAiAgentCommands({
+    aiFeaturesEnabled,
     aiAgentsStatus,
     vaultAiGuidanceStatus,
     selectedAiAgent,
@@ -258,6 +263,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onSetDefaultAiAgent,
     onCycleDefaultAiAgent,
   }), [
+    aiFeaturesEnabled,
     aiAgentsStatus, vaultAiGuidanceStatus, selectedAiAgent, selectedAiAgentLabel,
     onOpenAiAgents, onRestoreVaultAiGuidance, onSetDefaultAiAgent, onCycleDefaultAiAgent,
   ])

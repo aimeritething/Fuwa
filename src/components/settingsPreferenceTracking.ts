@@ -1,10 +1,12 @@
 import type { Settings, NoteWidthMode } from '../types'
 import { trackEvent } from '../lib/telemetry'
 import {
+  trackAiFeaturesEnabledChanged,
   trackDateDisplayFormatChanged,
   trackDefaultNoteWidthChanged,
   trackSidebarTypePluralizationChanged,
 } from '../lib/productAnalytics'
+import { areAiFeaturesEnabled } from '../lib/aiFeatures'
 import {
   DEFAULT_DATE_DISPLAY_FORMAT,
   normalizeDateDisplayFormat,
@@ -14,6 +16,7 @@ import { DEFAULT_NOTE_WIDTH_MODE, normalizeNoteWidthMode } from '../utils/noteWi
 
 export interface SettingsPreferenceDraft {
   analytics: boolean
+  aiFeaturesEnabled: boolean
   dateDisplayFormat: DateDisplayFormat
   defaultNoteWidth: NoteWidthMode
   multiWorkspaceEnabled: boolean
@@ -26,6 +29,11 @@ export function trackTelemetryConsentChange(previousAnalytics: boolean, nextAnal
 }
 
 export function trackSettingsPreferenceChanges(settings: Settings, draft: SettingsPreferenceDraft): void {
+  const previousAiFeaturesEnabled = areAiFeaturesEnabled(settings)
+  if (previousAiFeaturesEnabled !== draft.aiFeaturesEnabled) {
+    trackAiFeaturesEnabledChanged(draft.aiFeaturesEnabled)
+  }
+
   const previousDateDisplayFormat = normalizeDateDisplayFormat(settings.date_display_format) ?? DEFAULT_DATE_DISPLAY_FORMAT
   if (previousDateDisplayFormat !== draft.dateDisplayFormat) {
     trackDateDisplayFormatChanged(draft.dateDisplayFormat)

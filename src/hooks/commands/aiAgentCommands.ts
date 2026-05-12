@@ -24,6 +24,7 @@ function aiAgentKeywords(...keywords: string[]): string[] {
 }
 
 interface AiAgentCommandsConfig {
+  aiFeaturesEnabled?: boolean
   aiAgentsStatus?: AiAgentsStatus
   vaultAiGuidanceStatus?: VaultAiGuidanceStatus
   selectedAiAgent?: AiAgentId
@@ -75,6 +76,7 @@ function restoreGuidanceCommands({
 }
 
 export function buildAiAgentCommands({
+  aiFeaturesEnabled = true,
   aiAgentsStatus,
   vaultAiGuidanceStatus,
   selectedAiAgent,
@@ -84,6 +86,8 @@ export function buildAiAgentCommands({
   onCycleDefaultAiAgent,
   onSetDefaultAiAgent,
 }: AiAgentCommandsConfig): CommandAction[] {
+  if (!aiFeaturesEnabled) return []
+
   const commands: CommandAction[] = [
     {
       id: 'open-ai-agents',

@@ -82,6 +82,7 @@ pub struct Settings {
     pub note_width_mode: Option<String>,
     pub sidebar_type_pluralization_enabled: Option<bool>,
     pub initial_h1_auto_rename_enabled: Option<bool>,
+    pub ai_features_enabled: Option<bool>,
     pub default_ai_agent: Option<String>,
     pub default_ai_target: Option<String>,
     pub ai_model_providers: Option<Vec<AiModelProvider>>,
@@ -195,6 +196,7 @@ fn normalize_settings(settings: Settings) -> Settings {
         note_width_mode: normalize_note_width_mode(settings.note_width_mode.as_deref()),
         sidebar_type_pluralization_enabled: settings.sidebar_type_pluralization_enabled,
         initial_h1_auto_rename_enabled: settings.initial_h1_auto_rename_enabled,
+        ai_features_enabled: settings.ai_features_enabled,
         default_ai_agent: normalize_default_ai_agent(settings.default_ai_agent.as_deref()),
         default_ai_target: normalize_optional_string(settings.default_ai_target),
         ai_model_providers: normalize_ai_model_providers(settings.ai_model_providers),
@@ -347,6 +349,7 @@ mod tests {
             note_width_mode: Some("wide".to_string()),
             sidebar_type_pluralization_enabled: Some(false),
             initial_h1_auto_rename_enabled: Some(false),
+            ai_features_enabled: Some(false),
             default_ai_agent: Some("codex".to_string()),
             default_ai_target: Some("agent:codex".to_string()),
             ai_model_providers: None,
@@ -384,6 +387,7 @@ mod tests {
             note_width_mode: Some("wide".to_string()),
             sidebar_type_pluralization_enabled: Some(false),
             initial_h1_auto_rename_enabled: Some(false),
+            ai_features_enabled: Some(false),
             default_ai_agent: Some("codex".to_string()),
             hide_gitignored_files: Some(false),
             multi_workspace_enabled: Some(true),
@@ -404,6 +408,7 @@ mod tests {
         assert_eq!(loaded.note_width_mode.as_deref(), Some("wide"));
         assert_eq!(loaded.sidebar_type_pluralization_enabled, Some(false));
         assert_eq!(loaded.initial_h1_auto_rename_enabled, Some(false));
+        assert_eq!(loaded.ai_features_enabled, Some(false));
         assert_eq!(loaded.default_ai_agent.as_deref(), Some("codex"));
         assert_eq!(loaded.hide_gitignored_files, Some(false));
         assert_eq!(loaded.multi_workspace_enabled, Some(true));

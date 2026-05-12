@@ -628,7 +628,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
       {...buildEditorLayoutProps(props, runtime, findRequest)}
       onToggleInspector={rightPanel.handleToggleInspectorPanel}
       showAIChat={props.showAIChat}
-      onToggleAIChat={rightPanel.handleToggleAIChatPanel}
+      onToggleAIChat={props.onToggleAIChat ? rightPanel.handleToggleAIChatPanel : undefined}
       showTableOfContents={rightPanel.showTableOfContents}
       onToggleTableOfContents={rightPanel.handleToggleTableOfContents}
     />

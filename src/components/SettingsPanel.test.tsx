@@ -170,6 +170,25 @@ describe('SettingsPanel', () => {
     expect(screen.getByPlaceholderText('gemini-2.5-flash')).toBeInTheDocument()
   })
 
+  it('lets users disable AI surfaces without showing missing-agent setup', () => {
+    render(
+      <SettingsPanel
+        open={true}
+        settings={{ ...emptySettings, ai_features_enabled: false }}
+        onSave={onSave}
+        onClose={onClose}
+      />
+    )
+
+    expect(within(screen.getByTestId('settings-ai-features-enabled')).getByRole('switch')).toHaveAttribute('aria-checked', 'false')
+    expect(screen.queryByText('Recognized coding agents')).not.toBeInTheDocument()
+
+    fireEvent.click(within(screen.getByTestId('settings-ai-features-enabled')).getByRole('switch'))
+    saveSettingsPanel()
+
+    expectSettingsSaved({ ai_features_enabled: true })
+  })
+
   it('updates the draft language when stored settings finish loading', () => {
     const { rerender } = render(
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />

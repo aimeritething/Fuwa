@@ -21,6 +21,7 @@ interface CommandPaletteProps {
   claudeCodeReady?: boolean
   aiAgentReady?: boolean
   aiAgentLabel?: string
+  aiModeEnabled?: boolean
   locale?: AppLocale
   onClose: () => void
 }
@@ -280,6 +281,7 @@ function OpenCommandPalette({
   claudeCodeReady = true,
   aiAgentReady,
   aiAgentLabel = 'Claude Code',
+  aiModeEnabled = true,
   locale = 'en',
   onClose,
 }: Omit<CommandPaletteProps, 'open'>) {
@@ -289,7 +291,7 @@ function OpenCommandPalette({
   const inputRef = useRef<HTMLInputElement>(null)
   const aiInputRef = useRef<HTMLDivElement>(null)
   const listRef = useRef<HTMLDivElement>(null)
-  const aiMode = aiValue.startsWith(' ')
+  const aiMode = aiModeEnabled && aiValue.startsWith(' ')
   const resolvedAiAgentReady = aiAgentReady ?? claudeCodeReady
   const { groups, flatList } = usePaletteResults(commands, query)
   const t = createTranslator(locale)
@@ -358,7 +360,7 @@ function OpenCommandPalette({
 
   const handleQueryChange = (nextQuery: string) => {
     setSelectedIndex(0)
-    if (nextQuery.startsWith(' ')) {
+    if (aiModeEnabled && nextQuery.startsWith(' ')) {
       setAiValue(nextQuery)
       setQuery('')
       return

@@ -173,6 +173,8 @@
   "settings.allNotesVisibility.unsupportedDescription": "アプリ内プレビューのないその他の非Markdownファイルを「すべてのノート」に表示する。フォルダー参照では、引き続きこれらのファイルがそれぞれのフォルダー内に表示されます。",
   "settings.aiAgents.title": "AIエージェント",
   "settings.aiAgents.description": "TolariaのデフォルトのAIターゲットを選択してください。コーディングエージェントはツールを使用して編集できます。APIモデルとローカルモデルは、Vault書き込みツールなしでチャットモードで実行されます。",
+  "settings.aiFeatures.enable": "Tolaria AI機能を有効にする",
+  "settings.aiFeatures.enableDescription": "AIパネルコントロール、AIコマンドパレットモード、AIステータスプロンプトを表示します。これをオフにすると、ここで再度有効にするまでAIサーフェスが非表示になります。",
   "settings.aiAgents.default": "デフォルトのAIエージェント",
   "settings.aiAgents.defaultTarget": "デフォルトのAIターゲット",
   "settings.aiAgents.agentGroup": "Coding agent",
