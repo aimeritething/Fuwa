@@ -413,7 +413,16 @@ function useManualCommitPushAction({
   manualVaultPath,
   vaultPath,
   setShowCommitDialog,
-}: CommitFlowConfig & {
+}: Pick<
+  CommitFlowConfig,
+  | 'savePending'
+  | 'loadModifiedFiles'
+  | 'resolveRemoteStatusForVaultPath'
+  | 'setToastMessage'
+  | 'onPushRejected'
+  | 'manualVaultPath'
+  | 'vaultPath'
+> & {
   checkpointInFlightRef: MutableRefObject<boolean>
   setShowCommitDialog: (open: boolean) => void
 }) {
