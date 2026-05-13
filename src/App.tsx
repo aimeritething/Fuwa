@@ -968,6 +968,7 @@ function App() {
     setToastMessage,
     onPushRejected: autoSync.handlePushRejected,
     automaticVaultPaths: activeGitRepositoryPaths,
+    locale: appLocale,
     manualVaultPath: gitSurfaces.commitRepositoryPath,
     vaultPath: resolvedPath,
   })
