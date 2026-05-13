@@ -53,7 +53,7 @@ Linux release CI prepares Tauri's AppImage tools cache before `pnpm tauri build`
 node scripts/appimage-launcher-tools.mjs prepare-plugin
 ```
 
-That step patches linuxdeploy's generated GTK `AppRun` wrapper before the AppImage is sealed so direct launches, absolute symlinks, and relative symlinks resolve the real AppRun path before choosing its directory. After build, CI extracts every produced AppImage launcher and verifies the symlink-safe resolver:
+That step patches linuxdeploy's generated GTK `AppRun` wrapper before the AppImage is sealed so direct launches, absolute symlinks, and relative symlinks resolve the real AppRun path before choosing its directory. Linux release jobs also install `fcitx5-frontend-gtk3`; the same AppImage output-plugin wrapper copies the GTK3 fcitx immodule and client library into the AppDir so Chinese/Japanese/Korean input does not depend on host GTK module cache paths. After build, CI extracts every produced AppImage launcher and verifies the symlink-safe resolver plus the bundled fcitx files:
 
 ```bash
 node scripts/appimage-launcher-tools.mjs validate-appimages src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage

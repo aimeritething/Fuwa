@@ -25,6 +25,10 @@ const FCITX_ENV_HINT_KEYS: [&str; 4] = [
     "QT_IM_MODULE",
     "SDL_IM_MODULE",
 ];
+const FCITX_GTK3_IM_MODULE_RELATIVE_PATH: &str =
+    "usr/lib/x86_64-linux-gnu/gtk-3.0/3.0.0/immodules/im-fcitx5.so";
+#[cfg(all(desktop, target_os = "linux"))]
+const TOLARIA_FCITX_IMMODULES_CACHE_FILE: &str = "tolaria-appimage-fcitx5-immodules.cache";
 const COLRV1_EMOJI_FONT_FILE: &str = "Noto-COLRv1.ttf";
 #[cfg(all(desktop, target_os = "linux"))]
 const TOLARIA_COLRV1_FONTCONFIG_FILE: &str = "tolaria-appimage-no-colrv1-emoji.conf";
@@ -101,14 +105,73 @@ where
         .any(|key| get_var(key).is_some_and(|value| env_mentions_fcitx(&value)))
 }
 
+fn non_empty_env<F>(get_var: &mut F, key: &str) -> Option<String>
+where
+    F: FnMut(&str) -> Option<String>,
+{
+    get_var(key).filter(|value| !value.trim().is_empty())
+}
+
+#[derive(Debug, PartialEq, Eq)]
+struct FcitxGtkModuleFileOverride {
+    cache_path: std::path::PathBuf,
+    cache_contents: String,
+}
+
+fn fcitx_immodules_cache_contents(module_path: &std::path::Path) -> String {
+    format!(
+        r#"# Tolaria AppImage GTK input method modules
+"{}"
+"fcitx" "Fcitx 5" "fcitx" "" "ja:ko:zh:*"
+"#,
+        module_path.display()
+    )
+}
+
+fn should_use_bundled_fcitx_gtk_module<F>(get_var: &mut F) -> bool
+where
+    F: FnMut(&str) -> Option<String>,
+{
+    if !is_linux_appimage_launch(&mut *get_var) {
+        return false;
+    }
+    if has_non_empty_env(get_var, "GTK_IM_MODULE_FILE") {
+        return false;
+    }
+    if let Some(gtk_im_module) = non_empty_env(get_var, "GTK_IM_MODULE") {
+        return env_mentions_fcitx(&gtk_im_module);
+    }
+
+    has_fcitx_env_hint(get_var)
+}
+
+fn fcitx_gtk_im_module_file_override_with<F, E>(
+    get_var: &mut F,
+    mut module_exists: E,
+    cache_path: std::path::PathBuf,
+) -> Option<FcitxGtkModuleFileOverride>
+where
+    F: FnMut(&str) -> Option<String>,
+    E: FnMut(&std::path::Path) -> bool,
+{
+    if !should_use_bundled_fcitx_gtk_module(get_var) {
+        return None;
+    }
+
+    let appdir = non_empty_env(get_var, "APPDIR")?;
+    let module_path = std::path::Path::new(appdir.trim()).join(FCITX_GTK3_IM_MODULE_RELATIVE_PATH);
+
+    module_exists(&module_path).then(|| FcitxGtkModuleFileOverride {
+        cache_path,
+        cache_contents: fcitx_immodules_cache_contents(&module_path),
+    })
+}
+
 fn fcitx_gtk_im_module_override_with<F>(get_var: &mut F) -> Option<StartupEnvOverride>
 where
     F: FnMut(&str) -> Option<String>,
 {
     if !is_linux_appimage_launch(&mut *get_var) {
-        return None;
-    }
-    if !is_wayland_session(&mut *get_var) {
         return None;
     }
     if has_env(get_var, "GTK_IM_MODULE") {
@@ -245,10 +308,41 @@ where
 pub(crate) fn apply_startup_env_overrides() {
     apply_wayland_client_preload();
     apply_colrv1_emoji_font_guard();
+    apply_fcitx_gtk_im_module_file();
 
     for env_override in startup_env_overrides_with(|key| std::env::var(key).ok()) {
         std::env::set_var(env_override.key, env_override.value);
     }
+}
+
+#[cfg(all(desktop, target_os = "linux"))]
+fn apply_fcitx_gtk_im_module_file() {
+    let Some(cache_path) = fcitx_immodules_cache_file_path() else {
+        eprintln!("Tolaria AppImage fcitx GTK module skipped: failed to resolve cache directory");
+        return;
+    };
+    let Some(env_override) = fcitx_gtk_im_module_file_override_with(
+        &mut |key| std::env::var(key).ok(),
+        std::path::Path::is_file,
+        cache_path,
+    ) else {
+        return;
+    };
+    let Some(parent) = env_override.cache_path.parent() else {
+        return;
+    };
+
+    if let Err(error) = std::fs::create_dir_all(parent) {
+        eprintln!("Tolaria AppImage fcitx GTK module skipped: failed to prepare cache ({error})");
+        return;
+    }
+
+    if let Err(error) = std::fs::write(&env_override.cache_path, env_override.cache_contents) {
+        eprintln!("Tolaria AppImage fcitx GTK module skipped: failed to write cache ({error})");
+        return;
+    }
+
+    std::env::set_var("GTK_IM_MODULE_FILE", env_override.cache_path.as_os_str());
 }
 
 #[cfg(all(desktop, target_os = "linux"))]
@@ -310,6 +404,18 @@ fn colrv1_fontconfig_file_path() -> Option<std::path::PathBuf> {
 }
 
 #[cfg(all(desktop, target_os = "linux"))]
+fn fcitx_immodules_cache_file_path() -> Option<std::path::PathBuf> {
+    let cache_dir =
+        dirs::cache_dir().or_else(|| dirs::home_dir().map(|home| home.join(".cache")))?;
+
+    Some(
+        cache_dir
+            .join("tolaria")
+            .join(TOLARIA_FCITX_IMMODULES_CACHE_FILE),
+    )
+}
+
+#[cfg(all(desktop, target_os = "linux"))]
 fn launched_appimage_path() -> Result<std::path::PathBuf, String> {
     if let Some(appimage) = std::env::var_os("APPIMAGE").filter(|value| !value.is_empty()) {
         return Ok(std::path::PathBuf::from(appimage));
@@ -366,7 +472,8 @@ fn apply_wayland_client_preload() {
 mod tests {
     use super::{
         colrv1_emoji_font_path_with, colrv1_emoji_fontconfig_contents, elf_library_matches_process,
-        startup_env_overrides_with, wayland_client_preload_path_with, StartupEnvOverride,
+        fcitx_gtk_im_module_file_override_with, startup_env_overrides_with,
+        wayland_client_preload_path_with, StartupEnvOverride, FCITX_GTK3_IM_MODULE_RELATIVE_PATH,
     };
 
     fn default_webkit_overrides() -> Vec<StartupEnvOverride> {
@@ -443,6 +550,18 @@ mod tests {
     }
 
     #[test]
+    fn startup_env_overrides_enable_fcitx_gtk_module_for_x11_appimage() {
+        let overrides = startup_env_overrides_with(|key| match key {
+            "APPIMAGE" => Some("/tmp/Tolaria.AppImage".to_string()),
+            "XDG_SESSION_TYPE" => Some("x11".to_string()),
+            "XMODIFIERS" => Some("@im=fcitx".to_string()),
+            _ => None,
+        });
+
+        assert_eq!(overrides, default_webkit_and_fcitx_overrides());
+    }
+
+    #[test]
     fn startup_env_overrides_preserve_explicit_gtk_im_module() {
         let overrides =
             startup_env_overrides_with(|key| appimage_wayland_fcitx_env(key, Some("wayland")));
@@ -459,6 +578,50 @@ mod tests {
         });
 
         assert_eq!(overrides, default_webkit_overrides());
+    }
+
+    #[test]
+    fn fcitx_module_file_override_points_gtk_to_bundled_appimage_module() {
+        let appdir = std::path::Path::new("/tmp/.mount_Tolaria");
+        let module_path = appdir.join(FCITX_GTK3_IM_MODULE_RELATIVE_PATH);
+        let cache_path = std::path::PathBuf::from("/tmp/tolaria/immodules.cache");
+        let env_override = fcitx_gtk_im_module_file_override_with(
+            &mut |key| match key {
+                "APPDIR" => Some(appdir.display().to_string()),
+                "APPIMAGE" => Some("/tmp/Tolaria.AppImage".to_string()),
+                "GTK_IM_MODULE" => Some("fcitx".to_string()),
+                "XDG_SESSION_TYPE" => Some("x11".to_string()),
+                _ => None,
+            },
+            |path| path == module_path,
+            cache_path.clone(),
+        )
+        .unwrap();
+
+        assert_eq!(env_override.cache_path, cache_path);
+        assert!(env_override
+            .cache_contents
+            .contains(&module_path.display().to_string()));
+        assert!(env_override
+            .cache_contents
+            .contains("\"fcitx\" \"Fcitx 5\""));
+    }
+
+    #[test]
+    fn fcitx_module_file_override_preserves_explicit_module_cache() {
+        let env_override = fcitx_gtk_im_module_file_override_with(
+            &mut |key| match key {
+                "APPDIR" => Some("/tmp/.mount_Tolaria".to_string()),
+                "APPIMAGE" => Some("/tmp/Tolaria.AppImage".to_string()),
+                "GTK_IM_MODULE" => Some("fcitx".to_string()),
+                "GTK_IM_MODULE_FILE" => Some("/tmp/custom-immodules.cache".to_string()),
+                _ => None,
+            },
+            |_| true,
+            std::path::PathBuf::from("/tmp/tolaria/immodules.cache"),
+        );
+
+        assert_eq!(env_override, None);
     }
 
     #[test]

@@ -339,6 +339,7 @@ jobs:
             libxdo-dev \
             libssl-dev \
             libayatana-appindicator3-dev \
+            fcitx5-frontend-gtk3 \
             librsvg2-dev \
             curl \
             wget \

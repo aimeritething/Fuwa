@@ -112,3 +112,52 @@ test('plugin wrapper patches AppRun before delegating to the real output plugin'
   assert.equal(patched.includes(BROKEN_LINUXDEPLOY_APPRUN_DIR_LINE), false)
   assert.equal(patched.includes(FIXED_LINUXDEPLOY_APPRUN_DIR_LINE), true)
 })
+
+test('plugin wrapper bundles fcitx GTK3 input module before sealing AppImage', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tolaria-appimage-fcitx-'))
+  const appDir = join(root, 'Tolaria.AppDir')
+  const wrapper = join(root, 'linuxdeploy-plugin-appimage.AppImage')
+  const realPlugin = join(root, 'linuxdeploy-plugin-appimage.real.AppImage')
+  const pluginMarker = join(root, 'plugin-ran')
+  const hostModule = join(root, 'host', 'im-fcitx5.so')
+  const hostLibraryDir = join(root, 'host-lib')
+  const hostLibrary = join(hostLibraryDir, 'libFcitx5GClient.so.2')
+
+  await mkdir(appDir)
+  await mkdir(dirname(hostModule), { recursive: true })
+  await mkdir(hostLibraryDir)
+  await writeFile(hostModule, 'fake fcitx gtk module', 'utf8')
+  await writeFile(hostLibrary, 'fake fcitx client library', 'utf8')
+  await writeFile(wrapper, appImagePluginWrapperSource(), 'utf8')
+  await chmod(wrapper, 0o755)
+  await writeFile(
+    realPlugin,
+    `#!/usr/bin/env bash\nset -euo pipefail\ntouch "${pluginMarker}"\n`,
+    'utf8',
+  )
+  await chmod(realPlugin, 0o755)
+
+  const result = spawnSync(wrapper, [], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      APPDIR: appDir,
+      TOLARIA_APPIMAGE_REAL_PLUGIN: realPlugin,
+      TOLARIA_FCITX_GTK3_IM_MODULE: hostModule,
+      TOLARIA_FCITX_LIBRARY_DIR: hostLibraryDir,
+    },
+  })
+
+  assert.equal(result.status, 0, result.stderr)
+  assert.equal(existsSync(pluginMarker), true)
+  assert.equal(
+    existsSync(
+      join(
+        appDir,
+        'usr/lib/x86_64-linux-gnu/gtk-3.0/3.0.0/immodules/im-fcitx5.so',
+      ),
+    ),
+    true,
+  )
+  assert.equal(existsSync(join(appDir, 'usr/lib/x86_64-linux-gnu/libFcitx5GClient.so.2')), true)
+})
