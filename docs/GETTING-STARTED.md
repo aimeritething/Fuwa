@@ -45,6 +45,20 @@ WEBKIT_DISABLE_COMPOSITING_MODE=1 WEBKIT_DISABLE_DMABUF_RENDERER=1 LD_PRELOAD=/u
 
 If your distribution stores the 64-bit library elsewhere, use that path instead, for example `/usr/lib/x86_64-linux-gnu/libwayland-client.so.0`. On 64-bit Fedora, avoid `/usr/lib/libwayland-client.so.0`; that path can point at a 32-bit library and be ignored by the loader with a wrong ELF class warning.
 
+### Linux AppImage packaging checks
+
+Linux release CI prepares Tauri's AppImage tools cache before `pnpm tauri build`:
+
+```bash
+node scripts/appimage-launcher-tools.mjs prepare-plugin
+```
+
+That step patches linuxdeploy's generated GTK `AppRun` wrapper before the AppImage is sealed so direct launches, absolute symlinks, and relative symlinks resolve the real AppRun path before choosing its directory. After build, CI extracts every produced AppImage launcher and verifies the symlink-safe resolver:
+
+```bash
+node scripts/appimage-launcher-tools.mjs validate-appimages src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
+```
+
 ## Quick Start
 
 ```bash

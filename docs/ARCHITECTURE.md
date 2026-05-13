@@ -922,6 +922,11 @@ push to main
   → build-windows job:
       → pnpm install, stamp version, tauri build --target x86_64-pc-windows-msvc --bundles nsis
       → upload NSIS installer, optional MSI artifacts, and signed Windows updater bundles
+  → build-linux job:
+      → pnpm install, prepare AppImage symlink-safe launcher patch, stamp version
+      → tauri build --target x86_64-unknown-linux-gnu --bundles deb,rpm,appimage
+      → extract the sealed AppImage AppRun and verify linuxdeploy resolves $0 before dirname
+      → upload .deb, .rpm, .AppImage, and signed Linux updater bundles
   → release job:
       → generate alpha-latest.json with darwin-aarch64, darwin-x86_64, Linux, and Windows updater URLs
       → publish GitHub prerelease alpha-vYYYY.M.D-alpha.NNNN named Tolaria Alpha YYYY.M.D.N
@@ -944,8 +949,10 @@ push stable-vYYYY.M.D tag
       → pnpm install, stamp version, pnpm build, tauri build --target x86_64-apple-darwin
       → upload signed Apple Silicon and Intel .app.tar.gz + .sig and .dmg artifacts named Tolaria_<version>_macOS_Silicon and Tolaria_<version>_macOS_Intel
   → build-linux job:
-      → pnpm install, stamp version, tauri build --target x86_64-unknown-linux-gnu --bundles deb,appimage
-      → upload .deb, .AppImage, and signed Linux updater bundles
+      → pnpm install, prepare AppImage symlink-safe launcher patch, stamp version
+      → tauri build --target x86_64-unknown-linux-gnu --bundles deb,rpm,appimage
+      → extract the sealed AppImage AppRun and verify linuxdeploy resolves $0 before dirname
+      → upload .deb, .rpm, .AppImage, and signed Linux updater bundles
   → build-windows job:
       → pnpm install, stamp version, tauri build --target x86_64-pc-windows-msvc --bundles nsis
       → upload NSIS installer, optional MSI artifacts, and signed Windows updater bundles
@@ -960,6 +967,8 @@ push stable-vYYYY.M.D tag
       → preserve alpha/latest.json
       → deploy to gh-pages
 ```
+
+Linux AppImage release jobs run `scripts/appimage-launcher-tools.mjs prepare-plugin` before Tauri packaging. The script pre-seeds Tauri's Linux tools cache with a small `linuxdeploy-plugin-appimage` shim. When linuxdeploy is about to seal the AppImage, that shim patches linuxdeploy's generated GTK AppRun wrapper from `dirname "$0"`-then-`readlink -f` to `readlink -f "$0"`-then-`dirname`, preserving direct launches while allowing absolute and relative symlinks such as `/usr/local/bin/tolaria -> Tolaria.AppImage`. The validation step then extracts `AppRun` from every produced AppImage and fails the release if the symlink-safe resolver is missing.
 
 ### Versioning
 
