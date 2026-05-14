@@ -1,6 +1,7 @@
 import type { useCreateBlockNote } from '@blocknote/react'
 import { compactMarkdown } from './compact-markdown'
 import { serializeDurableEditorBlocks } from './editorDurableMarkdown'
+import { portableFileAttachmentUrls } from './fileAttachmentMarkdown'
 import { portableImageUrls } from './vaultImages'
 import { restoreWikilinksInBlocks, splitFrontmatter } from './wikilinks'
 
@@ -19,7 +20,10 @@ export function serializeRichEditorDocumentToMarkdown(
 ): string {
   const rawBodyMarkdown = serializeRichEditorBodyToMarkdown(editor)
   const bodyMarkdown = vaultPath
-    ? portableImageUrls(rawBodyMarkdown, vaultPath, notePath)
+    ? portableFileAttachmentUrls(
+      portableImageUrls(rawBodyMarkdown, vaultPath, notePath),
+      vaultPath,
+    )
     : rawBodyMarkdown
   const [frontmatter] = splitFrontmatter(tabContent)
   return `${frontmatter}${bodyMarkdown}`
