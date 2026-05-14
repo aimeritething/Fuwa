@@ -150,7 +150,7 @@
   "settings.titles.description": "選擇 Tolaria 是否根據第一個 H1 標題自動同步未命名筆記的檔名。",
   "settings.titles.autoRename": "根據第一個 H1 自動重新命名未命名筆記",
   "settings.titles.autoRenameDescription": "啟用後，只要第一個 H1 成為真實標題，Tolaria 就會重新命名 untitled-note 檔案。關閉後，檔名會保持不變，直到你從麵包屑欄手動重新命名。",
-  "settings.vaultContent.title": "保管庫內容",
+  "settings.vaultContent.title": "內容",
   "settings.vaultContent.description": "控制與 Vault .gitignore 相符的檔案是否顯示在 Tolaria 中。",
   "settings.dateDisplay.default": "日期顯示方式",
   "settings.dateDisplay.defaultDescription": "選擇 Tolaria 在可編輯日期欄位外顯示日期的方式。",

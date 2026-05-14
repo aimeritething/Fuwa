@@ -1,4 +1,4 @@
-import { ArrowUpRight, Bot, CheckCircle2, Cloud, HardDrive, Loader2, Terminal } from 'lucide-react'
+import { ArrowUpRight, CheckCircle as CheckCircle2, CircleNotch as Loader2, Cloud, HardDrive, Robot as Bot, Terminal } from '@phosphor-icons/react'
 import {
   AI_AGENT_DEFINITIONS,
   getAiAgentDefinition,

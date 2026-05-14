@@ -1,5 +1,5 @@
+import { Copy, ShieldCheck } from '@phosphor-icons/react'
 import { useEffect } from 'react'
-import { Copy, ShieldCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

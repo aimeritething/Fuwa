@@ -150,7 +150,7 @@
   "settings.titles.description": "Tolaria が、タイトルのないノートのファイル名を最初の H1 タイトルに基づいて自動的に同期するかどうかを選択します。",
   "settings.titles.autoRename": "タイトルのないノートのファイル名を最初のH1から自動的に変更する",
   "settings.titles.autoRenameDescription": "この設定を有効にすると、Tolariaは最初のH1が実際のタイトルになった時点で、タイトルのないノートファイルの名前を変更します。この設定をオフにすると、ブレッドクラムバーから手動で名前を変更するまで、ファイル名は変更されません。",
-  "settings.vaultContent.title": "Vaultのコンテンツ",
+  "settings.vaultContent.title": "コンテンツ",
   "settings.vaultContent.description": "Vaultの.gitignoreで一致したファイルをTolariaに表示するかどうかを制御します。",
   "settings.dateDisplay.default": "日付の表示",
   "settings.dateDisplay.defaultDescription": "編集可能な日付フィールド以外の場所で、Tolariaが日付を表示する方法を選択します。",

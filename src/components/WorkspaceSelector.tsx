@@ -1,4 +1,4 @@
-import { CaretUpDown, Check } from '@phosphor-icons/react'
+import { CaretUpDown, Check, Cube } from '@phosphor-icons/react'
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent } from 'react'
 import type { WorkspaceIdentity } from '../types'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { translate, type AppLocale } from '../lib/i18n'
 import { PROPERTY_CHIP_STYLE } from './propertyChipStyles'
 import {
   PROPERTY_PANEL_LABEL_CLASS_NAME,
+  PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME,
   PROPERTY_PANEL_ROW_STYLE,
 } from './propertyPanelLayout'
 
@@ -95,6 +96,12 @@ function reportWorkspaceChangeFailure(error: unknown) {
 function WorkspaceRowLabel({ locale }: { locale: AppLocale }) {
   return (
     <span className={PROPERTY_PANEL_LABEL_CLASS_NAME}>
+      <span
+        className={PROPERTY_PANEL_LABEL_ICON_SLOT_CLASS_NAME}
+        data-testid="workspace-row-icon-slot"
+      >
+        <Cube size={14} className="shrink-0" data-testid="workspace-row-icon" />
+      </span>
       <span className="min-w-0 truncate">{translate(locale, 'inspector.properties.workspace')}</span>
     </span>
   )

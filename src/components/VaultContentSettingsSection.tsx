@@ -1,3 +1,4 @@
+import { Article } from '@phosphor-icons/react'
 import type { TranslationKey, TranslationValues } from '../lib/i18n'
 import type { NoteWidthMode } from '../types'
 import type { AllNotesFileVisibility } from '../utils/allNotesFileVisibility'
@@ -76,6 +77,7 @@ export function VaultContentSettingsSection({
   return (
     <>
       <SectionHeading
+        icon={<Article size={16} aria-hidden="true" />}
         title={t('settings.vaultContent.title')}
       />
 

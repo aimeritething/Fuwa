@@ -1,9 +1,7 @@
-import { Component, useEffect, useCallback, useMemo, useRef, useContext, useState, type ReactNode } from 'react'
+import { ArrowSquareOut as ExternalLink, Copy } from '@phosphor-icons/react'
+import { Component, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { invoke } from '@tauri-apps/api/core'
-import { trackEvent } from '../lib/telemetry'
 import {
-  useCreateBlockNote,
-  SuggestionMenuController,
   BlockNoteViewRaw,
   ComponentsContext,
   DeleteLinkButton,
@@ -11,14 +9,15 @@ import {
   LinkToolbar,
   LinkToolbarController,
   SideMenuController,
+  SuggestionMenuController,
   useComponentsContext,
+  useCreateBlockNote,
   useDictionary,
   type LinkToolbarProps,
 } from '@blocknote/react'
 import { components } from '@blocknote/mantine'
 import { MantineContext, MantineProvider } from '@mantine/core'
-import { Copy } from '@phosphor-icons/react'
-import { ExternalLink } from 'lucide-react'
+import { trackEvent } from '../lib/telemetry'
 import { useDocumentThemeMode } from '../hooks/useDocumentThemeMode'
 import { repairMalformedEditorBlocks } from '../hooks/editorBlockRepair'
 import { useEditorTheme } from '../hooks/useTheme'

@@ -1,15 +1,5 @@
+import { ArrowDown, ArrowsClockwise as RefreshCw, CircleNotch as Loader2, Cpu, GitBranch, GitCommit as GitCommitHorizontal, GitDiff, Pulse, Terminal, Warning as AlertTriangle } from '@phosphor-icons/react'
 import { useRef, useState, type CSSProperties, type KeyboardEvent as ReactKeyboardEvent, type ReactNode } from 'react'
-import {
-  AlertTriangle,
-  ArrowDown,
-  Cpu,
-  GitBranch,
-  GitCommitHorizontal,
-  Loader2,
-  RefreshCw,
-  Terminal,
-} from 'lucide-react'
-import { GitDiff, Pulse } from '@phosphor-icons/react'
 import { ActionTooltip, type ActionTooltipCopy } from '@/components/ui/action-tooltip'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'

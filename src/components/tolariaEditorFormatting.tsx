@@ -45,14 +45,14 @@ import {
   Menu as MantineMenu,
 } from '@mantine/core'
 import {
-  Bold,
-  ChevronDown,
-  Code2,
-  ExternalLink,
-  Italic,
-  Strikethrough,
-  type LucideIcon,
-} from 'lucide-react'
+  ArrowSquareOut as ExternalLink,
+  CaretDown as ChevronDown,
+  Code as Code2,
+  TextB as Bold,
+  TextItalic as Italic,
+  TextStrikethrough as Strikethrough,
+  type Icon as PhosphorIcon,
+} from '@phosphor-icons/react'
 import {
   filterTolariaFormattingToolbarItems,
   getTolariaBlockTypeSelectItems,
@@ -186,7 +186,7 @@ const TOLARIA_BASIC_TEXT_STYLE_ICONS = {
   italic: Italic,
   strike: Strikethrough,
   code: Code2,
-} satisfies Record<TolariaBasicTextStyle, LucideIcon>
+} satisfies Record<TolariaBasicTextStyle, PhosphorIcon>
 
 type TolariaSelectedBlock = ReturnType<
   BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>['getTextCursorPosition']
@@ -417,7 +417,7 @@ function TolariaBasicTextStyleButton({
 
   if (buttonState === undefined) return null
 
-  const Icon = Reflect.get(TOLARIA_BASIC_TEXT_STYLE_ICONS, basicTextStyle) as LucideIcon
+  const Icon = Reflect.get(TOLARIA_BASIC_TEXT_STYLE_ICONS, basicTextStyle) as PhosphorIcon
   const copy = Reflect.get(TOLARIA_BASIC_TEXT_STYLE_TOOLTIPS, basicTextStyle) as {
     label: string
     mainTooltip: string

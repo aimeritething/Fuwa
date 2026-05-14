@@ -11,9 +11,8 @@ import {
   SortableContext, useSortable, verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { SlidersHorizontal } from 'lucide-react'
 import {
-  ArrowLeft, ArrowRight, Palette, PencilSimple, Plus, SidebarSimple, Trash,
+  ArrowLeft, ArrowRight, Palette, PencilSimple, Plus, SidebarSimple, SlidersHorizontal, Trash,
 } from '@phosphor-icons/react'
 import { APP_COMMAND_IDS, getAppCommandShortcutDisplay } from '../../hooks/appCommandCatalog'
 import { Button } from '@/components/ui/button'

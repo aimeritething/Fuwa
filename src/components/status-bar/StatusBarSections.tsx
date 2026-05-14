@@ -1,5 +1,4 @@
-import { BookOpen, Moon, Package, Settings, Sun } from 'lucide-react'
-import { Megaphone } from '@phosphor-icons/react'
+import { BookOpen, GearSix as Settings, Megaphone, Moon, Package, Sun, type IconProps } from '@phosphor-icons/react'
 import type { ComponentType, MouseEventHandler } from 'react'
 import type { AiAgentId, AiAgentsStatus } from '../../lib/aiAgents'
 import type { AiModelProvider } from '../../lib/aiTargets'
@@ -132,7 +131,7 @@ function BuildNumberButton({
         data-testid="status-build-number"
       >
         <span style={ICON_STYLE}>
-          <Package size={13} />
+          <Package size={13} weight="regular" />
           {compact ? null : buildNumber ?? translate(locale, 'status.build.unknown')}
         </span>
       </Button>
@@ -301,7 +300,7 @@ function StatusBarPrimaryBadges({
 
 type StatusLinkButtonProps = {
   compact: boolean
-  icon: ComponentType<{ size?: number }>
+  icon: ComponentType<IconProps>
   labelKey: TranslationKey
   locale: AppLocale
   onClick: MouseEventHandler<HTMLButtonElement>
@@ -333,7 +332,7 @@ function StatusLinkButton({
         aria-label={translate(locale, tooltipKey)}
         data-testid={testId}
       >
-        <Icon size={14} />
+        <Icon size={14} weight="regular" />
         {compact ? null : translate(locale, labelKey)}
       </Button>
     </ActionTooltip>
@@ -584,7 +583,7 @@ export function StatusBarSecondarySection({
           aria-label={themeTooltip.label}
           data-testid="status-theme-mode"
         >
-          <ThemeIcon size={14} />
+          <ThemeIcon size={14} weight="regular" />
         </Button>
       </ActionTooltip>
       <ActionTooltip copy={{ label: translate(locale, 'status.settings.open'), ...SETTINGS_SHORTCUT }} side="top" align="end">
@@ -597,7 +596,7 @@ export function StatusBarSecondarySection({
           aria-label={translate(locale, 'status.settings.open')}
           data-testid="status-settings"
         >
-          <Settings size={14} />
+          <Settings size={14} weight="regular" />
         </Button>
       </ActionTooltip>
     </div>

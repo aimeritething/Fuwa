@@ -1,3 +1,4 @@
+import { Copy, Cube, Monitor, Moon, Sun, X } from '@phosphor-icons/react'
 import {
   AI_AGENT_DEFINITIONS,
   createMissingAiAgentsStatus,
@@ -14,16 +15,14 @@ import {
   type AiModelProvider,
 } from '../lib/aiTargets'
 import {
-  useState,
-  useRef,
   useCallback,
   useEffect,
+  useRef,
+  useState,
   type KeyboardEvent as ReactKeyboardEvent,
   type MouseEvent as ReactMouseEvent,
   type ReactNode,
 } from 'react'
-import { Moon, Sun, X } from '@phosphor-icons/react'
-import { Copy, Monitor } from 'lucide-react'
 import type { Settings } from '../types'
 import {
   APP_LOCALES,
@@ -638,7 +637,10 @@ function SettingsSyncAndAppearanceSections({
         />
       </SettingsSection>
       <SettingsSection id={SETTINGS_SECTION_IDS.workspaces}>
-        <SectionHeading title={t('settings.workspaces.title')} />
+        <SectionHeading
+          icon={<Cube size={16} aria-hidden="true" />}
+          title={t('settings.workspaces.title')}
+        />
         <WorkspaceSettingsSection
           defaultWorkspacePath={defaultWorkspacePath}
           enabled={multiWorkspaceEnabled}

@@ -1,4 +1,4 @@
-import { AlertTriangle } from 'lucide-react'
+import { Warning as AlertTriangle } from '@phosphor-icons/react'
 import { translate, type AppLocale } from '../lib/i18n'
 
 interface ConflictNoteBannerProps {

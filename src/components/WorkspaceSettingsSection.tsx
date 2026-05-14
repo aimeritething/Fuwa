@@ -1,5 +1,4 @@
-import { Info } from '@phosphor-icons/react'
-import { Trash2 } from 'lucide-react'
+import { Info, Trash as Trash2 } from '@phosphor-icons/react'
 import { type KeyboardEvent, useState } from 'react'
 import { Button } from './ui/button'
 import { Input } from './ui/input'

@@ -150,7 +150,7 @@
   "settings.titles.description": "Choose whether Tolaria automatically syncs untitled note filenames from the first H1 title.",
   "settings.titles.autoRename": "Auto-rename untitled notes from first H1",
   "settings.titles.autoRenameDescription": "When enabled, Tolaria renames untitled-note files as soon as the first H1 becomes a real title. Turn this off to keep the filename unchanged until you rename it manually from the breadcrumb bar.",
-  "settings.vaultContent.title": "Vault Content",
+  "settings.vaultContent.title": "Content",
   "settings.vaultContent.description": "Control whether files matched by the vault .gitignore appear in Tolaria.",
   "settings.dateDisplay.default": "Date display",
   "settings.dateDisplay.defaultDescription": "Choose how Tolaria displays dates outside editable date fields.",

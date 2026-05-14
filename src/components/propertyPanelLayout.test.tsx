@@ -39,6 +39,32 @@ const entry: VaultEntry = {
   sidebarLabel: null,
 }
 
+const personalWorkspace = {
+  id: 'personal',
+  label: 'Personal',
+  alias: 'personal',
+  path: '/personal',
+  shortLabel: 'PE',
+  color: 'green',
+  icon: null,
+  mounted: true,
+  available: true,
+  defaultForNewNotes: true,
+}
+
+const teamWorkspace = {
+  id: 'team',
+  label: 'Team',
+  alias: 'team',
+  path: '/team',
+  shortLabel: 'TE',
+  color: 'purple',
+  icon: null,
+  mounted: true,
+  available: true,
+  defaultForNewNotes: false,
+}
+
 function renderPropertiesPanel(props: ComponentProps<typeof DynamicPropertiesPanel>) {
   return render(
     <TooltipProvider>
@@ -86,14 +112,17 @@ describe('property panel shared grid layout', () => {
     expect(row.style.gridColumn).toBe('1 / -1')
   })
 
-  it('uses the same fixed icon slot size for type, suggested, and add-property rows', () => {
+  it('uses the same fixed icon slot size for metadata, suggested, and add-property rows', () => {
     renderPropertiesPanel({
-      entry,
+      entry: { ...entry, workspace: personalWorkspace },
       frontmatter: {},
       onAddProperty: vi.fn(),
       onUpdateProperty: vi.fn(),
+      onChangeWorkspace: vi.fn(),
+      workspaces: [personalWorkspace, teamWorkspace],
     })
 
+    expect(screen.getByTestId('workspace-row-icon-slot')).toHaveClass('size-5')
     expect(screen.getByTestId('type-row-icon-slot')).toHaveClass('size-5')
     screen.getAllByTestId('suggested-property-icon-slot').forEach((slot) => {
       expect(slot).toHaveClass('size-5')

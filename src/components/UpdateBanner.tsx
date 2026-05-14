@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import { Download, ExternalLink, RefreshCw, X } from 'lucide-react'
+import { ArrowSquareOut as ExternalLink, ArrowsClockwise as RefreshCw, Download, X } from '@phosphor-icons/react'
 import type { UpdateStatus, UpdateActions } from '../hooks/useUpdater'
 import { restartApp } from '../hooks/useUpdater'
 import { Button } from './ui/button'

@@ -150,7 +150,7 @@
   "settings.titles.description": "Indiquez si Tolaria doit synchroniser automatiquement les noms de fichier des notes sans titre à partir du premier titre H1.",
   "settings.titles.autoRename": "Renommer automatiquement les notes sans titre à partir du premier H1",
   "settings.titles.autoRenameDescription": "Lorsque cette option est activée, Tolaria renomme les fichiers de notes sans titre dès que le premier H1 devient un véritable titre. Désactivez cette option pour que le nom de fichier reste inchangé jusqu'à ce que vous le renommiez manuellement depuis la barre de navigation.",
-  "settings.vaultContent.title": "Contenu du coffre-fort",
+  "settings.vaultContent.title": "Contenu",
   "settings.vaultContent.description": "Contrôler si les fichiers correspondants au fichier .gitignore du coffre-fort apparaissent dans Tolaria.",
   "settings.dateDisplay.default": "Affichage de la date",
   "settings.dateDisplay.defaultDescription": "Choisissez la manière dont Tolaria affiche les dates en dehors des champs de date modifiables.",

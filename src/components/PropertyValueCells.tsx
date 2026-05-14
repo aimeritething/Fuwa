@@ -1,17 +1,14 @@
+import { ArrowUpRight, X as XIcon } from '@phosphor-icons/react'
 import { useState, useCallback, useRef, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
-import { ArrowUpRight } from '@phosphor-icons/react'
-import type { FrontmatterValue } from './Inspector'
-import { EditableValue, TagPillList, UrlValue } from './EditableValue'
-import { isUrlValue } from '../utils/url'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
 import { Input } from '@/components/ui/input'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
-import { XIcon } from 'lucide-react'
 import { trackDatePropertyDirectEntrySaved } from '../lib/productAnalytics'
 import { translate, type AppLocale } from '../lib/i18n'
 import { isValidCssColor } from '../utils/colorUtils'
+import { isUrlValue } from '../utils/url'
 import {
   type PropertyDisplayMode,
   formatDateValue,
@@ -20,6 +17,8 @@ import {
   DISPLAY_MODE_ICONS,
 } from '../utils/propertyTypes'
 import { StatusDropdown } from './StatusDropdown'
+import type { FrontmatterValue } from './Inspector'
+import { EditableValue, TagPillList, UrlValue } from './EditableValue'
 import { getStatusStyle } from '../utils/statusStyles'
 import { TagsDropdown } from './TagsDropdown'
 import { getTagStyle } from '../utils/tagStyles'

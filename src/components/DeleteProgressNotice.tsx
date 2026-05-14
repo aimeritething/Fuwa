@@ -1,5 +1,5 @@
+import { CircleNotch as Loader2 } from '@phosphor-icons/react'
 import { memo } from 'react'
-import { Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface DeleteProgressNoticeProps {

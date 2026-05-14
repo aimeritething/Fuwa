@@ -135,7 +135,7 @@ The note list opportunistically preloads visible and adjacent markdown/text entr
 | Raw editor | CodeMirror 6 | - |
 | Styling | Tailwind CSS v4 + CSS variables | 4.1.18 |
 | UI primitives | Radix UI + shadcn/ui | - |
-| Icons | Phosphor Icons + Lucide | - |
+| Icons | Phosphor Icons | - |
 | Build | Vite | 7.3.1 |
 | Backend language | Rust (edition 2021) | 1.77.2 |
 | Frontmatter parsing | gray_matter | 0.2 |
