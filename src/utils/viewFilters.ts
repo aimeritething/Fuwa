@@ -143,19 +143,34 @@ function hasArrayMatch(values: string[], condVal: string): boolean {
   ))
 }
 
+function isSingleRelationshipMatch(values: string[], condVal: string): boolean {
+  return values.length === 1 && wikilinkEquals(values[0], condVal)
+}
+
+const ARRAY_MATCHERS = {
+  contains: hasArrayMatch,
+  not_contains: hasArrayMatch,
+  equals: isSingleRelationshipMatch,
+  not_equals: isSingleRelationshipMatch,
+} satisfies Partial<Record<FilterCondition['op'], (values: string[], condVal: string) => boolean>>
+
+const NEGATED_ARRAY_OPS = new Set<FilterCondition['op']>(['not_contains', 'not_equals', 'none_of'])
+const ARRAY_SET_OPS = new Set<FilterCondition['op']>(['any_of', 'none_of'])
+
 function evaluateArrayCondition(cond: FilterCondition, values: string[], condVal: string, regex: RegExp | null): boolean {
   const { op, value } = cond
   if (regex) return evaluateRegexArrayCondition(op, values, regex)
 
-  if (op === 'contains') return hasArrayMatch(values, condVal)
-  if (op === 'not_contains') return !hasArrayMatch(values, condVal)
-  if (op === 'any_of' && Array.isArray(value)) {
-    return values.some((item) => (value as string[]).some((v) => wikilinkEquals(item, v)))
+  const matcher = ARRAY_MATCHERS[op as keyof typeof ARRAY_MATCHERS]
+  if (matcher) {
+    const matched = matcher(values, condVal)
+    return NEGATED_ARRAY_OPS.has(op) ? !matched : matched
   }
-  if (op === 'none_of' && Array.isArray(value)) {
-    return !values.some((item) => (value as string[]).some((v) => wikilinkEquals(item, v)))
-  }
-  return false
+  if (!ARRAY_SET_OPS.has(op)) return false
+  if (!Array.isArray(value)) return false
+
+  const matched = values.some((item) => (value as string[]).some((v) => wikilinkEquals(item, v)))
+  return NEGATED_ARRAY_OPS.has(op) ? !matched : matched
 }
 
 function evaluateRegexScalarCondition(op: FilterCondition['op'], fieldRaw: string, regex: RegExp): boolean {
