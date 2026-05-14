@@ -195,6 +195,11 @@ jobs:
 
   linux-build:
     name: Linux build verification
+    # Keep the normal push CI lane under the 10-minute target. The release
+    # workflows already perform the full Linux/AppImage build after main
+    # pushes, so this slower compatibility check stays available for PRs and
+    # manual diagnostics without blocking every direct push.
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-22.04
 
     steps:
