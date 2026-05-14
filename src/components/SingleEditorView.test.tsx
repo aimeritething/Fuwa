@@ -796,6 +796,31 @@ describe('SingleEditorView', () => {
     expect(clipboardData.setData).toHaveBeenCalledWith('text/plain', json)
   })
 
+  it('copies CJK fenced code text from the selected DOM fragment when selection text is mojibake', async () => {
+    const text = 'const label = "中文測試"'
+    const { container } = renderEditorHarness()
+    const { codeBlock, code } = createCodeBlockFixture(text)
+    await act(async () => {
+      container.appendChild(codeBlock)
+      await Promise.resolve()
+    })
+
+    const range = document.createRange()
+    range.selectNodeContents(code)
+    const getSelection = vi.spyOn(window, 'getSelection').mockReturnValue({
+      rangeCount: 1,
+      isCollapsed: false,
+      getRangeAt: () => range,
+      toString: () => 'const label = "ä¸­æ–‡æ¸¬è©¦"',
+    } as Selection)
+
+    const clipboardData = { setData: vi.fn() }
+    fireEvent.copy(code, { clipboardData })
+    getSelection.mockRestore()
+
+    expect(clipboardData.setData).toHaveBeenCalledWith('text/plain', text)
+  })
+
   it('copies fenced code from the code-block action button', async () => {
     const json = '{\n  "id": "Demo"\n}'
     const writeText = vi.fn().mockResolvedValue(undefined)

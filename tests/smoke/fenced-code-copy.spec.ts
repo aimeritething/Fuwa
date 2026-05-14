@@ -12,6 +12,7 @@ const CODE_COPY_NOTE_RELATIVE_PATH = path.join('note', 'fenced-code-copy.md')
 const CODE_COPY_NOTE_TITLE = 'Fenced Code Copy'
 const JSON_SNIPPET = '{\n  "id": "Demo",\n  "enabled": true\n}'
 const TYPESCRIPT_SNIPPET = 'const answer = 42\nconsole.log(answer)'
+const CJK_SNIPPET = 'const label = "中文測試"\nconsole.log(label)'
 const RICH_CODE_SELECTOR = '.bn-block-content[data-content-type="codeBlock"] pre code'
 
 function writeCodeCopyFixtureNote(tempVaultDir: string) {
@@ -34,6 +35,12 @@ Copy this TypeScript exactly:
 
 \`\`\`ts
 ${TYPESCRIPT_SNIPPET}
+\`\`\`
+
+Copy this CJK text exactly:
+
+\`\`\`ts
+${CJK_SNIPPET}
 \`\`\`
 `)
 }
@@ -101,6 +108,8 @@ async function selectRawEditorText(page: Page, text: string) {
 test.describe('Fenced code copy', () => {
   let tempVaultDir: string
 
+  test.setTimeout(30_000)
+
   test.beforeEach(async ({ page }) => {
     await page.context().grantPermissions(['clipboard-read', 'clipboard-write'])
     tempVaultDir = createFixtureVaultCopy()
@@ -112,20 +121,25 @@ test.describe('Fenced code copy', () => {
     removeFixtureVaultCopy(tempVaultDir)
   })
 
-  test('copies rich code blocks from the button and selections without escape backslashes', async ({ page }) => {
+  test('copies rich code blocks from the button and selections without corruption', async ({ page }) => {
     const noteList = page.locator('[data-testid="note-list-container"]')
     const noteItem = noteList.getByText(CODE_COPY_NOTE_TITLE, { exact: true })
     await expect(noteItem).toBeVisible({ timeout: 10_000 })
     await noteItem.click()
+    await expect(page.locator(RICH_CODE_SELECTOR)).toHaveCount(3, { timeout: 10_000 })
 
     await expect.poll(() => copyRichCodeBlockFromButton(page, 0)).toBe(JSON_SNIPPET)
     await expect.poll(() => copyRichCodeBlockFromButton(page, 1)).toBe(TYPESCRIPT_SNIPPET)
+    await expect.poll(() => copyRichCodeBlockFromButton(page, 2)).toBe(CJK_SNIPPET)
 
     await selectRichCodeBlock(page, 0)
     await expect.poll(() => copySelectedText(page)).toBe(JSON_SNIPPET)
 
     await selectRichCodeBlock(page, 1)
     await expect.poll(() => copySelectedText(page)).toBe(TYPESCRIPT_SNIPPET)
+
+    await selectRichCodeBlock(page, 2)
+    await expect.poll(() => copySelectedText(page)).toBe(CJK_SNIPPET)
 
     await openCommandPalette(page)
     await executeCommand(page, 'Toggle Raw')

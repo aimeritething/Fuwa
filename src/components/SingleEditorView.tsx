@@ -421,7 +421,7 @@ function selectedCodeBlockText(options: {
   const range = selectedCodeBlockRange(options)
   if (!range) return null
 
-  return options.selection?.toString() || range.cloneContents().textContent || ''
+  return range.cloneContents().textContent || options.selection?.toString() || ''
 }
 
 function selectedEditorRange(selection: Selection | null, container: HTMLElement): Range | null {
