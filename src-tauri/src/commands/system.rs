@@ -384,9 +384,33 @@ pub fn trigger_menu_command(_app_handle: tauri::AppHandle, _id: String) -> Resul
 }
 
 #[cfg(desktop)]
-#[tauri::command]
-pub fn update_current_window_min_size(
-    window: Window,
+fn should_apply_window_min_size_constraints(
+    is_windows: bool,
+    is_fullscreen: bool,
+    is_maximized: bool,
+) -> bool {
+    !(is_windows && (is_fullscreen || is_maximized))
+}
+
+#[cfg(desktop)]
+fn should_skip_window_min_size_update(window: &Window) -> Result<bool, String> {
+    if !cfg!(target_os = "windows") {
+        return Ok(false);
+    }
+
+    let is_fullscreen = window.is_fullscreen().map_err(|e| e.to_string())?;
+    let is_maximized = window.is_maximized().map_err(|e| e.to_string())?;
+
+    Ok(!should_apply_window_min_size_constraints(
+        true,
+        is_fullscreen,
+        is_maximized,
+    ))
+}
+
+#[cfg(desktop)]
+fn apply_window_min_size_update(
+    window: &Window,
     min_width: f64,
     min_height: f64,
     grow_to_fit: bool,
@@ -414,6 +438,21 @@ pub fn update_current_window_min_size(
     window
         .set_size(LogicalSize::new(next_width, next_height))
         .map_err(|e| e.to_string())
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+pub fn update_current_window_min_size(
+    window: Window,
+    min_width: f64,
+    min_height: f64,
+    grow_to_fit: bool,
+) -> Result<(), String> {
+    if should_skip_window_min_size_update(&window)? {
+        return Ok(());
+    }
+
+    apply_window_min_size_update(&window, min_width, min_height, grow_to_fit)
 }
 
 #[cfg(desktop)]
@@ -621,6 +660,20 @@ mod tests {
             assert_eq!(result, Ok(()));
             assert_eq!(calls, expected_calls);
         }
+    }
+
+    #[test]
+    fn skips_min_size_updates_for_windows_fullscreen_or_maximized_windows() {
+        for (is_fullscreen, is_maximized) in [(true, false), (false, true), (true, true)] {
+            assert!(!should_apply_window_min_size_constraints(
+                true,
+                is_fullscreen,
+                is_maximized
+            ));
+        }
+
+        assert!(should_apply_window_min_size_constraints(true, false, false));
+        assert!(should_apply_window_min_size_constraints(false, true, true));
     }
 
     #[test]
