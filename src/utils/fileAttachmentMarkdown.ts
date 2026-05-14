@@ -19,6 +19,12 @@ interface SerializeFileAttachmentBlocksOptions {
   serializeOrdinaryBlocks: (blocks: unknown[]) => string
 }
 
+interface FlushOrdinaryBlocksOptions {
+  chunks: string[]
+  pending: unknown[]
+  serializeOrdinaryBlocks: (blocks: unknown[]) => string
+}
+
 type FileAttachmentLineTransform = (payload: FileAttachmentPayload) => string | null
 type MarkdownFence = { character: string; length: number }
 type AttachmentUrl = string
@@ -304,20 +310,24 @@ function readFileAttachmentBlockPayload(block: BlockLike): FileAttachmentPayload
   })
 }
 
+function flushOrdinaryBlocks({
+  chunks,
+  pending,
+  serializeOrdinaryBlocks,
+}: FlushOrdinaryBlocksOptions): unknown[] {
+  if (pending.length === 0) return pending
+
+  const markdown = serializeOrdinaryBlocks(pending).trimEnd()
+  if (markdown) chunks.push(markdown)
+  return []
+}
+
 export function serializeFileAttachmentBlocks({
   blocks,
   serializeOrdinaryBlocks,
 }: SerializeFileAttachmentBlocksOptions): string {
   const chunks: string[] = []
   let pending: unknown[] = []
-
-  const flushPending = () => {
-    if (pending.length === 0) return
-
-    const markdown = serializeOrdinaryBlocks(pending).trimEnd()
-    if (markdown) chunks.push(markdown)
-    pending = []
-  }
 
   for (const block of blocks as BlockLike[]) {
     const payload = readFileAttachmentBlockPayload(block)
@@ -326,11 +336,11 @@ export function serializeFileAttachmentBlocks({
       continue
     }
 
-    flushPending()
+    pending = flushOrdinaryBlocks({ chunks, pending, serializeOrdinaryBlocks })
     chunks.push(serializeMarkdownFileLink(payload))
   }
 
-  flushPending()
+  flushOrdinaryBlocks({ chunks, pending, serializeOrdinaryBlocks })
   return chunks.join('\n\n')
 }
 
