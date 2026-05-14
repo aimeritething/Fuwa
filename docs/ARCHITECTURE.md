@@ -375,8 +375,9 @@ Tolaria can register itself as an MCP server in:
 - `~/.gemini/settings.json` (Gemini CLI)
 - `~/.cursor/mcp.json` (Cursor)
 - `~/.config/mcp/mcp.json` (generic MCP-compatible clients)
+- `~/.config/opencode/opencode.json` (OpenCode, using its `mcp` config key)
 
-That setup is user-initiated through the status bar / command palette flow, not a startup side effect. Registration is non-destructive (additive, preserves other servers and Gemini settings), uses `upsert` semantics, and can be reversed by removing Tolaria's entry again. Tolaria verifies Node.js is available before writing config, writes a vault-neutral `type: "stdio"` entry, and sets `WS_UI_PORT=9711` so UI actions route back to the desktop app. Durable external MCP processes resolve active workspaces at tool-call time: explicit `VAULT_PATH`/`VAULT_PATHS` env still wins for app-owned and legacy launches, otherwise the Node server reads Tolaria's `vaults.json`, uses `active_vault` first, and includes every workspace not marked `mounted: false`. Vault context checks each active workspace root for `AGENTS.md` and includes those instructions in the returned context. The same generated entry is exposed as a manual JSON snippet in the MCP setup dialog and through the AI panel copy action, giving users a transparent fallback for MCP-compatible tools Tolaria does not auto-configure. In the desktop app, `useMcpStatus` copies that snippet through the native `copy_text_to_clipboard` command instead of the Web Clipboard API so macOS WKWebView permission policy cannot block setup. Packaged builds resolve `mcp-server/` from the installed resource directory next to the executable before falling back to macOS `Resources`, Linux package roots such as `/usr/local/Tolaria`, `/usr/lib/tolaria`, and `/usr/lib/tolaria/resources`, and AppImage paths. The `useMcpStatus` hook tracks whether Tolaria's durable MCP entry is connected (`checking | installed | not_installed`) and owns connect, disconnect, exact-snippet load, and copy-to-clipboard actions. Gemini CLI still owns its own install and sign-in; Tolaria writes the durable external MCP entry only on explicit setup, while app-managed Gemini sessions use transient settings and optional vault guidance. The desktop WebSocket bridge is started only when a persisted active vault exists and is resynced from React state on vault changes; no selected vault stops the bridge instead of falling back to `~/Laputa`. Stdio MCP server processes are owned by the external client that launched them: when that client closes stdin, Tolaria cancels UI-bridge reconnect timers, closes any UI WebSocket, and exits the Node process instead of keeping it alive in the background.
+That setup is user-initiated through the status bar / command palette flow, not a startup side effect. Registration is non-destructive (additive, preserves other servers and Gemini/OpenCode settings), uses `upsert` semantics, and can be reversed by removing Tolaria's entry again. Tolaria verifies Node.js is available before writing config, writes a vault-neutral `type: "stdio"` entry for standard MCP clients, writes OpenCode's vault-neutral `type: "local"` entry, and sets `WS_UI_PORT=9711` so UI actions route back to the desktop app. Durable external MCP processes resolve active workspaces at tool-call time: explicit `VAULT_PATH`/`VAULT_PATHS` env still wins for app-owned and legacy launches, otherwise the Node server reads Tolaria's `vaults.json`, uses `active_vault` first, and includes every workspace not marked `mounted: false`. Vault context checks each active workspace root for `AGENTS.md` and includes those instructions in the returned context. The same generated entry is exposed as a manual JSON snippet in the MCP setup dialog and through the AI panel copy action, giving users a transparent fallback for MCP-compatible tools Tolaria does not auto-configure. In the desktop app, `useMcpStatus` copies that snippet through the native `copy_text_to_clipboard` command instead of the Web Clipboard API so macOS WKWebView permission policy cannot block setup. Packaged builds resolve `mcp-server/` from the installed resource directory next to the executable before falling back to macOS `Resources`, Linux package roots such as `/usr/local/Tolaria`, `/usr/lib/tolaria`, and `/usr/lib/tolaria/resources`, and AppImage paths. Linux AppImage startup extracts the bundled `mcp-server/` to `~/.local/share/tolaria/mcp-server/` with a `.tolaria-version` marker, so durable external registrations use a stable path instead of the changing AppImage mount point. The `useMcpStatus` hook tracks whether Tolaria's durable MCP entry is connected (`checking | installed | not_installed`) and owns connect, disconnect, exact-snippet load, and copy-to-clipboard actions. Gemini CLI still owns its own install and sign-in; Tolaria writes the durable external MCP entry only on explicit setup, while app-managed Gemini sessions use transient settings and optional vault guidance. The desktop WebSocket bridge is started only when a persisted active vault exists and is resynced from React state on vault changes; no selected vault stops the bridge instead of falling back to `~/Laputa`. Stdio MCP server processes are owned by the external client that launched them: when that client closes stdin, Tolaria cancels UI-bridge reconnect timers, closes any UI WebSocket, and exits the Node process instead of keeping it alive in the background.
 
 ### Architecture
 
@@ -387,7 +388,7 @@ flowchart TD
         VAULT["vault.js\n(findMarkdownFiles, readNote, createNote,\nsearchNotes, appendToNote, editNoteFrontmatter,\ndeleteNote, linkNotes, listNotes, vaultContext)"]
         WSB["ws-bridge.js"]
 
-        IDX -->|"stdio transport"| STDIO["Claude Code / Cursor"]
+        IDX -->|"stdio transport"| STDIO["Claude Code / Cursor / Gemini / OpenCode"]
         IDX --> VAULT
         IDX --> WSB
         WSB -->|"port 9710 — tool bridge"| AI["AI Clients\n(Claude Code, external)"]
@@ -395,7 +396,7 @@ flowchart TD
     end
 
     TAURI["Tauri bridge lifecycle"] -->|"start/stop/restart with VAULT_PATHS"| MCP
-    UI["Status bar / Command Palette"] -->|"explicit setup or disconnect"| CFG["~/.claude.json\n~/.claude/mcp.json\n~/.cursor/mcp.json\n~/.config/mcp/mcp.json"]
+    UI["Status bar / Command Palette"] -->|"explicit setup or disconnect"| CFG["~/.claude.json\n~/.claude/mcp.json\n~/.cursor/mcp.json\n~/.config/mcp/mcp.json\n~/.config/opencode/opencode.json"]
 ```
 
 ### WebSocket Bridge
@@ -423,9 +424,10 @@ flowchart LR
 |----------|---------|
 | `spawn_ws_bridge(vault_path)` | Spawns `ws-bridge.js` as child process with `VAULT_PATH`/`VAULT_PATHS` env |
 | `sync_mcp_bridge_vault(vault_path?)` | Starts, restarts, or stops the desktop WebSocket bridge as the selected vault changes |
-| `register_mcp(vault_path)` | Verifies Node.js, resolves the packaged `mcp-server/`, and writes Tolaria's vault-neutral stdio entry to Claude Code, Gemini CLI, Cursor, and generic MCP configs on user request |
+| `extract_mcp_server_to_stable_dir(app_version)` | On Linux AppImage launches, copies bundled MCP files to `~/.local/share/tolaria/mcp-server/` with version-gated replacement so external clients can keep a stable `index.js` path |
+| `register_mcp(vault_path)` | Verifies Node.js, resolves the packaged or stable extracted `mcp-server/`, and writes Tolaria's vault-neutral entry to Claude Code, Gemini CLI, Cursor, OpenCode, and generic MCP configs on user request |
 | `mcp_config_snippet(vault_path)` | Builds the exact vault-neutral `mcpServers.tolaria` JSON users can copy into any compatible client without writing third-party config files |
-| `remove_mcp()` | Removes Tolaria's MCP entry from Claude Code, Gemini CLI, Cursor, and generic MCP configs |
+| `remove_mcp()` | Removes Tolaria's MCP entry from Claude Code, Gemini CLI, Cursor, OpenCode, and generic MCP configs |
 | `upsert_mcp_config(path, entry)` | Atomic config file update (create/merge, preserves others) |
 
 The `WsBridgeChild` state wrapper in `lib.rs` ensures the bridge process is replaced on vault switches, stopped when no active vault is selected, and killed plus waited on app exit via the `RunEvent::Exit` handler. The same desktop layer keeps Tauri asset protocol access limited to vault roots loaded during the current app session; command calls remain active-vault scoped for reads, writes, and external opens.
@@ -789,9 +791,9 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 | `get_ai_agents_status` | Check Claude Code + Codex + OpenCode + Pi + Gemini availability |
 | `get_agent_docs_path` | Resolve the bundled local Tolaria docs folder used in AI-agent system prompts |
 | `stream_ai_agent` | Stream Claude Code, Codex, OpenCode, Pi, or Gemini through the normalized agent event layer |
-| `register_mcp_tools` | Register MCP in Claude/Gemini/Cursor/generic config for the active vault |
-| `remove_mcp_tools` | Remove Tolaria's MCP entry from Claude/Gemini/Cursor/generic config |
-| `check_mcp_status` | Check whether the active vault is explicitly registered in Claude/Gemini/Cursor/generic config |
+| `register_mcp_tools` | Register vault-neutral MCP in Claude/Gemini/Cursor/OpenCode/generic config |
+| `remove_mcp_tools` | Remove Tolaria's MCP entry from Claude/Gemini/Cursor/OpenCode/generic config |
+| `check_mcp_status` | Check whether Tolaria's durable MCP entry is registered in Claude/Gemini/Cursor/OpenCode/generic config |
 | `get_mcp_config_snippet` | Return the exact manual MCP JSON snippet for the active vault |
 | `copy_text_to_clipboard` | Copy setup snippets through the native desktop clipboard command path |
 | `read_text_from_clipboard` | Read current desktop clipboard text for command-driven plain-text paste |
