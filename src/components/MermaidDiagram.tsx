@@ -33,6 +33,15 @@ interface RenderState {
 let initialized = false
 let renderQueue = Promise.resolve()
 
+const MERMAID_RENDER_HOST_STYLE = [
+  'position:absolute',
+  'left:-10000px',
+  'top:-10000px',
+  'width:0',
+  'height:0',
+  'overflow:hidden',
+].join(';')
+
 function renderIdFromReactId(reactId: string): string {
   const safeId = reactId.replace(/[^a-zA-Z0-9_-]/g, '')
   return `tolaria-mermaid-${safeId || 'diagram'}`
@@ -46,11 +55,27 @@ function initializeMermaid(mermaid: MermaidApi) {
     securityLevel: 'strict',
     htmlLabels: false,
     theme: 'default',
+    suppressErrorRendering: true,
     themeVariables: {
       fontFamily: 'ui-sans-serif, system-ui, sans-serif',
     },
   })
   initialized = true
+}
+
+function appendMermaidRenderHost(): HTMLDivElement {
+  const host = document.createElement('div')
+  host.setAttribute('data-tolaria-mermaid-render-host', '')
+  host.style.cssText = MERMAID_RENDER_HOST_STYLE
+  document.body.appendChild(host)
+  return host
+}
+
+function removeMermaidRenderArtifacts(renderId: string, host: HTMLElement): void {
+  host.remove()
+  document.getElementById(renderId)?.remove()
+  document.getElementById(`d${renderId}`)?.remove()
+  document.getElementById(`i${renderId}`)?.remove()
 }
 
 async function renderMermaidDiagram({
@@ -63,8 +88,13 @@ async function renderMermaidDiagram({
   const render = async () => {
     const mermaid = (await import('mermaid')).default
     initializeMermaid(mermaid)
-    const result = await mermaid.render(renderId, diagram)
-    return result.svg
+    const renderHost = appendMermaidRenderHost()
+    try {
+      const result = await mermaid.render(renderId, diagram, renderHost)
+      return result.svg
+    } finally {
+      removeMermaidRenderArtifacts(renderId, renderHost)
+    }
   }
   const nextRender = renderQueue.then(render, render)
   renderQueue = nextRender.then(() => undefined, () => undefined)

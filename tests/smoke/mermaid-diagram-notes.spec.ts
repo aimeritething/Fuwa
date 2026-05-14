@@ -91,6 +91,17 @@ const INVALID_DIAGRAM = [
   'not a diagram',
   '```',
 ].join('\n')
+const REPORTED_INVALID_DIAGRAM = [
+  '```mermaid',
+  'flowchart TD',
+  '    A[Christmas] -->|Get money| B(Go shopping)',
+  '    B --> C{Let me think}',
+  '    C -->|One| D[Laptop]',
+  '    C -->|Two| E[iPhone]',
+  '    C -->|Three| F[fa:fa-car Car]',
+  '## ABC',
+  '```',
+].join('\n')
 
 test.beforeEach(async ({ page }, testInfo) => {
   testInfo.setTimeout(90_000)
@@ -196,6 +207,15 @@ async function countLargeBlackFilledShapes(page: Page, diagramIndex: number): Pr
 
 function mermaidSvg(page: Page, diagramIndex: number): Locator {
   return page.locator('[data-testid="mermaid-diagram-viewport"] svg').nth(diagramIndex)
+}
+
+function mermaidBodyArtifacts(page: Page): Locator {
+  return page.locator([
+    'body > [data-tolaria-mermaid-render-host]',
+    'body > [id^="tolaria-mermaid-"]',
+    'body > [id^="dtolaria-mermaid-"]',
+    'body > [id^="itolaria-mermaid-"]',
+  ].join(', '))
 }
 
 function mermaidNode(page: Page, diagramIndex: number, text: string): Locator {
@@ -390,4 +410,35 @@ ${SYSTEM_OVERVIEW_DIAGRAM}
   expect(reopenedRaw).toContain(INVALID_DIAGRAM)
   expect(reopenedRaw).toContain(SECOND_DIAGRAM)
   expect(reopenedRaw).toContain(SYSTEM_OVERVIEW_DIAGRAM)
+})
+
+test('invalid reported Mermaid syntax recovers across source and AI panel rerenders', async ({ page }) => {
+  await openNote(page, 'Note B')
+  await toggleRawMode(page, '.cm-content')
+
+  const originalContent = await getRawEditorContent(page)
+  await setRawEditorContent(page, `${originalContent.trimEnd()}
+
+${REPORTED_INVALID_DIAGRAM}
+`)
+  await expect.poll(readNoteBFile).toContain(REPORTED_INVALID_DIAGRAM)
+
+  await toggleRawMode(page, '.bn-editor')
+  await expect(page.locator('[data-testid="mermaid-diagram-error"]')).toContainText('## ABC')
+  await expect(mermaidBodyArtifacts(page)).toHaveCount(0)
+  await expect(page.locator('#tolaria-fatal-render-error')).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Open the AI panel' }).click()
+  await expect(page.getByTestId('ai-panel')).toBeVisible({ timeout: 5_000 })
+  await toggleRawMode(page, '.cm-content')
+  await toggleRawMode(page, '.bn-editor')
+  await expect(page.locator('[data-testid="mermaid-diagram-error"]')).toContainText('## ABC')
+  await expect(mermaidBodyArtifacts(page)).toHaveCount(0)
+
+  const input = page.getByTestId('agent-input')
+  await input.fill('Confirm the note is still usable.')
+  await page.getByTestId('agent-send').click()
+  await expect(page.getByTestId('ai-message').last()).toBeVisible({ timeout: 5_000 })
+  await expect(mermaidBodyArtifacts(page)).toHaveCount(0)
+  await expect(page.locator('#tolaria-fatal-render-error')).toHaveCount(0)
 })

@@ -31,9 +31,14 @@ describe('MermaidDiagram', () => {
     await waitFor(() => {
       expect(screen.getByTestId('mermaid-diagram-viewport').querySelector('svg')).not.toBeNull()
     })
-    expect(mermaidMock.render).toHaveBeenCalledWith(expect.stringMatching(/^tolaria-mermaid-/), 'flowchart LR\nA --> B')
+    expect(mermaidMock.render).toHaveBeenCalledWith(
+      expect.stringMatching(/^tolaria-mermaid-/),
+      'flowchart LR\nA --> B',
+      expect.any(HTMLElement),
+    )
     expect(mermaidMock.initialize).toHaveBeenCalledWith(expect.objectContaining({
       htmlLabels: false,
+      suppressErrorRendering: true,
       theme: 'default',
     }))
   })
@@ -114,5 +119,28 @@ describe('MermaidDiagram', () => {
 
     expect(await screen.findByText('Mermaid diagram unavailable')).toBeInTheDocument()
     expect(screen.getByLabelText('Mermaid source')).toHaveTextContent('flowchart LR')
+  })
+
+  it('removes Mermaid error-rendering artifacts after a parse failure', async () => {
+    let leakedId = ''
+    mermaidMock.render.mockImplementationOnce(async (renderId: string, _diagram: string, container?: HTMLElement) => {
+      leakedId = `d${renderId}`
+      const leakedErrorSvgHost = document.createElement('div')
+      leakedErrorSvgHost.id = leakedId
+      leakedErrorSvgHost.textContent = 'Syntax error in text'
+      const leakTarget = container ?? document.body
+      leakTarget.appendChild(leakedErrorSvgHost)
+      throw new Error('parse error')
+    })
+
+    render(
+      <MermaidDiagram
+        diagram={'flowchart TD\n## ABC'}
+        source={'```mermaid\nflowchart TD\n## ABC\n```'}
+      />,
+    )
+
+    expect(await screen.findByText('Mermaid diagram unavailable')).toBeInTheDocument()
+    expect(document.getElementById(leakedId)).toBeNull()
   })
 })
