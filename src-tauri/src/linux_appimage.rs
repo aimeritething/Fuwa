@@ -4,7 +4,7 @@ struct StartupEnvOverride {
     value: &'static str,
 }
 
-const LINUX_APPIMAGE_WEBKIT_OVERRIDES: [StartupEnvOverride; 2] = [
+const LINUX_WEBKIT_RENDERING_OVERRIDES: [StartupEnvOverride; 2] = [
     StartupEnvOverride {
         key: "WEBKIT_DISABLE_DMABUF_RENDERER",
         value: "1",
@@ -56,6 +56,13 @@ where
     ["APPIMAGE", "APPDIR"]
         .into_iter()
         .any(|key| get_var(key).is_some_and(|value| !value.trim().is_empty()))
+}
+
+fn should_disable_unstable_webkit_rendering<F>(get_var: &mut F) -> bool
+where
+    F: FnMut(&str) -> Option<String>,
+{
+    is_linux_appimage_launch(&mut *get_var) || is_wayland_session(&mut *get_var)
 }
 
 fn has_non_empty_env<F>(get_var: &mut F, key: &str) -> bool
@@ -288,11 +295,11 @@ fn startup_env_overrides_with<F>(mut get_var: F) -> Vec<StartupEnvOverride>
 where
     F: FnMut(&str) -> Option<String>,
 {
-    if !is_linux_appimage_launch(&mut get_var) {
+    if !should_disable_unstable_webkit_rendering(&mut get_var) {
         return Vec::new();
     }
 
-    let mut overrides: Vec<_> = LINUX_APPIMAGE_WEBKIT_OVERRIDES
+    let mut overrides: Vec<_> = LINUX_WEBKIT_RENDERING_OVERRIDES
         .into_iter()
         .filter(|env_override| !has_non_empty_env(&mut get_var, env_override.key))
         .collect();
@@ -509,16 +516,26 @@ mod tests {
     }
 
     #[test]
-    fn startup_env_overrides_are_empty_outside_appimage_launches() {
+    fn startup_env_overrides_are_empty_outside_appimage_or_wayland_launches() {
         let overrides = startup_env_overrides_with(|_| None);
 
         assert!(overrides.is_empty());
     }
 
     #[test]
-    fn startup_env_overrides_disable_unstable_webkit_rendering_for_appimages() {
+    fn startup_env_overrides_disable_unstable_webkit_rendering_for_appimage_launches() {
         let overrides = startup_env_overrides_with(|key| match key {
             "APPIMAGE" => Some("/tmp/Tolaria.AppImage".to_string()),
+            _ => None,
+        });
+
+        assert_eq!(overrides, default_webkit_overrides());
+    }
+
+    #[test]
+    fn startup_env_overrides_disable_unstable_webkit_rendering_for_native_wayland_launches() {
+        let overrides = startup_env_overrides_with(|key| match key {
+            "XDG_SESSION_TYPE" => Some("wayland".to_string()),
             _ => None,
         });
 
