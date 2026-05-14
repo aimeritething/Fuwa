@@ -107,6 +107,22 @@ describe('refreshPulledVaultState', () => {
     expect(options.closeAllTabs).not.toHaveBeenCalled()
   })
 
+  it('retargets a focused active tab when the active note was moved externally', async () => {
+    const movedEntry = makeEntry('/vault/projects/active.md', 'Active')
+    const options = makeOptions({
+      activeTabPath: '/vault/active.md',
+      reloadVault: vi.fn().mockResolvedValue([movedEntry]),
+      shouldKeepActiveEditorMounted: vi.fn(() => true),
+      updatedFiles: ['active.md', 'projects/active.md'],
+    })
+
+    await refreshPulledVaultState(options)
+
+    expect(options.shouldKeepActiveEditorMounted).not.toHaveBeenCalled()
+    expect(options.closeAllTabs).toHaveBeenCalledOnce()
+    expect(options.replaceActiveTab).toHaveBeenCalledWith(movedEntry)
+  })
+
   it('skips stale tab replacement when the active note changes during reload', async () => {
     let resolveReload!: (entries: VaultEntry[]) => void
     let currentActivePath: string | null = '/vault/active.md'
