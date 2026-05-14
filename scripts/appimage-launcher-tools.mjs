@@ -11,7 +11,7 @@ import {
   writeFile,
 } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
 
@@ -20,7 +20,8 @@ export const BROKEN_LINUXDEPLOY_APPRUN_DIR_LINE =
 export const FIXED_LINUXDEPLOY_APPRUN_DIR_LINE =
   'this_dir="$(dirname "$(readlink -f "$0")")"'
 export const APPIMAGE_PLUGIN_WRAPPER_NAME = 'linuxdeploy-plugin-appimage.AppImage'
-export const REAL_APPIMAGE_PLUGIN_NAME = 'linuxdeploy-plugin-appimage.real.AppImage'
+export const REAL_APPIMAGE_PLUGIN_NAME =
+  'tolaria-real-linuxdeploy-plugin-appimage/linuxdeploy-plugin-appimage.AppImage'
 export const APPIMAGE_FCITX_GTK3_IM_MODULE_PATH =
   'usr/lib/x86_64-linux-gnu/gtk-3.0/3.0.0/immodules/im-fcitx5.so'
 export const APPIMAGE_FCITX_GCLIENT_LIBRARY_PATH =
@@ -115,6 +116,7 @@ download_real_plugin() {
 
   local tmp_plugin="$REAL_PLUGIN.tmp.$$"
   rm -f "$tmp_plugin"
+  mkdir -p "$(dirname -- "$REAL_PLUGIN")"
 
   if command -v curl >/dev/null 2>&1; then
     curl -fsSL -o "$tmp_plugin" "$PLUGIN_URL"
@@ -208,6 +210,7 @@ export async function preparePluginWrapper({
   if (existsSync(wrapperPath) && !existsSync(realPluginPath)) {
     const existing = await readFile(wrapperPath, 'utf8').catch(() => '')
     if (!existing.includes(WRAPPER_MARKER)) {
+      await mkdir(dirname(realPluginPath), { recursive: true })
       await rename(wrapperPath, realPluginPath)
     }
   }

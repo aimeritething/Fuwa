@@ -17,8 +17,10 @@ import test from 'node:test'
 import {
   BROKEN_LINUXDEPLOY_APPRUN_DIR_LINE,
   FIXED_LINUXDEPLOY_APPRUN_DIR_LINE,
+  REAL_APPIMAGE_PLUGIN_NAME,
   appImagePluginWrapperSource,
   patchAppRunText,
+  preparePluginWrapper,
 } from './appimage-launcher-tools.mjs'
 
 function brokenResolverDir(invokedPath) {
@@ -111,6 +113,23 @@ test('plugin wrapper patches AppRun before delegating to the real output plugin'
   const patched = await readFile(appRun, 'utf8')
   assert.equal(patched.includes(BROKEN_LINUXDEPLOY_APPRUN_DIR_LINE), false)
   assert.equal(patched.includes(FIXED_LINUXDEPLOY_APPRUN_DIR_LINE), true)
+})
+
+test('plugin wrapper keeps the delegated appimage plugin basename canonical', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'tolaria-appimage-tools-'))
+  const { realPluginPath, wrapperPath } = await preparePluginWrapper({
+    toolsDir: root,
+  })
+
+  assert.equal(basename(wrapperPath), 'linuxdeploy-plugin-appimage.AppImage')
+  assert.equal(
+    realPluginPath,
+    join(root, 'tolaria-real-linuxdeploy-plugin-appimage', 'linuxdeploy-plugin-appimage.AppImage'),
+  )
+  assert.equal(REAL_APPIMAGE_PLUGIN_NAME.endsWith('/linuxdeploy-plugin-appimage.AppImage'), true)
+
+  const wrapper = await readFile(wrapperPath, 'utf8')
+  assert.equal(wrapper.includes('linuxdeploy-plugin-appimage.real.AppImage'), false)
 })
 
 test('plugin wrapper bundles fcitx GTK3 input module before sealing AppImage', async () => {
