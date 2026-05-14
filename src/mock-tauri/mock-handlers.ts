@@ -574,14 +574,13 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   },
   register_mcp_tools: () => 'registered',
   check_mcp_status: () => 'installed',
-  get_mcp_config_snippet: (args: { vaultPath?: string }) => JSON.stringify({
+  get_mcp_config_snippet: () => JSON.stringify({
     mcpServers: {
       tolaria: {
         type: 'stdio',
         command: 'node',
         args: ['/mock/Tolaria/mcp-server/index.js'],
         env: {
-          VAULT_PATH: args.vaultPath ?? '/Users/mock/Documents/Getting Started',
           WS_UI_PORT: '9711',
         },
       },

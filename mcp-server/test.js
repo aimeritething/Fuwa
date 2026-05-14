@@ -2,7 +2,7 @@ import { describe, it, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import {
-  mkdtemp, mkdir, open, rm,
+  mkdtemp, mkdir, open, rm, writeFile,
 } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
@@ -13,6 +13,7 @@ import {
   findMarkdownFiles, getNote, searchNotes, vaultContext,
 } from './vault.js'
 import { requireVaultPath, requireVaultPaths } from './vault-path.js'
+import { vaultContextWithInstructions } from './agent-instructions.js'
 import { evaluateBridgeRequest } from './ws-bridge.js'
 
 let tmpDir
@@ -191,6 +192,26 @@ describe('vaultContext', () => {
     const ctx = await vaultContext(tmpDir)
     assert.equal(ctx.noteCount, 4)
   })
+
+  it('includes root AGENTS.md instructions when present', async () => {
+    const agentsPath = path.join(tmpDir, 'AGENTS.md')
+    await writeFile(agentsPath, '# Vault Rules\n\nUse this vault carefully.\n', 'utf-8')
+
+    try {
+      const ctx = await vaultContextWithInstructions(tmpDir)
+      assert.deepEqual(ctx.agentInstructions, {
+        path: agentsPath,
+        content: '# Vault Rules\n\nUse this vault carefully.\n',
+      })
+    } finally {
+      await rm(agentsPath, { force: true })
+    }
+  })
+
+  it('reports null agent instructions when AGENTS.md is absent', async () => {
+    const ctx = await vaultContextWithInstructions(tmpDir)
+    assert.equal(ctx.agentInstructions, null)
+  })
 })
 
 describe('evaluateBridgeRequest', () => {
@@ -236,11 +257,13 @@ describe('requireVaultPath', () => {
     )
   })
 
-  it('rejects missing vault paths instead of falling back to ~/Laputa', () => {
+  it('rejects missing vault paths instead of falling back to ~/Laputa', async () => {
+    const configDir = await mkdtemp(path.join(os.tmpdir(), 'tolaria-mcp-empty-config-'))
     assert.throws(
-      () => requireVaultPath({}),
+      () => requireVaultPaths({}, { configDir }),
       /VAULT_PATH is required/,
     )
+    await rm(configDir, { recursive: true, force: true })
   })
 
   it('returns all configured active vault paths with the primary vault first', () => {
@@ -251,6 +274,33 @@ describe('requireVaultPath', () => {
       }),
       ['/tmp/Default Vault', '/tmp/Second Vault'],
     )
+  })
+
+  it('loads active mounted vault paths from Tolaria config when env is vault-neutral', async () => {
+    const configDir = await mkdtemp(path.join(os.tmpdir(), 'tolaria-mcp-config-'))
+    const primaryVault = path.join(configDir, 'Primary Vault')
+    const secondaryVault = path.join(configDir, 'Secondary Vault')
+    const hiddenVault = path.join(configDir, 'Hidden Vault')
+    const configPath = path.join(configDir, 'com.tolaria.app', 'vaults.json')
+
+    await mkdir(path.dirname(configPath), { recursive: true })
+    await writeFile(configPath, JSON.stringify({
+      active_vault: primaryVault,
+      vaults: [
+        { label: 'Secondary', path: secondaryVault, mounted: true },
+        { label: 'Hidden', path: hiddenVault, mounted: false },
+        { label: 'Primary', path: primaryVault, mounted: true },
+      ],
+    }), 'utf-8')
+
+    try {
+      assert.deepEqual(
+        requireVaultPaths({}, { configDir }),
+        [primaryVault, secondaryVault],
+      )
+    } finally {
+      await rm(configDir, { recursive: true, force: true })
+    }
   })
 })
 

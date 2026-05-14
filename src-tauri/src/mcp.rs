@@ -482,29 +482,13 @@ fn entry_has_ui_port(entry: &serde_json::Value) -> bool {
     entry["env"]["WS_UI_PORT"].as_str() == Some("9711")
 }
 
-fn entry_targets_vault(entry: &serde_json::Value, vault_path: &Path) -> bool {
-    let Some(entry_vault_path) = entry["env"]["VAULT_PATH"].as_str() else {
-        return false;
-    };
-
-    let Ok(expected) = std::fs::canonicalize(vault_path) else {
-        return false;
-    };
-    let Ok(actual) = std::fs::canonicalize(entry_vault_path) else {
-        return false;
-    };
-
-    actual == expected
-}
-
-/// Build the MCP server entry JSON for a given vault path and index.js path.
-fn build_mcp_entry(node_command: &str, index_js: &str, vault_path: &str) -> serde_json::Value {
+/// Build the durable external MCP server entry JSON for an index.js path.
+fn build_mcp_entry(node_command: &str, index_js: &str) -> serde_json::Value {
     serde_json::json!({
         "type": "stdio",
         "command": node_command,
         "args": [index_js],
         "env": {
-            "VAULT_PATH": vault_path,
             "WS_UI_PORT": "9711"
         }
     })
@@ -521,13 +505,14 @@ fn build_mcp_config_snippet(entry: &serde_json::Value) -> Result<String, String>
 
 /// Build the exact MCP config JSON users can copy into compatible tools.
 pub fn mcp_config_snippet(vault_path: &str) -> Result<String, String> {
+    let _ = vault_path;
     let node = find_node().map_err(|e| {
         format!("Node.js 18+ is required on PATH before Tolaria can build MCP config: {e}")
     })?;
     let server_dir = mcp_server_dir()?;
     let index_js = server_dir.join("index.js").to_string_lossy().into_owned();
     let node_command = node.to_string_lossy().into_owned();
-    let entry = build_mcp_entry(&node_command, &index_js, vault_path);
+    let entry = build_mcp_entry(&node_command, &index_js);
 
     build_mcp_config_snippet(&entry)
 }
@@ -548,6 +533,7 @@ fn register_mcp_to_configs(entry: &serde_json::Value, config_paths: &[PathBuf]) 
 
 /// Register Tolaria as an MCP server in external AI tool config files.
 pub fn register_mcp(vault_path: &str) -> Result<String, String> {
+    let _ = vault_path;
     let node = find_node().map_err(|e| {
         format!("Node.js 18+ is required on PATH before Tolaria can register MCP tools: {e}")
     })?;
@@ -555,7 +541,7 @@ pub fn register_mcp(vault_path: &str) -> Result<String, String> {
     let index_js = server_dir.join("index.js").to_string_lossy().into_owned();
     let node_command = node.to_string_lossy().into_owned();
 
-    let entry = build_mcp_entry(&node_command, &index_js, vault_path);
+    let entry = build_mcp_entry(&node_command, &index_js);
 
     Ok(register_mcp_to_configs(&entry, &mcp_config_paths()))
 }
@@ -666,13 +652,10 @@ pub fn remove_mcp() -> String {
 /// an external AI tool config and the referenced index.js file is present.
 /// Otherwise returns `NotInstalled`.
 pub fn check_mcp_status(vault_path: &str) -> McpStatus {
-    let active_vault_path = Path::new(vault_path);
+    let _ = vault_path;
     if mcp_config_paths().into_iter().any(|config_path| {
         read_registered_mcp_entry(&config_path).is_some_and(|entry| {
-            entry_uses_stdio(&entry)
-                && entry_index_js_exists(&entry)
-                && entry_has_ui_port(&entry)
-                && entry_targets_vault(&entry, active_vault_path)
+            entry_uses_stdio(&entry) && entry_index_js_exists(&entry) && entry_has_ui_port(&entry)
         })
     }) {
         McpStatus::Installed
@@ -700,17 +683,17 @@ mod tests {
         std::fs::write(config_path, serde_json::to_string(&config).unwrap()).unwrap();
     }
 
-    fn managed_server(index_js: &str, vault_path: &str) -> serde_json::Value {
+    fn managed_server(index_js: &str) -> serde_json::Value {
         serde_json::json!({
             "type": "stdio",
             "command": "node",
             "args": [index_js],
-            "env": { "VAULT_PATH": vault_path, "WS_UI_PORT": "9711" }
+            "env": { "WS_UI_PORT": "9711" }
         })
     }
 
-    fn test_mcp_entry(index_js: &str, vault_path: &str) -> serde_json::Value {
-        build_mcp_entry("node", index_js, vault_path)
+    fn test_mcp_entry(index_js: &str) -> serde_json::Value {
+        build_mcp_entry("node", index_js)
     }
 
     fn write_mcp_servers_config(config_path: &Path, servers: Vec<(&str, serde_json::Value)>) {
@@ -723,7 +706,6 @@ mod tests {
 
     struct ExpectedMcpServer<'a> {
         index_js: &'a str,
-        vault_path: &'a str,
     }
 
     fn assert_registered_tolaria_server(
@@ -732,7 +714,8 @@ mod tests {
     ) {
         let server = &config["mcpServers"][MCP_SERVER_NAME];
         assert_eq!(server["args"][0], expected.index_js);
-        assert_eq!(server["env"]["VAULT_PATH"], expected.vault_path);
+        assert!(server["env"]["VAULT_PATH"].is_null());
+        assert_eq!(server["env"]["WS_UI_PORT"], "9711");
     }
 
     fn write_index_js(dir: &Path) -> PathBuf {
@@ -743,7 +726,7 @@ mod tests {
 
     #[test]
     fn build_mcp_entry_produces_correct_json() {
-        let entry = build_mcp_entry("/usr/local/bin/node", "/path/to/index.js", "/my/vault");
+        let entry = build_mcp_entry("/usr/local/bin/node", "/path/to/index.js");
         assert_eq!(
             entry,
             serde_json::json!({
@@ -751,7 +734,6 @@ mod tests {
                 "command": "/usr/local/bin/node",
                 "args": ["/path/to/index.js"],
                 "env": {
-                    "VAULT_PATH": "/my/vault",
                     "WS_UI_PORT": "9711"
                 }
             })
@@ -760,7 +742,7 @@ mod tests {
 
     #[test]
     fn build_mcp_config_snippet_wraps_tolaria_server_entry() {
-        let entry = test_mcp_entry("/path/to/index.js", "/my/vault");
+        let entry = test_mcp_entry("/path/to/index.js");
         let snippet = build_mcp_config_snippet(&entry).unwrap();
         let config: serde_json::Value = serde_json::from_str(&snippet).unwrap();
 
@@ -768,10 +750,7 @@ mod tests {
             config["mcpServers"][MCP_SERVER_NAME]["args"][0],
             "/path/to/index.js"
         );
-        assert_eq!(
-            config["mcpServers"][MCP_SERVER_NAME]["env"]["VAULT_PATH"],
-            "/my/vault"
-        );
+        assert!(config["mcpServers"][MCP_SERVER_NAME]["env"]["VAULT_PATH"].is_null());
     }
 
     #[test]
@@ -946,7 +925,7 @@ mod tests {
     fn upsert_creates_new_config() {
         let tmp = tempfile::tempdir().unwrap();
         let config_path = tmp.path().join("mcp.json");
-        let entry = test_mcp_entry("/test/index.js", "/test/vault");
+        let entry = test_mcp_entry("/test/index.js");
 
         let was_update = upsert_mcp_config(&config_path, &entry).unwrap();
         assert!(!was_update);
@@ -956,7 +935,6 @@ mod tests {
             &config,
             ExpectedMcpServer {
                 index_js: "/test/index.js",
-                vault_path: "/test/vault",
             },
         );
     }
@@ -966,18 +944,15 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let config_path = tmp.path().join("mcp.json");
 
-        let entry1 = test_mcp_entry("/test/index.js", "/vault/v1");
+        let entry1 = test_mcp_entry("/test/index.js");
         upsert_mcp_config(&config_path, &entry1).unwrap();
 
-        let entry2 = test_mcp_entry("/test/index.js", "/vault/v2");
+        let entry2 = test_mcp_entry("/test/index.js");
         let was_update = upsert_mcp_config(&config_path, &entry2).unwrap();
         assert!(was_update);
 
         let config = read_config(&config_path);
-        assert_eq!(
-            config["mcpServers"][MCP_SERVER_NAME]["env"]["VAULT_PATH"],
-            "/vault/v2"
-        );
+        assert!(config["mcpServers"][MCP_SERVER_NAME]["env"]["VAULT_PATH"].is_null());
     }
 
     #[test]
@@ -996,7 +971,7 @@ mod tests {
         });
         std::fs::write(&config_path, serde_json::to_string(&existing).unwrap()).unwrap();
 
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
         let was_update = upsert_mcp_config(&config_path, &entry).unwrap();
         assert!(was_update);
 
@@ -1019,7 +994,7 @@ mod tests {
             )],
         );
 
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
         upsert_mcp_config(&config_path, &entry).unwrap();
 
         let raw = std::fs::read_to_string(&config_path).unwrap();
@@ -1042,7 +1017,7 @@ mod tests {
             }),
         );
 
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
         upsert_mcp_config(&config_path, &entry).unwrap();
 
         let config = read_config(&config_path);
@@ -1069,7 +1044,7 @@ mod tests {
                 }
             }),
         );
-        let entry = test_mcp_entry("/gemini/index.js", "/gemini-vault");
+        let entry = test_mcp_entry("/gemini/index.js");
 
         let was_update = upsert_mcp_config(&config_path, &entry).unwrap();
         let config = read_config(&config_path);
@@ -1081,7 +1056,6 @@ mod tests {
             &config,
             ExpectedMcpServer {
                 index_js: "/gemini/index.js",
-                vault_path: "/gemini-vault",
             },
         );
     }
@@ -1090,7 +1064,7 @@ mod tests {
     fn upsert_creates_parent_dirs() {
         let tmp = tempfile::tempdir().unwrap();
         let config_path = tmp.path().join("nested").join("dir").join("mcp.json");
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
 
         upsert_mcp_config(&config_path, &entry).unwrap();
         assert!(config_path.exists());
@@ -1100,7 +1074,7 @@ mod tests {
     fn register_mcp_to_configs_returns_registered_for_new() {
         let tmp = tempfile::tempdir().unwrap();
         let config = tmp.path().join("claude").join("mcp.json");
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
 
         let status = register_mcp_to_configs(&entry, &[config]);
         assert_eq!(status, "registered");
@@ -1110,7 +1084,7 @@ mod tests {
     fn register_mcp_to_configs_returns_updated_for_existing() {
         let tmp = tempfile::tempdir().unwrap();
         let config = tmp.path().join("mcp.json");
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
 
         // First call
         register_mcp_to_configs(&entry, std::slice::from_ref(&config));
@@ -1159,7 +1133,7 @@ mod tests {
         let gemini_cfg = tmp.path().join(".gemini").join("settings.json");
         let cursor_cfg = tmp.path().join("cursor").join("mcp.json");
         let generic_cfg = tmp.path().join(".config").join("mcp").join("mcp.json");
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
 
         register_mcp_to_configs(
             &entry,
@@ -1187,7 +1161,6 @@ mod tests {
             &config,
             ExpectedMcpServer {
                 index_js: "/test/index.js",
-                vault_path: "/vault",
             },
         );
     }
@@ -1213,14 +1186,14 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let config_path = tmp.path().join("mcp.json");
         std::fs::write(&config_path, "not valid json{{{{").unwrap();
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
         let result = upsert_mcp_config(&config_path, &entry);
         assert!(result.is_err());
     }
 
     #[test]
     fn register_mcp_to_configs_handles_empty_list() {
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
         // Empty config list — function should return "registered" (no existing)
         let status = register_mcp_to_configs(&entry, &[]);
         // With empty config list, there were no updates, so status should be "registered"
@@ -1233,19 +1206,13 @@ mod tests {
         write_mcp_servers_config(
             &config_path,
             vec![
-                (
-                    MCP_SERVER_NAME,
-                    managed_server("/primary/index.js", "/primary"),
-                ),
-                (
-                    LEGACY_MCP_SERVER_NAME,
-                    managed_server("/legacy/index.js", "/legacy"),
-                ),
+                (MCP_SERVER_NAME, managed_server("/primary/index.js")),
+                (LEGACY_MCP_SERVER_NAME, managed_server("/legacy/index.js")),
             ],
         );
 
         let entry = read_registered_mcp_entry(&config_path).unwrap();
-        assert_eq!(entry["env"]["VAULT_PATH"], "/primary");
+        assert_eq!(entry["args"][0], "/primary/index.js");
     }
 
     #[test]
@@ -1253,14 +1220,11 @@ mod tests {
         let (_tmp, config_path) = temp_config_path("mcp.json");
         write_mcp_servers_config(
             &config_path,
-            vec![(
-                LEGACY_MCP_SERVER_NAME,
-                managed_server("/legacy/index.js", "/legacy"),
-            )],
+            vec![(LEGACY_MCP_SERVER_NAME, managed_server("/legacy/index.js"))],
         );
 
         let entry = read_registered_mcp_entry(&config_path).unwrap();
-        assert_eq!(entry["env"]["VAULT_PATH"], "/legacy");
+        assert_eq!(entry["args"][0], "/legacy/index.js");
     }
 
     #[test]
@@ -1305,7 +1269,7 @@ mod tests {
         let config_path = tmp.path().join("mcp.json");
         std::fs::write(&config_path, "[]").unwrap();
 
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
         let result = upsert_mcp_config(&config_path, &entry);
         assert!(matches!(result, Err(ref error) if error.contains("Config is not a JSON object")));
     }
@@ -1319,7 +1283,7 @@ mod tests {
         });
         std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
 
-        let entry = test_mcp_entry("/test/index.js", "/vault");
+        let entry = test_mcp_entry("/test/index.js");
         let result = upsert_mcp_config(&config_path, &entry);
         assert!(
             matches!(result, Err(ref error) if error.contains("mcpServers is not a JSON object"))
@@ -1364,42 +1328,26 @@ mod tests {
     }
 
     #[test]
-    fn check_mcp_status_returns_installed_for_matching_vault() {
+    fn durable_entry_is_status_eligible_without_vault_env() {
         let tmp = tempfile::tempdir().unwrap();
-        let vault_path = tmp.path().join("vault");
-        std::fs::create_dir_all(&vault_path).unwrap();
         let index_js = write_index_js(tmp.path());
         let config_path = tmp.path().join("mcp.json");
         let config = serde_json::json!({
             "mcpServers": {
                 "tolaria": {
+                    "type": "stdio",
                     "command": "node",
                     "args": [index_js.to_string_lossy()],
-                    "env": { "VAULT_PATH": vault_path.to_string_lossy() }
+                    "env": { "WS_UI_PORT": "9711" }
                 }
             }
         });
         std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
 
         let entry = read_registered_mcp_entry(&config_path).unwrap();
-        assert!(entry_targets_vault(&entry, &vault_path));
+        assert!(entry_uses_stdio(&entry));
         assert!(entry_index_js_exists(&entry));
-    }
-
-    #[test]
-    fn entry_targets_vault_requires_matching_existing_directory() {
-        let tmp = tempfile::tempdir().unwrap();
-        let first_vault = tmp.path().join("vault-a");
-        let second_vault = tmp.path().join("vault-b");
-        std::fs::create_dir_all(&first_vault).unwrap();
-        std::fs::create_dir_all(&second_vault).unwrap();
-
-        let entry = serde_json::json!({
-            "env": { "VAULT_PATH": first_vault.to_string_lossy() }
-        });
-
-        assert!(entry_targets_vault(&entry, &first_vault));
-        assert!(!entry_targets_vault(&entry, &second_vault));
+        assert!(entry_has_ui_port(&entry));
     }
 
     #[test]

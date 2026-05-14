@@ -22,9 +22,10 @@
 import { createServer } from 'node:http'
 import { WebSocketServer } from 'ws'
 import {
-  getNote, searchNotes, vaultContext,
+  getNote, searchNotes,
 } from './vault.js'
 import { requireVaultPaths } from './vault-path.js'
+import { readAgentInstructions, vaultContextWithInstructions } from './agent-instructions.js'
 import path from 'node:path'
 
 const WS_PORT = parseInt(process.env.WS_PORT || '9710', 10)
@@ -38,16 +39,10 @@ const TRUSTED_UI_ORIGINS = new Set([
 
 /** @type {WebSocketServer | null} */
 let uiBridge = null
-let vaultPaths = null
 const UNKNOWN_TOOL = Symbol('unknown tool')
 
 function activeVaultPaths() {
-  vaultPaths ??= requireVaultPaths()
-  return vaultPaths
-}
-
-function primaryVaultPath() {
-  return activeVaultPaths()[0]
+  return requireVaultPaths()
 }
 
 function requestedVaultPath(args = {}) {
@@ -63,7 +58,7 @@ function uiPath(args = {}) {
   const notePath = typeof args.path === 'string' ? args.path : ''
   if (path.isAbsolute(notePath)) return notePath
   const roots = activeVaultPaths()
-  const vaultPath = requestedVaultPath(args) ?? (roots.length === 1 ? primaryVaultPath() : '')
+  const vaultPath = requestedVaultPath(args) ?? (roots.length === 1 ? roots[0] : '')
   return vaultPath ? path.join(vaultPath, notePath) : notePath
 }
 
@@ -102,8 +97,8 @@ async function searchActiveVaults(query, limit = 10) {
 
 async function activeVaultContext() {
   const roots = activeVaultPaths()
-  if (roots.length === 1) return vaultContext(roots[0])
-  return { vaults: await Promise.all(roots.map(vaultContext)) }
+  if (roots.length === 1) return vaultContextWithInstructions(roots[0])
+  return { vaults: await Promise.all(roots.map(vaultContextWithInstructions)) }
 }
 
 function broadcastUiAction(action, payload) {
@@ -149,11 +144,26 @@ function refreshVaultTool(args) {
   return { ok: true }
 }
 
+async function listVaultsTool() {
+  return {
+    vaults: await Promise.all(activeVaultPaths().map(async (vaultPath) => {
+      const agentInstructions = await readAgentInstructions(vaultPath)
+      return {
+        path: vaultPath,
+        label: path.basename(vaultPath) || vaultPath,
+        agentInstructionsPath: agentInstructions?.path ?? null,
+        hasAgentInstructions: agentInstructions !== null,
+      }
+    })),
+  }
+}
+
 const TOOL_EXECUTORS = [
   ['open_note', readNoteTool],
   ['read_note', readNoteTool],
   ['search_notes', (args) => searchActiveVaults(args.query, args.limit)],
   ['vault_context', () => activeVaultContext()],
+  ['list_vaults', () => listVaultsTool()],
   ['ui_open_note', uiOpenNoteTool],
   ['ui_open_tab', uiOpenTabTool],
   ['ui_highlight', highlightTool],
