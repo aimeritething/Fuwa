@@ -129,17 +129,17 @@ fn load_configured_active_vault_root() -> Result<Option<VaultRootPaths>, String>
 
 fn load_registered_vault_roots() -> Result<Vec<VaultRootPaths>, String> {
     let list = vault_list::load_vault_list()?;
-    let mut roots = list
-        .vaults
+    Ok(registered_vault_roots(&list))
+}
+
+fn registered_vault_roots(list: &vault_list::VaultList) -> Vec<VaultRootPaths> {
+    list.vaults
         .iter()
-        .map(|entry| build_vault_root_paths(&entry.path))
-        .collect::<Result<Vec<_>, _>>()?;
-    if let Some(active_vault) = list.active_vault.as_deref() {
-        if !active_vault.trim().is_empty() {
-            roots.push(build_vault_root_paths(active_vault)?);
-        }
-    }
-    Ok(roots)
+        .map(|entry| entry.path.as_str())
+        .chain(list.active_vault.as_deref())
+        .filter(|path| !path.trim().is_empty())
+        .filter_map(|path| build_vault_root_paths(path).ok())
+        .collect()
 }
 
 fn is_registered_vault_root(requested: &VaultRootPaths) -> Result<bool, String> {
@@ -377,4 +377,38 @@ pub(crate) fn with_view_file<T>(
         let requested_root = boundary.requested_root_str();
         action(&requested_root, filename)
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::vault_list::{VaultEntry, VaultList};
+
+    #[test]
+    fn registered_vault_roots_skip_unavailable_vaults() {
+        let available = tempfile::TempDir::new().unwrap();
+        let missing = available.path().join("missing-vault");
+        let list = VaultList {
+            vaults: vec![
+                VaultEntry {
+                    label: "Missing".to_string(),
+                    path: missing.to_string_lossy().to_string(),
+                    ..Default::default()
+                },
+                VaultEntry {
+                    label: "Available".to_string(),
+                    path: available.path().to_string_lossy().to_string(),
+                    ..Default::default()
+                },
+            ],
+            active_vault: None,
+            default_workspace_path: None,
+            hidden_defaults: vec![],
+        };
+
+        let roots = registered_vault_roots(&list);
+
+        assert_eq!(roots.len(), 1);
+        assert_eq!(roots[0].canonical, available.path().canonicalize().unwrap());
+    }
 }
