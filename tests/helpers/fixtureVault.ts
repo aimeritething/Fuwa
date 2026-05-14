@@ -283,7 +283,6 @@ async function installFixtureVaultInitScript({ page, vaultPath, isGitRepo }: Fix
             command: 'node',
             args: ['/fixture/Tolaria/mcp-server/index.js'],
             env: {
-              VAULT_PATH: resolvedVaultPath,
               WS_UI_PORT: '9711',
             },
           },

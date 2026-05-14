@@ -32,7 +32,7 @@ test.describe('MCP config copy', () => {
     expect(tolariaServer.type).toBe('stdio')
     expect(tolariaServer.command).toBe('node')
     expect(tolariaServer.args[0]).toContain('mcp-server/index.js')
-    expect(tolariaServer.env.VAULT_PATH).toBeTruthy()
+    expect(tolariaServer.env.VAULT_PATH).toBeUndefined()
     expect(tolariaServer.env.WS_UI_PORT).toBe('9711')
   })
 })

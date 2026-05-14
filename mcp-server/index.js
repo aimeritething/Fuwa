@@ -19,12 +19,11 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js'
 import WebSocket from 'ws'
-import { searchNotes, getNote, vaultContext } from './vault.js'
+import { searchNotes, getNote } from './vault.js'
 import { requireVaultPaths } from './vault-path.js'
+import { readAgentInstructions, vaultContextWithInstructions } from './agent-instructions.js'
 import path from 'node:path'
 
-const VAULT_PATHS = requireVaultPaths()
-const PRIMARY_VAULT_PATH = VAULT_PATHS[0]
 const WS_UI_PORT = parseInt(process.env.WS_UI_PORT || '9711', 10)
 const WS_UI_URL = `ws://localhost:${WS_UI_PORT}`
 
@@ -34,6 +33,10 @@ let uiSocket = null
 let reconnectTimer = null
 let shutdownStarted = false
 const RECONNECT_INTERVAL_MS = 3000
+
+function activeVaultPaths() {
+  return requireVaultPaths()
+}
 
 function connectUiBridge() {
   if (shutdownStarted) return
@@ -115,12 +118,20 @@ const TOOLS = [
   },
   {
     name: 'get_vault_context',
-    description: 'Get vault orientation for the active Tolaria vaults: entity types, note count, folders, and recent notes.',
+    description: 'Get vault orientation for the active Tolaria vaults: entity types, AGENTS.md instructions, note count, folders, and recent notes.',
     inputSchema: {
       type: 'object',
       properties: {
         vaultPath: { type: 'string', description: 'Optional target vault root. Omit to inspect all active vaults.' },
       },
+    },
+  },
+  {
+    name: 'list_vaults',
+    description: 'List the current active Tolaria vaults available to MCP tools, including whether each vault has AGENTS.md instructions.',
+    inputSchema: {
+      type: 'object',
+      properties: {},
     },
   },
   {
@@ -175,7 +186,7 @@ const TOOLS = [
 function requestedVaultPath(args = {}) {
   const requested = typeof args.vaultPath === 'string' ? args.vaultPath.trim() : ''
   if (!requested) return null
-  if (!VAULT_PATHS.includes(requested)) {
+  if (!activeVaultPaths().includes(requested)) {
     throw new Error(`Vault is not active in Tolaria: ${requested}`)
   }
   return requested
@@ -194,7 +205,7 @@ function withVaultMetadata(note, vaultPath) {
 }
 
 async function getNoteFromActiveVaults(notePath, vaultPath = null) {
-  const candidates = vaultPath ? [vaultPath] : VAULT_PATHS
+  const candidates = vaultPath ? [vaultPath] : activeVaultPaths()
   const matches = []
   const errors = []
 
@@ -217,7 +228,7 @@ async function searchActiveVaults(query, limit = 10) {
   const requestedLimit = Number.isFinite(limit) && limit > 0 ? limit : 10
   const results = []
 
-  for (const vaultPath of VAULT_PATHS) {
+  for (const vaultPath of activeVaultPaths()) {
     const vaultResults = await searchNotes(vaultPath, query, requestedLimit)
     results.push(...vaultResults.map((result) => withVaultMetadata(result, vaultPath)))
     if (results.length >= requestedLimit) break
@@ -227,18 +238,20 @@ async function searchActiveVaults(query, limit = 10) {
 }
 
 async function activeVaultContext(targetVaultPath = null) {
-  if (targetVaultPath) return vaultContext(targetVaultPath)
-  if (VAULT_PATHS.length === 1) return vaultContext(PRIMARY_VAULT_PATH)
+  const roots = activeVaultPaths()
+  if (targetVaultPath) return vaultContextWithInstructions(targetVaultPath)
+  if (roots.length === 1) return vaultContextWithInstructions(roots[0])
 
   return {
-    vaults: await Promise.all(VAULT_PATHS.map(vaultContext)),
+    vaults: await Promise.all(roots.map(vaultContextWithInstructions)),
   }
 }
 
 function uiPath(args = {}) {
   const notePath = typeof args.path === 'string' ? args.path : ''
   if (path.isAbsolute(notePath)) return notePath
-  const vaultPath = requestedVaultPath(args) ?? (VAULT_PATHS.length === 1 ? PRIMARY_VAULT_PATH : '')
+  const roots = activeVaultPaths()
+  const vaultPath = requestedVaultPath(args) ?? (roots.length === 1 ? roots[0] : '')
   return vaultPath ? path.join(vaultPath, notePath) : notePath
 }
 
@@ -253,6 +266,20 @@ async function handleSearchNotes(args) {
 async function handleVaultContext(args = {}) {
   const ctx = await activeVaultContext(requestedVaultPath(args))
   return { content: [{ type: 'text', text: JSON.stringify(ctx, null, 2) }] }
+}
+
+async function handleListVaults() {
+  const vaults = await Promise.all(activeVaultPaths().map(async (vaultPath) => {
+    const agentInstructions = await readAgentInstructions(vaultPath)
+    return {
+      path: vaultPath,
+      label: vaultLabel(vaultPath),
+      agentInstructionsPath: agentInstructions?.path ?? null,
+      hasAgentInstructions: agentInstructions !== null,
+    }
+  }))
+
+  return { content: [{ type: 'text', text: JSON.stringify({ vaults }, null, 2) }] }
 }
 
 async function handleGetNote(args) {
@@ -279,23 +306,20 @@ function handleRefreshVault(args) {
   return { content: [{ type: 'text', text: 'Vault refresh triggered' }] }
 }
 
+const TOOL_HANDLERS = new Map([
+  ['search_notes', handleSearchNotes],
+  ['get_vault_context', handleVaultContext],
+  ['list_vaults', handleListVaults],
+  ['get_note', handleGetNote],
+  ['open_note', handleOpenNote],
+  ['highlight_editor', handleHighlightEditor],
+  ['refresh_vault', handleRefreshVault],
+])
+
 function callToolHandler(name, args) {
-  switch (name) {
-    case 'search_notes':
-      return handleSearchNotes(args)
-    case 'get_vault_context':
-      return handleVaultContext(args)
-    case 'get_note':
-      return handleGetNote(args)
-    case 'open_note':
-      return handleOpenNote(args)
-    case 'highlight_editor':
-      return handleHighlightEditor(args)
-    case 'refresh_vault':
-      return handleRefreshVault(args)
-    default:
-      throw new Error(`Unknown tool: ${name}`)
-  }
+  const handler = TOOL_HANDLERS.get(name)
+  if (!handler) throw new Error(`Unknown tool: ${name}`)
+  return handler(args)
 }
 
 // --- Server setup ---
@@ -358,7 +382,7 @@ async function main() {
 
   connectUiBridge()
   await server.connect(transport)
-  console.error(`Tolaria MCP server running (vaults: ${VAULT_PATHS.join(', ')})`)
+  console.error('Tolaria MCP server running (vaults resolved per call)')
 }
 
 main().catch((error) => {
