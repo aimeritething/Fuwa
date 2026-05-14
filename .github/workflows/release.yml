@@ -340,6 +340,7 @@ jobs:
             libssl-dev \
             libayatana-appindicator3-dev \
             fcitx5-frontend-gtk3 \
+            libfuse2 \
             librsvg2-dev \
             curl \
             wget \
