@@ -630,9 +630,7 @@ describe('App', () => {
   it('persists a Cmd+N note before opening it in the editor', async () => {
     const dateNow = vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
     let resolveSave!: () => void
-    const saveNoteContent = vi.fn(() => new Promise<void>((resolve) => {
-      resolveSave = resolve
-    }))
+    const saveNoteContent = vi.fn(() => new Promise<void>((resolve) => { resolveSave = resolve }))
     mockCommandResults.save_note_content = saveNoteContent
 
     try {
@@ -645,6 +643,7 @@ describe('App', () => {
         expect(saveNoteContent).toHaveBeenCalledWith({
           path: '/vault/untitled-note-1700000000.md',
           content: '---\ntype: Note\n---\n\n# \n\n',
+          vaultPath: '/vault',
         })
       })
       expect(window.__laputaTest?.activeTabPath).not.toBe('/vault/untitled-note-1700000000.md')

@@ -2,8 +2,14 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
 
+#[cfg(any(test, all(desktop, target_os = "linux")))]
+mod extraction;
+mod opencode;
 mod paths;
 mod subprocess;
+
+#[cfg(all(desktop, target_os = "linux"))]
+pub(crate) use extraction::extract_mcp_server_to_stable_dir;
 
 const MCP_SERVER_NAME: &str = "tolaria";
 const LEGACY_MCP_SERVER_NAME: &str = "laputa";
@@ -247,6 +253,15 @@ pub(crate) fn mcp_server_dir() -> Result<PathBuf, String> {
     Err(format!(
         "mcp-server not found. Searched these paths: {searched}"
     ))
+}
+
+fn mcp_server_dir_for_registration() -> Result<PathBuf, String> {
+    #[cfg(all(desktop, target_os = "linux"))]
+    if let Some(stable_dir) = extraction::ready_stable_mcp_server_dir() {
+        return Ok(stable_dir);
+    }
+
+    mcp_server_dir()
 }
 
 fn build_time_dev_mcp_server_dir() -> PathBuf {
@@ -509,7 +524,7 @@ pub fn mcp_config_snippet(vault_path: &str) -> Result<String, String> {
     let node = find_node().map_err(|e| {
         format!("Node.js 18+ is required on PATH before Tolaria can build MCP config: {e}")
     })?;
-    let server_dir = mcp_server_dir()?;
+    let server_dir = mcp_server_dir_for_registration()?;
     let index_js = server_dir.join("index.js").to_string_lossy().into_owned();
     let node_command = node.to_string_lossy().into_owned();
     let entry = build_mcp_entry(&node_command, &index_js);
@@ -537,11 +552,17 @@ pub fn register_mcp(vault_path: &str) -> Result<String, String> {
     let node = find_node().map_err(|e| {
         format!("Node.js 18+ is required on PATH before Tolaria can register MCP tools: {e}")
     })?;
-    let server_dir = mcp_server_dir()?;
+    let server_dir = mcp_server_dir_for_registration()?;
     let index_js = server_dir.join("index.js").to_string_lossy().into_owned();
     let node_command = node.to_string_lossy().into_owned();
 
     let entry = build_mcp_entry(&node_command, &index_js);
+    let opencode_entry = opencode::build_entry(&node_command, &index_js);
+    if let Some(config_path) = opencode::config_path() {
+        if let Err(e) = opencode::upsert_config(&config_path, &opencode_entry) {
+            log::warn!("Failed to update {}: {}", config_path.display(), e);
+        }
+    }
 
     Ok(register_mcp_to_configs(&entry, &mcp_config_paths()))
 }
@@ -643,7 +664,19 @@ fn remove_mcp_from_config(config_path: &Path) -> Result<bool, String> {
 }
 
 pub fn remove_mcp() -> String {
-    remove_mcp_from_configs(&mcp_config_paths())
+    let removed_standard = remove_mcp_from_configs(&mcp_config_paths()) == "removed";
+    let removed_opencode = opencode::config_path().is_some_and(|config_path| {
+        opencode::remove_config(&config_path).unwrap_or_else(|e| {
+            log::warn!("Failed to update {}: {}", config_path.display(), e);
+            false
+        })
+    });
+
+    if removed_standard || removed_opencode {
+        "removed".to_string()
+    } else {
+        "already_absent".to_string()
+    }
 }
 
 /// Check whether the MCP server is properly installed and registered.
@@ -653,11 +686,17 @@ pub fn remove_mcp() -> String {
 /// Otherwise returns `NotInstalled`.
 pub fn check_mcp_status(vault_path: &str) -> McpStatus {
     let _ = vault_path;
-    if mcp_config_paths().into_iter().any(|config_path| {
+    let installed_standard = mcp_config_paths().into_iter().any(|config_path| {
         read_registered_mcp_entry(&config_path).is_some_and(|entry| {
             entry_uses_stdio(&entry) && entry_index_js_exists(&entry) && entry_has_ui_port(&entry)
         })
-    }) {
+    });
+    let installed_opencode = opencode::config_path().is_some_and(|config_path| {
+        opencode::read_registered_entry(&config_path)
+            .is_some_and(|entry| opencode::entry_is_installed(&entry))
+    });
+
+    if installed_standard || installed_opencode {
         McpStatus::Installed
     } else {
         McpStatus::NotInstalled

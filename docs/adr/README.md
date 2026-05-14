@@ -171,3 +171,4 @@ proposed → active → superseded
 | [0116](0116-rich-raw-transition-and-serialization-ownership.md) | Rich/raw transition and serialization ownership | active |
 | [0118](0118-entry-scoped-note-windows-without-vault-index-scans.md) | Entry-scoped note windows without vault index scans | active |
 | [0119](0119-vault-neutral-mcp-registration-with-mounted-workspace-guidance.md) | Vault-neutral MCP registration with mounted workspace guidance | active |
+| [0120](0120-stable-appimage-mcp-server-path-with-opencode-registration.md) | Stable AppImage MCP server path with OpenCode registration | active |

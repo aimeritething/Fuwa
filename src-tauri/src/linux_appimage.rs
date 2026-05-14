@@ -58,6 +58,11 @@ where
         .any(|key| get_var(key).is_some_and(|value| !value.trim().is_empty()))
 }
 
+#[cfg(all(desktop, target_os = "linux"))]
+pub(crate) fn is_running() -> bool {
+    is_linux_appimage_launch(|key| std::env::var(key).ok())
+}
+
 fn should_disable_unstable_webkit_rendering<F>(get_var: &mut F) -> bool
 where
     F: FnMut(&str) -> Option<String>,

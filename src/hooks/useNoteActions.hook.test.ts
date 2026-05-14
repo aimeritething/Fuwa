@@ -438,6 +438,7 @@ describe('useNoteActions hook', () => {
       expect(vi.mocked(invoke)).toHaveBeenCalledWith('create_note_content', {
         path: createdPath,
         content: expect.stringContaining('type: Note'),
+        vaultPath: '/test/vault',
       })
       expect(addPendingSave).toHaveBeenCalledWith(createdPath)
       expect(removePendingSave).toHaveBeenCalledWith(createdPath)

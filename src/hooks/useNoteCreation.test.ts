@@ -495,6 +495,7 @@ describe('useNoteCreation hook', () => {
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('create_note_content', {
       path: createdPath,
       content: expect.stringContaining('type: Project'),
+      vaultPath: windowsVaultPath,
     })
     expect(addEntry).toHaveBeenCalledWith(expect.objectContaining({
       path: createdPath,
@@ -541,6 +542,7 @@ describe('useNoteCreation hook', () => {
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('create_note_content', {
       path: createdPath,
       content: expect.stringContaining('type: Note'),
+      vaultPath: '/test/vault',
     })
     expect(addPendingSave).toHaveBeenCalledWith(createdPath)
     expect(removePendingSave).toHaveBeenCalledWith(createdPath)
@@ -620,10 +622,12 @@ describe('useNoteCreation hook', () => {
     expect(created).toBe(true)
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_note_content', {
       path: createdPath,
+      vaultPath: windowsVaultPath,
     })
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('create_note_content', {
       path: createdPath,
       content: '---\ntype: Type\n---\n\n# Recipe\n',
+      vaultPath: windowsVaultPath,
     })
     expect(openTabWithContent).toHaveBeenCalledWith(expect.objectContaining({
       path: createdPath,
@@ -648,6 +652,7 @@ describe('useNoteCreation hook', () => {
     expect(created).toBe(false)
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_note_content', {
       path: '/test/vault/briefing.md',
+      vaultPath: '/test/vault',
     })
     expect(vi.mocked(invoke).mock.calls.some(([command]) => command === 'create_note_content')).toBe(false)
     expect(addEntry).not.toHaveBeenCalled()
@@ -669,6 +674,7 @@ describe('useNoteCreation hook', () => {
     expect(created).toBe(false)
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_note_content', {
       path: '/test/vault/note.md',
+      vaultPath: '/test/vault',
     })
     expect(vi.mocked(invoke).mock.calls.some(([command]) => command === 'create_note_content')).toBe(false)
     expect(addEntry).not.toHaveBeenCalled()
@@ -697,10 +703,12 @@ describe('useNoteCreation hook', () => {
     expect(created).toBe(true)
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('get_note_content', {
       path: '/test/vault/note.md',
+      vaultPath: '/test/vault',
     })
     expect(vi.mocked(invoke)).toHaveBeenCalledWith('create_note_content', {
       path: '/test/vault/note.md',
       content: '---\ntype: Type\n---\n\n# Note\n',
+      vaultPath: '/test/vault',
     })
     expect(addEntry).toHaveBeenCalledWith(expect.objectContaining({
       path: '/test/vault/note.md',

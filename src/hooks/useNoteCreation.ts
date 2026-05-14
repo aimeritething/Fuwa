@@ -423,17 +423,29 @@ function createPersistFailureMessage(entry: VaultEntry, error: unknown): string 
     : 'Failed to create note — disk write error'
 }
 
-/** Persist a newly created note to disk. Returns a Promise for error handling. */
-export function persistNewNote(path: string, content: string): Promise<void> {
-  if (!isTauri()) return mockInvoke<void>('save_note_content', { path, content }).then(() => {})
-  return invoke<void>('create_note_content', { path, content }).then(() => {})
+interface PersistNewNoteRequest {
+  path: string
+  content: string
+  vaultPath?: string
 }
 
-async function typeTargetExistsOnDisk(path: string): Promise<boolean> {
+function createNoteContentArgs({ path, content, vaultPath }: PersistNewNoteRequest): PersistNewNoteRequest {
+  return vaultPath ? { path, content, vaultPath } : { path, content }
+}
+
+/** Persist a newly created note to disk. Returns a Promise for error handling. */
+export function persistNewNote(request: PersistNewNoteRequest): Promise<void> {
+  const args = createNoteContentArgs(request)
+  if (!isTauri()) return mockInvoke<void>('save_note_content', args).then(() => {})
+  return invoke<void>('create_note_content', args).then(() => {})
+}
+
+async function typeTargetExistsOnDisk({ path, vaultPath }: Pick<PersistNewNoteRequest, 'path' | 'vaultPath'>): Promise<boolean> {
   if (!isTauri()) return false
 
   try {
-    await invoke<string>('get_note_content', { path })
+    const args = vaultPath ? { path, vaultPath } : { path }
+    await invoke<string>('get_note_content', args)
     return true
   } catch {
     return false
@@ -441,7 +453,10 @@ async function typeTargetExistsOnDisk(path: string): Promise<boolean> {
 }
 
 async function findTypeTargetCollision(resolved: ResolvedEntry): Promise<string | null> {
-  if (!await typeTargetExistsOnDisk(resolved.entry.path)) return null
+  if (!await typeTargetExistsOnDisk({
+    path: resolved.entry.path,
+    vaultPath: resolved.entry.workspace?.path,
+  })) return null
   return buildCreationCollisionMessage({
     noun: 'type',
     title: resolved.entry.title,
@@ -473,13 +488,13 @@ interface PersistCallbacks {
 }
 
 /** Persist to disk; track pending state via onStart/onEnd. */
-async function persistOptimistic(path: string, content: string, cbs: PersistCallbacks): Promise<void> {
-  cbs.onStart?.(path)
+async function persistOptimistic(request: PersistNewNoteRequest, cbs: PersistCallbacks): Promise<void> {
+  cbs.onStart?.(request.path)
   try {
-    await persistNewNote(path, content)
-    cbs.onPersisted?.(path)
+    await persistNewNote(request)
+    cbs.onPersisted?.(request.path)
   } finally {
-    cbs.onEnd?.(path)
+    cbs.onEnd?.(request.path)
   }
 }
 
@@ -664,7 +679,11 @@ async function persistImmediateEntry(
   content: string,
 ): Promise<boolean> {
   try {
-    await persistOptimistic(entry.path, content, {
+    await persistOptimistic({
+      path: entry.path,
+      content,
+      vaultPath: entry.workspace?.path,
+    }, {
       onStart: deps.addPendingSave,
       onEnd: deps.removePendingSave,
       onPersisted: deps.onNewNotePersisted,
@@ -869,11 +888,10 @@ export function useNoteCreation(config: NoteCreationConfig, tabDeps: CreationTab
     if (options?.openTab !== false) openTabWithContent(resolved.entry, resolved.content)
     addEntryWithMock(resolved.entry, resolved.content, addEntry)
     try {
-      await persistOptimistic(resolved.entry.path, resolved.content, {
-        onStart: addPendingSave,
-        onEnd: removePendingSave,
-        onPersisted: onNewNotePersisted,
-      })
+      await persistOptimistic(
+        { path: resolved.entry.path, content: resolved.content, vaultPath: resolved.entry.workspace?.path },
+        { onStart: addPendingSave, onEnd: removePendingSave, onPersisted: onNewNotePersisted },
+      )
       if (resolved.entry.isA === 'Type') {
         await onTypeStateChanged?.()
       }
