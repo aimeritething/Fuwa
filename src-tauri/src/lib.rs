@@ -517,6 +517,7 @@ macro_rules! app_invoke_handler {
             commands::get_process_memory_snapshot,
             commands::repair_vault,
             commands::reinit_telemetry,
+            commands::should_use_external_media_preview,
             commands::list_views,
             commands::save_view_cmd,
             commands::delete_view_cmd,

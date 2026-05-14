@@ -49,11 +49,15 @@ const blockNoteViewState = vi.hoisted(() => ({
 
 // Mock BlockNote components
 vi.mock('@blocknote/core', () => ({
+  audioParse: vi.fn(() => undefined),
   BlockNoteSchema: { create: () => ({ extend: () => ({}) }) },
+  createAudioBlockConfig: vi.fn(() => ({})),
   createCodeBlockSpec: vi.fn(() => ({})),
   createExtension: (factory: unknown) => () => factory,
+  createVideoBlockConfig: vi.fn(() => ({})),
   defaultInlineContentSpecs: {},
   filterSuggestionItems: vi.fn(() => []),
+  videoParse: vi.fn(() => undefined),
 }))
 
 vi.mock('@blocknote/code-block', () => ({
@@ -71,8 +75,12 @@ const capturedGetItemsByTrigger: Record<string, (query: string) => Promise<any[]
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
 let capturedGetItems: ((query: string) => Promise<any[]>) | null = null
 vi.mock('@blocknote/react', () => ({
+  AudioBlock: () => null,
+  AudioToExternalHTML: () => null,
   createReactBlockSpec: () => () => ({}),
   createReactInlineContentSpec: () => ({ render: () => null }),
+  VideoBlock: () => null,
+  VideoToExternalHTML: () => null,
   useCreateBlockNote: (options: unknown) => {
     blockNoteCreation.options.push(options)
     return mockEditor

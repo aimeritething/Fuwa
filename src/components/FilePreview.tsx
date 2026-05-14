@@ -4,6 +4,7 @@ import { ArrowSquareOut, ClipboardText, FileDashed, FilePdf, FolderOpen, ImageSq
 import type { VaultEntry } from '../types'
 import { trackFilePreviewAction, trackFilePreviewFailed, trackFilePreviewOpened } from '../lib/productAnalytics'
 import { filePreviewKind, previewFileTypeLabel, type FilePreviewKind } from '../utils/filePreview'
+import { useExternalMediaPreview } from '../utils/mediaPreviewRuntime'
 import { focusNoteListContainer } from '../utils/neighborhoodHistory'
 import { openLocalFile } from '../utils/url'
 import { Button } from './ui/button'
@@ -357,8 +358,17 @@ function useFilePreviewActions({
   return { handleOpenExternal, handleRevealFile, handleCopyFilePath }
 }
 
-function previewKindForBody(previewKind: FilePreviewKind | null, mediaFailed: boolean): FilePreviewKind | null {
-  return mediaFailed ? null : previewKind
+function isMediaPreviewKind(previewKind: FilePreviewKind | null): boolean {
+  return previewKind === 'audio' || previewKind === 'video'
+}
+
+function previewKindForBody(
+  previewKind: FilePreviewKind | null,
+  mediaFailed: boolean,
+  externalMediaPreview: boolean,
+): FilePreviewKind | null {
+  if (mediaFailed || (externalMediaPreview && isMediaPreviewKind(previewKind))) return null
+  return previewKind
 }
 
 export function FilePreview({
@@ -370,6 +380,7 @@ export function FilePreview({
   const previewKind = filePreviewKind(entry)
   const assetSrc = useMemo(() => (previewKind ? convertFileSrc(entry.path) : null), [entry.path, previewKind])
   const fileTypeLabel = previewFileTypeLabel(entry)
+  const externalMediaPreview = useExternalMediaPreview()
   const failures = useFilePreviewFailureState(entry.path)
   const actions = useFilePreviewActions({
     entryPath: entry.path,
@@ -409,7 +420,7 @@ export function FilePreview({
       <div className="min-h-0 flex-1 overflow-auto bg-background">
         <FilePreviewBody
           entry={entry}
-          previewKind={previewKindForBody(previewKind, failures.mediaFailed)}
+          previewKind={previewKindForBody(previewKind, failures.mediaFailed, externalMediaPreview)}
           assetSrc={assetSrc}
           imageFailed={failures.imageFailed}
           onImageError={failures.handleImageError}

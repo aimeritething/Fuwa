@@ -1,11 +1,22 @@
 /* eslint-disable react-refresh/only-export-components -- module-level schema, not a component file */
 import {
+  audioParse,
   createCodeBlockSpec,
   BlockNoteSchema,
+  createAudioBlockConfig,
+  createVideoBlockConfig,
   defaultInlineContentSpecs,
+  videoParse,
 } from '@blocknote/core'
-import { createReactBlockSpec, createReactInlineContentSpec } from '@blocknote/react'
-import { lazy, Suspense } from 'react'
+import {
+  AudioBlock,
+  AudioToExternalHTML,
+  createReactBlockSpec,
+  createReactInlineContentSpec,
+  VideoBlock,
+  VideoToExternalHTML,
+} from '@blocknote/react'
+import { lazy, Suspense, type ComponentProps } from 'react'
 import { resolveWikilinkColor as resolveColor } from '../utils/wikilinkColors'
 import { resolveEntry } from '../utils/wikilink'
 import { MATH_BLOCK_TYPE, MATH_INLINE_TYPE, renderMathToHtml } from '../utils/mathMarkdown'
@@ -17,10 +28,20 @@ import { NoteTitleIcon } from './NoteTitleIcon'
 import { MermaidDiagram } from './MermaidDiagram'
 import { SafeHtmlSpan } from './SafeMarkup'
 import { updateTldrawBlockPropsSafely } from './tldrawBlockProps'
+import { useExternalMediaPreview } from '../utils/mediaPreviewRuntime'
 
 const TldrawWhiteboard = lazy(() => import('./TldrawWhiteboard').then(module => ({
   default: module.TldrawWhiteboard,
 })))
+type AudioBlockProps = ComponentProps<typeof AudioBlock>
+type VideoBlockProps = ComponentProps<typeof VideoBlock>
+type MediaBlockPreviewProps = {
+  block: {
+    props: {
+      showPreview: boolean
+    }
+  }
+}
 
 // Module-level cache so the WikiLink renderer (defined outside React) can access entries
 export const _wikilinkEntriesRef: { current: VaultEntry[] } = { current: [] }
@@ -165,6 +186,54 @@ const MermaidBlock = createReactBlockSpec(
   },
 )
 
+export function mediaBlockPropsForPreviewRuntime<T extends MediaBlockPreviewProps>(
+  props: T,
+  externalMediaPreview: boolean,
+): T {
+  if (!externalMediaPreview) return props
+
+  return {
+    ...props,
+    block: {
+      ...props.block,
+      props: {
+        ...props.block.props,
+        showPreview: false,
+      },
+    },
+  }
+}
+
+export function TolariaAudioBlock(props: AudioBlockProps) {
+  const externalMediaPreview = useExternalMediaPreview()
+  return <AudioBlock {...mediaBlockPropsForPreviewRuntime(props, externalMediaPreview)} />
+}
+
+export function TolariaVideoBlock(props: VideoBlockProps) {
+  const externalMediaPreview = useExternalMediaPreview()
+  return <VideoBlock {...mediaBlockPropsForPreviewRuntime(props, externalMediaPreview)} />
+}
+
+const AudioBlockSpec = createReactBlockSpec(
+  createAudioBlockConfig,
+  (config) => ({
+    render: TolariaAudioBlock,
+    parse: audioParse(config),
+    toExternalHTML: AudioToExternalHTML,
+    runsBefore: ['file'],
+  }),
+)
+
+const VideoBlockSpec = createReactBlockSpec(
+  createVideoBlockConfig,
+  (config) => ({
+    render: TolariaVideoBlock,
+    parse: videoParse(config),
+    toExternalHTML: VideoToExternalHTML,
+    runsBefore: ['file'],
+  }),
+)
+
 const TldrawBlock = createReactBlockSpec(
   {
     type: TLDRAW_BLOCK_TYPE,
@@ -214,9 +283,11 @@ const TldrawBlock = createReactBlockSpec(
 )
 
 const codeBlock = createCodeBlockSpec(createTolariaCodeBlockOptions())
+const audioBlock = AudioBlockSpec()
 const mathBlock = MathBlock()
 const mermaidBlock = MermaidBlock()
 const tldrawBlock = TldrawBlock()
+const videoBlock = VideoBlockSpec()
 
 export const schema = BlockNoteSchema.create({
   inlineContentSpecs: {
@@ -226,9 +297,11 @@ export const schema = BlockNoteSchema.create({
   },
 }).extend({
   blockSpecs: {
+    audio: audioBlock,
     mathBlock,
     mermaidBlock,
     tldrawBlock,
     codeBlock,
+    video: videoBlock,
   },
 })

@@ -365,24 +365,23 @@ vi.mock('./hooks/useUpdater', async () => {
 
 // Mock BlockNote components (they need DOM APIs not available in jsdom)
 vi.mock('@blocknote/core', () => ({
+  audioParse: vi.fn(() => undefined), createAudioBlockConfig: vi.fn(() => ({})),
   BlockNoteSchema: { create: () => ({ extend: () => ({}) }) },
   createCodeBlockSpec: vi.fn(() => ({})),
   createExtension: (factory: unknown) => () => factory,
-  defaultInlineContentSpecs: {},
-  filterSuggestionItems: vi.fn(() => []),
+  createVideoBlockConfig: vi.fn(() => ({})), defaultInlineContentSpecs: {},
+  filterSuggestionItems: vi.fn(() => []), videoParse: vi.fn(() => undefined),
 }))
 
-vi.mock('@blocknote/code-block', () => ({
-  codeBlockOptions: {},
-}))
+vi.mock('@blocknote/code-block', () => ({ codeBlockOptions: {} }))
 
-vi.mock('@blocknote/core/extensions', () => ({
-  filterSuggestionItems: vi.fn(() => []),
-}))
+vi.mock('@blocknote/core/extensions', () => ({ filterSuggestionItems: vi.fn(() => []) }))
 
 vi.mock('@blocknote/react', () => ({
+  AudioBlock: () => null, AudioToExternalHTML: () => null,
   createReactBlockSpec: () => () => ({}),
   createReactInlineContentSpec: () => ({ render: () => null }),
+  VideoBlock: () => null, VideoToExternalHTML: () => null,
   BlockNoteViewRaw: ({ children, editable }: { children?: ReactNode; editable?: boolean }) => (
     <div data-testid="blocknote-view" data-editable={editable !== false ? 'true' : 'false'}>
       <div contentEditable={editable !== false} suppressContentEditableWarning data-testid="mock-editor">

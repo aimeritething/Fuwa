@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { FilePreview } from './FilePreview'
 import type { VaultEntry } from '../types'
 
-const { trackEventMock } = vi.hoisted(() => ({
+const { externalMediaPreviewMock, trackEventMock } = vi.hoisted(() => ({
+  externalMediaPreviewMock: vi.fn(() => false),
   trackEventMock: vi.fn(),
 }))
 
@@ -13,6 +14,10 @@ vi.mock('@tauri-apps/api/core', () => ({
 
 vi.mock('../lib/telemetry', () => ({
   trackEvent: trackEventMock,
+}))
+
+vi.mock('../utils/mediaPreviewRuntime', () => ({
+  useExternalMediaPreview: externalMediaPreviewMock,
 }))
 
 const imageEntry: VaultEntry = {
@@ -69,6 +74,7 @@ const videoEntry: VaultEntry = {
 
 describe('FilePreview', () => {
   beforeEach(() => {
+    externalMediaPreviewMock.mockReturnValue(false)
     trackEventMock.mockClear()
   })
 
@@ -136,6 +142,19 @@ describe('FilePreview', () => {
     expect(screen.getByTestId('video-file-preview')).toHaveAttribute('src', 'asset:///vault/Attachments/demo.mp4')
     expect(screen.getByTestId('video-file-preview')).toHaveAttribute('title', 'demo.mp4')
     expect(trackEventMock).toHaveBeenCalledWith('file_preview_opened', { preview_kind: 'video' })
+  })
+
+  it('uses the external-open fallback for media when native playback is unsafe', () => {
+    const onOpenExternalFile = vi.fn()
+    externalMediaPreviewMock.mockReturnValue(true)
+
+    render(<FilePreview entry={videoEntry} onOpenExternalFile={onOpenExternalFile} />)
+
+    expect(screen.queryByTestId('video-file-preview')).not.toBeInTheDocument()
+    expect(screen.getByTestId('file-preview-fallback')).toHaveTextContent('Preview unavailable')
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open in default app' }))
+    expect(onOpenExternalFile).toHaveBeenCalledWith('/vault/Attachments/demo.mp4')
   })
 
   it('provides a graceful fallback when a PDF preview cannot render', () => {
