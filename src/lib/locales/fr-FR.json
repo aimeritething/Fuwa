@@ -125,6 +125,8 @@
   "settings.workspaces.labelTooltip": "Initiales abrégées affichées sur les notes, les résultats de recherche, le fil d'Ariane et les badges de coffre-fort.",
   "settings.workspaces.slugTooltip": "Préfixe stable utilisé dans les liens et les relations entre coffres-forts. Pour l'instant, il est en lecture seule afin d'éviter de casser les références existantes.",
   "settings.workspaces.color": "Couleur",
+  "settings.workspaces.moveUpAria": "Déplacer le coffre {label} vers le haut",
+  "settings.workspaces.moveDownAria": "Déplacer le coffre {label} vers le bas",
   "settings.workspaces.removeAria": "Supprimer le coffre {label}",
   "settings.appearance.title": "Apparence",
   "settings.appearance.description": "Choisissez le mode de couleur de l'application utilisé pour Tolaria Chrome, les surfaces de l'éditeur, les menus et les boîtes de dialogue.",

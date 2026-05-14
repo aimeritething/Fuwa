@@ -125,6 +125,8 @@
   "settings.workspaces.labelTooltip": "노트, 검색 결과, 브레드크럼, 및 보관함 배지에 표시되는 짧은 이니셜.",
   "settings.workspaces.slugTooltip": "Vault 간 링크 및 관계에 사용되는 안정적인 접두사. 기존 참조가 손상되는 것을 방지하기 위해 현재는 읽기 전용입니다.",
   "settings.workspaces.color": "색상",
+  "settings.workspaces.moveUpAria": "보관함 {label} 위로 이동",
+  "settings.workspaces.moveDownAria": "보관함 {label} 아래로 이동",
   "settings.workspaces.removeAria": "보관함 {label} 제거",
   "settings.appearance.title": "외관",
   "settings.appearance.description": "Tolaria chrome, 편집기 표면, 메뉴, 대화 상자에 사용되는 앱 색상 모드를 선택하세요.",

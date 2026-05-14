@@ -125,6 +125,8 @@
   "settings.workspaces.labelTooltip": "显示在笔记、搜索结果、面包屑导航和 Vault 标签上的简短首字母缩写。",
   "settings.workspaces.slugTooltip": "用于跨保管库链接和关系中的稳定前缀。为了避免破坏现有引用，该字段目前为只读。",
   "settings.workspaces.color": "颜色",
+  "settings.workspaces.moveUpAria": "将保管库 {label} 上移",
+  "settings.workspaces.moveDownAria": "将保管库 {label} 向下移动",
   "settings.workspaces.removeAria": "删除保管库 {label}",
   "settings.appearance.title": "外观",
   "settings.appearance.description": "选择 Tolaria 界面、编辑器、菜单和对话框使用的颜色模式。",

@@ -95,6 +95,7 @@ interface StatusBarProps {
   buildNumber?: string
   onCheckForUpdates?: () => void
   onRemoveVault?: (path: string) => void
+  onReorderVaults?: (orderedPaths: string[]) => void
   onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   aiFeaturesEnabled?: boolean
   mcpStatus?: McpStatus
@@ -148,6 +149,7 @@ function StatusBarPrimaryFromFooter({
   buildNumber,
   onCheckForUpdates,
   onRemoveVault,
+  onReorderVaults,
   onUpdateWorkspaceIdentity,
   aiFeaturesEnabled = true,
   mcpStatus,
@@ -198,6 +200,7 @@ function StatusBarPrimaryFromFooter({
       buildNumber={buildNumber}
       onCheckForUpdates={onCheckForUpdates}
       onRemoveVault={onRemoveVault}
+      onReorderVaults={onReorderVaults}
       onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
       mcpStatus={aiFeaturesEnabled ? mcpStatus : undefined}
       onInstallMcp={onInstallMcp}

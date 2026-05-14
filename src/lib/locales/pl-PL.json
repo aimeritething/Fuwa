@@ -125,6 +125,8 @@
   "settings.workspaces.labelTooltip": "Skrócone inicjały wyświetlane w notatkach, wynikach wyszukiwania, ścieżkach nawigacyjnych i znacznikach magazynów.",
   "settings.workspaces.slugTooltip": "Stały prefiks używany w linkach i relacjach między magazynami. Obecnie jest on dostępny tylko do odczytu, aby uniknąć uszkodzenia istniejących odwołań.",
   "settings.workspaces.color": "Kolor",
+  "settings.workspaces.moveUpAria": "Przenieś skarbiec {label} w górę",
+  "settings.workspaces.moveDownAria": "Przenieś skarbiec {label} w dół",
   "settings.workspaces.removeAria": "Usuń skarbiec {label}",
   "settings.appearance.title": "Wygląd",
   "settings.appearance.description": "Wybierz tryb kolorów używany w interfejsie Tolaria, edytorze, menu i oknach dialogowych.",

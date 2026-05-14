@@ -71,6 +71,7 @@ interface StatusBarPrimarySectionProps {
   buildNumber?: string
   onCheckForUpdates?: () => void
   onRemoveVault?: (path: string) => void
+  onReorderVaults?: (orderedPaths: string[]) => void
   onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   mcpStatus?: McpStatus
   onInstallMcp?: () => void
@@ -430,7 +431,9 @@ export function StatusBarPrimarySection({
   onOpenConflictResolver,
   buildNumber,
   onCheckForUpdates,
-  onRemoveVault, onUpdateWorkspaceIdentity,
+  onRemoveVault,
+  onReorderVaults,
+  onUpdateWorkspaceIdentity,
   mcpStatus,
   onInstallMcp,
   aiAgentsStatus,
@@ -447,13 +450,7 @@ export function StatusBarPrimarySection({
   stacked = false,
   compact = false,
 }: StatusBarPrimarySectionProps) {
-  const {
-    openAddRemote,
-    closeAddRemote,
-    showAddRemote,
-    visibleRemoteStatus,
-    handleRemoteConnected,
-  } = useStatusBarAddRemote({
+  const { openAddRemote, closeAddRemote, showAddRemote, visibleRemoteStatus, handleRemoteConnected } = useStatusBarAddRemote({
     vaultPath,
     isGitVault,
     remoteStatus,
@@ -474,8 +471,7 @@ export function StatusBarPrimarySection({
         onCreateEmptyVault={onCreateEmptyVault}
         onCloneVault={onCloneVault}
         onCloneGettingStarted={onCloneGettingStarted}
-        onRemoveVault={onRemoveVault}
-        onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
+        {...{ onRemoveVault, onReorderVaults, onUpdateWorkspaceIdentity }}
         compact={compact}
         locale={locale}
       />

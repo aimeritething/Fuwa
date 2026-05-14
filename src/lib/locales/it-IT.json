@@ -125,6 +125,8 @@
   "settings.workspaces.labelTooltip": "Le iniziali brevi visualizzate su note, risultati di ricerca, breadcrumb e badge dei vault.",
   "settings.workspaces.slugTooltip": "Prefisso stabile utilizzato nei link e nelle relazioni tra vault. Per il momento è di sola lettura per evitare di compromettere i riferimenti esistenti.",
   "settings.workspaces.color": "Colore",
+  "settings.workspaces.moveUpAria": "Sposta il vault {label} }",
+  "settings.workspaces.moveDownAria": "Sposta il vault {label} in basso",
   "settings.workspaces.removeAria": "Rimuovi vault {label}",
   "settings.appearance.title": "Aspetto",
   "settings.appearance.description": "Scegli la modalità colore dell'app da utilizzare per Tolaria Chrome, le interfacce dell'editor, i menu e le finestre di dialogo.",

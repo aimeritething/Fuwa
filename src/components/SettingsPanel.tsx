@@ -93,9 +93,7 @@ interface SettingsPanelProps {
   onCopyMcpConfig?: () => void
   vaults?: VaultOption[]
   defaultWorkspacePath?: string | null
-  onRemoveVault?: (path: string) => void
-  onSetDefaultWorkspace?: (path: string) => void
-  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
+  onRemoveVault?: (path: string) => void; onReorderVaults?: (orderedPaths: string[]) => void; onSetDefaultWorkspace?: (path: string) => void; onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   isGitVault?: boolean
   explicitOrganizationEnabled?: boolean
   onSaveExplicitOrganization?: (enabled: boolean) => void
@@ -174,9 +172,7 @@ interface SettingsBodyProps {
   setMultiWorkspaceEnabled: (value: boolean) => void
   vaults: VaultOption[]
   defaultWorkspacePath?: string | null
-  onRemoveVault?: (path: string) => void
-  onSetDefaultWorkspace?: (path: string) => void
-  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
+  onRemoveVault?: (path: string) => void; onReorderVaults?: (orderedPaths: string[]) => void; onSetDefaultWorkspace?: (path: string) => void; onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   explicitOrganization: boolean
   setExplicitOrganization: (value: boolean) => void
   crashReporting: boolean
@@ -299,9 +295,7 @@ export function SettingsPanel({
   onCopyMcpConfig,
   vaults = [],
   defaultWorkspacePath = null,
-  onRemoveVault,
-  onSetDefaultWorkspace,
-  onUpdateWorkspaceIdentity,
+  onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity,
   isGitVault = true,
   explicitOrganizationEnabled = true,
   onSaveExplicitOrganization,
@@ -320,9 +314,7 @@ export function SettingsPanel({
       onCopyMcpConfig={onCopyMcpConfig}
       vaults={vaults}
       defaultWorkspacePath={defaultWorkspacePath}
-      onRemoveVault={onRemoveVault}
-      onSetDefaultWorkspace={onSetDefaultWorkspace}
-      onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
+      {...{ onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity }}
       isGitVault={isGitVault}
       explicitOrganizationEnabled={explicitOrganizationEnabled}
       onSaveExplicitOrganization={onSaveExplicitOrganization}
@@ -349,9 +341,7 @@ function SettingsPanelInner({
   onCopyMcpConfig,
   vaults,
   defaultWorkspacePath,
-  onRemoveVault,
-  onSetDefaultWorkspace,
-  onUpdateWorkspaceIdentity,
+  onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity,
   isGitVault,
   explicitOrganizationEnabled,
   onSaveExplicitOrganization,
@@ -454,9 +444,7 @@ function SettingsPanelInner({
           onCopyMcpConfig={onCopyMcpConfig}
           vaults={vaults ?? []}
           defaultWorkspacePath={defaultWorkspacePath}
-          onRemoveVault={onRemoveVault}
-          onSetDefaultWorkspace={onSetDefaultWorkspace}
-          onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
+          {...{ onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity }}
           setThemeMode={handleThemeModeChange}
           setHideGitignoredFiles={handleGitignoredVisibilityChange}
           setAllNotesFileVisibility={handleAllNotesFileVisibilityChange}
@@ -498,9 +486,7 @@ interface SettingsBodyFromDraftProps {
   onCopyMcpConfig?: () => void
   vaults: VaultOption[]
   defaultWorkspacePath?: string | null
-  onRemoveVault?: (path: string) => void
-  onSetDefaultWorkspace?: (path: string) => void
-  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
+  onRemoveVault?: (path: string) => void; onReorderVaults?: (orderedPaths: string[]) => void; onSetDefaultWorkspace?: (path: string) => void; onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   setThemeMode: (value: ThemeMode) => void
   setHideGitignoredFiles: (value: boolean) => void
   setAllNotesFileVisibility: (value: AllNotesFileVisibility) => void
@@ -517,9 +503,7 @@ function SettingsBodyFromDraft({
   onCopyMcpConfig,
   vaults,
   defaultWorkspacePath,
-  onRemoveVault,
-  onSetDefaultWorkspace,
-  onUpdateWorkspaceIdentity,
+  onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity,
   setThemeMode,
   setHideGitignoredFiles,
   setAllNotesFileVisibility,
@@ -572,9 +556,7 @@ function SettingsBodyFromDraft({
       setMultiWorkspaceEnabled={(value) => updateDraft('multiWorkspaceEnabled', value)}
       vaults={vaults}
       defaultWorkspacePath={defaultWorkspacePath}
-      onRemoveVault={onRemoveVault}
-      onSetDefaultWorkspace={onSetDefaultWorkspace}
-      onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
+      {...{ onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity }}
       explicitOrganization={draft.explicitOrganization}
       setExplicitOrganization={(value) => updateDraft('explicitOrganization', value)}
       crashReporting={draft.crashReporting}
@@ -617,9 +599,7 @@ function SettingsSyncAndAppearanceSections({
   setMultiWorkspaceEnabled,
   vaults,
   defaultWorkspacePath,
-  onRemoveVault,
-  onSetDefaultWorkspace,
-  onUpdateWorkspaceIdentity,
+  onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity,
   themeMode,
   setThemeMode,
   uiLanguage,
@@ -646,9 +626,7 @@ function SettingsSyncAndAppearanceSections({
           enabled={multiWorkspaceEnabled}
           locale={locale}
           onEnabledChange={setMultiWorkspaceEnabled}
-          onRemoveVault={onRemoveVault}
-          onSetDefaultWorkspace={onSetDefaultWorkspace}
-          onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
+          {...{ onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity }}
           vaults={vaults}
         />
       </SettingsSection>

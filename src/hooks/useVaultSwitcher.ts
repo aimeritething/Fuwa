@@ -6,6 +6,8 @@ import { formatFolderPickerActionError, pickFolder } from '../utils/vault-dialog
 import { loadVaultList, saveVaultList } from '../utils/vaultListStore'
 import type { VaultOption } from '../components/StatusBar'
 import { trackEvent } from '../lib/telemetry'
+import { buildAllVaults } from '../utils/vaultCollections'
+import { useVaultReorderAction } from './useVaultReorderAction'
 import { useWorkspaceIdentityActions } from './useWorkspaceIdentityActions'
 import { sanitizeDefaultWorkspacePath } from './vaultSwitcherSanitization'
 
@@ -196,7 +198,7 @@ function isUnavailableGettingStartedVault(vault: VaultOption): boolean {
 }
 
 function shouldDropPersistedGettingStartedVault(vault: VaultOption, resolvedDefaultPath: string): boolean {
-  return isCanonicalGettingStartedPath(vault.path, resolvedDefaultPath) || isUnavailableGettingStartedVault(vault)
+  return isCanonicalGettingStartedPath(vault.path, resolvedDefaultPath) && isUnavailableGettingStartedVault(vault)
 }
 
 async function checkVaultAvailability(path: string): Promise<boolean> {
@@ -341,22 +343,6 @@ function buildVisibleDefaultVaults({
   return defaultVaults.filter(vault => !hiddenDefaults.includes(vault.path))
 }
 
-function buildAllVaults({
-  visibleDefaults,
-  extraVaults,
-}: {
-  visibleDefaults: VaultOption[]
-  extraVaults: VaultOption[]
-}): VaultOption[] {
-  const vaultsByPath = new Map<string, VaultOption>()
-  for (const vault of visibleDefaults) vaultsByPath.set(vault.path, vault)
-  for (const vault of extraVaults) {
-    const existingVault = vaultsByPath.get(vault.path)
-    vaultsByPath.set(vault.path, existingVault ? { ...existingVault, ...vault, path: vault.path } : vault)
-  }
-  return [...vaultsByPath.values()]
-}
-
 function applyResolvedDefaultPath({
   defaultAvailable,
   resolvedDefaultPath,
@@ -431,8 +417,8 @@ function useVaultCollections(
     [defaultVaults, hiddenDefaults],
   )
   const allVaults = useMemo(
-    () => buildAllVaults({ visibleDefaults, extraVaults }),
-    [extraVaults, visibleDefaults],
+    () => buildAllVaults({ visibleDefaults, extraVaults, hiddenDefaults }),
+    [extraVaults, hiddenDefaults, visibleDefaults],
   )
   const isGettingStartedHidden = useMemo(
     () => hiddenDefaults.includes(defaultPath),
@@ -809,6 +795,7 @@ function removeVaultFromState({
 }: RemoveVaultStateOptions) {
   if (isDefault) {
     setHiddenDefaults(previousHidden => previousHidden.includes(removedPath) ? previousHidden : [...previousHidden, removedPath])
+    setExtraVaults(previousVaults => previousVaults.filter(vault => vault.path !== removedPath))
   } else {
     setExtraVaults(previousVaults => previousVaults.filter(vault => vault.path !== removedPath))
   }
@@ -1108,6 +1095,7 @@ function useRestoreGettingStartedAction(options: RestoreGettingStartedOptions) {
 }
 
 function useVaultActions({
+  allVaults,
   defaultAvailable,
   defaultPath,
   defaultWorkspacePath,
@@ -1132,6 +1120,7 @@ function useVaultActions({
 
   const switchVault = useSwitchVaultAction(onSwitchRef, setSelectedVaultPath, setVaultPath)
   const workspaceIdentityActions = useWorkspaceIdentityActions({ setDefaultWorkspacePath, setExtraVaults })
+  const reorderVaults = useVaultReorderAction({ allVaults, setExtraVaults })
   const registerVaultSelection = useRegisterVaultSelectionAction({
     defaultAvailable,
     defaultPath,
@@ -1184,6 +1173,7 @@ function useVaultActions({
       selectedVaultPath,
       vaultPath,
     }),
+    reorderVaults,
     restoreGettingStarted: useRestoreGettingStartedAction({
       defaultPath,
       onToastRef,
@@ -1252,6 +1242,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
     handleVaultCloned,
     registerVaultSelection,
     removeVault,
+    reorderVaults,
     restoreGettingStarted,
     setDefaultWorkspace,
     syncVaultSelection,
@@ -1277,6 +1268,7 @@ export function useVaultSwitcher({ onSwitch, onToast }: UseVaultSwitcherOptions)
     loaded,
     registerVaultSelection,
     removeVault,
+    reorderVaults,
     restoreGettingStarted,
     setDefaultWorkspace,
     selectedVaultPath,

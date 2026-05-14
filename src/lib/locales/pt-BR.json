@@ -125,6 +125,8 @@
   "settings.workspaces.labelTooltip": "As iniciais abreviadas exibidas em notas, resultados de busca, breadcrumbs e badges de cofre.",
   "settings.workspaces.slugTooltip": "O prefixo estável usado em links e relacionamentos entre cofres. Por enquanto, ele é somente leitura para evitar que referências existentes sejam corrompidas.",
   "settings.workspaces.color": "Cor",
+  "settings.workspaces.moveUpAria": "Mover o cofre {label} para cima",
+  "settings.workspaces.moveDownAria": "Mover o cofre {label} para baixo",
   "settings.workspaces.removeAria": "Remover cofre {label}",
   "settings.appearance.title": "Aparência",
   "settings.appearance.description": "Escolha o modo de cores do aplicativo usado para o Tolaria Chrome, as superfícies do editor, os menus e as caixas de diálogo.",

@@ -235,6 +235,7 @@ describe('SettingsPanel', () => {
 
   it('keeps vault identity management hidden until multiple vaults are enabled', () => {
     const onUpdateWorkspaceIdentity = vi.fn()
+    const onReorderVaults = vi.fn()
     render(
       <SettingsPanel
         open={true}
@@ -242,6 +243,7 @@ describe('SettingsPanel', () => {
         vaults={workspaceVaults}
         defaultWorkspacePath="/personal"
         onSave={onSave}
+        onReorderVaults={onReorderVaults}
         onUpdateWorkspaceIdentity={onUpdateWorkspaceIdentity}
         onClose={onClose}
       />,
@@ -264,6 +266,9 @@ describe('SettingsPanel', () => {
     expect(screen.getAllByLabelText('The stable prefix used in cross-vault links and relationships. It is read-only for now to avoid breaking existing references.').length).toBeGreaterThan(0)
     expect(screen.getByRole('button', { name: 'Make Default' })).toHaveAttribute('data-variant', 'secondary')
     expect(within(screen.getByTestId('settings-workspace-row-personal')).getByRole('button', { name: 'Purple' }).getAttribute('style')).toContain('2px solid var(--foreground)')
+    expect(screen.getByRole('button', { name: 'Move vault Personal Notes up' })).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: 'Move vault Personal Notes down' }))
+    expect(onReorderVaults).toHaveBeenCalledWith(['/team', '/personal'])
 
     const nameInput = screen.getByLabelText('Vault name for Personal Notes')
     fireEvent.change(nameInput, {

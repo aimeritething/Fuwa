@@ -125,6 +125,8 @@
   "settings.workspaces.labelTooltip": "Die kurzen Initialen, die in Notizen, Suchergebnissen, Breadcrumbs und Vault-Badges angezeigt werden.",
   "settings.workspaces.slugTooltip": "Das stabile Präfix, das in vault-übergreifenden Links und Beziehungen verwendet wird. Derzeit schreibgeschützt, um zu vermeiden, dass bestehende Verweise beschädigt werden.",
   "settings.workspaces.color": "Farbe",
+  "settings.workspaces.moveUpAria": "Vault {label} nach oben verschieben",
+  "settings.workspaces.moveDownAria": "Vault {label} nach unten verschieben",
   "settings.workspaces.removeAria": "Vault {label} entfernen",
   "settings.appearance.title": "Darstellung",
   "settings.appearance.description": "Wählen Sie den App-Farbmodus aus, der für Tolaria Chrome, Editor-Oberflächen, Menüs und Dialoge verwendet werden soll.",

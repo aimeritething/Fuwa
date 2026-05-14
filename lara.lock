@@ -127,6 +127,8 @@ files:
     settings.workspaces.labelTooltip: b1b87a2affcd504e54bf97100e3d9c34
     settings.workspaces.slugTooltip: daa690f5855e35d1cfa9dbffe1870d40
     settings.workspaces.color: cb5feb1b7314637725a2e73bdc9f7295
+    settings.workspaces.moveUpAria: 2ade43872ef9432d14af83056304c6d7
+    settings.workspaces.moveDownAria: ed1ef4a310797ac84894a224bf4c77a6
     settings.workspaces.removeAria: a5d2ceeeb76bfcb99015fc780ced07c2
     settings.appearance.title: a1c58e94227389415de133efdf78ea6e
     settings.appearance.description: ca7b75a4c10ab8a540707e3a96cd3592

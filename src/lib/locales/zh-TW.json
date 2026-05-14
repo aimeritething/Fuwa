@@ -125,6 +125,8 @@
   "settings.workspaces.labelTooltip": "顯示在筆記、搜尋結果、頁面路徑和 Vault 徽章上的縮寫首字母。",
   "settings.workspaces.slugTooltip": "用於跨 Vault 連結和關係的穩定前置詞。為了避免破壞現有參考，目前為唯讀狀態。",
   "settings.workspaces.color": "顏色",
+  "settings.workspaces.moveUpAria": "將密室 {label} 向上移動",
+  "settings.workspaces.moveDownAria": "將 Vault {label} 向下移動",
   "settings.workspaces.removeAria": "移除 Vault {label}",
   "settings.appearance.title": "外觀",
   "settings.appearance.description": "選擇 Tolaria 介面、編輯器、選單和對話方塊使用的顏色模式。",

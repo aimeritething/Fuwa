@@ -125,6 +125,8 @@
   "settings.workspaces.labelTooltip": "ノート、検索結果、ブレッドクラム、およびボルトバッジに表示される短いイニシャル。",
   "settings.workspaces.slugTooltip": "クロスボルトリンクと関係性で使用される安定したプレフィックス。既存の参照が破損するのを防ぐため、現時点では読み取り専用です。",
   "settings.workspaces.color": "色",
+  "settings.workspaces.moveUpAria": "ボールト{label}を上に移動",
+  "settings.workspaces.moveDownAria": "ボールト{label}を下に移動",
   "settings.workspaces.removeAria": "ボールト {label} を削除",
   "settings.appearance.title": "外観",
   "settings.appearance.description": "Tolaria chrome、エディターのサーフェス、メニュー、およびダイアログに使用するアプリのカラーモードを選択します。",
