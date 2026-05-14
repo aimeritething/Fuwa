@@ -1,4 +1,4 @@
-import { ArrowUpRight, Bot, CheckCircle2, Loader2 } from 'lucide-react'
+import { ArrowUpRight, CheckCircle as CheckCircle2, CircleNotch as Loader2, Robot as Bot } from '@phosphor-icons/react'
 import type { ClaudeCodeStatus } from '../hooks/useClaudeCodeStatus'
 import { openExternalUrl } from '../utils/url'
 import { Button } from './ui/button'

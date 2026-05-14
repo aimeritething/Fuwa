@@ -150,7 +150,7 @@
   "settings.titles.description": "Chọn xem Tolaria có tự động đồng bộ tên tệp của ghi chú chưa đặt tên từ tiêu đề H1 đầu tiên hay không.",
   "settings.titles.autoRename": "Tự đổi tên ghi chú chưa đặt tên từ H1 đầu tiên",
   "settings.titles.autoRenameDescription": "Khi bật, Tolaria sẽ đổi tên tệp ghi chú chưa đặt tên ngay khi H1 đầu tiên trở thành tiêu đề thật. Tắt tùy chọn này nếu bạn muốn giữ nguyên tên tệp cho đến khi tự đổi thủ công từ thanh breadcrumb.",
-  "settings.vaultContent.title": "Nội dung kho",
+  "settings.vaultContent.title": "Nội dung",
   "settings.vaultContent.description": "Kiểm soát việc các tệp khớp với .gitignore của kho có xuất hiện trong Tolaria hay không.",
   "settings.dateDisplay.default": "Hiển thị ngày",
   "settings.dateDisplay.defaultDescription": "Chọn cách Tolaria hiển thị ngày tháng bên ngoài các trường ngày tháng có thể chỉnh sửa.",

@@ -1,7 +1,7 @@
+import { Check, CircleNotch as Loader2, FileText, Warning as AlertTriangle } from '@phosphor-icons/react'
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, FileText, Check, Loader2 } from 'lucide-react'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import type { ConflictFileState } from '../hooks/useConflictResolver'
 import { cn } from '@/lib/utils'
 

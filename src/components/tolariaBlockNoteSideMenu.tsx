@@ -1,3 +1,4 @@
+import { DotsSixVertical as GripVertical, Plus } from '@phosphor-icons/react'
 import { SideMenuExtension, SuggestionMenu } from '@blocknote/core/extensions'
 import type {
   BlockNoteEditor,
@@ -15,7 +16,6 @@ import {
   useExtensionState,
   type SideMenuProps,
 } from '@blocknote/react'
-import { GripVertical, Plus } from 'lucide-react'
 import {
   useCallback,
   useLayoutEffect,

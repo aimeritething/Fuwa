@@ -1,6 +1,6 @@
+import { CircleNotch as Loader2, FolderOpen, Plus, Rocket, Warning as AlertTriangle } from '@phosphor-icons/react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { FolderOpen, Plus, AlertTriangle, Loader2, Rocket } from 'lucide-react'
 import { OnboardingShell } from './OnboardingShell'
 import { Button } from '@/components/ui/button'
 import tolariaIcon from '@/assets/tolaria-icon.svg'

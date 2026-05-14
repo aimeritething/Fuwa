@@ -150,7 +150,7 @@
   "settings.titles.description": "Legen Sie fest, ob Tolaria Dateinamen von unbenannten Notizen automatisch anhand der ersten H1-Überschrift synchronisiert.",
   "settings.titles.autoRename": "Unbenannte Notizen automatisch anhand der ersten H1-Uberschrift umbenennen",
   "settings.titles.autoRenameDescription": "Wenn diese Option aktiviert ist, benennt Tolaria Dateien mit unbenannten Notizen um, sobald die erste H1-Überschrift zu einem echten Titel wird. Deaktivieren Sie diese Option, um den Dateinamen unverändert zu lassen, bis Sie ihn manuell über die Breadcrumb-Leiste umbenennen.",
-  "settings.vaultContent.title": "Vault-Inhalt",
+  "settings.vaultContent.title": "Inhalt",
   "settings.vaultContent.description": "Legen Sie fest, ob Dateien, die der .gitignore-Datei des Vaults entsprechen, in Tolaria angezeigt werden.",
   "settings.dateDisplay.default": "Datumsanzeige",
   "settings.dateDisplay.defaultDescription": "Wählen Sie aus, wie Tolaria Datumsangaben außerhalb von editierbaren Datumsfeldern anzeigt.",

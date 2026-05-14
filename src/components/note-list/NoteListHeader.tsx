@@ -1,5 +1,4 @@
-import { MagnifyingGlass, Plus, SidebarSimple } from '@phosphor-icons/react'
-import { Loader2 } from 'lucide-react'
+import { CircleNotch as Loader2, MagnifyingGlass, Plus, SidebarSimple } from '@phosphor-icons/react'
 import type { VaultEntry } from '../../types'
 import type { SortOption, SortDirection } from '../../utils/noteListHelpers'
 import { translate, type AppLocale } from '../../lib/i18n'

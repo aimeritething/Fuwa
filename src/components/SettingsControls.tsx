@@ -35,13 +35,16 @@ export function SettingsSection({
 }
 
 export function SectionHeading({
+  icon,
   title,
 }: {
+  icon?: ReactNode
   title: string
   description?: string
 }) {
   return (
-    <div>
+    <div className="flex items-center gap-2">
+      {icon ? <span className="flex size-5 items-center justify-center text-muted-foreground">{icon}</span> : null}
       <div
         style={{
           fontSize: 14,

@@ -2,10 +2,10 @@
 
 import * as React from "react"
 import {
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "lucide-react"
+  CaretDown as ChevronDownIcon,
+  CaretLeft as ChevronLeftIcon,
+  CaretRight as ChevronRightIcon,
+} from '@phosphor-icons/react'
 import {
   DayPicker,
   getDefaultClassNames,

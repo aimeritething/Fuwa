@@ -150,7 +150,7 @@
   "settings.titles.description": "Decida si Tolaria sincroniza automáticamente los nombres de los archivos de las notas sin título a partir del primer título H1.",
   "settings.titles.autoRename": "Cambiar automático del nombre de las notas sin título a partir del primer H1",
   "settings.titles.autoRenameDescription": "Cuando esta opción está activada, Tolaria cambia el nombre de los archivos de notas sin título en cuanto el primer H1 se convierte en un título real. Desactive esta opción para que el nombre del archivo no cambie hasta que lo renombre manualmente desde la barra de navegación.",
-  "settings.vaultContent.title": "Contenido del repositorio",
+  "settings.vaultContent.title": "Contenido",
   "settings.vaultContent.description": "Controla si los archivos que coinciden con el .gitignore del repositorio aparecen en Tolaria.",
   "settings.dateDisplay.default": "Formato de fecha",
   "settings.dateDisplay.defaultDescription": "Elija cómo muestra Tolaria las fechas fuera de los campos de fecha editables.",

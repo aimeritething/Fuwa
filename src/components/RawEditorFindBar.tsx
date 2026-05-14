@@ -1,5 +1,5 @@
+import { CaretDown as ChevronDown, CaretRight as ChevronRight, CaretUp as ChevronUp, X } from '@phosphor-icons/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronDown, ChevronRight, ChevronUp, X } from 'lucide-react'
 import { EditorView } from '@codemirror/view'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'

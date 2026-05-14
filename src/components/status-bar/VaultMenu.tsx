@@ -1,6 +1,6 @@
+import { Check, Cube, FolderOpen, GitBranch, Plus, Rocket, Warning as AlertTriangle, X } from '@phosphor-icons/react'
 import { useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, Check, FolderOpen, GitBranch, Plus, Rocket, X } from 'lucide-react'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
@@ -416,7 +416,7 @@ export function VaultMenu(props: VaultMenuProps) {
           aria-label={translate(locale, 'status.vault.switch')}
           data-testid="status-vault-trigger"
         >
-          <FolderOpen size={13} />
+          <Cube size={13} weight="regular" />
           {compact ? null : <span className="max-w-32 truncate">{activeVaultLabel}</span>}
         </Button>
       </ActionTooltip>

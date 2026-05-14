@@ -1,10 +1,10 @@
 import type { FrontmatterValue } from '../components/Inspector'
+import { CalendarBlank as CalendarIcon, Circle, Hash, Link, Palette, Tag, TextT as Type, ToggleLeft } from '@phosphor-icons/react'
 import { getAppStorageItem } from '../constants/appStorage'
 import { isValidCssColor, isColorKeyName } from './colorUtils'
 import { dateFromParts, parseDashDateParts, parseSlashDateParts, type DateParts } from './dateStringParts'
 import { DEFAULT_DATE_DISPLAY_FORMAT, formatDateValueForDisplay, type DateDisplayFormat } from './dateDisplay'
 import { updateVaultConfigField } from './vaultConfigStore'
-import { CalendarIcon, Type, ToggleLeft, Circle, Link, Tag, Palette, Hash } from 'lucide-react'
 import { canonicalSystemMetadataKey } from './systemMetadata'
 
 export type PropertyDisplayMode = 'text' | 'number' | 'date' | 'boolean' | 'status' | 'url' | 'tags' | 'color'

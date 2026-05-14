@@ -100,13 +100,13 @@ vi.mock('@mantine/core', () => ({
   ),
 }))
 
-vi.mock('lucide-react', () => ({
-  Bold: MockIcon,
-  ChevronDown: MockIcon,
-  Code2: MockIcon,
-  ExternalLink: MockIcon,
-  Italic: MockIcon,
-  Strikethrough: MockIcon,
+vi.mock('@phosphor-icons/react', () => ({
+  ArrowSquareOut: MockIcon,
+  CaretDown: MockIcon,
+  Code: MockIcon,
+  TextB: MockIcon,
+  TextItalic: MockIcon,
+  TextStrikethrough: MockIcon,
 }))
 
 vi.mock('./tolariaEditorFormattingConfig', () => ({

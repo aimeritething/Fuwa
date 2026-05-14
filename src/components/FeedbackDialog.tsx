@@ -1,6 +1,5 @@
+import { ArrowUpRight, Bug, Chats as MessagesSquare, Check, Copy, GitPullRequest, Lightbulb, Megaphone, Newspaper } from '@phosphor-icons/react'
 import { type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Megaphone } from '@phosphor-icons/react'
-import { ArrowUpRight, Bug, Check, Copy, GitPullRequest, Lightbulb, MessagesSquare, Newspaper } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Card,

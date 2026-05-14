@@ -1,5 +1,4 @@
-import { AlertTriangle, ChevronsUpDown } from 'lucide-react'
-import { Sparkle } from '@phosphor-icons/react'
+import { CaretUpDown as ChevronsUpDown, Sparkle, Warning as AlertTriangle } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import {
   AI_AGENT_DEFINITIONS,
@@ -327,7 +326,7 @@ export function AiAgentsBadge({
             data-testid="status-ai-agents"
           >
             <span style={{ ...ICON_STYLE, color: showWarning ? 'var(--accent-orange)' : 'var(--muted-foreground)' }}>
-              <Sparkle size={13} weight="fill" />
+              <Sparkle size={13} weight="regular" />
               {!compact && (selectedTarget.kind === 'api_model' ? selectedTarget.shortLabel : triggerLabel(defaultAgent))}
               <TriggerStateIcon showWarning={showWarning} showSwitcherCue={showSwitcherCue} />
             </span>

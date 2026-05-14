@@ -1,5 +1,5 @@
+import { ArrowsOut as Maximize2 } from '@phosphor-icons/react'
 import { useEffect, useId, useMemo, useState } from 'react'
-import { Maximize2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,

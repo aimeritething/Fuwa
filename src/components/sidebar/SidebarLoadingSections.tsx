@@ -1,6 +1,5 @@
 import type { MouseEvent, ReactNode } from 'react'
-import { Folder, Funnel, Plus } from '@phosphor-icons/react'
-import { SlidersHorizontal } from 'lucide-react'
+import { Folder, Funnel, Plus, SlidersHorizontal } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
 import { translate, type AppLocale } from '../../lib/i18n'
 import { SidebarGroupHeader } from './SidebarGroupHeader'
