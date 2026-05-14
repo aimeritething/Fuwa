@@ -143,12 +143,18 @@ function hasArrayMatch(values: string[], condVal: string): boolean {
   ))
 }
 
+function isSingleRelationshipMatch(values: string[], condVal: string): boolean {
+  return values.length === 1 && wikilinkEquals(values[0], condVal)
+}
+
 function evaluateArrayCondition(cond: FilterCondition, values: string[], condVal: string, regex: RegExp | null): boolean {
   const { op, value } = cond
   if (regex) return evaluateRegexArrayCondition(op, values, regex)
 
   if (op === 'contains') return hasArrayMatch(values, condVal)
   if (op === 'not_contains') return !hasArrayMatch(values, condVal)
+  if (op === 'equals') return isSingleRelationshipMatch(values, condVal)
+  if (op === 'not_equals') return !isSingleRelationshipMatch(values, condVal)
   if (op === 'any_of' && Array.isArray(value)) {
     return values.some((item) => (value as string[]).some((v) => wikilinkEquals(item, v)))
   }

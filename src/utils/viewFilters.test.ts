@@ -181,6 +181,53 @@ describe('evaluateView', () => {
     expect(result.map((e) => e.title)).toEqual(['A'])
   })
 
+  it('equals on relationship matches a single-item array by stem', () => {
+    const view: ViewDefinition = {
+      name: 'session-trail', icon: null, color: null, sort: null,
+      filters: {
+        any: [
+          { field: 'belongs_to', op: 'equals', value: 'svc-session-trail' },
+          { field: 'related_to', op: 'equals', value: 'svc-session-trail' },
+        ],
+      },
+    }
+    const entries = [
+      makeEntry({ title: 'Matches', relationships: { related_to: ['[[svc-session-trail]]'] } }),
+      makeEntry({ title: 'Bracketed value also matches', relationships: { related_to: ['[[svc-session-trail|Trail]]'] } }),
+      makeEntry({ title: 'Other relation', relationships: { related_to: ['[[unrelated]]'] } }),
+      makeEntry({ title: 'No rels', relationships: {} }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Matches', 'Bracketed value also matches'])
+  })
+
+  it('equals on relationship requires a single-item array (mirrors Rust semantics)', () => {
+    const view: ViewDefinition = {
+      name: 'single', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'related_to', op: 'equals', value: 'svc-session-trail' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Single', relationships: { related_to: ['[[svc-session-trail]]'] } }),
+      makeEntry({ title: 'Multiple', relationships: { related_to: ['[[svc-session-trail]]', '[[other]]'] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Single'])
+  })
+
+  it('not_equals on relationship is the inverse of equals', () => {
+    const view: ViewDefinition = {
+      name: 'not-equals', icon: null, color: null, sort: null,
+      filters: { all: [{ field: 'related_to', op: 'not_equals', value: 'svc-session-trail' }] },
+    }
+    const entries = [
+      makeEntry({ title: 'Single match', relationships: { related_to: ['[[svc-session-trail]]'] } }),
+      makeEntry({ title: 'Multiple', relationships: { related_to: ['[[svc-session-trail]]', '[[other]]'] } }),
+      makeEntry({ title: 'Other', relationships: { related_to: ['[[unrelated]]'] } }),
+    ]
+    const result = evaluateView(view, entries)
+    expect(result.map((e) => e.title)).toEqual(['Multiple', 'Other'])
+  })
+
   it('any_of / none_of on relationship always use exact stem match', () => {
     const view: ViewDefinition = {
       name: 'Exact list', icon: null, color: null, sort: null,
