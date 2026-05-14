@@ -51,7 +51,8 @@ function findExternallyMovedActiveEntry(options: {
     && updatedPaths.has(normalizeNotePathForIdentity(entry.path)),
   )
 
-  return candidates.length === 1 ? candidates[0] : null
+  const [candidate] = candidates
+  return candidates.length === 1 && candidate ? candidate : null
 }
 
 function isActivePathBlocked(options: {
@@ -117,7 +118,7 @@ export async function refreshPulledVaultState(options: PulledVaultRefreshOptions
   if (isActivePathBlocked({ activeTabPath, latestActiveTabPath, hasUnsavedChanges })) return entries
 
   const activePath = latestActiveTabPath as string
-  const refreshedEntry = findByNotePath(entries, activePath)
+  const refreshedEntry = findByNotePath(entries, activePath) ?? null
   const movedEntry = refreshedEntry ? null : findExternallyMovedActiveEntry({
     activeTabPath: activePath,
     entries,

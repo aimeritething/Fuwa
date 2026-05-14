@@ -429,7 +429,7 @@ interface PersistNewNoteRequest {
   vaultPath?: string
 }
 
-function createNoteContentArgs({ path, content, vaultPath }: PersistNewNoteRequest): PersistNewNoteRequest {
+function createNoteContentArgs({ path, content, vaultPath }: PersistNewNoteRequest): Record<string, unknown> {
   return vaultPath ? { path, content, vaultPath } : { path, content }
 }
 
