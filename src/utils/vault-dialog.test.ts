@@ -85,6 +85,25 @@ describe('pickFolder', () => {
     })
   })
 
+  it('ignores overlapping native folder picker requests while one is open', async () => {
+    vi.mocked(isTauri).mockReturnValue(true)
+    vi.mocked(isRestartRequiredAfterUpdate).mockReturnValue(false)
+
+    let resolveOpen: ((path: string) => void) | null = null
+    openMock.mockReturnValueOnce(new Promise((resolve) => {
+      resolveOpen = resolve
+    }))
+
+    const firstRequest = pickFolder('Open vault folder')
+    const secondRequest = pickFolder('Open vault folder')
+
+    await expect(secondRequest).resolves.toBeNull()
+    expect(openMock).toHaveBeenCalledTimes(1)
+
+    resolveOpen?.('/Users/test/restored-vault')
+    await expect(firstRequest).resolves.toBe('/Users/test/restored-vault')
+  })
+
   it('normalizes native file URLs to filesystem paths', async () => {
     vi.mocked(isTauri).mockReturnValue(true)
     vi.mocked(isRestartRequiredAfterUpdate).mockReturnValue(false)

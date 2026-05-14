@@ -75,24 +75,32 @@ function normalizePickedFolderPath(selected: string | string[] | null): string |
   }
 }
 
+let folderPickerRequestInFlight = false
+
 /**
  * Opens a native folder picker dialog (Tauri) or falls back to prompt (browser).
  * Returns the selected folder path, or null if the user cancelled.
  */
 export async function pickFolder(title?: string): Promise<string | null> {
-  if (isTauri()) {
-    if (isRestartRequiredAfterUpdate()) {
-      throw new NativeFolderPickerBlockedError()
-    }
+  if (folderPickerRequestInFlight) return null
 
-    const { open } = await import('@tauri-apps/plugin-dialog')
-    const selected = await open({
-      directory: true,
-      multiple: false,
-      title: title ?? 'Select folder',
-    })
-    return normalizePickedFolderPath(selected)
+  folderPickerRequestInFlight = true
+  try {
+    if (isTauri()) {
+      if (isRestartRequiredAfterUpdate()) {
+        throw new NativeFolderPickerBlockedError()
+      }
+
+      const { open } = await import('@tauri-apps/plugin-dialog')
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: title ?? 'Select folder',
+      })
+      return normalizePickedFolderPath(selected)
+    }
+    return normalizePickedFolderPath(prompt(title ?? 'Enter folder path:'))
+  } finally {
+    folderPickerRequestInFlight = false
   }
-  // Browser fallback: prompt for path
-  return normalizePickedFolderPath(prompt(title ?? 'Enter folder path:'))
 }
