@@ -394,6 +394,7 @@ jobs:
 
       - name: Build Tauri app (Linux bundles)
         env:
+          APPIMAGE_EXTRACT_AND_RUN: 1
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
           VITE_SENTRY_DSN: ${{ secrets.VITE_SENTRY_DSN }}
