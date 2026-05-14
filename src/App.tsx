@@ -86,7 +86,7 @@ import { initializeNoteProperties } from './utils/initializeNoteProperties'
 import { filterEntries, filterInboxEntries, type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { isWindows } from './utils/platform'
-import { refreshPulledVaultState } from './utils/pulledVaultRefresh'
+import { getPulledVaultUpdateOptions, refreshPulledVaultState } from './utils/pulledVaultRefresh'
 import { isNoteWindow, getNoteWindowParams } from './utils/windowMode'
 import { GitSetupDialog } from './components/GitRequiredModal'
 import { RenameDetectedBanner } from './components/RenameDetectedBanner'
@@ -652,7 +652,7 @@ function App() {
       vault.unsavedPaths,
     ])
   const handlePulledVaultUpdate = useCallback(
-    (updatedFiles: string[]) => handleVaultUpdate(updatedFiles),
+    (updatedFiles: string[]) => handleVaultUpdate(updatedFiles, getPulledVaultUpdateOptions()),
     [handleVaultUpdate],
   )
   const handleFocusedVaultUpdate = useCallback(

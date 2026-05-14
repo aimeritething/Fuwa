@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { VaultEntry } from '../types'
-import { refreshPulledVaultState } from './pulledVaultRefresh'
+import { getPulledVaultUpdateOptions, refreshPulledVaultState } from './pulledVaultRefresh'
 
 function makeEntry(path: string, title = 'Test note'): VaultEntry {
   return {
@@ -30,6 +30,10 @@ function makeOptions(overrides: Partial<Parameters<typeof refreshPulledVaultStat
 }
 
 describe('refreshPulledVaultState', () => {
+  it('marks pull-originated vault updates as focused-editor preserving', () => {
+    expect(getPulledVaultUpdateOptions()).toEqual({ preserveFocusedEditor: true })
+  })
+
   it('reloads vault-derived data and refreshes the active note when pull updated it', async () => {
     const options = makeOptions()
 

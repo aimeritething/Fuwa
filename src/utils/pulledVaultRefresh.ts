@@ -15,6 +15,13 @@ interface PulledVaultRefreshOptions {
   vaultPath: string
 }
 
+interface ActiveTabRefreshGuardOptions {
+  activeTabPath: string
+  latestActiveTabPath: string
+  hasUnsavedChanges: (path: string) => boolean
+  shouldKeepActiveEditorMounted?: () => boolean
+}
+
 function resolveUpdatedFilePath(path: string, vaultPath: string): string {
   if (path.startsWith('/')) return normalizeNotePathForIdentity(path)
   return normalizeNotePathForIdentity(joinVaultPath(vaultPath, path))
@@ -26,6 +33,21 @@ function didPullUpdateActiveNote(updatedFiles: string[], vaultPath: string, acti
 
 function didActivePathChange(initialPath: string, latestPath: string): boolean {
   return !notePathsMatch(initialPath, latestPath)
+}
+
+function shouldKeepCurrentActiveTabMounted({
+  activeTabPath,
+  latestActiveTabPath,
+  hasUnsavedChanges,
+  shouldKeepActiveEditorMounted,
+}: ActiveTabRefreshGuardOptions): boolean {
+  if (didActivePathChange(activeTabPath, latestActiveTabPath)) return true
+  if (hasUnsavedChanges(latestActiveTabPath)) return true
+  return shouldKeepActiveEditorMounted?.() === true
+}
+
+export function getPulledVaultUpdateOptions(): { preserveFocusedEditor: true } {
+  return { preserveFocusedEditor: true }
 }
 
 export async function refreshPulledVaultState(options: PulledVaultRefreshOptions): Promise<VaultEntry[]> {
@@ -51,9 +73,12 @@ export async function refreshPulledVaultState(options: PulledVaultRefreshOptions
 
   const latestActiveTabPath = getActiveTabPath?.() ?? activeTabPath
   if (!activeTabPath || !latestActiveTabPath) return entries
-  if (didActivePathChange(activeTabPath, latestActiveTabPath)) return entries
-  if (hasUnsavedChanges(latestActiveTabPath)) return entries
-  if (shouldKeepActiveEditorMounted?.()) return entries
+  if (shouldKeepCurrentActiveTabMounted({
+    activeTabPath,
+    latestActiveTabPath,
+    hasUnsavedChanges,
+    shouldKeepActiveEditorMounted,
+  })) return entries
 
   const refreshedEntry = findByNotePath(entries, latestActiveTabPath)
   if (!refreshedEntry) {
