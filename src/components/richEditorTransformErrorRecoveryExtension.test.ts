@@ -45,6 +45,9 @@ describe('isRecoverableEditorTransformError', () => {
   it('recognizes ProseMirror transform and mismatched transaction failures', () => {
     expect(isRecoverableEditorTransformError(transformError())).toBe(true)
     expect(isRecoverableEditorTransformError(new RangeError('Applying a mismatched transaction'))).toBe(true)
+    expect(isRecoverableEditorTransformError(new RangeError(
+      'Invalid content for node blockContainer: <paragraph("Procedures are long-running"), blockGroup(blockContainer(bulletListItem("Step")))>',
+    ))).toBe(true)
     expect(isRecoverableEditorTransformError(new Error('unrelated'))).toBe(false)
   })
 })
@@ -71,6 +74,20 @@ describe('installRichEditorTransformErrorRecovery', () => {
     expect(() => view.dispatch({ before: currentDoc })).not.toThrow()
     expect(trackEvent).toHaveBeenCalledWith('rich_editor_transform_error_recovered', {
       reason: 'mismatched_transaction',
+    })
+  })
+
+  it('recovers invalid-content schema transactions from mixed paragraph and list editing', () => {
+    const schemaError = new RangeError(
+      'Invalid content for node blockContainer: <paragraph("Procedures are long-running"), blockGroup(blockContainer(bulletListItem("Step")))>',
+    )
+    const { currentDoc, view } = createView(schemaError)
+
+    installRichEditorTransformErrorRecovery(view)
+
+    expect(() => view.dispatch({ before: currentDoc })).not.toThrow()
+    expect(trackEvent).toHaveBeenCalledWith('rich_editor_transform_error_recovered', {
+      reason: 'transform_error',
     })
   })
 

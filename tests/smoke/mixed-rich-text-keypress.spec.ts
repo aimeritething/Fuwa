@@ -36,6 +36,21 @@ Intro paragraph before the list.
 Plain paragraph after the numbered list.
 `
 
+const PROCEDURE_NOTE_CONTENT = `---
+title: Procedure
+type: Procedure
+status: Active
+---
+
+# Procedure
+
+Procedures are long-running processes tied to a [[responsibility|Responsibility]].
+- Status: Active
+- Owner: The person responsible
+
+Plain follow-up paragraph after the procedure checklist.
+`
+
 let tempVaultDir: string
 
 test.beforeEach(async ({ page }, testInfo) => {
@@ -201,5 +216,48 @@ test('numbered list content stays editable after autosave and re-entry', async (
   expect(raw).toContain(listMarker)
   expect(raw).toContain(paragraphMarker)
   expect(raw).toContain(reentryMarker)
+  expectNoBlockContainerCrash(crashSignals)
+})
+
+test('Procedure prose and adjacent bullet-list content stay editable through keydown edits', async ({ page }) => {
+  const crashSignals = collectEditorCrashSignals(page)
+  const markerId = Date.now()
+  const paragraphMarker = `procedure-paragraph-${markerId}`
+  const ownerMarker = `procedure-owner-${markerId}`
+  const cadenceMarker = `procedure-cadence-${markerId}`
+
+  await openNote(page, 'Note B')
+  await toggleRawMode(page, '.cm-content')
+  await setRawEditorContent(page, PROCEDURE_NOTE_CONTENT)
+  await page.waitForTimeout(700)
+  await toggleRawMode(page, '.bn-editor')
+
+  const procedureParagraph = page.locator('.bn-block-content', {
+    hasText: 'Procedures are long-running processes',
+  }).first()
+  await expect(procedureParagraph).toBeVisible({ timeout: 5_000 })
+  await procedureParagraph.click()
+  await page.keyboard.press('End')
+  await page.keyboard.insertText(` ${paragraphMarker}`)
+  await page.waitForTimeout(700)
+
+  const ownerItem = page.locator('.bn-block-content[data-content-type="bulletListItem"]', {
+    hasText: 'Owner: The person responsible',
+  }).first()
+  await expect(ownerItem).toBeVisible({ timeout: 5_000 })
+  await ownerItem.click()
+  await page.keyboard.press('End')
+  await page.keyboard.insertText(` ${ownerMarker}`)
+  await page.keyboard.press('Enter')
+  await page.keyboard.insertText(`Cadence: Weekly ${cadenceMarker}`)
+  await page.waitForTimeout(900)
+
+  expectNoBlockContainerCrash(crashSignals)
+
+  await toggleRawMode(page, '.cm-content')
+  const raw = await getRawEditorContent(page)
+  expect(raw).toContain(paragraphMarker)
+  expect(raw).toContain(`- Owner: The person responsible ${ownerMarker}`)
+  expect(raw).toContain(`- Cadence: Weekly ${cadenceMarker}`)
   expectNoBlockContainerCrash(crashSignals)
 })

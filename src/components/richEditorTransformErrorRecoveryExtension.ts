@@ -47,10 +47,15 @@ function isMismatchedTransactionError(error: unknown): boolean {
   return error instanceof Error && error.message.includes('Applying a mismatched transaction')
 }
 
+function isInvalidContentTransactionError(error: unknown): boolean {
+  return error instanceof RangeError && error.message.startsWith('Invalid content for node ')
+}
+
 export function isRecoverableEditorTransformError(error: unknown): boolean {
   return error instanceof Error && (
     error.name === 'TransformError'
     || isMismatchedTransactionError(error)
+    || isInvalidContentTransactionError(error)
   )
 }
 
