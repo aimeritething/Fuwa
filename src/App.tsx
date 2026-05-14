@@ -368,7 +368,7 @@ function App() {
   })
 
   const vault = useVaultLoader(
-    resolvedPath,
+    noteWindowParams ? '' : resolvedPath,
     graphVaults,
     multiWorkspaceEnabled ? defaultWorkspacePath : null,
     folderVaults,
@@ -1687,7 +1687,7 @@ function App() {
               tabs={notes.tabs}
               activeTabPath={notes.activeTabPath}
               isVaultLoading={isVaultContentLoading}
-              entries={visibleEntries}
+              entries={noteWindowParams && activeTab ? [activeTab.entry] : visibleEntries}
               onNavigateWikilink={notes.handleNavigateWikilink}
               onLoadDiff={loadDiffForPath}
               onLoadDiffAtCommit={loadDiffAtCommitForPath}

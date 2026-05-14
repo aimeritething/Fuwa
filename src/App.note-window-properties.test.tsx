@@ -132,7 +132,13 @@ const relatedEntry = makeEntry({
   title: 'Software Development',
   isA: 'Topic',
 })
-const entries = [activeEntry, relatedEntry]
+const secondEntry = makeEntry({
+  path: '/vault/project/second.md',
+  filename: 'second.md',
+  title: 'Second Project',
+  isA: 'Project',
+})
+const entries = [activeEntry, relatedEntry, secondEntry]
 const noteContent = '---\ntitle: Test Project\ntype: Project\n---\n\n# Test Project\n'
 const defaultVaultPath = DEFAULT_VAULTS[0].path || '/Users/mock/Documents/Getting Started'
 
@@ -215,7 +221,7 @@ describe('App note windows', () => {
     )
   })
 
-  it('passes the loaded vault index to the editor in note windows', async () => {
+  it('keeps note windows scoped to the active entry without loading the vault index', async () => {
     renderApp(<App />)
 
     await waitFor(() => {
@@ -224,18 +230,44 @@ describe('App note windows', () => {
         vaultPath: '/vault',
       })
     })
-    await waitFor(() => {
-      expect(commandResults.list_vault).toHaveBeenCalledWith({ path: '/vault' })
-    })
+    expect(commandResults.list_vault).not.toHaveBeenCalled()
 
     await waitFor(() => {
       expect(screen.getByTestId('mock-editor-entry-titles')).toHaveTextContent(
-        'Test Project|Software Development',
+        'Test Project',
       )
     })
     expect(editorSnapshots.at(-1)).toEqual({
       activeTabPath: activeEntry.path,
-      entryTitles: ['Test Project', 'Software Development'],
+      entryTitles: ['Test Project'],
     })
+  })
+
+  it('opens repeated note windows without repeated full-vault scans', async () => {
+    const firstWindow = renderApp(<App />)
+
+    await waitFor(() => {
+      expect(commandResults.reload_vault_entry).toHaveBeenCalledWith({
+        path: activeEntry.path,
+        vaultPath: '/vault',
+      })
+    })
+    firstWindow.unmount()
+
+    window.history.replaceState(
+      {},
+      '',
+      '/?window=note&path=%2Fvault%2Fproject%2Fsecond.md&vault=%2Fvault&title=Second+Project',
+    )
+    renderApp(<App />)
+
+    await waitFor(() => {
+      expect(commandResults.reload_vault_entry).toHaveBeenCalledWith({
+        path: secondEntry.path,
+        vaultPath: '/vault',
+      })
+    })
+    expect(commandResults.reload_vault_entry).toHaveBeenCalledTimes(2)
+    expect(commandResults.list_vault).not.toHaveBeenCalled()
   })
 })
