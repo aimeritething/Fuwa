@@ -383,9 +383,6 @@ jobs:
         run: |
           rm -rf src-tauri/target/x86_64-unknown-linux-gnu/release/bundle
 
-      - name: Prepare AppImage symlink launcher patch
-        run: node scripts/appimage-launcher-tools.mjs prepare-plugin
-
       - name: Set version
         run: |
           VERSION="${{ needs.version.outputs.version }}"
@@ -433,7 +430,6 @@ jobs:
             echo "::error::Linux build produced no updater signature (.sig) artifact."
             exit 1
           fi
-          node scripts/appimage-launcher-tools.mjs validate-appimages "${appimages[@]}"
 
       - name: Upload Linux bundles
         uses: actions/upload-artifact@v4

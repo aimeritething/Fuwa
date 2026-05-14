@@ -47,17 +47,13 @@ If your distribution stores the 64-bit library elsewhere, use that path instead,
 
 ### Linux AppImage packaging checks
 
-Linux release CI prepares Tauri's AppImage tools cache before `pnpm tauri build`:
+Linux release CI currently uses Tauri's stock linuxdeploy AppImage output plugin:
 
 ```bash
-node scripts/appimage-launcher-tools.mjs prepare-plugin
+pnpm tauri build --target x86_64-unknown-linux-gnu --bundles deb,rpm,appimage
 ```
 
-That step patches linuxdeploy's generated GTK `AppRun` wrapper before the AppImage is sealed so direct launches, absolute symlinks, and relative symlinks resolve the real AppRun path before choosing its directory. Linux release jobs also install `fcitx5-frontend-gtk3`; the same AppImage output-plugin wrapper copies the GTK3 fcitx immodule and client library into the AppDir so Chinese/Japanese/Korean input does not depend on host GTK module cache paths. After build, CI extracts every produced AppImage launcher and verifies the symlink-safe resolver plus the bundled fcitx files:
-
-```bash
-node scripts/appimage-launcher-tools.mjs validate-appimages src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/appimage/*.AppImage
-```
+Release validation verifies that the Linux job produced an AppImage, at least one installer bundle, and updater signature artifacts. The experimental AppImage output-plugin shim in `scripts/appimage-launcher-tools.mjs` is retained for local investigation, but it is not wired into release packaging because linuxdeploy currently exits before sealing the AppImage when the shim is pre-seeded in Tauri's tools cache.
 
 ## Quick Start
 
