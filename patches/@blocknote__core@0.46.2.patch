@@ -241,7 +241,7 @@ index 3ac6fe16aa9ae605a59916f8343b8440befda89e..ee009c533fa3826819df0b83a12755b6
        e.state.draggingState = void 0, e.emitUpdate(), n.transact((o) => o.setMeta(D, null)), !n.headless && Ut(n.prosemirrorView.root);
      },
      /**
-@@ -1918,30 +1961,37 @@ const D = new P("TableHandlesPlugin"), Po = k(({ editor: n }) => {
+@@ -1918,30 +1961,38 @@ const D = new P("TableHandlesPlugin"), Po = k(({ editor: n }) => {
      setCellSelection(o, r, s = r) {
        if (!e)
          throw new Error("Table handles view not initialized");
@@ -292,8 +292,9 @@ index 3ac6fe16aa9ae605a59916f8343b8440befda89e..ee009c533fa3826819df0b83a12755b6
 +          return e == null || e.hideHandles({ resetCell: !0 }), !1;
          return r.orientation === "row" ? r.side === "above" ? pt(a, i) : ft(a, i) : r.side === "left" ? gt(a, i) : wt(a, i);
        });
++      e == null || e.hideHandles({ resetCell: !0, resetDragging: !0 });
      },
-@@ -1949,17 +1999,23 @@ const D = new P("TableHandlesPlugin"), Po = k(({ editor: n }) => {
+@@ -1949,17 +2000,23 @@ const D = new P("TableHandlesPlugin"), Po = k(({ editor: n }) => {
       * Removes a row or column from the table using prosemirror-table commands
       */
      removeRowOrColumn(o, r) {
@@ -722,7 +723,7 @@ index 029103600a98bf8ccd3054a5c43ffa2fd9115c06..d1678ed4761baca0b3495dafc8d75152
  
    destroy() {
 diff --git a/src/extensions/TableHandles/TableHandles.ts b/src/extensions/TableHandles/TableHandles.ts
-index 30637742d517bcf136ca562a09a1544d7b03a20d..25b298e6a2685f3667ee53b95175912a4c805e27 100644
+index 3063774..9813bed 100644
 --- a/src/extensions/TableHandles/TableHandles.ts
 +++ b/src/extensions/TableHandles/TableHandles.ts
 @@ -99,6 +99,46 @@ function getChildIndex(node: Element) {
@@ -1035,7 +1036,15 @@ index 30637742d517bcf136ca562a09a1544d7b03a20d..25b298e6a2685f3667ee53b95175912a
          if (direction.orientation === "row") {
            if (direction.side === "above") {
              return addRowBefore(state, dispatch);
-@@ -1006,12 +1081,19 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
+@@ -997,6 +1072,7 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
+           }
+         }
+       });
++      view?.hideHandles({ resetCell: true, resetDragging: true });
+     },
+ 
+     /**
+@@ -1006,12 +1082,19 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
        index: RelativeCellIndices["row"] | RelativeCellIndices["col"],
        direction: "row" | "column",
      ) {
@@ -1055,7 +1064,7 @@ index 30637742d517bcf136ca562a09a1544d7b03a20d..25b298e6a2685f3667ee53b95175912a
            return deleteRow(state, dispatch);
          });
        } else {
-@@ -1020,6 +1102,9 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
+@@ -1020,6 +1103,9 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
              row: 0,
              col: index,
            });
@@ -1065,7 +1074,7 @@ index 30637742d517bcf136ca562a09a1544d7b03a20d..25b298e6a2685f3667ee53b95175912a
            return deleteColumn(state, dispatch);
          });
        }
-@@ -1041,6 +1126,10 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
+@@ -1041,6 +1127,10 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
              )
            : beforeState;
  
@@ -1076,7 +1085,7 @@ index 30637742d517bcf136ca562a09a1544d7b03a20d..25b298e6a2685f3667ee53b95175912a
          return mergeCells(state, dispatch);
        });
      },
-@@ -1055,6 +1144,10 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
+@@ -1055,6 +1145,10 @@ export const TableHandlesExtension = createExtension(({ editor }) => {
            ? this.setCellSelection(beforeState, relativeCellToSplit)
            : beforeState;
  

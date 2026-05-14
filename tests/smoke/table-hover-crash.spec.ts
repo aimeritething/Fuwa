@@ -164,7 +164,9 @@ async function openTableHandleMenu(
   orientation: 'row' | 'column',
   source: { rowIndex: number; cellIndex: number },
 ): Promise<void> {
-  await tableCell(page, source.rowIndex, source.cellIndex).hover()
+  await tableCell(page, source.rowIndex, source.cellIndex).hover({
+    position: { x: 6, y: 6 },
+  })
   const handle = await visibleTableHandle(page, orientation)
   await handle.click({ force: true })
 }
@@ -217,7 +219,7 @@ test.describe('table hover crash regression', () => {
     expect(errors).toEqual([])
   })
 
-  test('hovered table handles survive a frontmatter reload before later table interaction', async ({ page }) => {
+  test('table handle menus survive a frontmatter reload before later editing', async ({ page }) => {
     const errors = trackUnexpectedErrors(page)
 
     writeTableReloadNote(tempVaultDir)
@@ -251,6 +253,12 @@ test.describe('table hover crash regression', () => {
     await moveAcrossElement(page, 'div.tableWrapper')
     await page.locator('table th').first().hover()
     await page.locator('table td').last().hover()
+
+    await addTableRowBelow(page)
+    await expect(page.locator('table tr')).toHaveCount(4)
+
+    await addTableColumnRight(page)
+    await expect(page.locator('table tr').first().locator('th,td')).toHaveCount(4)
 
     const trailingParagraph = page.locator('.bn-editor [data-content-type="paragraph"]').last()
     await trailingParagraph.click()

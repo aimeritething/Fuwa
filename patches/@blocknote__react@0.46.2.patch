@@ -1,5 +1,5 @@
 diff --git a/dist/blocknote-react.js b/dist/blocknote-react.js
-index d4d36cd4dbb5370c3b7431ffeb577e4870b39825..5a6c325bf0ff9a23f2023169d7fcf6319df91544 100644
+index d4d36cd..79dd4f0 100644
 --- a/dist/blocknote-react.js
 +++ b/dist/blocknote-react.js
 @@ -154,8 +154,26 @@ const co = (e) => {
@@ -31,7 +31,15 @@ index d4d36cd4dbb5370c3b7431ffeb577e4870b39825..5a6c325bf0ff9a23f2023169d7fcf631
  }
  const z = (e) => {
    var h, b, p;
-@@ -216,9 +234,7 @@ const z = (e) => {
+@@ -193,6 +211,7 @@ const z = (e) => {
+     ...e.elementProps,
+     style: {
+       display: "flex",
++      pointerEvents: c === "close" ? "none" : void 0,
+       ...(h = e.elementProps) == null ? void 0 : h.style,
+       zIndex: `calc(var(--bn-ui-base-z-index) + ${((p = (b = e.elementProps) == null ? void 0 : b.style) == null ? void 0 : p.zIndex) || 0})`,
+       ...n,
+@@ -216,9 +235,7 @@ const z = (e) => {
        const s = Ue(t, c.doc);
        if (!s)
          return;
@@ -42,7 +50,7 @@ index d4d36cd4dbb5370c3b7431ffeb577e4870b39825..5a6c325bf0ff9a23f2023169d7fcf631
        if (a instanceof Element)
          return {
            element: a
-@@ -2499,7 +2515,14 @@ function Kr(e) {
+@@ -2499,7 +2516,14 @@ function Kr(e) {
      columns: d
    } = e, m = H(
      (C) => {
@@ -58,7 +66,7 @@ index d4d36cd4dbb5370c3b7431ffeb577e4870b39825..5a6c325bf0ff9a23f2023169d7fcf631
      },
      [u, a, s]
    ), { items: g, usedQuery: f, loadingState: h } = Yt(
-@@ -2734,7 +2757,14 @@ function ti(e) {
+@@ -2734,7 +2758,14 @@ function ti(e) {
      onItemClick: u
    } = e, d = H(
      (p) => {
@@ -74,7 +82,7 @@ index d4d36cd4dbb5370c3b7431ffeb577e4870b39825..5a6c325bf0ff9a23f2023169d7fcf631
      },
      [u, a, s]
    ), { items: m, usedQuery: g, loadingState: f } = Yt(
-@@ -3306,14 +3336,15 @@ const ii = (e, t = 0.3) => {
+@@ -3306,14 +3337,15 @@ const ii = (e, t = 0.3) => {
      );
      if (!m)
        return {};
@@ -93,7 +101,7 @@ index d4d36cd4dbb5370c3b7431ffeb577e4870b39825..5a6c325bf0ff9a23f2023169d7fcf631
      return p instanceof Element ? (d.cellReference = { element: p }, d.rowReference = {
        element: f,
        getBoundingClientRect: () => {
-@@ -4371,7 +4402,7 @@ const zi = (e) => {
+@@ -4371,7 +4403,7 @@ const zi = (e) => {
      const a = Ue(t, c.prosemirrorState.doc);
      if (!a)
        return;
