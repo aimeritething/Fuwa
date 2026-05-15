@@ -245,7 +245,7 @@ describe('StatusBar', () => {
     expect(screen.getByText('Work Vault')).toBeInTheDocument()
   })
 
-  it('shows the active workspace as checked because it is always included', () => {
+  it('shows the active workspace real mount state so stale unmounted defaults can be repaired', () => {
     render(
       <StatusBar
         noteCount={100}
@@ -263,8 +263,8 @@ describe('StatusBar', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Switch vault' }))
 
     const activeCheckbox = screen.getByRole('checkbox', { name: 'Include Main Vault in the unified graph' })
-    expect(activeCheckbox).toBeChecked()
-    expect(activeCheckbox).toBeDisabled()
+    expect(activeCheckbox).not.toBeChecked()
+    expect(activeCheckbox).not.toBeDisabled()
   })
 
   it('uses the expanded multi-workspace vault picker layout', () => {

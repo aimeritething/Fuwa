@@ -44,7 +44,8 @@ export function useWorkspaceIdentityActions({
 
   const setDefaultWorkspace = useCallback((path: string) => {
     setDefaultWorkspacePath(path)
-  }, [setDefaultWorkspacePath])
+    setExtraVaults(updateVaultOptionInList(path, { mounted: true }))
+  }, [setDefaultWorkspacePath, setExtraVaults])
 
   return { setDefaultWorkspace, updateWorkspaceIdentity }
 }

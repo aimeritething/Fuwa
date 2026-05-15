@@ -60,4 +60,30 @@ describe('loadMountedVaultViews', () => {
       { filename: 'focus.yml', name: 'Team Focus', rootPath: '/team', workspacePath: '/team' },
     ])
   })
+
+  it('loads saved views from the default workspace even when stale state marks it unmounted', async () => {
+    mockInvoke.mockImplementation((command: string, args?: Record<string, unknown>) => {
+      if (command !== 'list_views') return Promise.resolve([])
+
+      if (args?.vaultPath === '/default') {
+        return Promise.resolve([{ filename: 'default.yml', definition: viewDefinition('Default View') }])
+      }
+      if (args?.vaultPath === '/mounted') {
+        return Promise.resolve([{ filename: 'mounted.yml', definition: viewDefinition('Mounted View') }])
+      }
+      throw new Error(`Unexpected vaultPath ${String(args?.vaultPath)}`)
+    })
+
+    const views = await loadMountedVaultViews({
+      defaultWorkspacePath: '/default',
+      vaultPath: '/default',
+      vaults: [
+        { label: 'Default', path: '/default', alias: 'default', mounted: false, available: true },
+        { label: 'Mounted', path: '/mounted', alias: 'mounted', mounted: true, available: true },
+        { label: 'Hidden', path: '/hidden', alias: 'hidden', mounted: false, available: true },
+      ],
+    })
+
+    expect(views.map((view) => view.definition.name)).toEqual(['Default View', 'Mounted View'])
+  })
 })

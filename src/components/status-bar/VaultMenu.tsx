@@ -95,6 +95,7 @@ interface MountToggleRequest {
   canSetDefaultWorkspace: boolean
   defaultPath: string
   includedVaultCount: number
+  isMounted: boolean
   path: string
 }
 
@@ -304,9 +305,12 @@ function shouldDisableMountToggle({
   canSetDefaultWorkspace,
   defaultPath,
   includedVaultCount,
+  isMounted,
   path,
 }: MountToggleRequest): boolean {
-  return path === defaultPath && (includedVaultCount <= 1 || !canSetDefaultWorkspace)
+  return path === defaultPath
+    && isMounted
+    && (includedVaultCount <= 1 || !canSetDefaultWorkspace)
 }
 
 function selectVaultPath({
@@ -351,9 +355,10 @@ function useVaultMenuInteractions({
       canSetDefaultWorkspace: !!onSetDefaultWorkspace,
       defaultPath,
       includedVaultCount: includedVaults.length,
+      isMounted: includedVaults.find((vault) => vault.path === path)?.mounted !== false,
       path,
     })
-  ), [defaultPath, includedVaults.length, onSetDefaultWorkspace])
+  ), [defaultPath, includedVaults, onSetDefaultWorkspace])
 
   const handleSelectVault = useCallback((path: string) => {
     selectVaultPath({
@@ -435,7 +440,7 @@ function VaultMenuItem({
     >
       {multiWorkspaceEnabled && (
         <WorkspaceMountCheckbox
-          checked={isActive || vault.mounted !== false}
+          checked={vault.mounted !== false}
           disabled={unavailable || disableMountToggle}
           locale={locale}
           onMountedChange={onMountedChange}

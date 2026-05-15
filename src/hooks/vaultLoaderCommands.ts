@@ -69,8 +69,9 @@ function loadVaultEntriesWithCommand({ vaultPath, command }: VaultPathOptions & 
     .then((entries) => normalizeVaultEntries(entries, vaultPath))
 }
 
-function shouldSkipMountedVault(vault: VaultOption): boolean {
-  return vault.available === false || vault.mounted === false || !vault.path.trim()
+function shouldIncludeVault(vault: VaultOption, primaryPaths: Set<string>): boolean {
+  if (!vault.path.trim() || vault.available === false) return false
+  return vault.mounted !== false || primaryPaths.has(vault.path)
 }
 
 function shouldReloadEmptyWorkspaceResult(entries: VaultEntry[], options: WorkspaceEntryLoadOptions): boolean {
@@ -109,10 +110,11 @@ export function loadWorkspaceEntries(
       : entries)
 }
 
-function uniqueMountedVaults({ vaultPath, vaults = [], includeFallbackVault = true }: MountedVaultEntriesOptions): VaultOption[] {
+function uniqueMountedVaults({ defaultWorkspacePath, vaultPath, vaults = [], includeFallbackVault = true }: MountedVaultEntriesOptions): VaultOption[] {
   const byPath = new Map<string, VaultOption>()
+  const primaryPaths = new Set([vaultPath, defaultWorkspacePath ?? ''].filter((path) => path.trim()))
   for (const vault of vaults) {
-    if (shouldSkipMountedVault(vault)) continue
+    if (!shouldIncludeVault(vault, primaryPaths)) continue
     byPath.set(vault.path, vault)
   }
   if (shouldIncludeFallbackVault(byPath, vaultPath, includeFallbackVault)) {
