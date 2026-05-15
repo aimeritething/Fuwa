@@ -19,6 +19,7 @@ import {
   NOTE_CONTENT_ENTRY_MAX_BYTES,
   NOTE_CONTENT_PREFETCH_CONCURRENCY,
   prefetchNoteContent as prefetchNoteContentInMemory,
+  type NoteContentRequestOptions,
 } from './noteContentCache'
 import { clearParsedNoteBlockCache } from './editorParsedBlockCache'
 import { notePathsMatch } from '../utils/notePathIdentity'
@@ -36,12 +37,17 @@ export {
   NOTE_CONTENT_PREFETCH_CONCURRENCY,
 }
 
-export function prefetchNoteContent(target: string | VaultEntry): void {
-  prefetchNoteContentInMemory(target)
+export function prefetchNoteContent(target: string | VaultEntry, options?: NoteContentRequestOptions): void {
+  prefetchNoteContentInMemory(target, options)
 }
 
-export function cacheNoteContent(path: string, content: string, entry?: VaultEntry): void {
-  cacheNoteContentInMemory(path, content, entry)
+export function cacheNoteContent(
+  path: string,
+  content: string,
+  entry?: VaultEntry,
+  options?: NoteContentRequestOptions,
+): void {
+  cacheNoteContentInMemory(path, content, entry, options)
 }
 
 /** Clear note-open caches. Call on vault reload to prevent stale content. */

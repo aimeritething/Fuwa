@@ -83,8 +83,9 @@ function useLikelyNextPreload(entries: VaultEntry[], selectedNotePath: string | 
       const preloadNext = () => {
         const entry = candidates.at(candidateIndex)
         if (!entry) return
+        const parsedBlockPreload = candidateIndex === 0
         candidateIndex += 1
-        prefetchNoteContent(entry)
+        prefetchNoteContent(entry, { parsedBlockPreload })
         stepTimer = window.setTimeout(preloadNext, LIKELY_NEXT_PRELOAD_STEP_DELAY_MS)
       }
       preloadNext()

@@ -1,24 +1,32 @@
 import { useState } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { NoteList } from './NoteList'
 import {
   allSelection,
+  makeIndexedEntry,
   mockEntries,
 } from '../test-utils/noteListTestUtils'
 import type { SidebarSelection, VaultEntry } from '../types'
 import * as tabManagement from '../hooks/useTabManagement'
 
 function NoteListKeyboardHarness({
+  entries = mockEntries,
+  initialSelectedNote = null,
   onOpen,
   onEnterNeighborhood = () => {},
+  selectedNoteOverride,
   selection = allSelection,
 }: {
+  entries?: VaultEntry[]
+  initialSelectedNote?: VaultEntry | null
   onOpen: (entry: VaultEntry) => void
   onEnterNeighborhood?: (entry: VaultEntry) => void
+  selectedNoteOverride?: VaultEntry
   selection?: SidebarSelection
 }) {
-  const [selectedNote, setSelectedNote] = useState<VaultEntry | null>(null)
+  const [selectedNote, setSelectedNote] = useState<VaultEntry | null>(initialSelectedNote)
+  const visibleSelectedNote = selectedNoteOverride ?? selectedNote
 
   const handleOpen = (entry: VaultEntry) => {
     setSelectedNote(entry)
@@ -27,9 +35,9 @@ function NoteListKeyboardHarness({
 
   return (
     <NoteList
-      entries={mockEntries}
+      entries={entries}
       selection={selection}
-      selectedNote={selectedNote}
+      selectedNote={visibleSelectedNote}
       noteListFilter="open"
       onNoteListFilterChange={() => {}}
       onSelectNote={handleOpen}
@@ -116,5 +124,54 @@ describe('NoteList keyboard activation', () => {
     fireEvent.mouseEnter(noteRow!)
 
     expect(prefetchSpy).toHaveBeenCalledWith(mockEntries[1])
+  })
+
+  it('keeps repeated large-note navigation broad for raw prefetch but narrow for parsed warmup', async () => {
+    vi.useFakeTimers()
+    try {
+      const largeEntries = Array.from({ length: 20 }, (_, index) => makeIndexedEntry(index, {
+        fileSize: 40 * 1024,
+      }))
+      const onOpen = vi.fn()
+      const prefetchSpy = vi.spyOn(tabManagement, 'prefetchNoteContent').mockImplementation(() => {})
+      const { rerender } = render(
+        <NoteListKeyboardHarness
+          entries={largeEntries}
+          onOpen={onOpen}
+          selectedNoteOverride={largeEntries[8]}
+        />,
+      )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_500)
+      })
+
+      expect(prefetchSpy).toHaveBeenCalledTimes(6)
+      expect(prefetchSpy.mock.calls[0][1]).toEqual({ parsedBlockPreload: true })
+      for (const call of prefetchSpy.mock.calls.slice(1)) {
+        expect(call[1]).toEqual({ parsedBlockPreload: false })
+      }
+
+      prefetchSpy.mockClear()
+      rerender(
+        <NoteListKeyboardHarness
+          entries={largeEntries}
+          onOpen={onOpen}
+          selectedNoteOverride={largeEntries[9]}
+        />,
+      )
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(1_500)
+      })
+
+      expect(prefetchSpy).toHaveBeenCalledTimes(6)
+      expect(prefetchSpy.mock.calls[0][1]).toEqual({ parsedBlockPreload: true })
+      for (const call of prefetchSpy.mock.calls.slice(1)) {
+        expect(call[1]).toEqual({ parsedBlockPreload: false })
+      }
+    } finally {
+      vi.useRealTimers()
+    }
   })
 })

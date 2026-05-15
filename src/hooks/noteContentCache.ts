@@ -20,6 +20,8 @@ export interface NoteContentCacheEntry {
   byteSize: number
   identity: NoteContentIdentity | null
   vaultPath?: string
+  parsedBlockPreload: boolean
+  parsedBlockPreloadNotified: boolean
   requestState?: NoteContentRequestState
   startRequest?: () => void
   cancelRequest?: () => void
@@ -29,6 +31,11 @@ export interface NoteContentResolvedEvent {
   entry: VaultEntry | null
   path: NotePath
   content: string
+  parsedBlockPreload: boolean
+}
+
+export interface NoteContentRequestOptions {
+  parsedBlockPreload?: boolean
 }
 
 type NoteContentResolvedListener = (event: NoteContentResolvedEvent) => void
@@ -62,6 +69,10 @@ function emitNoteContentResolved(event: NoteContentResolvedEvent): void {
       console.warn('Note content cache listener failed:', error)
     }
   }
+}
+
+function shouldRequestParsedBlockPreload(options?: NoteContentRequestOptions): boolean {
+  return options?.parsedBlockPreload ?? true
 }
 
 function measureNoteContentBytes(content: string): number {
@@ -154,7 +165,13 @@ function retainResolvedNoteContent(entry: NoteContentCacheEntry, content: string
   entry.value = content
   entry.byteSize = byteSize
   rememberNoteContent(entry)
-  emitNoteContentResolved({ entry: sourceEntry, path: entry.path, content })
+  if (entry.parsedBlockPreload) entry.parsedBlockPreloadNotified = true
+  emitNoteContentResolved({
+    entry: sourceEntry,
+    path: entry.path,
+    content,
+    parsedBlockPreload: entry.parsedBlockPreload,
+  })
 }
 
 function getNoteContentCommandPayload(path: string, vaultPath?: string): { path: string; vaultPath?: string } {
@@ -222,11 +239,25 @@ function markRequestSettled(entry: NoteContentCacheEntry, state: Extract<NoteCon
   entry.cancelRequest = undefined
 }
 
-function createNoteContentRequest(target: string | VaultEntry): NoteContentCacheEntry {
+function requestParsedBlockPreload(entry: NoteContentCacheEntry, sourceEntry: VaultEntry | null): void {
+  entry.parsedBlockPreload = true
+  if (entry.value === null || entry.parsedBlockPreloadNotified) return
+
+  entry.parsedBlockPreloadNotified = true
+  emitNoteContentResolved({
+    entry: sourceEntry,
+    path: entry.path,
+    content: entry.value,
+    parsedBlockPreload: true,
+  })
+}
+
+function createNoteContentRequest(target: string | VaultEntry, options?: NoteContentRequestOptions): NoteContentCacheEntry {
   const path = targetPath(target)
   const sourceEntry = targetEntry(target)
   const vaultPath = targetVaultPath(target)
   const identity = targetIdentity(target)
+  const parsedBlockPreload = shouldRequestParsedBlockPreload(options)
   const cacheEntry: NoteContentCacheEntry = {
     path,
     promise: Promise.resolve(''),
@@ -234,6 +265,8 @@ function createNoteContentRequest(target: string | VaultEntry): NoteContentCache
     byteSize: 0,
     identity,
     vaultPath,
+    parsedBlockPreload,
+    parsedBlockPreloadNotified: false,
     requestState: 'queued',
   }
   let started = false
@@ -305,8 +338,12 @@ function enqueuePrefetchRequest(entry: NoteContentCacheEntry): void {
   runQueuedPrefetches()
 }
 
-function requestNoteContent(target: string | VaultEntry, mode: NoteContentRequestMode = 'foreground'): NoteContentCacheEntry {
-  const cacheEntry = rememberNoteContent(createNoteContentRequest(target))
+function requestNoteContent(
+  target: string | VaultEntry,
+  mode: NoteContentRequestMode = 'foreground',
+  options?: NoteContentRequestOptions,
+): NoteContentCacheEntry {
+  const cacheEntry = rememberNoteContent(createNoteContentRequest(target, options))
   if (mode === 'prefetch') {
     enqueuePrefetchRequest(cacheEntry)
   } else {
@@ -315,35 +352,51 @@ function requestNoteContent(target: string | VaultEntry, mode: NoteContentReques
   return cacheEntry
 }
 
-export function prefetchNoteContent(target: string | VaultEntry): void {
+export function prefetchNoteContent(target: string | VaultEntry, options?: NoteContentRequestOptions): void {
   const path = targetPath(target)
   const identity = targetIdentity(target)
   const vaultPath = targetVaultPath(target)
   const existing = prefetchCache.get(path)
-  if (existing && shouldReuseExistingRequest(existing, identity, vaultPath)) return
+  if (existing && shouldReuseExistingRequest(existing, identity, vaultPath)) {
+    if (shouldRequestParsedBlockPreload(options)) requestParsedBlockPreload(existing, targetEntry(target))
+    return
+  }
 
-  void requestNoteContent(target, 'prefetch').promise.catch((error) => {
+  void requestNoteContent(target, 'prefetch', options).promise.catch((error) => {
     if (isCanceledNoteContentRequest(error) || isNoActiveVaultSelectedError(error) || isUnreadableNoteContentError(error)) return
     console.warn('Failed to prefetch note content:', error)
   })
 }
 
-export function cacheNoteContent(path: string, content: string, entry?: VaultEntry): void {
+export function cacheNoteContent(
+  path: string,
+  content: string,
+  entry?: VaultEntry,
+  options?: NoteContentRequestOptions,
+): void {
   const byteSize = measureNoteContentBytes(content)
   if (byteSize > NOTE_CONTENT_ENTRY_MAX_BYTES) {
     prefetchCache.delete(path)
     return
   }
 
-  rememberNoteContent({
+  const cacheEntry = rememberNoteContent({
     path,
     promise: Promise.resolve(content),
     value: content,
     byteSize,
     identity: entry ? noteContentIdentity(entry) : null,
     vaultPath: entry ? workspacePathForEntry(entry) : undefined,
+    parsedBlockPreload: shouldRequestParsedBlockPreload(options),
+    parsedBlockPreloadNotified: false,
   })
-  emitNoteContentResolved({ entry: entry ?? null, path, content })
+  if (cacheEntry.parsedBlockPreload) cacheEntry.parsedBlockPreloadNotified = true
+  emitNoteContentResolved({
+    entry: entry ?? null,
+    path,
+    content,
+    parsedBlockPreload: cacheEntry.parsedBlockPreload,
+  })
 }
 
 export function clearNoteContentCache(): void {

@@ -19,6 +19,7 @@ interface ParsedBlockPreloadOptions {
 
 function canPreloadParsedBlocks(event: NoteContentResolvedEvent, activeTabPath: string | null): boolean {
   if (!PARSED_BLOCK_PRELOAD_ENABLED) return false
+  if (!event.parsedBlockPreload) return false
   const { entry } = event
   if (!entry || entry.path === activeTabPath) return false
   if ((entry.fileKind ?? 'markdown') !== 'markdown') return false

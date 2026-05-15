@@ -8,6 +8,7 @@ import {
   PARSED_BLOCK_PRELOAD_MIN_BYTES,
   useParsedBlockPreload,
 } from './editorParsedBlockPreload'
+import type { NoteContentRequestOptions } from './noteContentCache'
 
 type RefSet = {
   activeTabPathRef: MutableRefObject<string | null>
@@ -78,9 +79,13 @@ function renderParsedPreload(refs: RefSet, prepareParsedBlocks: (event: {
   }))
 }
 
-async function emitResolvedContent(entry: VaultEntry, content = '# Large\n\nBody'): Promise<void> {
+async function emitResolvedContent(
+  entry: VaultEntry,
+  content = '# Large\n\nBody',
+  options?: NoteContentRequestOptions,
+): Promise<void> {
   await act(async () => {
-    cacheNoteContent(entry.path, content, entry)
+    cacheNoteContent(entry.path, content, entry, options)
     await vi.advanceTimersByTimeAsync(PARSED_BLOCK_PRELOAD_DELAY_MS)
   })
 }
@@ -110,7 +115,19 @@ describe('useParsedBlockPreload', () => {
       entry,
       path: entry.path,
       content: '# Large\n\nPrepared body.',
+      parsedBlockPreload: true,
     })
+  })
+
+  it('skips raw prefetches that are not parsed-block warmup candidates', async () => {
+    const refs = makeRefs()
+    const prepareParsedBlocks = vi.fn(async () => {})
+    const entry = makeEntry({ path: '/vault/raw-only.md' })
+
+    renderParsedPreload(refs, prepareParsedBlocks)
+    await emitResolvedContent(entry, '# Raw only\n\nPrepared body.', { parsedBlockPreload: false })
+
+    expect(prepareParsedBlocks).not.toHaveBeenCalled()
   })
 
   it('skips entries that should not compete with the foreground editor', async () => {
