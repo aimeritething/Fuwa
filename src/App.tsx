@@ -602,6 +602,7 @@ function App() {
     onMissingActiveVault: handleMissingActiveVault,
     onTypeStateChanged: async () => { await vault.reloadVault() },
     replaceEntry: vault.replaceEntry,
+    onInternalVaultWrite: markRecentVaultWrite,
     onFrontmatterPersisted: refreshGitModifiedFiles,
     onPathRenamed: (oldPath, newPath) => appSave.trackRenamedPath(oldPath, newPath),
   })

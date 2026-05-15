@@ -43,6 +43,8 @@ export interface NoteActionsConfig {
   onFrontmatterContentChanged?: (path: string, content: string) => void
   /** Called after a frontmatter mutation is fully persisted, including follow-up renames. */
   onFrontmatterPersisted?: () => void | Promise<void>
+  /** Called for note-action owned disk writes so file watchers can ignore app-originated changes. */
+  onInternalVaultWrite?: (path: string) => void
   /** Called after type files or type assignments change, so derived type surfaces can reload. */
   onTypeStateChanged?: () => void | Promise<void>
 }
@@ -97,6 +99,7 @@ interface TitleRenameDeps {
   handleSwitchTab: (path: string) => void
   setToastMessage: (msg: string | null) => void
   updateTabContent: (path: string, content: string) => void
+  onInternalVaultWrite?: (path: string) => void
 }
 
 interface FrontmatterCallbackParams {
@@ -117,22 +120,50 @@ interface RenameAfterTitleChangeParams {
   deps: TitleRenameDeps
 }
 
+interface ApplyTitleRenamePathChangeParams {
+  deps: TitleRenameDeps
+  newPath: string
+  newTitle: string
+  path: string
+}
+
+function tabPathsExceptRenamed(
+  tabs: { entry: VaultEntry; content: string }[],
+  path: string,
+  newPath: string,
+): string[] {
+  return tabs
+    .filter(t => !notePathsMatch(t.entry.path, path) && !notePathsMatch(t.entry.path, newPath))
+    .map(t => t.entry.path)
+}
+
+async function applyTitleRenamePathChange({
+  deps,
+  newPath,
+  newTitle,
+  path,
+}: ApplyTitleRenamePathChangeParams): Promise<void> {
+  const newFilename = notePathFilename(newPath)
+  deps.onInternalVaultWrite?.(newPath)
+  deps.onPathRenamed?.(path, newPath)
+  deps.replaceEntry?.(path, { path: newPath, filename: newFilename, title: newTitle } as Partial<VaultEntry> & { path: string })
+  const newContent = await loadNoteContent({ path: newPath })
+  deps.setTabs(prev => prev.map(t => notePathsMatch(t.entry.path, path)
+    ? { entry: { ...t.entry, path: newPath, filename: newFilename, title: newTitle }, content: newContent }
+    : t))
+  if (notePathsMatch(deps.activeTabPathRef.current, path)) deps.handleSwitchTab(newPath)
+  await reloadTabsAfterRename({
+    tabPaths: tabPathsExceptRenamed(deps.tabsRef.current, path, newPath),
+    updateTabContent: deps.updateTabContent,
+  })
+}
+
 async function renameAfterTitleChange({ path, newTitle, deps }: RenameAfterTitleChangeParams): Promise<void> {
   const oldTitle = deps.tabsRef.current.find(t => notePathsMatch(t.entry.path, path))?.entry.title
+  deps.onInternalVaultWrite?.(path)
   const result = await performRename({ path, newTitle, vaultPath: deps.vaultPath, oldTitle })
   if (!notePathsMatch(result.new_path, path)) {
-    const newFilename = notePathFilename(result.new_path)
-    deps.onPathRenamed?.(path, result.new_path)
-    deps.replaceEntry?.(path, { path: result.new_path, filename: newFilename, title: newTitle } as Partial<VaultEntry> & { path: string })
-    const newContent = await loadNoteContent({ path: result.new_path })
-    deps.setTabs(prev => prev.map(t => notePathsMatch(t.entry.path, path)
-      ? { entry: { ...t.entry, path: result.new_path, filename: newFilename, title: newTitle }, content: newContent }
-      : t))
-    if (notePathsMatch(deps.activeTabPathRef.current, path)) deps.handleSwitchTab(result.new_path)
-    const otherTabPaths = deps.tabsRef.current
-      .filter(t => !notePathsMatch(t.entry.path, path) && !notePathsMatch(t.entry.path, result.new_path))
-      .map(t => t.entry.path)
-    await reloadTabsAfterRename({ tabPaths: otherTabPaths, updateTabContent: deps.updateTabContent })
+    await applyTitleRenamePathChange({ path, newPath: result.new_path, newTitle, deps })
   }
   await reloadVaultAfterRename(deps.reloadVault)
   deps.setToastMessage(renameToastMessage(result.updated_files, result.failed_updates ?? 0))
@@ -244,6 +275,7 @@ async function updateFrontmatterAndMaybeRename({
   if (!canFlush) return
   if (!activePathGuardAllowsMutation(path, deps.activeTabPathRef, options)) return
 
+  config.onInternalVaultWrite?.(path)
   const newContent = await runFrontmatterOp('update', path, key, value, options)
   if (!applyFrontmatterCallbacks({ config, path, newContent })) return
 
@@ -353,6 +385,7 @@ function useFrontmatterActionHandlers({
         handleSwitchTab,
         setToastMessage,
         updateTabContent,
+        onInternalVaultWrite: config.onInternalVaultWrite,
       },
       path: currentPath,
       key,
@@ -369,6 +402,7 @@ function useFrontmatterActionHandlers({
     if (!canFlush) return
     if (!activePathGuardAllowsMutation(currentPath, activeTabPathRef, options)) return
 
+    config.onInternalVaultWrite?.(currentPath)
     const newContent = await runFrontmatterOp('delete', currentPath, key, undefined, options)
     if (!applyFrontmatterCallbacks({ config, path: currentPath, newContent })) return
     await notifyFrontmatterPersisted(config, key)
@@ -381,6 +415,7 @@ function useFrontmatterActionHandlers({
     if (!canFlush) return
     if (!activePathGuardAllowsMutation(currentPath, activeTabPathRef, options)) return
 
+    config.onInternalVaultWrite?.(currentPath)
     const newContent = await runFrontmatterOp('update', currentPath, key, value, options)
     if (!applyFrontmatterCallbacks({ config, path: currentPath, newContent })) return
     await notifyFrontmatterPersisted(config, key)

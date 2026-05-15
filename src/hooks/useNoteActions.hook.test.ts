@@ -83,6 +83,7 @@ describe('useNoteActions hook', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(invoke).mockReset()
     vi.mocked(isTauri).mockReturnValue(false)
     vi.useRealTimers()
   })
@@ -214,6 +215,30 @@ describe('useNoteActions hook', () => {
 
     expect(updateEntry).toHaveBeenCalledWith('/vault/note.md', { status: 'Done' })
     expect(setToastMessage).toHaveBeenCalledWith('Property updated')
+  })
+
+  it('marks Tauri frontmatter writes as internal before invoking the command', async () => {
+    vi.mocked(isTauri).mockReturnValue(true)
+    const order: string[] = []
+    const onInternalVaultWrite = vi.fn((path: string) => {
+      order.push(`mark:${path}`)
+    })
+    vi.mocked(invoke).mockImplementation(async (command) => {
+      order.push(`invoke:${String(command)}`)
+      return '---\nstatus: Done\n---\nBody'
+    })
+
+    const { result } = renderHook(() => useNoteActions({
+      ...makeConfig(),
+      onInternalVaultWrite,
+    }))
+
+    await act(async () => {
+      await result.current.handleUpdateFrontmatter('/vault/note.md', 'status', 'Done')
+    })
+
+    expect(onInternalVaultWrite).toHaveBeenCalledWith('/vault/note.md')
+    expect(order).toEqual(['mark:/vault/note.md', 'invoke:update_frontmatter'])
   })
 
   it('handleUpdateFrontmatter syncs is_a and color changes to entries', async () => {
