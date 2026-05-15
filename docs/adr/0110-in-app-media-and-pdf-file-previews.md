@@ -2,9 +2,10 @@
 type: ADR
 id: "0110"
 title: "In-app media and PDF previews for binary vault files"
-status: active
+status: superseded
 date: 2026-05-05
 supersedes: "0098"
+superseded_by: "0121"
 ---
 
 ## Context
