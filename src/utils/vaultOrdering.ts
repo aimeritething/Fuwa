@@ -2,7 +2,7 @@ import type { VaultOption } from '../components/status-bar/types'
 
 export type VaultMoveDirection = 'up' | 'down'
 
-function vaultPathList(vaults: VaultOption[]): string[] {
+export function vaultPathList(vaults: VaultOption[]): string[] {
   return vaults.map((vault) => vault.path)
 }
 
@@ -32,6 +32,20 @@ export function moveVaultPath(vaults: VaultOption[], path: string, direction: Va
   const nextPaths = [...orderedPaths]
   const [movedPath] = nextPaths.splice(currentIndex, 1)
   nextPaths.splice(nextIndex, 0, movedPath)
+  return nextPaths
+}
+
+export function reorderVaultPath(vaults: VaultOption[], activePath: string, overPath: string): string[] | null {
+  if (activePath === overPath) return null
+
+  const orderedPaths = vaultPathList(vaults)
+  const activeIndex = orderedPaths.indexOf(activePath)
+  const overIndex = orderedPaths.indexOf(overPath)
+  if (activeIndex === -1 || overIndex === -1) return null
+
+  const nextPaths = [...orderedPaths]
+  const [movedPath] = nextPaths.splice(activeIndex, 1)
+  nextPaths.splice(overIndex, 0, movedPath)
   return nextPaths
 }
 

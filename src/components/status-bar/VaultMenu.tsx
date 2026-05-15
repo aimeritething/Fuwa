@@ -1,11 +1,11 @@
 import { Check, Cube, FolderOpen, GitBranch, Plus, Rocket, Warning as AlertTriangle, X } from '@phosphor-icons/react'
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import {
   DndContext, PointerSensor, closestCenter, type DragEndEvent, useSensor, useSensors,
 } from '@dnd-kit/core'
 import {
-  SortableContext, arrayMove, useSortable, verticalListSortingStrategy,
+  SortableContext, useSortable, verticalListSortingStrategy,
 } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
@@ -17,6 +17,7 @@ import { trackEvent } from '../../lib/telemetry'
 import type { VaultOption } from './types'
 import { useDismissibleLayer } from './useDismissibleLayer'
 import { workspaceAliasFromOption, workspaceIdentityFromVault } from '../../utils/workspaces'
+import { reorderVaultPath, vaultPathList } from '../../utils/vaultOrdering'
 
 interface VaultMenuProps {
   vaults: VaultOption[]
@@ -78,6 +79,32 @@ interface VaultAction {
   testId: string
   accent?: boolean
   onClick: () => void
+}
+
+interface VaultMenuInteractionOptions {
+  defaultPath: string
+  includedVaults: VaultOption[]
+  multiWorkspaceEnabled: boolean
+  onSetDefaultWorkspace?: (path: string) => void
+  onSwitchVault: (path: string) => void
+  onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
+  setOpen: (open: boolean) => void
+}
+
+interface MountToggleRequest {
+  canSetDefaultWorkspace: boolean
+  defaultPath: string
+  includedVaultCount: number
+  path: string
+}
+
+interface VaultPathSelection extends VaultMenuInteractionOptions {
+  path: string
+}
+
+interface VaultMountChangeRequest extends VaultMenuInteractionOptions {
+  mounted: boolean
+  path: string
 }
 
 function getVaultTriggerClassName(open: boolean, compact: boolean) {
@@ -261,6 +288,103 @@ function WorkspaceInitialsBadge({ vault }: { vault: VaultOption }) {
   )
 }
 
+function isIncludedVault(vault: VaultOption, defaultPath: string): boolean {
+  return vault.available !== false && (vault.path === defaultPath || vault.mounted !== false)
+}
+
+function useIncludedVaults(vaults: VaultOption[], defaultPath: string): VaultOption[] {
+  return useMemo(() => vaults.filter((vault) => isIncludedVault(vault, defaultPath)), [defaultPath, vaults])
+}
+
+function nextIncludedVaultPath(includedVaults: VaultOption[], currentPath: string): string | null {
+  return includedVaults.find((vault) => vault.path !== currentPath)?.path ?? null
+}
+
+function shouldDisableMountToggle({
+  canSetDefaultWorkspace,
+  defaultPath,
+  includedVaultCount,
+  path,
+}: MountToggleRequest): boolean {
+  return path === defaultPath && (includedVaultCount <= 1 || !canSetDefaultWorkspace)
+}
+
+function selectVaultPath({
+  path,
+  multiWorkspaceEnabled,
+  onSetDefaultWorkspace,
+  onSwitchVault,
+  setOpen,
+}: VaultPathSelection): void {
+  if (multiWorkspaceEnabled && onSetDefaultWorkspace) onSetDefaultWorkspace(path)
+  else onSwitchVault(path)
+  setOpen(false)
+}
+
+function applyMountedChange({
+  defaultPath,
+  includedVaults,
+  mounted,
+  onSetDefaultWorkspace,
+  onUpdateWorkspaceIdentity,
+  path,
+}: VaultMountChangeRequest): void {
+  if (!mounted && path === defaultPath) {
+    const nextDefaultPath = nextIncludedVaultPath(includedVaults, path)
+    if (!nextDefaultPath) return
+    onSetDefaultWorkspace?.(nextDefaultPath)
+  }
+  onUpdateWorkspaceIdentity?.(path, { mounted })
+}
+
+function useVaultMenuInteractions({
+  defaultPath,
+  includedVaults,
+  multiWorkspaceEnabled,
+  onSetDefaultWorkspace,
+  onSwitchVault,
+  onUpdateWorkspaceIdentity,
+  setOpen,
+}: VaultMenuInteractionOptions) {
+  const disableMountToggleForPath = useCallback((path: string) => (
+    shouldDisableMountToggle({
+      canSetDefaultWorkspace: !!onSetDefaultWorkspace,
+      defaultPath,
+      includedVaultCount: includedVaults.length,
+      path,
+    })
+  ), [defaultPath, includedVaults.length, onSetDefaultWorkspace])
+
+  const handleSelectVault = useCallback((path: string) => {
+    selectVaultPath({
+      defaultPath,
+      includedVaults,
+      multiWorkspaceEnabled,
+      onSetDefaultWorkspace,
+      onSwitchVault,
+      onUpdateWorkspaceIdentity,
+      path,
+      setOpen,
+    })
+  }, [defaultPath, includedVaults, multiWorkspaceEnabled, onSetDefaultWorkspace, onSwitchVault, onUpdateWorkspaceIdentity, setOpen])
+
+  const handleMountedChange = useCallback((path: string, mounted: boolean) => {
+    applyMountedChange({
+      defaultPath,
+      includedVaults,
+      mounted,
+      multiWorkspaceEnabled,
+      onSetDefaultWorkspace,
+      onSwitchVault,
+      onUpdateWorkspaceIdentity,
+      path,
+      setOpen,
+    })
+  }, [defaultPath, includedVaults, multiWorkspaceEnabled, onSetDefaultWorkspace, onSwitchVault, onUpdateWorkspaceIdentity, setOpen])
+
+  return { disableMountToggleForPath, handleMountedChange, handleSelectVault }
+}
+
 function VaultMenuRemoveButton({
   locale,
   onRequestRemove,
@@ -336,20 +460,11 @@ function VaultMenuItem({
   )
 }
 
-function sortableVaultPaths(vaults: VaultOption[]): string[] {
-  return vaults.map((vault) => vault.path)
-}
-
 function reorderedVaultPaths(vaults: VaultOption[], event: DragEndEvent): string[] | null {
   const { active, over } = event
-  if (!over || active.id === over.id) return null
+  if (!over) return null
 
-  const paths = sortableVaultPaths(vaults)
-  const oldIndex = paths.indexOf(active.id as string)
-  const newIndex = paths.indexOf(over.id as string)
-  if (oldIndex === -1 || newIndex === -1) return null
-
-  return arrayMove(paths, oldIndex, newIndex)
+  return reorderVaultPath(vaults, String(active.id), String(over.id))
 }
 
 function SortableVaultMenuItem({
@@ -407,7 +522,7 @@ function renderVaultMenuItem({
 
 function VaultMenuList(props: VaultMenuListProps) {
   const { onReorderVaults, vaults } = props
-  const vaultPaths = useMemo(() => sortableVaultPaths(vaults), [vaults])
+  const vaultPaths = useMemo(() => vaultPathList(vaults), [vaults])
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }))
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -486,6 +601,38 @@ function VaultMenuAction({
       {icon}
       {translate(locale, labelKey)}
     </Button>
+  )
+}
+
+function VaultMenuRemoveConfirmDialog({
+  locale,
+  onRemoveVault,
+  setOpen,
+  setVaultPendingRemoval,
+  vaultPendingRemoval,
+}: {
+  locale: AppLocale
+  onRemoveVault?: (path: string) => void
+  setOpen: (open: boolean) => void
+  setVaultPendingRemoval: (vault: VaultOption | null) => void
+  vaultPendingRemoval: VaultOption | null
+}) {
+  const closeDialog = () => setVaultPendingRemoval(null)
+  const confirmRemoval = () => {
+    if (vaultPendingRemoval) onRemoveVault?.(vaultPendingRemoval.path)
+    setVaultPendingRemoval(null)
+    setOpen(false)
+  }
+
+  return (
+    <ConfirmDeleteDialog
+      open={!!vaultPendingRemoval}
+      title={translate(locale, 'status.vault.removeConfirmTitle')}
+      message={translate(locale, 'status.vault.removeConfirmMessage', { label: vaultPendingRemoval?.label ?? '' })}
+      confirmLabel={translate(locale, 'status.vault.removeConfirmAction')}
+      onCancel={closeDialog}
+      onConfirm={confirmRemoval}
+    />
   )
 }
 
@@ -590,29 +737,16 @@ export function VaultMenu(props: VaultMenuProps) {
   const triggerSize = compact ? 'icon-xs' : 'xs'
   const activeVaultLabel = activeVault?.label ?? translate(locale, 'status.vault.default')
   const menuMinWidth = multiWorkspaceEnabled ? 320 : 200
-  const includedVaults = useMemo(
-    () => vaults.filter((vault) => (
-      vault.available !== false
-      && (vault.path === defaultPath || vault.mounted !== false)
-    )),
-    [defaultPath, vaults],
-  )
-  const disableMountToggleForPath = (path: string) => (
-    path === defaultPath && (includedVaults.length <= 1 || !onSetDefaultWorkspace)
-  )
-  const handleSelectVault = (path: string) => {
-    if (multiWorkspaceEnabled && onSetDefaultWorkspace) onSetDefaultWorkspace(path)
-    else onSwitchVault(path)
-    setOpen(false)
-  }
-  const handleMountedChange = (path: string, mounted: boolean) => {
-    if (!mounted && path === defaultPath) {
-      const nextDefaultPath = includedVaults.find((includedVault) => includedVault.path !== path)?.path
-      if (!nextDefaultPath) return
-      onSetDefaultWorkspace?.(nextDefaultPath)
-    }
-    onUpdateWorkspaceIdentity?.(path, { mounted })
-  }
+  const includedVaults = useIncludedVaults(vaults, defaultPath)
+  const { disableMountToggleForPath, handleMountedChange, handleSelectVault } = useVaultMenuInteractions({
+    defaultPath,
+    includedVaults,
+    multiWorkspaceEnabled,
+    onSetDefaultWorkspace,
+    onSwitchVault,
+    onUpdateWorkspaceIdentity,
+    setOpen,
+  })
 
   useDismissibleLayer(open, menuRef, () => setOpen(false))
 
@@ -661,19 +795,12 @@ export function VaultMenu(props: VaultMenuProps) {
           vaults={vaults}
         />
       )}
-      <ConfirmDeleteDialog
-        open={!!vaultPendingRemoval}
-        title={translate(locale, 'status.vault.removeConfirmTitle')}
-        message={translate(locale, 'status.vault.removeConfirmMessage', { label: vaultPendingRemoval?.label ?? '' })}
-        confirmLabel={translate(locale, 'status.vault.removeConfirmAction')}
-        onCancel={() => setVaultPendingRemoval(null)}
-        onConfirm={() => {
-          if (vaultPendingRemoval) {
-            onRemoveVault?.(vaultPendingRemoval.path)
-          }
-          setVaultPendingRemoval(null)
-          setOpen(false)
-        }}
+      <VaultMenuRemoveConfirmDialog
+        locale={locale}
+        onRemoveVault={onRemoveVault}
+        setOpen={setOpen}
+        setVaultPendingRemoval={setVaultPendingRemoval}
+        vaultPendingRemoval={vaultPendingRemoval}
       />
     </div>
   )
