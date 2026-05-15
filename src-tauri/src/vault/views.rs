@@ -12,7 +12,8 @@ use super::view_date_filters::parse_date_filter_timestamp;
 use super::view_migration::{is_view_definition_file, migrate_views};
 use super::view_relationships::{evaluate_relationship_op, relationship_candidates};
 use super::view_value_conversions::{
-    json_scalar_to_string, yaml_value_to_string, yaml_value_to_string_vec,
+    json_scalar_array_to_strings, json_scalar_to_string, yaml_value_to_string,
+    yaml_value_to_string_vec,
 };
 use super::VaultEntry;
 
@@ -292,6 +293,7 @@ fn supports_regex(op: &FilterOp) -> bool {
 
 enum ConditionField<'a> {
     Scalar(Option<String>),
+    PropertyArray(Vec<String>),
     Relationship(&'a [String]),
 }
 
@@ -314,6 +316,9 @@ fn evaluate_condition(cond: &FilterCondition, entry: &VaultEntry) -> bool {
     }
 
     match field_value {
+        ConditionField::PropertyArray(values) => {
+            evaluate_property_array_op(&cond.op, &values, &cond.value)
+        }
         ConditionField::Relationship(rels) => evaluate_relationship_op(&cond.op, rels, &cond.value),
         ConditionField::Scalar(value) => evaluate_scalar_op(
             &cond.op,
@@ -349,6 +354,9 @@ fn resolve_condition_field<'a>(field: &str, entry: &'a VaultEntry) -> ConditionF
 
 fn resolve_dynamic_condition_field<'a>(field: &str, entry: &'a VaultEntry) -> ConditionField<'a> {
     if let Some(prop) = entry.properties.get(field) {
+        if let Some(values) = json_scalar_array_to_strings(prop) {
+            return ConditionField::PropertyArray(values);
+        }
         return ConditionField::Scalar(json_scalar_to_string(prop));
     }
     if let Some(relationships) = entry.relationships.get(field) {
@@ -380,6 +388,7 @@ fn invalid_regex_requested(cond: &FilterCondition, regex: Option<&Regex>) -> boo
 fn evaluate_regex_condition(op: &FilterOp, field: &ConditionField<'_>, regex: &Regex) -> bool {
     let matched = match field {
         ConditionField::Scalar(Some(value)) => regex.is_match(value),
+        ConditionField::PropertyArray(values) => values.iter().any(|value| regex.is_match(value)),
         ConditionField::Relationship(values) => values.iter().any(|item| {
             relationship_candidates(item)
                 .into_iter()
@@ -393,6 +402,48 @@ fn evaluate_regex_condition(op: &FilterOp, field: &ConditionField<'_>, regex: &R
         FilterOp::NotContains | FilterOp::NotEquals => !matched,
         _ => false,
     }
+}
+
+fn evaluate_property_array_op(
+    op: &FilterOp,
+    values: &[String],
+    raw_value: &Option<serde_yaml::Value>,
+) -> bool {
+    match op {
+        FilterOp::Contains => property_array_matches_value(values, raw_value),
+        FilterOp::NotContains => !property_array_matches_value(values, raw_value),
+        FilterOp::AnyOf => property_array_matches_any(values, raw_value),
+        FilterOp::NoneOf => !property_array_matches_any(values, raw_value),
+        FilterOp::Equals => values.len() == 1 && property_array_matches_value(values, raw_value),
+        FilterOp::NotEquals => {
+            !(values.len() == 1 && property_array_matches_value(values, raw_value))
+        }
+        FilterOp::IsEmpty => values.is_empty(),
+        FilterOp::IsNotEmpty => !values.is_empty(),
+        _ => false,
+    }
+}
+
+fn property_array_matches_value(values: &[String], raw_value: &Option<serde_yaml::Value>) -> bool {
+    raw_value
+        .as_ref()
+        .and_then(yaml_value_to_string)
+        .is_some_and(|target| property_array_contains(values, &target))
+}
+
+fn property_array_matches_any(values: &[String], raw_value: &Option<serde_yaml::Value>) -> bool {
+    raw_value
+        .as_ref()
+        .and_then(yaml_value_to_string_vec)
+        .unwrap_or_default()
+        .iter()
+        .any(|target| property_array_contains(values, target))
+}
+
+fn property_array_contains(values: &[String], target: &str) -> bool {
+    values
+        .iter()
+        .any(|value| value.eq_ignore_ascii_case(target))
 }
 
 fn evaluate_scalar_op(

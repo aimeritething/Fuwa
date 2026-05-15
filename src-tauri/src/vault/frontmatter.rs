@@ -289,7 +289,26 @@ fn nested_flow_wikilink(arr: &[serde_json::Value], depth: usize) -> Option<Strin
     }
 }
 
-/// Extract custom scalar properties from raw YAML frontmatter.
+fn scalar_array_property_value(arr: &[serde_json::Value]) -> Option<serde_json::Value> {
+    let mut values = Vec::new();
+    for item in arr {
+        let sanitized = sanitize_array_item(item)?;
+        match sanitized {
+            serde_json::Value::String(ref s) if contains_wikilink(s) => return None,
+            serde_json::Value::String(_)
+            | serde_json::Value::Number(_)
+            | serde_json::Value::Bool(_) => values.push(sanitized),
+            _ => return None,
+        }
+    }
+
+    match values.as_slice() {
+        [single] => Some(single.clone()),
+        _ => Some(serde_json::Value::Array(values)),
+    }
+}
+
+/// Extract custom scalar and scalar-array properties from raw YAML frontmatter.
 pub(crate) fn extract_properties(
     data: &HashMap<String, serde_json::Value>,
 ) -> HashMap<String, serde_json::Value> {
@@ -310,13 +329,9 @@ pub(crate) fn extract_properties(
             serde_json::Value::Number(_) | serde_json::Value::Bool(_) => {
                 properties.insert(key.clone(), value.clone());
             }
-            // Handle single-element arrays: unwrap to scalar.
-            // This ensures YAML like "Owner: [Luca]" or "Owner:\n  - Luca" works correctly.
             serde_json::Value::Array(arr) => {
-                if let [serde_json::Value::String(s)] = arr.as_slice() {
-                    if !contains_wikilink(s) {
-                        properties.insert(key.clone(), serde_json::Value::String(s.clone()));
-                    }
+                if let Some(value) = scalar_array_property_value(arr) {
+                    properties.insert(key.clone(), value);
                 }
             }
             _ => {}

@@ -78,16 +78,10 @@ fn assert_alias_parser_recovers(case: AliasRecoveryCase<'_>) {
 
 #[test]
 fn test_filtered_properties_stay_hidden() {
-    let cases = [
-        HiddenPropertyCase {
-            content: "---\nMentor: \"[[person/alice]]\"\nCompany: Acme Corp\n---\n# Test\n",
-            hidden_key: "Mentor",
-        },
-        HiddenPropertyCase {
-            content: "---\nTags:\n  - productivity\n  - writing\nCompany: Acme Corp\n---\n# Test\n",
-            hidden_key: "Tags",
-        },
-    ];
+    let cases = [HiddenPropertyCase {
+        content: "---\nMentor: \"[[person/alice]]\"\nCompany: Acme Corp\n---\n# Test\n",
+        hidden_key: "Mentor",
+    }];
 
     for case in cases {
         assert_filtered_property_stays_hidden(case);
@@ -112,6 +106,21 @@ fn test_single_element_array_properties_unwrap_to_scalars() {
     for case in cases {
         assert_single_element_array_property(case);
     }
+}
+
+#[test]
+fn test_multi_element_array_properties_are_preserved() {
+    let dir = TempDir::new().unwrap();
+    let entry = parse_test_entry(
+        &dir,
+        "playlist.md",
+        "---\ntags:\n  - blues\n  - chicago\n---\n# Playlist\n",
+    );
+
+    assert_eq!(
+        entry.properties.get("tags"),
+        Some(&serde_json::json!(["blues", "chicago"]))
+    );
 }
 
 #[test]

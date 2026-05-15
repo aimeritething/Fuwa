@@ -1,20 +1,24 @@
-import type { VaultEntry, ViewDefinition, FilterGroup, FilterNode, FilterCondition } from '../types'
+import type { VaultEntry, ViewDefinition, FilterGroup, FilterNode, FilterCondition, VaultPropertyValue } from '../types'
 import { toDateFilterTimestamp } from './filterDates'
 import { compileSafeUserRegex } from './safeRegex'
+import { evaluateArrayFieldCondition, type ViewFilterArrayKind } from './viewFilterArrayFields'
 
-type ResolvedField = { scalar?: string | number | boolean | null; array?: string[] }
+type FieldScalar = string | number | boolean | null
+type ResolvedField =
+  | { kind: 'scalar'; value: FieldScalar }
+  | { kind: 'array'; values: string[]; arrayKind: ViewFilterArrayKind }
 type BuiltInFieldReader = (entry: VaultEntry) => ResolvedField
 type TextOp = FilterCondition['op']
 
 const BUILT_IN_FIELD_READERS = new Map<string, BuiltInFieldReader>([
-  ['type', (entry) => ({ scalar: entry.isA })],
-  ['isa', (entry) => ({ scalar: entry.isA })],
-  ['status', (entry) => ({ scalar: entry.status })],
-  ['title', (entry) => ({ scalar: entry.title })],
-  ['filename', (entry) => ({ scalar: entry.filename })],
-  ['archived', (entry) => ({ scalar: entry.archived })],
-  ['favorite', (entry) => ({ scalar: entry.favorite })],
-  ['body', (entry) => ({ scalar: entry.snippet })],
+  ['type', (entry) => scalarField(entry.isA)],
+  ['isa', (entry) => scalarField(entry.isA)],
+  ['status', (entry) => scalarField(entry.status)],
+  ['title', (entry) => scalarField(entry.title)],
+  ['filename', (entry) => scalarField(entry.filename)],
+  ['archived', (entry) => scalarField(entry.archived)],
+  ['favorite', (entry) => scalarField(entry.favorite)],
+  ['body', (entry) => scalarField(entry.snippet)],
 ])
 
 /** Evaluate a view's filters against a list of entries, returning only matches. */
@@ -41,14 +45,27 @@ function findCaseInsensitiveKey(record: Record<string, unknown>, lower: string):
   return Object.keys(record).find((k) => k.toLowerCase() === lower)
 }
 
+function scalarField(value: FieldScalar): ResolvedField {
+  return { kind: 'scalar', value }
+}
+
+function arrayField(values: string[], arrayKind: ViewFilterArrayKind): ResolvedField {
+  return { kind: 'array', values, arrayKind }
+}
+
+function propertyField(value: VaultPropertyValue): ResolvedField {
+  if (Array.isArray(value)) return arrayField(value.map(toString), 'property')
+  return scalarField(value)
+}
+
 function resolveRelationshipField(entry: VaultEntry, lower: string): ResolvedField | null {
   const relKey = findCaseInsensitiveKey(entry.relationships, lower)
-  return relKey ? { array: Reflect.get(entry.relationships, relKey) as string[] } : null
+  return relKey ? arrayField(Reflect.get(entry.relationships, relKey) as string[], 'relationship') : null
 }
 
 function resolvePropertyField(entry: VaultEntry, lower: string): ResolvedField | null {
   const propKey = findCaseInsensitiveKey(entry.properties, lower)
-  return propKey ? { scalar: Reflect.get(entry.properties, propKey) as ResolvedField['scalar'] } : null
+  return propKey ? propertyField(Reflect.get(entry.properties, propKey) as VaultPropertyValue) : null
 }
 
 function resolveField(entry: VaultEntry, field: string): ResolvedField {
@@ -56,45 +73,7 @@ function resolveField(entry: VaultEntry, field: string): ResolvedField {
   return BUILT_IN_FIELD_READERS.get(lower)?.(entry)
     ?? resolveRelationshipField(entry, lower)
     ?? resolvePropertyField(entry, lower)
-    ?? { scalar: null }
-}
-
-function wikilinkStem(raw: string): string {
-  let s = raw.trim()
-  if (s.startsWith('[[')) s = s.slice(2)
-  if (s.endsWith(']]')) s = s.slice(0, -2)
-  const pipe = s.indexOf('|')
-  if (pipe >= 0) s = s.substring(0, pipe)
-  return s.toLowerCase()
-}
-
-function relationshipCandidates(raw: string): string[] {
-  const trimmed = raw.trim()
-  let inner = trimmed
-  if (inner.startsWith('[[')) inner = inner.slice(2)
-  if (inner.endsWith(']]')) inner = inner.slice(0, -2)
-  const pipe = inner.indexOf('|')
-  if (pipe >= 0) {
-    return [trimmed, inner.slice(0, pipe), inner.slice(pipe + 1)]
-  }
-  return [trimmed, inner]
-}
-
-/** Extract all comparable parts (path and alias) from a wikilink string. */
-function wikilinkParts(raw: string): string[] {
-  let s = raw.trim()
-  if (s.startsWith('[[')) s = s.slice(2)
-  if (s.endsWith(']]')) s = s.slice(0, -2)
-  const pipe = s.indexOf('|')
-  if (pipe >= 0) return [s.substring(0, pipe).toLowerCase(), s.substring(pipe + 1).toLowerCase()]
-  return [s.toLowerCase()]
-}
-
-/** Check if two wikilink values match by comparing all path/alias combinations. */
-function wikilinkEquals(a: string, b: string): boolean {
-  const partsA = wikilinkParts(a)
-  const partsB = wikilinkParts(b)
-  return partsA.some(pa => partsB.some(pb => pa === pb))
+    ?? scalarField(null)
 }
 
 function toString(v: unknown): string {
@@ -116,68 +95,36 @@ function usesRegex(cond: FilterCondition): boolean {
 
 function evaluateEmptyCondition(op: FilterCondition['op'], resolved: ReturnType<typeof resolveField>): boolean | null {
   if (op === 'is_empty') {
-    if (resolved.array) return resolved.array.length === 0
-    const s = resolved.scalar
+    if (resolved.kind === 'array') return resolved.values.length === 0
+    const s = resolved.value
     return s == null || s === '' || s === false
   }
   if (op === 'is_not_empty') {
-    if (resolved.array) return resolved.array.length > 0
-    const s = resolved.scalar
+    if (resolved.kind === 'array') return resolved.values.length > 0
+    const s = resolved.value
     return s != null && s !== '' && s !== false
   }
   return null
 }
 
-function evaluateRegexArrayCondition(op: FilterCondition['op'], values: string[], regex: RegExp): boolean {
-  const matched = values.some((item) => relationshipCandidates(item).some((candidate) => regex.test(candidate)))
+function textMatchResult(op: FilterCondition['op'], matched: boolean): boolean {
   if (op === 'contains' || op === 'equals') return matched
   if (op === 'not_contains' || op === 'not_equals') return !matched
   return false
 }
 
-function hasArrayMatch(values: string[], condVal: string): boolean {
-  const stem = wikilinkStem(condVal)
-  const isWikilink = condVal.trim().startsWith('[[')
-  return values.some((item) => (
-    isWikilink ? wikilinkEquals(item, condVal) : wikilinkStem(item).includes(stem)
-  ))
-}
-
-function isSingleRelationshipMatch(values: string[], condVal: string): boolean {
-  return values.length === 1 && wikilinkEquals(values[0], condVal)
-}
-
-const ARRAY_MATCHERS = {
-  contains: hasArrayMatch,
-  not_contains: hasArrayMatch,
-  equals: isSingleRelationshipMatch,
-  not_equals: isSingleRelationshipMatch,
-} satisfies Partial<Record<FilterCondition['op'], (values: string[], condVal: string) => boolean>>
-
-const NEGATED_ARRAY_OPS = new Set<FilterCondition['op']>(['not_contains', 'not_equals', 'none_of'])
-const ARRAY_SET_OPS = new Set<FilterCondition['op']>(['any_of', 'none_of'])
-
-function evaluateArrayCondition(cond: FilterCondition, values: string[], condVal: string, regex: RegExp | null): boolean {
-  const { op, value } = cond
-  if (regex) return evaluateRegexArrayCondition(op, values, regex)
-
-  const matcher = ARRAY_MATCHERS[op as keyof typeof ARRAY_MATCHERS]
-  if (matcher) {
-    const matched = matcher(values, condVal)
-    return NEGATED_ARRAY_OPS.has(op) ? !matched : matched
-  }
-  if (!ARRAY_SET_OPS.has(op)) return false
-  if (!Array.isArray(value)) return false
-
-  const matched = values.some((item) => (value as string[]).some((v) => wikilinkEquals(item, v)))
-  return NEGATED_ARRAY_OPS.has(op) ? !matched : matched
+function evaluateArrayCondition(cond: FilterCondition, resolved: Extract<ResolvedField, { kind: 'array' }>, condVal: string, regex: RegExp | null): boolean {
+  return evaluateArrayFieldCondition({
+    cond,
+    values: resolved.values,
+    arrayKind: resolved.arrayKind,
+    condVal,
+    regex,
+  })
 }
 
 function evaluateRegexScalarCondition(op: FilterCondition['op'], fieldRaw: string, regex: RegExp): boolean {
-  const matched = regex.test(fieldRaw)
-  if (op === 'equals' || op === 'contains') return matched
-  if (op === 'not_equals' || op === 'not_contains') return !matched
-  return false
+  return textMatchResult(op, regex.test(fieldRaw))
 }
 
 function conditionList(value: unknown): string[] | null {
@@ -236,13 +183,13 @@ function evaluateCondition(cond: FilterCondition, entry: VaultEntry): boolean {
   const regex = usesRegex(cond) ? compileRegex(cond, condVal) : null
   if (usesRegex(cond) && !regex) return false
 
-  if (resolved.array) {
-    return evaluateArrayCondition(cond, resolved.array, condVal, regex)
+  if (resolved.kind === 'array') {
+    return evaluateArrayCondition(cond, resolved, condVal, regex)
   }
 
   if (cond.op === 'before' || cond.op === 'after') {
-    return evaluateDateCondition(cond, resolved.scalar, condVal)
+    return evaluateDateCondition(cond, resolved.value, condVal)
   }
 
-  return evaluateTextCondition(cond, toString(resolved.scalar), condVal, regex)
+  return evaluateTextCondition(cond, toString(resolved.value), condVal, regex)
 }

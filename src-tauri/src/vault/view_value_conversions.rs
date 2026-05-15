@@ -7,6 +7,12 @@ pub(super) fn json_scalar_to_string(value: &serde_json::Value) -> Option<String>
     }
 }
 
+pub(super) fn json_scalar_array_to_strings(value: &serde_json::Value) -> Option<Vec<String>> {
+    value
+        .as_array()
+        .map(|sequence| sequence.iter().filter_map(json_scalar_to_string).collect())
+}
+
 pub(super) fn yaml_value_to_string(value: &serde_yaml::Value) -> Option<String> {
     match value {
         serde_yaml::Value::String(value) => Some(value.clone()),

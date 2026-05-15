@@ -15,7 +15,7 @@ type MarkdownContent = string
 type ToastMessage = string | null
 type VaultPath = string
 type WikilinkText = string
-type ScalarPropertyValue = string | number | boolean | null
+type PropertyPatchValue = VaultEntry['properties'][string]
 
 const ENTRY_DELETE_MAP: Record<string, Partial<VaultEntry>> = {
   title: { title: '' },
@@ -50,8 +50,8 @@ function extractWikilinks(value: FrontmatterValue): WikilinkText[] {
 export type RelationshipPatch = Record<FrontmatterKey, WikilinkText[] | null>
 
 /** Properties patch: a partial update to merge into `entry.properties`.
- *  Keys map to their new scalar values. A `null` value means "remove this key". */
-export type PropertiesPatch = Record<FrontmatterKey, ScalarPropertyValue>
+ *  Keys map to their new property values. A `null` value means "remove this key". */
+export type PropertiesPatch = Record<FrontmatterKey, PropertyPatchValue>
 
 export interface EntryPatchResult {
   patch: Partial<VaultEntry>
@@ -98,7 +98,11 @@ function visibleValue(value: FrontmatterValue | undefined): false | null {
   return value === false ? false : null
 }
 
-function scalarPropertyValue(value: FrontmatterValue): ScalarPropertyValue {
+function propertyValue(value: FrontmatterValue): PropertyPatchValue {
+  if (Array.isArray(value)) {
+    const values = value.map(String)
+    return values.length === 1 ? values[0] ?? '' : values
+  }
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return value
   return String(value)
 }
@@ -153,7 +157,7 @@ function propertiesUpdatePatch({
 }: FrontmatterPatchInput): PropertiesPatch | null {
   const knownUpdates = knownFrontmatterUpdates(value)
   if (systemMetadataKey || Object.hasOwn(knownUpdates, lookupKey) || value == null) return null
-  return singleEntryRecord({ key, value: scalarPropertyValue(value) })
+  return singleEntryRecord({ key, value: propertyValue(value) })
 }
 
 function updateEntryPatch(input: FrontmatterPatchInput): EntryPatchResult {
@@ -179,7 +183,7 @@ export function frontmatterToEntryPatch(
 export function contentToEntryPatch(content: MarkdownContent): Partial<VaultEntry> {
   const fm = parseFrontmatter(content)
   const merged: Partial<VaultEntry> = {}
-  const customProps: Record<FrontmatterKey, ScalarPropertyValue> = {}
+  const customProps: Record<FrontmatterKey, PropertyPatchValue> = {}
   for (const [key, value] of Object.entries(fm)) {
     const { patch, propertiesPatch } = frontmatterToEntryPatch('update', key, value)
     Object.assign(merged, patch)

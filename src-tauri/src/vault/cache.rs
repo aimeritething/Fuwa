@@ -19,8 +19,8 @@ use super::{is_md_file, parse_md_file, parse_non_md_file, scan_vault, VaultEntry
 
 /// Bump this when VaultEntry fields change to force a full rescan.
 /// v12: fix gray_matter YAML sanitization (unquoted colons / hash comments in list items)
-/// v13: preserve plain square brackets in parsed markdown H1 titles
-const CACHE_VERSION: u32 = 13;
+/// v14: preserve scalar-array custom frontmatter properties in VaultEntry
+const CACHE_VERSION: u32 = 14;
 const CACHE_WRITE_LOCK_STALE_SECS: u64 = 30;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

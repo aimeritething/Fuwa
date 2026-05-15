@@ -406,6 +406,34 @@ filters:
     }
 
     #[test]
+    fn test_contains_matches_scalar_array_property_element() {
+        let yaml = r#"
+name: Tagged
+filters:
+  all:
+    - field: tags
+      op: contains
+      value: blues
+"#;
+        let def: ViewDefinition = serde_yaml::from_str(yaml).unwrap();
+
+        let matching = make_entry(|e| {
+            e.properties
+                .insert("tags".to_string(), serde_json::json!(["blues", "chicago"]));
+        });
+        let partial = make_entry(|e| {
+            e.properties.insert(
+                "tags".to_string(),
+                serde_json::json!(["bluegrass", "chicago"]),
+            );
+        });
+
+        let entries = vec![matching, partial];
+        let result = evaluate_view(&def, &entries);
+        assert_eq!(result, vec![0]);
+    }
+
+    #[test]
     fn test_body_contains_filters_on_snippet() {
         let yaml = r#"
 name: Body Search

@@ -51,6 +51,13 @@ describe('frontmatterToEntryPatch', () => {
     expect(result.relationshipPatch).toBeNull()
   })
 
+  it('preserves unknown non-wikilink arrays as property arrays', () => {
+    const result = frontmatterToEntryPatch('update', 'tags', ['blues', 'chicago'])
+    expect(result.patch).toEqual({})
+    expect(result.propertiesPatch).toEqual({ tags: ['blues', 'chicago'] })
+    expect(result.relationshipPatch).toBeNull()
+  })
+
   it('produces relationship patch for wikilink values on unknown keys', () => {
     const result = frontmatterToEntryPatch('update', 'Notes', ['[[note-a]]', '[[note-b|Note B]]'])
     expect(result.patch).toEqual({})
