@@ -26,6 +26,12 @@ import path from 'node:path'
 
 const WS_UI_PORT = parseInt(process.env.WS_UI_PORT || '9711', 10)
 const WS_UI_URL = `ws://localhost:${WS_UI_PORT}`
+const LOCAL_READ_ONLY_TOOL_ANNOTATIONS = Object.freeze({
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: false,
+})
 
 // Connect as a WebSocket CLIENT to the UI bridge (run by ws-bridge.js).
 // The bridge relays messages to all other clients (the React frontend).
@@ -107,6 +113,7 @@ const TOOLS = [
   {
     name: 'search_notes',
     description: 'Full-text search across vault notes by title or content. Returns matching paths, titles, and snippets.',
+    annotations: LOCAL_READ_ONLY_TOOL_ANNOTATIONS,
     inputSchema: {
       type: 'object',
       properties: {
@@ -119,6 +126,7 @@ const TOOLS = [
   {
     name: 'get_vault_context',
     description: 'Get vault orientation for the active Tolaria vaults: entity types, AGENTS.md instructions, note count, folders, and recent notes.',
+    annotations: LOCAL_READ_ONLY_TOOL_ANNOTATIONS,
     inputSchema: {
       type: 'object',
       properties: {
@@ -129,6 +137,7 @@ const TOOLS = [
   {
     name: 'list_vaults',
     description: 'List the current active Tolaria vaults available to MCP tools, including whether each vault has AGENTS.md instructions.',
+    annotations: LOCAL_READ_ONLY_TOOL_ANNOTATIONS,
     inputSchema: {
       type: 'object',
       properties: {},
@@ -137,6 +146,7 @@ const TOOLS = [
   {
     name: 'get_note',
     description: 'Read a note with parsed YAML frontmatter and markdown content. Returns {path, frontmatter, content}.',
+    annotations: LOCAL_READ_ONLY_TOOL_ANNOTATIONS,
     inputSchema: {
       type: 'object',
       properties: {
@@ -149,6 +159,7 @@ const TOOLS = [
   {
     name: 'open_note',
     description: 'Open a note in the Tolaria UI as a new tab. Use after creating or editing a note so the user can see it.',
+    annotations: LOCAL_READ_ONLY_TOOL_ANNOTATIONS,
     inputSchema: {
       type: 'object',
       properties: {
@@ -161,6 +172,7 @@ const TOOLS = [
   {
     name: 'highlight_editor',
     description: 'Visually highlight a UI element in Tolaria (editor, tab, properties panel, or note list). The highlight auto-clears after a short delay.',
+    annotations: LOCAL_READ_ONLY_TOOL_ANNOTATIONS,
     inputSchema: {
       type: 'object',
       properties: {
@@ -173,6 +185,7 @@ const TOOLS = [
   {
     name: 'refresh_vault',
     description: 'Trigger a vault rescan so new or modified files appear immediately in the Tolaria note list.',
+    annotations: LOCAL_READ_ONLY_TOOL_ANNOTATIONS,
     inputSchema: {
       type: 'object',
       properties: {

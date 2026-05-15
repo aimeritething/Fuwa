@@ -9,6 +9,8 @@ import path from 'node:path'
 import process from 'node:process'
 import { clearTimeout, setTimeout } from 'node:timers'
 import { fileURLToPath } from 'node:url'
+import { Client } from '@modelcontextprotocol/sdk/client/index.js'
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 import {
   findMarkdownFiles, getNote, searchNotes, vaultContext,
 } from './vault.js'
@@ -305,6 +307,34 @@ describe('requireVaultPath', () => {
 })
 
 describe('stdio process lifecycle', () => {
+  it('advertises local vault tools as approval-safe for MCP clients', async () => {
+    const { client, stderr } = await connectMcpClient()
+
+    try {
+      const { tools } = await client.listTools()
+      const toolsByName = new Map(tools.map(tool => [tool.name, tool]))
+      const safeReadTools = [
+        'search_notes',
+        'get_vault_context',
+        'list_vaults',
+        'get_note',
+        'open_note',
+        'highlight_editor',
+        'refresh_vault',
+      ]
+
+      for (const name of safeReadTools) {
+        const tool = toolsByName.get(name)
+        assert.ok(tool, `Missing MCP tool: ${name}`)
+        assert.equal(tool.annotations?.readOnlyHint, true, `${name} should not require destructive approval`)
+        assert.equal(tool.annotations?.destructiveHint, false, `${name} should not be treated as destructive`)
+        assert.equal(tool.annotations?.openWorldHint, false, `${name} should stay scoped to local active vaults`)
+      }
+    } finally {
+      await closeMcpClient(client, stderr)
+    }
+  })
+
   it('exits when the MCP client closes stdin', async () => {
     const child = spawn(process.execPath, ['index.js'], {
       cwd: MCP_SERVER_DIR,
@@ -331,6 +361,41 @@ describe('stdio process lifecycle', () => {
     assert.equal(exit.code, 0, stderr)
   })
 })
+
+async function connectMcpClient() {
+  const transport = new StdioClientTransport({
+    command: process.execPath,
+    args: ['index.js'],
+    cwd: MCP_SERVER_DIR,
+    env: { ...process.env, VAULT_PATH: tmpDir, WS_UI_PORT: '65534' },
+    stderr: 'pipe',
+  })
+  const stderr = collectTransportStderr(transport)
+  const client = new Client(
+    { name: 'tolaria-mcp-test-client', version: '0.0.0' },
+    { capabilities: {} },
+  )
+
+  await client.connect(transport)
+  return { client, stderr }
+}
+
+function collectTransportStderr(transport) {
+  const chunks = []
+  transport.stderr?.setEncoding('utf8')
+  transport.stderr?.on('data', chunk => {
+    chunks.push(chunk)
+  })
+  return () => chunks.join('')
+}
+
+async function closeMcpClient(client, stderr) {
+  try {
+    await client.close()
+  } catch (error) {
+    assert.fail(`Failed to close MCP test client: ${error.message}\n${stderr()}`)
+  }
+}
 
 async function assertRejectsOutsideVault(prefix, resolveNotePath) {
   const outsideDir = await mkdtemp(path.join(os.tmpdir(), prefix))
