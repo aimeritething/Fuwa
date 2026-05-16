@@ -7,9 +7,10 @@ import { restoreWikilinksInBlocks, splitFrontmatter } from './wikilinks'
 
 export function serializeRichEditorBodyToMarkdown(
   editor: ReturnType<typeof useCreateBlockNote>,
+  vaultPath?: string,
 ): string {
   const restored = restoreWikilinksInBlocks(editor.document)
-  return compactMarkdown(serializeDurableEditorBlocks(editor, restored))
+  return compactMarkdown(serializeDurableEditorBlocks(editor, restored, vaultPath))
 }
 
 export function serializeRichEditorDocumentToMarkdown(
@@ -18,7 +19,7 @@ export function serializeRichEditorDocumentToMarkdown(
   vaultPath?: string,
   notePath?: string,
 ): string {
-  const rawBodyMarkdown = serializeRichEditorBodyToMarkdown(editor)
+  const rawBodyMarkdown = serializeRichEditorBodyToMarkdown(editor, vaultPath)
   const bodyMarkdown = vaultPath
     ? portableFileAttachmentUrls(
       portableImageUrls(rawBodyMarkdown, vaultPath, notePath),

@@ -210,6 +210,14 @@ export function portableAttachmentPathFromCurrentVaultAssetUrl({
   return currentVaultAttachmentPath({ path, vaultPath })
 }
 
+export function portableAttachmentPathFromCurrentVaultPath({
+  path,
+  vaultPath,
+}: PathRequest & VaultPathRequest): AttachmentPath | null {
+  if (!isPathInsideVault({ path, vaultPath })) return null
+  return currentVaultAttachmentPath({ path, vaultPath })
+}
+
 export function portableAttachmentPathFromAnyAssetUrl({ url }: UrlRequest): AttachmentPath | null {
   const path = resolveAssetPath({ url })
   return path ? extractPortableAttachmentPath({ path }) : null

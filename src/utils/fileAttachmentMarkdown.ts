@@ -6,6 +6,7 @@ import {
 import {
   isVaultAttachmentUrl,
   portableAttachmentPathFromCurrentVaultAssetUrl,
+  portableAttachmentPathFromCurrentVaultPath,
 } from './vaultAttachments'
 
 interface FileAttachmentPayload {
@@ -17,6 +18,7 @@ interface FileAttachmentPayload {
 interface SerializeFileAttachmentBlocksOptions {
   blocks: unknown[]
   serializeOrdinaryBlocks: (blocks: unknown[]) => string
+  vaultPath?: VaultPath
 }
 
 interface FlushOrdinaryBlocksOptions {
@@ -26,6 +28,7 @@ interface FlushOrdinaryBlocksOptions {
 }
 
 type FileAttachmentLineTransform = (payload: FileAttachmentPayload) => string | null
+type AttachmentUrlReader = (value: unknown) => AttachmentUrl | null
 type MarkdownFence = { character: string; length: number }
 type AttachmentUrl = string
 type Markdown = string
@@ -39,12 +42,14 @@ interface PreProcessFileAttachmentMarkdownOptions {
 
 interface TransformFileAttachmentLinksOptions {
   markdown: Markdown
+  readUrl?: AttachmentUrlReader
   transform: FileAttachmentLineTransform
 }
 
 interface TransformLineOptions {
   fence: MarkdownFence | null
   line: MarkdownLine
+  readUrl: AttachmentUrlReader
   transform: FileAttachmentLineTransform
 }
 
@@ -125,6 +130,10 @@ function readAttachmentUrl(value: unknown): AttachmentUrl | null {
   return url && isVaultAttachmentUrl({ url }) ? url : null
 }
 
+function readAnyLinkUrl(value: unknown): AttachmentUrl | null {
+  return readNonEmptyText(value)
+}
+
 function readPayloadName(record: Record<string, unknown>, url: AttachmentUrl): MarkdownText {
   return readNonEmptyText(record.name) ?? fileNameFromUrl(url)
 }
@@ -168,11 +177,14 @@ function readFileAttachmentToken(text: MarkdownText): FileAttachmentPayload | nu
   }
 }
 
-function readStandaloneFileAttachmentLink(text: MarkdownText): FileAttachmentPayload | null {
+function readStandaloneFileAttachmentLink(
+  text: MarkdownText,
+  readUrl: AttachmentUrlReader = readAttachmentUrl,
+): FileAttachmentPayload | null {
   const match = STANDALONE_ATTACHMENT_LINK_PATTERN.exec(text)
   if (!match) return null
 
-  const url = readAttachmentUrl(unescapeMarkdownDestination(match[3] ?? ''))
+  const url = readUrl(unescapeMarkdownDestination(match[3] ?? ''))
   if (!url) return null
 
   const name = unescapeMarkdownText(match[2] ?? '') || fileNameFromUrl(url)
@@ -194,9 +206,10 @@ function isFenceClosing(text: MarkdownText, fence: MarkdownFence): boolean {
 
 function transformAttachmentLine(
   line: MarkdownLine,
+  readUrl: AttachmentUrlReader,
   transform: FileAttachmentLineTransform,
 ): MarkdownLine {
-  const payload = readStandaloneFileAttachmentLink(lineText({ line }))
+  const payload = readStandaloneFileAttachmentLink(lineText({ line }), readUrl)
   if (!payload) return line
 
   const transformed = transform(payload)
@@ -213,6 +226,7 @@ function transformFencedLine(line: MarkdownLine, text: MarkdownText, fence: Mark
 function transformUnfencedLine(
   line: MarkdownLine,
   text: MarkdownText,
+  readUrl: AttachmentUrlReader,
   transform: FileAttachmentLineTransform,
 ): TransformedLine {
   const opening = readFenceOpening(text)
@@ -223,7 +237,7 @@ function transformUnfencedLine(
     }
   }
 
-  const transformedLine = transformAttachmentLine(line, transform)
+  const transformedLine = transformAttachmentLine(line, readUrl, transform)
   return {
     line: transformedLine,
     fence: null,
@@ -236,15 +250,16 @@ function transformLine(options: TransformLineOptions): TransformedLine {
     return transformFencedLine(options.line, text, options.fence)
   }
 
-  return transformUnfencedLine(options.line, text, options.transform)
+  return transformUnfencedLine(options.line, text, options.readUrl, options.transform)
 }
 
 function transformStandaloneFileAttachmentLinks(options: TransformFileAttachmentLinksOptions): Markdown {
   const lines: MarkdownLine[] = []
   let fence: MarkdownFence | null = null
+  const readUrl = options.readUrl ?? readAttachmentUrl
 
   for (const line of splitMarkdownLines(options.markdown)) {
-    const transformed = transformLine({ line, fence, transform: options.transform })
+    const transformed = transformLine({ line, fence, readUrl, transform: options.transform })
     lines.push(transformed.line)
     fence = transformed.fence
   }
@@ -291,16 +306,23 @@ export function injectFileAttachmentBlocks(blocks: unknown[]): unknown[] {
   return (blocks as BlockLike[]).map(injectFileAttachmentBlock)
 }
 
-function readBlockAttachmentUrl(block: BlockLike): AttachmentUrl | null {
-  return block.type === 'file' ? readAttachmentUrl(block.props?.url) : null
+function readBlockAttachmentUrl(block: BlockLike, vaultPath?: VaultPath): AttachmentUrl | null {
+  if (block.type !== 'file') return null
+
+  const url = readAttachmentUrl(block.props?.url)
+  if (url) return url
+
+  const rawUrl = readNonEmptyText(block.props?.url)
+  if (!rawUrl || !vaultPath) return null
+  return portableAttachmentPathFromCurrentVaultPath({ path: rawUrl, vaultPath })
 }
 
 function readBlockAttachmentName(block: BlockLike, url: AttachmentUrl): MarkdownText {
   return block.props?.name?.trim() || fileNameFromUrl(url)
 }
 
-function readFileAttachmentBlockPayload(block: BlockLike): FileAttachmentPayload | null {
-  const url = readBlockAttachmentUrl(block)
+function readFileAttachmentBlockPayload(block: BlockLike, vaultPath?: VaultPath): FileAttachmentPayload | null {
+  const url = readBlockAttachmentUrl(block, vaultPath)
   if (!url) return null
 
   return fileAttachmentPayload({
@@ -325,12 +347,13 @@ function flushOrdinaryBlocks({
 export function serializeFileAttachmentBlocks({
   blocks,
   serializeOrdinaryBlocks,
+  vaultPath,
 }: SerializeFileAttachmentBlocksOptions): string {
   const chunks: string[] = []
   let pending: unknown[] = []
 
   for (const block of blocks as BlockLike[]) {
-    const payload = readFileAttachmentBlockPayload(block)
+    const payload = readFileAttachmentBlockPayload(block, vaultPath)
     if (!payload) {
       pending.push(block)
       continue
@@ -357,15 +380,20 @@ export function hasFileAttachmentBlocks(blocks: unknown[]): boolean {
 
 function portableAttachmentUrl(payload: FileAttachmentPayload, vaultPath: VaultPath): AttachmentUrl | null {
   return portableAttachmentPathFromCurrentVaultAssetUrl({ url: payload.url, vaultPath })
+    ?? portableAttachmentPathFromCurrentVaultPath({ path: payload.url, vaultPath })
 }
 
 export function portableFileAttachmentUrls(markdown: Markdown, vaultPath: VaultPath): Markdown {
   if (!vaultPath) return markdown
 
-  return transformStandaloneFileAttachmentLinks({ markdown, transform: (payload) => {
-    const url = portableAttachmentUrl(payload, vaultPath)
-    return url ? serializeMarkdownFileLink({ ...payload, url }) : null
-  } })
+  return transformStandaloneFileAttachmentLinks({
+    markdown,
+    readUrl: readAnyLinkUrl,
+    transform: (payload) => {
+      const url = portableAttachmentUrl(payload, vaultPath)
+      return url ? serializeMarkdownFileLink({ ...payload, url }) : null
+    },
+  })
 }
 
 export function preProcessFileAttachmentMarkdown(

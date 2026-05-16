@@ -36,9 +36,14 @@ export function injectDurableEditorMarkdownBlocks(blocks: unknown[]): unknown[] 
   return injectFileAttachmentBlocks(withDurableBlocks)
 }
 
-export function serializeDurableEditorBlocks(editor: MarkdownSerializer, blocks: unknown[]): string {
+export function serializeDurableEditorBlocks(
+  editor: MarkdownSerializer,
+  blocks: unknown[],
+  vaultPath?: string,
+): string {
   return serializeFileAttachmentBlocks({
     blocks,
+    vaultPath,
     serializeOrdinaryBlocks: ordinaryBlocks => serializeDurableMarkdownBlocks({
       blocks: ordinaryBlocks,
       codecs: EDITOR_DURABLE_MARKDOWN_CODECS,

@@ -4,6 +4,7 @@ import {
   isVaultAttachmentUrl,
   portableAttachmentPathFromAnyAssetUrl,
   portableAttachmentPathFromCurrentVaultAssetUrl,
+  portableAttachmentPathFromCurrentVaultPath,
   resolveVaultAttachmentPath,
   vaultAttachmentAssetUrl,
 } from './vaultAttachments'
@@ -87,6 +88,33 @@ describe('vault attachment URL/path conversions', () => {
         vaultPath: '/vault',
       }),
     ).toBe('attachments/shot.png')
+  })
+
+  it('converts current-vault attachment paths back to portable attachment paths', () => {
+    expect(
+      portableAttachmentPathFromCurrentVaultPath({
+        path: '/vault/attachments/report.pdf',
+        vaultPath: '/vault',
+      }),
+    ).toBe('attachments/report.pdf')
+  })
+
+  it('keeps Windows attachment path normalization case-insensitive', () => {
+    expect(
+      portableAttachmentPathFromCurrentVaultPath({
+        path: 'C:\\Vault\\attachments\\Report.pdf',
+        vaultPath: 'c:\\vault',
+      }),
+    ).toBe('attachments/Report.pdf')
+  })
+
+  it('rejects non-attachment paths inside the current vault', () => {
+    expect(
+      portableAttachmentPathFromCurrentVaultPath({
+        path: '/vault/notes/report.pdf',
+        vaultPath: '/vault',
+      }),
+    ).toBeNull()
   })
 
   it('extracts portable attachment paths from legacy asset URLs in another vault', () => {
