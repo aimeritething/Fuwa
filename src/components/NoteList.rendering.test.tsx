@@ -296,7 +296,7 @@ describe('NoteList rendering', () => {
     }
   })
 
-  it('keeps the note-list search input full width and shows only an inline spinner while loading', () => {
+  it('keeps the note-list search input full width and shows inline search controls while loading', () => {
     vi.useFakeTimers()
     try {
       renderNoteList({
@@ -310,8 +310,9 @@ describe('NoteList rendering', () => {
       fireEvent.change(screen.getByPlaceholderText('Search notes...'), { target: { value: 'strategy' } })
 
       const searchInput = screen.getByPlaceholderText('Search notes...')
-      expect(searchInput).toHaveClass('pr-8')
+      expect(searchInput).toHaveClass('pr-16')
       expect(searchInput.parentElement).toHaveClass('relative', 'flex-1')
+      expect(screen.getByRole('button', { name: 'Clear search' })).toBeInTheDocument()
       expect(screen.getByTestId('note-list-search-loading')).toBeInTheDocument()
       expect(screen.queryByText('Searching...')).not.toBeInTheDocument()
 

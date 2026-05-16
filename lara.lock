@@ -386,6 +386,7 @@ files:
     noteList.title.notes: f4c6f851b00d5518bf888815de279aba
     noteList.searchPlaceholder: 4857cd2689a0a40eb4a77cdc745c518e
     noteList.searchAction: 5012120fc480c67686dd22ee2f9493cd
+    noteList.clearSearch: 9983381c21069a3d6e4432e0aaea0079
     noteList.createNote: f1484bc40bd3fe3430c13fb89e2ce1af
     noteList.empty.changesError: 4fca500c4b70f61f7d9413c57c34bdc4
     noteList.empty.noChanges: ad82ac153532f5625760c29c176c5d5f

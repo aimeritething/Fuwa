@@ -14,6 +14,11 @@ export function useNoteListSearchState() {
   const normalizedSearch = normalizeSearch(search)
   const query = useDeferredValue(debouncedQuery)
 
+  const updateSearch = useCallback((value: string) => {
+    setSearch(value)
+    if (normalizeSearch(value).length === 0) setDebouncedQuery('')
+  }, [])
+
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       setDebouncedQuery(normalizedSearch)
@@ -64,7 +69,7 @@ export function useNoteListSearchState() {
     search,
     searchInputRef,
     searchVisible,
-    setSearch,
+    setSearch: updateSearch,
     toggleSearch,
   }
 }

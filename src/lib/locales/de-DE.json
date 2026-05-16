@@ -384,6 +384,7 @@
   "noteList.title.notes": "Notizen",
   "noteList.searchPlaceholder": "Notizen durchsuchen …",
   "noteList.searchAction": "Notizen durchsuchen",
+  "noteList.clearSearch": "Suche löschen",
   "noteList.createNote": "Neue Notiz erstellen",
   "noteList.empty.changesError": "Änderungen konnten nicht geladen werden: {error}",
   "noteList.empty.noChanges": "Keine ausstehenden Änderungen",

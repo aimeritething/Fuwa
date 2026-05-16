@@ -1,4 +1,4 @@
-import { CircleNotch as Loader2, MagnifyingGlass, Plus, SidebarSimple } from '@phosphor-icons/react'
+import { CircleNotch as Loader2, MagnifyingGlass, Plus, SidebarSimple, X } from '@phosphor-icons/react'
 import type { VaultEntry } from '../../types'
 import type { SortOption, SortDirection } from '../../utils/noteListHelpers'
 import { translate, type AppLocale } from '../../lib/i18n'
@@ -14,16 +14,22 @@ import type { GitRepositoryOption } from '../../utils/gitRepositories'
 
 const NOTE_LIST_ACTION_BUTTON_CLASSNAME = '!h-auto !w-auto !min-w-0 !rounded-none !p-0 !text-muted-foreground hover:!bg-transparent hover:!text-foreground focus-visible:!bg-transparent data-[state=open]:!bg-transparent data-[state=open]:!text-foreground [&_svg]:!size-4'
 const NOTE_LIST_EXPAND_BUTTON_CLASSNAME = '!h-6 !w-6 !min-w-0 !rounded !p-0 !text-muted-foreground hover:!bg-accent hover:!text-foreground focus-visible:!bg-accent [&_svg]:!size-4'
+const PROPERTY_TRIGGER_TITLE_KEYS: Record<string, string> = {
+  'Customize columns': 'noteList.properties.customizeColumns',
+  'Customize All Notes columns': 'noteList.properties.customizeAllColumns',
+  'Customize Inbox columns': 'noteList.properties.customizeInboxColumns',
+}
 
-function localizePropertiesTriggerTitle(triggerTitle: string, locale: AppLocale): string {
-  if (triggerTitle === 'Customize columns') return translate(locale, 'noteList.properties.customizeColumns')
-  if (triggerTitle === 'Customize All Notes columns') return translate(locale, 'noteList.properties.customizeAllColumns')
-  if (triggerTitle === 'Customize Inbox columns') return translate(locale, 'noteList.properties.customizeInboxColumns')
+const localizePropertiesTriggerTitle = (triggerTitle: string, locale: AppLocale): string => {
+  const titleKey = PROPERTY_TRIGGER_TITLE_KEYS[triggerTitle]
+  if (titleKey) return translate(locale, titleKey)
+  return localizeViewPropertiesTriggerTitle(triggerTitle, locale)
+}
 
-  const viewMatch = triggerTitle.match(/^Customize (.+) columns$/)
-  return viewMatch
-    ? translate(locale, 'noteList.properties.customizeViewColumns', { name: viewMatch[1] })
-    : triggerTitle
+const localizeViewPropertiesTriggerTitle = (triggerTitle: string, locale: AppLocale): string => {
+  return triggerTitle.replace(/^Customize (.+) columns$/, (_match, name: string) => {
+    return translate(locale, 'noteList.properties.customizeViewColumns', { name })
+  })
 }
 
 interface NoteListHeaderProps {
@@ -210,6 +216,16 @@ function SearchRow({
 }) {
   if (!searchVisible) return null
 
+  const hasSearch = search.length > 0
+  const clearLabel = translate(locale, 'noteList.clearSearch')
+
+  const handleClearSearch = () => {
+    onSearchChange('')
+    requestAnimationFrame(() => {
+      searchInputRef.current?.focus()
+    })
+  }
+
   return (
     <div className="border-b border-border px-3 py-2">
       <div className="relative flex-1" aria-live="polite">
@@ -219,8 +235,22 @@ function SearchRow({
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           onKeyDown={onSearchKeyDown}
-          className="h-8 pr-8 text-[13px]"
+          className="h-8 pr-16 text-[13px]"
         />
+        {hasSearch && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            className="absolute inset-y-1 right-8 !h-6 !w-6 !min-w-0 !rounded !p-0 !text-muted-foreground hover:!bg-accent hover:!text-foreground focus-visible:!bg-accent [&_svg]:!size-3"
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={handleClearSearch}
+            title={clearLabel}
+            aria-label={clearLabel}
+          >
+            <X size={12} />
+          </Button>
+        )}
         {isSearching && (
           <span
             className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground"

@@ -70,10 +70,14 @@ describe('NoteList search keyboard behavior', () => {
     ]
 
     renderNoteList({ entries })
-    fireEvent.click(screen.getByTitle('Search notes'))
+    act(() => {
+      fireEvent.click(screen.getByTitle('Search notes'))
+    })
 
     const searchInput = screen.getByPlaceholderText('Search notes...')
-    fireEvent.change(searchInput, { target: { value: 'Strategy' } })
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: 'Strategy' } })
+    })
 
     expect(screen.getByTestId('note-list-search-loading')).toBeInTheDocument()
     expect(screen.getByText('Note 1')).toBeInTheDocument()
@@ -87,5 +91,50 @@ describe('NoteList search keyboard behavior', () => {
     expect(screen.getByText('Alpha Strategy')).toBeInTheDocument()
     expect(screen.getByText('Beta Strategy')).toBeInTheDocument()
     expect(screen.queryByText('Note 1')).not.toBeInTheDocument()
+  })
+
+  it('clears note-list search immediately from the keyboard-reachable clear action', () => {
+    const entries = [
+      makeIndexedEntry(0, { title: 'Alpha Strategy' }),
+      makeIndexedEntry(1, { title: 'Note 1' }),
+    ]
+
+    renderNoteList({ entries })
+    act(() => {
+      fireEvent.click(screen.getByTitle('Search notes'))
+    })
+
+    const searchInput = screen.getByPlaceholderText('Search notes...')
+    act(() => {
+      fireEvent.change(searchInput, { target: { value: 'Strategy' } })
+    })
+
+    act(() => {
+      vi.advanceTimersByTime(180)
+      flushAnimationFrame()
+    })
+
+    expect(screen.getByText('Alpha Strategy')).toBeInTheDocument()
+    expect(screen.queryByText('Note 1')).not.toBeInTheDocument()
+
+    const clearButton = screen.getByRole('button', { name: 'Clear search' })
+    act(() => {
+      clearButton.focus()
+    })
+    expect(clearButton).toHaveFocus()
+
+    act(() => {
+      fireEvent.click(clearButton)
+    })
+    expect(searchInput).toHaveValue('')
+    expect(screen.queryByTestId('note-list-search-loading')).not.toBeInTheDocument()
+    expect(screen.getByText('Alpha Strategy')).toBeInTheDocument()
+    expect(screen.getByText('Note 1')).toBeInTheDocument()
+
+    act(() => {
+      flushAnimationFrame()
+    })
+
+    expect(searchInput).toHaveFocus()
   })
 })
