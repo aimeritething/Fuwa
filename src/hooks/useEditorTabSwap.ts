@@ -28,6 +28,7 @@ import {
   slugifyPathStem,
 } from './editorTabContent'
 import { clearEditorDomSelection, EDITOR_CONTAINER_SELECTOR } from './editorDomSelection'
+import { editorDocumentSignature, isBlankEditorDocument } from './editorDocumentState'
 import {
   cacheEditorState,
   cacheParsedEditorState,
@@ -687,6 +688,16 @@ function applyBlankTabState(options: {
   return true
 }
 
+function editorChangedDuringUntitledEmptyHeadingParse(
+  editor: ReturnType<typeof useCreateBlockNote>,
+  targetPath: string,
+  documentBeforeParseSignature: string,
+): boolean {
+  return isUntitledPath(targetPath)
+    && editorDocumentSignature(editor.document) !== documentBeforeParseSignature
+    && !isBlankEditorDocument(editor.document)
+}
+
 function scheduleEmptyHeadingSwap(options: {
   editor: ReturnType<typeof useCreateBlockNote>
   targetPath: string
@@ -714,9 +725,15 @@ function scheduleEmptyHeadingSwap(options: {
 
   if (!startsWithEmptyHeading({ content })) return false
 
+  const documentBeforeParseSignature = editorDocumentSignature(editor.document)
   void resolveEmptyHeadingBlocks(editor, content, vaultPath, targetPath)
     .then((blocks) => {
-      if (!blocks || shouldAbortSwap({ prevActivePathRef, suppressChangeRef, swapSeqRef, tabsRef, token })) return
+      if (!blocks) return
+      if (shouldAbortSwap({ prevActivePathRef, suppressChangeRef, swapSeqRef, tabsRef, token })) return
+      if (editorChangedDuringUntitledEmptyHeadingParse(editor, targetPath, documentBeforeParseSignature)) {
+        suppressChangeRef.current = false
+        return
+      }
       cacheParsedEditorState(targetPath, { blocks, scrollTop: 0, sourceContent: content }, vaultPath)
       if (!applyBlocksToEditor({ editor, blocks, scrollTop: 0, suppressChangeRef, editorContentPathRef, targetPath })) return
       signalTabSwap({ path: targetPath })
