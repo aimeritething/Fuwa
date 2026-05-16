@@ -71,6 +71,7 @@ interface AppCommandsConfig {
   onCreateEmptyVault?: () => void
   onAddRemote?: () => void
   canAddRemote?: boolean
+  gitFeaturesEnabled?: boolean
   isGitVault?: boolean
   onInitializeGit?: () => void
   onCreateType?: () => void
@@ -186,6 +187,7 @@ type CommandRegistryVaultActions = Pick<
   | 'onCreateEmptyVault'
   | 'onAddRemote'
   | 'canAddRemote'
+  | 'gitFeaturesEnabled'
   | 'isGitVault'
   | 'onInitializeGit'
   | 'onCheckForUpdates'
@@ -479,6 +481,7 @@ function createCommandRegistryVaultConfig(
     onCreateEmptyVault: config.onCreateEmptyVault,
     onAddRemote: config.onAddRemote ?? requestAddRemote,
     canAddRemote: config.canAddRemote ?? true,
+    gitFeaturesEnabled: config.gitFeaturesEnabled,
     isGitVault: config.isGitVault,
     onInitializeGit: config.onInitializeGit,
     onCheckForUpdates: config.onCheckForUpdates,

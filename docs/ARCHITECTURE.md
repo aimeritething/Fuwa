@@ -26,7 +26,9 @@ When deciding where to persist a piece of data, ask: **"Would the user want this
 | Property display order | Window size / position |
 | Per-note `_width` rich-editor width override | Default rich-editor note width |
 | Vault-authored `.gitignore` patterns | Whether this installation hides Gitignored files |
+| N/A | Whether this installation shows Git features |
 | Per-vault All Notes note-list column overrides | All Notes PDF/image/unsupported file visibility |
+| N/A | Per-vault Git setup prompt opt-out |
 | Type `_sidebar_label` overrides | Whether this installation auto-pluralizes type labels |
 | N/A | Registered workspace labels, aliases, mount state, and default new-note destination |
 | Any user-visible customization of how content is organized or displayed | Any machine-specific or credential-type setting |
@@ -512,6 +514,7 @@ Per-vault UI settings stored locally per vault path (currently in browser/Tauri 
 - `inbox.noteListProperties`: Optional Inbox-only property chip override for the note list
 - `allNotes.noteListProperties`: Optional All Notes-only property chip override for the note list
 - `inbox.explicitOrganization`: When `false`, hide Inbox and the organized toggle so the vault behaves like a plain note collection
+- `git_setup_preference`: `"never"` when the user has opted out of future automatic Git setup prompts for that vault
 
 ### Getting Started Vault
 
@@ -522,7 +525,7 @@ On first launch, `useOnboarding` checks if the default vault exists. If not, it 
 
 If the selected vault disappears after startup, `useVaultLoader` re-checks `check_vault_exists` when reloads or vault-derived surfaces fail. A confirmed missing path clears cached entries, folders, views, modified-file state, and prefetched note content, then `App` reuses the `vault-missing` `WelcomeScreen` state so note and view actions cannot keep targeting the stale active vault.
 
-When an opened folder is not yet a git repo, Tolaria shows a dismissible Git setup dialog and a persistent `Git disabled` status-bar warning. Markdown scanning, note browsing, note editing, and search continue normally. Git-dependent surfaces (history, changes, commit, sync, conflict resolution, remotes, AutoGit, and auto-sync) stay unavailable until the user explicitly initializes Git from the dialog, the status-bar warning, or the `Initialize Git for Current Vault` command-palette action.
+When an opened folder is not yet a git repo, Tolaria can show a Git setup dialog with Initialize, Not now, and Never for this vault actions. The Never choice stores a local per-vault `git_setup_preference` so the automatic dialog does not return for that vault, while manual initialization remains reachable from Git commands when global Git features are enabled. Markdown scanning, note browsing, note editing, and search continue normally in plain folders. Git-dependent surfaces (history, changes, commit, sync, conflict resolution, remotes, AutoGit, and auto-sync) stay unavailable until the user explicitly initializes Git.
 
 When the user enables Git later, `init_git_repo` runs `git init`, ensures Tolaria's default `.gitignore`, stages the vault, and writes the initial `Initial vault setup` commit. Before app-managed setup, remote-connection, manual/automatic, and conflict-resolution commits, Tolaria ensures the vault has local `user.name` / `user.email` values, falling back to `Tolaria <vault@tolaria.md>` when the vault has no local Git identity yet. That app-managed setup commit explicitly disables commit signing for the single command so inherited global or local `commit.gpgsign` preferences cannot strand onboarding when GPG is missing or misconfigured. Later `git_commit` calls honor the user's signing configuration first, then retry the same app-managed commit once with `commit.gpgsign=false` only when Git reports a signing-helper failure, so working GPG/SSH signing setups continue to sign while broken GPG setups do not create repeated opaque commit failures.
 
@@ -657,7 +660,9 @@ flowchart TD
 
 `useGitRemoteStatus` re-checks `git_remote_status` for the default repository, and `useCommitFlow` can resolve remote status for an explicit selected repository when the commit dialog opens and again right before submit. If `hasRemote` is false, Tolaria keeps that repository's flow local-only: the status bar shows a neutral `No remote` chip for the default repository, the dialog copy switches from "Commit & Push" to "Commit", and no `git_push` call is attempted.
 
-If the current vault is not a Git repository, Tolaria treats Git as disabled instead of degraded. The status bar replaces changes, commit, sync, remote, conflict, and history controls with a `Git disabled` warning that reopens Git setup. Command registration follows the same state: only `Initialize Git for Current Vault` is available in the Git group, while pull, commit, changes, conflict, and remote commands are hidden. `useAutoSync` is disabled for non-git vaults so the app does not run background Git commands against plain folders.
+If the current vault is not a Git repository, Tolaria treats Git as unavailable instead of degraded. With global Git features enabled, the status bar replaces changes, commit, sync, remote, conflict, and history controls with a `Git disabled` warning that reopens Git setup unless the user has chosen not to be prompted automatically for that vault. Command registration follows the same state: only `Initialize Git for Current Vault` is available in the Git group, while pull, commit, changes, conflict, and remote commands are hidden. `useAutoSync` is disabled for non-git vaults so the app does not run background Git commands against plain folders.
+
+The installation-local `git_enabled` setting is a broader visibility switch. When it is `false`, Tolaria hides Git status-bar entries and Git command-palette actions completely, disables AutoGit controls in Settings, and prevents background Git refresh/sync work even for repositories that are otherwise Git-backed. Settings remains the re-enable path.
 
 The same local-only state enables the explicit Add Remote flow. `AddRemoteModal` is reachable from the `No remote` chip and the command palette. The backend `git_add_remote` command ensures the local author identity, adds `origin`, fetches it, refuses incompatible histories, and only enables tracking after a safe push or fast-forward-compatible check succeeds.
 
@@ -865,8 +870,8 @@ No Redux or global context. State lives in the root `App.tsx` and custom hooks:
 | `useCommitFlow` | Commit dialog state, shared manual/automatic checkpoint runner | Git commit/push orchestration |
 | `useGitRemoteStatus` | `remoteStatus`, `refreshRemoteStatus()` | On-demand remote detection for commit UI |
 | `useUnifiedSearch` | Query, results, loading state | Keyword search |
-| `useSettings` | App settings (telemetry, release channel, theme mode, UI language, date display format, auto-sync interval, AutoGit thresholds, default AI agent, Gitignored-content visibility, All Notes file visibility) | Persistent settings |
-| `useVaultConfig` | Per-vault UI preferences, AI permission mode | Vault-specific config |
+| `useSettings` | App settings (telemetry, release channel, theme mode, UI language, date display format, auto-sync interval, Git visibility, AutoGit thresholds, default AI agent, Gitignored-content visibility, All Notes file visibility) | Persistent settings |
+| `useVaultConfig` | Per-vault UI preferences, Git setup prompt preference, AI permission mode | Vault-specific config |
 | `appCommandDispatcher` | Manifest-backed shortcut/menu command IDs | Shared execution path for renderer and native menu commands |
 
 Data flows unidirectionally: `App` passes data and callbacks as props to child components. No child-to-child communication — everything goes through `App`.

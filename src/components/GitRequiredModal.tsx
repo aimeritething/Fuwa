@@ -14,9 +14,10 @@ interface GitSetupDialogProps {
   open: boolean
   onInitGit: () => Promise<void>
   onDismiss: () => void
+  onNeverForVault?: () => void
 }
 
-export function GitSetupDialog({ open, onInitGit, onDismiss }: GitSetupDialogProps) {
+export function GitSetupDialog({ open, onInitGit, onDismiss, onNeverForVault }: GitSetupDialogProps) {
   const [creating, setCreating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -51,6 +52,9 @@ export function GitSetupDialog({ open, onInitGit, onDismiss }: GitSetupDialogPro
           </p>
         )}
         <DialogFooter>
+          <Button variant="ghost" onClick={onNeverForVault} disabled={creating}>
+            Never for this vault
+          </Button>
           <Button variant="outline" onClick={onDismiss} disabled={creating}>
             Not now
           </Button>

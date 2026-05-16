@@ -13,6 +13,7 @@ describe('GitSetupDialog', () => {
     render(<GitSetupDialog open onInitGit={vi.fn()} onDismiss={vi.fn()} />)
     expect(screen.getByText('Initialize Git')).toBeInTheDocument()
     expect(screen.getByText('Not now')).toBeInTheDocument()
+    expect(screen.getByText('Never for this vault')).toBeInTheDocument()
   })
 
   it('calls onInitGit when primary button clicked', async () => {
@@ -27,6 +28,13 @@ describe('GitSetupDialog', () => {
     render(<GitSetupDialog open onInitGit={vi.fn()} onDismiss={onDismiss} />)
     fireEvent.click(screen.getByText('Not now'))
     expect(onDismiss).toHaveBeenCalledOnce()
+  })
+
+  it('calls onNeverForVault when never button clicked', () => {
+    const onNeverForVault = vi.fn()
+    render(<GitSetupDialog open onInitGit={vi.fn()} onDismiss={vi.fn()} onNeverForVault={onNeverForVault} />)
+    fireEvent.click(screen.getByText('Never for this vault'))
+    expect(onNeverForVault).toHaveBeenCalledOnce()
   })
 
   it('disables buttons and shows spinner while creating', async () => {

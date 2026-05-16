@@ -43,13 +43,14 @@ import {
 } from '../lib/themeMode'
 import { normalizeReleaseChannel, serializeReleaseChannel, type ReleaseChannel } from '../lib/releaseChannel'
 import { shouldHideGitignoredFiles } from '../lib/gitignoredVisibility'
+import { areGitFeaturesEnabled } from '../lib/gitSettings'
 import { areAiFeaturesEnabled } from '../lib/aiFeatures'
 import { trackAllNotesVisibilityChanged } from '../lib/productAnalytics'
 import { AiProviderSettings } from './AiProviderSettings'
+import { GitSettingsSection } from './GitSettingsSection'
 import { PrivacySettingsSection } from './PrivacySettingsSection'
 import { SettingsBodyNav } from './SettingsBodyNav'
 import {
-  NumberInputControl,
   SectionHeading,
   SelectControl,
   SettingsGroup,
@@ -102,6 +103,7 @@ interface SettingsPanelProps {
 
 interface SettingsDraft {
   pullInterval: number
+  gitFeaturesEnabled: boolean
   autoGitEnabled: boolean
   autoGitIdleThresholdSeconds: number
   autoGitInactiveThresholdSeconds: number
@@ -129,6 +131,8 @@ interface SettingsBodyProps {
   t: Translate
   pullInterval: number
   setPullInterval: (value: number) => void
+  gitFeaturesEnabled: boolean
+  setGitFeaturesEnabled: (value: boolean) => void
   isGitVault: boolean
   autoGitEnabled: boolean
   setAutoGitEnabled: (value: boolean) => void
@@ -196,6 +200,7 @@ function createSettingsDraft(
 ): SettingsDraft {
   return {
     pullInterval: settings.auto_pull_interval_minutes ?? 5,
+    gitFeaturesEnabled: areGitFeaturesEnabled(settings),
     autoGitEnabled: settings.autogit_enabled ?? false,
     autoGitIdleThresholdSeconds: sanitizePositiveInteger(
       settings.autogit_idle_threshold_seconds,
@@ -248,6 +253,7 @@ function resolveAnonymousId(settings: Settings, draft: SettingsDraft): string | 
 function buildSettingsFromDraft(settings: Settings, draft: SettingsDraft): Settings {
   const nextSettings = {
     auto_pull_interval_minutes: draft.pullInterval,
+    git_enabled: draft.gitFeaturesEnabled,
     autogit_enabled: draft.autoGitEnabled,
     autogit_idle_threshold_seconds: draft.autoGitIdleThresholdSeconds,
     autogit_inactive_threshold_seconds: draft.autoGitInactiveThresholdSeconds,
@@ -515,6 +521,8 @@ function SettingsBodyFromDraft({
       systemLocale={systemLocale}
       pullInterval={draft.pullInterval}
       setPullInterval={(value) => updateDraft('pullInterval', value)}
+      gitFeaturesEnabled={draft.gitFeaturesEnabled}
+      setGitFeaturesEnabled={(value) => updateDraft('gitFeaturesEnabled', value)}
       isGitVault={isGitVault}
       autoGitEnabled={draft.autoGitEnabled}
       setAutoGitEnabled={(value) => updateDraft('autoGitEnabled', value)}
@@ -586,6 +594,8 @@ function SettingsSyncAndAppearanceSections({
   systemLocale,
   pullInterval,
   setPullInterval,
+  gitFeaturesEnabled,
+  setGitFeaturesEnabled,
   isGitVault,
   autoGitEnabled,
   setAutoGitEnabled,
@@ -631,8 +641,10 @@ function SettingsSyncAndAppearanceSections({
         />
       </SettingsSection>
       <SettingsSection id={SETTINGS_SECTION_IDS.autogit}>
-        <AutoGitSettingsSection
+        <GitSettingsSection
           t={t}
+          gitFeaturesEnabled={gitFeaturesEnabled}
+          setGitFeaturesEnabled={setGitFeaturesEnabled}
           isGitVault={isGitVault}
           autoGitEnabled={autoGitEnabled}
           setAutoGitEnabled={setAutoGitEnabled}
@@ -880,80 +892,6 @@ function ThemeModeButton({
       {children}
       {label}
     </Button>
-  )
-}
-
-function autoGitSectionDescription(isGitVault: boolean, t: Translate): string {
-  return isGitVault
-    ? t('settings.autogit.description.enabled')
-    : t('settings.autogit.description.disabled')
-}
-
-function AutoGitSettingsSection({
-  t,
-  isGitVault,
-  autoGitEnabled,
-  setAutoGitEnabled,
-  autoGitIdleThresholdSeconds,
-  setAutoGitIdleThresholdSeconds,
-  autoGitInactiveThresholdSeconds,
-  setAutoGitInactiveThresholdSeconds,
-}: Pick<
-  SettingsBodyProps,
-  | 't'
-  | 'isGitVault'
-  | 'autoGitEnabled'
-  | 'setAutoGitEnabled'
-  | 'autoGitIdleThresholdSeconds'
-  | 'setAutoGitIdleThresholdSeconds'
-  | 'autoGitInactiveThresholdSeconds'
-  | 'setAutoGitInactiveThresholdSeconds'
->) {
-  return (
-    <>
-      <SectionHeading
-        title={t('settings.autogit.title')}
-      />
-
-      <SettingsGroup>
-        <SettingsSwitchRow
-          label={t('settings.autogit.enable')}
-          description={isGitVault ? t('settings.autogit.enableDescription') : autoGitSectionDescription(isGitVault, t)}
-          checked={autoGitEnabled}
-          onChange={setAutoGitEnabled}
-          disabled={!isGitVault}
-          testId="settings-autogit-enabled"
-        />
-
-        <SettingsRow
-          label={t('settings.autogit.idleThreshold')}
-          description={t('settings.autogit.idleThresholdDescription')}
-          controlWidth="compact"
-        >
-          <NumberInputControl
-            ariaLabel={t('settings.autogit.idleThreshold')}
-            value={autoGitIdleThresholdSeconds}
-            onValueChange={setAutoGitIdleThresholdSeconds}
-            testId="settings-autogit-idle-threshold"
-            disabled={!isGitVault}
-          />
-        </SettingsRow>
-
-        <SettingsRow
-          label={t('settings.autogit.inactiveThreshold')}
-          description={t('settings.autogit.inactiveThresholdDescription')}
-          controlWidth="compact"
-        >
-          <NumberInputControl
-            ariaLabel={t('settings.autogit.inactiveThreshold')}
-            value={autoGitInactiveThresholdSeconds}
-            onValueChange={setAutoGitInactiveThresholdSeconds}
-            testId="settings-autogit-inactive-threshold"
-            disabled={!isGitVault}
-          />
-        </SettingsRow>
-      </SettingsGroup>
-    </>
   )
 }
 

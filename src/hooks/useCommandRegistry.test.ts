@@ -140,6 +140,17 @@ describe('useCommandRegistry', () => {
     expect(findCommand(result.current, 'view-changes')).toBeUndefined()
   })
 
+  it('hides all Git commands when Git features are disabled globally', () => {
+    const config = makeConfig({ gitFeaturesEnabled: false, isGitVault: false, modifiedCount: 5 })
+    const { result } = renderHook(() => useCommandRegistry(config))
+
+    expect(findCommand(result.current, 'initialize-git')).toBeUndefined()
+    expect(findCommand(result.current, 'commit-push')).toBeUndefined()
+    expect(findCommand(result.current, 'git-pull')).toBeUndefined()
+    expect(findCommand(result.current, 'add-remote')).toBeUndefined()
+    expect(findCommand(result.current, 'view-changes')).toBeUndefined()
+  })
+
   it('resolve-conflicts stays enabled across rerenders', () => {
     const config = makeConfig()
     const { result, rerender } = renderHook(

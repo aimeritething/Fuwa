@@ -782,6 +782,28 @@ describe('StatusBar', () => {
     expect(screen.queryByTestId('status-commit-push')).not.toBeInTheDocument()
   })
 
+  it('hides all git controls when Git features are disabled globally', () => {
+    render(
+      <StatusBar
+        noteCount={100}
+        modifiedCount={5}
+        vaultPath="/Users/luca/Laputa"
+        vaults={vaults}
+        onSwitchVault={vi.fn()}
+        gitFeaturesEnabled={false}
+        isGitVault={false}
+        onInitializeGit={vi.fn()}
+        onClickPulse={vi.fn()}
+        onCommitPush={vi.fn()}
+      />
+    )
+
+    expect(screen.queryByTestId('status-missing-git')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('status-pulse')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('status-commit-push')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('status-changes')).not.toBeInTheDocument()
+  })
+
   it('opens Git setup from the missing-Git warning with mouse and keyboard', () => {
     const onInitializeGit = vi.fn()
     render(

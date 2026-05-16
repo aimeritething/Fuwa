@@ -67,6 +67,7 @@ const SUPPORTED_UI_LANGUAGE_ALIASES: &[(&str, &str)] = &[
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct Settings {
     pub auto_pull_interval_minutes: Option<u32>,
+    pub git_enabled: Option<bool>,
     pub autogit_enabled: Option<bool>,
     pub autogit_idle_threshold_seconds: Option<u32>,
     pub autogit_inactive_threshold_seconds: Option<u32>,
@@ -177,6 +178,7 @@ pub fn normalize_ui_language(value: Option<&str>) -> Option<String> {
 fn normalize_settings(settings: Settings) -> Settings {
     Settings {
         auto_pull_interval_minutes: settings.auto_pull_interval_minutes,
+        git_enabled: settings.git_enabled,
         autogit_enabled: settings.autogit_enabled,
         autogit_idle_threshold_seconds: normalize_optional_positive_u32(
             settings.autogit_idle_threshold_seconds,
@@ -334,6 +336,7 @@ mod tests {
     fn test_settings_json_roundtrip() {
         let settings = Settings {
             auto_pull_interval_minutes: Some(10),
+            git_enabled: Some(false),
             autogit_enabled: Some(true),
             autogit_idle_threshold_seconds: Some(90),
             autogit_inactive_threshold_seconds: Some(30),
@@ -376,6 +379,7 @@ mod tests {
     fn test_save_and_load_preserves_values() {
         let loaded = save_and_reload(Settings {
             auto_pull_interval_minutes: Some(10),
+            git_enabled: Some(false),
             autogit_enabled: Some(true),
             autogit_idle_threshold_seconds: Some(90),
             autogit_inactive_threshold_seconds: Some(30),
@@ -397,6 +401,7 @@ mod tests {
             ..Default::default()
         });
         assert_eq!(loaded.auto_pull_interval_minutes, Some(10));
+        assert_eq!(loaded.git_enabled, Some(false));
         assert_eq!(loaded.autogit_enabled, Some(true));
         assert_eq!(loaded.autogit_idle_threshold_seconds, Some(90));
         assert_eq!(loaded.autogit_inactive_threshold_seconds, Some(30));

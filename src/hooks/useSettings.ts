@@ -36,6 +36,7 @@ async function tauriCall<T>(command: string, tauriArgs: Record<string, unknown>,
 
 const EMPTY_SETTINGS: Settings = {
   auto_pull_interval_minutes: null,
+  git_enabled: null,
   autogit_enabled: null,
   autogit_idle_threshold_seconds: null,
   autogit_inactive_threshold_seconds: null,
@@ -66,6 +67,7 @@ function normalizeSettings(settings: Settings): Settings {
 
   return {
     ...settings,
+    git_enabled: settings.git_enabled ?? null,
     release_channel: serializeReleaseChannel(
       normalizeReleaseChannel(settings.release_channel),
     ),

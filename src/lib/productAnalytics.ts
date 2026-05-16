@@ -63,6 +63,12 @@ export function trackAiFeaturesEnabledChanged(enabled: boolean): void {
   })
 }
 
+export function trackGitFeaturesEnabledChanged(enabled: boolean): void {
+  trackEvent('git_features_visibility_changed', {
+    enabled: numericFlag(enabled),
+  })
+}
+
 export function trackDefaultNoteWidthChanged(mode: NoteWidthMode): void {
   trackEvent('note_width_default_changed', { mode })
 }

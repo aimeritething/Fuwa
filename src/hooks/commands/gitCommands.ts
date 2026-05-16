@@ -4,6 +4,7 @@ import type { SidebarSelection } from '../../types'
 interface GitCommandsConfig {
   modifiedCount: number
   canAddRemote: boolean
+  gitFeaturesEnabled?: boolean
   isGitVault?: boolean
   onAddRemote?: () => void
   onCommitPush: () => void
@@ -17,6 +18,7 @@ export function buildGitCommands(config: GitCommandsConfig): CommandAction[] {
   const {
     modifiedCount,
     canAddRemote,
+    gitFeaturesEnabled = true,
     isGitVault = true,
     onAddRemote,
     onCommitPush,
@@ -25,6 +27,8 @@ export function buildGitCommands(config: GitCommandsConfig): CommandAction[] {
     onResolveConflicts,
     onSelect,
   } = config
+
+  if (!gitFeaturesEnabled) return []
 
   if (!isGitVault) {
     return [

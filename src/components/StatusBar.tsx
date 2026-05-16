@@ -75,6 +75,7 @@ interface StatusBarProps {
   onClickPulse?: () => void
   onCommitPush?: () => void
   commitActionPending?: boolean
+  gitFeaturesEnabled?: boolean
   onInitializeGit?: () => void
   isOffline?: boolean
   isVaultReloading?: boolean
@@ -135,6 +136,7 @@ function StatusBarPrimaryFromFooter({
   onClickPulse,
   onCommitPush,
   commitActionPending = false,
+  gitFeaturesEnabled = true,
   onInitializeGit,
   isOffline = false,
   isVaultReloading = false,
@@ -186,6 +188,7 @@ function StatusBarPrimaryFromFooter({
       onClickPulse={onClickPulse}
       onCommitPush={onCommitPush}
       commitActionPending={commitActionPending}
+      gitFeaturesEnabled={gitFeaturesEnabled}
       onInitializeGit={onInitializeGit}
       isOffline={isOffline}
       isVaultReloading={isVaultReloading}

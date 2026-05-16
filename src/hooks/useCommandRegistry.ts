@@ -74,6 +74,7 @@ interface CommandRegistryConfig {
   onCreateEmptyVault?: () => void
   onAddRemote?: () => void
   canAddRemote?: boolean
+  gitFeaturesEnabled?: boolean
   isGitVault?: boolean
   onInitializeGit?: () => void
   onCreateType?: () => void
@@ -150,7 +151,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onCustomizeNoteListColumns, canCustomizeNoteListColumns,
     onRestoreDeletedNote, canRestoreDeletedNote,
     selection, noteListFilter, onSetNoteListFilter,
-    isGitVault, onInitializeGit,
+    gitFeaturesEnabled, isGitVault, onInitializeGit,
   } = config
 
   const hasActiveNote = activeTabPath !== null
@@ -212,6 +213,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
 
   const gitCommands = useMemo(() => buildGitCommands({
     modifiedCount,
+    gitFeaturesEnabled,
     isGitVault,
     canAddRemote: config.canAddRemote ?? false,
     onAddRemote: config.onAddRemote,
@@ -221,7 +223,7 @@ export function useCommandRegistry(config: CommandRegistryConfig): import('./com
     onResolveConflicts,
     onSelect,
   }), [
-    modifiedCount, isGitVault, config.canAddRemote, config.onAddRemote,
+    modifiedCount, gitFeaturesEnabled, isGitVault, config.canAddRemote, config.onAddRemote,
     onCommitPush, onInitializeGit, onPull, onResolveConflicts, onSelect,
   ])
 

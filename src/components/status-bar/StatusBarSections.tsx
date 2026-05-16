@@ -57,6 +57,7 @@ interface StatusBarPrimarySectionProps {
   onClickPulse?: () => void
   onCommitPush?: () => void
   commitActionPending?: boolean
+  gitFeaturesEnabled?: boolean
   onInitializeGit?: () => void
   isOffline?: boolean
   isVaultReloading?: boolean
@@ -197,6 +198,7 @@ function StatusBarPrimaryBadges({
   onClickPending,
   onCommitPush,
   commitActionPending,
+  gitFeaturesEnabled,
   onInitializeGit,
   syncStatus,
   lastSyncTime,
@@ -229,6 +231,7 @@ function StatusBarPrimaryBadges({
   onClickPending?: () => void
   onCommitPush?: () => void
   commitActionPending?: boolean
+  gitFeaturesEnabled: boolean
   onInitializeGit?: () => void
   syncStatus: SyncStatus
   lastSyncTime: number | null
@@ -259,7 +262,7 @@ function StatusBarPrimaryBadges({
     <>
       <OfflineBadge isOffline={isOffline} showSeparator={!compact} compact={compact} locale={locale} />
       <VaultReloadingBadge isReloading={isVaultReloading} showSeparator={!compact} compact={compact} locale={locale} />
-      {isGitVault ? (
+      {gitFeaturesEnabled && isGitVault ? (
         <>
           <NoRemoteBadge remoteStatus={visibleRemoteStatus} onAddRemote={onAddRemote} showSeparator={!compact} compact={compact} locale={locale} />
           <ChangesBadge count={modifiedCount} onClick={onClickPending} showSeparator={!compact} compact={compact} locale={locale} />
@@ -277,9 +280,9 @@ function StatusBarPrimaryBadges({
           <ConflictBadge count={conflictCount} onClick={onOpenConflictResolver} showSeparator={!compact} compact={compact} locale={locale} />
           <PulseBadge onClick={onClickPulse} showSeparator={!compact} compact={compact} locale={locale} />
         </>
-      ) : (
+      ) : gitFeaturesEnabled ? (
         <MissingGitBadge onClick={onInitializeGit} showSeparator={!compact} compact={compact} locale={locale} />
-      )}
+      ) : null}
       {mcpStatus && <McpBadge status={mcpStatus} onInstall={onInstallMcp} showSeparator={!compact} compact={compact} locale={locale} />}
       <StatusBarAiBadge
         aiAgentsStatus={aiAgentsStatus}
@@ -420,6 +423,7 @@ export function StatusBarPrimarySection({
   onAddRemote,
   onClickPending, onClickPulse,
   onCommitPush, commitActionPending = false,
+  gitFeaturesEnabled = true,
   onInitializeGit,
   isOffline = false, isVaultReloading = false, isGitVault = true,
   syncStatus,
@@ -452,7 +456,7 @@ export function StatusBarPrimarySection({
 }: StatusBarPrimarySectionProps) {
   const { openAddRemote, closeAddRemote, showAddRemote, visibleRemoteStatus, handleRemoteConnected } = useStatusBarAddRemote({
     vaultPath,
-    isGitVault,
+    isGitVault: gitFeaturesEnabled && isGitVault,
     remoteStatus,
     onAddRemote,
   })
@@ -486,6 +490,7 @@ export function StatusBarPrimarySection({
         onClickPending={onClickPending}
         onCommitPush={onCommitPush}
         commitActionPending={commitActionPending}
+        gitFeaturesEnabled={gitFeaturesEnabled}
         onInitializeGit={onInitializeGit}
         syncStatus={syncStatus}
         lastSyncTime={lastSyncTime}

@@ -141,9 +141,12 @@ files:
     settings.language.label: 244c7b77926f077b863c33ff1244e1ec
     settings.language.system: 41e2252344aa441e925589ddcb762e6d
     settings.language.summary: edc83f1f48ce29bc80bf2f2f90e24997
-    settings.autogit.title: e59f720605ec1cfa42b3b97d89d7e883
+    settings.autogit.title: 0bcc70105ad279503e31fe7b3f47b665
+    settings.git.enable: c40503e1b0f483eecf3aff2fd01665c4
+    settings.git.enableDescription: a96a43dc4dbf1490d665eef437807b07
     settings.autogit.description.enabled: e65bec70ca4d7921be56f84d10836018
     settings.autogit.description.disabled: 1143ef6ee00614816785e3c6fc299d51
+    settings.autogit.description.gitDisabled: 55a1dd2d7f797062cde1374930221649
     settings.autogit.enable: 9b205a4ae0e3ad4e6708155880ce9c75
     settings.autogit.enableDescription: a7424a8f90c0b7f290a8144d12374554
     settings.autogit.idleThreshold: 28016cc6fccd951a904ee3020cd733b6

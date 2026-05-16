@@ -16,6 +16,7 @@ vi.mock('../lib/telemetry', () => ({
 
 const emptySettings: Settings = {
   auto_pull_interval_minutes: null,
+  git_enabled: null,
   autogit_enabled: null,
   autogit_idle_threshold_seconds: null,
   autogit_inactive_threshold_seconds: null,
@@ -667,9 +668,40 @@ describe('SettingsPanel', () => {
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
     )
 
+    expect(screen.getAllByText('Git')).not.toHaveLength(0)
+    expect(screen.getByRole('switch', { name: 'Enable Git features' })).toHaveAttribute('aria-checked', 'true')
     expect(screen.getByRole('switch', { name: 'Enable AutoGit' })).toHaveAttribute('aria-checked', 'false')
     expect(screen.getByTestId('settings-autogit-idle-threshold')).toHaveValue(90)
     expect(screen.getByTestId('settings-autogit-inactive-threshold')).toHaveValue(30)
+  })
+
+  it('saves the global Git feature preference when toggled off', () => {
+    render(
+      <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
+    )
+
+    fireEvent.click(screen.getByRole('switch', { name: 'Enable Git features' }))
+    fireEvent.click(screen.getByTestId('settings-save'))
+
+    expect(onSave).toHaveBeenCalledWith(expect.objectContaining({
+      git_enabled: false,
+    }))
+  })
+
+  it('disables AutoGit controls when Git features are disabled globally', () => {
+    render(
+      <SettingsPanel
+        open={true}
+        settings={{ ...emptySettings, git_enabled: false, autogit_enabled: true }}
+        onSave={onSave}
+        onClose={onClose}
+      />
+    )
+
+    expect(screen.getByRole('switch', { name: 'Enable Git features' })).toHaveAttribute('aria-checked', 'false')
+    expect(screen.getByRole('switch', { name: 'Enable AutoGit' })).toBeDisabled()
+    expect(screen.getByTestId('settings-autogit-idle-threshold')).toBeDisabled()
+    expect(screen.getByTestId('settings-autogit-inactive-threshold')).toBeDisabled()
   })
 
   it('saves AutoGit preferences when toggled and edited', () => {

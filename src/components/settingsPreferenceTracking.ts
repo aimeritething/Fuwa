@@ -4,9 +4,11 @@ import {
   trackAiFeaturesEnabledChanged,
   trackDateDisplayFormatChanged,
   trackDefaultNoteWidthChanged,
+  trackGitFeaturesEnabledChanged,
   trackSidebarTypePluralizationChanged,
 } from '../lib/productAnalytics'
 import { areAiFeaturesEnabled } from '../lib/aiFeatures'
+import { areGitFeaturesEnabled } from '../lib/gitSettings'
 import {
   DEFAULT_DATE_DISPLAY_FORMAT,
   normalizeDateDisplayFormat,
@@ -19,6 +21,7 @@ export interface SettingsPreferenceDraft {
   aiFeaturesEnabled: boolean
   dateDisplayFormat: DateDisplayFormat
   defaultNoteWidth: NoteWidthMode
+  gitFeaturesEnabled: boolean
   multiWorkspaceEnabled: boolean
   sidebarTypePluralizationEnabled: boolean
 }
@@ -32,6 +35,11 @@ export function trackSettingsPreferenceChanges(settings: Settings, draft: Settin
   const previousAiFeaturesEnabled = areAiFeaturesEnabled(settings)
   if (previousAiFeaturesEnabled !== draft.aiFeaturesEnabled) {
     trackAiFeaturesEnabledChanged(draft.aiFeaturesEnabled)
+  }
+
+  const previousGitFeaturesEnabled = areGitFeaturesEnabled(settings)
+  if (previousGitFeaturesEnabled !== draft.gitFeaturesEnabled) {
+    trackGitFeaturesEnabledChanged(draft.gitFeaturesEnabled)
   }
 
   const previousDateDisplayFormat = normalizeDateDisplayFormat(settings.date_display_format) ?? DEFAULT_DATE_DISPLAY_FORMAT
