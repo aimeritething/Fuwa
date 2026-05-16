@@ -5,7 +5,7 @@ import { createFixtureVaultCopy, openFixtureVault, removeFixtureVaultCopy } from
 import { executeCommand, openCommandPalette } from './helpers'
 import { RUNTIME_STYLE_NONCE } from '../../src/lib/runtimeStyleNonce'
 import { APP_COMMAND_IDS } from '../../src/hooks/appCommandCatalog'
-import { triggerShortcutCommand } from './testBridge'
+import { triggerMenuCommand, triggerShortcutCommand } from './testBridge'
 
 let tempVaultDir: string
 
@@ -192,6 +192,13 @@ async function expectRenderedDiagramCount(page: Page, count: number): Promise<vo
   await expect(page.locator('[data-testid="mermaid-diagram-viewport"] svg')).toHaveCount(count, { timeout: 15_000 })
 }
 
+async function reloadVault(page: Page): Promise<void> {
+  await triggerMenuCommand(page, APP_COMMAND_IDS.vaultReload)
+  await expect(page.getByText(/Vault reloaded \(\d+ entries\)/).last()).toBeVisible({
+    timeout: 5_000,
+  })
+}
+
 async function countLargeBlackFilledShapes(page: Page, diagramIndex: number): Promise<number> {
   return page.locator('[data-testid="mermaid-diagram-viewport"] svg').nth(diagramIndex).evaluate((svg) => {
     const shapes = Array.from(svg.querySelectorAll<SVGGraphicsElement>('rect,path,polygon'))
@@ -339,6 +346,21 @@ test('Mermaid diagrams stay mounted after property edits refresh frontmatter', a
   )).toMatch(/Date: "?2026-04-30"?/)
   await expectRenderedDiagramCount(page, 1)
   await expect(page.locator('[data-testid="mermaid-diagram-viewport"]').first()).toContainText('Linked to a planned shift?')
+  expect(pageErrors).toEqual([])
+})
+
+test('Mermaid diagram clicks stay stable while a vault reload settles', async ({ page }) => {
+  const pageErrors: string[] = []
+  page.on('pageerror', error => pageErrors.push(error.message))
+
+  await openNote(page, 'Mermaid Reported')
+  await expectRenderedDiagramCount(page, 1)
+  await reloadVault(page)
+  await mermaidSvg(page, 0).click()
+
+  await expectRenderedDiagramCount(page, 1)
+  await expect(page.locator('#tolaria-fatal-render-error')).toHaveCount(0)
+  await expect(mermaidSvg(page, 0)).toContainText('Linked to a planned shift?')
   expect(pageErrors).toEqual([])
 })
 

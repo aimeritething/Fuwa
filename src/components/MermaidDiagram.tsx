@@ -1,5 +1,5 @@
 import { ArrowsOut as Maximize2 } from '@phosphor-icons/react'
-import { useEffect, useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState, type SyntheticEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -106,12 +106,25 @@ function MermaidSvgViewport({ ariaLabel, className, svg, testId }: MermaidSvgVie
     <SafeSvgDiv
       aria-label={ariaLabel}
       className={className}
+      contentEditable={false}
       data-testid={testId}
+      draggable={false}
+      onClick={stopMermaidViewportEvent}
+      onDoubleClick={stopMermaidViewportEvent}
+      onMouseDown={stopMermaidViewportEvent}
+      onMouseUp={stopMermaidViewportEvent}
+      onPointerDown={stopMermaidViewportEvent}
+      onPointerUp={stopMermaidViewportEvent}
       role="img"
       svg={svg}
+      suppressContentEditableWarning
       tabIndex={0}
     />
   )
+}
+
+function stopMermaidViewportEvent(event: SyntheticEvent): void {
+  event.stopPropagation()
 }
 
 function MermaidLightbox({ svg }: { svg: string }) {

@@ -59,6 +59,28 @@ describe('MermaidDiagram', () => {
     expect(screen.getByTestId('mermaid-diagram-dialog-viewport').querySelector('svg')).not.toBeNull()
   })
 
+  it('keeps rendered SVG pointer events inside the Mermaid block', async () => {
+    const onBlockPointer = vi.fn()
+    render(
+      <div onClick={onBlockPointer} onMouseDown={onBlockPointer}>
+        <MermaidDiagram
+          diagram={'flowchart LR\nA --> B'}
+          source={'```mermaid\nflowchart LR\nA --> B\n```'}
+        />
+      </div>,
+    )
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mermaid-diagram-viewport').querySelector('svg')).not.toBeNull()
+    })
+
+    const viewport = screen.getByTestId('mermaid-diagram-viewport')
+    fireEvent.mouseDown(viewport)
+    fireEvent.click(viewport)
+
+    expect(onBlockPointer).not.toHaveBeenCalled()
+  })
+
   it('tags Mermaid SVG style elements with the runtime CSP nonce', async () => {
     mermaidMock.render.mockResolvedValueOnce({
       svg: '<svg aria-label="Rendered Mermaid"><style>.node{fill:#000}</style><g><text>A to B</text></g></svg>',
