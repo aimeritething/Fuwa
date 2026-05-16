@@ -174,6 +174,66 @@ function evaluateDateCondition(cond: FilterCondition, scalar: string | number | 
   return cond.op === 'before' ? tsMs < target : tsMs > target
 }
 
+type DateTimestamps = {
+  left: number
+  right: number
+}
+
+function isSameLocalDay(timestamps: DateTimestamps): boolean {
+  const leftTimestamp = timestamps.left
+  const rightTimestamp = timestamps.right
+  const leftDate = new Date(leftTimestamp)
+  const rightDate = new Date(rightTimestamp)
+  return leftDate.getFullYear() === rightDate.getFullYear()
+    && leftDate.getMonth() === rightDate.getMonth()
+    && leftDate.getDate() === rightDate.getDate()
+}
+
+type DateEqualityCondition = {
+  op: FilterCondition['op']
+  scalar: FieldScalar
+  condVal: string
+}
+
+function evaluateDateEqualityCondition(condition: DateEqualityCondition): boolean | null {
+  const { op, scalar, condVal } = condition
+  if (op !== 'equals' && op !== 'not_equals') return null
+
+  const tsMs = fieldTimestamp(scalar)
+  const target = toDateFilterTimestamp(condVal)
+  if (tsMs == null || target == null) return null
+
+  const matched = isSameLocalDay({ left: tsMs, right: target })
+  return op === 'equals' ? matched : !matched
+}
+
+type ScalarDateCondition = {
+  cond: FilterCondition
+  scalar: FieldScalar
+  condVal: string
+}
+
+function evaluateScalarDateCondition(condition: ScalarDateCondition): boolean | null {
+  const { cond, scalar, condVal } = condition
+  if (cond.op === 'before' || cond.op === 'after') {
+    return evaluateDateCondition(cond, scalar, condVal)
+  }
+
+  return evaluateDateEqualityCondition({ op: cond.op, scalar, condVal })
+}
+
+type ScalarCondition = ScalarDateCondition & {
+  regex: RegExp | null
+}
+
+function evaluateScalarCondition(condition: ScalarCondition): boolean {
+  const dateResult = evaluateScalarDateCondition(condition)
+  if (dateResult !== null) return dateResult
+
+  const { cond, scalar, condVal, regex } = condition
+  return evaluateTextCondition(cond, toString(scalar), condVal, regex)
+}
+
 function evaluateCondition(cond: FilterCondition, entry: VaultEntry): boolean {
   const resolved = resolveField(entry, cond.field)
   const emptyResult = evaluateEmptyCondition(cond.op, resolved)
@@ -187,9 +247,5 @@ function evaluateCondition(cond: FilterCondition, entry: VaultEntry): boolean {
     return evaluateArrayCondition(cond, resolved, condVal, regex)
   }
 
-  if (cond.op === 'before' || cond.op === 'after') {
-    return evaluateDateCondition(cond, resolved.value, condVal)
-  }
-
-  return evaluateTextCondition(cond, toString(resolved.value), condVal, regex)
+  return evaluateScalarCondition({ cond, scalar: resolved.value, condVal, regex })
 }
