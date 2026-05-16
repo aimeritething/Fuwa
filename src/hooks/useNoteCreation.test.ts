@@ -13,7 +13,6 @@ import {
   resolveNewType,
   resolveTemplate,
   resolveTypeInstanceDefaults,
-  DEFAULT_TEMPLATES,
   RAPID_CREATE_NOTE_SETTLE_MS,
   planNewNoteCreation,
   useNoteCreation,
@@ -284,8 +283,8 @@ describe('resolveTemplate', () => {
     expect(resolveTemplate({ entries: [typeEntry], typeName: 'Recipe' })).toBe('## Ingredients\n\n')
   })
 
-  it('falls back to DEFAULT_TEMPLATES', () => {
-    expect(resolveTemplate({ entries: [], typeName: 'Project' })).toBe(DEFAULT_TEMPLATES.Project)
+  it('returns null for built-in types without an explicit type template', () => {
+    expect(resolveTemplate({ entries: [], typeName: 'Project' })).toBeNull()
   })
 
   it('returns null when no template and no default', () => {
@@ -473,7 +472,7 @@ describe('useNoteCreation hook', () => {
     })
     expect(addEntry.mock.calls[0][0].isA).toBe('Project')
     expect(addEntry.mock.calls[0][0].status).toBeNull()
-    expect(openTabWithContent.mock.calls[0][1]).toBe('---\ntype: Project\n---\n\n# \n\n## Objective\n\n\n\n## Key Results\n\n\n\n## Notes\n\n')
+    expect(openTabWithContent.mock.calls[0][1]).toBe('---\ntype: Project\n---\n\n# \n\n')
   })
 
   it('handleCreateNoteImmediate persists typed notes under Windows verbatim vault roots', async () => {

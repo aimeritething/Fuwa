@@ -327,7 +327,7 @@ describe('useNoteActions hook', () => {
     expect(createdEntry.isA).toBe('Project')
   })
 
-  it('handleCreateNote uses default template for Project type', () => {
+  it('handleCreateNote leaves Project body empty without an explicit type template', () => {
     const { result } = renderHook(() => useNoteActions(makeConfig()))
 
     act(() => {
@@ -335,8 +335,7 @@ describe('useNoteActions hook', () => {
     })
 
     const tabContent = result.current.tabs[0].content
-    expect(tabContent).toContain('## Objective')
-    expect(tabContent).toContain('## Key Results')
+    expect(tabContent).toBe('---\ntitle: My Project\ntype: Project\n---\n')
   })
 
   it('handleCreateNote uses custom template from type entry', () => {

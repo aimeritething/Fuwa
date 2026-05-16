@@ -9,7 +9,6 @@ import {
   resolveNewNote,
   resolveNewType,
   planNewTypeCreation,
-  DEFAULT_TEMPLATES,
   resolveTemplate,
 } from './useNoteCreation'
 
@@ -232,8 +231,8 @@ describe('resolveTemplate', () => {
     expect(resolveTemplate({ entries: [typeEntry], typeName: 'Recipe' })).toBe('## Ingredients\n\n## Steps\n\n')
   })
 
-  it('falls back to DEFAULT_TEMPLATES for built-in types', () => {
-    expect(resolveTemplate({ entries: [], typeName: 'Project' })).toBe(DEFAULT_TEMPLATES.Project)
+  it('returns null for built-in types without an explicit type template', () => {
+    expect(resolveTemplate({ entries: [], typeName: 'Project' })).toBeNull()
   })
 
   it('returns null when no template and no default', () => {
@@ -243,15 +242,6 @@ describe('resolveTemplate', () => {
   it('type entry template overrides default', () => {
     const typeEntry = makeEntry({ isA: 'Type', title: 'Project', template: '## Custom\n\n' })
     expect(resolveTemplate({ entries: [typeEntry], typeName: 'Project' })).toBe('## Custom\n\n')
-  })
-})
-
-describe('DEFAULT_TEMPLATES', () => {
-  it('has templates for Project, Person, Responsibility, Experiment', () => {
-    expect(DEFAULT_TEMPLATES.Project).toBeDefined()
-    expect(DEFAULT_TEMPLATES.Person).toBeDefined()
-    expect(DEFAULT_TEMPLATES.Responsibility).toBeDefined()
-    expect(DEFAULT_TEMPLATES.Experiment).toBeDefined()
   })
 })
 

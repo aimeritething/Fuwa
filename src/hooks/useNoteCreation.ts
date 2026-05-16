@@ -88,15 +88,7 @@ export function entryMatchesTarget({ entry, target }: EntryMatchParams): boolean
   return resolveEntry([entry], target) === entry
 }
 
-/** Default templates for built-in types. Used when the type entry has no custom template. */
-export const DEFAULT_TEMPLATES: Record<string, string> = {
-  Project: '## Objective\n\n\n\n## Key Results\n\n\n\n## Notes\n\n',
-  Person: '## Role\n\n\n\n## Contact\n\n\n\n## Notes\n\n',
-  Responsibility: '## Description\n\n\n\n## Key Activities\n\n\n\n## Notes\n\n',
-  Experiment: '## Hypothesis\n\n\n\n## Method\n\n\n\n## Results\n\n\n\n## Conclusion\n\n',
-}
-
-/** Look up the template for a given type from the type entry or defaults. */
+/** Look up the template for a given type from the type entry. */
 export interface TemplateLookupParams {
   entries: VaultEntry[]
   typeName: string
@@ -104,7 +96,7 @@ export interface TemplateLookupParams {
 
 export function resolveTemplate({ entries, typeName }: TemplateLookupParams): string | null {
   const typeEntry = entries.find((entry) => entry.isA === 'Type' && entry.title === typeName)
-  return typeEntry?.template ?? (Reflect.get(DEFAULT_TEMPLATES, typeName) as string | undefined) ?? null
+  return typeEntry?.template ?? null
 }
 
 export interface NoteContentParams {
