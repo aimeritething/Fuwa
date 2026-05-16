@@ -21,7 +21,6 @@ import { isRecoveredBlockNoteRenderError } from './components/blockNoteRenderRec
 import { shouldUseLinuxWindowChrome } from './utils/platform'
 import { reloadFrontendOnceIfStartupFailed } from './utils/frontendReady'
 
-const EDITOR_DROP_SELECTOR = '.editor__blocknote-container'
 const TLDRAW_CONTEXT_MENU_SELECTOR = '.tldraw-whiteboard'
 
 function dataTransferHasFiles(dataTransfer: DataTransfer | null): boolean {
@@ -32,12 +31,7 @@ function dataTransferHasFiles(dataTransfer: DataTransfer | null): boolean {
   return Array.from(dataTransfer.items).some((item) => item.kind === 'file')
 }
 
-function isEditorDropTarget(target: EventTarget | null): boolean {
-  return target instanceof Element && target.closest(EDITOR_DROP_SELECTOR) !== null
-}
-
 function preventFileDropNavigation(event: DragEvent): void {
-  if (isEditorDropTarget(event.target)) return
   if (!dataTransferHasFiles(event.dataTransfer)) return
 
   event.preventDefault()

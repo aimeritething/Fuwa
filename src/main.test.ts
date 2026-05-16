@@ -183,7 +183,7 @@ describe('main entrypoint', () => {
     expect(appDropHandler).toHaveBeenCalledWith(dropEvent)
   })
 
-  it('leaves editor file drags to the editor drop handler', async () => {
+  it('prevents browser navigation for editor file drags and still lets editor drop handlers run', async () => {
     await importEntrypoint()
 
     const editor = document.createElement('div')
@@ -191,12 +191,15 @@ describe('main entrypoint', () => {
     const editorChild = document.createElement('div')
     editor.appendChild(editorChild)
     document.body.appendChild(editor)
+    const editorDropHandler = vi.fn()
+    editor.addEventListener('drop', editorDropHandler, { once: true })
 
     const dragOverEvent = dispatchFileDragEvent(editorChild, 'dragover')
     const dropEvent = dispatchFileDragEvent(editorChild, 'drop')
 
-    expect(dragOverEvent.defaultPrevented).toBe(false)
-    expect(dropEvent.defaultPrevented).toBe(false)
+    expect(dragOverEvent.defaultPrevented).toBe(true)
+    expect(dropEvent.defaultPrevented).toBe(true)
+    expect(editorDropHandler).toHaveBeenCalledWith(dropEvent)
   })
 
   it('does not prevent app-internal drags without file payloads', async () => {
