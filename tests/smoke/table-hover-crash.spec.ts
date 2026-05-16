@@ -11,6 +11,12 @@ const TABLE_WIKILINK_NOTE_PATH = '/table-wikilink-regression.md'
 const TABLE_WIKILINK_NOTE_TITLE = 'Table Wikilink Regression'
 const TABLE_WIKILINK_TARGET = 'application-design-and-build'
 const TABLE_WIKILINK_TARGET_TITLE = 'Application Design and Build'
+const TABLE_ALIAS_NOTE_PATH = '/table-wikilink-alias-regression.md'
+const TABLE_ALIAS_NOTE_TITLE = 'Table Wikilink Alias Regression'
+const TABLE_ALIAS_TARGET = 'marcus-aurelius-antoninus'
+const TABLE_ALIAS_TARGET_TITLE = 'Marcus Aurelius Antoninus'
+const TABLE_ALIAS_DISPLAY = 'Marcus Aurelius'
+const TABLE_ALIAS_MOVEMENT = 'Stoic'
 
 function writeTableReloadNote(vaultDir: string): void {
   fs.writeFileSync(
@@ -61,6 +67,48 @@ type: Note
   )
 }
 
+function writeTableWikilinkAliasNotes(vaultDir: string): void {
+  fs.writeFileSync(
+    path.join(vaultDir, `${TABLE_ALIAS_TARGET}.md`),
+    `---
+title: ${TABLE_ALIAS_TARGET_TITLE}
+type: Note
+---
+# ${TABLE_ALIAS_TARGET_TITLE}
+
+Target note for alias table rendering.
+`,
+  )
+
+  fs.writeFileSync(
+    path.join(vaultDir, `${TABLE_ALIAS_MOVEMENT.toLowerCase()}.md`),
+    `---
+title: ${TABLE_ALIAS_MOVEMENT}
+type: Note
+---
+# ${TABLE_ALIAS_MOVEMENT}
+
+Movement note for alias table rendering.
+`,
+  )
+
+  fs.writeFileSync(
+    path.join(vaultDir, TABLE_ALIAS_NOTE_PATH.slice(1)),
+    `---
+title: ${TABLE_ALIAS_NOTE_TITLE}
+type: Note
+---
+# ${TABLE_ALIAS_NOTE_TITLE}
+
+| Quote | Author | Movement |
+| - | - | - |
+| _The happiness of your life depends upon the quality of your thoughts._ | [[${TABLE_ALIAS_TARGET}|${TABLE_ALIAS_DISPLAY}]] | [[${TABLE_ALIAS_MOVEMENT}]] |
+
+After table.
+`,
+  )
+}
+
 function trackUnexpectedErrors(page: Page): string[] {
   const errors: string[] = []
 
@@ -104,6 +152,25 @@ async function moveAcrossElement(page: Page, selector: string): Promise<void> {
 
 function tableCell(page: Page, rowIndex: number, cellIndex: number) {
   return page.locator('table tr').nth(rowIndex).locator('th,td').nth(cellIndex)
+}
+
+async function getRawEditorContent(page: Page): Promise<string> {
+  return page.evaluate(() => {
+    type CodeMirrorHost = Element & {
+      cmTile?: {
+        view?: {
+          state: {
+            doc: {
+              toString(): string
+            }
+          }
+        }
+      }
+    }
+
+    const host = document.querySelector('.cm-content') as CodeMirrorHost | null
+    return host?.cmTile?.view?.state.doc.toString() ?? host?.textContent ?? ''
+  })
 }
 
 async function visibleTableHandle(page: Page, orientation: 'row' | 'column') {
@@ -358,6 +425,44 @@ test.describe('table hover crash regression', () => {
 
     await tableWikilink.click({ modifiers: ['Meta'] })
     await expect(page.locator('.bn-editor h1').first()).toHaveText(TABLE_WIKILINK_TARGET_TITLE, { timeout: 5_000 })
+    expect(errors).toEqual([])
+  })
+
+  test('aliased wikilinks inside table cells survive preview edits @smoke', async ({ page }) => {
+    const errors = trackUnexpectedErrors(page)
+    const editMarker = `alias table preview edit ${Date.now()}`
+
+    writeTableWikilinkAliasNotes(tempVaultDir)
+    await openFixtureVaultTauri(page, tempVaultDir)
+    const tableNote = page
+      .getByTestId('note-list-container')
+      .locator('[data-note-path]')
+      .filter({ hasText: TABLE_ALIAS_NOTE_TITLE })
+      .first()
+    await expect(tableNote).toBeVisible({ timeout: 5_000 })
+    await tableNote.click()
+
+    await expect(page.locator('table tr')).toHaveCount(2, { timeout: 5_000 })
+    await expect(tableCell(page, 1, 0)).toContainText('The happiness of your life depends upon the quality of your thoughts.')
+    await expect(tableCell(page, 1, 1).locator('.wikilink')).toContainText(TABLE_ALIAS_DISPLAY)
+    await expect(tableCell(page, 1, 2).locator('.wikilink')).toContainText(TABLE_ALIAS_MOVEMENT)
+
+    const trailingParagraph = page.locator('.bn-editor [data-content-type="paragraph"]').last()
+    await trailingParagraph.click()
+    await page.keyboard.type(editMarker)
+    await triggerMenuCommand(page, 'file-save')
+
+    const notePath = path.join(tempVaultDir, TABLE_ALIAS_NOTE_PATH.slice(1))
+    await expect.poll(() => fs.readFileSync(notePath, 'utf8'), { timeout: 5_000 }).toContain(editMarker)
+
+    await triggerMenuCommand(page, 'edit-toggle-raw-editor')
+    await expect(page.getByTestId('raw-editor-codemirror')).toBeVisible({ timeout: 5_000 })
+    const rawContent = await getRawEditorContent(page)
+
+    expect(rawContent).toContain('[[marcus-aurelius-antoninus|Marcus Aurelius]]')
+    expect(rawContent).toContain('[[Stoic]]')
+    expect(rawContent).toContain('The happiness of your life depends upon the quality of your thoughts.')
+    expect(rawContent).not.toContain('WIKILINK:')
     expect(errors).toEqual([])
   })
 })

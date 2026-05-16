@@ -150,7 +150,7 @@ function splitTableCells(line: MarkdownLine): MarkdownLines {
 }
 
 function isMarkdownTableSeparatorCell(cell: MarkdownLine): boolean {
-  return /^:?-{3,}:?$/.test(cell)
+  return /^:?-+:?$/.test(cell)
 }
 
 /** Walk blocks recursively, applying a transform to each block's inline content */
