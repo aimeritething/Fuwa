@@ -971,7 +971,7 @@ push stable-vYYYY.M.D tag
       → build VitePress public docs into the GitHub Pages root
       → build static HTML release history page at /releases/
       → publish stable/latest.json
-      → publish stable/download/ and download/ as permanent download pages that keep the browser page visible while the platform installer starts
+      → publish stable/download/ and download/ as permanent download pages that keep the browser page visible while the platform installer starts, default Linux visitors to AppImage, and expose RPM as a manual Linux option when the stable release includes one
       → preserve alpha/latest.json
       → deploy to gh-pages
 ```

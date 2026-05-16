@@ -29,7 +29,7 @@ brew install --cask tolaria
 | --- | --- | --- |
 | macOS | Primary | Apple Silicon and Intel builds are published. Homebrew is available. |
 | Windows | Supported, early | NSIS installers and signed updater bundles are published. Some shell and menu behavior can still need Windows-specific fixes. |
-| Linux | Supported, early | AppImage and deb artifacts are published. Desktop behavior depends on distribution WebKitGTK and input-method integration. |
+| Linux | Supported, early | AppImage, deb, and RPM artifacts are published. Desktop behavior depends on distribution WebKitGTK and input-method integration. |
 
 See [Supported Platforms](/reference/supported-platforms) for the current support policy.
 

@@ -5,12 +5,14 @@ type StablePlatformKey =
   | 'darwin-aarch64'
   | 'darwin-x86_64'
   | 'linux-x86_64'
+  | 'linux-x86_64-rpm'
   | 'windows-x86_64'
 
 type PlatformPayload = {
   dmg_url?: unknown
   download_url?: unknown
   installer_url?: unknown
+  rpm_url?: unknown
   url?: unknown
 }
 
@@ -54,8 +56,12 @@ const PLATFORM_METADATA: Record<StablePlatformKey, { buttonLabel: string; label:
     label: 'macOS Intel',
   },
   'linux-x86_64': {
-    buttonLabel: 'Download Tolaria for Linux',
-    label: 'Linux',
+    buttonLabel: 'Download Tolaria AppImage for Linux',
+    label: 'Linux AppImage',
+  },
+  'linux-x86_64-rpm': {
+    buttonLabel: 'Download Tolaria RPM for Linux',
+    label: 'Linux RPM',
   },
   'windows-x86_64': {
     buttonLabel: 'Download Tolaria for Windows',
@@ -71,6 +77,7 @@ const PLATFORM_ORDER: StablePlatformKey[] = [
   'darwin-x86_64',
   'windows-x86_64',
   'linux-x86_64',
+  'linux-x86_64-rpm',
 ]
 
 const REDIRECT_PAGE_STYLES = `
@@ -226,7 +233,17 @@ function extractPlatformDownloadUrl(
       )
     case 'linux-x86_64':
       return normalizeUrl(payload.download_url) ?? normalizeUrl(payload.url)
+    case 'linux-x86_64-rpm':
+      return normalizeUrl(payload.rpm_url)
   }
+}
+
+function getPlatformPayload(
+  platform: StablePlatformKey,
+  platforms: NonNullable<LatestReleasePayload['platforms']>,
+): PlatformPayload | undefined {
+  const payloadKey = platform === 'linux-x86_64-rpm' ? 'linux-x86_64' : platform
+  return Reflect.get(platforms, payloadKey) as PlatformPayload | undefined
 }
 
 export function extractStableDownloadTargets(payload: unknown): StableDownloadTargets {
@@ -237,7 +254,7 @@ export function extractStableDownloadTargets(payload: unknown): StableDownloadTa
 
   const downloads: StableDownloadTargets = {}
   for (const platform of PLATFORM_ORDER) {
-    const platformPayload = Reflect.get(platforms, platform) as PlatformPayload | undefined
+    const platformPayload = getPlatformPayload(platform, platforms)
     const url = extractPlatformDownloadUrl(platform, platformPayload)
     if (url) Reflect.set(downloads, platform, buildStableDownloadTarget(platform, url))
   }
@@ -281,6 +298,9 @@ function classifyReleaseAsset(name: string): {
   }
   if (name.endsWith('.AppImage')) {
     return { platform: 'linux-x86_64', preference: 2 }
+  }
+  if (name.endsWith('.rpm')) {
+    return { platform: 'linux-x86_64-rpm', preference: 1 }
   }
   if (name.endsWith('.deb')) {
     return { platform: 'linux-x86_64', preference: 1 }

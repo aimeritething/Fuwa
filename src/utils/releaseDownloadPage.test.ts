@@ -80,7 +80,7 @@ describe('extractStableDownloadTargets', () => {
         url: 'https://example.com/Tolaria-x64.dmg',
       },
       'linux-x86_64': {
-        label: 'Linux',
+        label: 'Linux AppImage',
         url: 'https://example.com/Tolaria.AppImage',
       },
       'windows-x86_64': {
@@ -176,6 +176,10 @@ describe('resolveStableDownloadTargets', () => {
             name: 'Tolaria.AppImage',
             browser_download_url: 'https://example.com/Tolaria.AppImage',
           },
+          {
+            name: 'Tolaria.rpm',
+            browser_download_url: 'https://example.com/Tolaria.rpm',
+          },
         ],
       },
     ]
@@ -186,6 +190,10 @@ describe('resolveStableDownloadTargets', () => {
       },
       'linux-x86_64': {
         url: 'https://example.com/Tolaria.AppImage',
+      },
+      'linux-x86_64-rpm': {
+        label: 'Linux RPM',
+        url: 'https://example.com/Tolaria.rpm',
       },
       'windows-x86_64': {
         url: 'https://example.com/Tolaria-setup.exe',
@@ -201,9 +209,33 @@ describe('resolveStableDownloadTargets', () => {
       'linux-x86_64': {
         url: 'https://example.com/Tolaria.AppImage',
       },
+      'linux-x86_64-rpm': {
+        label: 'Linux RPM',
+        url: 'https://example.com/Tolaria.rpm',
+      },
       'windows-x86_64': {
         url: 'https://example.com/Tolaria-setup.exe',
       },
     })
+  })
+
+  it('keeps AppImage as the Linux auto-download while exposing RPM manually', () => {
+    const html = buildStableDownloadRedirectPage({
+      'linux-x86_64': {
+        buttonLabel: 'Download Tolaria AppImage for Linux',
+        label: 'Linux AppImage',
+        url: 'https://example.com/Tolaria.AppImage',
+      },
+      'linux-x86_64-rpm': {
+        buttonLabel: 'Download Tolaria RPM for Linux',
+        label: 'Linux RPM',
+        url: 'https://example.com/Tolaria.rpm',
+      },
+    })
+
+    expect(html).toContain('linux-x86_64-rpm')
+    expect(html).toContain('Linux AppImage')
+    expect(html).toContain('Linux RPM')
+    expect(html).toContain("if (/Linux/i.test(userAgent) && !/Android/i.test(userAgent)) return 'linux-x86_64';")
   })
 })
