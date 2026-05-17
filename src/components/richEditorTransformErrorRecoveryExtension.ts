@@ -1,9 +1,11 @@
 import { createExtension } from '@blocknote/core'
 import { trackEvent } from '../lib/telemetry'
+import { repairMalformedEditorBlocks } from '../hooks/editorBlockRepair'
 
 const DISPATCH_RECOVERY_STATE_KEY = '__tolariaRichEditorTransformErrorRecovery'
 
 type RichEditorDispatch = (transaction: unknown) => unknown
+type RecoverEditorDocument = () => void
 
 interface RichEditorDispatchView {
   dispatch: RichEditorDispatch
@@ -16,7 +18,17 @@ interface RichEditorDispatchView {
 
 interface DispatchRecoveryState {
   originalDispatch: RichEditorDispatch
+  recoverDocument?: RecoverEditorDocument
   refCount: number
+}
+
+interface InstallRecoveryOptions {
+  recoverDocument?: RecoverEditorDocument
+}
+
+interface RepairableBlockNoteEditor {
+  document?: unknown[]
+  replaceBlocks?: (currentBlocks: unknown[], nextBlocks: unknown[]) => unknown
 }
 
 type RecoveryReason = 'mismatched_transaction' | 'stale_transaction' | 'transform_error'
@@ -92,21 +104,26 @@ function releaseRecoveryState(
 function retainRecoveryState(
   view: RichEditorDispatchView,
   recoveryState: DispatchRecoveryState,
+  recoverDocument?: RecoverEditorDocument,
 ): () => void {
   recoveryState.refCount += 1
+  if (recoverDocument) recoveryState.recoverDocument = recoverDocument
   return () => releaseRecoveryState(view, recoveryState, recoveryState.originalDispatch)
 }
 
 function createRecoveringDispatch(
   view: RichEditorDispatchView,
-  originalDispatch: RichEditorDispatch,
+  recoveryState: DispatchRecoveryState,
 ): RichEditorDispatch {
   return (transaction: unknown) => {
     try {
-      return originalDispatch.call(view, transaction)
+      return recoveryState.originalDispatch.call(view, transaction)
     } catch (error) {
       if (!isRecoverableEditorTransformError(error)) throw error
 
+      if (isInvalidContentTransactionError(error)) {
+        recoveryState.recoverDocument?.()
+      }
       reportRecoveredEditorTransformError(recoveryReason(error, transaction, view), error)
       return undefined
     }
@@ -116,25 +133,44 @@ function createRecoveringDispatch(
 function installRecoveryState(
   view: RichEditorDispatchView,
   originalDispatch: RichEditorDispatch,
+  recoverDocument?: RecoverEditorDocument,
 ): DispatchRecoveryState {
   const recoveryState: DispatchRecoveryState = {
     originalDispatch,
+    recoverDocument,
     refCount: 1,
   }
 
-  view.dispatch = createRecoveringDispatch(view, originalDispatch)
+  view.dispatch = createRecoveringDispatch(view, recoveryState)
   Reflect.set(view, DISPATCH_RECOVERY_STATE_KEY, recoveryState)
   return recoveryState
 }
 
-export function installRichEditorTransformErrorRecovery(view: RichEditorDispatchView): () => void {
+function repairEditorDocumentAfterInvalidContentError(editor: RepairableBlockNoteEditor): void {
+  if (!Array.isArray(editor.document) || typeof editor.replaceBlocks !== 'function') return
+
+  const currentBlocks = editor.document
+  const safeBlocks = repairMalformedEditorBlocks(currentBlocks)
+  if (safeBlocks === currentBlocks) return
+
+  try {
+    editor.replaceBlocks(currentBlocks, safeBlocks)
+  } catch (error) {
+    console.warn('[editor] Failed to repair rich-editor document after transform error:', error)
+  }
+}
+
+export function installRichEditorTransformErrorRecovery(
+  view: RichEditorDispatchView,
+  options: InstallRecoveryOptions = {},
+): () => void {
   const currentState = Reflect.get(view, DISPATCH_RECOVERY_STATE_KEY)
   if (isDispatchRecoveryState(currentState)) {
-    return retainRecoveryState(view, currentState)
+    return retainRecoveryState(view, currentState, options.recoverDocument)
   }
 
   const originalDispatch = view.dispatch
-  const recoveryState = installRecoveryState(view, originalDispatch)
+  const recoveryState = installRecoveryState(view, originalDispatch, options.recoverDocument)
 
   return () => releaseRecoveryState(view, recoveryState, originalDispatch)
 }
@@ -145,7 +181,10 @@ export const createRichEditorTransformErrorRecoveryExtension = createExtension((
     const view = editor._tiptapEditor?.view ?? editor.prosemirrorView
     if (!view || typeof view.dispatch !== 'function') return
 
-    const uninstall = installRichEditorTransformErrorRecovery(view as unknown as RichEditorDispatchView)
+    const uninstall = installRichEditorTransformErrorRecovery(
+      view as unknown as RichEditorDispatchView,
+      { recoverDocument: () => repairEditorDocumentAfterInvalidContentError(editor as RepairableBlockNoteEditor) },
+    )
     signal.addEventListener('abort', uninstall, { once: true })
   },
 } as const))
