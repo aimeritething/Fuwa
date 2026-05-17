@@ -1,5 +1,5 @@
 import { useMemo, useState, useCallback } from 'react'
-import type { VaultEntry } from '../types'
+import type { VaultEntry, VaultPropertyValue } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
 import type { ParsedFrontmatter } from '../utils/frontmatter'
 import {
@@ -91,6 +91,10 @@ function isVisibleProperty([key, value]: [string, FrontmatterValue]): boolean {
   return !isHiddenPropertyKey(key) && !containsWikilinks(value)
 }
 
+function frontmatterValueFromVaultProperty(value: VaultPropertyValue): FrontmatterValue {
+  return Array.isArray(value) ? value.map(String) : value
+}
+
 function buildVisiblePropertyEntries(frontmatter: ParsedFrontmatter): PropertyEntry[] {
   const result: PropertyEntry[] = []
   const seen = new Set<string>()
@@ -139,9 +143,10 @@ function buildTypeDerivedPropertyEntries({
   for (const [key, value] of Object.entries(typeEntry.properties ?? {})) {
     const canonicalKey = canonicalFrontmatterKey(key)
     if (existingKeys.has(canonicalKey) || seen.has(canonicalKey) || isRelationshipSchemaKey(key)) continue
-    if (!isVisibleProperty([key, value])) continue
+    const propertyValue = frontmatterValueFromVaultProperty(value)
+    if (!isVisibleProperty([key, propertyValue])) continue
     seen.add(canonicalKey)
-    result.push([key, value])
+    result.push([key, propertyValue])
   }
 
   return result

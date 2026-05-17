@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { isTauri, mockInvoke } from '../mock-tauri'
-import type { VaultEntry } from '../types'
+import type { VaultEntry, VaultPropertyValue } from '../types'
 import type { FrontmatterValue } from '../components/Inspector'
 import { updateMockFrontmatter, deleteMockFrontmatterProperty } from './mockFrontmatterHelpers'
 import { updateMockContent, trackMockChange } from '../mock-tauri'
@@ -286,8 +286,8 @@ export interface FrontmatterRunRequest {
 
 /** Apply a properties patch by merging into the existing properties map. */
 export function applyPropertiesPatch(
-  existing: Record<FrontmatterKey, ScalarPropertyValue>, propPatch: PropertiesPatch,
-): Record<FrontmatterKey, ScalarPropertyValue> {
+  existing: Record<FrontmatterKey, VaultPropertyValue>, propPatch: PropertiesPatch,
+): Record<FrontmatterKey, VaultPropertyValue> {
   return applyRecordPatch(existing, propPatch)
 }
 

@@ -1,7 +1,7 @@
 import { CircleNotch as Loader2, MagnifyingGlass, Plus, SidebarSimple, X } from '@phosphor-icons/react'
 import type { VaultEntry } from '../../types'
 import type { SortOption, SortDirection } from '../../utils/noteListHelpers'
-import { translate, type AppLocale } from '../../lib/i18n'
+import { translate, type AppLocale, type TranslationKey } from '../../lib/i18n'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { APP_COMMAND_EVENT_NAME, APP_COMMAND_IDS } from '../../hooks/appCommandDispatcher'
@@ -14,7 +14,7 @@ import type { GitRepositoryOption } from '../../utils/gitRepositories'
 
 const NOTE_LIST_ACTION_BUTTON_CLASSNAME = '!h-auto !w-auto !min-w-0 !rounded-none !p-0 !text-muted-foreground hover:!bg-transparent hover:!text-foreground focus-visible:!bg-transparent data-[state=open]:!bg-transparent data-[state=open]:!text-foreground [&_svg]:!size-4'
 const NOTE_LIST_EXPAND_BUTTON_CLASSNAME = '!h-6 !w-6 !min-w-0 !rounded !p-0 !text-muted-foreground hover:!bg-accent hover:!text-foreground focus-visible:!bg-accent [&_svg]:!size-4'
-const PROPERTY_TRIGGER_TITLE_KEYS: Record<string, string> = {
+const PROPERTY_TRIGGER_TITLE_KEYS: Record<string, TranslationKey> = {
   'Customize columns': 'noteList.properties.customizeColumns',
   'Customize All Notes columns': 'noteList.properties.customizeAllColumns',
   'Customize Inbox columns': 'noteList.properties.customizeInboxColumns',

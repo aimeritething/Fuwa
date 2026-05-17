@@ -2,29 +2,32 @@ import type { FilterCondition } from '../types'
 import { evaluatePropertyArrayCondition } from './viewFilterArrayProperties'
 
 export type ViewFilterArrayKind = 'property' | 'relationship'
+type ConditionText = string
+type RelationshipValue = string
+type RelationshipArrayOperator = (field: RelationshipArrayField, value: ConditionText, cond: FilterCondition) => boolean
 
 interface ArrayFieldCondition {
   cond: FilterCondition
-  values: string[]
+  values: RelationshipValue[]
   arrayKind: ViewFilterArrayKind
-  condVal: string
+  condVal: ConditionText
   regex: RegExp | null
 }
 
-function toStringValue(value: unknown): string {
+function toStringValue(value: unknown): ConditionText {
   if (value == null) return ''
   if (typeof value === 'string') return value
   return String(value)
 }
 
-function conditionList(value: unknown): string[] | null {
+function conditionList(value: unknown): ConditionText[] | null {
   return Array.isArray(value) ? value.map(toStringValue) : null
 }
 
 class WikilinkValue {
-  private readonly trimmed: string
+  private readonly trimmed: RelationshipValue
 
-  constructor(private readonly raw: string) {
+  constructor(raw: RelationshipValue) {
     this.trimmed = raw.trim()
   }
 
@@ -32,11 +35,11 @@ class WikilinkValue {
     return this.trimmed.startsWith('[[')
   }
 
-  get normalizedStem(): string {
+  get normalizedStem(): RelationshipValue {
     return this.stem.toLowerCase()
   }
 
-  get candidates(): string[] {
+  get candidates(): ConditionText[] {
     const pipe = this.inner.indexOf('|')
     if (pipe >= 0) return [this.trimmed, this.inner.slice(0, pipe), this.inner.slice(pipe + 1)]
     return [this.trimmed, this.inner]
@@ -51,17 +54,17 @@ class WikilinkValue {
     return this.parts.some((part) => targetParts.some((targetPart) => part === targetPart))
   }
 
-  private get parts(): string[] {
+  private get parts(): ConditionText[] {
     const pipe = this.inner.indexOf('|')
     if (pipe >= 0) return [this.inner.substring(0, pipe).toLowerCase(), this.inner.substring(pipe + 1).toLowerCase()]
     return [this.inner.toLowerCase()]
   }
 
-  private get stem(): string {
+  private get stem(): RelationshipValue {
     return this.inner.split('|')[0] ?? this.inner
   }
 
-  private get inner(): string {
+  private get inner(): RelationshipValue {
     return this.trimmed.replace(/^\[\[/, '').replace(/\]\]$/, '')
   }
 }
@@ -69,36 +72,42 @@ class WikilinkValue {
 class RelationshipArrayField {
   private readonly links: WikilinkValue[]
 
-  constructor(values: string[]) {
+  constructor(values: RelationshipValue[]) {
     this.links = values.map((value) => new WikilinkValue(value))
   }
 
-  contains(targetValue: string): boolean {
+  contains(targetValue: ConditionText): boolean {
     const target = new WikilinkValue(targetValue)
     return this.links.some((link) => target.isBracketed ? link.equals(target) : link.includesStem(target))
   }
 
-  equals(targetValue: string): boolean {
+  equals(targetValue: ConditionText): boolean {
     return this.links.length === 1 && this.links[0]?.equals(new WikilinkValue(targetValue)) === true
   }
 
-  matchesAny(targets: string[] | null): boolean {
+  matchesAny(targets: ConditionText[] | null): boolean {
     return targets?.some((target) => this.links.some((link) => link.equals(new WikilinkValue(target)))) ?? false
   }
 
   matchesRegex(regex: RegExp): boolean {
     return this.links.some((link) => link.candidates.some((candidate) => regex.test(candidate)))
   }
+
+  isEmpty(): boolean {
+    return this.links.length === 0
+  }
 }
 
-const RELATIONSHIP_ARRAY_OPERATORS = {
+const RELATIONSHIP_ARRAY_OPERATORS: Partial<Record<FilterCondition['op'], RelationshipArrayOperator>> = {
   contains: (field, value) => field.contains(value),
   not_contains: (field, value) => !field.contains(value),
   equals: (field, value) => field.equals(value),
   not_equals: (field, value) => !field.equals(value),
   any_of: (field, _value, cond) => field.matchesAny(conditionList(cond.value)),
   none_of: (field, _value, cond) => !field.matchesAny(conditionList(cond.value)),
-} satisfies Partial<Record<FilterCondition['op'], (field: RelationshipArrayField, value: string, cond: FilterCondition) => boolean>>
+  is_empty: (field) => field.isEmpty(),
+  is_not_empty: (field) => !field.isEmpty(),
+}
 
 function textMatchResult(op: FilterCondition['op'], matched: boolean): boolean {
   if (op === 'contains' || op === 'equals') return matched
@@ -106,7 +115,7 @@ function textMatchResult(op: FilterCondition['op'], matched: boolean): boolean {
   return false
 }
 
-function evaluateRelationshipArrayCondition(cond: FilterCondition, values: string[], condVal: string, regex: RegExp | null): boolean {
+function evaluateRelationshipArrayCondition(cond: FilterCondition, values: RelationshipValue[], condVal: ConditionText, regex: RegExp | null): boolean {
   const { op } = cond
   const field = new RelationshipArrayField(values)
   if (regex) return textMatchResult(op, field.matchesRegex(regex))
