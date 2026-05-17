@@ -682,6 +682,43 @@ describe('useEditorTabSwap raw mode sync', () => {
     )
   })
 
+  it('flushes unsaved file attachment blocks as portable links before switching notes', async () => {
+    const tabA = makeTab('a.md', 'Note A')
+    const tabB = makeTab('b.md', 'Note B')
+    const onContentChange = vi.fn()
+    const { docRef, mockEditor, rerender, result } = await createSwapHarness({
+      initialProps: { tabs: [tabA, tabB], activeTabPath: 'a.md', rawMode: false, vaultPath: '/vault' },
+      onContentChange,
+    })
+
+    docRef.current = [{
+      type: 'file',
+      props: {
+        name: 'project brief.pdf',
+        url: '/vault/attachments/project brief.pdf',
+      },
+      children: [],
+    }]
+    mockEditor.blocksToMarkdownLossy.mockClear()
+    mockEditor.blocksToMarkdownLossy.mockReturnValue('unreachable lossy markdown')
+
+    act(() => {
+      result.current.handleEditorChange()
+    })
+    expect(onContentChange).not.toHaveBeenCalled()
+
+    act(() => {
+      rerender({ tabs: [tabA, tabB], activeTabPath: 'b.md', rawMode: false, vaultPath: '/vault' })
+    })
+    await act(async () => { await Promise.resolve() })
+
+    expect(onContentChange).toHaveBeenCalledWith(
+      'a.md',
+      '---\ntitle: Note A\n---\n[project brief.pdf](<attachments/project brief.pdf>)\n',
+    )
+    expect(mockEditor.blocksToMarkdownLossy).not.toHaveBeenCalled()
+  })
+
   it('serializes rich inline math nodes back to Markdown on editor changes', async () => {
     vi.spyOn(document, 'querySelector').mockReturnValue({ scrollTop: 0 } as unknown as Element)
     vi.spyOn(window, 'requestAnimationFrame').mockImplementation((cb) => { cb(0); return 0 })
