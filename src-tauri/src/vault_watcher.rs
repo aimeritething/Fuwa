@@ -23,15 +23,23 @@ fn is_temp_file_name(name: &OsStr) -> bool {
     let Some(name) = name.to_str() else {
         return false;
     };
-    name == ".DS_Store"
-        || name == ".tolaria-rename-txn"
-        || name.starts_with(".#")
-        || name.starts_with(".gitstatus.")
-        || name.ends_with('~')
-        || name.ends_with(".tmp")
-        || name.ends_with(".swp")
-        || name.ends_with(".swx")
-        || name.ends_with(".icloud")
+    is_exact_temp_file_name(name) || has_temp_file_prefix(name) || has_temp_file_suffix(name)
+}
+
+fn is_exact_temp_file_name(name: &str) -> bool {
+    [".DS_Store", ".tolaria-rename-txn"].contains(&name)
+}
+
+fn has_temp_file_prefix(name: &str) -> bool {
+    [".#", ".gitstatus."]
+        .iter()
+        .any(|prefix| name.starts_with(prefix))
+}
+
+fn has_temp_file_suffix(name: &str) -> bool {
+    ["~", ".tmp", ".swp", ".swx", ".icloud"]
+        .iter()
+        .any(|suffix| name.ends_with(suffix))
 }
 
 /// Resolve the real git directory for `vault_path`. Handles three cases:
@@ -241,43 +249,49 @@ mod desktop {
 
         #[test]
         fn changed_paths_ignores_access_events() {
-            let paths = changed_paths(event(
-                EventKind::Access(AccessKind::Read),
-                &["notes/today.md"],
-            ));
+            let paths = changed_paths(
+                event(EventKind::Access(AccessKind::Read), &["notes/today.md"]),
+                None,
+            );
 
             assert!(paths.is_empty());
         }
 
         #[test]
         fn changed_paths_filters_unwatchable_paths() {
-            let paths = changed_paths(event(
-                EventKind::Create(CreateKind::File),
-                &[
-                    ".git/index.lock",
-                    "node_modules/pkg/index.js",
-                    "notes/today.md",
-                ],
-            ));
+            let paths = changed_paths(
+                event(
+                    EventKind::Create(CreateKind::File),
+                    &[
+                        ".git/index.lock",
+                        "node_modules/pkg/index.js",
+                        "notes/today.md",
+                    ],
+                ),
+                None,
+            );
 
             assert_eq!(paths, vec!["notes/today.md"]);
         }
 
         #[test]
         fn changed_paths_filters_editor_temporary_files() {
-            let paths = changed_paths(event(
-                EventKind::Create(CreateKind::File),
-                &[
-                    ".DS_Store",
-                    ".tolaria-rename-txn",
-                    ".#draft.md",
-                    "draft.md~",
-                    "draft.tmp",
-                    "draft.swp",
-                    "draft.swx",
-                    "notes/keep.md",
-                ],
-            ));
+            let paths = changed_paths(
+                event(
+                    EventKind::Create(CreateKind::File),
+                    &[
+                        ".DS_Store",
+                        ".tolaria-rename-txn",
+                        ".#draft.md",
+                        "draft.md~",
+                        "draft.tmp",
+                        "draft.swp",
+                        "draft.swx",
+                        "notes/keep.md",
+                    ],
+                ),
+                None,
+            );
 
             assert_eq!(paths, vec!["notes/keep.md"]);
         }

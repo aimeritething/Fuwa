@@ -325,8 +325,7 @@ fn fallback_bun_paths() -> Vec<PathBuf> {
 fn bun_binary_candidates_for_home(home: &Path) -> Vec<PathBuf> {
     vec![
         home.join(".bun").join("bin").join(bun_binary_name()),
-        home.join(".local/share/mise/shims")
-            .join(bun_binary_name()),
+        home.join(".local/share/mise/shims").join(bun_binary_name()),
         home.join(".mise").join("shims").join(bun_binary_name()),
         home.join(".asdf").join("shims").join(bun_binary_name()),
         home.join(".proto").join("bin").join(bun_binary_name()),
