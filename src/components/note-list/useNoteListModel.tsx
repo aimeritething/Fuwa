@@ -30,6 +30,7 @@ import {
   useVisibleNotesSync,
 } from './noteListHooks'
 import { useChangesContextMenu } from './NoteListChangesMenu'
+import { useNoteListContextMenu } from './NoteListContextMenu'
 import { addNoteListSearchToggleListener, dispatchNoteListSearchAvailability } from '../../utils/noteListSearchEvents'
 import { useDateDisplayFormat } from '../../hooks/useAppPreferences'
 
@@ -305,6 +306,10 @@ interface UseNoteListInteractionStateParams {
   onEnterNeighborhood?: (entry: VaultEntry) => void
   onOpenDeletedNote?: (entry: DeletedNoteEntry) => void
   onOpenInNewWindow?: (entry: VaultEntry) => void
+  onToggleFavorite?: (path: string) => void
+  onToggleOrganized?: (path: string) => void
+  onRevealFile?: (path: string) => void
+  onCopyFilePath?: (path: string) => void
   onAutoTriggerDiff?: () => void
   onDiscardFile?: (relativePath: string) => Promise<void>
   onCreateNote: (type?: string) => void
@@ -329,6 +334,10 @@ function useNoteListInteractionState({
   onEnterNeighborhood,
   onOpenDeletedNote,
   onOpenInNewWindow,
+  onToggleFavorite,
+  onToggleOrganized,
+  onRevealFile,
+  onCopyFilePath,
   onAutoTriggerDiff,
   onDiscardFile,
   onCreateNote,
@@ -337,6 +346,17 @@ function useNoteListInteractionState({
   locale,
 }: UseNoteListInteractionStateParams) {
   const changesContextMenu = useChangesContextMenu({ isChangesView, onDiscardFile, modifiedFiles, locale })
+  const noteListContextMenu = useNoteListContextMenu({
+    locale,
+    onEnterNeighborhood,
+    onOpenInNewWindow,
+    onArchivePaths: onBulkArchive,
+    onDeletePaths: onBulkDeletePermanently,
+    onToggleFavorite,
+    onToggleOrganized,
+    onRevealFile,
+    onCopyFilePath,
+  })
   const {
     collapsedGroups,
     handleClickNote,
@@ -382,6 +402,7 @@ function useNoteListInteractionState({
     handleCreateNote,
     handleListKeyDown,
     multiSelect,
+    noteListContextMenu,
     noteListKeyboard,
     toggleGroup,
   }
@@ -397,7 +418,8 @@ interface UseRenderItemParams {
   resolvedGetNoteStatus: (path: string) => NoteStatus
   getChangeStatus: (path: string) => ModifiedFile['status'] | undefined
   handleClickNote: (entry: VaultEntry, event: React.MouseEvent) => void
-  noteContextMenu?: ((entry: VaultEntry, event: React.MouseEvent) => void) | undefined
+  changesContextMenu?: ((entry: VaultEntry, event: React.MouseEvent) => void) | undefined
+  noteListContextMenu?: ((entry: VaultEntry, event: React.MouseEvent) => void) | undefined
   multiSelect: MultiSelectState
   noteListKeyboard: { highlightedPath: string | null }
 }
@@ -412,11 +434,12 @@ function useRenderItem({
   resolvedGetNoteStatus,
   getChangeStatus,
   handleClickNote,
-  noteContextMenu,
+  changesContextMenu,
+  noteListContextMenu,
   multiSelect,
   noteListKeyboard,
 }: UseRenderItemParams) {
-  const contextMenuHandler = isChangesView && onDiscardFile ? noteContextMenu : undefined
+  const contextMenuHandler = isChangesView && onDiscardFile ? changesContextMenu : noteListContextMenu
 
   return useCallback((entry: VaultEntry, options?: { forceSelected?: boolean }) => (
     isDeletedNoteEntry(entry) ? (
@@ -490,6 +513,10 @@ export interface NoteListProps {
   onUpdateTypeSort?: (path: string, key: string, value: string | number | boolean | string[] | null) => void
   updateEntry?: (path: string, patch: Partial<VaultEntry>) => void
   onOpenInNewWindow?: (entry: VaultEntry) => void
+  onToggleFavorite?: (path: string) => void
+  onToggleOrganized?: (path: string) => void
+  onRevealFile?: (path: string) => void
+  onCopyFilePath?: (path: string) => void
   onDiscardFile?: (relativePath: string) => Promise<void>
   onAutoTriggerDiff?: () => void
   onOpenDeletedNote?: (entry: DeletedNoteEntry) => void
@@ -581,7 +608,12 @@ function buildNoteListLayoutModel(params: {
     handleBulkArchive: params.interaction.handleBulkArchive,
     handleBulkDeletePermanently: params.interaction.handleBulkDeletePermanently,
     handleBulkUnarchive: params.interaction.handleBulkUnarchive,
-    contextMenuNode: params.interaction.changesContextMenu.contextMenuNode,
+    contextMenuNode: (
+      <>
+        {params.interaction.changesContextMenu.contextMenuNode}
+        {params.interaction.noteListContextMenu.contextMenuNode}
+      </>
+    ),
     dialogNode: params.interaction.changesContextMenu.dialogNode,
   }
 }
@@ -609,6 +641,10 @@ export function useNoteListModel({
   onUpdateTypeSort,
   updateEntry,
   onOpenInNewWindow,
+  onToggleFavorite,
+  onToggleOrganized,
+  onRevealFile,
+  onCopyFilePath,
   onDiscardFile,
   onAutoTriggerDiff,
   onOpenDeletedNote,
@@ -663,6 +699,10 @@ export function useNoteListModel({
     onEnterNeighborhood,
     onOpenDeletedNote,
     onOpenInNewWindow,
+    onToggleFavorite,
+    onToggleOrganized,
+    onRevealFile,
+    onCopyFilePath,
     onAutoTriggerDiff,
     onDiscardFile,
     onCreateNote,
@@ -680,7 +720,8 @@ export function useNoteListModel({
     resolvedGetNoteStatus,
     getChangeStatus: interaction.getChangeStatus,
     handleClickNote: interaction.handleClickNote,
-    noteContextMenu: interaction.changesContextMenu.handleNoteContextMenu,
+    changesContextMenu: interaction.changesContextMenu.handleNoteContextMenu,
+    noteListContextMenu: interaction.noteListContextMenu.handleNoteContextMenu,
     multiSelect: interaction.multiSelect,
     noteListKeyboard: interaction.noteListKeyboard,
   })
