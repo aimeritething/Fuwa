@@ -157,7 +157,7 @@ export const FolderTree = memo(function FolderTree({
       // The selection→ancestor-expansion machinery deliberately doesn't expand the
       // selected node itself, so we expand it explicitly here. Vault-root keys are
       // open by default and don't need this.
-      if (parent && parent.path) {
+      if (parent?.path) {
         expandFolder(folderNodeKey(parent))
       }
     }
