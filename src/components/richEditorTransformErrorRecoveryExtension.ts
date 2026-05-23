@@ -36,8 +36,10 @@ interface RepairableBlockNoteEditor {
 }
 
 type RecoveryReason =
+  | 'invalid_block_join'
   | 'invalid_insertion_depth'
   | 'mismatched_transaction'
+  | 'stale_block_reference'
   | 'stale_transaction'
   | 'table_position_out_of_range'
   | 'transform_error'
@@ -80,7 +82,15 @@ function isTablePositionOutOfRangeError(error: unknown): boolean {
   return error instanceof RangeError && /^Index \d+ out of range for <tableRow\(/.test(error.message)
 }
 
-function isTransformError(error: unknown): boolean {
+function isInvalidBlockJoinError(error: unknown): boolean {
+  return isTransformError(error) && error.message === 'Cannot join blockGroup onto blockContainer'
+}
+
+export function isStaleBlockReferenceError(error: unknown): boolean {
+  return error instanceof Error && /^Block with ID .+ not found$/.test(error.message)
+}
+
+function isTransformError(error: unknown): error is Error {
   return error instanceof Error && error.name === 'TransformError'
 }
 
@@ -90,8 +100,15 @@ function isRecoverableRangeError(error: unknown): boolean {
     || isTablePositionOutOfRangeError(error)
 }
 
+const RECOVERABLE_EDITOR_ERROR_PREDICATES = [
+  isTransformError,
+  isMismatchedTransactionError,
+  isRecoverableRangeError,
+  isStaleBlockReferenceError,
+]
+
 export function isRecoverableEditorTransformError(error: unknown): boolean {
-  return isTransformError(error) || isMismatchedTransactionError(error) || isRecoverableRangeError(error)
+  return RECOVERABLE_EDITOR_ERROR_PREDICATES.some((predicate) => predicate(error))
 }
 
 function recoveryReason(
@@ -101,16 +118,18 @@ function recoveryReason(
 ): RecoveryReason {
   if (transactionDocIsStale(transaction, view)) return 'stale_transaction'
   if (isMismatchedTransactionError(error)) return 'mismatched_transaction'
+  if (isStaleBlockReferenceError(error)) return 'stale_block_reference'
+  if (isInvalidBlockJoinError(error)) return 'invalid_block_join'
   if (isInvalidInsertionDepthError(error)) return 'invalid_insertion_depth'
   if (isTablePositionOutOfRangeError(error)) return 'table_position_out_of_range'
   return 'transform_error'
 }
 
 function shouldRepairEditorDocument(error: unknown): boolean {
-  return isRecoverableRangeError(error)
+  return isRecoverableRangeError(error) || isInvalidBlockJoinError(error)
 }
 
-export function reportRecoveredEditorTransformError(reason: RecoveryReason, error: unknown): void {
+export const reportRecoveredEditorTransformError = (reason: RecoveryReason, error: unknown): void => {
   console.warn('[editor] Recovered rich-editor transform error:', error)
   trackEvent('rich_editor_transform_error_recovered', { reason })
 }
