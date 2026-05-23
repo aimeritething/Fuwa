@@ -180,6 +180,10 @@ function handlePushResult(options: {
     void callbacksRef.current.onToast('Pulled and pushed successfully')
     return
   }
+  if (pushResult.status === 'no_remote') {
+    clearConflictState(setSyncStatus, setConflictFiles)
+    return
+  }
   if (pushResult.status === 'rejected') {
     setSyncStatus('pull_required')
     void callbacksRef.current.onToast('Push still rejected after pull — try again')
@@ -312,6 +316,8 @@ export function useAutoSync({
             callbacksRef,
             setSyncStatus,
           })
+        } else if (result.status === 'no_remote') {
+          clearConflictState(setSyncStatus, setConflictFiles)
         } else {
           clearConflictState(setSyncStatus, setConflictFiles)
         }
@@ -347,6 +353,12 @@ export function useAutoSync({
             callbacksRef,
             setSyncStatus,
           })
+          return
+        }
+
+        if (pullResult.status === 'no_remote') {
+          clearConflictState(setSyncStatus, setConflictFiles)
+          void refreshRemoteStatus()
           return
         }
 

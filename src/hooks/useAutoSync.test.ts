@@ -500,6 +500,37 @@ describe('useAutoSync', () => {
     })
   })
 
+  it('skips git_push during pullAndPush when git_pull returns no_remote', async () => {
+    mockInvokeFn.mockImplementation((cmd: string) => {
+      if (cmd === 'get_conflict_files') return Promise.resolve([])
+      if (cmd === 'get_last_commit_info') return Promise.resolve(MOCK_COMMIT_INFO)
+      if (cmd === 'git_remote_status') return Promise.resolve(null)
+      if (cmd === 'git_pull') {
+        return Promise.resolve({
+          status: 'no_remote', message: 'No remote configured', updatedFiles: [], conflictFiles: [],
+        })
+      }
+      return Promise.resolve(upToDate())
+    })
+
+    const { result } = renderSync()
+    await waitFor(() => {
+      expect(result.current.syncStatus).toBe('idle')
+    })
+
+    await act(async () => {
+      result.current.pullAndPush()
+    })
+
+    await waitFor(() => {
+      expect(result.current.syncStatus).toBe('idle')
+    })
+
+    const pushCalls = mockInvokeFn.mock.calls.filter((c: unknown[]) => c[0] === 'git_push')
+    expect(pushCalls).toHaveLength(0)
+    expect(onToast).not.toHaveBeenCalledWith(expect.stringContaining('Push'))
+  })
+
   it('exposes a direct push-rejected handler for external workflows', async () => {
     const { result } = renderSync()
 

@@ -14,16 +14,39 @@ pub struct GitPullResult {
     pub conflict_files: Vec<String>,
 }
 
-/// Check whether the vault repo has at least one remote configured.
+/// Check whether the vault repo has at least one remote with a URL configured.
+///
+/// Plain `git remote` lists every remote *name* defined in any config layer
+/// (system/global/local) — so a `[remote "origin"]` section inherited from
+/// `~/.gitconfig` (e.g. one that only sets `prune = true`) makes every repo on
+/// the machine look like it has a remote. `git remote -v` is also unreliable
+/// on its own: in the same state it emits `"origin\t"` — the name followed by
+/// an empty URL field. We need to parse the verbose output and require at
+/// least one line whose URL column is non-empty.
 pub fn has_remote(vault_path: &str) -> Result<bool, String> {
     let vault = Path::new(vault_path);
     let output = git_command()
-        .args(["remote"])
+        .args(["remote", "-v"])
         .current_dir(vault)
         .output()
         .map_err(|e| format!("Failed to run git remote: {}", e))?;
 
-    Ok(!String::from_utf8_lossy(&output.stdout).trim().is_empty())
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    Ok(stdout.lines().any(remote_line_has_url))
+}
+
+/// A `git remote -v` line is `"<name>\t<url> (fetch|push)"`; if the remote has
+/// no URL configured the URL column is empty (`"origin\t"`). Returns true iff
+/// the URL column (after the tab, before any ` (fetch)` / ` (push)` suffix) is
+/// non-empty.
+fn remote_line_has_url(line: &str) -> bool {
+    let Some((_name, rest)) = line.split_once('\t') else { return false };
+    let url = rest
+        .rsplit_once(' ')
+        .map(|(url, _kind)| url)
+        .unwrap_or(rest)
+        .trim();
+    !url.is_empty()
 }
 
 /// Pull latest changes from remote. Uses --no-rebase to merge.
@@ -181,7 +204,7 @@ fn current_branch(vault: &Path) -> Result<String, String> {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct GitPushResult {
-    pub status: String, // "ok" | "rejected" | "auth_error" | "network_error" | "error"
+    pub status: String, // "ok" | "rejected" | "auth_error" | "network_error" | "no_remote" | "error"
     pub message: String,
 }
 
@@ -283,6 +306,13 @@ fn push_error_detail(stderr: &str) -> String {
 pub fn git_push(vault_path: &str) -> Result<GitPushResult, String> {
     let vault = Path::new(vault_path);
 
+    if !has_remote(vault_path)? {
+        return Ok(GitPushResult {
+            status: "no_remote".to_string(),
+            message: "No remote configured".to_string(),
+        });
+    }
+
     let output = git_command()
         .args(["push"])
         .current_dir(vault)
@@ -344,6 +374,75 @@ mod tests {
         assert_eq!(result.status, "no_remote");
         assert!(result.updated_files.is_empty());
         assert!(result.conflict_files.is_empty());
+    }
+
+    /// Regression for the "Sync failed" bug: a `[remote "origin"]` section
+    /// inherited from the user's global gitconfig (e.g. with `prune = true`)
+    /// causes `git remote` to list "origin" even though no URL is configured.
+    /// `has_remote` must look past the bare name and require an actual URL.
+    #[test]
+    fn test_has_remote_returns_false_when_remote_section_has_no_url() {
+        let dir = setup_git_repo();
+        let vault = dir.path();
+        let vp = vault.to_str().unwrap();
+
+        // Create a [remote "origin"] section with a non-URL setting, mirroring
+        // what a global `~/.gitconfig` with `[remote "origin"] prune = true`
+        // does when its config is merged into this repo.
+        git_command()
+            .args(["config", "remote.origin.prune", "true"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        // Sanity: bare `git remote` lists "origin" in this state.
+        let bare = git_command()
+            .args(["remote"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        assert!(
+            String::from_utf8_lossy(&bare.stdout).contains("origin"),
+            "precondition: `git remote` should list the name-only origin section"
+        );
+
+        assert!(!has_remote(vp).unwrap());
+    }
+
+    /// Companion to the regression above: `git_pull` must short-circuit with
+    /// `no_remote` instead of running `git pull` and reporting a generic error.
+    #[test]
+    fn test_git_pull_returns_no_remote_when_only_non_url_settings_present() {
+        let dir = setup_git_repo();
+        let vault = dir.path();
+        let vp = vault.to_str().unwrap();
+
+        fs::write(vault.join("note.md"), "# Note\n").unwrap();
+        git_commit(vp, "initial").unwrap();
+
+        git_command()
+            .args(["config", "remote.origin.prune", "true"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        let result = git_pull(vp).unwrap();
+        assert_eq!(result.status, "no_remote");
+        assert!(result.updated_files.is_empty());
+        assert!(result.conflict_files.is_empty());
+    }
+
+    #[test]
+    fn test_git_push_no_remote_returns_no_remote() {
+        let dir = setup_git_repo();
+        let vault = dir.path();
+        let vp = vault.to_str().unwrap();
+
+        fs::write(vault.join("note.md"), "# Note\n").unwrap();
+        git_commit(vp, "initial").unwrap();
+
+        let result = git_push(vp).unwrap();
+        assert_eq!(result.status, "no_remote");
     }
 
     #[test]
