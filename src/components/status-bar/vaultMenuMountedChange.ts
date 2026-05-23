@@ -1,14 +1,18 @@
 import type { VaultOption } from './types'
 
-export interface VaultMountChangeRequest {
-  defaultPath: string
-  includedVaults: VaultOption[]
-  mounted: boolean
+export interface VaultMountChangeCallbacks {
   onSetDefaultWorkspace?: (path: string) => void
   onSwitchVault: (path: string) => void
   onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
-  path: string
+}
+
+export interface VaultMountChangeRequest {
+  defaultPath: string
   vaultPath: string
+  includedVaults: VaultOption[]
+  mounted: boolean
+  path: string
+  callbacks: VaultMountChangeCallbacks
 }
 
 function nextIncludedVaultPath(includedVaults: VaultOption[], currentPath: string): string | null {
@@ -17,19 +21,17 @@ function nextIncludedVaultPath(includedVaults: VaultOption[], currentPath: strin
 
 export function applyMountedChange({
   defaultPath,
+  vaultPath,
   includedVaults,
   mounted,
-  onSetDefaultWorkspace,
-  onSwitchVault,
-  onUpdateWorkspaceIdentity,
   path,
-  vaultPath,
+  callbacks,
 }: VaultMountChangeRequest): void {
   if (!mounted && (path === defaultPath || path === vaultPath)) {
     const nextPath = nextIncludedVaultPath(includedVaults, path)
     if (!nextPath) return
-    if (path === defaultPath) onSetDefaultWorkspace?.(nextPath)
-    if (path === vaultPath) onSwitchVault(nextPath)
+    if (path === defaultPath) callbacks.onSetDefaultWorkspace?.(nextPath)
+    if (path === vaultPath) callbacks.onSwitchVault(nextPath)
   }
-  onUpdateWorkspaceIdentity?.(path, { mounted })
+  callbacks.onUpdateWorkspaceIdentity?.(path, { mounted })
 }

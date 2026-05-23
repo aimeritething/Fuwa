@@ -23,10 +23,8 @@ function callApply(overrides: ChangeOverrides) {
     vaultPath: overrides.vaultPath ?? '/a',
     includedVaults: overrides.includedVaults ?? [vault('/a'), vault('/b')],
     mounted: overrides.mounted ?? false,
-    onSetDefaultWorkspace,
-    onSwitchVault,
-    onUpdateWorkspaceIdentity,
     path: overrides.path ?? '/a',
+    callbacks: { onSetDefaultWorkspace, onSwitchVault, onUpdateWorkspaceIdentity },
   })
   return { onSetDefaultWorkspace, onSwitchVault, onUpdateWorkspaceIdentity }
 }

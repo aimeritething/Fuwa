@@ -356,13 +356,15 @@ function useVaultMenuInteractions({
   const handleMountedChange = useCallback((path: string, mounted: boolean) => {
     applyMountedChange({
       defaultPath,
+      vaultPath,
       includedVaults,
       mounted,
-      onSetDefaultWorkspace,
-      onSwitchVault,
-      onUpdateWorkspaceIdentity,
       path,
-      vaultPath,
+      callbacks: {
+        onSetDefaultWorkspace,
+        onSwitchVault,
+        onUpdateWorkspaceIdentity,
+      },
     })
   }, [defaultPath, includedVaults, onSetDefaultWorkspace, onSwitchVault, onUpdateWorkspaceIdentity, vaultPath])
 
