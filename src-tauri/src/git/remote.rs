@@ -39,7 +39,7 @@ pub fn has_remote(vault_path: &str) -> Result<bool, String> {
 /// no URL configured the URL column is empty (`"origin\t"`). Returns true iff
 /// the URL column (after the tab, before any ` (fetch)` / ` (push)` suffix) is
 /// non-empty.
-fn remote_line_has_url(line: &str) -> bool {
+pub(super) fn remote_line_has_url(line: &str) -> bool {
     let Some((_name, rest)) = line.split_once('\t') else { return false };
     let url = rest
         .rsplit_once(' ')

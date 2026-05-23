@@ -3,6 +3,7 @@ use std::path::Path;
 use std::process::Output;
 
 use super::credentials::request_remote_credentials;
+use super::remote::remote_line_has_url;
 use super::{ensure_author_config, git_command};
 
 const DEFAULT_REMOTE_NAME: &str = "origin";
@@ -185,14 +186,36 @@ fn current_branch(vault: &Path) -> Result<String, String> {
     Err(command_error("git branch --show-current", &output))
 }
 
+/// Return the names of remotes that have a URL configured locally.
+///
+/// Plain `git remote` lists every remote *name* defined in any config layer
+/// (system/global/local), so a `[remote "origin"]` section inherited from
+/// `~/.gitconfig` (e.g. one that only sets `prune = true`) would otherwise
+/// make a fresh local vault look like it already has a remote — breaking
+/// `git_add_remote` (returns `already_configured`) and silently neutering
+/// `disconnect_all_remotes`. We parse `git remote -v` and keep only lines
+/// whose URL column is non-empty, then dedupe by name across the
+/// `(fetch)` / `(push)` line pair.
 fn list_remotes(vault: &Path) -> Result<Vec<String>, String> {
-    let output = git_output(vault, &["remote"])?;
+    let output = git_output(vault, &["remote", "-v"])?;
 
     if !output.status.success() {
-        return Err(command_error("git remote", &output));
+        return Err(command_error("git remote -v", &output));
     }
 
-    Ok(stdout_lines(&output))
+    let mut names: Vec<String> = Vec::new();
+    for line in String::from_utf8_lossy(&output.stdout).lines() {
+        if !remote_line_has_url(line) {
+            continue;
+        }
+        let Some((name, _)) = line.split_once('\t') else { continue };
+        let name = name.trim().to_string();
+        if name.is_empty() || names.iter().any(|existing| existing == &name) {
+            continue;
+        }
+        names.push(name);
+    }
+    Ok(names)
 }
 
 fn unset_upstream(vault: &Path) {
@@ -466,6 +489,40 @@ mod tests {
 
             output.status.success() && !String::from_utf8_lossy(&output.stdout).trim().is_empty()
         })
+    }
+
+    /// Regression for the sibling of the "Sync failed" bug: a `[remote "origin"]`
+    /// section inherited from `~/.gitconfig` (e.g. one that only sets
+    /// `prune = true`) causes plain `git remote` to list "origin" even though
+    /// no URL is configured. `list_remotes` must look past the bare name and
+    /// require an actual URL — otherwise `git_add_remote` short-circuits with
+    /// `already_configured` and `disconnect_all_remotes` silently no-ops.
+    #[test]
+    fn list_remotes_ignores_name_only_remote_section() {
+        let dir = setup_git_repo();
+        let vault = dir.path();
+
+        // Create a [remote "origin"] section with a non-URL setting, mirroring
+        // what a global `~/.gitconfig` with `[remote "origin"] prune = true`
+        // does when its config is merged into this repo.
+        StdCommand::new("git")
+            .args(["config", "remote.origin.prune", "true"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        // Sanity: bare `git remote` lists "origin" in this state.
+        let bare = StdCommand::new("git")
+            .args(["remote"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        assert!(
+            String::from_utf8_lossy(&bare.stdout).contains("origin"),
+            "precondition: `git remote` should list the name-only origin section"
+        );
+
+        assert!(list_remotes(vault).unwrap().is_empty());
     }
 
     #[test]
