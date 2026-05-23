@@ -835,8 +835,10 @@ function App() {
     onVaultChanged: (path) => { void handlePulledVaultUpdate(path ? [path] : [], resolvedPath) },
   })
 
-  const handleInitializeProperties = useCallback(async (path: string) => {
-    await initializeNoteProperties(notes.handleUpdateFrontmatter, path)
+  const handleInitializeProperties = useCallback((path: string) => {
+    void initializeNoteProperties(notes.handleUpdateFrontmatter, path).catch((err) => {
+      console.warn('Failed to initialize note properties:', err)
+    })
   }, [notes])
 
   const handleRemoveNoteIcon = useCallback(async (path: string) => {
