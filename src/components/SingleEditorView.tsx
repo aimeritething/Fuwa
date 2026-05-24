@@ -1,7 +1,7 @@
 import { ArrowSquareOut as ExternalLink, Copy } from '@phosphor-icons/react'
 import { Component, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { invoke } from '@tauri-apps/api/core'
 import {
+  GridSuggestionMenuController,
   BlockNoteViewRaw,
   ComponentsContext,
   DeleteLinkButton,
@@ -13,6 +13,7 @@ import {
   useComponentsContext,
   useCreateBlockNote,
   useDictionary,
+  type DefaultReactGridSuggestionItem,
   type LinkToolbarProps,
 } from '@blocknote/react'
 import { components } from '@blocknote/mantine'
@@ -24,8 +25,9 @@ import { useEditorTheme } from '../hooks/useTheme'
 import { useImageDrop } from '../hooks/useImageDrop'
 import { useImageLightbox } from '../hooks/useImageLightbox'
 import { createTranslator, type AppLocale } from '../lib/i18n'
-import { isTauri } from '../mock-tauri'
+import { writeClipboardText } from '../utils/clipboardText'
 import { buildTypeEntryMap } from '../utils/typeColors'
+import { searchEmojis, type EmojiEntry } from '../utils/emoji'
 import { preFilterWikilinks, deduplicateByPath, MIN_QUERY_LENGTH } from '../utils/wikilinkSuggestions'
 import { filterPersonMentions, PERSON_MENTION_MIN_QUERY } from '../utils/personMentionSuggestions'
 import { attachClickHandlers, enrichSuggestionItems, hasMultipleSuggestionWorkspaces } from '../utils/suggestionEnrichment'
@@ -95,6 +97,7 @@ const TOOLBAR_MOUSE_DOWN_ALLOW_SELECTOR = [
   '[contenteditable="true"]',
 ].join(', ')
 const MAX_BLOCKNOTE_RENDER_RECOVERY_RETRIES = 1
+const EMOJI_SHORTCODE_RESULT_LIMIT = 80
 
 type TestTableBlock = {
   type?: string
@@ -102,6 +105,10 @@ type TestTableBlock = {
 }
 type SuggestionAction = () => void
 type SuggestionItemWithClick = { onItemClick?: SuggestionAction }
+type EmojiSuggestionItem = DefaultReactGridSuggestionItem & {
+  group: string
+  name: string
+}
 type BlockNoteRenderRecoveryState = {
   error: unknown
   recoveryKey: number
@@ -364,6 +371,16 @@ function normalizeSuggestionQuery(query: string, triggerCharacter: string): stri
     : query
 }
 
+function emojiSuggestionRank(entry: EmojiEntry, query: string): number {
+  const normalizedName = entry.name.toLowerCase()
+  const tokens = normalizedName.split(/[^a-z0-9]+/).filter(Boolean)
+  if (normalizedName === query) return 0
+  if (tokens.some(token => token === query)) return 1
+  if (tokens.some(token => token.startsWith(query))) return 2
+  if (normalizedName.startsWith(query)) return 3
+  return 4
+}
+
 const CODE_BLOCK_SELECTOR = '[data-content-type="codeBlock"]'
 const CLIPBOARD_INLINE_FORMAT_SELECTOR = 'a, b, code, em, i, s, span, strong, u'
 const CODE_BLOCK_COPY_RESET_MS = 1200
@@ -456,19 +473,6 @@ function selectedEditorHtml(range: Range): string {
 function codeBlockText(codeBlock: HTMLElement): string {
   const codeElement = codeBlock.querySelector<HTMLElement>('pre code')
   return codeElement?.textContent ?? ''
-}
-
-async function writeClipboardText(text: string): Promise<void> {
-  if (isTauri()) {
-    await invoke('copy_text_to_clipboard', { text })
-    return
-  }
-
-  if (!navigator.clipboard?.writeText) {
-    throw new Error('Clipboard API is unavailable')
-  }
-
-  await navigator.clipboard.writeText(text)
 }
 
 type CodeBlockCopyTarget = {
@@ -1132,6 +1136,30 @@ function useSuggestionMenuItems(options: {
     buildItems(query, '@') ?? []
   ), [buildItems])
 
+  const getEmojiItems = useCallback(async (query: string): Promise<EmojiSuggestionItem[]> => {
+    const normalizedQuery = normalizeSuggestionQuery(query, ':').trim().toLowerCase()
+    if (!normalizedQuery) return []
+
+    return searchEmojis(normalizedQuery)
+      .sort((left, right) => {
+        const rankDelta = emojiSuggestionRank(left, normalizedQuery) - emojiSuggestionRank(right, normalizedQuery)
+        return rankDelta || left.name.localeCompare(right.name)
+      })
+      .slice(0, EMOJI_SHORTCODE_RESULT_LIMIT)
+      .map((entry) => ({
+        id: entry.emoji,
+        icon: <span title={entry.name}>{entry.emoji}</span>,
+        name: entry.name,
+        group: entry.group,
+        onItemClick: () => {
+          runEditorAction(() => {
+            editor.insertInlineContent(entry.emoji, { updateSelection: true })
+            trackEvent('emoji_shortcode_inserted', { group: entry.group })
+          })
+        },
+      }))
+  }, [editor, runEditorAction])
+
   const getSlashMenuItems = useCallback(async (query: string) => {
     try {
       return guardSuggestionMenuItems(
@@ -1148,6 +1176,7 @@ function useSuggestionMenuItems(options: {
 
   return {
     getWikilinkItems,
+    getEmojiItems,
     getPersonMentionItems,
     getSlashMenuItems,
   }
@@ -1159,6 +1188,7 @@ type EditorInteractionControllersProps = ReturnType<typeof useSuggestionMenuItem
 }
 
 function EditorInteractionControllers({
+  getEmojiItems,
   getPersonMentionItems,
   getSlashMenuItems,
   getWikilinkItems,
@@ -1191,6 +1221,12 @@ function EditorInteractionControllers({
       <SuggestionMenuController
         triggerCharacter="/"
         getItems={getSlashMenuItems}
+      />
+      <GridSuggestionMenuController
+        triggerCharacter=":"
+        columns={10}
+        minQueryLength={1}
+        getItems={getEmojiItems}
       />
       <SuggestionMenuController
         triggerCharacter="[["
@@ -1381,6 +1417,7 @@ export function SingleEditorView({ editor, entries, onNavigateWikilink, onChange
             theme={themeMode}
             onChange={handleEditorChange}
             editable={editable}
+            emojiPicker={false}
             formattingToolbar={false}
             linkToolbar={false}
             slashMenu={false}

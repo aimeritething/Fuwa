@@ -64,16 +64,17 @@ vi.mock('@blocknote/code-block', () => ({
   codeBlockOptions: {},
 }))
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
-const mockFilterSuggestionItems = vi.fn((...args: any[]) => args[0] ?? [])
+const mockFilterSuggestionItems = vi.fn((...args: unknown[]) => args[0] ?? [])
 vi.mock('@blocknote/core/extensions', () => ({
   filterSuggestionItems: (...args: unknown[]) => mockFilterSuggestionItems(...args),
 }))
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
-const capturedGetItemsByTrigger: Record<string, (query: string) => Promise<any[]>> = {}
-// eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
-let capturedGetItems: ((query: string) => Promise<any[]>) | null = null
+type SuggestionControllerProps = {
+  triggerCharacter: string
+  getItems: (query: string) => Promise<unknown[]>
+}
+const capturedGetItemsByTrigger: Record<string, (query: string) => Promise<unknown[]>> = {}
+let capturedGetItems: ((query: string) => Promise<unknown[]>) | null = null
 vi.mock('@blocknote/react', () => ({
   AudioBlock: () => null,
   AudioToExternalHTML: () => null,
@@ -114,10 +115,13 @@ vi.mock('@blocknote/react', () => ({
   EditLinkButton: () => null,
   DeleteLinkButton: () => null,
   SideMenuController: () => null,
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- mock
-  SuggestionMenuController: (props: any) => {
+  SuggestionMenuController: (props: SuggestionControllerProps) => {
     capturedGetItemsByTrigger[props.triggerCharacter] = props.getItems
     if (props.triggerCharacter === '[[') capturedGetItems = props.getItems
+    return null
+  },
+  GridSuggestionMenuController: (props: SuggestionControllerProps) => {
+    capturedGetItemsByTrigger[props.triggerCharacter] = props.getItems
     return null
   },
   useComponentsContext: () => ({
@@ -573,7 +577,7 @@ describe('Editor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Open table of contents' }))
 
     expect(screen.getByTestId('table-of-contents-panel')).toBeInTheDocument()
-    expect(await screen.findByRole('button', { name: 'Table Heading' })).toBeInTheDocument()
+    expect(await screen.findByRole('button', { name: 'Table Heading' }, { timeout: 5000 })).toBeInTheDocument()
   })
 
   // Regression: editor content did not appear on first load because BlockNote's

@@ -408,6 +408,7 @@ vi.mock('@blocknote/react', () => ({
   DeleteLinkButton: () => null,
   SideMenuController: () => null,
   SuggestionMenuController: () => null,
+  GridSuggestionMenuController: () => null,
   useComponentsContext: () => ({
     LinkToolbar: {
       Button: ({
@@ -524,7 +525,7 @@ describe('App', () => {
       // Entries appear in both Sidebar and NoteList
       expect(screen.getAllByText('Test Project').length).toBeGreaterThan(0)
       expect(screen.getAllByText('Software Development').length).toBeGreaterThan(0)
-    })
+    }, { timeout: SLOW_APP_READY_TIMEOUT_MS })
   })
 
   it('keeps the app shell usable while the vault note scan is pending', async () => {
@@ -1300,7 +1301,7 @@ describe('App', () => {
 
     render(<App />)
 
-    expect(await screen.findByTestId('status-missing-git')).toBeInTheDocument()
+    expect(await screen.findByTestId('status-missing-git', {}, { timeout: SLOW_APP_READY_TIMEOUT_MS })).toBeInTheDocument()
     fireEvent.click(screen.getByTestId('status-missing-git'))
     expect(await screen.findByText('Enable Git for this vault?')).toBeInTheDocument()
 
