@@ -18,10 +18,22 @@ pub struct GitPullResult {
 pub fn has_remote(vault_path: &str) -> Result<bool, String> {
     let vault = Path::new(vault_path);
     let output = git_command()
-        .args(["remote"])
+        .args(["config", "--get-regexp", r"^remote\..*\.url$"])
         .current_dir(vault)
         .output()
-        .map_err(|e| format!("Failed to run git remote: {}", e))?;
+        .map_err(|e| format!("Failed to inspect git remotes: {}", e))?;
+
+    if !output.status.success() {
+        if output.status.code() == Some(1) {
+            return Ok(false);
+        }
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(if stderr.is_empty() {
+            "Failed to inspect git remotes".to_string()
+        } else {
+            stderr
+        });
+    }
 
     Ok(!String::from_utf8_lossy(&output.stdout).trim().is_empty())
 }
@@ -181,7 +193,7 @@ fn current_branch(vault: &Path) -> Result<String, String> {
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct GitPushResult {
-    pub status: String, // "ok" | "rejected" | "auth_error" | "network_error" | "error"
+    pub status: String, // "ok" | "rejected" | "auth_error" | "network_error" | "no_remote" | "error"
     pub message: String,
 }
 
@@ -208,6 +220,10 @@ pub fn classify_push_error(stderr: &str) -> GitPushResult {
             "network_error",
             "Push failed: network error. Check your connection and try again.",
         );
+    }
+
+    if is_no_remote_push_error(&lower) {
+        return push_error("no_remote", "No remote configured");
     }
 
     push_error(
@@ -259,6 +275,18 @@ fn is_network_push_error(lower: &str) -> bool {
     )
 }
 
+fn is_no_remote_push_error(lower: &str) -> bool {
+    contains_any(
+        lower,
+        &[
+            "no configured push destination",
+            "does not appear to be a git repository",
+            "no such remote",
+            "no upstream branch",
+        ],
+    )
+}
+
 fn push_error_detail(stderr: &str) -> String {
     let hint_line = stderr
         .lines()
@@ -282,6 +310,13 @@ fn push_error_detail(stderr: &str) -> String {
 /// Push to remote.
 pub fn git_push(vault_path: &str) -> Result<GitPushResult, String> {
     let vault = Path::new(vault_path);
+
+    if !has_remote(vault_path)? {
+        return Ok(GitPushResult {
+            status: "no_remote".to_string(),
+            message: "No remote configured".to_string(),
+        });
+    }
 
     let output = git_command()
         .args(["push"])
@@ -329,6 +364,27 @@ mod tests {
             .unwrap();
 
         assert!(has_remote(vp).unwrap());
+    }
+
+    #[test]
+    fn test_has_remote_ignores_name_only_remote_without_url() {
+        let dir = setup_git_repo();
+        let vault = dir.path();
+        let vp = vault.to_str().unwrap();
+
+        git_command()
+            .args(["config", "remote.origin.prune", "true"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+
+        let remote_names = git_command()
+            .args(["remote"])
+            .current_dir(vault)
+            .output()
+            .unwrap();
+        assert!(String::from_utf8_lossy(&remote_names.stdout).contains("origin"));
+        assert!(!has_remote(vp).unwrap());
     }
 
     #[test]
@@ -431,6 +487,14 @@ hint: have locally."#;
     }
 
     #[test]
+    fn test_classify_push_error_no_remote() {
+        let stderr = "fatal: No configured push destination.";
+        let result = classify_push_error(stderr);
+        assert_eq!(result.status, "no_remote");
+        assert!(result.message.contains("No remote"));
+    }
+
+    #[test]
     fn test_classify_push_error_unknown() {
         let stderr = "error: something unexpected happened\nhint: Try again later";
         let result = classify_push_error(stderr);
@@ -467,6 +531,19 @@ hint: have locally."#;
         git_commit(vp_a, "initial").unwrap();
         let result = git_push(vp_a).unwrap();
         assert_eq!(result.status, "ok");
+    }
+
+    #[test]
+    fn test_git_push_no_remote_returns_no_remote() {
+        let dir = setup_git_repo();
+        let vault = dir.path();
+        let vp = vault.to_str().unwrap();
+
+        fs::write(vault.join("note.md"), "# Note\n").unwrap();
+        git_commit(vp, "initial").unwrap();
+
+        let result = git_push(vp).unwrap();
+        assert_eq!(result.status, "no_remote");
     }
 
     #[test]
