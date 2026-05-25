@@ -62,8 +62,8 @@ pub fn check_claude_cli() -> ClaudeCliStatus {
 
 #[cfg(desktop)]
 #[tauri::command]
-pub fn get_ai_agents_status() -> AiAgentsStatus {
-    crate::ai_agents::get_ai_agents_status()
+pub async fn get_ai_agents_status() -> AiAgentsStatus {
+    crate::ai_agents::get_ai_agents_status().await
 }
 
 #[cfg(desktop)]

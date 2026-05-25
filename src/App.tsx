@@ -330,7 +330,9 @@ function App() {
     onVaultReady: handleOnboardingVaultReady,
     registerVault: registerVaultSelection,
   }, vaultSwitcher.loaded)
-  const aiAgentsStatus = useAiAgentsStatus()
+  const aiAgentsStatus = useAiAgentsStatus({
+    enabled: aiFeaturesEnabled && !noteWindowParams,
+  })
   const aiAgentsOnboarding = useAiAgentsOnboarding(aiFeaturesEnabled && onboarding.state.status === 'ready' && !noteWindowParams)
 
   // Onboarding can briefly own the vault path for a newly created/opened vault

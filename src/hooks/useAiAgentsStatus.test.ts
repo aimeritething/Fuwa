@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { renderHook, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { act, renderHook, waitFor } from '@testing-library/react'
 import { useAiAgentsStatus } from './useAiAgentsStatus'
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -13,53 +13,132 @@ vi.mock('../mock-tauri', () => ({
 
 const { mockInvoke } = await import('../mock-tauri') as { mockInvoke: ReturnType<typeof vi.fn> }
 
+function installedStatusResponse() {
+  return {
+    claude_code: { installed: true, version: '1.0.20' },
+    codex: { installed: false, version: null },
+    opencode: { installed: true, version: '0.3.1' },
+    pi: { installed: true, version: '0.70.2' },
+    gemini: { installed: true, version: '0.5.1' },
+  }
+}
+
 describe('useAiAgentsStatus', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('starts in checking state and resolves agent statuses', async () => {
-    mockInvoke.mockImplementation((command: string) => {
-      if (command === 'get_ai_agents_status') {
-        return Promise.resolve({
-          claude_code: { installed: true, version: '1.0.20' },
-          codex: { installed: false, version: null },
-          opencode: { installed: true, version: '0.3.1' },
-          pi: { installed: true, version: '0.70.2' },
-          gemini: { installed: true, version: '0.5.1' },
-        })
-      }
-      return Promise.resolve(null)
+  describe('with real timers', () => {
+    it('starts in checking state and resolves agent statuses', async () => {
+      mockInvoke.mockImplementation((command: string) => {
+        if (command === 'get_ai_agents_status') {
+          return Promise.resolve(installedStatusResponse())
+        }
+        return Promise.resolve(null)
+      })
+
+      const { result } = renderHook(() => useAiAgentsStatus())
+
+      expect(result.current.claude_code.status).toBe('checking')
+      expect(result.current.codex.status).toBe('checking')
+      expect(result.current.opencode.status).toBe('checking')
+      expect(result.current.pi.status).toBe('checking')
+      expect(result.current.gemini.status).toBe('checking')
+
+      // The probe is deferred via requestIdleCallback / setTimeout(0). With
+      // real timers the deferred callback fires on the next event-loop tick.
+      await waitFor(() => {
+        expect(result.current.claude_code).toEqual({ status: 'installed', version: '1.0.20' })
+        expect(result.current.codex).toEqual({ status: 'missing', version: null })
+        expect(result.current.opencode).toEqual({ status: 'installed', version: '0.3.1' })
+        expect(result.current.pi).toEqual({ status: 'installed', version: '0.70.2' })
+        expect(result.current.gemini).toEqual({ status: 'installed', version: '0.5.1' })
+      })
     })
 
-    const { result } = renderHook(() => useAiAgentsStatus())
+    it('falls back to missing when the status call fails', async () => {
+      mockInvoke.mockRejectedValue(new Error('failed'))
 
-    expect(result.current.claude_code.status).toBe('checking')
-    expect(result.current.codex.status).toBe('checking')
-    expect(result.current.opencode.status).toBe('checking')
-    expect(result.current.pi.status).toBe('checking')
-    expect(result.current.gemini.status).toBe('checking')
+      const { result } = renderHook(() => useAiAgentsStatus())
 
-    await waitFor(() => {
-      expect(result.current.claude_code).toEqual({ status: 'installed', version: '1.0.20' })
-      expect(result.current.codex).toEqual({ status: 'missing', version: null })
-      expect(result.current.opencode).toEqual({ status: 'installed', version: '0.3.1' })
-      expect(result.current.pi).toEqual({ status: 'installed', version: '0.70.2' })
-      expect(result.current.gemini).toEqual({ status: 'installed', version: '0.5.1' })
+      await waitFor(() => {
+        expect(result.current.claude_code.status).toBe('missing')
+        expect(result.current.codex.status).toBe('missing')
+        expect(result.current.opencode.status).toBe('missing')
+        expect(result.current.pi.status).toBe('missing')
+        expect(result.current.gemini.status).toBe('missing')
+      })
     })
   })
 
-  it('falls back to missing when the status call fails', async () => {
-    mockInvoke.mockRejectedValue(new Error('failed'))
+  describe('deferral and gating (fake timers)', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+    })
 
-    const { result } = renderHook(() => useAiAgentsStatus())
+    afterEach(() => {
+      vi.useRealTimers()
+    })
 
-    await waitFor(() => {
-      expect(result.current.claude_code.status).toBe('missing')
-      expect(result.current.codex.status).toBe('missing')
-      expect(result.current.opencode.status).toBe('missing')
-      expect(result.current.pi.status).toBe('missing')
-      expect(result.current.gemini.status).toBe('missing')
+    it('does not invoke the probe when disabled', async () => {
+      mockInvoke.mockResolvedValue(installedStatusResponse())
+
+      const { result } = renderHook(() => useAiAgentsStatus({ enabled: false }))
+
+      await vi.runAllTimersAsync()
+
+      expect(mockInvoke).not.toHaveBeenCalled()
+      // Status stays in initial 'checking' state because no consumer renders it
+      // when the gate is off, so it does not need to be reset.
+      expect(result.current.claude_code.status).toBe('checking')
+    })
+
+    it('defers the probe until the next idle callback / timeout tick', async () => {
+      mockInvoke.mockResolvedValue(installedStatusResponse())
+
+      renderHook(() => useAiAgentsStatus({ enabled: true }))
+
+      // Immediately after mount, the probe should not have fired yet — it is
+      // queued behind requestIdleCallback (or setTimeout(0) in jsdom/WebKit).
+      expect(mockInvoke).not.toHaveBeenCalled()
+
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockInvoke).toHaveBeenCalledWith('get_ai_agents_status')
+    })
+
+    it('fires a fresh probe when enabled toggles from false to true', async () => {
+      mockInvoke.mockResolvedValue(installedStatusResponse())
+
+      const { rerender } = renderHook(
+        ({ enabled }: { enabled: boolean }) => useAiAgentsStatus({ enabled }),
+        { initialProps: { enabled: false } },
+      )
+
+      await vi.runAllTimersAsync()
+      expect(mockInvoke).not.toHaveBeenCalled()
+
+      rerender({ enabled: true })
+      await act(async () => {
+        await vi.runAllTimersAsync()
+      })
+
+      expect(mockInvoke).toHaveBeenCalledTimes(1)
+      expect(mockInvoke).toHaveBeenCalledWith('get_ai_agents_status')
+    })
+
+    it('cancels the deferred probe when the hook unmounts before idle fires', async () => {
+      mockInvoke.mockResolvedValue(installedStatusResponse())
+
+      const { unmount } = renderHook(() => useAiAgentsStatus({ enabled: true }))
+
+      // Unmount before the idle callback runs.
+      unmount()
+      await vi.runAllTimersAsync()
+
+      expect(mockInvoke).not.toHaveBeenCalled()
     })
   })
 })
