@@ -27,7 +27,7 @@ export function SettingsBodyNav({ t }: SettingsBodyNavProps) {
   ]
 
   return (
-    <div className="hidden w-48 shrink-0 border-r border-border px-3 py-4 md:block">
+    <div className="hidden w-64 shrink-0 border-r border-border px-3 py-4 md:block">
       <div className="sticky top-0 space-y-1.5">
         {items.map((item) => (
           <Button
