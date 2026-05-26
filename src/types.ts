@@ -276,3 +276,13 @@ export interface FolderNode {
   rootPath?: string
   children: FolderNode[]
 }
+
+/**
+ * Context for a folder-create request: where the new folder should land.
+ * `path` is vault-relative (`''` means vault root); `rootPath` identifies the
+ * target vault when multiple workspaces are mounted.
+ */
+export interface FolderCreationParent {
+  path: string
+  rootPath?: string
+}

@@ -8,7 +8,7 @@ import {
   Plus,
 } from '@phosphor-icons/react'
 import { Button } from '@/components/ui/button'
-import type { FolderNode, SidebarSelection } from '../types'
+import type { FolderCreationParent, FolderNode, SidebarSelection } from '../types'
 import { FolderContextMenu } from './folder-tree/FolderContextMenu'
 import { FolderNameInput } from './folder-tree/FolderNameInput'
 import { FolderTreeRow } from './folder-tree/FolderTreeRow'
@@ -23,7 +23,7 @@ interface FolderTreeProps {
   folders: FolderNode[]
   selection: SidebarSelection
   onSelect: (selection: SidebarSelection) => void
-  onCreateFolder?: (name: string) => Promise<boolean> | boolean
+  onCreateFolder?: (name: string, parent?: FolderCreationParent) => Promise<boolean> | boolean
   onRenameFolder?: (folderPath: string, nextName: string) => Promise<boolean> | boolean
   onDeleteFolder?: (folderPath: string) => void
   folderFileActions?: FolderFileActions
@@ -113,6 +113,7 @@ export const FolderTree = memo(function FolderTree({
   const {
     closeCreateForm,
     expanded,
+    expandFolder,
     handleToggleSection,
     isCreating,
     openCreateForm,
@@ -146,10 +147,22 @@ export const FolderTree = memo(function FolderTree({
       return true
     }
 
-    const created = await onCreateFolder(nextName)
-    if (created) closeCreateForm()
+    const parent: FolderCreationParent | undefined = selection.kind === 'folder'
+      ? { path: selection.path, rootPath: selection.rootPath }
+      : undefined
+    const created = await onCreateFolder(nextName, parent)
+    if (created) {
+      closeCreateForm()
+      // Ensure the parent folder is open so the freshly created child is visible.
+      // The selection→ancestor-expansion machinery deliberately doesn't expand the
+      // selected node itself, so we expand it explicitly here. Vault-root keys are
+      // open by default and don't need this.
+      if (parent?.path) {
+        expandFolder(folderNodeKey(parent))
+      }
+    }
     return created
-  }, [closeCreateForm, onCreateFolder])
+  }, [closeCreateForm, expandFolder, onCreateFolder, selection])
 
   const handleCreateFolderClick = useCallback(() => {
     closeContextMenu()
