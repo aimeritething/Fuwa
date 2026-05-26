@@ -125,16 +125,33 @@ export function agentTargets(): AiTarget[] {
 export function resolveAiTarget(settings: Settings): AiTarget {
   const providers = normalizeAiModelProviders(settings.ai_model_providers)
   const targets = [...agentTargets(), ...configuredModelTargets(providers)]
-  const storedTarget = settings.default_ai_target
-  const target = targets.find((candidate) => candidate.id === storedTarget)
-  if (target) return target
+  const storedLegacyAgent = normalizeStoredAiAgent(settings.default_ai_agent)
+  const legacyAgent = storedLegacyAgent ?? DEFAULT_AI_AGENT
+  const target = resolveStoredAiTarget(settings.default_ai_target, targets)
+  if (target) {
+    if (target.kind === 'agent' && storedLegacyAgent && target.agent === DEFAULT_AI_AGENT && target.agent !== storedLegacyAgent) {
+      return agentTargets().find((candidate) => candidate.kind === 'agent' && candidate.agent === legacyAgent) ?? target
+    }
+    return target
+  }
 
-  const legacyAgent = normalizeStoredAiAgent(settings.default_ai_agent) ?? DEFAULT_AI_AGENT
   return agentTargets().find((candidate) => candidate.kind === 'agent' && candidate.agent === legacyAgent) ?? agentTargets()[0]
 }
 
 export function targetAgent(target: AiTarget): AiAgentId {
   return target.kind === 'agent' ? target.agent : DEFAULT_AI_AGENT
+}
+
+function resolveStoredAiTarget(storedTarget: string | null | undefined, targets: AiTarget[]): AiTarget | null {
+  const target = storedTarget?.trim()
+  if (!target) return null
+
+  const exactTarget = targets.find((candidate) => candidate.id === target)
+  if (exactTarget) return exactTarget
+
+  const legacyAgent = normalizeStoredAiAgent(target)
+  if (!legacyAgent) return null
+  return targets.find((candidate) => candidate.kind === 'agent' && candidate.agent === legacyAgent) ?? null
 }
 
 export function normalizeAiModelProviders(providers: AiModelProvider[] | null | undefined): AiModelProvider[] {

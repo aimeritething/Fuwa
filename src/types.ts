@@ -141,7 +141,7 @@ export interface GitPullResult {
 }
 
 export interface GitPushResult {
-  status: 'ok' | 'rejected' | 'auth_error' | 'network_error' | 'error'
+  status: 'ok' | 'rejected' | 'auth_error' | 'network_error' | 'no_remote' | 'error'
   message: string
 }
 
