@@ -124,22 +124,32 @@ export function agentTargets(): AiTarget[] {
 
 export function resolveAiTarget(settings: Settings): AiTarget {
   const providers = normalizeAiModelProviders(settings.ai_model_providers)
-  const targets = [...agentTargets(), ...configuredModelTargets(providers)]
+  const agents = agentTargets()
+  const targets = [...agents, ...configuredModelTargets(providers)]
   const storedLegacyAgent = normalizeStoredAiAgent(settings.default_ai_agent)
   const legacyAgent = storedLegacyAgent ?? DEFAULT_AI_AGENT
   const target = resolveStoredAiTarget(settings.default_ai_target, targets)
   if (target) {
-    if (target.kind === 'agent' && storedLegacyAgent && target.agent === DEFAULT_AI_AGENT && target.agent !== storedLegacyAgent) {
-      return agentTargets().find((candidate) => candidate.kind === 'agent' && candidate.agent === legacyAgent) ?? target
-    }
+    if (shouldPreferLegacyAgent(target, storedLegacyAgent)) return agentTargetFor(agents, legacyAgent) ?? target
     return target
   }
 
-  return agentTargets().find((candidate) => candidate.kind === 'agent' && candidate.agent === legacyAgent) ?? agentTargets()[0]
+  return agentTargetFor(agents, legacyAgent) ?? agents[0]
 }
 
 export function targetAgent(target: AiTarget): AiAgentId {
   return target.kind === 'agent' ? target.agent : DEFAULT_AI_AGENT
+}
+
+function shouldPreferLegacyAgent(target: AiTarget, storedLegacyAgent: AiAgentId | null): boolean {
+  if (target.kind !== 'agent') return false
+  if (!storedLegacyAgent) return false
+  if (target.agent !== DEFAULT_AI_AGENT) return false
+  return target.agent !== storedLegacyAgent
+}
+
+function agentTargetFor(agents: AiTarget[], agent: AiAgentId): AiTarget | undefined {
+  return agents.find((candidate) => candidate.kind === 'agent' && candidate.agent === agent)
 }
 
 function resolveStoredAiTarget(storedTarget: string | null | undefined, targets: AiTarget[]): AiTarget | null {

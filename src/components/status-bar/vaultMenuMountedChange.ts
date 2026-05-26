@@ -19,6 +19,20 @@ function nextIncludedVaultPath(includedVaults: VaultOption[], currentPath: strin
   return includedVaults.find((vault) => vault.path !== currentPath)?.path ?? null
 }
 
+function isCurrentPathUnmount(request: VaultMountChangeRequest): boolean {
+  if (request.mounted) return false
+  if (request.path === request.defaultPath) return true
+  return request.path === request.vaultPath
+}
+
+function rerouteUnmountedPath(request: VaultMountChangeRequest): boolean {
+  const nextPath = nextIncludedVaultPath(request.includedVaults, request.path)
+  if (!nextPath) return false
+  if (request.path === request.defaultPath) request.callbacks.onSetDefaultWorkspace?.(nextPath)
+  if (request.path === request.vaultPath) request.callbacks.onSwitchVault(nextPath)
+  return true
+}
+
 export function applyMountedChange({
   defaultPath,
   vaultPath,
@@ -27,11 +41,7 @@ export function applyMountedChange({
   path,
   callbacks,
 }: VaultMountChangeRequest): void {
-  if (!mounted && (path === defaultPath || path === vaultPath)) {
-    const nextPath = nextIncludedVaultPath(includedVaults, path)
-    if (!nextPath) return
-    if (path === defaultPath) callbacks.onSetDefaultWorkspace?.(nextPath)
-    if (path === vaultPath) callbacks.onSwitchVault(nextPath)
-  }
+  const request = { defaultPath, vaultPath, includedVaults, mounted, path, callbacks }
+  if (isCurrentPathUnmount(request) && !rerouteUnmountedPath(request)) return
   callbacks.onUpdateWorkspaceIdentity?.(path, { mounted })
 }

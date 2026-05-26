@@ -30,53 +30,48 @@ function callApply(overrides: ChangeOverrides) {
 }
 
 describe('applyMountedChange', () => {
-  it('reroutes both the default workspace and the active vault when the unmounted vault is both', () => {
-    const { onSetDefaultWorkspace, onSwitchVault, onUpdateWorkspaceIdentity } = callApply({
-      defaultPath: '/a',
-      vaultPath: '/a',
-      path: '/a',
-    })
+  it.each([
+    {
+      name: 'both default and active vault',
+      request: { defaultPath: '/a', vaultPath: '/a', path: '/a' },
+      expectedDefault: '/b',
+      expectedSwitch: '/b',
+      expectedIdentity: ['/a', { mounted: false }],
+    },
+    {
+      name: 'active vault only',
+      request: { defaultPath: '/b', vaultPath: '/a', path: '/a' },
+      expectedDefault: null,
+      expectedSwitch: '/b',
+      expectedIdentity: ['/a', { mounted: false }],
+    },
+    {
+      name: 'default workspace only',
+      request: { defaultPath: '/a', vaultPath: '/b', path: '/a' },
+      expectedDefault: '/b',
+      expectedSwitch: null,
+      expectedIdentity: ['/a', { mounted: false }],
+    },
+    {
+      name: 'neither default nor active vault',
+      request: {
+        defaultPath: '/a',
+        vaultPath: '/a',
+        path: '/b',
+        includedVaults: [vault('/a'), vault('/b'), vault('/c')],
+      },
+      expectedDefault: null,
+      expectedSwitch: null,
+      expectedIdentity: ['/b', { mounted: false }],
+    },
+  ])('handles unmounting $name', ({ request, expectedDefault, expectedSwitch, expectedIdentity }) => {
+    const { onSetDefaultWorkspace, onSwitchVault, onUpdateWorkspaceIdentity } = callApply(request)
 
-    expect(onSetDefaultWorkspace).toHaveBeenCalledWith('/b')
-    expect(onSwitchVault).toHaveBeenCalledWith('/b')
-    expect(onUpdateWorkspaceIdentity).toHaveBeenCalledWith('/a', { mounted: false })
-  })
-
-  it('reroutes the active vault when only the active vault is unmounted (default workspace differs)', () => {
-    const { onSetDefaultWorkspace, onSwitchVault, onUpdateWorkspaceIdentity } = callApply({
-      defaultPath: '/b',
-      vaultPath: '/a',
-      path: '/a',
-    })
-
-    expect(onSetDefaultWorkspace).not.toHaveBeenCalled()
-    expect(onSwitchVault).toHaveBeenCalledWith('/b')
-    expect(onUpdateWorkspaceIdentity).toHaveBeenCalledWith('/a', { mounted: false })
-  })
-
-  it('reroutes the default workspace when only the default is unmounted (active vault differs)', () => {
-    const { onSetDefaultWorkspace, onSwitchVault, onUpdateWorkspaceIdentity } = callApply({
-      defaultPath: '/a',
-      vaultPath: '/b',
-      path: '/a',
-    })
-
-    expect(onSetDefaultWorkspace).toHaveBeenCalledWith('/b')
-    expect(onSwitchVault).not.toHaveBeenCalled()
-    expect(onUpdateWorkspaceIdentity).toHaveBeenCalledWith('/a', { mounted: false })
-  })
-
-  it('does not reroute when the unmounted vault is neither default nor active', () => {
-    const { onSetDefaultWorkspace, onSwitchVault, onUpdateWorkspaceIdentity } = callApply({
-      defaultPath: '/a',
-      vaultPath: '/a',
-      path: '/b',
-      includedVaults: [vault('/a'), vault('/b'), vault('/c')],
-    })
-
-    expect(onSetDefaultWorkspace).not.toHaveBeenCalled()
-    expect(onSwitchVault).not.toHaveBeenCalled()
-    expect(onUpdateWorkspaceIdentity).toHaveBeenCalledWith('/b', { mounted: false })
+    if (expectedDefault) expect(onSetDefaultWorkspace).toHaveBeenCalledWith(expectedDefault)
+    else expect(onSetDefaultWorkspace).not.toHaveBeenCalled()
+    if (expectedSwitch) expect(onSwitchVault).toHaveBeenCalledWith(expectedSwitch)
+    else expect(onSwitchVault).not.toHaveBeenCalled()
+    expect(onUpdateWorkspaceIdentity).toHaveBeenCalledWith(...expectedIdentity)
   })
 
   it('bails out without changing anything when no alternative mounted vault exists', () => {

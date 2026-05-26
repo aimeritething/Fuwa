@@ -94,6 +94,39 @@ function useDisplayedFolders(folders: FolderNode[], expanded: Record<string, boo
   }, [expanded, folders, locale, vaultRootPath])
 }
 
+function creationParentForSelection(selection: SidebarSelection): FolderCreationParent | undefined {
+  if (selection.kind !== 'folder') return undefined
+  return { path: selection.path, rootPath: selection.rootPath }
+}
+
+function useCreateFolderSubmit({
+  closeCreateForm,
+  expandFolder,
+  onCreateFolder,
+  selection,
+}: {
+  closeCreateForm: () => void
+  expandFolder: (key: string) => void
+  onCreateFolder?: (name: string, parent?: FolderCreationParent) => Promise<boolean> | boolean
+  selection: SidebarSelection
+}) {
+  return useCallback(async (value: string) => {
+    const nextName = value.trim()
+    if (!nextName || !onCreateFolder) {
+      closeCreateForm()
+      return true
+    }
+
+    const parent = creationParentForSelection(selection)
+    const created = await onCreateFolder(nextName, parent)
+    if (!created) return created
+
+    closeCreateForm()
+    if (parent?.path) expandFolder(folderNodeKey(parent))
+    return created
+  }, [closeCreateForm, expandFolder, onCreateFolder, selection])
+}
+
 export const FolderTree = memo(function FolderTree({
   folders,
   selection,
@@ -140,29 +173,12 @@ export const FolderTree = memo(function FolderTree({
     onStartRenameFolder,
   })
 
-  const handleCreateFolderSubmit = useCallback(async (value: string) => {
-    const nextName = value.trim()
-    if (!nextName || !onCreateFolder) {
-      closeCreateForm()
-      return true
-    }
-
-    const parent: FolderCreationParent | undefined = selection.kind === 'folder'
-      ? { path: selection.path, rootPath: selection.rootPath }
-      : undefined
-    const created = await onCreateFolder(nextName, parent)
-    if (created) {
-      closeCreateForm()
-      // Ensure the parent folder is open so the freshly created child is visible.
-      // The selection→ancestor-expansion machinery deliberately doesn't expand the
-      // selected node itself, so we expand it explicitly here. Vault-root keys are
-      // open by default and don't need this.
-      if (parent?.path) {
-        expandFolder(folderNodeKey(parent))
-      }
-    }
-    return created
-  }, [closeCreateForm, expandFolder, onCreateFolder, selection])
+  const handleCreateFolderSubmit = useCreateFolderSubmit({
+    closeCreateForm,
+    expandFolder,
+    onCreateFolder,
+    selection,
+  })
 
   const handleCreateFolderClick = useCallback(() => {
     closeContextMenu()

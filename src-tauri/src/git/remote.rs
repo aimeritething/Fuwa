@@ -4,6 +4,13 @@ use std::path::Path;
 
 use super::conflict::get_conflict_files;
 
+const GIT_CONFIG_SUBCOMMAND: &str = "config";
+const GIT_CONFIG_GET_REGEXP: &str = "--get-regexp";
+const REMOTE_URL_CONFIG_PATTERN: &str = r"^remote\..*\.url$";
+const NO_REMOTE_STATUS: &str = "no_remote";
+const NO_REMOTE_MESSAGE: &str = "No remote configured";
+const GIT_INSPECT_REMOTES_ERROR: &str = "Failed to inspect git remotes";
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct GitPullResult {
     pub status: String, // "up_to_date" | "updated" | "conflict" | "no_remote" | "error"
@@ -17,8 +24,16 @@ pub struct GitPullResult {
 /// Check whether the vault repo has at least one remote configured.
 pub fn has_remote(vault_path: &str) -> Result<bool, String> {
     let vault = Path::new(vault_path);
+    remote_url_config_exists(vault)
+}
+
+fn remote_url_config_exists(vault: &Path) -> Result<bool, String> {
     let output = git_command()
-        .args(["config", "--get-regexp", r"^remote\..*\.url$"])
+        .args([
+            GIT_CONFIG_SUBCOMMAND,
+            GIT_CONFIG_GET_REGEXP,
+            REMOTE_URL_CONFIG_PATTERN,
+        ])
         .current_dir(vault)
         .output()
         .map_err(|e| format!("Failed to inspect git remotes: {}", e))?;
@@ -29,7 +44,7 @@ pub fn has_remote(vault_path: &str) -> Result<bool, String> {
         }
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         return Err(if stderr.is_empty() {
-            "Failed to inspect git remotes".to_string()
+            GIT_INSPECT_REMOTES_ERROR.to_string()
         } else {
             stderr
         });
@@ -45,8 +60,8 @@ pub fn git_pull(vault_path: &str) -> Result<GitPullResult, String> {
 
     if !has_remote(vault_path)? {
         return Ok(GitPullResult {
-            status: "no_remote".to_string(),
-            message: "No remote configured".to_string(),
+            status: NO_REMOTE_STATUS.to_string(),
+            message: NO_REMOTE_MESSAGE.to_string(),
             updated_files: vec![],
             conflict_files: vec![],
         });
@@ -313,8 +328,8 @@ pub fn git_push(vault_path: &str) -> Result<GitPushResult, String> {
 
     if !has_remote(vault_path)? {
         return Ok(GitPushResult {
-            status: "no_remote".to_string(),
-            message: "No remote configured".to_string(),
+            status: NO_REMOTE_STATUS.to_string(),
+            message: NO_REMOTE_MESSAGE.to_string(),
         });
     }
 
@@ -341,6 +356,11 @@ mod tests {
     use crate::git::git_commit;
     use crate::git::tests::{setup_git_repo, setup_remote_pair};
     use std::fs;
+
+    fn commit_default_note(vault_path: &Path) {
+        fs::write(vault_path.join("note.md"), "# Note\n").unwrap();
+        git_commit(vault_path.to_str().unwrap(), "initial").unwrap();
+    }
 
     #[test]
     fn test_has_remote_returns_false_for_local_repo() {
@@ -527,8 +547,7 @@ hint: have locally."#;
         let (_bare, clone_a, _clone_b) = setup_remote_pair();
         let vp_a = clone_a.path().to_str().unwrap();
 
-        fs::write(clone_a.path().join("note.md"), "# Note\n").unwrap();
-        git_commit(vp_a, "initial").unwrap();
+        commit_default_note(clone_a.path());
         let result = git_push(vp_a).unwrap();
         assert_eq!(result.status, "ok");
     }
@@ -539,8 +558,7 @@ hint: have locally."#;
         let vault = dir.path();
         let vp = vault.to_str().unwrap();
 
-        fs::write(vault.join("note.md"), "# Note\n").unwrap();
-        git_commit(vp, "initial").unwrap();
+        commit_default_note(vault);
 
         let result = git_push(vp).unwrap();
         assert_eq!(result.status, "no_remote");
