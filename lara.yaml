@@ -24,6 +24,7 @@ locales:
     - vi
     - pl-PL
     - be-BY
+    - id-ID
 
 files:
   json:

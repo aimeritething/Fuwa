@@ -21,6 +21,7 @@ export const APP_LOCALES = [
   'pl-PL',
   'be-BY',
   'be-Latn',
+  'id-ID',
 ] as const
 
 export type AppLocale = typeof APP_LOCALES[number]
@@ -178,6 +179,13 @@ const LOCALE_DEFINITIONS: Record<AppLocale, LocaleDefinition> = {
     labelKey: 'locale.beLatn',
     aliases: ['be-latn'],
     searchKeywords: ['belarusian', 'bielaruskaja', 'lacinka', 'be-latn'],
+  },
+  'id-ID': {
+    code: 'id-ID',
+    dateLocale: 'id-ID',
+    labelKey: 'locale.idID',
+    aliases: ['id','id-id'],
+    searchKeywords: ['indonesia', 'indonesian', 'bahasa', 'idn', 'id', 'id-id'],
   },
 }
 
