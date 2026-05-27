@@ -500,11 +500,12 @@ describe('SingleEditorView', () => {
       expect(editor.replaceBlocks.mock.calls[0][1]).toEqual([
         expect.objectContaining({
           id: expect.any(String),
-          children: [
-            expect.objectContaining({
-              id: expect.any(String),
-            }),
-          ],
+          children: [],
+        }),
+        expect.objectContaining({
+          id: expect.any(String),
+          content: [{ type: 'text', text: 'Recovered child', styles: {} }],
+          children: [],
         }),
       ])
     } finally {

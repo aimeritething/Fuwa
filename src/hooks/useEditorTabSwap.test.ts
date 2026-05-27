@@ -558,13 +558,14 @@ describe('useEditorTabSwap raw mode sync', () => {
       expect.objectContaining({ id: expect.any(String), type: 'paragraph', content: [], children: [] }),
       expect.objectContaining({
         id: expect.any(String),
-        children: [
-          expect.objectContaining({ id: expect.any(String), type: 'paragraph', content: [], children: [] }),
-          expect.objectContaining({
-            id: expect.any(String),
-            content: [{ type: 'text', text: 'Child', styles: {} }],
-          }),
-        ],
+        content: [{ type: 'text', text: 'Parent', styles: {} }],
+        children: [],
+      }),
+      expect.objectContaining({ id: expect.any(String), type: 'paragraph', content: [], children: [] }),
+      expect.objectContaining({
+        id: expect.any(String),
+        content: [{ type: 'text', text: 'Child', styles: {} }],
+        children: [],
       }),
     ])
   })

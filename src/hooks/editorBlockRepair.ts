@@ -1,5 +1,10 @@
 let fallbackBlockIdSequence = 0
-const LIST_ITEM_TYPES = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
+const NESTABLE_LIST_ITEM_TYPES = new Set([
+  'bulletListItem',
+  'numberedListItem',
+  'checkListItem',
+  'toggleListItem',
+])
 
 type RepairResult = {
   blocks: unknown[]
@@ -25,8 +30,8 @@ function isEditorBlockRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-function isListItemBlock(block: Record<string, unknown>): boolean {
-  return typeof block.type === 'string' && LIST_ITEM_TYPES.has(block.type)
+function canNestChildBlocks(block: Record<string, unknown>): boolean {
+  return typeof block.type === 'string' && NESTABLE_LIST_ITEM_TYPES.has(block.type)
 }
 
 function hasUsableBlockId(block: Record<string, unknown>): boolean {
@@ -46,20 +51,11 @@ function splitChildrenForBlock(
   block: Record<string, unknown>,
   children: unknown[],
 ): { safeChildren: unknown[], promotedChildren: unknown[] } {
-  if (isListItemBlock(block)) {
+  if (canNestChildBlocks(block)) {
     return { safeChildren: children, promotedChildren: [] }
   }
 
-  const safeChildren: unknown[] = []
-  const promotedChildren: unknown[] = []
-  for (const child of children) {
-    if (isEditorBlockRecord(child) && isListItemBlock(child)) {
-      promotedChildren.push(child)
-    } else {
-      safeChildren.push(child)
-    }
-  }
-  return { safeChildren, promotedChildren }
+  return { safeChildren: [], promotedChildren: children }
 }
 
 function repairBlockList(blocks: unknown[]): RepairResult {

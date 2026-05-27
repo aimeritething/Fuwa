@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, type Locator, type Page } from '@playwright/test'
 import { createFixtureVaultCopy, openFixtureVault, removeFixtureVaultCopy } from '../helpers/fixtureVault'
 import { executeCommand, openCommandPalette } from './helpers'
 
@@ -49,6 +49,24 @@ Procedures are long-running processes tied to a [[responsibility|Responsibility]
 - Owner: The person responsible
 
 Plain follow-up paragraph after the procedure checklist.
+`
+
+const NESTED_PROCEDURE_NOTE_CONTENT = `---
+title: Note B
+type: Procedure
+status: Active
+---
+
+# Note B
+
+Procedures are long-running processes tied to a responsibility.
+
+- Prepare release
+  1. Validate nested numbered content
+  2. Notify the owner
+- Record outcome
+
+Plain follow-up paragraph after the nested procedure checklist.
 `
 
 let tempVaultDir: string
@@ -141,6 +159,99 @@ function expectNoBlockContainerCrash(messages: string[]) {
   ))).toEqual([])
 }
 
+async function loadRawContentInRichEditor(page: Page, content: string) {
+  await openNote(page, 'Note B')
+  await toggleRawMode(page, '.cm-content')
+  await setRawEditorContent(page, content)
+  await page.waitForTimeout(700)
+  await toggleRawMode(page, '.bn-editor')
+}
+
+async function appendMarkerToBlock(page: Page, block: Locator, marker: string) {
+  await expect(block).toBeVisible({ timeout: 5_000 })
+  await block.click()
+  await page.keyboard.press('End')
+  await page.keyboard.insertText(` ${marker}`)
+  await page.waitForTimeout(900)
+}
+
+async function reopenNoteB(page: Page) {
+  await openNote(page, 'Note C')
+  await openNote(page, 'Note B')
+}
+
+async function expectListContentEditableAfterReopen(page: Page, options: {
+  content: string
+  markerPrefix: string
+  primary: {
+    selector: string
+    text: string
+  }
+  secondary: {
+    selector: string
+    text: string
+  }
+}) {
+  const crashSignals = collectEditorCrashSignals(page)
+  const markerId = Date.now()
+  const primaryMarker = `${options.markerPrefix}-primary-${markerId}`
+  const secondaryMarker = `${options.markerPrefix}-secondary-${markerId}`
+  const reentryMarker = `${options.markerPrefix}-reentry-${markerId}`
+
+  await loadRawContentInRichEditor(page, options.content)
+
+  const primaryBlock = page.locator(options.primary.selector, {
+    hasText: options.primary.text,
+  }).first()
+  await appendMarkerToBlock(page, primaryBlock, primaryMarker)
+
+  const secondaryBlock = page.locator(options.secondary.selector, {
+    hasText: options.secondary.text,
+  }).first()
+  await appendMarkerToBlock(page, secondaryBlock, secondaryMarker)
+
+  await reopenNoteB(page)
+  await appendMarkerToBlock(page, primaryBlock, reentryMarker)
+
+  expectNoBlockContainerCrash(crashSignals)
+
+  await toggleRawMode(page, '.cm-content')
+  const raw = await getRawEditorContent(page)
+  expect(raw).toContain(primaryMarker)
+  expect(raw).toContain(secondaryMarker)
+  expect(raw).toContain(reentryMarker)
+  expectNoBlockContainerCrash(crashSignals)
+}
+
+const listReopenScenarios = [
+  {
+    name: 'numbered list content stays editable after autosave and re-entry',
+    content: NUMBERED_REENTRY_CONTENT,
+    markerPrefix: 'numbered',
+    primary: {
+      selector: '.bn-block-content[data-content-type="numberedListItem"]',
+      text: 'First numbered item',
+    },
+    secondary: {
+      selector: '.bn-block-content',
+      text: 'Plain paragraph after the numbered list.',
+    },
+  },
+  {
+    name: 'nested procedure list content stays editable after save and reopen',
+    content: NESTED_PROCEDURE_NOTE_CONTENT,
+    markerPrefix: 'nested',
+    primary: {
+      selector: '.bn-block-content[data-content-type="numberedListItem"]',
+      text: 'Validate nested numbered content',
+    },
+    secondary: {
+      selector: '.bn-block-content[data-content-type="bulletListItem"]',
+      text: 'Record outcome',
+    },
+  },
+] as const
+
 test('mixed rich-text blocks with Korean list content stay editable after action clicks', async ({ page }) => {
   const crashSignals = collectEditorCrashSignals(page)
 
@@ -174,52 +285,11 @@ test('mixed rich-text blocks with Korean list content stay editable after action
   expectNoBlockContainerCrash(crashSignals)
 })
 
-test('numbered list content stays editable after autosave and re-entry', async ({ page }) => {
-  const crashSignals = collectEditorCrashSignals(page)
-  const markerId = Date.now()
-  const listMarker = `list-token-${markerId}`
-  const paragraphMarker = `paragraph-token-${markerId}`
-  const reentryMarker = `reentry-token-${markerId}`
-
-  await openNote(page, 'Note B')
-  await toggleRawMode(page, '.cm-content')
-  await setRawEditorContent(page, NUMBERED_REENTRY_CONTENT)
-  await page.waitForTimeout(700)
-  await toggleRawMode(page, '.bn-editor')
-
-  const numberedItem = page.locator('.bn-block-content[data-content-type="numberedListItem"]', {
-    hasText: 'First numbered item',
-  }).first()
-  await expect(numberedItem).toBeVisible({ timeout: 5_000 })
-  await numberedItem.click()
-  await page.keyboard.press('End')
-  await page.keyboard.insertText(` ${listMarker}`)
-  await page.waitForTimeout(900)
-
-  const paragraph = page.locator('.bn-block-content', {
-    hasText: 'Plain paragraph after the numbered list.',
-  }).first()
-  await paragraph.click()
-  await page.keyboard.press('End')
-  await page.keyboard.insertText(` ${paragraphMarker}`)
-  await page.waitForTimeout(900)
-
-  await openNote(page, 'Note C')
-  await openNote(page, 'Note B')
-  await numberedItem.click()
-  await page.keyboard.press('End')
-  await page.keyboard.insertText(` ${reentryMarker}`)
-  await page.waitForTimeout(700)
-
-  expectNoBlockContainerCrash(crashSignals)
-
-  await toggleRawMode(page, '.cm-content')
-  const raw = await getRawEditorContent(page)
-  expect(raw).toContain(listMarker)
-  expect(raw).toContain(paragraphMarker)
-  expect(raw).toContain(reentryMarker)
-  expectNoBlockContainerCrash(crashSignals)
-})
+for (const scenario of listReopenScenarios) {
+  test(scenario.name, async ({ page }) => {
+    await expectListContentEditableAfterReopen(page, scenario)
+  })
+}
 
 test('Procedure prose and adjacent bullet-list content stay editable through keydown edits', async ({ page }) => {
   const crashSignals = collectEditorCrashSignals(page)

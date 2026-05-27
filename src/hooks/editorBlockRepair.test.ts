@@ -15,7 +15,7 @@ function block(type: string, text: string, children: unknown[] = []) {
 }
 
 describe('repairMalformedEditorBlocks', () => {
-  it('promotes numbered-list children out of paragraph blocks', () => {
+  it('promotes all children out of paragraph blocks', () => {
     const nestedParagraph = block('paragraph', 'Nested paragraph')
     const nestedList = block('numberedListItem', 'Step one', [
       block('numberedListItem', 'Nested step'),
@@ -26,8 +26,9 @@ describe('repairMalformedEditorBlocks', () => {
     expect(repairMalformedEditorBlocks([paragraph, tail])).toEqual([
       {
         ...paragraph,
-        children: [nestedParagraph],
+        children: [],
       },
+      nestedParagraph,
       nestedList,
       tail,
     ])
@@ -36,6 +37,13 @@ describe('repairMalformedEditorBlocks', () => {
   it('keeps nested numbered-list children under numbered-list items', () => {
     const nested = block('numberedListItem', 'Nested step')
     const parent = block('numberedListItem', 'Step one', [nested])
+
+    expect(repairMalformedEditorBlocks([parent])).toEqual([parent])
+  })
+
+  it('keeps nested toggle-list children under toggle-list items', () => {
+    const nested = block('paragraph', 'Toggle detail')
+    const parent = block('toggleListItem', 'Toggle summary', [nested])
 
     expect(repairMalformedEditorBlocks([parent])).toEqual([parent])
   })
