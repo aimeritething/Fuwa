@@ -23,7 +23,8 @@ describe('useEditorSave', () => {
     updateVaultContent = vi.fn()
     setTabs = vi.fn()
     setToastMessage = vi.fn()
-    mockInvokeFn.mockClear()
+    mockInvokeFn.mockReset()
+    mockInvokeFn.mockResolvedValue(null)
   })
 
   function renderSaveHook() {
@@ -166,6 +167,32 @@ describe('useEditorSave', () => {
     })
   })
 
+  it('coalesces overlapping savePendingForPath calls for the same buffered content', async () => {
+    let resolveSave!: (value: null) => void
+    mockInvokeFn.mockReturnValue(new Promise<null>((resolve) => { resolveSave = resolve }))
+    const { result } = renderSaveHook()
+
+    act(() => {
+      result.current.handleContentChange('/test/note-a.md', 'content A')
+    })
+
+    let firstSave!: Promise<boolean>
+    let secondSave!: Promise<boolean>
+    await act(async () => {
+      firstSave = result.current.savePendingForPath('/test/note-a.md')
+      secondSave = result.current.savePendingForPath('/test/note-a.md')
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+
+    expect(mockInvokeFn).toHaveBeenCalledTimes(1)
+
+    await act(async () => {
+      resolveSave(null)
+      await expect(Promise.all([firstSave, secondSave])).resolves.toEqual([true, true])
+    })
+  })
+
   it('calls onAfterSave callback after successful save', async () => {
     const cb = vi.fn()
     const { result } = renderHook(() =>
@@ -244,6 +271,28 @@ describe('useEditorSave', () => {
     const tabs = [{ entry: { path: '/test/note.md' }, content: 'stale' }]
     const updated = updater(tabs)
     expect(updated[0].content).toBe('---\ntitle: T\n---\n\n# T\n\nLive edits')
+  })
+
+  it('does not replace current tab state again when saving content already synced from editor changes', async () => {
+    const { result } = renderSaveHook()
+    const path = '/test/note.md'
+    const content = '---\ntitle: T\n---\n\n# T\n\nLive edits'
+
+    act(() => {
+      result.current.handleContentChange(path, content)
+    })
+
+    const liveUpdater = setTabs.mock.calls.at(-1)?.[0]
+    const initialTabs = [{ entry: { path }, content: 'stale' }]
+    const currentTabs = liveUpdater(initialTabs)
+
+    await act(async () => {
+      await result.current.savePendingForPath(path)
+    })
+
+    const saveUpdater = setTabs.mock.calls.at(-1)?.[0]
+    expect(saveUpdater(currentTabs)).toBe(currentTabs)
+    expect(updateVaultContent).toHaveBeenCalledWith(path, content)
   })
 
   it('save updates tab content with edited body, not original (regression)', async () => {

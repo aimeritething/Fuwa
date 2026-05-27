@@ -46,6 +46,29 @@ interface PendingContent {
   content: string
 }
 
+interface InFlightPendingSave {
+  pending: PendingContent
+  promise: Promise<boolean>
+}
+
+interface PersistPendingContentParams {
+  pending: PendingContent
+  pendingContentRef: MutableRefObject<PendingContent | null>
+  saveNote: (path: string, content: string) => Promise<void>
+  onBeforePersist?: EditorSaveConfig['onBeforePersist']
+  onNotePersisted?: EditorSaveConfig['onNotePersisted']
+  resolvePath?: EditorSaveConfig['resolvePath']
+  resolvePathBeforeSave?: EditorSaveConfig['resolvePathBeforeSave']
+  persistenceScopeRef: MutableRefObject<string | readonly string[] | undefined>
+}
+
+interface ReusableInFlightSaveParams {
+  inFlightSave: InFlightPendingSave | null
+  pending: PendingContent
+  pathFilter?: string
+  resolvePath?: EditorSaveConfig['resolvePath']
+}
+
 interface EditorSaveCommandsParams {
   pendingContentRef: MutableRefObject<PendingContent | null>
   autoSaveTimerRef: MutableRefObject<ReturnType<typeof setTimeout> | null>
@@ -123,6 +146,26 @@ function matchesPendingContent(
   return matchesPendingPath(pending, path, resolvePath) && pending.content === content
 }
 
+function matchesPendingSnapshot(
+  pending: PendingContent,
+  snapshot: PendingContent,
+  resolvePath?: EditorSaveConfig['resolvePath'],
+): boolean {
+  return matchesPendingContent(pending, snapshot.path, snapshot.content, resolvePath)
+}
+
+function reusableInFlightSave({
+  inFlightSave,
+  pending,
+  pathFilter,
+  resolvePath,
+}: ReusableInFlightSaveParams): Promise<boolean> | null {
+  if (!inFlightSave) return null
+  if (!matchesPendingPath(inFlightSave.pending, pathFilter, resolvePath)) return null
+  if (!matchesPendingSnapshot(inFlightSave.pending, pending, resolvePath)) return null
+  return inFlightSave.promise
+}
+
 async function persistResolvedContent({
   path,
   content,
@@ -152,9 +195,48 @@ function applyTabContent(
   path: string,
   content: string,
 ): void {
-  setTabs((prev: Tab[]) =>
-    prev.map((t) => t.entry.path === path ? { ...t, content } : t)
-  )
+  setTabs((prev: Tab[]) => {
+    let changed = false
+    const next = prev.map((t) => {
+      if (t.entry.path !== path) return t
+      if (t.content === content) return t
+      changed = true
+      return { ...t, content }
+    })
+    return changed ? next : prev
+  })
+}
+
+async function persistPendingContent({
+  pending,
+  pendingContentRef,
+  saveNote,
+  onBeforePersist,
+  onNotePersisted,
+  resolvePath,
+  resolvePathBeforeSave,
+  persistenceScopeRef,
+}: PersistPendingContentParams): Promise<boolean> {
+  const { path, content } = pending
+  const targetPath = await persistResolvedContent({
+    path,
+    content,
+    saveNote,
+    onBeforePersist,
+    resolvePath,
+    resolvePathBeforeSave,
+    persistenceScopeRef,
+  })
+  if (targetPath === null) {
+    if (pendingContentRef.current === pending) pendingContentRef.current = null
+    return false
+  }
+  if (!matchesPendingContent(pendingContentRef.current, targetPath, content, resolvePath)) {
+    return false
+  }
+  pendingContentRef.current = null
+  onNotePersisted?.(targetPath, content)
+  return true
 }
 
 function scheduleAutoSave({
@@ -207,30 +289,40 @@ function usePendingContentFlush({
   canPersistRef: MutableRefObject<boolean>
   persistenceScopeRef: MutableRefObject<string | readonly string[] | undefined>
 }) {
+  const inFlightSaveRef = useRef<InFlightPendingSave | null>(null)
+
   return useCallback(async (pathFilter?: string): Promise<boolean> => {
     const pending = pendingContentRef.current
     if (!matchesPendingPath(pending, pathFilter, resolvePath)) return false
     if (!canPersistRef.current) return false
-    const { path, content } = pending
-    const targetPath = await persistResolvedContent({
-      path,
-      content,
+
+    const inFlightSave = reusableInFlightSave({
+      inFlightSave: inFlightSaveRef.current,
+      pending,
+      pathFilter,
+      resolvePath,
+    })
+    if (inFlightSave) return inFlightSave
+
+    const promise = persistPendingContent({
+      pending,
+      pendingContentRef,
       saveNote,
       onBeforePersist,
+      onNotePersisted,
       resolvePath,
       resolvePathBeforeSave,
       persistenceScopeRef,
     })
-    if (targetPath === null) {
-      if (pendingContentRef.current === pending) pendingContentRef.current = null
-      return false
+    inFlightSaveRef.current = { pending, promise }
+
+    try {
+      return await promise
+    } finally {
+      if (inFlightSaveRef.current?.promise === promise) {
+        inFlightSaveRef.current = null
+      }
     }
-    if (!matchesPendingContent(pendingContentRef.current, targetPath, content, resolvePath)) {
-      return false
-    }
-    pendingContentRef.current = null
-    onNotePersisted?.(targetPath, content)
-    return true
   }, [canPersistRef, onBeforePersist, onNotePersisted, pendingContentRef, persistenceScopeRef, resolvePath, resolvePathBeforeSave, saveNote])
 }
 
