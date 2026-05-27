@@ -43,7 +43,7 @@ brew install --cask tolaria
 
 ### Download from releases
 
-Download the [latest release here](https://refactoringhq.github.io/tolaria/download/) for macOS, Windows, or Linux.
+Download the [latest release here](https://refactoringhq.github.io/tolaria/download/) for macOS, Windows, or Linux. Windows installers are Authenticode-signed; company-managed devices may still require IT approval of the Tolaria publisher before first install.
 
 ## Getting started
 

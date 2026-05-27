@@ -1,5 +1,7 @@
 const RELEASE_HISTORY_URL = 'https://tolaria.md/releases/'
 const DOWNLOAD_FRAME_NAME = 'tolaria-download-frame'
+const WINDOWS_MANAGED_INSTALL_NOTE =
+  'Windows installers are Authenticode-signed. Company-managed devices may still require IT to approve the Tolaria publisher before first install.'
 
 type StablePlatformKey =
   | 'darwin-aarch64'
@@ -145,6 +147,13 @@ const REDIRECT_PAGE_STYLES = `
     p {
       margin: 0 0 12px;
       line-height: 1.5;
+    }
+
+    .platform-note {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--download-border-default);
+      font-size: 0.95rem;
     }
 
     .button-list {
@@ -419,6 +428,10 @@ function buildDownloadsMarkup(downloads: StableDownloadTargets): string {
   const targets = PLATFORM_ORDER
     .map((platform) => Reflect.get(downloads, platform) as StableDownloadTarget | undefined)
     .filter((target): target is StableDownloadTarget => Boolean(target))
+  const windowsTarget = Reflect.get(downloads, 'windows-x86_64') as StableDownloadTarget | undefined
+  const windowsInstallNote = windowsTarget
+    ? `<p class="platform-note">${escapeHtml(WINDOWS_MANAGED_INSTALL_NOTE)}</p>`
+    : ''
 
   if (targets.length === 0) {
     return `<div class="button-list"><a id="download-link" href="${RELEASE_HISTORY_URL}" data-secondary="true">View release history</a></div>`
@@ -441,7 +454,8 @@ function buildDownloadsMarkup(downloads: StableDownloadTargets): string {
     <div class="button-list">${secondaryLinks}</div>
     <div class="button-list">
       <a href="${RELEASE_HISTORY_URL}" data-secondary="true">View release history</a>
-    </div>`
+    </div>
+    ${windowsInstallNote}`
 }
 
 function buildDownloadFrameMarkup(downloads: StableDownloadTargets): string {
@@ -493,6 +507,10 @@ function buildRedirectMarkup(downloads: StableDownloadTargets): string {
         return hasMultipleMacDownloads && /Mac OS X|Macintosh/i.test(navigator.userAgent);
       }
 
+      function requiresWindowsInstallChoice() {
+        return Boolean(DOWNLOAD_TARGETS['windows-x86_64']) && /Windows/i.test(navigator.userAgent);
+      }
+
       function updatePrimaryDownloadLink(target) {
         const link = document.getElementById('download-link');
         if (!link) return;
@@ -501,23 +519,27 @@ function buildRedirectMarkup(downloads: StableDownloadTargets): string {
         link.textContent = target.buttonLabel;
       }
 
-      function downloadMessage(target, requiresMacChoice) {
+      function downloadMessage(target, requiresMacChoice, requiresWindowsChoice) {
         if (requiresMacChoice) {
           return 'Choose the Apple Silicon or Intel Mac download below.';
+        }
+
+        if (requiresWindowsChoice) {
+          return 'Use the signed Windows installer link below. Company-managed devices may require IT approval of the Tolaria publisher.';
         }
 
         return 'Starting the latest stable Tolaria download for ' + target.label + '.';
       }
 
-      function updateDownloadMessage(target, requiresMacChoice) {
+      function updateDownloadMessage(target, requiresMacChoice, requiresWindowsChoice) {
         const message = document.getElementById('download-message');
         if (!message) return;
 
-        message.textContent = downloadMessage(target, requiresMacChoice);
+        message.textContent = downloadMessage(target, requiresMacChoice, requiresWindowsChoice);
       }
 
-      function scheduleAutomaticDownload(target, requiresMacChoice) {
-        if (requiresMacChoice) return;
+      function scheduleAutomaticDownload(target, requiresMacChoice, requiresWindowsChoice) {
+        if (requiresMacChoice || requiresWindowsChoice) return;
 
         window.setTimeout(function () {
           startDownload(target);
@@ -529,9 +551,10 @@ function buildRedirectMarkup(downloads: StableDownloadTargets): string {
         if (!target) return;
 
         const requiresMacChoice = requiresMacDownloadChoice();
+        const requiresWindowsChoice = requiresWindowsInstallChoice();
         updatePrimaryDownloadLink(target);
-        updateDownloadMessage(target, requiresMacChoice);
-        scheduleAutomaticDownload(target, requiresMacChoice);
+        updateDownloadMessage(target, requiresMacChoice, requiresWindowsChoice);
+        scheduleAutomaticDownload(target, requiresMacChoice, requiresWindowsChoice);
       }
 
       window.addEventListener('DOMContentLoaded', setupDownloadPage);

@@ -180,3 +180,5 @@ proposed → active → superseded
 | [0126](0126-renderer-action-history.md) | Renderer action history for app-level undo and redo | active |
 | [0127](0127-native-ai-workspace-window.md) | Native AI workspace window | superseded -> [0128](0128-lightweight-ai-workspace-window.md) |
 | [0128](0128-lightweight-ai-workspace-window.md) | Lightweight AI workspace window | active |
+| [0129](0129-tolaria-vault-item-deep-links.md) | Tolaria vault item deep links | active |
+| [0130](0130-windows-authenticode-release-signing.md) | Windows Authenticode signing for release installers | active |

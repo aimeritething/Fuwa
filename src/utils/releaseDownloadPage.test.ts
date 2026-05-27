@@ -49,6 +49,30 @@ describe('release workflow macOS artifact names', () => {
     expect(countOccurrences(alphaWorkflow, releaseEnv)).toBe(3)
     expect(countOccurrences(stableWorkflow, releaseEnv)).toBe(3)
   })
+
+  it('requires Authenticode signing for Windows release installers', () => {
+    const alphaWorkflow = readFileSync(`${process.cwd()}/.github/workflows/release.yml`, 'utf8')
+    const stableWorkflow = readFileSync(
+      `${process.cwd()}/.github/workflows/release-stable.yml`,
+      'utf8',
+    )
+    const signingScript = readFileSync(
+      `${process.cwd()}/.github/scripts/configure-windows-authenticode.ps1`,
+      'utf8',
+    )
+
+    for (const workflow of [alphaWorkflow, stableWorkflow]) {
+      expect(workflow).toContain('WINDOWS_CODE_SIGNING_CERTIFICATE')
+      expect(workflow).toContain('WINDOWS_CERTIFICATE')
+      expect(workflow).toContain('./.github/scripts/configure-windows-authenticode.ps1')
+      expect(workflow).toContain('--config src-tauri/tauri.windows-signing.conf.json')
+      expect(workflow).toContain('Validate Windows Authenticode signatures')
+      expect(workflow).toContain('Get-AuthenticodeSignature')
+    }
+    expect(signingScript).toContain('certificateThumbprint')
+    expect(signingScript).toContain('timestampUrl')
+    expect(signingScript).toContain('WINDOWS_CODE_SIGNING_CERTIFICATE_THUMBPRINT')
+  })
 })
 
 describe('extractStableDownloadTargets', () => {
@@ -114,10 +138,12 @@ describe('buildStableDownloadRedirectPage', () => {
     expect(html).toContain('Tolaria Stable Download')
     expect(html).toContain('DOWNLOAD_TARGETS')
     expect(html).toContain('Download Tolaria for Windows')
+    expect(html).toContain('Windows installers are Authenticode-signed')
     expect(html).toContain('Download Tolaria for macOS Apple Silicon')
     expect(html).toContain('Download Tolaria for Intel Mac')
     expect(html).toContain('hasMultipleMacDownloads')
     expect(html).toContain('Choose the Apple Silicon or Intel Mac download below.')
+    expect(html).toContain('requiresWindowsInstallChoice')
     expect(html).toContain('tolaria-download-frame')
     expect(html).toContain('color-scheme: light dark')
     expect(html).toContain('@media (prefers-color-scheme: dark)')
@@ -137,6 +163,7 @@ describe('buildStableDownloadRedirectPage', () => {
     expect(html).toContain('target="tolaria-download-frame"')
     expect(html).toContain('sandbox="allow-downloads"')
     expect(html).toContain('startDownload(target)')
+    expect(html).toContain('Company-managed devices may require IT approval')
     expect(html).not.toContain('window.location.replace')
   })
 

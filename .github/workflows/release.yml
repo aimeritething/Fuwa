@@ -513,6 +513,10 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
+          WINDOWS_CODE_SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_CODE_SIGNING_CERTIFICATE }}
+          WINDOWS_CODE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CODE_SIGNING_CERTIFICATE_PASSWORD }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
         run: |
           for name in TAURI_SIGNING_PRIVATE_KEY TAURI_KEY_PASSWORD; do
             if [ -z "${!name}" ]; then
@@ -520,6 +524,27 @@ jobs:
               exit 1
             fi
           done
+          if [ -z "$WINDOWS_CODE_SIGNING_CERTIFICATE" ] && [ -z "$WINDOWS_CERTIFICATE" ]; then
+            echo "::error::WINDOWS_CODE_SIGNING_CERTIFICATE or WINDOWS_CERTIFICATE is required to Authenticode-sign Windows installers."
+            exit 1
+          fi
+          if [ -z "$WINDOWS_CODE_SIGNING_CERTIFICATE_PASSWORD" ] && [ -z "$WINDOWS_CERTIFICATE_PASSWORD" ]; then
+            echo "::error::WINDOWS_CODE_SIGNING_CERTIFICATE_PASSWORD or WINDOWS_CERTIFICATE_PASSWORD is required to import the Windows signing certificate."
+            exit 1
+          fi
+
+      - name: Prepare Windows Authenticode signing
+        shell: pwsh
+        env:
+          WINDOWS_CODE_SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_CODE_SIGNING_CERTIFICATE }}
+          WINDOWS_CODE_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CODE_SIGNING_CERTIFICATE_PASSWORD }}
+          WINDOWS_CODE_SIGNING_CERTIFICATE_THUMBPRINT: ${{ secrets.WINDOWS_CODE_SIGNING_CERTIFICATE_THUMBPRINT }}
+          WINDOWS_CODE_SIGNING_TIMESTAMP_URL: ${{ secrets.WINDOWS_CODE_SIGNING_TIMESTAMP_URL }}
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+          WINDOWS_CERTIFICATE_THUMBPRINT: ${{ secrets.WINDOWS_CERTIFICATE_THUMBPRINT }}
+          WINDOWS_TIMESTAMP_URL: ${{ secrets.WINDOWS_TIMESTAMP_URL }}
+        run: ./.github/scripts/configure-windows-authenticode.ps1
 
       - name: Build Tauri app (Windows bundles)
         env:
@@ -531,7 +556,38 @@ jobs:
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
         run: |
-          pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis
+          pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis --config src-tauri/tauri.windows-signing.conf.json
+
+      - name: Validate Windows Authenticode signatures
+        shell: pwsh
+        run: |
+          $expectedThumbprint = $env:WINDOWS_CODE_SIGNING_CERTIFICATE_THUMBPRINT
+          if ([string]::IsNullOrWhiteSpace($expectedThumbprint)) {
+            throw "WINDOWS_CODE_SIGNING_CERTIFICATE_THUMBPRINT was not exported by the signing setup step."
+          }
+          $expectedThumbprint = ($expectedThumbprint -replace "\s", "").ToUpperInvariant()
+          $paths = @()
+          $paths += Get-ChildItem -Path "src-tauri/target/x86_64-pc-windows-msvc/release" -Filter "*.exe" -File -ErrorAction SilentlyContinue
+          $paths += Get-ChildItem -Path "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/nsis" -Filter "*.exe" -File -ErrorAction SilentlyContinue
+          $paths += Get-ChildItem -Path "src-tauri/target/x86_64-pc-windows-msvc/release/bundle/msi" -Filter "*.msi" -File -ErrorAction SilentlyContinue
+          $paths = @($paths | Sort-Object FullName -Unique)
+          if ($paths.Count -eq 0) {
+            throw "No Windows executable or installer artifacts found to verify."
+          }
+          foreach ($path in $paths) {
+            $signature = Get-AuthenticodeSignature -FilePath $path.FullName
+            if ($signature.Status -ne "Valid") {
+              throw "Invalid Authenticode signature for $($path.FullName): $($signature.Status)"
+            }
+            if ($null -eq $signature.SignerCertificate) {
+              throw "Missing signer certificate for $($path.FullName)."
+            }
+            $actualThumbprint = ($signature.SignerCertificate.Thumbprint -replace "\s", "").ToUpperInvariant()
+            if ($actualThumbprint -ne $expectedThumbprint) {
+              throw "Unexpected signer thumbprint for $($path.FullName): $actualThumbprint"
+            }
+            Write-Host "Authenticode signature OK: $($path.FullName)"
+          }
 
       - name: Validate Windows bundles
         shell: bash

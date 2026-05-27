@@ -938,7 +938,9 @@ push to main
       → pnpm install, stamp version, pnpm build, tauri build --target x86_64-apple-darwin --bundles app
       → upload signed Apple Silicon and Intel .app.tar.gz + .sig updater artifacts named Tolaria_<version>_macOS_Silicon and Tolaria_<version>_macOS_Intel
   → build-windows job:
-      → pnpm install, stamp version, tauri build --target x86_64-pc-windows-msvc --bundles nsis
+      → pnpm install, stamp version, import the Windows code-signing certificate
+      → tauri build --target x86_64-pc-windows-msvc --bundles nsis with Authenticode signing config
+      → verify the Windows app executable and installer Authenticode signatures with Get-AuthenticodeSignature
       → upload NSIS installer, optional MSI artifacts, and signed Windows updater bundles
   → build-linux job:
       → pnpm install, stamp version
@@ -972,7 +974,9 @@ push stable-vYYYY.M.D tag
       → verify Linux installer and updater-signature artifacts exist
       → upload .deb, .rpm, .AppImage, and signed Linux updater bundles
   → build-windows job:
-      → pnpm install, stamp version, tauri build --target x86_64-pc-windows-msvc --bundles nsis
+      → pnpm install, stamp version, import the Windows code-signing certificate
+      → tauri build --target x86_64-pc-windows-msvc --bundles nsis with Authenticode signing config
+      → verify the Windows app executable and installer Authenticode signatures with Get-AuthenticodeSignature
       → upload NSIS installer, optional MSI artifacts, and signed Windows updater bundles
   → release job:
       → generate stable-latest.json with macOS Apple Silicon, macOS Intel, Linux, and Windows updater URLs plus platform-specific manual download URLs
@@ -981,7 +985,7 @@ push stable-vYYYY.M.D tag
       → build VitePress public docs into the GitHub Pages root
       → build static HTML release history page at /releases/
       → publish stable/latest.json
-      → publish stable/download/ and download/ as permanent download pages that keep the browser page visible while the platform installer starts, default Linux visitors to AppImage, and expose RPM as a manual Linux option when the stable release includes one
+      → publish stable/download/ and download/ as permanent download pages that keep the browser page visible while the platform installer starts, default Linux visitors to AppImage, require an explicit Windows installer click with managed-device signing guidance, and expose RPM as a manual Linux option when the stable release includes one
       → preserve alpha/latest.json
       → deploy to gh-pages
 ```
