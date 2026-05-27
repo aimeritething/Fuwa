@@ -81,14 +81,44 @@ impl AiAgentStreamRequest {
     }
 }
 
-pub fn get_ai_agents_status() -> AiAgentsStatus {
+/// Probe every supported AI-agent CLI in parallel.
+///
+/// Each per-agent `check_cli()` is synchronous and can block for up to ~1 s
+/// when the binary is missing and we fall through to the login-shell
+/// fallback (`/bin/zsh -lc 'command -v <agent>'` etc., evaluating the full
+/// shell startup). Running them sequentially used to add ~5 s to cold start
+/// when no agents are installed. Fan them out across Tokio's blocking pool
+/// so the user-perceived wall time is the slowest single probe rather than
+/// the sum of all six.
+///
+/// A panicking probe is mapped to `installed: false` so the IPC handler
+/// always returns a fully populated `AiAgentsStatus` and the frontend can
+/// keep rendering.
+pub async fn get_ai_agents_status() -> AiAgentsStatus {
+    let claude = tokio::task::spawn_blocking(availability_from_claude);
+    let codex = tokio::task::spawn_blocking(crate::codex_cli::check_cli);
+    let opencode = tokio::task::spawn_blocking(crate::opencode_cli::check_cli);
+    let pi = tokio::task::spawn_blocking(crate::pi_cli::check_cli);
+    let gemini = tokio::task::spawn_blocking(crate::gemini_cli::check_cli);
+    let kiro = tokio::task::spawn_blocking(crate::kiro_cli::check_cli);
+
+    let (claude, codex, opencode, pi, gemini, kiro) =
+        tokio::join!(claude, codex, opencode, pi, gemini, kiro);
+
     AiAgentsStatus {
-        claude_code: availability_from_claude(),
-        codex: crate::codex_cli::check_cli(),
-        opencode: crate::opencode_cli::check_cli(),
-        pi: crate::pi_cli::check_cli(),
-        gemini: crate::gemini_cli::check_cli(),
-        kiro: crate::kiro_cli::check_cli(),
+        claude_code: claude.unwrap_or_else(|_| missing_availability()),
+        codex: codex.unwrap_or_else(|_| missing_availability()),
+        opencode: opencode.unwrap_or_else(|_| missing_availability()),
+        pi: pi.unwrap_or_else(|_| missing_availability()),
+        gemini: gemini.unwrap_or_else(|_| missing_availability()),
+        kiro: kiro.unwrap_or_else(|_| missing_availability()),
+    }
+}
+
+fn missing_availability() -> AiAgentAvailability {
+    AiAgentAvailability {
+        installed: false,
+        version: None,
     }
 }
 
@@ -245,15 +275,16 @@ mod tests {
         );
     }
 
-    #[test]
-    fn normalize_status_contains_all_agents() {
-        let status = get_ai_agents_status();
+    #[tokio::test]
+    async fn normalize_status_contains_all_agents() {
+        let status = get_ai_agents_status().await;
         let install_flags = [
             status.claude_code.installed,
             status.codex.installed,
             status.opencode.installed,
             status.pi.installed,
             status.gemini.installed,
+            status.kiro.installed,
         ];
 
         assert!(install_flags

@@ -11,30 +11,87 @@ import {
 
 type RawAiAgentsStatus = Partial<Record<AiAgentId, { installed?: boolean | null; version?: string | null }>>
 
+interface UseAiAgentsStatusOptions {
+  /**
+   * When false, the hook stays in its initial state and never calls the
+   * Tauri probe. Used to skip the ~1 s discovery cost when AI features are
+   * disabled or when running in a detached note window where the result is
+   * never rendered.
+   *
+   * Defaults to true to preserve existing behaviour for callers that pass
+   * no options.
+   */
+  enabled?: boolean
+}
+
+type IdleHandle =
+  | { kind: 'idle'; id: number }
+  | { kind: 'timeout'; id: ReturnType<typeof setTimeout> }
+
 function tauriCall<T>(command: string): Promise<T> {
   return isTauri() ? invoke<T>(command) : mockInvoke<T>(command)
 }
 
-export function useAiAgentsStatus(): AiAgentsStatus {
+function scheduleIdle(callback: () => void): IdleHandle {
+  const requestIdle = (typeof window !== 'undefined' ? window.requestIdleCallback?.bind(window) : undefined)
+  if (typeof requestIdle === 'function') {
+    return { kind: 'idle', id: requestIdle(callback) }
+  }
+  return { kind: 'timeout', id: setTimeout(callback, 0) }
+}
+
+function cancelIdle(handle: IdleHandle): void {
+  if (handle.kind === 'idle') {
+    const cancelIdleFn = (typeof window !== 'undefined' ? window.cancelIdleCallback?.bind(window) : undefined)
+    if (typeof cancelIdleFn === 'function') {
+      cancelIdleFn(handle.id)
+    }
+    return
+  }
+
+  clearTimeout(handle.id)
+}
+
+export function useAiAgentsStatus(options?: UseAiAgentsStatusOptions): AiAgentsStatus {
+  const enabled = options?.enabled ?? true
   const [statuses, setStatuses] = useState<AiAgentsStatus>(createCheckingAiAgentsStatus())
 
   useEffect(() => {
+    if (!enabled) {
+      // Skip the probe entirely. Status is intentionally NOT reset — last-known
+      // results stay in memory across enabled/disabled toggles so that a brief
+      // disable does not blank out the badge.
+      return
+    }
+
     let cancelled = false
 
-    tauriCall<RawAiAgentsStatus>('get_ai_agents_status')
-      .then((result) => {
-        if (!cancelled) {
-          setStatuses(normalizeAiAgentsStatus(result))
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setStatuses(createMissingAiAgentsStatus())
-        }
-      })
+    const fire = () => {
+      if (cancelled) return
 
-    return () => { cancelled = true }
-  }, [])
+      tauriCall<RawAiAgentsStatus>('get_ai_agents_status')
+        .then((result) => {
+          if (!cancelled) {
+            setStatuses(normalizeAiAgentsStatus(result))
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setStatuses(createMissingAiAgentsStatus())
+          }
+        })
+    }
+
+    // Defer the probe so it does not run on the cold-start critical path.
+    // requestIdleCallback is unavailable in WKWebView (Tauri's macOS web view),
+    // so fall back to setTimeout(0).
+    const handle = scheduleIdle(fire)
+
+    return () => {
+      cancelled = true
+      cancelIdle(handle)
+    }
+  }, [enabled])
 
   return statuses
 }

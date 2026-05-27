@@ -837,6 +837,7 @@ Vault guidance is intentionally short and vault-specific. General Tolaria produc
 - Reads a local dismissal flag for the AI agents prompt (with a legacy fallback to the older Claude-only key)
 - Only shows after vault onboarding has already resolved to a ready state
 - Uses `get_ai_agents_status`, whose backend checks Claude Code, Codex, OpenCode, Pi, Gemini, and Kiro by treating the app process path, login-shell path, and supported local/toolchain/app install locations, including nvm-managed Node installs plus Windows `.exe` and npm/pnpm/Scoop shim paths, as valid CLI-agent sources
+- The shared `useAiAgentsStatus` hook defers that command until after the first render and skips it when AI features are disabled or the current window cannot render AI status surfaces
 - Persists dismissal locally once the user continues
 
 ### Remote Git Operations
