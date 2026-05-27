@@ -7,6 +7,7 @@ mod dates;
 mod history;
 mod pulse;
 mod remote;
+mod remote_config;
 mod status;
 
 use std::ffi::{OsStr, OsString};

@@ -3,6 +3,7 @@ use std::path::Path;
 use std::process::Output;
 
 use super::credentials::request_remote_credentials;
+use super::remote_config::{configure_origin_remote, list_configured_remotes};
 use super::{ensure_author_config, git_command};
 
 const DEFAULT_REMOTE_NAME: &str = "origin";
@@ -105,7 +106,7 @@ pub fn git_add_remote(vault_path: &str, remote_url: &str) -> Result<GitAddRemote
     let connection = RemoteConnection::new(branch);
 
     let trimmed_url = remote_url.trim();
-    run_git(vault, &["remote", "add", DEFAULT_REMOTE_NAME, trimmed_url])?;
+    configure_origin_remote(vault, trimmed_url)?;
     request_remote_credentials(vault, trimmed_url);
 
     let result = finish_remote_connection(vault, &connection);
@@ -186,13 +187,7 @@ fn current_branch(vault: &Path) -> Result<String, String> {
 }
 
 fn list_remotes(vault: &Path) -> Result<Vec<String>, String> {
-    let output = git_output(vault, &["remote"])?;
-
-    if !output.status.success() {
-        return Err(command_error("git remote", &output));
-    }
-
-    Ok(stdout_lines(&output))
+    list_configured_remotes(vault)
 }
 
 fn unset_upstream(vault: &Path) {
