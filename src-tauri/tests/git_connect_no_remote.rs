@@ -53,7 +53,9 @@ fn git_add_remote_ignores_name_only_origin_config() {
     .unwrap();
 
     assert_eq!(result.status, "connected");
-    assert!(git_remote_status(local.path().to_str().unwrap())
-        .unwrap()
-        .has_remote);
+    assert!(
+        git_remote_status(local.path().to_str().unwrap())
+            .unwrap()
+            .has_remote
+    );
 }
