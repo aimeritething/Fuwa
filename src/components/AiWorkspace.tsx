@@ -642,6 +642,40 @@ function WorkspaceHeader({
   )
 }
 
+type ConversationSessionProps = {
+  active: boolean
+  activeEntry?: VaultEntry | null
+  activeNoteContent?: string | null
+  aiAgentsStatus: AiAgentsStatus
+  conversation: AiConversation
+  defaultAiAgentReady: boolean
+  entries?: VaultEntry[]
+  groups: AiWorkspaceTargetGroups
+  locale: AppLocale
+  mode: 'docked' | 'window'
+  noteList?: NoteListItem[]
+  noteListFilter?: { type: string | null; query: string }
+  onArchive: () => void
+  onClose: () => void
+  onDock?: () => void
+  onFileCreated?: (relativePath: string) => void
+  onFileModified?: (relativePath: string) => void
+  onOpenAiSettings?: () => void
+  onOpenNote?: (path: string) => void
+  onPopOut?: () => void
+  onRestoreVaultAiGuidance?: () => void
+  onSelectTarget: (targetId: string) => void
+  onStatusChange: (id: string, status: AgentStatus) => void
+  onTitleFromPrompt: (id: string, prompt: string) => void
+  onUnsupportedAiPaste?: (message: string) => void
+  onVaultChanged?: () => void
+  openTabs?: VaultEntry[]
+  target: AiTarget
+  vaultAiGuidanceStatus?: VaultAiGuidanceStatus
+  vaultPath: string
+  vaultPaths?: string[]
+}
+
 function ConversationSession({
   active,
   activeEntry,
@@ -674,39 +708,9 @@ function ConversationSession({
   vaultAiGuidanceStatus,
   vaultPath,
   vaultPaths,
-}: {
-  active: boolean
-  activeEntry?: VaultEntry | null
-  activeNoteContent?: string | null
-  aiAgentsStatus: AiAgentsStatus
-  conversation: AiConversation
-  defaultAiAgentReady: boolean
-  entries?: VaultEntry[]
-  groups: AiWorkspaceTargetGroups
-  locale: AppLocale
-  mode: 'docked' | 'window'
-  noteList?: NoteListItem[]
-  noteListFilter?: { type: string | null; query: string }
-  onArchive: () => void
-  onClose: () => void
-  onDock?: () => void
-  onFileCreated?: (relativePath: string) => void
-  onFileModified?: (relativePath: string) => void
-  onOpenAiSettings?: () => void
-  onOpenNote?: (path: string) => void
-  onPopOut?: () => void
-  onRestoreVaultAiGuidance?: () => void
-  onSelectTarget: (targetId: string) => void
-  onStatusChange: (id: string, status: AgentStatus) => void
-  onTitleFromPrompt: (id: string, prompt: string) => void
-  onUnsupportedAiPaste?: (message: string) => void
-  onVaultChanged?: () => void
-  openTabs?: VaultEntry[]
-  target: AiTarget
-  vaultAiGuidanceStatus?: VaultAiGuidanceStatus
-  vaultPath: string
-  vaultPaths?: string[]
-}) {
+}: ConversationSessionProps) {
+  const contextActiveEntry = active ? activeEntry : null
+  const contextEntries = active ? entries : undefined
   const readiness = agentReadinessForTarget(target, aiAgentsStatus)
   const controller = useAiPanelController({
     vaultPath,
@@ -715,12 +719,12 @@ function ConversationSession({
     defaultAiTarget: target,
     defaultAiAgentReady: target.kind === 'api_model' || defaultAiAgentReady,
     defaultAiAgentReadiness: readiness,
-    activeEntry,
-    activeNoteContent,
-    entries,
-    openTabs,
-    noteList,
-    noteListFilter,
+    activeEntry: contextActiveEntry,
+    activeNoteContent: active ? activeNoteContent : null,
+    entries: contextEntries,
+    openTabs: active ? openTabs : undefined,
+    noteList: active ? noteList : undefined,
+    noteListFilter: active ? noteListFilter : undefined,
     locale,
     onOpenNote,
     onFileCreated,
@@ -774,8 +778,8 @@ function ConversationSession({
           defaultAiAgentReadiness={readiness}
           defaultAiAgentReady={aiTargetReady(target, aiAgentsStatus)}
           defaultAiTarget={target}
-          entries={entries}
-          activeEntry={activeEntry}
+          entries={contextEntries}
+          activeEntry={contextActiveEntry}
           composerControls={composerControls}
           interactive={active}
           locale={locale}

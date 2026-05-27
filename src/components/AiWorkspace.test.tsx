@@ -11,29 +11,34 @@ import {
 import type { AiModelProvider } from '../lib/aiTargets'
 import type { AgentStatus } from '../hooks/useCliAiAgent'
 import { resetVaultConfigStore } from '../utils/vaultConfigStore'
+import type { VaultEntry } from '../types'
 
 let mockedAgentStatus: AgentStatus = 'idle'
+let controllerCalls: unknown[] = []
 
 vi.mock('./useAiPanelController', () => ({
-  useAiPanelController: () => ({
-    agent: {
-      messages: [],
-      status: mockedAgentStatus,
-      sendMessage: vi.fn(),
-      clearConversation: vi.fn(),
-      addLocalMarker: vi.fn(),
-    },
-    input: '',
-    setInput: vi.fn(),
-    linkedEntries: [],
-    hasContext: false,
-    isActive: false,
-    permissionMode: 'safe',
-    handleSend: vi.fn(),
-    handleNavigateWikilink: vi.fn(),
-    handlePermissionModeChange: vi.fn(),
-    handleNewChat: vi.fn(),
-  }),
+  useAiPanelController: (args: unknown) => {
+    controllerCalls.push(args)
+    return {
+      agent: {
+        messages: [],
+        status: mockedAgentStatus,
+        sendMessage: vi.fn(),
+        clearConversation: vi.fn(),
+        addLocalMarker: vi.fn(),
+      },
+      input: '',
+      setInput: vi.fn(),
+      linkedEntries: [],
+      hasContext: false,
+      isActive: false,
+      permissionMode: 'safe',
+      handleSend: vi.fn(),
+      handleNavigateWikilink: vi.fn(),
+      handlePermissionModeChange: vi.fn(),
+      handleNewChat: vi.fn(),
+    }
+  },
 }))
 
 vi.mock('./AiPanel', () => ({
@@ -90,9 +95,53 @@ const providers: AiModelProvider[] = [
   },
 ]
 
+function makeEntry(overrides: Partial<VaultEntry> = {}): VaultEntry {
+  return {
+    aliases: [],
+    archived: false,
+    belongsTo: [],
+    color: null,
+    createdAt: 1700000000,
+    favorite: false,
+    favoriteIndex: null,
+    fileSize: 100,
+    filename: 'active.md',
+    hasH1: false,
+    icon: null,
+    isA: 'Note',
+    listPropertiesDisplay: [],
+    modifiedAt: 1700000000,
+    order: null,
+    organized: false,
+    outgoingLinks: [],
+    path: '/tmp/vault/active.md',
+    properties: {},
+    relatedTo: [],
+    relationships: {},
+    sidebarLabel: null,
+    snippet: '',
+    sort: null,
+    status: null,
+    template: null,
+    title: 'Active',
+    view: null,
+    visible: null,
+    wordCount: 0,
+    ...overrides,
+  }
+}
+
+function contextReadyControllerCalls(): unknown[] {
+  return controllerCalls.filter((args) => {
+    const call = args as { activeEntry?: unknown; entries?: unknown[] }
+    return call.activeEntry !== null && call.activeEntry !== undefined && Array.isArray(call.entries)
+  })
+}
+
 describe('AiWorkspace', () => {
   beforeEach(() => {
     mockedAgentStatus = 'idle'
+    controllerCalls = []
     resetVaultConfigStore()
   })
 
@@ -168,6 +217,52 @@ describe('AiWorkspace', () => {
 
     expect(screen.getByTestId('ai-workspace-session-visible-chat')).toHaveClass('flex')
     expect(screen.getByTestId('ai-workspace-session-archived-chat')).toHaveClass('hidden')
+  })
+
+  it('passes vault context only to the active conversation controller', () => {
+    const entries = [
+      makeEntry({ path: '/tmp/vault/active.md', filename: 'active.md', title: 'Active' }),
+      makeEntry({ path: '/tmp/vault/related.md', filename: 'related.md', title: 'Related' }),
+    ]
+    const singleConversation = render(
+      <AiWorkspace
+        open
+        mode="docked"
+        aiAgentsStatus={installedStatuses()}
+        aiModelProviders={providers}
+        activeEntry={entries[0]}
+        entries={entries}
+        conversationSettings={[
+          { id: 'active-chat', title: 'Live Chat', target_id: null, archived: false },
+        ]}
+        vaultPath="/tmp/vault"
+        onClose={vi.fn()}
+      />,
+    )
+    const activeContextCallCount = contextReadyControllerCalls().length
+    singleConversation.unmount()
+    controllerCalls = []
+
+    render(
+      <AiWorkspace
+        open
+        mode="docked"
+        aiAgentsStatus={installedStatuses()}
+        aiModelProviders={providers}
+        activeEntry={entries[0]}
+        entries={entries}
+        conversationSettings={[
+          { id: 'active-chat', title: 'Live Chat', target_id: null, archived: false },
+          { id: 'inactive-chat', title: 'Later Chat', target_id: null, archived: false },
+        ]}
+        vaultPath="/tmp/vault"
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('ai-workspace-session-active-chat')).toHaveClass('flex')
+    expect(screen.getByTestId('ai-workspace-session-inactive-chat')).toHaveClass('hidden')
+    expect(contextReadyControllerCalls()).toHaveLength(activeContextCallCount)
   })
 
   it('shows grouped target choices without missing agents', async () => {
