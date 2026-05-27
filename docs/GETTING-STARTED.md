@@ -69,9 +69,14 @@ pnpm dev
 pnpm tauri dev
 
 # Run tests
-pnpm test          # Vitest unit tests
-cargo test         # Rust tests (from src-tauri/)
-pnpm playwright:smoke  # Curated Playwright core smoke lane (~5 min)
+pnpm test    # Vitest unit tests
+cargo test   # Rust tests (from src-tauri/)
+
+# Or, run Rust tests from root project directory
+cargo test --manifest-path src-tauri/Cargo.toml
+
+# E2E tests
+pnpm playwright:smoke       # Curated Playwright core smoke lane (~5 min)
 pnpm playwright:regression  # Full Playwright regression suite
 ```
 

@@ -47,11 +47,13 @@ describe('i18n', () => {
     expect(localeDisplayName('zh-TW', 'zh-TW')).toBe('繁體中文')
     expect(localeDisplayName('en', 'zh-CN')).toBe('英文')
     expect(localeDisplayName('es-419', 'en')).toBe('Spanish (Latin America)')
+    expect(localeDisplayName('id-ID', 'id-ID')).toBe('Bahasa Indonesia')
   })
 
   it('keeps locale label keys present in English', () => {
     expect(EN_TRANSLATIONS['locale.itIT']).toBe('Italian')
     expect(EN_TRANSLATIONS['locale.koKR']).toBe('Korean')
+    expect(EN_TRANSLATIONS['locale.idID']).toBe('Indonesian')
   })
 
   it('loads a translation catalog for every configured locale', () => {
