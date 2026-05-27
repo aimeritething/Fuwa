@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
 import {
-  getAnchoredDropdownLeft,
   getNextHighlightIndex,
   getPreviousHighlightIndex,
   isCreateOptionVisible,
@@ -18,15 +17,5 @@ describe('propertyDropdownUtils', () => {
     expect(isCreateOptionVisible('', ['Draft'])).toBe(false)
     expect(isCreateOptionVisible(' draft ', ['Draft'])).toBe(false)
     expect(isCreateOptionVisible('Review', ['Draft'])).toBe(true)
-  })
-
-  it('keeps an anchored dropdown within the viewport margins', () => {
-    expect(getAnchoredDropdownLeft(300, 208, 800)).toBe(92)
-    expect(getAnchoredDropdownLeft(100, 208, 800)).toBe(8)
-    expect(getAnchoredDropdownLeft(900, 208, 800)).toBe(584)
-  })
-
-  it('keeps an over-wide dropdown at the visible left margin', () => {
-    expect(getAnchoredDropdownLeft(320, 400, 320, 8)).toBe(8)
   })
 })

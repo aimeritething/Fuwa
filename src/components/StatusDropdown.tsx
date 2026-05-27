@@ -6,9 +6,9 @@ import {
   getNextHighlightIndex,
   getPreviousHighlightIndex,
   isCreateOptionVisible,
-  useAnchoredDropdownPosition,
   useAutoFocus,
 } from './propertyDropdownUtils'
+import { getAnchoredDropdownStyle, useAnchoredDropdownPosition } from './anchoredDropdown'
 
 const PROPERTY_DROPDOWN_WIDTH = 208
 const SELECTED_SWATCH_CHECK_STYLE = { color: 'var(--text-inverse)', fontSize: 8, lineHeight: 1 } as const
@@ -262,7 +262,12 @@ export function StatusDropdown({
   const anchorRef = useRef<HTMLSpanElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  useAnchoredDropdownPosition({ anchorRef, dropdownRef, width: PROPERTY_DROPDOWN_WIDTH })
+  useAnchoredDropdownPosition({
+    anchorRef,
+    dropdownRef,
+    anchorElement: 'parent',
+    width: PROPERTY_DROPDOWN_WIDTH,
+  })
   useAutoFocus(inputRef)
 
   const { suggestedFiltered, vaultFiltered, allFiltered } = useStatusFiltering(query, vaultStatuses)
@@ -313,6 +318,7 @@ export function StatusDropdown({
           <div
             ref={dropdownRef}
             className="fixed z-[12001] w-52 overflow-hidden rounded-lg border border-border bg-background shadow-lg"
+            style={getAnchoredDropdownStyle(null, PROPERTY_DROPDOWN_WIDTH)}
             data-testid="status-dropdown-popover"
           >
             <div className="border-b border-border px-2 py-1.5">

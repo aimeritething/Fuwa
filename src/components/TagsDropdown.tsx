@@ -5,10 +5,10 @@ import {
   getNextHighlightIndex,
   getPreviousHighlightIndex,
   isCreateOptionVisible,
-  useAnchoredDropdownPosition,
   useAutoFocus,
 } from './propertyDropdownUtils'
 import { AccentColorPicker } from './AccentColorPicker'
+import { getAnchoredDropdownStyle, useAnchoredDropdownPosition } from './anchoredDropdown'
 
 const PROPERTY_DROPDOWN_WIDTH = 208
 
@@ -211,7 +211,12 @@ export function TagsDropdown({
 
   const selectedSet = useMemo(() => new Set(selectedTags), [selectedTags])
 
-  useAnchoredDropdownPosition({ anchorRef, dropdownRef, width: PROPERTY_DROPDOWN_WIDTH })
+  useAnchoredDropdownPosition({
+    anchorRef,
+    dropdownRef,
+    anchorElement: 'parent',
+    width: PROPERTY_DROPDOWN_WIDTH,
+  })
   useAutoFocus(inputRef)
 
   const { filtered } = useTagFiltering(query, vaultTags)
@@ -252,6 +257,7 @@ export function TagsDropdown({
           <div
             ref={dropdownRef}
             className="fixed z-[12001] w-52 overflow-hidden rounded-lg border border-border bg-background shadow-lg"
+            style={getAnchoredDropdownStyle(null, PROPERTY_DROPDOWN_WIDTH)}
             data-testid="tags-dropdown-popover"
           >
             <div className="border-b border-border px-2 py-1.5">

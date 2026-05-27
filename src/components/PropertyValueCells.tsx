@@ -1,5 +1,5 @@
 import { ArrowUpRight, X as XIcon } from '@phosphor-icons/react'
-import { useState, useCallback, useEffect, useRef, type ReactNode, type RefObject } from 'react'
+import { useState, useCallback, useRef, type ReactNode, type RefObject } from 'react'
 import { createPortal } from 'react-dom'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -27,10 +27,12 @@ import { IconEditableValue } from './IconEditableValue'
 import { PROPERTY_CHIP_STYLE } from './propertyChipStyles'
 import { canonicalSystemMetadataKey } from '../utils/systemMetadata'
 import { useDateDisplayFormat } from '../hooks/useAppPreferences'
+import { getAnchoredDropdownStyle, useAnchoredDropdownPosition } from './anchoredDropdown'
 
 const ISO_DATE_INPUT_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 const DEFAULT_DATE_PICKER_START_YEAR = 1800
 const DEFAULT_DATE_PICKER_END_YEAR = 2200
+const DISPLAY_MODE_MENU_WIDTH = 140
 
 function localDate(year: number, monthIndex: number, day: number): Date {
   const date = new Date(0)
@@ -479,35 +481,23 @@ function DisplayModeMenu({
   onSelect: (mode: PropertyDisplayMode) => void
   triggerRef: RefObject<HTMLButtonElement | null>
 }) {
-  const backdropRef = useRef<HTMLDivElement>(null)
-  const positionMenu = useCallback((node: HTMLDivElement | null) => {
-    if (!node) return
-    const el = triggerRef.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const menuW = 140
-    const left = Math.max(rect.right - menuW, 8)
-    node.style.top = `${rect.bottom + 4}px`
-    node.style.left = `${left}px`
-  }, [triggerRef])
-
-  useEffect(() => {
-    const backdrop = backdropRef.current
-    if (!backdrop) return
-
-    backdrop.addEventListener('click', onClose)
-    return () => backdrop.removeEventListener('click', onClose)
-  }, [onClose])
+  const menuRef = useRef<HTMLDivElement>(null)
+  useAnchoredDropdownPosition({
+    anchorRef: triggerRef,
+    dropdownRef: menuRef,
+    width: DISPLAY_MODE_MENU_WIDTH,
+  })
 
   return createPortal(
     <>
       <div
-        ref={backdropRef}
         className="fixed inset-0 z-[12000]"
+        onClick={onClose}
       />
       <div
-        ref={positionMenu}
+        ref={menuRef}
         className="fixed z-[12001] min-w-[130px] rounded-md border border-border bg-background py-1 shadow-md"
+        style={getAnchoredDropdownStyle(null, DISPLAY_MODE_MENU_WIDTH)}
         data-testid="display-mode-menu"
       >
         {DISPLAY_MODE_OPTIONS.map((opt) => (
