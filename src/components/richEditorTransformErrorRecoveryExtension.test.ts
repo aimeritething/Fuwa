@@ -139,9 +139,32 @@ describe('installRichEditorTransformErrorRecovery', () => {
     )
   })
 
+  it('repairs invalid table-cell joins while editing table contents', () => {
+    expectDocumentRepairRecovery(
+      transformError('Cannot join tableCell onto blockContainer'),
+      'invalid_block_join',
+    )
+  })
+
   it('recovers invalid block joins thrown during keydown handling before dispatch', () => {
     const { view, keyDownPlugin } = createViewWithSomeProp(() => {
       throw transformError('Cannot join blockGroup onto blockContainer')
+    })
+    const recoverDocument = vi.fn()
+
+    installRichEditorTransformErrorRecovery(view, { recoverDocument })
+
+    expect(view.someProp('handleKeyDown', (handler) => handler())).toBe(true)
+    expect(keyDownPlugin).toHaveBeenCalledTimes(1)
+    expect(recoverDocument).toHaveBeenCalledTimes(1)
+    expect(trackEvent).toHaveBeenCalledWith('rich_editor_transform_error_recovered', {
+      reason: 'invalid_block_join',
+    })
+  })
+
+  it('recovers invalid table-cell joins thrown during keydown handling', () => {
+    const { view, keyDownPlugin } = createViewWithSomeProp(() => {
+      throw transformError('Cannot join tableCell onto blockContainer')
     })
     const recoverDocument = vi.fn()
 

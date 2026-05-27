@@ -92,7 +92,7 @@ function isTablePositionOutOfRangeError(error: unknown): boolean {
 }
 
 function isInvalidBlockJoinError(error: unknown): boolean {
-  return isTransformError(error) && error.message === 'Cannot join blockGroup onto blockContainer'
+  return isTransformError(error) && /^Cannot join (blockGroup|tableCell) onto blockContainer$/.test(error.message)
 }
 
 export function isStaleBlockReferenceError(error: unknown): boolean {
