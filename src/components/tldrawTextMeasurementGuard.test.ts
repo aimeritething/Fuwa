@@ -62,6 +62,22 @@ describe('tldraw text measurement guard', () => {
     })
   })
 
+  it('handles WebKit missing range rect errors that are not native TypeError instances', () => {
+    const originalMeasure = vi.fn(() => {
+      throw { message: "undefined is not an object (evaluating 'w.top')" }
+    })
+    const host = textMeasureHost(originalMeasure)
+    installTldrawTextMeasurementGuard(host)
+
+    expect(host.textMeasure.measureElementTextNodeSpans(elementWithText('Canvas label'))).toEqual({
+      didTruncate: false,
+      spans: [{
+        box: { h: 24, w: 88, x: 0, y: 0 },
+        text: 'Canvas label',
+      }],
+    })
+  })
+
   it('rethrows unrelated measurement failures', () => {
     const originalMeasure = vi.fn(() => {
       throw new RangeError('bad measurement state')

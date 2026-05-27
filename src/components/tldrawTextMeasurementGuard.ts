@@ -11,8 +11,22 @@ interface TextMeasurementHost {
   }
 }
 
+function errorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (typeof error !== 'object' || error === null || !('message' in error)) return ''
+
+  const { message } = error
+  return typeof message === 'string' ? message : ''
+}
+
 function isMissingRangeRectError(error: unknown): boolean {
-  return error instanceof TypeError && error.message.includes('top')
+  const message = errorMessage(error).toLowerCase()
+  return message.includes('top') && (
+    message.includes('cannot read')
+    || message.includes('not an object')
+    || message.includes('undefined')
+  )
 }
 
 function finiteSize(value: number): number {
