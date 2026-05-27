@@ -101,6 +101,50 @@ function ignoreTldrawUserPreferencesUpdate(preferences: TLUserPreferences) {
   void preferences
 }
 
+function rejectionName(error: unknown): string {
+  if (error instanceof Error) return error.name
+  if (typeof error !== 'object' || error === null || !('name' in error)) return ''
+
+  const { name } = error
+  return typeof name === 'string' ? name : ''
+}
+
+function rejectionMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'string') return error
+  if (typeof error !== 'object' || error === null || !('message' in error)) return ''
+
+  const { message } = error
+  return typeof message === 'string' ? message : ''
+}
+
+function isWhiteboardPlatformPermissionRejection(reason: unknown): boolean {
+  const name = rejectionName(reason).toLowerCase()
+  const message = rejectionMessage(reason).toLowerCase()
+  if (name === 'notallowederror') return true
+
+  return message.includes('notallowederror') || (
+    message.includes('not allowed')
+    && (
+      message.includes('permission')
+      || message.includes('platform')
+      || message.includes('user agent')
+    )
+  )
+}
+
+function installTldrawPlatformPermissionGuard(): () => void {
+  const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
+    if (!isWhiteboardPlatformPermissionRejection(event.reason)) return
+    event.preventDefault()
+  }
+
+  window.addEventListener('unhandledrejection', handleUnhandledRejection)
+  return () => {
+    window.removeEventListener('unhandledrejection', handleUnhandledRejection)
+  }
+}
+
 function parseSnapshot(source: string): TLStoreSnapshot | null {
   if (!source.trim()) return null
 
@@ -211,8 +255,10 @@ function installZoomAwareViewport(editor: Editor): () => void {
 function installWhiteboardRuntimeGuards(editor: Editor): () => void {
   const cleanupTextMeasurementGuard = installTldrawTextMeasurementGuard(editor)
   const cleanupZoomAwareViewport = installZoomAwareViewport(editor)
+  const cleanupPlatformPermissionGuard = installTldrawPlatformPermissionGuard()
 
   return () => {
+    cleanupPlatformPermissionGuard()
     cleanupZoomAwareViewport()
     cleanupTextMeasurementGuard()
   }

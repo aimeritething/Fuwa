@@ -125,6 +125,13 @@ function mockEditor(): Editor {
   } as unknown as Editor
 }
 
+function dispatchUnhandledRejection(reason: unknown): Event {
+  const event = new Event('unhandledrejection', { cancelable: true })
+  Object.defineProperty(event, 'reason', { value: reason })
+  window.dispatchEvent(event)
+  return event
+}
+
 function measuredTextElement(): HTMLElement {
   const element = document.createElement('div')
   element.textContent = 'Label'
@@ -244,6 +251,31 @@ describe('TldrawWhiteboard', () => {
 
     cleanup()
     expect(() => editor.textMeasure.measureElementTextNodeSpans(measuredTextElement())).toThrow('top')
+  })
+
+  it('suppresses whiteboard platform permission rejections while mounted', () => {
+    render(
+      <TldrawWhiteboard
+        boardId="board-1"
+        height="520"
+        snapshot=""
+        width=""
+        onSizeChange={vi.fn()}
+        onSnapshotChange={vi.fn()}
+      />
+    )
+
+    const cleanup = renderedTldrawProps().onMount(mockEditor())
+    const denied = {
+      name: 'NotAllowedError',
+      message: 'The request is not allowed by the user agent or the platform in the current context, possibly because the user denied permission.',
+    }
+
+    expect(dispatchUnhandledRejection(denied).defaultPrevented).toBe(true)
+    expect(dispatchUnhandledRejection(new Error('save failed')).defaultPrevented).toBe(false)
+
+    cleanup()
+    expect(dispatchUnhandledRejection(denied).defaultPrevented).toBe(false)
   })
 
   it('resets the drawing store when switching to a blank board snapshot', () => {
