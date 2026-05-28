@@ -109,6 +109,45 @@ async function searchNoteList(query: string) {
   })
 }
 
+interface NoteListSearchMockResult {
+  note_type: string
+  path: string
+  score: number
+  snippet: string
+  title: string
+}
+
+function installFullTextSearchMocks({
+  contentByPath,
+  resultsByVault,
+}: {
+  contentByPath: Record<string, string>
+  resultsByVault: Record<string, NoteListSearchMockResult[]>
+}) {
+  const originalContentHandler = window.__mockHandlers?.get_note_content
+  const originalSearchHandler = window.__mockHandlers?.search_vault
+  const searchVault = vi.fn((args?: Record<string, unknown>) => ({
+    elapsed_ms: 7,
+    mode: args?.mode,
+    query: args?.query,
+    results: resultsByVault[String(args?.vaultPath ?? '')] ?? [],
+  }))
+  const getNoteContent = vi.fn((args?: Record<string, unknown>) => contentByPath[String(args?.path ?? '')] ?? '')
+
+  if (!window.__mockHandlers) window.__mockHandlers = {}
+  window.__mockHandlers.search_vault = searchVault
+  window.__mockHandlers.get_note_content = getNoteContent
+
+  return {
+    getNoteContent,
+    restore: () => {
+      window.__mockHandlers.search_vault = originalSearchHandler
+      window.__mockHandlers.get_note_content = originalContentHandler
+    },
+    searchVault,
+  }
+}
+
 function renderBookNoteList({
   displayProps = ['Priority'],
   entryOverrides = {},
@@ -251,6 +290,138 @@ describe('NoteList rendering', () => {
     expect(screen.queryByText('Alpha Note')).not.toBeInTheDocument()
   })
 
+  it('filters by full note content when the title and snippet do not match', async () => {
+    const { restore, searchVault } = installFullTextSearchMocks({
+      contentByPath: {
+        '/vault/b.md': '# Beta Note\n\nA private subterranean-keyword body match.',
+      },
+      resultsByVault: {
+        '/vault': [{
+          note_type: 'Note',
+          path: '/vault/b.md',
+          score: 1,
+          snippet: 'Private body match is intentionally not rendered here.',
+          title: 'Beta Note',
+        }],
+      },
+    })
+
+    try {
+      renderNoteList({
+        entries: [
+          makeEntry({ path: '/vault/a.md', filename: 'a.md', title: 'Alpha Note', snippet: 'Routine body copy.' }),
+          makeEntry({ path: '/vault/b.md', filename: 'b.md', title: 'Beta Note', snippet: 'Another public preview.' }),
+        ],
+      })
+
+      await searchNoteList('subterranean-keyword')
+
+      await waitFor(() => {
+        expect(searchVault).toHaveBeenCalledWith(expect.objectContaining({
+          vaultPath: '/vault',
+          query: 'subterranean-keyword',
+          mode: 'keyword',
+        }))
+      })
+      expect(screen.getByText('Beta Note')).toBeInTheDocument()
+      expect(screen.queryByText('Alpha Note')).not.toBeInTheDocument()
+      expect(screen.queryByText('Private body match is intentionally not rendered here.')).not.toBeInTheDocument()
+    } finally {
+      restore()
+    }
+  })
+
+  it('ignores full-content matches that only appear in hidden frontmatter', async () => {
+    const { restore } = installFullTextSearchMocks({
+      contentByPath: {
+        '/vault/a.md': [
+          '---',
+          'Owner: hidden-frontmatter-keyword',
+          '---',
+          '',
+          '# Alpha Note',
+          '',
+          'Public body text omits the private property value.',
+        ].join('\n'),
+      },
+      resultsByVault: {
+        '/vault': [{
+          note_type: 'Note',
+          path: '/vault/a.md',
+          score: 1,
+          snippet: 'Owner: hidden-frontmatter-keyword',
+          title: 'Alpha Note',
+        }],
+      },
+    })
+
+    try {
+      renderNoteList({
+        entries: [
+          makeEntry({ path: '/vault/a.md', filename: 'a.md', title: 'Alpha Note', snippet: 'Routine body copy.' }),
+          makeEntry({ path: '/vault/b.md', filename: 'b.md', title: 'Beta Note', snippet: 'Another public preview.' }),
+        ],
+      })
+
+      await searchNoteList('hidden-frontmatter-keyword')
+
+      expect(screen.queryByText('Alpha Note')).not.toBeInTheDocument()
+      expect(screen.getByText('No matching notes')).toBeInTheDocument()
+    } finally {
+      restore()
+    }
+  })
+
+  it('runs full-content note-list search across visible workspaces', async () => {
+    const { restore, searchVault } = installFullTextSearchMocks({
+      contentByPath: {
+        '/personal/personal-note.md': '# Personal Note\n\nNo matching body token.',
+        '/team/team-body-hit.md': '# Team Body Hit\n\nPrivate workspace-only-keyword body hit.',
+      },
+      resultsByVault: {
+        '/team': [{
+          note_type: 'Note',
+          path: '/team/team-body-hit.md',
+          score: 1,
+          snippet: 'Private workspace body hit.',
+          title: 'Team Body Hit',
+        }],
+      },
+    })
+
+    try {
+      renderNoteList({
+        entries: [
+          makeEntry({
+            path: '/personal/personal-note.md',
+            filename: 'personal-note.md',
+            title: 'Personal Note',
+            snippet: 'No body token here.',
+            workspace: { id: 'personal', label: 'Personal', alias: 'PE', path: '/personal', shortLabel: 'PE', color: null, icon: null, mounted: true, available: true, defaultForNewNotes: true },
+          }),
+          makeEntry({
+            path: '/team/team-body-hit.md',
+            filename: 'team-body-hit.md',
+            title: 'Team Body Hit',
+            snippet: 'No body token here either.',
+            workspace: { id: 'team', label: 'Team', alias: 'TE', path: '/team', shortLabel: 'TE', color: null, icon: null, mounted: true, available: true, defaultForNewNotes: false },
+          }),
+        ],
+      })
+
+      await searchNoteList('workspace-only-keyword')
+
+      await waitFor(() => {
+        expect(searchVault).toHaveBeenCalledWith(expect.objectContaining({ vaultPath: '/personal' }))
+        expect(searchVault).toHaveBeenCalledWith(expect.objectContaining({ vaultPath: '/team' }))
+      })
+      expect(screen.getByText('Team Body Hit')).toBeInTheDocument()
+      expect(screen.queryByText('Personal Note')).not.toBeInTheDocument()
+    } finally {
+      restore()
+    }
+  })
+
   it('filters by visible property values and ignores hidden properties', async () => {
     renderBookNoteList({
       entryOverrides: {
@@ -328,7 +499,7 @@ describe('NoteList rendering', () => {
     }
   })
 
-  it('keeps the note-list search input full width and shows inline search controls while loading', () => {
+  it('keeps the note-list search input full width and shows inline search controls while loading', async () => {
     vi.useFakeTimers()
     try {
       renderNoteList({
@@ -348,8 +519,11 @@ describe('NoteList rendering', () => {
       expect(screen.getByTestId('note-list-search-loading')).toBeInTheDocument()
       expect(screen.queryByText('Searching...')).not.toBeInTheDocument()
 
-      act(() => {
+      await act(async () => {
         vi.advanceTimersByTime(180)
+      })
+      await act(async () => {
+        await vi.runOnlyPendingTimersAsync()
       })
 
       expect(screen.queryByTestId('note-list-search-loading')).not.toBeInTheDocument()
