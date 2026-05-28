@@ -941,9 +941,9 @@ push to main
       → tauri build --target x86_64-unknown-linux-gnu --bundles deb,rpm,appimage
       → verify Linux installer and updater-signature artifacts exist
       → upload .deb, .rpm, .AppImage, and signed Linux updater bundles
-      → pnpm install, stamp version, import the Windows code-signing certificate
-      → tauri build --target x86_64-pc-windows-msvc --bundles nsis with Authenticode signing config
-      → verify the Windows app executable and installer Authenticode signatures with Get-AuthenticodeSignature
+      → pnpm install, stamp version, import the Windows code-signing certificate when configured
+      → tauri build --target x86_64-pc-windows-msvc --bundles nsis, using the Authenticode signing config when certificate secrets exist
+      → verify the Windows app executable and installer Authenticode signatures with Get-AuthenticodeSignature when Authenticode is configured
       → upload NSIS installer, optional MSI artifacts, and signed Windows updater bundles
   → release job:
       → generate alpha-latest.json with darwin-aarch64, darwin-x86_64, Linux, and Windows updater URLs

@@ -8,7 +8,6 @@ on:
       - ".husky/**"
       - ".github/workflows/deploy-docs.yml"
       - ".github/workflows/release.yml"
-      - ".github/workflows/release-build-artifacts.yml"
       - "site/**"
 
 concurrency:
@@ -128,6 +127,7 @@ jobs:
       version: ${{ needs.version.outputs.version }}
       macos_bundles: app
       upload_macos_dmg: false
+      require_windows_authenticode: false
     secrets: inherit
 
   # ─────────────────────────────────────────────────────────────
