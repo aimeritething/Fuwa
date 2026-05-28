@@ -313,11 +313,14 @@ files:
     ai.panel.placeholder.missing: 547c492026d115608067988b7cfbb9a9
     ai.panel.placeholder.ready: 31f5265c2e0432a7ca10d08e5c6f3114
     ai.panel.send: 747c6a3564774149c989884e0c581d53
-    ai.workspace.title: d5b381672258b0bb54ede1e886895b3e
+    ai.workspace.title: 375099f0c804e924c1dc275370710d92
     ai.workspace.newChat: a917baaf1484ec5dc85f19ab8fc4f4e9
     ai.workspace.collapseSidebar: 9ecc763686b7c61547281f3e05ffd06f
     ai.workspace.expandSidebar: 281b619f3da2ba27e604302c3c00db56
     ai.workspace.close: 184649ab030e9a609488608221c28d8c
+    ai.workspace.expandPanel: edbe17b531457367c1412e4b6349c194
+    ai.workspace.restorePanel: 64eb6176c678c6b395cfc93bac02a16f
+    ai.workspace.closeChat: 6c5be35688a466297db40c3a65ac9805
     ai.workspace.popOut: 85ec25ec056b3082651e6e3fcfa57416
     ai.workspace.dock: 72e81ed23007ec6fb9820b9abec353c4
     ai.workspace.settings: 2c178b1d7a60a3c2b37ca4221d322899

@@ -28,8 +28,8 @@ fn runtime_resource_roots_for_env_and_exe(
     if let Some(resource_path) = resource_path {
         push_resource_root(&mut roots, resource_path);
     }
-    if let Some(resource_dir) = current_exe.and_then(macos_app_resources_dir) {
-        push_resource_root(&mut roots, resource_dir);
+    if let Some(current_exe) = current_exe {
+        push_current_exe_resource_roots(&mut roots, current_exe);
     }
     if let Some(appdir) = appdir {
         push_resource_root(&mut roots, appdir.join("usr"));
@@ -42,6 +42,18 @@ fn runtime_resource_roots_for_env_and_exe(
     }
 
     roots
+}
+
+fn push_current_exe_resource_roots(roots: &mut Vec<PathBuf>, current_exe: &Path) {
+    let Some(exe_dir) = current_exe.parent() else {
+        return;
+    };
+
+    push_resource_root(roots, exe_dir.to_path_buf());
+    push_resource_root(roots, exe_dir.join("resources"));
+    if let Some(resource_dir) = macos_app_resources_dir(current_exe) {
+        push_resource_root(roots, resource_dir);
+    }
 }
 
 fn macos_app_resources_dir(executable: &Path) -> Option<PathBuf> {
@@ -101,6 +113,12 @@ mod tests {
 
         assert!(roots.contains(&PathBuf::from(
             "/Applications/Tolaria.app/Contents/Resources"
+        )));
+
+        let candidates =
+            super::super::mcp_server_dir_candidates(Path::new("/repo/mcp-server"), &roots);
+        assert!(candidates.contains(&PathBuf::from(
+            "/Applications/Tolaria.app/Contents/Resources/mcp-server"
         )));
     }
 }

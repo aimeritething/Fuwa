@@ -18,9 +18,8 @@ import {
 import {
   GitBranch,
   Code,
-  Sparkle,
   ListBullets,
-  SidebarSimple,
+  GearSix,
   Trash,
   Archive,
   ArrowUUpLeft,
@@ -334,21 +333,6 @@ function NeighborhoodAction({
   )
 }
 
-function AIChatAction({ showAIChat, locale = 'en', onToggleAIChat }: Pick<BreadcrumbBarProps, 'showAIChat' | 'locale' | 'onToggleAIChat'>) {
-  return (
-    <ToggleIconAction
-      active={!!showAIChat}
-      activeClassName="text-primary"
-      activeLabel={translate(locale, 'editor.toolbar.closeAi')}
-      inactiveLabel={translate(locale, 'editor.toolbar.openAi')}
-      onClick={onToggleAIChat}
-      shortcut={formatShortcutDisplay({ display: '⌘⇧L' })}
-    >
-      <Sparkle size={16} weight={showAIChat ? 'fill' : 'regular'} className={BREADCRUMB_ICON_CLASS} />
-    </ToggleIconAction>
-  )
-}
-
 function TableOfContentsAction({
   showTableOfContents,
   locale = 'en',
@@ -416,9 +400,10 @@ function InspectorAction({
       }}
       onClick={onToggleInspector}
       className="hover:text-foreground"
+      testId="breadcrumb-properties-button"
       tooltipAlign="end"
     >
-      <SidebarSimple size={16} weight="regular" className={BREADCRUMB_ICON_CLASS} style={{ transform: 'scaleX(-1)' }} />
+      <GearSix size={16} weight="regular" className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }
@@ -823,8 +808,6 @@ function BreadcrumbActions({
   forceRawMode,
   noteWidth,
   onToggleNoteWidth,
-  showAIChat,
-  onToggleAIChat,
   showTableOfContents,
   onToggleTableOfContents,
   inspectorCollapsed,
@@ -861,9 +844,6 @@ function BreadcrumbActions({
       <OverflowToolbarAction>
         <NoteWidthAction noteWidth={noteWidth} locale={locale} onToggleNoteWidth={onToggleNoteWidth} />
       </OverflowToolbarAction>
-      {onToggleAIChat ? (
-        <AIChatAction showAIChat={showAIChat} locale={locale} onToggleAIChat={onToggleAIChat} />
-      ) : null}
       <OverflowToolbarAction>
         <TableOfContentsAction
           showTableOfContents={showTableOfContents}

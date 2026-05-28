@@ -10,7 +10,7 @@ import type { ThemeMode } from './themeMode'
 type TrackedPreviewKind = FilePreviewKind | 'unsupported'
 type FilePreviewAction = 'copy_deep_link' | 'copy_path' | 'open_external' | 'reveal'
 type AgentBlockedReason = 'agent_unavailable' | 'missing_vault'
-type AiWorkspaceMode = 'docked' | 'window'
+type AiWorkspaceMode = 'docked' | 'side' | 'window'
 type AiWorkspaceTitleSource = 'generated' | 'manual'
 
 const ALL_NOTES_VISIBILITY_CATEGORIES: ReadonlyArray<keyof AllNotesFileVisibility> = [
