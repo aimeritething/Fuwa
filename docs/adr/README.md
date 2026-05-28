@@ -182,3 +182,4 @@ proposed → active → superseded
 | [0128](0128-lightweight-ai-workspace-window.md) | Lightweight AI workspace window | active |
 | [0129](0129-tolaria-vault-item-deep-links.md) | Tolaria vault item deep links | active |
 | [0130](0130-windows-authenticode-release-signing.md) | Windows Authenticode signing for release installers | active |
+| [0131](0131-reusable-release-artifact-build-workflow.md) | Reusable release artifact build workflow | active |
