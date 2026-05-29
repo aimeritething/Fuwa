@@ -228,8 +228,8 @@ tolaria/
 │   │   ├── frontmatter/          # Frontmatter module
 │   │   │   ├── mod.rs, yaml.rs, ops.rs
 │   │   ├── git/                  # Git module
-│   │   │   ├── mod.rs, commit.rs, status.rs, history.rs, clone.rs, connect.rs
-│   │   │   ├── conflict.rs, remote.rs, pulse.rs
+│   │   │   ├── mod.rs, command.rs, remote_config.rs, commit.rs, status.rs
+│   │   │   ├── history.rs, clone.rs, connect.rs, conflict.rs, remote.rs, pulse.rs
 │   │   ├── telemetry.rs          # Sentry init + path scrubber
 │   │   ├── search.rs             # Keyword search (walkdir-based)
 │   │   ├── ai_agents.rs          # CLI-agent request normalization + adapter dispatch

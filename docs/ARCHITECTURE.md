@@ -713,7 +713,7 @@ The vault backend (`src-tauri/src/vault/`) is split into focused submodules:
 |--------|---------|
 | `vault/` | Vault scanning, caching, parsing, rename, image, migration |
 | `frontmatter/` | YAML frontmatter read/write (`mod.rs`, `yaml.rs`, `ops.rs`) |
-| `git/` | Git operations (`commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`, `clone.rs`, `connect.rs`) |
+| `git/` | Git operations and shared system-git helpers (`command.rs`, `remote_config.rs`, `commit.rs`, `status.rs`, `history.rs`, `conflict.rs`, `remote.rs`, `pulse.rs`, `clone.rs`, `connect.rs`) |
 | `search.rs` | Keyword search — walkdir-based vault file scan with Gitignored-content visibility filtering |
 | `ai_agents.rs` | CLI-agent request normalization and adapter dispatch |
 | `cli_agent_runtime.rs` | Shared CLI-agent request, prompt, subprocess, version, and MCP path helpers |

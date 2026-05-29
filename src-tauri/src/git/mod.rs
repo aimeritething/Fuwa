@@ -1,4 +1,5 @@
 mod clone;
+mod command;
 mod commit;
 mod conflict;
 mod connect;
@@ -268,11 +269,12 @@ fn commit_initial_vault_setup(dir: &Path) -> Result<(), String> {
 
 /// Run a git command in the given directory, returning an error on failure.
 fn run_git(dir: &Path, args: &[&str]) -> Result<(), String> {
-    let output = git_command()
-        .args(args)
-        .current_dir(dir)
-        .output()
-        .map_err(|e| format!("Failed to run git {}: {e}", git_command_label(args)))?;
+    let output = command::git_output(dir, args).map_err(|e| {
+        format!(
+            "Failed to run git {}: {e}",
+            command::git_command_label(args)
+        )
+    })?;
 
     if output.status.success() {
         return Ok(());
@@ -280,17 +282,9 @@ fn run_git(dir: &Path, args: &[&str]) -> Result<(), String> {
 
     Err(format!(
         "git {} failed: {}",
-        git_command_label(args),
+        command::git_command_label(args),
         String::from_utf8_lossy(&output.stderr)
     ))
-}
-
-fn git_command_label<'a>(args: &'a [&'a str]) -> &'a str {
-    if args.first() == Some(&"-c") {
-        return args.get(2).copied().unwrap_or(args[0]);
-    }
-
-    args[0]
 }
 
 /// Set local user.name and user.email if not already configured.
