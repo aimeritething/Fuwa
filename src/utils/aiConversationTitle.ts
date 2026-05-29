@@ -3,13 +3,14 @@ import type { AiTarget } from '../lib/aiTargets'
 import { streamAiAgent, type AgentStreamCallbacks } from './streamAiAgent'
 import { streamAiModel } from './streamAiModel'
 
-const TITLE_WORD_LIMIT = 7
-const TITLE_CHAR_LIMIT = 56
+const TITLE_WORD_LIMIT = 4
+const TITLE_CHAR_LIMIT = 48
 
 const TITLE_SYSTEM_PROMPT = [
-  'Create a concise title for this chat.',
-  'Use 2 to 6 words when possible, and never exceed 56 characters.',
-  'Describe the user request specifically.',
+  'Create a concise title for this chat after reading the user request and assistant answer.',
+  'Use 2 to 4 words when possible, and never exceed 48 characters.',
+  'Write a noun phrase, not a question and not a sentence.',
+  'Describe the chat topic, not the assistant process or result count.',
   'Use sentence case: capitalize only the first word and preserve acronyms.',
   'Do not use quotation marks, markdown, emojis, or trailing punctuation.',
   'Return only the title.',
@@ -18,24 +19,63 @@ const TITLE_SYSTEM_PROMPT = [
 
 const STOP_WORDS = new Set([
   'a',
+  'about',
   'an',
   'and',
   'are',
+  'ask',
   'can',
   'could',
+  'create',
+  'did',
+  'do',
+  'does',
+  'draft',
+  'find',
   'for',
   'from',
+  'give',
   'help',
   'how',
+  'i',
   'into',
+  'is',
   'make',
+  'me',
+  'my',
+  'next',
   'please',
+  'show',
+  'steps',
+  'summarize',
+  'summary',
+  'tell',
   'the',
   'this',
   'that',
+  'to',
+  'what',
+  "what's",
+  'whats',
+  'when',
+  'where',
+  'which',
+  'who',
+  'why',
   'with',
   'you',
+  'your',
 ])
+
+const ANSWER_LIKE_TITLE_PATTERNS = [
+  /^(according to|after|based on|here|i\b|i'll|i will|let me|the answer|there|we\b|you\b)/i,
+  /\b(i found|i searched|let me check|tool use|mcp tools?)\b/i,
+]
+
+const QUESTION_TITLE_PATTERNS = [
+  /^(can|could|did|do|does|how|is|are|should|what|when|where|which|who|why|would)\b/i,
+  /\?$/,
+]
 
 function cleanPrompt({ prompt }: { prompt: string }): string {
   return prompt
@@ -97,8 +137,19 @@ function trimTitleLength({ title }: { title: string }): string {
   return nextTitle || words[0]?.slice(0, TITLE_CHAR_LIMIT) || ''
 }
 
+function titleLooksLikeAnswer({ title }: { title: string }): boolean {
+  return ANSWER_LIKE_TITLE_PATTERNS.some((pattern) => pattern.test(title))
+}
+
+function titleLooksLikeQuestion({ title }: { title: string }): boolean {
+  return QUESTION_TITLE_PATTERNS.some((pattern) => pattern.test(title))
+}
+
 export function normalizeAiConversationTitle(title: string): string | null {
-  const cleanTitle = trimTitleLength({ title: stripTitleDecorations({ title }) })
+  const decoratedTitle = stripTitleDecorations({ title })
+  if (titleLooksLikeAnswer({ title: decoratedTitle }) || titleLooksLikeQuestion({ title: decoratedTitle })) return null
+
+  const cleanTitle = trimTitleLength({ title: decoratedTitle })
   if (!cleanTitle) return null
 
   return toSentenceCase({ title: cleanTitle })
@@ -117,6 +168,7 @@ export function generateAiConversationTitle(prompt: string): string | null {
 }
 
 export interface GenerateAiConversationTitleRequest {
+  assistantResponse?: string
   permissionMode: AiAgentPermissionMode
   prompt: string
   target: AiTarget
@@ -125,8 +177,27 @@ export interface GenerateAiConversationTitleRequest {
   vaultPaths?: string[]
 }
 
-function titlePrompt({ prompt }: { prompt: string }): string {
-  return `User request:\n${prompt.trim()}\n\nReturn only the title.`
+function titlePrompt({ assistantResponse, prompt }: Pick<GenerateAiConversationTitleRequest, 'assistantResponse' | 'prompt'>): string {
+  return [
+    'Create a short title for this chat.',
+    '',
+    'Examples:',
+    'User request: What is my longest essay?',
+    'Assistant answer: The longest essay is Culture at 4,210 words.',
+    'Title: Longest essay',
+    '',
+    'User request: Draft a launch plan for the new site',
+    'Assistant answer: Here is a launch plan with owners and milestones.',
+    'Title: Launch plan',
+    '',
+    'User request:',
+    prompt.trim(),
+    '',
+    ...(assistantResponse?.trim()
+      ? ['Assistant answer:', assistantResponse.trim(), '']
+      : []),
+    'Title:',
+  ].join('\n')
 }
 
 function createTitleStreamCallbacks(onText: (text: string) => void): AgentStreamCallbacks {
@@ -150,7 +221,7 @@ async function generateAiTitleText(request: GenerateAiConversationTitleRequest):
     await streamAiModel({
       provider: request.target.provider,
       model: request.target.model,
-      message: titlePrompt({ prompt: request.prompt }),
+      message: titlePrompt(request),
       systemPrompt: TITLE_SYSTEM_PROMPT,
       callbacks,
     })
@@ -159,7 +230,7 @@ async function generateAiTitleText(request: GenerateAiConversationTitleRequest):
 
   await streamAiAgent({
     agent: request.target.agent,
-    message: titlePrompt({ prompt: request.prompt }),
+    message: titlePrompt(request),
     systemPrompt: TITLE_SYSTEM_PROMPT,
     vaultPath: request.vaultPath,
     vaultPaths: request.vaultPaths,

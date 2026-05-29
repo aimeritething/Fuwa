@@ -28,7 +28,7 @@ describe('generateAiConversationTitle', () => {
 
   it('creates a sentence-case fallback title from the first prompt', () => {
     expect(generateAiConversationTitle('please summarize quarterly sponsor outreach next steps')).toBe(
-      'Summarize quarterly sponsor outreach next steps',
+      'Quarterly sponsor outreach',
     )
   })
 
@@ -38,8 +38,16 @@ describe('generateAiConversationTitle', () => {
     )
   })
 
+  it('turns short questions into noun-phrase fallback titles', () => {
+    expect(generateAiConversationTitle("What's my longest essay?")).toBe('Longest essay')
+  })
+
   it('normalizes model title text to sentence case while preserving acronyms', () => {
     expect(normalizeAiConversationTitle('Title: Fix MCP Server Lookup.')).toBe('Fix MCP server lookup')
+  })
+
+  it('rejects answer-like title text from the model', () => {
+    expect(normalizeAiConversationTitle('There are 460 essay notes. Let me search them.')).toBeNull()
   })
 
   it('asks the selected agent for a short chat title', async () => {
@@ -49,6 +57,7 @@ describe('generateAiConversationTitle', () => {
     })
 
     await expect(generateAiConversationTitleForTarget({
+      assistantResponse: 'The lookup now resolves the configured MCP server.',
       permissionMode: 'power_user',
       prompt: 'The MCP server cannot be found anymore',
       target: { kind: 'agent', agent: 'codex', id: 'agent:codex', label: 'Codex', shortLabel: 'Codex' },
@@ -59,6 +68,7 @@ describe('generateAiConversationTitle', () => {
 
     expect(streamAiAgentMock).toHaveBeenCalledWith(expect.objectContaining({
       agent: 'codex',
+      message: expect.stringContaining('Assistant answer:'),
       permissionMode: 'power_user',
       vaultPath: '/vault',
       vaultPaths: ['/vault'],
@@ -85,6 +95,7 @@ describe('generateAiConversationTitle', () => {
     })
 
     await expect(generateAiConversationTitleForTarget({
+      assistantResponse: 'The sidebar needs tighter spacing and clearer grouping.',
       permissionMode: 'safe',
       prompt: 'Please review the spacing in the sidebar',
       target: {

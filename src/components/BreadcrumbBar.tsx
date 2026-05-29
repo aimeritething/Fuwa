@@ -19,7 +19,7 @@ import {
   GitBranch,
   Code,
   ListBullets,
-  GearSix,
+  SidebarSimple,
   Trash,
   Archive,
   ArrowUUpLeft,
@@ -403,7 +403,7 @@ function InspectorAction({
       testId="breadcrumb-properties-button"
       tooltipAlign="end"
     >
-      <GearSix size={16} weight="regular" className={BREADCRUMB_ICON_CLASS} />
+      <SidebarSimple size={16} weight="regular" className={BREADCRUMB_ICON_CLASS} />
     </IconActionButton>
   )
 }

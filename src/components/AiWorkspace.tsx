@@ -66,7 +66,7 @@ import {
 } from '../lib/vaultAiGuidance'
 import { translate, type AppLocale } from '../lib/i18n'
 import { trackAiWorkspaceChatTitled, trackAiWorkspaceSidebarToggled } from '../lib/productAnalytics'
-import type { AgentStatus } from '../hooks/useCliAiAgent'
+import type { AgentStatus, AiAgentMessage } from '../hooks/useCliAiAgent'
 import type { AiWorkspaceConversationSetting } from '../types'
 import type { NoteListItem } from '../utils/ai-context'
 import type { VaultEntry } from '../types'
@@ -231,28 +231,44 @@ function createConversation(locale: AppLocale, target: AiTarget, index: number):
     hasActivity: false,
     id: nextConversationId(),
     targetId: target.id,
-    title: translate(locale, 'ai.workspace.chatTitle', { index }),
+    title: defaultConversationTitle(locale, index),
     usesDefaultTitle: true,
     usesDefaultTarget: true,
   }
 }
 
-function isDefaultConversationTitle(title: string): boolean {
-  return /^(AI\s+)?Chat\s+\d+$/i.test(title.trim())
+function defaultConversationTitle(locale: AppLocale, index: number): string {
+  if (index <= 1) return translate(locale, 'ai.workspace.chatTitle', { index: '' }).trim()
+  return translate(locale, 'ai.workspace.chatTitle', { index })
 }
 
-function conversationFromSetting(setting: AiWorkspaceConversationSetting, fallbackTarget: AiTarget): AiConversation | null {
+function isDefaultConversationTitle(title: string): boolean {
+  return /^(AI\s+)?Chat(?:\s+\d+)?$/i.test(title.trim())
+}
+
+function defaultConversationTitleIndex(title: string): number {
+  const match = title.trim().match(/\d+$/)
+  if (!match) return 1
+  const parsed = Number(match[0])
+  return Number.isFinite(parsed) ? parsed : 1
+}
+
+function conversationFromSetting(setting: AiWorkspaceConversationSetting, fallbackTarget: AiTarget, locale: AppLocale): AiConversation | null {
   const id = setting.id.trim()
-  const title = setting.title.trim()
-  if (!id || !title) return null
+  const storedTitle = setting.title.trim()
+  if (!id || !storedTitle) return null
+  const usesDefaultTitle = isDefaultConversationTitle(storedTitle)
+  const title = usesDefaultTitle
+    ? defaultConversationTitle(locale, defaultConversationTitleIndex(storedTitle))
+    : storedTitle
 
   return {
     archived: setting.archived === true,
-    hasActivity: !isDefaultConversationTitle(title),
+    hasActivity: !usesDefaultTitle,
     id,
     targetId: setting.target_id?.trim() || fallbackTarget.id,
     title,
-    usesDefaultTitle: isDefaultConversationTitle(title),
+    usesDefaultTitle,
     usesDefaultTarget: !setting.target_id,
   }
 }
@@ -263,7 +279,7 @@ function conversationsFromSettings(
   locale: AppLocale,
 ): AiConversation[] {
   const stored = (settings ?? [])
-    .map((setting) => conversationFromSetting(setting, fallbackTarget))
+    .map((setting) => conversationFromSetting(setting, fallbackTarget, locale))
     .filter((conversation): conversation is AiConversation => conversation !== null)
   return stored.length > 0 ? stored : [createConversation(locale, fallbackTarget, 1)]
 }
@@ -325,7 +341,7 @@ function forkConversationState(
     hasActivity: true,
     id: nextConversationId(),
     targetId: source.targetId,
-    title: source.usesDefaultTitle ? translate(locale, 'ai.workspace.chatTitle', { index }) : source.title,
+    title: source.usesDefaultTitle ? defaultConversationTitle(locale, index) : source.title,
     usesDefaultTitle: false,
     usesDefaultTarget: source.usesDefaultTarget,
   }
@@ -421,7 +437,7 @@ function applyGeneratedConversationTitleState(current: AiConversation[], id: str
 
   return current.map((conversation) => (
     conversation.id === id && conversation.usesDefaultTitle
-      ? { ...conversation, title: nextTitle, usesDefaultTitle: false }
+      ? { ...conversation, hasActivity: true, title: nextTitle, usesDefaultTitle: false }
       : conversation
   ))
 }
@@ -498,9 +514,11 @@ function useConversations({
     setConversations((current) => renameConversationState(current, id, title))
   }, [])
 
-  const titleConversationFromPrompt = useCallback((request: GenerateAiConversationTitleRequest & { id: string }) => {
-    setConversations((current) => markConversationActivityState(current, request.id))
+  const markConversationActivity = useCallback((id: string) => {
+    setConversations((current) => markConversationActivityState(current, id))
+  }, [])
 
+  const titleConversationFromAnswer = useCallback((request: GenerateAiConversationTitleRequest & { id: string }) => {
     void generateAiConversationTitleForTarget(request).then((title) => {
       if (!title) return
       setConversations((current) => applyGeneratedConversationTitleState(current, request.id, title))
@@ -534,7 +552,8 @@ function useConversations({
     setConversationTarget,
     setShowArchived,
     showArchived,
-    titleConversationFromPrompt,
+    markConversationActivity,
+    titleConversationFromAnswer,
     updateDefaultConversationTargets,
   }
 }
@@ -835,7 +854,8 @@ type ConversationSessionProps = {
   onRestoreVaultAiGuidance?: () => void
   onSelectTarget: (targetId: string) => void
   onStatusChange: (id: string, status: AgentStatus) => void
-  onTitleFromPrompt: (request: GenerateAiConversationTitleRequest & { id: string }) => void
+  onPromptSubmitted: (id: string) => void
+  onTitleFromAnswer: (request: GenerateAiConversationTitleRequest & { id: string }) => void
   onUnsupportedAiPaste?: (message: string) => void
   onVaultChanged?: () => void
   openTabs?: VaultEntry[]
@@ -843,6 +863,71 @@ type ConversationSessionProps = {
   vaultAiGuidanceStatus?: VaultAiGuidanceStatus
   vaultPath: string
   vaultPaths?: string[]
+}
+
+function firstCompletedAssistantMessage(messages: AiAgentMessage[]): AiAgentMessage | undefined {
+  return messages.find((message) => (
+    !message.localMarker
+    && !message.isStreaming
+    && !!message.userMessage.trim()
+    && !!message.response?.trim()
+  ))
+}
+
+function useGeneratedConversationTitle({
+  aiAgentsStatus,
+  conversation,
+  messages,
+  onTitleFromAnswer,
+  permissionMode,
+  target,
+  vaultPath,
+  vaultPaths,
+}: {
+  aiAgentsStatus: AiAgentsStatus
+  conversation: AiConversation
+  messages: AiAgentMessage[]
+  onTitleFromAnswer: (request: GenerateAiConversationTitleRequest & { id: string }) => void
+  permissionMode: AiAgentPermissionMode
+  target: AiTarget
+  vaultPath: string
+  vaultPaths?: string[]
+}) {
+  const requestedTitleKeysRef = useRef(new Set<string>())
+
+  useEffect(() => {
+    if (!conversation.usesDefaultTitle) return
+
+    const firstMessage = firstCompletedAssistantMessage(messages)
+    const prompt = firstMessage?.userMessage.trim()
+    const assistantResponse = firstMessage?.response?.trim()
+    if (!firstMessage || !prompt || !assistantResponse) return
+
+    const titleKey = `${conversation.id}:${firstMessage.id ?? prompt}`
+    if (requestedTitleKeysRef.current.has(titleKey)) return
+    requestedTitleKeysRef.current.add(titleKey)
+
+    onTitleFromAnswer({
+      assistantResponse,
+      id: conversation.id,
+      permissionMode,
+      prompt,
+      target,
+      targetReady: aiTargetReady(target, aiAgentsStatus),
+      vaultPath,
+      vaultPaths,
+    })
+  }, [
+    aiAgentsStatus,
+    conversation.id,
+    conversation.usesDefaultTitle,
+    messages,
+    onTitleFromAnswer,
+    permissionMode,
+    target,
+    vaultPath,
+    vaultPaths,
+  ])
 }
 
 function ConversationSession({
@@ -871,7 +956,8 @@ function ConversationSession({
   onRestoreVaultAiGuidance,
   onSelectTarget,
   onStatusChange,
-  onTitleFromPrompt,
+  onPromptSubmitted,
+  onTitleFromAnswer,
   onUnsupportedAiPaste,
   onVaultChanged,
   openTabs,
@@ -925,12 +1011,36 @@ function ConversationSession({
         targetKind={target.kind}
         onChange={controller.handlePermissionModeChange}
       />
+      {onOpenAiSettings && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          className="text-muted-foreground hover:bg-[var(--hover)] hover:text-foreground"
+          aria-label={translate(locale, 'ai.workspace.settings')}
+          title={translate(locale, 'ai.workspace.settings')}
+          onClick={onOpenAiSettings}
+          data-testid="ai-workspace-composer-settings"
+        >
+          <GearSix size={16} weight="regular" />
+        </Button>
+      )}
     </>
   )
 
   useEffect(() => {
     onStatusChange(conversation.id, controller.agent.status)
   }, [conversation.id, controller.agent.status, onStatusChange])
+  useGeneratedConversationTitle({
+    aiAgentsStatus,
+    conversation,
+    messages: controller.agent.messages,
+    onTitleFromAnswer,
+    permissionMode: controller.permissionMode,
+    target,
+    vaultPath,
+    vaultPaths,
+  })
 
   return (
     <div className={active ? 'flex min-h-0 flex-1 flex-col' : 'hidden'} data-testid={`ai-workspace-session-${conversation.id}`}>
@@ -964,15 +1074,7 @@ function ConversationSession({
           onForkMessage={onForkMessage}
           onMessageHistoryScrollStateChange={active ? onMessageHistoryScrollStateChange : undefined}
           onOpenNote={onOpenNote}
-          onSendPrompt={(prompt) => onTitleFromPrompt({
-            id: conversation.id,
-            permissionMode: controller.permissionMode,
-            prompt,
-            target,
-            targetReady: aiTargetReady(target, aiAgentsStatus),
-            vaultPath,
-            vaultPaths,
-          })}
+          onSendPrompt={() => onPromptSubmitted(conversation.id)}
           onUnsupportedAiPaste={onUnsupportedAiPaste}
           showHeader={false}
           showLeftBorder={false}
@@ -1012,7 +1114,8 @@ interface AiWorkspaceModel {
   setShowArchived: (show: boolean) => void
   showArchived: boolean
   statuses: Record<string, AgentStatus>
-  titleConversationFromPrompt: (request: GenerateAiConversationTitleRequest & { id: string }) => void
+  markConversationActivity: (id: string) => void
+  titleConversationFromAnswer: (request: GenerateAiConversationTitleRequest & { id: string }) => void
   toggleSidebarCollapsed: () => void
   updateDefaultConversationTargets: (targetId: string) => void
 }
@@ -1572,24 +1675,24 @@ function useArchiveConversationSafely({
 function useTrackedConversationActions({
   conversations,
   renameConversation,
-  titleConversationFromPrompt,
+  titleConversationFromAnswer,
 }: {
   conversations: AiConversation[]
   renameConversation: (id: string, title: string) => void
-  titleConversationFromPrompt: (request: GenerateAiConversationTitleRequest & { id: string }) => void
+  titleConversationFromAnswer: (request: GenerateAiConversationTitleRequest & { id: string }) => void
 }) {
   const trackedRenameConversation = useCallback((id: string, title: string) => {
     if (!title.trim()) return
     renameConversation(id, title)
     trackAiWorkspaceChatTitled('manual')
   }, [renameConversation])
-  const trackedTitleConversationFromPrompt = useCallback((request: GenerateAiConversationTitleRequest & { id: string }) => {
+  const trackedTitleConversationFromAnswer = useCallback((request: GenerateAiConversationTitleRequest & { id: string }) => {
     const conversation = conversations.find((candidate) => candidate.id === request.id)
-    titleConversationFromPrompt(request)
+    titleConversationFromAnswer(request)
     if (conversation?.usesDefaultTitle) trackAiWorkspaceChatTitled('generated')
-  }, [conversations, titleConversationFromPrompt])
+  }, [conversations, titleConversationFromAnswer])
 
-  return { trackedRenameConversation, trackedTitleConversationFromPrompt }
+  return { trackedRenameConversation, trackedTitleConversationFromAnswer }
 }
 
 function useAiWorkspaceNewChatEvent(open: boolean, addDefaultConversation: () => void) {
@@ -1624,7 +1727,8 @@ function useAiWorkspaceModel(workspace: ResolvedAiWorkspaceProps): AiWorkspaceMo
     setConversationTarget,
     setShowArchived,
     showArchived,
-    titleConversationFromPrompt,
+    markConversationActivity,
+    titleConversationFromAnswer,
     updateDefaultConversationTargets,
   } = useConversations({
     fallbackTarget,
@@ -1657,10 +1761,10 @@ function useAiWorkspaceModel(workspace: ResolvedAiWorkspaceProps): AiWorkspaceMo
 
     cloneAiWorkspaceSessionUntilMessage(sourceId, targetId, messageId)
   }, [forkConversation])
-  const { trackedRenameConversation, trackedTitleConversationFromPrompt } = useTrackedConversationActions({
+  const { trackedRenameConversation, trackedTitleConversationFromAnswer } = useTrackedConversationActions({
     conversations,
     renameConversation,
-    titleConversationFromPrompt,
+    titleConversationFromAnswer,
   })
   const toggleSidebarCollapsed = useCallback(() => {
     setSidebarCollapsed((current) => {
@@ -1696,7 +1800,8 @@ function useAiWorkspaceModel(workspace: ResolvedAiWorkspaceProps): AiWorkspaceMo
     setShowArchived,
     showArchived,
     statuses,
-    titleConversationFromPrompt: trackedTitleConversationFromPrompt,
+    markConversationActivity,
+    titleConversationFromAnswer: trackedTitleConversationFromAnswer,
     toggleSidebarCollapsed,
     updateDefaultConversationTargets,
   }
@@ -1787,7 +1892,8 @@ function ConversationSessions({
             onRestoreVaultAiGuidance={workspace.onRestoreVaultAiGuidance}
             onSelectTarget={(targetId) => model.setConversationTarget(conversation.id, targetId)}
             onStatusChange={model.handleStatusChange}
-            onTitleFromPrompt={model.titleConversationFromPrompt}
+            onPromptSubmitted={model.markConversationActivity}
+            onTitleFromAnswer={model.titleConversationFromAnswer}
             onUnsupportedAiPaste={workspace.onUnsupportedAiPaste}
             onVaultChanged={workspace.onVaultChanged}
             openTabs={workspace.openTabs}

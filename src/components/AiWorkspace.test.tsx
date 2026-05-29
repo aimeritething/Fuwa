@@ -15,6 +15,7 @@ import type { VaultEntry } from '../types'
 import type { VaultAiGuidanceStatus } from '../lib/vaultAiGuidance'
 
 let mockedAgentStatus: AgentStatus = 'idle'
+let mockMessages: ReturnType<typeof import('../hooks/useCliAiAgent').useCliAiAgent>['messages'] = []
 let controllerCalls: unknown[] = []
 const { generateTitleMock } = vi.hoisted(() => ({
   generateTitleMock: vi.fn(),
@@ -37,7 +38,7 @@ vi.mock('./useAiPanelController', () => ({
     controllerCalls.push(args)
     return {
       agent: {
-        messages: [],
+        messages: mockMessages,
         status: mockedAgentStatus,
         sendMessage: vi.fn(),
         clearConversation: vi.fn(),
@@ -166,9 +167,10 @@ function contextReadyControllerCalls(): unknown[] {
 describe('AiWorkspace', () => {
   beforeEach(() => {
     mockedAgentStatus = 'idle'
+    mockMessages = []
     controllerCalls = []
     generateTitleMock.mockReset()
-    generateTitleMock.mockResolvedValue('Summarize quarterly sponsor outreach')
+    generateTitleMock.mockResolvedValue('Quarterly sponsor outreach')
     localStorage.clear()
     resetVaultConfigStore()
   })
@@ -199,7 +201,7 @@ describe('AiWorkspace', () => {
 
     fireEvent.click(screen.getByTestId('ai-workspace-sidebar-new-chat'))
 
-    expect(screen.getAllByText('AI Chat 1').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('AI Chat').length).toBeGreaterThan(0)
     expect(screen.getAllByText('AI Chat 2').length).toBeGreaterThan(0)
   })
 
@@ -219,7 +221,7 @@ describe('AiWorkspace', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Mock history scroll' }))
     expect(header).toHaveClass('border-b')
     expect(tabStrip).toHaveClass('overflow-x-auto')
-    expect(screen.getByRole('button', { name: 'AI Chat 1' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'AI Chat' })).toBeTruthy()
     expect(
       within(header).getByRole('button', { name: 'Expand AI workspace' }).compareDocumentPosition(
         within(header).getByRole('button', { name: 'Close AI workspace' }),
@@ -243,6 +245,25 @@ describe('AiWorkspace', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Close AI workspace' }))
     expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('opens AI settings from the composer controls', () => {
+    const onOpenAiSettings = vi.fn()
+    render(
+      <AiWorkspace
+        open
+        mode="side"
+        aiAgentsStatus={installedStatuses()}
+        aiModelProviders={providers}
+        vaultPath="/tmp/vault"
+        onClose={vi.fn()}
+        onOpenAiSettings={onOpenAiSettings}
+      />,
+    )
+
+    fireEvent.click(screen.getByTestId('ai-workspace-composer-settings'))
+
+    expect(onOpenAiSettings).toHaveBeenCalledOnce()
   })
 
   it('reports the active side chat so reopening can restore it', () => {
@@ -296,14 +317,14 @@ describe('AiWorkspace', () => {
         mode="side"
         aiAgentsStatus={installedStatuses()}
         aiModelProviders={providers}
-        conversationSettings={[{ id: 'chat-a', title: 'AI Chat 1', target_id: null, archived: false }]}
+        conversationSettings={[{ id: 'chat-a', title: 'AI Chat', target_id: null, archived: false }]}
         vaultPath="/tmp/vault"
         onClose={vi.fn()}
         onConversationSettingsChange={onConversationSettingsChange}
       />,
     )
 
-    fireEvent.doubleClick(screen.getByRole('button', { name: 'AI Chat 1' }))
+    fireEvent.doubleClick(screen.getByRole('button', { name: 'AI Chat' }))
     const input = screen.getByLabelText('Rename chat')
     fireEvent.change(input, { target: { value: 'Research thread' } })
     fireEvent.keyDown(input, { key: 'Enter' })
@@ -381,7 +402,7 @@ describe('AiWorkspace', () => {
     expect(archiveButtons.every((button) => button.hasAttribute('disabled'))).toBe(true)
     fireEvent.click(archiveButtons[0])
 
-    expect(screen.getAllByText('AI Chat 1').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('AI Chat').length).toBeGreaterThan(0)
     expect(screen.queryByText('AI Chat 2')).toBeNull()
   })
 
@@ -471,16 +492,35 @@ describe('AiWorkspace', () => {
     expect(within(menu).getByText('OpenAI · GPT-4.1')).toBeTruthy()
   })
 
-  it('renames the first chat from the selected target title request and stores conversation settings', async () => {
+  it('marks the first chat active when a prompt is submitted', () => {
     const onConversationSettingsChange = vi.fn()
     render(<AiWorkspace open mode="docked" aiAgentsStatus={installedStatuses()} aiModelProviders={providers} vaultPath="/tmp/vault" onClose={vi.fn()} onConversationSettingsChange={onConversationSettingsChange} />)
 
     fireEvent.click(screen.getByText('Send mocked prompt'))
 
+    expect(screen.getAllByText('AI Chat').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: 'Archive chat' }).some((button) => !button.hasAttribute('disabled'))).toBe(true)
+    expect(generateTitleMock).not.toHaveBeenCalled()
+    expect(onConversationSettingsChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ title: 'AI Chat' }),
+    ])
+  })
+
+  it('renames the first chat after the first assistant reply and stores conversation settings', async () => {
+    mockMessages = [{
+      userMessage: 'summarize quarterly sponsor outreach',
+      actions: [],
+      response: 'The next step is to follow up with the sponsor pipeline.',
+      id: 'msg-title',
+    }]
+    const onConversationSettingsChange = vi.fn()
+    render(<AiWorkspace open mode="docked" aiAgentsStatus={installedStatuses()} aiModelProviders={providers} vaultPath="/tmp/vault" onClose={vi.fn()} onConversationSettingsChange={onConversationSettingsChange} />)
+
     await waitFor(() => {
-      expect(screen.getAllByText('Summarize quarterly sponsor outreach').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Quarterly sponsor outreach').length).toBeGreaterThan(0)
     })
     expect(generateTitleMock).toHaveBeenCalledWith(expect.objectContaining({
+      assistantResponse: 'The next step is to follow up with the sponsor pipeline.',
       permissionMode: 'safe',
       prompt: 'summarize quarterly sponsor outreach',
       target: expect.objectContaining({ kind: 'agent', agent: 'claude_code' }),
@@ -489,11 +529,17 @@ describe('AiWorkspace', () => {
     }))
     expect(screen.getAllByRole('button', { name: 'Archive chat' }).some((button) => !button.hasAttribute('disabled'))).toBe(true)
     expect(onConversationSettingsChange).toHaveBeenLastCalledWith([
-      expect.objectContaining({ title: 'Summarize quarterly sponsor outreach' }),
+      expect.objectContaining({ title: 'Quarterly sponsor outreach' }),
     ])
   })
 
-  it('renames a persisted default chat title from the first prompt', async () => {
+  it('renames a persisted default chat title after the first assistant reply', async () => {
+    mockMessages = [{
+      userMessage: 'summarize quarterly sponsor outreach',
+      actions: [],
+      response: 'The next step is to follow up with the sponsor pipeline.',
+      id: 'msg-title',
+    }]
     const onConversationSettingsChange = vi.fn()
     render(
       <AiWorkspace
@@ -508,13 +554,11 @@ describe('AiWorkspace', () => {
       />,
     )
 
-    fireEvent.click(screen.getByText('Send mocked prompt'))
-
     await waitFor(() => {
-      expect(screen.getAllByText('Summarize quarterly sponsor outreach').length).toBeGreaterThan(0)
+      expect(screen.getAllByText('Quarterly sponsor outreach').length).toBeGreaterThan(0)
     })
     expect(onConversationSettingsChange).toHaveBeenLastCalledWith([
-      expect.objectContaining({ id: 'stored-chat', title: 'Summarize quarterly sponsor outreach' }),
+      expect.objectContaining({ id: 'stored-chat', title: 'Quarterly sponsor outreach' }),
     ])
   })
 
@@ -523,7 +567,7 @@ describe('AiWorkspace', () => {
     render(<AiWorkspace open mode="docked" aiAgentsStatus={installedStatuses()} aiModelProviders={providers} vaultPath="/tmp/vault" onClose={vi.fn()} onConversationSettingsChange={onConversationSettingsChange} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand AI chat list' }))
-    fireEvent.doubleClick(screen.getByRole('button', { name: /chat 1/i }))
+    fireEvent.doubleClick(screen.getByRole('button', { name: /^AI Chat$/i }))
     const input = screen.getByLabelText('Rename chat')
     fireEvent.change(input, { target: { value: 'Sponsor Plan' } })
     fireEvent.keyDown(input, { key: 'Enter' })

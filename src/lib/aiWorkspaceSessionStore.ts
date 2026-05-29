@@ -1,8 +1,11 @@
 import type { Dispatch, SetStateAction } from 'react'
+import { invoke } from '@tauri-apps/api/core'
 import type { AgentStatus, AiAgentMessage } from './aiAgentConversation'
+import { isTauri } from '../mock-tauri'
 
 const STORAGE_KEY = 'tolaria:ai-workspace-sessions:v1'
 const BROADCAST_CHANNEL = 'tolaria-ai-workspace-sessions'
+const NATIVE_WRITE_DEBOUNCE_MS = 250
 
 export interface AiWorkspaceSessionSnapshot {
   messages: AiAgentMessage[]
@@ -20,6 +23,10 @@ const EMPTY_SESSION: AiWorkspaceSessionSnapshot = {
 let sessions: SessionMap = readStoredSessions()
 let broadcastChannel: BroadcastChannel | null = null
 const listeners = new Set<Listener>()
+let storeVersion = 0
+let nativeWriteTimer: ReturnType<typeof setTimeout> | null = null
+let nativeWriteInFlight = false
+let pendingNativeSessions: SessionMap | null = null
 
 function isSessionSnapshot(value: unknown): value is AiWorkspaceSessionSnapshot {
   if (!value || typeof value !== 'object') return false
@@ -27,16 +34,48 @@ function isSessionSnapshot(value: unknown): value is AiWorkspaceSessionSnapshot 
   return Array.isArray(candidate.messages) && typeof candidate.status === 'string'
 }
 
-function readStoredSessions(): SessionMap {
+function normalizeStoredStatus(value: unknown, resetRunningStatus: boolean): AgentStatus {
+  switch (value) {
+    case 'idle':
+    case 'done':
+    case 'error':
+      return value
+    case 'thinking':
+    case 'tool-executing':
+      return resetRunningStatus ? 'idle' : value
+    default:
+      return 'idle'
+  }
+}
+
+function normalizeStoredMessages(messages: AiAgentMessage[], resetRunningStatus: boolean): AiAgentMessage[] {
+  if (!resetRunningStatus) return messages
+  return messages.map((message) => (
+    message.isStreaming ? { ...message, isStreaming: false } : message
+  ))
+}
+
+function normalizeStoredSessions(value: unknown, resetRunningStatus: boolean): SessionMap {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {}
+
+  return Object.fromEntries(
+    Object.entries(value).filter((entry): entry is [string, AiWorkspaceSessionSnapshot] => (
+      typeof entry[0] === 'string' && isSessionSnapshot(entry[1])
+    )).map(([sessionId, session]) => [
+      sessionId,
+      {
+        messages: normalizeStoredMessages(session.messages, resetRunningStatus),
+        status: normalizeStoredStatus(session.status, resetRunningStatus),
+      },
+    ]),
+  )
+}
+
+function readStoredSessions(resetRunningStatus = true): SessionMap {
   if (typeof localStorage === 'undefined') return {}
 
   try {
-    const parsed = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}') as Record<string, unknown>
-    return Object.fromEntries(
-      Object.entries(parsed).filter((entry): entry is [string, AiWorkspaceSessionSnapshot] => (
-        typeof entry[0] === 'string' && isSessionSnapshot(entry[1])
-      )),
-    )
+    return normalizeStoredSessions(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'), resetRunningStatus)
   } catch {
     return {}
   }
@@ -48,8 +87,48 @@ function writeStoredSessions(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions))
   } catch {
-    // Session history is a convenience cache; streaming state still lives in memory.
+    // Native persistence is the durable backend; localStorage is only a fast browser cache.
   }
+}
+
+async function readNativeSessions(): Promise<SessionMap> {
+  if (!isTauri()) return {}
+
+  try {
+    const stored = await invoke<unknown>('get_ai_workspace_sessions')
+    return normalizeStoredSessions(stored, true)
+  } catch {
+    return {}
+  }
+}
+
+async function flushNativeSessionsWrite(): Promise<void> {
+  if (!isTauri() || nativeWriteInFlight || !pendingNativeSessions) return
+
+  nativeWriteInFlight = true
+  const nextSessions = pendingNativeSessions
+  pendingNativeSessions = null
+  nativeWriteTimer = null
+
+  try {
+    await invoke('save_ai_workspace_sessions', { sessions: nextSessions })
+  } catch {
+    // Transcript persistence should never interrupt the chat UI.
+  } finally {
+    nativeWriteInFlight = false
+    if (pendingNativeSessions) scheduleNativeSessionsWrite(pendingNativeSessions)
+  }
+}
+
+function scheduleNativeSessionsWrite(nextSessions: SessionMap): void {
+  if (!isTauri()) return
+
+  pendingNativeSessions = nextSessions
+  if (nativeWriteTimer || nativeWriteInFlight) return
+
+  nativeWriteTimer = setTimeout(() => {
+    void flushNativeSessionsWrite()
+  }, NATIVE_WRITE_DEBOUNCE_MS)
 }
 
 function notifyListeners(): void {
@@ -64,7 +143,9 @@ function broadcastSessions(): void {
 }
 
 function publishSessions(): void {
+  storeVersion += 1
   writeStoredSessions()
+  scheduleNativeSessionsWrite(sessions)
   broadcastSessions()
   notifyListeners()
 }
@@ -75,7 +156,20 @@ function replaceSessions(nextSessions: SessionMap): void {
 }
 
 function syncFromStorage(): void {
-  replaceSessions(readStoredSessions())
+  replaceSessions(readStoredSessions(false))
+}
+
+async function syncFromNativeStorage(): Promise<void> {
+  const loadVersion = storeVersion
+  const nativeSessions = await readNativeSessions()
+  if (storeVersion !== loadVersion) return
+  if (Object.keys(nativeSessions).length === 0) {
+    if (Object.keys(sessions).length > 0) scheduleNativeSessionsWrite(sessions)
+    return
+  }
+
+  replaceSessions(nativeSessions)
+  writeStoredSessions()
 }
 
 function ensureCrossWindowSync(): void {
@@ -85,12 +179,19 @@ function ensureCrossWindowSync(): void {
     if (event.key === STORAGE_KEY) syncFromStorage()
   })
 
+  window.addEventListener('pagehide', () => {
+    if (nativeWriteTimer) clearTimeout(nativeWriteTimer)
+    nativeWriteTimer = null
+    void flushNativeSessionsWrite()
+  })
+
   if (typeof BroadcastChannel === 'undefined') return
   broadcastChannel ??= new BroadcastChannel(BROADCAST_CHANNEL)
   broadcastChannel.onmessage = syncFromStorage
 }
 
 ensureCrossWindowSync()
+void syncFromNativeStorage()
 
 export function aiWorkspaceSessionSnapshot(sessionId: string): AiWorkspaceSessionSnapshot {
   return sessions[sessionId] ?? EMPTY_SESSION
@@ -167,6 +268,11 @@ export function aiWorkspaceSessionDispatchers(sessionId: string): {
 
 export function resetAiWorkspaceSessionStoreForTests(): void {
   sessions = {}
+  storeVersion = 0
+  pendingNativeSessions = null
+  if (nativeWriteTimer) clearTimeout(nativeWriteTimer)
+  nativeWriteTimer = null
+  nativeWriteInFlight = false
   writeStoredSessions()
   notifyListeners()
 }
