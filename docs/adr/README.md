@@ -185,3 +185,4 @@ proposed → active → superseded
 | [0131](0131-reusable-release-artifact-build-workflow.md) | Reusable release artifact build workflow | active |
 | [0132](0132-alpha-authenticode-soft-gate.md) | Alpha Authenticode soft gate | active |
 | [0133](0133-request-scoped-ai-stream-events.md) | Request-scoped AI stream event channels | active |
+| [0134](0134-direct-shiki-language-registrations.md) | Direct Shiki language registrations for code blocks | active |
