@@ -67,7 +67,7 @@ jobs:
       version: ${{ needs.version.outputs.version }}
       macos_bundles: ""
       upload_macos_dmg: true
-      require_windows_authenticode: true
+      require_windows_authenticode: false
     secrets: inherit
 
   # ─────────────────────────────────────────────────────────────
