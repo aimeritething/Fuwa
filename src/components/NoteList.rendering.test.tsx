@@ -330,6 +330,86 @@ describe('NoteList rendering', () => {
     }
   })
 
+  it('ignores stale full-content results when the query changes before a slow search returns', async () => {
+    const originalContentHandler = window.__mockHandlers?.get_note_content
+    const originalSearchHandler = window.__mockHandlers?.search_vault
+    let resolveSlowSearch: ((response: {
+      elapsed_ms: number
+      results: NoteListSearchMockResult[]
+    }) => void) | null = null
+    const searchVault = vi.fn((args?: Record<string, unknown>) => {
+      if (args?.query === 'slow-body') {
+        return new Promise((resolve) => {
+          resolveSlowSearch = resolve
+        })
+      }
+
+      return Promise.resolve({
+        elapsed_ms: 7,
+        results: [],
+      })
+    })
+    const getNoteContent = vi.fn(() => {
+      throw new Error('Note-list full-text search should not read note content in React')
+    })
+
+    if (!window.__mockHandlers) window.__mockHandlers = {}
+    window.__mockHandlers.search_vault = searchVault
+    window.__mockHandlers.get_note_content = getNoteContent
+
+    try {
+      renderNoteList({
+        entries: [
+          makeEntry({ path: '/vault/a.md', filename: 'a.md', title: 'Alpha Note', snippet: 'Routine body copy.' }),
+          makeEntry({ path: '/vault/b.md', filename: 'b.md', title: 'Beta Note', snippet: 'Another public preview.' }),
+        ],
+      })
+
+      fireEvent.click(screen.getByTitle('Search notes'))
+      fireEvent.change(screen.getByPlaceholderText('Search notes...'), { target: { value: 'slow-body' } })
+
+      await waitFor(() => {
+        expect(searchVault).toHaveBeenCalledWith(expect.objectContaining({
+          query: 'slow-body',
+          excludeFrontmatter: true,
+        }))
+      })
+
+      fireEvent.change(screen.getByPlaceholderText('Search notes...'), { target: { value: 'new-empty-query' } })
+
+      await waitFor(() => {
+        expect(searchVault).toHaveBeenCalledWith(expect.objectContaining({
+          query: 'new-empty-query',
+          excludeFrontmatter: true,
+        }))
+      })
+      await waitFor(() => {
+        expect(screen.queryByTestId('note-list-search-loading')).not.toBeInTheDocument()
+      })
+
+      await act(async () => {
+        resolveSlowSearch?.({
+          elapsed_ms: 7,
+          results: [{
+            note_type: 'Note',
+            path: '/vault/b.md',
+            score: 1,
+            snippet: 'Stale body hit from the previous query.',
+            title: 'Beta Note',
+          }],
+        })
+        await Promise.resolve()
+      })
+
+      expect(getNoteContent).not.toHaveBeenCalled()
+      expect(screen.queryByText('Beta Note')).not.toBeInTheDocument()
+      expect(screen.getByText('No matching notes')).toBeInTheDocument()
+    } finally {
+      window.__mockHandlers.search_vault = originalSearchHandler
+      window.__mockHandlers.get_note_content = originalContentHandler
+    }
+  })
+
   it('ignores full-content matches that only appear in hidden frontmatter', async () => {
     const { getNoteContent, restore, searchVault } = installFullTextSearchMocks({
       resultsByVault: {
