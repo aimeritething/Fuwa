@@ -184,3 +184,4 @@ proposed → active → superseded
 | [0130](0130-windows-authenticode-release-signing.md) | Windows Authenticode signing for release installers | active |
 | [0131](0131-reusable-release-artifact-build-workflow.md) | Reusable release artifact build workflow | active |
 | [0132](0132-alpha-authenticode-soft-gate.md) | Alpha Authenticode soft gate | active |
+| [0133](0133-request-scoped-ai-stream-events.md) | Request-scoped AI stream event channels | active |
