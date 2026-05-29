@@ -454,7 +454,7 @@ Search is keyword-based, using `walkdir` to scan all `.md` files in the vault di
 
 The `search_vault` Tauri command runs the scan in a blocking Tokio task and returns results sorted by relevance score.
 
-The note-list search field combines client-side scoped filtering with that same command: title, snippet, and visible-property matches resolve immediately, while backend full-content hits are verified against Markdown body text, excluding frontmatter, before adding matching paths for the currently visible workspace roots without displaying matched body text in the note row.
+The note-list search field combines client-side scoped filtering with that same command: title, snippet, and visible-property matches resolve immediately, while backend body-content hits use `search_vault` with frontmatter excluded before adding matching paths for the currently visible workspace roots without displaying matched body text in the note row.
 
 ## Vault Cache System
 

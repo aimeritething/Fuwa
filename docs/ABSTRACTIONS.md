@@ -771,7 +771,7 @@ interface SearchResult {
 - Click result to open note in editor
 - Shows relevance score and snippet
 
-The NoteList header search keeps its local title/snippet/property filtering for immediate scoped results, then augments the match set with `search_vault` full-content hits from the visible workspace roots. It verifies backend hits against Markdown body text with frontmatter excluded, and stores only matching paths so body-only matches appear in the current list scope without rendering private matched text in note rows.
+The NoteList header search keeps its local title/snippet/property filtering for immediate scoped results, then augments the match set with `search_vault` hits from the visible workspace roots using the command's frontmatter-excluding search option. React stores only matching paths so body-only matches appear in the current list scope without a second content-read pass or rendering private matched text in note rows.
 
 No indexing step required — search runs directly against the filesystem.
 

@@ -3,7 +3,6 @@ import { invoke } from '@tauri-apps/api/core'
 import type { VaultEntry } from '../../types'
 import { isTauri, mockInvoke } from '../../mock-tauri'
 
-type MarkdownContent = string
 type NoteListSearchQuery = string
 type NotePath = string
 type VaultPath = string
@@ -22,6 +21,7 @@ interface SearchCommandArgs extends Record<string, unknown> {
   query: NoteListSearchQuery
   mode: 'keyword'
   limit: number
+  excludeFrontmatter: true
 }
 
 interface FullTextSearchRequest {
@@ -85,51 +85,14 @@ function resolveNoteListSearchVaultPaths(entries: VaultEntry[]): VaultPath[] {
   return root ? [root] : []
 }
 
-function stripFrontmatter(content: MarkdownContent): MarkdownContent {
-  const lineEnding = content.startsWith('---\r\n')
-    ? '\r\n'
-    : content.startsWith('---\n') ? '\n' : null
-  if (!lineEnding) return content
-
-  const afterOpen = content.slice(3 + lineEnding.length)
-  const closeMarker = `${lineEnding}---`
-  const closeIndex = afterOpen.indexOf(closeMarker)
-  if (closeIndex === -1) return content
-
-  return stripFrontmatterCloseLine(afterOpen.slice(closeIndex + closeMarker.length))
-}
-
-function stripFrontmatterCloseLine(content: MarkdownContent): MarkdownContent {
-  if (content.startsWith('\r\n')) return content.slice(2)
-  return content.startsWith('\n') ? content.slice(1) : content
-}
-
 function searchVault(args: SearchCommandArgs): Promise<SearchResponseData> {
   return isTauri()
     ? invoke<SearchResponseData>('search_vault', args)
     : mockInvoke<SearchResponseData>('search_vault', args)
 }
 
-function readNoteContent(path: NotePath): Promise<MarkdownContent> {
-  return isTauri()
-    ? invoke<MarkdownContent>('get_note_content', { path })
-    : mockInvoke<MarkdownContent>('get_note_content', { path })
-}
-
-async function bodyContainsQuery({ path, query }: { path: NotePath; query: NoteListSearchQuery }): Promise<boolean> {
-  try {
-    const body = stripFrontmatter(await readNoteContent(path))
-    return body.toLowerCase().includes(query)
-  } catch {
-    return false
-  }
-}
-
-async function resolveBodyResultPaths({ paths, query }: { paths: NotePath[]; query: NoteListSearchQuery }): Promise<Set<string>> {
-  const matches = await Promise.all(unique(paths).map(async (path) => (
-    await bodyContainsQuery({ path, query }) ? path : null
-  )))
-  return new Set(matches.filter((path): path is string => !!path))
+function resolveResultPaths(responses: SearchResponseData[]): Set<string> {
+  return new Set(unique(responses.flatMap((response) => response.results.map((result) => result.path))))
 }
 
 async function runFullTextSearch(request: FullTextSearchRequest): Promise<Set<string>> {
@@ -138,11 +101,9 @@ async function runFullTextSearch(request: FullTextSearchRequest): Promise<Set<st
     query: request.query,
     mode: 'keyword',
     limit: request.limit,
+    excludeFrontmatter: true,
   })))
-  return resolveBodyResultPaths({
-    paths: responses.flatMap((response) => response.results.map((result) => result.path)),
-    query: request.query,
-  })
+  return resolveResultPaths(responses)
 }
 
 function createSearchRequest({ entries, query }: { entries: VaultEntry[]; query: NoteListSearchQuery }): FullTextSearchRequest | null {

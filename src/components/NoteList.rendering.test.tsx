@@ -118,10 +118,8 @@ interface NoteListSearchMockResult {
 }
 
 function installFullTextSearchMocks({
-  contentByPath,
   resultsByVault,
 }: {
-  contentByPath: Record<string, string>
   resultsByVault: Record<string, NoteListSearchMockResult[]>
 }) {
   const originalContentHandler = window.__mockHandlers?.get_note_content
@@ -132,7 +130,9 @@ function installFullTextSearchMocks({
     query: args?.query,
     results: resultsByVault[String(args?.vaultPath ?? '')] ?? [],
   }))
-  const getNoteContent = vi.fn((args?: Record<string, unknown>) => contentByPath[String(args?.path ?? '')] ?? '')
+  const getNoteContent = vi.fn(() => {
+    throw new Error('Note-list full-text search should not read note content in React')
+  })
 
   if (!window.__mockHandlers) window.__mockHandlers = {}
   window.__mockHandlers.search_vault = searchVault
@@ -291,10 +291,7 @@ describe('NoteList rendering', () => {
   })
 
   it('filters by full note content when the title and snippet do not match', async () => {
-    const { restore, searchVault } = installFullTextSearchMocks({
-      contentByPath: {
-        '/vault/b.md': '# Beta Note\n\nA private subterranean-keyword body match.',
-      },
+    const { getNoteContent, restore, searchVault } = installFullTextSearchMocks({
       resultsByVault: {
         '/vault': [{
           note_type: 'Note',
@@ -321,8 +318,10 @@ describe('NoteList rendering', () => {
           vaultPath: '/vault',
           query: 'subterranean-keyword',
           mode: 'keyword',
+          excludeFrontmatter: true,
         }))
       })
+      expect(getNoteContent).not.toHaveBeenCalled()
       expect(screen.getByText('Beta Note')).toBeInTheDocument()
       expect(screen.queryByText('Alpha Note')).not.toBeInTheDocument()
       expect(screen.queryByText('Private body match is intentionally not rendered here.')).not.toBeInTheDocument()
@@ -332,26 +331,9 @@ describe('NoteList rendering', () => {
   })
 
   it('ignores full-content matches that only appear in hidden frontmatter', async () => {
-    const { restore } = installFullTextSearchMocks({
-      contentByPath: {
-        '/vault/a.md': [
-          '---',
-          'Owner: hidden-frontmatter-keyword',
-          '---',
-          '',
-          '# Alpha Note',
-          '',
-          'Public body text omits the private property value.',
-        ].join('\n'),
-      },
+    const { getNoteContent, restore, searchVault } = installFullTextSearchMocks({
       resultsByVault: {
-        '/vault': [{
-          note_type: 'Note',
-          path: '/vault/a.md',
-          score: 1,
-          snippet: 'Owner: hidden-frontmatter-keyword',
-          title: 'Alpha Note',
-        }],
+        '/vault': [],
       },
     })
 
@@ -365,6 +347,12 @@ describe('NoteList rendering', () => {
 
       await searchNoteList('hidden-frontmatter-keyword')
 
+      await waitFor(() => {
+        expect(searchVault).toHaveBeenCalledWith(expect.objectContaining({
+          excludeFrontmatter: true,
+        }))
+      })
+      expect(getNoteContent).not.toHaveBeenCalled()
       expect(screen.queryByText('Alpha Note')).not.toBeInTheDocument()
       expect(screen.getByText('No matching notes')).toBeInTheDocument()
     } finally {
@@ -373,11 +361,7 @@ describe('NoteList rendering', () => {
   })
 
   it('runs full-content note-list search across visible workspaces', async () => {
-    const { restore, searchVault } = installFullTextSearchMocks({
-      contentByPath: {
-        '/personal/personal-note.md': '# Personal Note\n\nNo matching body token.',
-        '/team/team-body-hit.md': '# Team Body Hit\n\nPrivate workspace-only-keyword body hit.',
-      },
+    const { getNoteContent, restore, searchVault } = installFullTextSearchMocks({
       resultsByVault: {
         '/team': [{
           note_type: 'Note',
@@ -412,9 +396,10 @@ describe('NoteList rendering', () => {
       await searchNoteList('workspace-only-keyword')
 
       await waitFor(() => {
-        expect(searchVault).toHaveBeenCalledWith(expect.objectContaining({ vaultPath: '/personal' }))
-        expect(searchVault).toHaveBeenCalledWith(expect.objectContaining({ vaultPath: '/team' }))
+        expect(searchVault).toHaveBeenCalledWith(expect.objectContaining({ vaultPath: '/personal', excludeFrontmatter: true }))
+        expect(searchVault).toHaveBeenCalledWith(expect.objectContaining({ vaultPath: '/team', excludeFrontmatter: true }))
       })
+      expect(getNoteContent).not.toHaveBeenCalled()
       expect(screen.getByText('Team Body Hit')).toBeInTheDocument()
       expect(screen.queryByText('Personal Note')).not.toBeInTheDocument()
     } finally {
