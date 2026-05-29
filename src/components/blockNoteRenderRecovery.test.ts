@@ -18,6 +18,19 @@ describe('blockNoteRenderRecovery', () => {
     expect(isRecoveredBlockNoteRenderError(new Error('Other render failure'), '')).toBe(false)
   })
 
+  it('recognizes recovered BlockNote table row index render errors', () => {
+    const error = new RangeError(
+      'Index 1 out of range for <tableRow(tableCell(tableParagraph("A")))>',
+    )
+
+    expect(isRecoverableBlockNoteRenderError(error)).toBe(true)
+    expect(isRecoveredBlockNoteRenderError(error, '')).toBe(false)
+
+    markRecoveredBlockNoteRenderError(error)
+
+    expect(isRecoveredBlockNoteRenderError(error, '')).toBe(true)
+  })
+
   it('recognizes recovered BlockNote errors from the React component stack fallback', () => {
     expect(isRecoveredBlockNoteRenderError(
       new Error("Block doesn't have id"),
