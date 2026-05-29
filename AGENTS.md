@@ -1,14 +1,12 @@
 # AGENTS.md — Tolaria App
 
-> Quick links: [Architecture](docs/ARCHITECTURE.md) · [Abstractions](docs/ABSTRACTIONS.md) · [Wireframes](ui-design.pen)
+> Quick links: [Architecture](docs/ARCHITECTURE.md) · [Abstractions](docs/ABSTRACTIONS.md)
 
 ---
 
 ## 1. Task Workflow
 
-### 1a. Pick up a task
-
-Run `/laputa-next-task` — fetches next task (To Rework first, then Open), moves to In Progress, returns full description.
+### 1a. Start working on a task
 
 **Before writing a single line of code:** run `mcp__codescene__code_health_score` to check the current codebase health against `.codescene-thresholds`. If the score is already below the threshold, **stop and refactor first** — find the worst files with the MCP, improve them, commit, then start the task. Never start feature work on a codebase that is already below the gate.
 
@@ -22,7 +20,7 @@ Run `/laputa-next-task` — fetches next task (To Rework first, then Open), move
 - Work on `main` branch — **no branches, no PRs, ever**. Pre-commit and pre-push block work from any other branch.
 - Commit every 20–30 min: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`
 - **⛔ NEVER use --no-verify**
-- For UI tasks: open `ui-design.pen` first, study visual language, design in light mode. You don't need Pencil to use it – you can open it as a JSON file.
+- For UI tasks: study visual language of the app first.
 
 ### 1c. When done
 
