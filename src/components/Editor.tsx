@@ -36,6 +36,8 @@ import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardE
 import { createMathInputExtension } from './mathInputExtension'
 import { createRichEditorTransformErrorRecoveryExtension } from './richEditorTransformErrorRecoveryExtension'
 import { useFilenameAutolinkGuard } from './useFilenameAutolinkGuard'
+import { useEditorPdfExport } from './useEditorPdfExport'
+import type { NotePdfExportSource } from '../utils/notePdfExport'
 import './Editor.css'
 import './EditorTheme.css'
 
@@ -116,6 +118,10 @@ interface EditorProps {
   diffToggleRef?: React.MutableRefObject<() => void>
   /** Mutable ref that Editor registers its table-of-contents toggle into, for app shortcuts and menus. */
   tableOfContentsToggleRef?: React.MutableRefObject<() => void>
+  /** Mutable ref that Editor registers the PDF export command into, for command palette and native menu access. */
+  pdfExportRef?: React.MutableRefObject<((source?: NotePdfExportSource) => void) | null>
+  /** Emits short user-visible messages for editor actions. */
+  onToast?: (message: string | null) => void
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
   onVaultChanged?: () => void
@@ -359,6 +365,7 @@ function EditorLayout({
   onRevealFile,
   onCopyFilePath,
   onCopyDeepLink,
+  onExportPdf,
   onOpenExternalFile,
   onDeleteNote,
   onArchiveNote,
@@ -472,6 +479,7 @@ function EditorLayout({
   workspaces?: WorkspaceIdentity[]
   onUnsupportedAiPaste?: (message: string) => void
   locale?: AppLocale
+  onExportPdf?: (source?: NotePdfExportSource) => void
 }) {
   const activeBinaryTab = activeTab?.entry.fileKind === 'binary' ? activeTab : null
   const showEmptyState = tabs.length === 0 && activeTabPath === null && !isVaultLoading
@@ -523,6 +531,7 @@ function EditorLayout({
               onRevealFile={onRevealFile}
               onCopyFilePath={onCopyFilePath}
               onCopyDeepLink={onCopyDeepLink}
+              onExportPdf={() => onExportPdf?.('breadcrumb')}
               onDeleteNote={onDeleteNote}
               onArchiveNote={onArchiveNote}
               onUnarchiveNote={onUnarchiveNote}
@@ -624,6 +633,16 @@ export const Editor = memo(function Editor(props: EditorProps) {
     handleToggleRawExclusive: runtime.handleToggleRawExclusive,
     rawMode: runtime.rawMode,
   })
+  const handleExportPdf = useEditorPdfExport({
+    activeTab: runtime.activeTab,
+    diffMode: runtime.diffMode,
+    handleToggleDiffExclusive: runtime.handleToggleDiffExclusive,
+    handleToggleRawExclusive: runtime.handleToggleRawExclusive,
+    locale: props.locale,
+    onToast: props.onToast,
+    pdfExportRef: props.pdfExportRef,
+    rawMode: runtime.rawMode,
+  })
   useRegisterEditorContentFlushes({
     activeTab: runtime.activeTab,
     flushPendingEditorChange: runtime.flushPendingEditorChange,
@@ -649,6 +668,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
       onToggleAIChat={props.onToggleAIChat ? rightPanel.handleToggleAIChatPanel : undefined}
       showTableOfContents={rightPanel.showTableOfContents}
       onToggleTableOfContents={rightPanel.handleToggleTableOfContents}
+      onExportPdf={handleExportPdf}
     />
   )
 })

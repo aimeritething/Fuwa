@@ -12,6 +12,8 @@ type FilePreviewAction = 'copy_deep_link' | 'copy_path' | 'open_external' | 'rev
 type AgentBlockedReason = 'agent_unavailable' | 'missing_vault'
 type AiWorkspaceMode = 'docked' | 'side' | 'window'
 type AiWorkspaceTitleSource = 'generated' | 'manual'
+type NotePdfExportFailureReason = 'print_unavailable' | 'print_error'
+type NotePdfExportSource = 'breadcrumb' | 'app_command'
 
 const ALL_NOTES_VISIBILITY_CATEGORIES: ReadonlyArray<keyof AllNotesFileVisibility> = [
   'pdfs',
@@ -42,6 +44,17 @@ export function trackFilePreviewAction(action: FilePreviewAction, previewKind: F
 
 export function trackFilePreviewFailed(previewKind: FilePreviewKind): void {
   trackEvent('file_preview_failed', { preview_kind: previewKind })
+}
+
+export function trackNotePdfExportStarted(source: NotePdfExportSource): void {
+  trackEvent('note_pdf_export_started', { source })
+}
+
+export function trackNotePdfExportFailed(
+  source: NotePdfExportSource,
+  reason: NotePdfExportFailureReason,
+): void {
+  trackEvent('note_pdf_export_failed', { reason, source })
 }
 
 export function trackAllNotesVisibilityChanged(

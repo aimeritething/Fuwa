@@ -24,6 +24,7 @@ import {
   Archive,
   ArrowUUpLeft,
   ClipboardText,
+  FilePdf,
   FolderOpen,
   Link,
   MapTrifold,
@@ -59,6 +60,7 @@ interface BreadcrumbBarProps {
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
   onCopyDeepLink?: (entry: VaultEntry) => void
+  onExportPdf?: () => void
   onDelete?: () => void
   onArchive?: () => void
   onUnarchive?: () => void
@@ -817,6 +819,7 @@ function BreadcrumbActions({
   onRevealFile,
   onCopyFilePath,
   onCopyDeepLink,
+  onExportPdf,
   onDelete,
   onArchive,
   onUnarchive,
@@ -865,6 +868,7 @@ function BreadcrumbActions({
         onRevealFile={onRevealFile}
         onCopyFilePath={onCopyFilePath}
         onCopyDeepLink={onCopyDeepLink}
+        onExportPdf={onExportPdf}
         onArchive={onArchive}
         onUnarchive={onUnarchive}
         onDelete={onDelete}
@@ -888,6 +892,7 @@ function BreadcrumbOverflowMenu({
   onRevealFile,
   onCopyFilePath,
   onCopyDeepLink,
+  onExportPdf,
   onArchive,
   onUnarchive,
   onDelete,
@@ -906,6 +911,7 @@ function BreadcrumbOverflowMenu({
   | 'onRevealFile'
   | 'onCopyFilePath'
   | 'onCopyDeepLink'
+  | 'onExportPdf'
   | 'onArchive'
   | 'onUnarchive'
   | 'onDelete'
@@ -921,6 +927,7 @@ function BreadcrumbOverflowMenu({
   const runArchiveAction = archiveAction(entry.archived, onArchive, onUnarchive)
   const runNeighborhoodAction = neighborhoodAction(entry, onEnterNeighborhood)
   const diffLabel = translate(locale, 'editor.toolbar.gitDiff')
+  const exportPdfLabel = translate(locale, 'editor.toolbar.exportPdf')
   const noteWidthLabel = translate(locale, noteWidthLabelKey(noteWidth))
   const archiveLabel = translate(locale, archiveLabelKey(entry.archived))
   const tableOfContentsLabel = translate(locale, showTableOfContents ? 'editor.toolbar.closeTableOfContents' : 'editor.toolbar.openTableOfContents')
@@ -946,6 +953,10 @@ function BreadcrumbOverflowMenu({
         <DropdownMenuItem disabled={!runDiffAction} onSelect={runDiffAction}>
           <GitBranch size={16} />
           {diffLabel}
+        </DropdownMenuItem>
+        <DropdownMenuItem disabled={!onExportPdf} onSelect={onExportPdf}>
+          <FilePdf size={16} />
+          {exportPdfLabel}
         </DropdownMenuItem>
         {showResponsiveActions && (
           <>

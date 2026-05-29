@@ -93,6 +93,7 @@ import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { isWindows } from './utils/platform'
 import { getPulledVaultUpdateOptions, refreshPulledVaultState } from './utils/pulledVaultRefresh'
 import { isAiWorkspaceWindow, isNoteWindow, getNoteWindowParams, type NoteWindowParams } from './utils/windowMode'
+import type { NotePdfExportSource } from './utils/notePdfExport'
 import { GitSetupDialog } from './components/GitRequiredModal'
 import { RenameDetectedBanner } from './components/RenameDetectedBanner'
 import { openNoteListPropertiesPicker } from './components/note-list/noteListPropertiesEvents'
@@ -1411,6 +1412,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   // Diff-toggle ref: Editor registers its handleToggleDiff here so the command palette can call it
   const diffToggleRef = useRef<() => void>(() => {})
   const findInNoteRef = useRef<((options?: { replace?: boolean }) => void) | null>(null)
+  const pdfExportRef = useRef<((source?: NotePdfExportSource) => void) | null>(null)
 
   const { setViewMode, sidebarVisible, noteListVisible } = useViewMode(
     noteWindowParams || aiWorkspaceWindow ? 'editor-only' : undefined,
@@ -1588,6 +1590,9 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   const toggleTableOfContentsCommand = useCallback(() => {
     if (notes.activeTabPath) tableOfContentsToggleRef.current()
   }, [notes.activeTabPath])
+  const exportNotePdfCommand = useCallback(() => {
+    pdfExportRef.current?.('app_command')
+  }, [])
   const findInNoteCommand = useCallback(() => {
     findInNoteRef.current?.({ replace: false })
   }, [])
@@ -1740,6 +1745,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     onToggleDiff: toggleDiffCommand,
     onToggleRawEditor: toggleRawEditorCommand,
     onToggleTableOfContents: toggleTableOfContentsCommand,
+    onExportNoteAsPdf: activeDeletedFile ? undefined : exportNotePdfCommand,
     noteWidth: activeNoteWidth,
     defaultNoteWidth,
     onSetNoteWidth: handleSetActiveNoteWidth,
@@ -1992,6 +1998,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
               onToggleNoteWidth={handleToggleNoteWidth}
               rawToggleRef={rawToggleRef}
               tableOfContentsToggleRef={tableOfContentsToggleRef}
+              pdfExportRef={pdfExportRef}
               findInNoteRef={findInNoteRef}
               diffToggleRef={diffToggleRef}
               canGoBack={canGoBack}
@@ -2008,6 +2015,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
               onKeepTheirs={conflictFlow.handleKeepTheirs}
               flushPendingEditorContentRef={flushPendingEditorContentRef}
               flushPendingRawContentRef={flushPendingRawContentRef}
+              onToast={setToastMessage}
               locale={appLocale}
             />
           </div>

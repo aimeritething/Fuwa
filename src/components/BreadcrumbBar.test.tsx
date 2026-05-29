@@ -248,6 +248,16 @@ describe('BreadcrumbBar — file actions', () => {
 
     expect(onCopyDeepLink).toHaveBeenCalledWith(baseEntry)
   })
+
+  it('exports the current note as PDF from the overflow menu', async () => {
+    const onExportPdf = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onExportPdf={onExportPdf} />)
+
+    const menu = await openOverflowMenu()
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Export note as PDF' }))
+
+    expect(onExportPdf).toHaveBeenCalledOnce()
+  })
 })
 
 describe('BreadcrumbBar — organized shortcut hint', () => {
