@@ -528,9 +528,11 @@ describe('AiWorkspace', () => {
       vaultPath: '/tmp/vault',
     }))
     expect(screen.getAllByRole('button', { name: 'Archive chat' }).some((button) => !button.hasAttribute('disabled'))).toBe(true)
-    expect(onConversationSettingsChange).toHaveBeenLastCalledWith([
-      expect.objectContaining({ title: 'Quarterly sponsor outreach' }),
-    ])
+    await waitFor(() => {
+      expect(onConversationSettingsChange).toHaveBeenLastCalledWith([
+        expect.objectContaining({ title: 'Quarterly sponsor outreach' }),
+      ])
+    })
   })
 
   it('renames a persisted default chat title after the first assistant reply', async () => {
