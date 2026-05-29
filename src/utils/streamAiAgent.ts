@@ -5,6 +5,7 @@ import {
   type AiAgentPermissionMode,
 } from '../lib/aiAgentPermissionMode'
 import { createScopedStreamEventName } from './aiStreamEvents'
+import { cleanupTauriEventListener } from './tauriEventCleanup'
 
 type AiAgentStreamEvent =
   | { kind: 'Init'; session_id: string }
@@ -129,6 +130,6 @@ export async function streamAiAgent(
     callbacks.onError(err instanceof Error ? err.message : String(err))
     closeStream()
   } finally {
-    unlisten()
+    cleanupTauriEventListener(unlisten)
   }
 }

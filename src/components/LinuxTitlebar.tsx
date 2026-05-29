@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { getCurrentWindow } from '@tauri-apps/api/window'
 import { useDragRegion } from '../hooks/useDragRegion'
 import { shouldUseCustomWindowChrome } from '../utils/platform'
+import { cleanupTauriEventListener } from '../utils/tauriEventCleanup'
 import { LinuxMenuButton } from './LinuxMenuButton'
 import { Button } from './ui/button'
 
@@ -82,7 +83,7 @@ function useLinuxMaximizedState(enabled: boolean): boolean {
 
     return () => {
       active = false
-      void unlistenPromise.then((unlisten) => unlisten()).catch(() => {})
+      void unlistenPromise.then(cleanupTauriEventListener).catch(() => {})
     }
   }, [enabled])
 

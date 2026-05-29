@@ -152,6 +152,30 @@ describe('streamAiAgent', () => {
     expect(unlistenMock).toHaveBeenCalledTimes(1)
   })
 
+  it('swallows stale native listener cleanup failures after a stream finishes', async () => {
+    isTauriState.value = true
+    const unlistenMock = vi.fn(() => {
+      throw new TypeError("undefined is not an object (evaluating 'listeners[eventId].handlerId')")
+    })
+
+    listenMock.mockResolvedValue(unlistenMock)
+    invokeMock.mockResolvedValue('session')
+
+    const callbacks = createCallbacks()
+
+    await expect(streamAiAgent({
+      agent: 'codex',
+      message: 'Explain this',
+      vaultPath: '/vault',
+      callbacks,
+    })).resolves.toBeUndefined()
+
+    await vi.dynamicImportSettled()
+
+    expect(callbacks.onDone).toHaveBeenCalledTimes(1)
+    expect(unlistenMock).toHaveBeenCalledTimes(1)
+  })
+
   it('closes the stream when the backend returns before a done event is observed', async () => {
     isTauriState.value = true
     const unlistenMock = vi.fn()

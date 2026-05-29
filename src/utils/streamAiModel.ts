@@ -2,6 +2,7 @@ import { isTauri } from '../mock-tauri'
 import type { AiModelDefinition, AiModelProvider } from '../lib/aiTargets'
 import type { AgentStreamCallbacks } from './streamAiAgent'
 import { createScopedStreamEventName } from './aiStreamEvents'
+import { cleanupTauriEventListener } from './tauriEventCleanup'
 
 type AiModelStreamEvent =
   | { kind: 'Init'; session_id: string }
@@ -97,6 +98,6 @@ export async function streamAiModel({
     callbacks.onError(err instanceof Error ? err.message : String(err))
     closeStream()
   } finally {
-    unlisten()
+    cleanupTauriEventListener(unlisten)
   }
 }

@@ -138,6 +138,7 @@ import { useAutoGitWork } from './hooks/useAutoGitWork'
 import { useAppAiWorkspaceBridge } from './hooks/useAppAiWorkspaceBridge'
 import { publishAiWorkspaceWindowSharedContext } from './lib/aiWorkspaceWindowSharedContext'
 import type { AiWorkspaceWindowContext } from './utils/openAiWorkspaceWindow'
+import { cleanupTauriEventListeners, type TauriUnlisten } from './utils/tauriEventCleanup'
 import {
   AI_WORKSPACE_FILE_CREATED_EVENT,
   AI_WORKSPACE_FILE_MODIFIED_EVENT,
@@ -815,7 +816,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     if (!isTauri()) return
 
     let disposed = false
-    let unlisteners: Array<() => void> = []
+    let unlisteners: TauriUnlisten[] = []
 
     void import('@tauri-apps/api/event')
       .then(({ listen }) => Promise.all([
@@ -834,7 +835,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
       ]))
       .then((nextUnlisteners) => {
         if (disposed) {
-          nextUnlisteners.forEach((unlisten) => unlisten())
+          cleanupTauriEventListeners(nextUnlisteners)
           return
         }
         unlisteners = nextUnlisteners
@@ -843,7 +844,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
 
     return () => {
       disposed = true
-      unlisteners.forEach((unlisten) => unlisten())
+      cleanupTauriEventListeners(unlisteners)
     }
   }, [
     handleAiWorkspaceWindowFileCreated,

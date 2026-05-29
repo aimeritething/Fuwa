@@ -1,6 +1,7 @@
 import { isTauri } from '../mock-tauri'
 import { rememberAiWorkspaceWindow } from './windowMode'
 import { AI_WORKSPACE_DOCK_REQUESTED_EVENT, requestDockAiWorkspace } from './aiPromptBridge'
+import { cleanupTauriEventListeners, type TauriUnlisten } from './tauriEventCleanup'
 
 export const AI_WORKSPACE_WINDOW_LABEL = 'ai-workspace'
 export const AI_WORKSPACE_CONTEXT_UPDATED_EVENT = 'ai-workspace-context-updated'
@@ -20,7 +21,7 @@ export interface AiWorkspaceWindowContext {
 interface ExistingAiWorkspaceWindow {
   close?: () => Promise<void>
   isVisible?: () => Promise<boolean>
-  once?: (event: string, handler: (event?: unknown) => void) => Promise<() => void>
+  once?: (event: string, handler: (event?: unknown) => void) => Promise<TauriUnlisten>
   setAlwaysOnTop?: (alwaysOnTop: boolean) => Promise<void>
   setBackgroundColor?: (color: typeof TRANSPARENT_WINDOW_BACKGROUND) => Promise<void>
   setFocus: () => Promise<void>
@@ -126,11 +127,11 @@ function waitForCreated(existingWindow: ExistingAiWorkspaceWindow): Promise<void
 
   return new Promise((resolve, reject) => {
     let settled = false
-    let cleanup: Array<() => void> = []
+    let cleanup: TauriUnlisten[] = []
     const finish = (error?: unknown) => {
       if (settled) return
       settled = true
-      for (const unlisten of cleanup) unlisten()
+      cleanupTauriEventListeners(cleanup)
       if (error) {
         reject(error)
         return

@@ -18,6 +18,7 @@ import {
   readAiWorkspaceWindowContext,
   type AiWorkspaceWindowContext,
 } from '../utils/openAiWorkspaceWindow'
+import { cleanupTauriEventListener, type TauriUnlisten } from '../utils/tauriEventCleanup'
 import {
   AI_WORKSPACE_FILE_CREATED_EVENT,
   AI_WORKSPACE_FILE_MODIFIED_EVENT,
@@ -44,7 +45,7 @@ function useAiWorkspaceWindowContext() {
 
   useEffect(() => {
     let disposed = false
-    let unlisten: (() => void) | undefined
+    let unlisten: TauriUnlisten | undefined
 
     void import('@tauri-apps/api/event')
       .then(({ listen }) => listen<AiWorkspaceWindowContext>(AI_WORKSPACE_CONTEXT_UPDATED_EVENT, (event) => {
@@ -52,7 +53,7 @@ function useAiWorkspaceWindowContext() {
       }))
       .then((nextUnlisten) => {
         if (disposed) {
-          nextUnlisten()
+          cleanupTauriEventListener(nextUnlisten)
           return
         }
         unlisten = nextUnlisten
@@ -61,7 +62,7 @@ function useAiWorkspaceWindowContext() {
 
     return () => {
       disposed = true
-      unlisten?.()
+      cleanupTauriEventListener(unlisten)
     }
   }, [])
 
