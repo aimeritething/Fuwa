@@ -371,6 +371,8 @@ In a mounted-workspace graph, each loaded `ViewFile` carries optional renderer-o
 
 `useAppViewActions()` owns the renderer-side saved View lifecycle: choosing the target workspace, preserving mounted-view identity, saving/deleting YAML definitions, reloading affected vault state, and exposing the available note-list fields for the create/edit dialog. `App.tsx` wires those callbacks into `Sidebar`, `NoteList`, `CreateViewDialog`, and command surfaces without duplicating the persistence rules.
 
+`useMcpSetupDialogController()` owns MCP setup dialog state, busy actions, and manual config callbacks so `App.tsx` only passes the controller into settings/status surfaces. `useAiWorkspaceWindowBridgeEvents()` owns native AI-workspace event subscriptions and listener cleanup for popped-out workspace windows.
+
 The renderer uses `viewOrdering` helpers to convert drag or command-palette move intent into dense order updates before saving each affected view file through `save_view_cmd`. The sidebar treats saved View rows like Type rows for direct customization: double-click starts inline rename, right-click opens edit/rename/icon-color/delete actions, and keyboard users can open that same menu from the focused row while command-palette actions remain responsible for saved View ordering.
 
 ### Neighborhood Mode

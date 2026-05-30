@@ -21,7 +21,6 @@ import { FeedbackDialog } from './components/FeedbackDialog'
 import { McpSetupDialog } from './components/McpSetupDialog'
 import { NoteRetargetingDialogs } from './components/note-retargeting/NoteRetargetingDialogs'
 import { StartupScreen } from './components/StartupScreen'
-import { useMcpStatus } from './hooks/useMcpStatus'
 import { useAiAgentsOnboarding } from './hooks/useAiAgentsOnboarding'
 import { useAiAgentsStatus } from './hooks/useAiAgentsStatus'
 import { useVaultAiGuidanceStatus } from './hooks/useVaultAiGuidanceStatus'
@@ -123,6 +122,8 @@ import { useStartupScreenState } from './hooks/useStartupScreenState'
 import { useGitFileWorkflows } from './hooks/useGitFileWorkflows'
 import { useAutoGitWork } from './hooks/useAutoGitWork'
 import { useAppAiWorkspaceBridge } from './hooks/useAppAiWorkspaceBridge'
+import { useAiWorkspaceWindowBridgeEvents } from './hooks/useAiWorkspaceWindowBridgeEvents'
+import { useMcpSetupDialogController } from './hooks/useMcpSetupDialogController'
 import {
   activeVaultModifiedFiles,
   aiWorkspaceWindowContextForPath,
@@ -132,13 +133,6 @@ import {
   runNativeTextHistoryCommand,
   shouldPreferOnboardingVaultPath,
 } from './utils/appOrchestration'
-import { cleanupTauriEventListeners, type TauriUnlisten } from './utils/tauriEventCleanup'
-import {
-  AI_WORKSPACE_FILE_CREATED_EVENT,
-  AI_WORKSPACE_FILE_MODIFIED_EVENT,
-  AI_WORKSPACE_OPEN_NOTE_REQUESTED_EVENT,
-  AI_WORKSPACE_VAULT_CHANGED_EVENT,
-} from './utils/aiPromptBridge'
 import './App.css'
 
 // Type declarations for mock content storage and test overrides
@@ -190,8 +184,6 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   const dialogs = useDialogs()
   const { closeAIChat, openAIChat, showAIChat } = dialogs
   const [showFeedback, setShowFeedback] = useState(false)
-  const [showMcpSetupDialog, setShowMcpSetupDialog] = useState(false)
-  const [mcpDialogAction, setMcpDialogAction] = useState<'connect' | 'disconnect' | null>(null)
   const openFeedback = useCallback(() => setShowFeedback(true), [])
   const closeFeedback = useCallback(() => setShowFeedback(false), [])
   const openDocs = useCallback(() => {
@@ -419,16 +411,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     gitRepoState,
     resolvedPath,
   })
-  const {
-    mcpStatus,
-    connectMcp,
-    disconnectMcp,
-    mcpConfigSnippet,
-    mcpConfigLoading,
-    mcpConfigError,
-    loadMcpConfigSnippet,
-    copyMcpConfig,
-  } = useMcpStatus(resolvedPath, setToastMessage, appLocale)
+  const mcpSetupDialog = useMcpSetupDialogController(resolvedPath, setToastMessage, appLocale)
   const loadDefaultVaultModifiedFiles = vault.loadModifiedFiles
   const loadAllGitModifiedFiles = gitSurfaces.loadAllModifiedFiles
   const loadModifiedFilesForRepository = gitSurfaces.loadModifiedFilesForRepository
@@ -455,39 +438,6 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     void refreshAllGitRemoteStatuses()
   }, [gitFeaturesEnabled, gitRepoState, loadVaultModifiedFiles, refreshAllGitRemoteStatuses, refreshGitRemoteStatus])
 
-  const openMcpSetupDialog = useCallback(() => {
-    setShowMcpSetupDialog(true)
-  }, [])
-
-  const closeMcpSetupDialog = useCallback(() => {
-    if (mcpDialogAction !== null) return
-    setShowMcpSetupDialog(false)
-  }, [mcpDialogAction])
-
-  const handleConnectMcp = useCallback(async () => {
-    setMcpDialogAction('connect')
-    try {
-      const didConnect = await connectMcp()
-      if (didConnect) setShowMcpSetupDialog(false)
-    } finally {
-      setMcpDialogAction(null)
-    }
-  }, [connectMcp])
-
-  const handleDisconnectMcp = useCallback(async () => {
-    setMcpDialogAction('disconnect')
-    try {
-      const didDisconnect = await disconnectMcp()
-      if (didDisconnect) setShowMcpSetupDialog(false)
-    } finally {
-      setMcpDialogAction(null)
-    }
-  }, [disconnectMcp])
-
-  const handleCopyMcpConfig = useCallback(() => {
-    void copyMcpConfig()
-  }, [copyMcpConfig])
-
   const handleOpenSettings = useCallback(() => {
     setSettingsInitialSectionId(null)
     dialogs.openSettings()
@@ -497,10 +447,6 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     setSettingsInitialSectionId(SETTINGS_SECTION_IDS.workspaces)
     dialogs.openSettings()
   }, [dialogs])
-
-  const handleLoadMcpConfigSnippet = useCallback(() => {
-    void loadMcpConfigSnippet().catch(() => undefined)
-  }, [loadMcpConfigSnippet])
 
   const {
     detectedRenames,
@@ -575,6 +521,8 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     closeAllTabs,
     openTabWithContent,
   } = notes
+  const noteActiveTabPath = notes.activeTabPath
+  const noteActiveTabPathRef = notes.activeTabPathRef
   useNoteWindowLifecycle({
     activeTabPath: notes.activeTabPath,
     handleSelectNote,
@@ -589,9 +537,9 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   ) => {
     const updateVaultPath = options.vaultPath ?? resolvedPath
     await refreshPulledVaultState({
-      activeTabPath: notes.activeTabPath,
+      activeTabPath: noteActiveTabPath,
       closeAllTabs,
-      getActiveTabPath: () => notes.activeTabPathRef.current,
+      getActiveTabPath: () => noteActiveTabPathRef.current,
       hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
       shouldKeepActiveEditorMounted: options.preserveFocusedEditor
         ? isActiveElementInsideEditorSurface
@@ -607,8 +555,8 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   }, [
       closeAllTabs,
       handleReplaceActiveTab,
-      notes.activeTabPath,
-      notes.activeTabPathRef,
+      noteActiveTabPath,
+      noteActiveTabPathRef,
       refreshGitModifiedFiles,
       resolvedPath,
       vault.reloadFolders,
@@ -705,46 +653,12 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     handleAgentFileModified: handleAiWorkspaceWindowFileModified,
     handleAgentVaultChanged: handleAiWorkspaceWindowVaultChanged,
   } = vaultBridge
-  useEffect(() => {
-    if (!isTauri()) return
-
-    let disposed = false
-    let unlisteners: TauriUnlisten[] = []
-
-    void import('@tauri-apps/api/event')
-      .then(({ listen }) => Promise.all([
-        listen<string>(AI_WORKSPACE_OPEN_NOTE_REQUESTED_EVENT, (event) => {
-          if (typeof event.payload === 'string') handleAiWorkspaceWindowOpenNote(event.payload)
-        }),
-        listen<string>(AI_WORKSPACE_FILE_CREATED_EVENT, (event) => {
-          if (typeof event.payload === 'string') handleAiWorkspaceWindowFileCreated(event.payload)
-        }),
-        listen<string>(AI_WORKSPACE_FILE_MODIFIED_EVENT, (event) => {
-          if (typeof event.payload === 'string') handleAiWorkspaceWindowFileModified(event.payload)
-        }),
-        listen(AI_WORKSPACE_VAULT_CHANGED_EVENT, () => {
-          handleAiWorkspaceWindowVaultChanged()
-        }),
-      ]))
-      .then((nextUnlisteners) => {
-        if (disposed) {
-          cleanupTauriEventListeners(nextUnlisteners)
-          return
-        }
-        unlisteners = nextUnlisteners
-      })
-      .catch(() => undefined)
-
-    return () => {
-      disposed = true
-      cleanupTauriEventListeners(unlisteners)
-    }
-  }, [
-    handleAiWorkspaceWindowFileCreated,
-    handleAiWorkspaceWindowFileModified,
-    handleAiWorkspaceWindowOpenNote,
-    handleAiWorkspaceWindowVaultChanged,
-  ])
+  useAiWorkspaceWindowBridgeEvents({
+    onFileCreated: handleAiWorkspaceWindowFileCreated,
+    onFileModified: handleAiWorkspaceWindowFileModified,
+    onOpenNote: handleAiWorkspaceWindowOpenNote,
+    onVaultChanged: handleAiWorkspaceWindowVaultChanged,
+  })
 
   const conflictFlow = useConflictFlow({
     resolvedPath: autoSync.conflictVaultPath ?? graphDefaultWorkspacePath,
@@ -1412,7 +1326,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     runtimeMissingVaultPath,
     selectedVaultPath,
     settingsLoaded,
-    showMcpSetupDialog,
+    showMcpSetupDialog: mcpSetupDialog.open,
     telemetryConsent: settings.telemetry_consent,
     vaultIsLoading: vault.isLoading,
     vaultSwitcher,
@@ -1517,8 +1431,8 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     selectedUiLanguage,
     onSetUiLanguage: handleSetUiLanguage,
     onSetThemeMode: handleSetThemeMode,
-    mcpStatus,
-    onInstallMcp: openMcpSetupDialog,
+    mcpStatus: mcpSetupDialog.status,
+    onInstallMcp: mcpSetupDialog.openDialog,
     onReloadVault: handleManualVaultReload,
     onRepairVault: handleRepairVault,
     onSetNoteIcon: handleSetNoteIconCommand,
@@ -1610,7 +1524,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
         settings={settings}
         settingsLoaded={settingsLoaded}
         shouldResumeFreshStartOnboarding={shouldResumeFreshStartOnboarding}
-        showMcpSetupDialog={showMcpSetupDialog}
+        showMcpSetupDialog={mcpSetupDialog.open}
         setToastMessage={setToastMessage}
         toastMessage={toastMessage}
         vaultSwitcher={vaultSwitcher}
@@ -1733,7 +1647,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
         </div>
         <UpdateBanner status={updateStatus} actions={updateActions} locale={appLocale} />
         <RenameDetectedBanner renames={detectedRenames} onUpdate={handleUpdateWikilinks} onDismiss={handleDismissRenames} />
-        <StatusBar noteCount={visibleEntries.length} modifiedCount={gitModifiedCount} vaultPath={resolvedPath} defaultWorkspacePath={defaultWorkspacePath} vaults={vaultSwitcher.allVaults} multiWorkspaceEnabled={multiWorkspaceEnabled} onSwitchVault={vaultSwitcher.switchVault} onSetDefaultWorkspace={vaultSwitcher.setDefaultWorkspace} onOpenSettings={handleOpenSettings} onOpenVaultSettings={handleOpenVaultSettings} onOpenFeedback={openFeedback} onOpenDocs={openDocs} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCreateEmptyVault={vaultSwitcher.handleCreateEmptyVault} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={cloneGettingStartedVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={handleCommitPush} commitActionPending={commitFlow.isOpeningCommitDialog} gitFeaturesEnabled={gitFeaturesEnabled} onInitializeGit={openGitSetupDialog} isOffline={networkStatus.isOffline} isGitVault={isGitVault} isVaultReloading={vault.isReloading || isVaultContentLoading} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} remoteStatus={autoSync.remoteStatus} repositories={gitRepositories} selectedRepositoryPath={gitSurfaces.syncRepositoryPath} onRepositoryChange={gitSurfaces.setSyncRepositoryPath} onTriggerSync={handlePullSelectedRepository} onPullAndPush={handlePullAndPushSelectedRepository} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} themeMode={documentThemeMode} onZoomReset={zoom.zoomReset} onToggleThemeMode={settingsLoaded ? handleToggleThemeMode : undefined} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} onReorderVaults={vaultSwitcher.reorderVaults} onUpdateWorkspaceIdentity={vaultSwitcher.updateWorkspaceIdentity} aiFeaturesEnabled={aiFeaturesEnabled} mcpStatus={mcpStatus} onInstallMcp={openMcpSetupDialog} locale={appLocale} />
+        <StatusBar noteCount={visibleEntries.length} modifiedCount={gitModifiedCount} vaultPath={resolvedPath} defaultWorkspacePath={defaultWorkspacePath} vaults={vaultSwitcher.allVaults} multiWorkspaceEnabled={multiWorkspaceEnabled} onSwitchVault={vaultSwitcher.switchVault} onSetDefaultWorkspace={vaultSwitcher.setDefaultWorkspace} onOpenSettings={handleOpenSettings} onOpenVaultSettings={handleOpenVaultSettings} onOpenFeedback={openFeedback} onOpenDocs={openDocs} onOpenLocalFolder={vaultSwitcher.handleOpenLocalFolder} onCreateEmptyVault={vaultSwitcher.handleCreateEmptyVault} onCloneVault={dialogs.openCloneVault} onCloneGettingStarted={cloneGettingStartedVault} onClickPending={() => handleSetSelection({ kind: 'filter', filter: 'changes' })} onClickPulse={() => handleSetSelection({ kind: 'filter', filter: 'pulse' })} onCommitPush={handleCommitPush} commitActionPending={commitFlow.isOpeningCommitDialog} gitFeaturesEnabled={gitFeaturesEnabled} onInitializeGit={openGitSetupDialog} isOffline={networkStatus.isOffline} isGitVault={isGitVault} isVaultReloading={vault.isReloading || isVaultContentLoading} syncStatus={autoSync.syncStatus} lastSyncTime={autoSync.lastSyncTime} conflictCount={autoSync.conflictFiles.length} remoteStatus={autoSync.remoteStatus} repositories={gitRepositories} selectedRepositoryPath={gitSurfaces.syncRepositoryPath} onRepositoryChange={gitSurfaces.setSyncRepositoryPath} onTriggerSync={handlePullSelectedRepository} onPullAndPush={handlePullAndPushSelectedRepository} onOpenConflictResolver={conflictFlow.handleOpenConflictResolver} zoomLevel={zoom.zoomLevel} themeMode={documentThemeMode} onZoomReset={zoom.zoomReset} onToggleThemeMode={settingsLoaded ? handleToggleThemeMode : undefined} buildNumber={buildNumber} onCheckForUpdates={handleCheckForUpdates} onRemoveVault={vaultSwitcher.removeVault} onReorderVaults={vaultSwitcher.reorderVaults} onUpdateWorkspaceIdentity={vaultSwitcher.updateWorkspaceIdentity} aiFeaturesEnabled={aiFeaturesEnabled} mcpStatus={mcpSetupDialog.status} onInstallMcp={mcpSetupDialog.openDialog} locale={appLocale} />
         {aiFeaturesEnabled && !effectiveShowAIChat ? (
           <AiWorkspaceFloatingButton
             statuses={aiAgentsStatus}
@@ -1794,9 +1708,9 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
           onCommit={conflictResolver.commitResolution}
           onClose={conflictFlow.handleCloseConflictResolver}
         />
-        <SettingsPanel open={dialogs.showSettings} initialSectionId={settingsInitialSectionId} settings={settings} aiAgentsStatus={aiAgentsStatus} locale={appLocale} systemLocale={systemLocale} vaults={vaultSwitcher.allVaults} defaultWorkspacePath={vaultSwitcher.defaultWorkspacePath} onSetDefaultWorkspace={vaultSwitcher.setDefaultWorkspace} onRemoveVault={vaultSwitcher.removeVault} onReorderVaults={vaultSwitcher.reorderVaults} onUpdateWorkspaceIdentity={vaultSwitcher.updateWorkspaceIdentity} isGitVault={gitRepoState !== 'missing'} onSave={saveSettings} onCopyMcpConfig={handleCopyMcpConfig} explicitOrganizationEnabled={explicitOrganizationEnabled} onSaveExplicitOrganization={handleSaveExplicitOrganization} onClose={dialogs.closeSettings} />
+        <SettingsPanel open={dialogs.showSettings} initialSectionId={settingsInitialSectionId} settings={settings} aiAgentsStatus={aiAgentsStatus} locale={appLocale} systemLocale={systemLocale} vaults={vaultSwitcher.allVaults} defaultWorkspacePath={vaultSwitcher.defaultWorkspacePath} onSetDefaultWorkspace={vaultSwitcher.setDefaultWorkspace} onRemoveVault={vaultSwitcher.removeVault} onReorderVaults={vaultSwitcher.reorderVaults} onUpdateWorkspaceIdentity={vaultSwitcher.updateWorkspaceIdentity} isGitVault={gitRepoState !== 'missing'} onSave={saveSettings} onCopyMcpConfig={mcpSetupDialog.copyManualConfig} explicitOrganizationEnabled={explicitOrganizationEnabled} onSaveExplicitOrganization={handleSaveExplicitOrganization} onClose={dialogs.closeSettings} />
         <FeedbackDialog open={showFeedback} onClose={closeFeedback} />
-        <McpSetupDialog open={showMcpSetupDialog} status={mcpStatus} busyAction={mcpDialogAction} manualConfigSnippet={mcpConfigSnippet} manualConfigLoading={mcpConfigLoading} manualConfigError={mcpConfigError} locale={appLocale} onClose={closeMcpSetupDialog} onConnect={handleConnectMcp} onCopyManualConfig={handleCopyMcpConfig} onDisconnect={handleDisconnectMcp} onLoadManualConfig={handleLoadMcpConfigSnippet} />
+        <McpSetupDialog open={mcpSetupDialog.open} status={mcpSetupDialog.status} busyAction={mcpSetupDialog.busyAction} manualConfigSnippet={mcpSetupDialog.manualConfigSnippet} manualConfigLoading={mcpSetupDialog.manualConfigLoading} manualConfigError={mcpSetupDialog.manualConfigError} locale={appLocale} onClose={mcpSetupDialog.closeDialog} onConnect={mcpSetupDialog.connect} onCopyManualConfig={mcpSetupDialog.copyManualConfig} onDisconnect={mcpSetupDialog.disconnect} onLoadManualConfig={mcpSetupDialog.loadManualConfig} />
         <CloneVaultModal key={dialogs.showCloneVault ? 'clone-open' : 'clone-closed'} open={dialogs.showCloneVault} onClose={dialogs.closeCloneVault} onVaultCloned={vaultSwitcher.handleVaultCloned} />
         {deleteActions.confirmDelete && (
           <ConfirmDeleteDialog
