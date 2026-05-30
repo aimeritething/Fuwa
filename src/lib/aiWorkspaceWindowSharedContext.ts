@@ -1,11 +1,10 @@
 import type { AiWorkspaceWindowContext } from '../utils/openAiWorkspaceWindow'
 import type { NoteListItem } from '../utils/ai-context'
 import type { VaultEntry } from '../types'
+import { createCrossWindowPersistedStore } from './crossWindowPersistedStore'
 
 const STORAGE_KEY = 'tolaria:ai-workspace-window-context:v1'
 const BROADCAST_CHANNEL = 'tolaria-ai-workspace-window-context'
-
-type Listener = () => void
 
 export interface AiWorkspaceWindowSharedContext extends AiWorkspaceWindowContext {
   activeEntry?: VaultEntry | null
@@ -18,9 +17,13 @@ export interface AiWorkspaceWindowSharedContext extends AiWorkspaceWindowContext
 
 const EMPTY_CONTEXT: AiWorkspaceWindowSharedContext = {}
 
-let context = readStoredContext()
-let broadcastChannel: BroadcastChannel | null = null
-const listeners = new Set<Listener>()
+const contextStore = createCrossWindowPersistedStore<AiWorkspaceWindowSharedContext>({
+  broadcastChannelName: BROADCAST_CHANNEL,
+  broadcastMessage: { type: 'ai-workspace-window-context-updated' },
+  emptySnapshot: EMPTY_CONTEXT,
+  sanitizeStoredValue: (value) => sanitizeContext(value),
+  storageKey: STORAGE_KEY,
+})
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -80,54 +83,6 @@ function sanitizeContext(value: unknown): AiWorkspaceWindowSharedContext {
   }
 }
 
-function readStoredContext(): AiWorkspaceWindowSharedContext {
-  if (typeof localStorage === 'undefined') return EMPTY_CONTEXT
-
-  try {
-    return sanitizeContext(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'))
-  } catch {
-    return EMPTY_CONTEXT
-  }
-}
-
-function writeStoredContext(): void {
-  if (typeof localStorage === 'undefined') return
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(context))
-  } catch {
-    // The AI window can still open without shared editor context.
-  }
-}
-
-function notify(): void {
-  for (const listener of listeners) listener()
-}
-
-function broadcast(): void {
-  if (typeof BroadcastChannel === 'undefined') return
-
-  broadcastChannel ??= new BroadcastChannel(BROADCAST_CHANNEL)
-  broadcastChannel.postMessage({ type: 'ai-workspace-window-context-updated' })
-}
-
-function syncFromStorage(): void {
-  context = readStoredContext()
-  notify()
-}
-
-function ensureCrossWindowSync(): void {
-  if (typeof window === 'undefined') return
-
-  window.addEventListener('storage', (event) => {
-    if (event.key === STORAGE_KEY) syncFromStorage()
-  })
-
-  if (typeof BroadcastChannel === 'undefined') return
-  broadcastChannel ??= new BroadcastChannel(BROADCAST_CHANNEL)
-  broadcastChannel.onmessage = syncFromStorage
-}
-
 function cloneEntryForWindowContext(entry: VaultEntry): VaultEntry {
   return {
     ...entry,
@@ -158,19 +113,15 @@ function cloneContextForWindow(nextContext: AiWorkspaceWindowSharedContext): AiW
 }
 
 export function aiWorkspaceWindowSharedContextSnapshot(): AiWorkspaceWindowSharedContext {
-  return context
+  return contextStore.getSnapshot()
 }
 
-export function subscribeAiWorkspaceWindowSharedContext(listener: Listener): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
+export function subscribeAiWorkspaceWindowSharedContext(listener: () => void): () => void {
+  return contextStore.subscribe(listener)
 }
 
 export function publishAiWorkspaceWindowSharedContext(nextContext: AiWorkspaceWindowSharedContext): void {
-  context = cloneContextForWindow(nextContext)
-  writeStoredContext()
-  broadcast()
-  notify()
+  contextStore.publishSnapshot(cloneContextForWindow(nextContext))
 }
 
-ensureCrossWindowSync()
+contextStore.ensureCrossWindowSync()

@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react'
 import { invoke } from '@tauri-apps/api/core'
 import type { AgentStatus, AiAgentMessage } from './aiAgentConversation'
 import { isTauri } from '../mock-tauri'
+import { createCrossWindowPersistedStore, type CrossWindowStoreReadReason } from './crossWindowPersistedStore'
 
 const STORAGE_KEY = 'tolaria:ai-workspace-sessions:v1'
 const BROADCAST_CHANNEL = 'tolaria-ai-workspace-sessions'
@@ -13,16 +14,19 @@ export interface AiWorkspaceSessionSnapshot {
 }
 
 type SessionMap = Record<string, AiWorkspaceSessionSnapshot>
-type Listener = () => void
 
 const EMPTY_SESSION: AiWorkspaceSessionSnapshot = {
   messages: [],
   status: 'idle',
 }
 
-let sessions: SessionMap = readStoredSessions()
-let broadcastChannel: BroadcastChannel | null = null
-const listeners = new Set<Listener>()
+const sessionStore = createCrossWindowPersistedStore<SessionMap>({
+  broadcastChannelName: BROADCAST_CHANNEL,
+  broadcastMessage: { type: 'ai-workspace-sessions-updated' },
+  emptySnapshot: {},
+  sanitizeStoredValue: normalizeStoredSessionsForReason,
+  storageKey: STORAGE_KEY,
+})
 let storeVersion = 0
 let nativeWriteTimer: ReturnType<typeof setTimeout> | null = null
 let nativeWriteInFlight = false
@@ -71,24 +75,11 @@ function normalizeStoredSessions(value: unknown, resetRunningStatus: boolean): S
   )
 }
 
-function readStoredSessions(resetRunningStatus = true): SessionMap {
-  if (typeof localStorage === 'undefined') return {}
-
-  try {
-    return normalizeStoredSessions(JSON.parse(localStorage.getItem(STORAGE_KEY) ?? '{}'), resetRunningStatus)
-  } catch {
-    return {}
-  }
-}
-
-function writeStoredSessions(): void {
-  if (typeof localStorage === 'undefined') return
-
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions))
-  } catch {
-    // Native persistence is the durable backend; localStorage is only a fast browser cache.
-  }
+function normalizeStoredSessionsForReason(
+  value: unknown,
+  reason: CrossWindowStoreReadReason,
+): SessionMap {
+  return normalizeStoredSessions(value, reason !== 'storage')
 }
 
 async function readNativeSessions(): Promise<SessionMap> {
@@ -131,32 +122,10 @@ function scheduleNativeSessionsWrite(nextSessions: SessionMap): void {
   }, NATIVE_WRITE_DEBOUNCE_MS)
 }
 
-function notifyListeners(): void {
-  for (const listener of listeners) listener()
-}
-
-function broadcastSessions(): void {
-  if (typeof BroadcastChannel === 'undefined') return
-
-  broadcastChannel ??= new BroadcastChannel(BROADCAST_CHANNEL)
-  broadcastChannel.postMessage({ type: 'ai-workspace-sessions-updated' })
-}
-
-function publishSessions(): void {
+function publishSessions(nextSessions: SessionMap): void {
   storeVersion += 1
-  writeStoredSessions()
-  scheduleNativeSessionsWrite(sessions)
-  broadcastSessions()
-  notifyListeners()
-}
-
-function replaceSessions(nextSessions: SessionMap): void {
-  sessions = nextSessions
-  notifyListeners()
-}
-
-function syncFromStorage(): void {
-  replaceSessions(readStoredSessions(false))
+  sessionStore.publishSnapshot(nextSessions)
+  scheduleNativeSessionsWrite(nextSessions)
 }
 
 async function syncFromNativeStorage(): Promise<void> {
@@ -164,42 +133,35 @@ async function syncFromNativeStorage(): Promise<void> {
   const nativeSessions = await readNativeSessions()
   if (storeVersion !== loadVersion) return
   if (Object.keys(nativeSessions).length === 0) {
-    if (Object.keys(sessions).length > 0) scheduleNativeSessionsWrite(sessions)
+    const currentSessions = sessionStore.getSnapshot()
+    if (Object.keys(currentSessions).length > 0) scheduleNativeSessionsWrite(currentSessions)
     return
   }
 
-  replaceSessions(nativeSessions)
-  writeStoredSessions()
+  sessionStore.replaceSnapshot(nativeSessions)
+  sessionStore.writeStoredSnapshot(nativeSessions)
 }
 
-function ensureCrossWindowSync(): void {
+function ensureSessionStoreSync(): void {
   if (typeof window === 'undefined') return
 
-  window.addEventListener('storage', (event) => {
-    if (event.key === STORAGE_KEY) syncFromStorage()
-  })
-
+  sessionStore.ensureCrossWindowSync()
   window.addEventListener('pagehide', () => {
     if (nativeWriteTimer) clearTimeout(nativeWriteTimer)
     nativeWriteTimer = null
     void flushNativeSessionsWrite()
   })
-
-  if (typeof BroadcastChannel === 'undefined') return
-  broadcastChannel ??= new BroadcastChannel(BROADCAST_CHANNEL)
-  broadcastChannel.onmessage = syncFromStorage
 }
 
-ensureCrossWindowSync()
+ensureSessionStoreSync()
 void syncFromNativeStorage()
 
 export function aiWorkspaceSessionSnapshot(sessionId: string): AiWorkspaceSessionSnapshot {
-  return sessions[sessionId] ?? EMPTY_SESSION
+  return sessionStore.getSnapshot()[sessionId] ?? EMPTY_SESSION
 }
 
-export function subscribeAiWorkspaceSession(_sessionId: string, listener: Listener): () => void {
-  listeners.add(listener)
-  return () => listeners.delete(listener)
+export function subscribeAiWorkspaceSession(_sessionId: string, listener: () => void): () => void {
+  return sessionStore.subscribe(listener)
 }
 
 export function setAiWorkspaceSessionMessages(
@@ -208,14 +170,13 @@ export function setAiWorkspaceSessionMessages(
 ): void {
   const current = aiWorkspaceSessionSnapshot(sessionId)
   const messages = typeof next === 'function' ? next(current.messages) : next
-  sessions = {
-    ...sessions,
+  publishSessions({
+    ...sessionStore.getSnapshot(),
     [sessionId]: {
       ...current,
       messages,
     },
-  }
-  publishSessions()
+  })
 }
 
 export function setAiWorkspaceSessionStatus(
@@ -224,36 +185,33 @@ export function setAiWorkspaceSessionStatus(
 ): void {
   const current = aiWorkspaceSessionSnapshot(sessionId)
   const status = typeof next === 'function' ? next(current.status) : next
-  sessions = {
-    ...sessions,
+  publishSessions({
+    ...sessionStore.getSnapshot(),
     [sessionId]: {
       ...current,
       status,
     },
-  }
-  publishSessions()
+  })
 }
 
 export function resetAiWorkspaceSession(sessionId: string): void {
-  sessions = {
-    ...sessions,
+  publishSessions({
+    ...sessionStore.getSnapshot(),
     [sessionId]: EMPTY_SESSION,
-  }
-  publishSessions()
+  })
 }
 
 export function cloneAiWorkspaceSessionUntilMessage(sourceSessionId: string, targetSessionId: string, messageId: string): void {
   const source = aiWorkspaceSessionSnapshot(sourceSessionId)
   const messageIndex = source.messages.findIndex((message) => message.id === messageId)
   const messages = messageIndex >= 0 ? source.messages.slice(0, messageIndex + 1) : source.messages
-  sessions = {
-    ...sessions,
+  publishSessions({
+    ...sessionStore.getSnapshot(),
     [targetSessionId]: {
       messages: messages.map((message) => ({ ...message, isStreaming: false })),
       status: 'idle',
     },
-  }
-  publishSessions()
+  })
 }
 
 export function aiWorkspaceSessionDispatchers(sessionId: string): {
@@ -267,12 +225,10 @@ export function aiWorkspaceSessionDispatchers(sessionId: string): {
 }
 
 export function resetAiWorkspaceSessionStoreForTests(): void {
-  sessions = {}
   storeVersion = 0
   pendingNativeSessions = null
   if (nativeWriteTimer) clearTimeout(nativeWriteTimer)
   nativeWriteTimer = null
   nativeWriteInFlight = false
-  writeStoredSessions()
-  notifyListeners()
+  sessionStore.publishSnapshot({})
 }
