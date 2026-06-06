@@ -484,7 +484,7 @@ function CommandRow({ command, selected, onHover, onSelect }: CommandRowProps) {
         selected ? 'bg-accent' : 'hover:bg-secondary',
       )}
       onClick={onSelect}
-      onMouseEnter={onHover}
+      onMouseMove={onHover}
     >
       <span className="text-sm text-foreground">{command.label}</span>
       {command.shortcut && (

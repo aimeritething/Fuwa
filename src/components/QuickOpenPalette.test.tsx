@@ -161,6 +161,17 @@ describe('QuickOpenPalette', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('keeps keyboard selection stable when the mouse is already over a result', () => {
+    render(<QuickOpenPalette open={true} entries={entries} onSelect={onSelect} onClose={onClose} />)
+
+    fireEvent.mouseEnter(screen.getByText('Gamma Experiment'))
+    fireEvent.keyDown(window, { key: 'ArrowDown' })
+    fireEvent.keyDown(window, { key: 'Enter' })
+
+    expect(onSelect).toHaveBeenCalledWith(entries[1])
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it('does not go below the last item with ArrowDown', () => {
     render(<QuickOpenPalette open={true} entries={entries} onSelect={onSelect} onClose={onClose} />)
 

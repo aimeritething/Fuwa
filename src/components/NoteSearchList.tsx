@@ -36,6 +36,47 @@ interface NoteSearchListItemProps<T extends NoteSearchResultItem> {
   activateOnMouseDown?: boolean
 }
 
+type SearchItemPressEvent = MouseEvent<HTMLButtonElement> | PointerEvent<HTMLButtonElement>
+
+function useSearchItemActivation<T extends NoteSearchResultItem>({
+  item,
+  index,
+  onItemClick,
+  activateOnMouseDown,
+}: Pick<NoteSearchListItemProps<T>, 'item' | 'index' | 'onItemClick' | 'activateOnMouseDown'>) {
+  const pressActivatedRef = useRef(false)
+
+  const activateItem = () => onItemClick(item, index)
+
+  const clearPressActivation = () => {
+    pressActivatedRef.current = false
+  }
+
+  const activateFromPress = (event: SearchItemPressEvent) => {
+    event.preventDefault()
+    if (!activateOnMouseDown) return
+
+    event.stopPropagation()
+    if (pressActivatedRef.current) return
+
+    pressActivatedRef.current = true
+    window.setTimeout(clearPressActivation, 0)
+    activateItem()
+  }
+
+  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
+    if (!activateOnMouseDown) {
+      activateItem()
+      return
+    }
+
+    event.preventDefault()
+    event.stopPropagation()
+  }
+
+  return { activateFromPress, handleClick }
+}
+
 function NoteSearchListItem<T extends NoteSearchResultItem>({
   item,
   index,
@@ -44,31 +85,12 @@ function NoteSearchListItem<T extends NoteSearchResultItem>({
   onItemHover,
   activateOnMouseDown,
 }: NoteSearchListItemProps<T>) {
-  const pressActivatedRef = useRef(false)
-
-  const activateFromPress = (event: MouseEvent<HTMLButtonElement> | PointerEvent<HTMLButtonElement>) => {
-    event.preventDefault()
-    if (!activateOnMouseDown) return
-
-    event.stopPropagation()
-    if (pressActivatedRef.current) return
-
-    pressActivatedRef.current = true
-    window.setTimeout(() => {
-      pressActivatedRef.current = false
-    }, 0)
-    onItemClick(item, index)
-  }
-
-  const handleClick = (event: MouseEvent<HTMLButtonElement>) => {
-    if (activateOnMouseDown) {
-      event.preventDefault()
-      event.stopPropagation()
-      return
-    }
-
-    onItemClick(item, index)
-  }
+  const { activateFromPress, handleClick } = useSearchItemActivation({
+    item,
+    index,
+    onItemClick,
+    activateOnMouseDown,
+  })
 
   return (
     <div
@@ -83,7 +105,7 @@ function NoteSearchListItem<T extends NoteSearchResultItem>({
         onPointerDownCapture={activateFromPress}
         onMouseDownCapture={activateFromPress}
         onClick={handleClick}
-        onMouseEnter={() => onItemHover?.(index)}
+        onMouseMove={() => onItemHover?.(index)}
       >
         <span className="flex min-w-0 flex-1 items-center gap-1.5 truncate text-sm text-foreground">
           {item.TypeIcon && (

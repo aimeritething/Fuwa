@@ -75,6 +75,28 @@ async function dispatchAppCommand(page: Page, id: string): Promise<void> {
   }, id)
 }
 
+async function openQuickOpenFromKeyboard(page: Page): Promise<void> {
+  await dispatchShortcutEvent(page, {
+    key: 'p',
+    code: 'KeyP',
+    ctrlKey: false,
+    metaKey: true,
+    shiftKey: false,
+    altKey: false,
+    bubbles: true,
+    cancelable: true,
+  })
+  await expect(page.getByTestId('quick-open-palette')).toBeVisible({ timeout: 5_000 })
+}
+
+function selectedQuickOpenTitle(page: Page) {
+  return page.getByTestId('quick-open-palette').locator('div.bg-accent > button:has([data-testid="note-search-item-icon"])').first()
+}
+
+function quickOpenTitleAt(page: Page, index: number) {
+  return page.getByTestId('quick-open-palette').locator('button:has([data-testid="note-search-item-icon"])').nth(index)
+}
+
 async function installGlobalSearchResultsHarness(page: Page): Promise<void> {
   await page.waitForFunction(() => Boolean(window.__mockHandlers?.search_vault))
   await page.evaluate((results) => {
@@ -134,17 +156,7 @@ test.describe('keyboard command routing', () => {
   test('desktop shortcut bridge opens quick open through both Cmd+P and Cmd+O @smoke', async ({ page }) => {
     await openFixtureVaultDesktopHarness(page, tempVaultDir)
 
-    await dispatchShortcutEvent(page, {
-      key: 'p',
-      code: 'KeyP',
-      ctrlKey: false,
-      metaKey: true,
-      shiftKey: false,
-      altKey: false,
-      bubbles: true,
-      cancelable: true,
-    })
-    await expect(page.getByTestId('quick-open-palette')).toBeVisible({ timeout: 5_000 })
+    await openQuickOpenFromKeyboard(page)
     await expect(page.locator('input[placeholder="Search notes..."]')).toBeFocused()
 
     await page.keyboard.press('Escape')
@@ -162,6 +174,31 @@ test.describe('keyboard command routing', () => {
     })
     await expect(page.getByTestId('quick-open-palette')).toBeVisible({ timeout: 5_000 })
     await expect(page.locator('input[placeholder="Search notes..."]')).toBeFocused()
+  })
+
+  test('quick open ignores a stationary pointer until it moves @smoke', async ({ page }) => {
+    await openFixtureVaultDesktopHarness(page, tempVaultDir)
+    await openQuickOpenFromKeyboard(page)
+
+    const initialTitle = await selectedQuickOpenTitle(page).textContent()
+    const secondTitle = quickOpenTitleAt(page, 1)
+    const targetTitle = await secondTitle.textContent()
+    const secondTitleBox = await secondTitle.boundingBox()
+    if (!initialTitle) throw new Error('Quick open did not select an initial note')
+    if (!targetTitle) throw new Error('Quick open did not render a second note title')
+    if (!secondTitleBox) throw new Error('Quick open did not render a second note box')
+
+    await page.keyboard.press('Escape')
+    await expect(page.getByTestId('quick-open-palette')).not.toBeVisible({ timeout: 5_000 })
+    await page.mouse.move(
+      secondTitleBox.x + secondTitleBox.width / 2,
+      secondTitleBox.y + secondTitleBox.height / 2,
+    )
+
+    await openQuickOpenFromKeyboard(page)
+    await expect(selectedQuickOpenTitle(page)).toHaveText(initialTitle)
+    await page.keyboard.press('ArrowDown')
+    await expect(selectedQuickOpenTitle(page)).toHaveText(targetTitle)
   })
 
   test('global search arrow keys move one result at a time @smoke', async ({ page }) => {

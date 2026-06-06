@@ -278,6 +278,28 @@ describe('CommandPalette', () => {
     expect(onClose).toHaveBeenCalled()
   })
 
+  it('keeps keyboard selection stable when the mouse is already over a row', () => {
+    render(<CommandPalette open={true} commands={commands} onClose={onClose} />)
+
+    fireEvent.mouseEnter(screen.getByText('Commit & Push'))
+    fireEvent.keyDown(window, { key: 'ArrowDown' })
+    fireEvent.keyDown(window, { key: 'Enter' })
+
+    expect(commands[1].execute).toHaveBeenCalledOnce()
+    expect(commands[2].execute).not.toHaveBeenCalled()
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
+  it('lets real mouse movement take over command selection', () => {
+    render(<CommandPalette open={true} commands={commands} onClose={onClose} />)
+
+    fireEvent.mouseMove(screen.getByText('Commit & Push'))
+    fireEvent.keyDown(window, { key: 'Enter' })
+
+    expect(commands[2].execute).toHaveBeenCalledOnce()
+    expect(onClose).toHaveBeenCalledOnce()
+  })
+
   it('keeps a short query keyboard-selectable after ArrowDown and Enter', () => {
     const changeNoteType = makeCommand({
       id: 'change-note-type',

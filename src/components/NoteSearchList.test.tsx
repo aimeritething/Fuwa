@@ -33,6 +33,34 @@ describe('NoteSearchList', () => {
   const onItemClick = vi.fn()
   const onItemHover = vi.fn()
 
+  const renderList = ({
+    listItems = items,
+    selectedIndex = 0,
+    getItemKey = (item: TestItem) => item.id,
+    itemClick = onItemClick,
+    itemHover,
+    activateOnMouseDown,
+    emptyMessage,
+  }: {
+    listItems?: TestItem[]
+    selectedIndex?: number
+    getItemKey?: (item: TestItem, index: number) => string
+    itemClick?: (item: TestItem, index: number) => void
+    itemHover?: (index: number) => void
+    activateOnMouseDown?: boolean
+    emptyMessage?: string
+  } = {}) => render(
+    <NoteSearchList
+      items={listItems}
+      selectedIndex={selectedIndex}
+      getItemKey={getItemKey}
+      onItemClick={itemClick}
+      onItemHover={itemHover}
+      activateOnMouseDown={activateOnMouseDown}
+      emptyMessage={emptyMessage}
+    />,
+  )
+
   beforeEach(() => {
     vi.clearAllMocks()
   })
@@ -112,39 +140,17 @@ describe('NoteSearchList', () => {
   })
 
   it('shows empty message when no items', () => {
-    render(
-      <NoteSearchList
-        items={[]}
-        selectedIndex={0}
-        getItemKey={() => ''}
-        onItemClick={onItemClick}
-        emptyMessage="No matching notes"
-      />,
-    )
+    renderList({ listItems: [], getItemKey: () => '', emptyMessage: 'No matching notes' })
     expect(screen.getByText('No matching notes')).toBeInTheDocument()
   })
 
   it('shows default empty message', () => {
-    render(
-      <NoteSearchList
-        items={[]}
-        selectedIndex={0}
-        getItemKey={() => ''}
-        onItemClick={onItemClick}
-      />,
-    )
+    renderList({ listItems: [], getItemKey: () => '' })
     expect(screen.getByText('No results')).toBeInTheDocument()
   })
 
   it('calls onItemClick when an item is clicked', () => {
-    render(
-      <NoteSearchList
-        items={items}
-        selectedIndex={0}
-        getItemKey={(item) => item.id}
-        onItemClick={onItemClick}
-      />,
-    )
+    renderList()
     fireEvent.click(screen.getByText('Beta Notes'))
     expect(onItemClick).toHaveBeenCalledWith(items[1], 1)
   })
@@ -184,17 +190,15 @@ describe('NoteSearchList', () => {
     expect(preventDefault).toHaveBeenCalledOnce()
   })
 
-  it('calls onItemHover when mouse enters an item', () => {
-    render(
-      <NoteSearchList
-        items={items}
-        selectedIndex={0}
-        getItemKey={(item) => item.id}
-        onItemClick={onItemClick}
-        onItemHover={onItemHover}
-      />,
-    )
+  it('does not call onItemHover for mouse enter alone', () => {
+    renderList({ itemHover: onItemHover })
     fireEvent.mouseEnter(screen.getByText('Gamma Experiment'))
+    expect(onItemHover).not.toHaveBeenCalled()
+  })
+
+  it('calls onItemHover when the mouse actually moves over an item', () => {
+    renderList({ itemHover: onItemHover })
+    fireEvent.mouseMove(screen.getByText('Gamma Experiment'))
     expect(onItemHover).toHaveBeenCalledWith(2)
   })
 
