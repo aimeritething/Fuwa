@@ -64,7 +64,9 @@ describe('release workflow macOS artifact names', () => {
     )
 
     expect(alphaWorkflow).toContain('require_windows_authenticode: false')
-    expect(stableWorkflow).toContain("require_windows_authenticode: ${{ needs.version.outputs.tag != 'v2026-06-01' }}")
+    expect(stableWorkflow).toContain(
+      `require_windows_authenticode: \${{ !contains(fromJson('["v2026-06-01","v2026-06-06"]'), needs.version.outputs.tag) }}`,
+    )
     expect(artifactWorkflow).toContain('require_windows_authenticode:')
     expect(artifactWorkflow).toContain('WINDOWS_CODE_SIGNING_CERTIFICATE')
     expect(artifactWorkflow).toContain('WINDOWS_CERTIFICATE')
