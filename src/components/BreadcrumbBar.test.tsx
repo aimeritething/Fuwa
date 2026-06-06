@@ -249,6 +249,24 @@ describe('BreadcrumbBar — file actions', () => {
     expect(onCopyDeepLink).toHaveBeenCalledWith(baseEntry)
   })
 
+  it('copies the current note git URL from the overflow menu when available', async () => {
+    const onCopyGitUrl = vi.fn()
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onCopyGitUrl={onCopyGitUrl} />)
+
+    const menu = await openOverflowMenu()
+    fireEvent.click(within(menu).getByRole('menuitem', { name: 'Copy git URL' }))
+
+    expect(onCopyGitUrl).toHaveBeenCalledWith(baseEntry)
+  })
+
+  it('does not show the note git URL action without a remote-backed handler', async () => {
+    render(<BreadcrumbBar entry={baseEntry} {...defaultProps} />)
+
+    const menu = await openOverflowMenu()
+
+    expect(within(menu).queryByRole('menuitem', { name: 'Copy git URL' })).not.toBeInTheDocument()
+  })
+
   it('exports the current note as PDF from the overflow menu', async () => {
     const onExportPdf = vi.fn()
     render(<BreadcrumbBar entry={baseEntry} {...defaultProps} onExportPdf={onExportPdf} />)

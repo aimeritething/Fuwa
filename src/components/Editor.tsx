@@ -96,6 +96,7 @@ interface EditorProps {
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
   onCopyDeepLink?: (entry: VaultEntry) => void
+  onCopyGitUrl?: (entry: VaultEntry) => void
   onOpenExternalFile?: (path: string) => void
   onDeleteNote?: (path: string) => void
   onArchiveNote?: (path: string) => void
@@ -367,6 +368,7 @@ function EditorLayout({
   onRevealFile,
   onCopyFilePath,
   onCopyDeepLink,
+  onCopyGitUrl,
   onExportPdf,
   onOpenExternalFile,
   onDeleteNote,
@@ -441,6 +443,7 @@ function EditorLayout({
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
   onCopyDeepLink?: (entry: VaultEntry) => void
+  onCopyGitUrl?: (entry: VaultEntry) => void
   onOpenExternalFile?: (path: string) => void
   onDeleteNote?: (path: string) => void
   onArchiveNote?: (path: string) => void
@@ -533,6 +536,7 @@ function EditorLayout({
               onRevealFile={onRevealFile}
               onCopyFilePath={onCopyFilePath}
               onCopyDeepLink={onCopyDeepLink}
+              onCopyGitUrl={onCopyGitUrl}
               onExportPdf={() => onExportPdf?.('breadcrumb')}
               onDeleteNote={onDeleteNote}
               onArchiveNote={onArchiveNote}

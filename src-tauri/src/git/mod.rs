@@ -5,6 +5,7 @@ mod conflict;
 mod connect;
 mod credentials;
 mod dates;
+mod file_url;
 mod history;
 mod pulse;
 mod remote;
@@ -27,6 +28,7 @@ pub use conflict::{
 };
 pub use connect::{disconnect_all_remotes, git_add_remote, GitAddRemoteResult};
 pub use dates::{get_all_file_dates, GitDates};
+pub use file_url::git_file_url;
 pub use history::{get_file_diff, get_file_diff_at_commit, get_file_history};
 pub use pulse::{get_last_commit_info, get_vault_pulse, LastCommitInfo, PulseCommit, PulseFile};
 pub use remote::{

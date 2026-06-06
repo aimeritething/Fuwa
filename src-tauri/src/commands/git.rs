@@ -152,6 +152,19 @@ pub async fn git_remote_status(vault_path: VaultPathArg) -> Result<GitRemoteStat
 
 #[cfg(desktop)]
 #[tauri::command]
+pub async fn git_file_url(
+    vault_path: VaultPathArg,
+    path: NotePathArg,
+) -> Result<Option<String>, String> {
+    let vault_path = expand_tilde(&vault_path).into_owned();
+    let path = expand_tilde(&path).into_owned();
+    tokio::task::spawn_blocking(move || crate::git::git_file_url(&vault_path, &path))
+        .await
+        .map_err(|e| format!("Task panicked: {e}"))?
+}
+
+#[cfg(desktop)]
+#[tauri::command]
 pub fn git_discard_file(
     vault_path: VaultPathArg,
     relative_path: NotePathArg,
@@ -342,6 +355,15 @@ pub async fn git_remote_status(_vault_path: VaultPathArg) -> Result<GitRemoteSta
         ahead: 0,
         behind: 0,
     })
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn git_file_url(
+    _vault_path: VaultPathArg,
+    _path: NotePathArg,
+) -> Result<Option<String>, String> {
+    Ok(None)
 }
 
 #[cfg(mobile)]

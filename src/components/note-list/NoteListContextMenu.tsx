@@ -28,6 +28,8 @@ interface NoteListContextMenuParams {
   onToggleOrganized?: (path: string) => void
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
+  canCopyGitUrl?: (entry: VaultEntry) => boolean
+  onCopyGitUrl?: (entry: VaultEntry) => void
 }
 
 function hasNoteListContextActions({
@@ -41,6 +43,8 @@ function hasNoteListContextActions({
   onToggleOrganized,
   onRevealFile,
   onCopyFilePath,
+  canCopyGitUrl,
+  onCopyGitUrl,
 }: NoteListContextMenuParams & { entry: VaultEntry }) {
   return [
     onOpenInNewWindow,
@@ -52,6 +56,7 @@ function hasNoteListContextActions({
     onToggleOrganized,
     onRevealFile,
     onCopyFilePath,
+    onCopyGitUrl && canCopyGitUrl?.(entry),
   ].some(Boolean)
 }
 
@@ -66,6 +71,8 @@ export function useNoteListContextMenu({
   onToggleOrganized,
   onRevealFile,
   onCopyFilePath,
+  canCopyGitUrl,
+  onCopyGitUrl,
 }: NoteListContextMenuParams) {
   const [ctxMenu, setCtxMenu] = useState<NoteListContextMenuState | null>(null)
   const ctxMenuRef = useRef<HTMLDivElement>(null)
@@ -101,6 +108,8 @@ export function useNoteListContextMenu({
       onToggleOrganized,
       onRevealFile,
       onCopyFilePath,
+      canCopyGitUrl,
+      onCopyGitUrl,
     })) return
     event.preventDefault()
     event.stopPropagation()
@@ -109,10 +118,12 @@ export function useNoteListContextMenu({
   }, [
     onArchivePaths,
     onCopyFilePath,
+    canCopyGitUrl,
     onDeletePaths,
     onEnterNeighborhood,
     onExportPdf,
     onOpenInNewWindow,
+    onCopyGitUrl,
     onRevealFile,
     onToggleFavorite,
     onToggleOrganized,
@@ -132,6 +143,8 @@ export function useNoteListContextMenu({
       onToggleOrganized={onToggleOrganized}
       onRevealFile={onRevealFile}
       onCopyFilePath={onCopyFilePath}
+      canCopyGitUrl={canCopyGitUrl}
+      onCopyGitUrl={onCopyGitUrl}
       onClose={closeContextMenu}
     />
   )

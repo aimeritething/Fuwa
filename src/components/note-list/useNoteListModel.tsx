@@ -345,6 +345,8 @@ interface UseNoteListInteractionStateParams {
   onToggleOrganized?: (path: string) => void
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
+  canCopyGitUrl?: (entry: VaultEntry) => boolean
+  onCopyGitUrl?: (entry: VaultEntry) => void
   onAutoTriggerDiff?: () => void
   onDiscardFile?: (relativePath: string) => Promise<void>
   onCreateNote: (type?: string, options?: ImmediateCreateOptions) => void
@@ -374,6 +376,8 @@ function useNoteListInteractionState({
   onToggleOrganized,
   onRevealFile,
   onCopyFilePath,
+  canCopyGitUrl,
+  onCopyGitUrl,
   onAutoTriggerDiff,
   onDiscardFile,
   onCreateNote,
@@ -393,6 +397,8 @@ function useNoteListInteractionState({
     onToggleOrganized,
     onRevealFile,
     onCopyFilePath,
+    canCopyGitUrl,
+    onCopyGitUrl,
   })
   const {
     collapsedGroups,
@@ -555,6 +561,8 @@ export interface NoteListProps {
   onToggleOrganized?: (path: string) => void
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
+  canCopyGitUrl?: (entry: VaultEntry) => boolean
+  onCopyGitUrl?: (entry: VaultEntry) => void
   onDiscardFile?: (relativePath: string) => Promise<void>
   onAutoTriggerDiff?: () => void
   onOpenDeletedNote?: (entry: DeletedNoteEntry) => void
@@ -684,6 +692,8 @@ export function useNoteListModel({
   onToggleOrganized,
   onRevealFile,
   onCopyFilePath,
+  canCopyGitUrl,
+  onCopyGitUrl,
   onDiscardFile,
   onAutoTriggerDiff,
   onOpenDeletedNote,
@@ -743,6 +753,8 @@ export function useNoteListModel({
     onToggleOrganized,
     onRevealFile,
     onCopyFilePath,
+    canCopyGitUrl,
+    onCopyGitUrl,
     onAutoTriggerDiff,
     onDiscardFile,
     onCreateNote,

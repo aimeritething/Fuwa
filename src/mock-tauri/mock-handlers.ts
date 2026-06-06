@@ -460,6 +460,12 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     const vaultPath = args?.vaultPath ?? args?.vault_path ?? mockLastVaultPath ?? DEFAULT_MOCK_VAULT_PATH
     return { branch: 'main', ahead: 0, behind: 0, hasRemote: getMockRemoteState(vaultPath) }
   },
+  git_file_url: (args?: { vaultPath?: string; vault_path?: string; path?: string }): string | null => {
+    const vaultPath = args?.vaultPath ?? args?.vault_path ?? mockLastVaultPath ?? DEFAULT_MOCK_VAULT_PATH
+    if (!getMockRemoteState(vaultPath)) return null
+    const path = args?.path?.replace(/^.*?\/Laputa\//, '') ?? 'note.md'
+    return `https://github.com/lucaong/laputa-vault/blob/main/${encodeURI(path)}`
+  },
   git_add_remote: (args?: {
     request?: { vaultPath?: string; vault_path?: string; remoteUrl?: string }
     vaultPath?: string

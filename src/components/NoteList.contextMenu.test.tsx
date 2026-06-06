@@ -14,6 +14,8 @@ describe('NoteList context menu', () => {
     const onToggleOrganized = vi.fn()
     const onRevealFile = vi.fn()
     const onCopyFilePath = vi.fn()
+    const canCopyGitUrl = vi.fn(() => true)
+    const onCopyGitUrl = vi.fn()
 
     renderNoteList({
       onOpenInNewWindow,
@@ -25,6 +27,8 @@ describe('NoteList context menu', () => {
       onToggleOrganized,
       onRevealFile,
       onCopyFilePath,
+      canCopyGitUrl,
+      onCopyGitUrl,
     })
 
     fireEvent.contextMenu(screen.getByText('Build Laputa App'))
@@ -59,6 +63,11 @@ describe('NoteList context menu', () => {
     expect(onCopyFilePath).toHaveBeenCalledWith(mockEntries[0].path)
 
     fireEvent.contextMenu(screen.getByText('Build Laputa App'))
+    fireEvent.click(screen.getByText('Copy git URL'))
+    expect(canCopyGitUrl).toHaveBeenCalledWith(mockEntries[0])
+    expect(onCopyGitUrl).toHaveBeenCalledWith(mockEntries[0])
+
+    fireEvent.contextMenu(screen.getByText('Build Laputa App'))
     fireEvent.click(screen.getByText('Export note as PDF'))
     expect(onExportPdf).toHaveBeenCalledWith(mockEntries[0])
 
@@ -89,5 +98,17 @@ describe('NoteList context menu', () => {
 
     expect(screen.getByText('Remove from Favorites')).toBeInTheDocument()
     expect(screen.getByText('Mark as Unorganized')).toBeInTheDocument()
+  })
+
+  it('hides the git URL action for notes without a remote', () => {
+    renderNoteList({
+      canCopyGitUrl: () => false,
+      onCopyGitUrl: vi.fn(),
+      onCopyFilePath: vi.fn(),
+    })
+
+    fireEvent.contextMenu(screen.getByText('Build Laputa App'))
+
+    expect(screen.queryByText('Copy git URL')).not.toBeInTheDocument()
   })
 })

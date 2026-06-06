@@ -60,6 +60,7 @@ interface BreadcrumbBarProps {
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
   onCopyDeepLink?: (entry: VaultEntry) => void
+  onCopyGitUrl?: (entry: VaultEntry) => void
   onExportPdf?: () => void
   onDelete?: () => void
   onArchive?: () => void
@@ -819,6 +820,7 @@ function BreadcrumbActions({
   onRevealFile,
   onCopyFilePath,
   onCopyDeepLink,
+  onCopyGitUrl,
   onExportPdf,
   onDelete,
   onArchive,
@@ -868,6 +870,7 @@ function BreadcrumbActions({
         onRevealFile={onRevealFile}
         onCopyFilePath={onCopyFilePath}
         onCopyDeepLink={onCopyDeepLink}
+        onCopyGitUrl={onCopyGitUrl}
         onExportPdf={onExportPdf}
         onArchive={onArchive}
         onUnarchive={onUnarchive}
@@ -892,6 +895,7 @@ function BreadcrumbOverflowMenu({
   onRevealFile,
   onCopyFilePath,
   onCopyDeepLink,
+  onCopyGitUrl,
   onExportPdf,
   onArchive,
   onUnarchive,
@@ -911,6 +915,7 @@ function BreadcrumbOverflowMenu({
   | 'onRevealFile'
   | 'onCopyFilePath'
   | 'onCopyDeepLink'
+  | 'onCopyGitUrl'
   | 'onExportPdf'
   | 'onArchive'
   | 'onUnarchive'
@@ -986,6 +991,7 @@ function BreadcrumbOverflowMenu({
           <Link size={16} />
           {translate(locale, 'editor.toolbar.copyNoteDeepLink')}
         </DropdownMenuItem>
+        <CopyGitUrlMenuItem action={entryAction(onCopyGitUrl, entry)} locale={locale} />
         <DropdownMenuItem disabled={!runArchiveAction} onSelect={runArchiveAction}>
           <ArchiveMenuIcon archived={entry.archived} />
           {archiveLabel}
@@ -996,6 +1002,22 @@ function BreadcrumbOverflowMenu({
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  )
+}
+
+function CopyGitUrlMenuItem({
+  action,
+  locale,
+}: {
+  action: (() => void) | undefined
+  locale: AppLocale
+}) {
+  if (!action) return null
+  return (
+    <DropdownMenuItem onSelect={action}>
+      <GitBranch size={16} />
+      {translate(locale, 'editor.toolbar.copyNoteGitUrl')}
+    </DropdownMenuItem>
   )
 }
 

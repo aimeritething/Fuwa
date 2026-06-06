@@ -588,6 +588,7 @@ files:
     editor.toolbar.revealFile: 76f4ed52da9937ae432dcf5a108fabb4
     editor.toolbar.copyFilePath: 64c6cec5ca57efbb8c9c93ae5fbccd27
     editor.toolbar.copyNoteDeepLink: 0fff274a7c47e7c12457c0b7412e86ce
+    editor.toolbar.copyNoteGitUrl: 04a732b98f7585e3c3b5474688e0baac
     editor.toolbar.exportPdf: 7a39acf8742a59d1a4f7ae064b6219a0
     editor.toolbar.moreActions: 89e19353176b94068dec4c768c25e70b
     editor.toolbar.openProperties: 948b90b60b8ce827f179e8c5b85b112e
@@ -611,6 +612,9 @@ files:
     deepLinks.error.unavailableVault: 911dfaf8e855bd8cadefe7df9a98a7e8
     deepLinks.error.unknownVault: b4940569e884833f50466177dab1f62f
     deepLinks.error.unsafePath: e09caab43be8c2372bfc94e947ea34e6
+    noteGitUrls.copied: 6832bf85abaa03a6304cd1cce073d747
+    noteGitUrls.error.copyFailed: 1952ee267f473efe8e28ca90659f75f6
+    noteGitUrls.error.unavailable: ed08c134bba26350fd28f780c6f1b55b
     editor.slash.math: a49950aa047c2292e989e368a97a3aae
     tableOfContents.title: f61d6c3e3733db355168b7e1aee6780b
     tableOfContents.close: d3292972a10edd1a06a627f3552f760a

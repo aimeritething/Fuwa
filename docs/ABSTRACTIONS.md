@@ -516,6 +516,7 @@ interface PulseCommit {
 | `history.rs` | File history | `git log` — last 20 commits per file |
 | `status.rs` | Modified files | `git status --porcelain` — filtered to `.md` |
 | `status.rs` | File diff | `git diff`, fallback to `--cached`, then synthetic for untracked |
+| `file_url.rs` | File URL | Builds a copyable remote URL from the primary remote, current branch, and vault-relative path without exposing remote credentials |
 | `commit.rs` | Commit | Ensures a local author fallback when needed, then runs `git add -A && git commit -m "..."`; broken signing helpers trigger one unsigned retry for the same app-managed commit |
 | `remote.rs` | Pull / Push | `git pull --rebase` / `git push` |
 | `connect.rs` | Add remote | Adds `origin`, fetches it, validates history compatibility, and only starts tracking when the remote is safe |

@@ -35,6 +35,7 @@ type BreadcrumbActions = Pick<
   | 'onRevealFile'
   | 'onCopyFilePath'
   | 'onCopyDeepLink'
+  | 'onCopyGitUrl'
   | 'onExportPdf'
   | 'onDeleteNote'
   | 'onArchiveNote'
@@ -204,6 +205,7 @@ function ActiveTabBreadcrumb({
       onRevealFile={actions.onRevealFile}
       onCopyFilePath={actions.onCopyFilePath}
       onCopyDeepLink={actions.onCopyDeepLink}
+      onCopyGitUrl={actions.onCopyGitUrl}
       onExportPdf={actions.onExportPdf}
       onDelete={bindPath(actions.onDeleteNote, path)}
       onArchive={bindPath(actions.onArchiveNote, path)}
@@ -271,6 +273,7 @@ function buildBreadcrumbActions(model: EditorContentModel): BreadcrumbActions {
     onRevealFile: model.onRevealFile,
     onCopyFilePath: model.onCopyFilePath,
     onCopyDeepLink: model.onCopyDeepLink,
+    onCopyGitUrl: model.onCopyGitUrl,
     onExportPdf: model.onExportPdf,
     onDeleteNote: model.onDeleteNote,
     onArchiveNote: model.onArchiveNote,

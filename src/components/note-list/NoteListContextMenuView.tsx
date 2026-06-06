@@ -6,6 +6,7 @@ import {
   ClipboardText,
   FilePdf,
   FolderOpen,
+  GitBranch,
   MapTrifold,
   Star,
   Trash,
@@ -43,6 +44,8 @@ interface NoteListContextMenuNodeProps {
   onToggleOrganized?: (path: string) => void
   onRevealFile?: (path: string) => void
   onCopyFilePath?: (path: string) => void
+  canCopyGitUrl?: (entry: VaultEntry) => boolean
+  onCopyGitUrl?: (entry: VaultEntry) => void
   onClose: () => void
 }
 
@@ -58,6 +61,8 @@ type BuildContextMenuItemsParams = Pick<
   | 'onToggleOrganized'
   | 'onRevealFile'
   | 'onCopyFilePath'
+  | 'canCopyGitUrl'
+  | 'onCopyGitUrl'
 >
 
 function openWindowItem(
@@ -149,6 +154,21 @@ function copyFilePathItem(
   }]
 }
 
+function copyGitUrlItem(
+  entry: VaultEntry,
+  locale: AppLocale,
+  canCopyGitUrl: ((entry: VaultEntry) => boolean) | undefined,
+  onCopyGitUrl: ((entry: VaultEntry) => void) | undefined,
+  selectAction: SelectContextAction,
+) {
+  if (!onCopyGitUrl || !canCopyGitUrl?.(entry)) return []
+  return [{
+    icon: GitBranch,
+    label: translate(locale, 'editor.toolbar.copyNoteGitUrl'),
+    onSelect: () => selectAction('copy_git_url', () => onCopyGitUrl(entry)),
+  }]
+}
+
 function exportPdfItem(
   entry: VaultEntry,
   locale: AppLocale,
@@ -206,6 +226,7 @@ function buildContextMenuItems(
     ...neighborhoodItem(entry, props.locale, props.onEnterNeighborhood, selectAction),
     ...revealFileItem(entry, props.locale, props.onRevealFile, selectAction),
     ...copyFilePathItem(entry, props.locale, props.onCopyFilePath, selectAction),
+    ...copyGitUrlItem(entry, props.locale, props.canCopyGitUrl, props.onCopyGitUrl, selectAction),
     ...exportPdfItem(entry, props.locale, props.onExportPdf, selectAction),
     ...archiveItem(entry, props.locale, props.onArchivePaths, selectAction),
     ...deleteItem(entry, props.locale, props.onDeletePaths, selectAction),
@@ -241,6 +262,8 @@ export function NoteListContextMenuNode({
   onToggleOrganized,
   onRevealFile,
   onCopyFilePath,
+  canCopyGitUrl,
+  onCopyGitUrl,
   onClose,
 }: NoteListContextMenuNodeProps) {
   if (!ctxMenu) return null
@@ -262,6 +285,8 @@ export function NoteListContextMenuNode({
     onToggleOrganized,
     onRevealFile,
     onCopyFilePath,
+    canCopyGitUrl,
+    onCopyGitUrl,
   }, entry, selectAction)
 
   return (
