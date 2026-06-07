@@ -1,4 +1,8 @@
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
+use tokio::task::JoinHandle;
+
+const AI_AGENT_STATUS_PROBE_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
@@ -104,16 +108,32 @@ pub async fn get_ai_agents_status() -> AiAgentsStatus {
     let gemini = tokio::task::spawn_blocking(crate::gemini_cli::check_cli);
     let kiro = tokio::task::spawn_blocking(crate::kiro_cli::check_cli);
 
-    let (claude, codex, opencode, pi, gemini, kiro) =
-        tokio::join!(claude, codex, opencode, pi, gemini, kiro);
+    let (claude, codex, opencode, pi, gemini, kiro) = tokio::join!(
+        availability_or_missing(claude, AI_AGENT_STATUS_PROBE_TIMEOUT),
+        availability_or_missing(codex, AI_AGENT_STATUS_PROBE_TIMEOUT),
+        availability_or_missing(opencode, AI_AGENT_STATUS_PROBE_TIMEOUT),
+        availability_or_missing(pi, AI_AGENT_STATUS_PROBE_TIMEOUT),
+        availability_or_missing(gemini, AI_AGENT_STATUS_PROBE_TIMEOUT),
+        availability_or_missing(kiro, AI_AGENT_STATUS_PROBE_TIMEOUT)
+    );
 
     AiAgentsStatus {
-        claude_code: claude.unwrap_or_else(|_| missing_availability()),
-        codex: codex.unwrap_or_else(|_| missing_availability()),
-        opencode: opencode.unwrap_or_else(|_| missing_availability()),
-        pi: pi.unwrap_or_else(|_| missing_availability()),
-        gemini: gemini.unwrap_or_else(|_| missing_availability()),
-        kiro: kiro.unwrap_or_else(|_| missing_availability()),
+        claude_code: claude,
+        codex,
+        opencode,
+        pi,
+        gemini,
+        kiro,
+    }
+}
+
+async fn availability_or_missing(
+    probe: JoinHandle<AiAgentAvailability>,
+    timeout: Duration,
+) -> AiAgentAvailability {
+    match tokio::time::timeout(timeout, probe).await {
+        Ok(Ok(availability)) => availability,
+        Ok(Err(_)) | Err(_) => missing_availability(),
     }
 }
 
@@ -293,6 +313,22 @@ mod tests {
         assert!(install_flags
             .iter()
             .all(|installed| matches!(installed, true | false)));
+    }
+
+    #[tokio::test]
+    async fn availability_probe_timeout_returns_missing_status() {
+        let handle = tokio::task::spawn_blocking(|| {
+            std::thread::sleep(std::time::Duration::from_millis(50));
+            AiAgentAvailability {
+                installed: true,
+                version: Some("late".into()),
+            }
+        });
+
+        let status = availability_or_missing(handle, std::time::Duration::from_millis(1)).await;
+
+        assert!(!status.installed);
+        assert_eq!(status.version, None);
     }
 
     #[test]

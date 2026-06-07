@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { act, renderHook, waitFor } from '@testing-library/react'
-import { useAiAgentsStatus } from './useAiAgentsStatus'
+import { AI_AGENTS_STATUS_PROBE_TIMEOUT_MS, useAiAgentsStatus } from './useAiAgentsStatus'
 import { AI_AGENT_DEFINITIONS, type AiAgentsStatus } from '../lib/aiAgents'
 
 vi.mock('@tauri-apps/api/core', () => ({
@@ -140,6 +140,24 @@ describe('useAiAgentsStatus', () => {
       await vi.runAllTimersAsync()
 
       expect(mockInvoke).not.toHaveBeenCalled()
+    })
+
+    it('falls back to missing when the status probe never resolves', async () => {
+      mockInvoke.mockReturnValue(new Promise(() => {}))
+
+      const { result } = renderHook(() => useAiAgentsStatus({ enabled: true }))
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(0)
+      })
+      expect(mockInvoke).toHaveBeenCalledWith('get_ai_agents_status')
+      expectStatuses(result.current, 'checking')
+
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(AI_AGENTS_STATUS_PROBE_TIMEOUT_MS + 1)
+      })
+
+      expectStatuses(result.current, 'missing')
     })
   })
 })

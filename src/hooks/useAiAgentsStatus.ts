@@ -11,6 +11,8 @@ import {
 
 type RawAiAgentsStatus = Partial<Record<AiAgentId, { installed?: boolean | null; version?: string | null }>>
 
+export const AI_AGENTS_STATUS_PROBE_TIMEOUT_MS = 5000
+
 interface UseAiAgentsStatusOptions {
   /**
    * When false, the hook stays in its initial state and never calls the
@@ -65,17 +67,32 @@ export function useAiAgentsStatus(options?: UseAiAgentsStatusOptions): AiAgentsS
     }
 
     let cancelled = false
+    let timeoutId: ReturnType<typeof setTimeout> | null = null
+
+    const clearProbeTimeout = () => {
+      if (timeoutId === null) return
+      clearTimeout(timeoutId)
+      timeoutId = null
+    }
 
     const fire = () => {
       if (cancelled) return
 
+      timeoutId = setTimeout(() => {
+        if (!cancelled) {
+          setStatuses(createMissingAiAgentsStatus())
+        }
+      }, AI_AGENTS_STATUS_PROBE_TIMEOUT_MS)
+
       tauriCall<RawAiAgentsStatus>('get_ai_agents_status')
         .then((result) => {
+          clearProbeTimeout()
           if (!cancelled) {
             setStatuses(normalizeAiAgentsStatus(result))
           }
         })
         .catch(() => {
+          clearProbeTimeout()
           if (!cancelled) {
             setStatuses(createMissingAiAgentsStatus())
           }
@@ -89,6 +106,7 @@ export function useAiAgentsStatus(options?: UseAiAgentsStatusOptions): AiAgentsS
 
     return () => {
       cancelled = true
+      clearProbeTimeout()
       cancelIdle(handle)
     }
   }, [enabled])
