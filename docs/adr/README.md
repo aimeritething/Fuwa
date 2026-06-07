@@ -187,3 +187,4 @@ proposed → active → superseded
 | [0133](0133-request-scoped-ai-stream-events.md) | Request-scoped AI stream event channels | active |
 | [0134](0134-direct-shiki-language-registrations.md) | Direct Shiki language registrations for code blocks | active |
 | [0135](0135-clean-active-note-refresh-after-external-edit.md) | Clean active notes refresh immediately after external edits | active |
+| [0137](0137-shared-rich-editor-input-transforms.md) | Shared rich-editor input transforms | active |

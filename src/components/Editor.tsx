@@ -31,10 +31,8 @@ import {
 } from './editorRawModeSync'
 import { useRegisterEditorContentFlushes } from './editorContentFlushRegistration'
 import { useRawModeWithFlush } from './useRawModeWithFlush'
-import { createArrowLigaturesExtension } from './arrowLigaturesExtension'
 import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardExtension'
-import { createMarkdownHighlightInputExtension } from './markdownHighlightInputExtension'
-import { createMathInputExtension } from './mathInputExtension'
+import { createRichEditorMarkdownInputTransformExtension } from './richEditorInputTransformExtension'
 import { createRichEditorTransformErrorRecoveryExtension } from './richEditorTransformErrorRecoveryExtension'
 import { useFilenameAutolinkGuard } from './useFilenameAutolinkGuard'
 import { useEditorPdfExport } from './useEditorPdfExport'
@@ -227,9 +225,7 @@ function useEditorSetup({
     extensions: [
       createRichEditorTransformErrorRecoveryExtension(),
       createImeCompositionKeyGuardExtension(),
-      createArrowLigaturesExtension(),
-      createMarkdownHighlightInputExtension(),
-      createMathInputExtension(),
+      createRichEditorMarkdownInputTransformExtension(),
     ],
   })
   useFilenameAutolinkGuard(editor)

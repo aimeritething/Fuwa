@@ -5,8 +5,7 @@ import { useEditorTabSwap } from '../hooks/useEditorTabSwap'
 import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import type { AppLocale } from '../lib/i18n'
 import type { VaultEntry } from '../types'
-import { createArrowLigaturesExtension } from './arrowLigaturesExtension'
-import { createMathInputExtension } from './mathInputExtension'
+import { createRichEditorMarkdownInputTransformExtension } from './richEditorInputTransformExtension'
 import { schema } from './editorSchema'
 import type { ProbeTarget } from './editorMemoryProbeTypes'
 import { SingleEditorView } from './SingleEditorView'
@@ -16,7 +15,7 @@ function useProbeEditor(target: ProbeTarget, vaultPath?: string) {
     schema,
     uploadFile: (file: File) => uploadImageFile(file, vaultPath),
     _tiptapOptions: { injectNonce: RUNTIME_STYLE_NONCE },
-    extensions: [createArrowLigaturesExtension(), createMathInputExtension()],
+    extensions: [createRichEditorMarkdownInputTransformExtension()],
   })
   useEditorTabSwap({
     tabs: [{ entry: target.entry, content: target.content }],

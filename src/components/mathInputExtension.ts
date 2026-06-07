@@ -3,9 +3,10 @@ import type { useCreateBlockNote } from '@blocknote/react'
 import { trackEvent } from '../lib/telemetry'
 import { MATH_BLOCK_TYPE, MATH_INLINE_TYPE, readCompletedInlineMathAtEnd } from '../utils/mathMarkdown'
 import {
-  isRecoverableEditorTransformError,
-  reportRecoveredEditorTransformError,
-} from './richEditorTransformErrorRecoveryExtension'
+  dispatchRichEditorInputTransaction,
+  mountRichEditorInputTransforms,
+  type RichEditorInputTransform,
+} from './richEditorInputTransform'
 
 const INLINE_WHITESPACE_RE = /^[^\S\r\n]$/
 const NEWLINE_INPUT_TYPES = new Set(['insertParagraph', 'insertLineBreak'])
@@ -59,12 +60,6 @@ function shouldHandleInput(event: InputEvent): boolean {
   return isInsertedInlineWhitespace(event) || NEWLINE_INPUT_TYPES.has(event.inputType)
 }
 
-function shouldSkipInput(event: InputEvent, view: EditorViewLike): boolean {
-  if (event.isComposing) return true
-  if (view.composing) return true
-  return !shouldHandleInput(event)
-}
-
 function selectionHasCodeMark(view: EditorViewLike): boolean {
   const marks = view.state.storedMarks ?? view.state.selection.$from.marks()
   return marks.some((mark: { type: { name: string } }) => mark.type.name === 'code')
@@ -113,25 +108,6 @@ function replaceCompletedInlineMath(
   }
 
   return transaction.scrollIntoView()
-}
-
-function recoverTransformError(error: unknown): boolean {
-  if (!isRecoverableEditorTransformError(error)) return false
-
-  reportRecoveredEditorTransformError('transform_error', error)
-  return true
-}
-
-function readMathInputTransaction(
-  view: EditorViewLike,
-  trailingText?: string,
-): EditorViewLike['state']['tr'] | null {
-  try {
-    return replaceCompletedInlineMath(view, trailingText)
-  } catch (error) {
-    if (!recoverTransformError(error)) throw error
-    return null
-  }
 }
 
 function mathSource({ latex }: { latex: string }): string {
@@ -287,7 +263,7 @@ function restoreMathSource({
     .replaceWith(location.from, location.to, replacement)
     .scrollIntoView()
 
-  if (!dispatchMathInputTransaction(view, transaction)) return false
+  if (!dispatchRichEditorInputTransaction(view, { transaction })) return false
 
   editor._tiptapEditor?.commands?.setTextSelection?.(
     mathLatexSelectionRange(location),
@@ -297,20 +273,6 @@ function restoreMathSource({
     math_mode: location.kind,
   })
   return true
-}
-
-function handleBeforeInputEvent(event: InputEvent, readView: ReadEditorView) {
-  const view = readView()
-  if (!view || shouldSkipInput(event, view)) return
-
-  const trailingText = isInsertedInlineWhitespace(event) ? event.data : undefined
-  const transaction = readMathInputTransaction(view, trailingText)
-  if (!transaction) return
-
-  if (!dispatchMathInputTransaction(view, transaction)) return
-  if (trailingText !== undefined) {
-    event.preventDefault()
-  }
 }
 
 function handleRenderedMathDoubleClick(
@@ -346,16 +308,20 @@ function handleMathKeyDown(
   event.stopPropagation()
 }
 
-function dispatchMathInputTransaction(
-  view: EditorViewLike,
-  transaction: EditorViewLike['state']['tr'],
-): boolean {
-  try {
-    view.dispatch(transaction)
-    return true
-  } catch (error) {
-    if (!recoverTransformError(error)) throw error
-    return false
+export function createMathInputTransform(): RichEditorInputTransform {
+  return {
+    handleBeforeInput(event, { view }) {
+      if (!shouldHandleInput(event)) return null
+
+      const trailingText = isInsertedInlineWhitespace(event) ? event.data : undefined
+      const transaction = replaceCompletedInlineMath(view, trailingText)
+      if (!transaction) return null
+
+      return {
+        preventDefault: trailingText !== undefined,
+        transaction,
+      }
+    },
   }
 }
 
@@ -367,11 +333,11 @@ export const createMathInputExtension = createExtension(({ editor }) => {
     mount: ({ dom, signal }) => {
       const context = { editor, readView }
 
-      dom.addEventListener('beforeinput', ((event: InputEvent) => {
-        handleBeforeInputEvent(event, readView)
-      }) as EventListener, {
-        capture: true,
+      mountRichEditorInputTransforms({
+        dom,
+        readView,
         signal,
+        transforms: [createMathInputTransform()],
       })
       dom.addEventListener('dblclick', (event) => {
         handleRenderedMathDoubleClick(event, context)

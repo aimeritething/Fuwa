@@ -1,10 +1,9 @@
-import { createExtension } from '@blocknote/core'
 import type { useCreateBlockNote } from '@blocknote/react'
 import { MARKDOWN_HIGHLIGHT_STYLE } from '../utils/markdownHighlightMarkdown'
 import {
-  isRecoverableEditorTransformError,
-  reportRecoveredEditorTransformError,
-} from './richEditorTransformErrorRecoveryExtension'
+  createRichEditorInputTransformExtension,
+  type RichEditorInputTransform,
+} from './richEditorInputTransform'
 
 const MARKDOWN_HIGHLIGHT_DELIMITER = '=='
 const MARKDOWN_HIGHLIGHT_DELIMITER_LENGTH = MARKDOWN_HIGHLIGHT_DELIMITER.length
@@ -15,7 +14,6 @@ type EditorViewLike = NonNullable<ReturnType<typeof useCreateBlockNote>['prosemi
 type MarkLike = { type: { name: string } }
 type EditorMark = Parameters<EditorViewLike['state']['tr']['addMark']>[2]
 type MarkTypeLike = { create: () => EditorMark }
-type ReadEditorView = () => EditorViewLike | undefined
 
 interface MarkdownHighlightCursorText {
   beforeText: string
@@ -116,13 +114,6 @@ export function readMarkdownHighlightInputReplacement({
   }
 }
 
-function recoverTransformError(error: unknown): boolean {
-  if (!isRecoverableEditorTransformError(error)) return false
-
-  reportRecoveredEditorTransformError('transform_error', error)
-  return true
-}
-
 function readHighlightMarkType(view: EditorViewLike): MarkTypeLike | null {
   const markType = Reflect.get(view.state.schema.marks, MARKDOWN_HIGHLIGHT_STYLE) as MarkTypeLike | undefined
   return markType ?? null
@@ -151,58 +142,20 @@ function replaceCompletedMarkdownHighlight(
     .scrollIntoView()
 }
 
-function readMarkdownHighlightInputTransaction(
-  view: EditorViewLike,
-): EditorViewLike['state']['tr'] | null {
-  try {
-    return replaceCompletedMarkdownHighlight(view)
-  } catch (error) {
-    if (!recoverTransformError(error)) throw error
-    return null
-  }
-}
-
-function shouldSkipInputEvent(event: InputEvent, view: EditorViewLike): boolean {
-  return !isInsertedFinalEquals(event) || event.isComposing || Boolean(view.composing)
-}
-
-function dispatchMarkdownHighlightTransaction(
-  view: EditorViewLike,
-  transaction: EditorViewLike['state']['tr'],
-): boolean {
-  try {
-    view.dispatch(transaction)
-    return true
-  } catch (error) {
-    if (!recoverTransformError(error)) throw error
-    return false
-  }
-}
-
-function handleMarkdownHighlightBeforeInput(event: InputEvent, readView: ReadEditorView) {
-  const view = readView()
-  if (!view || shouldSkipInputEvent(event, view)) return
-
-  const transaction = readMarkdownHighlightInputTransaction(view)
-  if (!transaction) return
-
-  if (!dispatchMarkdownHighlightTransaction(view, transaction)) return
-
-  event.preventDefault()
-}
-
-export const createMarkdownHighlightInputExtension = createExtension(({ editor }) => {
-  const readView = () => editor._tiptapEditor?.view ?? editor.prosemirrorView
-
+export function createMarkdownHighlightInputTransform(): RichEditorInputTransform {
   return {
-    key: 'markdownHighlightInput',
-    mount: ({ dom, signal }) => {
-      dom.addEventListener('beforeinput', ((event: InputEvent) => {
-        handleMarkdownHighlightBeforeInput(event, readView)
-      }) as EventListener, {
-        capture: true,
-        signal,
-      })
+    handleBeforeInput(event, { view }) {
+      if (!isInsertedFinalEquals(event)) return null
+
+      const transaction = replaceCompletedMarkdownHighlight(view)
+      if (!transaction) return null
+
+      return { preventDefault: true, transaction }
     },
-  } as const
+  }
+}
+
+export const createMarkdownHighlightInputExtension = createRichEditorInputTransformExtension({
+  createTransforms: () => [createMarkdownHighlightInputTransform()],
+  key: 'markdownHighlightInput',
 })

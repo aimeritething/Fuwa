@@ -1,5 +1,8 @@
-import { createExtension } from '@blocknote/core'
 import { resolveArrowLigatureInput } from '../utils/arrowLigatures'
+import {
+  createRichEditorInputTransformExtension,
+  type RichEditorInputTransform,
+} from './richEditorInputTransform'
 
 const PREFIX_CONTEXT_LENGTH = 2
 
@@ -15,12 +18,6 @@ interface CodeContextSelection {
       }
     }
   }
-}
-
-interface ArrowLigatureView {
-  composing?: boolean
-  dom?: { isConnected?: boolean }
-  isDestroyed?: boolean
 }
 
 interface ArrowLigatureTransactionArgs<Transaction> {
@@ -68,23 +65,6 @@ function getWritableCursor(selection: CodeContextSelection): number | null {
   return from === to ? from : null
 }
 
-function isLiveEditorView(view: ArrowLigatureView): boolean {
-  if (view.isDestroyed) return false
-  if (view.dom?.isConnected === false) return false
-
-  return true
-}
-
-function isComposingInput({
-  event,
-  view,
-}: {
-  event: InputEvent
-  view: { composing?: boolean }
-}): boolean {
-  return event.isComposing || Boolean(view.composing)
-}
-
 function withoutTransaction<Transaction>(
   nextLiteralAsciiCursor: number | null,
 ): ArrowLigatureTransactionResult<Transaction> {
@@ -130,47 +110,33 @@ function buildArrowLigatureTransaction<Transaction>({
   }
 }
 
-export const createArrowLigaturesExtension = createExtension(({ editor }) => {
+export function createArrowLigatureInputTransform(): RichEditorInputTransform {
   let literalAsciiCursor: number | null = null
 
-  const handleBeforeInput = (event: InputEvent) => {
-    if (!isInsertedCharacter(event)) {
-      return
-    }
-
-    const view = editor._tiptapEditor?.view ?? editor.prosemirrorView
-    if (!view) {
-      return
-    }
-    if (!isLiveEditorView(view)) {
-      literalAsciiCursor = null
-      return
-    }
-    if (isComposingInput({ event, view })) {
-      return
-    }
-
-    const result = buildArrowLigatureTransaction({ event, literalAsciiCursor, view })
-    literalAsciiCursor = result.nextLiteralAsciiCursor
-    if (result.transaction === null) {
-      return
-    }
-
-    try {
-      view.dispatch(result.transaction)
-      event.preventDefault()
-    } catch {
-      literalAsciiCursor = null
-    }
-  }
-
   return {
-    key: 'arrowLigatures',
-    mount: ({ dom, signal }) => {
-      dom.addEventListener('beforeinput', handleBeforeInput as EventListener, {
-        capture: true,
-        signal,
-      })
+    handleBeforeInput(event, { view }) {
+      if (!isInsertedCharacter(event)) return null
+
+      const result = buildArrowLigatureTransaction({ event, literalAsciiCursor, view })
+      literalAsciiCursor = result.nextLiteralAsciiCursor
+      if (result.transaction === null) return null
+
+      return {
+        ignoreDispatchError: true,
+        onDispatchError: () => {
+          literalAsciiCursor = null
+        },
+        preventDefault: true,
+        transaction: result.transaction,
+      }
     },
-  } as const
+    reset() {
+      literalAsciiCursor = null
+    },
+  }
+}
+
+export const createArrowLigaturesExtension = createRichEditorInputTransformExtension({
+  createTransforms: () => [createArrowLigatureInputTransform()],
+  key: 'arrowLigatures',
 })
