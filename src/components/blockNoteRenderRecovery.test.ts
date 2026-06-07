@@ -41,6 +41,20 @@ describe('blockNoteRenderRecovery', () => {
     expect(isRecoverableBlockNoteRenderError(error)).toBe(true)
   })
 
+  it('recognizes production paragraph index render errors from slash input', () => {
+    const error = new RangeError('Index 1 out of range for <paragraph("/")>')
+
+    expect(blockNoteRenderRecoveryReason(error)).toBe('paragraph_index_out_of_range')
+    expect(isRecoverableBlockNoteRenderError(error)).toBe(true)
+  })
+
+  it('recognizes production paragraph index render errors that are plain Error instances', () => {
+    const error = new Error('Index 1 out of range for <paragraph("/")>')
+
+    expect(blockNoteRenderRecoveryReason(error)).toBe('paragraph_index_out_of_range')
+    expect(isRecoverableBlockNoteRenderError(error)).toBe(true)
+  })
+
   it('recognizes recovered BlockNote block type mismatch render errors', () => {
     const error = new Error('Block type does not match')
 

@@ -95,6 +95,12 @@ describe('isRecoverableEditorTransformError', () => {
     expect(isRecoverableEditorTransformError(new Error(
       'Index 1 out of range for <tableRow(tableCell(tableParagraph("A")))>',
     ))).toBe(true)
+    expect(isRecoverableEditorTransformError(new RangeError(
+      'Index 1 out of range for <paragraph("/")>',
+    ))).toBe(true)
+    expect(isRecoverableEditorTransformError(new Error(
+      'Index 1 out of range for <paragraph("/")>',
+    ))).toBe(true)
     expect(isRecoverableEditorTransformError(new Error(
       'Block with ID 6c1c3bb4-e218-4f00-aaf5-40606852d286 not found',
     ))).toBe(true)
@@ -105,9 +111,6 @@ describe('isRecoverableEditorTransformError', () => {
     expect(isRecoverableEditorTransformError(stackOnlyAppendError)).toBe(true)
     expect(isRecoverableEditorTransformError(new TypeError(
       "Cannot read properties of null (reading 'append')",
-    ))).toBe(false)
-    expect(isRecoverableEditorTransformError(new RangeError(
-      'Index 1 out of range for <paragraph("A")>',
     ))).toBe(false)
     expect(isRecoverableEditorTransformError(new Error('unrelated'))).toBe(false)
   })
@@ -215,6 +218,13 @@ describe('installRichEditorTransformErrorRecovery', () => {
     expectDocumentRepairRecovery(
       new Error('Index 1 out of range for <tableRow(tableCell(tableParagraph("A")))>'),
       'table_position_out_of_range',
+    )
+  })
+
+  it('recovers production paragraph index transactions from stale slash input', () => {
+    expectDocumentRepairRecovery(
+      new RangeError('Index 1 out of range for <paragraph("/")>'),
+      'paragraph_position_out_of_range',
     )
   })
 

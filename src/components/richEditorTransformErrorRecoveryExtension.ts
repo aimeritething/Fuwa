@@ -49,10 +49,16 @@ type RecoveryReason =
   | 'invalid_insertion_depth'
   | 'mismatched_transaction'
   | 'null_fragment_append'
+  | 'paragraph_position_out_of_range'
   | 'stale_block_reference'
   | 'stale_transaction'
   | 'table_position_out_of_range'
   | 'transform_error'
+
+interface RecoveryReasonMatcher {
+  matches: (error: unknown) => boolean
+  reason: RecoveryReason
+}
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null
@@ -92,6 +98,10 @@ function isTablePositionOutOfRangeError(error: unknown): boolean {
   return error instanceof Error && /^Index \d+ out of range for <tableRow\(/.test(error.message)
 }
 
+function isParagraphPositionOutOfRangeError(error: unknown): boolean {
+  return error instanceof Error && /^Index \d+ out of range for <paragraph\(/.test(error.message)
+}
+
 function isInvalidBlockJoinError(error: unknown): boolean {
   return isTransformError(error) && /^Cannot join (blockGroup|tableCell) onto blockContainer$/.test(error.message)
 }
@@ -114,6 +124,7 @@ function isTransformError(error: unknown): error is Error {
 function isRecoverableRangeError(error: unknown): boolean {
   return isInvalidContentTransactionError(error)
     || isInvalidInsertionDepthError(error)
+    || isParagraphPositionOutOfRangeError(error)
     || isTablePositionOutOfRangeError(error)
 }
 
@@ -123,6 +134,16 @@ const RECOVERABLE_EDITOR_ERROR_PREDICATES = [
   isRecoverableRangeError,
   isNullFragmentAppendError,
   isStaleBlockReferenceError,
+]
+
+const RECOVERY_REASON_MATCHERS: RecoveryReasonMatcher[] = [
+  { matches: isMismatchedTransactionError, reason: 'mismatched_transaction' },
+  { matches: isStaleBlockReferenceError, reason: 'stale_block_reference' },
+  { matches: isInvalidBlockJoinError, reason: 'invalid_block_join' },
+  { matches: isInvalidInsertionDepthError, reason: 'invalid_insertion_depth' },
+  { matches: isNullFragmentAppendError, reason: 'null_fragment_append' },
+  { matches: isParagraphPositionOutOfRangeError, reason: 'paragraph_position_out_of_range' },
+  { matches: isTablePositionOutOfRangeError, reason: 'table_position_out_of_range' },
 ]
 
 export function isRecoverableEditorTransformError(error: unknown): boolean {
@@ -135,13 +156,7 @@ function recoveryReason(
   view: RichEditorDispatchView,
 ): RecoveryReason {
   if (transactionDocIsStale(transaction, view)) return 'stale_transaction'
-  if (isMismatchedTransactionError(error)) return 'mismatched_transaction'
-  if (isStaleBlockReferenceError(error)) return 'stale_block_reference'
-  if (isInvalidBlockJoinError(error)) return 'invalid_block_join'
-  if (isInvalidInsertionDepthError(error)) return 'invalid_insertion_depth'
-  if (isNullFragmentAppendError(error)) return 'null_fragment_append'
-  if (isTablePositionOutOfRangeError(error)) return 'table_position_out_of_range'
-  return 'transform_error'
+  return RECOVERY_REASON_MATCHERS.find(({ matches }) => matches(error))?.reason ?? 'transform_error'
 }
 
 function shouldRepairEditorDocument(error: unknown): boolean {

@@ -3,10 +3,12 @@ const BLOCKNOTE_BLOCK_TYPE_MISMATCH_ERROR = 'Block type does not match'
 const BLOCKNOTE_RECOVERY_BOUNDARY_NAME = 'BlockNoteRenderRecoveryBoundary'
 const RECOVERED_BLOCKNOTE_RENDER_ERROR_MARK = '__tolariaRecoveredBlockNoteRenderError'
 const BLOCKNOTE_TABLE_ROW_INDEX_ERROR = /^Index \d+ out of range for <tableRow\(/
+const BLOCKNOTE_PARAGRAPH_INDEX_ERROR = /^Index \d+ out of range for <paragraph\(/
 
 export type BlockNoteRenderRecoveryReason =
   | 'block_type_mismatch'
   | 'block_missing_id'
+  | 'paragraph_index_out_of_range'
   | 'table_row_index_out_of_range'
 
 type MarkedRecoveredBlockNoteRenderError = Error & {
@@ -28,6 +30,9 @@ export function blockNoteRenderRecoveryReason(error: unknown): BlockNoteRenderRe
   if (error.message.includes(BLOCKNOTE_MISSING_ID_ERROR)) return 'block_missing_id'
   if (BLOCKNOTE_TABLE_ROW_INDEX_ERROR.test(error.message)) {
     return 'table_row_index_out_of_range'
+  }
+  if (BLOCKNOTE_PARAGRAPH_INDEX_ERROR.test(error.message)) {
+    return 'paragraph_index_out_of_range'
   }
 
   return null
