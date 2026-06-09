@@ -183,8 +183,9 @@ proposed → active → superseded
 | [0129](0129-tolaria-vault-item-deep-links.md) | Tolaria vault item deep links | active |
 | [0130](0130-windows-authenticode-release-signing.md) | Windows Authenticode signing for release installers | active |
 | [0131](0131-reusable-release-artifact-build-workflow.md) | Reusable release artifact build workflow | active |
-| [0132](0132-alpha-authenticode-soft-gate.md) | Alpha Authenticode soft gate | active |
+| [0132](0132-alpha-authenticode-soft-gate.md) | Alpha Authenticode soft gate | superseded -> [0138](0138-authenticode-required-for-all-release-channels.md) |
 | [0133](0133-request-scoped-ai-stream-events.md) | Request-scoped AI stream event channels | active |
 | [0134](0134-direct-shiki-language-registrations.md) | Direct Shiki language registrations for code blocks | active |
 | [0135](0135-clean-active-note-refresh-after-external-edit.md) | Clean active notes refresh immediately after external edits | active |
 | [0137](0137-shared-rich-editor-input-transforms.md) | Shared rich-editor input transforms | active |
+| [0138](0138-authenticode-required-for-all-release-channels.md) | Require Authenticode signing for all Windows release channels | active |

@@ -48,7 +48,7 @@ describe('release workflow macOS artifact names', () => {
     expect(countOccurrences(artifactWorkflow, releaseEnv)).toBe(3)
   })
 
-  it('gates Windows Authenticode signing through the shared artifact workflow', () => {
+  it('requires Windows Authenticode signing through the shared artifact workflow', () => {
     const alphaWorkflow = readFileSync(`${process.cwd()}/.github/workflows/release.yml`, 'utf8')
     const stableWorkflow = readFileSync(
       `${process.cwd()}/.github/workflows/release-stable.yml`,
@@ -63,13 +63,15 @@ describe('release workflow macOS artifact names', () => {
       'utf8',
     )
 
-    expect(alphaWorkflow).toContain('require_windows_authenticode: false')
-    expect(stableWorkflow).toContain(
-      `require_windows_authenticode: \${{ !contains(fromJson('["v2026-06-01","v2026-06-06"]'), needs.version.outputs.tag) }}`,
-    )
-    expect(artifactWorkflow).toContain('require_windows_authenticode:')
+    expect(alphaWorkflow).not.toContain('require_windows_authenticode')
+    expect(stableWorkflow).not.toContain('require_windows_authenticode')
+    expect(artifactWorkflow).not.toContain('require_windows_authenticode')
+    expect(artifactWorkflow).not.toContain('authenticode_available')
+    expect(artifactWorkflow).not.toContain('without Authenticode')
     expect(artifactWorkflow).toContain('WINDOWS_CODE_SIGNING_CERTIFICATE')
     expect(artifactWorkflow).toContain('WINDOWS_CERTIFICATE')
+    expect(artifactWorkflow).toContain('Set both certificate and password secrets')
+    expect(artifactWorkflow).toContain('required to Authenticode-sign Windows installers')
     expect(artifactWorkflow).toContain('./.github/scripts/configure-windows-authenticode.ps1')
     expect(artifactWorkflow).toContain('--config src-tauri/tauri.windows-signing.conf.json')
     expect(artifactWorkflow).toContain('Validate Windows Authenticode signatures')

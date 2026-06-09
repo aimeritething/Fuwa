@@ -67,7 +67,7 @@ jobs:
 
       - name: Upload frontend coverage to Codecov
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe
+        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073
         with:
           use_oidc: true
           fail_ci_if_error: true
@@ -177,7 +177,7 @@ jobs:
 
       - name: Upload Rust coverage to Codecov
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: codecov/codecov-action@75cd11691c0faa626561e295848008c8a7dddffe
+        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073
         with:
           use_oidc: true
           fail_ci_if_error: true
