@@ -412,6 +412,7 @@ jobs:
           (Get-Content "src-tauri/Cargo.toml") -replace '^version = ".*"$', "version = `"$version`"" | Set-Content "src-tauri/Cargo.toml"
 
       - name: Validate Windows release env
+        id: windows-signing
         shell: bash
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -438,16 +439,19 @@ jobs:
           fi
 
           if [ "$has_certificate" != "$has_password" ]; then
-            echo "::error::Windows Authenticode signing is partially configured. Set both certificate and password secrets."
+            echo "::error::Windows Authenticode signing is partially configured. Set both certificate and password secrets, or remove both to build with Tauri updater signatures only."
             exit 1
           fi
 
-          if [ "$has_certificate" != "true" ]; then
-            echo "::error::WINDOWS_CODE_SIGNING_CERTIFICATE/WINDOWS_CERTIFICATE and the matching password secret are required to Authenticode-sign Windows installers."
-            exit 1
+          if [ "$has_certificate" = "true" ]; then
+            echo "authenticode_available=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "::warning::Windows Authenticode certificate secrets are not configured. Building Windows artifacts without Authenticode signatures; Tauri updater signatures are still required."
+            echo "authenticode_available=false" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Prepare Windows Authenticode signing
+        if: ${{ steps.windows-signing.outputs.authenticode_available == 'true' }}
         shell: pwsh
         env:
           WINDOWS_CODE_SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_CODE_SIGNING_CERTIFICATE }}
@@ -471,9 +475,14 @@ jobs:
           VITE_POSTHOG_KEY: ${{ secrets.VITE_POSTHOG_KEY }}
           VITE_POSTHOG_HOST: ${{ secrets.VITE_POSTHOG_HOST }}
         run: |
-          pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis --config src-tauri/tauri.windows-signing.conf.json
+          if ("${{ steps.windows-signing.outputs.authenticode_available }}" -eq "true") {
+            pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis --config src-tauri/tauri.windows-signing.conf.json
+          } else {
+            pnpm tauri build --target x86_64-pc-windows-msvc --bundles nsis
+          }
 
       - name: Validate Windows Authenticode signatures
+        if: ${{ steps.windows-signing.outputs.authenticode_available == 'true' }}
         shell: pwsh
         run: |
           $expectedThumbprint = $env:WINDOWS_CODE_SIGNING_CERTIFICATE_THUMBPRINT

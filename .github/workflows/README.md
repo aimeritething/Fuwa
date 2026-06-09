@@ -60,7 +60,7 @@ VITE_POSTHOG_HOST=https://eu.i.posthog.com
 Senza questi valori, i build distribuiti possono mantenere i toggle telemetry nelle Settings ma non inizializzare davvero PostHog/Sentry.
 
 ### Windows Authenticode Secrets For Release Builds
-Windows alpha e stable release builds falliscono se mancano i secret per il code signing:
+Windows alpha e stable release builds usano sempre le firme Tauri updater. Se i secret Authenticode sono presenti, il workflow firma anche gli installer Windows e verifica le firme; se mancano, emette un warning e pubblica gli artifact Windows senza Authenticode finche' il certificato non e' pronto.
 
 ```
 WINDOWS_CODE_SIGNING_CERTIFICATE=<base64-encoded pfx>

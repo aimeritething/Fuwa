@@ -36,7 +36,9 @@ https://eu.i.posthog.com
 
 **Windows Authenticode release signing**
 
-Windows release artifacts require a trusted code-signing certificate exported as base64 PFX data:
+Windows release artifacts can be Authenticode-signed when a trusted code-signing certificate is available. Until Windows certificate provisioning is complete, the release workflow warns and publishes Windows artifacts with Tauri updater signatures only.
+
+To enable Authenticode, configure a trusted certificate exported as base64 PFX data:
 
 ```
 WINDOWS_CODE_SIGNING_CERTIFICATE=<base64-encoded pfx>
