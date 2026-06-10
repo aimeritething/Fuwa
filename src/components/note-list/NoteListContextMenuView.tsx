@@ -19,6 +19,7 @@ import { trackEvent } from '../../lib/telemetry'
 import type { VaultEntry } from '../../types'
 import { isMarkdownEntry } from '../../utils/typeDefinitions'
 import type { NoteListContextMenuState } from './NoteListContextMenu'
+import { getContextMenuPositionStyle } from './contextMenuPosition'
 
 interface NoteListContextMenuItem {
   destructive?: boolean
@@ -293,7 +294,7 @@ export function NoteListContextMenuNode({
     <div
       ref={ctxMenuRef}
       className="fixed z-[12000] rounded-md border bg-popover p-1 shadow-md"
-      style={{ left: ctxMenu.x, top: ctxMenu.y, minWidth: 240 }}
+      style={getContextMenuPositionStyle(ctxMenu, 240)}
       data-testid="note-list-context-menu"
     >
       {items.map((item) => <NoteListContextMenuButton key={item.label} item={item} />)}
