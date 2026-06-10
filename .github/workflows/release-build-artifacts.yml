@@ -251,6 +251,7 @@ jobs:
             patchelf \
             build-essential \
             file \
+            cpio \
             rpm
 
       - name: Setup pnpm
@@ -334,6 +335,65 @@ jobs:
             echo "::error::Linux build produced no updater signature (.sig) artifact."
             exit 1
           fi
+
+          validate_desktop_categories() {
+            local package_path="$1"
+            local extract_dir="$2"
+
+            rm -rf "$extract_dir"
+            mkdir -p "$extract_dir"
+
+            case "$package_path" in
+              *.deb)
+                dpkg-deb -x "$package_path" "$extract_dir"
+                ;;
+              *.rpm)
+                (
+                  cd "$extract_dir"
+                  rpm2cpio "$GITHUB_WORKSPACE/$package_path" | cpio -id --quiet
+                )
+                ;;
+              *)
+                echo "::error::Unsupported package format for desktop entry validation: $package_path"
+                exit 1
+                ;;
+            esac
+
+            mapfile -t desktop_files < <(find "$extract_dir/usr/share/applications" -type f -name "*.desktop" 2>/dev/null)
+            if [ ${#desktop_files[@]} -eq 0 ]; then
+              echo "::error::$package_path did not include a desktop entry under /usr/share/applications."
+              exit 1
+            fi
+
+            for desktop_file in "${desktop_files[@]}"; do
+              local categories
+              categories=$(grep "^Categories=" "$desktop_file" | cut -d= -f2- || true)
+              if [ -z "$categories" ]; then
+                echo "::error::$package_path has an empty Categories field in $(basename "$desktop_file")."
+                exit 1
+              fi
+              if [[ "$categories" != *";" ]]; then
+                echo "::error::$package_path has a Categories field that is not semicolon-terminated: $categories"
+                exit 1
+              fi
+              case ";$categories" in
+                *";Office;"*|*";Utility;"*)
+                  ;;
+                *)
+                  echo "::error::$package_path has an unexpected launcher category: $categories"
+                  exit 1
+                  ;;
+              esac
+            done
+          }
+
+          for deb in src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/deb/*.deb; do
+            validate_desktop_categories "$deb" "$RUNNER_TEMP/tolaria-deb-desktop"
+          done
+
+          for rpm_package in src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/rpm/*.rpm; do
+            validate_desktop_categories "$rpm_package" "$RUNNER_TEMP/tolaria-rpm-desktop"
+          done
 
       - name: Upload Linux bundles
         uses: actions/upload-artifact@v4
