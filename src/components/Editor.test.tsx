@@ -456,7 +456,7 @@ describe('Editor', () => {
     }
   })
 
-  it('disables native text assistance on the rich editor editable surface', () => {
+  it('keeps the rich editor out of spellcheck without disabling IME autocorrection', () => {
     renderEditor({
       tabs: [mockTab],
       activeTabPath: mockEntry.path,
@@ -464,9 +464,9 @@ describe('Editor', () => {
 
     const editable = screen.getByTestId('blocknote-editable')
     expect(editable).toHaveAttribute('spellcheck', 'false')
-    expect(editable).toHaveAttribute('autocorrect', 'off')
     expect(editable).toHaveAttribute('autocomplete', 'off')
-    expect(editable).toHaveAttribute('autocapitalize', 'off')
+    expect(editable).not.toHaveAttribute('autocorrect')
+    expect(editable).not.toHaveAttribute('autocapitalize')
   })
 
   it('renders breadcrumb bar with action buttons', async () => {
