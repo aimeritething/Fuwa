@@ -190,3 +190,5 @@ proposed → active → superseded
 | [0137](0137-shared-rich-editor-input-transforms.md) | Shared rich-editor input transforms | active |
 | [0138](0138-authenticode-required-for-all-release-channels.md) | Require Authenticode signing for all Windows release channels | superseded -> [0139](0139-temporary-windows-authenticode-soft-gate.md) |
 | [0139](0139-temporary-windows-authenticode-soft-gate.md) | Temporary Windows Authenticode soft gate | active |
+| [0140](0140-extension-based-raw-text-syntax-highlighting.md) | Extension-based raw text syntax highlighting | active |
+| [0141](0141-scoped-linux-webkit-rendering-safeguards.md) | Scoped Linux WebKit rendering safeguards | active |
