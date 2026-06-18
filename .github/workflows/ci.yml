@@ -18,8 +18,8 @@ env:
   NODE_OPTIONS: --max-old-space-size=4096
 
 jobs:
-  frontend-quality:
-    name: Frontend Tests & Quality Checks
+  frontend-static-quality:
+    name: Frontend Static Quality Checks
     runs-on: macos-15
 
     steps:
@@ -72,29 +72,7 @@ jobs:
         if: steps.docs-changes.outputs.should-build == 'true'
         run: pnpm docs:build
 
-      # ── 1. Coverage-backed tests ──────────────────────────────────────────
-      # The coverage command runs the canonical frontend test suite.
-      - name: Bundle MCP server resources (required by Tauri build)
-        run: node scripts/bundle-mcp-server.mjs
-
-      # ── 2. Tests + coverage (enforced — fails build if thresholds not met) ─
-      - name: Frontend tests + coverage (≥70% lines/functions/branches/statements)
-        run: pnpm test:coverage
-        # Thresholds configured in vite.config.ts — exits non-zero if coverage drops
-
-      - name: Upload frontend coverage to Codecov
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
-        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073
-        with:
-          use_oidc: true
-          fail_ci_if_error: true
-          disable_search: true
-          files: ./coverage/lcov.info
-          flags: frontend
-          verbose: true
-        # OIDC avoids long-lived CODECOV_TOKEN secrets.
-
-      # ── 3. Code Health (CodeScene — Hotspot + Average Code Health gates) ──
+      # ── 1. Code Health (CodeScene — Hotspot + Average Code Health gates) ──
       # Enforces minimum floors on BOTH hotspot and average code health.
       # Thresholds come from .codescene-thresholds so CI and local hooks match.
       - name: Code Health gates
@@ -132,7 +110,7 @@ jobs:
               exit(1)
           "
 
-      # ── 4. Documentation check (warning only — does not fail build) ───────
+      # ── 2. Documentation check (warning only — does not fail build) ───────
       - name: Check docs are updated
         continue-on-error: true
         run: |
@@ -150,9 +128,50 @@ jobs:
           fi
           echo "✅ Documentation check passed"
 
-      # ── 5. Lint & format ──────────────────────────────────────────────────
+      # ── 3. Lint & format ──────────────────────────────────────────────────
       - name: Lint frontend
         run: pnpm lint
+
+  frontend-tests:
+    name: Frontend Tests & Coverage
+    runs-on: macos-15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@f40ffcd9367d9f12939873eb1018b921a783ffaa
+        with:
+          version: 10
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # The coverage command runs the canonical frontend test suite.
+      - name: Bundle MCP server resources (required by Tauri build)
+        run: node scripts/bundle-mcp-server.mjs
+
+      - name: Frontend tests + coverage (≥70% lines/functions/branches/statements)
+        run: pnpm test:coverage
+        # Thresholds configured in vite.config.ts — exits non-zero if coverage drops
+
+      - name: Upload frontend coverage to Codecov
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+        uses: codecov/codecov-action@5975040f7f7d40edaff8d784b576fd65ae95c073
+        with:
+          use_oidc: true
+          fail_ci_if_error: true
+          disable_search: true
+          files: ./coverage/lcov.info
+          flags: frontend
+          verbose: true
+        # OIDC avoids long-lived CODECOV_TOKEN secrets.
 
   rust-quality:
     name: Rust Tests & Quality Checks
