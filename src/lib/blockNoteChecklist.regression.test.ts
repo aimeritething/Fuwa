@@ -12,6 +12,8 @@ type CheckListItemControlEditor = {
   updateBlock: (block: CheckListItemBlock, update: { props: { checked: boolean } }) => void
 }
 
+type CheckListItemLookup = CheckListItemControlEditor['getBlock']
+
 function createCheckListItem(checked = false): CheckListItemBlock {
   return {
     id: 'check-list-item-1',
@@ -20,6 +22,13 @@ function createCheckListItem(checked = false): CheckListItemBlock {
     content: [],
     children: [],
   } as CheckListItemBlock
+}
+
+function createEditor(getBlock: CheckListItemLookup): CheckListItemControlEditor {
+  return {
+    getBlock: vi.fn(getBlock),
+    updateBlock: vi.fn(),
+  }
 }
 
 function renderCheckListItem(editor: CheckListItemControlEditor, checked = false) {
@@ -42,32 +51,36 @@ function dispatchChange(checkbox: HTMLInputElement) {
   checkbox.dispatchEvent(new window.Event('change'))
 }
 
+function expectCheckboxChangeIgnored(getBlock: CheckListItemLookup) {
+  const editor = createEditor(getBlock)
+  const { block, checkbox, view } = renderCheckListItem(editor)
+  checkbox.checked = true
+
+  expect(() => dispatchChange(checkbox)).not.toThrow()
+  expect(editor.getBlock).toHaveBeenCalledWith(block.id)
+  expect(editor.updateBlock).not.toHaveBeenCalled()
+  view.destroy?.()
+}
+
 afterEach(() => {
   document.body.replaceChildren()
 })
 
 describe('patched BlockNote checklist controls', () => {
-  it('ignores stale checkbox changes when the target checklist block disappeared', () => {
-    const editor: CheckListItemControlEditor = {
-      getBlock: vi.fn(() => undefined),
-      updateBlock: vi.fn(),
-    }
+  const staleLookupCases: Array<[string, CheckListItemLookup]> = [
+    ['when the target checklist block disappeared', () => undefined],
+    ['when BlockNote throws during block lookup', () => {
+      throw new Error('Block with ID check-list-item-1 not found')
+    }],
+  ]
 
-    const { block, checkbox, view } = renderCheckListItem(editor)
-    checkbox.checked = true
-    dispatchChange(checkbox)
-
-    expect(editor.getBlock).toHaveBeenCalledWith(block.id)
-    expect(editor.updateBlock).not.toHaveBeenCalled()
-    view.destroy?.()
+  it.each(staleLookupCases)('ignores stale checkbox changes %s', (_name, getBlock) => {
+    expectCheckboxChangeIgnored(getBlock)
   })
 
   it('applies live checkbox changes to the current checklist block', () => {
     const existingBlock = createCheckListItem()
-    const editor: CheckListItemControlEditor = {
-      getBlock: vi.fn(() => existingBlock),
-      updateBlock: vi.fn(),
-    }
+    const editor = createEditor(() => existingBlock)
 
     const { block, checkbox, view } = renderCheckListItem(editor)
     checkbox.checked = true

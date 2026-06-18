@@ -21,6 +21,8 @@ type CodeBlockControlEditor = {
   updateBlock: (id: string, update: { props: { language: string } }) => void
 }
 
+type CodeBlockLookup = CodeBlockControlEditor['getBlock']
+
 function createCodeBlock(): CodeBlock {
   return {
     id: 'code-block-1',
@@ -29,6 +31,14 @@ function createCodeBlock(): CodeBlock {
     content: [],
     children: [],
   } as CodeBlock
+}
+
+function createEditor(getBlock: CodeBlockLookup): CodeBlockControlEditor {
+  return {
+    isEditable: true,
+    getBlock: vi.fn(getBlock),
+    updateBlock: vi.fn(),
+  }
 }
 
 function renderLanguageSelect(editor: CodeBlockControlEditor) {
@@ -51,34 +61,36 @@ function dispatchChange(select: HTMLSelectElement) {
   select.dispatchEvent(new window.Event('change'))
 }
 
+function expectLanguageChangeIgnored(getBlock: CodeBlockLookup) {
+  const editor = createEditor(getBlock)
+  const { block, select, view } = renderLanguageSelect(editor)
+  select.value = 'typescript'
+
+  expect(() => dispatchChange(select)).not.toThrow()
+  expect(editor.getBlock).toHaveBeenCalledWith(block.id)
+  expect(editor.updateBlock).not.toHaveBeenCalled()
+  view.destroy?.()
+}
+
 afterEach(() => {
   document.body.replaceChildren()
 })
 
 describe('patched BlockNote code block controls', () => {
-  it('ignores stale language changes when the target code block disappeared', () => {
-    const editor: CodeBlockControlEditor = {
-      isEditable: true,
-      getBlock: vi.fn(() => undefined),
-      updateBlock: vi.fn(),
-    }
+  const staleLookupCases: Array<[string, CodeBlockLookup]> = [
+    ['when the target code block disappeared', () => undefined],
+    ['when BlockNote throws during block lookup', () => {
+      throw new Error('Block with ID code-block-1 not found')
+    }],
+  ]
 
-    const { block, select, view } = renderLanguageSelect(editor)
-    select.value = 'typescript'
-    dispatchChange(select)
-
-    expect(editor.getBlock).toHaveBeenCalledWith(block.id)
-    expect(editor.updateBlock).not.toHaveBeenCalled()
-    view.destroy?.()
+  it.each(staleLookupCases)('ignores stale language changes %s', (_name, getBlock) => {
+    expectLanguageChangeIgnored(getBlock)
   })
 
   it('keeps live language changes wired to the code block update', () => {
     const existingBlock = createCodeBlock()
-    const editor: CodeBlockControlEditor = {
-      isEditable: true,
-      getBlock: vi.fn(() => existingBlock),
-      updateBlock: vi.fn(),
-    }
+    const editor = createEditor(() => existingBlock)
 
     const { block, select, view } = renderLanguageSelect(editor)
     select.value = 'typescript'
