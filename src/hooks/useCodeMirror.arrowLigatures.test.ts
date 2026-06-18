@@ -45,6 +45,24 @@ function createView(container: HTMLDivElement, content = '') {
   return result.current.current!
 }
 
+function typeAtCursor(view: EditorView, cursor: number, inputs: readonly string[]) {
+  act(() => {
+    view.dispatch({ selection: { anchor: cursor } })
+  })
+  typeSequence(view, inputs)
+}
+
+function docAfterTyping(
+  container: HTMLDivElement,
+  content: string,
+  cursor: number,
+  inputs: readonly string[],
+): string {
+  const view = createView(container, content)
+  typeAtCursor(view, cursor, inputs)
+  return view.state.doc.toString()
+}
+
 describe('useCodeMirror arrow ligatures', () => {
   let container: HTMLDivElement
 
@@ -93,21 +111,59 @@ describe('useCodeMirror arrow ligatures', () => {
     expect(view.state.doc.toString()).toBe('→')
   })
 
-  it('keeps Mermaid arrows literal while typing inside fenced code', () => {
-    const content = [
-      '```mermaid',
-      'flowchart TD',
-      'A --',
-      '```',
-    ].join('\n')
-    const cursor = content.indexOf('A --') + 'A --'.length
-    const view = createView(container, content)
+  it.each([
+    {
+      content: [
+        '```mermaid',
+        'flowchart TD',
+        'A --',
+        '```',
+      ].join('\n'),
+      expected: 'A -->',
+      marker: 'A --',
+      title: 'backtick',
+    },
+    {
+      content: [
+        '~~~mermaid',
+        'flowchart TD',
+        'A -',
+        '~~~',
+      ].join('\n'),
+      expected: 'A ->',
+      marker: 'A -',
+      title: 'tilde',
+    },
+  ])('keeps arrows literal inside $title fenced code', ({ content, expected, marker }) => {
+    expect(docAfterTyping(
+      container,
+      content,
+      content.indexOf(marker) + marker.length,
+      ['>'],
+    )).toContain(expected)
+  })
 
-    act(() => {
-      view.dispatch({ selection: { anchor: cursor } })
-    })
-    typeSequence(view, ['>'])
-
-    expect(view.state.doc.toString()).toContain('A -->')
+  it.each([
+    {
+      content: [
+        '````',
+        '```',
+        '',
+      ].join('\n'),
+      expected: '->',
+      title: 'requires a closing fence to be at least as long as the opening fence',
+    },
+    {
+      content: [
+        '````',
+        'inside',
+        '````',
+        '',
+      ].join('\n'),
+      expected: '→',
+      title: 'resumes arrow ligatures after a matching-length closing fence',
+    },
+  ])('$title', ({ content, expected }) => {
+    expect(docAfterTyping(container, content, content.length, ['-', '>'])).toBe(`${content}${expected}`)
   })
 })

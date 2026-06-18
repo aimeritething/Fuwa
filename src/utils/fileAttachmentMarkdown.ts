@@ -8,6 +8,7 @@ import {
   portableAttachmentPathFromCurrentVaultAssetUrl,
   portableAttachmentPathFromCurrentVaultPath,
 } from './vaultAttachments'
+import { advanceMarkdownFence, type MarkdownFence } from './markdownFences'
 
 interface FileAttachmentPayload {
   name: string
@@ -29,7 +30,6 @@ interface FlushOrdinaryBlocksOptions {
 
 type FileAttachmentLineTransform = (payload: FileAttachmentPayload) => string | null
 type AttachmentUrlReader = (value: unknown) => AttachmentUrl | null
-type MarkdownFence = { character: string; length: number }
 type AttachmentUrl = string
 type Markdown = string
 type MarkdownLine = string
@@ -192,18 +192,6 @@ function readStandaloneFileAttachmentLink(
   return fileAttachmentPayload({ name, url, caption })
 }
 
-function readFenceOpening(text: MarkdownText): MarkdownFence | null {
-  const match = /^( {0,3})(`{3,}|~{3,})/u.exec(text)
-  const fence = match?.[2]
-  return fence ? { character: fence.charAt(0), length: fence.length } : null
-}
-
-function isFenceClosing(text: MarkdownText, fence: MarkdownFence): boolean {
-  const match = /^( {0,3})(`{3,}|~{3,})[ \t]*$/u.exec(text)
-  const closing = match?.[2]
-  return !!closing && closing.charAt(0) === fence.character && closing.length >= fence.length
-}
-
 function transformAttachmentLine(
   line: MarkdownLine,
   readUrl: AttachmentUrlReader,
@@ -219,7 +207,7 @@ function transformAttachmentLine(
 function transformFencedLine(line: MarkdownLine, text: MarkdownText, fence: MarkdownFence): TransformedLine {
   return {
     line,
-    fence: isFenceClosing(text, fence) ? null : fence,
+    fence: advanceMarkdownFence(text, fence),
   }
 }
 
@@ -229,7 +217,7 @@ function transformUnfencedLine(
   readUrl: AttachmentUrlReader,
   transform: FileAttachmentLineTransform,
 ): TransformedLine {
-  const opening = readFenceOpening(text)
+  const opening = advanceMarkdownFence(text, null)
   if (opening) {
     return {
       line,

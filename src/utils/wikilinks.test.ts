@@ -11,6 +11,22 @@ interface TestBlock {
   [key: string]: unknown
 }
 
+function tableBlockWithCellContent(content: TestBlock[]): TestBlock {
+  return {
+    children: [],
+    content: {
+      rows: [{ cells: [{ content, type: 'tableCell' }] }],
+      type: 'tableContent',
+    },
+    type: 'table',
+  }
+}
+
+function firstTableCellContent(block: TestBlock): TestBlock[] {
+  const tableContent = block.content as unknown as { rows: Array<{ cells: Array<{ content: TestBlock[] }> }> }
+  return tableContent.rows[0].cells[0].content
+}
+
 describe('preProcessWikilinks', () => {
   it('replaces [[target]] with placeholder tokens', () => {
     const result = preProcessWikilinks('See [[My Note]] for details')
@@ -54,19 +70,39 @@ describe('preProcessWikilinks', () => {
     expect(result).not.toContain('[[project/beta|Project Beta]]')
   })
 
-  it('leaves wikilinks inside fenced code unchanged', () => {
+  it.each([
+    { fence: '```', title: 'backtick' },
+    { fence: '~~~', title: 'tilde' },
+  ])('leaves wikilinks inside $title fenced code unchanged', ({ fence }) => {
     const input = [
       'Before [[Real Note]]',
       '',
-      '```ts',
+      `${fence}ts`,
       "const sample = '[[Not a note]]'",
-      '```',
+      fence,
     ].join('\n')
 
     const result = preProcessWikilinks(input)
 
     expect(result).toContain('WIKILINK:Real Note')
     expect(result).toContain('[[Not a note]]')
+  })
+
+  it('requires a closing fence to be at least as long as the opening fence', () => {
+    const input = [
+      '````ts',
+      '[[Not a note]]',
+      '```',
+      '[[Still not a note]]',
+      '````',
+      'After [[Real Note]]',
+    ].join('\n')
+
+    const result = preProcessWikilinks(input)
+
+    expect(result).toContain('[[Not a note]]')
+    expect(result).toContain('[[Still not a note]]')
+    expect(result).toContain('WIKILINK:Real Note')
   })
 
   it('handles empty string', () => {
@@ -144,51 +180,38 @@ describe('injectWikilinks', () => {
     expect(result).toEqual(blocks)
   })
 
-  it('handles text node that starts with wikilink', () => {
-    const blocks = [{
-      content: [
-        { type: 'text', text: `${WL_START}First${WL_END} text` },
+  it.each([
+    {
+      expected: [
+        { type: 'wikilink', props: { target: 'First' }, content: undefined },
+        { type: 'text', text: ' text' },
       ],
-    }]
-
-    const result = injectWikilinks(blocks) as TestBlock[]
-    expect(result[0].content![0].type).toBe('wikilink')
-    expect(result[0].content![0].props!.target).toBe('First')
-    expect(result[0].content![1].text).toBe(' text')
-  })
-
-  it('handles text node that ends with wikilink', () => {
-    const blocks = [{
-      content: [
-        { type: 'text', text: `text ${WL_START}Last${WL_END}` },
+      source: `${WL_START}First${WL_END} text`,
+      title: 'starts with wikilink',
+    },
+    {
+      expected: [
+        { type: 'text', text: 'text ' },
+        { type: 'wikilink', props: { target: 'Last' }, content: undefined },
       ],
-    }]
+      source: `text ${WL_START}Last${WL_END}`,
+      title: 'ends with wikilink',
+    },
+  ])('handles text node that $title', ({ expected, source }) => {
+    const result = injectWikilinks([{ content: [{ type: 'text', text: source }] }]) as TestBlock[]
 
-    const result = injectWikilinks(blocks) as TestBlock[]
-    expect(result[0].content![0].text).toBe('text ')
-    expect(result[0].content![1].type).toBe('wikilink')
+    expect(result[0].content).toEqual(expected)
   })
 
   it('converts encoded placeholder text inside table cells into wikilink nodes', () => {
-    const blocks = [{
-      type: 'table',
-      content: {
-        type: 'tableContent',
-        rows: [{
-          cells: [{
-            type: 'tableCell',
-            content: [
-              { type: 'text', text: `${WL_START}ENC:project%2Fbeta%7CProject%20Beta${WL_END}` },
-            ],
-          }],
-        }],
-      },
-      children: [],
-    }]
+    const blocks = [
+      tableBlockWithCellContent([
+        { type: 'text', text: `${WL_START}ENC:project%2Fbeta%7CProject%20Beta${WL_END}` },
+      ]),
+    ]
 
     const result = injectWikilinks(blocks) as TestBlock[]
-    const tableContent = result[0].content as unknown as { rows: Array<{ cells: Array<{ content: TestBlock[] }> }> }
-    expect(tableContent.rows[0].cells[0].content).toEqual([{
+    expect(firstTableCellContent(result[0])).toEqual([{
       type: 'wikilink',
       props: { target: 'project/beta|Project Beta' },
       content: undefined,
@@ -424,25 +447,14 @@ describe('restoreWikilinksInBlocks', () => {
   })
 
   it('converts wikilink nodes inside table cells back to markdown text', () => {
-    const blocks = [{
-      type: 'table',
-      content: {
-        type: 'tableContent',
-        rows: [{
-          cells: [{
-            type: 'tableCell',
-            content: [
-              { type: 'wikilink', props: { target: 'Project Alpha' }, content: undefined },
-            ],
-          }],
-        }],
-      },
-      children: [],
-    }]
+    const blocks = [
+      tableBlockWithCellContent([
+        { type: 'wikilink', props: { target: 'Project Alpha' }, content: undefined },
+      ]),
+    ]
 
     const result = restoreWikilinksInBlocks(blocks) as TestBlock[]
-    const tableContent = result[0].content as unknown as { rows: Array<{ cells: Array<{ content: TestBlock[] }> }> }
-    expect(tableContent.rows[0].cells[0].content).toEqual([{ type: 'text', text: '[[Project Alpha]]' }])
+    expect(firstTableCellContent(result[0])).toEqual([{ type: 'text', text: '[[Project Alpha]]' }])
   })
 
   it('handles blocks without content', () => {

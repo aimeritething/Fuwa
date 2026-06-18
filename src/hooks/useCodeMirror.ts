@@ -16,6 +16,7 @@ import { RUNTIME_STYLE_NONCE } from '../lib/runtimeStyleNonce'
 import { resolveArrowLigatureInput } from '../utils/arrowLigatures'
 import { zoomCursorFix } from '../extensions/zoomCursorFix'
 import { rawEditorTextInputAttributes } from '../lib/nativeTextAssistance'
+import { isInsideMarkdownFence } from '../utils/markdownFences'
 
 const FONT_FAMILY = '"JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace'
 const RAW_EDITOR_COLORS = {
@@ -30,51 +31,11 @@ const RAW_EDITOR_COLORS = {
 const AUTO_TEXT_DIRECTION_LINE = Decoration.line({
   attributes: { dir: 'auto' },
 })
-interface MarkdownFence {
-  character: '`' | '~'
-  length: number
-}
-
 export interface CodeMirrorCallbacks {
   onDocChange: (doc: string) => void
   onCursorActivity: (view: EditorView) => void
   onSave: () => void
   onEscape: () => boolean
-}
-
-function readMarkdownFence(line: string): MarkdownFence | null {
-  const match = /^( {0,3})(`{3,}|~{3,})/.exec(line)
-  if (!match) return null
-
-  const fence = match[2]
-  return {
-    character: fence[0] as MarkdownFence['character'],
-    length: fence.length,
-  }
-}
-
-function isClosingMarkdownFence(line: string, opening: MarkdownFence): boolean {
-  const match = /^( {0,3})(`{3,}|~{3,})[ \t]*$/.exec(line)
-  if (!match) return false
-
-  const fence = match[2]
-  return fence[0] === opening.character && fence.length >= opening.length
-}
-
-function isInsideMarkdownFence(markdownBeforeCursor: string): boolean {
-  const lines = markdownBeforeCursor.split(/\r?\n/)
-  let opening: MarkdownFence | null = null
-
-  for (const line of lines) {
-    if (opening) {
-      if (isClosingMarkdownFence(line, opening)) opening = null
-      continue
-    }
-
-    opening = readMarkdownFence(line)
-  }
-
-  return opening !== null
 }
 
 function buildBaseTheme() {

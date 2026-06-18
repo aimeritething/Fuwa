@@ -1,4 +1,6 @@
 // Wikilink placeholder tokens for markdown round-trip
+import { advanceMarkdownFence, type MarkdownFence, type MarkdownFenceScanOptions } from './markdownFences'
+
 const WL_START = '\u2039WIKILINK:'
 const WL_END = '\u203A'
 const WL_RE = /\u2039WIKILINK:([^\u203A]+)\u203A/g
@@ -20,7 +22,12 @@ type TokenSequence = string
 type ParsedTextRange = { text: MarkdownSource, nextIndex: TextOffset }
 type MatchTargets = Set<WikilinkTarget>
 type WordCount = number
-type FenceMarker = string | null
+type FenceMarker = MarkdownFence | null
+
+const WIKILINK_FENCE_SCAN_OPTIONS: MarkdownFenceScanOptions = {
+  closingMustEndLine: false,
+  maxLeadingSpaces: null,
+}
 
 /** Pre-process markdown: replace [[target]] with placeholder tokens */
 export function preProcessWikilinks(md: MarkdownSource): MarkdownSource {
@@ -109,15 +116,8 @@ function decodePlaceholderPayload(payload: PlaceholderPayload): WikilinkTarget {
   }
 }
 
-function lineFenceMarker(line: MarkdownLine): FenceMarker {
-  return line.trimStart().match(/^(`{3,}|~{3,})/)?.[1] ?? null
-}
-
 function nextMarkdownFenceMarker(line: MarkdownLine, currentMarker: FenceMarker): FenceMarker {
-  const marker = lineFenceMarker(line)
-  if (!marker) return currentMarker
-  if (!currentMarker) return marker
-  return marker[0] === currentMarker[0] && marker.length >= currentMarker.length ? null : currentMarker
+  return advanceMarkdownFence(line, currentMarker, WIKILINK_FENCE_SCAN_OPTIONS)
 }
 
 function blankFencedCodeLines(content: MarkdownSource): MarkdownSource {
