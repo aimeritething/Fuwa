@@ -5,6 +5,7 @@ import { DynamicPropertiesPanel } from './DynamicPropertiesPanel'
 import { FOCUS_NOTE_ICON_PROPERTY_EVENT } from './noteIconPropertyEvents'
 import type { VaultEntry } from '../types'
 import { TooltipProvider } from '@/components/ui/tooltip'
+import { parseFrontmatter } from '@/utils/frontmatter'
 
 beforeAll(() => {
   global.ResizeObserver = class { observe() {} unobserve() {} disconnect() {} }
@@ -92,6 +93,55 @@ describe('DynamicPropertiesPanel system metadata', () => {
     expect(screen.queryByText('Order')).not.toBeInTheDocument()
     expect(screen.queryByText('Sort')).not.toBeInTheDocument()
     expect(screen.queryByText('Sidebar label')).not.toBeInTheDocument()
+  })
+
+  it('does not expose nested sheet metadata as editable properties', () => {
+    const frontmatter = parseFrontmatter(`---
+type: Note
+_display: sheet
+_sheet:
+  frozen_rows: 1
+  columns:
+    A:
+      width: 180
+  cells:
+    B2:
+      number_format: "$#,##0.00"
+Owner: Luca
+---
+Metric,January`)
+
+    render(
+      <DynamicPropertiesPanel
+        entry={makeEntry({ isA: 'Note' })}
+        content=""
+        frontmatter={frontmatter}
+      />,
+    )
+
+    expect(screen.getByText('Owner')).toBeInTheDocument()
+    expect(screen.getByText('Luca')).toBeInTheDocument()
+    expect(screen.getByText('Display as')).toBeInTheDocument()
+    expect(screen.getByText('Sheet')).toBeInTheDocument()
+    expect(screen.queryByText('Display: sheet')).not.toBeInTheDocument()
+    expect(screen.queryByText('Frozen rows')).not.toBeInTheDocument()
+    expect(screen.queryByText('Columns')).not.toBeInTheDocument()
+    expect(screen.queryByText('Width')).not.toBeInTheDocument()
+    expect(screen.queryByText('Number format')).not.toBeInTheDocument()
+  })
+
+  it('shows text as the default display when _display is absent', () => {
+    render(
+      <DynamicPropertiesPanel
+        entry={makeEntry()}
+        content=""
+        frontmatter={{}}
+      />,
+    )
+
+    expect(screen.getByText('Type').compareDocumentPosition(screen.getByText('Display as')) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('Display as')).toBeInTheDocument()
+    expect(screen.getByText('Text')).toBeInTheDocument()
   })
 
   it('treats _icon as satisfying the suggested icon slot', () => {

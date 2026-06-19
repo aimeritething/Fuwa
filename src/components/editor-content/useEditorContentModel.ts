@@ -52,6 +52,7 @@ export interface EditorContentProps {
   rawModeContent?: string | null
   findRequest?: RawEditorFindRequest | null
   rawLatestContentRef?: React.MutableRefObject<string | null>
+  sheetFlushRef?: React.MutableRefObject<((path: string) => void) | null>
   onRenameFilename?: (path: string, newFilenameStem: string) => void
   noteWidth?: NoteWidthMode
   onToggleNoteWidth?: () => void
@@ -74,6 +75,7 @@ export function useEditorContentModel(props: EditorContentProps) {
   const {
     isArchived,
     isDeletedPreview,
+    isSheet,
     isNonMarkdownText,
     effectiveRawMode,
     showEditor: showContentEditor,
@@ -98,6 +100,7 @@ export function useEditorContentModel(props: EditorContentProps) {
     cssVars,
     isArchived,
     isDeletedPreview,
+    isSheet,
     effectiveRawMode,
     forceRawMode: isNonMarkdownText || isDeletedPreview,
     showEditor,

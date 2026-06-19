@@ -21,6 +21,12 @@ vi.mock('../RawEditorView', () => ({
   RawEditorView: () => <div data-testid="raw-editor-view" />,
 }))
 
+vi.mock('../SheetEditor', () => ({
+  SheetEditor: ({ content, path }: { content: string; path: string }) => (
+    <div data-testid="sheet-editor" data-content={content} data-path={path} />
+  ),
+}))
+
 vi.mock('../SingleEditorView', () => ({
   SingleEditorView: () => <div data-testid="single-editor-view" />,
 }))
@@ -141,5 +147,33 @@ describe('EditorContentLayout', () => {
 
     expect(findScope).toHaveClass('editor-scroll-area')
     expect(rawEditor.closest('.editor-content-wrapper')).toBeNull()
+  })
+
+  it('routes sheet notes to the sheet editor without the rich-editor wrapper', async () => {
+    render(<EditorContentLayout {...createModel({
+      cssVars: { '--editor-accent': '#155dff' },
+      isSheet: true,
+      activeTab: {
+        entry: {
+          path: '/vault/project/budget.md',
+          filename: 'budget.md',
+          title: 'Budget',
+        },
+        content: 'Metric,January\nRevenue,1200',
+      },
+    })} />)
+
+    const sheetEditor = await screen.findByTestId('sheet-editor')
+
+    expect(sheetEditor).toHaveAttribute('data-path', '/vault/project/budget.md')
+    expect(sheetEditor).toHaveAttribute('data-content', 'Metric,January\nRevenue,1200')
+    expect(screen.queryByTestId('single-editor-view')).not.toBeInTheDocument()
+    expect(sheetEditor.closest('.editor-content-wrapper')).toBeNull()
+    const findScope = sheetEditor.closest('[data-editor-find-scope="true"]')
+    expect(findScope).toHaveClass(
+      'editor-scroll-area',
+      'editor-scroll-area--sheet',
+    )
+    expect(findScope).toHaveStyle({ '--editor-accent': '#155dff' })
   })
 })

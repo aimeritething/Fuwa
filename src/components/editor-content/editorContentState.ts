@@ -1,5 +1,6 @@
 import type { NoteStatus, VaultEntry } from '../../types'
 import { extractH1TitleFromContent } from '../../utils/noteTitle'
+import { contentHasSheetFormat } from '../../utils/noteFormat'
 import { countWords } from '../../utils/wikilinks'
 
 export interface EditorContentTab {
@@ -18,6 +19,7 @@ interface VisibilityState {
   effectiveRawMode: boolean
   isDeletedPreview: boolean
   isNonMarkdownText: boolean
+  isSheet: boolean
   showEditor: boolean
 }
 
@@ -42,6 +44,7 @@ export interface EditorContentState {
   hasH1: boolean
   isDeletedPreview: boolean
   isNonMarkdownText: boolean
+  isSheet: boolean
   effectiveRawMode: boolean
   showEditor: boolean
   path: string
@@ -61,6 +64,11 @@ function resolveHasH1(activeTab: EditorContentTab | null, freshEntry: VaultEntry
   return contentHasTopLevelH1(activeTab) || freshEntry?.hasH1 === true || activeTab?.entry.hasH1 === true
 }
 
+function resolveIsSheet(activeTab: EditorContentTab | null): boolean {
+  if (!activeTab || activeTab.entry.fileKind === 'binary') return false
+  return contentHasSheetFormat(activeTab.content)
+}
+
 function deriveVisibilityState(input: {
   activeTab: EditorContentTab | null
   freshEntry: VaultEntry | undefined
@@ -72,12 +80,14 @@ function deriveVisibilityState(input: {
     rawMode,
   } = input
   const isDeletedPreview = !!activeTab && !freshEntry
-  const isNonMarkdownText = activeTab?.entry.fileKind === 'text'
+  const isSheet = resolveIsSheet(activeTab)
+  const isNonMarkdownText = activeTab?.entry.fileKind === 'text' && !isSheet
   const effectiveRawMode = rawMode || isNonMarkdownText
 
   return {
     isDeletedPreview,
     isNonMarkdownText,
+    isSheet,
     effectiveRawMode,
     showEditor: !effectiveRawMode,
   }

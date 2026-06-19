@@ -105,6 +105,26 @@ interface ResolutionKey {
   humanizedTarget: string | null
 }
 
+interface IndexedResolutionEntry {
+  aliases: string[]
+  entry: VaultEntry
+  filenameStem: string
+  normalizedPath: string
+  title: string
+  workspaceAlias: string | null
+}
+
+interface ResolutionIndex {
+  entries: IndexedResolutionEntry[]
+  entriesByWorkspaceAlias: Map<string, IndexedResolutionEntry[]>
+  resolutionCache: Map<string, VaultEntry | null>
+  workspaceAliases: Set<string>
+}
+
+type EntryMatcher = (entry: IndexedResolutionEntry, resolutionKey: ResolutionKey) => boolean
+
+const resolutionIndexesByEntries = new WeakMap<VaultEntry[], ResolutionIndex>()
+
 function buildResolutionKey(rawTarget: WikilinkTarget, knownWorkspaceAliases: Set<string> = new Set()): ResolutionKey {
   const exactTarget = rawTarget.includes('|') ? rawTarget.split('|')[0] : rawTarget
   const normalizedTarget = exactTarget.toLowerCase()
@@ -132,52 +152,123 @@ function buildResolutionKey(rawTarget: WikilinkTarget, knownWorkspaceAliases: Se
   }
 }
 
-function filterEntriesByWorkspace(entries: VaultEntry[], alias: string | null): VaultEntry[] {
-  if (!alias) return entries
-  return entries.filter((entry) => workspaceForEntry(entry)?.alias.toLowerCase() === alias)
+function workspaceAliasForEntry(entry: VaultEntry | undefined): string | null {
+  return entry ? (workspaceForEntry(entry)?.alias.toLowerCase() ?? null) : null
 }
 
-function prioritizeSourceWorkspace(entries: VaultEntry[], sourceEntry?: VaultEntry): VaultEntry[] {
-  const sourceWorkspace = sourceEntry ? workspaceForEntry(sourceEntry) : null
-  if (!sourceWorkspace) return entries
-  return [
-    ...entries.filter((entry) => workspaceForEntry(entry)?.alias === sourceWorkspace.alias),
-    ...entries.filter((entry) => workspaceForEntry(entry)?.alias !== sourceWorkspace.alias),
-  ]
+function buildIndexedResolutionEntry(entry: VaultEntry): IndexedResolutionEntry {
+  return {
+    aliases: entry.aliases.map((alias) => alias.toLowerCase()),
+    entry,
+    filenameStem: entry.filename.replace(/\.md$/, '').toLowerCase(),
+    normalizedPath: normalizeFilesystemPath(entry.path).toLowerCase(),
+    title: entry.title.toLowerCase(),
+    workspaceAlias: workspaceAliasForEntry(entry),
+  }
 }
 
-function findEntryByPathSuffix(entries: VaultEntry[], resolutionKey: ResolutionKey): VaultEntry | undefined {
-  if (resolutionKey.pathSuffixes.length === 0) return undefined
-  return entries.find((entry) => {
-    const normalizedEntryPath = normalizeFilesystemPath(entry.path).toLowerCase()
-    return resolutionKey.pathSuffixes.some(pathSuffix => normalizedEntryPath.endsWith(pathSuffix))
-  })
+function buildResolutionIndex(entries: VaultEntry[]): ResolutionIndex {
+  const indexedEntries = entries.map(buildIndexedResolutionEntry)
+  const entriesByWorkspaceAlias = new Map<string, IndexedResolutionEntry[]>()
+  const workspaceAliases = new Set<string>()
+
+  for (const entry of indexedEntries) {
+    if (!entry.workspaceAlias) continue
+    workspaceAliases.add(entry.workspaceAlias)
+    const workspaceEntries = entriesByWorkspaceAlias.get(entry.workspaceAlias) ?? []
+    workspaceEntries.push(entry)
+    entriesByWorkspaceAlias.set(entry.workspaceAlias, workspaceEntries)
+  }
+
+  return {
+    entries: indexedEntries,
+    entriesByWorkspaceAlias,
+    resolutionCache: new Map(),
+    workspaceAliases,
+  }
 }
 
-function findEntryByFilename(entries: VaultEntry[], { exactTarget, targetWithoutWorkspace, lastSegment }: ResolutionKey): VaultEntry | undefined {
-  return entries.find((entry) => {
-    const stem = entry.filename.replace(/\.md$/, '').toLowerCase()
-    return stem === exactTarget || stem === targetWithoutWorkspace || stem === lastSegment
-  })
+function resolutionIndexForEntries(entries: VaultEntry[]): ResolutionIndex {
+  const cached = resolutionIndexesByEntries.get(entries)
+  if (cached) return cached
+
+  const index = buildResolutionIndex(entries)
+  resolutionIndexesByEntries.set(entries, index)
+  return index
 }
 
-function findEntryByAlias(entries: VaultEntry[], resolutionKey: ResolutionKey): VaultEntry | undefined {
-  return entries.find(entry => entry.aliases.some((alias) => {
-    const normalizedAlias = alias.toLowerCase()
-    return normalizedAlias === resolutionKey.exactTarget || normalizedAlias === resolutionKey.targetWithoutWorkspace
-  }))
+function resolutionCacheKey(resolutionKey: ResolutionKey, sourceWorkspaceAlias: string | null): string {
+  return `${sourceWorkspaceAlias ?? ''}\n${resolutionKey.exactTarget}`
 }
 
-function findEntryByTitle(entries: VaultEntry[], resolutionKey: ResolutionKey): VaultEntry | undefined {
-  return entries.find((entry) => {
-    const lowerTitle = entry.title.toLowerCase()
-    return lowerTitle === resolutionKey.exactTarget || lowerTitle === resolutionKey.targetWithoutWorkspace || lowerTitle === resolutionKey.lastSegment
-  })
+function findIndexedEntry(entries: IndexedResolutionEntry[], resolutionKey: ResolutionKey, matcher: EntryMatcher): VaultEntry | undefined {
+  for (const entry of entries) {
+    if (matcher(entry, resolutionKey)) return entry.entry
+  }
+  return undefined
 }
 
-function findEntryByHumanizedTitle(entries: VaultEntry[], resolutionKey: ResolutionKey): VaultEntry | undefined {
-  if (!resolutionKey.humanizedTarget) return undefined
-  return entries.find(entry => entry.title.toLowerCase() === resolutionKey.humanizedTarget)
+function findPrioritizedEntry(
+  index: ResolutionIndex,
+  resolutionKey: ResolutionKey,
+  sourceWorkspaceAlias: string | null,
+  matcher: EntryMatcher,
+): VaultEntry | undefined {
+  if (resolutionKey.workspaceAlias) {
+    return findIndexedEntry(index.entriesByWorkspaceAlias.get(resolutionKey.workspaceAlias) ?? [], resolutionKey, matcher)
+  }
+  if (!sourceWorkspaceAlias) return findIndexedEntry(index.entries, resolutionKey, matcher)
+
+  const workspaceMatch = findIndexedEntry(index.entriesByWorkspaceAlias.get(sourceWorkspaceAlias) ?? [], resolutionKey, matcher)
+  if (workspaceMatch) return workspaceMatch
+
+  for (const entry of index.entries) {
+    if (entry.workspaceAlias === sourceWorkspaceAlias) continue
+    if (matcher(entry, resolutionKey)) return entry.entry
+  }
+  return undefined
+}
+
+function matchesPathSuffix(entry: IndexedResolutionEntry, resolutionKey: ResolutionKey): boolean {
+  return resolutionKey.pathSuffixes.some((pathSuffix) => entry.normalizedPath.endsWith(pathSuffix))
+}
+
+function matchesFilename(entry: IndexedResolutionEntry, resolutionKey: ResolutionKey): boolean {
+  return entry.filenameStem === resolutionKey.exactTarget
+    || entry.filenameStem === resolutionKey.targetWithoutWorkspace
+    || entry.filenameStem === resolutionKey.lastSegment
+}
+
+function matchesAlias(entry: IndexedResolutionEntry, resolutionKey: ResolutionKey): boolean {
+  return entry.aliases.some((alias) => (
+    alias === resolutionKey.exactTarget || alias === resolutionKey.targetWithoutWorkspace
+  ))
+}
+
+function matchesTitle(entry: IndexedResolutionEntry, resolutionKey: ResolutionKey): boolean {
+  return entry.title === resolutionKey.exactTarget
+    || entry.title === resolutionKey.targetWithoutWorkspace
+    || entry.title === resolutionKey.lastSegment
+}
+
+function matchesHumanizedTitle(entry: IndexedResolutionEntry, resolutionKey: ResolutionKey): boolean {
+  return !!resolutionKey.humanizedTarget && entry.title === resolutionKey.humanizedTarget
+}
+
+function resolveEntryFromIndex(
+  index: ResolutionIndex,
+  resolutionKey: ResolutionKey,
+  sourceWorkspaceAlias: string | null,
+): VaultEntry | undefined {
+  return (
+    (resolutionKey.pathSuffixes.length > 0
+      ? findPrioritizedEntry(index, resolutionKey, sourceWorkspaceAlias, matchesPathSuffix)
+      : undefined)
+    ?? findPrioritizedEntry(index, resolutionKey, sourceWorkspaceAlias, matchesFilename)
+    ?? findPrioritizedEntry(index, resolutionKey, sourceWorkspaceAlias, matchesAlias)
+    ?? findPrioritizedEntry(index, resolutionKey, sourceWorkspaceAlias, matchesTitle)
+    ?? findPrioritizedEntry(index, resolutionKey, sourceWorkspaceAlias, matchesHumanizedTitle)
+  )
 }
 
 /**
@@ -191,17 +282,13 @@ function findEntryByHumanizedTitle(entries: VaultEntry[], resolutionKey: Resolut
  *   5. Humanized title match (kebab-case → words)
  */
 export function resolveEntry(entries: VaultEntry[], rawTarget: WikilinkTarget, sourceEntry?: VaultEntry): VaultEntry | undefined {
-  const workspaceAliases = new Set(entries.map((entry) => workspaceForEntry(entry)?.alias.toLowerCase()).filter((alias): alias is string => !!alias))
-  const resolutionKey = buildResolutionKey(rawTarget, workspaceAliases)
-  const workspaceScopedEntries = filterEntriesByWorkspace(entries, resolutionKey.workspaceAlias)
-  const candidates = resolutionKey.workspaceAlias
-    ? workspaceScopedEntries
-    : prioritizeSourceWorkspace(entries, sourceEntry)
-  return (
-    findEntryByPathSuffix(candidates, resolutionKey)
-    ?? findEntryByFilename(candidates, resolutionKey)
-    ?? findEntryByAlias(candidates, resolutionKey)
-    ?? findEntryByTitle(candidates, resolutionKey)
-    ?? findEntryByHumanizedTitle(candidates, resolutionKey)
-  )
+  const index = resolutionIndexForEntries(entries)
+  const resolutionKey = buildResolutionKey(rawTarget, index.workspaceAliases)
+  const sourceWorkspaceAlias = workspaceAliasForEntry(sourceEntry)
+  const cacheKey = resolutionCacheKey(resolutionKey, sourceWorkspaceAlias)
+  if (index.resolutionCache.has(cacheKey)) return index.resolutionCache.get(cacheKey) ?? undefined
+
+  const resolved = resolveEntryFromIndex(index, resolutionKey, sourceWorkspaceAlias)
+  index.resolutionCache.set(cacheKey, resolved ?? null)
+  return resolved
 }

@@ -105,8 +105,12 @@ function parseKeyValueLine(line: FrontmatterLine): { key: FrontmatterKey, value:
   }
 }
 
+function isNestedFrontmatterLine(line: FrontmatterLine): boolean {
+  return line.startsWith(' ') || line.startsWith('\t')
+}
+
 function parseTopLevelKey(line: FrontmatterLine): FrontmatterKey | null {
-  if (line.trim() === '' || line.startsWith(' ') || line.startsWith('\t')) return null
+  if (line.trim() === '' || isNestedFrontmatterLine(line)) return null
   return parseKeyValueLine(line)?.key ?? null
 }
 
@@ -172,6 +176,8 @@ export function parseFrontmatter(content: MarkdownContent | null): ParsedFrontma
       currentList.push(listItem)
       continue
     }
+
+    if (isNestedFrontmatterLine(line)) continue
 
     currentList = flushList(result, collisionKeys, currentKey, currentList)
 

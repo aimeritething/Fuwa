@@ -107,4 +107,85 @@ describe('deriveEditorContentState', () => {
     expect(state.hasH1).toBe(false)
     expect(state.showEditor).toBe(true)
   })
+
+  it('marks markdown notes with sheet display as sheet editor content', () => {
+    const state = deriveState({
+      entry: {
+        ...baseEntry,
+        isA: 'Note',
+        fileKind: 'markdown',
+      },
+      content: '---\ntype: Note\n_display: sheet\n---\nMetric,January',
+    })
+
+    expect(state.isSheet).toBe(true)
+    expect(state.showEditor).toBe(true)
+    expect(state.effectiveRawMode).toBe(false)
+  })
+
+  it('does not treat Sheet type metadata as sheet editor content', () => {
+    const state = deriveState({
+      entry: {
+        ...baseEntry,
+        isA: 'Sheet',
+        fileKind: 'markdown',
+      },
+      content: '---\ntype: Sheet\n---\nMetric,January',
+    })
+
+    expect(state.isSheet).toBe(false)
+    expect(state.showEditor).toBe(true)
+  })
+
+  it('does not use fresh entry type metadata as sheet editor content', () => {
+    const activeEntry = {
+      ...baseEntry,
+      isA: 'Note',
+      fileKind: 'markdown' as const,
+    }
+    const freshEntry = {
+      ...activeEntry,
+      isA: 'Sheet',
+    }
+
+    const state = deriveEditorContentState({
+      activeTab: {
+        entry: activeEntry,
+        content: 'Metric,January',
+      },
+      entries: [freshEntry],
+      rawMode: false,
+      activeStatus: 'clean',
+    })
+
+    expect(state.isSheet).toBe(false)
+    expect(state.showEditor).toBe(true)
+  })
+
+  it('does not let text file classification override sheet display frontmatter', () => {
+    const textState = deriveState({
+      entry: {
+        ...baseEntry,
+        isA: 'Note',
+        fileKind: 'text',
+      },
+      content: '---\ntype: Note\n_display: sheet\n---\nMetric,January',
+    })
+
+    expect(textState.isSheet).toBe(true)
+    expect(textState.effectiveRawMode).toBe(false)
+  })
+
+  it('does not treat binary files as sheet nodes even if display metadata matches', () => {
+    const binaryState = deriveState({
+      entry: {
+        ...baseEntry,
+        isA: 'Note',
+        fileKind: 'binary',
+      },
+      content: '---\n_display: sheet\n---\nMetric,January',
+    })
+
+    expect(binaryState.isSheet).toBe(false)
+  })
 })

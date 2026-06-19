@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { getAppStorageItem } from '../constants/appStorage'
 import { getVaultConfig, updateVaultConfigField, subscribeVaultConfig } from '../utils/vaultConfigStore'
 
@@ -45,41 +45,45 @@ export function useZoom() {
     applyZoomToDocument(level)
     return level
   })
+  const zoomLevelRef = useRef(zoomLevel)
+
+  const syncZoomLevel = useCallback((level: number) => {
+    zoomLevelRef.current = level
+    setZoomLevel(level)
+    applyZoomToDocument(level)
+  }, [])
+
+  const commitZoomLevel = useCallback((level: number, forcePersist = false) => {
+    const unchanged = level === zoomLevelRef.current
+    if (!unchanged) {
+      syncZoomLevel(level)
+    }
+    if (!unchanged || forcePersist) {
+      persistZoom(level)
+    }
+  }, [syncZoomLevel])
 
   // Re-sync when vault config becomes available
   useEffect(() => {
     return subscribeVaultConfig(() => {
       const pct = configToPercent(getVaultConfig().zoom)
-      if (pct !== null) {
-        setZoomLevel(pct)
-        applyZoomToDocument(pct)
+      if (pct !== null && pct !== zoomLevelRef.current) {
+        syncZoomLevel(pct)
       }
     })
-  }, [])
+  }, [syncZoomLevel])
 
   const zoomIn = useCallback(() => {
-    setZoomLevel(prev => {
-      const next = Math.min(MAX_ZOOM, prev + STEP)
-      applyZoomToDocument(next)
-      persistZoom(next)
-      return next
-    })
-  }, [])
+    commitZoomLevel(Math.min(MAX_ZOOM, zoomLevelRef.current + STEP))
+  }, [commitZoomLevel])
 
   const zoomOut = useCallback(() => {
-    setZoomLevel(prev => {
-      const next = Math.max(MIN_ZOOM, prev - STEP)
-      applyZoomToDocument(next)
-      persistZoom(next)
-      return next
-    })
-  }, [])
+    commitZoomLevel(Math.max(MIN_ZOOM, zoomLevelRef.current - STEP))
+  }, [commitZoomLevel])
 
   const zoomReset = useCallback(() => {
-    setZoomLevel(DEFAULT_ZOOM)
-    applyZoomToDocument(DEFAULT_ZOOM)
-    persistZoom(DEFAULT_ZOOM)
-  }, [])
+    commitZoomLevel(DEFAULT_ZOOM, true)
+  }, [commitZoomLevel])
 
   return { zoomLevel, zoomIn, zoomOut, zoomReset }
 }

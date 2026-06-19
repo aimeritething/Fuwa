@@ -93,6 +93,7 @@ files:
     command.navigation.showArchivedNotes: 241399b908884adfe8608a3ab827ca74
     command.navigation.listType: 4f70c27c6826a37543c8ada561397c22
     command.note.newNote: 23c4edda8b815f750782f01870d27271
+    command.note.newSheet: 644f6b6a5bcbe0c3b723ec22ad198f3e
     command.note.newNoteInCurrentFolder: 167b765903c70ab1b645908ff8a899ab
     command.note.newType: adce5108f18945cc502a06c02445e32d
     command.note.newTypedNote: 1493eda772c2179cb6247169d00723b2
@@ -553,6 +554,30 @@ files:
     editor.empty.selectNote: a71ec7c80aefe49c59f6aba033bf453e
     editor.empty.shortcuts: 1133fdf3ecef6a09dd9e2a185e1bd4ec
     editor.raw.label: 7a9754c15264b0604aa31dfea32321ea
+    editor.sheet.loading: 59df3a3f0bb3834a820e8fbf6a515114
+    editor.sheet.unavailable: f0920deeec857fa2251bb073b956364e
+    editor.sheet.context.auto: 06b9281e396db002010bde1de57262eb
+    editor.sheet.context.number: b2ee912b91d69b435159c7c3f6df7f5f
+    editor.sheet.context.percentage: 37be07209f53a5d636d5c904ca9ae64c
+    editor.sheet.context.currencyUsd: 3cb6cef8f5a71608c2a6903d2dfb6656
+    editor.sheet.context.currencyEur: 24c64850c930dcaa85bbf03615fe2e78
+    editor.sheet.context.insertRowAbove: 9e4b77d73f7e68e13150a59175bcb6d9
+    editor.sheet.context.insertRowBelow: 410af72a850d577d370f3b19db951f29
+    editor.sheet.context.insertColumnLeft: 951489ec15082daab6174f1f79e99035
+    editor.sheet.context.insertColumnRight: d76ad5e27c1b1268ddd839b7b3f95108
+    editor.sheet.context.deleteRow: d501f89526d0fe57c1dfb94aeb3fc234
+    editor.sheet.context.deleteColumn: 864c8b59fdcfbf1d3872bc484c510c3b
+    editor.sheet.context.freezeRows: 5fa71e4def6c2b644894ee2af7285686
+    editor.sheet.context.freezeColumns: e23bf93c6a51438420d26004fd51d7bd
+    editor.sheet.context.unfreezeRows: 7069b8a8fb5d9428c3c8814a1d9bc5e9
+    editor.sheet.context.unfreezeColumns: b8bc2e9647448b820cdc20fd31cbdc52
+    editor.sheet.context.decreaseDecimals: 6b515416941b465cbbcddaa74f6559c1
+    editor.sheet.context.increaseDecimals: 07b8bdec0845dd1acbaebdebb0c15671
+    editor.sheet.context.bold: 114c3050111d8b8ddd830b99ccebd246
+    editor.sheet.context.italic: 1d874710ccdcd46b95397049d2e7500c
+    editor.sheet.context.wrapText: bcd38c54cc299e7f9d5d37f9b999c027
+    editor.sheet.context.unwrapText: bde49101f3872b8d2bf6b08cccc6c667
+    editor.sheet.context.clearFormatting: 4494691b92e1f195feb25bd63ee5468b
     editor.find.findLabel: 4cfa6c981549e990fe2344e4c805405e
     editor.find.findPlaceholder: 4cfa6c981549e990fe2344e4c805405e
     editor.find.replaceLabel: 0ebe6df8a3ac338e0512acc741823fdb
@@ -658,6 +683,9 @@ files:
     inspector.properties.addProperty: 9820ade036bf1bdf80c0b7da24a4ce0a
     inspector.properties.deleteProperty: f1d0ab48c8596108e949dfc90e13050b
     inspector.properties.none: 6adf97f83acf6453d4a6a4b1070f3754
+    inspector.properties.displayAs: 6e0b81cc9a0919bc2182df7a5762fd26
+    inspector.properties.formatText: 9dffbf69ffba8bc38bc4e01abf4b1675
+    inspector.properties.formatSheet: 83a293c58d996a90ac357b10ba864c83
     inspector.properties.workspace: 5b70a213f150f01f0776fa9481ef2ddf
     inspector.properties.missingType: 9179080e7bcc72408f3de7cb944ff400
     inspector.properties.missingTypeAria: 582c2c46117cff0534d13e7c8a45a3ba

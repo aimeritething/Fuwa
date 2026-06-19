@@ -10,6 +10,7 @@ export function useRegisterEditorContentFlushes({
   activeTab,
   flushPendingEditorChange,
   flushPendingEditorContentRef,
+  sheetFlushRef,
   rawLatestContentRef,
   rawMode,
   onContentChange,
@@ -18,12 +19,13 @@ export function useRegisterEditorContentFlushes({
   activeTab: Tab | null
   flushPendingEditorChange: () => boolean
   flushPendingEditorContentRef?: React.MutableRefObject<((path: string) => void) | null>
+  sheetFlushRef?: React.MutableRefObject<((path: string) => void) | null>
   rawLatestContentRef: React.MutableRefObject<string | null>
   rawMode: boolean
   onContentChange?: (path: string, content: string) => void
   flushPendingRawContentRef?: React.MutableRefObject<((path: string) => void) | null>
 }) {
-  useRegisterRichContentFlush({ activeTab, flushPendingEditorChange, flushPendingEditorContentRef })
+  useRegisterRichContentFlush({ activeTab, flushPendingEditorChange, flushPendingEditorContentRef, sheetFlushRef })
   useRegisterRawContentFlush({ activeTab, rawLatestContentRef, rawMode, onContentChange, flushPendingRawContentRef })
 }
 
@@ -31,15 +33,18 @@ function useRegisterRichContentFlush({
   activeTab,
   flushPendingEditorChange,
   flushPendingEditorContentRef,
+  sheetFlushRef,
 }: {
   activeTab: Tab | null
   flushPendingEditorChange: () => boolean
   flushPendingEditorContentRef?: React.MutableRefObject<((path: string) => void) | null>
+  sheetFlushRef?: React.MutableRefObject<((path: string) => void) | null>
 }) {
   const flushPendingEditorContent = useCallback((path: string) => {
     if (!activeTab || activeTab.entry.path !== path) return
+    sheetFlushRef?.current?.(path)
     flushPendingEditorChange()
-  }, [activeTab, flushPendingEditorChange])
+  }, [activeTab, flushPendingEditorChange, sheetFlushRef])
 
   useRegisteredFlushRef(flushPendingEditorContentRef, flushPendingEditorContent)
 }

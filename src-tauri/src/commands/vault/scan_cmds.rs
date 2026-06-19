@@ -7,17 +7,56 @@ use std::path::{Path, PathBuf};
 use super::boundary::{with_validated_path, ValidatedPathMode};
 
 fn collect_registered_vault_roots(vault_list: &vault_list::VaultList) -> Vec<PathBuf> {
-    let mut roots = vault_list
-        .vaults
-        .iter()
-        .map(|entry| PathBuf::from(expand_tilde(&entry.path).into_owned()))
-        .collect::<Vec<_>>();
+    let mut roots = Vec::new();
+    for entry in &vault_list.vaults {
+        push_unique_vault_root_path(
+            &mut roots,
+            PathBuf::from(expand_tilde(&entry.path).into_owned()),
+        );
+    }
 
     if let Some(active_vault) = &vault_list.active_vault {
-        roots.push(PathBuf::from(expand_tilde(active_vault).into_owned()));
+        push_unique_vault_root_path(
+            &mut roots,
+            PathBuf::from(expand_tilde(active_vault).into_owned()),
+        );
+    }
+
+    for hidden_default in &vault_list.hidden_defaults {
+        push_unique_vault_root_path(
+            &mut roots,
+            PathBuf::from(expand_tilde(hidden_default).into_owned()),
+        );
+    }
+
+    #[cfg(not(test))]
+    if let Ok(default_path) = vault::default_vault_path() {
+        push_unique_vault_root_path(&mut roots, default_path);
+    }
+
+    if let Some(dev_demo_path) = local_dev_demo_vault_path() {
+        push_unique_vault_root_path(&mut roots, dev_demo_path);
     }
 
     roots
+}
+
+fn push_unique_vault_root_path(paths: &mut Vec<PathBuf>, path: PathBuf) {
+    if paths.iter().any(|existing| existing == &path) {
+        return;
+    }
+    paths.push(path);
+}
+
+#[cfg(all(debug_assertions, not(test)))]
+fn local_dev_demo_vault_path() -> Option<PathBuf> {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    manifest_dir.parent().map(|root| root.join("demo-vault-v2"))
+}
+
+#[cfg(not(all(debug_assertions, not(test))))]
+fn local_dev_demo_vault_path() -> Option<PathBuf> {
+    None
 }
 
 fn find_registered_vault_root(path: &Path, registered_roots: &[PathBuf]) -> Option<PathBuf> {
@@ -233,6 +272,20 @@ mod tests {
             roots,
             vec![PathBuf::from("/listed"), PathBuf::from("/active")]
         );
+    }
+
+    #[test]
+    fn collect_registered_vault_roots_includes_hidden_defaults() {
+        let vault_list = VaultList {
+            vaults: vec![],
+            active_vault: None,
+            default_workspace_path: None,
+            hidden_defaults: vec!["/hidden-default".to_string()],
+        };
+
+        let roots = collect_registered_vault_roots(&vault_list);
+
+        assert_eq!(roots, vec![PathBuf::from("/hidden-default")]);
     }
 
     #[test]

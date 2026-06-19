@@ -71,6 +71,13 @@ body.mac-chrome .app:not(:has(.app__sidebar)):not(:has(.app__note-list)) .breadc
   flex-direction: column;
 }
 
+.editor-scroll-area--sheet {
+  overflow: hidden;
+  position: relative;
+  isolation: isolate;
+  contain: layout paint;
+}
+
 /* BlockNote container */
 .editor__blocknote-container {
   flex: 1;

@@ -138,6 +138,7 @@ The note list opportunistically preloads visible and adjacent markdown/text entr
 | Diagram rendering | Mermaid | 11.14.0 |
 | Whiteboard rendering | tldraw | 4.5.10 |
 | Raw editor | CodeMirror 6 + official language packages | Markdown, YAML, JSON, Python, SQL, JS/TS |
+| Spreadsheet editor | IronCalc workbook + WASM | 0.5.x |
 | Styling | Tailwind CSS v4 + CSS variables | 4.1.18 |
 | UI primitives | Radix UI + shadcn/ui | - |
 | Icons | Phosphor Icons | - |

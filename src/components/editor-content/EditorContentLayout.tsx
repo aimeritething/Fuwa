@@ -1,5 +1,5 @@
 import type React from 'react'
-import { useCallback, useEffect, useRef } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import { translate, type AppLocale } from '../../lib/i18n'
 import type { VaultEntry } from '../../types'
@@ -79,6 +79,8 @@ const LOADING_BREADCRUMB_ENTRY: VaultEntry = {
   fileKind: 'markdown',
 }
 
+const LazySheetEditor = lazy(() => import('../SheetEditor').then((module) => ({ default: module.SheetEditor })))
+
 function EditorLoadingSkeleton() {
   return (
     <div data-testid="editor-content-skeleton" className="flex flex-1 flex-col gap-3 py-5 animate-pulse" style={{ minHeight: 0 }}>
@@ -87,6 +89,14 @@ function EditorLoadingSkeleton() {
       <div className="h-4 w-3/5 rounded bg-muted" />
       <div className="h-4 w-4/5 rounded bg-muted" />
       <div className="h-4 w-2/5 rounded bg-muted" />
+    </div>
+  )
+}
+
+function SheetEditorLoading({ locale = 'en' }: { locale?: AppLocale }) {
+  return (
+    <div className="flex flex-1 items-center justify-center px-6 py-5 text-sm text-muted-foreground" data-testid="sheet-editor-loading">
+      {translate(locale, 'editor.sheet.loading')}
     </div>
   )
 }
@@ -360,29 +370,59 @@ function EditorChrome({
 
 function EditorCanvas({
   showEditor,
+  isSheet,
   cssVars,
   editor,
   activeTab,
   entries,
   onNavigateWikilink,
   onEditorChange,
+  onRawContentChange,
+  sheetFlushRef,
   isDeletedPreview,
   vaultPath,
   locale,
 }: Pick<
   EditorContentModel,
   | 'showEditor'
+  | 'isSheet'
   | 'cssVars'
   | 'editor'
   | 'activeTab'
   | 'entries'
   | 'onNavigateWikilink'
   | 'onEditorChange'
+  | 'onRawContentChange'
+  | 'sheetFlushRef'
   | 'isDeletedPreview'
   | 'vaultPath'
   | 'locale'
 >) {
   if (!showEditor) return null
+
+  if (isSheet && activeTab) {
+    return (
+      <EditorFindScope
+        className="editor-scroll-area editor-scroll-area--sheet"
+        style={cssVars as React.CSSProperties}
+      >
+        <Suspense fallback={<SheetEditorLoading locale={locale} />}>
+          <LazySheetEditor
+            key={activeTab.entry.path}
+            content={activeTab.content}
+            entries={entries}
+            flushContentRef={sheetFlushRef}
+            locale={locale}
+            path={activeTab.entry.path}
+            onContentChange={onRawContentChange ?? (() => {})}
+            onNavigateWikilink={onNavigateWikilink}
+            sourceEntry={activeTab.entry}
+            vaultPath={vaultPath}
+          />
+        </Suspense>
+      </EditorFindScope>
+    )
+  }
 
   return (
     <EditorFindScope
@@ -468,13 +508,14 @@ export function EditorContentLayout(model: EditorContentModel) {
     rawLatestContentRef,
     rawModeContent,
     noteWidth,
+    isSheet,
     findRequest,
     locale,
     isVaultLoading,
   } = model
   const rootClassName = cn(
     'flex flex-1 flex-col min-w-0 min-h-0',
-    noteWidth === 'wide' ? 'editor-content-width--wide' : 'editor-content-width--normal',
+    isSheet || noteWidth === 'wide' ? 'editor-content-width--wide' : 'editor-content-width--normal',
   )
   const chromeTab = activeTab ?? loadingTab
   const chromePath = chromeTab?.entry.path ?? path
@@ -529,7 +570,9 @@ export function EditorContentLayout(model: EditorContentModel) {
             entries={entries}
             onNavigateWikilink={onNavigateWikilink}
             onEditorChange={onEditorChange}
+            onRawContentChange={onRawContentChange}
             isDeletedPreview={isDeletedPreview}
+            isSheet={isSheet}
             locale={locale}
           />
         </>

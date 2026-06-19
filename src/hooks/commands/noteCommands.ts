@@ -95,6 +95,13 @@ function buildCoreNoteCommands(config: NoteCommandsConfig): CommandAction[] {
       enabled: true,
       execute: config.onCreateNote,
     }),
+    createNoteCommand({
+      id: 'create-sheet',
+      label: 'New Sheet',
+      keywords: ['new', 'create', 'add', 'sheet', 'spreadsheet', 'table', 'csv'],
+      enabled: true,
+      execute: () => config.onCreateNote(undefined, { creationPath: 'cmd_sheet', format: 'sheet' }),
+    }),
     buildCurrentFolderNoteCommand(config),
     createNoteCommand({
       id: 'create-type',

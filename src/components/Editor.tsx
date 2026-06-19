@@ -216,6 +216,7 @@ function useEditorSetup({
 }: EditorSetupParams) {
   const vaultPathRef = useRef(vaultPath)
   const flushPendingEditorChangeRef = useRef<(() => boolean) | null>(null)
+  const sheetFlushRef = useRef<((path: string) => void) | null>(null)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
 
   const editor = useCreateBlockNote({
@@ -292,7 +293,7 @@ function useEditorSetup({
     rawMode, diffMode, diffContent, diffLoading,
     handleToggleDiffExclusive, handleToggleRawExclusive,
     handleEditorChange, flushPendingEditorChange, handleViewCommitDiff,
-    isLoadingNewTab, activeStatus, showDiffToggle,
+    isLoadingNewTab, activeStatus, showDiffToggle, sheetFlushRef,
   }
 }
 
@@ -377,6 +378,7 @@ function EditorLayout({
   rawModeContent,
   findRequest,
   rawLatestContentRef,
+  sheetFlushRef,
   onRenameFilename,
   noteWidth,
   onToggleNoteWidth,
@@ -451,6 +453,7 @@ function EditorLayout({
   rawModeContent: string | null
   findRequest?: RawEditorFindRequest | null
   rawLatestContentRef: React.MutableRefObject<string | null>
+  sheetFlushRef: React.MutableRefObject<((path: string) => void) | null>
   onRenameFilename?: (path: string, newFilenameStem: string) => void
   noteWidth?: NoteWidthMode
   onToggleNoteWidth?: () => void
@@ -544,6 +547,7 @@ function EditorLayout({
               rawModeContent={rawModeContent}
               findRequest={findRequest}
               rawLatestContentRef={rawLatestContentRef}
+              sheetFlushRef={sheetFlushRef}
               onRenameFilename={onRenameFilename}
               noteWidth={noteWidth}
               onToggleNoteWidth={onToggleNoteWidth}
@@ -652,6 +656,7 @@ export const Editor = memo(function Editor(props: EditorProps) {
     activeTab: runtime.activeTab,
     flushPendingEditorChange: runtime.flushPendingEditorChange,
     flushPendingEditorContentRef: props.flushPendingEditorContentRef,
+    sheetFlushRef: runtime.sheetFlushRef,
     rawLatestContentRef: runtime.rawLatestContentRef,
     rawMode: runtime.rawMode,
     onContentChange: props.onContentChange,

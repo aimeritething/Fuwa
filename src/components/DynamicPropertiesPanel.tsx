@@ -8,6 +8,7 @@ import { usePropertyPanelState } from '../hooks/usePropertyPanelState'
 import { getEffectiveDisplayMode, detectPropertyType, DISPLAY_MODE_ICONS } from '../utils/propertyTypes'
 import { SmartPropertyValueCell, DisplayModeSelector } from './PropertyValueCells'
 import { TypeSelector } from './TypeSelector'
+import { FormatSelector } from './FormatSelector'
 import { WorkspaceSelector } from './WorkspaceSelector'
 import { AddPropertyForm } from './AddPropertyForm'
 import type { PropertyDisplayMode } from '../utils/propertyTypes'
@@ -24,6 +25,7 @@ import {
 import { humanizePropertyKey } from '../utils/propertyLabels'
 import { translate, type AppLocale } from '../lib/i18n'
 import { canonicalSystemMetadataKey, hasSystemMetadataKey } from '../utils/systemMetadata'
+import { noteFormatFromFrontmatter, type NoteFormat } from '../utils/noteFormat'
 
 // eslint-disable-next-line react-refresh/only-export-components -- utility co-located with component
 export function containsWikilinks(value: FrontmatterValue): boolean {
@@ -436,10 +438,12 @@ function MetadataSelectors({
   availableTypes,
   customColorKey,
   entry,
+  format,
   locale,
   missingTypeName,
   onChangeWorkspace,
   onCreateMissingType,
+  onDeleteProperty,
   onNavigate,
   onUpdateProperty,
   typeColorKeys,
@@ -449,10 +453,12 @@ function MetadataSelectors({
   availableTypes: string[]
   customColorKey?: string | null
   entry: VaultEntry
+  format: NoteFormat
   locale: AppLocale
   missingTypeName?: string | null
   onChangeWorkspace?: (workspace: WorkspaceIdentity) => void | Promise<void>
   onCreateMissingType?: (typeName: string) => boolean | void | Promise<boolean | void>
+  onDeleteProperty?: (key: string) => void
   onNavigate?: (target: string) => void
   onUpdateProperty?: (key: string, value: FrontmatterValue) => void
   typeColorKeys: Record<string, string | null>
@@ -479,6 +485,12 @@ function MetadataSelectors({
         onCreateMissingType={onCreateMissingType}
         locale={locale}
       />
+      <FormatSelector
+        format={format}
+        locale={locale}
+        onDeleteProperty={onDeleteProperty}
+        onUpdateProperty={onUpdateProperty}
+      />
     </>
   )
 }
@@ -489,6 +501,7 @@ function DynamicPropertiesPanelContent({
   pendingSuggestedKey,
   missingSuggested,
   missingTypeName,
+  format,
   locale,
   workspaces,
   onUpdateProperty,
@@ -506,6 +519,7 @@ function DynamicPropertiesPanelContent({
   pendingSuggestedKey: string | null
   missingSuggested: Array<{ key: string; label: string }>
   missingTypeName: string | null
+  format: NoteFormat
   locale: AppLocale
   workspaces?: WorkspaceIdentity[]
   onUpdateProperty?: (key: string, value: FrontmatterValue) => void
@@ -531,10 +545,12 @@ function DynamicPropertiesPanelContent({
           availableTypes={availableTypes}
           customColorKey={customColorKey}
           entry={entry}
+          format={format}
           locale={locale}
           missingTypeName={missingTypeName}
           onChangeWorkspace={onChangeWorkspace}
           onCreateMissingType={onCreateMissingType}
+          onDeleteProperty={onDeleteProperty}
           onNavigate={onNavigate}
           onUpdateProperty={onUpdateProperty}
           typeColorKeys={typeColorKeys}
@@ -626,6 +642,7 @@ export function DynamicPropertiesPanel({
   const propertyState = usePropertyPanelState({ entries, entryIsA: entry.isA, frontmatter, onUpdateProperty, onDeleteProperty, onAddProperty })
   const [pendingSuggestedKey, setPendingSuggestedKey] = useState<string | null>(null)
   const missingTypeName = useMemo(() => resolveMissingTypeName(entry.isA, propertyState.availableTypes), [entry.isA, propertyState.availableTypes])
+  const format = useMemo(() => noteFormatFromFrontmatter(frontmatter), [frontmatter])
 
   const existingKeys = useMemo(
     () => getExistingPropertyKeys([...propertyState.propertyEntries, ...propertyState.typeDerivedPropertyEntries], frontmatter),
@@ -654,6 +671,7 @@ export function DynamicPropertiesPanel({
       pendingSuggestedKey={pendingSuggestedKey}
       missingSuggested={missingSuggested}
       missingTypeName={missingTypeName}
+      format={format}
       locale={locale}
       workspaces={workspaces}
       onUpdateProperty={onUpdateProperty}

@@ -15,6 +15,13 @@ import {
 import { canonicalFrontmatterKey } from '../utils/systemMetadata'
 import { canonicalizeTypeName } from '../utils/vaultTypes'
 import { labelFromWorkspacePath, workspaceIdentityFromVault } from '../utils/workspaces'
+import {
+  NOTE_FORMAT_FRONTMATTER_KEY,
+  NOTE_FORMAT_SHEET,
+  NOTE_FORMAT_TEXT,
+  normalizeNoteFormat,
+  type NoteFormat,
+} from '../utils/noteFormat'
 import type { VaultOption } from '../components/status-bar/types'
 import { useCreateNoteInFolderRequests } from './noteCreationRequests'
 
@@ -113,6 +120,7 @@ export interface NoteContentParams {
   title: string | null
   type: string
   status: string | null
+  format?: NoteFormat
   template?: string | null
   initialEmptyHeading?: boolean
   defaults?: TypeInstanceDefault[]
@@ -126,7 +134,8 @@ export interface TypeInstanceDefault {
   kind: 'property' | 'relationship'
 }
 
-function buildNoteBody({ template, initialEmptyHeading }: Pick<NoteContentParams, 'template' | 'initialEmptyHeading'>): string {
+function buildNoteBody({ format, template, initialEmptyHeading }: Pick<NoteContentParams, 'format' | 'template' | 'initialEmptyHeading'>): string {
+  if (format === NOTE_FORMAT_SHEET) return template ? `\n${template}` : ''
   const templateStartsWithH1 = template?.trimStart().startsWith('# ') ?? false
   if (initialEmptyHeading && !templateStartsWithH1) {
     return template ? `\n# \n\n${template}` : '\n# \n\n'
@@ -241,20 +250,30 @@ function appendDefaultFrontmatterLines(lines: string[], defaults: TypeInstanceDe
   }
 }
 
-export function buildNoteContent({ title, type, status, template, initialEmptyHeading = false, defaults = [] }: NoteContentParams): string {
+export function buildNoteContent({
+  title,
+  type,
+  status,
+  format = NOTE_FORMAT_TEXT,
+  template,
+  initialEmptyHeading = false,
+  defaults = [],
+}: NoteContentParams): string {
   const lines = ['---']
   if (title) lines.push(`title: ${title}`)
   lines.push(`type: ${type}`)
+  if (format === NOTE_FORMAT_SHEET) lines.push(`${NOTE_FORMAT_FRONTMATTER_KEY}: sheet`)
   if (status) lines.push(`status: ${status}`)
   appendDefaultFrontmatterLines(lines, defaults)
   lines.push('---')
-  const body = buildNoteBody({ template, initialEmptyHeading })
+  const body = buildNoteBody({ format, template, initialEmptyHeading })
   return `${lines.join('\n')}\n${body}`
 }
 
 export interface NewNoteParams {
   title: string
   type: string
+  format?: NoteFormat
   vaultPath: string
   defaultWorkspacePath?: string | null
   vaults?: readonly VaultOption[]
@@ -262,7 +281,7 @@ export interface NewNoteParams {
   defaults?: TypeInstanceDefault[]
 }
 
-export function resolveNewNote({ title, type, vaultPath, defaultWorkspacePath, vaults = [], template, defaults = [] }: NewNoteParams): { entry: VaultEntry; content: string } {
+export function resolveNewNote({ title, type, format, vaultPath, defaultWorkspacePath, vaults = [], template, defaults = [] }: NewNoteParams): { entry: VaultEntry; content: string } {
   const creationVaultPath = resolveCreationVaultPath(vaultPath, defaultWorkspacePath, vaults)
   const slug = slugify(title)
   const status = null
@@ -272,7 +291,7 @@ export function resolveNewNote({ title, type, vaultPath, defaultWorkspacePath, v
   }
   return applyTypeDefaults({
     entry,
-    content: buildNoteContent({ title, type, status, template, defaults }),
+    content: buildNoteContent({ title, type, status, format, template, defaults }),
     defaults,
   })
 }
@@ -647,6 +666,7 @@ interface ImmediateCreateDeps {
 
 type ImmediateCreationPath =
   | 'cmd_n'
+  | 'cmd_sheet'
   | 'folder_command_palette'
   | 'folder_context_menu'
   | 'folder_header'
@@ -654,6 +674,7 @@ type ImmediateCreationPath =
 
 export interface ImmediateCreateOptions {
   creationPath?: ImmediateCreationPath
+  format?: NoteFormat
   folderPath?: string
   vaultPath?: string
 }
@@ -676,9 +697,9 @@ interface ImmediateCreateQueueConfig {
 }
 
 /** Generate a unique untitled filename using a timestamp. */
-function generateUntitledFilename(entries: VaultEntry[], type: string, pendingSlugs?: Set<string>): string {
+function generateUntitledFilename(entries: VaultEntry[], label: string, pendingSlugs?: Set<string>): string {
   const ts = Math.floor(Date.now() / 1000)
-  const typeSlug = type === 'Note' ? 'note' : slugify(type)
+  const typeSlug = label === 'Note' ? 'note' : slugify(label)
   const base = `untitled-${typeSlug}-${ts}`
   const existingSlugs = new Set(entries.map((entry) => entry.filename.replace(/\.md$/, '')))
 
@@ -727,9 +748,11 @@ function immediateNoteRelativePath(slug: string, folderPath?: string): string {
 
 async function createNoteImmediate(deps: ImmediateCreateDeps, request: ImmediateCreateRequest): Promise<boolean> {
   const noteType = request.type || 'Note'
-  const slug = generateUntitledFilename(deps.entries, noteType, deps.pendingSlugs)
+  const noteFormat = normalizeNoteFormat(request.format)
+  const untitledLabel = noteFormat === NOTE_FORMAT_SHEET ? 'Sheet' : noteType
+  const slug = generateUntitledFilename(deps.entries, untitledLabel, deps.pendingSlugs)
   const title = slug_to_title(slug)
-  const template = resolveTemplate({ entries: deps.entries, typeName: noteType })
+  const template = noteFormat === NOTE_FORMAT_SHEET ? null : resolveTemplate({ entries: deps.entries, typeName: noteType })
   const defaults = resolveTypeInstanceDefaults({ entries: deps.entries, typeName: noteType })
   const status = null
   const creationVaultPath = resolveImmediateCreationVaultPath(deps, request)
@@ -740,7 +763,15 @@ async function createNoteImmediate(deps: ImmediateCreateDeps, request: Immediate
   }
   const resolved = applyTypeDefaults({
     entry,
-    content: buildNoteContent({ title: null, type: noteType, status, template, initialEmptyHeading: true, defaults }),
+    content: buildNoteContent({
+      title: null,
+      type: noteType,
+      status,
+      format: noteFormat,
+      template,
+      initialEmptyHeading: noteFormat !== NOTE_FORMAT_SHEET,
+      defaults,
+    }),
     defaults,
   })
   const didPersist = await persistImmediateEntry(deps, resolved.entry, resolved.content)
@@ -758,6 +789,7 @@ function trackImmediateCreate(request: ImmediateCreateRequest, didCreate: boolea
   trackEvent('note_created', {
     has_type: request.type ? 1 : 0,
     creation_path: request.creationPath ?? (request.type ? 'type_section' : 'cmd_n'),
+    format: normalizeNoteFormat(request.format),
   })
 }
 

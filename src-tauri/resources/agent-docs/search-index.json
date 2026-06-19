@@ -150,6 +150,22 @@
     ]
   },
   {
+    "title": "Spreadsheets",
+    "path": "pages/concepts/spreadsheets.md",
+    "url": "/concepts/spreadsheets",
+    "section": "concepts",
+    "headings": [
+      "Read Next",
+      "Why Sheet Notes",
+      "One Note, One Sheet",
+      "Editing",
+      "Wikilinks In Cells",
+      "Cross-Sheet Formulas",
+      "Storage",
+      "Formulas"
+    ]
+  },
+  {
     "title": "Types",
     "path": "pages/concepts/types.md",
     "url": "/concepts/types",
@@ -303,6 +319,22 @@
     ]
   },
   {
+    "title": "Use Spreadsheets",
+    "path": "pages/guides/use-spreadsheets.md",
+    "url": "/guides/use-spreadsheets",
+    "section": "guides",
+    "headings": [
+      "Create A Sheet",
+      "Enter Values",
+      "Enter Formulas",
+      "Select And Edit Ranges",
+      "Format Cells",
+      "Add Wikilinks",
+      "Reference Another Sheet Note",
+      "Work With The Raw File"
+    ]
+  },
+  {
     "title": "Use The Table Of Contents",
     "path": "pages/guides/use-table-of-contents.md",
     "url": "/guides/use-table-of-contents",
@@ -401,6 +433,51 @@
       "Stable",
       "Alpha",
       "Before Switching"
+    ]
+  },
+  {
+    "title": "Spreadsheet File Format",
+    "path": "pages/reference/spreadsheet-format.md",
+    "url": "/reference/spreadsheet-format",
+    "section": "reference",
+    "headings": [
+      "Structure",
+      "Frontmatter",
+      "Body",
+      "`_sheet` Metadata",
+      "Number Formats",
+      "Markdown Style Import",
+      "Wikilinks",
+      "Guidance For Agents And Scripts"
+    ]
+  },
+  {
+    "title": "Spreadsheet Formulas",
+    "path": "pages/reference/spreadsheet-functions.md",
+    "url": "/reference/spreadsheet-functions",
+    "section": "reference",
+    "headings": [
+      "Basic Syntax",
+      "Tolaria Cross-Sheet References",
+      "Autocomplete Functions",
+      "Logical",
+      "Math and trigonometry",
+      "Lookup and reference",
+      "Text",
+      "Information",
+      "Statistical",
+      "Date and time",
+      "Financial",
+      "Engineering",
+      "Examples",
+      "Totals",
+      "Growth And Percentages",
+      "Conditional Logic",
+      "Dates",
+      "Text",
+      "Lookup",
+      "Cross-Sheet Model",
+      "IronCalc Function Families"
     ]
   },
   {

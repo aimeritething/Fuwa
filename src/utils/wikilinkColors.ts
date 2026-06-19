@@ -8,6 +8,19 @@ import { resolveEntry } from './wikilink'
 
 /** Broken-link color: muted text to signal the target note doesn't exist */
 const BROKEN_LINK_COLOR = 'var(--text-muted)'
+const typeEntriesByEntries = new WeakMap<VaultEntry[], Map<string, VaultEntry>>()
+
+function typeEntryMapForEntries(entries: VaultEntry[]): Map<string, VaultEntry> {
+  const cached = typeEntriesByEntries.get(entries)
+  if (cached) return cached
+
+  const typeEntries = new Map<string, VaultEntry>()
+  for (const entry of entries) {
+    if (entry.isA === 'Type') typeEntries.set(entry.title, entry)
+  }
+  typeEntriesByEntries.set(entries, typeEntries)
+  return typeEntries
+}
 
 /** Find a vault entry matching a wikilink target string.
  *  Delegates to the unified resolveEntry for consistent case-insensitive matching. */
@@ -18,7 +31,7 @@ export function findEntryByTarget(entries: VaultEntry[], target: string): VaultE
 /** Resolve the accent color for a given entry based on its type */
 export function lookupColorForEntry(entries: VaultEntry[], entry: VaultEntry): string {
   if (!entry.isA) return getTypeColor(null)
-  const typeEntry = entries.find(e => e.isA === 'Type' && e.title === entry.isA)
+  const typeEntry = typeEntryMapForEntries(entries).get(entry.isA)
   return getTypeColor(entry.isA, typeEntry?.color)
 }
 

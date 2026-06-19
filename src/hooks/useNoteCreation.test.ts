@@ -551,6 +551,24 @@ describe('useNoteCreation hook', () => {
     expect(openTabWithContent.mock.calls[0][1]).toBe('---\ntype: Project\n---\n\n# \n\n')
   })
 
+  it('handleCreateNoteImmediate creates sheet-display notes without markdown body scaffolding', async () => {
+    vi.spyOn(Date, 'now').mockReturnValue(1700000000000)
+    const { result } = renderHook(() => useNoteCreation(makeConfig(), tabDeps))
+
+    await act(async () => {
+      result.current.handleCreateNoteImmediate(undefined, { creationPath: 'cmd_sheet', format: 'sheet' })
+      await flushImmediateCreate()
+    })
+
+    expect(addEntry.mock.calls[0][0]).toMatchObject({
+      filename: 'untitled-sheet-1700000000.md',
+      title: 'Untitled Sheet 1700000000',
+      isA: 'Note',
+    })
+    expect(openTabWithContent.mock.calls[0][1]).toBe('---\ntype: Note\n_display: sheet\n---\n')
+    vi.restoreAllMocks()
+  })
+
   it('handleCreateNoteImmediate persists typed notes under Windows verbatim vault roots', async () => {
     vi.mocked(isTauri).mockReturnValue(true)
     vi.mocked(invoke).mockResolvedValueOnce(undefined)

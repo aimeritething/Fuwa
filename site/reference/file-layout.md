@@ -34,6 +34,8 @@ PDFs, images, and other non-Markdown files stay as normal files. Folder browsing
 
 Whiteboards are Markdown files with durable tldraw data, so they belong with notes rather than in `attachments/`.
 
+Spreadsheets are also Markdown files. A note with `_display: sheet` stores ordinary frontmatter plus a CSV-like body and opens in the sheet editor.
+
 Type definitions are Markdown notes with `type: Type` in frontmatter. New type documents are normal notes, and existing type documents in older folders still work.
 
 ## Git Files

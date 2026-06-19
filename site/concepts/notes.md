@@ -32,3 +32,5 @@ Use `[[wikilinks]]` to connect notes from the body. Tolaria shows autocomplete s
 ## Frontmatter
 
 Use frontmatter for structured fields such as type, status, date, URL, and relationships. Keep free-form thinking in the body.
+
+Some notes can be displayed with specialized editors while keeping the same file-first model. A note with `_display: sheet` opens as a spreadsheet and stores its cells in a CSV-like body, while `type` remains available for organization. See [Spreadsheets](/concepts/spreadsheets).

@@ -110,6 +110,22 @@ export function trackDatePropertyDirectEntrySaved(): void {
   trackEvent('date_property_direct_entry_saved', { source: 'properties_panel' })
 }
 
+export function trackSheetEditorOpened(params: {
+  columnCount: number
+  hasMetadata: boolean
+  rowCount: number
+}): void {
+  trackEvent('sheet_editor_opened', {
+    column_count: params.columnCount,
+    has_metadata: numericFlag(params.hasMetadata),
+    row_count: params.rowCount,
+  })
+}
+
+export function trackSheetFormulaAutocompleteUsed(functionName: string): void {
+  trackEvent('sheet_formula_autocomplete_used', { function_name: functionName })
+}
+
 export function trackAiAgentMessageBlocked(agent: AiAgentId, reason: AgentBlockedReason): void {
   trackEvent('ai_agent_message_blocked', { agent, reason })
 }

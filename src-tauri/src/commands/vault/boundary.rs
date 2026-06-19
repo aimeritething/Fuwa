@@ -132,31 +132,58 @@ fn load_registered_vault_roots() -> Result<Vec<VaultRootPaths>, String> {
     Ok(registered_vault_roots(&list))
 }
 
+fn push_unique_vault_root_path(paths: &mut Vec<String>, path: String) {
+    if path.trim().is_empty() || paths.iter().any(|existing| existing == &path) {
+        return;
+    }
+    paths.push(path);
+}
+
+#[cfg(all(debug_assertions, not(test)))]
+fn local_dev_demo_vault_path() -> Option<String> {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    manifest_dir
+        .parent()
+        .map(|root| root.join("demo-vault-v2").to_string_lossy().into_owned())
+}
+
+#[cfg(not(all(debug_assertions, not(test))))]
+fn local_dev_demo_vault_path() -> Option<String> {
+    None
+}
+
+fn configured_vault_root_paths(list: &vault_list::VaultList) -> Vec<String> {
+    let mut paths = Vec::new();
+    for entry in &list.vaults {
+        push_unique_vault_root_path(&mut paths, entry.path.clone());
+    }
+    if let Some(active_vault) = &list.active_vault {
+        push_unique_vault_root_path(&mut paths, active_vault.clone());
+    }
+    for hidden_default in &list.hidden_defaults {
+        push_unique_vault_root_path(&mut paths, hidden_default.clone());
+    }
+    #[cfg(not(test))]
+    if let Ok(default_path) = crate::vault::default_vault_path() {
+        push_unique_vault_root_path(&mut paths, default_path.to_string_lossy().into_owned());
+    }
+    if let Some(dev_demo_path) = local_dev_demo_vault_path() {
+        push_unique_vault_root_path(&mut paths, dev_demo_path);
+    }
+    paths
+}
+
 fn registered_vault_roots(list: &vault_list::VaultList) -> Vec<VaultRootPaths> {
-    list.vaults
-        .iter()
-        .map(|entry| entry.path.as_str())
-        .chain(list.active_vault.as_deref())
+    configured_vault_root_paths(list)
+        .into_iter()
         .filter(|path| !path.trim().is_empty())
-        .filter_map(|path| build_vault_root_paths(path).ok())
+        .filter_map(|path| build_vault_root_paths(&path).ok())
         .collect()
 }
 
 fn is_registered_vault_root(requested: &VaultRootPaths) -> Result<bool, String> {
     let list = vault_list::load_vault_list()?;
-    let registered_paths = list
-        .vaults
-        .iter()
-        .map(|entry| entry.path.as_str())
-        .chain(list.active_vault.as_deref());
-
-    for path in registered_paths {
-        if path.trim().is_empty() {
-            continue;
-        }
-        let Ok(root) = build_vault_root_paths(path) else {
-            continue;
-        };
+    for root in registered_vault_roots(&list) {
         if root.canonical == requested.canonical {
             return Ok(true);
         }
@@ -408,7 +435,26 @@ mod tests {
 
         let roots = registered_vault_roots(&list);
 
-        assert_eq!(roots.len(), 1);
-        assert_eq!(roots[0].canonical, available.path().canonicalize().unwrap());
+        assert!(roots
+            .iter()
+            .any(|root| root.canonical == available.path().canonicalize().unwrap()));
+        assert!(roots.iter().all(|root| root.canonical != missing));
+    }
+
+    #[test]
+    fn registered_vault_roots_include_hidden_default_vaults() {
+        let hidden = tempfile::TempDir::new().unwrap();
+        let list = VaultList {
+            vaults: Vec::new(),
+            active_vault: None,
+            default_workspace_path: None,
+            hidden_defaults: vec![hidden.path().to_string_lossy().to_string()],
+        };
+
+        let roots = registered_vault_roots(&list);
+
+        assert!(roots
+            .iter()
+            .any(|root| root.canonical == hidden.path().canonicalize().unwrap()));
     }
 }

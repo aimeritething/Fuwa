@@ -96,6 +96,34 @@ describe('parseFrontmatter', () => {
     expect(fm['start date']).toBe('')
     expect(fm['rating']).toBe('')
   })
+
+  it('ignores nested map keys inside frontmatter blocks', () => {
+    const fm = parseFrontmatter(`---
+type: Sheet
+_sheet:
+  frozen_rows: 1
+  columns:
+    A:
+      width: 180
+  cells:
+    B2:
+      number_format: "$#,##0.00"
+Owner: Luca
+---
+Metric,January`)
+
+    expect(fm).toEqual({
+      type: 'Sheet',
+      _sheet: '',
+      Owner: 'Luca',
+    })
+    expect(fm['frozen_rows']).toBeUndefined()
+    expect(fm['columns']).toBeUndefined()
+    expect(fm['A']).toBeUndefined()
+    expect(fm['width']).toBeUndefined()
+    expect(fm['B2']).toBeUndefined()
+    expect(fm['number_format']).toBeUndefined()
+  })
 })
 
 describe('detectFrontmatterState', () => {
