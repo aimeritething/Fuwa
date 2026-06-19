@@ -1279,6 +1279,36 @@ mod tests {
     }
 
     #[test]
+    fn test_move_note_to_folder_updates_title_and_path_links_in_body_and_frontmatter() {
+        let dir = TempDir::new().unwrap();
+        let vault = dir.path();
+        create_test_file(
+            vault,
+            "projects/weekly-review.md",
+            "---\ntitle: Weekly Review\n---\n# Weekly Review\nBody\n",
+        );
+        create_test_file(
+            vault,
+            "areas/linked.md",
+            "---\nrelated_to:\n  - \"[[Weekly Review]]\"\n---\nReference [[projects/weekly-review|review notes]] and [[weekly-review]].\n",
+        );
+
+        let result = move_note_to_folder(MoveNoteToFolderRequest {
+            vault_path: vault.to_str().unwrap(),
+            old_path: vault.join("projects/weekly-review.md").to_str().unwrap(),
+            destination_folder_path: vault.join("areas").to_str().unwrap(),
+        })
+        .expect("move should succeed");
+
+        assert_eq!(result.updated_files, 1);
+        assert!(result.new_path.ends_with("areas/weekly-review.md"));
+        assert_eq!(
+            fs::read_to_string(vault.join("areas/linked.md")).unwrap(),
+            "---\nrelated_to:\n  - \"[[areas/weekly-review]]\"\n---\nReference [[areas/weekly-review|review notes]] and [[areas/weekly-review]].\n",
+        );
+    }
+
+    #[test]
     fn test_move_note_to_folder_noop_when_destination_matches_current_parent() {
         let dir = TempDir::new().unwrap();
         let vault = dir.path();
