@@ -115,6 +115,10 @@ import { MIN_QUERY_LENGTH, preFilterWikilinks } from '../utils/wikilinkSuggestio
 import { notePathsMatch } from '../utils/notePathIdentity'
 import { isSecondaryPointerButton } from '../utils/pointerButtons'
 import { SheetContextMenu } from './SheetContextMenu'
+import {
+  SheetFormulaAutocompleteMenu,
+  type SheetFormulaAutocompleteMenuState,
+} from './SheetFormulaAutocompleteMenu'
 import { WikilinkSuggestionMenu, type WikilinkSuggestionItem } from './WikilinkSuggestionMenu'
 import type { VaultEntry } from '../types'
 import './SheetEditor.css'
@@ -163,14 +167,9 @@ interface ScheduleSheetSerializeOptions {
   dirty?: boolean
 }
 
-interface FormulaAutocompleteState {
-  suggestions: SheetFormulaSuggestion[]
-  selectedIndex: number
+interface FormulaAutocompleteState extends SheetFormulaAutocompleteMenuState {
   tokenStart: number
   tokenEnd: number
-  left: number
-  top: number
-  width: number
 }
 
 interface SheetWikilinkAutocompleteState {
@@ -1744,7 +1743,7 @@ export function SheetEditor({
     }
 
     const cursor = input.selectionStart ?? input.value.length
-    const match = matchFormulaAutocomplete(input.value, cursor)
+    const match = matchFormulaAutocomplete(input.value, cursor, locale)
     if (!match) {
       formulaInputRef.current = input
       setFormulaAutocomplete(null)
@@ -1759,7 +1758,7 @@ export function SheetEditor({
       tokenEnd: match.tokenEnd,
       ...formulaAutocompletePosition(input, container, cursor),
     }))
-  }, [])
+  }, [locale])
 
   const applyAutocompleteSuggestion = useCallback((suggestion: SheetFormulaSuggestion) => {
     const input = formulaInputRef.current
@@ -2152,38 +2151,16 @@ export function SheetEditor({
     >
       <MemoizedIronCalc model={workbook.model} refreshId={workbook.refreshId} />
       {formulaAutocomplete && (
-        <div
-          className="sheet-formula-autocomplete"
-          role="listbox"
-          style={{
-            left: formulaAutocomplete.left,
-            top: formulaAutocomplete.top,
-            minWidth: formulaAutocomplete.width,
+        <SheetFormulaAutocompleteMenu
+          onApplySuggestion={applyAutocompleteSuggestion}
+          onSelectIndex={(index) => {
+            setFormulaAutocomplete((current) => {
+              if (!current) return null
+              return { ...current, selectedIndex: index }
+            })
           }}
-        >
-          {formulaAutocomplete.suggestions.map((suggestion, index) => (
-            <div
-              aria-selected={index === formulaAutocomplete.selectedIndex}
-              className="sheet-formula-autocomplete__item"
-              key={suggestion.name}
-              onMouseDown={(event) => {
-                event.preventDefault()
-                applyAutocompleteSuggestion(suggestion)
-              }}
-              onMouseEnter={() => {
-                setFormulaAutocomplete((current) => {
-                  if (!current) return null
-                  return { ...current, selectedIndex: index }
-                })
-              }}
-              role="option"
-              tabIndex={-1}
-            >
-              <span className="sheet-formula-autocomplete__name">{suggestion.name}</span>
-              <span className="sheet-formula-autocomplete__signature">{suggestion.signature}</span>
-            </div>
-          ))}
-        </div>
+          state={formulaAutocomplete}
+        />
       )}
       {wikilinkAutocomplete && (
         <div
