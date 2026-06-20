@@ -12,11 +12,8 @@ import {
 
 export type SheetBodyRowsUpdate = Iterable<number> | 'all' | 'none' | undefined
 
-function shouldReplaceDirtyRows(
-  current: SheetBodyDirtyRows,
-  update: SheetBodyRowsUpdate,
-): boolean {
-  return update === undefined || update === 'all' || current === 'all'
+function hasDirtyRowsUpdate(update: SheetBodyRowsUpdate): update is Iterable<number> {
+  return update !== undefined && update !== 'all' && update !== 'none'
 }
 
 function mergedDirtyRowSet(current: SheetBodyDirtyRows, update: Iterable<number>): Set<number> | null {
@@ -59,7 +56,7 @@ export function dirtyRowsForSelectedRange(model: Model): Set<number> {
 
 export function mergeDirtyBodyRows(current: SheetBodyDirtyRows, update: SheetBodyRowsUpdate): SheetBodyDirtyRows {
   if (update === 'none') return current
-  if (shouldReplaceDirtyRows(current, update)) return 'all'
+  if (!hasDirtyRowsUpdate(update) || current === 'all') return 'all'
   return mergedDirtyRowSet(current, update) ?? current
 }
 
