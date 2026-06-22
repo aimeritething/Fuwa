@@ -50,7 +50,7 @@ function resolveChangeActionTarget(
 
 function useContextMenuDismissal(
   ctxMenu: ChangesContextMenuState | null,
-  ctxMenuRef: RefObject<HTMLDivElement>,
+  ctxMenuRef: RefObject<HTMLDivElement | null>,
   closeCtxMenu: () => void,
 ): void {
   useEffect(() => {
