@@ -33,21 +33,84 @@ pub struct LastCommitInfo {
     pub commit_url: Option<String>,
 }
 
-fn title_from_path(path: &str) -> String {
-    path.rsplit('/')
+#[derive(Clone, Copy)]
+struct CommitHash<'a>(&'a str);
+
+#[derive(Clone, Copy)]
+struct GitLogLine<'a>(&'a str);
+
+#[derive(Clone, Copy)]
+struct GitLogOutput<'a>(&'a str);
+
+#[derive(Clone, Copy)]
+struct GitStatusCode<'a>(&'a str);
+
+struct GitHubBaseUrl(String);
+
+#[derive(Clone, Copy, Eq, PartialEq)]
+enum FileChangeStatus {
+    Added,
+    Modified,
+    Deleted,
+}
+
+#[derive(Clone, Copy)]
+struct VaultRelativePath<'a>(&'a str);
+
+impl<'a> CommitHash<'a> {
+    fn as_str(self) -> &'a str {
+        self.0
+    }
+}
+
+impl FileChangeStatus {
+    fn as_str(self) -> &'static str {
+        match self {
+            FileChangeStatus::Added => "added",
+            FileChangeStatus::Modified => "modified",
+            FileChangeStatus::Deleted => "deleted",
+        }
+    }
+}
+
+impl GitHubBaseUrl {
+    fn commit_url(&self, hash: CommitHash<'_>) -> String {
+        format!("{}/commit/{}", self.0, hash.as_str())
+    }
+}
+
+impl<'a> GitLogLine<'a> {
+    fn as_str(self) -> &'a str {
+        self.0
+    }
+
+    fn is_empty(self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+impl<'a> GitLogOutput<'a> {
+    fn lines(self) -> impl Iterator<Item = GitLogLine<'a>> {
+        self.0.lines().map(GitLogLine)
+    }
+}
+
+fn title_from_path(path: VaultRelativePath<'_>) -> String {
+    path.0
+        .rsplit('/')
         .next()
-        .unwrap_or(path)
+        .unwrap_or(path.0)
         .strip_suffix(".md")
-        .unwrap_or(path)
+        .unwrap_or(path.0)
         .replace('-', " ")
 }
 
-fn parse_file_status(code: &str) -> &str {
-    match code {
-        "A" => "added",
-        "M" => "modified",
-        "D" => "deleted",
-        _ => "modified",
+fn parse_file_status(code: GitStatusCode<'_>) -> FileChangeStatus {
+    match code.0 {
+        "A" => FileChangeStatus::Added,
+        "M" => FileChangeStatus::Modified,
+        "D" => FileChangeStatus::Deleted,
+        _ => FileChangeStatus::Modified,
     }
 }
 
@@ -93,10 +156,13 @@ pub fn get_vault_pulse(
 
     let github_base = get_github_base_url(vault);
     let stdout = String::from_utf8_lossy(&output.stdout);
-    Ok(parse_pulse_output(&stdout, &github_base))
+    Ok(parse_pulse_output(
+        GitLogOutput(stdout.as_ref()),
+        github_base.as_ref(),
+    ))
 }
 
-fn get_github_base_url(vault: &Path) -> Option<String> {
+fn get_github_base_url(vault: &Path) -> Option<GitHubBaseUrl> {
     let output = git_command()
         .args(["remote", "get-url", "origin"])
         .current_dir(vault)
@@ -109,10 +175,13 @@ fn get_github_base_url(vault: &Path) -> Option<String> {
 
     let url = String::from_utf8_lossy(&output.stdout).trim().to_string();
     let repo_path = parse_github_repo_path(&url)?;
-    Some(format!("https://github.com/{}", repo_path))
+    Some(GitHubBaseUrl(format!("https://github.com/{}", repo_path)))
 }
 
-fn parse_pulse_output(stdout: &str, github_base: &Option<String>) -> Vec<PulseCommit> {
+fn parse_pulse_output(
+    stdout: GitLogOutput<'_>,
+    github_base: Option<&GitHubBaseUrl>,
+) -> Vec<PulseCommit> {
     let mut commits: Vec<PulseCommit> = Vec::new();
     let mut current: Option<PulseCommit> = None;
 
@@ -137,14 +206,15 @@ fn parse_pulse_output(stdout: &str, github_base: &Option<String>) -> Vec<PulseCo
     commits
 }
 
-fn is_git_status_line(line: &str) -> bool {
+fn is_git_status_line(line: GitLogLine<'_>) -> bool {
+    let line = line.as_str();
     line.starts_with(|c: char| {
         c.is_ascii_uppercase() && line.len() > 1 && line.as_bytes().get(1) == Some(&b'\t')
     })
 }
 
-fn is_commit_header(line: &str) -> bool {
-    line.contains('|') && !is_git_status_line(line)
+fn is_commit_header(line: GitLogLine<'_>) -> bool {
+    line.as_str().contains('|') && !is_git_status_line(line)
 }
 
 fn push_current_commit(commits: &mut Vec<PulseCommit>, current: &mut Option<PulseCommit>) {
@@ -153,22 +223,23 @@ fn push_current_commit(commits: &mut Vec<PulseCommit>, current: &mut Option<Puls
     }
 }
 
-fn parse_commit_header(line: &str, github_base: &Option<String>) -> Option<PulseCommit> {
-    let parts: Vec<&str> = line.splitn(4, '|').collect();
+fn parse_commit_header(
+    line: GitLogLine<'_>,
+    github_base: Option<&GitHubBaseUrl>,
+) -> Option<PulseCommit> {
+    let parts: Vec<&str> = line.as_str().splitn(4, '|').collect();
     if parts.len() != 4 {
         return None;
     }
 
-    let hash = parts[0];
+    let hash = CommitHash(parts[0]);
     let date = chrono::DateTime::parse_from_rfc3339(parts[3])
         .map(|dt| dt.timestamp())
         .unwrap_or(0);
-    let github_url = github_base
-        .as_ref()
-        .map(|base| format!("{}/commit/{}", base, hash));
+    let github_url = github_base.map(|base| base.commit_url(hash));
 
     Some(PulseCommit {
-        hash: hash.to_string(),
+        hash: hash.as_str().to_string(),
         short_hash: parts[1].to_string(),
         message: parts[2].to_string(),
         date,
@@ -180,23 +251,23 @@ fn parse_commit_header(line: &str, github_base: &Option<String>) -> Option<Pulse
     })
 }
 
-fn add_file_change(commit: &mut PulseCommit, line: &str) {
-    let file_parts: Vec<&str> = line.splitn(2, '\t').collect();
+fn add_file_change(commit: &mut PulseCommit, line: GitLogLine<'_>) {
+    let file_parts: Vec<&str> = line.as_str().splitn(2, '\t').collect();
     if file_parts.len() != 2 {
         return;
     }
 
-    let status = parse_file_status(file_parts[0].trim());
+    let status = parse_file_status(GitStatusCode(file_parts[0].trim()));
     let path = file_parts[1].trim();
     match status {
-        "added" => commit.added += 1,
-        "deleted" => commit.deleted += 1,
+        FileChangeStatus::Added => commit.added += 1,
+        FileChangeStatus::Deleted => commit.deleted += 1,
         _ => commit.modified += 1,
     }
     commit.files.push(PulseFile {
         path: path.to_string(),
-        status: status.to_string(),
-        title: title_from_path(path),
+        status: status.as_str().to_string(),
+        title: title_from_path(VaultRelativePath(path)),
     });
 }
 
@@ -234,7 +305,7 @@ pub fn get_last_commit_info(
     let full_hash = parts[0];
     let short_hash = parts[1].to_string();
 
-    let commit_url = get_github_commit_url(vault, full_hash);
+    let commit_url = get_github_commit_url(vault, CommitHash(full_hash));
 
     Ok(Some(LastCommitInfo {
         short_hash,
@@ -243,8 +314,8 @@ pub fn get_last_commit_info(
 }
 
 /// Try to build a GitHub commit URL from the origin remote URL.
-fn get_github_commit_url(vault: &Path, full_hash: &str) -> Option<String> {
-    get_github_base_url(vault).map(|base| format!("{}/commit/{}", base, full_hash))
+fn get_github_commit_url(vault: &Path, full_hash: CommitHash<'_>) -> Option<String> {
+    get_github_base_url(vault).map(|base| base.commit_url(full_hash))
 }
 
 #[cfg(test)]
@@ -448,16 +519,22 @@ mod tests {
 
     #[test]
     fn test_title_from_path() {
-        assert_eq!(title_from_path("note/my-project.md"), "my project");
-        assert_eq!(title_from_path("simple.md"), "simple");
-        assert_eq!(title_from_path("deep/nested/file.md"), "file");
+        assert_eq!(
+            title_from_path(VaultRelativePath("note/my-project.md")),
+            "my project"
+        );
+        assert_eq!(title_from_path(VaultRelativePath("simple.md")), "simple");
+        assert_eq!(
+            title_from_path(VaultRelativePath("deep/nested/file.md")),
+            "file"
+        );
     }
 
     #[test]
     fn test_parse_pulse_output_basic() {
         let stdout =
             "abc123|abc123d|Add notes|2026-03-05T10:00:00+01:00\nA\tnote.md\nM\tproject.md\n";
-        let commits = parse_pulse_output(stdout, &None);
+        let commits = parse_pulse_output(GitLogOutput(stdout), None);
 
         assert_eq!(commits.len(), 1);
         assert_eq!(commits[0].message, "Add notes");
@@ -472,8 +549,8 @@ mod tests {
     #[test]
     fn test_parse_pulse_output_with_github() {
         let stdout = "abc123|abc123d|Msg|2026-03-05T10:00:00+01:00\nA\tnote.md\n";
-        let base = Some("https://github.com/o/r".to_string());
-        let commits = parse_pulse_output(stdout, &base);
+        let base = GitHubBaseUrl("https://github.com/o/r".to_string());
+        let commits = parse_pulse_output(GitLogOutput(stdout), Some(&base));
 
         assert_eq!(
             commits[0].github_url.as_deref(),
@@ -484,7 +561,7 @@ mod tests {
     #[test]
     fn test_parse_pulse_output_multiple_commits() {
         let stdout = "aaa|aaa1234|First|2026-03-05T10:00:00+01:00\nA\ta.md\n\nbbb|bbb1234|Second|2026-03-04T10:00:00+01:00\nM\tb.md\nD\tc.md\n";
-        let commits = parse_pulse_output(stdout, &None);
+        let commits = parse_pulse_output(GitLogOutput(stdout), None);
 
         assert_eq!(commits.len(), 2);
         assert_eq!(commits[0].message, "First");
