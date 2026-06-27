@@ -36,6 +36,19 @@ function renderSheetHarness(content: string, options: SheetHarnessOptions = {}) 
   }
 }
 
+function sheetWithA1Metadata(metadataLines: string[], body = 'Metric,January'): string {
+  return [
+    '---',
+    'type: Sheet',
+    '_sheet:',
+    '  cells:',
+    '    A1:',
+    ...metadataLines.map((line) => `      ${line}`),
+    '---',
+    body,
+  ].join('\n')
+}
+
 async function renderLoadedSheet(content: string, options: SheetHarnessOptions = {}) {
   const rendered = renderSheetHarness(content, options)
   await screen.findByTestId('ironcalc-workbook')
@@ -228,6 +241,24 @@ describe('SheetEditor serialization', () => {
         '---',
         'Updated Metric,January',
       ].join('\n'),
+    })
+  })
+
+  it('normalizes violet sheet metadata colors before applying them to IronCalc', async () => {
+    await expectSaveAfterDirtyEdit({
+      content: sheetWithA1Metadata([
+        'font_color: violet',
+        'fill_color: violet',
+        'border_top: "thin violet"',
+      ]),
+      editWorkbook: () => {
+        ironCalcMock.state.lastModel?.setUserInput(0, 1, 1, 'Updated Metric')
+      },
+      expectedContent: sheetWithA1Metadata([
+        'font_color: "#ee82ee"',
+        'fill_color: "#ee82ee"',
+        'border_top: "thin #ee82ee"',
+      ], 'Updated Metric,January'),
     })
   })
 

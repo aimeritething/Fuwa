@@ -42,6 +42,7 @@ import {
   sheetCellContainsPlainWikilink,
   sheetWikilinkDisplayValue,
 } from './sheetWikilinks'
+import { normalizeSheetColorForIronCalc } from './sheetIronCalcColor'
 import { notePathsMatch } from './notePathIdentity'
 import { resolveEntry, wikilinkTarget } from './wikilink'
 
@@ -702,6 +703,16 @@ function applyCellStyleValue(
   if (value !== undefined) model.updateRangeStyle(area, stylePath, String(value))
 }
 
+function applyCellColorStyleValue(
+  model: Model,
+  area: IronCalcArea,
+  value: string | undefined,
+  stylePath: string,
+): void {
+  const color = normalizeSheetColorForIronCalc(value)
+  if (color) model.updateRangeStyle(area, stylePath, color)
+}
+
 function applyCellFontSize(model: Model, area: IronCalcArea, metadata: SheetCellMetadata): void {
   if (metadata.fontSize === undefined) return
   const currentFontSize = model.getCellStyle(SHEET_INDEX, area.row, area.column).font.sz ?? DEFAULT_FONT_SIZE
@@ -719,7 +730,7 @@ function applyCellBorderMetadata(
   model.setAreaWithBorder(area, {
     type,
     item: {
-      color: metadata.color ?? DEFAULT_FONT_COLOR,
+      color: normalizeSheetColorForIronCalc(metadata.color) ?? DEFAULT_FONT_COLOR,
       style: metadata.style,
     },
   })
@@ -758,8 +769,8 @@ function applyCellMetadata({
   applyCellStyleValue(model, area, metadata.underline, 'font.u')
   applyCellStyleValue(model, area, metadata.strike, 'font.strike')
   applyCellFontSize(model, area, metadata)
-  applyCellStyleValue(model, area, metadata.fontColor, 'font.color')
-  applyCellStyleValue(model, area, metadata.fillColor, 'fill.fg_color')
+  applyCellColorStyleValue(model, area, metadata.fontColor, 'font.color')
+  applyCellColorStyleValue(model, area, metadata.fillColor, 'fill.fg_color')
   applyCellStyleValue(model, area, metadata.horizontalAlign, 'alignment.horizontal')
   applyCellStyleValue(model, area, metadata.verticalAlign, 'alignment.vertical')
   applyCellStyleValue(model, area, metadata.wrapText, 'alignment.wrap_text')

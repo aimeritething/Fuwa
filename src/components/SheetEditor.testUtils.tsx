@@ -219,6 +219,12 @@ const ironCalcMock = vi.hoisted(() => {
     }
   }
 
+  function rejectUnsupportedIronCalcColor(color: string | undefined): void {
+    if (color !== undefined && !/^#[0-9a-f]{6}$/i.test(color)) {
+      throw new Error(`Invalid color: '${color}'.`)
+    }
+  }
+
   class MockModel implements MockSheetModel {
     readonly clearFormattingRanges: CellRange[] = []
     private readonly cells = new Map<string, string>()
@@ -296,6 +302,7 @@ const ironCalcMock = vi.hoisted(() => {
       range: { column: ColumnIndex; row: RowIndex },
       borderArea: { item: { color?: string; style: string }; type: string },
     ): void {
+      rejectUnsupportedIronCalcColor(borderArea.item.color)
       const key = cellKey(range.row, range.column)
       const current = this.styles.get(key) ?? defaultStyle()
       if (borderArea.type === 'Top') current.border.top = borderArea.item
@@ -364,11 +371,14 @@ const ironCalcMock = vi.hoisted(() => {
       stylePath: string,
       value: string,
     ): void {
+      if (stylePath === 'font.color' || stylePath === 'fill.fg_color') rejectUnsupportedIronCalcColor(value)
       this.styleUpdates.push({ range, stylePath, value })
       const key = cellKey(range.row, range.column)
       const current = this.styles.get(key) ?? defaultStyle()
       if (stylePath === 'font.b') current.font.b = value === 'true'
       if (stylePath === 'font.i') current.font.i = value === 'true'
+      if (stylePath === 'font.color') current.font.color = value
+      if (stylePath === 'fill.fg_color') current.fill.fg_color = value
       if (stylePath === 'num_fmt') current.num_fmt = value
       this.styles.set(key, current)
     }
