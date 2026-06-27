@@ -6,7 +6,6 @@ import {
 } from '@phosphor-icons/react'
 import { SideMenuExtension, SuggestionMenu } from '@blocknote/core/extensions'
 import type {
-  BlockNoteEditor,
   BlockSchema,
   InlineContentSchema,
   StyleSchema,
@@ -25,15 +24,30 @@ import {
   useCallback,
   useLayoutEffect,
   useRef,
-  useSyncExternalStore,
   type ComponentType,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react'
 import { isStaleBlockReferenceError } from './richEditorTransformErrorRecoveryExtension'
+import {
+  blockElementById,
+  blockElementFromPoint,
+  blockIdFromElement,
+  dropPlacementForPoint,
+  editorBlockElement,
+  type DropPlacement,
+  type TolariaBlockNoteEditor,
+} from './tolariaBlockNoteDom'
+import {
+  blockHeadingLevel,
+  isCollapsibleSectionBlockForEditor,
+  toggleCollapsedHeading,
+  useCollapsedHeadingIds,
+  useCollapsedHeadingRendering,
+  type CollapsibleBlock,
+} from './tolariaCollapsedSections'
 
-type TolariaBlockNoteEditor = BlockNoteEditor<BlockSchema, InlineContentSchema, StyleSchema>
 type TolariaBlock = NonNullable<ReturnType<TolariaBlockNoteEditor['getBlock']>>
 type SideMenuBlock = {
   children?: CollapsibleBlock[]
@@ -42,17 +56,10 @@ type SideMenuBlock = {
   props?: Record<string, unknown>
   type: string
 }
-type CollapsibleBlock = {
-  children?: CollapsibleBlock[]
-  id?: unknown
-  props?: Record<string, unknown>
-  type?: unknown
-}
 type TableHeaderContent = Record<string, unknown> & {
   headerCols?: unknown
   headerRows?: unknown
 }
-type DropPlacement = 'before' | 'after'
 type PointerReorderState = {
   affordances?: ReorderAffordances
   clearListeners: () => void
@@ -91,280 +98,9 @@ type SideMenuAlignmentContext = {
   retry: () => void
   state: SideMenuAlignmentState
 }
-type CollapsedHeadingStore = {
-  collapsedHeadingIds: Set<string>
-  emit: () => void
-  getSnapshot: () => number
-  listeners: Set<() => void>
-  subscribe: (listener: () => void) => () => void
-  version: number
-}
-type CollapsedSectionRenderState = {
-  collapsedHeadingIds: Set<string>
-  hiddenBlockIds: Set<string>
-}
-type CollapsedHeadingDotsHit = {
-  blockId: string
-  inlineContent: HTMLElement
-}
 
-const BLOCK_CONTAINER_SELECTOR = '[data-node-type="blockContainer"][data-id]'
-const BLOCK_OUTER_SELECTOR = '[data-node-type="blockOuter"][data-id], .bn-block-outer[data-id]'
-const COLLAPSIBLE_LIST_ITEM_TYPES = new Set(['bulletListItem', 'numberedListItem', 'checkListItem'])
 const POINTER_REORDER_THRESHOLD_PX = 4
 const SIDE_MENU_ALIGNMENT_ATTEMPTS = 8
-const headingCollapseStores = new WeakMap<TolariaBlockNoteEditor, CollapsedHeadingStore>()
-const headingCollapseRenderers = new WeakMap<HTMLElement, () => void>()
-const collapsedSectionStyleElements = new WeakMap<HTMLElement, HTMLStyleElement>()
-let collapsedSectionScopeSequence = 0
-
-function createCollapsedHeadingStore(): CollapsedHeadingStore {
-  const store: CollapsedHeadingStore = {
-    collapsedHeadingIds: new Set(),
-    emit: () => {
-      store.version += 1
-      store.listeners.forEach((listener) => listener())
-    },
-    getSnapshot: () => store.version,
-    listeners: new Set(),
-    subscribe: (listener) => {
-      store.listeners.add(listener)
-      return () => store.listeners.delete(listener)
-    },
-    version: 0,
-  }
-
-  return store
-}
-
-function collapsedHeadingStore(editor: TolariaBlockNoteEditor) {
-  let store = headingCollapseStores.get(editor)
-  if (!store) {
-    store = createCollapsedHeadingStore()
-    headingCollapseStores.set(editor, store)
-  }
-
-  return store
-}
-
-function useCollapsedHeadingIds(editor: TolariaBlockNoteEditor) {
-  const store = collapsedHeadingStore(editor)
-  useSyncExternalStore(store.subscribe, store.getSnapshot, store.getSnapshot)
-  return store.collapsedHeadingIds
-}
-
-function blockHeadingLevel(block: CollapsibleBlock | undefined): number | null {
-  if (block?.type !== 'heading') return null
-
-  const rawLevel = block.props?.level
-  const level = typeof rawLevel === 'number'
-    ? rawLevel
-    : typeof rawLevel === 'string'
-      ? Number.parseInt(rawLevel, 10)
-      : 1
-
-  return Number.isInteger(level) && level >= 1 && level <= 6 ? level : null
-}
-
-function isSectionBoundaryBlock(block: CollapsibleBlock) {
-  return block.type === 'divider' || block.type === 'horizontalRule'
-}
-
-function isCollapsibleListItemBlock(block: CollapsibleBlock | undefined) {
-  return typeof block?.type === 'string'
-    && COLLAPSIBLE_LIST_ITEM_TYPES.has(block.type)
-    && Array.isArray(block.children)
-    && block.children.length > 0
-}
-
-function isListItemBlockType(type: unknown) {
-  return typeof type === 'string' && COLLAPSIBLE_LIST_ITEM_TYPES.has(type)
-}
-
-function isCollapsibleSectionBlock(block: CollapsibleBlock | undefined) {
-  return blockHeadingLevel(block) !== null || isCollapsibleListItemBlock(block)
-}
-
-function addDescendantBlockIds(block: CollapsibleBlock, hiddenBlockIds: Set<string>) {
-  if (!Array.isArray(block.children)) return
-
-  for (const child of block.children) {
-    if (typeof child.id === 'string') hiddenBlockIds.add(child.id)
-    addDescendantBlockIds(child, hiddenBlockIds)
-  }
-}
-
-function flattenBlocks(blocks: readonly CollapsibleBlock[], result: CollapsibleBlock[] = []) {
-  for (const block of blocks) {
-    result.push(block)
-    if (Array.isArray(block.children)) flattenBlocks(block.children, result)
-  }
-
-  return result
-}
-
-function collapsedSectionRenderState(
-  blocks: readonly CollapsibleBlock[],
-  collapsedHeadingIds: ReadonlySet<string>,
-): CollapsedSectionRenderState {
-  const state: CollapsedSectionRenderState = {
-    collapsedHeadingIds: new Set(),
-    hiddenBlockIds: new Set(),
-  }
-  let activeCollapsedLevel: number | null = null
-
-  for (const block of flattenBlocks(blocks)) {
-    const blockId = typeof block.id === 'string' ? block.id : undefined
-    const headingLevel = blockHeadingLevel(block)
-    const closesActiveSection = activeCollapsedLevel !== null
-      && (isSectionBoundaryBlock(block) || (headingLevel !== null && headingLevel <= activeCollapsedLevel))
-
-    if (closesActiveSection) activeCollapsedLevel = null
-
-    if (activeCollapsedLevel !== null) {
-      if (blockId) state.hiddenBlockIds.add(blockId)
-      continue
-    }
-
-    if (blockId && headingLevel !== null && collapsedHeadingIds.has(blockId)) {
-      state.collapsedHeadingIds.add(blockId)
-      activeCollapsedLevel = headingLevel
-      continue
-    }
-
-    if (blockId && isCollapsibleListItemBlock(block) && collapsedHeadingIds.has(blockId)) {
-      state.collapsedHeadingIds.add(blockId)
-      addDescendantBlockIds(block, state.hiddenBlockIds)
-    }
-  }
-
-  return state
-}
-
-function cssString(value: string) {
-  return `"${value
-    .replace(/\\/g, '\\\\')
-    .replace(/"/g, '\\"')
-    .replace(/\n/g, '\\A ')
-    .replace(/\r/g, '\\D ')}"`
-}
-
-function collapsedSectionContainer(editorElement: HTMLElement) {
-  const container = editorElement.closest('.editor__blocknote-container')
-  return container instanceof HTMLElement ? container : undefined
-}
-
-function collapsedSectionStyleScope(editorElement: HTMLElement) {
-  const container = collapsedSectionContainer(editorElement)
-  if (!container) return ''
-
-  container.dataset.tolariaCollapseScope ??= String(++collapsedSectionScopeSequence)
-  return `[data-tolaria-collapse-scope=${cssString(container.dataset.tolariaCollapseScope)}]`
-}
-
-function collapsedSectionStyleElement(editorElement: HTMLElement) {
-  const existingStyle = collapsedSectionStyleElements.get(editorElement)
-  if (existingStyle) return existingStyle
-
-  const styleElement = editorElement.ownerDocument.createElement('style')
-  styleElement.setAttribute('data-tolaria-collapsed-sections', 'true')
-  editorElement.ownerDocument.head.appendChild(styleElement)
-  collapsedSectionStyleElements.set(editorElement, styleElement)
-  return styleElement
-}
-
-function blockOuterSelectorsForStyle(
-  editorElement: HTMLElement,
-  blockId: string,
-  scope = collapsedSectionStyleScope(editorElement),
-) {
-  const prefix = scope ? `${scope} ` : ''
-  const id = cssString(blockId)
-  return [
-    `${prefix}.bn-block-outer[data-id=${id}]`,
-    `${prefix}[data-node-type="blockOuter"][data-id=${id}]`,
-  ]
-}
-
-function headingDotsSelectorsForStyle(
-  editorElement: HTMLElement,
-  blockId: string,
-  scope = collapsedSectionStyleScope(editorElement),
-) {
-  return blockOuterSelectorsForStyle(editorElement, blockId, scope)
-    .map((selector) => (
-      `${selector} .bn-block-content .bn-inline-content::after`
-    ))
-}
-
-function headingDotsCssDeclarations() {
-  return [
-    'content: "...";',
-    'display: inline-flex;',
-    'align-items: center;',
-    'justify-content: center;',
-    'min-width: 34px;',
-    'height: 24px;',
-    'margin-inline-start: 10px;',
-    'padding: 0 8px;',
-    'border-radius: 8px;',
-    'background: var(--bg-secondary, rgba(0, 0, 0, 0.08));',
-    'color: var(--colors-muted, rgba(0, 0, 0, 0.46));',
-    'transition: background-color 120ms ease, color 120ms ease;',
-    'font-size: 0.5em;',
-    'font-weight: 700;',
-    'line-height: 1;',
-    'vertical-align: middle;',
-    'cursor: pointer;',
-    'pointer-events: auto;',
-  ].join('\n')
-}
-
-function headingDotsHoverCssDeclarations() {
-  return [
-    'background: var(--bg-tertiary, rgba(0, 0, 0, 0.13));',
-    'color: var(--text-secondary, rgba(0, 0, 0, 0.62));',
-  ].join('\n')
-}
-
-function collapsedSectionStyleText(
-  editorElement: HTMLElement,
-  renderState: CollapsedSectionRenderState,
-) {
-  const hiddenSelectors = Array.from(renderState.hiddenBlockIds)
-    .flatMap((blockId) => blockOuterSelectorsForStyle(editorElement, blockId))
-  const collapsedHeadingSelectors = Array.from(renderState.collapsedHeadingIds)
-    .flatMap((blockId) => headingDotsSelectorsForStyle(editorElement, blockId))
-  const scope = collapsedSectionStyleScope(editorElement)
-  const collapsedHeadingHoverSelectors = scope
-    ? Array.from(renderState.collapsedHeadingIds)
-      .flatMap((blockId) => headingDotsSelectorsForStyle(
-        editorElement,
-        blockId,
-        `${scope}[data-tolaria-collapse-hover-id=${cssString(blockId)}]`,
-      ))
-    : []
-
-  const rules: string[] = []
-  if (hiddenSelectors.length > 0) {
-    rules.push(`${hiddenSelectors.join(',\n')} {\ndisplay: none !important;\n}`)
-  }
-  if (collapsedHeadingSelectors.length > 0) {
-    rules.push(`${collapsedHeadingSelectors.join(',\n')} {\n${headingDotsCssDeclarations()}\n}`)
-  }
-  if (collapsedHeadingHoverSelectors.length > 0) {
-    rules.push(`${collapsedHeadingHoverSelectors.join(',\n')} {\n${headingDotsHoverCssDeclarations()}\n}`)
-  }
-
-  return rules.join('\n\n')
-}
-
-function syncCollapsedSectionStyle(
-  editorElement: HTMLElement,
-  renderState: CollapsedSectionRenderState,
-) {
-  collapsedSectionStyleElement(editorElement).textContent = collapsedSectionStyleText(editorElement, renderState)
-}
 
 function liveSideMenuBlock(editor: TolariaBlockNoteEditor, block: SideMenuBlock | undefined) {
   if (!block) return undefined
@@ -410,487 +146,6 @@ function hasChildBlock(block: TolariaBlock, blockId: string): boolean {
   }
 
   return false
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max)
-}
-
-function editorBlockElement(editor: TolariaBlockNoteEditor): HTMLElement | null {
-  const element = editor.domElement
-  if (!(element instanceof HTMLElement)) return null
-  return element.matches('.bn-editor')
-    ? element
-    : element.querySelector('.bn-editor')
-}
-
-function blockElementFromPoint({
-  editorElement,
-  ownerDocument,
-  x,
-  y,
-}: {
-  editorElement: HTMLElement
-  ownerDocument: Document
-  x: number
-  y: number
-}): HTMLElement | null {
-  if (typeof ownerDocument.elementsFromPoint !== 'function') return null
-
-  const editorRect = editorElement.getBoundingClientRect()
-  if (editorRect.width <= 0 || editorRect.height <= 0) return null
-
-  const hitX = clamp(x, editorRect.left + 10, editorRect.right - 10)
-  const hitY = clamp(y, editorRect.top + 1, editorRect.bottom - 1)
-
-  for (const element of ownerDocument.elementsFromPoint(hitX, hitY)) {
-    if (!editorElement.contains(element)) continue
-
-    const blockElement = element.closest(BLOCK_CONTAINER_SELECTOR)
-    if (blockElement instanceof HTMLElement && editorElement.contains(blockElement)) {
-      return blockElement
-    }
-  }
-
-  return null
-}
-
-function dropPlacementForPoint(blockElement: HTMLElement, y: number): DropPlacement {
-  const rect = blockElement.getBoundingClientRect()
-  return y < rect.top + rect.height / 2 ? 'before' : 'after'
-}
-
-function blockIdFromElement(blockElement: HTMLElement): string | null {
-  return blockElement.dataset.id ?? null
-}
-
-function blockElementById(editorElement: HTMLElement, blockId: string): HTMLElement | null {
-  for (const element of editorElement.querySelectorAll(BLOCK_CONTAINER_SELECTOR)) {
-    if (element instanceof HTMLElement && element.dataset.id === blockId) return element
-  }
-
-  return null
-}
-
-function renderedSectionBlockElements(editorElement: HTMLElement): HTMLElement[] {
-  const outerBlocks = Array.from(editorElement.querySelectorAll(BLOCK_OUTER_SELECTOR))
-    .filter((element): element is HTMLElement => element instanceof HTMLElement)
-  if (outerBlocks.length > 0) return outerBlocks
-
-  return Array.from(editorElement.querySelectorAll(BLOCK_CONTAINER_SELECTOR))
-    .filter((element): element is HTMLElement => element instanceof HTMLElement)
-}
-
-function renderedBlockElementById(editorElement: HTMLElement, blockId: string): HTMLElement | undefined {
-  return renderedSectionBlockElements(editorElement)
-    .find((element) => element.dataset.id === blockId)
-}
-
-function headingLevelFromRenderedBlock(element: HTMLElement): number | null {
-  const headingContent = element.querySelector('[data-content-type="heading"]')
-  if (!(headingContent instanceof HTMLElement)) return null
-
-  const dataLevel = headingContent.dataset.level
-  const parsedDataLevel = dataLevel ? Number.parseInt(dataLevel, 10) : Number.NaN
-  if (Number.isInteger(parsedDataLevel) && parsedDataLevel >= 1 && parsedDataLevel <= 6) {
-    return parsedDataLevel
-  }
-
-  const headingElement = headingContent.querySelector('h1, h2, h3, h4, h5, h6')
-  const tagName = headingElement?.tagName.toLowerCase()
-  const tagLevel = tagName?.match(/^h([1-6])$/)?.[1]
-  return tagLevel ? Number.parseInt(tagLevel, 10) : 1
-}
-
-function isRenderedDividerBlock(element: HTMLElement) {
-  return Boolean(element.querySelector('hr, [data-content-type="divider"]'))
-}
-
-function isRenderedListItemBlock(element: HTMLElement) {
-  const contentType = element.querySelector('.bn-block-content')?.getAttribute('data-content-type')
-  return isListItemBlockType(contentType)
-}
-
-function renderedChildBlockElements(element: HTMLElement) {
-  const blockId = element.dataset.id
-  if (!blockId) return []
-
-  return Array.from(element.querySelectorAll(BLOCK_OUTER_SELECTOR))
-    .filter((child): child is HTMLElement => (
-      child instanceof HTMLElement && child.dataset.id !== blockId
-    ))
-}
-
-function renderedListItemHasChildren(element: HTMLElement) {
-  return isRenderedListItemBlock(element) && renderedChildBlockElements(element).length > 0
-}
-
-function addRenderedDescendantBlockIds(element: HTMLElement, hiddenBlockIds: Set<string>) {
-  for (const child of renderedChildBlockElements(element)) {
-    if (child.dataset.id) hiddenBlockIds.add(child.dataset.id)
-  }
-}
-
-function collapsedSectionRenderStateFromElements(
-  elements: readonly HTMLElement[],
-  collapsedHeadingIds: ReadonlySet<string>,
-): CollapsedSectionRenderState {
-  const state: CollapsedSectionRenderState = {
-    collapsedHeadingIds: new Set(),
-    hiddenBlockIds: new Set(),
-  }
-  let activeCollapsedLevel: number | null = null
-
-  for (const element of elements) {
-    const blockId = element.dataset.id
-    const headingLevel = headingLevelFromRenderedBlock(element)
-    const closesActiveSection = activeCollapsedLevel !== null
-      && (isRenderedDividerBlock(element) || (headingLevel !== null && headingLevel <= activeCollapsedLevel))
-
-    if (closesActiveSection) activeCollapsedLevel = null
-
-    if (activeCollapsedLevel !== null) {
-      if (blockId) state.hiddenBlockIds.add(blockId)
-      continue
-    }
-
-    if (blockId && headingLevel !== null && collapsedHeadingIds.has(blockId)) {
-      state.collapsedHeadingIds.add(blockId)
-      activeCollapsedLevel = headingLevel
-      continue
-    }
-
-    if (blockId && collapsedHeadingIds.has(blockId) && renderedListItemHasChildren(element)) {
-      state.collapsedHeadingIds.add(blockId)
-      addRenderedDescendantBlockIds(element, state.hiddenBlockIds)
-    }
-  }
-
-  return state
-}
-
-function mergeCollapsedSectionRenderStates(...states: CollapsedSectionRenderState[]): CollapsedSectionRenderState {
-  const merged: CollapsedSectionRenderState = {
-    collapsedHeadingIds: new Set(),
-    hiddenBlockIds: new Set(),
-  }
-
-  for (const state of states) {
-    state.collapsedHeadingIds.forEach((blockId) => merged.collapsedHeadingIds.add(blockId))
-    state.hiddenBlockIds.forEach((blockId) => merged.hiddenBlockIds.add(blockId))
-  }
-
-  return merged
-}
-
-function applyCollapsedSectionRenderingToElement(
-  editorElement: HTMLElement,
-  collapsedHeadingIds: ReadonlySet<string>,
-  fallbackBlocks: readonly CollapsibleBlock[],
-) {
-  const blockElements = renderedSectionBlockElements(editorElement)
-  const renderState = mergeCollapsedSectionRenderStates(
-    fallbackBlocks.length > 0
-      ? collapsedSectionRenderState(fallbackBlocks, collapsedHeadingIds)
-      : { collapsedHeadingIds: new Set(), hiddenBlockIds: new Set() },
-    blockElements.length > 0
-      ? collapsedSectionRenderStateFromElements(blockElements, collapsedHeadingIds)
-      : { collapsedHeadingIds: new Set(), hiddenBlockIds: new Set() },
-  )
-
-  syncCollapsedSectionStyle(editorElement, renderState)
-}
-
-function applyCollapsedSectionRenderingFromHeadingIds(
-  editorElement: HTMLElement,
-  collapsedHeadingIds: ReadonlySet<string>,
-  fallbackBlocks: readonly CollapsibleBlock[] = [],
-) {
-  applyCollapsedSectionRenderingToElement(editorElement, collapsedHeadingIds, fallbackBlocks)
-}
-
-function applyCollapsedSectionRendering(
-  editor: TolariaBlockNoteEditor,
-  collapsedHeadingIds: ReadonlySet<string>,
-) {
-  const editorElement = editorBlockElement(editor)
-  if (!editorElement) return
-
-  applyCollapsedSectionRenderingToElement(
-    editorElement,
-    collapsedHeadingIds,
-    editor.document as readonly CollapsibleBlock[],
-  )
-}
-
-function isCollapsibleSectionBlockForEditor(
-  editor: TolariaBlockNoteEditor,
-  block: CollapsibleBlock | undefined,
-) {
-  if (isCollapsibleSectionBlock(block)) return true
-  if (!block || !isListItemBlockType(block.type) || typeof block.id !== 'string') return false
-
-  const editorElement = editorBlockElement(editor)
-  const blockElement = editorElement ? renderedBlockElementById(editorElement, block.id) : undefined
-  return Boolean(blockElement && renderedListItemHasChildren(blockElement))
-}
-
-function parseCssPixelLength(value: string) {
-  const parsed = Number.parseFloat(value)
-  return Number.isFinite(parsed) ? parsed : 0
-}
-
-function lastInlineContentRect(inlineContent: HTMLElement): DOMRect | undefined {
-  const ownerDocument = inlineContent.ownerDocument
-  const range = ownerDocument.createRange()
-  range.selectNodeContents(inlineContent)
-  const rect = Array.from(range.getClientRects())
-    .filter((candidate) => candidate.width > 0 && candidate.height > 0)
-    .at(-1)
-  range.detach()
-
-  return rect
-}
-
-function isCollapsedHeadingDotsHit(inlineContent: HTMLElement, clientX: number, clientY: number) {
-  const ownerWindow = inlineContent.ownerDocument.defaultView
-  if (!ownerWindow) return false
-
-  const textRect = lastInlineContentRect(inlineContent)
-  if (!textRect) return false
-
-  const contentRect = inlineContent.getBoundingClientRect()
-  const afterStyle = ownerWindow.getComputedStyle(inlineContent, '::after')
-  const marginStart = parseCssPixelLength(afterStyle.getPropertyValue('margin-inline-start'))
-  const dotsWidth = Math.max(
-    parseCssPixelLength(afterStyle.width),
-    parseCssPixelLength(afterStyle.minWidth),
-  ) + parseCssPixelLength(afterStyle.paddingLeft) + parseCssPixelLength(afterStyle.paddingRight)
-  const verticalSlop = 4
-  const isRtl = ownerWindow.getComputedStyle(inlineContent).direction === 'rtl'
-  const dotsStart = isRtl ? textRect.left - marginStart - dotsWidth : textRect.right + marginStart
-  const dotsEnd = isRtl ? textRect.left - marginStart : dotsStart + dotsWidth
-
-  return clientX >= dotsStart
-    && clientX <= dotsEnd
-    && clientY >= Math.min(textRect.top, contentRect.top) - verticalSlop
-    && clientY <= Math.max(textRect.bottom, contentRect.bottom) + verticalSlop
-}
-
-function collapsedHeadingDotsHitAtPoint(
-  editorElement: HTMLElement,
-  store: CollapsedHeadingStore,
-  clientX: number,
-  clientY: number,
-) {
-  for (const blockElement of renderedSectionBlockElements(editorElement)) {
-    const blockId = blockElement.dataset.id
-    if (!blockId || !store.collapsedHeadingIds.has(blockId)) continue
-
-    const inlineContent = blockElement.querySelector('.bn-block-content .bn-inline-content')
-    if (!(inlineContent instanceof HTMLElement)) continue
-    if (isCollapsedHeadingDotsHit(inlineContent, clientX, clientY)) return { blockId, inlineContent }
-  }
-
-  return undefined
-}
-
-function collapsedHeadingDotsHitFromEvent(
-  editorElement: HTMLElement,
-  store: CollapsedHeadingStore,
-  event: MouseEvent,
-) {
-  const coordinateHit = collapsedHeadingDotsHitAtPoint(editorElement, store, event.clientX, event.clientY)
-  if (coordinateHit) return coordinateHit
-  if (!(event.target instanceof Element)) return undefined
-
-  const inlineContent = event.target.closest('.bn-inline-content')
-  if (!(inlineContent instanceof HTMLElement) || !editorElement.contains(inlineContent)) return undefined
-
-  const blockElement = inlineContent.closest(BLOCK_OUTER_SELECTOR)
-  if (!(blockElement instanceof HTMLElement) || !editorElement.contains(blockElement)) return undefined
-
-  const blockId = blockElement.dataset.id
-  if (!blockId || !store.collapsedHeadingIds.has(blockId)) return undefined
-  if (!isCollapsedHeadingDotsHit(inlineContent, event.clientX, event.clientY)) return undefined
-
-  return { blockId, inlineContent }
-}
-
-function collapsedHeadingIdFromDotsEvent(
-  editorElement: HTMLElement,
-  store: CollapsedHeadingStore,
-  event: MouseEvent,
-) {
-  return collapsedHeadingDotsHitFromEvent(editorElement, store, event)?.blockId
-}
-
-function expandCollapsedHeading(
-  editorElement: HTMLElement,
-  store: CollapsedHeadingStore,
-  headingId: string,
-  fallbackBlocks: readonly CollapsibleBlock[] = [],
-) {
-  const collapsedHeadingIds = new Set(store.collapsedHeadingIds)
-  if (!collapsedHeadingIds.delete(headingId)) return
-
-  store.collapsedHeadingIds = collapsedHeadingIds
-  applyCollapsedSectionRenderingFromHeadingIds(editorElement, store.collapsedHeadingIds, fallbackBlocks)
-  store.emit()
-}
-
-function ensureCollapsedHeadingRenderer(
-  editor: TolariaBlockNoteEditor,
-  editorElement: HTMLElement,
-  store = collapsedHeadingStore(editor),
-) {
-  if (headingCollapseRenderers.has(editorElement)) return
-
-  const ownerWindow = editorElement.ownerDocument.defaultView
-  if (!ownerWindow) return
-
-  let frame: number | null = null
-  const apply = () => applyCollapsedSectionRenderingFromHeadingIds(
-    editorElement,
-    store.collapsedHeadingIds,
-    editor.document as readonly CollapsibleBlock[],
-  )
-  const scheduleApply = () => {
-    if (frame !== null) return
-    frame = ownerWindow.requestAnimationFrame(() => {
-      frame = null
-      apply()
-    })
-  }
-  const mutationObserver = new ownerWindow.MutationObserver(scheduleApply)
-  mutationObserver.observe(editorElement, {
-    childList: true,
-    subtree: true,
-  })
-  let hoveredDotsElement: HTMLElement | null = null
-  const setHoveredDotsHit = (hit?: CollapsedHeadingDotsHit) => {
-    if (hoveredDotsElement && hoveredDotsElement !== hit?.inlineContent) {
-      hoveredDotsElement.style.removeProperty('cursor')
-    }
-
-    const container = collapsedSectionContainer(editorElement)
-    if (container) {
-      if (hit) container.dataset.tolariaCollapseHoverId = hit.blockId
-      else delete container.dataset.tolariaCollapseHoverId
-    }
-
-    hoveredDotsElement = hit?.inlineContent ?? null
-    if (hoveredDotsElement) {
-      editorElement.style.setProperty('cursor', 'pointer')
-      hoveredDotsElement.style.setProperty('cursor', 'pointer')
-    } else {
-      editorElement.style.removeProperty('cursor')
-    }
-  }
-  const handleCollapsedHeadingMouseMove = (event: MouseEvent) => {
-    setHoveredDotsHit(collapsedHeadingDotsHitFromEvent(editorElement, store, event))
-  }
-  const handleCollapsedHeadingMouseLeave = () => setHoveredDotsHit()
-  const handleCollapsedHeadingMouseDown = (event: MouseEvent) => {
-    if (!collapsedHeadingIdFromDotsEvent(editorElement, store, event)) return
-
-    event.preventDefault()
-    event.stopPropagation()
-  }
-  const handleCollapsedHeadingClick = (event: MouseEvent) => {
-    const headingId = collapsedHeadingIdFromDotsEvent(editorElement, store, event)
-    if (!headingId) return
-
-    event.preventDefault()
-    event.stopPropagation()
-    setHoveredDotsHit()
-    expandCollapsedHeading(
-      editorElement,
-      store,
-      headingId,
-      editor.document as readonly CollapsibleBlock[],
-    )
-  }
-  editorElement.addEventListener('mousemove', handleCollapsedHeadingMouseMove, true)
-  editorElement.addEventListener('mouseleave', handleCollapsedHeadingMouseLeave, true)
-  editorElement.addEventListener('mousedown', handleCollapsedHeadingMouseDown, true)
-  editorElement.addEventListener('click', handleCollapsedHeadingClick, true)
-  const unsubscribeStore = store.subscribe(scheduleApply)
-  const unsubscribeEditorChange = editor.onChange(scheduleApply)
-  const cleanup = () => {
-    if (frame !== null) ownerWindow.cancelAnimationFrame(frame)
-    mutationObserver.disconnect()
-    setHoveredDotsHit()
-    editorElement.removeEventListener('mousemove', handleCollapsedHeadingMouseMove, true)
-    editorElement.removeEventListener('mouseleave', handleCollapsedHeadingMouseLeave, true)
-    editorElement.removeEventListener('mousedown', handleCollapsedHeadingMouseDown, true)
-    editorElement.removeEventListener('click', handleCollapsedHeadingClick, true)
-    collapsedSectionStyleElements.get(editorElement)?.remove()
-    collapsedSectionStyleElements.delete(editorElement)
-    unsubscribeEditorChange()
-    unsubscribeStore()
-  }
-
-  headingCollapseRenderers.set(editorElement, cleanup)
-  apply()
-}
-
-function releaseCollapsedHeadingRenderer(editorElement: HTMLElement) {
-  const cleanup = headingCollapseRenderers.get(editorElement)
-  if (!cleanup) return
-
-  cleanup()
-  headingCollapseRenderers.delete(editorElement)
-}
-
-function toggleCollapsedHeading(
-  editor: TolariaBlockNoteEditor,
-  headingId: string,
-  editorElement?: HTMLElement,
-) {
-  const store = collapsedHeadingStore(editor)
-  const collapsedHeadingIds = new Set(store.collapsedHeadingIds)
-  if (collapsedHeadingIds.has(headingId)) collapsedHeadingIds.delete(headingId)
-  else collapsedHeadingIds.add(headingId)
-  store.collapsedHeadingIds = collapsedHeadingIds
-
-  if (editorElement) {
-    ensureCollapsedHeadingRenderer(editor, editorElement, store)
-    applyCollapsedSectionRenderingFromHeadingIds(
-      editorElement,
-      store.collapsedHeadingIds,
-      editor.document as readonly CollapsibleBlock[],
-    )
-  } else {
-    applyCollapsedSectionRendering(editor, store.collapsedHeadingIds)
-  }
-  store.emit()
-}
-
-function useCollapsedHeadingRendering(editor: TolariaBlockNoteEditor) {
-  useLayoutEffect(() => {
-    let attachFrame: number | null = null
-    let attachedEditorElement: HTMLElement | null = null
-    const fallbackWindow = typeof window === 'undefined' ? undefined : window
-    const attachController = () => {
-      attachFrame = null
-      const editorElement = editorBlockElement(editor)
-      if (!editorElement) {
-        if (fallbackWindow) attachFrame = fallbackWindow.requestAnimationFrame(attachController)
-        return
-      }
-
-      attachedEditorElement = editorElement
-      ensureCollapsedHeadingRenderer(editor, editorElement)
-    }
-
-    attachController()
-
-    return () => {
-      if (attachFrame !== null && fallbackWindow) fallbackWindow.cancelAnimationFrame(attachFrame)
-      if (attachedEditorElement) releaseCollapsedHeadingRenderer(attachedEditorElement)
-    }
-  }, [editor])
 }
 
 function sideMenuElementForEditor(editorElement: HTMLElement): HTMLElement | null {
@@ -1297,6 +552,19 @@ function TolariaAddBlockButton() {
   )
 }
 
+function headingCollapseButtonLabel(isHeading: boolean, isCollapsed: boolean) {
+  if (isHeading) return sectionCollapseButtonLabel(isCollapsed)
+  return itemCollapseButtonLabel(isCollapsed)
+}
+
+function sectionCollapseButtonLabel(isCollapsed: boolean) {
+  return isCollapsed ? 'Expand section' : 'Collapse section'
+}
+
+function itemCollapseButtonLabel(isCollapsed: boolean) {
+  return isCollapsed ? 'Expand item' : 'Collapse item'
+}
+
 function TolariaHeadingCollapseButton() {
   const Components = useComponentsContext()!
   const { block, editor } = useSideMenuBlock()
@@ -1305,9 +573,7 @@ function TolariaHeadingCollapseButton() {
   const isHeading = blockHeadingLevel(block) !== null
   const isCollapsible = isCollapsibleSectionBlockForEditor(editor, block)
   const Icon = isCollapsed ? CaretRight : CaretDown
-  const label = isHeading
-    ? isCollapsed ? 'Expand section' : 'Collapse section'
-    : isCollapsed ? 'Expand item' : 'Collapse item'
+  const label = headingCollapseButtonLabel(isHeading, isCollapsed)
 
   const toggleHeading = useCallback((editorElement?: HTMLElement) => {
     runSideMenuAction(() => {
