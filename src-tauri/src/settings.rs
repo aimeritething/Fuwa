@@ -4,8 +4,6 @@ use std::path::PathBuf;
 
 use crate::ai_models::{normalize_ai_model_providers, AiModelProvider};
 
-const APP_CONFIG_DIR: &str = "com.tolaria.app";
-const LEGACY_APP_CONFIG_DIR: &str = "com.laputa.app";
 const SUPPORTED_DEFAULT_AI_AGENTS: &[&str] = &[
     "claude_code",
     "codex",
@@ -269,28 +267,12 @@ fn normalize_ai_workspace_conversations(
     }
 }
 
-fn app_config_dir() -> Result<PathBuf, String> {
-    dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())
-}
-
 pub(crate) fn preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
-    Ok(app_config_dir()?.join(APP_CONFIG_DIR).join(file_name))
+    crate::app_config::preferred_app_config_path(file_name)
 }
 
 fn resolve_existing_or_preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
-    let preferred = preferred_app_config_path(file_name)?;
-    if preferred.exists() {
-        return Ok(preferred);
-    }
-
-    let legacy = app_config_dir()?
-        .join(LEGACY_APP_CONFIG_DIR)
-        .join(file_name);
-    if legacy.exists() {
-        return Ok(legacy);
-    }
-
-    Ok(preferred)
+    crate::app_config::resolve_existing_or_preferred_app_config_path(file_name)
 }
 
 fn settings_path() -> Result<PathBuf, String> {

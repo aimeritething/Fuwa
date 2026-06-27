@@ -2,10 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 
+use crate::app_config::{preferred_app_config_path, resolve_existing_or_preferred_app_config_path};
 use crate::commands::expand_tilde;
-
-const APP_CONFIG_DIR: &str = "com.tolaria.app";
-const LEGACY_APP_CONFIG_DIR: &str = "com.laputa.app";
 
 #[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq)]
 pub struct VaultEntry {
@@ -32,30 +30,6 @@ pub struct VaultList {
     pub default_workspace_path: Option<String>,
     #[serde(default)]
     pub hidden_defaults: Vec<String>,
-}
-
-fn app_config_dir() -> Result<PathBuf, String> {
-    dirs::config_dir().ok_or_else(|| "Could not determine config directory".to_string())
-}
-
-fn preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
-    Ok(app_config_dir()?.join(APP_CONFIG_DIR).join(file_name))
-}
-
-fn resolve_existing_or_preferred_app_config_path(file_name: &str) -> Result<PathBuf, String> {
-    let preferred = preferred_app_config_path(file_name)?;
-    if preferred.exists() {
-        return Ok(preferred);
-    }
-
-    let legacy = app_config_dir()?
-        .join(LEGACY_APP_CONFIG_DIR)
-        .join(file_name);
-    if legacy.exists() {
-        return Ok(legacy);
-    }
-
-    Ok(preferred)
 }
 
 fn vault_list_path() -> Result<PathBuf, String> {

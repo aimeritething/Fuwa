@@ -33,7 +33,7 @@ When deciding where to persist a piece of data, ask: **"Would the user want this
 | N/A | Registered workspace labels, aliases, mount state, and default new-note destination |
 | Any user-visible customization of how content is organized or displayed | Any machine-specific or credential-type setting |
 
-**Rule:** If the information is about *how the content is structured or presented* and the user would expect it to be consistent wherever they open their vault, store it in the vault (frontmatter of the relevant note, using the `_field` underscore convention for system properties). If it's about *this specific installation of the app*, store it in `~/.config/com.tolaria.app/settings.json` or localStorage.
+**Rule:** If the information is about *how the content is structured or presented* and the user would expect it to be consistent wherever they open their vault, store it in the vault (frontmatter of the relevant note, using the `_field` underscore convention for system properties). If it's about *this specific installation of the app*, store it in app config JSON under `$XDG_CONFIG_HOME/com.tolaria.app/` (defaulting to `$HOME/.config/com.tolaria.app/` on Unix platforms), or in localStorage for renderer-only transient layout state.
 
 Examples:
 - ✅ Vault: `_pinned_properties` in a Type note (every device should show the same pinned properties)
@@ -108,7 +108,7 @@ Large-vault reproduction and keyboard QA steps live in [LARGE-VAULT-LOADING-QA.m
 
 #### Mounted Workspaces
 
-The registered vault list can act as a mounted-workspace set. `useVaultSwitcher` persists each workspace's installation-local identity (`label`, stable `alias`, color, mount flag) and the default destination for newly created notes in `~/.config/com.tolaria.app/vaults.json`. `useVaultLoader` scans every available mounted workspace and annotates each `VaultEntry` with provenance before React consumes the combined graph. The default workspace is the write target for new notes and Type documents; it is not the only active vault when multiple workspaces are enabled.
+The registered vault list can act as a mounted-workspace set. `useVaultSwitcher` persists each workspace's installation-local identity (`label`, stable `alias`, color, mount flag) and the default destination for newly created notes in `vaults.json` under Tolaria's app config directory (`$XDG_CONFIG_HOME/com.tolaria.app/`, defaulting to `$HOME/.config/com.tolaria.app/` on Unix platforms). `useVaultLoader` scans every available mounted workspace and annotates each `VaultEntry` with provenance before React consumes the combined graph. The default workspace is the write target for new notes and Type documents; it is not the only active vault when multiple workspaces are enabled.
 
 Vault item deep links use the registered vault list as their resolver namespace. `src/utils/deepLinks.ts` builds `tolaria://<vault-slug>/<relative-path-with-extension>` URLs from workspace aliases, labels, and paths, appending a short stable hash when generated slugs would collide. `useDeepLinks` validates incoming links, switches vaults when required, reloads the vault index once for recently changed files, and opens the matching `VaultEntry` through the normal note-selection path.
 
