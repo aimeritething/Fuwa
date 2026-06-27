@@ -643,6 +643,19 @@ export const mockHandlers: Record<string, (args: any) => any> = {
       },
     },
   }, null, 2),
+  get_opencode_mcp_config_snippet: () => JSON.stringify({
+    $schema: 'https://opencode.ai/config.json',
+    mcp: {
+      tolaria: {
+        type: 'local',
+        command: ['node', '/mock/Tolaria/mcp-server/index.js'],
+        enabled: true,
+        environment: {
+          WS_UI_PORT: '9711',
+        },
+      },
+    },
+  }, null, 2),
   copy_text_to_clipboard: () => null,
   read_text_from_clipboard: () => '',
   sync_mcp_bridge_vault: (args: { vaultPath?: string | null }) => args.vaultPath ? 'started' : 'stopped',

@@ -5,10 +5,12 @@ import { createTranslator, type AppLocale } from '../lib/i18n'
 
 export type McpStatus = 'checking' | 'installed' | 'not_installed'
 type ManualConfigSnippet = string
+type ManualConfigKind = 'standard' | 'opencode'
 type McpCommand =
   | 'check_mcp_status'
   | 'copy_text_to_clipboard'
   | 'get_mcp_config_snippet'
+  | 'get_opencode_mcp_config_snippet'
   | 'register_mcp_tools'
   | 'remove_mcp_tools'
 type McpCommandResult = string
@@ -21,14 +23,21 @@ type Translator = ReturnType<typeof createTranslator>
 interface ManualMcpConfigState {
   error: ToastMessage | null
   loading: boolean
-  snippet: ManualConfigSnippet | null
+  opencodeSnippet: ManualConfigSnippet | null
+  standardSnippet: ManualConfigSnippet | null
   vaultPath: VaultPath
+}
+
+interface ManualMcpConfigSnippets {
+  opencodeSnippet: ManualConfigSnippet
+  standardSnippet: ManualConfigSnippet
 }
 
 const EMPTY_MANUAL_CONFIG: ManualMcpConfigState = {
   error: null,
   loading: false,
-  snippet: null,
+  opencodeSnippet: null,
+  standardSnippet: null,
   vaultPath: '',
 }
 
@@ -85,6 +94,13 @@ async function writeClipboardText(value: ManualConfigSnippet, t: Translator): Pr
   await navigator.clipboard.writeText(value)
 }
 
+function snippetForKind(
+  snippets: ManualMcpConfigSnippets,
+  kind: ManualConfigKind,
+): ManualConfigSnippet {
+  return kind === 'opencode' ? snippets.opencodeSnippet : snippets.standardSnippet
+}
+
 function useManualMcpConfig(
   vaultPath: VaultPath,
   onToastRef: MutableRefObject<ToastHandler>,
@@ -92,39 +108,57 @@ function useManualMcpConfig(
 ) {
   const [manualConfig, setManualConfig] = useState<ManualMcpConfigState>(EMPTY_MANUAL_CONFIG)
 
-  const loadMcpConfigSnippet = useCallback(async () => {
-    setManualConfig({ error: null, loading: true, snippet: null, vaultPath })
+  const loadMcpConfigSnippets = useCallback(async () => {
+    setManualConfig({
+      error: null,
+      loading: true,
+      opencodeSnippet: null,
+      standardSnippet: null,
+      vaultPath,
+    })
     try {
-      const snippet = await tauriCall<ManualConfigSnippet>('get_mcp_config_snippet', { vaultPath })
-      setManualConfig({ error: null, loading: false, snippet, vaultPath })
-      return snippet
+      const [standardSnippet, opencodeSnippet] = await Promise.all([
+        tauriCall<ManualConfigSnippet>('get_mcp_config_snippet', { vaultPath }),
+        tauriCall<ManualConfigSnippet>('get_opencode_mcp_config_snippet', { vaultPath }),
+      ])
+      const snippets = { opencodeSnippet, standardSnippet }
+      setManualConfig({ error: null, loading: false, ...snippets, vaultPath })
+      return snippets
     } catch (error) {
       const message = errorMessage(error)
-      setManualConfig({ error: message, loading: false, snippet: null, vaultPath })
+      setManualConfig({
+        error: message,
+        loading: false,
+        opencodeSnippet: null,
+        standardSnippet: null,
+        vaultPath,
+      })
       throw error
     }
   }, [vaultPath])
 
-  const copyMcpConfig = useCallback(async () => {
+  const copyMcpConfig = useCallback(async (kind: ManualConfigKind = 'standard') => {
     try {
-      const snippet = await loadMcpConfigSnippet()
-      await writeClipboardText(snippet, t)
+      const snippets = await loadMcpConfigSnippets()
+      await writeClipboardText(snippetForKind(snippets, kind), t)
       onToastRef.current(t('mcp.toast.configCopied'))
       return true
     } catch (error) {
       onToastRef.current(t('mcp.toast.configCopyFailed', { error: errorMessage(error) }))
       return false
     }
-  }, [loadMcpConfigSnippet, onToastRef, t])
+  }, [loadMcpConfigSnippets, onToastRef, t])
 
   const currentManualConfig = visibleManualConfig(manualConfig, vaultPath)
 
   return {
-    mcpConfigSnippet: currentManualConfig.snippet,
+    mcpConfigSnippet: currentManualConfig.standardSnippet,
+    opencodeMcpConfigSnippet: currentManualConfig.opencodeSnippet,
     mcpConfigLoading: currentManualConfig.loading,
     mcpConfigError: currentManualConfig.error,
-    loadMcpConfigSnippet,
+    loadMcpConfigSnippets,
     copyMcpConfig,
+    copyOpenCodeMcpConfig: () => copyMcpConfig('opencode'),
   }
 }
 

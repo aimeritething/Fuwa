@@ -304,6 +304,22 @@ pub fn mcp_config_snippet(vault_path: &str) -> Result<String, String> {
     build_mcp_config_snippet(&entry)
 }
 
+/// Build the exact OpenCode MCP config JSON users can copy into opencode.json.
+pub fn opencode_mcp_config_snippet(vault_path: &str) -> Result<String, String> {
+    let _ = vault_path;
+    let runtime = find_mcp_runtime().map_err(|e| {
+        format!(
+            "Node.js 18+ or Bun 1+ is required on PATH before Tolaria can build OpenCode MCP config: {e}"
+        )
+    })?;
+    let server_dir = mcp_server_dir_for_registration()?;
+    let index_js = index_js_client_path(&server_dir);
+    let runtime_command = runtime.binary.to_string_lossy().into_owned();
+    let entry = opencode::build_entry(&runtime_command, &index_js);
+
+    opencode::build_config_snippet(&entry)
+}
+
 /// Write MCP registration to a list of config file paths.
 /// Returns "registered" on first registration, "updated" if already present.
 fn register_mcp_to_configs(entry: &serde_json::Value, config_paths: &[PathBuf]) -> String {

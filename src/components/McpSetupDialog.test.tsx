@@ -15,6 +15,20 @@ const MANUAL_CONFIG = JSON.stringify({
   },
 }, null, 2)
 
+const OPENCODE_CONFIG = JSON.stringify({
+  $schema: 'https://opencode.ai/config.json',
+  mcp: {
+    tolaria: {
+      type: 'local',
+      command: ['node', '/Applications/Tolaria.app/Contents/Resources/mcp-server/index.js'],
+      enabled: true,
+      environment: {
+        WS_UI_PORT: '9711',
+      },
+    },
+  },
+}, null, 2)
+
 describe('McpSetupDialog', () => {
   it('renders the explicit setup flow without mutating config by default', () => {
     render(
@@ -23,6 +37,7 @@ describe('McpSetupDialog', () => {
         status="not_installed"
         busyAction={null}
         manualConfigSnippet={MANUAL_CONFIG}
+        opencodeManualConfigSnippet={OPENCODE_CONFIG}
         onClose={vi.fn()}
         onConnect={vi.fn()}
         onDisconnect={vi.fn()}
@@ -32,15 +47,25 @@ describe('McpSetupDialog', () => {
     expect(screen.getByText('Set Up External AI Tools')).toBeInTheDocument()
     expect(screen.getByText(/will not touch third-party config files until you confirm here/i)).toBeInTheDocument()
     expect(screen.getByText(/requires Node.js 18\+ or Bun 1\+ on PATH/i)).toBeInTheDocument()
+    expect(screen.getByText('Manual MCP configs')).toBeInTheDocument()
+    expect(screen.getByText('Claude, Codex, Cursor, and Gemini')).toBeInTheDocument()
+    expect(screen.getByText('OpenCode')).toBeInTheDocument()
     expect(screen.getByTestId('mcp-config-snippet')).toHaveTextContent('"type": "stdio"')
+    expect(screen.getByTestId('mcp-config-snippet')).toHaveTextContent('"mcpServers"')
     expect(screen.getByTestId('mcp-config-snippet')).not.toHaveTextContent('"VAULT_PATH"')
     expect(screen.getByTestId('mcp-config-snippet')).toHaveTextContent('"WS_UI_PORT": "9711"')
+    expect(screen.getByTestId('mcp-opencode-config-snippet')).toHaveTextContent('"mcp"')
+    expect(screen.getByTestId('mcp-opencode-config-snippet')).toHaveTextContent('"type": "local"')
+    expect(screen.getByTestId('mcp-opencode-config-snippet')).toHaveTextContent('"command": [')
+    expect(screen.getByTestId('mcp-opencode-config-snippet')).not.toHaveTextContent('"mcpServers"')
     expect(screen.getByText('~/.claude.json')).toBeInTheDocument()
     expect(screen.getByText('~/.claude/mcp.json')).toBeInTheDocument()
     expect(screen.getByText('~/.gemini/settings.json')).toBeInTheDocument()
     expect(screen.getByText('~/.config/mcp/mcp.json')).toBeInTheDocument()
+    expect(screen.getByText('~/.config/opencode/opencode.json')).toBeInTheDocument()
     expect(screen.getByText(/Claude Code CLI reads ~\/\.claude\.json/i)).toBeInTheDocument()
-    expect(screen.getByText(/picked up by other MCP-compatible tools/i)).toBeInTheDocument()
+    expect(screen.getByText(/OpenCode reads ~\/\.config\/opencode\/opencode\.json/i)).toBeInTheDocument()
+    expect(screen.getByText(/top-level mcp/i)).toBeInTheDocument()
     expect(screen.getByText(/Gemini CLI needs its own install and sign-in/i)).toBeInTheDocument()
     expect(screen.getByText(/GEMINI\.md/)).toBeInTheDocument()
     expect(screen.getByTestId('mcp-setup-connect')).toHaveTextContent('Connect External AI Tools')
@@ -71,6 +96,7 @@ describe('McpSetupDialog', () => {
         status="not_installed"
         busyAction={null}
         manualConfigSnippet={MANUAL_CONFIG}
+        opencodeManualConfigSnippet={OPENCODE_CONFIG}
         onClose={vi.fn()}
         onConnect={vi.fn()}
         onDisconnect={vi.fn()}
@@ -95,6 +121,7 @@ describe('McpSetupDialog', () => {
     const onClose = vi.fn()
     const onConnect = vi.fn()
     const onCopyManualConfig = vi.fn()
+    const onCopyOpenCodeManualConfig = vi.fn()
     const onDisconnect = vi.fn()
 
     render(
@@ -105,17 +132,20 @@ describe('McpSetupDialog', () => {
         onClose={onClose}
         onConnect={onConnect}
         onCopyManualConfig={onCopyManualConfig}
+        onCopyOpenCodeManualConfig={onCopyOpenCodeManualConfig}
         onDisconnect={onDisconnect}
       />,
     )
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     fireEvent.click(screen.getByTestId('mcp-copy-config'))
+    fireEvent.click(screen.getByTestId('mcp-copy-opencode-config'))
     fireEvent.click(screen.getByTestId('mcp-setup-connect'))
     fireEvent.click(screen.getByTestId('mcp-setup-disconnect'))
 
     expect(onClose).toHaveBeenCalledOnce()
     expect(onCopyManualConfig).toHaveBeenCalledOnce()
+    expect(onCopyOpenCodeManualConfig).toHaveBeenCalledOnce()
     expect(onConnect).toHaveBeenCalledOnce()
     expect(onDisconnect).toHaveBeenCalledOnce()
   })

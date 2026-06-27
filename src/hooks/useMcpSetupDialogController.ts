@@ -4,6 +4,21 @@ import type { AppLocale } from '../lib/i18n'
 
 type ToastHandler = (message: string) => void
 type McpDialogAction = 'connect' | 'disconnect' | null
+type McpDialogMutation = () => Promise<boolean>
+
+async function runDialogMutation(
+  action: Exclude<McpDialogAction, null>,
+  setBusyAction: (action: McpDialogAction) => void,
+  setOpen: (open: boolean) => void,
+  mutate: McpDialogMutation,
+) {
+  setBusyAction(action)
+  try {
+    if (await mutate()) setOpen(false)
+  } finally {
+    setBusyAction(null)
+  }
+}
 
 export function useMcpSetupDialogController(
   vaultPath: string,
@@ -17,10 +32,12 @@ export function useMcpSetupDialogController(
     connectMcp,
     disconnectMcp,
     mcpConfigSnippet,
+    opencodeMcpConfigSnippet,
     mcpConfigLoading,
     mcpConfigError,
-    loadMcpConfigSnippet,
+    loadMcpConfigSnippets,
     copyMcpConfig,
+    copyOpenCodeMcpConfig,
   } = useMcpStatus(vaultPath, onToast, locale)
 
   const openDialog = useCallback(() => {
@@ -32,44 +49,40 @@ export function useMcpSetupDialogController(
     setOpen(false)
   }, [busyAction])
 
-  const connect = useCallback(async () => {
-    setBusyAction('connect')
-    try {
-      const didConnect = await connectMcp()
-      if (didConnect) setOpen(false)
-    } finally {
-      setBusyAction(null)
-    }
-  }, [connectMcp])
+  const connect = useCallback(
+    () => runDialogMutation('connect', setBusyAction, setOpen, connectMcp),
+    [connectMcp],
+  )
 
-  const disconnect = useCallback(async () => {
-    setBusyAction('disconnect')
-    try {
-      const didDisconnect = await disconnectMcp()
-      if (didDisconnect) setOpen(false)
-    } finally {
-      setBusyAction(null)
-    }
-  }, [disconnectMcp])
+  const disconnect = useCallback(
+    () => runDialogMutation('disconnect', setBusyAction, setOpen, disconnectMcp),
+    [disconnectMcp],
+  )
 
   const copyManualConfig = useCallback(() => {
     void copyMcpConfig()
   }, [copyMcpConfig])
 
+  const copyOpenCodeManualConfig = useCallback(() => {
+    void copyOpenCodeMcpConfig()
+  }, [copyOpenCodeMcpConfig])
+
   const loadManualConfig = useCallback(() => {
-    void loadMcpConfigSnippet().catch(() => undefined)
-  }, [loadMcpConfigSnippet])
+    void loadMcpConfigSnippets().catch(() => undefined)
+  }, [loadMcpConfigSnippets])
 
   return {
     busyAction,
     closeDialog,
     connect,
     copyManualConfig,
+    copyOpenCodeManualConfig,
     disconnect,
     loadManualConfig,
     manualConfigError: mcpConfigError,
     manualConfigLoading: mcpConfigLoading,
     manualConfigSnippet: mcpConfigSnippet,
+    opencodeManualConfigSnippet: opencodeMcpConfigSnippet,
     open,
     openDialog,
     status: mcpStatus,

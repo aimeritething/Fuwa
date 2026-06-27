@@ -86,6 +86,44 @@ async function runMutationScenario({
   return hook
 }
 
+function standardMcpSnippet() {
+  return JSON.stringify({ mcpServers: { tolaria: { type: 'stdio' } } })
+}
+
+function opencodeMcpSnippet() {
+  return JSON.stringify({ mcp: { tolaria: { command: ['node', 'index.js'], type: 'local' } } })
+}
+
+async function copySnippetInBrowser(kind: 'standard' | 'opencode') {
+  const writeText = mockClipboard()
+  const onToast = vi.fn()
+  const snippet = standardMcpSnippet()
+  const opencodeSnippet = opencodeMcpSnippet()
+  mockCommands({
+    check_mcp_status: 'not_installed',
+    get_mcp_config_snippet: snippet,
+    get_opencode_mcp_config_snippet: opencodeSnippet,
+  })
+  const { result } = renderSubject(onToast)
+
+  await waitFor(() => {
+    expect(result.current.mcpStatus).toBe('not_installed')
+  })
+
+  await act(async () => {
+    const copy = kind === 'opencode'
+      ? result.current.copyOpenCodeMcpConfig
+      : result.current.copyMcpConfig
+    await expect(copy()).resolves.toBe(true)
+  })
+
+  return {
+    expectedSnippet: kind === 'opencode' ? opencodeSnippet : snippet,
+    onToast,
+    writeText,
+  }
+}
+
 describe('useMcpStatus', () => {
   beforeEach(() => {
     runtimeMock.isTauri = false
@@ -177,10 +215,12 @@ describe('useMcpStatus', () => {
   })
 
   it('loads the exact manual MCP config snippet for the active vault', async () => {
-    const snippet = JSON.stringify({ mcpServers: { tolaria: { type: 'stdio' } } })
+    const snippet = standardMcpSnippet()
+    const opencodeSnippet = opencodeMcpSnippet()
     mockCommands({
       check_mcp_status: 'installed',
       get_mcp_config_snippet: snippet,
+      get_opencode_mcp_config_snippet: opencodeSnippet,
     })
     const { result } = renderSubject()
 
@@ -189,33 +229,27 @@ describe('useMcpStatus', () => {
     })
 
     await act(async () => {
-      await result.current.loadMcpConfigSnippet()
+      await result.current.loadMcpConfigSnippets()
     })
 
     expect(result.current.mcpConfigSnippet).toBe(snippet)
+    expect(result.current.opencodeMcpConfigSnippet).toBe(opencodeSnippet)
     expect(result.current.mcpConfigError).toBeNull()
     expect(mockInvoke).toHaveBeenCalledWith('get_mcp_config_snippet', { vaultPath: '/vault' })
+    expect(mockInvoke).toHaveBeenCalledWith('get_opencode_mcp_config_snippet', { vaultPath: '/vault' })
   })
 
   it('copies the manual MCP config snippet to the clipboard', async () => {
-    const writeText = mockClipboard()
-    const onToast = vi.fn()
-    const snippet = JSON.stringify({ mcpServers: { tolaria: { type: 'stdio' } } })
-    mockCommands({
-      check_mcp_status: 'not_installed',
-      get_mcp_config_snippet: snippet,
-    })
-    const { result } = renderSubject(onToast)
+    const { expectedSnippet, onToast, writeText } = await copySnippetInBrowser('standard')
 
-    await waitFor(() => {
-      expect(result.current.mcpStatus).toBe('not_installed')
-    })
+    expect(writeText).toHaveBeenCalledWith(expectedSnippet)
+    expect(onToast).toHaveBeenCalledWith('Tolaria MCP config copied to clipboard')
+  })
 
-    await act(async () => {
-      await expect(result.current.copyMcpConfig()).resolves.toBe(true)
-    })
+  it('copies the OpenCode MCP config snippet to the clipboard', async () => {
+    const { expectedSnippet, onToast, writeText } = await copySnippetInBrowser('opencode')
 
-    expect(writeText).toHaveBeenCalledWith(snippet)
+    expect(writeText).toHaveBeenCalledWith(expectedSnippet)
     expect(onToast).toHaveBeenCalledWith('Tolaria MCP config copied to clipboard')
   })
 
@@ -223,10 +257,12 @@ describe('useMcpStatus', () => {
     runtimeMock.isTauri = true
     const writeText = mockClipboard()
     const onToast = vi.fn()
-    const snippet = JSON.stringify({ mcpServers: { tolaria: { type: 'stdio' } } })
+    const snippet = standardMcpSnippet()
+    const opencodeSnippet = opencodeMcpSnippet()
     invoke.mockImplementation((command: string) => {
       if (command === 'check_mcp_status') return Promise.resolve('not_installed')
       if (command === 'get_mcp_config_snippet') return Promise.resolve(snippet)
+      if (command === 'get_opencode_mcp_config_snippet') return Promise.resolve(opencodeSnippet)
       if (command === 'copy_text_to_clipboard') return Promise.resolve(null)
       return Promise.resolve(null)
     })

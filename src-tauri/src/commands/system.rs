@@ -142,6 +142,15 @@ pub async fn get_mcp_config_snippet(vault_path: String) -> Result<String, String
 
 #[cfg(desktop)]
 #[tauri::command]
+pub async fn get_opencode_mcp_config_snippet(vault_path: String) -> Result<String, String> {
+    let vault_path = super::expand_tilde(&vault_path).into_owned();
+    tokio::task::spawn_blocking(move || crate::mcp::opencode_mcp_config_snippet(&vault_path))
+        .await
+        .map_err(|e| format!("OpenCode MCP config task failed: {e}"))?
+}
+
+#[cfg(desktop)]
+#[tauri::command]
 pub async fn sync_mcp_bridge_vault(
     app: tauri::AppHandle,
     vault_path: Option<String>,
@@ -187,6 +196,12 @@ pub async fn check_mcp_status(_vault_path: String) -> Result<crate::mcp::McpStat
 #[cfg(mobile)]
 #[tauri::command]
 pub async fn get_mcp_config_snippet(_vault_path: String) -> Result<String, String> {
+    Err("MCP is not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn get_opencode_mcp_config_snippet(_vault_path: String) -> Result<String, String> {
     Err("MCP is not available on mobile".into())
 }
 

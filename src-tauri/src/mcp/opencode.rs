@@ -21,6 +21,18 @@ pub(super) fn build_entry(node_command: &str, index_js: &str) -> Value {
     })
 }
 
+pub(super) fn build_config_snippet(entry: &Value) -> Result<String, String> {
+    let mut servers = Map::new();
+    servers.insert(MCP_SERVER_NAME.to_string(), entry.clone());
+    let config = serde_json::json!({
+        "$schema": "https://opencode.ai/config.json",
+        OPENCODE_MCP_KEY: servers
+    });
+
+    serde_json::to_string_pretty(&config)
+        .map_err(|e| format!("Failed to serialize OpenCode MCP config snippet: {e}"))
+}
+
 pub(super) fn upsert_config(config_path: &Path, entry: &Value) -> Result<bool, String> {
     let mut config = read_config_or_empty(config_path)?;
     let servers = ensure_servers_object(&mut config)?;
@@ -158,6 +170,31 @@ mod tests {
             })
         );
         assert!(entry["environment"]["VAULT_PATH"].is_null());
+    }
+
+    #[test]
+    fn build_config_snippet_wraps_tolaria_entry_in_opencode_schema() {
+        let snippet =
+            build_config_snippet(&build_entry("node", "/app/mcp-server/index.js")).unwrap();
+        let config: Value = serde_json::from_str(&snippet).unwrap();
+
+        assert_eq!(
+            config,
+            serde_json::json!({
+                "$schema": "https://opencode.ai/config.json",
+                "mcp": {
+                    "tolaria": {
+                        "type": "local",
+                        "command": ["node", "/app/mcp-server/index.js"],
+                        "enabled": true,
+                        "environment": {
+                            "WS_UI_PORT": "9711"
+                        }
+                    }
+                }
+            })
+        );
+        assert!(config["mcpServers"].is_null());
     }
 
     #[test]

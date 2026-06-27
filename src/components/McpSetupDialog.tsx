@@ -19,20 +19,26 @@ interface McpSetupDialogProps {
   manualConfigError?: string | null
   manualConfigLoading?: boolean
   manualConfigSnippet?: string | null
+  opencodeManualConfigSnippet?: string | null
   locale?: AppLocale
   onClose: () => void
   onConnect: () => void
   onCopyManualConfig?: () => void
+  onCopyOpenCodeManualConfig?: () => void
   onDisconnect: () => void
   onLoadManualConfig?: () => void
 }
 
 interface ManualMcpConfigSectionProps {
+  copyLabel: string
+  copyTestId: string
   error?: string | null
   loading: boolean
   locale?: AppLocale
   onCopy?: () => void
+  snippetTestId: string
   snippet?: string | null
+  title: string
 }
 
 interface McpSetupActionsProps {
@@ -83,22 +89,22 @@ function ManualMcpConfigSection(props: ManualMcpConfigSectionProps) {
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="m-0 text-sm font-medium text-foreground">{t('mcp.setup.manual.title')}</p>
+        <p className="m-0 text-sm font-medium text-foreground">{props.title}</p>
         <Button
           type="button"
           variant="outline"
           size="sm"
           onClick={props.onCopy}
           disabled={!props.onCopy || props.loading}
-          data-testid="mcp-copy-config"
+          data-testid={props.copyTestId}
         >
           <Copy size={14} />
-          {t('mcp.setup.manual.copy')}
+          {props.copyLabel}
         </Button>
       </div>
       <pre
         className="max-h-48 overflow-auto rounded-md border border-border bg-background px-3 py-3 font-mono text-xs leading-5 text-foreground"
-        data-testid="mcp-config-snippet"
+        data-testid={props.snippetTestId}
       >
         {manualConfigText(props, t)}
       </pre>
@@ -158,10 +164,12 @@ export function McpSetupDialog({
   manualConfigError,
   manualConfigLoading = false,
   manualConfigSnippet,
+  opencodeManualConfigSnippet,
   locale = 'en',
   onClose,
   onConnect,
   onCopyManualConfig,
+  onCopyOpenCodeManualConfig,
   onDisconnect,
   onLoadManualConfig,
 }: McpSetupDialogProps) {
@@ -206,14 +214,33 @@ export function McpSetupDialog({
             <div>~/.gemini/settings.json</div>
             <div>~/.cursor/mcp.json</div>
             <div>~/.config/mcp/mcp.json</div>
+            <div>~/.config/opencode/opencode.json</div>
           </div>
-          <ManualMcpConfigSection
-            error={manualConfigError}
-            loading={manualConfigLoading}
-            locale={locale}
-            onCopy={onCopyManualConfig}
-            snippet={manualConfigSnippet}
-          />
+          <div className="space-y-3">
+            <p className="m-0 text-sm font-medium text-foreground">{t('mcp.setup.manual.title')}</p>
+            <ManualMcpConfigSection
+              copyLabel={t('mcp.setup.manual.copyStandard')}
+              copyTestId="mcp-copy-config"
+              error={manualConfigError}
+              loading={manualConfigLoading}
+              locale={locale}
+              onCopy={onCopyManualConfig}
+              snippet={manualConfigSnippet}
+              snippetTestId="mcp-config-snippet"
+              title={t('mcp.setup.manual.standardTitle')}
+            />
+            <ManualMcpConfigSection
+              copyLabel={t('mcp.setup.manual.copyOpenCode')}
+              copyTestId="mcp-copy-opencode-config"
+              error={manualConfigError}
+              loading={manualConfigLoading}
+              locale={locale}
+              onCopy={onCopyOpenCodeManualConfig}
+              snippet={opencodeManualConfigSnippet}
+              snippetTestId="mcp-opencode-config-snippet"
+              title={t('mcp.setup.manual.opencodeTitle')}
+            />
+          </div>
           <p>
             {t('mcp.setup.clientPathsDescription')}
           </p>
