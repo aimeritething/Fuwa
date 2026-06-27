@@ -14,6 +14,10 @@ type ProductAnalyticsEventName = string
 type ProductAnalyticsProperties = Record<string, string | number>
 
 const STALE_TAURI_LISTENER_CLEANUP_SIGNATURE = "listeners[eventId].handlerId"
+const RESIZE_OBSERVER_LOOP_MESSAGES = [
+  'ResizeObserver loop completed with undelivered notifications',
+  'ResizeObserver loop limit exceeded',
+] as const
 
 function scrubPaths(input: SensitiveTelemetryText): string {
   return redactPathText({ text: input })
@@ -21,6 +25,12 @@ function scrubPaths(input: SensitiveTelemetryText): string {
 
 function isStaleTauriListenerCleanupText(value: string | undefined): boolean {
   return value?.includes(STALE_TAURI_LISTENER_CLEANUP_SIGNATURE) ?? false
+}
+
+function isResizeObserverLoopText(value: string | undefined): boolean {
+  return value
+    ? RESIZE_OBSERVER_LOOP_MESSAGES.some((message) => value.includes(message))
+    : false
 }
 
 function errorText(value: unknown): string | undefined {
@@ -60,9 +70,21 @@ function shouldDropStaleTauriListenerCleanupEvent(
     isStaleTauriListenerCleanupText(exception.value))
 }
 
+function shouldDropResizeObserverLoopEvent(
+  event: Sentry.ErrorEvent,
+  hint?: Sentry.EventHint,
+): boolean {
+  if (isResizeObserverLoopText(errorText(hint?.originalException))) return true
+  if (isResizeObserverLoopText(event.message)) return true
+
+  return (event.exception?.values ?? []).some((exception) =>
+    isResizeObserverLoopText(exception.value))
+}
+
 function shouldDropSentryEvent(event: Sentry.ErrorEvent, hint?: Sentry.EventHint): boolean {
   return shouldDropWhiteboardPlatformPermissionEvent(event, hint)
     || shouldDropStaleTauriListenerCleanupEvent(event, hint)
+    || shouldDropResizeObserverLoopEvent(event, hint)
 }
 
 function scrubEventMessage(event: Sentry.ErrorEvent): void {

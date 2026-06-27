@@ -185,6 +185,39 @@ describe('initSentry', () => {
     expect(beforeSend(messageOnlyEvent)).toBeNull()
     expect(beforeSend(unrelatedTypeErrorEvent)).toBe(unrelatedTypeErrorEvent)
   })
+
+  it('drops browser ResizeObserver loop notifications before sending them to Sentry', () => {
+    const beforeSend = initSentryBeforeSend()
+    const loopLimitEvent = {
+      exception: {
+        values: [{
+          type: 'Error',
+          value: 'ResizeObserver loop limit exceeded',
+        }],
+      },
+    }
+    const undeliveredEvent = {
+      message: 'ResizeObserver loop completed with undelivered notifications.',
+    }
+    const hintedEvent = {
+      message: 'Script error.',
+    }
+    const unrelatedObserverEvent = {
+      exception: {
+        values: [{
+          type: 'Error',
+          value: 'ResizeObserver callback failed while measuring the editor',
+        }],
+      },
+    }
+
+    expect(beforeSend(loopLimitEvent)).toBeNull()
+    expect(beforeSend(undeliveredEvent)).toBeNull()
+    expect(beforeSend(hintedEvent, {
+      originalException: new Error('ResizeObserver loop limit exceeded'),
+    })).toBeNull()
+    expect(beforeSend(unrelatedObserverEvent)).toBe(unrelatedObserverEvent)
+  })
 })
 
 describe('isFeatureEnabled', () => {
