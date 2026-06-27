@@ -5,7 +5,10 @@ import {
   resolveVaultAttachmentPath,
 } from '../utils/vaultAttachments'
 
-const FILE_BLOCK_ACTION_SELECTOR = '[data-file-block] .bn-file-name-with-icon'
+const FILE_BLOCK_ACTION_SELECTOR = [
+  '[data-file-block] .bn-file-name-with-icon',
+  '[data-file-block] a[href]',
+].join(', ')
 const FILE_BLOCK_CONTAINER_SELECTOR = '[data-node-type="blockContainer"][data-id]'
 const FILE_BLOCK_TYPES = new Set(['audio', 'file', 'image', 'video'])
 

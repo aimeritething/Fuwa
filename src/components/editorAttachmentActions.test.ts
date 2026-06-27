@@ -13,7 +13,7 @@ vi.mock('../utils/url', () => ({
 const mockOpenExternalUrl = vi.mocked(openExternalUrl)
 const mockOpenLocalFile = vi.mocked(openLocalFile)
 
-function fileBlockClickTarget(blockId = 'file-block') {
+function fileBlockClickTarget(blockId = 'file-block', actionTarget?: HTMLElement) {
   const blockContainer = document.createElement('div')
   blockContainer.setAttribute('data-node-type', 'blockContainer')
   blockContainer.dataset.id = blockId
@@ -21,9 +21,11 @@ function fileBlockClickTarget(blockId = 'file-block') {
   const fileBlock = document.createElement('div')
   fileBlock.setAttribute('data-file-block', '')
 
-  const fileName = document.createElement('span')
-  fileName.className = 'bn-file-name-with-icon'
-  fileName.textContent = 'report.pdf'
+  const fileName = actionTarget ?? document.createElement('span')
+  if (!actionTarget) {
+    fileName.className = 'bn-file-name-with-icon'
+    fileName.textContent = 'report.pdf'
+  }
 
   fileBlock.appendChild(fileName)
   blockContainer.appendChild(fileBlock)
@@ -79,6 +81,34 @@ describe('handleEditorFileBlockClick', () => {
     expect(event.preventDefault).toHaveBeenCalledTimes(1)
     expect(event.stopPropagation).toHaveBeenCalledTimes(1)
     expect(mockOpenLocalFile).toHaveBeenCalledWith(expectedPath, '/vault')
+    expect(mockOpenExternalUrl).not.toHaveBeenCalled()
+  })
+
+  it('opens nested relative attachment download anchors through the active vault path', () => {
+    const downloadLink = document.createElement('a')
+    downloadLink.setAttribute('href', 'attachments/Areas/Work/project/A.docx')
+    downloadLink.setAttribute('download', '')
+    downloadLink.textContent = 'Download file'
+    const event = clickRequest(fileBlockClickTarget('nested-file-block', downloadLink))
+    const editor = {
+      getBlock: vi.fn(() => ({
+        type: 'file',
+        props: { url: 'attachments/Areas/Work/project/A.docx' },
+      })),
+    }
+
+    expect(handleEditorFileBlockClick({
+      event: event as never,
+      editor,
+      vaultPath: '/vault',
+    })).toBe(true)
+
+    expect(event.preventDefault).toHaveBeenCalledTimes(1)
+    expect(event.stopPropagation).toHaveBeenCalledTimes(1)
+    expect(mockOpenLocalFile).toHaveBeenCalledWith(
+      '/vault/attachments/Areas/Work/project/A.docx',
+      '/vault',
+    )
     expect(mockOpenExternalUrl).not.toHaveBeenCalled()
   })
 
