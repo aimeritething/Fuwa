@@ -12,6 +12,8 @@ import {
   trackAiAgentResponseCompleted,
   trackAiAgentResponseFailed,
 } from './productAnalytics'
+import type { AppLocale } from './i18n'
+import { localizedStreamErrorMessage } from './localizedStreamError'
 
 const MAX_RETAINED_TOOL_OUTPUT_CHARS = 20_000
 const ASCII_WORD_RE = /^[A-Za-z0-9_]$/u
@@ -70,6 +72,7 @@ function needsSpaceAfterWikilink(response: AssistantResponseText, index: number)
 
 export interface StreamMutationContext {
   agent: AiAgentId
+  locale?: AppLocale
   messageId: string
   vaultPath: string
   setMessages: Dispatch<SetStateAction<AiAgentMessage[]>>
@@ -130,6 +133,7 @@ export function createStreamCallbacks(context: StreamMutationContext) {
   const {
     messageId,
     agent,
+    locale = 'en',
     vaultPath,
     setMessages,
     setStatus,
@@ -198,6 +202,7 @@ export function createStreamCallbacks(context: StreamMutationContext) {
 
       setStatus('error')
       streamFailed = true
+      const displayError = localizedStreamErrorMessage({ message: error, locale })
       const partial = normalizeAssistantResponseText(responseAccRef.current)
       failureTracked = true
       trackAiAgentResponseFailed(agent, partial, toolInputMapRef.current.size)
@@ -205,7 +210,7 @@ export function createStreamCallbacks(context: StreamMutationContext) {
         ...message,
         isStreaming: false,
         reasoningDone: true,
-        response: partial ? `${partial}\n\nError: ${error}` : `Error: ${error}`,
+        response: partial ? `${partial}\n\nError: ${displayError}` : `Error: ${displayError}`,
         actions: message.actions.map((action) => (
           action.status === 'pending' ? { ...action, status: 'error' as const } : action
         )),

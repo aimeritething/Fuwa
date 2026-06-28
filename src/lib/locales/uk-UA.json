@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent} не встановлено. Відкрийте «Агенти ШІ» в налаштуваннях.",
   "ai.panel.placeholder.ready": "Запитайте {agent}",
   "ai.panel.send": "Надіслати повідомлення",
+  "ai.error.pi.emptyOutput": "Pi CLI завершив роботу без виводу агента. Tolaria очікувала події потоку JSON від «pi --mode json»; запустіть Pi в терміналі, щоб перевірити налаштування.",
+  "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI завершив роботу без виводу агента. Tolaria очікувала події потоку JSON від 'pi --mode json', але Pi написав лише:\n{diagnostic_output}",
   "ai.message.regenerate": "Згенерувати відповідь повторно",
   "ai.message.copy": "Копіювати відповідь",
   "ai.message.fork": "Відгалузити чат звідси",

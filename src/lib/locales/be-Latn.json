@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent} nie ŭstaliavany. Adkryjcie Nalady.",
   "ai.panel.placeholder.ready": "Zapytać {agent}",
   "ai.panel.send": "Adpravić paviedamliennie",
+  "ai.error.pi.emptyOutput": "Pi CLI zaviaršyŭsia biez vychadu ahienta. Tolaria čakawa JSON-strumiennyja padziei ad `pi --mode json`; zapusćicie Pi u terminale, kab praveryć nastaŭliennie.",
+  "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI zaviaršyŭsia biez vychadu ahienta. Tolaria čakawa JSON-strumiennyja padziei ad `pi --mode json`, ale Pi napisaŭ tolki:\n{diagnostic_output}",
   "ai.message.regenerate": "Stvaryć adkaz nanova",
   "ai.message.copy": "Skapijavać adkaz",
   "ai.message.fork": "Adhalinavać čat adsiul",

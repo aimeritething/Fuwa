@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "未安装 {agent}。在“设置”中打开 AI 代理。",
   "ai.panel.placeholder.ready": "询问 {agent}",
   "ai.panel.send": "发送消息",
+  "ai.error.pi.emptyOutput": "Pi CLI 退出，没有 agent 输出。Tolaria 需要从 'pi --mode json' 获取 JSON 流事件；请在终端中运行 Pi 以检查设置。",
+  "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI 退出，没有 agent 输出。Tolaria 预期从 'pi --mode json' 获得 JSON 流事件，但 Pi 仅写入：\n{diagnostic_output}",
   "ai.message.regenerate": "重新生成回复",
   "ai.message.copy": "复制回复",
   "ai.message.fork": "从此处分叉聊天",

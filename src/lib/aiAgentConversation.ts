@@ -13,6 +13,7 @@ import type { AiAgentId } from './aiAgents'
 import { getAiAgentDefinition } from './aiAgents'
 import type { AiAgentPermissionMode } from './aiAgentPermissionMode'
 import type { AiTarget } from './aiTargets'
+import type { AppLocale } from './i18n'
 
 export interface AiAgentMessage {
   userMessage: string
@@ -31,6 +32,7 @@ export type AgentStatus = 'idle' | 'thinking' | 'tool-executing' | 'done' | 'err
 export interface AgentExecutionContext {
   agent: AiAgentId
   target?: AiTarget
+  locale?: AppLocale
   ready: boolean
   vaultPath: string
   vaultPaths?: string[]

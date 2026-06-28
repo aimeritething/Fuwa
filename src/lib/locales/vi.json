@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent} is not installed. Open AI Agents in Settings.",
   "ai.panel.placeholder.ready": "Ask {agent}",
   "ai.panel.send": "Send message",
+  "ai.error.pi.emptyOutput": "Pi CLI đã thoát mà không có đầu ra từ tác tử. Tolaria mong đợi các sự kiện luồng JSON từ 'pi --mode json'; hãy chạy Pi trong terminal để kiểm tra thiết lập.",
+  "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI đã thoát mà không có đầu ra từ tác tử. Tolaria mong đợi các sự kiện luồng JSON từ 'pi --mode json', nhưng Pi chỉ ghi:\n{diagnostic_output}",
   "ai.message.regenerate": "Tạo lại phản hồi",
   "ai.message.copy": "Sao chép phản hồi",
   "ai.message.fork": "Tách nhánh cuộc trò chuyện từ đây",

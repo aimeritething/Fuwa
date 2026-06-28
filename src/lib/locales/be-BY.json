@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent} не ўсталяваны. Адкрыйце Налады.",
   "ai.panel.placeholder.ready": "Запытаць {agent}",
   "ai.panel.send": "Адправіць паведамленне",
+  "ai.error.pi.emptyOutput": "Pi CLI выйшаў без вываду агента. Tolaria чакала падзей патоку JSON ад «pi --mode json»; запусціце Pi ў тэрмінале, каб праверыць наладу.",
+  "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI выйшаў без вываду агента. Tolaria чакала падзей патоку JSON ад «pi --mode json», але Pi напісаў толькі:\n{diagnostic_output}",
   "ai.message.regenerate": "Згенераваць адказ нанова",
   "ai.message.copy": "Скапіяваць адказ",
   "ai.message.fork": "Адгалінаваць чат адсюль",

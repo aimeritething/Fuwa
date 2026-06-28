@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "未安裝 {agent}。在「設定」中開啟 AI 代理程式。",
   "ai.panel.placeholder.ready": "詢問 {agent}",
   "ai.panel.send": "傳送訊息",
+  "ai.error.pi.emptyOutput": "Pi CLI 在沒有代理程式輸出的情況下退出。Tolaria 預期從 'pi --mode json' 獲得 JSON 串流事件；請在終端機中執行 Pi 以檢查設定。",
+  "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI 在沒有代理程式輸出的情況下退出。Tolaria 預期從 'pi --mode json' 獲得 JSON 串流事件，但 Pi 只寫出：\n{diagnostic_output}",
   "ai.message.regenerate": "重新產生回覆",
   "ai.message.copy": "複製回覆",
   "ai.message.fork": "從此處分支聊天",

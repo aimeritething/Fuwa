@@ -411,6 +411,8 @@ files:
     ai.panel.placeholder.missing: 547c492026d115608067988b7cfbb9a9
     ai.panel.placeholder.ready: 31f5265c2e0432a7ca10d08e5c6f3114
     ai.panel.send: 747c6a3564774149c989884e0c581d53
+    ai.error.pi.emptyOutput: f7e27de4f237828178113efbf60e8e52
+    ai.error.pi.emptyOutputWithDiagnostic: 41a47dab0883245a1ac42013368e2da4
     ai.message.regenerate: e464a5330788a9f79d06c96989f840cb
     ai.message.copy: 53fa249ce3d02c8a686b657b31d02ee7
     ai.message.fork: f5aace5e5b5e7b0954651a2da44b6755

@@ -151,7 +151,7 @@ printf '%s\n' 'pi completed without json output' >&2
         assert!(events.iter().any(|event| matches!(
             event,
             AiAgentStreamEvent::Error { message }
-                if message.contains("Pi CLI exited without agent output")
+                if message.contains(r#""key":"ai.error.pi.emptyOutputWithDiagnostic""#)
                     && message.contains("npm warn exec")
         )));
         assert!(matches!(events.last(), Some(AiAgentStreamEvent::Done)));

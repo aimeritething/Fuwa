@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent} n'est pas installé. Ouvrez Agents IA dans les Paramètres.",
   "ai.panel.placeholder.ready": "Demander à {agent}",
   "ai.panel.send": "Envoyer un message",
+  "ai.error.pi.emptyOutput": "Pi CLI s'est arrêté sans sortie d'agent. Tolaria attendait des événements de flux JSON de « pi --mode json » ; exécutez Pi dans un terminal pour inspecter la configuration.",
+  "ai.error.pi.emptyOutputWithDiagnostic": "La CLI Pi s'est terminée sans sortie d'agent. Tolaria s'attendait à recevoir des événements de flux JSON de « pi --mode json », mais Pi n'a écrit que :\n{diagnostic_output}",
   "ai.message.regenerate": "Régénérer la réponse",
   "ai.message.copy": "Copier la réponse",
   "ai.message.fork": "Créer une branche du chat ici",

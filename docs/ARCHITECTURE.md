@@ -286,6 +286,8 @@ CLI-agent availability intentionally does not depend only on the desktop app's i
 
 CLI-agent system prompts also include a local Tolaria docs orientation when the bundled docs resource is present. `scripts/build-agent-docs.mjs` generates `src-tauri/resources/agent-docs/` from the public VitePress Markdown sources, including `index.md`, `AGENTS.md`, per-section bundles, `all.md`, `search-index.json`, and generated per-page files. Tauri bundles that folder as `agent-docs/`; `get_agent_docs_path` resolves the installed resource path, with a repository fallback for development, and `getAgentDocsPath()` caches it before each agent run. Agents are instructed to read the active vault's `AGENTS.md` for local conventions and search the bundled docs for Tolaria product behavior.
 
+Renderer-facing CLI setup errors can carry a `tolaria:i18n-error:` JSON marker with a translation key and primitive interpolation values. `localizedStreamError.ts` resolves that marker through the active app locale before the AI panel appends stream failure text, so native adapters such as Pi can keep CLI diagnostics in Rust while user-facing setup copy remains in the JSON catalogs.
+
 #### Agent Event Flow
 
 ```mermaid

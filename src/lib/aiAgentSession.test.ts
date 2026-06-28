@@ -176,6 +176,7 @@ function expectFormattedHistoryUsed(): void {
 function expectStreamingRequest(runtime: RuntimeFixture['runtime']): void {
   expect(createStreamCallbacksMock).toHaveBeenCalledWith(expect.objectContaining({
     messageId: 'msg-stream',
+    locale: 'it-IT',
     vaultPath: '/vault',
     setMessages: runtime.setMessages,
     setStatus: runtime.setStatus,
@@ -312,6 +313,7 @@ describe('aiAgentSession', () => {
       runtime: session.runtime,
       context: {
         agent: 'codex',
+        locale: 'it-IT',
         ready: true,
         vaultPath: '/vault',
         permissionMode: 'power_user',

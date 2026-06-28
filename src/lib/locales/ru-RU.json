@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent} не установлен. Откройте «AI Agents» в настройках.",
   "ai.panel.placeholder.ready": "Спросить {agent}",
   "ai.panel.send": "Отправить сообщение",
+  "ai.error.pi.emptyOutput": "Pi CLI завершил работу без вывода агента. Tolaria ожидала события потока JSON от 'pi --mode json'; запустите Pi в терминале, чтобы проверить настройку.",
+  "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI завершил работу без вывода агента. Tolaria ожидала события потока JSON от 'pi --mode json', но Pi вывела только:\n{diagnostic_output}",
   "ai.message.regenerate": "Сгенерировать ответ заново",
   "ai.message.copy": "Скопировать ответ",
   "ai.message.fork": "Разветвить чат отсюда",

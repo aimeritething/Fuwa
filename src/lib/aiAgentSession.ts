@@ -147,6 +147,7 @@ export async function sendAgentMessage({
 
   const callbacks = createStreamCallbacks({
     agent: context.agent,
+    locale: context.locale,
     messageId,
     vaultPath: context.vaultPath,
     setMessages: runtime.setMessages,

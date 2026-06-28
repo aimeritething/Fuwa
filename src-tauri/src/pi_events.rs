@@ -1,5 +1,9 @@
 use crate::ai_agents::AiAgentStreamEvent;
 
+const LOCALIZED_ERROR_PREFIX: &str = "tolaria:i18n-error:";
+const PI_EMPTY_OUTPUT_KEY: &str = "ai.error.pi.emptyOutput";
+const PI_EMPTY_OUTPUT_WITH_DIAGNOSTIC_KEY: &str = "ai.error.pi.emptyOutputWithDiagnostic";
+
 #[cfg(test)]
 pub(crate) fn parse_line<F>(
     line: Result<String, std::io::Error>,
@@ -50,12 +54,21 @@ pub(crate) fn format_error(stderr_output: String, status: String) -> String {
 
 pub(crate) fn format_empty_success(diagnostic_output: &str) -> String {
     if diagnostic_output.is_empty() {
-        return "Pi CLI exited without agent output. Tolaria expected JSON stream events from `pi --mode json`; run Pi in a terminal to inspect the setup.".into();
+        return localized_error(PI_EMPTY_OUTPUT_KEY, serde_json::json!({}));
     }
 
-    format!(
-        "Pi CLI exited without agent output. Tolaria expected JSON stream events from `pi --mode json`, but Pi only wrote:\n{diagnostic_output}"
+    localized_error(
+        PI_EMPTY_OUTPUT_WITH_DIAGNOSTIC_KEY,
+        serde_json::json!({ "diagnostic_output": diagnostic_output }),
     )
+}
+
+fn localized_error(key: &str, values: serde_json::Value) -> String {
+    let payload = serde_json::json!({
+        "key": key,
+        "values": values,
+    });
+    format!("{LOCALIZED_ERROR_PREFIX}{payload}")
 }
 
 fn emit_session_event<F>(json: &serde_json::Value, emit: &mut F)

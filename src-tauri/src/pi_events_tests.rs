@@ -113,3 +113,15 @@ fn format_error_uses_status_or_first_stderr_lines() {
     assert_eq!(empty, "pi exited with status exit status: 2");
     assert_eq!(truncated, "line 1\nline 2\nline 3");
 }
+
+#[test]
+fn format_empty_success_returns_localized_error_markers() {
+    let empty = format_empty_success("");
+    let diagnostic = format_empty_success("npm warn exec installing pi-mcp-adapter");
+
+    assert!(empty.starts_with("tolaria:i18n-error:"));
+    assert!(empty.contains(r#""key":"ai.error.pi.emptyOutput""#));
+    assert!(diagnostic.contains(r#""key":"ai.error.pi.emptyOutputWithDiagnostic""#));
+    assert!(diagnostic.contains("npm warn exec installing pi-mcp-adapter"));
+    assert!(!diagnostic.contains("Pi CLI exited without agent output"));
+}

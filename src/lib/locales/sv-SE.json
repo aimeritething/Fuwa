@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent} är inte installerad. Öppna AI-agenter i Inställningar.",
   "ai.panel.placeholder.ready": "Fråga {agent}",
   "ai.panel.send": "Skicka meddelande",
+  "ai.error.pi.emptyOutput": "Pi CLI avslutades utan agentutdata. Tolaria förväntade sig JSON-strömhändelser från 'pi --mode json'; kör Pi i en terminal för att inspektera inställningen.",
+  "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI avslutades utan agentoutput. Tolaria förväntade sig JSON-strömhändelser från 'pi --mode json', men Pi skrev bara:\n{diagnostic_output}",
   "ai.message.regenerate": "Generera svaret på nytt",
   "ai.message.copy": "Kopiera svar",
   "ai.message.fork": "Förgrena chatten härifrån",
