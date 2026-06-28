@@ -15,6 +15,7 @@ import {
   useDictionary,
   type DefaultReactGridSuggestionItem,
   type LinkToolbarProps,
+  type SideMenuProps,
 } from '@blocknote/react'
 import { components } from '@blocknote/mantine'
 import { MantineContext, MantineProvider } from '@mantine/core'
@@ -1003,10 +1004,14 @@ function EditorInteractionControllers({
   runEditorAction,
   vaultPath,
 }: EditorInteractionControllersProps) {
+  const sideMenu = useCallback((props: SideMenuProps) => (
+    <TolariaSideMenu {...props} locale={locale} />
+  ), [locale])
+
   return (
     <>
       <TolariaCollapsedHeadingsController />
-      <SideMenuController sideMenu={TolariaSideMenu} />
+      <SideMenuController sideMenu={sideMenu} />
       <TolariaFormattingToolbarController
         formattingToolbar={(props) => (
           <TolariaFormattingToolbar {...props} locale={locale} vaultPath={vaultPath} />

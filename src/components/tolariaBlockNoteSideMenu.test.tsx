@@ -34,6 +34,17 @@ type MenuItemProps = PropsWithChildren<{
   onClick?: () => void
 }>
 
+type RenderSideMenuOptions = {
+  locale?: 'en' | 'it-IT'
+}
+
+type TestRect = {
+  height: number
+  left: number
+  top: number
+  width: number
+}
+
 type MockEditor = {
   document: MockBlock[]
   domElement: HTMLElement
@@ -200,22 +211,24 @@ vi.mock('@blocknote/react', () => ({
   ),
 }))
 
-function renderSideMenuWithBlock(block: MockBlock | undefined) {
+function renderSideMenuWithBlock(block: MockBlock | undefined, options: RenderSideMenuOptions = {}) {
   sideMenuBlock = block
-  render(<TolariaSideMenu />)
+  const locale = options.locale ?? 'en'
+  render(<TolariaSideMenu locale={locale} />)
 }
 
-function renderSideMenuAndCollapseControllerWithBlock(block: MockBlock | undefined) {
+function renderSideMenuAndCollapseControllerWithBlock(block: MockBlock | undefined, options: RenderSideMenuOptions = {}) {
   sideMenuBlock = block
+  const locale = options.locale ?? 'en'
   render(
     <>
       <TolariaCollapsedHeadingsController />
-      <TolariaSideMenu />
+      <TolariaSideMenu locale={locale} />
     </>,
   )
 }
 
-function rect(left: number, top: number, width: number, height: number) {
+function rect({ height, left, top, width }: TestRect) {
   return DOMRect.fromRect({ x: left, y: top, width, height })
 }
 
@@ -320,8 +333,8 @@ function dispatchHandlePointerReorder(dragHandle: HTMLElement) {
 function renderPointerReorderFixture() {
   const draggedBlock = testBlock('dragged-block', 'heading', ['Notes'])
   const targetBlock = testBlock('target-block', 'paragraph', ['Paragraph'])
-  const draggedElement = blockElement(draggedBlock.id, rect(120, 80, 420, 40))
-  const targetElement = blockElement(targetBlock.id, rect(120, 120, 420, 40))
+  const draggedElement = blockElement(draggedBlock.id, rect({ left: 120, top: 80, width: 420, height: 40 }))
+  const targetElement = blockElement(targetBlock.id, rect({ left: 120, top: 120, width: 420, height: 40 }))
   mockEditor.domElement.append(draggedElement, targetElement)
   mockEditor.getBlock.mockImplementation((id: string) => (
     id === draggedBlock.id ? draggedBlock
@@ -344,7 +357,7 @@ describe('TolariaSideMenu', () => {
   beforeEach(() => {
     const editorElement = document.createElement('div')
     editorElement.className = 'bn-editor'
-    editorElement.getBoundingClientRect = vi.fn(() => rect(100, 50, 500, 400))
+    editorElement.getBoundingClientRect = vi.fn(() => rect({ left: 100, top: 50, width: 500, height: 400 }))
     document.body.appendChild(editorElement)
 
     sideMenuBlock = {
@@ -590,6 +603,19 @@ describe('TolariaSideMenu', () => {
     ])
   })
 
+  it('localizes heading collapse and expand labels', () => {
+    const heading = headingBlock('heading-block', 2)
+    mockEditor.document = [heading]
+    appendBlockOuters([heading])
+    mockEditor.getBlock.mockReturnValue(heading)
+
+    renderSideMenuAndCollapseControllerWithBlock(heading, { locale: 'it-IT' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Comprimi sezione' }))
+
+    expect(screen.getByRole('button', { name: 'Espandi sezione' })).toBeInTheDocument()
+  })
+
   it('only renders the list item collapse toggle when a list item has children', () => {
     const leafListItem = listItemBlock('leaf-list-item')
     mockEditor.document = [leafListItem]
@@ -617,6 +643,22 @@ describe('TolariaSideMenu', () => {
       'Drag block',
       'Collapse item',
     ])
+  })
+
+  it('localizes list item collapse and expand labels', () => {
+    const childListItem = listItemBlock('child-list-item')
+    const parentListItem = listItemBlock('parent-list-item', [childListItem])
+    mockEditor.document = [parentListItem]
+    appendBlockOuters([parentListItem])
+    mockEditor.getBlock.mockImplementation((id: string) => (
+      [parentListItem, childListItem].find((block) => block.id === id)
+    ))
+
+    renderSideMenuAndCollapseControllerWithBlock(parentListItem, { locale: 'it-IT' })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Comprimi elemento' }))
+
+    expect(screen.getByRole('button', { name: 'Espandi elemento' })).toBeInTheDocument()
   })
 
   it('hides a collapsed heading section until the next same-level heading', () => {

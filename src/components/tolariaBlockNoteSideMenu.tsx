@@ -20,6 +20,7 @@ import {
   useExtensionState,
   type SideMenuProps,
 } from '@blocknote/react'
+import { translate, type AppLocale } from '../lib/i18n'
 import {
   useCallback,
   type ComponentType,
@@ -45,6 +46,10 @@ import {
 type TableHeaderContent = Record<string, unknown> & {
   headerCols?: unknown
   headerRows?: unknown
+}
+
+type TolariaSideMenuProps = SideMenuProps & {
+  locale?: AppLocale
 }
 
 function isInlineBlockEmpty(block: { content?: unknown }) {
@@ -136,20 +141,20 @@ function TolariaAddBlockButton() {
   )
 }
 
-function headingCollapseButtonLabel(isHeading: boolean, isCollapsed: boolean) {
-  if (isHeading) return sectionCollapseButtonLabel(isCollapsed)
-  return itemCollapseButtonLabel(isCollapsed)
+function headingCollapseButtonLabel(locale: AppLocale, isHeading: boolean, isCollapsed: boolean) {
+  if (isHeading) return sectionCollapseButtonLabel(locale, isCollapsed)
+  return itemCollapseButtonLabel(locale, isCollapsed)
 }
 
-function sectionCollapseButtonLabel(isCollapsed: boolean) {
-  return isCollapsed ? 'Expand section' : 'Collapse section'
+function sectionCollapseButtonLabel(locale: AppLocale, isCollapsed: boolean) {
+  return translate(locale, isCollapsed ? 'editor.sideMenu.expandSection' : 'editor.sideMenu.collapseSection')
 }
 
-function itemCollapseButtonLabel(isCollapsed: boolean) {
-  return isCollapsed ? 'Expand item' : 'Collapse item'
+function itemCollapseButtonLabel(locale: AppLocale, isCollapsed: boolean) {
+  return translate(locale, isCollapsed ? 'editor.sideMenu.expandItem' : 'editor.sideMenu.collapseItem')
 }
 
-function TolariaHeadingCollapseButton() {
+function TolariaHeadingCollapseButton({ locale }: { locale: AppLocale }) {
   const Components = useComponentsContext()!
   const { block, editor } = useSideMenuBlock()
   const collapsedHeadingIds = useCollapsedHeadingIds(editor)
@@ -157,7 +162,7 @@ function TolariaHeadingCollapseButton() {
   const isHeading = blockHeadingLevel(block) !== null
   const isCollapsible = isCollapsibleSectionBlockForEditor(editor, block)
   const Icon = isCollapsed ? CaretRight : CaretDown
-  const label = headingCollapseButtonLabel(isHeading, isCollapsed)
+  const label = headingCollapseButtonLabel(locale, isHeading, isCollapsed)
 
   const toggleHeading = useCallback((editorElement?: HTMLElement) => {
     runSideMenuAction(() => {
@@ -184,9 +189,9 @@ function TolariaHeadingCollapseButton() {
   )
 }
 
-function TolariaSectionControlButton() {
+function TolariaSectionControlButton({ locale }: { locale: AppLocale }) {
   const { block, editor } = useSideMenuBlock()
-  if (isCollapsibleSectionBlockForEditor(editor, block)) return <TolariaHeadingCollapseButton />
+  if (isCollapsibleSectionBlockForEditor(editor, block)) return <TolariaHeadingCollapseButton locale={locale} />
 
   return <TolariaAddBlockButton />
 }
@@ -309,14 +314,14 @@ function TolariaDragHandleMenu() {
   )
 }
 
-export function TolariaSideMenu(props: SideMenuProps) {
+export function TolariaSideMenu({ locale = 'en', ...props }: TolariaSideMenuProps) {
   const { block, editor } = useSideMenuBlock()
   useSideMenuTextAlignment(editor, block)
 
   return (
     <SideMenu {...props}>
       <TolariaDragHandleButton dragHandleMenu={TolariaDragHandleMenu} />
-      <TolariaSectionControlButton />
+      <TolariaSectionControlButton locale={locale} />
     </SideMenu>
   )
 }

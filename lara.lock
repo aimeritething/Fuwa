@@ -722,6 +722,10 @@ files:
     editor.toolbar.exportPdf: 7a39acf8742a59d1a4f7ae064b6219a0
     editor.toolbar.moreActions: 89e19353176b94068dec4c768c25e70b
     editor.toolbar.openProperties: 948b90b60b8ce827f179e8c5b85b112e
+    editor.sideMenu.expandSection: 2d8eda764f87bd48192245a238fe8b65
+    editor.sideMenu.collapseSection: 3d3b02981ab3390bf66247c92a2d8dd9
+    editor.sideMenu.expandItem: 16291fbe2d88fc603b23f97ed2bc22a3
+    editor.sideMenu.collapseItem: 91750c64ed8141fdb63ffb1e878a11ad
     editor.formatting.highlight: 0b90582f4589d84be89f5b847d4d1ed1
     editor.formatting.highlightTooltip: c27173fea9ec1718030c5fa8440b2c78
     editor.whiteboard.enterFullscreen: 606bf766125ecff4b33ca98122222c72
