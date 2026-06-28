@@ -79,6 +79,25 @@ function buildVaultLoaderMock(options: {
   }) as typeof defaultMockInvoke
 }
 
+function entryAt(path: string, title: string, metadata: Partial<VaultEntry> = {}): VaultEntry {
+  return {
+    ...mockEntries[0],
+    path,
+    filename: path.split('/').pop() ?? 'note.md',
+    title,
+    ...metadata,
+  }
+}
+
+function mockCachedStartupEntries(cachedPath: string, freshPath: string, metadata: Partial<VaultEntry> = {}) {
+  backendInvokeFn.mockImplementation(((cmd: string) => {
+    if (cmd === 'list_vault') return Promise.resolve([entryAt(cachedPath, 'Cached', metadata)])
+    if (cmd === 'reload_vault') return Promise.resolve([entryAt(freshPath, 'Fresh', metadata)])
+    if (EMPTY_ARRAY_COMMANDS.has(cmd)) return Promise.resolve([])
+    return Promise.resolve(null)
+  }) as typeof defaultMockInvoke)
+}
+
 function buildReloadVaultPathMock(loads: Record<string, Promise<VaultEntry[]>>) {
   return ((cmd: string, args?: Record<string, unknown>) => {
     const path = typeof args?.path === 'string' ? args.path : undefined
@@ -283,59 +302,9 @@ describe('useVaultLoader', () => {
     warnSpy.mockRestore()
   })
 
-  it('loads initial vault entries from a fresh reload in Tauri mode', async () => {
+  it('loads initial main-window vault entries from the cached listing in Tauri mode', async () => {
     await enableTauriMode()
-    backendInvokeFn.mockImplementation(((cmd: string) => {
-      if (cmd === 'list_vault') {
-        return Promise.resolve([
-          { ...mockEntries[0], path: '/vault/stale.md', filename: 'stale.md', title: 'Stale', isA: 'Type' },
-        ])
-      }
-      if (cmd === 'reload_vault') {
-        return Promise.resolve([
-          { ...mockEntries[0], path: '/vault/journal.md', filename: 'journal.md', title: 'Journal', isA: 'Type' },
-          { ...mockEntries[0], path: '/vault/2026-03-11.md', filename: '2026-03-11.md', title: 'March 11', isA: 'Journal' },
-        ])
-      }
-      if (cmd === 'get_modified_files') return Promise.resolve([])
-      if (cmd === 'list_vault_folders') return Promise.resolve([])
-      if (cmd === 'list_views') return Promise.resolve([])
-      return Promise.resolve(null)
-    }) as typeof defaultMockInvoke)
-
-    const { result } = renderHook(() => useVaultLoader('/vault'))
-
-    await waitFor(() => {
-      expect(result.current.entries.map((entry) => entry.title)).toEqual(['Journal', 'March 11'])
-    })
-    const issuedCommands = backendInvokeFn.mock.calls.map(([command]) => command)
-    expect(issuedCommands).toContain('reload_vault')
-    expect(issuedCommands).not.toContain('list_vault')
-  })
-
-  it('uses cached initial vault entries in Tauri note-window mode', async () => {
-    await enableTauriMode()
-    window.history.replaceState(
-      {},
-      '',
-      '/?window=note&path=%2Fvault%2Fnote%2Fhello.md&vault=%2Fvault&title=Hello',
-    )
-    backendInvokeFn.mockImplementation(((cmd: string) => {
-      if (cmd === 'list_vault') {
-        return Promise.resolve([
-          { ...mockEntries[0], path: '/vault/note/cached.md', filename: 'cached.md', title: 'Cached' },
-        ])
-      }
-      if (cmd === 'reload_vault') {
-        return Promise.resolve([
-          { ...mockEntries[0], path: '/vault/note/fresh.md', filename: 'fresh.md', title: 'Fresh' },
-        ])
-      }
-      if (cmd === 'get_modified_files') return Promise.resolve([])
-      if (cmd === 'list_vault_folders') return Promise.resolve([])
-      if (cmd === 'list_views') return Promise.resolve([])
-      return Promise.resolve(null)
-    }) as typeof defaultMockInvoke)
+    mockCachedStartupEntries('/vault/cached.md', '/vault/fresh.md', { isA: 'Type' })
 
     const { result } = renderHook(() => useVaultLoader('/vault'))
 
@@ -347,16 +316,37 @@ describe('useVaultLoader', () => {
     expect(issuedCommands).not.toContain('reload_vault')
   })
 
-  it('freshly reloads the active mounted workspace on startup in Tauri mode', async () => {
+  it('uses cached initial vault entries in Tauri note-window mode', async () => {
+    await enableTauriMode()
+    window.history.replaceState(
+      {},
+      '',
+      '/?window=note&path=%2Fvault%2Fnote%2Fhello.md&vault=%2Fvault&title=Hello',
+    )
+    mockCachedStartupEntries('/vault/note/cached.md', '/vault/note/fresh.md')
+
+    const { result } = renderHook(() => useVaultLoader('/vault'))
+
+    await waitFor(() => {
+      expect(result.current.entries.map((entry) => entry.title)).toEqual(['Cached'])
+    })
+    const issuedCommands = backendInvokeFn.mock.calls.map(([command]) => command)
+    expect(issuedCommands).toContain('list_vault')
+    expect(issuedCommands).not.toContain('reload_vault')
+  })
+
+  it('uses cached active mounted workspace entries on startup in Tauri mode', async () => {
     await enableTauriMode()
     const brian = { label: 'Brian', path: '/brian', alias: 'brian', available: true, mounted: true }
     const laputa = { label: 'Laputa', path: '/laputa', alias: 'laputa', available: true, mounted: true }
     const vaults = [laputa, brian]
     const laputaStartupResponses: Partial<Record<string, VaultEntry[]>> = {
       reload_vault: [
-        { ...mockEntries[0], path: '/laputa/note/alpha.md', filename: 'alpha.md', title: 'Alpha' },
+        { ...mockEntries[0], path: '/laputa/note/fresh.md', filename: 'fresh.md', title: 'Fresh' },
       ],
-      list_vault: [],
+      list_vault: [
+        { ...mockEntries[0], path: '/laputa/note/cached.md', filename: 'cached.md', title: 'Cached' },
+      ],
     }
 
     backendInvokeFn.mockImplementation(((cmd: string, args?: Record<string, unknown>) => {
@@ -369,14 +359,14 @@ describe('useVaultLoader', () => {
     const { result } = renderHook(() => useVaultLoader('/laputa', vaults, '/laputa', vaults))
 
     await waitFor(() => {
-      expect(result.current.entries.map((entry) => entry.title)).toEqual(['Alpha'])
+      expect(result.current.entries.map((entry) => entry.title)).toEqual(['Cached'])
     })
 
     const laputaLoadCommands = backendInvokeFn.mock.calls
       .filter(([, args]) => args?.path === '/laputa')
       .map(([command]) => command)
-    expect(laputaLoadCommands).toContain('reload_vault')
-    expect(laputaLoadCommands).not.toContain('list_vault')
+    expect(laputaLoadCommands).toContain('list_vault')
+    expect(laputaLoadCommands).not.toContain('reload_vault')
   })
 
   it('marks the vault unavailable when the initial load finds a missing active vault', async () => {

@@ -472,6 +472,8 @@ The local MCP WebSocket bridge follows the same active-vault boundary. `useVault
 6. Replaces the cache with a temp-file write + rename only if a short-lived writer lock and cache fingerprint check show another scan has not already refreshed it
 7. On first run, migrates any legacy `.laputa-cache.json` from inside the vault
 
+Startup entry hydration calls the cached `list_vault` path first for both the main window and secondary note windows. The main window alone treats an empty cached startup result as suspicious and retries with `reload_vault`; explicit user reloads, watcher refreshes, and Git pull refreshes still use reload paths when disk freshness is required.
+
 ### Frontmatter Manipulation (Rust)
 
 `frontmatter/ops.rs:update_frontmatter_content()` performs line-by-line YAML editing:

@@ -182,7 +182,7 @@ proposed → active → superseded
 | [0121](0121-appimage-external-fallback-for-audio-and-video-previews.md) | AppImage external fallback for audio and video previews | active |
 | [0122](0122-scalar-array-frontmatter-properties.md) | Scalar array frontmatter properties | active |
 | [0123](0123-full-vault-graph-for-secondary-note-windows.md) | Full vault graph for secondary note windows | superseded -> [0124](0124-cached-secondary-note-window-startup.md) |
-| [0124](0124-cached-secondary-note-window-startup.md) | Cached secondary note window startup | active |
+| [0124](0124-cached-secondary-note-window-startup.md) | Cached secondary note window startup | superseded -> [0146](0146-cached-main-window-startup-with-empty-reload-recovery.md) |
 | [0126](0126-renderer-action-history.md) | Renderer action history for app-level undo and redo | active |
 | [0127](0127-native-ai-workspace-window.md) | Native AI workspace window | superseded -> [0128](0128-lightweight-ai-workspace-window.md) |
 | [0128](0128-lightweight-ai-workspace-window.md) | Lightweight AI workspace window | active |
@@ -203,3 +203,5 @@ proposed → active → superseded
 | [0142](0142-rich-editor-prosemirror-decoration-dependency.md) | Rich editor ProseMirror decoration dependency | active |
 | [0143](0143-shared-focus-ownership-guard.md) | Shared focus ownership guard | active |
 | [0144](0144-collections-and-presentations.md) | Collections carry presentation configuration | active |
+| [0145](0145-xdg-backed-app-config-path.md) | XDG-backed app config path | active |
+| [0146](0146-cached-main-window-startup-with-empty-reload-recovery.md) | Cached main-window startup with empty reload recovery | active |

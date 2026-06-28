@@ -15,13 +15,15 @@ interface VaultPathOptions {
   vaultPath: string
 }
 
-interface VaultEntriesOptions extends VaultPathOptions {
+interface EmptyResultReloadOptions {
   forceReload?: boolean
+  reloadIfEmpty?: boolean
 }
 
-interface MountedVaultEntriesOptions extends VaultPathOptions {
+type VaultEntriesOptions = VaultPathOptions & EmptyResultReloadOptions
+
+interface MountedVaultEntriesOptions extends VaultPathOptions, EmptyResultReloadOptions {
   defaultWorkspacePath?: string | null
-  forceReload?: boolean
   includeFallbackVault?: boolean
   vaults?: VaultOption[]
 }
@@ -29,10 +31,7 @@ interface MountedVaultEntriesOptions extends VaultPathOptions {
 type MountedVaultFoldersOptions = MountedVaultEntriesOptions
 type MountedVaultViewsOptions = MountedVaultEntriesOptions
 
-interface WorkspaceEntryLoadOptions {
-  forceReload?: boolean
-  reloadIfEmpty?: boolean
-}
+type WorkspaceEntryLoadOptions = EmptyResultReloadOptions
 
 interface CommitWithPushOptions extends VaultPathOptions {
   message: string
@@ -78,7 +77,7 @@ function shouldIncludeVault(vault: VaultOption, primaryPaths: Set<string>): bool
   return vault.mounted !== false || primaryPaths.has(vault.path)
 }
 
-function shouldReloadEmptyWorkspaceResult(entries: VaultEntry[], options: WorkspaceEntryLoadOptions): boolean {
+function shouldReloadEmptyResult(entries: VaultEntry[], options: EmptyResultReloadOptions): boolean {
   return entries.length === 0 && options.reloadIfEmpty === true && !options.forceReload && isTauri()
 }
 
@@ -109,7 +108,7 @@ export function loadWorkspaceEntries(
 ): Promise<VaultEntry[]> {
   const command = options.forceReload && isTauri() ? 'reload_vault' : 'list_vault'
   return loadWorkspaceEntriesWithCommand(vault, command, defaultWorkspacePath)
-    .then((entries) => shouldReloadEmptyWorkspaceResult(entries, options)
+    .then((entries) => shouldReloadEmptyResult(entries, options)
       ? loadWorkspaceEntriesWithCommand(vault, 'reload_vault', defaultWorkspacePath)
       : entries)
 }
@@ -132,11 +131,17 @@ function loadMountedVaultEntries(options: MountedVaultEntriesOptions): Promise<V
   if (mountedVaults.length <= 1) {
     const onlyVault = mountedVaults[0]
     return onlyVault
-      ? loadWorkspaceEntries(onlyVault, options.defaultWorkspacePath, { forceReload: options.forceReload })
-      : loadVaultEntries({ vaultPath: options.vaultPath })
+      ? loadWorkspaceEntries(onlyVault, options.defaultWorkspacePath, {
+        forceReload: options.forceReload,
+        reloadIfEmpty: options.reloadIfEmpty,
+      })
+      : loadVaultEntries({ vaultPath: options.vaultPath, reloadIfEmpty: options.reloadIfEmpty })
   }
   return Promise.all(mountedVaults.map((vault) => (
-    loadWorkspaceEntries(vault, options.defaultWorkspacePath, { forceReload: options.forceReload })
+    loadWorkspaceEntries(vault, options.defaultWorkspacePath, {
+      forceReload: options.forceReload,
+      reloadIfEmpty: options.reloadIfEmpty,
+    })
   )))
     .then((groups) => groups.flat())
 }
@@ -162,9 +167,16 @@ function attachViewRootPath(
   }))
 }
 
-function loadVaultEntries({ vaultPath, forceReload = true }: VaultEntriesOptions): Promise<VaultEntry[]> {
+function loadVaultEntries({
+  vaultPath,
+  forceReload = true,
+  reloadIfEmpty = false,
+}: VaultEntriesOptions): Promise<VaultEntry[]> {
   const command = forceReload && isTauri() ? 'reload_vault' : 'list_vault'
   return loadVaultEntriesWithCommand({ vaultPath, command })
+    .then((entries) => shouldReloadEmptyResult(entries, { forceReload, reloadIfEmpty })
+      ? loadVaultEntriesWithCommand({ vaultPath, command: 'reload_vault' })
+      : entries)
 }
 
 export function reloadVaultEntries({ vaultPath, vaults, defaultWorkspacePath }: MountedVaultEntriesOptions): Promise<VaultEntry[]> {
@@ -230,11 +242,17 @@ export async function loadMountedVaultViews(options: MountedVaultViewsOptions): 
   return viewGroups.flat()
 }
 
-export async function loadVaultData({ vaultPath, vaults, defaultWorkspacePath, forceReload }: MountedVaultEntriesOptions): Promise<LoadedVaultData> {
+export async function loadVaultData({
+  vaultPath,
+  vaults,
+  defaultWorkspacePath,
+  forceReload,
+  reloadIfEmpty,
+}: MountedVaultEntriesOptions): Promise<LoadedVaultData> {
   if (!isTauri()) console.info('[mock] Using mock Tauri data for browser testing')
   const entries = vaults?.length
-    ? await loadMountedVaultEntries({ vaultPath, vaults, defaultWorkspacePath, forceReload })
-    : await loadVaultEntries({ vaultPath, forceReload })
+    ? await loadMountedVaultEntries({ vaultPath, vaults, defaultWorkspacePath, forceReload, reloadIfEmpty })
+    : await loadVaultEntries({ vaultPath, forceReload, reloadIfEmpty })
   console.log(`Vault scan complete: ${entries.length} entries found`)
   return { entries }
 }

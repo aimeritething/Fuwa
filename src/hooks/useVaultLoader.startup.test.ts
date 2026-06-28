@@ -59,11 +59,18 @@ function commandPath(args?: Record<string, unknown>): string {
 }
 
 function buildUpgradeStartupMock() {
+  let activeLists = 0
   let activeReloads = 0
 
   return {
+    activeListCount: () => activeLists,
     activeReloadCount: () => activeReloads,
     invoke: (command: string, args?: Record<string, unknown>) => {
+      if (command === 'list_vault') {
+        if (commandPath(args) !== ACTIVE_VAULT_PATH) return Promise.resolve([])
+        activeLists += 1
+        return Promise.resolve([])
+      }
       if (command === 'reload_vault') {
         if (commandPath(args) !== ACTIVE_VAULT_PATH) return Promise.resolve([])
         activeReloads += 1
@@ -81,7 +88,7 @@ describe('useVaultLoader startup recovery', () => {
     backendInvokeFn.mockReset()
   })
 
-  it('freshly reloads the active workspace when persisted metadata follows an empty startup scan', async () => {
+  it('reloads the active workspace only after an empty cached startup scan', async () => {
     const laputa: VaultOption = { label: 'Laputa', path: ACTIVE_VAULT_PATH, available: true, mounted: true }
     const startupMock = buildUpgradeStartupMock()
     backendInvokeFn.mockImplementation(startupMock.invoke)
@@ -101,6 +108,7 @@ describe('useVaultLoader startup recovery', () => {
     await waitFor(() => {
       expect(result.current.entries.map((entry) => entry.title)).toEqual(['Recovered'])
     })
+    expect(startupMock.activeListCount()).toBeGreaterThanOrEqual(2)
     expect(startupMock.activeReloadCount()).toBeGreaterThanOrEqual(2)
   })
 })
