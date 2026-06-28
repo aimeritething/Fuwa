@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen } from '@testing-library/react'
 import { vi } from 'vitest'
 import { clearNoteContentCache } from '../hooks/noteContentCache'
 import type { VaultEntry } from '../types'
+import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 
 type NativeWorkerResolver = typeof import('../utils/sheetExternalFormulaWorker').resolveExternalFormulaInputsWithNativeWorker
 
@@ -118,6 +119,7 @@ interface MockSheetModel {
   getRawCellContent(sheet: SheetIndex, row: RowIndex, column: ColumnIndex): string
   getRowHeight(): number
   getRowsWithData(sheet: SheetIndex, column: ColumnIndex): Int32Array
+  getSelectedSheet(): SheetIndex
   getSelectedView(): SelectedView
   getShowGridLines(): boolean
   insertColumn(sheet: SheetIndex, column: ColumnIndex): void
@@ -135,6 +137,7 @@ interface MockSheetModel {
   setFrozenRowsCount(sheet: SheetIndex, count: RowIndex): void
   setRowsHeight(): void
   setSelectedSheet(): void
+  setTopLeftVisibleCell(topRow: RowIndex, leftColumn: ColumnIndex): void
   setShowGridLines(sheet: SheetIndex, show: boolean): void
   setUserInput(sheet: SheetIndex, row: RowIndex, column: ColumnIndex, input: string): void
   updateRangeStyle(range: StyleRange, stylePath: string, value: string): void
@@ -243,6 +246,9 @@ const ironCalcMock = vi.hoisted(() => {
     resumeEvaluation(): void {}
     evaluate(): void {}
     setSelectedSheet(): void {}
+    getSelectedSheet(): SheetIndex {
+      return state.selectedView.sheet
+    }
     free(): void {}
 
     setUserInput(_sheet: SheetIndex, row: RowIndex, column: ColumnIndex, input: string): void {
@@ -340,6 +346,14 @@ const ironCalcMock = vi.hoisted(() => {
       return state.selectedView
     }
 
+    setTopLeftVisibleCell(topRow: RowIndex, leftColumn: ColumnIndex): void {
+      state.selectedView = {
+        ...state.selectedView,
+        left_column: leftColumn,
+        top_row: topRow,
+      }
+    }
+
     rangeClearContents(...rangeArgs: SheetRangeArgs): void {
       const { endColumn, endRow, sheet, startColumn, startRow } = sheetRangeFromArgs(rangeArgs)
       state.clearContentRanges.push({ endColumn, endRow, sheet, startColumn, startRow })
@@ -405,100 +419,129 @@ export function getIronCalcMock() {
   return ironCalcMock
 }
 
+function focusMockWorkbookOnRender(node: HTMLDivElement | null): void {
+  if (node && ironCalcMock.state.focusBeforeGuardOnRender) node.focus()
+}
+
+function handleMockWorkbookKeyDown(event: ReactKeyboardEvent<HTMLDivElement>): void {
+  if (event.key === 'F2') ironCalcMock.state.editStarts += 1
+  if (event.key === 'Enter') ironCalcMock.state.downMoves += 1
+}
+
+function resetFrozenPaneScroll(model: MockSheetModel, target: HTMLElement): void {
+  if (model.getFrozenColumnsCount() === 0 && model.getFrozenRowsCount() === 0) return
+  const scroll = target.closest<HTMLElement>('.scroll')
+  if (!scroll) return
+  scroll.scrollLeft = 0
+  scroll.scrollTop = 0
+}
+
+function selectMockContextCell(): void {
+  ironCalcMock.state.selectedView = {
+    column: 9,
+    left_column: 1,
+    range: [9, 9, 9, 9],
+    row: 9,
+    sheet: 0,
+    top_row: 1,
+  }
+}
+
+function selectMockPointerCell(event: ReactPointerEvent<HTMLDivElement>): void {
+  if (event.button !== 0 || document.activeElement !== event.currentTarget) return
+  const column = Math.max(1, Math.floor(event.clientX / 100))
+  const row = Math.max(1, Math.floor(event.clientY / 30))
+  ironCalcMock.state.selectedView = {
+    column,
+    left_column: 1,
+    range: [row, column, row, column],
+    row,
+    sheet: 0,
+    top_row: 1,
+  }
+}
+
+function recordMockPointer(event: ReactPointerEvent<HTMLDivElement>): void {
+  ironCalcMock.state.lastPointer = {
+    clientX: event.clientX,
+    clientY: event.clientY,
+    pageX: event.pageX,
+    pageY: event.pageY,
+  }
+}
+
+function handleMockWorkbookPointerDown(
+  event: ReactPointerEvent<HTMLDivElement>,
+  model: MockSheetModel,
+): void {
+  resetFrozenPaneScroll(model, event.currentTarget)
+  if (event.button === 2) selectMockContextCell()
+  selectMockPointerCell(event)
+  recordMockPointer(event)
+}
+
 vi.mock('@ironcalc/workbook', () => ({
   init: vi.fn(() => Promise.resolve()),
   IronCalc: ({ model }: { model: MockSheetModel }) => {
     ironCalcMock.state.lastModel = model
     ironCalcMock.state.workbookRenders += 1
     return (
-      <div
-        className="sheet-container"
-        data-testid="ironcalc-workbook"
-        ref={(node) => {
-          if (node && ironCalcMock.state.focusBeforeGuardOnRender) node.focus()
-        }}
-        onKeyDown={(event) => {
-          if (event.key === 'F2') ironCalcMock.state.editStarts += 1
-          if (event.key === 'Enter') ironCalcMock.state.downMoves += 1
-        }}
-        onPointerDown={(event) => {
-          if (event.button === 2) {
-            ironCalcMock.state.selectedView = {
-              column: 9,
-              left_column: 1,
-              range: [9, 9, 9, 9],
-              row: 9,
-              sheet: 0,
-              top_row: 1,
-            }
-          }
-          if (event.button === 0 && document.activeElement === event.currentTarget) {
-            const column = Math.max(1, Math.floor(event.clientX / 100))
-            const row = Math.max(1, Math.floor(event.clientY / 30))
-            ironCalcMock.state.selectedView = {
-              column,
-              left_column: 1,
-              range: [row, column, row, column],
-              row,
-              sheet: 0,
-              top_row: 1,
-            }
-          }
-          ironCalcMock.state.lastPointer = {
-            clientX: event.clientX,
-            clientY: event.clientY,
-            pageX: event.pageX,
-            pageY: event.pageY,
-          }
-        }}
-        tabIndex={0}
-      >
-        <canvas data-testid="mock-sheet-canvas" />
-        <input aria-label="Formula" data-testid="mock-formula-input" style={{ caretColor: 'rgb(242, 153, 74)' }} />
+      <div className="scroll" data-testid="mock-sheet-scroll">
         <div
-          data-testid="mock-selection-outline"
-          style={{
-            background: 'none',
-            border: '2px solid rgb(242, 153, 74)',
-            height: '20px',
-            lineHeight: '18px',
-            width: '100px',
-          }}
-        />
-        <div
-          data-testid="mock-range-outline"
-          style={{
-            backgroundColor: 'rgba(242, 153, 74, 0.1)',
-            border: '1px solid rgb(242, 153, 74)',
-            borderRadius: '3px',
-            height: '60px',
-            position: 'absolute',
-            width: '100px',
-          }}
-        />
-        <div
-          data-testid="mock-selection-handle"
-          style={{
-            backgroundColor: 'rgb(242, 153, 74)',
-            cursor: 'crosshair',
-            height: '5px',
-            position: 'absolute',
-            width: '5px',
-          }}
-        />
-        <div
-          data-testid="mock-editing-outline"
-          style={{
-            border: '2px solid rgb(242, 153, 74)',
-            height: '20px',
-            left: '10px',
-            position: 'absolute',
-            top: '20px',
-            width: '100px',
-          }}
+          className="sheet-container"
+          data-testid="ironcalc-workbook"
+          ref={focusMockWorkbookOnRender}
+          onKeyDown={handleMockWorkbookKeyDown}
+          onPointerDown={(event) => handleMockWorkbookPointerDown(event, model)}
+          tabIndex={0}
         >
-          <div>
-            <textarea aria-label="Cell editor" />
+          <canvas data-testid="mock-sheet-canvas" />
+          <input aria-label="Formula" data-testid="mock-formula-input" style={{ caretColor: 'rgb(242, 153, 74)' }} />
+          <div
+            data-testid="mock-selection-outline"
+            style={{
+              background: 'none',
+              border: '2px solid rgb(242, 153, 74)',
+              height: '20px',
+              lineHeight: '18px',
+              width: '100px',
+            }}
+          />
+          <div
+            data-testid="mock-range-outline"
+            style={{
+              backgroundColor: 'rgba(242, 153, 74, 0.1)',
+              border: '1px solid rgb(242, 153, 74)',
+              borderRadius: '3px',
+              height: '60px',
+              position: 'absolute',
+              width: '100px',
+            }}
+          />
+          <div
+            data-testid="mock-selection-handle"
+            style={{
+              backgroundColor: 'rgb(242, 153, 74)',
+              cursor: 'crosshair',
+              height: '5px',
+              position: 'absolute',
+              width: '5px',
+            }}
+          />
+          <div
+            data-testid="mock-editing-outline"
+            style={{
+              border: '2px solid rgb(242, 153, 74)',
+              height: '20px',
+              left: '10px',
+              position: 'absolute',
+              top: '20px',
+              width: '100px',
+            }}
+          >
+            <div>
+              <textarea aria-label="Cell editor" />
+            </div>
           </div>
         </div>
       </div>

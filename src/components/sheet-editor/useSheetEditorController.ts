@@ -411,6 +411,7 @@ function useSheetEditorPointerRuntime({
     sheetFocusRequestRef,
     sheetKeyboardCapturedRef,
     sheetPointerActiveRef,
+    workbookRef,
   })
 }
 
