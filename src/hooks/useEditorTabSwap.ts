@@ -471,6 +471,7 @@ function handleStableActivePath(options: {
   editorContentPathRef: EditorContentPathRef
   rawSwapPendingRef: MutableRefObject<boolean>
   pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
+  flushPendingEditorChange: () => boolean
 }) {
   const {
     pathChanged,
@@ -483,6 +484,7 @@ function handleStableActivePath(options: {
     editorContentPathRef,
     rawSwapPendingRef,
     pendingLocalContentRef,
+    flushPendingEditorChange,
   } = options
 
   if (pathChanged) return false
@@ -511,7 +513,9 @@ function handleStableActivePath(options: {
       pendingLocalContentRef,
     })
   }
-  if (shouldRefreshStableActivePath({ activeTabPath, activeTab, cache })) return false
+  if (shouldRefreshStableActivePath({ activeTabPath, activeTab, cache })) {
+    return flushPendingEditorChange()
+  }
   if (rawSwapPendingRef.current) return true
 
   cacheStableActivePath({
@@ -912,6 +916,7 @@ function shouldSkipScheduledTabSwap(options: {
   editorContentPathRef: EditorContentPathRef
   rawSwapPendingRef: MutableRefObject<boolean>
   pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
+  flushPendingEditorChange: () => boolean
 }) {
   const {
     state,
@@ -922,6 +927,7 @@ function shouldSkipScheduledTabSwap(options: {
     editorContentPathRef,
     rawSwapPendingRef,
     pendingLocalContentRef,
+    flushPendingEditorChange,
   } = options
 
   if (state.pathChanged) {
@@ -954,6 +960,7 @@ function shouldSkipScheduledTabSwap(options: {
     editorContentPathRef,
     rawSwapPendingRef,
     pendingLocalContentRef,
+    flushPendingEditorChange,
   })
 }
 
@@ -999,6 +1006,7 @@ function runTabSwapEffect(options: RunTabSwapEffectOptions) {
     editorContentPathRef,
     rawSwapPendingRef,
     pendingLocalContentRef,
+    flushPendingEditorChange,
   })) {
     return
   }

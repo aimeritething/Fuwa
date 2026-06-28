@@ -9,6 +9,13 @@ function makeTab(path: string, title: string, body: string) {
   }
 }
 
+function makeContentTab(path: string, content: string) {
+  return {
+    entry: { path, title: path.replace(/\.md$/, ''), filename: path, type: 'Note', status: 'Active', aliases: [], isA: '' } as never,
+    content,
+  }
+}
+
 function makeMockEditor(currentMarkdown: string) {
   const markdownRef = { current: currentMarkdown }
   const docRef = {
@@ -251,6 +258,65 @@ describe('useEditorTabSwap untitled rename continuity', () => {
     })
     await act(() => new Promise(r => setTimeout(r, 0)))
 
+    expect(editor.replaceBlocks).not.toHaveBeenCalled()
+    expect(editor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
+  })
+
+  it('does not re-swap equivalent empty-heading content after an untouched new note settles', async () => {
+    setupMountedEditorMocks()
+
+    const editor = makeMockEditor('#\n')
+    const initialTab = makeContentTab('untitled-note-123.md', '---\ntype: Note\n---\n\n# \n\n')
+    const settledTab = makeContentTab('untitled-note-123.md', '---\ntype: Note\n---\n\n#\n')
+
+    const { rerender } = renderHook(
+      ({ tabs, activeTabPath }) => useEditorTabSwap({
+        tabs,
+        activeTabPath,
+        editor: editor as never,
+      }),
+      { initialProps: { tabs: [initialTab], activeTabPath: initialTab.entry.path } },
+    )
+
+    await act(() => new Promise(r => setTimeout(r, 0)))
+    editor.replaceBlocks.mockClear()
+    editor.tryParseMarkdownToBlocks.mockClear()
+
+    rerender({ tabs: [settledTab], activeTabPath: settledTab.entry.path })
+    await act(() => new Promise(r => setTimeout(r, 0)))
+
+    expect(editor.replaceBlocks).not.toHaveBeenCalled()
+    expect(editor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
+  })
+
+  it('flushes pending first typing instead of re-swapping stale tab content', async () => {
+    setupMountedEditorMocks()
+
+    const editor = makeMockEditor('# First keystroke')
+    const onContentChange = vi.fn()
+    const tab = makeContentTab('untitled-note-123.md', '---\ntype: Note\n---\n\n# \n\n')
+
+    const { result, rerender } = renderHook(
+      ({ tabs, activeTabPath }) => useEditorTabSwap({
+        tabs,
+        activeTabPath,
+        editor: editor as never,
+        onContentChange,
+      }),
+      { initialProps: { tabs: [tab], activeTabPath: tab.entry.path } },
+    )
+
+    await act(() => new Promise(r => setTimeout(r, 0)))
+    editor.replaceBlocks.mockClear()
+    editor.tryParseMarkdownToBlocks.mockClear()
+
+    act(() => {
+      result.current.handleEditorChange()
+    })
+    rerender({ tabs: [tab], activeTabPath: tab.entry.path })
+    await act(() => new Promise(r => setTimeout(r, 0)))
+
+    expect(onContentChange).toHaveBeenCalledWith('untitled-note-123.md', expect.stringContaining('First keystroke'))
     expect(editor.replaceBlocks).not.toHaveBeenCalled()
     expect(editor.tryParseMarkdownToBlocks).not.toHaveBeenCalled()
   })
