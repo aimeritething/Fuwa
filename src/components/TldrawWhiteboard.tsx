@@ -70,6 +70,8 @@ type ResizeMode = 'height' | 'width' | 'both'
 const DEFAULT_HEIGHT = 520
 const MIN_HEIGHT = 260
 const MIN_WIDTH = 360
+const TLDRAW_UI_ICON_SELECTOR = '.tlui-icon'
+const WEBKIT_MASK_PROPERTY = '-webkit-mask'
 
 function parsePixelValue(value: string, fallback: number): number {
   const parsed = Number.parseInt(value, 10)
@@ -262,12 +264,66 @@ function installZoomAwareViewport(editor: Editor): () => void {
   }
 }
 
+function syncTldrawIconWebkitMask(icon: HTMLElement): void {
+  const mask = icon.style.getPropertyValue('mask').trim()
+  if (!mask) {
+    icon.style.removeProperty(WEBKIT_MASK_PROPERTY)
+    return
+  }
+
+  if (icon.style.getPropertyValue(WEBKIT_MASK_PROPERTY).trim() === mask) return
+  icon.style.setProperty(WEBKIT_MASK_PROPERTY, mask)
+}
+
+function syncTldrawIconWebkitMasks(root: HTMLElement): void {
+  if (root.matches(TLDRAW_UI_ICON_SELECTOR)) {
+    syncTldrawIconWebkitMask(root)
+  }
+
+  for (const icon of root.querySelectorAll<HTMLElement>(TLDRAW_UI_ICON_SELECTOR)) {
+    syncTldrawIconWebkitMask(icon)
+  }
+}
+
+function syncAddedTldrawIconMasks(node: Node): void {
+  if (!(node instanceof HTMLElement)) return
+  syncTldrawIconWebkitMasks(node)
+}
+
+function installTldrawWebkitIconMaskBridge(container: HTMLElement): () => void {
+  syncTldrawIconWebkitMasks(container)
+
+  const observer = new MutationObserver((mutations) => {
+    for (const mutation of mutations) {
+      if (mutation.type === 'attributes' && mutation.target instanceof HTMLElement) {
+        syncTldrawIconWebkitMasks(mutation.target)
+        continue
+      }
+
+      mutation.addedNodes.forEach(syncAddedTldrawIconMasks)
+    }
+  })
+
+  observer.observe(container, {
+    attributeFilter: ['class', 'style'],
+    attributes: true,
+    childList: true,
+    subtree: true,
+  })
+
+  return () => {
+    observer.disconnect()
+  }
+}
+
 function installWhiteboardRuntimeGuards(editor: Editor, options: WhiteboardRuntimeGuardOptions): () => void {
   const cleanupZoomAwareViewport = installZoomAwareViewport(editor)
+  const cleanupWebkitIconMaskBridge = installTldrawWebkitIconMaskBridge(editor.getContainer())
   const cleanupPlatformPermissionGuard = installTldrawPlatformPermissionGuard(options)
 
   return () => {
     cleanupPlatformPermissionGuard()
+    cleanupWebkitIconMaskBridge()
     cleanupZoomAwareViewport()
   }
 }

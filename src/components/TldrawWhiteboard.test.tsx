@@ -158,6 +158,13 @@ function mockEditor(): Editor {
   } as unknown as Editor
 }
 
+function maskedTldrawIcon(mask: string): HTMLElement {
+  const icon = document.createElement('span')
+  icon.className = 'tlui-icon'
+  icon.style.setProperty('mask', mask)
+  return icon
+}
+
 function dispatchUnhandledRejection(reason: unknown): Event {
   const event = new Event('unhandledrejection', { cancelable: true })
   Object.defineProperty(event, 'reason', { value: reason })
@@ -279,6 +286,35 @@ describe('TldrawWhiteboard', () => {
 
     if (typeof cleanupStoreMount === 'function') cleanupStoreMount()
     expect(() => editor.textMeasure.measureElementTextNodeSpans(measuredTextElement())).toThrow('top')
+  })
+
+  it('mirrors tldraw icon masks to WebKit masks while mounted', async () => {
+    const styleWrites = vi.spyOn(CSSStyleDeclaration.prototype, 'setProperty')
+    renderWhiteboard()
+
+    const editor = mockEditor()
+    const container = editor.getContainer()
+    const initialMask = 'url(/assets/0_merged.svg#tools.select) center 100% / 100% no-repeat'
+    const initialIcon = maskedTldrawIcon(initialMask)
+    container.append(initialIcon)
+
+    let cleanupRuntimeMount: (() => void) | null = null
+    try {
+      cleanupRuntimeMount = renderedTldrawProps().onMount(editor)
+
+      expect(styleWrites).toHaveBeenCalledWith('-webkit-mask', initialMask)
+
+      const delayedMask = 'url(/assets/0_merged.svg#style-panel) center 100% / 100% no-repeat'
+      const delayedIcon = maskedTldrawIcon(delayedMask)
+      container.append(delayedIcon)
+
+      await waitFor(() => {
+        expect(styleWrites).toHaveBeenCalledWith('-webkit-mask', delayedMask)
+      })
+    } finally {
+      cleanupRuntimeMount?.()
+      styleWrites.mockRestore()
+    }
   })
 
   it('suppresses whiteboard platform permission rejections while mounted', () => {

@@ -1,4 +1,4 @@
-import { expect, test, type Page } from '@playwright/test'
+import { expect, test, type Locator, type Page } from '@playwright/test'
 import fs from 'fs'
 import path from 'path'
 import { createFixtureVaultCopy, openFixtureVault, removeFixtureVaultCopy } from '../helpers/fixtureVault'
@@ -94,6 +94,33 @@ async function expectNoEditorNodeSelection(page: Page): Promise<void> {
   expect(await hasSelectedEditorNode(page)).toBe(false)
 }
 
+async function expectPaintedTldrawIcon(icon: Locator): Promise<void> {
+  await expect(icon).toBeVisible({ timeout: 5_000 })
+  const paintState = await icon.evaluate((element) => {
+    const iconElement = element as HTMLElement
+    const style = getComputedStyle(iconElement)
+    const rect = iconElement.getBoundingClientRect()
+
+    return {
+      backgroundColor: style.backgroundColor,
+      height: rect.height,
+      inlineWebkitMask: iconElement.style.getPropertyValue('-webkit-mask'),
+      maskImage: style.getPropertyValue('mask-image'),
+      webkitMaskImage: style.getPropertyValue('-webkit-mask-image'),
+      width: rect.width,
+    }
+  })
+
+  expect(paintState.width).toBeGreaterThan(0)
+  expect(paintState.height).toBeGreaterThan(0)
+  expect(paintState.backgroundColor).not.toBe('rgba(0, 0, 0, 0)')
+  expect([
+    paintState.inlineWebkitMask,
+    paintState.webkitMaskImage,
+    paintState.maskImage,
+  ].some((value) => value.trim() !== '' && value !== 'none')).toBe(true)
+}
+
 async function applyZoom(page: Page, percent: number): Promise<void> {
   await page.evaluate((pct) => {
     document.documentElement.style.setProperty('zoom', `${pct}%`)
@@ -158,6 +185,17 @@ test('embedded tldraw whiteboards follow Tolaria theme changes', async ({ page }
   await page.getByTestId('status-theme-mode').click()
   await expect(tldrawContainer).toHaveClass(new RegExp(`tl-theme__${initialMode}`))
   await expect(tldrawContainer).toHaveAttribute('data-color-mode', initialMode)
+})
+
+test('embedded tldraw toolbar and style panel icons keep a WebKit paint mask', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 })
+  await openNote(page, 'Whiteboard Embed')
+
+  const whiteboard = page.locator('.tldraw-whiteboard')
+  await expect(whiteboard).toBeVisible({ timeout: 20_000 })
+
+  await expectPaintedTldrawIcon(whiteboard.locator('.tlui-main-toolbar .tlui-icon').first())
+  await expectPaintedTldrawIcon(whiteboard.locator('.tlui-style-panel .tlui-icon').first())
 })
 
 test('embedded tldraw interactions stay inside the whiteboard', async ({ page }) => {
