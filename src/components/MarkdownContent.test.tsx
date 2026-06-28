@@ -1,9 +1,25 @@
-import { describe, it, expect, vi } from 'vitest'
+import { beforeEach, describe, it, expect, vi } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+
+vi.mock('../utils/url', async () => {
+  const actual = await vi.importActual('../utils/url') as typeof import('../utils/url')
+  return {
+    ...actual,
+    openExternalUrl: vi.fn().mockResolvedValue(undefined),
+  }
+})
+
+import { openExternalUrl } from '../utils/url'
 import { MarkdownContent } from './MarkdownContent'
 import { preprocessWikilinks } from '../utils/chatWikilinks'
 
+const mockOpenExternalUrl = vi.mocked(openExternalUrl)
+
 describe('MarkdownContent', () => {
+  beforeEach(() => {
+    mockOpenExternalUrl.mockClear()
+  })
+
   it('renders bold text', () => {
     render(<MarkdownContent content="Hello **world**" />)
     const strong = screen.getByText('world')
@@ -48,6 +64,29 @@ describe('MarkdownContent', () => {
     const link = screen.getByText('Click here') as HTMLAnchorElement
     expect(link.tagName).toBe('A')
     expect(link.getAttribute('href')).toBe('https://example.com')
+  })
+
+  it('opens explicit web links externally without navigating the current webview', () => {
+    render(<MarkdownContent content="[Docs](https://example.com/docs)" />)
+    const link = screen.getByRole('link', { name: 'Docs' })
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true })
+
+    link.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(true)
+    expect(mockOpenExternalUrl).toHaveBeenCalledWith('https://example.com/docs')
+  })
+
+  it('leaves relative markdown links as normal anchors', () => {
+    render(<MarkdownContent content="[Vault note](notes/project.md)" />)
+    const link = screen.getByRole('link', { name: 'Vault note' }) as HTMLAnchorElement
+    const event = new MouseEvent('click', { bubbles: true, cancelable: true })
+    link.addEventListener('click', (clickEvent) => clickEvent.preventDefault())
+
+    link.dispatchEvent(event)
+
+    expect(link.getAttribute('href')).toBe('notes/project.md')
+    expect(mockOpenExternalUrl).not.toHaveBeenCalled()
   })
 
   it('renders GFM email autolinks when modern regex features are available', () => {
