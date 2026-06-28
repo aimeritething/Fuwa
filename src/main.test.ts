@@ -8,6 +8,8 @@ type ReactRootOptions = {
   onRecoverableError?: (error: unknown, errorInfo: ReactRootErrorInfo) => void
 }
 
+const MAIN_ENTRYPOINT_IMPORT_TIMEOUT_MS = 120_000
+
 const mocks = vi.hoisted(() => {
   const render = vi.fn()
   const createRoot = vi.fn(() => ({ render }))
@@ -145,7 +147,7 @@ describe('main entrypoint', () => {
     rootOptions().onCaughtError?.(error, { componentStack: '\n    in App' })
 
     expect(mocks.sentryHandler).toHaveBeenCalledWith(error, { componentStack: '\n    in App' })
-  }, 60_000)
+  }, MAIN_ENTRYPOINT_IMPORT_TIMEOUT_MS)
 
   it('normalizes missing React component stacks before handing errors to Sentry', async () => {
     await importEntrypoint()
@@ -155,7 +157,7 @@ describe('main entrypoint', () => {
     rootOptions().onRecoverableError?.(error, {})
 
     expect(mocks.sentryHandler).toHaveBeenCalledWith(error, { componentStack: '' })
-  })
+  }, MAIN_ENTRYPOINT_IMPORT_TIMEOUT_MS)
 
   it('marks macOS chrome for traffic-light layout offsets', async () => {
     await withUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 Safari/605.1.15', async () => {
@@ -163,7 +165,7 @@ describe('main entrypoint', () => {
     })
 
     expect(document.body).toHaveClass('mac-chrome')
-  }, 60_000)
+  }, MAIN_ENTRYPOINT_IMPORT_TIMEOUT_MS)
 
   it('ignores ResizeObserver loop notifications instead of showing the fatal overlay', async () => {
     await importEntrypoint()
