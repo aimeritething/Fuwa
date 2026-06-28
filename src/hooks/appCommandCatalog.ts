@@ -468,11 +468,15 @@ export function findShortcutCommandId(
   key: string,
   code?: string,
 ): AppCommandId | null {
+  const keyMatch = (Reflect.get(shortcutKeyMaps, combo) as Map<string, AppCommandId>).get(normalizeShortcutKey(key))
+  if (keyMatch) return keyMatch
+
   if (code) {
     const codeMatch = (Reflect.get(shortcutCodeMaps, combo) as Map<string, AppCommandId>).get(code)
     if (codeMatch) return codeMatch
   }
-  return (Reflect.get(shortcutKeyMaps, combo) as Map<string, AppCommandId>).get(normalizeShortcutKey(key)) ?? null
+
+  return null
 }
 
 export function findShortcutCommandIdForEvent(event: ShortcutEventLike): AppCommandId | null {

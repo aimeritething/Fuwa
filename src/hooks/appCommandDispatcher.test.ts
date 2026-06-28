@@ -221,6 +221,11 @@ describe('appCommandDispatcher', () => {
     expectShortcutEventCommand({ key: 'z', code: 'KeyZ', metaKey: true, shiftKey: true }, APP_COMMAND_IDS.editRedo)
   })
 
+  it('prefers the active keyboard layout over physical letter keys', () => {
+    expectShortcutEventCommand({ key: 'e', code: 'KeyD', metaKey: true }, APP_COMMAND_IDS.noteToggleOrganized)
+    expectShortcutEventCommand({ key: 'd', code: 'KeyE', metaKey: true }, APP_COMMAND_IDS.noteToggleFavorite)
+  })
+
   it('maps Ctrl+Y to redo only off macOS', () => {
     setUserAgent('Mozilla/5.0 (Windows NT 10.0; Win64; x64)')
     expectShortcutEventCommand({ key: 'y', code: 'KeyY', ctrlKey: true }, APP_COMMAND_IDS.editRedo)

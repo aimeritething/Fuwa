@@ -283,6 +283,17 @@ describe('useAppKeyboard', () => {
     expect(actions.onToggleFavorite).toHaveBeenCalledWith('/vault/test.md')
   })
 
+  it('uses active-layout letter shortcuts before physical key codes', () => {
+    const actions = makeActions()
+    actions.onToggleFavorite = vi.fn()
+    renderHook(() => useAppKeyboard(actions))
+
+    fireKey('e', { metaKey: true, code: 'KeyD' })
+
+    expect(actions.onToggleOrganized).toHaveBeenCalledWith('/vault/test.md')
+    expect(actions.onToggleFavorite).not.toHaveBeenCalled()
+  })
+
   it('Cmd+E still works when editor focus stops propagation', () => {
     const actions = makeActions()
     const onToggleOrganized = vi.fn()
