@@ -1114,7 +1114,7 @@ mod tests {
         std::fs::create_dir_all(config_path.parent().unwrap()).unwrap();
         std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
 
-        let status = remove_mcp_from_configs(&[config_path.clone()]);
+        let status = remove_mcp_from_configs(std::slice::from_ref(&config_path));
         let updated = read_config(&config_path);
 
         assert_eq!(status, "removed");
