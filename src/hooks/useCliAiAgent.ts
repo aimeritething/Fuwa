@@ -15,6 +15,7 @@ import {
   clearAgentConversation,
   regenerateAgentMessage,
   sendAgentMessage,
+  stopAgentMessage,
   type AiAgentSessionRuntime,
 } from '../lib/aiAgentSession'
 import type { ToolInvocation } from '../lib/aiAgentMessageState'
@@ -163,6 +164,10 @@ export function useCliAiAgent(
     })
   }
 
+  function stopMessage(): void {
+    stopAgentMessage(runtime, { agent, locale })
+  }
+
   function clearConversation(): void {
     clearAgentConversation(runtime)
   }
@@ -171,5 +176,5 @@ export function useCliAiAgent(
     addAgentLocalMarker(runtime, text)
   }
 
-  return { messages, status, sendMessage, regenerateMessage, clearConversation, addLocalMarker }
+  return { messages, status, sendMessage, stopMessage, regenerateMessage, clearConversation, addLocalMarker }
 }

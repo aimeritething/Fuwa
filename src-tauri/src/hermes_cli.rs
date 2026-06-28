@@ -35,18 +35,18 @@ where
     let mut child = build_hermes_command(binary, prompt, &request.vault_path)?
         .spawn()
         .map_err(|error| format!("Failed to spawn hermes: {error}"))?;
+    let stdout = child.stdout.take().ok_or("No stdout handle")?;
     let stderr_handle = read_stderr_async(child.stderr.take().ok_or("No stderr handle")?);
+    let child = crate::ai_agent_processes::register_current_stream_child(child);
     let session_id = hermes_session_id();
 
     emit(AiAgentStreamEvent::Init {
         session_id: session_id.clone(),
     });
-    stream_stdout(child.stdout.take().ok_or("No stdout handle")?, &mut emit);
+    stream_stdout(stdout, &mut emit);
 
     let stderr_output = stderr_handle.join().unwrap_or_default();
-    let status = child
-        .wait()
-        .map_err(|error| format!("Wait failed: {error}"))?;
+    let status = child.wait()?;
     if !status.success() {
         emit(AiAgentStreamEvent::Error {
             message: format_hermes_error(HermesProcessError {

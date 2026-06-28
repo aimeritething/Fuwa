@@ -14,9 +14,33 @@ type StreamEmitter<Event> = Box<dyn Fn(Event) + Send>;
 const AGENT_DOCS_RESOURCE_DIR: &str = "agent-docs";
 
 #[cfg(desktop)]
+struct DesktopStreamScope {
+    event_name: String,
+    stream_id: Option<String>,
+}
+
+#[cfg(desktop)]
+impl DesktopStreamScope {
+    fn shared(event_name: impl Into<String>) -> Self {
+        Self {
+            event_name: event_name.into(),
+            stream_id: None,
+        }
+    }
+
+    fn cancellable(event_name: impl Into<String>) -> Self {
+        let event_name = event_name.into();
+        Self {
+            stream_id: Some(event_name.clone()),
+            event_name,
+        }
+    }
+}
+
+#[cfg(desktop)]
 async fn run_desktop_stream<Event, Request, Runner>(
     app_handle: tauri::AppHandle,
-    event_name: String,
+    scope: DesktopStreamScope,
     request: Request,
     runner: Runner,
 ) -> Result<String, String>
@@ -28,12 +52,22 @@ where
     use tauri::Emitter;
 
     tokio::task::spawn_blocking(move || {
-        runner(
-            request,
-            Box::new(move |event| {
-                let _ = app_handle.emit(event_name.as_str(), &event);
-            }),
-        )
+        let DesktopStreamScope {
+            event_name,
+            stream_id,
+        } = scope;
+        let run = || {
+            runner(
+                request,
+                Box::new(move |event| {
+                    let _ = app_handle.emit(event_name.as_str(), &event);
+                }),
+            )
+        };
+        match stream_id {
+            Some(stream_id) => crate::ai_agent_processes::with_stream_id(stream_id, run),
+            None => run(),
+        }
     })
     .await
     .map_err(|e| format!("Task failed: {e}"))?
@@ -47,7 +81,13 @@ macro_rules! define_desktop_stream_command {
             app_handle: tauri::AppHandle,
             request: $request,
         ) -> Result<String, String> {
-            run_desktop_stream(app_handle, $event_name.to_string(), request, $runner).await
+            run_desktop_stream(
+                app_handle,
+                DesktopStreamScope::shared($event_name),
+                request,
+                $runner,
+            )
+            .await
         }
     };
 }
@@ -164,11 +204,21 @@ pub async fn stream_ai_agent(
     let event_name = stream_event_name("ai-agent-stream", request.event_name.as_deref());
     run_desktop_stream(
         app_handle,
-        event_name,
+        DesktopStreamScope::cancellable(event_name),
         request,
         run_normalized_ai_agent_stream,
     )
     .await
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+pub fn abort_ai_agent_stream(event_name: String) -> Result<bool, String> {
+    if !is_scoped_stream_event_name("ai-agent-stream", &event_name) {
+        return Err("Invalid AI agent stream id".into());
+    }
+
+    crate::ai_agent_processes::abort_stream(&event_name)
 }
 
 #[cfg(desktop)]
@@ -180,7 +230,7 @@ pub async fn stream_ai_model(
     let event_name = stream_event_name("ai-model-stream", request.event_name.as_deref());
     run_desktop_stream(
         app_handle,
-        event_name,
+        DesktopStreamScope::shared(event_name),
         request,
         crate::ai_models::run_ai_model_stream,
     )
@@ -272,6 +322,12 @@ pub async fn stream_ai_agent(
     _app_handle: tauri::AppHandle,
     _request: AiAgentStreamRequest,
 ) -> Result<String, String> {
+    Err("CLI AI agents are not available on mobile".into())
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn abort_ai_agent_stream(_event_name: String) -> Result<bool, String> {
     Err("CLI AI agents are not available on mobile".into())
 }
 
@@ -377,6 +433,14 @@ mod tests {
             stream_event_name("ai-agent-stream", Some("ai-agent-stream/../bad")),
             "ai-agent-stream",
         );
+    }
+
+    #[cfg(desktop)]
+    #[test]
+    fn abort_ai_agent_stream_rejects_unscoped_names() {
+        let result = abort_ai_agent_stream("ai-model-stream-chat-123".into());
+
+        assert!(matches!(result, Err(message) if message.contains("Invalid AI agent stream id")));
     }
 
     #[test]

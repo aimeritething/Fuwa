@@ -178,6 +178,7 @@ export function AiPanelView({
     isActive,
     permissionMode,
     handleSend,
+    handleStop,
     handleNavigateWikilink,
     handlePermissionModeChange,
     handleNewChat,
@@ -245,6 +246,7 @@ export function AiPanelView({
         controls={composerControls}
         onChange={setInput}
         onSend={handleComposerSend}
+        onStop={handleStop}
         onUnsupportedAiPaste={onUnsupportedAiPaste}
       />
     </AiPanelFrame>

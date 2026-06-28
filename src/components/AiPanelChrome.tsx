@@ -1,5 +1,5 @@
 import { memo, useCallback, useEffect, useRef, type CSSProperties, type ReactNode } from 'react'
-import { Sparkle, X, PaperPlaneRight, Plus, Link } from '@phosphor-icons/react'
+import { Sparkle, X, PaperPlaneRight, Plus, Link, Stop } from '@phosphor-icons/react'
 import { AiMessage } from './AiMessage'
 import { Button } from '@/components/ui/button'
 import { ActionTooltip } from '@/components/ui/action-tooltip'
@@ -60,6 +60,7 @@ interface AiPanelComposerProps {
   controls?: ReactNode
   onChange: (value: string) => void
   onSend: (text: string, references: NoteReference[]) => void
+  onStop: () => void
   onUnsupportedAiPaste?: (message: string) => void
 }
 
@@ -87,6 +88,17 @@ function composerSendButtonStyle(canSend: boolean): CSSProperties {
     width: 30,
     height: 30,
     cursor: canSend ? 'pointer' : 'not-allowed',
+  }
+}
+
+function composerStopButtonStyle(): CSSProperties {
+  return {
+    background: 'var(--destructive)',
+    color: 'var(--destructive-foreground)',
+    borderRadius: 8,
+    width: 30,
+    height: 30,
+    cursor: 'pointer',
   }
 }
 
@@ -158,6 +170,30 @@ function ComposerSendButton({
       data-testid="agent-send"
     >
       <PaperPlaneRight size={16} />
+    </Button>
+  )
+}
+
+function ComposerStopButton({
+  label,
+  onStop,
+}: {
+  label: string
+  onStop: () => void
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      size="icon-sm"
+      className="shrink-0 flex items-center justify-center border-none cursor-pointer transition-colors hover:opacity-90"
+      style={composerStopButtonStyle()}
+      onClick={onStop}
+      aria-label={label}
+      title={label}
+      data-testid="agent-stop"
+    >
+      <Stop size={16} weight="fill" />
     </Button>
   )
 }
@@ -487,6 +523,7 @@ export function AiPanelComposer({
   controls,
   onChange,
   onSend,
+  onStop,
   onUnsupportedAiPaste,
 }: AiPanelComposerProps) {
   const t = createTranslator(locale)
@@ -494,15 +531,17 @@ export function AiPanelComposer({
   const canSend = !composerDisabled && input.trim().length > 0
   const placeholder = getComposerPlaceholder(agentLabel, agentReadiness, t)
   const hasControls = controls !== undefined && controls !== null
-  const sendButton = (
-    <ComposerSendButton
-      canSend={canSend}
-      entries={entries}
-      input={input}
-      label={t('ai.panel.send')}
-      onSend={onSend}
-    />
-  )
+  const sendButton = isActive
+    ? <ComposerStopButton label={t('ai.panel.stop')} onStop={onStop} />
+    : (
+        <ComposerSendButton
+          canSend={canSend}
+          entries={entries}
+          input={input}
+          label={t('ai.panel.send')}
+          onSend={onSend}
+        />
+      )
 
   return (
     <div

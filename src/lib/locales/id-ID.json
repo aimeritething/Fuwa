@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent} tidak terpasang. Buka Agen AI di Pengaturan.",
   "ai.panel.placeholder.ready": "Tanyai {agent}",
   "ai.panel.send": "Kirim pesan",
+  "ai.panel.stop": "Hentikan respons",
+  "ai.panel.stoppedResponse": "Dihentikan.",
   "ai.error.pi.emptyOutput": "Pi CLI keluar tanpa output agen. Tolaria mengharapkan peristiwa aliran JSON dari 'pi --mode json'; jalankan Pi di terminal untuk memeriksa pengaturannya.",
   "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI keluar tanpa output agen. Tolaria mengharapkan peristiwa aliran JSON dari 'pi --mode json', tetapi Pi hanya menulis:\n{diagnostic_output}",
   "ai.message.regenerate": "Buat ulang respons",

@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent}がインストールされていません。[設定] で [AI エージェント] を開きます。",
   "ai.panel.placeholder.ready": "{agent}に尋ねる",
   "ai.panel.send": "メッセージを送信",
+  "ai.panel.stop": "応答を停止",
+  "ai.panel.stoppedResponse": "停止しました。",
   "ai.error.pi.emptyOutput": "Pi CLIはエージェント出力なしで終了しました。Tolariaは'pi --mode json'からJSONストリームイベントを期待していました。ターミナルでPiを実行して、セットアップを確認してください。",
   "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLIはエージェント出力なしで終了しました。Tolariaは'pi --mode json'からJSONストリームイベントを期待していましたが、Piは次のように書き込むだけでした。\n{diagnostic_output}",
   "ai.message.regenerate": "応答を再生成",

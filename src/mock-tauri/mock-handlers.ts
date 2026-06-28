@@ -521,6 +521,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   },
   stream_claude_chat: () => 'mock-session',
   stream_ai_agent: () => null,
+  abort_ai_agent_stream: () => false,
   save_note_content: (args: { path: string; content: string }) => {
     MOCK_CONTENT[args.path] = args.content
     mockSavedSinceCommit.add(args.path)

@@ -17,6 +17,7 @@ type NotePdfExportSource = 'breadcrumb' | 'app_command' | 'note_list_context_men
 type AnalyticsBoolean = boolean
 type AiAgentResponseText = string
 type AiAgentToolCount = number
+type AiAgentResponseTextFlag = 'had_text' | 'had_partial_response'
 type SheetFormulaFunctionName = string
 
 const ALL_NOTES_VISIBILITY_CATEGORIES: ReadonlyArray<keyof AllNotesFileVisibility> = [
@@ -31,6 +32,19 @@ function trackedPreviewKind(previewKind: FilePreviewKind | null): TrackedPreview
 
 function numericFlag(value: AnalyticsBoolean): number {
   return value ? 1 : 0
+}
+
+function aiAgentResponsePayload(
+  agent: AiAgentId,
+  response: AiAgentResponseText,
+  toolCount: AiAgentToolCount,
+  textFlag: AiAgentResponseTextFlag,
+) {
+  return {
+    agent,
+    [textFlag]: numericFlag(response.trim().length > 0),
+    tool_count: toolCount,
+  }
 }
 
 export function trackFilePreviewOpened(previewKind: FilePreviewKind | null): void {
@@ -157,11 +171,7 @@ export function trackAiAgentResponseCompleted(
   skipped: AnalyticsBoolean,
 ): void {
   if (skipped) return
-  trackEvent('ai_agent_response_completed', {
-    agent,
-    had_text: numericFlag(response.trim().length > 0),
-    tool_count: toolCount,
-  })
+  trackEvent('ai_agent_response_completed', aiAgentResponsePayload(agent, response, toolCount, 'had_text'))
 }
 
 export function trackAiAgentResponseFailed(
@@ -170,11 +180,17 @@ export function trackAiAgentResponseFailed(
   toolCount: AiAgentToolCount,
 ): void {
   trackEvent('ai_agent_response_failed', {
-    agent,
+    ...aiAgentResponsePayload(agent, response, toolCount, 'had_partial_response'),
     error_kind: 'stream_error',
-    had_partial_response: numericFlag(response.trim().length > 0),
-    tool_count: toolCount,
   })
+}
+
+export function trackAiAgentResponseStopped(
+  agent: AiAgentId,
+  response: AiAgentResponseText,
+  toolCount: AiAgentToolCount,
+): void {
+  trackEvent('ai_agent_response_stopped', aiAgentResponsePayload(agent, response, toolCount, 'had_partial_response'))
 }
 
 export function trackAiAgentPermissionModeChanged(agent: AiAgentId, permissionMode: AiAgentPermissionMode): void {

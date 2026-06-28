@@ -58,6 +58,7 @@ vi.mock('./telemetry', () => ({
 import {
   clearAgentConversation,
   sendAgentMessage,
+  stopAgentMessage,
   type AiAgentSessionRuntime,
 } from './aiAgentSession'
 
@@ -148,7 +149,8 @@ const apiTarget: AiTarget = {
 }
 
 function expectStreamingRuntimeState(session: RuntimeFixture): void {
-  expect(session.runtime.abortRef.current).toEqual({ aborted: false })
+  expect(session.runtime.abortRef.current.aborted).toBe(false)
+  expect(session.runtime.abortRef.current.controller).toBeInstanceOf(AbortController)
   expect(session.runtime.responseAccRef.current).toBe('')
   expect(session.runtime.toolInputMapRef.current.size).toBe(0)
   expect(session.getStatus()).toBe('thinking')
@@ -181,14 +183,15 @@ function expectStreamingRequest(runtime: RuntimeFixture['runtime']): void {
     setMessages: runtime.setMessages,
     setStatus: runtime.setStatus,
   }))
-  expect(streamAiAgentMock).toHaveBeenCalledWith({
+  expect(streamAiAgentMock).toHaveBeenCalledWith(expect.objectContaining({
     agent: 'codex',
     message: expect.stringContaining('formatted:Latest question'),
     systemPrompt: 'SYSTEM',
     vaultPath: '/vault',
     permissionMode: 'power_user',
     callbacks: { stream: 'callbacks' },
-  })
+    signal: expect.any(AbortSignal),
+  }))
 }
 
 function expectApiModelStreamingRequest(runtime: RuntimeFixture['runtime']): void {
@@ -384,5 +387,48 @@ describe('aiAgentSession', () => {
     expect(runtime.toolInputMapRef.current.size).toBe(0)
     expect(runtime.setMessages).toHaveBeenCalledWith([])
     expect(runtime.setStatus).toHaveBeenCalledWith('idle')
+  })
+
+  it('stops the active stream and marks the streaming message as stopped', async () => {
+    nextMessageIdMock.mockReturnValue('msg-stream')
+    const session = createRuntime()
+    let streamSignal: AbortSignal | undefined
+    streamAiAgentMock.mockImplementation(async ({ signal }: { signal?: AbortSignal }) => new Promise<void>((resolve) => {
+      streamSignal = signal
+      signal?.addEventListener('abort', () => resolve(), { once: true })
+    }))
+
+    const pending = sendAgentMessage({
+      runtime: session.runtime,
+      context: {
+        agent: 'codex',
+        ready: true,
+        vaultPath: '/vault',
+        permissionMode: 'safe',
+      },
+      prompt: { text: '  Latest question  ' },
+    })
+    await Promise.resolve()
+    await Promise.resolve()
+
+    stopAgentMessage(session.runtime, { agent: 'codex', locale: 'en' })
+    await pending
+
+    expect(streamSignal?.aborted).toBe(true)
+    expect(session.runtime.abortRef.current.aborted).toBe(true)
+    expect(session.getStatus()).toBe('idle')
+    expect(session.getMessages()).toEqual([{
+      userMessage: 'Latest question',
+      actions: [],
+      isStreaming: false,
+      reasoningDone: true,
+      response: 'Stopped.',
+      id: 'msg-stream',
+    }])
+    expect(trackEventMock).toHaveBeenCalledWith('ai_agent_response_stopped', {
+      agent: 'codex',
+      had_partial_response: 0,
+      tool_count: 0,
+    })
   })
 })

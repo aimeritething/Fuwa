@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent} is not installed. Open AI Agents in Settings.",
   "ai.panel.placeholder.ready": "Ask {agent}",
   "ai.panel.send": "Send message",
+  "ai.panel.stop": "Stop response",
+  "ai.panel.stoppedResponse": "Stopped.",
   "ai.error.pi.emptyOutput": "Pi CLI exited without agent output. Tolaria expected JSON stream events from `pi --mode json`; run Pi in a terminal to inspect the setup.",
   "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI exited without agent output. Tolaria expected JSON stream events from `pi --mode json`, but Pi only wrote:\n{diagnostic_output}",
   "ai.message.regenerate": "Regenerate response",

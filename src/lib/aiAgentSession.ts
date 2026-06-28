@@ -13,15 +13,21 @@ import {
 import type { AgentFileCallbacks } from './aiAgentFileOperations'
 import { createStreamCallbacks } from './aiAgentStreamCallbacks'
 import type { ToolInvocation } from './aiAgentMessageState'
-import { trackAiAgentMessageBlocked, trackAiAgentMessageSent } from './productAnalytics'
+import { trackAiAgentMessageBlocked, trackAiAgentMessageSent, trackAiAgentResponseStopped } from './productAnalytics'
 import { streamAiAgent } from '../utils/streamAiAgent'
 import { streamAiModel } from '../utils/streamAiModel'
 import { hydrateNoteReferences } from '../utils/ai-reference-content'
+import { createTranslator } from './i18n'
+
+export interface AiAgentAbortState {
+  aborted: boolean
+  controller?: AbortController
+}
 
 export interface AiAgentSessionRuntime {
   setMessages: Dispatch<SetStateAction<AiAgentMessage[]>>
   setStatus: Dispatch<SetStateAction<AgentStatus>>
-  abortRef: MutableRefObject<{ aborted: boolean }>
+  abortRef: MutableRefObject<AiAgentAbortState>
   responseAccRef: MutableRefObject<string>
   fileCallbacksRef: MutableRefObject<AgentFileCallbacks | undefined>
   toolInputMapRef: MutableRefObject<Map<string, ToolInvocation>>
@@ -39,6 +45,14 @@ interface RegenerateAgentMessageOptions {
   runtime: AiAgentSessionRuntime
   context: AgentExecutionContext
   messageId: string
+}
+
+interface SelectedTargetStreamRequest {
+  context: AgentExecutionContext
+  formattedMessage: string
+  systemPrompt: string
+  callbacks: ReturnType<typeof createStreamCallbacks>
+  signal?: AbortSignal
 }
 
 function normalizePrompt(prompt: PendingUserPrompt): PendingUserPrompt {
@@ -70,12 +84,13 @@ function blockUnavailableAgent(runtime: AiAgentSessionRuntime, context: AgentExe
   )
 }
 
-async function streamWithSelectedTarget(
-  context: AgentExecutionContext,
-  formattedMessage: string,
-  systemPrompt: string,
-  callbacks: ReturnType<typeof createStreamCallbacks>,
-): Promise<void> {
+async function streamWithSelectedTarget({
+  context,
+  formattedMessage,
+  systemPrompt,
+  callbacks,
+  signal,
+}: SelectedTargetStreamRequest): Promise<void> {
   if (context.target?.kind === 'api_model') {
     await streamAiModel({
       provider: context.target.provider,
@@ -97,7 +112,14 @@ async function streamWithSelectedTarget(
     vaultPaths: context.vaultPaths,
     permissionMode: context.permissionMode,
     callbacks,
+    signal,
   })
+}
+
+function stoppedResponseText(response: string, locale: AgentExecutionContext['locale']): string {
+  const stopped = createTranslator(locale ?? 'en')('ai.panel.stoppedResponse')
+  const partial = response.trim()
+  return partial ? `${partial}\n\n${stopped}` : stopped
 }
 
 export async function sendAgentMessage({
@@ -128,7 +150,12 @@ export async function sendAgentMessage({
     historyMessageCount: completedMessageCount(runtime.messagesRef.current),
   })
 
-  runtime.abortRef.current = { aborted: false }
+  const controller = new AbortController()
+  const abortState: AiAgentAbortState = {
+    aborted: false,
+    controller,
+  }
+  runtime.abortRef.current = abortState
   runtime.responseAccRef.current = ''
   runtime.toolInputMapRef.current = new Map()
 
@@ -152,13 +179,19 @@ export async function sendAgentMessage({
     vaultPath: context.vaultPath,
     setMessages: runtime.setMessages,
     setStatus: runtime.setStatus,
-    abortRef: runtime.abortRef,
+    abortRef: { current: abortState },
     responseAccRef: runtime.responseAccRef,
     toolInputMapRef: runtime.toolInputMapRef,
     fileCallbacksRef: runtime.fileCallbacksRef,
   })
 
-  await streamWithSelectedTarget(context, formattedMessage, systemPrompt, callbacks)
+  await streamWithSelectedTarget({
+    context,
+    formattedMessage,
+    systemPrompt,
+    callbacks,
+    signal: controller.signal,
+  })
 }
 
 export async function regenerateAgentMessage({
@@ -199,8 +232,39 @@ export function addAgentLocalMarker(
 
 export function clearAgentConversation(runtime: Pick<AiAgentSessionRuntime, 'abortRef' | 'responseAccRef' | 'toolInputMapRef' | 'setMessages' | 'setStatus'>): void {
   runtime.abortRef.current.aborted = true
+  runtime.abortRef.current.controller?.abort()
   runtime.responseAccRef.current = ''
   runtime.toolInputMapRef.current = new Map()
   runtime.setMessages([])
+  runtime.setStatus('idle')
+}
+
+export function stopAgentMessage(
+  runtime: AiAgentSessionRuntime,
+  context: Pick<AgentExecutionContext, 'agent' | 'locale'>,
+): void {
+  if (!runtime.abortRef.current.controller || runtime.abortRef.current.aborted) return
+
+  runtime.abortRef.current.aborted = true
+  runtime.abortRef.current.controller.abort()
+  const response = runtime.responseAccRef.current
+  const toolCount = runtime.toolInputMapRef.current.size
+  trackAiAgentResponseStopped(context.agent, response, toolCount)
+
+  runtime.setMessages((current) => current.map((message) => (
+    message.isStreaming
+      ? {
+          ...message,
+          isStreaming: false,
+          reasoningDone: true,
+          response: stoppedResponseText(response, context.locale),
+          actions: message.actions.map((action) => (
+            action.status === 'pending' ? { ...action, status: 'error' as const } : action
+          )),
+        }
+      : message
+  )))
+  runtime.responseAccRef.current = ''
+  runtime.toolInputMapRef.current = new Map()
   runtime.setStatus('idle')
 }

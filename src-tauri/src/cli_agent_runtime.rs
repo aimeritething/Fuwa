@@ -352,6 +352,8 @@ where
     let stdin_write_error =
         write_stdin_input(&mut child, process.process_name, process.stdin_input);
     let stdout = child.stdout.take().ok_or("No stdout handle")?;
+    let stderr = child.stderr.take();
+    let child = crate::ai_agent_processes::register_current_stream_child(child);
     let reader = std::io::BufReader::new(stdout);
     let mut session_id = String::new();
     let mut ignored_stdout_lines = Vec::new();
@@ -371,14 +373,10 @@ where
         }
     }
 
-    let stderr_output = child
-        .stderr
-        .take()
+    let stderr_output = stderr
         .and_then(|stderr| std::io::read_to_string(stderr).ok())
         .unwrap_or_default();
-    let status = child
-        .wait()
-        .map_err(|error| format!("Wait failed: {error}"))?;
+    let status = child.wait()?;
     let stderr_output = with_stdin_write_error(stderr_output, stdin_write_error);
 
     Ok(JsonLineRun {

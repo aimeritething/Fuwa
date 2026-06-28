@@ -34,20 +34,22 @@ where
         child.stdin.take().ok_or("No stdin handle")?,
         prompt.into_bytes(),
     );
+    let stdout = child.stdout.take().ok_or("No stdout handle")?;
     let stderr_handle = read_stderr_async(child.stderr.take().ok_or("No stderr handle")?);
+    let child = crate::ai_agent_processes::register_current_stream_child(child);
 
     let session_id = generate_session_id();
     emit(AiAgentStreamEvent::Init {
         session_id: session_id.clone(),
     });
 
-    stream_stdout(child.stdout.take().ok_or("No stdout handle")?, &mut emit);
+    stream_stdout(stdout, &mut emit);
 
     let mut stderr_output = stderr_handle.join().unwrap_or_default();
     if let Some(error) = prompt_write_error(prompt_handle) {
         append_stderr_line(&mut stderr_output, error);
     }
-    let status = child.wait().map_err(|e| format!("Wait failed: {e}"))?;
+    let status = child.wait()?;
     if !status.success() {
         emit(AiAgentStreamEvent::Error {
             message: format_kiro_error(KiroError {

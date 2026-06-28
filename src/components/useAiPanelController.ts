@@ -51,6 +51,7 @@ export interface AiPanelController {
   isActive: boolean
   permissionMode: AiAgentPermissionMode
   handleSend: (text: string, references: NoteReference[]) => void
+  handleStop: () => void
   handleNavigateWikilink: (target: string) => void
   handlePermissionModeChange: (mode: AiAgentPermissionMode) => void
   handleNewChat: () => void
@@ -186,6 +187,11 @@ export function useAiPanelController({
     setInput('')
   }, [agent, isActive])
 
+  const handleStop = useCallback(() => {
+    if (!isActive) return
+    agent.stopMessage()
+  }, [agent, isActive])
+
   const handleNavigateWikilink = useCallback((target: string) => {
     onOpenNote?.(target)
   }, [onOpenNote])
@@ -206,6 +212,7 @@ export function useAiPanelController({
     isActive,
     permissionMode,
     handleSend,
+    handleStop,
     handleNavigateWikilink,
     handlePermissionModeChange,
     handleNewChat,

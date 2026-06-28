@@ -22,6 +22,7 @@ vi.mock('../lib/telemetry', () => ({
 let mockMessages: ReturnType<typeof import('../hooks/useCliAiAgent').useCliAiAgent>['messages'] = []
 let mockStatus: ReturnType<typeof import('../hooks/useCliAiAgent').useCliAiAgent>['status'] = 'idle'
 const mockSendMessage = vi.fn()
+const mockStopMessage = vi.fn()
 const mockClearConversation = vi.fn()
 const mockAddLocalMarker = vi.fn()
 const mockUseCliAiAgent = vi.fn()
@@ -33,6 +34,7 @@ vi.mock('../hooks/useCliAiAgent', () => ({
       messages: mockMessages,
       status: mockStatus,
       sendMessage: mockSendMessage,
+      stopMessage: mockStopMessage,
       clearConversation: mockClearConversation,
       addLocalMarker: mockAddLocalMarker,
     }
@@ -98,6 +100,7 @@ function QueuedPromptTargetHarness({ onTargetChange }: { onTargetChange: (target
         mockSendMessage(text, references)
         return Promise.resolve()
       },
+      stopMessage: mockStopMessage,
       regenerateMessage: () => Promise.resolve(),
       clearConversation: () => {
         mockClearConversation()
@@ -116,6 +119,7 @@ function QueuedPromptTargetHarness({ onTargetChange }: { onTargetChange: (target
       mockSendMessage(text, references)
       setInput('')
     },
+    handleStop: mockStopMessage,
     handleNavigateWikilink: vi.fn(),
     handlePermissionModeChange: vi.fn(),
     handleNewChat: vi.fn(),
@@ -137,6 +141,7 @@ describe('AiPanel', () => {
     mockMessages = []
     mockStatus = 'idle'
     mockSendMessage.mockReset()
+    mockStopMessage.mockReset()
     mockClearConversation.mockReset()
     mockAddLocalMarker.mockReset()
     mockUseCliAiAgent.mockReset()
@@ -216,6 +221,21 @@ describe('AiPanel', () => {
 
     expect(screen.getByRole('radio', { name: 'Vault Safe' })).toBeDisabled()
     expect(screen.getByRole('radio', { name: 'Power User' })).toBeDisabled()
+  })
+
+  it('replaces the composer send button with a stop button while the AI agent is running', () => {
+    mockStatus = 'thinking'
+
+    render(<AiPanel onClose={vi.fn()} vaultPath="/tmp/vault" />)
+
+    expect(screen.queryByTestId('agent-send')).toBeNull()
+    const stopButton = screen.getByRole('button', { name: 'Stop response' })
+    expect(stopButton).toHaveAttribute('data-testid', 'agent-stop')
+    expect(stopButton).not.toBeDisabled()
+
+    fireEvent.click(stopButton)
+
+    expect(mockStopMessage).toHaveBeenCalledOnce()
   })
 
   it('renders the permission mode toggle with high contrast selected state and per-mode tooltips', async () => {

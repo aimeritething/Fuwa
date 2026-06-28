@@ -33,6 +33,7 @@ export interface StreamAiAgentRequest {
   vaultPaths?: string[]
   permissionMode?: AiAgentPermissionMode
   callbacks: AgentStreamCallbacks
+  signal?: AbortSignal
 }
 
 const CONVERSATION_HISTORY_OPEN_MARKER = ['<', 'conversation_history', '>'].join('')
@@ -72,36 +73,61 @@ function handleStreamEvent(data: AiAgentStreamEvent, callbacks: AgentStreamCallb
   }
 }
 
-export async function streamAiAgent(
-  request: StreamAiAgentRequest,
-): Promise<void> {
-  const {
-    agent,
-    message,
-    systemPrompt,
-    vaultPath,
-    vaultPaths,
-    permissionMode,
-    callbacks,
-  } = request
-
-  if (!isTauri()) {
-    setTimeout(() => {
-      callbacks.onText(mockAgentResponse(agent, message))
-      callbacks.onDone()
-    }, 300)
-    return
-  }
-
-  const { invoke } = await import('@tauri-apps/api/core')
-  const { listen } = await import('@tauri-apps/api/event')
-  const eventName = createScopedStreamEventName('ai-agent-stream')
+function createStreamCloser(callbacks: AgentStreamCallbacks): () => void {
   let closed = false
-
-  const closeStream = (): void => {
+  return () => {
     if (closed) return
     closed = true
     callbacks.onDone()
+  }
+}
+
+function addAbortListener(signal: AbortSignal | undefined, onAbort: () => void): () => void {
+  if (!signal) return () => {}
+  if (signal.aborted) {
+    onAbort()
+    return () => {}
+  }
+
+  signal.addEventListener('abort', onAbort, { once: true })
+  return () => signal.removeEventListener('abort', onAbort)
+}
+
+function streamMockAiAgent(request: StreamAiAgentRequest): void {
+  const { agent, message, callbacks, signal } = request
+  const closeStream = createStreamCloser(callbacks)
+  let removeAbortListener = (): void => {}
+  const timeout = window.setTimeout(() => {
+    removeAbortListener()
+    callbacks.onText(mockAgentResponse(agent, message))
+    closeStream()
+  }, 300)
+  removeAbortListener = addAbortListener(signal, () => {
+    window.clearTimeout(timeout)
+    closeStream()
+  })
+}
+
+function nativeAgentStreamRequest(request: StreamAiAgentRequest, eventName: string) {
+  return {
+    agent: request.agent,
+    message: request.message,
+    system_prompt: request.systemPrompt || null,
+    vault_path: request.vaultPath,
+    vault_paths: request.vaultPaths && request.vaultPaths.length > 0 ? request.vaultPaths : null,
+    permission_mode: normalizeAiAgentPermissionMode(request.permissionMode),
+    event_name: eventName,
+  }
+}
+
+async function streamNativeAiAgent(request: StreamAiAgentRequest): Promise<void> {
+  const { invoke } = await import('@tauri-apps/api/core')
+  const { listen } = await import('@tauri-apps/api/event')
+  const eventName = createScopedStreamEventName('ai-agent-stream')
+  const closeStream = createStreamCloser(request.callbacks)
+
+  const abortNativeStream = (): void => {
+    void invoke<boolean>('abort_ai_agent_stream', { eventName }).catch(() => {})
   }
 
   const unlisten = await listen<AiAgentStreamEvent>(eventName, (event) => {
@@ -110,26 +136,39 @@ export async function streamAiAgent(
       return
     }
 
-    handleStreamEvent(event.payload, callbacks)
+    handleStreamEvent(event.payload, request.callbacks)
   })
+  const removeAbortListener = addAbortListener(request.signal, abortNativeStream)
+  if (request.signal?.aborted) {
+    cleanupTauriEventListener(unlisten)
+    closeStream()
+    return
+  }
 
   try {
     await invoke<string>('stream_ai_agent', {
-      request: {
-        agent,
-        message,
-        system_prompt: systemPrompt || null,
-        vault_path: vaultPath,
-        vault_paths: vaultPaths && vaultPaths.length > 0 ? vaultPaths : null,
-        permission_mode: normalizeAiAgentPermissionMode(permissionMode),
-        event_name: eventName,
-      },
+      request: nativeAgentStreamRequest(request, eventName),
     })
     closeStream()
   } catch (err) {
-    callbacks.onError(err instanceof Error ? err.message : String(err))
+    request.callbacks.onError(err instanceof Error ? err.message : String(err))
     closeStream()
   } finally {
+    removeAbortListener()
     cleanupTauriEventListener(unlisten)
   }
+}
+
+export async function streamAiAgent(request: StreamAiAgentRequest): Promise<void> {
+  if (request.signal?.aborted) {
+    request.callbacks.onDone()
+    return
+  }
+
+  if (!isTauri()) {
+    streamMockAiAgent(request)
+    return
+  }
+
+  await streamNativeAiAgent(request)
 }

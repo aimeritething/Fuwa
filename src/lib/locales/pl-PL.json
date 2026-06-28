@@ -409,6 +409,8 @@
   "ai.panel.placeholder.missing": "{agent} nie jest zainstalowany. Otwórz Agentów AI w Ustawieniach.",
   "ai.panel.placeholder.ready": "Zapytaj {agent}",
   "ai.panel.send": "Wyślij wiadomość",
+  "ai.panel.stop": "Zatrzymaj odpowiedź",
+  "ai.panel.stoppedResponse": "Zatrzymano.",
   "ai.error.pi.emptyOutput": "Pi CLI zakończył działanie bez danych wyjściowych agenta. Tolaria oczekiwała zdarzeń strumienia JSON z polecenia „pi --mode json”; uruchom Pi w terminalu, aby sprawdzić konfigurację.",
   "ai.error.pi.emptyOutputWithDiagnostic": "Pi CLI zakończył działanie bez danych wyjściowych agenta. Tolaria oczekiwała zdarzeń strumienia JSON z „pi --mode json”, ale Pi napisał tylko:\n{diagnostic_output}",
   "ai.message.regenerate": "Wygeneruj odpowiedź ponownie",

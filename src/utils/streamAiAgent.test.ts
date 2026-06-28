@@ -204,6 +204,46 @@ describe('streamAiAgent', () => {
     expect(unlistenMock).toHaveBeenCalledTimes(1)
   })
 
+  it('aborts the active native stream by scoped event name', async () => {
+    isTauriState.value = true
+    const controller = new AbortController()
+    const unlistenMock = vi.fn()
+    let listenedEventName = ''
+    let finishStream: ((value: string) => void) | undefined
+
+    listenMock.mockImplementation(async (eventName: string) => {
+      listenedEventName = eventName
+      return unlistenMock
+    })
+    invokeMock.mockImplementation(async (command: string) => {
+      if (command === 'abort_ai_agent_stream') return true
+      return new Promise<string>((resolve) => { finishStream = resolve })
+    })
+
+    const callbacks = createCallbacks()
+    const promise = streamAiAgent({
+      agent: 'codex',
+      message: 'Stop this',
+      vaultPath: '/vault',
+      callbacks,
+      signal: controller.signal,
+    })
+    await vi.waitFor(() => {
+      expect(finishStream).toBeDefined()
+    })
+
+    controller.abort()
+    await Promise.resolve()
+    finishStream?.('session-1')
+    await promise
+
+    expect(invokeMock).toHaveBeenCalledWith('abort_ai_agent_stream', {
+      eventName: listenedEventName,
+    })
+    expect(callbacks.onDone).toHaveBeenCalledTimes(1)
+    expect(unlistenMock).toHaveBeenCalledTimes(1)
+  })
+
   it('uses a fresh request-scoped event channel for each stream', async () => {
     isTauriState.value = true
     const handlers = new Map<string, (event: { payload: unknown }) => void>()

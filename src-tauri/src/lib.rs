@@ -1,3 +1,4 @@
+mod ai_agent_processes;
 pub mod ai_agents;
 mod ai_model_tools;
 pub mod ai_models;
@@ -521,6 +522,7 @@ macro_rules! app_invoke_handler {
             commands::restore_vault_ai_guidance,
             commands::stream_claude_chat,
             commands::stream_ai_agent,
+            commands::abort_ai_agent_stream,
             commands::stream_ai_model,
             commands::save_ai_model_provider_api_key,
             commands::delete_ai_model_provider_api_key,
