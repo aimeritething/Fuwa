@@ -2,6 +2,7 @@ import { useEffect, type RefObject } from 'react'
 import { openEditorAttachmentOrUrl } from './editorAttachmentActions'
 
 const CODE_CONTEXT_SELECTOR = '[data-content-type="codeBlock"], pre, code'
+const MOUSEDOWN_URL_SUPPRESSION_MS = 750
 
 function hasFollowModifier(event: KeyboardEvent | MouseEvent) {
   return event.metaKey || event.ctrlKey
@@ -129,11 +130,20 @@ export function useEditorLinkActivation(
       if (document.visibilityState !== 'visible') resetModifierState()
     }
     let handledMouseDownUrl: string | null = null
+    let handledMouseDownUrlTimer: number | null = null
+    const clearHandledMouseDownUrl = () => {
+      handledMouseDownUrl = null
+      if (handledMouseDownUrlTimer !== null) {
+        window.clearTimeout(handledMouseDownUrlTimer)
+        handledMouseDownUrlTimer = null
+      }
+    }
     const rememberHandledMouseDownUrl = (href: string) => {
       handledMouseDownUrl = href
-      window.setTimeout(() => {
-        if (handledMouseDownUrl === href) handledMouseDownUrl = null
-      }, 0)
+      if (handledMouseDownUrlTimer !== null) window.clearTimeout(handledMouseDownUrlTimer)
+      handledMouseDownUrlTimer = window.setTimeout(() => {
+        if (handledMouseDownUrl === href) clearHandledMouseDownUrl()
+      }, MOUSEDOWN_URL_SUPPRESSION_MS)
     }
     const handleMouseDown = (event: MouseEvent) => {
       const href = handleEditorLinkMouseDown(event, vaultPath)
@@ -142,12 +152,12 @@ export function useEditorLinkActivation(
     const handleClick = (event: MouseEvent) => {
       const followedHref = followedAnchorHrefFromEvent(event, container)
       if (handledMouseDownUrl && followedHref === handledMouseDownUrl) {
-        handledMouseDownUrl = null
+        clearHandledMouseDownUrl()
         consumeEditorLinkEvent(event)
         return
       }
 
-      handledMouseDownUrl = null
+      clearHandledMouseDownUrl()
       handleEditorLinkClick(event, container, onNavigateWikilink, vaultPath)
     }
 
@@ -165,6 +175,7 @@ export function useEditorLinkActivation(
       window.removeEventListener('keyup', handleModifierChange)
       window.removeEventListener('blur', resetModifierState)
       document.removeEventListener('visibilitychange', handleVisibilityChange)
+      clearHandledMouseDownUrl()
       resetModifierState()
     }
   }, [containerRef, onNavigateWikilink, vaultPath])

@@ -153,6 +153,25 @@ describe('useEditorLinkActivation', () => {
     expect(mockOpenExternalUrl).toHaveBeenCalledWith('https://example.com')
   })
 
+  it('suppresses the follow-up modified URL click even when it arrives after zero-delay timers', () => {
+    vi.useFakeTimers()
+    try {
+      const { container } = renderHarness()
+      const link = appendUrl(container, 'https://example.com')
+
+      const modifiedMouseDown = dispatchMouseEvent(link, 'mousedown', { ctrlKey: true })
+      vi.advanceTimersByTime(0)
+      const delayedClick = dispatchMouseEvent(link, 'click', { ctrlKey: true })
+
+      expect(modifiedMouseDown.defaultPrevented).toBe(true)
+      expect(delayedClick.defaultPrevented).toBe(true)
+      expect(mockOpenExternalUrl).toHaveBeenCalledOnce()
+      expect(mockOpenExternalUrl).toHaveBeenCalledWith('https://example.com')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('handles URL events that originate on link text nodes', () => {
     const { container } = renderHarness()
     const link = appendUrl(container, 'https://example.com')
