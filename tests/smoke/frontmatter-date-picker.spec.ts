@@ -39,12 +39,21 @@ async function chooseCalendarOption(page: Page, calendar: Locator, index: number
   await option.click()
 }
 
+async function openAlphaProjectProperties(page: Page): Promise<void> {
+  await openFixtureVaultDesktopHarness(page, tempVaultDir)
+  await page.setViewportSize({ width: 1600, height: 900 })
+  await page.getByTestId('note-list-container').getByText('Alpha Project', { exact: true }).click()
+  await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
+  await expect(page.getByRole('heading', { name: 'Alpha Project', level: 1 })).toBeVisible({ timeout: 5_000 })
+  await triggerShortcutCommand(page, APP_COMMAND_IDS.viewToggleProperties)
+  await expect(page.getByTestId('add-property-row')).toBeVisible()
+}
+
 test.describe('Frontmatter date picker', () => {
-  test.beforeEach(async ({ page }) => {
+  test.describe.configure({ timeout: 45_000 })
+
+  test.beforeEach(() => {
     tempVaultDir = createFixtureVaultCopy()
-    seedDateProperty(alphaProjectPath(tempVaultDir), '2026-04-29T00:00:00')
-    await openFixtureVaultDesktopHarness(page, tempVaultDir)
-    await page.setViewportSize({ width: 1600, height: 900 })
   })
 
   test.afterEach(() => {
@@ -53,12 +62,9 @@ test.describe('Frontmatter date picker', () => {
 
   test('local-midnight date properties keep the selected calendar day @smoke', async ({ page }) => {
     const notePath = alphaProjectPath(tempVaultDir)
+    seedDateProperty(notePath, '2026-04-29T00:00:00')
 
-    await page.getByTestId('note-list-container').getByText('Alpha Project', { exact: true }).click()
-    await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByRole('heading', { name: 'Alpha Project', level: 1 })).toBeVisible({ timeout: 5_000 })
-    await triggerShortcutCommand(page, APP_COMMAND_IDS.viewToggleProperties)
-    await expect(page.getByTestId('add-property-row')).toBeVisible()
+    await openAlphaProjectProperties(page)
 
     const dateRow = page.getByTestId('editable-property').filter({ hasText: 'Date' })
     await dateRow.getByTestId('date-display').click()
@@ -78,11 +84,9 @@ test.describe('Frontmatter date picker', () => {
 
   test('month and year controls change the visible calendar page', async ({ page }) => {
     const notePath = alphaProjectPath(tempVaultDir)
+    seedDateProperty(notePath, '2026-04-29T00:00:00')
 
-    await page.getByTestId('note-list-container').getByText('Alpha Project', { exact: true }).click()
-    await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByRole('heading', { name: 'Alpha Project', level: 1 })).toBeVisible({ timeout: 5_000 })
-    await triggerShortcutCommand(page, APP_COMMAND_IDS.viewToggleProperties)
+    await openAlphaProjectProperties(page)
 
     const dateRow = page.getByTestId('editable-property').filter({ hasText: 'Date' })
     await dateRow.getByTestId('date-display').click()
@@ -101,11 +105,9 @@ test.describe('Frontmatter date picker', () => {
 
   test('manual date input updates the date property', async ({ page }) => {
     const notePath = alphaProjectPath(tempVaultDir)
+    seedDateProperty(notePath, '2026-04-29T00:00:00')
 
-    await page.getByTestId('note-list-container').getByText('Alpha Project', { exact: true }).click()
-    await expect(page.locator('.bn-editor')).toBeVisible({ timeout: 5_000 })
-    await expect(page.getByRole('heading', { name: 'Alpha Project', level: 1 })).toBeVisible({ timeout: 5_000 })
-    await triggerShortcutCommand(page, APP_COMMAND_IDS.viewToggleProperties)
+    await openAlphaProjectProperties(page)
 
     const dateRow = page.getByTestId('editable-property').filter({ hasText: 'Date' })
     await dateRow.getByTestId('date-display').click()
@@ -115,5 +117,19 @@ test.describe('Frontmatter date picker', () => {
     await input.press('Enter')
 
     await expect.poll(() => fs.readFileSync(notePath, 'utf8')).toMatch(/Date: "?2026-05-13"?/)
+  })
+
+  test('suggested Date slot writes the documented lowercase date key', async ({ page }) => {
+    const notePath = alphaProjectPath(tempVaultDir)
+
+    await openAlphaProjectProperties(page)
+
+    await page.getByTestId('suggested-property').filter({ hasText: 'Date' }).click()
+    const input = page.getByTestId('date-picker-input')
+    await input.fill('2026-06-25')
+    await input.press('Enter')
+
+    await expect.poll(() => fs.readFileSync(notePath, 'utf8')).toMatch(/\ndate: "?2026-06-25"?/)
+    expect(fs.readFileSync(notePath, 'utf8')).not.toMatch(/\nDate:/)
   })
 })

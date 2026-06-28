@@ -90,14 +90,14 @@ function AddPropertyButton({ locale, onClick, disabled }: { locale: AppLocale; o
 
 const SUGGESTED_PROPERTIES = [
   { key: 'Status', label: 'Status' },
-  { key: 'Date', label: 'Date' },
+  { key: 'date', label: 'Date' },
   { key: 'URL', label: 'URL' },
   { key: 'icon', label: 'Icon' },
 ] as const
 
 const SUGGESTED_PROPERTY_MODES: Record<string, PropertyDisplayMode> = {
   Status: 'status',
-  Date: 'date',
+  date: 'date',
   URL: 'url',
   icon: 'text',
 }

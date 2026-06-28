@@ -654,6 +654,18 @@ describe('DynamicPropertiesPanel', () => {
         expect(screen.getByTestId('date-picker-popover')).toBeInTheDocument()
       })
     })
+
+    it('writes the suggested date with the documented lowercase key', async () => {
+      renderPanel({ onAddProperty })
+      fireEvent.click(findSuggestedSlot('Date'))
+
+      const input = await screen.findByTestId('date-picker-input')
+      fireEvent.change(input, { target: { value: '2026-06-25' } })
+      fireEvent.keyDown(input, { key: 'Enter' })
+
+      expect(onAddProperty).toHaveBeenCalledWith('date', '2026-06-25')
+      expect(onAddProperty).not.toHaveBeenCalledWith('Date', '2026-06-25')
+    })
   })
 
   describe('URL property rendering', () => {
