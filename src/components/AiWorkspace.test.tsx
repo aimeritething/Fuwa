@@ -91,7 +91,7 @@ function installedStatuses(): AiAgentsStatus {
     ...createMissingAiAgentsStatus(),
     claude_code: createAiAgentAvailability('installed', '1.0.0'),
     codex: createAiAgentAvailability('installed', '0.9.0'),
-    gemini: createAiAgentAvailability('missing', null),
+    antigravity: createAiAgentAvailability('missing', null),
   }
 }
 
@@ -179,7 +179,7 @@ describe('AiWorkspace', () => {
     const groups = buildAiWorkspaceTargetGroups(installedStatuses(), providers)
 
     expect(groups.localAgents.map((target) => target.agent)).toEqual(['claude_code', 'codex'])
-    expect(groups.localAgents.some((target) => target.agent === 'gemini')).toBe(false)
+    expect(groups.localAgents.some((target) => target.agent === 'antigravity')).toBe(false)
     expect(groups.localModels.map((target) => target.shortLabel)).toEqual(['Llama 3.2'])
     expect(groups.apiModels.map((target) => target.shortLabel)).toEqual(['GPT-4.1'])
   })
@@ -487,7 +487,7 @@ describe('AiWorkspace', () => {
     expect(within(menu).getByText('API models')).toBeTruthy()
     expect(within(menu).getByText('Claude Code')).toBeTruthy()
     expect(within(menu).getByText('Codex')).toBeTruthy()
-    expect(within(menu).queryByText('Gemini CLI')).toBeNull()
+    expect(within(menu).queryByText('Antigravity CLI')).toBeNull()
     expect(within(menu).getByText('Ollama · Llama 3.2')).toBeTruthy()
     expect(within(menu).getByText('OpenAI · GPT-4.1')).toBeTruthy()
   })

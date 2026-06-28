@@ -190,14 +190,14 @@ describe('buildSettingsCommands', () => {
     window.removeEventListener(TOGGLE_GITIGNORED_VISIBILITY_EVENT, listener)
   })
 
-  it('makes external AI setup discoverable for Gemini CLI', () => {
+  it('makes external AI setup discoverable for Antigravity CLI', () => {
     const onInstallMcp = vi.fn()
     const command = findCommand('install-mcp', buildSettingsCommands({
       onOpenSettings: vi.fn(),
       onInstallMcp,
     }))
 
-    expect(command?.keywords).toContain('gemini')
+    expect(command?.keywords).toContain('antigravity')
     command?.execute()
     expect(onInstallMcp).toHaveBeenCalledOnce()
   })

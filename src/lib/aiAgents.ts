@@ -1,4 +1,6 @@
-export type AiAgentId = 'claude_code' | 'codex' | 'opencode' | 'pi' | 'gemini' | 'kiro' | 'hermes'
+export type AiAgentId = 'claude_code' | 'codex' | 'opencode' | 'pi' | 'antigravity' | 'kiro' | 'hermes'
+type LegacyAiAgentId = 'gemini'
+type AiAgentsStatusPayload = Partial<Record<AiAgentId | LegacyAiAgentId, { installed?: boolean | null; version?: string | null }>>
 
 export type AiAgentStatus = 'checking' | 'installed' | 'missing'
 export type AiAgentReadiness = 'checking' | 'ready' | 'missing'
@@ -45,10 +47,10 @@ export const AI_AGENT_DEFINITIONS: readonly AiAgentDefinition[] = [
     installUrl: 'https://pi.dev',
   },
   {
-    id: 'gemini',
-    label: 'Gemini CLI',
-    shortLabel: 'Gemini',
-    installUrl: 'https://google-gemini.github.io/gemini-cli/',
+    id: 'antigravity',
+    label: 'Antigravity CLI',
+    shortLabel: 'Antigravity',
+    installUrl: 'https://antigravity.google/docs/cli/install',
   },
   {
     id: 'kiro',
@@ -86,6 +88,7 @@ export function createMissingAiAgentsStatus(): AiAgentsStatus {
 }
 
 export function normalizeStoredAiAgent(value: string | null | undefined): AiAgentId | null {
+  if (value === 'gemini') return 'antigravity'
   if (AI_AGENT_DEFINITIONS.some((definition) => definition.id === value)) return value as AiAgentId
   return null
 }
@@ -106,16 +109,17 @@ function normalizeAvailability(agent: { installed?: boolean | null; version?: st
   return createAiAgentAvailability('missing', agent?.version ?? null)
 }
 
-export function normalizeAiAgentsStatus(payload: Partial<Record<AiAgentId, { installed?: boolean | null; version?: string | null }>> | null | undefined): AiAgentsStatus {
-  return {
-    claude_code: normalizeAvailability(payload?.claude_code),
-    codex: normalizeAvailability(payload?.codex),
-    opencode: normalizeAvailability(payload?.opencode),
-    pi: normalizeAvailability(payload?.pi),
-    gemini: normalizeAvailability(payload?.gemini),
-    kiro: normalizeAvailability(payload?.kiro),
-    hermes: normalizeAvailability(payload?.hermes),
-  }
+function payloadForAgent(payload: AiAgentsStatusPayload | null | undefined, agent: AiAgentId) {
+  return agent === 'antigravity' ? payload?.antigravity ?? payload?.gemini : payload?.[agent]
+}
+
+export function normalizeAiAgentsStatus(payload: AiAgentsStatusPayload | null | undefined): AiAgentsStatus {
+  return Object.fromEntries(
+    AI_AGENT_DEFINITIONS.map((definition) => [
+      definition.id,
+      normalizeAvailability(payloadForAgent(payload, definition.id)),
+    ]),
+  ) as AiAgentsStatus
 }
 
 export function getAiAgentAvailability(statuses: Partial<AiAgentsStatus>, agent: AiAgentId): AiAgentAvailability {

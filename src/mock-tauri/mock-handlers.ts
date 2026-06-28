@@ -505,7 +505,7 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     codex: { installed: false, version: null },
     opencode: { installed: false, version: null },
     pi: { installed: false, version: null },
-    gemini: { installed: false, version: null },
+    antigravity: { installed: false, version: null },
     kiro: { installed: false, version: null },
   }),
   get_agent_docs_path: () => '/mock/Tolaria/resources/agent-docs',

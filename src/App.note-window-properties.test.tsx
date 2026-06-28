@@ -277,7 +277,7 @@ describe('App note windows', () => {
       codex: { installed: true, version: '0.122.0-alpha.1' },
       opencode: { installed: true, version: '0.7.4' },
       pi: { installed: false, version: null },
-      gemini: { installed: true, version: '0.3.2' },
+      antigravity: { installed: true, version: '0.3.2' },
       kiro: { installed: false, version: null },
       hermes: { installed: false, version: null },
     }))

@@ -211,7 +211,7 @@ export function McpSetupDialog({
           <div className="rounded-md border border-border bg-muted/30 px-3 py-3 font-mono text-xs text-foreground">
             <div>~/.claude.json</div>
             <div>~/.claude/mcp.json</div>
-            <div>~/.gemini/settings.json</div>
+            <div>~/.gemini/config/mcp_config.json</div>
             <div>~/.cursor/mcp.json</div>
             <div>~/.config/mcp/mcp.json</div>
             <div>~/.config/opencode/opencode.json</div>

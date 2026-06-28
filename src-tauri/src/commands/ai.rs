@@ -236,7 +236,7 @@ pub fn get_ai_agents_status() -> AiAgentsStatus {
             installed: false,
             version: None,
         },
-        gemini: crate::ai_agents::AiAgentAvailability {
+        antigravity: crate::ai_agents::AiAgentAvailability {
             installed: false,
             version: None,
         },

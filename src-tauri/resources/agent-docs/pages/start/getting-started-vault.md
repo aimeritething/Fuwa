@@ -24,7 +24,7 @@ When Tolaria clones the sample, it removes the remote from the local copy. This 
 
 To connect a vault to your own remote, use the bottom status bar remote chip or run `Add Remote` from the command palette.
 
-Tolaria also repairs starter-vault guidance files when needed. `AGENTS.md` is the canonical guidance file, `CLAUDE.md` is kept as a compatibility shim, and `GEMINI.md` is only created when you explicitly restore Gemini guidance.
+Tolaria also repairs starter-vault guidance files when needed. `AGENTS.md` is the canonical guidance file, `CLAUDE.md` is kept as a compatibility shim, and `GEMINI.md` is only created when you explicitly restore Antigravity/Gemini guidance.
 
 ## Use It Alongside Your Own Vaults
 

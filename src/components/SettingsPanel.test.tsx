@@ -137,7 +137,7 @@ describe('SettingsPanel', () => {
       codex: { status: 'missing', version: null },
       opencode: { status: 'missing', version: null },
       pi: { status: 'missing', version: null },
-      gemini: { status: 'missing', version: null },
+      antigravity: { status: 'missing', version: null },
       kiro: { status: 'missing', version: null },
     }
     render(

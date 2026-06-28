@@ -10,7 +10,7 @@ const missingStatuses: AiAgentsStatus = {
   codex: { status: 'missing', version: null },
   opencode: { status: 'missing', version: null },
   pi: { status: 'missing', version: null },
-  gemini: { status: 'missing', version: null },
+  antigravity: { status: 'missing', version: null },
   kiro: { status: 'missing', version: null },
   hermes: { status: 'missing', version: null },
 }
@@ -19,7 +19,7 @@ const installLinkTargets = [
   ['ai-agents-onboarding-install-codex', 'https://developers.openai.com/codex/cli'],
   ['ai-agents-onboarding-install-opencode', 'https://opencode.ai/docs/'],
   ['ai-agents-onboarding-install-pi', 'https://pi.dev'],
-  ['ai-agents-onboarding-install-gemini', 'https://google-gemini.github.io/gemini-cli/'],
+  ['ai-agents-onboarding-install-antigravity', 'https://antigravity.google/docs/cli/install'],
   ['ai-agents-onboarding-install-kiro', 'https://kiro.dev/docs/cli'],
   ['ai-agents-onboarding-install-hermes', 'https://hermes-agent.nousresearch.com/docs/getting-started/quickstart'],
 ] as const

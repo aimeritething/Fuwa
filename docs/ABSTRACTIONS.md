@@ -235,7 +235,7 @@ Type is determined **purely** from the `type:` frontmatter field — it is never
 ├── some-topic.md          ← type: Topic
 ├── AGENTS.md              ← canonical Tolaria AI guidance
 ├── CLAUDE.md              ← compatibility shim pointing at AGENTS.md
-├── GEMINI.md              ← optional Gemini CLI shim pointing at AGENTS.md
+├── GEMINI.md              ← optional Antigravity/Gemini shim pointing at AGENTS.md
 ├── project.md             ← type: Type (definition document)
 ├── person.md              ← type: Type (definition document)
 ├── ...
@@ -852,9 +852,9 @@ Installation-local layout state that should not sync through a vault stays in lo
 Tolaria tracks managed vault-level AI guidance separately from normal note content:
 - `AGENTS.md` is the canonical managed guidance file for Tolaria-aware coding agents
 - `CLAUDE.md` is a compatibility shim that points Claude Code back to `AGENTS.md`
-- `GEMINI.md` is an optional Gemini CLI compatibility shim that points Gemini back to `AGENTS.md`
+- `GEMINI.md` is an optional Antigravity/Gemini compatibility shim that points Google-backed CLI agents back to `AGENTS.md`
 - `useVaultAiGuidanceStatus` reads `get_vault_ai_guidance_status` and normalizes the backend state into four UI cases: `managed`, `missing`, `broken`, and `custom`
-- `restore_vault_ai_guidance` repairs only Tolaria-managed files and creates the optional Gemini shim on explicit request; user-authored custom `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` files are surfaced as custom and left untouched
+- `restore_vault_ai_guidance` repairs only Tolaria-managed files and creates the optional Antigravity/Gemini shim on explicit request; user-authored custom `AGENTS.md` / `CLAUDE.md` / `GEMINI.md` files are surfaced as custom and left untouched
 - Editing a usable `AGENTS.md`, including changing its frontmatter `type`, makes the file custom rather than broken; broken is reserved for missing, empty, frontmatter-only, unreadable, or exact replaceable managed templates/stubs
 - The status bar AI badge and command palette consume that abstraction to expose restore actions only when the managed guidance is missing or broken
 
@@ -888,7 +888,7 @@ Vault guidance is intentionally short and vault-specific. General Tolaria produc
 `useAiAgentsOnboarding(enabled)` adds a separate first-launch agent step:
 - Reads a local dismissal flag for the AI agents prompt (with a legacy fallback to the older Claude-only key)
 - Only shows after vault onboarding has already resolved to a ready state
-- Uses `get_ai_agents_status`, whose backend checks Claude Code, Codex, OpenCode, Pi, Gemini, Kiro, and Hermes Agent by treating the app process path, login-shell path, and supported local/toolchain/app install locations, including nvm-managed Node installs plus Windows `.exe` and npm/pnpm/Scoop shim paths, as valid CLI-agent sources
+- Uses `get_ai_agents_status`, whose backend checks Claude Code, Codex, OpenCode, Pi, Antigravity, Kiro, and Hermes Agent by treating the app process path, login-shell path, and supported local/toolchain/app install locations, including nvm-managed Node installs plus Windows `.exe` and npm/pnpm/Scoop shim paths, as valid CLI-agent sources
 - App-managed Claude Code runs preserve the same user-managed Anthropic/provider env behavior by forwarding selected exported variables from the app process or the user's zsh/bash startup files without persisting those secrets
 - The shared `useAiAgentsStatus` hook defers that command until after the first render, skips it when AI features are disabled or the current window cannot render AI status surfaces, and falls back to missing-agent statuses if the native probe does not return promptly so first-launch onboarding keeps a recovery path
 - Persists dismissal locally once the user continues
@@ -936,7 +936,7 @@ interface Settings {
   sidebar_type_pluralization_enabled: boolean | null // null = default true
   ai_features_enabled: boolean | null // null = default true
   git_enabled: boolean | null // null = default true
-  default_ai_agent: 'claude_code' | 'codex' | 'opencode' | 'pi' | 'gemini' | 'kiro' | 'hermes' | null
+  default_ai_agent: 'claude_code' | 'codex' | 'opencode' | 'pi' | 'antigravity' | 'kiro' | 'hermes' | null
   default_ai_target: string | null // "agent:codex" or "model:<provider>/<model>"
   ai_model_providers: AiModelProvider[] | null
   ai_workspace_conversations: AiWorkspaceConversationSetting[] | null

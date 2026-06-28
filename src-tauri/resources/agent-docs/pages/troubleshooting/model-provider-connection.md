@@ -27,4 +27,4 @@ For hosted providers:
 
 ## Chat Mode Boundary
 
-Direct model targets run in chat mode. If you need file-editing tools, use a coding agent target such as Claude Code, Codex, OpenCode, Pi, or Gemini CLI.
+Direct model targets run in chat mode. If you need file-editing tools, use a coding agent target such as Claude Code, Codex, OpenCode, Pi, or Antigravity CLI.

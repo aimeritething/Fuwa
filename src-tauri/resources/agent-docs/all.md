@@ -76,7 +76,7 @@ When Tolaria clones the sample, it removes the remote from the local copy. This 
 
 To connect a vault to your own remote, use the bottom status bar remote chip or run `Add Remote` from the command palette.
 
-Tolaria also repairs starter-vault guidance files when needed. `AGENTS.md` is the canonical guidance file, `CLAUDE.md` is kept as a compatibility shim, and `GEMINI.md` is only created when you explicitly restore Gemini guidance.
+Tolaria also repairs starter-vault guidance files when needed. `AGENTS.md` is the canonical guidance file, `CLAUDE.md` is kept as a compatibility shim, and `GEMINI.md` is only created when you explicitly restore Antigravity/Gemini guidance.
 
 ## Use It Alongside Your Own Vaults
 
@@ -187,7 +187,7 @@ Tolaria has two AI paths: coding agents that can use tools to inspect and edit a
 
 ## Coding Agents
 
-The AI panel can stream supported local CLI agents through Tolaria's normalized event layer. Current targets include Claude Code, Codex, OpenCode, Pi, and Gemini CLI when they are installed on the machine.
+The AI panel can stream supported local CLI agents through Tolaria's normalized event layer. Current targets include Claude Code, Codex, OpenCode, Pi, and Antigravity CLI when they are installed on the machine.
 
 Coding agents can run in:
 
@@ -206,7 +206,7 @@ Supported provider shapes include:
 
 ## External MCP Setup
 
-Tolaria exposes an MCP server for external tools. The setup flow can write Tolaria's MCP entry into Claude Code, Gemini CLI, Cursor, and a generic MCP config path, and it can also copy the exact JSON snippet for manual setup.
+Tolaria exposes an MCP server for external tools. The setup flow can write Tolaria's MCP entry into Claude Code, Antigravity CLI, Cursor, and a generic MCP config path, and it can also copy the exact JSON snippet for manual setup.
 
 MCP setup is explicit. Closing the dialog leaves third-party config files untouched.
 
@@ -1008,7 +1008,7 @@ Tolaria gives you two ways to ask for AI help: open the AI panel for an ongoing 
 
 Open Settings and choose the default AI target:
 
-- **Coding agent** for tool-backed vault editing through Claude Code, Codex, OpenCode, Pi, or Gemini CLI.
+- **Coding agent** for tool-backed vault editing through Claude Code, Codex, OpenCode, Pi, or Antigravity CLI.
 - **Local model** for Ollama or LM Studio chat over note context.
 - **API model** for OpenAI, Anthropic, Gemini, OpenRouter, or an OpenAI-compatible endpoint.
 
@@ -2147,7 +2147,7 @@ For hosted providers:
 
 ## Chat Mode Boundary
 
-Direct model targets run in chat mode. If you need file-editing tools, use a coding agent target such as Claude Code, Codex, OpenCode, Pi, or Gemini CLI.
+Direct model targets run in chat mode. If you need file-editing tools, use a coding agent target such as Claude Code, Codex, OpenCode, Pi, or Antigravity CLI.
 
 ---
 

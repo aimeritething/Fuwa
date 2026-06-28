@@ -32,7 +32,7 @@ The phase 1 site now covers post-branch features added after the original April 
 - Windows and Linux release artifacts.
 - Stable and Alpha updater channels.
 - Direct AI model providers and local/API model setup.
-- Claude Code, Codex, OpenCode, Pi, and Gemini CLI agent targets.
+- Claude Code, Codex, OpenCode, Pi, and Antigravity CLI agent targets.
 - Explicit MCP setup for external AI tools.
 - Table of contents, note width, raw mode, and paste-without-formatting workflows.
 - Media/PDF previews, image attachments, All Notes visibility, and Markdown whiteboards.

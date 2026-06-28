@@ -474,10 +474,10 @@ files:
     mcp.setup.disconnecting: 11de134aefe51cb4a5c545b5a057a871
     mcp.setup.runtimeRequirement: 1d7a8c99b2bc875b3601fa57860432fb
     mcp.setup.writeEntryDescription: 370aa4403d2ffc37f574503bc3cd00e6
-    mcp.setup.clientPathsDescription: 3b4a1b9d2c6ad6ae64ba459fa080160d
-    mcp.setup.geminiGuidanceDescription: 182cf5b84b2f56cb1cf41dcdb5e093d8
+    mcp.setup.clientPathsDescription: 541cd3d86aa9af81a6ab3a9d6f921a09
+    mcp.setup.geminiGuidanceDescription: c6d8625d56151afce0bb455504490d84
     mcp.setup.manual.title: b240f1ff497fcaa83e6cd489739f11b6
-    mcp.setup.manual.standardTitle: a3614bf47144cd49a1b055fb993bfc99
+    mcp.setup.manual.standardTitle: d2bc27dce31d27aec7612b638d443b95
     mcp.setup.manual.opencodeTitle: 5c38a2f5fe774f4cb886fcfa11a1acc4
     mcp.setup.manual.copyStandard: 89932d9339adf088de66947e8b7d4768
     mcp.setup.manual.copyOpenCode: dede4ad6a0b29559ea3bed6f796cd0fa

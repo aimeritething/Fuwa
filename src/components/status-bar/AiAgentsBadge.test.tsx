@@ -15,7 +15,7 @@ const installedStatuses = {
   codex: { status: 'installed' as const, version: '0.37.0' },
   opencode: { status: 'installed' as const, version: '0.3.1' },
   pi: { status: 'installed' as const, version: '0.70.2' },
-  gemini: { status: 'installed' as const, version: '0.5.1' },
+  antigravity: { status: 'installed' as const, version: '0.5.1' },
   kiro: { status: 'installed' as const, version: '0.12.0' },
   hermes: { status: 'installed' as const, version: 'Hermes Agent 0.16.0' },
 }
@@ -124,7 +124,7 @@ describe('AiAgentsBadge', () => {
         codex: { status: 'missing', version: null },
         opencode: { status: 'missing', version: null },
         pi: { status: 'missing', version: null },
-        gemini: { status: 'missing', version: null },
+        antigravity: { status: 'missing', version: null },
         kiro: { status: 'missing', version: null },
         hermes: { status: 'missing', version: null },
       },
@@ -135,7 +135,7 @@ describe('AiAgentsBadge', () => {
     expect(screen.queryByText('Install Codex')).not.toBeInTheDocument()
     expect(screen.queryByText('Install OpenCode')).not.toBeInTheDocument()
     expect(screen.queryByText('Install Pi')).not.toBeInTheDocument()
-    expect(screen.queryByText('Install Gemini CLI')).not.toBeInTheDocument()
+    expect(screen.queryByText('Install Antigravity CLI')).not.toBeInTheDocument()
     expect(screen.queryByText('Install Kiro')).not.toBeInTheDocument()
     expect(screen.queryByText('Install Hermes Agent')).not.toBeInTheDocument()
   })

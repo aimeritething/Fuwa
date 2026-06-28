@@ -11,7 +11,8 @@ pub enum AiAgentId {
     Codex,
     Opencode,
     Pi,
-    Gemini,
+    #[serde(alias = "gemini")]
+    Antigravity,
     Kiro,
     Hermes,
 }
@@ -36,7 +37,7 @@ pub struct AiAgentsStatus {
     pub codex: AiAgentAvailability,
     pub opencode: AiAgentAvailability,
     pub pi: AiAgentAvailability,
-    pub gemini: AiAgentAvailability,
+    pub antigravity: AiAgentAvailability,
     pub kiro: AiAgentAvailability,
     pub hermes: AiAgentAvailability,
 }
@@ -107,16 +108,16 @@ pub async fn get_ai_agents_status() -> AiAgentsStatus {
     let codex = tokio::task::spawn_blocking(crate::codex_cli::check_cli);
     let opencode = tokio::task::spawn_blocking(crate::opencode_cli::check_cli);
     let pi = tokio::task::spawn_blocking(crate::pi_cli::check_cli);
-    let gemini = tokio::task::spawn_blocking(crate::gemini_cli::check_cli);
+    let antigravity = tokio::task::spawn_blocking(crate::antigravity_cli::check_cli);
     let kiro = tokio::task::spawn_blocking(crate::kiro_cli::check_cli);
     let hermes = tokio::task::spawn_blocking(crate::hermes_cli::check_cli);
 
-    let (claude, codex, opencode, pi, gemini, kiro, hermes) = tokio::join!(
+    let (claude, codex, opencode, pi, antigravity, kiro, hermes) = tokio::join!(
         availability_or_missing(claude, AI_AGENT_STATUS_PROBE_TIMEOUT),
         availability_or_missing(codex, AI_AGENT_STATUS_PROBE_TIMEOUT),
         availability_or_missing(opencode, AI_AGENT_STATUS_PROBE_TIMEOUT),
         availability_or_missing(pi, AI_AGENT_STATUS_PROBE_TIMEOUT),
-        availability_or_missing(gemini, AI_AGENT_STATUS_PROBE_TIMEOUT),
+        availability_or_missing(antigravity, AI_AGENT_STATUS_PROBE_TIMEOUT),
         availability_or_missing(kiro, AI_AGENT_STATUS_PROBE_TIMEOUT),
         availability_or_missing(hermes, AI_AGENT_STATUS_PROBE_TIMEOUT)
     );
@@ -126,7 +127,7 @@ pub async fn get_ai_agents_status() -> AiAgentsStatus {
         codex,
         opencode,
         pi,
-        gemini,
+        antigravity,
         kiro,
         hermes,
     }
@@ -174,10 +175,10 @@ where
             crate::pi_cli::run_agent_stream,
             emit,
         ),
-        AiAgentId::Gemini => run_shared_agent_stream(
+        AiAgentId::Antigravity => run_shared_agent_stream(
             request,
             permission_mode,
-            crate::gemini_cli::run_agent_stream,
+            crate::antigravity_cli::run_agent_stream,
             emit,
         ),
         AiAgentId::Kiro => run_shared_agent_stream(
@@ -317,7 +318,7 @@ mod tests {
             status.codex.installed,
             status.opencode.installed,
             status.pi.installed,
-            status.gemini.installed,
+            status.antigravity.installed,
             status.kiro.installed,
             status.hermes.installed,
         ];

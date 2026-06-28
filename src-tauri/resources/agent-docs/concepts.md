@@ -9,7 +9,7 @@ Tolaria has two AI paths: coding agents that can use tools to inspect and edit a
 
 ## Coding Agents
 
-The AI panel can stream supported local CLI agents through Tolaria's normalized event layer. Current targets include Claude Code, Codex, OpenCode, Pi, and Gemini CLI when they are installed on the machine.
+The AI panel can stream supported local CLI agents through Tolaria's normalized event layer. Current targets include Claude Code, Codex, OpenCode, Pi, and Antigravity CLI when they are installed on the machine.
 
 Coding agents can run in:
 
@@ -28,7 +28,7 @@ Supported provider shapes include:
 
 ## External MCP Setup
 
-Tolaria exposes an MCP server for external tools. The setup flow can write Tolaria's MCP entry into Claude Code, Gemini CLI, Cursor, and a generic MCP config path, and it can also copy the exact JSON snippet for manual setup.
+Tolaria exposes an MCP server for external tools. The setup flow can write Tolaria's MCP entry into Claude Code, Antigravity CLI, Cursor, and a generic MCP config path, and it can also copy the exact JSON snippet for manual setup.
 
 MCP setup is explicit. Closing the dialog leaves third-party config files untouched.
 
@@ -474,6 +474,8 @@ _order: 10
 
 # Project
 ```
+
+Type templates can live in the Type document's `template` frontmatter field. When a hand-edited Type body contains template-like structure after its own `# TypeName` heading, Tolaria also uses that body content as the new-note template. Plain descriptive body text stays documentation-only.
 
 ## What Types Control
 

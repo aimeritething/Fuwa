@@ -224,7 +224,7 @@ describe('aiAgentSession', () => {
   async function expectLocalResponse(options: {
     messageId: string
     context: {
-      agent: 'claude_code' | 'codex' | 'opencode' | 'pi' | 'gemini'
+      agent: 'claude_code' | 'codex' | 'opencode' | 'pi' | 'antigravity'
       ready: boolean
       vaultPath: string
       permissionMode: 'safe' | 'power_user'

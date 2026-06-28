@@ -230,10 +230,20 @@ fn mcp_config_paths_for_home(home: &Path) -> Vec<PathBuf> {
     vec![
         home.join(".claude.json"),
         home.join(".claude").join("mcp.json"),
-        home.join(".gemini").join("settings.json"),
+        home.join(".gemini").join("config").join("mcp_config.json"),
         home.join(".cursor").join("mcp.json"),
         home.join(".config").join("mcp").join("mcp.json"),
     ]
+}
+
+fn legacy_gemini_mcp_config_paths() -> Vec<PathBuf> {
+    dirs::home_dir()
+        .map(|home| legacy_gemini_mcp_config_paths_for_home(&home))
+        .unwrap_or_default()
+}
+
+fn legacy_gemini_mcp_config_paths_for_home(home: &Path) -> Vec<PathBuf> {
+    vec![home.join(".gemini").join("settings.json")]
 }
 
 fn read_registered_mcp_entry(config_path: &Path) -> Option<serde_json::Value> {
@@ -354,7 +364,9 @@ pub fn register_mcp(vault_path: &str) -> Result<String, String> {
         }
     }
 
-    Ok(register_mcp_to_configs(&entry, &mcp_config_paths()))
+    let status = register_mcp_to_configs(&entry, &mcp_config_paths());
+    let _ = remove_mcp_from_configs(&legacy_gemini_mcp_config_paths());
+    Ok(status)
 }
 
 /// Insert or update the Tolaria entry in an MCP config file.
@@ -453,8 +465,18 @@ fn remove_mcp_from_config(config_path: &Path) -> Result<bool, String> {
     Ok(true)
 }
 
+fn mcp_removal_status(removed_configs: &[bool]) -> String {
+    if removed_configs.iter().any(|removed| *removed) {
+        "removed".to_string()
+    } else {
+        "already_absent".to_string()
+    }
+}
+
 pub fn remove_mcp() -> String {
     let removed_standard = remove_mcp_from_configs(&mcp_config_paths()) == "removed";
+    let removed_legacy_gemini =
+        remove_mcp_from_configs(&legacy_gemini_mcp_config_paths()) == "removed";
     let removed_opencode = opencode::config_path().is_some_and(|config_path| {
         opencode::remove_config(&config_path).unwrap_or_else(|e| {
             log::warn!("Failed to update {}: {}", config_path.display(), e);
@@ -462,11 +484,7 @@ pub fn remove_mcp() -> String {
         })
     });
 
-    if removed_standard || removed_opencode {
-        "removed".to_string()
-    } else {
-        "already_absent".to_string()
-    }
+    mcp_removal_status(&[removed_standard, removed_legacy_gemini, removed_opencode])
 }
 
 /// Check whether the MCP server is properly installed and registered.
@@ -807,8 +825,8 @@ mod tests {
     }
 
     #[test]
-    fn upsert_preserves_gemini_settings_json_fields() {
-        let (_tmp, config_path) = temp_config_path("settings.json");
+    fn upsert_preserves_antigravity_mcp_config_fields() {
+        let (_tmp, config_path) = temp_config_path("mcp_config.json");
         write_config_json(
             &config_path,
             serde_json::json!({
@@ -818,7 +836,7 @@ mod tests {
                 }
             }),
         );
-        let entry = test_mcp_entry("/gemini/index.js");
+        let entry = test_mcp_entry("/antigravity/index.js");
 
         let was_update = upsert_mcp_config(&config_path, &entry).unwrap();
         let config = read_config(&config_path);
@@ -829,7 +847,7 @@ mod tests {
         assert_registered_tolaria_server(
             &config,
             ExpectedMcpServer {
-                index_js: "/gemini/index.js",
+                index_js: "/antigravity/index.js",
             },
         );
     }
@@ -893,7 +911,11 @@ mod tests {
         let tmp = tempfile::tempdir().unwrap();
         let claude_user_cfg = tmp.path().join(".claude.json");
         let claude_cfg = tmp.path().join("claude").join("mcp.json");
-        let gemini_cfg = tmp.path().join(".gemini").join("settings.json");
+        let antigravity_cfg = tmp
+            .path()
+            .join(".gemini")
+            .join("config")
+            .join("mcp_config.json");
         let cursor_cfg = tmp.path().join("cursor").join("mcp.json");
         let generic_cfg = tmp.path().join(".config").join("mcp").join("mcp.json");
         let entry = test_mcp_entry("/test/index.js");
@@ -903,7 +925,7 @@ mod tests {
             &[
                 claude_user_cfg.clone(),
                 claude_cfg.clone(),
-                gemini_cfg.clone(),
+                antigravity_cfg.clone(),
                 cursor_cfg.clone(),
                 generic_cfg.clone(),
             ],
@@ -911,7 +933,7 @@ mod tests {
         let config_paths = [
             &claude_user_cfg,
             &claude_cfg,
-            &gemini_cfg,
+            &antigravity_cfg,
             &cursor_cfg,
             &generic_cfg,
         ];
@@ -938,12 +960,21 @@ mod tests {
             vec![
                 home.join(".claude.json"),
                 home.join(".claude").join("mcp.json"),
-                home.join(".gemini").join("settings.json"),
+                home.join(".gemini").join("config").join("mcp_config.json"),
                 home.join(".cursor").join("mcp.json"),
                 home.join(".config").join("mcp").join("mcp.json"),
             ]
         );
     }
+
+    #[test]
+    fn legacy_gemini_mcp_config_paths_for_home_points_to_settings_json() {
+        let home = Path::new("/Users/tester");
+        let paths = legacy_gemini_mcp_config_paths_for_home(home);
+
+        assert_eq!(paths, vec![home.join(".gemini").join("settings.json")]);
+    }
+
     #[test]
     fn upsert_returns_error_for_invalid_json() {
         let tmp = tempfile::tempdir().unwrap();
@@ -1068,6 +1099,27 @@ mod tests {
         assert!(updated["mcpServers"][MCP_SERVER_NAME].is_null());
         assert!(updated["mcpServers"][LEGACY_MCP_SERVER_NAME].is_null());
         assert!(updated["mcpServers"]["other-server"].is_object());
+    }
+
+    #[test]
+    fn remove_mcp_from_configs_removes_legacy_gemini_settings_entry() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config_path = tmp.path().join(".gemini").join("settings.json");
+        let config = serde_json::json!({
+            "preferredEditor": "vim",
+            "mcpServers": {
+                "tolaria": { "command": "node", "args": ["/index.js"] }
+            }
+        });
+        std::fs::create_dir_all(config_path.parent().unwrap()).unwrap();
+        std::fs::write(&config_path, serde_json::to_string(&config).unwrap()).unwrap();
+
+        let status = remove_mcp_from_configs(&[config_path.clone()]);
+        let updated = read_config(&config_path);
+
+        assert_eq!(status, "removed");
+        assert_eq!(updated["preferredEditor"], "vim");
+        assert!(updated["mcpServers"].is_null());
     }
 
     #[test]

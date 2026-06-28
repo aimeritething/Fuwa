@@ -22,18 +22,18 @@ pub(crate) fn find_binary() -> Result<PathBuf, String> {
         return Ok(binary);
     }
     if let Some(binary) = crate::cli_agent_runtime::find_executable_binary_candidate(
-        gemini_binary_candidates(),
-        "Gemini CLI",
+        antigravity_binary_candidates(),
+        "Antigravity CLI",
     )? {
         return Ok(binary);
     }
 
-    Err("Gemini CLI not found. Install it: https://google-gemini.github.io/gemini-cli/".into())
+    Err("Antigravity CLI not found. Install it: https://antigravity.google/docs/cli/install".into())
 }
 
 fn find_binary_on_path() -> Option<PathBuf> {
     crate::hidden_command(path_lookup_command())
-        .arg("gemini")
+        .arg("agy")
         .output()
         .ok()
         .and_then(|output| path_from_successful_output(&output))
@@ -51,7 +51,7 @@ fn find_binary_in_user_shell() -> Option<PathBuf> {
     user_shell_candidates()
         .into_iter()
         .filter(|shell| shell.exists())
-        .find_map(|shell| command_path_from_shell(&shell, "gemini"))
+        .find_map(|shell| command_path_from_shell(&shell, "agy"))
 }
 
 fn user_shell_candidates() -> Vec<PathBuf> {
@@ -105,57 +105,21 @@ fn existing_path(line: &str) -> Option<PathBuf> {
     candidate.exists().then_some(candidate)
 }
 
-fn gemini_binary_candidates() -> Vec<PathBuf> {
+fn antigravity_binary_candidates() -> Vec<PathBuf> {
     dirs::home_dir()
-        .map(|home| gemini_binary_candidates_for_home(&home))
+        .map(|home| antigravity_binary_candidates_for_home(&home))
         .unwrap_or_default()
 }
 
-fn gemini_binary_candidates_for_home(home: &Path) -> Vec<PathBuf> {
-    let mut candidates = vec![
-        home.join(".local/bin/gemini"),
-        home.join(".local/bin/gemini.exe"),
-        home.join(".gemini/bin/gemini"),
-        home.join(".gemini/bin/gemini.exe"),
-        home.join(".local/share/mise/shims/gemini"),
-        home.join(".local/share/mise/shims/gemini.exe"),
-        home.join(".asdf/shims/gemini"),
-        home.join(".asdf/shims/gemini.exe"),
-        home.join(".npm-global/bin/gemini"),
-        home.join(".npm-global/bin/gemini.cmd"),
-        home.join(".npm-global/bin/gemini.exe"),
-        home.join(".npm/bin/gemini"),
-        home.join(".npm/bin/gemini.cmd"),
-        home.join(".npm/bin/gemini.exe"),
-        home.join(".bun/bin/gemini"),
-        home.join(".bun/bin/gemini.exe"),
-        home.join(".linuxbrew/bin/gemini"),
-        home.join("AppData/Roaming/npm/gemini.cmd"),
-        home.join("AppData/Roaming/npm/gemini.exe"),
-        home.join("AppData/Local/pnpm/gemini.cmd"),
-        home.join("AppData/Local/pnpm/gemini.exe"),
-        home.join("scoop/shims/gemini.exe"),
-        PathBuf::from("/home/linuxbrew/.linuxbrew/bin/gemini"),
-        PathBuf::from("/usr/local/bin/gemini"),
-        PathBuf::from("/opt/homebrew/bin/gemini"),
-    ];
-    candidates.extend(nvm_binary_candidates_for_home(home));
-    candidates
-}
-
-fn nvm_binary_candidates_for_home(home: &Path) -> Vec<PathBuf> {
-    let Ok(entries) = std::fs::read_dir(home.join(".nvm/versions/node")) else {
-        return Vec::new();
-    };
-
-    let mut candidates = entries
-        .filter_map(Result::ok)
-        .map(|entry| entry.path())
-        .filter(|path| path.is_dir())
-        .map(|path| path.join("bin").join("gemini"))
-        .collect::<Vec<_>>();
-    candidates.sort();
-    candidates
+fn antigravity_binary_candidates_for_home(home: &Path) -> Vec<PathBuf> {
+    vec![
+        home.join(".local/bin/agy"),
+        home.join(".local/bin/agy.exe"),
+        home.join("AppData/Local/agy/bin/agy.exe"),
+        PathBuf::from("/usr/local/bin/agy"),
+        PathBuf::from("/opt/homebrew/bin/agy"),
+        PathBuf::from("/home/linuxbrew/.linuxbrew/bin/agy"),
+    ]
 }
 
 #[cfg(test)]
@@ -165,33 +129,11 @@ mod tests {
     #[test]
     fn binary_candidates_include_supported_installs() {
         let home = PathBuf::from("/Users/alex");
-        let candidates = gemini_binary_candidates_for_home(&home);
+        let candidates = antigravity_binary_candidates_for_home(&home);
         let expected = [
-            home.join(".local/bin/gemini"),
-            home.join(".gemini/bin/gemini"),
-            home.join(".local/share/mise/shims/gemini"),
-            home.join(".asdf/shims/gemini"),
-            home.join(".npm-global/bin/gemini"),
-            home.join(".bun/bin/gemini"),
-            PathBuf::from("/opt/homebrew/bin/gemini"),
-        ];
-
-        for candidate in expected {
-            assert!(
-                candidates.contains(&candidate),
-                "missing {}",
-                candidate.display()
-            );
-        }
-    }
-
-    #[test]
-    fn binary_candidates_include_linuxbrew_installs() {
-        let home = PathBuf::from("/home/alex");
-        let candidates = gemini_binary_candidates_for_home(&home);
-        let expected = [
-            home.join(".linuxbrew/bin/gemini"),
-            PathBuf::from("/home/linuxbrew/.linuxbrew/bin/gemini"),
+            home.join(".local/bin/agy"),
+            home.join("AppData/Local/agy/bin/agy.exe"),
+            PathBuf::from("/opt/homebrew/bin/agy"),
         ];
 
         for candidate in expected {
@@ -206,20 +148,20 @@ mod tests {
     #[test]
     fn first_existing_path_skips_empty_and_missing_lines() {
         let dir = tempfile::tempdir().unwrap();
-        let missing = dir.path().join("missing-gemini");
-        let gemini = dir.path().join("gemini");
-        std::fs::write(&gemini, "#!/bin/sh\n").unwrap();
+        let missing = dir.path().join("missing-agy");
+        let agy = dir.path().join("agy");
+        std::fs::write(&agy, "#!/bin/sh\n").unwrap();
 
-        let stdout = format!("\n{}\n{}\n", missing.display(), gemini.display());
+        let stdout = format!("\n{}\n{}\n", missing.display(), agy.display());
 
-        assert_eq!(first_existing_path(&stdout), Some(gemini));
+        assert_eq!(first_existing_path(&stdout), Some(agy));
     }
 
     #[test]
-    fn windows_path_lookup_prefers_cmd_shim_over_extensionless_npm_script() {
+    fn windows_path_lookup_prefers_cmd_shim_over_extensionless_script() {
         let dir = tempfile::tempdir().unwrap();
-        let shell_script = dir.path().join("gemini");
-        let cmd_shim = dir.path().join("gemini.cmd");
+        let shell_script = dir.path().join("agy");
+        let cmd_shim = dir.path().join("agy.cmd");
         std::fs::write(&shell_script, "#!/bin/sh\n").unwrap();
         std::fs::write(&cmd_shim, "@ECHO off\n").unwrap();
 

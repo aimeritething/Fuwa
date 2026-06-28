@@ -65,7 +65,7 @@ _organized: true
 
 @AGENTS.md
 
-This file is only a Gemini CLI compatibility shim. Keep shared agent instructions in `AGENTS.md`.
+This file is only an Antigravity/Gemini compatibility shim. Keep shared agent instructions in `AGENTS.md`.
 ";
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
