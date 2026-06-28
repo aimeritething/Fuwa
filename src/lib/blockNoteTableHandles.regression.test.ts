@@ -18,6 +18,46 @@ function createTableBlock() {
   }
 }
 
+function createRect({ left, top, width, height }: { left: number; top: number; width: number; height: number }) {
+  return {
+    bottom: top + height,
+    height,
+    left,
+    right: left + width,
+    toJSON: () => ({}),
+    top,
+    width,
+    x: left,
+    y: top,
+  } as DOMRect
+}
+
+function createTableDom(blockId = 'stale-table-block') {
+  const editorRoot = document.createElement('div')
+  const blockContainer = document.createElement('div')
+  const tableWrapper = document.createElement('div')
+  const table = document.createElement('table')
+  const tbody = document.createElement('tbody')
+  const row = document.createElement('tr')
+  const cell = document.createElement('td')
+
+  blockContainer.setAttribute('data-node-type', 'blockContainer')
+  blockContainer.setAttribute('data-id', blockId)
+  tableWrapper.className = 'tableWrapper'
+  tableWrapper.getBoundingClientRect = vi.fn(() => createRect({ left: 10, top: 10, width: 180, height: 80 }))
+  tbody.getBoundingClientRect = vi.fn(() => createRect({ left: 10, top: 10, width: 180, height: 80 }))
+
+  row.appendChild(cell)
+  tbody.appendChild(row)
+  table.appendChild(tbody)
+  tableWrapper.appendChild(table)
+  blockContainer.appendChild(tableWrapper)
+  editorRoot.appendChild(blockContainer)
+  document.body.appendChild(editorRoot)
+
+  return { cell, editorRoot }
+}
+
 function createSelectionStateThatRejectsNaNPositions() {
   const selectionTransaction = {
     setSelection: vi.fn(),
@@ -224,6 +264,51 @@ describe('BlockNote table handles regression', () => {
 
     expectAddRowAndColumnActionsToStaySafe(extension, Number.NaN)
     expect(editor.exec).not.toHaveBeenCalled()
+
+    view.destroy()
+  })
+
+  it('hides table handles instead of throwing when hover resolves a stale block id', () => {
+    const block = createTableBlock()
+    const { cell, editorRoot } = createTableDom(block.id)
+    const emitUpdate = vi.fn()
+    const editor = {
+      isEditable: true,
+      transact: vi.fn(() => undefined),
+    }
+
+    const view = new TableHandlesView(
+      editor as never,
+      {
+        dom: editorRoot,
+        root: document,
+      } as never,
+      emitUpdate,
+    )
+
+    view.state = {
+      block,
+      show: true,
+      showAddOrRemoveRowsButton: true,
+      showAddOrRemoveColumnsButton: true,
+      rowIndex: 0,
+      colIndex: 0,
+      draggingState: undefined,
+    } as never
+
+    const event = new MouseEvent('mousemove', {
+      bubbles: true,
+      clientX: 20,
+      clientY: 20,
+    })
+    Object.defineProperty(event, 'target', { value: cell })
+
+    expect(() => view.mouseMoveHandler(event)).not.toThrow()
+    expect(editor.transact).toHaveBeenCalled()
+    expect(view.state?.show).toBe(false)
+    expect(view.state?.showAddOrRemoveRowsButton).toBe(false)
+    expect(view.state?.showAddOrRemoveColumnsButton).toBe(false)
+    expect(emitUpdate).toHaveBeenCalled()
 
     view.destroy()
   })
