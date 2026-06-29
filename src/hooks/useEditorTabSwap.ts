@@ -911,7 +911,6 @@ function shouldSkipScheduledTabSwap(options: {
   editorContentPathRef: EditorContentPathRef
   rawSwapPendingRef: MutableRefObject<boolean>
   pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
-  flushPendingEditorChange: () => boolean
 }) {
   const {
     state,
@@ -922,7 +921,6 @@ function shouldSkipScheduledTabSwap(options: {
     editorContentPathRef,
     rawSwapPendingRef,
     pendingLocalContentRef,
-    flushPendingEditorChange,
   } = options
 
   if (state.pathChanged) {
@@ -1000,7 +998,6 @@ function runTabSwapEffect(options: RunTabSwapEffectOptions) {
     editorContentPathRef,
     rawSwapPendingRef,
     pendingLocalContentRef,
-    flushPendingEditorChange,
   })) {
     return
   }

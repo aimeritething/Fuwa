@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type {
   DragEventHandler,
   MouseEvent as ReactMouseEvent,
@@ -402,8 +402,11 @@ describe('TolariaSideMenu', () => {
   })
 
   afterEach(() => {
+    cleanup()
     document.elementsFromPoint = originalElementsFromPoint
     document.body.innerHTML = ''
+    document.head.querySelectorAll('style[data-tolaria-collapsed-sections]')
+      .forEach((styleElement) => styleElement.remove())
   })
 
   it('replaces BlockNote block colors with markdown-safe drag-handle items', () => {
