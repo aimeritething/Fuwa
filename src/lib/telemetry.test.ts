@@ -186,6 +186,39 @@ describe('initSentry', () => {
     expect(beforeSend(unrelatedTypeErrorEvent)).toBe(unrelatedTypeErrorEvent)
   })
 
+  it('drops stale BlockNote block-reference errors before sending them to Sentry', () => {
+    const beforeSend = initSentryBeforeSend()
+    const staleBlockEvent = {
+      exception: {
+        values: [{
+          type: 'Error',
+          value: 'Block with ID 15e8eb56-0947-4d4a-85c2-1611a864465a not found',
+        }],
+      },
+    }
+    const messageOnlyEvent = {
+      message: 'Error: Block with ID 15e8eb56-0947-4d4a-85c2-1611a864465a not found',
+    }
+    const hintedEvent = {
+      message: 'Script error.',
+    }
+    const unrelatedNotFoundEvent = {
+      exception: {
+        values: [{
+          type: 'Error',
+          value: 'Vault entry with ID 15e8eb56-0947-4d4a-85c2-1611a864465a not found',
+        }],
+      },
+    }
+
+    expect(beforeSend(staleBlockEvent)).toBeNull()
+    expect(beforeSend(messageOnlyEvent)).toBeNull()
+    expect(beforeSend(hintedEvent, {
+      originalException: new Error('Block with ID 15e8eb56-0947-4d4a-85c2-1611a864465a not found'),
+    })).toBeNull()
+    expect(beforeSend(unrelatedNotFoundEvent)).toBe(unrelatedNotFoundEvent)
+  })
+
   it('drops browser ResizeObserver loop notifications before sending them to Sentry', () => {
     const beforeSend = initSentryBeforeSend()
     const loopLimitEvent = {
