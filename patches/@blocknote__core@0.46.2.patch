@@ -876,6 +876,7 @@ index 30637742d517bcf136ca562a09a1544d7b03a20d..7271ad3a61f9dcf490deeb6b8cb63463
      );
      if (!pmNodeInfo) {
 -      throw new Error(`Block with ID ${blockEl.id} not found`);
++      // The table DOM can outlive its block while a note reload is settling.
 +      this.hideHandles({ resetCell: true, resetDragging: true });
 +      return;
      }
