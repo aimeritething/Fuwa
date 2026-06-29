@@ -105,6 +105,19 @@ interface UseTabSwapEffectOptions extends Omit<RunTabSwapEffectOptions, 'vaultPa
   vaultPathRef: MutableRefObject<string | undefined>
 }
 
+interface StableActivePathOptions {
+  pathChanged: boolean
+  rawModeJustEnded: boolean
+  activeTabPath: string | null
+  activeTab: Tab | undefined
+  cache: Map<string, CachedTabState>
+  editor: ReturnType<typeof useCreateBlockNote>
+  editorMountedRef: MutableRefObject<boolean>
+  editorContentPathRef: EditorContentPathRef
+  rawSwapPendingRef: MutableRefObject<boolean>
+  pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
+}
+
 type ParsedBlockPreloadEvent = { path: string; content: string }
 
 function now(): number {
@@ -404,6 +417,17 @@ function currentEditorMatchesActiveTab(options: {
   return matched
 }
 
+function currentEditorMatchesEmptyHeadingTab(options: {
+  activeTabPath: string | null
+  activeTab: Tab | undefined
+  editor: ReturnType<typeof useCreateBlockNote>
+  editorMountedRef: MutableRefObject<boolean>
+}) {
+  const { activeTab } = options
+  if (!activeTab || !startsWithEmptyHeading({ content: activeTab.content })) return false
+  return currentEditorMatchesActiveTab(options)
+}
+
 function cachedActiveTabMatchesEditor(options: {
   activeTabPath: string | null
   activeTab: Tab | undefined
@@ -494,73 +518,57 @@ function consumePendingLocalContent(options: {
   })
 }
 
-function handleStableActivePath(options: {
-  pathChanged: boolean
-  rawModeJustEnded: boolean
-  activeTabPath: string | null
-  activeTab: Tab | undefined
-  cache: Map<string, CachedTabState>
-  editor: ReturnType<typeof useCreateBlockNote>
-  editorMountedRef: MutableRefObject<boolean>
-  editorContentPathRef: EditorContentPathRef
-  rawSwapPendingRef: MutableRefObject<boolean>
-  pendingLocalContentRef: MutableRefObject<PendingLocalContent | null>
-}) {
+function handleStableActivePath(options: StableActivePathOptions) {
   const {
     pathChanged,
     rawModeJustEnded,
     activeTabPath,
-    activeTab,
     cache,
-    editor,
-    editorMountedRef,
-    editorContentPathRef,
     rawSwapPendingRef,
-    pendingLocalContentRef,
   } = options
 
   if (pathChanged) return false
   if (rawModeJustEnded) {
     return !markRawModeReswapPending({ activeTabPath, cache, rawSwapPendingRef })
   }
-  if (shouldKeepPendingLocalContent({ activeTabPath, activeTab, pendingLocalContentRef })) {
-    return consumePendingLocalContent({
-      cache,
-      activeTabPath,
-      activeTab,
-      editor,
-      editorMountedRef,
-      editorContentPathRef,
-      pendingLocalContentRef,
-    })
+  if (shouldKeepPendingLocalContent(options)) {
+    return consumePendingLocalContent(options)
   }
-  if (cachedActiveTabMatchesEditor({ activeTabPath, activeTab, cache, editorContentPathRef })) {
-    pendingLocalContentRef.current = null
-    return true
-  }
-  if (shouldRefreshStableActivePath({ activeTabPath, activeTab, cache })) return false
-  if (currentEditorMatchesActiveTab({ activeTabPath, activeTab, editor, editorMountedRef })) {
-    return cacheStableActiveTabAndClearPending({
-      cache,
-      activeTabPath,
-      activeTab,
-      editor,
-      editorMountedRef,
-      editorContentPathRef,
-      pendingLocalContentRef,
-    })
-  }
+  const contentResolution = resolveStableActivePathContent(options)
+  if (contentResolution !== null) return contentResolution
   if (rawSwapPendingRef.current) return true
 
-  cacheStableActivePath({
-    cache,
-    activeTabPath,
-    activeTab,
-    editor,
-    editorMountedRef,
-    editorContentPathRef,
-  })
+  cacheStableActivePath(options)
   return true
+}
+
+function resolveStableActivePathContent(options: StableActivePathOptions): boolean | null {
+  return resolveCachedStableContent(options)
+    ?? resolveEmptyHeadingStableContent(options)
+    ?? resolveStaleStableContent(options)
+    ?? resolveCurrentStableContent(options)
+}
+
+function resolveCachedStableContent(options: StableActivePathOptions): boolean | null {
+  if (!cachedActiveTabMatchesEditor(options)) return null
+  options.pendingLocalContentRef.current = null
+  return true
+}
+
+function resolveEmptyHeadingStableContent(options: StableActivePathOptions): boolean | null {
+  return currentEditorMatchesEmptyHeadingTab(options)
+    ? cacheStableActiveTabAndClearPending(options)
+    : null
+}
+
+function resolveStaleStableContent(options: StableActivePathOptions): boolean | null {
+  return shouldRefreshStableActivePath(options) ? false : null
+}
+
+function resolveCurrentStableContent(options: StableActivePathOptions): boolean | null {
+  return currentEditorMatchesActiveTab(options)
+    ? cacheStableActiveTabAndClearPending(options)
+    : null
 }
 
 function shouldRefreshStableActivePath(options: {
@@ -988,6 +996,7 @@ function runTabSwapEffect(options: RunTabSwapEffectOptions) {
   })
   if (state.pathChanged) invalidatePendingSwap({ pendingSwapRef, swapSeqRef })
   flushBeforePathChange({ pathChanged: state.pathChanged, flushPendingEditorChange })
+  if (!state.pathChanged && flushPendingEditorChange()) return
 
   if (shouldSkipScheduledTabSwap({
     state,
