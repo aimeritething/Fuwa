@@ -6,6 +6,12 @@ import {
 } from '../helpers/fixtureVault'
 
 const BLOCK_SELECTION = '.tolaria-rich-editor-block-selected'
+const MOD_SHIFT_ARROW_DOWN = process.platform === 'darwin'
+  ? 'Meta+Shift+ArrowDown'
+  : 'Control+Shift+ArrowDown'
+const MOD_SHIFT_ARROW_UP = process.platform === 'darwin'
+  ? 'Meta+Shift+ArrowUp'
+  : 'Control+Shift+ArrowUp'
 const PROJECT_BODY = 'This is a test project that references other notes.'
 const PROJECT_NOTES_HEADING = 'Notes'
 const PROJECT_NOTES_BODY = 'See Note B for details and Note C for additional context.'
@@ -91,5 +97,19 @@ test.describe('rich editor block selection', () => {
     await expect(page.locator(BLOCK_SELECTION)).toHaveCount(2)
     await expect(page.locator(BLOCK_SELECTION).first()).toContainText(PROJECT_BODY)
     await expect(page.locator(BLOCK_SELECTION).last()).toContainText(PROJECT_NOTES_HEADING)
+  })
+
+  test('Mod+Shift+Arrow moves a selected block without dropping block selection', async ({ page }) => {
+    await openAlphaProject(page)
+    await focusBlock(page, PROJECT_BODY)
+
+    await page.keyboard.press('Escape')
+    await page.keyboard.press(MOD_SHIFT_ARROW_DOWN)
+    await expect(page.locator(BLOCK_SELECTION)).toHaveCount(1)
+    await expect(page.locator(BLOCK_SELECTION).first()).toContainText(PROJECT_BODY)
+
+    await page.keyboard.press(MOD_SHIFT_ARROW_UP)
+    await expect(page.locator(BLOCK_SELECTION)).toHaveCount(1)
+    await expect(page.locator(BLOCK_SELECTION).first()).toContainText(PROJECT_BODY)
   })
 })

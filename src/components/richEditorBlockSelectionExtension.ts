@@ -25,7 +25,10 @@ type RichEditorBlockSelectionEditor = {
   getSelection?: () => unknown
   getTextCursorPosition?: () => unknown
   isEditable?: boolean
+  moveBlocksDown?: () => unknown
+  moveBlocksUp?: () => unknown
   removeBlocks?: (blocks: string[]) => unknown
+  setSelection?: (anchorBlock: string, headBlock: string) => void
   setTextCursorPosition?: (targetBlock: string, placement?: 'start' | 'end') => void
 }
 
@@ -233,6 +236,14 @@ function isBlockNavigationArrow(event: KeyboardEvent): event is KeyboardEvent & 
     && !event.metaKey
 }
 
+function isBlockMoveArrow(event: KeyboardEvent): event is KeyboardEvent & { key: 'ArrowDown' | 'ArrowUp' } {
+  return (event.key === 'ArrowDown' || event.key === 'ArrowUp')
+    && !event.isComposing
+    && !event.altKey
+    && (event.ctrlKey || event.metaKey)
+    && event.shiftKey
+}
+
 function isDeleteKey(event: KeyboardEvent): boolean {
   return (event.key === 'Delete' || event.key === 'Backspace')
     && !event.isComposing
@@ -336,49 +347,135 @@ function handleDeleteSelection(
   }
 }
 
+function selectBlocksForMove(
+  editor: RichEditorBlockSelectionEditor,
+  view: EditorView,
+  selectedBlockIds: readonly string[],
+): void {
+  if (selectedBlockIds.length > 1) {
+    try {
+      editor.setSelection?.(selectedBlockIds[0], selectedBlockIds[selectedBlockIds.length - 1])
+      return
+    } catch {
+      // Fall back to the collapsed selection used by single-block moves.
+    }
+  }
+
+  const transaction = withCollapsedSelectionNearBlock(view.state.tr, selectedBlockIds[0])
+  view.dispatch(transaction)
+}
+
+function handleMoveSelection(
+  editor: RichEditorBlockSelectionEditor,
+  view: EditorView,
+  selectedBlockIds: readonly string[],
+  direction: 'down' | 'up',
+): void {
+  const moveBlocks = direction === 'up' ? editor.moveBlocksUp : editor.moveBlocksDown
+  if (!moveBlocks) return
+
+  try {
+    selectBlocksForMove(editor, view, selectedBlockIds)
+    moveBlocks.call(editor)
+    editor.focus?.()
+  } finally {
+    if (!dispatchBlockSelection(view, selectedBlockIds)) {
+      clearBlockSelection(view)
+    }
+  }
+}
+
+function handleActiveEscapeKey(view: EditorView, event: KeyboardEvent): boolean {
+  if (!isPlainEscape(event)) return false
+
+  clearBlockSelection(view)
+  return false
+}
+
+function handleActiveNavigationKey(
+  editor: RichEditorBlockSelectionEditor,
+  view: EditorView,
+  event: KeyboardEvent,
+  selection: BlockSelectionState,
+): boolean {
+  if (!isBlockNavigationArrow(event)) return false
+
+  stopEditorKey(event)
+  const direction = event.key === 'ArrowUp' ? 'up' : 'down'
+  const nextSelection = blockSelectionAfterArrow(
+    selection.blockIds,
+    documentBlockIds(editor.document),
+    direction,
+    event.shiftKey,
+  )
+  dispatchBlockSelection(view, nextSelection)
+  return true
+}
+
+function handleActiveMoveKey(
+  editor: RichEditorBlockSelectionEditor,
+  view: EditorView,
+  event: KeyboardEvent,
+  selection: BlockSelectionState,
+): boolean {
+  if (!isBlockMoveArrow(event)) return false
+
+  stopEditorKey(event)
+  handleMoveSelection(
+    editor,
+    view,
+    selection.blockIds,
+    event.key === 'ArrowUp' ? 'up' : 'down',
+  )
+  return true
+}
+
+function handleActiveEnterKey(
+  editor: RichEditorBlockSelectionEditor,
+  view: EditorView,
+  event: KeyboardEvent,
+  selection: BlockSelectionState,
+): boolean {
+  if (!isPlainEnter(event)) return false
+
+  stopEditorKey(event)
+  clearBlockSelection(view)
+  focusBlockForEditing(editor, view, selection.blockIds[selection.blockIds.length - 1])
+  return true
+}
+
+function handleActiveDeleteKey(
+  editor: RichEditorBlockSelectionEditor,
+  view: EditorView,
+  event: KeyboardEvent,
+  selection: BlockSelectionState,
+): boolean {
+  if (!isDeleteKey(event)) return false
+
+  stopEditorKey(event)
+  handleDeleteSelection(editor, view, selection.blockIds)
+  return true
+}
+
+function handleActivePrintableKey(event: KeyboardEvent): boolean {
+  if (!isPrintableTextKey(event)) return false
+
+  stopEditorKey(event)
+  return true
+}
+
 function handleActiveBlockSelectionKey(
   editor: RichEditorBlockSelectionEditor,
   view: EditorView,
   event: KeyboardEvent,
   selection: BlockSelectionState,
 ): boolean {
-  if (isPlainEscape(event)) {
-    clearBlockSelection(view)
-    return false
-  }
-
-  if (isBlockNavigationArrow(event)) {
-    stopEditorKey(event)
-    const direction = event.key === 'ArrowUp' ? 'up' : 'down'
-    const nextSelection = blockSelectionAfterArrow(
-      selection.blockIds,
-      documentBlockIds(editor.document),
-      direction,
-      event.shiftKey,
-    )
-    dispatchBlockSelection(view, nextSelection)
-    return true
-  }
-
-  if (isPlainEnter(event)) {
-    stopEditorKey(event)
-    clearBlockSelection(view)
-    focusBlockForEditing(editor, view, selection.blockIds[selection.blockIds.length - 1])
-    return true
-  }
-
-  if (isDeleteKey(event)) {
-    stopEditorKey(event)
-    handleDeleteSelection(editor, view, selection.blockIds)
-    return true
-  }
-
-  if (isPrintableTextKey(event)) {
-    stopEditorKey(event)
-    return true
-  }
-
-  return false
+  return handleActiveEscapeKey(view, event)
+    || handleActiveNavigationKey(editor, view, event, selection)
+    || handleActiveMoveKey(editor, view, event, selection)
+    || handleActiveEnterKey(editor, view, event, selection)
+    || handleActiveDeleteKey(editor, view, event, selection)
+    || handleActivePrintableKey(event)
 }
 
 function handleInactiveBlockSelectionKey(
