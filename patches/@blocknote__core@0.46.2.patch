@@ -871,7 +871,7 @@ index 30637742d517bcf136ca562a09a1544d7b03a20d..7271ad3a61f9dcf490deeb6b8cb63463
        return;
      }
  
-@@ -261,7 +317,8 @@ export class TableHandlesView implements PluginView {
+@@ -261,7 +317,9 @@ export class TableHandlesView implements PluginView {
        getNodeById(blockEl.id, tr.doc),
      );
      if (!pmNodeInfo) {
