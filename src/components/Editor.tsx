@@ -43,6 +43,12 @@ import {
   useRichEditorContentReadiness,
   useRichEditorSheetSwapState,
 } from './useRichEditorSheetTransition'
+import {
+  installBlockNoteDirectMarkdown,
+  type DirectMarkdownCapableSerializer,
+} from '../utils/blockNoteDirectMarkdown'
+import { installRichEditorDispatchPerformanceProbe } from './richEditorDispatchPerformance'
+import { RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS } from './richEditorBlockNoteOptions'
 import './Editor.css'
 import './EditorTheme.css'
 
@@ -214,17 +220,25 @@ interface EditorSetupParams {
   diffToggleRef?: React.MutableRefObject<() => void>
 }
 
+function installDirectMarkdownForRealEditor(editor: ReturnType<typeof useCreateBlockNote>) {
+  if (!('pmSchema' in editor) || !('_tiptapEditor' in editor)) return
+  installBlockNoteDirectMarkdown(editor as DirectMarkdownCapableSerializer)
+}
+
 function useEditorSetup({
   tabs, activeTabPath, vaultPath, onContentChange,
   onLoadDiff, onLoadDiffAtCommit, pendingCommitDiffRequest, onPendingCommitDiffHandled, getNoteStatus,
   rawToggleRef, diffToggleRef,
 }: EditorSetupParams) {
   const vaultPathRef = useRef(vaultPath)
+  const activeTabPathRef = useRef(activeTabPath)
   const flushPendingEditorChangeRef = useRef<(() => boolean) | null>(null)
   const sheetFlushRef = useRef<((path: string) => void) | null>(null)
   useEffect(() => { vaultPathRef.current = vaultPath }, [vaultPath])
+  useEffect(() => { activeTabPathRef.current = activeTabPath }, [activeTabPath])
 
   const editor = useCreateBlockNote({
+    ...RICH_EDITOR_BLOCKNOTE_PERFORMANCE_OPTIONS,
     schema,
     domAttributes: RICH_EDITOR_BIDI_DOM_ATTRIBUTES,
     uploadFile: (file: File) => uploadImageFile(file, vaultPathRef.current),
@@ -238,6 +252,10 @@ function useEditorSetup({
       createRichEditorTextDirectionExtension(),
     ],
   })
+  installDirectMarkdownForRealEditor(editor)
+  useEffect(() => {
+    installRichEditorDispatchPerformanceProbe(editor, () => activeTabPathRef.current)
+  }, [editor])
   useFilenameAutolinkGuard(editor)
   const activeTab = tabs.find((t) => t.entry.path === activeTabPath) ?? null
   const {

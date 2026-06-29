@@ -710,13 +710,23 @@ export function toggleCollapsedHeading(
   store.collapsedHeadingIds = collapsedHeadingIds
 
   if (editorElement) {
-    ensureCollapsedHeadingRenderer(editor, editorElement, store)
-    applyCollapsedSectionRenderingFromHeadingIds(
-      editorElement,
-      store.collapsedHeadingIds,
-      editor.document as readonly CollapsibleBlock[],
-    )
+    if (store.collapsedHeadingIds.size === 0) {
+      releaseCollapsedHeadingRenderer(editorElement)
+    } else {
+      ensureCollapsedHeadingRenderer(editor, editorElement, store)
+      applyCollapsedSectionRenderingFromHeadingIds(
+        editorElement,
+        store.collapsedHeadingIds,
+        editor.document as readonly CollapsibleBlock[],
+      )
+    }
   } else {
+    if (store.collapsedHeadingIds.size === 0) {
+      const currentEditorElement = editorBlockElement(editor)
+      if (currentEditorElement) releaseCollapsedHeadingRenderer(currentEditorElement)
+      store.emit()
+      return
+    }
     applyCollapsedSectionRendering(editor, store.collapsedHeadingIds)
   }
   store.emit()
@@ -724,11 +734,18 @@ export function toggleCollapsedHeading(
 
 export function useCollapsedHeadingRendering(editor: TolariaBlockNoteEditor) {
   useLayoutEffect(() => {
+    const store = collapsedHeadingStore(editor)
     let attachFrame: number | null = null
     let attachedEditorElement: HTMLElement | null = null
     const fallbackWindow = typeof window === 'undefined' ? undefined : window
     const attachController = () => {
       attachFrame = null
+      if (store.collapsedHeadingIds.size === 0) {
+        if (attachedEditorElement) releaseCollapsedHeadingRenderer(attachedEditorElement)
+        attachedEditorElement = null
+        return
+      }
+
       const editorElement = editorBlockElement(editor)
       if (!editorElement) {
         if (fallbackWindow) attachFrame = fallbackWindow.requestAnimationFrame(attachController)
@@ -738,10 +755,16 @@ export function useCollapsedHeadingRendering(editor: TolariaBlockNoteEditor) {
       attachedEditorElement = editorElement
       ensureCollapsedHeadingRenderer(editor, editorElement)
     }
+    const scheduleAttachController = () => {
+      if (attachFrame !== null || !fallbackWindow) return
+      attachFrame = fallbackWindow.requestAnimationFrame(attachController)
+    }
+    const unsubscribeStore = store.subscribe(scheduleAttachController)
 
     attachController()
 
     return () => {
+      unsubscribeStore()
       if (attachFrame !== null && fallbackWindow) fallbackWindow.cancelAnimationFrame(attachFrame)
       if (attachedEditorElement) releaseCollapsedHeadingRenderer(attachedEditorElement)
     }

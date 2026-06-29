@@ -661,6 +661,41 @@ describe('TolariaSideMenu', () => {
     expect(screen.getByRole('button', { name: 'Espandi elemento' })).toBeInTheDocument()
   })
 
+  it('does not subscribe collapsed-heading rendering until something is collapsed', () => {
+    const heading = headingBlock('heading', 2)
+    const paragraph = testBlock('paragraph', 'paragraph', ['Text'])
+    const blocks = [heading, paragraph]
+    mockEditor.document = blocks
+    appendBlockOuters(blocks)
+    mockEditor.getBlock.mockImplementation((id: string) => blocks.find((block) => block.id === id))
+
+    renderSideMenuAndCollapseControllerWithBlock(heading)
+
+    expect(mockEditor.onChange).not.toHaveBeenCalled()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse section' }))
+
+    expect(mockEditor.onChange).toHaveBeenCalledTimes(1)
+  })
+
+  it('removes collapsed-heading edit subscriptions after the final section is expanded', () => {
+    const unsubscribeEditorChange = vi.fn()
+    const heading = headingBlock('heading', 2)
+    const paragraph = testBlock('paragraph', 'paragraph', ['Text'])
+    const blocks = [heading, paragraph]
+    mockEditor.document = blocks
+    appendBlockOuters(blocks)
+    mockEditor.getBlock.mockImplementation((id: string) => blocks.find((block) => block.id === id))
+    mockEditor.onChange.mockReturnValue(unsubscribeEditorChange)
+
+    renderSideMenuAndCollapseControllerWithBlock(heading)
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse section' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Expand section' }))
+
+    expect(unsubscribeEditorChange).toHaveBeenCalledTimes(1)
+    expect(collapsedSectionStyleText()).toBe('')
+  })
+
   it('hides a collapsed heading section until the next same-level heading', () => {
     const blocks = [
       headingBlock('heading', 2),
