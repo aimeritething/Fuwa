@@ -284,6 +284,15 @@ function appendBlockOuters(blocks: MockBlock[]) {
   }
 }
 
+function placeEditorInScrollArea(scrollTop: number) {
+  const scrollArea = document.createElement('div')
+  scrollArea.className = 'editor-scroll-area'
+  scrollArea.scrollTop = scrollTop
+  scrollArea.appendChild(mockEditor.domElement)
+  document.body.appendChild(scrollArea)
+  return scrollArea
+}
+
 function collapsedSectionStyleText() {
   return Array.from(document.head.querySelectorAll('style[data-tolaria-collapsed-sections]'))
     .map((styleElement) => styleElement.textContent ?? '')
@@ -448,6 +457,31 @@ describe('TolariaSideMenu', () => {
     expect(mockEditor.insertBlocks).toHaveBeenCalledWith([{ type: 'paragraph' }], liveBlock.id, 'after')
     expect(mockEditor.setTextCursorPosition).toHaveBeenCalledWith('inserted-block')
     expect(mockSuggestionMenu.openSuggestionMenu).toHaveBeenCalledWith('/')
+  })
+
+  it('keeps editor scroll stable when opening the add-block slash menu', async () => {
+    const scrollArea = placeEditorInScrollArea(480)
+    const liveBlock = { id: 'tail-block', type: 'paragraph', content: ['Tail text'] }
+    mockEditor.getBlock.mockReturnValue(liveBlock)
+    mockEditor.insertBlocks.mockImplementation(() => {
+      scrollArea.scrollTop = 120
+      return [{ id: 'inserted-block', type: 'paragraph', content: [] }]
+    })
+    mockEditor.setTextCursorPosition.mockImplementation(() => {
+      scrollArea.scrollTop = 180
+    })
+    mockSuggestionMenu.openSuggestionMenu.mockImplementation(() => {
+      queueMicrotask(() => {
+        scrollArea.scrollTop = 240
+      })
+    })
+
+    renderSideMenuWithBlock(liveBlock)
+    const addBlockButton = screen.getByRole('button', { name: 'Add block' })
+    fireEvent.click(addBlockButton)
+    await Promise.resolve()
+
+    expect(scrollArea.scrollTop).toBe(480)
   })
 
   it('ignores delete clicks when the side-menu block disappeared during a reload', () => {
