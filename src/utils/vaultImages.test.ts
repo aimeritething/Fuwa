@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { convertFileSrc } from '@tauri-apps/api/core'
 import { resolveImageUrls, portableImageUrls } from './vaultImages'
 
 let tauriMode = false
@@ -228,6 +229,29 @@ describe('resolveImageUrls', () => {
     const markdown = `![alt](${url})`
 
     expect(resolveImageUrls(markdown, '/vault')).toBe(markdown)
+  })
+
+  it('leaves image markdown intact when the native asset bridge rejects a path', () => {
+    tauriMode = true
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(convertFileSrc).mockImplementationOnce(() => {
+      throw new Error('null pointer passed to rust')
+    })
+    const markdown = '![shot](attachments/shot.png)'
+    let result = ''
+
+    try {
+      expect(() => {
+        result = resolveImageUrls(markdown, '/vault')
+      }).not.toThrow()
+      expect(result).toBe(markdown)
+      expect(warnSpy).toHaveBeenCalledWith(
+        '[image] Failed to prepare asset URL:',
+        expect.any(Error),
+      )
+    } finally {
+      warnSpy.mockRestore()
+    }
   })
 })
 
