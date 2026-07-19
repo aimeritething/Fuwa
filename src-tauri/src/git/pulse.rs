@@ -1,7 +1,7 @@
 use serde::Serialize;
 use std::path::Path;
 
-use super::{git_command_at, parse_github_repo_path};
+use super::{git_command_at, parse_github_repo_path, GitWorkspace};
 
 #[derive(Debug, Serialize, Clone)]
 pub struct PulseFile {
@@ -122,14 +122,12 @@ pub fn get_vault_pulse(
     skip: usize,
 ) -> Result<Vec<PulseCommit>, String> {
     let vault = vault_path.as_ref();
-
-    if !vault.join(".git").exists() {
-        return Err("Not a git repository".to_string());
-    }
+    let workspace =
+        GitWorkspace::resolve(vault)?.ok_or_else(|| "Not a git repository".to_string())?;
 
     let limit_str = limit.to_string();
     let skip_str = skip.to_string();
-    let output = git_command_at(vault)
+    let output = git_command_at(workspace.git_root())
         .and_then(|mut command| {
             command
                 .args([
@@ -142,7 +140,7 @@ pub fn get_vault_pulse(
                     "--skip",
                     &skip_str,
                     "--",
-                    "*.md",
+                    workspace.vault_pathspec(),
                 ])
                 .output()
         })
@@ -156,12 +154,42 @@ pub fn get_vault_pulse(
         return Err(format!("git log failed: {}", stderr));
     }
 
-    let github_base = get_github_base_url(vault);
+    let github_base = get_github_base_url(workspace.git_root());
     let stdout = String::from_utf8_lossy(&output.stdout);
-    Ok(parse_pulse_output(
-        GitLogOutput(stdout.as_ref()),
-        github_base.as_ref(),
-    ))
+    let commits = parse_pulse_output(GitLogOutput(stdout.as_ref()), github_base.as_ref());
+    Ok(scope_pulse_to_vault(commits, &workspace))
+}
+
+fn scope_pulse_to_vault(commits: Vec<PulseCommit>, workspace: &GitWorkspace) -> Vec<PulseCommit> {
+    commits
+        .into_iter()
+        .filter_map(|mut commit| {
+            commit.files = commit
+                .files
+                .into_iter()
+                .filter_map(|mut file| {
+                    let relative_path = workspace.vault_relative_path(&file.path)?;
+                    if !relative_path.ends_with(".md") {
+                        return None;
+                    }
+                    file.title = title_from_path(VaultRelativePath(&relative_path));
+                    file.path = relative_path;
+                    Some(file)
+                })
+                .collect();
+            if commit.files.is_empty() {
+                return None;
+            }
+            commit.added = count_file_status(&commit.files, "added");
+            commit.modified = count_file_status(&commit.files, "modified");
+            commit.deleted = count_file_status(&commit.files, "deleted");
+            Some(commit)
+        })
+        .collect()
+}
+
+fn count_file_status(files: &[PulseFile], status: &str) -> usize {
+    files.iter().filter(|file| file.status == status).count()
 }
 
 fn get_github_base_url(vault: &Path) -> Option<GitHubBaseUrl> {
@@ -276,9 +304,16 @@ pub fn get_last_commit_info(
     vault_path: impl AsRef<Path>,
 ) -> Result<Option<LastCommitInfo>, String> {
     let vault = vault_path.as_ref();
+    let workspace =
+        GitWorkspace::resolve(vault)?.ok_or_else(|| "Not a git repository".to_string())?;
 
-    let output = git_command_at(vault)
-        .and_then(|mut command| command.args(["log", "-1", "--format=%H|%h"]).output())
+    let output = git_command_at(workspace.git_root())
+        .and_then(|mut command| {
+            command
+                .args(["log", "-1", "--format=%H|%h", "--"])
+                .arg(workspace.vault_pathspec())
+                .output()
+        })
         .map_err(|e| format!("Failed to run git log: {}", e))?;
 
     if !output.status.success() {
@@ -303,7 +338,7 @@ pub fn get_last_commit_info(
     let full_hash = parts[0];
     let short_hash = parts[1].to_string();
 
-    let commit_url = get_github_commit_url(vault, CommitHash(full_hash));
+    let commit_url = get_github_commit_url(workspace.git_root(), CommitHash(full_hash));
 
     Ok(Some(LastCommitInfo {
         short_hash,
@@ -595,5 +630,43 @@ mod tests {
         let url = commit_url_for(CommitUrlSource::LastCommitInfo, remote);
 
         assert!(url.starts_with(remote.commit_prefix()));
+    }
+
+    #[test]
+    fn nested_vault_pulse_excludes_parent_changes_and_maps_paths() {
+        let dir = setup_git_repo();
+        let repository = dir.path();
+        let vault = repository.join("docs");
+        fs::create_dir(&vault).unwrap();
+        fs::write(vault.join("guide.md"), "# Guide\n").unwrap();
+        git_command_at(repository)
+            .unwrap()
+            .args(["add", "docs/guide.md"])
+            .output()
+            .unwrap();
+        git_command_at(repository)
+            .unwrap()
+            .args(["commit", "-m", "Add guide"])
+            .output()
+            .unwrap();
+        fs::write(repository.join("outside.md"), "# Outside\n").unwrap();
+        git_command_at(repository)
+            .unwrap()
+            .args(["add", "outside.md"])
+            .output()
+            .unwrap();
+        git_command_at(repository)
+            .unwrap()
+            .args(["commit", "-m", "Outside only"])
+            .output()
+            .unwrap();
+
+        let pulse = get_vault_pulse(&vault, 30, 0).unwrap();
+        assert_eq!(pulse.len(), 1);
+        assert_eq!(pulse[0].message, "Add guide");
+        assert_eq!(pulse[0].files[0].path, "guide.md");
+
+        let info = get_last_commit_info(&vault).unwrap().unwrap();
+        assert_eq!(info.short_hash, pulse[0].short_hash);
     }
 }

@@ -4,6 +4,7 @@ use std::path::Path;
 use super::command::{git_output, git_output_result, stdout_text};
 use super::remote_config::has_configured_remote;
 use super::upstream::{branch_label, sync_target};
+use super::GitWorkspace;
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub struct GitRemoteStatus {
@@ -20,21 +21,24 @@ pub struct GitRemoteStatus {
 /// Get the current branch name, and how many commits ahead/behind the upstream.
 pub fn git_remote_status(vault_path: impl AsRef<Path>) -> Result<GitRemoteStatus, String> {
     let vault = vault_path.as_ref();
-    let branch = branch_label(vault)?;
+    let workspace = GitWorkspace::resolve(vault)?
+        .ok_or_else(|| "Vault is not inside a Git work tree".to_string())?;
+    let git_root = workspace.git_root();
+    let branch = branch_label(git_root)?;
 
-    if !has_configured_remote(vault)? {
+    if !has_configured_remote(git_root)? {
         return Ok(status_without_remote(branch));
     }
 
     // Fetch latest remote refs (silent, best-effort)
-    let _ = git_output(vault, &["fetch", "--quiet"]);
+    let _ = git_output(git_root, &["fetch", "--quiet"]);
 
-    let Some(target) = sync_target(vault)? else {
+    let Some(target) = sync_target(git_root)? else {
         return Ok(status_without_upstream(branch));
     };
 
     let output = git_output_result(
-        vault,
+        git_root,
         &[
             "rev-list",
             "--left-right",

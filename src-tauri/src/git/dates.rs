@@ -1,4 +1,4 @@
-use super::git_command_at;
+use super::{git_command_at, GitWorkspace};
 use chrono::DateTime;
 use std::collections::HashMap;
 use std::path::Path;
@@ -19,9 +19,13 @@ pub struct GitDates {
 /// Files not yet committed (untracked / only staged) will not appear in the map;
 /// callers should fall back to filesystem metadata for those.
 pub fn get_all_file_dates(vault_path: &Path) -> HashMap<String, GitDates> {
-    let output = match git_command_at(vault_path).and_then(|mut command| {
+    let Ok(Some(workspace)) = GitWorkspace::resolve(vault_path) else {
+        return HashMap::new();
+    };
+    let output = match git_command_at(workspace.git_root()).and_then(|mut command| {
         command
-            .args(["log", "--format=COMMIT %aI", "--name-only"])
+            .args(["log", "--format=COMMIT %aI", "--name-only", "--"])
+            .arg(workspace.vault_pathspec())
             .output()
     }) {
         Ok(o) if o.status.success() => o,
@@ -30,6 +34,13 @@ pub fn get_all_file_dates(vault_path: &Path) -> HashMap<String, GitDates> {
 
     let stdout = String::from_utf8_lossy(&output.stdout);
     parse_git_log_output(&stdout)
+        .into_iter()
+        .filter_map(|(path, dates)| {
+            workspace
+                .vault_relative_path(&path)
+                .map(|path| (path, dates))
+        })
+        .collect()
 }
 
 /// Parse the output of `git log --format="COMMIT %aI" --name-only`.
@@ -226,5 +237,46 @@ notes/daily.md
         let dir = tempfile::TempDir::new().unwrap();
         let map = get_all_file_dates(dir.path());
         assert!(map.is_empty());
+    }
+
+    #[test]
+    fn test_nested_vault_dates_are_scoped_and_vault_relative() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let repository = dir.path();
+        let vault = repository.join("docs");
+        std::fs::create_dir(&vault).unwrap();
+        std::process::Command::new("git")
+            .args(["init"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.email", "test@test.com"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["config", "user.name", "Test"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        std::fs::write(vault.join("guide.md"), "# Guide\n").unwrap();
+        std::fs::write(repository.join("outside.md"), "# Outside\n").unwrap();
+        std::process::Command::new("git")
+            .args(["add", "-A"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        std::process::Command::new("git")
+            .args(["commit", "-m", "initial"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+
+        let dates = get_all_file_dates(&vault);
+        assert_eq!(dates.len(), 1);
+        assert!(dates.contains_key("guide.md"));
+        assert!(!dates.contains_key("docs/guide.md"));
+        assert!(!dates.contains_key("outside.md"));
     }
 }

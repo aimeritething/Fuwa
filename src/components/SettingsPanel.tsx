@@ -97,6 +97,7 @@ interface SettingsPanelProps {
   defaultWorkspacePath?: string | null
   onRemoveVault?: (path: string) => void; onReorderVaults?: (orderedPaths: string[]) => void; onSetDefaultWorkspace?: (path: string) => void; onUpdateWorkspaceIdentity?: (path: string, patch: Partial<VaultOption>) => void
   isGitVault?: boolean
+  vaultPath?: string
   explicitOrganizationEnabled?: boolean
   onSaveExplicitOrganization?: (enabled: boolean) => void
   onClose: () => void
@@ -143,6 +144,7 @@ interface SettingsBodyProps {
   gitWslDistro: string | null
   setGitWslDistro: (value: string | null) => void
   isGitVault: boolean
+  vaultPath: string
   autoGitEnabled: boolean
   setAutoGitEnabled: (value: boolean) => void
   autoGitAiCommitMessagesEnabled: boolean
@@ -328,6 +330,7 @@ export function SettingsPanel({
   defaultWorkspacePath = null,
   onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity,
   isGitVault = true,
+  vaultPath = '',
   explicitOrganizationEnabled = true,
   onSaveExplicitOrganization,
   onClose,
@@ -347,6 +350,7 @@ export function SettingsPanel({
       defaultWorkspacePath={defaultWorkspacePath}
       {...{ onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity }}
       isGitVault={isGitVault}
+      vaultPath={vaultPath}
       explicitOrganizationEnabled={explicitOrganizationEnabled}
       onSaveExplicitOrganization={onSaveExplicitOrganization}
       onClose={onClose}
@@ -354,12 +358,13 @@ export function SettingsPanel({
   )
 }
 
-type SettingsPanelInnerProps = Omit<SettingsPanelProps, 'open' | 'explicitOrganizationEnabled' | 'aiAgentsStatus' | 'isGitVault'> & {
+type SettingsPanelInnerProps = Omit<SettingsPanelProps, 'open' | 'explicitOrganizationEnabled' | 'aiAgentsStatus' | 'isGitVault' | 'vaultPath'> & {
   aiAgentsStatus: AiAgentsStatus
   initialSectionId: string | null
   locale: AppLocale
   systemLocale: AppLocale
   isGitVault: boolean
+  vaultPath: string
   explicitOrganizationEnabled: boolean
 }
 
@@ -373,7 +378,7 @@ function SettingsPanelInner({
   vaults,
   defaultWorkspacePath,
   onRemoveVault, onReorderVaults, onSetDefaultWorkspace, onUpdateWorkspaceIdentity,
-  isGitVault,
+  isGitVault, vaultPath,
   explicitOrganizationEnabled,
   onSaveExplicitOrganization,
   onClose,
@@ -481,7 +486,7 @@ function SettingsPanelInner({
           locale={draftLocale}
           systemLocale={systemLocale}
           updateDraft={updateDraft}
-          isGitVault={isGitVault}
+          isGitVault={isGitVault} vaultPath={vaultPath}
           aiAgentsStatus={aiAgentsStatus}
           onCopyMcpConfig={onCopyMcpConfig}
           vaults={vaults ?? []}
@@ -535,6 +540,7 @@ interface SettingsBodyFromDraftProps {
   systemLocale: AppLocale
   updateDraft: <Key extends keyof SettingsDraft>(key: Key, value: SettingsDraft[Key]) => void
   isGitVault: boolean
+  vaultPath: string
   aiAgentsStatus: AiAgentsStatus
   onCopyMcpConfig?: () => void
   vaults: VaultOption[]
@@ -551,7 +557,7 @@ function SettingsBodyFromDraft({
   locale,
   systemLocale,
   updateDraft,
-  isGitVault,
+  isGitVault, vaultPath,
   aiAgentsStatus,
   onCopyMcpConfig,
   vaults,
@@ -574,7 +580,7 @@ function SettingsBodyFromDraft({
       setGitProvider={(value) => updateDraft('gitProvider', value)}
       gitWslDistro={draft.gitWslDistro}
       setGitWslDistro={(value) => updateDraft('gitWslDistro', value)}
-      isGitVault={isGitVault}
+      isGitVault={isGitVault} vaultPath={vaultPath}
       autoGitEnabled={draft.autoGitEnabled}
       setAutoGitEnabled={(value) => updateDraft('autoGitEnabled', value)}
       autoGitAiCommitMessagesEnabled={draft.autoGitAiCommitMessagesEnabled}
@@ -655,7 +661,7 @@ function SettingsSyncAndAppearanceSections({
   setGitProvider,
   gitWslDistro,
   setGitWslDistro,
-  isGitVault,
+  isGitVault, vaultPath,
   autoGitEnabled,
   setAutoGitEnabled,
   autoGitAiCommitMessagesEnabled,
@@ -714,7 +720,7 @@ function SettingsSyncAndAppearanceSections({
           setGitProvider={setGitProvider}
           gitWslDistro={gitWslDistro}
           setGitWslDistro={setGitWslDistro}
-          isGitVault={isGitVault}
+          isGitVault={isGitVault} vaultPath={vaultPath}
           autoGitEnabled={autoGitEnabled}
           setAutoGitEnabled={setAutoGitEnabled}
           autoGitAiCommitMessagesEnabled={autoGitAiCommitMessagesEnabled}

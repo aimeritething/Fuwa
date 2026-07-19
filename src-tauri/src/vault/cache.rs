@@ -145,7 +145,8 @@ fn legacy_cache_path(vault: &Path) -> PathBuf {
 }
 
 fn git_head_hash(vault: &Path) -> Option<String> {
-    run_git(vault, &["rev-parse", "HEAD"]).map(|s| s.trim().to_string())
+    let workspace = crate::git::GitWorkspace::resolve(vault).ok().flatten()?;
+    run_git(workspace.git_root(), &["rev-parse", "HEAD"]).map(|s| s.trim().to_string())
 }
 
 /// Run a git command in the given directory and return stdout if successful.
@@ -201,10 +202,16 @@ fn push_changed_path_prefer_existing(paths: &mut Vec<String>, vault: &Path, path
 /// Extract file paths from git diff --name-only output.
 /// Includes all non-hidden files (not just .md) so the cache picks up
 /// view files (.yml), binary assets, etc.
-fn collect_paths_from_diff(vault: &Path, stdout: &str) -> Vec<String> {
+fn collect_paths_from_diff(
+    vault: &Path,
+    workspace: &crate::git::GitWorkspace,
+    stdout: &str,
+) -> Vec<String> {
     let mut paths = Vec::new();
     for line in stdout.lines() {
-        push_changed_path_prefer_existing(&mut paths, vault, line);
+        if let Some(path) = workspace.vault_relative_path(line) {
+            push_changed_path_prefer_existing(&mut paths, vault, &path);
+        }
     }
     paths
 }
@@ -212,19 +219,33 @@ fn collect_paths_from_diff(vault: &Path, stdout: &str) -> Vec<String> {
 /// Extract file paths from git status --porcelain output.
 /// Includes all non-hidden files so incremental cache updates cover
 /// every file type the vault scanner recognises.
-fn collect_paths_from_porcelain(stdout: &str) -> Vec<String> {
+fn collect_paths_from_porcelain(workspace: &crate::git::GitWorkspace, stdout: &str) -> Vec<String> {
     let mut paths = Vec::new();
     for (_, path) in stdout.lines().filter_map(parse_porcelain_line) {
-        push_unique_relative_path(&mut paths, path);
+        if let Some(path) = workspace.vault_relative_path(&path) {
+            push_unique_relative_path(&mut paths, path);
+        }
     }
     paths
 }
 
 fn git_changed_files(vault: &Path, from_hash: &str, to_hash: &str) -> Vec<String> {
+    let Some(workspace) = crate::git::GitWorkspace::resolve(vault).ok().flatten() else {
+        return Vec::new();
+    };
     let diff_arg = format!("{}..{}", from_hash, to_hash);
-    let mut files = run_git(vault, &["diff", &diff_arg, "--name-only"])
-        .map(|s| collect_paths_from_diff(vault, &s))
-        .unwrap_or_default();
+    let mut files = run_git(
+        workspace.git_root(),
+        &[
+            "diff",
+            &diff_arg,
+            "--name-only",
+            "--",
+            workspace.vault_pathspec(),
+        ],
+    )
+    .map(|s| collect_paths_from_diff(vault, &workspace, &s))
+    .unwrap_or_default();
 
     // Include uncommitted changes (modified, staged, and untracked files).
     let uncommitted = git_uncommitted_files(vault);
@@ -237,23 +258,40 @@ fn git_changed_files(vault: &Path, from_hash: &str, to_hash: &str) -> Vec<String
 }
 
 fn git_uncommitted_files(vault: &Path) -> Vec<String> {
+    let Some(workspace) = crate::git::GitWorkspace::resolve(vault).ok().flatten() else {
+        return Vec::new();
+    };
     // Modified/staged tracked files from git status --porcelain
-    let mut files: Vec<String> = run_git(vault, &["status", "--porcelain"])
-        .map(|s| collect_paths_from_porcelain(&s))
-        .unwrap_or_default();
+    let mut files: Vec<String> = run_git(
+        workspace.git_root(),
+        &["status", "--porcelain", "--", workspace.vault_pathspec()],
+    )
+    .map(|s| collect_paths_from_porcelain(&workspace, &s))
+    .unwrap_or_default();
 
     // Untracked files via ls-files (lists individual files, not just directories).
     // git status --porcelain shows `?? dir/` for new directories, hiding individual
     // files inside — ls-files resolves them so the cache picks up all new files.
-    let untracked = run_git(vault, &["ls-files", "--others", "--exclude-standard"])
-        .map(|s| {
-            let mut paths = Vec::new();
-            for line in s.lines() {
-                push_unique_relative_path(&mut paths, line);
+    let untracked = run_git(
+        workspace.git_root(),
+        &[
+            "ls-files",
+            "--others",
+            "--exclude-standard",
+            "--",
+            workspace.vault_pathspec(),
+        ],
+    )
+    .map(|s| {
+        let mut paths = Vec::new();
+        for line in s.lines() {
+            if let Some(path) = workspace.vault_relative_path(line) {
+                push_unique_relative_path(&mut paths, path);
             }
-            paths
-        })
-        .unwrap_or_default();
+        }
+        paths
+    })
+    .unwrap_or_default();
 
     for path in untracked {
         push_unique_relative_path(&mut files, path);
@@ -1104,6 +1142,25 @@ mod tests {
         let changed = git_uncommitted_files(vault);
 
         assert_eq!(changed, vec![relative_path.to_string()]);
+    }
+
+    #[test]
+    fn test_nested_vault_incremental_changes_exclude_parent_files() {
+        let (_lock, _cache_tmp, dir) = setup_git_vault();
+        let repository = dir.path();
+        let vault = repository.join("docs");
+        fs::create_dir(&vault).unwrap();
+        create_test_file(&vault, "guide.md", "# Guide\n");
+        create_test_file(repository, "outside.md", "# Outside\n");
+        git_add_commit(repository, "initial");
+
+        create_test_file(&vault, "guide.md", "# Guide\n\nUpdated\n");
+        create_test_file(&vault, "new.yml", "name: new\n");
+        create_test_file(repository, "outside.md", "# Outside changed\n");
+
+        let changed = git_uncommitted_files(&vault);
+
+        assert_eq!(changed, vec!["guide.md", "new.yml"]);
     }
 
     #[test]

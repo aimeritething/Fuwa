@@ -4,6 +4,7 @@ use crate::vault::path_identity::vault_relative_path_string;
 
 use super::command::{git_output, stderr_or_failure, stdout_text};
 use super::remote_config::primary_remote_url;
+use super::GitWorkspace;
 
 enum RemoteWebKind {
     Bitbucket,
@@ -40,14 +41,17 @@ struct RepoPath(String);
 pub fn git_file_url(vault_path: &str, file_path: &str) -> Result<Option<String>, String> {
     let vault = Path::new(vault_path);
     let file = Path::new(file_path);
-    let Some(relative_path) = RelativeGitPath::from_paths(vault, file)? else {
+    let Some(workspace) = GitWorkspace::resolve(vault)? else {
+        return Ok(None);
+    };
+    let Some(relative_path) = RelativeGitPath::from_paths(&workspace, file)? else {
         return Ok(None);
     };
 
-    let Some(remote_url) = primary_remote_url(vault)?.map(RemoteUrl::new) else {
+    let Some(remote_url) = primary_remote_url(workspace.git_root())?.map(RemoteUrl::new) else {
         return Ok(None);
     };
-    let location = GitFileLocation::new(current_ref_name(vault)?, relative_path);
+    let location = GitFileLocation::new(current_ref_name(workspace.git_root())?, relative_path);
 
     let url = match remote_web_base(&remote_url) {
         Some(remote) => remote.file_url(&location),
@@ -95,12 +99,12 @@ impl BranchName {
 }
 
 impl RelativeGitPath {
-    fn from_paths(vault: &Path, file: &Path) -> Result<Option<Self>, String> {
-        let value = vault_relative_path_string(vault, file)?;
+    fn from_paths(workspace: &GitWorkspace, file: &Path) -> Result<Option<Self>, String> {
+        let value = vault_relative_path_string(workspace.vault_root(), file)?;
         if value.is_empty() {
             return Ok(None);
         }
-        Ok(Some(Self(value)))
+        Ok(Some(Self(workspace.repo_relative_path(Path::new(&value)))))
     }
 
     fn encoded_fragment(&self) -> String {
@@ -399,5 +403,27 @@ mod tests {
         ]
         .into_iter()
         .for_each(assert_git_file_url);
+    }
+
+    #[test]
+    fn nested_vault_remote_url_includes_parent_repository_path() {
+        let dir = setup_git_repo();
+        let vault = dir.path().join("docs");
+        fs::create_dir(&vault).unwrap();
+        let note = write_note(&vault, "Project Plan.md");
+        add_remote(
+            dir.path(),
+            RemoteFixture {
+                name: "origin",
+                url: "git@github.com:owner/repo.git",
+            },
+        );
+
+        let url = git_file_url(vault.to_str().unwrap(), &note).unwrap();
+
+        assert_eq!(
+            url.as_deref(),
+            Some("https://github.com/owner/repo/blob/main/docs/Project%20Plan.md")
+        );
     }
 }

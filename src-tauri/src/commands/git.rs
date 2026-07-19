@@ -1,6 +1,6 @@
 use crate::git::{
     GitAuthorIdentity, GitCommit, GitProviderProbe, GitProviderStatus, GitPullResult,
-    GitPushResult, GitRemoteStatus, LastCommitInfo, ModifiedFile, PulseCommit,
+    GitPushResult, GitRemoteStatus, GitWorkspaceInfo, LastCommitInfo, ModifiedFile, PulseCommit,
 };
 
 use super::expand_tilde;
@@ -121,14 +121,14 @@ pub async fn git_pull(vault_path: VaultPathArg) -> Result<GitPullResult, String>
 #[tauri::command]
 pub fn get_conflict_files(vault_path: VaultPathArg) -> Result<Vec<String>, String> {
     let vault_path = expand_tilde(&vault_path);
-    crate::git::get_conflict_files(&vault_path)
+    crate::git::get_conflict_files(vault_path.as_ref())
 }
 
 #[cfg(desktop)]
 #[tauri::command]
 pub fn get_conflict_mode(vault_path: VaultPathArg) -> String {
     let vault_path = expand_tilde(&vault_path);
-    crate::git::get_conflict_mode(&vault_path)
+    crate::git::get_conflict_mode(vault_path.as_ref())
 }
 
 #[cfg(desktop)]
@@ -139,14 +139,14 @@ pub fn git_resolve_conflict(
     strategy: ConflictStrategyArg,
 ) -> Result<(), String> {
     let vault_path = expand_tilde(&vault_path);
-    crate::git::git_resolve_conflict(&vault_path, &file, &strategy)
+    crate::git::git_resolve_conflict(vault_path.as_ref(), &file, &strategy)
 }
 
 #[cfg(desktop)]
 #[tauri::command]
 pub fn git_commit_conflict_resolution(vault_path: VaultPathArg) -> Result<String, String> {
     let vault_path = expand_tilde(&vault_path);
-    crate::git::git_commit_conflict_resolution(&vault_path)
+    crate::git::git_commit_conflict_resolution(vault_path.as_ref())
 }
 
 #[cfg(desktop)]
@@ -217,6 +217,13 @@ pub fn git_discard_file(
 pub fn is_git_repo(vault_path: VaultPathArg) -> bool {
     let vault_path = expand_tilde(&vault_path);
     crate::git::is_inside_work_tree(std::path::Path::new(vault_path.as_ref()))
+}
+
+#[cfg(desktop)]
+#[tauri::command]
+pub fn git_workspace_info(vault_path: VaultPathArg) -> GitWorkspaceInfo {
+    let vault_path = expand_tilde(&vault_path);
+    crate::git::git_workspace_info(std::path::Path::new(vault_path.as_ref()))
 }
 
 #[cfg(desktop)]
@@ -454,6 +461,18 @@ pub fn git_discard_file(
 #[tauri::command]
 pub fn is_git_repo(_vault_path: VaultPathArg) -> bool {
     false
+}
+
+#[cfg(mobile)]
+#[tauri::command]
+pub fn git_workspace_info(vault_path: VaultPathArg) -> GitWorkspaceInfo {
+    GitWorkspaceInfo {
+        vault_root: vault_path,
+        git_root: None,
+        vault_pathspec: None,
+        git_root_relation: "none".to_string(),
+        resolution_failure: None,
+    }
 }
 
 #[cfg(mobile)]

@@ -518,6 +518,7 @@ macro_rules! app_invoke_handler {
             commands::git_commit_conflict_resolution,
             commands::git_discard_file,
             commands::is_git_repo,
+            commands::git_workspace_info,
             commands::init_git_repo,
             commands::check_claude_cli,
             commands::get_ai_agents_status,

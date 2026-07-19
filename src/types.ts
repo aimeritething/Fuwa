@@ -205,6 +205,16 @@ export interface GitProviderStatus {
   wsl_distributions: GitProviderProbe[]
 }
 
+export type GitRootRelation = 'vault' | 'parent' | 'none'
+
+export interface GitWorkspaceInfo {
+  vaultRoot: string
+  gitRoot: string | null
+  vaultPathspec: string | null
+  gitRootRelation: GitRootRelation
+  resolutionFailure: string | null
+}
+
 export interface SearchResult {
   title: string
   path: string

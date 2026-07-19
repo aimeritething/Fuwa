@@ -1,16 +1,54 @@
 use std::path::Path;
 
-use super::command::git_output_result;
-use super::{ensure_author_config, git_command_at, run_git};
+use super::{ensure_author_config, git_command_at, run_git, GitWorkspace};
+
+#[derive(Clone, Copy)]
+enum GitStatePath {
+    MergeHead,
+    RebaseApply,
+    RebaseMerge,
+}
+
+#[derive(Clone, Copy)]
+enum ConflictStrategy {
+    Ours,
+    Theirs,
+}
+
+impl ConflictStrategy {
+    fn checkout_flag(self) -> &'static str {
+        match self {
+            Self::Ours => "--ours",
+            Self::Theirs => "--theirs",
+        }
+    }
+}
+
+impl GitStatePath {
+    fn as_str(self) -> &'static str {
+        match self {
+            Self::MergeHead => "MERGE_HEAD",
+            Self::RebaseApply => "rebase-apply",
+            Self::RebaseMerge => "rebase-merge",
+        }
+    }
+}
 
 /// List files with merge conflicts (unmerged paths).
 ///
 /// Uses `git ls-files --unmerged` instead of `git diff --diff-filter=U` because
 /// ls-files reliably detects unmerged index entries even when the merge state is
 /// stale (e.g. after a reboot or when MERGE_HEAD is missing).
-pub fn get_conflict_files(vault_path: &str) -> Result<Vec<String>, String> {
-    let vault = Path::new(vault_path);
-    let output = git_output_result(vault, &["ls-files", "--unmerged"])
+pub fn get_conflict_files(vault_path: impl AsRef<Path>) -> Result<Vec<String>, String> {
+    let vault = vault_path.as_ref();
+    let workspace = GitWorkspace::resolve(vault)?
+        .ok_or_else(|| "Vault is not inside a Git work tree".to_string())?;
+    let output = git_command_at(workspace.git_root())
+        .and_then(|mut command| {
+            command
+                .args(["ls-files", "--unmerged", "--", workspace.vault_pathspec()])
+                .output()
+        })
         .map_err(|e| format!("Failed to check conflicts: {}", e))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -18,7 +56,8 @@ pub fn get_conflict_files(vault_path: &str) -> Result<Vec<String>, String> {
     // Format: "<mode> <hash> <stage>\t<path>"
     let mut files: Vec<String> = stdout
         .lines()
-        .filter_map(|line| line.split('\t').nth(1).map(|s| s.to_string()))
+        .filter_map(|line| line.split('\t').nth(1))
+        .filter_map(|path| workspace.vault_relative_path(path))
         .collect();
     files.sort();
     files.dedup();
@@ -27,12 +66,19 @@ pub fn get_conflict_files(vault_path: &str) -> Result<Vec<String>, String> {
 
 /// Resolve a single conflict file by choosing "ours" or "theirs" strategy,
 /// then stage the result.
-pub fn git_resolve_conflict(vault_path: &str, file: &str, strategy: &str) -> Result<(), String> {
-    let vault = Path::new(vault_path);
+pub fn git_resolve_conflict(
+    vault_path: impl AsRef<Path>,
+    file: impl AsRef<Path>,
+    strategy: &str,
+) -> Result<(), String> {
+    let vault = vault_path.as_ref();
+    let workspace = GitWorkspace::resolve(vault)?
+        .ok_or_else(|| "Vault is not inside a Git work tree".to_string())?;
+    let repo_relative_file = workspace.repo_relative_path(file.as_ref());
 
-    let checkout_flag = match strategy {
-        "ours" => "--ours",
-        "theirs" => "--theirs",
+    let strategy = match strategy {
+        "ours" => ConflictStrategy::Ours,
+        "theirs" => ConflictStrategy::Theirs,
         _ => {
             return Err(format!(
                 "Invalid strategy '{}': must be 'ours' or 'theirs'",
@@ -41,29 +87,69 @@ pub fn git_resolve_conflict(vault_path: &str, file: &str, strategy: &str) -> Res
         }
     };
 
-    run_git(vault, &["checkout", checkout_flag, "--", file])?;
-    run_git(vault, &["add", "--", file])?;
+    run_git(
+        workspace.git_root(),
+        &[
+            "checkout",
+            strategy.checkout_flag(),
+            "--",
+            &repo_relative_file,
+        ],
+    )?;
+    run_git(workspace.git_root(), &["add", "--", &repo_relative_file])?;
 
     Ok(())
 }
 
 /// Check whether a rebase is currently in progress.
-pub fn is_rebase_in_progress(vault_path: &str) -> bool {
-    let vault = Path::new(vault_path);
-    let git_dir = vault.join(".git");
-    git_dir.join("rebase-merge").exists() || git_dir.join("rebase-apply").exists()
+pub fn is_rebase_in_progress(vault_path: impl AsRef<Path>) -> bool {
+    let Ok(Some(workspace)) = GitWorkspace::resolve(vault_path.as_ref()) else {
+        return false;
+    };
+    git_state_path_exists(
+        &workspace,
+        &[GitStatePath::RebaseMerge, GitStatePath::RebaseApply],
+    )
 }
 
 /// Check whether a merge is currently in progress.
-pub fn is_merge_in_progress(vault_path: &str) -> bool {
-    Path::new(vault_path)
-        .join(".git")
-        .join("MERGE_HEAD")
-        .exists()
+pub fn is_merge_in_progress(vault_path: impl AsRef<Path>) -> bool {
+    let Ok(Some(workspace)) = GitWorkspace::resolve(vault_path.as_ref()) else {
+        return false;
+    };
+    git_state_path_exists(&workspace, &[GitStatePath::MergeHead])
+}
+
+fn git_state_path_exists(workspace: &GitWorkspace, state_paths: &[GitStatePath]) -> bool {
+    state_paths.iter().any(|state_path| {
+        git_state_path(workspace.git_root(), *state_path)
+            .map(|path| path.exists())
+            .unwrap_or(false)
+    })
+}
+
+fn git_state_path(git_root: &Path, state_path: GitStatePath) -> Result<std::path::PathBuf, String> {
+    let output = git_command_at(git_root)
+        .and_then(|mut command| {
+            command
+                .args(["rev-parse", "--git-path", state_path.as_str()])
+                .output()
+        })
+        .map_err(|error| format!("Failed to resolve Git state path: {error}"))?;
+    if !output.status.success() {
+        return Err("Git state path resolution failed".to_string());
+    }
+    let path = std::path::PathBuf::from(String::from_utf8_lossy(&output.stdout).trim());
+    Ok(if path.is_absolute() {
+        path
+    } else {
+        git_root.join(path)
+    })
 }
 
 /// Returns the current conflict mode: "rebase", "merge", or "none".
-pub fn get_conflict_mode(vault_path: &str) -> String {
+pub fn get_conflict_mode(vault_path: impl AsRef<Path>) -> String {
+    let vault_path = vault_path.as_ref();
     if is_rebase_in_progress(vault_path) {
         "rebase".to_string()
     } else if is_merge_in_progress(vault_path) {
@@ -76,11 +162,13 @@ pub fn get_conflict_mode(vault_path: &str) -> String {
 /// Commit after all conflicts have been resolved.
 /// Detects whether the repo is in a merge or rebase state and uses the
 /// appropriate command (`git commit` vs `git rebase --continue`).
-pub fn git_commit_conflict_resolution(vault_path: &str) -> Result<String, String> {
-    let vault = Path::new(vault_path);
+pub fn git_commit_conflict_resolution(vault_path: impl AsRef<Path>) -> Result<String, String> {
+    let vault = vault_path.as_ref();
+    let workspace = GitWorkspace::resolve(vault)?
+        .ok_or_else(|| "Vault is not inside a Git work tree".to_string())?;
 
     // Verify no remaining conflicts
-    let remaining = get_conflict_files(vault_path)?;
+    let remaining = get_conflict_files(vault)?;
     if !remaining.is_empty() {
         return Err(format!(
             "Cannot commit: {} file(s) still have unresolved conflicts",
@@ -88,11 +176,11 @@ pub fn git_commit_conflict_resolution(vault_path: &str) -> Result<String, String
         ));
     }
 
-    ensure_author_config(vault)?;
+    ensure_author_config(workspace.git_root())?;
 
-    let mode = get_conflict_mode(vault_path);
+    let mode = get_conflict_mode(vault);
     let output = match mode.as_str() {
-        "rebase" => git_command_at(vault)
+        "rebase" => git_command_at(workspace.git_root())
             .and_then(|mut command| {
                 command
                     .args(["rebase", "--continue"])
@@ -100,7 +188,7 @@ pub fn git_commit_conflict_resolution(vault_path: &str) -> Result<String, String
                     .output()
             })
             .map_err(|e| format!("Failed to run git rebase --continue: {}", e))?,
-        _ => git_command_at(vault)
+        _ => git_command_at(workspace.git_root())
             .and_then(|mut command| {
                 command
                     .args(["commit", "-m", "Resolve merge conflicts"])
@@ -230,30 +318,42 @@ mod tests {
         (bare_dir, clone_a_dir, clone_b_dir)
     }
 
-    fn assert_resolve_conflict_strategy(strategy: &str, expected_content: &str) {
+    fn assert_resolve_conflict_strategy(strategy: ConflictStrategy) {
         let (_bare, _clone_a, clone_b) = setup_conflict_pair();
         let vp_b = clone_b.path().to_str().unwrap();
 
         let conflicts = get_conflict_files(vp_b).unwrap();
         assert!(conflicts.contains(&"conflict.md".to_string()));
 
-        git_resolve_conflict(vp_b, "conflict.md", strategy).unwrap();
+        git_resolve_conflict(
+            vp_b,
+            "conflict.md",
+            match strategy {
+                ConflictStrategy::Ours => "ours",
+                ConflictStrategy::Theirs => "theirs",
+            },
+        )
+        .unwrap();
 
         let remaining = get_conflict_files(vp_b).unwrap();
         assert!(remaining.is_empty());
 
         let content = fs::read_to_string(clone_b.path().join("conflict.md")).unwrap();
+        let expected_content = match strategy {
+            ConflictStrategy::Ours => "# Version B\n",
+            ConflictStrategy::Theirs => "# Version A\n",
+        };
         assert_eq!(content, expected_content);
     }
 
     #[test]
     fn test_resolve_conflict_ours() {
-        assert_resolve_conflict_strategy("ours", "# Version B\n");
+        assert_resolve_conflict_strategy(ConflictStrategy::Ours);
     }
 
     #[test]
     fn test_resolve_conflict_theirs() {
-        assert_resolve_conflict_strategy("theirs", "# Version A\n");
+        assert_resolve_conflict_strategy(ConflictStrategy::Theirs);
     }
 
     #[test]
@@ -410,5 +510,61 @@ mod tests {
         assert!(result.is_ok(), "rebase --continue failed: {:?}", result);
 
         assert_eq!(get_conflict_mode(vp_b), "none");
+    }
+
+    #[test]
+    fn nested_vault_conflicts_are_scoped_and_vault_relative() {
+        let dir = setup_git_repo();
+        let repository = dir.path();
+        let vault = repository.join("docs");
+        fs::create_dir(&vault).unwrap();
+        fs::write(vault.join("conflict.md"), "base\n").unwrap();
+        fs::write(repository.join("outside.md"), "base\n").unwrap();
+        git_command()
+            .args(["add", "-A"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        git_command()
+            .args(["commit", "-m", "base"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        git_command()
+            .args(["checkout", "-b", "feature"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        fs::write(vault.join("conflict.md"), "feature\n").unwrap();
+        fs::write(repository.join("outside.md"), "feature\n").unwrap();
+        git_command()
+            .args(["commit", "-am", "feature"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        git_command()
+            .args(["checkout", "main"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        fs::write(vault.join("conflict.md"), "main\n").unwrap();
+        fs::write(repository.join("outside.md"), "main\n").unwrap();
+        git_command()
+            .args(["commit", "-am", "main"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        let merge = git_command()
+            .args(["merge", "feature"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        assert!(!merge.status.success());
+
+        assert_eq!(get_conflict_mode(vault.to_str().unwrap()), "merge");
+        assert_eq!(
+            get_conflict_files(vault.to_str().unwrap()).unwrap(),
+            vec!["conflict.md"]
+        );
     }
 }

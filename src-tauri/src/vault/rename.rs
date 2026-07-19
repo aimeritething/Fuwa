@@ -597,10 +597,21 @@ pub struct DetectedRename {
 
 /// Detect renamed files by comparing working tree against HEAD using git diff.
 pub fn detect_renames(vault: &Path) -> Result<Vec<DetectedRename>, String> {
-    let output = crate::git::git_command_at(vault)
+    let Some(workspace) = crate::git::GitWorkspace::resolve(vault)? else {
+        return Ok(Vec::new());
+    };
+    let output = crate::git::git_command_at(workspace.git_root())
         .and_then(|mut command| {
             command
-                .args(["diff", "HEAD", "--name-status", "--diff-filter=R", "-M"])
+                .args([
+                    "diff",
+                    "HEAD",
+                    "--name-status",
+                    "--diff-filter=R",
+                    "-M",
+                    "--",
+                    workspace.vault_pathspec(),
+                ])
                 .output()
         })
         .map_err(|e| format!("Failed to run git diff: {e}"))?;
@@ -615,8 +626,8 @@ pub fn detect_renames(vault: &Path) -> Result<Vec<DetectedRename>, String> {
         .filter_map(|line| {
             let parts: Vec<&str> = line.split('\t').collect();
             if parts.len() >= 3 && parts[0].starts_with('R') {
-                let old = parts[1].to_string();
-                let new = parts[2].to_string();
+                let old = workspace.vault_relative_path(parts[1])?;
+                let new = workspace.vault_relative_path(parts[2])?;
                 if old.ends_with(".md") && new.ends_with(".md") {
                     return Some(DetectedRename {
                         old_path: old,
@@ -846,6 +857,32 @@ mod tests {
         assert_eq!(renames.len(), 1);
         assert_eq!(renames[0].old_path, "旧名.md");
         assert_eq!(renames[0].new_path, "新名.md");
+    }
+
+    #[test]
+    fn test_detect_renames_in_nested_vault_excludes_parent_files() {
+        let dir = TempDir::new().unwrap();
+        let repository = dir.path();
+        let vault = repository.join("docs");
+        fs::create_dir(&vault).unwrap();
+        init_git_repo_with_quoted_paths(repository);
+        create_test_file(&vault, "old.md", "# Vault\n");
+        create_test_file(repository, "outside-old.md", "# Outside\n");
+        run_git(repository, &["add", "-A"]);
+        run_git(repository, &["commit", "-m", "initial"]);
+        fs::rename(vault.join("old.md"), vault.join("new.md")).unwrap();
+        fs::rename(
+            repository.join("outside-old.md"),
+            repository.join("outside-new.md"),
+        )
+        .unwrap();
+        run_git(repository, &["add", "-A"]);
+
+        let renames = detect_renames(&vault).unwrap();
+
+        assert_eq!(renames.len(), 1);
+        assert_eq!(renames[0].old_path, "old.md");
+        assert_eq!(renames[0].new_path, "new.md");
     }
 
     #[test]

@@ -18,6 +18,7 @@ mod remote_status;
 mod remote_url;
 mod status;
 mod upstream;
+mod workspace;
 
 use std::ffi::{OsStr, OsString};
 use std::io;
@@ -57,6 +58,8 @@ pub(crate) use remote_url::validate_user_remote_url;
 pub use status::{
     discard_file_changes, get_modified_files, get_modified_files_with_stats, ModifiedFile,
 };
+pub(crate) use workspace::GitWorkspace;
+pub use workspace::{git_workspace_info, GitWorkspaceInfo};
 
 use serde::Serialize;
 

@@ -285,6 +285,9 @@ files:
     settings.git.providerTesting: 1e9731b0f033754e9df1973d1fd77b0f
     settings.git.providerTestOk: 572542bead66201e0e49fa7c6ff18555
     settings.git.providerTestFailed: 3d0b8c3ec6a5a258bb3d6af98652c979
+    settings.git.repositoryRoot: 71654a8c8a8ea93c72e90647c6761b6c
+    settings.git.repositoryRootParentDescription: bd9467036b3b2dcfd828a1ceeb2d6c2f
+    settings.git.repositoryRootVaultDescription: 3562b69e3548659dc2147f6d460d91a6
     settings.autogit.description.enabled: e65bec70ca4d7921be56f84d10836018
     settings.autogit.description.disabled: 1143ef6ee00614816785e3c6fc299d51
     settings.autogit.description.gitDisabled: 55a1dd2d7f797062cde1374930221649

@@ -1,4 +1,4 @@
-use super::git_command_at;
+use super::{git_command_at, GitWorkspace};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
@@ -154,23 +154,24 @@ fn parse_numstat_output(output: &[u8]) -> HashMap<String, DiffStats> {
     stats
 }
 
-fn repo_has_head(vault: &Path) -> Result<bool, String> {
-    let output = git_command_at(vault)
+fn repo_has_head(git_root: &Path) -> Result<bool, String> {
+    let output = git_command_at(git_root)
         .and_then(|mut command| command.args(["rev-parse", "--verify", "HEAD"]).output())
         .map_err(|e| format!("Failed to run git rev-parse: {e}"))?;
 
     Ok(output.status.success())
 }
 
-fn load_diff_stats(vault: &Path) -> Result<HashMap<String, DiffStats>, String> {
-    if !repo_has_head(vault)? {
+fn load_diff_stats(workspace: &GitWorkspace) -> Result<HashMap<String, DiffStats>, String> {
+    if !repo_has_head(workspace.git_root())? {
         return Ok(HashMap::new());
     }
 
-    let output = git_command_at(vault)
+    let output = git_command_at(workspace.git_root())
         .and_then(|mut command| {
             command
                 .args(["diff", "--numstat", "-z", "--find-renames", "HEAD", "--"])
+                .arg(workspace.vault_pathspec())
                 .output()
         })
         .map_err(|e| format!("Failed to run git diff --numstat: {e}"))?;
@@ -198,7 +199,8 @@ fn count_worktree_lines(vault: &Path, relative_path: &Path) -> DiffStats {
 
 fn resolve_diff_stats(
     vault: &Path,
-    relative_path: &Path,
+    vault_relative_path: &Path,
+    repo_relative_path: &str,
     status: FileChangeStatus,
     diff_stats: &HashMap<String, DiffStats>,
     include_stats: bool,
@@ -208,11 +210,13 @@ fn resolve_diff_stats(
     }
 
     if status == FileChangeStatus::Untracked {
-        return count_worktree_lines(vault, relative_path);
+        return count_worktree_lines(vault, vault_relative_path);
     }
 
-    let key = relative_path.to_string_lossy();
-    diff_stats.get(key.as_ref()).copied().unwrap_or_default()
+    diff_stats
+        .get(repo_relative_path)
+        .copied()
+        .unwrap_or_default()
 }
 
 fn ensure_path_within_vault(vault: &Path, relative_path: &Path, abs: &Path) -> Result<(), String> {
@@ -240,12 +244,13 @@ fn ensure_path_within_vault(vault: &Path, relative_path: &Path, abs: &Path) -> R
     }
 }
 
-fn load_file_status(vault: &Path, relative_path: &Path) -> Result<String, String> {
-    let output = git_command_at(vault)
+fn load_file_status(workspace: &GitWorkspace, relative_path: &Path) -> Result<String, String> {
+    let repo_relative_path = workspace.repo_relative_path(relative_path);
+    let output = git_command_at(workspace.git_root())
         .and_then(|mut command| {
             command
                 .args(["status", "--porcelain", "--"])
-                .arg(relative_path)
+                .arg(repo_relative_path)
                 .output()
         })
         .map_err(|e| format!("Failed to run git status: {e}"))?;
@@ -258,16 +263,22 @@ fn load_file_status(vault: &Path, relative_path: &Path) -> Result<String, String
         .unwrap_or_default())
 }
 
-fn restore_tracked_file(vault: &Path, relative_path: &Path) -> Result<(), String> {
-    let _ = git_command_at(vault).and_then(|mut command| {
+fn restore_tracked_file(workspace: &GitWorkspace, relative_path: &Path) -> Result<(), String> {
+    let repo_relative_path = workspace.repo_relative_path(relative_path);
+    let _ = git_command_at(workspace.git_root()).and_then(|mut command| {
         command
             .args(["reset", "HEAD", "--"])
-            .arg(relative_path)
+            .arg(&repo_relative_path)
             .output()
     });
 
-    let checkout = git_command_at(vault)
-        .and_then(|mut command| command.args(["checkout", "--"]).arg(relative_path).output())
+    let checkout = git_command_at(workspace.git_root())
+        .and_then(|mut command| {
+            command
+                .args(["checkout", "--"])
+                .arg(&repo_relative_path)
+                .output()
+        })
         .map_err(|e| format!("Failed to run git checkout: {e}"))?;
 
     if checkout.status.success() {
@@ -291,14 +302,15 @@ pub fn get_modified_files_with_stats(
 }
 
 fn get_modified_files_impl(vault: &Path, include_stats: bool) -> Result<Vec<ModifiedFile>, String> {
-    if !super::is_inside_work_tree(vault) {
+    let Some(workspace) = GitWorkspace::resolve(vault)? else {
         return Ok(Vec::new());
-    }
+    };
 
-    let output = git_command_at(vault)
+    let output = git_command_at(workspace.git_root())
         .and_then(|mut command| {
             command
                 .args(["status", "--porcelain=v1", "-z", "--untracked-files=all"])
+                .args(["--", workspace.vault_pathspec()])
                 .output()
         })
         .map_err(|e| format!("Failed to run git status: {e}"))?;
@@ -309,26 +321,29 @@ fn get_modified_files_impl(vault: &Path, include_stats: bool) -> Result<Vec<Modi
     }
 
     let diff_stats = if include_stats {
-        load_diff_stats(vault)?
+        load_diff_stats(&workspace)?
     } else {
         HashMap::new()
     };
     let files = parse_status_output(&output.stdout)
         .into_iter()
         .filter_map(|entry| {
+            let relative_path = workspace.vault_relative_path(&entry.relative_path)?;
             // Only include markdown files
-            if !entry.relative_path.ends_with(".md") {
+            if !relative_path.ends_with(".md") {
                 return None;
             }
 
             let status = FileChangeStatus::from_code(&entry.status_code);
-            let full_path = vault
-                .join(&entry.relative_path)
+            let full_path = workspace
+                .vault_root()
+                .join(&relative_path)
                 .to_string_lossy()
                 .to_string();
             let stats = resolve_diff_stats(
-                vault,
-                Path::new(&entry.relative_path),
+                workspace.vault_root(),
+                Path::new(&relative_path),
+                &entry.relative_path,
                 status,
                 &diff_stats,
                 include_stats,
@@ -336,7 +351,7 @@ fn get_modified_files_impl(vault: &Path, include_stats: bool) -> Result<Vec<Modi
 
             Some(ModifiedFile {
                 path: full_path,
-                relative_path: entry.relative_path,
+                relative_path,
                 status: status.label().to_string(),
                 added_lines: stats.added_lines,
                 deleted_lines: stats.deleted_lines,
@@ -357,11 +372,13 @@ fn get_modified_files_impl(vault: &Path, include_stats: bool) -> Result<Vec<Modi
 /// returned by [`get_modified_files`]).
 pub fn discard_file_changes(vault_path: &str, relative_path: &str) -> Result<(), String> {
     let vault = Path::new(vault_path);
+    let workspace = GitWorkspace::resolve(vault)?
+        .ok_or_else(|| "Vault is not inside a Git work tree".to_string())?;
     let relative = Path::new(relative_path);
-    let abs = vault.join(relative);
+    let abs = workspace.vault_root().join(relative);
 
-    ensure_path_within_vault(vault, relative, &abs)?;
-    let status_code = load_file_status(vault, relative)?;
+    ensure_path_within_vault(workspace.vault_root(), relative, &abs)?;
+    let status_code = load_file_status(&workspace, relative)?;
 
     match status_code.as_str() {
         "??" => {
@@ -369,7 +386,7 @@ pub fn discard_file_changes(vault_path: &str, relative_path: &str) -> Result<(),
                 .map_err(|e| format!("Failed to delete untracked file: {e}"))?;
         }
         _ => {
-            restore_tracked_file(vault, relative)?;
+            restore_tracked_file(&workspace, relative)?;
         }
     }
 

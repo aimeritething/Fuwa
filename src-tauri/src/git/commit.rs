@@ -1,5 +1,4 @@
-use super::command::git_output_result;
-use super::{ensure_author_config, git_command_at};
+use super::{ensure_author_config, git_command_at, GitWorkspace};
 use std::path::Path;
 
 struct CommitFailure {
@@ -10,22 +9,28 @@ struct CommitFailure {
 /// Commit all changes with a message.
 pub fn git_commit(vault_path: &str, message: &str) -> Result<String, String> {
     let vault = Path::new(vault_path);
+    let workspace = GitWorkspace::resolve(vault)?
+        .ok_or_else(|| "Vault is not inside a Git work tree".to_string())?;
 
-    // Stage all changes
-    let add = git_output_result(vault, &["add", "-A"])
-        .map_err(|e| format!("Failed to run git add: {}", e))?;
+    let add = git_command_at(workspace.git_root())
+        .and_then(|mut command| {
+            command
+                .args(["add", "-A", "--", workspace.vault_pathspec()])
+                .output()
+        })
+        .map_err(|e| format!("Failed to run git add: {e}"))?;
 
     if !add.status.success() {
         let stderr = String::from_utf8_lossy(&add.stderr);
         return Err(format!("git add failed: {}", stderr));
     }
 
-    ensure_author_config(vault)?;
+    ensure_author_config(workspace.git_root())?;
 
-    match run_commit(vault, message, false) {
+    match run_commit(&workspace, message, false) {
         Ok(stdout) => Ok(stdout),
         Err(failure) if is_commit_signing_failure(&failure.detail()) => {
-            run_commit(vault, message, true).map_err(|retry_failure| {
+            run_commit(&workspace, message, true).map_err(|retry_failure| {
                 format!(
                     "git commit signing failed; retried without signing but git commit still failed: {}",
                     retry_failure.detail()
@@ -36,8 +41,12 @@ pub fn git_commit(vault_path: &str, message: &str) -> Result<String, String> {
     }
 }
 
-fn run_commit(vault: &Path, message: &str, disable_signing: bool) -> Result<String, CommitFailure> {
-    let mut command = git_command_at(vault).map_err(|e| CommitFailure {
+fn run_commit(
+    workspace: &GitWorkspace,
+    message: &str,
+    disable_signing: bool,
+) -> Result<String, CommitFailure> {
+    let mut command = git_command_at(workspace.git_root()).map_err(|e| CommitFailure {
         stdout: String::new(),
         stderr: format!("Failed to run git commit: {}", e),
     })?;
@@ -46,7 +55,14 @@ fn run_commit(vault: &Path, message: &str, disable_signing: bool) -> Result<Stri
     }
 
     let commit = command
-        .args(["commit", "-m", message])
+        .args([
+            "commit",
+            "--only",
+            "-m",
+            message,
+            "--",
+            workspace.vault_pathspec(),
+        ])
         .output()
         .map_err(|e| CommitFailure {
             stdout: String::new(),
@@ -221,6 +237,59 @@ mod tests {
             result.unwrap_err().contains("nothing to commit"),
             "Error should mention 'nothing to commit'"
         );
+    }
+
+    #[test]
+    fn nested_vault_commit_preserves_outside_repository_changes() {
+        let dir = setup_git_repo();
+        let repository = dir.path();
+        let vault = repository.join("docs");
+        fs::create_dir(&vault).unwrap();
+        fs::create_dir(repository.join("src")).unwrap();
+        fs::write(vault.join("guide.md"), "# Guide\n").unwrap();
+        fs::write(repository.join("src/staged.txt"), "original\n").unwrap();
+        fs::write(repository.join("src/unstaged.txt"), "original\n").unwrap();
+        git_command()
+            .args(["add", "-A"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        git_command()
+            .args(["commit", "-m", "initial"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+
+        fs::write(vault.join("guide.md"), "# Guide\n\nUpdated.\n").unwrap();
+        fs::write(repository.join("src/staged.txt"), "staged outside\n").unwrap();
+        git_command()
+            .args(["add", "src/staged.txt"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        fs::write(repository.join("src/unstaged.txt"), "unstaged outside\n").unwrap();
+
+        git_commit(vault.to_str().unwrap(), "update nested vault").unwrap();
+
+        let committed = git_command()
+            .args(["show", "--pretty=format:", "--name-only", "HEAD"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        assert_eq!(
+            String::from_utf8_lossy(&committed.stdout).trim(),
+            "docs/guide.md"
+        );
+
+        let status = git_command()
+            .args(["status", "--porcelain=v1"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        let status = String::from_utf8_lossy(&status.stdout);
+        assert!(status.contains("M  src/staged.txt"), "{status}");
+        assert!(status.contains(" M src/unstaged.txt"), "{status}");
+        assert!(!status.contains("docs/guide.md"), "{status}");
     }
 
     #[test]

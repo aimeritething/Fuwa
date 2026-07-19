@@ -1,4 +1,4 @@
-use super::git_command_at;
+use super::{git_command_at, GitWorkspace};
 use crate::vault::path_identity::vault_relative_path_string;
 use std::path::Path;
 
@@ -8,9 +8,14 @@ use super::GitCommit;
 pub fn get_file_history(vault_path: &str, file_path: &str) -> Result<Vec<GitCommit>, String> {
     let vault = Path::new(vault_path);
     let file = Path::new(file_path);
-    let relative_str = vault_relative_path_string(vault, file)?;
+    let workspace = GitWorkspace::resolve(vault)?
+        .ok_or_else(|| "Vault is not inside a Git work tree".to_string())?;
+    let relative_str = workspace.repo_relative_path(Path::new(&vault_relative_path_string(
+        workspace.vault_root(),
+        file,
+    )?));
 
-    let output = git_command_at(vault)
+    let output = git_command_at(workspace.git_root())
         .and_then(|mut command| {
             command
                 .args([
@@ -66,10 +71,15 @@ pub fn get_file_history(vault_path: &str, file_path: &str) -> Result<Vec<GitComm
 pub fn get_file_diff(vault_path: &str, file_path: &str) -> Result<String, String> {
     let vault = Path::new(vault_path);
     let file = Path::new(file_path);
-    let relative_str = vault_relative_path_string(vault, file)?;
+    let workspace = GitWorkspace::resolve(vault)?
+        .ok_or_else(|| "Vault is not inside a Git work tree".to_string())?;
+    let relative_str = workspace.repo_relative_path(Path::new(&vault_relative_path_string(
+        workspace.vault_root(),
+        file,
+    )?));
 
     // First try tracked file diff
-    let output = git_command_at(vault)
+    let output = git_command_at(workspace.git_root())
         .and_then(|mut command| command.args(["diff", "--", &relative_str]).output())
         .map_err(|e| format!("Failed to run git diff: {}", e))?;
 
@@ -77,7 +87,7 @@ pub fn get_file_diff(vault_path: &str, file_path: &str) -> Result<String, String
 
     // If no diff (maybe staged or untracked), try diff --cached
     if stdout.is_empty() {
-        let cached = git_command_at(vault)
+        let cached = git_command_at(workspace.git_root())
             .and_then(|mut command| {
                 command
                     .args(["diff", "--cached", "--", &relative_str])
@@ -91,7 +101,7 @@ pub fn get_file_diff(vault_path: &str, file_path: &str) -> Result<String, String
         }
 
         // Try showing untracked file as all-new
-        let status = git_command_at(vault)
+        let status = git_command_at(workspace.git_root())
             .and_then(|mut command| {
                 command
                     .args(["status", "--porcelain", "--", &relative_str])
@@ -125,10 +135,15 @@ pub fn get_file_diff_at_commit(
 ) -> Result<String, String> {
     let vault = Path::new(vault_path);
     let file = Path::new(file_path);
-    let relative_str = vault_relative_path_string(vault, file)?;
+    let workspace = GitWorkspace::resolve(vault)?
+        .ok_or_else(|| "Vault is not inside a Git work tree".to_string())?;
+    let relative_str = workspace.repo_relative_path(Path::new(&vault_relative_path_string(
+        workspace.vault_root(),
+        file,
+    )?));
 
     // Show diff between commit^ and commit for this file
-    let output = git_command_at(vault)
+    let output = git_command_at(workspace.git_root())
         .and_then(|mut command| {
             command
                 .args([
@@ -147,7 +162,7 @@ pub fn get_file_diff_at_commit(
     // If diff is empty, it might be the initial commit (no parent).
     // Fall back to showing the full file content as added.
     if stdout.is_empty() {
-        let show = git_command_at(vault)
+        let show = git_command_at(workspace.git_root())
             .and_then(|mut command| {
                 command
                     .args(["show", &format!("{}:{}", commit_hash, relative_str)])
@@ -345,5 +360,40 @@ mod tests {
         assert!(diff.contains("-第一行"));
         assert!(diff.contains("+第二行"));
         assert!(!diff.contains("\\344"));
+    }
+
+    #[test]
+    fn nested_vault_history_and_initial_diff_use_repository_relative_path() {
+        let dir = setup_git_repo();
+        let repository = dir.path();
+        let vault = repository.join("docs");
+        fs::create_dir(&vault).unwrap();
+        let file =
+            write_and_commit_file(repository, "docs/guide.md", "# Guide\n", "Add nested guide");
+        fs::write(repository.join("outside.md"), "# Outside\n").unwrap();
+        git_command()
+            .args(["add", "outside.md"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+        git_command()
+            .args(["commit", "-m", "Outside change"])
+            .current_dir(repository)
+            .output()
+            .unwrap();
+
+        let history = get_file_history(vault.to_str().unwrap(), file.to_str().unwrap()).unwrap();
+        assert_eq!(history.len(), 1);
+        assert_eq!(history[0].message, "Add nested guide");
+
+        let initial_hash = history[0].hash.clone();
+        let diff = get_file_diff_at_commit(
+            vault.to_str().unwrap(),
+            file.to_str().unwrap(),
+            &initial_hash,
+        )
+        .unwrap();
+        assert!(diff.contains("+++ b/docs/guide.md"), "{diff}");
+        assert!(diff.contains("+# Guide"), "{diff}");
     }
 }

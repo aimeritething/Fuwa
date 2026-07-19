@@ -466,6 +466,13 @@ export const mockHandlers: Record<string, (args: any) => any> = {
   should_use_external_media_preview: () => false,
   get_last_commit_info: (): LastCommitInfo => ({ shortHash: 'a1b2c3d', commitUrl: 'https://github.com/lucaong/laputa-vault/commit/a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0' }),
   is_git_repo: () => true,
+  git_workspace_info: ({ vaultPath }: { vaultPath?: string } = {}) => ({
+    vaultRoot: vaultPath ?? '/mock-vault',
+    gitRoot: vaultPath ?? '/mock-vault',
+    vaultPathspec: '',
+    gitRootRelation: 'vault',
+    resolutionFailure: null,
+  }),
   init_git_repo: () => null,
   git_pull: (): GitPullResult => ({ status: 'up_to_date', message: 'Already up to date', updatedFiles: [], conflictFiles: [] }),
   git_push: (): GitPushResult => ({ status: 'ok', message: 'Pushed to remote' }),

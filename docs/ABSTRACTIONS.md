@@ -87,6 +87,8 @@ Plain folders become Git-backed only when the user explicitly runs Git initializ
 
 The Git executable provider is an installation-local setting layered under that vault capability. Native Git is the default provider. On Windows, users may explicitly select WSL2 Git and a distribution in Settings; command launch then goes through the Rust Git provider abstraction, translates repository paths to WSL form, and never switches away from native Git without the stored provider setting.
 
+Git-backed vaults resolve a `GitWorkspace` before vault-facing Git work. `vault_root` remains the content/index boundary, `git_root` owns repository metadata and repository-wide sync state, and `vault_pathspec` is the vault's repository-relative subtree. Git commands execute at `git_root`; vault-scoped commands include `vault_pathspec`, and repository-relative output crosses one mapping boundary before reaching note features. Settings displays the resolved root. Telemetry emits only the categorical `git_root_relation` and failure category, never either path.
+
 Git initialization is intentionally scoped to dedicated vault folders. When the current non-git folder looks like a broad personal root such as Documents, Desktop, or Downloads and does not already carry Tolaria-managed vault markers, `init_git_repo` refuses to run Git and asks the user to select or create a dedicated subfolder instead.
 
 ### VaultEntry
@@ -578,11 +580,12 @@ interface PulseCommit {
 | `status.rs` | File diff | `git diff`, fallback to `--cached`, then synthetic for untracked |
 | `file_url.rs` | File URL | Builds a copyable remote URL from the primary remote, current branch, and vault-relative path without exposing remote credentials |
 | `author.rs` | Author identity | Resolves the exact commit author Tolaria will use, heals the legacy Tolaria fallback email, and reports when repo-local identity shadows the global Git identity |
-| `commit.rs` | Commit | Ensures a local author fallback when needed, then runs `git add -A && git commit -m "..."`; broken signing helpers trigger one unsigned retry for the same app-managed commit |
+| `commit.rs` | Commit | Ensures a local author fallback, stages only `vault_pathspec`, and commits it with `--only` so outside index/worktree state is preserved; broken signing helpers trigger one unsigned retry |
 | `remote.rs` | Pull / Push | Resolves the current branch's configured upstream, then runs explicit pull/push commands against that remote branch; missing upstream and detached HEAD states return actionable sync errors |
 | `connect.rs` | Add remote | Adds `origin`, fetches it, validates history compatibility, and only starts tracking when the remote is safe |
 | `conflict.rs` | Conflict resolution | Detect conflicts, resolve with ours/theirs/manual, and ensure a local author fallback before commit/rebase continuation |
 | `pulse.rs` | Activity feed | `git log` with `--name-status` for file changes |
+| `workspace.rs` | Vault/Git boundary | Resolves `vault_root`, `git_root`, and `vault_pathspec`; maps repository-relative Git output to vault-relative note paths |
 
 ### Auto-Sync
 

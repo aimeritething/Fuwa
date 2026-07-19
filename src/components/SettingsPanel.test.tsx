@@ -895,6 +895,36 @@ describe('SettingsPanel', () => {
     expectAutoGitControlsDisabled()
   })
 
+  it('shows a keyboard-readable parent Git repository root', async () => {
+    const handlers = window.__mockHandlers as Record<string, unknown>
+    const originalHandler = handlers.git_workspace_info
+    handlers.git_workspace_info = () => ({
+      vaultRoot: '/repo/docs',
+      gitRoot: '/repo',
+      vaultPathspec: 'docs',
+      gitRootRelation: 'parent',
+      resolutionFailure: null,
+    })
+
+    render(
+      <SettingsPanel
+        open={true}
+        settings={emptySettings}
+        isGitVault={true}
+        vaultPath="/repo/docs"
+        onSave={onSave}
+        onClose={onClose}
+      />
+    )
+
+    const root = await screen.findByTestId('settings-git-root')
+    expect(root).toHaveTextContent('/repo')
+    expect(root).toHaveAttribute('tabindex', '0')
+    expect(screen.getByText(/Repository-wide sync actions use this parent folder/)).toBeInTheDocument()
+
+    handlers.git_workspace_info = originalHandler
+  })
+
   it('saves the initial H1 auto-rename preference when toggled off', () => {
     render(
       <SettingsPanel open={true} settings={emptySettings} onSave={onSave} onClose={onClose} />
