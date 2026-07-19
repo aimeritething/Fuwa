@@ -14,10 +14,15 @@ const TAURI_DRAG_DROP_EVENT = 'tauri://drag-drop'
 const TAURI_DRAG_LEAVE_EVENT = 'tauri://drag-leave'
 
 type ImageUrlHandler = (url: string) => void
-export type ImageImportError = {
+type UnsupportedImageImportError = {
   fileName: string
   format: 'HEIC'
   kind: 'unsupported-heic'
+}
+export type ImageImportError = UnsupportedImageImportError | {
+  failedCount: number
+  kind: 'remote-download'
+  totalCount: number
 }
 type ImageImportErrorHandler = (error: ImageImportError) => void
 type TauriDropEvent = TauriEvent<TauriDragDropPayload>
@@ -40,7 +45,7 @@ type NativeDropEventRequest = {
   vaultPath: string | undefined
 }
 
-export class UnsupportedImageFormatError extends Error implements ImageImportError {
+export class UnsupportedImageFormatError extends Error implements UnsupportedImageImportError {
   readonly fileName: string
   readonly format = 'HEIC'
   readonly kind = 'unsupported-heic'

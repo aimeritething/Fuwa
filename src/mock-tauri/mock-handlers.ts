@@ -596,6 +596,11 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     const filename = args.source_path.split('/').pop() ?? 'image.png'
     return `${vault}/attachments/${Date.now()}-${filename}`
   },
+  download_remote_image_to_vault: (args: { vault_path?: string; url: string }) => {
+    const vault = args.vault_path ?? '/Users/luca/Laputa'
+    const filename = new URL(args.url).pathname.split('/').pop() || 'remote-image.png'
+    return `${vault}/attachments/${Date.now()}-${filename}`
+  },
   get_settings: () => ({ ...mockSettings }),
   save_settings: (args: { settings: Settings }) => {
     const s = args.settings

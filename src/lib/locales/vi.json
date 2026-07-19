@@ -791,6 +791,7 @@
   "editor.exportPdf.failed": "Không thể bắt đầu xuất PDF: {error}",
   "editor.imageImport.unsupportedHeic": "{filename} là một hình ảnh HEIC. Tolaria chưa thể nhập tệp HEIC hoặc HEIF. Xuất ảnh dưới dạng JPG hoặc PNG và chèn tệp đó.",
   "editor.imageImport.unsupported": "{filename} là hình ảnh {format}. Tolaria chưa thể nhập định dạng này. Sử dụng JPG, PNG, GIF, WebP, SVG, BMP hoặc TIFF.",
+  "editor.imageImport.remoteDownloadFailed": "Tolaria giữ lại các liên kết ban đầu vì không thể lưu cục bộ {failedCount}/{totalCount} hình ảnh đã dán.",
   "fileActions.copied.filePath": "Đã sao chép đường dẫn tệp",
   "fileActions.copied.folderPath": "Đã sao chép đường dẫn thư mục",
   "fileActions.error.copyFolderPath": "Không thể sao chép đường dẫn thư mục: {detail}",

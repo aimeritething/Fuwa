@@ -115,13 +115,14 @@ function RawModeEditorSection({
   rawMode,
   rawModeContent,
   onRawContentChange,
+  onImageImportError,
   onSave,
   rawLatestContentRef,
   vaultPath,
   locale,
 }: Pick<
   EditorContentModel,
-  'activeTab' | 'entries' | 'findRequest' | 'onRawContentChange' | 'onSave' | 'rawLatestContentRef' | 'rawModeContent' | 'vaultPath'
+  'activeTab' | 'entries' | 'findRequest' | 'onImageImportError' | 'onRawContentChange' | 'onSave' | 'rawLatestContentRef' | 'rawModeContent' | 'vaultPath'
 > & {
   rawMode: boolean
   locale?: AppLocale
@@ -138,6 +139,11 @@ function RawModeEditorSection({
         sourceEntry={activeTab.entry}
         findRequest={findRequest}
         onContentChange={onRawContentChange ?? (() => {})}
+        onImageImportResult={({ failedCount, totalCount }) => {
+          if (failedCount > 0) {
+            onImageImportError?.({ failedCount, kind: 'remote-download', totalCount })
+          }
+        }}
         onSave={onSave ?? (() => {})}
         latestContentRef={rawLatestContentRef}
         vaultPath={vaultPath}
@@ -544,6 +550,7 @@ export function EditorContentLayout(model: EditorContentModel) {
             rawMode={effectiveRawMode}
             rawModeContent={rawModeContent}
             onRawContentChange={onRawContentChange}
+            onImageImportError={onImageImportError}
             onSave={onSave}
             rawLatestContentRef={rawLatestContentRef}
             vaultPath={vaultPath}

@@ -791,6 +791,7 @@
   "editor.exportPdf.failed": "Não foi possível iniciar a exportação para PDF: {error}",
   "editor.imageImport.unsupportedHeic": "{filename} é uma imagem HEIC. O Tolaria ainda não consegue importar arquivos HEIC ou HEIF. Exporte a foto como JPG ou PNG e insira esse arquivo.",
   "editor.imageImport.unsupported": "{filename} é uma imagem {format}. O Tolaria ainda não consegue importar este formato. Use JPG, PNG, GIF, WebP, SVG, BMP ou TIFF.",
+  "editor.imageImport.remoteDownloadFailed": "O Tolaria manteve os links originais porque {failedCount} de {totalCount} imagens coladas não puderam ser salvas localmente.",
   "fileActions.copied.filePath": "Caminho do arquivo copiado",
   "fileActions.copied.folderPath": "Caminho da pasta copiado",
   "fileActions.error.copyFolderPath": "Falha ao copiar o caminho da pasta: {detail}",

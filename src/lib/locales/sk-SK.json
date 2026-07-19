@@ -791,6 +791,7 @@
   "editor.exportPdf.failed": "Nepodarilo sa spustiť export PDF: {error}",
   "editor.imageImport.unsupportedHeic": "{filename} je obrázok vo formáte HEIC. Tolaria zatiaľ nedokáže importovať súbory HEIC alebo HEIF. Exportujte fotografiu vo formáte JPG alebo PNG a vložte tento súbor.",
   "editor.imageImport.unsupported": "{filename} je obrázok vo formáte {format}. Tolaria zatiaľ nedokáže importovať tento formát. Použite formát JPG, PNG, GIF, WebP, SVG, BMP alebo TIFF.",
+  "editor.imageImport.remoteDownloadFailed": "Tolaria zachovala pôvodné odkazy, pretože {failedCount} z {totalCount} vložených obrázkov nebolo možné uložiť lokálne.",
   "fileActions.copied.filePath": "Cesta k súboru skopírovaná",
   "fileActions.copied.folderPath": "Cesta k priečinku skopírovaná",
   "fileActions.error.copyFolderPath": "Nepodarilo sa skopírovať cestu k priečinku: {detail}",

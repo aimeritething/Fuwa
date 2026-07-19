@@ -791,6 +791,7 @@
   "editor.exportPdf.failed": "PDF 내보내기를 시작할 수 없습니다: {error}",
   "editor.imageImport.unsupportedHeic": "{filename}은(는) HEIC 이미지입니다. Tolaria는 아직 HEIC 또는 HEIF 파일을 가져올 수 없습니다. 사진을 JPG 또는 PNG로 내보내고 해당 파일을 삽입하세요.",
   "editor.imageImport.unsupported": "{filename}은(는) {format} 이미지입니다. Tolaria는 아직 이 형식을 가져올 수 없습니다. JPG, PNG, GIF, WebP, SVG, BMP 또는 TIFF를 사용하세요.",
+  "editor.imageImport.remoteDownloadFailed": "Tolaria는 {totalCount}개 중 {failedCount}개의 붙여넣은 이미지를 로컬에 저장할 수 없었기 때문에 원본 링크를 유지했습니다.",
   "fileActions.copied.filePath": "파일 경로 복사됨",
   "fileActions.copied.folderPath": "폴더 경로 복사됨",
   "fileActions.error.copyFolderPath": "폴더 경로 복사에 실패했습니다: {detail}",

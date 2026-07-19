@@ -791,6 +791,7 @@
   "editor.exportPdf.failed": "無法開始 PDF 匯出：{error}",
   "editor.imageImport.unsupportedHeic": "{filename} 是 HEIC 圖片。Tolaria 目前還無法匯入 HEIC 或 HEIF 檔案。請將相片匯出為 JPG 或 PNG 格式，然後插入該檔案。",
   "editor.imageImport.unsupported": "{filename} 是 {format} 圖片。Tolaria 目前無法匯入此格式。請使用 JPG、PNG、GIF、WebP、SVG、BMP 或 TIFF。",
+  "editor.imageImport.remoteDownloadFailed": "Tolaria 保留了原始連結，因為無法將 {totalCount} 張貼上的圖片中 {failedCount} 張儲存到本機。",
   "fileActions.copied.filePath": "已複製檔案路徑",
   "fileActions.copied.folderPath": "已複製資料夾路徑",
   "fileActions.error.copyFolderPath": "無法複製資料夾路徑：{detail}",

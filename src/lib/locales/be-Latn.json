@@ -750,6 +750,7 @@
   "editor.exportPdf.unavailable": "Adkryjcie natatku Markdown pierad ekspartam u PDF.",
   "editor.exportPdf.failed": "Nie ŭdalosia pačać ekspart PDF: {error}",
   "editor.imageImport.unsupportedHeic": "{filename} — heta vyjava HEIC. Tolaria pakul nie moža impartavać fajly HEIC abo HEIF. Ekspartujcie fotazdymak u farmacie JPG abo PNG i ŭstaŭcie hety fajl.",
+  "editor.imageImport.remoteDownloadFailed": "Tolaria zachavała pieršapačatkovyja spasylki, bo nie ŭdalosia lakalna zachavać {failedCount} z {totalCount} ustaŭlenych vyjaŭ.",
   "editor.imageImport.unsupported": "{filename} — heta vyjava ŭ farmacie {format}. Tolaria pakul nie moža impartavać hety farmat. Vykarystoŭvajcie JPG, PNG, GIF, WebP, SVG, BMP abo TIFF.",
   "editor.sideMenu.expandSection": "Razharnuć razdziel",
   "editor.sideMenu.collapseSection": "Zharnuć razdziel",

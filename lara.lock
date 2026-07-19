@@ -793,6 +793,7 @@ files:
     editor.exportPdf.failed: bf3fa78ff5725f5cbde8979b67ec2e2a
     editor.imageImport.unsupportedHeic: 75481136eb7ca33ef4f82806765e406f
     editor.imageImport.unsupported: 9008202219a82edb8e70700bf351ce60
+    editor.imageImport.remoteDownloadFailed: 3a2f1825109b0ddd4a9eec1ab2bdffa5
     fileActions.copied.filePath: 702fb6fd2ae69083e8f5ee9603d7e5f6
     fileActions.copied.folderPath: 7d6ed7052d7570a7d1fec70dc65d9363
     fileActions.error.copyFolderPath: 0b63215944372916aee6d99bcc99af25

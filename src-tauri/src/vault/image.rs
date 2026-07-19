@@ -18,7 +18,10 @@ fn sanitize_filename(name: &str) -> String {
 const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "webp", "svg", "bmp", "tiff"];
 
 /// Prepare the attachments directory and generate a unique target path.
-fn prepare_attachment_path(vault_path: &str, filename: &str) -> Result<std::path::PathBuf, String> {
+pub(super) fn prepare_attachment_path(
+    vault_path: &str,
+    filename: &str,
+) -> Result<std::path::PathBuf, String> {
     let attachments_dir = Path::new(vault_path).join("attachments");
     fs::create_dir_all(&attachments_dir)
         .map_err(|e| format!("Failed to create attachments directory: {}", e))?;

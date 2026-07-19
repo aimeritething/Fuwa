@@ -791,6 +791,7 @@
   "editor.exportPdf.failed": "Не вдалося розпочати експорт PDF: {error}",
   "editor.imageImport.unsupportedHeic": "{filename} – це зображення HEIC. Tolaria поки що не може імпортувати файли HEIC або HEIF. Експортуйте фотографію у форматі JPG або PNG і вставте цей файл.",
   "editor.imageImport.unsupported": "{filename} – це зображення у форматі {format}. Tolaria поки що не може імпортувати цей формат. Використовуйте JPG, PNG, GIF, WebP, SVG, BMP або TIFF.",
+  "editor.imageImport.remoteDownloadFailed": "Tolaria зберегла початкові посилання, оскільки не вдалося локально зберегти {failedCount} із {totalCount} вставлених зображень.",
   "fileActions.copied.filePath": "Шлях до файлу скопійовано",
   "fileActions.copied.folderPath": "Шлях до папки скопійовано",
   "fileActions.error.copyFolderPath": "Не вдалося скопіювати шлях до папки: {detail}",

@@ -219,3 +219,4 @@ proposed → active → superseded
 | [0159](0159-antigravity-permission-flags-aligned-with-cli.md) | Antigravity permission flags aligned with CLI | active |
 | [0160](0160-editable-markdown-durable-callout-blocks.md) | Editable Markdown-durable callout blocks | active |
 | [0161](0161-parent-git-workspace-context.md) | Parent Git workspace context | active |
+| [0162](0162-safe-local-import-of-remote-paste-images.md) | Safe local import of remote paste images | active |

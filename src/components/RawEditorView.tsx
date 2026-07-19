@@ -23,6 +23,13 @@ import {
   type PlainTextPasteTarget,
 } from '../utils/plainTextPaste'
 import { rawEditorLanguageIdForPath } from '../utils/rawEditorLanguage'
+import {
+  clipboardRemoteImages,
+  importRemoteImages,
+  rawRemoteImagePasteText,
+  replaceImportedRemoteImages,
+  type RemoteImageImportResult,
+} from '../utils/remoteImagePaste'
 
 export interface RawEditorViewProps {
   content: string
@@ -37,6 +44,7 @@ export interface RawEditorViewProps {
   latestContentRef?: React.MutableRefObject<string | null>
   locale?: AppLocale
   findRequest?: RawEditorFindRequest | null
+  onImageImportResult?: (result: Pick<RemoteImageImportResult, 'failedCount' | 'totalCount'>) => void
 }
 
 const DEBOUNCE_MS = 500
@@ -393,7 +401,85 @@ function useRawEditorPlainTextPasteTarget({
   }, [])
 }
 
-export function RawEditorView({ content, path, entries, sourceEntry, onContentChange, onSave, latestContentRef, vaultPath, locale = 'en', findRequest }: RawEditorViewProps) {
+function useRawEditorRemoteImagePaste({
+  onImageImportResult,
+  vaultPath,
+  viewRef,
+}: Pick<RawEditorViewProps, 'onImageImportResult' | 'vaultPath'> & {
+  viewRef: React.MutableRefObject<EditorView | null>
+}) {
+  return useCallback((event: React.ClipboardEvent<HTMLDivElement>) => {
+    const view = viewRef.current
+    const images = clipboardRemoteImages(event.clipboardData)
+    if (!view || !vaultPath || images.length === 0) return
+
+    event.preventDefault()
+    event.stopPropagation()
+    const insertedText = rawRemoteImagePasteText(event.clipboardData)
+    const selection = view.state.selection.main
+    const insertedFrom = selection.from
+    const insertedTo = insertedFrom + insertedText.length
+    view.dispatch({
+      changes: { from: selection.from, to: selection.to, insert: insertedText },
+      selection: { anchor: insertedTo },
+      userEvent: 'input.paste',
+    })
+    view.focus()
+
+    void importRemoteImages({ images, vaultPath }).then(result => {
+      const importedText = replaceImportedRemoteImages({
+        text: insertedText,
+        replacements: result.replacements,
+      })
+      if (canRewriteRawImagePaste({
+        importedText,
+        insertedFrom,
+        insertedText,
+        insertedTo,
+        view,
+        viewRef,
+      })) {
+        view.dispatch({
+          changes: { from: insertedFrom, to: insertedTo, insert: importedText },
+          userEvent: 'input.paste',
+        })
+      }
+      onImageImportResult?.({
+        failedCount: result.failedCount,
+        totalCount: result.totalCount,
+      })
+      trackEvent('remote_images_paste_imported', {
+        surface: 'raw_editor',
+        total_count: result.totalCount,
+        success_count: result.totalCount - result.failedCount,
+        failure_count: result.failedCount,
+      })
+    })
+  }, [onImageImportResult, vaultPath, viewRef])
+}
+
+function canRewriteRawImagePaste({
+  importedText,
+  insertedFrom,
+  insertedText,
+  insertedTo,
+  view,
+  viewRef,
+}: {
+  importedText: string
+  insertedFrom: number
+  insertedText: string
+  insertedTo: number
+  view: EditorView
+  viewRef: React.MutableRefObject<EditorView | null>
+}): boolean {
+  if (viewRef.current !== view) return false
+  if (importedText === insertedText) return false
+  return view.state.doc.sliceString(insertedFrom, insertedTo) === insertedText
+}
+
+export function RawEditorView({ content, entries, findRequest, latestContentRef, locale = 'en', onContentChange,
+  onImageImportResult, onSave, path, sourceEntry, vaultPath }: RawEditorViewProps) {
   const rootRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [rawDoc, setRawDoc] = useState(content)
@@ -427,6 +513,11 @@ export function RawEditorView({ content, path, entries, sourceEntry, onContentCh
     onSave: pendingChanges.handleSave,
     onEscape: handleEscape,
   }, path)
+  const handleRemoteImagePaste = useRawEditorRemoteImagePaste({
+    onImageImportResult,
+    vaultPath,
+    viewRef,
+  })
   const activatePlainTextPaste = useRawEditorPlainTextPasteTarget({
     containerRef,
     setAutocomplete,
@@ -477,6 +568,7 @@ export function RawEditorView({ content, path, entries, sourceEntry, onContentCh
       ref={rootRef}
       className="flex flex-1 flex-col min-h-0 relative"
       style={{ background: 'var(--background)' }}
+      onPasteCapture={handleRemoteImagePaste}
     >
       <RawEditorYamlErrorBanner error={showFrontmatterWarning ? pendingChanges.yamlError : null} />
       <RawEditorFindBar

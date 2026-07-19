@@ -359,6 +359,21 @@ pub fn copy_image_to_vault(
 }
 
 #[tauri::command]
+pub async fn download_remote_image_to_vault(
+    app_handle: tauri::AppHandle,
+    vault_path: PathBuf,
+    url: String,
+) -> Result<String, String> {
+    tokio::task::spawn_blocking(move || {
+        with_image_asset_scope(&app_handle, vault_path.as_path(), |requested_root| {
+            vault::download_remote_image(requested_root, &url)
+        })
+    })
+    .await
+    .map_err(|error| format!("Remote image task failed: {error}"))?
+}
+
+#[tauri::command]
 pub async fn list_vault(path: PathBuf) -> Result<Vec<VaultEntry>, String> {
     tokio::task::spawn_blocking(move || {
         with_expanded_vault_root(path.as_path(), scan_visible_vault_entries)

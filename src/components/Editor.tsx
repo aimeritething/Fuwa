@@ -38,7 +38,7 @@ import { useRegisterEditorContentFlushes } from './editorContentFlushRegistratio
 import { useRawModeWithFlush } from './useRawModeWithFlush'
 import { createImeCompositionKeyGuardExtension } from './imeCompositionKeyGuardExtension'
 import { createMarkdownHighlightShortcutExtension } from './markdownHighlightShortcutExtension'
-import { handleRichEditorPaste } from './richEditorPaste'
+import { handleRemoteRichEditorPaste } from './richEditorPaste'
 import { createRichEditorMarkdownInputTransformExtension } from './richEditorInputTransformExtension'
 import { createRichEditorTextDirectionExtension } from './richEditorTextDirection'
 import { createRichEditorTransformErrorRecoveryExtension } from './richEditorTransformErrorRecoveryExtension'
@@ -235,10 +235,13 @@ interface EditorSetupParams {
 }
 
 function imageImportErrorMessage(error: ImageImportError, locale: AppLocale | undefined): string {
-  if (error.kind === 'unsupported-heic') {
-    return translate(locale ?? 'en', 'editor.imageImport.unsupportedHeic', { filename: error.fileName })
+  if (error.kind === 'remote-download') {
+    return translate(locale ?? 'en', 'editor.imageImport.remoteDownloadFailed', {
+      failedCount: error.failedCount,
+      totalCount: error.totalCount,
+    })
   }
-  return translate(locale ?? 'en', 'editor.imageImport.unsupported', { filename: error.fileName, format: error.format })
+  return translate(locale ?? 'en', 'editor.imageImport.unsupportedHeic', { filename: error.fileName })
 }
 
 function handleEditorImageUploadFailure(
@@ -277,7 +280,22 @@ function useEditorSetup({
         return handleEditorImageUploadFailure(file, error, onImageImportErrorRef.current)
       }
     },
-    pasteHandler: handleRichEditorPaste,
+    pasteHandler: context => {
+      const pastePath = activeTabPathRef.current
+      return handleRemoteRichEditorPaste(context, {
+        canApply: () => activeTabPathRef.current === pastePath,
+        vaultPath: vaultPathRef.current,
+        onImportResult: ({ failedCount, totalCount }) => {
+          if (failedCount > 0) {
+            onImageImportErrorRef.current?.({
+              failedCount,
+              kind: 'remote-download',
+              totalCount,
+            })
+          }
+        },
+      })
+    },
     tabBehavior: 'prefer-indent',
     _tiptapOptions: { injectNonce: RUNTIME_STYLE_NONCE },
     extensions: [

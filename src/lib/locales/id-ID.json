@@ -791,6 +791,7 @@
   "editor.exportPdf.failed": "Tidak dapat memulai ekspor PDF: {error}",
   "editor.imageImport.unsupportedHeic": "{filename} adalah gambar HEIC. Tolaria belum dapat mengimpor file HEIC atau HEIF. Ekspor foto sebagai JPG atau PNG dan sisipkan file tersebut.",
   "editor.imageImport.unsupported": "{filename} adalah gambar {format}. Tolaria belum dapat mengimpor format ini. Gunakan JPG, PNG, GIF, WebP, SVG, BMP, atau TIFF.",
+  "editor.imageImport.remoteDownloadFailed": "Tolaria mempertahankan tautan asli karena {failedCount} dari {totalCount} gambar yang disisipkan tidak dapat disimpan secara lokal.",
   "fileActions.copied.filePath": "Jalur file disalin",
   "fileActions.copied.folderPath": "Jalur folder disalin",
   "fileActions.error.copyFolderPath": "Gagal menyalin path folder: {detail}",
