@@ -7,6 +7,8 @@ import process from 'node:process'
 import { resolve } from 'node:path'
 import { spawn } from 'node:child_process'
 
+import { detectVitestRetryMode, VITEST_RETRY_MODE } from './vitest-coverage-retry.mjs'
+
 const rootDir = process.cwd()
 const finalCoverageDir = resolve(rootDir, process.env.VITEST_COVERAGE_FINAL_DIR ?? 'coverage')
 const coverageRunRoot = resolve(os.tmpdir(), 'tolaria-vitest-coverage-runs')
@@ -38,12 +40,6 @@ const baseCommandArgs = isJsExecpath
 const clearCacheCommandArgs = isJsExecpath
   ? [packageManagerExec, 'exec', 'vitest', '--clearCache']
   : ['exec', 'vitest', '--clearCache']
-
-function isKnownVitestInternalStateFlake(output) {
-  return output.includes('Vitest failed to access its internal state.')
-    && /Test Files\s+\d+\s+passed\s+\(\d+\)/.test(output)
-    && /Tests\s+\d+\s+passed\s+\(\d+\)/.test(output)
-}
 
 function appendCapturedOutput(output, chunk) {
   const nextOutput = output + chunk
@@ -78,7 +74,18 @@ function coverageThresholdOverrideArgs() {
   ]
 }
 
-async function runCoverageAttempt(attempt) {
+function coverageParallelismArgs(retryMode) {
+  if (retryMode === VITEST_RETRY_MODE.SINGLE_WORKER) {
+    return ['--no-file-parallelism', '--maxWorkers=1']
+  }
+
+  return [
+    ...(hasFileParallelismOverride ? [] : ['--fileParallelism']),
+    ...(hasMaxWorkersOverride ? [] : [`--maxWorkers=${defaultMaxWorkers}`]),
+  ]
+}
+
+async function runCoverageAttempt(attempt, retryMode) {
   const runId = `${Date.now()}-${process.pid}-${attempt}`
   const runCoverageDir = resolve(coverageRunRoot, runId)
   const runCoverageTempDir = resolve(runCoverageDir, '.tmp')
@@ -95,8 +102,7 @@ async function runCoverageAttempt(attempt) {
     // Keep coverage fast enough for CI while avoiding the unbounded worker
     // contention that makes a few DOM-heavy suites time out under full
     // file parallelism. Callers can still opt into serial or wider runs.
-    ...(hasFileParallelismOverride ? [] : ['--fileParallelism']),
-    ...(hasMaxWorkersOverride ? [] : [`--maxWorkers=${defaultMaxWorkers}`]),
+    ...coverageParallelismArgs(retryMode),
     ...(coverageShard && !hasShardOverride ? [`--shard=${coverageShard}`] : []),
     ...(skipCoverageThresholds ? coverageThresholdOverrideArgs() : []),
     `--coverage.reportsDirectory=${runCoverageDir}`,
@@ -174,9 +180,10 @@ if (coverageShard && !isValidCoverageShard(coverageShard)) {
 }
 
 let finalRun = null
+let retryMode = null
 
 for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-  const run = await runCoverageAttempt(attempt)
+  const run = await runCoverageAttempt(attempt, retryMode)
   finalRun = run
 
   if (run.exitCode === 0) {
@@ -189,9 +196,12 @@ for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     process.exit(0)
   }
 
-  // Retry once when Vitest itself flakes after a fully passing suite.
-  if (attempt < maxAttempts && isKnownVitestInternalStateFlake(run.output)) {
-    console.error(`Vitest hit a known internal-state teardown flake on attempt ${attempt}; retrying once...`)
+  retryMode = detectVitestRetryMode(run.output)
+  if (attempt < maxAttempts && retryMode) {
+    const retryDescription = retryMode === VITEST_RETRY_MODE.SINGLE_WORKER
+      ? 'a worker-startup timeout; retrying once with a single worker'
+      : 'a known internal-state teardown flake; retrying once'
+    console.error(`Vitest hit ${retryDescription}...`)
     await rm(run.runCoverageDir, { recursive: true, force: true })
     continue
   }
