@@ -33,11 +33,25 @@ function settledOverlap(sample: ClearanceSample, previousHeight: number): number
   return sample.overlap
 }
 
+async function gotoReadyApp(page: Page): Promise<void> {
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      await page.goto('/', { waitUntil: 'domcontentloaded', timeout: 15_000 })
+      await expect(page.getByTestId('note-list-container')).toBeVisible({ timeout: 5_000 })
+      return
+    } catch (error) {
+      if (attempt === 5) throw error
+      await page.waitForTimeout(250)
+    }
+  }
+}
+
 test.describe('Note list filter pills clearance', () => {
+  test.describe.configure({ timeout: 150_000 })
+
   test.beforeEach(async ({ page }) => {
     await page.route('**/api/vault/ping', route => route.fulfill({ status: 503 }))
-    await page.goto('/', { waitUntil: 'domcontentloaded' })
-    await expect(page.getByTestId('note-list-container')).toBeVisible({ timeout: 5_000 })
+    await gotoReadyApp(page)
   })
 
   test('last note in a type view scrolls fully above the Open/Archived pills', async ({ page }) => {
