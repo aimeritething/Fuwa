@@ -1668,6 +1668,7 @@ mod tests {
     fn run_agent_stream_returns_result() {
         let req = AgentStreamRequest {
             message: "test".into(),
+            model: None,
             system_prompt: Some("sys".into()),
             vault_path: "/tmp/nonexistent".into(),
             vault_paths: Vec::new(),

@@ -184,6 +184,7 @@ mod tests {
     fn request(vault_path: String, permission_mode: AiAgentPermissionMode) -> AgentStreamRequest {
         AgentStreamRequest {
             message: "Summarize".into(),
+            model: None,
             system_prompt: Some("Use Tolaria conventions".into()),
             vault_path,
             vault_paths: vec!["/team-vault".into()],

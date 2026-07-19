@@ -199,6 +199,7 @@ fn agent_args_with_tool_policy(
         args.push("--disallowedTools".into());
         args.push(disallowed_tools.into());
     }
+    append_non_empty_arg_pair(&mut args, "--model", req.model.as_deref());
     if prompt_source == PromptSource::Argument {
         append_non_empty_arg_pair(
             &mut args,
@@ -377,6 +378,7 @@ mod tests {
     ) -> AgentStreamRequest {
         AgentStreamRequest {
             message: message.into(),
+            model: None,
             system_prompt: system_prompt.map(str::to_string),
             vault_path: "/tmp/vault".into(),
             vault_paths: Vec::new(),
@@ -493,6 +495,20 @@ mod tests {
         )) {
             assert_args_contain!(args, ["--append-system-prompt", "Act as expert."]);
         }
+    }
+
+    #[test]
+    fn agent_args_passes_an_explicit_model_once() {
+        let mut request = agent_request("do it", None, AiAgentPermissionMode::Safe);
+        request.model = Some("sonnet".into());
+
+        let args = agent_args(&request).unwrap();
+
+        assert_eq!(arg_value_after(&args, "--model"), Some("sonnet"));
+        assert_eq!(
+            args.iter().filter(|arg| arg.as_str() == "--model").count(),
+            1
+        );
     }
 
     #[test]

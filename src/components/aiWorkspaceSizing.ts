@@ -12,8 +12,8 @@ export interface AiWorkspaceSizing {
 
 const DEFAULT_DOCKED_WORKSPACE_SIZE = { height: 540, width: 560 }
 const MIN_DOCKED_WORKSPACE_SIZE = { height: 360, width: 460 }
-const DEFAULT_SIDE_WORKSPACE_WIDTH = 320
-const MIN_SIDE_WORKSPACE_WIDTH = 320
+const DEFAULT_SIDE_WORKSPACE_WIDTH = 360
+const MIN_SIDE_WORKSPACE_WIDTH = 240
 const SIDE_WORKSPACE_WIDTH_STORAGE_KEY = 'tolaria:ai-workspace-side-width'
 const DEFAULT_SIDEBAR_WIDTH = 168
 const MIN_SIDEBAR_WIDTH = 132
@@ -36,7 +36,9 @@ function readStoredSideWorkspaceWidth(): number {
   if (typeof localStorage === 'undefined') return DEFAULT_SIDE_WORKSPACE_WIDTH
 
   try {
-    const parsed = Number(localStorage.getItem(SIDE_WORKSPACE_WIDTH_STORAGE_KEY))
+    const stored = localStorage.getItem(SIDE_WORKSPACE_WIDTH_STORAGE_KEY)
+    if (stored === null) return DEFAULT_SIDE_WORKSPACE_WIDTH
+    const parsed = Number(stored)
     if (!Number.isFinite(parsed)) return DEFAULT_SIDE_WORKSPACE_WIDTH
     return clampNumber(parsed, MIN_SIDE_WORKSPACE_WIDTH, maxDockedWorkspaceSize().width)
   } catch {

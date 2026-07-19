@@ -14,6 +14,7 @@ export interface AiConversation {
   archived: boolean
   hasActivity: boolean
   id: string
+  modelId: string | null
   targetId: string
   title: string
   usesDefaultTitle: boolean
@@ -27,6 +28,7 @@ type TargetId = AiConversation['targetId']
 
 interface UseConversationsOptions {
   fallbackTarget: AiTarget
+  fallbackModelId: string | null
   initialActiveConversationId?: ConversationId
   locale: AppLocale
   onSettingsChange?: (conversations: AiWorkspaceConversationSetting[]) => void
@@ -37,6 +39,7 @@ interface UseConversationsOptions {
 interface CloseConversationOptions {
   activeId: ConversationId
   fallbackTarget: AiTarget
+  fallbackModelId: string | null
   id: ConversationId
   locale: AppLocale
 }
@@ -86,11 +89,12 @@ export function resolveTarget(conversation: AiConversation, groups: AiWorkspaceT
   return flatTargets(groups).find((target) => target.id === conversation.targetId) ?? fallback
 }
 
-function createConversation(locale: AppLocale, target: AiTarget, index: number): AiConversation {
+function createConversation(locale: AppLocale, target: AiTarget, index: number, modelId: string | null): AiConversation {
   return {
     archived: false,
     hasActivity: false,
     id: nextConversationId(),
+    modelId,
     targetId: target.id,
     title: defaultConversationTitle(locale, index),
     usesDefaultTitle: true,
@@ -131,6 +135,7 @@ function conversationFromSetting(
     archived: setting.archived === true,
     hasActivity: !usesDefaultTitle,
     id,
+    modelId: setting.model_id?.trim() || null,
     targetId: setting.target_id?.trim() || fallbackTarget.id,
     title,
     usesDefaultTitle,
@@ -146,13 +151,14 @@ function conversationsFromSettings(
   const stored = (settings ?? [])
     .map((setting) => conversationFromSetting(setting, fallbackTarget, locale))
     .filter((conversation): conversation is AiConversation => conversation !== null)
-  return stored.length > 0 ? stored : [createConversation(locale, fallbackTarget, 1)]
+  return stored
 }
 
 function conversationsToSettings(conversations: AiConversation[]): AiWorkspaceConversationSetting[] {
   return conversations.map((conversation) => ({
     archived: conversation.archived,
     id: conversation.id,
+    model_id: conversation.modelId,
     target_id: conversation.usesDefaultTarget ? null : conversation.targetId,
     title: conversation.title,
   }))
@@ -175,8 +181,9 @@ function appendConversationState(
   current: AiConversation[],
   locale: AppLocale,
   target: AiTarget,
+  modelId: string | null,
 ): { activeId: string; conversations: AiConversation[] } {
-  const next = createConversation(locale, target, current.length + 1)
+  const next = createConversation(locale, target, current.length + 1, modelId)
   return {
     activeId: next.id,
     conversations: [...current, next],
@@ -196,6 +203,7 @@ function forkConversationState(
     archived: false,
     hasActivity: true,
     id: nextConversationId(),
+    modelId: source.modelId,
     targetId: source.targetId,
     title: source.usesDefaultTitle ? defaultConversationTitle(locale, index) : source.title,
     usesDefaultTitle: false,
@@ -221,7 +229,7 @@ function archiveConversationState(
 
 function closeConversationState(
   current: AiConversation[],
-  { activeId, fallbackTarget, id, locale }: CloseConversationOptions,
+  { activeId, fallbackModelId, fallbackTarget, id, locale }: CloseConversationOptions,
 ): { activeId: string; conversations: AiConversation[] } {
   const closedConversation = current.find((conversation) => conversation.id === id)
   if (!closedConversation) return { activeId, conversations: current }
@@ -237,7 +245,7 @@ function closeConversationState(
   const fallbackConversation = conversations.find((conversation) => !conversation.archived)
   if (fallbackConversation) return { activeId: fallbackConversation.id, conversations }
 
-  const nextConversation = createConversation(locale, fallbackTarget, conversations.length + 1)
+  const nextConversation = createConversation(locale, fallbackTarget, conversations.length + 1, fallbackModelId)
   return {
     activeId: nextConversation.id,
     conversations: [...conversations, nextConversation],
@@ -253,6 +261,12 @@ function restoreConversationState(current: AiConversation[], id: ConversationId)
 function retargetConversationState(current: AiConversation[], id: ConversationId, targetId: TargetId): AiConversation[] {
   return current.map((conversation) => (
     conversation.id === id ? { ...conversation, targetId, usesDefaultTarget: false } : conversation
+  ))
+}
+
+function setConversationModelState(current: AiConversation[], id: ConversationId, modelId: string | null): AiConversation[] {
+  return current.map((conversation) => (
+    conversation.id === id ? { ...conversation, modelId } : conversation
   ))
 }
 
@@ -346,23 +360,25 @@ function useUpdateDefaultConversationTargets(setConversations: SetConversations)
 
 export function useConversations({
   fallbackTarget,
+  fallbackModelId,
   initialActiveConversationId,
   locale,
   onSettingsChange,
   settings,
   settingsReady,
 }: UseConversationsOptions) {
-  const [conversations, setConversations] = useState<AiConversation[]>(() => (
-    conversationsFromSettings(settings, fallbackTarget, locale)
-  ))
+  const [conversations, setConversations] = useState<AiConversation[]>(() => {
+    const stored = conversationsFromSettings(settings, fallbackTarget, locale)
+    return stored.length > 0 ? stored : [createConversation(locale, fallbackTarget, 1, fallbackModelId)]
+  })
   const [activeId, setActiveId] = useState(() => initialActiveId(conversations, initialActiveConversationId))
   const [showArchived, setShowArchived] = useState(false)
 
-  const addConversation = useCallback((target: AiTarget) => {
-    const next = appendConversationState(conversations, locale, target)
+  const addConversation = useCallback((target: AiTarget, modelId: string | null = fallbackModelId) => {
+    const next = appendConversationState(conversations, locale, target, modelId)
     setConversations(next.conversations)
     setActiveId(next.activeId)
-  }, [conversations, locale])
+  }, [conversations, fallbackModelId, locale])
 
   const forkConversation = useCallback((sourceId: ConversationId) => {
     const next = forkConversationState(conversations, locale, sourceId)
@@ -380,10 +396,10 @@ export function useConversations({
   }, [conversations])
 
   const closeConversation = useCallback((id: ConversationId) => {
-    const next = closeConversationState(conversations, { activeId, fallbackTarget, id, locale })
+    const next = closeConversationState(conversations, { activeId, fallbackModelId, fallbackTarget, id, locale })
     setConversations(next.conversations)
     setActiveId(next.activeId)
-  }, [activeId, conversations, fallbackTarget, locale])
+  }, [activeId, conversations, fallbackModelId, fallbackTarget, locale])
 
   const restoreConversation = useCallback((id: ConversationId) => {
     setConversations((current) => restoreConversationState(current, id))
@@ -397,6 +413,10 @@ export function useConversations({
 
   const setConversationTarget = useCallback((id: ConversationId, targetId: TargetId) => {
     setConversations((current) => retargetConversationState(current, id, targetId))
+  }, [])
+
+  const setConversationModel = useCallback((id: ConversationId, modelId: string | null) => {
+    setConversations((current) => setConversationModelState(current, id, modelId))
   }, [])
 
   const renameConversation = useCallback((id: ConversationId, title: ConversationTitle) => {
@@ -414,6 +434,6 @@ export function useConversations({
   return {
     activeId, addConversation, archiveConversation, closeConversation, conversations, forkConversation,
     markConversationActivity, renameConversation, reorderConversation, restoreConversation, setActiveId,
-    setConversationTarget, setShowArchived, showArchived, titleConversationFromAnswer, updateDefaultConversationTargets,
+    setConversationModel, setConversationTarget, setShowArchived, showArchived, titleConversationFromAnswer, updateDefaultConversationTargets,
   }
 }

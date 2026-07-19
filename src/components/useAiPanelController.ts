@@ -35,6 +35,7 @@ interface UseAiPanelControllerArgs {
   noteList?: NoteListItem[]
   noteListFilter?: { type: string | null; query: string }
   locale?: AppLocale
+  model?: string
   onOpenNote?: (path: string) => void
   onFileCreated?: (relativePath: string) => void
   onFileModified?: (relativePath: string) => void
@@ -116,6 +117,7 @@ function usePanelAgent({
   defaultAiAgentReady,
   defaultAiAgentReadiness,
   locale,
+  model,
   onFileCreated,
   onFileModified,
   onVaultChanged,
@@ -129,6 +131,7 @@ function usePanelAgent({
   | 'defaultAiAgentReady'
   | 'defaultAiAgentReadiness'
   | 'locale'
+  | 'model'
   | 'onFileCreated'
   | 'onFileModified'
   | 'onVaultChanged'
@@ -138,6 +141,7 @@ function usePanelAgent({
   const permissionMode = useVaultAiAgentPermissionMode()
   const agent = useCliAiAgent(vaultPath, vaultPaths, contextPrompt, fileCallbacks, {
     agent: defaultAiAgent,
+    model,
     target: defaultAiTarget,
     locale,
     agentReady: resolveAgentReady(defaultAiAgentReadiness, defaultAiAgentReady),
@@ -161,6 +165,7 @@ export function useAiPanelController({
   noteList,
   noteListFilter,
   locale = 'en',
+  model,
   onOpenNote,
   onFileCreated,
   onFileModified,
@@ -178,7 +183,7 @@ export function useAiPanelController({
     noteListFilter,
   })
 
-  const { agent, permissionMode } = usePanelAgent({ vaultPath, vaultPaths, contextPrompt, defaultAiAgent, defaultAiTarget, defaultAiAgentReady, defaultAiAgentReadiness, locale, onFileCreated, onFileModified, onVaultChanged, sessionId })
+  const { agent, permissionMode } = usePanelAgent({ vaultPath, vaultPaths, contextPrompt, defaultAiAgent, defaultAiTarget, defaultAiAgentReady, defaultAiAgentReadiness, locale, model, onFileCreated, onFileModified, onVaultChanged, sessionId })
   const isActive = agent.status === 'thinking' || agent.status === 'tool-executing'
 
   const handleSend = useCallback((text: string, references: NoteReference[]) => {

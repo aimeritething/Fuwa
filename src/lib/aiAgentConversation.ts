@@ -31,6 +31,7 @@ export type AgentStatus = 'idle' | 'thinking' | 'tool-executing' | 'done' | 'err
 
 export interface AgentExecutionContext {
   agent: AiAgentId
+  model?: string
   target?: AiTarget
   locale?: AppLocale
   ready: boolean

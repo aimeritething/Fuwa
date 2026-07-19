@@ -14,10 +14,12 @@ import type { AgentStatus } from '../hooks/useCliAiAgent'
 import { resetVaultConfigStore } from '../utils/vaultConfigStore'
 import type { VaultEntry } from '../types'
 import type { VaultAiGuidanceStatus } from '../lib/vaultAiGuidance'
+import { setPreferredAgentModel } from '../lib/aiAgentModels'
 
 let mockedAgentStatus: AgentStatus = 'idle'
 let mockMessages: ReturnType<typeof import('../hooks/useCliAiAgent').useCliAiAgent>['messages'] = []
 let controllerCalls: unknown[] = []
+const addLocalMarkerMock = vi.fn()
 const { generateTitleMock } = vi.hoisted(() => ({
   generateTitleMock: vi.fn(),
 }))
@@ -43,7 +45,7 @@ vi.mock('./useAiPanelController', () => ({
         status: mockedAgentStatus,
         sendMessage: vi.fn(),
         clearConversation: vi.fn(),
-        addLocalMarker: vi.fn(),
+        addLocalMarker: addLocalMarkerMock,
       },
       input: '',
       setInput: vi.fn(),
@@ -179,6 +181,7 @@ describe('AiWorkspace', () => {
     mockedAgentStatus = 'idle'
     mockMessages = []
     controllerCalls = []
+    addLocalMarkerMock.mockReset()
     generateTitleMock.mockReset()
     generateTitleMock.mockResolvedValue('Quarterly sponsor outreach')
     localStorage.clear()
@@ -266,7 +269,7 @@ describe('AiWorkspace', () => {
     expect(workspace).toHaveAttribute('data-ai-workspace-expanded', 'false')
     expect(workspace).not.toHaveClass('fixed')
     expect(workspace).toHaveClass('bg-sidebar')
-    expect(workspace).toHaveStyle({ width: '320px', minWidth: '320px' })
+    expect(workspace).toHaveStyle({ width: '360px', minWidth: '240px' })
     const header = screen.getByTestId('ai-workspace-side-header')
     const tabStrip = screen.getByTestId('ai-workspace-side-tabs')
     expect(header).not.toHaveClass('border-b')
@@ -413,12 +416,12 @@ describe('AiWorkspace', () => {
     fireEvent.mouseDown(screen.getByTestId('ai-workspace-left-resize'), { clientX: 100, clientY: 20 })
     fireEvent.mouseMove(window, { clientX: 40, clientY: 20 })
     fireEvent.mouseUp(window)
-    expect(workspace).toHaveStyle({ width: '380px' })
+    expect(workspace).toHaveStyle({ width: '420px' })
 
     unmount()
     render(<AiWorkspace open mode="side" aiAgentsStatus={installedStatuses()} aiModelProviders={providers} vaultPath="/tmp/vault" onClose={vi.fn()} />)
 
-    expect(screen.getByTestId('ai-workspace')).toHaveStyle({ width: '380px' })
+    expect(screen.getByTestId('ai-workspace')).toHaveStyle({ width: '420px' })
   })
 
   it('separates the guidance warning from the header and uses a short restore action', () => {
@@ -542,6 +545,186 @@ describe('AiWorkspace', () => {
     expect(within(menu).queryByText('Antigravity CLI')).toBeNull()
     expect(within(menu).getByText('Ollama · Llama 3.2')).toBeTruthy()
     expect(within(menu).getByText('OpenAI · GPT-4.1')).toBeTruthy()
+  })
+
+  it('persists a verified model with the conversation and next invocation', async () => {
+    const onConversationSettingsChange = vi.fn()
+    render(
+      <AiWorkspace
+        open
+        mode="side"
+        aiAgentsStatus={installedStatuses()}
+        aiModelProviders={[]}
+        conversationSettings={[{
+          id: 'codex-chat',
+          title: 'Codex chat',
+          target_id: 'agent:codex',
+          model_id: null,
+          archived: false,
+        }]}
+        vaultPath="/tmp/vault"
+        onClose={vi.fn()}
+        onConversationSettingsChange={onConversationSettingsChange}
+      />,
+    )
+
+    const trigger = await screen.findByTestId('ai-workspace-model-trigger')
+    expect(trigger).toHaveAccessibleName('Model: Agent default')
+    act(() => {
+      trigger.focus()
+      fireEvent.keyDown(trigger, { key: 'ArrowDown' })
+    })
+    fireEvent.click(within(await screen.findByRole('menu')).getByText('GPT-5.6 Sol'))
+
+    await waitFor(() => {
+      expect(onConversationSettingsChange).toHaveBeenLastCalledWith([
+        expect.objectContaining({ id: 'codex-chat', model_id: 'gpt-5.6-sol' }),
+      ])
+    })
+    expect(controllerCalls.at(-1)).toEqual(expect.objectContaining({ model: 'gpt-5.6-sol' }))
+  })
+
+  it('restores independent model preferences when switching agents', async () => {
+    setPreferredAgentModel('codex', 'gpt-5.6-terra')
+    setPreferredAgentModel('claude_code', 'sonnet')
+    render(
+      <AiWorkspace
+        open
+        mode="side"
+        aiAgentsStatus={installedStatuses()}
+        aiModelProviders={[]}
+        conversationSettings={[{
+          id: 'switch-chat',
+          title: 'Switch chat',
+          target_id: 'agent:codex',
+          model_id: 'gpt-5.6-terra',
+          archived: false,
+        }]}
+        vaultPath="/tmp/vault"
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByTestId('ai-workspace-model-trigger')).toHaveAccessibleName('Model: GPT-5.6 Terra')
+    const targetTrigger = screen.getByTestId('ai-workspace-target-trigger')
+    act(() => {
+      targetTrigger.focus()
+      fireEvent.keyDown(targetTrigger, { key: 'ArrowDown' })
+    })
+    fireEvent.click(within(await screen.findByRole('menu')).getByText('Claude Code'))
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-workspace-model-trigger')).toHaveAccessibleName('Model: Sonnet')
+    })
+
+    const claudeTrigger = screen.getByTestId('ai-workspace-target-trigger')
+    act(() => {
+      claudeTrigger.focus()
+      fireEvent.keyDown(claudeTrigger, { key: 'ArrowDown' })
+    })
+    fireEvent.click(within(await screen.findByRole('menu')).getByText('Codex'))
+    await waitFor(() => {
+      expect(screen.getByTestId('ai-workspace-model-trigger')).toHaveAccessibleName('Model: GPT-5.6 Terra')
+    })
+  })
+
+  it('falls back visibly when a saved model is no longer available', async () => {
+    setPreferredAgentModel('codex', 'removed-model')
+    const onConversationSettingsChange = vi.fn()
+    render(
+      <AiWorkspace
+        open
+        mode="side"
+        aiAgentsStatus={installedStatuses()}
+        aiModelProviders={[]}
+        conversationSettings={[{
+          id: 'legacy-model-chat',
+          title: 'Legacy model chat',
+          target_id: 'agent:codex',
+          model_id: 'removed-model',
+          archived: false,
+        }]}
+        vaultPath="/tmp/vault"
+        onClose={vi.fn()}
+        onConversationSettingsChange={onConversationSettingsChange}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(addLocalMarkerMock).toHaveBeenCalledWith(expect.stringContaining('Agent default'))
+    })
+    expect(onConversationSettingsChange).toHaveBeenLastCalledWith([
+      expect.objectContaining({ id: 'legacy-model-chat', model_id: null }),
+    ])
+    expect(controllerCalls.at(-1)).toEqual(expect.objectContaining({ model: undefined }))
+  })
+
+  it('locks agent and model selectors while a response is active', async () => {
+    mockedAgentStatus = 'thinking'
+    render(
+      <AiWorkspace
+        open
+        mode="side"
+        aiAgentsStatus={installedStatuses()}
+        aiModelProviders={[]}
+        conversationSettings={[{
+          id: 'running-chat',
+          title: 'Running chat',
+          target_id: 'agent:codex',
+          model_id: 'gpt-5.6-sol',
+          archived: false,
+        }]}
+        vaultPath="/tmp/vault"
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByTestId('ai-workspace-target-trigger')).toBeDisabled()
+    expect(await screen.findByTestId('ai-workspace-model-trigger')).toBeDisabled()
+  })
+
+  it('keeps direct API model targets separate from agent model choices', async () => {
+    render(
+      <AiWorkspace
+        open
+        mode="side"
+        aiAgentsStatus={installedStatuses()}
+        aiModelProviders={providers}
+        conversationSettings={[{
+          id: 'api-chat',
+          title: 'API chat',
+          target_id: 'model:openai/gpt-4.1',
+          model_id: null,
+          archived: false,
+        }]}
+        vaultPath="/tmp/vault"
+        onClose={vi.fn()}
+      />,
+    )
+
+    await waitFor(() => {
+      expect(screen.queryByTestId('ai-workspace-model-trigger')).toBeNull()
+      expect(controllerCalls.at(-1)).toEqual(expect.objectContaining({ model: undefined }))
+    })
+  })
+
+  it('uses responsive composer control columns at narrow side-panel widths', async () => {
+    localStorage.setItem('tolaria:ai-workspace-side-width', '240')
+    render(
+      <AiWorkspace
+        open
+        mode="side"
+        aiAgentsStatus={installedStatuses()}
+        aiModelProviders={[]}
+        vaultPath="/tmp/vault"
+        onClose={vi.fn()}
+      />,
+    )
+
+    expect(await screen.findByTestId('ai-workspace-model-trigger')).toBeTruthy()
+    expect(screen.getByTestId('ai-workspace-composer-controls')).toHaveClass(
+      'grid-cols-[repeat(auto-fit,minmax(min(140px,100%),1fr))]',
+    )
+    expect(screen.getByTestId('ai-workspace-target-trigger')).toHaveClass('min-w-0', 'w-full')
   })
 
   it('reports the selected workspace target to parent surfaces', async () => {

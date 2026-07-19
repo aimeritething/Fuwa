@@ -91,6 +91,7 @@ import { trackEvent } from './lib/telemetry'
 import { areAutomaticUpdateChecksEnabled } from './lib/automaticUpdateChecks'
 import { areAiFeaturesEnabled } from './lib/aiFeatures'
 import { resolveAiTargetReadiness, type AiTarget } from './lib/aiTargets'
+import { isAiAgentInstalled } from './lib/aiAgents'
 import { areGitFeaturesEnabled } from './lib/gitSettings'
 import { useAppCommandAiActions } from './hooks/useAppCommandAiActions'
 import { TOLARIA_DOCS_URL } from './constants/feedback'
@@ -279,6 +280,8 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     aiFeaturesEnabled,
     aiWorkspaceWindow,
     closeAIChat,
+    modelSelectorAvailable: isAiAgentInstalled(aiAgentsStatus, 'claude_code')
+      || isAiAgentInstalled(aiAgentsStatus, 'codex'),
     openAIChat,
     openSettings: dialogs.openSettings,
     setSettingsInitialSectionId,

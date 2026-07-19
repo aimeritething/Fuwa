@@ -129,6 +129,12 @@ pub async fn get_ai_agents_status() -> AiAgentsStatus {
 
 #[cfg(desktop)]
 #[tauri::command]
+pub async fn get_ai_agent_model_catalog() -> Vec<crate::ai_agents::AiAgentModelCapability> {
+    crate::ai_agents::get_ai_agent_model_catalog().await
+}
+
+#[cfg(desktop)]
+#[tauri::command]
 pub fn get_agent_docs_path(app_handle: tauri::AppHandle) -> Result<String, String> {
     use std::path::PathBuf;
     use tauri::path::BaseDirectory;
@@ -307,6 +313,12 @@ pub fn get_ai_agents_status() -> AiAgentsStatus {
 
 #[cfg(mobile)]
 #[tauri::command]
+pub fn get_ai_agent_model_catalog() -> Vec<crate::ai_agents::AiAgentModelCapability> {
+    Vec::new()
+}
+
+#[cfg(mobile)]
+#[tauri::command]
 pub fn get_agent_docs_path() -> Result<String, String> {
     Err("Bundled agent docs are only available in the desktop app.".into())
 }
@@ -381,6 +393,7 @@ mod tests {
         let request = AiAgentStreamRequest {
             agent: AiAgentId::ClaudeCode,
             message: "hi".into(),
+            model: None,
             system_prompt: None,
             vault_path: "~/Vaults/content".into(),
             vault_paths: vec!["~/Vaults/secondary".into()],
@@ -410,6 +423,7 @@ mod tests {
         let request = AiAgentStreamRequest {
             agent: AiAgentId::Codex,
             message: "hi".into(),
+            model: None,
             system_prompt: None,
             vault_path: "/Users/example/vault".into(),
             vault_paths: Vec::new(),

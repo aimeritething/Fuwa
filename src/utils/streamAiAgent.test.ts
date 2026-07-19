@@ -102,6 +102,7 @@ describe('streamAiAgent', () => {
 
     const promise = streamAiAgent({
       agent: 'claude_code',
+      model: 'sonnet',
       message: 'Explain this',
       systemPrompt: 'SYSTEM',
       vaultPath: '/vault',
@@ -115,6 +116,7 @@ describe('streamAiAgent', () => {
     expect(invokeMock).toHaveBeenCalledWith('stream_ai_agent', {
       request: {
         agent: 'claude_code',
+        model: 'sonnet',
         message: 'Explain this',
         system_prompt: 'SYSTEM',
         vault_path: '/vault',

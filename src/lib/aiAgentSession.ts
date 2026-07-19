@@ -106,6 +106,7 @@ async function streamWithSelectedTarget({
 
   await streamAiAgent({
     agent: context.agent,
+    ...(context.model?.trim() ? { model: context.model.trim() } : {}),
     message: formattedMessage,
     systemPrompt,
     vaultPath: context.vaultPath,

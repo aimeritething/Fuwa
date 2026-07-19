@@ -31,6 +31,7 @@ export type { AiAgentMessage } from '../lib/aiAgentConversation'
 
 interface UseCliAiAgentOptions {
   agent: AiAgentId
+  model?: string
   target?: AiTarget
   locale?: AppLocale
   agentReady: boolean
@@ -120,7 +121,7 @@ export function useCliAiAgent(
   fileCallbacks: AgentFileCallbacks | undefined,
   options: UseCliAiAgentOptions,
 ) {
-  const { agent, agentReady, sessionId, target } = options
+  const { agent, agentReady, model, sessionId, target } = options
   const locale = options.locale ?? 'en'
   const { permissionMode } = options
   const localRuntime = useCliAiAgentRuntime(fileCallbacks)
@@ -133,6 +134,7 @@ export function useCliAiAgent(
 
     return {
       agent,
+      model,
       agentDocsPath,
       locale,
       target,

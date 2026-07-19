@@ -242,7 +242,7 @@ describe('useSettings', () => {
 
     const settings = await renderLoadedSettings()
     expect(settings.ai_workspace_conversations).toEqual([
-      { archived: false, id: 'thread-1', target_id: null, title: 'Research plan' },
+      { archived: false, id: 'thread-1', model_id: null, target_id: null, title: 'Research plan' },
     ])
   })
 

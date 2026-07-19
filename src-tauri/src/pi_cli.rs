@@ -58,6 +58,7 @@ mod tests {
     fn request(vault_path: String) -> AgentStreamRequest {
         AgentStreamRequest {
             message: "Summarize".into(),
+            model: None,
             system_prompt: None,
             vault_path,
             vault_paths: Vec::new(),

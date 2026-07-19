@@ -317,6 +317,7 @@ describe('aiAgentSession', () => {
       context: {
         agent: 'codex',
         locale: 'it-IT',
+        model: 'gpt-5.6-sol',
         ready: true,
         vaultPath: '/vault',
         permissionMode: 'power_user',
@@ -337,6 +338,9 @@ describe('aiAgentSession', () => {
       vaultContext: 'OVERRIDE',
     })
     expectStreamingRequest(session.runtime)
+    expect(streamAiAgentMock).toHaveBeenCalledWith(expect.objectContaining({
+      model: 'gpt-5.6-sol',
+    }))
     expect(trackEventMock).toHaveBeenCalledWith('ai_agent_message_sent', {
       agent: 'codex',
       permission_mode: 'power_user',
@@ -344,6 +348,26 @@ describe('aiAgentSession', () => {
       reference_count: 1,
       history_message_count: 1,
     })
+  })
+
+  it('omits an explicit model when the agent default is selected', async () => {
+    nextMessageIdMock.mockReturnValue('msg-stream')
+    const session = createRuntime()
+
+    await sendAgentMessage({
+      runtime: session.runtime,
+      context: {
+        agent: 'claude_code',
+        ready: true,
+        vaultPath: '/vault',
+        permissionMode: 'safe',
+      },
+      prompt: { text: 'Use the agent default' },
+    })
+
+    expect(streamAiAgentMock).toHaveBeenCalledWith(expect.not.objectContaining({
+      model: expect.anything(),
+    }))
   })
 
   it('passes vault roots to api model streams for native note tools', async () => {

@@ -84,6 +84,7 @@ const SUPPORTED_UI_LANGUAGE_ALIASES: &[(&str, &str)] = &[
 pub struct AiWorkspaceConversationSetting {
     pub archived: Option<bool>,
     pub id: String,
+    pub model_id: Option<String>,
     pub target_id: Option<String>,
     pub title: String,
 }
@@ -272,6 +273,7 @@ fn normalize_ai_workspace_conversations(
             Some(AiWorkspaceConversationSetting {
                 archived: conversation.archived,
                 id,
+                model_id: normalize_optional_string(conversation.model_id),
                 target_id: normalize_optional_string(conversation.target_id),
                 title,
             })

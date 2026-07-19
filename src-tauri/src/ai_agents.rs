@@ -44,6 +44,51 @@ pub struct AiAgentsStatus {
     pub hermes: AiAgentAvailability,
 }
 
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct AiAgentModelOption {
+    pub id: String,
+    pub label: String,
+}
+
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
+pub struct AiAgentModelCapability {
+    pub agent: AiAgentId,
+    pub models: Vec<AiAgentModelOption>,
+}
+
+pub async fn get_ai_agent_model_catalog() -> Vec<AiAgentModelCapability> {
+    let codex = tokio::task::spawn_blocking(crate::codex_cli::discover_models);
+    let mut capabilities = vec![claude_model_capability()];
+    if let Ok(Ok(Ok(models))) = tokio::time::timeout(AI_AGENT_STATUS_PROBE_TIMEOUT, codex).await {
+        if !models.is_empty() {
+            capabilities.push(AiAgentModelCapability {
+                agent: AiAgentId::Codex,
+                models: models
+                    .into_iter()
+                    .map(|model| AiAgentModelOption {
+                        id: model.id,
+                        label: model.label,
+                    })
+                    .collect(),
+            });
+        }
+    }
+    capabilities
+}
+
+fn claude_model_capability() -> AiAgentModelCapability {
+    AiAgentModelCapability {
+        agent: AiAgentId::ClaudeCode,
+        models: [("sonnet", "Sonnet"), ("opus", "Opus"), ("haiku", "Haiku")]
+            .into_iter()
+            .map(|(id, label)| AiAgentModelOption {
+                id: id.into(),
+                label: label.into(),
+            })
+            .collect(),
+    }
+}
+
 #[derive(Debug, Clone, Serialize)]
 #[serde(tag = "kind")]
 pub enum AiAgentStreamEvent {
@@ -76,6 +121,7 @@ pub enum AiAgentStreamEvent {
 #[derive(Debug, Clone, Deserialize)]
 pub struct AiAgentStreamRequest {
     pub agent: AiAgentId,
+    pub model: Option<String>,
     pub message: String,
     pub system_prompt: Option<String>,
     pub vault_path: String,
@@ -217,6 +263,7 @@ where
 {
     let mapped = crate::claude_cli::AgentStreamRequest {
         message: request.message,
+        model: request.model,
         system_prompt: request.system_prompt,
         vault_path: request.vault_path,
         vault_paths: request.vault_paths,
@@ -241,6 +288,7 @@ where
 {
     let mapped = crate::cli_agent_runtime::AgentStreamRequest {
         message: request.message,
+        model: request.model,
         system_prompt: request.system_prompt,
         vault_path: request.vault_path,
         vault_paths: request.vault_paths,
@@ -301,6 +349,7 @@ mod tests {
         AiAgentStreamRequest {
             agent: AiAgentId::Codex,
             message: "Summarize this vault".into(),
+            model: None,
             system_prompt: None,
             vault_path: "/tmp/vault".into(),
             vault_paths: Vec::new(),
@@ -318,6 +367,21 @@ mod tests {
         assert_eq!(
             request_with_permission(Some(AiAgentPermissionMode::PowerUser)).permission_mode(),
             AiAgentPermissionMode::PowerUser
+        );
+    }
+
+    #[test]
+    fn claude_capability_uses_documented_stable_aliases() {
+        let capability = claude_model_capability();
+
+        assert_eq!(capability.agent, AiAgentId::ClaudeCode);
+        assert_eq!(
+            capability
+                .models
+                .iter()
+                .map(|model| model.id.as_str())
+                .collect::<Vec<_>>(),
+            vec!["sonnet", "opus", "haiku"]
         );
     }
 

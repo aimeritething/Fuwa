@@ -129,6 +129,7 @@ function normalizeAiWorkspaceConversation(setting: unknown): AiWorkspaceConversa
   return {
     archived: setting.archived === true,
     id,
+    model_id: nullableTrimmedString(setting.model_id),
     target_id: nullableTrimmedString(setting.target_id),
     title,
   }

@@ -1,7 +1,27 @@
 use crate::ai_agents::{AiAgentAvailability, AiAgentStreamEvent};
 pub use crate::cli_agent_runtime::AgentStreamRequest;
+use serde::Deserialize;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CodexModelOption {
+    pub id: String,
+    pub label: String,
+}
+
+#[derive(Deserialize)]
+struct CodexModelCatalog {
+    models: Vec<CodexModelEntry>,
+}
+
+#[derive(Deserialize)]
+struct CodexModelEntry {
+    slug: String,
+    display_name: String,
+    visibility: String,
+}
 
 pub fn check_cli() -> AiAgentAvailability {
     codex_availability_from_binary_result(find_codex_binary())
@@ -13,6 +33,52 @@ where
 {
     let binary = find_codex_binary()?;
     run_agent_stream_with_binary(&binary, request, emit)
+}
+
+pub fn discover_models() -> Result<Vec<CodexModelOption>, String> {
+    let binary = find_codex_binary()?;
+    let target = crate::cli_agent_runtime::command_target_avoiding_windows_cmd_shim(&binary)?;
+    let mut command = crate::hidden_command(&target.program);
+    crate::cli_agent_runtime::configure_agent_command_environment(&mut command, &binary);
+    let output = command
+        .args(&target.prefix_args)
+        .args(["debug", "models"])
+        .stdin(Stdio::null())
+        .output()
+        .map_err(|error| format!("Failed to discover Codex models: {error}"))?;
+    if !output.status.success() {
+        return Err("Codex did not return an available model catalog.".into());
+    }
+    let stdout = String::from_utf8(output.stdout)
+        .map_err(|_| "Codex returned a non-UTF-8 model catalog.".to_string())?;
+    parse_codex_model_catalog(&stdout)
+}
+
+fn parse_codex_model_catalog(catalog: &str) -> Result<Vec<CodexModelOption>, String> {
+    let parsed: CodexModelCatalog = serde_json::from_str(catalog)
+        .map_err(|error| format!("Codex returned an invalid model catalog: {error}"))?;
+    let mut seen = HashSet::new();
+    Ok(parsed
+        .models
+        .into_iter()
+        .filter_map(|model| {
+            if model.visibility != "list" {
+                return None;
+            }
+            let id = model.slug.trim().to_string();
+            if id.is_empty() {
+                return None;
+            }
+            let label = model.display_name.trim().to_string();
+            if label.is_empty() {
+                return None;
+            }
+            if !seen.insert(id.clone()) {
+                return None;
+            }
+            Some(CodexModelOption { id, label })
+        })
+        .collect())
 }
 
 fn find_codex_binary() -> Result<PathBuf, String> {
@@ -287,6 +353,16 @@ fn build_codex_args(
         codex_mcp_env_config(request),
     ];
 
+    if let Some(model) = request
+        .model
+        .as_deref()
+        .map(str::trim)
+        .filter(|model| !model.is_empty())
+    {
+        args.push("--model".into());
+        args.push(model.into());
+    }
+
     if let Some(path) = last_message_path {
         args.push("--output-last-message".into());
         args.push(path.to_string_lossy().into_owned());
@@ -535,6 +611,7 @@ mod tests {
     ) -> AgentStreamRequest {
         AgentStreamRequest {
             message: "Summarize".into(),
+            model: None,
             system_prompt: None,
             vault_path: vault_path.to_string_lossy().into_owned(),
             vault_paths: Vec::new(),
@@ -586,6 +663,7 @@ mod tests {
     fn build_codex_prompt_keeps_system_prompt_first() {
         let prompt = build_codex_prompt(&AgentStreamRequest {
             message: "Rename the note".into(),
+            model: None,
             system_prompt: Some("Be concise".into()),
             vault_path: "/tmp/vault".into(),
             vault_paths: Vec::new(),
@@ -601,6 +679,7 @@ mod tests {
         if let Ok(args) = build_codex_args(
             &AgentStreamRequest {
                 message: "Rename the note".into(),
+                model: None,
                 system_prompt: None,
                 vault_path: "/tmp/vault".into(),
                 vault_paths: Vec::new(),
@@ -616,10 +695,57 @@ mod tests {
     }
 
     #[test]
+    fn build_codex_args_passes_an_explicit_model_once() {
+        let mut request = AgentStreamRequest {
+            message: "Rename the note".into(),
+            model: None,
+            system_prompt: None,
+            vault_path: "/tmp/vault".into(),
+            vault_paths: Vec::new(),
+            permission_mode: AiAgentPermissionMode::Safe,
+        };
+        request.model = Some("gpt-5.6-sol".into());
+
+        let args = build_codex_args(&request, None).unwrap();
+        let model_flags = args
+            .windows(2)
+            .filter(|window| window[0] == "--model" && window[1] == "gpt-5.6-sol")
+            .count();
+
+        assert_eq!(model_flags, 1);
+    }
+
+    #[test]
+    fn parses_only_visible_unique_models_from_debug_catalog() {
+        let catalog = r#"{
+            "models": [
+                {"slug":"gpt-5.6-sol","display_name":"GPT-5.6 Sol","visibility":"list"},
+                {"slug":"gpt-5.6-sol","display_name":"Duplicate","visibility":"list"},
+                {"slug":"hidden","display_name":"Hidden","visibility":"hide"},
+                {"slug":" ","display_name":"Invalid","visibility":"list"}
+            ]
+        }"#;
+
+        assert_eq!(
+            parse_codex_model_catalog(catalog).unwrap(),
+            vec![CodexModelOption {
+                id: "gpt-5.6-sol".into(),
+                label: "GPT-5.6 Sol".into(),
+            }]
+        );
+    }
+
+    #[test]
+    fn malformed_model_catalog_returns_an_error() {
+        assert!(parse_codex_model_catalog("not-json").is_err());
+    }
+
+    #[test]
     fn codex_power_user_keeps_workspace_write_without_dangerous_bypass() {
         if let Ok(args) = build_codex_args(
             &AgentStreamRequest {
                 message: "Rename the note".into(),
+                model: None,
                 system_prompt: None,
                 vault_path: "/tmp/vault".into(),
                 vault_paths: Vec::new(),
@@ -636,6 +762,7 @@ mod tests {
         if let Ok(args) = build_codex_args(
             &AgentStreamRequest {
                 message: "Rename the note".into(),
+                model: None,
                 system_prompt: None,
                 vault_path: "/tmp/vault".into(),
                 vault_paths: Vec::new(),
@@ -656,6 +783,7 @@ mod tests {
         let args = build_codex_args(
             &AgentStreamRequest {
                 message: "Read [[Test note]]".into(),
+                model: None,
                 system_prompt: None,
                 vault_path: "/tmp/vault".into(),
                 vault_paths: Vec::new(),

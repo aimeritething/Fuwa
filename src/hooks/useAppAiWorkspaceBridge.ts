@@ -10,6 +10,7 @@ interface UseAppAiWorkspaceBridgeOptions {
   aiFeaturesEnabled: boolean
   aiWorkspaceWindow: boolean
   closeAIChat: () => void
+  modelSelectorAvailable: boolean
   openAIChat: () => void
   openSettings: () => void
   setSettingsInitialSectionId: (sectionId: string | null) => void
@@ -62,6 +63,7 @@ export function useAppAiWorkspaceBridge({
   aiFeaturesEnabled,
   aiWorkspaceWindow,
   closeAIChat,
+  modelSelectorAvailable,
   openAIChat,
   openSettings,
   setSettingsInitialSectionId,
@@ -77,10 +79,13 @@ export function useAppAiWorkspaceBridge({
 
   const openAiWorkspace = useCallback(
     (source: 'event' | 'status_bar') => {
-      trackEvent('ai_workspace_open', { source })
+      trackEvent('ai_workspace_open', {
+        model_selector_available: modelSelectorAvailable ? 1 : 0,
+        source,
+      })
       openAIChat()
     },
-    [openAIChat],
+    [modelSelectorAvailable, openAIChat],
   )
 
   useOpenAiChatEvent(aiFeaturesEnabled, openAiWorkspace)

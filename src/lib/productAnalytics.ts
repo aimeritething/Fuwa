@@ -246,6 +246,25 @@ export function trackAiAgentPermissionModeChanged(agent: AiAgentId, permissionMo
   })
 }
 
+export function trackAiAgentModelSelected(
+  agent: AiAgentId,
+  usedAgentDefault: AnalyticsBoolean,
+  surface: AiWorkspaceMode,
+): void {
+  trackEvent('ai_agent_model_selected', {
+    agent_id: agent,
+    surface,
+    used_agent_default: numericFlag(usedAgentDefault),
+  })
+}
+
+export function trackAiAgentModelFallback(agent: AiAgentId, reason: 'unavailable'): void {
+  trackEvent('ai_agent_model_fallback', {
+    agent_id: agent,
+    reason,
+  })
+}
+
 export function trackAiWorkspaceSidebarToggled(collapsed: AnalyticsBoolean, mode: AiWorkspaceMode): void {
   trackEvent('ai_workspace_sidebar_toggled', {
     collapsed: numericFlag(collapsed),

@@ -285,6 +285,7 @@ mod tests {
     fn request() -> AgentStreamRequest {
         AgentStreamRequest {
             message: "Rename the note".into(),
+            model: None,
             system_prompt: None,
             vault_path: "/tmp/vault".into(),
             vault_paths: Vec::new(),

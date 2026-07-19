@@ -488,6 +488,9 @@ files:
     ai.workspace.status.done: f92965e2c8a7afb3c1b9a5c09a263636
     ai.workspace.status.error: 902b0d55fddef6f8d651fe1035b7d4bd
     ai.workspace.permissionMode: 5a7983f759c9e15ce53d7326f0abad71
+    ai.workspace.modelDefault: 12931c4e512403fb751975f2e172d4d0
+    ai.workspace.modelLabel: a559b87068921eec05086ce5485e9784
+    ai.workspace.modelUnavailable: b1fbaa24eac921d17e75d9dbf1b559a8
     ai.workspace.guidanceWarning: 00d95da9bc82394785728dec587b026e
     ai.workspace.targetLabel: df5dd38c32585fe0c71c955b3a31f83c
     ai.workspace.targetLocalAgents: 5a6a65e960093bfc37b4cc81c4a9f773

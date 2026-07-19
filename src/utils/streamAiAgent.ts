@@ -27,6 +27,7 @@ export interface AgentStreamCallbacks {
 
 export interface StreamAiAgentRequest {
   agent: AiAgentId
+  model?: string
   message: string
   systemPrompt?: string
   vaultPath: string
@@ -111,6 +112,7 @@ function streamMockAiAgent(request: StreamAiAgentRequest): void {
 function nativeAgentStreamRequest(request: StreamAiAgentRequest, eventName: string) {
   return {
     agent: request.agent,
+    model: request.model?.trim() || null,
     message: request.message,
     system_prompt: request.systemPrompt || null,
     vault_path: request.vaultPath,

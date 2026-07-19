@@ -108,6 +108,7 @@ mod tests {
     fn request(vault_path: String, permission_mode: AiAgentPermissionMode) -> AgentStreamRequest {
         AgentStreamRequest {
             message: "Rename the note".into(),
+            model: None,
             system_prompt: None,
             vault_path,
             vault_paths: Vec::new(),

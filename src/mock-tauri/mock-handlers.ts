@@ -567,6 +567,23 @@ export const mockHandlers: Record<string, (args: any) => any> = {
     kiro: { installed: false, version: null },
     hermes: { installed: false, version: null },
   }),
+  get_ai_agent_model_catalog: () => ([
+    {
+      agent: 'claude_code',
+      models: [
+        { id: 'sonnet', label: 'Sonnet' },
+        { id: 'opus', label: 'Opus' },
+        { id: 'haiku', label: 'Haiku' },
+      ],
+    },
+    {
+      agent: 'codex',
+      models: [
+        { id: 'gpt-5.6-sol', label: 'GPT-5.6 Sol' },
+        { id: 'gpt-5.6-terra', label: 'GPT-5.6 Terra' },
+      ],
+    },
+  ]),
   get_agent_docs_path: () => '/mock/Tolaria/resources/agent-docs',
   get_vault_ai_guidance_status: () => ({ ...mockVaultAiGuidanceStatus }),
   restore_vault_ai_guidance: () => {

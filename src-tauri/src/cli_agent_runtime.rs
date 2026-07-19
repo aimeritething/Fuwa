@@ -21,6 +21,8 @@ pub(crate) use shell_env::{
 #[derive(Debug, Clone, Deserialize)]
 pub struct AgentStreamRequest {
     pub message: String,
+    #[serde(default)]
+    pub model: Option<String>,
     pub system_prompt: Option<String>,
     pub vault_path: String,
     #[serde(default)]
