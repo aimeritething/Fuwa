@@ -137,7 +137,7 @@ function targetCodeElement(target: EventTarget | null): HTMLElement | null {
 }
 
 function selectionCodeElement(target: EventTarget | null): HTMLElement | null {
-  const ownerDocument = target instanceof Node ? target.ownerDocument : document
+  const ownerDocument = target instanceof Node ? target.ownerDocument ?? document : document
   const anchor = ownerDocument.getSelection()?.anchorNode
   const anchorElement = anchor instanceof Element ? anchor : anchor?.parentElement
   return anchorElement?.closest('[data-content-type="codeBlock"]')
