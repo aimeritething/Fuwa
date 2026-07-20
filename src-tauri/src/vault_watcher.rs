@@ -86,6 +86,7 @@ fn is_watchable_path(path: &Path, git_dir: Option<&Path>) -> bool {
 
 #[cfg(desktop)]
 mod desktop {
+    use std::collections::HashSet;
     use std::sync::Mutex;
 
     use notify::{
@@ -98,8 +99,18 @@ mod desktop {
     };
 
     struct ActiveVaultWatcher {
+        owners: HashSet<String>,
         path: PathBuf,
         _watcher: RecommendedWatcher,
+    }
+
+    fn register_watcher_owner(owners: &mut HashSet<String>, owner: &str) {
+        owners.insert(owner.to_string());
+    }
+
+    fn unregister_watcher_owner(owners: &mut HashSet<String>, owner: &str) -> bool {
+        owners.remove(owner);
+        owners.is_empty()
     }
 
     pub struct VaultWatcherState {
@@ -171,6 +182,7 @@ mod desktop {
     pub fn start(
         app: tauri::AppHandle,
         state: tauri::State<'_, VaultWatcherState>,
+        owner: &str,
         path: PathBuf,
     ) -> Result<(), String> {
         let vault_path = validate_vault_path(path)?;
@@ -178,7 +190,8 @@ mod desktop {
             .active
             .lock()
             .map_err(|_| "Failed to lock vault watcher state".to_string())?;
-        if active.iter().any(|watcher| watcher.path == vault_path) {
+        if let Some(watcher) = active.iter_mut().find(|watcher| watcher.path == vault_path) {
+            register_watcher_owner(&mut watcher.owners, owner);
             return Ok(());
         }
 
@@ -200,23 +213,26 @@ mod desktop {
             .map_err(|err| format!("Failed to watch {}: {err}", vault_path.display()))?;
 
         active.push(ActiveVaultWatcher {
+            owners: HashSet::from([owner.to_string()]),
             path: vault_path,
             _watcher: watcher,
         });
         Ok(())
     }
 
-    pub fn stop(state: tauri::State<'_, VaultWatcherState>) -> Result<(), String> {
+    pub fn stop(state: tauri::State<'_, VaultWatcherState>, owner: &str) -> Result<(), String> {
         let mut active = state
             .active
             .lock()
             .map_err(|_| "Failed to lock vault watcher state".to_string())?;
-        active.clear();
+        active.retain_mut(|watcher| !unregister_watcher_owner(&mut watcher.owners, owner));
         Ok(())
     }
 
     #[cfg(test)]
     mod tests {
+        use std::collections::HashSet;
+
         use notify::event::{AccessKind, CreateKind, EventAttributes};
         use notify::{Event, EventKind};
 
@@ -295,6 +311,19 @@ mod desktop {
 
             assert_eq!(paths, vec!["notes/keep.md"]);
         }
+
+        #[test]
+        fn watcher_owners_keep_shared_watch_alive_until_the_last_window_stops() {
+            let mut owners = HashSet::new();
+
+            register_watcher_owner(&mut owners, "main");
+            register_watcher_owner(&mut owners, "note-1");
+
+            assert!(!unregister_watcher_owner(&mut owners, "note-1"));
+            assert!(owners.contains("main"));
+            assert!(unregister_watcher_owner(&mut owners, "main"));
+            assert!(owners.is_empty());
+        }
     }
 }
 
@@ -335,26 +364,30 @@ pub use mobile::VaultWatcherState;
 pub fn start_vault_watcher(
     app: tauri::AppHandle,
     state: tauri::State<'_, VaultWatcherState>,
+    window: tauri::Window,
     path: PathBuf,
 ) -> Result<(), String> {
-    desktop::start(app, state, path)
+    desktop::start(app, state, window.label(), path)
 }
 
 #[cfg(desktop)]
 #[tauri::command]
-pub fn stop_vault_watcher(state: tauri::State<'_, VaultWatcherState>) -> Result<(), String> {
-    desktop::stop(state)
+pub fn stop_vault_watcher(
+    state: tauri::State<'_, VaultWatcherState>,
+    window: tauri::Window,
+) -> Result<(), String> {
+    desktop::stop(state, window.label())
 }
 
 #[cfg(not(desktop))]
 #[tauri::command]
-pub fn start_vault_watcher(path: PathBuf) -> Result<(), String> {
+pub fn start_vault_watcher(_window: tauri::Window, path: PathBuf) -> Result<(), String> {
     mobile::start(path)
 }
 
 #[cfg(not(desktop))]
 #[tauri::command]
-pub fn stop_vault_watcher() -> Result<(), String> {
+pub fn stop_vault_watcher(_window: tauri::Window) -> Result<(), String> {
     mobile::stop()
 }
 

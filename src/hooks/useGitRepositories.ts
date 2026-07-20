@@ -17,6 +17,7 @@ interface RepositoryRemoteStatus {
 
 interface UseGitRepositoriesOptions {
   defaultVaultPath: string
+  enabled?: boolean
   repositories: GitRepositoryOption[]
 }
 
@@ -111,7 +112,7 @@ function useValidatedRepositoryPath({
   return [selectedPath, setRepositoryPath] as const
 }
 
-function useRepositoryModifiedFiles(repositories: GitRepositoryOption[]) {
+function useRepositoryModifiedFiles(repositories: GitRepositoryOption[], enabled: boolean) {
   const [byRepository, setByRepository] = useState<ReadonlyMap<string, RepositoryModifiedFiles>>(() => new Map())
   const loadIdsRef = useRef<RepositoryLoadIds>(new Map())
   const repositorySignature = repositoryPathSignature(repositories)
@@ -151,9 +152,9 @@ function useRepositoryModifiedFiles(repositories: GitRepositoryOption[]) {
   }, [loadModifiedFilesForRepository, repositoryPaths])
 
   useEffect(() => {
-    if (repositoryPaths.length === 0) return
+    if (!enabled || repositoryPaths.length === 0) return
     void loadAllModifiedFiles()
-  }, [loadAllModifiedFiles, repositoryPaths.length])
+  }, [enabled, loadAllModifiedFiles, repositoryPaths.length])
 
   return { byRepository, loadAllModifiedFiles, loadModifiedFilesForRepository }
 }
@@ -195,6 +196,7 @@ function useRepositoryRemoteStatuses(repositories: GitRepositoryOption[]) {
 
 export function useGitRepositories({
   defaultVaultPath,
+  enabled = true,
   repositories,
 }: UseGitRepositoriesOptions) {
   const selectionConfig = { fallbackPath: defaultVaultPath, repositories }
@@ -202,7 +204,10 @@ export function useGitRepositories({
   const [historyRepositoryPath, setHistoryRepositoryPath] = useValidatedRepositoryPath(selectionConfig)
   const [commitRepositoryPath, setCommitRepositoryPath] = useValidatedRepositoryPath(selectionConfig)
   const [syncRepositoryPath, setSyncRepositoryPath] = useValidatedRepositoryPath(selectionConfig)
-  const { byRepository, loadAllModifiedFiles, loadModifiedFilesForRepository } = useRepositoryModifiedFiles(repositories)
+  const { byRepository, loadAllModifiedFiles, loadModifiedFilesForRepository } = useRepositoryModifiedFiles(
+    repositories,
+    enabled,
+  )
   const {
     byRepository: remoteStatusByRepository,
     refreshAllRemoteStatuses,

@@ -271,6 +271,32 @@ describe('App note windows', () => {
     expect(vi.mocked(commandResults.list_vault).mock.calls.length).toBeGreaterThanOrEqual(2)
   })
 
+  it('keeps automatic Git work out of secondary note windows', async () => {
+    const isGitRepo = vi.fn(() => true)
+    const getModifiedFiles = vi.fn(() => [])
+    const gitRemoteStatus = vi.fn(() => ({
+      ahead: 0,
+      behind: 0,
+      branch: 'main',
+      hasRemote: true,
+    }))
+    commandResults.is_git_repo = isGitRepo
+    commandResults.get_modified_files = getModifiedFiles
+    commandResults.git_remote_status = gitRemoteStatus
+
+    renderApp(<App />)
+
+    await waitFor(() => {
+      expect(commandResults.reload_vault_entry).toHaveBeenCalledWith({
+        path: activeEntry.path,
+        vaultPath: '/vault',
+      })
+    })
+    expect(isGitRepo).not.toHaveBeenCalled()
+    expect(getModifiedFiles).not.toHaveBeenCalled()
+    expect(gitRemoteStatus).not.toHaveBeenCalled()
+  })
+
   it('probes installed AI agents in note windows for target-picker parity', async () => {
     const getAiAgentsStatus = vi.fn(() => ({
       claude_code: { installed: true, version: '2.1.90' },

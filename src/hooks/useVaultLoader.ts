@@ -459,7 +459,11 @@ function useInitialVaultLoad(options: InitialVaultLoadOptions) {
   ])
 }
 
-function useModifiedFilesLoader(vaultPath: string, isCurrentVaultPath: (path: string) => boolean) {
+function useModifiedFilesLoader(
+  vaultPath: string,
+  isCurrentVaultPath: (path: string) => boolean,
+  enabled: boolean,
+) {
   const [modifiedFiles, setModifiedFiles] = useState<ModifiedFile[]>([])
   const [modifiedFilesError, setModifiedFilesError] = useState<string | null>(null)
 
@@ -490,7 +494,9 @@ function useModifiedFilesLoader(vaultPath: string, isCurrentVaultPath: (path: st
 
   const loadModifiedFiles = useCoalescedAsyncTask(runModifiedFilesLoad)
 
-  useEffect(() => { loadModifiedFiles() }, [loadModifiedFiles])
+  useEffect(() => {
+    if (enabled) loadModifiedFiles()
+  }, [enabled, loadModifiedFiles])
 
   return {
     modifiedFiles,
@@ -762,7 +768,7 @@ function useGitignoredVisibilityReloads(
   }, [reloadFolders, reloadVault, reloadViews])
 }
 
-function useVaultState(vaultPath: string) {
+function useVaultState(vaultPath: string, loadModifiedFiles: boolean) {
   const [entries, setEntries] = useState<VaultEntry[]>([])
   const [folders, setFolders] = useState<FolderNode[]>([])
   const [isLoading, setIsLoading] = useState(() => hasVaultPath({ vaultPath }))
@@ -771,7 +777,7 @@ function useVaultState(vaultPath: string) {
   const pendingSave = usePendingSaveTracker()
   const unsaved = useUnsavedTracker()
   const isCurrentVaultPath = useCurrentVaultPathGuard(vaultPath)
-  const modified = useModifiedFilesLoader(vaultPath, isCurrentVaultPath)
+  const modified = useModifiedFilesLoader(vaultPath, isCurrentVaultPath, loadModifiedFiles)
 
   return {
     entries,
@@ -1240,8 +1246,14 @@ function useVaultLoaderResult({
   }
 }
 
-export function useVaultLoader(vaultPath: string, vaults?: VaultOption[], defaultWorkspacePath?: string | null, folderVaults?: VaultOption[]) {
-  const state = useVaultState(vaultPath)
+export function useVaultLoader(
+  vaultPath: string,
+  vaults?: VaultOption[],
+  defaultWorkspacePath?: string | null,
+  folderVaults?: VaultOption[],
+  options: { loadModifiedFiles?: boolean } = {},
+) {
+  const state = useVaultState(vaultPath, options.loadModifiedFiles !== false)
   const setInitialFolders = useInitialFolderSetter(folderVaults, state.setFolders)
   const entryMutations = useEntryMutations(state.setEntries, state.tracker.trackNew)
   const gitLoaders = useGitLoaders(vaultPath)

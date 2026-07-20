@@ -22,15 +22,24 @@ function checkGitRepo(resolvedPath: string): Promise<boolean> {
     : mockInvoke<boolean>('is_git_repo', { vaultPath: resolvedPath })
 }
 
-function useCheckedGitRepoState(resolvedPath: string) {
+function resolvedGitRepoState(
+  gitRepoStatus: GitRepoStatus,
+  resolvedPath: string,
+  enabled: boolean,
+): GitRepoState {
+  if (!enabled) return 'ready'
+  return gitRepoStatus.path === resolvedPath ? gitRepoStatus.state : 'checking'
+}
+
+function useCheckedGitRepoState(resolvedPath: string, enabled: boolean) {
   const [gitRepoStatus, setGitRepoStatus] = useState<GitRepoStatus>({
     path: '',
     state: 'checking',
   })
-  const gitRepoState = gitRepoStatus.path === resolvedPath ? gitRepoStatus.state : 'checking'
+  const gitRepoState = resolvedGitRepoState(gitRepoStatus, resolvedPath, enabled)
 
   useEffect(() => {
-    if (!resolvedPath) return
+    if (!enabled || !resolvedPath) return
     let cancelled = false
     checkGitRepo(resolvedPath)
       .then(isGit => {
@@ -42,7 +51,7 @@ function useCheckedGitRepoState(resolvedPath: string) {
     return () => {
       cancelled = true
     }
-  }, [resolvedPath])
+  }, [enabled, resolvedPath])
 
   const markGitRepoReady = useCallback(() => {
     setGitRepoStatus({ path: resolvedPath, state: 'ready' })
@@ -80,7 +89,7 @@ export function useGitSetupState({
 }: GitSetupStateConfig) {
   const [dismissedGitSetupPath, setDismissedGitSetupPath] = useState<string | null>(null)
   const [manuallyOpened, setManuallyOpened] = useState(false)
-  const { gitRepoState, markGitRepoReady } = useCheckedGitRepoState(resolvedPath)
+  const { gitRepoState, markGitRepoReady } = useCheckedGitRepoState(resolvedPath, !windowMode)
 
   const openGitSetupDialog = useCallback(() => {
     if (gitRepoState !== 'missing') return

@@ -145,7 +145,7 @@ proposed → active → superseded
 | [0086](0086-in-app-image-file-preview.md) | In-app image previews for binary vault files | superseded → [0098](0098-in-app-image-and-pdf-file-previews.md) |
 | [0087](0087-json-catalogs-and-lara-cli-localization.md) | JSON locale catalogs with Lara CLI synchronization | active |
 | [0088](0088-markdown-durable-mermaid-diagrams.md) | Markdown-durable Mermaid diagrams in notes | active |
-| [0089](0089-active-vault-filesystem-watcher.md) | Active vault filesystem watcher | active |
+| [0089](0089-active-vault-filesystem-watcher.md) | Active vault filesystem watcher | superseded -> [0165](0165-window-owned-vault-watchers-and-main-window-git-background-work.md) |
 | [0090](0090-pi-cli-agent-adapter.md) | Pi CLI agent adapter | active |
 | [0091](0091-gemini-cli-external-ai-setup.md) | Gemini CLI external AI setup | superseded -> [0147](0147-antigravity-cli-agent-adapter.md) |
 | [0092](0092-vault-ai-agent-permission-modes.md) | Vault-scoped AI agent permission modes | superseded -> [0103](0103-adapter-specific-ai-permission-semantics.md) |
@@ -222,3 +222,4 @@ proposed → active → superseded
 | [0162](0162-safe-local-import-of-remote-paste-images.md) | Safe local import of remote paste images | active |
 | [0163](0163-agent-owned-model-selection.md) | Agent-owned model discovery and selection | active |
 | [0164](0164-local-cross-vault-quick-launcher-index.md) | Local incremental index for the cross-vault Quick Launcher | active |
+| [0165](0165-window-owned-vault-watchers-and-main-window-git-background-work.md) | Window-owned vault watchers and main-window Git background work | active |

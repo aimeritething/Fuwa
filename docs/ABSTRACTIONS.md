@@ -502,7 +502,7 @@ The scan owns one resolved `GitWorkspace` for its full lifetime and passes it th
 6. Replaces the cache with a temp-file write + rename only if a short-lived writer lock and cache fingerprint check show another scan has not already refreshed it
 7. On first run, migrates any legacy `.laputa-cache.json` from inside the vault
 
-Startup entry hydration calls the cached `list_vault` path first for both the main window and secondary note windows. The main window alone treats an empty cached startup result as suspicious and retries with `reload_vault`; explicit user reloads, watcher refreshes, and Git pull refreshes still use reload paths when disk freshness is required.
+Startup entry hydration calls the cached `list_vault` path first for both the main window and secondary note windows. The main window alone treats an empty cached startup result as suspicious and retries with `reload_vault`. Secondary note windows keep that full graph for feature parity but skip automatic Git modified-file, repository, remote-status, AutoSync, and AutoGit loops. Known watcher paths refresh with `reload_vault_entry`; explicit user reloads, Git pull refreshes, and watcher paths that cannot be reloaded individually still use full reload paths when disk freshness is required.
 
 ### Frontmatter Manipulation (Rust)
 

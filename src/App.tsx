@@ -83,6 +83,7 @@ import { initializeNoteProperties } from './utils/initializeNoteProperties'
 import { type NoteListFilter } from './utils/noteListHelpers'
 import { openNoteInNewWindow } from './utils/openNoteWindow'
 import { refreshPulledVaultState } from './utils/pulledVaultRefresh'
+import { refreshNoteWindowVaultChanges } from './utils/noteWindowVaultRefresh'
 import { viewMatchesSelection } from './utils/viewIdentity'
 import { isAiWorkspaceWindow, isNoteWindow, isQuickLauncherWindow, getNoteWindowParams, type NoteWindowParams } from './utils/windowMode'
 import { GitSetupDialog } from './components/GitRequiredModal'
@@ -330,6 +331,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   )
   const { config: vaultConfig, updateConfig } = useVaultConfig(resolvedPath)
   const gitFeaturesEnabled = areGitFeaturesEnabled(settings)
+  const automaticGitEnabled = gitFeaturesEnabled && !noteWindowParams
   const handleGitSetupPreferenceChange = useCallback((preference: GitSetupPreference) => {
     updateConfig('git_setup_preference', preference)
   }, [updateConfig])
@@ -348,7 +350,13 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     windowMode: Boolean(noteWindowParams) || aiWorkspaceWindow,
   })
 
-  const vault = useVaultLoader(resolvedPath, graphVaults, multiWorkspaceEnabled ? defaultWorkspacePath : null, folderVaults)
+  const vault = useVaultLoader(
+    resolvedPath,
+    graphVaults,
+    multiWorkspaceEnabled ? defaultWorkspacePath : null,
+    folderVaults,
+    { loadModifiedFiles: automaticGitEnabled },
+  )
   const gitRepositories = useMemo(() => activeGitRepositories({
     defaultVaultPath: graphDefaultWorkspacePath,
     multiWorkspaceEnabled,
@@ -360,6 +368,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
   )
   const gitSurfaces = useGitRepositories({
     defaultVaultPath: graphDefaultWorkspacePath,
+    enabled: automaticGitEnabled,
     repositories: gitRepositories,
   })
   const watchedVaultPaths = useMemo(() => {
@@ -455,21 +464,21 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     [refreshRemoteStatusForRepository, resolvedPath],
   )
   const refreshGitModifiedFiles = useCallback(async () => {
-    if (!gitFeaturesEnabled) return
+    if (!automaticGitEnabled) return
     await Promise.all([
       loadDefaultVaultModifiedFiles(),
       loadAllGitModifiedFiles({ includeStats: isChangesSelection }),
     ])
-  }, [gitFeaturesEnabled, isChangesSelection, loadAllGitModifiedFiles, loadDefaultVaultModifiedFiles])
+  }, [automaticGitEnabled, isChangesSelection, loadAllGitModifiedFiles, loadDefaultVaultModifiedFiles])
   const loadVaultModifiedFiles = refreshGitModifiedFiles
 
   useEffect(() => {
-    if (!gitFeaturesEnabled) return
+    if (!automaticGitEnabled) return
     if (gitRepoState !== 'ready') return
     void loadVaultModifiedFiles()
     void refreshGitRemoteStatus()
     void refreshAllGitRemoteStatuses()
-  }, [gitFeaturesEnabled, gitRepoState, loadVaultModifiedFiles, refreshAllGitRemoteStatuses, refreshGitRemoteStatus])
+  }, [automaticGitEnabled, gitRepoState, loadVaultModifiedFiles, refreshAllGitRemoteStatuses, refreshGitRemoteStatus])
 
   const handleOpenSettings = useCallback(() => {
     setSettingsInitialSectionId(null)
@@ -596,7 +605,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     options: { vaultPath?: string } = {},
   ) => {
     const updateVaultPath = options.vaultPath ?? resolvedPath
-    await refreshPulledVaultState({
+    const entries = await refreshPulledVaultState({
       activeTabPath: noteActiveTabPath,
       closeAllTabs,
       getActiveTabPath: () => noteActiveTabPathRef.current,
@@ -612,6 +621,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
       vaultPath: updateVaultPath,
     })
     await refreshGitModifiedFiles()
+    return entries
   }, [
       closeAllTabs,
       handleReplaceActiveTab,
@@ -626,17 +636,58 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
       vault.reloadViews,
       vault.unsavedPaths,
     ])
-  const handlePulledVaultUpdate = useCallback(
-    (updatedFiles: string[], vaultPath: string) => handleVaultUpdate(updatedFiles, { vaultPath }),
-    [handleVaultUpdate],
-  )
+  const handlePulledVaultUpdate = useCallback(async (updatedFiles: string[], vaultPath: string) => {
+    await handleVaultUpdate(updatedFiles, { vaultPath })
+  }, [handleVaultUpdate])
   const refreshGitHistorySurfaces = useCallback(() => {
     setGitHistoryRefreshKey((key) => key + 1)
   }, [])
-  const handleFocusedVaultUpdate = useCallback(
-    (updatedFiles: string[]) => handleVaultUpdate(updatedFiles),
-    [handleVaultUpdate],
-  )
+  const handleFocusedVaultUpdate = useCallback(async (updatedFiles: string[]) => {
+    if (!noteWindowParams) {
+      await handleVaultUpdate(updatedFiles)
+      return
+    }
+
+    await refreshNoteWindowVaultChanges({
+      activeTabPath: noteActiveTabPath,
+      applyEntry: (entry) => {
+        if (visibleEntries.some((current) => notePathsMatch(current.path, entry.path))) {
+          vault.updateEntry(entry.path, entry)
+        } else {
+          vault.addEntry(entry)
+        }
+      },
+      closeAllTabs,
+      currentEntries: visibleEntries,
+      getActiveTabPath: () => noteActiveTabPathRef.current,
+      hasUnsavedChanges: (path) => vault.unsavedPaths.has(path),
+      isActiveTabContentCurrent,
+      paths: updatedFiles,
+      refreshFullVault: handleVaultUpdate,
+      reloadEntry: async (path) => {
+        const request = { path, vaultPath: resolvedPath }
+        return isTauri()
+          ? invoke<VaultEntry>('reload_vault_entry', request)
+          : mockInvoke<VaultEntry>('reload_vault_entry', request)
+      },
+      replaceActiveTab: handleReplaceActiveTab,
+      refocusActiveEditor,
+      shouldRefocusActiveEditor: isActiveElementInsideEditorSurface,
+      vaultPath: resolvedPath,
+    })
+  }, [
+    closeAllTabs,
+    handleReplaceActiveTab,
+    handleVaultUpdate,
+    isActiveTabContentCurrent,
+    noteActiveTabPath,
+    noteActiveTabPathRef,
+    noteWindowParams,
+    refocusActiveEditor,
+    resolvedPath,
+    vault,
+    visibleEntries,
+  ])
   useEffect(() => {
     if (watchedVaultPaths.length === 0) return
     let cancelled = false
@@ -656,7 +707,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     filterChangedPaths: filterExternalVaultPaths,
   })
   const autoSync = useAutoSync({
-    enabled: gitFeaturesEnabled && gitRepoState === 'ready',
+    enabled: automaticGitEnabled && gitRepoState === 'ready',
     vaultPath: gitSurfaces.syncRepositoryPath,
     vaultPaths: activeGitRepositoryPaths,
     intervalMinutes: settings.auto_pull_interval_minutes,
@@ -966,7 +1017,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     resolveRemoteStatusForVaultPath: refreshRemoteStatusForRepository,
     setToastMessage,
     onPushRejected: autoSync.handlePushRejected,
-    automaticVaultPaths: gitFeaturesEnabled ? activeGitRepositoryPaths : [],
+    automaticVaultPaths: automaticGitEnabled ? activeGitRepositoryPaths : [],
     locale: appLocale,
     manualVaultPath: gitSurfaces.commitRepositoryPath,
     vaultPath: resolvedPath,
@@ -984,7 +1035,7 @@ function MainApp({ noteWindowParams }: { noteWindowParams: NoteWindowParams | nu
     remoteStatusForRepository: gitSurfaces.remoteStatusForRepository,
   })
   const autoGit = useAutoGit({
-    enabled: settings.autogit_enabled === true,
+    enabled: automaticGitEnabled && settings.autogit_enabled === true,
     idleThresholdSeconds: settings.autogit_idle_threshold_seconds ?? 90,
     inactiveThresholdSeconds: settings.autogit_inactive_threshold_seconds ?? 30,
     isGitVault,
