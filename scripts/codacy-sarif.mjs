@@ -1,5 +1,12 @@
 import { fileURLToPath } from 'node:url'
 
+const RUST_UNSAFE_USAGE_RULE = 'codacy.tools-configs.rust.lang.security.unsafe-usage.unsafe-usage'
+
+export function isAuditedRustUnsafe(finding, additions) {
+  if (finding.rule !== RUST_UNSAFE_USAGE_RULE || !finding.line) return false
+  return additions.get(finding.path)?.auditedRustUnsafeLines?.has(finding.line) ?? false
+}
+
 export function sarifGateFailures(sarif, additions, repositoryRoot = '') {
   return (sarif.runs ?? []).flatMap((run) => failuresForRun(run, additions, repositoryRoot))
 }
@@ -21,13 +28,14 @@ function scannerFailures(invocations, tool) {
 function resultFailure(result, additions, tool, repositoryRoot) {
   const { line, path } = resultPosition(result, repositoryRoot)
   if (!isAddedLine(additions, path, line)) return []
-  return [{
+  const failure = {
     line,
     message: result.message?.text ?? 'Codacy issue',
     path,
     rule: result.ruleId ?? 'unknown rule',
     tool,
-  }]
+  }
+  return isAuditedRustUnsafe(failure, additions) ? [] : [failure]
 }
 
 function resultPosition(result, repositoryRoot) {

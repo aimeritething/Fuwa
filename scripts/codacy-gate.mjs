@@ -97,4 +97,4 @@ if (failures.length > 0) {
   process.exit(1)
 }
 
-console.log('Codacy gate passed: no new issues of any severity.')
+console.log('Codacy gate passed: no unreviewed new issues.')

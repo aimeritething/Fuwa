@@ -8,7 +8,9 @@ use std::{
     sync::OnceLock,
 };
 #[cfg(not(target_os = "macos"))]
-use tauri::{menu::MenuEvent, Manager};
+use tauri::menu::MenuEvent;
+#[cfg(not(target_os = "macos"))]
+use tauri::Manager;
 use tauri::{
     menu::{
         MenuBuilder, MenuItem, MenuItemBuilder, MenuItemKind, Submenu, SubmenuBuilder,

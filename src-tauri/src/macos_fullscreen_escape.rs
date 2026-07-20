@@ -23,6 +23,7 @@ pub(crate) fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
 
     let app_handle = app.handle().clone();
     let handler = RcBlock::new(move |event: NonNull<NSEvent>| -> *mut NSEvent {
+        // SAFETY: AppKit supplies a non-null NSEvent for the duration of this callback.
         let event_ref = unsafe { event.as_ref() };
         let Some(window) = app_handle.get_webview_window("main") else {
             return event.as_ptr();
@@ -38,6 +39,7 @@ pub(crate) fn setup(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Erro
         std::ptr::null_mut()
     });
 
+    // SAFETY: The handler returns only AppKit's input event pointer or null, as required.
     let monitor = unsafe {
         NSEvent::addLocalMonitorForEventsMatchingMask_handler(NSEventMask::KeyDown, &handler)
     };

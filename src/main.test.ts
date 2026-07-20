@@ -80,7 +80,7 @@ async function importEntrypoint() {
   await import('./main')
 }
 
-async function withUserAgent<T>(userAgent: string, callback: () => Promise<T>): Promise<T> {
+const withUserAgent = async <T>(userAgent: string, callback: () => Promise<T>): Promise<T> => {
   const originalUserAgent = navigator.userAgent
   Object.defineProperty(window.navigator, 'userAgent', { value: userAgent, configurable: true })
   try {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { addedLinesFromDiff, biomeGateFailures, eslintGateFailures } from './codacy-gate-lib.mjs'
-import { sarifGateFailures } from './codacy-sarif.mjs'
+import { isAuditedRustUnsafe, sarifGateFailures } from './codacy-sarif.mjs'
 
 test('reports findings only on added lines', () => {
   const root = '/repo'
@@ -31,6 +31,24 @@ test('fails closed when a scanner does not complete', () => {
   }] }, new Map())
 
   assert.equal(failures[0]?.message, 'Broken scanner did not complete successfully')
+})
+
+test('recognizes only explicitly audited Rust unsafe findings', () => {
+  const additions = addedLinesFromDiff([
+    '+++ b/src/example.rs',
+    '@@ -0,0 +1,2 @@',
+    '+// SAFETY: callback pointer is non-null.',
+    '+let event = unsafe { pointer.as_ref() };',
+  ].join('\n'), '/repo')
+  const finding = {
+    line: 2,
+    path: '/repo/src/example.rs',
+    rule: 'codacy.tools-configs.rust.lang.security.unsafe-usage.unsafe-usage',
+  }
+
+  assert.equal(isAuditedRustUnsafe(finding, additions), true)
+  assert.equal(isAuditedRustUnsafe({ ...finding, line: 1 }, additions), false)
+  assert.equal(isAuditedRustUnsafe({ ...finding, rule: 'different-rule' }, additions), false)
 })
 
 test('reports Biome diagnostics on added lines at every severity', () => {

@@ -1,12 +1,29 @@
+function additionLinesFor(additions, file) {
+  if (additions.has(file)) return additions.get(file)
+  const lines = new Set()
+  lines.auditedRustUnsafeLines = new Set()
+  additions.set(file, lines)
+  return lines
+}
+
+function recordAddedLine(lines, lineNumber, source, previousAddedLine) {
+  lines.add(lineNumber)
+  const audited = previousAddedLine?.trimStart().startsWith('// SAFETY:')
+    && source.includes('unsafe')
+  if (audited) lines.auditedRustUnsafeLines.add(lineNumber)
+}
+
 export function addedLinesFromDiff(diff, repositoryRoot) {
   const additions = new Map()
   let file = null
   let nextLine = 0
+  let previousAddedLine = null
 
   for (const line of diff.split('\n')) {
     if (line.startsWith('+++ b/')) {
       file = `${repositoryRoot}/${line.slice(6)}`
-      if (!additions.has(file)) additions.set(file, new Set())
+      additionLinesFor(additions, file)
+      previousAddedLine = null
       continue
     }
     const hunk = line.match(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/)
@@ -16,9 +33,13 @@ export function addedLinesFromDiff(diff, repositoryRoot) {
     }
     if (!file || line.startsWith('---')) continue
     if (line.startsWith('+')) {
-      additions.get(file).add(nextLine)
+      const addedLine = line.slice(1)
+      const lines = additions.get(file)
+      recordAddedLine(lines, nextLine, addedLine, previousAddedLine)
+      previousAddedLine = addedLine
       nextLine += 1
     } else if (!line.startsWith('-')) {
+      previousAddedLine = null
       nextLine += 1
     }
   }

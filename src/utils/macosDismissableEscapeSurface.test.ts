@@ -6,7 +6,7 @@ const invoke = vi.fn(async () => undefined)
 
 vi.mock('@tauri-apps/api/core', () => ({ invoke }))
 
-async function withMacTauri(callback: () => Promise<void>) {
+const withMacTauri = async (callback: () => Promise<void>) => {
   const originalUserAgent = navigator.userAgent
   Object.defineProperty(window.navigator, 'userAgent', {
     value: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 Safari/605.1.15',
