@@ -52,6 +52,18 @@ function setGroupChildren(mode: 'all' | 'any', children: FilterNode[]): FilterGr
   return mode === 'all' ? { all: children } : { any: children }
 }
 
+function keyedFilterNodes(children: FilterNode[]): Array<{ key: string; node: FilterNode }> {
+  const occurrences = new Map<string, number>()
+  return children.map((node) => {
+    const identity = isFilterGroup(node)
+      ? JSON.stringify({ mode: getGroupMode(node) })
+      : JSON.stringify({ field: node.field, op: node.op })
+    const occurrence = occurrences.get(identity) ?? 0
+    occurrences.set(identity, occurrence + 1)
+    return { key: `${identity}:${occurrence}`, node }
+  })
+}
+
 function OperatorSelect({ value, onChange }: {
   value: FilterOp
   onChange: (v: FilterOp) => void
@@ -239,10 +251,10 @@ function FilterGroupView({ group, fields, depth, onChange, onRemove }: {
         )}
       </div>
       <div className="space-y-2">
-        {children.map((child, i) =>
+        {keyedFilterNodes(children).map(({ key, node: child }, i) =>
           isFilterGroup(child) ? (
             <FilterGroupView
-              key={JSON.stringify(child)}
+              key={key}
               group={child}
               fields={fields}
               depth={depth + 1}
@@ -251,7 +263,7 @@ function FilterGroupView({ group, fields, depth, onChange, onRemove }: {
             />
           ) : (
             <FilterRow
-              key={JSON.stringify(child)}
+              key={key}
               condition={child}
               fields={fields}
               onUpdate={(c) => updateChild(i, c)}
